@@ -6427,8 +6427,6 @@ CONTAINS
           if (thisOctal%inflow(subcell)) then
              thisOctal%biasCont3D(subcell) = 1.0
              thisOctal%biasLine3D(subcell) = SQRT(escProb)  ! good one to use 
-!             thisOctal%biasLine3D(subcell) = escProb**0.4
-!             thisOctal%biasLine3D(subcell) = escProb  ! bias too strong.
           else
              thisOctal%biasCont3D(subcell) = 1.0e-20
              thisOctal%biasLine3D(subcell) = 1.0e-20

@@ -2510,8 +2510,7 @@ program torus
               call computeProbDist(grid, totLineEmission, &
                    totWindContinuumEmission,lamline, useBias)
 
-              ! convert from per steradian
-              
+              ! convert from per steradian              
               totLineEmission = totLineEmission * fourPi
               totWindContinuumEmission = totwindContinuumEmission * fourPi
            endif
@@ -2607,11 +2606,6 @@ program torus
         nuEnd = cSpeed / (lamEnd * angstromtocm)
 
         totWindContinuumEmission = totWindContinuumEmission * (nuStart - nuEnd)
-
-!       !RK=============================================================RK
-!       !RK For debugging only.  Should be removed later.
-!       totWindContinuumEmission = 1.0d3
-!       !RK=============================================================RK      
         write(*,'(a,e12.3)') "Wind cont emission: ",totWindContinuumEmission
 
 
@@ -2669,11 +2663,6 @@ program torus
 
         write(*,'(a,e12.3)') "Continuum emission: ", totContinuumEmission
 
-!       !RK=============================================================RK
-!       !RK For debugging only.  Should be removed later.
-!       totLineEmission = totCoreContinuumEmission
-!       write(*,*) "Corrected Line emission: ",totLineEmission
-!       !RK=============================================================RK      
 
         if ((totContinuumEmission + totLineEmission) /= 0.) then
            chanceLine = totLineEmission/(totContinuumEmission + totLineEmission)
@@ -2803,13 +2792,65 @@ program torus
      end if
 
      ! Change bias for this viewing angle
-     if (grid%geometry == "ttauri" .and. useBias) then
+     if (grid%geometry == "ttauri" .and. useBias .and. iInclination==1) then
+        ! BIAS not working for iInclination /=1 case.
+        ! THIS SHOULD BE FIXED LATER. MEANWHILE USING THE BIAS FOR THE FIRST INCLINATION
+        ! FOR ALL INCLINATION IS NOT SO.... (RK)
         ! --using a routine in amr_mod
         write(*,*) "Setting emissin bias for ttauri geometry ..."
         call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
         ! recompute the cummulitive probability distribution
         call computeProbDist(grid, totLineEmission, &
              totWindContinuumEmission,lamline, useBias)
+        ! convert from per steradian
+        totLineEmission = totLineEmission * fourPi
+        totWindContinuumEmission = totwindContinuumEmission * fourPi
+        totWindContinuumEmission = totWindContinuumEmission * (nuStart - nuEnd)
+
+        !updating same info
+        totContinuumEmission = totCoreContinuumEmission + totWindContinuumEmission
+
+        write(*,'(a,e12.3)') "Continuum emission: ", totContinuumEmission
+
+        if ((totContinuumEmission + totLineEmission) /= 0.) then
+           chanceLine = totLineEmission/(totContinuumEmission + totLineEmission)
+           chanceContinuum = totContinuumEmission / &
+                (totContinuumEmission + totLineEmission)
+           grid%chanceWindOverTotalContinuum = totWindContinuumEmission &
+                / max(1.d-30,totContinuumEmission)
+        else
+           chanceLine =0.
+           chanceContinuum = 1.
+           grid%chanceWindOverTotalContinuum = 0.
+        endif
+        
+        write(*,'(a,e12.3)') "Chance continuum emission in wind: ", grid%chanceWindOverTotalContinuum
+
+        ! set up the line and continuum weights
+        if ((probLinePhoton /= 0.).and.(probContphoton /= 0.)) then
+           weightLinePhoton = chanceLine / probLinePhoton
+           weightContPhoton = chanceContinuum / probContPhoton / real(nLambda)
+        else
+           if (probLinePhoton == 0.) then
+              weightLinePhoton = 0.
+              weightContPhoton = 1.
+           else
+              weightLinePhoton = 1.
+              weightContPhoton = 0.
+           endif
+        endif
+
+        write(*,*) "Line photon weight: ", weightLinePhoton
+        write(*,*) "Continuum photon weight: ", weightContPhoton
+        write(*,*) " "
+        write(*,*) "Line photon prob: ", probLinePhoton
+        write(*,*) "Continuum photon prob: ", probContPhoton
+
+        energyPerPhoton =  (totLineEmission + totContinuumEmission) / dble(nPhotons)
+
+        write(*,*) "Energy per photon: ", energyPerPhoton
+        write(*,*) "chance line",chanceline
+
      end if
 
 

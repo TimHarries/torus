@@ -1237,6 +1237,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
        ALLOCATE(velocity(maxTau)) 
        ALLOCATE(chiLine(maxTau))
        ALLOCATE(tauSob(maxTau), tauSob2(maxTau)) 
+       ALLOCATE(kabs(maxTau), ksca(maxTau))
        ALLOCATE(velocityDeriv(maxTau)) 
        ALLOCATE(dLambda(maxTau))
        ALLOCATE(projVel(maxTau))
@@ -2292,13 +2293,13 @@ end subroutine integratePathAMR
                 projVel_mid = projVel(i-1)
              end if
              T_mid = MAX(T_mid, 10.0d0) ! [K]  To avoid a tiny Doppler width
-             
-             
+                          
              ! relative velocity wrt the location of photon (CMF)
              Vrel = projVel_mid -  Vn1
              
              ! The line centre of absorption profile shifted by Doppler.
              nu0_p = nu0/(1.0d0-Vrel)  ! [Hz] 
+
              
              DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T_mid/meanMoleMass) !eq 7  [Hz]
              
@@ -2308,7 +2309,7 @@ end subroutine integratePathAMR
              Hay = voigtn(a,dv)
              chil = chiLine_mid / (sqrt_pi*DopplerWidth) * Hay ! equation 5
              ! transform this back to observer's frame value
-             chil = chil/(1.0+projVel_mid)
+             chil = chil/(1.0d0+projVel_mid)
              dtau = chil*dL(i-1)
              ! line albedo added here - tjh
              kappa_total = (kSca(i) + kAbs(i) + chil)
@@ -2331,12 +2332,12 @@ end subroutine integratePathAMR
              tauAbsLine(i) = tauAbsLine(i-1)
              tauSca(i) = tauSca(i-1)
              tauAbs(i) = tauAbs(i-1)
-          end if                          
-             tauExt(i) = tauSca(i) + tauAbs(i) + tauAbsLine(i)
-          enddo
-       escProb = 1.0
+          end if
+          tauExt(i) = tauSca(i) + tauAbs(i) + tauAbsLine(i)
+       enddo
        taul =  tauAbsLine(nTau)
        tau_tot =  tauExt(nTau)
+       escProb = 1.0
     else  ! continuum photon
        escProb = 1.0
        tauAbs(1) = 1.0e-25
@@ -2403,7 +2404,7 @@ end subroutine integratePathAMR
                 Hay = voigtn(a,dv)
                 chil = chiLine_mid / (sqrt_pi*DopplerWidth) * Hay ! equation 5
                 ! transform this back to observer's frame value
-                chil = chil/(1.0+projVel_mid)
+                chil = chil/(1.0d0+projVel_mid)
                 dtau = chil*dL(i-1)
              else  ! not inflow
                 dtau = 0.0d0
