@@ -655,9 +655,13 @@ contains
        write(*,*) "Computing probability distributions..."
 
           if (useBias) then
-             write (*,*) 'Panic: computeProbDist2AMR does not have the ',&
-                         'facility to useBias?'
-             stop
+!             write (*,*) 'Panic: computeProbDist2AMR does not have the ',&
+!                         'facility to useBias?'
+!             stop
+             write(*,*) " "
+             write(*,*) "======= WARNING == WARNING == WARNING =============="
+             write(*,*) "useBias = T option may not work properly...."
+             write(*,*) " "
           endif
         
         totalLineEmissionDouble = 0.0_db

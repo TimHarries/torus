@@ -93,7 +93,7 @@ program torus
   real :: sTot
   ! optical depth variables
 
-  integer, parameter :: maxTau = 50000, maxLambda = 500
+  integer, parameter :: maxTau = 5000, maxLambda = 500
   integer :: nTau
   real, allocatable :: contTau(:,:)
 
@@ -1675,7 +1675,8 @@ program torus
         if (writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
 
      endif     
-     if (grid%geometry == "testamr") call setBiasAMR(grid%octreeRoot, grid)
+!     if (grid%geometry == "testamr") call setBiasAMR(grid%octreeRoot, grid)
+! ==== LINE ABOVE WAS MOVED TO LATER FOR CLEARITY ========================
      call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
 
@@ -1705,17 +1706,20 @@ program torus
      end if 
 
 
-
-     !
-     ! Setting the emission bias.
-     !
-     if (grid%geometry == "testamr") then
-        call setBiasAMR(grid%octreeRoot, grid)
-     elseif (grid%geometry == "cluster") then
-        ! Computing the emission bias based on the optical depth at
-        ! 2 microns. 
-        call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
-     end if
+! THESE LINES ARE MOVED TO OUTSIDE OF IF (LUCY..) BLOCK
+!      !
+!      ! Setting the emission bias.
+!      !
+!      if (grid%geometry == "testamr") then
+!         call setBiasAMR(grid%octreeRoot, grid)
+!      elseif (grid%geometry == "cluster") then
+!         ! Computing the emission bias based on the optical depth at
+!         ! 2 microns. 
+!         call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
+!      elseif (grid%geometry == "ttauri") then
+!         ! --using a routine in amr_mod
+!         call set_bias_ttauri(grid%octreeRoot, grid)
+!      end if
 
 
      ! Plotting the slices of planes
@@ -1729,6 +1733,22 @@ program torus
 
 
   endif
+
+
+  
+  !
+  ! Setting the emission bias.
+  !
+  if (grid%geometry == "testamr") then
+     call setBiasAMR(grid%octreeRoot, grid)
+  elseif (grid%geometry == "cluster") then
+     ! Computing the emission bias based on the optical depth at
+     ! 2 microns. 
+     call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
+  elseif (grid%geometry == "ttauri" .and. useBias) then
+     ! --using a routine in amr_mod
+     call set_bias_ttauri(grid%octreeRoot, grid)
+  end if
   
 
   

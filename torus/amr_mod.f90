@@ -10,7 +10,7 @@ MODULE amr_mod
   USE parameters_mod      ! parameters for specific geometries
   USE jets_mod            ! 
   USE luc_cir3d_class 
-  USE constants_mod, only: cSpeed
+  USE constants_mod, only: cSpeed, pi
   USE sph_data_class
   USE cluster_class
   USE density_mod
@@ -4291,8 +4291,10 @@ CONTAINS
 
     ! we will initialise the bias distribution
     thisOctal%biasLine3D(subcell) = 1.0
+
   
   END SUBROUTINE calcTTauriTemperature
+
   
   FUNCTION hartmannTemp(rM,inTheta,maxHartTemp)
     ! the paper: Hartman, Hewett & Calvet 1994ApJ...426..669H 
@@ -6142,6 +6144,53 @@ CONTAINS
        endif
     enddo
   end subroutine setBiasAMR
+
+  recursive subroutine set_bias_ttauri(thisOctal, grid)
+  type(gridtype) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  real(double) :: d, dV, EM, EM_line, r1, r2, S, S_line
+  type(octalvector)     :: rvec
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call set_bias_ttauri(child, grid)
+                exit
+             end if
+          end do
+       else
+          d = thisOctal%subcellsize 
+
+          if (thisOctal%threed) then
+             dV = d*d*d
+          else
+             rVec = subcellCentre(thisOctal,subcell)
+             dv = 2.0_db*pi*d*d*rVec%x
+          endif
+
+
+          ! weight with the inverse of the emission measure.
+!          S = thisOctal%etaCont(subcell) / &
+!               (thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1) )
+!          S_line = thisOctal%etaLine(subcell) / thisOctal%chiLine(subcell)
+!          EM      = S*d
+!          EM_line = S_line*d
+          EM      = thisOctal%etaCont(subcell)*dV
+          EM_line = thisOctal%etaLine(subcell)*dV
+
+          !thisOctal%biasCont3D(subcell) = EM
+          thisOctal%biasCont3D(subcell) = EM ! no bias for contiuum photon
+          thisOctal%biasLine3D(subcell) = EM_line
+
+       endif
+    enddo
+  end subroutine set_bias_ttauri
+
 
   recursive subroutine massInAnn(thisOctal, r1, r2, mass)
   type(OCTALVECTOR) :: rVec
