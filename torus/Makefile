@@ -406,7 +406,7 @@ torusMain.o: torusMain.f90.raw TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o
 	cluster_utils.o constants_mod.o disc_class.o disc_hydro_mod.o \
 	discwind_class.o distortion_mod.o dust_mod.o filter_set_class.o \
 	grid_mod.o gridtype_mod.o image_mod.o input_variables.o inputs_mod.o \
-	integratePath_new.o isochrone_class.o jet_class.o jets_mod.o \
+	integratePath.o isochrone_class.o jet_class.o jets_mod.o \
 	kind_mod.o luc_cir3d_class.o lucy_mod.o math_mod.o phasematrix_mod.o \
 	photon_mod.o puls_mod.o source_mod.o spectrum_mod.o sph_data_class.o \
 	stateq_mod.o surface_mod.o timing.o unix_mod.o utils_mod.o \

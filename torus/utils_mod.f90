@@ -369,7 +369,10 @@ contains
           hp=xa(i+m)-x
           w=c(i+1)-d(i)
           den=ho-hp
-          if(den.eq.0.)pause 'failure in polint'
+          if(den.eq.0.) then
+             print *, 'Error:: failure in polint.'
+             stop
+          end if
           den=w/den
           d(i)=hp*den
           c(i)=ho*den
@@ -384,6 +387,98 @@ contains
     end do
     return
   end SUBROUTINE polint
+
+
+  SUBROUTINE polint2(xa,ya,n,x,y,dy)
+    INTEGER n,NMAX
+    REAL :: x,xa(n)
+    real(double) :: y, ya(n), dy
+    PARAMETER (NMAX=10)
+    INTEGER i,m,ns
+    REAL den,dif,dift,ho,hp,w,c(NMAX),d(NMAX)
+    ns=1
+    dif=abs(x-xa(1))
+    do i=1,n
+       dift=abs(x-xa(i))
+       if (dift.lt.dif) then
+          ns=i
+          dif=dift
+       endif
+       c(i)=ya(i)
+       d(i)=ya(i)
+    end do
+    y=ya(ns)
+    ns=ns-1
+    do  m=1,n-1
+       do  i=1,n-m
+          ho=xa(i)-x
+          hp=xa(i+m)-x
+          w=c(i+1)-d(i)
+          den=ho-hp
+          if(den.eq.0.) then
+             print *, 'Error:: failure in polint2.'
+             stop
+          end if
+          den=w/den
+          d(i)=hp*den
+          c(i)=ho*den
+       end do
+       if (2*ns.lt.n-m)then
+          dy=c(ns+1)
+       else
+          dy=d(ns)
+          ns=ns-1
+       endif
+       y=y+dy
+    end do
+    return
+  end SUBROUTINE polint2
+
+  SUBROUTINE polint3(xa,ya,n,x,y,dy)
+    INTEGER n,NMAX
+    REAL :: x,xa(n), ya(n)
+    real(double) :: y, dy
+    PARAMETER (NMAX=10)
+    INTEGER i,m,ns
+    REAL den,dif,dift,ho,hp,w,c(NMAX),d(NMAX)
+    ns=1
+    dif=abs(x-xa(1))
+    do i=1,n
+       dift=abs(x-xa(i))
+       if (dift.lt.dif) then
+          ns=i
+          dif=dift
+       endif
+       c(i)=ya(i)
+       d(i)=ya(i)
+    end do
+    y=ya(ns)
+    ns=ns-1
+    do  m=1,n-1
+       do  i=1,n-m
+          ho=xa(i)-x
+          hp=xa(i+m)-x
+          w=c(i+1)-d(i)
+          den=ho-hp
+          if(den.eq.0.) then
+             print *, 'Error:: failure in polint3.'
+             stop
+          end if
+          den=w/den
+          d(i)=hp*den
+          c(i)=ho*den
+       end do
+       if (2*ns.lt.n-m)then
+          dy=c(ns+1)
+       else
+          dy=d(ns)
+          ns=ns-1
+       endif
+       y=y+dy
+    end do
+    return
+  end SUBROUTINE polint3
+
 
 
 
@@ -1299,7 +1394,7 @@ contains
     ! Damping contant in a Voigt Profile in [1/s]
     !
     real function bigGamma(N_HI, temperature, Ne, nu)      
-      use input_variables,  only: VoigtProf, C_rad, C_vdw, C_stark
+      use input_variables,  only:  C_rad, C_vdw, C_stark
       real(double), intent(in) :: N_HI         ! [#/cm^3]  number density of HI
       real(double), intent(in) :: temperature  ! [Kelvins]
       real(double), intent(in) :: Ne           ! [#/cm^3]  nunmber density of electron
@@ -1452,18 +1547,9 @@ contains
       real :: xArray(:), yArray(:)
       integer :: nx, newNx
       real :: newXarray(:)
-!      real, allocatable :: newYarray(:)
-      integer, parameter :: newNx_max = 50000
-      real :: newYarray(newNx_max)
+      real :: newYarray(newNx) ! automatic array
       integer :: i, j
 
-      if (newNx > newNx_max) then 
-         print *, "Error:: newNx > newNx_max in linearResample."
-         print *, "        newNx     = ", newNx
-         print *, "        newNx_max = ", newNx_max
-         stop
-      end if
-!      allocate(newYarray(1:newNx))
       do i = 1, newNx
          call hunt(xArray, nx, newXarray(i), j)
          if (xArray(j+1) /= xArray(j)) then
@@ -1485,19 +1571,9 @@ contains
       real(double) :: yArray(:)
       integer :: nx, newNx
       real :: newXarray(:)
- !     real, allocatable :: newYarray(:)
-      integer, parameter :: newNx_max = 50000
-      real  :: newYarray(newNx_max) 
+      real  :: newYarray(newNx)  ! automatic array
       integer :: i, j
 
-      if (newNx > newNx_max) then 
-         print *, "Error:: newNx > newNx_max in linearResample_dble."
-         print *, "        newNx     = ", newNx
-         print *, "        newNx_max = ", newNx_max
-         stop
-      end if
-      
-!      allocate(newYarray(1:newNx))
       do i = 1, newNx
          call hunt(xArray, nx, newXarray(i), j)
          if (xArray(j+1) /= xArray(j)) then
@@ -1507,8 +1583,129 @@ contains
          endif
       enddo
       yArray(1:newNx) = newYArray(1:newNx)
-!      deallocate(newYarray)
     end subroutine linearResample_dble
+
+
+
+    subroutine log_linear_resample(xArray, yArray, nX, newXarray, newNx)
+      implicit none
+      real, intent(in)    :: xArray(:)
+      real, intent(inout) :: yArray(:)
+      integer, intent(in) :: nx, newNx
+      real, intent(in)    :: newXarray(:)
+      !
+      real :: newYarray(newNx) ! automatic array
+      integer :: i, j
+      real:: log_y2, log_y1, x2, x1, T1
+
+      do i = 1, newNx
+         call hunt(xArray, nx, newXarray(i), j)
+         if (j >= Nx) j = j -1
+         x1 = xArray(j); x2 = xArray(j+1)
+         if (x1 /= x2) then
+            log_y1 = LOG(yArray(j))
+            log_y2 = LOG(yArray(j+1))
+            T1 = (log_y2-log_y1)/(x2-x1)
+            newYarray(i) = log_y1 + T1*(newXarray(i)-x1)
+            newYarray(i) = EXP(newYarray(i))
+         else
+            newYarray(i) = yArray(j)
+         endif
+      enddo
+      yArray(1:newNx) = newYArray(1:newNx)
+    end subroutine log_linear_resample
+
+
+
+    subroutine log_linear_resample_dble(xArray, yArray, nX, newXarray, newNx)
+      implicit none      
+      real, intent(in)            :: xArray(:)
+      real(double), intent(inout) :: yArray(:)
+      integer, intent(in)         :: nx, newNx
+      real, intent(in)            :: newXarray(:)
+      !
+      real(double) :: newYarray(newNx) ! automatic array
+      integer      :: i, j
+      real(double) :: log_y2, log_y1, x2, x1, T1
+
+      do i = 1, newNx
+         call hunt(xArray, nx, newXarray(i), j)
+         if (j >= Nx) j = j -1
+         x1 = xArray(j); x2 = xArray(j+1)
+         if (x2 /= x1) then
+            log_y1 = LOG(yArray(j))
+            log_y2 = LOG(yArray(j+1))
+            T1 = (log_y2-log_y1)/(x2-x1)
+            newYarray(i) = log_y1 + T1*(newXarray(i)-x1)
+            newYarray(i) = EXP(newYarray(i))
+         else
+            newYarray(i) = yArray(j)
+         endif
+      enddo
+      yArray(1:newNx) = newYArray(1:newNx)
+    end subroutine log_linear_resample_dble
+
+
+    subroutine log_log_resample(xArray, yArray, nX, newXarray, newNx)
+      implicit none
+      real, intent(in)    :: xArray(:)
+      real, intent(inout) :: yArray(:)
+      integer, intent(in) :: nx, newNx
+      real, intent(in)    :: newXarray(:)
+      !
+      real :: newYarray(newNx) ! automatic array
+      integer :: i, j
+      real:: log_y2, log_y1, log_x2, log_x1, T1
+
+      do i = 1, newNx
+         call hunt(xArray, nx, newXarray(i), j)
+         if (j >= Nx) j = j -1
+         log_x1 = LOG(xArray(j))
+         log_x2 = LOG(xArray(j+1))
+         if (log_x1 /= log_x2) then
+            log_y1 = LOG(yArray(j))
+            log_y2 = LOG(yArray(j+1))
+            T1 = (log_y2-log_y1)/(log_x2-log_x1)
+            newYarray(i) = log_y1 + T1*(LOG(newXarray(i))-log_x1)
+            newYarray(i) = EXP(newYarray(i))
+         else
+            newYarray(i) = yArray(j)
+         endif
+      enddo
+      yArray(1:newNx) = newYArray(1:newNx)
+    end subroutine log_log_resample
+
+
+
+    subroutine log_log_resample_dble(xArray, yArray, nX, newXarray, newNx)
+      implicit none      
+      real, intent(in)            :: xArray(:)
+      real(double), intent(inout) :: yArray(:)
+      integer, intent(in)         :: nx, newNx
+      real, intent(in)            :: newXarray(:)
+      !
+      real(double) :: newYarray(newNx) ! automatic array
+      integer      :: i, j
+      real(double) :: log_y2, log_y1, log_x2, log_x1, T1
+
+      do i = 1, newNx
+         call hunt(xArray, nx, newXarray(i), j)
+         if (j >= Nx) j = j -1
+         log_x1 = LOG(xArray(j)); log_x2 = LOG(xArray(j+1))
+         if (log_x1 /= log_x2) then
+            log_y1 = LOG(yArray(j))
+            log_y2 = LOG(yArray(j+1))
+            
+            T1 = (log_y2-log_y1)/(log_x2-log_x1)
+            newYarray(i) = log_y1 + T1*(LOG(newXarray(i))-log_x1)
+            newYarray(i) = EXP(newYarray(i))
+         else
+            newYarray(i) = yArray(j)
+         endif
+      enddo
+      yArray(1:newNx) = newYArray(1:newNx)
+    end subroutine log_log_resample_dble
+
 
  
   FUNCTION arth(first,increment,n)
