@@ -1294,11 +1294,12 @@ contains
     !
     integer, intent(in)   :: n
     real(kind=doubleKind), intent(in) ::  z,wl
-    real(kind=doubleKind), parameter ::  coeff(6) =         &
-         (/-0.338276d0, 0.808398d0, -0.59941d0, 0.104292d0, &
-         -6.61998d-3, 1.15609d-4 /)
+    real(kind=doubleKind) ::  coeff(6)
     real(kind=doubleKind) ::  efree,sum,ag,alam
     integer               :: i
+    ! making coeff  a PARAMETER may cause problems with XL Fortran
+    coeff = (/-0.338276d0, 0.808398d0, -0.59941d0, 0.104292d0, &
+              -6.61998d-3, 1.15609d-4 /)
 
 
     efree=(911.76e0/wl-1.e0/real(n*n))/(z*z)
@@ -1352,8 +1353,8 @@ contains
     integer, intent(in)         :: nPop, nNu1, nNu2
     logical, intent(in)         :: binary
     real, intent(in)            :: visFrac1, visFrac2
-    real, intent(in)            :: Hnu1(*), nuArray1(*)
-    real, intent(in)            :: Hnu2(*), nuArray2(*)
+    real, intent(in),dimension(:):: Hnu1, nuArray1
+    real, intent(in),dimension(:):: Hnu2, nuArray2
     integer, intent(in)         :: i1, i2, i3
     type(VECTOR), intent(in)    :: rVec
     type(OCTAL),pointer,optional:: thisOctal
@@ -1698,7 +1699,7 @@ contains
 
 
   real function integral1(n,hnu, nuArray, nNu, rVec, i1, i2, i3, grid, nStar, thisOctal, thisSubcell)
-    real, intent(in)         :: hnu(*), nuArray(*)
+    real, intent(in), dimension(:) :: hnu, nuArray
     integer, intent(in)      :: nNu, nStar, n
     type(VECTOR), intent(in) :: rVec
     type(GRIDTYPE),intent(in):: grid
@@ -1779,7 +1780,7 @@ do ; enddo
 
   
   real function integral2(n,hnu, nuArray, nNu, rVec, grid, nStar)
-    real :: hnu(*), nuArray(*)
+    real, dimension(:) :: hnu, nuArray
     integer :: nNu, nStar, n
     type(VECTOR) :: rVec
     type(GRIDTYPE) :: grid
@@ -1830,11 +1831,11 @@ do ; enddo
     type(GRIDTYPE), intent(inout)      :: grid
     logical, intent(in)                :: isBinary
     real, intent(in)                   :: visFrac1, visFrac2
-    real(kind=doubleKind), intent(in)  :: x(*)
+    real(kind=doubleKind), intent(in),dimension(:) :: x
     real(kind=doubleKind), intent(out) :: alpha(np, np)
     real(kind=doubleKind), intent(out) :: beta(np)
-    real, intent(in)                   :: hnu1(*), hnu2(*)
-    real, intent(in)                   :: nuarray1(*), nuarray2(*)
+    real, intent(in), dimension(:)     :: hnu1, hnu2
+    real, intent(in),dimension(:)      :: nuarray1, nuarray2
     integer, intent(in)                :: nNu1, nNu2
     type(VECTOR), intent(in)           :: rVec
     integer, intent(in)                :: i1, i2, i3
@@ -1976,10 +1977,10 @@ do ; enddo
     logical, intent(in)            :: isBinary
     real, intent(in)               :: visFrac1, visFrac2
     type(VECTOR), intent(in)       :: rVec
-    real, intent(in)               :: nuarray1(*), nuarray2(*)
-    real, intent(in)               :: hnu1(*), hnu2(*)
+    real, intent(in),dimension(:)  :: nuarray1, nuarray2
+    real, intent(in),dimension(:)  :: hnu1, hnu2
     integer, intent(in)            :: nNu1, nNu2
-    real(kind=doubleKind), intent(inout)::  x(*)
+    real(kind=doubleKind), intent(inout),dimension(:):: x
     integer, intent(in)            :: nTrial
     integer                        :: n, i, k
     integer                        :: indx(np)
@@ -2141,7 +2142,10 @@ do ; enddo
      integer               :: i,j,k, m
      real(kind=doubleKind) :: b2
      real(kind=doubleKind) :: frac, sum1, sum2, d
-     real(kind=doubleKind), parameter :: coeff(28) =                   &
+     ! making coeff and a2 PARAMETERs may cause problems with XL Fortran
+     real(kind=doubleKind) :: coeff(28) 
+     real(kind=doubleKind) :: a2(7)
+     coeff =                                                           &
         (/1.102d0       ,-0.1085d0     ,0.09775d0     ,-0.01125d0     ,&
           1.2d0         ,-0.24016667d0 ,0.07675d0     ,-0.01658333d0  ,&
           1.26d0        ,-0.313166667d0,0.15075d0     ,0.00241667d0   ,&
@@ -2149,9 +2153,8 @@ do ; enddo
           1.27d0        ,-0.579d0      ,0.092d0       ,-0.003d0       ,&
           1.16d0        ,-0.707333d0   ,0.112d0       ,0.0053333333d0 ,&
           0.883d0       ,-0.76885d0    ,0.190175d0    ,0.022675d0     /)
-     real(kind=doubleKind), parameter :: a2(7) =                       &
-        (/100.d0, 10.d0, 3.d0, 1.d0, 0.3d0, 0.1d0, 0.001d0/)
-
+     a2 = (/100.d0, 10.d0, 3.d0, 1.d0, 0.3d0, 0.1d0, 0.001d0/)
+       
        u = 1.44e+8 / (wl*t)
        ulog = log10(u)
        gam2 = 1.58e+5 * z*z/t

@@ -52,7 +52,7 @@ c     .........................................
           a = aDist(i) 
           x = 2.*pi*(a * micronsTocm)/(lambda*1.e-8)
           x = max(x, 1.e-5)
-          refrel = complex(cmr, cmi)
+          refrel = cmplx(cmr, cmi)
           call BHMIE(X,REFREL,2 ,S1,S2,QEXT(i),QSCA(i),QBACK(i),GSCA)
           
           qExt(i) = qExt(i) * nsd(i) * pi * (a * micronsToCm)**2

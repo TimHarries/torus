@@ -85,6 +85,22 @@
                STARLIBS="-L/usr/people/disk14/tjh/pgplot -lpgplot -lX11"
                echo "mk: Environment variables defined for $SYSTEM system"
                ;;
+            
+            ceres)
+               F95COMP="xlf95 -bloadmap:outp -qmoddir=/lscratch -I/lscratch -qsuffix=f=f90 -qnolm -O3 -qarch=pwr3 -qmaxmem=-1"
+               F77COMP="xlf -qmoddir=/lscratch -I/lscratch -qsuffix=f=f -qnolm -O3 -qarch=pwr3 -qmaxmem=-1"
+               FASTFLAG=""
+               MATHTRAP=" "
+               UNIXMOD="unix_mod.f90.aix"
+               KINDMOD="kind_mod.f90.aix"
+               EXE="torus.aix"
+               F77FLAG=" "
+               IMAGEF77="image_f77.f.miracle"
+               SPECF77="spec_f77.f.miracle"
+               F2CLIB=" "
+               STARLIBS="-L/usr/lib -lxlf90 -lm -lc -lX11 -L${HOME}/software/pgplot -lpgplot"
+               echo "mk: Environment variables defined for $SYSTEM system"
+               ;;
 
 
 #  Issue a warning if SYSTEM is not recognised.

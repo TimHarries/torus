@@ -2495,7 +2495,8 @@ contains
   end function outsideGrid
 
 
-  pure subroutine getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
+  subroutine getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
+    ! making this PURE may cause problems with XL Fortran
     type(GRIDTYPE), intent(in) :: grid
     type(VECTOR), intent(in)   :: rVec
     integer, intent(out)       :: i1, i2, i3

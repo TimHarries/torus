@@ -7,14 +7,14 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 distortion_mod.f90 \
  image_mod.f90 TTauri_mod.f90 puls_mod.f90 torusMain.f90 \
  integratePath.f90   readIntPro.f90 \
- mieDistPhaseMatrix.f90 \
+ mieDistPhaseMatrix.f90 gridtype_mod.f90 \
  getRefractiveIndex.f90 draineCrossSection.f90 \
  readTioCrossSection.f90 rayleighCrossSection.f90 \
  fillGridTio.f90 fillGridRayleigh.f90 fillGridMie.f90 \
  intersectCube.f90 fillGridThomson.f90 cont_read.f90 getMeanMass.f90 \
  input_variables.f90 amr_mod.f90 octal_mod.f90 parameters_mod.f90 \
  lucy_mod.f90 jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 \
- wr104_mod.f90
+ wr104_mod.f90 
 
 
 F77SOURCE= image_f77.f mieDistCrossSection.f palette.f\
@@ -43,7 +43,7 @@ LIBS=
 
 all:    $(ALLOBJ)
 	$(F90) -o $(EXE) \
-	$(MODOBJ) $(F77OBJ) $(F90OBJ) $(STARLIBS) $(F2CLIB)
+	$(STARLIBS) $(F2CLIB) $(MODOBJ) $(F77OBJ) $(F90OBJ) 
 
 
 

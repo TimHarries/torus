@@ -307,8 +307,8 @@ contains
   ! this subroutine computes the line of sight directional derivative
   ! numerical - ie completely generalized
 
-  real pure function directionalDeriv(grid, position, i1, i2, i3 , direction)
-
+  real function directionalDeriv(grid, position, i1, i2, i3 , direction)
+    ! making this PURE may cause problems with XL Fortran
     implicit none
     type(GRIDTYPE), intent(in) :: grid        ! the opacity grid
     type(VECTOR), intent(in)   :: direction   ! vector
