@@ -6361,9 +6361,12 @@ contains
              if (t < 0.) t = 0.
              idx = int(t * real(ihi - ilo) + real(ilo))
 
+             if (.not.thisOctal%inFlow(subcell)) idx = ilo
+
              ! set color
              call pgsci(idx)
              
+
              select case (plane)
              case ("x-y")
                 call pgrect(xm, xp, ym, yp)
@@ -6514,7 +6517,7 @@ contains
     type(gridtype), intent(in) :: thisGrid
     character(LEN=*), intent(in) :: filename
     integer :: UN
-    real(double) :: tmp
+    real(double) :: tmp,fac
     integer :: nOctals,nVoxels
     
     if (filename(1:1) == '*') then
@@ -6545,7 +6548,11 @@ contains
        write(UN,'(a)') ' '
        write(Un,'(a)') ' '
     
-       
+       fac = 1.d0/(2.d0**dble(thisGrid%maxDepth))
+       if (fac < epsilon(1.d0)) then
+          write(UN,'(a)') "**** WARNING: Grid cell depth is so great numerical problems may occur****"
+       endif
+       write(*,*) fac,epsilon(1.d0)
     else
        write(UN,'(a)') ' '
        write(UN,'(a)') '######################################################'
@@ -6873,7 +6880,8 @@ contains
                 stop
              end select
 
-             distance = modulus(rvec-center)   ! length of the vector
+!             distance = modulus(rvec-center)   ! length of the vector
+             distance = modulus(rVec)
              write(luout, '(2(2x, 1PE18.4))')  distance, value
 
 

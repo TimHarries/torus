@@ -23,20 +23,53 @@ MODULE amr_mod
 
 CONTAINS
 
-
-  SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, sphData, stellar_cluster)
+  SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, sphData, stellar_cluster, inherit, interp)
     ! calculates the variables describing one subcell of an octal.
     ! each geometry that can be used with AMR should be described here, 
     !   otherwise the program will print a warning and exit.
    
     IMPLICIT NONE
 
-    TYPE(octal), INTENT(INOUT)    :: thisOctal ! the octal being changed
+    TYPE(octal), INTENT(INOUT)    :: thisOctal   ! the octal being changed
     INTEGER, INTENT(IN)           :: subcell   ! the subcell being changed
     TYPE(gridtype), INTENT(INOUT) :: grid      ! the grid
     !
     TYPE(sph_data), optional, INTENT(IN)  :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, INTENT(IN)   :: stellar_cluster
+    LOGICAL, OPTIONAL :: inherit               ! inherit densities, temp, etc of parent
+    LOGICAL, OPTIONAL :: interp                ! interpolate densities, temp, etc of parent
+    TYPE(octal), POINTER :: parentOctal
+    INTEGER :: parentSubcell
+    LOGICAL :: inheritProps
+    LOGICAL :: interpolate
+
+
+    inheritProps = .false.
+    if (present(inherit)) then
+       inheritProps = inherit
+    endif
+
+    interpolate = .false.
+    if (present(interp)) then
+       interpolate = interp
+    endif
+
+    if (inheritProps) then
+       parentOctal => thisOctal%parent
+       parentSubcell = thisOctal%parentSubcell
+       thisOctal%rho(subcell) = parentOctal%rho(parentSubcell)
+       thisOctal%temperature(subcell) = parentOctal%temperature(parentSubcell)
+       thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
+       thisOctal%inFlow(subcell) = parentOctal%inFlow(parentSubcell)
+       thisOctal%velocity(subcell) = parentOctal%velocity(parentSubcell)
+       thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
+       thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
+       thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
+    else if (interpolate) then
+       parentOctal => thisOctal%parent
+       parentSubcell = thisOctal%parentSubcell
+!       interpByOctal (thisOctal, thisProperty, logflag)
+    else
 
     SELECT CASE (grid%geometry)
 
@@ -45,9 +78,6 @@ CONTAINS
       
     CASE ("jets")
       CALL calcJetsMassVelocity(thisOctal,subcell,grid)
-
-    CASE ("luc_cir3d")
-      CALL calc_cir3d_mass_velocity(thisOctal,subcell)
 
     CASE ("testamr")
        CALL calcTestDensity(thisOctal,subcell,grid)
@@ -58,6 +88,7 @@ CONTAINS
     CASE ("spiralwind")
        CALL spiralWindSubcell(thisOctal, subcell ,grid)
        
+
     CASE("cluster")
        ! using a routine in cluster_class.f90
        call assign_density(thisOctal,subcell, sphData, grid%geometry, stellar_cluster)
@@ -72,14 +103,11 @@ CONTAINS
     CASE ("shakara","aksco")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
+!    CASE("ppdisk")
+!       CALL calcPPDiskDensity(thisOctal,subcell,grid)
+
     CASE("melvin")
        CALL assign_melvin(thisOctal,subcell,grid)
-
-    CASE("clumpydisc")
-       CALL assign_clumpydisc(thisOctal, subcell, grid)
-
-    CASE ("windtest")
-       CALL calcWindTestValues(thisOctal,subcell,grid)
        
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
@@ -89,9 +117,9 @@ CONTAINS
  
 !    CALL fillGridDummyValues(thisOctal,subcell, grid)
  
+    end if
  
   END SUBROUTINE calcValuesAMR
-
 
   SUBROUTINE initFirstOctal(grid, centre, size, twod, sphData, stellar_cluster, nDustType)
     ! creates the first octal of a new grid (the root of the tree).
@@ -120,11 +148,6 @@ CONTAINS
        ALLOCATE(grid%octreeRoot%kappaSca(8,grid%nOpacity))
        grid%octreeRoot%kappaAbs = 1.e-30
        grid%octreeRoot%kappaSca = 1.e-30
-    ELSE
-       ALLOCATE(grid%oneKappaAbs(1:nDusttype,grid%nLambda))
-       ALLOCATE(grid%oneKappaSca(1:nDusttype,grid%nLambda))
-       grid%oneKappaAbs = 1.e-30
-       grid%oneKappaSca = 1.e-30
     endif
 
     ALLOCATE(grid%octreeRoot%N(8,grid%maxLevels))
@@ -162,6 +185,7 @@ CONTAINS
     grid%octreeRoot%Ne = -9.9e9
     grid%octreeRoot%nTot = -9.9e9
     grid%octreeRoot%changed = .false.
+    grid%octreeRoot%dustType = 1
 
     select case (grid%geometry)
        case("cluster")
@@ -1190,7 +1214,7 @@ CONTAINS
     ! Specify the ratio of extra length to give it for "locater" to the 
     ! "halfSmallestSubcell" size.
 !    REAL(oct), parameter :: frac =1.e-6_oc  
-    REAL(oct), parameter :: frac =1.e-2_oc  
+    REAL(oct), parameter :: frac =1.e-6_oc  
 
     if (threed) then
        
@@ -1520,19 +1544,21 @@ CONTAINS
        endif
 
        
+       if (distToZboundary == 0.d0) distToZboundary = 1.e30
+       if (distToXboundary == 0.d0) distToXboundary = 1.e30
+
        tVal = min(distToZboundary, distToXboundary)
        if (tVal > 1.e29) then
           write(*,*) "Error :: tVal > 1.e29 [amr_mod:getExitPoint]."
           write(*,*) "tVal,compX,compZ, distToZboundary,disttoxboundary = "
           write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
           write(*,*) "x,z = ",currentX,currentZ
-          stop 
-       elseif (tval <= 0.) then
+       endif
+       if (tval <= 0.) then
           write(*,*) "Error :: tVal <= 0  [amr_mod:getExitPoint]."
           write(*,*) "tVal,compZ, distToZboundary,disttoxboundary = "
-          write(*,*) tVal,compZ, distToZboundary,disttoxboundary
+          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
           write(*,*) "x,z = ",currentX,currentZ
-          stop
        endif
        
        minWallDistance = tVal
@@ -1757,8 +1783,6 @@ CONTAINS
 
       IF (PRESENT(temperature))   temperature = resultOctal%temperature(subcell)
       IF (PRESENT(rho))                   rho = resultOctal%rho(subcell)
-
-
       IF (PRESENT(chiLine))           chiLine = resultOctal%chiLine(subcell)
 
 !      IF (PRESENT(chiLine)) then
@@ -2604,8 +2628,7 @@ CONTAINS
     endif
   END FUNCTION looseInOctal
 
-
-  RECURSIVE SUBROUTINE smoothAMRgrid(thisOctal,grid,factor,gridConverged, sphData, stellar_cluster)
+  RECURSIVE SUBROUTINE smoothAMRgrid(thisOctal,grid,factor,gridConverged, sphData, stellar_cluster, inheritProps)
     ! checks whether each octal's neighbours are much bigger than it, 
     !   if so, makes the neighbours smaller.
     ! the 'needRestart' flag will be set if a change is made to the octree.
@@ -2616,13 +2639,14 @@ CONTAINS
 
     TYPE(octal), POINTER             :: thisOctal
     TYPE(gridtype), INTENT(INOUT   ) :: grid 
-     REAL, INTENT(IN)                 :: factor
+     REAL, INTENT(IN)                :: factor
     LOGICAL, INTENT(INOUT)               :: gridConverged
     TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
+    LOGICAL, INTENT(IN)              :: inheritProps
 
     INTEGER              :: i
-    real(oct) :: halfSmallestSubcell
+    REAL(oct) :: halfSmallestSubcell
     TYPE(octal), POINTER :: child
     TYPE(octal), POINTER :: neighbour
     TYPE(octalVector), ALLOCATABLE, DIMENSION(:) :: locator
@@ -2640,6 +2664,7 @@ CONTAINS
     ! we do not have to test the other subcells in the current octal because
     !   they can be smaller than the any of the other subcells, but they
     !   cannot be *bigger*. this saves some time.
+
 
     if (thisOctal%threed) then
        nlocator = 6
@@ -2683,7 +2708,7 @@ CONTAINS
           END IF
           ! tjh changed from
 !          CALL addNewChild(neighbour,subcell,grid)
-          call addNewChildren(neighbour, grid, sphData, stellar_cluster)
+          call addNewChildren(neighbour, grid, sphData, stellar_cluster, inheritProps)
           gridConverged = .FALSE.
         ENDIF
       END IF
@@ -2693,7 +2718,7 @@ CONTAINS
     IF ( thisOctal%nChildren > 0 ) THEN
        DO i = 1, thisOctal%nChildren, 1 
           child => thisOctal%child(i)
-          CALL smoothAMRgrid(child,grid,factor,gridConverged, sphData, stellar_cluster)
+          CALL smoothAMRgrid(child,grid,factor,gridConverged, sphData, stellar_cluster, inheritProps)
        END DO
     END IF
 
@@ -3382,7 +3407,7 @@ CONTAINS
     TYPE(octalVector)     :: searchPoint
     TYPE(octalVector)     :: cellCentre
     REAL                  :: x, y, z
-    REAL :: hr, rd, fac, warpHeight, phi
+    REAL(double) :: hr, rd, fac, warpHeight, phi
     INTEGER               :: i
     real(double)      :: total_mass
     real(double)      :: ave_density, rGrid(1000), r, dr
@@ -3392,6 +3417,7 @@ CONTAINS
     LOGICAL               :: inUse
     INTEGER               :: nparticle
     real(double) :: dummyDouble
+    real(double) :: fac1,fac2
     real(double) :: rho_disc_ave, scale_length
     real(double),save  :: R_tmp(204)  ! [10^10cm]
     real(double) :: rho
@@ -3646,22 +3672,11 @@ CONTAINS
       split = .false.
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
-!      if ((thisOctal%nDepth < 8).and.(cellCentre%x < grid%rOuter)) split = .true.
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      phi = atan2(cellcentre%y,cellcentre%x)
-      warpHeight = 0. !cos(phi) * grid%rInner * sin(30.*degtorad) * sqrt(grid%rinner / r)
-
-      
-      if (r > grid%rInner*0.8) then
-         hr = height * (r / (100.*autocm/1.e10))**1.25
-         fac = cellsize/hr
-         if (abs((cellCentre%z-warpHeight)/hr) < 10.) then
-            if (fac > 2.) split = .true.
-         endif
-      endif
-!      if ((r < 100.*rSol/1.e10).and.(abs(cellCentre%z)< 20.*rSol/1.e10)) then
-!         if (thisOctal%subcellSize > 0.5*rSol/1.e10) split = .true.
-!      endif
+      hr = height * (r / (100.d0*autocm/1.d10))**1.25
+      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
+      if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+      if ((r+cellsize/2.d0) < grid%rinner) split = .false.
 
    case("clumpydisc")
       split = .false.
@@ -5054,7 +5069,7 @@ CONTAINS
   end subroutine assign_clumpydisc
 
   
-  SUBROUTINE addNewChildren(parent, grid, sphData, stellar_cluster)
+  SUBROUTINE addNewChildren(parent, grid, sphData, stellar_cluster, inherit, interp)
     ! adds all eight new children to an octal
 
     IMPLICIT NONE
@@ -5069,11 +5084,24 @@ CONTAINS
                                        ! - this isn't very clever. might change it. 
     INTEGER       :: newChildIndex     ! the storage location for the new child
     INTEGER       :: error
+    LOGICAL, OPTIONAL :: inherit       ! inherit densities, temps, etc from parent
+    LOGICAL, OPTIONAL :: interp        ! interpolate densities, temps, etc from parent
+    LOGICAL       :: inheritProps
+    LOGICAL       :: interpolate
 
-
-    
     ! For only cluster geometry ...
     TYPE(sph_data), optional, intent(in) :: sphData
+    
+    inheritProps = .false.
+    if (present(inherit)) then
+       inheritProps = inherit
+    endif
+
+    interpolate = .false.
+    if (present(interp)) then
+       interpolate = interp
+    endif
+
     
     if (any(parent%hasChild(1:parent%maxChildren))) write(*,*) "parent already has a child"
 
@@ -5113,9 +5141,8 @@ CONTAINS
 
        ! allocate any variables that need to be  
        if (.not.grid%oneKappa) then
-!          print *, "nlamda in addnewchilredn= ", grid%nLambda 
-          ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nopacity)) ! (RK changed this)
-          ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nopacity)) ! (RK changed this)
+          ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nLambda))
+          ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nLambda))
           parent%child(newChildIndex)%kappaAbs = 1.e-30
           parent%child(newChildIndex)%kappaSca = 1.e-30
        endif
@@ -5127,7 +5154,9 @@ CONTAINS
        parent%child(newChildIndex)%twoD = parent%twod
        parent%child(newChildIndex)%maxChildren = parent%maxChildren
        parent%child(newChildIndex)%twoD = parent%twod
+       parent%child(newChildIndex)%inFlow = parent%inFlow
        parent%child(newChildIndex)%parent => parent
+       parent%child(newChildIndex)%parentSubcell = newChildIndex
        parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
        parent%child(newChildIndex)%hasChild = .false.
        parent%child(newChildIndex)%nChildren = 0
@@ -5144,10 +5173,7 @@ CONTAINS
        parent%child(newChildIndex)%etaLine = 1.e-30
        parent%child(newChildIndex)%etaCont = 1.e-30
        parent%child(newChildIndex)%N = 1.e-30
-       parent%child(newChildIndex)%Ne = 1.e-30
-       parent%child(newChildIndex)%temperature = 3.0
-       parent%child(newChildIndex)%nTot = 1.e-30
-       parent%child(newChildIndex)%changed = .false.
+       parent%child(newChildIndex)%dusttype = 1
 
        if (present(sphData)) then
           ! updates the sph particle list.           
@@ -5156,7 +5182,8 @@ CONTAINS
        
        ! put some data in the eight subcells of the new child
        DO subcell = 1, parent%maxChildren
-          CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData, stellar_cluster)
+          CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData, stellar_cluster,  &
+               inheritProps, interpolate)
           parent%child(newChildIndex)%label(subcell) = counter
           counter = counter + 1
        END DO
@@ -5167,14 +5194,13 @@ CONTAINS
     IF (parent%child(1)%nDepth > grid%maxDepth) THEN
        grid%maxDepth = parent%child(1)%nDepth
        grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
-            2.0_oc**REAL(grid%maxDepth,kind=oct)
+            2.0_oc**REAL(grid%maxDepth,KIND=oct)
        ! we store the value which is half the size of the 
        !   smallest subcell because this is more useful for later
        !   calculations.
     END IF
     
   END SUBROUTINE addNewChildren
-
   !
   !
   ! Recursively deletes the sph_particle list in the grid.
@@ -5809,7 +5835,6 @@ CONTAINS
   
   END SUBROUTINE insertOctreeBranch
 
-  
   ! chris (19/05/04)
   ! Smooths the AMR grid to ensure 'adequate' resolution at the boundary
   ! between optically thin and optically thick regions. This routine should be
@@ -5819,18 +5844,20 @@ CONTAINS
   ! the parameter file).
 
   RECURSIVE SUBROUTINE smoothAMRgridTau(thisOctal,grid,gridConverged, ilam, &
-                                        sphData, stellar_cluster)
-    use input_variables, only: tauSmoothMax, tauSmoothMin
+                                        sphData, stellar_cluster, inheritProps)
+    USE input_variables, ONLY : tauSmoothMax,tauSmoothMin
     IMPLICIT NONE
+
     TYPE(octal), POINTER             :: thisOctal
     TYPE(gridtype), INTENT(INOUT   ) :: grid 
     LOGICAL, INTENT(INOUT)               :: gridConverged
     TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
+    LOGICAL, INTENT(IN) :: inheritProps
 
     INTEGER              :: i, ilam
     TYPE(octalVector)    :: thisSubcellCentre
-    REAL(oct)            :: dSubcellCentre
+    REAL(oct) :: dSubcellCentre
     TYPE(octal), POINTER :: child
     TYPE(octal), POINTER :: neighbour
     TYPE(octalVector), ALLOCATABLE, DIMENSION(:) :: locator
@@ -5857,7 +5884,7 @@ CONTAINS
     do
       if (thisOctal%hasChild(thisSubcell)) then
         child => thisOctal%child(thisOctal%indexChild(thisSubcell))
-        call smoothAMRgridTau(child,grid,gridConverged,  ilam, sphData, stellar_cluster)
+        call smoothAMRgridTau(child,grid,gridConverged,  ilam, sphData, stellar_cluster, inheritProps)
       else
         thisSubcellCentre = subcellCentre(thisOctal,thisSubcell)
         FORALL (i = 1:nLocator)
@@ -5956,6 +5983,7 @@ CONTAINS
         thisTau = (grid%oneKappaAbs(thisOctal%dusttype(thissubcell),ilam) + &
                    grid%oneKappaSca(thisOctal%dusttype(thissubcell),ilam)) * &
                    thisOctal%subcellSize * thisOctal%rho(thisSubcell)
+
         DO i = 1, nLocator, 1
           IF ( inOctal(grid%octreeRoot,locator(i)) ) THEN
             neighbour => thisOctal
@@ -5969,7 +5997,7 @@ CONTAINS
                thatTau = (grid%oneKappaAbs(neighbour%dusttype(subcell),ilam) + &
                     grid%oneKappaSCa(neighbour%dusttype(subcell),ilam)) * &
                     neighbour%subcellSize * neighbour%rho(subcell)
-!               write(*,*) thisTau,thatTau
+
               ! Original critera was to split if:
               ! ((o1 - o2)/(o1+o2) > 0.5 .and. (o1 - o2) > 1)
 !              tauDiff = abs(thisTau - thatTau)
@@ -5982,9 +6010,9 @@ CONTAINS
               ! (tau > 1) and the other is optically thin with an optical
               ! depth less than some value (which should really be set in the
               ! parameter file).
+!              if (max(thisTau, thatTau).gt.0.5.and.min(thisTau, thatTau).lt.0.01) then
               if (max(thisTau, thatTau).gt.tauSmoothMax.and.min(thisTau, thatTau).lt.tauSmoothMin) then
-
-!               if (abs(thisTau-thatTau) .gt. 1.) then
+!write (*,*) thisSubcellCentre%x, thisSubcellCentre%y, thisSubcellCentre%z, thisTau, thatTau, i
                 ! Because addNewChild is broken, we must use addNewChildren below,
                 ! which makes these tests on the current and neighbouring subcells
                 ! insufficient. We perform them anyway.
@@ -6001,12 +6029,12 @@ CONTAINS
 !                call addNewChild(neighbour,subcell,grid)
 !                call addNewChild(thisOctal,thisSubcell,grid)
 
-                call addNewChildren(thisOctal, grid, sphData, stellar_cluster)
+                call addNewChildren(thisOctal, grid, sphData, stellar_cluster, inheritProps)
                 ! If we are splitting two subcells in the same octal, we don't
                 ! need to addNewChildren to the neighbour. If we switch to
                 ! addNewChild this test becomes redundant.
                 if (.not. associated(thisOctal, neighbour)) then
-                  call addNewChildren(neighbour, grid, sphData, stellar_cluster)
+                  call addNewChildren(neighbour, grid, sphData, stellar_cluster, inheritProps)
                 end if 
 
                 gridConverged = .FALSE.

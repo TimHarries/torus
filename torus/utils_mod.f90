@@ -518,7 +518,7 @@ contains
     real,intent(in)     :: x
     integer,intent(out) :: j
     integer :: jl, ju,jm
-      JL=0
+      JL=1
       JU=N+1
 10    IF(JU-JL.GT.1)THEN
         JM=(JU+JL)/2
@@ -529,15 +529,7 @@ contains
         ENDIF
       GO TO 10
       ENDIF
-
-      if(x.eq.xx(1))then
-        j=1
-      else if(x.eq.xx(n))then
-        j=n-1
-      else
-        j=jl
-      end if
-      return
+      j = jl
     END SUBROUTINE LOCATE_single
   
 
@@ -547,7 +539,7 @@ contains
     real(oct), intent(in) :: x
     integer,intent(out)              :: j
     integer :: jl, ju,jm
-      JL=0
+      JL=1
       JU=N+1
 10    IF(JU-JL.GT.1)THEN
         JM=(JU+JL)/2
@@ -558,15 +550,7 @@ contains
         ENDIF
       GO TO 10
       ENDIF
-      
-      if(x.eq.xx(1))then
-        j=1
-      else if(x.eq.xx(n))then
-        j=n-1
-      else
-        j=jl
-      end if
-      return
+      j = jl
     END SUBROUTINE LOCATE_octal
 
     real function gasdev()
@@ -1507,6 +1491,32 @@ contains
    stop
    
   END FUNCTION qsimp
+
+  subroutine stripSimilarValues(x, nx, xtol)
+    integer :: nx
+    real :: x(:)
+    real :: xtol
+    real, allocatable :: xtemp(:)
+    integer :: i, newNx
+
+    allocate(xtemp(1:nx))
+    
+    call sort(nx, x)
+
+    newnx = 1
+    xtemp(newnx) = x(1)
+    do i = 2, nx
+       if (abs((xtemp(newnx)-x(i))/x(i)) > xTol) then
+          newnx = newnx  + 1
+          xtemp(newnx) = x(i)
+       endif
+    enddo
+
+    x(1:newnx) = xtemp(1:newnx)
+    nx = newnx
+  end subroutine stripSimilarValues
+       
+
 
 
 end module utils_mod

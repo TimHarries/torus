@@ -102,6 +102,27 @@ contains
 
   end function fillRayleigh
 
+  type(PHASEMATRIX) function fillIsotropic(costheta)
+
+
+    type(PHASEMATRIX) :: b
+    real :: costheta
+    real :: cos2t
+
+    cos2t = costheta*costheta
+
+    b%element = 0.
+    b%element(1,1) = 1.
+    b%element(1,2) = 0.
+    b%element(2,1) = 0.
+    b%element(2,2) = 0.
+    b%element(3,3) = 0.
+    b%element(4,4) = 0.
+
+    fillIsotropic = b
+
+  end function fillIsotropic
+
   ! this writes out a 4x4 phase matrix - used for debugging
 
   subroutine writePhaseMatrix(a)
@@ -174,8 +195,6 @@ contains
     enddo
     prob(1:nMuMie) = prob(1:nMuMie)/prob(nMuMie)
     call random_number(r)
-!    if ((abs(r))     < ( epsilon(1.0))) r =       epsilon(1.0)
-!    if ((abs(r-1.0)) > (-epsilon(1.0))) r = 1.0 - epsilon(1.0)
     call locate(prob, nMuMie, r, j)
     cosTheta = cosArray(j) + &
          (cosArray(j+1)-cosArray(j))*(r - prob(j))/(prob(j+1)-prob(j))
@@ -338,19 +357,19 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
 endif
 
   if (sed) then
-     write(*,'(a)') "Writing spectrum as normalized lambda F_lambda"
+     write(*,'(a)') "Writing spectrum as lambda F_lambda"
 
 
-     tot = 0.
-     do i = 1, nLambda
-        tot = tot + stokes_i(i)* dlam(i)
-     enddo
+!     tot = 0.
+!     do i = 1, nLambda
+!        tot = tot + stokes_i(i)* dlam(i)
+!     enddo
 
-     stokes_i = stokes_i / tot
-     stokes_q = stokes_q / tot
-     stokes_u = stokes_u / tot
-     stokes_qv = stokes_qv / tot**2
-     stokes_uv = stokes_uv / tot**2
+!     stokes_i = stokes_i / tot
+!     stokes_q = stokes_q / tot
+!     stokes_u = stokes_u / tot
+!     stokes_qv = stokes_qv / tot**2
+!     stokes_uv = stokes_uv / tot**2
      
      stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda)
      stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)

@@ -298,7 +298,7 @@ contains
   end subroutine lucyRadiativeEquilibrium
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD)
+       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
@@ -357,7 +357,7 @@ contains
     logical :: converged
     real:: percent_undersampled
     integer :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
-
+    integer :: maxIter
     integer       :: imonte_beg, imonte_end  ! the index boundary for the photon loops.
 
 !$MPI    ! For MPI implementations
@@ -534,9 +534,9 @@ contains
 !$MPI          imonte_beg = m*my_rank + 1 + n_rmdr
 !$MPI          imonte_end = imonte_beg + m -1
 !$MPI       end if
-!$MPI       print *, ' '
-!$MPI       print *, 'imonte_beg = ', imonte_beg
-!$MPI       print *, 'imonte_end = ', imonte_end
+!$MPI   !    print *, ' '
+!$MPI   !    print *, 'imonte_beg = ', imonte_beg
+!$MPI   !    print *, 'imonte_end = ', imonte_end
 !$MPI  
 !$MPI      
 !$MPI       !  Just for safety.
@@ -554,6 +554,7 @@ contains
        avedirection = OCTALVECTOR(0.d0, 0.d0, 0.d0)
        do iMonte = imonte_beg, imonte_end
 
+
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
@@ -562,13 +563,17 @@ contains
           call getWavelength(thisSource%spectrum, wavelength)
           thisFreq = cSpeed/(wavelength / 1.e8)
 
+
           do while(.not.escaped)
 
 !$OMP CRITICAL (tonext)
-             call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD)
+             call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD,imonte)
 !$OMP END CRITICAL (tonext)
 
-             if (escaped) nInf_sub = nInf_sub + 1
+!             write(*,*) imonte,rvec,thisFreq
+!             if (iMonte == 14) stop
+
+             If (escaped) nInf_sub = nInf_sub + 1
 
              if (.not. escaped) then
 
@@ -623,6 +628,7 @@ contains
 
              endif
           enddo
+
        enddo
 !$OMP END DO
 !$OMP CRITICAL (update)
@@ -644,7 +650,14 @@ contains
 !$MPI       ! (Maybe faster to pack the values in 1D arrays and distribute.)
 !$MPI
 !$MPI       if(my_rank == 0) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
-!$MPI       call update_octal_MPI(grid%octreeRoot, grid)
+!$MPI       if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
+!$MPI    !   call update_octal_MPI(grid%octreeRoot, grid)
+
+!$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+
+!$MPI       call updateGridMPI(grid)
+
 !$MPI       if(my_rank == 0) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
 !$MPI
 !$MPI       ! collect some statical info from each node.
@@ -738,7 +751,6 @@ contains
             totalEmission, dT_over_T_max, nMonte
        
        close(LU_OUT)
-
 !$MPI    end if   
 
 !$MPI if (my_rank==0) &       
@@ -776,7 +788,7 @@ contains
        converged = .false.
        nMonte = nMonte*2  ! increases the number of iterations!
     elseif (nRemoved > 3   &
-         .or. iIter_grand < 20 &
+         .or. iIter_grand < maxIter &
          .or. (dT_mean_new-dT_mean_old)/((dT_mean_new+dT_mean_old)/2.0) > 0.05) then
        converged = .false.
     else 
@@ -1042,7 +1054,7 @@ contains
              end if
           end do
        else
-          thisOctal%distanceGrid(subcell) = 0.
+          thisOctal%distanceGrid(subcell) = 0.d0
           thisOctal%nCrossings(subcell) = 0
        endif
     enddo
@@ -1081,8 +1093,8 @@ contains
     integer :: nUndersampled
     integer, save  :: nwarning = 0
     integer, parameter :: nmaxwarning = 200000
-    real :: r1, r2
-    type(VECTOR) :: rVec
+    real(double) :: r1, r2
+    type(OCTALVECTOR) :: rVec
 
     if(this_is_root) then !initialize some values
        dT_sum = 0.0
@@ -1111,11 +1123,11 @@ contains
                 v = thisOctal%subcellSize**3
              else
                 rVec = subcellCentre(thisOctal,subcell)
-                r1 = rVec%x-thisOctal%subcellSize/2.
-                r2 = rVec%x+thisOctal%subcellSize/2.
-                v = pi * (r2**2 - r1**2) * thisOctal%subcellSize
+                r1 = rVec%x-thisOctal%subcellSize/2.d0
+                r2 = rVec%x+thisOctal%subcellSize/2.d0
+                v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
              endif
-             adot = epsoverDeltaT * (1.d0 / v) * thisOctal%distancegrid(subcell) / 1.d30
+             adot = epsoverDeltaT * (thisOctal%distancegrid(subcell)/v) / 1.d30
              kappaP = 0.d0
              norm = 0.d0
              do i = 1, nFreq
@@ -1136,8 +1148,8 @@ contains
              
              
              if (kappaP /= 0.) then
-                newT = (pi / stefanBoltz) * aDot / (fourPi * kappaP)
-                newT = newT**0.25
+                newT = dble(pi / stefanBoltz) * aDot / (dble(fourPi) * kappaP)
+                newT = newT**0.25d0
              else
                 newT = 10.0
              endif
@@ -1175,7 +1187,7 @@ contains
                    if (.not.grid%oneKappa) then
                       kabs = thisOctal%kappaAbs(subcell,iLam)
                    else
-                      kabs = grid%oneKappaAbs(1,iLam) * thisOctal%rho(subcell)
+                      kabs = grid%oneKappaAbs(thisOctal%dusttype(subcell),iLam) * thisOctal%rho(subcell)
                    endif
                    
                    kappaP = kappaP + dble(kabs) * &
@@ -1318,8 +1330,8 @@ contains
    ok = .true.
 
 
-   r1 = subcen%x - thisOctal%subcellSize/2.
-   r2 = subcen%x + thisOctal%subcellSize/2.
+   r1 = subcen%x - thisOctal%subcellSize/2.d0
+   r2 = subcen%x + thisOctal%subcellSize/2.d0
    d = sqrt(point%x**2+point%y**2)
    xHat = VECTOR(point%x, point%y,0.d0)
    call normalize(xHat)
@@ -1354,16 +1366,16 @@ contains
 
    if (compZ /= 0.d0 ) then
       if (compZ > 0.d0) then
-         distToZboundary = (subcen%z + thisOctal%subcellsize/2. - currentZ ) / compZ
+         distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
       else
-         distToZboundary = abs((subcen%z - thisOctal%subcellsize/2. - currentZ ) / compZ)
+         distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
       endif
    else
       disttoZboundary = 1.e30
    endif
 
    tVal = min(distToZboundary, distToXboundary)
-   tval = max(tval * 1.0001d0,dble(thisOctal%subCellSize/10000.d0))
+   tval = max(tval * 1.00001d0,dble(thisOctal%subCellSize/100000.d0))
    if (tVal > 1.e29) then
       write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
       write(*,*) "subcen",subcen
@@ -1379,7 +1391,7 @@ contains
 
 
 
- subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, twoD)
+ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, twoD, imonte)
 
 
    type(GRIDTYPE) :: grid
@@ -1400,9 +1412,11 @@ contains
    real(oct) :: thisLam
    integer :: iLam
    logical ::inFlow
+   integer :: imonte
 
     stillinGrid = .true.
     escaped = .false.
+
 
 
     thisLam = (cSpeed / thisFreq) * 1.e8
@@ -1418,6 +1432,10 @@ contains
     else
        call intersectCubeAMR2D(grid, rVec, uHat, tVal)
     endif
+
+!    if (iMonte == 13) write(*,*) "tval",tval,uHat,rVec
+
+
     octVec = rVec
     thisOctVec = rVec
     octVec2D = projecttoXZ(octVec)
@@ -1433,10 +1451,16 @@ contains
        thisTau = 1.0e-28
     end if
 
+!    if (iMonte == 13) write(*,*) "thisTau",thisTau
+
+
     do while(stillinGrid .and. (tau > thisTau)) 
        rVec = rVec + tVal * uHat
 
        octVec = rVec
+
+!    if (iMonte == 13) write(*,*) "octvec",octvec
+
 
        if (.not.inOctal(grid%octreeRoot, octVec)) then
           stillinGrid = .false.
@@ -1481,6 +1505,8 @@ contains
 
           if (inFlow) then
              thisTau = dble(tVal) * dble(kappaAbsReal + kappaScaReal)
+!             if (imonte == 13) write(*,*) "inflow",tval,thisTau,thisOctal%rho(subcell)
+!             if (imonte == 13) write(*,*) "inflow",kappaAbsReal,kappaScaReal
           else
              thisTau = 1.0e-28
           end if
@@ -1521,6 +1547,8 @@ contains
             kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid, inFlow=inFlow)
        thisOctVec = octVec
        if (.not.inFlow) kappaAbsReal =0.0d0
+
+!       if (iMonte == 13) write(*,*) "octVec in not escaped",octVec,thisTau
 
        if (thisTau > 1.e-30) then
 
@@ -1564,7 +1592,6 @@ contains
 !       endif
     endif
 
-
  end subroutine toNextEventAMR
 
   recursive subroutine removeDust(thisOctal, Tthresh, nRemoved)
@@ -1586,7 +1613,7 @@ contains
           end do
        else
           if (thisOctal%temperature(subcell) > Tthresh) then
-!             write(*,*) "cell removed with T at ",thisOctal%temperature(subcell)
+             write(*,*) "cell removed with T at ",thisOctal%temperature(subcell)
              thisOctal%inFlow(subcell) = .false.
              thisOctal%etaCont(subcell) = 1.e-30
              thisOctal%rho(subcell) = 1.e-27
@@ -1614,7 +1641,7 @@ contains
 !$MPI    real :: r
 !$MPI    ! data space to store values from all processors
 !$MPI    real, save, allocatable  :: buffer_ncrossings(:)     
-!$MPI    real, save, allocatable     :: buffer_distanceGrid(:) 
+!$MPI    real(double), save, allocatable     :: buffer_distanceGrid(:) 
 !$MPI    integer  :: ierr
 !$MPI    integer, save  :: np  ! number of processors
 !$MPI    logical, save  :: first_time = .true.
@@ -1656,6 +1683,59 @@ contains
 !$MPI       endif
 !$MPI    enddo
 !$MPI  end subroutine update_octal_MPI
+
+
+!$MPI  subroutine updateGridMPI(grid)
+!$MPI    implicit none
+!$MPI    include 'mpif.h'
+!$MPI    type(gridtype) :: grid
+!$MPI    integer :: nOctals, nVoxels
+!$MPI    real, allocatable :: nCrossings(:)
+!$MPI    real, allocatable :: tempRealArray(:)
+!$MPI    real(double), allocatable :: distanceGrid(:),tempDoubleArray(:)
+!$MPI    integer :: np, ierr,my_rank, nIndex
+!$MPI
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+!$MPI
+!$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI    nOctals = 0
+!$MPI    nVoxels = 0
+!$MPI    call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+!$MPI    allocate(nCrossings(1:nVoxels))
+!$MPI    allocate(distanceGrid(1:nVoxels))
+!$MPI
+!$MPI    nIndex = 0
+!$MPI    call packValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings)
+!$MPI
+!$MPI
+!$MPI    allocate(tempDoubleArray(nVoxels))
+!$MPI    allocate(tempRealArray(nVoxels))
+!$MPI
+!$MPI    tempDoubleArray = 0.d0
+!$MPI    call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI    distanceGrid = tempDoubleArray 
+!$MPI
+!$MPI    tempRealArray = 0.0
+!$MPI    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI    nCrossings = tempRealArray 
+!$MPI    
+!$MPI    deallocate(tempRealArray)
+!$MPI    deallocate(tempDoubleArray)
+!$MPI     
+!$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI    
+!$MPI    nIndex = 0
+!$MPI    call unpackValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings)
+!$MPI
+!$MPI
+!$MPI  end subroutine updateGridMPI
 
 
 
@@ -1854,5 +1934,59 @@ contains
        endif
     enddo
   end subroutine resetDistanceGrid
+
+  recursive subroutine packvalues(thisOctal,nIndex,distanceGrid,nCrossings)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: distanceGrid(:)
+  real :: nCrossings(:)
+  integer :: nIndex
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call packvalues(child,nIndex,distanceGrid,nCrossings)
+                exit
+             end if
+          end do
+       else
+          nIndex = nIndex + 1
+          distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
+          nCrossings(nIndex) = real(thisOctal%nCrossings(subcell))
+       endif
+    enddo
+  end subroutine packvalues
+
+  recursive subroutine unpackvalues(thisOctal,nIndex,distanceGrid,nCrossings)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: distanceGrid(:)
+  real :: ncrossings(:)
+  integer :: nIndex
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unpackvalues(child,nIndex,distanceGrid,nCrossings)
+                exit
+             end if
+          end do
+       else
+          nIndex = nIndex + 1
+          thisOctal%distanceGrid(subcell) = distanceGrid(nIndex)
+          thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
+       endif
+    enddo
+  end subroutine unpackvalues
+
+
 
 end module lucy_mod

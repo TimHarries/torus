@@ -60,7 +60,7 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
   real :: f(n)     ! distribution function (normalized)
   real :: mass(n)  ! 
   real :: normFac
-  character(len=*) :: grainType
+  character(len=80) :: grainType
   real :: density
 
   select case(grainType)

@@ -383,7 +383,7 @@ contains
 
     lambda_cm = lambda *1.d-8  ! wavelength in cm
     x =  (hCgs * cSpeed)/ (lambda_cm * kErg * T) 
-    y = (2.0d0*hCgs*cSpeed*cSpeed)/(lambda_cm)**5
+    y = (2.0d0*hCgs*cSpeed**2)/(lambda_cm)**5
 
     if (x > 100.d0) then      ! applying Wien's law
        bLambda = y * EXP(-x)

@@ -54,7 +54,7 @@ ifeq  ($(SYSTEM), linux)
    F95COMP=f95
    F77COMP=f77
    FASTFLAG=-O3 -w 
-   DEBUGFLAG=-g 
+   DEBUGFLAG=-g -C=all
    MATHTRAP=-ieee=stop
    UNIXMOD=unix_mod.f90.linux
    KINDMOD=kind_mod.f90.linux
@@ -355,7 +355,7 @@ lucy_mod.o : lucy_mod.f90.raw amr_mod.o constants_mod.o grid_mod.o phasematrix_m
 
 disc_hydro_mod.o : disc_hydro_mod.f90.raw lucy_mod.o amr_mod.o constants_mod.o grid_mod.o phasematrix_mod.o \
              source_mod.o spectrum_mod.o timing.o vector_mod.o
-        ifeq ($(MK_MPI_SRC), "yes")
+        ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
         else
 	   sed '/\!$$MPI/d'   disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
@@ -382,7 +382,7 @@ parallel_mod.o: parallel_mod.f90.raw
 
 
 torusMain.o: torusMain.f90.raw TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
-        cluster_utils.o constants_mod.o disc_class.o distortion_mod.o dust_mod.o \
+        cluster_utils.o constants_mod.o disc_hydro_mod.o disc_class.o distortion_mod.o dust_mod.o \
         filter_set_class.o grid_mod.o gridtype_mod.o image_mod.o \
         input_variables.o inputs_mod.o integratePath.o isochrone_class.o \
         jets_mod.o kind_mod.o lucy_mod.o math_mod.o phasematrix_mod.o \

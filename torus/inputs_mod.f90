@@ -869,6 +869,7 @@ endif
 
 
  call findLogical("mie", mie, cLine, nLines, ok)
+ call findLogical("iso_scatter", isotropicScattering, cLine, nLines, ok)
  if (.not. ok) then
     mie = .true.
     default = " (default)"
@@ -881,6 +882,12 @@ endif
    write(*,'(a)') "Scattering phase matrix: Rayleigh"
  endif
 
+ call getLogical("iso_scatter", isotropicScattering, cLine, nLines, &
+"Isotropic scattering function: ","(a,1l,1x,a)",.false.,ok,.false.)
+
+if  (isotropicScattering) then
+   write(*,'(a)') "!!! ISOTROPIC SCATTERING PHASE MATRIX ENFORCED"
+endif
 
  if (mie) then
     call getLogical("forcedwavelength", forcedWavelength, cLine, nLines, &
@@ -937,6 +944,11 @@ endif
 
    call getLogical("hydro", solveVerticalHydro, cLine, nLines, &
         "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
+
+   if (solveVerticalHydro) then
+      call getInteger("nhydro", nhydro, cLine, nLines, &
+           "Max number of hydro iterations : ","(a,i4,a)", 5, ok, .true.)
+   endif
 
    call getLogical("dustfile", dustfile, cLine, nLines, &
         "Get dust properties from file: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1535,7 +1547,7 @@ endif
        "Core mass (solar masses): ","(a,f5.1,a)", 0.5, ok, .true.)
 
    call getReal("mdisc", mDisc, cLine, nLines, &
-       "Disc mass (solar masses): ","(a,f5.1,a)", 1.e-4, ok, .true.)
+       "Disc mass (solar masses): ","(a,f5.3,a)", 1.e-4, ok, .true.)
 
    rCore = rCore * rSol / 1.e10
    rInner = rInner * rCore
@@ -1686,6 +1698,8 @@ endif
          "The density in the units of rho max for disk wind : ","(a,1PE7.1,a)", &
          1.0e-5, ok, .true.)
 
+
+
     
     ! save the variables in an object in jets_mod module.
     call set_jets_parameters(Rmin_bp, Rmax_bp, Vo_bp, &
@@ -1695,9 +1709,6 @@ endif
     
  end if
  
-!   mdot = mdot*msol/(365.25*24.*3600.)
-!   vterm = vterm * 1.e5
-!   v0 = v0 * 1.e5
 
 
 

@@ -316,7 +316,7 @@ contains
     m = modulus(a)
 
     if (m == 0.) then
-       write(*,'(a)') "! Attempt to normalize the zero vector"
+       write(*,'(a)') "! Attempt to normalize the zero vector single"
        a = VECTOR(1.,0.,0.)
     else
        a%x = a%x / m
@@ -333,7 +333,7 @@ contains
     m = modulus(a)
 
     if (m == 0.0_db) then
-       write(*,'(a)') "! Attempt to normalize the zero vector"
+       write(*,'(a)') "! Attempt to normalize the zero vector double"
        a = doubleVector(1.0_db,0.0_db,0.0_db)
 
     else
@@ -351,7 +351,7 @@ contains
     m = modulus(a)
 
     if (m == 0.0_oc) then
-       WRITE(*,'(a)') "! Attempt to normalize the zero vector"
+       WRITE(*,'(a)') "! Attempt to normalize the zero vector octal"
        a = octalVector(1.0_oc,0.0_oc,0.0_oc)
           
     else

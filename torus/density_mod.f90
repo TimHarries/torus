@@ -765,7 +765,13 @@ contains
     if ((r > rinner).and.(r < rOuter)) then
        h = height * (r / (100.*autocm/1.e10))**betaDisc
        rhoOut = rho0 * (rInner/r)**alphaDisc * exp(-0.5 * ((point%z-warpheight)/h)**2)
+
+       fac =  1.-min((r - rInner)/(0.01*rinner),1.)
+       fac = exp(-fac*10.)
+       rhoOut = rhoOut * fac
+
     endif
+
     rhoOut = max(rhoOut,1.e-30)
 
   end function shakaraSunyaevDisc

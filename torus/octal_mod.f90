@@ -91,7 +91,7 @@ MODULE octal_mod
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
     TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
-    REAL, DIMENSION(8)                 :: distanceGrid   ! distance crossing used by lucy R Eq
+    REAL(double), DIMENSION(8)         :: distanceGrid   ! distance crossing used by lucy R Eq
     INTEGER, DIMENSION(8)              :: nCrossings     ! no of photon crossings used by lucy R Eq
     REAL(double), DIMENSION(:,:), POINTER      :: kappaAbs => null() ! cont absorption opacities
     REAL(double), DIMENSION(:,:), POINTER      :: kappaSca => null() ! scattering opacities
@@ -121,6 +121,8 @@ MODULE octal_mod
     LOGICAL(KIND=logic), DIMENSION(8) :: changed     ! octal has changed in some way since previous calculation    
     
     INTEGER, DIMENSION(8)                :: dusttype
+    INTEGER :: parentSubcell
+
 
   END TYPE octal
  

@@ -40,6 +40,7 @@ module input_variables
   character(len=80) :: grainType ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl  
   real :: grainSize
   logical :: mie
+  logical :: isotropicScattering
   real :: dusttogas
   logical :: dustfile
   real :: probDust
@@ -414,6 +415,7 @@ module input_variables
 
   logical :: lucyRadiativeEq
   logical :: solveVerticalHydro
+  integer :: nHydro
   integer :: nLucy
   logical :: narrowBandImage
   logical :: useInterp

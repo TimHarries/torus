@@ -1038,10 +1038,12 @@ contains
 
                 tempSpectrum(1:nLambda) = tempSpectrum(1:nLambda) / totDouble
 
+
+
                 if (totDouble<=0.0) totDouble = 1.0e-28   ! for safty
-                tempSpectrum(1:nLambda) = tempSpectrum(1:nLambda) / totDouble
 
                 thisPhoton%stokes = thisPhoton%stokes * real(tempSpectrum(iLambda))
+
 
 !                thisPhoton%stokes = thisPhoton%stokes * interplinearSingle(real(lambda), &
 !                     real(tempSpectrum), nLambda, thisPhoton%lambda)
