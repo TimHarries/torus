@@ -79,6 +79,9 @@ CONTAINS
     CASE ("jets")
       CALL calcJetsMassVelocity(thisOctal,subcell,grid)
 
+    CASE ("luc_cir3d")
+      CALL calc_cir3d_mass_velocity(thisOctal,subcell)
+
     CASE ("testamr")
        CALL calcTestDensity(thisOctal,subcell,grid)
 
@@ -108,6 +111,12 @@ CONTAINS
 
     CASE("melvin")
        CALL assign_melvin(thisOctal,subcell,grid)
+
+    CASE("clumpydisc")
+       CALL assign_clumpydisc(thisOctal, subcell, grid)
+
+    CASE ("windtest")
+       CALL calcWindTestValues(thisOctal,subcell,grid)
        
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
@@ -1214,7 +1223,7 @@ CONTAINS
     ! Specify the ratio of extra length to give it for "locater" to the 
     ! "halfSmallestSubcell" size.
 !    REAL(oct), parameter :: frac =1.e-6_oc  
-    REAL(oct), parameter :: frac =1.e-6_oc  
+    REAL(oct), parameter :: frac =1.e-2_oc  
 
     if (threed) then
        
@@ -1544,21 +1553,19 @@ CONTAINS
        endif
 
        
-       if (distToZboundary == 0.d0) distToZboundary = 1.e30
-       if (distToXboundary == 0.d0) distToXboundary = 1.e30
-
        tVal = min(distToZboundary, distToXboundary)
        if (tVal > 1.e29) then
           write(*,*) "Error :: tVal > 1.e29 [amr_mod:getExitPoint]."
           write(*,*) "tVal,compX,compZ, distToZboundary,disttoxboundary = "
           write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
           write(*,*) "x,z = ",currentX,currentZ
-       endif
-       if (tval <= 0.) then
+          stop 
+       elseif (tval <= 0.) then
           write(*,*) "Error :: tVal <= 0  [amr_mod:getExitPoint]."
-          write(*,*) "tVal,compZ, distToZboundary,disttoxboundary = "
+          write(*,*) "tVal,compX, compZ, distToZboundary,disttoxboundary = "
           write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
           write(*,*) "x,z = ",currentX,currentZ
+          stop
        endif
        
        minWallDistance = tVal
@@ -5174,6 +5181,10 @@ CONTAINS
        parent%child(newChildIndex)%etaCont = 1.e-30
        parent%child(newChildIndex)%N = 1.e-30
        parent%child(newChildIndex)%dusttype = 1
+       parent%child(newChildIndex)%Ne = 1.e-30
+       parent%child(newChildIndex)%temperature = 3.0
+       parent%child(newChildIndex)%nTot = 1.e-30
+       parent%child(newChildIndex)%changed = .false.
 
        if (present(sphData)) then
           ! updates the sph particle list.           

@@ -829,23 +829,21 @@ program torus
      errorArray(1:nOuterLoop,1:nLambda)%i = 1.e-20
   endif
 
-     if (.not.dustfile) then
-!$MPI           if (my_rank==0) &
+  if (mie .and. .not.dustfile) then
      write(*,*) "fill grid mie",nLambda,grid%nlambda
      call fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
           ngrain, X_grain, grainname)
-!$MPI  if (my_rank==0) &
      write(*,'(a,f5.2)') "!!!! Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
      do i = 1, nDustType
         grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
         grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
      enddo
-     else
-        do i = 1, nDustType
-           call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
-                grid%onekappaSca(i,1:grid%nLambda))
-        enddo
-     endif
+  else
+     do i = 1, nDustType
+        call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
+             grid%onekappaSca(i,1:grid%nLambda))
+     enddo
+  endif
 
 
   ! if the grid uses an adaptive mesh, create it
@@ -860,11 +858,12 @@ program torus
 !  end if
 
 
-  call locate(grid%lamArray, nLambda,lambdaTau,itestlam)
-  call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-  write(*,*) "Test wavelength index: ",itestlam,ismoothlam
-  write(*,*) "Test Kappa Abs",grid%oneKappaAbs(1,itestLam)
-
+  if (mie) then
+     call locate(grid%lamArray, nLambda,lambdaTau,itestlam)
+     call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+     write(*,*) "Test wavelength index: ",itestlam,ismoothlam
+     write(*,*) "Test Kappa Abs",grid%oneKappaAbs(1,itestLam)
+  end if
 
   !===============================================================
   if (gridUsesAMR) then  !========================================
@@ -1010,7 +1009,6 @@ program torus
            ! chris (26/05/04)
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau) then
-!$MPI     if(my_rank == 0) &
               write(*,*) "Smoothing adaptive grid structure for optical depth..."
               do j = iSmoothLam, nLambda
                  do
@@ -1019,19 +1017,16 @@ program torus
                     if (gridConverged) exit
                  end do
               enddo
-!$MPI     if(my_rank == 0) &
               write(*,*) "...grid smoothing complete"
               ! The tau smoothing may result in large differences in the size
               ! of neighbouring octals, so we smooth the grid again.
               if (doSmoothGrid) then
-!$MPI     if(my_rank == 0) &
                 write(*,*) "Smoothing adaptive grid structure (again)..."
                 gridConverged = .false.
                 do
                    call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false.)
                    if (gridConverged) exit
                 end do
-!$MPI     if(my_rank == 0) &
                 write(*,*) "...grid smoothing complete"
               end if
            end if
@@ -1650,8 +1645,6 @@ program torus
 
   if (mie .or.  (grid%geometry == "ttauri" .and. ttau_disc_on)) then
      ! construct the mie phase matrix
-
-!$MPI     if (my_rank==0) &
      write(*,'(a)') "Computing Mie phase grid..."
 
      allocate(mReal(1:nLambda))
@@ -1725,7 +1718,6 @@ program torus
 
      deallocate(mReal)
      deallocate(mImg)
-!$MPI  if (my_rank==0) &
      write(*,'(a)') "Completed."
 
 
@@ -1847,11 +1839,9 @@ program torus
      if (mie) then
         totalMass =0.d0
         call findTotalMass(grid%octreeRoot, totalMass)
-!$MPI  if (my_rank==0) &
         write(*,*) "Dust mass of envelope: ",totalMass/mSol, " solar masses"
 	if (geometry == "shakara") then
         sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*autocm) ! defined at 1AU
-!$MPI  if (my_rank==0) &
         write(*,*) "Sigma0: ",sigma0
 	endif
      endif
@@ -1968,6 +1958,7 @@ program torus
      call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
   elseif (grid%geometry == "ttauri" .and. useBias) then
      ! --using a routine in amr_mod
+     write(*,*) "Setting emissin bias for ttauri geometry ..."
      call set_bias_ttauri(grid%octreeRoot, grid)
   end if
   
@@ -2398,7 +2389,11 @@ program torus
      write(*,'(a)') "---------------------------"
      write(*,*) " "
        
-     grid%rStar1 = rcore
+     ! THE FOLLOWING STATEMENT IS DANGEROUS. ACCORDING TO INPUT_MOD.F90 
+     ! NOT ALL THE GEOMETRY HAS RCORE VALUES, AND SAME UNITS!
+     ! THIS SHOULD BE DONE IN INITAMRGRID ROUTINE AS SOME GEOMETRY HAS
+     ! DONE SO.
+     grid%rStar1 = rcore  
      !
      ! Performs various optical depth tests here...
      !
@@ -3346,14 +3341,13 @@ end if
               
            ! Correcting the weight here... 
            ! escProb -- allowing for local emission
-           ! fac -- the first scattering was forced 
            thisPhoton%stokes = thisPhoton%stokes * real(fac) * escProb
 
 
            currentScat = 0
 
 
-
+!           escaped = .false.
            absorbed = .false.
            if (doRaman) hitCore = .false.
 
@@ -4041,7 +4035,7 @@ end if
        call emptySurface(starSurface)
      end if
 
-!$MPI !if (my_rank /= 0 .and. .not.noPhaseUpdate) call freeGrid(grid)
+!$MPI if (my_rank /= 0 .and. .not.noPhaseUpdate) call freeGrid(grid)
 !$MPI   print *,'Process ',my_rank,' waiting inside end of phase loop...' 
 !$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
   enddo phaseLoop

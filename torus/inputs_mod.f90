@@ -870,10 +870,14 @@ endif
 
  call findLogical("mie", mie, cLine, nLines, ok)
  call findLogical("iso_scatter", isotropicScattering, cLine, nLines, ok)
+
  if (.not. ok) then
     mie = .true.
     default = " (default)"
+    write(*,*) "Error:: mie and iso_scatter must be defined in your parameter file."
+    stop
  endif
+
  if (mie) then
    write(*,'(a)') "Scattering phase matrix: Mie"
  elseif (geometry == "ttauri".and. ttau_disc_on) then
@@ -1027,7 +1031,8 @@ endif
  if (geometry == "ttauri") then
    call getReal("ttaurirstar", TTauriRstar, cLine, nLines, &
         "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)
-     TTauriRstar = TTauriRstar * rSol
+     TTauriRstar = TTauriRstar * rSol ! [10cm]
+     rcore = TTauriRstar/1.0e10       ! [10^10cm]
    call getReal("ttaurimstar", TTauriMstar, cLine, nLines, &
         "T Tauri stellar mass (in M_sol): ","(a,f7.1,1x,a)", 0.8, ok, .true.)
      TTauriMstar = TTauriMstar * mSol
@@ -1214,8 +1219,9 @@ endif
  if (geometry == "luc_cir3d") then
       call getDouble("CIR_Rstar", CIR_Rstar, cLine, nLines, &
            "radius of central star  [R_sun] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+      rcore = (CIR_Rstar*rSol)/1.0e10       ! [10^10cm]
       call getDouble("CIR_Mass", CIR_Mass, cLine, nLines, &
-           "Mass of the star [M_sun] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+           "Mass of the star [M_sun] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.)       
       call getDouble("CIR_Twind", CIR_Twind, cLine, nLines, &
            "Isothemal temperature of the stellar wind [K] : ", &
            "(a,es9.3,1x,a)", 1.0d4, ok, .true.)       
