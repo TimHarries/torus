@@ -56,6 +56,7 @@ program torus
   use surface_mod
   use disc_class
   use discwind_class
+  use jet_class
 !$MPI   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
 !$MPI   !use MPI
@@ -347,6 +348,7 @@ program torus
   logical :: alreadyDoneInfall = .false. ! whether we have already done an infall calculation
   type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
   type(discwind)    :: ttauri_discwind   ! parameters for ttauri disc wind
+  type(jet)         :: ttauri_jet        ! parameters for ttauri jets
 
 !  ! For luc_cir3d geometry case
 !  type(luc_cir3d) :: cir3d ! parameters and data for luc_cir3d geometry
@@ -655,12 +657,16 @@ program torus
   elseif (geometry == "ttauri") then
      onekappa=.false.
      if (ttau_disc_on)  &
-          call new(ttauri_disc, dble(TTauriRouter/1.0e10), 1.5d3*10.d0, &
-          dble(Msol/1000.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0)
+          call new(ttauri_disc, dble(TTauriRouter/1.0e10), 1.5d3*100.d0, &
+          dble(Msol/100.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0, dble(TTauriMstar/mSol))
      if (ttau_discwind_on) &
           call new(ttauri_discwind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
           DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, &
           dble(TTauriMstar/mSol),  dble(TTauriDiskHeight/1.0e10) )
+     if (ttau_jet_on) &
+          call new(ttauri_jet,  dble(TTauriRouter/1.0e10), dble(amrgridsize), &
+          JET_theta_j, dble(TTauriMstar/mSol), JET_Mdot, JET_a_param, JET_b_param,  &
+          JET_Vbase, JET_Vinf, JET_beta, JET_gamma, limitscalar, JET_T)
 
   elseif (geometry == "luc_cir3d") then
      onekappa=.false.
@@ -925,11 +931,18 @@ program torus
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
            write(*,*) "...initial adaptive grid configuration complete"
-           if (geometry=="ttauri" .and. ttau_discwind_on) then
-              write(*,*) " "
-              write(*,*) "Adding TTauri disc wind to magnetosphere model... "
-              call add_discwind(grid%octreeRoot, grid, ttauri_discwind, limitscalar2)
-              write(*,*) " "
+           if (geometry=="ttauri") then
+              if (ttau_discwind_on) then
+                 write(*,*) " "
+                 write(*,*) "Adding TTauri disc wind to magnetosphere model... "
+                 call add_discwind(grid%octreeRoot, grid, ttauri_discwind, limitscalar2)
+                 write(*,*) " "
+              elseif (ttau_jet_on) then
+                 write(*,*) " "
+                 write(*,*) "Adding TTauri jets to magnetosphere model... "
+                 call add_jet(grid%octreeRoot, grid, ttauri_jet)
+                 write(*,*) " "
+              end if
            end if
            if (doSmoothGrid) then
               write(*,*) "Smoothing adaptive grid structure..."
@@ -940,6 +953,7 @@ program torus
               end do
               write(*,*) "...grid smoothing complete"
            end if
+
         end select
    
         nOctals = 0
@@ -984,6 +998,9 @@ program torus
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
         call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
              "Vz.ps/vcps", .false., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
+             "temperature.ps/vcps", .true., .false., &
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 
 
@@ -1067,7 +1084,7 @@ program torus
                  write(*,*) " ---- Scaling optical depth at r = 0.05 AU is ", tauExt(ntau)
                  write(*,*) " ----                           at lambda =  ", lambdatau
                  write(*,*) "Rescaling scattering and absorption coefficients ... "
-                 call finish_grid(grid%octreeroot, grid, ttauri_disc, tauExt(ntau)/10.0)
+                 call finish_grid(grid%octreeroot, grid, ttauri_disc, tauExt(ntau)/100.0)
                  call integratePath(gridUsesAMR, starkBroadening, &
                       lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(75.0,0,-50.), &
                       OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
@@ -2597,9 +2614,11 @@ program torus
         call make_filter_set(filters, filter_set_name)
 
         ! write filter info to standard output and to a file
+!$MPI     if (my_rank==0) then
         call info_filter_set(filters, "*") 
         call info_filter_set(filters, "info_filter_set.dat")
-                
+!$MPI     endif 
+
         ! number of images = number of filters
         nImage = get_nfilter(filters)
 
@@ -3201,12 +3220,12 @@ end if
                  endif
               end if
               
-              if ((thisChi+thisSca) > 0.) then
+              if ((thisChi+thisSca) >= 0.) then
                  albedo = thisSca / (thisChi + thisSca)
               else
                  albedo = 0.
                  write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
-                 stop
+!                 stop
               endif
 
               if (grid%resonanceLine) albedo = 1.

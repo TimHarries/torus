@@ -580,13 +580,21 @@ contains
     INTEGER              :: subcell, i    ! loop counters
     logical :: splitThis
     TYPE(octalVector)     :: cellCentre 
+    integer :: n
 
     splitThis = .false.
     subcell = 1
+
+    if (thisOctal%threeD) then
+       n = 8
+    else
+       n = 4
+    endif
+
     
     if (thisOctal%hasChild(subcell)) then
        ! find the index of the new child and decend the tree
-       do i = 1, 8
+       do i = 1, n
           childPointer => thisOctal%child(i)
           CALL add_discwind(childPointer,grid,this, limitscalar)
        end do
@@ -596,7 +604,7 @@ contains
        cellCentre = subcellCentre(thisOctal, subcell)
        
        if (modulus(cellCentre) > this%Rmin) then 
-          do while ((.not.splitThis).and.(subcell <= 8))
+          do while ((.not.splitThis).and.(subcell <= n))
              IF (need_to_split(thisOctal,subcell,this, limitscalar)) then
                 splitThis = .true. 
              end IF
@@ -607,7 +615,7 @@ contains
              ! using a routine in this module
              CALL add_new_children(thisOctal, grid, this)
              ! find the index of the new child and decend the tree
-             do i = 1, 8
+             do i = 1, n
                 childPointer => thisOctal%child(i)
                 CALL add_discwind(childPointer,grid,this,limitscalar)
              end do
@@ -676,18 +684,28 @@ contains
 
     real(double) :: rho, x, y, z
     TYPE(OCTAL), POINTER :: childPointer      
-    
-    if (any(parent%hasChild(1:8))) write(*,*) "parent already has a child"
 
-    parent%nChildren = 8
 
-    if (.not. ASSOCIATED(parent%child)) then
+    if (any(parent%hasChild(1:8))) &
+         write(*,*) "parent already has a child  [discwind_class::add_new_children]"
+
+    if (parent%threeD) then
+       parent%nChildren = 8
+       parent%maxChildren = 8
+    else
+       parent%nChildren = 4
+       parent%maxChildren = 4
+    endif
+
+    if (parent%threed) then
        ALLOCATE(parent%child(1:8), STAT=error)
-       IF ( error /= 0 ) THEN
-          PRINT *, 'Panic: allocation failed.'
-          STOP
-       END IF
-    end if
+    else
+       ALLOCATE(parent%child(1:4), STAT=error)
+    endif
+    IF ( error /= 0 ) THEN
+       PRINT *, 'Error: Allocation failed in [discwind_class::add_new_children].'
+       STOP
+    END IF
 
     ! update the parent octal
     
@@ -696,12 +714,14 @@ contains
     parent%indexChild(2) = 2
     parent%indexChild(3) = 3
     parent%indexChild(4) = 4
-    parent%indexChild(5) = 5
-    parent%indexChild(6) = 6
-    parent%indexChild(7) = 7
-    parent%indexChild(8) = 8
+    if (parent%threeD) then
+       parent%indexChild(5) = 5
+       parent%indexChild(6) = 6
+       parent%indexChild(7) = 7
+       parent%indexChild(8) = 8
+    end if
 
-    do newChildIndex = 1, 8
+    do newChildIndex = 1, parent%maxChildren
 
        ! allocate any variables that need to be  
        if (.not.grid%oneKappa) then
@@ -731,6 +751,7 @@ contains
        parent%child(newChildIndex)%etaCont = 1.e-30
        parent%child(newChildIndex)%N = 1.e-10
        parent%child(newChildIndex)%Ne = 1.e-10
+       parent%child(newChildIndex)%changed = .false.
 !       parent%child(newChildIndex)%inFlow = .true.
        x = parent%child(newChildIndex)%centre%x
        y = parent%child(newChildIndex)%centre%y
@@ -740,13 +761,13 @@ contains
 
 
        ! put some data in the eight subcells of the new child
-       DO subcell = 1, 8
+       DO subcell = 1, parent%maxChildren
           childPointer => parent%child(newChildIndex)
           rho =ave_discwind_density(childPointer, subcell, this)
           parent%child(newChildIndex)%rho(subcell) = rho 
           parent%child(newChildIndex)%velocity(subcell)  &
                = discwind_velocity(this, o2s(childPointer%Centre))
-          if (subcell == 8) call fill_velocity_corners(this, childPointer)
+          if (subcell == parent%maxChildren) call fill_velocity_corners(this, childPointer)
           parent%child(newChildIndex)%label(subcell) = counter
           counter = counter + 1
 
@@ -790,19 +811,35 @@ contains
     d = cellsize/2.0d0
 
     rho_sum=0.0d0
-    do i = 1, nsample
-       ! picking a random position in the subcell
-       call random_number(r)
-       x =  xc - d + r*2.0d0*d
-       call random_number(r)
-       y =  yc - d + r*2.0d0*d
-       call random_number(r)
-       z =  zc - d + r*2.0d0*d               
-       ! evaluate the disc density density
-       ! Taking the max value samples
-       rho_sample =  discwind_density(this, x, y, z)
-       rho_sum = rho_sum + rho_sample
-    end do
+    if (thisOctal%threeD)  then
+       do i = 1, nsample
+          ! picking a random position in the subcell
+          call random_number(r)
+          x =  xc - d + r*2.0d0*d
+          call random_number(r)
+          y =  yc - d + r*2.0d0*d
+          call random_number(r)
+          z =  zc - d + r*2.0d0*d               
+          ! evaluate the disc density density
+          ! Taking the max value samples
+          rho_sample =  discwind_density(this, x, y, z)
+          rho_sum = rho_sum + rho_sample
+       end do
+    else  ! 2D amr
+       do i = 1, nsample
+          ! picking a random position in the subcell
+          call random_number(r)
+          x =  xc - d + r*2.0d0*d
+          y =  yc 
+          call random_number(r)
+          z =  zc - d + r*2.0d0*d               
+          ! evaluate the disc density density
+          ! Taking the max value samples
+          rho_sample =  discwind_density(this, x, y, z)
+          rho_sum = rho_sum + rho_sample
+       end do
+    end if
+
     ave_discwind_density_slow = rho_sum/dble(nsample)
 
   end function ave_discwind_density_slow
@@ -830,21 +867,32 @@ contains
     y = cellcentre%y
     z = cellcentre%z
     d = cellsize/3.00
+    if (.not. thisOctal%threeD)  y = 0.0d0  ! 2D case
 
     ! assigning density 
-    c0 =  discwind_density(this, x, y, z)
-    
-    c1 =  discwind_density(this, x+d, y+d, z+d)
-    c2 =  discwind_density(this, x+d, y+d, z-d)
-    c3 =  discwind_density(this, x+d, y-d, z+d)
-    c4 =  discwind_density(this, x+d, y-d, z-d)
-    c5 =  discwind_density(this, x-d, y+d, z+d)
-    c6 =  discwind_density(this, x-d, y+d, z-d)
-    c7 =  discwind_density(this, x-d, y-d, z+d)
-    c8 =  discwind_density(this, x-d, y-d, z-d)
-
-    ave_discwind_density_fast =  &
-         (c0 + c1+ c2 + c3 + c4 + c5 + c6 + c7 + c8)/9.0d0
+    if (thisOctal%threeD)  then
+       c0 =  discwind_density(this, x, y, z)    
+       c1 =  discwind_density(this, x+d, y+d, z+d)
+       c2 =  discwind_density(this, x+d, y+d, z-d)
+       c3 =  discwind_density(this, x+d, y-d, z+d)
+       c4 =  discwind_density(this, x+d, y-d, z-d)
+       c5 =  discwind_density(this, x-d, y+d, z+d)
+       c6 =  discwind_density(this, x-d, y+d, z-d)
+       c7 =  discwind_density(this, x-d, y-d, z+d)
+       c8 =  discwind_density(this, x-d, y-d, z-d)
+       
+       ave_discwind_density_fast =  &
+            (c0 + c1+ c2 + c3 + c4 + c5 + c6 + c7 + c8)/9.0d0
+    else  ! 2D case
+       c0 =  discwind_density(this, x, y, z)    
+       c1 =  discwind_density(this, x+d, y, z+d)
+       c2 =  discwind_density(this, x+d, y, z-d)
+       c3 =  discwind_density(this, x-d, y, z+d)
+       c4 =  discwind_density(this, x-d, y, z-d)
+       
+       ave_discwind_density_fast =  &
+            (c0 + c1+ c2 + c3 + c4)/5.0d0
+    end if
 
   end function ave_discwind_density_fast
 
@@ -864,9 +912,15 @@ contains
     
     TYPE(octal), POINTER   :: pChild
     
-    INTEGER :: subcell
+    INTEGER :: subcell, n
     
-    do subcell = 1, 8
+    if (thisOctal%threeD) then
+       n = 8
+    else
+       n =4
+    end if
+    
+    do subcell = 1, n
        if (thisOctal%hasChild(subcell)) then
           ! just decdend the tree branch
           pChild => thisOctal%child(subcell)
@@ -894,9 +948,15 @@ contains
 
     TYPE(octal), POINTER   :: pChild
   
-    INTEGER :: subcell
+    INTEGER :: subcell, n
+
+    if (thisOctal%threeD) then
+       n = 8
+    else
+       n =4
+    end if
      
-    do subcell = 1, 8
+    do subcell = 1, n
        if (thisOctal%hasChild(subcell)) then
           ! just decdend the tree branch
           pChild => thisOctal%child(subcell)
@@ -924,56 +984,88 @@ contains
     real(oct)      :: x1, x2, x3
     real(oct)      :: y1, y2, y3
     real(oct)      :: z1, z2, z3
-    
-    ! we first store the values we use to assemble the position vectors
-    
-    x1 = thisOctal%centre%x - thisOctal%subcellSize
-    x2 = thisOctal%centre%x
-    x3 = thisOctal%centre%x + thisOctal%subcellSize
 
-    y1 = thisOctal%centre%y - thisOctal%subcellSize
-    y2 = thisOctal%centre%y
-    y3 = thisOctal%centre%y + thisOctal%subcellSize
+    if (thisOctal%threeD) then
     
-    z1 = thisOctal%centre%z - thisOctal%subcellSize
-    z2 = thisOctal%centre%z
-    z3 = thisOctal%centre%z + thisOctal%subcellSize
+       ! we first store the values we use to assemble the position vectors       
 
-    ! now store the 'base level' values    
-    thisOctal%cornerVelocity(1) = discwind_velocity(this, vector(x1,y1,z1))
-    thisOctal%cornerVelocity(2) = discwind_velocity(this, vector(x2,y1,z1))
-    thisOctal%cornerVelocity(3) = discwind_velocity(this, vector(x3,y1,z1))
-    thisOctal%cornerVelocity(4) = discwind_velocity(this, vector(x1,y2,z1))
-    thisOctal%cornerVelocity(5) = discwind_velocity(this, vector(x2,y2,z1))
-    thisOctal%cornerVelocity(6) = discwind_velocity(this, vector(x3,y2,z1))
-    thisOctal%cornerVelocity(7) = discwind_velocity(this, vector(x1,y3,z1))
-    thisOctal%cornerVelocity(8) = discwind_velocity(this, vector(x2,y3,z1))
-    thisOctal%cornerVelocity(9) = discwind_velocity(this, vector(x3,y3,z1))
-
-    ! middle level
-  
-    thisOctal%cornerVelocity(10) = discwind_velocity(this, vector(x1,y1,z2))
-    thisOctal%cornerVelocity(11) = discwind_velocity(this, vector(x2,y1,z2))
-    thisOctal%cornerVelocity(12) = discwind_velocity(this, vector(x3,y1,z2))
-    thisOctal%cornerVelocity(13) = discwind_velocity(this, vector(x1,y2,z2))
-    thisOctal%cornerVelocity(14) = discwind_velocity(this, vector(x2,y2,z2))
-    thisOctal%cornerVelocity(15) = discwind_velocity(this, vector(x3,y2,z2))
-    thisOctal%cornerVelocity(16) = discwind_velocity(this, vector(x1,y3,z2))
-    thisOctal%cornerVelocity(17) = discwind_velocity(this, vector(x2,y3,z2))
-    thisOctal%cornerVelocity(18) = discwind_velocity(this, vector(x3,y3,z2))
-
-    ! top level
+       x1 = thisOctal%centre%x - thisOctal%subcellSize
+       x2 = thisOctal%centre%x
+       x3 = thisOctal%centre%x + thisOctal%subcellSize
+       
+       y1 = thisOctal%centre%y - thisOctal%subcellSize
+       y2 = thisOctal%centre%y
+       y3 = thisOctal%centre%y + thisOctal%subcellSize
+       
+       z1 = thisOctal%centre%z - thisOctal%subcellSize
+       z2 = thisOctal%centre%z
+       z3 = thisOctal%centre%z + thisOctal%subcellSize
+       
+       ! now store the 'base level' values    
+       thisOctal%cornerVelocity(1) = discwind_velocity(this, vector(x1,y1,z1))
+       thisOctal%cornerVelocity(2) = discwind_velocity(this, vector(x2,y1,z1))
+       thisOctal%cornerVelocity(3) = discwind_velocity(this, vector(x3,y1,z1))
+       thisOctal%cornerVelocity(4) = discwind_velocity(this, vector(x1,y2,z1))
+       thisOctal%cornerVelocity(5) = discwind_velocity(this, vector(x2,y2,z1))
+       thisOctal%cornerVelocity(6) = discwind_velocity(this, vector(x3,y2,z1))
+       thisOctal%cornerVelocity(7) = discwind_velocity(this, vector(x1,y3,z1))
+       thisOctal%cornerVelocity(8) = discwind_velocity(this, vector(x2,y3,z1))
+       thisOctal%cornerVelocity(9) = discwind_velocity(this, vector(x3,y3,z1))
+       
+       ! middle level
+       
+       thisOctal%cornerVelocity(10) = discwind_velocity(this, vector(x1,y1,z2))
+       thisOctal%cornerVelocity(11) = discwind_velocity(this, vector(x2,y1,z2))
+       thisOctal%cornerVelocity(12) = discwind_velocity(this, vector(x3,y1,z2))
+       thisOctal%cornerVelocity(13) = discwind_velocity(this, vector(x1,y2,z2))
+       thisOctal%cornerVelocity(14) = discwind_velocity(this, vector(x2,y2,z2))
+       thisOctal%cornerVelocity(15) = discwind_velocity(this, vector(x3,y2,z2))
+       thisOctal%cornerVelocity(16) = discwind_velocity(this, vector(x1,y3,z2))
+       thisOctal%cornerVelocity(17) = discwind_velocity(this, vector(x2,y3,z2))
+       thisOctal%cornerVelocity(18) = discwind_velocity(this, vector(x3,y3,z2))
+       
+       ! top level
+       
+       thisOctal%cornerVelocity(19) = discwind_velocity(this, vector(x1,y1,z3))
+       thisOctal%cornerVelocity(20) = discwind_velocity(this, vector(x2,y1,z3))
+       thisOctal%cornerVelocity(21) = discwind_velocity(this, vector(x3,y1,z3))
+       thisOctal%cornerVelocity(22) = discwind_velocity(this, vector(x1,y2,z3))
+       thisOctal%cornerVelocity(23) = discwind_velocity(this, vector(x2,y2,z3))
+       thisOctal%cornerVelocity(24) = discwind_velocity(this, vector(x3,y2,z3))
+       thisOctal%cornerVelocity(25) = discwind_velocity(this, vector(x1,y3,z3))
+       thisOctal%cornerVelocity(26) = discwind_velocity(this, vector(x2,y3,z3))
+       thisOctal%cornerVelocity(27) = discwind_velocity(this, vector(x3,y3,z3))
     
-    thisOctal%cornerVelocity(19) = discwind_velocity(this, vector(x1,y1,z3))
-    thisOctal%cornerVelocity(20) = discwind_velocity(this, vector(x2,y1,z3))
-    thisOctal%cornerVelocity(21) = discwind_velocity(this, vector(x3,y1,z3))
-    thisOctal%cornerVelocity(22) = discwind_velocity(this, vector(x1,y2,z3))
-    thisOctal%cornerVelocity(23) = discwind_velocity(this, vector(x2,y2,z3))
-    thisOctal%cornerVelocity(24) = discwind_velocity(this, vector(x3,y2,z3))
-    thisOctal%cornerVelocity(25) = discwind_velocity(this, vector(x1,y3,z3))
-    thisOctal%cornerVelocity(26) = discwind_velocity(this, vector(x2,y3,z3))
-    thisOctal%cornerVelocity(27) = discwind_velocity(this, vector(x3,y3,z3))
-    
+    else   ! 2D amr
+
+       ! we first store the values we use to assemble the position vectors       
+
+       x1 = thisOctal%centre%x - thisOctal%subcellSize
+       x2 = thisOctal%centre%x
+       x3 = thisOctal%centre%x + thisOctal%subcellSize
+       
+       y1 = 0.0d0
+       y2 = 0.0d0
+       y3 = 0.0d0
+       
+       z1 = thisOctal%centre%z - thisOctal%subcellSize
+       z2 = thisOctal%centre%z
+       z3 = thisOctal%centre%z + thisOctal%subcellSize
+       
+
+       thisOctal%cornerVelocity(1) = discwind_velocity(this, vector(x1,y1,z1))
+       thisOctal%cornerVelocity(2) = discwind_velocity(this, vector(x2,y1,z1))
+       thisOctal%cornerVelocity(3) = discwind_velocity(this, vector(x3,y1,z1))
+       thisOctal%cornerVelocity(4) = discwind_velocity(this, vector(x1,y2,z2))
+       thisOctal%cornerVelocity(5) = discwind_velocity(this, vector(x2,y2,z2))
+       thisOctal%cornerVelocity(6) = discwind_velocity(this, vector(x3,y2,z2))
+       thisOctal%cornerVelocity(7) = discwind_velocity(this, vector(x1,y3,z3))
+       thisOctal%cornerVelocity(8) = discwind_velocity(this, vector(x2,y3,z3))
+       thisOctal%cornerVelocity(9) = discwind_velocity(this, vector(x3,y3,z3))
+       
+    end if
+
+
   END SUBROUTINE fill_velocity_corners
 
 

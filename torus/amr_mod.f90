@@ -1177,6 +1177,10 @@ CONTAINS
 
     TYPE(octalvector) :: xDir, zDir
     logical :: ok
+    ! Specify the ratio of extra length to give it for "locater" to the 
+    ! "halfSmallestSubcell" size.
+    REAL(oct), parameter :: frac =1.e-6_oc  
+
     if (threed) then
        
     ! this code is ugly, but should work OK.   
@@ -1460,8 +1464,11 @@ CONTAINS
              cosmu =((-1.d0)*xDir).dot.direction
              call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
              if (.not.ok) then
-                write(*,*) "Quad solver failed in intersectcubeamr2d"
-                do;enddo
+                write(*,*) "Error:: Quad solver failed in [amr_mod::intersectcubeamr2d] (1)"
+                write(*,*) " Correctionn forced for now. If problem insistet, you need to fix it."
+                x1 = 1.0d-5; x2=1.0d-5
+!                stop
+!                do;enddo
              endif
              distTor2 = max(x1,x2)      
              
@@ -1473,8 +1480,9 @@ CONTAINS
              if (mu  < theta ) then
                 call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
                 if (.not.ok) then
-                   write(*,*) "Quad solver failed in intersectcubeamr2d"
-                   do;enddo
+                   write(*,*) "Quad solver failed in  [amr_mod::intersectcubeamr2d] (2)"
+                   stop
+!                   do;enddo
                 endif
              endif
              distTor1 = max(x1,x2)
@@ -1502,20 +1510,26 @@ CONTAINS
 
        tVal = min(distToZboundary, distToXboundary)
        if (tVal > 1.e29) then
+          write(*,*) "Error :: tVal > 1.e29 [amr_mod:getExitPoint]."
+          write(*,*) "tVal,compX,compZ, distToZboundary,disttoxboundary = "
           write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
-          write(*,*) "x,z",currentX,currentZ
-          do;enddo
+          write(*,*) "x,z = ",currentX,currentZ
+          stop 
+!          do;enddo
        endif
        if (tval <= 0.) then
+          write(*,*) "Error :: tVal <= 0  [amr_mod:getExitPoint]."
+          write(*,*) "tVal,compZ, distToZboundary,disttoxboundary = "
           write(*,*) tVal,compZ, distToZboundary,disttoxboundary
-          write(*,*) "x,z",currentX,currentZ
-          do;enddo
+          write(*,*) "x,z = ",currentX,currentZ
+          stop
+!          do;enddo
        endif
        
        minWallDistance = tVal
        
        exitPoint = currentPoint + tval * direction
-       locator = exitPoint + 0.1*halfSmallestSubcell * direction
+       locator = exitPoint + frac*halfSmallestSubcell * direction
 
 !       write(*,*) tval, exitpoint
 
@@ -3371,6 +3385,7 @@ CONTAINS
     real(double),save  :: R_tmp(204)  ! [10^10cm]
     real(double) :: rho
     logical, save :: first_time=.true.
+    logical, save :: small_enough=.false.
 
    select case(grid%geometry)
 
@@ -3417,6 +3432,27 @@ CONTAINS
       IF (total_mass > amrLimitScalar) then
          split = .TRUE.
       END IF
+
+      ! If 2D and uses large root cell special care must be taken
+      if (grid%geometry == "ttauri" .and. .not. thisOctal%threeD) then         
+         if (cellSize > 40.d0  .and.  &
+              (subcell == 1 .or. subcell == 4) )  split=.true.
+      end if
+
+!         if (modulus(cellcentre) < 500.d0) small_enough =.true.
+!         if (small_enough) then
+!            if (cellSize > 30.d0) split=.true.
+!         else
+!            if (ASSOCIATED(thisOctal%parent) )then
+!               if ( (cellcentre%x < thisOctal%parent%centre%x) &
+!                    .and. cellSize > 500.d0)then
+!                  split=.true.
+!               end if
+!            else ! this must be a root cell, so splits
+!               split=.true.
+!            end if
+!         end if
+!      end if
 
    case ("testamr","proto")
       cellSize = thisOctal%subcellSize 
@@ -4021,14 +4057,24 @@ CONTAINS
         rMnorm = MAX(rMnorm, 0.0001)
         rMnorm = MIN(rMnorm, 0.9999)
         thisOctal%temperature(subcell) = hartmannTemp(rMnorm, theta, maxHartTemp)
-      END IF
-      endif
-      IF ((thisoctal%threed).and.(subcell == 8)) &
-        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .true.)
+     END IF
+  ELSE
+     thisOctal%inFlow(subcell) = .FALSE.
+!     thisOctal%rho(subcell) = 1.e-25
+     thisOctal%rho(subcell) = 1.e-19
+     IF (useHartmannTemp) thisOctal%temperature(subcell) = 6500.0
+  END IF
 
-      IF ((thisoctal%twod).and.(subcell == 4)) &
-        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .false.)
+  thisOctal%velocity(subcell) = TTauriVelocity(point,grid)
+  !thisOctal%velocity(subcell) = TTauriRotation(point,grid)    
+     
 
+  IF ((thisoctal%threed).and.(subcell == 8)) &
+       CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .true.)
+  
+  IF ((thisoctal%twod).and.(subcell == 4)) &
+       CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .false.)
+  
 
   END SUBROUTINE calcTTauriMassVelocity
 

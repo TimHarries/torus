@@ -293,6 +293,7 @@ module input_variables
   ! suboption for ttauri geometry
   logical ttau_disc_on       ! T to include disc
   logical ttau_discwind_on   ! T to include disc wind.
+  logical ttau_jet_on        ! T to include jets.
 
   !--------------------------------------------------------------------
 
@@ -335,6 +336,22 @@ module input_variables
   !
   real(double) :: DW_Mstar ! [M_sun]  mass of the central object
   !-----------------------------------------------------------------------------
+
+
+  !----- For T Tauri Jets -----------------------------------------------------
+  real(double) :: JET_theta_j !  [radian]  jet opening angle
+  !
+  real(double) :: JET_Mdot    ! [Msun/yr] mass loss rate in the jets
+  real(double) :: JET_a_param ! [-] a parameter in density function 
+  real(double) :: JET_b_param ! [-] a parameter in density function
+  real(double) :: JET_Vbase   ! [km/s] Base velocity of jets
+  real(double) :: JET_Vinf    ! [km/s] Terminal velocity of jets
+  real(double) :: JET_beta    ! [-] a parameter in velocity function
+  real(double) :: JET_gamma   ! [-] a parameter in velocity function
+  !
+  real(double) :: JET_T       ! [K]  Isothermal temperature of jets
+  !---------------------------------------------------------------------------
+  !---------------------------------------------------------------------------
 
 
   ! For luc_cir3d geometry ------------------------------------------------------

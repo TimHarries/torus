@@ -1419,6 +1419,7 @@ contains
 
        write(UN, 34)  thisSet%filters(i)%name, lambda_min, lambda_max, dlambda
     end do
+    write(UN,'(a)') '###################################################################'
     if (filename(1:1) /= "*") close(UN)
   end subroutine info_filter_set
   

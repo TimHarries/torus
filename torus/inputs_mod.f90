@@ -1099,6 +1099,8 @@ endif
         "Include TTauri Disc?: ", "(a,1l,1x,a)", .false., ok, .false.)
    call getLogical("ttau_discwind_on", ttau_discwind_on, cLine, nLines, &
         "Include TTauri disc wind?: ", "(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("ttau_jet_on", ttau_jet_on, cLine, nLines, &
+        "Include TTauri jets?: ", "(a,1l,1x,a)", .false., ok, .false.)
    if (ttau_discwind_on) then
       ! --- parameters for ttauri wind
       call getDouble("DW_d", DW_d, cLine, nLines, &
@@ -1136,6 +1138,41 @@ endif
            "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
    end if
    
+   if (ttau_jet_on) then
+      ! --- parameters for ttauri wind
+      call getDouble("JET_theta_j", JET_theta_j, cLine, nLines, &
+           "TTauri jets:: [deg]  jet opening angle: ", &
+           "(a,es9.3,1x,a)", 80.0d0, ok, .true.) 
+      JET_theta_j = JET_theta_j * (Pi/180.0)  ! converting [deg] to [radians]
+
+      call getDouble("JET_Mdot", JET_Mdot, cLine, nLines, &
+           "TTauri jets:: [Msun/yr] mass loss rate in the jets: ", &
+           "(a,es9.3,1x,a)", 1.0d-9, ok, .true.) 
+      call getDouble("JET_a_param", JET_a_param, cLine, nLines, &
+           "TTauri jets:: [-] a parameter in density function: ", &
+           "(a,es9.3,1x,a)", 0.8d0, ok, .true.) 
+      call getDouble("JET_b_param", JET_b_param, cLine, nLines, &
+           "TTauri jets:: [-] b parameter in density function: ", &
+           "(a,es9.3,1x,a)", 2.0d0, ok, .true.) 
+      call getDouble("JET_Vbase", JET_Vbase, cLine, nLines, &
+           "TTauri jets:: [km/s] Base velocity of jets: ", &
+           "(a,es9.3,1x,a)", 20.0d0, ok, .true.) 
+      call getDouble("JET_Vinf", JET_Vinf, cLine, nLines, &
+           "TTauri jets:: [km/s] Terminal velocity of jets: ", &
+           "(a,es9.3,1x,a)", 200.0d0, ok, .true.) 
+      call getDouble("JET_beta", JET_beta, cLine, nLines, &
+           "TTauri jets:: [-] a parameter in velocity function: ", &
+           "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+      call getDouble("JET_gamma", JET_gamma, cLine, nLines, &
+           "TTauri jets:: [-] a parameter in velocity function: ", &
+           "(a,es9.3,1x,a)", 0.05d0, ok, .true.) 
+      call getDouble("JET_T", JET_T, cLine, nLines, &
+           "TTauri jets:: [K]  Isothermal temperature of jets: ", &
+           "(a,es9.3,1x,a)", 1.0d4, ok, .true.) 
+
+   end if
+
+
 endif
 
  if (geometry == "ttwind" .or. geometry == "donati") then

@@ -270,7 +270,8 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  cluster_utils.f90 surface_mod.f90  math_mod2.f90 disc_class.f90 \
  hyd_col_coeff.f90 rotation_variables.f90 function_variables.f90 \
  flow_speed_variables.f90 clump_mod.f90 parallel_mod.f90 \
- discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90
+ discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
+ jet_class.f90
 
 
 F77SOURCE= image_f77.f mieDistCrossSection.f palette.f\

@@ -3111,33 +3111,35 @@ contains
     ! read the variables to be stored in the top-level 'grid' structure
     if (fileFormatted) then
        read(unit=20,fmt=*,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
-               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius,&
-               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore,&
-               grid%lCore, grid%chanceWindOverTotalContinuum,                &
-               grid%lineEmission, grid%contEmission, grid%doRaman,           &
-               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,  &
-               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,  &
-               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,      &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner, grid%rOuter
+               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
+               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore, &
+               grid%lCore, grid%chanceWindOverTotalContinuum,                 &
+               grid%lineEmission, grid%contEmission, grid%doRaman,            &
+               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
+               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
+               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
+               grid%rOuter, grid%amr2dOnly
     else
-       read(unit=20,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
-               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius,&
-               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore,&
-               grid%lCore, grid%chanceWindOverTotalContinuum,                &
-               grid%lineEmission, grid%contEmission, grid%doRaman,           &
-               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,  &
-               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,  &
-               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,      &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner, grid%rOuter
-    end if
-    call readReal1D(grid%lamarray,fileFormatted)
-    call readReal2D(grid%oneKappaAbs,fileFormatted)
-    call readReal2D(grid%oneKappaSca,fileFormatted)
-    
+       read(unit=20,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive, & 
+               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
+               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore, &
+               grid%lCore, grid%chanceWindOverTotalContinuum,                 &
+               grid%lineEmission, grid%contEmission, grid%doRaman,            &
+               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
+               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
+               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
+               grid%rOuter, grid%amr2dOnly
+    end if    
     if (error /=0) then
        print *, 'Panic: read error in readAMRgrid 1'
        stop
     end if
+    call readReal1D(grid%lamarray,fileFormatted)
+    call readReal2D(grid%oneKappaAbs,fileFormatted)
+    call readReal2D(grid%oneKappaSca,fileFormatted)
+    call readClumps(fileFormatted)
     
     ! now we call the recursive subroutine to read the tree structure 
     if (fileFormatted) then
@@ -6278,6 +6280,7 @@ contains
           L = thisOctal%subcellSize
           d = L/2.0d0
           eps = d/100.0d0
+!          eps = 0.0d0
           xp = REAL(rVec%x + d)
           xm = REAL(rVec%x - d)
           yp = REAL(rVec%y + d)

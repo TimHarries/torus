@@ -854,14 +854,16 @@ contains
   end function rtnewt
   
 
-  real function Equation2(mu0, eq2, deq2, r, mu)
+!  real function Equation2(mu0, eq2, deq2, r, mu)
+  subroutine Equation2(mu0, eq2, deq2, r, mu)
     real :: r, mu, mu0
     real :: eq2, deq2
 
     eq2 = mu0**3 + (r-1.)*mu0 -r*mu
     deq2 = 3.*mu0**2 + r - 1.
 
-  end function Equation2
+  end subroutine Equation2
+!  end function Equation2
 
   function clumpyDisc(rVec, grid) result (rhoOut)
     type(OCTALVECTOR) :: rVec
