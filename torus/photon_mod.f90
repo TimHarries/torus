@@ -212,18 +212,7 @@ contains
     ! now find the position of the scatter in the grid and adjust the velocity
     
     if (.not.grid%doRaman) then
-       call findPosition(outPhoton, grid, i1, i2, i3)
-       if (grid%cartesian) then
-          t1 = (outPhoton%position%x - grid%xAxis(i1))/(grid%xAxis(i1+1)-grid%xAxis(i1))
-          t2 = (outPhoton%position%y - grid%yAxis(i2))/(grid%yAxis(i2+1)-grid%yAxis(i2))
-          t3 = (outPhoton%position%z - grid%zAxis(i3))/(grid%zAxis(i3+1)-grid%zAxis(i3))
-       else
-          call getPolar(outPhoton%position, r, theta, phi)
-          mu = cos(theta)
-          t1 = (r - grid%rAxis(i1))/(grid%rAxis(i1+1)-grid%rAxis(i1))
-          t2 = (mu - grid%muAxis(i2))/(grid%muAxis(i2+1)-grid%muAxis(i2))
-          t3 = (phi - grid%phiAxis(i3))/(grid%phiAxis(i3+1)-grid%phiAxis(i3))
-       endif
+       call getIndices(grid, outPhoton%position, i1, i2, i3, t1, t2, t3)
 
        if (.not.grid%doRaman) then
           if (.not.grid%resonanceLine) then
@@ -246,10 +235,7 @@ contains
     else
 
        outPhoton%redPhoton = .true.
-       call findPosition(outPhoton, grid, i1, i2, i3)
-       t1 = (outPhoton%position%x - grid%xAxis(i1))/(grid%xAxis(i1+1)-grid%xAxis(i1))
-       t2 = (outPhoton%position%y - grid%yAxis(i2))/(grid%yAxis(i2+1)-grid%yAxis(i2))
-       t3 = (outPhoton%position%z - grid%zAxis(i3))/(grid%zAxis(i3+1)-grid%zAxis(i3))
+       call getIndices(grid, outPhoton%position, i1, i2, i3, t1, t2, t3)
        outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3)
 
        vray = (outPhoton%velocity-thisPhoton%velocity) .dot. incoming
@@ -903,7 +889,7 @@ contains
 
 
              call random_number(r1)
-             tempMuProbDistLine = grid%muProbDistLine(i1,1:grid%nMu) + t1 * &
+             tempMuProbDistLine(1:grid%nMu) = grid%muProbDistLine(i1,1:grid%nMu) + t1 * &
                   (grid%muProbDistLine(i1+1,1:grid%nMu) - grid%muProbDistLine(i1,1:grid%nMu))
              call locate(tempmuProbDistLine, grid%nMu, r1, i2)
              t2 = (r1-tempmuProbDistLine(i2))/(tempmuProbDistLine(i2+1)-tempmuProbDistLine(i2))
@@ -914,7 +900,7 @@ contains
              tempphiProbDistLine(1:grid%nphi) = &
                   (1.d0-t1)*(1.d0-t2) * grid%phiProbDistLine(i1  , i2  , 1:grid%nphi) +&
                   (   t1)*(1.d0-t2) * grid%phiProbDistLine(i1+1, i2  , 1:grid%nphi) +&
-                  (1.d0-t1)*(   t2) * grid%phiProbDistLine(i1  , i2+1, 1:grid%nz) +&
+                  (1.d0-t1)*(   t2) * grid%phiProbDistLine(i1  , i2+1, 1:grid%nphi) +&
                   (     t1)*(   t2) * grid%phiProbDistLine(i1+1, i2+1, 1:grid%nphi)
              tempphiProbDistLine(1:grid%nphi) = tempphiprobDistLine(1:grid%nphi) / tempphiprobDistLine(grid%nPhi)
              call locate(tempphiProbDistLine(1:grid%nPhi), grid%nPhi, r1, i3)
