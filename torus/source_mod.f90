@@ -10,11 +10,11 @@ module source_mod
   public
 
   type SOURCETYPE
-     type(VECTOR) :: position
-     real(kind=doubleKind) :: radius
-     real(kind=doubleKind) :: luminosity
-     real(kind=doubleKind) :: teff
-     type(SPECTRUMTYPE) :: spectrum
+     type(VECTOR) :: position            ! [10^10cm]
+     real(kind=doubleKind) :: radius     ! [10^10cm]
+     real(kind=doubleKind) :: luminosity ! [erg/s]
+     real(kind=doubleKind) :: teff       ! [K]
+     type(SPECTRUMTYPE) :: spectrum      ! [???]
   end type SOURCETYPE
 
   contains
@@ -35,10 +35,11 @@ module source_mod
       integer :: nSource
       type(SOURCETYPE) :: source(1:nSource)
       integer :: iSource
-      real, allocatable :: prob(:)
+      real, save, allocatable :: prob(:)
       real :: r, t
       real :: lRatio
       integer :: i
+      logical, save :: first_time = .true.
 
       if (nSource == 1) then
          iSource = 1
@@ -51,12 +52,21 @@ module source_mod
             iSource = 2
          endif
       else if (nSource > 2) then
-         prob(1:nSource) = source(1:nSource)%luminosity
-         do i = 2, nSource
-            prob(i) = prob(i) + prob(i-1)
-         enddo
-         prob(1:nSource) = prob(1:nSource) - prob(1)
-         prob(1:nSource) = prob(1:nSource) / prob(nSource)
+	 if (first_time) then
+	    ! allocate array
+	    ALLOCATE(prob(1:nSource))
+	    ! Create the prob. dist. function.
+	    prob(1:nSource) = source(1:nSource)%luminosity
+	    do i = 2, nSource
+	       prob(i) = prob(i) + prob(i-1)
+	    enddo
+	    prob(1:nSource) = prob(1:nSource) - prob(1)
+	    prob(1:nSource) = prob(1:nSource) / prob(nSource)
+
+	    first_time = .false.
+	    
+	 end if
+	 
          call random_number(r)
          call locate(prob, nSource, r, iSource)
          t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
@@ -65,13 +75,13 @@ module source_mod
 
     end subroutine randomSource
 
-    subroutine getPhotonPositionDirection(source, position, direction, rHat)
+    subroutine getPhotonPositionDirection(source, position, direction)
       type(SOURCETYPE) :: source
-      type(VECTOR) :: position, direction, rVec, rHat
+      type(VECTOR) :: position, direction, rVec
 
-      rHat = randomUnitVector()
-      position = source%position + source%radius*rHat
-      direction = fromPhotosphereVector(rHat)
+      rVec = randomUnitVector()
+      position = source%position + source%radius*rVec
+      direction = fromPhotosphereVector(rVec)
     end subroutine getPhotonPositionDirection
 
   end module source_mod
