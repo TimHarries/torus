@@ -239,13 +239,12 @@ contains
 
     if (m == 0.) then
        write(*,'(a)') "! Attempt to normalize the zero vector"
-       m = sqrt(m - 1.d0)
        a = VECTOR(1.,0.,0.)
+    else
+       a%x = a%x / m
+       a%y = a%y / m
+       a%z = a%z / m
     endif
-
-    a%x = a%x / m
-    a%y = a%y / m
-    a%z = a%z / m
 
   end subroutine normalizeSingle
   

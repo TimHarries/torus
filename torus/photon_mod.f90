@@ -381,7 +381,7 @@ contains
     real :: tempphiProbDistLine(2000)
 
     logical :: photonFromEnvelope
-    real(kind=doubleKind) :: tempSpectrum(2000), totDouble
+    real(kind=doubleKind) :: tempSpectrum(2000), totDouble, prob(2000), rd, td
     integer :: i
 
     type(octalVector) :: positionOctal     ! octalVector type version of thisPhoton%position
@@ -476,7 +476,9 @@ contains
                 !   probability value 'randomDouble'
                 sourceOctal => grid%octreeRoot
                 call locateContProbAMR(randomDouble,sourceOctal,subcell)
- 
+                if (.not.sourceOctal%inFlow(subcell)) then
+                   write(*,'(a)') "! Photon in cell that's not in flow. Screw-up in locatecontProbAmr"
+                endif
                 octalCentre = subcellCentre(sourceOctal,subcell)
                 
                 !!! we will just choose a random point within the subcell.
@@ -835,14 +837,27 @@ contains
                 positionOctal = thisPhoton%position
                 call amrGridvalues(grid%octreeRoot,positionOctal,&
                     foundOctal=foundOctal,foundSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=ilambda)
-                if (t1 < 100.) write(*,*) "temp!",t1
                 do i = 1, nLambda
                 call amrGridvalues(grid%octreeRoot,positionOctal,&
-                     foundOctal=foundOctal,foundSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=i)
-                   tempSpectrum(i)= blambda(dble(lambda(i)), dble(t1)) * dble(kabs) !/ dble(lambda(i))
+                    startOctal=foundOctal,actualSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=i)
+                   tempSpectrum(i)= blambda(dble(lambda(i)), dble(t1)) * dble(kabs)
                    totDouble = totDouble + tempSpectrum(i)
                 enddo
+!                prob(1)= 0.
+!                do i = 2, nLambda
+!                   prob(i) = prob(i-1) + tempSpectrum(i) * dlam(i)
+!                enddo
+!                prob(1:nLambda)  = prob(1:nLambda) / prob(nLambda)
+!                call random_number(rd)
+!                call locate(prob, nLambda, rd, i)
+!                td = (rd - prob(i))/(prob(i+1) - prob(i))
+!                thisPhoton%lambda = lambda(i) + td * (lambda(i+1) - lambda(i))
+!                ilambda = i
+
                 tempSpectrum(1:nLambda)  = tempSpectrum(1:nLambda) / totDouble
+                thisPhoton%stokes = thisPhoton%stokes * &
+                     (real(tempSpectrum(iLambda)) * weightContPhoton)
+
              else 
                 do i = 1, nLambda
                    if (.not.grid%oneKappa) then
@@ -851,13 +866,13 @@ contains
                       kabs = grid%oneKappaAbs(iLambda) * grid%rho(i1,i2,i3)
                    endif
                    tempSpectrum(i) =  blambda(dble(lambda(i)),dble(grid%temperature(i1,i2,i3))) &
-                         *  dble(kabs) !/ dble(lambda(i))
+                         *  dble(kabs) 
                    totDouble = totDouble + tempSpectrum(i)
                 enddo
                 tempSpectrum(1:nLambda)  = tempSpectrum(1:nLambda) / totDouble
-             end if 
-             thisPhoton%stokes = thisPhoton%stokes * &
-                  (real(tempSpectrum(iLambda)) * weightContPhoton)
+                thisPhoton%stokes = thisPhoton%stokes * &
+                     (real(tempSpectrum(iLambda)) * weightContPhoton)
+             end if
           else
 
              if (nSource == 0) then
@@ -866,8 +881,12 @@ contains
              else
                 call locate(source(thisSource)%spectrum%lambda,source(thisSource)%spectrum%nlambda, &
                      dble(thisPhoton%lambda), i)
+                t = (thisPhoton%lambda - source(thisSource)%spectrum%lambda(i)) / &
+                    (source(thisSource)%spectrum%lambda(i+1)-source(thisSource)%spectrum%lambda(i))
                 thisPhoton%stokes = thisPhoton%stokes * &
-                     (real(source(thisSource)%spectrum%normflux(i)) * weightContPhoton) * 4.
+                     (real(source(thisSource)%spectrum%normflux2(i) + &
+                     t * (source(thisSource)%spectrum%normflux2(i+1) - source(thisSource)%spectrum%normflux2(i))) &
+                       * weightContPhoton) * 4.
              endif
           endif
           

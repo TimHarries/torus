@@ -182,6 +182,7 @@ module input_variables
   ! adaptive mesh stuff 
   logical :: gridUsesAMR    ! true if grid is adaptive
   real :: limitScalar       ! value for controlling grid subdivision 
+  real :: limitScalar2       ! value for controlling grid subdivision 
   real :: amrGridSize          ! length of each side of the (cubic) grid 
   real :: amrGridCentreX       ! x-coordinate of grid centre 
   real :: amrGridCentreY       ! y-coordinate of grid centre 

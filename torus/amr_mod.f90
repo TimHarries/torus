@@ -47,7 +47,7 @@ CONTAINS
 
     END SELECT
  
-    CALL fillGridDummyValues(thisOctal,subcell, grid)
+!    CALL fillGridDummyValues(thisOctal,subcell, grid)
  
  
   END SUBROUTINE calcValuesAMR
@@ -240,14 +240,14 @@ CONTAINS
   END SUBROUTINE addNewChild
 
 
-  RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,grid)
+  RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid)
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
 
     IMPLICIT NONE
 
     TYPE(OCTAL), POINTER :: thisOctal
-    REAL, INTENT(IN)     :: amrLimitScalar 
+    REAL, INTENT(IN)     :: amrLimitScalar, amrLimitScalar2
       ! 'limitScalar' is the value the decideSplit function uses to
       !   decide whether or not to split cell.
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid through to the 
@@ -255,25 +255,24 @@ CONTAINS
     
     TYPE(OCTAL), POINTER :: childPointer  
     INTEGER              :: subcell, i    ! loop counters
+    logical :: splitThis
     
+    splitThis = .false.
     DO subcell = 1, 8, 1
-    
-      IF (decideSplit(thisOctal,subcell,amrLimitScalar,grid)) THEN
-      
-        CALL addNewChild(thisOctal,subcell,grid)
+       IF (decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid))splitThis = .true.
+    enddo
 
-        ! find the index of the new child and call splitGrid on it
+         ! tjh changed from
+!        CALL addNewChild(thisOctal,subcell,grid)
+    IF (splitThis) then
+       CALL addNewChildren(thisOctal, grid)
+       ! find the index of the new child and call splitGrid on it
         DO i = 1, 8, 1
-          IF ( thisOctal%indexChild(i) == subcell ) THEN 
-            childPointer => thisOctal%child(i)
-            CALL splitGrid(childPointer,amrLimitScalar,grid)
-            EXIT
-          END IF
+           childPointer => thisOctal%child(i)
+           CALL splitGrid(childPointer,amrLimitScalar,amrLimitScalar2,grid)
         END DO
-        
-      END IF
+     ENDIF
       
-    END DO
 
   END SUBROUTINE splitGrid
   
@@ -764,14 +763,14 @@ CONTAINS
 
         ! if there are no previously sampled points, we definitely have to take a
         !   sample here
-        IF ( nSamples == 0 ) then
-          length = modulus(currentPoint - startPoint)
-          CALL takeSample(currentPoint,length,direction,grid,octree,subcell,    &
-                          nSamples,maxSamples,usePops,iLambda,error,lambda,     &
-                          kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
-                          velocityDeriv=velocityDeriv,chiLine=chiLine,          &
-                          levelPop=levelPop,rho=rho)
-        ENDIF
+!        IF ( nSamples == 0 ) then
+!          length = modulus(currentPoint - startPoint)
+!          CALL takeSample(currentPoint,length,direction,grid,octree,subcell,    &
+!                          nSamples,maxSamples,usePops,iLambda,error,lambda,     &
+!                          kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
+!                          velocityDeriv=velocityDeriv,chiLine=chiLine,          &
+!                          levelPop=levelPop,rho=rho)
+!        ENDIF
 
         
         ! we check whether we should take a sample at currentPoint
@@ -779,15 +778,16 @@ CONTAINS
 
         length = modulus(currentPoint - startPoint)
 
-        IF ( modulus(currentPoint - (startPoint + (direction *         & 
-                              REAL(lambda(nSamples),KIND=octalKind)))) &
-                                               > sampleLength ) THEN
+! force sampling here        
+        !IF ( modulus(currentPoint - (startPoint + (direction *         & 
+        !                      REAL(lambda(nSamples),KIND=octalKind)))) &
+        !                                       > sampleLength ) THEN
           CALL takeSample(currentPoint,length,direction,grid,octree,subcell,    &
                           nSamples,maxSamples,usePops,iLambda,error,lambda,     &
                           kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
                           velocityDeriv=velocityDeriv,chiLine=chiLine,          &
                           levelPop=levelPop,rho=rho)
-        END IF
+        !END IF
 
         ! we add sampleLength to the distance from the last location
         !   that was sampled, and decide whether to take a new sample.
@@ -1391,9 +1391,9 @@ CONTAINS
       inc = resultOctal%subcellSize / 2.0
       centre = subcellCentre(resultOctal,subcell)
       
-      t1 = MAX(0.0, (point%x - (centre%x - inc)) / resultOctal%subcellSize)
-      t2 = MAX(0.0, (point%y - (centre%y - inc)) / resultOctal%subcellSize)
-      t3 = MAX(0.0, (point%z - (centre%z - inc)) / resultOctal%subcellSize)
+      t1 = MAX(0.0_oc, (point%x - (centre%x - inc)) / resultOctal%subcellSize)
+      t2 = MAX(0.0_oc, (point%y - (centre%y - inc)) / resultOctal%subcellSize)
+      t3 = MAX(0.0_oc, (point%z - (centre%z - inc)) / resultOctal%subcellSize)
     
       
 
@@ -2026,7 +2026,7 @@ CONTAINS
 
     TYPE(octal), POINTER             :: thisOctal
     TYPE(gridtype), INTENT(INOUT   ) :: grid 
-    REAL, INTENT(IN)                 :: factor
+     REAL, INTENT(IN)                 :: factor
     LOGICAL, INTENT(INOUT)           :: gridConverged
     
     INTEGER              :: i
@@ -2076,7 +2076,9 @@ CONTAINS
             PRINT *, "neighbour already has child"
             STOP
           END IF
-          CALL addNewChild(neighbour,subcell,grid)
+          ! tjh changed from
+!          CALL addNewChild(neighbour,subcell,grid)
+          call addNewChildren(neighbour, grid)
           gridConverged = .FALSE.
         ENDIF
       END IF
@@ -2198,13 +2200,17 @@ CONTAINS
           PRINT *, 'Panic: In findSubcellLocal, point is outside the grid'
 !          STOP
 !           DO ; END DO
+          boundaryProblem = .TRUE.
+          RETURN
         END IF
      
         ! if we have previously gone down the tree, and are now going back up, there
         !   must be a problem.
         IF (haveDescended) boundaryProblem = .TRUE.
         
-        thisOctal => thisOctal%parent
+        IF ( thisOctal%nDepth /= 1 ) THEN
+           thisOctal => thisOctal%parent
+        ENDIF
         CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
        
       END IF    
@@ -2495,7 +2501,7 @@ CONTAINS
   END SUBROUTINE plotCube
 
 
-  FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,grid) RESULT(split)
+  FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid) RESULT(split)
     ! returns true if the current voxel is to be subdivided. 
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell  
@@ -2504,12 +2510,12 @@ CONTAINS
 
     TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
-    REAL, INTENT(IN)           :: amrLimitScalar ! used for split decision
+    REAL, INTENT(IN)           :: amrLimitScalar, amrLimitScalar2  ! used for split decision
     TYPE(gridtype), INTENT(IN) :: grid
     LOGICAL                    :: split          
 
-    REAL, SAVE            :: criticalValue
-    REAL(KIND=doubleKind) :: criticalValueDouble
+    REAL, SAVE            :: criticalValue, criticalValue2
+    REAL(KIND=doubleKind) :: criticalValueDouble, criticalValueDouble2
     REAL(KIND=octalKind)  :: cellSize
     TYPE(octalVector)     :: searchPoint
     TYPE(octalVector)     :: cellCentre
@@ -2517,13 +2523,15 @@ CONTAINS
     INTEGER               :: i
     DOUBLE PRECISION      :: total_mass
     DOUBLE PRECISION      :: ave_density
-    INTEGER, PARAMETER    :: nsample = 400
+    DOUBLE PRECISION      :: total_opacity, minDensity, maxDensity, thisDensity
+    INTEGER               :: nsample = 400
     LOGICAL, SAVE         :: first_time = .true.
+    LOGICAL               :: inUse
 
 
     select case(grid%geometry)
 
-    case("ttauri","jets","testamr", "wr104")
+    case("ttauri","jets", "wr104")
       ! the density is only sampled at the centre of the grid
       ! we will search in each subcell to see if any point exceeds the 
       ! threshold density
@@ -2538,12 +2546,14 @@ CONTAINS
       if (first_time) then
 	 ! calculate the threshold mass for the subcell
 	 criticalValueDouble = REAL(amrLimitScalar,KIND=doubleKind)
+	 criticalValueDouble2 = REAL(amrLimitScalar2,KIND=doubleKind)
 	 
 	 IF ( criticalValueDouble >= HUGE(amrLimitScalar)) THEN
 	    PRINT *, 'In decideSplit, criticalValue exceeds floating point limit'
 	    STOP
 	 END IF
 	 criticalValue = amrLimitScalar
+	 criticalValue2 = amrLimitScalar2
 	 first_time = .false.
       end if
 
@@ -2566,8 +2576,6 @@ CONTAINS
 	   ave_density  = TTauriDensity(searchPoint,grid) + ave_density
            case("jets")
 	   ave_density  = JetsDensity(searchPoint,grid) + ave_density
-           case("testamr")
-	   ave_density  = testDensity(searchPoint,grid) + ave_density
            case("wr104")
 	   ave_density  = wr104Densityvalue(searchPoint,grid) + ave_density
 	end select
@@ -2579,6 +2587,55 @@ CONTAINS
       IF (total_mass > criticalValue) then
 	 split = .TRUE.
       END IF
+
+   case ("testamr")
+      nsample = 400
+      if (first_time) then
+	 ! calculate the threshold mass for the subcell
+	 criticalValueDouble = REAL(amrLimitScalar,KIND=doubleKind)
+	 criticalValueDouble2 = REAL(amrLimitScalar2,KIND=doubleKind)
+	 
+	 IF ( criticalValueDouble >= HUGE(amrLimitScalar)) THEN
+	    PRINT *, 'In decideSplit, criticalValue exceeds floating point limit'
+	    STOP
+	 END IF
+	 criticalValue = amrLimitScalar
+	 criticalValue2 = amrLimitScalar2
+	 first_time = .false.
+         split = .TRUE.
+      end if
+      cellSize = thisOctal%subcellSize 
+      cellCentre = subcellCentre(thisOctal,subCell)
+      split = .FALSE.
+      ave_density = 0.0d0
+      minDensity = 1.d30
+      maxDensity = -1.d30
+      DO i = 1, nsample
+	searchPoint = cellCentre
+        CALL RANDOM_NUMBER(x)
+        CALL RANDOM_NUMBER(y)
+        CALL RANDOM_NUMBER(z)
+        searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=octalKind) 
+        searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=octalKind) 
+        searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=octalKind) 
+        thisDensity =  testDensity(searchPoint,grid,inUse)
+        if (inUse) then
+           minDensity = MIN(thisDensity, minDensity)
+           maxDensity = MAX(thisDensity, maxDensity)
+        endif
+        ave_density  = thisDensity + ave_density
+
+      END DO
+
+      ave_density = ave_density/dble(nsample)
+      total_opacity = ave_density * cellSize * grid%kappaTest
+      total_mass = ave_density * cellSize**3
+      IF (total_mass > criticalValue2 .or. total_opacity > criticalValue) then
+	 split = .TRUE.
+      END IF
+
+
+
       
    case DEFAULT
 	   PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
@@ -2600,7 +2657,7 @@ CONTAINS
     TYPE(gridtype), INTENT(IN)        :: grid
     TYPE(octalVector), INTENT(IN)     :: startPoint
     TYPE(octalVector), INTENT(IN)     :: direction
-    REAL(KIND=octalKind), INTENT(IN)  :: sampleFreq
+    REAL, INTENT(IN)  :: sampleFreq
 
     REAL                              :: rho
 
@@ -2654,7 +2711,7 @@ CONTAINS
     endif
     thisOctal%chiLine(subcell)    = 1.0e-20
     thisOctal%etaLine(subcell)    = 1.0e-20 
-    thisOctal%etaCont(subcell)    = 1.0e-20
+    thisOctal%etaCont(subcell)    = 1.0e-20 
     thisOctal%N(subcell,:)        = 1.0e-20 
     thisOctal%Ne(subcell)         = 1.0e-20 
     thisOctal%nTot(subcell)       = 1.0e-20
@@ -3084,27 +3141,34 @@ CONTAINS
     r = modulus(rVec)
 
     thisOctal%rho(subcell) = 1.e-10
-    thisOctal%temperature(subcell) = 100.
+    thisOctal%temperature(subcell) = 1.e-3
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%inFlow(subcell) = .false.
 
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
        thisOctal%rho(subcell) = rho * (grid%rInner / r)**2 
        thisOctal%temperature(subcell) = 100.
+       thisOctal%inFlow(subcell) = .true.
+       thisOctal%etaCont(subcell) = 1.e10
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine calcTestDensity
 
-  function testDensity(point, grid)
+  function testDensity(point, grid, inUse)
     use input_variables
     real :: testDensity
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
+    logical :: inUse
     real :: r
     r = modulus(point)
+    inUse = .false.
     testDensity = 0.
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
        testDensity = rho * (grid%rInner / r)**2
+       inUse = .true.
     endif
   end function testDensity
 
@@ -3123,21 +3187,21 @@ CONTAINS
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
 
-    thisOctal%rho(subcell) = 1.e-10
-    thisOctal%temperature(subcell) = 100.
+    thisOctal%rho(subcell) = 1.e-30
+    thisOctal%temperature(subcell) = 10.
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
 
 
-    r = ((rVec%x / (grid%octreeroot%subcellsize))+1.)*304. /2.
-    i = int(r)
+    r = ((rVec%x / (2.*grid%octreeroot%subcellsize))+1.)*304. /2.
+    i = nint(r)
     i = min(max(1,i),304)
-    r = ((rVec%y / (grid%octreeroot%subcellsize))+1.)*304. /2.
-    j = int(r)
+    r = ((rVec%y / (2.*grid%octreeroot%subcellsize))+1.)*304. /2.
+    j = nint(r)
     j = min(max(1,j),304)
-    r = ((rVec%z / (grid%octreeroot%subcellsize))+1.)*304. /2.
-    k = int(r)
+    r = ((rVec%z / (2.*grid%octreeroot%subcellsize))+1.)*304. /2.
+    k = nint(r)
     k = min(max(1,k),304)
     thisOctal%rho(subcell) = wr104density(i,j,k)
 
@@ -3160,21 +3224,110 @@ CONTAINS
     wr104densityvalue = 0.
     rVec = point
 
-    r = ((rVec%x / (grid%octreeroot%subcellsize))+1.)*304./2.
-    i = int(r)
+    r = ((rVec%x / (grid%octreeroot%subcellsize*2.))+1.)*304./2.
+    i = nint(r)
     i = min(max(1,i),304)
-    r = ((rVec%y / (grid%octreeroot%subcellsize))+1.)*304./2.
-    j = int(r)
+    r = ((rVec%y / (grid%octreeroot%subcellsize*2.))+1.)*304./2.
+    j = nint(r)
     j = min(max(1,j),304)
-    r = ((rVec%z / (grid%octreeroot%subcellsize))+1.)*304./2.
-    k = int(r)
+    r = ((rVec%z / (grid%octreeroot%subcellsize*2.))+1.)*304./2.
+    k = nint(r)
     k = min(max(1,k),304)
     wr104densityvalue = wr104density(i,j,k)
 
 
   end function wr104DensityValue
 
+  SUBROUTINE addNewChildren(parent, grid)
+    ! adds one new child to an octal
 
+    IMPLICIT NONE
+    
+    TYPE(octal), POINTER :: parent     ! pointer to the parent octal 
+    TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
+                                          !   calculate the variables stored in
+                                          !   the tree.
+    TYPE(octal)   :: tempChildStorage  ! holder for existing children, while we
+                                       !   shuffle them around to make room for 
+                                       !   the new child.
+    INTEGER       :: subcell           ! loop counter
+    INTEGER, SAVE :: counter = 9       ! keeps track of the current subcell label
+                                       ! - this isn't very clever. might change it. 
+    INTEGER       :: nChildren         ! number of children the parent octal has
+    INTEGER       :: newChildIndex     ! the storage location for the new child
+    INTEGER       :: error, i
+
+
+    parent%nChildren = 8
+
+!
+    ALLOCATE(parent%child(1:8), STAT=error)
+    IF ( error /= 0 ) THEN
+       PRINT *, 'Panic: allocation failed.'
+       STOP
+    END IF
+
+    ! update the parent octal
+
+
+    do i = 1, 8
+       if (parent%hasChild(i)) then
+          write(*,*) "parent already has a child",i
+       endif
+    enddo
+    parent%hasChild(1:8) = .TRUE.
+    parent%indexChild(1) = 1
+    parent%indexChild(2) = 2
+    parent%indexChild(3) = 3
+    parent%indexChild(4) = 4
+    parent%indexChild(5) = 5
+    parent%indexChild(6) = 6
+    parent%indexChild(7) = 7
+    parent%indexChild(8) = 8
+
+    do newChildIndex = 1, 8
+
+       ! allocate any variables that need to be  
+       if (.not.grid%oneKappa) then
+          ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nLambda))
+          ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nLambda))
+       endif
+       ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
+       NULLIFY(parent%child(newChildIndex)%child)
+
+       ! set up the new child's variables
+       parent%child(newChildIndex)%parent => parent
+       parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
+       parent%child(newChildIndex)%hasChild = .false.
+       parent%child(newChildIndex)%nChildren = 0
+       parent%child(newChildIndex)%indexChild = -999 ! values are undefined
+       parent%child(newChildIndex)%nDepth = parent%nDepth + 1
+       parent%child(newChildIndex)%centre = subcellCentre(parent,newChildIndex)
+       parent%child(newChildIndex)%probDistLine = 0.0
+       parent%child(newChildIndex)%probDistCont = 0.0
+
+       ! put some data in the eight subcells of the new child
+       DO subcell = 1, 8
+          CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid)
+          parent%child(newChildIndex)%label(subcell) = counter
+          counter = counter + 1
+       END DO
+
+ 
+       ! check for a new maximum depth 
+       IF (parent%child(newChildIndex)%nDepth > grid%maxDepth) THEN
+          grid%maxDepth = parent%child(newChildIndex)%nDepth
+          grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
+               2.0_oc**REAL(grid%maxDepth,KIND=octalKind)
+          ! we store the value which is half the size of the 
+          !   smallest subcell because this is more useful for later
+          !   calculations.
+       END IF
+    enddo
+
+  END SUBROUTINE addNewChildren
+
+  
 
 
 END MODULE amr_mod

@@ -1036,18 +1036,18 @@ contains
           dV = real(thisOctal%subcellSize, kind=doubleKind) ** 3.0_db
 
           totalLineProb = totalLineProb + dV * &
-              real(thisOctal%etaLine(subcell),kind=doubleKind) * &
-              real(thisOctal%biasLine3D(subcell),kind=doubleKind)
+              real(thisOctal%etaLine(subcell), kind=doubleKind) * &
+              real(thisOctal%biasLine3D(subcell), kind=doubleKind)
               
           totalLineEmission = totalLineEmission + dV * &
-              real(thisOctal%etaLine(subcell),kind=doubleKind)
+              real(thisOctal%etaLine(subcell), kind=doubleKind)
               
           totalContProb = totalContProb + dV * &
-              real(thisOctal%etaCont(subcell),kind=doubleKind) * & 
-              real(thisOctal%biasCont3D(subcell),kind=doubleKind)
+              real(thisOctal%etaCont(subcell), kind=doubleKind) * & 
+              real(thisOctal%biasCont3D(subcell), kind=doubleKind)
         
           totalContEmission = totalContEmission + dV * &
-              real(thisOctal%etaCont(subcell),kind=doubleKind) 
+              real(thisOctal%etaCont(subcell), kind=doubleKind)
           
        end if
        

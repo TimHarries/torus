@@ -4714,11 +4714,9 @@ contains
           read(20) wr104Density(j,i,1:304)
        enddo
     enddo
-
     close(20)
 
     allocate(temp(1:304,1:304,1:304))
-
     do i = 1, 304
        do j = 1, 304
           do k = 1, 304
@@ -4727,10 +4725,24 @@ contains
        enddo
     enddo
     wr104density(1:304,1:304,1:304) = temp(1:304,1:304,1:304) 
+    write(*,'(a)') "Smoothing..."
+    do i = 2, 303
+       do j = 2, 303
+          do k = 2, 303
+             temp(i,j,k) = SUM(wr104Density(i-1:i+1,j-1:j+1,k-1:k+1))/27.
+          enddo
+       enddo
+    enddo
+    wr104density(1:304,1:304,1:304) = temp(1:304,1:304,1:304) 
+
+
+
+
     deallocate(temp)
 
+    wr104density(151:153,151:153,151:153) = 0.
 
-    wr104density = wr104density  * 0.001
+    wr104density = wr104density  * 0.0001
     where (wr104density == 0.)
        wr104density = 1.e-30
     end where
@@ -4758,7 +4770,6 @@ contains
     rhoMax = -1.e30
     thisOctal => grid%octreeRoot
     call minMaxDensity(thisOctal, rhoMin, rhoMax)
-    rhoMin = 0.001 * rhoMax
 
     write(*,*) "Density range",rhoMin,rhoMax
 
@@ -4766,13 +4777,14 @@ contains
 
     call pgvport(0.1,0.9,0.1,0.9)
 
-    call pgwnad(-grid%octreeRoot%subcellsize, grid%octreeRoot%subcellsize, &
-         -grid%octreeRoot%subcellsize, grid%octreeRoot%subcellsize)
+    call pgwnad(real(-grid%octreeRoot%subcellsize), real(grid%octreeRoot%subcellsize), &
+         real(-grid%octreeRoot%subcellsize), real(grid%octreeRoot%subcellsize))
     oldSubcell =0
 
 
-    call palette(1)
     call pgqcir(ilo, ihi)
+    call pgscir(ilo, ihi)
+    call palette(2)
     if (device == "/vps") then
        i = ilo
        ilo = ihi
@@ -4780,6 +4792,7 @@ contains
     endif
     thisOctal => grid%octreeRoot
     call plotZplane(thisOctal, rhoMax, rhoMin, ilo, ihi)
+    call pgsci(1)
     call pgbox('bcnst',0,0,'bcnst',0,0)
     call pgend
   end subroutine fancyAMRplot
@@ -4805,8 +4818,8 @@ contains
           end do
        else
           rVec = subcellCentre(thisOctal,subcell)
-          if (((rVec%z + thisOctal%subcellSize/2.) > 0.).and. &
-              ((rVec%z - thisOctal%subcellSize/2.) < 0.)) then
+          if (((rVec%z + thisOctal%subcellSize/2.) >= 0.).and. &
+              ((rVec%z - thisOctal%subcellSize/2.) <= 0.)) then
              
              rho = thisOctal%rho(subcell)
              if (rho == 0.) rho = rhoMin
@@ -4814,24 +4827,25 @@ contains
              if (t < 0.) t = 0.
              idx = int(t * real(ihi - ilo) + real(ilo))
              call pgsci(idx)
-             call pgrect(rVec%x-thisOctal%subcellSize/2., rVec%x + thisOctal%subcellSize/2., &
-                  rVec%y-thisOctal%subcellSize/2.,rVec%y+thisOctal%subcellSize/2.)
+             call pgrect(real(rVec%x-thisOctal%subcellSize/2.), real(rVec%x + thisOctal%subcellSize/2.), &
+                  real(rVec%y-thisOctal%subcellSize/2.),real(rVec%y+thisOctal%subcellSize/2.))
              call pgsci(1)
-             call pgmove(rVec%x-thisOctal%subcellSize/2., &
-                  rVec%y-thisOctal%subcellSize/2.)
-             call pgdraw(rVec%x+thisOctal%subcellSize/2., &
-                  rVec%y-thisOctal%subcellSize/2.)
-             call pgdraw(rVec%x+thisOctal%subcellSize/2., &
-                  rVec%y+thisOctal%subcellSize/2.)
-             call pgdraw(rVec%x-thisOctal%subcellSize/2., &
-                  rVec%y+thisOctal%subcellSize/2.)
-             call pgdraw(rVec%x-thisOctal%subcellSize/2., &
-                  rVec%y-thisOctal%subcellSize/2.)
+             call pgmove(real(rVec%x-thisOctal%subcellSize/2.), &
+                  real(rVec%y-thisOctal%subcellSize/2.))
+             call pgdraw(real(rVec%x+thisOctal%subcellSize/2.), &
+                  real(rVec%y-thisOctal%subcellSize/2.))
+             call pgdraw(real(rVec%x+thisOctal%subcellSize/2.), &
+                  real(rVec%y+thisOctal%subcellSize/2.))
+             call pgdraw(real(rVec%x-thisOctal%subcellSize/2.), &
+                  real(rVec%y+thisOctal%subcellSize/2.))
+             call pgdraw(real(rVec%x-thisOctal%subcellSize/2.), &
+                  real(rVec%y-thisOctal%subcellSize/2.))
           endif
        endif
     enddo
-
+    
   end subroutine plotZplane
+
   recursive subroutine minMaxDensity(thisOctal, rhoMin, rhoMax)
 
   type(octal), pointer   :: thisOctal
@@ -4850,8 +4864,10 @@ contains
              end if
           end do
        else
-          if (thisOctal%rho(subcell) > rhoMax) rhoMax = thisOctal%rho(subcell)
-          if (thisOctal%rho(subcell) < rhoMin) rhoMin = thisOctal%rho(subcell)
+          if (thisOctal%inFlow(subcell)) then
+             if (thisOctal%rho(subcell) > rhoMax) rhoMax = thisOctal%rho(subcell)
+             if (thisOctal%rho(subcell) < rhoMin) rhoMin = thisOctal%rho(subcell)
+          endif
        endif
     enddo
 

@@ -300,10 +300,11 @@ contains
     real(kind=doubleKind) :: r
     integer, parameter :: nFreq = 100
     integer :: i, j
-    real(kind=doubleKind) :: freq(nFreq), dnu(nFreq), probDistPlanck(nFreq), probDistJnu(nFreq)
+    real(kind=doubleKind) :: freq(nFreq), dnu(nFreq), probDistJnu(nFreq)
     real(kind=doubleKind) :: temperature
+!    real(kind=doubleKind) :: probDistPlanck(nFreq)
     real :: kappaScaReal, kappaAbsReal
-    integer :: nMonte = 1000000, iMonte, nScat, nAbs
+    integer :: nMonte = 2000000, iMonte, nScat, nAbs
     real(kind=doubleKind) :: thisFreq,  logFreqStart, logFreqEnd
     real(kind=doubleKind) :: albedo
     logical :: escaped
@@ -319,7 +320,7 @@ contains
     integer :: nt
     real(kind=doubleKind) ::   epsOverDeltaT
     real(kind=doubleKind) :: meanDeltaT, meant
-    integer :: nDT
+    integer :: nDT, nUndersampled
     real(kind=doubleKind) :: totalEmission
     integer :: subcell
     real :: treal
@@ -446,13 +447,17 @@ contains
 
        meanDeltaT = 0.
        nDT = 0
+       nUndersampled = 0
 
 
        totalEmission = 0.
        call calculateTemperatureCorrections(grid%octreeRoot, totalEmission, epsOverDeltaT, &
-       nFreq, freq, dnu, lamarray, nLambda, grid)
+       nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled)
 
+       write(*,'(a,f8.2)') "Percentage of undersampled cells: ",100.*real(nUndersampled)/real(nDt)
        write(*,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
+       write(*,*) "Total emission",totalEmission
+
     enddo
 
     Tthresh = 2000.
@@ -463,28 +468,9 @@ contains
     call removeDust(grid%octreeRoot, Tthresh, nRemoved)
 
     write(*,*) "Number of cells removed: ",nRemoved
-    enddo
+ enddo
 
 
-    call hunt(lamArray, nLambda, 5500.0, iLam)
-    open(21,file="r.dat",status="unknown",form="formatted")
-    do i = 1, 100
-       meant = 0.
-       nt = 0
-       r = grid%rInner + (grid%rOuter-grid%rInner)* real(i-1)/99.
-       do j = 1, 100
-          ang = twoPi * real(j-1)/10.
-          octVec = OCTALVECTOR(r*cos(ang), r*sin(ang),0.)
-          call amrGridValues(grid%octreeRoot, octVec, temperature=treal, &
-              ilambda=ilam, grid=grid)
-          t1 = dble(treal)
-          meant = meant + t1
-          nt = nt + 1
-       enddo
-       write(21,*) r,meant/real(nt)
-    enddo
-    close(21)
-       
   end subroutine lucyRadiativeEquilibriumAMR
 
 
@@ -732,13 +718,14 @@ contains
           end do
        else
           thisOctal%distanceGrid(subcell) = 0.
+          thisOctal%nCrossings(subcell) = 0
        endif
     enddo
   end subroutine zeroDistanceGrid
 
 
   recursive subroutine calculateTemperatureCorrections(thisOctal, totalEmission, epsOverDeltaT, &
-       nFreq, freq, dnu, lamarray, nLambda, grid)
+       nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled)
 
     real(kind=doubleKind) :: totalEmission
     type(octal), pointer   :: thisOctal
@@ -758,6 +745,7 @@ contains
     integer :: nFreq
     real(kind=doubleKind) :: freq(*)
     real(kind=doubleKind) :: dnu(*)
+    integer :: nUndersampled
     do subcell = 1, 8
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -765,7 +753,7 @@ contains
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call calculateTemperatureCorrections(child, totalEmission, epsOverDeltaT, &
-       nFreq, freq, dnu, lamarray, nLambda, grid)
+       nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled)
                 exit
              end if
           end do
@@ -787,7 +775,7 @@ contains
                         dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))
                 endif
              enddo
-             kappaP = kappaP * (pi / (stefanBoltz * thisOctal%temperature(subcell)**4)) /1.e10
+             kappaP = kappaP * (pi / (stefanBoltz * thisOctal%temperature(subcell)**4)) /1.d10
              
              
              if (kappaP /= 0.) then
@@ -797,7 +785,16 @@ contains
                 newT = 1.e-3
              endif
              deltaT = newT - thisOctal%temperature(subcell)
-             thisOctal%temperature(subcell) = max(1.e-3,thisOctal%temperature(subcell) + real(0.8 * deltaT))
+             if (deltaT > 10000.) then
+                write(*,*) deltaT, thisOctal%nCrossings(subcell)
+!                write(*,*) deltaT, thisOctal%temperature(subcell), newT
+!                write(*,*) adot,kappap,thisOctal%rho(subcell)
+             endif
+             if (thisOctal%nCrossings(subcell) .ge. 5) then
+                thisOctal%temperature(subcell) = max(1.e-3,thisOctal%temperature(subcell) + real(0.8 * deltaT))
+             else 
+                nUnderSampled = nUndersampled + 1
+             endif
              nDT = nDT  + 1
              meanDeltaT = meanDeltaT + deltaT
              kappaP = 0.d0
@@ -819,7 +816,7 @@ contains
              thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * (thisOctal%temperature(subcell)**4)
              totalEmission = totalEmission + thisOctal%etaCont(subcell) * V
           else
-             thisOctal%etaCont(subcell) = 1.e-30
+             thisOctal%etaCont(subcell) = 0.
           endif
        endif
     enddo
@@ -902,8 +899,8 @@ contains
      stop
   endif
 
-  if (tval > 2.*thisOctal%subcellsize) then
-!     write(*,*) "tval too big",tval,posVec,thisOctal%subcellSize
+  if (tval > sqrt(3.)*thisOctal%subcellsize) then
+!     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
 !     write(*,*) "direction",direction
 !     write(*,*) t(1:6)
 !     write(*,*) denom(1:6)
@@ -963,6 +960,7 @@ contains
           escaped = .true.
        else
           thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal * dble(kappaAbsReal)
+          thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
        endif
 
 
@@ -989,11 +987,15 @@ contains
           write(*,*) "size",grid%octreeRoot%subcellsize
           stop
        endif
+       if (dble(tau)/thisTau .gt. 1.d0) then
+          write(*,*) "tau prob",tau,thisTau
+       endif
        call intersectCubeAMR(grid, rVec, uHat, tVal)
           call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLam, foundOctal=thisOctal, foundSubcell=subcell, &
                 kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid)
           if (thisTau > 1.e-30) then
              thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsReal)
+             thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
              oldOctal => thisOctal
           endif
 
@@ -1027,15 +1029,40 @@ contains
           end do
        else
           if (thisOctal%temperature(subcell) > Tthresh) then
+             write(*,*) "cell removed with T at ",thisOctal%temperature(subcell)
              thisOctal%inFlow(subcell) = .false.
-             thisOctal%etaCont(subcell) = 0.
+             thisOctal%etaCont(subcell) = 1.e-30
              thisOctal%rho(subcell) = 1.e-20
-             thisOctal%temperature(subcell) = 0.
+             thisOctal%temperature(subcell) = 1.e-3
              nRemoved = nRemoved + 1
           endif
        endif
     enddo
   end subroutine removeDust
+
+  recursive subroutine setbiasAMR(thisOctal, grid)
+  type(gridtype) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  real :: r
+  
+  do subcell = 1, 8
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setBiasAMR(child, grid)
+                exit
+             end if
+          end do
+       else
+          r = modulus(subcellcentre(thisOctal, subcell)) / grid%rInner
+          thisOctal%biasCont3D(subcell) = r
+       endif
+    enddo
+  end subroutine setBiasAMR
 
 
 end module lucy_mod

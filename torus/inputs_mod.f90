@@ -127,6 +127,8 @@ subroutine inputs()
         end if
      call getReal("limitscalar", limitScalar, cLine, nLines, &
           "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000., ok, .true.) 
+     call getReal("limittwo", limitScalar2, cLine, nLines, &
+          "Second scalar limit for subcell division: ","(a,es9.3,1x,a)", 0., ok, .false.) 
      call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
           "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
      if (doSmoothGrid) then
@@ -551,13 +553,13 @@ endif
  if (geometry .eq. "testamr") then
 
    call getReal("rcore", rCore, cLine, nLines, &
-       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+       "Core radius (solar radii): ","(a,f8.1,a)", 10., ok, .true.)
 
    call getReal("rinner", rInner, cLine, nLines, &
-       "Inner Radius (solar radii): ","(a,f5.1,a)", 12., ok, .true.)
+       "Inner Radius (solar radii): ","(a,f8.1,a)", 12., ok, .true.)
 
    call getReal("router", rOuter, cLine, nLines, &
-       "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
+       "Outer Radius (inner radius): ","(a,f8.1,a)", 20., ok, .true.)
 
    call getReal("teff", teff, cLine, nLines, &
         "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)

@@ -55,6 +55,7 @@ MODULE octal_mod
     TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
     REAL, DIMENSION(8)                 :: distanceGrid   ! distance crossing used by lucy R Eq
+    INTEGER, DIMENSION(8)              :: nCrossings     ! no of photon crossings used by lucy R Eq
     REAL, DIMENSION(:,:), POINTER      :: kappaAbs       ! cont absorption opacities
     REAL, DIMENSION(:,:), POINTER      :: kappaSca       ! scattering opacities
     REAL, DIMENSION(8)                 :: chiLine        ! line opacity

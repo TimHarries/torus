@@ -357,7 +357,7 @@ contains
     Vr = JetsVelocity(pointVec, grid)/ dble(cSpeed/1.0e5)
     ! in [c]
     
-    vp = pointVec*(Vr/r)  ! vector operation done here
+    vp = pointVec*real((Vr/r),kind=octalKind)  ! vector operation done here
     
     thisOctal%velocity(subcell) = vP
        

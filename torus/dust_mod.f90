@@ -295,6 +295,8 @@ contains
 
     end subroutine getRefractiveIndex
 
+    
+
     subroutine fillGridMie(grid, scale, aMin, aMax, qDist, grainType)
 
       implicit none
@@ -327,6 +329,7 @@ contains
       do i = 1, grid%nLambda
          call mieDistCrossSection(aMin, aMax, qDist, grid%lamArray(i),  mReal(i), mImg(i), sigmaExt(i), &
               sigmaSca(i), sigmaAbs(i))
+         write(20,*) grid%lamArray(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
       enddo
       close(20)
 
@@ -382,6 +385,33 @@ contains
 
   write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
 end subroutine fillGridMie
+
+    subroutine setKappaTest(grid, scale, aMin, aMax, qDist, grainType)
+
+      implicit none
+      type(GRIDTYPE) :: grid
+      real :: aMin, aMax, qDist
+      real :: sigmaAbs, sigmaSca, sigmaExt
+      real :: abundance
+      real :: scale
+      real, allocatable :: mReal(:), mImg(:)
+      character(len=*) :: grainType
+      integer :: i
+      scale = 1.
+
+      abundance = 1.
+
+      write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
+
+      allocate(mReal(1:grid%nLambda))
+      allocate(mImg(1:grid%nLambda))
+      call locate(grid%lamArray, grid%nLambda, 5500., i)
+      call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)
+      call mieDistCrossSection(aMin, aMax, qDist, grid%lamArray(i),  mReal(i), mImg(i), sigmaExt, &
+              sigmaSca, sigmaAbs)
+      grid%kappaTest = sigmaExt * 1.e10
+
+end subroutine setKappaTest
 
 recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
   type(octal), pointer   :: thisOctal

@@ -330,8 +330,8 @@ contains
     
     real(kind=doubleKind) :: fac1, fac2, fac3, nu, T
 
-    fac1 = (2.*hCgs*nu**3)/cSpeed**2
-    fac3 =  (hCgs*nu)/ (kErg * T) 
+    fac1 = (2.d0*dble(hCgs)*nu**3)/dble(cSpeed)**2
+    fac3 =  (dble(hCgs)*nu)/ (dble(kErg) * T) 
     if (fac3 > 100.d0) then
        fac2 = 0.d0
     else

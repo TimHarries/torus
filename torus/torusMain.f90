@@ -74,7 +74,7 @@ program torus
   real :: sTot
   ! optical depth variables
 
-  integer, parameter :: maxTau = 100000, maxLambda = 200
+  integer, parameter :: maxTau = 100000, maxLambda = 500
   integer :: nTau
   real, allocatable :: contTau(:,:)
 
@@ -267,6 +267,9 @@ program torus
   ! adaptive grid stuff
 
   type(OCTALVECTOR) :: amrGridCentre ! central coordinates of grid
+  type(OCTALVECTOR) :: octVec
+  real :: meant, treal, ang
+  integer :: nt
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
                                      !   (i.e. the number of childless subcells)
@@ -556,14 +559,18 @@ program torus
 
   ! if the grid uses an adaptive mesh, create it
      
+  if (gridUsesAMR.and.mie) call setKappaTest(grid, scale, aMin, aMax, qDist, grainType)
+
+
   if (gridUsesAMR) then
      if (readPops) then 
         call readAMRgrid(popFilename,readFileFormatted,grid)
+
      else
         amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
         write(*,*) "Starting initial set up of adaptive grid..."
         call initFirstOctal(grid,amrGridCentre,amrGridSize)
-        call splitGrid(grid%octreeRoot,limitScalar,grid)
+        call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
         write(*,*) "...initial adaptive grid configuration complete"
   
         if (doSmoothGrid) then
@@ -746,6 +753,29 @@ program torus
 
   endif ! (grid%usesAMR)
 
+
+  if (geometry(1:7) .eq. "testamr") then
+    open(21,file="r.dat",status="unknown",form="formatted")
+    do i = 1, 100
+       meant = 0.
+       nt = 0
+       r = log10(grid%rInner) + (log10(grid%rOuter)-log10(grid%rInner))* real(i-1)/99.
+       r = 10.**r
+       do j = 1, 100
+          ang = twoPi * real(j-1)/100.
+          octVec = OCTALVECTOR(r*cos(ang), r*sin(ang),0.)
+          call amrGridValues(grid%octreeRoot, octVec, temperature=treal, &
+              ilambda=1, grid=grid)
+          if (treal > 1.) then
+             t1 = dble(treal)
+             meant = meant + t1
+             nt = nt + 1
+          endif
+       enddo
+       write(21,*) r/grid%rInner,meant/real(nt)
+    enddo
+    close(21)
+ endif
   
   if (mie) then
      write(*,*) "fill grid mie",nLambda,grid%nlambda
@@ -794,12 +824,21 @@ program torus
            call mieDistPhaseMatrix(aMin, aMax, qDist, xArray(i), &
                 mu, miePhase(i,j), mReal(i), mImg(i))
 
+!           miePhase(i,j) = fillRayleigh(mu)
+
         enddo
      enddo
      deallocate(mReal)
      deallocate(mImg)
      write(*,'(a)') "Completed."
+
+
+
   endif
+
+
+
+
 
   ! set up the sources
 
@@ -812,23 +851,25 @@ program torus
        source(1)%luminosity = grid%lCore
        source(1)%radius = grid%rCore
        source(1)%teff = teff
-       call fillSpectrumBB(source(1)%spectrum, dble(teff), 100.d0, 5000000.d0, 1000)
+       source(1)%position = VECTOR(0.,0.,0.)
+       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
        call normalizedSpectrum(source(1)%spectrum, dble(lamStart), dble(lamEnd))
     case("wr104")
        nSource = 2
+
        allocate(source(1:nSource)) 
-       source(1)%luminosity = 1.e5 * dble(lSol)  ! wr star
-       source(1)%teff = 50000.
+       source(1)%teff = 30000.  ! o star
        source(1)%radius = 20. * rSol / 1.e10
        source(1)%position = VECTOR(0.,0.,0.001)
-       call readSpectrum(source(1)%spectrum, "wr.flx")
+       source(1)%luminosity = fourPi * stefanBoltz * (20.*rSol)**2 * (source(1)%teff)**4
+       call readSpectrum(source(1)%spectrum, "ostar.flx")
        call normalizedSpectrum(source(1)%spectrum, dble(lamStart), dble(lamEnd))
 
-       source(2)%teff = 30000.             ! o9 star
+       source(2)%teff = 40000.             ! wr star 
        source(2)%radius = 20. * rSol / 1.e10
        source(2)%position = VECTOR(0.,0.,0.001)
-       source(2)%luminosity = fourPi * stefanBoltz * (20.*rSol)**2 * (source(2)%teff)**4
-       call readSpectrum(source(2)%spectrum, "ostar.flx")
+       source(2)%luminosity = 0.5 * source(1)%luminosity
+       call readSpectrum(source(2)%spectrum, "wr.flx")
        call normalizedSpectrum(source(2)%spectrum, dble(lamStart), dble(lamEnd))
   end select
 
@@ -841,7 +882,10 @@ program torus
         if (writePops) call writeAMRgrid(popFilename,writeFileFormatted,grid)
 
      endif
+       call setBiasAMR(grid%octreeRoot, grid)
   endif
+
+
 
 
   ! initialize the blobs if required
@@ -1294,6 +1338,12 @@ program torus
           if (intPathError < 0) then
             write(*,*) '   Error encountered in test towards observer!!! (error = ',intPathError,')'
           end if
+!          open(20,file="tau.dat", status="unknown",form="formatted")
+!          do i = 1, nTau
+!             write(20,*) lambda(i)/grid%rInner, tauExt(i)
+!          enddo
+!          close(20)
+
      else
         call integratePath(5500.,  lamLine, VECTOR(1.,1.,1.), &
           zeroVec, outVec, grid, lambda, &
@@ -1773,7 +1823,7 @@ print *, 'nu = ',nu
                       call quickDeallocate ; cycle innerPhotonLoop ; endif
                    if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
                       call quickDeallocate ; cycle innerPhotonLoop ; endif
-              else
+               else
                 call integratePath(thisPhoton%lambda, lamLine, &
                    thisPhoton%velocity, &
                    thisPhoton%position, outVec, grid, &

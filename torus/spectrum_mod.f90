@@ -11,6 +11,7 @@ module spectrum_mod
   type SPECTRUMTYPE
      real(kind=doubleKind), pointer :: flux(:)
      real(kind=doubleKind), pointer :: normflux(:)
+     real(kind=doubleKind), pointer :: normflux2(:)
      real(kind=doubleKind), pointer :: lambda(:)
      real(kind=doubleKind), pointer :: prob(:)
      real(kind=doubleKind), pointer :: dlambda(:)
@@ -46,6 +47,7 @@ module spectrum_mod
       allocate(spectrum%flux(1:nLambda))
       allocate(spectrum%lambda(1:nLambda))
       allocate(spectrum%dlambda(1:nLambda))
+      allocate(spectrum%prob(1:nLambda))
 
       logLamStart = log10(lamStart)
       logLamEnd = log10(lamEnd)
@@ -61,7 +63,7 @@ module spectrum_mod
       spectrum%dlambda(nLambda) = spectrum%lambda(nlambda)-spectrum%lambda(nLambda-1)
       
       do i = 1, nLambda
-         spectrum%flux(i) = bLambda(dble(teff), spectrum%lambda(i))
+         spectrum%flux(i) = bLambda(spectrum%lambda(i), dble(teff))
       enddo
       spectrum%nLambda = nLambda
 
@@ -121,6 +123,14 @@ module spectrum_mod
          tot = tot + spectrum%flux(i) * spectrum%dlambda(i)
       enddo
       spectrum%normflux = spectrum%flux / tot
+      allocate(spectrum%normflux2(1:spectrum%nLambda))
+      tot = 0.d0
+      call locate(spectrum%lambda, spectrum%nLambda, lamStart, i1)
+      call locate(spectrum%lambda, spectrum%nLambda, lamEnd, i2)
+      do i = i1, i2
+         tot = tot + spectrum%flux(i)
+      enddo
+      spectrum%normflux2 = spectrum%flux / tot
     end subroutine normalizedSpectrum
          
   end module spectrum_mod
