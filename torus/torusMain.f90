@@ -111,6 +111,7 @@ program torus
   real, allocatable :: tauExt(:)
   real, allocatable :: tauAbs(:)
   real, allocatable :: tauSca(:)
+  real, allocatable :: linePhotonAlbedo(:)
   real, allocatable :: lambda(:)
 
   real, allocatable :: mReal(:), mImg(:)          ! size = nlambda
@@ -1117,11 +1118,11 @@ program torus
                  !
                  !
                  allocate(lambda(1:maxTau),tauExt(1:maxTau),tauAbs(1:maxTau),tauSca(1:maxTau),&
-                          contTau(1:maxTau,1:nLambda))
+                          contTau(1:maxTau,1:nLambda), linePhotonalbedo(1:maxtau))
                  call integratePath(gridUsesAMR, VoigtProf, &
                       lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(150.0,0,-200.), &
                       OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
-                      tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
+                      tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
                       lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                       .false., nUpper, nLower, 0., 0., 0., junk,&
                       sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
@@ -1511,6 +1512,9 @@ program torus
      call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
           "rho_grid.ps/vcps",.true., .true.,&
           nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+          "rho_zoom.ps/vcps",.true., .false.,&
+          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.005)
      call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
           nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
      call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
@@ -1670,6 +1674,17 @@ program torus
        source(1)%position = VECTOR(0.,0.,0.)
        call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
        call normalizedSpectrum(source(1)%spectrum)
+    case("melvin")
+       nSource = 1
+       teff = 30000.
+       allocate(source(1:1))
+       source(1)%luminosity = fourPi * (10.*rsol)**2 * stefanBoltz * teff**4
+       source(1)%radius = 10.*rSol / 1.e10
+       source(1)%teff = teff
+       source(1)%position = VECTOR(0.,0.,0.)
+       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
+       call normalizedSpectrum(source(1)%spectrum)
+       rstar = source(1)%radius
     case("wr104")
        nSource = 2
 
@@ -2255,6 +2270,7 @@ program torus
      allocate(tauExt(1:maxTau))
      allocate(tauAbs(1:maxTau))
      allocate(tauSca(1:maxTau))
+     allocate(linePhotonalbedo(1:maxTau))
      allocate(contTau(1:maxTau,1:nLambda))
      allocate(contWeightArray(1:nLambda))
 
@@ -2352,6 +2368,7 @@ program torus
      endif
 
 
+
      if (grid%lineEmission) then
 
         ! integrate the line and continuum emission and read the 
@@ -2403,7 +2420,6 @@ program torus
 
         nu = cSpeed / (lamLine * angstromtocm)
         write(*,'(a,e12.3)') "Line emission: ",totLineEmission
-
         select case(geometry)
            case("binary")
               call contread(contFluxFile, nu, totCoreContinuumEmission1)
@@ -2590,6 +2606,7 @@ program torus
      deallocate(tauExt)
      deallocate(tauAbs)
      deallocate(contTau)
+     deallocate(linePhotonAlbedo)
      deallocate(contWeightArray)
 
 
@@ -2933,7 +2950,7 @@ program torus
                          thisPhoton%lambda, lamLine, &
                          s2o(thisPhoton%velocity), &
                          thisPhoton%position, s2o(outVec), grid, &
-                         lambda, tauExt, tauAbs, tauSca, maxTau , nTau, thin_disc_on, opaqueCore, &
+                         lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau , nTau, thin_disc_on, opaqueCore, &
                          escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                          .false., nUpper, nLower, 0., 0., 0., junk,&
@@ -2966,7 +2983,7 @@ program torus
                          thisPhoton%lambda, lamLine, &
                          s2o(thisPhoton%velocity), &
                          thisPhoton%position, s2o(outVec), grid, &
-                         lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, &
+                         lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
                          escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,&
                          .false., nUpper, nLower, 0., 0., 0., junk,&
@@ -3152,7 +3169,7 @@ program torus
               s2o(thisPhoton%velocity), &
               thisPhoton%position, &
               thisPhoton%direction, grid, &
-              lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, &
+              lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
               escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
               nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,  &
               .false., nUpper, nLower, 0., 0., 0., &
@@ -3274,12 +3291,16 @@ program torus
                  endif
               end if
               
-              if ((thisChi+thisSca) >= 0.) then
-                 albedo = thisSca / (thisChi + thisSca)
+              if (contPhoton) then
+                 if ((thisChi+thisSca) >= 0.) then
+                    albedo = thisSca / (thisChi + thisSca)
+                 else
+                    albedo = 0.
+                    write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
+                    !                 stop
+                 endif
               else
-                 albedo = 0.
-                 write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
-!                 stop
+                 albedo = linePhotonAlbedo(j)
               endif
 
               if (grid%resonanceLine) albedo = 1.
@@ -3327,7 +3348,7 @@ program torus
                     call integratePath(gridUsesAMR, VoigtProf, &
                             obsPhoton%lambda, lamLine, s2o(obsPhoton%velocity), &
                             obsPhoton%position, obsPhoton%direction, grid, &
-                            lambda, tauExt, tauAbs, tauSca, maxTau, nTau,  thin_disc_on, opaqueCore, &
+                            lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau,  thin_disc_on, opaqueCore, &
                             escProb, obsPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
                             thinLine, lineResAbs, .false., .false., nUpper, nLower, 0., 0., 0.,&
                             junk, sampleFreq,intPathError, &
@@ -3365,7 +3386,7 @@ program torus
                       obsPhoton%lambda, lamLine, &
                       s2o(obsPhoton%velocity), &
                       obsPhoton%position, obsPhoton%direction, grid, &
-                      lambda, tauExt, tauAbs, tauSca, maxTau, nTau,  thin_disc_on, opaqueCore, &
+                      lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau,  thin_disc_on, opaqueCore, &
                       escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
                       nLambda, contTau, hitCore, &
                       thinLine, lineResAbs, redRegion, &
@@ -3546,7 +3567,7 @@ program torus
                             thisPhoton%lambda, lamLine, &
                             s2o(thisPhoton%velocity), thisPhoton%position, &
                             thisPhoton%direction, grid, lambda, tauExt, tauAbs, &
-                            tauSca, maxTau, nTau, thin_disc_on, opaqueCore, &
+                            tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, &
                             escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                             nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                             .false., nUpper, nLower, 0.,&

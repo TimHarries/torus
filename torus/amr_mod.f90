@@ -1505,8 +1505,8 @@ CONTAINS
 
 !xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
-       r1 = centre%x - subcellSize/2.
-       r2 = centre%x + subcellSize/2.
+       r1 = centre%x - subcellSize/2.d0
+       r2 = centre%x + subcellSize/2.d0
        d = sqrt(currentpoint%x**2+currentpoint%y**2)
        xDir = OCTALVECTOR(currentpoint%x, currentpoint%y,0.d0)
 
@@ -1553,9 +1553,9 @@ CONTAINS
 
        if (compZ /= 0.d0 ) then
           if (compZ > 0.d0) then
-             distToZboundary = (centre%z + subcellsize/2. - currentZ ) / compZ
+             distToZboundary = (centre%z + subcellsize/2.d0 - currentZ ) / compZ
           else
-             distToZboundary = abs((centre%z - subcellsize/2. - currentZ ) / compZ)
+             distToZboundary = abs((centre%z - subcellsize/2.d0 - currentZ ) / compZ)
           endif
        else
           disttoZboundary = 1.e30
