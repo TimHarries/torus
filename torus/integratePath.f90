@@ -2035,13 +2035,12 @@ end subroutine integratePathAMR
     ! line photons
     nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
     nu = cSpeed / (wavelength*angstromtocm)  ! freq of this photon
-!    nu_p = nu
-    nu_p = nu0/(1.0d0+thisVel)
+    nu_p = nu
+!    nu_p = nu0/(1.0d0+thisVel)
     if (.not.contPhoton) then
        tauAbsLine(1) = 0. 
        do i = 2, nTau
-!          if (inFlow(i)) then
-          if (.true.) then
+          if (inFlow(i)) then
             ! Evaluating the values in the mid point
              T_mid = 0.5d0*(temperature(i-1)+temperature(i))
              Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
@@ -2049,7 +2048,7 @@ end subroutine integratePathAMR
              chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
              T_mid = MAX(T_mid, 3000.0d0) ! [K]  To avoid a tiny Doppler width
              
-             Vrel = 0.5d0*(projVel(i-1)+projVel(i)) -  Vn2  ! relative velocity
+             Vrel = 0.5d0*(projVel(i-1)+projVel(i)) -  Vn1  ! relative velocity
              
              ! The line centre of absorption profile shifted by Doppler.
              !          nu0_p = nu0/(1.0d0-projVel(i-1))  ! [Hz] 
@@ -2103,16 +2102,15 @@ end subroutine integratePathAMR
           nu = cSpeed / (lam*angstromtocm)  ! freq of this photon
           nu_p = nu   ! photon freq (CMF) at this location
           do i = 2, nTau
-!             if (inFlow(i)) then
-             if (.true.) then
+             if (inFlow(i)) then
                 ! Evaluating the values in the mid point
                 T_mid = 0.5d0*(temperature(i-1)+temperature(i))
                 Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
                 N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
                 chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
                 T_mid = MAX(T_mid, 3000.0d0) ! [K]  To avoid a tiny Doppler width
-                
-                Vrel = 0.5d0*(projVel(i-1)+projVel(i)) -  Vn2  ! relative velocity
+
+                Vrel = 0.5d0*(projVel(i-1)+projVel(i)) -  Vn1  ! relative velocity                
                 
                 ! The line centre of absorption profile shifted by Doppler.
                 nu0_p = nu0/(1.0d0+Vrel)  
@@ -2127,7 +2125,7 @@ end subroutine integratePathAMR
              else
                 dtau = 1.0d-30
              end if
-          tauCont(i,j) = tauCont(i-1,j) + dtau
+          tauCont(i:nTau,j) = tauCont(i:nTau,j) + dtau
           enddo
        enddo   ! over wavelength array
     else

@@ -1445,7 +1445,8 @@ contains
                    Gamma = 0.0d0
                 end if
                 nu_shuffled = random_Lorentzian_frequency(nu, Gamma) ! [Hz]                
-                lambda_shuffled = (cSpeed_dbl/nu_shuffled)*1.e8  ! [A]
+!                lambda_shuffled = (cSpeed_dbl/nu_shuffled)*1.e8  ! [A]
+                lambda_shuffled = lamline  ! [A]
                 ! ==> This will be assigend to the photon later.
 !             else
 !                thisPhoton%velocity = amrGridVelocity(grid%octreeRoot,octalPoint)!,&

@@ -1562,6 +1562,7 @@ CONTAINS
 
        
        tVal = min(distToZboundary, distToXboundary)
+       if (tval <= 0.) tval = 1.0e-5
        if (tVal > 1.e29) then
           write(*,*) "Error :: tVal > 1.e29 [amr_mod:getExitPoint]."
           write(*,*) "tVal,compX,compZ, distToZboundary,disttoxboundary = "
