@@ -160,6 +160,7 @@ module input_variables
   
   logical :: fillTio
   logical :: opaqueCore
+  logical :: thin_disc_on       ! T to include disc
   logical :: pencilBeam
   logical :: plezModelOn
   logical :: useBias

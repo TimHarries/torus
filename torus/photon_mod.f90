@@ -20,7 +20,7 @@ module photon_mod
   use amr_mod               ! adaptive grid routines
   use utils_mod
   use phasematrix_mod
-!  use jets_mod
+  use disc_class
   use source_mod
   use filter_set_class
   use surface_mod
@@ -83,7 +83,7 @@ contains
   ! this subroutine performs a scattering
 
   subroutine scatterPhoton(grid, thisPhoton, givenVec, outPhoton, mie, &
-        miePhase, nLambda, nMuMie)
+        miePhase, nLambda, nMuMie, ttau_disc_on, alpha_disc_param)
 
     
     type(GRIDTYPE) :: grid                       ! the opacity grid
@@ -93,11 +93,16 @@ contains
     type(VECTOR) :: sVec, givenVec      ! vectors
     type(VECTOR) :: zAxis                        ! the z-axis
     type(PHASEMATRIX) :: rayleighPhase           ! rayleigh phase matrix
-    logical :: mie                               ! is this a mie scattering?
+    logical, intent(in) :: mie                   ! is this a mie scattering?
     integer :: i, j                              ! counters
     integer :: nLambda                           ! size of wavelength array
     integer :: nMumie                            ! number of mu angles for mie
-    type(PHASEMATRIX), intent(in) :: miePhase(nLambda, nMumie) ! mie phase matrices
+    type(PHASEMATRIX), intent(in) :: miePhase(nLambda, nMumie) ! mie phase matrices   
+    ! if the system has accretion disc around the obeject
+    logical, intent(in) :: ttau_disc_on          
+    ! to find if scattering occurs in the accretion disc
+    type(alpha_disc), intent(in)  :: alpha_disc_param
+
     real :: costheta                             ! cos scattering angle
     real :: ang                                  ! scattering angle
     real :: r1, r2                               ! radii
@@ -112,6 +117,7 @@ contains
     type(octalVector) :: pointOctalVec
     type(octal), pointer :: octalLocation
     integer :: subcellLocation
+    logical :: mie_scattering
 
     
 !    real :: dx
@@ -120,7 +126,8 @@ contains
 
     ! initialize variables
 
-    outPhoton = thisPhoton                    
+    outPhoton = thisPhoton 
+    pointOctalVec = outPhoton%position
     incoming = outPhoton%direction
 
     zAxis = VECTOR(0.,0.,1.)
@@ -128,6 +135,22 @@ contains
     outgoing = givenVec
 
     randomDirection = .false.
+
+
+    !
+    ! Quick check to see if the location of scattering is
+    ! in accretion disc. 
+    if (grid%geometry == "ttauri" .and. ttau_disc_on) then
+       if (in_alpha_disc(alpha_disc_param, pointOctalVec))  then
+          mie_scattering = .true.
+       else
+          mie_scattering = .false.
+       end if
+    else
+       ! use the value from the parameter passed to this routine
+       mie_scattering = mie
+    end if
+       
 
     ! if the outgoing vector is the zero vector then this flags that
     ! we are going to scattering into a random direction
@@ -170,7 +193,7 @@ contains
 
 
     if (.not.thisPhoton%resonanceLine) then
-       if (.not.mie) then
+       if (.not.mie_scattering) then
           
           ! set up the rayleigh phase matrix and apply it
 
@@ -240,7 +263,7 @@ contains
                          foundOctal=octalLocation,foundSubcell=subcellLocation) 
 
 
-             if (.not.mie) then
+             if (.not.mie_scattering) then
                 outPhoton%velocity = outPhoton%velocity + thermalElectronVelocity( &
                      amrGridTemperature(grid%octreeRoot,pointOctalVec,&
                      startOctal=octalLocation,actualSubcell=subcellLocation))
@@ -261,7 +284,7 @@ contains
           endif
        endif
 
-       if (.not.mie) then
+       if (.not.mie_scattering) then
           vray = (outPhoton%velocity-thisPhoton%velocity) .dot. incoming
           vovercsqr = (outPhoton%velocity-thisPhoton%velocity) .dot. &
                (outPhoton%velocity-thisPhoton%velocity)

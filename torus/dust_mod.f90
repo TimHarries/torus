@@ -618,7 +618,7 @@ end subroutine fillGridMie
       else 
          ! Do a single grain calculations...       
          call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)         
-            call mieDistCrossSection(aMin, aMax, a0, qDist, pDist,grid%lamArray(i),  &
+         call mieDistCrossSection(aMin, aMax, a0, qDist, pDist,grid%lamArray(i),  &
                  mReal(i), mImg(i), sigmaExt, sigmaSca, sigmaAbs, gsca)
       end if
       meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
@@ -651,7 +651,87 @@ end subroutine fillGridMie
          kappaSca(i) = sigmaSca * 1.e10
       enddo
     end subroutine setKappa
-      
+
+    !
+    ! Computes Kappa at a single fgrequency/wavelength.
+    !
+    subroutine MieCrossSection(sigmaExt, sigmaAbs, sigmaSca, &
+         aMin, aMax, a0, qDist, pDist, grainType, &
+         ngrain, abundance, grainname, lambda)
+
+      implicit none
+      real, intent(out) :: sigmaExt, sigmaAbs, sigmaSca ! total, absorption and scattering  x-sections
+      real, intent(in) :: aMin, aMax, a0, qDist, pDist
+      character(len=*), intent(in) :: grainType
+      integer, intent(in) :: ngrain  ! number of grain types
+      real, intent(in) :: abundance(ngrain)   ! relative abundance of grains
+      character(len=*) :: grainname(ngrain)   ! names of grains available
+      real, intent(in) :: lambda  ! wavelength at which sigma are cmoputed
+      !
+      real :: mReal(ngrain), mImg(ngrain)  ! automatic arrays
+      !
+      real :: sig_ext, sig_scat, sig_abs
+      real :: total_abundance, gsca
+      real :: meanParticleMass
+      real :: getMeanMass2
+      integer, parameter :: nlambda = 1
+      integer :: j 
+      ! dummy array for interface with subroutines
+      real :: lamArray(nlambda)   
+      real :: mRealArray(nlambda), mImgArray(nlambda)  ! automatic arrays
+
+
+      lamArray(:) = lambda  ! same for all elemets
+      if (graintype(1:5) == "mixed") then
+         ! Synthetic grains
+         
+         ! quick test for zero total abundance.
+         total_abundance = SUM(abundance)
+         if ( total_abundance <= 0.0 ) then
+            write(*,*) "Error:: total_abundance <= 0.0 in  dust_mod::getKappa."
+            write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
+            write(*,*) "  ==> Exiting the prograim ... "
+            stop 
+         end if
+
+         ! initializing the values
+         mReal(:) = 0.0; mImg(:) = 0.0
+         
+         ! Find the index of refractions for all types of grains available
+         do j = 1, ngrain
+            call getRefractiveIndex(lamArray, nLambda, grainname(j), mRealArray, mImgArray)
+            mReal(j) = mRealArray(1) 
+            mImg(j)  = mImgArray(1)  
+         end do
+
+         ! finding the cross sections
+         sigmaExt = 0.0; sigmaAbs=0.0; sigmaSca=0.0 ! initializing the values
+
+         do j = 1, ngrain
+            call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, lamArray(1), &
+                 mReal(j), mImg(j), sig_ext, sig_scat, sig_abs ,gsca)
+
+            ! Weighting the cross section according to their abundance...            
+            sigmaExt = sig_ext*abundance(j)+ sigmaExt
+            sigmaAbs = sig_abs*abundance(j)+ sigmaAbs
+            sigmaSca = sig_scat*abundance(j)+ sigmaSca
+         end do
+         sigmaExt =    sigmaExt/total_abundance 
+         sigmaAbs =    sigmaAbs/total_abundance 
+         sigmaSca =    sigmaSca/total_abundance 
+         
+      else 
+         ! Do a single grain calculations... 
+         call getRefractiveIndex(lamArray, nLambda, graintype, mRealArray, mImgArray)         
+         call mieDistCrossSection(aMin, aMax, a0, qDist, pDist,lamArray(1),  &
+              mRealArray(1), mImgArray(1), sigmaExt, sigmaSca, sigmaAbs, gsca)
+      end if
+
+      !      meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
+         
+
+    end subroutine MieCrossSection
+
 
 
 recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)

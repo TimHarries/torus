@@ -20,17 +20,20 @@ module jet_class
        &   ave_jet_density, &
        &   add_jet, &
        &   turn_on_jet, &
-       &   turn_off_jet
+       &   turn_off_jet, &
+       &   finish_grid_jet
 
   private::  &
        &   int_jet, &
        &   scale_size, &
        &   need_to_split, &
+       &   need_to_split2, &
        &   add_new_children, &
        &   V_phi, &
        &   V_r, &
        &   in_jet_flow, &
-       &   fill_velocity_corners
+       &   fill_velocity_corners, &
+       &   assign_values
 
 
 
@@ -95,6 +98,10 @@ module jet_class
      module procedure int_jet
   end interface
 
+
+  ! the minimum density used in this module
+  real(double), private, parameter :: rho_min=1.0d-19  ! background density
+  
 
 
 contains
@@ -265,7 +272,7 @@ contains
     type(octalvector), intent(in) :: rvec  ! componets should be in [10^10cm]
     !
     real(double), parameter :: pi = 3.14159265d0
-    real(double), parameter :: rho_min = 1.0d-19
+    !real(double), parameter :: rho_min = 1.0d-22
     real(double), parameter :: rho_max = 1.0d-5
     !
     real(double) :: r, w , x, y, z, r_cm, cos_theta, cos_theta_j
@@ -445,7 +452,7 @@ contains
 
        if (modulus(cellCentre) > this%Rin .or. modulus(cellCentre) < this%Rout) then 
           do while ((.not.splitThis).and.(subcell <= n))
-             IF (need_to_split(thisOctal,subcell,this)) splitThis = .true.           
+             IF (need_to_split2(thisOctal,subcell,this)) splitThis = .true.           
              subcell = subcell + 1
           end do
           
@@ -487,8 +494,15 @@ contains
        need_to_split = .false.
     else
        rho_disc = ave_jet_density(thisOctal, subcell, this)
-       mass_cell = rho_disc * (cellSize*1.0d10)**3  ! should be in grams
-       
+       if (thisOctal%maxChildren == 8)  then ! 3D case
+          mass_cell = rho_disc * (cellSize*1.0d10)**3  ! should be in grams
+       else  ! 2-D AMR
+          mass_cell = rho_disc * pi *  &
+               ( (cellCentre%x+cellsize/2.)**2 - (cellCentre%x-cellsize/2.)**2) &
+               * cellsize * 1.d30 ! should be in grams
+       end if
+
+       !
        if (mass_cell > this%limitscalar) then       
           need_to_split = .true. 
        else
@@ -497,6 +511,54 @@ contains
     end if
 
   end function need_to_split
+
+  logical function need_to_split2(thisOctal,subcell, this)
+
+    IMPLICIT NONE
+
+    TYPE(octal), POINTER       :: thisOctal
+    INTEGER, INTENT(IN)        :: subcell
+    type(jet), intent(in) :: this
+    
+    real(oct)  :: cellSize, d
+    real(double) :: rho_disc, mass_cell
+    TYPE(octalVector)     :: cellCentre
+    integer, parameter :: nr = 25
+    real(double) :: r
+    integer :: i
+    !
+    logical, save :: first_time = .true.
+    real(double) , save:: rGrid(nr)
+
+    need_to_split2 = .false.
+
+    if (first_time) then  ! setup ref. r grid
+       do i = 1, nr
+          rGrid(i) = log10(this%rIn)+dble(i-1)/dble(nr-1)*(log10(this%rOut)-log10(this%rIn))
+       enddo
+       do i = 1, nr
+          rGrid(i) = 10.d0**rGrid(i)
+       end do
+       first_time = .false.
+    end if
+
+    cellSize = (thisOctal%subcellSize)*2.0d0
+    cellCentre = subcellCentre(thisOctal, subcell)
+
+
+    if (.not.in_jet_flow(this, cellCentre) ) then
+       need_to_split2 = .false.
+    else
+       ! get the size and the position of the centre of the current cell
+       r = modulus(cellCentre)
+       call locate(rGrid,nr,r,i)
+       if (i > (nr-1)) i = nr-1
+       d = rGrid(i+1) - rGrid(i)
+       if (cellSize > d ) then
+          need_to_split2 = .true.
+       end if
+    endif
+  end function need_to_split2
 
 
   !
@@ -591,29 +653,26 @@ contains
        parent%child(newChildIndex)%Ne = 1.e-10
        parent%child(newChildIndex)%changed = .false.
        ! 
-       parent%child(newChildIndex)%inFlow(:) =  &
-            in_jet_flow(this, parent%child(newChildIndex)%centre)
-       parent%child(newChildIndex)%temperature(:) = this%T      
+       parent%child(newChildIndex)%temperature(:) = 3000.0
+       parent%child(newChildIndex)%biasCont3D(:) = 1.0
+       parent%child(newChildIndex)%biasLine3D(:) = 1.0
+       parent%child(newChildIndex)%etaLine(:) = 1.e-30
+       parent%child(newChildIndex)%etaCont(:) = 1.e-30
+       parent%child(newChildIndex)%inFlow(:) =  .false.
+       parent%child(newChildIndex)%rho(:) = rho_min   ! [g/cm^3]
        !
 
 
        ! put some data in the eight subcells of the new child
        DO subcell = 1, parent%maxChildren
           childPointer => parent%child(newChildIndex)
-          ! assigining denisty
-          rho =ave_jet_density(childPointer, subcell, this)
-          parent%child(newChildIndex)%rho(subcell) = rho   ! [g/cm^3]
-          
           ! assigiing velocity
           parent%child(newChildIndex)%velocity(subcell)  &
                = jet_velocity(this, childPointer%Centre)   ! [c]
-
           if (subcell == parent%maxChildren) &
-               call fill_velocity_corners(this, childPointer)
-          
+               call fill_velocity_corners(this, childPointer)          
           parent%child(newChildIndex)%label(subcell) = counter
-          counter = counter + 1
-          
+          counter = counter + 1          
        END DO
 
  
@@ -636,9 +695,79 @@ contains
   !
   !
   !
+  subroutine assign_values(thisOctal,subcell, this)
+    IMPLICIT NONE
+    
+    TYPE(octal), pointer :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(jet), INTENT(IN)  :: this
+    !
+    TYPE(octalVector)     :: cellCentre 
+
+    cellCentre = subcellCentre(thisOctal, subcell)
+    if (in_jet_flow(this, cellCentre) ) then
+       thisOctal%rho(subcell) = ave_jet_density(thisOctal, subcell, this)
+       if (thisOctal%rho(subcell) > rho_min) thisOctal%inFlow(subcell) = .true.         
+       thisOctal%temperature(subcell)=this%T
+       
+       thisOctal%velocity = jet_velocity(this,cellCentre)
+       if (subcell == thisOctal%maxChildren) &
+            call fill_velocity_corners(this, thisOctal)
+
+       thisOctal%biasCont3D(subcell) = 1.0
+       thisOctal%biasLine3D(subcell) = 1.0
+       thisOctal%etaLine(subcell) = 1.e-30
+       thisOctal%etaCont(subcell) = 1.e-30       
+    else
+       ! don't touch the grid
+       continue
+    end if
+
+
+  end subroutine assign_values
 
 
 
+
+  !
+  ! Recursively assigins some values after the grid is added. 
+  !
+  RECURSIVE SUBROUTINE finish_grid_jet(thisOctal, this)
+    
+    IMPLICIT NONE
+
+    TYPE(octal), POINTER   :: thisOctal
+    TYPE(jet), INTENT(IN)  :: this
+
+    TYPE(octal), POINTER   :: pChild
+  
+    INTEGER :: subcell, n
+
+    if (thisOctal%threeD) then
+       n = 8
+    else
+       n = 4
+    endif
+     
+    do subcell = 1, n
+       if (thisOctal%hasChild(subcell)) then
+          ! just decdend the tree branch
+          pChild => thisOctal%child(subcell)
+          CALL finish_grid_jet(pChild, this)
+       else
+          ! assigin the values to the grid 
+          call assign_values(thisOctal, subcell, this)
+       end if
+    end do
+    
+  END SUBROUTINE finish_grid_jet
+
+
+
+
+  !
+  !
+  !
   real(double) function ave_jet_density(thisOctal,subcell, this)
 
     IMPLICIT NONE

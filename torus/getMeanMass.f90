@@ -60,7 +60,7 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
   real :: f(n)     ! distribution function (normalized)
   real :: mass(n)  ! 
   real :: normFac
-  character(len=80) :: grainType
+  character(len=*) :: grainType
   real :: density
 
   select case(grainType)
@@ -69,7 +69,12 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
   case("amc_hn","amc_zb")
      density = 2.   ! mean density of graphite 2 g /cm^3
   case DEFAULT
-     write(*,*) "!!! Unknown grain type in getMeanMass"
+     write(*,*) "==== WARNING ==== WARNING ==== WARNING ====="
+     write(*,*) "Unknown grain type in getMeanMass2."
+     write(*,*) "       grainType =", grainType
+     write(*,*) "  Assuing the density of grain to be"
+     write(*,*) "       and continuing .... "
+     write(*,*) "====================================== ====="
      density = 3.6
   end select
 

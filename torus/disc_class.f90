@@ -6,6 +6,7 @@ module disc_class
   use grid_mod
   use vector_mod
   use constants_mod
+  use dust_mod
 
   !  
   ! Class definition for a accreation disc (not including the central object)
@@ -56,7 +57,7 @@ module disc_class
   end interface
 
 
-  real, parameter :: rho_min = 1.e-19
+  real, private, parameter :: rho_min = 1.e-19
 
 
 contains
@@ -218,11 +219,11 @@ contains
     rmax = this%Rd
         
     ! these should be parameterized and put them in this object.
-    alpha = 2.25d0
-    beta = 1.25d0
+!    alpha = 2.25d0
+    alpha = 0.75d0
+    beta = 1.125d0
     !
     !
-    ! holesize = 12.0d0 * 7.0d00 ! [10^10cm] 12 times the radius of a star
     holesize = this%Rh  ! [10^10cm]
 
     !
@@ -280,20 +281,10 @@ contains
 
 !             p = abs(zdist/height)
              
-             p = 0.2d0
-             sizescale = (height) * (w/this%Rh)**p
-!             sizescale = height
+!             p = 0.2d0
+!             sizescale = (height) * (w/this%Rh)**p
+             sizescale = height
              
-
-!              !
-!              ! Produces the > 500 Mb grid
-!              !
-             
-!              ! Works with  height = height/2.0d0
-!              logscale = .false.
-
-!              sizescale = scale_size(abs(zdist), 0.0d0,  20.0d0*height, &
-!                   5.0d0*height,  2.0d0*height, logscale)
 
 
                 
@@ -311,12 +302,6 @@ contains
 
     ! converting units from g/(10^10cm)^3 to g/cm^3
     density_out = density_out/1.0d30   ! [g/cm^3]
-
-!    density_out = density_out*10.0   ! [g/cm^3]
-
-!    ! assuming dust density is 100 times smaller than the gas density
-!    density_out = density_out/1.0d2   ! [g/cm^3]
-
 
     ! cutoff density
     ! max and min  density allowed
@@ -592,7 +577,8 @@ contains
   !
   ! Recursively assigins some values after the grid is added. 
   !
-  RECURSIVE SUBROUTINE finish_grid(thisOctal,grid, this, scaling_tau)
+  RECURSIVE SUBROUTINE finish_grid(thisOctal,grid, this, scaling_tau, &
+       sigmaAbs, sigmaSca, meanDustParticleMass)
     ! takes the octree grid that has been created using 'splitGrid'
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
@@ -607,6 +593,8 @@ contains
     TYPE(gridtype)         :: grid
     TYPE(alpha_disc), INTENT(IN)  :: this
     real, intent(in) :: scaling_tau
+    real, intent(in) :: sigmaAbs, sigmaSca
+    real, intent(in) :: meanDustParticleMass  ! [g]
 
     TYPE(octal), POINTER   :: pChild
   
@@ -622,10 +610,12 @@ contains
        if (thisOctal%hasChild(subcell)) then
           ! just decdend the tree branch
           pChild => thisOctal%child(subcell)
-          CALL finish_grid(pChild,grid, this, scaling_tau)
+          CALL finish_grid(pChild,grid, this, scaling_tau, &
+               sigmaAbs, sigmaSca, meanDustParticleMass)
        else
           ! assigin the values to the grid 
-          call assign_values(thisOctal,subcell, grid, this, scaling_tau)
+          call assign_values(thisOctal,subcell, grid, this, scaling_tau, &
+               sigmaAbs, sigmaSca, meanDustParticleMass)
        end if
     end do
 
@@ -635,7 +625,8 @@ contains
   !
   !
   !
-  subroutine assign_values(thisOctal,subcell, grid, this, scaling_tau)
+  subroutine assign_values(thisOctal,subcell, grid, this, scaling_tau, &
+       sigmaAbs, sigmaSca, meanDustParticleMass)
     IMPLICIT NONE
     
 !    TYPE(octal), intent(inout) :: thisOctal
@@ -644,18 +635,20 @@ contains
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(alpha_disc), INTENT(IN)  :: this
     real, intent(in) :: scaling_tau
+    real, intent(in) :: sigmaAbs, sigmaSca    ! [cm^2] photon-dust x-sections
+    real, intent(in) :: meanDustParticleMass  ! [g]
     !
     TYPE(octalVector)     :: cellCentre 
     real :: r
-    real, parameter :: rho_bg = 1.e-19  ! background density
+    real, parameter :: rho_bg = rho_min  ! background density
     TYPE(Vector)    ::  rvec, vvec
     real :: vel 
     ! the following should be really taken from a parameter files... 
     ! Need to fix this later. 
-    TYPE(Vector), parameter    ::  spinAxis = Vector(0.0, 0.0, 1.0)
     real  :: M
-    real(double) :: dum_d, x, y, z, w
+    real(double) :: dum_d, x, y, z, w, fac
     
+
     M = 1.989d33*this%Mcore ! [g] mass of the central object
 
 
@@ -672,11 +665,13 @@ contains
     elseif (in_alpha_disc(this,cellCentre) ) then 
        thisOctal%rho(subcell) = ave_alpha_disc_density(thisOctal, subcell, this)
        if (thisOctal%rho(subcell) > rho_min) thisOctal%inFlow(subcell) = .true.  
-       
-!       thisOctal%kappaAbs(subcell,:) = 1.e+20/scaling_tau
-!       thisOctal%kappaSca(subcell,:) = 1.e+20/scaling_tau
-          thisOctal%kappaAbs(subcell,:) = thisOctal%rho(subcell)/scaling_tau
-          thisOctal%kappaSca(subcell,:) = thisOctal%rho(subcell)/scaling_tau
+
+       ! assigning dust opacity
+       ! This part should be modefied for oneKappa option later.
+       ! The followings are devided by 100 since we assume the gas to dust ratio of 100.
+       fac = thisOctal%rho(subcell)*1.0e10/100.e0/meanDustParticleMass
+       thisOctal%kappaAbs(subcell,:) = sigmaAbs*fac
+       thisOctal%kappaSca(subcell,:) = sigmaSca*fac
           
        thisOctal%temperature(subcell) = 1000.0
        thisOctal%biasCont3D(subcell) = 1.0

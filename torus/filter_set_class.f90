@@ -27,7 +27,8 @@ module filter_set_class
   !
   ! 11. "brgamma"        : Filters sets centered at Br-gamma (21655. A)
 
-  !  9. "raman"          : Raman-scattering filters for the optical (6830) and UV (1032) lines
+  ! 12. "raman"          : Raman-scattering filters for the optical (6830) and UV (1032) lines
+  ! 13. "natural"        : A single natural filter.
   use utils_mod
 
   public::  &
@@ -55,7 +56,8 @@ module filter_set_class
        make_combo_filters, &
        make_halpha_filters, &
        make_pabeta_filters, &
-       make_brgamma_filters
+       make_brgamma_filters, &
+       make_natural_filters
 
        
   type filter_set
@@ -196,6 +198,8 @@ contains
        call make_raman_filters(this_set, name)
     case ("midi") 
        call make_midi_filters(this_set, name)
+    case ("natural") 
+       call make_natural_filters(this_set, name)
     case default
        write(*,*) " "
        write(*,*) "Error:: Unknown filter name passed to filter_set_class::init_filter_set."
@@ -1182,6 +1186,46 @@ contains
 
 
 
+  !
+  ! making simple natural filter
+  !
+  !
+  subroutine make_natural_filters(this_set, name)
+    implicit none 
+    type(filter_set), intent(inout) :: this_set
+    character(LEN=*), intent(in) :: name
+    !
+    !
+    integer,  parameter :: nfilter=1  ! number of filters
+    integer,  parameter :: nlam=5  ! number of wavelegth samples
+    type(filter) :: natural        ! One filter to pass everything    
+
+    !
+    ! Setting up the natural filter
+    !
+    ! 100 A  to  0.36 mm
+    call init_filter(natural, "natural", nlam, 100.0d0, 3.6d7)
+    natural%response_function(:) = 1.0d0  ! set everything to 1.0
+
+
+    !
+    ! Now store them as a set    
+    this_set%name = name
+    this_set%nfilter = nfilter 
+    
+    ALLOCATE(this_set%filters(nfilter))
+
+    this_set%filters(1) = natural
+
+    ! finished
+
+    
+  end subroutine make_natural_filters
+  
+
+
+
+
 
   !
   ! Given a photon, this function will return a photon after passing through 
@@ -1403,8 +1447,8 @@ contains
        open(unit=UN, file = TRIM(filename), status = 'replace',form='formatted')
     end if
 
-33  format(2x, a10, 3(2x, a10))
-34  format(2x, a10, 3(2x, f10.2)) 
+33  format(2x, a10, 3(2x, a15))
+34  format(2x, a10, 3(2x, f15.2)) 
     write(UN,'(a)') ' '
     write(UN,'(a)') '###################################################################'
     write(UN,'(a)') 'Filter set info :'

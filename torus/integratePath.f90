@@ -32,7 +32,7 @@ module path_integral
     !
     subroutine integratePath(gridUsesAMR, starkBroadening, &
          wavelength,  lambda0, vVec, aVec, uHat, Grid, &
-         lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb,&
+         lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
          contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
          lineResAbs, redRegion, usePops, mLevel, nLevel, &
          fStrength, gM, gN, localTau,sampleFreq,error, interp, &
@@ -55,6 +55,7 @@ module path_integral
       real, dimension(:), intent(out) :: tauAbs           ! optical depth
       real, dimension(:), intent(out) :: tauSca           ! optical depth
       integer, intent(out)      :: nTau                   ! size of optical depth arrays
+      logical, intent(in)       :: thin_disc_on      ! T to include thin disc
       logical, intent(in)       :: opaqueCore             ! is the core opaque
       real, intent(out)         :: escProb                ! the escape probability
       real, intent(in)          :: lamStart, lamEnd
@@ -79,13 +80,13 @@ module path_integral
       if (gridUsesAMR) then
          if (starkBroadening) then
             call integratePathStark(wavelength,  lambda0, o2s(vVec), o2s(aVec), o2s(uHat), Grid, &
-                 lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb,&
+                 lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
                  contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
                  redRegion, usePops, mLevel, nLevel, &
                  fStrength, gM, gN, sampleFreq,error)
          else
             call integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
-                 lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb,&
+                 lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
                  contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
                  lineResAbs, redRegion, usePops, mLevel, nLevel, &
                  fStrength, gM, gN, localTau,sampleFreq,error)
@@ -176,7 +177,7 @@ subroutine integratePathCaresian(wavelength,  lambda0, vVec, aVec, uHat, Grid,  
 
 
 
-  integer, parameter :: maxLambda = 200              ! max size of tau arrays
+!  integer, parameter :: maxLambda = 200              ! max size of tau arrays
   integer :: nLambda
   real :: lambda(:),dlambda                         ! distance arrays
   real :: tauExt(:), tauAbs(:), tauSca(:)           ! optical depths
@@ -1120,7 +1121,7 @@ end subroutine integratePathCaresian
 
 
 subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
-     lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb,&
+     lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
      contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs,&
      redRegion, usePops, mLevel, nLevel, &
      fStrength, gM, gN, localTau,sampleFreq,error)
@@ -1148,6 +1149,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   real, dimension(:), intent(out) :: tauAbs           ! optical depth
   real, dimension(:), intent(out) :: tauSca           ! optical depth
   integer, intent(out)      :: nTau                   ! size of optical depth arrays
+  logical, intent(in)       :: thin_disc_on           ! T to include thin disc
   logical, intent(in)       :: opaqueCore             ! is the core opaque
   real, intent(out)         :: escProb                ! the escape probability
   real, intent(in)          :: lamStart, lamEnd
@@ -1191,7 +1193,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   integer :: ilambda                                ! wavelength index
 
 
-  integer, parameter :: maxLambda = 2000             ! max size of tau arrays
+!  integer, parameter :: maxLambda = 10000           ! max size of tau arrays
   real :: dlambda(maxTau)                           ! distance increment array
 
   real :: projVel(maxTau)
@@ -1234,7 +1236,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
      ! sample the grid along the path of the ray
      CALL startReturnSamples (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
-                              maxTau,opaqueCore,hitcore,usePops,iLambda,error,&
+                              maxTau,thin_disc_on,opaqueCore,hitcore,usePops,iLambda,error,&
                               lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
                               velocityDeriv=velocityDeriv,chiLine=chiLine,    &
                               levelPop=levelPop,rho=rho, &
@@ -1300,7 +1302,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
      escProb = 1.
 
      CALL startReturnSamples (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
-                              maxTau,opaqueCore,hitcore,usePops,iLambda,error,&
+                              maxTau,thin_disc_on,opaqueCore,hitcore,usePops,iLambda,error,&
                               lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
                               velocityDeriv=velocityDeriv,chiLine=chiLine,    &
                               levelPop=levelPop,rho=rho, &
@@ -1757,7 +1759,7 @@ end subroutine integratePathAMR
   !
   !
   subroutine integratePathStark(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
-       lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb,&
+       lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
        contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
        redRegion, usePops, mLevel, nLevel, &
        fStrength, gM, gN, sampleFreq,error)
@@ -1788,6 +1790,7 @@ end subroutine integratePathAMR
     real, dimension(:), intent(out) :: tauAbs           ! thermal optical depth
     real, dimension(:), intent(out) :: tauSca           ! e-scattering optical depth
     integer, intent(out)      :: nTau                   ! size of optical depth arrays
+    logical, intent(in)       :: thin_disc_on           ! T to include thin disc
     logical, intent(in)       :: opaqueCore             ! is the core opaque
     real, intent(out)         :: escProb                ! the escape probability
     real, intent(in)          :: lamStart, lamEnd
@@ -1828,7 +1831,7 @@ end subroutine integratePathAMR
     integer :: ilambda                                ! wavelength index
     
     
-    integer, parameter :: maxLambda = 10000           ! max size of tau arrays
+!    integer, parameter :: maxLambda = 10000          ! max size of tau arrays
     real :: dlambda(maxTau)                           ! distance increment array
     
     real(double) :: projVel(maxTau)
@@ -1902,7 +1905,7 @@ end subroutine integratePathAMR
     escProb = 1.
     
     CALL startReturnSamples (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
-         maxTau,opaqueCore,hitcore,usePops,iLambda,error,&
+         maxTau,thin_disc_on,opaqueCore,hitcore,usePops,iLambda,error,&
          lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
          velocityDeriv=velocityDeriv,chiLine=chiLine,    &
          levelPop=levelPop,rho=rho, &
@@ -1977,14 +1980,21 @@ end subroutine integratePathAMR
  
 
      ! Additional points along a ray are inserted near the velocity changes fast.
-     call resampleRay(lambda, nTau, projVel, maxtau, newLambda, newNTau)        
+     call resampleRay(lambda, nTau, projVel, maxtau, newLambda, newNTau)
+     if (newNTau > maxTau) then 
+        print *, "Error:: newNtau > newNx_max in integratePathStark."
+        print *, "        newNtau     = ", newNTau
+        print *, "        maxTau   = ", maxTau
+        stop
+     end if
+
      ! Now interpolate on to newly sampled ray    
      call linearResample_dble(lambda, projVel, nTAu, newLambda, newNtau)
      call linearResample(lambda, tauSca, nTAu, newLambda, newNtau)
      call linearResample(lambda, tauAbs, nTAu, newLambda, newNtau)
      call linearResample(lambda, chiline, nTAu, newLambda, newNtau)
-     call linearResample(lambda, temperature, nTAu, newLambda, newNtau)
      call linearResample(lambda, N_HI, nTAu, newLambda, newNtau)
+     call linearResample(lambda, temperature, nTAu, newLambda, newNtau)
      call linearResample_dble(lambda, Ne, nTAu, newLambda, newNtau)
      nTau = newNtau
      lambda(1:nTau) = newLambda(1:nTau)    
@@ -2181,7 +2191,7 @@ end subroutine intersectCubeAMR
 !
 subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
      amrGridCentre, sphericityTest,  &
-     dir_obs, wavelength,  lambda0, grid, opaqueCore, lamStart, lamEnd,   &
+     dir_obs, wavelength,  lambda0, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,   &
      ThinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, Rstar, coolStarPosition)
 
   implicit none
@@ -2196,7 +2206,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   real, intent(in)          :: lambda0            ! rest wavelength of line
   type(GRIDTYPE), intent(in):: grid               ! the opacity grid
   !
-
+  logical, intent(in)       :: thin_disc_on      ! T to include thin disc
   logical, intent(in)       :: opaqueCore         ! is the core opaque
   real, intent(in)          :: lamStart, lamEnd
   !
@@ -2271,7 +2281,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   call integratePath(gridUsesAMR, starkBroadening, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
-       tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
+       tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
        lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
        .false., nUpper, nLower, 0., 0., 0., junk,&
        sampleFreq, error, useInterp, rStar, coolStarPosition)
@@ -2295,7 +2305,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   call integratePath(gridUsesAMR, starkBroadening, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
-       tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
+       tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
        lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
        .false., nUpper, nLower, 0., 0., 0., junk,&
        sampleFreq,error, useInterp, rStar, coolStarPosition)
@@ -2319,7 +2329,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   call integratePath(gridUsesAMR, starkBroadening, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
-       tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
+       tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
        lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
        .false., nUpper, nLower, 0., 0., 0., junk,&
        sampleFreq,error, useInterp, rStar, coolStarPosition)
@@ -2339,11 +2349,12 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   ! test towards the observer
   !
   octVec = s2o(dir_obs)
-  position = (octVec*R) + amrGridCentre
+!  position = (octVec*R) + amrGridCentre
+  position = (octVec*R) + grid%starPos1
   call integratePath(gridUsesAMR, starkBroadening, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5), &
        position, s2o(dir_obs), grid, lambda, &
-       tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
+       tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, &
        contPhoton, lamStart, lamEnd, nLambda, tauCont, &
        hitCore, thinLine,lineResAbs, .false.,  &
        .false., nUpper, nLower, 0., 0., 0., junk,sampleFreq,error, &
@@ -2370,7 +2381,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
         call IntegratePath(gridUsesAMR, starkBroadening, &
              lambda0,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5), &
              amrGridCentre, s2o(tempVec), grid, lambda, &
-             tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
+             tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, &
              contPhoton, lamStart, lamEnd, nLambda, tauCont, &
              hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk, sampleFreq,error, &
@@ -2405,13 +2416,13 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
         !           call Normalize(octVec)  ! just in case ..
 
         ! position of emission
-        position = (octVec*R) + amrGridCentre
-        
+!        position = (octVec*R) + amrGridCentre
+        position = (octVec*R) + grid%starPos1
         ! continuum
         call IntegratePath(gridUsesAMR, starkBroadening, &
              wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
-             tauSca, maxTau, nTau, opaqueCore, escProb, .true. , &
+             tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
              lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk,&
              sampleFreq,Error,&
@@ -2423,7 +2434,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
         call IntegratePath(gridUsesAMR, starkBroadening, &
              wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
-             tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
+             tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
              lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk,&
              sampleFreq,Error, &
@@ -2454,13 +2465,14 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
         !          call Normalize(octVec)  ! just in case ..
         
         ! position of emission
-        position = (octVec*R)  + amrGridCentre
+!        position = (octVec*R)  + amrGridCentre
+        position = (octVec*R) + grid%starPos1
         
         ! continuum
         call IntegratePath(gridUsesAMR, starkBroadening, &
              wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
-             tauSca, maxTau, nTau, opaqueCore, escProb, .true. , &
+             tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
              lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk,&
              sampleFreq,Error,&
@@ -2472,7 +2484,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
         call IntegratePath(gridUsesAMR, starkBroadening, &
              wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
-             tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
+             tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
              lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
              .false., nUpper, nLower, 0., 0., 0., junk,&
              sampleFreq,Error, &

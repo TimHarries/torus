@@ -97,7 +97,7 @@ program torus
   real :: sTot
   ! optical depth variables
 
-  integer, parameter :: maxTau = 10000, maxLambda = 500
+  integer, parameter :: maxTau = 50000, maxLambda = 500
   integer :: nTau
   real, allocatable :: contTau(:,:)
 
@@ -119,6 +119,7 @@ program torus
 
 
   real, allocatable :: kappaAbs(:), kappaSca(:), kappaExt(:)
+  real  :: sigmaExt0, sigmaAbs0, sigmaSca0  ! cross section at the line centre
   real :: dlambda, thisTau
 
   ! variables to do with dust
@@ -518,9 +519,13 @@ program torus
      allocate(pvimage(1:nSlit))
   endif
 
-  if (mie) then
-     meanDustParticleMass = getMeanMass2(amin, amax, a0, qDist, pdist)
+  if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
+     meanDustParticleMass = getMeanMass2(amin, amax, a0, qDist, pdist, graintype)
      write(*,*) "mean dust particle mass: ",meanDustParticleMass
+     if (meanDustParticleMass <=0.0) then 
+        write(*,*) "Error: meanDustParticleMass <=0 in torusMain."
+        stop
+     end if
   endif
 
   probLinePhoton = 1. - probContPhoton
@@ -658,7 +663,7 @@ program torus
      onekappa=.false.
      if (ttau_disc_on)  &
           call new(ttauri_disc, dble(TTauriRouter/1.0e10), 1.5d3*100.d0, &
-          dble(Msol/100.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0, dble(TTauriMstar/mSol))
+          dble(TTauriMstar/100.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0, dble(TTauriMstar/mSol))
      if (ttau_discwind_on) &
           call new(ttauri_discwind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
           DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, &
@@ -810,9 +815,11 @@ program torus
 
   ! if the grid uses an adaptive mesh, create it
      
-  if (gridUsesAMR.and.mie) then 
-     call setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
-          ngrain, X_grain, grainname, lambdaTau)
+  if (gridUsesAMR) then
+     if ((mie) .or. (geometry == "ttauri" .and. ttau_disc_on)) then 
+        call setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
+             ngrain, X_grain, grainname, lambdaTau)
+     end if
   end if
 
 
@@ -856,7 +863,7 @@ program torus
         ! This may not work for dust calculation...
         ! Copying the wavelength array to the grid
         if (grid%nlambda /= nlambda) then
-           if (mie) then              
+           if (mie .or. (grid%geometry == "ttauri" .and. ttau_disc_on)) then              
               write(*,*) "Error:: The number of the wavelength bins in the data file "
               write(*,*) "        does not macth with that specifed in your parameter file."
               write(*,*) "nlambda(old) = ", grid%nlambda
@@ -941,6 +948,7 @@ program torus
                  write(*,*) " "
                  write(*,*) "Adding TTauri jets to magnetosphere model... "
                  call add_jet(grid%octreeRoot, grid, ttauri_jet)
+                 call finish_grid_jet(grid%octreeroot, ttauri_jet)
                  write(*,*) " "
               end if
            end if
@@ -969,7 +977,8 @@ program torus
         do
            call finishGrid(grid%octreeRoot,grid,gridConverged)
            if (gridConverged) exit
-        end do
+        end do        
+
         write(*,*) "...final adaptive grid configuration complete"
 
         call grid_info(grid, "*")
@@ -1070,32 +1079,44 @@ program torus
               if (ttau_disc_on) then
                  write(*,*) "Adding an acreation disc ... "
                  call add_alpha_disc(grid%octreeroot, grid, ttauri_disc)
-                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0)
+                 ! finding the photon-dust interaction x-secions
+                 call mieCrossSection(sigmaExt0, sigmaAbs0, sigmaSca0,  &
+                      aMin, aMax, a0, qDist, pDist, grainType, &
+                      ngrain, X_grain, grainname, lamLine)
+                 write(*,*) " "
+                 write(*,*) "Photon-dust cross section at lambda = ", lamLine, " [A]"
+                 write(*,*) "    sigma(tot) = ", sigmaExt0, " [cm^2]"
+                 write(*,*) "    sigma(abs) = ", sigmaAbs0, " [cm^2]"
+                 write(*,*) "    sigma(sca) = ", sigmaSca0, " [cm^2]"
+                 write(*,*) " "
+                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, &
+                      sigmaAbs0, sigmaSca0, meanDustParticleMass)
+                 !
                  !
                  allocate(lambda(1:maxTau),tauExt(1:maxTau),tauAbs(1:maxTau),tauSca(1:maxTau),&
                           contTau(1:maxTau,1:nLambda))
                  call integratePath(gridUsesAMR, starkBroadening, &
-                      lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(75.0,0,-50.), &
+                      lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(150.0,0,-200.), &
                       OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
-                      tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
+                      tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
                       lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                       .false., nUpper, nLower, 0., 0., 0., junk,&
                       sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
-                 write(*,*) " ---- Scaling optical depth at r = 0.05 AU is ", tauExt(ntau)
+                 write(*,*) " ----  Vertical optical depth at r = 0.1 AU is ", tauExt(ntau)
                  write(*,*) " ----                           at lambda =  ", lambdatau
-                 write(*,*) "Rescaling scattering and absorption coefficients ... "
-                 call finish_grid(grid%octreeroot, grid, ttauri_disc, tauExt(ntau)/100.0)
-                 call integratePath(gridUsesAMR, starkBroadening, &
-                      lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(75.0,0,-50.), &
-                      OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
-                      tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
-                      lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
-                      .false., nUpper, nLower, 0., 0., 0., junk,&
-                      sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
-                 write(*,*) " ---- New Optical depth  at r = 0.05 AU    is ", tauExt(ntau)
-                 write(*,*) " ----                           at lambda =  ", lambdatau
+!                 write(*,*) "Rescaling scattering and absorption coefficients ... "
+!                 call finish_grid(grid%octreeroot, grid, ttauri_disc, tauExt(ntau)/100.0)
+!                 call integratePath(gridUsesAMR, starkBroadening, &
+!                      lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(75.0,0,-50.), &
+!                      OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
+!                      tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
+!                      lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
+!                      .false., nUpper, nLower, 0., 0., 0., junk,&
+!                      sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
+!                 write(*,*) " ---- New Optical depth  at r = 0.05 AU    is ", tauExt(ntau)
+!                 write(*,*) " ----                           at lambda =  ", lambdatau
                  deallocate(lambda,tauExt,tauAbs,tauSca,contTau)
-                 write(*,*) ".. Finished rescaling scattering and absorption coefficients ... "
+!                 write(*,*) ".. Finished rescaling scattering and absorption coefficients ... "
                  write(*,*) ".. Finished adding an acreation disc ... "
               end if
               !-------------------------------------------------------------------
@@ -1104,10 +1125,10 @@ program torus
 
               call amrStateq(grid, newContFluxFile, lte, nLower, nUpper, &
                       starSurface, recalcPrevious=.false., ion_name=ion_name, ion_frac=ion_frac)
-              if (ttau_disc_on) then
-                 ! amrStateq will have messed up the disc, so we reset those cells
-                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0)
-              end if
+!              if (ttau_disc_on) then
+!                 ! amrStateq will have messed up the disc, so we reset those cells
+!                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, sigmaAbs0, sigmaSca0)
+!              end if
 
 !$MPI   print *,'Process ',my_rank,' waiting for other amrStatEq calls to return...' 
 !$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all the processes
@@ -1543,7 +1564,8 @@ program torus
   xMin =  2.*pi*grainSize/(lamEnd*angstromToCm)
   xMax =  2.*pi*grainSize/(lamStart*angstromToCm)
 
-  if (mie) then
+  if (mie .or.  (grid%geometry == "ttauri" .and. ttau_disc_on)) then
+     ! construct the mie phase matrix
      write(*,'(a)') "Computing Mie phase grid..."
 
      allocate(mReal(1:nLambda))
@@ -2108,7 +2130,8 @@ program torus
 !$MPI         call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all processes
              if (ttau_disc_on) then
                 ! amrStateq will have messed up the disc, so we reset those cells
-                call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0)
+                call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, &
+                     sigmaAbs0, sigmaSca0, meanDustParticleMass)
              end if
 !$MPI if (my_rank == 0) then
              if (writePhasePops) then
@@ -2231,7 +2254,7 @@ program torus
 !$MPI        if (my_rank==0) &
      call test_optical_depth(gridUsesAMR, starkBroadening, &
           amrGridCentre, sphericityTest,  &
-          outVec, lambdatau,  lambdatau, grid, opaqueCore, lamStart, lamEnd,  &
+          outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &
           thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition)
 
 !$MPI     ! Synchronizing everybody here.
@@ -2549,6 +2572,7 @@ program torus
      
      if (nInclination > 1) then  
         ! Now the inclinations are equally spaced in  cos(incination).
+        ! Asuuming that firstInclination < lastInclination <= pi/2
         cos_inc_first = COS(firstInclination)
         cos_inc_last = COS(lastInclination)
         d_cos_inc = (cos_inc_first - cos_inc_last)/ REAL(nInclination-1)
@@ -2905,7 +2929,7 @@ program torus
                          thisPhoton%lambda, lamLine, &
                          s2o(thisPhoton%velocity), &
                          thisPhoton%position, s2o(outVec), grid, &
-                         lambda, tauExt, tauAbs, tauSca, maxTau , nTau, opaqueCore, &
+                         lambda, tauExt, tauAbs, tauSca, maxTau , nTau, thin_disc_on, opaqueCore, &
                          escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                          .false., nUpper, nLower, 0., 0., 0., junk,&
@@ -2938,7 +2962,7 @@ program torus
                          thisPhoton%lambda, lamLine, &
                          s2o(thisPhoton%velocity), &
                          thisPhoton%position, s2o(outVec), grid, &
-                         lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
+                         lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, &
                          escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,&
                          .false., nUpper, nLower, 0., 0., 0., junk,&
@@ -3114,7 +3138,7 @@ end if
               s2o(thisPhoton%velocity), &
               thisPhoton%position, &
               thisPhoton%direction, grid, &
-              lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
+              lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, &
               escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
               nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,  &
               .false., nUpper, nLower, 0., 0., 0., &
@@ -3269,7 +3293,7 @@ end if
                  
 
                  call scatterPhoton(grid, tempPhoton, outVec, obsPhoton, mie, &
-                       miePhase, nLambda, nMumie)
+                       miePhase, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
 
 
                  ! the o6 photon might get scattered towards the observer by a rayleigh scattering
@@ -3278,7 +3302,7 @@ end if
                     call integratePath(gridUsesAMR, starkBroadening, &
                             obsPhoton%lambda, lamLine, s2o(obsPhoton%velocity), &
                             obsPhoton%position, obsPhoton%direction, grid, &
-                            lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
+                            lambda, tauExt, tauAbs, tauSca, maxTau, nTau,  thin_disc_on, opaqueCore, &
                             escProb, obsPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
                             thinLine, lineResAbs, .false., .false., nUpper, nLower, 0., 0., 0.,&
                             junk, sampleFreq,intPathError, &
@@ -3316,7 +3340,7 @@ end if
                       obsPhoton%lambda, lamLine, &
                       s2o(obsPhoton%velocity), &
                       obsPhoton%position, obsPhoton%direction, grid, &
-                      lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
+                      lambda, tauExt, tauAbs, tauSca, maxTau, nTau,  thin_disc_on, opaqueCore, &
                       escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
                       nLambda, contTau, hitCore, &
                       thinLine, lineResAbs, redRegion, &
@@ -3490,14 +3514,14 @@ end if
 
 
                  call scatterPhoton(grid,thisPhoton, zeroVec, outPhoton, mie, &
-                       miePhase, nLambda, nMuMie)
+                       miePhase, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
                  thisPhoton = outPhoton
 
                  call integratePath(gridUsesAMR, starkBroadening, &
                             thisPhoton%lambda, lamLine, &
                             s2o(thisPhoton%velocity), thisPhoton%position, &
                             thisPhoton%direction, grid, lambda, tauExt, tauAbs, &
-                            tauSca, maxTau, nTau, opaqueCore, &
+                            tauSca, maxTau, nTau, thin_disc_on, opaqueCore, &
                             escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                             nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                             .false., nUpper, nLower, 0.,&

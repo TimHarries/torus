@@ -157,8 +157,9 @@ CONTAINS
        CASE (8)    
           subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
        CASE DEFAULT
-          PRINT *, "Invalid nChild passed to subcellCentre threed case"
-          DO ; END DO
+          PRINT *, "Error:: Invalid nChild passed to subcellCentre threed case"
+          PRINT *, "        nChild = ", nChild 
+          STOP
        END SELECT
     else
        SELECT CASE (nChild)
@@ -171,8 +172,9 @@ CONTAINS
        CASE (4)    
           subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * zHatOctal)
        CASE DEFAULT
-          PRINT *, "Invalid nChild passed to subcellCentre twoD case"
-          DO ; END DO
+          PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case"
+          PRINT *, "        nChild = ", nChild 
+          STOP
        END SELECT
     endif
   END FUNCTION subcellCentre

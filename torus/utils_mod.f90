@@ -1259,7 +1259,8 @@ contains
 
       ! -- using the values in input_variables module
       dvel = (lamend-lamstart)/lamline/real(nlambda-1)  ! should be in [c]
-      dvel = dvel/7.0  ! to be safe 
+!      dvel = dvel/7.0  ! to be safe
+      dvel = dvel/2.0  ! to be safe  
       allocate(dProjVel(1:nTau))
       dProjVel(1)  = 0.
       dProjVel(2:nTau) = projVel(2:nTau) - projVel(1:nTau-1)
@@ -1268,7 +1269,8 @@ contains
       do i = 2, nTau
          ! if (i==2) we always add points
          if (abs(dProjVel(i)) > dVel .or. i==2) then
-            nAdd = nint(abs(ProjVel(i))/dVel)
+!            nAdd = nint(abs(ProjVel(i))/dVel)
+            nAdd = nint(abs(dProjVel(i))/dVel)
             dlam = (lambda(i)-lambda(i-1))/real(nAdd+1)
             do j = 1, nAdd+1
                newNtau = newNtau + 1
@@ -1351,10 +1353,18 @@ contains
       real :: xArray(:), yArray(:)
       integer :: nx, newNx
       real :: newXarray(:)
-      real, allocatable :: newYarray(:)
+!      real, allocatable :: newYarray(:)
+      integer, parameter :: newNx_max = 500000
+      real :: newYarray(newNx_max)
       integer :: i, j
 
-      allocate(newYarray(1:newNx))
+      if (newNx > newNx_max) then 
+         print *, "Error:: newNx > newNx_max in linearResample."
+         print *, "        newNx     = ", newNx
+         print *, "        newNx_max = ", newNx_max
+         stop
+      end if
+!      allocate(newYarray(1:newNx))
       do i = 1, newNx
          call hunt(xArray, nx, newXarray(i), j)
          if (xArray(j+1) /= xArray(j)) then
@@ -1364,7 +1374,7 @@ contains
          endif
       enddo
       yArray(1:newNx) = newYArray(1:newNx)
-      deallocate(newYarray)
+!      deallocate(newYarray)
     end subroutine linearResample
 
 
@@ -1376,10 +1386,19 @@ contains
       real(double) :: yArray(:)
       integer :: nx, newNx
       real :: newXarray(:)
-      real, allocatable :: newYarray(:)
+ !     real, allocatable :: newYarray(:)
+      integer, parameter :: newNx_max = 500000
+      real  :: newYarray(newNx_max) 
       integer :: i, j
 
-      allocate(newYarray(1:newNx))
+      if (newNx > newNx_max) then 
+         print *, "Error:: newNx > newNx_max in linearResample_dble."
+         print *, "        newNx     = ", newNx
+         print *, "        newNx_max = ", newNx_max
+         stop
+      end if
+      
+!      allocate(newYarray(1:newNx))
       do i = 1, newNx
          call hunt(xArray, nx, newXarray(i), j)
          if (xArray(j+1) /= xArray(j)) then
@@ -1389,7 +1408,7 @@ contains
          endif
       enddo
       yArray(1:newNx) = newYArray(1:newNx)
-      deallocate(newYarray)
+!      deallocate(newYarray)
     end subroutine linearResample_dble
 
  

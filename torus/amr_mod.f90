@@ -672,7 +672,7 @@ CONTAINS
 
 
   SUBROUTINE startReturnSamples (startPoint,direction,grid,          &
-             sampleFreq,nSamples,maxSamples,opaqueCore,hitCore,      &
+             sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
              usePops,iLambda,error,lambda,kappaAbs,kappaSca,velocity,&
              velocityDeriv,chiLine,levelPop,rho, temperature, Ne)
     ! samples the grid at points along the path.
@@ -693,12 +693,14 @@ CONTAINS
                        
     INTEGER, INTENT(OUT)             :: nSamples   ! number of samples made
     INTEGER, INTENT(IN)                :: maxSamples ! size of sample arrays 
+    logical, intent(in)                :: thin_disc_on   ! T to include thin disc
     LOGICAL, INTENT(IN)                :: opaqueCore ! true if the core is opaque
     LOGICAL, INTENT(OUT)               :: hitCore    ! true if the core is opaque
     LOGICAL, INTENT(IN)                :: usePops    ! whether to use level populations
     INTEGER, INTENT(IN)                :: iLambda    ! wavelength index
     INTEGER, INTENT(INOUT)             :: error      ! error code
     REAL, DIMENSION(:), INTENT(INOUT)  :: lambda     ! path distances of sample locations
+
     
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaAbs   ! continuous absorption opacities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca   ! scattering opacities
@@ -802,20 +804,26 @@ CONTAINS
        diskNormal = grid%diskNormal
        starPosition = grid%starPos1
                                   
-       ! find the disk intersection point
-       distanceFromOrigin = modulus(grid%starPos1)
-       diskIntersection = intersectionLinePlane(startPoint, directionNormalized,&
-                                 diskNormal, distanceFromOrigin, intersectionFound)
+       ! find the (geometrycally thin) disk intersection point
+       if (thin_disc_on) then
+          distanceFromOrigin = modulus(grid%starPos1)
+          diskIntersection = intersectionLinePlane(startPoint, directionNormalized,&
+               diskNormal, distanceFromOrigin, intersectionFound)
+       else
+          intersectionFound = .false.
+       end if
 
-       ! Cases for no accretion disc
+       ! This line is here for backward compatability, but should be removed
+       ! in the future.
        if (grid%geometry == "luc_cir3d") intersectionFound = .false.
        
        IF (intersectionFound) THEN
        
          ! we need to check whether the photon passes through the disk's
-         !   central hole.
+         !   central hole, or the outside of the outer radius of accretion disc.
          intersectionRadius =  modulus(diskIntersection - starPosition)
-         IF (intersectionRadius > grid%diskRadius) THEN
+         IF (intersectionRadius > grid%diskRadius .and.  &
+              intersectionRadius < grid%octreeRoot%subcellsize*2.0) THEN
            absorbPhoton = .TRUE.
 
            ! we need to check whether the intersection occurs within our
@@ -884,7 +892,9 @@ CONTAINS
        
          nSamples = nSamples + 1
          IF (nSamples > maxSamples) THEN
-           PRINT *, "nSamples > maxSamples in takeSample subroutine"
+           PRINT *, "Error:: nSamples > maxSamples in takeSample subroutine"
+           PRINT *, "        nSamples   = ", nSamples
+           PRINT *, "        maxSamples = ", maxSamples
            STOP
          END IF
          
@@ -1179,7 +1189,8 @@ CONTAINS
     logical :: ok
     ! Specify the ratio of extra length to give it for "locater" to the 
     ! "halfSmallestSubcell" size.
-    REAL(oct), parameter :: frac =1.e-6_oc  
+!    REAL(oct), parameter :: frac =1.e-6_oc  
+    REAL(oct), parameter :: frac =1.e-22_oc  
 
     if (threed) then
        
@@ -1508,6 +1519,13 @@ CONTAINS
           disttoZboundary = 1.e30
        endif
 
+!       ! Because of some truncation error, the value could be a small
+!       ! negative value (e.g. -1.0e-15). When this occur, we set the value to be a
+!       ! large number, so the other distance will be picked in the following statement.
+!       ! (This is a quick fix.   Ryuichi Kurosawa)
+!       if (distToZboundary <=0) distToZboundary = 1.e20
+!       if (distToXboundary <=0) distToXboundary = 1.e20
+       
        tVal = min(distToZboundary, distToXboundary)
        if (tVal > 1.e29) then
           write(*,*) "Error :: tVal > 1.e29 [amr_mod:getExitPoint]."
@@ -1580,7 +1598,9 @@ CONTAINS
 
     nSamples = nSamples + 1
     IF (nSamples > maxSamples) THEN
-      PRINT *, "nSamples > maxSamples in takeSample subroutine"
+      PRINT *, "Erro:: nSamples > maxSamples in takeSample subroutine"
+      PRINT *, "nSamples   = ", nSamples
+      PRINT *, "maxSamples = ", maxSamples      
       STOP
     END IF
     
@@ -3417,7 +3437,7 @@ CONTAINS
            searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
         else
            searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct) 
-           searchPoint%y = 1.e-30
+           searchPoint%y = 0.d0
            searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
         endif
         ! using a generic density function in density_mod.f90
@@ -3428,7 +3448,13 @@ CONTAINS
       END DO
 
       ave_density = ave_density / REAL(nsample,KIND=double)
-      total_mass = maxDensity * (cellSize*1.e10_db)**3.0_db
+
+      if (thisOctal%threed) then
+         total_mass = maxDensity * (cellSize*1.e10_db)**3.0_db
+      else
+         total_mass = maxDensity * pi * ((searchPoint%x+cellsize/2.)**2-(searchPoint%x-cellsize/2.)**2)*cellsize*1.d30
+      endif
+
       IF (total_mass > amrLimitScalar) then
          split = .TRUE.
       END IF
@@ -3438,18 +3464,13 @@ CONTAINS
 !         if (cellSize > 40.d0  .and.  &
 !              (subcell == 1 .or. subcell == 3) )  split=.true.
          close_to_star = .false.
-         if (modulus(cellcentre) < 300.d0) close_to_star =.true.
+         r = modulus(cellcentre)
+         if (r < 300.d0) close_to_star =.true.
          if (close_to_star) then
             if (cellSize > 20.d0) split=.true.
          else
-            if (ASSOCIATED(thisOctal%parent) )then
-               if ( (cellcentre%x < thisOctal%parent%centre%x) &
-                    .and. cellSize > 400.d0)then
-                  split=.true.
-               end if
-            else ! this must be a root cell, so splits
-               split=.true.
-            end if
+            ! Splits the two cells closer to the origin.
+            if (r < cellSize*2.0d0)  split = .true.
          end if
       end if
 
@@ -3717,7 +3738,7 @@ CONTAINS
     nSamples = 0
                 
     CALL startReturnSamples(startPoint,direction,grid,sampleFreq,     &
-                 nSamples,maxSamples,.false.,hitCore,.false.,1,error, &
+                 nSamples,maxSamples,.false.,.false.,hitCore,.false.,1,error, &
                  distances,kappaAbs=dummy,kappaSca=dummy,velocity=dummyVel,&
                  velocityDeriv=dummy,chiLine=dummy,                &
                  levelPop=dummyPops,rho=densities)

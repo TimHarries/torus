@@ -859,6 +859,14 @@ endif
    vRot = vRot * 1.e5
  endif
 
+ ! sub option for ttauri geometry
+ call getLogical("ttau_disc_on", ttau_disc_on, cLine, nLines, &
+      "Include TTauri Disc?: ", "(a,1l,1x,a)", .false., ok, .false.)
+ call getLogical("ttau_discwind_on", ttau_discwind_on, cLine, nLines, &
+      "Include TTauri disc wind?: ", "(a,1l,1x,a)", .false., ok, .false.)
+ call getLogical("ttau_jet_on", ttau_jet_on, cLine, nLines, &
+        "Include TTauri jets?: ", "(a,1l,1x,a)", .false., ok, .false.)
+
 
  call findLogical("mie", mie, cLine, nLines, ok)
  if (.not. ok) then
@@ -867,6 +875,8 @@ endif
  endif
  if (mie) then
    write(*,'(a)') "Scattering phase matrix: Mie"
+ elseif (geometry == "ttauri".and. ttau_disc_on) then
+   write(*,'(a)') "Scattering phase matrix: Mie (disc) and Rayleigh (elsewhere)"
   else
    write(*,'(a)') "Scattering phase matrix: Rayleigh"
  endif
@@ -949,7 +959,7 @@ endif
 
 
 
- if (mie) then
+ if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
      call getString("graintype", grainType, cLine, nLines, &
           "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
@@ -1095,12 +1105,6 @@ endif
      call getReal("maxharttemp", maxHartTemp, cLine, nLines, &
            "Maximum of Hartmann temperature: ","(a,f7.1,1x,a)", 7436., ok, .false.)
    ! sub options for ttauri geometry
-   call getLogical("ttau_disc_on", ttau_disc_on, cLine, nLines, &
-        "Include TTauri Disc?: ", "(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("ttau_discwind_on", ttau_discwind_on, cLine, nLines, &
-        "Include TTauri disc wind?: ", "(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("ttau_jet_on", ttau_jet_on, cLine, nLines, &
-        "Include TTauri jets?: ", "(a,1l,1x,a)", .false., ok, .false.)
    if (ttau_discwind_on) then
       ! --- parameters for ttauri wind
       call getDouble("DW_d", DW_d, cLine, nLines, &
@@ -1277,10 +1281,14 @@ endif
  call getLogical("opaquecore", opaqueCore, cLine, nLines, &
    "Opaque Core: ","(a,1l,a)", .true., ok, .false.)
 
+ call getLogical("thin_disc_on", thin_disc_on, cLine, nLines, &
+   "Include geometrically thin Disc?: ", "(a,1l,1x,a)", .true., ok, .false.)
+
  call getLogical("tio", fillTio, cLine, nLines, &
    "TiO opacity: ","(a,1l,a)", .false., ok, .false.)
 
- if (fillTio.or.mie) then
+ if (fillTio.or.mie  &
+      .or. (geometry == "ttauri" .and. ttau_disc_on) ) then
 
 ! amin and amax are left as microns here
 
