@@ -24,7 +24,8 @@ module stateq_mod
   real(double) :: bEinstein(20, 20) 
   
   real(double), parameter :: eTrans(23) =                      &
-       (/ (hydE0eVdb - hydE0eVdb/level**2,level=1,SIZE(eTrans)) /)
+       (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /) 
+!       (/ (hydE0eVdb - hydE0eVdb/level**2,level=1,SIZE(eTrans)) /)
   
   real(double), parameter :: gDegen(23) = &
        (/ (2.0_db*level**2,level=1,SIZE(gDegen)) /)
@@ -1212,7 +1213,7 @@ contains
     real(double), parameter :: ci = 2.07d-16
     real(double), parameter :: iPot = hydE0eV
 
-    BoltzSaha = Ne**2 * gDegen(m) * ci * exp( (iPot-eTrans(m))/(kev * t) ) / t**1.5
+    BoltzSaha = Ne**2 * gDegen(m) * ci * exp( (iPot-eTrans(m))/(kev * t) ) / t**1.5d0
     
   end function BoltzSaha
 
@@ -2469,7 +2470,10 @@ contains
           errf=errf+abs(beta(i))
         end do 
         !if (debug) print *, "errf,tolf",errf,tolf
-        if ((errf.le.tolf) .and. all(x > 0.0_db)) then 
+!        if ((errf.le.tolf) .and. all(x > 0.0_db)) then 
+
+        ! Now allows for at least two iteration. (RK changed this)
+        if ((errf.le.tolf) .and. all(x > 0.0_db) .and. k>2) then 
            if (debug) print *, k, 'trials.'
            return
         end if
@@ -2483,7 +2487,8 @@ contains
           x(i)=x(i)+beta(i)
         end do 
         !if (debug) print *, "errx,tolx",errx,tolx
-        if ((errx.le.tolx) .and. all(x > 0.0_db)) then
+        ! Now allows for at least two iteration. (RK changed this)
+        if ((errx.le.tolx) .and. all(x > 0.0_db) .and. k>2) then
            if (debug) print *, k, 'trials.'
            return
         end if
@@ -2806,8 +2811,10 @@ contains
     integer                     :: iSubcell      ! loop counter
     integer                     :: nOctal        ! number of octals in grid
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
-    real(double),parameter :: tolx = 1.e6_db   ! tolerance
-    real(double),parameter :: tolf = 1.e6_db  ! tolerance
+!    real(double),parameter :: tolx = 1.e6_db   ! tolerance
+!    real(double),parameter :: tolf = 1.e6_db  ! tolerance
+    real(double),parameter :: tolx = 1.e4_db   ! tolerance
+    real(double),parameter :: tolf = 1.e4_db  ! tolerance
     integer                     :: returnVal     ! status value
     real(double),dimension(1:maxLevels+1) :: xall
     real(double)       :: nTot
@@ -2989,6 +2996,7 @@ contains
         ! we solve from scratch for all the cells
         call calcAMRstatEq(octalArray, setupCoeffs=.false., propogateCoeffs=.true., &
                            firstTime=.true.,NeFactor=NeFactor)
+
       end if 
       deallocate(octalArray)
     end if
@@ -3034,6 +3042,7 @@ contains
     real(double),dimension(maxLevels) :: tempLevels
     real(double) :: tempNe
     real,dimension(SIZE(starSurface%nuArray)) :: photoFlux1
+    integer, parameter :: ntrial_max = 20
 !$MPI     logical :: dcAllocated
 !$MPI     integer, dimension(:), allocatable :: octalsBelongRank
 !$MPI     logical :: rankComplete
@@ -3202,7 +3211,8 @@ contains
                   stop
                 end if
                   
-                call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
+!                call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
+                call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf, hNu1(1:nNu1), &
                            nuArray1, nNu1, &
                            hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                            isBinary, thisOctal, iSubcell,   &
@@ -3234,7 +3244,8 @@ contains
                       xAll(maxLevels+1) = xAll(maxLevels+1) * tempNe
                       xAll(1:maxLevels) = xAll(1:maxLevels) * tempLevels
                       
-                      call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, &
+!                      call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf, &
+                      call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf, &
                            hNu1(1:nNu1), nuArray1, nNu1, &
                            hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                            isBinary, thisOctal, iSubcell, needRestart,maxNegatives=8)
@@ -3254,7 +3265,8 @@ contains
                                    thisOctal%rho(iSubcell),xAll(maxLevels+1),&
                                    thisOctal%nTot(iSubcell),xAll(1:maxLevels))
 
-                    call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, &
+!                    call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, &
+                    call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, &
                          tolf, hNu1(1:nNu1), nuArray1, nNu1, &
                          hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                          isBinary, thisOctal, iSubcell, needRestart,maxNegatives=6)
@@ -3266,7 +3278,8 @@ contains
                       call LTElevels(thisOctal%temperature(iSubcell),  &
                                      thisOctal%rho(iSubcell),xAll(maxLevels+1),&
                                      thisOctal%nTot(iSubcell),xAll(1:maxLevels),NeFactor=NeFactor)
-                      call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf,  &
+!                      call mnewt_stateq(grid, maxLevels+1, xAll, maxlevels+1, tolx, tolf,  &
+                      call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf,  &
                          hNu1(1:nNu1), nuArray1, nNu1, &
                          hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                          isBinary, thisOctal, iSubcell, needRestart,maxNegatives=12)
@@ -3885,12 +3898,16 @@ type(octal), pointer :: testOctal
     ! Solving for phi(T)*ne^2 + 2ne -n =0 for ne, and choosing the physical
     ! solution ... 
     Ne = (sqrt(nTot*phiT+1.0_db) -1.0_db)/phiT
-    Ne = min(Ne, nTot)  ! to avoid unphysical solution.
-    if (Ne<=0) Ne =nTot ! to avoid unphysical solution.
+    Ne = min(Ne, nTot)     ! to avoid unphysical solution.
+!    if (Ne<=0) Ne =nTot   ! to avoid unphysical solution.
+    if (Ne<=0) Ne =1.0d-40 ! to avoid unphysical solution.
    
     if (present(NeFactor)) Ne = Ne * NeFactor
     
-    levels = boltzsaha(allLevels,Ne,T) 
+!    levels = boltzsaha(allLevels,Ne,T)  ! This is ok for elemental function...
+    do i = 1, maxLevels
+       levels(i) = boltzsaha(allLevels(i),Ne,T)  
+    end do
   end subroutine LTElevels
 
 end module stateq_mod

@@ -1866,13 +1866,13 @@ end subroutine integratePathAMR
     escProb = 1.
     error = 0
     
-    ! THIS ROUTINE IS STILL UNDERDEVELOPEMENT
-    write(*,*) " "
-    write(*,*) " "
-    write(*,*) "ERROR:: Please set stark=F. This option is not yet available! "
-    stop
-    write(*,*) " "
-    write(*,*) " "
+!    ! THIS ROUTINE IS STILL UNDERDEVELOPEMENT
+!    write(*,*) " "
+!    write(*,*) " "
+!    write(*,*) "ERROR:: Please set stark=F. This option is not yet available! "
+!    stop
+!    write(*,*) " "
+!    write(*,*) " "
 
 
     ! locate this wavelength in the grid of wavelengths
@@ -2030,7 +2030,7 @@ end subroutine integratePathAMR
     ! line photons
     nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
     nu = cSpeed / (wavelength*angstromtocm)  ! freq of this photon
-    nu_p = nu/( 1.0d0+ (Vn2-Vn1) )
+    nu_p = nu
     if (.not.contPhoton) then
        tauAbsLine(1) = 0. 
        do i = 2, nTau          

@@ -19,7 +19,7 @@ disc_class.o: constants_mod.o dust_mod.o grid_mod.o gridtype_mod.o kind_mod.o \
 	octal_mod.o vector_mod.o
 disc_hydro_mod.o: amr_mod.o constants_mod.o density_mod.o gridtype_mod.o \
 	input_variables.o kind_mod.o lucy_mod.o octal_mod.o phasematrix_mod.o \
-	source_mod.o utils_mod.o vector_mod.o mpif.h
+	source_mod.o utils_mod.o vector_mod.o
 discwind_class.o: constants_mod.o grid_mod.o gridtype_mod.o kind_mod.o \
 	octal_mod.o vector_mod.o
 distortion_mod.o: blob_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
@@ -59,7 +59,7 @@ jets_mod.o: constants_mod.o gridtype_mod.o kind_mod.o octal_mod.o \
 luc_cir3d_class.o: constants_mod.o kind_mod.o octal_mod.o vector_mod.o \
 	zeus_data_class.o
 lucy_mod.o: amr_mod.o constants_mod.o grid_mod.o phasematrix_mod.o \
-	source_mod.o spectrum_mod.o timing.o vector_mod.o mpif.h
+	source_mod.o spectrum_mod.o timing.o vector_mod.o
 magnetic_mod.o: constants_mod.o gridtype_mod.o kind_mod.o octal_mod.o \
 	vector_mod.o
 math_mod.o: constants_mod.o grid_mod.o gridtype_mod.o kind_mod.o utils_mod.o \
@@ -70,7 +70,6 @@ miePhaseMatrix.o: phasematrix_mod.o
 octal_mod.o: kind_mod.o vector_mod.o
 opacity_lte_mod.o: atom_mod.o
 ostar_mod.o: constants_mod.o gridtype_mod.o input_variables.o vector_mod.o
-parallel_mod.o: mpif.h
 parameters_mod.o: constants_mod.o
 phasematrix_mod.o: utils_mod.o
 photon_mod.o: amr_mod.o constants_mod.o disc_class.o filter_set_class.o \
@@ -84,7 +83,7 @@ spectrum_mod.o: atom_mod.o constants_mod.o utils_mod.o
 sph_data_class.o: kind_mod.o
 stateq_mod.o: constants_mod.o grid_mod.o gridtype_mod.o hyd_col_coeff.o \
 	input_variables.o integratePath.o jets_mod.o math_mod.o \
-	opacity_lte_mod.o parallel_mod.o vector_mod.o mpif.h
+	opacity_lte_mod.o vector_mod.o
 surface_mod.o: amr_mod.o constants_mod.o gridtype_mod.o input_variables.o \
 	kind_mod.o utils_mod.o vector_mod.o
 torusMain.o: TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
@@ -92,10 +91,10 @@ torusMain.o: TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
 	discwind_class.o distortion_mod.o dust_mod.o filter_set_class.o \
 	grid_mod.o gridtype_mod.o image_mod.o input_variables.o inputs_mod.o \
 	integratePath.o isochrone_class.o jet_class.o jets_mod.o kind_mod.o \
-	luc_cir3d_class.o lucy_mod.o math_mod.o parallel_mod.o \
-	phasematrix_mod.o photon_mod.o puls_mod.o source_mod.o spectrum_mod.o \
-	sph_data_class.o stateq_mod.o surface_mod.o timing.o unix_mod.o \
-	utils_mod.o vector_mod.o wr104_mod.o mpif.h
+	luc_cir3d_class.o lucy_mod.o math_mod.o phasematrix_mod.o \
+	photon_mod.o puls_mod.o source_mod.o spectrum_mod.o sph_data_class.o \
+	stateq_mod.o surface_mod.o timing.o unix_mod.o utils_mod.o \
+	vector_mod.o wr104_mod.o
 TTauri_mod.o: amr_mod.o atom_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
 	kind_mod.o math_mod.o octal_mod.o parameters_mod.o stateq_mod.o \
 	utils_mod.o vector_mod.o

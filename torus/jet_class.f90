@@ -523,7 +523,7 @@ contains
     real(oct)  :: cellSize, d
     real(double) :: rho_disc, mass_cell
     TYPE(octalVector)     :: cellCentre
-    integer, parameter :: nr = 100
+    integer, parameter :: nr = 250
     real(double) :: r
     integer :: i
     !

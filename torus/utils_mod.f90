@@ -29,6 +29,11 @@ module utils_mod
      module procedure sortdouble
   end interface
 
+  interface logint
+     module procedure logint_single
+     module procedure logint_dble
+  end interface
+
 
 contains
 
@@ -161,7 +166,7 @@ contains
 
   ! logarithmic interpolation
 
-  REAL FUNCTION LOGINT(X,X1,X2,Y1,Y2)
+  REAL FUNCTION LOGINT_single(X,X1,X2,Y1,Y2)
     IMPLICIT NONE
     REAL X,X1,X2,Y1,Y2,ANS
     REAL(double) ::  LX,LX1,LX2,LY1,LY2,GR
@@ -182,8 +187,32 @@ contains
     endif
     GR=(LY2-LY1)/(LX2-LX1)
     ANS=LY1+GR*(LX-LX1)
-    LOGINT=EXP(ANS)
-  END FUNCTION LOGINT
+    LOGINT_single=EXP(ANS)
+  END FUNCTION LOGINT_SINGLE
+
+  REAL FUNCTION LOGINT_dble(X,X1,X2,Y1,Y2)
+    IMPLICIT NONE
+    REAL(double) ::  X,X1,X2,Y1,Y2,ANS
+    REAL(double) ::  LX,LX1,LX2,LY1,LY2,GR
+    if ( (x.le.0.0d0).or.(x1.le.0.0d0).or.(x2.le.0.0d0)) then
+       write(*,*) 'f.up in logint',x,x1,x2,y1,y2
+       stop
+    endif
+    LX=LOG(X)
+    LX1=LOG(X1)
+    LX2=LOG(X2)
+    LY1=LOG(MAX(Y1,1.d-90))
+    LY2=LOG(MAX(Y2,1.d-90))
+    if (lx1.eq.lx2) then
+       write(*,*) 'Error:: Bad x in logint.'
+       write(*,*) 'lx1 =', lx1
+       write(*,*) 'lx2 =', lx2
+       stop
+    endif
+    GR=(LY2-LY1)/(LX2-LX1)
+    ANS=LY1+GR*(LX-LX1)
+    LOGINT_dble=EXP(ANS)
+  END FUNCTION LOGINT_DBLE
 
 
   ! sort an array
