@@ -1139,7 +1139,7 @@ program torus
 !                      sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
 !                 write(*,*) " ---- New Optical depth  at r = 0.05 AU    is ", tauExt(ntau)
 !                 write(*,*) " ----                           at lambda =  ", lambdatau
-                 deallocate(lambda,tauExt,tauAbs,tauSca,contTau)
+                 deallocate(lambda,tauExt,tauAbs,tauSca,contTau,linePhotonalbedo)
 !                 write(*,*) ".. Finished rescaling scattering and absorption coefficients ... "
                  write(*,*) ".. Finished adding an acreation disc ... "
               end if
@@ -2835,7 +2835,7 @@ program torus
 !$OMP PRIVATE(outPhoton,intPathError) &
 !$OMP PRIVATE(nTau, escProb, spotPhoton) &
 !$OMP PRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray) &
-!$OMP PRIVATE(rHatinStar, positionOc) &
+!$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo) &
 
 !$OMP SHARED(grid) &
 
@@ -2876,6 +2876,7 @@ program torus
            allocate(tauExt(1:maxTau))
            allocate(tauAbs(1:maxTau))
            allocate(tauSca(1:maxTau))
+           allocate(linePhotonalbedo(1:maxTau))
            allocate(contTau(1:maxTau,1:nLambda)) 
            allocate(contWeightArray(1:nLambda))
 
@@ -3631,6 +3632,7 @@ program torus
            deallocate(tauSca)
            deallocate(tauExt)
            deallocate(tauAbs)
+           deallocate(linePhotonalbedo)
            deallocate(contTau)
            deallocate(contWeightArray)
 

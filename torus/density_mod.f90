@@ -18,12 +18,15 @@ module density_mod
 
   implicit none
   
-  public :: density, TTauriDensity,spiralWindDensity
+  public :: density,spiralWindDensity
   ! the specific definition of density functions should really be private, 
   ! but for now they are public... Better yet, they should be in their own module.
   ! See jets_mod for example. 
   
-  private :: print_geometry_list
+  private :: &
+       print_geometry_list, &
+       TTauriDensity, &
+       TTauriDensityFuzzy
   
 contains
 
@@ -51,6 +54,7 @@ contains
     case ("ttauri")
        !  using a routine this module
        out = TTauriDensity(r_vec, grid) ! [g/cm^3]
+!       out = TTauriDensityFuzzy(r_vec, grid) ! [g/cm^3]
        ! Double check the units
 
     case("testamr")
@@ -212,6 +216,76 @@ contains
     END IF
     
   end function TTauriDensity
+
+
+  ! Similar to TTauriDensity but density decreases exponentially near the edge
+ real function TTauriDensityFuzzy(point,grid,ignoreDisk) result(rho) 
+    ! given a position in the grid, we calculate the elapsed free-fall duration
+    ! from the disc surface, and then use the mass accretion rate at the time
+    ! when the material left the disc. 
+
+    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
+                               TTauriMstar
+    use flowSpeedVariables
+    
+    type(GRIDTYPE), intent(in)    :: grid
+    type(octalVector), intent(in) :: point
+    logical, optional, intent(in) :: ignoreDisk
+    real :: y
+
+    TYPE(octalVector) :: starPosn
+    TYPE(octalVector) :: pointVec
+
+    real(oct) :: r, theta, Rm,  Rin_fuzzy, Rout_fuzzy, Rc, dR, h
+    real(oct), parameter  :: scale = 0.3_oc
+    real :: TTauriMdotLocal
+
+    starPosn = grid%starPos1
+    pointVec = (point - starPosn) * 1.e10_oc
+    r = modulus( pointVec ) 
+
+    theta = ACOS(MIN(ABS(pointVec%z/r),0.995_oc))
+    Rm  = r / SIN(theta)**2
+
+    y = SIN(theta)**2 
+
+    IF (TTauriInFlow(point,grid,ignoreDisk)) then 
+    
+      ! we call the accretion rate function to determine the appropriate value.
+      TTauriMdotLocal = TTauriVariableMdot(point,grid,ignoreDisk)
+
+      rho = (TTauriMdotLocal * TTauriRstar) / (4.0 * pi * &
+            (TTauriRStar/TTauriRinner - TTauriRstar/TTauriRouter)) &
+            * (r**(-5.0/2.0) / SQRT( 2.0 * bigG * TTauriMstar )) &
+            * (SQRT( 4.0 - 3.0*y) / SQRT( 1.0 - y)) 
+
+      ! If the point is close to the edge, we make it fuzzy
+      if ( Rm < Rin_fuzzy ) then
+         h = (TTauriRouter-TTauriRinner)*scale
+         Rc = (TTauriRouter+TTauriRinner)*0.5_oc
+         Rin_fuzzy = TTauriRinner + h
+         Rout_fuzzy = TTauriRouter - h
+         dR = Rin_fuzzy-Rc         
+         rho = rho*EXP(-dR/Rc)
+      elseif ( Rm > Rout_fuzzy ) then
+         h = (TTauriRouter-TTauriRinner)*scale
+         Rc = (TTauriRouter+TTauriRinner)*0.5_oc
+         Rin_fuzzy = TTauriRinner + h
+         Rout_fuzzy = TTauriRouter - h
+         dR = Rc-Rout_fuzzy
+         rho = rho*EXP(-dR/Rc)
+      end if
+
+      rho = max(rho,1.e-25)
+    ELSE
+      rho = 1.e-25
+      RETURN
+    END IF
+    
+  end function TTauriDensityFuzzy
+
+
+
 
   pure function TTauriFlowSpeedFunc(bigR)
     ! returns the component of the T Tauri flow speed that is in the disc plane

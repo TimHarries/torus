@@ -1386,12 +1386,12 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
      tauSca(1:2) = 0.
 
      do i = 2, nTau, 1
-!        tauSca(i) = tauSca(i-1) + dlambda(i-1)*0.5*(ksca(i-1)+ksca(i))
-!        tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*0.5*(kabs(i-1)+kabs(i))
+        tauSca(i) = tauSca(i-1) + dlambda(i-1)*0.5*(ksca(i-1)+ksca(i))
+        tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*0.5*(kabs(i-1)+kabs(i))
 !        tauSca(i) = tauSca(i-1) + dlambda(i-1)*ksca(i-1)
 !        tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*kabs(i-1)
-        tauSca(i) = tauSca(i-1) + dlambda(i)*ksca(i-1)
-        tauAbs(i) = tauAbs(i-1) + dlambda(i)*kabs(i-1)
+!        tauSca(i) = tauSca(i-1) + dlambda(i)*ksca(i-1)
+!        tauAbs(i) = tauAbs(i-1) + dlambda(i)*kabs(i-1)
            if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
               write(*,*) "negative opacity"
               error = -70
@@ -1854,7 +1854,8 @@ end subroutine integratePathAMR
     real :: dL(maxTau)                           ! distance increment array
     
     real(double) :: projVel(maxTau)
-    real :: kabs(maxtau), ksca(maxtau)                ! opacities
+    real :: kabs(maxtau), ksca(maxtau)                ! opacitie
+    real :: kappa_total
 !    real :: temperature(maxtau)
     real    :: newL(maxtau)
     logical :: newInFlow(maxtau)
@@ -1970,8 +1971,8 @@ end subroutine integratePathAMR
     do i = 2, nTau, 1
        tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
        tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
-!       tauSca(i) = tauSca(i-1) + dL(i)*ksca(i-1)
-!       tauAbs(i) = tauAbs(i-1) + dL(i)*kabs(i-1)
+!       tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+!       tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
        if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
           write(*,*) "negative opacity"
           do
@@ -2013,6 +2014,8 @@ end subroutine integratePathAMR
      call linearResample_dble(L, projVel, nTAu, newL, newNtau)
      call linearResample(L, tauSca, nTAu, newL, newNtau)
      call linearResample(L, tauAbs, nTAu, newL, newNtau)
+     call linearResample(L, kSca, nTAu, newL, newNtau)
+     call linearResample(L, kAbs, nTAu, newL, newNtau)
      call linearResample(L, chiline, nTAu, newL, newNtau)
      call linearResample(L, N_HI, nTAu, newL, newNtau)
      call linearResample(L, temperature, nTAu, newL, newNtau)
@@ -2062,6 +2065,8 @@ end subroutine integratePathAMR
      call linearResample_dble(L, projVel, nTAu, newL, newNtau)
      call linearResample(L, tauSca, nTAu, newL, newNtau)
      call linearResample(L, tauAbs, nTAu, newL, newNtau)
+     call linearResample(L, kSca, nTAu, newL, newNtau)
+     call linearResample(L, kAbs, nTAu, newL, newNtau)
      call linearResample(L, chiline, nTAu, newL, newNtau)
      call linearResample(L, temperature, nTAu, newL, newNtau)
      call linearResample(L, N_HI, nTAu, newL, newNtau)
@@ -2070,6 +2075,8 @@ end subroutine integratePathAMR
 !     call linearResample_dble(L, projVel, nTAu, newL, newNtau)
 !     call log_log_resample(L, tauSca, nTAu, newL, newNtau)
 !     call log_log_resample(L, tauAbs, nTAu, newL, newNtau)
+!     call log_log_resample(L, kSca, nTAu, newL, newNtau)
+!     call log_log_resample(L, kAbs, nTAu, newL, newNtau)
 !     call log_log_resample(L, chiline, nTAu, newL, newNtau)
 !     call log_log_resample(L, temperature, nTAu, newL, newNtau)
 !     call log_log_resample(L, N_HI, nTAu, newL, newNtau)
@@ -2078,6 +2085,8 @@ end subroutine integratePathAMR
 !     call linearResample_dble(L, projVel, nTAu, newL, newNtau)
 !     call log_linear_resample(L, tauSca, nTAu, newL, newNtau)
 !     call log_linear_resample(L, tauAbs, nTAu, newL, newNtau)
+!     call log_linear_resample(L, kSca, nTAu, newL, newNtau)
+!     call log_linear_resample(L, kAbs, nTAu, newL, newNtau)
 !     call log_linear_resample(L, chiline, nTAu, newL, newNtau)
 !     call log_linear_resample(L, N_HI, nTAu, newL, newNtau)
 !     call log_linear_resample(L, temperature, nTAu, newL, newNtau)
@@ -2093,11 +2102,10 @@ end subroutine integratePathAMR
     ! line photons
     nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
     nu = cSpeed / (wavelength*angstromtocm)  ! freq of this photon
-!    nu_p = nu/(1.0d0+(Vn1-Vn2))  ! freq in the rest frame of local gas
-!    nu_p = nu/(1.0d0+Vn1)  ! freq in the rest frame of local gas
     nu_p = nu  ! freq in the rest frame of local gas
     if (.not.contPhoton) then
        tauAbsLine(1) = 1.0e-25
+       linePhotonAlbedo(i) = 1.0e-25
        do i = 2, nTau
           if (inFlow(i)) then
             ! Evaluating the values in the mid point
@@ -2107,6 +2115,11 @@ end subroutine integratePathAMR
              chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
              projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
 
+!             T_mid = temperature(i-1)
+!             Ne_mid = Ne(i-1)
+!             N_HI_mid = N_HI(i-1)
+!             chiline_mid = chiline(i-1)
+!             projVel_mid = projVel(i-1)
 
              T_mid = MAX(T_mid, 1000.0d0) ! [K]  To avoid a tiny Doppler width
 
@@ -2128,14 +2141,19 @@ end subroutine integratePathAMR
              chil = chil/(1.0+projVel_mid)
              dtau = chil*dL(i-1)
              ! line albedo added here - tjh
-             linePhotonAlbedo(i) = kSca(i) / (kSca(i) + kAbs(i) + chil)
+             kappa_total = (kSca(i) + kAbs(i) + chil)
+             if (kappa_total >0.0) then
+                linePhotonAlbedo(i) = kSca(i) / kappa_total
+             else
+                linePhotonAlbedo(i) = 0.0
+             end if
           else
              dtau = 1.0d-30
           end if
           tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
        enddo
+       escProb = 1.0
        tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau) + tauAbsLine(1:nTau)
-
     else
        escProb = 1.0
        tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau)    
@@ -2143,17 +2161,9 @@ end subroutine integratePathAMR
 
     
 
-   do  i = 1,nTau
-      write(*,*) i, tauSca(i),tauAbs(i),tauAbsLine(i)
-   enddo
-    
-    !  if ((tauExt(nTau) < 10.).and.(.not.contPhoton)) then
-    !     write(*,*) "in here",abs(vVec.dot.uHat)*cSpeed/1.e5
-    !     do i = 1, nTau
-    !        write(*,*) i,abs(projvel(i)*cspeed/1.e5),tauExt(i)
-    !     enddo
-    !  endif
-        
+!   do  i = 1,nTau
+!      write(*,*) i, tauSca(i),tauAbs(i),tauAbsLine(i)
+!   enddo
     
 
     ! continuum photons
@@ -2163,12 +2173,8 @@ end subroutine integratePathAMR
        tauCont(1,1:nlambda)=0.d0
        do j = 1, nLambda
           ! compute projected velocity of this bin  
-!          lam = (lambda0-wavelength) + grid%lamArray(j)
           lam = (wavelength-lambda0) + grid%lamArray(j)
-!          lam = grid%lamArray(j)
           nu = cSpeed / (lam*angstromtocm)  ! freq of this photon
-!          nu_p = nu/(1.0d0+(Vn1-Vn2))  ! freq in the rest frame of local gas
-!         nu_p = nu/(1.0d0+Vn1) ! freq in the rest frame of local gas
           nu_p = nu             ! freq in the rest frame of local gas
           do i = 2, nTau
              if (inFlow(i)) then
@@ -2177,9 +2183,16 @@ end subroutine integratePathAMR
                 Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
                 N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
                 chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-                T_mid = MAX(T_mid, 1000.0d0) ! [K]  To avoid a tiny Doppler width
                 projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
-                
+
+!                T_mid = temperature(i-1)
+!                Ne_mid = Ne(i-1)
+!                N_HI_mid = N_HI(i-1)
+!                chiline_mid = chiline(i-1)
+!                projVel_mid = projVel(i-1)
+
+
+                T_mid = MAX(T_mid, 1000.0d0) ! [K]  To avoid a tiny Doppler width                
                 ! relative velocity wrt the location of photon (CMF)
                 Vrel = projVel_mid -  Vn1
                 

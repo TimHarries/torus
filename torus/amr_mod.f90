@@ -4055,7 +4055,8 @@ CONTAINS
     pointVec = (point - starPosn) * 1.e10_oc
     
     IF (TTauriInFlow(point,grid)) THEN
-      thisOctal%rho(subcell) = TTauriDensity(point,grid)
+!      thisOctal%rho(subcell) = TTauriDensity(point,grid)
+      thisOctal%rho(subcell) = Density(point,grid)
       thisOctal%inFlow(subcell) = .TRUE.
       IF (useHartmannTemp) THEN
         ! need to calculate the flow point AS IF the magnetosphere
@@ -6385,21 +6386,22 @@ CONTAINS
           endif
 
 
-          ! weight with the inverse of the emission measure.
 !          S = thisOctal%etaCont(subcell) / &
 !               (thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1) )
 !          S_line = thisOctal%etaLine(subcell) / thisOctal%chiLine(subcell)
 !          EM      = S*d
 !          EM_line = S_line*d
+
           if (thisOctal%inflow(subcell)) then
-             EM      = thisOctal%etaCont(subcell)*dV
-             EM_line = thisOctal%etaLine(subcell)*dV
+!             EM      = thisOctal%etaCont(subcell)*dV
+             EM      = 1.0d0  ! no bias for contiuum
+             EM_line = thisOctal%chiLine(subcell)*dV
           else
              EM      = 1.0e-20
              EM_line = 1.0e-20
           end if
-          thisOctal%biasCont3D(subcell) = 1.0d0/EM 
-          thisOctal%biasLine3D(subcell) = 1.0d0/EM_line
+          thisOctal%biasCont3D(subcell) = EM 
+          thisOctal%biasLine3D(subcell) = EM_line
 
        endif
     enddo
@@ -6903,7 +6905,8 @@ CONTAINS
 
       DO iSubcell = 1, thisOctal%maxChildren, 1
 
-        newDensity = TTauriDensity(subcellCentre(thisOctal,iSubcell),grid)
+!        newDensity = TTauriDensity(subcellCentre(thisOctal,iSubcell),grid)
+         newDensity = Density(subcellCentre(thisOctal,iSubcell),grid)
           IF ( ABS((newDensity/(MAX(thisOctal%rho(iSubcell),1.e-25))-1.0)) > 0.1 ) &
             thisOctal%changed(iSubcell) = .TRUE.
          
