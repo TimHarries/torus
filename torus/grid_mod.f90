@@ -1479,9 +1479,9 @@ contains
     integer :: i1, i2, i3
     real :: r, mu, phi
     character(len=*) :: device
-    integer :: x, z
+    integer :: x, y, z
     real :: smallOffset
-    type(octalVector) :: samplePoint
+    type(octalVector) :: startPoint
 
 
     if (grid%adaptive) then
@@ -1491,7 +1491,7 @@ contains
 
        ! we will try to slightly offset our sampling points w.r.t.
        !   the subcell walls to reduce numerical problems.
-       smallOffset = grid%halfSmallestSubcell * 0.1
+       y = grid%octreeRoot%centre%y - 0.995 * grid%octreeRoot%subcellSize 
        
        tr(1) = grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
        tr(2) = 0.995 * grid%octreeRoot%subcellSize * 2.0 / real(resolution)
@@ -1503,22 +1503,20 @@ contains
           do j = 1, resolution
              x = tr(1) + tr(2)*i
              z = tr(1) + tr(2)*j
-             samplePoint = octalVector(x,grid%octreeRoot%centre%y+smallOffset,z)
-             plane(i,j) = amrGridDensity(grid%octreeRoot,samplePoint)
+             startPoint = octalVector(x,y,z)
+             plane(i,j) = columnDensity(grid,startPoint,yHatOctal,1.0)
           enddo
        enddo
-
-       !angle1 = 0.0
-       !angle2 = 0.0
-       !sampleFreq = 2.0
-       !call columnDensity(grid,angle1,angle2,resolution,sampleFreq,plane)   
-
-       where (plane < 1.0) 
-          plane = 1.0
+       
+       where (plane > 1.0) 
+          plane = log(plane)
+       elsewhere
+          plane = 0.0
        end where
-       plane = log10(plane)
-       fg = MAXVAL(plane)
-       bg = MINVAL(plane)
+       
+       !                    vvv this in an emperical factor to make the plot better
+       bg = MINVAL(plane) + 0.3 * (MAXVAL(plane) - MINVAL(plane))
+       fg = MAXVAL(plane) 
        call pgbegin(0,device,1,1)
        
        call pgvport(0.1,0.9,0.1,0.9)
@@ -1528,7 +1526,7 @@ contains
                    REAL(grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize),&
                    REAL(grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize))
        
-       call pgimag(plane, resolution, resolution, 1, resolution, 1, resolution, fg, bg, tr)
+       call pgimag(plane, resolution, resolution, 1, resolution, 1, resolution, bg, fg, tr)
        
        call pgbox('bcnst',0,0,'bcnst',0,0)
        call pgend

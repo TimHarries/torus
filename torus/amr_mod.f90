@@ -2139,178 +2139,49 @@ CONTAINS
   END FUNCTION decideSplit
 
 
-  SUBROUTINE columnDensity(grid,angle1,angle2,resolution,sampleFreq,densities)
+  FUNCTION columnDensity(grid,startPoint,direction,sampleFreq) RESULT(rho)
+                 
     ! integrates the density along a line through an amr grid.
-
-
-    !!! NB this needs to be tidied up!!!
 
     IMPLICIT NONE
 
-    TYPE(gridtype), INTENT(IN) :: grid
-    TYPE(octalVector) :: viewVec
-    REAL(KIND=octalKind), INTENT(INOUT) :: angle1, angle2 
-    INTEGER, INTENT(IN) :: resolution
-    REAL(KIND=octalKind), INTENT(IN) :: sampleFreq
-    REAL, DIMENSION(:,:), INTENT(OUT) :: densities
+    TYPE(gridtype), INTENT(IN)        :: grid
+    TYPE(octalVector), INTENT(IN)     :: startPoint
+    TYPE(octalVector), INTENT(IN)     :: direction
+    REAL(KIND=octalKind), INTENT(IN)  :: sampleFreq
 
-    INTEGER :: u, v, wall
-    REAL(KIND=octalKind) :: uReal, vReal
+    REAL                              :: rho
 
-    REAL(KIND=octalKind), DIMENSION(6) :: dist
-    REAL(KIND=octalKind), DIMENSION(6) :: Walldist
-    REAL(KIND=octalKind) :: WalldistCurrent
-    TYPE(octalVector), DIMENSION(6) :: wallNormal
-    TYPE(octalVector) :: wallNormalCurrent
-    TYPE(octalVector) :: reverseViewVec
-
-    REAL(KIND=octalKind) :: minusOne
-    REAL, DIMENSION(:), ALLOCATABLE :: distances, values
-    REAL, DIMENSION(:), ALLOCATABLE :: dummy
-    REAL, DIMENSION(:,:), ALLOCATABLE :: dummyPops
-    TYPE(vector), DIMENSION(:), ALLOCATABLE :: dummyVel
+    INTEGER, PARAMETER                :: maxSamples = 10000
+    REAL, DIMENSION(maxSamples)       :: distances, densities
+    REAL, DIMENSION(maxSamples)       :: dummy
+    REAL, DIMENSION(maxSamples,1)     :: dummyPops
+    TYPE(vector),DIMENSION(maxSamples):: dummyVel
     
-    INTEGER :: nSamples, i
-    INTEGER :: halfResolution
-    LOGICAL :: hitCore
+    INTEGER :: nSamples, iSample
 
-    TYPE(octalVector) :: startPoint, endPoint
-    TYPE(octalVector) :: viewPoint
-    LOGICAL :: found
-    REAL(KIND=octalKind) :: cubeSize
-    REAL :: rho
-    LOGICAL :: abandon
-    INTEGER :: maxSamples
     INTEGER :: error
 
-
-    !!! NB this needs to be tidied up!!!
-
-
-    ALLOCATE(distances(maxSamples),values(maxSamples))
-    ALLOCATE(dummy(maxSamples),dummyVel(maxSamples))
-    ALLOCATE(dummyPops(maxSamples,1))
-    cubeSize = grid%octreeRoot%subcellSize * 0.99_oc 
-            ! might want to make this slightly smaller?
-            
-    minusOne = -1.0_oc
     error = 0 
 
-    ! define the planes of the grid walls
-    wallNormal(1) = xHatOctal  
-    wallNormal(2) = minusOne * xHatOctal  
-    wallNormal(3) = yHatOctal  
-    wallNormal(4) = minusOne * yHatOctal  
-    wallNormal(5) = zHatOctal  
-    wallNormal(6) = minusOne * zHatOctal  
-    wallDist(1) = 0.99 * cubesize
-    wallDist(2) = 0.99 * cubesize
-    wallDist(3) = 0.99 * cubesize
-    wallDist(4) = 0.99 * cubesize
-    wallDist(5) = 0.99 * cubesize
-    wallDist(6) = 0.99 * cubesize
-
-    halfResolution = resolution / 2  -1
-
-
-    DO u = -halfResolution, halfResolution,  1
-      uReal = 1.0_oc * REAL(u,KIND=octalKind) * &
-                       cubeSize / REAL(halfResolution,KIND=octalKind) +&
-                       0.01_oc * cubeSize / REAL(halfResolution,KIND=octalKind)
-                       
-      DO v = -halfResolution, halfResolution,  1
-      vReal = 1.0_oc * REAL(v,KIND=octalKind) * &
-                       cubeSize / REAL(halfResolution,KIND=octalKind) + &  
-                       0.01_oc * cubeSize / REAL(halfResolution,KIND=octalKind)
-      abandon = .FALSE.
-
-      ! we start tracing the ray at the point where it hits the nearest
-      !   wall
-      viewVec = octalVector(0.0,1.0,0.0)
-      viewPoint = octalVector(uReal,0.0_oc,vReal)
-      viewPoint = rotateX(viewPoint,angle1)
-      viewPoint = rotateZ(viewPoint,angle2)
-      viewVec = rotateX(viewVec,angle1)
-      viewVec = rotateZ(viewVec,angle2)
-     
-      DO wall = 1, 6
-      
-        dist(wall) = modulus( viewPoint - intersectionLinePlane( &
-              viewPoint,viewVec,wallNormal(wall),wallDist(wall),found))
-
-        IF ( found .EQV. .FALSE. ) dist(wall) = HUGE(1.0)
-        IF ( dist(wall) < 0.0_oc ) dist(wall) = HUGE(1.0) 
-
-      END DO
-
-      IF ( MINVAL(dist) > (2.0_oc * cubeSize)) THEN
-        abandon = .TRUE.
-      END IF
-
-      wallNormalCurrent = wallNormal(TRANSFER(MINLOC(dist),1))
-      wallDistCurrent =  wallDist(TRANSFER(MINLOC(dist),1))
-      startPoint = intersectionLinePlane( viewPoint,viewVec, &
-                wallNormalCurrent,wallDistCurrent,found)
-      
-      ! we stop tracing the ray at the point where it hits the nearest
-      !   wall in the negative direction
-      viewPoint = octalVector(uReal,0.0_oc,vReal)
-      viewPoint = rotateX(viewPoint,angle1)
-      viewPoint = rotateZ(viewPoint,angle2)
-      reverseViewVec = minusOne * viewVec 
-       
-      DO wall = 1, 6
-      
-        dist(wall) = modulus( viewPoint - intersectionLinePlane( &
-              viewPoint,reverseViewVec,wallNormal(wall),wallDist(wall),found))
-
-        IF ( found .EQV. .FALSE. ) dist(wall) = HUGE(1.0)
-        IF ( dist(wall) < 0.0_oc ) dist(wall) = HUGE(1.0) 
-
-      END DO
-
-      IF ( MINVAL(dist) > (2.0_oc * cubeSize)) THEN
-        abandon = .TRUE.
-      END IF
-
-      wallNormalCurrent = wallNormal(TRANSFER(MINLOC(dist),1))
-      wallDistCurrent =  wallDist(TRANSFER(MINLOC(dist),1))
-      endPoint = intersectionLinePlane( viewPoint,reverseViewVec, &
-                wallNormalCurrent,wallDistCurrent,found)
-    
-      IF (( .NOT. abandon ) .AND. ( inOctal(grid%octreeRoot,startPoint) ) &
-           .AND. ( inOctal(grid%octreeRoot,endPoint) )) THEN
-      
-        
-        nSamples = 0
-        
-        CALL startReturnSamples(startPoint,viewVec,grid,sampleFreq, &
-                     nSamples,maxSamples,distances,dummy,dummy, &
-                     dummyVel,dummy,dummy,dummyPops,values,.false.,&
-                     hitCore,.false.,1,error)
+    nSamples = 0
+                
+    CALL startReturnSamples(startPoint,direction,grid,sampleFreq, &
+                 nSamples,maxSamples,distances,dummy,dummy, &
+                 dummyVel,dummy,dummy,dummyPops,densities,.false.,&
+                 hitCore,.false.,1,error)
  
-        IF (nSamples == 1) THEN  
-          rho = 0.0
-        ELSE
-          rho = 0.0
-          DO i = 2, nSamples, 1
-             rho = rho + ( (values(i) + values(i-1)) / 2.0 ) * &
-                        (distances(i-1) - distances(i)  )
-          END DO
-        END IF
+    IF (nSamples <= 1 .OR. error /= 0)  THEN  
+      rho = 0.0
+    ELSE
+      rho = 0.0
+      DO iSample = 2, nSamples, 1
+         rho = rho + ( (densities(iSample) + densities(iSample-1)) / 2.0 ) * &
+                    ABS(distances(iSample-1) - distances(iSample)  )
+      END DO
+    END IF
 
-      ELSE
-        rho = 0.0
-      END IF
-    densities(u+halfResolution+1,v+halfResolution+1) = rho
-
-    END DO
-  END DO
-  DEALLOCATE(distances,values)
-  DEALLOCATE(dummy,dummyVel)
-  DEALLOCATE(dummyPops)
-
-  END SUBROUTINE columnDensity
+  END FUNCTION columnDensity
 
 
 
