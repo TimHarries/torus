@@ -39,6 +39,7 @@ module grid_mod
      integer :: nphi                             ! size of polar grid in phi
      integer :: na1, na2, na3                    ! generic 3d grid sizes
      integer :: nlambda                          ! number of wavelength points
+     logical :: flatspec                         ! flat spectrum being computed
      logical :: cartesian                        ! is the grid cartesian?
      logical :: isotropic                        ! are the axes evenly spaced?
      logical :: hitcore
@@ -134,6 +135,8 @@ contains
     initCartesianGrid%lineEmission = .false. ! the default
 
     ! if the spectrum is flat one only needs on wavelength point
+
+    initCartesianGrid%flatspec = flatspec
 
     if (flatspec) ilambda = 1
 
@@ -337,6 +340,8 @@ contains
     initPolarGrid%lineEmission = .false. ! the default
 
     iLambda = nLambda
+
+    initPolarGrid%flatspec = flatspec
 
     if (flatspec) iLambda = 1
 

@@ -117,7 +117,7 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
 
   ! locate this wavelength in the grid of wavelengths
 
-  if ((grid%nLambda == 1).or.(grid%doRaman)) then
+  if (grid%flatspec.or.(grid%doRaman)) then
      iLambda = 1
   else
      call hunt(grid%lamArray, grid%nLambda, wavelength, iLambda)
