@@ -31,6 +31,7 @@ module constants_mod
   real, parameter :: micron = 1.e-6
   real, parameter :: angsToMicrons = angstrom/micron
   real, parameter :: centimeter = 1.e-2
+  real, parameter :: micronTocm = micron/centimeter
   real, parameter :: angstromToCm = angstrom/centimeter
   real, parameter :: rSol = 6.96e10              ! cm
   real, parameter :: auToCm = 1.495979e13

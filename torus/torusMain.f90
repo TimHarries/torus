@@ -34,6 +34,7 @@ program torus
   use path_integral
   use puls_mod
   use input_variables         ! variables filled by inputs subroutine
+  use lucy_mod
 
   implicit none
 
@@ -59,8 +60,7 @@ program torus
   real :: probLinePhoton 
   real :: weightContPhoton, weightLinePhoton
   real :: chanceLine, chanceContinuum
-
-  
+  real :: sTot
   ! optical depth variables
 
   integer, parameter :: maxTau = 100000, maxLambda = 200
@@ -241,6 +241,10 @@ program torus
   real :: chanceSpot                     ! chance of spot
   logical :: spotPhoton                  ! photon from spot?
 
+  real :: loglamStart, logLamEnd
+
+  real :: chanceDust, totDustContinuumEmission
+
   ! binary parameters
 
   type(VECTOR) :: starPos1, starPos2
@@ -365,6 +369,11 @@ program torus
 
   if (geometry == "disk") rotateView = .true.
 
+  if (geometry == "wr104") then
+     rotateView = .true.
+     rotateDirection = 1.
+  endif
+
   ! switches for line emission
 
   if (lineEmission) then
@@ -451,20 +460,42 @@ program torus
   allocate(yArray(1:nLambda))
   allocate(errorArray(1:nOuterLoop,1:nLambda))
 
-  deltaLambda = (lamEnd - lamStart) / real(nLambda)
 
-  xArray(1) = lamStart + deltaLambda/2.
-  yArray(1)%i = 0.
-  yArray(1)%q = 0.
-  yArray(1)%u = 0.
-  yArray(1)%v = 0.
-  do i = 2, nLambda
-     xArray(i) = xArray(i-1) + deltaLambda
-     yArray(i)%i = 0.
-     yArray(i)%q = 0.
-     yArray(i)%u = 0.
-     yArray(i)%v = 0.
+
+
+  if (lamLinear) then
+     deltaLambda = (lamEnd - lamStart) / real(nLambda)
+
+     xArray(1) = lamStart + deltaLambda/2.
+     yArray(1)%i = 0.
+     yArray(1)%q = 0.
+     yArray(1)%u = 0.
+     yArray(1)%v = 0.
+     do i = 2, nLambda
+        xArray(i) = xArray(i-1) + deltaLambda
+        yArray(i)%i = 0.
+        yArray(i)%q = 0.
+        yArray(i)%u = 0.
+        yArray(i)%v = 0.
+     enddo
+  else
+
+
+     logLamStart = log10(lamStart)
+     logLamEnd = log10(lamEnd)
+
+     do i = 1, nLambda
+        xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+        xArray(i) = 10.**xArray(i)
+        yArray(i) = STOKESVECTOR(0.,0.,0.,0.)
+        write(*,*) i, xArray(i)
+     enddo
+  endif
+
+  do i = 1, nLambda
+     grid%lamArray(i) = xArray(i)
   enddo
+  grid%nLambda = nLambda
 
 
   errorArray(1:nOuterLoop,1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
@@ -482,6 +513,8 @@ program torus
      select case(geometry)
      case("torus")
         call fillGridTorus(grid, rho, rTorus, rOuter)
+     case("wr104")
+        call fillGridWR104(grid, rho, teff)
      case("sphere")
         call fillGridSpheriod(grid, rho, radius, kFac)
      case("flared")
@@ -604,6 +637,9 @@ program torus
         call distortWindCollision(grid, momRatio, binarySep)
 
   end select
+
+
+
   
   if (enhance) then
      nVec = 40
@@ -622,10 +658,10 @@ program torus
 
   if (.not.grid%lineEmission) then
      do i = 1, nLambda
-        nu = cSpeed / (xArray(i)*angstromToCm)
-        fac= log(2.)+log(hConst) + 3.*log(nu)
-        sourceSpectrum(i) = exp(fac)/(exp(hConst*nu/(kConst*Teff))-1.)
+        sourceSpectrum(i) = bLambda(dble(xArray(i)), dble(teff))
+        stot = stot + sourceSpectrum(i)
      enddo
+     sourceSpectrum  = sourceSpectrum / stot
   endif
 
 
@@ -648,13 +684,16 @@ program torus
      do i = 1, nLambda
         do j = 1, nMumie
            mu = 2.*real(j-1)/real(nMumie-1)-1.
-           thislam = lamStart+(lamEnd-lamStart)*real(i-1)/real(nLambda-1)
-           call mieDistPhaseMatrix(aMin, aMax, qDist, thislam, &
+           call mieDistPhaseMatrix(aMin, aMax, qDist, xArray(i), &
                 mu, miePhase(i,j), grainType)
 
         enddo
      enddo
      write(*,'(a)') "Completed."
+  endif
+
+  if (lucyRadiativeEq) then
+     call lucyRadiativeEquilibrium(grid, miePhase, nMuMie, nLambda, xArray, teff)
   endif
 
 
@@ -800,13 +839,11 @@ program torus
 
      ! zero the output arrays
 
-     xArray(1) = lamStart + deltaLambda/2.
      yArray(1)%i = 0.
      yArray(1)%q = 0.
      yArray(1)%u = 0.
      yArray(1)%v = 0.
      do i = 2, nLambda
-        xArray(i) = xArray(i-1) + deltaLambda
         yArray(i)%i = 0.
         yArray(i)%q = 0.
         yArray(i)%u = 0.
@@ -862,6 +899,8 @@ program torus
         select case(geometry)
         case("torus")
 !           call fillGridTorus(grid, rho, rTorus, rOuter)
+        case("wr104")
+!
         case("sphere")
            call fillGridSpheriod(grid, rho, radius, kFac)
         case("ellipse")
@@ -1020,7 +1059,7 @@ program torus
                        VECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
-                       coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk)
+                       coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk, useInterp)
 
      write(*,'(a,1pe10.3)') "Optical depth in x-axis from centre: ",tauExt(ntau)
      write(*,'(a,1pe10.3)') "Absorption depth in x-axis from centre: ",tauAbs(ntau)
@@ -1031,7 +1070,7 @@ program torus
                        VECTOR(0.,1.,0.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
-                       coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk)
+                       coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk, useInterp)
 
 
      write(*,'(a,1pe10.3)') "Optical depth in y-axis from centre: ",tauExt(ntau)
@@ -1043,7 +1082,7 @@ program torus
                        VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
-                       coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk)
+                       coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk, useInterp)
 
 
      write(*,'(a,1pe10.3)') "Optical depth in z-axis from centre: ",tauExt(ntau)
@@ -1058,7 +1097,7 @@ program torus
           tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
           .false., lamStart, lamEnd, nLambda, contTau, &
           hitCore, thinLine,.false., rStar, coolStarPosition, 1., &
-          .false., 0, 0, 0., 0., 0., junk)
+          .false., 0, 0, 0., 0., 0., junk, useInterp)
 
      write(*,'(a,1pe10.3)') "Optical depth to observer: ",tauExt(ntau)
      write(*,'(a,1pe10.3)') "Absorption depth to observer: ",tauAbs(ntau)
@@ -1075,7 +1114,7 @@ program torus
                 tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
                 .false., lamStart, lamEnd, nLambda, contTau, &
                 hitCore, thinLine,.false., rStar, coolStarPosition, 1., &
-                .false., 0, 0, 0., 0., 0., junk)
+                .false., 0, 0, 0., 0., 0., junk, useInterp)
            write(*,'(a,1pe10.3,1pe10.3,1pe10.3)') "Optical depths: ",tauExt(nTau),tauAbs(nTau),tauSca(nTau)
         enddo
      endif
@@ -1087,6 +1126,15 @@ program torus
      weightLinePhoton = 0.
      weightContPhoton = 1.
 
+
+     if (mie) then
+        call computeProbDist(grid, totLineEmission, &
+             totDustContinuumEmission,lamline, .false.)
+        totDustContinuumEmission = totdustContinuumEmission
+        chanceDust = totDustContinuumEmission/(totDustContinuumEmission+grid%lCore/1.e30)
+        write(*,*) "totdustemission",totdustcontinuumemission
+        write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
+     endif
 
 
      if (geometry == "hourglass") then
@@ -1129,15 +1177,16 @@ program torus
            endif
         endif
 
-        write(*,'(a)') "mu axis"
-        do i = 1, grid%nMu
-           write(*,*) i,acos(grid%muAxis(i))*radtodeg, &
-                             grid%muProbDistLine(grid%nr/2,i)
-        enddo
-        write(*,'(a)') "Phi axis"
-        do i = 1, grid%nPhi
-           write(*,*) i,grid%phiAxis(i)*radtodeg, grid%phiProbDistLine(grid%nr/2,grid%nmu/2,i)
-        enddo
+!        write(*,'(a)') "mu axis"
+!        do i = 1, grid%nMu
+!           write(*,*) i,acos(grid%muAxis(i))*radtodeg, &
+!                             grid%muProbDistLine(grid%nr/2,i)
+!        enddo
+!        write(*,'(a)') "Phi axis"
+!        do i = 1, grid%nPhi
+!           write(*,*) i,grid%phiAxis(i)*radtodeg, grid%phiProbDistLine(grid%nr/2,grid%nmu/2,i)
+!        enddo
+
 
 
         if (geometry == "donati") totWindContinuumEmission = 0.
@@ -1363,7 +1412,8 @@ program torus
                 secondSource, secondSourcePosition, lumRatio, &
                 ramanSourceVelocity, vo6, contWindPhoton, directionalWeight, useBias, theta1, theta2, &
 		chanceHotRing, &
-                nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton)
+                nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, chanceDust, &
+                narrowBandImage, vmin, vmax)
 	  
            if (thisPhoton%linePhoton) then
               junk1 = junk1 + thisPhoton%position%z
@@ -1456,8 +1506,8 @@ program torus
                       secondSource, secondSourcePosition, lumRatio, &
                       ramanSourceVelocity, vo6, contWindPhoton, directionalWeight, useBias, &
 		      theta1, theta2, chanceHotRing,  &
-                      nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton)
-
+                      nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, chanceDust, &
+                      narrowBandImage, vMin, vMax)
                  if (thisPhoton%resonanceLine) then
                     r1 = real(i)/real(nPhotons/nOuterLoop)
                     thisPhoton%lambda = xArray(1) + r1*(xArray(nLambda)-xArray(1))
@@ -1488,7 +1538,7 @@ program torus
                    lambda, tauExt, tauAbs, tauSca, maxTau , nTau, opaqueCore, &
                    escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                    nLambda, contTau, hitCore, thinLine,.false., rStar,&
-                   coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk)
+                   coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk, useInterp)
               thisLam = thisPhoton%lambda + (thisPhoton%velocity .dot. viewVec) * 1031.928
               j = findIlambda(thisLam, o6xArray, no6pts, ok)
               if (ok) then
@@ -1513,7 +1563,7 @@ program torus
                    lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
                    escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                    nLambda, contTau, hitCore, thinLine,.false., rStar,&
-                   coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk)
+                   coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk, useInterp)
 
 
               call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
@@ -1558,7 +1608,7 @@ program torus
                     statArray(iLambda) = statArray(iLambda) + 1.
                  endif
                  if (stokesImage) then
-                    thisVel = 0.
+                    thisVel = observedLambda
                     call addPhotonToImage(viewVec, rotationAxis, obsImage, thisPhoton, thisVel, weight)
                  endif
                  if (doPVimage) then
@@ -1665,7 +1715,7 @@ program torus
                 lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
                 escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                 nLambda, contTau, hitCore, thinLine,.false., rStar, &
-                coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk)
+                coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk, useInterp)
 
 
 
@@ -1776,7 +1826,7 @@ program torus
                          obsPhoton%position, obsPhoton%direction, grid, &
                          lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
                          escProb, obsPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
-                         thinLine, .false., rStar, coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk)
+                         thinLine, .false., rStar, coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk, useInterp)
                     vray = -(obsPhoton%velocity .dot. outVec)
                     vovercsqr = modulus(thisPhoton%velocity)**2
                     fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)
@@ -1803,7 +1853,7 @@ program torus
                       lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
                       escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
                       nLambda, contTau, hitCore, &
-                      thinLine, redRegion, rStar, coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk)
+                      thinLine, redRegion, rStar, coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk, useInterp)
 
 
 
@@ -1841,7 +1891,13 @@ program torus
                        yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*weight
                        statArray(iLambda) = statArray(iLambda) + 1.
                     endif
-                    thisVel = (1./(1./observedLambda  + 1./1215.67))/1031.928-1.
+                    if (doRaman) then
+                       thisVel = (1./(1./observedLambda  + 1./1215.67))/1031.928-1.
+                    else
+                       thisVel = observedLambda
+                    endif
+
+
 
                     if (stokesImage) then
                        call addPhotonToImage(viewVec,  rotationAxis, obsImage, obsPhoton, thisVel, weight)
@@ -1962,7 +2018,7 @@ program torus
                       thisPhoton%direction, grid, &
                       lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
                       escProb, thisPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
-                      thinLine, .false.,rStar, coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk)
+                      thinLine, .false.,rStar, coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk, useInterp)
 
 
 
@@ -2147,7 +2203,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
         x  = 1.d0
      endif
   else
-     x = 1.d0/(xArray(2)-xArray(1))
+     x = 1.d0
   endif
 
 

@@ -148,7 +148,9 @@ module image_mod
      real :: thisVel, velincgs
      real :: weight
 
-     velIncgs = thisVel * cSpeed/1.e5
+     velIncgs = thisVel! * cSpeed/1.e5
+
+!     write(*,*) thisvel,thisimage%vMax,thisimage%vMin
 
      if ((velincgs < thisImage%vMax) .and. (velincgs > thisImage%vMin)) then
 

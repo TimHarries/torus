@@ -282,7 +282,8 @@ contains
        pencilBeam, secondSource, secondSourcePosition, lumRatio, &
        ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias, &
        theta1,theta2, chanceHotRing, &
-       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton)
+       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, chanceDust, &
+       narrowBandImage, narrowBandMin, narrowBandMax)
 
     type(PHOTON) :: thisPhoton                 ! the photon
     type(GRIDTYPE) :: grid                     ! the opacity grid
@@ -291,6 +292,8 @@ contains
     real :: weightContPhoton, weightLinePhoton ! the photon weights
     logical :: contWindPhoton                  ! is this continuum photon produced in the wind
     logical :: ok
+    logical :: narrowBandImage
+    real :: narrowBandMin, narrowBandMax  ! parameters for a narrow band image
     real :: lumRatio
     real :: vo6
     real :: x,y,z
@@ -317,28 +320,30 @@ contains
     type(VECTOR) :: secondSourcePosition       ! the position of it
     type(VECTOR) :: ramanSourceVelocity        ! what it says
 
+    real :: chanceDust
 
-  ! Spot stuff
-  
-  integer :: nSpot                       ! number of spots
-  real :: fSpot                          ! factional area coverage of spots
-  real :: thetaSpot, phiSpot             ! spot coords
-  logical :: spotPhoton
-  
-  type(VECTOR) :: rSpot, tVec
 
-  real :: chanceSpot
-  real :: maxTheta
-  real :: cosThisTheta
-  real :: rotAngle
+    ! Spot stuff
 
+    integer :: nSpot                       ! number of spots
+    real :: fSpot                          ! factional area coverage of spots
+    real :: thetaSpot, phiSpot             ! spot coords
+    logical :: spotPhoton
+
+    type(VECTOR) :: rSpot, tVec
+
+    real :: chanceSpot
+    real :: maxTheta
+    real :: cosThisTheta
+    real :: rotAngle
+    real :: tot
 
     real :: biasWeight
 
     real :: theta1, theta2                     ! defines hot ring of accretion for TTaus
     real :: chanceHotRing                      ! chance of core photon in ttauri accretion ring
     real :: thisTheta, thisPhi
-    
+
     real :: tempXProbDist(2000)
     real :: tempYProbDist(2000)
     real :: tempZProbDist(2000)
@@ -346,7 +351,14 @@ contains
     real :: tempmuProbDistLine(2000)
     real :: tempphiProbDistLine(2000)
 
+    logical :: photonFromEnvelope
+    real :: tempSpectrum(2000)
+    real :: thisFreq
+    integer :: i
+
     ! set up the weights and the stokes intensities (zero at emission)
+
+    photonFromEnvelope = .false.
 
     thisPhoton%resonanceLine = .false.
 
@@ -395,11 +407,17 @@ contains
     endif
 
 
+
+    call random_number(r)
+    if (r < chanceDust) then
+       photonFromEnvelope = .true.
+    endif
+
+
+
     ! if it is a continuum photon initialize its position
 
     if (thisPhoton%contPhoton) then
-
-
 
 
        if (grid%cartesian.and.(.not.grid%lineEmission)) then
@@ -408,6 +426,59 @@ contains
           ! the second source position
 
           thisPhoton%position = VECTOR(0.,0.,0.)
+
+
+          if (photonFromEnvelope) then
+             ok = .false.
+             do while(.not.ok)
+                call random_number(r1)
+                tempXprobdist(1:grid%nx) = grid%xProbDistCont(1:grid%nx)
+                call locate(grid%xProbDistCont, grid%nx, r1, i1)
+                t1 = (r1 - grid%xProbDistCont(i1))/(grid%xProbDistCont(i1+1)-grid%xProbDistCont(i1))
+                x = grid%xAxis(i1) + t1 * (grid%xAxis(i1+1)-grid%xAxis(i1))
+
+
+                tempYProbDist(1:grid%ny) = grid%yProbDistCont(i1,1:grid%ny) + t1 * &
+                     (grid%yProbDistCont(i1+1,1:grid%ny) - grid%yProbDistCont(i1,1:grid%ny))
+                tempYProbDist(1:grid%ny) = tempYprobDist(1:grid%ny) / tempYprobDist(grid%ny)
+
+                call random_number(r2)
+                call locate(tempYProbDist, grid%ny, r2, i2)
+                t2 = (r2 - tempYProbDist(i2)) / &
+                     (tempYProbDist(i2+1) - tempYProbDist(i2))
+                y = grid%yAxis(i2) + t2 * (grid%yAxis(i2+1)-grid%yAxis(i2))
+
+                tempZProbDist(1:grid%nz) = &
+                     (1.d0-t1)*(1.d0-t2) * grid%zProbDistCont(i1  , i2  , 1:grid%nz) +&
+                     (   t1)*(1.d0-t2) * grid%zProbDistCont(i1+1, i2  , 1:grid%nz) +&
+                     (1.d0-t1)*(   t2) * grid%zProbDistCont(i1  , i2+1, 1:grid%nz) +&
+                     (   t1)*(   t2) * grid%zProbDistCont(i1+1, i2+1, 1:grid%nz)
+                tempZProbDist(1:grid%nz) = tempZprobDist(1:grid%nz) / tempZprobDist(grid%nz)
+
+
+                call random_number(r3)
+                call locate(tempZProbDist, grid%nz, r3, i3)
+                t3 = (r3 - tempZProbDist(i3)) / &
+                     (tempZProbDist(i3+1) - tempZProbDist(i3))
+                z = grid%zAxis(i3) + t3 * (grid%zAxis(i3+1)-grid%zAxis(i3))
+
+
+                thisPhoton%position  = VECTOR(x,y,z)
+
+                if (outSideGrid(thisPhoton%position,grid).or.(.not.grid%inUse(i1,i2,i3))) then
+                   !                      write(*,*) "Mistake in initPhoton",thisPhoton%position
+                   !                      write(*,*) i1,i2,i3,t1,t2,t3
+                   ok = .false.
+                else
+                   ok = .true.
+                endif
+
+
+             enddo
+             biasWeight =  biasWeight * &
+                  (1.d0/ interpGridScalar2(grid%biasCont3d,grid%nx,grid%ny,grid%nz,i1,i2,i3,t1,t2,t3))
+
+          endif
 
 
        else
@@ -450,12 +521,12 @@ contains
                         (tempZProbDist(i3+1) - tempZProbDist(i3))
                    z = grid%zAxis(i3) + t3 * (grid%zAxis(i3+1)-grid%zAxis(i3))
 
-                   
+
                    thisPhoton%position  = VECTOR(x,y,z)
 
                    if (outSideGrid(thisPhoton%position,grid).or.(.not.grid%inUse(i1,i2,i3))) then
-!                      write(*,*) "Mistake in initPhoton",thisPhoton%position
-!                      write(*,*) i1,i2,i3,t1,t2,t3
+                      !                      write(*,*) "Mistake in initPhoton",thisPhoton%position
+                      !                      write(*,*) i1,i2,i3,t1,t2,t3
                       ok = .false.
                    else
                       ok = .true.
@@ -464,7 +535,7 @@ contains
 
                 enddo
                 biasWeight =  biasWeight * &
-                        (1.d0/ interpGridScalar2(grid%biasCont3d,grid%nx,grid%ny,grid%nz,i1,i2,i3,t1,t2,t3))
+                     (1.d0/ interpGridScalar2(grid%biasCont3d,grid%nx,grid%ny,grid%nz,i1,i2,i3,t1,t2,t3))
 
              else
 
@@ -502,86 +573,86 @@ contains
              r = grid%rCore*1.0001d0
              select case(grid%geometry)
 
-                case("disk")
-                   if (nSpot > 0) then
-		      rSpot = VECTOR(cos(phiSpot)*sin(thetaSpot),sin(phiSpot)*sin(thetaSpot),cos(thetaSpot))
-                      if (nSpot == 1) then
-                         maxTheta = Pi * fSpot   
-                      else
-                         maxTheta = Pi * fSpot * 0.5
-                      endif
+             case("disk")
+                if (nSpot > 0) then
+                   rSpot = VECTOR(cos(phiSpot)*sin(thetaSpot),sin(phiSpot)*sin(thetaSpot),cos(thetaSpot))
+                   if (nSpot == 1) then
+                      maxTheta = Pi * fSpot   
+                   else
+                      maxTheta = Pi * fSpot * 0.5
+                   endif
 
-                      spotPhoton = .false.
+                   spotPhoton = .false.
 
+                   call random_number(r1)
+                   if (r1 < chanceSpot) then
+                      spotPhoton = .true.
                       call random_number(r1)
-                      if (r1 < chanceSpot) then
-                         spotPhoton = .true.
+                      cosThisTheta = r1 * (1. - cos(maxTheta)) + cos(maxTheta)    
+                      thisTheta = acos(cosThisTheta)
+                      call random_number(r1)
+                      thisPhi = twoPi * r1	
+                      rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
+
+                      tVec = zAxis .cross. rSpot  
+                      call normalize(tVec)
+                      rotAngle = zAxis .dot. rSpot
+                      rotAngle = acos(rotAngle)
+                      rHat = arbitraryrotate(rHat,rotAngle,tVec)
+                      if (nSpot == 2) then
                          call random_number(r1)
-                         cosThisTheta = r1 * (1. - cos(maxTheta)) + cos(maxTheta)    
-                         thisTheta = acos(cosThisTheta)
-                         call random_number(r1)
-                         thisPhi = twoPi * r1	
-                         rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
-                         
-                         tVec = zAxis .cross. rSpot  
-                         call normalize(tVec)
-                         rotAngle = zAxis .dot. rSpot
-                         rotAngle = acos(rotAngle)
-                         rHat = arbitraryrotate(rHat,rotAngle,tVec)
-                         if (nSpot == 2) then
-                            call random_number(r1)
-                            if (r1 < 0.5) then
-                               rHat = (-1.) * rHat
-                               rSpot = (-1.) * rSpot
-                            endif
+                         if (r1 < 0.5) then
+                            rHat = (-1.) * rHat
+                            rSpot = (-1.) * rSpot
                          endif
-                         thisPhoton%position = r * rHat
-                      else
+                      endif
+                      thisPhoton%position = r * rHat
+                   else
+                      tVec = randomUnitVector()
+                      ang = tVec .dot. rSpot
+                      ang = acos(ang)
+                      do while (ang < maxTheta)
                          tVec = randomUnitVector()
                          ang = tVec .dot. rSpot
                          ang = acos(ang)
-                         do while (ang < maxTheta)
-                            tVec = randomUnitVector()
-                            ang = tVec .dot. rSpot
-                            ang = acos(ang)
-                         enddo
-                         thisPhoton%position = r*tVec
-                      endif
-                   else
-		      thisPhoton%position = (r*randomUnitVector())
+                      enddo
+                      thisPhoton%position = r*tVec
                    endif
-
-                case("binary")
-                   call random_number(r)
-                   if (r < grid%lumRatio) then
-                      thisPhoton%position = grid%starPos1 + (1.01*(grid%rStar1) * randomUnitVector())
-                      thisPhoton%fromStar1 = .true.
-                      call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
-                   else
-                      thisPhoton%position = grid%starPos2 + (1.01*(grid%rStar2) * randomUnitVector())
-                      thisPhoton%fromStar2 = .true.
-                      call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
-                   endif
-
-                case("ttauri")
-
-                   call random_number(r1)
-		   if (r1 < chanceHotRing) then
-		      call random_number(r1)
-		      thisTheta = r1*(theta2 - theta1)+theta1
-		      call random_number(r1)
-		      if (r1 < 0.5) thisTheta = pi - thisTheta
-		      call random_number(r1)
-		      thisPhi = twoPi * r1
-		      rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
-		      thisPhoton%position = r * rHat
-		   else
-		      thisPhoton%position = (r*randomUnitVector())
-		   endif
-                                      
-
-                case DEFAULT
+                else
                    thisPhoton%position = (r*randomUnitVector())
+                endif
+
+             case("binary")
+                call random_number(r)
+                if (r < grid%lumRatio) then
+                   thisPhoton%position = grid%starPos1 + (1.01*(grid%rStar1) * randomUnitVector())
+                   thisPhoton%fromStar1 = .true.
+                   call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
+                else
+                   thisPhoton%position = grid%starPos2 + (1.01*(grid%rStar2) * randomUnitVector())
+                   thisPhoton%fromStar2 = .true.
+                   call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
+                endif
+
+             case("ttauri")
+
+                call random_number(r1)
+                if (r1 < chanceHotRing) then
+                   call random_number(r1)
+                   thisTheta = r1*(theta2 - theta1)+theta1
+                   call random_number(r1)
+                   if (r1 < 0.5) thisTheta = pi - thisTheta
+                   call random_number(r1)
+                   thisPhi = twoPi * r1
+                   rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
+                   thisPhoton%position = r * rHat
+                else
+                   thisPhoton%position = (r*randomUnitVector())
+                endif
+
+
+             case DEFAULT
+                thisPhoton%position = (r*randomUnitVector())
              end select
 
 
@@ -594,13 +665,31 @@ contains
 
        ! get wavelength
 
-       call random_number(r1)
-       iLambda = int(r1*real(nLambda))+1
-       thisPhoton%lambda = lambda(iLambda)
+       if (narrowBandImage) then
+          call random_number(r1)
+          thisPhoton%lambda = narrowBandmin + r1 * (narrowBandmax - narrowBandmin)
+          call locate(lambda, nLambda, thisPhoton%lambda, iLambda)
+       else
+          call random_number(r1)
+          iLambda = int(r1*real(nLambda))+1
+          thisPhoton%lambda = lambda(iLambda)
+       endif
        if (.not.flatspec) then
+          if (photonFromEnvelope) then
+             tot = 0.
+             do i = 1, nLambda
+                tempSpectrum(i) = blambda(dble(lambda(i)),dble(grid%temperature(i1,i2,i3)))*grid%kappaAbs(i1,i2,i3,iLambda)
+                tot = tot + tempSpectrum(i)
+             enddo
+             thisPhoton%stokes = thisPhoton%stokes * &
+                  (tempSpectrum(iLambda) * weightContPhoton / tot)
 
-          thisPhoton%stokes = thisPhoton%stokes * &
-               (sourceSpectrum(iLambda) * weightContPhoton)
+          else
+
+             thisPhoton%stokes = thisPhoton%stokes * &
+                  (sourceSpectrum(iLambda) * weightContPhoton)
+          endif
+
        else
           thisPhoton%stokes = thisPhoton%stokes * weightContPhoton
           thisPhoton%lambda = lamLine
@@ -765,8 +854,8 @@ contains
 
 
              if (outSideGrid(thisPhoton%position,grid).or.(.not.grid%inUse(i1,i2,i3))) then
-!                write(*,*) "Mistake in initPhoton",thisPhoton%position
-!                write(*,*) i1,i2,i3,t1,t2,t3
+                !                write(*,*) "Mistake in initPhoton",thisPhoton%position
+                !                write(*,*) i1,i2,i3,t1,t2,t3
                 ok = .false.
              else
                 ok = .true.
@@ -796,11 +885,11 @@ contains
              directionalWeight = abs(2.*t)
              call normalize(thisPhoton%originalNormal)
              thisPhoton%velocity = VECTOR(1.e-30,1.e-30,1.e-30)
-!             call random_number(r1)
-!             thisPhoton%lambda = lambda(1)+r1*(lambda(nLambda)-lambda(1))
+             !             call random_number(r1)
+             !             thisPhoton%lambda = lambda(1)+r1*(lambda(nLambda)-lambda(1))
 
-! The resonance line wavelength is given in torus main according to the photon loop
-! in order to evenly distribute photons across the input wavelength range
+             ! The resonance line wavelength is given in torus main according to the photon loop
+             ! in order to evenly distribute photons across the input wavelength range
 
           else
 
@@ -832,7 +921,7 @@ contains
              t3 = (r1-tempphiProbDistLine(i3)) / & 
                   (tempphiProbDistLine(i3+1)-tempphiProbDistLine(i3))
              phi = grid%phiAxis(i3) + t3 * (grid%phiAxis(i3+1)-grid%phiAxis(i3))
-             
+
              ! set up the position
 
              sinTheta = sqrt(1.d0-mu**2)

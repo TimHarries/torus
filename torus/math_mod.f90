@@ -83,13 +83,13 @@ contains
 
 
     interpGridKappaSca = &
-         ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10(grid%kappaSca(i1  , i2   , i3   , ilambda)) + &
-         ((t1   )  *   (1.d0-t2) * (1.d0-t3))* log10(grid%kappaSca(i1+1, i2   , i3   , ilambda)) + &
-         ((t1   )  *   (t2   ) *   (1.d0-t3))* log10(grid%kappaSca(i1+1, i2+1 , i3   , ilambda)) + &
-         ((1.d0-t1)  * (t2   ) *     (t3   ))* log10(grid%kappaSca(i1  , i2+1 , i3+1 , ilambda)) + &
-         ((1.d0-t1)  * (t2   )   * (1.d0-t3))* log10(grid%kappaSca(i1  , i2+1 , i3   , ilambda)) + &
-         ((t1   )  *   (1.d0-t2) *   (t3   ))* log10(grid%kappaSca(i1+1, i2   , i3+1 , ilambda)) + &
-         ((1.d0-t1)  * (1.d0-t2) *   (t3   ))* log10(grid%kappaSca(i1  , i2   , i3+1 , ilambda)) + &
+         ((1.e0-t1)  * (1.e0-t2) * (1.e0-t3))* log10(grid%kappaSca(i1  , i2   , i3   , ilambda)) + &
+         ((t1   )  *   (1.e0-t2) * (1.e0-t3))* log10(grid%kappaSca(i1+1, i2   , i3   , ilambda)) + &
+         ((t1   )  *   (t2   ) *   (1.e0-t3))* log10(grid%kappaSca(i1+1, i2+1 , i3   , ilambda)) + &
+         ((1.e0-t1)  * (t2   ) *     (t3   ))* log10(grid%kappaSca(i1  , i2+1 , i3+1 , ilambda)) + &
+         ((1.e0-t1)  * (t2   )   * (1.e0-t3))* log10(grid%kappaSca(i1  , i2+1 , i3   , ilambda)) + &
+         ((t1   )  *   (1.e0-t2) *   (t3   ))* log10(grid%kappaSca(i1+1, i2   , i3+1 , ilambda)) + &
+         ((1.e0-t1)  * (1.e0-t2) *   (t3   ))* log10(grid%kappaSca(i1  , i2   , i3+1 , ilambda)) + &
          ((t1   )  *   (t2   ) *     (t3   ))* log10(grid%kappaSca(i1+1, i2+1 , i3+1 , ilambda))
 
     
@@ -127,14 +127,14 @@ contains
 
 
     interpGridKappaAbs = &
-         ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3))* log10((grid%kappaAbs(i1  , i2   , i3   , ilambda))) + &
-         ((t1   )  * (1.d0-t2) * (1.d0-t3))* log10((grid%kappaAbs(i1+1, i2   , i3   , ilambda))) + &
-         ((t1   )  * (t2   ) * (1.d0-t3))* log10((grid%kappaAbs(i1+1, i2+1 , i3   , ilambda))) + &
-         ((1.d0-t1)  * (t2   ) * (t3   ))* log10((grid%kappaAbs(i1  , i2+1 , i3+1 , ilambda))) + &
-         ((1.d0-t1)  * (t2   ) * (1.d0-t3))* log10((grid%kappaAbs(i1  , i2+1 , i3   , ilambda))) + &
-         ((t1   )  * (1.d0-t2) * (t3   ))* log10((grid%kappaAbs(i1+1, i2   , i3+1 , ilambda))) + &
-         ((1.d0-t1)  * (1.d0-t2) * (t3   ))* log10((grid%kappaAbs(i1  , i2   , i3+1 , ilambda))) + &
-         ((t1   )  * (t2   ) * (t3   ))* log10((grid%kappaAbs(i1+1, i2+1 , i3+1 , ilambda)))
+         ((1.e0-t1)  * (1.e0-t2) * (1.e0-t3)) * log10((grid%kappaAbs(i1  , i2   , i3   , ilambda))) + &
+         ((t1   )  * (1.e0-t2) * (1.e0-t3))   * log10((grid%kappaAbs(i1+1, i2   , i3   , ilambda))) + &
+         ((t1   )  * (t2   ) * (1.e0-t3))     * log10((grid%kappaAbs(i1+1, i2+1 , i3   , ilambda))) + &
+         ((1.e0-t1)  * (t2   ) * (t3   ))     * log10((grid%kappaAbs(i1  , i2+1 , i3+1 , ilambda))) + &
+         ((1.d0-t1)  * (t2   ) * (1.e0-t3))   * log10((grid%kappaAbs(i1  , i2+1 , i3   , ilambda))) + &
+         ((t1   )  * (1.e0-t2) * (t3   ))     * log10((grid%kappaAbs(i1+1, i2   , i3+1 , ilambda))) + &
+         ((1.e0-t1)  * (1.e0-t2) * (t3   ))   * log10((grid%kappaAbs(i1  , i2   , i3+1 , ilambda))) + &
+         ((t1   )  * (t2   ) * (t3   ))       * log10((grid%kappaAbs(i1+1, i2+1 , i3+1 , ilambda)))
 
     if (interpGridKappaAbs  > 20.) then
        write(*,*) grid%kappaAbs(i1-1:i1+1,i2-1:i2+1,i3-1:i3+1,1)
@@ -976,6 +976,9 @@ contains
 
 
   end function thermalHydrogenVelocity
+
+
+
 
 
 end module math_mod

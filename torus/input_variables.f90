@@ -70,6 +70,7 @@ module input_variables
 
   integer :: nLambda
   real :: lamStart, lamEnd
+  logical :: lamLinear
  
  
   ! variables for a second source of radiation
@@ -200,5 +201,11 @@ module input_variables
   real :: relIntCoreEmissionLine       ! previously: 'relIntCoreEmission'
   real :: velWidthCoreEmissionLine     ! previously: 'velWidthCoreEmission'
 
+  ! lucy radiative equ
+
+  logical :: lucyRadiativeEq
+
+  logical :: narrowBandImage
+  logical :: useInterp
   
 end module input_variables

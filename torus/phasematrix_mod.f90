@@ -10,6 +10,7 @@
 
 module phasematrix_mod
 
+  use utils_mod
   implicit none
 
   public
@@ -149,8 +150,59 @@ contains
 
   end function multStokes
 
+  type(VECTOR) function newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nMuMie)
+    type(VECTOR) :: oldDirection
+    real :: wavelength
+    integer :: nMuMie, nLambda, i, j
+    real :: costheta, theta, r, phi
+    real :: lamArray(*)
+    real, allocatable :: prob(:)
+    real, allocatable :: cosArray(:)
+    type(VECTOR) :: tVec, perpVec, newVec
+    
+    type(PHASEMATRIX) :: miePhase(nMuMie, nLambda)
+    
 
+    allocate(prob(1:nMuMie))
+    allocate(cosArray(1:nMuMie))
+    call locate(lamArray, nLambda, wavelength, j)
+    if (j < 1) j = 1
+    if (j > nLambda) j = nLambda
 
+    prob = 0.
+    do i = 1, nMuMie
+       cosArray(i) = -1. + 2.*real(i-1)/real(nMuMie-1)
+       prob(i) = miePhase(j,i)%element(1,1)
+    enddo
+    do i = 2, nMuMie
+       prob(i) = prob(i) + prob(i-1)
+    enddo
+    prob(1:nMuMie) = prob(1:nMuMie)/prob(nMuMie)
+    call random_number(r)
+    call locate(prob, nMuMie, r, j)
+    cosTheta = cosArray(j) + &
+         (cosArray(j+1)-cosArray(j))*(r - prob(j))/(prob(j+1)-prob(j))
+    call random_number(r)
+    phi = twoPi * r
+
+    tVec = oldDirection
+
+    perpVec%x =  tVec%y
+    perpVec%y = -tVec%x
+    perpVec%z = 0.
+    call normalize(perpVec)
+
+    theta = acos(min(1.,max(-1.,costheta)))
+    newVec = arbitraryRotate(oldDirection, theta, perpVec)
+    newVec = arbitraryRotate(newVec, phi, oldDirection)
+
+    Deallocate(cosArray)
+    deallocate(prob)
+
+    newDirectionMie = newVec
+    
+
+  end function newDirectionMie
 
 end module phasematrix_mod
 

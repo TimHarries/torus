@@ -84,6 +84,7 @@ module grid_mod
      real, pointer :: biasLine3D(:,:,:)              ! grid bias distribution
      real, pointer :: biasCont3D(:,:,:)              ! grid bias distribution
      real :: rCore                                   ! core radius
+     real(kind=doublekind) :: lCore                                   ! core luminosity
      real :: chanceWindOverTotalContinuum            ! chance of continuum photon being produced
      ! in the wind rather than at the core
 
@@ -294,14 +295,6 @@ contains
     endif
     initCartesiangrid%inUse = .true.
 
-    ! fill wavelength array
-
-    if (iLambda > 1) then
-       do i = 1, iLambda
-          initCartesianGrid%lamArray(i) = lamStart + &
-               (lamEnd-lamStart)*real(i-1)/real(iLambda-1)
-       enddo
-    endif
 
     ! initialize the arrays with zeros
 
@@ -486,13 +479,6 @@ contains
     initPolarGrid%biasLine = 1.
     initPolarGrid%biasCont = 1.
 
-    if (iLambda > 1) then
-       do i = 1, iLambda
-          initPolarGrid%lamArray(i) = lamStart + &
-               (lamEnd-lamStart)*real(i-1)/real(iLambda-1)
-       enddo
-    endif
-
 
     initPolarGrid%nr = nr
     initPolarGrid%nmu = nmu
@@ -666,6 +652,12 @@ contains
 
     grid%geometry = "ellipse"
 
+    grid%rCore = rSol / 1.e10
+    grid%lCore = lSol
+    grid%inUse = .false.
+
+    grid%temperature = 100.
+
     ! only for cartesians
 
     if (.not.grid%cartesian) then
@@ -686,6 +678,10 @@ contains
     do i = 1, grid%nz
        grid%zAxis(i) = 2.*real(i-1)/real(grid%nz-1) - 1.
     enddo
+
+    grid%xAxis = grid%xAxis * rMaj * 1.1
+    grid%yAxis = grid%yAxis * rMaj * 1.1
+    grid%zAxis = grid%zAxis * rMaj * 1.1
 
 
     ! use spherical polars to compute ellipsoid
@@ -712,6 +708,7 @@ contains
           call locate(grid%zAxis,grid%nz,-z,i4)
           do k = min(i3,i4), max(i3,i4)
              Grid%rho(i1,i2,k) = rho    
+             grid%inUse(i1,i2,k) = .true.
           enddo
        enddo
     enddo
@@ -926,6 +923,9 @@ contains
 
     grid%geometry = "torus"
 
+    grid%rCore = rSol / 1.e10
+    grid%lCore = lSol
+
     grid%rho = 1.e-20
 
     do i = 1, grid%nx
@@ -943,6 +943,7 @@ contains
     enddo
 
     torusAxis = VECTOR(0.,0.,1.)
+    grid%inUse = .false.
 
     grid%xAxis = grid%xAxis * (rTorus + rOuter) * 1.1
     grid%yAxis = grid%yAxis * (rTorus + rOuter) * 1.1
@@ -973,9 +974,15 @@ contains
 
           do k = min(i3,i4),max(i3,i4)
              Grid%rho(i1,i2,k) = rho
+             grid%inUse(i1,i2,k) = .true.
           enddo
        enddo
     enddo
+
+    grid%xAxis = grid%xAxis / 1.e10
+    grid%yAxis = grid%yAxis / 1.e10
+    grid%zAxis = grid%zAxis / 1.e10
+
 
   end subroutine fillGridTorus
 
@@ -3859,6 +3866,98 @@ contains
 
 
   end subroutine fillGridDonati2
+
+
+
+  subroutine fillGridWR104(grid, rho, teff)
+    
+    implicit none
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, tubeVec, offset
+
+    integer :: i, j, k
+    real :: t1, t2, t3
+    integer :: i1, i2, i3
+    real :: gridSize
+    real :: tubeRadius
+    real :: outflowSpeed = 1220. * 10e5
+    real :: temperature
+    real :: rho
+    real :: thisDist, thisTime
+    real :: theta, phi
+    integer , parameter :: nAng = 360
+    integer , parameter :: nRad = 20
+    real :: r
+    real :: alpha
+    real :: teff
+    real :: kfac
+
+    write(*,'(a)') "Filling with WR104 model..."
+    gridSize = 2000. * AUtoCM / 1.e10
+    tubeRadius = 100. * AUtoCM 
+    grid%inUse = .false.
+    grid%temperature = 10.
+    grid%etaCont = 0.
+    temperature = 1000.
+    do i = 1, grid%nx
+       grid%xAxis(i) = 2.*real(i-1)/real(grid%nx-1) - 1.
+    enddo
+
+    do i = 1, grid%ny
+       grid%yAxis(i) = 2.*real(i-1)/real(grid%ny-1) - 1.
+    enddo
+
+    do i = 1, grid%nz
+       grid%zAxis(i) = 2.*real(i-1)/real(grid%nz-1) - 1.
+    enddo
+
+    grid%xAxis = grid%xAxis * gridSize
+    grid%yAxis = grid%yAxis * gridSize
+    grid%zAxis = grid%zAxis * gridSize
+
+    offSet = VECTOR(2.*tubeRadius,0.,0.)
+    do i = 1, nAng
+       theta = real(i-1)/real(nAng-1) * twoPi * 2.
+       thisTime = real(i-1)/real(nAng-1) * 220. * 24.* 60. * 60. * 2.
+       thisDist = thisTime * outflowSpeed 
+       kFac = 220. * 24.* 60. * 60. * 2. * outflowSpeed / fourPi
+       do j = 1, nAng
+          phi = real(j-1)/real(nAng-1) * twoPi
+          do k = 1, nRad
+             r = tubeRadius * real(k-1)/real(nRad-1)
+             alpha = atan2(kFac,thisDist)
+             rVec = VECTOR(thisDist, 0., 0.)
+             rVec = rotateZ(rVec, theta)
+             tubeVec = VECTOR(r * cos(phi), 0., r*sin(phi))
+             tubeVec = rotateZ(tubeVec, theta)
+             tubeVec = rotateZ(tubeVec, -alpha)
+             rVec = rVec + tubeVec 
+             rVec = rVec + offSet
+             rVec = rVec / 1.e10
+             
+             if (.not.outsideGrid(rVec, grid)) then
+                call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
+                grid%rho(i1,i2,i3) = rho
+                grid%inUse(i1,i2,i3) = .true.
+                grid%temperature(i1,i2,i3) = temperature
+             endif
+          enddo
+       enddo
+    enddo
+!    rVec=VECTOR(0., 0., 0.)
+!    call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
+!    grid%rho(i1,i2,i3) = 1.e-30
+!    grid%temperature(i1,i2,i3) = 1.
+!    grid%inUse(i1,i2,i3) = .false.
+
+
+    grid%rCore = 20.*rSol / 1.e10
+    grid%lCore = fourPi * stefanBoltz * (20.*rSol)**2 * teff**4
+
+    write(*,'(a)') "done."
+
+  end subroutine fillGridWR104
+
 
 
   subroutine fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &

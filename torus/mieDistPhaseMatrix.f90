@@ -2,6 +2,7 @@
       subroutine mieDistPhaseMatrix(aMin, aMax, qDist, lambda, &
                                 costheta, mieMatrix, grainType)
 
+      use constants_mod
       use phasematrix_mod
 
       implicit none
@@ -47,7 +48,6 @@
       complex cm,ci,cim,f(1000),g(1000),s1,s2
       common /cfcom/ f,g,cnrm
       real :: pnmllg(1001),cnrm(1000)
-      real, parameter :: pi = 3.14159265358979
       real, parameter :: rtd = 180.0/pi
       real :: a, da, gfac
       real :: a1,a2,loga1,loga2

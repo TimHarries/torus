@@ -328,11 +328,30 @@ contains
 
   real(kind=doubleKind) function bNu(nu,T)
     
-    real(kind=doubleKind) :: fac1, fac2, nu, T
+    real(kind=doubleKind) :: fac1, fac2, fac3, nu, T
 
-    fac1 = (2.*hConst*nu**3)/cSpeed**2
-    fac2 = 1.d0/(exp( (hConst*nu)/ (kConst * T) ) - 1.)
+    fac1 = (2.*hCgs*nu**3)/cSpeed**2
+    fac3 =  (hCgs*nu)/ (kErg * T) 
+    if (fac3 > 500.d0) then
+       fac2 = 0.d0
+    else
+       fac2 = 1.d0/(exp(fac3) - 1.d0)
+    endif
     bNu = fac1 * fac2
   end function bNu
+
+  real(kind=doubleKind) function bLambda(lambda,T)
+    
+    real(kind=doubleKind) :: fac1, fac2, fac3,  T, lambda
+
+    fac1 = (2.*hCgs*cSpeed**2)/(lambda *1.d-8)**5
+    fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T) 
+    if (fac3 > 500.d0) then
+       fac2 = 0.d0
+    else
+       fac2 = 1.d0/(exp(fac3) - 1.d0)
+    endif
+    bLambda = fac1 * fac2
+  end function bLambda
 
 end module atom_mod

@@ -35,8 +35,10 @@ subroutine fillGridMie(grid, scale, aMin, aMax, qDist, grainType)
            do k = 1, grid%nz
 
 
-              grid%kappaAbs(i,j,k,1:grid%nLambda) = sigmaAbs  * grid%rho(i,j,k)
-              grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca  * grid%rho(i,j,k)
+              if (grid%inUse(i,j,k)) then
+                 grid%kappaAbs(i,j,k,1:grid%nLambda) = sigmaAbs  * grid%rho(i,j,k)
+                 grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca  * grid%rho(i,j,k)
+              endif
 
               !      write(*,*) grid%kappaAbs(i,j,k,1:grid%nLambda),grid%kappaSca(i,j,k,1:grid%nLambda), grid%rho(i,j,k),scale
            enddo
@@ -60,6 +62,10 @@ subroutine fillGridMie(grid, scale, aMin, aMax, qDist, grainType)
   where(grid%kappaAbs < 1.e-25) grid%kappaAbs = 1.e-25
   where(grid%kappaSca < 1.e-25) grid%kappaSca = 1.e-25
 
-  write(*,'(a)') "mie cross-sections done."
+
+  grid%kappaAbs = grid%kappaAbs * 1.e10
+  grid%kappaSca = grid%kappaSca * 1.e10
+
+  write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
 end subroutine fillGridMie
 

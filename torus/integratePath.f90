@@ -15,7 +15,7 @@ module path_integral
 subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, &
      tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton, &
      lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, redRegion, rStar, &
-     coolStarPosition, iRev, usePops, mLevel, nLevel, fStrength, gM, gN, localTau)
+     coolStarPosition, iRev, usePops, mLevel, nLevel, fStrength, gM, gN, localTau, interp)
 
 
   type(GRIDTYPE) :: grid                            ! the opacity grid
@@ -26,6 +26,7 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
   real :: fStrength, gM, GN
   real :: iRev
   real :: rStar
+  logical :: interp
   type(VECTOR) :: aVec                              ! starting position vector
   type(VECTOR) :: uHat                              ! direction
   type(VECTOR) :: rVec                              ! position vector
@@ -110,7 +111,6 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
 
   ! initialize variables
 
-  irev = 0.
   hitcore = .false.
   rVec = aVec
   escProb = 1.
@@ -120,8 +120,7 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
   if ((grid%nLambda == 1).or.(grid%doRaman)) then
      iLambda = 1
   else
-     iLambda = nint(real(grid%nlambda)*(wavelength-grid%lamArray(1))/(grid%lamArray(grid%nlambda)-grid%lamArray(1)))
-     ilambda = max(1,min(grid%nLambda,ilambda))
+     call hunt(grid%lamArray, grid%nLambda, wavelength, iLambda)
   endif
 
 
@@ -138,7 +137,7 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
 
      ! size of the distance increment - this won't work will for non-uniform grids
 
-     dLambda = min(dx,dy,dz) / 4.
+     dLambda = min(dx,dy,dz) 
 
      lambda(1:1000) = 0.
      tauExt(1:1000) = 0.
@@ -197,8 +196,15 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
 
 
         if (.not.redRegion) then
-           kabsInterp = interpGridkappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
-           kscaInterp = interpGridkappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+
+
+           if (interp) then
+              kabsInterp = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+              kscaInterp = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+           else
+              kabsInterp = grid%kappaAbs(i1,i2,i3,iLambda)
+              kscaInterp = grid%kappaSca(i1,i2,i3,iLambda)
+           endif
            tauExt(nTau) = tauExt(nTau-1) + &
                 (kabsInterp + kscaInterp)* dlambda
            tauSca(nTau) = tauSca(nTau-1) + kscaInterp * dlambda
@@ -290,8 +296,13 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
      ! opacities at first grid point
 
 
-     kabs(nTau) = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
-     ksca(nTau) = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+     if (interp) then
+        kabs(nTau) = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+        ksca(nTau) = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+     else
+        kabs(nTau) = grid%kappaAbs(i1,i2,i3,iLambda)
+        ksca(nTau) = grid%kappaSca(i1,i2,i3,iLambda)
+     endif
 
      ! first position held in indices
 
@@ -555,8 +566,13 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
               endloop = .true.
            endif
 
-           kabs(nTau) = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
-           ksca(nTau) = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+           if (interp) then
+              kabs(nTau) = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+              ksca(nTau) = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+           else
+              kabs(nTau) = grid%kappaAbs(i1,i2,i3,iLambda)
+              ksca(nTau) = grid%kappaSca(i1,i2,i3,iLambda)
+           endif
 
 
            ! store the position indices and projected velocities etc

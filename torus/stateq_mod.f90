@@ -385,15 +385,15 @@ contains
              if (.not.occulted) then
 
                 if (full) then
-                   call integratePath(real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
-                        grid%velocity(i1,i2,i3), &
-                        rVec, direction, grid, &
-                        lambdaArray, tauExt, tauAbs, tauSca, maxTau, nTau, .true., &
-                        escProb, .false., real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
-                        1, contTau, hitCore, .false.,.false., 0.,&
-                        VECTOR(0.,0.,0.), 1., .true., m, n, real(fstrength(m,n)), real(gDegen(m)), real(gDegen(n)), &
-                        tauLocal)
-                   tau_cmn = tauLocal + tauExt(nTau-1)
+!                   call integratePath(real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
+!                        grid%velocity(i1,i2,i3), &
+!                        rVec, direction, grid, &
+!                        lambdaArray, tauExt, tauAbs, tauSca, maxTau, nTau, .true., &
+!                        escProb, .false., real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
+!                        1, contTau, hitCore, .false.,.false., 0.,&
+!                        VECTOR(0.,0.,0.), 1., .true., m, n, real(fstrength(m,n)), real(gDegen(m)), real(gDegen(n)), &
+!                        tauLocal)
+!                   tau_cmn = tauLocal + tauExt(nTau-1)
                 else
 
 

@@ -74,12 +74,20 @@ subroutine inputs()
  call getReal("lamend", lamend, cLine, nLines, &
      "X-array end (angs or kms): ", "(a,f7.1,1x,a)", 10000., ok, .true.)
 
+
+ call getLogical("wavlin", lamLinear, cLine, nLines, &
+         "Linear wavelength array: ","(a,1l,1x,a)", .true., ok, .true.)
+
  
 
  call getInteger("nlambda", nlambda, cLine, nLines, &
      "Number of wavelength/velocity bins: ", "(a,i4,1x,a)", 20, ok, .true.)
 
 
+ if (mie) then
+    call getLogical("lucy", lucyRadiativeEq, cLine, nLines, &
+         "Lucy radiative equ.: ","(a,1l,1x,a)", .false., ok, .false.)
+ endif
 
 
   call getString("distortion", distortionType, cLine, nLines, &
@@ -127,6 +135,8 @@ subroutine inputs()
           "Radius of torus (AU): ","(a,f5.1,a)", 0.7, ok, .true.)
      call getReal("router", rOuter, cLine, nLines, &
           "Radius of torus x-section (AU): ","(a,f5.1,a)", 0.1, ok, .true.)
+     call getReal("teff", teff, cLine, nLines, &
+          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
      rTorus = rTorus * auTocm
      rOuter = rOuter * auTocm
   endif
@@ -174,6 +184,14 @@ subroutine inputs()
      call getReal("momratio", momRatio, cLine, nLines, &
           "Wind momentum ratio (p/s): ","(a,f3.1,a)", 0.1, ok, .true.)
   endif
+
+  if (geometry .eq. "wr104") then
+     call getReal("teff", teff, cLine, nLines, &
+          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+     call getReal("rho", rho, cLine, nLines, &
+          "Density: ","(a,f7.2,a)", 1., ok, .true.)
+  endif
+
 
   if (geometry .eq. "wr137") then
      call getReal("rcore", rCore, cLine, nLines, &
@@ -402,11 +420,15 @@ endif
 
  if (geometry(1:7) .eq. "ellipse") then
    call getReal("rmaj", rmaj, cLine, nLines, &
-     "rMajor: ", "(a,f5.1,a)", 0.5, ok, .true.)
+     "rMajor (AU): ", "(a,f5.1,a)", 0.5, ok, .true.)
    call getReal("rmin", rmin, cLine, nLines, &
-     "rMinor: ", "(a,f5.1,a)", 0.5, ok, .true.)
+     "rMinor (AU): ", "(a,f5.1,a)", 0.5, ok, .true.)
     call getReal("rho", rho, cLine, nLines, &
     "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 1.e-6, ok, .true.)
+    call getReal("teff", teff, cLine, nLines, &
+         "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+    rmaj = rmaj * AUtocm / 1.e10
+    rmin = rmin * AUtocm / 1.e10
  endif
 
  if (geometry(1:4) .eq. "disk") then
@@ -554,6 +576,13 @@ endif
 
 
  if (mie) then
+    call getLogical("lucy", lucyRadiativeEq, cLine, nLines, &
+         "Lucy radiative equ.: ","(a,1l,1x,a)", .false., ok, .true.)
+ endif
+
+
+
+ if (mie) then
      call getString("graintype", grainType, cLine, nLines, &
   "Grain type: ","(a,a,1x,a)","silicate", ok, .true.)
  endif
@@ -698,6 +727,9 @@ endif
  call getLogical("usebias", usebias, cLine, nLines, &
    "Variance reduction: ","(a,1l,a)", .true., ok, .false.)
 
+ call getLogical("interp", useInterp, cLine, nLines, &
+   "Use opacity interpolation: ","(a,1l,a)", .true., ok, .false.)
+
  call getInteger("maxscat", maxScat, cLine, nLines, &
       "Max no of scatters: ","(a,i4,1x,a)", 1, ok, .false.)
 
@@ -729,16 +761,22 @@ endif
  call getLogical("stokesimage", stokesImage, cLine, nLines, &
       "Output stokes image: ","(a,1l,a)",.false., ok, .false.)
 
+ call getLogical("narrowband", narrowBandImage, cLine, nLines, &
+      "Output stokes image: ","(a,1l,a)",.false., ok, .false.)
+
+
  if (stokesImage) then
-    call getReal("vmin", vmin, cLine, nLines, &
-     "Minimum velocity for image (km/s): ", "(a,f7.1,1x,a)", -20000., ok, .true.)
-    call getReal("vmax", vmax, cLine, nLines, &
-     "Maximum velocity for image (km/s): ", "(a,f7.1,1x,a)", 20000., ok, .true.)
-!    vmax = (vmax*1.e5) / cSpeed
-!    vmin = (vmin*1.e5) / cSpeed
-    vmin = vmin * 1.e5
-    vmax = vmax * 1.e5
-    
+    if (.not.narrowBandImage) then
+       call getReal("vmin", vmin, cLine, nLines, &
+            "Minimum velocity for image (km/s): ", "(a,1pe10.2,1x,a)", -20000., ok, .true.)
+       call getReal("vmax", vmax, cLine, nLines, &
+            "Maximum velocity for image (km/s): ", "(a,1pe10.2,1x,a)", 20000., ok, .true.)
+    else
+       call getReal("lmin", vmin, cLine, nLines, &
+            "Minimum wavelength for image (angs): ", "(a,1pe10.2,1x,a)", -20000., ok, .true.)
+       call getReal("lmax", vmax, cLine, nLines, &
+            "Maximum wavelength for image (angs): ", "(a,1pe10.2,1x,a)", 20000., ok, .true.)
+    endif
  endif
 
  call getLogical("pvimage", doPVimage, cLine, nLines, &
@@ -907,7 +945,7 @@ subroutine findString(name, value, cLine, nLines, ok)
     ival = idef
     default = "(default)"
   endif
-  if (musthave) then
+  if (musthave.or.(ival /= idef)) then
      write(*,format) trim(message),ival,default
   endif
  end subroutine getInteger

@@ -24,8 +24,7 @@ subroutine getRefractiveIndex(lambda, grainType, mReal, mImg)
 
  select case(grainType)
 
- case("graphite")
-
+ case("graphite","draine")
     npts = 53
     filename = trim(dataDirectory)//"graphite_r.dat"
  open(20,file=filename, status="old", form="formatted")
@@ -35,9 +34,15 @@ subroutine getRefractiveIndex(lambda, grainType, mReal, mImg)
  close(20)
 
  xArray = xArray * 1.e-4
-
- call locate(xArray, npts, lambda*1.e-8, j)
- t = (lambda*1.e-8 - xArray(j))/(xArray(j+1)-xArray(j))
+ 
+ if ((lambda*1.e-8 > xArray(1)).and.(lambda*1.e-8 < xArray(npts))) then
+    call locate(xArray, npts, lambda*1.e-8, j)
+    t = (lambda*1.e-8 - xArray(j))/(xArray(j+1)-xArray(j))
+ else
+    t = 0
+    if (lambda*1.e-8 < xArray(1)) j = 1
+    if (lambda*1.e-8 > xArray(npts)) j = npts-1
+ endif
 
  e1para = eps1para(j) + t*(eps1para(j+1)-eps1para(j))
  e2para = eps2para(j) + t*(eps2para(j+1)-eps2para(j))
