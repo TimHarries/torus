@@ -1,0 +1,7 @@
+module kind_mod
+  
+  integer, parameter :: doubleKind = 8
+
+
+end module kind_mod
+

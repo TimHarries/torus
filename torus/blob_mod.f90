@@ -1,0 +1,483 @@
+! This module deals with blobs or clumps which can be
+! used to distort the opacity grid. It includes 
+! subroutines to initialize the blobs, move them, and
+! to distort the grid
+
+! written by tjh
+
+! v1.0 on 13/08/99
+
+
+module blob_mod
+
+  use grid_mod              ! The density grid
+  use vector_mod            ! Vector maths
+  use constants_mod         ! Physical constants
+  use math_mod              ! Misc maths
+
+  implicit none
+
+  public
+
+  ! The type definition
+
+  type BLOBTYPE
+     type(VECTOR) :: position          ! Position vector
+     type(VECTOR) :: velocity          ! Velocity
+     real :: contrast                  ! Density contrast
+     real :: radius                    ! Blob `radius'
+     logical :: inUse                  ! Is this blob in use?
+  end type BLOBTYPE
+
+
+contains
+
+  ! Start up by initializing blobs
+
+  subroutine initializeBlobs(nBlobs, blobs, grid, blobContrast)
+
+
+    integer :: nBLobs                 ! Number of blobs to initialize
+    type(BLOBTYPE) :: blobs(*)        ! The array of blobs
+    type(GRIDTYPE) :: grid            ! The grid of opacities
+    integer :: i                      ! counter
+    real :: blobContrast
+
+    ! loop over all blobs and initialize them
+
+    do i = 1, nBlobs
+       call initBlob(blobs, grid, i, .false., blobContrast)
+    enddo
+
+  end subroutine initializeBlobs
+
+  ! subroutine to initialize an individual blob
+
+  subroutine initBlob(blobs, grid, iBlob, atBase, blobContrast)
+
+
+    integer :: iBlob               ! The blob to init
+    logical :: atBase              ! Start the blob at the base?
+    type(BLOBTYPE) :: blobs(*)     ! array of blobs
+    type(GRIDTYPE) :: grid         ! the opacity grid
+    integer :: i1,i2,i3            ! indices
+    real :: r1, r2, r3             ! random deviates
+    real :: r, mu, phi, theta      ! spherical polar coords
+    real :: sinTheta              
+    real :: blobContrast
+ 
+    ! set the blob as in use
+
+    blobs(iBlob)%inUse = .true.
+
+    ! put the blob at the base if requested, otherwise
+    ! put it between 1 and 10 stellar radii
+
+    if (atBase) then
+       r = grid%rAxis(1)*1.000001
+    else
+       call random_number(r1)
+       r = (1. + 9. * sqrt(r1)) *grid%rAxis(1)
+    endif
+
+    ! random latitude
+
+    call random_number(r2)
+    mu = 2.*r2 -1.
+    sinTheta = sqrt(1.- mu*mu)
+
+    ! random azimuth
+
+    call random_number(r3)
+    phi = r3 * twoPi
+
+    ! set the position
+
+    blobs(iBlob)%position = VECTOR(r*sinTheta*cos(phi),r*sinTheta*sin(phi),r*mu)
+
+    ! radius random between 0.01 and 0.1 stellar radii
+
+    call random_number(r1)
+    blobs(iBlob)%radius = (0.01 + 0.09*r1)*grid%rAxis(1)
+
+    ! find the position of the blob within the opacity grid
+
+
+    call getPolar(blobs(iBlob)%position, r, theta, phi)
+    mu = cos(theta)
+    call locate(grid%rAxis, grid%nr, r, i1)
+    call locate(grid%muAxis, grid%nmu, mu, i2)
+    call locate(grid%phiAxis, grid%nphi, phi, i3)
+
+    ! set up the instantaneous blob velocity
+    ! NB the velocity grid is actually unitless doppler shifts and
+    ! the distances are all in 10^10 cm.
+
+    blobs(iBlob)%velocity = (cSpeed/1.e10)*grid%velocity(i1,i2,i3)
+
+    ! blob contrast is hardwired
+    
+    blobs(iBlob)%contrast = blobContrast
+
+  end subroutine initBlob
+
+  ! this subroutine moves the blobs about the grid between
+  ! timeStart and timeEnd
+
+  subroutine moveBlobs(maxBlobs, blobs, timeStart, timeEnd, grid)
+
+    real :: timeStart, timeEnd           ! the times
+    integer :: maxBlobs                  ! the number of blobs in the array
+    type(BLOBTYPE) :: blobs(*)           ! the blob array
+    type(GRIDTYPE) :: grid               ! the opacity grid          
+    real :: t1, t2, t3                   
+    integer :: i, j, i1, i2, i3          ! counters
+    integer ::   nTimes = 1000    ! the number of time segments
+    real :: dTime, thisdTime, timeScale, vel
+
+    ! the time increment
+
+    dTime = (timeEnd - timeStart) / real(nTimes)
+
+    ! loop over all blobs
+
+    do j = 1, maxBlobs
+
+       ! is this blob active?
+
+       if (blobs(j)%inUse) then
+          
+          call getIndices(grid, blobs(j)%position, i1, i2, i3, t1, t2, t3)
+          vel = modulus(grid%velocity(i1,1,1))*cSpeed/1.e10
+          if (i1 /= grid%nr) then
+             timeScale = (grid%rAxis(i1+1)-grid%rAxis(i1))/vel
+          else
+             timeScale = (grid%rAxis(i1)-grid%rAxis(i1-1))/vel
+          endif
+          
+          nTimes = max(1,int((timeEnd-timeStart)/(timeScale/10.)))
+          thisdTime = (timeEnd-timeStart)/real(nTimes)
+         
+
+          ! loop over all times
+
+          do i = 1, nTimes
+
+             ! update the blob position
+
+             blobs(j)%position = blobs(j)%position + thisdTime * blobs(j)%velocity
+
+             ! is the blob outside 20 core radii? If so, switch it off
+
+             if ((modulus(blobs(j)%position)/grid%rAxis(1)) > 20.) then
+                blobs(j)%inUse = .false.
+                EXIT
+
+             else
+
+                ! if not find its new location in the grid
+
+                call getIndices(grid, blobs(j)%position, i1, i2, i3, t1, t2, t3)
+
+                ! update the velocity
+
+                blobs(j)%velocity = (cSpeed/1.e10) * &
+                     interpGridvelocity(grid, i1,i2,i3, t1, t2, t3)
+             endif
+
+
+          enddo   ! over times
+
+       endif
+    enddo   ! over all blobs
+
+  end subroutine moveBlobs
+
+  ! this subroutine distorts the grid by the blobs
+
+  subroutine distortGridWithBlobs(grid, maxBlobs, blobs)
+
+    type(GRIDTYPE) :: grid                ! the opacity grid
+    integer :: maxBlobs                   ! max no of blobs
+    type(BLOBTYPE) :: blobs(*)            ! blob array 
+    real :: distance, sinTheta
+    integer :: i, j, k, m
+    real :: fac1,fac2,r
+    real, allocatable :: facGrid(:,:,:)   ! enhancement factor grid
+    type(VECTOR), allocatable :: posGrid(:,:,:)   ! enhancement factor grid
+
+    ! this may take a while for a large grid/number of blobs
+
+    write(*,*) "Distorting grid by blobs..."
+ 
+    ! set up a temporary array 
+
+    allocate(facGrid(1:grid%nr, 1:grid%nMu, 1:grid%nPhi))
+    allocate(posGrid(1:grid%nr, 1:grid%nMu, 1:grid%nPhi))
+
+    ! it'll be mostly ones
+
+    facGrid = 1.
+
+    do i = 1, grid%nr
+       do j = 1, grid%nMu
+          do k = 1, grid%nPhi
+             
+             ! determine position vector
+                   
+             sinTheta = sqrt(1.-grid%muAxis(j)**2)
+             posGrid(i,j,k) = VECTOR(grid%rAxis(i)*cos(grid%phiAxis(k))*sinTheta, &
+                  grid%rAxis(i)*sin(grid%phiAxis(k))*sinTheta, &
+                  grid%rAxis(i)*grid%muAxis(j))
+          enddo
+       enddo
+    enddo
+                   
+
+    
+    ! loop over all the blobs
+
+    do m = 1, maxBlobs
+
+
+       ! only blobs in use can distort grid
+       
+       
+       if (blobs(m)%inUse) then
+          write(*,*) "blob: ",m
+          ! loop over grid
+          
+          do i = 1, grid%nr
+             do j = 1, grid%nMu
+                do k = 1, grid%nPhi
+             
+                   distance = modulus(posGrid(i,j,k) - blobs(m)%position)
+                   fac1 = distance**2 / (2.*blobs(m)%radius**2)
+
+                   if (fac1 < 10.) then
+                      fac2 = blobs(m)%contrast
+
+                      ! distort by a 3D gaussian
+                   
+                      
+                      facGrid(i,j,k) = facgrid(i,j,k) + fac2 * exp(-fac1)
+                      r = modulus(posGrid(i,j,k)/grid%rAxis(1))
+                      if ((fac1 < 1.) .and. (r > 5.) .and. (r < 10.)) then
+                         write(*,*) r,facGrid(i,j,k)
+                      endif
+                   endif
+
+
+                enddo
+             enddo
+          enddo
+
+       endif
+
+    enddo
+
+ ! should be able to use intrinsic arrays to do these loops,
+ ! but doesn't seem to work at the moment, despite the fact
+ ! the arrays are conformable
+
+    do i = 1, grid%nr
+       do j = 1, grid%nMu
+          do k = 1, grid%nPhi
+             if (facGrid(i,j,k) == 1.) facGrid(i,j,k) = 1.e-20
+          enddo
+       enddo
+    enddo
+             
+ 
+
+    do i = 1, grid%nr
+       do j = 1, grid%nMu
+          do k = 1, grid%nPhi
+             
+             ! line opacities go as f^2
+             
+             grid%chiLine(i,j,k) = grid%chiLine(i,j,k)*facGrid(i,j,k)**2
+             grid%etaLine(i,j,k) = grid%etaLine(i,j,k)*facGrid(i,j,k)**2
+
+             ! scattering opacities go like f
+
+             do m = 1, grid%nLambda
+                grid%kappaSca(i,j,k,m) = &
+                     grid%kappaSca(i,j,k,m)*facGrid(i,j,k)
+             enddo
+
+          enddo
+       enddo
+    enddo
+    
+
+
+    ! tell the users we've done
+
+    write(*,*) "Max distortion: ",MAXVAL(facGrid)
+    write(*,*) "Min distortion: ",MINVAL(facGrid)
+ 
+    deallocate(facGrid) ! free up the array
+    deallocate(posGrid) ! free up the array
+ 
+    write(*,*) "Done."
+  end subroutine distortGridWithBlobs
+
+
+  ! add a new blob according to poissonion stats
+
+
+  subroutine addNewBlobs(grid, maxBlobs, blobs, blobTime, dTime, nCurr, blobContrast)
+
+    integer :: maxBlobs               ! max no of blobs
+    type(BLOBTYPE) :: blobs(maxBlobs) ! blob array
+    integer :: nNewBlobs              ! no of new blobs
+    type(GRIDTYPE) :: grid            ! opacity grid
+    real :: blobTime                  ! the timescale for blob creation
+    real :: dTime                     ! time interval
+    logical :: freeBlob               ! found a free blob
+    integer :: j,k, iBlob             ! counters
+    integer :: nCurr                  ! current number of blobs
+    real :: blobContrast
+    
+
+    ! the number of new blobs is found according to the random
+    ! poissonion deviate.
+
+    nNewBlobs = int(poidev(dTime/blobTime))
+
+    nCurr = 0
+    do iBlob = 1, maxBlobs
+       if (blobs(iBlob)%inUse) then
+          nCurr = nCurr + 1
+       endif
+    enddo
+
+
+    ! loop over the number of new blobs
+
+    do k = 1 , nNewBlobs
+
+       ! find a slot for the new blob
+
+       freeBlob = .false.
+       do iBlob = 1, maxBlobs
+          if (.not.blobs(iBlob)%inUse) then
+             freeBlob = .true.
+             j = iBlob
+          endif
+       enddo
+
+       ! if a free slot is found then initialize it otherwise
+       ! warn the user - this means that maxblobs must be 
+       ! increased
+
+       if (freeBlob) then
+          call initBlob(blobs, grid, j, .true., blobContrast)
+       else
+          write(*,'(A)') "! No slot free for new blob"
+          write(*,'(A)') "! increase maxBlobs"
+       endif
+
+    enddo  ! over new blobs
+
+
+
+
+
+  end subroutine addNewBlobs
+
+
+  ! subroutine to write current blob configuration to a file
+
+  subroutine writeBlobs(filename, maxBlobs, blobs)
+
+
+    character(len=*) :: filename        ! the filename
+    type(BLOBTYPE) :: blobs(*)          ! the blob array
+    integer :: maxBlobs                 ! max no of blobs
+    integer :: i                        ! counter
+
+    ! open file as new to prevent overwriting previous blob
+    ! configurations - an easy mistake to make
+
+    open(40, file=filename, status='new', form='unformatted', err=666)
+
+    ! first line contains number of blobs
+
+    write(40) maxBlobs
+
+    ! loop over all blobs writing out details
+
+    do i = 1, maxBlobs
+
+       write(40) blobs(i)%position
+       write(40) blobs(i)%velocity
+       write(40) blobs(i)%contrast
+       write(40) blobs(i)%radius
+       write(40) blobs(i)% inUse
+
+    end do ! over all blobs
+
+    close(40) ! close output
+
+    goto 1000 ! quit
+
+    ! cannot open the blob file
+
+666 continue
+    write(*,'(a,a,a)') "! Blob configuration file ",trim(filename)," already exists"
+    stop
+
+
+1000 continue
+
+
+  end subroutine writeBlobs
+
+
+  ! read in the blob configuration from a file
+
+  subroutine readBlobs(filename, maxBlobs, blobs)
+
+    character(len=*) :: filename     ! the filename
+    type(BLOBTYPE) :: blobs(*)       ! blob array
+    integer :: maxBlobs              ! max number of blobs
+    integer :: i                     ! counter
+    integer :: nBlobs                ! actual no of blobs
+
+    ! info for user
+
+    write(*,'(a,a)') "Reading blob configuration from: ",trim(filename)
+
+    ! file must already exist
+
+    open(40, file=filename, status='old', form='unformatted')
+
+    read(40) nBlobs
+    
+    ! this might happen
+
+    if (nBlobs > maxBlobs) then
+       write(*,'(a)') "! Too many blobs in configuration file"
+       write(*,'(a)') "! increase maxBlobs"
+    endif
+
+    ! read in configuration
+
+    do i = 1, nBlobs
+
+       read(40) blobs(i)%position
+       read(40) blobs(i)%velocity
+       read(40) blobs(i)%contrast
+       read(40) blobs(i)%radius
+       read(40) blobs(i)% inUse
+    end do
+
+    close(40) ! close file
+  end subroutine readBlobs
+
+end module blob_mod
+
+
+

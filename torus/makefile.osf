@@ -1,0 +1,37 @@
+
+COBJ =  kind_mod.o constants_mod.o atom_mod.o vector_mod.o utils_mod.o \
+  	grid_mod.o \
+	math_mod.o unix_mod.o \
+	phasematrix_mod.o photon_mod.o blob_mod.o distortion_mod.o \
+	image_mod.o  \
+	torusMain.o integratePath.o \
+	mieDistPhaseMatrix.o inputs.o \
+        mieDistCrossSection.o getRefractiveIndex.o draineCrossSection.o \
+	palette.o readTioCrossSection.o rayleighCrossSection.o \
+        fillGridTio.o fillGridRayleigh.o fillGridMie.o intersectCube.o \
+	image_f77.o fillGridThomson.o cont_read.o readIntPro.o getMeanMass.o 
+
+EXE=	./torus.osf
+F90=	f95   ${debug}
+#F90=	f95 -g  -ieee=full
+
+.f90.o:
+	$(F90)  -c $*.f90
+
+.f.o:
+#	f77 -g  -fno-second-underscore  -c $*.f
+	f77 ${debug}   -fno-second-underscore -c $*.f
+
+LIBDIR= -L/star/lib
+LIBS=	`pgplot_link` `ndf_link` -last -last_err -last_ems \
+	-last_grf -last_pass2 \
+	-last_pgplot -last_wcslib -last_slalib -lsla
+
+torus:	$(COBJ)
+	$(F90)  -o ${EXE} \
+	$(COBJ) $(LIBDIR) $(LIBS)
+
+clean:
+	/bin/rm *.o *~ *.mod torus
+
+

@@ -1,0 +1,508 @@
+subroutine integratePath(wavelength, lambda0, vVec, aVec, uHat, Grid,  lambda, &
+     tauExt, tauAbs, tauSca, &
+     nTau, opaqueCore, escProb, contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine)
+
+  use vector_mod
+  use grid_mod
+  use math_mod
+  use photon_mod
+  use constants_mod
+
+  implicit none
+  type(GRIDTYPE) :: grid
+  type(VECTOR) :: aVec, uHat, rVec, rHat, vVec, vHat
+  logical :: thinLine
+  real :: lambda0
+  real :: escProb
+  real :: sigma, t1, t2, t3
+  real, parameter :: precision = 1.e-4
+  real :: factor
+  real :: wavelength
+  logical :: contPhoton
+  real :: sinTheta
+  integer :: iStart
+  real :: mu, nu
+  real :: tauSob, tauSob1, tauSob2
+  real :: thisLam
+  real :: thisVel
+  integer :: ilambda
+  type(PHOTON) :: thisPhoton
+  real :: rMin
+  integer, parameter :: maxTau = 20000
+  integer :: indx(maxTau)
+  real :: fudgeFactor = 1.00001
+  real :: lambda(*),dlambda
+  real :: tauExt(*), tauAbs(*), tauSca(*)
+  real :: projVel(maxTau), projVel1, projVel2, t
+  integer :: posIndex(maxTau,3)
+  real :: kabs(maxtau), ksca(maxtau), dlam(maxtau)
+  type(VECTOR) :: rVecArray(maxTau)
+  real :: x,x1,x2,cosTheta
+  logical :: endLoop
+  integer :: nTau
+  integer :: iMidPhi, iMidMu
+  real :: chil
+  real :: dx, dy, dz
+  real :: r,  phi
+  real :: lamStart, lamEnd
+  integer :: nLambda
+  real :: tauCont(maxTau, nLambda)
+  integer :: i, i1, i2, i3, di, j
+  integer :: diR, diMu, diPhi
+  integer :: iMin
+  real :: rho
+  logical :: first
+  logical :: opaqueCore
+  logical :: hitcore
+  logical :: ok
+  logical :: picky
+  real :: resFac, theta
+
+
+  hitcore = .false.
+
+
+  picky = .true.
+
+
+  rVec = aVec
+
+  escProb = 1.
+
+  if (grid%nLambda == 1) then
+     iLambda = 1
+  else
+     iLambda = nint(real(grid%nlambda)*(wavelength-grid%lamArray(1))/(grid%lamArray(grid%nlambda)-grid%lamArray(1)))
+     ilambda = max(1,min(grid%nLambda,ilambda))
+  endif
+
+  if (grid%cartesian) then
+     dx = grid%xAxis(2)-grid%xAxis(1)
+     dy = grid%yAxis(2)-grid%yAxis(1)
+     dz = grid%zAxis(2)-grid%zAxis(1)
+
+     dLambda = dx / 4.
+
+     lambda(1:1000) = 0.
+     tauExt(1:1000) = 0.
+     tauAbs(1:1000) = 0.
+     tauSca(1:1000) = 0.
+
+     nTau = 1
+
+     lambda(nTau) = 0.
+     tauExt(nTau) = 0.
+     tauAbs(nTau) = 0.
+     tauSca(nTau) = 0.
+
+     rVec = rVec + dlambda * uHat
+
+     call hunt(grid%xAxis, grid%nx, rVec%x, i1)
+     call hunt(grid%yAxis, grid%ny, rVec%y, i2)
+     call hunt(grid%zAxis, grid%nz, rVec%z, i3)
+
+     do  while ( ((rVec%x >= grid%xAxis(1)) .and. (rVec%x <= grid%xAxis(grid%nx))) .and. &
+          ((rVec%y >= grid%yAxis(1)) .and. (rVec%y <= grid%yAxis(grid%ny))) .and. &
+          ((rVec%z >= grid%zAxis(1)) .and. (rVec%z <= grid%zAxis(grid%nz))) )
+
+        if (rVec%x > grid%xAxis(i1+1)) i1 = i1 + 1
+        if (rVec%x < grid%xAxis(i1)) i1 = i1 - 1
+
+        if (rVec%y > grid%yAxis(i2+1)) i2 = i2 + 1
+        if (rVec%y < grid%yAxis(i2)) i2 = i2 - 1
+
+        if (rVec%z > grid%zAxis(i3+1)) i3 = i3 + 1
+        if (rVec%z < grid%zAxis(i3)) i3 = i3 - 1
+
+        rho = Grid%rho(i1,i2,i3)
+        if (rho /= 0.) then
+           nTau = nTau + 1
+           if (nTau > maxTau) then
+              write(*,*) "! tau array full"
+              stop
+           endif
+           tauExt(nTau) = tauExt(nTau-1) + &
+                (grid%kappaAbs(i1,i2,i3,iLambda) +grid%kappaSca(i1,i2,i3,iLambda))* dlambda
+
+           tauSca(nTau) = tauSca(nTau-1) + grid%kappaSca(i1,i2,i3,iLambda) * dlambda
+           tauAbs(nTau) = tauAbs(nTau-1) + grid%kappaAbs(i1,i2,i3,iLambda) * dlambda
+           lambda(nTau) = lambda(nTau-1) + dlambda
+
+        endif
+
+        rVec = rVec + dlambda *  uHat
+     enddo
+
+
+  endif
+
+
+  if (picky) then
+
+     ! picky piecemeal integration - slow but accurate
+
+
+     resFac = 1.
+     nTau = 1
+
+     ksca(nTau) = 0.
+     kabs(nTau) = 0.
+     dlam(nTau) = 0.
+
+     lambda(nTau) = 0.
+     tauExt(nTau) = 0.
+     tauAbs(nTau) = 0.
+     tauSca(nTau) = 0.
+
+
+
+     if (modulus(rVec) == 0.)  rVec = 1.0001 * grid%rAxis(1)*uHat
+
+
+     call getPolar(rVec, r, theta, phi)
+     mu = rVec%z/r
+
+     i = 1
+     call hunt(grid%rAxis, grid%nr, r, i)
+     if (i == 0) then
+        i = 1
+     endif
+     t1 = (r-grid%rAxis(i))/(grid%rAxis(i+1)-grid%rAxis(i))
+
+
+     call hunt(grid%muAxis, grid%nMu, mu, i2)
+     t2 = (mu-grid%muAxis(i2))/(grid%muAxis(i2+1)-grid%muAxis(i2))
+
+     call hunt(grid%phiAxis, grid%nPhi, phi, i3)
+     if (i3 == grid%nPhi) i3=i3-1
+
+     t3 = (phi-grid%phiAxis(i3))/(grid%phiAxis(i3+1)-grid%phiAxis(i3))
+     
+
+
+     thisVel = (lambda0 - wavelength)/lambda0
+     thisVel = thisVel  + (uHat .dot. vVec)  
+
+     escProb = 1.
+
+     kabs(nTau) = interpGridKappaAbs(grid,i,i2,i3,iLambda,t1,t2,t3) 
+
+     ksca(nTau) = interpGridKappaSca(grid,i,i2,i3,iLambda,t1,t2,t3) 
+
+
+     posIndex(nTau,1) = i
+     posIndex(nTau,2) = i2
+     posIndex(nTau,3) = i3
+
+     rVecArray(nTau) = rVec
+
+     if (.not.contPhoton) then
+
+
+        vHat = vVec/modulus(vVec)
+
+        nu = cSpeed / (lambda0*angstromtocm)
+
+        mu = uHat .dot. vHat
+
+        chil = &
+             interpGridChil(grid,i,i2,i3,t1,t2,t3)
+
+        tauSob = chil  / nu
+        tauSob = tauSob / directionalDeriv(grid,rVec,i,i2,i3,uHat,.false.)
+
+
+
+        escProb = (1. - exp(-tauSob))/tauSob
+
+     endif
+
+
+     if (contPhoton) then
+        projVel(1) = interpGridVelocity(grid,i,i2,i3,t1,t2,t3) .dot. uHat
+     else
+        projVel(1) = thisVel
+     endif
+
+
+     if (i /= grid%nR) then
+        dlambda = grid%rAxis(i+1) - grid%rAxis(i)
+     else
+        dlambda = grid%rAxis(grid%nr) - grid%rAxis(grid%nr-1)
+     endif
+
+     dlambda = dlambda / resFac
+
+
+     endLoop = .false.
+
+     do while(.not.endLoop)
+
+        rVec = rVec + dlambda * uHat
+        call getPolar(rVec, r, theta, phi)
+        mu = rVec%z/r
+
+        if ((r < grid%rAxis(1)) .and. opaqueCore) then
+           nTau = nTau + 1
+           ksca(nTau) = ksca(nTau-1)
+           kabs(nTau) = kabs(nTau-1)
+           lambda(nTau) = lambda(nTau-1)
+           hitCore = .true.
+           endLoop = .true.
+           posIndex(nTau,1:3) = posIndex(nTau-1,1:3)
+           dlam(nTau) = dLam(nTau-1)
+        else if ((r < grid%rAxis(1)).and.(.not.opaqueCore)) then
+
+           rHat = rVec / r
+           cosTheta  = uHat .dot. rHat
+           call solveQuad(1.,-2.*r*cosTheta,r*r-grid%rAxis(1)*grid%rAxis(1),x1,x2,ok)
+           dlambda = max(x1,x2) * fudgeFactor
+           rVec = rVec +  dlambda * uHat   
+           r = modulus(rVec)
+           mu = rVec%z/r
+
+        endif
+
+
+
+
+        if ((r > grid%rAxis(grid%nr))) then
+           endLoop = .true.
+        endif
+
+        if (.not.endLoop) then
+           call hunt(grid%rAxis, grid%nr, r, i)
+           if (i == 0) i==1
+           t1 = (r-grid%rAxis(i))/(grid%rAxis(i+1)-grid%rAxis(i))
+
+
+           if (grid%isotropic) then
+              i2 = (mu+1.) / grid%dMu + 1
+              if (i2 == grid%nMu) i2=i2-1
+              t2 = (mu-grid%muAxis(i2))/grid%dMu
+              i3 = phi / grid%dPhi + 1
+              t3 = (phi-grid%phiAxis(i3))/grid%dPhi
+           else
+              call hunt(grid%muAxis, grid%nMu, mu, i2)
+              t2 = (mu-grid%muAxis(i2))/(grid%muAxis(i2+1)-grid%muAxis(i2))
+              call hunt(grid%phiAxis, grid%nPhi, phi, i3)
+              t3 = (phi-grid%phiAxis(i3))/(grid%phiAxis(i3+1)-grid%phiAxis(i3))
+           endif
+
+
+           nTau = nTau + 1
+
+           kabs(nTau) = interpGridKappaAbs(grid,i,i2,i3,iLambda,t1,t2,t3) 
+           ksca(nTau) = interpGridKappaSca(grid,i,i2,i3,iLambda,t1,t2,t3) 
+
+
+           posIndex(nTau,1) = i
+           posIndex(nTau,2) = i2
+           posIndex(nTau,3) = i3
+           rVecArray(nTau) = rVec
+
+           lambda(nTau) = lambda(nTau-1) + dlambda
+           dlam(nTau-1) = dLambda
+
+
+           projVel(nTau) = interpGridVelocity(grid,i,i2,i3,t1,t2,t3) .dot. uHat
+ 
+          
+           if (i /= grid%nR) then
+              dlambda = grid%rAxis(i+1) - grid%rAxis(i)
+           else
+              dlambda = grid%rAxis(grid%nr) - grid%rAxis(grid%nr-1)
+           endif
+
+           dlambda = dlambda / resFac
+
+        endif
+
+     enddo
+
+
+
+     do i = 2, nTau
+        tauExt(i) = tauExt(i-1) + dlam(i-1) * (0.5*(kabs(i)+kabs(i-1)) + 0.5*(ksca(i)+ksca(i-1)))
+        tauSca(i) = tauSca(i-1) + dlam(i-1) * (0.5*(ksca(i)+ksca(i-1)))
+        tauAbs(i) = tauAbs(i-1) + dlam(i-1) * (0.5*(kabs(i)+kabs(i-1)))
+     enddo
+
+
+
+     iStart = 1
+
+
+     if (grid%geometry == "stateq") then
+        if (nTau > 0) then
+
+           if (.not.contPhoton) then
+
+              do i = 2, nTau-1
+                 if ( ((projVel(i) < thisVel) .and. (thisVel <= projVel(i+1))) .or. &
+                      ((projVel(i+1) < thisVel) .and. (thisVel <= projVel(i))) ) then
+                    i1 = posIndex(i,1)
+                    i2 = posIndex(i,2)
+                    i3 = posIndex(i,3)
+
+                    sinTheta = sqrt(1.-grid%muAxis(i2)**2)
+
+
+                    nu = cSpeed / (lambda0*angstromtocm)
+
+
+                    vHat = grid%velocity(i1, i2, i3) / modulus(grid%velocity(i1,i2,i3))
+
+                    mu = uHat .dot. vHat
+
+                    tauSob = interpGridchiL(grid,i1,i2,i3,t1,t2,t3) / nu
+
+                    tauSob1 = tauSob / directionalDeriv(grid,rVecArray(i),i1,i2,i3,uHat, .false.)
+
+
+
+                    i1 = posIndex(i+1,1)
+                    i2 = posIndex(i+1,2)
+                    i3 = posIndex(i+1,3)
+
+                    sinTheta = sqrt(1.-grid%muAxis(i2)**2)
+
+                    vHat = grid%velocity(i1, i2, i3) / modulus(grid%velocity(i1,i2,i3))
+
+
+
+                    nu = cSpeed / (lambda0*angstromtocm)
+
+                    mu = uHat .dot. vHat
+
+                    tauSob = interpGridchiL(grid,i1,i2,i3,t1,t2,t3) / nu
+
+
+                    tauSob2 = tauSob / directionalDeriv(grid,rVecArray(i+1),i1,i2,i3,uHat,.false.)
+
+                    x = 1.
+                    if ((projVel(i+1)-projVel(i)) /= 0.) then
+                       x = (thisVel-projVel(i))/(projVel(i+1)-projVel(i))
+                    endif
+                    tauSob = tauSob1  + x * (tauSob2 - tauSob1)
+
+
+
+                    if (tauSob < 0.) then
+                       write(*,*) "tau sob",tausob
+                       write(*,*) "this Vel",thisVel*cSpeed/1.e5
+                       write(*,*) "modulus vvec",modulus(vVec)*cSpeed/1.e5
+                       write(*,*) "wavelength",wavelength,lambda0
+                       write(*,*) "proj",projVel(i)*cSpeed/1.e5,projVel(i+1)*cSpeed/1.e5
+                    endif
+
+
+
+                    tauExt(i:nTau) = tauExt(i:nTau) + tauSob
+                    tauAbs(i:nTau) = tauAbs(i:nTau) + tauSob
+
+
+                 endif
+              enddo
+
+
+           else
+
+              tauCont(1:nTau,1:nLambda) = 0.
+
+
+              if (.not.thinLine) then
+
+              do j = 1, nLambda
+
+                 thisVel = real(j-1)/real(nLambda-1)
+                 thisVel = lamStart + thisVel*(lamEnd-lamStart)
+                 thisVel = (lambda0-thisVel)/lambda0
+                 thisVel = thisVel  + (uHat .dot. thisPhoton%velocity) 
+
+
+                 do i = 1, nTau - 1
+
+                    if ( ((projVel(i) < thisVel) .and. (thisVel <= projVel(i+1))) .or. &
+                         ((projVel(i+1) < thisVel) .and. (thisVel <= projVel(i))) ) then
+
+
+                       i1 = posIndex(i,1)
+                       i2 = posIndex(i,2)
+                       i3 = posIndex(i,3)
+ 
+                       sinTheta = sqrt(1.-grid%muAxis(i2)**2)
+
+                       vHat = grid%velocity(i1, i2, i3) / modulus(grid%velocity(i1,i2,i3))
+
+
+                       nu = cSpeed / (lambda0*angstromtocm)
+
+                       mu = uHat .dot. vHat
+
+                       tauSob = interpGridchiL(grid,i1,i2,i3,t1,t2,t3) / nu
+
+                       tauSob1 = tauSob / directionalDeriv(grid,rVecArray(i),i1,i2,i3,uHat,.true.)
+
+                       i1 = posIndex(i+1,1)
+                       i2 = posIndex(i+1,2)
+                       i3 = posIndex(i+1,3)
+                       
+                       sinTheta = sqrt(1.-grid%muAxis(i2)**2)
+
+                       vHat = grid%velocity(i1, i2, i3) / modulus(grid%velocity(i1,i2,i3))
+
+                       nu = cSpeed / (lambda0*angstromtocm)
+
+                       mu = uHat .dot. vHat
+
+                       tauSob = interpGridchiL(grid,i1,i2,i3,t1,t2,t3) / nu
+
+                       tauSob2 = tauSob / directionalDeriv(grid,rVecArray(i+1),i1,i2,i3,uHat,.true.)
+
+                       x = 1.
+                       if ((projVel(i+1)-projVel(i)) /= 0.) then
+                          x = (thisVel-projVel(i))/(projVel(i+1)-projVel(i))
+                       endif
+                       tauSob = tauSob1  + x * (tauSob2 - tauSob1)
+
+
+
+
+                       if (tauSob < 0.) then
+                          write(*,*) "tau sob",tausob,tausob1,tausob2
+                          write(*,*) "this Vel",thisVel*cSpeed/1.e5
+                          write(*,*) "modulus vvec",modulus(vVec)*cSpeed/1.e5
+                          write(*,*) "wavelength",wavelength,lambda0
+                          write(*,*) "proj",projVel(i)*cSpeed/1.e5
+                       endif
+
+
+                       tauCont(i:nTau,j) = tauCont(i:nTau,j) + tauSob
+
+                    endif
+
+                 enddo
+
+              enddo
+
+              endif
+
+           endif
+
+        endif
+
+     endif
+
+
+  endif
+
+
+
+
+666 continue
+end subroutine integratePath
+
+   
+    
+   

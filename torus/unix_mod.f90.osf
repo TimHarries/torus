@@ -1,0 +1,51 @@
+module unix_mod
+  
+contains
+
+  subroutine unixGetenv(envVariable, directory, length, error)
+
+    character(len=*) :: envVariable
+    character(len=*) :: directory
+    integer, intent(out), optional :: length
+    integer, intent(out), optional :: error
+
+    call getenv(envVariable, directory)
+
+  end subroutine unixGetenv
+
+  subroutine unixGetLogin(login, n)
+    
+    character(len=*) :: login
+    integer :: n
+!    call getLogin(login, n)
+
+  end subroutine unixGetLogin
+
+  subroutine unixGetHostname(name, n)
+
+    character(len=*) :: name
+    integer :: n
+    
+!    call getHostname(name, n)
+
+  end subroutine unixGetHostname
+
+  subroutine unixTimes(cpuTime, systemTime)
+    integer :: cpuTime, systemTime
+!    integer(CLOCK_TICK_KIND) :: i
+
+!    integer(TMS) :: buffer
+
+!    i = times(buffer)
+
+!    cpuTime = buffer%uTime / clk_tck()
+!    systemTime = buffer%sTime / clk_tck()
+ 
+    cpuTime = 0
+    systemTime = 0
+  end subroutine unixTimes
+    
+
+
+end module unix_mod
+

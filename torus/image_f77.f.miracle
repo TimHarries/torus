@@ -1,0 +1,95 @@
+      subroutine writeImagef77(thisImageI, thisImageQ, thisImageU,
+     &     thisImageV, thisImageVel, scale, nSize, nPix, filename)
+      implicit none
+      integer npix, nsize, i , j
+      real thisImageI(nPix, nPix)
+      real thisImageQ(nPix, nPix)
+      real thisImageU(nPix, nPix)
+      real thisImageV(nPix, nPix)
+      real thisImageVel(nPix, nPix)
+      character*(*)  filename
+      character*80 datfilename
+      real scale
+
+      write(*,'(a,i3,a,i3)') "Writing image: ",npix," by ",npix
+      
+      i = index(filename, " ")
+      datfilename = filename(1:i-1)//".dat"
+
+      open(20, file=datfilename, status="unknown", form="formatted")
+
+      write(20,'(2I4)') nSize
+      write(20, '(1p,e13.5)') scale
+
+      do i = -nSize, nSize
+         do j = -nSize, nSize
+            write(20, '(1p,5e13.5)') thisImageI(i+nSize+1,j+nSize+1),
+     &           thisImageQ(i+nSize+1,j+nSize+1),
+     &           thisImageU(i+nSize+1,j+nSize+1),
+     &           thisImageV(i+nSize+1,j+nSize+1),
+     &           thisImageVel(i+nSize+1,j+nSize+1)
+         enddo
+      enddo
+      close(20)
+      end
+                         
+
+      subroutine writePVimageF77(nx, ny, array, xaxis, yaxis,
+     &                           filename)
+      implicit none
+c      include '/star/include/dat_par'
+c      include '/star/include/sae_par'
+      integer nx, ny
+      real array(nx,ny)
+      real xaxis(nx)
+      real yaxis(ny)
+      character*(*) filename
+c      integer status, lbnd(2), ubnd(2)
+c      integer iptr, oaxisp1, oaxisp2, ndfo, nelm
+c      character*(DAT__SZLOC) loc
+
+c      lbnd(1) = 1
+c      lbnd(2) = 1
+c      ubnd(1) = nx
+c      ubnd(2) = ny
+c      nelm = nx * ny
+
+c      write(*,*) "writing",nx,ny," pv image to ",filename(1:20)
+!
+! Begin the ndf and hds systems
+!
+c      status = 0
+
+c      call ndf_begin
+c      call hds_start(status)
+!
+! create a new tsp ndf and map it
+!
+c      call hds_new(filename,'output','ndf',0,0,loc,status)
+c      call dat_new(loc,'data_array','_real',2,ubnd,status)
+c      call ndf_find(loc, " ", ndfo, status)
+c      call ndf_acre(ndfo,status)
+c      call ndf_acput('v',ndfo,'lab',1,status)
+c      call ndf_acput('km/s',ndfo,'unit',1,status)
+c      call ndf_acput('p',ndfo,'lab',2,status)
+c      call ndf_acput('arcsec',ndfo,'unit',2,status)
+c      call ndf_amap(ndfo,'centre',1,'_real','update',oaxisp1,
+c     &ubnd(1),status)
+c      call ndf_amap(ndfo,'centre',2,'_real','update',oaxisp2,
+c     &ubnd(1),status)
+c      call ndf_map(ndfo,'data','_real','write',iptr,nelm,status)
+
+c      if (status .ne. sai__ok) then
+c         write(*,'(a)') "! Error opening output ndf image"
+c         stop
+c      endif
+
+c      call copyImage(nx, ny, array, xAxis, yAxis, %val(iptr),
+c     &               %val(oaxisp1), %val(oaxisp2))
+
+
+c      call ndf_end(status)
+c      call hds_close(loc,status)
+c      call hds_stop(status)
+
+      end

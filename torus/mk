@@ -1,0 +1,105 @@
+      export DEBUGFLAG
+      export FASTFLAG
+      export MATHTRAP
+      export F77FLAG
+      export EXE
+      export F2CLIB
+      export F95COMP
+      export F77COMP
+      export STARLIBS
+	
+#  Check that the SYSTEM environment variable is defined.
+      if test "$SYSTEM" = ""; then
+         echo "mk: Please define the environment variable SYSTEM"
+
+#  If OK, test for each recognised system.
+      else
+         case "$SYSTEM" in
+
+            alpha)
+               F95COMP="f90"
+               F77COMP="f77"
+               FASTFLAG="-fast"
+               MATHTRAP="-fpe3"
+               UNIXMOD="unix_mod.f90.osf"
+               EXE="torus.osf"
+               F77FLAG=" "
+               IMAGEF77="image_f77.f.default"
+               SPECF77="spec_f77.f.default"
+               KINDMOD="kind_mod.f90.osf"
+               F2CLIB=" "
+	       STARLIBS="-L/star/lib `ndf_link` `pgplot_link`"
+
+
+               echo "mk: Environment variables defined for $SYSTEM system"
+               ;;
+
+            linux)
+               F95COMP="f95 -Bstatic"
+               F77COMP="f77"
+               FASTFLAG="-O3"
+               MATHTRAP="-ieee=full"
+               UNIXMOD="unix_mod.f90.linux"
+               KINDMOD="kind_mod.f90.linux"
+               EXE="torus.linux"
+               F77FLAG="-fno-second-underscore -w"
+               IMAGEF77="image_f77.f.default"
+               SPECF77="spec_f77.f.default"
+               F2CLIB=-lg2c
+	       STARLIBS="-L/star/lib `ndf_link` `pgplot_link`"
+
+               echo "mk: Environment variables defined for $SYSTEM system"
+               ;;
+
+            miracle)
+               F95COMP="f90"
+               F77COMP="f77"
+               FASTFLAG="-mp -mpio"
+               MATHTRAP=" "
+               UNIXMOD="unix_mod.f90.miracle"
+               KINDMOD="kind_mod.f90.miracle"
+               EXE="torus.miracle"
+               F77FLAG=" "
+               IMAGEF77="image_f77.f.miracle"
+               SPECF77="spec_f77.f.miracle"
+               F2CLIB=" "
+               STARLIBS="-L/usr/people/disk14/tjh/pgplot -lpgplot -lX11"
+               echo "mk: Environment variables defined for $SYSTEM system"
+               ;;
+
+
+#  Issue a warning if SYSTEM is not recognised.
+            *)
+               SOURCE_VARIANT='unknown'
+               echo "mk: WARNING: value of SYSTEM = $SYSTEM not recognised..."
+               echo '             ...setting SOURCE_VARIANT to "unknown"'
+               ;;
+         esac
+
+#  Invoke make with the appropriate environment variables set to override
+#  default macros defined in the makefile.
+	ln -sf $UNIXMOD unix_mod.f90
+	ln -sf $KINDMOD kind_mod.f90
+	ln -sf $IMAGEF77 image_f77.f
+	ln -sf $SPECF77 spec_f77.f
+
+
+        case "$1" in
+
+        debug)
+        touch make.depends
+        make -e depends
+        make -e DEBUG=-g MATHTRAP=" " FASTFLAG=" "
+        ;;
+
+        *)
+        touch make.depends
+        make -e depends
+        make -e $*
+        ;;
+   esac
+        
+
+      fi
+
+#  End of script.

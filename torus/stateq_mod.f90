@@ -1,0 +1,2073 @@
+!
+! a module to do 3d statistical equilibrium according to Klein & Castor (1978)
+! - lots of it based on my "stateq" PhD code
+!
+module stateq_mod
+
+  use grid_mod
+  use math_mod
+  use vector_mod
+  use constants_mod
+  use path_integral
+
+  implicit none
+  public
+
+!  public initGridStateq, expint, gii, giia, beta_mn, cijt
+
+  real(kind=doubleKind) :: aEinstein(9, 9)
+  real(kind=doubleKind) :: eTrans(15)
+  real(kind=doubleKind) :: lambdaTrans(9,9)
+  real(kind=doubleKind) :: fStrength(9,9), gDegen(15), bEinstein(9, 9) 
+
+
+
+  data aEinstein   &
+       / 0.000d0, 4.699d8, 5.575d7, 1.278d7, 4.125d6, 1.644d6, &
+       7.568d5, 3.869d5, 2.143d5,  &
+       0.000d0, 0.000d0, 4.410d7, 8.419d6, 2.530d6, 9.732d5, &
+       4.389d5, 2.215d5, 1.216d5, &
+       0.000d0, 0.000d0, 0.000d0, 8.986d6, 2.201d6, 7.783d5, &
+       3.358d5, 1.651d5, 8.905d4, &
+       0.000d0, 0.000d0, 0.000d0, 0.000d0, 2.699d6, 7.711d5, &
+       3.041d5, 1.424d5, 7.459d4, &
+       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 1.025d6, &
+       3.253d5, 1.388d5, 6.908d4, &
+       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
+       4.561d5, 1.561d5, 7.065d4, &
+       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
+       0.000d0, 2.272d5, 8.237d4, &
+       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
+       0.000d0, 0.000d0, 1.233d5,  &
+       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
+       0.000d0, 0.000d0, 0.000d0 /
+
+  data gDegen   &
+       / 2.d0, 8.d0, 18.d0, 32.d0, 50.d0, 72.d0, 98.d0, 128.d0, 162.d0, 200.d0, 242.d0, &
+       288.d0, 338.d0, 392.d0, 450.d0 /
+
+  data eTrans &
+       /  0.000d0, 10.199d0, 12.088d0, 12.749d0, 13.055d0, 13.221d0, &
+       13.321d0, 13.386d0, 13.431d0, 13.463d0, 13.486d0, 13.504d0, &
+       13.518d0, 13.529d0, 13.538d0 /
+
+
+
+  data fStrength  &
+       / 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
+       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
+       4.162d-1, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
+       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
+       7.910d-2, 6.407d-1, 0.000d00, 0.000d00, 0.000d00, &
+       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
+       2.899d-2, 1.193d-1, 8.421d-1, 0.000d00, 0.000d00, &
+       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
+       1.394d-2, 4.467d-2, 1.506d-1, 1.038d00, 0.000d00, &
+       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
+       7.799d-3, 2.209d-2, 5.584d-2, 1.793d-1, 1.231d00, &
+       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
+       4.814d-3, 1.270d-2, 2.768d-2, 6.549d-2, 2.069d-1, &
+       1.424d00, 0.000d00, 0.000d00, 0.000d00, &
+       3.183d-3, 8.036d-3, 1.604d-2, 3.230d-2, 7.448d-2, &
+       2.340d-1, 1.616d00, 0.000d00, 0.000d00, &
+       2.216d-3, 5.429d-3, 1.023d-2, 1.870d-2, 3.645d-2, &
+       8.315d-2, 2.609d-1, 1.807d00, 0.000d00 /
+
+  data lambdaTrans   &
+       /000000.d-8,1215.67d-8,1025.72d-8,992.537d-8,949.743d-8, &
+       937.803d-8,930.748d-8,926.226d-8,923.150d-8, &
+       0.00000d-8,0000000d-8,6562.80d-8,4861.32d-8,4340.36d-8, &
+       4101.73d-8,3970.07d-8,3889.05d-8,3835.38d-8, &
+       0.00000d-8,0.00000d-8,0000000d-8,18751.0d-8,12818.1d-8, &
+       10938.1d-8,10049.4d-8,9545.98d-8,9229.02d-8, &
+       0.00000d-8,0.00000d-8,0.00000d-8,0000000d-8,40512.0d-8, &
+       26252.0d-8,21655.0d-8,19445.6d-8,18174.1d-8, &
+       0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0000000d-8, &
+       74578.0d-8,46525.0d-8,37395.0d-8,32961.0d-8, &
+       0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8, &
+       0.00000d-8,123680.d-8,75005.0d-8,59066.0d-8, &
+       0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8, &
+       0.00000d-8,0000000d-8,190570.d-8,113060.d-8, &
+       0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8, &
+       0.00000d-8,0000000d-8,0000000d-8,277960.d-8, &
+       0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8, &
+       0.00000d-8,0000000d-8,0000000d-8,0.00000d-8 /
+
+
+contains
+
+  real function beta_mn(m, n, rVec, i1, i2, i3, grid)
+
+    type(GRIDTYPE) :: grid
+    type(VECTOR) :: rVec, direction
+    integer :: i, j
+    integer :: m,n
+    real :: theta, phi
+    integer :: nTheta = 10, nPhi
+    real :: dTheta, dPhi, dOmega
+    integer :: i1, i2, i3
+    real :: totomega
+    real :: escprob,  tau_mn
+
+
+    dtheta = pi / real(ntheta-1)
+    dphi = twopi / real(nphi-1)
+    beta_mn = 0.
+    totomega = 0.
+    do i = 1, ntheta
+       theta = pi*real(i-1)/real(ntheta-1)
+       nphi = max(2,nint(real(ntheta)*sin(theta)))
+       dphi = twopi / real(nphi-1)
+       do j = 1, nphi-1
+          phi = twopi * real(j-1)/real(nphi-1)
+          direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
+          domega = sin(theta)*dtheta*dphi
+          totomega = totomega + domega
+
+!          call integratePath(real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
+!                   grid%velocity(i1,i2,i3), &
+!                   rVec, direction, grid, &
+!                   lambdaArray, tauExt, tauAbs, tauSca, maxTau, nTau, .false., &
+!                   escProb, .false., real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
+!                   1, contTau, hitCore, .false.,.false., 0.,&
+!                   VECTOR(0.,0.,0.), 1., .true., m, n, real(fstrength(m,n)), real(gDegen(m)), real(gDegen(n)), &
+!                    tau_mn)
+
+          tau_mn = (pi*echarge**2)/(melectron*cspeed)
+          tau_mn = tau_mn * gDegen(m) * fStrength(m,n)
+          tau_mn = tau_mn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
+          tau_mn = tau_mn *  lambdaTrans(m,n) / cSpeed
+          tau_mn = tau_mn / (directionalderiv(grid,rvec,i1,i2,i3,direction)/1.e10)
+          if (tau_mn < 0.) then
+             tau_mn = 1.e-10 
+          endif
+
+        if (tau_mn < 0.1) then
+          escProb = 1.0-tau_mn*0.5*(1.0 - tau_mn/3.0*(1. - tau_mn*0.25*(1.0 - 0.20*tau_mn)))
+        else if (tau_mn < 15.) then
+          escProb = (1.0-exp(-tau_mn))/tau_mn
+        else
+          escProb = 1./tau_mn
+        end if
+        beta_mn = beta_mn + escprob * domega
+
+       enddo
+    enddo
+   beta_mn = beta_mn / totOmega 
+
+!   if ((m == 1).and.(n == 2)) beta_mn = beta_mn * 100.
+!    write(*,*) totOmega/fourPi
+!   write(*,*) m,n,beta_mn
+  end function beta_mn
+
+
+  real function beta_cmn(m,n,rvec,i1,i2,i3,grid,nstar)
+
+    integer :: m,n
+    type(gridtype) :: grid
+    type(vector) :: rvec
+    integer :: i1, i2, i3
+    integer :: i, j, nphi=10, ntheta=10
+    real :: r, thetatostar, phiTostar
+    real :: h, totomega, disttooccult
+    integer nstar
+    type(vector) :: tostar, occultposition, starposition
+    type(vector) :: tooccult, direction
+    real :: starradius, occultradius
+    real :: disttostar
+    real :: cosang, sinang, ang
+    logical :: occulted, full
+    real :: tau_cmn
+    real :: dtheta, dphi
+    real :: theta, phi, domega
+    real :: escprob, dotprod
+    integer, parameter :: maxTau = 4000
+    integer :: nTau
+    real, allocatable :: contTau(:,:)
+    real :: tauExt(maxTau)
+    real :: tauAbs(maxTau)
+    real :: tauSca(maxTau)
+    real :: lambdaArray(maxTau)
+    logical :: hitCore
+    real :: tauLocal
+
+    full = .false.
+
+
+    if (nstar == 1) then
+       starradius = grid%rstar1
+       occultradius = grid%rstar2
+       starposition = grid%starpos1
+       occultposition = grid%starpos2
+    else
+       starradius = grid%rstar2
+       occultradius = grid%rstar1
+       starposition = grid%starpos2
+       occultposition = grid%starpos1
+    endif
+
+    tostar = starposition - rvec
+    disttostar = modulus(tostar)
+    tostar = tostar / disttostar
+
+    tooccult = occultposition - rvec
+    disttooccult = modulus(tooccult)
+    tooccult = tooccult / disttooccult
+
+    h  = sqrt(max(0.,(disttostar**2 - starradius**2)))
+    cosang = h / disttostar
+    ang = acos(min(1.,max(-1.,cosAng)))
+
+    call getPolar(toStar, r, thetaTostar, phiToStar)
+
+    dtheta = pi / real(ntheta-1)
+    dphi = twopi / real(nphi-1)
+    beta_cmn = 0.
+    totomega = 0.
+    do i = 1, ntheta
+       theta = thetaToStar + (2.*real(i-1)/real(nTheta-1)-1.)*ang
+       if (theta > pi) theta = theta - pi
+       if (theta < 0.) theta = theta + pi
+       dTheta = 2.*ang/real(nTheta-1)
+       do j = 1, nphi
+          phi = phiToStar + (2.*real(j-1)/real(nPhi-1)-1.)*ang
+          if (phi < 0.) phi = phi + twoPi
+          if (phi > twoPi) phi = phi - twoPi
+          dphi = 2.*ang/real(nPhi-1)
+          occulted = .false.
+          direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
+          domega = sin(theta)*dtheta*dphi
+          dotprod = direction .dot. tostar
+          escProb = 0.
+          if ((dotprod > 0.) .and. (acos(min(1.,max(-1.,dotprod))) < ang)) then
+
+             dotprod = direction .dot. tooccult
+             if ((dotprod > 0.).and.(distToOccult < distToStar)) then
+                sinang = sqrt(max(0.,(1.-dotprod*dotprod)))
+                if ((sinang*disttooccult) < occultradius) then 
+                   occulted = .true.
+                endif
+             endif
+
+
+             if (.not.occulted) then
+
+                if (full) then
+!                   call integratePath(real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
+!                        grid%velocity(i1,i2,i3), &
+!                        rVec, direction, grid, &
+!                        lambdaArray, tauExt, tauAbs, tauSca, maxTau, nTau, .true., &
+!                        escProb, .false., real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
+!                        1, contTau, hitCore, .false.,.false., 0.,&
+!                        VECTOR(0.,0.,0.), 1., .true., m, n, real(fstrength(m,n)), real(gDegen(m)), real(gDegen(n)), &
+!                        tauLocal)
+!                   tau_cmn = tauLocal + tauExt(nTau-1)
+                else
+
+
+                   tau_cmn = (pi*echarge**2)/(melectron*cspeed)
+                   tau_cmn = tau_cmn * gDegen(m) * fStrength(m,n)
+                   tau_cmn = tau_cmn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
+                   if (tau_cmn < 0.) then
+                      tau_cmn = 0. !abs(tau_cmn)
+                   endif
+                   tau_cmn = tau_cmn  / (cSpeed / lambdaTrans(m,n))
+                   tau_cmn = tau_cmn / (directionalderiv(grid,rvec,i1,i2,i3,direction)/1.e10)
+                endif
+
+                if (tau_cmn < 0.1) then
+                   escProb = 1.d0-tau_cmn*0.5d0*(  1.0d0 - tau_cmn/3.0d0*( 1.0d0 - &
+                        tau_cmn*0.25d0*(1.0d0 -0.20d0*tau_cmn) )  )
+                else
+                   escprob = (1.d0 - exp(-tau_cmn))/tau_cmn
+                endif
+                beta_cmn = beta_cmn + escprob * domega
+                totOmega = totOmega + dOmega
+             endif
+          endif
+       enddo
+    enddo
+    beta_cmn =   beta_cmn / fourpi
+!    write(*,*) "calc",fourPi*(pi*starradius**2)/(fourPi * disttostar**2)
+!    write(*,*) "found",totOmega
+  end function beta_cmn
+
+  subroutine beta_cmn_sub(m,n,i1,i2,i3,grid,nstar)
+
+    integer :: m,n
+    type(gridtype) :: grid
+    type(vector) :: rvec
+    integer :: i1, i2, i3
+    integer :: i, j, nphi=5, ntheta=5
+    real :: r, thetatostar, phiTostar,betacmn
+    real :: h, totomega, disttooccult
+    integer nstar
+    type(vector) :: tostar, occultposition, starposition
+    type(vector) :: tooccult, direction
+    real :: starradius, occultradius
+    real :: disttostar
+    real :: cosang, sinang, ang
+    logical :: occulted, full
+    real :: tau_cmn
+    real :: dtheta, dphi
+    real :: theta, phi, domega
+    real :: escprob, dotprod
+    integer, parameter :: maxTau = 4000
+    integer :: nTau
+    real, allocatable :: contTau(:,:)
+    real :: tauExt(maxTau)
+    real :: tauAbs(maxTau)
+    real :: tauSca(maxTau)
+    real :: lambdaArray(maxTau)
+    logical :: hitCore
+    real :: tauLocal
+
+    full = .false.
+
+    rVec = VECTOR(grid%xAxis(i1),grid%yAxis(i2),grid%zAxis(i3))
+
+    if (nstar == 1) then
+       starradius = grid%rstar1
+       occultradius = grid%rstar2
+       starposition = grid%starpos1
+       occultposition = grid%starpos2
+    else
+       starradius = grid%rstar2
+       occultradius = grid%rstar1
+       starposition = grid%starpos2
+       occultposition = grid%starpos1
+    endif
+
+    tostar = starposition - rvec
+    disttostar = modulus(tostar)
+    tostar = tostar / disttostar
+
+    tooccult = occultposition - rvec
+    disttooccult = modulus(tooccult)
+    tooccult = tooccult / disttooccult
+
+    h  = sqrt(max(0.,(disttostar**2 - starradius**2)))
+    cosang = h / disttostar
+    ang = acos(min(1.,max(-1.,cosAng)))
+
+    call getPolar(toStar, r, thetaTostar, phiToStar)
+
+    dtheta = pi / real(ntheta-1)
+    dphi = twopi / real(nphi-1)
+    betacmn = 0.
+    totomega = 0.
+    do i = 1, ntheta
+       theta = thetaToStar + (2.*real(i-1)/real(nTheta-1)-1.)*ang
+       if (theta > pi) theta = theta - pi
+       if (theta < 0.) theta = theta + pi
+       dTheta = 2.*ang/real(nTheta-1)
+       do j = 1, nphi
+          phi = phiToStar + (2.*real(j-1)/real(nPhi-1)-1.)*ang
+          if (phi < 0.) phi = phi + twoPi
+          if (phi > twoPi) phi = phi + twoPi
+          dphi = 2.*ang/real(nPhi-1)
+          occulted = .false.
+          direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
+          domega = sin(theta)*dtheta*dphi
+          dotprod = direction .dot. tostar
+          escProb = 0.
+          if ((dotprod > 0.) .and. (acos(min(1.,max(-1.,dotprod))) < ang)) then
+
+             dotprod = direction .dot. tooccult
+             if ((dotprod > 0.).and.(distToOccult < distToStar)) then
+                sinang = sqrt(max(0.,(1.-dotprod*dotprod)))
+                if ((sinang*disttooccult) < occultradius) then 
+                   occulted = .true.
+                endif
+             endif
+
+
+             if (.not.occulted) then
+
+                if (full) then
+                   call integratePath(real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
+                        grid%velocity(i1,i2,i3), &
+                        rVec, direction, grid, &
+                        lambdaArray, tauExt, tauAbs, tauSca, maxTau, nTau, .true., &
+                        escProb, .false., real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
+                        1, contTau, hitCore, .false.,.false., 0.,&
+                        VECTOR(0.,0.,0.), 1., .true., m, n, real(fstrength(m,n)), real(gDegen(m)), real(gDegen(n)), &
+                        tauLocal)
+                   tau_cmn = tauLocal + tauExt(nTau-1)
+                else
+
+
+                   tau_cmn = (pi*echarge**2)/(melectron*cspeed)
+                   tau_cmn = tau_cmn * gDegen(m) * fStrength(m,n)
+                   tau_cmn = tau_cmn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
+                   if (tau_cmn < 0.) then
+                      tau_cmn = 0. !abs(tau_cmn)
+                   endif
+                   tau_cmn = tau_cmn  / (cSpeed / lambdaTrans(m,n))
+                   tau_cmn = tau_cmn / (directionalderiv(grid,rvec,i1,i2,i3,direction)/1.e10)
+                endif
+
+                if (tau_cmn < 0.1) then
+                   escProb = 1.-tau_cmn*0.5*(  1.0 - tau_cmn/3.0*( 1.0 - &
+                        tau_cmn*0.25*(1.0 -0.20*tau_cmn) )  )
+                else
+                   escprob = (1. - exp(-tau_cmn))/tau_cmn
+                endif
+                betacmn = betacmn + escprob * domega
+                totOmega = totOmega + dOmega
+             endif
+          endif
+       enddo
+    enddo
+    betacmn =   betacmn / fourpi
+!    write(*,*) "calc",fourPi*(pi*starradius**2)/(fourPi * disttostar**2)
+!    write(*,*) "found",totOmega
+  end subroutine beta_cmn_sub
+
+
+
+  ! this subroutine fills the grid with nlte level populations
+  ! the grid should have temperatures/densities at all points
+
+  subroutine initgridstateq(grid, contfile1, contfile2, popFileName, &
+       readPops, writePops, lte, nLower, nUpper)
+    type(gridtype) :: grid
+    integer, parameter :: maxLevels = 6
+    integer :: nLower, nUpper
+    logical :: lte, debugInfo
+    real :: sinTheta
+    logical :: readPops, writePops
+    character(len=*) :: popFileName
+    real :: visFrac1, visFrac2
+    logical :: isBinary
+    integer :: i, j, k, m
+    real(kind=doubleKind) :: freq
+    real :: hnu1(2000), hnu2(2000)
+    real :: nuarray1(2000), nuarray2(2000)
+    real :: percentDone
+    integer :: nnu1, nnu2
+    character(len=*) :: contfile1, contfile2
+    real(kind=doublekind) :: tolx = 1.d-3, tolf = 1.d-3
+    real(kind=doublekind) :: x(15), nTot
+    real :: t1, t2, t3
+    integer :: i1, i2, i3
+    type(vector) :: rvec, rHat, thisVec
+    real :: departCoeff(maxLevels), ang, r
+    real, allocatable :: departCoeffall(:)
+    logical :: oneD, twoD, threeD, firstTime
+
+    integer :: nIter, iIter
+    real :: oldLevels(maxLevels+1)
+    real(kind=doubleKind), allocatable :: xall(:)
+    real (kind=doubleKind):: ne1, ne2
+    real :: temp, crate
+    real(kind=doubleKind) :: phiT
+    logical :: ok
+    logical :: aboutX, aboutZ
+    integer :: ierr
+
+
+    debugInfo = .true.
+    oneD = .false.
+    twoD = .false.
+    threeD = .true.
+    aboutX = .false.
+    aboutZ = .true.
+
+
+    isBinary = .false.
+    if (grid%geometry == "binary") then
+       isBinary = .true.
+       threeD = .false.
+       twoD = .true.
+       aboutX = .true.
+       aboutZ = .false.
+    endif
+
+    if (grid%geometry == "wind") then
+       threeD = .false.
+       oneD = .true.
+       aboutZ = .false.
+    endif
+    
+    if (grid%geometry == "donati") then
+       twoD = .true.
+       threeD = .false.
+       aboutZ = .true.
+       aboutX = .false.
+    endif
+
+    if (grid%geometry == "ttauri") then
+       twoD = .true.
+       threeD = .false.
+       aboutZ = .true.
+       aboutX = .false.
+    endif
+
+    if (grid%geometry == "puls") then
+       twoD = .true.
+       threeD = .false.
+       aboutZ = .true.
+       aboutX = .false.
+    endif
+
+    if (lte) then
+       nIter = 1
+    else
+       nIter = 1
+    endif
+
+    do k = 2, maxlevels
+       do i=1, k-1
+          lambdaTrans(i, k) = lambdaTrans(k, i)
+          aEinstein(k, i) = aEinstein(k, i)
+          freq = cspeed / lambdaTrans(i, k)
+          bEinstein(k, i) = ((dble(aEinstein(k,i))*dble(cspeed)**2) / (2.d0*dble(hcgs)*dble(freq)**3))
+          bEinstein(i, k) = bEinstein(k,i) * gDegen(k) / gDegen(i)
+          fStrength(k, i) = -gDegen(i) * fStrength(i,k) / gDegen(k)
+       enddo
+    enddo
+
+
+
+
+
+    allocate(grid%n(1:grid%na1, 1:grid%na2, 1:grid%na3,1:maxlevels))
+    allocate(grid%ne(1:grid%na1, 1:grid%na2, 1:grid%na3))
+    allocate(grid%nTot(1:grid%na1, 1:grid%na2, 1:grid%na3))
+
+    grid%n = 1.e-20
+    grid%ne = 1.
+
+    if (readPops) then
+       call readGridPopulations(popFilename, grid, maxLevels)
+    else
+       do i = 1, grid%na1
+          do j = 1, grid%na2 
+             do k = 1, grid%na3
+                if ((.not.grid%instar(i,j,k)).and.grid%inUse(i,j,k)) then
+                   nTot = dble(grid%rho(i,j,k) / mhydrogen)
+
+
+                   if (grid%temperature(i,j,k) < 1.e5) then
+		      phiT = 1.5d0*log10(2.d0*pi*mElectron*kErg*grid%temperature(i,j,k)) - &
+			   3.d0*log10(hCgs) + log10(exp(-13.6d0/(kEV*grid%temperature(i,j,k))))
+		      
+		      phiT = 10.d0**phiT
+		      call solveQuadDble(1.d0, phiT, &
+			   -1.d0*phiT*dble(nTot), ne1, ne2, ok)
+		      grid%ne(i,j,k) = min(max(ne1,ne2),nTot)		   
+		      grid%ne(i,j,k) = max(grid%ne(i,j,k),1.d0)
+                   else
+                      grid%ne(i,j,k) = dble(ntot)
+                   endif
+
+                   grid%nTot(i,j,k) = nTot 
+                   do m = 1, maxlevels
+                      grid%n(i,j,k,m) = boltzsaha(m, grid%ne(i,j,k), &
+                           dble(grid%temperature(i,j,k)))
+                   enddo
+                endif
+             enddo
+          enddo
+       enddo
+
+
+
+
+       open(20,file=contfile1,status="old",form="formatted")
+       nnu1 = 1
+10     continue
+       read(20,*,end=20) nuarray1(nnu1), hnu1(nnu1)
+       nnu1 = nnu1 + 1
+       goto 10
+20     continue
+       nnu1 = nnu1  - 1
+9      close(20)
+       hnu1(1:nnu1) = hnu1(1:nnu1) / fourPi   ! Converts from flux to flux momemnt
+
+       if (grid%geometry == "binary") then
+          open(20,file=contfile2,status="old",form="formatted")
+          nnu2 = 1
+30        continue
+          read(20,*,end=40) nuarray2(nnu2), hnu2(nnu2)
+          nnu2 = nnu2 + 1
+          goto 30
+40        continue
+          nnu2 = nnu2  - 1
+          close(20)
+          hnu2(1:nnu2) = hnu2(1:nnu2) / fourPi   ! Converts from flux to flux momemnt
+       endif
+
+       if (threeD) then
+
+          percentDone = 0.
+          departCoeff = 1.
+
+          !$OMP PARALLEL DO &
+          !$OMP DEFAULT(NONE) &
+          !$OMP PRIVATE(i1, i2, i3) &
+          !$OMP SHARED(grid) &
+          !$OMP SHARED(lte, tolx, tolf, hnu1, hnu2, nuArray1, nnu1, nuarray2, nnu2) &
+          !$OMP SHARED(isBinary, debugInfo) &
+          !$OMP PRIVATE(i, visFrac1, visFrac2, rVec, nTot, percentDone) &
+          !$OMP PRIVATE(departCoeffAll, xAll) 
+          do i1 = 1, grid%na1
+             allocate(departCoeffAll(1:maxlevels))
+             departCoeffAll = 1.d0
+             do i2 = 1, grid%na2
+                do i3 = 1, grid%na3
+                   allocate(xall(1:15))
+                   if (grid%inUse(i1,i2,i3)) then
+                      rvec = vector(grid%xaxis(i1), grid%yaxis(i2), grid%zaxis(i3))
+                      if (.not.grid%inStar(i1,i2,i3)) then
+                         do i = 1, maxlevels
+                            xall(i) = grid%n(i1,i2,i3,i) * dble(departCoeffall(i))
+                         enddo
+                         xall(maxlevels+1) = grid%ne(i1,i2,i3)
+                         if (.not.lte) then
+
+                            if (grid%geometry == "binary") then
+                               call occultTest(grid, i1, i2, i3, grid%starPos1, grid%rStar1, &
+                                    grid%starPos2, grid%rStar2, visFrac1)
+                               call occultTest(grid, i1, i2, i3, grid%starPos2, grid%rStar2, &
+                                    grid%starPos1, grid%rStar1, visFrac2)
+                            else
+                               visFrac1 = 1.
+                               visFrac2 = 0.
+                            endif
+
+
+                            call mnewt(grid, 20,xall,maxlevels+1,tolx,tolf, hnu1, &
+                                 nuarray1, nnu1, hnu2, nuarray2, nnu2, rvec, i1, i2, i3, visFrac1, visFrac2, isBinary)
+                            if ((.not.lte).and.debugInfo) write(*,'(a,3i3,f8.1)') "grid cell",i1,i2,i3,grid%temperature(i1,i2,i3)
+			    write(*,*) visFrac1, visFrac2
+                            grid%ne(i1,i2,i3) = xall(maxlevels+1)
+                            do i = 1 , maxLevels
+                               departCoeffall(i) = real(xall(i))/boltzSaha(i, grid%Ne(i1,i2,i3), dble(grid%temperature(i1,i2,i3)))
+                               grid%n(i1,i2,i3,i) = xall(i)
+                               if ((.not.lte).and.debugInfo) then
+                                  write(*,'(i3,1p,e12.3,e12.3)') &
+                                       i,departCoeffall(i), xall(i)
+                               endif
+
+                            enddo
+                            if ((.not.lte).and.debugInfo) write(*,'(a,f6.2)') "log Ne: ",log10(grid%ne(i1,i2,i3))
+                            nTot = dble(grid%rho(i1,i2,i3) / mhydrogen)
+                            if ((.not.lte).and.debugInfo) write(*,'(a,1p,e12.5)') "Ne / Ntot: ",grid%ne(i1,i2,i3)/nTot
+                         endif
+                      endif
+                   endif
+                   deallocate(xall)
+                enddo
+             enddo
+             percentDone = 100.*(real(i1)/real(grid%nx))
+             if (.not.lte) write(*,'(a,f5.1)') "Percentage complete: ",percentDone
+             deallocate(departCoeffAll)
+
+          enddo
+          !$OMP END PARALLEL DO
+
+       endif
+
+       ! if we are only computing in 2D then compute the populations in the z=0 plane
+       ! and remap the populations
+       ! onto the full 3D grid via rotation about the x-axis
+
+       if (twoD) then
+
+
+          if (aboutX) then
+             do iIter = 1, nIter
+                do i1 = 1, grid%nx
+                   departCoeff = 1.
+                   do i2 = 1, grid%ny
+                      rvec = vector(grid%xaxis(i1), grid%yaxis(i2), 0.)
+                      call hunt(grid%zAxis, grid%nz, 0., i3)
+
+                      if (.not.grid%inStar(i1,i2,i3)) then
+                         if (modulus(rVec-grid%starpos1) /= 0.) then
+                            if (.not.lte) then
+                               departCoeff(1) = 1./(0.5*(1.-sqrt(max(0.,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2)))))
+                            endif
+                         endif
+                         if (iIter == 1) then
+                            do i = 1, maxlevels
+                               x(i) = grid%n(i1,i2,i3,i) * dble(departCoeff(i))
+                            enddo
+                            x(maxlevels+1) = grid%ne(i1,i2,i3)
+                            oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
+                            oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                         else
+                            oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
+                            oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                            do i = 1, maxlevels
+                               x(i) = grid%n(i1,i2,i3,i)
+                            enddo
+                            x(maxlevels+1) = grid%ne(i1,i2,i3)
+                         endif
+
+
+                         if (.not.lte) then
+                            if (grid%geometry == "binary") then
+                               call occultTest(grid, i1, i2, i3, grid%starPos1, grid%rStar1, &
+                                    grid%starPos2, grid%rStar2, visFrac1)
+                               call occultTest(grid, i1, i2, i3, grid%starPos2, grid%rStar2, &
+                                    grid%starPos1, grid%rStar1, visFrac2)
+                            else
+                               visFrac1 = 1.
+                               visFrac2 = 0.
+                            endif
+
+                            call mnewt(grid, 20,x,maxlevels+1,tolx,tolf, hnu1, &
+                                 nuarray1, nnu1, hnu2, nuarray2, nnu2, rvec, i1, i2, i3, visFrac1, visFrac2, isBinary)
+                         endif
+                         if (.not.lte) write(*,*) "Grid: ",i1,i2,i3
+                         do i = 1 , maxLevels
+                            departCoeff(i) = real(x(i))/boltzSaha(i, grid%Ne(i1,i2,i3), dble(grid%temperature(i1,i2,i3)))
+
+                            if (.not.lte) write(*,'(i3,1p,e12.3,e12.3)') i,departCoeff(i), x(i)/oldLevels(i)
+                            grid%n(i1,i2,i3,i) = x(i)
+                         enddo
+                         grid%ne(i1,i2,i3) = x(maxLevels+1)
+                         write(*,'(a,1p,e12.3,e12.3)') "Ne ",grid%ne(i1,i2,i3),grid%ne(i1,i2,i3)/oldLevels(maxLevels+1)
+                      endif
+                   enddo
+                   percentDone = 100.*(real(i1)/real(grid%nx))
+                   if (.not.lte) write(*,'(a,f5.1)') "Percentage complete: ",percentDone
+                enddo
+             enddo
+
+             ! now perform the remapping
+
+             do i = 1, grid%nx
+                do j = 1, grid%ny
+                   do k = 1, grid%nz
+                      if (k /= i3) then
+                         rVec = vector(grid%xaxis(i), grid%yaxis(j), grid%zaxis(k))
+                         ang = atan2(rVec%z, rVec%y)
+                         thisVec = rotateX(rVec, ang)
+                         call getIndices(grid, thisVec, i1, i2, i3, t1, t2, t3)
+                         if (.not.grid%inStar(i1,i2,i3)) then
+                            grid%ne(i,j,k) = grid%ne(i1,i2,i3)
+                            do m = 1, maxLevels
+                               grid%n(i,j,k,m) = grid%n(i1,i2,i3,m)
+                            enddo
+                         endif
+                      endif
+                   enddo
+                enddo
+             enddo
+
+          endif
+
+          if (aboutZ) then
+             if (.not.grid%cartesian) then
+
+
+                WRITE(*,*) "about Z in polar"
+                do iIter = 1, nIter
+                   !$OMP PARALLEL DO &
+                   !$OMP DEFAULT(NONE) &
+                   !$OMP PRIVATE(i1, i2, i3) &
+                   !$OMP SHARED(grid) &
+                   !$OMP SHARED(lte, tolx, tolf, hnu1, hnu2, nuArray1, nnu1, nuarray2, nnu2) &
+                   !$OMP SHARED(isBinary, debugInfo, iiter) &
+                   !$OMP PRIVATE(i, visFrac1, visFrac2, rVec, nTot, percentDone) &
+                   !$OMP PRIVATE(departCoeffAll, xAll, oldLevels, sinTheta, ang) 
+
+                   do i1 = 1, grid%nr
+                      allocate(departCoeffAll(1:maxlevels))
+                      allocate(xall(1:maxLevels+1))
+                      do i2 = 1, grid%nmu
+                         departCoeffAll = 1.d0
+                         ang = 0.
+                         sinTheta = sqrt(1.d0 - grid%muAxis(i2)**2)
+                         rvec = vector(grid%raxis(i1)*sinTheta*cos(ang), &
+                              grid%raxis(i1)*sinTheta*sin(ang), &
+                              grid%rAxis(i1)*grid%muAxis(i2))
+                         call hunt(grid%phiAxis, grid%nphi, ang, i3)
+
+
+
+                         if (.not.grid%inStar(i1,i2,i3).and.grid%inUse(i1,i2,i3)) then
+                            if (iIter == 1) then
+                               do i = 1, maxlevels
+                                  xall(i) = grid%n(i1,i2,i3,i) * dble(departCoeffAll(i))
+                               enddo
+                               xall(maxlevels+1) = grid%ne(i1,i2,i3)
+                               oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
+                               oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                            else
+                               oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
+                               oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                               do i = 1, maxlevels
+                                  xall(i) = grid%n(i1,i2,i3,i)
+                               enddo
+                               xall(maxlevels+1) = grid%ne(i1,i2,i3)
+                            endif
+
+
+                            if (.not.lte) then
+                               if (grid%geometry == "binary") then
+                                  call occultTest(grid, i1, i2, i3, grid%starPos1, grid%rStar1, &
+                                       grid%starPos2, grid%rStar2, visFrac1)
+                                  call occultTest(grid, i1, i2, i3, grid%starPos2, grid%rStar2, &
+                                       grid%starPos1, grid%rStar1, visFrac2)
+                               else
+                                  visFrac1 = 1.
+                                  visFrac2 = 0.
+                               endif
+
+
+                               call mnewt(grid, 20,xall,maxlevels+1,tolx,tolf, hnu1, &
+                                    nuarray1, nnu1, hnu2, nuarray2, nnu2, rvec, i1, i2, i3, visFrac1, visFrac2, isBinary)
+                            endif
+                            if ((.not.lte).and.debuginfo) write(*,*) "Grid: ",i1,i2,i3,grid%temperature(i1,i2,i3)
+                            do i = 1 , maxLevels
+                               departCoeffall(i) = real(xall(i))/boltzSaha(i, xall(maxlevels+1), dble(grid%temperature(i1,i2,i3)))
+
+                               if ((.not.lte).and.debugInfo) then
+                                  write(*,'(i3,1p,e12.3,e12.3, e12.3)') &
+                                       i,departCoeffall(i), xall(i), abs(xall(i)-oldLevels(i))/xall(i)
+                               endif
+                               grid%n(i1,i2,i3,i) = xall(i)
+                            enddo
+                            grid%ne(i1,i2,i3) = xall(maxLevels+1)
+                            if ((.not.lte).and.debugInfo) then
+                               write(*,'(a,1p,e12.3,e12.3)') "Ne ",grid%ne(i1,i2,i3),grid%ne(i1,i2,i3)/oldLevels(maxLevels+1)
+                            endif
+                         if (minval(xall(1:maxlevels)) < 0.) then
+                            write(*,'(a)') "Negative population..."
+                            stop
+                         endif
+                      endif
+                   enddo
+                   percentDone = 100.*(real(i1)/real(grid%nr))
+                   if ((.not.lte).and.debugInfo) write(*,'(a,f5.1)') "Percentage complete: ",percentDone
+                   deallocate(departCoeffAll)
+                   deallocate(xall)
+
+                enddo
+!$OMP END PARALLEL DO
+
+             enddo
+
+          else
+
+             do iIter = 1, nIter
+                do i1 = 1, grid%nx
+                   departCoeff = 1.
+                   do i3 = 1, grid%nz
+                      rvec = vector(grid%xaxis(i1), 0., grid%zaxis(i3))
+                      call hunt(grid%yAxis, grid%ny, 0., i2)
+
+                      if (.not.grid%inStar(i1,i2,i3).and.grid%inUse(i1,i2,i3)) then
+                         departCoeff = 1. !xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+                         if (iIter == 1) then
+                            do i = 1, maxlevels
+                               x(i) = grid%n(i1,i2,i3,i) * dble(departCoeff(i))
+                            enddo
+                            x(maxlevels+1) = grid%ne(i1,i2,i3)
+                            oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
+                            oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                         else
+                            oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
+                            oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                            do i = 1, maxlevels
+                               x(i) = grid%n(i1,i2,i3,i)
+                            enddo
+                            x(maxlevels+1) = grid%ne(i1,i2,i3)
+                         endif
+
+
+                         if (.not.lte) then
+                            if (grid%geometry == "binary") then
+                               call occultTest(grid, i1, i2, i3, grid%starPos1, grid%rStar1, &
+                                    grid%starPos2, grid%rStar2, visFrac1)
+                               call occultTest(grid, i1, i2, i3, grid%starPos2, grid%rStar2, &
+                                    grid%starPos1, grid%rStar1, visFrac2)
+                            else
+                               visFrac1 = 1.
+                               visFrac2 = 0.
+                            endif
+
+                            call mnewt(grid, 20,x,maxlevels+1,tolx,tolf, hnu1, &
+                                 nuarray1, nnu1, hnu2, nuarray2, nnu2, rvec, i1, i2, i3, visFrac1, visFrac2, isBinary)
+                         endif
+                         if (.not.lte) write(*,*) "Grid: ",i1,i2,i3,grid%temperature(i1,i2,i3)
+                         do i = 1 , maxLevels
+                            departCoeff(i) = real(x(i))/boltzSaha(i, x(maxlevels+1), dble(grid%temperature(i1,i2,i3)))
+
+                            if (.not.lte) then
+                               write(*,'(i3,1p,e12.3,e12.3)') &
+                                    i,departCoeff(i), x(i)
+                            endif
+                            grid%n(i1,i2,i3,i) = x(i)
+                         enddo
+                         grid%ne(i1,i2,i3) = x(maxLevels+1)
+                         if (.not.lte) then
+                            write(*,'(a,1p,e12.3,e12.3)') "Ne ",grid%ne(i1,i2,i3),grid%ne(i1,i2,i3)/oldLevels(maxLevels+1)
+                         endif
+                      endif
+                   enddo
+                   percentDone = 100.*(real(i1)/real(grid%nx))
+                   if (.not.lte) write(*,'(a,f5.1)') "Percentage complete: ",percentDone
+                enddo
+             enddo
+          endif
+             
+             ! now perform the remapping
+
+          if (.not.lte) then
+          if (grid%cartesian) then
+             do i = 1, grid%nx
+                do j = 1, grid%ny
+                   do k = 1, grid%nz
+                      if (j /= i2) then
+                         rVec = vector(grid%xaxis(i), grid%yaxis(j), grid%zaxis(k))
+                         ang = atan2(rVec%y, rVec%x)
+                         thisVec = rotateZ(rVec, ang)
+                         call getIndices(grid, thisVec, i1, i2, i3, t1, t2, t3)
+                         if (.not.grid%inStar(i1,i2,i3)) then
+                            grid%ne(i,j,k) = grid%ne(i1,i2,i3)
+                            do m = 1, maxLevels
+                               grid%n(i,j,k,m) = grid%n(i1,i2,i3,m)
+                            enddo
+                         endif
+                      endif
+                   enddo
+                enddo
+             enddo
+             else
+
+                write(*,'(a)') "Remapping about Z axis..."
+                do k = 2, grid%nphi
+                   grid%ne(1:grid%nr,1:grid%nMu,k) = &
+                        grid%ne(1:grid%nr,1:grid%nMu,1)
+                   grid%n(1:grid%nr,1:grid%nmu,k,1:maxLevels) = &
+                        grid%n(1:grid%nr,1:grid%nMu,1,1:maxLevels)
+                enddo
+             endif
+       endif
+    endif
+    
+ endif
+
+
+
+ if (oneD) then
+    
+    nIter = 1.
+    
+    departCoeff = 1.
+    do iIter = 1, nIter
+       do i1 = 1,grid%na1
+	  i2 = 1
+	  i3 = 1
+	  sinTheta = sqrt(1.d0 - grid%muAxis(i2)**2)
+	  rvec = vector(grid%raxis(i1)*sinTheta*cos(ang), &
+	       grid%raxis(i1)*sinTheta*sin(ang), &
+	       grid%rAxis(i1)*grid%muAxis(i2))
+	  
+	  where (departCoeff < 0.) 
+	     departCoeff = 1.
+	  end where
+	  departCoeff(1) = 1./(0.5*(1.-sqrt(max(0.,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2)))))
+	  
+	  
+	  if (.not.grid%inStar(i1,i2,i3).and.grid%inUse(i1,i2,i3)) then
+	     
+	     if (iIter == 1) then
+		do i = 1, maxlevels
+		   x(i) = grid%n(i1,i2,i3,i) * dble(departCoeff(i))
+		enddo
+		x(maxlevels+1) = grid%ne(i1,i2,i3)
+		oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
+		oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+	     else
+		oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
+		oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+		do i = 1, maxlevels
+		   x(i) = grid%n(i1,i2,i3,i)
+		enddo
+		x(maxlevels+1) = grid%ne(i1,i2,i3)
+	     endif
+	     
+	     
+	     if (.not.lte) then
+		if (grid%geometry == "binary") then
+		   call occultTest(grid, i1, i2, i3, grid%starPos1, grid%rStar1, &
+			grid%starPos2, grid%rStar2, visFrac1)
+		   call occultTest(grid, i1, i2, i3, grid%starPos2, grid%rStar2, &
+			grid%starPos1, grid%rStar1, visFrac2)
+		else
+		   visFrac1 = 1.
+		   visFrac2 = 0.
+		endif
+		
+		call mnewt(grid, 20,x,maxlevels+1,tolx,tolf, hnu1, &
+		     nuarray1, nnu1, hnu2, nuarray2, nnu2, rvec, i1, i2, i3, visFrac1, visFrac2, isBinary)
+	     endif
+	     if (.not.lte) write(*,*) "Grid: ",i1,i2,i3,grid%temperature(i1,i2,i3)
+	     do i = 1 , maxLevels
+		departCoeff(i) = real(x(i))/boltzSaha(i, x(maxlevels+1), dble(grid%temperature(i1,i2,i3)))
+		
+		if (.not.lte) then
+		   write(*,'(i3,1p,e12.3,e12.3,e12.3,e12.3)') &
+			i,departCoeff(i), x(i),log10(departCoeff(i)),log10(x(2)/x(1))
+		endif
+		grid%n(i1,i2,i3,i) = x(i)
+	     enddo
+	     grid%ne(i1,i2,i3) = x(maxLevels+1)
+	     if (.not.lte) then
+		write(*,'(a,1p,e12.3,e12.3)') "Ne ",grid%ne(i1,i2,i3),grid%ne(i1,i2,i3)/grid%nTot(i1,i2,i3)
+	     endif
+
+	     endif
+	     enddo
+	  enddo
+	     ! now perform the remapping
+             rHat = VECTOR(1., 1., 1.)
+             call normalize(rHat)
+
+             do i = 1, grid%na1
+                do j = 1, grid%na2
+                   do k = 1, grid%na3
+		      i1 = i
+		      i2 = 1
+		      i3 = 1
+		      if (.not.grid%inStar(i1,i2,i3)) then
+			 grid%ne(i,j,k) = grid%ne(i1,i2,i3)
+			 do m = 1, maxLevels
+			    grid%n(i,j,k,m) = grid%n(i1,i2,i3,m)
+			 enddo
+		      endif
+                   enddo
+                enddo
+             enddo
+
+          endif
+
+
+
+
+
+
+
+	  if (writePops) then
+	     call writeGridPopulations(popFilename, grid, maxLevels)
+	  endif
+    endif
+
+    write(*,'(a,f8.1)') "Generating opacities for ",lambdaTrans(nLower, nUpper)*1.e8
+
+
+!    write(*,*) "!!!!!!!!!!!!!!! depart coeff of level 3 is 2"
+!    grid%n(:,:,:,3) = grid%n(:,:,:,3) * 100.
+!    grid%n(:,:,:,5) = grid%n(:,:,:,5) * 30.
+    call generateOpacities(grid, nLower, nUpper)
+
+    deallocate(grid%n)
+    deallocate(grid%ne)
+    deallocate(grid%nTot)
+
+
+
+  end subroutine initGridStateq
+
+
+
+  real function BoltzSaha(m, Ne, t)
+    integer :: m
+    real(kind=doubleKind) :: Ne, t
+    real(kind=doubleKind), parameter :: ci = 2.07d-16
+    real(kind=doubleKind), parameter :: iPot = 13.598d0
+
+    BoltzSaha = Ne**2 * gDegen(m) * ci * exp( (iPot-eTrans(m))/(kev * t) ) / t**1.5
+  end function BoltzSaha
+
+
+  real function boltzmann(m, N0, t)
+    integer :: m
+    real(kind=doubleKind) :: N0, t
+    real :: z0
+
+    z0 = SUM(gDegen(1:15)*exp(-eTrans(1:15)/(kev*t)))
+
+    boltzmann = (gDegen(m)/z0)*n0*exp(-eTrans(m)/(kev*t))
+    
+
+  end function boltzmann
+
+
+
+
+
+
+  real(kind=doubleKind) function cikt(i,t)
+    !
+    ! this function calculates the collisional ionization rate (see k&c and
+    ! mihalas 1967 (apj 149 169) ).
+    ! 
+    integer :: i                  ! the level
+    real(kind=doubleKind) :: t,t1                  ! the temperature
+    real(kind=doubleKind) :: gammait               ! see k&c
+    real(kind=doubleKind) :: lgt
+    real(kind=doubleKind) :: chi                   ! potential from i to k
+    real(kind=doubleKind) :: cint(5,10)
+
+    data cint  &
+         /-0.4350000d0, 0.3000000d00,0.0000000d0, 0.0000000d0,0.00000000d0, &
+         1.9987261d1,-5.8906298d-5,0.0000000d0,-2.8185937d4,5.44441600d7, &
+         1.3935312d3,-1.6805859d02,0.0000000d0,-2.5390000d3,0.00000000d0, &
+         2.0684609d3,-3.3415820d02,0.0000000d0, 0.0000000d0,-7.6440625d3, &
+         3.2174844d3,-5.5882422d02,0.0000000d0, 0.0000000d0,-6.8632500d3, &
+         5.7591250d3,-1.5163125d03,8.1750000d1, 0.0000000d0,0.00000000d0, &
+         1.4614750d4,-4.8283750d03,3.9335938d2, 0.0000000d0,0.00000000d0, &
+         2.8279250d4,-1.0172750d04,9.1967968d2, 0.0000000d0,0.00000000d0, &
+         4.6799250d4,-1.7627500d04,1.6742031d3, 0.0000000d0,0.00000000d0, &
+         -7.4073000d4, 6.8599375d03,0.0000000d0, 2.0169800d5,0.00000000d0/
+
+    t1 = min(t,1.d5)
+    lgt=log10(t1)
+    if (i .ne. 2) then 
+       gammait=cint(1,i)+cint(2,i)*lgt+cint(3,i)*(lgt**2)+ &
+            (cint(4,i)/lgt)+(cint(5,i)/(lgt**2))
+    else
+       gammait=cint(1,i)+cint(2,i)*t1+(cint(4,i)/t1)+(cint(5,i)/t1**2)
+    endif
+    chi=13.598e0-eTrans(i)
+    cikt=(5.465e-11)*sqrt(t1)*exp(-chi/(kev*t1))*gammait
+
+
+
+  end function cikt
+
+
+
+
+
+  real(kind=doubleKind) function cijt(i,j,t)
+    !
+    ! this function calculates the excitation rate according to crandell et al
+    ! (apj 191 789).
+    !
+    integer :: i,j,i1,j1                   ! lower/upper level
+    integer :: r                       ! counter
+    real(kind=doubleKind) :: t ,t1             ! temperature
+    real(kind=doubleKind) :: bsum(9)           ! summation
+    real(kind=doubleKind) :: chi            ! excitation energy
+    real(kind=doubleKind) :: x
+    real(kind=doubleKind) :: avals(7)
+
+
+    data avals &
+         / 2.579997d-10,-1.629166d-10,7.713069d-11,-2.668768d-11, &
+         6.642513d-12,-9.422885d-13 ,0.d0 /
+
+    t1 = min(t,1.d5)
+
+    i1 = min(i,j)
+    j1 = max(i,j)
+
+    x=log10(t1)-4.e0
+    chi=abs(eTrans(j)-eTrans(i))
+    chi=chi/(kev*t1)
+    if ((i1.eq.1).and.(j1.eq.2)) then
+       bsum(9)=0.0
+       bsum(8)=0.0
+       do r=7,1,-1
+          bsum(r)=2.0*x*bsum(r+1)-bsum(r+2)+avals(r)
+       enddo
+       cijt=4.e0*sqrt(t1)*exp(-chi)*0.5e0*(bsum(1)-bsum(3))
+    else
+       cijt=abs(5.465e-11*sqrt(t1)*4.d0*fStrength(i1,j1)/ &
+            (( (1.e0/real(i1)**2) - (1.0/real(j1)**2))**2))*chi* &
+            (expint(1,chi)+0.148d0*chi*expint(5,chi))
+    endif
+
+    if (j < i) then
+       cijt = cijt / (exp(-chi) * 2.)
+    endif
+
+
+  end function cijt
+
+
+
+
+  real(kind=doubleKind) function annu(n,nu)
+    !
+    ! this subroutine calculates the photoionization x-section
+    ! for hydrogen from the n-th level for a given freq photon.
+    !
+    integer :: n                   ! the level
+    real(kind=doubleKind) :: nu         ! the photon frequency
+    real(kind=doubleKind) :: lam,e      ! the photon wavelength
+    lam=cSpeed/nu
+    lam=lam*1.d8
+
+    e = hCgs * nu * ergToEv
+
+    if (e > (13.598 - eTrans(n))) then
+       annu=1.044d-26*gii(n,1.d0,lam)*(lam**3)/dble(n)**5
+    else
+       annu = 1.d-30
+    endif
+
+  end function annu
+
+
+  real function expint(n,x1)
+    ! 
+    ! exponential integrals. numerical approximations given by gray.
+    !
+    real(kind=doubleKind) :: x,ep(5),x1
+    real(kind=doubleKind) :: a1(4),b1(4)
+    integer :: i,n
+    data a1 &
+         / 0.2677737343d0, 8.6347608925d0, 18.059016973d0, 8.5733287401d0 /
+
+    data b1 &
+         /3.9584969228d0, 21.0996530827d0, 25.6329561486d0, 9.5733223454d0 /
+    x=abs(x1)
+    if (x.le.1.0) then
+       ep(1)=-log(x)-0.57721566d0+0.99999193d0*x-0.24991055d0*x**2+ &
+            0.05519968d0*x**3-0.00976004*x**4+0.00107857*x**5
+    else
+       ep(1)=(x**4+a1(4)*x**3+a1(3)*x**2+a1(2)*x+a1(1))
+       ep(1)=ep(1)/(x**4+b1(4)*x**3+b1(3)*x**2+b1(2)*x+b1(1))
+       ep(1)=ep(1)/(x*exp(x))
+    endif
+    if (n.gt.1) then
+       do i=1,n-1
+          ep(i+1)=(exp(-x)-x*ep(i))/real(i)
+       enddo
+    endif
+    expint=ep(n)
+  end function expint
+
+
+
+  real(kind=doubleKind) function gii(n,z,wl)
+    !
+    ! returns bound-free gaunt factors (nicked from idh)
+    !
+    real(kind=doubleKind) ::  z,wl,coeff(6)
+    real(kind=doubleKind) ::  efree,sum,ag,alam
+    integer :: n,i
+
+    data coeff /-0.338276d0, 0.808398d0, -0.59941d0, 0.104292d0, &
+         -6.61998d-3, 1.15609d-4 /
+
+    efree=(911.76e0/wl-1.e0/real(n*n))/(z*z)
+    if (efree.le.(1.e0+2.e0/n)) then
+       gii = giia(n,z,wl)
+       goto 500
+    elseif (efree.gt.10.e0) then
+       sum=coeff(1)
+       ag=1.e0
+       efree=log10(efree)
+       do i=2,6
+          ag=ag*efree
+          sum=sum+coeff(i)*ag
+       enddo
+       gii=10.d0**sum
+       goto 500
+    else
+       alam=911.76e0/(z*z*(1.e0+2.e0/n)+1.e0/(n*n))
+       alam=giia(n,z,alam)
+       sum=log10(1.e0+2.e0/n)
+       efree=log10(efree)
+       sum=(efree-sum)/(1.d0-sum)
+       gii=(1.e0-sum)*alam+0.93e0*sum+0.2e0*sum*(1.e0-sum)
+       goto 500
+    endif
+500 continue
+  end function gii
+
+  real  function giia(n,z,wl)
+    integer :: n
+    real(kind=doubleKind) ::  z,wl,ag,u,gii,term
+    ag=real(n)
+    u=ag*ag*911.76d0/(wl*z*z)-1.d0
+    gii=1.d0+0.1728d0*(u-1.d0)/((n*(u+1.d0))**(2.d0/3.d0))
+    term=0.0496d0*(1.d0+u*(u+1.333d0))/(n*(u+1.d0)**(4.d0/3.d0))
+    if ((term/gii).le.0.25d0) then
+       giia=gii-term
+       goto 500
+    else
+       giia=1.0
+       goto 500
+    endif
+500 continue
+  end function giia
+
+
+  real(kind=doubleKind) function equation8(n, nPop, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
+       rVec, i1, i2, i3, grid, visFrac1, visFrac2, binary)
+    type(GRIDTYPE) :: grid
+    integer :: nPop, nNu1, nNu2
+    logical :: binary
+    real :: visFrac1, visFrac2
+    real :: Hnu1(*), nuArray1(*)
+    real :: Hnu2(*), nuArray2(*)
+    integer :: m,n
+    type(VECTOR) :: rVec
+    real(kind=doubleKind) :: nstar
+    real(kind=doubleKind) :: freq
+    integer :: debug
+    integer :: i
+    integer :: i1, i2, i3
+    real(kind=doubleKind) :: Inu
+    real(kind=doubleKind) :: tot
+    real(kind=doubleKind) :: fac1, fac2
+    
+    debug = 0
+
+
+    if (n == debug) write(*,*) " "
+    tot = 0.d0
+    do m = 1, n - 1
+       freq = cSpeed/lambdaTrans(m,n)
+       if ((freq >= nuArray1(1)).and.(freq <= nuArray1(nnu1))) then
+          call hunt(nuArray1, nNu1, real(freq), i)
+          Inu = 4.*logint(real(freq), nuArray1(i),nuArray1(i+1),hnu1(i), hnu1(i+1))
+       else
+          inu = 0.
+       endif
+
+
+       tot = tot  + (grid%N(i1,i2,i3,m)*bEinstein(m,n) &
+            - grid%N(i1,i2,i3,n)*bEinstein(n,m)) * &
+            beta_cmn(m, n, rVec, i1, i2, i3, grid, 1) * Inu
+
+       if (binary) then
+          if ((freq >= nuArray2(1)).and.(freq <= nuArray2(nnu2))) then
+             call hunt(nuArray2, nNu2, real(freq), i)
+             Inu = 4.*logint(real(freq), nuArray2(i),nuArray2(i+1),hnu2(i), hnu2(i+1))
+          else
+             inu = 0.
+          endif
+          tot = tot  + (grid%N(i1,i2,i3,m)*bEinstein(m,n) - &
+               grid%N(i1,i2,i3,n)*bEinstein(n,m)) * &
+               beta_cmn(m, n, rVec, i1, i2, i3, grid, 2) * Inu
+       endif
+
+       tot = tot - grid%N(i1,i2,i3,n)*aEinstein(n,m)*beta_mn(m, n, rVec, i1, i2, i3, grid)
+       tot = tot + grid%Ne(i1,i2,i3) * &
+            (grid%N(i1,i2,i3,m)*cijt(m,n,dble(grid%temperature(i1,i2,i3))) - grid%N(i1,i2,i3,n) * &
+             cijt(n,m,dble(grid%temperature(i1,i2,i3))))
+    enddo
+
+    if (n == debug) then
+       write(*,*) "m < n",tot
+    endif
+
+
+    do m = n+1, nPop
+       tot = tot + grid%N(i1,i2,i3,m)*aEinstein(m,n)*beta_mn(n,m,rVec, i1, i2, i3,grid)
+       if (n == debug) then
+	  write(*,*) "spont",m,tot
+       endif
+
+       freq = cSpeed/lambdaTrans(m,n)
+       if ((freq >= nuArray1(1)).and.(freq <= nuArray1(nnu1))) then
+          call hunt(nuArray1, nNu1, real(freq), i)
+          Inu = 4.*logint(real(freq), nuArray1(i),nuArray1(i+1),hnu1(i), hnu1(i+1))
+       else
+          inu = 0.
+       endif
+
+
+       tot = tot  - (grid%N(i1,i2,i3,n)*bEinstein(n,m) - &
+            grid%N(i1,i2,i3,m)*bEinstein(m,n)) * &
+            beta_cmn(n, m, rVec, i1, i2, i3, grid, 1) * Inu
+
+       if (n == debug) then
+	  write(*,*) m,"star 1",tot
+       endif
+
+
+       if (binary) then
+          if ((freq >= nuArray2(1)).and.(freq <= nuArray2(nnu2))) then
+             call hunt(nuArray2, nNu2, real(freq), i)
+             Inu = 4.*logint(real(freq), nuArray2(i),nuArray2(i+1),hnu2(i), hnu2(i+1))
+          else
+             inu = 0.
+          endif
+          tot = tot  -(grid%N(i1,i2,i3,n)*bEinstein(n,m) - &
+               grid%N(i1,i2,i3,m)*bEinstein(m,n)) * &
+               beta_cmn(n, m, rVec, i1, i2, i3, grid, 2) * Inu
+       endif
+
+       if (n == debug) then
+	  write(*,*) m,"star 2",tot
+       endif
+
+
+       tot = tot + grid%Ne(i1,i2,i3) * (grid%N(i1,i2,i3,m) &
+        *cijt(m,n,dble(grid%temperature(i1,i2,i3))) - grid%N(i1,i2,i3,n)*cijt(n,m,dble(grid%temperature(i1,i2,i3))))
+       if (n == debug) then
+	  write(*,*) m,"collisional",tot
+       endif
+
+
+    enddo
+
+
+    if ( n == debug) then
+       write(*,*) "m > n",tot
+    endif
+
+    NStar = boltzSaha(n, grid%Ne(i1,i2,i3),dble(grid%temperature(i1,i2,i3)))
+
+    fac1 = integral1(n,hnu1, nuArray1, nNu1, rVec, i1, i2, i3, grid, 1)*visFrac1
+    if (binary) then
+       fac2 = integral1(n,hnu2, nuArray2, nNu2, rVec, i1, i2, i3, grid, 2)*visFrac2
+    else
+       fac2 = 0.
+    endif
+    tot = tot + Nstar * (fac1 + fac2 + grid%Ne(i1,i2,i3)*cikt(n,dble(grid%temperature(i1,i2,i3))))
+
+    if (n == debug) then
+       write(*,*) "Recombination: ",tot
+       write(*,*) nstar, fac1, fac2, grid%Ne(i1,i2,i3)*cikt(n,dble(grid%temperature(i1,i2,i3)))
+    endif
+    
+    
+
+    fac1 = integral2(n,hnu1, nuArray1, nNu1, rVec, grid, 1)*visFrac1
+    if (binary) then
+       fac2 = integral2(n,hnu2, nuArray2, nNu2, rVec, grid, 2)*visFrac2
+    else
+       fac2 = 0.
+    endif
+    tot = tot - grid%N(i1,i2,i3,n)*(fac1 + fac2 + grid%Ne(i1,i2,i3) * cikt(n, dble(grid%temperature(i1,i2,i3))))
+
+    if (n == debug) then
+       write(*,*) "Ionization: ", &
+	    grid%N(i1,i2,i3,n)*(fac1 + fac2 + grid%Ne(i1,i2,i3) * cikt(n, dble(grid%temperature(i1,i2,i3))))
+       write(*,*) grid%N(i1,i2,i3,n),fac1,fac2,grid%Ne(i1,i2,i3) * cikt(n, dble(grid%temperature(i1,i2,i3)))
+    endif 
+    
+
+    if (n == debug) write(*,*) "Final total:",tot
+    equation8 = tot
+
+  end function equation8
+
+  real (kind=doubleKind) function equation14(nPop, grid, i1, i2, i3)
+    type(GRIDTYPE) :: grid
+    integer :: i1, i2, i3, nPop
+    integer, parameter :: maxLevels = 6
+    real(kind=doubleKind) :: tot
+    integer :: i
+
+
+   tot = 0.d0
+    do i = 1, nPop
+       tot = tot + dble(grid%n(i1,i2,i3,i))
+    enddo
+    
+    do i = nPop+1, maxLevels+3
+       tot = tot + boltzSaha(i, grid%ne(i1,i2,i3), dble(grid%temperature(i1,i2,i3)))
+    enddo
+!    write(*,*) "Neutral",tot
+    tot = tot + grid%ne(i1,i2,i3)
+!    write(*,*) "Ne",grid%ne(i1,i2,i3)
+    tot = tot - dble(grid%rho(i1,i2,i3) / mHydrogen)
+!    write(*,*) "Ntot",grid%rho(i1,i2,i3) / mHydrogen
+    equation14 = tot
+!    write(*,*) "tot",tot
+
+  end function equation14
+
+
+
+  real function integral1(n,hnu, nuArray, nNu, rVec, i1, i2, i3, grid, nStar)
+    real :: hnu(*), nuArray(*)
+    integer :: nNu, nStar, n
+    type(VECTOR) :: rVec
+    type(GRIDTYPE) :: grid
+    real :: r
+    integer :: i, imin
+    real :: fac1, fac2
+    real :: w, x1, freq, tot, jnu
+    integer :: i1, i2, i3
+
+
+    if (nStar == 1) then
+       r = modulus(rVec-grid%starPos1)
+       x1 = sqrt(max(0.,(1. - grid%rStar1**2 / r**2)))
+       w = 0.5*(1. - x1)
+    else
+       r = modulus(rVec-grid%starPos2)
+       x1 = sqrt(max(0.,1. - grid%rStar2**2 / r**2))
+       w = 0.5*(1. - x1)
+    endif
+
+    freq = ((13.598-eTrans(n))*1.602192e-12)/hcgs
+    if ((freq < nuArray(1)) .or.(freq > nuArray(nNu))) then
+       write(*,*) "error in integral1",nNu,freq,nuArray(1),nuArray(nNu)
+       jnu = 1.e-28
+       iMin = 1
+    else
+       call hunt(nuArray, nNu, freq, iMin)
+       jnu = 4.*w*logint(freq,nuArray(iMin), nuArray(iMin+1), hnu(imin), hnu(imin+1))
+    endif
+    tot = 0.
+    fac1  = (fourPi/(hCgs*freq))*annu(n,dble(freq))* &
+ ((2.*real(dble(hCgs)*dble(freq)**3) / cSpeed**2) + jnu)*exp(-hCgs*freq/(kErg*grid%temperature(i1,i2,i3)))
+    jnu = 4.*w*hnu(imin+1)
+    fac2  = (fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))* &
+         ((2.*real(dble(hcgs)*dble(nuArray(imin+1))**3) / cSpeed**2) + jnu) &
+         *exp(-hcgs*nuArray(imin+1)/(kErg*grid%temperature(i1,i2,i3)))
+    tot = tot + 0.5*(fac1 + fac2)*(nuArray(imin+1)-freq)
+    do i = iMin+1, nNu-1
+       Jnu = 4.*w*hnu(i)
+       fac1  = (fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
+ ((2.*real(dble(hCgs)*dble(nuArray(i))**3) / cSpeed**2) + jnu)*exp(-hCgs*nuArray(i)/(kErg*grid%temperature(i1,i2,i3)))
+       Jnu = 4.*w*hnu(i+1)
+       fac2  = (fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))* &
+ ((2.*real(dble(hcgs)*dble(nuArray(i+1))**3) / cSpeed**2) + jnu)*exp(-hcgs*nuArray(i+1)/(kErg*grid%temperature(i1,i2,i3)))
+       tot = tot + 0.5*(fac1 + fac2)*(nuArray(i+1)-nuArray(i))
+    enddo
+    integral1 = tot
+  end function integral1
+
+  real function integral2(n,hnu, nuArray, nNu, rVec, grid, nStar)
+    real :: hnu(*), nuArray(*)
+    integer :: nNu, nStar, n
+    type(VECTOR) :: rVec
+    type(GRIDTYPE) :: grid
+    real :: r
+    integer :: i, iMin
+    real :: fac1, fac2
+    real :: w, x1, freq, tot, jnu
+
+    if (nStar == 1) then
+       r = modulus(rVec-grid%starPos1)
+       x1 = sqrt(max(0.,(1. - grid%rStar1**2 / r**2)))
+       w = 0.5*(1. - x1)
+    else
+       r = modulus(rVec-grid%starPos2)
+       x1 = sqrt(max(0.,1. - grid%rStar2**2 / r**2))
+       w = 0.5*(1. - x1)
+    endif
+
+    tot = 0.
+    freq = ((13.598-eTrans(n))*1.602192e-12)/hcgs
+    if ((freq < nuArray(1)).or.(freq > nuArray(nNu))) then
+       write(*,*) "error in integral2",freq,nuArray(1),nuArray(nNu)
+       iMin = 1
+       jnu = 1.e-28
+    else
+       call hunt(nuArray, nNu, freq, iMin)
+       jnu = 4.*w*logint(freq,nuArray(imin), nuArray(iMin+1), hnu(imin), hnu(imin+1))
+    endif
+    fac1  = (fourPi/(hcgs*freq))*annu(n,dble(freq))*jnu
+    jnu = 4.*w*hnu(imin+1)
+    fac2  = (fourPi/(hcgs*nuArray(imin+1)))*annu(n,dble(nuArray(imin+1)))*jnu
+    tot = tot + 0.5*(fac1 + fac2)*(nuArray(imin+1)-freq)
+    do i = iMin+1, nNu-1
+       Jnu = 4.*w*hnu(i)
+       fac1  = (fourPi/(hcgs*nuArray(i)))*annu(n,dble(nuArray(i)))*jnu
+       Jnu = 4.*w*hnu(i+1)
+       fac2  = (fourPi/(hcgs*nuArray(i+1)))*annu(n,dble(nuArray(i+1)))*jnu
+       tot = tot + 0.5*(fac1 + fac2)*(nuArray(i+1)-nuArray(i))
+    enddo
+    integral2 = tot
+  end function integral2
+
+
+  subroutine setupMatrices(x, alpha, beta, np, rVec, i1, i2, i3, grid, &
+       hnu1, nuArray1, nnu1, hnu2, nuarray2, nnu2, visFrac1, visFrac2, isBinary)
+    integer :: np
+    type(GRIDTYPE) :: grid
+    logical :: isBinary
+    real :: visFrac1, visFrac2
+    real(kind=doubleKind) :: x(np), alpha(np, np), beta(np)
+    real :: hnu1(*), hnu2(*), nuarray1(*), nuarray2(*)
+    integer :: nNu1, nNu2
+    type(VECTOR) :: rVec
+    integer :: i1, i2, i3
+    real(kind=doubleKind) :: tmp, incr, fac = 1.d-3
+    integer :: i, j
+    integer, parameter :: maxLevels = 6
+    
+
+    do i = 1, maxLevels
+       grid%N(i1,i2,i3,i) = x(i)
+    enddo
+    grid%Ne(i1,i2,i3) = x(maxLevels+1)
+
+    do i = 1, maxLevels
+       beta(i) = -equation8(i, maxLevels, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
+            rVec, i1, i2, i3, grid, visFrac1, visFrac2, isBinary)
+    enddo
+    beta(maxLevels+1) = -equation14(maxLevels, grid, i1, i2, i3)
+
+!    write(*,*) "beta",real(beta(1:7))
+    do i = 1, maxLevels
+       do j = 1, maxLevels
+          tmp = grid%N(i1,i2,i3,j)
+          grid%N(i1,i2,i3,j) = grid%N(i1,i2,i3,j) * (1.d0 + fac)
+          incr = equation8(i, maxLevels, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, rVec, &
+               i1, i2, i3, grid, visFrac1, visFrac2, isBinary)
+          alpha(i,j) = (beta(i) + incr) / (tmp*fac)
+          if (alpha(i,j) == 0.) then
+!             write(*,*) i,j,beta(i),incr,tmp,grid%n(i1,i2,i3,j),grid%temperature(i1,i2,i3)
+          endif
+          grid%N(i1,i2,i3,j) = tmp
+       enddo
+    enddo
+
+!    do j = 1, maxLevels
+!       tmp = grid%N(i1,i2,i3,j)
+!       grid%N(i1,i2,i3,j) = grid%N(i1,i2,i3,j) * (1.d0 + fac)
+!       incr = equation14(maxLevels, grid, i1, i2, i3)
+!       alpha(maxLevels+1,j) = 1.d0 !(beta(maxLevels+1) + incr) / (tmp*fac) ! 1.d0
+!       grid%N(i1,i2,i3,j) = tmp
+!    enddo
+
+    alpha(maxLevels+1,1:maxLevels) = 1.d0
+
+    tmp = grid%Ne(i1,i2,i3)
+    grid%Ne(i1,i2,i3) = grid%Ne(i1,i2,i3) * (1.d0+fac)
+    do i = 1, maxLevels
+       incr =  equation8(i, maxLevels, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, rVec, &
+            i1, i2, i3, grid, visFrac1, visFrac2, isBinary)
+!       alpha(i, maxLevels+1) = (beta(maxLevels+1)+incr)/(tmp*fac)
+       alpha(i, maxLevels+1) = (beta(i)+incr)/(tmp*fac)
+    enddo
+
+    incr = equation14(maxLevels, grid, i1, i2, i3)
+    incr = incr + beta(maxLevels+1)
+    alpha(maxLevels+1,maxLevels+1) = incr/(tmp*fac)
+    grid%Ne(i1,i2,i3) = tmp
+
+!    do i = 1, maxLevels+1
+!       do j = 1, maxLevels+1
+!          write(*,*) i,j,real(alpha(i,j))
+!       enddo
+!    enddo
+
+  end subroutine setupMatrices
+
+  subroutine mnewt(grid, ntrial,x,n,tolx,tolf, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, &
+       rVec, i1, i2, i3, visFrac1, visFrac2, isBinary)
+    type(GRIDTYPE) :: grid
+    integer, parameter :: maxLevels = 6
+    integer :: i1, i2, i3
+    logical :: isBinary
+    real :: visFrac1, visFrac2
+    type(VECTOR) :: rVec
+    real :: hnu1(*), hnu2(*), nuarray1(*), nuarray2(*)
+    integer :: nNu1, nNu2
+    integer, parameter ::  np=15
+    real(kind=doubleKind) ::  x(*),alpha(np,np),beta(np)
+    integer :: indx(np)
+    integer :: nTrial, n, i, k
+    real(kind=doubleKind) :: tolx, tolf
+    real(kind=doubleKind) :: errf, d, errx
+      do 13  k=1,ntrial
+        call setupMatrices(x,alpha,beta,np,rVec, i1, i2, i3, grid,Hnu1, nuArray1, nNu1, Hnu2, &
+             nuArray2, nNu2, visFrac1, visFrac2, isBinary)
+        errf=0.
+        do 11 i=1,n
+          errf=errf+abs(beta(i))
+11      continue
+!          write(*,*) "errf,tolf",errf,tolf
+        if(errf.le.tolf)return
+        call ludcmp(alpha,n,np,indx,d)
+        call lubksb(alpha,n,np,indx,beta)
+        errx=0.
+        do 12 i=1,n
+          errx=errx+abs(beta(i))
+          x(i)=x(i)+beta(i)
+12      continue
+!          write(*,*) "errx,tolx",errx,tolx
+        if(errx.le.tolx)return
+13    continue
+      end subroutine 
+
+      subroutine ludcmp(a,n,np,indx,d)
+      real(kind=doubleKind), parameter :: tiny=1.0e-20
+      integer, parameter :: nmax=200
+      integer :: n, np
+      real(kind=doubleKind) :: d
+      real(kind=doubleKind) ::  a(np,np),vv(nmax)
+      integer :: indx(n)
+      integer :: i
+      real(kind=doubleKind) :: aamax
+      real(kind=doubleKind) :: sum, dum
+      integer :: j, k
+      integer :: imax
+      d=1.
+      do 12 i=1,n
+        aamax=0.
+        do 11 j=1,n
+          if (abs(a(i,j)).gt.aamax) aamax=abs(a(i,j))
+11      continue
+        if (aamax.eq.0.) then
+           write(*,*) 'singular matrix.'
+           stop
+        endif
+        vv(i)=1./aamax
+12    continue
+      do 19 j=1,n
+        if (j.gt.1) then
+          do 14 i=1,j-1
+            sum=a(i,j)
+            if (i.gt.1)then
+              do 13 k=1,i-1
+                sum=sum-a(i,k)*a(k,j)
+13            continue
+              a(i,j)=sum
+            endif
+14        continue
+        endif
+        aamax=0.
+        do 16 i=j,n
+          sum=a(i,j)
+          if (j.gt.1)then
+            do 15 k=1,j-1
+              sum=sum-a(i,k)*a(k,j)
+15          continue
+            a(i,j)=sum
+          endif
+          dum=vv(i)*abs(sum)
+          if (dum.ge.aamax) then
+            imax=i
+            aamax=dum
+          endif
+16      continue
+        if (j.ne.imax)then
+          do 17 k=1,n
+            dum=a(imax,k)
+            a(imax,k)=a(j,k)
+            a(j,k)=dum
+17        continue
+          d=-d
+          vv(imax)=vv(j)
+        endif
+        indx(j)=imax
+        if(j.ne.n)then
+          if(a(j,j).eq.0.)a(j,j)=tiny
+          dum=1./a(j,j)
+          do 18 i=j+1,n
+            a(i,j)=a(i,j)*dum
+18        continue
+        endif
+19    continue
+      if(a(n,n).eq.0.)a(n,n)=tiny
+      end subroutine
+
+      subroutine lubksb(a,n,np,indx,b2)
+        integer :: np,n
+        real(kind=doubleKind) ::  a(np,np)
+        integer :: indx(n)
+        real(kind=doubleKind) :: b2(n)
+        integer :: ii, i, ll, j
+        real(kind=doubleKind) :: sum
+      ii=0
+      do 12 i=1,n
+        ll=indx(i)
+        sum=b2(ll)
+        b2(ll)=b2(i)
+        if (ii.ne.0)then
+          do 11 j=ii,i-1
+            sum=sum-a(i,j)*b2(j)
+11        continue
+        else if (sum.ne.0.) then
+          ii=i
+        endif
+        b2(i)=sum
+12    continue
+      do 14 i=n,1,-1
+        sum=b2(i)
+        if(i.lt.n)then
+          do 13 j=i+1,n
+            sum=sum-a(i,j)*b2(j)
+13        continue
+        endif
+        b2(i)=sum/a(i,i)
+14    continue
+      end subroutine
+    
+      real(kind=doubleKind) function alpkk(freq,t)
+!
+! this function returns the free-free absorption coefficient for hydrogen
+!
+      real(kind=doubleKind) ::  freq,t,wav,gauntf
+      wav=1.d8*cSpeed/freq
+      gauntf=giii(1.d0,t,wav)
+      alpkk=gauntf*real(3.6d8/((dble(freq)**3)*sqrt(dble(t))))
+    end function alpkk
+
+
+
+      real(kind=doubleKind) function giii (z, t, wl)
+!
+!   ferland's fabulous functional fits
+!
+       real(kind=doubleKind) ::  coeff(28), a2(7)
+       real(kind=doubleKind) :: c, u, wl, t, ulog, gam2, z
+       integer :: i,j,k, m
+       real(kind=doubleKind) :: b2
+       real(kind=doubleKind) :: frac, sum1, sum2, d
+       data coeff &
+      /1.102d0       ,-0.1085d0     ,0.09775d0     ,-0.01125d0     ,&
+       1.2d0         ,-0.24016667d0 ,0.07675d0     ,-0.01658333d0  ,&
+       1.26d0        ,-0.313166667d0,0.15075d0     ,0.00241667d0   ,&
+       1.29d0        ,-0.4518333d0  ,0.12925d0     ,0.00258333d0   ,&
+       1.27d0        ,-0.579d0      ,0.092d0       ,-0.003d0       ,&
+       1.16d0        ,-0.707333d0   ,0.112d0       ,0.0053333333d0 ,&
+       0.883d0       ,-0.76885d0    ,0.190175d0    ,0.022675d0     /
+       data a2 &
+      /100.d0, 10.d0, 3.d0, 1.d0, 0.3d0, 0.1d0, 0.001d0/
+
+       u = 1.44e+8 / (wl*t)
+       ulog = log10(u)
+       gam2 = 1.58e+5 * z*z/t
+       if (gam2.gt.a2(7)) go to 10
+         i = 7
+         j = 7
+         k = 7
+         frac = 0.5
+         go to 60
+   10  continue
+       if (gam2.lt.a2(1)) go to 20
+         i = 1
+         j = 1
+         k = 1
+         frac = 0.5
+         go to 60
+   20  continue
+       do 30 i = 2, 7
+           if (gam2.gt.a2(i)) go to 40
+   30  continue
+   40  continue
+       k = i - 1
+   50  continue
+       b2 = log10(a2(k))
+       c = log10(a2(i))
+       gam2 = log10(gam2)
+       frac = abs ((gam2-b2) / (b2-c))
+   60  continue
+       k = (k-1)*4
+       sum1 = coeff(k+1)
+       d = 1.0
+       do 70 m = 2, 4
+           d = d*ulog
+           sum1 = sum1 + coeff(k+m)*d
+   70  continue
+       sum1 = sum1 * (1.0 - frac)
+       i = (i-1)*4
+       sum2 = coeff(i+1)
+       d = 1.0
+       do 80 m = 2, 4
+           d = d*ulog
+           sum2 = sum2 + coeff(i+m)*d
+   80  continue
+       sum2 = sum2 * frac
+
+       giii = sum1 + sum2
+    end function giii
+
+
+    subroutine occultTest(grid, i1, i2, i3, starPos, starRadius, &
+         occultPos, occultRadius, visFrac)
+
+      type(GRIDTYPE) :: grid
+      integer :: i1, i2, i3
+      real :: visFrac
+      type(VECTOR) :: toStar, toOccult, direction, rVec, starPos, occultPos
+      real :: distToStar, distToOccult, h
+      real :: starRadius, occultRadius
+      real :: thetaToStar, phiToStar
+      logical :: occulted
+      real :: dotProd, sinAng
+      real :: r, occultedFrac
+      integer :: nTheta = 10, nPhi = 10
+      real :: cosAng, ang, theta, phi, dtheta, dphi, domega
+      integer :: i, j
+
+      rVec = VECTOR(grid%xAxis(i1), grid%yAxis(i2), grid%zAxis(i3))
+      toStar = starPos - rVec
+      toOccult = occultPos - rVec
+      distToStar = modulus(toStar)
+      distToOccult = modulus(toOccult)
+      toStar = toStar / distToStar
+      toOccult = toOccult / distToOccult
+      
+      if (distToOccult > distToStar) then
+         visFrac = 1.
+         goto 666
+      endif
+
+      
+      visFrac = 0.
+      occultedFrac = 0.
+
+      h  = sqrt(max(0.,distToStar**2 - starRadius**2))
+      cosang = h / distToStar
+      ang = acos(min(1.,max(-1.,cosAng)))
+      call getPolar(toStar, r, thetaTostar, phiToStar)
+      dtheta = pi / real(ntheta-1)
+      dphi = twopi / real(nphi-1)
+      do i = 1, ntheta
+       theta = thetaToStar + (2.*real(i-1)/real(nTheta-1)-1.)*ang
+       if (theta > pi) theta = theta - pi
+       if (theta < 0.) theta = theta + pi
+       dTheta = 2.*ang/real(nTheta-1)
+       do j = 1, nphi
+          phi = phiToStar + (2.*real(j-1)/real(nPhi-1)-1.)*ang
+          if (phi < 0.) phi = phi + twoPi
+          if (phi > twoPi) phi = phi + twoPi
+          dphi = 2.*ang/real(nPhi-1)
+
+          occulted = .false.
+          direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
+          domega = sin(theta)*dtheta*dphi
+          dotprod = direction .dot. tostar
+          if ((dotprod > 0.) .and. (acos(min(1.,max(-1.,dotprod))) < ang)) then
+
+             visFrac = visFrac + dOmega
+             dotprod = direction .dot. tooccult
+             if (dotprod > 0.) then
+                sinang = sqrt(max(0.,(1.-dotprod*dotprod)))
+                if ((sinang*disttooccult) < occultradius) then 
+                   occultedFrac = occultedFrac + dOmega
+                endif
+             endif
+          endif
+       enddo
+    enddo
+    visFrac = (visFrac-occultedFrac)/visFrac
+666 continue
+  end subroutine occultTest
+
+  subroutine generateOpacities(grid, m, n)
+
+    type(GRIDTYPE) :: grid
+    integer, parameter :: maxLevels = 6
+    integer :: m, n
+    integer :: i1, i2, i3
+    real :: chil, fac
+    real :: transe, thresh
+    integer :: i,j,k
+    real :: chi, eta
+    real(kind=doubleKind) :: freq
+
+    write(*,'(a)') "Generating opacities..."
+
+    do k = 2, maxlevels
+       do i=1, k-1
+          lambdaTrans(i, k) = lambdaTrans(k, i)
+          aEinstein(k, i) = aEinstein(k, i)
+          freq = cspeed / lambdaTrans(i, k)
+          bEinstein(k, i) = ((dble(aEinstein(k,i))*dble(cspeed)**2) / (2.d0*dble(hcgs)*dble(freq)**3))
+          bEinstein(i, k) = bEinstein(k,i) * gDegen(k) / gDegen(i)
+          fStrength(k, i) = -gDegen(i) * fStrength(i,k) / gDegen(k)
+       enddo
+    enddo
+
+    transe = abs(eTrans(n)-eTrans(m))
+    freq = cspeed/lambdaTrans(m,n)
+
+    grid%etaLine = 1.e-20
+    grid%etaCont = 1.e-20
+    grid%kappaAbs = 1.e-20
+    grid%kappaSca = 1.e-20
+    grid%chiLine = 1.e-20
+
+    do i1 = 1, grid%na1
+       do i2 = 1, grid%na2
+          do i3 = 1, grid%na3
+             if (.not.grid%inStar(i1,i2,i3).and.grid%inUse(i1,i2,i3)) then
+                grid%kappasca(i1,i2,i3,1) = grid%ne(i1,i2,i3) * sigmae * 1.e10
+                !
+                ! calculate the line opacity and emissivity
+                !
+                chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength(m,n)
+                chil = chil* (grid%n(i1,i2,i3,m)-( ( gDegen(m) / gDegen(n)) * grid%n(i1,i2,i3,n)))
+                grid%chiLine(i1,i2,i3) = 1.e10*chil
+                
+                if (grid%n(i1,i2,i3,n) == 0.d0) then
+                   write(*,*) i1,i2,i3,n
+                   write(*,*) grid%n(i1,i2,i3,1:maxLevels)
+                   write(*,*) grid%Ne(i1,i2,i3)
+                   write(*,*) grid%temperature(i1,i2,i3)
+                   stop
+                endif
+                fac=( ((grid%n(i1,i2,i3,m)*gDegen(n))/(grid%n(i1,i2,i3,n)*gDegen(m)))-1.d0)
+                grid%etaLine(i1,i2,i3)=1.e10*chil*real((2.d0*dble(hcgs)*dble(freq)**3)/(dble(cSpeed**2)))/fac
+
+!                write(*,*) i1,i2,i3,grid%etaline(i1,i2,i3)/grid%chiline(i1,i2,i3)
+                !
+                ! continuous opacity.. bound-free and free-free processes (+es)
+                !
+                chi=0.d0
+                do j=1,maxLevels
+                   thresh=(13.598d0-eTrans(j))
+                   if (transe.ge.thresh) then
+                      chi=chi+(grid%n(i1,i2,i3,j)- &
+                           boltzsaha(j, grid%ne(i1,i2,i3), dble(grid%temperature(i1,i2,i3)))* &
+                           exp((-hcgs*freq)/(kerg*grid%temperature(i1,i2,i3))))* annu(j,dble(freq))
+                   endif
+                enddo
+                
+                chi=chi+real(grid%ne(i1,i2,i3))**2*alpkk(freq,dble(grid%temperature(i1,i2,i3)))*&
+                     (1.d0-exp((-hcgs*freq)/(kerg*grid%temperature(i1,i2,i3))))
+!                chi=chi+grid%ne(i1,i2,i3)*sigmaE
+                
+                grid%kappaabs(i1,i2,i3,1) = chi * 1.e10
+                !
+                ! continuous emissivity...bf and ff
+                ! 
+                eta=0.d0
+                do j=1,15
+                   thresh=(13.598d0-eTrans(j))
+                   if (transe.ge.thresh) then
+                      eta=eta+boltzsaha(j, grid%ne(i1,i2,i3),dble(grid%temperature(i1,i2,i3))) &
+                           *annu(j,freq)*exp(-(hcgs*freq)/(kerg*grid%temperature(i1,i2,i3)))
+                   endif
+                enddo
+                
+                eta=eta + (grid%ne(i1,i2,i3)**2) * alpkk(freq,dble(grid%temperature(i1,i2,i3)))* &
+                     exp(-(hcgs*freq)/(kerg*grid%temperature(i1,i2,i3)))
+                
+                eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
+                
+                grid%etacont(i1,i2,i3) = eta*1.e10
+
+		if (grid%chiLine(i1,i2,i3) < 0.) then
+		   write(*,*) i1, i2, i3, chil
+                   grid%chiLine(i1,i2,i3) = 1.e-20
+                   grid%etaLine(i1,i2,i3) = 1.e-20
+                   grid%etaCont(i1,i2,i3) = 1.e-20
+                   grid%kappaAbs(i1,i2,i3,1) = 1.e-20
+                   grid%kappaSca(i1,i2,i3,1) = 1.e-20
+                endif
+
+             endif
+          enddo
+       enddo
+    enddo
+    write(*,'(a)') "Done."
+
+
+    where (grid%kappaabs < 0.) grid%kappaabs = 1.e-20
+  end subroutine generateOpacities
+
+
+end module stateq_mod
+
+
+
+
+
+
