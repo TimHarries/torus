@@ -3496,17 +3496,13 @@ CONTAINS
       endif
 
       thisScale = grid%rstar1/modulus(cellCentre)
+      ! weigting toward the smaller radial positions
       total_mass = total_mass * thisScale**4
 
-!      IF (total_mass > amrLimitScalar) then
-!         split = .TRUE.
-!      END IF
-
-      ! weigting toward the smaller radial positions
-      thisScale = maxDensity * cellSize*1.e10_db
-      if (thisScale > amrLimitScalar) then
+      IF (total_mass > amrLimitScalar) then
          split = .TRUE.
-      end if
+      END IF
+
 
 
       ! If 2D and uses large root cell special care must be taken
