@@ -10,7 +10,8 @@
 
 module distortion_mod
 
-  use grid_mod              ! opacity grid
+  use gridtype_mod          ! opacity grid
+  use grid_mod              ! opacity grid routines
   use constants_mod         ! physical constants
   use vector_mod            ! vector math
   use blob_mod              ! blob module

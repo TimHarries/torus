@@ -13,105 +13,23 @@
 ! v1.2 on 19/05/00
 ! added disk stuff in LTE
 
+! extended to allow adaptive mesh refinement grid. nhs
 
 
 module grid_mod
 
-
+  use gridtype_mod                    ! type definition for the 3-d grid
   use kind_mod
   use constants_mod                   ! physical constants
   use vector_mod                      ! vector math
   use atom_mod                        ! LTE atomic physics
   use utils_mod
+  use octal_mod                       ! octal type for amr
+  use amr_mod
 
   implicit none
 
   public
-
-  ! this is the grid type
-
-  type GRIDTYPE
-     integer :: nx                               ! size of cartesian grid in x
-     integer :: ny                               ! size of cartesian grid in y
-     integer :: nz                               ! size of cartesian grid in z
-     integer :: nr                               ! size of polar grid in r
-     integer :: nmu                              ! size of polar grid in mu
-     integer :: nphi                             ! size of polar grid in phi
-     integer :: na1, na2, na3                    ! generic 3d grid sizes
-     integer :: nlambda                          ! number of wavelength points
-     logical :: flatspec                         ! flat spectrum being computed
-     logical :: cartesian                        ! is the grid cartesian?
-     logical :: isotropic                        ! are the axes evenly spaced?
-     logical :: hitcore
-     real :: diskRadius
-     type(VECTOR) :: diskNormal
-     real :: dipoleOffset
-     character(len=20) :: geometry               ! type of geometry
-     real, pointer :: rho(:,:,:)                 ! density grid
-     real, pointer :: kappaAbs(:,:,:,:)          ! cont absorption opacities
-     real, pointer :: kappaSca(:,:,:,:)          ! scattering opacities
-     real, pointer :: kappaAbsRed(:,:,:,:)          ! cont absorption opacities
-     real, pointer :: kappaScaRed(:,:,:,:)          ! scattering opacities
-     real, pointer :: chiLine(:,:,:)             ! line opacity
-     real, pointer :: etaLine(:,:,:)             ! line emissivity
-     real, pointer :: etaCont(:,:,:)             ! line emissivity
-     real, pointer :: sigma(:,:,:)               ! radial velocity gradient
-     type(VECTOR), pointer :: velocity(:,:,:)    ! velocity grid
-     real, pointer :: rAxis(:)                   ! r-axis
-
-     real, pointer :: biasCont(:)                ! radial bias for cont
-     real, pointer :: biasLine(:)                ! radial bias for line
-
-     real, pointer :: muAxis(:)                  ! mu-axis
-     real, pointer :: phiAxis(:)                 ! phi-axis
-     real          :: dMu, dPhi                  ! spacing of mu and phi axes
-     real, pointer :: xAxis(:)                   ! x-axis
-     real, pointer :: yAxis(:)                   ! y-axis
-     real, pointer :: zAxis(:)                   ! z-axis
-     real, pointer :: lamArray(:)                ! the wavelength array
-     real, pointer :: rProbDistLine(:)               ! emissivity probability
-     real, pointer :: muProbDistLine(:,:)            ! distributions
-     real, pointer :: phiProbDistLine(:,:,:)         !
-     real, pointer :: xProbDistLine(:)               ! emissivity probability
-     real, pointer :: yProbDistLine(:,:)             ! distributions
-     real, pointer :: zProbDistLine(:,:,:)           !
-     real, pointer :: rProbDistCont(:)               ! emissivity probability
-     real, pointer :: muProbDistCont(:,:)            ! distributions
-     real, pointer :: phiProbDistCont(:,:,:)         !
-     real, pointer :: xProbDistCont(:)               ! emissivity probability
-     real, pointer :: yProbDistCont(:,:)             ! distributions
-     real, pointer :: zProbDistCont(:,:,:)           !
-     real, pointer :: temperature(:,:,:)             ! grid cell temperatures
-     real, pointer :: biasLine3D(:,:,:)              ! grid bias distribution
-     real, pointer :: biasCont3D(:,:,:)              ! grid bias distribution
-     real :: rCore                                   ! core radius
-     real(kind=doublekind) :: lCore                                   ! core luminosity
-     real :: chanceWindOverTotalContinuum            ! chance of continuum photon being produced
-     ! in the wind rather than at the core
-
-     logical :: lineEmission                        ! is there line emission?
-     logical :: contEmission                        ! is there continuum emission?
-
-     logical :: doRaman                             ! is this a raman-scattering model?
-     logical :: resonanceLine
-
-     real :: rStar1, rStar2, lumRatio
-
-     real :: tempSource
-
-     type(VECTOR) :: starPos1, starPos2
-
-     real :: lambda2
-
-     real(kind=doubleKind), pointer :: N(:,:,:,:)             ! stateq level pops
-     real(kind=doubleKind), pointer :: Ne(:,:,:)            ! electron density
-     real(kind=doubleKind), pointer :: nTot(:,:,:)          ! total density
-     logical(kind=1), pointer :: inStar(:,:,:)
-     logical(kind=1), pointer :: inUse(:,:,:)
-
-
-  end type GRIDTYPE
-
 
 
 contains
@@ -305,6 +223,7 @@ contains
     initCartesianGrid%kappaAbs = 1.e-30
     initCartesianGrid%kappaSca = 1.e-30
     initCartesianGrid%cartesian = .true.
+    initCartesianGrid%adaptive = .false.
 
     initCartesianGrid%resonanceLine = .false.
 
@@ -500,6 +419,7 @@ contains
     initPolarGrid%kappaSca = 0.
     initPolarGrid%kappaAbs = 0.
     initPolarGrid%cartesian = .false.
+    initPolarGrid%adaptive = .false.
 
     initPolarGrid%resonanceLine = .false.
 
@@ -518,6 +438,100 @@ contains
 
 666 continue
   end function initPolarGrid
+  ! function to initialize a cartesian grid
+
+
+  subroutine initAMRgrid(Laccretion,Taccretion,sAccretion,&
+                         greyContinuum,newContFile,flatspec,grid,ok)
+
+    use input_variables
+
+    implicit none
+
+    real(kind=doublekind), intent(inout) :: Laccretion 
+    real, intent(inout) :: Taccretion 
+    real, intent(inout) :: sAccretion
+    logical, intent(in) :: greyContinuum
+    character(len=80), intent(out) :: newContFile
+    logical, intent(in) :: flatspec        ! is the spectrum flat
+    logical, intent(inout) :: ok           ! function done ok?
+    type(GRIDTYPE), intent(out) :: grid                 ! the grid
+    
+    integer :: i,ilambda                   ! counters
+    
+    ! ok for now
+    ok = .true.
+
+    iLambda = nLambda
+
+    grid%lineEmission = lineEmission
+    grid%maxLevels = 6 ! (this is copying the value in initgridstateq)
+
+    ! if the spectrum is flat one only needs on wavelength point
+
+    grid%flatspec = flatspec
+    if (flatspec) ilambda = 1
+
+
+    grid%geometry = geometry
+
+    select case (geometry)
+    
+    case ("ttauri") 
+       call initTTauriAMR(grid,Laccretion,Taccretion,&
+                           sAccretion,newContFile)
+
+    case DEFAULT
+       print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'
+       print *, '            for use with an adaptive grid.'
+    end select
+    
+
+
+    nullify(grid%rho)
+    nullify(grid%kappaAbs)
+    nullify(grid%kappaSca)
+    nullify(grid%velocity)
+    nullify(grid%temperature)
+    nullify(grid%chiLine)
+    nullify(grid%etaLine)
+    nullify(grid%etaCont)
+    nullify(grid%sigma)
+    nullify(grid%biasLine3D)
+    nullify(grid%biasCont3D)
+    nullify(grid%xAxis)
+    nullify(grid%yAxis)
+    nullify(grid%zAxis)
+    nullify(grid%xProbDistLine)
+    nullify(grid%yProbDistLine)
+    nullify(grid%zProbDistLine)
+    nullify(grid%xProbDistCont)
+    nullify(grid%yProbDistCont)
+    nullify(grid%zProbDistCont)
+    nullify(grid%inStar)
+    nullify(grid%inUse)
+    nullify(grid%rProbDistLine)
+    nullify(grid%muProbDistLine)
+    nullify(grid%phiProbDistLine)
+    nullify(grid%rProbDistCont)
+    nullify(grid%muProbDistCont)
+    nullify(grid%phiProbDistCont)
+    nullify(grid%rAxis)
+    nullify(grid%muAxis)
+    nullify(grid%phiAxis)
+
+
+    allocate(grid%lamArray(1:nlambda))
+
+    grid%nLambda = nLambda
+
+    grid%adaptive = .true.
+    grid%cartesian = .false.
+
+    grid%resonanceLine = .false.
+
+  end subroutine initAMRgrid
+
 
   ! this subroutine sets up a shell grid of constant density
 
@@ -730,7 +744,7 @@ contains
     integer, parameter :: nRad = 100
     real :: rOuter, rInner, rCore
     type(VECTOR) :: rVec, vVec
-    real :: phi, r
+    real :: r 
     real :: rho, rhoNought
     real :: diskTemp
     real :: height, theta
@@ -830,14 +844,13 @@ contains
     integer, parameter :: nRad = 1000
     real :: rOuter, rInner, rCore
     type(VECTOR) :: rVec, vVec
-    real :: phi, r
+    real :: r
     real :: rho, rhoNought
     real :: diskTemp
-    real :: height, theta
+    real :: height
     real :: vel, mCore
     type(VECTOR) :: spinAxis
-    integer :: i, j, k, nMu
-    real :: sinTheta
+    integer :: i, j, k 
 
     grid%geometry = "disk"
     grid%lineEmission = .true.
@@ -967,15 +980,15 @@ contains
        call normalize(rHat)
 
        do j = 1, nAng
-	  phi  = real(j-1)/real(nAng-1)*Pi
+          phi  = real(j-1)/real(nAng-1)*Pi
           aVec = router * (cos(phi) * rHat)
-	  bVec = router * (sin(phi) * torusAxis)
-	  rUp = r0Vec + (aVec + bVec)
- 	  rDown = r0Vec + (aVec - bVec)
-	  call locate(grid%xAxis,grid%nx,rUp%x, i1)
-	  call locate(grid%yAxis,grid%ny,rUp%y, i2)
-	  call locate(grid%zAxis,grid%nz,rUp%z, i3)
-	  call locate(grid%zAxis,grid%nz,rDown%z, i4)
+          bVec = router * (sin(phi) * torusAxis)
+          rUp = r0Vec + (aVec + bVec)
+          rDown = r0Vec + (aVec - bVec)
+          call locate(grid%xAxis,grid%nx,rUp%x, i1)
+          call locate(grid%yAxis,grid%ny,rUp%y, i2)
+          call locate(grid%zAxis,grid%nz,rUp%z, i3)
+          call locate(grid%zAxis,grid%nz,rDown%z, i4)
 
           do k = min(i3,i4),max(i3,i4)
              Grid%rho(i1,i2,k) = rho
@@ -1449,35 +1462,62 @@ contains
 
   subroutine plotGrid(Grid, viewVec, opaqueCore, device, contTau, fg, bg, coolStarPosition, firstPlot)
 
-
     implicit none
     logical :: opaqueCore, firstPlot
     type(GRIDTYPE) :: grid
-    real :: x, y
-    real :: minTau, maxTau
-    real :: junk
-    real :: imageExtent
-    logical :: hitcore
     real :: contTau(2000,*)
-    real :: rMax
-    type(VECTOR) :: viewVec, posVec
-    type(VECTOR) :: xProj, zAxis
-    type(VECTOR) :: yProj, intersection, coolStarPosition
-    integer :: resFac = 2
+    type(VECTOR) :: viewVec
+    type(VECTOR) :: coolStarPosition
     integer :: i, j, npix
     real, allocatable :: plane(:,:), axis(:)
     logical, allocatable :: inuse(:,:)
     real :: tr(6)
-    real :: escprob
     real :: fg, bg, dx, dz
+    real :: angle1, angle2
+    integer :: resolution
+    real :: sampleFreq
     integer :: i1, i2, i3
     real :: r, mu, phi
-    real :: modz
-    integer :: nTau
     character(len=*) :: device
-    logical :: ok
 
-    if (grid%cartesian) then
+    if (grid%adaptive) then
+       
+       resolution = 100 
+       allocate(plane(resolution,resolution))
+
+       angle1 = 0.0
+       angle2 = 0.0
+       sampleFreq = 2.0
+       call columnDensity(grid,angle1,angle2,resolution,sampleFreq,plane)   
+       dx = REAL(grid%octreeRoot%subcellSize) * 2.0 / REAL(resolution) 
+       dz = dx 
+       tr(1) =  - dx + grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
+       tr(2) = dx
+       tr(3) = 0.
+       tr(4) =  - dz + grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize
+       tr(5) = 0.
+       tr(6) = dz
+       where (plane < 1.0) 
+          plane = 0.1
+       end where
+       plane = log10(plane)
+       fg = MAXVAL(plane)
+       bg = MINVAL(plane)
+       call pgbegin(0,device,1,1)
+       
+       call pgvport(0.1,0.9,0.1,0.9)
+       
+       call pgwnad(REAL(grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize),&
+                   REAL(grid%octreeRoot%centre%x + grid%octreeRoot%subcellSize),&
+                   REAL(grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize),&
+                   REAL(grid%octreeRoot%centre%z + grid%octreeRoot%subcellSize))
+       
+       call pgimag(plane, resolution, resolution, 1, resolution, 1, resolution, fg, bg, tr)
+       
+       call pgbox('bcnst',0,0,'bcnst',0,0)
+       call pgend
+
+    else if (grid%cartesian) then
 
        allocate(plane(1:grid%nx,1:grid%nz))
 
@@ -2539,7 +2579,7 @@ contains
     real :: sigmaScaBlue, sigmaAbsBlue
     real :: sigmaScaRed, sigmaAbsRed
     real :: mdot, vterm, rho
-    real :: t1, t2, t3, o6width
+    real :: o6width
     integer, parameter :: maxr = 200
     
     integer :: kPrime
@@ -2549,7 +2589,7 @@ contains
     integer :: nTheta, nPhi, nr
     integer :: iTheta, iPhi, i1
     real :: fac, fac2, r, theta, phi
-    type(VECTOR) :: starPos1, starPos2, rVec, rHat
+    type(VECTOR) :: starPos1, starPos2, rVec
     character(len=80) :: filename
 
 
@@ -3315,13 +3355,13 @@ contains
   subroutine fillGridDonati(grid, resonanceLine)
     type(GRIDTYPE) :: grid
     integer :: i, j, k
-    integer :: i1, i2, i3, nMu, j1, j2
+    integer :: i1, i2, i3, j1, j2
     real :: zPrime, yPrime, r, r1, fac, ang
     logical :: resonanceLine
     type(VECTOR) :: rHat, rVec, vHat
     real :: surfaceVel, vel, theta
     integer :: nz, ny
-    real :: t1, t2, t3, sinTheta
+    real :: t1, t2, t3
     real :: thickness
     real, allocatable :: z(:), y(:), rho(:,:), t(:,:), phi(:,:), v(:,:)
     character(len=80) :: junkline
@@ -3575,15 +3615,15 @@ contains
 
   subroutine fillGridDonati2(grid, resonanceLine, misc)
     type(GRIDTYPE) :: grid
-    integer :: i, j, k
-    integer :: i1, i2, i3, nMu, j1, j2
-    real :: zPrime, yPrime, r, r1, fac, ang
+    integer :: i, j
+    integer :: i1, i2, i3, j1, j2
+    real :: zPrime, r, fac, ang
     logical :: resonanceLine
     character(len=*) :: misc
     type(VECTOR) :: rHat, rVec, vHat
-    real :: surfaceVel, vel, theta
+    real :: surfaceVel, vel
     integer :: nz, ny
-    real :: t1, t2, t3, sinTheta
+    real :: t1, t2, t3
     real :: thickness
     real, allocatable :: z(:), y(:), rho(:,:), t(:,:), phi(:,:), v(:,:)
     character(len=80) :: junkline
@@ -3975,14 +4015,10 @@ contains
     logical :: readPops, writePops, lte
     integer :: nLower, nUpper
     real :: sinTheta
-    logical :: ok
     type(VECTOR) :: rHat, rVec
     real :: vel
     integer, parameter :: maxLevels = 9
     real :: x, dx
-    real(kind=doubleKind) :: phiT, ne1, ne2, ntot
-    integer ::m
-    real :: v, b2, b3
     type(GRIDTYPE) :: grid
 
     grid%geometry = "wind"
@@ -4119,7 +4155,7 @@ contains
     type(GRIDTYPE) :: grid
     real :: rCore, mDot, vTerm, beta, temp
     integer :: i,j,k
-    real :: sinTheta, vel, tot, v0, fac
+    real :: sinTheta, vel, v0
     real :: x, dx
     type(VECTOR) :: rHat
 
@@ -4197,6 +4233,8 @@ contains
        muAxis(i) = cosTheta2 + (cosThetaEnd - cosTheta2) * real(i-n2-1)/real(nMu-n2-1)
     enddo
   end subroutine fillmuAxisDisk
+
+
 end module grid_mod
 
 

@@ -1,5 +1,6 @@
 subroutine fillGridMie(grid, scale, aMin, aMax, qDist, grainType)
 
+  use gridtype_mod
   use grid_mod
   use constants_mod
   implicit none

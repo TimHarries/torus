@@ -10,13 +10,16 @@ module ttauri_mod
   use vector_mod                      ! vector math
   use atom_mod                        ! LTE atomic physics
   use utils_mod
+  use gridtype_mod
   use grid_mod
   use stateq_mod
   use math_mod
+  use octal_mod
 
   implicit none
   
   public
+
 
 contains
 
@@ -52,7 +55,8 @@ contains
     real :: tot, tot2
     type(VECTOR) :: vP, posVec
     real :: modVp
-    real :: Laccretion, Taccretion, sAccretion
+    real(kind=doublekind) :: Laccretion
+    real :: Taccretion, sAccretion
     real :: minRho, maxRho
     type(VECTOR) :: rHat, vHat
     real :: rMag, mLoss, vTerm, dist, v0, vel
@@ -394,8 +398,8 @@ contains
                 grid%etaLine(i1,i2,i3) = grid%etaLine(i1,i2,i3) * etaFac
                 grid%chiLine(i1,i2,i3) = grid%chiLine(i1,i2,i3) * chiFac
                 done(i1,i2,i3) = .true.
-	     endif
-	  enddo
+             endif
+          enddo
        enddo
        write(*,*) "done."
     endif
@@ -605,19 +609,9 @@ contains
     grid%rho = grid%rho / meanParticleMass
 
   end subroutine fillGridFlaredDisk
-             
 
+  
 
 end module ttauri_mod
-
-
-
-    
-
-
-
-
-
-
 
 

@@ -10,10 +10,12 @@
 
 module blob_mod
 
-  use grid_mod              ! The density grid
+  use gridtype_mod          ! The density grid
+  use grid_mod              ! density grid routines
   use vector_mod            ! Vector maths
   use constants_mod         ! Physical constants
   use math_mod              ! Misc maths
+  use amr_mod         ! instead of math_mod
 
   implicit none
 

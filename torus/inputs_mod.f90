@@ -1,6 +1,7 @@
 module inputs_mod
 
 use utils_mod
+use input_variables
 
 implicit none
 
@@ -21,9 +22,10 @@ subroutine inputs()
   integer :: errNo, i
   logical :: ok
   character(len=80) :: cLine(100) 
-  character(len=9) :: default
-  logical :: done
+  character(len=10) :: default
 
+
+  logical :: done
 
   ! character vars for unix environ
 
@@ -104,24 +106,50 @@ subroutine inputs()
   call getString("gridtype", gridcoords, cLine, nLines, &
        "Grid type: ","(a,a,a)","cartesian",ok, .true.)
 
-  if (gridcoords.eq."cartesian") then
-     call getInteger("nx", nx, cLine, nLines, &
-          "Grid size in x-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
-     call getInteger("ny", ny, cLine, nLines, &
-          "Grid size in y-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
-     call getInteger("nz", nz, cLine, nLines, &
-          "Grid size in z-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
-  endif
+  call getLogical("gridusesamr", gridUsesAMR, cLine, nLines, &
+       "Grid uses adaptive mesh refinement: ","(a,1l,1x,a)", .false., ok, .false.)
+  
+  if (gridUsesAMR) then
+     call getReal("amrgridsize", amrGridSize, cLine, nLines, &
+          "Size of adaptive mesh grid: ","(a,f6.1,1x,a)", 1000., ok, .true.) 
+     call getReal("amrgridcentrex", amrGridCentreX, cLine, nLines, &
+          "Grid centre X-coordinate: ","(a,f6.1,1x,a)", 0., ok, .false.) 
+     call getReal("amrgridcentrey", amrGridCentreY, cLine, nLines, &
+          "Grid centre Y-coordinate: ","(a,f6.1,1x,a)", 0., ok, .false.) 
+     call getReal("amrgridcentrez", amrGridCentreZ, cLine, nLines, &
+          "Grid centre Z-coordinate: ","(a,f6.1,1x,a)", 0., ok, .false.) 
+     call getReal("limitscalar", limitScalar, cLine, nLines, &
+          "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000., ok, .true.) 
+     call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
+          "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
+     if (doSmoothGrid) then
+       call getReal("smoothfactor", smoothFactor, cLine, nLines, &
+            "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 5., ok, .false.)
+     end if
+     call getReal("samplefreq", sampleFreq, cLine, nLines, &
+          "Max samples per AMR subcell: ","(a,f6.1,1x,a)", 2., ok, .true.) 
+     
+  else    
 
-  if (gridcoords.eq."polar") then
-     call getInteger("nr", nr, cLine, nLines, &
-          "Grid size in r-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
-     call getInteger("nmu", nmu, cLine, nLines, &
-          "Grid size in mu-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
-     call getInteger("nphi", nphi, cLine, nLines, &
-          "Grid size in phi-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
-  endif
+    if (gridcoords.eq."cartesian") then
+       call getInteger("nx", nx, cLine, nLines, &
+            "Grid size in x-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+       call getInteger("ny", ny, cLine, nLines, &
+            "Grid size in y-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+       call getInteger("nz", nz, cLine, nLines, &
+            "Grid size in z-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+    endif
 
+    if (gridcoords.eq."polar") then
+       call getInteger("nr", nr, cLine, nLines, &
+            "Grid size in r-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+       call getInteger("nmu", nmu, cLine, nLines, &
+            "Grid size in mu-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+       call getInteger("nphi", nphi, cLine, nLines, &
+            "Grid size in phi-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+    endif
+
+  end if
 
   call getString("geometry", geometry, cLine, nLines, &
        "Geometry: ","(a,a,a)","sphere",ok, .true.)
@@ -552,7 +580,7 @@ endif
    call getInteger("nspiral", nSpiral, cLine, nLines, &
         "Number of spiral arms: ","(a,i3)",1,ok,.true.)
    call getReal("dipoleoffset", dipoleOffset, cLine, nLines, &
-	"Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
+       "Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
    dipoleOffset = dipoleOffset * degToRad
  endif
 
@@ -930,7 +958,7 @@ subroutine findString(name, value, cLine, nLines, ok)
   character(len=80) :: cLine(*)
   integer :: nLines
   character(len=*) :: message, format
-  character(len=9) :: default
+  character(len=10) :: default
   logical :: musthave
   integer :: idef
   logical :: ok
@@ -943,7 +971,7 @@ subroutine findString(name, value, cLine, nLines, ok)
        stop
     endif
     ival = idef
-    default = "(default)"
+    default = " (default)"
   endif
   if (musthave.or.(ival /= idef)) then
      write(*,format) trim(message),ival,default
@@ -958,7 +986,7 @@ subroutine findString(name, value, cLine, nLines, ok)
   character(len=80) :: cLine(*)
   integer :: nLines
   character(len=*) :: message, format
-  character(len=9) :: default
+  character(len=10) :: default
   real :: rdef
   logical :: ok
   ok = .true.
@@ -970,7 +998,7 @@ subroutine findString(name, value, cLine, nLines, ok)
        stop
     endif
     rval = rdef
-    default = "(default)"
+    default = " (default)"
  endif
  if (musthave) then
     write(*,format) trim(message),rval,default
@@ -986,7 +1014,7 @@ subroutine findString(name, value, cLine, nLines, ok)
   character(len=80) :: cLine(*)
   integer :: nLines
   character(len=*) :: message, format
-  character(len=9) :: default
+  character(len=10) :: default
   character(len=*) :: rdef
   logical :: ok
   ok = .true.
@@ -1012,7 +1040,7 @@ subroutine findString(name, value, cLine, nLines, ok)
   character(len=80) :: cLine(*)
   integer :: nLines
   character(len=*) :: message, cformat
-  character(len=9) :: default
+  character(len=10) :: default
   logical :: rdef
   character(len=6) :: trueOrFalse, tmp
   logical :: ok, thisIsDefault

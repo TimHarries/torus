@@ -1,6 +1,6 @@
 module atom_mod
   use constants_mod
-	use kind_mod
+  use kind_mod
   implicit none
   public
 contains

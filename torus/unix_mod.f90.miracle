@@ -39,7 +39,7 @@ contains
     call system_clock(count, countRate)
     systemTime = count / countRate
     cpuTime = systemTime
-	
+
 
 
   end subroutine unixTimes

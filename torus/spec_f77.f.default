@@ -28,7 +28,7 @@ C Misc.
 C
       INTEGER SP
       INTEGER NDF
-      CHARACTER*(*) CPARAM
+      ! CHARACTER*(*) CPARAM ! Unused? Commented out by nhs.
       CHARACTER*80 PATH,FILENAME
       CHARACTER*64 NAME
       CHARACTER*80 ERROR

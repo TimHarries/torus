@@ -1,5 +1,6 @@
 module puls_mod
 
+  use gridtype_mod
   use grid_mod
   use stateq_mod
 

@@ -1,7 +1,16 @@
 module kind_mod
-  
-  integer, parameter :: doubleKind = 2
+  ! KIND parameters, specific to the 'linux' system
+  ! double, octal and logic entries added by nhs
 
+  integer, parameter :: singleKind = 1
+  integer, parameter :: si = singleKind
+  integer, parameter :: doubleKind = 2
+  integer, parameter :: db = doubleKind
+  integer, parameter :: octalKind = 1
+  integer, parameter :: oc = octalKind
+
+  integer, parameter :: logicKind = 1
+  integer, parameter :: lg = logicKind
 
 end module kind_mod
 

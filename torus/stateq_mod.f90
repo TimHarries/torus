@@ -4,6 +4,7 @@
 !
 module stateq_mod
 
+  use gridtype_mod
   use grid_mod
   use math_mod
   use vector_mod
@@ -550,14 +551,14 @@ contains
 
 
                    if (grid%temperature(i,j,k) < 1.e5) then
-		      phiT = 1.5d0*log10(2.d0*pi*mElectron*kErg*grid%temperature(i,j,k)) - &
-			   3.d0*log10(hCgs) + log10(exp(-13.6d0/(kEV*grid%temperature(i,j,k))))
-		      
-		      phiT = 10.d0**phiT
-		      call solveQuadDble(1.d0, phiT, &
-			   -1.d0*phiT*dble(nTot), ne1, ne2, ok)
-		      grid%ne(i,j,k) = min(max(ne1,ne2),nTot)		   
-		      grid%ne(i,j,k) = max(grid%ne(i,j,k),1.d0)
+                      phiT = 1.5d0*log10(2.d0*pi*mElectron*kErg*grid%temperature(i,j,k)) - &
+                           3.d0*log10(hCgs) + log10(exp(-13.6d0/(kEV*grid%temperature(i,j,k))))
+                     
+                      phiT = 10.d0**phiT
+                      call solveQuadDble(1.d0, phiT, &
+                           -1.d0*phiT*dble(nTot), ne1, ne2, ok)
+                      grid%ne(i,j,k) = min(max(ne1,ne2),nTot)   
+                      grid%ne(i,j,k) = max(grid%ne(i,j,k),1.d0)
                    else
                       grid%ne(i,j,k) = dble(ntot)
                    endif
@@ -641,7 +642,7 @@ contains
                             call mnewt(grid, 20,xall,maxlevels+1,tolx,tolf, hnu1, &
                                  nuarray1, nnu1, hnu2, nuarray2, nnu2, rvec, i1, i2, i3, visFrac1, visFrac2, isBinary)
                             if ((.not.lte).and.debugInfo) write(*,'(a,3i3,f8.1)') "grid cell",i1,i2,i3,grid%temperature(i1,i2,i3)
-			    write(*,*) visFrac1, visFrac2
+                            write(*,*) visFrac1, visFrac2
                             grid%ne(i1,i2,i3) = xall(maxlevels+1)
                             do i = 1 , maxLevels
                                departCoeffall(i) = real(xall(i))/boltzSaha(i, grid%Ne(i1,i2,i3), dble(grid%temperature(i1,i2,i3)))
@@ -963,86 +964,86 @@ contains
     departCoeff = 1.
     do iIter = 1, nIter
        do i1 = 1,grid%na1
-	  i2 = 1
-	  i3 = 1
-	  sinTheta = sqrt(1.d0 - grid%muAxis(i2)**2)
-	  rvec = vector(grid%raxis(i1)*sinTheta*cos(ang), &
-	       grid%raxis(i1)*sinTheta*sin(ang), &
-	       grid%rAxis(i1)*grid%muAxis(i2))
-	  
-	  where (departCoeff < 0.) 
-	     departCoeff = 1.
-	  end where
-	  departCoeff(1) = 1./(0.5*(1.-sqrt(max(0.,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2)))))
-	  
-	  
-	  if (.not.grid%inStar(i1,i2,i3).and.grid%inUse(i1,i2,i3)) then
-	     
-	     if (iIter == 1) then
-		do i = 1, maxlevels
-		   x(i) = grid%n(i1,i2,i3,i) * dble(departCoeff(i))
-		enddo
-		x(maxlevels+1) = grid%ne(i1,i2,i3)
-		oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
-		oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
-	     else
-		oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
-		oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
-		do i = 1, maxlevels
-		   x(i) = grid%n(i1,i2,i3,i)
-		enddo
-		x(maxlevels+1) = grid%ne(i1,i2,i3)
-	     endif
-	     
-	     
-	     if (.not.lte) then
-		if (grid%geometry == "binary") then
-		   call occultTest(grid, i1, i2, i3, grid%starPos1, grid%rStar1, &
-			grid%starPos2, grid%rStar2, visFrac1)
-		   call occultTest(grid, i1, i2, i3, grid%starPos2, grid%rStar2, &
-			grid%starPos1, grid%rStar1, visFrac2)
-		else
-		   visFrac1 = 1.
-		   visFrac2 = 0.
-		endif
-		
-		call mnewt(grid, 20,x,maxlevels+1,tolx,tolf, hnu1, &
-		     nuarray1, nnu1, hnu2, nuarray2, nnu2, rvec, i1, i2, i3, visFrac1, visFrac2, isBinary)
-	     endif
-	     if (.not.lte) write(*,*) "Grid: ",i1,i2,i3,grid%temperature(i1,i2,i3)
-	     do i = 1 , maxLevels
-		departCoeff(i) = real(x(i))/boltzSaha(i, x(maxlevels+1), dble(grid%temperature(i1,i2,i3)))
-		
-		if (.not.lte) then
-		   write(*,'(i3,1p,e12.3,e12.3,e12.3,e12.3)') &
-			i,departCoeff(i), x(i),log10(departCoeff(i)),log10(x(2)/x(1))
-		endif
-		grid%n(i1,i2,i3,i) = x(i)
-	     enddo
-	     grid%ne(i1,i2,i3) = x(maxLevels+1)
-	     if (.not.lte) then
-		write(*,'(a,1p,e12.3,e12.3)') "Ne ",grid%ne(i1,i2,i3),grid%ne(i1,i2,i3)/grid%nTot(i1,i2,i3)
-	     endif
+          i2 = 1
+          i3 = 1
+          sinTheta = sqrt(1.d0 - grid%muAxis(i2)**2)
+          rvec = vector(grid%raxis(i1)*sinTheta*cos(ang), &
+               grid%raxis(i1)*sinTheta*sin(ang), &
+               grid%rAxis(i1)*grid%muAxis(i2))
+          
+          where (departCoeff < 0.) 
+             departCoeff = 1.
+          end where
+          departCoeff(1) = 1./(0.5*(1.-sqrt(max(0.,(1.-grid%rStar1**2/modulus(rVec-grid%starpos1)**2)))))
+          
+          
+          if (.not.grid%inStar(i1,i2,i3).and.grid%inUse(i1,i2,i3)) then
+             
+             if (iIter == 1) then
+                do i = 1, maxlevels
+                   x(i) = grid%n(i1,i2,i3,i) * dble(departCoeff(i))
+                enddo
+                x(maxlevels+1) = grid%ne(i1,i2,i3)
+                oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
+                oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+             else
+                oldLevels(1:maxLevels) = grid%n(i1,i2,i3,1:maxLevels)
+                oldLevels(maxLevels+1) = grid%ne(i1,i2,i3)
+                do i = 1, maxlevels
+                   x(i) = grid%n(i1,i2,i3,i)
+                enddo
+                x(maxlevels+1) = grid%ne(i1,i2,i3)
+             endif
+             
+             
+             if (.not.lte) then
+                if (grid%geometry == "binary") then
+                   call occultTest(grid, i1, i2, i3, grid%starPos1, grid%rStar1, &
+                        grid%starPos2, grid%rStar2, visFrac1)
+                   call occultTest(grid, i1, i2, i3, grid%starPos2, grid%rStar2, &
+                        grid%starPos1, grid%rStar1, visFrac2)
+                else
+                   visFrac1 = 1.
+                   visFrac2 = 0.
+                endif
+                
+                call mnewt(grid, 20,x,maxlevels+1,tolx,tolf, hnu1, &
+                     nuarray1, nnu1, hnu2, nuarray2, nnu2, rvec, i1, i2, i3, visFrac1, visFrac2, isBinary)
+             endif
+             if (.not.lte) write(*,*) "Grid: ",i1,i2,i3,grid%temperature(i1,i2,i3)
+             do i = 1 , maxLevels
+                departCoeff(i) = real(x(i))/boltzSaha(i, x(maxlevels+1), dble(grid%temperature(i1,i2,i3)))
+                
+                if (.not.lte) then
+                   write(*,'(i3,1p,e12.3,e12.3,e12.3,e12.3)') &
+                        i,departCoeff(i), x(i),log10(departCoeff(i)),log10(x(2)/x(1))
+                endif
+                grid%n(i1,i2,i3,i) = x(i)
+             enddo
+             grid%ne(i1,i2,i3) = x(maxLevels+1)
+             if (.not.lte) then
+                write(*,'(a,1p,e12.3,e12.3)') "Ne ",grid%ne(i1,i2,i3),grid%ne(i1,i2,i3)/grid%nTot(i1,i2,i3)
+             endif
 
-	     endif
-	     enddo
-	  enddo
-	     ! now perform the remapping
+             endif
+             enddo
+          enddo
+             ! now perform the remapping
              rHat = VECTOR(1., 1., 1.)
              call normalize(rHat)
 
              do i = 1, grid%na1
                 do j = 1, grid%na2
                    do k = 1, grid%na3
-		      i1 = i
-		      i2 = 1
-		      i3 = 1
-		      if (.not.grid%inStar(i1,i2,i3)) then
-			 grid%ne(i,j,k) = grid%ne(i1,i2,i3)
-			 do m = 1, maxLevels
-			    grid%n(i,j,k,m) = grid%n(i1,i2,i3,m)
-			 enddo
-		      endif
+                      i1 = i
+                      i2 = 1
+                      i3 = 1
+                      if (.not.grid%inStar(i1,i2,i3)) then
+                         grid%ne(i,j,k) = grid%ne(i1,i2,i3)
+                         do m = 1, maxLevels
+                            grid%n(i,j,k,m) = grid%n(i1,i2,i3,m)
+                         enddo
+                      endif
                    enddo
                 enddo
              enddo
@@ -1055,9 +1056,9 @@ contains
 
 
 
-	  if (writePops) then
-	     call writeGridPopulations(popFilename, grid, maxLevels)
-	  endif
+          if (writePops) then
+             call writeGridPopulations(popFilename, grid, maxLevels)
+          endif
     endif
 
     write(*,'(a,f8.1)') "Generating opacities for ",lambdaTrans(nLower, nUpper)*1.e8
@@ -1369,7 +1370,7 @@ contains
     do m = n+1, nPop
        tot = tot + grid%N(i1,i2,i3,m)*aEinstein(m,n)*beta_mn(n,m,rVec, i1, i2, i3,grid)
        if (n == debug) then
-	  write(*,*) "spont",m,tot
+          write(*,*) "spont",m,tot
        endif
 
        freq = cSpeed/lambdaTrans(m,n)
@@ -1386,7 +1387,7 @@ contains
             beta_cmn(n, m, rVec, i1, i2, i3, grid, 1) * Inu
 
        if (n == debug) then
-	  write(*,*) m,"star 1",tot
+          write(*,*) m,"star 1",tot
        endif
 
 
@@ -1403,14 +1404,14 @@ contains
        endif
 
        if (n == debug) then
-	  write(*,*) m,"star 2",tot
+          write(*,*) m,"star 2",tot
        endif
 
 
        tot = tot + grid%Ne(i1,i2,i3) * (grid%N(i1,i2,i3,m) &
         *cijt(m,n,dble(grid%temperature(i1,i2,i3))) - grid%N(i1,i2,i3,n)*cijt(n,m,dble(grid%temperature(i1,i2,i3))))
        if (n == debug) then
-	  write(*,*) m,"collisional",tot
+          write(*,*) m,"collisional",tot
        endif
 
 
@@ -1448,7 +1449,7 @@ contains
 
     if (n == debug) then
        write(*,*) "Ionization: ", &
-	    grid%N(i1,i2,i3,n)*(fac1 + fac2 + grid%Ne(i1,i2,i3) * cikt(n, dble(grid%temperature(i1,i2,i3))))
+            grid%N(i1,i2,i3,n)*(fac1 + fac2 + grid%Ne(i1,i2,i3) * cikt(n, dble(grid%temperature(i1,i2,i3))))
        write(*,*) grid%N(i1,i2,i3,n),fac1,fac2,grid%Ne(i1,i2,i3) * cikt(n, dble(grid%temperature(i1,i2,i3)))
     endif 
     
@@ -2044,8 +2045,8 @@ contains
                 
                 grid%etacont(i1,i2,i3) = eta*1.e10
 
-		if (grid%chiLine(i1,i2,i3) < 0.) then
-		   write(*,*) i1, i2, i3, chil
+                if (grid%chiLine(i1,i2,i3) < 0.) then
+                   write(*,*) i1, i2, i3, chil
                    grid%chiLine(i1,i2,i3) = 1.e-20
                    grid%etaLine(i1,i2,i3) = 1.e-20
                    grid%etaCont(i1,i2,i3) = 1.e-20

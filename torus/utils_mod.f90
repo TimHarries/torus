@@ -14,7 +14,10 @@ module utils_mod
 
   public
 
-
+  interface locate
+     module procedure locate_single
+     module procedure locate_double
+  end interface
 
 contains
 
@@ -400,7 +403,7 @@ contains
 
   end function logInterp
 
-  SUBROUTINE LOCATE(XX,N,X,J)
+  SUBROUTINE LOCATE_single(XX,N,X,J)
     real :: XX(*)
     integer :: n
     real :: x
@@ -417,7 +420,26 @@ contains
       GO TO 10
       ENDIF
       J=JL
-    END SUBROUTINE LOCATE
+    END SUBROUTINE LOCATE_single
+  
+    SUBROUTINE LOCATE_double(XX,N,X,J)
+    real(kind=doubleKind) :: XX(*)
+    integer :: n
+    real(kind=doubleKind) :: x
+    integer :: j, jl, ju,jm
+      JL=1
+      JU=N+1
+10    IF(JU-JL.GT.1)THEN
+        JM=(JU+JL)/2
+        IF((XX(N).GT.XX(1)).EQV.(X.GT.XX(JM)))THEN
+          JL=JM
+        ELSE
+          JU=JM
+        ENDIF
+      GO TO 10
+      ENDIF
+      J=JL
+    END SUBROUTINE LOCATE_double
 
     real function gasdev()
       implicit none

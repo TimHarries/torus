@@ -1,5 +1,5 @@
 module unix_mod
-  
+! NB This hasn't been changed from the "linux" version!!!  
 contains
 
   subroutine unixGetenv(envVariable, directory, length, error)

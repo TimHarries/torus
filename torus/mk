@@ -50,6 +50,25 @@
 
                echo "mk: Environment variables defined for $SYSTEM system"
                ;;
+	    
+            linuxintel)
+               F95COMP="ifc"
+               F77COMP="ifc"
+               FASTFLAG="-O3 -ipo -xMK "
+               MATHTRAP="-mp"
+               UNIXMOD="unix_mod.f90.linuxintel"
+               KINDMOD="kind_mod.f90.linuxintel"
+               EXE="torus.linuxintel"
+               F77FLAG="-w"
+               IMAGEF77="image_f77.f.default"
+               SPECF77="spec_f77.f.default"
+#               F2CLIB=""
+               F2CLIB="-L/usr/lib -lg2c"
+               STARLIBS="-L/usr/lib -L/stardev/lib `ndf_link` `pgplot_link`"
+#	       STARLIBS=""
+
+               echo "mk: Environment variables defined for $SYSTEM system"
+               ;;
 
             miracle)
                F95COMP="f90"
@@ -89,7 +108,7 @@
         debug)
         touch make.depends
         make -e depends
-        make -e DEBUG="-g" MATHTRAP=" " FASTFLAG=" "
+        make -e DEBUG="-g -C" MATHTRAP=" " FASTFLAG=" "
         ;;
 
         profile)
@@ -102,7 +121,7 @@
         *)
         touch make.depends
         make -e depends
-        make -e $*
+        make -e -j 2 $*
         ;;
    esac
         

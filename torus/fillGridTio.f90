@@ -1,5 +1,6 @@
 subroutine fillGridTio(grid,  scale)
 
+use gridtype_mod
 use grid_mod
 use constants_mod
 implicit none

@@ -1,10 +1,13 @@
 module path_integral
 
   use vector_mod             ! vector maths 
-  use grid_mod               ! opacity grid
+  use gridtype_mod           ! opacity grid
+  use grid_mod               ! opacity grid routines
   use math_mod               ! misc maths routines
   use photon_mod             ! the photon module
   use constants_mod          ! physical constants
+  use amr_mod
+  
   implicit none
 !
 ! This subroutine performs an integration through the grid in order
@@ -382,29 +385,29 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
         dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
 
      else
-	r1 = grid%rAxis(i1)
-	if (i1 < grid%nr) then
-	   r2 = grid%rAxis(i1+1)
-	else
-	   r2 = grid%rAxis(i1-1)
-	endif
-	dr = abs(r2 - r1)
-	sinTheta = sqrt(1.-grid%muAxis(i2)**2)
-	if (i3 < grid%nphi) then
-	   dx = r1 * sinTheta * cos(grid%phiAxis(i3)) - r2 * sinTheta * cos(grid%phiAxis(i3+1))
-	   dy = r1 * sinTheta * sin(grid%phiAxis(i3)) - r2 * sinTheta * sin(grid%phiAxis(i3+1))
-	else
-	   dx = r1 * sinTheta * cos(grid%phiAxis(i3)) - r2 * sinTheta * cos(grid%phiAxis(i3-1))
-	   dy = r1 * sinTheta * sin(grid%phiAxis(i3)) - r2 * sinTheta * sin(grid%phiAxis(i3-1))
-	endif
-	
-	if (i2 < grid%nMu) then
-	   dz = r1 * grid%muAxis(i2) - r2 * grid%muAxis(i2+1)
-	else
-	   dz = r1 * grid%muAxis(i2) - r2 * grid%muAxis(i2-1)
-	endif
-	fVec = VECTOR(dx, dy, dz)
-	dlambda  = min(modulus(fVec),dr)
+        r1 = grid%rAxis(i1)
+        if (i1 < grid%nr) then
+           r2 = grid%rAxis(i1+1)
+        else
+           r2 = grid%rAxis(i1-1)
+        endif
+        dr = abs(r2 - r1)
+        sinTheta = sqrt(1.-grid%muAxis(i2)**2)
+        if (i3 < grid%nphi) then
+           dx = r1 * sinTheta * cos(grid%phiAxis(i3)) - r2 * sinTheta * cos(grid%phiAxis(i3+1))
+           dy = r1 * sinTheta * sin(grid%phiAxis(i3)) - r2 * sinTheta * sin(grid%phiAxis(i3+1))
+        else
+           dx = r1 * sinTheta * cos(grid%phiAxis(i3)) - r2 * sinTheta * cos(grid%phiAxis(i3-1))
+           dy = r1 * sinTheta * sin(grid%phiAxis(i3)) - r2 * sinTheta * sin(grid%phiAxis(i3-1))
+        endif
+        
+        if (i2 < grid%nMu) then
+           dz = r1 * grid%muAxis(i2) - r2 * grid%muAxis(i2+1)
+        else
+           dz = r1 * grid%muAxis(i2) - r2 * grid%muAxis(i2-1)
+        endif
+        fVec = VECTOR(dx, dy, dz)
+        dlambda  = min(modulus(fVec),dr)
 !	dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
 
      endif
@@ -616,29 +619,29 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
 !              dlambda = min(dx,dy,dz)
 
            else
-	      r1 = grid%rAxis(i1)
-	      if (i1 < grid%nr) then
-		 r2 = grid%rAxis(i1+1)
-	      else
-		 r2 = grid%rAxis(i1-1)
-	      endif
-	      dr = abs (r2 - r1)
-	      sinTheta = sqrt(1.-grid%muAxis(i2)**2)
-	      if (i3 < grid%nphi) then
-		 dx = r1 * sinTheta * cos(grid%phiAxis(i3)) - r2 * sinTheta * cos(grid%phiAxis(i3+1))
-		 dy = r1 * sinTheta * sin(grid%phiAxis(i3)) - r2 * sinTheta * sin(grid%phiAxis(i3+1))
-	      else
-		 dx = r1 * sinTheta * cos(grid%phiAxis(i3)) - r2 * sinTheta * cos(grid%phiAxis(i3-1))
-		 dy = r1 * sinTheta * sin(grid%phiAxis(i3)) - r2 * sinTheta * sin(grid%phiAxis(i3-1))
-	      endif
-	      
-	      if (i2 < grid%nMu) then
-		 dz = r1 * grid%muAxis(i2) - r2 * grid%muAxis(i2+1)
-	      else
-		 dz = r1 * grid%muAxis(i2) - r2 * grid%muAxis(i2-1)
-	      endif
-	      fVec = VECTOR(dx, dy, dz)
-	      dlambda = min(modulus(fVec),dr)
+              r1 = grid%rAxis(i1)
+              if (i1 < grid%nr) then
+                 r2 = grid%rAxis(i1+1)
+              else
+                 r2 = grid%rAxis(i1-1)
+              endif
+              dr = abs (r2 - r1)
+              sinTheta = sqrt(1.-grid%muAxis(i2)**2)
+              if (i3 < grid%nphi) then
+                 dx = r1 * sinTheta * cos(grid%phiAxis(i3)) - r2 * sinTheta * cos(grid%phiAxis(i3+1))
+                 dy = r1 * sinTheta * sin(grid%phiAxis(i3)) - r2 * sinTheta * sin(grid%phiAxis(i3+1))
+              else
+                 dx = r1 * sinTheta * cos(grid%phiAxis(i3)) - r2 * sinTheta * cos(grid%phiAxis(i3-1))
+                 dy = r1 * sinTheta * sin(grid%phiAxis(i3)) - r2 * sinTheta * sin(grid%phiAxis(i3-1))
+              endif
+              
+              if (i2 < grid%nMu) then
+                 dz = r1 * grid%muAxis(i2) - r2 * grid%muAxis(i2+1)
+              else
+                 dz = r1 * grid%muAxis(i2) - r2 * grid%muAxis(i2-1)
+              endif
+              fVec = VECTOR(dx, dy, dz)
+              dlambda = min(modulus(fVec),dr)
 !	      dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
            endif
 
@@ -966,7 +969,568 @@ modulus(rVecArray(i)-grid%starpos2)/grid%rStar2
 
 end subroutine integratePath
 
-   
+
+subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
+     lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb,&
+     contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
+     redRegion, rStar, coolStarPosition, iRev, usePops, mLevel, nLevel, &
+     fStrength, gM, gN, localTau,sampleFreq,error)
+
+  ! should we add the 'interp' argument and implement it?
+
+  ! error codes are:  -10: too few samples made (the code should be fixed to 
+  !                          stop this being a problem)
+  !                   -20: the photon passed too close to a cell boundary and 
+  !                          returnSamples decided to abort it 
+ 
+  use constants_mod
+
+  implicit none
+
+  real, intent(in)          :: wavelength             ! the wavelength 
+  real, intent(in)          :: lambda0                ! rest wavelength of line
+  type(VECTOR), intent(in)  :: vVec                   ! velocity vector
+  type(VECTOR), intent(in)  :: aVec                   ! starting position vector
+  type(VECTOR), intent(in)  :: uHat                   ! direction
+  type(GRIDTYPE), intent(in):: grid                   ! the opacity grid
+  integer, intent(in)       :: maxTau
+  real, intent(out)         :: lambda(1:maxTau)       ! path distance array
+  real, intent(out)         :: tauExt(1:maxTau)       ! optical depth
+  real, intent(out)         :: tauAbs(1:maxTau)       ! optical depth
+  real, intent(out)         :: tauSca(1:maxTau)       ! optical depth
+  integer, intent(out)      :: nTau                   ! size of optical depth arrays
+  logical, intent(in)       :: opaqueCore             ! is the core opaque
+  real, intent(out)         :: escProb                ! the escape probability
+  real, intent(in)          :: lamStart, lamEnd
+  integer, intent(in)       :: nLambda
+  real, intent(out)         :: tauCont(maxTau, nLambda)
+  logical, intent(out)      :: hitcore                ! has the photon hit the core
+  logical, intent(in)       :: thinLine               ! ignore line absorption of continuum
+  logical, intent(in)       :: redRegion              ! use raman scattering red region opacities
+  real, intent(in)          :: rStar
+  type(VECTOR), intent(in)  :: coolStarPosition       ! pos of cool giant star
+  real, intent(in)          :: iRev
+  logical, intent(in)       :: usePops
+  integer, intent(in)       :: mLevel, nLevel
+  real, intent(in)          :: fStrength, gM, gN
+  real, intent(out)         :: localTau
+  real, intent(in)          :: sampleFreq             ! max. samples per grid cell
+  integer, intent(out)      :: error                  ! error code returned
+
+
+  real                      :: rho(1:maxTau)          ! density
+  type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
+  type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
+  type(VECTOR)              :: rVec                   ! position vector
+  type(VECTOR)              :: rHat                   ! unit radius vector
+  type(VECTOR)              :: rFromStar
+  logical                   :: contPhoton             ! is this a continuum photon?
+  real, dimension(1:maxTau) :: chiLine                ! line opacities
+  real, dimension(1:maxTau,1:grid%maxLevels) :: levelPop  ! stateq level pops
+  real, dimension(1:maxTau) :: tauSob, tauSob2        ! Sobolev optical depths
+  real, dimension(1:maxTau) :: escProbArray           ! escape probabilities
+  type(vector), dimension(1:maxTau) :: velocity       ! 
+  real, dimension(1:maxTau) :: velocityDeriv          ! directional derivative
+  
+
+  logical :: hitDisk
+  real :: distToDisk
+
+  real, parameter :: precision = 1.e-4              ! relative precision
+
+  real :: nu, nu2                                        ! frequencies
+
+  integer :: iStart                                 ! starting index
+
+  real :: tauSobScalar,tauSobScalar1,tauSobScalar2  ! Sobolev optical depths
+
+  real :: thisVel
+  integer :: ilambda                                ! wavelength index
+
+  real(kind=octalKind) :: sampleFreqOctal           ! octalKind version of 'sampleFreq'
+
+  integer, parameter :: maxLambda = 200              ! max size of tau arrays
+  real :: dlambda(maxTau)                           ! distance increment array
+
+  real :: projVel(maxTau)
+  real :: kabs(maxtau), ksca(maxtau)                ! opacities
+  real :: x                                         ! multipliers
+
+  logical :: endLoop                                ! is the loop finished?
+
+  real :: chil                                      ! line opacity
+  
+  real :: lambda2, thisVel2
+
+  integer :: i, j                   ! counters
+  logical :: ok                                     ! is everything ok?
+  logical :: outwards
+  real :: minDist
+  type(VECTOR) :: tVec
+
+
+  ! initialize variables
+
+  hitcore = .false.
+  rVec = aVec
+  escProb = 1.
+  error = 0
+
+  ! locate this wavelength in the grid of wavelengths
+
+  if (grid%flatspec.or.(grid%doRaman)) then
+     iLambda = 1
+  else
+     call hunt(grid%lamArray, grid%nLambda, wavelength, iLambda)
+  endif
+
+  if (.not. grid%adaptive) then
+     print *, 'integratePathAMR called on a non-adaptive grid!'
+     stop
+  end if
+
+  nTau = 0
+  
+  ! convert some variables to the appropriate kind for startReturnSamples
+  aVecOctal = octalVector(REAL(aVec%x,KIND=octalKind), &
+                          REAL(aVec%y,KIND=octalKind), &
+                          REAL(aVec%z,KIND=octalKind))
+  uHatOctal = octalVector(REAL(uHat%x,KIND=octalKind), &
+                          REAL(uHat%y,KIND=octalKind), &
+                          REAL(uHat%z,KIND=octalKind))
+  sampleFreqOctal = REAL(sampleFreq,KIND=octalKind)
+
+     
+  if (.not. grid%lineEmission) then
+
+     if ((modulus(rVec) /= 0.).and.(modulus(rVec-coolStarPosition) < rStar)) then
+        rHat = rVec
+        call normalize(rHat)
+        outwards = .false.
+        if ((rHat .dot. uHat) > 0.) outwards = .true.
+     endif
+
+
+     ! sample the grid along the path of the ray
+     CALL startReturnSamples (aVecOctal,uHatOctal,grid, &
+                              sampleFreqOctal,nTau,maxTau, &
+                              lambda,kAbs,kSca,velocity,velocityDeriv,&
+                              chiLine,levelPop,rho,usePops,iLambda,error)
+
+
+     if (.not.redRegion) then
+           
+        ! first optical depths are all zero of course
+
+        tauExt(1) = 0.
+        tauAbs(1) = 0.
+        tauSca(1) = 0.
+                     
+        dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)
+        
+        tauSca(2:nTau) = tauSca(1:nTau-1) + dlambda(1:nTau-1) * &
+                         (0.5 * (ksca(2:nTau) + ksca(1:nTau-1)) )
+                         
+        tauAbs(2:nTau) = tauAbs(1:nTau-1) + dlambda(1:nTau-1) * &
+                         (0.5 * (kabs(2:nTau) + kabs(1:nTau-1)) )
+                         
+        tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau)
+
+        else
+           print *, "No code for handling redRegion"
+           stop
+ 
+        endif
+
+  else
+
+     ! find the project velocity
+
+     thisVel = (lambda0 - wavelength)/lambda0
+     thisVel = thisVel  + (uHat .dot. vVec)  
+
+     if (grid%resonanceLine) then
+        lambda2 = grid%lambda2
+        thisVel2 = (lambda2 - wavelength)/lambda2
+        thisVel2 = thisVel2  + (uHat .dot. vVec) 
+     endif
+
+
+     escProb = 1.
+
+!PRINT *, 'Calling startReturnSamples'
+!print *, '  aVecOctal = ',aVecOctal     
+!print *, '  uHatOctal = ',uHatOctal     
+!print *, '  samplefreq = ',samplefreq 
+     CALL startReturnSamples (aVecOctal,uHatOctal,grid, &
+                 sampleFreqOctal,nTau,maxTau,&
+                 lambda,kAbs,kSca,velocity,velocityDeriv,chiLine,&
+                 levelPop,rho,usePops,iLambda,error)
+!PRINT *, '  ... after startReturnSamples'
+
+     if (nTau <= 2) then
+        print *, 'The code does not yet include routines for handling ',&
+                 'the case where nTau <= 2 (in integratePathAMR)'
+        error = -10
+        return
+     end if
+
+
+     ! compute the escape probability if this is a line photon
+
+     if (.not.contPhoton) then
+
+        if (usePops) then
+           chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
+           chiLine(1:nTau) = 1.e10 * chil * (levelPop(1:nTau,mLevel)&
+                          -( ( gM / gN) * (levelPop(1:nTau,nLevel))))
+        endif
+
+        nu  = cSpeed / (lambda0*angstromtocm)
+        tauSob(1:nTau) = chiLine(1:nTau)  / nu
+        tauSob(1:nTau) = tauSob(1:nTau) / velocityDeriv(1:nTau)
+     
+        if (grid%resonanceLine) then
+           nu2 = cSpeed / (lambda2*angstromtocm)
+           tauSob2(1:nTau) = chiLine(1:nTau)  / nu
+           tauSob2(1:nTau) = tauSob2(1:nTau) / velocityDeriv(1:nTau)
+        end if
+
+
+! escProb stuff ???
+        where (tauSob(1:nTau) < 0.1)
+           escProbArray(1:nTau) = 1.0d0-tauSob(1:nTau)*0.5d0*(1.0d0 - tauSob(1:nTau)/3.0d0* &
+                       (1. - tauSob(1:nTau)*0.25d0*(1.0d0 - 0.20d0*tauSob(1:nTau))))
+        elsewhere (tauSob(1:nTau) < 15.) 
+           escProbArray(1:nTau)  = (1.0d0-exp(-tauSob(1:nTau)))/tauSob(1:nTau)
+        elsewhere  
+           escProbArray(1:nTau) = 1.d0/tauSob(1:nTau)
+        end where
+        localTau = tauSob(1)
+
+     endif
+
+
+     ! first projected velocity 
+
+     if (contPhoton) then
+        do i = 1, nTau, 1
+           projVel(i) = velocity(i) .dot. uHat
+        end do
+       
+     else
+        projVel(1:nTau) = thisVel
+     endif
+
+
+     endLoop = .false.
+
+     hitDisk = .false.
+
+! move this somewhere else vvvvvvvvvvvvvv
+     if (grid%geometry == "ttauri") then
+        tVec = intersectionLinePlane(rVec, uHat, grid%diskNormal, 0., ok)
+        if (ok) then
+           minDist = modulus(tVec)
+           if (minDist > grid%diskRadius) then
+              hitCore = .true.
+              hitDisk = .true.
+              distToDisk = modulus(tVec-rVec)
+           endif
+        endif
+     endif
+
+        ! if the photon is inside the inner boundary then it has hit the core
+
+        ! if the core is opaque then the loop stops here, otherwise the
+        ! photon cross the core and appears on the other side
+
+!       if (grid%geometry /= "binary") then
+!          if ((r < grid%rCore) .and. opaqueCore) then
+!             nTau = nTau + 1
+!             ksca(nTau) = 0.
+!             kabs(nTau) = 1.e20
+!             lambda(nTau) = lambda(nTau-1)
+!             hitCore = .true.
+!             endLoop = .true.
+!             posIndex(nTau,1:3) = posIndex(nTau-1,1:3)
+!             posOffset(nTau,1:3) = posOffset(nTau-1,1:3)
+!             rvecarray(ntau) = rVecArray(ntau-1)
+!             dlam(nTau) = dLam(nTau-1)
+!          else if ((r < grid%rCore).and.(.not.opaqueCore)) then
+!             rHat = (-1.)*(rVec / r)
+!             cosTheta  = uHat .dot. rHat
+!             call solveQuad(1.,-2.*r*cosTheta,r*r-grid%rCore*grid%rCore,x1,x2,ok)
+!             dlambda = max(x1,x2) * fudgeFactor
+!             rVec = rVec +  dlambda * uHat   
+!             r = modulus(rVec)
+!             mu = rVec%z/r
+!             call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
+!          endif
+!       else
+!          rFromStar = rVec - grid%starPos1
+!          r = modulus(rFromStar)
+!          if ((r < grid%rStar1) .and. opaqueCore) then
+!             nTau = nTau + 1
+!             ksca(nTau) = 0.
+!             kabs(nTau) = 1.e20
+!             lambda(nTau) = lambda(nTau-1)
+!             hitCore = .true.
+!             endLoop = .true.
+!             posIndex(nTau,1:3) = posIndex(nTau-1,1:3)
+!             posOffset(nTau,1:3) = posOffset(nTau-1,1:3)
+!             rvecarray(ntau) = rVecArray(ntau-1)
+!             dlam(nTau) = dLam(nTau-1)
+!          endif
+!
+!          rFromStar = rVec - grid%starPos2
+!          r = modulus(rFromStar)
+!          if ((r < grid%rStar2) .and. opaqueCore) then
+!             nTau = nTau + 1
+!             ksca(nTau) = 0.
+!             kabs(nTau) = 1.e20
+!             lambda(nTau) = lambda(nTau-1)
+!             hitCore = .true.
+!             endLoop = .true.
+!             posIndex(nTau,1:3) = posIndex(nTau-1,1:3)
+!             posOffset(nTau,1:3) = posOffset(nTau-1,1:3)
+!
+!             dlam(nTau) = dLam(nTau-1)
+!          endif
+!       endif
+!
+!
+!
+!          if (grid%geometry == "ttauri") then
+!             if (hitDisk.and.(lambda(nTau)>distToDisk)) then
+!                nTau = nTau + 1
+!                ksca(nTau) = 1.e20
+!                kabs(nTau) = 1.e20
+!                lambda(nTau) = lambda(nTau-1)
+!                endLoop = .true.
+!                posIndex(nTau,1:3) = posIndex(nTau-1,1:3)
+!                posOffset(nTau,1:3) = posOffset(nTau-1,1:3)
+!                dlam(nTau) = dLam(nTau-1)
+!             endif
+!          endif
+!
+!       else
+!          if ((r > grid%rAxis(grid%nr))) then
+!             endLoop = .true.
+!             if (nTau > 1) then
+!                ksca(nTau) = ksca(nTau-1)
+!                kabs(nTau) = kabs(nTau-1)
+!                lambda(nTau) = lambda(nTau-1)
+!                posIndex(nTau,1:3) = posIndex(nTau-1,1:3)
+!                posOffset(nTau,1:3) = posOffset(nTau-1,1:3)
+!                rvecarray(ntau) = rVecArray(ntau-1)
+!                dlam(nTau) = dLam(nTau-1)
+!             endif
+!          endif
+!       endif
+!
+
+
+     dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)
+     do i = 1, nTau, 1
+        projVel(i) = velocity(i) .dot. uHat
+     end do
+
+     ! now compute the optical depths from the opacities
+
+     tauExt(1) = 0.
+     tauAbs(1) = 0.
+     tauSca(1) = 0.
+
+     tauSca(2:nTau) = tauSca(1:nTau-1) + dlambda(1:nTau-1) * &
+                        (0.5*(ksca(2:nTau)+ksca(1:nTau-1)))
+     tauAbs(2:nTau) = tauAbs(1:nTau-1) + dlambda(1:nTau-1) * &
+                        (0.5*(kabs(2:nTau)+kabs(1:nTau-1)))
+     tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau)
+
+     iStart = 1
+
+     if (grid%lineEmission) then
+        if (nTau > 0) then
+
+           ! line photons are treated as individuals
+
+           if (.not.contPhoton) then
+
+              ! loop through the projected velocities to find the resonance zones
+
+              do i = 2, nTau-1
+
+                 if ( ((projVel(i) < thisVel) .and. (thisVel <= projVel(i+1))) .or. &
+                      ((projVel(i+1) < thisVel) .and. (thisVel <= projVel(i))) ) then
+
+                    ! compute sobolev optical depth at this point and the next one
+
+                    tauSobScalar1 = tauSob(i)
+
+                    tauSobScalar2 = tauSob(i+1)
+
+                    ! interpolate in velocity space to get sobolev depth
+
+                    x = 1.
+                    if ((projVel(i+1)-projVel(i)) /= 0.) then
+                       x = (thisVel-projVel(i))/(projVel(i+1)-projVel(i))
+                    endif
+                    tauSobScalar = tauSobScalar1  + x * (tauSobScalar2 - tauSobScalar1)
+
+                    ! somethings gone wrong - usually numerical problems 
+
+                    if (tauSobScalar < 0.) then
+                       write(*,*) "tau sob",tausobScalar
+                       write(*,*) "this Vel",thisVel*cSpeed/1.e5
+                       write(*,*) "modulus vvec",modulus(vVec)*cSpeed/1.e5
+                       write(*,*) "wavelength",wavelength,lambda0
+                       write(*,*) "proj",projVel(i)*cSpeed/1.e5,projVel(i+1)*cSpeed/1.e5
+                       write(*,*) "m,n",mLevel, nLevel
+                       write(*,*) "g",gM,gN
+                       write(*,*) "f",fStrength
+                       write(*,*) "popm",levelPop(i,mLevel)
+                       write(*,*) "popn",levelPop(i,nLevel)
+                    endif
+
+                    ! add depths
+
+                    tauExt(i:nTau) = tauExt(i:nTau) + tauSobScalar
+                    tauAbs(i:nTau) = tauAbs(i:nTau) + tauSobScalar
+
+
+                 endif
+
+                 if (grid%resonanceLine) then
+
+
+                    if ( ((projVel(i) < thisVel2) .and. (thisVel2 <= projVel(i+1))) .or. &
+                         ((projVel(i+1) < thisVel2) .and. (thisVel2 <= projVel(i))) ) then
+                       
+                       ! compute sobolev optical depth at this point and the next one
+                       
+                       tauSobScalar1 = tauSob2(i)
+
+                       tauSobScalar2 = tauSob2(i+1)
+                                             ! interpolate in velocity space to get sobolev depth
+                       
+                       x = 1.
+                       if ((projVel(i+1)-projVel(i)) /= 0.) then
+                          x = (thisVel2-projVel(i))/(projVel(i+1)-projVel(i))
+                       endif
+                       tauSobScalar = tauSobScalar1  + x * (tauSobScalar2 - tauSobScalar1)
+
+                       ! somethings gone wrong - usually numerical problems 
+                       if (tauSobScalar < 0.) then
+                          write(*,*) "tau sob",tausobScalar
+                          write(*,*) "this Vel",thisVel*cSpeed/1.e5
+                          write(*,*) "modulus vvec",modulus(vVec)*cSpeed/1.e5
+                          write(*,*) "wavelength",wavelength,lambda0
+                          write(*,*) "proj",projVel(i)*cSpeed/1.e5,projVel(i+1)*cSpeed/1.e5
+                          write(*,*) "m,n",mLevel, nLevel
+                          write(*,*) "g",gM,gN
+                          write(*,*) "f",fStrength
+                          write(*,*) "popm",levelPop(i,mLevel)
+                          write(*,*) "popn",levelPop(i,nLevel)
+                       endif
+
+                       ! add depths
+                       
+                       tauExt(i:nTau) = tauExt(i:nTau) + tauSobScalar
+                       tauAbs(i:nTau) = tauAbs(i:nTau) + tauSobScalar
+
+
+                    endif
+                 endif
+
+              enddo
+
+
+           else
+
+              ! for continuum photons we treat an array of optical depths corresponding
+              ! to different velocities/frequencies
+
+              ! initialize array
+
+              tauCont(1:nTau,1:nLambda) = 0.
+
+
+              ! we can ignore this if the line is very thin
+
+              if (.not.thinLine) then
+
+                 ! loop over all wavelength bins
+
+                 do j = 1, nLambda
+
+                    ! compute projected velocity of this bin
+
+                    thisVel = real(j-1)/real(nLambda-1)
+                    thisVel = lamStart + thisVel*(lamEnd-lamStart)
+                    thisVel = (thisVel-lambda0)/lambda0
+                    thisVel = -thisVel  + (uHat .dot. vVec) - (wavelength - lambda0)/lambda0
+
+                    ! now find resonances
+
+                    do i = 1, nTau - 1
+                       if ( ((projVel(i) < thisVel) .and. (thisVel <= projVel(i+1))) .or. &
+                            ((projVel(i+1) < thisVel) .and. (thisVel <= projVel(i))) ) then
+
+                          ! compute sobolev optical depth at this point and the next one
+
+                          tauSobScalar1 = tauSob(i)
+
+                          tauSobScalar2 = tauSob(i+1)
+
+                          ! interpolate in velocity space to get sobolev depth
+
+                          x = 1.
+                          if ((projVel(i+1)-projVel(i)) /= 0.) then
+                             x = (thisVel-projVel(i))/(projVel(i+1)-projVel(i))
+                          endif
+                          tauSobScalar = tauSobScalar1  + x * (tauSobScalar2 - tauSobScalar1)
+
+                          ! might have gone wrong due to rounding errors
+                          if (tauSobScalar < 0.) then
+                             write(*,*) "tau sob",tausobScalar,tausobScalar1,tausobScalar2
+                             write(*,*) "this Vel",thisVel*cSpeed/1.e5
+                             write(*,*) "modulus vvec",modulus(vVec)*cSpeed/1.e5
+                             write(*,*) "wavelength",wavelength,lambda0
+                             write(*,*) "proj",projVel(i)*cSpeed/1.e5
+!                             write(*,*) modulus(rVecArray(i+1)-grid%starpos1)/grid%rStar1, &
+!modulus(rVecArray(i)-grid%starpos1)/grid%rStar1
+!                             write(*,*) modulus(rVecArray(i+1)-grid%starpos2)/grid%rStar2, &
+!modulus(rVecArray(i)-grid%starpos2)/grid%rStar2
+!                             write(*,*) "inuse",grid%inuse(i1,i2,i3)
+!                             write(*,*) posindex(i,1:3),posoffset(i,1:3)
+!                             write(*,*) posindex(i+1,1:3),posoffset(i+1,1:3)
+                          endif
+
+                          ! add optical depths
+
+                          tauCont(i:nTau,j) = tauCont(i:nTau,j) + tauSobScalar
+
+                       endif ! resonance zone
+
+                    enddo ! over optical depth array
+
+                 enddo   ! over wavelength array
+
+              endif  ! thin line?
+
+           endif ! continuum photon?
+
+        endif
+
+     endif ! stateq grid?
+
+
+  endif 
+
+
+end subroutine integratePathAMR
+
     
    
 end module path_integral

@@ -179,6 +179,19 @@ module input_variables
   logical :: curtains, enhance
   real :: dipoleOffset
 
+  ! adaptive mesh stuff 
+  logical :: gridUsesAMR    ! true if grid is adaptive
+  real :: limitScalar       ! value for controlling grid subdivision 
+  real :: amrGridSize          ! length of each side of the (cubic) grid 
+  real :: amrGridCentreX       ! x-coordinate of grid centre 
+  real :: amrGridCentreY       ! y-coordinate of grid centre 
+  real :: amrGridCentreZ       ! z-coordinate of grid centre 
+  logical :: doSmoothGrid   ! whether to correct large differences in the size
+                            !   of adjacent grid cells
+  real :: smoothFactor      ! maximum ratio between adjacent cell sizes before
+                            !   smoothing is applied 
+  real :: sampleFreq        ! maximum number of samples made per subcell
+
 
   integer :: nPhotons
   integer :: maxScat

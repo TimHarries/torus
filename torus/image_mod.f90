@@ -154,7 +154,7 @@ module image_mod
 
      if ((velincgs < thisImage%vMax) .and. (velincgs > thisImage%vMin)) then
 
-	
+
         xProj =  rotationAxis .cross. viewVec
         call normalize(xProj)
         yProj = viewVec .cross. xProj

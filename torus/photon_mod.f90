@@ -7,15 +7,19 @@
 ! written by tjh
 
 ! v1.0 on 16/08/99
+! adaptive mesh stuff added 2002/08/06. nhs
 
 module photon_mod
 
   use vector_mod            ! the vector maths
   use constants_mod         ! physical constants
   use phasematrix_mod       ! phase matrix manipulation
-  use grid_mod              ! the opacity grid
+  use gridtype_mod          ! type definition for the 3-d grid
+  use grid_mod              ! opacity grid routines
   use math_mod              ! maths utils
+  use amr_mod               ! adaptive grid routines
   use utils_mod
+  use phasematrix_mod
   implicit none
 
   public
@@ -75,6 +79,7 @@ contains
   subroutine scatterPhoton(grid, thisPhoton, givenVec, outPhoton, mie, &
         miePhase, nLambda, nMuMie, lamStart, lamEnd)
 
+    
     type(GRIDTYPE) :: grid                       ! the opacity grid
     type(PHOTON) :: thisPhoton, outPhoton        ! current/output photon
     type(VECTOR) :: incoming, outgoing           ! directions
@@ -100,6 +105,7 @@ contains
     real :: fac
     real :: nuRest
     real :: theta, phi, mu
+    type(octalVector) :: pointOctalVec
 !    real :: dx
 
 !    dx = abs(grid%xAxis(2) - grid%xAxis(1))
@@ -212,18 +218,26 @@ contains
     ! now find the position of the scatter in the grid and adjust the velocity
     
     if (.not.grid%doRaman) then
-       call getIndices(grid, outPhoton%position, i1, i2, i3, t1, t2, t3)
+       
+       if (grid%adaptive) then
+          pointOctalVec = octalVector(outPhoton%position%x,&
+                                      outPhoton%position%y,&
+                                      outPhoton%position%z)
+          if (.not.grid%resonanceLine) then
+             outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec) + &
+              thermalElectronVelocity(amrGridTemperature(grid%octreeRoot,pointOctalVec))
+          else
+             outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec)
+          end if
+       else
+          call getIndices(grid, outPhoton%position, i1, i2, i3, t1, t2, t3)
 
-       if (.not.grid%doRaman) then
           if (.not.grid%resonanceLine) then
              outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3) + &
                   thermalElectronVelocity(grid%temperature(i1,i2,i3))
           else
              outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3)
           endif
-       else
-          outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3) !+ &
-!               thermalHydrogenVelocity(grid%temperature(i1,i2,i3))
        endif
 
        vray = (outPhoton%velocity-thisPhoton%velocity) .dot. incoming
@@ -235,8 +249,16 @@ contains
     else
 
        outPhoton%redPhoton = .true.
-       call getIndices(grid, outPhoton%position, i1, i2, i3, t1, t2, t3)
-       outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3)
+       
+       if (grid%adaptive) then
+          pointOctalVec = octalVector(outPhoton%position%x,&
+                                      outPhoton%position%y,&
+                                      outPhoton%position%z)
+          outPhoton%Velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec)
+       else
+          call getIndices(grid, outPhoton%position, i1, i2, i3, t1, t2, t3)
+          outPhoton%velocity = interpGridVelocity(grid,i1,i2,i3,t1,t2,t3)
+       endif
 
        vray = (outPhoton%velocity-thisPhoton%velocity) .dot. incoming
        vovercsqr = (outPhoton%velocity-thisPhoton%velocity) .dot. &
@@ -252,15 +274,14 @@ contains
        outPhoton%redlambda = 1.e8 * cSpeed / nuRest   ! in Angs
 
 
-
-
-
     endif 
 
        
   end subroutine scatterPhoton
 
   ! this subroutine initializes a photon
+
+
 
   subroutine initPhoton(thisPhoton, Grid, nLambda, lambda, sourceSpectrum, &
        lineEmission, lamLine,  &
@@ -270,6 +291,8 @@ contains
        theta1,theta2, chanceHotRing, &
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, chanceDust, &
        narrowBandImage, narrowBandMin, narrowBandMax)
+
+    implicit none
 
     type(PHOTON) :: thisPhoton                 ! the photon
     type(GRIDTYPE) :: grid                     ! the opacity grid
@@ -283,9 +306,12 @@ contains
     real :: lumRatio
     real :: vo6
     real :: x,y,z
+    real(kind=octalKind) :: xOctal, yOctal, zOctal
+    type(octalVector) :: octalCentre
     real :: directionalWeight
     real :: lambda(:), sourceSpectrum(*)       ! wavelength array/spectrum
     real :: r1,r2,r3                           ! radii
+    real(kind=doubleKind) :: randomDouble      ! a double precision random number
     real :: u, v, w, t                         ! direction components
     real :: r, mu, phi                         ! spherical polar coords
     real :: sinTheta      
@@ -305,17 +331,19 @@ contains
     logical :: secondSource                    ! second photon source?
     type(VECTOR) :: secondSourcePosition       ! the position of it
     type(VECTOR) :: ramanSourceVelocity        ! what it says
-
+    type(octalVector) :: octalPoint            ! 
+    type(octal), pointer :: sourceOctal        ! randomly selected octal
+    integer :: subcell
     real :: chanceDust
 
 
     ! Spot stuff
-
+  
     integer :: nSpot                       ! number of spots
     real :: fSpot                          ! factional area coverage of spots
     real :: thetaSpot, phiSpot             ! spot coords
     logical :: spotPhoton
-
+  
     type(VECTOR) :: rSpot, tVec
 
     real :: chanceSpot
@@ -323,6 +351,7 @@ contains
     real :: cosThisTheta
     real :: rotAngle
     real :: tot
+
 
     real :: biasWeight
 
@@ -342,6 +371,8 @@ contains
     real :: thisFreq
     integer :: i
 
+    type(octalVector) :: positionOctal     ! octalVector type version of thisPhoton%position
+    
     ! set up the weights and the stokes intensities (zero at emission)
 
     photonFromEnvelope = .false.
@@ -393,12 +424,10 @@ contains
     endif
 
 
-
     call random_number(r)
     if (r < chanceDust) then
        photonFromEnvelope = .true.
     endif
-
 
 
     ! if it is a continuum photon initialize its position
@@ -406,68 +435,108 @@ contains
     if (thisPhoton%contPhoton) then
 
 
-       if (grid%cartesian.and.(.not.grid%lineEmission)) then
+       if ((grid%cartesian.or.grid%adaptive) .and.     &
+                         (.not.grid%lineEmission)) then
 
           ! cartesian photons are produced at the grid centre, or at
           ! the second source position
 
           thisPhoton%position = VECTOR(0.,0.,0.)
-
-
+          
+                  
           if (photonFromEnvelope) then
-             ok = .false.
-             do while(.not.ok)
+             if (grid%adaptive) then 
+
+                call random_number(randomDouble)
+
+                ! we search through the tree to find the subcell that contains the
+                !   probability value 'randomDouble'
+                sourceOctal => grid%octreeRoot
+                call locateContProbAMR(randomDouble,sourceOctal,subcell)
+ 
+
+                octalCentre = subcellCentre(sourceOctal,subcell)
+                
+                !!! we will just choose a random point within the subcell.
+                !!! this *should* be done in a better way.
+                
                 call random_number(r1)
-                tempXprobdist(1:grid%nx) = grid%xProbDistCont(1:grid%nx)
-                call locate(grid%xProbDistCont, grid%nx, r1, i1)
-                t1 = (r1 - grid%xProbDistCont(i1))/(grid%xProbDistCont(i1+1)-grid%xProbDistCont(i1))
-                x = grid%xAxis(i1) + t1 * (grid%xAxis(i1+1)-grid%xAxis(i1))
-
-
-                tempYProbDist(1:grid%ny) = grid%yProbDistCont(i1,1:grid%ny) + t1 * &
-                     (grid%yProbDistCont(i1+1,1:grid%ny) - grid%yProbDistCont(i1,1:grid%ny))
-                tempYProbDist(1:grid%ny) = tempYprobDist(1:grid%ny) / tempYprobDist(grid%ny)
-
+                r1 = r1 - 0.5  ! shift value mean value to zero
+                r1 = r1 * 0.99 ! to avoid any numerical accuracy problems
+                xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+                
                 call random_number(r2)
-                call locate(tempYProbDist, grid%ny, r2, i2)
-                t2 = (r2 - tempYProbDist(i2)) / &
-                     (tempYProbDist(i2+1) - tempYProbDist(i2))
-                y = grid%yAxis(i2) + t2 * (grid%yAxis(i2+1)-grid%yAxis(i2))
-
-                tempZProbDist(1:grid%nz) = &
-                     (1.d0-t1)*(1.d0-t2) * grid%zProbDistCont(i1  , i2  , 1:grid%nz) +&
-                     (   t1)*(1.d0-t2) * grid%zProbDistCont(i1+1, i2  , 1:grid%nz) +&
-                     (1.d0-t1)*(   t2) * grid%zProbDistCont(i1  , i2+1, 1:grid%nz) +&
-                     (   t1)*(   t2) * grid%zProbDistCont(i1+1, i2+1, 1:grid%nz)
-                tempZProbDist(1:grid%nz) = tempZprobDist(1:grid%nz) / tempZprobDist(grid%nz)
-
-
+                r2 = r2 - 0.5                                  
+                r2 = r2 * 0.99                                           
+                yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
+                
                 call random_number(r3)
-                call locate(tempZProbDist, grid%nz, r3, i3)
-                t3 = (r3 - tempZProbDist(i3)) / &
-                     (tempZProbDist(i3+1) - tempZProbDist(i3))
-                z = grid%zAxis(i3) + t3 * (grid%zAxis(i3+1)-grid%zAxis(i3))
+                r3 = r3 - 0.5                                  
+                r3 = r3 * 0.99                                           
+                zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
+                
+                
+                thisPhoton%position = vector(xOctal,yOctal,zOctal)
+
+                !!! need to call an interpolation routine, rather than
+                !!!   use subcell central value
+                biasWeight = biasWeight * 1.0_db / sourceOctal%biasCont3D(subcell)
+
+             else ! grid is cartesian
+                ok = .false.
+                do while(.not.ok)
+                   call random_number(r1)
+                   tempXprobdist(1:grid%nx) = grid%xProbDistCont(1:grid%nx)
+                   call locate(grid%xProbDistCont, grid%nx, r1, i1)
+                   t1 = (r1 - grid%xProbDistCont(i1))/(grid%xProbDistCont(i1+1)-grid%xProbDistCont(i1))
+                   x = grid%xAxis(i1) + t1 * (grid%xAxis(i1+1)-grid%xAxis(i1))
 
 
-                thisPhoton%position  = VECTOR(x,y,z)
+                   tempYProbDist(1:grid%ny) = grid%yProbDistCont(i1,1:grid%ny) + t1 * &
+                        (grid%yProbDistCont(i1+1,1:grid%ny) - grid%yProbDistCont(i1,1:grid%ny))
+                   tempYProbDist(1:grid%ny) = tempYprobDist(1:grid%ny) / tempYprobDist(grid%ny)
 
-                if (outSideGrid(thisPhoton%position,grid).or.(.not.grid%inUse(i1,i2,i3))) then
-                   !                      write(*,*) "Mistake in initPhoton",thisPhoton%position
-                   !                      write(*,*) i1,i2,i3,t1,t2,t3
-                   ok = .false.
-                else
-                   ok = .true.
-                endif
+                   call random_number(r2)
+                   call locate(tempYProbDist, grid%ny, r2, i2)
+                   t2 = (r2 - tempYProbDist(i2)) / &
+                        (tempYProbDist(i2+1) - tempYProbDist(i2))
+                   y = grid%yAxis(i2) + t2 * (grid%yAxis(i2+1)-grid%yAxis(i2))
+
+                   tempZProbDist(1:grid%nz) = &
+                        (1.d0-t1)*(1.d0-t2) * grid%zProbDistCont(i1  , i2  , 1:grid%nz) +&
+                        (   t1)*(1.d0-t2) * grid%zProbDistCont(i1+1, i2  , 1:grid%nz) +&
+                        (1.d0-t1)*(   t2) * grid%zProbDistCont(i1  , i2+1, 1:grid%nz) +&
+                        (   t1)*(   t2) * grid%zProbDistCont(i1+1, i2+1, 1:grid%nz)
+                   tempZProbDist(1:grid%nz) = tempZprobDist(1:grid%nz) / tempZprobDist(grid%nz)
 
 
-             enddo
-             biasWeight =  biasWeight * &
+                   call random_number(r3)
+                   call locate(tempZProbDist, grid%nz, r3, i3)
+                   t3 = (r3 - tempZProbDist(i3)) / &
+                        (tempZProbDist(i3+1) - tempZProbDist(i3))
+                   z = grid%zAxis(i3) + t3 * (grid%zAxis(i3+1)-grid%zAxis(i3))
+
+
+                   thisPhoton%position  = VECTOR(x,y,z)
+
+                   if (outSideGrid(thisPhoton%position,grid).or.(.not.grid%inUse(i1,i2,i3))) then
+                      !                      write(*,*) "Mistake in initPhoton",thisPhoton%position
+                      !                      write(*,*) i1,i2,i3,t1,t2,t3
+                      ok = .false.
+                   else
+                      ok = .true.
+                   endif
+
+
+                enddo
+                biasWeight =  biasWeight * &
                   (1.d0/ interpGridScalar2(grid%biasCont3d,grid%nx,grid%ny,grid%nz,i1,i2,i3,t1,t2,t3))
 
-          endif
-
-
-       else
+             end if ! cartesian or adaptive
+          
+          end if ! (photonFromEnvelope)
+          
+       else ! grid has polar coordinates
 
           ! if there is line emission, then the continuum photons can be produced either
           ! at the core, or in the wind itself.
@@ -522,8 +591,47 @@ contains
                 enddo
                 biasWeight =  biasWeight * &
                      (1.d0/ interpGridScalar2(grid%biasCont3d,grid%nx,grid%ny,grid%nz,i1,i2,i3,t1,t2,t3))
+                     
+             elseif (grid%adaptive) then
+                   
+                call random_number(randomDouble)
 
-             else
+                ! we search through the tree to find the subcell that contains the
+                !   probability value 'randomDouble'
+                sourceOctal => grid%octreeRoot
+                call locateContProbAMR(randomDouble,sourceOctal,subcell)
+ 
+
+                octalCentre = subcellCentre(sourceOctal,subcell)
+                
+                !!! we will just choose a random point within the subcell.
+                !!! this *should* be done in a better way.
+                
+                call random_number(r1)
+                r1 = r1 - 0.5  ! shift value mean value to zero
+                r1 = r1 * 0.99 ! to avoid any numerical accuracy problems
+                xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+                
+                call random_number(r2)
+                r2 = r2 - 0.5                                  
+                r2 = r2 * 0.99                                           
+                yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
+                
+                call random_number(r3)
+                r3 = r3 - 0.5                                  
+                r3 = r3 * 0.99                                           
+                zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
+                
+                
+                thisPhoton%position = vector(xOctal,yOctal,zOctal)
+                
+
+                !!! need to call an interpolation routine, rather than
+                !!!   use subcell central value
+                biasWeight = biasWeight * 1.0_db / sourceOctal%biasCont3D(subcell)
+
+               
+             else ! grid is polar
 
 
                 call random_number(r1)
@@ -553,104 +661,104 @@ contains
              thisPhoton%position = VECTOR(x, y, z)
 
 
-          else
+          else ! not (contWindPhoton)
 
 
              r = grid%rCore*1.0001d0
              select case(grid%geometry)
 
-             case("disk")
-                if (nSpot > 0) then
-                   rSpot = VECTOR(cos(phiSpot)*sin(thetaSpot),sin(phiSpot)*sin(thetaSpot),cos(thetaSpot))
-                   if (nSpot == 1) then
-                      maxTheta = Pi * fSpot   
-                   else
-                      maxTheta = Pi * fSpot * 0.5
-                   endif
-
-                   spotPhoton = .false.
-
-                   call random_number(r1)
-                   if (r1 < chanceSpot) then
-                      spotPhoton = .true.
-                      call random_number(r1)
-                      cosThisTheta = r1 * (1. - cos(maxTheta)) + cos(maxTheta)    
-                      thisTheta = acos(cosThisTheta)
-                      call random_number(r1)
-                      thisPhi = twoPi * r1	
-                      rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
-
-                      tVec = zAxis .cross. rSpot  
-                      call normalize(tVec)
-                      rotAngle = zAxis .dot. rSpot
-                      rotAngle = acos(rotAngle)
-                      rHat = arbitraryrotate(rHat,rotAngle,tVec)
-                      if (nSpot == 2) then
-                         call random_number(r1)
-                         if (r1 < 0.5) then
-                            rHat = (-1.) * rHat
-                            rSpot = (-1.) * rSpot
-                         endif
+                case("disk")
+                   if (nSpot > 0) then
+                      rSpot = VECTOR(cos(phiSpot)*sin(thetaSpot),sin(phiSpot)*sin(thetaSpot),cos(thetaSpot))
+                      if (nSpot == 1) then
+                         maxTheta = Pi * fSpot   
+                      else
+                         maxTheta = Pi * fSpot * 0.5
                       endif
-                      thisPhoton%position = r * rHat
-                   else
-                      tVec = randomUnitVector()
-                      ang = tVec .dot. rSpot
-                      ang = acos(ang)
-                      do while (ang < maxTheta)
+
+                      spotPhoton = .false.
+
+                      call random_number(r1)
+                      if (r1 < chanceSpot) then
+                         spotPhoton = .true.
+                         call random_number(r1)
+                         cosThisTheta = r1 * (1. - cos(maxTheta)) + cos(maxTheta)    
+                         thisTheta = acos(cosThisTheta)
+                         call random_number(r1)
+                         thisPhi = twoPi * r1
+                         rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
+                         
+                         tVec = zAxis .cross. rSpot  
+                         call normalize(tVec)
+                         rotAngle = zAxis .dot. rSpot
+                         rotAngle = acos(rotAngle)
+                         rHat = arbitraryrotate(rHat,rotAngle,tVec)
+                         if (nSpot == 2) then
+                            call random_number(r1)
+                            if (r1 < 0.5) then
+                               rHat = (-1.) * rHat
+                               rSpot = (-1.) * rSpot
+                            endif
+                         endif
+                         thisPhoton%position = r * rHat
+                      else
                          tVec = randomUnitVector()
                          ang = tVec .dot. rSpot
                          ang = acos(ang)
-                      enddo
-                      thisPhoton%position = r*tVec
+                         do while (ang < maxTheta)
+                            tVec = randomUnitVector()
+                            ang = tVec .dot. rSpot
+                            ang = acos(ang)
+                         enddo
+                         thisPhoton%position = r*tVec
+                      endif
+                   else
+                      thisPhoton%position = (r*randomUnitVector())
                    endif
-                else
+
+                case("binary")
+                   call random_number(r)
+                   if (r < grid%lumRatio) then
+                      thisPhoton%position = grid%starPos1 + (1.01*(grid%rStar1) * randomUnitVector())
+                      thisPhoton%fromStar1 = .true.
+                      call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
+                   else
+                      thisPhoton%position = grid%starPos2 + (1.01*(grid%rStar2) * randomUnitVector())
+                      thisPhoton%fromStar2 = .true.
+                      call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
+                   endif
+
+                case("ttauri")
+
+                   call random_number(r1)
+                   if (r1 < chanceHotRing) then
+                      call random_number(r1)
+                      thisTheta = r1*(theta2 - theta1)+theta1
+                      call random_number(r1)
+                      if (r1 < 0.5) thisTheta = pi - thisTheta
+                      call random_number(r1)
+                      thisPhi = twoPi * r1
+                      rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
+                      thisPhoton%position = r * rHat
+                   else
+                      thisPhoton%position = (r*randomUnitVector())
+                   endif
+                                      
+
+                case DEFAULT
                    thisPhoton%position = (r*randomUnitVector())
-                endif
-
-             case("binary")
-                call random_number(r)
-                if (r < grid%lumRatio) then
-                   thisPhoton%position = grid%starPos1 + (1.01*(grid%rStar1) * randomUnitVector())
-                   thisPhoton%fromStar1 = .true.
-                   call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
-                else
-                   thisPhoton%position = grid%starPos2 + (1.01*(grid%rStar2) * randomUnitVector())
-                   thisPhoton%fromStar2 = .true.
-                   call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
-                endif
-
-             case("ttauri")
-
-                call random_number(r1)
-                if (r1 < chanceHotRing) then
-                   call random_number(r1)
-                   thisTheta = r1*(theta2 - theta1)+theta1
-                   call random_number(r1)
-                   if (r1 < 0.5) thisTheta = pi - thisTheta
-                   call random_number(r1)
-                   thisPhi = twoPi * r1
-                   rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
-                   thisPhoton%position = r * rHat
-                else
-                   thisPhoton%position = (r*randomUnitVector())
-                endif
-
-
-             case DEFAULT
-                thisPhoton%position = (r*randomUnitVector())
              end select
 
 
              thisPhoton%originalNormal = thisPhoton%position
              call normalize(thisPhoton%originalNormal)
 
-          endif
+          endif ! (contWindPhoton)
 
-       endif
+       endif ! grid cartesian/adaptive/polar
 
        ! get wavelength
-
+       
        if (narrowBandImage) then
           call random_number(r1)
           thisPhoton%lambda = narrowBandmin + r1 * (narrowBandmax - narrowBandmin)
@@ -660,13 +768,29 @@ contains
           iLambda = int(r1*real(nLambda))+1
           thisPhoton%lambda = lambda(iLambda)
        endif
+       
        if (.not.flatspec) then
           if (photonFromEnvelope) then
              tot = 0.
-             do i = 1, nLambda
-                tempSpectrum(i) = blambda(dble(lambda(i)),dble(grid%temperature(i1,i2,i3)))*grid%kappaAbs(i1,i2,i3,iLambda)
-                tot = tot + tempSpectrum(i)
-             enddo
+             
+             if (grid%adaptive) then
+                do i = 1, nLambda
+                   positionOctal = octalVector(thisPhoton%position%x, &
+                                               thisPhoton%position%y, &
+                                               thisPhoton%position%z)
+                   tempSpectrum(i) = blambda(dble(lambda(i)), &
+                      dble(amrGridTemperature(grid%octreeRoot,positionOctal,startOctal=sourceOctal)))&
+                      * sourceOctal%kappaAbs(subcell,iLambda)
+                      ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ we should be calling an interpolation function here!
+                      print *, 'In integratePathAMR, the tempSpectrum value is wrong! - needs fixed'
+                   tot = tot + tempSpectrum(i)
+                enddo
+             else 
+                do i = 1, nLambda
+                   tempSpectrum(i) = blambda(dble(lambda(i)),dble(grid%temperature(i1,i2,i3)))*grid%kappaAbs(i1,i2,i3,iLambda)
+                   tot = tot + tempSpectrum(i)
+                enddo
+             end if 
              thisPhoton%stokes = thisPhoton%stokes * &
                   (tempSpectrum(iLambda) * weightContPhoton / tot)
 
@@ -675,7 +799,7 @@ contains
              thisPhoton%stokes = thisPhoton%stokes * &
                   (sourceSpectrum(iLambda) * weightContPhoton)
           endif
-
+          
        else
           thisPhoton%stokes = thisPhoton%stokes * weightContPhoton
           thisPhoton%lambda = lamLine
@@ -743,12 +867,19 @@ contains
        ! be zero
 
        if (grid%geometry == "binary") then
-          call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
-          thisPhoton%velocity = grid%velocity(i1,i2,i3)
+          if (grid%adaptive) then 
+             octalPoint = octalVector(thisPhoton%position%x, &
+                                      thisPhoton%position%y, &
+                                      thisPhoton%position%z)  
+             thisPhoton%velocity = amrGridVelocity(grid%octreeRoot,octalPoint)
+          else  
+            call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
+            thisPhoton%velocity = grid%velocity(i1,i2,i3)
+          endif
        endif
 
 
-       if (.not.grid%cartesian) then
+       if (.not.grid%cartesian .and. .not. grid%adaptive) then
           if (grid%rCore /= 0.) then
              vPhi = (vRot/cSpeed)*sqrt(max(0.d0,1.d0-(thisPhoton%position%z/grid%rCore)**2))
              perp = thisPhoton%position .cross. zAxis
@@ -762,7 +893,7 @@ contains
        endif
 
 
-    endif
+    endif ! (thisPhoton%contPhoton)
 
 
     ! now for a line photon
@@ -771,6 +902,8 @@ contains
 
        ! for the polar grid we use the probability distributions to get
        ! r, theta and phi for the emission
+
+       
 
        if (grid%cartesian) then
 
@@ -851,7 +984,57 @@ contains
           biasWeight =  biasWeight * &
                (1.d0/ interpGridScalar2(grid%biasLine3D,grid%nx,grid%ny,grid%nz,i1,i2,i3,t1,t2,t3))
 
-       else
+       elseif (grid%adaptive) then
+    
+          if (secondSource) then
+             thisPhoton%position = secondSourcePosition
+             ok = .true.
+          endif
+
+          if (grid%geometry == "rolf") then
+             write(*,*) "Panic: in initPhoton, there is no code for handling ",&
+                        "grid%geometry==rolf with an adaptive grid"
+          endif
+
+          if (.not. ok) then
+
+             call random_number(randomDouble)
+
+             ! we search through the tree to find the subcell that contains the
+             !   probability value 'randomDouble'
+             sourceOctal => grid%octreeRoot
+             call locateLineProbAMR(randomDouble,sourceOctal,subcell)
+               
+             octalCentre = subcellCentre(sourceOctal,subcell)
+
+
+             !!! we will just choose a random point within the subcell.
+             !!! this *should* be done in a better way.
+             call random_number(r1)
+             r1 = r1 - 0.5  ! shift value mean value to zero
+             r1 = r1 * 0.99 ! to avoid any numerical accuracy problems
+             xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+               
+             call random_number(r2)
+             r2 = r2 - 0.5                                  
+             r2 = r2 * 0.99                                           
+             yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
+                
+             call random_number(r3)
+             r3 = r3 - 0.5                                  
+             r3 = r3 * 0.99                                           
+             zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
+             
+
+             thisPhoton%position = vector(xOctal,yOctal,zOctal)
+                
+             !!! need to call an interpolation routine, rather than
+             !!!   use subcell central value
+             biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
+
+          end if
+
+       else ! grid has polar coordinates
 
 
           if (thisPhoton%resonanceLine) then
@@ -926,15 +1109,24 @@ contains
        ! interpolate to get the velocity
 
        if (.not.thisPhoton%resonanceLine) then
-          thisPhoton%velocity = &
-               ((1.d0-t1)*(1.d0-t2)*(1.d0-t3))*grid%velocity(i1,i2,i3) + &
-               ((1.d0-t1)*(1.d0-t2)*t3     )*grid%velocity(i1,i2,i3+1) + &
-               ((1.d0-t1)*t2     *t3     )*grid%velocity(i1,i2+1,i3+1) + &
-               (t1     *(1.d0-t2)*(1.d0-t3))*grid%velocity(i1+1,i2,i3) + &
-               ((1.d0-t1)*t2     *(1.d0-t3))*grid%velocity(i1,i2+1,i3) + &
-               (t1     *(1.d0-t2)* t3    )*grid%velocity(i1+1,i2,  i3+1) + &
-               (t1     *t2     *(1.d0-t3))*grid%velocity(i1+1,i2+1,i3  ) + &
-               (t1     *t2     *t3     )*grid%velocity(i1+1,i2+1,i3+1)
+               
+          if (grid%adaptive) then
+             octalPoint = octalVector(thisPhoton%position%x, &
+                                      thisPhoton%position%y, &
+                                      thisPhoton%position%z)  
+             thisPhoton%velocity = amrGridVelocity(grid%octreeRoot,octalPoint)
+          
+          else
+             thisPhoton%velocity = &
+                  ((1.d0-t1)*(1.d0-t2)*(1.d0-t3))*grid%velocity(i1,i2,i3) + &
+                  ((1.d0-t1)*(1.d0-t2)*t3     )*grid%velocity(i1,i2,i3+1) + &
+                  ((1.d0-t1)*t2     *t3     )*grid%velocity(i1,i2+1,i3+1) + &
+                  (t1     *(1.d0-t2)*(1.d0-t3))*grid%velocity(i1+1,i2,i3) + &
+                  ((1.d0-t1)*t2     *(1.d0-t3))*grid%velocity(i1,i2+1,i3) + &
+                  (t1     *(1.d0-t2)* t3    )*grid%velocity(i1+1,i2,  i3+1) + &
+                  (t1     *t2     *(1.d0-t3))*grid%velocity(i1+1,i2+1,i3  ) + &
+                  (t1     *t2     *t3     )*grid%velocity(i1+1,i2+1,i3+1)
+          end if
        endif
 
        if (grid%geometry == "donati") then
@@ -955,7 +1147,7 @@ contains
 
 
 
-    endif
+    endif ! (thisPhoton%linePhoton) 
 
 
     if (thisPhoton%linePhoton) then
@@ -995,6 +1187,10 @@ contains
 
 
   end subroutine initPhoton
+
+
+
+
 
   ! this subroutine finds the grid array indices of a particular
   ! photon - OUTDATED

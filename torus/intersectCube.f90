@@ -1,6 +1,7 @@
 
   subroutine intersectCube(grid, posVec, direction, intersection, ok)
    use vector_mod
+   use gridtype_mod
    use grid_mod
    implicit none
    type(GRIDTYPE) :: grid

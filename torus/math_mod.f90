@@ -10,7 +10,8 @@
 module math_mod
 
 
-  use grid_mod            ! opacity grid
+  use gridtype_mod        ! opacity grid
+  use grid_mod            ! opacity grid routines
   use vector_mod          ! vector maths
   use constants_mod       ! physical constants
   use utils_mod
@@ -23,7 +24,6 @@ module math_mod
 
 
 contains
-
 
   ! interpolated in 3d for grid in chiline
 
@@ -461,62 +461,108 @@ contains
 
   subroutine computeProbDist(grid, totalLineEmission, totalContEmission, lambda0, useBias)
 
-    type(GRIDTYPE) :: grid
-    real :: totalLineEmission, totalContEmission, lambda0
+    type(GRIDTYPE), intent(inout) :: grid
+    real, intent(out) :: totalLineEmission, totalContEmission
+    real, intent(in) :: lambda0
     integer :: i,j,k, ierr
     real, allocatable :: chi(:,:,:)
-    logical :: useBias
+    logical, intent(in) :: useBias
 
+    real(kind=doubleKind) :: totalLineEmissionDouble
+    real(kind=doubleKind) :: totalContEmissionDouble
+    real(kind=doubleKind) :: totalLineProb
+    real(kind=doubleKind) :: totalContProb
     
-    if (grid%cartesian) then
-       allocate(chi(1:grid%nx,1:grid%ny,1:grid%nz), stat=ierr)
-       if (ierr /=0) then
-         write(*,'(a)') "! Cannot allocate tmp chi memory"
-         stop
+    real(kind=doubleKind) :: biasCorrectionLine
+    real(kind=doubleKind) :: biasCorrectionCont
+
+    if (.not. grid%adaptive) then
+       if (grid%cartesian) then
+          allocate(chi(1:grid%nx,1:grid%ny,1:grid%nz), stat=ierr)
+          if (ierr /=0) then
+            write(*,'(a)') "! Cannot allocate tmp chi memory"
+            stop
+          endif
+          chi = grid%chiLine
+       else
+          allocate(chi(1:grid%nr,1:grid%nmu,1:grid%nphi), stat=ierr)
+          if (ierr /=0) then
+            write(*,'(a)') "! Cannot allocate tmp chi memory"
+            stop
+          endif
+          chi = grid%chiLine
        endif
-       chi = grid%chiLine
-    else
-       allocate(chi(1:grid%nr,1:grid%nmu,1:grid%nphi), stat=ierr)
-       if (ierr /=0) then
-         write(*,'(a)') "! Cannot allocate tmp chi memory"
-         stop
-       endif
-       chi = grid%chiLine
-    endif
+
+       call computeProbDist2(grid, grid%cartesian, grid%xProbDistLine,&
+              grid%xAxis, grid%nx, grid%yProbDistLine, grid%yAxis, grid%ny,&
+              grid%zProbDistLine, grid%zAxis, grid%nz, grid%rProbDistLine, &
+              grid%rAxis, grid%nr, grid%muProbDistLine, grid%muAxis,&
+              grid%nMu, grid%phiProbDistLine, grid%phiAxis, grid%nphi, &
+              grid%etaLine, chi, grid%biasLine, totalLineEmission, .true.,&
+              lambda0, useBias)
 
 
-    call computeProbDist2(grid, grid%cartesian, grid%xProbDistLine, grid%xAxis, grid%nx, grid%yProbDistLine, &
-         grid%yAxis, grid%ny, grid%zProbDistLine, grid%zAxis, grid%nz, grid%rProbDistLine, grid%rAxis, &
-         grid%nr, grid%muProbDistLine, grid%muAxis, grid%nMu, &
-         grid%phiProbDistLine, grid%phiAxis, grid%nphi, &
-         grid%etaLine, chi, grid%biasLine, totalLineEmission, .true.,lambda0, useBias)
-
-
-    if (grid%cartesian) then
-       do i = 1, grid%nx
-          do j = 1, grid%ny
-             do k = 1, grid%nz
-                chi(i,j,k) = grid%kappaAbs(i,j,k,1)
+       if (grid%cartesian) then
+          do i = 1, grid%nx
+             do j = 1, grid%ny
+                do k = 1, grid%nz
+                   chi(i,j,k) = grid%kappaAbs(i,j,k,1)
+                enddo
              enddo
           enddo
-       enddo
-    else
-       do i = 1, grid%nr
-          do j = 1, grid%nmu
-             do k = 1, grid%nphi
-                chi(i,j,k) = grid%kappaAbs(i,j,k,1)
+       else
+          do i = 1, grid%nr
+             do j = 1, grid%nmu
+                do k = 1, grid%nphi
+                   chi(i,j,k) = grid%kappaAbs(i,j,k,1)
+                enddo
              enddo
           enddo
-       enddo
+       endif
+
+       call computeProbDist2(grid, grid%cartesian, grid%xProbDistCont,&
+              grid%xAxis, grid%nx, grid%yProbDistCont, grid%yAxis, grid%ny,&
+              grid%zProbDistCont, grid%zAxis, grid%nz, grid%rProbDistCont, &
+              grid%rAxis, grid%nr, grid%muProbDistCont, grid%muAxis, &
+              grid%nMu, grid%phiProbDistCont, grid%phiAxis, grid%nphi, &
+              grid%etaCont, chi, grid%biasCont,totalContEmission, .false.,&
+              lambda0, useBias)
+
+
+       deallocate(chi)
+
+    else ! the grid is adaptive
+
+       write(*,*) "Computing probability distributions..."
+
+          if (useBias) then
+             write (*,*) 'Panic: computeProbDist2AMR does not have the ',&
+                         'facility to useBias?'
+             stop
+          endif
+        
+        totalLineEmissionDouble = 0.0_db
+        totalContEmissionDouble = 0.0_db
+        totalContProb           = 0.0_db
+        totalLineProb           = 0.0_db
+        
+        call computeProbDist2AMR(grid%octreeRoot,totalLineEmissionDouble,&
+                                                 totalContEmissionDouble,&
+                                                 totalLineProb,&
+                                                 totalContProb)
+       
+        biasCorrectionLine = totalLineEmissionDouble / totalLineProb
+        biasCorrectionCont = totalContEmissionDouble / totalContProb
+        write(*,*) "Bias correction (line)      : ",biasCorrectionLine 
+        write(*,*) "Bias correction (continuum) : ",biasCorrectionCont 
+    
+        call computeProbDist3AMR(grid%octreeRoot,biasCorrectionLine, &
+                                                 biasCorrectionCont, &
+                                                 totalLineProb,&
+                                                 totalContProb)
+        write(*,*) "Distributions done"
+ 
     endif
-
-    call computeProbDist2(grid, grid%cartesian, grid%xProbDistCont, grid%xAxis, grid%nx, grid%yProbDistCont, &
-         grid%yAxis, grid%ny, grid%zProbDistCont, grid%zAxis, grid%nz, grid%rProbDistCont, grid%rAxis, &
-         grid%nr, grid%muProbDistCont, grid%muAxis, grid%nMu, grid%phiProbDistCont, grid%phiAxis, &
-         grid%nphi, grid%etaCont, chi, grid%biasCont,totalContEmission, .false., lambda0, useBias)
-
-
-    deallocate(chi)
 
 
   end subroutine computeProbDist
@@ -949,6 +995,104 @@ contains
     write(*,*) "Distributions done"
   end subroutine computeProbDist2
 
+
+  recursive subroutine computeProbDist2AMR(thisOctal,totalLineEmission,&
+                          totalContEmission,totalLineProb,totalContProb)
+
+    implicit none
+
+    type(octal), pointer                 :: thisOctal
+    real(kind=doubleKind), intent(inout) :: totalLineProb
+    real(kind=doubleKind), intent(inout) :: totalContProb
+    real(kind=doubleKind), intent(inout) :: totalLineEmission
+    real(kind=doubleKind), intent(inout) :: totalContEmission
+    
+    type(octal), pointer  :: child 
+    real(kind=doubleKind) :: dV
+    integer               :: subcell
+    integer               :: i
+
+
+
+
+    dV = real(thisOctal%subcellSize, kind=doubleKind) ** 3.0_db
+    
+    do subcell = 1, 8, 1
+
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call computeProbDist2AMR(child,totalLineEmission,&
+                          totalContEmission,totalLineProb,totalContProb)
+                exit
+             end if
+          end do
+            
+       else
+          totalLineProb = totalLineProb + dV * &
+              real(thisOctal%etaLine(subcell),kind=doubleKind) * &
+              real(thisOctal%biasLine3D(subcell),kind=doubleKind)
+              
+          totalLineEmission = totalLineEmission + dV * &
+              real(thisOctal%etaLine(subcell),kind=doubleKind)
+              
+          totalContProb = totalContProb + dV * &
+              real(thisOctal%etaCont(subcell),kind=doubleKind) * & 
+              real(thisOctal%biasCont3D(subcell),kind=doubleKind)
+        
+          totalContEmission = totalContEmission + dV * &
+              real(thisOctal%etaCont(subcell),kind=doubleKind) 
+          
+       end if
+       
+       thisOctal%probDistLine(subcell) = totalLineProb
+       thisOctal%probDistCont(subcell) = totalContProb
+      
+    end do
+
+  end subroutine computeProbDist2AMR
+
+
+
+  recursive subroutine computeProbDist3AMR(thisOctal,biasCorrectionLine,&
+                                                     biasCorrectionCont,&
+                                                     totalLineProb,&
+                                                     totalContProb)
+
+    implicit none
+
+    type(octal), pointer              :: thisOctal
+    real(kind=doubleKind), intent(in) :: biasCorrectionLine
+    real(kind=doubleKind), intent(in) :: biasCorrectionCont
+    real(kind=doubleKind), intent(in) :: totalLineProb
+    real(kind=doubleKind), intent(in) :: totalContProb
+
+    integer :: subcell
+    type(octal), pointer  :: child 
+
+    if (thisOctal%nChildren > 0) then
+            
+       ! call this subroutine recursively on each of its children
+       do subcell = 1, thisOctal%nChildren, 1 
+          child => thisOctal%child(subcell)
+          call computeProbDist3AMR(child,biasCorrectionLine,&
+                   biasCorrectionCont,totalLineProb,totalContProb)
+       end do 
+       
+    end if
+
+
+    thisOctal%probDistLine = thisOctal%probDistLine / totalLineProb
+    thisOctal%probDistCont = thisOctal%probDistCont / totalContProb
+    thisOctal%biasLine3D = thisOctal%biasLine3D * biasCorrectionLine
+    thisOctal%biasCont3D = thisOctal%biasCont3D * biasCorrectionCont
+    
+      
+  end subroutine computeProbDist3AMR
+
+
   type(VECTOR) function thermalElectronVelocity(temperature)
     real :: temperature
     type(VECTOR) :: rHat
@@ -975,10 +1119,6 @@ contains
 
 
   end function thermalHydrogenVelocity
-
-
-
-
 
 end module math_mod
 

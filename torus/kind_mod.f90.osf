@@ -1,7 +1,14 @@
 module kind_mod
   
+  integer, parameter :: singleKind = 4
+  integer, parameter :: si = singleKind
   integer, parameter :: doubleKind = 8
+  integer, parameter :: db = doubleKind
+  integer, parameter :: octalKind = 4
+  integer, parameter :: oc = octalKind
 
+  integer, parameter :: logicKind = 1
+  integer, parameter :: lg = logicKind
 
 end module kind_mod
 

@@ -3,7 +3,7 @@ subroutine rdintpro(int_pro_file,int_pro,x_int_pro,n_int_pro)
   ! reads in an ascii format intrinsic profile tjh
   !
   implicit none
-  character*80 int_pro_file
+  character(80) int_pro_file
   real int_pro(*),x_int_pro(*),tot
   real xstart,xend
   integer n_int_pro,i
