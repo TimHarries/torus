@@ -2601,7 +2601,8 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   if (grid%geometry == "cluster") then
      R = 1.0d-3
   else
-     R = 1.00001*rStar
+!     R = 1.001*rStar
+     R = 0.1d0*rStar
   end if
   if (gridUsesAMR) then
 

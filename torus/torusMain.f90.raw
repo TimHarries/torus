@@ -2809,6 +2809,7 @@ program torus
      ! Change bias for this viewing angle
      if ( (grid%geometry == "ttauri" .or. grid%geometry == "cmfgen" ) &
           .and. (useBias .and. iInclination==1) ) then
+
         ! BIAS not working for iInclination /=1 case.
         ! THIS SHOULD BE FIXED LATER. MEANWHILE USING THE BIAS FOR THE FIRST INCLINATION
         ! FOR ALL INCLINATION IS NOT SO.... (RK)

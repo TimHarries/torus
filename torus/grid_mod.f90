@@ -6290,6 +6290,7 @@ contains
           d = L/2.0d0
 !          eps = d/100.0d0
           eps = d/10.0d0
+!          eps = d/5.0d0
 !          eps = 0.0d0
           xp = REAL(rVec%x + d)
           xm = REAL(rVec%x - d)

@@ -847,17 +847,18 @@ CONTAINS
        starPosition = grid%starPos1
                                   
        ! find the (geometrycally thin) disk intersection point
-       if (thin_disc_on) then
-          distanceFromOrigin = modulus(grid%starPos1)
-          diskIntersection = intersectionLinePlane(startPoint, directionNormalized,&
-               diskNormal, distanceFromOrigin, intersectionFound)
-       else
+       if (grid%geometry == "luc_cir3d" .or. grid%geometry == "cmfgen") then
           intersectionFound = .false.
+       else
+          if (thin_disc_on) then
+             distanceFromOrigin = modulus(grid%starPos1)
+             diskIntersection = intersectionLinePlane(startPoint, directionNormalized,&
+                  diskNormal, distanceFromOrigin, intersectionFound)
+          else
+             intersectionFound = .false.
+          end if
        end if
 
-       ! This line is here for backward compatability, but should be removed
-       ! in the future.
-       if (grid%geometry == "luc_cir3d" .or. grid%geometry == "cmfgen") intersectionFound = .false.
        
        IF (intersectionFound) THEN
        
@@ -6528,7 +6529,8 @@ CONTAINS
 
           !
           if (thisOctal%inflow(subcell)) then
-             thisOctal%biasCont3D(subcell) = EXP(-dtau_cont)
+!             thisOctal%biasCont3D(subcell) = EXP(-dtau_cont)
+             thisOctal%biasCont3D(subcell) = 1.0  ! no bias for contiuum
              thisOctal%biasLine3D(subcell) = SQRT(escProb)  ! good one to use 
           else
              thisOctal%biasCont3D(subcell) = 1.0e-20

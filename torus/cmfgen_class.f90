@@ -135,6 +135,10 @@ contains
     ! changing units of T from 10^4 K to K
     cmfgen_opacity%T(1:nd) = 1.0d4*cmfgen_opacity%T(1:nd)
 
+    ! to be consistent with the notation in stateq_mod::generateOpacitiesAMR
+    cmfgen_opacity%eta(1:nd) = 1.0d10*cmfgen_opacity%eta(1:nd)
+    cmfgen_opacity%etal(1:nd) = 1.0d10*cmfgen_opacity%etal(1:nd)
+
     close(luin)
 
   end subroutine read_cmfgen_data
@@ -266,7 +270,7 @@ contains
     TYPE(octalVector), INTENT(IN) :: point    
     !
     real(double), parameter ::  rho_min = 1.0e-18 ! [g/cm^3]     
-    real(double), parameter ::  rho_max = 1.0e-6  ! [g/cm^3]     
+    real(double), parameter ::  rho_max = 1.0e-2  ! [g/cm^3]     
     !
     real(double) :: ri
 
@@ -276,7 +280,7 @@ contains
        out = rho_min  ! just assign a small value and return
     else       
        ! using a routine in utils_mod
-       out = loginterp_dble(cmfgen_opacity%eta, cmfgen_opacity%nd, cmfgen_opacity%R, ri)    
+       out = loginterp_dble(cmfgen_opacity%esec, cmfgen_opacity%nd, cmfgen_opacity%R, ri)    
     end if
 
   END FUNCTION cmfgen_density
