@@ -533,7 +533,7 @@ contains
     integer :: i, j, k
     real :: t1, t2, t3
     integer :: i1,i2,i3
-    real :: fac, gridStep
+    real :: fac
     real :: dR, dtheta, dphi, sintheta
     real :: r,phi
     real :: mu
@@ -554,7 +554,6 @@ contains
 
     bias = 1.d0
     totalEmission = 0.
-    gridStep = xAxis(2) - xAxis(1)
 
     write(*,*) "Computing probability distributions..."
 
