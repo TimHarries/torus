@@ -1511,7 +1511,7 @@ contains
     implicit none
     logical :: opaqueCore, firstPlot
     type(GRIDTYPE) :: grid
-    real :: contTau(2000,*)
+    real, dimension(:,:), intent(in) :: contTau
     type(VECTOR) :: viewVec
     type(VECTOR) :: coolStarPosition
     integer :: i, j, npix
@@ -2651,7 +2651,8 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
+               grid%rOuter
                
     else
             
@@ -2667,7 +2668,8 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa 
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
+               grid%rOuter
                
     end if 
     
@@ -2796,7 +2798,8 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,  &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,  &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,      &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa,grid%rInner,&
+               grid%rOuter
     else
        read(unit=20,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
                grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius,&
@@ -2806,7 +2809,8 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,  &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,  &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,      &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa 
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa,grid%rInner,& 
+               grid%rOuter
     end if
 
     call readReal1D(grid%lamarray,fileFormatted)
@@ -2814,7 +2818,7 @@ contains
     call readReal1D(grid%oneKappaSca,fileFormatted)
     
     if (error /=0) then
-       print *, 'Panic: read error in readAMRgrid 1'
+       print *, 'Panic: read error in readAMRgrid 1, iostat error = ', error
        stop
     end if
     

@@ -50,8 +50,8 @@ module gridtype_mod
      type(VECTOR), pointer :: velocity(:,:,:)    ! velocity grid
      real, pointer :: rAxis(:)                   ! r-axis
 
-     real, pointer :: biasCont(:)                ! radial bias for cont
-     real, pointer :: biasLine(:)                ! radial bias for line
+     real, pointer :: biasCont(:) => null()      ! radial bias for cont
+     real, pointer :: biasLine(:) => null()      ! radial bias for line
 
      real, pointer :: muAxis(:)                  ! mu-axis
      real, pointer :: phiAxis(:)                 ! phi-axis

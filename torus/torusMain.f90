@@ -936,22 +936,26 @@ program torus
 
   
   !
-  if (grid%geometry == "jets"  .or. &
-       grid%geometry == "ttauri"  .or.  grid%geometry == "testamr" ) then
-     call draw_cells_on_density(grid, "x-z", "cells_on_density.ps/vcps")
-!     call draw_cells_on_density(grid, "x-z", device)
+  if (gridUsesAMR) then 
+     if (grid%geometry == "jets"  .or.  grid%geometry == "wr104" .or. &
+        grid%geometry == "ttauri"  .or.  grid%geometry == "testamr" ) then
+        call draw_cells_on_density(grid, "x-z", "cells_on_density.ps/vcps")
+!        call draw_cells_on_density(grid, "x-z", device)
+     end if
   end if
 
   !  call fancyAmrPlot(grid, device)
-  
-  ! Plot desired AMR grid value here... This is more generalized
-  ! version of fancyAmrPlot.
-  !
-  ! See grid_mod.f90 for details.
-  ! subroutine plot_AMR_values(grid, name, plane, val_3rd_dim,  device, logscale, withgrid)
-  call plot_AMR_values(grid, "rho", "x-y", 0.0, "rho_grid.ps/vcps", .true., .true.)
-  ! Plotting the slices of planes
-  call plot_AMR_planes(grid, "rho", "x-y", 15, "rho", .true., .false.)
+
+  if (gridUsesAMR) then 
+     ! Plot desired AMR grid value here... This is more generalized
+     ! version of fancyAmrPlot.
+     !
+     ! See grid_mod.f90 for details.
+     ! subroutine plot_AMR_values(grid, name, plane, val_3rd_dim,  device, logscale, withgrid)
+     call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_grid.ps/vcps", .true., .true.)
+     ! Plotting the slices of planes
+     call plot_AMR_planes(grid, "rho", "x-z", 15, "rho", .true., .false.)
+  end if
 
   
   ! The source spectrum is normally a black body
@@ -1474,8 +1478,8 @@ program torus
      allocate(tauExt(1:maxTau))
      allocate(tauAbs(1:maxTau))
      allocate(tauSca(1:maxTau))
-     allocate(contTau(1:maxTau,1:maxLambda))
-     allocate(contWeightArray(1:maxTau))
+     allocate(contTau(1:maxTau,1:nLambda))
+     allocate(contWeightArray(1:nLambda))
 
 
 
@@ -1830,8 +1834,8 @@ print *, 'nu = ',nu
            allocate(tauExt(1:maxTau))
            allocate(tauAbs(1:maxTau))
            allocate(tauSca(1:maxTau))
-           allocate(contTau(1:maxTau,1:maxLambda))
-           allocate(contWeightArray(1:maxTau))
+           allocate(contTau(1:maxTau,1:nLambda))
+           allocate(contWeightArray(1:nLambda))
 
            write(*,*) "Binary luminosity ratio (p/s): ",totCoreContinuumEmission1/totCoreContinuumEmission2
         endif
@@ -2029,8 +2033,8 @@ print *, 'nu = ',nu
            allocate(tauExt(1:maxTau))
            allocate(tauAbs(1:maxTau))
            allocate(tauSca(1:maxTau))
-           allocate(contTau(1:maxTau,1:maxLambda))
-           allocate(contWeightArray(1:maxTau))
+           allocate(contTau(1:maxTau,1:nLambda)) 
+           allocate(contWeightArray(1:nLambda))
            ! initlialize them to zero for safty
 !           lambda(:) = 0.0; tauExt(:)=0.0; tauAbs(:)=0.0
 !           tauSca(:) = 0.0; contTau(:,:) =0.0; contWeightArray(:) =0.0
@@ -2061,7 +2065,7 @@ print *, 'nu = ',nu
 
            ! initialize the photon
            
-           contWeightArray(1:maxLambda) = 1.
+           contWeightArray = 1.
 
            select case(grid%geometry)
               case("planet")
@@ -2380,9 +2384,8 @@ print *, 'nu = ',nu
               currentScat = currentScat  + 1
 
               ! find position of next interaction
-
               call locate(tauExt, nTau, thisTau, j)
-
+ 
 
               t = 0.
               if ((tauExt(j+1) - tauExt(j)) /= 0.) then
@@ -2392,7 +2395,7 @@ print *, 'nu = ',nu
 
 
               thisPhoton%position = thisPhoton%position + dlambda*thisPhoton%direction
-
+              
               contWeightArray(1:nLambda) = contWeightArray(1:nLambda) * &
                    exp(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))))
 
@@ -2807,6 +2810,7 @@ print *, 'nu = ',nu
         endif
      endif
 
+     close(22)
 
      if (stokesimage) then
         do i = 1, nImage

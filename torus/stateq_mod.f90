@@ -152,22 +152,22 @@ contains
                                    (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
              tau_mn = tau_mn / (directionalderiv(grid,rvec,i1,i2,i3,direction)/1.e10)
           end if
-          if (tau_mn < 0.) then
-             tau_mn = 1.e-10 
+          if (tau_mn < 1.e-20) then
+             tau_mn = 1.e-20 
           endif
 
-        if (tau_mn < 0.1) then
-          escProb = 1.0-tau_mn*0.5*(1.0 - tau_mn/3.0*(1. - tau_mn*0.25*(1.0 - 0.20*tau_mn)))
-        else if (tau_mn < 15.) then
-          escProb = (1.0-exp(-tau_mn))/tau_mn
-        else
-          escProb = 1./tau_mn
-        end if
-        beta_mn = beta_mn + escprob * domega
+          if (tau_mn < 0.1) then
+             escProb = 1.0-tau_mn*0.5*(1.0 - tau_mn/3.0*(1. - tau_mn*0.25*(1.0 - 0.20*tau_mn)))
+          else if (tau_mn < 15.) then
+             escProb = (1.0-exp(-tau_mn))/tau_mn
+          else
+             escProb = 1./tau_mn
+          end if
+          beta_mn = beta_mn + escprob * domega
 
        enddo
     enddo
-   beta_mn = beta_mn / totOmega 
+    beta_mn = beta_mn / totOmega 
 
 !   if ((m == 1).and.(n == 2)) beta_mn = beta_mn * 100.
 !    write(*,*) totOmega/fourPi
@@ -1726,7 +1726,6 @@ contains
     freq = ((13.598-eTrans(n))*1.602192e-12)/hcgs
     if ((freq < nuArray(1)) .or.(freq > nuArray(nNu))) then
        write(*,*) "error in integral1",nNu,freq,nuArray(1),nuArray(nNu)
-do ; enddo       
        jnu = 1.e-28
        iMin = 1
     else
@@ -1988,7 +1987,7 @@ do ; enddo
     integer, intent(in)            :: n
     integer                        :: i, k
     integer                        :: indx(np)
-    real(kind=doubleKind)          :: tolx, tolf
+    real(kind=doubleKind),intent(in):: tolx, tolf
     real(kind=doubleKind)          :: errf, d, errx
     real(kind=doubleKind)          :: alpha(np,np),beta(np)
     type(octal), pointer, optional :: thisOctal 
@@ -2513,7 +2512,7 @@ do ; enddo
                 xAll(maxLevels+1) = thisOctal%Ne(iSubcell)
                 rVec = subcellCentre(thisOctal,iSubcell)
 
-                call mnewt(grid, 20, xAll, maxlevels+1, tolx, tolf, hNu1, nuArray1, nNu1, &
+                call mnewt(grid, 20, xAll, maxlevels+1, tolx, tolf, hNu1, nuArray1(1:nNu1), nNu1, &
                            hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                            isBinary, thisOctal, iSubcell)
                            
@@ -2523,7 +2522,9 @@ do ; enddo
                    do i = 1 , maxLevels
                       departCoeff(i) = real(xall(i))/boltzSaha(i, thisOctal%Ne(iSubcell),          &
                                                          real(thisOctal%temperature(iSubcell),kind=db))
-                      write(*,'(a5,i3,1p,e12.3,e12.3)') '     ',i,departCoeff(i),xall(i)
+                      write(*,'(a5,i3,1p,e12.3,e12.3,e12.3)') '     ',i,departCoeff(i),xall(i),&
+                                                                      xall(i)/departCoeff(i)                     
+                      
                    enddo
                 end if   
                 

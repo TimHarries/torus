@@ -497,6 +497,12 @@ contains
           chi = grid%chiLine
        endif
 
+       ! if grid%biasLine and grid%biasCont have not been allocated, we will do 
+       !   a dummy allocation here so that we are not passing an uninitialized 
+       !   pointer.
+       if (.not. associated(grid%biasLine)) allocate(grid%biasLine(0))
+       if (.not. associated(grid%biasCont)) allocate(grid%biasCont(0))
+       
        call computeProbDist2(grid, grid%cartesian, grid%xProbDistLine,&
               grid%xAxis, grid%nx, grid%yProbDistLine, grid%yAxis, grid%ny,&
               grid%zProbDistLine, grid%zAxis, grid%nz, grid%rProbDistLine, &

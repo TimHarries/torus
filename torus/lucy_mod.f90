@@ -766,7 +766,6 @@ contains
     integer :: ilam, nLambda
     real(kind=doubleKind) :: newT, deltaT
     integer :: ndt
-    real(kind=doubleKind) :: meanDeltaT 
     real(kind=doubleKind) :: kabs
     real :: lamArray(*)
     integer :: nFreq
@@ -845,7 +844,6 @@ contains
              thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * (thisOctal%temperature(subcell)**4)
              totalEmission = totalEmission + thisOctal%etaCont(subcell) * V
              nDT = nDT  + 1
-!RK.. This is not used nor inilialized.         meanDeltaT = meanDeltaT + deltaT
           else 
              thisOctal%etaCont(subcell) = 0.
           endif

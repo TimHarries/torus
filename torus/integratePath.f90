@@ -78,9 +78,9 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
 
   integer, parameter :: maxLambda = 200              ! max size of tau arrays
   integer :: nLambda
-  real :: lambda(1:maxTau),dlambda                         ! distance arrays
-  real :: tauExt(1:maxTau), tauAbs(1:maxTau), tauSca(1:maxTau)           ! optical depths
-  real :: tauCont(maxTau, maxLambda)
+  real :: lambda(:),dlambda                         ! distance arrays
+  real :: tauExt(:), tauAbs(:), tauSca(:)           ! optical depths
+  real, dimension(:,:) :: tauCont
 
 
   real :: fudgeFactor = 1.00001                     ! fudge factor
@@ -110,6 +110,16 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
   real :: kscaInterp, kabsInterp
   real :: minDist
   type(VECTOR) :: tVec
+
+logical :: firstTime = .true.
+
+if (firstTime) then
+print *, 'integratePath may need some bug fixes for out-by-one errors'
+print *, '  changes were made by nhs for the ttauri geometry, but these may'
+print *, '  not be correct. Other geometries were not checked. The changes were '
+print *, '  made around lines 553,554,492,906.'
+firstTime = .false.
+end if
 
   ! initialize variables
 
@@ -486,7 +496,10 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
               posIndex(nTau,1:3) = posIndex(nTau-1,1:3)
               posOffset(nTau,1:3) = posOffset(nTau-1,1:3)
               rvecarray(ntau) = rVecArray(ntau-1)
-              dlam(nTau) = dLam(nTau-1)
+              if (ntau > 2) then
+                 dlam(nTau-1) = dLam(nTau-2)
+              end if
+              projVel(nTau) = projVel(nTau-1)
            else if ((r < grid%rCore).and.(.not.opaqueCore)) then
               rHat = (-1.)*(rVec / r)
               cosTheta  = uHat .dot. rHat
@@ -550,7 +563,10 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
                  endLoop = .true.
                  posIndex(nTau,1:3) = posIndex(nTau-1,1:3)
                  posOffset(nTau,1:3) = posOffset(nTau-1,1:3)
-                 dlam(nTau) = dLam(nTau-1)
+                 if (nTau > 2) then 
+                    dlam(nTau-1) = dLam(nTau-2)
+                 end if
+                 projVel(nTau) = projVel(nTau-1)
               endif
            endif
 
@@ -903,7 +919,7 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
 
                     ! now find resonances
 
-                    do i = 1, nTau - 1
+                    do i = 2, nTau - 1
 
                        if ( ((projVel(i) < thisVel) .and. (thisVel <= projVel(i+1))) .or. &
                             ((projVel(i+1) < thisVel) .and. (thisVel <= projVel(i))) ) then
@@ -1036,7 +1052,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   real, intent(out)         :: escProb                ! the escape probability
   real, intent(in)          :: lamStart, lamEnd
   integer, intent(in)       :: nLambda
-  real, intent(out)         :: tauCont(maxTau, nLambda)
+  real,intent(out),dimension(:,:) :: tauCont
   logical, intent(out)      :: hitcore                ! has the photon hit the core
   logical, intent(in)       :: thinLine               ! ignore line absorption of continuum
   logical, intent(in)       :: redRegion              ! use raman scattering red region opacities
@@ -1361,7 +1377,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
               ! initialize array
 
-              tauCont(1:nTau,1:nLambda) = 0.
+              tauCont(1:nTau,:) = 0.
 
 
               ! we can ignore this if the line is very thin
@@ -1484,16 +1500,16 @@ subroutine integratePathAMR2(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   type(VECTOR), intent(in)  :: uHat                   ! direction
   type(GRIDTYPE), intent(in):: grid                   ! the opacity grid
   integer, intent(in)       :: maxTau
-  real, intent(out)         :: lambda(1:maxTau)       ! path distance array
-  real, intent(out)         :: tauExt(1:maxTau)       ! optical depth
-  real, intent(out)         :: tauAbs(1:maxTau)       ! optical depth
-  real, intent(out)         :: tauSca(1:maxTau)       ! optical depth
+  real,intent(out),dimension(:) :: lambda             ! path distance array
+  real,intent(out),dimension(:) :: tauExt             ! optical depth
+  real,intent(out),dimension(:) :: tauAbs             ! optical depth
+  real,intent(out),dimension(:) :: tauSca             ! optical depth
   integer, intent(out)      :: nTau                   ! size of optical depth arrays
   logical, intent(in)       :: opaqueCore             ! is the core opaque
   real, intent(out)         :: escProb                ! the escape probability
   real, intent(in)          :: lamStart, lamEnd
   integer, intent(in)       :: nLambda
-  real, intent(out)         :: tauCont(maxTau, nLambda)
+  real,intent(out),dimension(:,:) :: tauCont
   logical, intent(out)      :: hitcore                ! has the photon hit the core
   logical, intent(in)       :: thinLine               ! ignore line absorption of continuum
   logical, intent(in)       :: redRegion              ! use raman scattering red region opacities
@@ -1570,9 +1586,9 @@ subroutine integratePathAMR2(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   tauAbs(nTau) = 0.
   lambda(nTau) = 0.
   escaped = .false.
-  call amrGridValues(grid%octreeRoot, octVec, iLambda=iLambda, &
-       foundOctal=thisOctal, foundSubcell=subcell, &
-       kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid)
+  !call amrGridValues(grid%octreeRoot, octVec, iLambda=iLambda, &
+  !     foundOctal=thisOctal, foundSubcell=subcell, &
+  !     kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid)
   oldOctal => grid%octreeRoot
     do while (.not.escaped) 
        octVec = rVec

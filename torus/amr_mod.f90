@@ -727,6 +727,10 @@ CONTAINS
                          (octree%subcellSize*2.0_oc),endLength,margin) 
        distanceLimit = endLength * distanceFraction
        
+       ! need to reset some of the variables
+       abortRay = .FALSE.
+       locator = startPoint
+       
        CALL returnSamples(currentPoint,startPoint,locator,directionNormalized,&
                    octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,&
                    usePops,iLambda,error,margin,distanceLimit,                &
@@ -925,6 +929,7 @@ CONTAINS
           ELSE 
             EXIT
           END IF
+          trial = trial + 1
         END DO    
 
         ! adjust some variables
@@ -1648,6 +1653,8 @@ CONTAINS
     ! if the startOctal argument is supplied, the function uses a 
     !   local search for the correct octal starting at that octal.
 
+    ! Note that the results of this function DO have a 1^10 factor in them. 
+
     IMPLICIT NONE
 
     TYPE(gridtype), INTENT(IN)     :: grid 
@@ -1717,9 +1724,9 @@ CONTAINS
     ELSE
        amrGridDirectionalDeriv = 1.e-10
     ENDIF
-
-    IF (amrGridDirectionalDeriv == 0.) amrGridDirectionalDeriv = 1.e-10
-
+    
+    IF (.NOT. ABS(amrGridDirectionalDeriv) >= 1.e-10) &
+       amrGridDirectionalDeriv = 1.e-10
 
   END FUNCTION amrGridDirectionalDeriv
 
@@ -2116,13 +2123,12 @@ CONTAINS
     TYPE(octal), INTENT(IN)       :: thisOctal
     TYPE(octalVector), INTENT(IN) :: point
 
-    IF ((point%x <= thisOctal%centre%x - thisOctal%subcellSize ) .OR. &              
-        (point%x >= thisOctal%centre%x + thisOctal%subcellSize ) .OR. &
-        (point%y <= thisOctal%centre%y - thisOctal%subcellSize ) .OR. &
-        (point%y >= thisOctal%centre%y + thisOctal%subcellSize ) .OR. &
-        (point%z <= thisOctal%centre%z - thisOctal%subcellSize ) .OR. &
-        (point%z >= thisOctal%centre%z + thisOctal%subcellSize )) THEN
-      inOctal = .FALSE.
+        IF (point%x <= thisOctal%centre%x - thisOctal%subcellSize ) THEN ; inOctal = .FALSE. 
+    ELSEIF (point%x >= thisOctal%centre%x + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+    ELSEIF (point%y <= thisOctal%centre%y - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+    ELSEIF (point%y >= thisOctal%centre%y + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+    ELSEIF (point%z <= thisOctal%centre%z - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+    ELSEIF (point%z >= thisOctal%centre%z + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
     ELSE  
       inOctal = .TRUE.
     ENDIF

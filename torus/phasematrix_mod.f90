@@ -179,6 +179,8 @@ contains
     enddo
     prob(1:nMuMie) = prob(1:nMuMie)/prob(nMuMie)
     call random_number(r)
+    if ((abs(r))     < ( epsilon(1.0))) r =       epsilon(1.0)
+    if ((abs(r-1.0)) > (-epsilon(1.0))) r = 1.0 - epsilon(1.0)
     call locate(prob, nMuMie, r, j)
     cosTheta = cosArray(j) + &
          (cosArray(j+1)-cosArray(j))*(r - prob(j))/(prob(j+1)-prob(j))
