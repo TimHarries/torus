@@ -101,7 +101,7 @@ program torus
 
   ! optical depth variables
 
-  integer, parameter :: maxTau = 50000, maxLambda = 500
+  integer, parameter :: maxTau = 1000000, maxLambda = 500
   integer :: nTau
   real, allocatable :: contTau(:,:)
 
@@ -1992,10 +1992,6 @@ program torus
      ! Computing the emission bias based on the optical depth at
      ! 2 microns. 
      call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
-  elseif (grid%geometry == "ttauri" .and. useBias) then
-     ! --using a routine in amr_mod
-     write(*,*) "Setting emissin bias for ttauri geometry ..."
-     call set_bias_ttauri(grid%octreeRoot, grid)
   end if
   
 !$MPI        if (my_rank==0) then
@@ -2148,6 +2144,7 @@ program torus
      viewVec = originalViewVec
      outVec = (-1.)*viewVec
      thisVec = viewVec
+
 
      ! we rotate the view by an appropriate amount
 
@@ -2807,6 +2804,17 @@ program torus
        endif
 
      end if
+
+     ! Change bias for this viewing angle
+     if (grid%geometry == "ttauri" .and. useBias) then
+        ! --using a routine in amr_mod
+        write(*,*) "Setting emissin bias for ttauri geometry ..."
+        call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
+        ! recompute the cummulitive probability distribution
+        call computeProbDist(grid, totLineEmission, &
+             totWindContinuumEmission,lamline, useBias)
+     end if
+
 
           ! zero the output arrays
 

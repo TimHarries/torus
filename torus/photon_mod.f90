@@ -1280,9 +1280,10 @@ contains
 
              ! we search through the tree to find the subcell that contains the
              !   probability value 'randomDouble'
+             call random_number(randomDouble)
              sourceOctal => grid%octreeRoot
              call locateLineProbAMR(randomDouble,sourceOctal,subcell)
-            call random_number(randomDouble)
+
 
              octalCentre = subcellCentre(sourceOctal,subcell)
 
@@ -1316,7 +1317,9 @@ contains
              zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
              
 
-             thisPhoton%position = vector(xOctal,yOctal,zOctal)
+!just for testing ... 
+             thisPhoton%position = octalCentre
+!             thisPhoton%position = vector(xOctal,yOctal,zOctal)
                 
 
              if (sourceOctal%twod) then

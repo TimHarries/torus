@@ -1518,6 +1518,71 @@ contains
       newInFlow(newNTau) = inFlow(nTau)
     end subroutine resampleRay2
 
+
+    
+    subroutine resampleRay_tau(L, nTau, tau, dtau_max, maxtau, newL, newNTau,&
+         inFlow, newInFlow)
+      integer, intent(in) :: nTau, maxtau
+      real, intent(in) :: L(nTau)
+      real, intent(in) :: tau(nTau)
+      ! maxmum line optical depth increment allowed
+      real, intent(in) :: dtau_max
+      integer, intent(inout) :: newNtau
+      real, intent(inout)  :: newL(maxtau)
+      logical, intent(inout)  :: InFlow(nTau)
+      logical, intent(inout)  :: newInFlow(maxtau)
+      !
+      real, allocatable, save :: dtau(:) ! dtau(maxtau)  ! automatic array
+      integer :: nAdd 
+      integer :: i, j
+!      real, parameter :: dvel  = 10.e5/cSpeed
+      real ::  dL
+      logical, save  :: first_time = .true.      
+      !
+      ! allocates memotry for work array for the first time.
+      if (first_time) then
+         first_time=.false.
+         ALLOCATE(dtau(maxtau))
+      end if
+
+
+      ! Initial optical depth in each line sequemnt
+      dtau(1:nTau-1) = tau(2:nTau) - tau(1:nTau-1)
+
+      newNTau = 0
+      do i = 1, nTau-1
+         if (dtau(i) > dtau_max) then
+            nAdd = nint(dtau(i)/dtau_max)  ! this should be at least 1
+            dL = (L(i+1)-L(i))/real(nAdd+1)
+            do j = 1, nAdd+1
+               newNtau = newNtau + 1
+               if (newntau > maxtau) then
+                  print *, "Error: newntau > maxtau in resampleRay_tau. (1)"
+                  print *, "       maxtau = ", maxtau
+                  print *, "       newtau = ", newNtau
+                  stop
+               end if
+               newL(newNTau) = real(j-1)*dL + L(i)
+               newInFlow(newNTau) = inFlow(i)
+            enddo
+         else
+            newNtau = newNtau + 1
+            if (newntau > maxtau) then
+               print *, "Error: newntau > maxtau in resampleRay_tau. (2)"
+               stop
+            end if
+            newL(newNTau) = L(i)
+            newInFlow(newNTau) = inFlow(i)
+         endif
+      enddo
+      newNtau = newNtau + 1
+      newL(newNTau) = L(nTau)
+      newInFlow(newNTau) = inFlow(nTau)
+    end subroutine resampleRay_tau
+
+
+
+
     !
     ! Inserting additional points in ray (lambda) array.
     ! 
@@ -1544,12 +1609,19 @@ contains
 
 
                
-    subroutine linearResample(xArray, yArray, nX, newXarray, newNx)
+    subroutine linearResample(xArray, yArray, nX, nx_max, newXarray, newNx)
       real :: xArray(:), yArray(:)
       integer :: nx, newNx
+      integer, intent(in) :: nx_max
       real :: newXarray(:)
-      real :: newYarray(newNx) ! automatic array
+      real, save, allocatable :: newYarray(:) ! newYarray(newNx) ! automatic array
       integer :: i, j
+      logical, save :: first_time = .true.
+
+      if (first_time) then
+         first_time=.false.
+         ALLOCATE(newYarray(nx_max))
+      end if
 
       do i = 1, newNx
          call hunt(xArray, nx, newXarray(i), j)
@@ -1567,13 +1639,21 @@ contains
 
 
 
-    subroutine linearResample_dble(xArray, yArray, nX, newXarray, newNx)
+    subroutine linearResample_dble(xArray, yArray, nX, nx_max, newXarray, newNx)
       real :: xArray(:)
       real(double) :: yArray(:)
       integer :: nx, newNx
+      integer, intent(in) :: nx_max
       real :: newXarray(:)
-      real  :: newYarray(newNx)  ! automatic array
+      real, save, allocatable  :: newYarray(:) ! newYarray(newNx)  ! automatic array
       integer :: i, j
+      logical, save :: first_time = .true.
+
+      if (first_time) then
+         first_time=.false.
+         ALLOCATE(newYarray(Nx_max))
+      end if
+
 
       do i = 1, newNx
          call hunt(xArray, nx, newXarray(i), j)
@@ -1706,6 +1786,79 @@ contains
       enddo
       yArray(1:newNx) = newYArray(1:newNx)
     end subroutine log_log_resample_dble
+
+
+    subroutine quadraticResample(xArray, yArray, nx, nx_max,newXarray, newNx)
+      real :: xArray(:), yArray(:)
+      integer :: nx, newNx
+      integer, intent(in) :: nx_max
+      real :: newXarray(:)
+      integer :: i, j
+      real :: y
+      real :: dy  ! error estimate
+      real, save, allocatable  :: newYarray(:) ! newYarray(newNx)  ! automatic array
+      logical, save :: first_time = .true.
+
+      if (first_time) then
+         first_time=.false.
+         ALLOCATE(newYarray(nx_max))
+      end if
+
+
+    ! polynomial interpolation 
+      do i = 1, newNx
+         call hunt(xArray, nx, newXarray(i), j)
+         if (j==1) then
+            j=2
+         elseif (j==nx) then
+            j=nx-1
+         end if
+         call polint(xArray(j-1:j+1), yArray(j-1:j+1), 3, &
+              newXarray(i), y, dy)
+         newyarray(i) = y
+      enddo
+
+      yArray(1:newNx) = newYArray(1:newNx)
+      
+    end subroutine quadraticResample
+
+
+    subroutine quadraticResample_dble(xArray, yArray, nx, nx_max,  newXarray, newNx)
+      real, intent(in)            :: xArray(:)
+      real(double), intent(inout) :: yArray(:)
+      integer, intent(in)         :: nx, newNx
+      integer, intent(in)         :: nx_max
+      real, intent(in)            :: newXarray(:)
+      !
+      integer      :: i, j
+      real(double) :: dy  ! error estimate
+      real(double) :: y
+      real(double), save, allocatable  :: newYarray(:) ! newYarray(newNx)  ! automatic array
+      logical, save :: first_time = .true.
+
+      if (first_time) then
+         first_time=.false.
+         ALLOCATE(newYarray(nx_max))
+      end if
+
+
+    ! polynomial interpolation 
+      do i = 1, newNx
+         call hunt(xArray, nx, newXarray(i), j)
+         if (j<=1) then
+            j=2
+         elseif (j>=nx) then
+            j=nx-1
+         end if
+         call polint2(xArray(j-1:j+1), yArray(j-1:j+1), 3, &
+              newXarray(i), y, dy)
+         newYarray(i) = y
+      enddo
+
+      yArray(1:newNx) = newYArray(1:newNx)
+      
+    end subroutine quadraticResample_dble
+
 
 
  

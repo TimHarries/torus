@@ -1174,23 +1174,28 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   real, intent(out)         :: localTau
   real, intent(in)          :: sampleFreq             ! max. samples per grid cell
   integer, intent(out)      :: error                  ! error code returned
-
-
-  real                      :: rho(1:maxTau)          ! density
-  real                      :: temperature(1:maxTau)  ! temperature
-  real(double)              :: Ne(1:maxTau)           ! electron density 
-  logical                   :: InFlow(1:maxtau)       ! inFlow flag
+  !
+  ! WORK ARRAYS
+  logical, save :: first_time = .true.
+  real, allocatable, save :: rho(:)         ! density (size=maxTau)
+  real, allocatable, save :: temperature(:) ! temperature (size=maxTau)
+  real(double), allocatable, save :: Ne(:)  ! electron density (size=maxTau)
+  logical, allocatable, save :: inFlow(:)   ! inFlow flags (size=maxTau)   
+  real(double), allocatable, save :: levelPop(:,:)  ! (size=maxTau x grid%maxLevels)
+  type(vector), allocatable, save :: velocity(:) ! size=maxTau       ! 
+  real, allocatable, save  :: chiLine(:)         ! line optical depth (size=maxTau)
+  real, allocatable, save  :: tauSob(:), tauSob2(:) ! (size=maxTau) Sobolev optical depths
+  real, allocatable, save  :: velocityDeriv(:)   ! directional derivative (size=maxTau)
+  real, allocatable, save  :: dlambda(:)         ! distance increment array (size=maxTau)
+  real(double), allocatable, save :: projVel(:)  ! (size=maxTau)
+  real, allocatable, save  :: kabs(:), ksca(:)   ! (size=maxTau)
+  !
+  !
   type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
   type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
   type(OCTALVECTOR)         :: rVec                   ! position vector
   logical                   :: contPhoton             ! is this a continuum photon?
-  real, dimension(1:maxTau) :: chiLine                ! line opacities
-  real(double), dimension(1:maxTau,1:grid%maxLevels) :: levelPop ! stateq level pops
-  real, dimension(1:maxTau) :: tauSob, tauSob2        ! Sobolev optical depths
-!  real, dimension(1:maxTau) :: escProbArray           ! escape probabilities
-  type(vector), dimension(1:maxTau) :: velocity       ! 
-  real, dimension(1:maxTau) :: velocityDeriv          ! directional derivative
-  
+
   real :: nu, nu2                                        ! frequencies
 
   integer :: iStart                                 ! starting index
@@ -1202,11 +1207,6 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   integer :: ilambda                                ! wavelength index
 
 
-!  integer, parameter :: maxLambda = 10000           ! max size of tau arrays
-  real :: dlambda(maxTau)                           ! distance increment array
-
-  real :: projVel(maxTau)
-  real :: kabs(maxtau), ksca(maxtau)                ! opacities
   real :: x                                         ! multipliers
 
   real :: chil                                      ! line opacity
@@ -1221,6 +1221,28 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   rVec = aVec
   escProb = 1.
   error = 0
+
+
+    ! Allocates memory for work arrays for the first time
+    ! This should be faster than using automatic arrays which allocates
+    ! and deallocates memory every single time.  These array are SAVED
+    ! so they should be available next time as well.
+    if (first_time) then
+       first_time = .false.
+       ALLOCATE(rho(maxTau))         
+       ALLOCATE(temperature(maxTau)) 
+       ALLOCATE(Ne(maxTau))  
+       ALLOCATE(inFlow(maxTau))
+       ALLOCATE(levelPop(maxTau,grid%maxLevels))  
+       ALLOCATE(velocity(maxTau)) 
+       ALLOCATE(chiLine(maxTau))
+       ALLOCATE(tauSob(maxTau), tauSob2(maxTau)) 
+       ALLOCATE(velocityDeriv(maxTau)) 
+       ALLOCATE(dLambda(maxTau))
+       ALLOCATE(projVel(maxTau))
+    end if
+
+
 
 
   ! locate this wavelength in the grid of wavelengths
@@ -1390,8 +1412,6 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
         tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*0.5*(kabs(i-1)+kabs(i))
 !        tauSca(i) = tauSca(i-1) + dlambda(i-1)*ksca(i-1)
 !        tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*kabs(i-1)
-!        tauSca(i) = tauSca(i-1) + dlambda(i)*ksca(i-1)
-!        tauAbs(i) = tauAbs(i-1) + dlambda(i)*kabs(i-1)
            if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
               write(*,*) "negative opacity"
               error = -70
@@ -1820,81 +1840,90 @@ end subroutine integratePathAMR
     logical, intent(in)       :: usePops
     integer, intent(in)       :: mLevel, nLevel
     real, intent(in)          :: fStrength, gM, gN
-!    real, intent(out)         :: localTau
     real, intent(in)          :: sampleFreq             ! max. samples per grid cell
     integer, intent(out)      :: error                  ! error code returned
-    
-    real                      :: rho(1:maxTau)          ! density
-    real                      :: temperature(1:maxTau)  ! temperature    
-    real(double)              :: Ne(1:maxTau)           ! electron density 
-    logical                   :: inFlow(1:maxTau)       ! inFlow flags
+    !    
     type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
     type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
     type(VECTOR)              :: rVec                   ! position vector
-    logical                   :: contPhoton             ! is this a continuum photon?
-    real, dimension(1:maxTau) :: chiLine                ! line optical depth
-    real(double), dimension(1:maxTau,1:grid%maxLevels) :: levelPop  ! stateq level pops
-!    real, dimension(1:maxTau) :: tauSob, tauSob2        ! Sobolev optical depths
-!    real, dimension(1:maxTau) :: escProbArray           ! escape probabilities
-    real, dimension(1:maxTau) :: tauAbsLine
-    type(vector), dimension(1:maxTau) :: velocity       ! 
-    real, dimension(1:maxTau) :: velocityDeriv          ! directional derivative
-    
-    real(double) :: nu, nu2, nu_p, nu0, nu0_p                   ! frequencies
-    
-    integer :: iStart                                 ! starting index
-    
-!    real :: tauSobScalar,tauSobScalar1,tauSobScalar2  ! Sobolev optical depths
-    
+    logical                   :: contPhoton             ! is this a continuum photon?    
+    real(double) :: nu, nu2, nu_p, nu0, nu0_p           ! frequencies   
     real :: thisVel
-    integer :: ilambda                                ! wavelength index
-    
-    
-!    integer, parameter :: maxLambda = 10000          ! max size of tau arrays
-    real :: dL(maxTau)                           ! distance increment array
-    
-    real(double) :: projVel(maxTau)
-    real :: kabs(maxtau), ksca(maxtau)                ! opacitie
+    integer :: ilambda                                ! wavelength index    
     real :: kappa_total
-!    real :: temperature(maxtau)
-    real    :: newL(maxtau)
-    logical :: newInFlow(maxtau)
-!    real :: Ne(maxtau)
-    real :: N_HI(maxtau)
-!    real :: x                                         ! multipliers
-    
     real(double) :: chil                                       ! line opacity
-    
-!    real :: lambda2, thisVel2
-    
     integer :: i, j                   ! counters
     
     
     real(double) :: deltaNu, DopplerWidth
     real :: meanMoleMass = mHydrogen
     real(double) :: a
-!    real :: Hay(0:0), dv(0:0)
     real(double) :: Hay, dv, Vn1, Vn2, Vrel
     real(double) :: T_mid, Ne_mid, N_HI_mid, chiline_mid, projVel_mid
     integer :: newNtau
     real :: T, lam, tmp
     real :: sqrt_pi
-    real(double) :: dtau, taul
+    real(double) :: dtau, taul, tau_tot
+    real :: dtau_max
+    !
+    ! WORK ARRAYS
+    logical, save :: first_time = .true.
+    real, allocatable, save :: rho(:)         ! density (size=maxTau)
+    real, allocatable, save :: temperature(:) ! temperature (size=maxTau)
+    real(double), allocatable, save :: Ne(:)  ! electron density (size=maxTau)
+    logical, allocatable, save :: inFlow(:)   ! inFlow flags (size=maxTau)   
+    real(double), allocatable, save :: levelPop(:,:)  ! (size=maxTau x grid%maxLevels)
+    type(vector), allocatable, save :: velocity(:) ! size=maxTau       ! 
+    real, allocatable, save :: chiLine(:)          ! line optical depth (size=maxTau)
+    real, allocatable, save  :: tauAbsLine(:)      ! (size=maxTau)
+    real, allocatable, save  :: velocityDeriv(:)   ! directional derivative (size=maxTau)
+    real, allocatable, save :: dL(:)     ! distance increment array (size=maxTau)
+    real(double), allocatable, save :: projVel(:)   ! (size=maxTau)
+    real, allocatable, save :: kabs(:), ksca(:)     ! (size=maxTau)
+    real, allocatable, save :: newL(:)              ! (size=maxTau)
+    logical, allocatable, save :: newInFlow(:)      ! size=maxtau
+    real, allocatable, save :: N_HI(:)              ! size = maxTau
+
+
+    !
     ! initialize variables
     sqrt_pi = SQRT(pi)
     hitcore = .false.
     rVec = aVec
     escProb = 1.
     error = 0
+   
 
-    
-!    ! THIS ROUTINE IS STILL UNDERDEVELOPEMENT
-!    write(*,*) " "
-!    write(*,*) " "
-!    write(*,*) "ERROR:: Please set voigtprof=F. This option is not yet available! "
-!    stop
-!    write(*,*) " "
-!    write(*,*) " "
+    if (usePops) then
+       print *, "Error:: usePop=F option has not been implemented in integratePathVoigtProf."
+       stop
+    end if
+
+
+
+    ! Allocates memory for work arrays for the first time
+    ! This should be faster than using automatic arrays which allocates
+    ! and deallocates memory every single time.  These array are SAVED
+    ! so they should be available next time as well.
+    if (first_time) then
+       first_time = .false.
+       ALLOCATE(rho(maxTau))         
+       ALLOCATE(temperature(maxTau)) 
+       ALLOCATE(Ne(maxTau))  
+       ALLOCATE(inFlow(maxTau))
+       ALLOCATE(levelPop(maxTau,grid%maxLevels))  
+       ALLOCATE(velocity(maxTau)) 
+       ALLOCATE(chiLine(maxTau)) 
+       ALLOCATE(tauAbsLine(maxTau)) 
+       ALLOCATE(velocityDeriv(maxTau)) 
+       ALLOCATE(dL(maxTau))
+       ALLOCATE(projVel(maxTau))
+       ALLOCATE(kabs(maxTau), ksca(maxTau))
+       ALLOCATE(newL(maxTau))   
+       ALLOCATE(newInFlow(maxTau))
+       ALLOCATE(N_HI(maxTau))
+    end if
+
 
 
     ! locate this wavelength in the grid of wavelengths
@@ -1942,50 +1971,93 @@ end subroutine integratePathAMR
          velocityDeriv=velocityDeriv,chiLine=chiLine,    &
          levelPop=levelPop,rho=rho, &
          temperature=temperature, Ne=Ne, inFlow=inFlow)
-        ! Note: temperature and Ne won't be needed here, but they have to be passed 
+        ! Note: temperature and Ne won't be needed here, but they have to be passed
         ! as arguments because NAG compiler do not like it!  (RK)
 
-    L(1) = 1.0e-25
-    
-    
-    if (nTau <= 2) then
-       !print *, 'The code does not yet include routines for handling ',&
-       !         'the case where nTau <= 2 (in integratePathAMR)'
+    if (nTau <= 3) then
+       !       print *, 'The code does not yet include routines for handling ',&
+       !            'the case where nTau <= 2 (in integratePathAMR)'
        error = -10
        return
     end if
+      
+    L(1) = 1.0e-25
+    
+     ! Some elements of L array could be dupulicated, so we removed them since
+     ! they could potentially cause problems in interpolation routines used later.
+      newntau = 0
+      do i = 1, ntau-1       
+         if (L(i) /= L(i+1)) then
+            newNtau = newNtau + 1
+            L(newNtau) = L(i)
+            kabs(newNtau) = kabs(i)
+            ksca(newNtau) = ksca(i)
+            velocity(newNtau) = velocity(i)
+            chiline(newNtau) = chiline(i)
+            rho(newNtau) = rho(i)
+            Ne(newNtau) = Ne(i)
+            temperature(newNtau) = temperature(i)
+            inFlow(newNtau) = inFlow(i)
+         end if
+      end do
+      ! and .. the last point
+      if (L(ntau-1) /= L(ntau) .and. ntau >=2) then
+         newNtau = newNtau + 1
+         L(newNtau) = L(ntau)
+         kabs(newNtau) = kabs(ntau)
+         ksca(newNtau) = ksca(ntau)
+         velocity(newNtau) = velocity(ntau)
+         chiline(newNtau) = chiline(ntau)
+         rho(newNtau) = rho(ntau)
+         Ne(newNtau) = Ne(ntau)
+         temperature(newNtau) = temperature(ntau)
+         inFlow(newNtau) = inFlow(ntau)
+      end if
 
+      !
+      ntau= newNtau    
+
+      if (nTau <= 3) then
+         !       print *, 'The code does not yet include routines for handling ',&
+         !            'the case where nTau <= 2 (in integratePathAMR)'
+         error = -10
+         return
+      end if
+
+
+    !----------------------------------------------------------------------------
     Vn2 = velocity(1) .dot. uHat  ! projected velocity of the local gas at this location
     
     ! projected velocities 
     forall (i = 1:nTau)
-       projVel(i) = dble(velocity(i) .dot. uHat)  ! (+ve when moving toward.)
+       ! (+ve when moving toward in the direction of photon.)
+       projVel(i) = dble(velocity(i) .dot. uHat)  
     end forall
     
     dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
-    
-    ! now compute the optical depths from the opacities 
-    tauAbs(1) = 1.0e-25
-    tauSca(1) = 1.0e-25
-
-    do i = 2, nTau, 1
-       tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-       tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
-!       tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
-!       tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
-       if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
-          write(*,*) "negative opacity"
-          do
-          enddo
-       endif
-    enddo
-    
-    !
     ! Number density of HI N_H = N_HI + Np, but Np=Ne
     N_HI(1:ntau) = rho(1:ntau)/meanMoleMass - Ne(1:nTau)
 
     
-    iStart = 1
+!    ! now compute the optical depths from the opacities 
+!    tauAbs(1) = 1.0e-25
+!    tauSca(1) = 1.0e-25
+!
+!    do i = 2, nTau, 1
+!!       tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+!!       tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+!       tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+!       tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+!       if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
+!          write(*,*) "negative opacity"
+!          do
+!          enddo
+!       endif
+!    enddo
+    
+    !
+
+    
     if (usePops) then
        chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
        chiLine(1:nTau) = 1.e10 * chil * (levelPop(1:nTau,mLevel)&
@@ -1994,135 +2066,233 @@ end subroutine integratePathAMR
 
 
     
-     ! Additional points along a ray are inserted around the 
-     ! the constant velocity surface (e.g. the projected velocity along a ray is 
-     ! slowly changing...) for accuracy.
-     !
-     ! Additional points along a ray are inserted near the velocity changes fast.
-     call resampleRay(L, nTau, projVel, maxtau, &
-          newL, newNTau, InFlow, newInFlow)
-     if (newNTau > maxTau) then 
-        print *, "Error:: newNtau > newNx_max in integratePathVoigtProf. (1)"
-        print *, "        newNtau     = ", newNTau
-        print *, "        maxTau   = ", maxTau
-        stop
-     end if
+!      ! Additional points along a ray are inserted around the 
+!      ! the constant velocity surface (e.g. the projected velocity along a ray is 
+!      ! slowly changing...) for accuracy.
+!      !
+!      ! Additional points along a ray are inserted near the velocity changes fast.
+!      call resampleRay(L, nTau, projVel, maxtau, &
+!           newL, newNTau, InFlow, newInFlow)
+!      if (newNTau > maxTau) then 
+!         print *, "Error:: newNtau > newNx_max in integratePathVoigtProf. (1)"
+!         print *, "        newNtau     = ", newNTau
+!         print *, "        maxTau   = ", maxTau
+!         stop
+!      end if
 
-     inFlow(1:nTau) = newInFlow(1:nTau)  ! updating the inFlow flags.
+!      inFlow(1:nTau) = newInFlow(1:nTau)  ! updating the inFlow flags.
 
-     ! Now interpolate on to newly sampled ray    
-     call linearResample_dble(L, projVel, nTAu, newL, newNtau)
-     call linearResample(L, tauSca, nTAu, newL, newNtau)
-     call linearResample(L, tauAbs, nTAu, newL, newNtau)
-     call linearResample(L, kSca, nTAu, newL, newNtau)
-     call linearResample(L, kAbs, nTAu, newL, newNtau)
-     call linearResample(L, chiline, nTAu, newL, newNtau)
-     call linearResample(L, N_HI, nTAu, newL, newNtau)
-     call linearResample(L, temperature, nTAu, newL, newNtau)
-     call linearResample_dble(L, Ne, nTAu, newL, newNtau)
-
-
-     call linearResample(L, kSca, nTAu, newL, newNtau)
-     call linearResample(L, kAbs, nTAu, newL, newNtau)
+!      ! Now interpolate on to newly sampled ray    
+!      call linearResample_dble(L, projVel, nTAu, newL, newNtau)
+!      call linearResample(L, tauSca, nTAu, newL, newNtau)
+!      call linearResample(L, tauAbs, nTAu, newL, newNtau)
+!      call linearResample(L, kSca, nTAu, newL, newNtau)
+!      call linearResample(L, kAbs, nTAu, newL, newNtau)
+!      call linearResample(L, chiline, nTAu, newL, newNtau)
+!      call linearResample(L, N_HI, nTAu, newL, newNtau)
+!      call linearResample(L, temperature, nTAu, newL, newNtau)
+!      call linearResample_dble(L, Ne, nTAu, newL, newNtau)
 
 
-!     call linearResample_dble(L, projVel, nTAu, newL, newNtau)
-!     call log_log_resample(L, tauSca, nTAu, newL, newNtau)
-!     call log_log_resample(L, tauAbs, nTAu, newL, newNtau)
-!     call log_log_resample(L, chiline, nTAu, newL, newNtau)
-!     call log_log_resample(L, N_HI, nTAu, newL, newNtau)
-!     call log_log_resample(L, temperature, nTAu, newL, newNtau)
-!     call log_log_resample_dble(L, Ne, nTAu, newL, newNtau)
-!
-!     call linearResample_dble(L, projVel, nTAu, newL, newNtau)
-!     call log_linear_resample(L, tauSca, nTAu, newL, newNtau)
-!     call log_linear_resample(L, tauAbs, nTAu, newL, newNtau)
-!     call log_linear_resample(L, chiline, nTAu, newL, newNtau)
-!     call log_linear_resample(L, N_HI, nTAu, newL, newNtau)
-!     call log_linear_resample(L, temperature, nTAu, newL, newNtau)
-!     call log_linear_resample_dble(L, Ne, nTAu, newL, newNtau)
-     nTau = newNtau
-     L(1:nTau) = newL(1:nTau)
-     L(1) = 1.0e-25
-     dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
+!      call linearResample(L, kSca, nTAu, newL, newNtau)
+!      call linearResample(L, kAbs, nTAu, newL, newNtau)
 
-     ! Additional points along a ray are inserted near resonance zones.
-     ! Here velocities are in observer's frame ...
-     thisVel = (lambda0 - wavelength)/lambda0  
-     thisVel = thisVel  + (uHat .dot. vVec)    ! (+ve when toward observer!)
+!      nTau = newNtau
+!      L(1:nTau) = newL(1:nTau)
+!      L(1) = 1.0e-25
+!      dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
 
-     call resampleRay2(L, nTau, projVel, thisVel, maxTau, &
-          newL, newNTau, InFlow, newInFlow)
-     inFlow(1:nTau) = newInFlow(1:nTau)  ! updating the inFlow flags.
-     if (newNTau > maxTau) then 
-        print *, "Error:: newNtau > newNx_max in integratePathVoigtProf. (2)"
-        print *, "        newNtau     = ", newNTau
-        print *, "        maxTau   = ", maxTau
-        stop
-     end if
+!      ! Additional points along a ray are inserted near resonance zones.
+!      ! Here velocities are in observer's frame ...
+!      thisVel = (lambda0 - wavelength)/lambda0  
+!      thisVel = thisVel  + (uHat .dot. vVec)    ! (+ve when toward observer!)
 
-     ! Now interpolate on to newly sampled ray    
-     call linearResample_dble(L, projVel, nTAu, newL, newNtau)
-     call linearResample(L, tauSca, nTAu, newL, newNtau)
-     call linearResample(L, tauAbs, nTAu, newL, newNtau)
-     call linearResample(L, kSca, nTAu, newL, newNtau)
-     call linearResample(L, kAbs, nTAu, newL, newNtau)
-     call linearResample(L, chiline, nTAu, newL, newNtau)
-     call linearResample(L, temperature, nTAu, newL, newNtau)
-     call linearResample(L, N_HI, nTAu, newL, newNtau)
-     call linearResample_dble(L, Ne, nTAu, newL, newNtau)
+!      call resampleRay2(L, nTau, projVel, thisVel, maxTau, &
+!           newL, newNTau, InFlow, newInFlow)
+!      inFlow(1:nTau) = newInFlow(1:nTau)  ! updating the inFlow flags.
+!      if (newNTau > maxTau) then 
+!         print *, "Error:: newNtau > newNx_max in integratePathVoigtProf. (2)"
+!         print *, "        newNtau     = ", newNTau
+!         print *, "        maxTau   = ", maxTau
+!         stop
+!      end if
 
-!     call linearResample_dble(L, projVel, nTAu, newL, newNtau)
-!     call log_log_resample(L, tauSca, nTAu, newL, newNtau)
-!     call log_log_resample(L, tauAbs, nTAu, newL, newNtau)
-!     call log_log_resample(L, kSca, nTAu, newL, newNtau)
-!     call log_log_resample(L, kAbs, nTAu, newL, newNtau)
-!     call log_log_resample(L, chiline, nTAu, newL, newNtau)
-!     call log_log_resample(L, temperature, nTAu, newL, newNtau)
-!     call log_log_resample(L, N_HI, nTAu, newL, newNtau)
-!     call log_log_resample_dble(L, Ne, nTAu, newL, newNtau)
-!
-!     call linearResample_dble(L, projVel, nTAu, newL, newNtau)
-!     call log_linear_resample(L, tauSca, nTAu, newL, newNtau)
-!     call log_linear_resample(L, tauAbs, nTAu, newL, newNtau)
-!     call log_linear_resample(L, kSca, nTAu, newL, newNtau)
-!     call log_linear_resample(L, kAbs, nTAu, newL, newNtau)
-!     call log_linear_resample(L, chiline, nTAu, newL, newNtau)
-!     call log_linear_resample(L, N_HI, nTAu, newL, newNtau)
-!     call log_linear_resample(L, temperature, nTAu, newL, newNtau)
-!     call log_linear_resample_dble(L, Ne, nTAu, newL, newNtau)
+!      ! Now interpolate on to newly sampled ray    
+!      call linearResample_dble(L, projVel, nTAu, newL, newNtau)
+!      call linearResample(L, tauSca, nTAu, newL, newNtau)
+!      call linearResample(L, tauAbs, nTAu, newL, newNtau)
+!      call linearResample(L, kSca, nTAu, newL, newNtau)
+!      call linearResample(L, kAbs, nTAu, newL, newNtau)
+!      call linearResample(L, chiline, nTAu, newL, newNtau)
+!      call linearResample(L, temperature, nTAu, newL, newNtau)
+!      call linearResample(L, N_HI, nTAu, newL, newNtau)
+!      call linearResample_dble(L, Ne, nTAu, newL, newNtau)
 
-     nTau = newNtau
-     L(1:nTau) = newL(1:nTau)
-     L(1) = 1.0e-25
-     dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
+!      nTau = newNtau
+!      L(1:nTau) = newL(1:nTau)
+!      L(1) = 1.0e-25
+!      dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
 
-    
-    
+
+!---------------------------------------------------------------
+!---------------------------------------------------------------
+!     !
+!     ! Finding the initial optical depth scales...
+!     ! and resample points along the ray.
+!     if (contPhoton) then
+!        tauAbs(1) = 1.0e-25
+!        tauSca(1) = 1.0e-25
+!        tauExt(1) = 1.0e-25
+!        do i = 2, nTau
+!           if (inflow(i)) then
+!              if (inflow(i-1)) then
+!                 tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+!                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+!              else
+!                 tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+!                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+!              end if
+!           else
+!              tauSca(i) = tauSca(i-1)
+!              tauAbs(i) = tauAbs(i-1)
+!           end if
+!           tauExt(i) = tauSca(i) + tauAbs(i)
+!        end do
+!     else ! line photon
+!        nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
+!        nu = cSpeed / (wavelength*angstromtocm)  ! freq of this photon
+!        nu_p = nu  ! freq in the rest frame of local gas
+!        tauAbs(1) = 1.0e-25
+!        tauSca(1) = 1.0e-25
+!        tauExt(1) = 1.0e-25
+!        tauAbsLine(1) = 1.0e-25
+!        do i = 2, nTau
+!           if (inflow(i)) then
+!              ! Evaluating the values in the mid point
+!              !             T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+!              !             Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+!              !             N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+!              !             chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+!              !             projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+         
+!              T_mid = temperature(i-1)
+!              Ne_mid = Ne(i-1)
+!              N_HI_mid = N_HI(i-1)
+!              chiline_mid = chiline(i-1)
+!              projVel_mid = projVel(i-1)
+         
+!              T_mid = MAX(T_mid, 10.0d0) ! [K]  To avoid a tiny Doppler width
+         
+         
+!              ! relative velocity wrt the location of photon (CMF)
+!              Vrel = projVel_mid -  Vn1
+         
+!              ! The line centre of absorption profile shifted by Doppler.
+!              nu0_p = nu0/(1.0d0-Vrel)  ! [Hz] 
+         
+!              DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T_mid/meanMoleMass) !eq 7  [Hz]
+         
+!              a = bigGamma(N_HI_mid, T_mid, Ne_mid, nu0_p) / (fourPi * DopplerWidth) ! [-]
+!              deltaNu = nu_p - nu0_p     !  [Hz]
+!              dv = deltaNu/DopplerWidth  ! [-]
+!              Hay = voigtn(a,dv)
+!              chil = chiLine_mid / (sqrt_pi*DopplerWidth) * Hay ! equation 5
+!              ! transform this back to observer's frame value
+!              chil = chil/(1.0+projVel_mid)
+!              dtau = chil*dL(i-1)
+         
+!              tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
+!              if (inflow(i-1)) then
+!                 tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+!                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+!              else
+!                 tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+!                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+!              end if
+!           else ! not inflow
+!              tauAbsLine(i) = tauAbsLine(i-1) 
+!              tauSca(i) = tauSca(i-1)
+!              tauAbs(i) = tauAbs(i-1)
+!           end if
+!           tauExt(i) = tauSca(i) + tauAbs(i) + tauAbsLine(i)
+!        enddo
+!        taul =  tauAbsLine(nTau)
+!        tau_tot =  tauExt(nTau)
+!     endif
+
+!     ! Now resample rays using tauExt values
+!     dtau_max = 0.1
+!     call resampleRay_tau(L, nTau, tauExt, dtau_max, maxTau, newL, newNTau, &
+!          inflow, newInFlow)
+
+!     ! updating the inFlow flags.
+!     inFlow(1:nTau) = newInFlow(1:nTau)  
+
+!     ! Now interpolate on to newly sampled ray    
+! !    call linearResample_dble(L, projVel, nTAu, maxTau, newL, newNtau)
+! !    call linearResample(L, kSca, nTAu, maxTau, newL, newNtau)
+! !    call linearResample(L, kAbs, nTAu, maxTau, newL, newNtau)
+! !    call linearResample(L, chiline, nTAu, maxTau, newL, newNtau)
+! !    call linearResample(L, temperature, nTAu, maxTau, newL, newNtau)
+! !    call linearResample(L, N_HI, nTAu, maxTau, newL, newNtau)
+! !    call linearResample_dble(L, Ne, nTAu, maxTau, newL, newNtau)
+
+!     call quadraticResample_dble(L, projVel, nTAu, maxTau, newL, newNtau)
+!     call quadraticResample(L, kSca, nTAu, maxTau, newL, newNtau)
+!     call quadraticResample(L, kAbs, nTAu, maxTau, newL, newNtau)
+!     call quadraticResample(L, chiline, nTAu, maxTau, newL, newNtau)
+!     call quadraticResample(L, temperature, nTAu, maxTau, newL, newNtau)
+!     call quadraticResample(L, N_HI, nTAu, maxTau, newL, newNtau)
+!     call quadraticResample_dble(L, Ne, nTAu, maxTau, newL, newNtau)
+
+
+!     ! updating the ray
+!     nTau = newNtau
+!     L(1:nTau) = newL(1:nTau)
+!     L(1) = 1.0e-25
+!     dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
+
+!     Ne(1:ntau) = ABS(Ne(1:ntau))  ! just for safty
+
+!---------------------------------------------------------------
+!---------------------------------------------------------------
+
+  
+
+    !
+    !
+    ! Now we compute optical depth again with improved samping
+    !
+    !
+
     ! line photons
     nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
     nu = cSpeed / (wavelength*angstromtocm)  ! freq of this photon
     nu_p = nu  ! freq in the rest frame of local gas
     if (.not.contPhoton) then
+       tauAbs(1) = 1.0e-25
+       tauSca(1) = 1.0e-25
+       tauExt(1) = 1.0e-25
        tauAbsLine(1) = 1.0e-25
        linePhotonAlbedo(i) = 1.0e-25
        do i = 2, nTau
-          if (inFlow(i)) then
-            ! Evaluating the values in the mid point
-             T_mid = 0.5d0*(temperature(i-1)+temperature(i))
-             Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
-             N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
-             chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-             projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
-
-!             T_mid = temperature(i-1)
-!             Ne_mid = Ne(i-1)
-!             N_HI_mid = N_HI(i-1)
-!             chiline_mid = chiline(i-1)
-!             projVel_mid = projVel(i-1)
-
-             T_mid = MAX(T_mid, 1000.0d0) ! [K]  To avoid a tiny Doppler width
-
+          if (inflow(i)) then
+             ! Evaluating the values in the mid point
+             if (inflow(i-1)) then
+                T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+                Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+                N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+                chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+                projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+             else
+                T_mid = temperature(i-1)
+                Ne_mid = Ne(i-1)
+                N_HI_mid = N_HI(i-1)
+                chiline_mid = chiline(i-1)
+                projVel_mid = projVel(i-1)
+             end if
+             T_mid = MAX(T_mid, 10.0d0) ! [K]  To avoid a tiny Doppler width
+             
              
              ! relative velocity wrt the location of photon (CMF)
              Vrel = projVel_mid -  Vn1
@@ -2131,7 +2301,7 @@ end subroutine integratePathAMR
              nu0_p = nu0/(1.0d0-Vrel)  ! [Hz] 
              
              DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T_mid/meanMoleMass) !eq 7  [Hz]
-
+             
              a = bigGamma(N_HI_mid, T_mid, Ne_mid, nu0_p) / (fourPi * DopplerWidth) ! [-]
              deltaNu = nu_p - nu0_p     !  [Hz]
              dv = deltaNu/DopplerWidth  ! [-]
@@ -2147,23 +2317,48 @@ end subroutine integratePathAMR
              else
                 linePhotonAlbedo(i) = 0.0
              end if
-          else
-             dtau = 1.0d-30
+
+             tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
+             if (inflow(i-1)) then
+                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+             else
+                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+             end if
+          else ! not in flow
+             linePhotonAlbedo(i) = 0.0
+             tauAbsLine(i) = tauAbsLine(i-1)
+             tauSca(i) = tauSca(i-1)
+             tauAbs(i) = tauAbs(i-1)
+          end if                          
+             tauExt(i) = tauSca(i) + tauAbs(i) + tauAbsLine(i)
+          enddo
+       escProb = 1.0
+       taul =  tauAbsLine(nTau)
+       tau_tot =  tauExt(nTau)
+    else  ! continuum photon
+       escProb = 1.0
+       tauAbs(1) = 1.0e-25
+       tauSca(1) = 1.0e-25
+       tauExt(1) = 1.0e-25
+       do i = 2, nTau
+          if (inflow(i)) then
+             if (inflow(i-1))then
+                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+             else
+                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+             end if
+          else 
+             tauSca(i) = tauSca(i-1)
+             tauAbs(i) = tauAbs(i-1)
           end if
-          tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
-       enddo
-       escProb = 1.0
-       tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau) + tauAbsLine(1:nTau)
-    else
-       escProb = 1.0
-       tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau)    
+          tauExt(i) = tauSca(i) + tauAbs(i)
+       end do
     endif 
 
-    
-
-!   do  i = 1,nTau
-!      write(*,*) i, tauSca(i),tauAbs(i),tauAbsLine(i)
-!   enddo
     
 
     ! continuum photons
@@ -2177,30 +2372,31 @@ end subroutine integratePathAMR
           nu = cSpeed / (lam*angstromtocm)  ! freq of this photon
           nu_p = nu             ! freq in the rest frame of local gas
           do i = 2, nTau
-             if (inFlow(i)) then
+             if (inflow(i)) then
                 ! Evaluating the values in the mid point
-                T_mid = 0.5d0*(temperature(i-1)+temperature(i))
-                Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
-                N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
-                chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-                projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+                if (inflow(i-1)) then
+                   T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+                   Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+                   N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+                   chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+                   projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+                else                
+                   T_mid = temperature(i-1)
+                   Ne_mid = Ne(i-1)
+                   N_HI_mid = N_HI(i-1)
+                   chiline_mid = chiline(i-1)
+                   projVel_mid = projVel(i-1)
+                end if
 
-!                T_mid = temperature(i-1)
-!                Ne_mid = Ne(i-1)
-!                N_HI_mid = N_HI(i-1)
-!                chiline_mid = chiline(i-1)
-!                projVel_mid = projVel(i-1)
-
-
-                T_mid = MAX(T_mid, 1000.0d0) ! [K]  To avoid a tiny Doppler width                
+                T_mid = MAX(T_mid, 10.0d0) ! [K]  To avoid a tiny Doppler width                
                 ! relative velocity wrt the location of photon (CMF)
                 Vrel = projVel_mid -  Vn1
-                
+             
                 ! The line centre of absorption profile shifted by Doppler.
                 nu0_p = nu0/(1.0d0-Vrel)  
                 
                 DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T_mid/meanMoleMass) !eq 7  [Hz]
-
+                
                 a = bigGamma(N_HI_mid, T_mid, Ne_mid, nu0_p) / (fourPi * DopplerWidth) ! [-]
                 deltaNu = nu_p - nu0_p     !  [Hz]
                 dv = deltaNu/DopplerWidth  ! [-]
@@ -2209,21 +2405,18 @@ end subroutine integratePathAMR
                 ! transform this back to observer's frame value
                 chil = chil/(1.0+projVel_mid)
                 dtau = chil*dL(i-1)
-             else
-                dtau = 1.0d-30
+             else  ! not inflow
+                dtau = 0.0d0
              end if
              tauCont(i,j) = tauCont(i-1,j) + abs(dtau)
           enddo
        enddo   ! over wavelength array
-    else
+    else  ! for optically thin line option
        tauCont(1:nTau,1:nLambda) = 0.
     end if
 
-
-
   end subroutine integratePathVoigtProf
   
-
 
 
   !

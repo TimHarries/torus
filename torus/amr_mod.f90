@@ -3444,6 +3444,7 @@ CONTAINS
     real(double) :: rho
     logical, save :: first_time=.true.
     logical :: close_to_star
+    real(double)      :: thisScale
 
    select case(grid%geometry)
 
@@ -3487,15 +3488,26 @@ CONTAINS
 
       ave_density = ave_density / REAL(nsample,KIND=double)
 
+
       if (thisOctal%threed) then
          total_mass = maxDensity * (cellSize*1.e10_db)**3.0_db
       else
          total_mass = maxDensity * pi * ((searchPoint%x+cellsize/2.)**2-(searchPoint%x-cellsize/2.)**2)*cellsize*1.d30
       endif
 
-      IF (total_mass > amrLimitScalar) then
+      thisScale = grid%rstar1/modulus(cellCentre)
+      total_mass = total_mass * thisScale**4
+
+!      IF (total_mass > amrLimitScalar) then
+!         split = .TRUE.
+!      END IF
+
+      ! weigting toward the smaller radial positions
+      thisScale = maxDensity * cellSize*1.e10_db
+      if (thisScale > amrLimitScalar) then
          split = .TRUE.
-      END IF
+      end if
+
 
       ! If 2D and uses large root cell special care must be taken
       if (grid%geometry == "ttauri" .and. .not. thisOctal%threeD) then         
@@ -6370,13 +6382,16 @@ CONTAINS
     enddo
   end subroutine setBiasAMR
 
-  recursive subroutine set_bias_ttauri(thisOctal, grid)
+  recursive subroutine set_bias_ttauri(thisOctal, grid, lambda0, dir_obs)
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
+  real, intent(in)          :: lambda0                ! rest wavelength of line
+  type(VECTOR), intent(in)  :: dir_obs           ! direction
   integer :: subcell, i
-  real(double) :: d, dV, EM, EM_line, r1, r2, S, S_line
-  type(octalvector)     :: rvec
+  real(double) :: d, dV, r1, r2
+  type(octalvector)  :: rvec
+  real(double):: tausob, escprob, nu
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -6384,37 +6399,44 @@ CONTAINS
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call set_bias_ttauri(child, grid)
+                call set_bias_ttauri(child, grid, lambda0, dir_obs)
                 exit
              end if
           end do
        else
           d = thisOctal%subcellsize 
-
+          rVec = subcellCentre(thisOctal,subcell)
           if (thisOctal%threed) then
              dV = d*d*d
           else
-             rVec = subcellCentre(thisOctal,subcell)
              dv = 2.0_db*pi*d*d*rVec%x
           endif
+          
+          nu  = cSpeed / (lambda0*angstromtocm)
 
+          tauSob = thisOctal%chiline(subcell)  / nu
+          tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, dir_obs, &
+               startOctal=thisOctal)
 
-!          S = thisOctal%etaCont(subcell) / &
-!               (thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1) )
-!          S_line = thisOctal%etaLine(subcell) / thisOctal%chiLine(subcell)
-!          EM      = S*d
-!          EM_line = S_line*d
-
-          if (thisOctal%inflow(subcell)) then
-!             EM      = thisOctal%etaCont(subcell)*dV
-             EM      = 1.0d0  ! no bias for contiuum
-             EM_line = thisOctal%chiLine(subcell)*dV
+          if (tauSob < 0.01) then
+             escProb = 1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
+          else if (tauSob < 15.) then
+             escProb = (1.0d0-exp(-tauSob))/tauSob
           else
-             EM      = 1.0e-20
-             EM_line = 1.0e-20
+             escProb = 1.d0/tauSob
+          end if          
+          escProb = max(escProb, 1.d-7)
+
+          !
+          if (thisOctal%inflow(subcell)) then
+             thisOctal%biasCont3D(subcell) = 1.0
+             thisOctal%biasLine3D(subcell) = SQRT(escProb)  ! good one to use 
+!             thisOctal%biasLine3D(subcell) = escProb**0.4
+!             thisOctal%biasLine3D(subcell) = escProb  ! bias too strong.
+          else
+             thisOctal%biasCont3D(subcell) = 1.0e-20
+             thisOctal%biasLine3D(subcell) = 1.0e-20
           end if
-          thisOctal%biasCont3D(subcell) = EM 
-          thisOctal%biasLine3D(subcell) = EM_line
 
        endif
     enddo

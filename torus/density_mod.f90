@@ -236,7 +236,7 @@ contains
     TYPE(octalVector) :: starPosn
     TYPE(octalVector) :: pointVec
 
-    real(oct) :: r, theta, Rm,  Rin_fuzzy, Rout_fuzzy, Rc, dR, h
+    real(oct) :: r, theta, Rm,  Rin_fuzzy, Rout_fuzzy, Rc, dR, h, w
     real(oct), parameter  :: scale = 0.3_oc
     real :: TTauriMdotLocal
 
@@ -261,19 +261,19 @@ contains
 
       ! If the point is close to the edge, we make it fuzzy
       if ( Rm < Rin_fuzzy ) then
-         h = (TTauriRouter-TTauriRinner)*scale
+         w = TTauriRouter-TTauriRinner
+         h = w*scale
          Rc = (TTauriRouter+TTauriRinner)*0.5_oc
          Rin_fuzzy = TTauriRinner + h
-         Rout_fuzzy = TTauriRouter - h
          dR = Rin_fuzzy-Rc         
-         rho = rho*EXP(-dR/Rc)
+         rho = rho*EXP(-dR/w)
       elseif ( Rm > Rout_fuzzy ) then
-         h = (TTauriRouter-TTauriRinner)*scale
+         w = TTauriRouter-TTauriRinner
+         h = w*scale
          Rc = (TTauriRouter+TTauriRinner)*0.5_oc
-         Rin_fuzzy = TTauriRinner + h
          Rout_fuzzy = TTauriRouter - h
          dR = Rc-Rout_fuzzy
-         rho = rho*EXP(-dR/Rc)
+         rho = rho*EXP(-dR/w)
       end if
 
       rho = max(rho,1.e-25)

@@ -3,6 +3,7 @@ module atom_mod
   use kind_mod
   implicit none
   public
+
 contains
 
   subroutine getLTEopacities(rne, rtemp, retal, rchil, reta, rchi, resec, m, n)
