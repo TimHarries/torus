@@ -73,7 +73,7 @@ program torus
   type(SOURCETYPE) a_star
   real(double) :: lCore
   real ::  weightDust=1.0, weightPhoto=1.0
-  real :: inclination
+  real :: inclination, cos_inc, cos_inc_first, cos_inc_last, d_cos_inc
   integer :: iInclination  
 
   real(double) :: energyPerPhoton
@@ -2548,9 +2548,14 @@ program torus
        ! NB This loop is not indented in the code!
      
      if (nInclination > 1) then  
-
-       inclination = firstInclination + REAL(iInclination-1) * &
-                       (lastInclination-firstInclination)/REAL(nInclination-1)
+        ! Now the inclinations are equally spaced in  cos(incination).
+        cos_inc_first = COS(firstInclination)
+        cos_inc_last = COS(lastInclination)
+        d_cos_inc = (cos_inc_first - cos_inc_last)/ REAL(nInclination-1)
+        cos_inc = cos_inc_first - d_cos_inc * REAL(iInclination-1)
+        inclination = ACOS(cos_inc)
+!       inclination = firstInclination + REAL(iInclination-1) * &
+!                       (lastInclination-firstInclination)/REAL(nInclination-1)
        write(*,*) " "
        write(*,*) "Inclination = ",NINT(inclination*radToDeg),' degrees'
        write(*,*) " "

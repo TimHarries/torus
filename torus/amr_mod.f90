@@ -3385,7 +3385,7 @@ CONTAINS
     real(double),save  :: R_tmp(204)  ! [10^10cm]
     real(double) :: rho
     logical, save :: first_time=.true.
-    logical, save :: small_enough=.false.
+    logical :: close_to_star
 
    select case(grid%geometry)
 
@@ -3435,24 +3435,23 @@ CONTAINS
 
       ! If 2D and uses large root cell special care must be taken
       if (grid%geometry == "ttauri" .and. .not. thisOctal%threeD) then         
-         if (cellSize > 40.d0  .and.  &
-              (subcell == 1 .or. subcell == 4) )  split=.true.
+!         if (cellSize > 40.d0  .and.  &
+!              (subcell == 1 .or. subcell == 3) )  split=.true.
+         close_to_star = .false.
+         if (modulus(cellcentre) < 300.d0) close_to_star =.true.
+         if (close_to_star) then
+            if (cellSize > 20.d0) split=.true.
+         else
+            if (ASSOCIATED(thisOctal%parent) )then
+               if ( (cellcentre%x < thisOctal%parent%centre%x) &
+                    .and. cellSize > 400.d0)then
+                  split=.true.
+               end if
+            else ! this must be a root cell, so splits
+               split=.true.
+            end if
+         end if
       end if
-
-!         if (modulus(cellcentre) < 500.d0) small_enough =.true.
-!         if (small_enough) then
-!            if (cellSize > 30.d0) split=.true.
-!         else
-!            if (ASSOCIATED(thisOctal%parent) )then
-!               if ( (cellcentre%x < thisOctal%parent%centre%x) &
-!                    .and. cellSize > 500.d0)then
-!                  split=.true.
-!               end if
-!            else ! this must be a root cell, so splits
-!               split=.true.
-!            end if
-!         end if
-!      end if
 
    case ("testamr","proto")
       cellSize = thisOctal%subcellSize 

@@ -278,9 +278,10 @@ contains
 
           if (density_out>rho_min) then
 
-             p = abs(zdist/height)
+!             p = abs(zdist/height)
              
-             sizescale = (height*2.0d0) * (w/this%Rh)**0.2
+             p = 0.2d0
+             sizescale = (height) * (w/this%Rh)**p
 !             sizescale = height
              
 
