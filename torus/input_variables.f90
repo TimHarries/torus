@@ -71,6 +71,7 @@ module input_variables
   integer :: nLambda
   real :: lamStart, lamEnd
   logical :: lamLinear
+  logical :: oneKappa
  
  
   ! variables for a second source of radiation

@@ -1017,7 +1017,6 @@ contains
 
 
 
-    dV = real(thisOctal%subcellSize, kind=doubleKind) ** 3.0_db
     
     do subcell = 1, 8, 1
 
@@ -1033,6 +1032,9 @@ contains
           end do
             
        else
+
+          dV = real(thisOctal%subcellSize, kind=doubleKind) ** 3.0_db
+
           totalLineProb = totalLineProb + dV * &
               real(thisOctal%etaLine(subcell),kind=doubleKind) * &
               real(thisOctal%biasLine3D(subcell),kind=doubleKind)

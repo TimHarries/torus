@@ -43,13 +43,14 @@ contains
     integer :: nx, ny, nz                 ! x,y,z sizes
     integer :: nLambda                    ! no of wavelength points
     integer :: ierr                       ! allocation error status
-    integer :: i,ilambda                  ! counters
+    integer :: ilambda                   ! counters
     real    :: lamStart, lamEnd           ! start and end wavelengths
     logical :: ok                         ! function done ok?
     logical :: flatspec                   ! is the spectrum flat
 
     iLambda = nLambda
 
+    initCartesianGrid%oneKappa = .false.
     initCartesianGrid%lineEmission = .false. ! the default
 
     ! if the spectrum is flat one only needs on wavelength point
@@ -223,6 +224,7 @@ contains
     initCartesianGrid%kappaAbs = 1.e-30
     initCartesianGrid%kappaSca = 1.e-30
     initCartesianGrid%cartesian = .true.
+    initCartesianGrid%polar = .false.
     initCartesianGrid%adaptive = .false.
 
     initCartesianGrid%resonanceLine = .false.
@@ -252,7 +254,7 @@ contains
     integer :: nr, nmu, nphi
     integer :: nLambda
     integer :: ierr
-    integer :: i, ilambda
+    integer :: ilambda
     real    :: lamStart, lamEnd
     logical :: ok, flatspec
 
@@ -261,6 +263,7 @@ contains
     iLambda = nLambda
 
     initPolarGrid%flatspec = flatspec
+    initPolarGrid%oneKappa = .false.
 
     if (flatspec) iLambda = 1
 
@@ -419,6 +422,7 @@ contains
     initPolarGrid%kappaSca = 0.
     initPolarGrid%kappaAbs = 0.
     initPolarGrid%cartesian = .false.
+    initPolarGrid%polar = .true.
     initPolarGrid%adaptive = .false.
 
     initPolarGrid%resonanceLine = .false.
@@ -463,6 +467,13 @@ contains
     ok = .true.
 
     iLambda = nLambda
+    grid%oneKappa = oneKappa
+
+
+    if (oneKappa) then
+       allocate(grid%oneKappaAbs(1:nLambda))
+       allocate(grid%oneKappaSca(1:nLambda))
+    endif
 
     grid%lineEmission = lineEmission
     grid%maxLevels = 6 ! (this is copying the value in initgridstateq)
@@ -482,6 +493,12 @@ contains
                            sAccretion,newContFile)
     case ("jets") 
        call initJetsAMR(grid)
+
+    case ("testamr")
+       call initTestAMR(grid)
+
+    case("wr104")
+       call initWR104amr(grid)
 
     case DEFAULT
        print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'
@@ -527,8 +544,10 @@ contains
 
     grid%nLambda = nLambda
 
+
     grid%adaptive = .true.
     grid%cartesian = .false.
+    grid%polar = .false.
 
     grid%resonanceLine = .false.
     grid%smoothingFactor = smoothFactor
@@ -658,7 +677,7 @@ contains
   ! sets up an ellipsoidal of constant density - suitable for dusty
   ! envelopes
 
-  subroutine fillGridEllipse(grid, rho, rMin, rMaj, teff)
+  subroutine fillGridEllipse(grid, rho, rMin, rMaj, rInner, teff)
 
 
     implicit none
@@ -679,7 +698,6 @@ contains
     grid%lCore = fourPi * stefanBoltz * grid%rCore**2 * 1.e20 * teff**4
     grid%inUse = .false.
 
-    rInner = rSol * 11.7 / 1.e10
 
     grid%temperature = 100.
 
@@ -742,7 +760,7 @@ contains
        enddo
     enddo
 
-    open(22,file="temps.dat",status="unknown",form="unformatted")
+    open(22,file="temps.dat",status="old",form="unformatted",err=666)
     do i = 1, grid%nx
        do j = 1, grid%ny
           do k = 1, grid%nz
@@ -752,7 +770,7 @@ contains
     enddo
     close(22)
 
-
+666 continue
 
   end subroutine fillGridEllipse
 
@@ -1531,16 +1549,21 @@ contains
              plane(i,j) = columnDensity(grid,startPoint,yHatOctal,1.0)
           enddo
        enddo
-       plane = plane * 1.0e20
-       where (plane > 1.0) 
-          plane = log(plane)
-       elsewhere
-          plane = 0.0
-       end where
-       
-       !                    vvv this in an emperical factor to make the plot better
-       bg = MINVAL(plane) + 0.3 * (MAXVAL(plane) - MINVAL(plane))
-       fg = MAXVAL(plane) 
+       bg = 1.e30
+       fg = -1.e30 
+       do i = 1, resolution
+          do j = 1, resolution
+             if (plane(i,j) > 0.) then
+                plane(i,j) = log10(plane(i,j))
+                if (plane(i,j) > fg) fg = plane(i,j)
+                if (plane(i,j) < bg) bg = plane(i,j)
+             else
+                plane(i,j) = -30.
+             endif
+          enddo
+       enddo
+       write(*,*) "foreground",fg,"background",bg
+
        call pgbegin(0,device,1,1)
        
        call pgvport(0.1,0.9,0.1,0.9)
@@ -2615,7 +2638,7 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
-               grid%nOctals, grid%smoothingFactor 
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa
                
     else
             
@@ -2631,11 +2654,13 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
-               grid%nOctals, grid%smoothingFactor 
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa 
                
     end if 
     
     call writeReal1D(grid%lamarray,fileFormatted)
+    call writeReal1D(grid%oneKappaAbs,fileFormatted)
+    call writeReal1D(grid%oneKappaSca,fileFormatted)
 
     if (error /=0) then
        print *, 'Panic: write error in writeAMRgrid'
@@ -2649,7 +2674,7 @@ contains
        else
           write(unit=20) .true.
        end if
-       call writeOctreePrivate(grid%octreeRoot,fileFormatted)
+       call writeOctreePrivate(grid%octreeRoot,fileFormatted, grid)
     end if
 
     if (error /=0) then
@@ -2662,12 +2687,12 @@ contains
     
   contains
   
-    recursive subroutine writeOctreePrivate(thisOctal,fileFormatted)
+    recursive subroutine writeOctreePrivate(thisOctal,fileFormatted, grid)
        ! writes out an octal from the grid octree
 
        type(octal), intent(in), target :: thisOctal
        logical, intent(in)             :: fileFormatted
-
+       type(gridtype) :: grid
        type(octal), pointer :: thisChild
        integer              :: iChild
        
@@ -2692,14 +2717,16 @@ contains
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize
        end if 
-       call writeReal2D(thisOctal%kappaAbs,fileFormatted)
-       call writeReal2D(thisOctal%kappaSca,fileFormatted)
+       if (.not.grid%oneKappa) then
+          call writeReal2D(thisOctal%kappaAbs,fileFormatted)
+          call writeReal2D(thisOctal%kappaSca,fileFormatted)
+       endif
        call writeDouble2D(thisOctal%N,fileFormatted)
        
        if (thisOctal%nChildren > 0) then 
           do iChild = 1, thisOctal%nChildren, 1
              thisChild => thisOctal%child(iChild)
-             call writeOctreePrivate(thisChild,fileFormatted)
+             call writeOctreePrivate(thisChild,fileFormatted,grid)
           end do
        end if
 
@@ -2713,6 +2740,7 @@ contains
   subroutine readAMRgrid(filename,fileFormatted,grid)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
+    implicit none
     character(len=*)            :: filename
     logical, intent(in)         :: fileFormatted
     type(GRIDTYPE), intent(out) :: grid
@@ -2721,6 +2749,9 @@ contains
     integer               :: dummy         
     integer               :: error         ! status code
     logical               :: octreePresent ! true if grid has an octree
+    integer :: nOctal
+
+    error = 0
 
     if (fileFormatted) then
        open(unit=20, iostat=error, file=filename, form="formatted", status="old")
@@ -2736,6 +2767,11 @@ contains
     print *, ' - data file written at: ',timeValues(1),'/',timeValues(2),'/',&
                           timeValues(3),'  ',timeValues(5),':',timeValues(6)
                           
+    if (error /=0) then
+       print *, 'Panic: read error for timestamp'
+       stop
+    end if
+
     ! read the variables to be stored in the top-level 'grid' structure
     if (fileFormatted) then
        read(unit=20,fmt=*,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
@@ -2746,9 +2782,9 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,  &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,  &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,      &
-               grid%nOctals, grid%smoothingFactor 
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa
     else
-       read(unit=20,fmt=*,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
+       read(unit=20,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
                grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius,&
                grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore,&
                grid%lCore, grid%chanceWindOverTotalContinuum,                &
@@ -2756,13 +2792,15 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,  &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,  &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,      &
-               grid%nOctals, grid%smoothingFactor 
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa 
     end if
 
     call readReal1D(grid%lamarray,fileFormatted)
+    call readReal1D(grid%oneKappaAbs,fileFormatted)
+    call readReal1D(grid%oneKappaSca,fileFormatted)
     
     if (error /=0) then
-       print *, 'Panic: read error in readAMRgrid'
+       print *, 'Panic: read error in readAMRgrid 1'
        stop
     end if
     
@@ -2775,11 +2813,13 @@ contains
      
     if (octreePresent) then
        allocate(grid%octreeRoot)
-       call readOctreePrivate(grid%octreeRoot,null(),fileFormatted)
+       nOctal = 0
+       call readOctreePrivate(grid%octreeRoot,null(),fileFormatted, nOctal, grid)
+       write(*,*) noctal,"octals read"
     end if
 
     if (error /=0) then
-       print *, 'Panic: read error in readAMRgrid'
+       print *, 'Panic: read error in readAMRgrid 2'
        stop
     end if
     
@@ -2798,16 +2838,21 @@ contains
     
   contains
    
-    recursive subroutine readOctreePrivate(thisOctal,parent,fileFormatted)
+    recursive subroutine readOctreePrivate(thisOctal,parent,fileFormatted, noctal, grid)
        ! read in an octal to the grid octree
 
+       implicit none
        type(octal), pointer :: thisOctal
        type(octal), pointer :: parent
+       type(gridtype) :: grid
+
        logical, intent(in)  :: fileFormatted
+       integer :: nOctal
 
        type(octal), pointer :: thisChild
        integer              :: iChild
 
+       nOctal = nOctal+1
        thisOctal%parent => parent
        
        if (fileFormatted) then
@@ -2831,16 +2876,19 @@ contains
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize
        end if
-       
-       call readReal2D(thisOctal%kappaAbs,fileFormatted)
-       call readReal2D(thisOctal%kappaSca,fileFormatted)
+
+
+       if (.not.grid%oneKappa) then
+          call readReal2D(thisOctal%kappaAbs,fileFormatted)
+          call readReal2D(thisOctal%kappaSca,fileFormatted)
+       endif
        call readDouble2D(thisOctal%N,fileFormatted)
        
        if (thisOctal%nChildren > 0) then 
           allocate(thisOctal%child(1:thisOctal%nChildren)) 
           do iChild = 1, thisOctal%nChildren, 1
              thisChild => thisOctal%child(iChild)
-             call readOctreePrivate(thisChild,thisOctal,fileFormatted)
+             call readOctreePrivate(thisChild,thisOctal,fileFormatted, nOctal, grid)
           end do
        end if
 
@@ -4252,86 +4300,6 @@ contains
 
 
 
-  subroutine fillGridWR104(grid, rho, teff)
-    
-    implicit none
-    type(GRIDTYPE) :: grid
-    type(VECTOR) :: rVec, tubeVec, offset
-
-    integer :: i, j, k
-    integer ::  j1, k1
-    real :: t1, t2, t3
-    integer :: i1, i2, i3
-    real :: gridSize
-    real :: tubeRadius
-    real :: outflowSpeed = 1220. * 10e5
-    real :: temperature
-    real :: rho
-    integer, allocatable :: bigDensity(:,:,:)
-    real :: thisDist, thisTime
-    real :: theta, phi
-    integer , parameter :: nAng = 360
-    integer , parameter :: nRad = 20
-    real :: r
-    real :: alpha
-    real :: teff
-    real :: kfac, tmp
-
-    write(*,'(a)') "Filling with WR104 model..."
-
-    allocate(bigDensity(1:304,1:304,1:304))
-    open(20,file="wr104_density.dat",form="unformatted",status="old")
-    do i = 1, 304
-       do j = 1, 304
-          read(20) bigDensity(i,j,1:304)
-       enddo
-    enddo
-    close(20)
-
-    grid%inUse = .false.
-    grid%rho = 1.e-30
-    
-    do i = 1, grid%nx
-       do j = 1, grid%ny
-          do k = 1, grid%nz
-             i1 = (i-1)*3 + 1
-             j1 = (j-1)*3 + 1
-             k1 = (k-1)*3 + 1
-             tmp  = SUM(real(bigDensity(i1:i1+2,j1:j1+2,k1:k1+2)))
-             tmp = tmp / 9.
-             grid%rho(k,j,i) = tmp / 1.e12
-          enddo
-       enddo
-    enddo
-
-
-    do i = 1, grid%nx
-       grid%xAxis(i) = 2.*real(i-1)/real(grid%nx-1)-1.
-       grid%yAxis(i) = 2.*real(i-1)/real(grid%ny-1)-1.
-       grid%zAxis(i) = 2.*real(i-1)/real(grid%nz-1)-1.
-    enddo
-
-    i1 = (grid%nx / 2) + 1
-    j1 = (grid%ny / 2) + 1
-    k1 = (grid%nz / 2) + 1
-
-    grid%rho(i1-2:i1+2,j1-2:j1+2,k1-2:k1+2) = 0
-
-    grid%xAxis = 151.*grid%xAxis * 1600. * pctocm * (3.e-3 * arcsec) / 1.e10
-    grid%yAxis = 151.*grid%yAxis * 1600. * pctocm * (3.e-3 * arcsec) / 1.e10
-    grid%zAxis = 151.*grid%zAxis * 1600. * pctocm * (3.e-3 * arcsec) / 1.e10
-    grid%temperature = 100.
-
-    grid%rCore = 20.*rSol / 1.e10
-    grid%lCore = fourPi * stefanBoltz * (20.*rSol)**2 * teff**4
-
-    where (grid%rho /= 0.) grid%inUse = .true.
-    where (grid%rho == 0.) grid%rho = 1.e-30
-
-    write(*,'(a)') "done."
-
-  end subroutine fillGridWR104
-
 
 
   subroutine fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
@@ -4540,7 +4508,7 @@ contains
     integer :: nMu
     real :: openingAngle
     real :: muAxis(*)
-    integer :: i, n, n1, n2
+    integer :: i,  n1, n2
     real :: cosTheta1, cosTheta2, cosThetaStart, cosThetaEnd
     
     cosThetaStart = -1.
@@ -4678,11 +4646,11 @@ contains
            read(unit=20,fmt=*) variable
         end if
      else
-        read(unit=20,fmt=*) present
+        read(unit=20) present
         if (present) then
-           read(unit=20,fmt=*) length1, length2
+           read(unit=20) length1, length2
            allocate(variable(length1,length2))
-           read(unit=20,fmt=*) variable
+           read(unit=20) variable
         end if
      endif
     
@@ -4718,14 +4686,175 @@ contains
     use input_variables
     type(GRIDTYPE) :: grid
 
-    grid%geometry = "amrtest"
+    grid%geometry = "testamr"
 
-    grid%rCore = rSol / 1.e10
+    grid%rCore = rCore / 1.e10
     grid%lCore = fourPi * stefanBoltz * grid%rCore**2 * 1.e20 * teff**4
-    grid%inUse = .false.
-    rInner = rSol * 11.7 / 1.e10
-
+    grid%rInner = rInner / 1.e10
+    grid%rOuter = rOuter / 1.e10
+    grid%lineEmission = .false.
   end subroutine initTestAmr
+
+
+
+  subroutine initWR104amr(grid)
+    
+    use wr104_mod
+    implicit none
+    type(GRIDTYPE) :: grid
+    integer :: i,j,k
+    real, allocatable :: temp(:,:,:)
+
+    write(*,'(a)') "Reading WR104 hydro model..."
+
+    open(20,file="wr104_density.dat",form="unformatted",status="old")
+    do i = 1, 304
+       do j = 1, 304
+          read(20) wr104Density(j,i,1:304)
+       enddo
+    enddo
+
+    close(20)
+
+    allocate(temp(1:304,1:304,1:304))
+
+    do i = 1, 304
+       do j = 1, 304
+          do k = 1, 304
+             temp(i,j,k) = wr104Density(i,k,j)
+          enddo
+       enddo
+    enddo
+    wr104density(1:304,1:304,1:304) = temp(1:304,1:304,1:304) 
+    deallocate(temp)
+
+
+    wr104density = wr104density  * 0.001
+    where (wr104density == 0.)
+       wr104density = 1.e-30
+    end where
+    write(*,'(a)') "done."
+
+  end subroutine initWR104amr
+
+
+  subroutine fancyAMRplot(grid, device)
+    type(GRIDTYPE) :: grid
+    character(len=*) device
+    type(OCTALVECTOR) :: rVec
+    type(OCTAL), pointer :: oldOctal, thisOctal
+    integer :: i, j, k, n
+    integer :: thisSubcell, oldSubcell
+    real :: rhoMin, rhoMax
+    real :: rho
+    real :: x, y, z, t
+    integer :: ilo, ihi, idx
+    logical :: plotCell
+
+    write(*,*) "Fancy plotting to: ",trim(device)
+
+    rhoMin = 1.e30
+    rhoMax = -1.e30
+    thisOctal => grid%octreeRoot
+    call minMaxDensity(thisOctal, rhoMin, rhoMax)
+    rhoMin = 0.001 * rhoMax
+
+    write(*,*) "Density range",rhoMin,rhoMax
+
+    call pgbegin(0,device,1,1)
+
+    call pgvport(0.1,0.9,0.1,0.9)
+
+    call pgwnad(-grid%octreeRoot%subcellsize, grid%octreeRoot%subcellsize, &
+         -grid%octreeRoot%subcellsize, grid%octreeRoot%subcellsize)
+    oldSubcell =0
+
+
+    call palette(1)
+    call pgqcir(ilo, ihi)
+    if (device == "/vps") then
+       i = ilo
+       ilo = ihi
+       ihi = i 
+    endif
+    thisOctal => grid%octreeRoot
+    call plotZplane(thisOctal, rhoMax, rhoMin, ilo, ihi)
+    call pgbox('bcnst',0,0,'bcnst',0,0)
+    call pgend
+  end subroutine fancyAMRplot
+
+  recursive subroutine plotZplane(thisOctal, rhoMax, rhoMin, ilo, ihi)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(octalvector) :: rvec
+  real :: rho
+  real :: rhoMin, rhoMax
+  integer :: subcell, i, ilo, ihi, idx
+  real :: t
+  
+  do subcell = 1, 8
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call plotZplane(child, rhoMax, rhoMin, ilo, ihi)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          if (((rVec%z + thisOctal%subcellSize/2.) > 0.).and. &
+              ((rVec%z - thisOctal%subcellSize/2.) < 0.)) then
+             
+             rho = thisOctal%rho(subcell)
+             if (rho == 0.) rho = rhoMin
+             t = (log(rho)-log(rhoMin))/(log(rhoMax)-log(rhoMin))
+             if (t < 0.) t = 0.
+             idx = int(t * real(ihi - ilo) + real(ilo))
+             call pgsci(idx)
+             call pgrect(rVec%x-thisOctal%subcellSize/2., rVec%x + thisOctal%subcellSize/2., &
+                  rVec%y-thisOctal%subcellSize/2.,rVec%y+thisOctal%subcellSize/2.)
+             call pgsci(1)
+             call pgmove(rVec%x-thisOctal%subcellSize/2., &
+                  rVec%y-thisOctal%subcellSize/2.)
+             call pgdraw(rVec%x+thisOctal%subcellSize/2., &
+                  rVec%y-thisOctal%subcellSize/2.)
+             call pgdraw(rVec%x+thisOctal%subcellSize/2., &
+                  rVec%y+thisOctal%subcellSize/2.)
+             call pgdraw(rVec%x-thisOctal%subcellSize/2., &
+                  rVec%y+thisOctal%subcellSize/2.)
+             call pgdraw(rVec%x-thisOctal%subcellSize/2., &
+                  rVec%y-thisOctal%subcellSize/2.)
+          endif
+       endif
+    enddo
+
+  end subroutine plotZplane
+  recursive subroutine minMaxDensity(thisOctal, rhoMin, rhoMax)
+
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real :: rhoMin, rhoMax
+  integer :: subcell, i
+  
+  do subcell = 1, 8
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call minMaxDensity(child, rhoMin, rhoMax)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%rho(subcell) > rhoMax) rhoMax = thisOctal%rho(subcell)
+          if (thisOctal%rho(subcell) < rhoMin) rhoMin = thisOctal%rho(subcell)
+       endif
+    enddo
+
+  end subroutine minMaxDensity
 
 
 end module grid_mod

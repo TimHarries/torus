@@ -21,7 +21,8 @@ module photon_mod
   use utils_mod
   use phasematrix_mod
   use jets_mod
-  
+  use source_mod
+
   implicit none
 
   public
@@ -229,10 +230,11 @@ contains
                   
              outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec,&
                          foundOctal=octalLocation,foundSubcell=subcellLocation) 
-             
-             outPhoton%velocity = outPhoton%velocity + thermalElectronVelocity( &
-                    amrGridTemperature(grid%octreeRoot,pointOctalVec,&
-                    startOctal=octalLocation,actualSubcell=subcellLocation))
+             if (.not.mie) then
+                outPhoton%velocity = outPhoton%velocity + thermalElectronVelocity( &
+                     amrGridTemperature(grid%octreeRoot,pointOctalVec,&
+                     startOctal=octalLocation,actualSubcell=subcellLocation))
+             endif
              
           else
              outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec)
@@ -253,6 +255,7 @@ contains
             (outPhoton%velocity-thisPhoton%velocity)
        fac = (1.d0 - 0.5d0*vovercsqr*(1.d0-0.25d0*vovercsqr))/(1.d0 + vray)
        outPhoton%lambda = outPhoton%lambda  / fac
+
 
     else
 
@@ -296,9 +299,12 @@ contains
        ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias, &
        theta1,theta2, chanceHotRing, &
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, chanceDust, &
-       narrowBandImage, narrowBandMin, narrowBandMax)
+       narrowBandImage, narrowBandMin, narrowBandMax, source, nSource)
 
     implicit none
+
+    integer :: nSource, thisSource
+    type(SOURCETYPE) :: source(*)
 
     type(PHOTON) :: thisPhoton                 ! the photon
     type(GRIDTYPE) :: grid                     ! the opacity grid
@@ -315,6 +321,7 @@ contains
     type(octalVector) :: octalCentre
     real :: directionalWeight
     real :: lambda(:), sourceSpectrum(*)       ! wavelength array/spectrum
+    real :: dlam(1000)
     real :: r1,r2,r3                           ! radii
     real(kind=doubleKind) :: randomDouble      ! a double precision random number
     real :: u, v, w, t                         ! direction components
@@ -322,6 +329,7 @@ contains
     real :: sinTheta      
     real :: t1, t2, t3                         ! multipliers
     real :: vPhi                               ! azimuthal velocities
+    real :: kabs
     real :: ang                                ! angle
     logical :: contPhoton                      ! is this a continuum photon?
     logical :: lineEmission                    ! is there line emission?
@@ -338,6 +346,7 @@ contains
     type(VECTOR) :: ramanSourceVelocity        ! what it says
     type(octalVector) :: octalPoint            ! 
     type(octal), pointer :: sourceOctal        ! randomly selected octal
+    type(octal), pointer :: foundOctal       
     integer :: subcell
     real :: chanceDust
 
@@ -356,7 +365,7 @@ contains
     real :: cosThisTheta
     real :: rotAngle
     real :: tot
-
+    real :: weight
 
     real :: biasWeight
 
@@ -372,7 +381,7 @@ contains
     real :: tempphiProbDistLine(2000)
 
     logical :: photonFromEnvelope
-    real :: tempSpectrum(2000)
+    real(kind=doubleKind) :: tempSpectrum(2000), totDouble
     integer :: i
 
     type(octalVector) :: positionOctal     ! octalVector type version of thisPhoton%position
@@ -384,6 +393,8 @@ contains
     photonFromEnvelope = .false.
 
     thisPhoton%resonanceLine = .false.
+
+    thisPhoton%velocity = VECTOR(0.,0.,0.)
 
     if (grid%resonanceLine) thisPhoton%resonanceLine = .true.
 
@@ -401,6 +412,12 @@ contains
     thisPhoton%stokes%q = 0.
     thisPhoton%stokes%u = 0.
     thisPhoton%stokes%v = 0.
+
+    ! if we are doing this by sources then find out which source we are using
+    
+    if (nSource > 0) then
+       call randomSource(source, nSource, thisSource)
+    endif
 
 
 
@@ -446,18 +463,20 @@ contains
 
           thisPhoton%position = grid%rCore * randomUnitVector()
           
+          if (nSource > 0) then
+             call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction)
+          endif
+
                   
           if (photonFromEnvelope) then
              if (grid%adaptive) then 
 
                 call random_number(randomDouble)
-
                 ! we search through the tree to find the subcell that contains the
                 !   probability value 'randomDouble'
                 sourceOctal => grid%octreeRoot
                 call locateContProbAMR(randomDouble,sourceOctal,subcell)
  
-
                 octalCentre = subcellCentre(sourceOctal,subcell)
                 
                 !!! we will just choose a random point within the subcell.
@@ -465,19 +484,18 @@ contains
                 
                 call random_number(r1)
                 r1 = r1 - 0.5  ! shift value mean value to zero
-                r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
+                r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
                 xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
                 
                 call random_number(r2)
                 r2 = r2 - 0.5                                  
-                r2 = r2 * 0.995                                           
+                r2 = r2 * 0.9999                                          
                 yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
                 
                 call random_number(r3)
                 r3 = r3 - 0.5                                  
-                r3 = r3 * 0.995                                           
+                r3 = r3 * 0.9999                                          
                 zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
-                
                 
                 thisPhoton%position = vector(xOctal,yOctal,zOctal)
 
@@ -787,42 +805,70 @@ contains
           thisPhoton%lambda = narrowBandmin + r1 * (narrowBandmax - narrowBandmin)
           call locate(lambda, nLambda, thisPhoton%lambda, iLambda)
        else
+          do i = 2, nLambda-1
+             dlam(i) = 0.5*((lambda(i+1)+lambda(i))-(lambda(i)+lambda(i-1)))
+          enddo
+          dlam(1) = lambda(2)-lambda(1)
+          dlam(nLambda) = lambda(nlambda)-lambda(nLambda-1)
+          tot = SUM(dlam(1:nLambda))
           call random_number(r1)
-          iLambda = int(r1*real(nLambda))+1
+          iLambda = int(r1 * real(nLambda)) + 1
           thisPhoton%lambda = lambda(iLambda)
+          weight = dlam(i)
+          thisPhoton%stokes = thisPhoton%stokes * (weight / tot)
        endif
 
 
        
        if (.not.flatspec) then
           if (photonFromEnvelope) then
-             tot = 0.
+
+             do i = 2, nLambda-1
+                dlam(i) = 0.5*((lambda(i+1)+lambda(i))-(lambda(i)+lambda(i-1)))
+             enddo
+             dlam(1) = lambda(2)-lambda(1)
+             dlam(nLambda) = lambda(nlambda)-lambda(nLambda-1)
+
+             totDouble = 0.d0
              
              if (grid%adaptive) then
+                positionOctal = thisPhoton%position
+                call amrGridvalues(grid%octreeRoot,positionOctal,&
+                    foundOctal=foundOctal,foundSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=ilambda)
+                if (t1 < 100.) write(*,*) "temp!",t1
                 do i = 1, nLambda
-                   positionOctal = thisPhoton%position
-                   tempSpectrum(i) = blambda(dble(lambda(i)), &
-                      dble(amrGridTemperature(grid%octreeRoot,positionOctal,&
-                                    startOctal=sourceOctal,actualSubcell=subcell)))&
-                      * sourceOctal%kappaAbs(subcell,iLambda)
-                      ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ we should be calling an interpolation function here!
-                      print *, 'In integratePathAMR, the tempSpectrum value is wrong! - needs fixed'
-                   tot = tot + tempSpectrum(i)
+                call amrGridvalues(grid%octreeRoot,positionOctal,&
+                     foundOctal=foundOctal,foundSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=i)
+                   tempSpectrum(i)= blambda(dble(lambda(i)), dble(t1)) * dble(kabs) !/ dble(lambda(i))
+                   totDouble = totDouble + tempSpectrum(i)
                 enddo
+                tempSpectrum(1:nLambda)  = tempSpectrum(1:nLambda) / totDouble
              else 
                 do i = 1, nLambda
-                   tempSpectrum(i) = blambda(dble(lambda(i)),dble(grid%temperature(i1,i2,i3)))*grid%kappaAbs(i1,i2,i3,i) &
-                        /(lambda(i)*angstromtocm)
-                   tot = tot + tempSpectrum(i)
+                   if (.not.grid%oneKappa) then
+                      kabs = grid%kappaAbs(i1,i2,i3,iLambda)
+                   else
+                      kabs = grid%oneKappaAbs(iLambda) * grid%rho(i1,i2,i3)
+                   endif
+                   tempSpectrum(i) =  blambda(dble(lambda(i)),dble(grid%temperature(i1,i2,i3))) &
+                         *  dble(kabs) !/ dble(lambda(i))
+                   totDouble = totDouble + tempSpectrum(i)
                 enddo
+                tempSpectrum(1:nLambda)  = tempSpectrum(1:nLambda) / totDouble
              end if 
              thisPhoton%stokes = thisPhoton%stokes * &
-                  (tempSpectrum(iLambda) * weightContPhoton / tot)
-
+                  (real(tempSpectrum(iLambda)) * weightContPhoton)
           else
 
-             thisPhoton%stokes = thisPhoton%stokes * &
-                  (sourceSpectrum(iLambda) * weightContPhoton)
+             if (nSource == 0) then
+                thisPhoton%stokes = thisPhoton%stokes * &
+                     (sourceSpectrum(iLambda) * weightContPhoton) * 4.
+             else
+                call locate(source(thisSource)%spectrum%lambda,source(thisSource)%spectrum%nlambda, &
+                     dble(thisPhoton%lambda), i)
+                thisPhoton%stokes = thisPhoton%stokes * &
+                     (real(source(thisSource)%spectrum%normflux(i)) * weightContPhoton) * 4.
+             endif
           endif
           
        else
@@ -1210,7 +1256,6 @@ contains
 
 
     thisPhoton%stokes = thisPhoton%stokes * biasWeight
-
 
 
 

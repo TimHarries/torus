@@ -32,7 +32,7 @@ subroutine inputs()
 
   character(len=80) :: dataDirectory
 
-
+  oneKappa = .false.
 
   contrast = 1.
   grainSize = 1.
@@ -87,10 +87,7 @@ subroutine inputs()
      "Number of wavelength/velocity bins: ", "(a,i4,1x,a)", 20, ok, .true.)
 
 
- if (mie) then
-    call getLogical("lucy", lucyRadiativeEq, cLine, nLines, &
-         "Lucy radiative equ.: ","(a,1l,1x,a)", .false., ok, .false.)
- endif
+
 
 
   call getString("distortion", distortionType, cLine, nLines, &
@@ -240,12 +237,6 @@ subroutine inputs()
           "Wind momentum ratio (p/s): ","(a,f3.1,a)", 0.1, ok, .true.)
   endif
 
-  if (geometry .eq. "wr104") then
-     call getReal("teff", teff, cLine, nLines, &
-          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("rho", rho, cLine, nLines, &
-          "Density: ","(a,f7.2,a)", 1., ok, .true.)
-  endif
 
 
   if (geometry .eq. "wr137") then
@@ -478,12 +469,15 @@ endif
      "rMajor (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
    call getReal("rmin", rmin, cLine, nLines, &
      "rMinor (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
+   call getReal("rinner", rinner, cLine, nLines, &
+     "rInner (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
     call getReal("rho", rho, cLine, nLines, &
     "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 1.e-6, ok, .true.)
     call getReal("teff", teff, cLine, nLines, &
          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
     rmaj = rmaj * rSol / 1.e10
     rmin = rmin * rSol / 1.e10
+    rinner = rinner * rSol / 1.e10
  endif
 
  if (geometry(1:4) .eq. "disk") then
@@ -554,8 +548,27 @@ endif
 
  endif
 
+ if (geometry .eq. "testamr") then
+
+   call getReal("rcore", rCore, cLine, nLines, &
+       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
+   call getReal("rinner", rInner, cLine, nLines, &
+       "Inner Radius (solar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+   call getReal("router", rOuter, cLine, nLines, &
+       "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
+
+   call getReal("teff", teff, cLine, nLines, &
+        "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+   
+
+   rCore = rCore * rSol
+   rInner = rInner * rSol
+   rOuter = rOuter * rInner
 
 
+  endif
 
 
 
@@ -630,9 +643,17 @@ endif
  endif
 
 
+
  if (mie) then
     call getLogical("lucy", lucyRadiativeEq, cLine, nLines, &
          "Lucy radiative equ.: ","(a,1l,1x,a)", .false., ok, .true.)
+    oneKappa = .true.
+   call getString("gridfile", popFilename, cLine, nLines, &
+        "Grid filename: ","(a,a,1x,a)","none", ok, .false.)
+   call getLogical("writegrid", writePops, cLine, nLines, &
+        "Write grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("readgrid", readPops, cLine, nLines, &
+          "Read grid file: ","(a,1l,1x,a)", .false., ok, .false.)
  endif
 
 

@@ -19,6 +19,11 @@ module utils_mod
      module procedure locate_double
   end interface
 
+  interface hunt
+     module procedure hunt_single
+     module procedure hunt_double
+  end interface
+
 contains
 
   ! solve a quadratic equation
@@ -327,7 +332,7 @@ contains
 
   ! locate in a grid via bisection but starting at jlo
 
-  pure SUBROUTINE HUNT(XX,N,X,JLO)
+  pure SUBROUTINE HUNT_single(XX,N,X,JLO)
     REAL, INTENT(IN) :: XX(*)
     INTEGER, INTENT(IN) :: N
     REAL, INTENT(IN)    :: X
@@ -373,7 +378,55 @@ contains
        JHI=JM
     ENDIF
     GO TO 3
-  END SUBROUTINE HUNT
+  END SUBROUTINE HUNT_single
+
+  pure SUBROUTINE HUNT_double(XX,N,X,JLO)
+    REAL(kind=doubleKind), INTENT(IN) :: XX(*)
+    INTEGER, INTENT(IN) :: N
+    REAL(kind=doubleKind), INTENT(IN)    :: X
+    INTEGER, INTENT(INOUT) :: JLO
+    INTEGER :: JHI, INC, JM
+    LOGICAL ASCND
+    IF (X .LE. XX(1)) THEN
+       JLO = 1
+       RETURN
+    ENDIF
+    ASCND=XX(N).GT.XX(1)
+    IF(JLO.LE.0.OR.JLO.GT.N)THEN
+       JLO=0
+       JHI=N+1
+       GO TO 3
+    ENDIF
+    INC=1
+    IF(X.GE.XX(JLO).EQV.ASCND)THEN
+1      JHI=JLO+INC
+       IF(JHI.GT.N)THEN
+          JHI=N+1
+       ELSE IF(X.GE.XX(JHI).EQV.ASCND)THEN
+          JLO=JHI
+          INC=INC+INC
+          GO TO 1
+       ENDIF
+    ELSE
+       JHI=JLO
+2      JLO=JHI-INC
+       IF(JLO.LT.1)THEN
+          JLO=0
+       ELSE IF(X.LT.XX(JLO).EQV.ASCND)THEN
+          JHI=JLO
+          INC=INC+INC
+          GO TO 2
+       ENDIF
+    ENDIF
+3   IF(JHI-JLO.EQ.1)RETURN
+    JM=(JHI+JLO)/2
+    IF(X.GT.XX(JM).EQV.ASCND)THEN
+       JLO=JM
+    ELSE
+       JHI=JM
+    ENDIF
+    GO TO 3
+  end SUBROUTINE HUNT_double
 
   pure subroutine getDerivs(x, y, n, derivs)
     implicit none

@@ -34,14 +34,20 @@ CONTAINS
       
     CASE ("jets")
       CALL calcJetsMassVelocity(thisOctal,subcell,grid)
+
+    CASE ("testamr")
+       call calcTestDensity(thisOctal,subcell,grid)
       
+    CASE("wr104")
+       call calcWR104Density(thisOctal,subcell,grid)
+
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
       STOP
 
     END SELECT
  
-    CALL fillGridDummyValues(thisOctal,subcell)
+    CALL fillGridDummyValues(thisOctal,subcell, grid)
  
  
   END SUBROUTINE calcValuesAMR
@@ -66,8 +72,14 @@ CONTAINS
     ALLOCATE(grid%octreeRoot)
     
     ! allocate any variables that need to be 
-    ALLOCATE(grid%octreeRoot%kappaAbs(8,grid%maxLevels))
-    ALLOCATE(grid%octreeRoot%kappaSca(8,grid%maxLevels))
+    if (.not.grid%oneKappa) then
+       ALLOCATE(grid%octreeRoot%kappaAbs(8,grid%nLambda))
+       ALLOCATE(grid%octreeRoot%kappaSca(8,grid%nLambda))
+    ELSE
+       ALLOCATE(grid%oneKappaAbs(grid%nLambda))
+       ALLOCATE(grid%oneKappaSca(grid%nLambda))
+    endif
+
     ALLOCATE(grid%octreeRoot%N(8,grid%maxLevels))
     
     grid%octreeRoot%nDepth = 1
@@ -110,7 +122,6 @@ CONTAINS
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
                                           !   calculate the variables stored in
                                           !   the tree.
-                                          
     TYPE(octal)   :: tempChildStorage  ! holder for existing children, while we
                                        !   shuffle them around to make room for 
                                        !   the new child.
@@ -156,8 +167,10 @@ CONTAINS
       
       ![2]
       tempChildStorage%child(1:nChildren) = parent%child(1:nChildren)
-       
-      ![3] 
+
+      
+!      ![3] 
+!
       ALLOCATE(parent%child(nChildren+1), STAT=error)
       IF ( error /= 0 ) THEN
         PRINT *, 'Panic: allocation failed.'
@@ -166,6 +179,7 @@ CONTAINS
 
       ![4]
       parent%child(1:nChildren) = tempChildStorage%child(1:nChildren)   
+
       
       ! we should now release the temporary storage
       DEALLOCATE(tempChildStorage%child, STAT=error)
@@ -187,8 +201,10 @@ CONTAINS
     parent%indexChild(newChildIndex) = nChild
 
     ! allocate any variables that need to be  
-    ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%maxLevels))
-    ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%maxLevels))
+    if (.not.grid%oneKappa) then
+       ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nLambda))
+       ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nLambda))
+    endif
     ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
     NULLIFY(parent%child(newChildIndex)%child)
 
@@ -330,6 +346,12 @@ CONTAINS
         CALL calcJetsTemperature(thisOctal,subcell, grid)
         gridConverged = .TRUE.
         
+      CASE ("testamr")
+        gridConverged = .TRUE.
+
+      CASE ("wr104")
+        gridConverged = .TRUE.
+
       CASE DEFAULT
         WRITE(*,*) "! Unrecognised grid geometry: ",trim(grid%geometry)
         STOP
@@ -386,10 +408,10 @@ CONTAINS
   END SUBROUTINE countVoxels
 
 
-  SUBROUTINE startReturnSamples (startPoint,direction,grid, &
-             sampleFreq,nSamples,maxSamples,lambda,kappaAbs,&
-             kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,&
-             opaqueCore,hitCore,usePops,iLambda,error)
+  SUBROUTINE startReturnSamples (startPoint,direction,grid,          &
+             sampleFreq,nSamples,maxSamples,opaqueCore,hitCore,      &
+             usePops,iLambda,error,lambda,kappaAbs,kappaSca,velocity,&
+             velocityDeriv,chiLine,levelPop,rho)
     ! samples the grid at points along the path.
     ! this should be called by the program, instead of calling 
     !   returnSamples directly, because this checks the start and finish
@@ -405,21 +427,22 @@ CONTAINS
     REAL, INTENT(IN)                   :: sampleFreq ! the maximum number of 
                        ! samples that will be made in any subcell of the octree. 
                        
-    INTEGER, INTENT(INOUT)             :: nSamples   ! number of samples made
+    INTEGER, INTENT(OUT)             :: nSamples   ! number of samples made
     INTEGER, INTENT(IN)                :: maxSamples ! size of sample arrays 
-    REAL, DIMENSION(:), INTENT(INOUT)  :: lambda     ! path distances of sample locations
-    REAL, DIMENSION(:), INTENT(INOUT)  :: kappaAbs   ! continuous absorption opacities
-    REAL, DIMENSION(:), INTENT(INOUT)  :: kappaSca   ! scattering opacities
-    TYPE(vector),DIMENSION(:),INTENT(INOUT) :: velocity ! sampled velocities
-    REAL, DIMENSION(:), INTENT(INOUT)  :: velocityDeriv ! sampled velocity derivatives
-    REAL, DIMENSION(:), INTENT(INOUT)  :: chiLine    ! line opacities
-    REAL, DIMENSION(:,:), INTENT(INOUT):: levelPop   ! level populations
-    REAL, DIMENSION(:)                 :: rho        ! density at sample points
     LOGICAL, INTENT(IN)                :: opaqueCore ! true if the core is opaque
     LOGICAL, INTENT(OUT)               :: hitCore    ! true if the core is opaque
     LOGICAL, INTENT(IN)                :: usePops    ! whether to use level populations
     INTEGER, INTENT(IN)                :: iLambda    ! wavelength index
     INTEGER, INTENT(INOUT)             :: error      ! error code
+    REAL, DIMENSION(:), INTENT(INOUT)  :: lambda     ! path distances of sample locations
+    
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaAbs   ! continuous absorption opacities
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca   ! scattering opacities
+    TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: velocityDeriv ! sampled velocity derivatives
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: chiLine    ! line opacities
+    REAL,DIMENSION(:,:),INTENT(INOUT),OPTIONAL:: levelPop   ! level populations
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: rho        ! density at sample points
 
     TYPE(octalVector)       :: locator 
                        ! 'locator' is used to indicate a point that lies within the  
@@ -464,18 +487,25 @@ CONTAINS
     CALL normalize(directionNormalized)
     distanceLimit = HUGE(distanceLimit)
     locator = startPoint
-    
+    nSamples = 0
+
     ! we will abort tracking any rays which are too close to 
     !   to a cell wall. The distance to use is defined by:
-    margin = 8.0_oc * REAL(grid%maxDepth,KIND=octalKind) * EPSILON(1.0_oc)
+    margin = 5.0_oc * REAL(grid%maxDepth,KIND=octalKind) * EPSILON(1.0_oc)
     ! some more experimentation is required to find out the best value for
     !   margin
     
     currentPoint = startPoint
     
     IF (.NOT. inOctal(octree,startPoint)) THEN
-      PRINT *, 'Attempting to find path between point(s) outwith the grid'
-      STOP
+      PRINT *, 'Attempting to find path between point(s) outwith the grid.'
+      write(*,*) startpoint
+      error = -30
+      return
+!      startpoint%x = min(max(startpoint%x,octree%centre%x - octree%subcellSize),octree%centre%x + octree%subcellSize)
+!      startpoint%y = min(max(startpoint%y,octree%centre%y - octree%subcellSize),octree%centre%y + octree%subcellSize)
+!      startpoint%z = min(max(startpoint%z,octree%centre%z - octree%subcellSize),octree%centre%z + octree%subcellSize)
+
     ENDIF
    
    
@@ -485,9 +515,9 @@ CONTAINS
        ! need to test for both star and disc intersections 
       
        ! we will find out when and where the photon leaves the simulation space 
-       CALL getExitPoint(currentPoint,directionNormalized,locator,octree,&
-                         abortRay,error,grid%halfSmallestSubcell,endPoint,&
-                         octree%centre,endLength,margin) 
+       CALL getExitPoint(currentPoint,directionNormalized,locator,abortRay,error,&
+                         grid%halfSmallestSubcell,endPoint,octree%centre,        &
+                         (octree%subcellSize*2.0_oc),endLength,margin) 
        
        ! need to reset some of the variables
        abortRay = .FALSE.
@@ -543,11 +573,12 @@ CONTAINS
        ! we trace the photon path until it encounters the disk, the star,
        !   or the edge of the simulation space.
        error = 0
-       CALL returnSamples(currentPoint,startPoint,locator,directionNormalized,octree, &
-                 grid,sampleFreq,nSamples,maxSamples,&
-                 abortRay,lambda,kappaAbs,kappaSca,velocity,&
-                 velocityDeriv,chiLine,levelPop,rho,usePops,iLambda,error,&
-                 margin,endLength)
+       CALL returnSamples(currentPoint,startPoint,locator,directionNormalized,&
+                     octree,grid,sampleFreq,nSamples,maxSamples,abortRay,     &
+                     lambda,usePops,iLambda,error,margin,endLength,           &
+                     kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,   &
+                     velocityDeriv=velocityDeriv,chiLine=chiLine,             &
+                     levelPop=levelPop,rho=rho)
       
        IF (error < 0)  RETURN
 
@@ -562,11 +593,12 @@ CONTAINS
          locator = currentPoint
          dummystartPoint = startPoint + distanceThroughStar * directionNormalized
            
-         CALL returnSamples(currentPoint,dummystartPoint,locator,directionNormalized,&
-                   octree,grid,sampleFreq,nSamples,maxSamples,&
-                   abortRay,lambda,kappaAbs,kappaSca,velocity,&
-                   velocityDeriv,chiLine,levelPop,rho,usePops,iLambda,error,&
-                   margin,distanceLimit)
+        CALL returnSamples(currentPoint,dummyStartPoint,locator,             &
+                    directionNormalized,octree,grid,sampleFreq,nSamples,     &
+                    maxSamples,abortRay,lambda,usePops,iLambda,error,margin, &
+                    distanceLimit,kappaAbs=kappaAbs,kappaSca=kappaSca,       &
+                    velocity=velocity,velocityDeriv=velocityDeriv,           &
+                    chiLine=chiLine,levelPop=levelPop,rho=rho)
 
        END IF
 
@@ -591,23 +623,21 @@ CONTAINS
        END IF
        
     ELSE 
-       CALL returnSamples(currentPoint,startPoint,locator,directionNormalized,octree, &
-                 grid,sampleFreq,nSamples,maxSamples,&
-                 abortRay,lambda,kappaAbs,kappaSca,velocity,&
-                 velocityDeriv,chiLine,levelPop,rho,usePops,iLambda,error,&
-                 margin,distanceLimit)
+       CALL returnSamples(currentPoint,startPoint,locator,directionNormalized,&
+                   octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,&
+                   usePops,iLambda,error,margin,distanceLimit,                &
+                   kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,     &
+                   velocityDeriv=velocityDeriv,chiLine=chiLine,               &
+                   levelPop=levelPop,rho=rho)
     END IF
       
-   
-
-
   END SUBROUTINE startReturnSamples
 
   
   RECURSIVE SUBROUTINE returnSamples (currentPoint,startPoint,locator,direction, &
-             octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,kappaAbs, &
-             kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,&
-             usePops,iLambda,error,margin,distanceLimit)
+             octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,usePops, &
+             iLambda,error,margin,distanceLimit,kappaAbs,kappaSca,velocity,      &
+             velocityDeriv,chiLine,levelPop,rho)
     ! this uses a recursive ray traversal algorithm to sample the octal
     !   grid at points along the path of the ray. 
     ! no checks are made that the ray lies within the boundaries of the
@@ -636,24 +666,27 @@ CONTAINS
     INTEGER, INTENT(IN)                 :: maxSamples   ! size of sample arrays 
     LOGICAL, INTENT(INOUT)              :: abortRay     ! flag to signal completion
     REAL, DIMENSION(:), INTENT(INOUT)   :: lambda       ! distance travelled by photon
-    REAL, DIMENSION(:), INTENT(INOUT)   :: kappaAbs     ! continuous absorption opacities
-    REAL, DIMENSION(:), INTENT(INOUT)   :: kappaSca     ! scattering opacities
-    TYPE(vector), DIMENSION(:), INTENT(INOUT) :: velocity ! sampled velocities
-    REAL, DIMENSION(:), INTENT(INOUT)   :: velocityDeriv ! sampled velocity derivatives
-    REAL, DIMENSION(:), INTENT(INOUT)   :: chiLine      ! line opacities
-    REAL, DIMENSION(:,:), INTENT(INOUT) :: levelPop     ! level populations 
-    REAL, DIMENSION(:)                  :: rho          ! density at sample points
-    LOGICAL, INTENT(IN)                 :: usePops      ! whether to use level populations
     INTEGER, INTENT(IN)                 :: iLambda      ! wavelength index
     INTEGER, INTENT(INOUT)              :: error        ! error code
     REAL(KIND=octalKind)                :: margin
                   ! margin is the size of the region around the edge of a subcell
                   !   where numerical inaccuracies may cause problems.
     REAL(KIND=octalKind), INTENT(IN)    :: distanceLimit ! max length of ray before aborting
+    LOGICAL, INTENT(IN)                 :: usePops      ! whether to use level populations
+    
+    REAL,DIMENSION(:), INTENT(INOUT)   :: kappaAbs     ! continuous absorption opacities
+    REAL,DIMENSION(:), INTENT(INOUT)   :: kappaSca     ! scattering opacities
+    TYPE(vector), DIMENSION(:), INTENT(INOUT) :: velocity ! sampled velocities
+    REAL,DIMENSION(:), INTENT(INOUT)   :: velocityDeriv ! sampled velocity derivatives
+    REAL,DIMENSION(:), INTENT(INOUT)   :: chiLine      ! line opacities
+    REAL,DIMENSION(:,:), INTENT(INOUT) :: levelPop     ! level populations 
+    REAL,DIMENSION(:)                  :: rho          ! density at sample points
+    
 
 
     TYPE(octalVector)      :: exitPoint      ! where ray leaves current cell
     TYPE(octalVector)      :: centre         ! centre of current subcell
+    REAL(KIND=octalKind)   :: subcellSize    ! size of current subcell
     REAL(KIND=octalKind)   :: minWallDistance ! distance to *nearest* wall
     
     REAL(KIND=octalKind)   :: length         ! distance from start of the ray's path.
@@ -694,11 +727,12 @@ CONTAINS
           STOP
         ENDIF
 
-        CALL returnSamples(currentPoint,startPoint,locator,direction, &
-                    octree%child(subIndex),grid,sampleFreq,nSamples,&
-                    maxSamples,abortRay,lambda,&
-                    kappaAbs,kappaSca,velocity,velocityDeriv,chiLine,&
-                    levelPop,rho,usePops,iLambda,error,margin,distanceLimit)
+        CALL returnSamples(currentPoint,startPoint,locator,direction,        &
+                    octree%child(subIndex),grid,sampleFreq,nSamples,         &
+                    maxSamples,abortRay,lambda,usePops,iLambda,error,margin, &
+                    distanceLimit,kappaAbs=kappaAbs,kappaSca=kappaSca,       &
+                    velocity=velocity,velocityDeriv=velocityDeriv,           &
+                    chiLine=chiLine,levelPop=levelPop,rho=rho)
         
         ! after returning from the recursive subroutine, we may have 
         !   finished tracing the ray's path
@@ -714,12 +748,13 @@ CONTAINS
 
         ! find the subcell centre
         centre = subcellCentre(octree,subcell)
+        subcellSize = octree%subcellSize
 
         ! we find the exit point from the current subcell, 
         !  and also 'locator' - a point that lies in the *next* subcell 
-        CALL getExitPoint(currentPoint,direction,locator,octree,abortRay,error,&
-                          grid%halfSmallestSubcell,exitPoint,centre,minWallDistance,&
-                          margin)
+        CALL getExitPoint(currentPoint,direction,locator,abortRay,error, &
+                          grid%halfSmallestSubcell,exitPoint,centre,subcellSize,&
+                          minWallDistance,margin)
         IF ( abortRay .EQV. .TRUE. ) RETURN
 
         ! we now decide where we are going to sample the quantities
@@ -729,11 +764,14 @@ CONTAINS
 
         ! if there are no previously sampled points, we definitely have to take a
         !   sample here
-        IF ( nSamples == 0 ) &
-          CALL takeSample(currentPoint,length,direction,grid,octree,subcell,&
-                          nSamples,maxSamples,lambda,kappaAbs,kappaSca,velocity,&
-                          velocityDeriv,chiLine,levelPop,rho,usePops,iLambda,&
-                          error) 
+        IF ( nSamples == 0 ) then
+          length = modulus(currentPoint - startPoint)
+          CALL takeSample(currentPoint,length,direction,grid,octree,subcell,    &
+                          nSamples,maxSamples,usePops,iLambda,error,lambda,     &
+                          kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
+                          velocityDeriv=velocityDeriv,chiLine=chiLine,          &
+                          levelPop=levelPop,rho=rho)
+        ENDIF
 
         
         ! we check whether we should take a sample at currentPoint
@@ -744,9 +782,11 @@ CONTAINS
         IF ( modulus(currentPoint - (startPoint + (direction *         & 
                               REAL(lambda(nSamples),KIND=octalKind)))) &
                                                > sampleLength ) THEN
-          CALL takeSample(currentPoint,length,direction,grid,octree,subcell,&
-                          nSamples,maxSamples,lambda,kappaAbs,kappaSca,velocity,&
-                          velocityDeriv,chiLine,levelPop,rho,usePops,iLambda,error) 
+          CALL takeSample(currentPoint,length,direction,grid,octree,subcell,    &
+                          nSamples,maxSamples,usePops,iLambda,error,lambda,     &
+                          kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
+                          velocityDeriv=velocityDeriv,chiLine=chiLine,          &
+                          levelPop=levelPop,rho=rho)
         END IF
 
         ! we add sampleLength to the distance from the last location
@@ -754,9 +794,9 @@ CONTAINS
         trial = 1
         DO 
           trialPoint = currentPoint + direction * &
-                       (length - (REAL(lambda(nSamples),KIND=octalKind) + &
-                       (REAL(trial,KIND=octalKind) * sampleLength)))
-
+                       ((REAL(lambda(nSamples),KIND=octalKind) + &
+                       (REAL(trial,KIND=octalKind) * sampleLength)) - length)
+                       
           ! we only want to take a sample if we are still within the subcell
           IF ( modulus(trialPoint - currentPoint) < minWallDistance ) THEN
           
@@ -767,10 +807,11 @@ CONTAINS
             END IF
               
             IF (trialLength >= 0.0_oc) THEN
-              CALL takeSample(trialPoint,trialLength,direction,grid, &
-                       octree,subcell,nSamples,maxSamples,lambda,kappaAbs,&
-                       kappaSca,velocity,velocityDeriv,chiLine,levelPop,&
-                       rho,usePops,iLambda,error) 
+              CALL takeSample(trialPoint,trialLength,direction,grid,octree,subcell, &
+                         nSamples,maxSamples,usePops,iLambda,error,lambda,     &
+                         kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
+                         velocityDeriv=velocityDeriv,chiLine=chiLine,          &
+                         levelPop=levelPop,rho=rho)
             ELSE
               EXIT
             END IF
@@ -796,9 +837,9 @@ CONTAINS
   END SUBROUTINE returnSamples
 
   
-  SUBROUTINE getExitPoint(currentPoint,direction,locator,octree,abortRay,error,&
-                          halfSmallestSubcell,exitPoint,centre,minWallDistance,&
-                          margin)
+  SUBROUTINE getExitPoint(currentPoint,direction,locator,abortRay,error,    &
+                          halfSmallestSubcell,exitPoint,centre,subcellSize, &
+                          minWallDistance,margin)
     ! this subroutine finds the closest subcell wall in the direction the
     !   photon is travelling. 
 
@@ -809,7 +850,6 @@ CONTAINS
     TYPE(octalVector), INTENT(OUT)      :: locator       
                   ! 'locator' is used to indicate a point that lies within the  
                   !   *next* cell of the octree that the ray will interesect.
-    TYPE(octal), INTENT(IN)             :: octree       ! an octal grid
     LOGICAL, INTENT(INOUT)              :: abortRay     ! flag to signal completion
     INTEGER, INTENT(INOUT)              :: error        ! error code
     REAL(KIND=octalKind), INTENT(IN)    :: halfSmallestSubcell
@@ -818,6 +858,7 @@ CONTAINS
                   !   where numerical inaccuracies may cause problems.
     TYPE(octalVector), INTENT(OUT)      :: exitPoint    ! where ray leaves current cell
     TYPE(octalVector), INTENT(IN)       :: centre       ! centre of current subcell
+    REAL(octalKind), INTENT(IN)         :: subcellSize  ! size of current subcell
     REAL(KIND=octalKind), INTENT(OUT)   :: minWallDistance ! distance to *nearest* wall
     
     
@@ -840,25 +881,25 @@ CONTAINS
     !   find the three planes that the photon will intersect.
     
     IF ( direction%x > 0.0_oc ) THEN
-      walldistanceX = (centre%x - currentPoint%x + octree%subcellSize / 2.0_oc  ) / ABS(direction%x) 
+      walldistanceX = (centre%x - currentPoint%x + subcellSize / 2.0_oc  ) / ABS(direction%x) 
     ELSE IF ( direction%x < 0.0_oc ) THEN
-      wallDistanceX = (currentPoint%x - centre%x + octree%subcellSize / 2.0_oc ) / ABS(direction%x) 
+      wallDistanceX = (currentPoint%x - centre%x + subcellSize / 2.0_oc ) / ABS(direction%x) 
     ELSE 
       wallDistanceX = HUGE(wallDistanceX) 
     END IF
 
     IF ( direction%y > 0.0_oc ) THEN
-      wallDistanceY = (centre%y - currentPoint%y + octree%subcellSize / 2.0_oc ) / ABS(direction%y) 
+      wallDistanceY = (centre%y - currentPoint%y + subcellSize / 2.0_oc ) / ABS(direction%y) 
     ELSE IF ( direction%y < 0.0_oc ) THEN
-      wallDistanceY = (currentPoint%y - centre%y + octree%subcellSize / 2.0_oc ) / ABS(direction%y) 
+      wallDistanceY = (currentPoint%y - centre%y + subcellSize / 2.0_oc ) / ABS(direction%y) 
     ELSE 
       wallDistanceY = HUGE(wallDistanceX) 
     END IF
         
     IF ( direction%z > 0.0_oc ) THEN
-      wallDistanceZ = (centre%z - currentPoint%z + octree%subcellSize / 2.0_oc ) / ABS(direction%z) 
+      wallDistanceZ = (centre%z - currentPoint%z + subcellSize / 2.0_oc ) / ABS(direction%z) 
     ELSE IF ( direction%z < 0.0_oc ) THEN
-      wallDistanceZ = (currentPoint%z - centre%z + octree%subcellSize / 2.0_oc ) / ABS(direction%z) 
+      wallDistanceZ = (currentPoint%z - centre%z + subcellSize / 2.0_oc ) / ABS(direction%z) 
     ELSE 
       wallDistanceZ = HUGE(wallDistanceX) 
     END IF
@@ -886,7 +927,7 @@ CONTAINS
          wallDistanceX < wallDistanceZ ) THEN
       wallNormal =  xHatOctal
       IF ( direction%x > 0.0_oc ) THEN
-        wallFromOrigin = centre%x + (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%x + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -897,7 +938,7 @@ CONTAINS
         END IF
         locator = exitpoint + (halfSmallestSubcell*xHatOctal)
       ELSE
-        wallFromOrigin = centre%x - (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -911,7 +952,7 @@ CONTAINS
              wallDistanceY < wallDistanceZ ) THEN
       wallNormal =  yHatOctal
       IF ( direction%y > 0.0_oc ) THEN
-        wallFromOrigin = centre%y + (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%y + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -920,7 +961,7 @@ CONTAINS
         END IF
         locator = exitpoint + (halfSmallestSubcell*yHatOctal)
       ELSE
-        wallFromOrigin = centre%y - (octree%subcellSize / 2.0_oc) 
+        wallFromOrigin = centre%y - (subcellSize / 2.0_oc) 
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -934,7 +975,7 @@ CONTAINS
              wallDistanceZ < wallDistanceY ) THEN
       wallNormal =  zHatOctal
       IF ( direction%z > 0.0_oc ) THEN
-       wallFromOrigin = centre%z + (octree%subcellSize / 2.0_oc)
+       wallFromOrigin = centre%z + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -943,7 +984,7 @@ CONTAINS
         END IF
         locator = exitpoint + (halfSmallestSubcell*zHatOctal)
       ELSE
-        wallFromOrigin = centre%z - (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%z - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -962,7 +1003,7 @@ CONTAINS
              wallDistanceX /= wallDistanceZ ) THEN
       wallNormal =  xHatOctal
       IF ( direction%x > 0.0_oc ) THEN
-        wallFromOrigin = centre%x + (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%x + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -971,7 +1012,7 @@ CONTAINS
         END IF
         locator = exitpoint + (halfSmallestSubcell*xHatOctal)
       ELSE
-        wallFromOrigin = centre%x - (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -989,7 +1030,7 @@ CONTAINS
              wallDistanceX /= wallDistanceY ) THEN
       wallNormal =  xHatOctal
       IF ( direction%x > 0.0_oc ) THEN
-        wallFromOrigin = centre%x + (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%x + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -998,7 +1039,7 @@ CONTAINS
         END IF
         locator = exitpoint + (halfSmallestSubcell*xHatOctal)
       ELSE
-        wallFromOrigin = centre%x - (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
       IF ( found .EQV. .FALSE. ) THEN 
@@ -1017,7 +1058,7 @@ CONTAINS
              wallDistanceX /= wallDistanceZ ) THEN
       wallNormal =  yHatOctal
       IF ( direction%y > 0.0_oc ) THEN
-        wallFromOrigin = centre%y + (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%y + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -1026,7 +1067,7 @@ CONTAINS
         END IF
         locator = exitpoint + (halfSmallestSubcell*yHatOctal)
       ELSE
-        wallFromOrigin = centre%y - (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%y - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -1048,7 +1089,7 @@ CONTAINS
              wallDistanceY == wallDistanceZ ) THEN
       wallNormal =  xHatOctal
       IF ( direction%x > 0.0_oc ) THEN
-        wallFromOrigin = centre%x + (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%x + (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                    (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -1057,7 +1098,7 @@ CONTAINS
         END IF
         locator = exitpoint + (halfSmallestSubcell*xHatOctal)
       ELSE
-        wallFromOrigin = centre%x - (octree%subcellSize / 2.0_oc)
+        wallFromOrigin = centre%x - (subcellSize / 2.0_oc)
         exitPoint = intersectionLinePlane &
                      (currentPoint,direction,wallNormal,wallFromOrigin,found)
         IF ( found .EQV. .FALSE. ) THEN 
@@ -1087,8 +1128,8 @@ CONTAINS
 
 
   SUBROUTINE takeSample(point,length,direction,grid,thisOctal,subcell,nSamples,&
-                        maxSamples,lambda,kappaAbs,kappaSca,velocity,&
-                        velocityDeriv,chiLine,levelPop,rho,usePops,iLambda,error) 
+                        maxSamples,usePops,iLambda,error,lambda,kappaAbs,      &
+                        kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho) 
   
     
     IMPLICIT NONE
@@ -1102,16 +1143,17 @@ CONTAINS
     INTEGER, INTENT(INOUT)             :: nSamples  ! number of samples so far
     INTEGER, INTENT(IN)                :: maxSamples! size of sample arrays 
     REAL, DIMENSION(:), INTENT(INOUT)  :: lambda    ! distances of samples from startPoint 
-    REAL, DIMENSION(:), INTENT(INOUT)  :: kappaAbs  ! continuous absorption opacities
-    REAL, DIMENSION(:), INTENT(INOUT)  :: kappaSca  ! scattering opacities 
-    TYPE(vector), DIMENSION(:), INTENT(INOUT) :: velocity ! sampled velocities
-    REAL, DIMENSION(:), INTENT(INOUT)  :: velocityDeriv   ! sampled velocity derivatives
-    REAL, DIMENSION(:), INTENT(INOUT)  :: chiLine   ! line opacities
-    REAL, DIMENSION(:,:), INTENT(INOUT):: levelPop  ! level populations
-    REAL, DIMENSION(:), INTENT(INOUT)  :: rho       ! density at sample points
     LOGICAL, INTENT(IN)                :: usePops   ! whether to use level populations
     INTEGER, INTENT(IN)                :: iLambda   ! wavelength index
     INTEGER, INTENT(INOUT)             :: error     ! error code
+    
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: kappaAbs  ! continuous absorption opacities
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: kappaSca  ! scattering opacities 
+    TYPE(vector), DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: velocityDeriv   ! sampled velocity derivatives
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: chiLine   ! line opacities
+    REAL,DIMENSION(:,:),INTENT(INOUT),OPTIONAL        :: levelPop  ! level populations
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: rho       ! density at sample points
 
     TYPE(vector)                       :: directionReal ! direction vector (REAL values)
     TYPE(octal), POINTER               :: localPointer  ! pointer to the current octal
@@ -1254,17 +1296,25 @@ CONTAINS
      
       IF (PRESENT(kappaAbs)) THEN 
         IF (PRESENT(iLambda)) THEN
-          kappaAbs = resultOctal%kappaAbs(subcell,1)
+           if (.not.grid%oneKappa) then
+              kappaAbs = resultOctal%kappaAbs(subcell,iLambda)
+           else
+              kappaAbs = grid%oneKappaAbs(iLambda)*resultOctal%rho(subcell)
+           endif
         ELSE
           PRINT *, 'In amrGridValues, can''t evaluate ''kappaAbs'' without',&
                    ' ''iLambda''.'
-          STOP
+          do;enddo
         END IF
       END IF
       
       IF (PRESENT(kappaSca)) THEN 
         IF (PRESENT(iLambda)) THEN
-          kappaSca = resultOctal%kappaSca(subcell,iLambda)
+           if (.not.grid%oneKappa) then
+              kappaSca = resultOctal%kappaSca(subcell,iLambda)
+           else
+              kappaSca = grid%oneKappaSca(iLambda)*resultOctal%rho(subcell)
+           endif
         ELSE
           PRINT *, 'In amrGridValues, can''t evaluate ''kappaSca'' without',&
                    ' ''iLambda''.'
@@ -1319,8 +1369,7 @@ CONTAINS
     TYPE(octalVector)              :: centre
     REAL(KIND=octalKind)           :: inc
     REAL(KIND=octalKind)           :: t1, t2, t3
-    
-    
+
     
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
@@ -1342,21 +1391,107 @@ CONTAINS
       inc = resultOctal%subcellSize / 2.0
       centre = subcellCentre(resultOctal,subcell)
       
-      t1 = point%x - (centre%x - inc)
-      t2 = point%y - (centre%y - inc)
-      t3 = point%z - (centre%z - inc)
-      
-      amrGridVelocity = &
-        ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(subcell,1) + &
-        ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(subcell,2) + &
-        ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(subcell,3) + &
-        ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(subcell,4) + &
-        ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(subcell,5) + &
-        ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(subcell,6) + &
-        ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(subcell,7) + &
-        ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(subcell,8)
+      t1 = MAX(0.0, (point%x - (centre%x - inc)) / resultOctal%subcellSize)
+      t2 = MAX(0.0, (point%y - (centre%y - inc)) / resultOctal%subcellSize)
+      t3 = MAX(0.0, (point%z - (centre%z - inc)) / resultOctal%subcellSize)
+    
       
 
+      amrGridVelocity = vector(0.,0.,0.)  ! TJH did this 
+       if (.false.) then
+
+    SELECT CASE(subcell)
+  
+    CASE(1)
+      amrGridVelocity = &
+        ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 1) + &
+        ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
+        ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
+        ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+        ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(10) + &
+        ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
+        ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
+        ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(14)
+        
+    CASE(2)
+      amrGridVelocity = &
+        ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 2) + &
+        ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
+        ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+        ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
+        ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(11) + &
+        ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(12) + &
+        ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
+        ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(15)
+        
+    CASE(3)
+      amrGridVelocity = &
+        ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
+        ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+        ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 7) + &
+        ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
+        ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(13) + &
+        ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
+        ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(16) + &
+        ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17)
+        
+    CASE(4)
+      amrGridVelocity = &
+        ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 5) + &
+        ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 6) + &
+        ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 8) + &
+        ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity( 9) + &
+        ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(14) + &
+        ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(15) + &
+        ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(17) + &
+        ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(18)
+
+    CASE(5)
+      amrGridVelocity = &
+        ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(10) + &
+        ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
+        ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(13) + &
+        ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+        ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(19) + &
+        ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(20) + &
+        ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(22) + &
+        ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(23)
+        
+    CASE(6)
+      amrGridVelocity = &
+        ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(11) + &
+        ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(12) + &
+        ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+        ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(15) + &
+        ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(20) + &
+        ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(21) + &
+        ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
+        ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(24)
+        
+    CASE(7)
+      amrGridVelocity = &
+        ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(13) + &
+        ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+        ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(16) + &
+        ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(17) + &
+        ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(22) + &
+        ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
+        ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(25) + &
+        ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26)
+        
+    CASE(8)
+      amrGridVelocity = &
+        ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(14) + &
+        ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(15) + &
+        ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(17) + &
+        ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(18) + &
+        ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(23) + &
+        ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(24) + &
+        ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26) + &
+        ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(27)
+    
+    END SELECT
+    endif
   END FUNCTION amrGridVelocity
 
   FUNCTION amrGridDirectionalDeriv(grid,position,direction,startOctal,&
@@ -1591,7 +1726,7 @@ CONTAINS
       END IF
       
       ! should add in some interpolation routine
-      amrGridTemperature = resultOctal%temperature(subcell)
+      amrGridTemperature = startOctal%temperature(subcell)
       
     ELSE
       CALL findSubcellTD(point,octalTree,resultOctal,subcell)
@@ -1641,7 +1776,7 @@ CONTAINS
       END IF
       
       ! should add in some interpolation routine
-      amrGridDensity = resultOctal%rho(subcell)
+      amrGridDensity = startOctal%rho(subcell)
       
     ELSE
       CALL findSubcellTD(point,octalTree,resultOctal,subcell)
@@ -1667,7 +1802,6 @@ CONTAINS
     TYPE(octal), POINTER              :: thisOctal
     INTEGER, INTENT(OUT)              :: subcell
 
-    TYPE(octal), POINTER :: child
     INTEGER              :: i, j 
    
    
@@ -1680,8 +1814,8 @@ CONTAINS
         ! find the child
         DO j = 1, thisOctal%nChildren, 1
           IF (thisOctal%indexChild(j) == 1) THEN
-            child => thisOctal%child(j)
-            CALL locateLineProbAMR(probability,child,subcell)
+            thisOctal => thisOctal%child(j)
+            CALL locateLineProbAMR(probability,thisOctal,subcell)
             RETURN
           END IF
         END DO
@@ -1704,8 +1838,8 @@ CONTAINS
           ! find the child
           DO j = 1, thisOctal%nChildren, 1
             IF (thisOctal%indexChild(j) == i) THEN
-              child => thisOctal%child(j)
-              CALL locateLineProbAMR(probability,child,subcell)
+              thisOctal => thisOctal%child(j)
+              CALL locateLineProbAMR(probability,thisOctal,subcell)
               RETURN
             END IF
           END DO
@@ -1734,11 +1868,9 @@ CONTAINS
     TYPE(octal), POINTER              :: thisOctal
     INTEGER, INTENT(OUT)              :: subcell
 
-    TYPE(octal), POINTER :: child
     INTEGER              :: i, j 
    
-
-   
+!    write(*,'(9f9.5)') probability,thisOctal%probDistCont(1:8)
     ! we need to treat the first subcell as a special case
     
     IF (probability < thisOctal%probDistCont(1)) THEN
@@ -1748,8 +1880,8 @@ CONTAINS
         ! find the child
         DO j = 1, thisOctal%nChildren, 1
           IF (thisOctal%indexChild(j) == 1) THEN
-            child => thisOctal%child(j)
-            CALL locateContProbAMR(probability,child,subcell)
+            thisOctal => thisOctal%child(j)
+            CALL locateContProbAMR(probability,thisOctal,subcell)
             RETURN
           END IF
         END DO
@@ -1772,8 +1904,8 @@ CONTAINS
           ! find the child
           DO j = 1, thisOctal%nChildren, 1
             IF (thisOctal%indexChild(j) == i) THEN
-              child => thisOctal%child(j)
-              CALL locateContProbAMR(probability,child,subcell)
+               thisOctal => thisOctal%child(j)
+              CALL locateContProbAMR(probability,thisOctal,subcell)
               RETURN
             END IF
           END DO
@@ -1936,6 +2068,9 @@ CONTAINS
     DO i = 1, 6, 1
       IF ( inOctal(grid%octreeRoot,locator(i)) ) THEN
         CALL findSubcellTD(locator(i),grid%octreeRoot,neighbour,subcell)
+        neighbour => thisOctal
+        CALL findSubcellLocal(locator(i),neighbour,subcell)
+
         IF ( neighbour%subcellSize > (factor * thisOctal%subcellSize) ) THEN
           IF ( neighbour%hasChild(subcell) ) THEN 
             PRINT *, "neighbour already has child"
@@ -2062,7 +2197,7 @@ CONTAINS
         IF ( thisOctal%nDepth == 1 ) THEN
           PRINT *, 'Panic: In findSubcellLocal, point is outside the grid'
 !          STOP
-           DO ; END DO
+!           DO ; END DO
         END IF
      
         ! if we have previously gone down the tree, and are now going back up, there
@@ -2385,8 +2520,10 @@ CONTAINS
     INTEGER, PARAMETER    :: nsample = 400
     LOGICAL, SAVE         :: first_time = .true.
 
-    IF ( grid%geometry(1:6) == "ttauri" .or. grid%geometry(1:4) == "jets") THEN
-       
+
+    select case(grid%geometry)
+
+    case("ttauri","jets","testamr", "wr104")
       ! the density is only sampled at the centre of the grid
       ! we will search in each subcell to see if any point exceeds the 
       ! threshold density
@@ -2424,30 +2561,32 @@ CONTAINS
         searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=octalKind) 
         searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=octalKind) 
 
-	IF (grid%geometry(1:6) == "ttauri") then
+        select case (grid%geometry)
+	  case("ttauri")
 	   ave_density  = TTauriDensity(searchPoint,grid) + ave_density
-	ELSE IF (grid%geometry(1:4) == "jets") then
+           case("jets")
 	   ave_density  = JetsDensity(searchPoint,grid) + ave_density
-	ELSE
-	   PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
-	   PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
-	   PRINT *, 'Exiting the program .... '
-	   STOP
-	END IF
+           case("testamr")
+	   ave_density  = testDensity(searchPoint,grid) + ave_density
+           case("wr104")
+	   ave_density  = wr104Densityvalue(searchPoint,grid) + ave_density
+	end select
+
       END DO
 
       ave_density = ave_density/nsample
       total_mass = ave_density*cellSize*cellSize*cellSize
-
       IF (total_mass > criticalValue) then
 	 split = .TRUE.
-	 RETURN
       END IF
-
-    ELSE
-     PRINT *,'In decideSplit, there is no procedure for handling this geometry'
-     STOP
-    END IF
+      
+   case DEFAULT
+	   PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
+	   PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
+	   PRINT *, 'Exiting the program .... '
+	   STOP
+   end select
+  
 
   END FUNCTION decideSplit
 
@@ -2480,10 +2619,11 @@ CONTAINS
 
     nSamples = 0
                 
-    CALL startReturnSamples(startPoint,direction,grid,sampleFreq, &
-                 nSamples,maxSamples,distances,dummy,dummy, &
-                 dummyVel,dummy,dummy,dummyPops,densities,.false.,&
-                 hitCore,.false.,1,error)
+    CALL startReturnSamples(startPoint,direction,grid,sampleFreq,     &
+                 nSamples,maxSamples,.false.,hitCore,.false.,1,error, &
+                 distances,kappaAbs=dummy,kappaSca=dummy,velocity=dummyVel,&
+                 velocityDeriv=dummy,chiLine=dummy,                &
+                 levelPop=dummyPops,rho=densities)
  
     IF (nSamples <= 1 .OR. error /= 0)  THEN  
       rho = 0.0
@@ -2499,42 +2639,43 @@ CONTAINS
 
 
 
-  PURE SUBROUTINE fillGridDummyValues(thisOctal,subcell) 
+  PURE SUBROUTINE fillGridDummyValues(thisOctal,subcell, grid) 
     ! for testing, just put some generic values in an octal
 
     IMPLICIT NONE
     
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
+    type(gridtype), intent(in) :: grid
 
-    thisOctal%kappaAbs(subcell,:) = 1.0e-2 
-    thisOctal%kappaSca(subcell,:) = 1.0e-2 
-    thisOctal%chiLine(subcell)    = 1.0e-2 
-    thisOctal%etaLine(subcell)    = 1.0e-2 
-    thisOctal%etaCont(subcell)    = 1.0e-2 
-    thisOctal%N(subcell,:)        = 1.0e-2 
-    thisOctal%Ne(subcell)         = 1.0e-2 
-    thisOctal%nTot(subcell)       = 1.0e-2 
+    if (.not.grid%oneKappa) then
+       thisOctal%kappaAbs(subcell,:) = 1.0e-20
+       thisOctal%kappaSca(subcell,:) = 1.0e-20 
+    endif
+    thisOctal%chiLine(subcell)    = 1.0e-20
+    thisOctal%etaLine(subcell)    = 1.0e-20 
+    thisOctal%etaCont(subcell)    = 1.0e-20
+    thisOctal%N(subcell,:)        = 1.0e-20 
+    thisOctal%Ne(subcell)         = 1.0e-20 
+    thisOctal%nTot(subcell)       = 1.0e-20
     thisOctal%biasLine3D(subcell) = 1.0 
     thisOctal%biasCont3D(subcell) = 1.0 
 
   END SUBROUTINE fillGridDummyValues
-
+  
   
   SUBROUTINE fillVelocityCorners(thisOctal,grid,velocityFunc)
     ! store the velocity values at the subcell corners of an octal so
     !   that they can be used for interpolation.
-    ! this is currently very inefficient, many of the points are identical.
-    ! it should probably be changed later.
 
     IMPLICIT NONE
   
     TYPE(octal), INTENT(INOUT) :: thisOctal
     TYPE(gridtype), INTENT(IN) :: grid
 
-    INTEGER              :: subcell
-    TYPE(octalVector)    :: centre
-    REAL(KIND=octalKind) :: inc
+    REAL(octalKind)      :: x1, x2, x3
+    REAL(octalKind)      :: y1, y2, y3
+    REAL(octalKind)      :: z1, z2, z3
     
     INTERFACE 
       TYPE(vector) FUNCTION velocityFunc(point,grid)
@@ -2545,30 +2686,56 @@ CONTAINS
       END FUNCTION velocityFunc
     END INTERFACE
 
-    inc = thisOctal%subcellSize / 2.0
-        
-    DO subcell = 1, 8, 1
+    ! we first store the values we use to assemble the position vectors
     
-      centre = subcellCentre(thisOctal,subcell)
+    x1 = thisOctal%centre%x - thisOctal%subcellSize
+    x2 = thisOctal%centre%x
+    x3 = thisOctal%centre%x + thisOctal%subcellSize
 
-      thisOctal%cornerVelocity(subcell,1) = velocityFunc(centre + &
-         octalVector( (-1.0*inc), (-1.0*inc), (-1.0*inc)),grid)
-      thisOctal%cornerVelocity(subcell,2) = velocityFunc(centre + &
-         octalVector( ( 1.0*inc), (-1.0*inc), (-1.0*inc)),grid)
-      thisOctal%cornerVelocity(subcell,3) = velocityFunc(centre + &
-         octalVector( (-1.0*inc), ( 1.0*inc), (-1.0*inc)),grid)
-      thisOctal%cornerVelocity(subcell,4) = velocityFunc(centre + &
-         octalVector( ( 1.0*inc), ( 1.0*inc), (-1.0*inc)),grid)
-      thisOctal%cornerVelocity(subcell,5) = velocityFunc(centre + &
-         octalVector( (-1.0*inc), (-1.0*inc), ( 1.0*inc)),grid)
-      thisOctal%cornerVelocity(subcell,6) = velocityFunc(centre + &
-         octalVector( ( 1.0*inc), (-1.0*inc), ( 1.0*inc)),grid)
-      thisOctal%cornerVelocity(subcell,7) = velocityFunc(centre + &
-         octalVector( (-1.0*inc), ( 1.0*inc), ( 1.0*inc)),grid)
-      thisOctal%cornerVelocity(subcell,8) = velocityFunc(centre + &
-         octalVector( ( 1.0*inc), ( 1.0*inc), ( 1.0*inc)),grid)
-    END DO
-      
+    y1 = thisOctal%centre%y - thisOctal%subcellSize
+    y2 = thisOctal%centre%y
+    y3 = thisOctal%centre%y + thisOctal%subcellSize
+    
+    z1 = thisOctal%centre%z - thisOctal%subcellSize
+    z2 = thisOctal%centre%z
+    z3 = thisOctal%centre%z + thisOctal%subcellSize
+
+    ! now store the 'base level' values
+    
+    thisOctal%cornerVelocity(1) = velocityFunc(octalVector(x1,y1,z1),grid)
+    thisOctal%cornerVelocity(2) = velocityFunc(octalVector(x2,y1,z1),grid)
+    thisOctal%cornerVelocity(3) = velocityFunc(octalVector(x3,y1,z1),grid)
+    thisOctal%cornerVelocity(4) = velocityFunc(octalVector(x1,y2,z1),grid)
+    thisOctal%cornerVelocity(5) = velocityFunc(octalVector(x2,y2,z1),grid)
+    thisOctal%cornerVelocity(6) = velocityFunc(octalVector(x3,y2,z1),grid)
+    thisOctal%cornerVelocity(7) = velocityFunc(octalVector(x1,y3,z1),grid)
+    thisOctal%cornerVelocity(8) = velocityFunc(octalVector(x2,y3,z1),grid)
+    thisOctal%cornerVelocity(9) = velocityFunc(octalVector(x3,y3,z1),grid)
+
+    ! middle level
+  
+    thisOctal%cornerVelocity(10) = velocityFunc(octalVector(x1,y1,z2),grid)
+    thisOctal%cornerVelocity(11) = velocityFunc(octalVector(x2,y1,z2),grid)
+    thisOctal%cornerVelocity(12) = velocityFunc(octalVector(x3,y1,z2),grid)
+    thisOctal%cornerVelocity(13) = velocityFunc(octalVector(x1,y2,z2),grid)
+    thisOctal%cornerVelocity(14) = velocityFunc(octalVector(x2,y2,z2),grid)
+    thisOctal%cornerVelocity(15) = velocityFunc(octalVector(x3,y2,z2),grid)
+    thisOctal%cornerVelocity(16) = velocityFunc(octalVector(x1,y3,z2),grid)
+    thisOctal%cornerVelocity(17) = velocityFunc(octalVector(x2,y3,z2),grid)
+    thisOctal%cornerVelocity(18) = velocityFunc(octalVector(x3,y3,z2),grid)
+
+    ! top level
+    
+    thisOctal%cornerVelocity(19) = velocityFunc(octalVector(x1,y1,z3),grid)
+    thisOctal%cornerVelocity(20) = velocityFunc(octalVector(x2,y1,z3),grid)
+    thisOctal%cornerVelocity(21) = velocityFunc(octalVector(x3,y1,z3),grid)
+    thisOctal%cornerVelocity(22) = velocityFunc(octalVector(x1,y2,z3),grid)
+    thisOctal%cornerVelocity(23) = velocityFunc(octalVector(x2,y2,z3),grid)
+    thisOctal%cornerVelocity(24) = velocityFunc(octalVector(x3,y2,z3),grid)
+    thisOctal%cornerVelocity(25) = velocityFunc(octalVector(x1,y3,z3),grid)
+    thisOctal%cornerVelocity(26) = velocityFunc(octalVector(x2,y3,z3),grid)
+    thisOctal%cornerVelocity(27) = velocityFunc(octalVector(x3,y3,z3),grid)
+    
   END SUBROUTINE fillVelocityCorners
 
 
@@ -2602,7 +2769,7 @@ CONTAINS
 
     ! test if the point lies within the star
     IF ( r < rStar ) THEN
-      rho = 0.0
+      rho = 1.e-25
       RETURN
     END IF
     
@@ -2631,7 +2798,7 @@ CONTAINS
       rho = rho * r**(-5.0/2.0) / SQRT( 2.0 * bigG * TTauriMstar ) 
       rho = rho * SQRT( 4.0 - 3.0*y) / SQRT( 1.0 - y) 
     ELSE
-      rho = 0.0
+      rho = 1.e-25
     END IF
     
   END FUNCTION TTauriDensity
@@ -2671,11 +2838,11 @@ CONTAINS
 
     ! test if the point lies within the star
     IF ( r < rStar ) THEN
-      TTauriVelocity = vector(0.0,0.0,0.0)
+      TTauriVelocity = vector(1.e-25,1.e-25,1.e-25)
       
     ! test if the point lies too close to the disk
     ELSE IF ( ABS(pointVec%z) < 4.0e-2 * rStar) THEN
-      TTauriVelocity = vector(0.0,0.0,0.0)
+      TTauriVelocity = vector(1.e-25,1.e-25,1.e-25)
    
     ! test if the point lies outside the accretion stream
     ELSE IF ((rM > diskRinner) .AND. (rM < diskRouter )) THEN
@@ -2692,7 +2859,7 @@ CONTAINS
       TTauriVelocity = vP
 
     ELSE
-      TTauriVelocity = vector(0.0,0.0,0.0)
+      TTauriVelocity = vector(1.e-25,1.e-25,1.e-25)
     END IF
 
   END FUNCTION TTauriVelocity
@@ -2738,14 +2905,14 @@ CONTAINS
 
       ! test if the point lies within the star
       IF ( r < rStar ) THEN
-        thisOctal%rho(subcell) = 0.0
-        thisOctal%velocity(subcell) = vector(0.0,0.0,0.0)
+        thisOctal%rho(subcell) = 1.e-25
+        thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
         thisOctal%inFlow(subcell) = .FALSE.
       
       ! test if the point lies too close to the disk
       ELSE IF ( ABS(pointVec%z) < 4.0e-2 * rStar) THEN
-        thisOctal%rho(subcell) = 0.0
-        thisOctal%velocity(subcell) = vector(0.0,0.0,0.0)
+        thisOctal%rho(subcell) = 1.e-25
+        thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
         thisOctal%inFlow(subcell) = .FALSE.
    
       ! test if the point lies outside the accretion stream
@@ -2773,11 +2940,12 @@ CONTAINS
 
       ELSE
         thisOctal%inFlow(subcell) = .FALSE.
-        thisOctal%rho(subcell) = 0.0
-        thisOctal%velocity(subcell) = vector(0.0,0.0,0.0)
+        thisOctal%rho(subcell) = 1.e-25
+        thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
       END IF
-
-      IF (subcell == 8) CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity)
+      
+      IF (subcell == 8) &
+        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity)
 
   END SUBROUTINE calcTTauriMassVelocity
 
@@ -2901,27 +3069,111 @@ CONTAINS
 
   end subroutine initTTauriAMR
 
-  subroutine calcTestDensity(thisOctal, subcell, grid)
 
-    use constants_mod
-    use vector_mod
+  subroutine calcTestDensity(thisOctal,subcell,grid)
+
     use input_variables
-    use parameters_mod
-    type(GRIDTYPE), intent(out)  :: grid 
-    type(octal), intent(inout) :: thisOctal
-    integer, intent(in) :: subcell
-    type(VECTOR) :: rVec
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    
+    TYPE(octalVector) :: rVec
     real :: r
     
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec) 
+    r = modulus(rVec)
 
-    thisOctal%rho(subcell) = 0.
+    thisOctal%rho(subcell) = 1.e-10
+    thisOctal%temperature(subcell) = 100.
 
-    if (r > rInner) then
-       thisOctal%rho(subcell) = rho * (rInner / r)**2
+    if ((r > grid%rInner).and.(r < grid%rOuter)) then
+       thisOctal%rho(subcell) = rho * (grid%rInner / r)**2 
+       thisOctal%temperature(subcell) = 100.
     endif
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
   end subroutine calcTestDensity
+
+  function testDensity(point, grid)
+    use input_variables
+    real :: testDensity
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+    real :: r
+    r = modulus(point)
+    testDensity = 0.
+    if ((r > grid%rInner).and.(r < grid%rOuter)) then
+       testDensity = rho * (grid%rInner / r)**2
+    endif
+  end function testDensity
+
+  subroutine calcWR104Density(thisOctal,subcell,grid)
+    use input_variables
+    use wr104_mod
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    
+    TYPE(octalVector) :: rVec
+    real :: r
+    integer :: i,j,k
+
+
+    rVec = subcellCentre(thisOctal,subcell)
+    r = modulus(rVec)
+
+    thisOctal%rho(subcell) = 1.e-10
+    thisOctal%temperature(subcell) = 100.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+
+
+    r = ((rVec%x / (grid%octreeroot%subcellsize))+1.)*304. /2.
+    i = int(r)
+    i = min(max(1,i),304)
+    r = ((rVec%y / (grid%octreeroot%subcellsize))+1.)*304. /2.
+    j = int(r)
+    j = min(max(1,j),304)
+    r = ((rVec%z / (grid%octreeroot%subcellsize))+1.)*304. /2.
+    k = int(r)
+    k = min(max(1,k),304)
+    thisOctal%rho(subcell) = wr104density(i,j,k)
+
+    if (wr104density(i,j,k) < 1.e-20) then
+       thisOctal%inFlow(subcell) = .false.
+    else
+       thisOctal%inFlow(subcell) = .true.
+    endif
+
+  end subroutine calcWR104Density
+
+  function wr104DensityValue(point, grid)
+    use wr104_mod
+    real :: wr104densityvalue
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+    type(VECTOR) :: rvec
+    real :: r
+    integer :: i,j,k
+    wr104densityvalue = 0.
+    rVec = point
+
+    r = ((rVec%x / (grid%octreeroot%subcellsize))+1.)*304./2.
+    i = int(r)
+    i = min(max(1,i),304)
+    r = ((rVec%y / (grid%octreeroot%subcellsize))+1.)*304./2.
+    j = int(r)
+    j = min(max(1,j),304)
+    r = ((rVec%z / (grid%octreeroot%subcellsize))+1.)*304./2.
+    k = int(r)
+    k = min(max(1,k),304)
+    wr104densityvalue = wr104density(i,j,k)
+
+
+  end function wr104DensityValue
+
 
 
 

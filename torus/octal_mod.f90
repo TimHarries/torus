@@ -41,19 +41,20 @@ MODULE octal_mod
 
   TYPE octal
 
-    INTEGER                            :: nDepth       ! depth of octal. root is 1, it's children are 2...
+    INTEGER                            :: nDepth       ! depth of octal. root is 1, it's childen are 2...
     INTEGER                            :: nChildren    ! how many pointers to children there are (max 8)
     INTEGER                            :: indexChild(8)! index of child array containing
                                                        !   pointer to each subcell's child (if it exists) 
-    TYPE(octal), DIMENSION(:), POINTER :: child   
+    TYPE(octal), DIMENSION(:), POINTER :: child
     LOGICAL, DIMENSION(8)              :: hasChild
     TYPE(octal), POINTER               :: parent          
     TYPE(octalVector)                  :: centre
 
     REAL, DIMENSION(8)                 :: rho            ! density
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
-    TYPE(vector), DIMENSION(8,8)       :: cornerVelocity ! velocity at corners of subcells
+    TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
+    REAL, DIMENSION(8)                 :: distanceGrid   ! distance crossing used by lucy R Eq
     REAL, DIMENSION(:,:), POINTER      :: kappaAbs       ! cont absorption opacities
     REAL, DIMENSION(:,:), POINTER      :: kappaSca       ! scattering opacities
     REAL, DIMENSION(8)                 :: chiLine        ! line opacity

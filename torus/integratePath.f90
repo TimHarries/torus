@@ -201,11 +201,22 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
 
 
            if (interp) then
-              kabsInterp = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
-              kscaInterp = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+              if (.not.grid%oneKappa) then
+                 kabsInterp = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+                 kscaInterp = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+              else
+                 r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2,t3)
+                 kabsInterp = grid%oneKappaAbs(iLambda) * r
+                 kscaInterp = grid%oneKappaSca(iLambda) * r
+              endif
            else
-              kabsInterp = grid%kappaAbs(i1,i2,i3,iLambda)
-              kscaInterp = grid%kappaSca(i1,i2,i3,iLambda)
+              if (.not.grid%oneKappa) then
+                 kabsInterp = grid%kappaAbs(i1,i2,i3,iLambda)
+                 kscaInterp = grid%kappaSca(i1,i2,i3,iLambda)
+              else
+                 kabsInterp = grid%oneKappaAbs(iLambda)*grid%rho(i1,i2,i3)
+                 kscaInterp = grid%oneKappaSca(iLambda)*grid%rho(i1,i2,i3)
+              endif
            endif
            tauExt(nTau) = tauExt(nTau-1) + &
                 (kabsInterp + kscaInterp)* dlambda
@@ -299,11 +310,22 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
 
 
      if (interp) then
-        kabs(nTau) = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
-        ksca(nTau) = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+        if (.not.grid%oneKappa) then
+           kabs(nTau) = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+           ksca(nTau) = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+        else
+           r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2,t3)
+           kabs(nTau) = grid%oneKappaAbs(iLambda) * r
+           ksca(nTau) = grid%oneKappaSca(iLambda) * r
+        endif
      else
-        kabs(nTau) = grid%kappaAbs(i1,i2,i3,iLambda)
-        ksca(nTau) = grid%kappaSca(i1,i2,i3,iLambda)
+        if (.not.grid%oneKappa) then
+           kabs(nTau) = grid%kappaAbs(i1,i2,i3,iLambda)
+           ksca(nTau) = grid%kappaSca(i1,i2,i3,iLambda)
+        else
+           kabs(nTau) = grid%oneKappaAbs(iLambda) * grid%rho(i1,i2,i3)
+           ksca(nTau) = grid%oneKappaSca(iLambda) * grid%rho(i1,i2,i3)
+        endif
      endif
 
      ! first position held in indices
@@ -568,12 +590,24 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
               endloop = .true.
            endif
 
+           
            if (interp) then
-              kabs(nTau) = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
-              ksca(nTau) = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+              if (.not.grid%oneKappa) then
+                 kabs(nTau) = interpGridKappaAbs(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+                 ksca(nTau) = interpGridKappaSca(grid,i1,i2,i3,iLambda,t1,t2,t3) 
+              else
+                 r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,t1,t2,t3)
+                 kabs(nTau) = grid%oneKappaAbs(iLambda) * r
+                 ksca(nTau) = grid%oneKappaSca(iLambda) * r
+              endif
            else
-              kabs(nTau) = grid%kappaAbs(i1,i2,i3,iLambda)
-              ksca(nTau) = grid%kappaSca(i1,i2,i3,iLambda)
+              if (.not.grid%oneKappa) then
+                 kabs(nTau) = grid%kappaAbs(i1,i2,i3,iLambda)
+                 ksca(nTau) = grid%kappaSca(i1,i2,i3,iLambda)
+              else
+                 kabs(nTau) = grid%oneKappaAbs(iLambda) * grid%rho(i1,i2,i3)
+                 ksca(nTau) = grid%oneKappaSca(iLambda) * grid%rho(i1,i2,i3)
+              endif
            endif
 
 
@@ -841,7 +875,7 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
               enddo
 
 
-           else
+           else ! contPhoton
 
               ! for continuum photons we treat an array of optical depths corresponding
               ! to different velocities/frequencies
@@ -1036,7 +1070,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   integer :: ilambda                                ! wavelength index
 
 
-  integer, parameter :: maxLambda = 200              ! max size of tau arrays
+  integer, parameter :: maxLambda = 2000             ! max size of tau arrays
   real :: dlambda(maxTau)                           ! distance increment array
 
   real :: projVel(maxTau)
@@ -1078,29 +1112,31 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   if (.not. grid%lineEmission) then
 
      ! sample the grid along the path of the ray
-     CALL startReturnSamples (aVecOctal,uHatOctal,grid,sampleFreq,nTau,  &
-                              maxTau,lambda,kAbs,kSca,velocity,velocityDeriv, &
-                              chiLine,levelPop,rho,opaqueCore,hitcore,usePops,&
-                              iLambda,error)
-
+     CALL startReturnSamples (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
+                              maxTau,opaqueCore,hitcore,usePops,iLambda,error,&
+                              lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
+                              velocityDeriv=velocityDeriv,chiLine=chiLine,    &
+                              levelPop=levelPop,rho=rho)
 
      if (.not.redRegion) then
-           
         ! first optical depths are all zero of course
 
         tauExt(1) = 0.
         tauAbs(1) = 0.
         tauSca(1) = 0.
                      
-        dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)
         
-        tauSca(2:nTau) = tauSca(1:nTau-1) + dlambda(1:nTau-1) * &
-                         (0.5 * (ksca(2:nTau) + ksca(1:nTau-1)) )
-                         
-        tauAbs(2:nTau) = tauAbs(1:nTau-1) + dlambda(1:nTau-1) * &
-                         (0.5 * (kabs(2:nTau) + kabs(1:nTau-1)) )
-                         
-        tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau)
+        do i = 2, nTau
+           dlambda(i) = lambda(i)-lambda(i-1)
+           tauSca(i) = tauSca(i-1) + dlambda(i)*0.5*(ksca(i-1)+ksca(i))
+           tauAbs(i) = tauAbs(i-1) + dlambda(i)*0.5*(kabs(i-1)+kabs(i))
+           if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
+              write(*,*) "negative opacity"
+              do;enddo
+           endif
+        enddo
+
+        tauExt(1:nTau) = tauSca(1:nTau)+tauAbs(1:nTau)
 
         else
            print *, "No code for handling redRegion"
@@ -1134,10 +1170,11 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
      escProb = 1.
 
-     CALL startReturnSamples (aVecOctal,uHatOctal,grid, &
-                 sampleFreq,nTau,maxTau,&
-                 lambda,kAbs,kSca,velocity,velocityDeriv,chiLine,&
-                 levelPop,rho,opaqueCore,hitCore,usePops,iLambda,error)
+     CALL startReturnSamples (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
+                              maxTau,opaqueCore,hitcore,usePops,iLambda,error,&
+                              lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
+                              velocityDeriv=velocityDeriv,chiLine=chiLine,    &
+                              levelPop=levelPop,rho=rho)
 
      if (nTau <= 2) then
         !print *, 'The code does not yet include routines for handling ',&
@@ -1198,10 +1235,16 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
      tauAbs(1) = 0.
      tauSca(1) = 0.
 
-     tauSca(2:nTau) = tauSca(1:nTau-1) + dlambda(1:nTau-1) * &
-                        (0.5*(ksca(2:nTau)+ksca(1:nTau-1)))
-     tauAbs(2:nTau) = tauAbs(1:nTau-1) + dlambda(1:nTau-1) * &
-                        (0.5*(kabs(2:nTau)+kabs(1:nTau-1)))
+     do i = 2, nTau
+        tauSca(i) = tauSca(i-1) + dlambda(i)*0.5*(ksca(i-1)+ksca(i))
+        tauAbs(i) = tauAbs(i-1) + dlambda(i)*0.5*(kabs(i-1)+kabs(i))
+           if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
+              write(*,*) "negative opacity"
+              do;enddo
+           endif
+
+     enddo
+
      tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau)
 
      iStart = 1
@@ -1341,8 +1384,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
  
                     do i = 2, nTau-1
 
-                       if ( ((projVel(i) < thisVel2) .and. (thisVel2 <= projVel(i+1))) .or. &
-                            ((projVel(i+1) < thisVel2) .and. (thisVel2 <= projVel(i))) ) then
+                       if ( ((projVel(i) < thisVel) .and. (thisVel <= projVel(i+1))) .or. &
+                            ((projVel(i+1) < thisVel) .and. (thisVel <= projVel(i))) ) then
 
                           ! this bit is the same as for the line photon - linear interpolation
                           !   in velocity space to get sobolev optical depth

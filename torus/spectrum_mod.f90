@@ -1,0 +1,126 @@
+module spectrum_mod
+
+  use constants_mod
+  use atom_mod
+  use utils_mod
+
+  implicit none
+
+  public
+
+  type SPECTRUMTYPE
+     real(kind=doubleKind), pointer :: flux(:)
+     real(kind=doubleKind), pointer :: normflux(:)
+     real(kind=doubleKind), pointer :: lambda(:)
+     real(kind=doubleKind), pointer :: prob(:)
+     real(kind=doubleKind), pointer :: dlambda(:)
+     integer :: nLambda
+  end type SPECTRUMTYPE
+  
+
+  contains
+
+    subroutine getWavelength(spectrum, wavelength)
+
+      type(SPECTRUMTYPE) :: spectrum
+      real(kind=doubleKind) :: wavelength
+      real(kind=doubleKind) :: r, t
+      integer :: i
+
+      call random_number(r)
+      call locate(spectrum%prob, spectrum%nLambda, r, i)
+      t = (r - spectrum%prob(i))/(spectrum%prob(i+1)-spectrum%prob(i))
+      wavelength = spectrum%lambda(i) + t*(spectrum%lambda(i+1)-spectrum%lambda(i))
+
+    end subroutine getWavelength
+
+
+    subroutine fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda)
+
+      type(SPECTRUMTYPE) :: spectrum
+      integer :: nLambda
+      real(kind=doubleKind) :: lamStart, lamEnd, teff
+      real(kind=doubleKind) :: logLamStart, logLamEnd
+      integer :: i
+
+      allocate(spectrum%flux(1:nLambda))
+      allocate(spectrum%lambda(1:nLambda))
+      allocate(spectrum%dlambda(1:nLambda))
+
+      logLamStart = log10(lamStart)
+      logLamEnd = log10(lamEnd)
+      
+      do i = 1, nLambda
+         spectrum%lambda(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+         spectrum%lambda(i) = 10.**spectrum%lambda(i)
+      enddo
+      do i = 2, nLambda-1
+         spectrum%dlambda(i) = 0.5*((spectrum%lambda(i+1)+spectrum%lambda(i))-(spectrum%lambda(i)+spectrum%lambda(i-1)))
+      enddo
+      spectrum%dlambda(1) = spectrum%lambda(2)-spectrum%lambda(1)
+      spectrum%dlambda(nLambda) = spectrum%lambda(nlambda)-spectrum%lambda(nLambda-1)
+      
+      do i = 1, nLambda
+         spectrum%flux(i) = bLambda(dble(teff), spectrum%lambda(i))
+      enddo
+      spectrum%nLambda = nLambda
+
+      call probSpectrum(spectrum)
+    end subroutine fillSpectrumBB
+
+    subroutine readSpectrum(spectrum, filename)
+      type(SPECTRUMTYPE) :: spectrum
+      character(len=*) :: filename
+      real :: fTemp(60000),xTemp(60000)
+      integer :: nLambda, i
+
+      open(20,file=filename,form="formatted",status="old")
+      nLambda = 1
+10    continue
+      read(20,*,end=20) xtemp(nLambda),fTemp(nLambda)
+      nLambda = nLambda + 1
+      goto 10
+20    continue
+      close(20)
+      nLambda = nLambda - 1
+      allocate(spectrum%flux(1:nLambda))
+      allocate(spectrum%lambda(1:nLambda))
+      allocate(spectrum%dlambda(1:nLambda))
+      allocate(spectrum%prob(1:nLambda))
+      spectrum%nLambda = nLambda
+      spectrum%flux(1:nLambda) = fTemp(1:nLambda)
+      spectrum%lambda(1:nLambda) = xTemp(1:nLambda)
+      do i = 2, nLambda-1
+         spectrum%dlambda(i) = 0.5*((xtemp(i+1)+xtemp(i))-(xtemp(i)+xtemp(i-1)))
+      enddo
+      spectrum%dlambda(1) = xtemp(2)-xtemp(1)
+      spectrum%dlambda(nLambda) = xtemp(nlambda)-xtemp(nLambda-1)
+      call probSpectrum(spectrum)
+    end subroutine readSpectrum
+
+    subroutine probSpectrum(spectrum)
+      type(SPECTRUMTYPE) :: spectrum
+      integer :: i
+      spectrum%prob = 0.d0
+      do i = 2, spectrum%nLambda
+         spectrum%prob(i) = spectrum%prob(i-1) + spectrum%flux(i) * spectrum%dLambda(i)
+      enddo
+      spectrum%prob(1:spectrum%nLambda) = spectrum%prob(1:spectrum%nLambda) / spectrum%prob(spectrum%nLambda)
+    end subroutine probSpectrum
+
+    subroutine normalizedSpectrum(spectrum, lamStart, lamEnd)
+      type(SPECTRUMTYPE) :: spectrum
+      integer :: i, i1, i2
+      real(kind=doubleKind) :: tot
+      real(kind=doubleKind) :: lamStart, lamEnd
+      allocate(spectrum%normflux(1:spectrum%nLambda))
+      tot = 0.d0
+      call locate(spectrum%lambda, spectrum%nLambda, lamStart, i1)
+      call locate(spectrum%lambda, spectrum%nLambda, lamEnd, i2)
+      do i = i1, i2
+         tot = tot + spectrum%flux(i) * spectrum%dlambda(i)
+      enddo
+      spectrum%normflux = spectrum%flux / tot
+    end subroutine normalizedSpectrum
+         
+  end module spectrum_mod

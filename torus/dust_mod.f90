@@ -3,6 +3,7 @@ module dust_mod
   use gridtype_mod
   use grid_mod
   use constants_mod
+  use amr_mod
   implicit none
   public
 
@@ -294,88 +295,117 @@ contains
 
     end subroutine getRefractiveIndex
 
-subroutine fillGridMie(grid, scale, aMin, aMax, qDist, grainType)
+    subroutine fillGridMie(grid, scale, aMin, aMax, qDist, grainType)
 
-  implicit none
-  type(GRIDTYPE) :: grid
-  real :: aMin, aMax, qDist
-  real, allocatable :: sigmaAbs(:), sigmaSca(:), sigmaExt(:)
-  real :: abundance
-  real :: scale
-  real, allocatable :: mReal(:), mImg(:)
-  character(len=*) :: grainType
-  integer :: i, j, k
+      implicit none
+      type(GRIDTYPE) :: grid
+      real :: aMin, aMax, qDist
+      real, allocatable :: sigmaAbs(:), sigmaSca(:), sigmaExt(:)
+      real :: abundance
+      real :: scale
+      real, allocatable :: mReal(:), mImg(:)
+      character(len=*) :: grainType
+      integer :: i, j, k
 
-  scale = 1.
+      scale = 1.
 
-  allocate(sigmaAbs(1:grid%nLambda))
-  allocate(sigmaSca(1:grid%nLambda))
-  allocate(sigmaExt(1:grid%nLambda))
+      allocate(sigmaAbs(1:grid%nLambda))
+      allocate(sigmaSca(1:grid%nLambda))
+      allocate(sigmaExt(1:grid%nLambda))
 
-  abundance = 1.
+      abundance = 1.
 
-  write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
+      write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
 
-  allocate(mReal(1:grid%nLambda))
-  allocate(mImg(1:grid%nLambda))
+      allocate(mReal(1:grid%nLambda))
+      allocate(mImg(1:grid%nLambda))
 
-  call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)
+      call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)
 
-  write(*,*) "Dust law: ",aMin,aMax,qDist
-  open(20,file="albedo.dat",form="formatted",status="unknown")
-  do i = 1, grid%nLambda
-     call mieDistCrossSection(aMin, aMax, qDist, grid%lamArray(i),  mReal(i), mImg(i), sigmaExt(i), &
-          sigmaSca(i), sigmaAbs(i))
-     write(20,*) grid%lamArray(i)*angsToMicrons, sigmaSca(i), sigmaAbs(i),sigmaSca(i)/sigmaExt(i)
-  enddo
-  close(20)
+      write(*,*) "Dust law: ",aMin,aMax,qDist
+      open(20,file="albedo.dat",form="formatted",status="unknown")
+      do i = 1, grid%nLambda
+         call mieDistCrossSection(aMin, aMax, qDist, grid%lamArray(i),  mReal(i), mImg(i), sigmaExt(i), &
+              sigmaSca(i), sigmaAbs(i))
+      enddo
+      close(20)
 
-  !write(*,*) amin,amax,qdist
-  !do i = 1, grid%nLambda
-  !   write(*,*) grid%lamArray(i),sigmaAbs(i),sigmaSca(i)
-  !enddo
+      if (.not.grid%oneKappa) then
+         if (grid%adaptive) then
+            write(*,'(a,i3)') "Filling AMR grid with mie cross sections...",grid%nLambda
+            call fillAMRgridMie(grid%OctreeRoot, sigmaSca, sigmaAbs, grid%nLambda)
+         endif
 
-  if (grid%cartesian) then
+         if (grid%cartesian) then
 
-     do i = 1, grid%nx
-        do j = 1, grid%ny
-           do k = 1, grid%nz
-
-
-              if (grid%inUse(i,j,k)) then
-                 grid%kappaAbs(i,j,k,1:grid%nLambda) = sigmaAbs  * grid%rho(i,j,k)
-                 grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca  * grid%rho(i,j,k)
-              endif
-
-              !      write(*,*) grid%kappaAbs(i,j,k,1:grid%nLambda),grid%kappaSca(i,j,k,1:grid%nLambda), grid%rho(i,j,k),scale
-           enddo
-        enddo
-     enddo
-  else
-
-     do i = 1, grid%nr
-        do j = 1, grid%nmu
-           do k = 1, grid%nPhi
-
-              grid%kappaAbs(i,j,k,1:grid%nLambda) = sigmaAbs * grid%rho(i,j,k)
-              grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca * grid%rho(i,j,k)
-
-           enddo
-        enddo
-     enddo
-
-  endif
-
-  where(grid%kappaAbs < 1.e-25) grid%kappaAbs = 1.e-25
-  where(grid%kappaSca < 1.e-25) grid%kappaSca = 1.e-25
+            do i = 1, grid%nx
+               do j = 1, grid%ny
+                  do k = 1, grid%nz
 
 
-  grid%kappaAbs = grid%kappaAbs * 1.e10
-  grid%kappaSca = grid%kappaSca * 1.e10
+                     if (grid%inUse(i,j,k)) then
+                        grid%kappaAbs(i,j,k,1:grid%nLambda) = sigmaAbs  * grid%rho(i,j,k)
+                        grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca  * grid%rho(i,j,k)
+                     endif
+
+                     !      write(*,*) grid%kappaAbs(i,j,k,1:grid%nLambda),grid%kappaSca(i,j,k,1:grid%nLambda), grid%rho(i,j,k),scale
+                  enddo
+               enddo
+            enddo
+         endif
+
+         if (grid%polar) then
+            do i = 1, grid%nr
+               do j = 1, grid%nmu
+                  do k = 1, grid%nPhi
+
+                     grid%kappaAbs(i,j,k,1:grid%nLambda) = sigmaAbs * grid%rho(i,j,k)
+                     grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca * grid%rho(i,j,k)
+
+                  enddo
+               enddo
+            enddo
+
+         endif
+
+         where(grid%kappaAbs < 1.e-25) grid%kappaAbs = 1.e-25
+         where(grid%kappaSca < 1.e-25) grid%kappaSca = 1.e-25
+
+
+         grid%kappaAbs = grid%kappaAbs * 1.e10
+         grid%kappaSca = grid%kappaSca * 1.e10
+      else
+         write(*,'(a,i4)') "Filling the oneKappa arrays: ",grid%nLambda
+         grid%oneKappaAbs(1:grid%nLambda) = sigmaAbs(1:grid%nLambda) * 1.e10
+         grid%oneKappaSca(1:grid%nLambda) = sigmaSca(1:grid%nLambda) * 1.e10
+      endif
 
   write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
 end subroutine fillGridMie
 
+recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: nLambda
+  real :: sigmaSca(*), sigmaAbs(*)
+  integer :: subcell, i
+  
+  do subcell = 1, 8
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillAMRgridMie(child, sigmaSca, sigmaAbs, nLambda)
+                exit
+             end if
+          end do
+       else
+          thisOctal%kappaAbs(subcell,1:nLambda) = sigmaAbs(1:nLambda) * thisOctal%rho(subcell) * 1.e10
+          thisOctal%kappaSca(subcell,1:nLambda) = sigmaSca(1:nLambda) * thisOctal%rho(subcell) * 1.e10
+       endif
+    enddo
+  end subroutine fillAMRgridMie
 
 
 

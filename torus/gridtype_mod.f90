@@ -27,9 +27,13 @@ module gridtype_mod
      logical :: flatspec                         ! flat spectrum being computed
      logical :: adaptive                         ! are the cells adaptive, rather than fixed
      logical :: cartesian                        ! is the grid cartesian?
+     logical :: polar
      logical :: isotropic                        ! are the axes evenly spaced?
      logical :: hitcore
      real :: diskRadius
+     logical :: oneKappa                        
+     real, pointer :: oneKappaAbs(:)
+     real, pointer :: oneKappaSca(:)
      type(VECTOR) :: diskNormal
      real :: dipoleOffset
      character(len=20) :: geometry               ! type of geometry
@@ -88,6 +92,9 @@ module gridtype_mod
      type(VECTOR) :: starPos1, starPos2
 
      real :: lambda2
+     real :: rInner
+     real :: rOuter
+
 
      real(kind=doubleKind), pointer :: N(:,:,:,:)           ! stateq level pops
      real(kind=doubleKind), pointer :: Ne(:,:,:)            ! electron density

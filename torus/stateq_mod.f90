@@ -2524,6 +2524,7 @@ print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
              octalArray(iOctal)%content%chiLine(iSubcell) = 1.e10 * chil
              
              if (octalArray(iOctal)%content%n(iSubcell,nUpper) == 0.d0) then
+                write(*,*) 'In amrStatEq, octalArray(iOctal)%content%n(iSubcell,nUpper) == 0.d0'
                 write(*,*) nUpper
                 write(*,*) octalArray(iOctal)%content%N(iSubcell,1:maxLevels)
                 write(*,*) octalArray(iOctal)%content%Ne(iSubcell)
