@@ -33,14 +33,13 @@ program torus
   use unix_mod
   use path_integral
   use puls_mod
+  use input_variables         ! variables filled by inputs subroutine
 
   implicit none
 
 
-  integer :: nPhotons
   integer, parameter :: nOuterLoop = 10
   integer :: iOuterLoop
-  integer :: maxScat
   integer :: nScat
   integer :: cpuTime, startTime
 
@@ -49,21 +48,7 @@ program torus
 
   type(GRIDTYPE) :: grid
 
-  character(len=10) :: geometry
-
-
-  integer :: nx
-  integer :: ny
-  integer :: nz
-
-  integer :: nr, nmu, nphi
-
-
-  character(len=80) :: distortionType
-  character(len=10) :: gridcoords
-  integer :: nPhase, iPhase
-  integer :: nStartPhase, nEndPhase
-  logical :: lineEmission
+  integer :: iPhase
 
   real :: totLineEmission
   real :: totContinuumEmission
@@ -71,7 +56,7 @@ program torus
   real :: totCoreContinuumEmission1
   real :: totCoreContinuumEmission2
   real :: totWindContinuumEmission
-  real :: probLinePhoton , probContPhoton
+  real :: probLinePhoton 
   real :: weightContPhoton, weightLinePhoton
   real :: chanceLine, chanceContinuum
 
@@ -95,15 +80,10 @@ program torus
 
   real, allocatable :: kappaAbs(:), kappaSca(:), kappaExt(:)
   real :: dlambda, thisTau
-  real :: inputKappaSca, inputKappaAbs
 
   ! variables to do with dust
 
-  real :: aMin, aMax, qDist 
-  character(len=10) :: grainType
-  real  :: grainSize
   real :: xMin, xMax
-  logical :: mie
   integer, parameter :: nXmie = 20, nMuMie = 20
   type(PHASEMATRIX),allocatable :: miePhase(:, :)
   real :: particleMass, abundance
@@ -112,20 +92,9 @@ program torus
 
   type(IMAGETYPE) :: obsImage, o6image
   type(PVIMAGETYPE), allocatable :: pvimage(:)
-  real :: slitLength, slitWidth, slitPA
   real :: imageSize
-  real :: vSys
-  integer :: nSlit, iSlit, np, nv
-  real :: vfwhm, pfwhm
-  type(VECTOR) :: slitPosition1,  slitPosition2, slitPosition
-  logical :: doPVimage
-  logical :: stokesImage
-  real :: vmax, vmin
-  real :: gridDistance
-
-  ! variables to do with spiral models
-
-  integer :: nSpiral
+  integer :: iSlit
+  type(VECTOR) :: slitPosition
 
   ! intrinsic profile variables
 
@@ -148,22 +117,14 @@ program torus
   integer, parameter :: maxBlobs = 10000
   integer :: nCurrent
   type(BLOBTYPE), allocatable :: blobs(:)
-  logical :: freshBlobs
   real, parameter :: blobTime = 1000.
-  integer :: nBlobs
   real :: timeEnd = 24.*60.*60.
   real :: timeStart = 0.
   real :: dTime, thisTime
-  real :: blobContrast
 
   ! filenames
 
-  character(len=1024) :: outFile
   character(len=80) :: filename, specFile
-  character(len=80) :: device, opacityDataFile
-  character(len=80) :: intProFilename
-  character(len=80) :: intProFilename2
-  logical :: useNdf 
 
   ! photons
 
@@ -185,67 +146,31 @@ program torus
 
   ! output arrays
 
-  integer :: nLambda
   integer :: iLambda
-  real :: lamStart, lamEnd
   type(STOKESVECTOR), allocatable :: yArray(:)
   type(STOKESVECTOR), allocatable :: errorArray(:,:)
   real, allocatable :: xArray(:)
   real, allocatable :: contWeightArray(:)
   type(STOKESVECTOR) :: tot
 
-  ! variables for a second source of radiation
-
-  logical :: secondSource                    ! second photon source?
-  type(VECTOR) :: secondSourcePosition       ! the position of it
-  real :: lumRatio                           ! lumonsity ratio
-  real :: binarySep
-  real :: momRatio
-
   ! model flags
 
-  logical :: fillTio
-  logical :: opaqueCore
   logical :: escaped, absorbed
   logical :: rotateView
   logical :: tiltView
-  logical :: thinLine
-  logical :: screened
-  logical :: pencilBeam
   logical :: flatSpec
-  logical :: inputOK
-  logical :: plezModelOn
-  logical :: useBias, ok, fillThomson
-  logical :: movie
-  logical :: fillRayleighOpacity
+  logical :: ok
   logical :: greyContinuum
-  logical :: plotVelocity
   logical :: hitCore
   logical :: firstPlot
 
   ! model parameters
 
-  real :: height
-  real :: radius, kFac
-  real :: rMin, rMaj
-  real :: shellFrac
-  real :: Teff
-  real :: inclination
-  real :: contrast
-  real :: mdot, vel
-  real :: rTorus, rOuter, rInner
-  real :: vterm, beta, v0
-  real :: rho, scale
-  real :: mCore, diskTemp
-  real :: scaleDensity
-  real :: vrot
+  real :: vel
   real :: nuStart, nuEnd
-  real :: rCore
 
   ! single dust blob parameters (WR137 type model)
 
-  real :: phiDustBlob, dustBlobdistance
-  real :: xDustBlobSize, yDustBlobSize, zDustBlobSize
   real :: meanDustParticleMass, getMeanMass
 
 
@@ -258,12 +183,8 @@ program torus
   ! raman scattering model parameters
 
   logical :: thruStar
-  logical :: doRaman
   type(VECTOR) :: hotSourcePosition, coolStarPosition
-  real :: vo6, o6width
   type(VECTOR) :: ramanSourceVelocity
-  real :: ramVel
-  character(len=20) :: ramanDist          ! raman distortion type
 
   ! O VI spectrum stuff
 
@@ -272,27 +193,18 @@ program torus
   real, parameter :: o6start = 1031.5, o6end=1032.8
   real :: o6xarray(no6pts), o6yarray(no6pts)
 
-  ! core emission line parameters
-
-  logical :: coreEmissionLine
-  real :: velWidthCoreEmissionLine
-  real :: relIntCoreEmissionLine 
 
   ! misc
 
-  character(len=80) :: plotFile, misc
   real :: rotateDirection
   real :: meanr_line = 0., meanr_cont = 0.
   real :: wtot_line =0., wtot_cont = 0.
   real :: meanr0_line = 0., meanr0_cont = 0.
   real :: wtot0_line =0., wtot0_cont = 0.
   real :: junk
+  character(len=80) :: plotFile
 
-  character(len=80) :: contFluxFile, contFluxFile2
   real :: thisChi, thisSca, albedo
-  real :: logMassLossRate
-  real :: phaseOffset
-  logical :: lineOff
   logical :: normalizeSpectrum
   integer :: currentScat
   logical :: redRegion
@@ -317,8 +229,6 @@ program torus
   logical :: contPhoton
   integer :: nContPhotons
   real :: phi
-  real :: lamLine
-  integer :: nLower, nUpper
   real :: deltaLambda
   real :: rStar
   integer :: findilambda
@@ -328,34 +238,14 @@ program torus
 
   ! Spot stuff
   
-  integer :: nSpot                       ! number of spots
-  real :: fSpot                          ! fractional area coverage of spots
-  real :: tSpot                          ! spot temperatures
-  real :: thetaSpot, phiSpot             ! spot coords
   real :: chanceSpot                     ! chance of spot
   logical :: spotPhoton                  ! photon from spot?
-  logical :: photLine                    ! line produced over whole photosphere?
 
   ! binary parameters
 
-  real :: period
-  real :: shockWidth, shockFac
   type(VECTOR) :: starPos1, starPos2
-  real :: mass1, mass2
-  real :: radius1, radius2
-  real :: temp1, temp2
-  real :: vNought1, vNought2
-  real :: vTerm1 , vTerm2
-  real :: beta1, beta2
-  real :: mdot1, mdot2
-  logical :: readPops, writePops
-  character(len=80) :: popFilename
-  real :: deflectionAngle
-  logical :: lte
-  logical :: curtains, enhance
   integer :: nVec
   type(VECTOR), allocatable :: distortionVec(:)
-  real :: dipoleOffset
 
 
   ! initialize
@@ -396,31 +286,7 @@ program torus
 
   ! get the model parameters
 
-  call  inputs(nPhotons, nx, ny, nz, nr, nmu, nphi, inclination, &
-       geometry, gridcoords, mie, &
-       rTorus, rOuter, scale, &
-       rho, lamstart, lamEnd, nLambda, outFile, grainSize, &
-       radius, kfac, rMin, rMaj, aMin, aMax, qDist, height, &
-       inputkappaSca, inputkappaAbs, screened, useBias, maxScat, Teff, &
-       mdot, vterm, plezModelOn, opaqueCore, filltio, lineEmission, &
-       lamLine, fillThomson, fillRayleighOpacity, device, movie, shellFrac, &
-       inputOK, probContPhoton, &
-       nPhase, nBlobs, contrast, beta, opacityDataFile, &
-       intProFilename, intProFilename2, distortionType, vrot, plotVelocity, nStartPhase, &
-       nEndPhase,scaleDensity, grainType, nSpiral, thinLine, freshBlobs, &
-       stokesImage, vmin, vmax, gridDistance, pencilBeam, &
-       dustBlobDistance, phiDustBlob, xDustBlobSize, yDustBlobSize, &
-       zDustBlobSize, secondSource, secondSourcePosition, lumRatio, &
-       binarySep, momRatio, vo6, rCore, rInner, coreEmissionLine, &
-       velWidthCoreEmissionLine, relIntCoreEmissionLine, contFluxFile, &
-       lineOff, logMassLossRate, ramVel, ramanDist, PhaseOffset, &
-       contFluxFile2, mass1, mass2, period,  radius1, radius2, mdot1, mdot2, &
-       popFilename, readPops, writePops, vNought1, vNought2, beta1, beta2, &
-       vterm1, vterm2, temp1, temp2, shockWidth, shockFac, doRaman, deflectionAngle, lte, blobContrast, &
-       dopvimage, slitPosition1, slitPosition2, slitPA, slitWidth, slitLength, &
-       nSlit, np ,nv, vfwhm, pfwhm, vSys, useNdf, mcore, diskTemp, curtains, &
-       dipoleOffset, enhance, v0, o6width, misc, nLower, nUpper, &
-       nSpot, fSpot, tSpot, thetaSpot, phiSpot, photLine)
+  call  inputs() ! variables are passed using the input_variables module
 
 
 !  secondSourcePosition = zeroVec

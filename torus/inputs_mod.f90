@@ -8,143 +8,27 @@ public
 
 contains
 
-subroutine inputs(nPhotons, nx, ny, nz, nr, nmu, nphi, &
-     inclination, geometry, gridtype, mie, &
-     rTorus, rOuter, scale, rho, lamStart, lamEnd, nLambda, &
-     outFile, grainSize, radius, kfac, rMin, rMaj, &
-     aMin, aMax, qDist, height, kappaSca, kappaAbs, &
-     screened, useBias, maxScat, Teff, mdot, vterm, plezModelOn, &
-     opaqueCore, fillTio, lineEmission, lamLine, &
-     fillThomson, fillRayleigh, device, movie, shellfrac, &
-     inputOK, probContPhoton, &
-     nPhase, nBlobs, contrast, beta, opacityDataFile, &
-     intProFilename, intProFilename2, distortionType, vRot, plotVelocity, &
-     nStartPhase, nEndphase, scaleDensity, grainType,nSpiral, thinLine, &
-     freshBlobs, stokesImage, vmin, vmax, gridDistance, pencilBeam, &
-     dustBlobDistance, phiDustBlob, xDustBlobSize, yDustBlobSize, &
-     zDustBlobSize, secondSource, secondSourcePosition, lumRatio, &
-     binarySep, momRatio, vo6, rCore, rInner, coreEmissionLine, &
-     velWidthCoreEmission, relIntCoreEmission, contFluxFile, lineOff, &
-     logMassLossRate, ramVel, ramanDist, phaseOffset, &
-     contFluxFile2, mass1, mass2, period, radius1, radius2, mdot1, mdot2, &
-     popFilename, readPops, writePops, vNought1, vNought2, beta1, beta2, &
-     vterm1, vterm2, temp1, temp2, shockWidth, shockFac, doRaman, deflectionAngle, lte, blobContrast, &
-     pvimage, slitPosition1,slitPosition2, slitPA, slitWidth, slitLength, &
-     nSlit, np, nv, vfwhm, pfwhm, vSys, useNdf, mCore, diskTemp,curtains, &
-     dipoleOffset, enhance, v0, o6width, misc, nLower, nUpper, &
-     nSpot, fSpot, tSpot, thetaSpot, phiSpot, photLine)
+subroutine inputs()
 
   use constants_mod
   use vector_mod
   use unix_mod
+  use input_variables         ! variables that would be passed as arguments
+  
   implicit none
-  logical :: curtains, enhance, done
-  real :: dipoleOffset
-  logical :: lte, useNdf
-  character(len=*) :: misc
-  logical pvimage
-  real :: mCore, diskTemp, v0, o6width
-  real :: slitPA, slitWidth, slitLength
-  integer :: nSlit, np, nv
-  real :: vfwhm, pfwhm, vSys
-  type(VECTOR) :: slitPosition1, slitPosition2
-  integer :: nphase, nBlobs, nStartPhase, nEndPhase
-  logical :: doRaman
-  integer :: nLower, nUpper
-  real :: contrast, beta
-  real :: radius1, radius2, mdot1, mdot2
-  real :: vNought1, vNought2, beta1, beta2
-  real :: temp1, temp2
-  real :: shockWidth, shockFac
-  real :: vterm1, vterm2
-  real :: phaseOffset
-  logical :: readPops, writePops
-  character(len=*) :: popFilename
-  real :: logMassLossRate
-  real :: period
-  real :: mass1, mass2
-  logical :: lineOff
+
+  integer :: nLines
   integer :: errNo, i
-  integer :: nSpiral
-  logical :: freshBlobs
-  real :: blobContrast
-  logical :: thinLine
-  logical :: stokesImage
-  logical :: pencilBeam
-  real :: vo6
-  real :: vMin, vMax
-  real :: binarysep, momRatio
-  character(len=*) :: grainType
-  character(len=*) :: device, opacityDataFile, intProFilename,  intProFilename2
-  character(len=*) :: distortionType
-  character(len=*) :: contFluxFile, contFluxFile2
-  character(len=*) :: ramanDist
-  logical :: plotVelocity
-  real :: rTorus, rOuter, shellfrac
-  real :: scaleDensity
-  logical :: fillThomson
-  logical :: movie
-  real :: probContPhoton
-  real :: inclination
-  real :: vRot
-  logical :: opaqueCore, lineEmission
-  real :: lamLine
-  real :: grainSize
-  real :: Teff
-  logical :: fillRayleigh
-  logical :: fillTio
-  integer :: nx,ny,nz
-  integer :: nr, nmu, nphi
-  logical :: useBias
-  logical :: plezModelOn
-  real :: kappaSca, kappaAbs
-  real :: scale
-  real :: height
-  real :: rho
-  logical :: screened
-  real :: aMin, aMax, qDist
-  character(len=10) geometry, gridtype
-  integer :: nPhotons
-  logical :: mie
   logical :: ok
-  real :: mdot, vterm
-  real :: lamStart, lamEnd
-  real :: radius, kfac
-  real :: rMin, rMaj
-  integer :: nLines, nLambda
   character(len=80) :: cLine(100) 
   character(len=9) :: default
-  character(len=*) :: outFile
-  real :: gridDistance, ramVel
-  integer :: maxScat
-  logical :: inputOK
-  real :: dustBlobDistance, phiDustBlob
-  real :: xDustBlobSize, yDustBlobSize, zDustBlobSize
-  real :: rCore, rInner
+  logical :: done
 
-  logical :: coreEmissionLine
-  real :: velWidthCoreEmission
-  real :: relIntCoreEmission
-  real :: deflectionAngle
-
-  ! variables for a second source of radiation
-
-  logical :: secondSource                    ! second photon source?
-  type(VECTOR) :: secondSourcePosition       ! the position of it
-  real :: lumRatio                           ! lumonsity ratio
 
   ! character vars for unix environ
 
   character(len=80) :: dataDirectory
 
-  ! Spot stuff
-  
-  integer :: nSpot                       ! number of spots
-  real :: fSpot                          ! factional area coverage of spots
-  real :: tSpot                          ! spot temperatures
-  real :: thetaSpot, phiSpot             ! spot coords
-  logical :: photLine                    ! photospheric line production
-  
 
 
   contrast = 1.
@@ -209,10 +93,10 @@ subroutine inputs(nPhotons, nx, ny, nz, nr, nmu, nphi, &
        "Scale (rsolar): ","(a,f6.1,1x,a)", 1000., ok, .false.) 
 
 
-  call getString("gridtype", gridtype, cLine, nLines, &
+  call getString("gridtype", gridcoords, cLine, nLines, &
        "Grid type: ","(a,a,a)","cartesian",ok, .true.)
 
-  if (gridtype.eq."cartesian") then
+  if (gridcoords.eq."cartesian") then
      call getInteger("nx", nx, cLine, nLines, &
           "Grid size in x-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
      call getInteger("ny", ny, cLine, nLines, &
@@ -221,7 +105,7 @@ subroutine inputs(nPhotons, nx, ny, nz, nr, nmu, nphi, &
           "Grid size in z-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
   endif
 
-  if (gridtype.eq."polar") then
+  if (gridcoords.eq."polar") then
      call getInteger("nr", nr, cLine, nLines, &
           "Grid size in r-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
      call getInteger("nmu", nmu, cLine, nLines, &
@@ -672,14 +556,14 @@ endif
 
  if (.not.mie) then
  default = " "
- call findReal("kappasca", kappaSca, cLine, nLines, ok)
+ call findReal("kappasca", inputKappaSca, cLine, nLines, ok)
  if (ok) then
-   write(*,'(a,1pe12.4)') "Scattering cross-section: ",kappaSca
+   write(*,'(a,1pe12.4)') "Scattering cross-section: ",inputKappaSca
  endif
  default = " "
- call findReal("kappaabs", kappaAbs, cLine, nLines, ok)
+ call findReal("kappaabs", inputKappaAbs, cLine, nLines, ok)
  if (ok) then
-   write(*,'(a,1pe12.4)') "Absorption cross-section: ",kappaAbs
+   write(*,'(a,1pe12.4)') "Absorption cross-section: ",inputKappaAbs
  endif
 endif
 
@@ -739,11 +623,11 @@ endif
  
  if (coreEmissionLine) then
     
-    call getReal("velfwhm", velWidthCoreEmission, cLine, nLines, &
+    call getReal("velfwhm", velWidthCoreEmissionLine, cLine, nLines, &
    "FWHM Velocity width of core emission line (km/s): ","(a,f7.0,1x,a)", 1000., ok, .true.)
-    call getReal("relint", relintCoreEmission, cLine, nLines, &
+    call getReal("relint", relintCoreEmissionLine, cLine, nLines, &
    "Relative intensity of core emission line: ","(a,f7.0,1x,a)", 10., ok, .true.)
-    velWidthCoreEmission = velWidthCoreEmission * 1.e5
+    velWidthCoreEmissionLine = velWidthCoreEmissionLine * 1.e5
  endif
 
  call getLogical("screened", screened, cLine, nLines, &
@@ -779,7 +663,7 @@ endif
  endif
 
 
- call getLogical("rayleigh", fillRayleigh, cLine, nLines, &
+ call getLogical("rayleigh", fillRayleighOpacity, cLine, nLines, &
    "Rayleigh scattering opacity: ","(a,1l,a)", .false., ok, .false.)
 
  call getLogical("line", lineEmission, cLine, nLines, &
@@ -853,9 +737,9 @@ endif
     
  endif
 
- call getLogical("pvimage", pvimage, cLine, nLines, &
+ call getLogical("pvimage", doPVimage, cLine, nLines, &
       "Output pv image: ","(a,1l,a)",.false., ok, .false.)
- if (pvimage) then
+ if (doPVimage) then
     call getInteger("nslit", nSlit, cLine, nLines, &
          "Number of slits: ","(a,i3,a)", 1, ok, .true.)
     call getInteger("pvnp", np, cLine, nLines, &

@@ -11,7 +11,8 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  getRefractiveIndex.f90 draineCrossSection.f90 \
  readTioCrossSection.f90 rayleighCrossSection.f90 \
  fillGridTio.f90 fillGridRayleigh.f90 fillGridMie.f90 \
- intersectCube.f90 fillGridThomson.f90 cont_read.f90 getMeanMass.f90 
+ intersectCube.f90 fillGridThomson.f90 cont_read.f90 getMeanMass.f90 \
+ input_variables.f90
 
 
 F77SOURCE= image_f77.f mieDistCrossSection.f palette.f\
