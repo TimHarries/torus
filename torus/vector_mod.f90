@@ -1,3 +1,4 @@
+module vector_mod
 !
 ! This is a module for vector maths. This includes the vector
 ! type definitions, as well as simple operations such as add,
@@ -9,36 +10,62 @@
 
 
 ! v1.0 on 13/08/99
-! double precision and 'octal' versions of some routines added by nhs
-
-module vector_mod
-
+! real(double) and 'octal' versions of some routines added by nhs
 
   use kind_mod
   use constants_mod
 
   implicit none
 
-  public
+  public:: &
+       modulus, &
+       normalize, &
+       rotateX, rotateY, rotateZ, &
+       intersectionLinePlane, &
+       intersectionLineSphere, &
+       arbitraryRotate, &
+       getPolar, &
+       fromPhotosphereVector, &
+       s2o, &
+       o2s        
+       
+  private :: &
+       rmultSingle, rmultDouble, rmultOctal, rmultSingleReversed, rmultDoubleReversed, &
+       rmultOctalReversed, dmult, divideVecSingle, divideVecDouble, divideVecOctal, &
+       addSingle, addDouble, addOctal, addOctalDouble,  addDoubleOctal, addOctalSingle, &
+       addSingleOctal, subtractSingle, subtractDouble, subtractOctal, &
+       singleToDoubleVector, doubleToSingleVector, singleToOctalVector, octalToSingleVector, &
+       doubleToOctalVector, octalToDoubleVector, dotProdSingle, dotProdDouble, dotProdOctal, &
+       dotProdOctalSingle, dotProdSingleOctal, crossProdSingle, crossProdDouble, crossProdOctal, &
+       crossProdOctalSingle, crossProdSingleOctal, modulusSingle, modulusDouble, modulusOctal, &
+       normalizeSingle, normalizeDouble, normalizeOctal, rotateXSingle, rotateXDouble, rotateXOctal, &
+       rotateYSingle, rotateYDouble, rotateYOctal, rotateZSingle, rotateZDouble, rotateZOctal, &
+       intersectionLinePlaneSingle, intersectionLinePlaneDouble, intersectionLinePlaneOctal, &
+       intersectionLineSphereSingle, intersectionLineSphereDouble, intersectionLineSphereOctal, &
+       arbitraryRotateSingle, arbitraryRotateDouble, arbitraryRotateOctal, &
+       getPolarSingle, getPolarDouble, getPolarOctal, fromPhotosphereSingleVector, &
+       fromPhotosphereDoubleVector, fromPhotosphereOctalVector
+  
+  
 
   ! The definition of the vector type
 
   type VECTOR
-     real(kind=singleKind) :: x
-     real(kind=singleKind) :: y
-     real(kind=singleKind) :: z
+     real(single) :: x
+     real(single) :: y
+     real(single) :: z
   end type VECTOR
 
   type doubleVector
-    real(kind=doubleKind) :: x
-    real(kind=doubleKind) :: y
-    real(kind=doubleKind) :: z
+    real(double) :: x
+    real(double) :: y
+    real(double) :: z
   end type doubleVector
   
   type octalVector
-    real(kind=octalKind) :: x
-    real(kind=octalKind) :: y
-    real(kind=octalKind) :: z
+    real(oct) :: x
+    real(oct) :: y
+    real(oct) :: z
   end type octalVector
 
   ! Define multiply
@@ -166,7 +193,7 @@ module vector_mod
     module procedure getPolarOctal
   end interface
 
-  interface fromPhotophereVector
+  interface fromPhotosphereVector
      module procedure fromPhotosphereSingleVector
      module procedure fromPhotosphereDoubleVector
      module procedure fromPhotosphereOctalVector
@@ -197,7 +224,7 @@ contains
 
   end function dotProdSingle
   
-  real(kind=doubleKind) pure function dotProdDouble(a , b)
+  real(double) pure function dotProdDouble(a , b)
     type(doubleVector), intent(in) :: a
     type(doubleVector), intent(in) :: b
 
@@ -205,7 +232,7 @@ contains
 
   end function dotProdDouble
   
-  real(kind=octalKind) pure function dotProdOctal(a , b)
+  real(oct) pure function dotProdOctal(a , b)
     type(octalVector), intent(in) :: a
     type(octalVector), intent(in) :: b
 
@@ -213,7 +240,7 @@ contains
 
   end function dotProdOctal
 
-  real(kind=octalKind) pure function dotProdSingleOctal(a , b)
+  real(oct) pure function dotProdSingleOctal(a , b)
     type(Vector), intent(in) :: a
     type(octalVector), intent(in) :: b
 
@@ -222,7 +249,7 @@ contains
   end function dotProdSingleOctal
 
 
-  real(kind=octalKind) pure function dotProdOctalSingle(a , b)
+  real(oct) pure function dotProdOctalSingle(a , b)
     type(octalVector), intent(in) :: a
     type(Vector), intent(in) :: b
 
@@ -301,7 +328,7 @@ contains
   
   subroutine normalizeDouble(a)
     type(doubleVector), intent(inout) :: a
-    real(kind=doubleKind) :: m
+    real(double) :: m
 
     m = modulus(a)
 
@@ -319,7 +346,7 @@ contains
 
   subroutine normalizeOctal(a)
     type(octalVector), intent(inout) :: a
-    real(kind=octalKind) :: m
+    real(oct) :: m
 
     m = modulus(a)
 
@@ -346,7 +373,7 @@ contains
 
   end function modulusSingle
   
-  real(kind=doubleKind) pure function modulusDouble(a)
+  real(double) pure function modulusDouble(a)
     type(doubleVector), intent(in) :: a
 
     modulusDouble = a%x*a%x + a%y*a%y + a%z*a%z
@@ -354,7 +381,7 @@ contains
 
   end function modulusDouble
   
-  real(kind=octalKind) pure function modulusOctal(a)
+  real(oct) pure function modulusOctal(a)
     type(octalVector), intent(in) :: a
 
     modulusOctal = a%x*a%x + a%y*a%y + a%z*a%z
@@ -375,7 +402,7 @@ contains
   end function rmultSingle
 
   type(doubleVector) pure function rmultDouble(a,b)
-    real(kind=doubleKind), intent(in) :: a
+    real(double), intent(in) :: a
     type(doubleVector), intent(in) :: b
 
     rmultDouble%x = a * b%x
@@ -385,7 +412,7 @@ contains
   end function rmultDouble
 
   type(octalVector) pure function rmultOctal(a,b)
-    real(kind=octalKind), intent(in) :: a
+    real(oct), intent(in) :: a
     type(octalVector), intent(in) :: b
 
     rmultOctal%x = a * b%x
@@ -405,7 +432,7 @@ contains
   end function rmultSingleReversed
 
   type(doubleVector) pure function rmultDoubleReversed(b,a)
-    real(kind=doubleKind), intent(in) :: a
+    real(double), intent(in) :: a
     type(doubleVector), intent(in) :: b
 
     rmultDoubleReversed%x = a * b%x
@@ -415,7 +442,7 @@ contains
   end function rmultDoubleReversed
 
   type(octalVector) pure function rmultOctalReversed(b,a)
-    real(kind=octalKind), intent(in) :: a
+    real(oct), intent(in) :: a
     type(octalVector), intent(in) :: b
 
     rmultOctalReversed%x = a * b%x
@@ -426,11 +453,11 @@ contains
 
  
   type(VECTOR) pure function dmult(a,b)
-    ! this has one single precision and one double precision 
+    ! this has one single precision and one real(double) 
     !   argument, which doesn't really fit with the scheme used
     !   elsewhere in this module, but is required by some of the
     !   other torus routines.
-    real(kind=doubleKind), intent(in) :: a
+    real(double), intent(in) :: a
     type(VECTOR), intent(in) :: b
 
     dmult%x = a * b%x
@@ -454,7 +481,7 @@ contains
   
   type(doubleVector) pure function divideVecDouble(a,b)
     type(doubleVector), intent(in) :: a
-    real(kind=doubleKind), intent(in) :: b
+    real(double), intent(in) :: b
 
     divideVecDouble%x = a%x / b
     divideVecDouble%y = a%y / b
@@ -464,7 +491,7 @@ contains
   
   type(octalVector) pure function divideVecOctal(a,b)
     type(octalVector), intent(in) :: a
-    real(kind=octalKind), intent(in) :: b
+    real(oct), intent(in) :: b
 
     divideVecOctal%x = a%x / b
     divideVecOctal%y = a%y / b
@@ -589,7 +616,7 @@ contains
     
   end subroutine doubleToSingleVector 
   
-  pure subroutine singleToDoubleVector(a,b)
+  elemental subroutine singleToDoubleVector(a,b)
 
     type(doubleVector), intent(out) :: a
     type(vector),       intent(in)  :: b
@@ -600,7 +627,7 @@ contains
     
   end subroutine singleToDoubleVector 
   
-  pure subroutine octalToSingleVector(a,b)
+  elemental subroutine octalToSingleVector(a,b)
 
     type(vector),       intent(out) :: a
     type(octalVector), intent(in)   :: b
@@ -611,7 +638,7 @@ contains
     
   end subroutine octalToSingleVector 
   
-  pure subroutine singleToOctalVector(a,b)
+  elemental subroutine singleToOctalVector(a,b)
 
     type(octalVector), intent(out)  :: a
     type(vector),       intent(in)  :: b
@@ -622,7 +649,7 @@ contains
     
   end subroutine singleToOctalVector 
 
-  pure subroutine octalToDoubleVector(a,b)
+  elemental subroutine octalToDoubleVector(a,b)
 
     type(doubleVector), intent(out) :: a
     type(octalVector), intent(in)   :: b
@@ -633,7 +660,7 @@ contains
     
   end subroutine octalToDoubleVector 
   
-  pure subroutine doubleToOctalVector(a,b)
+  elemental subroutine doubleToOctalVector(a,b)
 
     type(octalVector), intent(out)  :: a
     type(doubleVector), intent(in)  :: b
@@ -673,8 +700,8 @@ contains
 
     implicit none
     type(doubleVector), intent(in) :: vec
-    real(kind=doubleKind),intent(out) :: r, theta, phi
-    real(kind=doubleKind) :: cosTheta 
+    real(double),intent(out) :: r, theta, phi
+    real(double) :: cosTheta 
 
     r = modulus(vec)
     if ((vec%y == 0.0_db) .and. (vec%x == 0.0_db)) then
@@ -696,8 +723,8 @@ contains
 
     implicit none
     type(octalVector), intent(in) :: vec
-    real(kind=octalKind),intent(out) :: r, theta, phi
-    real(kind=octalKind) :: cosTheta 
+    real(oct),intent(out) :: r, theta, phi
+    real(oct) :: cosTheta 
 
     r = modulus(vec)
     if ((vec%y == 0.0_oc) .and. (vec%x == 0.0_oc)) then
@@ -734,8 +761,8 @@ contains
   
   type(doubleVector) pure function rotateZDouble(a,b)
     type(doubleVector), intent(in) :: a
-    real(kind=doubleKind), intent(in) :: b   ! angle in radians
-    real(kind=doubleKind) :: cosb, sinb
+    real(double), intent(in) :: b   ! angle in radians
+    real(double) :: cosb, sinb
 
     cosb = COS(b)
     sinb = Sin(b)
@@ -748,8 +775,8 @@ contains
   
   type(octalVector) pure function rotateZOctal(a,b)
     type(octalVector), intent(in) :: a
-    real(kind=octalKind), intent(in) :: b   ! angle in radians
-    real(kind=octalKind) :: cosb, sinb
+    real(oct), intent(in) :: b   ! angle in radians
+    real(oct) :: cosb, sinb
 
     cosb = COS(b)
     sinb = Sin(b)
@@ -777,8 +804,8 @@ contains
   
   type(doubleVector) pure function rotateXDouble(a,b)
     type(doubleVector), intent(in) :: a
-    real(kind=doubleKind), intent(in) :: b   ! angle in radians
-    real(kind=doubleKind)  :: cosb, sinb
+    real(double), intent(in) :: b   ! angle in radians
+    real(double)  :: cosb, sinb
 
     cosb = COS(b)
     sinb = Sin(b)
@@ -791,8 +818,8 @@ contains
   
   type(octalVector) pure function rotateXOctal(a,b)
     type(octalVector), intent(in) :: a
-    real(kind=octalKind), intent(in) :: b   ! angle in radians
-    real(kind=octalKind)  :: cosb, sinb
+    real(oct), intent(in) :: b   ! angle in radians
+    real(oct)  :: cosb, sinb
 
     cosb = COS(b)
     sinb = Sin(b)
@@ -820,8 +847,8 @@ contains
   
   type(doubleVector) pure function rotateYDouble(a,b)
     type(doubleVector), intent(in) :: a
-    real(kind=doubleKind), intent(in) :: b   ! angle in radians
-    real(kind=doubleKind) :: cosb, sinb
+    real(double), intent(in) :: b   ! angle in radians
+    real(double) :: cosb, sinb
 
     cosb = COS(b)
     sinb = Sin(b)
@@ -834,8 +861,8 @@ contains
   
   type(octalVector) pure function rotateYOctal(a,b)
     type(octalVector), intent(in) :: a
-    real(kind=octalKind), intent(in) :: b   ! angle in radians
-    real(kind=octalKind) :: cosb, sinb
+    real(oct), intent(in) :: b   ! angle in radians
+    real(oct) :: cosb, sinb
 
     cosb = COS(b)
     sinb = Sin(b)
@@ -862,7 +889,7 @@ contains
 
 
   type(DOUBLEVECTOR) function randomUnitDoubleVector()
-    real(kind=doublekind) :: r1, r2, u, v, w, t, ang
+    real(double) :: r1, r2, u, v, w, t, ang
     call random_number(r1)
     w = 2.*r1 - 1.
     t = sqrt(1.0-w*w)
@@ -875,7 +902,7 @@ contains
   end function randomUnitDoubleVector
 
   type(OCTALVECTOR) function randomUnitOctalVector()
-    real(kind=octalkind) :: r1, r2, u, v, w, t, ang
+    real(oct) :: r1, r2, u, v, w, t, ang
     call random_number(r1)
     w = 2.0d0*r1 - 1.0d0
     t = sqrt(1.0d0-w*w)
@@ -925,10 +952,10 @@ contains
 
     type(doubleVector), intent(in) :: r0, rHat    ! equation of line
     type(doubleVector), intent(in) :: nHat        ! the normal to the plane
-    real(kind=doubleKind) , intent(in) :: d
+    real(double) , intent(in) :: d
                          ! minimum distance of plane from origin
     logical,intent(out) :: ok               ! is there in intersection?
-    real(kind=doubleKind) :: fac
+    real(double) :: fac
 
     ok = .false.
     if ((nHat.dot.rHat) /= 0.0_db) then
@@ -955,10 +982,10 @@ contains
 
     type(octalVector), intent(in) :: r0, rHat    ! equation of line
     type(octalVector), intent(in) :: nHat        ! the normal to the plane
-    real(kind=octalKind) , intent(in) :: d
+    real(oct) , intent(in) :: d
                          ! minimum distance of plane from origin
     logical,intent(out) :: ok               ! is there in intersection?
-    real(kind=octalKind) :: fac
+    real(oct) :: fac
 
     ok = .false.
     if ((nHat.dot.rHat) /= 0.0_oc) then
@@ -992,14 +1019,14 @@ contains
     logical,intent(out)           :: found2   ! there is a second intersection
     real, intent(out)             :: intersectionDistance1 ! distances along line 
     real, intent(out)             :: intersectionDistance2 !   to intersections
-    real(doubleKind)  :: a, b, c       ! quadratic formula variables
-    real(doubleKind)  :: discriminant  ! quadratic formula variable
-    real(doubleKind)  :: solution1     ! quadratic formula variable
-    real(doubleKind)  :: solution2     ! quadratic formula variable
+    real(double)  :: a, b, c       ! quadratic formula variables
+    real(double)  :: discriminant  ! quadratic formula variable
+    real(double)  :: solution1     ! quadratic formula variable
+    real(double)  :: solution2     ! quadratic formula variable
     
-    type(doubleVector) :: r0Double, rHatDouble ! equation of line (double precision)
-    type(doubleVector) :: s0Double             ! centre of sphere (double precision)
-    real(doubleKind)   :: sRDouble             ! radius of sphere (double precision)
+    type(doubleVector) :: r0Double, rHatDouble ! equation of line (real(double))
+    type(doubleVector) :: s0Double             ! centre of sphere (real(double))
+    real(double)   :: sRDouble             ! radius of sphere (real(double))
     
     r0Double = doubleVector(r0%x,r0%y,r0%z)
     rHatDouble = doubleVector(rHat%x,rHat%y,rHat%z)
@@ -1054,17 +1081,17 @@ contains
     implicit none
 
     type(doubleVector), intent(in) :: r0, rHat ! equation of line
-    real(doubleKind), intent(in)   :: length   ! length of line segment 
+    real(double), intent(in)   :: length   ! length of line segment 
     type(doubleVector), intent(in) :: s0       ! centre of sphere
-    real(doubleKind), intent(in)   :: sR       ! radius of sphere
+    real(double), intent(in)   :: sR       ! radius of sphere
     logical,intent(out)            :: found1   ! there is one intersection
     logical,intent(out)            :: found2   ! there is a second intersection
-    real(doubleKind), intent(out)  :: intersectionDistance1 ! distances along line 
-    real(doubleKind), intent(out)  :: intersectionDistance2 !   to intersections
-    real(doubleKind)  :: a, b, c       ! quadratic formula variables
-    real(doubleKind)  :: discriminant  ! quadratic formula variable
-    real(doubleKind)  :: solution1     ! quadratic formula variable
-    real(doubleKind)  :: solution2     ! quadratic formula variable
+    real(double), intent(out)  :: intersectionDistance1 ! distances along line 
+    real(double), intent(out)  :: intersectionDistance2 !   to intersections
+    real(double)  :: a, b, c       ! quadratic formula variables
+    real(double)  :: discriminant  ! quadratic formula variable
+    real(double)  :: solution1     ! quadratic formula variable
+    real(double)  :: solution2     ! quadratic formula variable
     
     a = rHat%x**2.0_db + rHat%y**2.0_db + rHat%z**2.0_db
     b = 2.0_db * ( rHat%x * (r0%x - s0%x) + rHat%y * (r0%y - s0%y) + rHat%z * (r0%z - s0%z)) 
@@ -1112,21 +1139,21 @@ contains
     implicit none
 
     type(octalVector), intent(in) :: r0, rHat ! equation of line
-    real(octalKind), intent(in)   :: length   ! length of line segment 
+    real(oct), intent(in)   :: length   ! length of line segment 
     type(octalVector), intent(in) :: s0       ! centre of sphere
-    real(octalKind), intent(in)   :: sR       ! radius of sphere
+    real(oct), intent(in)   :: sR       ! radius of sphere
     logical,intent(out)           :: found1   ! there is one intersection
     logical,intent(out)           :: found2   ! there is a second intersection
-    real(octalKind), intent(out)  :: intersectionDistance1 ! distances along line 
-    real(octalKind), intent(out)  :: intersectionDistance2 !   to intersections
-    real(doubleKind)  :: a, b, c       ! quadratic formula variables
-    real(doubleKind)  :: discriminant  ! quadratic formula variable
-    real(doubleKind)  :: solution1     ! quadratic formula variable
-    real(doubleKind)  :: solution2     ! quadratic formula variable
+    real(oct), intent(out)  :: intersectionDistance1 ! distances along line 
+    real(oct), intent(out)  :: intersectionDistance2 !   to intersections
+    real(double)  :: a, b, c       ! quadratic formula variables
+    real(double)  :: discriminant  ! quadratic formula variable
+    real(double)  :: solution1     ! quadratic formula variable
+    real(double)  :: solution2     ! quadratic formula variable
     
-    type(doubleVector) :: r0Double, rHatDouble ! equation of line (double precision)
-    type(doubleVector) :: s0Double             ! centre of sphere (double precision)
-    real(doubleKind)   :: sRDouble             ! radius of sphere (double precision)
+    type(doubleVector) :: r0Double, rHatDouble ! equation of line (real(double))
+    type(doubleVector) :: s0Double             ! centre of sphere (real(double))
+    real(double)   :: sRDouble             ! radius of sphere (real(double))
     
     r0Double = doubleVector(r0%x,r0%y,r0%z)
     rHatDouble = doubleVector(rHat%x,rHat%y,rHat%z)
@@ -1287,8 +1314,10 @@ contains
 
     fromPhotosphereSingleVector = v
   end function fromPhotosphereSingleVector
+
+  
   type(DOUBLEVECTOR) function fromPhotosphereDoubleVector(rVec)
-    real(kind=doublekind) :: ang, z
+    real(double) :: ang, z
     type(DOUBLEVECTOR) :: norm, zAxis, v, rVec, n
     
     zAxis = DOUBLEVECTOR(0.,0.,1.)
@@ -1318,8 +1347,11 @@ contains
   end function fromPhotosphereDoubleVector
 
 
+
+
+
   type(OCTALVECTOR) function fromPhotosphereOctalVector(rVec)
-    real(kind=octalkind) :: ang, z
+    real(oct) :: ang, z
     type(OCTALVECTOR) :: norm, zAxis, v, rVec, n
     
     zAxis = OCTALVECTOR(0.0d0,0.0d0,1.0d0)
@@ -1352,6 +1384,16 @@ contains
 
 
 
+  ! Convertiong single vector to octalvector
+  function s2o(vec_sngl) RESULT(out)
+    implicit none
+    type(octalvector) :: out 
+    type(vector), intent(in) :: vec_sngl 
+    
+    out%x = vec_sngl%x
+    out%y = vec_sngl%y
+    out%z = vec_sngl%z
+  end function s2o
 
 
   
@@ -1378,17 +1420,6 @@ contains
     
 
 
-
-  ! Convertiong single vector to octalvector
-  function s2o(vec_sngl) RESULT(out)
-    implicit none
-    type(octalvector) :: out 
-    type(vector), intent(in) :: vec_sngl 
-    
-    out%x = vec_sngl%x
-    out%y = vec_sngl%y
-    out%z = vec_sngl%z
-  end function s2o
 
 
   ! Convertiong single vector to octalvector

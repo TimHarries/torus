@@ -12,9 +12,9 @@ module image_mod
   public
   
   type IMAGETYPE
-    type(STOKESVECTOR), pointer :: pixel(:,:)
-    real, pointer :: vel(:,:)
-    real, pointer :: totWeight(:,:)
+    type(STOKESVECTOR), pointer :: pixel(:,:) => null()
+    real, pointer :: vel(:,:) => null()
+    real, pointer :: totWeight(:,:) => null()
     integer :: nsize
     real :: scale
     real :: vMin
@@ -22,9 +22,9 @@ module image_mod
   end type IMAGETYPE
 
   type PVIMAGETYPE
-     real, pointer :: pixel(:,:) ! in arcsec
-     real, pointer :: vAxis(:)   ! in km/s
-     real, pointer :: pAxis(:)
+     real, pointer :: pixel(:,:) => null()! in arcsec
+     real, pointer :: vAxis(:) => null()  ! in km/s
+     real, pointer :: pAxis(:) => null()
      integer :: nv
      integer :: np
      type(VECTOR) :: slitDirection
@@ -140,7 +140,7 @@ module image_mod
      
 
    subroutine addPhotonToImage(viewVec, rotationAxis, thisImageSet, nImage, thisPhoton, &
-                               thisVel, weight, filters, center)
+                               thisVel, weight, filters, center, lambda0_cont)
      
      integer, intent(in) :: nImage  ! number of images in a set
      type(IMAGETYPE), intent(inout) :: thisImageSet(nImage)
@@ -152,11 +152,24 @@ module image_mod
      real :: weight
      type(filter_set), intent(in) :: filters     
      type(octalvector), intent(in) :: center  ! the center of the model space. [10^10cm]
+     real, intent(in), optional :: lambda0_cont  ! rest wavelength of contiuum photon
      !
      integer :: i
      real :: filter_response
+     real(double) :: lambda_obs
 
-     velIncgs = thisVel * cSpeed/1.e5
+     velIncgs = thisVel! * cSpeed/1.e5 
+
+     ! observed wavelength should be Doppler shifted by local gas velocity
+     if (thisPhoton%contPhoton) then
+        if (PRESENT(lambda0_cont)) then
+           lambda_obs = dble( lambda0_cont*(1.0d0+thisVel) )
+        else
+           lambda_obs = dble( thisPhoton%lambda*(1.0d0+thisVel) )
+        end if
+     else
+        lambda_obs = dble( thisPhoton%lambda*(1.0d0+thisVel) )  
+     end if
 
 !     write(*,*) thisvel,thisimage%vMax,thisimage%vMin
 
@@ -171,7 +184,6 @@ module image_mod
            
 !           xDist = (thisPhoton%position - center) .dot. xProj
 !           yDist = (thisPhoton%position - center) .dot. yProj
-
            xDist = (thisPhoton%position) .dot. xProj
            yDist = (thisPhoton%position) .dot. yProj
            
@@ -184,7 +196,8 @@ module image_mod
                 (xPix <= thisImageSet(i)%nSize) .and. &
                 (yPix <= thisImageSet(i)%nSize)) then
               ! using a filter response function in filter_set_class here
-              filter_response = real( pass_a_filter(filters, i, dble(thisPhoton%lambda)) )
+              filter_response = real( pass_a_filter(filters, i, lambda_obs ))
+              
               thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
                    + thisPhoton%stokes * weight * filter_response
               thisImageSet(i)%vel(xPix,yPix) = thisImageSet(i)%vel(xPix, yPix)  &
@@ -216,27 +229,26 @@ module image_mod
      end subroutine freePVImage
 
 
-     subroutine writeImage(thisImage, filename, objectDistance, inArcsec, &
-          lambda_center, bandwidth)
-
+     subroutine writeImage(thisImage, filename, objectDistance, inArcsec, lambda_center, bandwidth)
+       
        type(IMAGETYPE),intent(in) :: thisImage
        character(len=*), intent(in) :: filename
-       real(kind=doubleKind), intent(in) :: objectDistance ! in [cm]
-       real(kind=doubleKind), intent(in) :: lambda_center ! of the filter in [A]
-       real(kind=doubleKind), intent(in) :: bandwidth     ! of the filter in [A]
+       real(double), intent(in) :: objectDistance ! in [cm]
+       logical, intent(in)      :: inArcsec       ! if T, the dimension of images are in arcsec
+       real(double), intent(in) :: lambda_center ! of the filter in [A]
+       real(double), intent(in) :: bandwidth     ! of the filter in [A]
        !
        real, allocatable :: piximageI(:,:)
        real, allocatable :: piximageQ(:,:)
        real, allocatable :: piximageU(:,:)
        real, allocatable :: piximageV(:,:)
        real, allocatable :: piximageVel(:,:)
-       real(kind=doubleKind) :: area
+       real(double) :: area
        real :: imScale
        real :: physicalPixelSize
        real :: angularPixelSize
        real :: pixelArea
-       logical :: inArcsec
-       real(kind=doubleKind) :: scale, convert, c_in_m_per_sec
+       real(double) :: scale, convert, c_in_m_per_sec
 
        integer :: nSize, nPix, i, j
 
@@ -282,13 +294,13 @@ module image_mod
 
        scale = scale * convert
 
-       !
-       write(*,*) " "
-       write(*,*) "================================================================="
-       write(*,*) "Image Scale Factor =", scale, " [Jy/(erg/s)*sr*(cm^2*A)/(cm^2*A)]"
-       write(*,*) "================================================================="
-       write(*,*) " "
-       !
+!       !
+!       write(*,*) " "
+!       write(*,*) "================================================================="
+!       write(*,*) "Image Scale Factor =", scale, " [Jy/(erg/s)*sr*(cm^2*A)/(cm^2*A)]"
+!       write(*,*) "================================================================="
+!       write(*,*) " "
+!       !
 
        do i = 1 , nPix
           do j = 1 , nPix

@@ -100,7 +100,7 @@ contains
     ! radius random between 0.01 and 0.1 stellar radii
 
     call random_number(r1)
-    blobs(iBlob)%radius = 0.5*grid%raxis(1) !(0.01 + 0.09*r1)*grid%rAxis(1)
+    blobs(iBlob)%radius = 0.1*grid%raxis(1) !(0.01 + 0.09*r1)*grid%rAxis(1)
 
     ! find the position of the blob within the opacity grid
 

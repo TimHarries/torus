@@ -8,16 +8,13 @@ module parameters_mod
    public
 
    ! TTauri star and disk
-   real, parameter :: TTauriRstar      = 2.0 * rSol 
-   real, parameter :: TTauriMstar      = 0.8 * mSol
-   real, parameter :: TTauriRinner     = 2.2 * TTauriRstar
-   real, parameter :: TTauriRouter     = 3.0 * TTauriRstar
-   real, parameter :: TTauriDiskRadius = 3.0 * TTauriRstar
-   real, parameter :: TTauriMdot       = 1.e-7 * mSol / (365.25 * 24. * 3600.)
-   real, parameter :: TTauriMloss      = 1.e-8 * mSol / (365.25 * 24. * 3600.)
-   ! we need to track the minimum and maximum densities of the
+   ! we may need to track the minimum and maximum densities of the
    !   accretion flow 
-   real, save      :: TTauriMinRho = huge(TTauriMinRho)
-   real, save      :: TTauriMaxRho = tiny(TTauriMaxRho)
+! RK COMMENTED OUT THIS. IBM XFL compiler does not allow intrinsic function 
+! in declearations.
+!   real, save      :: TTauriMinRho = huge(TTauriMinRho)
+!   real, save      :: TTauriMaxRho = tiny(TTauriMaxRho)
+   real, save      :: TTauriMinRho = 1.0e25
+   real, save      :: TTauriMaxRho = 1.0e-25
 
 end module parameters_mod

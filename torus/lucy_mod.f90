@@ -23,34 +23,34 @@ contains
     integer,intent(in) :: nLambda, nMuMie
     type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
     real :: lamArray(:)
-    real(kind=octalKind), allocatable :: distanceGrid(:, :, :)
-    real(kind=octalKind) :: r
+    real(oct), allocatable :: distanceGrid(:, :, :)
+    real(oct) :: r
     integer, parameter :: nFreq = 100
     integer :: i, j, k
-    real(kind=octalKind) :: freq(nFreq), dnu(nFreq), probDistPlanck(nFreq), probDistJnu(nFreq)
-    real(kind=octalKind) :: temperature
+    real(oct) :: freq(nFreq), dnu(nFreq), probDistPlanck(nFreq), probDistJnu(nFreq)
+    real(oct) :: temperature
     integer :: nMonte, iMonte, nScat, nAbs
-    real(kind=octalKind) :: thisFreq,  logFreqStart, logFreqEnd
-    real(kind=octalKind) :: albedo
+    real(oct) :: thisFreq,  logFreqStart, logFreqEnd
+    real(oct) :: albedo
     logical :: escaped
     integer :: i1, i2, i3
-    real(kind=octalkind) :: t1, t2, t3
-    real(kind=octalKind) :: thisLam
+    real(oct) :: t1, t2, t3
+    real(oct) :: thisLam
     integer :: iLam
     integer :: nInf
-    real(kind=octalKind) :: t
+    real(oct) :: t
     integer :: nt
-    real(kind=octalKind) :: ang
+    real(oct) :: ang
     integer :: iIter, nIter = 5
-    real(kind=octalKind) :: kabs
-    real(kind=octalKind) ::  kappaP, norm
-    real(kind=octalKind) :: adot, V, epsOverDeltaT
-    real(kind=octalKind) :: newT, deltaT
-    real(kind=octalKind) :: meanDeltaT
-    real(kind=octalKind) :: dx, dy, tr(6), fg, bg
-    real(kind=octalKind), allocatable :: tempImage(:,:)
+    real(oct) :: kabs
+    real(oct) ::  kappaP, norm
+    real(oct) :: adot, V, epsOverDeltaT
+    real(oct) :: newT, deltaT
+    real(oct) :: meanDeltaT
+    real(oct) :: dx, dy, tr(6), fg, bg
+    real(oct), allocatable :: tempImage(:,:)
     integer :: nDT
-    real(kind=octalKind) :: totalEmission
+    real(oct) :: totalEmission
     type(vector) :: vec_tmp
 
     allocate(tempImage(1:grid%nx,1:grid%ny))
@@ -99,7 +99,7 @@ contains
                (r - probDistPlanck(j))/(probDistPlanck(j+1)-probDistPlanck(j))
 
 
-          rVec  = real(grid%rCore, kind=octalkind) * randomUnitOctalVector()
+          rVec  = real(grid%rCore, kind=oct) * randomUnitOctalVector()
 !          uHat = fromPhotosphereVector(rVec)
           ! -- using a new routine in source_mod.f90 (RK)
           uHat = random_direction_from_sphere(rVec)
@@ -314,45 +314,45 @@ contains
     type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
 !    real  :: lamArray(:)
     real  :: lamArray(nLambda)
-    real(kind=octalKind) :: r
+    real(oct) :: r
     real :: massEnvelope, scaleFac
-    real(kind=octalKind) :: totalMass
+    real(oct) :: totalMass
     integer :: nFreq
     integer :: i, j
-    real(kind=octalKind) :: freq(2000), dnu(2000), probDistJnu(2000)
-!    real(kind=octalKind) :: probDistPlanck(nFreq)
+    real(oct) :: freq(2000), dnu(2000), probDistJnu(2000)
+!    real(oct) :: probDistPlanck(nFreq)
     real :: kappaScaReal, kappaAbsReal
     integer :: nMonte, iMonte, nScat, nAbs
-    real(kind=octalKind) :: thisFreq
-    real(kind=octalKind) :: albedo
+    real(oct) :: thisFreq
+    real(oct) :: albedo
     logical :: escaped
-    real(kind=octalKind) :: t1
-    real(kind=octalKind) :: thisLam,wavelength
+    real(oct) :: t1
+    real(oct) :: thisLam,wavelength
     integer :: iSource
     integer :: nRemoved
     real :: Tthresh
     integer :: iLam
     integer :: nInf
     integer :: iIter, nIter
-    real(kind=octalKind) ::   epsOverDeltaT
-    real(kind=octalKind) :: meanDeltaT
+    real(oct) ::   epsOverDeltaT
+    real(oct) :: meanDeltaT
     integer :: nDT, nUndersampled
-    real(kind=octalKind) :: totalEmission
+    real(oct) :: totalEmission
     integer :: subcell
     real :: treal
-    real(kind=octalKind) :: lCore
-    real(kind=octalKind) :: kabs
+    real(oct) :: lCore
+    real(oct) :: kabs
     type(vector) :: vec_tmp
     real :: dummy(1)
-    real(kind=octalKind)::  dT_sum ! [Kelvins]  the sum of the temperature change
-    real(kind=octalKind)::  dT_min ! [kelvins]  the minimum change of temperature
-    real(kind=octalKind)::  dT_max ! [kelvins]  the maximum change of temperature
-    real(kind=octalKind)::  dT_over_T_max ! [kelvins]  the maximum fractional change of temperature
+    real(oct)::  dT_sum ! [Kelvins]  the sum of the temperature change
+    real(oct)::  dT_min ! [kelvins]  the minimum change of temperature
+    real(oct)::  dT_max ! [kelvins]  the maximum change of temperature
+    real(oct)::  dT_over_T_max ! [kelvins]  the maximum fractional change of temperature
     character(len=30) :: tfilename1, tfilename2
     logical, save :: first_time_to_open_file = .true.
     integer, parameter :: LU_OUT = 42
     integer :: iIter_grand
-    real(kind=octalKind)::  dT_mean_new, dT_mean_old ! [Kelvins]
+    real(oct)::  dT_mean_new, dT_mean_old ! [Kelvins]
     logical :: converged
     real:: percent_undersampled
     integer :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
@@ -707,11 +707,11 @@ contains
 
     ! Lucy 1999, A&A, 344, 282 Equation 3
 
-    real(kind=octalKind) :: temperature
+    real(oct) :: temperature
     integer :: nFreq
-    real(kind=octalKind) :: freq(*)
-    real(kind=octalKind) :: probDist(*)
-    real(kind=octalKind) :: dnu(*)
+    real(oct) :: freq(*)
+    real(oct) :: probDist(*)
+    real(oct) :: dnu(*)
 
     integer :: i
 
@@ -734,17 +734,17 @@ contains
    type(GRIDTYPE) :: grid
    type(OCTALVECTOR) :: rVec, uHat
    integer :: i1, i2, i3
-   real(kind=octalkind) :: t1, t2, t3
-   real(kind=octalKind) :: tval, tau, r
+   real(oct) :: t1, t2, t3
+   real(oct) :: tval, tau, r
    real :: lamArray(*)
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
-   real(kind=octalKind) :: thisTau
-   real(kind=octalKind) :: kabs, ksca
-   real(kind=octalKind) :: thisFreq
-   real(kind=octalKind) :: distanceGrid(1:grid%nx, 1:grid%ny, 1:grid%nz)
-   real(kind=octalKind) :: thisLam
+   real(oct) :: thisTau
+   real(oct) :: kabs, ksca
+   real(oct) :: thisFreq
+   real(oct) :: distanceGrid(1:grid%nx, 1:grid%ny, 1:grid%nz)
+   real(oct) :: thisLam
    integer :: iLam
 
     stillinGrid = .true.
@@ -850,7 +850,7 @@ contains
    type(GRIDTYPE) :: grid
    type(OCTALVECTOR) :: direction
    type(OCTALVECTOR) :: posVec, norm(6), p3(6)
-   real(kind=octalkind) :: t(6),tval,denom(6)
+   real(oct) :: t(6),tval,denom(6)
    integer :: i,j
    logical :: ok, thisOk(6)
    integer :: i1, i2, i3
@@ -957,30 +957,30 @@ contains
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
     logical, intent(in) :: this_is_root    ! T if thisOctal is a root node.
-    real(kind=octalKind) :: totalEmission
+    real(oct) :: totalEmission
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     type(gridtype) :: grid
     integer :: subcell, i
     integer, parameter :: minCrossings = 30
-    real(kind=octalKind) :: V, epsOverDeltaT
-    real(kind=octalKind) :: adot
-    real(kind=octalKind) :: kappaP, norm
-    real(kind=octalKind) :: thisLam
+    real(oct) :: V, epsOverDeltaT
+    real(oct) :: adot
+    real(oct) :: kappaP, norm
+    real(oct) :: thisLam
     integer :: ilam, nLambda
-    real(kind=octalKind) :: newT, deltaT
+    real(oct) :: newT, deltaT
     integer, intent(inout) :: nDt
-    real(kind=octalKind), intent(inout) :: dT_sum ! [Kelvins]  the sum of the temperature change
-    real(kind=octalKind), intent(inout) :: dT_min ! [kelvins]  the minimum change of temperature
-    real(kind=octalKind), intent(inout) :: dT_max ! [kelvins]  the maximum change of temperature
+    real(oct), intent(inout) :: dT_sum ! [Kelvins]  the sum of the temperature change
+    real(oct), intent(inout) :: dT_min ! [kelvins]  the minimum change of temperature
+    real(oct), intent(inout) :: dT_max ! [kelvins]  the maximum change of temperature
     ! [kelvins]  the maximum fractional change of temperature
-    real(kind=octalKind), intent(inout) :: dT_over_T_max 
+    real(oct), intent(inout) :: dT_over_T_max 
 
-    real(kind=octalKind) :: kabs
+    real(oct) :: kabs
     real :: lamArray(*)
     integer :: nFreq
-    real(kind=octalKind) :: freq(*)
-    real(kind=octalKind) :: dnu(*)
+    real(oct) :: freq(*)
+    real(oct) :: dnu(*)
     integer :: nUndersampled
     integer, save  :: nwarning = 0
     integer, parameter :: nmaxwarning = 200000
@@ -1106,14 +1106,14 @@ contains
    type(GRIDTYPE), intent(in)    :: grid
    type(OCTALVECTOR), intent(in) :: posVec
    type(OCTALVECTOR), intent(in) :: direction
-   real(kind=octalkind), intent(out) :: tval
+   real(oct), intent(out) :: tval
    !
    type(OCTALVECTOR) :: norm(6), p3(6)
    type(OCTAL),pointer :: thisOctal
    type(OCTALVECTOR) :: subcen, point
    integer :: subcell
    
-   real(kind=octalKind) :: t(6),denom(6)
+   real(oct) :: t(6),denom(6)
    integer :: i,j
    logical :: ok, thisOk(6)
 
@@ -1200,16 +1200,16 @@ contains
    type(GRIDTYPE), intent(in)    :: grid
    type(OCTALVECTOR), intent(in) :: posVec
    type(OCTALVECTOR), intent(in) :: direction
-   real(kind=octalkind), intent(out) :: tval
+   real(oct), intent(out) :: tval
    !
    type(OCTALVECTOR) :: norm(6), p3(6)
    type(OCTAL),pointer :: thisOctal
    type(OCTALVECTOR) :: subcen, point
    real :: dx, dz ! directions in cylindrical coords
    integer :: subcell
-   real(kind=doubleKind) :: compX, compZ,currentX,currentZ
-   real(kind=doubleKind) :: distToZBoundary, distToXboundary
-   real(kind=octalKind) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
+   real(double) :: compX, compZ,currentX,currentZ
+   real(double) :: distToZBoundary, distToXboundary
+   real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
    integer :: i,j
    logical :: ok, thisOk(6)
    type(OCTALVECTOR) :: xHat, zHAt
@@ -1291,16 +1291,16 @@ contains
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: foundOctal
    integer :: subcell, isubcell
-   real(kind=octalKind) :: tval, tau, r
+   real(oct) :: tval, tau, r
    real :: lamArray(*)
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
    logical :: twoD
    real :: kappaScaReal, kappaAbsReal
-   real(kind=octalKind) :: thisTau
-   real(kind=octalKind) :: thisFreq
-   real(kind=octalKind) :: thisLam
+   real(oct) :: thisTau
+   real(oct) :: thisFreq
+   real(oct) :: thisLam
    integer :: iLam
    logical ::inFlow
 
@@ -1510,7 +1510,7 @@ contains
     type(OCTALVECTOR) :: rVec, rotVec
     type(OCTAL), pointer :: foundOctal, resultOctal
     integer :: subcell
-    real(kind=octalKind) :: r
+    real(oct) :: r
 
 ! This subroutine finds the location of an octal in the y=0, x>=0 plane
 ! that corresponds to the position vector rVec when it is rotated
@@ -1536,7 +1536,7 @@ contains
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
     type(OCTALVECTOR) :: rVec, rotVec
-    real(kind=octalKind) :: r
+    real(oct) :: r
     integer :: subcell, j, isub
 
 ! this routine remaps the distance grid attribute of a two-D plane
@@ -1589,7 +1589,7 @@ contains
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
     type(OCTALVECTOR) :: rVec, rotVec
-    real(kind=octalKind) :: r
+    real(oct) :: r
     integer :: subcell, j, isub
 
 ! this routine remaps the distance grid attribute of a two-D plane
@@ -1636,7 +1636,7 @@ contains
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
     type(OCTALVECTOR) :: rVec, rotVec
-    real(kind=octalKind) :: r
+    real(oct) :: r
     integer :: subcell, j, isub
 
 ! this routine remaps the distance grid attribute of a two-D plane

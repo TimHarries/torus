@@ -10,6 +10,8 @@ contains
     integer, intent(out), optional :: error
 
     call getenv(envVariable, directory)
+    if (present(error)) error = 0
+    if (present(length)) length = len(directory)
 
   end subroutine unixGetenv
 
@@ -28,7 +30,7 @@ contains
     character(len=*) :: name
     integer :: n
     
-    name = " "
+    name = "XXX"
 !    call getHostname(name, n)
 
   end subroutine unixGetHostname

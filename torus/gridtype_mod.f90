@@ -11,7 +11,7 @@ module gridtype_mod
 
   implicit none
 
-  integer, parameter :: statEqMaxLevels = 6      ! number of stateq levels
+  integer, parameter :: statEqMaxLevels =   14   ! number of stateq levels
                                                  ! (specified as a parameter for speed)
 
   public
@@ -25,6 +25,7 @@ module gridtype_mod
      integer :: nphi                             ! size of polar grid in phi
      integer :: na1, na2, na3                    ! generic 3d grid sizes
      integer :: nlambda                          ! number of wavelength points
+     integer :: nopacity                         ! number of opacity array (kappaAbs and KappaSca)
      logical :: flatspec                         ! flat spectrum being computed
      logical :: adaptive                         ! are the cells adaptive, rather than fixed
      logical :: cartesian                        ! is the grid cartesian?
@@ -39,52 +40,52 @@ module gridtype_mod
      type(VECTOR) :: diskNormal
      real :: dipoleOffset
      character(len=20) :: geometry               ! type of geometry
-     real, pointer :: rho(:,:,:)                 ! density grid
-     real, pointer :: kappaAbs(:,:,:,:)          ! cont absorption opacities
-     real, pointer :: kappaSca(:,:,:,:)          ! scattering opacities
-     real, pointer :: kappaAbsRed(:,:,:,:)          ! cont absorption opacities
-     real, pointer :: kappaScaRed(:,:,:,:)          ! scattering opacities
-     real, pointer :: chiLine(:,:,:)             ! line opacity
-     real, pointer :: etaLine(:,:,:)             ! line emissivity
-     real, pointer :: etaCont(:,:,:)             ! line emissivity
-     real, pointer :: sigma(:,:,:)               ! radial velocity gradient
-     type(VECTOR), pointer :: velocity(:,:,:)    ! velocity grid
      type(vector), pointer :: dVbydr(:,:,:)            ! velocity gradient
-     real, pointer :: rAxis(:)                   ! r-axis
 
-     real(kind=doubleKind),pointer :: oneProbLine(:)
-     real(kind=doubleKind),pointer :: oneProbCont(:)
+     real(double),pointer :: oneProbLine(:)
+     real(double),pointer :: oneProbCont(:)
      integer :: nProb
      integer, pointer :: cellIndex(:,:)
+     real, pointer :: rho(:,:,:) => null()       ! density grid
+     real, pointer :: kappaAbs(:,:,:,:) => null()! cont absorption opacities
+     real, pointer :: kappaSca(:,:,:,:) => null()! scattering opacities
+     real, pointer :: kappaAbsRed(:,:,:,:) => null()! cont absorption opacities
+     real, pointer :: kappaScaRed(:,:,:,:)=> null() ! scattering opacities
+     real, pointer :: chiLine(:,:,:) => null()   ! line opacity
+     real, pointer :: etaLine(:,:,:) => null()   ! line emissivity
+     real, pointer :: etaCont(:,:,:) => null()   ! line emissivity
+     real, pointer :: sigma(:,:,:)  => null()    ! radial velocity gradient
+     type(VECTOR), pointer :: velocity(:,:,:) => null() ! velocity grid
+     real, pointer :: rAxis(:) => null()                  ! r-axis
 
-     real, pointer :: biasCont(:)                ! radial bias for cont
-     real, pointer :: biasLine(:)                ! radial bias for line
+     real, pointer :: biasCont(:) => null()      ! radial bias for cont
+     real, pointer :: biasLine(:) => null()      ! radial bias for line
 
-     real, pointer :: muAxis(:)                  ! mu-axis
+     real, pointer :: muAxis(:) => null()                 ! mu-axis
      real, pointer :: phiAxis(:)                 ! phi-axis
      real          :: dMu, dPhi                  ! spacing of mu and phi axes
-     real, pointer :: xAxis(:)                   ! x-axis
-     real, pointer :: yAxis(:)                   ! y-axis
-     real, pointer :: zAxis(:)                   ! z-axis
-     real, pointer :: lamArray(:)                ! the wavelength array
-     real, pointer :: rProbDistLine(:)               ! emissivity probability
-     real, pointer :: muProbDistLine(:,:)            ! distributions
-     real, pointer :: phiProbDistLine(:,:,:)         !
-     real, pointer :: xProbDistLine(:)               ! emissivity probability
-     real, pointer :: yProbDistLine(:,:)             ! distributions
-     real, pointer :: zProbDistLine(:,:,:)           !
-     real, pointer :: rProbDistCont(:)               ! emissivity probability
-     real, pointer :: muProbDistCont(:,:)            ! distributions
-     real, pointer :: phiProbDistCont(:,:,:)         !
-     real, pointer :: xProbDistCont(:)               ! emissivity probability
-     real, pointer :: yProbDistCont(:,:)             ! distributions
-     real, pointer :: zProbDistCont(:,:,:)           !
-     real, pointer :: temperature(:,:,:)             ! grid cell temperatures
-     real, pointer :: biasLine3D(:,:,:)              ! grid bias distribution
-     real, pointer :: biasCont3D(:,:,:)              ! grid bias distribution
+     real, pointer :: xAxis(:) => null()         ! x-axis
+     real, pointer :: yAxis(:) => null()         ! y-axis
+     real, pointer :: zAxis(:) => null()         ! z-axis
+     real, pointer :: lamArray(:) => null()      ! the wavelength array
+     real, pointer :: rProbDistLine(:) => null() ! emissivity probability
+     real, pointer :: muProbDistLine(:,:) => null()   ! distributions
+     real, pointer :: phiProbDistLine(:,:,:) => null()!
+     real, pointer :: xProbDistLine(:) => null()      ! emissivity probability
+     real, pointer :: yProbDistLine(:,:) => null()    ! distributions
+     real, pointer :: zProbDistLine(:,:,:) => null()  !
+     real, pointer :: rProbDistCont(:) => null()      ! emissivity probability
+     real, pointer :: muProbDistCont(:,:) => null()   ! distributions
+     real, pointer :: phiProbDistCont(:,:,:) => null()!
+     real, pointer :: xProbDistCont(:) => null()      ! emissivity probability
+     real, pointer :: yProbDistCont(:,:) => null()    ! distributions
+     real, pointer :: zProbDistCont(:,:,:) => null()  !
+     real, pointer :: temperature(:,:,:) => null()    ! grid cell temperatures
+     real, pointer :: biasLine3D(:,:,:) => null()     ! grid bias distribution
+     real, pointer :: biasCont3D(:,:,:) => null()     ! grid bias distribution
      real :: rCore                                   ! core radius
-     real(kind=doublekind) :: lCore                  ! core luminosity
-     real :: chanceWindOverTotalContinuum            ! chance of continuum photon being produced
+     real(double) :: lCore = -9.9e9         ! core luminosity
+     real :: chanceWindOverTotalContinuum = -9.9e9   ! chance of continuum photon being produced
      ! in the wind rather than at the core
 
      logical :: lineEmission                        ! is there line emission?
@@ -93,37 +94,44 @@ module gridtype_mod
      logical :: doRaman                             ! is this a raman-scattering model?
      logical :: resonanceLine
 
-     real :: rStar1, rStar2, lumRatio
+     real :: rStar1, rStar2
+     real :: lumRatio = -9.9e9
 
      real :: densityScaleFac
 
-     real :: tempSource
+     real :: tempSource = -9.9e9
 
      type(VECTOR) :: starPos1, starPos2
 
-     real :: lambda2
-     real :: rInner
-     real :: rOuter
+     real :: lambda2 = -9.9e9
+     real :: rInner = -9.9e9
+     real :: rOuter = -9.9e9
 
 
-     real(kind=doubleKind), pointer :: N(:,:,:,:)           ! stateq level pops
-     real(kind=doubleKind), pointer :: Ne(:,:,:)            ! electron density
-     real(kind=doubleKind), pointer :: nTot(:,:,:)          ! total density
-     logical(kind=1), pointer :: inStar(:,:,:)
-     logical(kind=1), pointer :: inUse(:,:,:)
+     real(double), pointer :: N(:,:,:,:) => null() ! stateq level pops
+     real(double), pointer :: Ne(:,:,:) => null()  ! electron density
+     real(double), pointer :: nTot(:,:,:) => null()! total density
+     logical(kind=1), pointer :: inStar(:,:,:) => null()
+     logical(kind=1), pointer :: inUse(:,:,:) => null()
 
-     integer :: maxLevels = statEqMaxLevels          ! number of stateq levels 
+     integer :: maxLevels                            ! number of stateq levels 
      
      ! adaptive mesh refinement stuff
      type(octal), POINTER :: octreeRoot => NULL()    ! root of adaptive mesh octree 
      integer :: maxDepth                             ! maximum depth of octree
-     real(kind=octalKind) :: halfSmallestSubcell 
+     real(oct) :: halfSmallestSubcell 
        ! 'halfSmallestSubcell' is half the vertex length of the grid's smallest
        !    subcells. we store this because it is used frequently in calculations.
      integer :: nOctals                              ! total number of octals 
      real    :: smoothingFactor                      ! inter-cell maximum ratio before smooth
      integer :: ng
      type(GAUSSIAN), pointer :: gArray(:)
+
+     logical :: statEq2d                             ! can do statEq in 2-D
+     logical :: amr2dOnly                            ! only do statEq in 2-D
+     !
+     REAL    :: timeNow ! elapsed time since start of model   ! [seconds]
+     
 
   end type GRIDTYPE
 

@@ -16,6 +16,7 @@ module ttauri_mod
   use math_mod
   use octal_mod
   use parameters_mod
+  use amr_mod
 
   implicit none
   
@@ -57,7 +58,7 @@ contains
     real :: tot
     type(VECTOR) :: vP, posVec
     real :: modVp
-    real(kind=doublekind) :: Laccretion
+    real(double) :: Laccretion
     real :: Taccretion, sAccretion
     real :: minRho, maxRho
     !type(VECTOR) :: rHat, vHat
@@ -343,45 +344,53 @@ contains
 
   end subroutine fillGridMagneticAccretion
             
-  subroutine infallEnhancment(grid, distortionVec, nVec, timeStep, doDistortion)
+  subroutine infallEnhancment(grid, distortionVec, nVec, nPhi, timeStep, doDistortion,&
+                              particleMass, alreadyDoneInfall)
 
-    type(GRIDTYPE) :: grid
-    integer :: nVec
-    logical :: doDistortion
-    type(VECTOR) :: distortionVec(nVec), thisVel, thisVec
+    type(GRIDTYPE), intent(inout) :: grid
+    integer, intent(in) :: nVec, nPhi
+    logical, intent(in) :: doDistortion
+    type(VECTOR), intent(inout) :: distortionVec(nVec)
     logical, allocatable :: done(:,:,:)
-    real :: timeStep, dTime
+    real, intent(in) :: timeStep
+    real, intent(in) :: particleMass
+    logical, intent(inout) :: alreadyDoneInfall
+    real :: dTime
     real, parameter :: etaFac = 9
     real, parameter :: chiFac = 1
-
+    type(VECTOR) :: thisVel, thisVec
 
     integer, parameter :: nTimes = 1000
-    integer, parameter :: nPhi = 360
     real :: phi
     integer :: i, j
     integer :: i1, i2, i3
     real :: t1, t2, t3
 
-    write(*,*) "Time stepping vectors..."
-    dTime = timeStep/real(nTimes)
-    do j = 1, nVec
-       do i = 1, nTimes
+    if (grid%adaptive) then 
+       call infallEnhancmentAMR(grid, distortionVec, nVec, timeStep, doDistortion, &
+                               particleMass,alreadyDoneInfall)    
+    else
+      
+      write(*,*) "Time stepping vectors..."
+      dTime = timeStep/real(nTimes)
+      do j = 1, nVec
+        do i = 1, nTimes
           thisVec = distortionVec(j)/1.e10
           call getIndices(grid, thisVec, i1, i2, i3, t1, t2, t3)
           thisVel = interpGridVelocity(grid,i1, i2, i3, t1, t2, t3)
           thisVel = cSpeed * thisVel
           distortionVec(j) = distortionVec(j) + (dTime * thisVel)
-       enddo
-    enddo
-    write(*,*) "done."
+        enddo
+      enddo
+      write(*,*) "done."
 
-    allocate(done(1:grid%nx, 1:grid%ny, 1:grid%nz))
-    done = .false.
+      allocate(done(1:grid%nx, 1:grid%ny, 1:grid%nz))
+      done = .false.
 
-    
-    if (doDistortion) then
-       write(*,*) "Distorting grid..."    
-       do i = 1, nVec
+
+      if (doDistortion) then
+        write(*,*) "Distorting grid..."    
+        do i = 1, nVec
           do j = 1, nPhi
              phi = twoPi * real(j-1)/real(nPhi-1)
              thisVec = rotateZ(distortionVec(i), phi)
@@ -402,17 +411,20 @@ contains
                 done(i1,i2,i3) = .true.
              endif
           enddo
-       enddo
-       write(*,*) "done."
-    endif
-    deallocate(done)
+        enddo
+        write(*,*) "done."
+      endif
+      deallocate(done)
+
+    end if
 
   end subroutine infallEnhancment
        
 
-  subroutine initInfallEnhancement(distortionVec, nVec)
-    integer :: nVec
-    type(VECTOR) :: distortionVec(nVec)
+  subroutine initInfallEnhancement(distortionVec, nVec, nPhi, particleMass)
+    integer, intent(in) :: nVec, nPhi
+    type(VECTOR), intent(inout) :: distortionVec(nVec)
+    real, intent(inout) :: particleMass
     real ::  rStar, rinner, rOuter, fac, theta, rM
     integer :: j
 
@@ -429,6 +441,13 @@ contains
        write(*,*) distortionVec(j)
     enddo
     write(*,*) "done."
+
+    !particleMass =  sqrt(2.*TTauriRinner/((bigG * TTauriMstar) / TTauriRinner**2)) * &
+    !                 TTauriMdot * 1.0 !0.05
+    !particleMass = particleMass / real(nVec * nPhi)
+    !print *, 'Particle Mass = ', particleMass
+
+    particleMass = 1.0 ! assiging a dummy value  for safty (RK added this)
 
   end subroutine initInfallEnhancement
        

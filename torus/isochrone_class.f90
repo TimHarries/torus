@@ -1,5 +1,7 @@
 module isochrone_class
 
+  use kind_mod
+
   !
   ! DATA from http://www.mporzio.astro.it/~dantona/prems.html
   !
@@ -226,16 +228,16 @@ contains
   subroutine mass_age_to_Temp_Rad_Lum(this, mass, age, temperature, radius, luminosity)
     implicit none
     type(isochrone),  intent(in) :: this
-    double precision, intent(in) :: mass   ! should be in Solar masses
-    double precision, intent(in) :: age    ! shoudle be in years
-    double precision, intent(out) :: temperature  ! in  kelvins
-    double precision, intent(out) :: radius       ! in  10^10 cm
-    double precision, intent(out) :: luminosity   ! in  erg/sec
+    real(double), intent(in) :: mass   ! should be in Solar masses
+    real(double), intent(in) :: age    ! shoudle be in years
+    real(double), intent(out) :: temperature  ! in  kelvins
+    real(double), intent(out) :: radius       ! in  10^10 cm
+    real(double), intent(out) :: luminosity   ! in  erg/sec
     !
     real :: log_L, log_T
-    double precision, parameter  :: T_sun = 5778.d0  ! Kelvins
-    double precision, parameter :: L_sun = 3.85d33          !erg/s
-    double precision, parameter :: R_sun = 6.96d10          !cm
+    real(double), parameter  :: T_sun = 5778.d0  ! Kelvins
+    real(double), parameter :: L_sun = 3.85d33          !erg/s
+    real(double), parameter :: R_sun = 6.96d10          !cm
 
     !
     !  --- Using the routine in this module.

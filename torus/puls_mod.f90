@@ -19,7 +19,7 @@ contains
     real :: vel
     integer, parameter :: maxLevels = 9
     real :: x, dx
-    real(kind=doubleKind) :: phiT, ne1, ne2, ntot
+    real(double) :: phiT, ne1, ne2, ntot
     real :: w, qfrac,beta2,vext
     integer ::m
     real :: v, b2, b3, xfac, pfac, kfac, beta1, v1
@@ -95,6 +95,20 @@ contains
              call normalize(rHat)
 !             v1 = vTerm * (1.+(vContrast-1.)*abs(grid%muAxis(j)))/vContrast
              vel = v0 + (vTerm - v0) * (1. - grid%rAxis(1)/grid%rAxis(i))**beta
+             
+!             beta1 = 1.
+!             beta2 = 3.
+!             vext = 500.*1.e5
+!             vel = v0 + (vterm-vext-v0)*(1. -grid%rAxis(1)/grid%rAxis(i))**beta1 + &
+!                  vext*(1. -grid%rAxis(1)/grid%rAxis(i))**beta2
+
+!             fac = (abs(grid%muAxis(j))+2.)/3.
+             fac = 1.
+             v1 = fac* vTerm
+             fac = abs(grid%muAxis(j))
+             beta1 = 1.
+             vel = v0 + (v1 - v0) * (1. - grid%rAxis(1)/grid%rAxis(i))**beta1
+
              grid%velocity(i,j,k) = (vel / cSpeed) * rHat
              grid%rho(i,j,k) = mDot / (fourPi * vel * grid%rAxis(i)**2 * 1.e20)
 

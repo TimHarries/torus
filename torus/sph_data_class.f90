@@ -1,4 +1,6 @@
 module sph_data_class
+
+  use kind_mod
   ! 
   ! Class definition for Mathew's SPH data.
   ! 
@@ -8,6 +10,7 @@ module sph_data_class
 
 
   public:: &
+       kill, &
        read_sph_data, &
        get_udist, &
        get_umass, &
@@ -32,37 +35,45 @@ module sph_data_class
        find_inclinations
   
   
+  private:: &
+       kill_sph_data
   
 
 
   ! At a given time (time)
   type sph_data
 !     private  ! Believe me. It's better to be private!    
-     double precision :: udist, umass, utime    ! Units of distance, mass, time in cgs
+     real(double) :: udist, umass, utime    ! Units of distance, mass, time in cgs
      !                                          ! (umass is M_sol, udist=0.1 pc)
      integer          :: npart                  ! Total number of gas particles (field+disc)
-     double precision :: time                   ! Time of sph data dump (in units of utime)
+     real(double) :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
-     double precision :: gaspartmass            ! Mass of each gas particle
+     real(double) :: gaspartmass            ! Mass of each gas particle
      ! Positions of gas particles
-     double precision, pointer, dimension(:) :: xn,yn,zn
+     real(double), pointer, dimension(:) :: xn,yn,zn
      ! Density of the gas particles
-     double precision, pointer, dimension(:) :: rhon
+     real(double), pointer, dimension(:) :: rhon
      ! Positions of stars
-     double precision, pointer, dimension(:) :: x,y,z
+     real(double), pointer, dimension(:) :: x,y,z
      !
-     double precision, pointer, dimension(:) :: ptmass ! Masses of stars
+     real(double), pointer, dimension(:) :: ptmass ! Masses of stars
      ! 
      !
      ! Some extra data for the stellar disk.
      ! Note: the units used here are diffrent from the ones used above!     
      logical :: have_stellar_disc            ! T if the following data are assigned
-     double precision, pointer, dimension(:) :: discrad ! in [10^10cm]
-     double precision, pointer, dimension(:) :: discmass   ! in [g]
-     double precision, pointer, dimension(:) :: spinx, spiny, spinz
+     real(double), pointer, dimension(:) :: discrad ! in [10^10cm]
+     real(double), pointer, dimension(:) :: discmass   ! in [g]
+     real(double), pointer, dimension(:) :: spinx, spiny, spinz
           
   end type sph_data
 
+
+  !
+  !
+  interface kill
+     module procedure kill_sph_data
+  end interface
   
   
 contains  
@@ -75,12 +86,12 @@ contains
        gaspartmass)
     implicit none
     type(sph_data), intent(inout) :: this
-    double precision, intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
+    real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
     !                                                       ! (umass is M_sol, udist=0.1 pc)
     integer, intent(in)           :: npart                  ! Number of gas particles (field+disc)
-    double precision, intent(in)  :: time                   ! Time of sph data dump (in units of utime)
+    real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass                ! Number of stars/brown dwarfs
-    double precision, intent(in)  :: gaspartmass            ! Mass of each gas particle
+    real(double), intent(in)  :: gaspartmass            ! Mass of each gas particle
 
     ! save these values in this object
     this%udist = udist
@@ -126,11 +137,11 @@ contains
     character(LEN=*), intent(in)  :: filename
     !   
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
-!    double precision :: udist, umass, utime,  time,  gaspartmass, discpartmass
+!    real(double) :: udist, umass, utime,  time,  gaspartmass, discpartmass
 !    integer*4 :: npart,  nsph, nptmass
-    double precision :: udist, umass, utime,  time,  gaspartmass
+    real(double) :: udist, umass, utime,  time,  gaspartmass
     integer :: npart,  nptmass
-    double precision, allocatable :: dummy(:)     
+    real(double), allocatable :: dummy(:)     
 
 
     open(unit=LUIN, file=TRIM(filename), form='unformatted')
@@ -191,7 +202,7 @@ contains
     integer :: nstar
     integer :: i, dum_i
     character(LEN=1) :: dum_a
-    double precision, parameter :: M_sun = 1.989e33 ! [grams]
+    real(double), parameter :: M_sun = 1.989e33 ! [grams]
 
     open(unit=LUIN, file=TRIM(filename), status='old')
     
@@ -242,7 +253,7 @@ contains
   ! returns program units of distance in cm 
   function get_udist(this) RESULT(out)
     implicit none
-    double precision :: out
+    real(double) :: out
     type(sph_data), intent(in) :: this
     out = this%udist
   end function get_udist
@@ -250,7 +261,7 @@ contains
   ! returns program units of mass in g
   function get_umass(this) RESULT(out)
     implicit none
-    double precision :: out
+    real(double) :: out
     type(sph_data), intent(in) :: this
     out = this%umass
   end function get_umass
@@ -258,7 +269,7 @@ contains
   ! returns program units of time in s
   function get_utime(this) RESULT(out)
     implicit none
-    double precision :: out
+    real(double) :: out
     type(sph_data), intent(in) :: this
     out = this%utime
   end function get_utime
@@ -285,7 +296,7 @@ contains
   ! returns the time of dump time in the unit of [utime]
   function get_time(this) RESULT(out)
     implicit none
-    double precision :: out
+    real(double) :: out
     type(sph_data), intent(in) :: this
     out = this%time
   end function get_time
@@ -294,7 +305,7 @@ contains
   ! returns the mass of each gass particle in [umass]
   function get_gaspartmass(this) RESULT(out)
     implicit none
-    double precision :: out
+    real(double) :: out
     type(sph_data), intent(in) :: this
     out = this%gaspartmass
   end function get_gaspartmass
@@ -309,7 +320,7 @@ contains
     implicit none    
     type(sph_data), intent(in) :: this
     integer, intent(in) :: i
-    double precision, intent(out) :: x, y, z
+    real(double), intent(out) :: x, y, z
     
     x = this%xn(i) 
     y = this%yn(i)
@@ -327,7 +338,7 @@ contains
     type(sph_data), intent(inout) :: this
     integer, intent(in) :: i
     character(LEN=*), intent(in) :: name
-    double precision, intent(in) :: value
+    real(double), intent(in) :: value
     
     select case(name)
     case ("x", "X")
@@ -349,7 +360,7 @@ contains
   
   function get_rhon(this, i) RESULT(out)
     implicit none
-    double precision :: out 
+    real(double) :: out 
     type(sph_data), intent(in) :: this
     integer, intent(in) :: i
 
@@ -364,7 +375,7 @@ contains
     implicit none
     type(sph_data), intent(inout) :: this
     integer, intent(in) :: i
-    double precision, intent(in) :: value
+    real(double), intent(in) :: value
 
     this%rhon(i) = value
     
@@ -380,7 +391,7 @@ contains
     implicit none    
     type(sph_data), intent(in) :: this
     integer, intent(in) :: i
-    double precision, intent(out) :: x, y, z
+    real(double), intent(out) :: x, y, z
     
     x = this%x(i) 
     y = this%y(i)
@@ -395,7 +406,7 @@ contains
   !
   function get_pt_mass(this, i) RESULT(out)
     implicit none
-    double precision  :: out 
+    real(double)  :: out 
     type(sph_data), intent(in) :: this
     integer, intent(in):: i
 
@@ -411,7 +422,7 @@ contains
   ! 
   !  Deallocates the array memories
 
-  subroutine kill(this)
+  subroutine kill_sph_data(this)
     implicit none
     type(sph_data), intent(inout) :: this
     
@@ -424,7 +435,7 @@ contains
     NULLIFY(this%x, this%y, this%z)
     NULLIFY(this%ptmass)
 
-  end subroutine kill
+  end subroutine kill_sph_data
     
 
 
@@ -436,10 +447,10 @@ contains
 
   function max_distance(this) RESULT(out)
     implicit none
-    double precision :: out
+    real(double) :: out
     type(sph_data), intent(in) :: this
     !
-    double precision :: d_max, d, x, y, z
+    real(double) :: d_max, d, x, y, z
     integer :: i, j, n
     
     d_max= -1.0
@@ -462,7 +473,7 @@ contains
   !
   function get_rhon_min(this) RESULT(out)
     implicit none
-    double precision :: out
+    real(double) :: out
     type(sph_data), intent(in) :: this
 
     out = MINVAL(this%rhon)
@@ -475,7 +486,7 @@ contains
   !
   function get_rhon_max(this) RESULT(out)
     implicit none
-    double precision :: out
+    real(double) :: out
     type(sph_data), intent(in) :: this
 
     out = MAXVAL(this%rhon)
@@ -491,7 +502,7 @@ contains
     implicit none
     type(sph_data), intent(in) :: this
     integer, intent(in) :: i 
-    double precision, intent(out) :: sx, sy, sz 
+    real(double), intent(out) :: sx, sy, sz 
     
     sx = this%spinx(i)
     sy = this%spiny(i)
@@ -510,7 +521,7 @@ contains
     type(sph_data), intent(in) :: this
     character(LEN=*), intent(in) :: filename
     integer :: UN
-    double precision :: tmp
+    real(double) :: tmp
     
     if (filename(1:1) == '*') then
        UN = 6   ! prints on screen
@@ -553,9 +564,9 @@ contains
     implicit none    
     type(sph_data), intent(in) :: this
     integer, intent(in) :: i
-    double precision, intent(out) :: discrad    ! in [10^10cm] 
-    double precision, intent(out) :: discmass   ! in [grams] 
-    double precision, intent(out) :: spinx, spiny, spinz
+    real(double), intent(out) :: discrad    ! in [10^10cm] 
+    real(double), intent(out) :: discmass   ! in [grams] 
+    real(double), intent(out) :: spinx, spiny, spinz
     logical, save :: first_time = .true.
     
     ! quick check
@@ -599,10 +610,10 @@ contains
   subroutine find_inclinations(this, obs_x, obs_y, obs_z, outfilename)
     implicit none
     type(sph_data), intent(in) :: this
-    double precision, intent(in) :: obs_x,  obs_y, obs_z  ! directions cosines of of observer.
+    real(double), intent(in) :: obs_x,  obs_y, obs_z  ! directions cosines of of observer.
     character(LEN=*), intent(in) :: outfilename 
-    double precision :: r1, r2, inc, dp, pi
-    double precision :: sx, sy, sz ! spins
+    real(double) :: r1, r2, inc, dp, pi
+    real(double) :: sx, sy, sz ! spins
     integer :: i
 
     open(unit=43, file=TRIM(ADJUSTL(outfilename)), status="replace")

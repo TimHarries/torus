@@ -9,12 +9,12 @@ module spectrum_mod
   public
 
   type SPECTRUMTYPE
-     real(kind=doubleKind), pointer :: flux(:)
-     real(kind=doubleKind), pointer :: normflux(:)
-     real(kind=doubleKind), pointer :: normflux2(:)
-     real(kind=doubleKind), pointer :: lambda(:)
-     real(kind=doubleKind), pointer :: prob(:)
-     real(kind=doubleKind), pointer :: dlambda(:)
+     real(double), pointer :: flux(:)
+     real(double), pointer :: normflux(:)
+     real(double), pointer :: normflux2(:)
+     real(double), pointer :: lambda(:)
+     real(double), pointer :: prob(:)
+     real(double), pointer :: dlambda(:)
      integer :: nLambda
   end type SPECTRUMTYPE
   
@@ -24,8 +24,8 @@ module spectrum_mod
     subroutine getWavelength(spectrum, wavelength)
 
       type(SPECTRUMTYPE) :: spectrum
-      real(kind=doubleKind) :: wavelength
-      real(kind=doubleKind) :: r, t
+      real(double) :: wavelength
+      real(double) :: r, t
       integer :: i
 
       call random_number(r)
@@ -40,8 +40,8 @@ module spectrum_mod
 
       type(SPECTRUMTYPE) :: spectrum
       integer :: nLambda
-      real(kind=doubleKind) :: lamStart, lamEnd, teff
-      real(kind=doubleKind) :: logLamStart, logLamEnd
+      real(double) :: lamStart, lamEnd, teff
+      real(double) :: logLamStart, logLamEnd
       integer :: i
 
       allocate(spectrum%flux(1:nLambda))
@@ -118,9 +118,9 @@ module spectrum_mod
            / SUM(spectrum%flux(1:spectrum%nLambda)*spectrum%dlambda(1:spectrum%nLambda))
     end subroutine normalizedSpectrum
 
-    real(kind=doubleKind) function returnNormValue(spectrum, lambda)
+    real(double) function returnNormValue(spectrum, lambda)
       type(SPECTRUMTYPE) :: spectrum
-      real(kind=doubleKind) :: lambda, t
+      real(double) :: lambda, t
       logical :: ok
       integer :: i
 

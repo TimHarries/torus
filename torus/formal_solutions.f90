@@ -52,35 +52,35 @@ contains
 
     implicit none
     
-    real(kind=quadkind) ::  I1    ! output intensity.
+    real(quad) ::  I1    ! output intensity.
     !
-    real(kind=doublekind), intent(in)  ::  I0    ! input intensity
-    real(kind=doublekind), intent(in)  ::  tau0  ! optical depth at the initial point 
+    real(double), intent(in)  ::  I0    ! input intensity
+    real(double), intent(in)  ::  tau0  ! optical depth at the initial point 
 
-    real(kind=doublekind), intent(in)          :: wavelength        ! the wavelength [A]
+    real(double), intent(in)          :: wavelength        ! the wavelength [A]
     type(OCTALVECTOR), intent(in)  :: aVec          ! starting position vector
     type(OCTALVECTOR), intent(in)  :: uHat          ! direction
     type(GRIDTYPE), intent(in)     :: grid          ! the opacity grid
     logical, intent(in)            :: contPhoton    ! is this a continuum photon?
-    real(kind=doublekind), intent(in) :: offset     ! offset scale factor
-    real(kind=doublekind), optional, intent(inout) :: tau_inf ! offset scale factor
+    real(double), intent(in) :: offset     ! offset scale factor
+    real(double), optional, intent(inout) :: tau_inf ! offset scale factor
     
     
     type(OCTALVECTOR) :: octVec
     integer :: subcell
-    real(kind=doublekind) :: tval
+    real(double) :: tval
     integer               :: nTau                   ! size of optical depth arrays
     type(octalvector)     :: rVec                   ! position vector
     real :: kappaScaReal, kappaAbsReal, etaCont
-    real(kind=octalKind) :: chi, eta, tau
-    real(kind=quadkind)  :: integral
+    real(oct) :: chi, eta, tau
+    real(quad)  :: integral
     integer :: ilambda
     logical :: escaped
     type(OCTAL), pointer :: thisOctal
     type(OCTAL),pointer :: oldOctal
-    real(kind=quadkind) :: dtau, delta
-    real(kind=doublekind)::  I00                         ! input intensity
-    real(kind=doublekind), parameter :: c=2.99792458d10  ! speed of light in cm/s
+    real(quad) :: dtau, delta
+    real(double)::  I00                         ! input intensity
+    real(double), parameter :: c=2.99792458d10  ! speed of light in cm/s
     
     I00 = I0*offset
 

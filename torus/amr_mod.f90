@@ -9,12 +9,14 @@ MODULE amr_mod
   USE gridtype_mod        ! type definition for the 3-d grid 
   USE parameters_mod      ! parameters for specific geometries
   USE jets_mod            ! 
+  USE luc_cir3d_class 
   USE constants_mod, only: cSpeed
   USE sph_data_class
   USE cluster_class
   USE density_mod
   USE wr104_mod
   USE utils_mod
+  USE math_mod2!, only : mnewt  
 
   IMPLICIT NONE
 
@@ -44,6 +46,9 @@ CONTAINS
     CASE ("jets")
       CALL calcJetsMassVelocity(thisOctal,subcell,grid)
 
+    CASE ("luc_cir3d")
+      CALL calc_cir3d_mass_velocity(thisOctal,subcell)
+
     CASE ("testamr")
        CALL calcTestDensity(thisOctal,subcell,grid)
 
@@ -53,7 +58,6 @@ CONTAINS
     CASE ("spiralwind")
        CALL spiralWindSubcell(thisOctal, subcell ,grid)
        
-
     CASE("cluster")
        ! using a routine in cluster_class.f90
        call assign_density(thisOctal,subcell, sphData, grid%geometry, stellar_cluster)
@@ -73,6 +77,9 @@ CONTAINS
 
     CASE("clumpydisc")
        CALL assign_clumpydisc(thisOctal, subcell, grid)
+
+    CASE ("windtest")
+       CALL calcWindTestValues(thisOctal,subcell,grid)
        
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
@@ -109,15 +116,15 @@ CONTAINS
     
     ! allocate any variables that need to be 
     if (.not.grid%oneKappa) then
-       ALLOCATE(grid%octreeRoot%kappaAbs(8,grid%nLambda))
-       ALLOCATE(grid%octreeRoot%kappaSca(8,grid%nLambda))
+       ALLOCATE(grid%octreeRoot%kappaAbs(8,grid%nOpacity))
+       ALLOCATE(grid%octreeRoot%kappaSca(8,grid%nOpacity))
        grid%octreeRoot%kappaAbs = 1.e-30
        grid%octreeRoot%kappaSca = 1.e-30
-!    ELSE
-!       ALLOCATE(grid%oneKappaAbs(nDustType,grid%nLambda))
-!       ALLOCATE(grid%oneKappaSca(nDustTYpe,grid%nLambda))
-!       grid%oneKappaAbs = 1.e-30
-!       grid%oneKappaSca = 1.e-30
+    ELSE
+       ALLOCATE(grid%oneKappaAbs(1:nDusttype,grid%nLambda))
+       ALLOCATE(grid%oneKappaSca(1:nDusttype,grid%nLambda))
+       grid%oneKappaAbs = 1.e-30
+       grid%oneKappaSca = 1.e-30
     endif
 
     ALLOCATE(grid%octreeRoot%N(8,grid%maxLevels))
@@ -131,6 +138,8 @@ CONTAINS
        grid%octreeRoot%threeD = .true.
        grid%octreeRoot%maxChildren = 8
     endif
+
+
     grid%octreeRoot%nDepth = 1
     grid%octreeRoot%nChildren = 0
     grid%octreeRoot%hasChild = .FALSE.
@@ -146,10 +155,13 @@ CONTAINS
     grid%octreeRoot%biasCont3D = 1.0 
     grid%octreeRoot%velocity = vector(1.e-30,1.e-30,1.e-30)
     grid%octreeRoot%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
-    grid%octreeRoot%chiLine = 1.e-30
-    grid%octreeRoot%etaLine = 1.e-30
-    grid%octreeRoot%etaCont = 1.e-30
-    grid%octreeRoot%N = 1.e-30
+    grid%octreeRoot%chiLine = -9.9e9
+    grid%octreeRoot%etaLine = -9.9e9
+    grid%octreeRoot%etaCont = -9.9e9 
+    grid%octreeRoot%N = -9.9e9
+    grid%octreeRoot%Ne = -9.9e9
+    grid%octreeRoot%nTot = -9.9e9
+    grid%octreeRoot%changed = .false.
 
     select case (grid%geometry)
        case("cluster")
@@ -175,7 +187,7 @@ CONTAINS
           !
           DO subcell = 1, grid%octreeRoot%maxChildren
              ! calculate the values at the centre of each of the subcells
-             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, sphData)
+             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, sphData, stellar_cluster)
              ! label the subcells
              grid%octreeRoot%label(subcell) = subcell
           END DO
@@ -197,15 +209,15 @@ CONTAINS
     !   smallest subcell because this is more useful for later
     !   calculations.
     grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
-                                2.0_oc**REAL(grid%maxDepth,KIND=octalKind)
+                                2.0_oc**REAL(grid%maxDepth,kind=oct)
       
   END SUBROUTINE initFirstOctal
 
 
 ! THIS ROUTINE IS NOW REDUNDANT AND HAS BEEN REPLACED BY ADDNEWCHILDEN!!!!!!
-
   SUBROUTINE addNewChild(parent, nChild, grid, sphData, stellar_cluster)
     ! adds one new child to an octal
+    ! NB this routine leaks memory when adding an additional child to an octal.
 
     IMPLICIT NONE
     
@@ -321,10 +333,11 @@ CONTAINS
     parent%child(newChildIndex)%biasCont3D = 1.0 
     parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
     parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
-    parent%child(newChildIndex)%chiLine = 1.e-30
-    parent%child(newChildIndex)%etaLine = 1.e-30
-    parent%child(newChildIndex)%etaCont = 1.e-30
-    parent%child(newChildIndex)%N = 1.e-30
+    parent%child(newChildIndex)%chiLine = -9.9e9
+    parent%child(newChildIndex)%etaLine = -9.9e9
+    parent%child(newChildIndex)%etaCont = -9.9e9 
+    parent%child(newChildIndex)%N = -9.9e9 
+    parent%child(newChildIndex)%changed = .false.
 
 
     select case (grid%geometry)
@@ -355,7 +368,7 @@ CONTAINS
     IF (parent%child(newChildIndex)%nDepth > grid%maxDepth) THEN
       grid%maxDepth = parent%child(newChildIndex)%nDepth
       grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
-                                2.0_oc**REAL(grid%maxDepth,KIND=octalKind)
+                                2.0_oc**REAL(grid%maxDepth,kind=oct)
       ! we store the value which is half the size of the 
       !   smallest subcell because this is more useful for later
       !   calculations.
@@ -367,14 +380,14 @@ CONTAINS
   
 
   RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid, &
-       sphData, stellar_cluster)
+       sphData, stellar_cluster, setChanged)
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
 
     IMPLICIT NONE
 
     TYPE(OCTAL), POINTER :: thisOctal
-    REAL(KIND=doubleKind), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 
+    real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 
       ! 'limitScalar' is the value the decideSplit function uses to
       !   decide whether or not to split cell.
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid through to the 
@@ -384,6 +397,7 @@ CONTAINS
     ! This will be just passed to decideSplit routine.
     TYPE(sph_data), OPTIONAL, intent(in) :: sphData
     TYPE(cluster), OPTIONAL,  intent(in) :: stellar_cluster
+    LOGICAL, INTENT(IN), OPTIONAL :: setChanged
     !
     TYPE(OCTAL), POINTER :: childPointer  
     INTEGER              :: subcell, i    ! loop counters
@@ -401,11 +415,16 @@ CONTAINS
 !        CALL addNewChild(thisOctal,subcell,grid)
     IF (splitThis) then
        CALL addNewChildren(thisOctal, grid, sphData, stellar_cluster)
+       IF (PRESENT(setChanged)) THEN
+         DO i = 1, thisOctal%nChildren, 1
+           IF (setChanged) thisOctal%child(i)%changed = .TRUE.
+         END DO
+       END IF
        ! find the index of the new child and call splitGrid on it
         DO i = 1, thisOctal%maxChildren, 1
            childPointer => thisOctal%child(i)
            CALL splitGrid(childPointer,amrLimitScalar,amrLimitScalar2,grid,&
-                sphData, stellar_cluster )
+                sphData, stellar_cluster, setChanged)
         END DO
      ENDIF
       
@@ -414,7 +433,7 @@ CONTAINS
 
   
   
-  RECURSIVE SUBROUTINE getOctalArray(thisOctal,array,counter) 
+  RECURSIVE SUBROUTINE getOctalArray(thisOctal,array,counter,maxOctals) 
     ! returns an array of pointers to all of the subcells in the grid.
     ! NB because fortran cannot create arrays of pointers, the output
     !   array is actually of a derived type which *contains* the 
@@ -426,6 +445,7 @@ CONTAINS
     TYPE(octal), POINTER                            :: thisOctal
     TYPE(octalWrapper), DIMENSION(:), INTENT(INOUT) :: array 
     INTEGER, INTENT(INOUT)                          :: counter 
+    INTEGER, INTENT(IN), OPTIONAL                   :: maxOctals
   
     INTEGER              :: i
     TYPE(octal), POINTER :: child
@@ -437,6 +457,9 @@ CONTAINS
     array(counter)%content => thisOctal
     !array(counter)%inUse = .TRUE. 
     array(counter)%inUse = .NOT. thisOctal%hasChild 
+    IF (PRESENT(maxOctals)) THEN
+      IF (counter >= maxOctals) RETURN
+    END IF
     
     IF ( thisOctal%nChildren > 0 ) THEN
       DO i = 1, thisOctal%nChildren, 1
@@ -449,9 +472,86 @@ CONTAINS
     END IF
 
   END SUBROUTINE getOctalArray
+
+  
+  SUBROUTINE sortOctalArray(array,grid)
+    ! sorts by radius using HeapSort
+    
+    IMPLICIT NONE
+
+    TYPE(octalWrapper), DIMENSION(:), INTENT(INOUT) :: array 
+    TYPE(gridType), INTENT(IN) :: grid
+    
+    TYPE(octal), POINTER  :: tempContent
+    LOGICAL(KIND=logic), DIMENSION(8) :: tempInUse
+    
+    INTEGER               :: i, n
+
+    n = SIZE(array) 
+    
+    DO i = n/2, 1, -1 
+      CALL sift_down(i,n)
+    END DO
+    
+    DO i = n, 2, -1
+      ! swap the array elements
+      tempContent      => array(1)%content
+      tempInUse        =  array(1)%inUse
+      array(1)%content => array(i)%content 
+      array(1)%inUse   =  array(i)%inUse 
+      array(i)%content => tempContent 
+      array(i)%inUse   =  tempInUse 
+      CALL sift_down(1,i-1)
+    END DO
+
+    CONTAINS
+
+    SUBROUTINE sift_down(l,r)
+    
+      INTEGER, INTENT(IN) :: l, r
+      INTEGER :: j, jold 
+      REAL    :: a
+      real(oct) :: valueX
+      real(oct) :: valueY
+      real(oct) :: valueA
+      real(oct) :: valueJ
+      TYPE(octal), POINTER :: Acontent
+      LOGICAL(KIND=logic), DIMENSION(8) :: AinUse
+      TYPE(octalVector)    :: starPos
+      
+      starPos = grid%starPos1
+      valueA = modulus(array(l)%content%centre - starPos)
+      Acontent => array(l)%content
+      AinUse   =  array(l)%inUse
+      
+      jold = l
+      j = l + l 
+      DO 
+        IF (j > r) EXIT 
+        
+        IF (j < r) THEN
+          valueX = modulus(array(j)%content%centre   - starPos)
+          valueY = modulus(array(j+1)%content%centre - starPos)
+          IF (valueX < valueY) j = j + 1
+        END IF 
+        
+        valueJ = modulus(array(j)%content%centre - starPos)
+        IF (valueA >= valueJ) EXIT
+
+        array(jold)%content => array(j)%content
+        array(jold)%inUse   =  array(j)%inUse
+        
+        jold = j
+        j = j + j
+      END DO
+      array(jold)%content => Acontent
+      array(jold)%inUse   =  AinUse
+
+    END SUBROUTINE sift_down 
+
+  END SUBROUTINE sortOctalArray    
     
   
-
   RECURSIVE SUBROUTINE finishGrid(thisOctal,grid,gridConverged)
     ! takes the octree grid that has been created using 'splitGrid'
     !   and calculates all the other variables in the model.
@@ -459,6 +559,8 @@ CONTAINS
     ! the gridConverged variable should be set .TRUE. when the entire
     !   grid has been finished. Until that happens, this subroutine 
     !   will be called repeatedly.
+    
+    USE input_variables, ONLY : useHartmannTemp
     
     IMPLICIT NONE
 
@@ -476,7 +578,8 @@ CONTAINS
       SELECT CASE (grid%geometry)
 
       CASE ("ttauri")
-        CALL calcTTauriTemperature(thisOctal,subcell)
+        IF (.NOT. useHartmannTemp) &
+          CALL calcTTauriTemperature(thisOctal,subcell)
         gridConverged = .TRUE.
         
       CASE ("spiralwind")
@@ -486,7 +589,14 @@ CONTAINS
         CALL calcJetsTemperature(thisOctal,subcell, grid)
         gridConverged = .TRUE.
         
+      CASE ("luc_cir3d")
+        CALL calc_cir3d_temperature(thisOctal,subcell)
+        gridConverged = .TRUE.
+        
       CASE ("testamr","proto")
+        gridConverged = .TRUE.
+
+      CASE ("windtest")
         gridConverged = .TRUE.
 
       CASE("benchmark","shakara","aksco", "melvin","clumpydisc")
@@ -532,6 +642,7 @@ CONTAINS
     INTEGER,INTENT(INOUT) :: nVoxels   ! number of childless subcells
     
     nOctals = 0 
+    nVoxels = 0
     CALL countVoxelsPrivate(thisOctal)
     
     CONTAINS
@@ -563,7 +674,7 @@ CONTAINS
   SUBROUTINE startReturnSamples (startPoint,direction,grid,          &
              sampleFreq,nSamples,maxSamples,opaqueCore,hitCore,      &
              usePops,iLambda,error,lambda,kappaAbs,kappaSca,velocity,&
-             velocityDeriv,chiLine,levelPop,rho, temperature)
+             velocityDeriv,chiLine,levelPop,rho, temperature, Ne)
     ! samples the grid at points along the path.
     ! this should be called by the program, instead of calling 
     !   returnSamples directly, because this checks the start and finish
@@ -577,7 +688,7 @@ CONTAINS
     TYPE(octalVector), INTENT(IN)      :: direction  ! photon direction 
     TYPE(gridtype), INTENT(IN)         :: grid       ! the entire grid structure
     REAL, INTENT(IN)                   :: sampleFreq ! the maximum number of
-!    REAL(KIND=octalKind), INTENT(IN)   :: sampleFreq ! the maximum number of 
+!    real(oct), INTENT(IN)   :: sampleFreq ! the maximum number of 
                        ! samples that will be made in any subcell of the octree. 
                        
     INTEGER, INTENT(OUT)             :: nSamples   ! number of samples made
@@ -594,9 +705,10 @@ CONTAINS
     TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: velocityDeriv ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: chiLine    ! line opacities
-    REAL,DIMENSION(:,:),INTENT(INOUT),OPTIONAL:: levelPop   ! level populations
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: rho        ! density at sample points
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: temperature        ! density at sample points
+    real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL:: levelPop ! level populations
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: temperature! temperature [K] at sample points
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: Ne       ! electron density
 
     TYPE(octalVector)       :: locator 
                        ! 'locator' is used to indicate a point that lies within the  
@@ -607,39 +719,39 @@ CONTAINS
     LOGICAL                 :: abortRay     ! flag to signal completion of ray trace
     TYPE(octal)             :: octree       ! the octree structure within 'grid'
     TYPE(octalVector)       :: directionNormalized
-    REAL(KIND=octalKind)    :: distanceLimit ! max length of ray before aborting
+    real(oct)    :: distanceLimit ! max length of ray before aborting
     ! margin is the size of the region around the edge of a subcell
     !   where numerical inaccuracies may cause problems.
-    REAL(KIND=octalKind)    :: margin
+    real(oct)    :: margin
  
     ! variables for testing special cases (stellar intersections etc.)
     TYPE(octalVector)       :: starPosition       ! position vector of stellar centre
     TYPE(octalVector)       :: diskNormal         ! disk normal vector
-    REAL(KIND=octalKind)    :: rStar              ! stellar radius
-    REAL(KIND=octalKind)    :: endLength          ! max path length of photon
+    real(oct)    :: rStar              ! stellar radius
+    real(oct)    :: endLength          ! max path length of photon
     TYPE(octalVector)       :: endPoint           ! where photon leaves grid
     LOGICAL                 :: absorbPhoton       ! photon will be absorbed
-    REAL(KIND=octalKind)    :: distanceFromOrigin ! closest distance of plane from origin
+    real(oct)    :: distanceFromOrigin ! closest distance of plane from origin
     TYPE(octalVector)       :: diskIntersection   ! point of photon intersection with disk
-    REAL(KIND=octalKind)    :: starIntersectionDistance1 ! distance to first  intersection
-    REAL(KIND=octalKind)    :: starIntersectionDistance2 ! distance to second intersection
+    real(oct)    :: starIntersectionDistance1 ! distance to first  intersection
+    real(oct)    :: starIntersectionDistance2 ! distance to second intersection
     LOGICAL                 :: starIntersectionFound1 ! 1st star intersection takes place      
     LOGICAL                 :: starIntersectionFound2 ! 2nd star intersection takes place      
     LOGICAL                 :: intersectionFound  ! true when intersection takes place      
-    REAL(KIND=octalKind)    :: intersectionRadius ! disk radius when photon intersects
-    REAL(KIND=octalKind)    :: diskDistance       ! distance to disk intersection
-    REAL(KIND=octalKind)    :: distanceThroughStar! distance of chord through star
+    real(oct)    :: intersectionRadius ! disk radius when photon intersects
+    real(oct)    :: diskDistance       ! distance to disk intersection
+    real(oct)    :: distanceThroughStar! distance of chord through star
     TYPE(octalVector)       :: dummyStartPoint    ! modified start point 
-    REAL(KIND=octalKind), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
+    real(oct), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
     
     
     ! we will abort tracking a photon just before it reaches the edge of the
     !   simulation space. This is the fraction of the total distance to use:
-    REAL(KIND=octalKind), PARAMETER :: distanceFraction = 0.999_oc 
+    real(oct), PARAMETER :: distanceFraction = 0.999_oc 
     
     ! we will abort tracking any rays which are too close to 
     !   to a cell wall. The distance to use is defined by:
-    margin = 6.0_oc * REAL(grid%maxDepth,KIND=octalKind) * EPSILON(1.0_oc)
+    margin = 6.0_oc * REAL(grid%maxDepth,kind=oct) * EPSILON(1.0_oc)
     ! some more experimentation is required to find out the best value for
     !   margin.
 
@@ -661,9 +773,6 @@ CONTAINS
       PRINT *, ' in amr_mod::startReturnSamples.'
       PRINT *, ' ==> StartPoint = (', startPoint, ')'
       error = -30
-
-      write(*,*) "size",octree%subcellsize
-      write(*,*) "centre",octree%centre
       return
 !      startpoint%x = min(max(startpoint%x,octree%centre%x - octree%subcellSize),octree%centre%x + octree%subcellSize)
 !      startpoint%y = min(max(startpoint%y,octree%centre%y - octree%subcellSize),octree%centre%y + octree%subcellSize)
@@ -673,7 +782,8 @@ CONTAINS
    
    
     ! geometry-specific tests should go here
-    IF (grid%geometry(1:6) == "ttauri" .OR. grid%geometry(1:4) == "jets") THEN
+    IF (grid%geometry(1:6) == "ttauri" .OR. grid%geometry(1:4) == "jets" .or. &
+         grid%geometry(1:9) == "luc_cir3d") THEN
       
        ! need to test for both star and disc intersections 
       
@@ -696,6 +806,9 @@ CONTAINS
        distanceFromOrigin = modulus(grid%starPos1)
        diskIntersection = intersectionLinePlane(startPoint, directionNormalized,&
                                  diskNormal, distanceFromOrigin, intersectionFound)
+
+       ! Cases for no accretion disc
+       if (grid%geometry == "luc_cir3d") intersectionFound = .false.
        
        IF (intersectionFound) THEN
        
@@ -741,7 +854,7 @@ CONTAINS
                      lambda,usePops,iLambda,error,margin,endLength,           &
                      kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,   &
                      velocityDeriv=velocityDeriv,chiLine=chiLine,             &
-                     levelPop=levelPop,rho=rho, temperature=temperature)
+                     levelPop=levelPop,rho=rho, temperature=temperature, Ne=Ne)
       
        IF (error < 0)  RETURN
 
@@ -762,7 +875,7 @@ CONTAINS
                     maxSamples,abortRay,lambda,usePops,iLambda,error,margin, &
                     distanceLimit,kappaAbs=kappaAbs,kappaSca=kappaSca,       &
                     velocity=velocity,velocityDeriv=velocityDeriv,           &
-                    chiLine=chiLine,levelPop=levelPop,rho=rho,temperature=temperature)
+                    chiLine=chiLine,levelPop=levelPop,rho=rho,temperature=temperature, Ne=Ne)
 
        END IF
 
@@ -775,15 +888,17 @@ CONTAINS
            STOP
          END IF
          
-         kappaSca(nSamples) = 0.
-         kappaAbs(nSamples) = 1.e20
          lambda(nSamples) = lambda(nSamples-1)
          hitCore = .TRUE.
-         velocity(nSamples) = vector(0.,0.,0.)
-         velocityDeriv(nSamples) = 1.0
-         chiLine(nSamples) = 1.e20
-         levelPop(nSamples,:) = 0.0
-         rho(nSamples) = 0.0
+         IF (PRESENT(kappaSca))      kappaSca(nSamples) = 0.
+         IF (PRESENT(kappaAbs))      kappaAbs(nSamples) = 1.e20
+         IF (PRESENT(velocity))      velocity(nSamples) = vector(0.,0.,0.)
+         IF (PRESENT(velocityDeriv)) velocityDeriv(nSamples) = 1.0
+         IF (PRESENT(chiLine))       chiLine(nSamples) = 1.e20
+         IF (PRESENT(levelPop))      levelPop(nSamples,:) = 0.0
+         IF (PRESENT(Ne))            Ne(nSamples) = 0.0
+         IF (PRESENT(rho))           rho(nSamples) = 0.0
+         IF (PRESENT(temperature))   temperature(nSamples) = 0.0
        END IF
        
     ELSE
@@ -802,7 +917,7 @@ CONTAINS
                    usePops,iLambda,error,margin,distanceLimit,                &
                    kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,     &
                    velocityDeriv=velocityDeriv,chiLine=chiLine,               &
-                   levelPop=levelPop,rho=rho,temperature=temperature)
+                   levelPop=levelPop,rho=rho,temperature=temperature, Ne=Ne)
     END IF
       
   END SUBROUTINE startReturnSamples
@@ -811,7 +926,7 @@ CONTAINS
   RECURSIVE SUBROUTINE returnSamples (currentPoint,startPoint,locator,direction, &
              octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,usePops, &
              iLambda,error,margin,distanceLimit,kappaAbs,kappaSca,velocity,      &
-             velocityDeriv,chiLine,levelPop,rho,temperature)
+             velocityDeriv,chiLine,levelPop,rho,temperature, Ne)
     ! this uses a recursive ray traversal algorithm to sample the octal
     !   grid at points along the path of the ray. 
     ! no checks are made that the ray lies within the boundaries of the
@@ -834,7 +949,7 @@ CONTAINS
     TYPE(octal), INTENT(IN)             :: octree       ! an octal grid
     TYPE(gridtype), INTENT(IN)          :: grid         ! grid structure
     REAL, INTENT(IN)                    :: sampleFreq
-!    REAL(KIND=octalKind), INTENT(IN)    :: sampleFreq
+!    real(oct), INTENT(IN)    :: sampleFreq
                   ! 'sampleFreq' is the maximum number of samples that will be made
                   !   in any subcell of the octree. 
     INTEGER, INTENT(INOUT)              :: nSamples     ! number of samples made
@@ -843,31 +958,32 @@ CONTAINS
     REAL, DIMENSION(:), INTENT(INOUT)   :: lambda       ! distance travelled by photon
     INTEGER, INTENT(IN)                 :: iLambda      ! wavelength index
     INTEGER, INTENT(INOUT)              :: error        ! error code
-    REAL(KIND=octalKind)                :: margin
+    real(oct)                :: margin
                   ! margin is the size of the region around the edge of a subcell
                   !   where numerical inaccuracies may cause problems.
-    REAL(KIND=octalKind), INTENT(IN)    :: distanceLimit ! max length of ray before aborting
+    real(oct), INTENT(IN)    :: distanceLimit ! max length of ray before aborting
     LOGICAL, INTENT(IN)                 :: usePops      ! whether to use level populations
     
-    REAL,DIMENSION(:), INTENT(INOUT)   :: kappaAbs     ! continuous absorption opacities
-    REAL,DIMENSION(:), INTENT(INOUT)   :: kappaSca     ! scattering opacities
-    TYPE(vector), DIMENSION(:), INTENT(INOUT) :: velocity ! sampled velocities
-    REAL,DIMENSION(:), INTENT(INOUT)   :: velocityDeriv ! sampled velocity derivatives
-    REAL,DIMENSION(:), INTENT(INOUT)   :: chiLine      ! line opacities
-    REAL,DIMENSION(:,:), INTENT(INOUT) :: levelPop     ! level populations 
-    REAL,DIMENSION(:)                  :: rho          ! density at sample points
-    REAL,DIMENSION(:),INTENT(INOUT)    :: temperature  ! density at sample points
-
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: kappaAbs      ! continuous absorption opacities
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca     ! scattering opacities
+    TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocityDeriv ! sampled velocity derivatives
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: chiLine       ! line opacities
+    REAL,DIMENSION(:),OPTIONAL               :: rho           ! density at sample points
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL   :: temperature! in [K]
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL   :: Ne         ! electron density
+    real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL :: levelPop   ! level populations 
+    
 
 
     TYPE(octalVector)      :: exitPoint      ! where ray leaves current cell
     TYPE(octalVector)      :: centre         ! centre of current subcell
-    REAL(KIND=octalKind)   :: subcellSize    ! size of current subcell
-    REAL(KIND=octalKind)   :: minWallDistance ! distance to *nearest* wall
+    real(oct)   :: subcellSize    ! size of current subcell
+    real(oct)   :: minWallDistance ! distance to *nearest* wall
     
-    REAL(KIND=octalKind)   :: length         ! distance from start of the ray's path.
-    REAL(KIND=octalKind)   :: sampleLength   ! distance interval between samples 
-    REAL(KIND=octalKind)   :: trialLength    ! trial distance to a possible next sample
+    real(oct)   :: length         ! distance from start of the ray's path.
+    real(oct)   :: sampleLength   ! distance interval between samples 
+    real(oct)   :: trialLength    ! trial distance to a possible next sample
     TYPE(octalVector)      :: trialPoint     ! trial location for a next sample 
     INTEGER                :: trial          ! loop counter for trial points 
     INTEGER                :: subcell        ! current subcell 
@@ -908,7 +1024,8 @@ CONTAINS
                     maxSamples,abortRay,lambda,usePops,iLambda,error,margin, &
                     distanceLimit,kappaAbs=kappaAbs,kappaSca=kappaSca,       &
                     velocity=velocity,velocityDeriv=velocityDeriv,           &
-                    chiLine=chiLine,levelPop=levelPop,rho=rho,temperature=temperature)
+                    chiLine=chiLine,levelPop=levelPop,rho=rho,               &
+                    temperature=temperature, Ne=Ne)
         
         ! after returning from the recursive subroutine, we may have 
         !   finished tracing the ray's path
@@ -925,10 +1042,6 @@ CONTAINS
         ! find the subcell centre
         centre = subcellCentre(octree,subcell)
         subcellSize = octree%subcellSize
-
-!        write(*,*) "centre",centre
-!        write(*,*) "subcellsize",subcellsize
-!        write(*,*) "current",currentpoint
 
         ! we find the exit point from the current subcell, 
         !  and also 'locator' - a point that lies in the *next* subcell 
@@ -950,7 +1063,7 @@ CONTAINS
 !                          nSamples,maxSamples,usePops,iLambda,error,lambda,     &
 !                          kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
 !                          velocityDeriv=velocityDeriv,chiLine=chiLine,          &
-!                          levelPop=levelPop,rho=rho)
+!                          levelPop=levelPop,rho=rho, Ne=Ne)
 !        ENDIF
 
         
@@ -961,13 +1074,13 @@ CONTAINS
 
 ! force sampling here        
         !IF ( modulus(currentPoint - (startPoint + (direction *         & 
-        !                      REAL(lambda(nSamples),KIND=octalKind)))) &
+        !                      REAL(lambda(nSamples),kind=oct)))) &
         !                                       > sampleLength ) THEN
           CALL takeSample(currentPoint,length,direction,grid,octree,subcell,    &
                           nSamples,maxSamples,usePops,iLambda,error,lambda,     &
                           kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
                           velocityDeriv=velocityDeriv,chiLine=chiLine,          &
-                          levelPop=levelPop,rho=rho,temperature=temperature)
+                          levelPop=levelPop,rho=rho,temperature=temperature,Ne=Ne)
         !END IF
 
         ! we add sampleLength to the distance from the last location
@@ -975,8 +1088,8 @@ CONTAINS
         trial = 1
         DO 
           trialPoint = currentPoint + direction * &
-                       ((REAL(lambda(nSamples),KIND=octalKind) + &
-                       (REAL(trial,KIND=octalKind) * sampleLength)) - length)
+                       ((REAL(lambda(nSamples),kind=oct) + &
+                       (REAL(trial,kind=oct) * sampleLength)) - length)
                        
           ! we only want to take a sample if we are still within the subcell
           IF ( modulus(trialPoint - currentPoint) < minWallDistance ) THEN
@@ -992,7 +1105,7 @@ CONTAINS
                          nSamples,maxSamples,usePops,iLambda,error,lambda,     &
                          kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
                          velocityDeriv=velocityDeriv,chiLine=chiLine,          &
-                         levelPop=levelPop,rho=rho,temperature=temperature)
+                         levelPop=levelPop,rho=rho,temperature=temperature,Ne=Ne)
             ELSE
               EXIT
             END IF
@@ -1034,33 +1147,33 @@ CONTAINS
                   !   *next* cell of the octree that the ray will interesect.
     LOGICAL, INTENT(INOUT)              :: abortRay     ! flag to signal completion
     INTEGER, INTENT(INOUT)              :: error        ! error code
-    REAL(KIND=octalKind), INTENT(IN)    :: halfSmallestSubcell
-    REAL(KIND=octalKind), INTENT(IN)    :: margin
+    real(oct), INTENT(IN)    :: halfSmallestSubcell
+    real(oct), INTENT(IN)    :: margin
                   ! margin is the size of the region around the edge of a subcell
                   !   where numerical inaccuracies may cause problems.
     TYPE(octalVector), INTENT(OUT)      :: exitPoint    ! where ray leaves current cell
     TYPE(octalVector), INTENT(IN)       :: centre       ! centre of current subcell
-    REAL(octalKind), INTENT(IN)         :: subcellSize  ! size of current subcell
-    REAL(KIND=octalKind), INTENT(OUT)   :: minWallDistance ! distance to *nearest* wall
+    real(oct), INTENT(IN)         :: subcellSize  ! size of current subcell
+    real(oct), INTENT(OUT)   :: minWallDistance ! distance to *nearest* wall
     
     
-    REAL(KIND=octalKind)   :: wallDistanceX  ! distance to next x-wall-plane 
-    REAL(KIND=octalKind)   :: wallDistanceY  ! distance to next y-wall-plane
-    REAL(KIND=octalKind)   :: wallDistanceZ  ! distance to next z-wall-plane
+    real(oct)   :: wallDistanceX  ! distance to next x-wall-plane 
+    real(oct)   :: wallDistanceY  ! distance to next y-wall-plane
+    real(oct)   :: wallDistanceZ  ! distance to next z-wall-plane
                   ! 'wallDistanceX,Y,Z' are the distances between the current 
                   !   position and the intersections with the cell walls (along the 
                   !   'direction' vector)
     LOGICAL                :: found          ! status flag  
-    REAL(KIND=octalKind)   :: wallFromOrigin ! distance of cell wall from the origin
+    real(oct)   :: wallFromOrigin ! distance of cell wall from the origin
     TYPE(octalVector)      :: wallNormal     ! normal to plane of cell wall
 
     INTEGER, parameter :: max_num_err = 10;
     INTEGER, save :: num_err = 0    
 
     LOGICAL :: threed
-    REAL(KIND=octalKind) :: r2, d, cosMu, disttor2, disttoxboundary,disttozboundary
-    REAL(KIND=octalKind) :: compZ, currentZ, tval, x1, x2, currentx, compx
-    REAL(KIND=octalKind) :: r1, theta, mu, disttor1
+    REAL(oct) :: r2, d, cosMu, disttor2, disttoxboundary,disttozboundary
+    REAL(oct) :: compZ, currentZ, tval, x1, x2, currentx, compx
+    REAL(oct) :: r1, theta, mu, disttor1
 
     TYPE(octalvector) :: xDir, zDir
     logical :: ok
@@ -1338,37 +1451,42 @@ CONTAINS
        r1 = centre%x - subcellSize/2.
        r2 = centre%x + subcellSize/2.
        d = sqrt(currentpoint%x**2+currentpoint%y**2)
-       xDir = VECTOR(currentpoint%x, currentpoint%y,0.d0)
+       xDir = OCTALVECTOR(currentpoint%x, currentpoint%y,0.d0)
 
-       if (modulus(xDir) /= 0.d0) then
-          call normalize(xDir)       
-          cosmu =((-1.d0)*xDir).dot.direction
-          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-          if (.not.ok) then
-             write(*,*) "Quad solver failed in intersectcubeamr2d"
-             do;enddo
-          endif
-          distTor2 = max(x1,x2)      
-          
-          
-          theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-          cosmu = xDir.dot.direction
-          mu = acos(max(-1.d0,min(1.d0,cosmu)))
-          distTor1 = 1.e30
-          if (mu  < theta ) then
-             call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+
+       if ((direction%x**2+direction%y**2) /= 0.0) then
+          if (modulus(xDir) /= 0.d0) then
+             call normalize(xDir)       
+             cosmu =((-1.d0)*xDir).dot.direction
+             call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
              if (.not.ok) then
                 write(*,*) "Quad solver failed in intersectcubeamr2d"
                 do;enddo
              endif
+             distTor2 = max(x1,x2)      
+             
+             
+             theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+             cosmu = xDir.dot.direction
+             mu = acos(max(-1.d0,min(1.d0,cosmu)))
+             distTor1 = 1.e30
+             if (mu  < theta ) then
+                call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+                if (.not.ok) then
+                   write(*,*) "Quad solver failed in intersectcubeamr2d"
+                   do;enddo
+                endif
+             endif
+             distTor1 = max(x1,x2)
+             distToXboundary = min(distTor1, distTor2)
+          else
+             distToXboundary = 1.e30
           endif
-          distTor1 = max(x1,x2)
-          distToXboundary = min(distTor1, distTor2)
        else
           distToXboundary = 1.e30
        endif
 
-       zDir = VECTOR(0.d0, 0.d0, 1.d0)
+       zDir = OCTALVECTOR(0.d0, 0.d0, 1.d0)
        compZ = zDir.dot.direction
        currentZ = currentpoint%z
 
@@ -1388,8 +1506,8 @@ CONTAINS
           write(*,*) "x,z",currentX,currentZ
           do;enddo
        endif
-       if (tval < 0.) then
-          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+       if (tval <= 0.) then
+          write(*,*) tVal,compZ, distToZboundary,disttoxboundary
           write(*,*) "x,z",currentX,currentZ
           do;enddo
        endif
@@ -1397,26 +1515,24 @@ CONTAINS
        minWallDistance = tVal
        
        exitPoint = currentPoint + tval * direction
-       locator = exitPoint + halfSmallestSubcell * direction
+       locator = exitPoint + 0.1*halfSmallestSubcell * direction
+
+!       write(*,*) tval, exitpoint
 
     endif
-
-
-
-
 
   END SUBROUTINE getExitPoint 
 
 
   SUBROUTINE takeSample(point,length,direction,grid,thisOctal,subcell,nSamples,&
                         maxSamples,usePops,iLambda,error,lambda,kappaAbs,      &
-                        kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,temperature) 
+                        kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,temperature,Ne) 
   
     
     IMPLICIT NONE
     
     TYPE(octalVector), INTENT(IN)      :: point     ! place to make sample
-    REAL(KIND=octalKind), INTENT(IN)   :: length    ! 
+    real(oct), INTENT(IN)   :: length    ! 
     TYPE(octalVector), INTENT(IN)      :: direction ! direction vector
     TYPE(gridtype), INTENT(IN)         :: grid      ! grid structure
     TYPE(octal), TARGET, INTENT(IN)    :: thisOctal ! grid structure
@@ -1433,9 +1549,10 @@ CONTAINS
     TYPE(vector), DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: velocityDeriv   ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: chiLine   ! line opacities
-    REAL,DIMENSION(:,:),INTENT(INOUT),OPTIONAL        :: levelPop  ! level populations
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: rho       ! density at sample points
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: temperature       ! temp at sample points
+    real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL :: levelPop  ! level populations
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL   :: Ne        ! electron density
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL   :: temperature ! in [K]
 
     TYPE(vector)                       :: directionReal ! direction vector (REAL values)
     TYPE(octal), POINTER               :: localPointer  ! pointer to the current octal
@@ -1469,7 +1586,10 @@ CONTAINS
                          kappaSca=kappaSca(nSamples),                  &
                          rho=rho(nSamples),                            &
                          N=levelPop(nSamples,:),                       &
-                         grid=grid, temperature=temperature(nSamples))
+                         grid=grid,                                    &
+                         temperature=temperature(nSamples),            &
+                         Ne=Ne(nSamples)             &
+                         )
     ELSE
       CALL amrGridValues(grid%octreeRoot,point,startOctal=localPointer,&
                          actualSubcell=subcell,                        &
@@ -1481,7 +1601,10 @@ CONTAINS
                          kappaSca=kappaSca(nSamples),                  &
                          rho=rho(nSamples),                            &
                          chiLine=chiLine(nSamples),                    &
-                         grid=grid,temperature=temperature(nSamples))
+                         grid=grid,                                    &
+                         temperature=temperature(nSamples),            &
+                         Ne=Ne(nSamples)             &
+                         )
     END IF
 
     
@@ -1493,7 +1616,7 @@ CONTAINS
        r = modulus(pointVec)
        Rs = get_jets_parameter("Rmin")
        if (r < Rs) r =Rs
-       velocity(nSamples) = REAL(Vr, kind=octalkind)*(pointVec/REAL(r,kind=octalkind))
+       velocity(nSamples) = REAL(Vr, kind=oct)*(pointVec/REAL(r,kind=oct))
        velocityDeriv(nSamples) = dV_dn_jets(VECTOR(pointVec%x, pointVec%y, pointVec%z), &
             VECTOR(direction%x, direction%y, direction%z))    ! [1/sec]
     end If
@@ -1509,7 +1632,8 @@ CONTAINS
                            foundSubcell,actualSubcell,iLambda,lambda,direction,&
                            velocity,velocityDeriv,temperature,kappaAbs,&
                            kappaSca,rho,chiLine,etaLine,etaCont, &
-                           probDistLine,probDistCont,N,Ne,nTot,inflow,grid,interp)
+                           probDistLine,probDistCont,N,Ne,nTot,inflow,grid, &
+                           interp, departCoeff)
     ! returns one or more physical variables at a given point in the grid.
     ! optional arguments should be specified for all of the variables that
     !   are wanted.
@@ -1538,7 +1662,6 @@ CONTAINS
     LOGICAL, INTENT(IN), OPTIONAL     :: interp        ! use interpolation
                                       !  ^^^^^^ ! not implemented yet???
     REAL,INTENT(IN),OPTIONAL          :: lambda
-
     TYPE(vector),INTENT(OUT),OPTIONAL :: velocity
     REAL,INTENT(OUT),OPTIONAL         :: velocityDeriv
     REAL,INTENT(OUT),OPTIONAL         :: temperature
@@ -1548,11 +1671,12 @@ CONTAINS
     REAL,INTENT(OUT),OPTIONAL         :: chiLine
     REAL,INTENT(OUT),OPTIONAL         :: etaLine
     REAL,INTENT(OUT),OPTIONAL         :: etaCont
-    REAL,INTENT(OUT),OPTIONAL         :: probDistLine
-    REAL,INTENT(OUT),OPTIONAL         :: probDistCont
-    REAL,DIMENSION(:),INTENT(OUT),OPTIONAL :: N
-    REAL,INTENT(OUT),OPTIONAL         :: Ne
-    REAL,INTENT(OUT),OPTIONAL         :: nTot
+    real(double),INTENT(OUT),OPTIONAL :: probDistLine
+    real(double),INTENT(OUT),OPTIONAL :: probDistCont
+    real(double),DIMENSION(:),INTENT(OUT),OPTIONAL :: N
+    real(double),INTENT(OUT),OPTIONAL :: Ne
+    real(double),INTENT(OUT),OPTIONAL :: nTot
+    REAL,DIMENSION(:),INTENT(OUT),OPTIONAL     :: departCoeff
     LOGICAL,INTENT(OUT),optional      :: inFlow
     
     TYPE(octal), POINTER              :: resultOctal
@@ -1597,10 +1721,26 @@ CONTAINS
        PRINT *, 'Interpolation not implemented!' 
        STOP
     ELSE
-      IF (PRESENT(velocity))         velocity = resultOctal%velocity(subcell)
+
+
+!      IF (PRESENT(velocity))         velocity = resultOctal%velocity(subcell)
+
+      IF (PRESENT(velocity))  velocity =amrGridVelocity(octalTree,point,foundOctal=resultOctal,&
+                                        actualSubcell=subcell) 
+
+
+
       IF (PRESENT(temperature))   temperature = resultOctal%temperature(subcell)
       IF (PRESENT(rho))                   rho = resultOctal%rho(subcell)
+
+
       IF (PRESENT(chiLine))           chiLine = resultOctal%chiLine(subcell)
+
+!      IF (PRESENT(chiLine)) then
+!         CALL interpAMR(resultOctal, point, chiLine)
+!         write(*,*) point,resultOCTAL%chiLine(subcell), chiline
+!      ENDIF
+
       IF (PRESENT(etaLine))           etaLine = resultOctal%etaLine(subcell)
       IF (PRESENT(etaCont))           etaCont = resultOctal%etaCont(subcell)
       IF (PRESENT(probDistLine)) probDistLine = resultOctal%probDistLine(subcell)
@@ -1608,6 +1748,7 @@ CONTAINS
       IF (PRESENT(Ne))                     Ne = resultOctal%Ne(subcell)
       IF (PRESENT(N))                       N = resultOctal%N(subcell,:)
       IF (PRESENT(nTot))                 nTot = resultOctal%nTot(subcell)
+      IF (PRESENT(departCoeff))   departCoeff = resultOctal%departCoeff(subcell,:)
       IF (PRESENT(inFlow))           inFlow = resultOctal%inFlow(subcell)     
 
       IF (PRESENT(kappaAbs)) THEN 
@@ -1626,7 +1767,7 @@ CONTAINS
         ELSE
           PRINT *, 'In amrGridValues, can''t evaluate ''kappaAbs'' without',&
                    ' ''iLambda''.'
-          do;enddo
+          stop
         END IF
       END IF
       
@@ -1695,11 +1836,10 @@ CONTAINS
     INTEGER                        :: subcell
 
     TYPE(octalVector)              :: centre
-    type(vector) :: newVec
-    REAL(KIND=octalKind)           :: inc
+    real(oct)           :: inc
+    real(oct)           :: t1, t2, t3
     real :: phi
-    REAL(KIND=octalKind)           :: t1, t2, t3
-
+    type(vector) :: newvec
     
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
@@ -1724,12 +1864,7 @@ CONTAINS
       t1 = MAX(0.0_oc, (point%x - (centre%x - inc)) / resultOctal%subcellSize)
       t2 = MAX(0.0_oc, (point%y - (centre%y - inc)) / resultOctal%subcellSize)
       t3 = MAX(0.0_oc, (point%z - (centre%z - inc)) / resultOctal%subcellSize)
-    
 
-!      amrGridVelocity = vector(0.,0.,0.)  ! TJH did this 
-!      amrGridVelocity = resultOctal%velocity(subcell) ! RK did this.
-
-!       if (.false.) then
 
       if (resultOctal%threed) then
          SELECT CASE(subcell)
@@ -1821,8 +1956,10 @@ CONTAINS
                  ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(24) + &
                  ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(26) + &
                  ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(27)
-            
-      END SELECT
+     CASE DEFAULT
+       PRINT *, 'Invalid subcell in amrGridVelocity'
+
+    end SELECT
    else
       select case(subcell)
          CASE(1)
@@ -1838,7 +1975,6 @@ CONTAINS
                  ((     t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 3) + &
                  ((1.d0-t1) * (     t3)) * resultOctal%cornerVelocity( 5) + &
                  ((     t1) * (     t3)) * resultOctal%cornerVelocity( 6)
-
          CASE(3)
             amrGridVelocity = &
                  ((1.d0-t1) * (1.d0-t3)) * resultOctal%cornerVelocity( 4) + &
@@ -1877,6 +2013,10 @@ CONTAINS
     !   the subcell containing 'position'.
     ! if the startOctal argument is supplied, the function uses a 
     !   local search for the correct octal starting at that octal.
+    !   NOTE that startOctal may be *changed* by this function! 
+
+    ! Note that the results of this function DO have a 1^10 factor in them. 
+    !   (they are in cSpeed, but the distance is calculated 1e10cm)
 
     IMPLICIT NONE
 
@@ -1890,9 +2030,9 @@ CONTAINS
 
     TYPE(octalVector)              :: octalDirection
     TYPE(octal), POINTER           :: firstOctal
-    REAL(KIND=octalKind)           :: dr, dx, dphi
-    REAL(KIND=octalKind)           :: r
-    REAL(KIND=octalKind)           :: phi1, phi2
+    real(oct)           :: dr, dx, dphi
+    real(oct)           :: r
+    real(oct)           :: phi1, phi2
     TYPE(octalVector)              :: position1
     TYPE(octalVector)              :: position2
     INTEGER                        :: subcell
@@ -1914,10 +2054,9 @@ CONTAINS
     END IF
       
     ! first line of sight velocity
-    phi1 = direction .dot. AMRgridVelocity(grid%octreeRoot,position1,&
-                                        startOctal=startOctal,&
-                                        foundOctal=firstOctal)
-                                        
+    phi1 = direction .dot. (AMRgridVelocity(grid%octreeRoot,position1,&
+                                            startOctal=startOctal,&
+                                            foundOctal=firstOctal))
     
     ! now go forward a bit from current position
     position2 = position + (dr * octalDirection)
@@ -1929,10 +2068,10 @@ CONTAINS
     END IF
 
     ! the second position l.o.s. velocity
-    phi2 = direction .dot. AMRgridVelocity(grid%octreeRoot,position2,&
-                                        startOctal=firstOctal,&
-                                        foundOctal=foundOctal,&
-                                        foundSubcell=subcell)
+    phi2 = direction .dot. (AMRgridVelocity(grid%octreeRoot,position2,&
+                                            startOctal=firstOctal,&
+                                            foundOctal=foundOctal,&
+                                            foundSubcell=subcell))
 
     IF (PRESENT(foundSubcell)) foundSubcell = subcell                                        
 
@@ -1942,10 +2081,10 @@ CONTAINS
 
     ! the line of sight velocity gradient
 
-    IF (ABS(dx) >= 1.e-10) THEN
+    IF (ABS(dx) >= 1.e-20) THEN
        amrGridDirectionalDeriv = (abs(dphi / dx))
     ELSE
-       amrGridDirectionalDeriv = 1.e-10
+       amrGridDirectionalDeriv = 1.e-20
     ENDIF
     
     IF (.NOT. ABS(amrGridDirectionalDeriv) >= 1.e-10) &
@@ -2168,7 +2307,7 @@ CONTAINS
 
     IMPLICIT NONE
 
-    REAL(KIND=doubleKind), INTENT(IN) :: probability
+    real(double), INTENT(IN) :: probability
     TYPE(octal), POINTER              :: thisOctal
     INTEGER, INTENT(OUT)              :: subcell
 
@@ -2234,7 +2373,7 @@ CONTAINS
 
     IMPLICIT NONE
 
-    REAL(KIND=doubleKind), INTENT(IN) :: probability
+    real(double), INTENT(IN) :: probability
     TYPE(octal), POINTER              :: thisOctal
     INTEGER, INTENT(OUT)              :: subcell
 
@@ -2351,6 +2490,7 @@ CONTAINS
           ENDIF
        END IF
     endif
+
   END FUNCTION whichSubcell    
 
 
@@ -2363,8 +2503,6 @@ CONTAINS
     TYPE(octal), INTENT(IN)       :: thisOctal
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(octalVector)             :: octVec2D
-
-
     
 
     if (thisOctal%threeD) then
@@ -2389,6 +2527,23 @@ CONTAINS
     endif
   END FUNCTION inOctal
 
+  FUNCTION inSubcell(thisOctal,thisSubcell,point) 
+    ! true if the point lies within the boundaries of the current octal
+  
+    IMPLICIT NONE
+ 
+    LOGICAL                       :: inSubcell
+    TYPE(octal), INTENT(IN)       :: thisOctal
+    INTEGER, INTENT(IN)           :: thisSubcell
+    TYPE(octalVector), INTENT(IN) :: point
+
+    IF (inOctal(thisOctal,point)) THEN
+      inSubcell = whichSubcell(thisOctal,point) == thisSubcell
+    ELSE
+      inSubcell = .FALSE.
+    END IF
+  
+  END FUNCTION inSubcell
 
   FUNCTION looseInOctal(thisOctal,point) 
     ! true if the point lies 'loosely' in the current octal
@@ -2400,7 +2555,6 @@ CONTAINS
     LOGICAL                       :: looseInOctal
     TYPE(octal), INTENT(IN)       :: thisOctal
     TYPE(octalVector), INTENT(IN) :: point
-
 
     if (thisOctal%threeD) then
        IF ((point%x <= thisOctal%centre%x - 1.1_oc * thisOctal%subcellSize ) .OR. &
@@ -2443,7 +2597,7 @@ CONTAINS
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
 
     INTEGER              :: i
-    REAL(KIND=octalKind) :: halfSmallestSubcell
+    real(oct) :: halfSmallestSubcell
     TYPE(octal), POINTER :: child
     TYPE(octal), POINTER :: neighbour
     TYPE(octalVector), ALLOCATABLE, DIMENSION(:) :: locator
@@ -2461,7 +2615,6 @@ CONTAINS
     ! we do not have to test the other subcells in the current octal because
     !   they can be smaller than the any of the other subcells, but they
     !   cannot be *bigger*. this saves some time.
-
 
     if (thisOctal%threed) then
        nlocator = 6
@@ -2624,7 +2777,7 @@ CONTAINS
 
         ! first check that we are not outside the grid
         IF ( thisOctal%nDepth == 1 ) THEN
-          PRINT *, 'Panic: In findSubcellLocal, point is outside the grid'
+!          PRINT *, 'Panic: In findSubcellLocal, point is outside the grid'
 !          STOP
 !           DO ; END DO
           boundaryProblem = .TRUE.
@@ -2832,14 +2985,14 @@ CONTAINS
     real :: defDist, fac
     type(OCTALVECTOR) :: octViewVec,octPosVec
     real :: ang
-    real(kind=doubleKind) :: totalMass, minRho, maxRho
+    real(double) :: totalMass, minRho, maxRho
     integer maxPoints
     integer :: nPoints
     type(VECTOR),allocatable :: points(:), lineGrid(:,:)
     real :: x, y, dr
-    integer,allocatable :: depth(:)
     integer :: nGrid
     integer, allocatable :: nColour(:)
+    real, allocatable :: depth(:)
     integer :: i
     real :: dist, r1, r2
     type(VECTOR) :: newPoint, oldPoint, thisPoint, direction,campoint(4),startpoint
@@ -2863,6 +3016,19 @@ CONTAINS
           lineGrid(nGrid,3) = VECTOR(x + dr, y + dr, 0.)
           lineGrid(nGrid,4) = VECTOR(x - dr, y + dr, 0.)
        enddo
+    enddo
+    nGrid = 100
+    allocate(lineGrid(1:ngrid,1:2))
+    r1 = 100.*grid%ocTreeRoot%subcellSize
+    do i = 1, nGrid/2
+       r2 = r1 * (2.*real(i-1)/real(nGrid/2-1)-1.)
+       lineGrid(i,1) = VECTOR(-r1,r2,0.)
+       lineGrid(i,2) = VECTOR(+r1,r2,0.)
+    enddo
+    do i = ngrid/2+1, nGrid
+       r2 = r1 * (2.*real(i-ngrid/2-1)/real(nGrid/2-1)-1.)
+       lineGrid(i,1) = VECTOR(r2,-r1,0.)
+       lineGrid(i,2) = VECTOR(r2,+r1,0.)
     enddo
     maxFrames = 1000
 
@@ -2902,7 +3068,6 @@ CONTAINS
     campoint(4) = defDist*randomUnitVector()
     call cameraPositions(campoint, 4, posVec, viewVec, nScene, nFrames)
     
-
 
     totalMass =0.
     minrho=1.e30
@@ -2958,7 +3123,7 @@ CONTAINS
     type(OCTAL), INTENT(IN) :: thisOctal
     type(octalVector) :: viewVec, posVec
     real :: defDist
-    real(kind=doubleKind) :: totalMass
+    real(double) :: totalMass
     integer :: thisDepth
     integer :: nPoints
     type(VECTOR) :: points(:)
@@ -2997,7 +3162,7 @@ CONTAINS
     
     type(octalVector) :: viewVecOctal, cubeCentreOctal, posVecOctal
     type(VECTOR) :: cubeCentre,viewVec, posVec
-    real(KIND=octalKind) :: cubeSizeOctal
+    real(oct) :: cubeSizeOctal
     real :: cubeSize, s, defDist
     type(VECTOR) :: xAxis, yAxis, zAxis, xProj, yProj
     real :: xCube(8), yCube(8)
@@ -3183,27 +3348,29 @@ CONTAINS
     IMPLICIT NONE
     TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
-    REAL(KIND=doubleKind), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
+    real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(sph_data), OPTIONAL, intent(in) :: sphData
     TYPE(cluster), OPTIONAL, intent(in) :: stellar_cluster
     LOGICAL                    :: split          
-    REAL(KIND=octalKind)  :: cellSize
-    TYPE(octalVector)     :: searchPoint, octVec
+    real(oct)  :: cellSize
+    TYPE(octalVector)     :: searchPoint
     TYPE(octalVector)     :: cellCentre
     REAL                  :: x, y, z
     REAL :: hr, rd, fac, warpHeight, phi
     INTEGER               :: i
-    DOUBLE PRECISION      :: total_mass
-    DOUBLE PRECISION      :: ave_density, rGrid(1000), r
+    real(double)      :: total_mass
+    real(double)      :: ave_density, rGrid(1000), r, dr
     INTEGER               :: nr, nr1, nr2
-    DOUBLE PRECISION      :: total_opacity, minDensity, maxDensity, thisDensity, rho
+    real(double)      :: total_opacity, minDensity, maxDensity, thisDensity
     INTEGER               :: nsample = 400
     LOGICAL               :: inUse
     INTEGER               :: nparticle
-    REAL(KIND=doubleKind) :: dummyDouble
-    REAL(KIND=doubleKind) :: rho_disc_ave, scale_length
-
+    real(double) :: dummyDouble
+    real(double) :: rho_disc_ave, scale_length
+    real(double),save  :: R_tmp(204)  ! [10^10cm]
+    real(double) :: rho
+    logical, save :: first_time=.true.
 
    select case(grid%geometry)
 
@@ -3230,13 +3397,13 @@ CONTAINS
         CALL RANDOM_NUMBER(y)
         CALL RANDOM_NUMBER(z)
         if (thisOctal%threed) then
-           searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=octalKind) 
-           searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=octalKind) 
-           searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=octalKind) 
+           searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct)
+           searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=oct) 
+           searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
         else
-           searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=octalKind) 
+           searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct) 
            searchPoint%y = 1.e-30
-           searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=octalKind) 
+           searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
         endif
         ! using a generic density function in density_mod.f90
         rho = density(searchPoint,grid)
@@ -3245,7 +3412,7 @@ CONTAINS
         maxDensity = max(maxDensity, rho)
       END DO
 
-      ave_density = ave_density / REAL(nsample,KIND=doubleKind)
+      ave_density = ave_density / REAL(nsample,KIND=double)
       total_mass = maxDensity * (cellSize*1.e10_db)**3.0_db
       IF (total_mass > amrLimitScalar) then
          split = .TRUE.
@@ -3283,21 +3450,32 @@ CONTAINS
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       if (thisOctal%nDepth < 6) split = .true.
-      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      if (grid%geometry == "benchmark") then
-         if (r > grid%rInner) then
-            rd = grid%rOuter / 2. 
-            hr = height * (r/rd)**1.125
-            if (abs(cellCentre%z)/hr < 10.) then
-               if (cellsize/hr > 1.) split = .true.
-            endif
-            if (sqrt(cellcentre%x**2 + cellcentre%y**2)/grid%rInner < 4.) then
-               if (abs(cellCentre%z)/hr < 10.) then
-                  if (cellsize/hr > 0.4) split = .true.
-               endif
-            endif
-         endif
-      endif
+
+
+   case("luc_cir3d") 
+      if (first_time) then
+         open(unit=77, file ="zeus_rgrid.dat", status="old")
+         do i = 1, 204
+            read(77,*) R_tmp(i)
+         end do
+         close(77)
+         R_tmp(:) = R_tmp(:) * get_dble_param(cir3d_data,"Rs") ! [10^10cm]
+         first_time=.false.         
+      end if
+      cellSize = thisOctal%subcellSize
+      cellCentre = subcellCentre(thisOctal,subCell)
+      r = modulus(cellcentre)
+      nr=204
+      call locate(R_tmp, nr, r, i)      
+      if (i == 0) i = nr-1
+      if (i == nr) i = nr-1
+      if (cellsize*amrlimitscalar > (R_tmp(i+1)-R_tmp(i))) then
+         split = .true.
+      else
+         split = .false.
+      end if
+
+      if (cellSize > 100.0d0)  split=.true.
 
    case ("cluster")
       ! Splits if the number of particle is more than a critical mass.
@@ -3360,7 +3538,62 @@ CONTAINS
             end if
             
          end if
+
+      end if
+            
+            
+   case ("wr104")
+      ! Splits if the number of particle is more than a critical value (~3).
+      
+      call find_n_particle_in_subcell(nparticle, dummyDouble, sphData, thisOctal, subcell)
+
+      !
+      if (nparticle > nint(amrLimitScalar) ) then 
+	 split = .TRUE.
+      else
+         split = .FALSE.
+      end if
+      
+
+   case ("windtest")
+
+      cellSize = thisOctal%subcellSize 
+      cellCentre = subcellCentre(thisOctal,subCell)
+      split = .FALSE.
+
+      nr = 25
+      r  = 1. 
+      dr = 1.e-3
+      do i = 1, nr, 1
+        rgrid(i) = r 
+        r = r + dr
+        dr = dr * 1.25
+      end do
+      do i = 2, nr, 1
+        rgrid(i) = grid%rInner + ((grid%rOuter - grid%rInner) * (rgrid(i)-rgrid(1))/(rgrid(nr) - rGrid(1)))
+      end do
+      rgrid(1) = grid%rInner
+ !    print *, rgrid(1), rgrid(nr) 
+!      nr1 = 30
+!      nr2 = 0
+!      nr = nr1 + nr2
+!      do i = 1, nr1
+!         rgrid(i) = log10(grid%rInner)+dble(i-1)*(log10(grid%rOuter)-log10(grid%rInner))/dble(nr1-1)
+!      end do
+!      do i = 1, nr2
+!         rgrid(nr1+i) = log10(0.01*grid%rOuter)+dble(i)*(log10(grid%rOuter)-log10(0.01*grid%rOuter))/dble(nr2)
+!      end do
+      
+!      rgrid(1:nr) = 10.d0**rgrid(1:nr)
+      r = modulus(cellcentre)
+      if ((r < grid%rOuter).and.(r > grid%rinner)) then
+         call locate(rGrid, nr, r, i)      
+         if (i == 0) i = nr-1
+         if (i == nr) i = nr-1
+         if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       endif
+      if (thisOctal%nDepth < 4) split = .true.
+      
 
    case("shakara","aksco")
       split = .false.
@@ -3406,18 +3639,6 @@ CONTAINS
 !      endif
 
      
-   case ("wr104")
-      ! Splits if the number of particle is more than a critical value (~3).
-      
-      call find_n_particle_in_subcell(nparticle, dummyDouble, sphData, thisOctal, subcell)
-
-      !
-      if (nparticle > nint(amrLimitScalar) ) then 
-	 split = .TRUE.
-      else
-         split = .FALSE.
-      end if
-
 
 
       
@@ -3448,7 +3669,7 @@ CONTAINS
     INTEGER, PARAMETER                :: maxSamples = 10000
     REAL, DIMENSION(maxSamples)       :: distances, densities
     REAL, DIMENSION(maxSamples)       :: dummy
-    REAL, DIMENSION(maxSamples,1)     :: dummyPops
+    real(double), DIMENSION(maxSamples,1) :: dummyPops
     TYPE(vector),DIMENSION(maxSamples):: dummyVel
     LOGICAL                           :: hitCore
     
@@ -3515,9 +3736,9 @@ CONTAINS
     TYPE(gridtype), INTENT(IN) :: grid
     LOGICAL, INTENT(IN) :: threed
 
-    REAL(octalKind)      :: x1, x2, x3
-    REAL(octalKind)      :: y1, y2, y3
-    REAL(octalKind)      :: z1, z2, z3
+    real(oct)      :: x1, x2, x3
+    real(oct)      :: y1, y2, y3
+    real(oct)      :: z1, z2, z3
     
     INTERFACE 
       TYPE(vector) FUNCTION velocityFunc(point,grid)
@@ -3615,8 +3836,9 @@ CONTAINS
     !   of a T Tauri star with magnetospheric accretion
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
-    USE parameters_mod
-
+    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
+                               TTauriMstar, TTauriDiskHeight
+                               
     IMPLICIT NONE
 
     TYPE(octalVector), INTENT(IN) :: point
@@ -3625,9 +3847,9 @@ CONTAINS
     TYPE(octalVector) :: starPosn
     TYPE(octalVector) :: pointVec
     TYPE(octalvector)      :: vP
-    REAL(kind=doubleKind)  :: modVp
-    REAL(kind=doubleKind)  :: phi
-    REAL(kind=doubleKind)  :: r, rM, theta, y
+    REAL(double)  :: modVp
+    REAL(double)  :: phi
+    REAL(double)  :: r, rM, theta, y
 
     starPosn = grid%starPos1
     pointVec = (point - starPosn) * 1.e10_oc
@@ -3646,7 +3868,7 @@ CONTAINS
       TTauriVelocity = vector(1.e-25,1.e-25,1.e-25)
       
     ! test if the point lies too close to the disk
-    ELSE IF ( ABS(pointVec%z) < 4.0e-2 * TTauriRstar) THEN
+    ELSE IF ( ABS(pointVec%z) < TTauriDiskHeight) THEN
       TTauriVelocity = vector(1.e-25,1.e-25,1.e-25)
    
     ! test if the point lies outside the accretion stream
@@ -3659,8 +3881,9 @@ CONTAINS
                      (TTauriRstar/r - TTauriRstar/rM))
       vP = (-1.0 * (modVp/cSpeed)) * vP
       phi = ATAN2(pointVec%y,pointVec%x)
-      vP = rotateZ(vP,phi) 
-      IF (theta > pi/2.0) vP%z = -vP%z
+      vP = rotateZ(vP,-phi)
+      
+      IF (pointVec%z < 0.0) vP%z = -vP%z
       TTauriVelocity = vP
 
     ELSE
@@ -3669,13 +3892,60 @@ CONTAINS
 
   END FUNCTION TTauriVelocity
 
+  SUBROUTINE equationA7(m,func,deriv)
+  
+    USE rotation_variables
+    use input_variables, only: TTauriMstar
+    real(double), DIMENSION(:), INTENT(IN) :: m
+    real(double), DIMENSION(:), INTENT(OUT) :: func
+    real(double), DIMENSION(:,:), INTENT(OUT) :: deriv
+
+    !print *, 'eta = ',eta
+    !print *, 'm = ',m
+    !print *, 'Bp = ',Bp
+    !print *, 'Einitial = ',Einitial
+    !print *, '2ndterm = ',-(Bp**2 * m**2)/(8.0*pi*eta)
+    !print *, '3rdterm = ',bigG*TTauriMstar/r
+    
+
+    !print *,(Bp**2/(8.0_db*pi*eta)) * m**4                                    
+    !print *, - (Einitial + bigG*TTauriMstar/r - l**2/(2.0_db*bigR**2) - (Bp**2/(8.0_db*pi*eta))) * m**2 
+    !print *,        + (bigR**2 * omegaStar * omega) * m                              
+    !print *,        - (0.5_db * bigR**2 * omega**2) + Einitial + (bigG*TTauriMstar/r)
+
+    func = (Bp**2/(8.0_db*pi*eta)) * m**4                                    &
+            - (Einitial + bigG*TTauriMstar/r + l**2/(2.0_db*bigR**2) + (Bp**2/(8.0_db*pi*eta))) * m**2 &
+            + (omegaStar * l) * m                                            &
+            - (0.5_db * bigR**2 * omegaStar**2) + Einitial + (bigG*TTauriMstar/r)
+
+    deriv = spread(dim=1,ncopies=1,source=                                        &
+              (4.0 * Bp**2/(8.0_db*pi*eta)) * m**3                                &
+              + 2.0 * (-Einitial - bigG*TTauriMstar/r - l**2/(2.0_db*bigR**2) - (Bp**2/(8.0_db*pi*eta))) * m &
+              + (omegaStar * l))
+
+    
+  END SUBROUTINE equationA7
+  
+  real(double) PURE FUNCTION funcA7(m)
+
+    USE rotation_variables
+    use input_variables, only: TTauriMstar
+    real(double), INTENT(IN) :: m
+!!!!!!!!!!!!!! INCORRECT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    funcA7 = (Bp**2/8.0_db*pi*eta) * m**4                                      &
+              - (Einitial + bigG*TTauriMstar/r - l**2/(2.0_db*bigR**2)) * m**2 &
+              + (bigR**2 * omegaStar * omega) * m                              &
+              - (0.5_db * bigR**2 * omega**2)
+
+  END FUNCTION funcA7
 
   SUBROUTINE calcTTauriMassVelocity(thisOctal,subcell,grid) 
     ! calculates some of the variables at a given point for a model
     !   of a T Tauri star with magnetospheric accretion
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
-    USE parameters_mod
+    USE input_variables, ONLY : useHartmannTemp, maxHartTemp, TTauriRstar,&
+                                TTauriRinner, TTauriRouter
 
     IMPLICIT NONE
 
@@ -3692,59 +3962,67 @@ CONTAINS
 
     REAL :: modVp
     REAL :: phi
-    REAL :: r, rM, theta, y
+    REAL :: r, rM, theta, y, ang, bigR, thetaStar
+    REAL :: bigRstar, thetaStarHartmann, bigRstarHartmann, rMnorm
+    REAL :: tmp
 
     starPosn = grid%starPos1
 
-      point = subcellCentre(thisOctal,subcell)
-      pointVec = (point - starPosn) * 1.e10_oc
-      r = modulus( pointVec ) 
-      theta = ACOS( pointVec%z / r )
-      rM  = r / SIN(theta)**2
-      y = SIN(theta)**2 
+    point = subcellCentre(thisOctal,subcell)
+    pointVec = (point - starPosn) * 1.e10_oc
+    
+    IF (TTauriInFlow(point,grid)) THEN
+      thisOctal%rho(subcell) = TTauriDensity(point,grid)
+      thisOctal%inFlow(subcell) = .TRUE.
+      IF (useHartmannTemp) THEN
+        ! need to calculate the flow point AS IF the magnetosphere
+        !   was the same size as the one in the Hartmann et al paper
+        r = modulus( pointVec ) 
+        theta = acos( pointVec%z  / r )
+        
+        rM  = r / SIN(theta)**2
+        
+        ! work out the intersection angle (at the stellar surface) for
+        !   the current flow line  
+        thetaStar = ASIN(SQRT(TTauriRstar/rM))
+        bigRstar = TTauriRstar * SIN(thetaStar) 
 
-      ! test if the point lies within the star
-      IF ( r < TTauriRstar ) THEN
-        thisOctal%rho(subcell) = 1.e-25
-        thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
-        thisOctal%inFlow(subcell) = .FALSE.
-      
-      ! test if the point lies too close to the disk
-      ELSE IF ( ABS(pointVec%z) < 4.0e-2 * TTauriRstar) THEN
-        thisOctal%rho(subcell) = 1.e-25
-        thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
-        thisOctal%inFlow(subcell) = .FALSE.
-   
-      ! test if the point lies outside the accretion stream
-      ELSE IF ((rM > TTauriRinner) .AND. (rM < TTauriRouter )) THEN
-        thisOctal%inFlow(subcell) = .TRUE.
-  
-        rho = (TTauriMdot * TTauriRstar) / (4.0 * pi * &
-                 (TTauriRstar/TTauriRinner - TTauriRstar/TTauriRouter))
-        rho = rho * r**(-5.0/2.0) / SQRT( 2.0 * bigG * TTauriMstar ) 
-        rho = rho * SQRT( 4.0 - 3.0*y) / SQRT( 1.0 - y) 
-        TTauriMinRho = MIN(TTauriMinRho, rho/mHydrogen)
-        TTauriMaxRho = MAX(TTauriMaxRho, rho/mHydrogen)
-        thisOctal%rho(subcell) = rho
+        ! normalize the magnetic radius (0=inside, 1=outside)
+        rMnorm = (rM-TTauriRinner) / (TTauriRouter-TTauriRinner)
+        
+        ! convert rM to Hartmann units
+        rM = 2.2*(2.0*rSol) + rMnorm*(0.8*(2.0*rSol))
+        
+        bigR = SQRT(pointVec%x**2+pointVec%y**2)
+        bigR = (bigR-bigRstar) / (TTauriRouter-bigRstar) ! so that we can rescale it
+        bigR = min(bigR,TTauriRouter)
+        bigR = max(bigR,0.0)
 
-        vP = vector(3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y)), &
-                    0.0, &
-                   (2.0 - 3.0 * y) / SQRT(4.0 - 3.0 * y))
-        modVp = SQRT((2.0 * bigG * TTauriMstar / TTauriRstar) * &
-                       (TTauriRstar/r - TTauriRstar/rM))
-        vP = (-1.0 * (modVp/cSpeed)) * vP
-        phi = ATAN2(pointVec%y,pointVec%x)
-        vP = rotateZ(vP,phi) 
-        IF (theta > pi/2.0) vP%z = -vP%z
-        thisOctal%velocity(subcell) = vP
-
-      ELSE
-        thisOctal%inFlow(subcell) = .FALSE.
-        thisOctal%rho(subcell) = 1.e-25
-        thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
+        ! get the equivalent bigR for the Hartmann geometry
+        ! first work out the intersection angle (at the stellar surface) for
+        !   the current flow line  
+        thetaStarHartmann = ASIN(SQRT((2.0*rSol)/rM))
+        ! work out bigR for this point
+        bigRstarHartmann = (2.0*rSol) * SIN(thetaStarHartmann) 
+        
+        bigR = bigRstarHartmann + (bigR * (3.0*(2.0*rSol) - bigRstarHartmann))
+                           
+        r = (rM * bigR**2)**(1./3.) ! get r in the Hartmann setup
+        
+        ! get theta in the Hartmann setup
+        tmp = r/rM
+        ! quick fix for out of range argments (R. Kurosawa)
+        if (tmp > 1.0) tmp=1.0
+        if (tmp < -1.0) tmp = -1.0
+        theta = ASIN(SQRT(tmp))
+        theta = MIN(theta,pi/2.0-0.0001)
+        theta = MAX(theta,0.0001)
+        
+        rMnorm = MAX(rMnorm, 0.0001)
+        rMnorm = MIN(rMnorm, 0.9999)
+        thisOctal%temperature(subcell) = hartmannTemp(rMnorm, theta, maxHartTemp)
       END IF
-      
-
+      endif
       IF ((thisoctal%threed).and.(subcell == 8)) &
         CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .true.)
 
@@ -3754,6 +4032,176 @@ CONTAINS
 
   END SUBROUTINE calcTTauriMassVelocity
 
+  subroutine infallEnhancmentAMR(grid, distortionVector, nVec, timeStep, doDistortion, &
+                                 particleMass, alreadyDoneInfall)
+    ! creates an increase in the accretion rate for a T Tauri geometry.
+    ! currently, the setup must be simple (no disc inclination etc.)
+                                 
+    type(GRIDTYPE), intent(inout) :: grid
+    integer, intent(in) :: nVec
+    logical, intent(in) :: doDistortion
+    type(VECTOR), intent(inout) :: distortionVector(nVec)
+    real, intent(in) :: timeStep
+    real, intent(in) :: particleMass
+    logical, intent(inout) :: alreadyDoneInfall
+
+    real(oct) :: dTime
+    real, parameter :: etaFac = 9
+    real, parameter :: chiFac = 1
+    type(octalVector) :: distortionVec(nVec)
+    type(octalVector) :: thisVec
+    type(vector) :: thisVel
+    type(octalVector) :: thisVelOc
+    logical :: setAllChanged
+    
+    integer, parameter :: nTimes = 1000
+    integer :: i, j
+    type(octalVector) :: starPos
+
+    ! if we are not undoing a previous infall, we will assume that we need to
+    ! run stateq on ALL subcells
+    setAllChanged = .not. alreadyDoneInfall
+    
+    do i = 1, nVec
+       distortionVec(i) = s2o(distortionVector(i))
+    end do
+
+    if (alreadyDoneInfall) then 
+      ! we first have to undo the previous infall phase's changes
+      call infallEnhancePrivate(grid%octreeRoot,distortionVec,undoPrevious=.true.,&
+                                setAllChanged=.false.)
+    end if
+    
+    write(*,*) "Time stepping vectors..."
+    dTime = timeStep/real(nTimes,kind=db)
+    do j = 1, nVec
+      do i = 1, nTimes
+        thisVec = distortionVec(j) / 1.e10_oc
+        call amrGridValues(grid%octreeRoot,thisVec,velocity=thisVel)
+        thisVelOc = thisVel
+        thisVelOc = cSpeed * thisVel
+        distortionVec(j) = distortionVec(j) + (dTime * thisVelOc)
+      enddo
+    enddo
+    write(*,*) "done."
+    
+    do i = 1, nVec
+       distortionVector(i) = o2s(distortionVec(i))
+    end do
+    
+    if (doDistortion) then
+      write(*,*) "Distorting grid..."    
+      starPos = grid%starPos1
+      call infallEnhancePrivate(grid%octreeRoot,distortionVec, undoPrevious=.false.,&
+                                setAllChanged=(.not.alreadyDoneInfall))
+      alreadyDoneInfall = .true.
+      write(*,*) "done."
+    end if
+    
+  contains
+
+    recursive subroutine infallEnhancePrivate(thisOctal, distortionVec, undoPrevious,&
+                                              setAllChanged)
+
+      type(octal), pointer :: thisOctal
+      type(octalVector), intent(in) :: distortionVec(nVec)
+      logical, intent(in) :: undoPrevious
+      logical, intent(in) :: setAllChanged
+      
+      integer, parameter :: nPhi = 360
+      real(oct) :: phi
+      integer :: containedParticles
+      real :: addedDensity
+      real :: deltaRho
+      integer :: iSubcell, iChild
+      type(octal), pointer :: child
+      type(octalVector) :: trueVector
+      type(octalVector) :: thisVec
+ 
+      do iSubcell = 1, 8, 1
+        if (thisOctal%hasChild(iSubcell)) then
+          
+          ! descend to a child
+          
+          do iChild = 1, thisOctal%nChildren, 1
+            if (thisOctal%indexChild(iChild) == iSubcell) exit
+          end do 
+
+          child => thisOctal%child(iChild)
+          call infallEnhancePrivate(child, distortionVec, undoPrevious,&
+                                    setAllChanged)
+          
+        else
+
+          if (setAllChanged) thisOctal%changed(:) = .true.
+          
+          ! if we are out of the accretion flow, we can ignore this cell
+          if (thisOctal%rho(iSubcell) < 1.e-24) cycle
+          
+          ! check if any of the 'particles' lie in the current subcell
+
+          containedParticles = 0 
+          do i = 1, nVec
+            do j = 1, nPhi
+
+              phi = twoPi * real(j-1) / real(nPhi-1)
+              thisVec = rotateZ(distortionVec(i), phi)
+              thisVec = thisVec * 1.0e-10_oc
+              thisVec = thisVec + starPos
+
+              if (inOctal(thisOctal,thisVec)) then
+                if (whichSubcell(thisOctal,thisVec) == iSubcell) &
+                  containedParticles = containedParticles + 1
+                  
+              else
+                trueVector = subcellCentre(thisOctal,iSubcell) - starPos
+                
+                if (trueVector%z < 0.0_oc) then 
+
+                  ! mirror the particles about the disc, and try again 
+                  thisVec%z = starPos%z - (thisVec%z - starPos%z)
+                  
+                  if (inOctal(thisOctal,thisVec)) then
+                    if (whichSubcell(thisOctal,thisVec) == iSubcell) &
+                      containedParticles = containedParticles + 1
+                  end if
+                end if
+
+              end if
+
+            end do
+          end do
+
+          if (containedParticles > 0) then 
+            
+            addedDensity = (real(containedParticles) * particleMass) / &
+                            (real(thisOctal%subcellSize,kind=db)*1.e10_db)**3
+            ! calculate the density change in the subcell
+            deltaRho = addedDensity / thisOctal%rho(iSubcell)
+
+            if (.not. undoPrevious) then
+              thisOctal%rho(iSubcell) = thisOctal%rho(iSubcell) + addedDensity
+              thisOctal%etaLine(iSubcell) = thisOctal%etaLine(iSubcell) * (1.0+deltaRho)**2
+              thisOctal%chiLine(iSubcell) = thisOctal%chiLine(iSubcell) * (1.0+deltaRho)**2
+            else  
+              ! we are reversing the changes made on a previous run of this
+              !   subroutine.
+              thisOctal%rho(iSubcell) = thisOctal%rho(iSubcell) - addedDensity
+              thisOctal%etaLine(iSubcell) = thisOctal%etaLine(iSubcell) / (1.0+deltaRho)**2
+              thisOctal%chiLine(iSubcell) = thisOctal%chiLine(iSubcell) / (1.0+deltaRho)**2
+            end if
+
+            thisOctal%changed(iSubcell) = .true.
+              
+          endif
+        end if
+      end do
+    
+    end subroutine infallEnhancePrivate
+
+  end subroutine infallEnhancmentAMR
+  
+
   
   PURE SUBROUTINE calcTTauriTemperature(thisOctal,subcell) 
     ! calculates the temperature in an octal for a model
@@ -3761,6 +4209,7 @@ CONTAINS
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
     USE parameters_mod
+    USE input_variables, ONLY: isoTherm, isoThermTemp
 
     IMPLICIT NONE
 
@@ -3769,6 +4218,11 @@ CONTAINS
 
     REAL :: rho
 
+    IF (isoTherm) THEN
+      thisOctal%temperature(subcell) = isoThermTemp
+      RETURN
+    END IF
+      
     IF ( thisOctal%inFlow(subcell) ) THEN
       rho = thisOctal%rho(subcell)
       thisOctal%temperature(subcell) = MAX(5000.0, &
@@ -3781,32 +4235,480 @@ CONTAINS
     thisOctal%biasLine3D(subcell) = 1000.0
   
   END SUBROUTINE calcTTauriTemperature
+  
+  FUNCTION hartmannTemp(rM,inTheta,maxHartTemp)
+    ! the paper: Hartman, Hewett & Calvet 1994ApJ...426..669H 
+    !   quotes data from points along the magnetic field lines marked 
+    !   on one of the figures. this function returns the temperature
+    !   at any point within the accretion flow, by interpolating
+    !   between the values in the published figure 6.
+
+    REAL             :: hartmannTemp
+    REAL, INTENT(IN) :: rM ! normalized (0=inside, 1=outside)
+    REAL, INTENT(IN) :: inTheta
+    REAL, INTENT(IN) :: maxHartTemp
+    
+    
+    REAL, DIMENSION(:,:), ALLOCATABLE, SAVE :: temperatures
+    REAL, DIMENSION(:,:), ALLOCATABLE, SAVE :: angles
+    INTEGER, DIMENSION(5), SAVE             :: nSamples
+    
+    LOGICAL, SAVE:: alreadyLoaded = .FALSE.
+    REAL :: radius
+    REAL :: theta
+    CHARACTER(LEN=80) :: dataDirectory 
+    INTEGER :: errNo, i
+    
+    INTEGER :: nLines, subPos
+    INTEGER :: fieldline
+    INTEGER :: lowerLine, upperLine
+    INTEGER :: iSample
+    INTEGER :: maxSamples
+    INTEGER :: lowerSample, upperSample
+    REAL :: lowerTemp, upperTemp
+    INTEGER :: iStat
+    logical, save :: warned_already_01 = .false.
+    logical, save :: warned_already_02 = .false.
+
+    IF (.NOT. alreadyLoaded) THEN
+      ! if this is the first time the function has been called, need
+      !   to load in the data.
+      
+      call unixGetenv("TORUS_DATA",dataDirectory,i,errno)
+      dataDirectory = trim(dataDirectory)//"/hartmann/"
+      OPEN(31,FILE=TRIM(dataDirectory)//"tempProfile1.csv",STATUS="OLD",FORM="FORMATTED",IOSTAT=iStat)
+        IF (iStat/=0) THEN; PRINT *, 'File open error in hartmannTemp: ',iStat; STOP ; END IF 
+      OPEN(32,FILE=TRIM(dataDirectory)//"tempProfile2.csv",STATUS="OLD",FORM="FORMATTED",IOSTAT=iStat)
+        IF (iStat/=0) THEN; PRINT *, 'File open error in hartmannTemp: ',iStat; STOP ; END IF 
+      OPEN(33,FILE=TRIM(dataDirectory)//"tempProfile3.csv",STATUS="OLD",FORM="FORMATTED",IOSTAT=iStat)
+        IF (iStat/=0) THEN; PRINT *, 'File open error in hartmannTemp: ',iStat; STOP ; END IF  
+      OPEN(34,FILE=TRIM(dataDirectory)//"tempProfile4.csv",STATUS="OLD",FORM="FORMATTED",IOSTAT=iStat)
+        IF (iStat/=0) THEN; PRINT *, 'File open error in hartmannTemp: ',iStat; STOP ; END IF  
+      OPEN(35,FILE=TRIM(dataDirectory)//"tempProfile5.csv",STATUS="OLD",FORM="FORMATTED",IOSTAT=iStat)
+        IF (iStat/=0) THEN; PRINT *, 'File open error in hartmannTemp: ',iStat; STOP ; END IF 
+
+      DO fieldline = 1, 5, 1
+        READ(UNIT=(30+fieldline),FMT=*) nSamples(fieldLine)
+      END DO
+
+      maxSamples = MAXVAL(nSamples)
+
+      ALLOCATE(temperatures(5,maxSamples))
+      ALLOCATE(angles(5,maxSamples))
+      ! make sure that there are no uninitialized variables
+      temperatures = 0.0
+      angles = 0.0
+      
+      DO fieldline = 1, 5, 1
+        DO iSample = 1,  nSamples(fieldLine), 1
+          READ(UNIT=(30+fieldline),FMT=*) angles(fieldLine,iSample),     &
+                                          temperatures(fieldLine,iSample)
+        END DO
+        CLOSE(UNIT=(30+fieldline))
+      END DO
 
 
-  subroutine initTTauriAMR(grid,Laccretion,Taccretion,&
-                           sAccretion,newContFile,theta1,theta2)
+      ! might need to rescale the temperature distribution to have a new maximum
+      temperatures = temperatures * maxHartTemp/MAXVAL(temperatures)
+      
+      alreadyLoaded = .TRUE.
+    END IF
+
+    ! find which fieldlines bracket the point
+   
+    radius = rM * 0.8 ! because the Hartmann magnetic radii span 0.8 R_star
+    radius = radius / 0.2 ! divide by the field line spacing
+
+    IF (radius < 0.0) THEN 
+       if (.not. warned_already_01) then
+          PRINT *, 'In hartmannTemp, rM value is out of range! (',rM,')'
+          PRINT *, '  assuming fieldlines 1-2'
+          PRINT *, '  ==> Further warning surpressed.'
+          warned_already_01 = .true.
+       end if
+       lowerLine = 1
+       upperLine = 2 
+       subPos    = 0.0
+    ELSE IF (radius > 5.0) THEN
+       if (.not. warned_already_02) then
+          PRINT *, 'In hartmannTemp, rM value is out of range! (',rM,')'
+          PRINT *, '  assuming fieldlines 1-2'
+          PRINT *, '  ==> Further warning surpressed.'
+          warned_already_02 = .true.
+       end if
+       lowerLine = 4
+       upperLine = 5 
+    ELSE 
+       lowerLine = INT(radius) + 1
+       upperLine = lowerLine + 1 
+       subPos = radius - REAL(lowerline)
+    END IF
+      
+    IF (inTheta > pi) THEN
+      theta = inTheta - pi
+    ELSE
+      theta = inTheta
+    END IF
+    
+    IF (inTheta > pi/2.0) theta = pi - theta
+    
+    ! find the two temperatures at the fieldlines 
+    CALL locate(angles(lowerLine,1:nSamples(lowerLine)), &
+                nSamples(lowerLine), ABS(theta), lowerSample)
+    CALL locate(angles(upperLine,1:nSamples(upperLine)), &
+                nSamples(upperLine), ABS(theta), upperSample)
+
+
+    ! Forcing the values to be with in range...
+    ! ... quick fix to avoid out of range problem... (R. Kurosawa)
+    if (lowerSample <= 0) lowerSample =1
+    if (upperSample <= 0) upperSample =1
+    if (lowerSample >= nSamples(lowerLine)) lowerSample = nSamples(lowerLine)-1
+    if (upperSample >= nSamples(upperLine)) upperSample = nSamples(upperLine)-1
+
+                
+    IF ((lowerSample == 0) .OR. (lowerSample >= nSamples(lowerLine)) .OR. &
+       (upperSample == 0) .OR. (upperSample >= nSamples(upperLine))) THEN       
+       PRINT *, 'In hartmannTemp, theta value is out of range! (',ABS(theta),')'
+       STOP
+    END IF
+                
+    ! interpolate along each fieldline
+    lowerTemp = (temperatures(lowerLine,lowerSample) +        &
+                 temperatures(lowerLine,lowerSample+1)) / 2.0
+    upperTemp = (temperatures(upperLine,upperSample) +        &
+                 temperatures(upperLine,upperSample+1)) / 2.0
+   
+    ! interpolate between the fieldLines
+    
+    hartmannTemp = (lowerTemp * (1.0-subPos)) + (upperTemp * subPos)
+    
+  END FUNCTION hartmannTemp
+
+  SUBROUTINE hartmannLines(fieldline,RAD,phi,grid,point,azVec,polVec,ok)
+    ! the paper: Hartman, Hewett & Calvet 1994ApJ...426..669H 
+    !   quotes data from points along the magnetic field lines marked 
+    !   on one of the figures. this function returns the coordinates 
+    !   of points along these lines, for obtaining comparable data. 
+
+    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
+                               TTauriDiskHeight
+                               
+    INTEGER, INTENT(IN)              :: fieldline
+      ! 1 is the inner fieldline, 5 is the outer fieldline
+    real(oct), INTENT(IN) :: RAD 
+      ! RAD is projection of radius onto z=0 plane (in units of R_star)
+    REAL, INTENT(IN)                 :: phi    ! azimuth angle (radians)
+    TYPE(gridtype), INTENT(IN)       :: grid
+    TYPE(octalVector), INTENT(OUT)   :: point  ! coordinates returned
+    TYPE(vector), INTENT(OUT)        :: azVec  ! azimuth vector
+    TYPE(vector), INTENT(OUT)        :: polVec ! poloidal vector
+    LOGICAL, INTENT(OUT)             :: ok     ! coordinates are valid
+    
+    TYPE(octalVector) :: starPosn
+    REAL              :: rM, theta, radius
+    REAL              :: swap, y
+
+    starPosn = grid%starPos1
+
+    ok = .FALSE.
+    
+    ! test if the radius is sensible
+    IF ( RAD  > (TTauriRouter/TTauriRstar) ) RETURN 
+
+    rM = TTauriRinner + REAL(fieldline-1)*((TTauriRouter - TTauriRinner) / 4.0)
+    rM = rM / TTauriRstar
+    
+    ! test if the radius is greater than this fieldline's max radius
+    IF ( RAD  > rM ) RETURN 
+    
+    radius = (rM * RAD**2)**(1./3.)  
+
+    ! test if the point lies inside the star
+    IF ( radius < 1.0 ) RETURN
+    
+    y = radius / rM
+    theta = ASIN(SQRT(y))
+
+    ! set up vector in x-z plane
+    point = octalVector(RAD, 0., radius*cos(theta))
+    azVec = yHat
+
+    ! test if the point lies too close to the disk
+    IF ( ABS(point%z) < (TTauriDiskHeight/TTauriRstar)) RETURN
+
+    ! calculate the poloidal vector
+    polVec = vector(3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y)), &
+                     0.0, &
+                    (2.0 - 3.0 * y) / SQRT(4.0 - 3.0 * y))
+
+    polVec = rotateZ(polVec,-phi)
+
+    CALL RANDOM_NUMBER(swap)
+    IF ( swap > 0.5 ) THEN 
+      point%z  = -1.0_oc * point%z
+      polVec%z = -1.0_oc * polVec%z
+    END IF
+
+    ! rotate about z-axis
+    point  = rotateZ(point,REAL(-phi,kind=oct))
+    polVec = rotateZ(polVec,-phi)
+    azVec  = rotateZ(azVec,-phi)
+    
+    CALL normalize(polVec)
+
+    ! convert to grid units (1.e10 cm)
+    point = (TTauriRstar * 1.e-10_oc) * point
+    
+    ! offset to match centre of star
+    point = point + starPosn
+    
+    ok = .TRUE.
+
+  END SUBROUTINE hartmannLines
+
+  SUBROUTINE writeHartmannValues(grid,variable)
+    ! writes out values from the grid at places defined by the
+    !   hartmannLines function
+    
+    use input_variables, only: TTauriRouter, TTauriRstar, &
+                               MdotType, curtainsPhi1s, curtainsPhi1e, &
+                               curtainsPhi2s, curtainsPhi2e
+    
+                               
+    TYPE(gridtype), INTENT(IN)   :: grid
+    CHARACTER(LEN=*), INTENT(IN) :: variable
+
+    INTEGER, PARAMETER :: nBins = 100
+    INTEGER, PARAMETER :: radiiPerBin = 1
+    INTEGER, PARAMETER :: samplesPerRadii = 10
+    INTEGER, PARAMETER :: samplesPerBin = radiiPerBin  * samplesPerRadii
+    INTEGER, PARAMETER :: nFieldLines = 5
+    
+    real(double), DIMENSION(nFieldLines,nBins) :: outputArray
+    real(double), DIMENSION(nFieldLines,nBins,grid%maxLevels) :: output2dArray
+    REAL, DIMENSION(nBins)             :: radii
+    REAL, DIMENSION(samplesPerBin)     :: samples
+    TYPE(vector)                       :: azVec  ! azimuth vector
+    TYPE(vector)                       :: polVec ! poloidal vector
+    
+    INTEGER           :: iBin, iRadius, iSample, iFieldLine
+    REAL              :: rand
+    REAL              :: phi
+    real(oct) :: radius
+    LOGICAL           :: ok
+    TYPE(octalVector) :: point 
+    REAL              :: value
+    real(double) :: valueDouble
+    TYPE(vector)      :: velocityValue
+    REAL              :: etaLine, chiLine
+    REAL,DIMENSION(grid%maxLevels) :: valueArraySingle
+    REAL,DIMENSION(grid%maxLevels+1) :: departCoeff
+    real(double),DIMENSION(grid%maxLevels) :: valueArrayDouble
+    LOGICAL           :: scalar, logarithmic
+    CHARACTER(80)     :: tempChar
+    INTEGER           :: iLevel
+    LOGICAL, SAVE     :: firstRun = .TRUE.
+    REAL              :: curtainsFill
+    
+    scalar = .TRUE.
+    logarithmic = .FALSE.
+    curtainsFill = 1.
+    IF (variable == 'hartmann_departCoeff' .or. variable == 'hartmann_N') scalar = .false.
+   
+    IF (scalar) THEN
+      OPEN(UNIT=22, FILE=TRIM(variable)//'.csv', STATUS='REPLACE',FORM='FORMATTED')
+    ELSE
+      DO iLevel = 1, grid%maxLevels, 1
+        write(tempChar,'(i2.2)') iLevel
+        OPEN(UNIT=30+iLevel, FILE=TRIM(variable)//TRIM(tempChar)//'.csv', STATUS='REPLACE',FORM='FORMATTED')
+      END DO
+    END IF
+    
+    outputArray = 0.0
+    output2dArray = 0.0
+    
+    DO iBin = 1, nBins, 1
+    
+      DO iFieldLine = 1, nFieldLines, 1
+      
+        DO iRadius = 1, radiiPerBin
+
+          radius = 0.5*TTauriRstar + ((REAL(iBin-1)*REAL(radiiPerBin)+REAL(iRadius)) * &
+                     ((TTauriRouter - (0.1*TTauriRstar)) / REAL(nBins*radiiPerBin)))
+          radius = radius / TTauriRstar
+          radii(iBin) = radius
+        
+          DO iSample = 1, samplesPerRadii
+            IF (grid%amr2dOnly) THEN
+              phi = pi/4.0 
+            ELSE
+              IF (TRIM(mDotType) == "constantcurtains") THEN
+                IF (firstRun) THEN
+                  PRINT *, 'Using only region in curtains for ''writeHartmannValues'''
+                  curtainsFill = curtainsPhi1e-curtainsPhi1s 
+                  IF (curtainsPhi2e-curtainsPhi2s /= curtainsFill) &
+                    PRINT *, 'WARNING: curtains not equal size. Hartman values will be wrong'
+                  curtainsFill = curtainsFill / 180.
+                  PRINT *, '  curtains filling-factor: ',curtainsFill
+                    
+                  firstRun = .FALSE.
+                END IF
+                ok = .FALSE.
+                DO 
+                  CALL RANDOM_NUMBER(rand)
+                  phi = (rand-0.5) * twoPi
+                  IF (((phi > curtainsPhi1s+1.0).AND.(phi < curtainsPhi1e-1.0)) .OR.  &
+                      ((phi > curtainsPhi2s+1.0).AND.(phi < curtainsPhi2e-1.0))) ok = .TRUE.
+                  IF (ok) EXIT
+                END DO
+              ELSE
+                CALL RANDOM_NUMBER(rand)
+                phi = (rand-0.5) * twoPi
+              END IF
+            END IF
+
+            CALL hartmannLines(iFieldline,radius,phi,grid,point,azVec,polVec,ok)
+            IF (.NOT. ok) EXIT
+
+            SELECT CASE (variable)
+
+            CASE ('hartmann_logNH')
+              CALL amrGridValues(grid%octreeRoot,point,rho=value) 
+              valueDouble = (value/(mHydrogen*curtainsFill))
+              logarithmic = .TRUE.
+            
+            CASE ('hartmann_temperature')
+              CALL amrGridValues(grid%octreeRoot,point,temperature=value) 
+              valueDouble = value / curtainsFill
+              
+            CASE ('hartmann_velPol')
+              CALL amrGridValues(grid%octreeRoot,point,velocity=velocityValue) 
+              value = velocityValue .dot. polVec
+              value = (value * cSpeed) * 1.e-5 ! km/s
+              valueDouble = abs(value) / curtainsFill
+              
+            CASE ('hartmann_velAz')
+              CALL amrGridValues(grid%octreeRoot,point,velocity=velocityValue) 
+              value = velocityValue .dot. azVec
+              value = (value * cSpeed) * 1.e-5 ! km/s
+              valueDouble = abs(value) / curtainsFill
+
+            CASE ('hartmann_line')
+              CALL amrGridValues(grid%octreeRoot,point,chiLine=chiLine,etaLine=etaLine)
+              valueDouble = etaLine / (chiLine*curtainsFill*10.) 
+              logarithmic = .TRUE.
+              
+            CASE ('hartmann_Nelectron')
+              CALL amrGridValues(grid%octreeRoot,point,Ne=valueDouble)
+              valueDouble = valueDouble/curtainsFill
+              logarithmic = .TRUE.
+              
+            CASE ('hartmann_Nlevel2')
+              CALL amrGridValues(grid%octreeRoot,point,N=valueArrayDouble)
+              valueDouble = valueArrayDouble(2)/curtainsFill
+              logarithmic = .TRUE.
+              
+            CASE ('hartmann_logNe')
+              CALL amrGridValues(grid%octreeRoot,point,Ne=valueDouble)
+              valueDouble = valueDouble/curtainsFill
+              logarithmic = .TRUE.
+              
+            CASE ('hartmann_NH')
+              CALL amrGridValues(grid%octreeRoot,point,rho=value)
+              valueDouble = value/(mHydrogen*curtainsFill)
+              logarithmic = .TRUE.
+              
+            CASE ('hartmann_departCoeff')
+              scalar = .false.
+              CALL amrGridValues(grid%octreeRoot,point,departCoeff=departCoeff)
+              valueArrayDouble = departCoeff(1:grid%maxLevels) / curtainsFill
+              
+            CASE ('hartmann_N')
+              scalar = .false.
+              CALL amrGridValues(grid%octreeRoot,point,N=valueArrayDouble)
+              valueArrayDouble = valueArrayDouble / curtainsFill
+              !logarithmic = .TRUE.
+              
+            CASE DEFAULT
+              PRINT *, '''variable'' not recognized in writeHartmannValues'
+              STOP
+              
+            END SELECT
+
+            IF (scalar) THEN
+              outputArray(iFieldLine,iBin) = outputArray(iFieldLine,iBin) + valueDouble 
+            ELSE
+              output2dArray(iFieldLine,iBin,:) = output2dArray(iFieldLine,iBin,:) + valueArrayDouble 
+            END IF
+
+          END DO ! iSample
+          
+          IF (.NOT. ok) EXIT
+        
+        END DO ! iRadius
+        
+        IF (ok) THEN
+          IF (scalar) THEN
+            outputArray(iFieldLine,iBin) = outputArray(iFieldLine,iBin) / REAL(samplesPerBin,KIND=db)
+            IF (logarithmic) outputArray = LOG10(MAX(1.0e-10_db,outputArray))
+          ELSE
+            output2dArray(iFieldLine,iBin,:) = output2dArray(iFieldLine,iBin,:) / REAL(samplesPerBin,KIND=db)
+            IF (logarithmic) output2dArray = LOG10(MAX(1.0e-10_db,output2dArray))
+          END IF
+        ELSE 
+          IF (scalar) THEN
+            outputArray(iFieldLine,iBin) = 0.0
+            !outputArray(iFieldLine,iBin) = -1.0 * HUGE(outputArray(1,iBin))
+          ELSE
+            output2dArray(iFieldLine,iBin,:) = 0.0
+            !output2dArray(iFieldLine,iBin,:) = -1.0 * HUGE(output2dArray(1,iBin,1))
+          END IF
+        END IF
+
+      END DO ! iFieldLine
+      
+      IF (scalar) THEN
+        WRITE(22,'(F11.4,3(" ",E11.4))') radii(iBin), outputArray(2:4,iBin)
+        !                ^                                  ^^^   
+        ! these constants might change!
+      ELSE
+        DO iLevel = 1, grid%maxLevels, 1
+          WRITE(30+iLevel,'(F11.4,3(" ",E11.4))') radii(iBin), REAL(output2dArray(2:4,iBin,iLevel))
+        END DO
+      END IF
+    
+    END DO ! iBin
+    
+    IF (scalar) THEN
+      CLOSE(UNIT=22)
+    ELSE
+      DO iLevel = 1, grid%maxLevels, 1
+        CLOSE(UNIT=30+iLevel)
+      END DO
+    END IF
+
+  END SUBROUTINE writeHartmannValues    
+    
+  subroutine initTTauriAMR(grid,theta1,theta2)
 
     use constants_mod
     use vector_mod
-    use input_variables
-    use parameters_mod
+    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
+                               TTauriMstar, dipoleOffset, contFluxFile
 
     implicit none
     
     type(GRIDTYPE), intent(inout)      :: grid                
-    real(kind=doublekind), intent(out) :: Laccretion 
-    real, intent(out)                  :: Taccretion 
-    real, intent(out)                  :: sAccretion
-    character(len=80), intent(out)     :: newContFile
     real, intent(out) :: theta1, theta2
    
-    real(kind=doublekind) :: TaccretionDouble
+    real(double) :: TaccretionDouble
     integer :: nNu 
     real :: nuArray(3000),fnu(3000)
     real :: tot
     integer :: i 
-    real :: rStar
-    
+    real :: rStar, saccretion, taccretion
+
     rStar  = TTauriRstar / 1.e10
     
     grid%rCore = rStar
@@ -3823,20 +4725,19 @@ CONTAINS
     theta1 = asin(sqrt(TTauriRstar/TTauriRouter))
     theta2 = asin(sqrt(TTauriRstar/TTauriRinner))
 
+    !Laccretion = (REAL(bigG,KIND=db)* &
+    !              REAL(TTauriMstar,KIND=db)* &
+    !              !REAL(TTauriMdot,KIND=db)/ &
+    !              REAL(10e-8*Msol*secstoyears,KIND=db)/ &
+    !              REAL(TTauriRstar,kind=db))* &
+    !        REAL((1.0_db-(2.0_db*TTauriRstar/(TTauriRouter+TTauriRinner))),KIND=db)
 
-    Laccretion = (REAL(bigG,KIND=db)* &
-                  REAL(TTauriMstar,KIND=db)* &
-                  REAL(TTauriMdot,KIND=db)/ &
-                  REAL(TTauriRstar,kind=db))* &
-            REAL((1.0_db-(2.0_db*TTauriRstar/(TTauriRouter+TTauriRinner))),KIND=db)
-
-    TaccretionDouble = Laccretion / REAL(((fourPi * TTauriRstar**2)*stefanBoltz* &
-                                      abs(cos(theta1)-cos(theta2))),kind=db)
+    !TaccretionDouble = Laccretion / REAL(((fourPi * TTauriRstar**2)*stefanBoltz* &
+    !                                  abs(cos(theta1)-cos(theta2))),kind=db)
 
     sAccretion = (fourPi * TTauriRstar**2)*abs(cos(theta1)-cos(theta2))!1.e20
     Taccretion = TaccretionDouble**0.25
 
-    write(*,*) "accretion lum/temp",Laccretion/Lsol, Taccretion
 
     open(20,file=contFluxFile,status="old",form="formatted")
     nnu = 1
@@ -3859,14 +4760,19 @@ CONTAINS
     ! add the accretion luminosity spectrum to the stellar spectrum,
     ! write it out and pass it to the stateq routine.
     
-    open(22,file="star_plus_acc.dat",form="formatted",status="unknown")
-    do i = 1, nNu
-       fNu(i) = fNu(i) + blackbody(tAccretion, 1.e8*cSpeed/ nuArray(i))* &
-                (sAccretion/(fourPi*TTauriRstar**2))
-       write(22,*) nuArray(i), fNu(i)
-    enddo
-    close(22)
-    newContfile="star_plus_acc.dat"
+    !open(22,file="star_plus_acc.dat",form="formatted",status="unknown")
+    !do i = 1, nNu
+    !   fNu(i) = fNu(i) + pi*blackbody(tAccretion, 1.e8*cSpeed/ nuArray(i))* &
+    !            ((1.e20*sAccretion)/(fourPi*TTauriRstar**2))
+    !   write(22,*) nuArray(i), fNu(i)
+    !enddo
+    !tot = 0.
+    !do i = 1, nnu-1
+    !   tot = tot + 0.5*(nuArray(i+1)-nuArray(i))*(fnu(i+1)+fnu(i))
+    !enddo
+    !write(*,*) "Final star+accretion luminosity (in solar)",(fourPi*TTauriRstar**2)*tot/lSol
+    !close(22)
+    !newContfile="star_plus_acc.dat"
 
 
   end subroutine initTTauriAMR
@@ -3899,6 +4805,33 @@ CONTAINS
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine calcTestDensity
+  
+  
+  subroutine initWindTestAMR(grid)
+
+    use constants_mod
+    use vector_mod
+    use input_variables
+    use parameters_mod
+
+    implicit none
+    
+    type(GRIDTYPE), intent(inout)      :: grid                
+   
+    real :: rStar
+    
+    rStar  = (rSol * 20.) / 1.e10
+    
+    grid%rCore = rStar
+    grid%rStar1 = rStar
+    grid%rStar2 = 0.
+    grid%rInner = rStar
+    grid%rOuter = rStar * 500.
+    grid%starPos1 = VECTOR(0.,0.,0.) ! in units of 1.e-10 cm
+    grid%starPos2 = VECTOR(9.e9,9.e9,9.e9) ! in units of 1.e-10 cm
+
+  end subroutine initWindTestAMR
+
 
   subroutine calcProtoDensity(thisOctal,subcell,grid)
 
@@ -4060,8 +4993,7 @@ CONTAINS
    if (thisOctal%rho(subcell) > 1.e-33) thisOctal%inflow(subcell) = .true.
   end subroutine assign_clumpydisc
 
-
-
+  
   SUBROUTINE addNewChildren(parent, grid, sphData, stellar_cluster)
     ! adds all eight new children to an octal
 
@@ -4121,8 +5053,9 @@ CONTAINS
 
        ! allocate any variables that need to be  
        if (.not.grid%oneKappa) then
-          ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nLambda))
-          ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nLambda))
+!          print *, "nlamda in addnewchilredn= ", grid%nLambda 
+          ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nopacity)) ! (RK changed this)
+          ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nopacity)) ! (RK changed this)
           parent%child(newChildIndex)%kappaAbs = 1.e-30
           parent%child(newChildIndex)%kappaSca = 1.e-30
        endif
@@ -4151,7 +5084,10 @@ CONTAINS
        parent%child(newChildIndex)%etaLine = 1.e-30
        parent%child(newChildIndex)%etaCont = 1.e-30
        parent%child(newChildIndex)%N = 1.e-30
-       parent%child(newChildIndex)%dusttype = 1
+       parent%child(newChildIndex)%Ne = 1.e-30
+       parent%child(newChildIndex)%temperature = 3.0
+       parent%child(newChildIndex)%nTot = 1.e-30
+       parent%child(newChildIndex)%changed = .false.
 
        if (present(sphData)) then
           ! updates the sph particle list.           
@@ -4171,7 +5107,7 @@ CONTAINS
     IF (parent%child(1)%nDepth > grid%maxDepth) THEN
        grid%maxDepth = parent%child(1)%nDepth
        grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
-            2.0_oc**REAL(grid%maxDepth,KIND=octalKind)
+            2.0_oc**REAL(grid%maxDepth,kind=oct)
        ! we store the value which is half the size of the 
        !   smallest subcell because this is more useful for later
        !   calculations.
@@ -4256,9 +5192,9 @@ CONTAINS
   recursive subroutine findTotalMass(thisOctal, totalMass, minRho, maxRho)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real(kind=doubleKind) :: totalMass
-  real(kind=doubleKind),optional :: minRho, maxRho
-  real(kind=doubleKind) :: r1,r2,dv
+  real(double) :: totalMass
+  real(double),optional :: minRho, maxRho
+  real(double) :: r1,r2,dv
   type(OCTALVECTOR) :: rVec
   integer :: subcell, i
   
@@ -4297,13 +5233,12 @@ CONTAINS
   subroutine find_average_temperature(grid, T_ave, T_mass, TotalMass)
     implicit none
     type(gridtype), intent(in)  :: grid
-    real(kind=doubleKind), intent(out) :: T_ave   ! average temperature in [k}
-    real(kind=doubleKind), intent(out) :: T_mass  ! mass weighted temperature in [K]
-    real(kind=doubleKind), intent(out) :: TotalMass  ! total mass [g]
-    ! 
-    real(kind=doublekind) :: sum_T    ! Sum of temperatures in all cells [K]
-    real(kind=doublekind) :: sum_M    ! Sum of mass in all cells [g]
-    real(kind=doublekind) :: sum_TM   ! Sum of temperatures*Mass in all cells [K*g]
+    real(double), intent(out) :: T_ave   ! average temperature in [k}
+    real(double), intent(out) :: T_mass  ! mass weighted temperature in [K]
+    real(double), intent(out) :: TotalMass  ! total mass [g]
+    real(double) :: sum_T    ! Sum of temperatures in all cells [K]
+    real(double) :: sum_M    ! Sum of mass in all cells [g]
+    real(double) :: sum_TM   ! Sum of temperatures*Mass in all cells [K*g]
     integer :: ncell
 
     ! initialize some values
@@ -4325,13 +5260,13 @@ CONTAINS
        totalMassTemperature, TotalMass, ncell)
     implicit none
     type(octal), pointer   :: thisOctal
-    real(kind=doubleKind), intent(inout) :: totalTemperature      ! simple total mass
-    real(kind=doubleKind), intent(inout) :: totalMassTemperature
-    real(kind=doubleKind), intent(inout) :: totalMass
+    real(double), intent(inout) :: totalTemperature      ! simple total mass
+    real(double), intent(inout) :: totalMassTemperature
+    real(double), intent(inout) :: totalMass
     integer, intent(inout) :: ncell ! number of cells used for this calculation
     !
     type(octal), pointer  :: child
-    real(kind=doubleKind) :: M, T
+    real(double) :: M, T
     integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -4366,9 +5301,9 @@ CONTAINS
     implicit none
     type(gridtype), intent(in)  :: grid
     integer, intent(in)         :: ilambda  ! wavelength index
-    real(kind=doubleKind), intent(out) :: tau_max
-    real(kind=doubleKind), intent(out) :: tau_min
-    real(kind=doubleKind), intent(out) :: tau_ave
+    real(double), intent(out) :: tau_max
+    real(double), intent(out) :: tau_min
+    real(double), intent(out) :: tau_ave
     ! 
     integer :: ncell   ! number of cells
 
@@ -4388,13 +5323,13 @@ CONTAINS
     type(octal), pointer   :: thisOctal
     type(gridtype), intent(in)  :: grid    
     integer, intent(in)  :: ilambda  ! wavelength index at which tau is computed.
-    real(kind=doubleKind), intent(inout) :: tau_max
-    real(kind=doubleKind), intent(inout) :: tau_min
-    real(kind=doubleKind), intent(inout) :: tau_ave
+    real(double), intent(inout) :: tau_max
+    real(double), intent(inout) :: tau_min
+    real(double), intent(inout) :: tau_ave
     integer, intent(inout) :: ncell ! number of cells used for this calculation
     !
     type(octal), pointer  :: child
-    real(kind=doubleKind) :: chi, tau
+    real(double) :: chi, tau
     integer :: subcell, i
   
     do subcell = 1, thisOctal%maxChildren
@@ -4515,7 +5450,7 @@ CONTAINS
     integer :: nColour(:)
     integer :: maxpoints, nPoints
     integer :: subcell, i, j, m
-    real(kind=doubleKind) :: totalMass, minRho, maxRho
+    real(double) :: totalMass, minRho, maxRho
     real :: s, r1, r2, r3
     integer :: iclow, ichi
     xAxis = VECTOR(1., 0., 0.)
@@ -4555,7 +5490,7 @@ CONTAINS
   end subroutine createPointList
 
   TYPE(vector) FUNCTION ostarVelocity(point,grid)
-    real(kind=doubleKind) :: r1
+    real(double) :: r1
     type(OCTALVECTOR), intent(in) :: point
     type(OCTALVECTOR) rHat
     type(GRIDTYPE), intent(in) :: grid
@@ -4593,189 +5528,96 @@ CONTAINS
   !
   !
   !
-
-  SUBROUTINE deleteOctreeBranch(topOctal,deletedBranch)
-    ! recursively deletes an octal (and any children it has). If the
-    !   'deletedBranch' pointer is supplied, the branch is copied 
-    !   there as it is deleted.
-    ! NB This does not delete the 'topOctal' of the deleted tree - 
+  SUBROUTINE deleteOctreeBranch(thisOctal,grid,onlyChildren)
+    ! recursively deletes an octal's contents (and any children it has). 
+    ! NB This does not delete the top octal itself - 
     !   you must do this yourself after you call this subroutine!
-  
+
     IMPLICIT NONE
 
-    TYPE(octal), POINTER           :: topOctal      ! top of branch to be deleted
-    TYPE(octal), POINTER, OPTIONAL :: deletedBranch ! optional copy of deleted branch
+    TYPE(octal), TARGET, INTENT(INOUT)     :: thisOctal ! top of branch to be deleted
+    TYPE(gridtype), INTENT(INOUT)  :: grid
+    LOGICAL, INTENT(IN), OPTIONAL  :: onlyChildren ! only delete this octals *children*
     
-    TYPE(octal), POINTER :: deletedBranchcopy
-    TYPE(octal), POINTER :: topOctalPointer
-
-    NULLIFY(deletedBranchcopy)
-    NULLIFY(topOctalPointer)
+    TYPE(octal), POINTER           :: childPointer => null()
+    TYPE(octal), POINTER           :: localPointer => null()
+    INTEGER :: iChild
     
-    ! if required, we copy the octal at the top of the branch
-    IF (PRESENT(deletedBranch)) THEN
-            
-      ALLOCATE(deletedBranch)
-      
-      ! the octal structure contains allocatable array pointers. we must
-      !   create similarly sized arrays in the new octal before copying
-      !   the contents from the existing octal.
-      
-      IF (ASSOCIATED(topOctal%kappaAbs)) THEN                  
-        ALLOCATE(deletedBranch%kappaAbs((SIZE(topOctal%kappaAbs,1)),   &
-                                        (SIZE(topOctal%kappaAbs,2))))
-      ELSE
-        NULLIFY(deletedBranch%kappaAbs)
+    localPointer => thisOctal
+    
+    IF (PRESENT(onlyChildren)) THEN
+      IF (.NOT. onlyChildren) THEN 
+        IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs)
+        IF (ASSOCIATED(thisOctal%kappaSca)) DEALLOCATE(thisOctal%kappaSca)
+        IF (ASSOCIATED(thisOctal%N)) DEALLOCATE(thisOctal%N)
+        IF (ASSOCIATED(thisOctal%departCoeff)) DEALLOCATE(thisOctal%departCoeff)
+        IF (ASSOCIATED(thisOctal%gas_particle_list)) DEALLOCATE(thisOctal%gas_particle_list)
       END IF
-          
-      IF (ASSOCIATED(topOctal%kappaSca)) THEN                  
-        ALLOCATE(deletedBranch%kappaSca((SIZE(topOctal%kappaSca,1)),   &
-                                        (SIZE(topOctal%kappaSca,2))))
-      ELSE
-        NULLIFY(deletedBranch%kappaSca)
-      END IF
-          
-      IF (ASSOCIATED(topOctal%N)) THEN                  
-        ALLOCATE(deletedBranch%N((SIZE(topOctal%N,1)),(SIZE(topOctal%N,2))))
-      ELSE
-        NULLIFY(deletedBranch%N)
-      END IF
-     
-!      IF (ASSOCIATED(topOctal%departCoeff)) THEN                  
-!        ALLOCATE(deletedBranch%departCoeff((SIZE(topOctal%departCoeff,1)),(SIZE(topOctal%departCoeff,2))))
-!      ELSE
-!        NULLIFY(deletedBranch%departCoeff)
-!      END IF
-     
-      ! now that the original and destination octals have identical layouts, we
-      !   can copy the data from one to the other.
-      deletedBranch = topOctal  
-      
-      NULLIFY(deletedBranch%parent) 
-      NULLIFY(deletedBranch%child)  ! for now, assume no children
-
+    ELSE
+        IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs)
+        IF (ASSOCIATED(thisOctal%kappaSca)) DEALLOCATE(thisOctal%kappaSca)
+        IF (ASSOCIATED(thisOctal%N)) DEALLOCATE(thisOctal%N)
+        IF (ASSOCIATED(thisOctal%departCoeff)) DEALLOCATE(thisOctal%departCoeff)
+        IF (ASSOCIATED(thisOctal%gas_particle_list)) DEALLOCATE(thisOctal%gas_particle_list)
     END IF
-
-    ! if the original octal has any children, we must recursively delete them
-    !   from the tree (and optionally make copies of them in the
-    !   'deletedBranch')
-    IF (topOctal%nChildren > 0) THEN
-            
-      deletedBranchCopy => deletedBranch
-      topOctalPointer => topOctal
-      
-      CALL deleteOctreeBranchPrivate(topOctalPointer,deletedBranch=deletedBranchCopy)
+    
+    IF (thisOctal%nChildren > 0) THEN 
+      DO iChild = 1, thisOctal%nChildren, 1
+        childPointer => thisOctal%child(iChild)
+        CALL deleteOctreeBranchPrivate(childPointer,grid)
+        NULLIFY(childPointer)
+      END DO
       
       ! we now dellocate the children
-      DEALLOCATE(topOctal%child) 
-      
-    END IF
-    
+      DEALLOCATE(thisOctal%child) 
+      grid%nOctals = grid%nOctals - thisOctal%nChildren
+      thisOctal%nChildren = 0
+      thisOctal%indexChild = -999
+      thisOctal%hasChild(:) = .FALSE.
+      thisOctal%changed(:) = .TRUE.
+   END IF
   CONTAINS
     
-    RECURSIVE SUBROUTINE deleteOctreeBranchPrivate(thisOctal,deletedBranch)
-      ! delete (and optionally make copies) of an octal's children.
-
-      TYPE(octal), POINTER           :: thisOctal
-      TYPE(octal), POINTER, OPTIONAL :: deletedBranch
-
-      TYPE(octal), POINTER  :: thisChild          
-      TYPE(octal), POINTER  :: thisChildPointer   
-      TYPE(octal), POINTER  :: deletedBranchChild 
-      TYPE(octal), POINTER  :: deletedBranchChildPointer
-      INTEGER               :: iChild
-      INTEGER               :: status
-
-      TYPE(octal), POINTER  :: parentPointer1 
+    RECURSIVE SUBROUTINE deleteOctreeBranchPrivate(thisOctal,grid)
  
-      NULLIFY(thisChild)
-      NULLIFY(thisChildPointer)
-      NULLIFY(deletedBranchChild)
-      NULLIFY(deletedBranchChildPointer)
+      IMPLICIT NONE
 
-      ! if we want to copy the children before deletion, we must first
-      !   allocate space.
-      IF (PRESENT(deletedBranch)) THEN 
-              
-        ALLOCATE(deletedBranch%child(thisOctal%nChildren),STAT=status)
-        IF (status /= 0) print *, 'allocation status /= 0 in deleteOctreeBranchPrivate'
-        
-      END IF
-
-      ! now loop over each child
-      DO iChild = 1, thisOctal%nChildren, 1
+      TYPE(octal), TARGET, INTENT(INOUT)     :: thisOctal      ! top of branch to be deleted
+      TYPE(gridtype), INTENT(INOUT)  :: grid
       
-        thisChild => thisOctal%child(iChild)
-         
-        ! again, have to allocate arrays of same size before copying contents.
-        IF (PRESENT(deletedBranch)) THEN
-          deletedBranchChild => deletedBranch%child(iChild)
+      TYPE(octal), POINTER           :: childPointer => null()
+      TYPE(octal), POINTER           :: localPointer => null()
+      INTEGER :: iChild
 
-          ! 
-          IF (ASSOCIATED(thisChild%kappaAbs)) THEN                  
-            ALLOCATE(deletedBranchChild%kappaAbs(      &
-                                (SIZE(thisChild%kappaAbs,1)),   &
-                                (SIZE(thisChild%kappaAbs,2))))
-          ELSE 
-            NULLIFY(deletedBranchChild%kappaAbs)
-          END IF
-         
-          IF (ASSOCIATED(thisChild%kappaSca)) THEN                  
-            ALLOCATE(deletedBranchChild%kappaSca(      &
-                                (SIZE(thisChild%kappaSca,1)),   &
-                                (SIZE(thisChild%kappaSca,2))))
-          ELSE
-            NULLIFY(deletedBranchChild%kappaSca)
-          END IF
-            
-          IF (ASSOCIATED(thisChild%N)) THEN                  
-            ALLOCATE(deletedBranchChild%N(             &
-                                (SIZE(thisChild%N,1)),          &
-                                (SIZE(thisChild%N,2))))
-          ELSE
-            NULLIFY(deletedBranchChild%N)
-          END IF
-     
-!          IF (ASSOCIATED(thisChild%departCoeff)) THEN                  
-!            ALLOCATE(deletedBranchChild%departCoeff(             &
-!                                (SIZE(thisChild%departCoeff,1)),          &
-!                                (SIZE(thisChild%departCoeff,2))))
-!          ELSE
-!            NULLIFY(deletedBranchChild%departCoeff)
-!          END IF
-     
-          ! can now copy contents
-          deletedBranchChild = thisChild  
+      localPointer => thisOctal
+    
+      IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs)
+      IF (ASSOCIATED(thisOctal%kappaSca)) DEALLOCATE(thisOctal%kappaSca)
+      IF (ASSOCIATED(thisOctal%N)) DEALLOCATE(thisOctal%N)
+      IF (ASSOCIATED(thisOctal%departCoeff)) DEALLOCATE(thisOctal%departCoeff)
+      IF (ASSOCIATED(thisOctal%gas_particle_list)) DEALLOCATE(thisOctal%gas_particle_list)
 
-          ! and set the parent pointer
-          deletedBranchChild%parent => deletedBranch
-          NULLIFY(deletedBranchChild%child)
+      ! if the octal has any children, we must recursively delete them
+      !   from the tree 
 
-            
-        END IF
+      IF (thisOctal%nChildren > 0) THEN 
+        DO iChild = 1, thisOctal%nChildren, 1
+          childPointer => thisOctal%child(iChild)
+          CALL deleteOctreeBranchPrivate(childPointer,grid)
+          NULLIFY(childPointer)
+        END DO
 
+        ! we now dellocate the children
+        DEALLOCATE(thisOctal%child) 
+        grid%nOctals = grid%nOctals - thisOctal%nChildren
+        thisOctal%nChildren = 0
+        thisOctal%indexChild = -999
+        thisOctal%hasChild(:) = .FALSE.
+        thisOctal%changed(:) = .TRUE.
+     END IF
 
-
-        ! if this child has children of its own, we delete/(copy) those too
-        IF (thisChild%nChildren > 0) THEN
-                
-          IF (PRESENT(deletedBranch)) THEN 
-            deletedBranchChildPointer => deletedBranch%child(iChild)
-            thisChildPointer => thisOctal%child(iChild)
-            CALL deleteOctreeBranchPrivate(thisChildPointer,deletedBranch=deletedBranchChildPointer)
-          ELSE
-            CALL deleteOctreeBranchPrivate(thisChildPointer)
-          END IF
-          
-          ! can now free-up the memory occupied by this child's child
-          IF (ASSOCIATED(thisOctal%child(iChild)%child)) DEALLOCATE(thisOctal%child(iChild)%child)
-        END IF
-          
-      END DO
-
-    END SUBROUTINE deleteOctreeBranchPrivate
-  
-  END SUBROUTINE deleteOctreeBranch
+   END SUBROUTINE deleteOctreeBranchPrivate
+ END SUBROUTINE deleteOctreeBranch
  
 
   SUBROUTINE insertOctreeBranch(branch,insertLocation,delete)
@@ -4928,7 +5770,7 @@ CONTAINS
 
     INTEGER              :: i, ilam
     TYPE(octalVector)    :: thisSubcellCentre
-    REAL(KIND=octalKind) :: dSubcellCentre
+    REAL(oct)            :: dSubcellCentre
     TYPE(octal), POINTER :: child
     TYPE(octal), POINTER :: neighbour
     TYPE(octalVector), ALLOCATABLE, DIMENSION(:) :: locator
@@ -5304,5 +6146,458 @@ CONTAINS
   end subroutine dumpSmoothedSurfaceDensity
 
 
-END MODULE amr_mod
+  SUBROUTINE calcWindTestValues(thisOctal,subcell,grid) 
+    ! calculates some of the variables for a spherical wind flow
 
+    USE parameters_mod
+    USE constants_mod
+
+    IMPLICIT NONE
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(INOUT) :: grid
+
+    TYPE(octalVector) :: point
+
+    TYPE(octalVector) :: starPosn
+    TYPE(octalVector) :: pointVec
+    TYPE(octalVector) :: pointVecNorm
+    TYPE(Vector)      :: pointVecNormSingle
+
+    REAL :: r, rStar
+    REAL :: velocity, rho
+    REAL, PARAMETER :: v0         = 100.e5
+    REAL, PARAMETER :: vTerminal  = 2000.e5
+    REAL, PARAMETER :: tEff       = 30.e3
+    REAL, PARAMETER :: mDot       = 1.e-7 * mSol * secsToYears 
+!    REAL, PARAMETER :: mDot       = 1.e-2 * mSol * secsToYears 
+    REAL, PARAMETER :: vBeta      = 1.0
+    
+
+    rStar = grid%rStar1
+    starPosn = grid%starPos1
+
+    point = subcellCentre(thisOctal,subcell)
+    pointVec = (point - starPosn) 
+    
+    r = modulus( pointVec ) 
+    pointVecNorm = pointVec 
+    CALL normalize(pointVecNorm)
+
+    IF (r > grid%rInner .AND. r < grid%rOuter) THEN
+
+       ! calculate the velocity
+       velocity = REAL((v0 + (vTerminal - v0) * (1. - rStar / r)**vBeta),kind=oct)
+
+       ! calculate the density
+       rho = mDot / ( fourPi * (r*1.e10)**2 * velocity)
+
+       ! store the data 
+       thisOctal%inFlow(subcell) = .TRUE.
+       thisOctal%temperature(subcell) = 0.8 * tEff
+       pointVecNormSingle = pointVecNorm
+       thisOctal%velocity(subcell) = (velocity / cSpeed) * pointVecNormSingle
+       thisOctal%rho(subcell) = rho
+
+    ELSE
+       thisOctal%inFlow(subcell) = .FALSE.
+       thisOctal%rho(subcell) = 1.e-20
+       thisOctal%temperature(subcell) = 0.8 * tEff
+       thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
+    END IF
+    
+    IF (subcell == 8) CALL fillVelocityCorners(thisOctal,grid,windTestVelocity,thisOctal%threed)
+      
+  END SUBROUTINE calcWindTestValues
+
+  
+  TYPE(vector) FUNCTION windTestVelocity(point,grid)
+
+    USE parameters_mod
+
+    IMPLICIT NONE
+
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+    
+    TYPE(octalVector) :: starPosn
+    TYPE(octalVector) :: pointVec
+    TYPE(octalVector) :: pointVecNorm
+    TYPE(Vector)      :: pointVecNormSingle
+
+    REAL :: r, rStar
+    REAL :: velocity, rho
+    REAL, PARAMETER :: v0         = 100.e5
+    REAL, PARAMETER :: vTerminal  = 2000.e5
+    REAL, PARAMETER :: vBeta      = 1.0
+    
+    rStar = grid%rStar1
+    starPosn = grid%starPos1
+
+    pointVec = (point - starPosn) 
+    
+    r = modulus( pointVec ) 
+    pointVecNorm = pointVec 
+    CALL normalize(pointVecNorm)
+    pointVecNormSingle = pointVecNorm
+    
+    IF (r > grid%rInner .AND. r < grid%rOuter) THEN
+       velocity = REAL((v0 + (vTerminal - v0) * (1. - rStar / r)**vBeta),kind=oct)
+       windTestVelocity = (velocity / cSpeed) * pointVecNormSingle
+    ELSE
+       windTestVelocity = vector(1.e-25,1.e-25,1.e-25)
+    END IF
+    
+  END FUNCTION windTestVelocity
+
+  
+
+  RECURSIVE SUBROUTINE getIntersectedOctals(thisOctal,listHead,grid,nOctals,onlyChanged)  
+    ! returns a linked list of all the octals which are intersected by a
+    !   plane. we assume that the z-axis lies in the plane and the plane
+    !   is at 45deg from the x and y axes. we only need to consider half
+    !   the plane (one quadrant of the simulation space).
+    !   
+    ! if onlyChanged is True, we ignore cells without the Changed flag
+
+    USE vector_mod
+    
+    IMPLICIT NONE
+
+    TYPE(octal), INTENT(INOUT), TARGET :: thisOctal
+    TYPE(octalListElement), POINTER :: listHead
+    TYPE(gridType), INTENT(IN)      :: grid
+    INTEGER,INTENT(INOUT)           :: nOctals   ! number of octals
+    LOGICAL, INTENT(IN), OPTIONAL   :: onlyChanged
+    
+    LOGICAL               :: intersectionFound
+    LOGICAL               :: octalAdded
+    TYPE(octalVector)     :: centrePoint
+    TYPE(octalVector)     :: lineOrigin
+    TYPE(octalVector)     :: starPos
+    TYPE(octalVector)     :: nearestPlanePoint
+    TYPE(octal), POINTER  :: child
+    INTEGER               :: i, iSubcell, subIndex
+    TYPE(octalVector)     :: planeVec
+    TYPE(octalListElement), POINTER :: newElement
+    
+    octalAdded = .FALSE.
+    starPos = grid%starPos1
+    lineOrigin = starPos
+    planeVec = octalVector(1.0_oc/SQRT(2.0_oc),1.0_oc/SQRT(2.0_oc),0.0_oc)
+
+    DO iSubcell = 1, thisOctal%maxChildren, 1 
+    
+      centrePoint = subcellCentre(thisOctal,iSubcell) - starPos
+      lineOrigin%z = centrePoint%z
+      centrePoint%z = 0.0_oc
+      
+      IF (centrePoint%x < 0.0 .OR. centrePoint%y < 0.0) THEN
+        ! we are in the wrong quadrant.
+        ! this makes some assumptions about the numerical accuracy of the
+        !   grid, but it should be mostly OK.
+        CYCLE 
+      END IF
+
+      nearestPlanePoint = lineOrigin + (planeVec * (centrePoint .dot. planeVec))
+    
+      IF (inSubcell(thisOctal,iSubcell,nearestPlanePoint)) THEN
+                            
+        IF (thisOctal%hasChild(iSubcell)) THEN
+           ! call the recursive subroutine on its child
+           
+          subIndex = -99
+          DO i = 1, thisOctal%nChildren, 1
+            IF ( thisOctal%indexChild(i) == iSubcell ) THEN
+              subIndex = i  
+              EXIT
+            ENDIF
+          ENDDO
+          IF (subIndex == -99) THEN
+            PRINT *, ' Panic: subindex not found'
+            STOP
+          ENDIF
+
+          child => thisOctal%child(subIndex)
+           
+          CALL getIntersectedOctals(child,listHead,grid,nOctals) 
+                            
+        ELSE ! childless
+          
+          IF (PRESENT(onlyChanged)) THEN
+            IF (onlyChanged .AND. thisOctal%changed(iSubcell)) CYCLE
+          END IF
+          
+          IF (.NOT. octalAdded) THEN
+            nOctals = nOctals + 1
+            ALLOCATE(newElement)
+            newElement%content => thisOctal
+            newElement%next    => listHead
+            newElement%inUse   = .FALSE.
+            newElement%inUse(iSubcell) = .TRUE.
+            listHead => newElement
+            octalAdded = .TRUE.
+          ELSE
+            newElement%inUse(iSubcell) = .TRUE.
+          END IF
+
+        END IF
+      END IF
+    END DO
+        
+  END SUBROUTINE getIntersectedOctals
+
+  !
+  ! Based on getIntersectedOctals, but for all the octals in the first 
+  ! octant (x>0, y>0 and z>0 domain).
+  ! 
+  ! Returns a linked list of all the octals which are in x>0, y>0 and z>0 
+  ! domain. 
+  RECURSIVE SUBROUTINE getOctalsInFirstOctant(thisOctal,listHead,grid,nOctals,onlyChanged)  
+    !   
+    ! if onlyChanged is True, we ignore cells without the Changed flag
+
+    USE vector_mod
+    
+    IMPLICIT NONE
+
+    TYPE(octal), INTENT(INOUT), TARGET :: thisOctal
+    TYPE(octalListElement), POINTER :: listHead
+    TYPE(gridType), INTENT(IN)      :: grid
+    INTEGER,INTENT(INOUT)           :: nOctals   ! number of octals
+    LOGICAL, INTENT(IN), OPTIONAL   :: onlyChanged
+    
+    LOGICAL               :: intersectionFound
+    LOGICAL               :: octalAdded
+    TYPE(octalVector)     :: centrePoint
+    TYPE(octalVector)     :: starPos
+    TYPE(octal), POINTER  :: child
+    INTEGER               :: i, iSubcell, subIndex
+    TYPE(octalListElement), POINTER :: newElement
+    
+    octalAdded = .FALSE.
+    starPos = grid%starPos1
+
+    MAINLOOP: DO iSubcell = 1, thisOctal%maxChildren, 1 
+    
+      centrePoint = subcellCentre(thisOctal,iSubcell) - starPos
+      
+      IF (centrePoint%x < 0.0 .OR. centrePoint%y < 0.0 .OR. centrePoint%z < 0.0) THEN
+         ! we are in the wrong octant.
+         ! this makes some assumptions about the numerical accuracy of the
+         !   grid, but it should be mostly OK.
+         CYCLE  MAINLOOP
+
+      ELSE
+         IF (thisOctal%hasChild(iSubcell)) THEN
+            ! call the recursive subroutine on its child           
+            subIndex = -99
+            DO i = 1, thisOctal%nChildren, 1
+               IF ( thisOctal%indexChild(i) == iSubcell ) THEN
+                  subIndex = i  
+                  EXIT
+               ENDIF
+            ENDDO
+            IF (subIndex == -99) THEN
+               PRINT *, ' Panic: subindex not found'
+               STOP
+            ENDIF
+
+            child => thisOctal%child(subIndex)
+           
+            CALL getOctalsInFirstOctant(child,listHead,grid,nOctals) 
+                            
+         ELSE ! childless
+          
+            IF (PRESENT(onlyChanged)) THEN
+               IF (onlyChanged .AND. thisOctal%changed(iSubcell)) CYCLE
+            END IF
+            
+            IF (.NOT. octalAdded) THEN
+               nOctals = nOctals + 1
+               ALLOCATE(newElement)
+               newElement%content => thisOctal
+               newElement%next    => listHead
+               newElement%inUse   = .FALSE.
+               newElement%inUse(iSubcell) = .TRUE.
+               listHead => newElement
+               octalAdded = .TRUE.
+            ELSE
+               newElement%inUse(iSubcell) = .TRUE.
+            END IF
+            
+         END IF
+
+      END IF
+
+   END DO MAINLOOP
+        
+ END SUBROUTINE getOctalsInFirstOctant
+  
+
+  SUBROUTINE moveOctalListToArray(listHead,octalArray)
+    ! copies all the pointers (to octals) from a linked list into an array.
+    ! assumes that the SIZE of octalArray is the number of list elements.
+  
+    IMPLICIT NONE 
+    
+    TYPE(octalListElement), POINTER :: listHead
+    TYPE(octalWrapper),DIMENSION(:) :: octalArray
+
+    TYPE(octalListElement), POINTER :: oldHead
+    INTEGER :: element
+    
+    DO element = 1, SIZE(octalArray), 1
+
+      octalArray(element)%content => listHead%content
+      octalArray(element)%inUse   =  listHead%inUse
+      
+      oldHead => listHead
+      listHead => listHead%next
+      DEALLOCATE(oldHead)
+
+    END DO
+    NULLIFY(listHead)
+  
+  END SUBROUTINE moveOctalListToArray
+  SUBROUTINE amrUpdateGrid(amrLimitScalar,amrLimitScalar2,grid)
+    ! checks whether each octal has changed significantly since the last phase
+    !   of the simulation, and splits/deletes it as necessary.
+
+    IMPLICIT NONE
+
+    real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 
+      ! 'limitScalar' is the value the decideSplit function uses to
+      !   decide whether or not to split cell.
+    TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid through to the 
+                                          !   routines that this subroutine calls
+    
+    TYPE(OCTAL), POINTER :: thisOctal
+    TYPE(OCTAL), POINTER :: childPointer  
+    INTEGER              :: subcell, i    ! loop counters
+    logical :: splitThis, needRestart
+
+    IF ((.NOT. grid%adaptive) .OR. (.NOT.grid%geometry(1:6)=="ttauri")) THEN
+      print *, 'amrUpdateGrid probably doesn''t work with this setup'
+      stop
+    END IF
+  
+    ! first we check whether we are going to delete any child octals
+   
+    !print *, 'Deleting cells no longer needed...'
+    !thisOctal => grid%octreeRoot
+    !CALL amrUpdateGridDelete(thisOctal)
+   
+    ! then we check if we are adding any new octals
+    
+    print *, 'Adding new cells to grid...'
+    thisOctal => grid%octreeRoot
+    CALL amrUpdateGridAdd(thisOctal)
+
+    ! finally, check whether any subcells have changed significantly
+    print *, 'Flagging updated cells...'
+    thisOctal => grid%octreeRoot
+    CALL amrUpdateGridChanged(thisOctal)
+    
+  CONTAINS
+
+    RECURSIVE SUBROUTINE amrUpdateGridDelete(thisOctal)
+      ! if a child should no longer exist, we delete it.
+      ! this doesn't work quite as well as it should do, because we do not
+      ! delete the child itself (only IT'S children). 
+
+      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
+      TYPE(octal), POINTER :: thisChild, thisOctalPointer
+
+      INTEGER :: iChild, iSubcell
+
+      DO iChild = 1, thisOctal%nChildren, 1
+        
+        thisChild => thisOctal%child(iChild)
+        
+        DO iSubcell = 1, thisChild%maxChildren, 1
+          IF (thisOctal%indexChild(iSubcell) == iChild) EXIT
+        END DO 
+        
+        thisOctalPointer => thisOctal
+        IF (.NOT. decideSplit(thisOctalPointer,iSubcell,amrLimitScalar,amrLimitScalar2,grid)) THEN
+          PRINT *, 'Deleting unneeded children'
+          CALL deleteOctreeBranch(thisChild,grid)
+          thisOctal%changed(iSubcell) = .TRUE.
+        ELSE
+          CALL amrUpdateGridDelete(thisChild)
+        END IF
+
+      END DO  
+    
+    END SUBROUTINE amrUpdateGridDelete
+
+    RECURSIVE SUBROUTINE amrUpdateGridAdd(thisOctal)
+      ! subdivide any octals that now exceed the threshold
+
+      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
+      TYPE(octal), POINTER :: thisChild, thisOctalPointer 
+      INTEGER :: iChild, iSubcell, j
+
+      DO iSubcell = 1, thisOctal%maxChildren, 1
+        IF (thisOctal%hasChild(iSubcell)) THEN 
+          ! find the child
+          DO j = 1, thisOctal%nChildren, 1
+            IF (thisOctal%indexChild(j) == iSubcell) THEN
+              thisChild => thisOctal%child(j)
+              CALL amrUpdateGridAdd(thisChild)
+              EXIT
+            END IF
+          END DO
+        ELSE 
+          thisOctalPointer => thisOctal
+          IF (decideSplit(thisOctalPointer,iSubcell,amrLimitScalar,amrLimitScalar2,grid)) THEN
+            PRINT *, 'Adding new children'
+            thisOctalPointer => thisOctal
+            CALL addNewChildren(thisOctalPointer,grid)
+            DO j = 1, thisOctalPointer%maxChildren ,1
+              thisOctal%child(j)%changed = .TRUE.
+            END DO
+            grid%nOctals = grid%nOctals + 8
+            
+            EXIT
+          END IF
+        END IF 
+          
+      END DO 
+        
+    END SUBROUTINE amrUpdateGridAdd
+    
+    RECURSIVE SUBROUTINE amrUpdateGridChanged(thisOctal)
+      ! update the octals in the grid
+      ! flag any octals that have changed "significantly" since the last phase
+
+      ! NB This is only for T Tauri models. It should be made more elegant and general!
+      
+      TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
+      TYPE(octal), POINTER :: thisChild
+      INTEGER :: iChild, iSubcell, j
+      REAL :: newDensity
+
+      DO iSubcell = 1, thisOctal%maxChildren, 1
+
+        newDensity = TTauriDensity(subcellCentre(thisOctal,iSubcell),grid)
+          IF ( ABS((newDensity/(MAX(thisOctal%rho(iSubcell),1.e-25))-1.0)) > 0.1 ) &
+            thisOctal%changed(iSubcell) = .TRUE.
+         
+        CALL calcTTauriMassVelocity(thisOctal,iSubcell,grid)
+
+      END DO
+
+      DO iChild = 1, thisOctal%nChildren, 1
+        thisChild => thisOctal%child(iChild)
+        CALL amrUpdateGridChanged(thisChild)
+      END DO 
+      
+    END SUBROUTINE amrUpdateGridChanged
+
+  END SUBROUTINE amrUpdateGrid
+
+
+END MODULE amr_mod

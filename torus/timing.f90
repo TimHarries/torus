@@ -28,6 +28,8 @@ contains
     !      These library functions will return times in seconds. (See Man pages
     !      for detail.)
     !
+    ! Modefied 21-Apr-2004 by Ryuichi Kurosawa :: Now uses intrinsic function (fortran95) CPU_TIME
+    !             instead of ETIME. 
     ! Modefied 11-Nov-1998 by Ryuichi Kurosawa
     ! Created 02-Jan-1992 by D. J. Hillier 
     !
@@ -41,12 +43,12 @@ contains
     integer :: N_th_call(max_id)          ! stores how many time this routine
                                           !  was called with a given ID
     real :: cpu_start(max_id)             ! time at the first tuning pt
-    real :: cpu_time                      ! elapsed CPU time
+    real :: cputime                       ! elapsed CPU time
     logical :: found
     logical :: very_first_time            ! true if this routine is called
                                           !  very first time
 
-    real :: time_array(2)                 ! dummy array to get cpu time
+!    real :: time_array(2)                 ! dummy array to get cpu time
     data very_first_time/.true./
 
     integer :: i,id_num, dum_i
@@ -55,8 +57,8 @@ contains
     
     save id_stored,very_first_time,cpu_start, N_th_call
 
-    real :: etime
-    external etime  ! libarary function
+!    real :: etime
+!    external etime  ! libarary function
 
     ! Initiallizing arrays if used for the fisrt time
     if (very_first_time) then
@@ -104,12 +106,15 @@ contains
     dum_i = MOD(N_th_call(id_num),2)
     
     if (dum_i.eq.1) then ! the first call in pair 
-       cpu_start(id_num) = ETIME(time_array)
+       !cpu_start(id_num) = ETIME(time_array)
+       call CPU_TIME(cpu_start(id_num))
        
     elseif (dum_i.eq.0) then ! the second call in pair
-       cpu_time = ETIME(time_array) - cpu_start(id_num)
-       minutes = NINT(cpu_time)/60
-       seconds = MOD(cpu_time,60.)
+       !cpu_time = ETIME(time_array) - cpu_start(id_num)
+       call CPU_TIME(cputime)
+       cputime = cputime - cpu_start(id_num)
+       minutes = NINT(cputime)/60
+       seconds = MOD(cputime,60.)
        
 39     continue
 40     format(a12,1x,a30,1x,i6,1x, a5,1x,f9.4,1x,a5)

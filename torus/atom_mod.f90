@@ -14,26 +14,26 @@ contains
     real, intent(inout) :: retal, rchil, reta, rchi, resec
     integer, intent(in), optional :: m,n
     
-    real(kind=doubleKind) ::  thresh
-    real(kind=doubleKind) ::  transe
-    real(kind=doubleKind) ::  nsaha(15),freq
-    real(kind=doubleKind) ::  temp
-    real(kind=doubleKind) ::  ne
-    real(kind=doubleKind) ::  chi
-    real(kind=doubleKind) ::  eta
-    real(kind=doubleKind) ::  esec
-    real(kind=doubleKind) ::  etal
-    real(kind=doubleKind) ::  chil
+    real(double) ::  thresh
+    real(double) ::  transe
+    real(double) ::  nsaha(15),freq
+    real(double) ::  temp
+    real(double) ::  ne
+    real(double) ::  chi
+    real(double) ::  eta
+    real(double) ::  esec
+    real(double) ::  etal
+    real(double) ::  chil
     
 
     
-    real(kind=doubleKind) :: kappa
-    real(kind=doubleKind) ::  ah(6,6)
-    real(kind=doubleKind) ::  bh(6,6)
-    real(kind=doubleKind) ::  gh(15)
-    real(kind=doubleKind) ::  eh(10)
-    real(kind=doubleKind) ::  fh(6,6)
-    real(kind=doubleKind) :: lambdah(6,6)
+    real(double) :: kappa
+    real(double) ::  ah(6,6)
+    real(double) ::  bh(6,6)
+    real(double) ::  gh(15)
+    real(double) ::  eh(10)
+    real(double) ::  fh(6,6)
+    real(double) :: lambdah(6,6)
 
     DATA EH &
     /  0.000D0, 10.199D0, 12.088D0, 12.749D0, 13.055D0, 13.221D0, &
@@ -85,7 +85,7 @@ contains
           lambdah(i,k)=lambdah(k,i)
           ah(k,i)=ah(k,i)
           freq=cSpeed/lambdah(i,k)
-          bh(k,i)=((ah(k,i)*cSpeed**2)/(2.d0*hConst*freq**3))
+          bh(k,i)=((ah(k,i)*cSpeed*cSpeed)/(2.d0*hConst*freq**3))
           bh(i,k)=bh(k,i)*gh(k)/gh(i)
           fh(k,i)=-gh(i)*fh(i,k)/gh(k)
        enddo
@@ -148,14 +148,14 @@ contains
     implicit none
     integer maxsaha
     parameter (maxsaha=15)
-    real(kind=doubleKind) ::  nsaha(maxsaha)
+    real(double) ::  nsaha(maxsaha)
     integer i                        ! loop counter
-    real(kind=doubleKind) ::  ne
-    real(kind=doubleKind) ::  ipot            ! hydrogen ionization potential
-    real(kind=doubleKind) ::  ci              ! cgs constant
-    real(kind=doubleKind) ::  te              ! wind temperature
-    real(kind=doubleKind), parameter :: kev =8.6171E-5
-    real(kind=doubleKind) :: eh(10), gh(10)
+    real(double) ::  ne
+    real(double) ::  ipot            ! hydrogen ionization potential
+    real(double) ::  ci              ! cgs constant
+    real(double) ::  te              ! wind temperature
+    real(double), parameter :: kev =8.6171E-5
+    real(double) :: eh(10), gh(10)
       DATA GH &
      / 2.D0,  8.D0,  18.D0,  32.D0,  50.D0, &
       72.D0, 98.D0, 128.D0, 162.D0, 200.D0 /
@@ -180,7 +180,7 @@ contains
   end subroutine boltz_saha
 
 
-  real(kind=doubleKind)   function annudouble(n,nu)
+  real(double)   function annudouble(n,nu)
     !
     ! this subroutine calculates the photoionization x-section
     ! for hydrogen from the n-th level for a given freq photon.
@@ -189,20 +189,20 @@ contains
     integer n                   ! the level
     integer maxsaha
     parameter(maxsaha=15)
-    real(kind=doubleKind) ::  nu         ! the photon frequency
-    real(kind=doubleKind) ::  lam        ! the photon wavelength
+    real(double) ::  nu         ! the photon frequency
+    real(double) ::  lam        ! the photon wavelength
     lam=cSpeed/nu
     lam=lam*1.d8
     annudouble=1.044d-26*giidble(n,1.d0,lam)*(lam**3)/dble(n)**5
   end function annudouble
 
-  real(kind=doubleKind)  function giidble(n,z,wl)
+  real(double)  function giidble(n,z,wl)
     !
     ! returns bound-free gaunt factors (nicked from idh)
     !
     implicit none
-    real(kind=doubleKind) ::  z,wl,coeff(6)
-    real(kind=doubleKind) ::  efree,sum,a,alam
+    real(double) ::  z,wl,coeff(6)
+    real(double) ::  efree,sum,a,alam
     integer n,i
 
     data coeff /-0.338276d0, 0.808398d0, -0.59941d0, 0.104292d0, &
@@ -234,11 +234,11 @@ contains
 500 continue
   end function giidble
 
-  real(kind=doubleKind)  function giiadble(n,z,wl)
+  real(double)  function giiadble(n,z,wl)
     implicit none
     integer n
-    real(kind=doubleKind) ::  z,wl,a,u,term
-    real(kind=doubleKind) :: giib
+    real(double) ::  z,wl,a,u,term
+    real(double) :: giib
     a=dble(n)
     u=a*a*911.76d0/(wl*z*z)-1.d0
     giib=1.d0+0.1728d0*(u-1.d0)/((n*(u+1.d0))**(2.d0/3.d0))
@@ -254,12 +254,12 @@ contains
 500 continue
   end function giiadble
 
-  real(kind=doubleKind)  function alpkka(freq,t)
+  real(double)  function alpkka(freq,t)
     !
     ! this function returns the free-free absorption coefficient for hydrogen
     !
     implicit none
-    real(kind=doubleKind) ::  freq,t,wav,gauntf
+    real(double) ::  freq,t,wav,gauntf
     wav=1.d8*cSpeed/freq
     gauntf=giiia(1.d0,dble(t),dble(wav))
     alpkka=gauntf*3.69d8/((freq**3)*sqrt(t))
@@ -267,12 +267,12 @@ contains
   !
   ! free-free gaunt factor routine courtesy of idh
   !
-  real(kind=doubleKind) function giiia (z, t, wl)
+  real(double) function giiia (z, t, wl)
     !
     !   ferland's fabulous functional fits
     !
-    real(kind=doubleKind) :: coeff(28), a(7)
-    real(kind=doubleKind) :: u, wl, t, ulog, gam2, z, frac,b,c,sum1,sum2,d
+    real(double) :: coeff(28), a(7)
+    real(double) :: u, wl, t, ulog, gam2, z, frac,b,c,sum1,sum2,d
     integer i,j,k,m
     !
     data coeff &
@@ -333,9 +333,9 @@ contains
     giiia = sum1 + sum2
   end function giiia
 
-  real(kind=doubleKind) function bNu(nu,T)
+  real(double) function bNu(nu,T)
     
-    real(kind=doubleKind) :: fac1, fac2, fac3, nu, T
+    real(double) :: fac1, fac2, fac3, nu, T
 
     fac1 = (2.d0*dble(hCgs)*nu**3)/dble(cSpeed)**2
     fac3 =  (dble(hCgs)*nu)/ (dble(kErg) * T) 
@@ -347,9 +347,9 @@ contains
     bNu = fac1 * fac2
   end function bNu
 
-  real(kind=doubleKind) function dbNubydT(nu,T)
+  real(double) function dbNubydT(nu,T)
     
-    real(kind=doubleKind) :: fac1, fac2, fac3, nu, T
+    real(double) :: fac1, fac2, fac3, nu, T
 
     fac1 = (2.d0*(dble(hCgs)**2)*(nu**4))/((dble(cSpeed)**2)*dble(kErg) * T**2)
     fac3 =  (dble(hCgs)*nu)/ (dble(kErg) * T) 
@@ -358,9 +358,9 @@ contains
   end function dbNubyDt
 
 
-!!$  real(kind=doubleKind) function bLambda(lambda,T)
+!!$  real(double) function bLambda(lambda,T)
 !!$    
-!!$    real(kind=doubleKind) :: fac1, fac2, fac3,  T, lambda
+!!$    real(double) :: fac1, fac2, fac3,  T, lambda
 !!$
 !!$    fac1 = (2.*hCgs*cSpeed**2)/(lambda *1.d-8)**5
 !!$    fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T) 
@@ -375,15 +375,15 @@ contains
   !
   ! Plancks function B_lambda(T)
   ! in [erg cm^-2 s^-2 cm^-1 sr^-1]
-  real(kind=doubleKind) function bLambda(lambda,T)
+  real(double) function bLambda(lambda,T)
     implicit none
-    real(kind=doublekind), intent(in)  :: T       ! temperature in Kelvinslambda
-    real(kind=doublekind), intent(in)  :: lambda  ! wavelength in Angstrom
-    real(kind=doubleKind) :: x, y, lambda_cm
+    real(double), intent(in)  :: T       ! temperature in Kelvinslambda
+    real(double), intent(in)  :: lambda  ! wavelength in Angstrom
+    real(double) :: x, y, lambda_cm
 
     lambda_cm = lambda *1.d-8  ! wavelength in cm
     x =  (hCgs * cSpeed)/ (lambda_cm * kErg * T) 
-    y = (2.0d0*hCgs*cSpeed**2)/(lambda_cm)**5
+    y = (2.0d0*hCgs*cSpeed*cSpeed)/(lambda_cm)**5
 
     if (x > 100.d0) then      ! applying Wien's law
        bLambda = y * EXP(-x)
@@ -398,9 +398,9 @@ contains
   end function bLambda
 
 
-  real(kind=doubleKind) function dbLambdabydT(lambda,T)
+  real(double) function dbLambdabydT(lambda,T)
     
-    real(kind=doubleKind) :: fac1, fac2, fac3,  T, lambda
+    real(double) :: fac1, fac2, fac3,  T, lambda
 
     fac1 = (2.d0*dble(hCgs)**2*dble(cSpeed)**3)/((lambda *1.d-8)**6 * dble(Kerg) * T**2)
     fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T) 

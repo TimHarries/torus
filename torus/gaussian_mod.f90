@@ -10,6 +10,7 @@ module gaussian_mod
   use kind_mod
   use constants_mod
   use vector_mod
+  use utils_mod
 
   implicit none
 
@@ -18,9 +19,9 @@ module gaussian_mod
   ! The definition of the vector type
 
   type GAUSSIAN
-     real(kind=doubleKind) :: sigma
+     real(double) :: sigma
      type(OCTALVECTOR) :: centre
-     real(kind=doubleKind) :: amplitude
+     real(double) :: amplitude
   end type GAUSSIAN
 
 contains
@@ -52,7 +53,7 @@ contains
   real function eval(thisgaussian, position)
     type(GAUSSIAN) :: thisGaussian
     type(OCTALVECTOR) :: position
-    real(kind=octalKind) :: x
+    real(oct) :: x
 
     x = modulus(thisGaussian%centre - position)
     eval = thisGaussian%amplitude * exp(-x**2 / (2.*thisGaussian%sigma**2))

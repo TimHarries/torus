@@ -42,7 +42,7 @@ contains
     implicit none
     type(cluster), intent(in) :: a_cluster 
     type(octalvector), intent(in) :: dir_obs
-    double precision, intent(in) :: distance  ! in [pc]
+    real(double), intent(in) :: distance  ! in [pc]
     type(gridtype), intent(in) :: grid    
     !
     type(filter_set) :: SIRTF_MIPS
@@ -79,50 +79,50 @@ contains
 
     type(cluster), intent(in) :: a_cluster 
     type(octalvector), intent(in) :: dir_obs
-    double precision, intent(in) :: distance  ! in [pc]
+    real(double), intent(in) :: distance  ! in [pc]
     type(gridtype), intent(in) :: grid    
     !
     integer :: i
-    double precision :: I0_J, I0_H, I0_K, I0_L, I0_M, I0_V  ! initial intensity
-!    double precision :: I_J, I_H, I_K, I_L, I_M, I_V       ! final intensity
-    real(kind=quadkind) :: I_J, I_H, I_K, I_L, I_M, I_V       ! final intensity
+    real(double) :: I0_J, I0_H, I0_K, I0_L, I0_M, I0_V  ! initial intensity
+!    real(double) :: I_J, I_H, I_K, I_L, I_M, I_V       ! final intensity
+    real(quad) :: I_J, I_H, I_K, I_L, I_M, I_V       ! final intensity
     integer :: nstar
     type(sourcetype) :: a_star
-    double precision :: T  !   temperature in K.    
+    real(double) :: T  !   temperature in K.    
     type(octalvector) :: position   ! position of stars [10^10cm]
-    double precision :: R            ! radius of star    [10^10cm]
+    real(double) :: R            ! radius of star    [10^10cm]
     !
     ! The mean wavelength of the filters
-    double precision, parameter :: lam_J =  1.25d4 ! [A]
-    double precision, parameter :: lam_H =  1.65d4 ! [A]
-    double precision, parameter :: lam_K =  2.2d4  ! [A]
-    double precision, parameter :: lam_L =  3.6d4  ! [A]
-    double precision, parameter :: lam_M =  10.2d4 ! [A]
-    double precision, parameter :: lam_V =  0.55d4 ! [A]
+    real(double), parameter :: lam_J =  1.25d4 ! [A]
+    real(double), parameter :: lam_H =  1.65d4 ! [A]
+    real(double), parameter :: lam_K =  2.2d4  ! [A]
+    real(double), parameter :: lam_L =  3.6d4  ! [A]
+    real(double), parameter :: lam_M =  10.2d4 ! [A]
+    real(double), parameter :: lam_V =  0.55d4 ! [A]
     
     !
     ! zero point flux for each filter.
-    double precision, parameter :: offset = 1.0d100
+    real(double), parameter :: offset = 1.0d100
     !
-    double precision, parameter :: F0_J =  3.18d-10*offset ! [erg cm^-2 s^-1 A^-1 *offset]
-    double precision, parameter :: F0_H =  1.18d-10*offset ! [erg cm^-2 s^-1 A^-1 *offset]
-    double precision, parameter :: F0_K =  4.17d-11*offset ! [erg cm^-2 s^-1 A^-1 *offset]
-    double precision, parameter :: F0_L =  6.23d-12*offset ! [erg cm^-2 s^-1 A^-1 *offset]
-    double precision, parameter :: F0_M =  2.07d-12*offset ! [erg cm^-2 s^-1 A^-1 *offset]
-    double precision, parameter :: F0_V =  3.64d-09*offset ! [erg cm^-2 s^-1 A^-1 *offset]
+    real(double), parameter :: F0_J =  3.18d-10*offset ! [erg cm^-2 s^-1 A^-1 *offset]
+    real(double), parameter :: F0_H =  1.18d-10*offset ! [erg cm^-2 s^-1 A^-1 *offset]
+    real(double), parameter :: F0_K =  4.17d-11*offset ! [erg cm^-2 s^-1 A^-1 *offset]
+    real(double), parameter :: F0_L =  6.23d-12*offset ! [erg cm^-2 s^-1 A^-1 *offset]
+    real(double), parameter :: F0_M =  2.07d-12*offset ! [erg cm^-2 s^-1 A^-1 *offset]
+    real(double), parameter :: F0_V =  3.64d-09*offset ! [erg cm^-2 s^-1 A^-1 *offset]
 
     ! 
     ! Observed flux and magnitudes
-!    double precision :: F_J, F_H, F_K, F_L, F_M, F_V  ! [erg cm^-2 s^-1 A^-1]
-    real(kind=quadkind) :: F_J, F_H, F_K, F_L, F_M, F_V  ! [erg cm^-2 s^-1 A^-1 *offset]
-    double precision :: m_J, m_H, m_K, m_L, m_M, m_V  !  magnitudes of real stars
-    double precision :: m_J0, m_H0, m_K0, m_L0, m_M0  ! mag. of naked stars
-    double precision, allocatable :: m_V0(:)
+!    real(double) :: F_J, F_H, F_K, F_L, F_M, F_V  ! [erg cm^-2 s^-1 A^-1]
+    real(quad) :: F_J, F_H, F_K, F_L, F_M, F_V  ! [erg cm^-2 s^-1 A^-1 *offset]
+    real(double) :: m_J, m_H, m_K, m_L, m_M, m_V  !  magnitudes of real stars
+    real(double) :: m_J0, m_H0, m_K0, m_L0, m_M0  ! mag. of naked stars
+    real(double), allocatable :: m_V0(:)
     !
-    double precision :: Av ! extinction
+    real(double) :: Av ! extinction
 
     !
-    double precision :: scale,  Rmax, tau_inf, tmp
+    real(double) :: scale,  Rmax, tau_inf, tmp
 
 
     integer, parameter :: nr    = 30
@@ -131,7 +131,7 @@ contains
     integer, parameter :: LU_MAG = 32
     integer, parameter :: LU_COL = 33    
 
-    double precision, parameter :: pi = 3.141592654d0
+    real(double), parameter :: pi = 3.141592654d0
 
 
     
@@ -342,41 +342,41 @@ contains
 
     type(cluster), intent(in) :: a_cluster 
     type(octalvector), intent(in) :: dir_obs
-    double precision, intent(in) :: distance  ! in [pc]
+    real(double), intent(in) :: distance  ! in [pc]
     type(gridtype), intent(in) :: grid    
     type(filter_set), intent(in) :: filters 
     !
     integer :: j, k
-    double precision, allocatable :: I0(:) ! initial intensity
-    double precision, allocatable :: I(:)  ! final intensity
+    real(double), allocatable :: I0(:) ! initial intensity
+    real(double), allocatable :: I(:)  ! final intensity
     integer :: nstar
     type(sourcetype) :: a_star
-    double precision :: T  !   temperature in K.    
+    real(double) :: T  !   temperature in K.    
     type(octalvector) :: position   ! position of stars [10^10cm]
-    double precision :: R            ! radius of star    [10^10cm]
+    real(double) :: R            ! radius of star    [10^10cm]
     ! 
     ! number of filters in a set
     integer :: nfilter
     
     ! The mean wavelength and the band width of the filters
-    double precision, allocatable :: lambda(:)      ! [A]
-    double precision, allocatable :: dlambda(:)     ! [A]
+    real(double), allocatable :: lambda(:)      ! [A]
+    real(double), allocatable :: dlambda(:)     ! [A]
     !
     ! Observed flux and magnitudes
-    double precision, allocatable :: F_lambda(:)     ! [erg cm^-2 s^-1 A^-1]
-    double precision, allocatable :: F_Jy(:)         ! [erg cm^-2 s^-1 A^-1]
-    double precision, parameter :: offset = 1.0d100
+    real(double), allocatable :: F_lambda(:)     ! [erg cm^-2 s^-1 A^-1]
+    real(double), allocatable :: F_Jy(:)         ! [erg cm^-2 s^-1 A^-1]
+    real(double), parameter :: offset = 1.0d100
     !
-    double precision :: scale
+    real(double) :: scale
 
     integer, parameter :: LU_COL = 32
     integer, parameter :: LU_FLX = 33    
 
-    double precision, parameter :: pi = 3.141592654d0
-    double precision, parameter :: c_in_m_per_sec = 2.998d8 ! [m/s]
+    real(double), parameter :: pi = 3.141592654d0
+    real(double), parameter :: c_in_m_per_sec = 2.998d8 ! [m/s]
 
-    double precision :: Rmax
-    double precision :: convert
+    real(double) :: Rmax
+    real(double) :: convert
     !
     character(LEN=30) :: name_filter_set
     character(LEN=30), allocatable :: name_filter(:)
@@ -603,27 +603,27 @@ contains
 
     implicit none
     
-    real(kind=quadkind) ::  F_obs    ! output intensity.
+    real(quad) ::  F_obs    ! output intensity.
     !
-    real(kind=doublekind), intent(in)  ::  I0  ! [erg cm^-2 s^-2 A^-1 sr^-1] input intensity
-    real(kind=doublekind), intent(in)  :: wavelength    ! [A] the wavelength 
-    real(kind=doublekind), intent(in)  :: R_star        ! [cm] radius of a star
-    real(kind=doublekind), intent(in)  :: R_max         ! [cm] the wavelength (usually ~10 AU)
+    real(double), intent(in)  ::  I0  ! [erg cm^-2 s^-2 A^-1 sr^-1] input intensity
+    real(double), intent(in)  :: wavelength    ! [A] the wavelength 
+    real(double), intent(in)  :: R_star        ! [cm] radius of a star
+    real(double), intent(in)  :: R_max         ! [cm] the wavelength (usually ~10 AU)
     integer, intent(in)                :: nr            ! number of radial points for integration
     integer, intent(in)                :: nphi          ! number of angle  points for integration
     type(OCTALVECTOR), intent(in)      :: pos_star      ! position of the star
-    real(kind=doublekind), intent(in)  :: dist_obs      ! [cm] distance to the observer
+    real(double), intent(in)  :: dist_obs      ! [cm] distance to the observer
     type(OCTALVECTOR), intent(in)      :: dir_obs       ! direction
     type(GRIDTYPE), intent(in)         :: amrgrid       ! the opacity grid
     logical, intent(in)                :: contPhoton    ! is this a continuum photon?
-    real(kind=doublekind), intent(in)  :: offset        ! offset scale factor
+    real(double), intent(in)  :: offset        ! offset scale factor
     !
     type(OCTALVECTOR), allocatable     :: p(:)          ! integration grids
-    real(kind=doublekind), allocatable :: dA(:)         ! surface elements at p
+    real(double), allocatable :: dA(:)         ! surface elements at p
     type(OCTALVECTOR)                  :: q             
-    real(kind=quadkind)                :: F, F_core, Fi, I1, F_sub
+    real(quad)                :: F, F_core, Fi, I1, F_sub
     !
-    real(kind=doublekind)              :: pi
+    real(double)              :: pi
     integer :: i, np, nc
     integer, parameter    :: nr_core   = 50     ! number of radial points for integration
     integer, parameter    :: nphi_core = 20     ! number of angle  points for integration
@@ -723,21 +723,21 @@ contains
   subroutine setup_grid(p, dA,nr, nphi, R_min, R_max, pos_star, dir_obs)
     implicit none
     type(OCTALVECTOR), intent(inout)     :: p(:)          ! integration grids
-    real(kind=doublekind), intent(inout) :: dA(:)         ! surface elements at p
+    real(double), intent(inout) :: dA(:)         ! surface elements at p
     integer, intent(in)                :: nr            ! number of radial points for integration
     integer, intent(in)                :: nphi          ! number of angle  points for integration
-    real(kind=doublekind), intent(in)  :: R_min         ! [cm] minimum radius (usually 5*R_star)
-    real(kind=doublekind), intent(in)  :: R_max         ! [cm] the wavelength (usually ~10 AU)
+    real(double), intent(in)  :: R_min         ! [cm] minimum radius (usually 5*R_star)
+    real(double), intent(in)  :: R_max         ! [cm] the wavelength (usually ~10 AU)
     
     type(OCTALVECTOR), intent(in)      :: pos_star      ! position of the sta
     type(OCTALVECTOR), intent(in)      :: dir_obs       ! direction
     
     integer :: i , j , k
     type(OCTALVECTOR)                  :: q             ! 
-    real(kind=doublekind)              :: pi
-    real(kind=doublekind)              :: r, phi, dphi, dr, rp, rm
-    real(kind=doublekind)              :: log_r, log_R_max, log_R_min
-    real(kind=octalkind)              :: x, y, z
+    real(double)              :: pi
+    real(double)              :: r, phi, dphi, dr, rp, rm
+    real(double)              :: log_r, log_R_max, log_R_min
+    real(oct)              :: x, y, z
     
     pi = 2.0*ACOS(0.0)
 
@@ -783,25 +783,25 @@ contains
 
     type(cluster), intent(in) :: a_cluster 
     type(octalvector), intent(in) :: dir_obs
-    double precision, intent(in) :: distance  ! in [pc]
+    real(double), intent(in) :: distance  ! in [pc]
     type(gridtype), intent(in) :: grid    
     !
     integer :: i
-    double precision :: I0_V  ! initial intensity
+    real(double) :: I0_V  ! initial intensity
     integer :: nstar
     type(sourcetype) :: a_star
-    double precision :: T  !   temperature in K.    
+    real(double) :: T  !   temperature in K.    
     type(octalvector) :: position   ! position of stars [10^10cm]
-    double precision :: R            ! radius of star    [10^10cm]
+    real(double) :: R            ! radius of star    [10^10cm]
     !
     ! The mean wavelength of the filters
-    double precision, parameter :: lam_V =  0.55d4 ! [A]
+    real(double), parameter :: lam_V =  0.55d4 ! [A]
     
-    double precision, parameter :: offset = 1.0d100
+    real(double), parameter :: offset = 1.0d100
     !
-    double precision :: Av ! extinction
+    real(double) :: Av ! extinction
     !
-    double precision ::  tau_inf, tmp
+    real(double) ::  tau_inf, tmp
 
     !
     !

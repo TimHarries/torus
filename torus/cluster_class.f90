@@ -46,7 +46,7 @@ module cluster_class
   type cluster
      private   ! It is better to be private! (The maintenance is easier later...)
      ! size of the cubic box which hold the entire sph particle and stars.
-     double precision :: boxsize  
+     real(double) :: boxsize  
      ! number of stars
      integer :: nstar
      ! stars
@@ -94,7 +94,7 @@ contains
     implicit none
     type(cluster), intent(inout) :: this
     type(sph_data), intent(in) :: sphData
-    double precision, intent(in) :: amrGridSize
+    real(double), intent(in) :: amrGridSize
     logical, intent(in) :: disc_on
     ! Store important info from the data.    
     this%boxsize = amrGridSize  ! [10^10 cm]
@@ -147,7 +147,7 @@ contains
   ! Return the size of the box which holds the whole particles
   function get_boxsize(this) RESULT(out)
     implicit none
-    double precision :: out
+    real(double) :: out
     type(cluster), intent(in) :: this
     
     out = this%boxsize
@@ -215,7 +215,7 @@ contains
     type(cluster), intent(inout) :: this
     type(sph_data), intent(in) :: sphData
     ! starting and the ending wavelength in Angstrome!
-    double precision, intent(in) :: lambda_beg, lambda_end 
+    real(double), intent(in) :: lambda_beg, lambda_end 
     !
     ! isochrone data to assign R, L, & T os stars
     type(isochrone), intent(in) :: iso_data  
@@ -223,10 +223,10 @@ contains
     !
     integer :: i, n
     type(sourcetype) :: a_star
-    double precision :: mass, age, radius, temperature
-    double precision :: luminosity
-    double precision :: length_units
-    double precision :: x, y, z
+    real(double) :: mass, age, radius, temperature
+    real(double) :: luminosity
+    real(double) :: length_units
+    real(double) :: x, y, z
     
     n = get_nstar(this)
 
@@ -336,7 +336,7 @@ contains
     character(len=*), intent(in) :: geometry
     type(cluster), intent(in), optional :: a_cluster
     !
-    double precision :: density_ave, rho_disc_ave, dummy_d
+    real(double) :: density_ave, rho_disc_ave, dummy_d
     integer :: nparticle     
     !
     !
@@ -421,9 +421,9 @@ contains
     type(sph_data), intent(in) :: sphData
     !
     integer          :: np, i, j, k
-    double precision :: udist  ! units for distance
-    double precision :: x, y, z
-    double precision :: density_ave
+    real(double) :: udist  ! units for distance
+    real(double) :: x, y, z
+    real(double) :: density_ave
     integer :: nparticle
     
     !
@@ -475,25 +475,25 @@ contains
   subroutine find_n_particle_in_subcell(n, rho_ave, sphData, node, subcell)
     implicit none
     integer, intent(out) :: n                ! number of particels in the subcell
-    double precision, intent(out) :: rho_ave ! average density of the subcell
+    real(double), intent(out) :: rho_ave ! average density of the subcell
     type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     !
     integer :: npart
     integer :: i, j, counter
-    double precision :: x, y, z
+    real(double) :: x, y, z
     !
     !
-    double precision, save :: umass, udist, udent  ! for units conversion  
-    double precision, save :: rho_min
+    real(double), save :: umass, udist, udent  ! for units conversion  
+    real(double), save :: rho_min
     logical, save  :: first_time = .true.
     !
     !logical :: restart
     !    
-    double precision :: rho_disc_ave ! For eveluation of disc density ...
+    real(double) :: rho_disc_ave ! For eveluation of disc density ...
     integer, parameter :: nsample =400
-    double precision :: xc, yc, zc, d, sizescale, r
+    real(double) :: xc, yc, zc, d, sizescale, r
     TYPE(octalVector)     :: cellCenter
 
     ! Carry out the initial calculations
@@ -594,7 +594,7 @@ contains
     integer                    :: i,j           ! loop counters
     integer :: np, nc, subcell, parent_subcell
     real :: rho_ave
-    double precision :: rho_tmp    
+    real(double) :: rho_tmp    
     
     nc = thisOctal%nChildren    
     do subcell = 1, 8
@@ -733,7 +733,7 @@ contains
 
     type(cluster), intent(in)  :: thisCluster    
     type(octal), pointer       :: thisOctal
-    double precision, intent(in) :: R_max   ! [10^10 cm]
+    real(double), intent(in) :: R_max   ! [10^10 cm]
     !
     type(octal), pointer       :: pChild
     integer                    :: i,j           ! loop counters
@@ -784,10 +784,10 @@ contains
     integer, parameter :: LUOF=23
     integer :: i
     type(sourcetype) :: a_star
-    double precision :: mass
-    double precision, parameter :: M_sun = 1.989e33         ! grams
-    double precision, parameter :: L_sun = 3.85d33          !erg/s
-    double precision, parameter :: R_sun = 6.96d0           ! 10^10cm
+    real(double) :: mass
+    real(double), parameter :: M_sun = 1.989e33         ! grams
+    real(double), parameter :: L_sun = 3.85d33          !erg/s
+    real(double), parameter :: R_sun = 6.96d0           ! 10^10cm
 
     ! 
     write(*,*) " "
@@ -838,29 +838,29 @@ contains
   
   function disc_density(xpos,ypos,zpos,sphData, young_cluster ,sizescale) RESULT(density_out)
     implicit none
-    double precision :: density_out  ! in [g/cm^3]
-    double precision, intent(in) :: xpos,ypos,zpos  ! should be in [10^10cm]
+    real(double) :: density_out  ! in [g/cm^3]
+    real(double), intent(in) :: xpos,ypos,zpos  ! should be in [10^10cm]
     type(sph_data), intent(in)   :: sphData
     type(cluster), intent(in)    :: young_cluster
-    double precision, intent(out):: sizescale       ! should be in [10^10cm]
+    real(double), intent(out):: sizescale       ! should be in [10^10cm]
     !
     logical,save :: first_time = .true.
-    double precision, parameter :: pi = 3.14159265d0
+    real(double), parameter :: pi = 3.14159265d0
     integer :: nstar, i 
-    double precision :: holesize
-    double precision :: discrad, discmass, unitx, unity, unitz
-    double precision :: spinx, spiny, spinz, starrad, x, y, z
-    double precision :: xposi, yposi, zposi, rad, radius2, radius
-    double precision :: unorm, zdist, height, densitymidplane
+    real(double) :: holesize
+    real(double) :: discrad, discmass, unitx, unity, unitz
+    real(double) :: spinx, spiny, spinz, starrad, x, y, z
+    real(double) :: xposi, yposi, zposi, rad, radius2, radius
+    real(double) :: unorm, zdist, height, densitymidplane
     type(sourcetype) :: a_star
     ! maximum density allowed
-!    double precision, parameter :: rho_max = 1.0d-12   ! g/cm^3
-    double precision, parameter :: rho_max = 2.5d50   ! g/cm^3 (equivalent to no threshold)
+!    real(double), parameter :: rho_max = 1.0d-12   ! g/cm^3
+    real(double), parameter :: rho_max = 2.5d50   ! g/cm^3 (equivalent to no threshold)
     !
-    double precision :: s1, s2  
+    real(double) :: s1, s2  
     logical :: logscale
-    double precision :: Rgap1 = 1000.0 ! 10^10 cm
-    double precision :: Rgap2 = 2000.0 ! 10^10 cm
+    real(double) :: Rgap1 = 1000.0 ! 10^10 cm
+    real(double) :: Rgap2 = 2000.0 ! 10^10 cm
     
 
     ! quick check
@@ -1039,10 +1039,10 @@ contains
     type(octal), intent(in) :: octal_in
     integer, intent(in) :: subcell
 
-    double precision :: x, y, z, xc, yc, zc
+    real(double) :: x, y, z, xc, yc, zc
     type(sourcetype) :: a_star
     integer :: i, nstar
-    double precision :: dummy_d, R_disc, R2_disc, R2_cell, d2
+    real(double) :: dummy_d, R_disc, R2_disc, R2_cell, d2
     TYPE(octalVector)     :: cellCenter
 
     nstar = get_nstar(this)
@@ -1093,12 +1093,12 @@ contains
     type(cluster), intent(in) :: this
     type(octal), intent(in) :: octal_in
     integer, intent(in) :: subcell
-    double precision, intent(in) :: R_max  ! limiting distance in [10^10cm]
+    real(double), intent(in) :: R_max  ! limiting distance in [10^10cm]
 
-    double precision :: x, y, z, xc, yc, zc
+    real(double) :: x, y, z, xc, yc, zc
     type(sourcetype) :: a_star
     integer :: i, nstar
-    double precision :: R_sq, R_max_sq
+    real(double) :: R_sq, R_max_sq
     TYPE(octalVector)     :: cellCenter
 
     nstar = get_nstar(this)
@@ -1142,20 +1142,20 @@ contains
   function average_disc_density(sphData, node, subcell, stellar_cluster, &
        scale_length) RESULT(out)
     implicit none
-    double precision :: out     ! out put density in [g/cm^3]
+    real(double) :: out     ! out put density in [g/cm^3]
     type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     type(cluster), intent(in)     :: stellar_cluster
-    double precision, optional, intent(inout) :: scale_length  ! [10^10cm]
+    real(double), optional, intent(inout) :: scale_length  ! [10^10cm]
 
     !
     integer, parameter :: nsample =300
-    double precision :: d, x, y, z, xc, yc, zc, rho_disc_ave, r, dummy_d, rho_sample
+    real(double) :: d, x, y, z, xc, yc, zc, rho_disc_ave, r, dummy_d, rho_sample
     type(octalVector)     :: cellCenter
     logical, save :: first_time = .true.
     integer :: i, n
-    double precision , parameter:: rho_min = 1.0d-23
+    real(double) , parameter:: rho_min = 1.0d-23
     
     ! quick check for the first time
     if (first_time) then
@@ -1240,20 +1240,20 @@ contains
   function average_disc_density_fast(sphData, node, subcell, stellar_cluster, &
        scale_length) RESULT(out)
     implicit none
-    double precision :: out     ! out put density in [g/cm^3]
+    real(double) :: out     ! out put density in [g/cm^3]
     type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     type(cluster), intent(in)     :: stellar_cluster
-    double precision,  intent(inout) :: scale_length
+    real(double),  intent(inout) :: scale_length
 
     !
-    double precision :: d, d2, xc, yc, zc, rho_disc_ave, dummy_d
+    real(double) :: d, d2, xc, yc, zc, rho_disc_ave, dummy_d
     type(octalVector)     :: cellCenter
     logical, save :: first_time = .true.
-    double precision :: c0, c1, c2, c3, c4, c5, c6, c7, c8
-    double precision :: c9, c10, c11, c12, c13, c14, c15, c16
-    double precision :: c17, c18, c19, c20, c21, c22
+    real(double) :: c0, c1, c2, c3, c4, c5, c6, c7, c8
+    real(double) :: c9, c10, c11, c12, c13, c14, c15, c16
+    real(double) :: c17, c18, c19, c20, c21, c22
     
     ! quick check for the first time
     if (first_time) then
@@ -1324,17 +1324,17 @@ contains
   function max_disc_density_from_sample(sphData, node, subcell, stellar_cluster, &
        scale_length) RESULT(out)
     implicit none
-    double precision :: out     ! out put density in [g/cm^3]
+    real(double) :: out     ! out put density in [g/cm^3]
     type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
     type(cluster), intent(in)     :: stellar_cluster
-    double precision, optional, intent(inout) :: scale_length  ! [10^10cm]
+    real(double), optional, intent(inout) :: scale_length  ! [10^10cm]
 
     !
     integer, parameter :: nsample =300
-    double precision :: d, x, y, z, xc, yc, zc, rho_disc_max, r, dummy_d
-    double precision :: rho_tmp
+    real(double) :: d, x, y, z, xc, yc, zc, rho_disc_max, r, dummy_d
+    real(double) :: rho_tmp
     type(octalVector)     :: cellCenter
     logical, save :: first_time = .true.
     integer :: i
@@ -1390,11 +1390,11 @@ contains
   ! s_min and s_max.
   function compute_scale_size(s, s_min, s_max, ds_min, ds_max, logscale) RESULT(out)
     implicit none
-    double precision :: out
+    real(double) :: out
     ! distance from center of a star or from the disk plane
-    double precision, intent(in) :: s,  s_min, s_max, ds_min, ds_max
+    real(double), intent(in) :: s,  s_min, s_max, ds_min, ds_max
     logical, intent(in) :: logscale
-    double precision  :: p,ss
+    real(double)  :: p,ss
 
     ss=s
     if (logscale) then
@@ -1442,10 +1442,10 @@ contains
     real, intent(in) :: lambda_array(n_lambda)
 
     !
-    double precision :: d    ! size of the octal
-    double precision :: tau  ! optical depth across the cell
+    real(double) :: d    ! size of the octal
+    real(double) :: tau  ! optical depth across the cell
     integer :: ilambda
-    double precision :: kappaScaReal, KappaAbsReal
+    real(double) :: kappaScaReal, KappaAbsReal
 
 
     d = thisOctal%subcellSize
@@ -1528,13 +1528,13 @@ contains
     integer, intent(in)  :: nsource                     ! The number of sources.
     type(sourcetype), intent(inout) :: sources(nsource) ! sources (stars)
    type(octalvector), intent(in)    :: n_obs            ! direcion to the observer (should be normalized)
-    real(kind=doublekind), intent(in)    :: Rmax        ! The radius of the cylinder (in 10^10cm)
+    real(double), intent(in)    :: Rmax        ! The radius of the cylinder (in 10^10cm)
     !
     logical, save :: first_time=.true.
     integer :: j, subcell
 
     type(octalvector) :: r0, r, rp
-    real(kind=doublekind) :: p
+    real(double) :: p
     type(octal), pointer  :: child 
 
     !

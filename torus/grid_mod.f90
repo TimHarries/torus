@@ -502,16 +502,14 @@ contains
   ! function to initialize a cartesian grid
 
 
-  subroutine initAMRgrid(Laccretion,Taccretion,sAccretion,&
-                         greyContinuum,newContFile,flatspec,grid,ok,theta1,theta2)
+  subroutine initAMRgrid(greyContinuum,newContFile,flatspec,grid,ok,theta1,theta2)
 
     use input_variables
 
     implicit none
 
-    real(kind=doublekind), intent(inout) :: Laccretion 
-    real, intent(inout) :: Taccretion 
-    real, intent(inout) :: sAccretion
+    ! grid%timeNow must be assigned before this routine is called!
+
     logical, intent(in) :: greyContinuum
     character(len=80), intent(out) :: newContFile
     logical, intent(in) :: flatspec        ! is the spectrum flat
@@ -519,29 +517,32 @@ contains
     type(GRIDTYPE), intent(out) :: grid                 ! the grid
     real, intent(out)   :: theta1, theta2
     
-    integer :: ilambda                   ! counters
-
+    integer :: i,ilambda                   ! counters
+    real :: rStar
+    
     ! ok for now
     ok = .true.
 
     iLambda = nLambda
     grid%oneKappa = oneKappa
 
-
+    newContFile = " "
+    
     if (oneKappa) then
        allocate(grid%oneKappaAbs(nDustType,1:nLambda))
        allocate(grid%oneKappaSca(nDustType,1:nLambda))
     endif
 
     grid%lineEmission = lineEmission
-    grid%maxLevels = 6 ! (this is copying the value in initgridstateq)
+    grid%maxLevels = statEqMaxLevels
 
     ! if the spectrum is flat one only needs on wavelength point
 
     grid%flatspec = flatspec
+    grid%statEq2d = statEq2d
     if (flatspec) ilambda = 1
 
-
+    grid%amr2dOnly = amr2dOnly
     grid%geometry = geometry
 
     select case (geometry)
@@ -579,10 +580,18 @@ contains
 
 
     case ("ttauri") 
-       call initTTauriAMR(grid,Laccretion,Taccretion,&
-                           sAccretion,newContFile,theta1,theta2)
+       call initTTauriAMR(grid,theta1,theta2)
+    case ("windtest") 
+       call initWindTestAMR(grid)
+
     case ("jets") 
        call initJetsAMR(grid)
+
+    case ("luc_cir3d") 
+       rStar  = CIR_Rstar*Rsol/1.0d10   ! in [10^10cm] 
+       grid%rCore = rStar
+       grid%rStar1 = rStar
+       grid%starPos1 = vector(0.,0.,0.)
 
     case ("testamr")
        call initTestAMR(grid)
@@ -1137,7 +1146,7 @@ contains
     grid%yAxis = grid%yAxis / 1.e10
     grid%zAxis = grid%zAxis / 1.e10
     grid%temperature = 100.
-    grid%lCore = fourPi * stefanBoltz *rsol**2 * 4000.**4
+    grid%lCore = fourPi * stefanBoltz * (rsol*rsol) * 4000.**4
     grid%rCore = 2.* rsol / 1.e10
 
   end subroutine fillGridTorus
@@ -1161,8 +1170,8 @@ contains
     real :: fac
     logical :: dust
     real :: meanDustParticleMass
-    real(kind=doubleKind) :: vElement
-    real(kind=doubleKind) :: totalDustMass
+    real(double) :: vElement
+    real(double) :: totalDustMass
     logical, allocatable :: done(:,:,:)
 
     grid%geometry(1:7) = "collide"
@@ -1603,12 +1612,12 @@ contains
     implicit none
     logical :: opaqueCore, firstPlot
     type(GRIDTYPE) :: grid
-    real :: contTau(2000,*)
+    real, dimension(:,:), intent(in) :: contTau
     type(VECTOR) :: viewVec
     type(VECTOR) :: coolStarPosition
     integer :: i, j, npix
     real, allocatable :: plane(:,:), axis(:)
-!    double precision, allocatable :: plane_dble(:,:)
+!    real(double), allocatable :: plane_dble(:,:)
     logical, allocatable :: inuse(:,:)
     real :: tr(6)
     real :: fg, bg, dx, dz
@@ -1617,7 +1626,8 @@ contains
     integer :: i1, i2, i3
     real :: r, mu, phi
     character(len=*) :: device
-    real(kind=octalKind) :: x, y, z
+    real(oct) :: x, y, z
+    real :: smallOffset
     type(octalVector) :: startPoint
    integer :: pgbegin
 
@@ -2206,32 +2216,96 @@ contains
 
     type(GRIDTYPE) :: grid
 
+    print *, 'Deallocating grid structure'
+    
+!    if (associated(grid%octreeRoot)) then
+!      call deleteOctreeBranch(grid%octreeRoot,grid)   
+!      deallocate(grid%octreeRoot)
+!      nullify(grid%octreeRoot)
+!    end if
+      
+    if (associated(grid%oneKappaAbs)) deallocate(grid%oneKappaAbs)
+       nullify(grid%oneKappaAbs)
+    if (associated(grid%oneKappaSca)) deallocate(grid%oneKappaSca)
+       nullify(grid%oneKappaSca)
     if (associated(grid%rho)) deallocate(grid%rho)
+       nullify(grid%rho)
     if (associated(grid%kappaAbs)) deallocate(grid%kappaAbs)
+       nullify(grid%kappaAbs)
     if (associated(grid%kappaSca)) deallocate(grid%kappaSca)
+       nullify(grid%kappaSca)
+    if (associated(grid%kappaAbsRed)) deallocate(grid%kappaAbsRed)
+       nullify(grid%kappaAbsRed)
+    if (associated(grid%kappaScaRed)) deallocate(grid%kappaScaRed)
+       nullify(grid%kappaScaRed)
     if (associated(grid%chiLine)) deallocate(grid%chiLine)
+       nullify(grid%chiLine)
     if (associated(grid%etaLine)) deallocate(grid%etaLine)
+       nullify(grid%etaLine)
+    if (associated(grid%etaCont)) deallocate(grid%etaCont)
+       nullify(grid%etaCont)
     if (associated(grid%sigma)) deallocate(grid%sigma)
+       nullify(grid%sigma)
     if (associated(grid%velocity)) deallocate(grid%velocity)
+       nullify(grid%velocity)
     if (associated(grid%rAxis)) deallocate(grid%rAxis)
+       nullify(grid%rAxis)
+    if (associated(grid%biasCont)) deallocate(grid%biasCont)
+       nullify(grid%biasCont)
+    if (associated(grid%biasLine)) deallocate(grid%biasLine)
+       nullify(grid%biasLine)
     if (associated(grid%muAxis)) deallocate(grid%muAxis)
+       nullify(grid%muAxis)
     if (associated(grid%phiAxis)) deallocate(grid%phiAxis)
+       nullify(grid%phiAxis)
     if (associated(grid%xAxis)) deallocate(grid%xAxis)
+       nullify(grid%xAxis)
     if (associated(grid%yAxis)) deallocate(grid%yAxis)
+       nullify(grid%yAxis)
     if (associated(grid%zAxis)) deallocate(grid%zAxis)
+       nullify(grid%zAxis)
     if (associated(grid%lamArray)) deallocate(grid%lamArray)
+       nullify(grid%lamArray)
     if (associated(grid%rProbDistLine)) deallocate(grid%rProbDistLine)
+       nullify(grid%rProbDistLine)
     if (associated(grid%muProbDistLine)) deallocate(grid%muProbDistLine)
+       nullify(grid%muProbDistLine)
     if (associated(grid%phiProbDistLine)) deallocate(grid%phiProbDistLine)
-    if (associated(grid%rProbDistCont)) deallocate(grid%rProbDistCont)
-    if (associated(grid%muProbDistCont)) deallocate(grid%muProbDistCont)
-    if (associated(grid%phiProbDistCont)) deallocate(grid%phiProbDistCont)
+       nullify(grid%phiProbDistLine)
     if (associated(grid%xProbDistLine)) deallocate(grid%xProbDistLine)
+       nullify(grid%xProbDistLine)
     if (associated(grid%yProbDistLine)) deallocate(grid%yProbDistLine)
+       nullify(grid%yProbDistLine)
     if (associated(grid%zProbDistLine)) deallocate(grid%zProbDistLine)
+       nullify(grid%zProbDistLine)
+    if (associated(grid%rProbDistCont)) deallocate(grid%rProbDistCont)
+       nullify(grid%rProbDistCont)
+    if (associated(grid%muProbDistCont)) deallocate(grid%muProbDistCont)
+       nullify(grid%muProbDistCont)
+    if (associated(grid%phiProbDistCont)) deallocate(grid%phiProbDistCont)
+       nullify(grid%phiProbDistCont)
     if (associated(grid%xProbDistCont)) deallocate(grid%xProbDistCont)
+       nullify(grid%xProbDistCont)
     if (associated(grid%yProbDistCont)) deallocate(grid%yProbDistCont)
+       nullify(grid%yProbDistCont)
     if (associated(grid%zProbDistCont)) deallocate(grid%zProbDistCont)
+       nullify(grid%zProbDistCont)
+    if (associated(grid%temperature)) deallocate(grid%temperature)
+       nullify(grid%temperature)
+    if (associated(grid%biasLine3D)) deallocate(grid%biasLine3D)
+       nullify(grid%biasLine3D)
+    if (associated(grid%biasCont3D)) deallocate(grid%biasCont3D)
+       nullify(grid%biasCont3D)
+    if (associated(grid%N)) deallocate(grid%N)
+       nullify(grid%N)
+    if (associated(grid%Ne)) deallocate(grid%Ne)
+       nullify(grid%Ne)
+    if (associated(grid%nTot)) deallocate(grid%nTot)
+       nullify(grid%nTot)
+    if (associated(grid%inStar)) deallocate(grid%inStar)
+       nullify(grid%inStar)
+    if (associated(grid%inUse)) deallocate(grid%inUse)
+       nullify(grid%inUse)
 
   end subroutine freeGrid
 
@@ -2733,8 +2807,8 @@ contains
     type(GRIDTYPE), intent(in)          :: grid
     type(OCTALVECTOR), intent(in)       :: rVec
     integer, intent(out)                :: i1, i2, i3
-    real(kind=octalkind), intent(out)   :: t1, t2 ,t3
-    real(kind=octalkind)                :: r, theta, phi, mu
+    real(oct), intent(out)   :: t1, t2 ,t3
+    real(oct)                :: r, theta, phi, mu
 
     if (grid%cartesian) then
 
@@ -2864,6 +2938,9 @@ contains
             
        ! write a time stamp to the file
        write(unit=20,fmt=*,iostat=error) timeValues(:)
+       if (error /=0) then
+         print *, 'Panic: write error in writeAMRgrid (formatted timeValues)' ; stop
+       end if
            
        ! write the variables that are stored in the top-level 'grid' structure
        write(unit=20,fmt=*,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
@@ -2874,13 +2951,19 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa,grid%rinner, &
-               grid%rOuter
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
+               grid%rOuter, grid%amr2dOnly
+       if (error /=0) then
+         print *, 'Panic: write error in writeAMRgrid (formatted variables)' ; stop
+       end if
                
     else
             
        ! write a time stamp to the file
        write(unit=20,iostat=error) timeValues(:)
+       if (error /=0) then
+         print *, 'Panic: write error in writeAMRgrid (unformatted timeValues)' ; stop
+       end if
     
        ! write the variables that are stored in the top-level 'grid' structure
        write(unit=20,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
@@ -2891,20 +2974,18 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa,grid%rinner, &
-               grid%router
-       
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
+               grid%rOuter, grid%amr2dOnly
+       if (error /=0) then
+         print *, 'Panic: write error in writeAMRgrid (unformatted variables)' ; stop
+       end if
                
     end if 
     
     call writeReal1D(grid%lamarray,fileFormatted)
     call writeReal2D(grid%oneKappaAbs,fileFormatted)
     call writeReal2D(grid%oneKappaSca,fileFormatted)
-
-    if (error /=0) then
-       print *, 'Panic: write error in writeAMRgrid'
-       stop
-    end if
+    call writeClumps(fileFormatted)
 
     ! now we call the recursive subroutine to store the tree structure 
     if (associated(grid%octreeRoot)) then
@@ -2914,11 +2995,12 @@ contains
           write(unit=20) .true.
        end if
        call writeOctreePrivate(grid%octreeRoot,fileFormatted, grid)
-    end if
-
-    if (error /=0) then
-       print *, 'Panic: write error in writeAMRgrid'
-       stop
+    else 
+       if (fileFormatted) then 
+          write(unit=20,fmt=*) .false.
+       else
+          write(unit=20) .false.
+       end if
     end if
 
     endfile 20
@@ -2959,10 +3041,13 @@ contains
                   thisOctal%maxChildren, thisOctal%dustType
        end if 
        if (.not.grid%oneKappa) then
-          call writeReal2D(thisOctal%kappaAbs,fileFormatted)
-          call writeReal2D(thisOctal%kappaSca,fileFormatted)
+!          call writeReal2D(thisOctal%kappaAbs,fileFormatted)
+!          call writeReal2D(thisOctal%kappaSca,fileFormatted)
+          call writeDouble2D(thisOctal%kappaAbs,fileFormatted)
+          call writeDouble2D(thisOctal%kappaSca,fileFormatted)
        endif
        call writeDouble2D(thisOctal%N,fileFormatted)
+       call writeReal2D(thisOctal%departCoeff,fileFormatted)
        
        if (thisOctal%nChildren > 0) then 
           do iChild = 1, thisOctal%nChildren, 1
@@ -2981,7 +3066,9 @@ contains
   subroutine readAMRgrid(filename,fileFormatted,grid)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
+    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d
     implicit none
+
     character(len=*)            :: filename
     logical, intent(in)         :: fileFormatted
     type(GRIDTYPE), intent(out) :: grid
@@ -2996,24 +3083,31 @@ contains
 
     if (fileFormatted) then
        open(unit=20, iostat=error, file=filename, form="formatted", status="old")
+       if (error /=0) then
+         print *, 'Panic: file open error in readAMRgrid, file:',trim(filename) ; stop
+       end if
        ! read the file's time stamp
-       read(unit=20,fmt=*,iostat=error) timeValues
+       read(unit=20,fmt=*,iostat=error) timeValues 
+       if (error /=0) then
+         print *, 'Panic: read error in readAMRgrid (formatted timeValues)' ; stop
+       end if
     else
        open(unit=20, iostat=error, file=filename, form="unformatted", status="old")
+       if (error /=0) then
+         print *, 'Panic: file open error in readAMRgrid, file:',trim(filename) ; stop
+       end if
        ! read the file's time stamp
        read(unit=20,iostat=error) timeValues
+       if (error /=0) then
+         print *, 'Panic: read error in readAMRgrid (unformatted timeValues)' ; stop
+       end if
     end if
 
     write(*,'(a,a)') "Reading populations file from: ",trim(filename)
-    write(*,'(a,i4,a,i2,a,i2,a,i2,a,i2)') ' - data file written at: ', &
+    write(*,'(a,i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') ' - data file written at: ', &
                           timeValues(1),'/',timeValues(2),'/',&
                           timeValues(3),'  ',timeValues(5),':',timeValues(6)
                           
-    if (error /=0) then
-       print *, 'Panic: read error for timestamp'
-       stop
-    end if
-
     ! read the variables to be stored in the top-level 'grid' structure
     if (fileFormatted) then
        read(unit=20,fmt=*,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
@@ -3059,11 +3153,6 @@ contains
        write(*,*) noctal,"octals read"
     end if
 
-    if (error /=0) then
-       print *, 'Panic: read error in readAMRgrid 2'
-       stop
-    end if
-    
     ! check that we are at the end of the file
     if (fileFormatted) then
        read(unit=20,fmt=*, iostat=error) dummy
@@ -3071,12 +3160,20 @@ contains
        read(unit=20, iostat=error) dummy
     end if
     if (error == 0) then
-       print *, 'Panic: read error (expected end of file) in readAMRgrid'
-       stop
+       print *, 'Panic: read error (expected end of file) in readAMRgrid' ; stop
     end if
     
     close(unit=20)
+
     
+    print *, 'setting ''geometry'':',trim(geometry),' previously:',trim(grid%geometry)
+    print *, 'setting ''dipoleOffset'':',dipoleOffset,' previously:',grid%dipoleOffset
+    print *, 'setting ''amr2donly'':',amr2donly,' previously:',grid%amr2donly
+    print *, 'setting ''statEq2d'':',' previously:', grid%statEq2d
+    grid%geometry = trim(geometry)
+    grid%dipoleOffset = dipoleOffset
+    grid%amr2donly = amr2donly
+    grid%statEq2d = statEq2d
   contains
    
     recursive subroutine readOctreePrivate(thisOctal,parent,fileFormatted, noctal, grid)
@@ -3122,10 +3219,13 @@ contains
 
 
        if (.not.grid%oneKappa) then
-          call readReal2D(thisOctal%kappaAbs,fileFormatted)
-          call readReal2D(thisOctal%kappaSca,fileFormatted)
+!          call readReal2D(thisOctal%kappaAbs,fileFormatted)
+!          call readReal2D(thisOctal%kappaSca,fileFormatted)
+          call readDouble2D(thisOctal%kappaAbs,fileFormatted)
+          call readDouble2D(thisOctal%kappaSca,fileFormatted)
        endif
        call readDouble2D(thisOctal%N,fileFormatted)
+       call readReal2D(thisOctal%departCoeff,fileFormatted)
        
        if (thisOctal%nChildren > 0) then 
           allocate(thisOctal%child(1:thisOctal%nChildren)) 
@@ -4788,7 +4888,7 @@ contains
   subroutine fillmuAxisDisk(muAxis, nMu, openingAngle)
     integer :: nMu
     real :: openingAngle
-    real :: muAxis(*)
+    real :: muAxis(:)
     integer :: i,  n1, n2
     real :: cosTheta1, cosTheta2, cosThetaStart, cosThetaEnd
     
@@ -4815,22 +4915,47 @@ contains
 
      real,dimension(:),pointer :: variable
      logical, intent(in)       :: fileFormatted
+     integer :: error
 
      if (fileFormatted) then
         if (associated(variable)) then
-           write(unit=20,fmt=*) .true.
-           write(unit=20,fmt=*) SIZE(variable)
-           write(unit=20,fmt=*) variable
+           write(unit=20,fmt=*,iostat=error) .true.
+           if (error /=0) then
+             print *, 'Panic: write error in writeReal1D' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) SIZE(variable)
+           if (error /=0) then
+             print *, 'Panic: write error in writeReal1D' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) variable
+           if (error /=0) then
+             print *, 'Panic: write error in writeReal1D' ; stop
+           end if
         else
-           write(unit=20,fmt=*) .false.
+           write(unit=20,fmt=*,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal1D' ; stop
+           end if
         end if
      else
         if (associated(variable)) then
-           write(unit=20) .true.
-           write(unit=20) SIZE(variable)
-           write(unit=20) variable
+           write(unit=20,iostat=error) .true.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal1D' ; stop
+           end if
+           write(unit=20,iostat=error) SIZE(variable)
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal1D' ; stop
+           end if
+           write(unit=20,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal1D' ; stop
+           end if
         else
-           write(unit=20) .false.
+           write(unit=20,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal1D' ; stop
+           end if
         end if
      end if
              
@@ -4840,22 +4965,47 @@ contains
 
      real,dimension(:,:),pointer :: variable
      logical, intent(in)         :: fileFormatted
+     integer :: error
 
      if (fileFormatted) then
         if (associated(variable)) then
-           write(unit=20,fmt=*) .true.
-           write(unit=20,fmt=*) SIZE(variable,1),SIZE(variable,2)
-           write(unit=20,fmt=*) variable
+           write(unit=20,fmt=*,iostat=error) .true.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal2D' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) SIZE(variable,1),SIZE(variable,2)
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal2D' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal2D' ; stop
+           end if
         else
-           write(unit=20) .false.
+           write(unit=20,fmt=*,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal2D' ; stop
+           end if
         end if
      else
         if (associated(variable)) then
-           write(unit=20) .true.
-           write(unit=20) SIZE(variable,1),SIZE(variable,2)
-           write(unit=20) variable
+           write(unit=20,iostat=error) .true.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal2D' ; stop
+           end if
+           write(unit=20,iostat=error) SIZE(variable,1),SIZE(variable,2)
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal2D' ; stop
+           end if
+           write(unit=20,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal2D' ; stop
+           end if
         else
-           write(unit=20) .false.
+           write(unit=20,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeReal2D' ; stop
+           end if
         end if
      end if 
     
@@ -4863,49 +5013,196 @@ contains
 
   subroutine writeDouble2D(variable,fileFormatted)
 
-     real(kind=doubleKind),dimension(:,:),pointer :: variable
+     real(double),dimension(:,:),pointer :: variable
      logical, intent(in)                          :: fileFormatted
+     integer :: error
 
      if (fileFormatted) then
         if (associated(variable)) then
-           write(unit=20,fmt=*) .true.
-           write(unit=20,fmt=*) SIZE(variable,1),SIZE(variable,2)
-           write(unit=20,fmt=*) variable
+           write(unit=20,fmt=*,iostat=error) .true.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble2D' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) SIZE(variable,1),SIZE(variable,2)
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble2D' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble2D' ; stop
+           end if
         else
-           write(unit=20) .false.
+           write(unit=20,fmt=*,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble2D' ; stop
+           end if
         end if
      else
         if (associated(variable)) then
-           write(unit=20) .true.
-           write(unit=20) SIZE(variable,1),SIZE(variable,2)
-           write(unit=20) variable
+           write(unit=20,iostat=error) .true.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble2D' ; stop
+           end if
+           write(unit=20,iostat=error) SIZE(variable,1),SIZE(variable,2)
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble2D' ; stop
+           end if
+           write(unit=20,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble2D' ; stop
+           end if
         else
-           write(unit=20) .false.
+           write(unit=20,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble2D' ; stop
+           end if
         end if
      end if
     
   end subroutine writeDouble2D
 
+  subroutine writeClumps(fileFormatted)
+
+     use clump_mod
+     logical, intent(in)       :: fileFormatted
+     integer :: error
+
+     if (fileFormatted) then
+        if (allocated(clumps)) then
+           write(unit=20,fmt=*,iostat=error) .true.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeClumps' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) SIZE(clumps)
+           if (error /=0) then 
+             print *, 'Panic: write error in writeClumps' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) clumps
+           if (error /=0) then 
+             print *, 'Panic: write error in writeClumps' ; stop
+           end if
+        else
+           write(unit=20,fmt=*,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeClumps' ; stop
+           end if
+        end if
+     else
+        if (allocated(clumps)) then
+           write(unit=20,iostat=error) .true.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeClumps' ; stop
+           end if
+           write(unit=20,iostat=error) SIZE(clumps)
+           if (error /=0) then 
+             print *, 'Panic: write error in writeClumps' ; stop
+           end if
+           write(unit=20,iostat=error) clumps
+           if (error /=0) then 
+             print *, 'Panic: write error in writeClumps' ; stop
+           end if
+        else
+           write(unit=20,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeClumps' ; stop
+           end if
+        end if
+     end if
+             
+  end subroutine writeClumps
+  
+  subroutine readClumps(fileFormatted)
+ 
+     use clump_mod
+  
+     logical, intent(in)       :: fileFormatted
+     logical                   :: present 
+     integer                   :: length
+     integer                   :: error
+
+     if (allocated(clumps)) then
+       print *, 'Clearing existing ''clumps'' variable'
+       deallocate(clumps)
+     end if
+     
+     if (fileFormatted) then
+        read(unit=20,fmt=*,iostat=error) present
+        if (error /=0) then 
+          print *, 'Panic: read error in readClumps' ; stop
+        end if
+        if (present) then
+           read(unit=20,fmt=*,iostat=error) length
+           if (error /=0) then 
+             print *, 'Panic: read error in readClumps' ; stop
+           end if
+           allocate(clumps(length),stat=error)
+           if (error /=0) then 
+             print *, 'Panic: in readClumps, can''t allocate clumps(',length,')' ; stop
+           end if
+           read(unit=20,fmt=*,iostat=error) clumps
+           if (error /=0) then 
+             print *, 'Panic: read error in readClumps' ; stop
+           end if
+        end if
+     else
+        read(unit=20,iostat=error) present
+        if (error /=0) then 
+          print *, 'Panic: read error in readClumps' ; stop
+        end if
+        if (present) then
+           read(unit=20,iostat=error) length
+           if (error /=0) then 
+             print *, 'Panic: read error in readClumps' ; stop
+           end if
+           allocate(clumps(length),stat=error)
+           if (error /=0) then 
+             print *, 'Panic: in readClumps, can''t allocate clumps(',length,')' ; stop
+           end if
+           read(unit=20,iostat=error) clumps
+           if (error /=0) then 
+             print *, 'Panic: read error in readClumps' ; stop
+           end if
+        end if
+     end if
+    
+  end subroutine readClumps
+ 
   subroutine readReal1D(variable,fileFormatted)
 
      real,dimension(:),pointer :: variable
      logical, intent(in)       :: fileFormatted
      logical                   :: present 
      integer                   :: length
+     integer                   :: error
 
      if (fileFormatted) then
-        read(unit=20,fmt=*) present
+        read(unit=20,fmt=*,iostat=error) present
+        if (error /=0) then 
+          print *, 'Panic: read error in readReal1D' ; stop
+        end if
         if (present) then
-           read(unit=20,fmt=*) length
+           read(unit=20,fmt=*,iostat=error) length
+           if (error /=0) then 
+             print *, 'Panic: read error in readReal1D' ; stop
+           end if
            allocate(variable(length))
-           read(unit=20,fmt=*) variable
+           read(unit=20,fmt=*,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: read error in readReal1D' ; stop
+           end if
         end if
      else
-        read(unit=20) present
+        read(unit=20,iostat=error) present
         if (present) then
-           read(unit=20) length
+           read(unit=20,iostat=error) length
+           if (error /=0) then 
+             print *, 'Panic: read error in readReal1D' ; stop
+           end if
            allocate(variable(length))
-           read(unit=20) variable
+           read(unit=20,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: read error in readReal1D' ; stop
+           end if
         end if
      end if
     
@@ -4918,20 +5215,39 @@ contains
      logical                   :: present 
      integer                   :: length1
      integer                   :: length2
+     integer                   :: error
 
      if (fileFormatted) then
-        read(unit=20,fmt=*) present
+        read(unit=20,fmt=*,iostat=error) present
+        if (error /=0) then 
+          print *, 'Panic: read error in readReal2D' ; stop
+        end if
         if (present) then
-           read(unit=20,fmt=*) length1, length2
+           read(unit=20,fmt=*,iostat=error) length1, length2
+           if (error /=0) then 
+             print *, 'Panic: read error in readReal2D' ; stop
+           end if
            allocate(variable(length1,length2))
-           read(unit=20,fmt=*) variable
+           read(unit=20,fmt=*,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: read error in readReal2D' ; stop
+           end if
         end if
      else
-        read(unit=20) present
+        read(unit=20,iostat=error) present
+        if (error /=0) then 
+          print *, 'Panic: read error in readReal2D' ; stop
+        end if
         if (present) then
-           read(unit=20) length1, length2
+           read(unit=20,iostat=error) length1, length2
+           if (error /=0) then 
+             print *, 'Panic: read error in readReal2D' ; stop
+           end if
            allocate(variable(length1,length2))
-           read(unit=20) variable
+           read(unit=20,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: read error in readReal2D' ; stop
+           end if
         end if
      endif
     
@@ -4939,25 +5255,44 @@ contains
 
   subroutine readDouble2D(variable,fileFormatted)
 
-     real(kind=doubleKind),dimension(:,:),pointer :: variable
+     real(double),dimension(:,:),pointer :: variable
      logical, intent(in)       :: fileFormatted
      logical                   :: present 
      integer                   :: length1
      integer                   :: length2
+     integer                   :: error
      
      if (fileFormatted) then
-        read(unit=20,fmt=*) present
+        read(unit=20,fmt=*,iostat=error) present
+        if (error /=0) then 
+          print *, 'Panic: read error in readDouble2D' ; stop
+        end if
         if (present) then
-           read(unit=20,fmt=*) length1, length2
+           read(unit=20,fmt=*,iostat=error) length1, length2
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble2D' ; stop
+           end if
            allocate(variable(length1,length2))
-           read(unit=20,fmt=*) variable
+           read(unit=20,fmt=*,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble2D' ; stop
+           end if
         end if
      else
-        read(unit=20) present
+        read(unit=20,iostat=error) present
+        if (error /=0) then 
+          print *, 'Panic: read error in readDouble2D' ; stop
+        end if
         if (present) then
-           read(unit=20) length1, length2
+           read(unit=20,iostat=error) length1, length2
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble2D' ; stop
+           end if
            allocate(variable(length1,length2))
-           read(unit=20) variable
+           read(unit=20,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble2D' ; stop
+           end if
         end if
      end if
 
@@ -5124,11 +5459,11 @@ contains
     parameter (n=1500, ncol=32, nlev=10)
     integer :: i,j,ci1,ci2
     real :: f(n,n),fmin,fmax,tr(6)
-    double precision  :: xmap(n), ymap(n), zmap(n), x1, y1, z1
+    real(double)  :: xmap(n), ymap(n), zmap(n), x1, y1, z1
     real :: box_size
     real :: offset
-    double precision  :: tmp
-    type(octalVector) :: pos, dir
+    real(double)  :: tmp
+    type(octalVector) :: pos,dir
     
     
     write(*,*) "draw_cells_on_density plotting to: ",trim(device)
@@ -5348,10 +5683,10 @@ contains
     parameter (n=100, ncol=32, nlev=10)
     integer :: i,j,ci1,ci2
     real :: f(n,n),fmin,fmax,tr(6)
-    double precision  :: xmap(n), ymap(n), zmap(n), x1, y1, z1
+    real(double)  :: xmap(n), ymap(n), zmap(n), x1, y1, z1
     real :: box_size
     real :: offset
-    double precision  :: tmp
+    real(double)  :: tmp
     type(octalVector) :: pos, dir
     
     
@@ -5924,7 +6259,7 @@ contains
     integer :: subcell, i, idx
     real :: t
     real :: xp, yp, xm, ym, zp, zm
-    double precision :: d, L, eps
+    real(double) :: d, L, eps
     logical :: plot_this_subcell
   
     do subcell = 1, thisOctal%maxChildren
@@ -6089,7 +6424,7 @@ contains
     real :: value
     !
     real :: xp, yp, xm, ym, zp, zm
-    double precision :: d
+    real(double) :: d
     logical :: use_this_subcell
     type(octalvector) :: rvec
     
@@ -6173,7 +6508,7 @@ contains
     type(gridtype), intent(in) :: thisGrid
     character(LEN=*), intent(in) :: filename
     integer :: UN
-    double precision :: tmp
+    real(double) :: tmp
     integer :: nOctals,nVoxels
     
     if (filename(1:1) == '*') then
@@ -6461,7 +6796,7 @@ contains
     integer :: subcell, i, idx
     real :: t
     real :: xp, yp, xm, ym, zp, zm
-    double precision :: d, L, eps, distance
+    real(double) :: d, L, eps, distance
     logical :: use_this_subcell
 
   
@@ -6532,7 +6867,7 @@ contains
                 stop
              end select
 
-             distance = modulus(rvec)   ! length of the vector
+             distance = modulus(rvec-center)   ! length of the vector
              write(luout, '(2(2x, 1PE18.4))')  distance, value
 
 

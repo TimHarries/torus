@@ -60,12 +60,18 @@ MODULE octal_mod
 
   TYPE octalWrapper
     TYPE(octal), POINTER  :: content => NULL()
-    LOGICAL(KIND=logicKind), DIMENSION(8) :: inUse
+    LOGICAL(KIND=logic), DIMENSION(8) :: inUse
   END TYPE octalWrapper
  
   TYPE wrapperArray
-    TYPE(octalWrapper), DIMENSION(:), POINTER :: wrappers   ! a number of octal wrappers  
+    TYPE(octalWrapper), DIMENSION(:), POINTER :: wrappers => NULL()  ! a number of octal wrappers  
   END TYPE wrapperArray
+
+  TYPE octalListElement
+    TYPE(octal), POINTER  :: content => NULL()
+    LOGICAL(KIND=logic), DIMENSION(8) :: inUse
+    TYPE(octalListElement), POINTER :: next => NULL()
+  END TYPE octalListElement
 
   TYPE octal
 
@@ -78,7 +84,7 @@ MODULE octal_mod
     INTEGER                            :: maxChildren   ! this is 8 for three-d and 4 for two-d
     TYPE(octal), DIMENSION(:), POINTER :: child
     LOGICAL, DIMENSION(8)              :: hasChild
-    TYPE(octal), POINTER               :: parent          
+    TYPE(octal), POINTER               :: parent => null()         
     TYPE(octalVector)                  :: centre
 
     REAL, DIMENSION(8)                 :: rho            ! density
@@ -87,30 +93,32 @@ MODULE octal_mod
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
     REAL, DIMENSION(8)                 :: distanceGrid   ! distance crossing used by lucy R Eq
     INTEGER, DIMENSION(8)              :: nCrossings     ! no of photon crossings used by lucy R Eq
-    REAL, DIMENSION(:,:), POINTER      :: kappaAbs       ! cont absorption opacities
-    REAL, DIMENSION(:,:), POINTER      :: kappaSca       ! scattering opacities
-    REAL, DIMENSION(8)                 :: chiLine        ! line opacity
-    REAL, DIMENSION(8)                 :: etaLine        ! line emissivity
-    REAL, DIMENSION(8)                 :: etaCont        ! line emissivity
-    REAL, DIMENSION(8)                 :: biasLine3D     ! grid bias distrubtion
-    REAL, DIMENSION(8)                 :: biasCont3D     ! grid bias distrubtion
-    REAL(KIND=doubleKind), DIMENSION(8) :: probDistLine  ! emissivity probabilty distribution
-    REAL(KIND=doubleKind), DIMENSION(8) :: probDistCont  ! emissivity probabilty distribution
-    REAL(KIND=doubleKind), DIMENSION(:,:), POINTER ::  N ! stateq level pops
-    REAL(KIND=doubleKind), DIMENSION(8) :: Ne            ! electron density
-    REAL(KIND=doubleKind), DIMENSION(8) :: nTot          ! total density
-    LOGICAL(KIND=logicKind), DIMENSION(8) :: inStar      ! point lies within star
-    LOGICAL(KIND=logicKind), DIMENSION(8) :: inFlow      ! inside accretion flow region GET RID OF THIS?    
+    REAL(double), DIMENSION(:,:), POINTER      :: kappaAbs => null() ! cont absorption opacities
+    REAL(double), DIMENSION(:,:), POINTER      :: kappaSca => null() ! scattering opacities
+    REAL(double), DIMENSION(8)                 :: chiLine        ! line opacity
+    REAL(double), DIMENSION(8)                 :: etaLine        ! line emissivity
+    REAL(double), DIMENSION(8)                 :: etaCont        ! line emissivity
+    REAL(double), DIMENSION(8)                 :: biasLine3D     ! grid bias distrubtion
+    REAL(double), DIMENSION(8)                 :: biasCont3D     ! grid bias distrubtion
+    real(double), DIMENSION(8) :: probDistLine  ! emissivity probabilty distribution
+    real(double), DIMENSION(8) :: probDistCont  ! emissivity probabilty distribution
+    real(double), DIMENSION(:,:), POINTER ::  N => null()! stateq level pops
+    real(double), DIMENSION(8) :: Ne            ! electron density
+    real(double), DIMENSION(8) :: nTot          ! total density
+    REAL, DIMENSION(:,:), POINTER      :: departCoeff =>null()! temporary storage for departure coefficients
+    LOGICAL(KIND=logic), DIMENSION(8) :: inStar      ! point lies within star
+    LOGICAL(KIND=logic), DIMENSION(8) :: inFlow      ! inside accretion flow region GET RID OF THIS?    
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
       ! the subcell labels may be useful for debugging the code, but are not needed for
       !   any of the normal AMR routines. They should probably be removed in the future.
     
-    REAL(KIND=octalKind)               :: subcellSize    ! the size (length of a vertex) of each subcell
+    real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
 
     ! This is used only when we construct the tree from SPH data which
     ! contains the position+density+velocitiy of gas particles.
     ! Should be allocated with # of gas particles in this octal
-    INTEGER, POINTER                   :: gas_particle_list(:)  ! SPH index of the particles in this octal
+    INTEGER, POINTER                   :: gas_particle_list(:) => null() ! SPH index of the particles in this octal
+    LOGICAL(KIND=logic), DIMENSION(8) :: changed     ! octal has changed in some way since previous calculation    
     
     INTEGER, DIMENSION(8)                :: dusttype
 
@@ -126,9 +134,9 @@ CONTAINS
     TYPE(octal), INTENT(IN) :: thisOctal 
     INTEGER, INTENT(IN)     :: nChild    ! index (1-8) of the subcell
     
-    REAL(KIND=octalKind)    :: d 
+    real(oct)    :: d 
     
-    d = thisOctal%subcellSize / 2.0_oc
+    d = thisOctal%subcellSize * 0.5_oc
 
     if (thisOctal%threeD) then  !do the three-d case as per diagram
        SELECT CASE (nChild)
@@ -179,14 +187,14 @@ CONTAINS
     logical :: out
     type(octal), intent(in) :: this
     integer, intent(in) :: subcell   
-    double precision, intent(in) :: x, y, z
+    real(double), intent(in) :: x, y, z
     !
     TYPE(octalVector)     :: cellCenter
-    double precision :: x0, y0, z0  ! cell center
-    double precision :: d, dp, dm
-    double precision :: eps = 0.0d0
+    real(double) :: x0, y0, z0  ! cell center
+    real(double) :: d, dp, dm
+    real(double), parameter :: eps = 0.0d0
     
-    d = (this%subcellSize)/2.0d0
+    d = (this%subcellSize)*0.5d0
     dp = d+eps
     dm = d-eps
     

@@ -1,16 +1,16 @@
 module kind_mod
   
-  integer, parameter :: singleKind = 4
-  integer, parameter :: si = singleKind
-  integer, parameter :: doubleKind = 8
-  integer, parameter :: db = doubleKind
-  integer, parameter :: quadKind = 16
-  integer, parameter :: qd = quadKind
-  integer, parameter :: octalKind = 4
-  integer, parameter :: oc = octalKind
+  integer, parameter :: single = 4
+  integer, parameter :: si = single
+  integer, parameter :: double = 8
+  integer, parameter :: db = double
+  integer, parameter :: quad = 16
+  integer, parameter :: qd = quad
+  integer, parameter :: oct = 4
+  integer, parameter :: oc = oct
 
-  integer, parameter :: logicKind = 1
-  integer, parameter :: lg = logicKind
+  integer, parameter :: logic = 1
+  integer, parameter :: lg = logic
 
 end module kind_mod
 

@@ -30,9 +30,9 @@ contains
   subroutine solveHydro(temperature, zAxis, rho, nz, &
        radius, mStar, sigma0, rDisk, converged, drho)
     integer, intent(in) :: nz ! number of vertical grid points
-    real(kind=singleKind),intent(in) :: temperature(1:nz)  ! temperature
-    real(kind=singleKind),intent(inout) :: rho(1:nz)         ! density
-    real(kind=singleKind),intent(in) :: zAxis(1:nz)       ! z grid
+    real(single),intent(in) :: temperature(1:nz)  ! temperature
+    real(single),intent(inout) :: rho(1:nz)         ! density
+    real(single),intent(in) :: zAxis(1:nz)       ! z grid
     real :: mStar, rDisk                      ! stellar mass, disk mass and radius
     real :: radius                                   ! radius at disc midplane
     real :: sigma0                                   ! surface density at rinner
@@ -231,7 +231,7 @@ contains
     integer :: nIter
     integer, parameter :: maxIter = 10
     character(len=20) :: plotfile
-    real(kind=doubleKind) totalMass
+    real(double) totalMass
     logical :: twoD
 
 !$MPI    ! For MPI implementations

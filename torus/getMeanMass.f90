@@ -1,4 +1,4 @@
-real function getMeanMass(aMin, aMax, a0, qDist, pDist, grainType)
+real function getMeanMass(aMin, aMax, a0, qDist, pDist)
 
   use constants_mod
 
@@ -108,6 +108,7 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
 end function getMeanMass2
 
 
+
 real function getMeanRadius(aMin, aMax, a0, qDist, pDist)
 
   use constants_mod
@@ -141,7 +142,7 @@ end function getMeanRadius
 
 
 !
-! This is similar to getMeanRadius, but it uses more accurate integration method.
+! This is similar to getMeanRaius, but it uses more accurate integration method.
 real function getMeanRadius2(aMin, aMax, a0, qDist, pDist)  
 
   use constants_mod

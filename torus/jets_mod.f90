@@ -91,7 +91,7 @@ module jets_mod
   end type jets_parameters
 
   
-  type(jets_parameters) :: jets  ! One incidence to be used ONLY IN THIS MODULE.
+  type(jets_parameters), private :: jets  ! One instance to be used ONLY IN THIS MODULE.
 
   !
   !
@@ -250,20 +250,20 @@ contains
 
     !
     LOGICAL, SAVE  :: first_time = .true. 
-    DOUBLE PRECISION ::  r, rn  ! distance from the center of central star
-    DOUBLE PRECISION :: rp, rho_jets, rho_disk
-    DOUBLE PRECISION :: vr
-    DOUBLE PRECISION :: cos_theta
-    double precision :: theta_o_jets, theta_o_disk
+    real(double) ::  r, rn  ! distance from the center of central star
+    real(double) :: rp, rho_jets, rho_disk
+    real(double) :: vr
+    real(double) :: cos_theta
+    real(double) :: theta_o_jets, theta_o_disk
     !
-    DOUBLE PRECISION, SAVE :: cos_theta_o_jets    
-    DOUBLE PRECISION, SAVE :: Mdot_jets             ! [kg/sec]
-    DOUBLE PRECISION, SAVE :: cos_theta_o_disk    
-    DOUBLE PRECISION, SAVE :: Mdot_disk             ! [kg/sec]
+    real(double), SAVE :: cos_theta_o_jets    
+    real(double), SAVE :: Mdot_jets             ! [kg/sec]
+    real(double), SAVE :: cos_theta_o_disk    
+    real(double), SAVE :: Mdot_disk             ! [kg/sec]
     !
-    DOUBLE PRECISION, parameter :: M_sun=1.9891d30 ! in [kg]
+    real(double), parameter :: M_sun=1.9891d30 ! in [kg]
 
-    double precision, save :: rho_max_disk_wind, rho_min_disk_wind
+    real(double), save :: rho_max_disk_wind, rho_min_disk_wind
 
     IF (first_time) THEN
        ! Converting the half open angle to radians
@@ -271,6 +271,13 @@ contains
        cos_theta_o_jets = COS(theta_o_jets)
        theta_o_disk = jets%theta_o_disk * Pi/180.0d0 
        cos_theta_o_disk = COS(theta_o_disk)
+
+       ! check the validity if theta_o_jets
+       if (theta_o_jets > Pi/2.0d0 .or. theta_o_disk > Pi/2.0d0) then
+          write(*,*) "Error:: theta_o_jets > Pi/2.0d0 .or. theta_o_disk > Pi/2.0d0."
+          write(*,*) "        in [jets_mod::JetsDensity]."
+          stop
+       end if
        ! Converting Mdot to kg/s
        Mdot_jets = jets%Mdot_jets*M_sun/(60.0d0*60.0d0*24.0d0*365.0d0) ! [kg/sec]
        Mdot_disk = jets%Mdot_disk*M_sun/(60.0d0*60.0d0*24.0d0*365.0d0) ! [kg/sec]
@@ -428,15 +435,15 @@ contains
 
     !
     LOGICAL, SAVE  :: first_time = .true. 
-    DOUBLE PRECISION ::  r  ! distance from the center of central star
-    DOUBLE PRECISION :: Vr
-    DOUBLE PRECISION :: Rp, Vinf, beta, cos_theta_o
-    DOUBLE PRECISION :: cos_theta 
-    double precision :: theta_o_jets, theta_o_disk
+    real(double) ::  r  ! distance from the center of central star
+    real(double) :: Vr
+    real(double) :: Rp, Vinf, beta, cos_theta_o
+    real(double) :: cos_theta 
+    real(double) :: theta_o_jets, theta_o_disk
     !
-    DOUBLE PRECISION, SAVE :: cos_theta_o_jets
-    DOUBLE PRECISION, SAVE :: cos_theta_o_disk    
-    DOUBLE PRECISION, parameter :: M_sun=1.9891d30 ! in [kg]
+    real(double), SAVE :: cos_theta_o_jets
+    real(double), SAVE :: cos_theta_o_disk    
+    real(double), parameter :: M_sun=1.9891d30 ! in [kg]
 
     IF (first_time) THEN
        ! Converting the half open angle to radians
@@ -446,7 +453,13 @@ contains
        theta_o_disk = jets%theta_o_disk * Pi/180.0d0 
        cos_theta_o_disk = COS(theta_o_disk)
 
-       ! Quick check
+       ! Quick checks
+       if (theta_o_jets > Pi/2.0d0 .or. theta_o_disk > Pi/2.0d0) then
+          write(*,*) "Error:: theta_o_jets > Pi/2.0d0 .or. theta_o_disk > Pi/2.0d0."
+          write(*,*) "        in [jets_mod::JetVelocity]."
+          stop
+       end if
+
        if (theta_o_disk < theta_o_jets) then
           print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
           print *, ' Exiting the program ...'
@@ -558,10 +571,10 @@ contains
     REAL :: Rp, cos_theta
     real :: r
     
-    double precision :: theta_o_jets, theta_o_disk
-    double precision,save :: cos_theta_o_jets, cos_theta_o_disk
+    real(double) :: theta_o_jets, theta_o_disk
+    real(double),save :: cos_theta_o_jets, cos_theta_o_disk
     logical, save :: first_time = .true.
-    double precision :: Tcore, e6
+    real(double) :: Tcore, e6
 
     starPosn = grid%starPos1
     pointVec = (point - starPosn)
@@ -578,6 +591,11 @@ contains
        cos_theta_o_disk = COS(theta_o_disk)
 
        ! Quick check
+       if (theta_o_jets > Pi/2.0d0 .or. theta_o_disk > Pi/2.0d0) then
+          write(*,*) "Error:: theta_o_jets > Pi/2.0d0 .or. theta_o_disk > Pi/2.0d0."
+          write(*,*) "        in [jets_mod::JetsTemperature]."
+          stop
+       end if
        if (theta_o_disk < theta_o_jets) then
           print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
           print *, ' Exiting the program ...'
@@ -673,7 +691,7 @@ contains
     Vr = JetsVelocity(pointVec, grid)/ dble(cSpeed/1.0e5)
     ! in [c]
     
-    vp = pointVec*real((Vr/r),kind=octalKind)  ! vector operation done here
+    vp = pointVec*real((Vr/r),kind=oct)  ! vector operation done here
     
     thisOctal%velocity(subcell) = vP
        
@@ -761,14 +779,14 @@ contains
     type(vector), intent(in) :: n  ! direction
     type(vector), intent(in) :: r  ! position
 
-    double precision :: rval ! size of r  [10^10cm]
-    double precision :: nval ! size of n
-    double precision :: Vinf, beta
+    real(double) :: rval ! size of r  [10^10cm]
+    real(double) :: nval ! size of n
+    real(double) :: Vinf, beta
 
-    double precision :: theta_o_jets, theta_o_disk
-    double precision,save :: cos_theta_o_jets, cos_theta_o_disk
+    real(double) :: theta_o_jets, theta_o_disk
+    real(double),save :: cos_theta_o_jets, cos_theta_o_disk
     logical, save :: first_time = .true.
-    double precision :: cos_theta
+    real(double) :: cos_theta
 
 
     IF (first_time) THEN
@@ -779,6 +797,11 @@ contains
        theta_o_disk = jets%theta_o_disk * Pi/180.0d0 
        cos_theta_o_disk = COS(theta_o_disk)
 
+       if (theta_o_jets > Pi/2.0d0 .or. theta_o_disk > Pi/2.0d0) then
+          write(*,*) "Error:: theta_o_jets > Pi/2.0d0 .or. theta_o_disk > Pi/2.0d0."
+          write(*,*) "        in [jets_mod::dv_dn_jets]."
+          stop
+       end if
        ! Quick check
        if (theta_o_disk < theta_o_jets) then
           print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
@@ -851,9 +874,9 @@ contains
     TYPE(octal), INTENT(INOUT) :: thisOctal
     TYPE(gridtype), INTENT(IN) :: grid
 
-    REAL(octalKind)      :: x1, x2, x3
-    REAL(octalKind)      :: y1, y2, y3
-    REAL(octalKind)      :: z1, z2, z3
+    real(oct)      :: x1, x2, x3
+    real(oct)      :: y1, y2, y3
+    real(oct)      :: z1, z2, z3
     
 
     ! we first store the values we use to assemble the position vectors
@@ -916,13 +939,13 @@ contains
     type(octalvector), intent(in) :: point
 !    type(gridtype), intent(in)    :: grid
 
-    real(kind=octalkind)        :: rr                     !  [10^10 cm]
-    real(kind=octalkind)        :: r                      !  [-]
+    real(oct)        :: rr                     !  [10^10 cm]
+    real(oct)        :: r                      !  [-]
     
-    real(kind=octalkind), parameter  :: rmin = 1.0_oc     !  [-]
-    real(kind=octalkind), parameter  :: rmax = 101.0_oc   !  [-]
-!    double precision, parameter  :: rmax = 100.0_oc      !  [-]
-    real(kind=octalkind), parameter  :: rho_0=1.0_oc      ! density at rmin
+    real(oct), parameter  :: rmin = 1.0_oc     !  [-]
+    real(oct), parameter  :: rmax = 101.0_oc   !  [-]
+!    real(double), parameter  :: rmax = 100.0_oc      !  [-]
+    real(oct), parameter  :: rho_0=1.0_oc      ! density at rmin
 
     rr  = modulus(point)  ! [10^10cm]
     r = rr/rmin          ! dimensionless radius

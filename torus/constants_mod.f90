@@ -3,6 +3,8 @@
 !
 
 module constants_mod
+  
+  use kind_mod
 
   public
   
@@ -11,6 +13,7 @@ module constants_mod
   ! pi stuff
   
   real, parameter :: pi = 3.141592654
+  real(double), parameter :: piDouble = 3.1415926535897932_db
   real, parameter :: twoPi = 2.*pi
   real, parameter :: fourPi = 4.*pi
   real, parameter :: piBy4 = pi/4.
@@ -50,6 +53,8 @@ module constants_mod
   !real, parameter :: sigmaE = 6.65e-25       ! cm^2 updated by nhs
   real, parameter :: sigmaE = 6.6525e-25       ! cm^2
   real, parameter :: eCharge = 4.803242384E-10 ! 
+  real, parameter :: hydE0eV = 13.598433       ! eV
+  real(double),parameter :: hydE0eVdb = 13.598433_db! eV
 
   real, parameter :: ergToEv = 6.24145e11   
 
@@ -58,10 +63,11 @@ module constants_mod
   ! speeds
 
   real, parameter :: cSpeed = 2.99792458e10  ! cm/s
+  real(double), parameter :: cSpeed_dbl = 2.99792458d10  ! cm/s
 
   ! masses
 
-  real, parameter :: mHydrogen = 1.67e-24        ! g
+  real, parameter :: mHydrogen = 1.6733e-24      ! g
   real, parameter :: mSol = 1.9891e33            ! g
   real, parameter :: mEarth = 5.98e27            ! g
   real, parameter :: mMoon = 7.349e25            ! g

@@ -344,7 +344,7 @@ contains
     real            :: t1, t2, t3             ! multipliers
     type(VECTOR)    :: position1, position2, position_tmp
     type(VECTOR)    :: rHat
-    real(kind=doublekind)            :: r, theta, mu, phi      ! spherical polar coords
+    real(double)            :: r, theta, mu, phi      ! spherical polar coords
     integer         :: j1, j2, j3             ! indices
     real, parameter :: h = 1.                 ! factor
     logical         :: hit
@@ -494,7 +494,7 @@ contains
 
   subroutine computeProbDist1D(grid)
     type(GRIDTYPE) :: grid
-    real(kind=doubleKind) :: tot, V, dr, dtheta, dphi
+    real(double) :: tot, V, dr, dtheta, dphi
     integer :: i,j,k,n
     
     tot = 0.
@@ -537,7 +537,7 @@ contains
     type(GRIDTYPE), intent(inout) :: grid
     integer :: i1, i2, i3, i
     real :: r, mu, phi
-    real(kind=doubleKind) :: r1
+    real(double) :: r1
 
     call random_number(r1)
     call locate(grid%oneProbLine, grid%nProb, r1, i)
@@ -554,7 +554,7 @@ contains
     type(GRIDTYPE), intent(inout) :: grid
     integer :: i1, i2, i3, i
     real :: r, mu, phi
-    real(kind=doubleKind) :: r1
+    real(double) :: r1
 
     call random_number(r1)
     call locate(grid%oneProbCont, grid%nProb, r1, i)
@@ -571,19 +571,19 @@ contains
 
     type(GRIDTYPE), intent(inout) :: grid
     !    real, intent(out) :: totalLineEmission, totalContEmission
-    real(kind=doubleKind), intent(out) :: totalLineEmission, totalContEmission
+    real(double), intent(out) :: totalLineEmission, totalContEmission
     real, intent(in) :: lambda0
     integer :: i,j,k, ierr
     real, allocatable :: chi(:,:,:)
     logical, intent(in) :: useBias
 
-    real(kind=doubleKind) :: totalLineEmissionDouble
-    real(kind=doubleKind) :: totalContEmissionDouble
-    real(kind=doubleKind) :: totalLineProb
-    real(kind=doubleKind) :: totalContProb
+    real(double) :: totalLineEmissionDouble
+    real(double) :: totalContEmissionDouble
+    real(double) :: totalLineProb
+    real(double) :: totalContProb
     
-    real(kind=doubleKind) :: biasCorrectionLine
-    real(kind=doubleKind) :: biasCorrectionCont
+    real(double) :: biasCorrectionLine
+    real(double) :: biasCorrectionCont
 
     if (.not. grid%adaptive) then
        if (grid%cartesian) then
@@ -602,6 +602,12 @@ contains
           chi = grid%chiLine
        endif
 
+       ! if grid%biasLine and grid%biasCont have not been allocated, we will do 
+       !   a dummy allocation here so that we are not passing an uninitialized 
+       !   pointer.
+       if (.not. associated(grid%biasLine)) allocate(grid%biasLine(0))
+       if (.not. associated(grid%biasCont)) allocate(grid%biasCont(0))
+       
        call computeProbDist2(grid, grid%cartesian, grid%xProbDistLine,&
               grid%xAxis, grid%nx, grid%yProbDistLine, grid%yAxis, grid%ny,&
               grid%zProbDistLine, grid%zAxis, grid%nz, grid%rProbDistLine, &
@@ -683,8 +689,8 @@ contains
                                                  totalLineProb,&
                                                  totalContProb)
 
-        totalLineEmission = REAL(totalLineEmissionDouble)
-        totalContEmission = REAL(totalContEmissionDouble)
+        totalLineEmission = totalLineEmissionDouble
+        totalContEmission = totalContEmissionDouble
         
 
         write(*,*) "Distributions done"
@@ -700,10 +706,10 @@ contains
        rProbDist, rAxis, nr, muProbDist, muAxis, nMu, phiProbDist, phiAxis, nPhi, eta, chi,  &
        bias, totalEmission, lineEmission, lambda0, useBias)
 
-    type(GRIDTYPE) :: grid
+    type(GRIDTYPE), intent(in) :: grid
     type(VECTOR) :: rVec
     real :: tot, tot2
-    real(kind=doubleKind) :: totalEmission
+    real(double), intent(out) :: totalEmission
     logical :: lineEmission, useBias
     integer :: i, j, k
     real :: t1, t2, t3
@@ -726,7 +732,7 @@ contains
     real :: rAxis(:), muAxis(:), phiAxis(:)
     real :: tmp2, fac2
     real, allocatable :: tmp(:) ! ,tmp2(:)
-    real(kind=doubleKind) :: dV
+    real(double) :: dV
 
 
     if (grid%polar) then
@@ -993,15 +999,19 @@ contains
        enddo
        if (scaleFac /= 0.) then
           write(*,*) "Bias correction: ",totalEmission/scaleFac
-          if (lineEmission) then
-             where(grid%inUse)
-                grid%biasLine3d = grid%biasLine3d * totalEmission/scaleFac
-             end where
-          else
-             where(grid%inUse)
-                grid%biasCont3D = grid%biasCont3d * totalEmission/scaleFac
-             end where
-          endif
+          
+print *, 'In MATHMOD, some lines were commented out because the Intel compiler'
+print *, ' was tripping up on them. You''ll have to uncomment them NOW'
+stop
+!          if (lineEmission) then
+!             where(grid%inUse)
+!                grid%biasLine3d = grid%biasLine3d * totalEmission/scaleFac
+!             end where
+!          else
+!             where(grid%inUse)
+!                grid%biasCont3D = grid%biasCont3d * totalEmission/scaleFac
+!             end where
+!          endif
        endif
 
     else
@@ -1190,13 +1200,13 @@ contains
     implicit none
 
     type(octal), pointer                 :: thisOctal
-    real(kind=doubleKind), intent(inout) :: totalLineProb
-    real(kind=doubleKind), intent(inout) :: totalContProb
-    real(kind=doubleKind), intent(inout) :: totalLineEmission
-    real(kind=doubleKind), intent(inout) :: totalContEmission
+    real(double), intent(inout) :: totalLineProb
+    real(double), intent(inout) :: totalContProb
+    real(double), intent(inout) :: totalLineEmission
+    real(double), intent(inout) :: totalContEmission
     
     type(octal), pointer  :: child 
-    real(kind=doubleKind) :: dV,r1,r2
+    real(double) :: dV,r1,r2
     type(octalvector)     :: rvec
     integer               :: subcell
     integer               :: i
@@ -1218,7 +1228,7 @@ contains
        else
 
           if (thisOctal%threed) then
-             dV = real(thisOctal%subcellSize, kind=doubleKind) ** 3.0_db
+             dV = real(thisOctal%subcellSize, kind=double) ** 3.0_db
           else
              rVec = subcellCentre(thisOctal,subcell)
              r1 = rVec%x-thisOctal%subcellSize/2.
@@ -1228,18 +1238,16 @@ contains
 
 
           totalLineProb = totalLineProb + dV * &
-              real(thisOctal%etaLine(subcell), kind=doubleKind) * &
-              real(thisOctal%biasLine3D(subcell), kind=doubleKind)
+              thisOctal%etaLine(subcell) * thisOctal%biasLine3D(subcell)
               
           totalLineEmission = totalLineEmission + dV * &
-              real(thisOctal%etaLine(subcell), kind=doubleKind)
+               thisOctal%etaLine(subcell)
               
           totalContProb = totalContProb + dV * &
-              real(thisOctal%etaCont(subcell), kind=doubleKind) * & 
-              real(thisOctal%biasCont3D(subcell), kind=doubleKind)
+              thisOctal%etaCont(subcell) * thisOctal%biasCont3D(subcell)
         
           totalContEmission = totalContEmission + dV * &
-              real(thisOctal%etaCont(subcell), kind=doubleKind)
+               thisOctal%etaCont(subcell)
           
        end if
        
@@ -1260,10 +1268,10 @@ contains
     implicit none
 
     type(octal), pointer              :: thisOctal
-    real(kind=doubleKind), intent(in) :: biasCorrectionLine
-    real(kind=doubleKind), intent(in) :: biasCorrectionCont
-    real(kind=doubleKind), intent(in) :: totalLineProb
-    real(kind=doubleKind), intent(in) :: totalContProb
+    real(double), intent(in) :: biasCorrectionLine
+    real(double), intent(in) :: biasCorrectionCont
+    real(double), intent(in) :: totalLineProb
+    real(double), intent(in) :: totalContProb
 
     integer :: subcell
     type(octal), pointer  :: child 

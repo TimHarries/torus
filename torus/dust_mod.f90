@@ -12,7 +12,7 @@ contains
   subroutine getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg)
 
       integer, parameter :: npLnk = 98
-      real(kind=singleKind) :: n_sil_ow(npLnk),k_sil_ow(npLnk),n_sil_oc(npLnk), &
+      real(single) :: n_sil_ow(npLnk),k_sil_ow(npLnk),n_sil_oc(npLnk), &
              k_sil_oc(npLnk), n_sil_dl(npLnk), k_sil_dl(npLnk),             &
              n_amc_hn(npLnk), k_amc_hn(npLnk), n_sic_pg(npLnk),             &
              k_sic_pg(npLnk), n_gr1_dl(npLnk), k_gr1_dl(npLnk),             &
@@ -571,6 +571,7 @@ end subroutine fillGridMie
       write(*,*) "kappa test set for: ",grid%lamarray(i)
 
 
+      scale = 1.
       write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
 
       if (graintype(1:5) == "mixed") then

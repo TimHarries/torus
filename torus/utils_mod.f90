@@ -1,5 +1,4 @@
 !
-
 ! written by tjh
 
 
@@ -9,7 +8,8 @@ module utils_mod
   use vector_mod          ! vector maths
   use constants_mod       ! physical constants
   use unix_mod
-
+  use input_variables,  only: StarkBroadening, C_rad, C_vdw, C_stark
+  
   implicit none
 
   public
@@ -60,9 +60,9 @@ contains
 
   subroutine solveQuadDble(a, b, c, x1, x2,ok)
     implicit none
-    real(kind=doubleKind),intent(in) :: a, b, c
-    real(kind=doubleKind),intent(out):: x1, x2
-    real(kind=doubleKind)            :: y
+    real(double),intent(in) :: a, b, c
+    real(double),intent(out):: x1, x2
+    real(double)            :: y
     logical,intent(out)              :: ok
 
     ok = .true.
@@ -83,7 +83,7 @@ contains
 
   ! return a blackbody function
 
-  real pure function blackBody(temperature, wavelength)
+  real elemental function blackBody(temperature, wavelength)
 
     real,intent(in) :: temperature
     real,intent(in) :: wavelength
@@ -143,7 +143,7 @@ contains
   REAL FUNCTION GAMMLN(XX)
     REAL XX
     INTEGER  J
-    REAL(kind=doubleKind):: COF(6),STP,HALF,ONE,FPF,X,TMP,SER
+    real(double):: COF(6),STP,HALF,ONE,FPF,X,TMP,SER
     DATA COF,STP/76.18009173D0,-86.50532033D0,24.01409822D0, &
          -1.231739516D0,.120858003D-2,-.536382D-5,2.50662827465D0/
     DATA HALF,ONE,FPF/0.5D0,1.0D0,5.5D0/
@@ -164,7 +164,7 @@ contains
   REAL FUNCTION LOGINT(X,X1,X2,Y1,Y2)
     IMPLICIT NONE
     REAL X,X1,X2,Y1,Y2,ANS
-    REAL LX,LX1,LX2,LY1,LY2,GR
+    REAL(double) ::  LX,LX1,LX2,LY1,LY2,GR
     if ( (x.le.0.0).or.(x1.le.0.0).or.(x2.le.0.0)) then
        write(*,*) 'f.up in logint',x,x1,x2,y1,y2
        stop
@@ -175,7 +175,9 @@ contains
     LY1=LOG(MAX(Y1,1.E-20))
     LY2=LOG(MAX(Y2,1.E-20))
     if (lx1.eq.lx2) then
-       write(*,*) 'bad x in logint'
+       write(*,*) 'Error:: Bad x in logint.'
+       write(*,*) 'lx1 =', lx1
+       write(*,*) 'lx2 =', lx2
        stop
     endif
     GR=(LY2-LY1)/(LX2-LX1)
@@ -226,8 +228,8 @@ contains
 
   SUBROUTINE SORTdouble(N,RA)
     INTEGER N, L, IR, I, J
-    REAL(kind=doubleKind) RRA
-    REAL(kind=doubleKind) RA(N)
+    real(double) RRA
+    real(double) RA(N)
     L=N/2+1
     IR=N
 10  CONTINUE
@@ -266,8 +268,8 @@ contains
 
   PURE SUBROUTINE INDEXX(N,ARRIN,INDX)
     INTEGER, INTENT(IN)  :: N
-    REAL, INTENT(IN)     :: ARRIN(*)
-    INTEGER, INTENT(OUT) :: INDX(*)
+    REAL, INTENT(IN)     :: ARRIN(:)
+    INTEGER, INTENT(OUT) :: INDX(:)
     INTEGER              :: J, L, IR, I, INDXT
     REAL                 :: Q
     DO  J=1,N
@@ -425,9 +427,9 @@ contains
 
 
   pure SUBROUTINE HUNT_octal(XX,N,X,JLO)
-    REAL(kind=octalKind), INTENT(IN) :: XX(*)
+    real(oct), INTENT(IN) :: XX(*)
     INTEGER, INTENT(IN) :: N
-    REAL(kind=octalKind), INTENT(IN)    :: X
+    real(oct), INTENT(IN)    :: X
     INTEGER, INTENT(INOUT) :: JLO
     INTEGER :: JHI, INC, JM
     LOGICAL ASCND
@@ -477,8 +479,8 @@ contains
   pure subroutine getDerivs(x, y, n, derivs)
     implicit none
     integer,intent(in) :: n
-    real,intent(in)    :: x(*), y(*)           
-    real,intent(out)   :: derivs(*)
+    real,intent(in)    :: x(:), y(:)           
+    real,intent(out)   :: derivs(:)
     integer            :: i
 
     do i = 2, n-1
@@ -497,7 +499,7 @@ contains
   end subroutine getDerivs
 
   real function logInterp(y, ny, x, xi)
-    real, intent(in)    :: y(*), x(*), xi
+    real, intent(in)    :: y(:), x(:), xi
     integer, intent(in) :: ny
     integer, save       :: i
     real                :: t
@@ -516,7 +518,7 @@ contains
     real,intent(in)     :: x
     integer,intent(out) :: j
     integer :: jl, ju,jm
-      JL=1
+      JL=0
       JU=N+1
 10    IF(JU-JL.GT.1)THEN
         JM=(JU+JL)/2
@@ -527,17 +529,25 @@ contains
         ENDIF
       GO TO 10
       ENDIF
-      J=JL
+
+      if(x.eq.xx(1))then
+        j=1
+      else if(x.eq.xx(n))then
+        j=n-1
+      else
+        j=jl
+      end if
+      return
     END SUBROUTINE LOCATE_single
   
 
     PURE SUBROUTINE LOCATE_octal(XX,N,X,J)
-    real(kind=octalKind), intent(in) :: XX(*)
+    real(oct), intent(in) :: XX(*)
     integer, intent(in)              :: n
-    real(kind=octalKind), intent(in) :: x
+    real(oct), intent(in) :: x
     integer,intent(out)              :: j
     integer :: jl, ju,jm
-      JL=1
+      JL=0
       JU=N+1
 10    IF(JU-JL.GT.1)THEN
         JM=(JU+JL)/2
@@ -548,7 +558,15 @@ contains
         ENDIF
       GO TO 10
       ENDIF
-      J=JL
+      
+      if(x.eq.xx(1))then
+        j=1
+      else if(x.eq.xx(n))then
+        j=n-1
+      else
+        j=jl
+      end if
+      return
     END SUBROUTINE LOCATE_octal
 
     real function gasdev()
@@ -672,11 +690,64 @@ contains
     end function maxwellianVelocity
 
 
+
+    ! Computes a random Lorentzian frequency using rejection method 
+    ! -- The output in [Hz]
+    !  
+    !  The form of the profile is assumed to be 
+    !                   (Gamma/4Pi)^2
+    !  phi(nu) = ------------------------------
+    !              (nu-nu0)^2 +  (Gamma/4Pi)^2
+    !
+    real(double) function random_Lorentzian_frequency(nu0, Gamma)      
+      real(double), intent(in) :: nu0   !  line center freq.  [Hz]
+      real(double), intent(in) :: Gamma !  Damping Constant  [Hz]
+      !
+      real(double) :: x, y, t, u, vel, a, a2
+      logical :: ok
+      a = Gamma/4.0d0/Pi
+      a2 = a*a
+
+      ok = .false.
+
+      if (a<=0.0d0) then  ! special case. No shift in line frequency
+         x=0.0d0 
+         ok = .true.
+      end if
+
+      do while(.not.ok)
+         ! trial value of (nu-nu0)
+         call random_number(x)
+         ! random number between -6a to 6a
+         x =6.0d0*a*(-1.0d0 + 2.0d0*x) 
+         ! trial value of phi(nu)
+         call random_number(y)
+
+         t = a2/(x*x +a2)  ! This should be always less than 1.
+         
+         if (y < t) then
+            ok = .true.
+            u = x
+         endif
+
+      end do
+      
+      ! x = nu - nu0, so
+      random_Lorentzian_frequency = x + nu0  ! [Hz]
+
+    end function random_Lorentzian_frequency
+    
+
+
+
+
+
+
     ! a functions to convert characters to integer 
     function char2int(a) RESULT(out)
       implicit none 
       integer :: out
-      character(LEN=*), intent(in) :: a
+      character, intent(in),dimension(:) :: a
       integer :: ierr
       
       read(a, *, IOSTAT = ierr) out
@@ -774,9 +845,9 @@ contains
       endif
     end function interpLinearSingle
 
-    real(kind=doubleKind) function interpLinearDouble(xArray, yArray, n, x)
-      real(kind=doubleKind) :: xarray(:), yArray(:)
-      real(kind=doubleKind) :: x, t
+    real(double) function interpLinearDouble(xArray, yArray, n, x)
+      real(double) :: xarray(:), yArray(:)
+      real(double) :: x, t
       integer :: n, i
       logical :: ok
       i = findIlambda(real(x), real(xArray), n, ok)
@@ -797,9 +868,9 @@ contains
       endif
     end function interpLinearDouble
 
-    real(kind=doubleKind) function interpLogLinearDouble(xArray, yArray, n, x)
-      real(kind=doubleKind) :: xarray(:), yArray(:)
-      real(kind=doubleKind) :: x, t
+    real(double) function interpLogLinearDouble(xArray, yArray, n, x)
+      real(double) :: xarray(:), yArray(:)
+      real(double) :: x, t
       integer :: n, i
       logical :: ok
       i = findIlambda(real(x), real(xArray), n, ok)
@@ -823,15 +894,152 @@ contains
 
 
     function convertToJanskies(flux, wavelength) result (newflux)
-      real(kind=doubleKind) :: flux   ! in erg/s/cm^2/A
-      real(kind=doubleKind) :: wavelength ! in A
-      real(kind=doubleKind) :: newFlux, nu
+      real(double) :: flux   ! in erg/s/cm^2/A
+      real(double) :: wavelength ! in A
+      real(double) :: newFlux, nu
 
       nu  = cspeed / (wavelength * angstromtocm)
       newFlux = flux * (cSpeed * 1.e8)/ nu**2 ! from /A to /Hz
 
       newFlux = newFlux * 1.e23 ! to janskies
     end function convertToJanskies
+
+    
+    !
+    ! -----Computes UNNORMALIZED voigtn function: (normalization = sqrt(pi))
+    !
+    FUNCTION VOIGTN(AA,VV)
+      IMPLICIT NONE
+      ! Modefied: 05-Nov-2004 :: Now treats a = 0 as a special case.   (R. Kurosawa)
+      ! Imported from JDH's CMFGEN code: 27-Oct-2004    (R. Kurosawa) 
+      ! Cleaned : 20-Nov-2000 (JDH)
+      !
+      REAL*8 VOIGTN,AA,VV
+      !
+      REAL*8 H(25)
+      DATA C1,C2/1.128379167095512D0  ,5.64189583547756D-1/
+      SAVE C1,C2
+      !
+      REAL*8 V,V2,V4,V6
+      REAL*8 A,A2,A4,A6
+      REAL*8 Z,Z2                       
+      REAL*8 X,W
+      REAL*8 C1,C2
+      !
+      INTEGER*4 I,J
+      !
+      !REAL*8 DAWSON
+      !EXTERNAL DAWSON
+      !
+      V=ABS(VV)
+      A=AA
+      V2=V*V
+      A2=A*A
+      Z=A2+V2
+      IF(A .EQ. 0.0D0  ) THEN
+         ! ---- Normal Doppler brodening.         
+         VOIGTN = EXP(-V2)
+         RETURN
+      END IF
+      IF(A .LE. 0.5D0  )GOTO 20
+      IF(Z .LT. 10.D0  )GOTO 50
+      !-----ASYMPTOTIC EXPANSION FOR LARGE MODULUS
+10    Z2=Z*Z
+      V4=V2*V2
+      V6=V4*V2
+      A4=A2*A2
+      A6=A4*A2
+      VOIGTN=C2*A* (1.D0  +  ((1.875D0  *(7.D0  *V6-35.D0  *A2*V4+21.D0*A4*V2-A6) &
+           /Z2+ 0.75D0  *(5.D0  *V4-10.D0  *A2*V2+A4))/Z2+1.5D0  *V2-0.5D0*A2)/Z2)/Z 
+      RETURN
+      !-----HARRIS EXPANSION
+20    IF(V .GT. 5.D0  ) GOTO 10
+      W=DAWSON(V)
+      H(1)= EXP(-V2)
+      H(2)=-C1*(1.0D0  -2.0D0  *V*W)
+      H(3)=(1.0D0  -2.0D0  *V2)*H(1)
+      H(4)=-C1*(2.D0  *(1.D0  -V2)/3.D0  -2.D0  *V*W*(1.D0  -2.D0  *V2/3.D0  ))      
+      !-----HIGHER TERMS BY RECURSION
+      DO I=5,11
+         X=I-1
+         H(I)= (2.0D0 *(2.0D0*X -3.0D0 -2.0D0*V2) *H(I-2) -4.0D0*H(I-4))/(X*(X-1.0D0  ))
+      END DO
+      VOIGTN=H(11)
+      DO I=1,10
+         J=11-I
+         VOIGTN=H(J)+A*VOIGTN
+      END DO
+      RETURN
+      !-----GRONWALL EXPANSION
+50    X=1.0D0  /(1.0D0  +3.275911D-1*A)
+      H(1)=((((1.061405429D0  *X-1.453152027D0  )*X+1.421413741D0  )*X &
+           -2.84496736D-1)*X+2.54829592D-1)*X
+      DO I=2,25
+         X=I-1
+         H(I)=2.0D0  *A*(C2-A*H(I-1))/(2.0D0  *X-1.0D0  )
+      END DO
+      VOIGTN=0.0D0
+      DO I=1,24
+         J=26-I
+         X=J-1
+         VOIGTN=(VOIGTN+H(J))*V2/X
+      END DO
+      VOIGTN= EXP(-V2)*(VOIGTN+H(1))
+      RETURN
+    END FUNCTION VOIGTN
+
+
+
+    !
+    !-----DAWSON*S INTEGRAL USING ANL ALGORITHM, MATH COMP,1970,171
+    !
+    FUNCTION DAWSON(XX)
+      IMPLICIT NONE
+      ! Imported from JDH's CMFGEN code: 27-Oct-2004    (R. Kurosawa) 
+      !
+      REAL*8 DAWSON,XX
+      REAL*8 X,U
+      REAL*8 UP,DOWN
+      !
+      X=XX
+      U=X*X
+      IF(X .LT. 5.0D0  ) GOTO 10
+      !-----X GREATER THAN 5
+      DAWSON= ((5.0000000167450D-1+7.4999919056701D-1/      &
+           (-2.5001711668562D0  +U-2.4878765880441D0  /     &
+           (-4.6731202214124D0  +U-4.1254406560831D0  /     &
+           (-1.1195216423662D1+U))))/U+1.0D0  )/(2.0D0  *X) 
+      RETURN
+      !-----X ON (3.5D0,5.0D0)
+10    IF(X .LT. 3.5D0  ) GOTO 20
+      DAWSON=(5.00001538408193D-1 +2.49811162845499D-1/     &
+           (-1.53672069271915D0  +U-6.53419359860764D-1/    &
+           (-1.77068693717670D1 +U+2.04866410976332D2/      &
+           (7.49584016278357D0   +U-2.298758419286D0  /     &
+           (4.02187490205698D1+U+2.53388006963558D3/        &
+           (-5.9391591850032E1+U))))))/X                    
+      RETURN
+      !-----X ON (2.5,3.5)
+20    IF(X .LT. 2.5D0  ) GOTO 30
+      DAWSON=(5.0140106611704D-1+1.8897553014354D-1/      &
+           (-7.4499050579364D0  +U+7.0204980729194D1/     &
+           (7.5077816490106D0  +U+4.1821806337830D1/      &
+           (-2.6629001073842D1 +U+3.7343084728334D1/      &
+           (3.0984087863402D1+U+1.2599323546764D3/        &
+           (-4.0847391212716D1+U))))))/X
+      RETURN
+      !-----X LESS THAN 2.5
+   30 UP=(((((U*2.0846835103886D-2 -8.5410681195954D-1)*U  &
+            +5.4616122556699D1)*U-4.3501160207595D2)*U     &
+            +9.6696398191665D3)*U-2.9179464300780D4)*U+2.3156975201341D5    
+      DOWN=((((( U+2.9391995612556D1)*U +4.668490654511D2  &
+           )*U+4.7447098440662D3)*U+3.1384620138163D4)*U   &
+           +1.2520037031851D5)*U+2.3156975201425D5
+      DAWSON=X*(UP/DOWN)
+      RETURN
+    END FUNCTION DAWSON
+
+
 
     subroutine voigt ( n, x, y, k )
 
@@ -1007,25 +1215,64 @@ contains
       bigLambda = C_rad + C_vdw*(N_HII / 1.e16)*(temperature/5000.)*0.3 + C_stark*(Ne/1.e12)**0.6666
     end function bigLambda
 
+    !
+    ! Damping contant in a Voigt Profile in [1/s]
+    !
+    real function bigGamma(N_HI, temperature, Ne, nu)      
+      real(double), intent(in) :: N_HI         ! [#/cm^3]  number density of HI
+      real(double), intent(in) :: temperature  ! [Kelvins]
+      real(double), intent(in) :: Ne           ! [#/cm^3]  nunmber density of electron
+      real(double), intent(in) :: nu           ! [1/s]  line center frequency 
 
-    subroutine resampleRay(lambda, nTau, projVel, newLambda, newNTau)
-      real :: lambda(:)
-      real :: projVel(:)
-      integer :: nTau, newNtau
-      real :: newLambda(:)
+      ! The following are set in input_variables module.
+      !  
+      ! real, parameter :: C_rad  =  0.   ! [A]  
+      ! real, parameter :: C_vdw =   0.   ! [A]
+      ! real, parameter :: C_stark = 0.   ! [A]
+
+      ! see Muzerolle et al. 2001 ApJ 550 944
+
+      bigGamma = &
+           &    C_rad  &
+           &  + C_vdw*(N_HI / 1.e16)*(temperature/5000.)**0.3 &
+           &  + C_stark*(Ne/1.e12)**0.6666  ! [Angstrom]
+
+      ! convert units 
+      bigGamma = (bigGamma*1.e-8) * nu**2   / cSpeed  ! [1/s]
+      !                  [cm]       * [1/s^2] / [cm/s]
+    end function bigGamma
+
+
+    subroutine resampleRay(lambda, nTau, projVel, maxtau, newLambda, newNTau)
+      use  input_variables, only: lamstart, lamend, nlambda, lamline
+      integer, intent(in) :: nTau, maxtau
+      real, intent(in) :: lambda(nTau)
+      real(double), intent(in) :: projVel(nTau)
+      integer, intent(inout) :: newNtau
+      real, intent(inout)  :: newLambda(maxtau)
+      !
       real,allocatable :: dProjVel(:)
-      integer :: nAdd = 5
+      integer :: nAdd 
       integer :: i, j
+!      real, parameter :: dvel  = 10.e5/cSpeed
+      real :: dvel, dlam
+
+      ! -- using the values in input_variables module
+      dvel = (lamend-lamstart)/lamline/real(nlambda-1)  ! should be in [c]
+      dvel = dvel/7.0  ! to be safe 
       allocate(dProjVel(1:nTau))
-      dProjVel  = 0.
+      dProjVel(1)  = 0.
       dProjVel(2:nTau) = projVel(2:nTau) - projVel(1:nTau-1)
 
       newNTau = 0
       do i = 2, nTau
-         if (abs(dProjVel(i)) > 50.) then
-            do j = 1, nAdd
+         ! if (i==2) we always add points
+         if (abs(dProjVel(i)) > dVel .or. i==2) then
+            nAdd = nint(abs(ProjVel(i))/dVel)
+            dlam = (lambda(i)-lambda(i-1))/real(nAdd+1)
+            do j = 1, nAdd+1
                newNtau = newNtau + 1
-               newLambda(newNTau) = real(j-1)/real(nAdd) * real(lambda(i)-lambda(i-1)) + lambda(i-1)
+               newLambda(newNTau) = real(j-1)*dlam + lambda(i-1)
             enddo
          else
             newNtau = newNtau + 1
@@ -1036,6 +1283,69 @@ contains
       newLambda(newNTau) = lambda(nTau)
       deallocate(dProjVel)
     end subroutine resampleRay
+
+
+    !
+    ! Adding extra points near the resonace zone if any. 
+    !
+    subroutine resampleRay2(lambda, nTau, projVel, thisVel, maxTau, newLambda, newNTau)
+      integer, intent(in) :: nTau
+      integer, intent(in) :: maxtau
+      real, intent(in) :: lambda(nTau)  ! ray sequments, but not the wavelenghth!
+      real(double), intent(in) :: projVel(nTau)
+      real, intent(in) :: thisVel       ! velocity at the photon emission 
+      integer, intent(inout) :: newNtau
+      real, intent(inout) :: newLambda(maxTau)
+      integer :: nAdd = 10
+      integer :: i, j
+      real :: dlam
+      
+      ! loop through the projected velocities to find the resonance zones
+      newNTau = 0
+      do i = 2, nTau         
+         if ( ( (projVel(i-1) <= thisVel) .and. (thisVel < projVel(i)) ) &
+              .or. &
+              ( (projVel(i-1) >= thisVel) .and. (thisVel > projVel(i)) )   ) then
+            ! adding extra points (linearly interporating between points).
+            dlam = (lambda(i)-lambda(i-1))/real(nAdd+1)
+            do j = 1, nAdd+1
+               newNtau = newNtau + 1
+               newLambda(newNTau) = real(j-1)*dlam + lambda(i-1)
+            enddo
+         else
+            newNtau = newNtau + 1
+            newLambda(newNTau) = lambda(i-1)
+         endif
+      end do
+      newNtau = newNtau + 1
+      newLambda(newNTau) = lambda(nTau)
+    end subroutine resampleRay2
+
+    !
+    ! Inserting additional points in ray (lambda) array.
+    ! 
+    subroutine insert_points_in_ray(lambda, nTau, nadd, newLambda, newNTau)
+      real, intent(in)     :: lambda(:)  ! ray segments
+      integer, intent(in)  :: nTau       ! number of points along ray
+      integer, intent(in)  :: nadd       ! number of points to be inserted in between points
+      integer, intent(out) :: newNtau      ! new number of points along ray
+      real, intent(out)    :: newLambda(:) ! new ray segments.
+      integer :: i, j
+      real :: dlam
+
+      newNTau = 0
+      do i = 2, nTau
+         dlam= (lambda(i)-lambda(i-1))/real(nAdd+1)
+         do j = 1, nAdd+1
+            newNtau = newNtau + 1
+            newLambda(newNTau) = lambda(i-1) +  real(j-1)*dlam
+         end do
+      end do
+      newNtau = newNtau + 1
+      newLambda(newNTau) = lambda(nTau)
+    end subroutine insert_points_in_ray
+
+
                
     subroutine linearResample(xArray, yArray, nX, newXarray, newNx)
       real :: xArray(:), yArray(:)
@@ -1047,7 +1357,11 @@ contains
       allocate(newYarray(1:newNx))
       do i = 1, newNx
          call hunt(xArray, nx, newXarray(i), j)
-         newYarray(i) = yArray(j) + yArray(j+1)*(newXarray(i)-xArray(j))/(xArray(j+1)-xArray(j))
+         if (xArray(j+1) /= xArray(j)) then
+            newYarray(i) = yArray(j) + (yArray(j+1)-yArray(j))*(newXarray(i)-xArray(j))/(xArray(j+1)-xArray(j))
+         else
+            newYarray(i) = yArray(j)
+         endif
       enddo
       yArray(1:newNx) = newYArray(1:newNx)
       deallocate(newYarray)
@@ -1055,33 +1369,125 @@ contains
 
 
 
-    function spiraldist(x,y,k,phase) result(d)
-      integer :: i, nr = 100, imin
-      real :: x,y,k,d,theta,ktheta
-      real :: r,t1,t2,theta1,theta2,phase
-      logical :: converged
-      d = 1.e30
-      theta1 = -phase
-      theta2 = twoPi-phase
-      converged = .false.
-      do while(.not.converged)
-         do i = 1, nr
-            theta = theta1+(theta2-theta1)*real(i-1)/real(nr-1)
-            ktheta = k * (theta+phase)
-            r = (x-ktheta*cos(theta+phase))**2 + (y-ktheta*sin(theta+phase))**2
-            if (r < d) then
-               d=r
-               imin = i
-            endif
-         enddo
-         t1 = theta1+(theta2-theta1)*real(imin-2)/real(nr-1)
-         t2 = theta1+(theta2-theta1)*real(imin)/real(nr-1)
-         theta1 = max(t1,-phase)
-         theta2 = t2
-         if (abs(theta1-theta2)/twopi < 1.e-4) converged = .true.
+
+
+    subroutine linearResample_dble(xArray, yArray, nX, newXarray, newNx)
+      real :: xArray(:)
+      real(double) :: yArray(:)
+      integer :: nx, newNx
+      real :: newXarray(:)
+      real, allocatable :: newYarray(:)
+      integer :: i, j
+
+      allocate(newYarray(1:newNx))
+      do i = 1, newNx
+         call hunt(xArray, nx, newXarray(i), j)
+         if (xArray(j+1) /= xArray(j)) then
+            newYarray(i) = yArray(j) + (yArray(j+1)-yArray(j))*(newXarray(i)-xArray(j))/(xArray(j+1)-xArray(j))
+         else
+            newYarray(i) = yArray(j)
+         endif
       enddo
-      d = sqrt(d)
-    end function spiraldist
+      yArray(1:newNx) = newYArray(1:newNx)
+      deallocate(newYarray)
+    end subroutine linearResample_dble
+
+ 
+  FUNCTION arth(first,increment,n)
+    ! Array function returning an arithmetic progression. 
+    REAL, INTENT(IN) :: first,increment 
+    INTEGER, INTENT(IN) :: n 
+    REAL, DIMENSION(n) :: arth 
+    INTEGER :: k,k2 
+    REAL :: temp 
+    INTEGER, PARAMETER :: NPAR_ARTH=16,NPAR2_ARTH=8
+    if (n > 0) arth(1)=first 
+    if (n <= NPAR_ARTH) then 
+      do k=2,n
+        arth(k)=arth(k-1)+increment 
+      end do
+    else
+      do k=2,NPAR2_ARTH 
+        arth(k)=arth(k-1)+increment 
+      end do 
+      temp=increment*NPAR2_ARTH 
+      k=NPAR2_ARTH
+      do
+        if (k >= n) exit 
+        k2=k+k 
+        arth(k+1:min(k2,n))=temp+arth(1:min(k,n-k))
+        temp=temp+temp 
+        k=k2
+      end do 
+    end if
+  END FUNCTION arth 
+  
+  SUBROUTINE trapzd(func,a,b,s,n) 
+    IMPLICIT NONE 
+    REAL, INTENT(IN) :: a,b 
+    REAL, INTENT(INOUT) :: s 
+    INTEGER, INTENT(IN) :: n 
+  
+    INTERFACE
+      FUNCTION func(x) 
+        REAL, DIMENSION(:), INTENT(IN) :: x
+        REAL, DIMENSION(size(x)) :: func 
+      END FUNCTION func 
+    END INTERFACE 
+    
+    ! This routine computes the nth stage of refinement of an extended trapezoidal rule. 
+    ! func is input as the name of the function to be integrated between limits a and b, 
+    ! also input. When called with n=1, the routine returns as s the crudest estimate of 
+    ! b a f(x)dx. Subsequent calls with n=2,3,... (in that sequential order) will improve
+    ! the accuracy of s by adding 2n-2 additional interior points. s should not be modified
+    ! between sequential calls. 
+    REAL :: del,fsum
+    INTEGER :: it 
+    if (n == 1) then
+      s=0.5*(b-a)*sum(func( (/ a,b /) )) 
+    else 
+      it=2**(n-2)
+      del=(b-a)/it ! This is the spacing of the points to be added. 
+      fsum=sum(func(arth(a+0.5*del,del,it)))
+      s=0.5*(s+del*fsum) ! This replaces s by its re ned value. 
+    end if
+  END SUBROUTINE trapzd
+
+  
+  FUNCTION qsimp(func,a,b)
+   
+   IMPLICIT NONE 
+   REAL, INTENT(IN) :: a,b 
+   REAL :: qsimp 
+   INTERFACE 
+     FUNCTION func(x) 
+       REAL, DIMENSION(:), INTENT(IN) :: x 
+       REAL, DIMENSION(size(x)) :: func 
+     END FUNCTION func 
+   END INTERFACE 
+   INTEGER, PARAMETER :: JMAX=20 
+   REAL, PARAMETER :: EPS=2.0e-4
+   ! Returns the integral of the function func from a to b. The parameter EPS should be
+   ! set to the desired fractional accuracy and JMAX so that 2 to the power JMAX-1
+   ! is the maximum allowed number of steps. Integration is performed by Simpson's
+   ! rule. 
+   INTEGER :: j 
+   REAL :: os,ost,st
+   ost=0.0 
+   os= 0.0
+   do j=1,JMAX 
+     call trapzd(func,a,b,st,j) 
+     qsimp=(4.0*st-ost)/3.0  ! Compare equation (4.2.4). 
+     if (j > 5) then !Avoid spurious early convergence. 
+       if (abs(qsimp-os) < EPS*abs(os) .or. (qsimp == 0.0 .and. os == 0.0)) RETURN
+     end if 
+     os=qsimp  
+     ost=st
+   end do 
+   print *, 'Too many steps in qsimp'
+   stop
+   
+  END FUNCTION qsimp
 
 
 end module utils_mod

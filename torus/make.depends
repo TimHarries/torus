@@ -1,0 +1,108 @@
+amr_mod.o: cluster_class.o constants_mod.o density_mod.o gridtype_mod.o \
+	input_variables.o jets_mod.o kind_mod.o luc_cir3d_class.o math_mod2.o \
+	octal_mod.o parameters_mod.o rotation_variables.o sph_data_class.o \
+	utils_mod.o vector_mod.o wr104_mod.o
+atom_mod.o: constants_mod.o kind_mod.o
+blob_mod.o: amr_mod.o constants_mod.o grid_mod.o gridtype_mod.o math_mod.o \
+	vector_mod.o
+cluster_class.o: gridtype_mod.o isochrone_class.o octal_mod.o source_mod.o \
+	spectrum_mod.o sph_data_class.o
+cluster_utils.o: atom_mod.o cluster_class.o filter_set_class.o \
+	formal_solutions.o grid_mod.o integratePath.o kind_mod.o source_mod.o \
+	vector_mod.o
+constants_mod.o: kind_mod.o
+cont_read.o: kind_mod.o math_mod.o
+density_mod.o: clump_mod.o flow_speed_variables.o function_variables.o \
+	gridtype_mod.o input_variables.o jets_mod.o luc_cir3d_class.o \
+	ostar_mod.o utils_mod.o vector_mod.o wr104_mod.o
+disc_class.o: constants_mod.o grid_mod.o gridtype_mod.o kind_mod.o \
+	octal_mod.o vector_mod.o
+disc_hydro_mod.o: amr_mod.o constants_mod.o density_mod.o gridtype_mod.o \
+	input_variables.o kind_mod.o lucy_mod.o octal_mod.o phasematrix_mod.o \
+	source_mod.o utils_mod.o vector_mod.o
+discwind_class.o: constants_mod.o grid_mod.o gridtype_mod.o kind_mod.o \
+	octal_mod.o vector_mod.o
+distortion_mod.o: blob_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
+	vector_mod.o
+draineCrossSection.o: constants_mod.o unix_mod.o utils_mod.o
+dust_mod.o: amr_mod.o constants_mod.o grid_mod.o gridtype_mod.o
+fillGridMie.o: constants_mod.o grid_mod.o gridtype_mod.o
+fillGridRayleigh.o: constants_mod.o grid_mod.o gridtype_mod.o
+fillGridThomson.o: constants_mod.o grid_mod.o gridtype_mod.o
+fillGridTio.o: constants_mod.o grid_mod.o gridtype_mod.o
+fillGridTorus.o: constants_mod.o vector_mod.o
+filter_set_class.o: utils_mod.o
+formal_solutions.o: gridtype_mod.o integratePath.o kind_mod.o octal_mod.o \
+	vector_mod.o
+gaussian_mod.o: constants_mod.o input_variables.o kind_mod.o utils_mod.o \
+	vector_mod.o
+getMeanMass.o: constants_mod.o
+getRefractiveIndex.o: constants_mod.o unix_mod.o utils_mod.o
+grid_mod.o: amr_mod.o atom_mod.o clump_mod.o cluster_class.o constants_mod.o \
+	density_mod.o gridtype_mod.o input_variables.o kind_mod.o octal_mod.o \
+	pixplot_module.o utils_mod.o vector_mod.o
+gridtype_mod.o: gaussian_mod.o kind_mod.o octal_mod.o vector_mod.o
+hyd_col_coeff.o: kind_mod.o
+image_mod.o: constants_mod.o filter_set_class.o phasematrix_mod.o \
+	photon_mod.o vector_mod.o
+input_variables.o: constants_mod.o unix_mod.o vector_mod.o
+inputs_mod.o: constants_mod.o input_variables.o jets_mod.o unix_mod.o \
+	utils_mod.o vector_mod.o
+integratePath.o: amr_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
+	math_mod.o photon_mod.o vector_mod.o
+interp_mod.o: grid_mod.o vector_mod.o
+intersectCube.o: grid_mod.o gridtype_mod.o vector_mod.o
+isochrone_class.o: kind_mod.o
+jets_mod.o: constants_mod.o gridtype_mod.o kind_mod.o octal_mod.o \
+	parameters_mod.o vector_mod.o
+luc_cir3d_class.o: constants_mod.o kind_mod.o octal_mod.o vector_mod.o \
+	zeus_data_class.o
+lucy_mod.o: amr_mod.o constants_mod.o grid_mod.o phasematrix_mod.o \
+	source_mod.o spectrum_mod.o timing.o vector_mod.o
+magnetic_mod.o: constants_mod.o gridtype_mod.o kind_mod.o octal_mod.o \
+	vector_mod.o
+math_mod.o: constants_mod.o grid_mod.o gridtype_mod.o kind_mod.o utils_mod.o \
+	vector_mod.o
+math_mod2.o: kind_mod.o
+mieDistPhaseMatrix.o: constants_mod.o phasematrix_mod.o
+miePhaseMatrix.o: phasematrix_mod.o
+octal_mod.o: kind_mod.o vector_mod.o
+opacity_lte_mod.o: atom_mod.o
+ostar_mod.o: constants_mod.o gridtype_mod.o input_variables.o vector_mod.o
+parameters_mod.o: constants_mod.o
+phasematrix_mod.o: utils_mod.o
+photon_mod.o: amr_mod.o constants_mod.o filter_set_class.o grid_mod.o \
+	gridtype_mod.o math_mod.o phasematrix_mod.o source_mod.o \
+	surface_mod.o utils_mod.o vector_mod.o
+puls_mod.o: blob_mod.o grid_mod.o gridtype_mod.o stateq_mod.o
+readTioCrossSection.o: unix_mod.o utils_mod.o
+source_mod.o: constants_mod.o octal_mod.o spectrum_mod.o utils_mod.o \
+	vector_mod.o
+spectrum_mod.o: atom_mod.o constants_mod.o utils_mod.o
+sph_data_class.o: kind_mod.o
+stateq_mod.o: constants_mod.o grid_mod.o gridtype_mod.o hyd_col_coeff.o \
+	input_variables.o integratePath.o jets_mod.o math_mod.o \
+	opacity_lte_mod.o vector_mod.o
+surface_mod.o: amr_mod.o constants_mod.o gridtype_mod.o input_variables.o \
+	kind_mod.o utils_mod.o vector_mod.o
+torusMain.o: TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
+	cluster_utils.o constants_mod.o disc_class.o discwind_class.o \
+	distortion_mod.o dust_mod.o filter_set_class.o grid_mod.o \
+	gridtype_mod.o image_mod.o input_variables.o inputs_mod.o \
+	integratePath.o isochrone_class.o jets_mod.o kind_mod.o \
+	luc_cir3d_class.o lucy_mod.o math_mod.o phasematrix_mod.o \
+	photon_mod.o puls_mod.o source_mod.o spectrum_mod.o sph_data_class.o \
+	stateq_mod.o surface_mod.o timing.o unix_mod.o utils_mod.o \
+	vector_mod.o wr104_mod.o
+TTauri_mod.o: amr_mod.o atom_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
+	kind_mod.o math_mod.o octal_mod.o parameters_mod.o stateq_mod.o \
+	utils_mod.o vector_mod.o
+unix_mod.o: 
+utils_mod.o: constants_mod.o input_variables.o kind_mod.o unix_mod.o \
+	vector_mod.o
+vector_mod.o: constants_mod.o kind_mod.o
+wr104_mod.o: kind_mod.o sph_data_class.o vector_mod.o
+zeus_data_class.o: kind_mod.o utils_mod.o vector_mod.o
+image_f77.o: /star/include/dat_par /star/include/sae_par \
+	/star/include/dat_par /star/include/sae_par
+spec_f77.o: /star/include/sae_par /star/include/dat_par

@@ -20,9 +20,10 @@ module photon_mod
   use amr_mod               ! adaptive grid routines
   use utils_mod
   use phasematrix_mod
-  use jets_mod
+!  use jets_mod
   use source_mod
   use filter_set_class
+  use surface_mod
 
   implicit none
 
@@ -58,9 +59,9 @@ contains
 
   subroutine rotate(thisPhoton, cosx, sinx)
 
-    type (PHOTON) :: thisPhoton          ! the photon
+    type(PHOTON), intent(inout) :: thisPhoton          ! the photon
+    real, intent(in) :: cosx, sinx       ! x should be twice theta
     real :: qdash, udash                 ! the rotated stokes vector
-    real :: cosx, sinx                   ! x should be twice theta
 
     ! perform the rotation
 
@@ -101,7 +102,7 @@ contains
     real :: ang                                  ! scattering angle
     real :: r1, r2                               ! radii
     integer :: i1, i2, i3                        ! position indices
-    real(kind=octalkind) :: t1,t2,t3             ! interp factors
+    real(oct) :: t1,t2,t3             ! interp factors
     real :: u,v,w,t                              ! direction components
     real :: sinGamma, cosGamma, sin2Gamma, cos2Gamma
     logical :: randomDirection                   ! is this a random direction
@@ -111,6 +112,7 @@ contains
     type(octalVector) :: pointOctalVec
     type(octal), pointer :: octalLocation
     integer :: subcellLocation
+
     
 !    real :: dx
 
@@ -237,10 +239,12 @@ contains
              outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec, &
                          foundOctal=octalLocation,foundSubcell=subcellLocation) 
 
+
              if (.not.mie) then
                 outPhoton%velocity = outPhoton%velocity + thermalElectronVelocity( &
                      amrGridTemperature(grid%octreeRoot,pointOctalVec,&
                      startOctal=octalLocation,actualSubcell=subcellLocation))
+
              endif
              
           else
@@ -309,13 +313,13 @@ contains
        theta1,theta2, chanceHotRing, &
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
-       filterSet, mie, forcedWavelength, usePhotonWavelength)
+       filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength)
 
     implicit none
 
     integer :: nSource, thisSource
-    type(SOURCETYPE) :: source(*)
-
+    type(SOURCETYPE) :: source(:)
+    type(SURFACETYPE) :: starSurface
     type(PHOTON) :: thisPhoton                 ! the photon
     type(GRIDTYPE) :: grid                     ! the opacity grid
     integer :: nLambda, iLambda                ! wavelength indices
@@ -325,22 +329,22 @@ contains
     logical :: ok
     logical :: narrowBandImage
     real :: narrowBandMin, narrowBandMax  ! parameters for a narrow band image
-    real(kind=doubleKind) :: energyPerPhoton
+    real(double) :: energyPerPhoton
     real :: vo6
     real :: x,y,z
-    real(kind=octalKind) :: xOctal, yOctal, zOctal
+    real(oct) :: xOctal, yOctal, zOctal
     type(octalVector) :: octalCentre
     type(filter_set) :: filterSet
     real :: directionalWeight
-    real :: lambda(:), sourceSpectrum(*)       ! wavelength array/spectrum
+    real :: lambda(:), sourceSpectrum(:)       ! wavelength array/spectrum
     real :: dlam(1000)
     real :: r1,r2,r3                              ! radii
-    real(kind=octalkind)  :: r1_oct,r2_oct,r3_oct ! radii
-    real(kind=doubleKind) :: randomDouble         ! a double precision random number
+    real(oct)  :: r1_oct,r2_oct,r3_oct ! radii
+    real(double) :: randomDouble         ! a real(double) random number
     real :: u, v, w, t                            ! direction components
     real :: r, mu, phi                         ! spherical polar coords
     real :: sinTheta      
-    real(kind=octalkind) :: t1, t2, t3                         ! multipliers
+    real(oct) :: t1, t2, t3                         ! multipliers
     real :: temp
 
     real :: vPhi                               ! azimuthal velocities
@@ -360,6 +364,7 @@ contains
     logical :: secondSource                    ! second photon source?
     type(VECTOR) :: secondSourcePosition       ! the position of it
     type(VECTOR) :: ramanSourceVelocity        ! what it says
+    type(VECTOR) :: rVel
     type(octalVector) :: octalPoint            ! 
     type(octal), pointer :: sourceOctal        ! randomly selected octal
     type(octal), pointer :: foundOctal       
@@ -394,6 +399,8 @@ contains
 
     real :: theta1, theta2                     ! defines hot ring of accretion for TTaus
     real :: chanceHotRing                      ! chance of core photon in ttauri accretion ring
+    logical, intent(in) :: curtains  ! T Tauri accretion curtains
+    real :: curtain1size             ! angular size of first accretion curtain
     real :: thisTheta, thisPhi
     real :: x1, x2
     real :: tempXProbDist(2000)
@@ -404,8 +411,8 @@ contains
     real :: tempphiProbDistLine(2000)
 
     logical :: photonFromEnvelope, mie
-    real(kind=doubleKind) :: tempSpectrum(2000), prob(5000), weightarray(5000)
-    real(kind=doubleKind) :: rd, bias(5000),totDouble, lambias(5000), dlambias(5000)
+    real(double) :: tempSpectrum(2000), prob(5000), weightarray(5000)
+    real(double) :: rd, bias(5000),totDouble, lambias(5000), dlambias(5000)
     integer :: i, nbias
 
     type(octalVector) :: positionOctal     ! octalVector type version of thisPhoton%position
@@ -414,7 +421,10 @@ contains
 
     type(octalVector) :: octalvec_tmp
     type(Vector) :: vec_tmp
-    
+    ! For Voigt Profile 
+    real :: temperature, rho, N_HI
+    real(double) :: nu_shuffled, lambda_shuffled, nu, Gamma, Ne
+    type(Vector) ::  velocity
 
     ! set up the weights and the stokes intensities (zero at emission)
 
@@ -520,32 +530,30 @@ contains
           if (photonFromEnvelope) then
              if (grid%adaptive) then 
 
-                call random_number(randomDouble)
-                ! we search through the tree to find the subcell that contains the
-                !   probability value 'randomDouble'
-                sourceOctal => grid%octreeRoot
-                call locateContProbAMR(randomDouble,sourceOctal,subcell)
-                if (.not.sourceOctal%inFlow(subcell)) then
-!                   write(*,'(a)') "! Photon in cell that's not in flow. Screw-up in locatecontProbAmr"
-                endif
-                octalCentre = subcellCentre(sourceOctal,subcell)
-                
-                !!! we will just choose a random point within the subcell.
-                !!! this *should* be done in a better way.
-                
-                call random_number(r1)
-                r1 = r1 - 0.5  ! shift value mean value to zero
-                r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
-                xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
-                
-                if (sourceOctal%threed) then
-                   call random_number(r2)
-                   r2 = r2 - 0.5                                  
-                   r2 = r2 * 0.9999                                          
-                   yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
-                else
-                   yOctal = 0.
-                endif
+                do ! dummy loop, in case we pick a position inside a star
+
+                  call random_number(randomDouble)
+                  ! we search through the tree to find the subcell that contains the
+                  !   probability value 'randomDouble'
+                  sourceOctal => grid%octreeRoot
+                  call locateContProbAMR(randomDouble,sourceOctal,subcell)
+                  if (.not.sourceOctal%inFlow(subcell)) then
+                    write(*,'(a)') "! Photon in cell that's not in flow. Screw-up in locatecontProbAmr"
+                  endif
+                  octalCentre = subcellCentre(sourceOctal,subcell)
+
+                  !!! we will just choose a random point within the subcell.
+                  !!! this *should* be done in a better way.
+
+                  call random_number(r1)
+                  r1 = r1 - 0.5  ! shift value mean value to zero
+                  r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
+                  xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+
+                  call random_number(r2)
+                  r2 = r2 - 0.5                                  
+                  r2 = r2 * 0.9999                                          
+                  yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
 
                 
                 call random_number(r3)
@@ -561,7 +569,15 @@ contains
                    thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
                 endif
 
+                  if (grid%geometry(1:7) == "ttauri" .or.  &
+                       grid%geometry(1:9) == "luc_cir3d") then
+                    ! need to check the position is not inside the star
+                    if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) exit
+                  else
+                    exit
+                  end if
 
+                end do 
 
                 !!! need to call an interpolation routine, rather than
                 !!!   use subcell central value
@@ -679,13 +695,34 @@ contains
                      
              elseif (grid%adaptive) then
                    
-                call random_number(randomDouble)
+                do ! dummy loop, in case we pick a position inside a star
+                  call random_number(randomDouble)
 
-                ! we search through the tree to find the subcell that contains the
-                !   probability value 'randomDouble'
-                sourceOctal => grid%octreeRoot
-                call locateContProbAMR(randomDouble,sourceOctal,subcell)
- 
+                  ! we search through the tree to find the subcell that contains the
+                  !   probability value 'randomDouble'
+                  sourceOctal => grid%octreeRoot
+                  call locateContProbAMR(randomDouble,sourceOctal,subcell)
+
+
+                  octalCentre = subcellCentre(sourceOctal,subcell)
+
+                  !!! we will just choose a random point within the subcell.
+                  !!! this *should* be done in a better way.
+
+                  call random_number(r1)
+                  r1 = r1 - 0.5  ! shift value mean value to zero
+                  r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
+                  xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+
+                  call random_number(r2)
+                  r2 = r2 - 0.5                                  
+                  r2 = r2 * 0.995                                           
+                  yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
+
+                  call random_number(r3)
+                  r3 = r3 - 0.5                                  
+                  r3 = r3 * 0.995                                           
+                  zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
 
                 octalCentre = subcellCentre(sourceOctal,subcell)
                 
@@ -720,6 +757,17 @@ contains
                    thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
                 endif
 
+                  thisPhoton%position = vector(xOctal,yOctal,zOctal)
+
+                  if (grid%geometry(1:7) == "ttauri" .or. &
+                       grid%geometry(1:9) == "luc_cir3d") then
+                    ! need to check the position is not inside the star
+                    if ((modulus(thisPhoton%position-s2o(grid%starPos1))) > grid%rStar1) exit
+                  else
+                    exit
+                  end if
+
+                end do 
 
                 !!! need to call an interpolation routine, rather than
                 !!!   use subcell central value
@@ -829,25 +877,39 @@ contains
                       !call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
                    endif
 
-                case("ttauri")
+                case("ttauri", "luc_cir3d")
 
-                   call random_number(r1)
-                   if (r1 < chanceHotRing) then
-                      call random_number(r1)
-                      thisTheta = r1*(theta2 - theta1)+theta1
-                      call random_number(r1)
-                      if (r1 < 0.5) thisTheta = pi - thisTheta
-                      call random_number(r1)
-                      thisPhi = twoPi * r1
-                      rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
-                      thisPhoton%position = r * rHat
-                   else
-                      thisPhoton%position = (r*randomUnitVector())
-                   endif
+!                   call random_number(r1)
+!                   if (r1 < chanceHotRing) then
+!                      call random_number(r1)
+!                      thisTheta = r1*(theta2 - theta1)+theta1
+!                      call random_number(r1)
+!                      if (r1 < 0.5) thisTheta = pi - thisTheta
+!                      call random_number(r1)
+!                      if (curtains) then 
+!                        ! if we have accretion curtains, we have to restrict the
+!                        ! emission region.
+!                        curtain1size = curtainsPhi1e - curtainsPhi1s
+!                        thisPhi =  r1 * (curtain1size+(curtainsPhi2e-curtainsPhi2s))    &
+!                                     + curtainsPhi1s
+!                        if (thisPhi > curtainsPhi1e) then
+!                          thisPhi = thisPhi + (curtainsPhi2s-curtainsPhi1e)
+!                        end if
+!                      else
+!                        thisPhi = twoPi * r1
+!                      end if
+!                      rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
+!                      thisPhoton%position = r * rHat
+!                   else
+!                      thisPhoton%position = (r*randomUnitVector())
+!                   endif
+
+                   call getPhotoVec(starSurface, thisPhoton%position, thisPhoton%direction)
 
                 case("jets")
-                   ! using a routine in rho_vel_temp_mod module
-                   r = get_jets_parameter("Rmin")
+                   ! emission from the surface
+!                   r = get_jets_parameter("Rmin")
+                   r = grid%rStar1
                    rHat = vector(x,y,z)
                    thisPhoton%position = r*randomUnitVector()
 
@@ -941,6 +1003,9 @@ contains
                 endif
 
 
+                tempSpectrum(1:nLambda) = tempSpectrum(1:nLambda) / totDouble
+
+                if (totDouble<=0.0) totDouble = 1.0e-28   ! for safty
                 tempSpectrum(1:nLambda) = tempSpectrum(1:nLambda) / totDouble
 
                 thisPhoton%stokes = thisPhoton%stokes * real(tempSpectrum(iLambda))
@@ -1162,7 +1227,8 @@ contains
 
        elseif (grid%adaptive) then
     
-
+          ok = .false.
+          
           if (secondSource) then
              thisPhoton%position = secondSourcePosition
              ok = .true.
@@ -1176,15 +1242,18 @@ contains
           ok = .false.
           if (.not. ok) then
 
-             call random_number(randomDouble)
 
              ! we search through the tree to find the subcell that contains the
              !   probability value 'randomDouble'
              sourceOctal => grid%octreeRoot
              call locateLineProbAMR(randomDouble,sourceOctal,subcell)
+            call random_number(randomDouble)
 
              octalCentre = subcellCentre(sourceOctal,subcell)
 
+            !!! need to call an interpolation routine, rather than
+            !!!   use subcell central value
+            biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
 
              !!! we will just choose a random point within the subcell.
              !!! this *should* be done in a better way.
@@ -1218,13 +1287,11 @@ contains
                 thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
              endif
 
+            !!! need to call an interpolation routine, rather than
+            !!!   use subcell central value
+            biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
 
-
-             !!! need to call an interpolation routine, rather than
-             !!!   use subcell central value
-             biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
-
-          end if
+          end if ! (.not. OK)
 
        else ! grid has polar coordinates
 
@@ -1314,10 +1381,33 @@ contains
        if (.not.thisPhoton%resonanceLine) then
                
           if (grid%adaptive) then
-             octalPoint = thisPhoton%position
-             thisPhoton%velocity = amrGridVelocity(grid%octreeRoot,octalPoint)!,&
-                                       !startOctal=sourceOctal,actualSubcell=subcell)
-!             write(*,*) thisphoton%velocity * cSpeed /1.e5
+             octalPoint = thisPhoton%position  
+             
+             !  Assiging the velocity at the emission location
+!             if (starkBroadening) then
+                CALL amrGridValues(grid%octreeRoot,octalPoint,  &
+                     velocity=velocity, temperature=temperature, &
+                     Ne=Ne, rho=rho)
+                ! Setting the velocity at the emission location + offset 
+                !  velocity (rVel) by the thermal motion of gas.
+                rVel = thermalHydrogenVelocity(temperature)  ! [C] (vector)
+                thisPhoton%velocity = velocity + rVel
+                
+                ! We shuffle the emission frequency acoording to the shape 
+                ! of the Voigt profile.
+                N_HI = MAX((rho/mHydrogen - Ne), 1.d-25) ! number density of HI.
+                nu = cSpeed_dbl/dble(lamline*angstromtocm)  ! [Hz]
+                Gamma = bigGamma(dble(N_HI), dble(temperature), dble(Ne), nu)
+                nu_shuffled = random_Lorentzian_frequency(nu, Gamma) ! [Hz]                
+                lambda_shuffled = (cSpeed_dbl/nu_shuffled)*1.e8  ! [A]
+                ! ==> This will be assigend to the photon later.
+!             else
+!                thisPhoton%velocity = amrGridVelocity(grid%octreeRoot,octalPoint)!,&
+!                !startOctal=sourceOctal,actualSubcell=subcell)
+!                rVel = ((gasdev()*20.e5)/cSpeed)*randomUnitVector()
+!                thisPhoton%velocity = thisPhoton%velocity + rVel
+!             end if
+             
           
           else
              thisPhoton%velocity = &
@@ -1344,24 +1434,23 @@ contains
 
        if (secondSource) thisPhoton%velocity = ramanSourceVelocity
 
-
+       ! Assigining the photon wavelength 
        if (.not.thisPhoton%resonanceLine) then
-          ilambda = int(real(nLambda)* &
-               (lamLine-lambda(1))/(lambda(nLambda)-lambda(1)))+1
-          thisPhoton%lambda = lamLine
+!          if (StarkBroadening) then 
+             ilambda = int(real(nLambda)* &
+                  (lambda_shuffled-lambda(1))/(lambda(nLambda)-lambda(1)))+1
+             thisPhoton%lambda = lambda_shuffled
+!          else
+!             ilambda = int(real(nLambda)* &
+!                  (lamLine-lambda(1))/(lambda(nLambda)-lambda(1)))+1             
+!             thisPhoton%lambda = lamLine
+!          end if
        endif
 
        thisPhoton%stokes = thisPhoton%stokes * weightLinePhoton
 
 
-
-    endif ! (thisPhoton%linePhoton) 
-
-
-    if (thisPhoton%linePhoton) then
-
        ! random direction
-
        thisPhoton%direction = randomUnitVector()
 
        if (grid%doRaman) then
@@ -1370,7 +1459,8 @@ contains
        endif
 
 
-    endif
+    endif ! (thisPhoton%linePhoton) 
+
 
 
     ! set up the two normals

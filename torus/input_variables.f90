@@ -3,8 +3,6 @@ module input_variables
   !   program by the inputs subroutine. they are all collected
   !   here so that they only need to be defined once.  nhs
 
-  use utils_mod
-
   use constants_mod
   use vector_mod
   use unix_mod
@@ -23,6 +21,7 @@ module input_variables
   character(len=80) :: distortionType
   integer :: nPhase
   integer :: nStartPhase, nEndPhase
+  real    :: phaseTime ! time of each phase of simulation (seconds)
 
   logical :: lineEmission
   logical :: resonanceLine
@@ -32,7 +31,13 @@ module input_variables
 
   ! variables to do with dust
 
-  character(len=80) :: grainType ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl
+  integer :: nInclination  ! number of inclinations
+  real :: firstInclination ! first inclination angle
+  real :: lastInclination  !
+
+  ! variables to do with dust
+  
+  character(len=80) :: grainType ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl  
   real :: grainSize
   logical :: mie
   real :: dusttogas
@@ -41,6 +46,8 @@ module input_variables
   integer :: nDustType
   logical :: forcedWavelength
   real :: usePhotonWavelength
+
+
 
 
   !
@@ -77,6 +84,11 @@ module input_variables
 
   integer :: npix    ! Number of pixels for polimages  
   character(LEN=30) :: filter_set_name  ! name of filter set used for images
+  ! if T, the dimension of the images will be in arcsec otherwise in phyiscal unit of length.
+  logical :: imageInArcsec  
+
+  logical :: forceRotate
+  logical :: forceNoRotate
 
   ! variables to do with dust
   !
@@ -157,6 +169,7 @@ module input_variables
   logical :: screened
   logical :: thinLine
   logical :: inputOK
+  logical :: StarkBroadening
 
 
   ! model parameters
@@ -167,7 +180,6 @@ module input_variables
   real :: shellFrac
   real :: Teff
   real :: radius, kfac, xfac
-  real :: inclination
   real :: contrast
   real :: rCore, rInner
   real :: rTorus, rOuter
@@ -180,6 +192,11 @@ module input_variables
   real :: beta
   real :: vterm
   real :: v0
+  logical :: useHartmannTemp ! use T Tauri accretion stream temperatures
+                             !   from Hartmann paper
+  real :: maxHartTemp        ! maximum temperature of hartmann distribution                             
+  logical :: isoTherm        ! use isothermal T Tauri accretion stream 
+  real    :: isoThermTemp    ! If isoTherm is true, use this temperature in [K]
 
 
   ! single dust blob parameters (WR137 type model)
@@ -240,6 +257,7 @@ module input_variables
   real :: radius1, radius2
   real :: mdot1, mdot2
   logical :: readPops, writePops
+  logical :: readPhasePops, writePhasePops
   logical :: readLucy, writeLucy
   real :: tThresh
   character(len=80) :: lucyFilename
@@ -251,19 +269,91 @@ module input_variables
   character(len=80) :: popFilename
   real :: deflectionAngle
   logical :: lte
+  logical :: LyContThick
   logical :: curtains, enhance
   real :: dipoleOffset
   logical :: twoD
 
-  ! adaptive mesh stuff 
+  ! T Tauri parameters ----------------------------------------------------
+  character(len=80) :: MdotType ! variable accretion rate model in use
+  real :: MdotParameter1, MdotParameter2, MdotParameter3, MdotParameter4
+  real :: MdotParameter5, MdotParameter6
+  real :: TTauriRinner, TTauriRouter ! disc sizes (in R_star units)
+  real :: TTauriRstar ! stellar radius (in R_sol units)
+  real :: TTauriMstar ! stellar mass   (in M_sol units)
+  real :: TTauriDiskHeight ! (in R_star units)
+  real :: curtainsPhi1s ! accretion curtains from (s)tart... 
+  real :: curtainsPhi1e ! ... to (e)nd angle
+  real :: curtainsPhi2s ! (all in degrees)
+  real :: curtainsPhi2e ! must be: phi1s<phi1e<phi2s<phi2e
+  ! The following two are used for constantcurtain geometry (RK)
+  integer :: curtain_number ! nuumber of curtains
+  real    :: curtain_width  ! Width of curtain in degrees.
+
+  ! suboption for ttauri geometry
+  logical ttau_disc_on       ! T to include disc
+  logical ttau_discwind_on   ! T to include disc wind.
+
+  !--------------------------------------------------------------------
+
+  !------ The disc wind parameters follows here -----------------------
+  real(double) :: DW_d           ![10^10cm] displacement of souce point from the center of star
+  real(double) :: DW_Rmin        ! the inner most radius of the disc [10^10cm]
+  real(double) :: DW_Rmax        ! outer limit of the disc [10^10cm]
+  !
+  ! Temperature : T(R)= Tmax*(R/Rmin)^gamma where R is the distance from the center
+  !               along the disc along the disc
+  real(double) :: DW_Tmax        ! [K] Temperature at the inner edge of the disc
+  real(double) :: DW_gamma       ! exponet in the temperature power low: 
+  !
+  ! mass loss rate per unit area (from the disc)
+  !                                       Mdot*R^delta
+  !     mdot_per_area =   ---------------------------------------------
+  !                         4Pi*(Rmax ^(delta+2) - Rmin^(delta+2))
+  ! where delta = 4*alpha*gamma
+  !
+  real(double) :: DW_Mdot        ! [Msun/yr] total mass-loss rate 
+  real(double) :: DW_alpha       ! [-] exponent in the mass-loss rate per unit area
+  !
+  ! modefied  beta-velocity low
+  !                                                  Rs
+  !  V(r) = Cs(R) + ( f*Vesc(R) - Cs(R) ) * ( 1 - ------- )^beta
+  !                                                s - Rs
+  ! 
+  !  Cs -- speed of sound
+  !  f  -- scaling of the asymptotic terminal velocity
+  !  Vesc(R) -- escape velocity from R.
+  !  s -- distance from the disc along a stream line. Note this l in the paper.
+  !  Rs -- constant effective accerelation length
+  real(double) :: DW_beta  ! [-]
+  real(double) :: DW_Rs    ! [10^10 cm]  usually 50 times of Rmin
+  real(double) :: DW_f     ! [-]  usually 2.0
+  !
+  ! temperature of the disc wind 
+  !  -- set to be isothermal for now.
+  real(double) :: DW_Twind     ! [Kelvin] Isothermal temperature of the wind
+  !
+  real(double) :: DW_Mstar ! [M_sun]  mass of the central object
+  !-----------------------------------------------------------------------------
+
+
+  ! For luc_cir3d geometry ------------------------------------------------------
+  real(double)    :: CIR_Rstar       ! radius of central star  [R_sun]
+  real(double)    :: CIR_Mass        ! [M_sun]  Mass of the star
+  real(double)    :: CIR_Twind       ! [K]  Isothemal temperature of the stellar wind
+  real(double)    :: CIR_Mdot_scale  ! [-]  Scaling factor for CIR density and Mdot
+  !---------------------------------------------------------------------------------
+
+
+
+  ! adaptive mesh stuff ---------------------------------------------------------
   logical :: gridUsesAMR    ! true if grid is adaptive
-  logical :: amr2d          ! a two-d AMR grid only
-  real(kind=doubleKind) :: limitScalar  ! value for controlling grid subdivision 
-  real(kind=doubleKind) :: limitScalar2 ! value for controlling grid subdivision 
+  real(double) :: limitScalar  ! value for controlling grid subdivision 
+  real(double) :: limitScalar2 ! value for controlling grid subdivision 
   real :: amrGridSize          ! length of each side of the (cubic) grid 
-  real(kind=doublekind) :: amrGridCentreX       ! x-coordinate of grid centre 
-  real(kind=doublekind) :: amrGridCentreY       ! y-coordinate of grid centre 
-  real(kind=doublekind) :: amrGridCentreZ       ! z-coordinate of grid centre 
+  real(double) :: amrGridCentreX       ! x-coordinate of grid centre 
+  real(double) :: amrGridCentreY       ! y-coordinate of grid centre 
+  real(double) :: amrGridCentreZ       ! z-coordinate of grid centre 
   logical :: doSmoothGrid   ! whether to correct large differences in the size
                             !   of adjacent grid cells
   logical :: doSmoothGridTau! smooth according to chris's algorithm
@@ -271,8 +361,14 @@ module input_variables
                             !   smoothing is applied 
   real :: sampleFreq        ! maximum number of samples made per subcell
   logical :: readFileFormatted  ! whether 'grid' input  file is formatted
-  logical :: writeFileFormatted ! whether 'grid' output file is formatted
-
+  logical :: writeFileFormatted ! whether 'grid' output file is formatte
+  logical :: statEq2d       ! whether statEq can be run in 2-D
+  logical :: noPhaseUpdate  ! disable updating AMR grid at each phase
+  logical :: amr2dOnly      ! only use cells in 2D plane through grid
+  logical :: amr2d      ! only use cells in 2D plane through grid
+  logical :: forceLineChange ! recalculate opacities for new transition 
+  logical :: statEq1stOctant ! T if do stateqAMR routine for the octals in first octant
+                             ! then later values are mapped to other octants.
 
   integer :: nPhotons
   integer :: maxScat
@@ -363,6 +459,15 @@ module input_variables
 
   real :: tauExtra   ! foreground optical depth
   real :: tauExtra2  ! foreground optical depth
+
+
+  !
+  ! Voigt profile prameters
+  !
+  real :: C_rad    ! Damping constant (radiation)     in [A]
+  real :: C_vdw    ! Damping constant (van der Waals) in [A]
+  real :: C_stark  ! Damping constant (Stark)         in [A]
+
   
 end module input_variables
 

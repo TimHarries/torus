@@ -35,6 +35,7 @@ program torus
   use stateq_mod
   use inputs_mod
   use TTauri_mod
+  use luc_cir3d_class
   use unix_mod
   use path_integral
   use puls_mod
@@ -52,11 +53,11 @@ program torus
   use isochrone_class
   use filter_set_class
   use cluster_utils
-  use disc_hydro_mod
-  use gaussian_mod
+  use surface_mod
+  use disc_class
+  use discwind_class
 
   implicit none
-
 
   integer, parameter :: nOuterLoop = 10
   integer :: iOuterLoop
@@ -65,26 +66,26 @@ program torus
   integer :: nSource
   type(SOURCETYPE), allocatable :: source(:)
   type(SOURCETYPE) a_star
-  real(kind=doubleKind) :: lCore
+  real(double) :: lCore
   real ::  weightDust=1.0, weightPhoto=1.0
-  
+  real :: inclination
+  integer :: iInclination  
 
-  real(kind=doubleKind) :: energyPerPhoton
-  real(kind=doubleKind) :: objectDistance
+  real(double) :: energyPerPhoton
+  real(double) :: objectDistance
 
   ! variables for the grid
 
-
   type(GRIDTYPE) :: grid
 
-  integer :: error
   integer :: iPhase
-  real(kind=doubleKind) :: totLineEmission
-  real(kind=doubleKind) :: totContinuumEmission
-  real(kind=doubleKind) :: totCoreContinuumEmission
-  real(kind=doubleKind) :: totCoreContinuumEmission1
-  real(kind=doubleKind) :: totCoreContinuumEmission2
-  real(kind=doubleKind) :: totWindContinuumEmission
+  real(double) :: totLineEmission
+  real(double) :: totContinuumEmission
+  real(double) :: totCoreContinuumEmission
+  real(double) :: cOrecontinuumflux
+  real(double) :: totCoreContinuumEmission1
+  real(double) :: totCoreContinuumEmission2
+  real(double) :: totWindContinuumEmission
   real :: probLinePhoton 
   real :: weightContPhoton, weightLinePhoton
   real :: chanceLine, chanceContinuum
@@ -94,10 +95,9 @@ program torus
   integer, parameter :: maxTau = 10000, maxLambda = 500
   integer :: nTau
   real, allocatable :: contTau(:,:)
-!  real :: contTau(maxTau,maxLambda)
 
 
-  real :: scaleFac, ang, z, dz
+  real :: scaleFac
 
 !  real :: tauExt(maxTau)
 !  real :: tauAbs(maxTau)
@@ -121,18 +121,18 @@ program torus
   real :: xMin, xMax
   integer, parameter :: nXmie = 20, nMuMie = 20
   type(PHASEMATRIX),allocatable :: miePhase(:, :)
-  real :: particleMass, abundance, expectedMass
+  real :: particleMass, abundance
 
   ! torus images
 
   type(IMAGETYPE) :: o6image(1)
-  type(octalvector) :: imageCentre
+
   type(IMAGETYPE), allocatable :: obsImageSet(:)
   integer           :: nImage  ! number of images in obsImageSet
   type(filter_set)  :: filters ! a set of filters used for imaging
   character(LEN=30) :: name_filter
-  real(kind=doublekind) :: bandwidth   ! Band width of a filter[A]
-  real(kind=doublekind) :: lambda_eff  ! Effective wavelength of a filter[A]
+  real(double) :: bandwidth   ! Band width of a filter[A]
+  real(double) :: lambda_eff  ! Effective wavelength of a filter[A]
 
   type(PVIMAGETYPE), allocatable :: pvimage(:)
   real :: imageSize
@@ -151,6 +151,7 @@ program torus
   real, allocatable :: sourceSpectrum(:)
   real, allocatable :: sourceSpectrum2(:)
 
+!  logical :: resonanceLine
 
 
   ! variables for clumped wind models
@@ -159,14 +160,16 @@ program torus
   integer, parameter :: maxBlobs = 10000
   integer :: nCurrent
     type(BLOBTYPE), allocatable :: blobs(:)
-  real, parameter :: blobTime = 40000.
-  real :: timeEnd = 20.*24.*60.*60.
+  real, parameter :: blobTime = 1000.
+  real :: timeEnd = 24.*60.*60.
   real :: timeStart = 0.
-  real :: dTime, thisTime
+  real :: dTime
 
   ! filenames
 
   character(len=80) :: filename, specFile
+  character(len=80) :: originalOutFile
+  character(len=80) :: phasePopFilename
 
   ! photons
 
@@ -188,7 +191,7 @@ program torus
 
   ! output arrays
 
-  integer :: iLambda, itestLam, iSmoothLam
+  integer :: iLambda
   type(STOKESVECTOR), allocatable :: yArray(:)
   type(STOKESVECTOR), allocatable :: errorArray(:,:)
   real, allocatable :: xArray(:), dx(:)
@@ -219,9 +222,11 @@ program torus
 
   real :: foreground = 0., background = 0.  ! plotting intensities
   real :: mu
-  real(kind=octalkind) :: t1, t2, t3
+  real(oct) :: t1, t2, t3
   real :: junk1
 
+
+  logical :: velocitySpace
 
   ! raman scattering model parameters
 
@@ -256,35 +261,41 @@ program torus
   real :: ramanWeight
   real :: thisVel
   real :: fac1, fac2, fac3
-  real :: vRay, vOverCsqr
+  real(double) :: vRay, vOverCsqr
   real :: directionalWeight
-  real :: weight
+  real :: obs_weight
   real :: r1, r2
-  real(kind=octalkind) :: t
+  real(oct) :: t
   integer :: i, j, k, n
   integer :: i1,i2,i3
   integer :: nTot  
   real :: observedLambda
   real :: thisLam
   real :: nu
-  real :: fac
-!  real(kind=doublekind) :: fac
+!  real :: fac
+  real(double) :: fac
+  real(double) :: tau_bnd
   real :: escProb
   logical :: contPhoton
   integer :: nContPhotons
   real :: phi
   real :: deltaLambda
   real :: rStar
+  character(len=80) :: tempChar
+  logical :: lineResAbs    ! T if you want to include absorption
+  !                        !   of line by line resonance zones.
+
 
   !
-  real(kind=doubleKind) :: totalMass
-  real(kind=doubleKind) :: T_ave   ! average temperature of cluster
-  real(kind=doubleKind) :: T_mass  ! mass weighted temperature
-  real(kind=doubleKind) :: tau_max, tau_min, tau_ave
+  real(double) :: totalMass
+  real(double) :: T_ave   ! average temperature of cluster
+  real(double) :: T_mass  ! mass weighted temperature
+  real(double) :: tau_max, tau_min, tau_ave
 
-  real(kind=doublekind) :: Laccretion
+  real(double) :: Laccretion
   real :: Taccretion, fAccretion, sAccretion
   real :: theta1, theta2, chanceHotRing
+  type(SURFACETYPE) :: starSurface
 
   ! Spot stuff
   
@@ -294,7 +305,7 @@ program torus
   real :: loglamStart, logLamEnd
 
   real :: chanceDust = 0.
-  real(kind=doublekind) :: totDustContinuumEmission, totEnvelopeEmission
+  real(double) :: totDustContinuumEmission, totEnvelopeEmission
 
   ! binary parameters
 
@@ -306,9 +317,7 @@ program torus
 
   type(OCTALVECTOR) :: amrGridCentre ! central coordinates of grid
   type(OCTALVECTOR) :: octVec
-  integer :: subcell, oldSubcell
-  type(OCTAL), pointer :: thisOctal, oldOctal
-  real :: meant, treal, meaneta, eta, kabs
+  real :: meant, treal, ang, meaneta, eta, kabs
   integer, parameter :: nrGrid = 1000
   real :: rGrid(nrGrid), drGrid(nrgrid),prGrid(nrGrid)
   integer :: nt
@@ -318,13 +327,26 @@ program torus
   logical :: gridConverged           ! true when adaptive grid structure has 
                                      !   been finalised
   integer :: intPathError            ! error code from integratePathAMR
-  character(len=80) :: newcontfile   ! get rid of this once the stateq is implemented?
   type(OCTALVECTOR) :: positionOc    ! photon position position
 !  type(octal),pointer :: octalLocation! octal located by search routine 
-  type(octal), pointer :: foundOctal
 !  integer           :: subcellLocation! subcell located by search routine
   integer           :: tooFewSamples ! number of errors from integratePathAMR
   integer           :: boundaryProbs ! number of errors from integratePathAMR
+  integer           :: negativeOpacity ! number of errors from integratePathAMR
+
+  real(double)           :: Ne         ! for testing
+  real,dimension(statEqMAxLevels) :: meanDepart ! for testing
+  real(double),dimension(statEqMAxLevels) :: levelPops  ! for testing
+  integer                         :: level      ! for testing
+  character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
+  real :: infallParticleMass         ! for T Tauri infall models
+  logical :: alreadyDoneInfall = .false. ! whether we have already done an infall calculation
+  type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
+  type(discwind)    :: ttauri_discwind   ! parameters for ttauri disc wind
+
+!  ! For luc_cir3d geometry case
+!  type(luc_cir3d) :: cir3d ! parameters and data for luc_cir3d geometry
+
 
   !
   ! SPH data of Matthew
@@ -346,19 +368,12 @@ program torus
   real    :: tmp
   type(octalvector) :: vec_offset
 
-  integer ::   iphase_beg, iphase_end  ! the beginning and the end of the phase index.
-
-! additional extinction stuff
   
-  logical :: additionalExtinction
-  real ::  testKappaAbs, testKappaSca, testKappaAbs2, testkappaSca2
-  real, allocatable :: foregroundKappaAbs(:), foregroundKappaSca(:)
-  real, allocatable :: foregroundKappaAbs2(:), foregroundKappaSca2(:)
+  integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
+!  integer ::   iphase_beg, iphase_end  ! the beginning and the end of the phase index.
 
 
 
-
-  
   !
   ! For time statistics
   call tune(6, "Torus Main") ! start a stopwatch  
@@ -367,6 +382,9 @@ program torus
 
   useNdf = .true.
   sed = .false.
+  jansky = .false.
+  SIsed = .false.
+  velocitySpace = .false.
   movie = .false.
   thinLine = .false.
   rotateView = .false.
@@ -377,8 +395,7 @@ program torus
   doRaman = .false.
   enhance = .false.
   rotateDirection = -1.
-
-  energyPerPhoton = 1. ! default
+  lineResAbs = .false.  
 
   contFluxFile = "none"
   intProFilename = "none"
@@ -394,8 +411,15 @@ program torus
 
   tooFewSamples = 0 
   boundaryProbs = 0 
+  negativeOpacity = 0 
+  lucyRadiativeEq = .false. ! this has to be initialized here
 
-  grid%densityScaleFac = 1.
+  ! for plot_AMR_value and plot_AMR_plane (initialization)
+  nmarker = 0;
+  ALLOCATE(xmarker(nmarker), ymarker(nmarker), zmarker(nmarker))
+  width_3rd_dim = amrGridSize
+
+
   ! hardwired stuff
 
   abundance = 1.e-8
@@ -413,15 +437,37 @@ program torus
 
   objectDistance = griddistance * pctocm
 
-!  secondSourcePosition = zeroVec
+
+  ! time elipsed since the beginning of the model
+  grid%timeNow = phaseTime * REAL(nStartPhase-1)
+  
 
   grid%resonanceLine = resonanceLine
 
+
+
+  
+  ! For plotting routines used later in this program
+  if (plane_for_plot == "x-y") then
+     val_3rd_dim = amrGridCentre%z
+  else if (plane_for_plot == "y-z") then
+     val_3rd_dim = amrGridCentre%x
+  else if (plane_for_plot == "z-x") then
+     val_3rd_dim = amrGridCentre%y
+  else if (plane_for_plot == "x-z") then
+     val_3rd_dim = amrGridCentre%y
+  else
+     val_3rd_dim = 0.0d0        
+  end if
+
+  !
   if (nLambda > maxLambda) then
      write(*,'(a,i3.3,a)') "nlambda is greater than the maximum value (",&
           maxLambda,")"
      stop
   endif
+
+  !
 
   if (geometry.eq."raman") then
      hotSourcePosition = 0.75*secondSourcePosition
@@ -439,15 +485,15 @@ program torus
   endif
 
   if (mie) then
-     meanDustParticleMass = getMeanMass2(amin, amax, a0, qDist, pdist, graintype)
+     meanDustParticleMass = getMeanMass2(amin, amax, a0, qDist, pdist)
      write(*,*) "mean dust particle mass: ",meanDustParticleMass
   endif
 
   probLinePhoton = 1. - probContPhoton
-  inclination = inclination*degToRad
+  inclination = firstInclination
   scale = scale * rSol
 
-  rStar = 100.*rSol / 1.e10
+  rStar = 100.*rSol
 
   ! if we are computing spiral models then we rotate the view
 
@@ -480,7 +526,9 @@ program torus
 
   if (geometry == "donati") rotateView = .true.
 
-  if ((geometry == "ttauri").and.(.not.enhance)) rotateView = .true.
+  if ((geometry == "ttauri")) rotateView = .true.
+
+  if ((geometry == "luc_cir3d")) rotateView = .true.
 
   if ((geometry(1:4) == "jets")) then
      rotateView = .true.
@@ -511,6 +559,7 @@ program torus
   if (lineEmission) then
      flatspec = .true.
      greyContinuum = .true.
+     velocitySpace = .true.
   endif
 
   if (geometry == "planet") then
@@ -523,7 +572,7 @@ program torus
      greyContinuum = .true.
   endif
      
-  if (geometry == "shakara") rotateView = .true.  
+  
 
   ! the observer's viewing direction
 
@@ -533,53 +582,68 @@ program torus
   call normalize(normToRotation)
 
   originalViewVec%x = 0.
-  originalViewVec%y = -sin(inclination)
-  originalViewVec%z = -cos(inclination)
+  originalViewVec%y = -sin(firstInclination)
+  originalViewVec%z = -cos(firstInclination)
   viewVec = originalViewVec
 
-
-  !
-  ! Special case
-  !
+  !=====================================================================
+  ! INIIALIZATIONS BEFORE CALLING INITAMR ROUTINE SHOUDL BE HERE
+  !=====================================================================
   if (geometry == "cluster") then
      ! read in the sph data from a file
      call read_sph_data(sphData, "sph.dat")
      call read_stellar_disc_data(sphData, "stellar_disc.dat")
+
      ! Writing basic info of this data
      call info(sphData, "*")
      call info(sphData, "info_sph.dat")
-     
      ! reading in the isochrone data needed to build an cluster object.
-     
      call new(isochrone_data, "dam98_0225")   
      call read_isochrone_data(isochrone_data)
-     
+
      ! making a cluster object
      call new(young_cluster, sphData, dble(amrGridSize), disc_on)
      call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
-     
+
      ! Wrting the stellar catalog readble for a human
      call write_catalog(young_cluster, sphData)
      ! Finding the inclinations of discs seen from +z directions...
      call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
-  end if
 
-  if (geometry == "wr104") then
+  elseif (geometry == "wr104") then
      if (.not.(readPops.or.readlucy)) then
         call readWR104Particles("harries_wr104.txt", sphData, objectDistance)
         call info(sphData,"*")
      endif
-  endif
 
-  
+  elseif (geometry == "ttauri") then
+     onekappa=.false.
+     if (ttau_disc_on)  &
+          call new(ttauri_disc, dble(TTauriRouter/1.0e10), 1.5d3*10.d0, &
+          dble(Msol/1000.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0)
+     if (ttau_discwind_on) &
+          call new(ttauri_discwind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
+          DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, &
+          dble(TTauriMstar/mSol),  dble(TTauriDiskHeight/1.0e10) )
+
+  elseif (geometry == "luc_cir3d") then
+     onekappa=.false.
+     !                    Rmin [10^10cm]         
+     call new(CIR_Rstar*Rsol*1.0e-10, CIR_Twind, CIR_Mdot_scale,  &
+     "zeus_rgrid.dat", "zeus_rho_vel.dat")     
+  end if
+  !==========================================================================
+  !==========================================================================
+
+
   ! allocate the grid - this might crash out through memory problems
 
   if (gridUsesAMR) then
      ! any AMR allocation stuff goes here
-     call initAMRGrid(Laccretion,Taccretion,sAccretion,greyContinuum, &
-                        newContFile,flatspec,grid,ok,theta1,theta2)
+     call initAMRGrid(greyContinuum, &
+                        newContFluxFile,flatspec,grid,ok,theta1,theta2)
         if (.not.ok) goto 666
-        
+
   else
      if (gridcoords /= "polar") then
         if ((.not.doRaman).and.(geometry /= "binary"))  then
@@ -635,68 +699,41 @@ program torus
 
   ! allocate the output arrays
 
-  if (lamfile) then
-     write(*,*) "Reading lambda array from file",trim(lamfilename)
-     open(30,file=lamfilename, form="formatted", status="old")
-     read(30, *) nLambda
-  endif
-
   allocate(xArray(1:nLambda))
   allocate(dx(1:nLambda))
   allocate(yArray(1:nLambda))
   allocate(errorArray(1:nOuterLoop,1:nLambda))
 
-  if (lamfile) then
-     do i = 1, nLambda
-        read(30,*) xArray(i)
+
+
+
+  if (lamLinear) then
+     deltaLambda = (lamEnd - lamStart) / real(nLambda)
+     
+     xArray(1) = lamStart + deltaLambda/2.
+     yArray(1)%i = 0.
+     yArray(1)%q = 0.
+     yArray(1)%u = 0.
+     yArray(1)%v = 0.
+     do i = 2, nLambda
+        xArray(i) = xArray(i-1) + deltaLambda
+        yArray(i)%i = 0.
+        yArray(i)%q = 0.
+        yArray(i)%u = 0.
+        yArray(i)%v = 0.
      enddo
-     close(30)
-     lamStart = xArray(1)
-     lamEnd = xArray(nLambda)
-  endif
+     dx = deltaLambda
+  else
 
 
+     logLamStart = log10(lamStart)
+     logLamEnd = log10(lamEnd)
 
-  if (.not.lamfile) then
-     if (lamLinear) then
-        deltaLambda = (lamEnd - lamStart) / real(nLambda)
-        
-        xArray(1) = lamStart + deltaLambda/2.
-        yArray(1)%i = 0.
-        yArray(1)%q = 0.
-        yArray(1)%u = 0.
-        yArray(1)%v = 0.
-        do i = 2, nLambda
-           xArray(i) = xArray(i-1) + deltaLambda
-           yArray(i)%i = 0.
-           yArray(i)%q = 0.
-           yArray(i)%u = 0.
-           yArray(i)%v = 0.
-        enddo
-        dx = deltaLambda
-     else
-
-
-        logLamStart = log10(lamStart)
-        logLamEnd = log10(lamEnd)
-        
-        do i = 1, nLambda
-           xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-           xArray(i) = 10.**xArray(i)
-           yArray(i) = STOKESVECTOR(0.,0.,0.,0.)
-        enddo
-     endif
-     if (mie) then
-        call locate(xArray, nLambda, lambdaTau, i)
-        t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
-        if (t1 > 0.5) then
-           write(*,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
-           xArray(i+1) = lambdaTau
-        else
-           write(*,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
-           xArray(i) = lambdaTau
-        endif
-     endif
+     do i = 1, nLambda
+        xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+        xArray(i) = 10.**xArray(i)
+        yArray(i) = STOKESVECTOR(0.,0.,0.,0.)
+     enddo
 
      dx(1) = xarray(2)-xarray(1)
      dx(nLambda) = xarray(nlambda)-xarray(nLambda-1)
@@ -705,10 +742,21 @@ program torus
      enddo
   endif
 
+  !
+  ! Copying the wavelength array to the grid
   do i = 1, nLambda
      grid%lamArray(i) = xArray(i)
   enddo
   grid%nLambda = nLambda
+
+  !
+  ! Setting the number of opacity (kappa) arrays in grid.
+  !
+  if (flatspec) then
+     grid%nopacity = 1
+  else
+     grid%nopacity = nLambda
+  end if
 
   
   errorArray(1:nOuterLoop,1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
@@ -718,69 +766,106 @@ program torus
      errorArray(1:nOuterLoop,1:nLambda)%i = 1.e-20
   endif
 
-! clumpy disc stuff
-  
-  if (geometry .eq. "clumpydisc") then
-     grid%ng = nclumps
-     allocate(grid%gArray(1:nClumps))
-     write(*,'(a)') "Creating disc gaussians..."
-     call createDiscGaussians(grid%ng, grid%gArray)
-  endif
-
-
-
   ! if the grid uses an adaptive mesh, create it
      
-
-  if (mie) then
-
-     if (.not.dustfile) then
-     write(*,*) "fill grid mie",nLambda,grid%nlambda
-     call fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
-          ngrain, X_grain, grainname)
-     else
-        do i = 1, nDustType
-           call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
-                grid%onekappaSca(i,1:grid%nLambda))
-        enddo
-     endif
-  endif
-  
-  write(*,'(a,f5.2)') "!!!! Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
-  do i = 1, nDustType
-     grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
-     grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
-  enddo
+  if (gridUsesAMR.and.mie) then 
+     call setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
+          ngrain, X_grain, grainname, lambdaTau)
+  end if
 
 
+  !===============================================================
+  if (gridUsesAMR) then  !========================================
+  !===============================================================
 
-!  if (gridUsesAMR.and.mie) then 
-!     call setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
-!          ngrain, X_grain, grainname, lambdaTau)
-!  end if
-  
-  call locate(grid%lamArray, nLambda,lambdaTau,itestlam)
-  call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-  write(*,*) "Test wavelength index: ",itestlam,ismoothlam
-
-  if (gridUsesAMR) then
      call tune(6, "AMR grid construction.")  ! start a stopwatch
-     if (readPops) then 
-        call readAMRgrid(popFilename,readFileFormatted,grid)
 
-     elseif (readLucy) then
-           write(*,*) " "
-           write(*,*) "Reading lucy radiative equilibrium data along with the AMR grid..."
-           call readAMRgrid(lucyFilenameIn,readFileFormatted,grid)
-           write(*,*) "done ..."
-           write(*,*) " "
-     else
+
+     if (readPops .or. readPhasePops) then 
+        if (readPhasePops) then ! need to get the right file for the phase
+          write(tempChar,'(i3.3)') nStartPhase
+          phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
+          call readAMRgrid(phasePopFilename,readFileFormatted,grid)
+        else ! just read the normal pops file
+          call readAMRgrid(popFilename,readFileFormatted,grid)
+        end if 
+        if (forceLineChange) then
+           write (*,'(A,I1,A,I1,A)') 'Recalculating for n =',nUpper,' /',nLower,'levels...'
+           call generateOpacitiesAMR(grid, nLower, nUpper)
+           print *, '...level change done.'
+        end if
+
+        ! for some geometries, it is valid to alter the 'dipoleOffset parameter
+        !   for a grid we've already created. 
+        if (geometry(1:6) == "ttauri") then 
+          if (ABS(grid%dipoleOffset/dipoleoffset-1.0) > 0.01) then 
+            write(*,'(a,f5.2,a)') 'Using new dipole offset value (',&
+                                     dipoleOffset*radToDeg,'deg)'
+            grid%dipoleOffset = dipoleOffset                         
+            grid%diskNormal = VECTOR(0.,0.,1.)
+            grid%diskNormal = rotateX(grid%diskNormal,grid%dipoleOffSet)
+            
+          end if
+        end if
+
+        ! In case, a user is using a new nlambda (number of wavelength bins)
+        ! we have to update the wavelength array in the grid.
+        ! This may not work for dust calculation...
+        ! Copying the wavelength array to the grid
+        if (grid%nlambda /= nlambda) then
+           if (mie) then              
+              write(*,*) "Error:: The number of the wavelength bins in the data file "
+              write(*,*) "        does not macth with that specifed in your parameter file."
+              write(*,*) "nlambda(old) = ", grid%nlambda
+              write(*,*) "nlambda(new) = ", nlambda
+              write(*,*) " "
+              write(*,*) "Make the new nlambda same as the old one, otherwise you cannot use"
+              write(*,*) "this data file. This should be changed in future...."
+              stop
+           else 
+              ! update the wavelength array.
+              do i = 1, nLambda
+                 grid%lamArray(i) = xArray(i)
+              enddo
+              grid%nLambda = nLambda
+           end if
+        end if
+
+
+        if (writePhasePops) then
+          write(tempChar,'(i3.3)') nStartPhase
+          phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
+          call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
+        else if (writePops) then
+          call writeAMRgrid(popFilename,writeFileFormatted,grid)
+        end if
+
+
+        ! Plotting the slices of planes
+        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+             "rho_grid.ps/vcps",.true., .true.,&
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
+             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
+             "Vx.ps/vcps", .false., .false.,  &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
+             "Vy.ps/vcps", .false., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
+             "Vz.ps/vcps", .false., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+
+
+     else  ! not reading a population file
+
         amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
         write(*,*) "Starting initial set up of adaptive grid..."
 
         select case (geometry)
         case("cluster")
-           call initFirstOctal(grid,amrGridCentre,amrGridSize, .false.,sphData, young_cluster, nDusttype=nDustType)
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData, young_cluster)
            write(*,*) "...initial adaptive grid configuration complete"
            call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
@@ -789,93 +874,20 @@ program torus
            call remove_too_close_cells(young_cluster,grid%octreeRoot,1.0d4)
 
         case("wr104")
-           call initFirstOctal(grid,amrGridCentre,amrGridSize, .false., sphData, nDustType=nDustType)
-           !
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData)
            write(*,*) "...initial adaptive grid configuration complete"
-!           do
-!              call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged, sphData)
-!              if (gridConverged) exit
-!           end do
-!           write(*,*) "...grid smoothing complete"
+
         case DEFAULT
-           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, nDusttype=nDustType)
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
-           if (geometry == "proto") then
-              allocate(lambda(1:maxTau))
-              allocate(tauExt(1:maxTau))
-              allocate(tauAbs(1:maxTau))
-              allocate(tauSca(1:maxTau))
-              allocate(contTau(1:maxTau,1:maxLambda))
-              allocate(contWeightArray(1:maxTau))
-              
-              if (grid%octreeRoot%threed) then
-                 call IntegratePathAMR(lambdaTau,  lamLine, OCTALVECTOR(1.,1.,1.),  &
-                      amrGridCentre,  &
-                      OCTALVECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
-                      tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
-                      lamStart, lamEnd, nLambda, Conttau, hitCore, thinLine, .false., &
-                      .false., nUpper, nLower, 0., 0., 0., junk,&
-                      sampleFreq,Error)
-              else
-                 call IntegratePathAMR(lambdaTau,  lamLine, OCTALVECTOR(1.,1.,1.),  &
-                      OCTALVECTOR(0.1,0.1,0.1),  &
-                      OCTALVECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
-                      tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
-                      lamStart, lamEnd, nLambda, Conttau, hitCore, thinLine, .false., &
-                      .false., nUpper, nLower, 0., 0., 0., junk,&
-                      sampleFreq,Error)
-              endif
-              if (error < 0) then
-                 write(*,*) '   Error encountered in cross-sections!!! (error = ',error,')'
-              end if
-              grid%densityscaleFac =  taurad/tauExt(ntau)
-              call scaleDensityAMR(grid%octreeRoot, grid%densityscaleFac)
-              call IntegratePathAMR(lambdaTau,  lamLine, OCTALVECTOR(1.,1.,1.),  &
-                   OCTALVECTOR(0.1,0.1,0.1),  &
-                   OCTALVECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
-                   tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
-                   lamStart, lamEnd, nLambda, Conttau, hitCore, thinLine, .false., &
-                   .false., nUpper, nLower, 0., 0., 0., junk,&
-                   sampleFreq,Error)
-              write(*,*) "Grid re-scaled..."
-              write(*,*) "Optical depth at characteristic lambda",tauExt(ntau)
-              call IntegratePathAMR(lambdaSmooth,  lamLine, OCTALVECTOR(1.,1.,1.),  &
-                   OCTALVECTOR(0.1,0.1,0.1),  &
-                   OCTALVECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
-                   tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
-                   lamStart, lamEnd, nLambda, Conttau, hitCore, thinLine, .false., &
-                   .false., nUpper, nLower, 0., 0., 0., junk,&
-                   sampleFreq,Error)
-              write(*,*) "Optical depth at smoothing lambda",tauExt(ntau)
-
-              deallocate(lambda)
-              deallocate(tauExt)
-              deallocate(tauAbs)
-              deallocate(tauSca)
-              deallocate(contTau)
-              deallocate(contWeightArray)
-           endif
-
-
-           if (geometry == "clumpydisc") then
-              write(*,*) "Scaling clumpy disc..."
-              totalmass = 0.
-              call findTotalMass(grid%octreeRoot, totalMass)
-              if (totalMass /= 0.) then
-                 grid%densityscaleFac =  mDisc/totalMass
-                 write(*,*) "Density scale factor",grid%densityScalefac
-              else
-                 grid%densityScaleFac = 1.
-              endif
-              call scaleDensityAMR(grid%octreeRoot, grid%densityscaleFac)
-              totalmass = 0.
-              call findTotalMass(grid%octreeRoot, totalMass)
-              write(*,*) "Total disc mass",totalmass/msol
-           endif
-
            write(*,*) "...initial adaptive grid configuration complete"
-
+           if (geometry=="ttauri" .and. ttau_discwind_on) then
+              write(*,*) " "
+              write(*,*) "Adding TTauri disc wind to magnetosphere model... "
+              call add_discwind(grid%octreeRoot, grid, ttauri_discwind, limitscalar2)
+              write(*,*) " "
+           end if
            if (doSmoothGrid) then
               write(*,*) "Smoothing adaptive grid structure..."
               gridConverged = .false.
@@ -885,31 +897,6 @@ program torus
               end do
               write(*,*) "...grid smoothing complete"
            end if
-           ! chris (26/05/04)
-           ! Smooth the grid with respect to optical depth, if requested
-           if (doSmoothGridTau) then
-              write(*,*) "Smoothing adaptive grid structure for optical depth..."
-              do j = iSmoothLam,iSmoothlam
-                 do
-                    gridConverged = .true.
-                    call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j)
-                    if (gridConverged) exit
-                 end do
-              enddo
-              write(*,*) "...grid smoothing complete"
-              ! The tau smoothing may result in large differences in the size
-              ! of neighbouring octals, so we smooth the grid again.
-              if (doSmoothGrid) then
-                write(*,*) "Smoothing adaptive grid structure (again)..."
-                gridConverged = .false.
-                do
-                   call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged)
-                   if (gridConverged) exit
-                end do
-                write(*,*) "...grid smoothing complete"
-              end if
-           end if
-
         end select
    
         nOctals = 0
@@ -926,111 +913,128 @@ program torus
            call finishGrid(grid%octreeRoot,grid,gridConverged)
            if (gridConverged) exit
         end do
-
-
-
-           if (geometry == "proto") then
-              allocate(lambda(1:maxTau))
-              allocate(tauExt(1:maxTau))
-              allocate(tauAbs(1:maxTau))
-              allocate(tauSca(1:maxTau))
-              allocate(contTau(1:maxTau,1:maxLambda))
-              allocate(contWeightArray(1:maxTau))
-              
-              if (grid%octreeRoot%threed) then
-                 call IntegratePathAMR(lambdaTau,  lamLine, OCTALVECTOR(1.,1.,1.),  &
-                      amrGridCentre,  &
-                      OCTALVECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
-                      tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
-                      lamStart, lamEnd, nLambda, Conttau, hitCore, thinLine, .false., &
-                      .false., nUpper, nLower, 0., 0., 0., junk,&
-                      sampleFreq,Error)
-              else
-                 call IntegratePathAMR(lambdaTau,  lamLine, OCTALVECTOR(1.,1.,1.),  &
-                      OCTALVECTOR(0.1,0.1,0.1),  &
-                      OCTALVECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
-                      tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
-                      lamStart, lamEnd, nLambda, Conttau, hitCore, thinLine, .false., &
-                      .false., nUpper, nLower, 0., 0., 0., junk,&
-                      sampleFreq,Error)
-              endif
-              if (error < 0) then
-                 write(*,*) '   Error encountered in cross-sections!!! (error = ',error,')'
-              end if
-              grid%densityscaleFac =  taurad/tauExt(ntau)
-              call scaleDensityAMR(grid%octreeRoot, grid%densityscaleFac)
-              call IntegratePathAMR(lambdaTau,  lamLine, OCTALVECTOR(1.,1.,1.),  &
-                   OCTALVECTOR(0.1,0.1,0.1),  &
-                   OCTALVECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
-                   tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
-                   lamStart, lamEnd, nLambda, Conttau, hitCore, thinLine, .false., &
-                   .false., nUpper, nLower, 0., 0., 0., junk,&
-                   sampleFreq,Error)
-              write(*,*) "Grid re-scaled..."
-              write(*,*) "Optical depth at characteristic lambda",tauExt(ntau)
-              call IntegratePathAMR(lambdaSmooth,  lamLine, OCTALVECTOR(1.,1.,1.),  &
-                   OCTALVECTOR(0.1,0.1,0.1),  &
-                   OCTALVECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
-                   tauSca, maxTau, nTau, opaqueCore, escProb, contPhoton , &
-                   lamStart, lamEnd, nLambda, Conttau, hitCore, thinLine, .false., &
-                   .false., nUpper, nLower, 0., 0., 0., junk,&
-                   sampleFreq,Error)
-              write(*,*) "Optical depth at smoothing lambda",tauExt(ntau)
-
-              deallocate(lambda)
-              deallocate(tauExt)
-              deallocate(tauAbs)
-              deallocate(tauSca)
-              deallocate(contTau)
-              deallocate(contWeightArray)
-           endif
-
-           if (geometry == "clumpydisc") then
-              write(*,*) "Re-scaling clumpy disc..."
-              totalmass = 0.
-              call findTotalMass(grid%octreeRoot, totalMass)
-              if (totalMass /= 0.) then
-                 grid%densityscaleFac =  mDisc/totalMass
-              else
-                 grid%densityScaleFac = 1.
-              endif
-              call scaleDensityAMR(grid%octreeRoot, grid%densityscaleFac)
-           call dumpSmoothedSurfaceDensity("surfacedens.dat", grid)
-           endif
-
-
         write(*,*) "...final adaptive grid configuration complete"
-        call tune(6, "AMR grid construction.") ! stop a stopwatch
 
-        if (writePops) call writeAMRgrid(popFilename,writeFileFormatted,grid)
+        call grid_info(grid, "*")
+        call grid_info(grid, "info_grid.dat")
 
 
-        if (gridUsesAMR .and. lineEmission) then
+        if (writePhasePops) then
+          write(tempChar,'(i3.3)') nStartPhase
+          phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
+          call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
+        else if (writePops) then
+          call writeAMRgrid(popFilename,writeFileFormatted,grid)
+        end if
+
+        ! Plotting the slices of planes
+        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+             "rho_grid.ps/vcps",.true., .true.,&
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
+             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
+             "Vx.ps/vcps", .false., .false.,  &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
+             "Vy.ps/vcps", .false., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
+             "Vz.ps/vcps", .false., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+
+
+!     ! plotting column density (new routine in grid_mod.f90)
+!     if (grid%geometry == "luc_cir3d") then 
+!        call plot_column_density(grid, plane_for_plot,  "column_density.ps/vcps", &
+!            nmarker, xmarker, ymarker, zmarker, &
+!            width_3rd_dim, show_value_3rd_dim,val_3rd_dim)
+!     end if
+
+
+
+
+        if (geometry == "ttauri" .or. geometry == "luc_cir3d") then
+           nu = cSpeed / (lamLine * angstromtocm)
+           call contread(contFluxFile, nu, coreContinuumFlux)
+           call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
+           if (geometry == "ttauri") then
+              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+           else
+              call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+           end if
+           call testSurface(starSurface)
+        endif
+
+        if (lineEmission) then
            !  calculate the statistical equilibrium (and hence the emissivities 
            !  and the opacities) for all of the subcells in an
            !  adaptive octal grid.
            !  Using a routine in stateq_mod module.
            write(*,*) "Calling statistical equilibrium routines..."
            call tune(6, "amrStateq") ! start a stopwatch  
-           if (grid%geometry=="ttauri") then
-              call amrStateq(grid, contfluxfile, lte, nLower, nUpper)
+           if (grid%geometry=="ttauri" .or.  &
+                grid%geometry(1:8)=="windtest" .or. grid%geometry(1:9)=="luc_cir3d") then
+              call amrStateq(grid, newContFluxFile,lte, nLower, nUpper, &
+                             starSurface, recalcPrevious=.false.)
+
+              ! the 'lte' setting is intended so that a model with infall
+              ! enhancement is first set up with LTE values. Only after we have 
+              ! done the first time-dependent change so we calculate non-LTE 
+              ! values.
+
+              
+              ! RK added the followings ------------------------------------------
+              !  adding alpha disc to the grid
+              if (ttau_disc_on) then
+                 write(*,*) "Adding an acreation disc ... "
+                 call add_alpha_disc(grid%octreeroot, grid, ttauri_disc)
+                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0)
+                 !
+                 allocate(lambda(1:maxTau),tauExt(1:maxTau),tauAbs(1:maxTau),tauSca(1:maxTau),&
+                          contTau(1:maxTau,1:nLambda))
+                 call integratePath(gridUsesAMR, starkBroadening, &
+                      lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(75.0,0,-50.), &
+                      OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
+                      tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
+                      lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
+                      .false., nUpper, nLower, 0., 0., 0., junk,&
+                      sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
+                 write(*,*) " ---- Scaling optical depth at r = 0.05 AU is ", tauExt(ntau)
+                 write(*,*) " ----                           at lambda =  ", lambdatau
+                 write(*,*) "Rescaling scattering and absorption coefficients ... "
+                 call finish_grid(grid%octreeroot, grid, ttauri_disc, tauExt(ntau)/10.0)
+                 call integratePath(gridUsesAMR, starkBroadening, &
+                      lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(75.0,0,-50.), &
+                      OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
+                      tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
+                      lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
+                      .false., nUpper, nLower, 0., 0., 0., junk,&
+                      sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
+                 write(*,*) " ---- New Optical depth  at r = 0.05 AU    is ", tauExt(ntau)
+                 write(*,*) " ----                           at lambda =  ", lambdatau
+                 deallocate(lambda,tauExt,tauAbs,tauSca,contTau)
+                 write(*,*) ".. Finished rescaling scattering and absorption coefficients ... "
+                 write(*,*) ".. Finished adding an acreation disc ... "
+              end if
+              !-------------------------------------------------------------------
+
            else
-              call amrStateq(grid, contfluxfile, lte, nLower, nUpper, ion_name, ion_frac)
-           end if
+
+              call amrStateq(grid, newContFluxFile, lte, nLower, nUpper, &
+                      starSurface, recalcPrevious=.false., ion_name=ion_name, ion_frac=ion_frac)
+              if (ttau_disc_on) then
+                 ! amrStateq will have messed up the disc, so we reset those cells
+                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0)
+              end if
+
+
+           end if ! (grid%geometry=="ttauri" .or. grid%geometry(1:8)=="windtest" .or. ...)
 
            call tune(6, "amrStateq") ! stop a stopwatch  
            write(*,*) "... statistical equilibrium routines complete"
-           if (writePops) call writeAMRgrid(popFilename,writeFileFormatted,grid)
-           call plot_AMR_values(grid, "etaCont", "x-z", 0.0,  &
-                "etacont.ps/vcps", .true., .false.)
-           call plot_AMR_values(grid, "etaLine", "x-z", 0.0,  &
-                "etaline.ps/vcps", .true., .false.)
-           call plot_AMR_values(grid, "chiLine", "x-z", 0.0,  &
-               "chiline.ps/vcps", .true., .false.)
-           call plot_AMR_values(grid, "temperature", "x-z", 0.0, &
-               "temperature.ps/vcps", .true., .false.)
 
-	endif
+        end if ! (lineEmission)
 
         !
         ! cleaning up unused memory here ....
@@ -1039,14 +1043,52 @@ program torus
            call kill(sphData)
            ! using the routine in amr_mod.f90
            call delete_particle_lists(grid%octreeRoot)
+
+        elseif (geometry == "luc_cir3d") then
+           call deallocate_zeus_data()
         end if
 
-     end if ! (readPops) 
+
+     end if ! (readPops .or. readPhasePops)
+
+             
+     ! writing pop files after statEq routines
+     if (writePhasePops) then
+        write(tempChar,'(i3.3)') nStartPhase
+        phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
+        call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
+     end if
+     if (writePops) then
+        call writeAMRgrid(popFilename,writeFileFormatted,grid)
+     end if
+
+   call tune(6, "AMR grid construction.") ! stop a stopwatch
 
 
+!     if (geometry == "ttauri".and.starkBroadening) then
+!        write(*,*) "Setting biases for stark broadening..."
+!        call setBiasChil(grid%octreeroot)
+!        write(*,*) "done..."
+!     endif
 
-  else ! grid is not adaptive
-           
+     if (geometry(1:6) == "ttauri") then
+        call writeHartmannValues(grid,'hartmann_logNH')
+        call writeHartmannValues(grid,'hartmann_logNe')
+        call writeHartmannValues(grid,'hartmann_temperature')
+        call writeHartmannValues(grid,'hartmann_velPol')
+        call writeHartmannValues(grid,'hartmann_velAz')
+        call writeHartmannValues(grid,'hartmann_line')
+        !call writeHartmannValues(grid,'hartmann_Nelectron')
+        call writeHartmannValues(grid,'hartmann_Nlevel2')
+        call writeHartmannValues(grid,'hartmann_NH')
+        !call writeHartmannValues(grid,'hartmann_departCoeff')
+        call writeHartmannValues(grid,'hartmann_N')
+     end if
+
+  !=================================================================
+  else ! grid is not adaptive ======================================     
+  !=================================================================
+
      ! fill up the grid with the appropriate opacities
  
      if (.not.plezModelOn) then
@@ -1097,7 +1139,7 @@ program torus
         case("ttauri")
            call fillGridMagneticAccretion(grid,contfluxfile, popFileName, &
               readPops, writePops, lte,  lamLine, Laccretion, Taccretion, sAccretion, &
-                   curtains, dipoleOffset, nLower, nUpper, theta1, theta2)
+              curtains, dipoleOffset, nLower, nUpper, theta1, theta2)
         case("ttwind")
            call fillGridTTauriWind(grid,contfluxfile, popFileName, &
                 readPops, writePops, lte, nLower, nUpper)
@@ -1115,14 +1157,13 @@ program torus
 
 
         case("puls")
-
-           call fillGridPuls(grid, mDot, rcore, tEff, v0, vterm, beta, xfac, blobs, maxblobs, .false., vContrast)
-
+           call fillGridPuls(grid, mDot, rcore, tEff, v0, vterm, beta, xfac, blobs, maxBlobs, .false., vContrast)
    !        call initGridStateq(grid, contFluxFile, contFluxFile2, popFilename, &
    !                            readPops, writePops, lte, nLower, nUpper)
         case("wind")
-           call fillGridWind(grid, mDot, rCore, tEff, v0, vterm, beta, &
-           lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper, vrot)
+!           call fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
+!           lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper)
+
         call initgridstateq(grid, contfluxFile, " ", popFileName, &
            readPops, writePops, lte, nLower, nUpper)
            grid%etaCont = 1.e-30
@@ -1130,8 +1171,7 @@ program torus
 
         
         case("resonance")
-!           call fillGridResonance(grid, rCore, mDot, vTerm, beta, temp1)
-!           grid%resonanceLine = .true.
+           call fillGridResonance(grid, rCore, mDot, vTerm, beta, temp1)
 
         case DEFAULT
            write(*,*) "! Unrecognised grid geometry: ",trim(geometry)
@@ -1174,27 +1214,21 @@ program torus
 
      end select
 
-
+  endif ! (grid%usesAMR)
   
-     if (enhance) then
-        nVec = 40
-        allocate(distortionVec(nVec))
-        timeStart = 0.
-        timeEnd = 12.*3600.
-        dTime = (timeEnd - timeStart)/real(nPhase)
-        call initInfallEnhancement(distortionVec, nVec)
-        do i = 1, nStartPhase-1
-           call infallEnhancment(grid, distortionVec, nVec, dTime, .false.)
-        enddo
-     endif
-
-  endif ! (gridusesAMR)
-
-
-
-        if (geometry == "shakara") then
-           call polardump(grid)
-        endif
+  if (enhance .and. .not. grid%adaptive) then
+     nVec = 100
+     nPhi = 360
+     allocate(distortionVec(nVec))
+     timeStart = 0.
+     timeEnd = 12.*3600.
+     dTime = (timeEnd - timeStart)/real(nPhase)
+     call initInfallEnhancement(distortionVec, nVec, nPhi, infallParticleMass)
+     do i = 1, nStartPhase-1
+        call infallEnhancment(grid, distortionVec, nVec, nPhi, dTime, &
+                              .false., infallParticleMass, alreadyDoneInfall)
+     enddo
+  endif
 
 
   if (geometry(1:7) .eq. "testamr") then
@@ -1251,30 +1285,53 @@ program torus
        endif
     Enddo
     close(21)
- endif
+  endif
 
- if (grid%geometry == "wr104") then
-    open(20,file="r.dat",status="unknown",form="formatted")
+  if (grid%geometry(1:8) == 'windtest') then
     do i = 1, 1000
-       r = real(i-1)/999. * amrGridSize/2.
+       r = log10(grid%rInner) + (log10(grid%rOuter)-log10(grid%rInner))* real(i-1)/999.
+       r = 10.**r
+       r1 = log10(grid%rInner) + (log10(grid%rOuter)-log10(grid%rInner))* real(i)/999.
+       r1 = 10.**r1
+       rGrid(i) = r
+       drGrid(i) = r1 - r
+    enddo
+    
+    open(21,file="rDepart.dat",status="unknown",form="formatted")
+
+    prGrid = 0.
+    do i = 1, 1000
+       meanDepart = 0.
        nt = 0
-       t1 = 0.
-       do j = 1, 1000
-          call random_number(ang)
-          ang = ang * twoPi
-          octVec = OCTALVECTOR(r*cos(ang), r*sin(ang), 0.)
-          call amrGridValues(grid%octreeRoot, octVec, temperature=treal)       
-          if (treal > 11.) then
-             t1 = t1  + treal
-             nt = nt + 1
-          endif
+       outVec = VECTOR(1., 0., 0.)
+       rVec = rGrid(i) * outVec 
+       r = rgrid(i)
+!       call integratePathAMR(10.e4,  lamLine, VECTOR(1.,1.,1.), &
+!            rVec, outVec, grid, lambda, &
+!            tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
+!            .false., lamStart, lamEnd, nLambda, contTau, &
+!            hitCore, thinLine,.false.,  &
+!            .false., nUpper, nLower, 0., 0., 0., junk,sampleFreq,intPathError)
+
+
+
+       do j = 1, 100
+          ang = twoPi * real(j-1)/100.
+          octVec = OCTALVECTOR(r*cos(ang), r*sin(ang),0.)
+          call amrGridValues(grid%octreeRoot, octVec, temperature=tReal, &
+              ilambda=1, N=levelPops, Ne=Ne)
+          t1 = dble(treal)
+          do level = 1, statEqMaxLevels, 1
+             meanDepart(level) = meanDepart(level) + real(levelPops(level))/boltzSaha(level,Ne,dble(treal))
+          end do
+          nt = nt + 1
        enddo
        if (nt > 0) then
-          write(20,*) r, t1/real(nt)
+          write(21,*) r/grid%rInner,meanDepart/real(nt)
        endif
-    enddo
-    close(20)
- endif
+    Enddo
+    close(21)
+  end if ! windtest
 
  
   ! Print the infomation on the grid to the standard ouput.
@@ -1283,23 +1340,10 @@ program torus
   call grid_info(grid, "info_grid.dat")
 
 
-  
-!  if (mie) then
-!
-!     if (.not.dustfile) then
-!     write(*,*) "fill grid mie",nLambda,grid%nlambda
-!     call fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
-!          ngrain, X_grain, grainname)
-!     else
-!        do i = 1, nDustType
-!           call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
-!                grid%onekappaSca(i,1:grid%nLambda))
-!        enddo
-!     endif
-!  endif
-
-  if (grid%adaptive.and.movie) then
-     call plotAMRthreeDMovie("/xs", "rotateZ", grid)
+  if (mie) then
+     write(*,*) "fill grid mie",nLambda,grid%nlambda
+     call fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
+          ngrain, X_grain, grainname)
   endif
 
 
@@ -1321,17 +1365,12 @@ program torus
      ! Do some preparation for the arrays used in plot_AMR_* which will be used later
      if (grid%geometry(1:7) == "cluster") then
         nmarker = get_nstar(young_cluster)
-        ALLOCATE(xmarker(nmarker), ymarker(nmarker), zmarker(nmarker))
         do i = 1, nmarker
            a_star = get_a_star(young_cluster, i)
            xmarker(i)= a_star%position%x
            ymarker(i)= a_star%position%y
            zmarker(i)= a_star%position%z
         end do
-        width_3rd_dim = amrGridSize
-     else
-        nmarker = 0;
-        ALLOCATE(xmarker(nmarker), ymarker(nmarker), zmarker(nmarker))
         width_3rd_dim = amrGridSize
      end if
 
@@ -1343,46 +1382,13 @@ program torus
      !
      ! See grid_mod.f90 for details.
      !
-     if (plane_for_plot == "x-y") then
-        val_3rd_dim = amrGridCentre%z
-     else if (plane_for_plot == "y-z") then
-        val_3rd_dim = amrGridCentre%x
-     else if (plane_for_plot == "z-x") then
-        val_3rd_dim = amrGridCentre%y
-     else if (plane_for_plot == "x-z") then
-        val_3rd_dim = amrGridCentre%y
-     else
-        val_3rd_dim = 0.0d0        
-     end if
-
-     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_grid.ps/vcps",.true., .true.,&
-              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_zoom.ps/vcps",.true., .true.,&
-              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.01)
-     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_lin.ps/vcps",.false., .true.,&
-              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     if (.not.lineEmission) then
-        call plot_AMR_values(grid, "tau", plane_for_plot, val_3rd_dim, &
-             "tau_grid.ps/vcps",.true., .false.,&
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, ilam=itestlam)
-        call plot_AMR_values(grid, "tau", plane_for_plot, val_3rd_dim, &
-             "tau_zoom.ps/vcps",.true., .false.,&
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, ilam=itestlam, boxFac=0.01)
-     endif
-     ! Plotting the slices of planes
-     call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-          nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
    
      ! Plotting some grid values
-     call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-          "etacont.ps/vcps", .true., .false.,  &
+     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+          "rho_grid.ps/vcps",.true., .true.,&
           nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
-          "temperature.ps/vcps", .true., .false., &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+     call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
+          nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
      call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
           "Vx.ps/vcps", .false., .false.,  &
           nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
@@ -1391,6 +1397,12 @@ program torus
           nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
      call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
           "Vz.ps/vcps", .false., .false., &
+          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+     call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
+          "etacont.ps/vcps", .true., .false.,  &
+          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+     call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
+          "temperature.ps/vcps", .true., .false., &
           nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
      if (lineEmission) then
         call plot_AMR_values(grid, "etaLine", plane_for_plot, val_3rd_dim,  &
@@ -1494,22 +1506,16 @@ program torus
       do i = 1, nLambda
          do j = 1, nMumie
             mu = 2.*real(j-1)/real(nMumie-1)-1.
-            if (.not.((geometry == "benchmark").or.(geometry == "shakara").or.(geometry == "proto"))) then
-               call mieDistPhaseMatrix(aMin, aMax, a0, qDist, pDist, xArray(i), &
-                    mu, miePhase(i,j), mReal(i), mImg(i))               
-            else
-               write(*,*) "! ISOTROPIC SCATTERING ENFORCED"
-               miePhase(i,j) = fillIsotropic(mu)
-            endif
+            call mieDistPhaseMatrix(aMin, aMax, a0, qDist, pDist, xArray(i), &
+                 mu, miePhase(i,j), mReal(i), mImg(i))               
+            !           miePhase(i,j) = fillRayleigh(mu)
          end do
       end do
 
 
      deallocate(mReal)
      deallocate(mImg)
-
      write(*,'(a)') "Completed."
-
 
 
   endif
@@ -1519,33 +1525,14 @@ program torus
   nSource = 0
 
   select case(geometry)
-    case("testamr","proto")
-       nSource = 1
-       allocate(source(1:1))
-       source(1)%luminosity = grid%lCore
-       source(1)%radius = grid%rCore
-       source(1)%teff = teff
-       source(1)%position = VECTOR(1.,0.,1.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
-       call normalizedSpectrum(source(1)%spectrum)
-    case("melvin")
-       nSource = 1
-       teff = 30000.
-       allocate(source(1:1))
-       source(1)%luminosity = fourPi * (10.*rsol)**2 * stefanBoltz * teff**4
-       source(1)%radius = 10.*rSol / 1.e10
-       source(1)%teff = teff
-       source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
-       call normalizedSpectrum(source(1)%spectrum)
-    case("benchmark")
+    case("testamr")
        nSource = 1
        allocate(source(1:1))
        source(1)%luminosity = grid%lCore
        source(1)%radius = grid%rCore
        source(1)%teff = teff
        source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd), nLambda)
+       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
        call normalizedSpectrum(source(1)%spectrum)
     case("wr104")
        nSource = 2
@@ -1554,7 +1541,7 @@ program torus
        source(1)%teff = 30000.  ! o star
        source(1)%radius = 20. * rSol / 1.e10
        source(1)%position = (VECTOR(0.,0.,1.)*autocm)/1.e10
-       source(1)%luminosity = fourPi * stefanBoltz * (20.*rSol)**2 * (source(1)%teff)**4
+       source(1)%luminosity = fourPi * stefanBoltz * (20.*rSol)**2.0 * (source(1)%teff)**4
        call readSpectrum(source(1)%spectrum, "ostar.flx")
        call normalizedSpectrum(source(1)%spectrum)
 
@@ -1586,53 +1573,6 @@ program torus
              source(j) = a_star
           end if
        end do
-       
-!    case("jets")
-!       !  This should be consistent with the contfile read 
-!       !  in amrStateq later! 
-!       nSource = 1
-!       allocate(source(1:1))
-!       source(1)%radius = get_jets_parameter("Rmin")
-!       source(1)%teff = teff   
-!       source(1)%position = VECTOR(0.,0.,0.)
-!       tmp = source(1)%radius * 10.e10  ! [cm]
-!       source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
-!       call fillSpectrumBB(source(1)%spectrum, dble(teff), &
-!            dble(lamStart), dble(lamEnd),nLambda)
-!       call normalizedSpectrum(source(1)%spectrum)
-
-    case("shakara","clumpydisc")
-       nSource = 1
-       allocate(source(1:1))
-       source(1)%radius = grid%rCore
-       source(1)%teff = teff   
-       source(1)%position = VECTOR(0.,0.,0.)
-       tmp = source(1)%radius * 1.e10  ! [cm]
-       source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
-       call fillSpectrumBB(source(1)%spectrum, dble(teff), &
-            dble(lamStart), dble(lamEnd),nLambda)
-
-
-!       call readSpectrum(source(1)%spectrum, "kurucz.dat")
-       call normalizedSpectrum(source(1)%spectrum)
-
-
-    case("aksco")
-       nSource = 2
-       allocate(source(1:2))
-       source(1)%radius = 1.6 * rSol / 1.e10
-       source(1)%teff = 6500.
-       source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2 * source(1)%teff**4
-       source(2) = source(1)
-       source(1)%position = VECTOR(0.15*autocm/1.e10,0.,0.)
-       source(2)%position = VECTOR(-0.15*autocm/1.e10,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff), &
-            dble(lamStart), dble(lamEnd),nLambda)
-       call normalizedSpectrum(source(1)%spectrum)
-       call fillSpectrumBB(source(2)%spectrum, dble(teff), &
-            dble(lamStart), dble(lamEnd),nLambda)
-       call normalizedSpectrum(source(2)%spectrum)
-
 
     case default
        ! Allocating the source array with size =0 to avoid, non-allocated array passed problem
@@ -1642,7 +1582,6 @@ program torus
        
   end select
 
-  
   
 
      if (geometry == "wr104") then
@@ -1673,29 +1612,15 @@ program torus
         ilambda = findIlambda(20000.0, xArray, nLambda, ok)
         call find_max_min_ave_tau(grid, ilambda, tau_max, tau_min,  tau_ave)
         write(*,*) " "
-        write(*,'(a,1pe12.4, a11)') "Max tau(1 micron) = ", tau_max, " [continuum]"
-        write(*,'(a,1pe12.4, a11)') "Min tau(1 micron) = ", tau_min, " [continuum]"
-        write(*,'(a,1pe12.4, a11)') "Ave tau(1 micron) = ", tau_ave, " [continuum]"
+        write(*,'(a,1pe12.4, a11)') "Max tau(1 micron) = ", tau_max, " [contiuum]"
+        write(*,'(a,1pe12.4, a11)') "Min tau(1 micron) = ", tau_min, " [contiuum]"
+        write(*,'(a,1pe12.4, a11)') "Ave tau(1 micron) = ", tau_ave, " [contiuum]"
         write(*,*) " "
      end if
 
 
 
-
-
-     if (mie) then
-        totalMass =0.d0
-        call findTotalMass(grid%octreeRoot, totalMass)
-        write(*,*) "Dust mass of envelope: ",totalMass/mSol, " solar masses"
-	if (geometry == "shakara") then
-        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*autocm) ! defined at 1AU
-        write(*,*) "Sigma0: ",sigma0
-	endif
-     endif
-
-
   if (lucyRadiativeEq) then
-
      call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
  
      if (grid%cartesian .or. grid%polar) then
@@ -1704,19 +1629,14 @@ program torus
         if (readLucy .and. .not. redoLucy) then
            continue
         else
-           if (solveVerticalHydro) then
-              call verticalHydrostatic(grid, mCore, sigma0, rInner, miePhase, nMuMie, nLambda, xArray, &
-                   source, nSource, nLucy, massEnvelope, tThresh, twod, mDisc)
-           else
-              call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod)
-           endif
+           call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, & 
+                nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled,twod)
         endif
         
         if (writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
 
      endif     
-
+     if (grid%geometry == "testamr") call setBiasAMR(grid%octreeRoot, grid)
      call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
 
@@ -1725,9 +1645,7 @@ program torus
         write (*,*) " "
         write (*,*) "Computing the magnitudes and colors of stars ..."
         ! -- note grid distance here is in [pc]
-         call tune(6, "Color") ! start a stopwatch
          call analyze_cluster(young_cluster,s2o(outVec),dble(gridDistance),grid)
-         call tune(6, "Color") ! stop a stopwatch
 
 
 
@@ -1749,6 +1667,18 @@ program torus
 
 
 
+     !
+     ! Setting the emission bias.
+     !
+     if (grid%geometry == "testamr") then
+        call setBiasAMR(grid%octreeRoot, grid)
+     elseif (grid%geometry == "cluster") then
+        ! Computing the emission bias based on the optical depth at
+        ! 2 microns. 
+        call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
+     end if
+
+
      ! Plotting the slices of planes
      if (plot_maps) then
        call plot_AMR_planes(grid, "temperature", plane_for_plot, 3, "temperature", &
@@ -1761,21 +1691,6 @@ program torus
 
   endif
   
-
-     !
-     ! Setting the emission bias.
-     !
-     if ((grid%geometry == "testamr").or.(geometry=="proto")) then
-	write(*,*) "Setting bias..."
-        call setBiasAMR(grid%octreeRoot, grid)
-     elseif (grid%geometry == "cluster") then
-        ! Computing the emission bias based on the optical depth at
-        ! 2 microns. 
-        call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
-!     elseif (grid%geometry == "shakara") then
-!        call setBiasDisc(grid%octreeRoot,grid)
-     end if
-
 
   
   ! initialize the blobs if required
@@ -1819,9 +1734,9 @@ program torus
           write(*,'(a)') "Running blobs and writing configuration files"
           do i = 1, nPhase
   
-             thisTime = timeStart + (timeEnd-timeStart)*real(i-1)/real(nPhase-1)
+             grid%timeNow = timeStart + (timeEnd-timeStart)*real(i-1)/real(nPhase-1)	    
              write(specFile,'(a,i3.3,a)') trim(outfile),i,".dat"
-             write(50,*) specFile(1:30),thisTime
+             write(50,*) specFile(1:30), grid%timeNow
   
              call addNewBlobs(grid, maxBlobs, blobs, blobTime, dTime, nCurrent, blobContrast)
              call moveBlobs(maxBlobs, blobs, 0., dTime, grid)
@@ -1834,13 +1749,13 @@ program torus
   
        endif
     endif
-!    call writeBlobPgp(originalViewVec, timeStart, timeEnd, nphase, maxBlobs)
 
 
   if (plotVelocity) then
      write(*,*) ' Plotting velocity vectors...'
-     call plotVelocityVectors(grid, device)
+     call plotVelocityVectors(grid, "1.gif/GIF")
   endif
+
 
 
 
@@ -1862,6 +1777,11 @@ program torus
      write(*,*) "rotation axis",rotationAxis
   endif
 
+  if (geometry == "luc_cir3d") then
+     rotationAxis = VECTOR(0.,0.,1.)
+     write(*,*) "rotation axis",rotationAxis
+  endif
+
   if (geometry == "donati") then
      rotationAxis = rotateX(rotationAxis, -dipoleOffset)
   endif
@@ -1880,7 +1800,7 @@ program torus
   normToRotation = rotationAxis .cross. yAxis
   call normalize(normToRotation)
 
-  tempVec  = arbitraryRotate(rotationAxis, inclination, normToRotation)
+  tempVec  = arbitraryRotate(rotationAxis, firstInclination, normToRotation)
   originalViewVec =  (-1.)*tempVec
 
 
@@ -1888,15 +1808,27 @@ program torus
      write(*,'(a)') "THERMAL ELECTRON BROADENING IS OFF!!!!!!!!!!!!!!!!!!!!!!!!!!"
   endif
 
-  ! default phase indecies
-  iphase_beg = nStartPhase
-  iphase_end = nEndPhase
 
+  
+  if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d") then
+    call emptySurface(starSurface)
+  end if
 
+!  ! default phase indecies
+!  iphase_beg = nStartPhase
+!  iphase_end = nEndPhase
 
+  if (forceRotate)   rotateView = .true.
+  if (forceNoRotate) rotateView = .false.
+  
 
-  do iPhase = iphase_beg, iphase_end
+! From here we do multiple runs if required !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  tiltView = .false.
+
+  phaseLoop: do iPhase = nStartPhase, nEndPhase
           
+     grid%timeNow = phaseTime * real(iPhase-1)
 
      call unixTimes(cpuTime, startTime)
 
@@ -1928,99 +1860,6 @@ program torus
         phi = -twoPi * real(iPhase-1)/real(nPhase-1)
         viewVec =  arbitraryRotate(thisVec, phi, xAxis)
         outVec = (-1.) * viewVec
-     endif
-
-
-
-     ! zero the output arrays
-
-     yArray(1)%i = 0.
-     yArray(1)%q = 0.
-     yArray(1)%u = 0.
-     yArray(1)%v = 0.
-     do i = 2, nLambda
-        yArray(i)%i = 0.
-        yArray(i)%q = 0.
-        yArray(i)%u = 0.
-        yArray(i)%v = 0.
-     enddo
-
-     if (doRaman) then
-        yArray(1:nLambda)%i = 1.e-20
-     endif
-     
-     if (stokesimage) then
-        
-        imageCentre = OCTALVECTOR(0.d0,0.d0,0.d0)
-        if (gridUsesAMR) imageCentre = grid%octreeRoot%centre
-
-        ! bulid a filter to be used for imaging
-        ! -- using a routine in filter_set_class
-        call make_filter_set(filters, filter_set_name)
-        
-        ! number of images = number of filters
-        nImage = get_nfilter(filters)
-
-        ! Allocate the image array
-        if (allocated(obsImageSet)) deallocate(obsImageSet)
-        allocate(obsImageSet(nImage))
-        
-        ! Initializing the images ...
-
-        if (setImageSize == 0.) then
-           if (grid%adaptive) then
-              if (amr2d) then
-                 imageSize = 2.*grid%octreeRoot%subcellSize
-              else
-                 imageSize = grid%octreeRoot%subcellSize          
-              endif
-           else if (grid%cartesian) then
-              imageSize = grid%xAxis(grid%nx)-grid%xAxis(1)
-           else
-              imagesize = 2.*grid%rAxis(grid%nr)
-           endif
-        else
-           imageSize = setImageSize / 1.e10
-        endif
-
-        do i = 1, nImage           
-           if (grid%cartesian) then     
-              obsImageSet(i) = initImage(npix, imageSize, vmin, vmax)
-              if (doRaman) then
-                 o6image(1) = initImage(npix, imageSize, vmin, vmax)
-              endif
-           else if (grid%adaptive) then
-              obsImageSet(i) = initImage(npix, imageSize, vmin, vmax)
-           else   
-              select case (geometry)
-              case("disk")
-                 obsImageSet(i) = initImage(npix, grid%rAxis(grid%nr), vMin, vMax)
-              case("flared")
-                 obsImageSet(i) = initImage(npix, 4.*grid%rAxis(1), vMin, vMax)
-              case DEFAULT
-                 obsImageSet(i) = initImage(npix, imageSize, vMin, vMax)
-              end select
-           endif
-        end do
-        
-     endif
-
-
-     if (dopvImage) then
-
-        if (nSlit  > 1) then
-           rHat = slitPosition2 - slitPosition1
-           do iSlit = 1, nSlit
-              slitPosition = slitPosition1 + (real(iSlit-1)/real(nSlit-1))*(slitPosition2 - slitPosition1)
-              pvImage(iSlit) = initPVimage(nv, vMin, vMax, np, -slitLength/2., slitLength/2., &
-                   slitPosition, slitPA, slitWidth, slitLength)
-           enddo
-        else
-           slitPosition = slitPosition1
-           pvImage(1) = initPVimage(200, vMin, vMax, 200, -slitLength/2., slitLength/2., &
-                slitPosition, slitPA, slitWidth, slitLength)
-        endif
-           
      endif
 
 
@@ -2068,13 +1907,6 @@ program torus
         case("hourglass")
 !           call fillGridHourglass(grid)
 
-        case("ttauri")
-           if (enhance) then
-              call fillGridMagneticAccretion(grid,contfluxfile, popFileName, &
-                   readPops, writePops, lte,  lamLine, Laccretion, Taccretion, sAccretion, &
-                   curtains, dipoleOffset, nLower, nUpper, theta1, theta2)
-              call infallEnhancment(grid, distortionVec, nVec, dTime, .true.)
-           endif
         !        call fillGridMagneticAccretion(grid)
         case("ttwind")
         
@@ -2083,23 +1915,16 @@ program torus
         case("donati")
 !           call fillGridDonati(grid, resonanceLine)
         case("puls")
-           if (nBlobs > 0) then
-              write(filename,"(a,i3.3,a)") "run",iPhase,".blob"
-              call readBlobs(filename, maxBlobs, blobs, .false.)
-              call fillGridPuls(grid, mDot, rCore, tEff, v0, vterm, beta, xfac, blobs, maxBlobs, .true., vContrast)
-        endif
-
-        case("wind")
-           if (nblobs > 0) then
-              call fillGridWind(grid, mDot, rCore, tEff, v0, vterm, beta, &
-                   lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper, vrot)
-              call initgridstateq(grid, contfluxFile, " ", popFileName, &
-                   readPops, writePops, lte, nLower, nUpper)
-
-              grid%etaCont = 1.e-30
-              grid%kappaAbs = 1.e-30
-              grid%kappaSca = 1.e-30
-           endif
+        !        call fillGridPuls(grid, mDot, rStar, tEff, v0, vterm, beta, xfac)
+           case("wind")
+           
+        case ("ttauri")
+            call fillGridMagneticAccretion(grid,contfluxfile, popFileName, &
+                     readPops, writePops, lte,  lamLine, Laccretion, Taccretion, sAccretion, &
+                     curtains, dipoleOffset, nLower, nUpper, theta1, theta2)
+                     
+!       call fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
+!       lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper)
 
         case("resonance")
 !           call fillGridResonance(grid, rCore, mDot, vTerm, beta, temp)
@@ -2110,15 +1935,65 @@ program torus
         case("cluster")
            ! do nothing
            continue
-
-        case("aksco")
-           continue
            
         case DEFAULT
            write(*,*) "! Unrecognised grid geometry: ",trim(geometry)
            goto 666
         end select
      endif
+
+
+     if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d") then      
+        ! Nu must be set again here since it is not assigned when the population/grid 
+        ! file is read from a file!  (RK changed here.)
+        nu = cSpeed / (lamLine * angstromtocm)
+        call contread(contFluxFile, nu, coreContinuumFlux)
+        call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
+        if (geometry == "ttauri") then
+           call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+        else
+           call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+        end if           
+        call testSurface(starSurface)
+
+       if (grid%adaptive) then
+         !call infallEnhancment(grid, distortionVec, nVec, nPhi, dTime, .true., &
+
+         !                    infallParticleMass, alreadyDoneInfall)
+          if (.not. noPhaseUpdate .and. iPhase /= nStartPhase) then
+             write(*,*) "Modifying grid for new phase"
+             call amrUpdateGrid(limitScalar,limitScalar2,grid) 
+             call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+             write(*,*) "Adaptive grid contains: ",nOctals," octals"
+             write(*,*) "                      : ",nVoxels," unique voxels"
+             grid%nOctals = nOctals
+
+
+             write(*,*) "Recalculating statistical equilibrium after changing grid" 
+             call amrStateq(grid, newContFluxFile, lte, nLower, nUpper,  &
+                   starSurface, recalcPrevious=.true.)
+             if (ttau_disc_on) then
+                ! amrStateq will have messed up the disc, so we reset those cells
+                call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0)
+             end if
+             if (writePhasePops) then
+                write(tempChar,'(i3.3)') iPhase
+                phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
+                call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
+             end if
+
+             
+          end if ! (.not. noPhaseUpdate .and. iPhase /= nStartPhase) 
+
+       else
+         call infallEnhancment(grid, distortionVec, nVec, nPhi, dTime, .true., &
+                             infallParticleMass, alreadyDoneInfall)
+      end if !(adaptive)
+
+    end if
+
+
+
 
      if (.not. gridUsesAMR) then
 
@@ -2166,12 +2041,6 @@ program torus
         call distortGridWithBlobs(grid, maxBlobs, blobs)
      endif
 
-!     if (geometry == "melvin") then
-!        write(*,*) "Bias centre volume..."
-!        call biasCentreVolume(grid%octreeRoot, imageSize)
-!        write(*,*) "done."
-!     endif
-
      
      
 
@@ -2193,30 +2062,9 @@ program torus
      allocate(tauExt(1:maxTau))
      allocate(tauAbs(1:maxTau))
      allocate(tauSca(1:maxTau))
-     allocate(contTau(1:maxTau,1:maxLambda))
-     allocate(contWeightArray(1:maxTau))
+     allocate(contTau(1:maxTau,1:nLambda))
+     allocate(contWeightArray(1:nLambda))
 
-
-
-     additionalExtinction = .false.
-
-     if ((tauExtra > 0.).or.(tauExtra2 > 0.)) then
-        additionalExtinction = .true.
-        allocate(foreGroundKappaAbs(1:nLambda))
-        allocate(foreGroundKappaSca(1:nLambda))
-        allocate(foreGroundKappaAbs2(1:nLambda))
-        allocate(foreGroundKappaSca2(1:nLambda))
-        call setKappa(foregroundKappaAbs, foregroundkappaSca, &
-             xArray, nLambda, 0.005, 0.25, 1., 3.5, 0.,  "amc_zb")
-        iLambda = findIlambda(lambdaTau, xArray,  nLambda, ok)
-        testKappaAbs = foregroundKappaAbs(ilambda)
-        testKappaSca = foregroundKappaSca(ilambda)
-        call setKappa(foregroundKappaAbs2, foregroundkappaSca2, &
-             xArray, nLambda, 0.005, 0.25, 1., 3.5, 0.,  "sil_dl")
-        iLambda = findIlambda(lambdaTau, xArray,  nLambda, ok)
-        testKappaAbs2 = foregroundKappaAbs2(ilambda)
-        testKappaSca2 = foregroundKappaSca2(ilambda)
-     endif
 
 
 
@@ -2232,29 +2080,26 @@ program torus
         call plotGrid(grid, viewVec,  opaqueCore, &
              filename, contTau, foreground, background, coolStarPosition, firstPlot)
      endif
-       
-
-     ! chuck out some useful information to the user
 
      write(*,*) " "
      write(*,'(a)') "Some basic model parameters"
      write(*,'(a)') "---------------------------"
      write(*,*) " "
-
-
+       
      !
      ! Performs various optical depth tests here...
      !
-     call test_optical_depth(gridUsesAMR, octalvector(1.d-6,1.d-6,1.d-6), sphericityTest,  &
+     call test_optical_depth(gridUsesAMR, starkBroadening, &
+          amrGridCentre, sphericityTest,  &
           outVec, lambdatau,  lambdatau, grid, opaqueCore, lamStart, lamEnd,  &
-          thinLine, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition)
+          thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition)
 
 
 
 
      weightLinePhoton = 0.
      weightContPhoton = 1.
-
+     weightPhoto = 1.
 
      if (mie) then
         call computeProbDist(grid, totLineEmission, &
@@ -2328,6 +2173,7 @@ program torus
            endif
         endif
 
+
 !        write(*,'(a)') "mu axis"
 !        do i = 1, grid%nMu
 !           write(*,*) i,acos(grid%muAxis(i))*radtodeg, &
@@ -2346,7 +2192,8 @@ program torus
 
         if (grid%resonanceLine) totWindContinuumEmission = 0.
 
-        if (geometry == "ttauri") then
+        !if (geometry == "ttauri" .or. geometry == "windtest") then
+        if (geometry == "windtest") then
            totWindContinuumEmission = 0.
            write(*,'(a)') "! Wind continuum emission switched off."
         endif
@@ -2356,8 +2203,7 @@ program torus
         endif
 
         nu = cSpeed / (lamLine * angstromtocm)
-        write(*,*) "Line emission: ",totLineEmission
-        print *, 'nu = ',nu
+        write(*,'(a,e12.3)') "Line emission: ",totLineEmission
 
         select case(geometry)
            case("binary")
@@ -2366,12 +2212,13 @@ program torus
            case("puls")
               totCoreContinuumEmission = pi * blackBody(0.77 * tEff, lamLine)
            case DEFAULT
-              call contread(contFluxFile, nu, totCoreContinuumEmission)
+              call contread(contFluxFile, nu, coreContinuumFlux)
+              totCoreContinuumEmission = coreContinuumFlux
         end select
 
 
         ! reads the intrinsic core absorption profile for core-halo models
-
+        ! Note: The profile should be normaised (to contiuum) and the x axis shoudl be in Angstrome.
 
         if (trim(intProFilename) /= "none") then
            call rdIntPro(intProFilename, intPro, lamIntPro, nIntPro)
@@ -2418,7 +2265,11 @@ program torus
 
         totWindContinuumEmission = totWindContinuumEmission * (nuStart - nuEnd)
 
-        write(*,*) "Wind cont emission: ",totWindContinuumEmission
+!       !RK=============================================================RK
+!       !RK For debugging only.  Should be removed later.
+!       totWindContinuumEmission = 1.0d3
+!       !RK=============================================================RK      
+        write(*,'(a,e12.3)') "Wind cont emission: ",totWindContinuumEmission
 
 
 ! factor of four pi taken out from below - input continuum files are expected
@@ -2426,30 +2277,36 @@ program torus
 
         if (geometry /= "binary") then
            totCoreContinuumEmission = (totCoreContinuumEmission * &
-                (nuStart - nuEnd))*fourPi*grid%rCore**2 
+                (nuStart - nuEnd))*fourPi*grid%rCore**2
         else
            totCoreContinuumEmission1 = totCoreContinuumEmission1 * (nuStart-nuEnd) * fourPi * grid%rStar1**2
            totCoreContinuumEmission2 = totCoreContinuumEmission2 * (nuStart-nuEnd) * fourPi * grid%rStar2**2
            totCoreContinuumEmission = totCoreContinuumEmission1 + totCoreContinuumEmission2
            grid%lumRatio = totCoreContinuumEmission1 / totCoreContinuumEmission
 
-           allocate(lambda(1:maxTau))
-           allocate(tauExt(1:maxTau))
-           allocate(tauAbs(1:maxTau))
-           allocate(tauSca(1:maxTau))
-           allocate(contTau(1:maxTau,1:maxLambda))
-           allocate(contWeightArray(1:maxTau))
-
            write(*,*) "Binary luminosity ratio (p/s): ",totCoreContinuumEmission1/totCoreContinuumEmission2
         endif
            
         if (geometry == "ttauri") then
-              fAccretion =  blackBody(Taccretion, lamLine)*(nuStart-nuEnd)*sAccretion/1.e20
-              write(*,*) "laccretion/core",fAccretion/totCoreContinuumEmission
-              totCoreContinuumEmission = totCoreContinuumEmission + &
-                   fAccretion
-              chanceHotRing = fAccretion/totCoreContinuumEmission
+           write (*,'(a,e12.3)') 'T Tauri star: continuum emission: ',totCoreContinuumEmission
+           fAccretion = fAccretion * (nuStart-nuEnd)
+           write (*,'(a,e12.3)') 'T Tauri accretion: continuum emission: ',fAccretion
+           write (*,'(a,f12.3)') 'Accretion continuum / stellar continuum: ',fAccretion/totCoreContinuumEmission
+           totCoreContinuumEmission = totCoreContinuumEmission + fAccretion
+           write (*,'(a,e12.3)') 'T Tauri total continuum emission: ',totCoreContinuumEmission
+           ! chanceHotRing = fAccretion/totCoreContinuumEmission ! no longer used
         endif
+
+        if (geometry == "luc_cir3d") then
+           write (*,'(a,e12.3)') 'Star: continuum emission: ',totCoreContinuumEmission
+           fAccretion = fAccretion * (nuStart-nuEnd)
+           write (*,'(a,e12.3)') 'Accretion: continuum emission: ',fAccretion
+           write (*,'(a,f12.3)') 'Accretion continuum / stellar continuum: ',fAccretion/totCoreContinuumEmission
+           totCoreContinuumEmission = totCoreContinuumEmission + fAccretion
+           write (*,'(a,e12.3)') 'Total continuum emission: ',totCoreContinuumEmission
+        endif
+
+
         
         chanceSpot = 0.
         if ((geometry == "disk").and.(nSpot > 0)) then
@@ -2461,12 +2318,19 @@ program torus
 
 
 
-        write(*,*) "Core Continuum Emission: ",totCorecontinuumEmission
+
+        write(*,'(a,e12.3)') "Core Continuum Emission: ",totCorecontinuumEmission
 
 
         totContinuumEmission = totCoreContinuumEmission + totWindContinuumEmission
 
-        write(*,*) "Continuum emission: ", totContinuumEmission
+        write(*,'(a,e12.3)') "Continuum emission: ", totContinuumEmission
+
+!       !RK=============================================================RK
+!       !RK For debugging only.  Should be removed later.
+!       totLineEmission = totCoreContinuumEmission
+!       write(*,*) "Corrected Line emission: ",totLineEmission
+!       !RK=============================================================RK      
 
         if ((totContinuumEmission + totLineEmission) /= 0.) then
            chanceLine = totLineEmission/(totContinuumEmission + totLineEmission)
@@ -2481,7 +2345,8 @@ program torus
         endif
 
 
-        write(*,*) "Chance continuum emission in wind: ", grid%chanceWindOverTotalContinuum
+
+        write(*,'(a,e12.3)') "Chance continuum emission in wind: ", grid%chanceWindOverTotalContinuum
 
         ! set up the line and continuum weights
 
@@ -2500,19 +2365,17 @@ program torus
         endif
 
 
-        energyPerPhoton =  (totLineEmission + totContinuumEmission) / dble(nPhotons)
-
-        energyperphoton = 1.
-
-        write(*,*) "Energy per photon: ", energyPerPhoton
-
-
         write(*,*) "Line photon weight: ", weightLinePhoton
         write(*,*) "Continuum photon weight: ", weightContPhoton
 
         write(*,*) " "
         write(*,*) "Line photon prob: ", probLinePhoton
         write(*,*) "Continuum photon prob: ", probContPhoton
+
+
+        energyPerPhoton =  (totLineEmission + totContinuumEmission) / dble(nPhotons)
+
+        write(*,*) "Energy per photon: ", energyPerPhoton
 
 
         write(*,*) "chance line",chanceline
@@ -2535,13 +2398,156 @@ program torus
 
      nContPhotons = nint(probContPhoton * real(nPhotons) / real(nOuterLoop))
 
+     !
+     ! here we may loop over different inclinations
+     !
+     
+  incLoop: do iInclination = 1, nInclination, 1 
+       ! NB This loop is not indented in the code!
+     
+     if (nInclination > 1) then  
 
+       inclination = firstInclination + REAL(iInclination-1) * &
+                       (lastInclination-firstInclination)/REAL(nInclination-1)
+       write(*,*) " "
+       write(*,*) "Inclination = ",NINT(inclination*radToDeg),' degrees'
+       write(*,*) " "
+
+       if (iPhase == nStartPhase .and. iInclination == 1) originalOutFile = outFile
+         
+       write(tempChar,'(i3.3)') NINT(inclination*radToDeg)
+       outFile = trim(originalOutFile)//'_inc'//TRIM(tempChar)
+       
+       viewVec%x = 0.
+       viewVec%y = -sin(inclination)
+       viewVec%z = -cos(inclination)
+       outVec = (-1.)*viewVec
+       thisVec = viewVec
+
+       if (rotateView.and.(nPhase /= 1)) then
+         write(*,'(a)') "Rotating view..."
+         phi = -rotateDirection * twoPi * real(iPhase-1)/real(nPhase-1)
+         viewVec =  arbitraryRotate(thisVec, phi, rotationAxis)
+         outVec = (-1.) * viewVec
+         write(*,'(a,f5.2,a,f5.2,a,f5.2,a)') "View vector: (",viewVec%x,",", &
+         viewVec%y,",",viewVec%z,")"
+       endif
+
+       if (phaseOffset /= 0.) then
+         write(*,'(a,f5.2)') "Rotating by phase offset: ",phaseOffset
+         phi = twoPi * phaseOffset
+         viewVec =  arbitraryRotate(viewVec, phi, rotationAxis)
+         outVec = (-1.) * viewVec
+       endif
+
+       if (tiltView.and.(nPhase /= 1)) then
+         phi = -twoPi * real(iPhase-1)/real(nPhase-1)
+         viewVec =  arbitraryRotate(thisVec, phi, xAxis)
+         outVec = (-1.) * viewVec
+       endif
+
+     end if
+
+          ! zero the output arrays
+
+     yArray(1)%i = 0.
+     yArray(1)%q = 0.
+     yArray(1)%u = 0.
+     yArray(1)%v = 0.
+     do i = 2, nLambda
+        yArray(i)%i = 0.
+        yArray(i)%q = 0.
+        yArray(i)%u = 0.
+        yArray(i)%v = 0.
+     enddo
+
+     if (doRaman) then
+        yArray(1:nLambda)%i = 1.e-20
+     endif
+     
+     if (stokesimage) then
+        
+        ! bulid a filter to be used for imaging
+        ! -- using a routine in filter_set_class
+        call make_filter_set(filters, filter_set_name)
+
+        ! write filter info to standard output and to a file
+        call info_filter_set(filters, "*") 
+        call info_filter_set(filters, "info_filter_set.dat")
+                
+        ! number of images = number of filters
+        nImage = get_nfilter(filters)
+
+        ! Allocate the image array
+        if (allocated(obsImageSet)) deallocate(obsImageSet)
+        allocate(obsImageSet(nImage))
+        
+
+        ! Initializing the images ...
+
+        if (setImageSize == 0.) then
+           if (grid%adaptive) then
+              if (amr2d) then
+                 imageSize = 2.*grid%octreeRoot%subcellSize
+              else
+                 imageSize = grid%octreeRoot%subcellSize          
+              endif
+           else if (grid%cartesian) then
+              imageSize = grid%xAxis(grid%nx)-grid%xAxis(1)
+           else
+              imagesize = 2.*grid%rAxis(grid%nr)
+           endif
+        else
+           imageSize = setImageSize / 1.e10
+        endif
+
+
+        ! Initializing the images ...
+        do i = 1, nImage           
+           if (grid%cartesian) then
+              obsImageSet(i) = initImage(npix, imageSize, vmin, vmax)
+              if (doRaman) then
+                 o6image(1) = initImage(npix, imageSize, vmin, vmax)
+              endif
+           else if (grid%adaptive) then
+              obsImageSet(i) = initImage(npix, imageSize, vmin, vmax)
+           else   
+              select case (geometry)
+              case("disk")
+                 obsImageSet(i) = initImage(npix, grid%rAxis(grid%nr), vMin, vMax)
+              case("flared")
+                 obsImageSet(i) = initImage(npix, 4.*grid%rAxis(1), vMin, vMax)
+              case DEFAULT
+                 obsImageSet(i) = initImage(npix, min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), vMin, vMax)
+              end select
+           endif
+        end do
+        
+     endif
+
+
+     if (dopvImage) then
+
+        if (nSlit  > 1) then
+           rHat = slitPosition2 - slitPosition1
+           do iSlit = 1, nSlit
+              slitPosition = slitPosition1 + (real(iSlit-1)/real(nSlit-1))*(slitPosition2 - slitPosition1)
+              pvImage(iSlit) = initPVimage(nv, vMin, vMax, np, -slitLength/2., slitLength/2., &
+                   slitPosition, slitPA, slitWidth, slitLength)
+           enddo
+        else
+           slitPosition = slitPosition1
+           pvImage(1) = initPVimage(200, vMin, vMax, 200, -slitLength/2., slitLength/2., &
+                slitPosition, slitPA, slitWidth, slitLength)
+        endif
+           
+     endif
 
      write(*,*) " "
      write(*,'(a)') "Run-time messages"
      write(*,'(a)') "-----------------"
      write(*,*) " "
-
+     
 
      tot%i = 0.
      tot%q = 0.
@@ -2574,7 +2580,7 @@ program torus
                 chanceHotRing, &
                 nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto,&
                 narrowBandImage, vmin, vmax, source, nSource, rHatinStar, energyPerPhoton, filters, mie, &
-                forcedWavelength, usePhotonWavelength)
+                curtains, starSurface, forcedWavelength, usePhotonWavelength)
            if (thisPhoton%linePhoton) then
               junk1 = junk1 + thisPhoton%position%z
               rHat = rHat + thisPhoton%velocity
@@ -2583,20 +2589,19 @@ program torus
            if (.not. gridUsesAMR) call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
         enddo
         write(*,*) "Average z position",junk1/real(n)
-        write(*,*) "Average velocity",((cSpeed/1.d5)*(1.d0/dble(n)))*rHat
+        write(*,*) "Average velocity",((cSpeed/1.e5)*(1./real(n)))*o2s(rHat)
      endif
+
 
      call tune(6, "All Photon Loops")  ! Start a stopwatch
      
-     do iOuterLoop = 1, nOuterLoop
-
-        call tune(6, "One Outer Phone Loop") ! Start a stop watch
+     outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(i, contPhoton, contWindPhoton, r, nScat) &
 !$OMP PRIVATE(thisPhoton, directionalWeight) &
 !$OMP PRIVATE( ilambda, sourceSpectrum, ok) &
-!$OMP PRIVATE(hitCore, junk, thisLam, j, weight, thisVel) &
+!$OMP PRIVATE(hitCore, junk, thisLam, j, obs_weight, thisVel) &
 !$OMP PRIVATE(i1, i2, i3, t1, t2, t3, vray, vovercsqr, fac, observedLambda) &
 !$OMP PRIVATE(t, rHat, islit, fac1, fac2, fac3, obsPhoton, r1, r2, thisTau) &
 !$OMP PRIVATE(escaped, currentScat, absorbed, dlambda, thisChi, thisSca) &
@@ -2623,21 +2628,30 @@ program torus
 !$OMP SHARED(narrowBandImage, vMin, vMax, gridUsesAMR) &
 !$OMP SHARED(sampleFreq, useInterp, photLine,tooFewSamples,boundaryProbs) &
 !$OMP SHARED(probDust, WeightDust, WeightPhoto, source, nsource) &
-!$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImage)
+!$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImage) &
+!$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
+!$OMP SHARED(curtains, starSurface, StarkBroadening)
+
+
+
+        call tune(6, "One Outer Photon Loop") ! Start a stop watch
+
+        ! default inner loop indices
+        iInner_beg = 1
+        iInner_end = nPhotons/nOuterLoop
+
 
 
 !$OMP DO SCHEDULE(DYNAMIC)
-        innerPhotonLoop: do i = 1, nPhotons/nOuterLoop
+        innerPhotonLoop: do i = iInner_beg, iInner_end
+           ! The following six arrays must be allocated and deallocated for each 
+           ! innerPhotonLoop to make the program work with OpenMP! (RK)
            allocate(lambda(1:maxTau))
            allocate(tauExt(1:maxTau))
            allocate(tauAbs(1:maxTau))
            allocate(tauSca(1:maxTau))
-           allocate(contTau(1:maxTau,1:maxLambda))
-           allocate(contWeightArray(1:maxTau))
-           ! initlialize them to zero for safty
-!           lambda(:) = 0.0; tauExt(:)=0.0; tauAbs(:)=0.0
-!           tauSca(:) = 0.0; contTau(:,:) =0.0; contWeightArray(:) =0.0
-
+           allocate(contTau(1:maxTau,1:nLambda)) 
+           allocate(contWeightArray(1:nLambda))
 
 
            ! continuum or line photon?
@@ -2647,7 +2661,6 @@ program torus
            else
               contPhoton = .false.
            endif
-
            contWindPhoton = .false.
 
            ! there is a chance that this continuum photon is produced in the wind rather
@@ -2664,7 +2677,7 @@ program torus
 
            ! initialize the photon
            
-           contWeightArray(1:maxLambda) = 1.
+           contWeightArray = 1.
 
            select case(grid%geometry)
               case("planet")
@@ -2679,14 +2692,15 @@ program torus
                       ramanSourceVelocity, vo6, contWindPhoton, directionalWeight, useBias, &
                       theta1, theta2, chanceHotRing,  &
                       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto,&
-                      narrowBandImage, vMin, vMax, source, nSource, rHatinStar, energyPerPhoton, filters, mie, &
-                      forcedWavelength, usePhotonWavelength)
+                      narrowBandImage, vMin, vMax, source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
+                      curtains, starSurface, forcedWavelength, usePhotonWavelength)
                  if (thisPhoton%resonanceLine) then
                     r1 = real(i)/real(nPhotons/nOuterLoop)
                     thisPhoton%lambda = xArray(1) + r1*(xArray(nLambda)-xArray(1))
                  endif
 
            end select
+
 
            observedLambda = thisPhoton%lambda
            if (thisPhoton%contPhoton) then
@@ -2703,65 +2717,35 @@ program torus
            iLambda = findIlambda(thisPhoton%lambda, xArray, nLambda, ok)
 
            ! now we fire the photon direct to the observer
-
+           lineResAbs = .false.  ! F for the zero-th scattering.
            if (doRaman) then
               
-              if (gridUsesAMR) then
-
-                 if (grid%octreeroot%threeD) then
-                    call IntegratePathAMR(thisPhoton%lambda, lamLine, &
+              call integratePath(gridUsesAMR, starkBroadening, &
+                         thisPhoton%lambda, lamLine, &
                          s2o(thisPhoton%velocity), &
                          thisPhoton%position, s2o(outVec), grid, &
                          lambda, tauExt, tauAbs, tauSca, maxTau , nTau, opaqueCore, &
                          escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                         nLambda, contTau, hitCore, thinLine,.false., &
+                         nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                          .false., nUpper, nLower, 0., 0., 0., junk,&
-                         sampleFreq,intPathError)
-                 else
-                    call IntegratePathAMR(thisPhoton%lambda, lamLine, &
-                         s2o(thisPhoton%velocity), &
-                         thisPhoton%position, s2o(outVec), grid, &
-                         lambda, tauExt, tauAbs, tauSca, maxTau , nTau, opaqueCore, &
-                         escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                         nLambda, contTau, hitCore, thinLine,.false., &
-                         .false., nUpper, nLower, 0., 0., 0., junk,&
-                         sampleFreq,intPathError)
-                 endif
-
-
-                   if (intPathError == -10) then
-                      tooFewSamples = tooFewSamples + 1  
-!                      call quickDeallocate
-                      deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                      deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                      cycle innerPhotonLoop
-                   endif
-                   if (intPathError == -20) then
-                      boundaryProbs = boundaryProbs + 1
-!                      call quickDeallocate
-                      deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                      deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                      cycle innerPhotonLoop
-                   endif
-               else
-                call integratePath(thisPhoton%lambda, lamLine, &
-                   thisPhoton%velocity, &
-                   o2s(thisPhoton%position), outVec, grid, &
-                   lambda, tauExt, tauAbs, tauSca, maxTau , nTau, opaqueCore, &
-                   escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                   nLambda, contTau, hitCore, thinLine,.false., rStar,&
-                   coolStarPosition,.false., nUpper, nLower, 0., 0., 0., junk, useInterp)
-              end if
+                         sampleFreq,intPathError, &
+                         useInterp, grid%Rstar1, coolStarPosition)
+              if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
+                 goto 999 ; endif
+              if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
+                 goto 999 ; endif
+              if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1 
+                 goto 999 ; endif
 
               thisLam = thisPhoton%lambda + (thisPhoton%velocity .dot. viewVec) * 1031.928
               j = findIlambda(thisLam, o6xArray, no6pts, ok)
               if (ok) then
-                 weight = oneOnFourPi * exp(-tauExt(nTau))
-                 o6yArray(j) = o6yArray(j) + weight
+                 obs_weight = oneOnFourPi * exp(-tauExt(nTau))
+                 o6yArray(j) = o6yArray(j) + obs_weight
                  thisVel = (thisLam-lamLine)/lamLine
 
                  call addPhotonToImage(viewVec, rotationAxis,o6Image(1), 1, &
-                      thisPhoton, thisVel, weight, filters, imageCentre)
+                      thisPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
               endif
            endif
 
@@ -2769,69 +2753,29 @@ program torus
 
 
               ! find optical depths to observer
-
-
-
-              if (gridUsesAMR) then
-                 if (grid%octreeRoot%threeD) then
-                    call IntegratePathAMR(thisPhoton%lambda, lamLine, &
+              call integratePath(gridUsesAMR, starkBroadening, &
+                         thisPhoton%lambda, lamLine, &
                          s2o(thisPhoton%velocity), &
                          thisPhoton%position, s2o(outVec), grid, &
                          lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
                          escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                         nLambda, contTau, hitCore, thinLine,.false.,&
+                         nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,&
                          .false., nUpper, nLower, 0., 0., 0., junk,&
-                         sampleFreq,intPathError)
-                 else
-                    call IntegratePathAMR(thisPhoton%lambda, lamLine, &
-                         s2o(thisPhoton%velocity), &
-                         thisPhoton%position, s2o(outVec), grid, &
-                         lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
-                         escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                         nLambda, contTau, hitCore, thinLine,.false.,&
-                         .false., nUpper, nLower, 0., 0., 0., junk,&
-                         sampleFreq,intPathError)
-                 endif
-                    if (intPathError == -10) then
-                       tooFewSamples = tooFewSamples + 1  
-!                       call quickDeallocate
-                       deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                       deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                       cycle innerPhotonLoop
-                    endif
-                    if (intPathError == -20) then
-                       boundaryProbs = boundaryProbs + 1
-!                       call quickDeallocate 
-                       deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                       deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                       cycle innerPhotonLoop
-                    endif
-              else
-                 call integratePath(thisPhoton%lambda, lamLine, &
-                    thisPhoton%velocity, &
-                    o2s(thisPhoton%position), outVec, grid, &
-                    lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
-                    escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                    nLambda, contTau, hitCore, thinLine,.false., rStar,&
-                    coolStarPosition,.false., nUpper, nLower, 0., 0., 0., junk,useInterp)
+                         sampleFreq,intPathError, &
+                         useInterp, grid%Rstar1, coolStarPosition)
 
-                 call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
+               if (intPathError == -10) then
+                    tooFewSamples = tooFewSamples + 1  
+                    goto 999
+               endif
+               if (intPathError == -20) then
+                    boundaryProbs = boundaryProbs + 1
+                    goto 999
+               endif
+               if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
+                  goto 999; endif
 
-              end if
-
-              if (additionalExtinction) then
-                 nTau = nTau + 1
-                 iLambda = findIlambda(thisPhoton%lambda, xArray,  nLambda, ok)
-                 tauAbs(nTau) = tauAbs(nTau-1) + tauExtra * foregroundKappaAbs(iLambda)/testKappaAbs
-                 tauSca(nTau) = tauSca(nTau-1) + tauExtra * foregroundKappaSca(iLambda)/testKappaSca
-                 tauExt(nTau) = tauSca(nTau) + tauAbs(nTau)
-                 lambda(nTau) = lambda(nTau-1) + 1.e-20
-                 nTau = nTau + 1
-                 tauAbs(nTau) = tauAbs(nTau-1) + tauExtra2 * foregroundKappaAbs2(iLambda)/testKappaAbs2
-                 tauSca(nTau) = tauSca(nTau-1) + tauExtra2 * foregroundKappaSca2(iLambda)/testKappaSca2
-                 tauExt(nTau) = tauSca(nTau) + tauAbs(nTau)
-                 lambda(nTau) = lambda(nTau-1) + 1.e-20
-              endif
+              if (.not. gridUsesAMR) call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
 
 
               if (thisPhoton%resonanceLine) escProb = 1.
@@ -2841,7 +2785,7 @@ program torus
                  vovercsqr = modulus(thisPhoton%velocity)**2
                  fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)
                  observedlambda = thisPhoton%lambda / fac
-                 weight = oneOnFourPi * exp(-tauExt(nTau)) * escProb
+                 obs_weight = oneOnFourPi * exp(-tauExt(nTau)) * escProb
               endif
 
               if (thisPhoton%contPhoton.and.(.not.contWindPhoton)) then
@@ -2854,38 +2798,37 @@ program torus
                  t = rHat .dot. outVec
 
                  if (lineEmission) then
-                    weight = abs(t)*exp(-tauExt(nTau)) / pi
+                    obs_weight = abs(t)*exp(-tauExt(nTau)) / pi
                  else
-                    weight = oneOnFourPi*abs(t)*exp(-tauExt(nTau))
+                    obs_weight = oneOnFourPi*abs(t)*exp(-tauExt(nTau))
                  endif
                  observedlambda = thisPhoton%lambda
               endif
 
-
               if (.not.flatSpec.and.(.not.hitCore)) then
                  if (contWindPhoton) then
-                    weight = oneOnFourPi*exp(-tauExt(nTau))
+                    obs_weight = oneOnFourPi*exp(-tauExt(nTau))
                  else 
-                    directionalWeight = (outVec.dot.rHatinStar)/pi
-                    weight = directionalweight*exp(-tauExt(nTau))
-                    if (weight < 0.) weight = 0.
+                    obs_weight = (outVec.dot.rHatinStar)*exp(-tauExt(nTau))/pi
+                    if (obs_weight < 0.) obs_weight = 0.
                  endif
                  
                  iLambda = findIlambda(observedlambda, xArray,  nLambda, ok)
                  if (ok) then
                     yArray(iLambda) = yArray(iLambda) + &
-                         (thisPhoton%stokes * weight)
+                         (thisPhoton%stokes * obs_weight)
                     statArray(iLambda) = statArray(iLambda) + 1.
                  endif
                  if (stokesImage) then
                     thisVel = observedLambda
                     call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImage, thisPhoton,&
-                         thisVel, weight, filters, imageCentre)
+                         thisVel, obs_weight, filters, grid%octreeRoot%centre)
+
                  endif
                  if (doPVimage) then
                     do iSlit = 1, nSlit
                        call addPhotontoPVimage(pvImage(iSlit), thisPhoton, viewVec, rotationAxis, thisVel, &
-                                 weight, gridDistance)
+                                 obs_weight, gridDistance)
                     enddo
                  endif
               endif
@@ -2901,42 +2844,45 @@ program torus
                        statArray(iLambda) = statArray(iLambda) + 1.
                     endif
 
-                    weight = oneOnFourPi * escProb * exp(-tauExt(nTau))*fac2
+                    obs_weight = oneOnFourPi * escProb * exp(-tauExt(nTau))*fac2
 
                     meanr0_line = meanr0_line + modulus(thisPhoton%position) * &
-                         (thisPhoton%stokes%i * weight)
-                    wtot0_line = wtot0_line + (thisPhoton%stokes%i * weight)
+                         (thisPhoton%stokes%i * obs_weight)
+                    wtot0_line = wtot0_line + (thisPhoton%stokes%i * obs_weight)
                     
 
                     thisVel = (observedLambda-lamLine)/lamLine
                     if (stokesImage) then
                        call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImage, &
-                            thisPhoton, thisVel, weight, filters, imageCentre)
+                            thisPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
                     endif
                     if (dopvImage) then
                        do iSlit = 1, nSlit
                           call addPhotontoPVimage(pvImage(iSlit), thisPhoton, viewVec,  rotationAxis,thisVel, &
-                            weight, gridDistance)
+                            obs_weight, gridDistance)
                        enddo
                     endif
 
                  else
+                    fac1 = 1.
+                    if (.not.contWindPhoton) then
+                       fac1 = 2.*abs(thisPhoton%originalNormal.dot.outVec)/twoPi
+                    else
+                       fac1 = oneOnfourPi
+                    endif
+                    
+                    vray = -(thisPhoton%velocity .dot. outVec)
+                    vovercsqr = modulus(thisPhoton%velocity)**2
+                    fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)
+                    observedlambda = thisPhoton%lambda / fac
+                    
                     i1 = 0
                     do iLambda = 1, nLambda
-                       fac1 = 1.
-                       if (.not.contWindPhoton) then
-                          fac1 = 2.*abs(thisPhoton%originalNormal.dot.outVec)/twoPi
-                       else
-                          fac1 = oneOnfourPi
-                       endif
-
-                       vray = -(thisPhoton%velocity .dot. outVec)
-                       vovercsqr = modulus(thisPhoton%velocity)**2
-                       fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)
-                       observedlambda = thisPhoton%lambda / fac
-
-
+if (StarkBroadening) then
+                       thisLam = (lamLine-thisPhoton%lambda) + xArray(iLambda)
+else
                        thisLam = (lamLine-observedlambda) + xArray(iLambda)
+end if
 
                        call hunt(xArray,nLambda,thisLam,i1)
                        if (i1 ==0 ) i1 = 1
@@ -2955,22 +2901,24 @@ program torus
                        endif
                        fac3 = contTau(nTau,i1)
                        if (thinLine) fac3 = 0.
-                       weight = (fac1 * exp(-(tauExt(ntau)+fac3)))*fac2
+                       obs_weight = (fac1 * exp(-(tauExt(ntau)+fac3)))*fac2
                        yArray(iLambda) = yArray(iLambda) + &
-                                           (thisPhoton%stokes * weight)
+                                           (thisPhoton%stokes * obs_weight)
                        statArray(iLambda) = statArray(iLambda) + 1.
 
-                       meanr0_cont = meanr0_cont + modulus(thisPhoton%position) * thisPhoton%stokes%i*weight
-                       wtot0_cont = wtot0_cont + thisPhoton%stokes%i*weight
+                       meanr0_cont = meanr0_cont + modulus(thisPhoton%position) &
+                            * thisPhoton%stokes%i*obs_weight
+                       wtot0_cont = wtot0_cont + thisPhoton%stokes%i*obs_weight
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
                           call addPhotonToImage(viewVec,  rotationAxis,obsImageSet, nImage, &
-                               thisPhoton, thisVel, weight, filters, imageCentre)
+                               thisPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre, &
+                               xArray(iLambda))
                        endif
                        if (dopvImage) then
                           do iSlit = 1, nSlit
                              call addPhotontoPVimage(pvImage(islit), obsPhoton, viewVec,  rotationAxis, thisVel, &
-                               weight, gridDistance)
+                               obs_weight, gridDistance)
                           enddo
                        endif
 
@@ -2979,66 +2927,42 @@ program torus
               endif
 
            endif
-           
 
-           if (gridUsesAMR) then
-              if (grid%octreeRoot%threeD) then
-                 call IntegratePathAMR(thisPhoton%lambda, lamLine, &
-                      s2o(thisPhoton%velocity), &
-                      thisPhoton%position, &
-                      thisPhoton%direction, grid, &
-                      lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
-                      escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                      nLambda, contTau, hitCore, thinLine,.false.,  &
-                      .false., nUpper, nLower, 0., 0., 0., &
-                      junk,sampleFreq,intPathError)
-              else
-                 call IntegratePathAMR(thisPhoton%lambda, lamLine, &
-                      s2o(thisPhoton%velocity), &
-                      thisPhoton%position, &
-                      thisPhoton%direction, grid, &
-                      lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
-                      escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                      nLambda, contTau, hitCore, thinLine,.false.,  &
-                      .false., nUpper, nLower, 0., 0., 0., &
-                      junk,sampleFreq,intPathError)
-              endif
-                if (intPathError == -10) then 
-                    tooFewSamples = tooFewSamples + 1  
-!                               call quickDeallocate
-                    deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                    deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                    cycle innerPhotonLoop
-                endif
-                if (intPathError == -20) then
-                    boundaryProbs = boundaryProbs + 1
-!                               call quickDeallocate
-                    deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                    deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                    cycle innerPhotonLoop
-                endif
-           else
-             call integratePath(thisPhoton%lambda, lamLine, &
-                thisPhoton%velocity, &
-                o2s(thisPhoton%position), &
-                o2s(thisPhoton%direction), grid, &
-                lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
-                escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                nLambda, contTau, hitCore, thinLine,.false., rStar, &
-                coolStarPosition,.false., nUpper, nLower, 0., 0., 0., junk, useInterp)
-           end if
+           call integratePath(gridUsesAMR, starkBroadening, &
+              thisPhoton%lambda, lamLine, &
+              s2o(thisPhoton%velocity), &
+              thisPhoton%position, &
+              thisPhoton%direction, grid, &
+              lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
+              escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
+              nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,  &
+              .false., nUpper, nLower, 0., 0., 0., &
+              junk,sampleFreq,intPathError, &
+              useInterp, grid%Rstar1, coolStarPosition)
 
+              if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
+                 goto 999 ; endif
+              if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
+                 goto 999 ; endif
+              if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
+                 goto 999 ; endif
+
+           tau_bnd = tauExt(nTau) ! Optical depth to outer boundary.
+           fac=1.0d0-exp(-tau_bnd)
            call random_number(r1)
-           fac = (1.d0-exp(-dble(tauExt(nTau))))
-           thisTau = min(-log(1.d0-r1*fac),dble(tauExt(nTau)))
+           thisTau = min(-log(1.d0-r1*fac),tau_bnd)  
+           ! This is done so to force the first scattering if 
+           ! MAXSCAT>0. 
 
 
            if (thisPhoton%contPhoton) escProb = 1.
 
            if (thisPhoton%resonanceLine) escProb = 1.
-
-
-           thisPhoton%stokes = thisPhoton%stokes * (fac * escProb)
+              
+           ! Correcting the weight here... 
+           ! escProb -- allowing for local emission
+           ! fac -- the first scattering was forced 
+           thisPhoton%stokes = thisPhoton%stokes * real(fac) * escProb
 
 
            currentScat = 0
@@ -3050,11 +2974,16 @@ program torus
            if (doRaman) hitCore = .false.
 
 
-! scattering loop !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
-
+           ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+           ! scattering loop !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+           ! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1
+           lineResAbs = .true.
            do while (.not.escaped .and. .not.absorbed .and. &
                      (nScat < maxScat)   )
-
+              ! Now we do not force the scattering exept for the first scattering.
+              ! maxScat specifies the max number of scattering ALLOWED, but 
+              ! not the number of scattering FORCED!
+              
 
               nScat = nScat + 1
 
@@ -3075,16 +3004,20 @@ program torus
                  dlambda = lambda(nTau)
               endif
                     
+              ! New photon position 
+              thisPhoton%position = thisPhoton%position + real(dlambda,kind=oct)*thisPhoton%direction
+              ! adjusting the photon weights 
+              if (.not. thisPhoton%linePhoton) then
+                 if (j < nTau) then
+                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda) *  &
+                         EXP(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))) )
+                 else
+                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda)*EXP(-(contTau(nTau,1:nLambda)))
+                 end if
+              end if
 
-
-              thisPhoton%position = thisPhoton%position + real(dlambda,kind=octalkind)*thisPhoton%direction
 
               if (flatspec) then
-                 contWeightArray(1:nLambda) = contWeightArray(1:nLambda) * &
-                      exp(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))))
-              endif
-
-              if (grid%nLambda == 1) then
                  iLambda = 1
               else
                   iLambda = findIlambda(thisPhoton%lambda, xArray, nLambda, ok)
@@ -3094,11 +3027,6 @@ program torus
                  positionOc = thisPhoton%position
                  call amrGridValues(grid%octreeRoot, positionOc, grid=grid, iLambda=iLambda, &
                       kappaAbs = thisChi, kappaSca = thisSca)
-                 
-!                 thisChi = amrGridKappaAbs(grid%octreeRoot,positionOc,1, &
-!                           foundOctal=octalLocation,foundSubcell=subcellLocation)
-!                 thisSca = amrGridKappaAbs(grid%octreeRoot,positionOc,1, &
-!                           startOctal=octalLocation,actualSubcell=subcellLocation)
               else
                  call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
                  if (.not.grid%oneKappa) then
@@ -3120,10 +3048,11 @@ program torus
                  albedo = thisSca / (thisChi + thisSca)
               else
                  albedo = 0.
+                 write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
+                 stop
               endif
 
               if (grid%resonanceLine) albedo = 1.
-
 
               if (hitCore) then
                  if (grid%geometry /= "binary") then
@@ -3142,16 +3071,8 @@ program torus
                  endif
               endif
                  
-!                 thisPhoton%stokes = thisPhoton%stokes * albedo
 
-! tjh changed on 10/11/04. photons now are either absorbed or scattered without
-! biasing
-              
-              call random_number(r) 
-              if (r > albedo) then
-                 absorbed = .true.
-              endif
-
+              thisPhoton%stokes = thisPhoton%stokes * albedo  ! weight adjusted here!!!
 
               if (thisPhoton%stokes%i < reallySmall) then
                  absorbed = .true.
@@ -3166,64 +3087,42 @@ program torus
                  tempPhoton = thisPhoton
                  
 
-                 if (miePhase(1,1)%element(1,1) > 2.) then
-                    write(*,*) "Mie phase changed in torus main"
-                 endif
                  call scatterPhoton(grid, tempPhoton, outVec, obsPhoton, mie, &
                        miePhase, nLambda, nMumie)
+
 
                  ! the o6 photon might get scattered towards the observer by a rayleigh scattering
 
                  if (doRaman) then
-                    if (gridUsesAMR) then     
-                       if (grid%octreeRoot%threed) then
-                          call IntegratePathAMR(obsPhoton%lambda, lamLine, s2o(obsPhoton%velocity), &
-                               obsPhoton%position, obsPhoton%direction, grid, &
-                               lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
-                               escProb, obsPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
-                               thinLine, .false., .false., nUpper, nLower, 0., 0., 0.,&
-                               junk, sampleFreq,intPathError)
-                       else
-                          call IntegratePathAMR(obsPhoton%lambda, lamLine, s2o(obsPhoton%velocity), &
-                               obsPhoton%position, obsPhoton%direction, grid, &
-                               lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
-                               escProb, obsPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
-                               thinLine, .false., .false., nUpper, nLower, 0., 0., 0.,&
-                               junk, sampleFreq,intPathError)
-                       endif
-                          if (intPathError == -10) then
-                               tooFewSamples = tooFewSamples + 1  
-!                               call quickDeallocate
-                               deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                               deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                               cycle innerPhotonLoop
-                            endif
-                            if (intPathError == -20) then
-                               boundaryProbs = boundaryProbs + 1
-!                               call quickDeallocate
-                               deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                               deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                               cycle innerPhotonLoop
-                            endif
-                    else
-                       call integratePath(obsPhoton%lambda, lamLine, obsPhoton%velocity, &
-                            o2s(obsPhoton%position), o2s(obsPhoton%direction), grid, &
+                    call integratePath(gridUsesAMR, starkBroadening, &
+                            obsPhoton%lambda, lamLine, s2o(obsPhoton%velocity), &
+                            obsPhoton%position, obsPhoton%direction, grid, &
                             lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
                             escProb, obsPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
-                            thinLine, .false., rStar, coolStarPosition, .false., nUpper, nLower, 0., 0., 0., junk, useInterp)
-                    end if
+                            thinLine, lineResAbs, .false., .false., nUpper, nLower, 0., 0., 0.,&
+                            junk, sampleFreq,intPathError, &
+                            useinterp, grid%Rstar1, coolStarPosition)
+
+                   if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
+                      goto 999 ; endif
+                   if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
+                      goto 999 ; endif
+                   if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
+                      goto 999 ; endif
+
                     vray = -(obsPhoton%velocity .dot. outVec)
                     vovercsqr = modulus(thisPhoton%velocity)**2
                     fac = (1.d0-0.5d0*vovercsqr*(1.d0-0.5d0*vovercsqr))/(1.d0+vray)
                     observedlambda = obsPhoton%lambda / fac
                     
-                    weight = oneOnFourPi*exp(-tauExt(nTau)) * 34./(6.6+34.)
+                    obs_weight = oneOnFourPi*exp(-tauExt(nTau)) * 34./(6.6+34.)
 
                     j = findIlambda(observedLambda, o6xArray, no6pts, ok)
                     if (ok) then
-                       o6yArray(j) = o6yArray(j) + weight
+                       o6yArray(j) = o6yArray(j) + obs_weight
                     endif
-                 endif
+
+                 endif  ! raman
 
 
 
@@ -3231,69 +3130,24 @@ program torus
                  redRegion = .false.
 
                  if (doRaman) redRegion = .true.
-                 
-                 if (gridUsesAMR) then
-                    if (grid%octreeRoot%threed) then
-                       call IntegratePathAMR(obsPhoton%lambda, lamLine, &
-                            s2o(obsPhoton%velocity), &
-                            obsPhoton%position, obsPhoton%direction, grid, &
-                            lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
-                            escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
-                            nLambda, contTau, hitCore, &
-                            thinLine, redRegion, &
-                            .false., nUpper, nLower, 0., 0., 0., junk,sampleFreq,intPathError)
-                    else
-                       call IntegratePathAMR(obsPhoton%lambda, lamLine, &
-                            s2o(obsPhoton%velocity), &
-                            obsPhoton%position, obsPhoton%direction, grid, &
-                            lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
-                            escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
-                            nLambda, contTau, hitCore, &
-                            thinLine, redRegion, &
-                            .false., nUpper, nLower, 0., 0., 0., junk,sampleFreq,intPathError)
-                    endif
-                      if (intPathError == -10) then
-                         tooFewSamples = tooFewSamples + 1  
-!                         call quickDeallocate
-                         deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                         deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                         cycle innerPhotonLoop
-                      endif
-                      if (intPathError == -20) then
-                         boundaryProbs = boundaryProbs + 1
-!                         call quickDeallocate
-                         deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                         deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                         cycle innerPhotonLoop
-                      endif
-                 else
-                    call integratePath(obsPhoton%lambda, lamLine, &
-                      obsPhoton%velocity, &
-                      o2s(obsPhoton%position), o2s(obsPhoton%direction), grid, &
+
+                 call integratePath(gridUsesAMR, starkBroadening, &
+                      obsPhoton%lambda, lamLine, &
+                      s2o(obsPhoton%velocity), &
+                      obsPhoton%position, obsPhoton%direction, grid, &
                       lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
                       escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
                       nLambda, contTau, hitCore, &
-                      thinLine, redRegion, rStar, coolStarPosition,&
-                      .false., nUpper, nLower, 0., 0., 0., junk, useInterp)
-                 end if
+                      thinLine, lineResAbs, redRegion, &
+                      .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
+                      useInterp, grid%Rstar1, coolStarPosition)                 
 
-!                 if ((obsPhoton%lambda  < 1.e4).and.(obsPhoton%lambda > 5500.)) then
-!                    write(*,*) "scattered towards observer",tauext(ntau),ntau
-!                 endif
-                 
-                 if (additionalExtinction) then
-                    nTau = nTau + 1
-                    iLambda = findIlambda(thisPhoton%lambda, xArray,  nLambda, ok)
-                    tauAbs(nTau) = tauAbs(nTau-1) + tauExtra * foregroundKappaAbs(iLambda)/testKappaAbs
-                    tauSca(nTau) = tauSca(nTau-1) + tauExtra * foregroundKappaSca(iLambda)/testKappaSca
-                    tauExt(nTau) = tauSca(nTau) + tauAbs(nTau)
-                    lambda(nTau) = lambda(nTau-1) + 1.e-20
-                    nTau = nTau + 1
-                    tauAbs(nTau) = tauAbs(nTau-1) + tauExtra2 * foregroundKappaAbs2(iLambda)/testKappaAbs2
-                    tauSca(nTau) = tauSca(nTau-1) + tauExtra2 * foregroundKappaSca2(iLambda)/testKappaSca2
-                    tauExt(nTau) = tauSca(nTau) + tauAbs(nTau)
-                    lambda(nTau) = lambda(nTau-1) + 1.e-20
-                 endif
+                 if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
+                    goto 999 ; endif
+                 if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
+                    goto 999 ; endif
+                 if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
+                    goto 999 ; endif
 
 
                  if (obsPhoton%linePhoton) then
@@ -3320,13 +3174,14 @@ program torus
                     ramanWeight = 1.
                     if (doRaman) ramanWeight = 6.6 / (34.+6.6)
 
-                    weight = oneOnFourPi*exp(-tauExt(nTau)) * ramanWeight
+                    obs_weight = oneOnFourPi*exp(-tauExt(nTau)) * ramanWeight
 
                     iLambda = findIlambda(observedlambda, xArray, nLambda, ok)
                       
 
                     if (ok) then
-                       yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*weight
+                       yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*obs_weight
+
                        statArray(iLambda) = statArray(iLambda) + 1.
                     endif
                     if (doRaman) then
@@ -3338,17 +3193,13 @@ program torus
 
 
                     if (stokesImage) then
-                       tempPhoton = obsPhoton
-                       if (doRaman) then
-                          tempPhoton%lambda = observedLambda
-                       endif
                        call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage,  &
-                            tempPhoton, thisVel, weight, filters, imageCentre)
+                            obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
                     endif
                     if (dopvImage) then
                        do iSlit = 1, nSlit
                           call addPhotontoPVimage(pvImage(iSlit), obsPhoton, viewVec,  rotationAxis,thisVel, &
-                            weight, gridDistance)
+                            obs_weight, gridDistance)
                        enddo
                     endif
 
@@ -3365,13 +3216,13 @@ program torus
 
                     if (obsPhoton%linePhoton) then
                        iLambda = findIlambda(observedlambda, xArray, nLambda, ok)
-                       weight = oneOnFourPi*exp(-tauExt(nTau))
+                       obs_weight = oneOnFourPi*exp(-tauExt(nTau))
 
 
-                       if (obsPhoton%resonanceLine) weight = weight * directionalWeight
+                       if (obsPhoton%resonanceLine) obs_weight = obs_weight * directionalWeight
 
                        if (ok) then
-                          yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*weight
+                          yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*obs_weight
                           statArray(iLambda) = statArray(iLambda) + 1.
                        endif
 
@@ -3379,12 +3230,12 @@ program torus
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
                           call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage, &
-                               obsPhoton, thisVel, weight, filters, imageCentre)
+                               obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
                        endif
                        if (dopvImage) then
                           do iSlit = 1 , nSlit
                              call addPhotontoPVimage(pvImage(iSlit), obsPhoton, viewVec,  rotationAxis, thisVel, &
-                               weight, gridDistance)
+                               obs_weight, gridDistance)
                           enddo
                        endif
 
@@ -3398,8 +3249,12 @@ program torus
                        observedlambda = obsPhoton%lambda / fac
 
                        do iLambda = 1,nLambda
+if (StarkBroadening) then
+                       thisLam = (lamLine-obsPhoton%lambda) + xArray(iLambda)
+else
+                       thisLam = (lamLine-observedlambda) + xArray(iLambda)
+end if
 
-                          thisLam = (lamLine-observedLambda) + xArray(iLambda)
 
                           i1 = findILambda(thisLam, xArray, nLambda, ok)
                           if (grid%geometry /= "binary") then
@@ -3420,13 +3275,13 @@ program torus
                           if (thinLine) fac3 = 0.
 
 
-                          weight = exp(-(tauExt(nTau)+fac3)) * oneOnFourpi & 
+                          obs_weight = exp(-(tauExt(nTau)+fac3)) * oneOnFourpi & 
                           * fac2 * directionalWeight * contWeightArray(i1)
 
                           
                           if (ok) then
                              yArray(iLambda) = yArray(iLambda) + &
-                                  (obsPhoton%stokes*weight)
+                                  (obsPhoton%stokes*obs_weight)
                           else 
                              yarray(ilambda) = yArray(ilambda) + &
                                   obsPhoton%stokes*(oneOnFourpi* directionalweight * exp(-tauExt(ntau)))
@@ -3436,12 +3291,13 @@ program torus
                           thisVel = (observedlambda-lamLine)/lamLine
                           if (stokesImage) then
                              call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage, &
-                                  obsPhoton, thisVel, weight, filters, imageCentre)
+                                  obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre, &
+                                  xArray(iLambda))
                           endif
                           if (dopvImage) then
                              do iSlit = 1, nSlit
                                 call addPhotontoPVimage(pvImage(iSlit), obsPhoton, viewVec,  rotationAxis, thisVel, &
-                                  weight, gridDistance)
+                                  obs_weight, gridDistance)
                              enddo
                           endif
 
@@ -3456,75 +3312,69 @@ program torus
                        miePhase, nLambda, nMuMie)
                  thisPhoton = outPhoton
 
-
-                 if (gridUsesAMR) then
-                    if (grid%octreeRoot%threed) then
-                       call IntegratePathAMR(thisPhoton%lambda, lamLine, &
+                 call integratePath(gridUsesAMR, starkBroadening, &
+                            thisPhoton%lambda, lamLine, &
                             s2o(thisPhoton%velocity), thisPhoton%position, &
                             thisPhoton%direction, grid, lambda, tauExt, tauAbs, &
                             tauSca, maxTau, nTau, opaqueCore, &
                             escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                            nLambda, contTau, hitCore, thinLine, .false., &
+                            nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                             .false., nUpper, nLower, 0.,&
-                            0., 0., junk,sampleFreq,intPathError)
-                    else
-                       call IntegratePathAMR(thisPhoton%lambda, lamLine, &
-                            s2o(thisPhoton%velocity), thisPhoton%position, &
-                            thisPhoton%direction, grid, lambda, tauExt, tauAbs, &
-                            tauSca, maxTau, nTau, opaqueCore, &
-                            escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                            nLambda, contTau, hitCore, thinLine, .false., &
-                            .false., nUpper, nLower, 0.,&
-                            0., 0., junk,sampleFreq,intPathError)
-                    endif
+                            0., 0., junk,sampleFreq,intPathError, &
+                            useInterp, grid%Rstar1, coolStarPosition)
 
-                      if (intPathError == -10) then
-                         tooFewSamples = tooFewSamples + 1  
-!                         call quickDeallocate
-                         deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                         deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                         cycle innerPhotonLoop
-                      endif
-                      if (intPathError == -20) then
-                         boundaryProbs = boundaryProbs + 1
-!                         call quickDeallocate
-                         deallocate(lambda); deallocate(tauSca); deallocate(tauExt)
-                         deallocate(tauAbs); deallocate(contTau); deallocate(contWeightArray)
-                         cycle innerPhotonLoop
-                      endif
-                 else
-                   call integratePath(thisPhoton%lambda, lamLine, &
-                      thisPhoton%velocity, o2s(thisPhoton%position), &
-                      o2s(thisPhoton%direction), grid, lambda, tauExt, tauAbs, &
-                      tauSca, maxTau, nTau, opaqueCore, &
-                      escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
-                      nLambda, contTau, hitCore, thinLine, .false., &
-                      rStar, coolStarPosition, .false., nUpper, nLower, 0.,&
-                      0., 0., junk,useInterp)
-                 end if
+                 if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
+                    goto 999 ; endif
+                 if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
+                    goto 999 ; endif
+                 if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
+                    goto 999 ; endif
 
 
-                 if (maxScat == 1) then
-                    call random_number(r1)
-                    thistau = -log(max(1.e-10,(1. - r1)))
-                    if (thistau .gt. tauExt(nTau)) then
-                       escaped = .true.
-                    else
-                       nscat = 0
-                    endif
-                 else
-                    call random_number(r1)
-                    fac = 1.d0 - exp(-tauExt(nTau))
-                    thisTau = -log(1.d0-r1*fac)
-                    thisPhoton%stokes = thisPhoton%stokes * fac
-                 endif
+                  call random_number(r1)
+                  thistau = -log(max(1.e-10,(1. - r1)))
+                  if (thistau .gt. tauExt(nTau)) then
+                     escaped = .true.  
+                  else
+                     escaped = .false.  
+                  endif
 
 
-              endif
+!                  if (maxScat == 1) then
+!                     call random_number(r1)
+!                     thistau = -log(max(1.e-10,(1. - r1)))
+!                     if (thistau .gt. tauExt(nTau)) then
+!                        ! one scattering forced already, 
+!                        ! so let it escape the second time if it must.
+!                        escaped = .true.  
+!                     else
+!                        nscat = 0
+!                     endif
+!                  else  
+!                     ! This should be never reached if MAXSCAT<2.
+!                     tau_bnd = tauExt(nTau) ! Optical depth to outer boundary.
+!                     if(abs(tau_bnd) < 0.01)then  ! appoximation
+!                        fac=tau_bnd*(  1.0d0-0.5d0*tau_bnd*( 1.0d0-tau_bnd/3.0d0*  &
+!                             (1.0d0-0.25d0*tau_bnd) )  )
+!                     else
+!                        fac=1.0d0-exp(-tau_bnd)
+!                     end if
+!                     call random_number(r1)
+!                     thisTau = -log(1.d0-r1*fac)
+!                     ! (RK) commented out the next line.
+!                     ! if (thisTau > tauExt(nTau)) print *, 'Fixed thisTau in scattering loop.'
+!                     thisTau = min(dble(thisTau),tau_bnd)
+!                     thisPhoton%stokes = thisPhoton%stokes * real(fac)
+!                  endif
+
+
+              endif  ! (.not. absorbed)
 
 
            enddo
            nTot = nTot + nScat
+
+999  continue  ! escape route for a bad photon
 
            deallocate(lambda)
            deallocate(tauSca)
@@ -3540,13 +3390,18 @@ program torus
 
 
 
+        
+
+
+
+
         write(*,'(i8,a,f7.3)') iOuterLoop*nPhotons/nOuterLoop," photons done"
 
         errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
-        call tune(6, "One Outer Phone Loop") ! Stop a stop watch
-        
-     enddo
+        call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
+     end do outerPhotonLoop ! outer photon loop
+
 
      call tune(6, "All Photon Loops")  ! Stop a stopwatch
 
@@ -3561,7 +3416,11 @@ program torus
      if (grid%adaptive) then
         print *, tooFewSamples, ' rays had 2 or less samples.'
         print *, BoundaryProbs, ' rays had numerical problems with octal boundaries.'
+        print *, negativeOpacity, ' rays had problems with negative opacity values.'
      end if
+     write(*,*) " "
+     write(*,*) "Average # of scattering per photon:: ", real(nTot)/real(nPhotons)
+     write(*,*) " " 
 
 !     if (.not.grid%cartesian.and.(grid%rCore /= 0.)) then
 !        if (wtot_line /= 0.) write(*,*) "Mean radius of line formation",meanr_line/wtot_line/grid%rCore
@@ -3574,21 +3433,38 @@ program torus
         normalizeSpectrum = .true.
      endif
 
-     if (flatspec) normalizeSpectrum = .true.
-
-
      if (mie) normalizeSpectrum = .false.
 
-
      if (nPhase == 1) then
-        call  writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, &
-             nOuterLoop, normalizeSpectrum, useNdf, sed, objectDistance, jansky, SIsed, dustySED)
+
+
+
+        call writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
+     .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
+
+        if (velocitySpace) then
+           specFile = trim(outfile)//"_v"
+           call writeSpectrum(specFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
+             .true., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+        endif
+
      else
-        write(specFile,'(a,i3.3)') trim(outfile),iPhase
-        call  writeSpectrum(specFile,  nLambda, xArray, yArray,  errorArray, &
-             nOuterLoop, normalizeSpectrum, useNdf, sed, objectDistance, jansky, SIsed, dustySED)
+        write(tempChar,'(i3.3)') iPhase
+        specFile = trim(outfile)//trim(tempChar)
+
+        call writeSpectrum(specFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
+      .false., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+
+        if (velocitySpace) then
+           tempChar = trim(specFile)//"_v"
+           call writeSpectrum(tempChar,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
+             .true., useNdf, sed, objectDistance, jansky, SIsed, velocitySpace, lamLine)
+        endif
+
+
         if (doRaman) then
-           write(o6filename,'(a,a,i3.3,a)') trim(outfile),"_o6_",iPhase,".dat"
+           write(tempChar,'(i3.3)') iPhase
+           o6filename = trim(outfile)//"_o6_"//trim(tempChar)//".dat"
            open(20,file=o6filename,status="unknown",form="formatted")
            do i = 1, no6pts
               t1 = 1./(o6xArray(2)-o6xArray(1))
@@ -3598,6 +3474,7 @@ program torus
         endif
      endif
 
+     close(22)
 
      if (stokesimage) then
         do i = 1, nImage
@@ -3605,7 +3482,7 @@ program torus
            bandwidth = 0.5*FWHM_filters(filters, i)  ! 1/2 of FWHM  [A]
            lambda_eff = lambda_eff_filters(filters, i) ! Effective wavelength of filter in [A]   
            write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
-           call writeImage(obsImageSet(i), specfile, objectDistance, inArcsec, lambda_eff, bandwidth)
+           call writeImage(obsImageSet(i), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
         end do
         if (doRaman) then
            write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase
@@ -3613,7 +3490,7 @@ program torus
            ! Check the the effectieve wavelength and the 
            ! bandwith of O6 image here later and replace 5000 and 1.0d0 below!
            !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-           call writeImage(o6Image(1), specfile, objectDistance, inArcsec, 5000d0, 1.0d0)
+           call writeImage(o6Image(1), specfile, objectDistance, imageInArcsec, 5000d0, 1.0d0)
         endif
 
      endif
@@ -3647,8 +3524,13 @@ program torus
         enddo
      endif
 
-  enddo
+     end do incLoop ! end of multiple inclination loop
+     
+     if (associated(starSurface%element)) then
+       call emptySurface(starSurface)
+     end if
 
+  enddo phaseLoop
 
 
 
@@ -3656,30 +3538,12 @@ program torus
 
 !  call freeGrid(grid)
 
+
 call tune(6, "Torus Main") ! stop a stopwatch  
 
 
 
+  end program torus
 
-contains
-    
-  subroutine quickDeallocate() 
-    ! deallocates some variables so that we can CYCLE the innerPhotonLoop
-    deallocate(lambda)
-    deallocate(tauSca)
-    deallocate(tauExt)
-    deallocate(tauAbs)
-    deallocate(contTau)
-    deallocate(contWeightArray)
-  end subroutine quickDeallocate
-    
-
-end program torus
-
-
-
-
-
-
-
-
+!!! vim:set filetype=fortran :                                !!!  
+!!! otherwise vim won't recognize a file with the suffix .raw !!!

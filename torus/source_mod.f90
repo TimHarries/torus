@@ -13,9 +13,9 @@ module source_mod
 
   type SOURCETYPE
      type(DOUBLEVECTOR)    :: position   ! [10^10cm]
-     real(kind=doubleKind) :: radius     ! [10^10cm]
-     real(kind=doubleKind) :: luminosity ! [erg/s]
-     real(kind=doubleKind) :: teff       ! [K]
+     real(double) :: radius     ! [10^10cm]
+     real(double) :: luminosity ! [erg/s]
+     real(double) :: teff       ! [K]
      type(SPECTRUMTYPE)    :: spectrum   ! [???]
   end type SOURCETYPE
 
@@ -26,7 +26,7 @@ module source_mod
     function newSource(position, luminosity, radius, teff, spectrum)
       type(SOURCETYPE) :: newSource
       type(DOUBLEVECTOR), intent(in) :: position
-      real(kind=doubleKind), intent(in) :: luminosity, radius, teff
+      real(double), intent(in) :: luminosity, radius, teff
       type(SPECTRUMTYPE) :: spectrum
       newSource%position = position
       newSource%radius = radius
@@ -83,7 +83,7 @@ module source_mod
       integer :: nSource
       type(SOURCETYPE) :: source(nSource)
       type(DOUBLEVECTOR) :: rVec, uHat
-      real(kind=doubleKind) :: distance, cosTheta, sintheta
+      real(double) :: distance, cosTheta, sintheta
       logical :: hitSource
       integer :: i
 
@@ -118,7 +118,7 @@ module source_mod
       position = source%position + source%radius*rHat
       ! A limb darkening law should be applied here for 
       ! for general case here.....
-      direction = fromPhotoSphereoctalVector(rHat)
+      direction = fromPhotoSphereVector(rHat)
       ! -- using a new routine in this module (RK)
 !      direction = random_direction_from_sphere(rHat)
     end subroutine getPhotonPositionDirection
@@ -127,8 +127,8 @@ module source_mod
 
 
   function distanceToSphere(rVec, uHat, centre, radius) result (distance)
-    real(kind=doubleKind) :: distance, radius
-    real(kind=doubleKind) :: x1, x2,a,b,c,d,costheta
+    real(double) :: distance, radius
+    real(double) :: x1, x2,a,b,c,d,costheta
     logical :: ok
     type(DOUBLEVECTOR) :: rVec, uHat, centre
 
@@ -169,9 +169,9 @@ module source_mod
       type(sourcetype), intent(in) :: this
       type(octal), intent(in) :: an_octal 
       
-      real(kind=octalkind) :: xc, yc, zc ! position of the octal center.
-      real(kind=octalkind) :: d          ! size of the subcell
-      real(kind=octalkind) :: x, y, z    ! position of the source.
+      real(oct) :: xc, yc, zc ! position of the octal center.
+      real(oct) :: d          ! size of the subcell
+      real(oct) :: x, y, z    ! position of the source.
       
       xc = an_octal%centre%x
       yc = an_octal%centre%y
@@ -218,7 +218,7 @@ module source_mod
     type(octalvector), intent(in) :: rvec
     !
     type(octalvector) :: dir 
-    real(kind=octalkind) :: inner_product
+    real(oct) :: inner_product
     
     inner_product = -1.0d0
     do while (inner_product<0.0d0) 

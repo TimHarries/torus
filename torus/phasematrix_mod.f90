@@ -48,7 +48,7 @@ contains
   ! this function applies a phase matrix to a stokes vector
   
 
-  type(STOKESVECTOR) function apply(a, b)
+  pure function apply(a, b) result(c)
 
     type(PHASEMATRIX), intent(in) :: a
     type(STOKESVECTOR), intent(in) :: b
@@ -79,63 +79,34 @@ contains
          a%element(4,3) * b%u + &
          a%element(4,4) * b%v 
 
-    apply = c
-
-
   end function apply
 
 
   ! this sets up a Rayleigh phase matrix
 
-  type(PHASEMATRIX) function fillRayleigh(costheta)
-
+  pure function fillRayleigh(costheta) result(b)
 
     type(PHASEMATRIX) :: b
-    real :: costheta
+    real,intent(in) :: costheta
     real :: cos2t
 
     cos2t = costheta*costheta
 
     b%element = 0.
-    b%element(1,1) = 0.75*(1.d0+cos2t)
-    b%element(1,2) = 0.75*(cos2t-1.d0)
-    b%element(2,1) = 0.75*(cos2t-1.d0)
-    b%element(2,2) = 0.75*(1.d0+cos2t)
+    b%element(1,1) = 0.75*(1.0+cos2t)
+    b%element(1,2) = 0.75*(cos2t-1.0)
+    b%element(2,1) = 0.75*(cos2t-1.0)
+    b%element(2,2) = 0.75*(1.0+cos2t)
     b%element(3,3) = 0.75*2.*costheta
     b%element(4,4) = 0.75*2.*costheta
 
-    fillRayleigh = b
-
   end function fillRayleigh
-
-  ! this sets up a Rayleigh phase matrix
-
-  type(PHASEMATRIX) function fillIsotropic(costheta)
-
-
-    type(PHASEMATRIX) :: b
-    real :: costheta
-    real :: cos2t
-
-    cos2t = costheta*costheta
-
-    b%element = 0.
-    b%element(1,1) = 1.
-    b%element(1,2) = 0.
-    b%element(2,1) = 0.
-    b%element(2,2) = 0.
-    b%element(3,3) = 0.
-    b%element(4,4) = 0.
-
-    fillIsotropic = b
-
-  end function fillIsotropic
 
   ! this writes out a 4x4 phase matrix - used for debugging
 
   subroutine writePhaseMatrix(a)
 
-    type(PHASEMATRIX) :: a
+    type(PHASEMATRIX), intent(in) :: a
     integer :: i
 
     write(*,*) " "
@@ -149,7 +120,7 @@ contains
 
   ! function to add to stokes vectors
 
-  type(STOKESVECTOR) function addStokes(a , b)
+  type(STOKESVECTOR) pure function addStokes(a , b)
     type(STOKESVECTOR), intent(in) :: a
     type(STOKESVECTOR), intent(in) :: b
 
@@ -162,7 +133,7 @@ contains
 
   ! multiply a stokes vector by a constant
 
-  type(STOKESVECTOR) function multStokes(a , b)
+  type(STOKESVECTOR) pure function multStokes(a , b)
     type(STOKESVECTOR), intent(in) :: a
     real, intent(in) :: b
 
@@ -174,16 +145,17 @@ contains
   end function multStokes
 
   type(VECTOR) function newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nMuMie)
-    type(VECTOR) :: oldDirection
-    real :: wavelength
-    integer :: nMuMie, nLambda, i, j
+    type(VECTOR), intent(in) :: oldDirection
+    real, intent(in) :: wavelength
+    integer, intent(in) :: nMuMie, nLambda
+    integer :: i, j
     real :: costheta, theta, r, phi
-    real :: lamArray(*)
+    real, intent(in) :: lamArray(:)
     real, allocatable :: prob(:)
     real, allocatable :: cosArray(:)
     type(VECTOR) :: tVec, perpVec, newVec
     
-    type(PHASEMATRIX),intent(in) :: miePhase(nLambda, nMuMie)
+    type(PHASEMATRIX) :: miePhase(nLambda, nMuMie)
     
 
     allocate(prob(1:nMuMie))
@@ -202,6 +174,8 @@ contains
     enddo
     prob(1:nMuMie) = prob(1:nMuMie)/prob(nMuMie)
     call random_number(r)
+    if ((abs(r))     < ( epsilon(1.0))) r =       epsilon(1.0)
+    if ((abs(r-1.0)) > (-epsilon(1.0))) r = 1.0 - epsilon(1.0)
     call locate(prob, nMuMie, r, j)
     cosTheta = cosArray(j) + &
          (cosArray(j+1)-cosArray(j))*(r - prob(j))/(prob(j+1)-prob(j))
@@ -218,7 +192,6 @@ contains
     theta = acos(min(1.,max(-1.,costheta)))
     newVec = arbitraryRotate(oldDirection, theta, perpVec)
     newVec = arbitraryRotate(newVec, phi, oldDirection)
-    call normalize(newvec)
 
     Deallocate(cosArray)
     deallocate(prob)
@@ -229,30 +202,35 @@ contains
 
   end function newDirectionMie
 
+
 subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
-     normalizeSpectrum, useNdf, sed, objectDistance, jansky, SI, dustySed)
-     
+     normalizeSpectrum, useNdf, sed, objectDistance, jansky, SI, velocitySpace, lamLine)
+
   implicit none
-  integer :: nLambda
-  character(len=*) :: outFile
-  real :: xArray(nLambda)
-  logical :: useNdf
-  logical :: jansky
-  integer :: nOuterLoop
-  logical :: normalizeSpectrum, sed
-  real(kind=doubleKind) :: objectDistance, area
-  type(STOKESVECTOR) :: yArray(nLambda), errorArray(nOuterloop,nLambda)
-  type(STOKESVECTOR),pointer :: ytmpArray(:)
+  integer, intent(in) :: nLambda
+  character(len=*), intent(in) :: outFile
+  real, intent(in) :: xArray(nLambda)
+  logical, intent(in) :: useNdf
+  logical, intent(in) :: jansky
+  integer, intent(in) :: nOuterLoop
+  logical, intent(in) :: normalizeSpectrum, sed, velocitySpace
+  real(double), intent(in) :: objectDistance
+  real(double) :: area
+  real, intent(in) :: lamLine
+  type(STOKESVECTOR), intent(in) :: yArray(nLambda), errorArray(nOuterloop,nLambda)
+  type(STOKESVECTOR), allocatable :: ytmpArray(:), tmpErrorArray(:,:)
   real, allocatable :: meanQ(:), meanU(:), sigQ(:), sigU(:)
-  real(kind=doubleKind), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
-  real(kind=doubleKind), allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
+  real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
+  real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
+  real, allocatable, dimension(:) :: tmpXarray
   real :: tot
   real :: x
   integer :: i
   logical :: SI
-  logical :: dustysed
 
   allocate(ytmpArray(1:nLambda))
+  allocate(tmpXarray(1:nLambda))
+  allocate(tmpErrorArray(nOuterloop,nLambda))
 
   allocate(meanQ(1:nLambda))
   allocate(meanU(1:nLambda))
@@ -276,6 +254,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   if (normalizeSpectrum) then
      if (yArray(1)%i /= 0.) then
         x = 1.d0/yArray(1)%i
+!        x = 1.d0/yArray(nLambda)%i
      else
        x  = 1.d0
      endif
@@ -284,25 +263,28 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   endif
 
   write(*,*) "scaling by ",x
-  
+!  
   do i = 1, nLambda
      ytmpArray(i) = yArray(i) * x
   enddo
 
 
   where(errorArray%i /= 0.)
-     errorArray%q = errorArray%q / errorArray%i
-     errorArray%u = errorArray%u / errorArray%i
+     tmpErrorArray%q = errorArray%q / errorArray%i
+     tmpErrorArray%u = errorArray%u / errorArray%i
+  elsewhere 
+     tmpErrorArray%q = errorArray%q 
+     tmpErrorArray%u = errorArray%u
   end where
 
   do i = 1, nLambda
-     meanQ(i) = sum(errorArray(1:nOuterLoop,i)%q) / real(nOuterLoop)
-     meanU(i) = sum(errorArray(1:nOuterLoop,i)%u) / real(nOuterLoop)
+     meanQ(i) = sum(tmpErrorArray(1:nOuterLoop,i)%q) / real(nOuterLoop)
+     meanU(i) = sum(tmpErrorArray(1:nOuterLoop,i)%u) / real(nOuterLoop)
   enddo
 
   do i = 1, nLambda
-     sigQ(i) = sqrt(sum((errorArray(1:nOuterLoop,i)%q-meanQ(i))**2)/real(nOuterLoop-1))
-     sigU(i) = sqrt(sum((errorArray(1:nOuterLoop,i)%u-meanU(i))**2)/real(nOuterLoop-1))
+     sigQ(i) = sqrt(sum((tmpErrorArray(1:nOuterLoop,i)%q-meanQ(i))**2)/real(nOuterLoop-1))
+     sigU(i) = sqrt(sum((tmpErrorArray(1:nOuterLoop,i)%u-meanU(i))**2)/real(nOuterLoop-1))
   enddo
 
   write(*,*) "setting up stokes"
@@ -312,7 +294,6 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   stokes_u = ytmpArray%u
   stokes_qv = (ytmpArray%i * sigQ)**2
   stokes_uv = (ytmpArray%i * sigU)**2
-
 
   dlam(1) = (xArray(2)-xArray(1))
   dlam(nlambda) = (xArray(nLambda)-xArray(nLambda-1))
@@ -357,19 +338,19 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
 endif
 
   if (sed) then
-     write(*,'(a)') "Writing spectrum as lambda F_lambda"
+     write(*,'(a)') "Writing spectrum as normalized lambda F_lambda"
 
 
-!     tot = 0.
-!     do i = 1, nLambda
-!        tot = tot + stokes_i(i)* dlam(i)
-!     enddo
-!
-!     stokes_i = stokes_i / tot
-!     stokes_q = stokes_q / tot
-!     stokes_u = stokes_u / tot
-!     stokes_qv = stokes_qv / tot**2
-!     stokes_uv = stokes_uv / tot**2
+     tot = 0.
+     do i = 1, nLambda
+        tot = tot + stokes_i(i)* dlam(i)
+     enddo
+
+     stokes_i = stokes_i / tot
+     stokes_q = stokes_q / tot
+     stokes_u = stokes_u / tot
+     stokes_qv = stokes_qv / tot**2
+     stokes_uv = stokes_uv / tot**2
      
      stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda)
      stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)
@@ -378,55 +359,42 @@ endif
      stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2
   endif
 
-  if (dustysed) then
-     write(*,'(a)') "Writing spectrum as normalized lambda (microns) vs lambda F_lambda"
-
-     xArray(1:nLambda) = xArray(1:nLambda) / 1.e4
-     dlam(1:nLambda) = dlam(1:nLambda) / 1.e4
-    
-     tot = 0.
-     do i = 1, nLambda
-        tot = tot + stokes_i(i)* dlam(i)
-     enddo
-
-      
-     stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda) / tot
-     stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda) / tot
-     stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda) / tot
-     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2 / tot**2
-     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2 / tot**2
-
-
-  endif
-
-
   if (SI) then
      write(*,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (microns * W/m^2)"
 
-     xArray(1:nLambda) = xArray(1:nLambda) / 1.e4
+     tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
      
      stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda) * 10.
      stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda) * 10.
      stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda) * 10.
      stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2  * 100.
      stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2 * 100.
+  else 
+    tmpXarray = xArray
+  endif
+
+  if (velocitySpace) then
+     tmpXarray(1:nLambda) = cSpeed*((xArray(1:nLambda)-lamLine)/lamLine)/1.e5 ! wavelength to km/s
   endif
 
   if (useNdf) then
      write(*,*) "Writing spectrum to ",trim(outfile),".sdf"
      call wrtsp(nLambda,real(stokes_i),real(stokes_q),real(stokes_qv), &
           real(stokes_u), &
-          real(stokes_uv),xArray,outFile)
+          real(stokes_uv),tmpXarray,outFile)
   else
      write(*,*) "Writing spectrum to ",trim(outfile),".dat"
-55   format(6(1x,1PE16.6))
      open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
+33   format(6(1x, 1PE14.5))
      do i = 1, nLambda
-        write(20,55) xArray(i),stokes_i(i), stokes_q(i), stokes_qv(i), &
+        write(20,33) tmpXarray(i),stokes_i(i), stokes_q(i), stokes_qv(i), &
              stokes_u(i), stokes_uv(i)
      enddo
      close(20)
   endif
+
+  deallocate(ytmpArray,meanQ,meanU,sigQ,sigU,tmpErrorArray)
+  deallocate(dlam,stokes_i,stokes_q,stokes_qv,stokes_u,stokes_uv)
 
 end subroutine writeSpectrum
 

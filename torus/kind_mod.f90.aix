@@ -2,17 +2,17 @@ module kind_mod
   ! KIND parameters, specific to the 'miracle' system
   ! double, octal and logic entries added by nhs
    
-  integer, parameter :: singleKind = 4
-  integer, parameter :: si = singleKind
-  integer, parameter :: doubleKind = 8
-  integer, parameter :: db = doubleKind
-  integer, parameter :: quadKind = 16
-  integer, parameter :: qd = quadKind
-  integer, parameter :: octalKind = 8
-  integer, parameter :: oc = octalKind
+  integer, parameter :: single = 4
+  integer, parameter :: si = single
+  integer, parameter :: double = 8
+  integer, parameter :: db = double
+  integer, parameter :: quad = 16
+  integer, parameter :: qd = quad
+  integer, parameter :: oct = 8
+  integer, parameter :: oc = oct
   
-  integer, parameter :: logicKind = 1
-  integer, parameter :: lg = logicKind
+  integer, parameter :: logic = 1
+  integer, parameter :: lg = logic
   
 end module kind_mod
 

@@ -20,6 +20,13 @@ module filter_set_class
   !  7. "ukirt"          : J, H, L', M' and K filters at UKIRT.
   !                        c.f. http://www.ast.cam.ac.uk:81/JACpublic/UKIRT/instruments/ircam/filters.html
   !  8. "combo"          : ukirt+irac+Vband
+  !
+  !  9. "halpha"         : Filters sets centered at H-alpha (6564.614 A)
+  !
+  ! 10. "pabeta"         : Filters sets centered at Pa-beta (12818.1 A)
+  !
+  ! 11. "brgamma"        : Filters sets centered at Br-gamma (21655. A)
+
   !  9. "raman"          : Raman-scattering filters for the optical (6830) and UV (1032) lines
   use utils_mod
 
@@ -30,7 +37,8 @@ module filter_set_class
        get_filter_name, &
        get_nfilter, &
        FWHM_filters, &
-       lambda_eff_filters
+       lambda_eff_filters, &
+       info_filter_set
   
 
   
@@ -44,7 +52,10 @@ module filter_set_class
        make_mips_filters, &
        make_irac_filters, &
        make_ukirt_filters, &
-       make_combo_filters
+       make_combo_filters, &
+       make_halpha_filters, &
+       make_pabeta_filters, &
+       make_brgamma_filters
 
        
   type filter_set
@@ -61,8 +72,8 @@ module filter_set_class
      ! Filter functions table
      integer ::  nlambda         ! # of elements in the table  
      ! The followin should be allocated by nf.
-     double precision, pointer :: response_function(:)    !  The values should be between 0-1.
-     double precision, pointer :: wavelength(:)           !  in Angstrome.
+     real(double), pointer :: response_function(:)    !  The values should be between 0-1.
+     real(double), pointer :: wavelength(:)           !  in Angstrome.
   end type filter
 
 
@@ -75,11 +86,11 @@ contains
     type(filter), intent(inout)     :: this_filter
     character(LEN=*), intent(in) :: name         ! the name of the filter
     integer, intent(in)          ::  nlambda     ! # of elements in the table  
-    double precision, intent(in) ::  lambda_min  !  [A]. The minimum wavelength of the filter.
-    double precision, intent(in) ::  lambda_max  !  [A]. The maximum wavelength of the filter. 
+    real(double), intent(in) ::  lambda_min  !  [A]. The minimum wavelength of the filter.
+    real(double), intent(in) ::  lambda_max  !  [A]. The maximum wavelength of the filter. 
     !
     integer :: i
-    double precision :: del
+    real(double) :: del
     
     ! save some inputs
     this_filter%name = name
@@ -109,12 +120,12 @@ contains
   !        simply returns 0.
   function response(this_filter, wavelength) result(out)
     implicit none 
-    double precision :: out 
+    real(double) :: out 
     type(filter), intent(in) :: this_filter
-    double precision, intent(in) :: wavelength ! in [A]
+    real(double), intent(in) :: wavelength ! in [A]
     ! 
     integer :: n,  i
-    double precision :: tmp
+    real(double) :: tmp
 
 
     n = this_filter%nLambda
@@ -175,6 +186,12 @@ contains
        call make_ukirt_filters(this_set, name)
     case ("combo") 
        call make_combo_filters(this_set, name)
+    case ("halpha") 
+       call make_halpha_filters(this_set, name)
+    case ("pabeta") 
+       call make_pabeta_filters(this_set, name)
+    case ("brgamma") 
+       call make_brgamma_filters(this_set, name)
     case ("raman") 
        call make_raman_filters(this_set, name)
     case ("midi") 
@@ -886,6 +903,189 @@ contains
 
 
   !
+  ! Filter sets centered at H-alpha (6564.614 A)
+  ! Number of filters (nfilter) and the range of the 
+  ! the filter wavelengths (lambda_min, lambda_min) and
+  ! the reslution are hardwired for now.
+  ! The first filter should start from the wavelength which correspoends
+  ! to V ~ -400km/s and the last one should correspond to V~500km/s
+  subroutine make_halpha_filters(this_set, name)
+    implicit none 
+    type(filter_set), intent(inout) :: this_set
+    character(LEN=*), intent(in) :: name
+    !
+    integer,  parameter :: nfilter=31  ! number of filters
+    integer,  parameter :: nlam=5  ! number of wavelegth samples
+    !
+    real(double), parameter :: lambda0=6564.614d0     ! [A]  Line center wavelength
+    real(double), parameter :: lambda_min=6555.855d0  ! [A]  minimum wavelength (~-400km/s)
+    real(double), parameter :: R=10000.0d0            ! [-]  Resolution (lambda/dlambda)
+    real(double) :: dlam, lam
+    integer :: i 
+    character(len=20) :: name_of_filter, dum_a
+    
+    ! Now store them as a set    
+    this_set%name = name         
+    this_set%nfilter = nfilter 
+    
+    ALLOCATE(this_set%filters(nfilter))
+
+
+    !
+    ! Setting up the natural filter 
+    !  --> Placing it at the last in the filter_Set array.
+    ! 100 A  to  0.36 mm
+    call init_filter(this_set%filters(nfilter), "H_alpha_natural", nlam, 100.0d0, 3.6d7)
+    this_set%filters(nfilter)%response_function(:) = 1.0d0  ! set everything to 1.0
+    
+
+    ! 
+    ! Seeting up the rest of the filters
+    ! 
+    dlam =  lambda0/R   ! filter width
+
+    do i = 1, nfilter-1
+       write(dum_a, *) i
+       if (i<10) then
+          name_of_filter = "H_alpha0"//TRIM(ADJUSTL(dum_a))
+       else
+          name_of_filter = "H_alpha"//TRIM(ADJUSTL(dum_a))
+       end if
+       call init_filter(this_set%filters(i), TRIM(ADJUSTL(name_of_filter)),  nlam, &
+            lambda_min+dlam*dble(i-1),  lambda_min+dlam*dble(i))
+       this_set%filters(i)%response_function(:) = 1.0d0  ! set everything to 1.0
+    end do
+
+    ! finished
+
+    
+  end subroutine make_halpha_filters
+
+
+
+  !
+  ! Filter sets centered at Pa-beta (12818.1 A)
+  ! Number of filters (nfilter) and the range of the 
+  ! the filter wavelengths (lambda_min, lambda_min) and
+  ! the reslution are hardwired for now.
+  ! The first filter should start from the wavelength which correspoends
+  ! to V ~ -400km/s and the last one should correspond to V~500km/s
+  subroutine make_pabeta_filters(this_set, name)
+    implicit none 
+    type(filter_set), intent(inout) :: this_set
+    character(LEN=*), intent(in) :: name
+    !
+    integer,  parameter :: nfilter=31  ! number of filters
+    integer,  parameter :: nlam=5  ! number of wavelegth samples
+    !
+    real(double), parameter :: lambda0=12818.1d0       ! [A]  Line center wavelength
+    real(double), parameter :: lambda_min=12800.898d0  ! [A]  minimum wavelength (~-400km/s)
+    real(double), parameter :: R=10000.0d0             ! [-]  Resolution (lambda/dlambda)
+    real(double) :: dlam, lam
+    integer :: i 
+    character(len=20) :: name_of_filter, dum_a
+    
+    ! Now store them as a set    
+    this_set%name = name         
+    this_set%nfilter = nfilter 
+    
+    ALLOCATE(this_set%filters(nfilter))
+
+
+    !
+    ! Setting up the natural filter 
+    !  --> Placing it at the last in the filter_Set array.
+    ! 100 A  to  0.36 mm
+    call init_filter(this_set%filters(nfilter), "Pa_beta_natural", nlam, 100.0d0, 3.6d7)
+    this_set%filters(nfilter)%response_function(:) = 1.0d0  ! set everything to 1.0
+    
+
+    ! 
+    ! Seeting up the rest of the filters
+    ! 
+    dlam =  lambda0/R   ! filter width
+    
+    do i = 1, nfilter-1
+       write(dum_a, *) i
+       if (i<10) then
+          name_of_filter = "Pa_beta0"//TRIM(ADJUSTL(dum_a))
+       else
+          name_of_filter = "Pa_beta"//TRIM(ADJUSTL(dum_a))
+       end if
+       call init_filter(this_set%filters(i), TRIM(ADJUSTL(name_of_filter)),  nlam, &
+            lambda_min+dlam*dble(i-1),  lambda_min+dlam*dble(i))
+       this_set%filters(i)%response_function(:) = 1.0d0  ! set everything to 1.0
+    end do
+
+    ! finished
+
+    
+  end subroutine make_pabeta_filters
+
+
+
+
+  !
+  ! Filter sets centered at Br-gamma (21655. A)
+  ! Number of filters (nfilter) and the range of the 
+  ! the filter wavelengths (lambda_min, lambda_min) and
+  ! the reslution are hardwired for now.
+  ! The first filter should start from the wavelength which correspoends
+  ! to V ~ -400km/s and the last one should correspond to V~500km/s
+  subroutine make_brgamma_filters(this_set, name)
+    implicit none 
+    type(filter_set), intent(inout) :: this_set
+    character(LEN=*), intent(in) :: name
+    !
+    integer,  parameter :: nfilter=31  ! number of filters
+    integer,  parameter :: nlam=5  ! number of wavelegth samples
+    !
+    real(double), parameter :: lambda0=21655.0d0       ! [A]  Line center wavelength
+    real(double), parameter :: lambda_min=21626.107d0  ! [A]  minimum wavelength (~-400km/s)
+    real(double), parameter :: R=10000.0d0             ! [-]  Resolution (lambda/dlambda)
+    real(double) :: dlam, lam
+    integer :: i 
+    character(len=20) :: name_of_filter, dum_a
+    
+    ! Now store them as a set    
+    this_set%name = name         
+    this_set%nfilter = nfilter 
+    
+    ALLOCATE(this_set%filters(nfilter))
+
+
+    !
+    ! Setting up the natural filter 
+    !  --> Placing it at the last in the filter_Set array.
+    ! 100 A  to  0.36 mm
+    call init_filter(this_set%filters(nfilter), "Br_gamma_natural", nlam, 100.0d0, 3.6d7)
+    this_set%filters(nfilter)%response_function(:) = 1.0d0  ! set everything to 1.0
+    
+
+    ! 
+    ! Seeting up the rest of the filters
+    ! 
+    dlam =  lambda0/R   ! filter width
+
+    do i = 1, nfilter-1
+       write(dum_a, *) i
+       if (i<10) then
+          name_of_filter = "Br_gamma0"//TRIM(ADJUSTL(dum_a))
+       else
+          name_of_filter = "Br_gamma"//TRIM(ADJUSTL(dum_a))
+       end if
+       call init_filter(this_set%filters(i), TRIM(ADJUSTL(name_of_filter)),  nlam, &
+            lambda_min+dlam*dble(i-1),  lambda_min+dlam*dble(i))
+       this_set%filters(i)%response_function(:) = 1.0d0  ! set everything to 1.0
+    end do
+
+    ! finished
+
+    
+  end subroutine make_brgamma_filters
+
+
+  !
   ! making the filter sets for raman options
   !
   !
@@ -991,11 +1191,11 @@ contains
   function pass_a_filter(this_set, i, lambda) result(out)
     implicit none
     
-    double precision :: out  ! betweem 0 and 1 
+    real(double) :: out  ! betweem 0 and 1 
     !
     type(filter_set), intent(in)  :: this_set
     integer, intent(in) :: i                  ! index of the filters in this set.
-    double precision, intent(in)  :: lambda    ! wavelength in Angstrome
+    real(double), intent(in)  :: lambda    ! wavelength in Angstrome
     
     ! using a function in this module
     out = response(this_set%filters(i), lambda) 
@@ -1053,14 +1253,14 @@ contains
   !
   subroutine createWeightArrays(thisSet, lamArray, dlam, nLambda, bias, weight, lams, lame)
     integer :: nLambda
-    real(kind=doubleKind) :: lamArray(:), bias(:), weight(:), resp, dlam(:)
+    real(double) :: lamArray(:), bias(:), weight(:), resp, dlam(:)
     integer :: i 
-    real(kind=doubleKind) :: lams, lame, biasCorrection
+    real(double) :: lams, lame, biasCorrection
     type(filter_set) :: thisSet
 
     nLambda = 0
     do i = 1, get_nfilter(thisSet)
-       do j = 1, thisSet%filters(i)%nlambda
+       do j = 2, thisSet%filters(i)%nlambda
           nLambda = nLambda + 1
           lamArray(nLambda) = thisSet%filters(i)%wavelength(j)
        enddo
@@ -1078,12 +1278,12 @@ contains
 
     do i = 1, nLambda
        resp = -1.e30
-       do j = 1, get_nfilter(thisSet)
+       do j = 2, get_nfilter(thisSet)
           resp = max(pass_a_filter(thisset, j, lamArray(i)), resp)
        enddo
        bias(i) = resp
     enddo
-    bias(1:nLambda) = bias(1:nLambda) + 0.001
+    bias(1:nLambda) = bias(1:nLambda) + 0.1
     biasCorrection =  SUM(bias(1:nLambda))
     weight(1:nLambda) = biasCorrection * (dlam(1:nLambda) / (bias(1:nLambda)))
 
@@ -1099,17 +1299,17 @@ contains
 
   function FWHM_filters(this_set, i) RESULT(out)
     implicit none
-    real(kind=doublekind) :: out   ! width in [A]
+    real(double) :: out   ! width in [A]
     !
     type(filter_set), intent(in) :: this_set
     integer, intent(in) :: i  ! index of the filter
     
     ! 
-    real(kind=doublekind) ::  area   ! are under response curve [unit less] = 1/lambda * lambda   
-    real(kind=doublekind) ::  R_max  ! Maximum value of the response curve [1/A]
+    real(double) ::  area   ! are under response curve [unit less] = 1/lambda * lambda   
+    real(double) ::  R_max  ! Maximum value of the response curve [1/A]
    
     integer :: j
-    real(kind=doublekind) :: dLambda, dA
+    real(double) :: dLambda, dA
 
     area = 0.0
     R_max = this_set%filters(i)%response_function(1)
@@ -1145,17 +1345,17 @@ contains
   !
   function lambda_eff_filters(this_set, i) RESULT(out)
     implicit none
-    real(kind=doublekind) :: out   ! width in [A]
+    real(double) :: out   ! width in [A]
     !
     type(filter_set), intent(in) :: this_set
     integer, intent(in) :: i  ! index of the filter
     
     ! 
-    real(kind=doublekind) ::  area1, area2
-    real(kind=doublekind) ::  R_max  ! Maximum value of the response curve [1/A]
+    real(double) ::  area1, area2
+    real(double) ::  R_max  ! Maximum value of the response curve [1/A]
    
     integer :: j
-    real(kind=doublekind) :: dLambda, dA
+    real(double) :: dLambda, dA
 
     area1 = 0.0; area2 = 0.0
     R_max = this_set%filters(i)%response_function(1)
@@ -1185,7 +1385,41 @@ contains
   end function lambda_eff_filters
   
 
+  !
+  ! Write the summary for filter sets.
+  !
+  subroutine info_filter_set(thisSet, filename)
+    implicit none
+    type(filter_set), intent(in) :: thisSet
+    character(LEN=*), intent(in) :: filename
+    integer :: UN
+    integer :: i , nlambda
+    real(double) :: lambda_min, lambda_max, dlambda
 
+    if (filename(1:1) == '*') then
+       UN = 6   ! prints on screen
+    else
+       UN = 69
+       open(unit=UN, file = TRIM(filename), status = 'replace',form='formatted')
+    end if
 
+33  format(2x, a10, 3(2x, a10))
+34  format(2x, a10, 3(2x, f10.2)) 
+    write(UN,'(a)') ' '
+    write(UN,'(a)') '###################################################################'
+    write(UN,'(a)') 'Filter set info :'
+    write(UN,'(a)') ' '
+    write(UN,*)     'Filter set name: ', thisSet%name
+    write(UN,33)     'Filter name', 'lambda min', 'lambda max', 'dlambda'
+    do i= 1, thisSet%nfilter
+       nlambda = thisSet%filters(i)%nlambda
+       lambda_min = thisSet%filters(i)%wavelength(1)
+       lambda_max= thisSet%filters(i)%wavelength(nlambda)
+       dlambda = lambda_max - lambda_min
+
+       write(UN, 34)  thisSet%filters(i)%name, lambda_min, lambda_max, dlambda
+    end do
+    if (filename(1:1) /= "*") close(UN)
+  end subroutine info_filter_set
   
 end module filter_set_class
