@@ -13,6 +13,8 @@
 
 ! OMP parallelization calls added 1/7/2001
 
+! TJH: 19/7/02  Jorick's spotty star stuff added
+
 program torus
 
   use constants_mod          ! physical constants
@@ -324,6 +326,16 @@ program torus
   real :: Laccretion, Taccretion, fAccretion, sAccretion
   real :: theta1, theta2, chanceHotRing
 
+  ! Spot stuff
+  
+  integer :: nSpot                       ! number of spots
+  real :: fSpot                          ! fractional area coverage of spots
+  real :: tSpot                          ! spot temperatures
+  real :: thetaSpot, phiSpot             ! spot coords
+  real :: chanceSpot                     ! chance of spot
+  logical :: spotPhoton                  ! photon from spot?
+  logical :: photLine                    ! line produced over whole photosphere?
+
   ! binary parameters
 
   real :: period
@@ -403,11 +415,13 @@ program torus
        velWidthCoreEmissionLine, relIntCoreEmissionLine, contFluxFile, &
        lineOff, logMassLossRate, ramVel, ramanDist, PhaseOffset, &
        contFluxFile2, mass1, mass2, period,  radius1, radius2, mdot1, mdot2, &
-     popFilename, readPops, writePops, vNought1, vNought2, beta1, beta2, &
-     vterm1, vterm2, temp1, temp2, shockWidth, shockFac, doRaman, deflectionAngle, lte, blobContrast, &
-     dopvimage, slitPosition1, slitPosition2, slitPA, slitWidth, slitLength, &
-     nSlit, np ,nv, vfwhm, pfwhm, vSys, useNdf, mcore, diskTemp, curtains, &
-     dipoleOffset, enhance, v0, o6width, misc, nLower, nUpper)
+       popFilename, readPops, writePops, vNought1, vNought2, beta1, beta2, &
+       vterm1, vterm2, temp1, temp2, shockWidth, shockFac, doRaman, deflectionAngle, lte, blobContrast, &
+       dopvimage, slitPosition1, slitPosition2, slitPA, slitWidth, slitLength, &
+       nSlit, np ,nv, vfwhm, pfwhm, vSys, useNdf, mcore, diskTemp, curtains, &
+       dipoleOffset, enhance, v0, o6width, misc, nLower, nUpper, &
+       nSpot, fSpot, tSpot, thetaSpot, phiSpot, photLine)
+
 
 !  secondSourcePosition = zeroVec
 
@@ -1339,6 +1353,16 @@ program torus
 	      chanceHotRing = fAccretion/totCoreContinuumEmission
         endif
         
+        chanceSpot = 0.
+        if ((geometry == "disk").and.(nSpot > 0)) then
+           chanceSpot = fSpot * blackBody(tSpot, 6562.8) / &
+                ((1.-fSpot)*blackBody(tEff, 6562.8) + &
+                (fSpot * blackBody(tSpot, 6562.8)))
+           write(*,'(a,f5.3)') "Spot chance at 6563A: ",chanceSpot
+        endif
+
+
+
 
         write(*,*) "Core Continuum Emission: ",totCorecontinuumEmission
 
@@ -1448,7 +1472,8 @@ program torus
                 weightContPhoton, contPhoton, flatspec, vRot, pencilBeam, &
                 secondSource, secondSourcePosition, lumRatio, &
                 ramanSourceVelocity, vo6, contWindPhoton, directionalWeight, useBias, theta1, theta2, &
-		chanceHotRing)
+		chanceHotRing, &
+                nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton)
 	  
            if (thisPhoton%linePhoton) then
               junk1 = junk1 + thisPhoton%position%z
@@ -1540,7 +1565,9 @@ program torus
                       weightContPhoton, contPhoton, flatspec, vRot, pencilBeam, &
                       secondSource, secondSourcePosition, lumRatio, &
                       ramanSourceVelocity, vo6, contWindPhoton, directionalWeight, useBias, &
-		      theta1, theta2, chanceHotRing)
+		      theta1, theta2, chanceHotRing,  &
+                      nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton)
+
                  if (thisPhoton%resonanceLine) then
                     r1 = real(i)/real(nPhotons/nOuterLoop)
                     thisPhoton%lambda = xArray(1) + r1*(xArray(nLambda)-xArray(1))
@@ -1588,6 +1615,8 @@ program torus
 
               ! find optical depths to observer
 
+
+
               call integratePath(thisPhoton%lambda, lamLine, &
                    thisPhoton%velocity, &
                    thisPhoton%position, outVec, grid, &
@@ -1595,7 +1624,10 @@ program torus
                    escProb, thisPhoton%contPhoton, lamStart, lamEnd, &
                    nLambda, contTau, hitCore, thinLine,.false., rStar,&
                    coolStarPosition, 1., .false., 0, 0, 0., 0., 0., junk)
+
+
               call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
+
 
 
               if (thisPhoton%resonanceLine) escProb = 1.
@@ -1698,6 +1730,10 @@ program torus
                        if (i1 ==0 ) i1 = 1
                        if (grid%geometry /= "binary") then
                           fac2 = sourceSpectrum(i1)
+
+                          if ((grid%geometry == "disk").and.(.not.spotPhoton).and.(.not.photLine)) fac2 = 1.
+
+
                        else
                           if (thisPhoton%fromStar1) then
                              fac2 = sourceSpectrum(i1)
@@ -1978,6 +2014,7 @@ program torus
                           i1 = findILambda(thisLam, xArray, nLambda, ok)
                           if (grid%geometry /= "binary") then
                              fac2 = sourceSpectrum(i1)
+                             if ((grid%geometry == "disk").and.(.not.spotPhoton).and.(.not.photLine)) fac2 = 1.
                           else
                              if (obsPhoton%fromStar1) then
                                 fac2 = sourceSpectrum(i1)

@@ -253,17 +253,17 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
      endif
 
 
-     if (.not.grid%cartesian) then
-        r = modulus(rVec)
-        if (r < grid%rAxis(1)) then
-           rHat = (-1.)*(rVec / r)
-           cosTheta  = uHat .dot. rHat
-           call solveQuad(1.,-2.*r*cosTheta,r*r-grid%rAxis(1)*grid%rAxis(1),x1,x2,ok)
-           dlambda = max(x1,x2) * fudgeFactor
-           rVec = rVec +  dlambda * uHat   
-           lambda(nTau) = dlambda
-        endif
-     endif
+!     if (.not.grid%cartesian) then
+!        r = modulus(rVec)
+!        if (r < grid%rAxis(1)) then
+!           rHat = (-1.)*(rVec / r)
+!           cosTheta  = uHat .dot. rHat
+!           call solveQuad(1.,-2.*r*cosTheta,r*r-grid%rAxis(1)*grid%rAxis(1),x1,x2,ok)
+!           dlambda = max(x1,x2) * fudgeFactor
+!           rVec = rVec +  dlambda * uHat   
+!           lambda(nTau) = dlambda
+!        endif
+!     endif
 
 
 

@@ -31,7 +31,8 @@ subroutine inputs(nPhotons, nx, ny, nz, nr, nmu, nphi, &
      vterm1, vterm2, temp1, temp2, shockWidth, shockFac, doRaman, deflectionAngle, lte, blobContrast, &
      pvimage, slitPosition1,slitPosition2, slitPA, slitWidth, slitLength, &
      nSlit, np, nv, vfwhm, pfwhm, vSys, useNdf, mCore, diskTemp,curtains, &
-     dipoleOffset, enhance, v0, o6width, misc, nLower, nUpper)
+     dipoleOffset, enhance, v0, o6width, misc, nLower, nUpper, &
+     nSpot, fSpot, tSpot, thetaSpot, phiSpot, photLine)
 
   use constants_mod
   use vector_mod
@@ -135,6 +136,16 @@ subroutine inputs(nPhotons, nx, ny, nz, nr, nmu, nphi, &
   ! character vars for unix environ
 
   character(len=80) :: dataDirectory
+
+  ! Spot stuff
+  
+  integer :: nSpot                       ! number of spots
+  real :: fSpot                          ! factional area coverage of spots
+  real :: tSpot                          ! spot temperatures
+  real :: thetaSpot, phiSpot             ! spot coords
+  logical :: photLine                    ! photospheric line production
+  
+
 
   contrast = 1.
   grainSize = 1.
@@ -527,6 +538,9 @@ endif
    call getReal("height", height, cLine, nLines, &
        "Scale height (solar radii): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
+   call getReal("teff", teff, cLine, nLines, &
+          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+
    call getReal("disktemp", diskTemp, cLine, nLines, &
        "Disk temperature (K): ","(a,f9.1,a)",10000.,ok,.true.)
 
@@ -539,6 +553,34 @@ endif
    call getString("contflux", contFluxFile, cLine, nLines, &
   "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
 
+   call getInteger("nspot", nSpot, cLine, nLines, &
+        "Number of spots: ", "(a,i3,1x,a)", 0, ok, .false.)
+
+   if (nSpot > 0) then
+
+      call getReal("theta", thetaSpot, cLine, nLines, &
+           "Theta of spot (degs): ","(a,f6.2,a)", 0., ok, .true.)
+      
+      call getReal("phi", phiSpot, cLine, nLines, &
+           "Phi of spot (degs): ","(a,f6.2,a)", 0., ok, .true.)
+      
+      call getReal("tspot", tSpot, cLine, nLines, &
+           "Temp of spot (degs): ","(a,f7.0,a)", 0., ok, .true.)
+      
+      call getReal("fspot", fSpot, cLine, nLines, &
+           "Fractional coverage of spots: ","(a,f6.2,a)", 0., ok, .true.)
+
+      call getLogical("photline", photLine, cLine, nLines, &
+            "Line produced over whole star: ","(a,1l,1x,a)", .false., ok, .true.)
+
+
+      thetaSpot = thetaSpot * degToRad
+      phiSpot = phiSpot * degToRad
+
+
+   endif
+
+
     rCore = rCore * rSol
     rInner = rInner * rSol
     rOuter = rOuter * rSol
@@ -546,6 +588,11 @@ endif
     mCore = mCore * mSol
 
  endif
+
+
+
+
+
 
  if (geometry(1:4) .eq. "star") then 
    call getReal("radius", radius, cLine, nLines, &
@@ -713,7 +760,7 @@ endif
    "Use a Plez model atmosphere: ","(a,1l,a)", .false., ok, .false.)
 
  call getLogical("opaquecore", opaqueCore, cLine, nLines, &
-   "Opaque Core: ","(a,1l,a)", .false., ok, .false.)
+   "Opaque Core: ","(a,1l,a)", .true., ok, .false.)
 
  call getLogical("tio", fillTio, cLine, nLines, &
    "TiO opacity: ","(a,1l,a)", .false., ok, .false.)

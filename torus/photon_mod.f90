@@ -280,7 +280,9 @@ contains
        lineEmission, lamLine,  &
        weightLinePhoton, weightContPhoton, contPhoton, flatspec, vRot, &
        pencilBeam, secondSource, secondSourcePosition, lumRatio, &
-       ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias,theta1,theta2, chanceHotRing)
+       ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias, &
+       theta1,theta2, chanceHotRing, &
+       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton)
 
     type(PHOTON) :: thisPhoton                 ! the photon
     type(GRIDTYPE) :: grid                     ! the opacity grid
@@ -307,7 +309,6 @@ contains
     logical :: flatspec                        ! is the spectrum flat
     real :: vRot                               ! rotational velocity
     integer :: i1, i2, i3                      ! position indices
-    integer :: j, k
     type(VECTOR) :: rHat, perp                 ! radial unit vector
     type(VECTOR) :: rotatedVec                 ! rotated vector
     logical :: pencilBeam                      ! beamed radiation
@@ -315,8 +316,24 @@ contains
     logical :: secondSource                    ! second photon source?
     type(VECTOR) :: secondSourcePosition       ! the position of it
     type(VECTOR) :: ramanSourceVelocity        ! what it says
+
+
+  ! Spot stuff
+  
+  integer :: nSpot                       ! number of spots
+  real :: fSpot                          ! factional area coverage of spots
+  real :: thetaSpot, phiSpot             ! spot coords
+  logical :: spotPhoton
+  
+  type(VECTOR) :: rSpot, tVec
+
+  real :: chanceSpot
+  real :: maxTheta
+  real :: cosThisTheta
+  real :: rotAngle
+
+
     real :: biasWeight
-    integer :: i
 
     real :: theta1, theta2                     ! defines hot ring of accretion for TTaus
     real :: chanceHotRing                      ! chance of core photon in ttauri accretion ring
@@ -480,12 +497,60 @@ contains
 
 
           else
+
+
+
              if (grid%geometry /= "binary") then
                 r = grid%rCore*1.00001d0
 		if (grid%geometry /= "ttauri") then
-		   thisPhoton%position = (r*randomUnitVector())
-		else
-		   call random_number(r1)
+
+                   if ((grid%geometry == "disk").and.(nSpot>0)) then
+		      rSpot = VECTOR(cos(phiSpot)*sin(thetaSpot),sin(phiSpot)*sin(thetaSpot),cos(thetaSpot))
+                      if (nSpot == 1) then
+                         maxTheta = Pi * fSpot   
+                      else
+                         maxTheta = Pi * fSpot * 0.5
+                      endif
+
+                      spotPhoton = .false.
+
+                      call random_number(r1)
+                      if (r1 < chanceSpot) then
+                         spotPhoton = .true.
+                         call random_number(r1)
+                         cosThisTheta = r1 * (1. - cos(maxTheta)) + cos(maxTheta)    
+                         thisTheta = acos(cosThisTheta)
+                         call random_number(r1)
+                         thisPhi = twoPi * r1	
+                         rHat = VECTOR(cos(thisPhi)*sin(thisTheta),sin(thisPhi)*sin(thisTheta),cos(thisTheta))
+                         
+                         tVec = zAxis .cross. rSpot  
+                         call normalize(tVec)
+                         rotAngle = zAxis .dot. rSpot
+                         rotAngle = acos(rotAngle)
+                         rHat = arbitraryrotate(rHat,rotAngle,tVec)
+                         if (nSpot == 2) then
+                            call random_number(r1)
+                            if (r1 < 0.5) then
+                               rHat = (-1.) * rHat
+                               rSpot = (-1.) * rSpot
+                            endif
+                         endif
+                         thisPhoton%position = r * rHat
+                      else
+                         tVec = randomUnitVector()
+                         ang = tVec .dot. rSpot
+                         ang = acos(ang)
+                         do while (ang < maxTheta)
+                            tVec = randomUnitVector()
+                            ang = tVec .dot. rSpot
+                            ang = acos(ang)
+                         enddo
+                         thisPhoton%position = r*tVec
+                      endif
+                   endif
+	      else 
+                   call random_number(r1)
 		   if (r1 < chanceHotRing) then
 		      call random_number(r1)
 		      thisTheta = r1*(theta2 - theta1)+theta1
@@ -532,6 +597,7 @@ contains
        iLambda = int(r1*real(nLambda))+1
        thisPhoton%lambda = lambda(iLambda)
        if (.not.flatspec) then
+
           thisPhoton%stokes = thisPhoton%stokes * &
                (sourceSpectrum(iLambda) * weightContPhoton)
        else
