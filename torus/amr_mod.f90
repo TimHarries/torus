@@ -5148,8 +5148,14 @@ CONTAINS
 
        ! allocate any variables that need to be  
        if (.not.grid%oneKappa) then
-          ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nLambda))
-          ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nLambda))
+          ! The kappa arrays should be allocated with grid%nopacity instead of grid%nlambda
+          ! because for line calculation, there is only one kappa needed.
+          ! (but grid%nlambda is not 1). If you allocate the arrays with grid%nlambda,
+          ! it will be a huge waste of RAM. ---  (RK) 
+          ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nopacity))
+          ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nopacity))
+!          ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nlambda))
+!          ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nlambda))
           parent%child(newChildIndex)%kappaAbs = 1.e-30
           parent%child(newChildIndex)%kappaSca = 1.e-30
        endif

@@ -2029,7 +2029,7 @@ end subroutine integratePathAMR
           DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T/meanMoleMass) !eq 7  [Hz]
           a = bigGamma(dble(N_HI(i-1)), dble(T), dble(Ne(i-1)), dble(nu0_p))   &
                / (fourPi * DopplerWidth) ! [-]
-          deltaNu = nu_p - nu0_p    !  [Hz]
+          deltaNu = nu_p - nu0_p     !  [Hz]
           dv = deltaNu/DopplerWidth  ! [-]
           Hay = voigtn(dble(a),dv)       
           chil = chiLine(i-1) / (sqrt_pi*DopplerWidth) * Hay ! equation 5
