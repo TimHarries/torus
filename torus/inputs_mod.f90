@@ -240,6 +240,10 @@ subroutine inputs()
           "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
      call getInteger("nlower", nLower, cLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
      call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
+
+     call getReal("xfac", xFac, cLine, nLines, &
+          "Latitudinal x-fac: ","(a,f6.3,a)", 0., ok, .true.)
+
      
      rCore = rCore * rSol
      v0 = v0 * 1.e5
@@ -785,6 +789,9 @@ endif
 
  call getLogical("plotvel", plotVelocity, cLine, nLines, &
   "Plot velocity vectors: ","(a,1l,a)",.false., ok, .false.)
+
+ call getLogical("sphericity", sphericitytest, cLine, nLines, &
+  "Perform sphericity test: ","(a,1l,a)",.false., ok, .false.)
 
 
 

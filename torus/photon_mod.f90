@@ -499,12 +499,11 @@ contains
           else
 
 
+             r = grid%rCore*1.0001d0
+             select case(grid%geometry)
 
-             if (grid%geometry /= "binary") then
-                r = grid%rCore*1.00001d0
-		if (grid%geometry /= "ttauri") then
-
-                   if ((grid%geometry == "disk").and.(nSpot>0)) then
+                case("disk")
+                   if (nSpot > 0) then
 		      rSpot = VECTOR(cos(phiSpot)*sin(thetaSpot),sin(phiSpot)*sin(thetaSpot),cos(thetaSpot))
                       if (nSpot == 1) then
                          maxTheta = Pi * fSpot   
@@ -548,8 +547,24 @@ contains
                          enddo
                          thisPhoton%position = r*tVec
                       endif
+                   else
+		      thisPhoton%position = (r*randomUnitVector())
                    endif
-	      else 
+
+                case("binary")
+                   call random_number(r)
+                   if (r < grid%lumRatio) then
+                      thisPhoton%position = grid%starPos1 + (1.01*(grid%rStar1) * randomUnitVector())
+                      thisPhoton%fromStar1 = .true.
+                      call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
+                   else
+                      thisPhoton%position = grid%starPos2 + (1.01*(grid%rStar2) * randomUnitVector())
+                      thisPhoton%fromStar2 = .true.
+                      call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
+                   endif
+
+                case("ttauri")
+
                    call random_number(r1)
 		   if (r1 < chanceHotRing) then
 		      call random_number(r1)
@@ -563,29 +578,15 @@ contains
 		   else
 		      thisPhoton%position = (r*randomUnitVector())
 		   endif
-		endif
+                                      
 
-                if (r /= 0.) then		   
-                   thisPhoton%originalNormal = thisPhoton%position
-                else
-                   thisPhoton%originalNormal = randomUnitVector()
-                endif
-                call normalize(thisPhoton%originalNormal)
-                thisPhoton%velocity = VECTOR(1.e-30,1.e-30,1.e-30)
-                
+                case DEFAULT
+                   thisPhoton%position = (r*randomUnitVector())
+             end select
 
-             else
-                call random_number(r)
-                if (r < grid%lumRatio) then
-                   thisPhoton%position = grid%starPos1 + (1.01*(grid%rStar1) * randomUnitVector())
-                   thisPhoton%fromStar1 = .true.
-                   call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
-                else
-                   thisPhoton%position = grid%starPos2 + (1.01*(grid%rStar2) * randomUnitVector())
-                   thisPhoton%fromStar2 = .true.
-                   call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
-                endif
-             endif
+
+             thisPhoton%originalNormal = thisPhoton%position
+             call normalize(thisPhoton%originalNormal)
 
           endif
 

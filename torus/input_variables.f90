@@ -102,7 +102,7 @@ module input_variables
   real :: rMin, rMaj
   real :: shellFrac
   real :: Teff
-  real :: radius, kfac
+  real :: radius, kfac, xfac
   real :: inclination
   real :: contrast
   real :: rCore, rInner
@@ -182,6 +182,10 @@ module input_variables
   integer :: nPhotons
   integer :: maxScat
   
+
+  ! sphericity test
+
+  logical :: sphericityTest
  
 
   ! some variables had different names in inputs_mod and torusMain. To avoid conflict 

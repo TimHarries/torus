@@ -543,7 +543,7 @@ program torus
         grid%kappaAbs = 1.e-30
 
      case("puls")
-        call fillGridPuls(grid, mDot, rcore, tEff, v0, vterm, beta)
+        call fillGridPuls(grid, mDot, rcore, tEff, v0, vterm, beta, xfac)
 !        call initGridStateq(grid, contFluxFile, contFluxFile2, popFilename, &
 !                            readPops, writePops, lte, nLower, nUpper)
      case("wind")
@@ -913,7 +913,7 @@ program torus
      case("donati")
 !        call fillGridDonati(grid, resonanceLine)
      case("puls")
-	!        call fillGridPuls(grid, mDot, rStar, tEff, v0, vterm, beta)
+	!        call fillGridPuls(grid, mDot, rStar, tEff, v0, vterm, beta, xfac)
 	case("wind")
 	   
 !	call fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
@@ -1066,6 +1066,24 @@ program torus
      write(*,*) " "
 
 
+     if (sphericityTest) then
+        write(*,'(a)') "Sphericity test - 100 random directions:"
+        do i = 1, 100
+           tempVec = randomUnitVector()
+           call integratePath(lamLine,  lamLine, VECTOR(1.,1.,1.), &
+                zeroVec, tempVec, grid, lambda, &
+                tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
+                .false., lamStart, lamEnd, nLambda, contTau, &
+                hitCore, thinLine,.false., rStar, coolStarPosition, 1., &
+                .false., 0, 0, 0., 0., 0., junk)
+           write(*,'(a,1pe10.3,1pe10.3,1pe10.3)') "Optical depths: ",tauExt(nTau),tauAbs(nTau),tauSca(nTau)
+        enddo
+     endif
+           
+
+
+
+
      weightLinePhoton = 0.
      weightContPhoton = 1.
 
@@ -1111,10 +1129,16 @@ program torus
            endif
         endif
 
+        write(*,'(a)') "mu axis"
         do i = 1, grid%nMu
            write(*,*) i,acos(grid%muAxis(i))*radtodeg, &
                              grid%muProbDistLine(grid%nr/2,i)
         enddo
+        write(*,'(a)') "Phi axis"
+        do i = 1, grid%nPhi
+           write(*,*) i,grid%phiAxis(i)*radtodeg, grid%phiProbDistLine(grid%nr/2,grid%nmu/2,i)
+        enddo
+
 
         if (geometry == "donati") totWindContinuumEmission = 0.
 

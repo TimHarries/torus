@@ -862,14 +862,15 @@ contains
                 call getIndices(grid, rVec, i1, i2, i3, t1, t1, t3)
 
 
-                tot = tot + interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)*dV
+!                tot = tot + interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)*dV
+                tot = tot + eta(i,j,k)
 
              enddo
              muProbDist(i,j) = tot
           enddo 
-         do j = nMu, 2, -1
-             muProbDist(i,j) = muProbDist(i,j-1)
-          enddo
+!         do j = nMu, 2, -1
+!             muProbDist(i,j) = muProbDist(i,j-1)
+!          enddo
 
        enddo
 

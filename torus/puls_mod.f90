@@ -5,12 +5,13 @@ module puls_mod
 
 contains
 
-  subroutine fillGridPuls(grid, mDot, rStar, tEff, v0, vterm, beta)
+  subroutine fillGridPuls(grid, mDot, rStar, tEff, v0, vterm, beta, &
+       xfac)
 
     implicit none
     real :: mDot, rStar, tEff, v0, vTerm, beta
     integer :: i, j, k
-    real :: sinTheta
+    real :: sinTheta, fac
     logical :: ok
     type(VECTOR) :: rHat, rVec
     real :: vel
@@ -18,12 +19,17 @@ contains
     real :: x, dx
     real(kind=doubleKind) :: phiT, ne1, ne2, ntot
     integer ::m
-    real :: v, b2, b3
+    real :: v, b2, b3, xfac, pfac, kfac
     type(GRIDTYPE) :: grid
 
 !
 ! Departure coeffs from Puls et al 1996, A&A, 305, 171
 !
+
+    pfac = 2.e0
+    kfac = 1.0e0/(1.0e0-xFac/(1.0e0+pFac))
+
+
     grid%geometry = "puls"
 
     do i = 1, grid%nmu
@@ -127,17 +133,26 @@ contains
        enddo
     enddo
 
-    
     call generateOpacities(grid, 2, 3)
 
 
     deallocate(grid%ne)
     deallocate(grid%n)
     deallocate(grid%nTot)
-
-    
     
     grid%etaCont = 1.e-30
+
+    do i = 1, grid%nr
+       do j = 1, grid%nMu
+          do k = 1, grid%nPhi
+             fac = kFac * (1.e0-xfac*abs(grid%muAxis(j))**pFac)
+             grid%chiLine(i,j,k) = grid%chiLine(i,j,k)*fac**2
+             grid%etaLine(i,j,k) = grid%etaLine(i,j,k)*fac**2
+             grid%kappaSca(i,j,k,1) = grid%kappaSca(i,j,k,1)*fac
+          enddo
+       enddo
+    enddo
+
 
   end subroutine fillGridPuls
 
