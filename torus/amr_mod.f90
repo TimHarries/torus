@@ -10,6 +10,7 @@ MODULE amr_mod
   USE parameters_mod      ! parameters for specific geometries
   USE jets_mod            ! 
   USE luc_cir3d_class 
+  USE cmfgen_class
   USE constants_mod, only: cSpeed, pi
   USE sph_data_class
   USE cluster_class
@@ -81,6 +82,9 @@ CONTAINS
 
     CASE ("luc_cir3d")
       CALL calc_cir3d_mass_velocity(thisOctal,subcell)
+
+    CASE ("cmfgen")
+      CALL cmfgen_mass_velocity(thisOctal,subcell)
 
     CASE ("testamr")
        CALL calcTestDensity(thisOctal,subcell,grid)
@@ -625,6 +629,10 @@ CONTAINS
       CASE ("luc_cir3d")
         CALL calc_cir3d_temperature(thisOctal,subcell)
         gridConverged = .TRUE.
+
+      CASE ("cmfgen")
+        CALL calc_cmfgen_temperature(thisOctal,subcell)
+        gridConverged = .TRUE.
         
       CASE ("testamr","proto")
         gridConverged = .TRUE.
@@ -819,7 +827,7 @@ CONTAINS
    
     ! geometry-specific tests should go here
     IF (grid%geometry(1:6) == "ttauri" .OR. grid%geometry(1:4) == "jets" .or. &
-         grid%geometry(1:9) == "luc_cir3d") THEN
+         grid%geometry(1:9) == "luc_cir3d" .or. grid%geometry(1:6) == "cmfgen" ) THEN
       
        ! need to test for both star and disc intersections 
       
@@ -849,7 +857,7 @@ CONTAINS
 
        ! This line is here for backward compatability, but should be removed
        ! in the future.
-       if (grid%geometry == "luc_cir3d") intersectionFound = .false.
+       if (grid%geometry == "luc_cir3d" .or. grid%geometry == "cmfgen") intersectionFound = .false.
        
        IF (intersectionFound) THEN
        
@@ -3441,6 +3449,8 @@ CONTAINS
     real(double) :: fac1,fac2
     real(double) :: rho_disc_ave, scale_length
     real(double),save  :: R_tmp(204)  ! [10^10cm]
+    real(double),allocatable, save  :: R_cmfgen(:)  ! [10^10cm]
+    real(double),save  :: Rmin_cmfgen  ! [10^10cm]
     real(double) :: rho
     logical, save :: first_time=.true.
     logical :: close_to_star
@@ -3591,6 +3601,38 @@ CONTAINS
       end if
 
       if (cellSize > 100.0d0)  split=.true.
+
+   case("cmfgen") 
+      nr = get_cmfgen_nd()
+      if (first_time) then
+         ! retriving the r grid in CMFGEN data.
+         ALLOCATE(R_cmfgen(nr))
+         call get_cmfgen_data_array("R", R_cmfgen) ! [10^10cm]
+         Rmin_cmfgen = get_cmfgen_Rmin()
+         first_time=.false.         
+      end if
+      cellSize = thisOctal%subcellSize
+      cellCentre = subcellCentre(thisOctal,subCell)
+      r = modulus(cellcentre)
+
+      if (r > R_cmfgen(nr) .or. r < Rmin_cmfgen ) then
+         split = .false.
+      else
+         call locate(R_cmfgen, nr, r, i)      
+         if (i == 0) i = nr-1
+         if (i == nr) i = nr-1
+
+         dR = ABS(R_cmfgen(i+1)-R_cmfgen(i))
+         thisScale = cellsize/amrlimitscalar
+         
+         if ( thisScale > dR) then
+            split = .true.
+         else
+            split = .false.
+         end if
+      end if
+
+      if (cellSize > ABS(R_cmfgen(nr)-Rmin_cmfgen)/4.0d0)  split=.true.
 
    case ("cluster")
       ! Splits if the number of particle is more than a critical mass.
@@ -6435,6 +6477,67 @@ CONTAINS
        endif
     enddo
   end subroutine set_bias_ttauri
+
+
+  recursive subroutine set_bias_cmfgen(thisOctal, grid, lambda0, dir_obs)
+  type(gridtype) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real, intent(in)          :: lambda0                ! rest wavelength of line
+  type(VECTOR), intent(in)  :: dir_obs           ! direction
+  integer :: subcell, i
+  real(double) :: d, dV, r1, r2
+  type(octalvector)  :: rvec
+  real(double):: tausob, escprob, nu, dtau_cont
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call set_bias_ttauri(child, grid, lambda0, dir_obs)
+                exit
+             end if
+          end do
+       else
+          d = thisOctal%subcellsize 
+          rVec = subcellCentre(thisOctal,subcell)
+          if (thisOctal%threed) then
+             dV = d*d*d
+          else
+             dv = 2.0_db*pi*d*d*rVec%x
+          endif
+          
+          nu  = cSpeed / (lambda0*angstromtocm)
+
+          tauSob = thisOctal%chiline(subcell)  / nu
+          tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, dir_obs, &
+               startOctal=thisOctal)
+
+          if (tauSob < 0.01) then
+             escProb = 1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
+          else if (tauSob < 15.) then
+             escProb = (1.0d0-exp(-tauSob))/tauSob
+          else
+             escProb = 1.d0/tauSob
+          end if          
+          escProb = max(escProb, 1.d-7)
+
+          dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
+
+          !
+          if (thisOctal%inflow(subcell)) then
+             thisOctal%biasCont3D(subcell) = EXP(-dtau_cont)
+             thisOctal%biasLine3D(subcell) = SQRT(escProb)  ! good one to use 
+          else
+             thisOctal%biasCont3D(subcell) = 1.0e-20
+             thisOctal%biasLine3D(subcell) = 1.0e-20
+          end if
+
+       endif
+    enddo
+  end subroutine set_bias_cmfgen
 
 
   recursive subroutine massInAnn(thisOctal, r1, r2, mass)

@@ -594,13 +594,14 @@ contains
                    thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
                 endif
 
-                  if (grid%geometry(1:7) == "ttauri" .or.  &
-                       grid%geometry(1:9) == "luc_cir3d") then
-                    ! need to check the position is not inside the star
-                    if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) exit
-                  else
-                    exit
-                  end if
+                if (grid%geometry(1:7) == "ttauri" .or.  &
+                     grid%geometry(1:9) == "luc_cir3d".or. &
+                     grid%geometry(1:6) == "cmfgen") then
+                   ! need to check the position is not inside the star
+                   if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) exit
+                else
+                   exit
+                end if
 
                 end do 
 
@@ -789,7 +790,8 @@ contains
                   thisPhoton%position = vector(xOctal,yOctal,zOctal)
 
                   if (grid%geometry(1:7) == "ttauri" .or. &
-                       grid%geometry(1:9) == "luc_cir3d") then
+                       grid%geometry(1:9) == "luc_cir3d" .or. &
+                     grid%geometry(1:6) == "cmfgen") then
                     ! need to check the position is not inside the star
                     if ((modulus(thisPhoton%position-s2o(grid%starPos1))) > grid%rStar1) exit
                   else
@@ -909,7 +911,7 @@ contains
                       !call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
                    endif
 
-                case("ttauri", "luc_cir3d")
+                case("ttauri", "luc_cir3d",  "cmfgen")
 
 !                   call random_number(r1)
 !                   if (r1 < chanceHotRing) then

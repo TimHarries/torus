@@ -1261,6 +1261,31 @@ endif
            "Core profile: ","(a,a,1x,a)","none", ok, .false.)
 
  end if
+
+
+ if (geometry == "cmfgen") then
+      call getDouble("CMFGEN_Rmin", CMFGEN_Rmin, cLine, nLines, &
+           "radius of central star  [10^10cm] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+      rcore = CMFGEN_Rmin      ! [10^10cm]
+      call getLogical("lycontthick", LyContThick, cLine, nLines, &
+           "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
+      call getString("contflux", contFluxFile, cLine, nLines, &
+           "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+      call getString("popfile", popFilename, cLine, nLines, &
+           "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
+      call getLogical("writepops", writePops, cLine, nLines, &
+           "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+      call getLogical("readpops", readPops, cLine, nLines, &
+           "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+      call getLogical("writephasepops", writePhasePops, cLine, nLines, &
+           "Write populations file at each phase: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("readphasepops", readPhasePops, cLine, nLines, &
+           "Read populations file (specific phase): ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("enhance", enhance, cLine, nLines, &
+           "Accretion enhancement: ","(a,1l,1x,a)", .false., ok, .false.)
+ end if
+
+
  
  if (coreEmissionLine) then
     

@@ -28,6 +28,7 @@ module grid_mod
   use density_mod                     ! to use generic density function
   use pixplot_module                  ! To use some plotting routines.
   use cluster_class
+  use cmfgen_class
   
   implicit none
 
@@ -589,6 +590,12 @@ contains
 
     case ("luc_cir3d") 
        rStar  = CIR_Rstar*Rsol/1.0d10   ! in [10^10cm] 
+       grid%rCore = rStar
+       grid%rStar1 = rStar
+       grid%starPos1 = vector(0.,0.,0.)
+
+    case ("cmfgen") 
+       rStar  = get_cmfgen_data_array_element("R", 1)   ! in [10^10cm] 
        grid%rCore = rStar
        grid%rStar1 = rStar
        grid%starPos1 = vector(0.,0.,0.)

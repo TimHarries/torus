@@ -13,6 +13,8 @@ module stateq_mod
   use jets_mod
   use opacity_lte_mod
   use hyd_col_coeff
+  use cmfgen_class
+  use utils_mod
 				   
   implicit none
 !  public
@@ -3600,6 +3602,78 @@ type(octal), pointer :: testOctal
     deallocate(octalArray)
 
   end subroutine generateOpacitiesAMR
+
+
+  ! This really should be in cmfgen_mod.f90, but due to circular 
+  ! depdndecy this has to be in this module
+  ! 
+  subroutine map_cmfgen_opacities(grid)
+    type(GRIDTYPE),intent(inout):: grid      
+    !
+    integer                     :: iOctal        ! loop counter
+    integer                     :: iSubcell      ! loop counter
+    integer                     :: nOctal
+    !
+    type(octalWrapper), dimension(:), allocatable :: octalArray ! array containing pointers to octals
+    type(octal), pointer :: thisOctal
+    TYPE(octalVector) :: point
+    REAL(double) :: ri
+    ! work arrays
+    integer :: nd  ! depth points
+    real(double), allocatable :: R(:), eta(:), chi_th(:), chi_line(:), eta_line(:), chi_es(:)
+
+    nOctal = 0 
+    !
+    allocate(octalArray(grid%nOctals))
+    call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+  
+    ! creating the temp arrays
+    nd = get_cmfgen_nd()
+    ! just checking ...
+    if (nd <= 0) then
+       print *, "Error:: nd <=0 in [stated_mod:: map_cmfgen_opacities]."
+       print *, "        nd = ", nd
+       stop
+    end if
+    ALLOCATE(R(nd), eta(nd), chi_th(nd), chi_line(nd), eta_line(nd), chi_es(nd))
+    ! retrive the data
+    call get_cmfgen_data_array("R", R)
+    call get_cmfgen_data_array("eta", eta)
+    call get_cmfgen_data_array("chi_th", chi_th)
+    call get_cmfgen_data_array("chil", chi_line)
+    call get_cmfgen_data_array("etal", eta_line)
+    call get_cmfgen_data_array("esec", chi_es)  ! electron scattering opacity
+
+
+    write(*,'(a) ')  " "
+    write(*,'(a) ')  " Mapping CMFGEN opacity to AMR grid ... "
+    write(*,'(a) ')  "  "
+
+    do iOctal = 1, SIZE(octalArray), 1
+       do iSubcell = 1, octalArray(iOctal)%content%maxChildren
+          if (octalArray(iOctal)%inUse(iSubcell).and.octalArray(iOctal)%content%inFlow(isubcell)) then
+             thisOctal => octalArray(iOctal)%content        
+             point = subcellCentre(thisOctal,isubcell)
+             ri = modulus( point )   ! [10^10cm]             
+             thisOctal%etaCont(iSubcell) = loginterp_dble(eta, nd, R, ri)    
+             thisOctal%kappaAbs(iSubcell,1) =  loginterp_dble(chi_th, nd, R, ri)    
+             thisOctal%kappaSca(iSubcell,1) =  loginterp_dble(chi_es, nd, R, ri)    
+             thisOctal%etaLine(iSubcell) = loginterp_dble(eta_line, nd, R, ri)    
+             thisOctal%chiLine(iSubcell) = loginterp_dble(chi_line, nd, R, ri)              
+          endif
+       enddo
+    enddo
+
+    deallocate(octalArray)
+    DEALLOCATE(R, eta, chi_th, chi_line, eta_line, chi_es)
+
+    write(*,'(a) ')  " "
+    write(*,'(a) ')  " ...............done."
+    write(*,'(a) ')  "  "
+
+
+  end subroutine map_cmfgen_opacities
+
   
 
   recursive subroutine map2DstatEq(thisOctal,grid,subcellMask)

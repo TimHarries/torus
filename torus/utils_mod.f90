@@ -194,7 +194,7 @@ contains
     REAL(double) ::  X,X1,X2,Y1,Y2,ANS
     REAL(double) ::  LX,LX1,LX2,LY1,LY2,GR
     if ( (x.le.0.0d0).or.(x1.le.0.0d0).or.(x2.le.0.0d0)) then
-       write(*,*) 'f.up in logint',x,x1,x2,y1,y2
+       write(*,*) 'f.up in logint_dble',x,x1,x2,y1,y2
        stop
     endif
     LX=LOG(X)
@@ -203,7 +203,7 @@ contains
     LY1=LOG(MAX(Y1,1.d-90))
     LY2=LOG(MAX(Y2,1.d-90))
     if (lx1.eq.lx2) then
-       write(*,*) 'Error:: Bad x in logint.'
+       write(*,*) 'Error:: Bad x in logint_dble.'
        write(*,*) 'lx1 =', lx1
        write(*,*) 'lx2 =', lx2
        stop
@@ -680,6 +680,20 @@ contains
     logInterp = 10.e0**(log10(y(i)) + t * (log10(y(i+1))-log10(y(i))))
 
   end function logInterp
+
+  real(double) function logInterp_dble(y, n, x, xi)
+    integer, intent(in) :: n
+    real(double), intent(in)    :: y(n), x(n), xi
+    integer, save       :: i
+    real(double)                :: t
+
+    call locate(x, n, xi, i)
+    
+    t = (xi - x(i))/(x(i+1)-x(i))
+
+    logInterp_dble = 10.d0**(log10(y(i)) + t * (log10(y(i+1))-log10(y(i))))
+
+  end function logInterp_dble
 
   PURE SUBROUTINE LOCATE_single(XX,N,X,J)
     real, intent(in)    :: XX(*)

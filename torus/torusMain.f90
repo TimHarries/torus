@@ -36,6 +36,7 @@ program torus
   use inputs_mod
   use TTauri_mod
   use luc_cir3d_class
+  use cmfgen_class
   use unix_mod
   use path_integral
   use puls_mod
@@ -575,6 +576,8 @@ program torus
 
   if ((geometry == "luc_cir3d")) rotateView = .true.
 
+  if ((geometry == "cmfgen")) rotateView = .true.
+
   if ((geometry(1:4) == "jets")) then
      rotateView = .true.
      tiltView = .true.
@@ -684,6 +687,11 @@ program torus
      !                    Rmin [10^10cm]         
      call new(CIR_Rstar*Rsol*1.0e-10, CIR_Twind, CIR_Mdot_scale,  &
      "zeus_rgrid.dat", "zeus_rho_vel.dat")     
+
+  elseif (geometry == "cmfgen") then
+     onekappa=.false.
+     call read_cmfgen_data("OPACITY_DATA")
+     call put_cmfgen_Rmin(CMFGEN_Rmin)  ! in [10^10cm]
   end if
   !==========================================================================
   !==========================================================================
@@ -1133,7 +1141,7 @@ program torus
   ! Wait until everybody reads in the grid 
    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
-        if (geometry == "ttauri" .or. geometry == "luc_cir3d") then
+        if (geometry == "ttauri" .or. geometry == "luc_cir3d" .or. geometry == "cmfgen") then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
            call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
@@ -1213,6 +1221,10 @@ program torus
               end if
               !-------------------------------------------------------------------
 
+           elseif (geometry == "cmfgen") then
+              ! simply map CMFGEN opacity data to the AMR grid
+              call map_cmfgen_opacities(grid)
+
            else
 
               call amrStateq(grid, newContFluxFile, lte, nLower, nUpper, &
@@ -1225,11 +1237,13 @@ program torus
    print *,'Process ',my_rank,' waiting for other amrStatEq calls to return...' 
    call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all the processes
 
-           end if ! (grid%geometry=="ttauri" .or. grid%geometry(1:8)=="windtest" .or. ...)
+           end if ! (grid%geometry=="ttaur" .or. ...)
 
   if (my_rank==1) &
            call tune(6, "amrStateq") ! stop a stopwatch  
            write(*,*) "... statistical equilibrium routines complete"
+
+
 
         end if ! (lineEmission)
 
@@ -2083,7 +2097,7 @@ program torus
      write(*,*) "rotation axis",rotationAxis
   endif
 
-  if (geometry == "luc_cir3d") then
+  if (geometry == "luc_cir3d" .or. geometry == "cmfgen") then
      rotationAxis = VECTOR(0.,0.,1.)
      write(*,*) "rotation axis",rotationAxis
   endif
@@ -2116,7 +2130,7 @@ program torus
 
 
   
-  if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d") then
+  if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d" .or. geometry == "cmfgen") then
     call emptySurface(starSurface)
   end if
 
@@ -2250,7 +2264,7 @@ program torus
      endif
 
 
-     if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d") then      
+     if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d" .or. geometry =="cmfgen") then      
         ! Nu must be set again here since it is not assigned when the population/grid 
         ! file is read from a file!  (RK changed here.)
         nu = cSpeed / (lamLine * angstromtocm)
@@ -2424,7 +2438,9 @@ program torus
      ! NOT ALL THE GEOMETRY HAS RCORE VALUES, AND SAME UNITS!
      ! THIS SHOULD BE DONE IN INITAMRGRID ROUTINE AS SOME GEOMETRY HAS
      ! DONE SO.
-     grid%rStar1 = rcore  
+     if (geometry /= "cmfgen") then	
+        grid%rStar1 = rcore       
+     end if
      !
      ! Performs various optical depth tests here...
      !
@@ -2630,17 +2646,16 @@ program torus
            write (*,'(a,e12.3)') 'T Tauri accretion: continuum emission: ',fAccretion
            write (*,'(a,f12.3)') 'Accretion continuum / stellar continuum: ',fAccretion/totCoreContinuumEmission
            totCoreContinuumEmission = totCoreContinuumEmission + fAccretion
-           write (*,'(a,e12.3)') 'T Tauri total continuum emission: ',totCoreContinuumEmission
+           write (*,'(a,e12.3)') 'T Tauri total core continuum emission: ',totCoreContinuumEmission
            ! chanceHotRing = fAccretion/totCoreContinuumEmission ! no longer used
         endif
 
-        if (geometry == "luc_cir3d") then
+        if (geometry == "luc_cir3d" .or. geometry == "cmfgen") then
            write (*,'(a,e12.3)') 'Star: continuum emission: ',totCoreContinuumEmission
            fAccretion = fAccretion * (nuStart-nuEnd)
            write (*,'(a,e12.3)') 'Accretion: continuum emission: ',fAccretion
            write (*,'(a,f12.3)') 'Accretion continuum / stellar continuum: ',fAccretion/totCoreContinuumEmission
            totCoreContinuumEmission = totCoreContinuumEmission + fAccretion
-           write (*,'(a,e12.3)') 'Total continuum emission: ',totCoreContinuumEmission
         endif
 
 
@@ -2656,12 +2671,12 @@ program torus
 
 
 
-        write(*,'(a,e12.3)') "Core Continuum Emission: ",totCorecontinuumEmission
+        write(*,'(a,e12.3)') "Total Core Continuum Emission: ",totCorecontinuumEmission
 
 
         totContinuumEmission = totCoreContinuumEmission + totWindContinuumEmission
 
-        write(*,'(a,e12.3)') "Continuum emission: ", totContinuumEmission
+        write(*,'(a,e12.3)') "Total Continuum emission: ", totContinuumEmission
 
 
         if ((totContinuumEmission + totLineEmission) /= 0.) then
@@ -2792,13 +2807,17 @@ program torus
      end if
 
      ! Change bias for this viewing angle
-     if (grid%geometry == "ttauri" .and. useBias .and. iInclination==1) then
+     if ( (grid%geometry == "ttauri" .or. grid%geometry == "cmfgen" ) &
+          .and. (useBias .and. iInclination==1) ) then
         ! BIAS not working for iInclination /=1 case.
         ! THIS SHOULD BE FIXED LATER. MEANWHILE USING THE BIAS FOR THE FIRST INCLINATION
         ! FOR ALL INCLINATION IS NOT SO.... (RK)
         ! --using a routine in amr_mod
         write(*,*) "Setting emissin bias for ttauri geometry ..."
-        call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
+        if (grid%geometry == "ttauri") &
+             call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
+        if (grid%geometry == "cmfgen") &
+             call set_bias_cmfgen(grid%octreeRoot, grid, lamline, outVec)
         ! recompute the cummulitive probability distribution
         call computeProbDist(grid, totLineEmission, &
              totWindContinuumEmission,lamline, useBias)

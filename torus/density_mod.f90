@@ -15,6 +15,7 @@ module density_mod
   use wr104_mod
   use ostar_mod
   use luc_cir3d_class
+  use cmfgen_class
 
   implicit none
   
@@ -79,6 +80,9 @@ contains
        out = clumpydisc(r_vec, grid)
     case("luc_cir3d")
        out = luc_cir3d_density(r_vec)  ! [g/cm^3]
+
+    case("cmfgen")
+       out = cmfgen_density(r_vec)  ! [g/cm^3]
        
     case default
        print *, 'Error:: Geometry option passed to [density_mod::density] '
@@ -100,7 +104,7 @@ contains
   subroutine print_geometry_list()    
     implicit none
     ! # of option available currently.
-    integer, parameter :: n = 6
+    integer, parameter :: n = 7
     character(LEN=30) :: name(n)
     integer :: i
 
@@ -111,6 +115,7 @@ contains
     name(4) =  'testamr'
     name(5) =  'spiralwind'
     name(6) =  'luc_cir3d'
+    name(7) =  'cmfgen'
     
     do i = 1, n
        write(*, *)  '   ', i, '. ', name(i)
