@@ -50,7 +50,7 @@ contains
        
     case default
        print *, 'Error:: Geometry option passed to [density_mod::density] '&
-	    &' (through grid) has not been implemented yet. Sorry.'
+            &' (through grid) has not been implemented yet. Sorry.'
        print *, 'Your geometry = ', grid%geometry
        print *, 'Avilable gemetries are: '
        call print_geometry_list()

@@ -547,17 +547,17 @@ contains
                                                  totalLineProb,&
                                                  totalContProb)
 
-	if (totalLineProb /= 0.0) then
-	   biasCorrectionLine = totalLineEmissionDouble / totalLineProb
-	else
-	   biasCorrectionLine = 1.0
-	end if
-	if (totalContProb /= 0.0) then	   
-	   biasCorrectionCont = totalContEmissionDouble / totalContProb
-	else
-	   biasCorrectionCont = 1.0
-	end if
-	
+        if (totalLineProb /= 0.0) then
+           biasCorrectionLine = totalLineEmissionDouble / totalLineProb
+        else
+           biasCorrectionLine = 1.0
+        end if
+        if (totalContProb /= 0.0) then     
+           biasCorrectionCont = totalContEmissionDouble / totalContProb
+        else
+           biasCorrectionCont = 1.0
+        end if
+        
         write(*,*) "Bias correction (line)      : ",biasCorrectionLine 
         write(*,*) "Bias correction (continuum) : ",biasCorrectionCont 
     

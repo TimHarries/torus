@@ -114,6 +114,7 @@ CONTAINS
     grid%octreeRoot%chiLine = 1.e-30
     grid%octreeRoot%etaLine = 1.e-30
     grid%octreeRoot%etaCont = 1.e-30
+    grid%octreeRoot%N = 1.e-30
 
 
     if(grid%geometry(1:7) == "cluster") then
@@ -130,20 +131,20 @@ CONTAINS
        DO subcell = 1, 8
           ! calculate the values at the centre of each of the subcells
           CALL calcValuesAMR(grid%octreeRoot,subcell,grid, sphData)
-	  ! label the subcells
-	  grid%octreeRoot%label(subcell) = subcell
+          ! label the subcells
+          grid%octreeRoot%label(subcell) = subcell
        END DO
     else
        DO subcell = 1, 8
-	  ! calculate the values at the centre of each of the subcells
-	  CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
-	  ! label the subcells
-	  grid%octreeRoot%label(subcell) = subcell
+          ! calculate the values at the centre of each of the subcells
+          CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
+          ! label the subcells
+          grid%octreeRoot%label(subcell) = subcell
 
        END DO
     end if
     
-	  
+          
 
     ! we keep track of the maximum depth of the grid...
     grid%maxDepth = 1
@@ -252,7 +253,9 @@ CONTAINS
     ! allocate any variables that need to be  
     if (.not.grid%oneKappa) then
        ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nLambda))
+       parent%child(newChildIndex)%kappaAbs = 1.e-30
        ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nLambda))
+       parent%child(newChildIndex)%kappaSca = 1.e-30
     endif
     ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
     NULLIFY(parent%child(newChildIndex)%child)
@@ -274,6 +277,7 @@ CONTAINS
     parent%child(newChildIndex)%chiLine = 1.e-30
     parent%child(newChildIndex)%etaLine = 1.e-30
     parent%child(newChildIndex)%etaCont = 1.e-30
+    parent%child(newChildIndex)%N = 1.e-30
 
 
     if (present(sphData) .and. grid%geometry(1:7) =="cluster") then
@@ -282,16 +286,16 @@ CONTAINS
        
        ! put some data in the eight subcells of the new child
        DO subcell = 1, 8 
-	  CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData)
-	  parent%child(newChildIndex)%label(subcell) = counter
-	  counter = counter + 1
+          CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData)
+          parent%child(newChildIndex)%label(subcell) = counter
+          counter = counter + 1
        END DO
     else
        ! put some data in the eight subcells of the new child
        DO subcell = 1, 8 
-	  CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid)
-	  parent%child(newChildIndex)%label(subcell) = counter
-	  counter = counter + 1
+          CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid)
+          parent%child(newChildIndex)%label(subcell) = counter
+          counter = counter + 1
        END DO          
     end if
     
@@ -426,8 +430,8 @@ CONTAINS
         gridConverged = .TRUE.
 
       CASE ("cluster")
-	call assign_grid_values(thisOctal,subcell, grid)
-	gridConverged = .TRUE.
+        call assign_grid_values(thisOctal,subcell, grid)
+        gridConverged = .TRUE.
 
       CASE DEFAULT
         WRITE(*,*) "! Unrecognised grid geometry: ",trim(grid%geometry)
@@ -1021,14 +1025,14 @@ CONTAINS
          wallDistanceZ < margin      ) THEN 
       abortRay = .TRUE.
       if (num_err < max_num_err) then
-	 PRINT *, 'In getExitPoint, aborting ray because distance is less than ''margin'''
-	 PRINT *, '  wallDistances=',wallDistanceX,wallDistanceY,wallDistanceZ
+         PRINT *, 'In getExitPoint, aborting ray because distance is less than ''margin'''
+         PRINT *, '  wallDistances=',wallDistanceX,wallDistanceY,wallDistanceZ
       elseif (num_err ==  max_num_err) then
-	 PRINT *, ' '
-	 PRINT *, 'Surpressing the further message from subroutine getExitPoint....'
-	 PRINT *, ' '
+         PRINT *, ' '
+         PRINT *, 'Surpressing the further message from subroutine getExitPoint....'
+         PRINT *, ' '
       else
-	 continue
+         continue
       end if
       
       error = -20
@@ -2688,7 +2692,7 @@ CONTAINS
       split = .FALSE.
       ave_density = 0.0_db
       DO i = 1, nsample
-	searchPoint = cellCentre
+        searchPoint = cellCentre
         CALL RANDOM_NUMBER(x)
         CALL RANDOM_NUMBER(y)
         CALL RANDOM_NUMBER(z)
@@ -2696,15 +2700,15 @@ CONTAINS
         searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=octalKind) 
         searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=octalKind) 
 
-	! using a generic density function in density_mod.f90
-	ave_density  = density(searchPoint,grid) + ave_density
+        ! using a generic density function in density_mod.f90
+        ave_density  = density(searchPoint,grid) + ave_density
 
       END DO
 
       ave_density = ave_density / REAL(nsample,KIND=doubleKind)
       total_mass = ave_density * (cellSize*1.e10_db)**3.0_db
       IF (total_mass > amrLimitScalar) then
-	 split = .TRUE.
+         split = .TRUE.
       END IF
 
    case ("testamr")
@@ -2737,10 +2741,10 @@ CONTAINS
 
       !
       if (nparticle > nint(amrLimitScalar) ) then
-	 
-	 split = .TRUE.
+         
+         split = .TRUE.
       else
-	 split = .FALSE.
+         split = .FALSE.
       end if
 
 
@@ -2751,10 +2755,10 @@ CONTAINS
 
       
    case DEFAULT
-	   PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
-	   PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
-	   PRINT *, 'Exiting the program .... '
-	   STOP
+           PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
+           PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
+           PRINT *, 'Exiting the program .... '
+           STOP
    end select
   
   
@@ -3076,7 +3080,7 @@ CONTAINS
 
 
   subroutine initTTauriAMR(grid,Laccretion,Taccretion,&
-                           sAccretion,newContFile)
+                           sAccretion,newContFile,theta1,theta2)
 
     use constants_mod
     use vector_mod
@@ -3090,24 +3094,26 @@ CONTAINS
     real, intent(out)                  :: Taccretion 
     real, intent(out)                  :: sAccretion
     character(len=80), intent(out)     :: newContFile
+    real, intent(out) :: theta1, theta2
    
     real(kind=doublekind) :: TaccretionDouble
     integer :: nNu 
     real :: nuArray(3000),fnu(3000)
     real :: tot
     integer :: i 
-    real :: theta1, theta2
     real :: rStar
     
     rStar  = TTauriRstar / 1.e10
     
     grid%rCore = rStar
     grid%rStar1 = rStar
+    grid%rStar2 = 0.
     grid%dipoleOffset = dipoleOffset
     grid%diskRadius = TTauriRInner * 1.e-10
     grid%diskNormal = VECTOR(0.,0.,1.)
     grid%diskNormal = rotateX(grid%diskNormal,grid%dipoleOffSet)
     grid%starPos1 = VECTOR(0.,0.,0.) ! in units of 1.e-10 cm
+    grid%starPos2 = VECTOR(9.e9,9.e9,9.e9) ! in units of 1.e-10 cm
 
 
     theta1 = asin(sqrt(TTauriRstar/TTauriRouter))
@@ -3152,7 +3158,7 @@ CONTAINS
     open(22,file="star_plus_acc.dat",form="formatted",status="unknown")
     do i = 1, nNu
        fNu(i) = fNu(i) + blackbody(tAccretion, 1.e8*cSpeed/ nuArray(i))* &
-                (1.e20*sAccretion/(fourPi*TTauriRstar**2))
+                (sAccretion/(fourPi*TTauriRstar**2))
        write(22,*) nuArray(i), fNu(i)
     enddo
     close(22)
@@ -3242,6 +3248,8 @@ CONTAINS
        if (.not.grid%oneKappa) then
           ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nLambda))
           ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nLambda))
+          parent%child(newChildIndex)%kappaAbs = 1.e-30
+          parent%child(newChildIndex)%kappaSca = 1.e-30
        endif
        ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
        NULLIFY(parent%child(newChildIndex)%child)
@@ -3263,10 +3271,11 @@ CONTAINS
        parent%child(newChildIndex)%chiLine = 1.e-30
        parent%child(newChildIndex)%etaLine = 1.e-30
        parent%child(newChildIndex)%etaCont = 1.e-30
+       parent%child(newChildIndex)%N = 1.e-30
 
        if (present(sphData)) then
-	  ! updates the sph particle linked list.           
-	  call update_particle_list(parent, newChildIndex, newChildIndex, sphData)
+          ! updates the sph particle linked list.           
+          call update_particle_list(parent, newChildIndex, newChildIndex, sphData)
        end if
        
        ! put some data in the eight subcells of the new child
@@ -3306,8 +3315,8 @@ CONTAINS
     
     if ( thisOctal%nChildren > 0) then
        do i = 1, thisOctal%nChildren
-	  pChild => thisOctal%child(i)
-	  call delete_particle_lists(pChild)
+          pChild => thisOctal%child(i)
+          call delete_particle_lists(pChild)
        end do
     end if
     

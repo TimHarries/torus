@@ -634,9 +634,9 @@ contains
       
       read(a, *, IOSTAT = ierr) out
       if (ierr /= 0) then
-	 print *, 'Error : Non-numerical characters passed to [char2int] &
-	      & function in char_function_class module.'
-	 stop
+         print *, 'Error : Non-numerical characters passed to [char2int] &
+              & function in char_function_class module.'
+         stop
       end if
       
     end function char2int

@@ -429,7 +429,7 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
         endif
         fVec = VECTOR(dx, dy, dz)
         dlambda  = min(modulus(fVec),dr)
-!	dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
+!       dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
 
      endif
 
@@ -675,7 +675,7 @@ subroutine integratePath(wavelength,  lambda0, vVec, aVec, uHat, Grid,  lambda, 
               endif
               fVec = VECTOR(dx, dy, dz)
               dlambda = min(modulus(fVec),dr)
-!	      dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
+!             dlambda = abs(fvec%x*uHat%x) + abs(fVec%y*uHat%y) + abs(fVec%z*uHat%z)
            endif
 
            dlambda = dlambda / resFac
@@ -1026,11 +1026,11 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   type(VECTOR), intent(in)  :: aVec                   ! starting position vector
   type(VECTOR), intent(in)  :: uHat                   ! direction
   type(GRIDTYPE), intent(in):: grid                   ! the opacity grid
-  integer, intent(in)       :: maxTau
-  real, intent(out)         :: lambda(1:maxTau)       ! path distance array
-  real, intent(out)         :: tauExt(1:maxTau)       ! optical depth
-  real, intent(out)         :: tauAbs(1:maxTau)       ! optical depth
-  real, intent(out)         :: tauSca(1:maxTau)       ! optical depth
+  integer, intent(in)       :: maxTau 
+  real, dimension(:), intent(out) :: lambda           ! path distance array
+  real, dimension(:), intent(out) :: tauExt           ! optical depth
+  real, dimension(:), intent(out) :: tauAbs           ! optical depth
+  real, dimension(:), intent(out) :: tauSca           ! optical depth
   integer, intent(out)      :: nTau                   ! size of optical depth arrays
   logical, intent(in)       :: opaqueCore             ! is the core opaque
   real, intent(out)         :: escProb                ! the escape probability
@@ -1126,7 +1126,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
         tauSca(1) = 0.
                      
         
-        do i = 2, nTau
+        do i = 2, nTau, 1 
            dlambda(i) = lambda(i)-lambda(i-1)
            tauSca(i) = tauSca(i-1) + dlambda(i)*0.5*(ksca(i-1)+ksca(i))
            tauAbs(i) = tauAbs(i-1) + dlambda(i)*0.5*(kabs(i-1)+kabs(i))
@@ -1231,13 +1231,13 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
      ! now compute the optical depths from the opacities
 
-     tauExt(1) = 0.
-     tauAbs(1) = 0.
-     tauSca(1) = 0.
+     tauExt(1:2) = 0.
+     tauAbs(1:2) = 0.
+     tauSca(1:2) = 0.
 
-     do i = 2, nTau
-        tauSca(i) = tauSca(i-1) + dlambda(i)*0.5*(ksca(i-1)+ksca(i))
-        tauAbs(i) = tauAbs(i-1) + dlambda(i)*0.5*(kabs(i-1)+kabs(i))
+     do i = 2, nTau, 1
+        tauSca(i) = tauSca(i-1) + dlambda(i-1)*0.5*(ksca(i-1)+ksca(i))
+        tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*0.5*(kabs(i-1)+kabs(i))
            if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
               write(*,*) "negative opacity"
               do;enddo
@@ -1258,7 +1258,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
               ! loop through the projected velocities to find the resonance zones
 
-              do i = 2, nTau-1
+              do i = 2, nTau-1, 1
 
                  if ( ((projVel(i) < thisVel) .and. (thisVel <= projVel(i+1))) .or. &
                       ((projVel(i+1) < thisVel) .and. (thisVel <= projVel(i))) ) then
@@ -1379,7 +1379,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                  
                  ! loop over all wavelength bins
 
-                 do j = 1, nLambda
+                 do j = 1, nLambda, 1
 
                     ! compute projected velocity of this bin
 
@@ -1391,7 +1391,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                     
                     ! loop through the projected velocities to find the resonance zones
  
-                    do i = 2, nTau-1
+                    do i = 2, nTau-1, 1
 
                        if ( ((projVel(i) < thisVel) .and. (thisVel <= projVel(i+1))) .or. &
                             ((projVel(i+1) < thisVel) .and. (thisVel <= projVel(i))) ) then

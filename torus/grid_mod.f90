@@ -449,7 +449,7 @@ contains
 
 
   subroutine initAMRgrid(Laccretion,Taccretion,sAccretion,&
-                         greyContinuum,newContFile,flatspec,grid,ok)
+                         greyContinuum,newContFile,flatspec,grid,ok,theta1,theta2)
 
     use input_variables
 
@@ -463,6 +463,7 @@ contains
     logical, intent(in) :: flatspec        ! is the spectrum flat
     logical, intent(inout) :: ok           ! function done ok?
     type(GRIDTYPE), intent(out) :: grid                 ! the grid
+    real, intent(out)   :: theta1, theta2
     
     integer :: i,ilambda                   ! counters
     
@@ -493,7 +494,7 @@ contains
     
     case ("ttauri") 
        call initTTauriAMR(grid,Laccretion,Taccretion,&
-                           sAccretion,newContFile)
+                           sAccretion,newContFile,theta1,theta2)
     case ("jets") 
        call initJetsAMR(grid)
 
@@ -4889,11 +4890,11 @@ contains
     if (plane(1:3) == 'x-y') then  
        do j = 1, n
           do i = 1, n
-	     pos = Vector(xmap(i),ymap(j),0.0d0)
-	     ! using the function in density_mod.f90
-	     tmp = ABS( density(pos, grid) )
-	     if (tmp<=0) tmp=1.0e-28
-	     f(i,j) = LOG10(tmp)
+             pos = Vector(xmap(i),ymap(j),0.0d0)
+             ! using the function in density_mod.f90
+             tmp = ABS( density(pos, grid) )
+             if (tmp<=0) tmp=1.0e-28
+             f(i,j) = LOG10(tmp)
              fmin = min(f(i,j),fmin)
              fmax = max(f(i,j),fmax)
           end do
@@ -4901,11 +4902,11 @@ contains
     elseif (plane(1:3) == 'y-z') then  
        do j = 1, n
           do i = 1, n
-	     pos = Vector(0.0d0, ymap(i), zmap(j))
-	     ! using the function in density_mod.f90
-	     tmp = ABS( density(pos, grid) )
-	     if (tmp<=0) tmp=1.0e-28
-	     f(i,j) = LOG10(tmp)
+             pos = Vector(0.0d0, ymap(i), zmap(j))
+             ! using the function in density_mod.f90
+             tmp = ABS( density(pos, grid) )
+             if (tmp<=0) tmp=1.0e-28
+             f(i,j) = LOG10(tmp)
              fmin = min(f(i,j),fmin)
              fmax = max(f(i,j),fmax)
           end do
@@ -5067,28 +5068,28 @@ contains
           w = thisOctal%subcellSize  ! width
           x = rVec%x; y = rVec%y; z = rVec%z
 
-	  if (present(val_3rd_dim)) then
-	     if ( plane(1:3) == "x-y" .and.  &
-		  rVec%z > (val_3rd_dim-h) .and.  rVec%z < (val_3rd_dim+h)) then
-		call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
-	     elseif ( plane(1:3) == "y-z" .and. &
-		  rVec%x > (val_3rd_dim-h) .and.  rVec%x < (val_3rd_dim+h)) then
-		call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
-	     elseif ( plane(1:3) == "z-x" .and.  &
-		  rVec%y > (val_3rd_dim-h) .and.  rVec%y < (val_3rd_dim+h)) then
-		call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
-	     end if	     
-	  else
-	     if (plane(1:3) == 'x-y' .and.  ABS(rVec%z) < h ) then
-		call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
-	     elseif (plane(1:3) == 'y-z' .and. ABS(rVec%x) < h ) then
-		call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
-	     elseif (plane(1:3) == 'z-x' .and. ABS(rVec%y) < h ) then
-		call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
-	     end if
-	  end if
+          if (present(val_3rd_dim)) then
+             if ( plane(1:3) == "x-y" .and.  &
+                  rVec%z > (val_3rd_dim-h) .and.  rVec%z < (val_3rd_dim+h)) then
+                call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+             elseif ( plane(1:3) == "y-z" .and. &
+                  rVec%x > (val_3rd_dim-h) .and.  rVec%x < (val_3rd_dim+h)) then
+                call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
+             elseif ( plane(1:3) == "z-x" .and.  &
+                  rVec%y > (val_3rd_dim-h) .and.  rVec%y < (val_3rd_dim+h)) then
+                call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
+             end if          
+          else
+             if (plane(1:3) == 'x-y' .and.  ABS(rVec%z) < h ) then
+                call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+             elseif (plane(1:3) == 'y-z' .and. ABS(rVec%x) < h ) then
+                call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
+             elseif (plane(1:3) == 'z-x' .and. ABS(rVec%y) < h ) then
+                call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
+             end if
+          end if
 
-	  
+          
        endif
     enddo
   end subroutine draw_rectangle
@@ -5125,7 +5126,7 @@ contains
     parameter (n=1500, ncol=32, nlev=10)
     integer :: i,j,ci1,ci2, ilo, ihi 
     real :: valuemax, valuemin
-    real, pointer :: pvaluemax, pvaluemin
+    real :: pvaluemax, pvaluemin
     
     real :: box_size
     double precision  :: tmp
@@ -5145,8 +5146,6 @@ contains
     
 
     ! Finding the plotting range
-    allocate(pValueMin)
-    allocate(pValueMax)
     pvalueMin = 1.e30
     pvalueMax = -1.e30
     call minMaxValue(root, name, plane, pValueMin, pValueMax)
@@ -5284,35 +5283,35 @@ contains
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call plot_values(child, name, plane, val_3rd_dim, &
-		     logscale, valueMax, valueMin, ilo, ihi)
+                     logscale, valueMax, valueMin, ilo, ihi)
                 exit
              end if
           end do
        else
           rVec = subcellCentre(thisOctal,subcell)
           d = thisOctal%subcellSize/2.0d0
-	  L = thisOctal%subcellSize
+          L = thisOctal%subcellSize
           xp = REAL(rVec%x + d)
           xm = REAL(rVec%x - d)
           yp = REAL(rVec%y + d)
           ym = REAL(rVec%y - d)
           zp = REAL(rVec%z + d)
           zm = REAL(rVec%z - d)     
-	  
+          
           plot_this_subcell = .false.
           if ( plane(1:3) == "x-y" .and.  &
-	       rVec%z > (val_3rd_dim-L) .and.  rVec%z < (val_3rd_dim+L)) then
-             plot_this_subcell = .true.	     
+               rVec%z > (val_3rd_dim-L) .and.  rVec%z < (val_3rd_dim+L)) then
+             plot_this_subcell = .true.      
           elseif ( plane(1:3) == "y-z" .and. &
-	       rVec%x > (val_3rd_dim-L) .and.  rVec%x < (val_3rd_dim+L)) then
+               rVec%x > (val_3rd_dim-L) .and.  rVec%x < (val_3rd_dim+L)) then
              plot_this_subcell = .true.
           elseif ( plane(1:3) == "z-x" .and.  &
-	       rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
+               rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
              plot_this_subcell = .true.
           else
              plot_this_subcell = .false.
           end if
-	  
+          
 !          if ( plane(1:3) == "x-y" .and. ABS(rVec%z) < 2.0d0*d) then
 !             plot_this_subcell = .true.
 !          elseif ( plane(1:3) == "y-z" .and. ABS(rVec%x) < 2.0d0*d) then
@@ -5322,7 +5321,7 @@ contains
 !          else
 !             plot_this_subcell = .false.
 !          end if
-	  
+          
           if (plot_this_subcell) then
              select case (name)
              case("rho")
@@ -5408,7 +5407,7 @@ contains
     type(octal), pointer   :: thisOctal
     character(LEN=*), intent(in) :: name ! See the options in plot_AMR_values
     character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z' or 'z-x' 
-    real, pointer :: valueMin, valueMax
+    real, intent(inout) :: valueMin, valueMax
     !
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -5452,27 +5451,27 @@ contains
 !          end if
           use_this_subcell = .true.
 
-	  if (use_this_subcell) then
-	     select case (name)
-	     case("rho")
-		value = thisOctal%rho(subcell)
-	     case("temperature")
-		value = thisOctal%temperature(subcell)
-	     case("chiLine")
-		value = thisOctal%chiLine(subcell)
-	     case("etaLine")
-		value = thisOctal%etaLine(subcell)
-	     case("etaCont")
-		value = thisOctal%etaCont(subcell)
-	     case default
-		write(*,*) "Error:: unknow name passed to MinMaxValue."
-		stop
-	     end select
-	  
-	     valueMax = MAX(valueMax, value)
-	     valueMin = Min(valueMin, value)
-	  end if
-	end if
+          if (use_this_subcell) then
+             select case (name)
+             case("rho")
+                value = thisOctal%rho(subcell)
+             case("temperature")
+                value = thisOctal%temperature(subcell)
+             case("chiLine")
+                value = thisOctal%chiLine(subcell)
+             case("etaLine")
+                value = thisOctal%etaLine(subcell)
+             case("etaCont")
+                value = thisOctal%etaCont(subcell)
+             case default
+                write(*,*) "Error:: unknow name passed to MinMaxValue."
+                stop
+             end select
+          
+             valueMax = MAX(valueMax, value)
+             valueMin = Min(valueMin, value)
+          end if
+        end if
     enddo
 
   end subroutine minMaxValue
@@ -5495,7 +5494,7 @@ contains
        UN = 6   ! prints on screen
     else
        UN = 69
-       open(unit=UN, file = TRIM(filename), status = 'replace')
+       open(unit=UN, file = TRIM(filename), status = 'replace',form='formatted')
     end if
 
 
@@ -5579,7 +5578,7 @@ contains
        device = TRIM(device)//".ps/vcps"
        
        call plot_AMR_values(grid, name, plane, val_3rd_dim, &
-	    device, logscale, withgrid)
+            device, logscale, withgrid)
     end do
 
   end subroutine plot_AMR_planes

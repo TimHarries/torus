@@ -109,14 +109,8 @@ contains
     real              :: totomega
     real              :: escprob,  tau_mn
     type(octalVector) :: rVecOctal
-    type(OCTAL),pointer :: octalCopy
     
-!integer :: labels(8)
-!integer :: label1
-!label1 = thisOctal%label(1)                
-!labels = thisOctal%label
     dtheta = pi / real(ntheta-1)
-    dphi = twopi / real(nphi-1)
     beta_mn = 0.
     totomega = 0.
     do i = 1, ntheta
@@ -150,10 +144,8 @@ contains
                 tau_mn = tau_mn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
                                       (thisOctal%N(thisSubcell,n)/gDegen(n))) ! eq 5.
                 rVecOctal = rVec
-                octalCopy => thisOctal
                 tau_mn = tau_mn / (amrGridDirectionalDeriv(grid,rVecOctal,direction, &
                                                         startOctal=thisOctal) / 1.e10)
-!if (label1 /= thisOctal%label(1)) print *, "Label change during amrGridDirectionalDeriv" 		
              end if
           else
              tau_mn = tau_mn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - &
@@ -181,7 +173,6 @@ contains
 !    write(*,*) totOmega/fourPi
 !   write(*,*) m,n,beta_mn
 
-!if (SUM(labels-thisOctal%label) /= 0) print *, "            leaving beta_mn, labels = ", labels    
   end function beta_mn
 
 
@@ -222,9 +213,6 @@ contains
     type(octalVector) :: rVecOctal
     type(OCTAL),pointer :: octalCopy
 
-!integer :: labels(8)
-!integer :: label1
-!labels = thisOctal%label
     full = .false.
 
     if (nstar == 1) then
@@ -318,10 +306,8 @@ contains
                          rVecOctal = rVec
                          
                          octalCopy => thisOctal
-!label1 = thisOctal%label(1)                
                          tau_cmn = tau_cmn / (amrGridDirectionalDeriv(grid,rVecOctal,direction, &
                                                                    startOctal=octalCopy) / 1.e10)
-!if (label1 /= thisOctal%label(1)) print *, "Label change during amrGridDirectionalDeriv"                
                       end if
                    else
                       tau_cmn = tau_cmn / (directionalderiv(grid,rVec,i1,i2,i3,direction)/1.e10)
@@ -343,7 +329,6 @@ contains
     beta_cmn =   beta_cmn / fourpi
 !    write(*,*) "calc",fourPi*(pi*starradius**2)/(fourPi * disttostar**2)
 !    write(*,*) "found",totOmega
-!if (SUM(labels-thisOctal%label) /= 0) print *, "            leaving beta_cmn, labels = ", labels    
   end function beta_cmn
 
   subroutine beta_cmn_sub(m,n,i1,i2,i3,grid,nstar)
@@ -510,7 +495,7 @@ contains
     type(vector) :: rvec, rHat, thisVec
     real :: departCoeff(maxLevels), ang, r
     real, allocatable :: departCoeffall(:)
-    logical :: oneD, twoD, threeD, firstTime
+    logical :: oneD, twoD, threeD
 
     integer :: nIter, iIter
     real :: oldLevels(maxLevels+1)
@@ -1380,13 +1365,11 @@ contains
     real(kind=doubleKind) :: nstar
     real(kind=doubleKind) :: freq
     integer, parameter :: debug = 0
-    integer :: i
+    integer, save :: i = 0
     real(kind=doubleKind) :: Inu
     real(kind=doubleKind) :: tot
     real(kind=doubleKind) :: fac1, fac2
 
-!integer :: labels(8)
-!labels = thisOctal%label
     if (n == debug) write(*,*) " "
 
     ! we have one IF statement to decide whether we use the block containin the
@@ -1659,7 +1642,6 @@ contains
     if (n == debug) write(*,*) "Final total:",tot
     equation8 = tot
 
-!if (SUM(labels-thisOctal%label) /= 0) print *, "          leaving equation8, labels = ", labels    
 
   end function equation8
  
@@ -1748,6 +1730,7 @@ do ; enddo
        jnu = 1.e-28
        iMin = 1
     else
+       iMin = -1
        call hunt(nuArray, nNu, freq, iMin)
        jnu = 4.*w*logint(freq,nuArray(iMin), nuArray(iMin+1), hnu(imin), hnu(imin+1))
     endif
@@ -1825,6 +1808,7 @@ do ; enddo
        iMin = 1
        jnu = 1.e-28
     else
+       iMin = -1
        call hunt(nuArray, nNu, freq, iMin)
        jnu = 4.*w*logint(freq,nuArray(imin), nuArray(iMin+1), hnu(imin), hnu(imin+1))
     endif
@@ -1866,8 +1850,6 @@ do ; enddo
     integer                            :: i, j
     integer, parameter                 :: maxLevels = statEqMaxLevels
     
-!integer :: labels(8)
-!labels = thisOctal%label
     if (grid%adaptive) then 
 
        thisOctal%N(thisSubcell,1:maxLevels) = x(1:maxLevels)
@@ -1984,7 +1966,6 @@ do ; enddo
 
     end if ! (grid%adaptive)
   
-!if (SUM(labels-thisOctal%label) /= 0) print *, "        leaving setupMatrices, labels = ", thisOctal%label    
 
   end subroutine setupMatrices
 
@@ -2013,8 +1994,6 @@ do ; enddo
     type(octal), pointer, optional :: thisOctal 
     integer, intent(in),optional   :: thisSubcell 
       
-!integer :: labels(8)
-!labels = thisOctal%label
       do k = 1, ntrial
         call setupMatrices(x,alpha,beta,np,rVec, i1, i2, i3, grid,Hnu1, nuArray1, nNu1, Hnu2, &
              nuArray2, nNu2, visFrac1, visFrac2, isBinary, thisOctal, thisSubcell)
@@ -2036,7 +2015,6 @@ do ; enddo
 !          write(*,*) "errx,tolx",errx,tolx
         if (errx.le.tolx) return
       end do
-!if (SUM(labels-thisOctal%label) /= 0)  print *, "      leaving mnewt, labels = ", thisOctal%label    
 
   end subroutine 
 
@@ -2464,7 +2442,6 @@ do ; enddo
     real (kind=doubleKind)      :: Ne1, Ne2
     logical                     :: ok
     type(octal), pointer        :: thisOctal => null()
-    real(kind=doubleKind)       :: tmp0, tmp1, tmp2   ! used for debug
     real                        :: departCoeff(maxLevels)
     logical                     :: debugInfo = .true.
 
@@ -2484,7 +2461,6 @@ do ; enddo
     nNu1 = nNu1  - 1
     close(20)
     hNu1(1:nNu1) = hnu1(1:nNu1) / fourPi   ! Converts from flux to flux momemnt
-print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
 
     allocate(octalArray(grid%nOctals))
     
@@ -2658,20 +2634,24 @@ print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
     integer, intent(in)   :: maxLevels      
     integer               :: i, k
     real(kind=doubleKind) :: freq    
+    
+    if (maxLevels > 9) then
+      print *, 'Number of levels is > 9. Stopping in stateq_mod'
+      stop
+    end if
+    do k = 2, maxlevels
+       do i=1, k-1
+          lambdaTrans(i, k) = lambdaTrans(k, i)
+          ! aEinstein(k, i) = aEinstein(k, i) commented out by nhs
+          freq = cspeed / lambdaTrans(i, k)
+          bEinstein(k, i) = ((dble(aEinstein(k,i))*dble(cspeed)**2)  &
+               &   / (2.e0_db*dble(hcgs)*dble(freq)**3))
+          bEinstein(i, k) = bEinstein(k,i) * gDegen(k) / gDegen(i)
+          fStrength(k, i) = -gDegen(i) * fStrength(i,k) / gDegen(k)
+       end do
+    end do
 
-        do k = 2, maxlevels
-           do i=1, k-1
-              lambdaTrans(i, k) = lambdaTrans(k, i)
-              ! aEinstein(k, i) = aEinstein(k, i) commented out by nhs
-              freq = cspeed / lambdaTrans(i, k)
-              bEinstein(k, i) = ((dble(aEinstein(k,i))*dble(cspeed)**2)  &
-                   &   / (2.e0_db*dble(hcgs)*dble(freq)**3))
-              bEinstein(i, k) = bEinstein(k,i) * gDegen(k) / gDegen(i)
-              fStrength(k, i) = -gDegen(i) * fStrength(i,k) / gDegen(k)
-           end do
-        end do
-
-      end subroutine map_transition_arrays
+  end subroutine map_transition_arrays
 
 end module stateq_mod
 

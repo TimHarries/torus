@@ -53,7 +53,7 @@ contains
     case("H I")
        ! uses the routine in atom_mod.f90
        call getLTEopacities(ne, temp, eta_line, chi_line,  eta_cont, &
-	    chi_cont, chi_e_scat, nLower, nUpper)
+            chi_cont, chi_e_scat, nLower, nUpper)
        
     case default
        ! uses the routine in this module. 

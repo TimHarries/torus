@@ -319,9 +319,9 @@ contains
     
     do i = 1, n-2
        do j = i+1, n
-	  call get_position_pt_mass(this, j, x, y, z)
-	  d = (x*x+y*y+z*z)  ! omit SQRT here cus it costs too much.
-	  d_max = MAX(d_max, d)
+          call get_position_pt_mass(this, j, x, y, z)
+          d = (x*x+y*y+z*z)  ! omit SQRT here cus it costs too much.
+          d_max = MAX(d_max, d)
        end do
     end do 
     d_max = SQRT(d_max)

@@ -283,9 +283,9 @@ contains
 
        ! Quick check
        if (theta_o_disk < theta_o_jets) then
-	  print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
-	  print *, '  Exiting the program ...'
-	  stop
+          print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
+          print *, '  Exiting the program ...'
+          stop
        end if
 
 
@@ -314,7 +314,7 @@ contains
        cos_theta_o = cos_theta_o_jets
     elseif (r >= jets%Rmin .and. r < jets%Rmax &
          .and. abs(cos_theta) > cos_theta_o_disk .and. &
-	 abs(cos_theta) < cos_theta_o_jets ) then
+         abs(cos_theta) < cos_theta_o_jets ) then
        Mdot = jets%Mdot_disk       
        Vinf = jets%Vinf_disk
        beta = jets%beta_disk
@@ -349,8 +349,8 @@ contains
     Vr = Vr*10.0d3  ! m/s
     
     out  =       Mdot               &
-	 /                 &
-	 ( 4.0d0*Pi*r*r*Vr*(1.0d0-cos_theta_o) )
+         /                 &
+         ( 4.0d0*Pi*r*r*Vr*(1.0d0-cos_theta_o) )
 
                    
   END FUNCTION JetsDensity
@@ -408,9 +408,9 @@ contains
 
        ! Quick check
        if (theta_o_disk < theta_o_jets) then
-	  print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
-	  print *, ' Exiting the program ...'
-	  stop
+          print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
+          print *, ' Exiting the program ...'
+          stop
        end if
        first_time = .false.
     END IF
@@ -508,9 +508,9 @@ contains
 
        ! Quick check
        if (theta_o_disk < theta_o_jets) then
-	  print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
-	  print *, ' Exiting the program ...'
-	  stop
+          print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
+          print *, ' Exiting the program ...'
+          stop
        end if
        first_time = .false.
     END IF
@@ -554,7 +554,7 @@ contains
     !  below.
 
     !    use input_variables
-	
+        
     IMPLICIT NONE
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
@@ -577,7 +577,7 @@ contains
     pointVec = (point - starPosn)
     r = modulus( pointVec ) 
 
-		      
+                      
     ! test if the point lies within the star
     IF ( r >= jets%Rmin .AND. r < jets%Rmax) THEN
        thisOctal%inFlow(subcell) = .FALSE.       
@@ -697,9 +697,9 @@ contains
 
        ! Quick check
        if (theta_o_disk < theta_o_jets) then
-	  print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
-	  print *, ' Exiting the program ...'
-	  stop
+          print *, 'Error:: theta_o_disk must be greater than theta_o_jets.'
+          print *, ' Exiting the program ...'
+          stop
        end if
        first_time = .false.
     END IF

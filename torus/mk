@@ -20,6 +20,7 @@
                F95COMP="f90"
                F77COMP="f77"
                FASTFLAG="-fast"
+               DEBUGFLAG="-g"
                MATHTRAP="-fpe3"
                UNIXMOD="unix_mod.f90.osf"
                EXE="torus.osf"
@@ -38,6 +39,8 @@
                F95COMP="f95"
                F77COMP="f77"
                FASTFLAG="-O3"
+               #DEBUGFLAG="-g -O3 -C=all -nan -unsharedf95"
+               DEBUGFLAG="-g -C=all -nan -unsharedf95"
                MATHTRAP="-ieee=stop"
                UNIXMOD="unix_mod.f90.linux"
                KINDMOD="kind_mod.f90.linux"
@@ -54,7 +57,8 @@
             linuxintel)
                F95COMP="ifc"
                F77COMP="ifc"
-               FASTFLAG="-O3 -xM "
+               FASTFLAG="-O3 -xM -mp -axK"
+               DEBUGFLAG="-g -O0 -mp -xM"
                MATHTRAP="-mp"
                UNIXMOD="unix_mod.f90.linuxintel"
                KINDMOD="kind_mod.f90.linuxintel"
@@ -72,6 +76,7 @@
                F95COMP="f90"
                F77COMP="f77"
                FASTFLAG="-mp -mpio"
+               DEBUGFLAG="-g"
                MATHTRAP=" "
                UNIXMOD="unix_mod.f90.miracle"
                KINDMOD="kind_mod.f90.miracle"
@@ -88,6 +93,7 @@
                F95COMP="xlf95 -bloadmap:outp -qmoddir=/lscratch -I/lscratch -qsuffix=f=f90 -qnolm -O3 -qarch=pwr3 -qmaxmem=-1"
                F77COMP="xlf -qmoddir=/lscratch -I/lscratch -qsuffix=f=f -qnolm -O3 -qarch=pwr3 -qmaxmem=-1"
                FASTFLAG=""
+               DEBUGFLAG="-g"
                MATHTRAP=" "
                UNIXMOD="unix_mod.f90.aix"
                KINDMOD="kind_mod.f90.aix"
@@ -122,7 +128,7 @@
         debug)
         touch make.depends
         make -e depends
-        make -e DEBUG="-g -C=all " MATHTRAP="-ieee=stop" FASTFLAG=" "
+        make -e MATHTRAP="-ieee=stop" FASTFLAG=" "
         ;;
 
         profile)
@@ -133,9 +139,10 @@
 
 
         *)
+        
         touch make.depends
         make -e depends
-        make -e $*
+        make -e DEBUGFLAG="" $*
         ;;
    esac
         

@@ -288,10 +288,10 @@ contains
       type(link_node), pointer :: in_node
 
       if (associated(in_node%next)) then
-	 write(*,*) in_node%value
-	 call print_node_value(in_node%next)
+         write(*,*) in_node%value
+         call print_node_value(in_node%next)
       else
-	 write(*,*) in_node%value
+         write(*,*) in_node%value
       end if
       
     end subroutine print_node_value
@@ -336,10 +336,10 @@ contains
     do while (i /= j)
        j = j+1
        if (j> n) then ! something went wrong
-	  write(*,*) 'Error:: j > n  in delete.'
-	  write(*,*) 'j=', j
-	  write(*,*) 'n=', n
-	  stop
+          write(*,*) 'Error:: j > n  in delete.'
+          write(*,*) 'j=', j
+          write(*,*) 'n=', n
+          stop
        end if
        pnode_prev => pnode   ! will be used later
        pnode => pnode%next

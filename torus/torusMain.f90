@@ -261,7 +261,7 @@ program torus
 
   real :: loglamStart, logLamEnd
 
-  real :: chanceDust
+  real :: chanceDust = 0.
   real(kind=doublekind) :: totDustContinuumEmission
 
   ! binary parameters
@@ -492,9 +492,9 @@ program torus
   if (gridUsesAMR) then
      ! any AMR allocation stuff goes here
      call initAMRGrid(Laccretion,Taccretion,sAccretion,greyContinuum, &
-                        newContFile,flatspec,grid,ok)
+                        newContFile,flatspec,grid,ok,theta1,theta2)
         if (.not.ok) goto 666
-	
+        
   else
      if (gridcoords /= "polar") then
         if ((.not.doRaman).and.(geometry /= "binary"))  then
@@ -619,32 +619,32 @@ program torus
         amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
         write(*,*) "Starting initial set up of adaptive grid..."
 
-	
-	if (geometry(1:7) == "cluster") then
-	   call initFirstOctal(grid,amrGridCentre,amrGridSize, sphData)
-	   !
-	   call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData)
-	   write(*,*) "...initial adaptive grid configuration complete"
+        
+        if (geometry(1:7) == "cluster") then
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, sphData)
+           !
+           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData)
+           write(*,*) "...initial adaptive grid configuration complete"
 !           do
 !              call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged, sphData)
 !              if (gridConverged) exit
 !           end do
 !           write(*,*) "...grid smoothing complete"
-	else
-	   call initFirstOctal(grid,amrGridCentre,amrGridSize)
-	   call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
-	   write(*,*) "...initial adaptive grid configuration complete"
-	
-	   if (doSmoothGrid) then
-	      write(*,*) "Smoothing adaptive grid structure..."
-	      gridConverged = .false.
-	      do
-		 call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged)
-		 if (gridConverged) exit
-	      end do
-	      write(*,*) "...grid smoothing complete"
-	   end if	   
-	end if
+        else
+           call initFirstOctal(grid,amrGridCentre,amrGridSize)
+           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+           write(*,*) "...initial adaptive grid configuration complete"
+        
+           if (doSmoothGrid) then
+              write(*,*) "Smoothing adaptive grid structure..."
+              gridConverged = .false.
+              do
+                 call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged)
+                 if (gridConverged) exit
+              end do
+              write(*,*) "...grid smoothing complete"
+           end if          
+        end if
    
         nOctals = 0
         nVoxels = 0
@@ -1015,7 +1015,7 @@ program torus
        ALLOCATE(source(nSource))
        
        do i = 1, nSource
-	  source(i) = get_a_star(young_cluster, i)
+          source(i) = get_a_star(young_cluster, i)
        end do
 
        ! delete the cluster object since it won't be used any more.
@@ -1309,18 +1309,18 @@ program torus
         !        call fillGridPuls(grid, mDot, rStar, tEff, v0, vterm, beta, xfac)
            case("wind")
            
-!	call fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
+!       call fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
 !       lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper)
 
         case("resonance")
 !           call fillGridResonance(grid, rCore, mDot, vTerm, beta, temp)
 
         case("wr104")
-	   
-	case("cluster")
-	   ! do nothing
-	   continue
-	   
+           
+        case("cluster")
+           ! do nothing
+           continue
+           
         case DEFAULT
            write(*,*) "! Unrecognised grid geometry: ",trim(geometry)
            goto 666
@@ -1438,11 +1438,13 @@ program torus
                        coolStarPosition,.false., nUpper, nLower, 0., 0., 0., junk, useInterp)
      end if
 
-     write(*,'(a,1pe10.3)') "Optical depth in x-axis from centre: ",tauExt(ntau)
-     write(*,'(a,1pe10.3)') "Absorption depth in x-axis from centre: ",tauAbs(ntau)
-     write(*,'(a,1pe10.3)') "Scattering depth in x-axis from centre: ",tauSca(ntau)
-     write(*,'(a,i4)') "Number of samples: ",nTau
-     write(*,*) " "
+     if (nTau > 2) then 
+        write(*,'(a,1pe10.3)') "Optical depth in x-axis from centre: ",tauExt(ntau)
+        write(*,'(a,1pe10.3)') "Absorption depth in x-axis from centre: ",tauAbs(ntau)
+        write(*,'(a,1pe10.3)') "Scattering depth in x-axis from centre: ",tauSca(ntau)
+        write(*,'(a,i4)') "Number of samples: ",nTau
+        write(*,*) " "
+     end if
      
      if (gridUsesAMR) then
         call integratePathAMR2(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
@@ -1463,11 +1465,13 @@ program torus
      end if
 
 
-     write(*,'(a,1pe10.3)') "Optical depth in y-axis from centre: ",tauExt(ntau)
-     write(*,'(a,1pe10.3)') "Absorption depth in y-axis from centre: ",tauAbs(ntau)
-     write(*,'(a,1pe10.3)') "Scattering depth in y-axis from centre: ",tauSca(ntau)
-     write(*,'(a,i4)') "Number of samples: ",nTau
-     write(*,*) " "
+     if (nTau > 2) then 
+        write(*,'(a,1pe10.3)') "Optical depth in y-axis from centre: ",tauExt(ntau)
+        write(*,'(a,1pe10.3)') "Absorption depth in y-axis from centre: ",tauAbs(ntau)
+        write(*,'(a,1pe10.3)') "Scattering depth in y-axis from centre: ",tauSca(ntau)
+        write(*,'(a,i4)') "Number of samples: ",nTau
+        write(*,*) " "
+     end if
       
      if (gridUsesAMR) then
         call integratePathAMR2(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
@@ -1487,12 +1491,13 @@ program torus
                        coolStarPosition,.false., nUpper, nLower, 0., 0., 0., junk, useInterp)
      end if
 
-     write(*,'(a,1pe10.3)') "Optical depth in z-axis from centre: ",tauExt(ntau)
-     write(*,'(a,1pe10.3)') "Absorption depth in z-axis from centre: ",tauAbs(ntau)
-     write(*,'(a,1pe10.3)') "Scattering depth in z-axis from centre: ",tauSca(ntau)
-     write(*,'(a,i4)') "Number of samples: ",nTau
-     write(*,*) " "
-
+     if (nTau > 2) then 
+        write(*,'(a,1pe10.3)') "Optical depth in z-axis from centre: ",tauExt(ntau)
+        write(*,'(a,1pe10.3)') "Absorption depth in z-axis from centre: ",tauAbs(ntau)
+        write(*,'(a,1pe10.3)') "Scattering depth in z-axis from centre: ",tauSca(ntau)
+        write(*,'(a,i4)') "Number of samples: ",nTau
+        write(*,*) " "
+     end if
 
 
      if (gridUsesAMR) then
@@ -1520,17 +1525,13 @@ program torus
           .false., nUpper, nLower, 0., 0., 0., junk, useInterp)
      end if
 
-     write(*,'(a,1pe10.3)') "Optical depth to observer: ",tauExt(ntau)
-     write(*,'(a,1pe10.3)') "Absorption depth to observer: ",tauAbs(ntau)
-     write(*,'(a,1pe10.3)') "Scattering depth to observer: ",tauSca(ntau)
-     write(*,'(a,i4)') "Number of samples: ",nTau
-     write(*,*) " "
-     open(21,file="tau2.dat", status="unknown")
-     do i = 1, ntau
-        write(21,*) lambda(i)/grid%rinner, tauExt(i), tauAbs(i), tauSca(i)
-     enddo
-     close(21)
-
+     if (nTau > 2) then 
+        write(*,'(a,1pe10.3)') "Optical depth to observer: ",tauExt(ntau)
+        write(*,'(a,1pe10.3)') "Absorption depth to observer: ",tauAbs(ntau)
+        write(*,'(a,1pe10.3)') "Scattering depth to observer: ",tauSca(ntau)
+        write(*,'(a,i4)') "Number of samples: ",nTau
+        write(*,*) " "
+     end if
 
      if (sphericityTest) then
         write(*,'(a)') "Sphericity test - 100 random directions:"
@@ -1715,10 +1716,10 @@ print *, 'nu = ',nu
 
         totWindContinuumEmission = totWindContinuumEmission * (nuStart - nuEnd)
 
-!	!RK=============================================================RK
-!	!RK For debugging only.  Should be removed later.
-!	totWindContinuumEmission = 1.0d3
-!	!RK=============================================================RK	
+!       !RK=============================================================RK
+!       !RK For debugging only.  Should be removed later.
+!       totWindContinuumEmission = 1.0d3
+!       !RK=============================================================RK      
         write(*,*) "Wind cont emission: ",totWindContinuumEmission
 
 
@@ -1762,11 +1763,11 @@ print *, 'nu = ',nu
 
         write(*,*) "Continuum emission: ", totContinuumEmission
 
-!	!RK=============================================================RK
-!	!RK For debugging only.  Should be removed later.
-!	totLineEmission = totCoreContinuumEmission
-!	write(*,*) "Corrected Line emission: ",totLineEmission
-!	!RK=============================================================RK	
+!       !RK=============================================================RK
+!       !RK For debugging only.  Should be removed later.
+!       totLineEmission = totCoreContinuumEmission
+!       write(*,*) "Corrected Line emission: ",totLineEmission
+!       !RK=============================================================RK      
 
         if ((totContinuumEmission + totLineEmission) /= 0.) then
            chanceLine = totLineEmission/(totContinuumEmission + totLineEmission)
@@ -1888,7 +1889,7 @@ print *, 'nu = ',nu
      
      do iOuterLoop = 1, nOuterLoop
 
-	call tune(6, "One Outer Phone Loop") ! Start a stop watch
+        call tune(6, "One Outer Phone Loop") ! Start a stop watch
 
 !$OMP PARALLEL DO DEFAULT(NONE) &
 !$OMP PRIVATE(i, contPhoton, contWindPhoton, r, nScat) &
@@ -2649,8 +2650,8 @@ print *, 'nu = ',nu
 
         errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
-	call tune(6, "One Outer Phone Loop") ! Stop a stop watch
-	
+        call tune(6, "One Outer Phone Loop") ! Stop a stop watch
+        
      enddo
 
      call tune(6, "All Photon Loops")  ! Stop a stopwatch

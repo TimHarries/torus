@@ -925,15 +925,15 @@ endif
 
  if (geometry(1:4) ==  "jets") then
     call getLogical("lte", lte, cLine, nLines, &
-	 "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
+         "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
     call getString("contflux", contFluxFile, cLine, nLines, &
-	 "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+         "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
     call getString("popfile", popFilename, cLine, nLines, &
-	 "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
+         "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
     call getLogical("writepops", writePops, cLine, nLines, &
-	 "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+         "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
     call getLogical("readpops", readPops, cLine, nLines, &
-	 "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+         "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
     call getLogical("curtains", curtains, cLine, nLines, &
             "Curtains of accretion: ","(a,1l,1x,a)", .false., ok, .false.)
     call getReal("dipoleoffset", dipoleOffset, cLine, nLines, &
@@ -941,61 +941,61 @@ endif
     dipoleOffset = dipoleOffset * degToRad
 
     call getString("ion_name", ion_name, cLine, nLines, &
-	 "Name of the ion for a line: ","(a,a,1x,a)","H I", ok, .true.)
+         "Name of the ion for a line: ","(a,a,1x,a)","H I", ok, .true.)
     call getReal("ion_frac", ion_frac, cLine, nLines, &
           "Inonization fraction of the ion above: ","(a,f7.0,a)", 1.0, ok, .true.)    
     
     call getInteger("nlower", nLower, cLine, nLines,"Lower level: ", &
-	 & "(a,i2,a)",2,ok,.true.)
+         & "(a,i2,a)",2,ok,.true.)
     
     call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ", &
-	 & "(a,i2,a)",3,ok,.true.)
+         & "(a,i2,a)",3,ok,.true.)
 
     call getReal("Rmin_bp", Rmin_bp, cLine, nLines, &
-	 "Radius of central star  [10^10cm] : ","(a,f5.1,a)", 1.0, ok, .true.)
+         "Radius of central star  [10^10cm] : ","(a,f5.1,a)", 1.0, ok, .true.)
     call getReal("Rmax_bp", Rmax_bp, cLine, nLines, &
-	 "Cutoff radius in [10^10 cm] : ","(a,1PE7.1,a)", 10.0, ok, .true.)
+         "Cutoff radius in [10^10 cm] : ","(a,1PE7.1,a)", 10.0, ok, .true.)
     call getReal("Vo_bp", Vo_bp, cLine, nLines, &
-	 "A small offset in V in  [km/s] : ","(a,f5.1,a)", 5.0, ok, .true.)
+         "A small offset in V in  [km/s] : ","(a,f5.1,a)", 5.0, ok, .true.)
 
     call getReal("Vinf_jets", Vinf_jets, cLine, nLines, &
-	 "Terminal velocity in  [kms] : ","(a,f5.1,a)", 250.0, ok, .true.)
+         "Terminal velocity in  [kms] : ","(a,f5.1,a)", 250.0, ok, .true.)
     call getReal("beta_jets", beta_jets, cLine, nLines, &
-	 "Beta in the beta-belocity law [-] : ","(a,f5.1,a)", 0.5, ok, .true.)
+         "Beta in the beta-belocity law [-] : ","(a,f5.1,a)", 0.5, ok, .true.)
     call getReal("Mdot_jets", Mdot_jets, cLine, nLines, &
-	 "Mass loss rate in jets  [M_solar/yr] : ","(a,1PE7.1,a)", 1.0e-9, ok, .true.)
+         "Mass loss rate in jets  [M_solar/yr] : ","(a,1PE7.1,a)", 1.0e-9, ok, .true.)
     call getReal("theta_o_jets", theta_o_jets, cLine, nLines, &
-	 "Half opening angle [degrees] : ","(a,f5.1,a)", 30.0, ok, .true.)
+         "Half opening angle [degrees] : ","(a,f5.1,a)", 30.0, ok, .true.)
     call getReal("Tcore_jets", Tcore_jets, cLine, nLines, &
-	 "Temperature at the core at Rmin in [10^4 K] : ","(a,f5.1,a)", 5.0, ok, .true.)
+         "Temperature at the core at Rmin in [10^4 K] : ","(a,f5.1,a)", 5.0, ok, .true.)
     call getReal("e6_jets", e6_jets, cLine, nLines, &
-	 "Exponet in tempereture eq. [-] : ","(a,f5.1,a)", 1.0, ok, .true.)
+         "Exponet in tempereture eq. [-] : ","(a,f5.1,a)", 1.0, ok, .true.)
 
 
     call getReal("Vinf_disk", Vinf_disk, cLine, nLines, &
-	 "Terminal velocity in  [kms] : ","(a,f5.1,a)", 250.0, ok, .true.)
+         "Terminal velocity in  [kms] : ","(a,f5.1,a)", 250.0, ok, .true.)
     call getReal("beta_disk", beta_disk, cLine, nLines, &
-	 "Beta in the beta-belocity law [-] : ","(a,f5.1,a)", 0.5, ok, .true.)
+         "Beta in the beta-belocity law [-] : ","(a,f5.1,a)", 0.5, ok, .true.)
     call getReal("Mdot_disk", Mdot_disk, cLine, nLines, &
-	 "Mass loss rate in jets  [M_solar/yr] : ","(a,1PE7.1,a)", 1.0e-9, ok, .true.)
+         "Mass loss rate in jets  [M_solar/yr] : ","(a,1PE7.1,a)", 1.0e-9, ok, .true.)
     call getReal("theta_o_disk", theta_o_disk, cLine, nLines, &
-	 "Half opening angle [degrees] : ","(a,f5.1,a)", 30.0, ok, .true.)
+         "Half opening angle [degrees] : ","(a,f5.1,a)", 30.0, ok, .true.)
     call getReal("Tcore_disk", Tcore_disk, cLine, nLines, &
-	 "Temperature at the core at Rmin in [10^4 K] : ","(a,f5.1,a)", 5.0, ok, .true.)
+         "Temperature at the core at Rmin in [10^4 K] : ","(a,f5.1,a)", 5.0, ok, .true.)
     call getReal("e6_disk", e6_disk, cLine, nLines, &
-	 "Exponet in tempereture eq. [-] : ","(a,f5.1,a)", 1.0, ok, .true.)
+         "Exponet in tempereture eq. [-] : ","(a,f5.1,a)", 1.0, ok, .true.)
 
     call getReal("Rdisk_min", Rdisk_min, cLine, nLines, &
-	 "The minimum radius of the disk. [10^10 cm] : ","(a,f5.1,a)", &
+         "The minimum radius of the disk. [10^10 cm] : ","(a,f5.1,a)", &
          1.0, ok, .true.)
     call getReal("Rdisk_max", Rdisk_max, cLine, nLines, &
-	 "The maximum radius of the disk. [10^10 cm] : ","(a,f5.1,a)", &
+         "The maximum radius of the disk. [10^10 cm] : ","(a,f5.1,a)", &
          100.0, ok, .true.)
     call getReal("h_disk", h_disk, cLine, nLines, &
-	 "Thickness of the disk [10^10 cm] : ","(a,f5.1,a)", &
+         "Thickness of the disk [10^10 cm] : ","(a,f5.1,a)", &
          2.0, ok, .true.)
     call getReal("rho_scale", rho_scale, cLine, nLines, &
-	 "The density in the units of rho max for disk wind : ","(a,1PE7.1,a)", &
+         "The density in the units of rho max for disk wind : ","(a,1PE7.1,a)", &
          1.0e-5, ok, .true.)
 
     
