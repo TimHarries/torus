@@ -1521,7 +1521,7 @@ contains
     integer :: i1, i2, i3
     real :: r, mu, phi
     character(len=*) :: device
-    integer :: x, y, z
+    real(kind=octalKind) :: x, y, z
     real :: smallOffset
     type(octalVector) :: startPoint
 
@@ -2765,7 +2765,8 @@ contains
     end if
 
     write(*,'(a,a)') "Reading populations file from: ",trim(filename)
-    print *, ' - data file written at: ',timeValues(1),'/',timeValues(2),'/',&
+    write(*,'(a,i4,a,i2,a,i2,a,i2,a,i2)') ' - data file written at: ', &
+                          timeValues(1),'/',timeValues(2),'/',&
                           timeValues(3),'  ',timeValues(5),':',timeValues(6)
                           
     if (error /=0) then

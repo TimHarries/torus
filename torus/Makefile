@@ -43,7 +43,7 @@ LIBS=
 
 all:    $(ALLOBJ)
 	$(F90) -o $(EXE) \
-	$(STARLIBS) $(F2CLIB) $(MODOBJ) $(F77OBJ) $(F90OBJ) 
+	$(MODOBJ) $(F77OBJ) $(F90OBJ) $(STARLIBS) $(F2CLIB) 
 
 
 

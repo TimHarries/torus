@@ -125,10 +125,10 @@ subroutine inputs()
         if (amrGridCentreZ == 0.0) then 
            print *, 'WARNING: amrGridCentreZ == 0. This may cause numerical problems!'
         end if
-     call getReal("limitscalar", limitScalar, cLine, nLines, &
-          "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000., ok, .true.) 
-     call getReal("limittwo", limitScalar2, cLine, nLines, &
-          "Second scalar limit for subcell division: ","(a,es9.3,1x,a)", 0., ok, .false.) 
+     call getDouble("limitscalar", limitScalar, cLine, nLines, &
+          "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000._db, ok, .true.) 
+     call getDouble("limittwo", limitScalar2, cLine, nLines, &
+          "Second scalar limit for subcell division: ","(a,es9.3,1x,a)", 0._db, ok, .false.) 
      call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
           "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
      if (doSmoothGrid) then
@@ -553,13 +553,13 @@ endif
  if (geometry .eq. "testamr") then
 
    call getReal("rcore", rCore, cLine, nLines, &
-       "Core radius (solar radii): ","(a,f8.1,a)", 10., ok, .true.)
+       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
 
    call getReal("rinner", rInner, cLine, nLines, &
-       "Inner Radius (solar radii): ","(a,f8.1,a)", 12., ok, .true.)
+       "Inner Radius (solar radii): ","(a,f5.1,a)", 12., ok, .true.)
 
    call getReal("router", rOuter, cLine, nLines, &
-       "Outer Radius (inner radius): ","(a,f8.1,a)", 20., ok, .true.)
+       "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
 
    call getReal("teff", teff, cLine, nLines, &
         "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
@@ -569,9 +569,15 @@ endif
    rInner = rInner * rSol
    rOuter = rOuter * rInner
 
+   call getReal("teff", teff, cLine, nLines, &
+        "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+   
+
+   rCore = rCore * rSol
+   rInner = rInner * rSol
+   rOuter = rOuter * rInner
 
   endif
-
 
 
  if (geometry(1:4) .eq. "star") then 
@@ -935,7 +941,6 @@ endif
     call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ", &
 	 & "(a,i2,a)",3,ok,.true.)
 
-    
     call getReal("Rmin_bp", Rmin_bp, cLine, nLines, &
 	 "Radius of central star  [10^10cm] : ","(a,f5.1,a)", 1.0, ok, .true.)
     call getReal("Rmax_bp", Rmax_bp, cLine, nLines, &
@@ -961,7 +966,6 @@ endif
     
  end if
  
-
 !   mdot = mdot*msol/(365.25*24.*3600.)
 !   vterm = vterm * 1.e5
 !   v0 = v0 * 1.e5
@@ -991,7 +995,25 @@ subroutine findReal(name, value, cLine, nLines, ok)
  end do
  end subroutine findReal
 
- 
+ subroutine findDouble(name, value, cLine, nLines, ok)
+ implicit none
+ character(len=*) :: name
+ real(kind=doubleKind) :: value
+ character(len=80) :: cLine(*)
+ integer :: nLines
+ logical :: ok
+ integer :: i, j
+
+ ok = .false.
+ do i = 1, nLines
+  j = len(name)
+  if (trim(cLine(i)(1:j)) .eq. name) then
+       ok = .true.
+       read(cLine(i)(j+1:80),*) value
+  endif
+ end do
+ end subroutine findDouble
+
 subroutine findInteger(name, value, cLine, nLines, ok)
  implicit none
  character(len=*) :: name
@@ -1103,6 +1125,34 @@ subroutine findString(name, value, cLine, nLines, ok)
     write(*,format) trim(message),rval,default
  endif
  end subroutine getReal
+ 
+
+ subroutine getDouble(name, dval, cLine, nLines, message, format, ddef, ok, &
+                    musthave)
+  character(len=*) :: name
+  real(kind=doubleKind) :: dval
+  logical :: musthave
+  character(len=80) :: cLine(*)
+  integer :: nLines
+  character(len=*) :: message, format
+  character(len=10) :: default
+  real(kind=doubleKind) :: ddef
+  logical :: ok
+  ok = .true.
+  default = " "
+  call findDouble(name, dval, cLine, nLines, ok)
+  if (.not. ok) then
+    if (musthave) then
+       write(*,'(a,a)') name, " must be defined"
+       stop
+    endif
+    dval = ddef
+    default = " (default)"
+ endif
+ if (musthave) then
+    write(*,format) trim(message),dval,default
+ endif
+ end subroutine getDouble
 
 
  subroutine getString(name, rval, cLine, nLines, message, format, rdef, ok, &

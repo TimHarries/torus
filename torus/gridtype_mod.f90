@@ -32,8 +32,8 @@ module gridtype_mod
      logical :: hitcore
      real :: diskRadius
      logical :: oneKappa                        
-     real, pointer :: oneKappaAbs(:)
-     real, pointer :: oneKappaSca(:)
+     real, pointer :: oneKappaAbs(:) => null()
+     real, pointer :: oneKappaSca(:) => null()
      real :: kappaTest
      type(VECTOR) :: diskNormal
      real :: dipoleOffset

@@ -256,13 +256,12 @@ contains
 
     if (m == 0.0_db) then
        write(*,'(a)') "! Attempt to normalize the zero vector"
-       m = SQRT(m - 1.0_db)
        a = doubleVector(1.0_db,0.0_db,0.0_db)
+    else
+      a%x = a%x / m
+      a%y = a%y / m
+      a%z = a%z / m
     endif
-
-    a%x = a%x / m
-    a%y = a%y / m
-    a%z = a%z / m
 
   end subroutine normalizeDouble
 
@@ -274,13 +273,12 @@ contains
 
     if (m == 0.0_oc) then
        WRITE(*,'(a)') "! Attempt to normalize the zero vector"
-       m = SQRT(m - 1.0_oc)
        a = octalVector(1.0_oc,0.0_oc,0.0_oc)
+    else
+      a%x = a%x / m
+      a%y = a%y / m
+      a%z = a%z / m
     endif
-
-    a%x = a%x / m
-    a%y = a%y / m
-    a%z = a%z / m
 
   end subroutine normalizeOctal
 

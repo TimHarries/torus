@@ -75,9 +75,13 @@ CONTAINS
     if (.not.grid%oneKappa) then
        ALLOCATE(grid%octreeRoot%kappaAbs(8,grid%nLambda))
        ALLOCATE(grid%octreeRoot%kappaSca(8,grid%nLambda))
+       grid%octreeRoot%kappaAbs = 1.e-30
+       grid%octreeRoot%kappaSca = 1.e-30
     ELSE
        ALLOCATE(grid%oneKappaAbs(grid%nLambda))
        ALLOCATE(grid%oneKappaSca(grid%nLambda))
+       grid%oneKappaAbs = 1.e-30
+       grid%oneKappaSca = 1.e-30
     endif
 
     ALLOCATE(grid%octreeRoot%N(8,grid%maxLevels))
@@ -92,6 +96,14 @@ CONTAINS
     grid%octreeRoot%probDistCont = 0.0
     NULLIFY(grid%octreeRoot%parent)   ! tree root does not have a parent
     NULLIFY(grid%octreeRoot%child)    ! tree root does not yet have children
+    ! initialize some values
+    grid%octreeRoot%biasLine3D = 1.0 
+    grid%octreeRoot%biasCont3D = 1.0 
+    grid%octreeRoot%velocity = vector(1.e-30,1.e-30,1.e-30)
+    grid%octreeRoot%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+    grid%octreeRoot%chiLine = 1.e-30
+    grid%octreeRoot%etaLine = 1.e-30
+    grid%octreeRoot%etaCont = 1.e-30
     
     DO subcell = 1, 8
       ! calculate the values at the centre of each of the subcells
@@ -218,6 +230,13 @@ CONTAINS
     parent%child(newChildIndex)%centre = subcellCentre(parent,nChild)
     parent%child(newChildIndex)%probDistLine = 0.0
     parent%child(newChildIndex)%probDistCont = 0.0
+    parent%child(newChildIndex)%biasLine3D = 1.0 
+    parent%child(newChildIndex)%biasCont3D = 1.0 
+    parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
+    parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+    parent%child(newChildIndex)%chiLine = 1.e-30
+    parent%child(newChildIndex)%etaLine = 1.e-30
+    parent%child(newChildIndex)%etaCont = 1.e-30
 
     ! put some data in the eight subcells of the new child
     DO subcell = 1, 8
@@ -247,7 +266,7 @@ CONTAINS
     IMPLICIT NONE
 
     TYPE(OCTAL), POINTER :: thisOctal
-    REAL, INTENT(IN)     :: amrLimitScalar, amrLimitScalar2
+    REAL(KIND=doubleKind), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 
       ! 'limitScalar' is the value the decideSplit function uses to
       !   decide whether or not to split cell.
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid through to the 
@@ -452,10 +471,10 @@ CONTAINS
     LOGICAL                 :: abortRay     ! flag to signal completion of ray trace
     TYPE(octal)             :: octree       ! the octree structure within 'grid'
     TYPE(octalVector)       :: directionNormalized
-    REAL(KIND=octalKind)    :: margin
-                       ! margin is the size of the region around the edge of a subcell
-                       !   where numerical inaccuracies may cause problems.
     REAL(KIND=octalKind)    :: distanceLimit ! max length of ray before aborting
+    ! margin is the size of the region around the edge of a subcell
+    !   where numerical inaccuracies may cause problems.
+    REAL(KIND=octalKind)    :: margin
  
     ! variables for testing special cases (stellar intersections etc.)
     TYPE(octalVector)       :: starPosition       ! position vector of stellar centre
@@ -478,6 +497,17 @@ CONTAINS
     REAL(KIND=octalKind), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
     
     
+    ! we will abort tracking a photon just before it reaches the edge of the
+    !   simulation space. This is the fraction of the total distance to use:
+    REAL(KIND=octalKind), PARAMETER :: distanceFraction = 0.999_oc 
+    
+    ! we will abort tracking any rays which are too close to 
+    !   to a cell wall. The distance to use is defined by:
+    margin = 6.0_oc * REAL(grid%maxDepth,KIND=octalKind) * EPSILON(1.0_oc)
+    ! some more experimentation is required to find out the best value for
+    !   margin.
+
+    
     ! set up some variables
     octree = grid%octreeRoot  
     abortRay = .FALSE.
@@ -488,12 +518,6 @@ CONTAINS
     locator = startPoint
     nSamples = 0
 
-    ! we will abort tracking any rays which are too close to 
-    !   to a cell wall. The distance to use is defined by:
-    margin = 5.0_oc * REAL(grid%maxDepth,KIND=octalKind) * EPSILON(1.0_oc)
-    ! some more experimentation is required to find out the best value for
-    !   margin
-    
     currentPoint = startPoint
     
     IF (.NOT. inOctal(octree,startPoint)) THEN
@@ -517,6 +541,7 @@ CONTAINS
        CALL getExitPoint(currentPoint,directionNormalized,locator,abortRay,error,&
                          grid%halfSmallestSubcell,endPoint,octree%centre,        &
                          (octree%subcellSize*2.0_oc),endLength,margin) 
+       endLength = endLength * distanceFraction
        
        ! need to reset some of the variables
        abortRay = .FALSE.
@@ -591,6 +616,7 @@ CONTAINS
          currentPoint = currentPoint + distanceThroughStar * directionNormalized
          locator = currentPoint
          dummystartPoint = startPoint + distanceThroughStar * directionNormalized
+         distanceLimit = endLength - distanceThroughStar
            
         CALL returnSamples(currentPoint,dummyStartPoint,locator,             &
                     directionNormalized,octree,grid,sampleFreq,nSamples,     &
@@ -621,7 +647,13 @@ CONTAINS
          rho(nSamples) = 0.0
        END IF
        
-    ELSE 
+    ELSE
+            
+       CALL getExitPoint(currentPoint,directionNormalized,locator,abortRay,error,&
+                         grid%halfSmallestSubcell,endPoint,octree%centre,        &
+                         (octree%subcellSize*2.0_oc),endLength,margin) 
+       distanceLimit = endLength * distanceFraction
+       
        CALL returnSamples(currentPoint,startPoint,locator,directionNormalized,&
                    octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,&
                    usePops,iLambda,error,margin,distanceLimit,                &
@@ -1395,7 +1427,6 @@ CONTAINS
       t2 = MAX(0.0_oc, (point%y - (centre%y - inc)) / resultOctal%subcellSize)
       t3 = MAX(0.0_oc, (point%z - (centre%z - inc)) / resultOctal%subcellSize)
     
-      
 
       amrGridVelocity = vector(0.,0.,0.)  ! TJH did this 
        if (.false.) then
@@ -1572,7 +1603,7 @@ CONTAINS
 
     ! the line of sight velocity gradient
 
-    IF (dx /=0.) THEN
+    IF (ABS(dx) >= 1.e-10) THEN
        amrGridDirectionalDeriv = (abs(dphi / dx))
     ELSE
        amrGridDirectionalDeriv = 1.e-10
@@ -2510,28 +2541,26 @@ CONTAINS
 
     TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
-    REAL, INTENT(IN)           :: amrLimitScalar, amrLimitScalar2  ! used for split decision
+    REAL(KIND=doubleKind), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
     TYPE(gridtype), INTENT(IN) :: grid
     LOGICAL                    :: split          
 
-    REAL, SAVE            :: criticalValue, criticalValue2
-    REAL(KIND=doubleKind) :: criticalValueDouble, criticalValueDouble2
     REAL(KIND=octalKind)  :: cellSize
     TYPE(octalVector)     :: searchPoint
     TYPE(octalVector)     :: cellCentre
     REAL                  :: x, y, z
     INTEGER               :: i
-    DOUBLE PRECISION      :: total_mass
-    DOUBLE PRECISION      :: ave_density
-    DOUBLE PRECISION      :: total_opacity, minDensity, maxDensity, thisDensity
-    INTEGER               :: nsample = 400
-    LOGICAL, SAVE         :: first_time = .true.
+    REAL(KIND=doubleKind) :: total_mass
+    REAL(KIND=doubleKind) :: ave_density
+    REAL(KIND=doubleKind) :: total_opacity, minDensity, maxDensity, thisDensity
+    INTEGER               :: nsample 
     LOGICAL               :: inUse
 
 
     select case(grid%geometry)
 
-    case("ttauri","jets", "wr104")
+    case("ttauri","jets","wr104")
+      nsample = 400
       ! the density is only sampled at the centre of the grid
       ! we will search in each subcell to see if any point exceeds the 
       ! threshold density
@@ -2540,28 +2569,11 @@ CONTAINS
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
     
-      !! calculate the threshold density for the subcell
-      !!criticalValueDouble = REAL(amrLimitScalar,KIND=doubleKind) / cellSize**3.0_oc
-
-      if (first_time) then
-	 ! calculate the threshold mass for the subcell
-	 criticalValueDouble = REAL(amrLimitScalar,KIND=doubleKind)
-	 criticalValueDouble2 = REAL(amrLimitScalar2,KIND=doubleKind)
-	 
-	 IF ( criticalValueDouble >= HUGE(amrLimitScalar)) THEN
-	    PRINT *, 'In decideSplit, criticalValue exceeds floating point limit'
-	    STOP
-	 END IF
-	 criticalValue = amrLimitScalar
-	 criticalValue2 = amrLimitScalar2
-	 first_time = .false.
-      end if
-
       ! check the density of random points in the current cell - 
       !   if any of them exceed the critical density, set the flag
       !   indicating the cell is to be split, and return from the function
       split = .FALSE.
-      ave_density = 0.0d0
+      ave_density = 0.0_db
       DO i = 1, nsample
 	searchPoint = cellCentre
         CALL RANDOM_NUMBER(x)
@@ -2582,28 +2594,14 @@ CONTAINS
 
       END DO
 
-      ave_density = ave_density/nsample
-      total_mass = ave_density*cellSize*cellSize*cellSize
-      IF (total_mass > criticalValue) then
+      ave_density = ave_density / REAL(nsample,KIND=doubleKind)
+      total_mass = ave_density * (cellSize*1.e10_db)**3.0_db
+      IF (total_mass > amrLimitScalar) then
 	 split = .TRUE.
       END IF
 
    case ("testamr")
       nsample = 400
-      if (first_time) then
-	 ! calculate the threshold mass for the subcell
-	 criticalValueDouble = REAL(amrLimitScalar,KIND=doubleKind)
-	 criticalValueDouble2 = REAL(amrLimitScalar2,KIND=doubleKind)
-	 
-	 IF ( criticalValueDouble >= HUGE(amrLimitScalar)) THEN
-	    PRINT *, 'In decideSplit, criticalValue exceeds floating point limit'
-	    STOP
-	 END IF
-	 criticalValue = amrLimitScalar
-	 criticalValue2 = amrLimitScalar2
-	 first_time = .false.
-         split = .TRUE.
-      end if
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       split = .FALSE.
@@ -2629,13 +2627,10 @@ CONTAINS
 
       ave_density = ave_density/dble(nsample)
       total_opacity = ave_density * cellSize * grid%kappaTest
-      total_mass = ave_density * cellSize**3
-      IF (total_mass > criticalValue2 .or. total_opacity > criticalValue) then
+      total_mass = ave_density * (cellSize*1.e10_db)**3
+      IF (total_mass > amrLimitScalar2 .or. total_opacity > amrLimitScalar) then
 	 split = .TRUE.
       END IF
-
-
-
       
    case DEFAULT
 	   PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
@@ -2813,30 +2808,23 @@ CONTAINS
     TYPE(octalVector) :: pointVec
 
     REAL :: r, rM, theta, y
-    REAL :: rStar
-    REAL :: diskRinner
-    REAL :: diskRouter
 
     starPosn = grid%starPos1
-    pointVec = (point - starPosn)
+    pointVec = (point - starPosn) * 1.e10_oc
     r = modulus( pointVec ) 
-    rStar = TTauriRstar / 1.e10
-    diskRinner = TTauriRinner / 1.e10
-    diskRouter = TTauriRouter / 1.e10
 
     ! test if the point lies within the star
-    IF ( r < rStar ) THEN
+    IF ( r < TTauriRstar ) THEN
       rho = 1.e-25
       RETURN
     END IF
     
     ! test if the point lies too close to the disk
-    IF ( ABS(pointVec%z) < 4.0e-2 * rStar) THEN
+    IF ( ABS(pointVec%z) < 4.0e-2 * TTauriRstar) THEN
       ! we will fake the coordinates so that the density
       !  remains constant within this region 
-      pointVec%z = SIGN( 4.0e-2 * rStar, REAL(pointVec%z) )
+      pointVec%z = SIGN( 4.0e-2 * TTauriRstar, REAL(pointVec%z) )
       r = modulus( pointVec ) 
-      RETURN
     END IF
    
     theta = ACOS( pointVec%z  / r )
@@ -2847,11 +2835,11 @@ CONTAINS
     END IF
      
     ! test if the point lies outside the accretion stream
-    IF  ((rM > diskRinner) .AND. (rM < diskRouter )) THEN
+    IF  ((rM > TTauriRinner) .AND. (rM < TTauriRouter )) THEN
       y = SIN(theta)**2 
   
-      rho = (TTauriMdot * rStar) / (4.0 * pi * &
-              (rStar/diskRinner - rStar/diskRouter))
+      rho = (TTauriMdot * TTauriRstar) / (4.0 * pi * &
+              (TTauriRStar/TTauriRinner - TTauriRstar/TTauriRouter))
       rho = rho * r**(-5.0/2.0) / SQRT( 2.0 * bigG * TTauriMstar ) 
       rho = rho * SQRT( 4.0 - 3.0*y) / SQRT( 1.0 - y) 
     ELSE
@@ -2876,39 +2864,32 @@ CONTAINS
     TYPE(octalVector) :: pointVec
     TYPE(vector)      :: vP
     REAL              :: modVp
-    REAL              :: rStar
-    REAL              :: diskRinner
-    REAL              :: diskRouter
     REAL              :: phi
     REAL              :: r, rM, theta, y
 
     starPosn = grid%starPos1
-    rStar  = TTauriRstar / 1.e10
-    diskRinner = TTauriRinner / 1.e10
-    diskRouter = TTauriRouter / 1.e10
- 
-    pointVec = (point - starPosn)
+    pointVec = (point - starPosn) * 1.e10_oc
     r = modulus( pointVec ) 
     theta = ACOS( pointVec%z / r )
     rM  = r / SIN(theta)**2
     y = SIN(theta)**2 
 
     ! test if the point lies within the star
-    IF ( r < rStar ) THEN
+    IF ( r < TTauriRstar ) THEN
       TTauriVelocity = vector(1.e-25,1.e-25,1.e-25)
       
     ! test if the point lies too close to the disk
-    ELSE IF ( ABS(pointVec%z) < 4.0e-2 * rStar) THEN
+    ELSE IF ( ABS(pointVec%z) < 4.0e-2 * TTauriRstar) THEN
       TTauriVelocity = vector(1.e-25,1.e-25,1.e-25)
    
     ! test if the point lies outside the accretion stream
-    ELSE IF ((rM > diskRinner) .AND. (rM < diskRouter )) THEN
+    ELSE IF ((rM > TTauriRinner) .AND. (rM < TTauriRouter )) THEN
   
       vP = vector(3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y)), &
                   0.0, &
                  (2.0 - 3.0 * y) / SQRT(4.0 - 3.0 * y))
-      modVp = SQRT((2.0 * bigG * TTauriMstar / rStar) * &
-                     (rStar/r - rStar/rM))
+      modVp = SQRT((2.0 * bigG * TTauriMstar / TTauriRstar) * &
+                     (TTauriRstar/r - TTauriRstar/rM))
       vP = (-1.0 * (modVp/cSpeed)) * vP
       phi = ATAN2(pointVec%y,pointVec%x)
       vP = rotateZ(vP,phi) 
@@ -2942,42 +2923,36 @@ CONTAINS
     TYPE(vector) :: vP
 
     REAL :: modVp
-    REAL :: rStar
-    REAL :: diskRinner
-    REAL :: diskRouter
     REAL :: phi
     REAL :: r, rM, theta, y
 
     starPosn = grid%starPos1
-    rStar  = TTauriRstar / 1.e10
-    diskRinner = TTauriRinner / 1.e10
-    diskRouter = TTauriRouter / 1.e10
 
       point = subcellCentre(thisOctal,subcell)
-      pointVec = (point - starPosn)
+      pointVec = (point - starPosn) * 1.e10_oc
       r = modulus( pointVec ) 
       theta = ACOS( pointVec%z / r )
       rM  = r / SIN(theta)**2
       y = SIN(theta)**2 
 
       ! test if the point lies within the star
-      IF ( r < rStar ) THEN
+      IF ( r < TTauriRstar ) THEN
         thisOctal%rho(subcell) = 1.e-25
         thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
         thisOctal%inFlow(subcell) = .FALSE.
       
       ! test if the point lies too close to the disk
-      ELSE IF ( ABS(pointVec%z) < 4.0e-2 * rStar) THEN
+      ELSE IF ( ABS(pointVec%z) < 4.0e-2 * TTauriRstar) THEN
         thisOctal%rho(subcell) = 1.e-25
         thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
         thisOctal%inFlow(subcell) = .FALSE.
    
       ! test if the point lies outside the accretion stream
-      ELSE IF ((rM > diskRinner) .AND. (rM < diskRouter )) THEN
+      ELSE IF ((rM > TTauriRinner) .AND. (rM < TTauriRouter )) THEN
         thisOctal%inFlow(subcell) = .TRUE.
   
-        rho = (TTauriMdot * rStar) / (4.0 * pi * &
-                 (rStar/diskRinner - rStar/diskRouter))
+        rho = (TTauriMdot * TTauriRstar) / (4.0 * pi * &
+                 (TTauriRstar/TTauriRinner - TTauriRstar/TTauriRouter))
         rho = rho * r**(-5.0/2.0) / SQRT( 2.0 * bigG * TTauriMstar ) 
         rho = rho * SQRT( 4.0 - 3.0*y) / SQRT( 1.0 - y) 
         TTauriMinRho = MIN(TTauriMinRho, rho/mHydrogen)
@@ -2987,8 +2962,8 @@ CONTAINS
         vP = vector(3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y)), &
                     0.0, &
                    (2.0 - 3.0 * y) / SQRT(4.0 - 3.0 * y))
-        modVp = SQRT((2.0 * bigG * TTauriMstar / rStar) * &
-                       (rStar/r - rStar/rM))
+        modVp = SQRT((2.0 * bigG * TTauriMstar / TTauriRstar) * &
+                       (TTauriRstar/r - TTauriRstar/rM))
         vP = (-1.0 * (modVp/cSpeed)) * vP
         phi = ATAN2(pointVec%y,pointVec%x)
         vP = rotateZ(vP,phi) 
@@ -3000,9 +2975,8 @@ CONTAINS
         thisOctal%rho(subcell) = 1.e-25
         thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
       END IF
-      
-      IF (subcell == 8) &
-        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity)
+
+      IF (subcell == 8) CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity)
 
   END SUBROUTINE calcTTauriMassVelocity
 
@@ -3058,21 +3032,16 @@ CONTAINS
     integer :: i 
     real :: theta1, theta2
     real :: rStar
-    real :: diskRinner
-    real :: diskRouter
-    
     
     rStar  = TTauriRstar / 1.e10
-    diskRouter = TTauriRouter /1.e10
-    diskRInner = TTauriRinner /1.e10
     
     grid%rCore = rStar
     grid%rStar1 = rStar
     grid%dipoleOffset = dipoleOffset
-    grid%diskRadius = diskRInner
+    grid%diskRadius = TTauriRInner * 1.e-10
     grid%diskNormal = VECTOR(0.,0.,1.)
     grid%diskNormal = rotateX(grid%diskNormal,grid%dipoleOffSet)
-    grid%starPos1 = VECTOR(0.,0.,0.)
+    grid%starPos1 = VECTOR(0.,0.,0.) ! in units of 1.e-10 cm
 
 
     theta1 = asin(sqrt(TTauriRstar/TTauriRouter))
@@ -3239,7 +3208,7 @@ CONTAINS
   end function wr104DensityValue
 
   SUBROUTINE addNewChildren(parent, grid)
-    ! adds one new child to an octal
+    ! adds all eight new children to an octal
 
     IMPLICIT NONE
     
@@ -3247,20 +3216,16 @@ CONTAINS
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
                                           !   calculate the variables stored in
                                           !   the tree.
-    TYPE(octal)   :: tempChildStorage  ! holder for existing children, while we
-                                       !   shuffle them around to make room for 
-                                       !   the new child.
     INTEGER       :: subcell           ! loop counter
     INTEGER, SAVE :: counter = 9       ! keeps track of the current subcell label
                                        ! - this isn't very clever. might change it. 
-    INTEGER       :: nChildren         ! number of children the parent octal has
     INTEGER       :: newChildIndex     ! the storage location for the new child
-    INTEGER       :: error, i
+    INTEGER       :: error
 
+    if (any(parent%hasChild(1:8))) write(*,*) "parent already has a child"
 
     parent%nChildren = 8
 
-!
     ALLOCATE(parent%child(1:8), STAT=error)
     IF ( error /= 0 ) THEN
        PRINT *, 'Panic: allocation failed.'
@@ -3268,13 +3233,7 @@ CONTAINS
     END IF
 
     ! update the parent octal
-
-
-    do i = 1, 8
-       if (parent%hasChild(i)) then
-          write(*,*) "parent already has a child",i
-       endif
-    enddo
+    
     parent%hasChild(1:8) = .TRUE.
     parent%indexChild(1) = 1
     parent%indexChild(2) = 2
@@ -3305,6 +3264,13 @@ CONTAINS
        parent%child(newChildIndex)%centre = subcellCentre(parent,newChildIndex)
        parent%child(newChildIndex)%probDistLine = 0.0
        parent%child(newChildIndex)%probDistCont = 0.0
+       parent%child(newChildIndex)%biasLine3D = 1.0 
+       parent%child(newChildIndex)%biasCont3D = 1.0 
+       parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
+       parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+       parent%child(newChildIndex)%chiLine = 1.e-30
+       parent%child(newChildIndex)%etaLine = 1.e-30
+       parent%child(newChildIndex)%etaCont = 1.e-30
 
        ! put some data in the eight subcells of the new child
        DO subcell = 1, 8
@@ -3312,19 +3278,19 @@ CONTAINS
           parent%child(newChildIndex)%label(subcell) = counter
           counter = counter + 1
        END DO
-
  
-       ! check for a new maximum depth 
-       IF (parent%child(newChildIndex)%nDepth > grid%maxDepth) THEN
-          grid%maxDepth = parent%child(newChildIndex)%nDepth
-          grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
-               2.0_oc**REAL(grid%maxDepth,KIND=octalKind)
-          ! we store the value which is half the size of the 
-          !   smallest subcell because this is more useful for later
-          !   calculations.
-       END IF
     enddo
 
+    ! check for a new maximum depth 
+    IF (parent%child(1)%nDepth > grid%maxDepth) THEN
+       grid%maxDepth = parent%child(1)%nDepth
+       grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
+            2.0_oc**REAL(grid%maxDepth,KIND=octalKind)
+       ! we store the value which is half the size of the 
+       !   smallest subcell because this is more useful for later
+       !   calculations.
+    END IF
+    
   END SUBROUTINE addNewChildren
 
   

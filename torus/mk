@@ -35,7 +35,7 @@
                ;;
 
             linux)
-               F95COMP="f95"
+               F95COMP="f95 -colour"
                F77COMP="f77"
                FASTFLAG="-O3"
                MATHTRAP="-ieee=full"
@@ -54,7 +54,7 @@
             linuxintel)
                F95COMP="ifc"
                F77COMP="ifc"
-               FASTFLAG="-O3 -ipo -xMK "
+               FASTFLAG="-O3 -xM "
                MATHTRAP="-mp"
                UNIXMOD="unix_mod.f90.linuxintel"
                KINDMOD="kind_mod.f90.linuxintel"
@@ -62,10 +62,8 @@
                F77FLAG="-w"
                IMAGEF77="image_f77.f.default"
                SPECF77="spec_f77.f.default"
-#               F2CLIB=""
-               F2CLIB="-L/usr/lib -lg2c"
-               STARLIBS="-L/usr/lib -L/stardev/lib `ndf_link` `pgplot_link`"
-#	       STARLIBS=""
+               F2CLIB="-L/usr/lib/gcc-lib/i386-redhat-linux/2.96/ -lg2c"
+	       STARLIBS="-L/star/lib `ndf_link` `pgplot_link`"
 
                echo "mk: Environment variables defined for $SYSTEM system"
                ;;
@@ -124,7 +122,7 @@
         debug)
         touch make.depends
         make -e depends
-        make -e DEBUG="-g" MATHTRAP="-ieee=stop" FASTFLAG=" "
+        make -e DEBUG="-g -C=all " MATHTRAP="-ieee=stop" FASTFLAG=" "
         ;;
 
         profile)

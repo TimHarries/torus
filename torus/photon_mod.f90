@@ -843,21 +843,7 @@ contains
                    tempSpectrum(i)= blambda(dble(lambda(i)), dble(t1)) * dble(kabs)
                    totDouble = totDouble + tempSpectrum(i)
                 enddo
-!                prob(1)= 0.
-!                do i = 2, nLambda
-!                   prob(i) = prob(i-1) + tempSpectrum(i) * dlam(i)
-!                enddo
-!                prob(1:nLambda)  = prob(1:nLambda) / prob(nLambda)
-!                call random_number(rd)
-!                call locate(prob, nLambda, rd, i)
-!                td = (rd - prob(i))/(prob(i+1) - prob(i))
-!                thisPhoton%lambda = lambda(i) + td * (lambda(i+1) - lambda(i))
-!                ilambda = i
-
                 tempSpectrum(1:nLambda)  = tempSpectrum(1:nLambda) / totDouble
-                thisPhoton%stokes = thisPhoton%stokes * &
-                     (real(tempSpectrum(iLambda)) * weightContPhoton)
-
              else 
                 do i = 1, nLambda
                    if (.not.grid%oneKappa) then
@@ -870,9 +856,9 @@ contains
                    totDouble = totDouble + tempSpectrum(i)
                 enddo
                 tempSpectrum(1:nLambda)  = tempSpectrum(1:nLambda) / totDouble
-                thisPhoton%stokes = thisPhoton%stokes * &
-                     (real(tempSpectrum(iLambda)) * weightContPhoton)
-             end if
+             end if 
+             thisPhoton%stokes = thisPhoton%stokes * &
+                  (real(tempSpectrum(iLambda)) * weightContPhoton)
           else
 
              if (nSource == 0) then

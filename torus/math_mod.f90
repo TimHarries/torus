@@ -1014,8 +1014,8 @@ contains
     integer               :: subcell
     integer               :: i
 
-
-
+real :: etaCont(8)
+real :: biasCont3D(8)
 
     
     do subcell = 1, 8, 1
@@ -1033,6 +1033,8 @@ contains
             
        else
 
+etaCont = thisOctal%etaCont
+biasCont3D = thisOctal%biasCont3D
           dV = real(thisOctal%subcellSize, kind=doubleKind) ** 3.0_db
 
           totalLineProb = totalLineProb + dV * &

@@ -20,84 +20,84 @@ module stateq_mod
   real(kind=doubleKind) :: bEinstein(9, 9) 
   
   real(kind=doubleKind), parameter :: eTrans(15) =                      &
-       (/  0.000d0, 10.199d0, 12.088d0, 12.749d0, 13.055d0, 13.221d0,   &
-       13.321d0, 13.386d0, 13.431d0, 13.463d0, 13.486d0, 13.504d0,      &
-       13.518d0, 13.529d0, 13.538d0 /)
+       (/  0.000e0, 10.199e0, 12.088e0, 12.749e0, 13.055e0, 13.221e0,   &
+       13.321e0, 13.386e0, 13.431e0, 13.463e0, 13.486e0, 13.504e0,      &
+       13.518e0, 13.529e0, 13.538e0 /)
 
   real(kind=doubleKind), parameter :: gDegen(15) =                      &
-       (/ 2.d0, 8.d0, 18.d0, 32.d0, 50.d0, 72.d0, 98.d0, 128.d0, 162.d0,&
-       200.d0, 242.d0, 288.d0, 338.d0, 392.d0, 450.d0 /)
+       (/ 2.0, 8.0, 18.0, 32.0, 50.0, 72.0, 98.0, 128.0, 162.0,&
+       200.0, 242.0, 288.0, 338.0, 392.0, 450.0 /)
 
   real(kind=doubleKind), parameter :: aEinstein(9, 9) = reshape( source=&
-       (/ 0.000d0, 4.699d8, 5.575d7, 1.278d7, 4.125d6, 1.644d6, &
-       7.568d5, 3.869d5, 2.143d5,  &
-       0.000d0, 0.000d0, 4.410d7, 8.419d6, 2.530d6, 9.732d5, &
-       4.389d5, 2.215d5, 1.216d5, &
-       0.000d0, 0.000d0, 0.000d0, 8.986d6, 2.201d6, 7.783d5, &
-       3.358d5, 1.651d5, 8.905d4, &
-       0.000d0, 0.000d0, 0.000d0, 0.000d0, 2.699d6, 7.711d5, &
-       3.041d5, 1.424d5, 7.459d4, &
-       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 1.025d6, &
-       3.253d5, 1.388d5, 6.908d4, &
-       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
-       4.561d5, 1.561d5, 7.065d4, &
-       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
-       0.000d0, 2.272d5, 8.237d4, &
-       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
-       0.000d0, 0.000d0, 1.233d5,  &
-       0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, 0.000d0, &
-       0.000d0, 0.000d0, 0.000d0 /), shape=(/9,9/))
+       (/ 0.000e0, 4.699e8, 5.575e7, 1.278e7, 4.125e6, 1.644e6, &
+       7.568e5, 3.869e5, 2.143e5,  &
+       0.000e0, 0.000e0, 4.410e7, 8.419e6, 2.530e6, 9.732e5, &
+       4.389e5, 2.215e5, 1.216e5, &
+       0.000e0, 0.000e0, 0.000e0, 8.986e6, 2.201e6, 7.783e5, &
+       3.358e5, 1.651e5, 8.905e4, &
+       0.000e0, 0.000e0, 0.000e0, 0.000e0, 2.699e6, 7.711e5, &
+       3.041e5, 1.424e5, 7.459e4, &
+       0.000e0, 0.000e0, 0.000e0, 0.000e0, 0.000e0, 1.025e6, &
+       3.253e5, 1.388e5, 6.908e4, &
+       0.000e0, 0.000e0, 0.000e0, 0.000e0, 0.000e0, 0.000e0, &
+       4.561e5, 1.561e5, 7.065e4, &
+       0.000e0, 0.000e0, 0.000e0, 0.000e0, 0.000e0, 0.000e0, &
+       0.000e0, 2.272e5, 8.237e4, &
+       0.000e0, 0.000e0, 0.000e0, 0.000e0, 0.000e0, 0.000e0, &
+       0.000e0, 0.000e0, 1.233e5,  &
+       0.000e0, 0.000e0, 0.000e0, 0.000e0, 0.000e0, 0.000e0, &
+       0.000e0, 0.000e0, 0.000e0 /), shape=(/9,9/))
   
   real(kind=doubleKind) :: fStrength(9,9) = reshape( source=& 
-       (/ 0.000d00, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
-       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
-       4.162d-1, 0.000d00, 0.000d00, 0.000d00, 0.000d00, &
-       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
-       7.910d-2, 6.407d-1, 0.000d00, 0.000d00, 0.000d00, &
-       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
-       2.899d-2, 1.193d-1, 8.421d-1, 0.000d00, 0.000d00, &
-       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
-       1.394d-2, 4.467d-2, 1.506d-1, 1.038d00, 0.000d00, &
-       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
-       7.799d-3, 2.209d-2, 5.584d-2, 1.793d-1, 1.231d00, &
-       0.000d00, 0.000d00, 0.000d00, 0.000d00, &
-       4.814d-3, 1.270d-2, 2.768d-2, 6.549d-2, 2.069d-1, &
-       1.424d00, 0.000d00, 0.000d00, 0.000d00, &
-       3.183d-3, 8.036d-3, 1.604d-2, 3.230d-2, 7.448d-2, &
-       2.340d-1, 1.616d00, 0.000d00, 0.000d00, &
-       2.216d-3, 5.429d-3, 1.023d-2, 1.870d-2, 3.645d-2, &
-       8.315d-2, 2.609d-1, 1.807d00, 0.000d00 /), shape=(/9,9/))
+       (/ 0.000e00, 0.000e00, 0.000e00, 0.000e00, 0.000e00, &
+       0.000e00, 0.000e00, 0.000e00, 0.000e00, &
+       4.162e-1, 0.000e00, 0.000e00, 0.000e00, 0.000e00, &
+       0.000e00, 0.000e00, 0.000e00, 0.000e00, &
+       7.910e-2, 6.407e-1, 0.000e00, 0.000e00, 0.000e00, &
+       0.000e00, 0.000e00, 0.000e00, 0.000e00, &
+       2.899e-2, 1.193e-1, 8.421e-1, 0.000e00, 0.000e00, &
+       0.000e00, 0.000e00, 0.000e00, 0.000e00, &
+       1.394e-2, 4.467e-2, 1.506e-1, 1.038e00, 0.000e00, &
+       0.000e00, 0.000e00, 0.000e00, 0.000e00, &
+       7.799e-3, 2.209e-2, 5.584e-2, 1.793e-1, 1.231e00, &
+       0.000e00, 0.000e00, 0.000e00, 0.000e00, &
+       4.814e-3, 1.270e-2, 2.768e-2, 6.549e-2, 2.069e-1, &
+       1.424e00, 0.000e00, 0.000e00, 0.000e00, &
+       3.183e-3, 8.036e-3, 1.604e-2, 3.230e-2, 7.448e-2, &
+       2.340e-1, 1.616e00, 0.000e00, 0.000e00, &
+       2.216e-3, 5.429e-3, 1.023e-2, 1.870e-2, 3.645e-2, &
+       8.315e-2, 2.609e-1, 1.807e00, 0.000e00 /), shape=(/9,9/))
        
   real(kind=doubleKind) :: lambdaTrans(9,9) = reshape( source=&
-       (/000000.d-8,1215.67d-8,1025.72d-8,992.537d-8,949.743d-8, &
-       937.803d-8,930.748d-8,926.226d-8,923.150d-8, &
-       0.00000d-8,0000000d-8,6562.80d-8,4861.32d-8,4340.36d-8, &
-       4101.73d-8,3970.07d-8,3889.05d-8,3835.38d-8, &
-       0.00000d-8,0.00000d-8,0000000d-8,18751.0d-8,12818.1d-8, &
-       10938.1d-8,10049.4d-8,9545.98d-8,9229.02d-8, &
-       0.00000d-8,0.00000d-8,0.00000d-8,0000000d-8,40512.0d-8, &
-       26252.0d-8,21655.0d-8,19445.6d-8,18174.1d-8, &
-       0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0000000d-8, &
-       74578.0d-8,46525.0d-8,37395.0d-8,32961.0d-8, &
-       0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8,0.00000d-8, &
-       0.00000d-8,123680.d-8,75005.0d-8,59066.0d-8, &
-       0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8, &
-       0.00000d-8,0000000d-8,190570.d-8,113060.d-8, &
-       0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8, &
-       0.00000d-8,0000000d-8,0000000d-8,277960.d-8, &
-       0.00000d-8,0000000d-8,0000000d-8,0000000d-8,0000000d-8, &
-       0.00000d-8,0000000d-8,0000000d-8,0.00000d-8 /), shape=(/9,9/))
+       (/000000.e-8,1215.67e-8,1025.72e-8,992.537e-8,949.743e-8, &
+       937.803e-8,930.748e-8,926.226e-8,923.150e-8, &
+       0.00000e-8,0000000e-8,6562.80e-8,4861.32e-8,4340.36e-8, &
+       4101.73e-8,3970.07e-8,3889.05e-8,3835.38e-8, &
+       0.00000e-8,0.00000e-8,0000000e-8,18751.0e-8,12818.1e-8, &
+       10938.1e-8,10049.4e-8,9545.98e-8,9229.02e-8, &
+       0.00000e-8,0.00000e-8,0.00000e-8,0000000e-8,40512.0e-8, &
+       26252.0e-8,21655.0e-8,19445.6e-8,18174.1e-8, &
+       0.00000e-8,0.00000e-8,0.00000e-8,0.00000e-8,0000000e-8, &
+       74578.0e-8,46525.0e-8,37395.0e-8,32961.0e-8, &
+       0.00000e-8,0.00000e-8,0.00000e-8,0.00000e-8,0.00000e-8, &
+       0.00000e-8,123680.e-8,75005.0e-8,59066.0e-8, &
+       0.00000e-8,0000000e-8,0000000e-8,0000000e-8,0000000e-8, &
+       0.00000e-8,0000000e-8,190570.e-8,113060.e-8, &
+       0.00000e-8,0000000e-8,0000000e-8,0000000e-8,0000000e-8, &
+       0.00000e-8,0000000e-8,0000000e-8,277960.e-8, &
+       0.00000e-8,0000000e-8,0000000e-8,0000000e-8,0000000e-8, &
+       0.00000e-8,0000000e-8,0000000e-8,0.00000e-8 /), shape=(/9,9/))
   
 contains
 
   real function beta_mn(m, n, rVec, i1, i2, i3, grid, thisOctal, thisSubcell)
 
-    type(GRIDTYPE), intent(in)  :: grid
-    type(VECTOR), intent(in)    :: rVec
-    integer, intent(in)         :: i1, i2, i3
-    integer, intent(in)         :: m,n
-    type(OCTAL),pointer,optional:: thisOctal
-    integer,intent(in),optional    :: thisSubcell 
+    type(GRIDTYPE), intent(in)   :: grid
+    type(VECTOR), intent(in)     :: rVec
+    integer, intent(in)          :: i1, i2, i3
+    integer, intent(in)          :: m,n
+    type(OCTAL), pointer,optional:: thisOctal
+    integer, intent(in),optional :: thisSubcell 
     
     type(VECTOR)      :: direction
     integer           :: i, j
@@ -108,8 +108,12 @@ contains
     real              :: totomega
     real              :: escprob,  tau_mn
     type(octalVector) :: rVecOctal
-
-
+    type(OCTAL),pointer :: octalCopy
+    
+!integer :: labels(8)
+!integer :: label1
+!label1 = thisOctal%label(1)                
+!labels = thisOctal%label
     dtheta = pi / real(ntheta-1)
     dphi = twopi / real(nphi-1)
     beta_mn = 0.
@@ -145,8 +149,10 @@ contains
                 tau_mn = tau_mn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
                                       (thisOctal%N(thisSubcell,n)/gDegen(n))) ! eq 5.
                 rVecOctal = rVec
+                octalCopy => thisOctal
                 tau_mn = tau_mn / (amrGridDirectionalDeriv(grid,rVecOctal,direction, &
-                                                        startOctal=thisOctal) / 1.e10)
+                                                        startOctal=octalCopy) / 1.e10)
+!if (label1 /= thisOctal%label(1)) print *, "Label change during amrGridDirectionalDeriv"                
             ! end if
           else
              tau_mn = tau_mn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - &
@@ -173,6 +179,8 @@ contains
 !   if ((m == 1).and.(n == 2)) beta_mn = beta_mn * 100.
 !    write(*,*) totOmega/fourPi
 !   write(*,*) m,n,beta_mn
+
+!if (SUM(labels-thisOctal%label) /= 0) print *, "            leaving beta_mn, labels = ", labels    
   end function beta_mn
 
 
@@ -211,7 +219,11 @@ contains
     logical :: hitCore
     real :: tauLocal
     type(octalVector) :: rVecOctal
+    type(OCTAL),pointer :: octalCopy
 
+!integer :: labels(8)
+!integer :: label1
+!labels = thisOctal%label
     full = .false.
 
     if (nstar == 1) then
@@ -303,9 +315,12 @@ contains
                      !    tau_cmn = tau_cmn/dV_dn_jets(rVec, direction)
                      ! else
                          rVecOctal = rVec
-                      
+                         
+                         octalCopy => thisOctal
+!label1 = thisOctal%label(1)                
                          tau_cmn = tau_cmn / (amrGridDirectionalDeriv(grid,rVecOctal,direction, &
-                                                                   startOctal=thisOctal) / 1.e10)
+                                                                   startOctal=octalCopy) / 1.e10)
+!if (label1 /= thisOctal%label(1)) print *, "Label change during amrGridDirectionalDeriv"                
                      ! end if
                    else
                       tau_cmn = tau_cmn / (directionalderiv(grid,rVec,i1,i2,i3,direction)/1.e10)
@@ -327,6 +342,7 @@ contains
     beta_cmn =   beta_cmn / fourpi
 !    write(*,*) "calc",fourPi*(pi*starradius**2)/(fourPi * disttostar**2)
 !    write(*,*) "found",totOmega
+!if (SUM(labels-thisOctal%label) /= 0) print *, "            leaving beta_cmn, labels = ", labels    
   end function beta_cmn
 
   subroutine beta_cmn_sub(m,n,i1,i2,i3,grid,nstar)
@@ -485,7 +501,8 @@ contains
     real :: percentDone
     integer :: nnu1, nnu2
     character(len=*) :: contfile1, contfile2
-    real(kind=doublekind) :: tolx = 1.d-3, tolf = 1.d-3
+    real(kind=doublekind), parameter :: tolx = 1.d-3
+    real(kind=doublekind), parameter :: tolf = 1.d-3
     real(kind=doublekind) :: x(15), nTot
     real :: t1, t2, t3
     integer :: i1, i2, i3
@@ -1117,57 +1134,58 @@ contains
 
 
   real pure function BoltzSaha(m, Ne, t)
+  
     integer, intent(in)              :: m
     real(kind=doubleKind), intent(in):: Ne, t
+    
     real(kind=doubleKind), parameter :: ci = 2.07d-16
     real(kind=doubleKind), parameter :: iPot = 13.598d0
 
     BoltzSaha = Ne**2 * gDegen(m) * ci * exp( (iPot-eTrans(m))/(kev * t) ) / t**1.5
+    
   end function BoltzSaha
 
 
   real pure function boltzmann(m, N0, t)
+  
     integer, intent(in)              :: m
     real(kind=doubleKind), intent(in):: N0, t
     real                             :: z0
 
     z0 = SUM(gDegen(1:15)*exp(-eTrans(1:15)/(kev*t)))
-
     boltzmann = (gDegen(m)/z0)*n0*exp(-eTrans(m)/(kev*t))
-    
 
   end function boltzmann
 
 
-
-
-
-
-  real(kind=doubleKind) function cikt(i,t)
+  real(kind=doubleKind) pure function cikt(i,t)
     !
     ! this function calculates the collisional ionization rate (see k&c and
     ! mihalas 1967 (apj 149 169) ).
     ! 
-    integer :: i                  ! the level
-    real(kind=doubleKind) :: t,t1                  ! the temperature
-    real(kind=doubleKind) :: gammait               ! see k&c
+    integer, intent(in)              :: i        ! the level
+    real(kind=doubleKind),intent(in) :: t        ! the temperature
+    
+    real(kind=doubleKind) :: t1                  
+    real(kind=doubleKind) :: gammait             ! see k&c
     real(kind=doubleKind) :: lgt
-    real(kind=doubleKind) :: chi                   ! potential from i to k
+    real(kind=doubleKind) :: chi                 ! potential from i to k
     real(kind=doubleKind) :: cint(5,10)
+    ! making cint a PARAMETER may cause problems with XL Fortran
+    cint = reshape(source=                                                                   &
+         (/-0.4350000e0_db, 0.3000000e00_db,0.0000000e0_db, 0.0000000e0_db,0.00000000e0_db,  &
+            1.9987261e1_db,-5.8906298e-5_db,0.0000000e0_db,-2.8185937e4_db,5.44441600e7_db,  &
+            1.3935312e3_db,-1.6805859e02_db,0.0000000e0_db,-2.5390000e3_db,0.00000000e0_db,  &
+            2.0684609e3_db,-3.3415820e02_db,0.0000000e0_db, 0.0000000e0_db,-7.6440625e3_db,  &
+            3.2174844e3_db,-5.5882422e02_db,0.0000000e0_db, 0.0000000e0_db,-6.8632500e3_db,  &
+            5.7591250e3_db,-1.5163125e03_db,8.1750000e1_db, 0.0000000e0_db,0.00000000e0_db,  &
+            1.4614750e4_db,-4.8283750e03_db,3.9335938e2_db, 0.0000000e0_db,0.00000000e0_db,  &
+            2.8279250e4_db,-1.0172750e04_db,9.1967968e2_db, 0.0000000e0_db,0.00000000e0_db,  &
+            4.6799250e4_db,-1.7627500e04_db,1.6742031e3_db, 0.0000000e0_db,0.00000000e0_db,  &
+           -7.4073000e4_db, 6.8599375e03_db,0.0000000e0_db, 2.0169800e5_db,0.00000000e0_db/),&
+                                                                             shape=(/5,10/))
 
-    data cint  &
-         /-0.4350000d0, 0.3000000d00,0.0000000d0, 0.0000000d0,0.00000000d0, &
-         1.9987261d1,-5.8906298d-5,0.0000000d0,-2.8185937d4,5.44441600d7, &
-         1.3935312d3,-1.6805859d02,0.0000000d0,-2.5390000d3,0.00000000d0, &
-         2.0684609d3,-3.3415820d02,0.0000000d0, 0.0000000d0,-7.6440625d3, &
-         3.2174844d3,-5.5882422d02,0.0000000d0, 0.0000000d0,-6.8632500d3, &
-         5.7591250d3,-1.5163125d03,8.1750000d1, 0.0000000d0,0.00000000d0, &
-         1.4614750d4,-4.8283750d03,3.9335938d2, 0.0000000d0,0.00000000d0, &
-         2.8279250d4,-1.0172750d04,9.1967968d2, 0.0000000d0,0.00000000d0, &
-         4.6799250d4,-1.7627500d04,1.6742031d3, 0.0000000d0,0.00000000d0, &
-         -7.4073000d4, 6.8599375d03,0.0000000d0, 2.0169800d5,0.00000000d0/
-
-    t1 = min(t,1.d5)
+    t1 = min(t,1.5_db)
     lgt=log10(t1)
     if (i .ne. 2) then 
        gammait=cint(1,i)+cint(2,i)*lgt+cint(3,i)*(lgt**2)+ &
@@ -1178,34 +1196,29 @@ contains
     chi=13.598e0-eTrans(i)
     cikt=(5.465e-11)*sqrt(t1)*exp(-chi/(kev*t1))*gammait
 
-
-
   end function cikt
 
 
-
-
-
-  real(kind=doubleKind) function cijt(i,j,t)
+  real(kind=doubleKind) pure function cijt(i,j,t)
     !
     ! this function calculates the excitation rate according to crandell et al
     ! (apj 191 789).
     !
-    integer :: i,j,i1,j1                   ! lower/upper level
-    integer :: r                       ! counter
-    real(kind=doubleKind) :: t ,t1             ! temperature
-    real(kind=doubleKind) :: bsum(9)           ! summation
-    real(kind=doubleKind) :: chi            ! excitation energy
+    integer, intent(in)              :: i,j  ! lower/upper level
+    real(kind=doubleKind),intent(in) :: t    ! temperature
+    
+    integer :: r                             ! counter
+    real(kind=doubleKind) :: t1              ! temperature
+    real(kind=doubleKind) :: bsum(9)         ! summation
+    real(kind=doubleKind) :: chi             ! excitation energy
     real(kind=doubleKind) :: x
-    real(kind=doubleKind) :: avals(7)
+    integer               :: i1,j1           ! lower/upper level
+    real(kind=doubleKind) :: avals(7) 
+    ! making avals a PARAMETER may cause problems with XL Fortran
+    avals = (/ 2.579997e-10_db, -1.629166e-10_db, 7.713069e-11_db, -2.668768e-11_db, &
+               6.642513e-12_db, -9.422885e-13_db, 0.e0_db                            /)
 
-
-    data avals &
-         / 2.579997d-10,-1.629166d-10,7.713069d-11,-2.668768d-11, &
-         6.642513d-12,-9.422885d-13 ,0.d0 /
-
-    t1 = min(t,1.d5)
-
+    t1 = min(t,1.e5_db)
     i1 = min(i,j)
     j1 = max(i,j)
 
@@ -1220,7 +1233,7 @@ contains
        enddo
        cijt=4.e0*sqrt(t1)*exp(-chi)*0.5e0*(bsum(1)-bsum(3))
     else
-       cijt=abs(5.465e-11*sqrt(t1)*4.d0*fStrength(i1,j1)/ &
+       cijt=abs(5.465e-11*sqrt(t1)*4.e0_db*fStrength(i1,j1)/ &
             (( (1.e0/real(i1)**2) - (1.0/real(j1)**2))**2))*chi* &
             (expint(1,chi)+0.148d0*chi*expint(5,chi))
     endif
@@ -1233,8 +1246,6 @@ contains
   end function cijt
 
 
-
-
   real(kind=doubleKind) pure function annu(n,nu)
     !
     ! this subroutine calculates the photoionization x-section
@@ -1243,36 +1254,39 @@ contains
     integer, intent(in)              :: n     ! the level
     real(kind=doubleKind), intent(in):: nu    ! the photon frequency
     real(kind=doubleKind)            :: lam,e ! the photon wavelength
+    
     lam=cSpeed/nu
-    lam=lam*1.d8
+    lam=lam * 1.e8_db
 
     e = hCgs * nu * ergToEv
 
     if (e > (13.598 - eTrans(n))) then
-       annu=1.044d-26*gii(n,1.d0,lam)*(lam**3)/dble(n)**5
+       annu=1.044e-26_db*gii(n,1.e0_db,lam)*(lam**3)/dble(n)**5
     else
-       annu = 1.d-30
+       annu = 1.e-30_db
     endif
 
   end function annu
 
 
-  real function expint(n,x1)
+  real pure function expint(n,x1)
     ! 
     ! exponential integrals. numerical approximations given by gray.
     !
-    real(kind=doubleKind) :: x,ep(5),x1
-    real(kind=doubleKind) :: a1(4),b1(4)
-    integer :: i,n
-    data a1 &
-         / 0.2677737343d0, 8.6347608925d0, 18.059016973d0, 8.5733287401d0 /
+    integer, intent(in)              :: n
+    real(kind=doubleKind),intent(in) :: x1
+    real(kind=doubleKind)            :: x,ep(5)
+    integer                          :: i
+    real(kind=doubleKind)            :: a1(4)
+    real(kind=doubleKind)            :: b1(4)
+    ! making a1 and b1 PARAMETERs may cause problems with XL Fortran
+    a1=(/ 0.2677737343e0_db,8.6347608925e0_db, 18.059016973e0_db, 8.5733287401e0_db /)
+    b1=(/ 3.9584969228e0_db,21.0996530827e0_db,25.6329561486e0_db,9.5733223454e0_db /)
 
-    data b1 &
-         /3.9584969228d0, 21.0996530827d0, 25.6329561486d0, 9.5733223454d0 /
     x=abs(x1)
     if (x.le.1.0) then
-       ep(1)=-log(x)-0.57721566d0+0.99999193d0*x-0.24991055d0*x**2+ &
-            0.05519968d0*x**3-0.00976004*x**4+0.00107857*x**5
+       ep(1)=-log(x)-0.57721566e0_db+0.99999193e0_db*x-0.24991055e0_db*x**2+ &
+            0.05519968e0_db*x**3-0.00976004*x**4+0.00107857*x**5
     else
        ep(1)=(x**4+a1(4)*x**3+a1(3)*x**2+a1(2)*x+a1(1))
        ep(1)=ep(1)/(x**4+b1(4)*x**3+b1(3)*x**2+b1(2)*x+b1(1))
@@ -1314,29 +1328,30 @@ contains
           ag=ag*efree
           sum=sum+coeff(i)*ag
        enddo
-       gii=10.d0**sum
+       gii=10.e0_db**sum
        goto 500
     else
        alam=911.76e0/(z*z*(1.e0+2.e0/n)+1.e0/(n*n))
        alam=giia(n,z,alam)
        sum=log10(1.e0+2.e0/n)
        efree=log10(efree)
-       sum=(efree-sum)/(1.d0-sum)
+       sum=(efree-sum)/(1.e0_db-sum)
        gii=(1.e0-sum)*alam+0.93e0*sum+0.2e0*sum*(1.e0-sum)
        goto 500
     endif
 500 continue
   end function gii
+  
 
   real pure function giia(n,z,wl)
-    integer, intent(in)   :: n
-    real(kind=doubleKind), intent(in) ::  z,wl
-    real(kind=doubleKind) ::  ag,u,gii,term
+    integer, intent(in)               :: n
+    real(kind=doubleKind), intent(in) :: z, wl
+    real(kind=doubleKind)             :: ag, u, gii, term
     ag=real(n)
-    u=ag*ag*911.76d0/(wl*z*z)-1.d0
-    gii=1.d0+0.1728d0*(u-1.d0)/((n*(u+1.d0))**(2.d0/3.d0))
-    term=0.0496d0*(1.d0+u*(u+1.333d0))/(n*(u+1.d0)**(4.d0/3.d0))
-    if ((term/gii).le.0.25d0) then
+    u=ag*ag*911.76e0_db/(wl*z*z)-1.e0_db
+    gii=1.e0_db+0.1728e0_db*(u-1.e0_db)/((n*(u+1.e0_db))**(2.e0_db/3.e0_db))
+    term=0.0496e0_db*(1.e0_db+u*(u+1.333e0_db))/(n*(u+1.e0_db)**(4.e0_db/3.e0_db))
+    if ((term/gii).le.0.25e0_db) then
        giia=gii-term
        goto 500
     else
@@ -1353,8 +1368,8 @@ contains
     integer, intent(in)         :: nPop, nNu1, nNu2
     logical, intent(in)         :: binary
     real, intent(in)            :: visFrac1, visFrac2
-    real, intent(in),dimension(:):: Hnu1, nuArray1
-    real, intent(in),dimension(:):: Hnu2, nuArray2
+    real, intent(in), dimension(:) :: Hnu1, nuArray1
+    real, intent(in), dimension(:) :: Hnu2, nuArray2
     integer, intent(in)         :: i1, i2, i3
     type(VECTOR), intent(in)    :: rVec
     type(OCTAL),pointer,optional:: thisOctal
@@ -1369,6 +1384,8 @@ contains
     real(kind=doubleKind) :: tot
     real(kind=doubleKind) :: fac1, fac2
 
+!integer :: labels(8)
+!labels = thisOctal%label
     if (n == debug) write(*,*) " "
 
     ! we have one IF statement to decide whether we use the block containin the
@@ -1376,7 +1393,7 @@ contains
 
     if (grid%adaptive) then
    
-       tot = 0.d0
+       tot = 0.e0_db
        do m = 1, n - 1
           freq = cSpeed/lambdaTrans(m,n)
           if ((freq >= nuArray1(1)).and.(freq <= nuArray1(nnu1))) then
@@ -1406,8 +1423,8 @@ contains
           tot = tot - thisOctal%N(thisSubcell,n)*aEinstein(n,m)*&
                    beta_mn(m, n, rVec, i1, i2, i3, grid, thisOctal, thisSubcell)
           tot = tot + thisOctal%Ne(thisSubcell) * &
-               (thisOctal%N(thisSubcell,m)*cijt(m,n,dble(thisOctal%temperature(thisSubcell))) &
-               - thisOctal%N(thisSubcell,n) * cijt(n,m,dble(thisOctal%temperature(thisSubcell))))
+               (thisOctal%N(thisSubcell,m)*cijt(m,n,real(thisOctal%temperature(thisSubcell),kind=db)) &
+               - thisOctal%N(thisSubcell,n) * cijt(n,m,real(thisOctal%temperature(thisSubcell),kind=db)))
        enddo
    
        if (n == debug) then
@@ -1458,8 +1475,8 @@ contains
    
    
           tot = tot + thisOctal%Ne(thisSubcell) * (thisOctal%N(thisSubcell,m) &
-           *cijt(m,n,dble(thisOctal%temperature(thisSubcell))) - thisOctal%N(thisSubcell,n)&
-           *cijt(n,m,dble(thisOctal%temperature(thisSubcell))))
+           *cijt(m,n,real(thisOctal%temperature(thisSubcell),kind=db)) - thisOctal%N(thisSubcell,n)&
+           *cijt(n,m,real(thisOctal%temperature(thisSubcell),kind=db)))
           if (n == debug) then
              write(*,*) m,"collisional",tot
           endif
@@ -1472,7 +1489,7 @@ contains
           write(*,*) "m > n",tot
        endif
    
-       NStar = boltzSaha(n, thisOctal%Ne(thisSubcell),dble(thisOctal%temperature(thisSubcell)))
+       NStar = boltzSaha(n, real(thisOctal%Ne(thisSubcell),kind=db),real(thisOctal%temperature(thisSubcell),kind=db))
    
        fac1 = integral1(n,hnu1, nuArray1, nNu1, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)*visFrac1
        if (binary) then
@@ -1481,12 +1498,12 @@ contains
           fac2 = 0.
        endif
        tot = tot + Nstar * (fac1 + fac2 + thisOctal%Ne(thisSubcell)* &
-          cikt(n,dble(thisOctal%temperature(thisSubcell))))
+          cikt(n,real(thisOctal%temperature(thisSubcell),kind=db)))
    
        if (n == debug) then
           write(*,*) "Recombination: ",tot
           write(*,*) nstar, fac1, fac2, thisOctal%Ne(thisSubcell)* &
-             cikt(n,dble(thisOctal%temperature(thisSubcell)))
+             cikt(n,real(thisOctal%temperature(thisSubcell),kind=db))
        endif
        
        
@@ -1498,21 +1515,21 @@ contains
           fac2 = 0.
        endif
        tot = tot - thisOctal%N(thisSubcell,n)*(fac1 + fac2 + thisOctal%Ne(thisSubcell) * &
-          cikt(n, dble(thisOctal%temperature(thisSubcell))))
+          cikt(n, real(thisOctal%temperature(thisSubcell),kind=db)))
    
        if (n == debug) then
           write(*,*) "Ionization: ", &
                thisOctal%N(thisSubcell,n)*(fac1 + fac2 + thisOctal%Ne(thisSubcell) * &
-                  cikt(n, dble(thisOctal%temperature(thisSubcell))))
+                  cikt(n, real(thisOctal%temperature(thisSubcell),kind=db)))
           write(*,*) thisOctal%N(thisSubcell,n),fac1,fac2,thisOctal%Ne(thisSubcell) * &
-             cikt(n, dble(thisOctal%temperature(thisSubcell)))
+             cikt(n, real(thisOctal%temperature(thisSubcell),kind=db))
        endif 
        
        
     else ! grid is not adaptive
        
        
-       tot = 0.d0
+       tot = 0.e0_db
        do m = 1, n - 1
           freq = cSpeed/lambdaTrans(m,n)
           if ((freq >= nuArray1(1)).and.(freq <= nuArray1(nnu1))) then
@@ -1641,6 +1658,7 @@ contains
     if (n == debug) write(*,*) "Final total:",tot
     equation8 = tot
 
+!if (SUM(labels-thisOctal%label) /= 0) print *, "          leaving equation8, labels = ", labels    
 
   end function equation8
  
@@ -1658,13 +1676,13 @@ contains
 
     if (grid%adaptive) then
 
-      tot = 0.d0
+      tot = 0.e0_db
        do i = 1, nPop
           tot = tot + dble(thisOctal%N(thisSubcell,i))
        enddo
        
        do i = nPop+1, maxLevels+3
-          tot = tot + boltzSaha(i, thisOctal%Ne(thisSubcell), dble(thisOctal%temperature(thisSubcell)))
+          tot = tot + boltzSaha(i, dble(thisOctal%Ne(thisSubcell)), dble(thisOctal%temperature(thisSubcell)))
        enddo
    !    write(*,*) "Neutral",tot
        tot = tot + thisOctal%Ne(thisSubcell)
@@ -1676,7 +1694,7 @@ contains
 
     else ! grid not adaptive
 
-      tot = 0.d0
+      tot = 0.e0_db
        do i = 1, nPop
           tot = tot + dble(grid%n(i1,i2,i3,i))
        enddo
@@ -1725,7 +1743,6 @@ contains
     freq = ((13.598-eTrans(n))*1.602192e-12)/hcgs
     if ((freq < nuArray(1)) .or.(freq > nuArray(nNu))) then
        write(*,*) "error in integral1",nNu,freq,nuArray(1),nuArray(nNu)
-do ; enddo       
        jnu = 1.e-28
        iMin = 1
     else
@@ -1831,11 +1848,11 @@ do ; enddo
     type(GRIDTYPE), intent(inout)      :: grid
     logical, intent(in)                :: isBinary
     real, intent(in)                   :: visFrac1, visFrac2
-    real(kind=doubleKind), intent(in),dimension(:) :: x
-    real(kind=doubleKind), intent(out) :: alpha(np, np)
-    real(kind=doubleKind), intent(out) :: beta(np)
+    real(kind=doubleKind),intent(in),dimension(:) :: x
+    real(kind=doubleKind), intent(out) :: alpha(:,:)
+    real(kind=doubleKind), intent(out) :: beta(:)
     real, intent(in), dimension(:)     :: hnu1, hnu2
-    real, intent(in),dimension(:)      :: nuarray1, nuarray2
+    real, intent(in), dimension(:)     :: nuarray1, nuarray2
     integer, intent(in)                :: nNu1, nNu2
     type(VECTOR), intent(in)           :: rVec
     integer, intent(in)                :: i1, i2, i3
@@ -1843,10 +1860,12 @@ do ; enddo
     integer, intent(in),optional       :: thisSubcell 
     
     real(kind=doubleKind)              :: tmp, incr
-    real(kind=doubleKind), parameter   :: fac = 1.d-3
+    real(kind=doubleKind), parameter   :: fac = 1.e-3_db
     integer                            :: i, j
     integer, parameter                 :: maxLevels = statEqMaxLevels
     
+!integer :: labels(8)
+!labels = thisOctal%label
     if (grid%adaptive) then 
 
        thisOctal%N(thisSubcell,1:maxLevels) = x(1:maxLevels)
@@ -1862,7 +1881,7 @@ do ; enddo
        do i = 1, maxLevels
           do j = 1, maxLevels
              tmp = thisOctal%N(thisSubcell,j)
-             thisOctal%N(thisSubcell,j) = thisOctal%N(thisSubcell,j) * (1.d0 + fac)
+             thisOctal%N(thisSubcell,j) = thisOctal%N(thisSubcell,j) * (1.e0_db + fac)
              incr = equation8(i, maxLevels, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, rVec, &
                   i1, i2, i3, grid, visFrac1, visFrac2, isBinary, thisOctal, thisSubcell)
              alpha(i,j) = (beta(i) + incr) / (tmp*fac)
@@ -1881,10 +1900,10 @@ do ; enddo
    !       grid%N(i1,i2,i3,j) = tmp
    !    enddo
    
-       alpha(maxLevels+1,1:maxLevels) = 1.d0
+       alpha(maxLevels+1,1:maxLevels) = 1.e0_db
    
        tmp = thisOctal%Ne(thisSubcell)
-       thisOctal%Ne(thisSubcell) = thisOctal%Ne(thisSubcell) * (1.d0+fac)
+       thisOctal%Ne(thisSubcell) = thisOctal%Ne(thisSubcell) * (1.e0_db+fac)
        do i = 1, maxLevels
           incr =  equation8(i, maxLevels, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, rVec, &
                i1, i2, i3, grid, visFrac1, visFrac2, isBinary, thisOctal, thisSubcell)
@@ -1920,7 +1939,7 @@ do ; enddo
        do i = 1, maxLevels
           do j = 1, maxLevels
              tmp = grid%N(i1,i2,i3,j)
-             grid%N(i1,i2,i3,j) = grid%N(i1,i2,i3,j) * (1.d0 + fac)
+             grid%N(i1,i2,i3,j) = grid%N(i1,i2,i3,j) * (1.e0_db + fac)
              incr = equation8(i, maxLevels, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, rVec, &
                   i1, i2, i3, grid, visFrac1, visFrac2, isBinary)
              alpha(i,j) = (beta(i) + incr) / (tmp*fac)
@@ -1939,10 +1958,10 @@ do ; enddo
    !       grid%N(i1,i2,i3,j) = tmp
    !    enddo
    
-       alpha(maxLevels+1,1:maxLevels) = 1.d0
+       alpha(maxLevels+1,1:maxLevels) = 1.e0_db
    
        tmp = grid%Ne(i1,i2,i3)
-       grid%Ne(i1,i2,i3) = grid%Ne(i1,i2,i3) * (1.d0+fac)
+       grid%Ne(i1,i2,i3) = grid%Ne(i1,i2,i3) * (1.e0_db+fac)
        do i = 1, maxLevels
           incr =  equation8(i, maxLevels, Hnu1, nuArray1, nNu1, Hnu2, nuArray2, nNu2, rVec, &
                i1, i2, i3, grid, visFrac1, visFrac2, isBinary)
@@ -1963,6 +1982,7 @@ do ; enddo
 
     end if ! (grid%adaptive)
   
+!if (SUM(labels-thisOctal%label) /= 0) print *, "        leaving setupMatrices, labels = ", thisOctal%label    
 
   end subroutine setupMatrices
 
@@ -1977,12 +1997,13 @@ do ; enddo
     logical, intent(in)            :: isBinary
     real, intent(in)               :: visFrac1, visFrac2
     type(VECTOR), intent(in)       :: rVec
-    real, intent(in),dimension(:)  :: nuarray1, nuarray2
-    real, intent(in),dimension(:)  :: hnu1, hnu2
+    real, intent(in), dimension(:) :: nuarray1, nuarray2
+    real, intent(in), dimension(:) :: hnu1, hnu2
     integer, intent(in)            :: nNu1, nNu2
-    real(kind=doubleKind), intent(inout),dimension(:):: x
+    real(kind=doubleKind),intent(inout),dimension(:) :: x
     integer, intent(in)            :: nTrial
-    integer                        :: n, i, k
+    integer, intent(in)            :: n
+    integer                        :: i, k
     integer                        :: indx(np)
     real(kind=doubleKind)          :: tolx, tolf
     real(kind=doubleKind)          :: errf, d, errx
@@ -1990,6 +2011,8 @@ do ; enddo
     type(octal), pointer, optional :: thisOctal 
     integer, intent(in),optional   :: thisSubcell 
       
+!integer :: labels(8)
+!labels = thisOctal%label
       do k = 1, ntrial
         call setupMatrices(x,alpha,beta,np,rVec, i1, i2, i3, grid,Hnu1, nuArray1, nNu1, Hnu2, &
              nuArray2, nNu2, visFrac1, visFrac2, isBinary, thisOctal, thisSubcell)
@@ -1999,7 +2022,9 @@ do ; enddo
         end do 
 !          write(*,*) "errf,tolf",errf,tolf
         if(errf.le.tolf)return
-        call ludcmp(alpha,n,np,indx,d)
+
+        call ludcmp(alpha,n,np,indx,d) 
+
         call lubksb(alpha,n,np,indx,beta)
         errx=0.
         do i = 1, n
@@ -2009,11 +2034,12 @@ do ; enddo
 !          write(*,*) "errx,tolx",errx,tolx
         if (errx.le.tolx) return
       end do
+!if (SUM(labels-thisOctal%label) /= 0)  print *, "      leaving mnewt, labels = ", thisOctal%label    
 
   end subroutine 
 
       subroutine ludcmp(a,n,np,indx,d)
-      real(kind=doubleKind), parameter :: tiny=1.0e-20
+      real(kind=doubleKind), parameter :: tiny=1.0e-20_db
       integer, parameter :: nmax=200
       integer :: n, np
       real(kind=doubleKind) :: d
@@ -2124,12 +2150,11 @@ do ; enddo
      real(kind=doubleKind), intent(in) :: freq,t
      real(kind=doubleKind)             :: wav,gauntf
       
-     wav=1.d8*cSpeed/freq
-     gauntf=giii(1.d0,t,wav)
+     wav=1.e8_db*cSpeed/freq
+     gauntf=giii(1.e0_db,t,wav)
      alpkk=gauntf*real(3.6d8/((dble(freq)**3)*sqrt(dble(t))))
      
   end function alpkk
-
 
 
   real(kind=doubleKind) pure function giii (z, t, wl)
@@ -2276,6 +2301,7 @@ do ; enddo
 666 continue
   end subroutine occultTest
 
+  
   subroutine generateOpacities(grid, m, n)
 
     type(GRIDTYPE) :: grid
@@ -2398,15 +2424,15 @@ do ; enddo
     type(GRIDTYPE),intent(inout):: grid      
     character(len=*),intent(in) :: contfile      ! filename for continuum flux
     logical,intent(in)          :: lte           ! true if lte conditions
-    integer, parameter          :: maxLevels = statEqMaxLevels ! number of levels to compute
     integer,intent(in)          :: nLower, nUpper! level populations
     
+    integer, parameter          :: maxLevels = statEqMaxLevels ! number of levels to compute
     integer                     :: iOctal        ! loop counter
     integer                     :: iSubcell      ! loop counter
     integer                     :: nOctal        ! number of octals in grid
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
-    real(kind=doublekind),parameter :: tolx = 1.d-3  ! tolerance
-    real(kind=doublekind),parameter :: tolf = 1.d-3  ! tolerance
+    real(kind=doublekind),parameter :: tolx = 1.e-3  ! tolerance
+    real(kind=doublekind),parameter :: tolf = 1.e-3  ! tolerance
     integer                     :: returnVal     ! status value
     real                        :: chil
     real                        :: chi
@@ -2424,13 +2450,16 @@ do ; enddo
     real                        :: hNu2(2000)
     real                        :: nuarray1(2000)
     real                        :: nuarray2(2000)
-    integer                     :: j, m          ! loop counters
+    integer                     :: i, j, m       ! loop counters
     real                        :: transe
     real(kind=doubleKind)       :: freq
     type(vector)                :: rVec
     real (kind=doubleKind)      :: Ne1, Ne2
     logical                     :: ok
+    type(octal), pointer        :: thisOctal => null()
     real(kind=doubleKind)       :: tmp0, tmp1, tmp2   ! used for debug
+    real                        :: departCoeff(maxLevels)
+    logical                     :: debugInfo = .true.
 
     ! Initialize the data arrays (lambdaTrans, bEinstein, fStrength) defined at the top of this module.
     call map_transition_arrays(maxLevels)
@@ -2448,7 +2477,6 @@ do ; enddo
     nNu1 = nNu1  - 1
     close(20)
     hNu1(1:nNu1) = hnu1(1:nNu1) / fourPi   ! Converts from flux to flux momemnt
-print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
 
     allocate(octalArray(grid%nOctals))
     
@@ -2456,33 +2484,34 @@ print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
 
     ! now loop over all octals
+    print *, "   calculating LTE values..." 
     do iOctal = 1, nOctal
-
+       thisOctal => octalArray(iOctal)%content
        do iSubcell = 1, 8
           if (octalArray(iOctal)%inUse(iSubcell)) then
-             nTot = dble(octalArray(iOctal)%content%rho(iSubcell) / mHydrogen)
-             tmp0 = octalArray(iOctal)%content%temperature(iSubcell)
-             tmp1 = 2.d0*pi*mElectron*kErg*tmp0
-             tmp2 = exp(-13.6d0/(kEV*dble(tmp0)))
-             phiT = 1.5d0*log10(tmp1) - &
-                           3.d0*log10(hCgs) +  &
-                           log10(tmp2)
-             phiT = 10.d0**phiT
-             call solveQuadDble(1.d0, phiT, -1.d0*phiT*dble(nTot), Ne1, Ne2, ok)
-             octalArray(iOctal)%content%Ne(iSubcell) = min(max(Ne1,Ne2),nTot)
-             octalArray(iOctal)%content%nTot(iSubcell) = nTot 
+             nTot = dble(thisOctal%rho(iSubcell) / mHydrogen)
+             
+             phiT = 1.5e0_db*log10(2.e0_db*pi*mElectron*kErg*thisOctal%temperature(iSubcell)) - &
+                      3.e0_db*log10(hCgs) + &
+                      log10(exp(-13.6e0_db/(kEV*real(thisOctal%temperature(iSubcell),kind=db))))
+             phiT = 10.e0_db**phiT             
+             
+             call solveQuadDble(1.e0_db, phiT, -1.e0_db*phiT*real(nTot,kind=doublekind), Ne1, Ne2, ok)
+             thisOctal%Ne(iSubcell) = min(max(Ne1,Ne2),nTot)
+             thisOctal%nTot(iSubcell) = nTot 
              do m = 1, maxlevels
-                octalArray(iOctal)%content%n(iSubcell,m) =               &
-                   boltzsaha(m,octalArray(iOctal)%content%ne(iSubcell),  &
-                   dble(octalArray(iOctal)%content%temperature(iSubcell)))
+                thisOctal%n(iSubcell,m) =               &
+                   boltzsaha(m,thisOctal%ne(iSubcell),real(thisOctal%temperature(iSubcell),kind=db))
              enddo
           endif
        enddo
 
     enddo
+    print *, "   ...LTE calculations complete." 
 
 
     if (.not.lte) then
+       print *, "   calculating non-LTE values..." 
             
        allocate(xall(1:maxLevels+1))
        visFrac1 = 1.
@@ -2490,22 +2519,36 @@ print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
        isBinary = .false.
        
        do iOctal = 1, nOctal
+       if (debugInfo) print *, 'Octal #',iOctal
+          thisOctal => octalArray(iOctal)%content
           do iSubcell = 1, 8, 1
-             if (octalArray(iOctal)%inUse(iSubcell)) then
-                
+             if (octalArray(iOctal)%inUse(iSubcell) .and. &
+                (thisOctal%nTot(iSubcell) > 1.0)) then
 
-                xAll(1:maxLevels) = octalArray(iOctal)%content%n(iSubcell,1:maxLevels)
-                xAll(maxLevels+1) = octalArray(iOctal)%content%Ne(iSubcell)
-                rVec = subcellCentre(octalArray(iOctal)%content,iSubcell)
+                xAll(1:maxLevels) = thisOctal%N(iSubcell,1:maxLevels)
+                xAll(maxLevels+1) = thisOctal%Ne(iSubcell)
+                rVec = subcellCentre(thisOctal,iSubcell)
 
                 call mnewt(grid, 20, xAll, maxlevels+1, tolx, tolf, hNu1, nuArray1, nNu1, &
                            hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
-                           isBinary, octalArray(iOctal)%content, iSubcell)
+                           isBinary, thisOctal, iSubcell)
+                           
+                if (debugInfo) then
+                   write (*,'(a12,i1,a15,f5.0,a11,e10.1)') '   subcell #', iSubcell, '  temperature: ', & 
+                                      thisOctal%temperature(iSubcell),'  density: ',thisOctal%rho(iSubcell) 
+                   do i = 1 , maxLevels
+                      departCoeff(i) = real(xall(i))/boltzSaha(i, thisOctal%Ne(iSubcell),          &
+                                                         real(thisOctal%temperature(iSubcell),kind=db))
+                      write(*,'(a5,i3,1p,e12.3,e12.3)') '     ',i,departCoeff(i),xall(i)
+                   enddo
+                end if   
+                
              endif
           enddo
        enddo
        
        deallocate(xall)
+       print *, "   non-LTE calculations complete..." 
        
     endif
 
@@ -2526,8 +2569,7 @@ print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
                        ((gDegen(nLower) / gDegen(nUpper)) * octalArray(iOctal)%content%N(iSubcell,nUpper)))
              octalArray(iOctal)%content%chiLine(iSubcell) = 1.e10 * chil
              
-             if (octalArray(iOctal)%content%n(iSubcell,nUpper) == 0.d0) then
-                write(*,*) 'In amrStatEq, octalArray(iOctal)%content%n(iSubcell,nUpper) == 0.d0'
+             if (octalArray(iOctal)%content%n(iSubcell,nUpper) == 0.e0_db) then
                 write(*,*) nUpper
                 write(*,*) octalArray(iOctal)%content%N(iSubcell,1:maxLevels)
                 write(*,*) octalArray(iOctal)%content%Ne(iSubcell)
@@ -2536,28 +2578,28 @@ print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
              endif
              
              fac=(((octalArray(iOctal)%content%N(iSubcell,nLower)* gDegen(nUpper)) / &
-                 (octalArray(iOctal)%content%N(iSubcell,nUpper)*gDegen(nLower)))-1.d0)
+                 (octalArray(iOctal)%content%N(iSubcell,nUpper)*gDegen(nLower)))-1.e0_db)
              octalArray(iOctal)%content%etaLine(iSubcell) = &
-                  1.e10*chil*real((2.d0*dble(hcgs)*dble(freq)**3)/(dble(cSpeed**2)))/fac
+                  1.e10*chil*real((2.e0_db*dble(hcgs)*dble(freq)**3)/(dble(cSpeed**2)))/fac
              
              
              ! continuous opacity.. bound-free and free-free processes (+es)
              
-             chi=0.d0
+             chi=0.e0_db
              do j=1,maxLevels
-                thresh=(13.598d0-eTrans(j))
+                thresh=(13.598e0_db-eTrans(j))
                 if (transe.ge.thresh) then
                    chi=chi+(octalArray(iOctal)%content%N(iSubcell,j)- &
-                        boltzsaha(j, octalArray(iOctal)%content%Ne(iSubcell), &
-                                  dble(octalArray(iOctal)%content%temperature(iSubcell)))* &
+                        boltzsaha(j, real(octalArray(iOctal)%content%Ne(iSubcell),kind=db), &
+                                  real(octalArray(iOctal)%content%temperature(iSubcell),kind=db))* &
                         exp((-hcgs*freq)/(kerg*octalArray(iOctal)%content%temperature(iSubcell)))) * &
-                        annu(j,dble(freq))
+                        annu(j,real(freq,kind=db))
                 endif
              enddo
              
              chi=chi+real(octalArray(iOctal)%content%Ne(iSubcell))**2 * &
-                    alpkk(freq,dble(octalArray(iOctal)%content%temperature(iSubcell)))*&
-                    (1.d0-exp((-hcgs*freq)/(kerg*octalArray(iOctal)%content%temperature(iSubcell))))
+                    alpkk(freq,real(octalArray(iOctal)%content%temperature(iSubcell),kind=db))*&
+                    (1.e0_db-exp((-hcgs*freq)/(kerg*octalArray(iOctal)%content%temperature(iSubcell))))
              !                chi=chi+grid%ne(i1,i2,i3)*sigmaE
              
              octalArray(iOctal)%content%kappaAbs(iSubcell,1) = chi * 1.e10
@@ -2565,18 +2607,18 @@ print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
              
              ! continuous emissivity...bf and ff
               
-             eta=0.d0
+             eta=0.e0_db
              do j=1,15
-                thresh=(13.598d0-eTrans(j))
+                thresh=(13.598e0_db-eTrans(j))
                 if (transe.ge.thresh) then
-                   eta=eta+boltzsaha(j, octalArray(iOctal)%content%Ne(iSubcell),&
-                                     dble(octalArray(iOctal)%content%temperature(iSubcell))) * &
+                   eta=eta+boltzsaha(j, real(octalArray(iOctal)%content%Ne(iSubcell),kind=db),&
+                                     real(octalArray(iOctal)%content%temperature(iSubcell),kind=db)) * &
                         annu(j,freq)*exp(-(hcgs*freq)/(kerg*octalArray(iOctal)%content%temperature(iSubcell)))
                 endif
              enddo
              
              eta=eta + (octalArray(iOctal)%content%Ne(iSubcell)**2) * &
-                        alpkk(freq,dble(octalArray(iOctal)%content%temperature(iSubcell)))* &
+                        alpkk(freq,real(octalArray(iOctal)%content%temperature(iSubcell),kind=db))* &
                         exp(-(hcgs*freq)/(kerg*octalArray(iOctal)%content%temperature(iSubcell)))
              
              eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
@@ -2614,7 +2656,7 @@ print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
               ! aEinstein(k, i) = aEinstein(k, i) commented out by nhs
               freq = cspeed / lambdaTrans(i, k)
               bEinstein(k, i) = ((dble(aEinstein(k,i))*dble(cspeed)**2)  &
-                   &   / (2.d0*dble(hcgs)*dble(freq)**3))
+                   &   / (2.e0_db*dble(hcgs)*dble(freq)**3))
               bEinstein(i, k) = bEinstein(k,i) * gDegen(k) / gDegen(i)
               fStrength(k, i) = -gDegen(i) * fStrength(i,k) / gDegen(k)
            end do

@@ -598,17 +598,19 @@ program torus
            if (gridConverged) exit
         end do
         write(*,*) "...final adaptive grid configuration complete"
-     end if ! (readPops) 
 
-     !  calculate the statistical equilibrium (and hence the emissivities 
-     !  and the opacities) for all of the subcells in an
-     !  adaptive octal grid.
-     !  Using a routine in stateq_mod module.
-     if (grid%geometry=="ttauri") then
-        call amrStateq(grid, contfluxfile, lte, nLower, nUpper)
-        if (writePops) call writeAMRgrid(popFilename,writeFileFormatted,grid)
-     endif
+        if (grid%geometry=="ttauri") then
+           !  calculate the statistical equilibrium (and hence the emissivities 
+           !  and the opacities) for all of the subcells in an
+           !  adaptive octal grid.
+           !  Using a routine in stateq_mod module.
+           write(*,*) "Calling statistical equilibrium routines..."
+           call amrStateq(grid, contfluxfile, lte, nLower, nUpper)
+           write(*,*) "... statistical equilibrium routines complete"
+           if (writePops) call writeAMRgrid(popFilename,writeFileFormatted,grid)
+        endif
      
+     end if ! (readPops) 
 
   else ! grid is not adaptive
            
@@ -660,8 +662,8 @@ program torus
         case("hourglass")
            call fillGridHourglass(grid)
         case("ttauri")
-	   call fillGridMagneticAccretion(grid,contfluxfile, popFileName, &
-		readPops, writePops, lte,  lamLine, Laccretion, Taccretion, sAccretion, &
+           call fillGridMagneticAccretion(grid,contfluxfile, popFileName, &
+              readPops, writePops, lte,  lamLine, Laccretion, Taccretion, sAccretion, &
                    curtains, dipoleOffset, nLower, nUpper, theta1, theta2)
         case("ttwind")
            call fillGridTTauriWind(grid,contfluxfile, popFileName, &
@@ -871,6 +873,8 @@ program torus
        source(2)%luminosity = 0.5 * source(1)%luminosity
        call readSpectrum(source(2)%spectrum, "wr.flx")
        call normalizedSpectrum(source(2)%spectrum, dble(lamStart), dble(lamEnd))
+    case default
+       allocate(source(0)) ! allows 'source' to be passed as an argument.
   end select
 
 
