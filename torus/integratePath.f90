@@ -1171,6 +1171,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   real                      :: rho(1:maxTau)          ! density
   real                      :: temperature(1:maxTau)  ! temperature
   real(double)              :: Ne(1:maxTau)           ! electron density 
+  logical                   :: InFlow(1:maxtau)       ! inFlow flag
   type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
   type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
   type(OCTALVECTOR)         :: rVec                   ! position vector
@@ -1240,7 +1241,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                               lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
                               velocityDeriv=velocityDeriv,chiLine=chiLine,    &
                               levelPop=levelPop,rho=rho, &
-                              temperature=temperature, Ne=Ne)
+                              temperature=temperature, Ne=Ne, inflow=inflow)
      ! Note: temperature and Ne won't be needed here, but they have to be passed 
      ! as arguments because NAG compiler do not like it!  (RK)
 
@@ -1306,7 +1307,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                               lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
                               velocityDeriv=velocityDeriv,chiLine=chiLine,    &
                               levelPop=levelPop,rho=rho, &
-                              temperature=temperature, Ne=Ne)
+                              temperature=temperature, Ne=Ne, inflow=inflow)
      ! Note: temperature and Ne won't be needed here, but they have to be passed 
      ! as arguments because NAG compiler do not like it!  (RK)
 

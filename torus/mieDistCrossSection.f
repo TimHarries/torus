@@ -60,7 +60,7 @@ c     For safty (R. Kurosawa fixed this.)
           
           qExt(i) = qExt(i) * nsd(i) * pi * (a * micronsToCm)**2
           qSca(i) = qSca(i) * nsd(i) * pi * (a * micronsToCm)**2
-          write(54, *) x, gsca
+          write(54, *) x, gsca(i)
         enddo
         close(54)
         
