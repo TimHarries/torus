@@ -8,7 +8,6 @@ module utils_mod
   use vector_mod          ! vector maths
   use constants_mod       ! physical constants
   use unix_mod
-  use input_variables,  only: StarkBroadening, C_rad, C_vdw, C_stark
   
   implicit none
 
@@ -339,6 +338,52 @@ contains
     INDX(I)=INDXT
     GO TO 10
   END subroutine indexx
+
+
+  !
+  !
+  ! Taken from Numerical recipes
+  ! See the comments in the book.
+  SUBROUTINE polint(xa,ya,n,x,y,dy)
+    INTEGER n,NMAX
+    REAL dy,x,y,xa(n),ya(n)
+    PARAMETER (NMAX=10)
+    INTEGER i,m,ns
+    REAL den,dif,dift,ho,hp,w,c(NMAX),d(NMAX)
+    ns=1
+    dif=abs(x-xa(1))
+    do i=1,n
+       dift=abs(x-xa(i))
+       if (dift.lt.dif) then
+          ns=i
+          dif=dift
+       endif
+       c(i)=ya(i)
+       d(i)=ya(i)
+    end do
+    y=ya(ns)
+    ns=ns-1
+    do  m=1,n-1
+       do  i=1,n-m
+          ho=xa(i)-x
+          hp=xa(i+m)-x
+          w=c(i+1)-d(i)
+          den=ho-hp
+          if(den.eq.0.)pause 'failure in polint'
+          den=w/den
+          d(i)=hp*den
+          c(i)=ho*den
+       end do
+       if (2*ns.lt.n-m)then
+          dy=c(ns+1)
+       else
+          dy=d(ns)
+          ns=ns-1
+       endif
+       y=y+dy
+    end do
+    return
+  end SUBROUTINE polint
 
 
 
@@ -1254,6 +1299,7 @@ contains
     ! Damping contant in a Voigt Profile in [1/s]
     !
     real function bigGamma(N_HI, temperature, Ne, nu)      
+      use input_variables,  only: VoigtProf, C_rad, C_vdw, C_stark
       real(double), intent(in) :: N_HI         ! [#/cm^3]  number density of HI
       real(double), intent(in) :: temperature  ! [Kelvins]
       real(double), intent(in) :: Ne           ! [#/cm^3]  nunmber density of electron
@@ -1289,7 +1335,7 @@ contains
       logical, intent(inout)  :: InFlow(nTau)
       logical, intent(inout)  :: newInFlow(maxtau)
       !
-      real,allocatable :: dProjVel(:)
+      real :: dProjVel(nTau)  ! automatic array
       integer :: nAdd 
       integer :: i, j
 !      real, parameter :: dvel  = 10.e5/cSpeed
@@ -1297,8 +1343,7 @@ contains
 
       ! -- using the values in input_variables module
       dvel = (lamend-lamstart)/lamline/real(nlambda-1)  ! should be in [c]
-      dvel = dvel/2.0  ! to be safe  
-      allocate(dProjVel(1:nTau))
+      dvel = dvel/4.0  ! to be safe  
 !      dProjVel(1)  = 0.
       dProjVel(1:nTau-1) = projVel(2:nTau) - projVel(1:nTau-1)
       dProjVel(nTau)  = 0.0
@@ -1324,14 +1369,14 @@ contains
       newNtau = newNtau + 1
       newLambda(newNTau) = lambda(nTau)
       newInFlow(newNTau) = inFlow(nTau)
-      deallocate(dProjVel)
     end subroutine resampleRay
 
 
     !
     ! Adding extra points near the resonace zone if any. 
     !
-    subroutine resampleRay2(lambda, nTau, projVel, thisVel, maxTau, newLambda, newNTau)
+    subroutine resampleRay2(lambda, nTau, projVel, thisVel, maxTau, &
+         newLambda, newNTau, inFlow, newInFlow)
       integer, intent(in) :: nTau
       integer, intent(in) :: maxtau
       real, intent(in) :: lambda(nTau)  ! ray sequments, but not the wavelenghth!
@@ -1339,14 +1384,23 @@ contains
       real, intent(in) :: thisVel       ! velocity at the photon emission 
       integer, intent(inout) :: newNtau
       real, intent(inout) :: newLambda(maxTau)
+      logical, intent(inout)  :: InFlow(nTau)
+      logical, intent(inout)  :: newInFlow(maxtau)
+      integer :: nClose = 10
       integer :: nAdd = 10
-      integer :: i, j
+      integer :: i, j, n
       real :: dlam
       
       ! loop through the projected velocities to find the resonance zones
       newNTau = 0
+
+      ! always add points between points near the current location of photon
+      n = min(nClose, nTau)
+      ! check for the resonance zone(s)
       do i = 2, nTau         
-         if ( ( (projVel(i-1) <= thisVel) .and. (thisVel < projVel(i)) ) &
+         if ( ( i<n ) &
+              .or.    &            
+            ( (projVel(i-1) <= thisVel) .and. (thisVel < projVel(i)) ) &
               .or. &
               ( (projVel(i-1) >= thisVel) .and. (thisVel > projVel(i)) )   ) then
             ! adding extra points (linearly interporating between points).
@@ -1354,14 +1408,18 @@ contains
             do j = 1, nAdd+1
                newNtau = newNtau + 1
                newLambda(newNTau) = real(j-1)*dlam + lambda(i-1)
+               newInFlow(newNTau) = inFlow(i-1)
             enddo
          else
             newNtau = newNtau + 1
             newLambda(newNTau) = lambda(i-1)
+            newInFlow(newNTau) = inFlow(i-1)
          endif
       end do
+      ! last points
       newNtau = newNtau + 1
       newLambda(newNTau) = lambda(nTau)
+      newInFlow(newNTau) = inFlow(nTau)
     end subroutine resampleRay2
 
     !
@@ -1395,7 +1453,7 @@ contains
       integer :: nx, newNx
       real :: newXarray(:)
 !      real, allocatable :: newYarray(:)
-      integer, parameter :: newNx_max = 500000
+      integer, parameter :: newNx_max = 50000
       real :: newYarray(newNx_max)
       integer :: i, j
 
@@ -1428,7 +1486,7 @@ contains
       integer :: nx, newNx
       real :: newXarray(:)
  !     real, allocatable :: newYarray(:)
-      integer, parameter :: newNx_max = 500000
+      integer, parameter :: newNx_max = 50000
       real  :: newYarray(newNx_max) 
       integer :: i, j
 

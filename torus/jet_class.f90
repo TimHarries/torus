@@ -524,8 +524,8 @@ contains
     real(oct)  :: cellSize, d
     real(double) :: rho_disc, mass_cell
     TYPE(octalVector)     :: cellCentre
-    integer, parameter :: nr = 100  ! low resolution
-!    integer, parameter :: nr = 250  ! Hi resolution
+!    integer, parameter :: nr = 100  ! low resolution
+    integer, parameter :: nr = 250  ! Hi resolution
     real(double) :: r
     integer :: i
     !

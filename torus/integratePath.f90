@@ -15,8 +15,10 @@ module path_integral
        test_optical_depth, &
        intersectCubeAMR
        
-  private:: integratePathCaresian, integratePathAMR, &
-   integratePathStark
+  private:: &
+       integratePathCaresian, &
+       integratePathAMR, &
+       integratePathVoigtProf
        
 !
 ! This subroutine performs an integration through the grid in order
@@ -30,7 +32,7 @@ module path_integral
     ! integratePath subroutines defined in this module.
     !  Use this to compunicate outside of this module!
     !
-    subroutine integratePath(gridUsesAMR, starkBroadening, &
+    subroutine integratePath(gridUsesAMR, VoigtProf, &
          wavelength,  lambda0, vVec, aVec, uHat, Grid, &
          lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
          contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
@@ -41,7 +43,7 @@ module path_integral
       implicit none
       
       logical, intent(in) :: gridUsesAMR                  ! T if AMR grid 
-      logical, intent(in) :: starkBroadening              ! T if treat Stark broadening
+      logical, intent(in) :: VoigtProf              ! T if use voigt profile
       real, intent(in)          :: wavelength             ! the wavelength 
       real, intent(in)          :: lambda0                ! rest wavelength of line
       type(OCTALVECTOR), intent(in)  :: vVec              ! velocity vector
@@ -78,8 +80,8 @@ module path_integral
 
 
       if (gridUsesAMR) then
-         if (starkBroadening) then
-            call integratePathStark(wavelength,  lambda0, o2s(vVec), o2s(aVec), o2s(uHat), Grid, &
+         if (VoigtProf) then
+            call integratePathVoigtProf(wavelength,  lambda0, o2s(vVec), o2s(aVec), o2s(uHat), Grid, &
                  lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
                  contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
                  redRegion, usePops, mLevel, nLevel, &
@@ -1256,11 +1258,11 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
         do i = 2, nTau, 1 
 ! RK CHANGED THE FOLLOWINGS
-!           dlambda(i) = lambda(i)-lambda(i-1)
-!           tauSca(i) = tauSca(i-1) + dlambda(i)*0.5*(ksca(i-1)+ksca(i))
-!           tauAbs(i) = tauAbs(i-1) + dlambda(i)*0.5*(kabs(i-1)+kabs(i))
-           tauSca(i) = tauSca(i-1) + dlambda(i-1)*ksca(i-1)
-           tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*kabs(i-1)
+           dlambda(i) = lambda(i)-lambda(i-1)
+           tauSca(i) = tauSca(i-1) + dlambda(i)*0.5*(ksca(i-1)+ksca(i))
+           tauAbs(i) = tauAbs(i-1) + dlambda(i)*0.5*(kabs(i-1)+kabs(i))
+!           tauSca(i) = tauSca(i-1) + dlambda(i-1)*ksca(i-1)
+!           tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*kabs(i-1)
            if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
               write(*,*) "negative opacity"
               error = -70
@@ -1759,7 +1761,7 @@ end subroutine integratePathAMR
   !
   !
   !
-  subroutine integratePathStark(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
+  subroutine integratePathVoigtProf(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
        lambda, tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
        contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
        redRegion, usePops, mLevel, nLevel, &
@@ -1857,7 +1859,7 @@ end subroutine integratePathAMR
     real(double) :: a
 !    real :: Hay(0:0), dv(0:0)
     real(double) :: Hay, dv, Vn1, Vn2, Vrel
-    real(double) :: T_mid, Ne_mid, N_HI_mid, chiline_mid
+    real(double) :: T_mid, Ne_mid, N_HI_mid, chiline_mid, projVel_mid
     integer :: newNtau
     real :: T, lam, tmp
     real :: sqrt_pi
@@ -1872,7 +1874,7 @@ end subroutine integratePathAMR
 !    ! THIS ROUTINE IS STILL UNDERDEVELOPEMENT
 !    write(*,*) " "
 !    write(*,*) " "
-!    write(*,*) "ERROR:: Please set stark=F. This option is not yet available! "
+!    write(*,*) "ERROR:: Please set voigtprof=F. This option is not yet available! "
 !    stop
 !    write(*,*) " "
 !    write(*,*) " "
@@ -1911,7 +1913,6 @@ end subroutine integratePathAMR
 
     ! find the projected velocity [c]
     Vn1 = uHat .dot. vVec         ! projected velocity of the local gas at emission location
-    Vn2 = velocity(1) .dot. uHat  ! projected velocity of the local gas at this location
 !    thisVel = Vn1 + (lambda0-wavelength)/lambda0
     thisVel = (wavelength-lambda0)/lambda0
 
@@ -1935,8 +1936,7 @@ end subroutine integratePathAMR
        return
     end if
 
-!    ! projected velocity of the local gas at emission location
-
+    Vn2 = velocity(1) .dot. uHat  ! projected velocity of the local gas at this location
 
     ! projected velocities 
     forall (i = 1:nTau)
@@ -1948,16 +1948,14 @@ end subroutine integratePathAMR
     ! now compute the optical depths from the opacities 
     tauAbs(1) = 0.
     tauSca(1) = 0.
-    
     do i = 2, nTau, 1
-       tauSca(i) = tauSca(i-1) + dlambda(i-1)*ksca(i-1)
-       tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*kabs(i-1)
+       tauSca(i) = tauSca(i-1) + dlambda(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+       tauAbs(i) = tauAbs(i-1) + dlambda(i-1)*(0.5*(kabs(i)+kabs(i-1)))
        if ((ksca(i) < 0.).or.(kabs(i)<0.)) then
           write(*,*) "negative opacity"
           do
           enddo
        endif
-       
     enddo
     
     !
@@ -1973,31 +1971,16 @@ end subroutine integratePathAMR
     endif
 
 
-!     ! Additional points inserted between all points.
-!     call insert_points_in_ray(lambda, nTau, 5, newLambda, newNTau)
-!     call linearResample_dble(lambda, projVel, nTAu, newLambda, newNtau)
-!     call linearResample(lambda, tauSca, nTAu, newLambda, newNtau)
-!     call linearResample(lambda, tauAbs, nTAu, newLambda, newNtau)
-!     call linearResample(lambda, chiline, nTAu, newLambda, newNtau)
-!     call linearResample(lambda, temperature, nTAu, newLambda, newNtau)
-!     call linearResample(lambda, N_HI, nTAu, newLambda, newNtau)
-!     call linearResample_dble(lambda, Ne, nTAu, newLambda, newNtau)
-!     nTau = newNtau
-!     lambda(1:nTau) = newLambda(1:nTau)    
-!     dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)
-
     
-    ! Additional points along a ray are inserted around the 
-    ! the constant velocity surface (e.g. the projected velocity along a ray is 
-    ! slowly changing...) for accuracy.
-    !
- 
-
+     ! Additional points along a ray are inserted around the 
+     ! the constant velocity surface (e.g. the projected velocity along a ray is 
+     ! slowly changing...) for accuracy.
+     !
      ! Additional points along a ray are inserted near the velocity changes fast.
      call resampleRay(lambda, nTau, projVel, maxtau, &
           newLambda, newNTau, InFlow, newInFlow)
      if (newNTau > maxTau) then 
-        print *, "Error:: newNtau > newNx_max in integratePathStark."
+        print *, "Error:: newNtau > newNx_max in integratePathVoigtProf. (1)"
         print *, "        newNtau     = ", newNTau
         print *, "        maxTau   = ", maxTau
         stop
@@ -2018,26 +2001,41 @@ end subroutine integratePathAMR
      dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)
 
 
-!     ! Additional points along a ray are inserted near resonance zones.
-!     call resampleRay2(lambda, nTau, projVel, thisVel, maxTau, newLambda, newNTau)
-!     ! Now interpolate on to newly sampled ray    
-!     call linearResample_dble(lambda, projVel, nTAu, newLambda, newNtau)
-!     call linearResample(lambda, tauSca, nTAu, newLambda, newNtau)
-!     call linearResample(lambda, tauAbs, nTAu, newLambda, newNtau)
-!     call linearResample(lambda, chiline, nTAu, newLambda, newNtau)
-!     call linearResample(lambda, temperature, nTAu, newLambda, newNtau)
-!     call linearResample(lambda, N_HI, nTAu, newLambda, newNtau)
-!     call linearResample_dble(lambda, Ne, nTAu, newLambda, newNtau)
-!     nTau = newNtau
-!     lambda(1:nTau) = newLambda(1:nTau)    
-!     dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)
+     ! Additional points along a ray are inserted near resonance zones.
+     ! Here velocities are in observer's frame ...
+     thisVel = (lambda0 - wavelength)/lambda0  
+     thisVel = thisVel  + (uHat .dot. vVec)    ! (+ve when toward observer!)
+
+     call resampleRay2(lambda, nTau, projVel, thisVel, maxTau, &
+          newLambda, newNTau, InFlow, newInFlow)
+     inFlow(1:nTau) = newInFlow(1:nTau)  ! updating the inFlow flags.
+     if (newNTau > maxTau) then 
+        print *, "Error:: newNtau > newNx_max in integratePathVoigtProf. (2)"
+        print *, "        newNtau     = ", newNTau
+        print *, "        maxTau   = ", maxTau
+        stop
+     end if
+
+     ! Now interpolate on to newly sampled ray    
+     call linearResample_dble(lambda, projVel, nTAu, newLambda, newNtau)
+     call linearResample(lambda, tauSca, nTAu, newLambda, newNtau)
+     call linearResample(lambda, tauAbs, nTAu, newLambda, newNtau)
+     call linearResample(lambda, chiline, nTAu, newLambda, newNtau)
+     call linearResample(lambda, temperature, nTAu, newLambda, newNtau)
+     call linearResample(lambda, N_HI, nTAu, newLambda, newNtau)
+     call linearResample_dble(lambda, Ne, nTAu, newLambda, newNtau)
+     nTau = newNtau
+     lambda(1:nTau) = newLambda(1:nTau)    
+     dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)
+
     
     
     ! line photons
     nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
     nu = cSpeed / (wavelength*angstromtocm)  ! freq of this photon
-    nu_p = nu
-!    nu_p = nu0/(1.0d0+thisVel)
+!    nu_p = nu/(1.0d0+(Vn1-Vn2))  ! freq in the rest frame of local gas
+!    nu_p = nu/(1.0d0+Vn1)  ! freq in the rest frame of local gas
+    nu_p = nu  ! freq in the rest frame of local gas
     if (.not.contPhoton) then
        tauAbsLine(1) = 0. 
        do i = 2, nTau
@@ -2047,37 +2045,40 @@ end subroutine integratePathAMR
              Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
              N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
              chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-             T_mid = MAX(T_mid, 3000.0d0) ! [K]  To avoid a tiny Doppler width
+             T_mid = MAX(T_mid, 1000.0d0) ! [K]  To avoid a tiny Doppler width
+             projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
              
-             Vrel = 0.5d0*(projVel(i-1)+projVel(i)) -  Vn1  ! relative velocity
+             ! relative velocity wrt the location of photon (CMF)
+             Vrel = projVel_mid -  Vn1
              
              ! The line centre of absorption profile shifted by Doppler.
-             !          nu0_p = nu0/(1.0d0-projVel(i-1))  ! [Hz] 
-             nu0_p = nu0/(1.0d0+Vrel)  ! [Hz] 
+             nu0_p = nu0/(1.0d0-Vrel)  ! [Hz] 
              
              DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T_mid/meanMoleMass) !eq 7  [Hz]
+
              a = bigGamma(N_HI_mid, T_mid, Ne_mid, nu0_p) / (fourPi * DopplerWidth) ! [-]
              deltaNu = nu_p - nu0_p     !  [Hz]
              dv = deltaNu/DopplerWidth  ! [-]
              Hay = voigtn(a,dv)
              chil = chiLine_mid / (sqrt_pi*DopplerWidth) * Hay ! equation 5
+             ! transform this back to observer's frame value
+             chil = chil/(1.0+projVel_mid)
              dtau = chil*dlambda(i-1)
           else
              dtau = 1.0d-30
           end if
-          tauAbsLine(i) = tauAbsLine(i-1) +  dtau
+          tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
        enddo
        taul = tauAbsLine(nTau)
-       if (taul == 0.0d0) then
-          escProb = 1.0d0
+       if (taul < 0.01d0) then
+          escProb = 1.0d0 - taul + 0.5d0*taul*taul
        else
-          escProb = (1.0d0-exp(-taul))/taul
+          escProb = exp(-taul)
        end if
-       tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau) + tauAbsLine(1:nTau)
-    else ! just contiuum photone
-       tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau)
+    else
+       escProb = 1.0
     endif
-    
+    tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau)    
 
     
     
@@ -2094,14 +2095,16 @@ end subroutine integratePathAMR
     ! If the line is optically thick, we consider the absorption of 
     ! of the contiuum photons by line....
     if (contPhoton .and. .not.thinLine) then
-       tauCont(1,1:nlambda)=0.
+       tauCont(1,1:nlambda)=0.d0
        do j = 1, nLambda
           ! compute projected velocity of this bin  
-!          lam = (lambda0 - wavelength) + grid%lamArray(j)
-          thisVel = (wavelength -lambda0)/lambda0  + (grid%lamArray(j)-lambda0)/lambda0
-          lam = (1.0d0+thisVel)*lambda0
+!          lam = (lambda0-wavelength) + grid%lamArray(j)
+          lam = (wavelength-lambda0) + grid%lamArray(j)
+!          lam = grid%lamArray(j)
           nu = cSpeed / (lam*angstromtocm)  ! freq of this photon
-          nu_p = nu   ! photon freq (CMF) at this location
+!          nu_p = nu/(1.0d0+(Vn1-Vn2))  ! freq in the rest frame of local gas
+!         nu_p = nu/(1.0d0+Vn1) ! freq in the rest frame of local gas
+          nu_p = nu             ! freq in the rest frame of local gas
           do i = 2, nTau
              if (inFlow(i)) then
                 ! Evaluating the values in the mid point
@@ -2109,24 +2112,29 @@ end subroutine integratePathAMR
                 Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
                 N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
                 chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-                T_mid = MAX(T_mid, 3000.0d0) ! [K]  To avoid a tiny Doppler width
-
-                Vrel = 0.5d0*(projVel(i-1)+projVel(i)) -  Vn1  ! relative velocity                
+                T_mid = MAX(T_mid, 1000.0d0) ! [K]  To avoid a tiny Doppler width
+                projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+                
+                ! relative velocity wrt the location of photon (CMF)
+                Vrel = projVel_mid -  Vn1
                 
                 ! The line centre of absorption profile shifted by Doppler.
-                nu0_p = nu0/(1.0d0+Vrel)  
+                nu0_p = nu0/(1.0d0-Vrel)  
                 
                 DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T_mid/meanMoleMass) !eq 7  [Hz]
+
                 a = bigGamma(N_HI_mid, T_mid, Ne_mid, nu0_p) / (fourPi * DopplerWidth) ! [-]
                 deltaNu = nu_p - nu0_p     !  [Hz]
                 dv = deltaNu/DopplerWidth  ! [-]
                 Hay = voigtn(a,dv)
                 chil = chiLine_mid / (sqrt_pi*DopplerWidth) * Hay ! equation 5
+                ! transform this back to observer's frame value
+                chil = chil/(1.0+projVel_mid)
                 dtau = chil*dlambda(i-1)
              else
                 dtau = 1.0d-30
              end if
-          tauCont(i:nTau,j) = tauCont(i:nTau,j) + dtau
+             tauCont(i,j) = tauCont(i-1,j) + abs(dtau)
           enddo
        enddo   ! over wavelength array
     else
@@ -2135,8 +2143,8 @@ end subroutine integratePathAMR
 
 
 
-  end subroutine integratePathStark
-
+  end subroutine integratePathVoigtProf
+  
 
   !
   !
@@ -2239,15 +2247,15 @@ end subroutine intersectCubeAMR
 ! Check the optical depth in diffrent direction from the center of the model
 ! space.  The results will be written to a standard output and files.
 !
-subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
+subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      amrGridCentre, sphericityTest,  &
      dir_obs, wavelength,  lambda0, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,   &
-     ThinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, Rstar, coolStarPosition)
+     ThinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, Rstar, coolStarPosition, maxTau)
 
   implicit none
   
   logical, intent(in)           :: gridUsesAMR     !
-  logical, intent(in)           :: starkBroadening ! T if treat Stark broadening
+  logical, intent(in)           :: VoigtProf       ! T to use Voigt Profile
   type(OCTALVECTOR), intent(in) :: amrGridCentre  ! central coordinates of grid
   logical, intent(in)           :: sphericityTest !
 
@@ -2269,14 +2277,14 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   logical, intent(in)       :: useinterp
   real, intent(in)          :: Rstar
   type(VECTOR), intent(in)  :: coolStarPosition
-
-  integer, parameter :: maxTau  = 10000
+  integer, intent(in) :: maxTau
+  
   integer :: nLambda
   ! local variables
-  real :: lambda(maxTau)    ! path distance array
-  real :: tauExt(maxTau)    ! optical depth
-  real :: tauAbs(maxTau)    ! optical depth
-  real :: tauSca(maxTau)    ! optical depth
+  real, allocatable :: lambda(:)    ! path distance array  (SIZE=maxTau)
+  real, allocatable :: tauExt(:)    ! optical depth  (SIZE=maxTau)
+  real, allocatable :: tauAbs(:)    ! optical depth  (SIZE=maxTau)
+  real, allocatable :: tauSca(:)    ! optical depth  (SIZE=maxTau)
   real, allocatable :: tauCont(:,:) !tauCont(maxTau,nLambda)
 
 
@@ -2300,8 +2308,8 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   
   real(oct) :: R
 
-
-  ! 
+  allocate(lambda(maxTau), tauExt(maxTau), tauAbs(maxTau), tauSca(maxTau))
+  
   nlambda = grid%nlambda
   allocate(tauCont(maxTau,nLambda))
 
@@ -2318,7 +2326,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   if (grid%geometry == "cluster") then
      R = 1.0d-3
   else
-     R = rStar
+     R = 1.001*rStar
   end if
   if (gridUsesAMR) then
 
@@ -2329,7 +2337,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   octVec = OCTALVECTOR(1.d0, 0.d0, 0.d0)
 !  position = (octVec*R)
   position = (octVec*R) + grid%starPos1
-  call integratePath(gridUsesAMR, starkBroadening, &
+  call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
        tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
@@ -2354,7 +2362,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   octVec = OCTALVECTOR(0.d0, 1.d0, 0.d0)
 !  position = (octVec*R)
   position = (octVec*R) + grid%starPos1
-  call integratePath(gridUsesAMR, starkBroadening, &
+  call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
        tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
@@ -2379,7 +2387,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   octVec = OCTALVECTOR(0.d0, 0.d0, 1.d0)
 !  position = (octVec*R)
   position = (octVec*R) + grid%starPos1
-  call integratePath(gridUsesAMR, starkBroadening, &
+  call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
        tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, contPhoton , &
@@ -2404,7 +2412,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   octVec = s2o(dir_obs)
 !  position = (octVec*R) + amrGridCentre
   position = (octVec*R) + grid%starPos1
-  call integratePath(gridUsesAMR, starkBroadening, &
+  call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5), &
        position, s2o(dir_obs), grid, lambda, &
        tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, &
@@ -2431,7 +2439,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
      write(*,'(a)') "Sphericity test - 100 random directions:"
      do i = 1, 100
         tempVec = randomUnitVector()
-        call IntegratePath(gridUsesAMR, starkBroadening, &
+        call IntegratePath(gridUsesAMR, VoigtProf, &
              lambda0,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5), &
              amrGridCentre, s2o(tempVec), grid, lambda, &
              tauExt, tauAbs, tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, &
@@ -2472,7 +2480,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
 !        position = (octVec*R) + amrGridCentre
         position = (octVec*R) + grid%starPos1
         ! continuum
-        call IntegratePath(gridUsesAMR, starkBroadening, &
+        call IntegratePath(gridUsesAMR, VoigtProf, &
              wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
              tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
@@ -2484,7 +2492,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
         write(UNOUT1, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
         
         ! line 
-        call IntegratePath(gridUsesAMR, starkBroadening, &
+        call IntegratePath(gridUsesAMR, VoigtProf, &
              wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
              tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
@@ -2522,7 +2530,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
         position = (octVec*R) + grid%starPos1
         
         ! continuum
-        call IntegratePath(gridUsesAMR, starkBroadening, &
+        call IntegratePath(gridUsesAMR, VoigtProf, &
              wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
              tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
@@ -2534,7 +2542,7 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
         write(UNOUT1, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
         
         ! line 
-        call IntegratePath(gridUsesAMR, starkBroadening, &
+        call IntegratePath(gridUsesAMR, VoigtProf, &
              wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
              position, octVec, grid, lambda, tauExt, tauAbs, &
              tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &

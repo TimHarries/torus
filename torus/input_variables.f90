@@ -171,7 +171,7 @@ module input_variables
   logical :: screened
   logical :: thinLine
   logical :: inputOK
-  logical :: StarkBroadening
+  logical :: VoigtProf
 
 
   ! model parameters
@@ -293,11 +293,15 @@ module input_variables
   real    :: curtain_width  ! Width of curtain in degrees.
 
   ! suboption for ttauri geometry
-  logical ttau_disc_on       ! T to include disc
-  logical ttau_discwind_on   ! T to include disc wind.
-  logical ttau_jet_on        ! T to include jets.
+  logical :: ttau_disc_on       ! T to include disc
+  logical :: ttau_discwind_on   ! T to include disc wind.
+  logical :: ttau_jet_on        ! T to include jets.
 
   !--------------------------------------------------------------------
+
+  ! Use this paremeter to turn off the alpha disc when the grid read in has alpha disc
+  logical :: ttau_turn_off_disc
+
 
   !------ The disc wind parameters follows here -----------------------
   real(double) :: DW_d           ![10^10cm] displacement of souce point from the center of star

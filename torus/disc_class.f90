@@ -678,7 +678,7 @@ contains
        thisOctal%biasLine3D(subcell) = 1.0e-30  ! should be no emission from disc
        thisOctal%etaLine(subcell) = 1.e-30
        thisOctal%etaCont(subcell) = 1.e-30
-
+       if (subcell == thisOctal%maxChildren) call fill_velocity_corners(this, thisOctal)          
        thisOctal%velocity = keplerian_velocity(this,cellCentre)
 
     end if
@@ -742,7 +742,7 @@ contains
     
 
   !
-  ! Recursively turn off the inflow flag to false if grid > Rh.
+  ! Recursively turn off the inflow flag to false if in disc
   !
   RECURSIVE SUBROUTINE turn_off_disc(thisOctal,grid, this)    
     
@@ -753,6 +753,7 @@ contains
     TYPE(alpha_disc), INTENT(IN)  :: this
     
     TYPE(octal), POINTER   :: pChild
+    type(octalvector) :: rvec
     
     INTEGER :: subcell, n
     
@@ -769,7 +770,20 @@ contains
           CALL turn_off_disc(pChild,grid, this)
        else
           ! turnning it off 
-          if (modulus(thisOctal%centre) > this%Rh) thisOctal%inFlow(subcell) = .false.
+!          if (modulus(thisOctal%centre) > this%Rh) thisOctal%inFlow(subcell) = .false.
+          rvec = subcellCentre(thisOctal,subcell)
+          if (in_alpha_disc(this, rvec)) then
+             thisOctal%inFlow(subcell) = .false.
+             thisOctal%kappaAbs(subcell,:) = 1.0e-30
+             thisOctal%kappaSca(subcell,:) = 1.0e-30          
+             thisOctal%temperature(subcell) = 6500.0
+             thisOctal%biasCont3D(subcell) = 1.0e-30  ! should be no emission from disc
+             thisOctal%biasLine3D(subcell) = 1.0e-30  ! should be no emission from disc
+             thisOctal%etaLine(subcell) = 1.e-30
+             thisOctal%etaCont(subcell) = 1.e-30
+             thisOctal%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+             thisOctal%velocity = vector(1.e-30,1.e-30,1.e-30)
+          end if
        end if
     end do
     
@@ -789,7 +803,7 @@ contains
     TYPE(alpha_disc), INTENT(IN)  :: this
 
     TYPE(octal), POINTER   :: pChild
-  
+    type(octalvector) :: rvec
     INTEGER :: subcell, n
     
     if (thisOctal%threeD) then
@@ -805,7 +819,9 @@ contains
           CALL turn_on_disc(pChild,grid, this)
        else
           ! turnning it on
-          if (modulus(thisOctal%centre) > this%Rh) thisOctal%inFlow(subcell) = .true.        
+!          if (modulus(thisOctal%centre) > this%Rh) thisOctal%inFlow(subcell) = .true.
+          rvec = subcellCentre(thisOctal,subcell)
+          if (in_alpha_disc(this, rvec)) thisOctal%inFlow(subcell) = .true.
        end if
     end do
     

@@ -867,6 +867,11 @@ endif
  call getLogical("ttau_jet_on", ttau_jet_on, cLine, nLines, &
         "Include TTauri jets?: ", "(a,1l,1x,a)", .false., ok, .false.)
 
+ ! Use this paremeter to turn off the alpha disc when the 
+ ! grid read in has alpha disc
+ call getLogical("ttau_turn_off_disc", ttau_turn_off_disc, cLine, nLines, &
+      "Alpha disc read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
+
 
  call findLogical("mie", mie, cLine, nLines, ok)
  call findLogical("iso_scatter", isotropicScattering, cLine, nLines, ok)
@@ -1158,6 +1163,7 @@ endif
            "Disc wind:: Isotherma temperature of disc wind [K]: ", &
            "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
    end if
+
    
    if (ttau_jet_on) then
       ! --- parameters for ttauri wind
@@ -1359,8 +1365,8 @@ endif
   "Line emission switched off: ","(a,1l,a)",.false., ok, .false.)
 
 
- call getLogical("stark", starkBroadening, cLine, nLines, &
-         "Use Stark broadening (Voigt profile): ","(a,1l,1x,a)", .false., ok, .false.)
+ call getLogical("voigtprof", VoigtProf, cLine, nLines, &
+         "Use Voigt profile: ","(a,1l,1x,a)", .false., ok, .false.)
 
  !
  ! Voigt profile prameters

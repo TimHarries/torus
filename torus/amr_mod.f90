@@ -857,7 +857,8 @@ CONTAINS
          !   central hole, or the outside of the outer radius of accretion disc.
          intersectionRadius =  modulus(diskIntersection - starPosition)
          IF (intersectionRadius > grid%diskRadius .and.  &
-              intersectionRadius < grid%octreeRoot%subcellsize*2.0) THEN
+              intersectionRadius < 1.5d5) THEN  ! assuming 100 AU disc size
+!              intersectionRadius < grid%octreeRoot%subcellsize*2.0) THEN
            absorbPhoton = .TRUE.
 
            ! we need to check whether the intersection occurs within our
@@ -4102,7 +4103,8 @@ CONTAINS
         
         rMnorm = MAX(rMnorm, 0.0001)
         rMnorm = MIN(rMnorm, 0.9999)
-        thisOctal%temperature(subcell) = hartmannTemp(rMnorm, theta, maxHartTemp)
+!        thisOctal%temperature(subcell) = hartmannTemp(rMnorm, theta, maxHartTemp)
+        thisOctal%temperature(subcell) = hartmannTemp2(rMnorm, theta, maxHartTemp)
      END IF
   ELSE
      thisOctal%inFlow(subcell) = .FALSE.
@@ -4454,7 +4456,7 @@ CONTAINS
                 nSamples(upperLine), ABS(theta), upperSample)
 
 
-    ! Forcing the values to be with in range...
+    ! Forcing the values to be within the range...
     ! ... quick fix to avoid out of range problem... (R. Kurosawa)
     if (lowerSample <= 0) lowerSample =1
     if (upperSample <= 0) upperSample =1
@@ -4479,6 +4481,157 @@ CONTAINS
     hartmannTemp = (lowerTemp * (1.0-subPos)) + (upperTemp * subPos)
     
   END FUNCTION hartmannTemp
+
+
+  !
+  ! This is based on hartmannTemp. The temperature is interpolarted
+  ! by using all five field lines instead of just two to avoid 
+  ! the jumps in the temperature across the field lines. (RK)
+  FUNCTION hartmannTemp2(rM,inTheta,maxHartTemp)
+    ! the paper: Hartman, Hewett & Calvet 1994ApJ...426..669H 
+    !   quotes data from points along the magnetic field lines marked 
+    !   on one of the figures. this function returns the temperature
+    !   at any point within the accretion flow, by interpolating
+    !   between the values in the published figure 6.
+
+    REAL             :: hartmannTemp2
+    REAL, INTENT(IN) :: rM ! normalized (0=inside, 1=outside)
+    REAL, INTENT(IN) :: inTheta
+    REAL, INTENT(IN) :: maxHartTemp
+    
+    
+    REAL, DIMENSION(:,:), ALLOCATABLE, SAVE :: temperatures
+    REAL, DIMENSION(:,:), ALLOCATABLE, SAVE :: angles
+    INTEGER, DIMENSION(5), SAVE             :: nSamples
+    
+    LOGICAL, SAVE:: alreadyLoaded = .FALSE.
+    REAL :: radius
+    REAL :: theta
+    CHARACTER(LEN=80) :: dataDirectory 
+    INTEGER :: errNo, i
+    
+    INTEGER :: nLines, subPos
+    INTEGER :: fieldline
+    INTEGER :: lowerLine, upperLine
+    INTEGER :: iSample
+    INTEGER :: maxSamples
+    REAL :: lowerTemp, upperTemp
+    INTEGER :: iStat
+    logical, save :: warned_already_01 = .false.
+    logical, save :: warned_already_02 = .false.
+    real:: T(5), R(5), dT, R_ip
+    integer :: indx_T(5)
+    
+
+    IF (.NOT. alreadyLoaded) THEN
+      ! if this is the first time the function has been called, need
+      !   to load in the data.
+      
+      call unixGetenv("TORUS_DATA",dataDirectory,i,errno)
+      dataDirectory = trim(dataDirectory)//"/hartmann/"
+      OPEN(31,FILE=TRIM(dataDirectory)//"tempProfile1.csv",STATUS="OLD",FORM="FORMATTED",IOSTAT=iStat)
+        IF (iStat/=0) THEN; PRINT *, 'File open error in hartmannTemp: ',iStat; STOP ; END IF 
+      OPEN(32,FILE=TRIM(dataDirectory)//"tempProfile2.csv",STATUS="OLD",FORM="FORMATTED",IOSTAT=iStat)
+        IF (iStat/=0) THEN; PRINT *, 'File open error in hartmannTemp: ',iStat; STOP ; END IF 
+      OPEN(33,FILE=TRIM(dataDirectory)//"tempProfile3.csv",STATUS="OLD",FORM="FORMATTED",IOSTAT=iStat)
+        IF (iStat/=0) THEN; PRINT *, 'File open error in hartmannTemp: ',iStat; STOP ; END IF  
+      OPEN(34,FILE=TRIM(dataDirectory)//"tempProfile4.csv",STATUS="OLD",FORM="FORMATTED",IOSTAT=iStat)
+        IF (iStat/=0) THEN; PRINT *, 'File open error in hartmannTemp: ',iStat; STOP ; END IF  
+      OPEN(35,FILE=TRIM(dataDirectory)//"tempProfile5.csv",STATUS="OLD",FORM="FORMATTED",IOSTAT=iStat)
+        IF (iStat/=0) THEN; PRINT *, 'File open error in hartmannTemp: ',iStat; STOP ; END IF 
+
+      DO fieldline = 1, 5, 1
+        READ(UNIT=(30+fieldline),FMT=*) nSamples(fieldLine)
+      END DO
+
+      maxSamples = MAXVAL(nSamples)
+
+      ALLOCATE(temperatures(5,maxSamples))
+      ALLOCATE(angles(5,maxSamples))
+      ! make sure that there are no uninitialized variables
+      temperatures = 0.0
+      angles = 0.0
+      
+      DO fieldline = 1, 5, 1
+        DO iSample = 1,  nSamples(fieldLine), 1
+          READ(UNIT=(30+fieldline),FMT=*) angles(fieldLine,iSample),     &
+                                          temperatures(fieldLine,iSample)
+        END DO
+        CLOSE(UNIT=(30+fieldline))
+      END DO
+
+
+      ! might need to rescale the temperature distribution to have a new maximum
+      temperatures = temperatures * maxHartTemp/MAXVAL(temperatures)
+      
+      alreadyLoaded = .TRUE.
+    END IF
+
+    ! find which fieldlines bracket the point
+   
+    radius = rM * 0.8 ! because the Hartmann magnetic radii span 0.8 R_star
+    radius = radius / 0.2 ! divide by the field line spacing
+
+    IF (radius < 0.0) THEN 
+       if (.not. warned_already_01) then
+          PRINT *, 'In hartmannTemp, rM value is out of range! (',rM,')'
+          PRINT *, '  assuming fieldlines 1-2'
+          PRINT *, '  ==> Further warning surpressed.'
+          warned_already_01 = .true.
+       end if
+       lowerLine = 1
+       upperLine = 2 
+       subPos    = 0.0
+    ELSE IF (radius > 5.0) THEN
+       if (.not. warned_already_02) then
+          PRINT *, 'In hartmannTemp, rM value is out of range! (',rM,')'
+          PRINT *, '  assuming fieldlines 1-2'
+          PRINT *, '  ==> Further warning surpressed.'
+          warned_already_02 = .true.
+       end if
+       lowerLine = 4
+       upperLine = 5 
+    ELSE 
+       lowerLine = INT(radius) + 1
+       upperLine = lowerLine + 1 
+!       subPos = radius - REAL(lowerline)
+       subPos = radius - 1.0
+    END IF
+      
+    IF (inTheta > pi) THEN
+      theta = inTheta - pi
+    ELSE
+      theta = inTheta
+    END IF
+    
+    IF (inTheta > pi/2.0) theta = pi - theta
+    
+    ! find the index position in each field line 
+    do i = 1, 5 
+       CALL locate(angles(i,1:nSamples(i)), &
+            nSamples(i), ABS(theta), indx_T(i))
+       ! Forcing the values to be within the range...
+       ! ... quick fix to avoid out of range problem... (R. Kurosawa)
+       if (indx_T(i) <=0) indx_T(i)=1
+       if (indx_T(i) >=nSamples(i)) indx_T(i)=nSamples(i)-1
+
+       ! get the cooresponding temperature from each lines.       
+       T(i) = temperatures(i, indx_T(i))
+       R(i) = REAL(i)
+    end do
+                
+    ! interpolate between the fieldLines 
+    ! polynomial interpolation 
+    ! using a routine in utils_mod.f90
+    ! The output here is hartmannTemp2
+    R_ip = radius
+    if (R_ip<=1.0) R_ip=1.0
+    if (R_ip>=5.0) R_ip=5.0
+    call polint(R, T, 5, R_ip, hartmannTemp2, dT)
+
+    
+  END FUNCTION hartmannTemp2
+
 
   SUBROUTINE hartmannLines(fieldline,RAD,phi,grid,point,azVec,polVec,ok)
     ! the paper: Hartman, Hewett & Calvet 1994ApJ...426..669H 

@@ -97,7 +97,7 @@ program torus
 
   ! optical depth variables
 
-  integer, parameter :: maxTau = 5000, maxLambda = 500
+  integer, parameter :: maxTau = 50000, maxLambda = 500
   integer :: nTau
   real, allocatable :: contTau(:,:)
 
@@ -879,11 +879,24 @@ program torus
               stop
            else 
               ! update the wavelength array.
+              ! It over writes whatever the wavelength you had in your file!
+              deallocate(grid%lamArray)
+              allocate(grid%lamArray(nlambda))
               do i = 1, nLambda
                  grid%lamArray(i) = xArray(i)
               enddo
               grid%nLambda = nLambda
            end if
+        end if
+
+        !
+        ! If the grid read from file contains ttauri disc, you can turn it
+        ! off by setting ttau_trun_off_disc = .true. in your parameter file.
+        if (grid%geometry=="ttauri" .and. ttau_turn_off_disc) then
+           write(*,*) " "
+           write(*,*) "Turning off the alpha disc read in from file, but keeping"
+           write(*,*) "the magnetorsphere alive."
+           call turn_off_disc(grid%octreeroot, grid, ttauri_disc)
         end if
 
 
@@ -901,7 +914,7 @@ program torus
              "rho_grid.ps/vcps",.true., .true.,&
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
         call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_zoom.ps/vcps",.true., .true.,&
+             "rho_zoom.ps/vcps",.true., .false.,&
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.01)
         call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
              nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
@@ -1024,7 +1037,7 @@ program torus
              "rho_grid.ps/vcps",.true., .true.,&
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
         call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_zoom.ps/vcps",.true., .true.,&
+             "rho_zoom.ps/vcps",.true., .false.,&
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.01)
         call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
              nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
@@ -1105,7 +1118,7 @@ program torus
                  !
                  allocate(lambda(1:maxTau),tauExt(1:maxTau),tauAbs(1:maxTau),tauSca(1:maxTau),&
                           contTau(1:maxTau,1:nLambda))
-                 call integratePath(gridUsesAMR, starkBroadening, &
+                 call integratePath(gridUsesAMR, VoigtProf, &
                       lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(150.0,0,-200.), &
                       OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
                       tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
@@ -1116,7 +1129,7 @@ program torus
                  write(*,*) " ----                           at lambda =  ", lambdatau
 !                 write(*,*) "Rescaling scattering and absorption coefficients ... "
 !                 call finish_grid(grid%octreeroot, grid, ttauri_disc, tauExt(ntau)/100.0)
-!                 call integratePath(gridUsesAMR, starkBroadening, &
+!                 call integratePath(gridUsesAMR, VoigtProf, &
 !                      lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(75.0,0,-50.), &
 !                      OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
 !                      tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
@@ -1163,6 +1176,7 @@ program torus
 
      end if ! (readPops .or. readPhasePops)
 
+
              
      ! writing pop files after statEq routines
      if (writePhasePops) then
@@ -1177,7 +1191,7 @@ program torus
    call tune(6, "AMR grid construction.") ! stop a stopwatch
 
 
-!     if (geometry == "ttauri".and.starkBroadening) then
+!     if (geometry == "ttauri".and.VoigtProf) then
 !        write(*,*) "Setting biases for stark broadening..."
 !        call setBiasChil(grid%octreeroot)
 !        write(*,*) "done..."
@@ -2273,10 +2287,10 @@ program torus
      !
      ! Performs various optical depth tests here...
      !
-     call test_optical_depth(gridUsesAMR, starkBroadening, &
+     call test_optical_depth(gridUsesAMR, VoigtProf, &
           amrGridCentre, sphericityTest,  &
           outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &
-          thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition)
+          thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, maxTau)
 
 
 
@@ -2775,7 +2789,7 @@ program torus
                 chanceHotRing, &
                 nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto,&
                 narrowBandImage, vmin, vmax, source, nSource, rHatinStar, energyPerPhoton, filters, mie, &
-                curtains, starSurface, forcedWavelength, usePhotonWavelength, starkBroadening)
+                curtains, starSurface, forcedWavelength, usePhotonWavelength, VoigtProf)
            if (thisPhoton%linePhoton) then
               junk1 = junk1 + thisPhoton%position%z
               rHat = rHat + thisPhoton%velocity
@@ -2825,7 +2839,7 @@ program torus
 !$OMP SHARED(probDust, WeightDust, WeightPhoto, source, nsource) &
 !$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImage) &
 !$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
-!$OMP SHARED(curtains, starSurface, StarkBroadening)
+!$OMP SHARED(curtains, starSurface, VogitProf)
 
 
 
@@ -2888,7 +2902,7 @@ program torus
                       theta1, theta2, chanceHotRing,  &
                       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto,&
                       narrowBandImage, vMin, vMax, source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
-                      curtains, starSurface, forcedWavelength, usePhotonWavelength, starkBroadening)
+                      curtains, starSurface, forcedWavelength, usePhotonWavelength, VoigtProf)
                  if (thisPhoton%resonanceLine) then
                     r1 = real(i)/real(nPhotons/nOuterLoop)
                     thisPhoton%lambda = xArray(1) + r1*(xArray(nLambda)-xArray(1))
@@ -2915,7 +2929,7 @@ program torus
            lineResAbs = .false.  ! F for the zero-th scattering.
            if (doRaman) then
               
-              call integratePath(gridUsesAMR, starkBroadening, &
+              call integratePath(gridUsesAMR, VoigtProf, &
                          thisPhoton%lambda, lamLine, &
                          s2o(thisPhoton%velocity), &
                          thisPhoton%position, s2o(outVec), grid, &
@@ -2948,7 +2962,7 @@ program torus
 
 
               ! find optical depths to observer
-              call integratePath(gridUsesAMR, starkBroadening, &
+              call integratePath(gridUsesAMR, VoigtProf, &
                          thisPhoton%lambda, lamLine, &
                          s2o(thisPhoton%velocity), &
                          thisPhoton%position, s2o(outVec), grid, &
@@ -3083,11 +3097,11 @@ program torus
                     
                     i1 = 0
                     do iLambda = 1, nLambda
-if (StarkBroadening) then
-                       thisLam = (lamLine-thisPhoton%lambda) + xArray(iLambda)
-else
+!if (VoigtProf) then
+!                       thisLam = (lamLine-thisPhoton%lambda) + xArray(iLambda)
+!else
                        thisLam = (lamLine-observedlambda) + xArray(iLambda)
-end if
+!end if
 
                        call hunt(xArray,nLambda,thisLam,i1)
                        if (i1 ==0 ) i1 = 1
@@ -3133,7 +3147,7 @@ end if
 
            endif
 
-           call integratePath(gridUsesAMR, starkBroadening, &
+           call integratePath(gridUsesAMR, VoigtProf, &
               thisPhoton%lambda, lamLine, &
               s2o(thisPhoton%velocity), &
               thisPhoton%position, &
@@ -3156,22 +3170,21 @@ end if
 !           fac=1.0d0-exp(-tau_bnd)
 !           call random_number(r1)
 !           thisTau = min(-log(1.d0-r1*fac),tau_bnd)  
-!           ! This is done so to force the first scattering if 
-!           ! MAXSCAT>0. 
+!           escaped = .false.!
+           ! This is done so to force the first scattering if 
+           ! MAXSCAT>0. 
 
-            ! DON'T FORCE THE FIRST SCATTERING
+           ! DON'T FORCE THE FIRST SCATTERING
             
-                 escaped = .false.
-                 call random_number(r1)
-                 fac = 1.
-                 thistau = -log(max(1.e-10,(1. - r1)))
-                 if (thistau .gt. tauExt(nTau)) then
-                    escaped = .true.  
-                 else
-                    escaped = .false.  
-                 endif
-
-
+           
+           call random_number(r1)
+           fac = 1.
+           thistau = -log(max(1.e-10,(1. - r1)))
+           if (thistau .gt. tauExt(nTau)) then
+              escaped = .true.  
+           else
+              escaped = .false.  
+           endif
 
 
            if (thisPhoton%contPhoton) escProb = 1.
@@ -3237,7 +3250,7 @@ end if
               if (flatspec) then
                  iLambda = 1
               else
-                  iLambda = findIlambda(thisPhoton%lambda, xArray, nLambda, ok)
+                 iLambda = findIlambda(thisPhoton%lambda, xArray, nLambda, ok)
               endif
 
               if (grid%adaptive) then
@@ -3311,7 +3324,7 @@ end if
                  ! the o6 photon might get scattered towards the observer by a rayleigh scattering
 
                  if (doRaman) then
-                    call integratePath(gridUsesAMR, starkBroadening, &
+                    call integratePath(gridUsesAMR, VoigtProf, &
                             obsPhoton%lambda, lamLine, s2o(obsPhoton%velocity), &
                             obsPhoton%position, obsPhoton%direction, grid, &
                             lambda, tauExt, tauAbs, tauSca, maxTau, nTau,  thin_disc_on, opaqueCore, &
@@ -3348,7 +3361,7 @@ end if
 
                  if (doRaman) redRegion = .true.
 
-                 call integratePath(gridUsesAMR, starkBroadening, &
+                 call integratePath(gridUsesAMR, VoigtProf, &
                       obsPhoton%lambda, lamLine, &
                       s2o(obsPhoton%velocity), &
                       obsPhoton%position, obsPhoton%direction, grid, &
@@ -3466,11 +3479,11 @@ end if
                        observedlambda = obsPhoton%lambda / fac
 
                        do iLambda = 1,nLambda
-if (StarkBroadening) then
-                       thisLam = (lamLine-obsPhoton%lambda) + xArray(iLambda)
-else
+!if (VoigtProf) then
+!                       thisLam = (lamLine-obsPhoton%lambda) + xArray(iLambda)
+!else
                        thisLam = (lamLine-observedlambda) + xArray(iLambda)
-end if
+!end if
 
 
                           i1 = findILambda(thisLam, xArray, nLambda, ok)
@@ -3529,7 +3542,7 @@ end if
                        miePhase, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
                  thisPhoton = outPhoton
 
-                 call integratePath(gridUsesAMR, starkBroadening, &
+                 call integratePath(gridUsesAMR, VoigtProf, &
                             thisPhoton%lambda, lamLine, &
                             s2o(thisPhoton%velocity), thisPhoton%position, &
                             thisPhoton%direction, grid, lambda, tauExt, tauAbs, &

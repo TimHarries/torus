@@ -337,7 +337,7 @@ contains
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, &
-       starkBroadening)
+       VoigtProf)
 
     implicit none
 
@@ -418,7 +418,7 @@ contains
 
     logical :: forcedWavelength
     real :: usePhotonWavelength
-    logical, intent(in) ::  starkBroadening
+    logical, intent(in) ::  VoigtProf
 
     real :: tempr
 
@@ -1077,7 +1077,7 @@ contains
           
        else
           thisPhoton%stokes = thisPhoton%stokes * weightContPhoton
-          thisPhoton%lambda = lamLine
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!          thisPhoton%lambda = lamLine
        endif
 
 
@@ -1426,7 +1426,7 @@ contains
              octalPoint = thisPhoton%position  
              
              !  Assiging the velocity at the emission location
-!             if (starkBroadening) then
+!             if (VoigtProf) then
                 CALL amrGridValues(grid%octreeRoot,octalPoint,  &
                      velocity=velocity, temperature=temperature, &
                      Ne=Ne, rho=rho)
@@ -1439,14 +1439,14 @@ contains
                 ! of the Voigt profile.
                 N_HI = MAX((rho/mHydrogen - Ne), 1.d-25) ! number density of HI.
                 nu = cSpeed_dbl/dble(lamline*angstromtocm)  ! [Hz]
-                if (starkBroadening) then
+                if (VoigtProf) then
                    Gamma = bigGamma(dble(N_HI), dble(temperature), dble(Ne), nu)
                 else
                    Gamma = 0.0d0
                 end if
                 nu_shuffled = random_Lorentzian_frequency(nu, Gamma) ! [Hz]                
-!                lambda_shuffled = (cSpeed_dbl/nu_shuffled)*1.e8  ! [A]
-                lambda_shuffled = lamline  ! [A]
+                lambda_shuffled = (cSpeed_dbl/nu_shuffled)*1.e8  ! [A]
+!                lambda_shuffled = lamline  ! [A]
                 ! ==> This will be assigend to the photon later.
 !             else
 !                thisPhoton%velocity = amrGridVelocity(grid%octreeRoot,octalPoint)!,&
