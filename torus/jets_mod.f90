@@ -733,7 +733,7 @@ contains
        beta = jets%beta_disk
 
     else
-       
+       Vinf = jets%Vinf_disk       
        beta = jets%beta_disk
 
     end if

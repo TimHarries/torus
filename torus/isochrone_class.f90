@@ -241,12 +241,13 @@ contains
     !  --- Using the routine in this module.
     call interpol_log_L_log_T(this, real(mass), real(age), log_L, log_T)
 
-    temperature = (10.0**log_T)                   ! Kelvins
+    temperature = (10.0**log_T)                   ! Kelvins    
+    luminosity = (10.0**log_L) * L_sun  ! [erg/s]
     
     radius =  SQRT(luminosity/L_sun) * (T_sun/temperature)**2  * R_sun ! [cm]
     radius = radius/1.0d10 ! [10^10cm]
 
-    luminosity = (10.0**log_L) * L_sun  ! [erg/s]
+    
     
   end subroutine mass_age_to_Temp_Rad_Lum
   

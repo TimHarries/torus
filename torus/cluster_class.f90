@@ -288,7 +288,7 @@ contains
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     
-    thisOctal%temperature(subcell) = 100.
+    thisOctal%temperature(subcell) = 10.
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D(subcell) = 1.0
     thisOctal%biasLine3D(subcell) = 1.0
@@ -468,14 +468,6 @@ contains
     rho_ave = rho_ave*1.0d13 ! just for debug
 
     
-!    ! Just for debug
-!    if (n>0) then
-!       rho_ave =dble(n+1)/(node%subcellsize **3)
-!    else
-!       rho_ave = 1.0d0/(node%subcellsize **3)
-!    end if
-    
-
     
   end subroutine find_n_particle_in_subcell
 

@@ -139,12 +139,11 @@ CONTAINS
           ! calculate the values at the centre of each of the subcells
           CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
           ! label the subcells
-          grid%octreeRoot%label(subcell) = subcell
-
+          grid%octreeRoot%label(subcell) = subcell    
        END DO
     end if
     
-          
+
 
     ! we keep track of the maximum depth of the grid...
     grid%maxDepth = 1
@@ -2755,13 +2754,12 @@ CONTAINS
 
       
    case DEFAULT
-           PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
-           PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
-           PRINT *, 'Exiting the program .... '
-           STOP
+      PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
+      PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
+      PRINT *, 'Exiting the program .... '
+      STOP
    end select
-  
-  
+   
 
   END FUNCTION decideSplit
 

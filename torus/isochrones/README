@@ -1,3 +1,9 @@
+This directory contains the data from low mass star 
+evolutionary calcluations.  These data files will be used in 
+isochrone_class.f90.
+
+
+File names:
 
 iso0215.tot98  iso0225.tot98   iso0245.tot98 
 				   

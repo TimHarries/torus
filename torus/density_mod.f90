@@ -38,6 +38,14 @@ contains
        out = JetsDensity(r_vec, grid)*1000.d0 
        !                              ^^^^^^^
        !                          Converting kg/m^3 to g/cm^3
+       ! For debugging, 
+       out = out*1.0d20
+
+    case ("wr104")
+       ! using a routine in this module
+       out = wr104DensityValue(r_vec, grid)
+       ! NOTE: You have to check the units of this
+       !        function later!!!
     case ("ttauri")
        !  using a routine this module
        out = TTauriDensity(r_vec, grid) ! [g/cm^3]

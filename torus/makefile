@@ -16,7 +16,7 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  lucy_mod.f90 jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 \
  wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 pixplot_module.f90 \
  sph_data_class.f90 cluster_class.f90 linked_list_class.f90 timing.f90 \
- isochrone_class.f90
+ isochrone_class.f90 filter_set_class.f90
 
 
 F77SOURCE= image_f77.f mieDistCrossSection.f palette.f\

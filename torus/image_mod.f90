@@ -5,6 +5,7 @@ module image_mod
   use vector_mod
   use constants_mod
   use photon_mod
+  use filter_set_class
 
   implicit none
 
@@ -52,6 +53,7 @@ module image_mod
      initImage%pixel(-nsize:nsize,-nsize:nsize) = STOKESVECTOR(1.e-30,0.,0.,0.)
      initImage%nsize = nsize
      initImage%scale = scale
+
      initImage%vMin = vMin
      initImage%vMax = vMax
      initImage%vel(-nsize:nsize,-nsize:nsize) = 0.
@@ -137,45 +139,56 @@ module image_mod
      
      
 
-   subroutine addPhotonToImage(viewVec, rotationAxis, thisImage, thisPhoton, &
-                               thisVel, weight)
+   subroutine addPhotonToImage(viewVec, rotationAxis, thisImageSet, nImage, thisPhoton, &
+                               thisVel, weight, filters)
      
-     type(IMAGETYPE) :: thisImage
+     integer, intent(in) :: nImage  ! number of images in a set
+     type(IMAGETYPE), intent(inout) :: thisImageSet(nImage)
      type(PHOTON) :: thisPhoton
      type(VECTOR) :: viewVec,  xProj, yProj, rotationAxis
      real :: xDist, yDist
      integer :: xPix, yPix
      real :: thisVel, velincgs
      real :: weight
+     type(filter_set), intent(in) :: filters     
+     !
+     integer :: i
+     real :: filter_response
 
      velIncgs = thisVel! * cSpeed/1.e5
 
 !     write(*,*) thisvel,thisimage%vMax,thisimage%vMin
 
-     if ((velincgs < thisImage%vMax) .and. (velincgs > thisImage%vMin)) then
 
+     do i = 1, nImage
+        if ((velincgs < thisImageSet(i)%vMax) .and. (velincgs > thisImageSet(i)%vMin)) then
+           xProj =  rotationAxis .cross. viewVec
+           call normalize(xProj)
+           yProj = viewVec .cross. xProj
+           call normalize(yProj)
+           
+           xDist = thisPhoton%position .dot. xProj
+           yDist = thisPhoton%position .dot. yProj
+           
+           xPix = nint(xDist / thisImageSet(i)%scale)
+           yPix = nint(yDist / thisImageSet(i)%scale)
 
-        xProj =  rotationAxis .cross. viewVec
-        call normalize(xProj)
-        yProj = viewVec .cross. xProj
-        call normalize(yProj)
-
-        xDist = thisPhoton%position .dot. xProj
-        yDist = thisPhoton%position .dot. yProj
-
-        xPix = nint(xDist / thisImage%scale)
-        yPix = nint(yDist / thisImage%scale)
-
-
-        if ((xPix >= -thisImage%nSize) .and. &
-             (yPix >= -thisImage%nSize) .and. &
-             (xPix <= thisImage%nSize) .and. &
-             (yPix <= thisImage%nSize)) then
-           thisImage%pixel(xPix, yPix) = thisImage%pixel(xPix, yPix) + thisPhoton%stokes * weight
-           thisImage%vel(xPix,yPix) = thisImage%vel(xPix, yPix) + velincgs * (thisPhoton%stokes%i*weight)
-           thisImage%totWeight(xPix,yPix) = thisImage%totWeight(xPix,yPix) + (thisPhoton%stokes%i*weight)
+           if ((xPix >= -thisImageSet(i)%nSize) .and. &
+                (yPix >= -thisImageSet(i)%nSize) .and. &
+                (xPix <= thisImageSet(i)%nSize) .and. &
+                (yPix <= thisImageSet(i)%nSize)) then
+              ! using a filter response function in filter_set_class here
+              filter_response = real( pass_a_filter(filters, i, dble(thisPhoton%lambda)) )
+              
+              thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
+                   + thisPhoton%stokes * weight * filter_response
+              thisImageSet(i)%vel(xPix,yPix) = thisImageSet(i)%vel(xPix, yPix)  &
+                   + velincgs * (thisPhoton%stokes%i*weight*filter_response)
+              thisImageSet(i)%totWeight(xPix,yPix) = thisImageSet(i)%totWeight(xPix,yPix) &
+                   + (thisPhoton%stokes%i*weight*filter_response)
+           endif
         endif
-     endif
+     end do
 
      end subroutine addPhotonToImage
 
@@ -456,6 +469,7 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
     end subroutine smoothPVimage
       
 end module image_mod
+
 
 
 

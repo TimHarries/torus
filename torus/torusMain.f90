@@ -48,6 +48,7 @@ program torus
   use cluster_class
   use timing
   use isochrone_class
+  use filter_set_class
 
   implicit none
 
@@ -107,7 +108,13 @@ program torus
 
   ! torus images
 
-  type(IMAGETYPE) :: obsImage, o6image
+  type(IMAGETYPE) :: o6image(1)
+
+  type(IMAGETYPE), allocatable :: obsImageSet(:)
+  integer           :: nImage  ! number of images in obsImageSet
+  type(filter_set)  :: filters ! a set of filters used for imaging
+  character(LEN=30) :: name_filter
+
   type(PVIMAGETYPE), allocatable :: pvimage(:)
   real :: imageSize
   integer :: iSlit
@@ -333,6 +340,7 @@ program torus
   tooFewSamples = 0 
   boundaryProbs = 0 
 
+
   ! hardwired stuff
 
   abundance = 1.e-8
@@ -414,7 +422,7 @@ program torus
 
   if ((geometry == "ttauri").and.(.not.enhance)) rotateView = .true.
 
-  if ((geometry(1:4) == "jets").and.(.not.enhance)) rotateView = .true.
+  if ((geometry(1:4) == "jets").and.(.not.enhance)) rotateView = .false.
 
   if (doRaman) then
         rotateView = .true.
@@ -668,13 +676,23 @@ program torus
            !  adaptive octal grid.
            !  Using a routine in stateq_mod module.
            write(*,*) "Calling statistical equilibrium routines..."
+           call tune(6, "amrStateq") ! start a stopwatch  
            if (grid%geometry=="ttauri") then
               call amrStateq(grid, contfluxfile, lte, nLower, nUpper)
            else
               call amrStateq(grid, contfluxfile, lte, nLower, nUpper, ion_name, ion_frac)
            end if
+           call tune(6, "amrStateq") ! stop a stopwatch  
            write(*,*) "... statistical equilibrium routines complete"
            if (writePops) call writeAMRgrid(popFilename,writeFileFormatted,grid)
+           call plot_AMR_values(grid, "etaCont", "x-z", 0.0,  &
+                "etacont.ps/vcps", .true., .false.)
+           call plot_AMR_values(grid, "etaLine", "x-z", 0.0,  &
+                "etaline.ps/vcps", .true., .false.)
+           call plot_AMR_values(grid, "chiLine", "x-z", 0.0,  &
+               "chiline.ps/vcps", .true., .false.)
+           call plot_AMR_values(grid, "temperature", "x-z", 0.0, &
+               "temperature.ps/vcps", .true., .false.)
         endif
 
         !
@@ -905,10 +923,11 @@ program torus
 
   
   !
-!  if (grid%geometry == "jets"  .or.  grid%geometry == "wr104" .or. &
-!       grid%geometry == "ttauri"  .or.  grid%geometry == "testamr" ) then
-!     call draw_cells_on_density(grid, "z-x", device)
-!  end if
+  if (grid%geometry == "jets"  .or.  grid%geometry == "wr104" .or. &
+       grid%geometry == "ttauri"  .or.  grid%geometry == "testamr" ) then
+     call draw_cells_on_density(grid, "x-z", "cells_on_density.ps/vcps")
+!     call draw_cells_on_density(grid, "x-z", device)
+  end if
 
   !  call fancyAmrPlot(grid, device)
   
@@ -917,9 +936,9 @@ program torus
   !
   ! See grid_mod.f90 for details.
   ! subroutine plot_AMR_values(grid, name, plane, val_3rd_dim,  device, logscale, withgrid)
-  call plot_AMR_values(grid, "rho", "z-x", 0.0, "rho_grid.ps/vcps", .true., .true.)
+  call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_grid.ps/vcps", .true., .true.)
   ! Plotting the slices of planes
-  call plot_AMR_planes(grid, "rho", "z-x", 15, "rho", .true., .false.)
+  call plot_AMR_planes(grid, "rho", "x-z", 15, "rho", .true., .false.)
 
   
   ! The source spectrum is normally a black body
@@ -1022,15 +1041,19 @@ program torus
        call kill_all(young_cluster)
        
     case default
-       allocate(source(0)) ! allows 'source' to be passed as an argument.
+       ! Allocating the source array with size =0 to avoid, non-allocated array passed problem
+       ! in subroutine initPhoton...
+       if (.not. allocated(source)) ALLOCATE(source(0))
+       nSource = 0  ! This must be zero!
        
   end select
 
   
   
-  call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
-  
   if (lucyRadiativeEq) then
+
+     call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
+ 
      if (grid%cartesian .or. grid%polar) then
         call lucyRadiativeEquilibrium(grid, miePhase, nMuMie, nLambda, xArray, dble(teff), nLucy)
      else
@@ -1040,12 +1063,13 @@ program torus
      endif     
      if (grid%geometry(1:7) /= "cluster") call setBiasAMR(grid%octreeRoot, grid)
 
-     call plot_AMR_values(grid, "etaCont", "z-x", 0.0, "etacont.ps/vcps", .true., .false.)
-     call plot_AMR_values(grid, "temperature", "z-x", 0.0, "temperature.ps/vcps", .true., .false.)
+     call plot_AMR_values(grid, "etaCont", "x-z", 0.0, "etacont.ps/vcps", .true., .false.)
+     call plot_AMR_values(grid, "temperature", "x-z", 0.0, "temperature.ps/vcps", .true., .false.)
+
+     call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
+
   endif
   
-  call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
-
 
   
   ! initialize the blobs if required
@@ -1205,27 +1229,43 @@ program torus
      if (doRaman) then
         yArray(1:nLambda)%i = 1.e-20
      endif
-
+     
      if (stokesimage) then
-        if (grid%cartesian) then
-           imageSize = max(abs(grid%xAxis(1)),abs(grid%yAxis(1)),abs(grid%zAxis(1)))
-           obsImage = initImage(50, imageSize, vmin, vmax)
-           if (doRaman) then
-              o6image = initImage(50, imageSize, vmin, vmax)
-           endif
-        else if (grid%adaptive) then
-           imageSize = grid%octreeRoot%subcellSize          
-           obsImage = initImage(100, imageSize, vmin, vmax)
-        else   
-           select case (geometry)
+        
+        ! bulid a filter to be used for imaging
+        ! -- using a routine in filter_set_class
+        call make_filter_set(filters, filter_set_name)
+        
+        ! number of images = number of filters
+        nImage = get_nfilter(filters)
+
+        ! Allocate the image array
+        if (allocated(obsImageSet)) deallocate(obsImageSet)
+        allocate(obsImageSet(nImage))
+        
+        ! Initializing the images ...
+        do i = 1, nImage           
+           if (grid%cartesian) then
+              imageSize = max(abs(grid%xAxis(1)),abs(grid%yAxis(1)),abs(grid%zAxis(1)))
+              obsImageSet(i) = initImage(npix, imageSize, vmin, vmax)
+              if (doRaman) then
+                 o6image(1) = initImage(npix, imageSize, vmin, vmax)
+              endif
+           else if (grid%adaptive) then
+              imageSize = grid%octreeRoot%subcellSize          
+              obsImageSet(i) = initImage(npix, imageSize, vmin, vmax)
+           else   
+              select case (geometry)
               case("disk")
-                 obsImage = initImage(50, grid%rAxis(grid%nr), vMin, vMax)
+                 obsImageSet(i) = initImage(npix, grid%rAxis(grid%nr), vMin, vMax)
               case("flared")
-                 obsImage = initImage(50, 4.*grid%rAxis(1), vMin, vMax)
+                 obsImageSet(i) = initImage(npix, 4.*grid%rAxis(1), vMin, vMax)
               case DEFAULT
-                 obsImage = initImage(50, min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), vMin, vMax)
-           end select
-        endif
+                 obsImageSet(i) = initImage(npix, min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), vMin, vMax)
+              end select
+           endif
+        end do
+        
      endif
 
 
@@ -1380,7 +1420,6 @@ program torus
      allocate(tauSca(1:maxTau))
      allocate(contTau(1:maxTau,1:maxLambda))
      allocate(contWeightArray(1:maxTau))
-     
 
      if (geometry .eq. "rolf") then
         if (gridUsesAMR) then
@@ -1912,8 +1951,8 @@ print *, 'nu = ',nu
 !$OMP SHARED(ramanSourceVelocity, vO6, doRaman) &
 !$OMP SHARED(weightContPhoton, useBias, pencilBeam ,outVec)&
 !$OMP SHARED(opaqueCore, lamStart, lamEnd, thinLine, rStar, coolStarPosition) &
-!$OMP SHARED(viewVec, o6xArray,o6yArray, rotationAxis, o6image, screened) &
-!$OMP SHARED(xArray, yArray, statArray, stokesImage, obsImage, doPvimage) &
+!$OMP SHARED(viewVec, o6xArray,o6yArray, rotationAxis, o6image(1), screened) &
+!$OMP SHARED(xArray, yArray, statArray, stokesImage, obsImageSet, doPvimage) &
 !$OMP SHARED(nSlit, pvimage, gridDistance, meanr0_line, wtot0_line) &
 !$OMP SHARED(sourceSpectrum2, meanr0_cont,wtot0_cont, maxScat, mie) &
 !$OMP SHARED(miePhase, zeroVec, theta1, theta2, chanceHotRing) &
@@ -1929,6 +1968,9 @@ print *, 'nu = ',nu
            allocate(tauSca(1:maxTau))
            allocate(contTau(1:maxTau,1:maxLambda))
            allocate(contWeightArray(1:maxTau))
+           ! initlialize them to zero for safty
+!           lambda(:) = 0.0; tauExt(:)=0.0; tauAbs(:)=0.0
+!           tauSca(:) = 0.0; contTau(:,:) =0.0; contWeightArray(:) =0.0
 
 
 
@@ -2030,7 +2072,8 @@ print *, 'nu = ',nu
                  weight = oneOnFourPi * exp(-tauExt(nTau))
                  o6yArray(j) = o6yArray(j) + weight
                  thisVel = (thisLam-lamLine)/lamLine
-                 call addPhotonToImage(viewVec, rotationAxis,o6Image, thisPhoton, thisVel, weight)
+                 call addPhotonToImage(viewVec, rotationAxis,o6Image(1), 1, &
+                      thisPhoton, thisVel, weight, filters)
 
               endif
            endif
@@ -2118,7 +2161,8 @@ print *, 'nu = ',nu
                  endif
                  if (stokesImage) then
                     thisVel = observedLambda
-                    call addPhotonToImage(viewVec, rotationAxis, obsImage, thisPhoton, thisVel, weight)
+                    call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImage, thisPhoton,&
+                         thisVel, weight, filters)
                  endif
                  if (doPVimage) then
                     do iSlit = 1, nSlit
@@ -2148,7 +2192,8 @@ print *, 'nu = ',nu
 
                     thisVel = (observedLambda-lamLine)/lamLine
                     if (stokesImage) then
-                       call addPhotonToImage(viewVec, rotationAxis, obsImage, thisPhoton, thisVel, weight)
+                       call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImage, &
+                            thisPhoton, thisVel, weight, filters)
                     endif
                     if (dopvImage) then
                        do iSlit = 1, nSlit
@@ -2201,7 +2246,8 @@ print *, 'nu = ',nu
                        wtot0_cont = wtot0_cont + thisPhoton%stokes%i*weight
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
-                          call addPhotonToImage(viewVec,  rotationAxis,obsImage, thisPhoton, thisVel, weight)
+                          call addPhotonToImage(viewVec,  rotationAxis,obsImageSet, nImage, &
+                               thisPhoton, thisVel, weight, filters)
                        endif
                        if (dopvImage) then
                           do iSlit = 1, nSlit
@@ -2475,7 +2521,8 @@ print *, 'nu = ',nu
 
 
                     if (stokesImage) then
-                       call addPhotonToImage(viewVec,  rotationAxis, obsImage, obsPhoton, thisVel, weight)
+                       call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage,  &
+                            obsPhoton, thisVel, weight, filters)
                     endif
                     if (dopvImage) then
                        do iSlit = 1, nSlit
@@ -2510,7 +2557,8 @@ print *, 'nu = ',nu
                        thisVel = observedLambda
                        thisVel = (observedLambda-lamLine)/lamLine
                        if (stokesImage) then
-                          call addPhotonToImage(viewVec,  rotationAxis, obsImage, obsPhoton, thisVel, weight)
+                          call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage, &
+                               obsPhoton, thisVel, weight, filters)
                        endif
                        if (dopvImage) then
                           do iSlit = 1 , nSlit
@@ -2567,7 +2615,8 @@ print *, 'nu = ',nu
 
                           thisVel = (observedlambda-lamLine)/lamLine
                           if (stokesImage) then
-                             call addPhotonToImage(viewVec,  rotationAxis, obsImage, obsPhoton, thisVel, weight)
+                             call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage, &
+                                  obsPhoton, thisVel, weight, filters)
                           endif
                           if (dopvImage) then
                              do iSlit = 1, nSlit
@@ -2705,12 +2754,16 @@ print *, 'nu = ',nu
      close(22)
 
      if (stokesimage) then
-        write(specFile,'(a,a,i3.3)') trim(outfile),"_image",iPhase
-        call writeImage(obsImage, specfile)
+        do i = 1, nImage
+           name_filter = get_filter_name(filters, i)
+           write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
+           call writeImage(obsImageSet(i), specfile)
+        end do
         if (doRaman) then
-        write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase
-           call writeImage(o6Image, specfile)
+           write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase
+           call writeImage(o6Image(1), specfile)
         endif
+
      endif
 
      if (doPvimage) then
@@ -2725,11 +2778,16 @@ print *, 'nu = ',nu
            else
               plotfile = device
            endif
-           call plotSlitOnImage(obsImage, PVimage(iSlit), plotfile, gridDistance)
+           ! doing this only for the first image in obsImageSet
+           call plotSlitOnImage(obsImageSet(1), PVimage(iSlit), plotfile, gridDistance)
         enddo
      endif
 
-     if (stokesImage) call freeImage(obsImage)
+     if (stokesImage) then
+        do i = 1, nImage
+           call freeImage(obsImageSet(i))
+        end do
+     end if
 
      if (doPVimage) then
         do iSlit = 1, nSlit
@@ -2761,7 +2819,7 @@ call tune(6, "Torus Main") ! stop a stopwatch
     end subroutine quickDeallocate
     
 
-end program torus
+  end program torus
 
 
 

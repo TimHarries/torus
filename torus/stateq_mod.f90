@@ -2439,7 +2439,7 @@ do ; enddo
     real                        :: transe
     real(kind=doubleKind)       :: freq
     type(vector)                :: rVec
-    real (kind=doubleKind)      :: Ne1, Ne2
+    real(kind=doubleKind)       :: Ne1, Ne2
     logical                     :: ok
     type(octal), pointer        :: thisOctal => null()
     real                        :: departCoeff(maxLevels)

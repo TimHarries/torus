@@ -4836,7 +4836,7 @@ contains
   subroutine draw_cells_on_density(grid, plane, device)
     implicit none
     type(GRIDTYPE), intent(in) :: grid
-    ! must be 'x-y', 'y-z' or 'z-x'
+    ! must be 'x-y', 'y-z' , 'z-x' or 'x-z'
     character(LEN=*), intent(in)  :: plane
     character(len=*), intent(in)  :: device
     type(OCTAL), pointer :: root
@@ -4847,23 +4847,15 @@ contains
     ! For plotting density
     integer :: pgbeg
     integer :: n, ncol, nlev
-!    parameter (n=400, ncol=32, nlev=10)
     parameter (n=1500, ncol=32, nlev=10)
-!    parameter (n=2000, ncol=32, nlev=10)
-!    parameter (n=200, ncol=32, nlev=10)
     integer :: i,j,ci1,ci2
-!    real :: f(n,n),fmin,fmax,r,g,b,clev(nlev),tr(6)
     real :: f(n,n),fmin,fmax,tr(6)
-    integer :: ia(n,n)
     double precision  :: xmap(n), ymap(n), zmap(n), x1, y1, z1
     real :: box_size
     real :: offset
     double precision  :: tmp
     type(octalVector) :: pos
     
-    TR = 0.0
-    TR(2) = 1.0
-    TR(6) = 1.0    
     
     write(*,*) "draw_cells_on_density plotting to: ",trim(device)
 
@@ -4873,6 +4865,20 @@ contains
     ! setup the density 
     box_size = REAL(grid%octreeRoot%subcellsize)*2.0
     d = box_size
+
+    ! The transformation matrix TR is used to calculate the world
+    ! coordinates of the center of the cell that represents each
+    ! array element. The world coordinates of the center of the cell
+    ! corresponding to array element f(I,J) are given by
+    !        X = TR(1) + TR(2)*I + TR(3)*J
+    !        Y = TR(4) + TR(5)*I + TR(6)*J
+    
+    TR = 0.0
+    TR(1) = -d/2.0
+    TR(4) = -d/2.0
+    TR(2) = d/real(n)
+    TR(6) = d/real(n)
+    
     
     x1 =  - d/2.0d0
     y1 =  - d/2.0d0
@@ -4893,7 +4899,7 @@ contains
              pos = Vector(xmap(i),ymap(j),0.0d0)
              ! using the function in density_mod.f90
              tmp = ABS( density(pos, grid) )
-             if (tmp<=0) tmp=1.0e-28
+             if (tmp<=0) tmp=1.0e-36
              f(i,j) = LOG10(tmp)
              fmin = min(f(i,j),fmin)
              fmax = max(f(i,j),fmax)
@@ -4905,7 +4911,7 @@ contains
              pos = Vector(0.0d0, ymap(i), zmap(j))
              ! using the function in density_mod.f90
              tmp = ABS( density(pos, grid) )
-             if (tmp<=0) tmp=1.0e-28
+             if (tmp<=0) tmp=1.0e-36
              f(i,j) = LOG10(tmp)
              fmin = min(f(i,j),fmin)
              fmax = max(f(i,j),fmax)
@@ -4914,11 +4920,23 @@ contains
     elseif (plane(1:3) == 'z-x') then  
        do j = 1, n
           do i = 1, n
-	     pos = Vector(xmap(j),0.0d0, zmap(i))
-	     ! using the function in density_mod.f90
-	     tmp = ABS( density(pos, grid) )
-	     if (tmp<=0) tmp=1.0e-28
-	     f(i,j) = LOG10(tmp)
+             pos = Vector(xmap(j),0.0d0, zmap(i))
+             ! using the function in density_mod.f90
+             tmp = ABS( density(pos, grid) )
+             if (tmp<=0) tmp=1.0e-36
+             f(i,j) = LOG10(tmp)
+             fmin = min(f(i,j),fmin)
+             fmax = max(f(i,j),fmax)
+          end do
+       end do
+    elseif (plane(1:3) == 'x-z') then  
+       do j = 1, n
+          do i = 1, n
+             pos = Vector(xmap(i),0.0d0, zmap(j))
+             ! using the function in density_mod.f90
+             tmp = ABS( density(pos, grid) )
+             if (tmp<=0) tmp=1.0e-36
+             f(i,j) = LOG10(tmp)
              fmin = min(f(i,j),fmin)
              fmax = max(f(i,j),fmax)
           end do
@@ -4931,13 +4949,6 @@ contains
        fmax = fmax+fmax/10.0
     end if
 
-    !
-    do j=1,n
-       do i=1,n
-          ia(i,j) = (f(i,j)-fmin)/(fmax-fmin)*(ncol-1)+16
-       end do
-    end do
-    
     ! Open plot device and set up coordinate system. We will plot the
     !image within a unit square.
     !
@@ -4954,41 +4965,23 @@ contains
     !    CALL PGSVP(0.05,0.95,0.05,0.95)
 
     call setvp
-!    CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+
     if (plane(1:3) == 'x-y') then
        CALL PGWNAD(real(xmap(1)), real(xmap(n)), real(ymap(1)), real(ymap(n)))
-!       CALL PGWNAD(0.0, real(1+n), 0.0, real(1+n))
     elseif (plane(1:3) == 'y-z') then
        CALL PGWNAD(real(ymap(1)), real(ymap(n)), real(zmap(1)), real(zmap(n)))
     elseif (plane(1:3) == 'z-x') then
        CALL PGWNAD(real(zmap(1)), real(zmap(n)), real(xmap(1)), real(xmap(n)))
+    elseif (plane(1:3) == 'x-z') then
+       CALL PGWNAD(real(xmap(1)), real(xmap(n)), real(zmap(1)), real(zmap(n)))
     end if
     
-!    CALL PGWNAD(0.0, real(1+n), 0.0, real(1+n))
-
-    
-    !
-    ! Use PGPIXL to plot the image.
-    !
-    
-    ! routines in pixplot_module    
-!    call palett(2, 1.0, 0.5)
-!    call palett(2, 2.0, 0.7)
+        
+    ! Setting the color range and etc..e
     call palett(2, 1.0, 0.5)
-
-    if (plane(1:3) == 'x-y') then
-       CALL PGPIXL(IA,N,N, 1, N, 1, N, &
-            real(xmap(1)), real(xmap(n)), real(ymap(1)), real(ymap(n)))
-       !    CALL PGIMAG(f,N,N, 1, N, 1, N,  fmin, fmax, TR)
-    elseif (plane(1:3) == 'y-z') then
-       CALL PGPIXL(IA,N,N, 1, N, 1, N, &
-            real(ymap(1)), real(ymap(n)), real(zmap(1)), real(zmap(n)))
-    elseif (plane(1:3) == 'z-x') then
-       CALL PGPIXL(IA,N,N, 1, N, 1, N, &
-            real(zmap(1)), real(zmap(n)), real(xmap(1)), real(xmap(n)))
-    end if
-
-    !    CALL PGIMAG(f,N,N, 1, N, 1, N,  fmin, fmax, TR)
+    
+    ! Plot the image
+    CALL PGIMAG(f,N,N, 1, N, 1, N,  fmin, fmax, TR)
 
 
     !
@@ -5008,6 +5001,9 @@ contains
     elseif (plane(1:3) == 'z-x') then 
        CALL PGMTXT('B',3.0,1.0,1.0,'z')
        CALL PGMTXT('L',3.0,1.0,1.0,'x')
+    elseif (plane(1:3) == 'x-z') then 
+       CALL PGMTXT('B',3.0,1.0,1.0,'x')
+       CALL PGMTXT('L',3.0,1.0,1.0,'z')
     end if
     
     ! draw boxies
@@ -5068,26 +5064,31 @@ contains
           w = thisOctal%subcellSize  ! width
           x = rVec%x; y = rVec%y; z = rVec%z
 
-          if (present(val_3rd_dim)) then
-             if ( plane(1:3) == "x-y" .and.  &
-                  rVec%z > (val_3rd_dim-h) .and.  rVec%z < (val_3rd_dim+h)) then
-                call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
-             elseif ( plane(1:3) == "y-z" .and. &
-                  rVec%x > (val_3rd_dim-h) .and.  rVec%x < (val_3rd_dim+h)) then
-                call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
-             elseif ( plane(1:3) == "z-x" .and.  &
-                  rVec%y > (val_3rd_dim-h) .and.  rVec%y < (val_3rd_dim+h)) then
-                call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
-             end if          
-          else
-             if (plane(1:3) == 'x-y' .and.  ABS(rVec%z) < h ) then
-                call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
-             elseif (plane(1:3) == 'y-z' .and. ABS(rVec%x) < h ) then
-                call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
-             elseif (plane(1:3) == 'z-x' .and. ABS(rVec%y) < h ) then
-                call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
-             end if
-          end if
+	  if (present(val_3rd_dim)) then
+	     if ( plane(1:3) == "x-y" .and.  &
+		  rVec%z > (val_3rd_dim-h) .and.  rVec%z < (val_3rd_dim+h)) then
+		call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+	     elseif ( plane(1:3) == "y-z" .and. &
+		  rVec%x > (val_3rd_dim-h) .and.  rVec%x < (val_3rd_dim+h)) then
+		call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
+	     elseif ( plane(1:3) == "z-x" .and.  &
+		  rVec%y > (val_3rd_dim-h) .and.  rVec%y < (val_3rd_dim+h)) then
+		call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
+	     elseif ( plane(1:3) == "x-z" .and.  &
+		  rVec%y > (val_3rd_dim-h) .and.  rVec%y < (val_3rd_dim+h)) then
+		call PGRECT(x-w/2.0, x+w/2.0, z-h/2.0, z+h/2.0)
+	     end if	     
+	  else
+	     if (plane(1:3) == 'x-y' .and.  ABS(rVec%z) < h ) then
+		call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+	     elseif (plane(1:3) == 'y-z' .and. ABS(rVec%x) < h ) then
+		call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
+	     elseif (plane(1:3) == 'z-x' .and. ABS(rVec%y) < h ) then
+		call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
+	     elseif (plane(1:3) == 'x-z' .and. ABS(rVec%y) < h ) then
+		call PGRECT(x-w/2.0, x+w/2.0, z-h/2.0, z+h/2.0)
+	     end if
+	  end if
 
           
        endif
@@ -5097,15 +5098,15 @@ contains
 
 
   !
-  ! It overlay the AMR grid values and the grid structure using PGPLOT
+  ! This overlays the AMR grid values on the grid structure using PGPLOT
   ! routines. 
   !
   subroutine plot_AMR_values(grid, name, plane, val_3rd_dim,  device, logscale, withgrid)
     implicit none
     type(gridtype), intent(in) :: grid
     character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
-    !                                       ! "etaLine", or "etaCont"
-    character(len=*), intent(in)  :: plane  ! must be 'x-y', 'y-z' or 'z-x'
+    !                                       ! or "etaCont"
+    character(len=*), intent(in)  :: plane  ! must be 'x-y', 'y-z', 'z-x' or' x-z'
     ! The value of the third dimension.
     ! For example, if plane = "x-y", the third dimension is the value of z.
     ! Then, when  val_3rd_dim = 0.0, this will plot the density (and the grid)
@@ -5126,7 +5127,6 @@ contains
     parameter (n=1500, ncol=32, nlev=10)
     integer :: i,j,ci1,ci2, ilo, ihi 
     real :: valuemax, valuemin
-    real :: pvaluemax, pvaluemin
     
     real :: box_size
     double precision  :: tmp
@@ -5146,12 +5146,9 @@ contains
     
 
     ! Finding the plotting range
-    pvalueMin = 1.e30
-    pvalueMax = -1.e30
-    call minMaxValue(root, name, plane, pValueMin, pValueMax)
-
-    ValueMin = pValueMin
-    ValueMax = pValueMax
+    valueMin = 1.e35
+    valueMax = -1.e35
+    call minMaxValue(root, name, plane, ValueMin, ValueMax)
     
     if (logscale) then
        if (valueMax<=0) valueMax=1.0e-35
@@ -5218,6 +5215,10 @@ contains
        CALL PGMTXT('B',3.0,1.0,1.0,'Z')
        CALL PGMTXT('LV',3.0,0.8,1.0,'X')
        CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
+    elseif (plane(1:3) == 'x-z') then 
+       CALL PGMTXT('B',3.0,1.0,1.0,'X')
+       CALL PGMTXT('LV',3.0,0.8,1.0,'Z')
+       CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
     end if
     
     if (withgrid) then
@@ -5253,9 +5254,9 @@ contains
     implicit none
     !
     type(octal), pointer   :: thisOctal
-    character(len=*), intent(in)  :: name     ! "rho", "temperature", chiLine",  
-    !                                         ! "etaLine", or "etaCont"
-    character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z' or 'z-x'
+    character(len=*), intent(in)  :: name     ! "rho", "temperature", chiLine", "etaLine",  
+    !                                         !  or "etaCont"
+    character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z', 'z-x', 'x-z'
     ! The value of the third dimension.
     ! For example, if plane = "x-y", the third dimension is the value of z.
     ! Then, when  val_3rd_dim = 0.0, this will plot the density (and the grid)
@@ -5289,8 +5290,8 @@ contains
           end do
        else
           rVec = subcellCentre(thisOctal,subcell)
-          d = thisOctal%subcellSize/2.0d0
-          L = thisOctal%subcellSize
+	  L = thisOctal%subcellSize
+          d = L/2.0d0
           xp = REAL(rVec%x + d)
           xm = REAL(rVec%x - d)
           yp = REAL(rVec%y + d)
@@ -5307,6 +5308,9 @@ contains
              plot_this_subcell = .true.
           elseif ( plane(1:3) == "z-x" .and.  &
                rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
+             plot_this_subcell = .true.
+          elseif ( plane(1:3) == "x-z" .and.  &
+	       rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
              plot_this_subcell = .true.
           else
              plot_this_subcell = .false.
@@ -5361,6 +5365,8 @@ contains
                 call pgrect(ym, yp, zm, zp)
              case ("z-x")
                 call pgrect(zm, zp, xm, xp)
+             case ("x-z")
+                call pgrect(xm, xp, zm, zp)
              end select
 
           end if
@@ -5512,7 +5518,6 @@ contains
        write(UN,*)     'nOctals              = ', nOctals
        write(UN,*)     'nVoxels              = ', nVoxels
        write(UN,*)     'smoothingFactor      = ', thisGrid%smoothingFactor
-       write(UN,*)     'dipoleOffset         = ', thisGrid%dipoleOffset
        write(UN,*)     'grid center          =', thisGrid%octreeRoot%centre
        write(UN,*)     'Size of largest cell =', thisGrid%octreeRoot%subcellSize*2.0, ' [10^10 cm]'
        write(UN,'(a)') '#######################################################'

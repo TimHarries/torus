@@ -44,8 +44,9 @@ module input_variables
   real :: vMin, vMax
   real :: gridDistance
 
-  integer :: npix    ! Number of pixels for polimages
-  
+  integer :: npix    ! Number of pixels for polimages  
+  character(LEN=30) :: filter_set_name  ! name of filter set used for images
+
   ! variables to do with dust
   
   integer :: nSpiral

@@ -92,7 +92,7 @@ subroutine inputs()
  
 
  call getInteger("npix", npix, cLine, nLines, &
-      "Number of pixels for polimages: ", "(a,i3,1x,a)", 50, ok, .true.)
+      "Number of pixels for polimages: ", "(a,i3,1x,a)", 50, ok, .false.)
 
 
   call getString("distortion", distortionType, cLine, nLines, &
@@ -111,6 +111,10 @@ subroutine inputs()
 
   call getLogical("gridusesamr", gridUsesAMR, cLine, nLines, &
        "Grid uses adaptive mesh refinement: ","(a,1l,1x,a)", .false., ok, .false.)
+
+  call getString("filter_set_name", filter_set_name, cLine, nLines, &
+       "Name of filter set: ","(a,a,1x,a)","step_functions", ok, .false.)
+  
   
   if (gridUsesAMR) then
      call getReal("amrgridsize", amrGridSize, cLine, nLines, &
@@ -627,7 +631,7 @@ endif
    call getInteger("nspiral", nSpiral, cLine, nLines, &
         "Number of spiral arms: ","(a,i3)",1,ok,.true.)
    call getReal("dipoleoffset", dipoleOffset, cLine, nLines, &
-       "Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
+       "Dipole offset (degrees): ","(a,f7.1,1x,a)", 0.0e0, ok, .true.)
    dipoleOffset = dipoleOffset * degToRad
  endif
 

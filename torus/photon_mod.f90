@@ -844,12 +844,11 @@ contains
                 positionOctal = thisPhoton%position
                 call amrGridvalues(grid%octreeRoot,positionOctal,&
                     foundOctal=foundOctal,foundSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=ilambda)
-                tempSpectrum(1) = 0.
-                do i = 1, nLambda  !xxxx change to 2
-                   call amrGridvalues(grid%octreeRoot,positionOctal,&
-                        startOctal=foundOctal,actualSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=i)
-
-                   tempSpectrum(i) = blambda(dble(lambda(i)), dble(t1)) * dble(kabs)* dlam(i)
+!                if (t1 < 100.) write(*,*) "temp!",t1
+                do i = 1, nLambda
+                call amrGridvalues(grid%octreeRoot,positionOctal,&
+                     foundOctal=foundOctal,foundSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=i)
+                   tempSpectrum(i)= blambda(dble(lambda(i)), dble(t1)) * dble(kabs) !/ dble(lambda(i))
                    totDouble = totDouble + tempSpectrum(i)
 !                   tempSpectrum(i)= tempSpectrum(i-1) + blambda(dble(lambda(i)), dble(t1)) * dble(kabs) * dlam(i)
 !                   totDouble = totDouble + tempSpectrum(i) 
