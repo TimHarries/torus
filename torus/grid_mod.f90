@@ -230,7 +230,7 @@ contains
     allocate(initCartesianGrid%xAxis(1:nx))
     allocate(initCartesianGrid%yAxis(1:ny))
     allocate(initCartesianGrid%zAxis(1:nz))
-    allocate(initCartesianGrid%lamArray(1:ilambda))
+    allocate(initCartesianGrid%lamArray(1:nlambda))
     initCartesianGrid%nx = nx
     initCartesianGrid%ny = ny
     initCartesianGrid%nz = nz
@@ -241,7 +241,7 @@ contains
 
     
 
-    initCartesianGrid%nLambda = iLambda
+    initCartesianGrid%nLambda = nLambda
 
     allocate(initCartesianGrid%xProbDistLine(1:nx),stat=ierr)
     if (ierr /=0) then
@@ -471,7 +471,7 @@ contains
     allocate(initPolarGrid%rAxis(1:nr))
     allocate(initPolarGrid%muAxis(1:nmu))
     allocate(initPolarGrid%phiAxis(1:nphi))
-    allocate(initPolarGrid%lamArray(1:ilambda))
+    allocate(initPolarGrid%lamArray(1:nlambda))
 
     allocate(initPolarGrid%biasLine(1:nr))
     allocate(initPolarGrid%biasCont(1:nr))
@@ -489,7 +489,7 @@ contains
     initPolarGrid%na3 = nphi
 
 
-    initPolarGrid%nlambda = ilambda
+    initPolarGrid%nlambda = nlambda
 
     initPolarGrid%rho = 0.
     initPolarGrid%kappaSca = 0.
