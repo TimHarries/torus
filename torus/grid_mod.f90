@@ -1487,7 +1487,7 @@ contains
 
     if (grid%adaptive) then
        
-       resolution = 100 
+       resolution = 250 
        allocate(plane(resolution,resolution))
 
        ! we will try to slightly offset our sampling points w.r.t.

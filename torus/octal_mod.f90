@@ -52,6 +52,7 @@ MODULE octal_mod
 
     REAL, DIMENSION(8)                 :: rho            ! density
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
+    TYPE(vector), DIMENSION(8,8)       :: cornerVelocity ! velocity at corners of subcells
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
     REAL, DIMENSION(:,:), POINTER      :: kappaAbs       ! cont absorption opacities
     REAL, DIMENSION(:,:), POINTER      :: kappaSca       ! scattering opacities
@@ -72,7 +73,6 @@ MODULE octal_mod
       !   any of the normal AMR routines. They should probably be removed in the future.
     
     REAL(KIND=octalKind)               :: subcellSize    ! the size (length of a vertex) of each subcell
-    TYPE(wrapperArray),DIMENSION(:),POINTER :: neighbours ! pointers to neighbouring subcells
     
   END TYPE octal
  

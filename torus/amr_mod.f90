@@ -374,6 +374,7 @@ CONTAINS
     IF ( thisOctal%nChildren > 0 ) THEN
       ! call this subroutine recursively on each of its children
       DO i = 1, thisOctal%nChildren, 1
+      
         child => thisOctal%child(i)
         CALL countVoxels(child,nOctals,nVoxels)
       END DO
@@ -730,7 +731,7 @@ CONTAINS
         ! if there are no previously sampled points, we definitely have to take a
         !   sample here
         IF ( nSamples == 0 ) &
-          CALL takeSample(currentPoint,length,direction,octree,grid,subcell,&
+          CALL takeSample(currentPoint,length,direction,grid,octree,subcell,&
                           nSamples,maxSamples,lambda,kappaAbs,kappaSca,velocity,&
                           velocityDeriv,chiLine,levelPop,rho,usePops,iLambda,&
                           error) 
@@ -744,7 +745,7 @@ CONTAINS
         IF ( modulus(currentPoint - (startPoint + (direction *         & 
                               REAL(lambda(nSamples),KIND=octalKind)))) &
                                                > sampleLength ) THEN
-          CALL takeSample(currentPoint,length,direction,octree,grid,subcell,&
+          CALL takeSample(currentPoint,length,direction,grid,octree,subcell,&
                           nSamples,maxSamples,lambda,kappaAbs,kappaSca,velocity,&
                           velocityDeriv,chiLine,levelPop,rho,usePops,iLambda,error) 
         END IF
@@ -767,8 +768,8 @@ CONTAINS
             END IF
               
             IF (trialLength >= 0.0_oc) THEN
-              CALL takeSample(trialPoint,trialLength,direction,octree,&
-                       grid,subcell,nSamples,maxSamples,lambda,kappaAbs,&
+              CALL takeSample(trialPoint,trialLength,direction,grid, &
+                       octree,subcell,nSamples,maxSamples,lambda,kappaAbs,&
                        kappaSca,velocity,velocityDeriv,chiLine,levelPop,&
                        rho,usePops,iLambda,error) 
             ELSE
@@ -1086,7 +1087,7 @@ CONTAINS
   END SUBROUTINE getExitPoint 
 
 
-  SUBROUTINE takeSample(point,length,direction,octree,grid,subcell,nSamples,&
+  SUBROUTINE takeSample(point,length,direction,grid,thisOctal,subcell,nSamples,&
                         maxSamples,lambda,kappaAbs,kappaSca,velocity,&
                         velocityDeriv,chiLine,levelPop,rho,usePops,iLambda,error) 
   
@@ -1096,8 +1097,8 @@ CONTAINS
     TYPE(octalVector), INTENT(IN)      :: point     ! place to make sample
     REAL(KIND=octalKind), INTENT(IN)   :: length    ! 
     TYPE(octalVector), INTENT(IN)      :: direction ! direction vector
-    TYPE(octal), TARGET, INTENT(IN)            :: octree    ! amr octree
     TYPE(gridtype), INTENT(IN)         :: grid      ! grid structure
+    TYPE(octal), TARGET, INTENT(IN)    :: thisOctal ! grid structure
     INTEGER, INTENT(IN)                :: subcell   ! subcell containing 'point'
     INTEGER, INTENT(INOUT)             :: nSamples  ! number of samples so far
     INTEGER, INTENT(IN)                :: maxSamples! size of sample arrays 
@@ -1113,11 +1114,9 @@ CONTAINS
     INTEGER, INTENT(IN)                :: iLambda   ! wavelength index
     INTEGER, INTENT(INOUT)             :: error     ! error code
 
-    TYPE(octal), POINTER               :: thisOctal 
-    INTEGER                            :: dummy                 
+    TYPE(vector)                       :: directionReal ! direction vector (REAL values)
+    TYPE(octal), POINTER               :: localPointer  ! pointer to the current octal
 
-    thisOctal => octree
-    
     nSamples = nSamples + 1
     IF (nSamples > maxSamples) THEN
       PRINT *, "nSamples > maxSamples in takeSample subroutine"
@@ -1125,39 +1124,51 @@ CONTAINS
     END IF
     
     lambda(nSamples) = length
- 
-!!! Need to add in the routines to interpolate these quantities
- 
-    kappaAbs(nSamples) = octree%kappaAbs(subcell,iLambda) 
-    rho(nSamples) = octree%rho(subcell) 
-    kappaSca(nSamples) = octree%kappaSca(subcell,iLambda) 
-    velocity(nSamples) = amrGridVelocity(thisOctal,point,startOctal=thisOctal,actualSubcell=subcell)
-    velocityDeriv(nSamples) = 0.001
+    directionReal = direction
 
+    localPointer => thisOctal
 
     IF (usePops) THEN
-      levelPop(nSamples,:) = octree%n(subcell,:)
+      CALL amrGridValues(grid%octreeRoot,point,startOctal=localPointer,&
+                         actualSubcell=subcell,                        &
+                         iLambda=iLambda,                              &
+                         direction=directionReal,                      &
+                         velocity=velocity(nSamples),                  &
+                         velocityDeriv=velocityDeriv(nSamples),        &
+                         kappaAbs=kappaAbs(nSamples),                  &
+                         kappaSca=kappaSca(nSamples),                  &
+                         rho=rho(nSamples),                            &
+                         N=levelPop(nSamples,:),                       &
+                         grid=grid)
     ELSE
-      chiLine(nSamples) = octree%chiLine(subcell)
+      CALL amrGridValues(grid%octreeRoot,point,startOctal=localPointer,&
+                         actualSubcell=subcell,                        &
+                         iLambda=iLambda,                              &
+                         direction=directionReal,                      &
+                         velocity=velocity(nSamples),                  &
+                         velocityDeriv=velocityDeriv(nSamples),        &
+                         kappaAbs=kappaAbs(nSamples),                  &
+                         kappaSca=kappaSca(nSamples),                  &
+                         rho=rho(nSamples),                            &
+                         chiLine=chiLine(nSamples),                    &
+                         grid=grid)
     END IF
-  
+
     ! use variables to silence compiler warnings
     error = error
-    dummy = grid%nLambda
-    dummy = int(direction%x)
 
   END SUBROUTINE takeSample
 
+  
   SUBROUTINE amrGridValues(octalTree,point,startOctal,foundOctal,&
-                           foundSubcell,actualSubcell,velocity,  &
-                           velocityDeriv,temperature,kappaAbs,   &
+                           foundSubcell,actualSubcell,iLambda,direction,&
+                           velocity,velocityDeriv,temperature,kappaAbs,&
                            kappaSca,rho,chiLine,etaLine,etaCont, &
-                           probDistLine,       &
-                           probDistCont,N,Ne,nTot)
-    ! returns the velocity at a given point in the grid.
-    ! this function can be called with just the first two arguments.
-    !   and it will start at the root of the octal tree to locate
-    !   the correct octal.
+                           probDistLine,probDistCont,N,Ne,nTot,grid,interp)
+    ! returns one or more physical variables at a given point in the grid.
+    ! optional arguments should be specified for all of the variables that
+    !   are wanted.
+    
     ! if the foundOctal argument is supplied, it is made to point to 
     !   the octal containing 'point'.
     ! if the foundSubcell argument is supplied, it is made to point to 
@@ -1169,12 +1180,17 @@ CONTAINS
 
     IMPLICIT NONE
 
-    TYPE(octal), POINTER           :: octalTree
-    TYPE(octalVector), INTENT(IN)  :: point
-    TYPE(octal), OPTIONAL, POINTER :: startOctal
-    TYPE(octal), OPTIONAL, POINTER :: foundOctal
-    INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
-    INTEGER, INTENT(IN),  OPTIONAL :: actualSubcell
+    TYPE(octal), POINTER              :: octalTree
+    TYPE(octalVector), INTENT(IN)     :: point
+    TYPE(octal), OPTIONAL, POINTER    :: startOctal
+    TYPE(octal), OPTIONAL, POINTER    :: foundOctal
+    INTEGER, INTENT(OUT), OPTIONAL    :: foundSubcell
+    INTEGER, INTENT(IN), OPTIONAL     :: actualSubcell 
+    INTEGER, INTENT(IN), OPTIONAL     :: iLambda       ! wavelength index
+    TYPE(vector),INTENT(IN),OPTIONAL  :: direction     
+    TYPE(gridtype),INTENT(IN),OPTIONAL:: grid          
+    LOGICAL, INTENT(IN), OPTIONAL     :: interp        ! use interpolation
+                                      !  ^^^^^^ ! not implemented yet???
 
     TYPE(vector),INTENT(OUT),OPTIONAL :: velocity
     REAL,INTENT(OUT),OPTIONAL         :: velocityDeriv
@@ -1187,14 +1203,20 @@ CONTAINS
     REAL,INTENT(OUT),OPTIONAL         :: etaCont
     REAL,INTENT(OUT),OPTIONAL         :: probDistLine
     REAL,INTENT(OUT),OPTIONAL         :: probDistCont
-    REAL,INTENT(OUT),OPTIONAL         :: N
+    REAL,DIMENSION(:),INTENT(OUT),OPTIONAL :: N
     REAL,INTENT(OUT),OPTIONAL         :: Ne
     REAL,INTENT(OUT),OPTIONAL         :: nTot
     
-    TYPE(octal), POINTER           :: resultOctal
-    INTEGER                        :: subcell
     
-    LOGICAL, PARAMETER :: interp = .TRUE.
+    TYPE(octal), POINTER              :: resultOctal
+    INTEGER                           :: subcell
+    LOGICAL                           :: interpolate
+
+    IF (PRESENT(interp)) THEN
+      interpolate = interp
+    ELSE
+      interpolate = .FALSE. 
+    END IF
     
     ! first we find the correct subcell (if we need to)
     
@@ -1214,24 +1236,53 @@ CONTAINS
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
 
     END IF
-  
-    ! now we work out a set of interpolation coefficients
-    IF (interp) THEN
-       print *, 'blah' 
+ 
+    IF (interpolate) THEN
+       PRINT *, 'Interpolation not implemented!' 
+       STOP
     ELSE
       IF (PRESENT(velocity))         velocity = resultOctal%velocity(subcell)
       IF (PRESENT(temperature))   temperature = resultOctal%temperature(subcell)
-      IF (PRESENT(kappaAbs))         kappaAbs = resultOctal%kappaAbs(subcell,1)! <---
-      IF (PRESENT(kappaSca))         kappaSca = resultOctal%kappaSca(subcell,1)! <---
       IF (PRESENT(rho))                   rho = resultOctal%rho(subcell)
       IF (PRESENT(chiLine))           chiLine = resultOctal%chiLine(subcell)
       IF (PRESENT(etaLine))           etaLine = resultOctal%etaLine(subcell)
       IF (PRESENT(etaCont))           etaCont = resultOctal%etaCont(subcell)
       IF (PRESENT(probDistLine)) probDistLine = resultOctal%probDistLine(subcell)
       IF (PRESENT(probDistCont)) probDistCont = resultOctal%probDistCont(subcell)
-      IF (PRESENT(N))                       N = resultOctal%N(subcell,1) ! <---
       IF (PRESENT(Ne))                     Ne = resultOctal%Ne(subcell)
+      IF (PRESENT(N))                       N = resultOctal%N(subcell,:)
       IF (PRESENT(nTot))                 nTot = resultOctal%nTot(subcell)
+     
+      IF (PRESENT(kappaAbs)) THEN 
+        IF (PRESENT(iLambda)) THEN
+          kappaAbs = resultOctal%kappaAbs(subcell,1)
+        ELSE
+          PRINT *, 'In amrGridValues, can''t evaluate ''kappaAbs'' without',&
+                   ' ''iLambda''.'
+          STOP
+        END IF
+      END IF
+      
+      IF (PRESENT(kappaSca)) THEN 
+        IF (PRESENT(iLambda)) THEN
+          kappaSca = resultOctal%kappaSca(subcell,iLambda)
+        ELSE
+          PRINT *, 'In amrGridValues, can''t evaluate ''kappaSca'' without',&
+                   ' ''iLambda''.'
+          STOP
+        END IF
+      END IF
+
+      IF (PRESENT(velocityDeriv)) THEN
+        IF (PRESENT(direction) .AND. PRESENT(grid)) THEN
+          velocityDeriv = amrGridDirectionalDeriv(grid,point,direction,&
+                                                  startOctal=resultOctal)
+        ELSE
+          PRINT *, 'In amrGridValues, can''t evaluate ''velocityDeriv'' without',&
+                   ' ''direction'' and ''grid''.'
+          STOP
+        END IF
+      END IF
     END IF
       
 
@@ -1265,6 +1316,12 @@ CONTAINS
 
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
+
+    TYPE(octalVector)              :: centre
+    REAL(KIND=octalKind)           :: inc
+    REAL(KIND=octalKind)           :: t1, t2, t3
+    
+    
     
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
@@ -1274,22 +1331,125 @@ CONTAINS
         IF (PRESENT(foundOctal))   foundOctal   => startOctal
         IF (PRESENT(foundSubcell)) foundSubcell =  subcell
       END IF
-      
-      ! should add in some interpolation routine
-      amrGridVelocity = startOctal%velocity(subcell)
+      resultOctal => startOctal
       
     ELSE
       CALL findSubcellTD(point,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal))   foundOctal   => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
 
-      ! should add in some interpolation routine
-      amrGridVelocity = resultOctal%velocity(subcell)
-
     END IF
-  
+
+      inc = resultOctal%subcellSize / 2.0
+      centre = subcellCentre(resultOctal,subcell)
+      
+      t1 = point%x - (centre%x - inc)
+      t2 = point%y - (centre%y - inc)
+      t3 = point%z - (centre%z - inc)
+      
+      amrGridVelocity = &
+        ((1.d0-t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(subcell,1) + &
+        ((     t1) * (1.d0-t2) * (1.d0-t3)) * resultOctal%cornerVelocity(subcell,2) + &
+        ((1.d0-t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(subcell,3) + &
+        ((     t1) * (     t2) * (1.d0-t3)) * resultOctal%cornerVelocity(subcell,4) + &
+        ((1.d0-t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(subcell,5) + &
+        ((     t1) * (1.d0-t2) * (     t3)) * resultOctal%cornerVelocity(subcell,6) + &
+        ((1.d0-t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(subcell,7) + &
+        ((     t1) * (     t2) * (     t3)) * resultOctal%cornerVelocity(subcell,8)
+      
+
   END FUNCTION amrGridVelocity
 
+  FUNCTION amrGridDirectionalDeriv(grid,position,direction,startOctal,&
+                                   foundOctal,foundSubcell) 
+    ! returns the directional derivative of velocity at a given point
+    !   in the grid.
+    ! this function can be called with just the first three arguments
+    !   and it will start at the root of the octal tree to locate
+    !   the correct octal.
+    ! if the foundOctal argument is supplied, it is made to point to 
+    !   the octal containing 'position'.
+    ! if the foundSubcell argument is supplied, it is made to point to 
+    !   the subcell containing 'position'.
+    ! if the startOctal argument is supplied, the function uses a 
+    !   local search for the correct octal starting at that octal.
+
+    IMPLICIT NONE
+
+    TYPE(gridtype), INTENT(IN)     :: grid 
+    REAL                           :: amrGridDirectionalDeriv
+    TYPE(octalVector), INTENT(IN)  :: position
+    TYPE(vector), INTENT(IN)       :: direction
+    TYPE(octal), OPTIONAL, POINTER :: startOctal
+    TYPE(octal), OPTIONAL, POINTER :: foundOctal
+    INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
+
+    TYPE(octalVector)              :: octalDirection
+    TYPE(octal), POINTER           :: firstOctal
+    REAL(KIND=octalKind)           :: dr, dx, dphi
+    REAL(KIND=octalKind)           :: r
+    REAL(KIND=octalKind)           :: phi1, phi2
+    TYPE(octalVector)              :: position1
+    TYPE(octalVector)              :: position2
+    INTEGER                        :: subcell
+    
+    octalDirection = direction
+    
+    ! dr is a small increment of distance
+    dr = grid%halfSmallestSubcell * 2.0 
+
+    ! get a new position a little way back from current position
+    position1 = position - (dr * octalDirection)
+    
+    ! this might be inside core or outside grid - in which case
+    !   just use the current position as the first point
+
+    r = modulus(position1)
+    IF (.NOT. inOctal(grid%octreeRoot,position1) .OR. (r < grid%rCore)) THEN
+      position1 = position
+    END IF
+      
+    ! first line of sight velocity
+    phi1 = direction .dot. AMRgridVelocity(grid%octreeRoot,position1,&
+                                        startOctal=startOctal,&
+                                        foundOctal=firstOctal)
+                                        
+    
+    ! now go forward a bit from current position
+    position2 = position + (dr * octalDirection)
+
+    ! check we're still inside grid
+    r = modulus(position2)
+    IF (.NOT. inOctal(grid%octreeRoot,position2) .OR. (r < grid%rCore)) THEN
+      position2 = position
+    END IF
+
+    ! the second position l.o.s. velocity
+    phi2 = direction .dot. AMRgridVelocity(grid%octreeRoot,position2,&
+                                        startOctal=firstOctal,&
+                                        foundOctal=foundOctal,&
+                                        foundSubcell=subcell)
+
+    IF (PRESENT(foundSubcell)) foundSubcell = subcell                                        
+
+    dx = modulus(position2 - position1)
+
+    dphi = phi2 - phi1
+
+    ! the line of sight velocity gradient
+
+    IF (dx /=0.) THEN
+       amrGridDirectionalDeriv = (abs(dphi / dx))
+    ELSE
+       amrGridDirectionalDeriv = 1.e-10
+    ENDIF
+
+    IF (amrGridDirectionalDeriv == 0.) amrGridDirectionalDeriv = 1.e-10
+
+
+  END FUNCTION amrGridDirectionalDeriv
+
+    
   FUNCTION amrGridKappaAbs(octalTree,point,iLambda,startOctal,&
                            foundOctal,foundSubcell,actualSubcell) 
     ! returns the continuous absorption opacity at a given point in the grid.
@@ -1798,269 +1958,6 @@ CONTAINS
 
   END SUBROUTINE smoothAMRgrid
 
-
-  RECURSIVE SUBROUTINE createNeighbourLinks(thisOctal,grid)
-    ! creates pointers to the neighbouring octals of each subcell.
-  
-    IMPLICIT NONE
-
-    TYPE(octal), POINTER             :: thisOctal
-    TYPE(gridtype), INTENT(INOUT)    :: grid 
-    
-    INTEGER              :: i, j
-    REAL(KIND=octalKind) :: halfSmallestSubcell
-    TYPE(octal), POINTER :: child
-    INTEGER              :: subcell
-    INTEGER, DIMENSION(56) :: nNeighbours
-    TYPE(octalWrapper),DIMENSION(:,:), ALLOCATABLE :: tempNeighbours ! temporary array
-    TYPE(octalVector)    :: corner
-    LOGICAL, PARAMETER   :: plus  = .TRUE.
-    LOGICAL, PARAMETER   :: minus = .FALSE.
-
-    nNeighbours(:) = 0
-    halfSmallestSubcell = grid%halfSmallestSubcell
-    
-    ! we will find the coordinates of a point that lies outside the current
-    !   octal. we then compare the size of the cell that contains that point
-    !   with the size of the current cell, if it is bigger be more than a 
-    !   factor of 'factor', we subdivide the neighbouring cell.
-    ! we do this in each of six directions
-
-    ! we will first store the neighbour pointers in a temporary (oversized) array,
-    !  once we know the total number of neighbours, we will allocate an array of 
-    !  the correct size in 'thisOctal'. 
-    ALLOCATE(tempNeighbours(56, (NINT(grid%smoothingfactor**2)+grid%maxDepth) ))
-
-    
-    DO subcell = 1, 8, 1
-      
-      SELECT CASE (subcell)
-
-      CASE (1) 
-        corner = octalVector(thisOctal%centre%x - thisOctal%subcellSize,&  
-                             thisOctal%centre%y - thisOctal%subcellSize,&  
-                             thisOctal%centre%z - thisOctal%subcellSize)   
-        CALL stepAlong(minus, plus,minus, 2, 0,tempNeighbours( 9,:),nNeighbours( 9),corner)
-        CALL stepAlong( plus, plus,minus, 1, 2,tempNeighbours(10,:),nNeighbours(10),corner)
-        CALL stepAlong(minus,minus,minus, 0, 0,tempNeighbours(13,:),nNeighbours(13),corner)
-        CALL stepAlong( plus,minus,minus, 1, 0,tempNeighbours(14,:),nNeighbours(14),corner)
-        
-       
-        CALL stepAlong(minus, plus, plus, 2, 3,tempNeighbours(23,:),nNeighbours(23),corner)
-        CALL stepAlong(minus,minus, plus, 3, 0,tempNeighbours(25,:),nNeighbours(25),corner)
-        CALL stepAlong( plus,minus, plus, 1, 3,tempNeighbours(26,:),nNeighbours(26),corner)
-        
-      CASE (2) 
-        corner = octalVector(thisOctal%centre%x + thisOctal%subcellSize,&  
-                             thisOctal%centre%y - thisOctal%subcellSize,&  
-                             thisOctal%centre%z - thisOctal%subcellSize)   
-        
-        CALL stepAlong(minus, plus,minus,-1, 2,tempNeighbours(11,:),nNeighbours(11),corner)
-        CALL stepAlong( plus, plus,minus, 2, 0,tempNeighbours(12,:),nNeighbours(12),corner)
-        CALL stepAlong(minus,minus,minus,-1, 0,tempNeighbours(15,:),nNeighbours(15),corner)
-        CALL stepAlong( plus,minus,minus, 0, 0,tempNeighbours(16,:),nNeighbours(16),corner)
-        
-       
-        CALL stepAlong( plus, plus, plus, 2, 3,tempNeighbours(24,:),nNeighbours(24),corner)
-        CALL stepAlong(minus,minus, plus,-1, 3,tempNeighbours(27,:),nNeighbours(27),corner)
-        CALL stepAlong( plus,minus, plus, 3, 0,tempNeighbours(28,:),nNeighbours(28),corner)
-
-      END SELECT
-
-    END DO
-    
-    ! now we copy the data out of the temporary arrays into the octal structure
-    ALLOCATE(thisOctal%neighbours(56))
-    
-    DO i = 1, 56
-       IF (nNeighbours(i) > 0) THEN
-       
-         ALLOCATE(thisOctal%neighbours(i)%wrappers(nNeighbours(i)))
-         FORALL( j = 1:nNeighbours(i)) 
-           thisOctal%neighbours(i)%wrappers(j)%content => tempNeighbours(i,j)%content
-! this next line crashes NAG f95:
-!           thisOctal%neighbours(i)%wrappers(j)%inUse   =  tempNeighbours(i,j)%inUse
-! temporary fix:
-            thisOctal%neighbours(i)%wrappers(j)%inUse   =  .TRUE.
-         END FORALL
-       ELSE
-          NULLIFY(thisOctal%neighbours(i)%wrappers)
-       END IF
-    END DO
-
-    DEALLOCATE(tempNeighbours)
-               
-    ! if the subcells have children, we call the subroutine recursively
-    DO i = 1, thisOctal%nChildren, 1
-      child => thisOctal%child(i)
-      CALL createNeighbourLinks(child,grid)
-    END DO
-
-
-  CONTAINS
-
-    SUBROUTINE stepAlong(incX,incY,incZ,firstDirection,secondDirection,thisNeighbour,nPoints,corner) 
-    
-      LOGICAL, INTENT(IN)  :: incX, incY, incZ
-      INTEGER, INTENT(IN)  :: firstDirection
-      INTEGER, INTENT(IN)  :: secondDirection
-      TYPE(octalWrapper),DIMENSION(:),INTENT(INOUT) :: thisNeighbour 
-      INTEGER, INTENT(OUT) :: nPoints
-      TYPE(octalVector), INTENT(IN) :: corner
-      
-      TYPE(octalVector)    :: point
-      TYPE(octalVector)    :: startPoint
-      INTEGER              :: iStep1, iStep2
-      INTEGER              :: nSteps
-      INTEGER              :: iPoint
-      TYPE(octal), POINTER :: neighbourPointer
-      INTEGER              :: neighbourSubcell
-      REAL(KIND=octalKind) :: stepSize
-      LOGICAL              :: alreadyStored
-      
-      startPoint = corner 
-      IF (incX) THEN
-        startPoint%x = startPoint%x + grid%halfSmallestSubcell
-      ELSE 
-        startPoint%x = startPoint%x - grid%halfSmallestSubcell
-      END IF
-      
-      IF (incY) THEN
-        startPoint%y = startPoint%y + grid%halfSmallestSubcell
-      ELSE 
-        startPoint%y = startPoint%y - grid%halfSmallestSubcell
-      END IF
-      
-      IF (incZ) THEN
-        startPoint%z = startPoint%z + grid%halfSmallestSubcell
-      ELSE 
-        startPoint%z = startPoint%z - grid%halfSmallestSubcell
-      END IF
-   
-   
-      ! if firstDirection is 1,  this means we are moving in the positive x-direction
-      !   if firstDirection is -1, this means we are moving in the negative x-direction
-      !   if firstDirection is 2,  we are moving in the positive y-direction
-      !   and so on... 
-      ! secondDirection works the same way
-      ! if secondDirection is zero, we search a line instead of a plane 
-      ! if first and second directions are zero, we do not search at all 
-   
-      neighbourPointer => thisOctal
-      nPoints = 0
-     
-      IF (.NOT. inOctal(grid%octreeRoot,startPoint)) THEN
-        RETURN
-      ELSE
-      
-        !CALL findSubcellLocal(startPoint,neighbourPointer,neighbourSubcell)
-        CALL findSubcellTD(startPoint,grid%octreeRoot,neighbourPointer,neighbourSubcell)
-        
-        ! if the neighbouring subcell is bigger than the subcells of 
-        !   'thisOctal' it must be the only neighbour 
-        IF (thisOctal%subcellSize < neighbourPointer%subcellSize) THEN
-          nPoints = 1  
-          thisNeighbour(1)%content => neighbourPointer
-          thisNeighbour(1)%inUse(neighbourSubcell) = .TRUE.
-          nPoints = 1
-          
-        ELSE ! there are multiple neighbours
-      
-          ! we move through the neighbouring cell.
-          ! rather than work out where the cell boundaries are, we will
-          !   use a brute-force approach. the maximum distance we move is
-          !   set by the size of the grid smoothing factor.
-        
-          nSteps = NINT(2.0**(INT(LOG(grid%smoothingfactor)/LOG(2.0)))) - 1  
-          stepSize = thisOctal%subcellSize / 2**(INT(LOG(grid%smoothingfactor)/LOG(2.0))) 
-          
-        
-          DO iStep1 = 0, nSteps, 1
-            point = startPoint
-            
-            ! we now need to do the direction specific stuff
-            SELECT CASE (firstDirection)
-
-            CASE (-3)
-              point%z = point%z - REAL(iStep1) * stepSize 
-            CASE (-2)
-              point%y = point%y - REAL(iStep1) * stepSize 
-            CASE (-1) 
-              point%x = point%x - REAL(iStep1) * stepSize 
-            CASE ( 0)
-              ! do nothing
-            CASE ( 1) 
-              point%x = point%x + REAL(iStep1) * stepSize 
-            CASE ( 2) 
-              point%y = point%y + REAL(iStep1) * stepSize 
-            CASE ( 3)
-              point%z = point%z + REAL(iStep1) * stepSize 
-
-            END SELECT
-
-            DO iStep2 = 0, nSteps, 1
-
-              SELECT CASE (secondDirection)
-
-              CASE (-3)
-                point%z = point%z - REAL(iStep2) * stepSize 
-              CASE (-2)
-                point%y = point%y - REAL(iStep2) * stepSize 
-              CASE (-1) 
-                point%x = point%x - REAL(iStep2) * stepSize
-              CASE ( 0)
-                ! do nothing
-              CASE ( 1) 
-                point%x = point%x + REAL(iStep2) * stepSize 
-              CASE ( 2) 
-                point%y = point%y + REAL(iStep2) * stepSize 
-              CASE ( 3)
-                point%z = point%z + REAL(iStep2) * stepSize 
-
-              END SELECT
-              
-              ! now that we've moved 'point' to a new poition, we find
-              !   the subcell that it lies in
-        !      CALL findSubcellLocal(point,neighbourPointer,neighbourSubcell)
-        CALL findSubcellTD(point,grid%octreeRoot,neighbourPointer,neighbourSubcell)
-
-              ! we search the pointers we have already stored to see if 
-              !   the current subcell is already there
-              alreadyStored = .FALSE.
-
-              DO iPoint = 1, nPoints, 1
-               !IF (neighbourPointer%centre == thisNeighbour(iPoint)%content%centre .AND. & 
-               IF (ASSOCIATED(neighbourPointer,thisNeighbour(iPoint)%content) .AND. & 
-                   thisNeighbour(iPoint)%inUse(neighbourSubcell)) THEN
-                  alreadyStored = .TRUE.
-                  EXIT
-                END IF
-              END DO
-
-              ! we add the subcell to the array
-              IF (.NOT. alreadyStored) THEN
-                nPoints = nPoints + 1
-                thisNeighbour(nPoints)%content => neighbourPointer
-                thisNeighbour(nPoints)%inUse(neighbourSubcell) = .TRUE.
-              END IF
-
-              IF (secondDirection == 0) EXIT
-              
-            END DO ! iStep2
-            
-            IF (firstDirection == 0) EXIT
-             
-          END DO ! iStep1
-
-        END IF ! single or multiple neighbours
-        
-      END IF ! point lies within grid
-         
-    END SUBROUTINE stepAlong
-  
-  END SUBROUTINE createNeighbourLinks
-
-
   RECURSIVE SUBROUTINE findSubcellTD(point,currentOctal,resultOctal,subcell)
   ! finds the octal (and that octal's subcell) containing a point.
   !   only searches in downwards direction (TD = top-down) , so
@@ -2092,54 +1989,93 @@ CONTAINS
 
   END SUBROUTINE findSubcellTD
 
-  RECURSIVE SUBROUTINE findSubcellLocal(point,thisOctal,subcell)
-  ! finds the octal (and that octal's subcell) containing a point.
-  !   starts searching from the current octal, and goes up and down the
-  !   tree as needed to find the correct octal.
+
+  SUBROUTINE findSubcellLocal(point,thisOctal,subcell)
+    ! finds the octal (and that octal's subcell) containing a point.
+    !   starts searching from the current octal, and goes up and down the
+    !   tree as needed to find the correct octal.
 
     IMPLICIT NONE
 
     TYPE(octalVector), INTENT(IN) :: point
-    TYPE(octal), INTENT(INOUT) :: thisOctal
-    INTEGER, INTENT(OUT) :: subcell
+    TYPE(octal),POINTER    :: thisOctal
+    INTEGER, INTENT(OUT)   :: subcell
     
-    TYPE(octal), POINTER :: nextOctal 
+    LOGICAL                :: haveDescended    ! see comments below
+    LOGICAL                :: boundaryProblem  ! see comments below
+    
+                             
+    haveDescended = .FALSE.   ! if the 'point' lies very close to an 
+    boundaryProblem = .FALSE. !   boundary, the program may go into 
+                              !   a loop going up and down the tree.
+                              ! we will keep track of the progress of
+                              !   the search using these flags.
+                              
+    CALL findSubcellLocalPrivate(point,thisOctal,subcell,&
+                                 haveDescended,boundaryProblem)
+                                 
+  CONTAINS
 
-    INTEGER :: i
-
-    IF ( inOctal(thisOctal,point) ) THEN
+    RECURSIVE SUBROUTINE findSubcellLocalPrivate(point,thisOctal,subcell,&
+                                                 haveDescended,boundaryProblem)
+      TYPE(octalVector), INTENT(IN) :: point
+      TYPE(octal),POINTER    :: thisOctal
+      INTEGER, INTENT(OUT)   :: subcell
+      LOGICAL, INTENT(INOUT) :: haveDescended
+      LOGICAL, INTENT(INOUT) :: boundaryProblem
       
-      ! if the point lies within the current octal, we identify the
-      !   subcell
-      subcell = whichSubcell(thisOctal,point)
-
-      ! if the subcell has a child, we look in the child for the point
-      IF ( thisOctal%hasChild(subcell) ) THEN
-        ! search the index to see where it is stored
-        DO i = 1, 8, 1
-          IF ( thisOctal%indexChild(i) == subcell ) THEN
-            nextOctal => thisOctal%child(i)
-            CALL findSubcellLocal(point,nextOctal,subcell)
-            EXIT
-          END IF
-        END DO
-      END IF
-
-    ELSE
-      ! if the point is outside the current octal, we look in its
-      !   parent octal
-
-      ! first check that we are not outside the grid
-      IF ( thisOctal%nDepth == 1 ) THEN
-        PRINT *, 'Panic: In findSubcellLocal, point is outside the grid'
-!        STOP
-         DO ; END DO
-      END IF
-
-      nextOctal => thisOctal%parent
-      CALL findSubcellLocal(point,nextOctal,subcell)
+      INTEGER :: i
       
-    END IF    
+      IF ( inOctal(thisOctal,point) ) THEN
+
+        haveDescended = .TRUE. ! record that we have gone down the tree.
+      
+        ! if the point lies within the current octal, we identify the
+        !   subcell
+        subcell = whichSubcell(thisOctal,point)
+
+        ! if a problem has been detected, this is where we complete the search
+        IF (boundaryProblem) RETURN 
+      
+        ! if the subcell has a child, we look in the child for the point
+        IF ( thisOctal%hasChild(subcell) ) THEN
+                
+          ! search the index to see where it is stored
+          DO i = 1, thisOctal%nChildren, 1
+            IF ( thisOctal%indexChild(i) == subcell ) THEN
+                    
+              thisOctal => thisOctal%child(i)
+              CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
+              RETURN
+              
+            END IF
+          END DO
+          
+        ELSE 
+          RETURN
+        END IF
+
+      ELSE
+        ! if the point is outside the current octal, we look in its
+        !   parent octal
+
+        ! first check that we are not outside the grid
+        IF ( thisOctal%nDepth == 1 ) THEN
+          PRINT *, 'Panic: In findSubcellLocal, point is outside the grid'
+!          STOP
+           DO ; END DO
+        END IF
+     
+        ! if we have previously gone down the tree, and are now going back up, there
+        !   must be a problem.
+        IF (haveDescended) boundaryProblem = .TRUE.
+        
+        thisOctal => thisOctal%parent
+        CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
+       
+      END IF    
+    
+    END SUBROUTINE findSubcellLocalPrivate
 
   END SUBROUTINE findSubcellLocal
    
@@ -2524,14 +2460,14 @@ CONTAINS
                  nSamples,maxSamples,distances,dummy,dummy, &
                  dummyVel,dummy,dummy,dummyPops,densities,.false.,&
                  hitCore,.false.,1,error)
- 
+
     IF (nSamples <= 1 .OR. error /= 0)  THEN  
       rho = 0.0
     ELSE
       rho = 0.0
       DO iSample = 2, nSamples, 1
          rho = rho + ( (densities(iSample) + densities(iSample-1)) / 2.0 ) * &
-                    ABS(distances(iSample-1) - distances(iSample)  )
+                    ABS(distances(iSample-1) - distances(iSample) * 1.e10  )                    
       END DO
     END IF
 
@@ -2559,6 +2495,57 @@ CONTAINS
     thisOctal%biasCont3D(subcell) = 1.0 
 
   END SUBROUTINE fillGridDummyValues
+
+  
+  SUBROUTINE fillVelocityCorners(thisOctal,grid,velocityFunc)
+    ! store the velocity values at the subcell corners of an octal so
+    !   that they can be used for interpolation.
+    ! this is currently very inefficient, many of the points are identical.
+    ! it should probably be changed later.
+
+    IMPLICIT NONE
+  
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    TYPE(gridtype), INTENT(IN) :: grid
+
+    INTEGER              :: subcell
+    TYPE(octalVector)    :: centre
+    REAL(KIND=octalKind) :: inc
+    
+    INTERFACE 
+      TYPE(vector) FUNCTION velocityFunc(point,grid)
+        USE vector_mod
+        USE gridtype_mod
+        TYPE(octalVector), INTENT(IN) :: point
+        TYPE(gridtype), INTENT(IN)    :: grid
+      END FUNCTION velocityFunc
+    END INTERFACE
+
+    inc = thisOctal%subcellSize / 2.0
+        
+    DO subcell = 1, 8, 1
+    
+      centre = subcellCentre(thisOctal,subcell)
+
+      thisOctal%cornerVelocity(subcell,1) = velocityFunc(centre + &
+         octalVector( (-1.0*inc), (-1.0*inc), (-1.0*inc)),grid)
+      thisOctal%cornerVelocity(subcell,2) = velocityFunc(centre + &
+         octalVector( ( 1.0*inc), (-1.0*inc), (-1.0*inc)),grid)
+      thisOctal%cornerVelocity(subcell,3) = velocityFunc(centre + &
+         octalVector( (-1.0*inc), ( 1.0*inc), (-1.0*inc)),grid)
+      thisOctal%cornerVelocity(subcell,4) = velocityFunc(centre + &
+         octalVector( ( 1.0*inc), ( 1.0*inc), (-1.0*inc)),grid)
+      thisOctal%cornerVelocity(subcell,5) = velocityFunc(centre + &
+         octalVector( (-1.0*inc), (-1.0*inc), ( 1.0*inc)),grid)
+      thisOctal%cornerVelocity(subcell,6) = velocityFunc(centre + &
+         octalVector( ( 1.0*inc), (-1.0*inc), ( 1.0*inc)),grid)
+      thisOctal%cornerVelocity(subcell,7) = velocityFunc(centre + &
+         octalVector( (-1.0*inc), ( 1.0*inc), ( 1.0*inc)),grid)
+      thisOctal%cornerVelocity(subcell,8) = velocityFunc(centre + &
+         octalVector( ( 1.0*inc), ( 1.0*inc), ( 1.0*inc)),grid)
+    END DO
+      
+  END SUBROUTINE fillVelocityCorners
 
 
   PURE FUNCTION TTauriDensity(point,grid) RESULT(rho)
@@ -2605,7 +2592,11 @@ CONTAINS
     END IF
    
     theta = ACOS( pointVec%z  / r )
-    rM  = r / SIN(theta)**2
+    IF (ABS(MODULO(theta,pi)) > 1.e-10 ) THEN 
+      rM  = r / SIN(theta)**2
+    ELSE
+      rM = HUGE(rM)
+    END IF
      
     ! test if the point lies outside the accretion stream
     IF  ((rM > diskRinner) .AND. (rM < diskRouter )) THEN
@@ -2621,6 +2612,66 @@ CONTAINS
     
   END FUNCTION TTauriDensity
 
+  TYPE(vector) PURE FUNCTION TTauriVelocity(point,grid)
+    ! calculates the velocity vector at a given point for a model
+    !   of a T Tauri star with magnetospheric accretion
+    ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
+
+    USE parameters_mod
+
+    IMPLICIT NONE
+
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+
+    TYPE(octalVector) :: starPosn
+    TYPE(octalVector) :: pointVec
+    TYPE(vector)      :: vP
+    REAL              :: modVp
+    REAL              :: rStar
+    REAL              :: diskRinner
+    REAL              :: diskRouter
+    REAL              :: phi
+    REAL              :: r, rM, theta, y
+
+    starPosn = grid%starPos1
+    rStar  = TTauriRstar / 1.e10
+    diskRinner = TTauriRinner / 1.e10
+    diskRouter = TTauriRouter / 1.e10
+ 
+    pointVec = (point - starPosn)
+    r = modulus( pointVec ) 
+    theta = ACOS( pointVec%z / r )
+    rM  = r / SIN(theta)**2
+    y = SIN(theta)**2 
+
+    ! test if the point lies within the star
+    IF ( r < rStar ) THEN
+      TTauriVelocity = vector(0.0,0.0,0.0)
+      
+    ! test if the point lies too close to the disk
+    ELSE IF ( ABS(pointVec%z) < 4.0e-2 * rStar) THEN
+      TTauriVelocity = vector(0.0,0.0,0.0)
+   
+    ! test if the point lies outside the accretion stream
+    ELSE IF ((rM > diskRinner) .AND. (rM < diskRouter )) THEN
+  
+      vP = vector(3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y)), &
+                  0.0, &
+                 (2.0 - 3.0 * y) / SQRT(4.0 - 3.0 * y))
+      modVp = SQRT((2.0 * bigG * TTauriMstar / rStar) * &
+                     (rStar/r - rStar/rM))
+      vP = (-1.0 * (modVp/cSpeed)) * vP
+      phi = ATAN2(pointVec%y,pointVec%x)
+      vP = rotateZ(vP,phi) 
+      IF (theta > pi/2.0) vP%z = -vP%z
+      TTauriVelocity = vP
+
+    ELSE
+      TTauriVelocity = vector(0.0,0.0,0.0)
+    END IF
+
+  END FUNCTION TTauriVelocity
 
   SUBROUTINE calcTTauriMassVelocity(thisOctal,subcell,grid) 
     ! calculates some of the variables at a given point for a model
@@ -2648,7 +2699,7 @@ CONTAINS
     REAL :: diskRouter
     REAL :: phi
     REAL :: r, rM, theta, y
-    
+
     starPosn = grid%starPos1
     rStar  = TTauriRstar / 1.e10
     diskRinner = TTauriRinner / 1.e10
@@ -2702,9 +2753,11 @@ CONTAINS
         thisOctal%velocity(subcell) = vector(0.0,0.0,0.0)
       END IF
 
+      IF (subcell == 8) CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity)
 
   END SUBROUTINE calcTTauriMassVelocity
-    
+
+  
   PURE SUBROUTINE calcTTauriTemperature(thisOctal,subcell) 
     ! calculates the temperature in an octal for a model
     !   of a T Tauri star with magnetospheric accretion
@@ -2731,6 +2784,7 @@ CONTAINS
     thisOctal%biasLine3D(subcell) = 1.0
   
   END SUBROUTINE calcTTauriTemperature
+
 
   subroutine initTTauriAMR(grid,Laccretion,Taccretion,&
                            sAccretion,newContFile)
