@@ -297,7 +297,9 @@ contains
     ! Make sure this is true oterwise it won't be calculated
     ! in Lucy's radiative equiiliburium rouinine!!!    
 
-    if (thisOctal%rho(subcell) > 1.d-20) then
+    if (grid%geometry == "cluster") then
+       thisOctal%inFlow(subcell) = .true.
+    elseif (thisOctal%rho(subcell) > 1.d-20) then
        thisOctal%inFlow(subcell) = .true.  
     else
        thisOctal%inFlow(subcell) = .false.
@@ -476,7 +478,7 @@ contains
     
     rho_ave = rho_ave*udent  ! [g/cm^3]
 
-    rho_ave = rho_ave*1.0d13 ! just for debug
+!    rho_ave = rho_ave*1.0d13 ! just for debug
 
     
     

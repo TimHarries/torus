@@ -6,7 +6,7 @@ MODULE octal_mod
 
   USE kind_mod
   USE vector_mod
-  USE linked_list_class
+!  USE linked_list_class
   
   
   IMPLICIT NONE

@@ -253,7 +253,7 @@ contains
     logical, intent(in) :: restart
     !
     !
-    type(link_node), save, pointer :: pnode
+    !    type(link_node), save, pointer :: pnode
 
     if (restart) then
        list%current => list%head

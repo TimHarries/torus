@@ -1084,11 +1084,6 @@ program torus
 
 
 
-
-
-
-  call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
-  
   if (lucyRadiativeEq) then
 
      call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
@@ -1107,7 +1102,8 @@ program torus
      if (grid%geometry == "testamr") call setBiasAMR(grid%octreeRoot, grid)
 
      call plot_AMR_values(grid, "etaCont", "x-z", 0.0, "etacont.ps/vcps", .true., .false.)
-     call plot_AMR_values(grid, "temperature", "x-z", 0.0, "temperature.ps/vcps", .true., .false.)
+!     call plot_AMR_values(grid, "temperature", "x-z", 0.0, "temperature.ps/vcps", .true., .false.)
+     call plot_AMR_planes(grid, "temperature", "x-z", 15, "temperature", .true., .false.)
 
      call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 

@@ -367,7 +367,7 @@ contains
     nRemoved = 1
     do while (nRemoved > 0)
     do iIter = 1, nIter
-       call plot_AMR_values(grid, "temperature", "x-y", 0.0, "/xs", .false., .true.)
+!       call plot_AMR_values(grid, "temperature", "x-y", 0.0, "/xs", .false., .true.)
 
 
        call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
@@ -845,7 +845,7 @@ contains
              thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * (thisOctal%temperature(subcell)**4)
              totalEmission = totalEmission + thisOctal%etaCont(subcell) * V
              nDT = nDT  + 1
-             meanDeltaT = meanDeltaT + deltaT
+!RK.. This is not used nor inilialized.         meanDeltaT = meanDeltaT + deltaT
           else 
              thisOctal%etaCont(subcell) = 0.
           endif

@@ -17,7 +17,9 @@ module sph_data_class
        get_time, &
        get_gaspartmass, &
        get_position_gas_partilce, &
+       put_position_gas_partilce, &
        get_rhon, &
+       put_rhon, &
        get_position_pt_mass, &
        get_pt_mass, &
        get_rhon_min, &
@@ -28,11 +30,11 @@ module sph_data_class
 
   ! At a given time (time)
   type sph_data
-!     private  ! Believe me. It's better to be private!    
+     private  ! Believe me. It's better to be private!    
      double precision :: udist, umass, utime    ! Units of distance, mass, time in cgs
      !                                          ! (umass is M_sol, udist=0.1 pc)
      integer          :: npart                  ! Number of gas particles
-     double precision :: time                   ! Time of dump (in units of utime)
+     double precision :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
      double precision :: gaspartmass            ! Mass of each gas particle
      ! Positions of gas particles
@@ -49,32 +51,21 @@ module sph_data_class
   
   
 contains  
-  
-  !
-  !
-  ! Read in the data from a file, allocate the array memory, and store the
-  ! the number of gas and stars in this object.
-  !
-  subroutine read_sph_data(this, filename)
+
+
+  ! 
+  ! Initializes an object with parameters (if possible).
+  ! 
+  subroutine init_sph_data(this, udist, umass, utime, npart, time, nptmass, gaspartmass)
     implicit none
     type(sph_data), intent(inout) :: this
-    character(LEN=*), intent(in)  :: filename
-    !   
-    integer, parameter  :: LUIN = 10 ! logical unit # of the data file
-    double precision :: udist, umass, utime,  time,  gaspartmass
-    integer :: npart,  nptmass
-    double precision, allocatable :: dummy(:)
+    double precision, intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
+    !                                                       ! (umass is M_sol, udist=0.1 pc)
+    integer, intent(in)           :: npart                  ! Number of gas particles
+    double precision, intent(in)  :: time                   ! Time of sph data dump (in units of utime)
+    integer, intent(in)           :: nptmass                ! Number of stars/brown dwarfs
+    double precision, intent(in)  :: gaspartmass            ! Mass of each gas particle
 
-!    ! for debug
-!    double precision :: d, r
-!    integer :: i
-    
-    open(unit=LUIN, file=TRIM(filename), form='unformatted')
-    
-
-    ! reading in the first line
-    READ(LUIN) udist, umass, utime, npart, time, nptmass, gaspartmass
-    
     ! save these values in this object
     this%udist = udist
     this%umass = umass
@@ -91,7 +82,7 @@ contains
     ALLOCATE(this%yn(npart))
     ALLOCATE(this%zn(npart))
     ALLOCATE(this%rhon(npart))
-    ALLOCATE(dummy(npart))
+
 
     ! -- for star positions
     ALLOCATE(this%x(nptmass))
@@ -100,8 +91,43 @@ contains
     
     ! -- for mass of stars
     ALLOCATE(this%ptmass(nptmass))
+    
+    
+  end subroutine init_sph_data
+
+  
+  !
+  !
+  ! Read in the data from a file, allocate the array memory, and store the
+  ! the number of gas and stars in this object.
+  !
+  subroutine read_sph_data(this, filename)
+    implicit none
+    type(sph_data), intent(inout) :: this
+    character(LEN=*), intent(in)  :: filename
+    !   
+    integer, parameter  :: LUIN = 10 ! logical unit # of the data file
+    double precision :: udist, umass, utime,  time,  gaspartmass
+    integer :: npart,  nptmass
+    double precision, allocatable :: dummy(:)     
+
+!    ! for debug
+!    double precision :: d, r
+!    integer :: i
+    
+    open(unit=LUIN, file=TRIM(filename), form='unformatted')
+    
+
+    ! reading in the first line
+    READ(LUIN) udist, umass, utime, npart, time, nptmass, gaspartmass
+
+
+    ! initilaizing the sph_data object (allocating arrays, saving parameters and so on....)
+    call init_sph_data(this, udist, umass, utime, npart, time, nptmass, gaspartmass)
+
 
     ! reading the positions  of gas particles and stars,
+    ALLOCATE(dummy(npart))
 
     write(*,*) ' '
     write(*,*) 'Reading Matthew''s SPH data....'
@@ -228,6 +254,32 @@ contains
     
   end subroutine get_position_gas_particle
 
+  !
+  ! saves the position of the i_th gas particle in this object. 
+  !
+  ! "name" must be one of the following: "x", "y", "z"
+  ! x, y, z are in [udist] ... See the type definition section.
+  subroutine put_position_gas_particle(this, i, name, value)
+    implicit none    
+    type(sph_data), intent(inout) :: this
+    integer, intent(in) :: i
+    character(LEN=*), intent(in) :: name
+    double precision, intent(in) :: value
+    
+    select case(name)
+    case ("x", "X")
+       this%xn(i) = value
+    case ("y", "Y") 
+       this%yn(i) = value
+    case ("z", "Z") 
+       this%zn(i) = value
+    case default
+       write(*,*) "Error: Unknown name passed to sph_data_class::put_position_gas_particle."
+       stop
+    end select
+    
+  end subroutine put_position_gas_particle
+
 
   ! Returns the density of gas particle at the postion of
   ! i-th particle.
@@ -241,6 +293,19 @@ contains
     out  = this%rhon(i)
     
   end function get_rhon
+
+  ! Assigns the density of gas particle at the postion of
+  ! i-th particle.
+  
+  subroutine put_rhon(this, i, value)
+    implicit none
+    type(sph_data), intent(inout) :: this
+    integer, intent(in) :: i
+    double precision, intent(in) :: value
+
+    this%rhon(i) = value
+    
+  end subroutine put_rhon
    
 
   

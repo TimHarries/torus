@@ -138,7 +138,6 @@ contains
             
        out = tmp * (wavelength - this_filter%wavelength(i))  &
             &        + this_filter%response_function(i) 
-
     end if
     
   end function response
@@ -209,7 +208,7 @@ contains
     ! 
     ! F100: 90 to 110 micron
     call init_filter(F100, "F100",  nlam, 90.0d4, 110.0d4)
-    F001%response_function(:) = 1.0d0  ! set everything to 1.0
+    F100%response_function(:) = 1.0d0  ! set everything to 1.0
     
 
     !

@@ -277,7 +277,7 @@ contains
     real, intent(out) :: log_L  ! L in [L_sun]
     real, intent(out)  :: log_T  ! T in Kelvins
 
-    integer :: i, j, im, ia, nmass, nage
+    integer :: i, im, ia, nmass, nage
     real :: tmp, f1, f2
     
     nmass = this%nmass; nage = this%nage
