@@ -108,7 +108,7 @@
         debug)
         touch make.depends
         make -e depends
-        make -e DEBUG="-g -C" MATHTRAP=" " FASTFLAG=" "
+        make -e DEBUG="-g" MATHTRAP=" " FASTFLAG=" "
         ;;
 
         profile)

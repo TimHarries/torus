@@ -1,4 +1,3 @@
-
 ! this module contains the description of the 3d grid of opacity arrays
 ! and contains subroutines to initialize the grid with a variety of 
 ! geometries.
@@ -483,6 +482,7 @@ contains
                            sAccretion,newContFile)
     case ("jets") 
        call initJetsAMR(grid)
+
     case DEFAULT
        print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'
        print *, '            for use with an adaptive grid.'
@@ -658,25 +658,28 @@ contains
   ! sets up an ellipsoidal of constant density - suitable for dusty
   ! envelopes
 
-  subroutine fillGridEllipse(grid, rho, rMin, rMaj)
+  subroutine fillGridEllipse(grid, rho, rMin, rMaj, teff)
 
 
     implicit none
-    integer, parameter :: nRmaj = 100
+    integer, parameter :: nRmaj = 200
     type(GRIDTYPE) :: grid
-    real :: x,y,z,r
+    real :: x,y,z,r,r1
     real :: phi
     real :: rho
-    real :: rMaj, rMin
-    integer, parameter :: nPhi = 200
+    real :: teff
+    real :: rMaj, rMin, rInner
+    integer, parameter :: nPhi = 500
     integer :: i, j, k
     integer :: i1, i2, i3, i4
 
     grid%geometry = "ellipse"
 
     grid%rCore = rSol / 1.e10
-    grid%lCore = lSol
+    grid%lCore = fourPi * stefanBoltz * grid%rCore**2 * 1.e20 * teff**4
     grid%inUse = .false.
+
+    rInner = rSol * 11.7 / 1.e10
 
     grid%temperature = 100.
 
@@ -705,6 +708,7 @@ contains
     grid%yAxis = grid%yAxis * rMaj * 1.1
     grid%zAxis = grid%zAxis * rMaj * 1.1
 
+    grid%inUse = .false.
 
     ! use spherical polars to compute ellipsoid
 
@@ -729,11 +733,26 @@ contains
           call locate(grid%zAxis,grid%nz,z,i3)
           call locate(grid%zAxis,grid%nz,-z,i4)
           do k = min(i3,i4), max(i3,i4)
-             Grid%rho(i1,i2,k) = rho    
-             grid%inUse(i1,i2,k) = .true.
+             r1 = sqrt(x**2 + y**2 + grid%zAxis(k)**2)
+             if (r1 > rInner) then
+                Grid%rho(i1,i2,k) = rho * (rInner / r1)**2
+                grid%inUse(i1,i2,k) = .true.
+             endif
           enddo
        enddo
     enddo
+
+    open(22,file="temps.dat",status="unknown",form="unformatted")
+    do i = 1, grid%nx
+       do j = 1, grid%ny
+          do k = 1, grid%nz
+             read(22) grid%temperature(i,j,k),grid%etaCont(i,j,k)
+          enddo
+       enddo
+    enddo
+    close(22)
+
+
 
   end subroutine fillGridEllipse
 
@@ -1003,7 +1022,9 @@ contains
     grid%xAxis = grid%xAxis / 1.e10
     grid%yAxis = grid%yAxis / 1.e10
     grid%zAxis = grid%zAxis / 1.e10
-
+    grid%temperature = 100.
+    grid%lCore = fourPi * stefanBoltz *rsol**2 * 4000.**4
+    grid%rCore = 2.* rsol / 1.e10
 
   end subroutine fillGridTorus
 
@@ -4238,6 +4259,7 @@ contains
     type(VECTOR) :: rVec, tubeVec, offset
 
     integer :: i, j, k
+    integer ::  j1, k1
     real :: t1, t2, t3
     integer :: i1, i2, i3
     real :: gridSize
@@ -4245,6 +4267,7 @@ contains
     real :: outflowSpeed = 1220. * 10e5
     real :: temperature
     real :: rho
+    integer, allocatable :: bigDensity(:,:,:)
     real :: thisDist, thisTime
     real :: theta, phi
     integer , parameter :: nAng = 360
@@ -4252,69 +4275,58 @@ contains
     real :: r
     real :: alpha
     real :: teff
-    real :: kfac
+    real :: kfac, tmp
 
     write(*,'(a)') "Filling with WR104 model..."
-    gridSize = 2000. * AUtoCM / 1.e10
-    tubeRadius = 100. * AUtoCM 
+
+    allocate(bigDensity(1:304,1:304,1:304))
+    open(20,file="wr104_density.dat",form="unformatted",status="old")
+    do i = 1, 304
+       do j = 1, 304
+          read(20) bigDensity(i,j,1:304)
+       enddo
+    enddo
+    close(20)
+
     grid%inUse = .false.
-    grid%temperature = 10.
-    grid%etaCont = 0.
-    temperature = 1000.
+    grid%rho = 1.e-30
+    
     do i = 1, grid%nx
-       grid%xAxis(i) = 2.*real(i-1)/real(grid%nx-1) - 1.
-    enddo
-
-    do i = 1, grid%ny
-       grid%yAxis(i) = 2.*real(i-1)/real(grid%ny-1) - 1.
-    enddo
-
-    do i = 1, grid%nz
-       grid%zAxis(i) = 2.*real(i-1)/real(grid%nz-1) - 1.
-    enddo
-
-    grid%xAxis = grid%xAxis * gridSize
-    grid%yAxis = grid%yAxis * gridSize
-    grid%zAxis = grid%zAxis * gridSize
-
-    offSet = VECTOR(2.*tubeRadius,0.,0.)
-    do i = 1, nAng
-       theta = real(i-1)/real(nAng-1) * twoPi * 2.
-       thisTime = real(i-1)/real(nAng-1) * 220. * 24.* 60. * 60. * 2.
-       thisDist = thisTime * outflowSpeed 
-       kFac = 220. * 24.* 60. * 60. * 2. * outflowSpeed / fourPi
-       do j = 1, nAng
-          phi = real(j-1)/real(nAng-1) * twoPi
-          do k = 1, nRad
-             r = tubeRadius * real(k-1)/real(nRad-1)
-             alpha = atan2(kFac,thisDist)
-             rVec = VECTOR(thisDist, 0., 0.)
-             rVec = rotateZ(rVec, theta)
-             tubeVec = VECTOR(r * cos(phi), 0., r*sin(phi))
-             tubeVec = rotateZ(tubeVec, theta)
-             tubeVec = rotateZ(tubeVec, -alpha)
-             rVec = rVec + tubeVec 
-             rVec = rVec + offSet
-             rVec = rVec / 1.e10
-             
-             if (.not.outsideGrid(rVec, grid)) then
-                call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
-                grid%rho(i1,i2,i3) = rho
-                grid%inUse(i1,i2,i3) = .true.
-                grid%temperature(i1,i2,i3) = temperature
-             endif
+       do j = 1, grid%ny
+          do k = 1, grid%nz
+             i1 = (i-1)*3 + 1
+             j1 = (j-1)*3 + 1
+             k1 = (k-1)*3 + 1
+             tmp  = SUM(real(bigDensity(i1:i1+2,j1:j1+2,k1:k1+2)))
+             tmp = tmp / 9.
+             grid%rho(k,j,i) = tmp / 1.e12
           enddo
        enddo
     enddo
-!    rVec=VECTOR(0., 0., 0.)
-!    call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
-!    grid%rho(i1,i2,i3) = 1.e-30
-!    grid%temperature(i1,i2,i3) = 1.
-!    grid%inUse(i1,i2,i3) = .false.
 
+
+    do i = 1, grid%nx
+       grid%xAxis(i) = 2.*real(i-1)/real(grid%nx-1)-1.
+       grid%yAxis(i) = 2.*real(i-1)/real(grid%ny-1)-1.
+       grid%zAxis(i) = 2.*real(i-1)/real(grid%nz-1)-1.
+    enddo
+
+    i1 = (grid%nx / 2) + 1
+    j1 = (grid%ny / 2) + 1
+    k1 = (grid%nz / 2) + 1
+
+    grid%rho(i1-2:i1+2,j1-2:j1+2,k1-2:k1+2) = 0
+
+    grid%xAxis = 151.*grid%xAxis * 1600. * pctocm * (3.e-3 * arcsec) / 1.e10
+    grid%yAxis = 151.*grid%yAxis * 1600. * pctocm * (3.e-3 * arcsec) / 1.e10
+    grid%zAxis = 151.*grid%zAxis * 1600. * pctocm * (3.e-3 * arcsec) / 1.e10
+    grid%temperature = 100.
 
     grid%rCore = 20.*rSol / 1.e10
     grid%lCore = fourPi * stefanBoltz * (20.*rSol)**2 * teff**4
+
+    where (grid%rho /= 0.) grid%inUse = .true.
+    where (grid%rho == 0.) grid%rho = 1.e-30
 
     write(*,'(a)') "done."
 
@@ -4701,6 +4713,20 @@ contains
      end if
 
   end subroutine readDouble2D
+
+  subroutine initTestAmr(grid)
+    use input_variables
+    type(GRIDTYPE) :: grid
+
+    grid%geometry = "amrtest"
+
+    grid%rCore = rSol / 1.e10
+    grid%lCore = fourPi * stefanBoltz * grid%rCore**2 * 1.e20 * teff**4
+    grid%inUse = .false.
+    rInner = rSol * 11.7 / 1.e10
+
+  end subroutine initTestAmr
+
 
 end module grid_mod
 

@@ -1,4 +1,4 @@
-subroutine fillGridMie(grid, scale, aMin, aMax, qDist, grainType)
+subroutine fillGridMie2(grid, scale, aMin, aMax, qDist, grainType)
 
   use gridtype_mod
   use grid_mod
@@ -68,5 +68,5 @@ subroutine fillGridMie(grid, scale, aMin, aMax, qDist, grainType)
   grid%kappaSca = grid%kappaSca * 1.e10
 
   write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
-end subroutine fillGridMie
+end subroutine fillGridMie2
 

@@ -332,7 +332,7 @@ contains
 
     fac1 = (2.*hCgs*nu**3)/cSpeed**2
     fac3 =  (hCgs*nu)/ (kErg * T) 
-    if (fac3 > 500.d0) then
+    if (fac3 > 70.d0) then
        fac2 = 0.d0
     else
        fac2 = 1.d0/(exp(fac3) - 1.d0)
@@ -346,7 +346,7 @@ contains
 
     fac1 = (2.*hCgs*cSpeed**2)/(lambda *1.d-8)**5
     fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T) 
-    if (fac3 > 500.d0) then
+    if (fac3 > 70.d0) then
        fac2 = 0.d0
     else
        fac2 = 1.d0/(exp(fac3) - 1.d0)

@@ -1141,6 +1141,33 @@ contains
     
   end function arbitraryRotateOctal
 
+  type(VECTOR) function fromPhotosphereVector(rVec)
+    real :: ang, z
+    type(VECTOR) :: norm, zAxis, v, rVec, n
+    
+    zAxis = VECTOR(0.,0.,1.)
 
+    norm = rVec
+    call normalize(norm)
+
+    call random_number(z)
+    z = sqrt(z)
+
+    ang = acos(z)
+    n = norm .cross. zAxis
+    call normalize(n)
+    v = norm
+
+    v = arbitraryRotateSingle(v, ang, n)
+    call random_number(ang)
+    ang = ang * twoPi
+    v = arbitraryRotateSingle(v, ang, norm)
+
+    fromPhotosphereVector = v
+  end function fromPhotosphereVector
+
+
+
+  
 end module vector_mod
 

@@ -1,6 +1,6 @@
 
       subroutine mieDistPhaseMatrix(aMin, aMax, qDist, lambda, &
-                                costheta, mieMatrix, grainType)
+                                costheta, mieMatrix, cmr, cmi)
 
       use constants_mod
       use phasematrix_mod
@@ -17,7 +17,6 @@
       real ::  x, cmr, cmi,  t, theta, costh, rn, p1, p2
       real :: logamax, logamin
       integer :: nc,nci,n, i, n1,j
-      character(len=*) :: grainType
 
       real :: p11, pl, p33p11, p34p11
       
@@ -53,20 +52,15 @@
       real :: a1,a2,loga1,loga2
       real :: tot
       real :: p11tot, pltot, p33p11tot, p34p11tot
+      real :: micronsTocm
       ci = (0.0,1.0)
 
       ! for amorphous carbon grains we assume we're in the rayleigh regime
 
-      if (grainType .eq. "amorphous") then
-         mieMatrix = fillRayleigh(costheta)
-         goto 666
-      endif
-
-      call getRefractiveIndex(lambda, grainType, cmr, cmi)      
       cm = cmplx(cmr,cmi)
 
 
-
+      micronsTocm = 1.e-4
 
       p11tot = 0.
       pltot = 0.
@@ -93,9 +87,9 @@
         a2 = exp(loga2)
         da = a2 - a1
         a = 0.5*(a1+a2)
-        x = 2.*pi*a/(lambda*1.e-8)
-
-        gfac = pi*a**2
+        x = 2.*pi*(a * micronsToCm)/(lambda*1.e-8)
+        x = max(1.e-5, x)
+        gfac = pi*(a * micronsToCm)**2
 
 !     .........................................
 !     .  set the complex index of refraction  .
@@ -181,8 +175,9 @@
         a2 = exp(loga2)
         da = a2 - a1
         a = 0.5*(a1+a2)
-        x = 2.*pi*a/(lambda*1.e-8)
-        gfac = pi*a**2
+        x = 2.*pi*(a * micronsToCm)/(lambda*1.e-8)
+        x = max(1.e-5,x)
+        gfac = pi*(a * micronsTocm)**2
       
 
 !     .........................................
@@ -418,3 +413,31 @@
       end 
 
 
+      subroutine genlgp2(theta,pnmllg,nc)
+!     ........................................................
+!     .  calculate associated Legendre functions (argument   .
+!     .    cos(theta)) divided by sin(theta) for m = 1       .
+!     .  generate first two orders by formula and remaining  .
+!     .    orders by recursion                               .
+!     .                                                      .
+!     .  pnmllg = associated Legendre function/sin(theta)    .
+!     .  nc = number of orders (0 to nc-1)                   .
+!     .  the order of the associated Legendre functions is   .
+!     .    incremented by one in the pnmllg(*) array         .
+!     ........................................................
+      real pnmllg(nc)
+      costh = cos(theta)
+!     ..............................
+!     .  calculate orders 0 and 1  .
+!     ..............................
+      pnmllg(1) = 0.0                                                
+      pnmllg(2) = 1.0                                                
+!     .................................................
+!     .  recur upward to obtain all remaining orders  .
+!     .................................................
+      do n = 3,nc 
+      rn = real(n-1)
+      pnmllg(n) = ((2.0*rn-1.0)*costh*pnmllg(n-1) &
+                  -rn*pnmllg(n-2))/(rn-1.0)     
+   enddo
+      end 

@@ -40,6 +40,7 @@ program torus
   use lucy_mod
   use amr_mod
   use jets_mod
+  use dust_mod
 
   implicit none
 
@@ -55,7 +56,7 @@ program torus
   type(GRIDTYPE) :: grid
 
   integer :: iPhase
-
+  logical :: sed
   real :: totLineEmission
   real :: totContinuumEmission
   real :: totCoreContinuumEmission
@@ -82,6 +83,7 @@ program torus
   real, allocatable :: tauSca(:)
   real, allocatable :: lambda(:)
 
+  real, allocatable :: mReal(:), mImg(:)
 
   real, allocatable :: kappaAbs(:), kappaSca(:), kappaExt(:)
   real :: dlambda, thisTau
@@ -276,6 +278,7 @@ program torus
   ! initialize
 
   useNdf = .true.
+  sed = .false.
   movie = .false.
   thinLine = .false.
   rotateView = .false.
@@ -459,6 +462,8 @@ program torus
 
   ! a few dynamic arrays
 
+  if (mie) sed = .true.
+
   allocate(miePhase(1:nLambda,1:nMumie))
   allocate(kappaExt(1:nLambda))
   allocate(kappaAbs(1:nLambda))
@@ -598,7 +603,7 @@ program torus
         case("flared")
            call fillGridFlaredDisk(grid, meanDustParticleMass)
         case("ellipse")
-           call fillGridEllipse(Grid,rho, rMin, rMaj)
+           call fillGridEllipse(Grid,rho, rMin, rMaj, teff)
         case("disk")
            call fillGridDisk(grid, rho, rCore, rInner, rOuter, height, mCore, diskTemp)
         case("star")
@@ -735,6 +740,7 @@ program torus
   ! The source spectrum is normally a black body
 
   if (.not.grid%lineEmission) then
+     stot = 0.
      do i = 1, nLambda
         sourceSpectrum(i) = bLambda(dble(xArray(i)), dble(teff))
         stot = stot + sourceSpectrum(i)
@@ -759,14 +765,21 @@ program torus
 
   if (mie) then
      write(*,'(a)') "Computing Mie phase grid..."
+
+     allocate(mReal(1:nLambda))
+     allocate(mImg(1:nLambda))
+     call getRefractiveIndex(xArray, nLambda, graintype, mReal, mImg)
+
      do i = 1, nLambda
         do j = 1, nMumie
            mu = 2.*real(j-1)/real(nMumie-1)-1.
            call mieDistPhaseMatrix(aMin, aMax, qDist, xArray(i), &
-                mu, miePhase(i,j), grainType)
+                mu, miePhase(i,j), mReal(i), mImg(i))
 
         enddo
      enddo
+     deallocate(mReal)
+     deallocate(mImg)
      write(*,'(a)') "Completed."
   endif
 
@@ -986,7 +999,7 @@ program torus
         case("sphere")
            call fillGridSpheriod(grid, rho, radius, kFac)
         case("ellipse")
-           call fillGridEllipse(Grid,rho,  rMin, rMaj)
+           call fillGridEllipse(Grid,rho,  rMin, rMaj, teff)
         case("flared")
 !           call fillGridFlaredDisk(grid)
         case("disk")
@@ -1155,7 +1168,7 @@ program torus
                          write(*,*) '   Error encountered in cross-sections!!! (error = ',intPathError,')'
                        end if
      else
-        call integratePath(lamArray(1),  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePath(5500.,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
@@ -1178,7 +1191,7 @@ program torus
                          write(*,*) '   Error encountered in cross-sections!!! (error = ',intPathError,')'
                        end if
      else
-        call integratePath(lamArray(1), lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePath(5500., lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(0.,1.,0.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
@@ -1202,7 +1215,7 @@ program torus
                          write(*,*) '   Error encountered in cross-sections!!! (error = ',intPathError,')'
                        end if
      else
-        call integratePath(lamArray(1),  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePath(5500.,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
@@ -1227,7 +1240,7 @@ program torus
             write(*,*) '   Error encountered in test towards observer!!! (error = ',intPathError,')'
           end if
      else
-        call integratePath(lamLine,  lamLine, VECTOR(1.,1.,1.), &
+        call integratePath(5500.,  lamLine, VECTOR(1.,1.,1.), &
           zeroVec, outVec, grid, lambda, &
           tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
           .false., lamStart, lamEnd, nLambda, contTau, &
@@ -1674,6 +1687,7 @@ print *, 'nu = ',nu
               meanr_line = meanr_line + modulus(thisPhoton%position)*thisPhoton%stokes%i
               wtot_line = wtot_line + thisPhoton%stokes%i
            endif
+
 
 
            iLambda = findIlambda(thisPhoton%lambda, xArray, nLambda, ok)
@@ -2308,14 +2322,6 @@ print *, 'nu = ',nu
 
      enddo
 
-! fudge !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-     yArray(1) = yArray(2)
-     yArray(nLambda) = yArray(nLambda-3)
-     yArray(nLambda-1) = yArray(nLambda-3)
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
 
      write(*,*) " "
      write(*,'(a)') "Model summary"
@@ -2344,10 +2350,10 @@ print *, 'nu = ',nu
 
 
      if (nPhase == 1) then
-        call  writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, normalizeSpectrum, useNdf)
+        call  writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, normalizeSpectrum, useNdf, sed)
      else
         write(specFile,'(a,i3.3)') trim(outfile),iPhase
-        call  writeSpectrum(specFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, normalizeSpectrum, useNdf)
+        call  writeSpectrum(specFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, normalizeSpectrum, useNdf, sed)
         if (doRaman) then
            write(o6filename,'(a,a,i3.3,a)') trim(outfile),"_o6_",iPhase,".dat"
            open(20,file=o6filename,status="unknown",form="formatted")
@@ -2422,7 +2428,7 @@ end program torus
 
 
 subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
-     normalizeSpectrum, useNdf)
+     normalizeSpectrum, useNdf, sed)
 
   use phasematrix_mod
 
@@ -2432,12 +2438,13 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   real :: xArray(nLambda)
   logical :: useNdf
   integer :: nOuterLoop
-  logical :: normalizeSpectrum
+  logical :: normalizeSpectrum, sed
   type(STOKESVECTOR) :: yArray(nLambda), errorArray(nOuterloop,nLambda)
   type(STOKESVECTOR),pointer :: ytmpArray(:)
   real, allocatable :: meanQ(:), meanU(:), sigQ(:), sigU(:)
   real, allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
   real, allocatable :: stokes_u(:), stokes_uv(:)
+  real :: tot, dlam
   real :: x
   integer :: i
 
@@ -2495,6 +2502,31 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   stokes_u = ytmpArray%u
   stokes_qv = (ytmpArray%i * sigQ)**2
   stokes_uv = (ytmpArray%i * sigU)**2
+
+  if (sed) then
+     write(*,'(a)') "Writing spectrum as normalized lambda F_lambda"
+     tot = 0.
+     dlam = (xArray(2)-xArray(1))
+     tot = tot + stokes_i(1) * dlam
+     dlam = (xArray(nLambda)-xArray(nLambda-1))
+     tot = tot + stokes_i(nLambda) * dlam
+     do i = 2, nLambda-1
+        dlam = 0.5*((xArray(i+1)+xArray(i))-(xArray(i)+xArray(i-1)))
+        tot = tot + stokes_i(i) * dlam
+     enddo
+
+     stokes_i = stokes_i / tot
+     stokes_q = stokes_q / tot
+     stokes_u = stokes_u / tot
+     stokes_qv = stokes_qv / tot**2
+     stokes_uv = stokes_uv / tot**2
+     
+     stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda)
+     stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)
+     stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda)
+     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2
+     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2
+  endif
 
   if (useNdf) then
      call wrtsp(nLambda,stokes_i,stokes_q,stokes_qv,stokes_u, &

@@ -1,4 +1,4 @@
-subroutine getRefractiveIndex(lambda, grainType, mReal, mImg)
+subroutine getRefractiveIndex2(lambda, grainType, mReal, mImg)
  use constants_mod
  use utils_mod
  use unix_mod
@@ -87,4 +87,4 @@ case DEFAULT
  
 end select
 
-end subroutine getRefractiveIndex
+end subroutine getRefractiveIndex2

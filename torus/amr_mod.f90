@@ -2900,7 +2900,30 @@ CONTAINS
 
 
   end subroutine initTTauriAMR
-  
-  
+
+  subroutine calcTestDensity(thisOctal, subcell, grid)
+
+    use constants_mod
+    use vector_mod
+    use input_variables
+    use parameters_mod
+    type(GRIDTYPE), intent(out)  :: grid 
+    type(octal), intent(inout) :: thisOctal
+    integer, intent(in) :: subcell
+    type(VECTOR) :: rVec
+    real :: r
+    
+    rVec = subcellCentre(thisOctal,subcell)
+    r = modulus(rVec) 
+
+    thisOctal%rho(subcell) = 0.
+
+    if (r > rInner) then
+       thisOctal%rho(subcell) = rho * (rInner / r)**2
+    endif
+  end subroutine calcTestDensity
+
+
+
 END MODULE amr_mod
 

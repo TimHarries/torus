@@ -444,10 +444,7 @@ contains
        if ((grid%cartesian.or.grid%adaptive) .and.     &
                          (.not.grid%lineEmission)) then
 
-          ! cartesian photons are produced at the grid centre, or at
-          ! the second source position
-
-          thisPhoton%position = VECTOR(0.,0.,0.)
+          thisPhoton%position = grid%rCore * randomUnitVector()
           
                   
           if (photonFromEnvelope) then
@@ -794,6 +791,8 @@ contains
           iLambda = int(r1*real(nLambda))+1
           thisPhoton%lambda = lambda(iLambda)
        endif
+
+
        
        if (.not.flatspec) then
           if (photonFromEnvelope) then
@@ -812,7 +811,8 @@ contains
                 enddo
              else 
                 do i = 1, nLambda
-                   tempSpectrum(i) = blambda(dble(lambda(i)),dble(grid%temperature(i1,i2,i3)))*grid%kappaAbs(i1,i2,i3,iLambda)
+                   tempSpectrum(i) = blambda(dble(lambda(i)),dble(grid%temperature(i1,i2,i3)))*grid%kappaAbs(i1,i2,i3,i) &
+                        /(lambda(i)*angstromtocm)
                    tot = tot + tempSpectrum(i)
                 enddo
              end if 

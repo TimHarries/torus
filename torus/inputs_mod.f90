@@ -475,15 +475,15 @@ endif
 
  if (geometry(1:7) .eq. "ellipse") then
    call getReal("rmaj", rmaj, cLine, nLines, &
-     "rMajor (AU): ", "(a,f5.1,a)", 0.5, ok, .true.)
+     "rMajor (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
    call getReal("rmin", rmin, cLine, nLines, &
-     "rMinor (AU): ", "(a,f5.1,a)", 0.5, ok, .true.)
+     "rMinor (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
     call getReal("rho", rho, cLine, nLines, &
     "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 1.e-6, ok, .true.)
     call getReal("teff", teff, cLine, nLines, &
          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-    rmaj = rmaj * AUtocm / 1.e10
-    rmin = rmin * AUtocm / 1.e10
+    rmaj = rmaj * rSol / 1.e10
+    rmin = rmin * rSol / 1.e10
  endif
 
  if (geometry(1:4) .eq. "disk") then
@@ -736,16 +736,18 @@ endif
    "TiO opacity: ","(a,1l,a)", .false., ok, .false.)
 
  if (fillTio.or.mie) then
+
+! amin and amax are left as microns here
+
     call getReal("amin", aMin, cLine, nLines, &
-         "Min grain size (microns): ","(a,f8.5,1x,a)", 0.0005, ok,  .false.)
-    aMin = aMin * 1.e-4
+         "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .false.)
 
     call getReal("amax", aMax, cLine, nLines, &
          "Max grain size (microns): ","(a,f8.5,1x,a)", 0.25, ok, .false.)
-    aMax = aMax * 1.e-4
 
     call getReal("qdist", qdist, cLine, nLines, &
-         "Grain power law: ","(a,f4.1,1x,a)", -3.5, ok, .false. )
+         "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .false. )
+
  endif
 
 

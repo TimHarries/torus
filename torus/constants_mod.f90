@@ -20,6 +20,9 @@ module constants_mod
   real, parameter :: radToDeg = 180./pi
   real, parameter :: oneByRootTwo = 1./1.4142136
   real, parameter :: radiansToArcSec = radToDeg * 60. * 60.
+  real, parameter :: arcsec = 1./3600. * degtorad
+
+
   ! times
 
   real, parameter :: secsToYears = 1./(365.25*24.*3600.)
