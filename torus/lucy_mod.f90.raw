@@ -7,6 +7,7 @@ module lucy_mod
   use amr_mod
   use source_mod
   use spectrum_mod
+  use parallel_mod
   use timing
   implicit none
 
@@ -261,7 +262,6 @@ contains
        call pgwedg("RI", 0.,10., fg,bg," ")
        call pgbox('bcnst',0,0,'bcnst',0,0)
        call pgend
-
     enddo
     open(21,file="r.dat",status="unknown",form="formatted")
     do i = 1, 100
@@ -361,20 +361,28 @@ contains
     integer       :: imonte_beg, imonte_end  ! the index boundary for the photon loops.
 
 !$MPI    ! For MPI implementations
-!$MPI    integer       ::   my_rank        ! my processor rank
-!$MPI    integer, save ::   np             ! The number of processes
-!$MPI    integer       ::   ierr           ! error flag
-!$MPI    integer       :: n_rmdr, m
+!$MPI  ! For MPI implementations =====================================================
+!$MPI  integer ::   my_rank        ! my processor rank
+!$MPI  integer ::   n_proc         ! The number of processes
+!$MPI  integer ::   ierr           ! error flag
+!$MPI  integer ::   n_rmdr, m      !
+!$MPI  integer ::   mphotons       ! number of photons (actual) 
+!$MPI  integer ::   tempInt        !
+!$MPI  real, dimension(:), allocatable :: tempRealArray
+!$MPI  real, dimension(:), allocatable :: tempRealArray2
+!$MPI  integer, dimension(:), allocatable :: photonBelongsRank
+!$MPI  integer, parameter :: tag = 0
+!$MPI  logical :: rankComplete
 !$MPI    ! data space to store values from all processors
 !$MPI    real, save, allocatable  :: buffer_real(:)     
 !$MPI    logical, save  :: first_time = .true.
 !$MPI
-!$MPI    ! find the number of the processors for the first time.    
-!$MPI    if (first_time) then
-!$MPI       call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-!$MPI       allocate(buffer_real(np))
-!$MPI       first_time = .false.
-!$MPI    end if
+!!$MPI    ! find the number of the processors for the first time.    
+!!$MPI    if (first_time) then
+!!$MPI       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
+!!$MPI       allocate(buffer_real(n_proc))
+!!$MPI       first_time = .false.
+!!$MPI    end if
 !$MPI
 !$MPI
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
@@ -382,15 +390,18 @@ contains
 !$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
 !$MPI  
 !$MPI    ! Find the total # of precessor being used in this run
-!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
 !$MPI    
+!$MPI       allocate(buffer_real(n_proc))
 !$MPI    if (my_rank .eq. 0) then
 !$MPI       print *, ' '
-!$MPI       print *, 'Lucy radiative equilibrium routine computed by ', np, ' processors.'
+!$MPI       print *, 'Lucy radiative equilibrium routine computed by ', n_proc, ' processors.'
 !$MPI       print *, ' '
 !$MPI    endif
 !$MPI    
 !$MPI    ! ============================================================================
+
+
 
 
 
@@ -523,37 +534,69 @@ contains
 
        imonte_beg=1; imonte_end=nMonte  ! default value
 
-!$MPI       ! Set the range of index for a photon loop used later.     
-!$MPI       n_rmdr = MOD(nMonte,np)
-!$MPI       m = nMonte/np
-!$MPI
-!$MPI       if (my_rank .lt. n_rmdr ) then
-!$MPI          imonte_beg = (m+1)*my_rank + 1
-!$MPI          imonte_end = imonte_beg + m
-!$MPI       else
-!$MPI          imonte_beg = m*my_rank + 1 + n_rmdr
-!$MPI          imonte_end = imonte_beg + m -1
-!$MPI       end if
-!$MPI   !    print *, ' '
-!$MPI   !    print *, 'imonte_beg = ', imonte_beg
-!$MPI   !    print *, 'imonte_end = ', imonte_end
-!$MPI  
-!$MPI      
-!$MPI       !  Just for safety.
-!$MPI       if (imonte_end .gt. nMonte .or. imonte_beg < 1) then
-!$MPI          print *, 'Index out of range: i_beg and i_end must be ' 
-!$MPI          print *, ' 0< index < ', nMonte , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
-!$MPI          print *, 'imonte_beg = ', imonte_beg
-!$MPI          print *, 'imonte_end = ', imonte_end
-!$MPI          stop
-!$MPI       end if
+!!$MPI       ! Set the range of index for a photon loop used later.     
+!!$MPI       n_rmdr = MOD(nMonte,np)
+!!$MPI       m = nMonte/np
+!!$MPI
+!!$MPI       if (my_rank .lt. n_rmdr ) then
+!!$MPI          imonte_beg = (m+1)*my_rank + 1
+!!$MPI          imonte_end = imonte_beg + m
+!!$MPI       else
+!!$MPI          imonte_beg = m*my_rank + 1 + n_rmdr
+!!$MPI          imonte_end = imonte_beg + m -1
+!!$MPI       end if
+!!$MPI   !    print *, ' '
+!!$MPI   !    print *, 'imonte_beg = ', imonte_beg
+!!$MPI   !    print *, 'imonte_end = ', imonte_end
+!!$MPI  
+!!$MPI      
+!!$MPI       !  Just for safety.
+!!$MPI       if (imonte_end .gt. nMonte .or. imonte_beg < 1) then
+!!$MPI          print *, 'Index out of range: i_beg and i_end must be ' 
+!!$MPI          print *, ' 0< index < ', nMonte , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
+!!$MPI          print *, 'imonte_beg = ', imonte_beg
+!!$MPI          print *, 'imonte_end = ', imonte_end
+!!$MPI          stop
+!!$MPI       end if
+
+
+
+
+!$MPI  !====================================================================================
+!$MPI  ! Splitting the innerPhoton loop for multiple processors.
+!$MPI  if (my_rank == 0) then
+!$MPI     print *, ' '
+!$MPI     print *, 'photonLoop computed by ', n_proc-1, ' processors.'
+!$MPI     print *, ' '
+!$MPI  endif
+!$MPI  if (my_rank == 0) then
+!$MPI     ! we will use an array to store the rank of the process
+!$MPI     !   which will calculate each photon
+!$MPI     allocate(photonBelongsRank(nMonte))
+!$MPI    
+!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=40,tag=tag,&
+!$MPI                          setDebug=.false.)
+!$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
+!$MPI  end if
+!$MPI  !====================================================================================
+
+!$MPI    
+!$MPI    
+!$MPI  if (my_rank /= 0) then
+!$MPI    mpiBlockLoop: do  
+!$MPI      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
+!$MPI      if (rankComplete) exit mpiBlockLoop  
+!$MPI    
 
 
 !!$OMP DO SCHEDULE(DYNAMIC,10)
 !$OMP DO SCHEDULE(STATIC,10)
        avedirection = OCTALVECTOR(0.d0, 0.d0, 0.d0)
-       do iMonte = imonte_beg, imonte_end
+       photonloop: do iMonte = imonte_beg, imonte_end
 
+!$MPI !  if (MOD(i,n_proc) /= my_rank) cycle photonLoop
+
+!$MPI !  if (MOD(i,n_proc) /= my_rank) goto 999
 
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
@@ -629,7 +672,12 @@ contains
              endif
           enddo
 
-       enddo
+       enddo photonLoop
+
+!$MPI    end do mpiBlockLoop  
+!$MPI  end if ! (my_rank /= 0)
+
+
 !$OMP END DO
 !$OMP CRITICAL (update)
       nScat = nScat_sub  + nScat   ! sum from each thread for OpenMP
@@ -1071,7 +1119,7 @@ contains
     type(octal), pointer  :: child 
     type(gridtype) :: grid
     integer :: subcell, i
-    integer, parameter :: minCrossings = 30
+    integer, parameter :: minCrossings = 50
     real(oct) :: V, epsOverDeltaT
     real(oct) :: adot
     real(oct) :: kappaP, norm

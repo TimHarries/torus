@@ -1,4 +1,4 @@
-!
+
 ! this module sets up the stokes vector type and the corresponding
 ! phase matrix type. It includes subroutines to create and
 ! apply phase matrices
@@ -328,7 +328,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
      stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
      stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
      
-! convert to erg/s/A to erg/s/cm^2/A
+     ! convert to erg/s/A to erg/s/cm^2/A
      
      area =  objectDistance**2  ! (nb flux is alread per sterad)
      !
@@ -383,11 +383,11 @@ endif
 
      tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
      
-     stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda) * 10.
-     stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda) * 10.
-     stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda) * 10.
-     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2  * 100.
-     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2 * 100.
+     stokes_i(1:nLambda) = stokes_i(1:nLambda) * tmpxArray(1:nLambda) * 10.
+     stokes_q(1:nLambda) = stokes_q(1:nLambda) * tmpxArray(1:nLambda) * 10.
+     stokes_u(1:nLambda) = stokes_u(1:nLambda) * tmpxArray(1:nLambda) * 10.
+     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * tmpxArray(1:nLambda)**2  * 100.
+     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * tmpxArray(1:nLambda)**2 * 100.
   else 
     tmpXarray = xArray
   endif

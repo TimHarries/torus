@@ -224,7 +224,7 @@ subroutine inputs()
      call getLogical("stateq1stoctant", statEq1stOctant, cLine, nLines, &
           "amrStateq is performed only in 1st octant: ","(a,1l,1x,a)", .false., ok, .false.)
      call getLogical("nophaseupdate", noPhaseUpdate, cLine, nLines, &
-          "Disable updating AMR grid at each phase: ","(a,1l,1x,a)", .false., ok, .false.)
+          "Disable updating AMR grid at each phase: ","(a,1l,1x,a)", .true., ok, .false.)
      call getLogical("2donly", amr2dOnly, cLine, nLines, &
           "Only use 2D plane in AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
      if (amr2dOnly .and. .not. statEq2d) then
@@ -909,22 +909,6 @@ endif
  if (mie) then
     call getLogical("lucyrad", lucyRadiativeEq, cLine, nLines, &
          "Lucy radiative equ.: ","(a,1l,1x,a)", .false., ok, .true.)
-    if (lucyRadiativeEq) then
-       call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
-       call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
-            "Minimum percentage of undersampled cell in lucy iteration: ", &
-            "(a,f4.2,a)",30.0,ok,.false.)
-    endif
-   call getReal("probdust", probDust, cLine, nLines, &
-       "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
-
-   call getReal("tthresh", tthresh, cLine, nLines, &
-       "Temperature threshold for dust (K): ","(a,f8.2,a)", 1000., ok, .true.)
-
-    oneKappa = .true.
-    nDustType = 1
-    call getInteger("ndusttype", nDustType, cLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
-
    call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
         "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
    call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
@@ -946,6 +930,23 @@ endif
            "Grid + lucy temperature input file is read as formatted: ","(a,1l,1x,a)",  &
            .false., ok, .false.)
    end if
+
+
+    if (lucyRadiativeEq) then
+       call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
+       call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
+            "Minimum percentage of undersampled cell in lucy iteration: ", &
+            "(a,f4.2,a)",30.0,ok,.false.)
+    endif
+   call getReal("probdust", probDust, cLine, nLines, &
+       "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
+
+   call getReal("tthresh", tthresh, cLine, nLines, &
+       "Temperature threshold for dust (K): ","(a,f8.2,a)", 1000., ok, .true.)
+
+    oneKappa = .true.
+    nDustType = 1
+    call getInteger("ndusttype", nDustType, cLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
 
    call getLogical("twod", twoD, cLine, nLines, &
           "Do lucy algorithm under assumption of axisymmetry: ", &

@@ -3544,6 +3544,19 @@ CONTAINS
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       if (thisOctal%nDepth < 6) split = .true.
+      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+      if (r > grid%rInner) then
+         rd = grid%rOuter / 2. 
+         hr = height * (r/rd)**1.125
+         if (abs(cellCentre%z)/hr < 10.) then
+            if (cellsize/hr > 1.) split = .true.
+         endif
+         if (sqrt(cellcentre%x**2 + cellcentre%y**2)/grid%rInner < 4.) then
+            if (abs(cellCentre%z)/hr < 10.) then
+               if (cellsize/hr > 0.4) split = .true.
+            endif
+         endif
+      endif
 
 
    case("luc_cir3d") 
