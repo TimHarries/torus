@@ -1,7 +1,7 @@
       SUBROUTINE PALETTE(TYPE)
 C-----------------------------------------------------------------------
 C Set a "palette" of colors in the range of color indices used by
-C PGIMAG.
+C PGIMAG. tjh
 C-----------------------------------------------------------------------
       INTEGER TYPE
 C
