@@ -12,6 +12,8 @@ MODULE amr_mod
   USE sph_data_class
   USE cluster_class
   USE density_mod
+  USE wr104_mod
+  USE utils_mod
 
   IMPLICIT NONE
 
@@ -32,7 +34,6 @@ CONTAINS
     !
     TYPE(sph_data), optional, INTENT(IN)    :: sphData   ! Matthew's SPH data.
     
-    
     SELECT CASE (grid%geometry)
 
     CASE ("ttauri")
@@ -42,10 +43,7 @@ CONTAINS
       CALL calcJetsMassVelocity(thisOctal,subcell,grid)
 
     CASE ("testamr")
-       call calcTestDensity(thisOctal,subcell,grid)
-      
-    CASE("wr104")
-       call calcWR104Density(thisOctal,subcell,grid)
+       CALL calcTestDensity(thisOctal,subcell,grid)
        
     CASE("cluster")
        ! using a routine in cluster_class.f90
@@ -54,6 +52,8 @@ CONTAINS
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
       STOP
+
+    CASE("wr104")
 
     END SELECT
  
@@ -177,6 +177,8 @@ CONTAINS
     INTEGER       :: newChildIndex     ! the storage location for the new child
     INTEGER       :: error
     
+
+
     ! For only cluster geometry ...
     TYPE(sph_data), optional, intent(in) :: sphData    
 
@@ -2653,24 +2655,24 @@ CONTAINS
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(sph_data), OPTIONAL, intent(in) :: sphData
     LOGICAL                    :: split          
-
     REAL(KIND=octalKind)  :: cellSize
     TYPE(octalVector)     :: searchPoint
     TYPE(octalVector)     :: cellCentre
     REAL                  :: x, y, z
     INTEGER               :: i
-    REAL(KIND=doubleKind) :: total_mass
-    REAL(KIND=doubleKind) :: ave_density
-    REAL(KIND=doubleKind) :: total_opacity, minDensity, maxDensity, thisDensity
-    INTEGER               :: nsample 
+    DOUBLE PRECISION      :: total_mass
+    DOUBLE PRECISION      :: ave_density, rGrid(1000), r
+    INTEGER               :: nr, nr1, nr2
+    DOUBLE PRECISION      :: total_opacity, minDensity, maxDensity, thisDensity
+    INTEGER               :: nsample = 400
     LOGICAL               :: inUse
     INTEGER               :: nparticle
     REAL(KIND=doubleKind) :: dummyDouble
 
 
-    select case(grid%geometry)
+   select case(grid%geometry)
 
-    case("ttauri","jets", "wr104")
+    case("ttauri","jets")
       nsample = 400
       ! the density is only sampled at the centre of the grid
       ! we will search in each subcell to see if any point exceeds the 
@@ -2706,29 +2708,26 @@ CONTAINS
       END IF
 
    case ("testamr")
-      nsample = 400
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       split = .FALSE.
-      ave_density = 0.0d0
-      minDensity = 1.d30
-      maxDensity = -1.d30
-      DO i = 1, nsample
-	searchPoint = cellCentre
-        CALL RANDOM_NUMBER(x)
-        CALL RANDOM_NUMBER(y)
-        CALL RANDOM_NUMBER(z)
-        searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=octalKind) 
-        searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=octalKind) 
-        searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=octalKind) 
-        thisDensity =  testDensity(searchPoint,grid,inUse)
-        if (inUse) then
-           minDensity = MIN(thisDensity, minDensity)
-           maxDensity = MAX(thisDensity, maxDensity)
-        endif
-        ave_density  = thisDensity + ave_density
-
-     END DO
+      nr1 = 30
+      nr2 = 0
+      nr = nr1 + nr2
+      do i = 1, nr1
+         rgrid(i) = log10(grid%rInner)+dble(i-1)*(log10(grid%rOuter)-log10(grid%rInner))/dble(nr1-1)
+      end do
+      do i = 1, nr2
+         rgrid(nr1+i) = log10(0.01*grid%rOuter)+dble(i)*(log10(grid%rOuter)-log10(0.01*grid%rOuter))/dble(nr2)
+      end do
+      
+      rgrid(1:nr) = 10.d0**rgrid(1:nr)
+      r = modulus(cellcentre)
+      if ((r < grid%rOuter).and.(r > grid%rinner)) then
+         call locate(rGrid, nr, r, i)      
+         if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
+      endif
+      if (thisOctal%nDepth < 6) split = .true.
      
    case ("cluster")
       ! Splits if the number of particle is more than a critical value (~3).
@@ -2743,6 +2742,13 @@ CONTAINS
       else
 	 split = .FALSE.
       end if
+
+
+
+
+   case ("wr104")
+
+
       
    case DEFAULT
 	   PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
@@ -2750,6 +2756,7 @@ CONTAINS
 	   PRINT *, 'Exiting the program .... '
 	   STOP
    end select
+  
   
 
   END FUNCTION decideSplit
@@ -3163,7 +3170,8 @@ CONTAINS
     TYPE(gridtype), INTENT(IN) :: grid
     
     TYPE(octalVector) :: rVec
-    real :: r
+    real :: r,r1,t,rgrid(19),tgrid(19)
+    integer :: i
     
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
@@ -3177,69 +3185,14 @@ CONTAINS
        thisOctal%rho(subcell) = rho * (grid%rInner / r)**2 
        thisOctal%temperature(subcell) = 100.
        thisOctal%inFlow(subcell) = .true.
-       thisOctal%etaCont(subcell) = 1.e10
+       thisOctal%etaCont(subcell) = 0.
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine calcTestDensity
 
-  function testDensity(point, grid, inUse)
-    use input_variables
-    real :: testDensity
-    TYPE(octalVector), INTENT(IN) :: point
-    TYPE(gridtype), INTENT(IN)    :: grid
-    logical :: inUse
-    real :: r
-    r = modulus(point)
-    inUse = .false.
-    testDensity = 0.
-    if ((r > grid%rInner).and.(r < grid%rOuter)) then
-       testDensity = rho * (grid%rInner / r)**2
-       inUse = .true.
-    endif
-  end function testDensity
 
-  subroutine calcWR104Density(thisOctal,subcell,grid)
-    use input_variables
-    use wr104_mod
-    TYPE(octal), INTENT(INOUT) :: thisOctal
-    INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
-    
-    TYPE(octalVector) :: rVec
-    real :: r
-    integer :: i,j,k
-
-
-    rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
-
-    thisOctal%rho(subcell) = 1.e-30
-    thisOctal%temperature(subcell) = 10.
-    thisOctal%velocity = VECTOR(0.,0.,0.)
-    thisOctal%biasCont3D = 1.
-    thisOctal%etaLine = 1.e-30
-
-
-    r = ((rVec%x / (2.*grid%octreeroot%subcellsize))+1.)*304. /2.
-    i = nint(r)
-    i = min(max(1,i),304)
-    r = ((rVec%y / (2.*grid%octreeroot%subcellsize))+1.)*304. /2.
-    j = nint(r)
-    j = min(max(1,j),304)
-    r = ((rVec%z / (2.*grid%octreeroot%subcellsize))+1.)*304. /2.
-    k = nint(r)
-    k = min(max(1,k),304)
-    thisOctal%rho(subcell) = wr104density(i,j,k)
-
-    if (wr104density(i,j,k) < 1.e-20) then
-       thisOctal%inFlow(subcell) = .false.
-    else
-       thisOctal%inFlow(subcell) = .true.
-    endif
-
-  end subroutine calcWR104Density
 
   SUBROUTINE addNewChildren(parent, grid, sphData)
     ! adds all eight new children to an octal
@@ -3255,6 +3208,8 @@ CONTAINS
                                        ! - this isn't very clever. might change it. 
     INTEGER       :: newChildIndex     ! the storage location for the new child
     INTEGER       :: error
+
+
     
     ! For only cluster geometry ...
     TYPE(sph_data), optional, intent(in) :: sphData
@@ -3386,6 +3341,7 @@ CONTAINS
        
   end subroutine copy_sph_index_to_root
 
+    
 
 
 END MODULE amr_mod

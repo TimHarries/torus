@@ -65,13 +65,13 @@ module source_mod
 
     end subroutine randomSource
 
-    subroutine getPhotonPositionDirection(source, position, direction)
+    subroutine getPhotonPositionDirection(source, position, direction, rHat)
       type(SOURCETYPE) :: source
-      type(VECTOR) :: position, direction, rVec
+      type(VECTOR) :: position, direction, rVec, rHat
 
-      rVec = randomUnitVector()
-      position = source%position + source%radius*rVec
-      direction = fromPhotosphereVector(rVec)
+      rHat = randomUnitVector()
+      position = source%position + source%radius*rHat
+      direction = fromPhotosphereVector(rHat)
     end subroutine getPhotonPositionDirection
 
   end module source_mod

@@ -570,11 +570,12 @@ endif
    call getReal("teff", teff, cLine, nLines, &
         "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
    
+   call getReal("rho", rho, cLine, nLines, &
+        "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 0., ok, .true.)
 
    rCore = rCore * rSol
    rInner = rInner * rSol
    rOuter = rOuter * rInner
-   
   endif
 
 
@@ -653,6 +654,11 @@ endif
  if (mie) then
     call getLogical("lucy", lucyRadiativeEq, cLine, nLines, &
          "Lucy radiative equ.: ","(a,1l,1x,a)", .false., ok, .true.)
+    if (lucyRadiativeEq) then
+       call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i8,a)",20000,ok,.true.)
+    endif
+
+
     oneKappa = .true.
    call getString("gridfile", popFilename, cLine, nLines, &
         "Grid filename: ","(a,a,1x,a)","none", ok, .false.)

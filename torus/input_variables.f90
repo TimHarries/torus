@@ -226,7 +226,7 @@ module input_variables
   ! lucy radiative equ
 
   logical :: lucyRadiativeEq
-
+  integer :: nLucy
   logical :: narrowBandImage
   logical :: useInterp
 

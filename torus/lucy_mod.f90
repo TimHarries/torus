@@ -14,10 +14,11 @@ module lucy_mod
 contains
 
 
-  subroutine lucyRadiativeEquilibrium(grid, miePhase, nMuMie, nLambda, lamArray, temperature)
+  subroutine lucyRadiativeEquilibrium(grid, miePhase, nMuMie, nLambda, lamArray, temperature, nLucy)
 
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec, uHat, uNew
+    integer :: nlucy
     integer :: nLambda, nMuMie
     type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
     real :: lamArray(:)
@@ -27,7 +28,7 @@ contains
     integer :: i, j, k
     real(kind=doubleKind) :: freq(nFreq), dnu(nFreq), probDistPlanck(nFreq), probDistJnu(nFreq)
     real(kind=doubleKind) :: temperature
-    integer :: nMonte = 100000, iMonte, nScat, nAbs
+    integer :: nMonte, iMonte, nScat, nAbs
     real(kind=doubleKind) :: thisFreq,  logFreqStart, logFreqEnd
     real(kind=doubleKind) :: albedo
     logical :: escaped
@@ -41,7 +42,7 @@ contains
     real(kind=doubleKind) :: ang
     integer :: iIter, nIter = 5
     real(kind=doubleKind) :: kabs
-    real(kind=doubleKind) ::  kappaP
+    real(kind=doubleKind) ::  kappaP, norm
     real(kind=doubleKind) :: adot, V, epsOverDeltaT
     real(kind=doubleKind) :: newT, deltaT
     real(kind=doubleKind) :: meanDeltaT
@@ -85,6 +86,9 @@ contains
        nInf = 0
        nScat = 0
        nAbs = 0
+
+       nMonte = nLucy
+
        do iMonte = 1, nMonte
           escaped = .false.
           call random_number(r)
@@ -171,6 +175,7 @@ contains
                 if (grid%inUse(i1,i2,i3)) then
                    adot = epsoverDeltaT * (1.d0 / v) * distancegrid(i1,i2,i3) / 1.d30
                    kappaP = 0.d0
+                   norm = 0.d0
                    do i = 1, nFreq
                       thisLam = (cSpeed / freq(i)) * 1.e8
                       call hunt(lamArray, nLambda, real(thisLam), iLam)
@@ -183,9 +188,10 @@ contains
 
                          kappaP = kappaP + kabs * &
                               bnu(freq(i),dble(grid%temperature(i1,i2,i3)))  * dnu(i)
+                         norm = norm + bnu(freq(i),dble(grid%temperature(i1,i2,i3)))  * dnu(i)
                       endif
                    enddo
-                   kappaP = kappaP * (pi / (stefanBoltz * grid%temperature(i1,i2,i3)**4)) /1.d10
+                   kappaP = kappaP / norm /1.d10
 
 
                    newT = (pi / stefanBoltz) * aDot / (fourPi * kappaP)
@@ -196,6 +202,7 @@ contains
                    nDT = nDT  + 1
                    meanDeltaT = meanDeltaT + deltaT
                    kappaP = 0.d0
+                   norm = 0.d0
                    do i = 1, nFreq
                       thisLam = (cSpeed / freq(i)) * 1.e8
                       call hunt(lamArray, nLambda, real(thisLam), iLam)
@@ -207,9 +214,10 @@ contains
                          endif
                          kappaP = kappaP + kabs * &
                               bnu(freq(i),dble(grid%temperature(i1,i2,i3))) * dnu(i)
+                         norm = norm + bnu(freq(i),dble(grid%temperature(i1,i2,i3))) * dnu(i)
                       endif
                    enddo
-                   kappaP = kappaP * (pi / (stefanBoltz * grid%temperature(i1,i2,i3)**4)) /1.e10
+                   kappaP = kappaP / norm /1.e10
                    grid%etaCont(i1,i2,i3) = fourPi * kappaP * (stefanBoltz/pi) * (grid%temperature(i1,i2,i3)**4)
                    totalEmission = totalEmission + grid%etaCont(i1,i2,i3) * V
 
@@ -286,26 +294,26 @@ contains
   end subroutine lucyRadiativeEquilibrium
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, nLambda, lamArray, temperature, &
-       source, nSource)
+       source, nSource, nLucy)
 
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(*), thisSource
     integer :: nSource
-    
-    type(VECTOR) ::  uHat, uNew, rVec
+    integer :: nLucy
+    type(VECTOR) ::  uHat, uNew, rVec, rHat
     type(OCTALVECTOR) :: octVec
     type(OCTAL), pointer :: thisOctal
     integer :: nLambda, nMuMie
     type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
     real  :: lamArray(:)
     real(kind=doubleKind) :: r
-    integer, parameter :: nFreq = 100
+    integer :: nFreq
     integer :: i, j
-    real(kind=doubleKind) :: freq(nFreq), dnu(nFreq), probDistJnu(nFreq)
+    real(kind=doubleKind) :: freq(2000), dnu(2000), probDistJnu(2000)
     real(kind=doubleKind) :: temperature
 !    real(kind=doubleKind) :: probDistPlanck(nFreq)
     real :: kappaScaReal, kappaAbsReal
-    integer :: nMonte = 4000000, iMonte, nScat, nAbs
+    integer :: nMonte, iMonte, nScat, nAbs
     real(kind=doubleKind) :: thisFreq,  logFreqStart, logFreqEnd
     real(kind=doubleKind) :: albedo
     logical :: escaped
@@ -328,12 +336,15 @@ contains
     real(kind=doubleKind) :: lCore
     real(kind=doubleKind) :: kabs
 
-    logFreqStart = log10((cSpeed / (lamArray(nLambda)*1.e-8)))
-    logFreqEnd =  log10((cSpeed / (lamArray(1)*1.e-8)))
+
+    nMonte = nLucy
+
+    nFreq = nLambda
     do i = 1, nFreq
-       freq(i) = logFreqStart + (dble(i-1)/dble(nFreq-1))*(logFreqEnd-logFreqStart)
-       freq(i) = 10.**freq(i)
+       freq(nFreq-i+1) = cSpeed / (lamArray(i)*1.e-8)
     enddo
+
+
     do i = 2, nFreq-1
        dnu(i) = 0.5*((freq(i+1)+freq(i))-(freq(i)+freq(i-1)))
     enddo
@@ -361,7 +372,7 @@ contains
        call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
        
        call zeroDistanceGrid(grid%octreeRoot)
-       write(*,*) "Iteration",iIter
+       write(*,*) "Iteration",iIter,",",nmonte," photons"
        nInf = 0
        nScat = 0
        nAbs = 0
@@ -370,7 +381,7 @@ contains
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
            
-          call getPhotonPositionDirection(thisSource, rVec, uHat)
+          call getPhotonPositionDirection(thisSource, rVec, uHat, rHat)
           escaped = .false.
           call getWavelength(thisSource%spectrum, wavelength)
           thisFreq = cSpeed/(wavelength / 1.e8)
@@ -457,6 +468,7 @@ contains
        call calculateTemperatureCorrections(grid%octreeRoot, totalEmission, epsOverDeltaT, &
        nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled)
 
+       write(*,'(a,i5)') "Number of undersampled cells: ",nUndersampled
        write(*,'(a,f8.2)') "Percentage of undersampled cells: ",100.*real(nUndersampled)/real(nDt)
        write(*,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
        write(*,*) "Total emission",totalEmission
@@ -485,15 +497,15 @@ contains
 
     real(kind=doubleKind) :: temperature
     integer :: nFreq
-    real(kind=doubleKind) :: freq(nFreq)
-    real(kind=doubleKind) :: probDist(nFreq)
+    real(kind=doubleKind) :: freq(*)
+    real(kind=doubleKind) :: probDist(*)
     real(kind=doubleKind) :: dnu(*)
 
     integer :: i
 
 
     
-    probDist = 0.
+    probDist(1:nFreq) = 0.
     do i = 2, nFreq
        probDist(i) = probDist(i-1) + bnu(dble(freq(i)),dble(temperature)) * dnu(i)
 
@@ -739,14 +751,14 @@ contains
     integer :: subcell, i
     real(kind=doubleKind) :: V, epsOverDeltaT
     real(kind=doubleKind) :: adot
-    real(kind=doubleKind) :: kappaP
+    real(kind=doubleKind) :: kappaP, norm
     real(kind=doubleKind) :: thisLam
     integer :: ilam, nLambda
     real(kind=doubleKind) :: newT, deltaT
     integer :: ndt
     real(kind=doubleKind) :: meanDeltaT 
     real(kind=doubleKind) :: kabs
-    real :: lamArray(*)
+    real :: lamArray(*), dlam(2000)
     integer :: nFreq
     real(kind=doubleKind) :: freq(*)
     real(kind=doubleKind) :: dnu(*)
@@ -758,7 +770,7 @@ contains
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call calculateTemperatureCorrections(child, totalEmission, epsOverDeltaT, &
-       nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled)
+                     nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled)
                 exit
              end if
           end do
@@ -767,6 +779,7 @@ contains
              v = thisOctal%subcellSize**3
              adot = epsoverDeltaT * (1.d0 / v) * thisOctal%distancegrid(subcell) / 1.d30
              kappaP = 0.d0
+             norm = 0.d0
              do i = 1, nFreq
                 thisLam = (cSpeed / freq(i)) * 1.e8
                 call hunt(lamArray, nLambda, real(thisLam), iLam)
@@ -778,9 +791,10 @@ contains
                    endif
                    kappaP = kappaP + dble(kabs) * &
                         dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))
+                   norm = norm + dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))
                 endif
              enddo
-             kappaP = kappaP * (pi / (stefanBoltz * thisOctal%temperature(subcell)**4)) /1.d10
+             kappaP = kappaP / norm /1.d10
              
              
              if (kappaP /= 0.) then
@@ -792,17 +806,16 @@ contains
              deltaT = newT - thisOctal%temperature(subcell)
              if (deltaT > 10000.) then
                 write(*,*) deltaT, thisOctal%nCrossings(subcell)
-!                write(*,*) deltaT, thisOctal%temperature(subcell), newT
-!                write(*,*) adot,kappap,thisOctal%rho(subcell)
+                !                write(*,*) deltaT, thisOctal%temperature(subcell), newT
+                !                write(*,*) adot,kappap,thisOctal%rho(subcell)
              endif
              if (thisOctal%nCrossings(subcell) .ge. 5) then
                 thisOctal%temperature(subcell) = max(1.e-3,thisOctal%temperature(subcell) + real(0.8 * deltaT))
-             else 
+             else
                 nUnderSampled = nUndersampled + 1
              endif
-             nDT = nDT  + 1
-             meanDeltaT = meanDeltaT + deltaT
              kappaP = 0.d0
+             norm = 0.d0
              do i = 1, nFreq
                 thisLam = (cSpeed / freq(i)) * 1.e8
                 call hunt(lamArray, nLambda, real(thisLam), iLam)
@@ -815,17 +828,20 @@ contains
                    
                    kappaP = kappaP + dble(kabs) * &
                         dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell)))) * dble(dnu(i)) 
+                   norm = norm + dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell)))) * dble(dnu(i)) 
                 endif
              enddo
-             kappaP = kappaP * (pi / (stefanBoltz * thisOctal%temperature(subcell)**4)) /1.e10
+             kappaP = kappaP / norm / 1.e10
              thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * (thisOctal%temperature(subcell)**4)
              totalEmission = totalEmission + thisOctal%etaCont(subcell) * V
-          else
+             nDT = nDT  + 1
+             meanDeltaT = meanDeltaT + deltaT
+          else 
              thisOctal%etaCont(subcell) = 0.
           endif
        endif
     enddo
-  end subroutine calculateTemperatureCorrections
+     end subroutine calculateTemperatureCorrections
 
   subroutine intersectCubeAMR(grid, posVec, direction, tval)
    use vector_mod

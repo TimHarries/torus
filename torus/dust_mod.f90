@@ -329,7 +329,7 @@ contains
       do i = 1, grid%nLambda
          call mieDistCrossSection(aMin, aMax, qDist, grid%lamArray(i),  mReal(i), mImg(i), sigmaExt(i), &
               sigmaSca(i), sigmaAbs(i))
-         write(20,*) grid%lamArray(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
+         write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
       enddo
       close(20)
 

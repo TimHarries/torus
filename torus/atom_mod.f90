@@ -347,6 +347,17 @@ contains
     bNu = fac1 * fac2
   end function bNu
 
+  real(kind=doubleKind) function dbNubydT(nu,T)
+    
+    real(kind=doubleKind) :: fac1, fac2, fac3, nu, T
+
+    fac1 = (2.d0*(dble(hCgs)**2)*(nu**4))/((dble(cSpeed)**2)*dble(kErg) * T**2)
+    fac3 =  (dble(hCgs)*nu)/ (dble(kErg) * T) 
+    fac2 = exp(fac3)/(exp(fac3) - 1.d0)**2
+    dbNubydT = fac1 * fac2
+  end function dbNubyDt
+
+
   real(kind=doubleKind) function bLambda(lambda,T)
     
     real(kind=doubleKind) :: fac1, fac2, fac3,  T, lambda
@@ -360,5 +371,15 @@ contains
     endif
     bLambda = fac1 * fac2
   end function bLambda
+
+  real(kind=doubleKind) function dbLambdabydT(lambda,T)
+    
+    real(kind=doubleKind) :: fac1, fac2, fac3,  T, lambda
+
+    fac1 = (2.d0*dble(hCgs)**2*dble(cSpeed)**3)/((lambda *1.d-8)**6 * dble(Kerg) * T**2)
+    fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T) 
+    fac2 = exp(fac3)/(exp(fac3) - 1.d0)**2
+    dbLambdabydT = fac1 * fac2
+  end function dbLambdabyDt
 
 end module atom_mod

@@ -500,9 +500,6 @@ contains
     case ("testamr")
        call initTestAMR(grid)
 
-    case("wr104")
-       call initWR104amr(grid)
-
     case("cluster")
        call initClusterAMR(grid)
        
@@ -1531,7 +1528,7 @@ contains
     real(kind=octalKind) :: x, y, z
     real :: smallOffset
     type(octalVector) :: startPoint
-
+   integer :: pgbegin
 
     if (grid%adaptive) then
        
@@ -1572,7 +1569,7 @@ contains
        enddo
        write(*,*) "foreground",fg,"background",bg
 
-       call pgbegin(0,device,1,1)
+       i = pgbegin(0,device,1,1)
        
        call pgvport(0.1,0.9,0.1,0.9)
        
@@ -1606,7 +1603,7 @@ contains
        plane = log10(plane)
        fg = MAXVAL(plane, mask=grid%inUse(1:grid%nx,grid%ny/2,1:grid%nz))
        bg = MINVAL(plane, mask=grid%inUse(1:grid%nx,grid%ny/2,1:grid%nz))
-       call pgbegin(0,device,1,1)
+       i =  pgbegin(0,device,1,1)
        
        call pgvport(0.1,0.9,0.1,0.9)
        
@@ -1659,7 +1656,7 @@ contains
        fg = MAXVAL(plane, mask=inuse)
        bg = MINVAL(plane, mask=inuse)
        write(*,*) "fg, bg",fg,bg
-       call pgbegin(0,device,1,1)
+       i =  pgbegin(0,device,1,1)
        
        call pgvport(0.1,0.9,0.1,0.9)
        
@@ -1989,9 +1986,9 @@ contains
     real :: smallOffset
     type(octalVector) :: samplePoint
     type(vector) :: velocityVector
+    integer :: pgbegin
 
-
-    call pgbegin(0,device,1,1)
+    i = pgbegin(0,device,1,1)
 
 
     allocate(xArray(1:nx,1:ny))
@@ -4711,64 +4708,33 @@ contains
     grid%lineEmission = .false.
   end subroutine initTestAmr
 
-  subroutine initWR104amr(grid)
-    
-    use wr104_mod
-    implicit none
-    type(GRIDTYPE) :: grid
-    integer :: i,j,k
-    real, allocatable :: temp(:,:,:)
-
-    write(*,'(a)') "Reading WR104 hydro model..."
-
-    open(20,file="wr104_density.dat",form="unformatted",status="old")
-    do i = 1, 304
-       do j = 1, 304
-          read(20) wr104Density(j,i,1:304)
-       enddo
-    enddo
-    close(20)
-
-    allocate(temp(1:304,1:304,1:304))
-    do i = 1, 304
-       do j = 1, 304
-          do k = 1, 304
-             temp(i,j,k) = wr104Density(i,k,j)
-          enddo
-       enddo
-    enddo
-    wr104density(1:304,1:304,1:304) = temp(1:304,1:304,1:304) 
-    write(*,'(a)') "Smoothing..."
-    do i = 2, 303
-       do j = 2, 303
-          do k = 2, 303
-             temp(i,j,k) = SUM(wr104Density(i-1:i+1,j-1:j+1,k-1:k+1))/27.
-          enddo
-       enddo
-    enddo
-    wr104density(1:304,1:304,1:304) = temp(1:304,1:304,1:304) 
-
-
-
-
-    deallocate(temp)
-
-    wr104density(151:153,151:153,151:153) = 0.
-
-    wr104density = wr104density  * 0.0001
-    where (wr104density == 0.)
-       wr104density = 1.e-30
-    end where
-    write(*,'(a)') "done."
-
-  end subroutine initWR104amr
 
 
   subroutine fancyAMRplot(grid, device)
     type(GRIDTYPE) :: grid
     character(len=*) device
+    real :: scaleFac
+    integer :: i, pgbeg
+
+    i =  pgbeg(0,device, 2, 2)
+    call pgpage
+    call dofancyAMRplot(grid, device, 1.)
+    call pgpage
+    call dofancyAMRplot(grid, device, 0.1)
+    call pgpage
+    call dofancyAMRplot(grid, device, 0.01)
+    call pgpage
+    call dofancyAMRplot(grid, device, 0.001)
+    call pgend
+  end subroutine fancyAMRplot
+
+
+  subroutine dofancyAMRplot(grid, device, scaleFac)
+    type(GRIDTYPE) :: grid
+    character(len=*) device
     type(OCTALVECTOR) :: rVec
     type(OCTAL), pointer :: oldOctal, thisOctal
+    real :: scaleFac
     integer :: i, j, k, n
     integer :: thisSubcell, oldSubcell
     real :: rhoMin, rhoMax
@@ -4786,12 +4752,12 @@ contains
 
     write(*,*) "Density range",rhoMin,rhoMax
 
-    call pgbegin(0,device,1,1)
+!    call pgbegin(0,device,1,1)
 
     call pgvport(0.1,0.9,0.1,0.9)
 
-    call pgwnad(real(-grid%octreeRoot%subcellsize), real(grid%octreeRoot%subcellsize), &
-         real(-grid%octreeRoot%subcellsize), real(grid%octreeRoot%subcellsize))
+    call pgwnad(real(-grid%octreeRoot%subcellsize)*scaleFac, real(grid%octreeRoot%subcellsize)*scaleFac, &
+         real(-grid%octreeRoot%subcellsize)*scaleFac, real(grid%octreeRoot%subcellsize)*scaleFac)
     oldSubcell =0
 
 
@@ -4808,7 +4774,7 @@ contains
     call pgsci(1)
     call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
     call pgend
-  end subroutine fancyAMRplot
+  end subroutine dofancyAMRplot
 
   recursive subroutine plotZplane(thisOctal, rhoMax, rhoMin, ilo, ihi)
   type(octal), pointer   :: thisOctal
@@ -4949,7 +4915,9 @@ contains
           do i = 1, n
 	     pos = Vector(xmap(j),0.0d0, zmap(i))
 	     ! using the function in density_mod.f90
-	     f(i,j) = LOG10( ABS(density(pos, grid) ) )
+	     tmp = ABS( density(pos, grid) )
+	     if (tmp<=0) tmp=1.0e-28
+	     f(i,j) = LOG10(tmp)
              fmin = min(f(i,j),fmin)
              fmax = max(f(i,j),fmax)
           end do

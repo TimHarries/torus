@@ -120,7 +120,7 @@ CONTAINS
         subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
       CASE DEFAULT
         PRINT *, "Invalid nChild passed to subcellCentre"
-        DO ; END DO
+!        DO ; END DO
     END SELECT   
     
   END FUNCTION subcellCentre

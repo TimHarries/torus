@@ -35,7 +35,7 @@
                ;;
 
             linux)
-               F95COMP="f95 -colour"
+               F95COMP="f95"
                F77COMP="f77"
                FASTFLAG="-O3"
                MATHTRAP="-ieee=stop"

@@ -13,7 +13,7 @@ module density_mod
   use jets_mod
   use wr104_mod
   
-  public :: density, wr104DensityValue, TTauriDensity
+  public :: density, TTauriDensity
   ! the specific definition of density functions should really be private, 
   ! but for now they are public... Better yet, they should be in their own module.
   ! See jets_mod for example. 
@@ -38,15 +38,15 @@ contains
        out = JetsDensity(r_vec, grid)*1000.d0 
        !                              ^^^^^^^
        !                          Converting kg/m^3 to g/cm^3
-    case ("wr104")
-       ! using a routine in this module
-       out = wr104DensityValue(r_vec, grid)
-       ! NOTE: You have to check the units of this
-       !        function later!!!
     case ("ttauri")
        !  using a routine this module
        out = TTauriDensity(r_vec, grid) ! [g/cm^3]
        ! Double check the units
+
+    case("testamr")
+       out = testDensity(r_vec,grid)
+
+
        
     case default
        print *, 'Error:: Geometry option passed to [density_mod::density] '&
@@ -83,35 +83,6 @@ contains
     end do
        
   end subroutine print_geometry_list
-
-
-  !
-  !
-  !
-  function wr104DensityValue(point, grid)
-    use wr104_mod
-    real :: wr104densityvalue
-    TYPE(octalVector), INTENT(IN) :: point
-    TYPE(gridtype), INTENT(IN)    :: grid
-    type(VECTOR) :: rvec
-    real :: r
-    integer :: i,j,k
-    wr104densityvalue = 0.
-    rVec = point
-
-    r = ((rVec%x / (grid%octreeroot%subcellsize*2.))+1.)*304./2.
-    i = nint(r)
-    i = min(max(1,i),304)
-    r = ((rVec%y / (grid%octreeroot%subcellsize*2.))+1.)*304./2.
-    j = nint(r)
-    j = min(max(1,j),304)
-    r = ((rVec%z / (grid%octreeroot%subcellsize*2.))+1.)*304./2.
-    k = nint(r)
-    k = min(max(1,k),304)
-    wr104densityvalue = wr104density(i,j,k)
-
-
-  end function wr104DensityValue
 
 
   !
@@ -173,5 +144,19 @@ contains
     END IF
     
   END FUNCTION TTauriDensity
+
+
+  function testDensity(point, grid)
+    use input_variables
+    real :: testDensity
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+    real :: r
+    r = modulus(point)
+    testDensity = 1.e-30
+    if ((r > grid%rInner).and.(r < grid%rOuter)) then
+       testDensity = rho * (grid%rInner / r)**2
+    endif
+  end function testDensity
 
 end module density_mod 

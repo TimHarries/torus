@@ -474,7 +474,7 @@ contains
       JU=N+1
 10    IF(JU-JL.GT.1)THEN
         JM=(JU+JL)/2
-        IF((XX(N).GT.XX(1)).EQV.(X.GT.XX(JM)))THEN
+        IF((XX(N).GT.XX(1)).EQV.(X.GE.XX(JM)))THEN
           JL=JM
         ELSE
           JU=JM
@@ -494,7 +494,7 @@ contains
       JU=N+1
 10    IF(JU-JL.GT.1)THEN
         JM=(JU+JL)/2
-        IF((XX(N).GT.XX(1)).EQV.(X.GT.XX(JM)))THEN
+        IF((XX(N).GT.XX(1)).EQV.(X.GE.XX(JM)))THEN
           JL=JM
         ELSE
           JU=JM

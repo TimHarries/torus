@@ -299,7 +299,7 @@ contains
        ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias, &
        theta1,theta2, chanceHotRing, &
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, chanceDust, &
-       narrowBandImage, narrowBandMin, narrowBandMax, source, nSource)
+       narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar)
 
     implicit none
 
@@ -338,6 +338,7 @@ contains
     real :: vRot                               ! rotational velocity
     integer :: i1, i2, i3                      ! position indices
     type(VECTOR) :: rHat, perp                 ! radial unit vector
+    type(VECTOR) :: rHatInStar
     type(VECTOR) :: rotatedVec                 ! rotated vector
     logical :: pencilBeam                      ! beamed radiation
     type(VECTOR), parameter :: zAxis = VECTOR(0.,0.,1.) ! the z axis
@@ -374,6 +375,8 @@ contains
     real :: thisTheta, thisPhi
 
     real :: tempXProbDist(2000)
+    real :: rgrid(19),tgrid(19)
+    integer :: j
     real :: tempYProbDist(2000)
     real :: tempZProbDist(2000)
     real :: temprProbDistLine(2000)
@@ -381,7 +384,7 @@ contains
     real :: tempphiProbDistLine(2000)
 
     logical :: photonFromEnvelope
-    real(kind=doubleKind) :: tempSpectrum(2000), totDouble, prob(2000), rd, td
+    real(kind=doubleKind) :: tempSpectrum(2000), totDouble, prob(2000), rd
     integer :: i
 
     type(octalVector) :: positionOctal     ! octalVector type version of thisPhoton%position
@@ -446,11 +449,14 @@ contains
 
     endif
 
+    contwindphoton = .false.
 
     call random_number(r)
     if (r < chanceDust) then
        photonFromEnvelope = .true.
+       contWindPhoton = .true.
     endif
+
 
 
     ! if it is a continuum photon initialize its position
@@ -464,7 +470,7 @@ contains
           thisPhoton%position = grid%rCore * randomUnitVector()
           
           if (nSource > 0) then
-             call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction)
+             call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction, rHatInStar)
           endif
 
                   
@@ -500,6 +506,7 @@ contains
                 zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
                 
                 thisPhoton%position = vector(xOctal,yOctal,zOctal)
+
 
                 !!! need to call an interpolation routine, rather than
                 !!!   use subcell central value
@@ -767,26 +774,26 @@ contains
                       thisPhoton%position = (r*randomUnitVector())
                    endif
 
-		case("jets")
-		   ! For now, photons are emitted only from the surface of the central star.
+                case("jets")
+                   ! For now, photons are emitted only from the surface of the central star.
 
-		   ! picking the positions
-		   call random_number(z_rand)
-		   z_rand = -1.0 + 2.0*z_rand   ! uniform between -1 and 1
-		   theta_rand = ACOS(z_rand)
-		   call random_number(phi_rand)
-		   phi_rand = phi_rand*2.0*Pi
+                   ! picking the positions
+                   call random_number(z_rand)
+                   z_rand = -1.0 + 2.0*z_rand   ! uniform between -1 and 1
+                   theta_rand = ACOS(z_rand)
+                   call random_number(phi_rand)
+                   phi_rand = phi_rand*2.0*Pi
 
-		   ! using a routine in rho_vel_temp_mod module
-		   r = get_jets_parameter("Rmin")
+                   ! using a routine in rho_vel_temp_mod module
+                   r = get_jets_parameter("Rmin")
 
-		   x = r*Cos(phi_rand)*Sin(theta_rand)
-		   y = r*Sin(phi_rand)*Sin(theta_rand)
-		   z = r*z_rand
+                   x = r*Cos(phi_rand)*Sin(theta_rand)
+                   y = r*Sin(phi_rand)*Sin(theta_rand)
+                   z = r*z_rand
 
-		   rHat = vector(x,y,z)
-		   
-		   thisPhoton%position = r * rHat
+                   rHat = vector(x,y,z)
+                   
+                   thisPhoton%position = r * rHat
 
                 case DEFAULT
                    thisPhoton%position = (r*randomUnitVector())
@@ -817,7 +824,7 @@ contains
           iLambda = int(r1 * real(nLambda)) + 1
           thisPhoton%lambda = lambda(iLambda)
           weight = dlam(i)
-          thisPhoton%stokes = thisPhoton%stokes * (weight / tot)
+          thisPhoton%stokes = thisPhoton%stokes * (weight / tot) * real(nLambda)
        endif
 
 
@@ -837,13 +844,28 @@ contains
                 positionOctal = thisPhoton%position
                 call amrGridvalues(grid%octreeRoot,positionOctal,&
                     foundOctal=foundOctal,foundSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=ilambda)
-                do i = 1, nLambda
-                call amrGridvalues(grid%octreeRoot,positionOctal,&
-                    startOctal=foundOctal,actualSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=i)
-                   tempSpectrum(i)= blambda(dble(lambda(i)), dble(t1)) * dble(kabs)
+                tempSpectrum(1) = 0.
+                do i = 1, nLambda  !xxxx change to 2
+                   call amrGridvalues(grid%octreeRoot,positionOctal,&
+                        startOctal=foundOctal,actualSubcell=subcell, temperature=t1, kappaAbs=kabs, grid=grid, iLambda=i)
+
+                   tempSpectrum(i) = blambda(dble(lambda(i)), dble(t1)) * dble(kabs)* dlam(i)
                    totDouble = totDouble + tempSpectrum(i)
+!                   tempSpectrum(i)= tempSpectrum(i-1) + blambda(dble(lambda(i)), dble(t1)) * dble(kabs) * dlam(i)
+!                   totDouble = totDouble + tempSpectrum(i) 
                 enddo
-                tempSpectrum(1:nLambda)  = tempSpectrum(1:nLambda) / totDouble
+
+!                tempSpectrum(1:nLambda)  = tempSpectrum(1:nLambda) / totDouble
+!                thisPhoton%stokes = thisPhoton%stokes * &
+!                     (real(tempSpectrum(iLambda)) * weightContPhoton)
+!                tempSpectrum(1:nLambda) = tempSpectrum(1:nLambda) / tempSpectrum(nLambda)
+!                call random_number(rd)
+!                call locate(tempSpectrum, nLambda, rd, i)
+!                t = (rd - tempSpectrum(i))/(tempSpectrum(i+1) - tempSpectrum(i))
+!                thisPhoton%lambda = lambda(i) + t * (lambda(i+1) - lambda(i))
+
+                thisPhoton%stokes = thisPhoton%stokes * real(tempSpectrum(iLambda)/totDouble)
+
              else 
                 do i = 1, nLambda
                    if (.not.grid%oneKappa) then
@@ -856,23 +878,29 @@ contains
                    totDouble = totDouble + tempSpectrum(i)
                 enddo
                 tempSpectrum(1:nLambda)  = tempSpectrum(1:nLambda) / totDouble
+                thisPhoton%stokes = thisPhoton%stokes * &
+                     (real(tempSpectrum(iLambda)) * weightContPhoton)
              end if 
-             thisPhoton%stokes = thisPhoton%stokes * &
-                  (real(tempSpectrum(iLambda)) * weightContPhoton)
           else
 
              if (nSource == 0) then
                 thisPhoton%stokes = thisPhoton%stokes * &
-                     (sourceSpectrum(iLambda) * weightContPhoton) * 4.
+                     (sourceSpectrum(iLambda) * weightContPhoton)
              else
-                call locate(source(thisSource)%spectrum%lambda,source(thisSource)%spectrum%nlambda, &
-                     dble(thisPhoton%lambda), i)
-                t = (thisPhoton%lambda - source(thisSource)%spectrum%lambda(i)) / &
-                    (source(thisSource)%spectrum%lambda(i+1)-source(thisSource)%spectrum%lambda(i))
-                thisPhoton%stokes = thisPhoton%stokes * &
-                     (real(source(thisSource)%spectrum%normflux2(i) + &
-                     t * (source(thisSource)%spectrum%normflux2(i+1) - source(thisSource)%spectrum%normflux2(i))) &
-                       * weightContPhoton) * 4.
+!                call locate(source(thisSource)%spectrum%lambda,source(thisSource)%spectrum%nlambda, &
+!                     dble(thisPhoton%lambda), i)
+!                t = (thisPhoton%lambda - source(thisSource)%spectrum%lambda(i)) / &
+!                    (source(thisSource)%spectrum%lambda(i+1)-source(thisSource)%spectrum%lambda(i))
+!                thisPhoton%stokes = thisPhoton%stokes * &
+!                     (real(source(thisSource)%spectrum%normflux2(i) + &
+!                     t * (source(thisSource)%spectrum%normflux2(i+1) - source(thisSource)%spectrum%normflux2(i))) &
+!                       * weightContPhoton)
+
+
+!                call getWavelength(source(thisSource)%spectrum, rd)
+!                thisPhoton%stokes = thisPhoton%stokes * 0.
+!                thisPhoton%lambda = real(rd)
+                thisPhoton%stokes = thisPhoton%stokes * real(source(thissource)%spectrum%normflux(iLambda))
              endif
           endif
           

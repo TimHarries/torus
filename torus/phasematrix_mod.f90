@@ -160,7 +160,7 @@ contains
     real, allocatable :: cosArray(:)
     type(VECTOR) :: tVec, perpVec, newVec
     
-    type(PHASEMATRIX) :: miePhase(nMuMie, nLambda)
+    type(PHASEMATRIX) :: miePhase(nLambda, nMuMie)
     
 
     allocate(prob(1:nMuMie))

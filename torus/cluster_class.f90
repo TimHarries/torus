@@ -242,7 +242,7 @@ contains
        ! ( For now it is just BB specturm)
        ! using the routine in spectrum_mod.f90
        call fillSpectrumBB(a_star%spectrum, temperature, lambda_beg, lambda_end, 1000)
-       call normalizedSpectrum(a_star%spectrum, lambda_beg, lambda_end)
+       call normalizedSpectrum(a_star%spectrum)
        
        ! Put this star in a array.
        ! Make sure that the arrays has been already allocated!

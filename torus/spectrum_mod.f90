@@ -110,27 +110,11 @@ module spectrum_mod
       spectrum%prob(1:spectrum%nLambda) = spectrum%prob(1:spectrum%nLambda) / spectrum%prob(spectrum%nLambda)
     end subroutine probSpectrum
 
-    subroutine normalizedSpectrum(spectrum, lamStart, lamEnd)
+    subroutine normalizedSpectrum(spectrum)
       type(SPECTRUMTYPE) :: spectrum
-      integer :: i, i1, i2
-      real(kind=doubleKind) :: tot
-      real(kind=doubleKind) :: lamStart, lamEnd
       allocate(spectrum%normflux(1:spectrum%nLambda))
-      tot = 0.d0
-      call locate(spectrum%lambda, spectrum%nLambda, lamStart, i1)
-      call locate(spectrum%lambda, spectrum%nLambda, lamEnd, i2)
-      do i = i1, i2
-         tot = tot + spectrum%flux(i) * spectrum%dlambda(i)
-      enddo
-      spectrum%normflux = spectrum%flux / tot
-      allocate(spectrum%normflux2(1:spectrum%nLambda))
-      tot = 0.d0
-      call locate(spectrum%lambda, spectrum%nLambda, lamStart, i1)
-      call locate(spectrum%lambda, spectrum%nLambda, lamEnd, i2)
-      do i = i1, i2
-         tot = tot + spectrum%flux(i)
-      enddo
-      spectrum%normflux2 = spectrum%flux / tot
+      spectrum%normflux(1:spectrum%nLambda) = spectrum%flux(1:spectrum%nLambda)*spectrum%dlambda(1:spectrum%nLambda)
+      spectrum%normflux(1:spectrum%nLambda) = spectrum%normflux(1:spectrum%nLambda) / SUM(spectrum%normflux(1:spectrum%nLambda))
     end subroutine normalizedSpectrum
          
   end module spectrum_mod

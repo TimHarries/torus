@@ -1095,7 +1095,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   if (grid%flatspec.or.(grid%doRaman)) then
      iLambda = 1
   else
-     call hunt(grid%lamArray, grid%nLambda, wavelength, iLambda)
+     call locate(grid%lamArray, grid%nLambda, wavelength, iLambda)
   endif
 
   if (.not. grid%adaptive) then
@@ -1454,6 +1454,233 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
 
 end subroutine integratePathAMR
+
+subroutine integratePathAMR2(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
+     lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb,&
+     contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
+     redRegion, usePops, mLevel, nLevel, &
+     fStrength, gM, gN, localTau,sampleFreq,error)
+
+  ! should we add the 'interp' argument and implement it?
+
+  ! error codes are:  -10: too few samples made (the code should be fixed to 
+  !                          stop this being a problem)
+  !                   -20: the photon passed too close to a cell boundary and 
+  !                          returnSamples decided to abort it 
+ 
+  use constants_mod
+
+  implicit none
+
+  logical :: escaped
+  type(OCTALVECTOR) :: octVec
+  integer :: subcell
+  real(kind=doubleKind) :: tval
+
+  real, intent(in)          :: wavelength             ! the wavelength 
+  real, intent(in)          :: lambda0                ! rest wavelength of line
+  type(VECTOR), intent(in)  :: vVec                   ! velocity vector
+  type(VECTOR), intent(in)  :: aVec                   ! starting position vector
+  type(VECTOR), intent(in)  :: uHat                   ! direction
+  type(GRIDTYPE), intent(in):: grid                   ! the opacity grid
+  integer, intent(in)       :: maxTau
+  real, intent(out)         :: lambda(1:maxTau)       ! path distance array
+  real, intent(out)         :: tauExt(1:maxTau)       ! optical depth
+  real, intent(out)         :: tauAbs(1:maxTau)       ! optical depth
+  real, intent(out)         :: tauSca(1:maxTau)       ! optical depth
+  integer, intent(out)      :: nTau                   ! size of optical depth arrays
+  logical, intent(in)       :: opaqueCore             ! is the core opaque
+  real, intent(out)         :: escProb                ! the escape probability
+  real, intent(in)          :: lamStart, lamEnd
+  integer, intent(in)       :: nLambda
+  real, intent(out)         :: tauCont(maxTau, nLambda)
+  logical, intent(out)      :: hitcore                ! has the photon hit the core
+  logical, intent(in)       :: thinLine               ! ignore line absorption of continuum
+  logical, intent(in)       :: redRegion              ! use raman scattering red region opacities
+  logical, intent(in)       :: usePops
+  integer, intent(in)       :: mLevel, nLevel
+  real, intent(in)          :: fStrength, gM, gN
+  real, intent(out)         :: localTau
+  real, intent(in)          :: sampleFreq             ! max. samples per grid cell
+  integer, intent(out)      :: error                  ! error code returned
+
+
+  real                      :: rho(1:maxTau)          ! density
+  type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
+  type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
+  type(VECTOR)              :: rVec                   ! position vector
+  logical                   :: contPhoton             ! is this a continuum photon?
+  real, dimension(1:maxTau) :: chiLine                ! line opacities
+  real, dimension(1:maxTau,1:grid%maxLevels) :: levelPop  ! stateq level pops
+  real, dimension(1:maxTau) :: tauSob, tauSob2        ! Sobolev optical depths
+  real, dimension(1:maxTau) :: escProbArray           ! escape probabilities
+  type(vector), dimension(1:maxTau) :: velocity       ! 
+  real, dimension(1:maxTau) :: velocityDeriv          ! directional derivative
+  
+  real :: nu, nu2                                        ! frequencies
+
+  integer :: iStart                                 ! starting index
+
+  real :: tauSobScalar,tauSobScalar1,tauSobScalar2  ! Sobolev optical depths
+
+  real :: thisVel
+  integer :: ilambda                                ! wavelength index
+
+
+  integer, parameter :: maxLambda = 2000             ! max size of tau arrays
+  real :: dlambda(maxTau)                           ! distance increment array
+
+  real :: projVel(maxTau)
+  real :: kabs(maxtau), ksca(maxtau)                ! opacities
+  real :: x                                         ! multipliers
+
+  real :: chil                                      ! line opacity
+
+   type(OCTAL), pointer :: thisOctal
+   type(OCTAL),pointer :: oldOctal
+
+  real :: kappaScaReal, kappaAbsReal
+  
+  real :: lambda2, thisVel2
+
+  integer :: i, j                   ! counters
+
+  ! initialize variables
+
+  hitcore = .false.
+  rVec = aVec
+  escProb = 1.
+  error = 0
+
+  ! locate this wavelength in the grid of wavelengths
+
+  if (grid%flatspec.or.(grid%doRaman)) then
+     iLambda = 1
+  else
+     call locate(grid%lamArray, grid%nLambda, wavelength, iLambda)
+  endif
+
+  if (.not. grid%adaptive) then
+     print *, 'integratePathAMR called on a non-adaptive grid!'
+     stop
+  end if
+
+  nTau = 1
+  tauSca(nTau) = 0.
+  tauAbs(nTau) = 0.
+  lambda(nTau) = 0.
+  escaped = .false.
+  call amrGridValues(grid%octreeRoot, octVec, iLambda=iLambda, &
+       foundOctal=thisOctal, foundSubcell=subcell, &
+       kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid)
+  oldOctal => grid%octreeRoot
+    do while (.not.escaped) 
+       octVec = rVec
+       if (.not.inOctal(grid%octreeRoot, octVec)) then
+          escaped = .true.
+       endif
+       if (.not.escaped) then
+          call intersectCubeAMR(grid, rVec, uHat, tVal)
+          call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLambda, &
+               foundOctal=thisOctal, foundSubcell=subcell, &
+               kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid)
+          nTau = nTau + 1
+          tauSca(nTau) = tauSca(nTau-1) + tval * kappaScaReal
+          tauAbs(nTau) = tauAbs(nTau-1) + tval * kappaAbsReal
+          lambda(nTau) = lambda(nTau-1) + tval
+          rVec = rVec + tval * uHat
+          oldOctal => thisOctal
+       endif
+    end do
+    tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau)
+  end subroutine integratePathAMR2
+
+  subroutine intersectCubeAMR(grid, posVec, direction, tval)
+   use vector_mod
+   use grid_mod
+   implicit none
+   type(GRIDTYPE) :: grid
+   type(VECTOR) :: posVec, direction, norm(6), p3(6)
+   type(OCTAL),pointer :: thisOctal
+   type(OCTALVECTOR) :: subcen, point
+   integer :: subcell
+   
+   real(kind=doubleKind) :: t(6),tval,denom(6)
+   integer :: i,j
+   logical :: ok, thisOk(6)
+
+   point = posVec
+
+   call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
+   subcen =  subcellCentre(thisOctal,subcell)
+   ok = .true.
+
+   norm(1) = VECTOR(1., 0., 0.)
+   norm(2) = VECTOR(0., 1., 0.)
+   norm(3) = VECTOR(0., 0., 1.)
+   norm(4) = VECTOR(-1., 0., 0.)
+   norm(5) = VECTOR(0., -1., 0.)
+   norm(6) = VECTOR(0., 0., -1.)
+
+   p3(1) = VECTOR(subcen%x+thisOctal%subcellsize/2., 0., 0.)
+   p3(2) = VECTOR(0., subcen%y+thisOctal%subcellsize/2. ,0.)
+   p3(3) = VECTOR(0.,0.,subcen%z+thisOctal%subcellsize/2.)
+   p3(4) = VECTOR(subcen%x-thisOctal%subcellsize/2., 0., 0.)
+   p3(5) = VECTOR(0.,subcen%y-thisOctal%subcellsize/2.,0.)
+   p3(6) = VECTOR(0.,0.,subcen%z-thisOctal%subcellsize/2.)
+
+   thisOk = .true.
+
+   do i = 1, 6
+
+      denom(i) = norm(i) .dot. direction
+      if (denom(i) /= 0.) then
+         t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
+      else
+         thisOk(i) = .false.
+         t(i) = 0.
+      endif
+      if (t(i) < 0.) thisOk(i) = .false.
+!      if (denom > 0.) thisOK(i) = .false.
+   enddo
+
+
+
+
+  
+  j = 0
+  do i = 1, 6
+    if (thisOk(i)) j=j+1
+  enddo
+
+  if (j == 0) ok = .false.
+   
+  if (.not.ok) then
+     write(*,*) direction%x,direction%y,direction%z
+     write(*,*) t(1:6)
+     stop
+  endif
+
+  tval = minval(t, mask=thisOk)
+  tval = max(tval * 1.001d0,dble(thisOctal%subCellSize/1000.))
+
+
+  if (tval == 0.) then
+     write(*,*) posVec
+     write(*,*) direction%x,direction%y,direction%z
+     write(*,*) t(1:6)
+     stop
+  endif
+
+  if (tval > sqrt(3.)*thisOctal%subcellsize) then
+!     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
+!     write(*,*) "direction",direction
+!     write(*,*) t(1:6)
+!     write(*,*) denom(1:6)
+  endif
+
+
+end subroutine intersectCubeAMR
 
    
 end module path_integral
