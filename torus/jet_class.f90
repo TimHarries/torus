@@ -529,14 +529,16 @@ contains
     !
     logical, save :: first_time = .true.
     real(double) , save:: rGrid(nr)
-    real(double) :: Rmax = 1.5d3  ! [10^10cm]
+    real(double) :: Rmax = 1.5d5  ! [10^10cm] = 100 AU
 
     need_to_split2 = .false.
 
     if (first_time) then  ! setup ref. r grid
        do i = 1, nr
-          rGrid(i) = log10(this%rIn)+dble(i-1)/dble(nr-1)*(log10(this%rOut)-log10(this%rIn))
-!          rGrid(i) = log10(this%rIn)+dble(i-1)/dble(nr-1)*(log10(Rmax)-log10(this%rIn))
+!          rGrid(i) = log10(this%rIn)+dble(i-1)/dble(nr-1)*(log10(this%rOut)-log10(this%rIn))
+
+          ! this should not depend on the size of the model boundary box.
+          rGrid(i) = log10(this%rIn)+dble(i-1)/dble(nr-1)*(log10(Rmax)-log10(this%rIn))
        enddo
        do i = 1, nr
           rGrid(i) = 10.d0**rGrid(i)

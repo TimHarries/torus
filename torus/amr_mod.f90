@@ -6225,12 +6225,15 @@ CONTAINS
 !          S_line = thisOctal%etaLine(subcell) / thisOctal%chiLine(subcell)
 !          EM      = S*d
 !          EM_line = S_line*d
-          EM      = thisOctal%etaCont(subcell)*dV
-          EM_line = thisOctal%etaLine(subcell)*dV
-
-          !thisOctal%biasCont3D(subcell) = EM
-          thisOctal%biasCont3D(subcell) = EM ! no bias for contiuum photon
-          thisOctal%biasLine3D(subcell) = EM_line
+          if (thisOctal%inflow(subcell)) then
+             EM      = thisOctal%etaCont(subcell)*dV
+             EM_line = thisOctal%etaLine(subcell)*dV
+          else
+             EM      = 1.0e-20
+             EM_line = 1.0e-20
+          end if
+          thisOctal%biasCont3D(subcell) = 1.0d0/EM 
+          thisOctal%biasLine3D(subcell) = 1.0d0/EM_line
 
        endif
     enddo

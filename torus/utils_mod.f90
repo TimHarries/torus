@@ -1243,11 +1243,11 @@ contains
 
       ! -- using the values in input_variables module
       dvel = (lamend-lamstart)/lamline/real(nlambda-1)  ! should be in [c]
-!      dvel = dvel/7.0  ! to be safe
       dvel = dvel/2.0  ! to be safe  
       allocate(dProjVel(1:nTau))
-      dProjVel(1)  = 0.
-      dProjVel(2:nTau) = projVel(2:nTau) - projVel(1:nTau-1)
+!      dProjVel(1)  = 0.
+      dProjVel(1:nTau-1) = projVel(2:nTau) - projVel(1:nTau-1)
+      dProjVel(nTau)  = 0.0
 
       newNTau = 0
       do i = 2, nTau

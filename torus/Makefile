@@ -86,7 +86,7 @@ ifeq ($(SYSTEM), alpha)
    KNOWN_SYSTEM=yes
 endif
 
-ifeq ($(SYSTEM), mpi)
+ifeq ($(SYSTEM), mpilam)
    TOP=/h/rk/mpi_nag
    TOP2=/h/rk/mpi_g77
    F95COMP=${TOP}/bin/mpif95 -mismatch
@@ -97,11 +97,32 @@ ifeq ($(SYSTEM), mpi)
    MATHTRAP=
    UNIXMOD=unix_mod.f90.linux
    KINDMOD=kind_mod.f90.linux
-   EXE=torus.mpi
+   EXE=torus.mpilam
    F77FLAG=-fno-second-underscore -w
    IMAGEF77=image_f77.f.default
    SPECF77=spec_f77.f.default
    F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
+   STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+   MK_MPI_SRC=yes
+   KNOWN_SYSTEM=yes
+endif
+
+ifeq ($(SYSTEM), mpich)
+   TOP=/h/th/mpich
+   TOP2=/h/th/mpich_g77
+   F95COMP=${TOP}/bin/mpif90 -mismatch
+   F77COMP=${TOP2}/bin/mpif77
+   FASTFLAG=-O3 -I${TOP}/include -dcfuns -w
+   DEBUGFLAG=-g -I${TOP}/include -dcfuns
+#   MATHTRAP=-ieee=stop
+   MATHTRAP=
+   UNIXMOD=unix_mod.f90.linux
+   KINDMOD=kind_mod.f90.linux
+   EXE=torus.mpich
+   F77FLAG=-fno-second-underscore -w
+   IMAGEF77=image_f77.f.default
+   SPECF77=spec_f77.f.default
+   F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
    MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes

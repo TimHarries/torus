@@ -1853,7 +1853,8 @@ end subroutine integratePathAMR
     real :: meanMoleMass = mHydrogen
     real(double) :: a
 !    real :: Hay(0:0), dv(0:0)
-    real(double) :: Hay, dv, Vn
+    real(double) :: Hay, dv, Vn1, Vn2, Vrel
+    real(double) :: T_mid, Ne_mid, N_HI_mid, chiline_mid
     integer :: newNtau
     real :: T, lam, tmp
     real :: sqrt_pi
@@ -1865,6 +1866,15 @@ end subroutine integratePathAMR
     escProb = 1.
     error = 0
     
+    ! THIS ROUTINE IS STILL UNDERDEVELOPEMENT
+    write(*,*) " "
+    write(*,*) " "
+    write(*,*) "ERROR:: Please set stark=F. This option is not yet available! "
+    stop
+    write(*,*) " "
+    write(*,*) " "
+
+
     ! locate this wavelength in the grid of wavelengths
     
     if (grid%flatspec.or.(grid%doRaman)) then
@@ -1897,9 +1907,9 @@ end subroutine integratePathAMR
 
 
     ! find the projected velocity [c]
-    Vn = uHat .dot. vVec  ! projected velocity of the local gas at emission location
-    thisVel = (lambda0 - wavelength)/lambda0
-!    thisVel = thisVel  + Vn    ! (+ve when moving toward.)
+    Vn1 = uHat .dot. vVec         ! projected velocity of the local gas at emission location
+    Vn2 = velocity(1) .dot. vVec  ! projected velocity of the local gas at this location
+    thisVel = Vn1 + (lambda0-wavelength)/lambda0
 
 
     escProb = 1.
@@ -1921,11 +1931,13 @@ end subroutine integratePathAMR
        return
     end if
 
+!    ! projected velocity of the local gas at emission location
+
 
     ! projected velocities 
     forall (i = 1:nTau)
        ! Shifting to CMF
-       projVel(i) = dble(velocity(i) .dot. uHat)  -  Vn ! (+ve when moving toward.)
+       projVel(i) = dble(velocity(i) .dot. uHat)  ! (+ve when moving toward.)
     end forall
     
     dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)
@@ -2018,21 +2030,29 @@ end subroutine integratePathAMR
     ! line photons
     nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
     nu = cSpeed / (wavelength*angstromtocm)  ! freq of this photon
-    nu_p = nu  ! photon freq (CMF)
+    nu_p = nu/( 1.0d0+ (Vn2-Vn1) )
     if (.not.contPhoton) then
        tauAbsLine(1) = 0. 
-       do i = 2, nTau
-!         T = MAX(temperature(i-1), 3.0) ! [K] 
-          T = MAX(temperature(i-1), 3000.0) ! [K]  To avoid a tiny Doppler width
+       do i = 2, nTau          
+          ! Evaluating the values in the mid point
+          T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+          Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+          N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+          chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+          T_mid = MAX(T_mid, 3000.0d0) ! [K]  To avoid a tiny Doppler width
+
+          Vrel = projVel(i) -  Vn2  ! relative velocity
+
           ! The line centre of absorption profile shifted by Doppler.
-          nu0_p = nu0/(1.0d0-projVel(i-1))  ! [Hz] 
-          DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T/meanMoleMass) !eq 7  [Hz]
-          a = bigGamma(dble(N_HI(i-1)), dble(T), dble(Ne(i-1)), dble(nu0_p))   &
-               / (fourPi * DopplerWidth) ! [-]
+!          nu0_p = nu0/(1.0d0-projVel(i-1))  ! [Hz] 
+          nu0_p = nu0/(1.0d0+Vrel)  ! [Hz] 
+
+          DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T_mid/meanMoleMass) !eq 7  [Hz]
+          a = bigGamma(N_HI_mid, T_mid, Ne_mid, nu0_p) / (fourPi * DopplerWidth) ! [-]
           deltaNu = nu_p - nu0_p     !  [Hz]
           dv = deltaNu/DopplerWidth  ! [-]
-          Hay = voigtn(dble(a),dv)       
-          chil = chiLine(i-1) / (sqrt_pi*DopplerWidth) * Hay ! equation 5
+          Hay = voigtn(a,dv)
+          chil = chiLine_mid / (sqrt_pi*DopplerWidth) * Hay ! equation 5
           dtau = chil*dlambda(i-1)
           tauAbsLine(i) = tauAbsLine(i-1) +  dtau
        enddo
@@ -2063,19 +2083,26 @@ end subroutine integratePathAMR
 !          lam = (lambda0 - wavelength) + grid%lamArray(j)
           lam = wavelength + (grid%lamArray(j)-lambda0)
           nu = cSpeed / (lam*angstromtocm)  ! freq of this photon
-          nu_p = nu  ! CMF freqency
-          do i = 2, nTau
-!             T = MAX(temperature(i-1), 3.0) ! [K]   to avoid infinity
-             T = MAX(temperature(i-1), 3000.0) ! [K]  To avoid a tiny Doppler width
+          nu_p = nu   ! photon freq (CMF) at this location
+          do i = 2, nTau                       
+             ! Evaluating the values in the mid point
+             T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+             Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+             N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+             chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+             T_mid = MAX(T_mid, 3000.0d0) ! [K]  To avoid a tiny Doppler width
+
+             Vrel = projVel(i) -  Vn2  ! relative velocity
+
              ! The line centre of absorption profile shifted by Doppler.
-             nu0_p = nu0/(1.0d0-projVel(i-1))  
-             DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T/meanMoleMass)  ! [Hz]
-             a = bigGamma(dble(N_HI(i-1)),  dble(T), dble(Ne(i-1)), dble(nu0_p))   &
-                  / (fourPi * DopplerWidth)  ! [Hz]
-             deltaNu = nu_p - nu0_p     ! [Hz]
+             nu0_p = nu0/(1.0d0+Vrel)  
+
+             DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T_mid/meanMoleMass) !eq 7  [Hz]
+             a = bigGamma(N_HI_mid, T_mid, Ne_mid, nu0_p) / (fourPi * DopplerWidth) ! [-]
+             deltaNu = nu_p - nu0_p     !  [Hz]
              dv = deltaNu/DopplerWidth  ! [-]
-             Hay = voigtn(dble(a), dv)
-             chil = chiLine(i-1) / (sqrt_pi*DopplerWidth) * Hay
+             Hay = voigtn(a,dv)
+             chil = chiLine_mid / (sqrt_pi*DopplerWidth) * Hay ! equation 5
              dtau = chil*dlambda(i-1)
              tauCont(i,j) = tauCont(i-1,j) + dtau
           enddo
