@@ -7,11 +7,13 @@ subroutine contread(filename,line_freq,hnu)
   ! formatted file.
   !
   use math_mod
+  use kind_mod
   
   implicit none
   real nu(2000)         ! frequency grid
   real hnugrid(2000)        ! intensity grid
-  real line_freq,hnu
+  real line_freq
+  real(kind=doubleKind) :: hnu
   character(len=80) :: filename
   integer n                        ! number of points
   integer j                        ! loop counter

@@ -5,11 +5,15 @@ module atom_mod
   public
 contains
 
-  subroutine getLTEopacities(rne, rtemp, retal, rchil, reta, rchi, resec)
-
+  subroutine getLTEopacities(rne, rtemp, retal, rchil, reta, rchi, resec, m, n)
+    implicit none
+    
     integer :: k
-    integer :: i,m,n
-    real :: rne, rtemp, retal, rchil, reta, rchi, resec
+    integer :: i
+    real, intent(in) :: rne, rtemp
+    real, intent(inout) :: retal, rchil, reta, rchi, resec
+    integer, intent(in), optional :: m,n
+    
     real(kind=doubleKind) ::  thresh
     real(kind=doubleKind) ::  transe
     real(kind=doubleKind) ::  nsaha(15),freq
@@ -20,6 +24,9 @@ contains
     real(kind=doubleKind) ::  esec
     real(kind=doubleKind) ::  etal
     real(kind=doubleKind) ::  chil
+    
+
+    
     real(kind=doubleKind) :: kappa
     real(kind=doubleKind) ::  ah(6,6)
     real(kind=doubleKind) ::  bh(6,6)
@@ -63,8 +70,8 @@ contains
        1.394D-2, 4.467D-2, 1.506D-1, 1.038D00, 0.000D00,-0.855D00, &
        7.799D-3, 2.209D-2, 5.584D-2, 1.793D-1, 1.231D00, 0.000D00/
 
-    m = 2 
-    n = 3
+!    m = 2 
+!    n = 3
 
     ne = dble(rne)
     temp = dble(rtemp)

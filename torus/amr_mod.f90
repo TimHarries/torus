@@ -8,6 +8,10 @@ MODULE amr_mod
   USE gridtype_mod        ! type definition for the 3-d grid 
   USE parameters_mod      ! parameters for specific geometries
   USE jets_mod            ! 
+  USE constants_mod, only: cSpeed
+  USE sph_data_class
+  USE cluster_class
+  USE density_mod
 
   IMPLICIT NONE
 
@@ -15,7 +19,7 @@ MODULE amr_mod
 CONTAINS
 
 
-  SUBROUTINE calcValuesAMR(thisOctal,subcell,grid)
+  SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, sphData)
     ! calculates the variables describing one subcell of an octal.
     ! each geometry that can be used with AMR should be described here, 
     !   otherwise the program will print a warning and exit.
@@ -24,9 +28,11 @@ CONTAINS
 
     TYPE(octal), INTENT(INOUT)    :: thisOctal ! the octal being changed
     INTEGER, INTENT(IN)           :: subcell   ! the subcell being changed
-    TYPE(gridtype), INTENT(INOUT) :: grid      ! the grid 
-
-
+    TYPE(gridtype), INTENT(INOUT) :: grid      ! the grid
+    !
+    TYPE(sph_data), optional, INTENT(IN)    :: sphData   ! Matthew's SPH data.
+    
+    
     SELECT CASE (grid%geometry)
 
     CASE ("ttauri")
@@ -40,7 +46,11 @@ CONTAINS
       
     CASE("wr104")
        call calcWR104Density(thisOctal,subcell,grid)
-
+       
+    CASE("cluster")
+       ! using a routine in cluster_class.f90
+       call assign_density(thisOctal,subcell, sphData)
+       
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
       STOP
@@ -53,7 +63,7 @@ CONTAINS
   END SUBROUTINE calcValuesAMR
 
 
-  SUBROUTINE initFirstOctal(grid, centre, size)
+  SUBROUTINE initFirstOctal(grid, centre, size, sphData)
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
@@ -65,7 +75,7 @@ CONTAINS
     REAL, INTENT(IN)                 :: size 
       ! 'size' should be the vertex length of the cube that contains the whole
       !   of the simulation space, *not* the size of a subcell.
-                                         
+    TYPE(sph_data), optional, intent(in)   :: sphData   ! Matthew's SPH model data                                         
     INTEGER :: subcell ! loop counter 
 
 
@@ -104,13 +114,36 @@ CONTAINS
     grid%octreeRoot%chiLine = 1.e-30
     grid%octreeRoot%etaLine = 1.e-30
     grid%octreeRoot%etaCont = 1.e-30
+
+
+    if(grid%geometry(1:7) == "cluster") then
+       ! Initially we copy the idecies of particles (in SPH data)
+       ! to the root node. The indecies will copy over to
+       ! to the subcells if the particles are in the subcells.
+       ! This will allow us to work with the subsets of gas particle
+       ! list hence reduces the computation time when we are 
+       ! splitting/constructing the octree data structure. 
+       !
+       ! Using the routine in grid_mod.f90
+       call copy_sph_index_to_root(grid, sphData)
+       !
+       DO subcell = 1, 8
+          ! calculate the values at the centre of each of the subcells
+          CALL calcValuesAMR(grid%octreeRoot,subcell,grid, sphData)
+	  ! label the subcells
+	  grid%octreeRoot%label(subcell) = subcell
+       END DO
+    else
+       DO subcell = 1, 8
+	  ! calculate the values at the centre of each of the subcells
+	  CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
+	  ! label the subcells
+	  grid%octreeRoot%label(subcell) = subcell
+
+       END DO
+    end if
     
-    DO subcell = 1, 8
-      ! calculate the values at the centre of each of the subcells
-      CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
-      ! label the subcells
-      grid%octreeRoot%label(subcell) = subcell
-    END DO
+	  
 
     ! we keep track of the maximum depth of the grid...
     grid%maxDepth = 1
@@ -124,7 +157,7 @@ CONTAINS
   END SUBROUTINE initFirstOctal
 
 
-  SUBROUTINE addNewChild(parent, nChild, grid)
+  SUBROUTINE addNewChild(parent, nChild, grid, sphData)
     ! adds one new child to an octal
 
     IMPLICIT NONE
@@ -142,8 +175,10 @@ CONTAINS
                                        ! - this isn't very clever. might change it. 
     INTEGER       :: nChildren         ! number of children the parent octal has
     INTEGER       :: newChildIndex     ! the storage location for the new child
-    INTEGER       :: error 
-
+    INTEGER       :: error
+    
+    ! For only cluster geometry ...
+    TYPE(sph_data), optional, intent(in) :: sphData    
 
     ! store the number of children that already exist
     nChildren = parent%nChildren
@@ -199,7 +234,7 @@ CONTAINS
         PRINT *, 'Panic: deallocation failed.'
         STOP
       END IF
-
+      NULLIFY(tempChildStorage%child)  ! For safety
     ENDIF
 
 
@@ -238,13 +273,26 @@ CONTAINS
     parent%child(newChildIndex)%etaLine = 1.e-30
     parent%child(newChildIndex)%etaCont = 1.e-30
 
-    ! put some data in the eight subcells of the new child
-    DO subcell = 1, 8
-      CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid)
-      parent%child(newChildIndex)%label(subcell) = counter
-      counter = counter + 1
-    END DO
 
+    if (present(sphData) .and. grid%geometry(1:7) =="cluster") then
+       ! updates the sph particle linked list.           
+       call update_particle_list(parent, nChild, newChildIndex, sphData)
+       
+       ! put some data in the eight subcells of the new child
+       DO subcell = 1, 8 
+	  CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData)
+	  parent%child(newChildIndex)%label(subcell) = counter
+	  counter = counter + 1
+       END DO
+    else
+       ! put some data in the eight subcells of the new child
+       DO subcell = 1, 8 
+	  CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid)
+	  parent%child(newChildIndex)%label(subcell) = counter
+	  counter = counter + 1
+       END DO          
+    end if
+    
  
     ! check for a new maximum depth 
     IF (parent%child(newChildIndex)%nDepth > grid%maxDepth) THEN
@@ -259,7 +307,7 @@ CONTAINS
   END SUBROUTINE addNewChild
 
 
-  RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid)
+  RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid, sphData)
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
 
@@ -271,24 +319,28 @@ CONTAINS
       !   decide whether or not to split cell.
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid through to the 
                                           !   routines that this subroutine calls
-    
+
+    ! Object containg the output from the (Mattew's) SPH code.
+    ! This will be just passed to decideSplit routine.
+    TYPE(sph_data), OPTIONAL, intent(in) :: sphData
+    !
     TYPE(OCTAL), POINTER :: childPointer  
     INTEGER              :: subcell, i    ! loop counters
     logical :: splitThis
-    
+
     splitThis = .false.
     DO subcell = 1, 8, 1
-       IF (decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid))splitThis = .true.
+       IF (decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid,sphData))splitThis = .true.
     enddo
 
          ! tjh changed from
 !        CALL addNewChild(thisOctal,subcell,grid)
     IF (splitThis) then
-       CALL addNewChildren(thisOctal, grid)
+       CALL addNewChildren(thisOctal, grid, sphData)
        ! find the index of the new child and call splitGrid on it
         DO i = 1, 8, 1
            childPointer => thisOctal%child(i)
-           CALL splitGrid(childPointer,amrLimitScalar,amrLimitScalar2,grid)
+           CALL splitGrid(childPointer,amrLimitScalar,amrLimitScalar2,grid,sphData)
         END DO
      ENDIF
       
@@ -331,6 +383,7 @@ CONTAINS
     END IF
 
   END SUBROUTINE getOctalArray
+    
   
 
   RECURSIVE SUBROUTINE finishGrid(thisOctal,grid,gridConverged)
@@ -370,6 +423,10 @@ CONTAINS
       CASE ("wr104")
         gridConverged = .TRUE.
 
+      CASE ("cluster")
+	call assign_grid_values(thisOctal,subcell, grid)
+	gridConverged = .TRUE.
+
       CASE DEFAULT
         WRITE(*,*) "! Unrecognised grid geometry: ",trim(grid%geometry)
         STOP
@@ -394,7 +451,7 @@ CONTAINS
   END SUBROUTINE finishGrid
  
   
-  RECURSIVE SUBROUTINE countVoxels(thisOctal,nOctals,nVoxels)  
+  SUBROUTINE countVoxels(thisOctal,nOctals,nVoxels)  
     ! count the number of octals in the current section of the grid.
     ! also counts the number of unique volume elements (voxels) i.e.
     !   those subcells that are not subdivided
@@ -405,23 +462,31 @@ CONTAINS
     INTEGER,INTENT(INOUT) :: nOctals   ! number of octals
     INTEGER,INTENT(INOUT) :: nVoxels   ! number of childless subcells
     
-    TYPE(OCTAL), POINTER  :: child
-
-    INTEGER :: i
-
-    nOctals = nOctals + 1
-
-    IF ( thisOctal%nChildren > 0 ) THEN
-      ! call this subroutine recursively on each of its children
-      DO i = 1, thisOctal%nChildren, 1
+    nOctals = 0 
+    CALL countVoxelsPrivate(thisOctal)
+    
+    CONTAINS
+    
+      RECURSIVE SUBROUTINE countVoxelsPrivate(thisOctal)
       
-        child => thisOctal%child(i)
-        CALL countVoxels(child,nOctals,nVoxels)
-      END DO
-    END IF
+        TYPE(OCTAL), POINTER  :: thisOctal 
+        TYPE(OCTAL), POINTER  :: child
+        INTEGER :: i
+        
+        nOctals = nOctals + 1
+        
+        IF ( thisOctal%nChildren > 0 ) THEN
+          ! call this subroutine recursively on each of its children
+          DO i = 1, thisOctal%nChildren, 1
+            child => thisOctal%child(i)
+            CALL countVoxelsPrivate(child)
+          END DO
+        END IF
 
-    ! increment the counter once for each of its childless subcells
-    nVoxels = nVoxels + (8 - thisOctal%nchildren)
+        ! increment the counter once for each of its childless subcells
+        nVoxels = nVoxels + (8 - thisOctal%nchildren)
+        
+      END SUBROUTINE countVoxelsPrivate
 
   END SUBROUTINE countVoxels
 
@@ -442,7 +507,8 @@ CONTAINS
     TYPE(octalVector), INTENT(IN)      :: startPoint ! photon start point
     TYPE(octalVector), INTENT(IN)      :: direction  ! photon direction 
     TYPE(gridtype), INTENT(IN)         :: grid       ! the entire grid structure
-    REAL, INTENT(IN)                   :: sampleFreq ! the maximum number of 
+    REAL, INTENT(IN)                   :: sampleFreq ! the maximum number of
+!    REAL(KIND=octalKind), INTENT(IN)   :: sampleFreq ! the maximum number of 
                        ! samples that will be made in any subcell of the octree. 
                        
     INTEGER, INTENT(OUT)             :: nSamples   ! number of samples made
@@ -522,7 +588,8 @@ CONTAINS
     
     IF (.NOT. inOctal(octree,startPoint)) THEN
       PRINT *, 'Attempting to find path between point(s) outwith the grid.'
-      write(*,*) startpoint
+      PRINT *, ' in amr_mod::startReturnSamples.'
+      PRINT *, ' ==> StartPoint = (', startPoint, ')'
       error = -30
       return
 !      startpoint%x = min(max(startpoint%x,octree%centre%x - octree%subcellSize),octree%centre%x + octree%subcellSize)
@@ -691,6 +758,7 @@ CONTAINS
     TYPE(octal), INTENT(IN)             :: octree       ! an octal grid
     TYPE(gridtype), INTENT(IN)          :: grid         ! grid structure
     REAL, INTENT(IN)                    :: sampleFreq
+!    REAL(KIND=octalKind), INTENT(IN)    :: sampleFreq
                   ! 'sampleFreq' is the maximum number of samples that will be made
                   !   in any subcell of the octree. 
     INTEGER, INTENT(INOUT)              :: nSamples     ! number of samples made
@@ -904,6 +972,8 @@ CONTAINS
     REAL(KIND=octalKind)   :: wallFromOrigin ! distance of cell wall from the origin
     TYPE(octalVector)      :: wallNormal     ! normal to plane of cell wall
 
+    INTEGER, parameter :: max_num_err = 10;
+    INTEGER, save :: num_err = 0    
        
     ! this code is ugly, but should work OK.   
                   
@@ -948,10 +1018,21 @@ CONTAINS
          wallDistanceY < margin .OR. &
          wallDistanceZ < margin      ) THEN 
       abortRay = .TRUE.
-      PRINT *, 'In getExitPoint, aborting ray because distance is less than ''margin'''
-      PRINT *, '  wallDistances=',wallDistanceX,wallDistanceY,wallDistanceZ 
+      if (num_err < max_num_err) then
+	 PRINT *, 'In getExitPoint, aborting ray because distance is less than ''margin'''
+	 PRINT *, '  wallDistances=',wallDistanceX,wallDistanceY,wallDistanceZ
+      elseif (num_err ==  max_num_err) then
+	 PRINT *, ' '
+	 PRINT *, 'Surpressing the further message from subroutine getExitPoint....'
+	 PRINT *, ' '
+      else
+	 continue
+      end if
+      
       error = -20
-      RETURN
+      num_err = num_err + 1
+      
+      RETURN      
     END IF
        
        
@@ -1189,6 +1270,13 @@ CONTAINS
 
     TYPE(vector)                       :: directionReal ! direction vector (REAL values)
     TYPE(octal), POINTER               :: localPointer  ! pointer to the current octal
+ 
+    TYPE(octalVector) :: starPosn
+    TYPE(octalVector) :: pointVec
+    REAL :: Vr, r, Rs
+    
+    starPosn = grid%starPos1
+    pointVec = (point - starPosn)
 
     nSamples = nSamples + 1
     IF (nSamples > maxSamples) THEN
@@ -1226,6 +1314,21 @@ CONTAINS
                          chiLine=chiLine(nSamples),                    &
                          grid=grid)
     END IF
+
+    
+    ! special case if the geometry is "jets" (for accuracy)
+    If (grid%geometry(1:4) == "jets" ) then
+       ! using routines in jets_mod.f90
+       rho(nSamples) = Density(pointVec, grid)                 ! in [g/cm^3]
+       Vr = JetsVelocity(pointVec, grid)/(cSpeed/1.0e5)        ! in [c]
+       r = modulus(pointVec)
+       Rs = get_jets_parameter("Rmin")
+       if (r < Rs) r =Rs
+       velocity(nSamples) = REAL(Vr, kind=octalkind)*(pointVec/REAL(r,kind=octalkind))
+       velocityDeriv(nSamples) = dV_dn_jets(VECTOR(pointVec%x, pointVec%y, pointVec%z), &
+            VECTOR(direction%x, direction%y, direction%z))    ! [1/sec]
+    end If
+    
 
     ! use variables to silence compiler warnings
     error = error
@@ -2007,7 +2110,7 @@ CONTAINS
     TYPE(octal), INTENT(IN)       :: thisOctal
     TYPE(octalVector), INTENT(IN) :: point
 
-    IF ((point%x <= thisOctal%centre%x - thisOctal%subcellSize ) .OR. &
+    IF ((point%x <= thisOctal%centre%x - thisOctal%subcellSize ) .OR. &              
         (point%x >= thisOctal%centre%x + thisOctal%subcellSize ) .OR. &
         (point%y <= thisOctal%centre%y - thisOctal%subcellSize ) .OR. &
         (point%y >= thisOctal%centre%y + thisOctal%subcellSize ) .OR. &
@@ -2046,7 +2149,7 @@ CONTAINS
   END FUNCTION looseInOctal
 
 
-  RECURSIVE SUBROUTINE smoothAMRgrid(thisOctal,grid,factor,gridConverged)
+  RECURSIVE SUBROUTINE smoothAMRgrid(thisOctal,grid,factor,gridConverged, sphData)
     ! checks whether each octal's neighbours are much bigger than it, 
     !   if so, makes the neighbours smaller.
     ! the 'needRestart' flag will be set if a change is made to the octree.
@@ -2059,6 +2162,7 @@ CONTAINS
     TYPE(gridtype), INTENT(INOUT   ) :: grid 
      REAL, INTENT(IN)                 :: factor
     LOGICAL, INTENT(INOUT)           :: gridConverged
+    TYPE(sph_data), optional, INTENT(IN)    :: sphData   ! Matthew's SPH data.
     
     INTEGER              :: i
     REAL(KIND=octalKind) :: halfSmallestSubcell
@@ -2109,7 +2213,7 @@ CONTAINS
           END IF
           ! tjh changed from
 !          CALL addNewChild(neighbour,subcell,grid)
-          call addNewChildren(neighbour, grid)
+          call addNewChildren(neighbour, grid, sphData)
           gridConverged = .FALSE.
         ENDIF
       END IF
@@ -2119,7 +2223,11 @@ CONTAINS
     IF ( thisOctal%nChildren > 0 ) THEN
       DO i = 1, thisOctal%nChildren, 1 
         child => thisOctal%child(i)
-        CALL smoothAMRgrid(child,grid,factor,gridConverged)
+        if (present(sphData)) then
+           CALL smoothAMRgrid(child,grid,factor,gridConverged, sphData)
+        else
+           CALL smoothAMRgrid(child,grid,factor,gridConverged)
+        end if
       END DO
     END IF 
 
@@ -2532,7 +2640,7 @@ CONTAINS
   END SUBROUTINE plotCube
 
 
-  FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid) RESULT(split)
+  FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid, sphData) RESULT(split)
     ! returns true if the current voxel is to be subdivided. 
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell  
@@ -2543,6 +2651,7 @@ CONTAINS
     INTEGER, INTENT(IN)        :: subcell
     REAL(KIND=doubleKind), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
     TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(sph_data), OPTIONAL, intent(in) :: sphData
     LOGICAL                    :: split          
 
     REAL(KIND=octalKind)  :: cellSize
@@ -2555,11 +2664,13 @@ CONTAINS
     REAL(KIND=doubleKind) :: total_opacity, minDensity, maxDensity, thisDensity
     INTEGER               :: nsample 
     LOGICAL               :: inUse
+    INTEGER               :: nparticle
+    REAL(KIND=doubleKind) :: dummyDouble
 
 
     select case(grid%geometry)
 
-    case("ttauri","jets","wr104")
+    case("ttauri","jets", "wr104")
       nsample = 400
       ! the density is only sampled at the centre of the grid
       ! we will search in each subcell to see if any point exceeds the 
@@ -2583,14 +2694,8 @@ CONTAINS
         searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=octalKind) 
         searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=octalKind) 
 
-        select case (grid%geometry)
-	  case("ttauri")
-	   ave_density  = TTauriDensity(searchPoint,grid) + ave_density
-           case("jets")
-	   ave_density  = JetsDensity(searchPoint,grid) + ave_density
-           case("wr104")
-	   ave_density  = wr104Densityvalue(searchPoint,grid) + ave_density
-	end select
+	! using a generic density function in density_mod.f90
+	ave_density  = density(searchPoint,grid) + ave_density
 
       END DO
 
@@ -2623,14 +2728,21 @@ CONTAINS
         endif
         ave_density  = thisDensity + ave_density
 
-      END DO
+     END DO
+     
+   case ("cluster")
+      ! Splits if the number of particle is more than a critical value (~3).
+      
+      ! using the function in amr_mod.f90
+      call find_n_particle_in_subcell(nparticle, dummyDouble, sphData, thisOctal, subcell)
 
-      ave_density = ave_density/dble(nsample)
-      total_opacity = ave_density * cellSize * grid%kappaTest
-      total_mass = ave_density * (cellSize*1.e10_db)**3
-      IF (total_mass > amrLimitScalar2 .or. total_opacity > amrLimitScalar) then
+      !
+      if (nparticle > nint(amrLimitScalar) ) then
+	 
 	 split = .TRUE.
-      END IF
+      else
+	 split = .FALSE.
+      end if
       
    case DEFAULT
 	   PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
@@ -2790,64 +2902,7 @@ CONTAINS
     
   END SUBROUTINE fillVelocityCorners
 
-
-  PURE FUNCTION TTauriDensity(point,grid) RESULT(rho)
-    ! calculates the density at a given point for a model of a T Tauri 
-    !   star with magnetospheric accretion
-    !   see Hartman, Hewett & Calvet 1994ApJ...426..669H 
-
-    use parameters_mod
-
-    IMPLICIT NONE
-
-    TYPE(octalVector), INTENT(IN) :: point
-    TYPE(gridtype), INTENT(IN)    :: grid
-    REAL                          :: rho
-
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
-
-    REAL :: r, rM, theta, y
-
-    starPosn = grid%starPos1
-    pointVec = (point - starPosn) * 1.e10_oc
-    r = modulus( pointVec ) 
-
-    ! test if the point lies within the star
-    IF ( r < TTauriRstar ) THEN
-      rho = 1.e-25
-      RETURN
-    END IF
-    
-    ! test if the point lies too close to the disk
-    IF ( ABS(pointVec%z) < 4.0e-2 * TTauriRstar) THEN
-      ! we will fake the coordinates so that the density
-      !  remains constant within this region 
-      pointVec%z = SIGN( 4.0e-2 * TTauriRstar, REAL(pointVec%z) )
-      r = modulus( pointVec ) 
-    END IF
-   
-    theta = ACOS( pointVec%z  / r )
-    IF (ABS(MODULO(theta,pi)) > 1.e-10 ) THEN 
-      rM  = r / SIN(theta)**2
-    ELSE
-      rM = HUGE(rM)
-    END IF
-     
-    ! test if the point lies outside the accretion stream
-    IF  ((rM > TTauriRinner) .AND. (rM < TTauriRouter )) THEN
-      y = SIN(theta)**2 
   
-      rho = (TTauriMdot * TTauriRstar) / (4.0 * pi * &
-              (TTauriRStar/TTauriRinner - TTauriRstar/TTauriRouter))
-      rho = rho * r**(-5.0/2.0) / SQRT( 2.0 * bigG * TTauriMstar ) 
-      rho = rho * SQRT( 4.0 - 3.0*y) / SQRT( 1.0 - y) 
-    ELSE
-      rho = 1.e-25
-    END IF
-    
-  END FUNCTION TTauriDensity
-
   TYPE(vector) PURE FUNCTION TTauriVelocity(point,grid)
     ! calculates the velocity vector at a given point for a model
     !   of a T Tauri star with magnetospheric accretion
@@ -2901,6 +2956,7 @@ CONTAINS
     END IF
 
   END FUNCTION TTauriVelocity
+
 
   SUBROUTINE calcTTauriMassVelocity(thisOctal,subcell,grid) 
     ! calculates some of the variables at a given point for a model
@@ -2975,6 +3031,9 @@ CONTAINS
         thisOctal%rho(subcell) = 1.e-25
         thisOctal%velocity(subcell) = vector(1.e-25,1.e-25,1.e-25)
       END IF
+      
+      IF (subcell == 8) &
+        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity)
 
       IF (subcell == 8) CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity)
 
@@ -3182,32 +3241,7 @@ CONTAINS
 
   end subroutine calcWR104Density
 
-  function wr104DensityValue(point, grid)
-    use wr104_mod
-    real :: wr104densityvalue
-    TYPE(octalVector), INTENT(IN) :: point
-    TYPE(gridtype), INTENT(IN)    :: grid
-    type(VECTOR) :: rvec
-    real :: r
-    integer :: i,j,k
-    wr104densityvalue = 0.
-    rVec = point
-
-    r = ((rVec%x / (grid%octreeroot%subcellsize*2.))+1.)*304./2.
-    i = nint(r)
-    i = min(max(1,i),304)
-    r = ((rVec%y / (grid%octreeroot%subcellsize*2.))+1.)*304./2.
-    j = nint(r)
-    j = min(max(1,j),304)
-    r = ((rVec%z / (grid%octreeroot%subcellsize*2.))+1.)*304./2.
-    k = nint(r)
-    k = min(max(1,k),304)
-    wr104densityvalue = wr104density(i,j,k)
-
-
-  end function wr104DensityValue
-
-  SUBROUTINE addNewChildren(parent, grid)
+  SUBROUTINE addNewChildren(parent, grid, sphData)
     ! adds all eight new children to an octal
 
     IMPLICIT NONE
@@ -3221,7 +3255,10 @@ CONTAINS
                                        ! - this isn't very clever. might change it. 
     INTEGER       :: newChildIndex     ! the storage location for the new child
     INTEGER       :: error
-
+    
+    ! For only cluster geometry ...
+    TYPE(sph_data), optional, intent(in) :: sphData
+    
     if (any(parent%hasChild(1:8))) write(*,*) "parent already has a child"
 
     parent%nChildren = 8
@@ -3272,9 +3309,14 @@ CONTAINS
        parent%child(newChildIndex)%etaLine = 1.e-30
        parent%child(newChildIndex)%etaCont = 1.e-30
 
+       if (present(sphData)) then
+	  ! updates the sph particle linked list.           
+	  call update_particle_list(parent, newChildIndex, newChildIndex, sphData)
+       end if
+       
        ! put some data in the eight subcells of the new child
        DO subcell = 1, 8
-          CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid)
+          CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData)
           parent%child(newChildIndex)%label(subcell) = counter
           counter = counter + 1
        END DO
@@ -3293,7 +3335,57 @@ CONTAINS
     
   END SUBROUTINE addNewChildren
 
+  !
+  !
+  ! Recursively deletes the sph_particle list in the grid.
+  !
+  recursive subroutine delete_particle_lists(thisoctal)
+    implicit none
+    
+    type(octal), pointer :: thisoctal
+    type(octal), pointer :: pChild  
+    integer              :: i             ! loop counters
+    
+    ! using a routine in linekd_list_class.f90    
+    DEALLOCATE(thisOctal%gas_particle_list)
+    
+    if ( thisOctal%nChildren > 0) then
+       do i = 1, thisOctal%nChildren
+	  pChild => thisOctal%child(i)
+	  call delete_particle_lists(pChild)
+       end do
+    end if
+    
+  end subroutine delete_particle_lists
   
+  
+
+
+  !
+  ! Assign the indecies to root node in the grid
+  !
+  
+  subroutine copy_sph_index_to_root(grid, sphData)
+    implicit none
+    type(gridtype), intent(inout) :: grid    
+    type(sph_data), intent(in) :: sphData
+    !
+    integer :: i, n
+
+    ! extracting the number of gas particles in sph
+    n = get_npart(sphData)
+
+    ! initialize the list
+    ALLOCATE(grid%octreeRoot%gas_particle_list(n))
+
+    ! Actually the initial indecies are just 1, 2, 3 ..n
+    do i = 1, n
+       ! assigin the values to the root
+       grid%octreeRoot%gas_particle_list(i) = i
+    end do
+       
+  end subroutine copy_sph_index_to_root
+
 
 
 END MODULE amr_mod

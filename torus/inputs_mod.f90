@@ -22,7 +22,7 @@ subroutine inputs()
   integer :: nLines
   integer :: errNo, i
   logical :: ok
-  character(len=80) :: cLine(100) 
+  character(len=80) :: cLine(200) 
   character(len=10) :: default
 
 
@@ -87,7 +87,12 @@ subroutine inputs()
      "Number of wavelength/velocity bins: ", "(a,i4,1x,a)", 20, ok, .true.)
 
 
+ call getReal("lambdatau", lambdatau, cLine, nLines, &
+      "Lambda for tau test: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
+ 
 
+ call getInteger("npix", npix, cLine, nLines, &
+      "Number of pixels for polimages: ", "(a,i3,1x,a)", 50, ok, .true.)
 
 
   call getString("distortion", distortionType, cLine, nLines, &
@@ -307,6 +312,7 @@ subroutine inputs()
      call getInteger("nlower", nLower, cLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
      call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
 
+     
      call getReal("xfac", xFac, cLine, nLines, &
           "Latitudinal x-fac: ","(a,f6.3,a)", 0., ok, .true.)
 
@@ -401,10 +407,10 @@ subroutine inputs()
    mdot2 = (10.**mdot2)*msol/(365.25*24.*3600.)
    deflectionAngle = deflectionAngle * degTorad
 
-endif
 
- call getReal("rho", rho, cLine, nLines, &
-      "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 0., ok, .false.)
+   call getReal("rho", rho, cLine, nLines, &
+        "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 0., ok, .false.)
+endif
 
  if (geometry .eq. "shell") then
    call getReal("radius", radius, cLine, nLines, &
@@ -568,15 +574,7 @@ endif
    rCore = rCore * rSol
    rInner = rInner * rSol
    rOuter = rOuter * rInner
-
-   call getReal("teff", teff, cLine, nLines, &
-        "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
    
-
-   rCore = rCore * rSol
-   rInner = rInner * rSol
-   rOuter = rOuter * rInner
-
   endif
 
 
@@ -935,6 +933,12 @@ endif
     call getReal("dipoleoffset", dipoleOffset, cLine, nLines, &
          "Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
     dipoleOffset = dipoleOffset * degToRad
+
+    call getString("ion_name", ion_name, cLine, nLines, &
+	 "Name of the ion for a line: ","(a,a,1x,a)","H I", ok, .true.)
+    call getReal("ion_frac", ion_frac, cLine, nLines, &
+          "Inonization fraction of the ion above: ","(a,f7.0,a)", 1.0, ok, .true.)    
+    
     call getInteger("nlower", nLower, cLine, nLines,"Lower level: ", &
 	 & "(a,i2,a)",2,ok,.true.)
     
@@ -944,25 +948,56 @@ endif
     call getReal("Rmin_bp", Rmin_bp, cLine, nLines, &
 	 "Radius of central star  [10^10cm] : ","(a,f5.1,a)", 1.0, ok, .true.)
     call getReal("Rmax_bp", Rmax_bp, cLine, nLines, &
-	 "Cutoff radius in [10^10 cm] : ","(a,f5.1,a)", 10.0, ok, .true.)
-    call getReal("Vinf_bp", Vinf_bp, cLine, nLines, &
-	 "Terminal velocity in  [kms] : ","(a,f5.1,a)", 250.0, ok, .true.)
-    call getReal("beta_bp", beta_bp, cLine, nLines, &
-	 "Beta in the beta-belocity law [-] : ","(a,f5.1,a)", 0.5, ok, .true.)
+	 "Cutoff radius in [10^10 cm] : ","(a,1PE7.1,a)", 10.0, ok, .true.)
     call getReal("Vo_bp", Vo_bp, cLine, nLines, &
 	 "A small offset in V in  [km/s] : ","(a,f5.1,a)", 5.0, ok, .true.)
-    call getReal("Mdot_bp", Mdot_bp, cLine, nLines, &
+
+    call getReal("Vinf_jets", Vinf_jets, cLine, nLines, &
+	 "Terminal velocity in  [kms] : ","(a,f5.1,a)", 250.0, ok, .true.)
+    call getReal("beta_jets", beta_jets, cLine, nLines, &
+	 "Beta in the beta-belocity law [-] : ","(a,f5.1,a)", 0.5, ok, .true.)
+    call getReal("Mdot_jets", Mdot_jets, cLine, nLines, &
 	 "Mass loss rate in jets  [M_solar/yr] : ","(a,1PE7.1,a)", 1.0e-9, ok, .true.)
-    call getReal("theta_o_bp", theta_o_bp, cLine, nLines, &
+    call getReal("theta_o_jets", theta_o_jets, cLine, nLines, &
 	 "Half opening angle [degrees] : ","(a,f5.1,a)", 30.0, ok, .true.)
-    call getReal("Tcore_bp", Tcore_bp, cLine, nLines, &
+    call getReal("Tcore_jets", Tcore_jets, cLine, nLines, &
 	 "Temperature at the core at Rmin in [10^4 K] : ","(a,f5.1,a)", 5.0, ok, .true.)
-    call getReal("e6_bp", e6_bp, cLine, nLines, &
+    call getReal("e6_jets", e6_jets, cLine, nLines, &
 	 "Exponet in tempereture eq. [-] : ","(a,f5.1,a)", 1.0, ok, .true.)
 
+
+    call getReal("Vinf_disk", Vinf_disk, cLine, nLines, &
+	 "Terminal velocity in  [kms] : ","(a,f5.1,a)", 250.0, ok, .true.)
+    call getReal("beta_disk", beta_disk, cLine, nLines, &
+	 "Beta in the beta-belocity law [-] : ","(a,f5.1,a)", 0.5, ok, .true.)
+    call getReal("Mdot_disk", Mdot_disk, cLine, nLines, &
+	 "Mass loss rate in jets  [M_solar/yr] : ","(a,1PE7.1,a)", 1.0e-9, ok, .true.)
+    call getReal("theta_o_disk", theta_o_disk, cLine, nLines, &
+	 "Half opening angle [degrees] : ","(a,f5.1,a)", 30.0, ok, .true.)
+    call getReal("Tcore_disk", Tcore_disk, cLine, nLines, &
+	 "Temperature at the core at Rmin in [10^4 K] : ","(a,f5.1,a)", 5.0, ok, .true.)
+    call getReal("e6_disk", e6_disk, cLine, nLines, &
+	 "Exponet in tempereture eq. [-] : ","(a,f5.1,a)", 1.0, ok, .true.)
+
+    call getReal("Rdisk_min", Rdisk_min, cLine, nLines, &
+	 "The minimum radius of the disk. [10^10 cm] : ","(a,f5.1,a)", &
+         1.0, ok, .true.)
+    call getReal("Rdisk_max", Rdisk_max, cLine, nLines, &
+	 "The maximum radius of the disk. [10^10 cm] : ","(a,f5.1,a)", &
+         100.0, ok, .true.)
+    call getReal("h_disk", h_disk, cLine, nLines, &
+	 "Thickness of the disk [10^10 cm] : ","(a,f5.1,a)", &
+         2.0, ok, .true.)
+    call getReal("rho_scale", rho_scale, cLine, nLines, &
+	 "The density in the units of rho max for disk wind : ","(a,1PE7.1,a)", &
+         1.0e-5, ok, .true.)
+
+    
     ! save the variables in an object in jets_mod module.
-    call set_jets_parameters(Rmin_bp, Rmax_bp, Vinf_bp, beta_bp,  Vo_bp, &
-	 & Mdot_bp, theta_o_bp, Tcore_bp, e6_bp)
+    call set_jets_parameters(Rmin_bp, Rmax_bp, Vo_bp, &
+         & Vinf_jets, beta_jets, Mdot_jets, theta_o_jets, Tcore_jets, e6_jets, &
+         & Vinf_disk, beta_disk, Mdot_disk, theta_o_disk, Tcore_disk, e6_disk, &
+         & Rdisk_min, Rdisk_max, h_disk, rho_scale)
     
  end if
  
@@ -970,7 +1005,7 @@ endif
 !   vterm = vterm * 1.e5
 !   v0 = v0 * 1.e5
 
-
+ 
  write(*,*) " "
 
 666 continue

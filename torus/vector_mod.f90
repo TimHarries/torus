@@ -758,7 +758,7 @@ contains
     real :: r1, r2, u, v, w, t, ang
     call random_number(r1)
     w = 2.*r1 - 1.
-    t = sqrt(1.d0-w*w)
+    t = sqrt(1.0-w*w)
     call random_number(r2)
     ang = pi*(2.*r2-1.)
     u = t*cos(ang)
@@ -1144,6 +1144,11 @@ contains
     
     zAxis = VECTOR(0.,0.,1.)
 
+    do while (ABS(rVec .dot. zAxis) == 1.0)
+       ! choose another one
+       rVec = randomUnitVector()
+    end do
+    
     norm = rVec
     call normalize(norm)
 

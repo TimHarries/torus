@@ -6,8 +6,12 @@ MODULE octal_mod
 
   USE kind_mod
   USE vector_mod
-
+  USE linked_list_class
+  
+  
   IMPLICIT NONE
+
+  public :: subcellCentre, within_subcell
 
 !       y                  z
 !       |                 /
@@ -75,6 +79,11 @@ MODULE octal_mod
       !   any of the normal AMR routines. They should probably be removed in the future.
     
     REAL(KIND=octalKind)               :: subcellSize    ! the size (length of a vertex) of each subcell
+
+    ! This is used only when we construct the tree from SPH data which
+    ! contains the position+density+velocitiy of gas particles.
+    ! Should be allocated with # of gas particles in this octal
+    INTEGER, POINTER                   :: gas_particle_list(:)  ! SPH index of the particles in this octal
     
   END TYPE octal
  
@@ -116,5 +125,64 @@ CONTAINS
     
   END FUNCTION subcellCentre
 
+
+  !
+  ! For a given octal object and a x,y,z position,  this
+  ! function checks if this position is within this octal.
+  !
+  function within_subcell(this, subcell, x, y, z) RESULT(out)
+    implicit none
+    logical :: out
+    type(octal), intent(in) :: this
+    integer, intent(in) :: subcell   
+    double precision, intent(in) :: x, y, z
+    !
+    TYPE(octalVector)     :: cellCenter
+    double precision :: x0, y0, z0  ! cell center
+    double precision :: d, dp, dm
+    double precision :: eps = 0.0d0
+    
+    d = (this%subcellSize)/2.0d0
+    dp = d+eps
+    dm = d-eps
+    
+    cellCenter = subcellCentre(this,subcell)
+    x0=dble(cellCenter%x); y0=dble(cellCenter%y); z0=dble(cellCenter%z)
+
+    ! Fortran check the condidtion from
+    ! the top, so this should work, and it is faster...
+    if ( x > (x0+dp) ) then
+       out = .false.
+    else if ( x < (x0-dm)) then
+       out = .false.      
+    elseif ( y > (y0+dp) ) then
+       out = .false.
+    elseif ( y < (y0-dm)) then
+       out = .false.
+    elseif ( z > (z0+dp) ) then
+       out = .false.
+    elseif ( z < (z0-dm)) then
+       out = .false.
+    else
+       out = .true.
+    end if
+
+    !    if ( x <= (x0+dp) .and.  x >= (x0-dm) ) then
+    !       if ( y <= (y0+dp) .and.  y >= (y0-dm) )  then
+    !	  if ( z <= (z0+dp) .and.  z >= (z0-dm) )  then
+    !	     out = .true.
+    !	  else
+    !	     out = .false.
+    !	  end if
+    !       else
+    !	  out = .false.
+    !       end if
+    !    else
+    !       out = .false.
+    !    end if
+
+  end function within_subcell
+
+  
   
 END MODULE octal_mod

@@ -25,7 +25,10 @@ module grid_mod
   use utils_mod
   use octal_mod                       ! octal type for amr
   use amr_mod
-
+  use density_mod                     ! to use generic density function
+  use pixplot_module                  ! To use some plotting routines.
+  use cluster_class
+  
   implicit none
 
   public
@@ -500,6 +503,9 @@ contains
     case("wr104")
        call initWR104amr(grid)
 
+    case("cluster")
+       call initClusterAMR(grid)
+       
     case DEFAULT
        print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'
        print *, '            for use with an adaptive grid.'
@@ -1512,6 +1518,7 @@ contains
     type(VECTOR) :: coolStarPosition
     integer :: i, j, npix
     real, allocatable :: plane(:,:), axis(:)
+!    double precision, allocatable :: plane_dble(:,:)
     logical, allocatable :: inuse(:,:)
     real :: tr(6)
     real :: fg, bg, dx, dz
@@ -1530,6 +1537,7 @@ contains
        
        resolution = 250 
        allocate(plane(resolution,resolution))
+!       allocate(plane_dble(resolution,resolution))
 
        ! we will try to slightly offset our sampling points w.r.t.
        !   the subcell walls to reduce numerical problems.
@@ -1575,8 +1583,10 @@ contains
        
        call pgimag(plane, resolution, resolution, 1, resolution, 1, resolution, bg, fg, tr)
        
-       call pgbox('bcnst',0,0,'bcnst',0,0)
+       call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
        call pgend
+
+       deallocate(plane)
 
     else if (grid%cartesian) then
 
@@ -1604,8 +1614,9 @@ contains
        
        call pgimag(plane, grid%nx, grid%nz, 1, grid%nx, 1, grid%nz, fg, bg, tr)
        
-       call pgbox('bcnst',0,0,'bcnst',0,0)
+       call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
        call pgend
+       deallocate(plane)
        
     else
 
@@ -1656,16 +1667,19 @@ contains
        
        call pgimag(plane, npix, npix, 1, npix, 1, npix, fg, bg, tr)
        
-       call pgbox('bcnst',0,0,'bcnst',0,0)
+       call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
        call pgend
 
 
 
+       deallocate(plane)
+       deallocate(inuse)
+       deallocate(axis)
 
-       write(*,'(a)') "Finished plotting grid..."
 
     endif
 
+    write(*,'(a)') "Finished plotting grid..."
 
   end subroutine plotGrid
 
@@ -4697,8 +4711,6 @@ contains
     grid%lineEmission = .false.
   end subroutine initTestAmr
 
-
-
   subroutine initWR104amr(grid)
     
     use wr104_mod
@@ -4794,7 +4806,7 @@ contains
     thisOctal => grid%octreeRoot
     call plotZplane(thisOctal, rhoMax, rhoMin, ilo, ihi)
     call pgsci(1)
-    call pgbox('bcnst',0,0,'bcnst',0,0)
+    call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
     call pgend
   end subroutine fancyAMRplot
 
@@ -4847,6 +4859,550 @@ contains
     
   end subroutine plotZplane
 
+  
+  
+  ! It overlay the density structure and the grid structure using PGPLOT
+  ! routines. 
+  ! For plotting density, we use a generic "density" function which returns
+  ! the density for a given postion and the type of density.
+  !
+  subroutine draw_cells_on_density(grid, plane, device)
+    implicit none
+    type(GRIDTYPE), intent(in) :: grid
+    ! must be 'x-y', 'y-z' or 'z-x'
+    character(LEN=*), intent(in)  :: plane
+    character(len=*), intent(in)  :: device
+    type(OCTAL), pointer :: root
+
+    !integer :: thisSubcell, oldSubcell
+    real :: d
+    
+    ! For plotting density
+    integer :: pgbeg
+    integer :: n, ncol, nlev
+!    parameter (n=400, ncol=32, nlev=10)
+    parameter (n=1500, ncol=32, nlev=10)
+!    parameter (n=2000, ncol=32, nlev=10)
+!    parameter (n=200, ncol=32, nlev=10)
+    integer :: i,j,ci1,ci2
+!    real :: f(n,n),fmin,fmax,r,g,b,clev(nlev),tr(6)
+    real :: f(n,n),fmin,fmax,tr(6)
+    integer :: ia(n,n)
+    double precision  :: xmap(n), ymap(n), zmap(n), x1, y1, z1
+    real :: box_size
+    real :: offset
+    double precision  :: tmp
+    type(octalVector) :: pos
+    
+    TR = 0.0
+    TR(2) = 1.0
+    TR(6) = 1.0    
+    
+    write(*,*) "draw_cells_on_density plotting to: ",trim(device)
+
+    ! retriving the address to the root of the tree.
+    root => grid%octreeRoot
+    
+    ! setup the density 
+    box_size = REAL(grid%octreeRoot%subcellsize)*2.0
+    d = box_size
+    
+    x1 =  - d/2.0d0
+    y1 =  - d/2.0d0
+    z1 =  - d/2.0d0
+    
+    do i = 1, n
+       xmap(i) = x1 + dble(i-1)*d/dble(n-1) 
+       ymap(i) = y1 + dble(i-1)*d/dble(n-1) 
+       zmap(i) = z1 + dble(i-1)*d/dble(n-1) 
+    end do
+    
+    fmin = 1.0+200.0
+    fmax = -1.0-200.0
+    
+    if (plane(1:3) == 'x-y') then  
+       do j = 1, n
+          do i = 1, n
+	     pos = Vector(xmap(i),ymap(j),0.0d0)
+	     ! using the function in density_mod.f90
+	     tmp = ABS( density(pos, grid) )
+	     if (tmp<=0) tmp=1.0e-28
+	     f(i,j) = LOG10(tmp)
+             fmin = min(f(i,j),fmin)
+             fmax = max(f(i,j),fmax)
+          end do
+       end do
+    elseif (plane(1:3) == 'y-z') then  
+       do j = 1, n
+          do i = 1, n
+	     pos = Vector(0.0d0, ymap(i), zmap(j))
+	     ! using the function in density_mod.f90
+	     tmp = ABS( density(pos, grid) )
+	     if (tmp<=0) tmp=1.0e-28
+	     f(i,j) = LOG10(tmp)
+             fmin = min(f(i,j),fmin)
+             fmax = max(f(i,j),fmax)
+          end do
+       end do
+    elseif (plane(1:3) == 'z-x') then  
+       do j = 1, n
+          do i = 1, n
+	     pos = Vector(xmap(j),0.0d0, zmap(i))
+	     ! using the function in density_mod.f90
+	     f(i,j) = LOG10( ABS(density(pos, grid) ) )
+             fmin = min(f(i,j),fmin)
+             fmax = max(f(i,j),fmax)
+          end do
+       end do
+    end if
+
+    ! Just for safty
+    if(fmin == fmax) then
+       fmin = fmin-fmin/10.0
+       fmax = fmax+fmax/10.0
+    end if
+
+    !
+    do j=1,n
+       do i=1,n
+          ia(i,j) = (f(i,j)-fmin)/(fmax-fmin)*(ncol-1)+16
+       end do
+    end do
+    
+    ! Open plot device and set up coordinate system. We will plot the
+    !image within a unit square.
+    !
+    IF (PGBEG(0,device,1,1) .NE. 1) STOP
+    CALL PGQCOL(CI1, CI2)
+    IF (CI2.LT. 15+NCOL) THEN
+       WRITE (*,*) 'This program requires a device with at least',&
+            15+NCOL,' colors'
+       STOP
+    END IF
+    CALL PGPAGE
+
+    !    CALL PGSCR(0, 0.0, 0.3, 0.2)
+    !    CALL PGSVP(0.05,0.95,0.05,0.95)
+
+    call setvp
+!    CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+    if (plane(1:3) == 'x-y') then
+       CALL PGWNAD(real(xmap(1)), real(xmap(n)), real(ymap(1)), real(ymap(n)))
+!       CALL PGWNAD(0.0, real(1+n), 0.0, real(1+n))
+    elseif (plane(1:3) == 'y-z') then
+       CALL PGWNAD(real(ymap(1)), real(ymap(n)), real(zmap(1)), real(zmap(n)))
+    elseif (plane(1:3) == 'z-x') then
+       CALL PGWNAD(real(zmap(1)), real(zmap(n)), real(xmap(1)), real(xmap(n)))
+    end if
+    
+!    CALL PGWNAD(0.0, real(1+n), 0.0, real(1+n))
+
+    
+    !
+    ! Use PGPIXL to plot the image.
+    !
+    
+    ! routines in pixplot_module    
+!    call palett(2, 1.0, 0.5)
+!    call palett(2, 2.0, 0.7)
+    call palett(2, 1.0, 0.5)
+
+    if (plane(1:3) == 'x-y') then
+       CALL PGPIXL(IA,N,N, 1, N, 1, N, &
+            real(xmap(1)), real(xmap(n)), real(ymap(1)), real(ymap(n)))
+       !    CALL PGIMAG(f,N,N, 1, N, 1, N,  fmin, fmax, TR)
+    elseif (plane(1:3) == 'y-z') then
+       CALL PGPIXL(IA,N,N, 1, N, 1, N, &
+            real(ymap(1)), real(ymap(n)), real(zmap(1)), real(zmap(n)))
+    elseif (plane(1:3) == 'z-x') then
+       CALL PGPIXL(IA,N,N, 1, N, 1, N, &
+            real(zmap(1)), real(zmap(n)), real(xmap(1)), real(xmap(n)))
+    end if
+
+    !    CALL PGIMAG(f,N,N, 1, N, 1, N,  fmin, fmax, TR)
+
+
+    !
+    ! Annotation.
+    !
+    CALL PGSCI(1)
+    CALL PGMTXT('t',1.0,0.0,0.0,' ')
+    !CALL PGBOX('bcnts',0.0,0,'bcnts',0.0,0)
+    CALL PGBOX('bcntsi',0.0,0,'bcntsiv',0.0,0)
+    
+    if (plane(1:3) == 'x-y') then
+       CALL PGMTXT('B',3.0,1.0,1.0,'x')
+       CALL PGMTXT('L',3.0,1.0,1.0,'y')
+    elseif (plane(1:3) == 'y-z') then
+       CALL PGMTXT('B',3.0,1.0,1.0,'y')
+       CALL PGMTXT('L',3.0,1.0,1.0,'z')
+    elseif (plane(1:3) == 'z-x') then 
+       CALL PGMTXT('B',3.0,1.0,1.0,'z')
+       CALL PGMTXT('L',3.0,1.0,1.0,'x')
+    end if
+    
+    ! draw boxies
+    call PGSFS(2)  ! we don't want to fill in a box
+
+    ! this is a recursive routine
+    call draw_rectangle(root, plane)
+
+    ! routines in pixplot_module    
+    
+    ! draw wedge
+    offset = 0
+    CALL PGWEDG('BI', 4.0, 5.0, FMIN, FMAX+offset, 'pixel value')
+    CALL PGSCH(0.6)
+
+!    CALL FIDDLE
+    CALL PGASK(.FALSE.)  
+
+    call PGEND
+    
+    ! deallocate(a_root)
+  end subroutine draw_cells_on_density
+
+
+
+  ! recursively draws a rectangle by calliing a pgplot rouitne
+  ! must be only used in draw_cells_on_density routine in this module.
+  recursive subroutine draw_rectangle(thisOctal, plane, val_3rd_dim)
+    implicit none
+    type(octal), intent(in)           :: thisOctal
+    character(LEN=*), intent(in)      :: plane
+    ! The value of the third dimension.
+    ! For example, if plane = "x-y", the third dimension is the value of z.
+    ! Then, when  val_3rd_dim = 0.0, this will plot the density (and the grid)
+    ! on the z=0 plane, and so on...
+    real, optional, intent(in)        :: val_3rd_dim 
+    !
+    type(octal), pointer  :: child 
+    type(octalvector) :: rvec
+    integer :: subcell, i
+    !real :: t
+    
+    real  :: x,y,z,h,w  
+    
+    do subcell = 1, 8
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call draw_rectangle(child, plane)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          h = thisOctal%subcellSize  ! height
+          w = thisOctal%subcellSize  ! width
+          x = rVec%x; y = rVec%y; z = rVec%z
+
+	  if (present(val_3rd_dim)) then
+	     if ( plane(1:3) == "x-y" .and.  &
+		  rVec%z > (val_3rd_dim-h) .and.  rVec%z < (val_3rd_dim+h)) then
+		call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+	     elseif ( plane(1:3) == "y-z" .and. &
+		  rVec%x > (val_3rd_dim-h) .and.  rVec%x < (val_3rd_dim+h)) then
+		call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
+	     elseif ( plane(1:3) == "z-x" .and.  &
+		  rVec%y > (val_3rd_dim-h) .and.  rVec%y < (val_3rd_dim+h)) then
+		call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
+	     end if	     
+	  else
+	     if (plane(1:3) == 'x-y' .and.  ABS(rVec%z) < h ) then
+		call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+	     elseif (plane(1:3) == 'y-z' .and. ABS(rVec%x) < h ) then
+		call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
+	     elseif (plane(1:3) == 'z-x' .and. ABS(rVec%y) < h ) then
+		call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
+	     end if
+	  end if
+
+	  
+       endif
+    enddo
+  end subroutine draw_rectangle
+    
+
+
+  !
+  ! It overlay the AMR grid values and the grid structure using PGPLOT
+  ! routines. 
+  !
+  subroutine plot_AMR_values(grid, name, plane, val_3rd_dim,  device, logscale, withgrid)
+    implicit none
+    type(gridtype), intent(in) :: grid
+    character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
+    !                                       ! "etaLine", or "etaCont"
+    character(len=*), intent(in)  :: plane  ! must be 'x-y', 'y-z' or 'z-x'
+    ! The value of the third dimension.
+    ! For example, if plane = "x-y", the third dimension is the value of z.
+    ! Then, when  val_3rd_dim = 0.0, this will plot the density (and the grid)
+    ! on the z=0 plane, and so on...
+    real, intent(in)              :: val_3rd_dim 
+    character(len=*), intent(in)  :: device ! PGPLOT plotting device
+    logical, intent(in)           :: logscale ! logscale if T, linear if not
+    logical, intent(in)           :: withgrid ! plot
+    !
+    type(octal), pointer :: root
+
+    !integer :: thisSubcell, oldSubcell
+    real :: d
+    
+    ! For plotting density
+    integer :: pgbeg
+    integer :: n, ncol, nlev
+    parameter (n=1500, ncol=32, nlev=10)
+    integer :: i,j,ci1,ci2, ilo, ihi 
+    real :: valuemax, valuemin
+    real, pointer :: pvaluemax, pvaluemin
+    
+    real :: box_size
+    double precision  :: tmp
+    type(octalVector) :: pos
+    character(LEN=30) :: char_val
+    
+    write(*,*) " "
+    write(*,*) "plot_AMR_values plotting to: ",trim(device)
+    write(*,*) " "
+
+    ! retriving the address to the root of the tree.
+    root => grid%octreeRoot
+    
+    !
+    box_size = REAL(grid%octreeRoot%subcellsize)*2.0
+    d = box_size ! the whole box!
+    
+
+    ! Finding the plotting range
+    allocate(pValueMin)
+    allocate(pValueMax)
+    pvalueMin = 1.e30
+    pvalueMax = -1.e30
+    call minMaxValue(root, name, plane, pValueMin, pValueMax)
+
+    ValueMin = pValueMin
+    ValueMax = pValueMax
+    
+    if (logscale) then
+       if (valueMax<=0) valueMax=1.0e-35
+       if (valueMin<=0) valueMin=valueMax*1.0e-6
+       write(*,*) "Value Range: ",log10(valueMin), " -- ", log10(valueMax)
+    else
+       write(*,*) "Value Range: ",valueMin, " -- ", valueMax
+    end if
+
+    !
+    ! For safty
+    if (valueMin == valueMax) then
+       valueMax = valueMax + valueMax/10.0
+    end if
+    
+    
+    ! Open plot device and set up coordinate system. We will plot the
+    !image within a unit square.
+    !
+    IF (PGBEG(0,device,1,1) .NE. 1) STOP
+    CALL PGQCOL(CI1, CI2)
+    IF (CI2.LT. 15+NCOL) THEN
+       WRITE (*,*) 'This program requires a device with at least',&
+            15+NCOL,' colors'
+       STOP
+    END IF
+    CALL PGPAGE
+
+    !    CALL PGSCR(0, 0.0, 0.3, 0.2)
+    !    CALL PGSVP(0.05,0.95,0.05,0.95)
+
+    call setvp
+
+    CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+
+    call palett(2, 1.0, 0.5)
+
+    call pgqcir(ilo, ihi)
+
+
+    !
+    ! Calling a recursive function in this module
+    call plot_values(root, name, plane, val_3rd_dim, logscale, valueMax, valueMin, ilo, ihi)
+
+    !
+    ! Annotation.
+    !
+    CALL PGSCI(1)
+    CALL PGMTXT('t',1.0,0.5,0.0, TRIM(name))
+    !CALL PGBOX('bcnts',0.0,0,'bcnts',0.0,0)
+    CALL PGBOX('bcntsi',0.0,0,'bcntsiv',0.0,0)
+
+    write(char_val, '(1PE9.1)') val_3rd_dim
+    
+    if (plane(1:3) == 'x-y') then
+       CALL PGMTXT('B',3.0,1.0,1.0,'X')
+       CALL PGMTXT('LV',3.0,0.8,1.0,'Y')
+       CALL PGMTXT('T',1.0,0.0,0.0, 'Z='//TRIM(char_val))
+    elseif (plane(1:3) == 'y-z') then
+       CALL PGMTXT('B',3.0,1.0,1.0,'Y')
+       CALL PGMTXT('LV',3.0,0.8,1.0,'Z')
+       CALL PGMTXT('T',1.0,0.0,0.0, 'X='//TRIM(char_val))
+    elseif (plane(1:3) == 'z-x') then 
+       CALL PGMTXT('B',3.0,1.0,1.0,'Z')
+       CALL PGMTXT('LV',3.0,0.8,1.0,'X')
+       CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
+    end if
+    
+    if (withgrid) then
+       ! draw boxies
+       call PGSFS(2)  ! we don't want to fill in a box this time
+       ! this is a recursive routine in this module
+       call draw_rectangle(root, plane, val_3rd_dim)
+    end if
+
+    ! draw wedge
+    if(logscale) then
+       CALL PGWEDG('BI', 4.0, 5.0, log10(valueMin), log10(valueMax), 'pixel value')
+    else
+       CALL PGWEDG('BI', 4.0, 5.0, valueMin, valueMax, 'pixel value')
+    end if
+    
+    CALL PGSCH(0.6)
+
+!    CALL FIDDLE
+    CALL PGASK(.FALSE.)  
+
+    call PGEND
+    
+    ! deallocate(a_root)
+  end subroutine plot_AMR_values
+
+
+  !
+  ! This is modefied from plotZplane
+  !
+  recursive subroutine plot_values(thisOctal, name, plane, val_3rd_dim, &
+       logscale, valueMax, valueMin, ilo, ihi)
+    implicit none
+    !
+    type(octal), pointer   :: thisOctal
+    character(len=*), intent(in)  :: name     ! "rho", "temperature", chiLine",  
+    !                                         ! "etaLine", or "etaCont"
+    character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z' or 'z-x'
+    ! The value of the third dimension.
+    ! For example, if plane = "x-y", the third dimension is the value of z.
+    ! Then, when  val_3rd_dim = 0.0, this will plot the density (and the grid)
+    ! on the z=0 plane, and so on...
+    real, intent(in)              :: val_3rd_dim 
+    logical, intent(in)           :: logscale ! logscale if T, linear if not
+    real, intent(in) :: valueMin, valueMax
+    integer, intent(in) :: ilo, ihi
+    !
+    !
+    type(octal), pointer  :: child 
+    type(octalvector) :: rvec
+    real :: value
+
+    integer :: subcell, i, idx
+    real :: t
+    real :: xp, yp, xm, ym, zp, zm
+    double precision :: d, L
+    logical :: plot_this_subcell
+  
+    do subcell = 1, 8
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call plot_values(child, name, plane, val_3rd_dim, &
+		     logscale, valueMax, valueMin, ilo, ihi)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          d = thisOctal%subcellSize/2.0d0
+	  L = thisOctal%subcellSize
+          xp = REAL(rVec%x + d)
+          xm = REAL(rVec%x - d)
+          yp = REAL(rVec%y + d)
+          ym = REAL(rVec%y - d)
+          zp = REAL(rVec%z + d)
+          zm = REAL(rVec%z - d)     
+	  
+          plot_this_subcell = .false.
+          if ( plane(1:3) == "x-y" .and.  &
+	       rVec%z > (val_3rd_dim-L) .and.  rVec%z < (val_3rd_dim+L)) then
+             plot_this_subcell = .true.	     
+          elseif ( plane(1:3) == "y-z" .and. &
+	       rVec%x > (val_3rd_dim-L) .and.  rVec%x < (val_3rd_dim+L)) then
+             plot_this_subcell = .true.
+          elseif ( plane(1:3) == "z-x" .and.  &
+	       rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
+             plot_this_subcell = .true.
+          else
+             plot_this_subcell = .false.
+          end if
+	  
+!          if ( plane(1:3) == "x-y" .and. ABS(rVec%z) < 2.0d0*d) then
+!             plot_this_subcell = .true.
+!          elseif ( plane(1:3) == "y-z" .and. ABS(rVec%x) < 2.0d0*d) then
+!             plot_this_subcell = .true.
+!          elseif ( plane(1:3) == "z-x" .and. ABS(rVec%y) < 2.0d0*d) then
+!             plot_this_subcell = .true.
+!          else
+!             plot_this_subcell = .false.
+!          end if
+	  
+          if (plot_this_subcell) then
+             select case (name)
+             case("rho")
+                value = thisOctal%rho(subcell)
+             case("temperature")
+                value = thisOctal%temperature(subcell)
+             case("chiLine")
+                value = thisOctal%chiLine(subcell)
+             case("etaLine")
+                value = thisOctal%etaLine(subcell)
+             case("etaCont")
+                value = thisOctal%etaCont(subcell)
+             case default
+                write(*,*) "Error:: unknow name passed to grid_mod::plot_values."
+                stop
+             end select
+
+             ! for safety
+             if (logscale .and. value <=0 ) value = 1.0e-30
+
+             if (logscale) then            
+                t = (log10(value)-log10(valueMin))/(log10(valueMax)-log10(valueMin))
+             else ! linear
+                t = (value-valueMin)/(valueMax-valueMin)
+             end if
+             
+             if (t < 0.) t = 0.
+             idx = int(t * real(ihi - ilo) + real(ilo))
+
+             ! set color
+             call pgsci(idx)
+             
+             select case (plane)
+             case ("x-y")
+                call pgrect(xm, xp, ym, yp)
+             case ("y-z")
+                call pgrect(ym, yp, zm, zp)
+             case ("z-x")
+                call pgrect(zm, zp, xm, xp)
+             end select
+
+          end if
+       end if
+
+    end do
+
+  end subroutine plot_values
+  
   recursive subroutine minMaxDensity(thisOctal, rhoMin, rhoMax)
 
   type(octal), pointer   :: thisOctal
@@ -4875,6 +5431,191 @@ contains
   end subroutine minMaxDensity
 
 
+
+  !
+  !  Recursively finds the min and max values of "name"d value.
+  !
+  recursive subroutine minMaxValue(thisOctal, name, plane, valueMin, valueMax)
+    implicit none
+    type(octal), pointer   :: thisOctal
+    character(LEN=*), intent(in) :: name ! See the options in plot_AMR_values
+    character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z' or 'z-x' 
+    real, pointer :: valueMin, valueMax
+    !
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real :: value
+    !
+    real :: xp, yp, xm, ym, zp, zm
+    double precision :: d
+    logical :: use_this_subcell
+    type(octalvector) :: rvec
+    
+  
+    do subcell = 1, 8
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call minMaxValue(child, name, plane, valueMin, valueMax)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          d = thisOctal%subcellSize/2.d0
+          xp = REAL(rVec%x + d)
+          xm = REAL(rVec%x - d)
+          yp = REAL(rVec%y + d)
+          ym = REAL(rVec%y - d)
+          zp = REAL(rVec%z + d)
+          zm = REAL(rVec%z - d)          
+
+!          use_this_subcell = .false.
+!          if ( plane(1:3) == "x-y" .and. ABS(rVec%z) < d*2.0d0) then
+!             use_this_subcell = .true.
+!          elseif ( plane(1:3) == "y-z" .and. ABS(rVec%x) < d*2.0d0) then
+!             use_this_subcell = .true.
+!          elseif ( plane(1:3) == "z-x" .and. ABS(rVec%y) < d*2.0d0) then
+!             use_this_subcell = .true.
+!          else
+!             use_this_subcell = .false.
+!          end if
+          use_this_subcell = .true.
+
+	  if (use_this_subcell) then
+	     select case (name)
+	     case("rho")
+		value = thisOctal%rho(subcell)
+	     case("temperature")
+		value = thisOctal%temperature(subcell)
+	     case("chiLine")
+		value = thisOctal%chiLine(subcell)
+	     case("etaLine")
+		value = thisOctal%etaLine(subcell)
+	     case("etaCont")
+		value = thisOctal%etaCont(subcell)
+	     case default
+		write(*,*) "Error:: unknow name passed to MinMaxValue."
+		stop
+	     end select
+	  
+	     valueMax = MAX(valueMax, value)
+	     valueMin = Min(valueMin, value)
+	  end if
+	end if
+    enddo
+
+  end subroutine minMaxValue
+
+
+  !
+  ! Print out the basic infomation about the grid.
+  !
+  
+  ! if filename is '*' then it prints on screen.
+  subroutine grid_info(thisGrid, filename)
+    implicit none
+    type(gridtype), intent(in) :: thisGrid
+    character(LEN=*), intent(in) :: filename
+    integer :: UN
+    double precision :: tmp
+    integer :: nOctals,nVoxels
+    
+    if (filename(1:1) == '*') then
+       UN = 6   ! prints on screen
+    else
+       UN = 69
+       open(unit=UN, file = TRIM(filename), status = 'replace')
+    end if
+
+
+    if (thisGrid%adaptive) then
+
+       call countVoxels(thisGrid%octreeRoot,nOctals,nVoxels)
+    
+       write(UN,'(a)') ' '
+       write(UN,'(a)') '######################################################'
+       write(UN,'(a)') 'Grid info :'
+       write(UN,'(a)') ' '
+       write(UN,*)     'geometry             = ', thisGrid%geometry
+       write(UN,*)     'maxDepth             = ', thisGrid%maxDepth
+       write(UN,*)     'halfSmallestSubcell  = ', thisGrid%halfSmallestSubcell, ' [10^10 cm]'
+       write(UN,*)     'nOctals              = ', nOctals
+       write(UN,*)     'nVoxels              = ', nVoxels
+       write(UN,*)     'smoothingFactor      = ', thisGrid%smoothingFactor
+       write(UN,*)     'dipoleOffset         = ', thisGrid%dipoleOffset
+       write(UN,*)     'grid center          =', thisGrid%octreeRoot%centre
+       write(UN,*)     'Size of largest cell =', thisGrid%octreeRoot%subcellSize*2.0, ' [10^10 cm]'
+       write(UN,'(a)') '#######################################################'
+       write(UN,'(a)') ' '
+       write(Un,'(a)') ' '
+    
+       
+    else
+       write(UN,'(a)') ' '
+       write(UN,'(a)') '######################################################'
+       write(UN,'(a)') 'Grid info :'
+       write(UN,'(a)') ' '
+       write(UN,*)    'geometry  = ', thisGrid%geometry
+       write(UN,*)    'cartesian = ', thisGrid%cartesian
+       write(UN,*)    'polar     = ', thisGrid%polar
+       write(UN,*)    'nx        = ', thisGrid%nx
+       write(UN,*)    'ny        = ', thisGrid%ny
+       write(UN,*)    'nz        = ', thisGrid%nz
+       write(UN,*)    'na1       = ', thisGrid%na1
+       write(UN,*)    'na2       = ', thisGrid%na2
+       write(UN,*)    'na3       = ', thisGrid%na3
+       write(UN,*)    'dipoleOffset  = ',thisGrid%dipoleOffset
+       write(UN,'(a)') '#######################################################'
+       write(UN,'(a)') ' '
+       write(Un,'(a)') ' '
+              
+    end if
+    
+    
+    if (filename(1:1) /= '*')  close(UN)
+
+  end subroutine grid_info
+    
+
+
+  !
+  ! It overlay the AMR grid values for a give number of planes sequentially.
+  ! Uses the plot_AMR_values routine in this module.
+  subroutine plot_AMR_planes(grid, name, plane,  nplane, filename, logscale, withgrid)
+    implicit none
+    type(gridtype), intent(in) :: grid
+    character(len=*), intent(in)  :: name     ! "rho", "temperature", chiLine", "etaLine", 
+    !                                         ! "etaLine", or "etaCont"
+    character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z' or 'z-x'
+    integer, intent(in)           :: nplane   ! the number of planes to be plotted.
+    character(len=*), intent(in)  :: filename ! the head of filename
+    logical, intent(in)           :: logscale ! logscale if T, linear if not
+    logical, intent(in)           :: withgrid ! plot
+    !
+    integer :: i
+    real    :: val_3rd_dim
+    integer :: d   ! the size of the largest cell.
+    character(LEN=50) :: device
+
+    d = grid%octreeRoot%subcellSize*2
+    
+    do i = 1, nplane
+       val_3rd_dim = -d/2.0 + real(i-1)*d/real(nplane-1)
+
+       ! Setting up the name for the output file....
+       ! using a function in utils_mod.f90
+       device = tail_num_to_char(filename, i)
+       device = TRIM(device)//".ps/vcps"
+       
+       call plot_AMR_values(grid, name, plane, val_3rd_dim, &
+	    device, logscale, withgrid)
+    end do
+
+  end subroutine plot_AMR_planes
+    
 end module grid_mod
 
 

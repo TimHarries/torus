@@ -7,6 +7,7 @@ module lucy_mod
   use amr_mod
   use source_mod
   use spectrum_mod
+  use timing
   implicit none
 
 
@@ -304,7 +305,7 @@ contains
     real(kind=doubleKind) :: temperature
 !    real(kind=doubleKind) :: probDistPlanck(nFreq)
     real :: kappaScaReal, kappaAbsReal
-    integer :: nMonte = 2000000, iMonte, nScat, nAbs
+    integer :: nMonte = 4000000, iMonte, nScat, nAbs
     real(kind=doubleKind) :: thisFreq,  logFreqStart, logFreqEnd
     real(kind=doubleKind) :: albedo
     logical :: escaped
@@ -357,6 +358,8 @@ contains
     do while (nRemoved > 0)
     do iIter = 1, nIter
 
+       call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
+       
        call zeroDistanceGrid(grid%octreeRoot)
        write(*,*) "Iteration",iIter
        nInf = 0
@@ -458,6 +461,8 @@ contains
        write(*,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
        write(*,*) "Total emission",totalEmission
 
+       call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
+       
     enddo
 
     Tthresh = 2000.
@@ -468,7 +473,7 @@ contains
     call removeDust(grid%octreeRoot, Tthresh, nRemoved)
 
     write(*,*) "Number of cells removed: ",nRemoved
- enddo
+  enddo
 
 
   end subroutine lucyRadiativeEquilibriumAMR
@@ -991,8 +996,8 @@ contains
           write(*,*) "tau prob",tau,thisTau
        endif
        call intersectCubeAMR(grid, rVec, uHat, tVal)
-          call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLam, foundOctal=thisOctal, foundSubcell=subcell, &
-                kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid)
+       call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLam, foundOctal=thisOctal, foundSubcell=subcell, &
+            kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid)
           if (thisTau > 1.e-30) then
              thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsReal)
              thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1

@@ -14,7 +14,9 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  intersectCube.f90 fillGridThomson.f90 cont_read.f90 getMeanMass.f90 \
  input_variables.f90 amr_mod.f90 octal_mod.f90 parameters_mod.f90 \
  lucy_mod.f90 jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 \
- wr104_mod.f90 
+ wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 pixplot_module.f90 \
+ sph_data_class.f90 cluster_class.f90 linked_list_class.f90 timing.f90 \
+ isochrone_class.f90
 
 
 F77SOURCE= image_f77.f mieDistCrossSection.f palette.f\
@@ -52,7 +54,7 @@ depends:
 
 
 clean:
-	@/bin/rm -f *.o *~ *.mod *.il *.pc *.d ${EXE} ./make.depends
+	@/bin/rm -f *.o *~ *.mod *.il *.pc *.d ./make.depends
 
 
 include make.depends

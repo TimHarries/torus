@@ -44,6 +44,10 @@ program torus
   use source_mod
   use spectrum_mod
   use wr104_mod
+  use sph_data_class
+  use cluster_class
+  use timing
+  use isochrone_class
 
   implicit none
 
@@ -62,12 +66,12 @@ program torus
 
   integer :: iPhase
   logical :: sed
-  real :: totLineEmission
-  real :: totContinuumEmission
-  real :: totCoreContinuumEmission
-  real :: totCoreContinuumEmission1
-  real :: totCoreContinuumEmission2
-  real :: totWindContinuumEmission
+  real(kind=doubleKind) :: totLineEmission
+  real(kind=doubleKind) :: totContinuumEmission
+  real(kind=doubleKind) :: totCoreContinuumEmission
+  real(kind=doubleKind) :: totCoreContinuumEmission1
+  real(kind=doubleKind) :: totCoreContinuumEmission2
+  real(kind=doubleKind) :: totWindContinuumEmission
   real :: probLinePhoton 
   real :: weightContPhoton, weightLinePhoton
   real :: chanceLine, chanceContinuum
@@ -256,7 +260,8 @@ program torus
 
   real :: loglamStart, logLamEnd
 
-  real :: chanceDust, totDustContinuumEmission
+  real :: chanceDust
+  real(kind=doublekind) :: totDustContinuumEmission
 
   ! binary parameters
 
@@ -283,6 +288,18 @@ program torus
   integer           :: tooFewSamples ! number of errors from integratePathAMR
   integer           :: boundaryProbs ! number of errors from integratePathAMR
 
+  !
+  ! SPH data of Matthew
+  type(sph_data) :: sphData
+
+  ! Used for multiple sources (when geometry=cluster)
+  type(cluster)   :: young_cluster
+  type(isochrone) :: isochrone_data
+  
+
+  !
+  ! For time statistics
+  call tune(6, "Torus Main") ! start a stopwatch  
 
   ! initialize
 
@@ -410,6 +427,9 @@ program torus
      rotateDirection = 1.
   endif
 
+  if (geometry(1:7) == "cluster")  rotateView = .false.
+  
+  
   ! switches for line emission
 
   if (lineEmission) then
@@ -427,7 +447,7 @@ program torus
      greyContinuum = .true.
   endif
      
-
+  
 
   ! the observer's viewing direction
 
@@ -442,6 +462,28 @@ program torus
   viewVec = originalViewVec
 
 
+  !
+  ! Special case
+  !
+  if (geometry == "cluster") then
+     ! read in the sph data from a file
+     call read_sph_data(sphData, "sph.dat")
+     ! Writing basic info of this data
+     call info(sphData, "*")
+     call info(sphData, "info_sph.dat")
+
+     ! reading in the isochrone data needed to build an cluster object.
+
+     call new(isochrone_data, "dam98_0225")   
+     call read_isochrone_data(isochrone_data)
+
+     ! making a cluster object
+     call new(young_cluster, sphData, dble(amrGridSize))
+     call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
+  end if
+     
+
+  
   ! allocate the grid - this might crash out through memory problems
 
   if (gridUsesAMR) then
@@ -449,7 +491,7 @@ program torus
      call initAMRGrid(Laccretion,Taccretion,sAccretion,greyContinuum, &
                         newContFile,flatspec,grid,ok)
         if (.not.ok) goto 666
-         
+	
   else
      if (gridcoords /= "polar") then
         if ((.not.doRaman).and.(geometry /= "binary"))  then
@@ -563,25 +605,40 @@ program torus
 
 
   if (gridUsesAMR) then
+     call tune(6, "AMR grid construction.")  ! start a stopwatch
      if (readPops) then 
         call readAMRgrid(popFilename,readFileFormatted,grid)
 
      else
         amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
         write(*,*) "Starting initial set up of adaptive grid..."
-        call initFirstOctal(grid,amrGridCentre,amrGridSize)
-        call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
-        write(*,*) "...initial adaptive grid configuration complete"
-  
-        if (doSmoothGrid) then
-           write(*,*) "Smoothing adaptive grid structure..."
-           gridConverged = .false.
-           do
-              call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged)
-              if (gridConverged) exit
-           end do
-           write(*,*) "...grid smoothing complete"
-        end if
+
+	
+	if (geometry(1:7) == "cluster") then
+	   call initFirstOctal(grid,amrGridCentre,amrGridSize, sphData)
+	   !
+	   call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData)
+	   write(*,*) "...initial adaptive grid configuration complete"
+!           do
+!              call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged, sphData)
+!              if (gridConverged) exit
+!           end do
+!           write(*,*) "...grid smoothing complete"
+	else
+	   call initFirstOctal(grid,amrGridCentre,amrGridSize)
+	   call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
+	   write(*,*) "...initial adaptive grid configuration complete"
+	
+	   if (doSmoothGrid) then
+	      write(*,*) "Smoothing adaptive grid structure..."
+	      gridConverged = .false.
+	      do
+		 call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged)
+		 if (gridConverged) exit
+	      end do
+	      write(*,*) "...grid smoothing complete"
+	   end if	   
+	end if
    
         nOctals = 0
         nVoxels = 0
@@ -599,18 +656,33 @@ program torus
         end do
         write(*,*) "...final adaptive grid configuration complete"
 
-        if (grid%geometry=="ttauri") then
+        if (gridUsesAMR .and. lineEmission) then
            !  calculate the statistical equilibrium (and hence the emissivities 
            !  and the opacities) for all of the subcells in an
            !  adaptive octal grid.
            !  Using a routine in stateq_mod module.
            write(*,*) "Calling statistical equilibrium routines..."
-           call amrStateq(grid, contfluxfile, lte, nLower, nUpper)
+           if (grid%geometry=="ttauri") then
+              call amrStateq(grid, contfluxfile, lte, nLower, nUpper)
+           else
+              call amrStateq(grid, contfluxfile, lte, nLower, nUpper, ion_name, ion_frac)
+           end if
            write(*,*) "... statistical equilibrium routines complete"
            if (writePops) call writeAMRgrid(popFilename,writeFileFormatted,grid)
         endif
-     
+
+        !
+        ! cleaning up unused memory here ....
+        if (geometry(1:7) == "cluster") then
+           ! using the routine in sph_data_class
+           call kill(sphData)
+           ! using the routine in amr_mod.f90
+           call delete_particle_lists(grid%octreeRoot)
+        end if
+
      end if ! (readPops) 
+
+     call tune(6, "AMR grid construction.") ! stop a stopwatch
 
   else ! grid is not adaptive
            
@@ -778,13 +850,37 @@ program torus
     enddo
     close(21)
  endif
+
+ 
+  ! Print the infomation on the grid to the standard ouput.
+  ! -- using a routine in grid_mod.f90
+  call grid_info(grid, "*")
+  call grid_info(grid, "info_grid.dat")
+
+
   
   if (mie) then
      write(*,*) "fill grid mie",nLambda,grid%nlambda
      call fillGridMie(grid, scale, aMin, aMax, qDist, grainType)
   endif
 
-  call fancyAmrPlot(grid, device)
+  
+  !
+  if (grid%geometry == "jets"  .or.  grid%geometry == "wr104" .or. &
+       grid%geometry == "ttauri"  .or.  grid%geometry == "testamr" ) then
+     call draw_cells_on_density(grid, "z-x", device)
+  end if
+
+  !  call fancyAmrPlot(grid, device)
+  
+  ! Plot desired AMR grid value here... This is more generalized
+  ! version of fancyAmrPlot.
+  !
+  ! See grid_mod.f90 for details.
+  ! subroutine plot_AMR_values(grid, name, plane, val_3rd_dim,  device, logscale, withgrid)
+  call plot_AMR_values(grid, "rho", "z-x", 0.0, "rho_grid.ps/vcps", .true., .true.)
+  ! Plotting the slices of planes
+  call plot_AMR_planes(grid, "rho", "z-x", 15, "rho", .true., .false.)
 
   
   ! The source spectrum is normally a black body
@@ -838,10 +934,6 @@ program torus
 
   endif
 
-
-
-
-
   ! set up the sources
 
   nSource = 0
@@ -873,25 +965,50 @@ program torus
        source(2)%luminosity = 0.5 * source(1)%luminosity
        call readSpectrum(source(2)%spectrum, "wr.flx")
        call normalizedSpectrum(source(2)%spectrum, dble(lamStart), dble(lamEnd))
+
+    case ("cluster")
+       ! Extract some info from cluster object.
+       nSource = get_nstar(young_cluster)  ! number of stars in the cluster
+
+       ! copy the star over in the array.
+       ! This is ugly. Maybe lucyRadiativeEquilibriumAMR should be changed to take
+       ! an cluster_class object as an input variable in future.
+       ALLOCATE(source(nSource))
+       
+       do i = 1, nSource
+	  source(i) = get_a_star(young_cluster, i)
+       end do
+
+       ! delete the cluster object since it won't be used any more.
+       call kill_all(young_cluster)
+       
     case default
        allocate(source(0)) ! allows 'source' to be passed as an argument.
+       
   end select
 
-
+  
+  
+  call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
+  
   if (lucyRadiativeEq) then
      if (grid%cartesian .or. grid%polar) then
         call lucyRadiativeEquilibrium(grid, miePhase, nMuMie, nLambda, xArray, dble(teff))
      else
-        if (.not.readpops) call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, nLambda, xArray, dble(teff), source, nSource)
+        if (.not.readpops) call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, & 
+	     nLambda, xArray, dble(teff), source, nSource)
         if (writePops) call writeAMRgrid(popFilename,writeFileFormatted,grid)
+     endif     
+     if (grid%geometry(1:7) /= "cluster") call setBiasAMR(grid%octreeRoot, grid)
 
-     endif
-       call setBiasAMR(grid%octreeRoot, grid)
+     call plot_AMR_values(grid, "etaCont", "z-x", 0.0, "etacont.ps/vcps", .true., .false.)
+     call plot_AMR_values(grid, "temperature", "z-x", 0.0, "temperature.ps/vcps", .true., .false.)
   endif
+  
+  call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
 
-
-
+  
   ! initialize the blobs if required
 
   if (nBlobs > 0) then
@@ -1059,7 +1176,7 @@ program torus
            endif
         else if (grid%adaptive) then
            imageSize = grid%octreeRoot%subcellSize          
-           obsImage = initImage(50, imageSize, vmin, vmax)
+           obsImage = initImage(100, imageSize, vmin, vmax)
         else   
            select case (geometry)
               case("disk")
@@ -1160,6 +1277,11 @@ program torus
 !           call fillGridResonance(grid, rCore, mDot, vTerm, beta, temp)
 
         case("wr104")
+	   
+	case("cluster")
+	   ! do nothing
+	   continue
+	   
         case DEFAULT
            write(*,*) "! Unrecognised grid geometry: ",trim(geometry)
            goto 666
@@ -1238,8 +1360,11 @@ program torus
         if (device(2:3) == "xs") then
            call plotGrid(grid, viewVec,  opaqueCore, &
                 device,contTau, foreground, background, coolStarPosition, firstPlot)
-        endif  
-        write(filename,"(a,i3.3,a)") "frame",iPhase,".gif/gif"
+        endif
+
+! COMMENTED OUT FOR DEBUG
+!        write(filename,"(a,i3.3,a)") "frame",iPhase,".gif/gif"
+        write(filename,"(a,i3.3,a)") "frame",iPhase,".ps/vcps"
         call plotGrid(grid, viewVec,  opaqueCore, &
              filename, contTau, foreground, background, coolStarPosition, firstPlot)
      endif
@@ -1252,13 +1377,12 @@ program torus
      write(*,'(a)') "---------------------------"
      write(*,*) " "
 
-
      write(*,'(a,f7.1,a)') "Cross-sections at ",lamStart, " angstroms"
      write(*,'(a)') "------------------------------------------"
      write(*,*) " "
 
      if (gridUsesAMR) then
-        call integratePathAMR(5500.,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., &
@@ -1268,7 +1392,7 @@ program torus
                          write(*,*) '   Error encountered in cross-sections!!! (error = ',intPathError,')'
                        end if
      else
-        call integratePath(5500.,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePath(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
@@ -1282,7 +1406,7 @@ program torus
      write(*,*) " "
      
      if (gridUsesAMR) then
-        call integratePathAMR(5500.,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(0.,1.,0.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., &
@@ -1292,7 +1416,7 @@ program torus
                          write(*,*) '   Error encountered in cross-sections!!! (error = ',intPathError,')'
                        end if
      else
-        call integratePath(5500., lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePath(lambdatau, lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(0.,1.,0.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
@@ -1307,7 +1431,7 @@ program torus
      write(*,*) " "
       
      if (gridUsesAMR) then
-        call integratePathAMR(5500.,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., &
@@ -1317,7 +1441,7 @@ program torus
                          write(*,*) '   Error encountered in cross-sections!!! (error = ',intPathError,')'
                        end if
      else
-        call integratePath(5500.,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePath(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
@@ -1333,7 +1457,7 @@ program torus
 
 
      if (gridUsesAMR) then
-        call integratePathAMR(5500.,  lamLine, VECTOR(1.,1.,1.), &
+        call integratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), &
           zeroVec, outVec, grid, lambda, &
           tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
           .false., lamStart, lamEnd, nLambda, contTau, &
@@ -1349,7 +1473,7 @@ program torus
 !          close(20)
 
      else
-        call integratePath(5500.,  lamLine, VECTOR(1.,1.,1.), &
+        call integratePath(lambdatau,  lamLine, VECTOR(1.,1.,1.), &
           zeroVec, outVec, grid, lambda, &
           tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
           .false., lamStart, lamEnd, nLambda, contTau, &
@@ -1547,6 +1671,10 @@ print *, 'nu = ',nu
 
         totWindContinuumEmission = totWindContinuumEmission * (nuStart - nuEnd)
 
+!	!RK=============================================================RK
+!	!RK For debugging only.  Should be removed later.
+!	totWindContinuumEmission = 1.0d3
+!	!RK=============================================================RK	
         write(*,*) "Wind cont emission: ",totWindContinuumEmission
 
 
@@ -1590,12 +1718,18 @@ print *, 'nu = ',nu
 
         write(*,*) "Continuum emission: ", totContinuumEmission
 
+!	!RK=============================================================RK
+!	!RK For debugging only.  Should be removed later.
+!	totLineEmission = totCoreContinuumEmission
+!	write(*,*) "Corrected Line emission: ",totLineEmission
+!	!RK=============================================================RK	
+
         if ((totContinuumEmission + totLineEmission) /= 0.) then
            chanceLine = totLineEmission/(totContinuumEmission + totLineEmission)
            chanceContinuum = totContinuumEmission / &
                 (totContinuumEmission + totLineEmission)
            grid%chanceWindOverTotalContinuum = totWindContinuumEmission &
-                / max(1.e-30,totContinuumEmission)
+                / max(1.d-30,totContinuumEmission)
         else
            chanceLine =0.
            chanceContinuum = 1.
@@ -1706,8 +1840,11 @@ print *, 'nu = ',nu
      endif
 
 
-
+     call tune(6, "All Photon Loops")  ! Start a stopwatch
+     
      do iOuterLoop = 1, nOuterLoop
+
+	call tune(6, "One Outer Phone Loop") ! Start a stop watch
 
 !$OMP PARALLEL DO DEFAULT(NONE) &
 !$OMP PRIVATE(i, contPhoton, contWindPhoton, r, nScat) &
@@ -2453,8 +2590,11 @@ print *, 'nu = ',nu
 
         errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
+	call tune(6, "One Outer Phone Loop") ! Stop a stop watch
+	
      enddo
 
+     call tune(6, "All Photon Loops")  ! Stop a stopwatch
 
      write(*,*) " "
      write(*,'(a)') "Model summary"
@@ -2540,6 +2680,8 @@ print *, 'nu = ',nu
 666 continue
 
 !  call freeGrid(grid)
+
+call tune(6, "Torus Main") ! stop a stopwatch  
 
   contains
     

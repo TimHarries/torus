@@ -43,7 +43,8 @@ module input_variables
   logical :: stokesImage
   real :: vMin, vMax
   real :: gridDistance
-  
+
+  integer :: npix    ! Number of pixels for polimages
   
   ! variables to do with dust
   
@@ -72,8 +73,9 @@ module input_variables
   real :: lamStart, lamEnd
   logical :: lamLinear
   logical :: oneKappa
- 
- 
+
+  real :: lambdatau  ! Wavelength at which testing optical depth computed [A]
+
   ! variables for a second source of radiation
 
   logical :: secondSource                    ! second photon source?
@@ -149,8 +151,11 @@ module input_variables
   logical :: lineOff
   real :: logMassLossRate
   real :: lamLine
+  character(LEN=20) :: ion_name  ! Name of the ion (see opacity_lte_mod.f90 for the list of a valid name.)
+  real ::  ion_frac              ! n_ion/n_specie
   integer :: nLower, nUpper
 
+  
 
  ! Spot stuff
   
@@ -217,6 +222,7 @@ module input_variables
   real :: relIntCoreEmissionLine       ! previously: 'relIntCoreEmission'
   real :: velWidthCoreEmissionLine     ! previously: 'velWidthCoreEmission'
 
+  
   ! lucy radiative equ
 
   logical :: lucyRadiativeEq
@@ -256,14 +262,29 @@ module input_variables
   !===============================================================  
   real :: Rmin_bp    ! radius of central star  [10^10cm]
   real :: Rmax_bp    ! cutoff radius in [10^10 cm]
-  real :: Vinf_bp    ! terminal velocity in  [kms]
-  real :: beta_bp    ! beta in the beta-belocity law [-]
-  real :: Vo_bp      ! a small offset in V in  [km/s]  
-  real :: Mdot_bp    ! mass loss rate in jets [M_solar/yr]
-  real :: theta_o_bp ! half opening angle [degrees]
-
-  real :: Tcore_bp   ! temperature at the core at Rmin in [10^4 K]
-  real :: e6_bp      ! an exponet of in tempereture eq. [-]
+  real :: Vo_bp      ! a small offset in V in  [km/s]
+     
+  ! For jets
+  real :: Vinf_jets    ! terminal velocity in  [kms]
+  real :: beta_jets    ! beta in the beta-belocity law [-]
+  real :: Mdot_jets    ! mass loss rate in jets [M_solar/yr]
+  real :: theta_o_jets ! half opening angle [degrees]     
+  real :: Tcore_jets   ! temperature at the core at Rmin in [10^4 K]
+  real :: e6_jets      ! an exponet of in tempereture eq. [-]
+  
+  ! For disk wind
+  real :: Vinf_disk    ! terminal velocity in  [kms]
+  real :: beta_disk    ! beta in the beta-belocity law [-]
+  real :: Mdot_disk    ! mass loss rate in jets [M_solar/yr]
+  real :: theta_o_disk ! half opening angle [degrees]     
+  real :: Tcore_disk   ! temperature at the core at Rmin in [10^4 K]
+  real :: e6_disk      ! an exponet of in tempereture eq. [-]
+  
+  ! For equatorial disk
+  real :: Rdisk_min  ! The minimum radius of the disk. in 10^10 cm.
+  real :: Rdisk_max  ! The minimum  of the disk in 10^10 cm.
+  real :: h_disk     ! Thickness of the disk in 10^10 cm.
+  real :: rho_scale  ! The density in the units of rho max for disk wind.     
   
 end module input_variables
 

@@ -11,6 +11,7 @@ module stateq_mod
   use constants_mod
   use path_integral
   use jets_mod
+  use opacity_lte_mod
 
   implicit none
   public
@@ -141,19 +142,19 @@ contains
           tau_mn = tau_mn * gDegen(m) * fStrength(m,n)
           tau_mn = tau_mn *  lambdaTrans(m,n) / cSpeed
           if (grid%adaptive) then
-            ! if (grid%geometry(1:4) == "jets")  then
-            !    tau_mn = tau_mn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
-            !         (thisOctal%N(thisSubcell,n)/gDegen(n)))
-            !    tau_mn = tau_mn/dV_dn_jets(rVec, direction)
-            ! else
+             if (grid%geometry(1:4) == "jets")  then
+                tau_mn = tau_mn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
+                     (thisOctal%N(thisSubcell,n)/gDegen(n)))
+                tau_mn = tau_mn/dV_dn_jets(rVec, direction)
+             else
                 tau_mn = tau_mn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
                                       (thisOctal%N(thisSubcell,n)/gDegen(n))) ! eq 5.
                 rVecOctal = rVec
                 octalCopy => thisOctal
                 tau_mn = tau_mn / (amrGridDirectionalDeriv(grid,rVecOctal,direction, &
-                                                        startOctal=octalCopy) / 1.e10)
-!if (label1 /= thisOctal%label(1)) print *, "Label change during amrGridDirectionalDeriv"                
-            ! end if
+                                                        startOctal=thisOctal) / 1.e10)
+!if (label1 /= thisOctal%label(1)) print *, "Label change during amrGridDirectionalDeriv" 		
+             end if
           else
              tau_mn = tau_mn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - &
                                    (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
@@ -311,9 +312,9 @@ contains
                    endif
                    tau_cmn = tau_cmn  / (cSpeed / lambdaTrans(m,n))
                    if (grid%adaptive) then
-                     ! if (grid%geometry(1:4) == "jets")  then
-                     !    tau_cmn = tau_cmn/dV_dn_jets(rVec, direction)
-                     ! else
+                      if (grid%geometry(1:4) == "jets")  then
+                         tau_cmn = tau_cmn/dV_dn_jets(rVec, direction)
+                      else
                          rVecOctal = rVec
                          
                          octalCopy => thisOctal
@@ -321,7 +322,7 @@ contains
                          tau_cmn = tau_cmn / (amrGridDirectionalDeriv(grid,rVecOctal,direction, &
                                                                    startOctal=octalCopy) / 1.e10)
 !if (label1 /= thisOctal%label(1)) print *, "Label change during amrGridDirectionalDeriv"                
-                     ! end if
+                      end if
                    else
                       tau_cmn = tau_cmn / (directionalderiv(grid,rVec,i1,i2,i3,direction)/1.e10)
                    end if
@@ -1488,8 +1489,8 @@ contains
        if ( n == debug) then
           write(*,*) "m > n",tot
        endif
-   
-       NStar = boltzSaha(n, real(thisOctal%Ne(thisSubcell),kind=db),real(thisOctal%temperature(thisSubcell),kind=db))
+
+       NStar = boltzSaha(n, thisOctal%Ne(thisSubcell),dble(thisOctal%temperature(thisSubcell)))
    
        fac1 = integral1(n,hnu1, nuArray1, nNu1, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)*visFrac1
        if (binary) then
@@ -1743,6 +1744,7 @@ contains
     freq = ((13.598-eTrans(n))*1.602192e-12)/hcgs
     if ((freq < nuArray(1)) .or.(freq > nuArray(nNu))) then
        write(*,*) "error in integral1",nNu,freq,nuArray(1),nuArray(nNu)
+do ; enddo       
        jnu = 1.e-28
        iMin = 1
     else
@@ -2415,7 +2417,7 @@ contains
     where (grid%kappaabs < 0.) grid%kappaabs = 1.e-20
   end subroutine generateOpacities
 
-  subroutine amrStateq(grid, contfile, lte, nLower, nUpper)
+  subroutine amrStateq(grid, contfile, lte, nLower, nUpper,  ion_name, ion_frac)
     ! calculate the statistical equilibrium for all of the subcells in an
     !   adaptive octal grid.
 
@@ -2425,6 +2427,9 @@ contains
     character(len=*),intent(in) :: contfile      ! filename for continuum flux
     logical,intent(in)          :: lte           ! true if lte conditions
     integer,intent(in)          :: nLower, nUpper! level populations
+    ! Name of the ion (see opacity_lte_mod.f90 for the list of a valid name.)
+    character(LEN=*),intent(in), optional :: ion_name
+    real,intent(in), optional             :: ion_frac      ! n_ion/n_specie
     
     integer, parameter          :: maxLevels = statEqMaxLevels ! number of levels to compute
     integer                     :: iOctal        ! loop counter
@@ -2438,6 +2443,8 @@ contains
     real                        :: chi
     real                        :: fac
     real                        :: eta
+    real                        :: etal
+    real                        :: chi_es
     real                        :: thresh
     real(kind=doubleKind),allocatable,dimension(:) :: xall
     real(kind=doublekind)       :: nTot
@@ -2477,6 +2484,7 @@ contains
     nNu1 = nNu1  - 1
     close(20)
     hNu1(1:nNu1) = hnu1(1:nNu1) / fourPi   ! Converts from flux to flux momemnt
+print *, contfile, 'nnu1 = ',nnu1,'  nuarray1(nnu1) = ',nuarray1(nnu1)
 
     allocate(octalArray(grid%nOctals))
     
@@ -2570,6 +2578,7 @@ contains
              octalArray(iOctal)%content%chiLine(iSubcell) = 1.e10 * chil
              
              if (octalArray(iOctal)%content%n(iSubcell,nUpper) == 0.e0_db) then
+                write(*,*) 'In amrStatEq, octalArray(iOctal)%content%n(iSubcell,nUpper) == 0.d0'
                 write(*,*) nUpper
                 write(*,*) octalArray(iOctal)%content%N(iSubcell,1:maxLevels)
                 write(*,*) octalArray(iOctal)%content%Ne(iSubcell)

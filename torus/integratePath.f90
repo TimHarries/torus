@@ -1277,9 +1277,14 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                     endif
                     tauSobScalar = tauSobScalar1  + x * (tauSobScalar2 - tauSobScalar1)
 
-                    ! somethings gone wrong - usually numerical problems 
 
-                    if (tauSobScalar < 0.) then
+
+
+                    if (tauSobScalar < 0. .and.  abs(tauSobScalar) < 1.0e-3) then
+                       ! somethings gone wrong - usually numerical problems 
+                       ! Correction forced (R.K. Oct-15-2002)
+                       tauSobScalar = 1.0e-10
+                    elseif (tauSobScalar < 0.) then
                        write(*,*) "tau sob",tausobScalar
                        write(*,*) "this Vel",thisVel*cSpeed/1.e5
                        write(*,*) "modulus vvec",modulus(vVec)*cSpeed/1.e5
@@ -1320,7 +1325,11 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                        tauSobScalar = tauSobScalar1  + x * (tauSobScalar2 - tauSobScalar1)
 
                        ! somethings gone wrong - usually numerical problems 
-                       if (tauSobScalar < 0.) then
+                       if (tauSobScalar < 0. .and.  abs(tauSobScalar) < 1.0e-3) then
+                          ! somethings gone wrong - usually numerical problems 
+                          ! Correction forced (R.K. Oct-15-2002)
+                          tauSobScalar = 1.0e-10
+                       elseif (tauSobScalar < 0.) then
                           write(*,*) "tau sob",tausobScalar
                           write(*,*) "this Vel",thisVel*cSpeed/1.e5
                           write(*,*) "modulus vvec",modulus(vVec)*cSpeed/1.e5
@@ -1404,10 +1413,12 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                              x = (thisVel-projVel(i))/(projVel(i+1)-projVel(i))
                           endif
                           tauSobScalar = tauSobScalar1  + x * (tauSobScalar2 - tauSobScalar1)
-   
-                          ! somethings gone wrong - usually numerical problems 
-   
-                          if (tauSobScalar < 0.) then
+
+                          if (tauSobScalar < 0. .and.  abs(tauSobScalar) < 1.0e-3) then
+                             ! somethings gone wrong - usually numerical problems 
+                             ! Correction forced (R.K. Oct-15-2002)
+                             tauSobScalar = 1.0e-10
+                          elseif (tauSobScalar < 0.) then
                              write(*,*) "tau sob",tausobScalar
                              write(*,*) "this Vel",thisVel*cSpeed/1.e5
                              write(*,*) "modulus vvec",modulus(vVec)*cSpeed/1.e5

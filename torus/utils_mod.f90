@@ -624,6 +624,58 @@ contains
       maxwellianVelocity = vel * randomUnitVector()
     end function maxwellianVelocity
 
+
+    ! a functions to convert characters to integer 
+    function char2int(a) RESULT(out)
+      implicit none 
+      integer :: out
+      character*(*), intent(in) :: a
+      integer :: ierr
+      
+      read(a, *, IOSTAT = ierr) out
+      if (ierr /= 0) then
+	 print *, 'Error : Non-numerical characters passed to [char2int] &
+	      & function in char_function_class module.'
+	 stop
+      end if
+      
+    end function char2int
+  
+  
+    ! a function to convert integer to strings
+    function int2char(num) RESULT(out)
+      implicit none
+      character(LEN=50) :: out
+      integer, intent(in) :: num
+      
+      write(out,*) num
+    end function int2char
+    
+    
+
+    ! A function to attach numbers at the end of strings
+    ! The length of output character is 50.
+    function tail_num_to_char(strings, number) RESULT(out)
+      character(LEN=50) :: out
+      character*(*), intent(in) :: strings
+      integer, intent(in) :: number
+      character(LEN=50) :: char_number
+      integer :: length, n
+      
+      ! convert number into strings .. using a function in this module
+      char_number = int2char(number)
+      char_number = ADJUSTL(char_number)
+      length = LEN( TRIM(char_number) )
+      
+      ! Stick them togeter.
+      n = LEN_TRIM(strings)
+      out = strings(1:n)//char_number(1:length)
+      
+    end function tail_num_to_char
+
+
+    
+
 end module utils_mod
 
 

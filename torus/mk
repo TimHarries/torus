@@ -38,7 +38,7 @@
                F95COMP="f95 -colour"
                F77COMP="f77"
                FASTFLAG="-O3"
-               MATHTRAP="-ieee=full"
+               MATHTRAP="-ieee=stop"
                UNIXMOD="unix_mod.f90.linux"
                KINDMOD="kind_mod.f90.linux"
                EXE="torus.linux"

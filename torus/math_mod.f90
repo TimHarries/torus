@@ -465,7 +465,8 @@ contains
   subroutine computeProbDist(grid, totalLineEmission, totalContEmission, lambda0, useBias)
 
     type(GRIDTYPE), intent(inout) :: grid
-    real, intent(out) :: totalLineEmission, totalContEmission
+    !    real, intent(out) :: totalLineEmission, totalContEmission
+    real(kind=doubleKind), intent(out) :: totalLineEmission, totalContEmission
     real, intent(in) :: lambda0
     integer :: i,j,k, ierr
     real, allocatable :: chi(:,:,:)
@@ -545,9 +546,18 @@ contains
                                                  totalContEmissionDouble,&
                                                  totalLineProb,&
                                                  totalContProb)
-       
-        biasCorrectionLine = totalLineEmissionDouble / totalLineProb
-        biasCorrectionCont = totalContEmissionDouble / totalContProb
+
+	if (totalLineProb /= 0.0) then
+	   biasCorrectionLine = totalLineEmissionDouble / totalLineProb
+	else
+	   biasCorrectionLine = 1.0
+	end if
+	if (totalContProb /= 0.0) then	   
+	   biasCorrectionCont = totalContEmissionDouble / totalContProb
+	else
+	   biasCorrectionCont = 1.0
+	end if
+	
         write(*,*) "Bias correction (line)      : ",biasCorrectionLine 
         write(*,*) "Bias correction (continuum) : ",biasCorrectionCont 
     
@@ -576,7 +586,7 @@ contains
     type(GRIDTYPE) :: grid
     type(VECTOR) :: rVec
     real :: tot, tot2
-    real :: totalEmission
+    real(kind=doubleKind) :: totalEmission
     logical :: lineEmission, useBias
     integer :: i, j, k
     real :: t1, t2, t3
@@ -1033,8 +1043,6 @@ real :: biasCont3D(8)
             
        else
 
-etaCont = thisOctal%etaCont
-biasCont3D = thisOctal%biasCont3D
           dV = real(thisOctal%subcellSize, kind=doubleKind) ** 3.0_db
 
           totalLineProb = totalLineProb + dV * &
