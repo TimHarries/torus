@@ -1460,7 +1460,7 @@ program torus
      write(*,*) " "
 
      if (gridUsesAMR) then
-        call integratePathAMR2(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., &
@@ -1486,7 +1486,7 @@ program torus
      end if
      
      if (gridUsesAMR) then
-        call integratePathAMR2(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(0.,1.,0.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., &
@@ -1513,7 +1513,7 @@ program torus
      end if
       
      if (gridUsesAMR) then
-        call integratePathAMR2(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+        call integratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
                        VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
                        tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
                        lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., &
@@ -1540,7 +1540,7 @@ program torus
 
 
      if (gridUsesAMR) then
-        call integratePathAMR2(lambdatau,  lamLine, VECTOR(1.,1.,1.), &
+        call integratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), &
           zeroVec, outVec, grid, lambda, &
           tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
           .false., lamStart, lamEnd, nLambda, contTau, &
@@ -1577,7 +1577,7 @@ program torus
         do i = 1, 100
            tempVec = randomUnitVector()
            if (gridUsesAMR) then
-              call integratePathAMR2(lamLine,  lamLine, VECTOR(1.,1.,1.), &
+              call integratePathAMR(lamLine,  lamLine, VECTOR(1.,1.,1.), &
                 zeroVec, tempVec, grid, lambda, &
                 tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, escProb, &
                 .false., lamStart, lamEnd, nLambda, contTau, &
@@ -2022,10 +2022,10 @@ print *, 'nu = ',nu
            end select
 
 
-           r = modulus(thisPhoton%position)
-           call locate(rGrid, nrGrid, r, j)
-           prgrid(j) = prgrid(j) + thisPhoton%stokes%i
-           observedLambda = thisPhoton%lambda
+           !r = modulus(thisPhoton%position)
+           !call locate(rGrid, nrGrid, r, j)
+           !prgrid(j) = prgrid(j) + thisPhoton%stokes%i
+           !observedLambda = thisPhoton%lambda
            if (thisPhoton%contPhoton) then
 
               meanr_cont = meanr_cont + modulus(thisPhoton%position)*thisPhoton%stokes%i
@@ -2044,7 +2044,7 @@ print *, 'nu = ',nu
            if (doRaman) then
               
               if (gridUsesAMR) then
-                call integratePathAMR2(thisPhoton%lambda, lamLine, &
+                call integratePathAMR(thisPhoton%lambda, lamLine, &
                    thisPhoton%velocity, &
                    thisPhoton%position, outVec, grid, &
                    lambda, tauExt, tauAbs, tauSca, maxTau , nTau, opaqueCore, &
@@ -2086,7 +2086,7 @@ print *, 'nu = ',nu
 
 
               if (gridUsesAMR) then
-                 call integratePathAMR2(thisPhoton%lambda, lamLine, &
+                 call integratePathAMR(thisPhoton%lambda, lamLine, &
                     thisPhoton%velocity, &
                     thisPhoton%position, outVec, grid, &
                     lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
@@ -2264,7 +2264,7 @@ print *, 'nu = ',nu
            
 
            if (gridUsesAMR) then
-             call integratePathAMR2(thisPhoton%lambda, lamLine, &
+             call integratePathAMR(thisPhoton%lambda, lamLine, &
                 thisPhoton%velocity, &
                 thisPhoton%position, &
                 thisPhoton%direction, grid, &
@@ -2414,7 +2414,7 @@ print *, 'nu = ',nu
 
                  if (doRaman) then
                     if (gridUsesAMR) then     
-                       call integratePathAMR2(obsPhoton%lambda, lamLine, obsPhoton%velocity, &
+                       call integratePathAMR(obsPhoton%lambda, lamLine, obsPhoton%velocity, &
                             obsPhoton%position, obsPhoton%direction, grid, &
                             lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
                             escProb, obsPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
@@ -2452,7 +2452,7 @@ print *, 'nu = ',nu
                  if (doRaman) redRegion = .true.
                  
                  if (gridUsesAMR) then
-                    call integratePathAMR2(obsPhoton%lambda, lamLine, &
+                    call integratePathAMR(obsPhoton%lambda, lamLine, &
                       obsPhoton%velocity, &
                       obsPhoton%position, obsPhoton%direction, grid, &
                       lambda, tauExt, tauAbs, tauSca, maxTau, nTau, opaqueCore, &
@@ -2638,7 +2638,7 @@ print *, 'nu = ',nu
 
 
                  if (gridUsesAMR) then
-                   call integratePathAMR2(thisPhoton%lambda, lamLine, &
+                   call integratePathAMR(thisPhoton%lambda, lamLine, &
                       thisPhoton%velocity, thisPhoton%position, &
                       thisPhoton%direction, grid, lambda, tauExt, tauAbs, &
                       tauSca, maxTau, nTau, opaqueCore, &
