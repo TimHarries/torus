@@ -104,6 +104,7 @@ module input_variables
   ! model parameters
   
   real :: height
+  real :: openingangle
   real :: rMin, rMaj
   real :: shellFrac
   real :: Teff
@@ -115,6 +116,7 @@ module input_variables
   real :: rho
   real :: scale
   real :: mCore, diskTemp
+  real :: tauDisk
   real :: scaleDensity
   real :: vRot
   real :: mdot

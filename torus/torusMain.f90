@@ -167,7 +167,7 @@ program torus
   type(VECTOR), parameter :: xAxis = VECTOR(1.,0.,0.)
   type(VECTOR) :: viewVec, outVec, thisVec, originalViewVec
   type(VECTOR) :: rotationAxis, normToRotation
-  type(VECTOR) :: zeroVec, tempVec
+  type(VECTOR) :: zeroVec, tempVec, startVec
   type(VECTOR) :: rHat, rVec, rHatinStar
 
 
@@ -736,7 +736,7 @@ program torus
         case("ellipse")
            call fillGridEllipse(Grid,rho, rMin, rMaj, rinner, teff)
         case("disk")
-           call fillGridDisk(grid, rho, rCore, rInner, rOuter, height, mCore, diskTemp)
+           call fillGridDisk(grid, rho, rCore, rInner, rOuter, openingAngle, height, mCore, diskTemp)
         case("star")
            call fillGridStar(grid, radius, mdot, vel, kfac, scale)
         case("spiral")
@@ -1345,7 +1345,7 @@ program torus
         case("flared")
 !           call fillGridFlaredDisk(grid)
         case("disk")
-!           call fillGridDisk(grid, rho, rCore, rInner, rOuter, height, mCore, diskTemp)
+!           call fillGridDisk(grid, rho, rCore, rInner, rOuter, openingAngle, height, mCore, diskTemp)
         case("star")
            call fillGridStar(grid, radius, mdot, vel, kfac, scale)
         case("spiral")
@@ -1498,6 +1498,20 @@ program torus
      endif
        
 
+
+
+     if ((grid%geometry == "disk").and.(tauDisk /= 0.)) then
+        call integratePath(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
+             VECTOR(1.,0.,0.), grid, lambda, tauExt, tauAbs, &
+             tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
+             lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
+             coolStarPosition,.false., nUpper, nLower, 0., 0., 0., junk, useInterp)
+        scalefac = tauDisk / tauExt(nTau)
+        grid%kappaSca(1:grid%nr, 1:grid%nMu, 1:grid%nPhi, 1) = grid%kappaSca(1:grid%nr, 1:grid%nMu, 1:grid%nPhi, 1) * scaleFac
+     endif
+
+
+
      ! chuck out some useful information to the user
 
 
@@ -1589,6 +1603,36 @@ program torus
         write(*,*) " "
      end if
 
+     if (grid%geometry == "disk") then
+        startVec = VECTOR(rInner*1.00001, 0., -rOuter/2.)
+
+        if (gridUsesAMR) then
+           call integratePathAMR2(lambdatau,  lamLine, VECTOR(1.,1.,1.), startVec, &
+                VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
+                tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
+                lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., &
+                .false., nUpper, nLower, 0., 0., 0., junk,&
+                sampleFreq,intPathError)
+           if (intPathError < 0) then
+              write(*,*) '   Error encountered in cross-sections!!! (error = ',intPathError,')'
+           end if
+        else
+           call integratePath(lambdatau,  lamLine, VECTOR(1.,1.,1.), startVec, &
+                VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
+                tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
+                lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., rStar, &
+                coolStarPosition,.false., nUpper, nLower, 0., 0., 0., junk, useInterp)
+        end if
+        
+        if (nTau > 2) then 
+           write(*,'(a,1pe10.3)') "Optical depth in z-axis through disk: ",tauExt(ntau)
+           write(*,'(a,1pe10.3)') "Absorption depth in z-axis through disk: ",tauAbs(ntau)
+           write(*,'(a,1pe10.3)') "Scattering depth in z-axis through disk: ",tauSca(ntau)
+           write(*,'(a,i4)') "Number of samples: ",nTau
+           write(*,*) " "
+        end if
+     endif
+
 
      if (gridUsesAMR) then
         call integratePathAMR2(lambdatau,  lamLine, VECTOR(1.,1.,1.), &
@@ -1655,6 +1699,8 @@ program torus
      weightContPhoton = 1.
 
 
+     probDust = 0.
+     weightPhoto = 1.
      if (mie) then
         call computeProbDist(grid, totLineEmission, &
              totDustContinuumEmission,lamline, .false.)
@@ -1850,9 +1896,9 @@ print *, 'nu = ',nu
         
         chanceSpot = 0.
         if ((geometry == "disk").and.(nSpot > 0)) then
-           chanceSpot = fSpot * blackBody(tSpot, 6562.8) / &
-                ((1.-fSpot)*blackBody(tEff, 6562.8) + &
-                (fSpot * blackBody(tSpot, 6562.8)))
+           chanceSpot = fSpot * pi * blackBody(tSpot, 6562.8) / &
+                ((1.-fSpot) * pi * blackBody(tEff, 6562.8) + &
+                (fSpot * pi * blackBody(tSpot, 6562.8)))
            write(*,'(a,f5.3)') "Spot chance at 6563A: ",chanceSpot
         endif
 
@@ -2271,7 +2317,9 @@ print *, 'nu = ',nu
                     do iLambda = 1, nLambda
                        fac1 = 1.
                        if (.not.contWindPhoton) then
-                          fac1 = 2.*abs(thisPhoton%originalNormal.dot.outVec)/twoPi
+!                          fac1 = 2.*abs(thisPhoton%originalNormal.dot.outVec)/twoPi
+!                          write(*,*) fac1,directionalWeight!!!!!!!!!!!tjh
+                          fac1 = directionalWeight/fourPi
                        else
                           fac1 = oneOnfourPi
                        endif
@@ -2302,8 +2350,7 @@ print *, 'nu = ',nu
                        fac3 = contTau(nTau,i1)
                        if (thinLine) fac3 = 0.
                        weight = (fac1 * exp(-(tauExt(ntau)+fac3)))*fac2
-                       
-                       yArray(iLambda) = yArray(iLambda) + &
+                       yArray(ilambda) = yArray(ilambda) + &
                                            (thisPhoton%stokes * weight)
                        statArray(iLambda) = statArray(iLambda) + 1.
                        meanr0_cont = meanr0_cont + modulus(thisPhoton%position) * thisPhoton%stokes%i*weight
@@ -2404,6 +2451,8 @@ print *, 'nu = ',nu
               else
                   iLambda = findIlambda(thisPhoton%lambda, xArray, nLambda, ok)
               endif
+
+              if (grid%geometry == "disk") iLambda = 1
 
               if (grid%adaptive) then
                  positionOc = thisPhoton%position

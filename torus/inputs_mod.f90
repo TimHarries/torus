@@ -510,8 +510,11 @@ endif
    call getReal("mcore", mCore, cLine, nLines, &
        "Core mass (solar masses): ","(a,f5.1,a)", 10., ok, .true.)
 
+   call getReal("openingangle", openingAngle, cLine, nLines, &
+       "Opening angle of disk (degrees): ","(a,1pe8.2,a)",0.e0,ok,.false.)
+
    call getReal("height", height, cLine, nLines, &
-       "Scale height (solar radii): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+       "Scale height (solar radii): ","(a,1pe8.2,a)",0.e0,ok,.false.)
 
    call getReal("teff", teff, cLine, nLines, &
           "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
@@ -520,7 +523,13 @@ endif
        "Disk temperature (K): ","(a,f9.1,a)",10000.,ok,.true.)
 
     call getReal("rho", rho, cLine, nLines, &
-    "Electron Density (cm^-3): ","(a,1p,e10.2,1p,1x,a)", 1.e13, ok, .true.)
+    "Electron Density (cm^-3): ","(a,1p,e10.2,1p,1x,a)", 1.e13, ok, .false.)
+
+   call getReal("vrot", vRot, cLine, nLines, &
+       "Rotational velocity (km/s): ","(a,f5.1,a)", 0., ok, .false.)
+
+    call getReal("taudisk", tauDisk, cLine, nLines, &
+    "Optical depth in disk midplane: ","(a,1p,e10.2,1p,1x,a)", 0., ok, .false.)
 
    call getString("coreprofile", intProFilename, cLine, nLines, &
         "Core profile: ","(a,a,1x,a)","none", ok, .false.)
@@ -530,6 +539,11 @@ endif
 
    call getInteger("nspot", nSpot, cLine, nLines, &
         "Number of spots: ", "(a,i3,1x,a)", 0, ok, .false.)
+
+   call getLogical("photline", photLine, cLine, nLines, &
+        "Line produced over whole star: ","(a,1l,1x,a)", .false., ok, .true.)
+
+
 
    if (nSpot > 0) then
 
@@ -545,10 +559,6 @@ endif
       call getReal("fspot", fSpot, cLine, nLines, &
            "Fractional coverage of spots: ","(a,f6.2,a)", 0., ok, .true.)
 
-      call getLogical("photline", photLine, cLine, nLines, &
-            "Line produced over whole star: ","(a,1l,1x,a)", .false., ok, .true.)
-
-
       thetaSpot = thetaSpot * degToRad
       phiSpot = phiSpot * degToRad
 
@@ -556,11 +566,14 @@ endif
    endif
 
 
-    rCore = rCore * rSol
-    rInner = rInner * rSol
-    rOuter = rOuter * rSol
-    height = height * rSol
+    rCore = rCore * rSol / 1.e10
+    rInner = rInner * rSol / 1.e10
+    rOuter = rOuter * rSol / 1.e10
     mCore = mCore * mSol
+    openingAngle = openingAngle * degToRad
+    height = height * rSol  / 1.e10
+    vRot = vRot * 1.e5
+
 
  endif
 
@@ -1162,9 +1175,10 @@ subroutine findString(name, value, cLine, nLines, ok)
   character(len=*) :: message, format
   character(len=10) :: default
   real :: rdef
-  logical :: ok
+  logical :: ok, thisIsDefault
   ok = .true.
   default = " "
+  thisIsDefault = .false.
   call findReal(name, rval, cLine, nLines, ok)
   if (.not. ok) then
     if (musthave) then
@@ -1173,8 +1187,9 @@ subroutine findString(name, value, cLine, nLines, ok)
     endif
     rval = rdef
     default = " (default)"
+    thisIsDefault = .true.
  endif
- if (musthave) then
+ if (musthave .or. .not.thisIsDefault) then
     write(*,format) trim(message),rval,default
  endif
  end subroutine getReal

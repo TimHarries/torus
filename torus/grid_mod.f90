@@ -779,7 +779,7 @@ contains
   end subroutine fillGridEllipse
 
 
-  subroutine fillGridDisk(grid, rhoNought, rCore, rInner, rOuter, height, &
+  subroutine fillGridDisk(grid, rhoNought, rCore, rInner, rOuter, openingAngle, height, &
        mCore, diskTemp)
 
 
@@ -787,15 +787,22 @@ contains
     type(GRIDTYPE) :: grid
     integer, parameter :: nRad = 100
     real :: rOuter, rInner, rCore
+    real :: lamStart, lamEnd
+    integer :: nLambda
     type(VECTOR) :: rVec, vVec
     real :: r 
+    real :: tauMidplane = 1.
     real :: rho, rhoNought
+    real :: openingAngle
     real :: diskTemp
     real :: height, theta
     real :: vel, mCore
     type(VECTOR) :: spinAxis
     integer :: i, j, k, nMu
     real :: sinTheta
+    real :: hNought
+    real :: rIndex
+
 
     grid%geometry = "disk"
     grid%lineEmission = .true.
@@ -820,6 +827,28 @@ contains
        stop
     endif
 
+    if ((height /= 0.).and.(openingAngle /=0.)) then
+       write(*,*) "Both height and opening angle specified in input. Aborting."
+       stop
+    endif
+
+    if ((height == 0.).and.(openingAngle ==0.)) then
+       write(*,*) "Neither height and opening angle specified in input. Aborting."
+       stop
+    endif
+
+    if (openingangle /= 0.) then
+       rIndex = 1.
+    else
+       rIndex = 2.
+    endif
+
+    if (openingangle /= 0.) then
+       hNought = rInner * tan(openingAngle / 2.)
+       height = hNought
+    endif
+
+
     theta = asin(3.*height/rOuter)
 
     write(*,'(a,f7.3,a)') "Using a finer latitude grid within ",theta*radtodeg," deg of the equator"
@@ -841,6 +870,7 @@ contains
 
     call writeAxes(grid)
 
+
     do i = 1, grid%nr
        do j = 1, grid%nMu
           do k = 1, grid%nPhi
@@ -849,14 +879,17 @@ contains
                            grid%rAxis(i)*sin(grid%phiAxis(k))*sinTheta, &
                            grid%rAxis(i)*grid%muAxis(j))
              r = grid%rAxis(i)
-             rho = rhoNought * (rInner/r)**2
+             rho = rhoNought * (rInner/r)**rIndex
              if (sqrt(rVec%x**2 + rVec%y**2) > rInner) then
+                if (openingAngle /= 0.) then
+                   height = hNought * (r / rInner)
+                endif
                 grid%rho(i,j,k) = rho * exp(-abs(rVec%z/height))
                 rVec = rVec / r
                 vVec = rVec  .cross. spinAxis
                 if (modulus(vVec) /= 0.) then
                    call normalize(vVec)
-                   vel = sqrt(bigG * mCore / r) / cSpeed
+                   vel = sqrt(bigG * mCore / (r*1.e10)) / cSpeed
                    vVec = vel  * vVec 
                    grid%velocity(i,j,k) = vVec
                 endif
@@ -870,11 +903,14 @@ contains
        do j = 1, grid%nmu
           do k = 1, grid%nphi
              if (grid%rho(i,j,k) /= 0.) then
-                grid%kappaSca(i,j,k,1) = max(1.e-30,grid%rho(i,j,k) * sigmaE)
+                grid%kappaSca(i,j,k,1) = max(1.e-30,grid%rho(i,j,k) * sigmaE*1.e10)
              endif
           enddo
        enddo
     enddo
+
+
+
 
   end subroutine fillGridDisk
 
@@ -4398,7 +4434,7 @@ contains
        write(*,*) "-------------------------"
        write(*,*) " "
        do i = 1, grid%nr
-          write(*,'(i4,f8.1)') i, grid%rAxis(i)/rSol
+          write(*,'(i4,f8.1)') i, grid%rAxis(i)/(rSol/1.e10)
        enddo
        write(*,*) " "
 

@@ -298,7 +298,7 @@ contains
        ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias, &
        theta1,theta2, chanceHotRing, &
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
-       narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar)
+      narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar)
 
     implicit none
 
@@ -700,6 +700,8 @@ contains
              select case(grid%geometry)
 
                 case("disk")
+
+                   spotPhoton = .false.
                    if (nSpot > 0) then
                       rSpot = VECTOR(cos(phiSpot)*sin(thetaSpot),sin(phiSpot)*sin(thetaSpot),cos(thetaSpot))
                       if (nSpot == 1) then
@@ -707,8 +709,6 @@ contains
                       else
                          maxTheta = Pi * fSpot * 0.5
                       endif
-
-                      spotPhoton = .false.
 
                       call random_number(r1)
                       if (r1 < chanceSpot) then
@@ -1010,9 +1010,9 @@ contains
           endif
        endif
 
-       if (grid%geometry == "disk") then
-          if (.not.contWindPhoton) thisPhoton%velocity = VECTOR(0.,0.,0.)
-       endif
+!       if (grid%geometry == "disk") then
+!          if (.not.contWindPhoton) thisPhoton%velocity = VECTOR(0.,0.,0.)
+!       endif
 
 
     endif ! (thisPhoton%contPhoton)

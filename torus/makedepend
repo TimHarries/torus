@@ -1,4 +1,4 @@
-#! /usr/bin/perl
+#! /star/Perl/bin/perl
 #
 # Usage: makemake {<program name> {<F90 compiler or fc or f77 or cc or c>}}
 #

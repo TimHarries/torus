@@ -40,7 +40,7 @@
                F77COMP="f77"
                FASTFLAG="-O3"
                #DEBUGFLAG="-g -O3 -C=all -nan -unsharedf95"
-               DEBUGFLAG="-g -C=all -nan -unsharedf95"
+               DEBUGFLAG="-g  -unsharedf95"
                MATHTRAP="-ieee=stop"
                UNIXMOD="unix_mod.f90.linux"
                KINDMOD="kind_mod.f90.linux"
