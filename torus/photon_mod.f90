@@ -606,7 +606,11 @@ contains
 
                 !!! need to call an interpolation routine, rather than
                 !!!   use subcell central value
-                biasWeight = biasWeight * 1.0_db / sourceOctal%biasCont3D(subcell)
+                if (useBias) then
+                   biasWeight = biasWeight * 1.0_db / sourceOctal%biasCont3D(subcell)
+                else
+                   biasWeight = 1.0_db
+                end if
 
              else ! grid is cartesian
                 ok = .false.
@@ -796,8 +800,11 @@ contains
 
                 !!! need to call an interpolation routine, rather than
                 !!!   use subcell central value
-                biasWeight = biasWeight * 1.0_db / sourceOctal%biasCont3D(subcell)
-
+                if (useBias) then
+                   biasWeight = biasWeight * 1.0_db / sourceOctal%biasCont3D(subcell)
+                else
+                   biasWeight = 1.0_db
+                end if
                
              else ! grid is polar
 
@@ -1279,8 +1286,11 @@ contains
 
             !!! need to call an interpolation routine, rather than
             !!!   use subcell central value
-            biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
-
+             if (useBias) then
+                biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
+             else
+                biasWeight = 1.0_db
+             end if
              !!! we will just choose a random point within the subcell.
              !!! this *should* be done in a better way.
              call random_number(r1)
@@ -1315,7 +1325,11 @@ contains
 
             !!! need to call an interpolation routine, rather than
             !!!   use subcell central value
-            biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
+             if (useBias) then
+                biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
+             else
+                biasWeight = 1.0
+             end if
 
           end if ! (.not. OK)
 

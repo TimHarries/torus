@@ -4275,6 +4275,7 @@ CONTAINS
 
     REAL :: rho
 
+
     IF (isoTherm) THEN
       thisOctal%temperature(subcell) = isoThermTemp
       RETURN
@@ -4289,7 +4290,6 @@ CONTAINS
     END IF
 
     ! we will initialise the bias distribution
-!    thisOctal%biasLine3D(subcell) = 1000.0
     thisOctal%biasLine3D(subcell) = 1.0
   
   END SUBROUTINE calcTTauriTemperature

@@ -674,8 +674,8 @@ contains
        thisOctal%kappaSca(subcell,:) = sigmaSca*fac
           
        thisOctal%temperature(subcell) = 1000.0
-       thisOctal%biasCont3D(subcell) = 1.0
-       thisOctal%biasLine3D(subcell) = 1.0
+       thisOctal%biasCont3D(subcell) = 1.0e-30  ! should be no emission from disc
+       thisOctal%biasLine3D(subcell) = 1.0e-30  ! should be no emission from disc
        thisOctal%etaLine(subcell) = 1.e-30
        thisOctal%etaCont(subcell) = 1.e-30
 
