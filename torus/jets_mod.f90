@@ -15,12 +15,21 @@ module jets_mod
   USE constants_mod
 
     
-  public :: set_jets_parameters, get_jets_parameter, &
-       &    JetsDensity, JetsVelocity, JetsTemperature,&
-       &    calcJetsMassVelocity, calcJetsTemperature, initJetsAMR, &
-       &    dV_dn_jets
+  public :: &
+       set_jets_parameters, &
+       get_jets_parameter, &
+       JetsDensity, &
+       JetsVelocity,&
+       JetsVelocity_in_C,&
+       JetsTemperature,&
+       calcJetsMassVelocity, &
+       calcJetsTemperature, &
+       initJetsAMR, &
+       dV_dn_jets
 
-  !  privare :: 
+  private :: &
+       VelocityCorners
+  
   
   !--------------------------------------------------------------------------------
   ! Bipolar Jet flow
@@ -81,7 +90,7 @@ module jets_mod
      
   end type jets_parameters
 
-   
+  
   type(jets_parameters) :: jets  ! One incidence to be used ONLY IN THIS MODULE.
 
   !
@@ -241,10 +250,10 @@ contains
 
     !
     LOGICAL, SAVE  :: first_time = .true. 
-    DOUBLE PRECISION ::  r  ! distance from the center of central star
-    DOUBLE PRECISION :: rp
+    DOUBLE PRECISION ::  r, rn  ! distance from the center of central star
+    DOUBLE PRECISION :: rp, rho_jets, rho_disk
     DOUBLE PRECISION :: vr
-    DOUBLE PRECISION :: cos_theta, Mdot, Vinf, beta, cos_theta_o
+    DOUBLE PRECISION :: cos_theta
     double precision :: theta_o_jets, theta_o_disk
     !
     DOUBLE PRECISION, SAVE :: cos_theta_o_jets    
@@ -254,7 +263,7 @@ contains
     !
     DOUBLE PRECISION, parameter :: M_sun=1.9891d30 ! in [kg]
 
-    double precision, save :: rho_max_disk_wind
+    double precision, save :: rho_max_disk_wind, rho_min_disk_wind
 
     IF (first_time) THEN
        ! Converting the half open angle to radians
@@ -268,7 +277,7 @@ contains
 
        ! Computing the maximum desnity of the disk wind
        Rp = 1.0d0    
-       Vr = jets%Vinf_disk * ( (1.0 - Rp)**jets%beta_disk ) + jets%Vo     ! [km/s]
+       Vr = jets%Vo     ! [km/s]
        ! density in [kg/m^3]     
        !-- convert r in [m] was in [10^10cm]
        r = jets%Rmin  * 1.0d8
@@ -276,7 +285,18 @@ contains
        Vr = Vr*10.0d3  ! m/s    
        
        ! this value is save for the successive calls
-       rho_max_disk_wind  =       jets%Mdot_disk &
+       rho_max_disk_wind  =       Mdot_disk &
+            &                         /                 &
+            ( 4.0*Pi*r*r*Vr*(1.0-cos_theta_o_disk) )
+
+
+       ! this value is save for the successive calls
+       Rp = jets%Rmin/jets%Rmax
+       Vr = jets%Vinf_disk * ( (1.0 - Rp)**jets%beta_disk ) + jets%Vo     ! [km/s]
+       ! convert [km/s] to [m/s]
+       Vr = Vr*10.0d3  ! m/s           
+       r = jets%Rmax  * 1.0d8
+       rho_min_disk_wind  =       Mdot_disk &
             &                         /                 &
             ( 4.0*Pi*r*r*Vr*(1.0-cos_theta_o_disk) )
   
@@ -296,7 +316,9 @@ contains
     starPosn = grid%starPos1
     pointVec = (point - starPosn)
     r = modulus( pointVec ) 
-    
+    !-- convert r in [m] was in [10^10cm]
+    rn = r * 1.0d8
+        
     
     IF (pointVec%z /= 0.0) THEN
        cos_theta = pointVec%z/r
@@ -305,53 +327,71 @@ contains
     END IF
 
 
-    !
-    if (r >= jets%Rmin .and. r < jets%Rmax &
-       .and. abs(cos_theta) > cos_theta_o_jets) then
-       Mdot = jets%Mdot_jets
-       Vinf = jets%Vinf_jets
-       beta = jets%beta_jets
-       cos_theta_o = cos_theta_o_jets
-    elseif (r >= jets%Rmin .and. r < jets%Rmax &
-         .and. abs(cos_theta) > cos_theta_o_disk .and. &
-         abs(cos_theta) < cos_theta_o_jets ) then
-       Mdot = jets%Mdot_disk       
-       Vinf = jets%Vinf_disk
-       beta = jets%beta_disk
-       cos_theta_o = cos_theta_o_disk
-    else if (r >= jets%Rmin .and.  r < jets%Rdisk_min .and. &
-         &  abs(cos_theta) < cos_theta_o_disk) then
-       ! Spherical wind up to the disk radius
-       Mdot = jets%Mdot_disk
-       Vinf = jets%Vinf_jets
-       beta = jets%beta_disk
-       cos_theta_o = cos_theta_o_disk
-    elseif (abs(pointVec%z)<jets%h_disk/2.0 .and.  &
-         (r>jets%Rdisk_min .and. r<jets%Rdisk_max)) then
-       out = jets%rho_scale*rho_max_disk_wind
-       return
+
+    if ( r >= jets%Rmin ) then
+       Rp = jets%Rmin/r
     else
-       Mdot = jets%Mdot_disk*1.0d-2
-       Vinf = jets%Vinf_disk
-       beta = jets%beta_disk
-       cos_theta_o = cos_theta_o_disk
-       r = jets%Rmax
+       Rp = 1.0d0
     end if
-       
-    Rp = jets%Rmin/r
     
-    Vr = Vinf * (1.0d0 - Rp)**beta  + jets%Vo     ! [km/s]
+    !
+    ! computing the density contribution from the jets
+    !
+    Vr =  jets%Vinf_jets * (1.0d0 - Rp)**jets%beta_jets  + jets%Vo     ! [km/s]
     ! density in [kg/m^3]     
-    !-- convert r in [m] was in [10^10cm]
-    r = r * 1.0d8
     
     ! convert [km/s] to [m/s]
     Vr = Vr*10.0d3  ! m/s
     
-    out  =       Mdot               &
+    rho_jets  =       Mdot_jets               &
          /                 &
-         ( 4.0d0*Pi*r*r*Vr*(1.0d0-cos_theta_o) )
+         ( 4.0d0*Pi*rn*rn*Vr*(1.0d0-cos_theta_o_jets) )  ! [kg/m^3]
 
+
+    !
+    ! Contribution from the disk wind (outer cones)
+    !
+
+    Vr =  jets%Vinf_disk * (1.0d0 - Rp)**jets%beta_disk  + jets%Vo     ! [km/s]
+    ! density in [kg/m^3]     
+    
+    ! convert [km/s] to [m/s]
+    Vr = Vr*10.0d3  ! m/s
+    
+    rho_disk  =       Mdot_disk               &
+         /                 &
+         ( 4.0d0*Pi*rn*rn*Vr*(1.0d0-cos_theta_o_disk) )  ! [kg/m^3]
+        
+
+
+    !
+!    if (r >= jets%Rmin .and. r < jets%Rmax &
+    if (r >= jets%Rdisk_min .and. r < jets%Rmax &
+       .and. abs(cos_theta) > cos_theta_o_jets) then
+
+       out = rho_jets + rho_disk
+
+    elseif (r >= jets%Rdisk_min .and. r < jets%Rmax &
+         .and. abs(cos_theta) > cos_theta_o_disk .and. &
+         abs(cos_theta) < cos_theta_o_jets ) then
+
+       out = rho_disk
+
+    else if (r >= jets%Rmin .and.  r < jets%Rdisk_min) then
+
+       ! Spherical wind up to the disk radius
+       out = rho_disk
+
+    elseif (abs(pointVec%z)<jets%h_disk/2.0 .and.  &
+         (r>jets%Rdisk_min .and. r<jets%Rdisk_max)) then
+
+       out = jets%rho_scale*rho_max_disk_wind
+
+    else
+       
+       out = rho_min_disk_wind
+
+    end if
                    
   END FUNCTION JetsDensity
 
@@ -430,13 +470,19 @@ contains
 
     !
     if (r >= jets%Rmin .and. r < jets%Rmax &
-         &        .and. abs(cos_theta) > cos_theta_o_jets) then
+         .and. abs(cos_theta) > cos_theta_o_jets) then
        Vinf = jets%Vinf_jets
        beta = jets%beta_jets
        cos_theta_o = cos_theta_o_jets
     elseif (r >= jets%Rmin .and. r < jets%Rmax  &
          .and. abs(cos_theta) > cos_theta_o_disk .and. &
          abs(cos_theta) < cos_theta_o_jets ) then
+       Vinf = jets%Vinf_disk
+       beta = jets%beta_disk
+       cos_theta_o = cos_theta_o_disk
+    else if (r >= jets%Rmin .and.  r < jets%Rdisk_min .and. &
+         &  abs(cos_theta) < cos_theta_o_disk) then
+       ! Spherical wind up to the disk radius
        Vinf = jets%Vinf_disk
        beta = jets%beta_disk
        cos_theta_o = cos_theta_o_disk
@@ -457,6 +503,31 @@ contains
 
     
   END FUNCTION JetsVelocity
+
+
+
+  ! Same as JetsVelocity function defined above except that
+  ! this one returns a vector with it's components in the unit of speed of light. 
+  FUNCTION JetsVelocity_in_C(point,grid) RESULT(out)
+    USE constants_mod
+    
+    IMPLICIT NONE
+
+    TYPE(vector)                  :: out  ! componets in [c]
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+    real                          :: Vr
+    TYPE(vector)                  :: rhat
+
+    ! radial speed in [c]
+    Vr = JetsVelocity(point,grid)*1.0d5/cSpeed  
+    
+    rhat = o2s(point)/real( modulus(point) )
+    
+    out = Vr * rhat
+
+  end FUNCTION JetsVelocity_in_C
+
 
 
   !
@@ -533,6 +604,11 @@ contains
          abs(cos_theta) < cos_theta_o_jets ) then
        Tcore = jets%Tcore_disk
        e6 = jets%e6_disk       
+    else if (r >= jets%Rmin .and.  r < jets%Rdisk_min .and. &
+         &  abs(cos_theta) < cos_theta_o_disk) then
+       ! Spherical wind up to the disk radius
+       Tcore = jets%Tcore_disk
+       e6 = jets%e6_disk
     else
        Tcore = jets%Tcore_disk
        e6 = jets%e6_disk       
@@ -580,14 +656,20 @@ contains
                       
     ! test if the point lies within the star
     IF ( r >= jets%Rmin .AND. r < jets%Rmax) THEN
-       thisOctal%inFlow(subcell) = .FALSE.       
+       thisOctal%inFlow(subcell) = .TRUE.       
     ELSE 
-       thisOctal%inFlow(subcell) = .TRUE.
+       thisOctal%inFlow(subcell) = .FALSE.
     END IF
 
-    thisOctal%rho(subcell) = JetsDensity(pointVec, grid)*1.0d3
+    thisOctal%rho(subcell) = JetsDensity(pointVec, grid)/1.0d3
     ! [g/cm^3]
-    
+
+!!===========================================================
+!! TEST FUNCTION!
+!    thisOctal%rho(subcell) = density_inverse_sq(pointVec)
+!    thisOctal%inFlow(subcell) = .TRUE.       
+!!===========================================================   
+
     Vr = JetsVelocity(pointVec, grid)/ dble(cSpeed/1.0e5)
     ! in [c]
     
@@ -595,7 +677,9 @@ contains
     
     thisOctal%velocity(subcell) = vP
        
-
+    
+    IF (subcell == 8) CALL VelocityCorners(thisOctal,grid)
+    
     
 
   END SUBROUTINE calcJetsMassVelocity
@@ -755,6 +839,104 @@ contains
 
     
   end function dV_dn_jets
+
+
+
+  SUBROUTINE VelocityCorners(thisOctal,grid)
+    ! store the velocity values at the subcell corners of an octal so
+    !   that they can be used for interpolation.
+
+    IMPLICIT NONE
+  
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    TYPE(gridtype), INTENT(IN) :: grid
+
+    REAL(octalKind)      :: x1, x2, x3
+    REAL(octalKind)      :: y1, y2, y3
+    REAL(octalKind)      :: z1, z2, z3
+    
+
+    ! we first store the values we use to assemble the position vectors
+    
+    x1 = thisOctal%centre%x - thisOctal%subcellSize
+    x2 = thisOctal%centre%x
+    x3 = thisOctal%centre%x + thisOctal%subcellSize
+
+    y1 = thisOctal%centre%y - thisOctal%subcellSize
+    y2 = thisOctal%centre%y
+    y3 = thisOctal%centre%y + thisOctal%subcellSize
+    
+    z1 = thisOctal%centre%z - thisOctal%subcellSize
+    z2 = thisOctal%centre%z
+    z3 = thisOctal%centre%z + thisOctal%subcellSize
+
+    ! now store the 'base level' values
+    
+    thisOctal%cornerVelocity(1) = JetsVelocity_in_C(octalVector(x1,y1,z1),grid)
+    thisOctal%cornerVelocity(2) = JetsVelocity_in_C(octalVector(x2,y1,z1),grid)
+    thisOctal%cornerVelocity(3) = JetsVelocity_in_C(octalVector(x3,y1,z1),grid)
+    thisOctal%cornerVelocity(4) = JetsVelocity_in_C(octalVector(x1,y2,z1),grid)
+    thisOctal%cornerVelocity(5) = JetsVelocity_in_C(octalVector(x2,y2,z1),grid)
+    thisOctal%cornerVelocity(6) = JetsVelocity_in_C(octalVector(x3,y2,z1),grid)
+    thisOctal%cornerVelocity(7) = JetsVelocity_in_C(octalVector(x1,y3,z1),grid)
+    thisOctal%cornerVelocity(8) = JetsVelocity_in_C(octalVector(x2,y3,z1),grid)
+    thisOctal%cornerVelocity(9) = JetsVelocity_in_C(octalVector(x3,y3,z1),grid)
+
+    ! middle level
+  
+    thisOctal%cornerVelocity(10) = JetsVelocity_in_C(octalVector(x1,y1,z2),grid)
+    thisOctal%cornerVelocity(11) = JetsVelocity_in_C(octalVector(x2,y1,z2),grid)
+    thisOctal%cornerVelocity(12) = JetsVelocity_in_C(octalVector(x3,y1,z2),grid)
+    thisOctal%cornerVelocity(13) = JetsVelocity_in_C(octalVector(x1,y2,z2),grid)
+    thisOctal%cornerVelocity(14) = JetsVelocity_in_C(octalVector(x2,y2,z2),grid)
+    thisOctal%cornerVelocity(15) = JetsVelocity_in_C(octalVector(x3,y2,z2),grid)
+    thisOctal%cornerVelocity(16) = JetsVelocity_in_C(octalVector(x1,y3,z2),grid)
+    thisOctal%cornerVelocity(17) = JetsVelocity_in_C(octalVector(x2,y3,z2),grid)
+    thisOctal%cornerVelocity(18) = JetsVelocity_in_C(octalVector(x3,y3,z2),grid)
+
+    ! top level
+    
+    thisOctal%cornerVelocity(19) = JetsVelocity_in_C(octalVector(x1,y1,z3),grid)
+    thisOctal%cornerVelocity(20) = JetsVelocity_in_C(octalVector(x2,y1,z3),grid)
+    thisOctal%cornerVelocity(21) = JetsVelocity_in_C(octalVector(x3,y1,z3),grid)
+    thisOctal%cornerVelocity(22) = JetsVelocity_in_C(octalVector(x1,y2,z3),grid)
+    thisOctal%cornerVelocity(23) = JetsVelocity_in_C(octalVector(x2,y2,z3),grid)
+    thisOctal%cornerVelocity(24) = JetsVelocity_in_C(octalVector(x3,y2,z3),grid)
+    thisOctal%cornerVelocity(25) = JetsVelocity_in_C(octalVector(x1,y3,z3),grid)
+    thisOctal%cornerVelocity(26) = JetsVelocity_in_C(octalVector(x2,y3,z3),grid)
+    thisOctal%cornerVelocity(27) = JetsVelocity_in_C(octalVector(x3,y3,z3),grid)
+    
+  END SUBROUTINE VelocityCorners
+
+
+  ! Use this for quick test function.
+  function density_inverse_sq(point) RESULT(out)
+    implicit none
+    real                          :: out
+    type(octalvector), intent(in) :: point
+!    type(gridtype), intent(in)    :: grid
+
+    real(kind=octalkind)        :: rr                     !  [10^10 cm]
+    real(kind=octalkind)        :: r                      !  [-]
+    
+    real(kind=octalkind), parameter  :: rmin = 1.0_oc     !  [-]
+    real(kind=octalkind), parameter  :: rmax = 101.0_oc   !  [-]
+!    double precision, parameter  :: rmax = 100.0_oc      !  [-]
+    real(kind=octalkind), parameter  :: rho_0=1.0_oc      ! density at rmin
+
+    rr  = modulus(point)  ! [10^10cm]
+    r = rr/rmin          ! dimensionless radius
+    if ( r >= rmin*0.5_oc  .and. r < rmax ) then
+!    if ( r >= rmin  .and. r < rmax ) then
+       out = rho_0/(r**2)
+    else
+       out = (rho_0/ (rmax**2))*1.0e-9
+    end if
+
+  end function density_inverse_sq
+
+
+
   
   
 end module jets_mod

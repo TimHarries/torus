@@ -66,6 +66,7 @@ module spectrum_mod
          spectrum%flux(i) = bLambda(spectrum%lambda(i), dble(teff))
       enddo
       spectrum%nLambda = nLambda
+      where(spectrum%flux(1:spectrum%nLambda) == 0.d0) spectrum%flux = 1.e-30
 
       call probSpectrum(spectrum)
     end subroutine fillSpectrumBB
@@ -120,14 +121,18 @@ module spectrum_mod
     real(kind=doubleKind) function returnNormValue(spectrum, lambda)
       type(SPECTRUMTYPE) :: spectrum
       real(kind=doubleKind) :: lambda, t
+      logical :: ok
       integer :: i
 
       if ((lambda < spectrum%lambda(1)).or.(lambda > spectrum%lambda(spectrum%nlambda))) then
          returnNormValue = 0. 
       else
+!         i = findIlambda(real(lambda), real(spectrum%lambda), spectrum%Nlambda, ok)
          call locate(spectrum%lambda,spectrum%nLambda, lambda, i)
          t = (lambda - spectrum%lambda(i))/(spectrum%lambda(i+1) - spectrum%lambda(i))
+!         t = 0.
          returnNormValue = spectrum%normFlux(i) + t * (spectrum%normFlux(i+1) - spectrum%normFlux(i))
+!         returnNormValue = interpLogLinearDouble(spectrum%lambda, spectrum%normFlux, spectrum%nLambda, lambda)
       endif
     end function returnNormValue
          

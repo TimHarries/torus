@@ -1,4 +1,4 @@
-subroutine draineCrossSection(lambda, nLambda, aMin, aMax, qDist, &
+subroutine draineCrossSection(lambda, nLambda, aMin, aMax, a0, qDist, pDist, &
      kappaAbs, kappaSca, grainType)
   use constants_mod
   use utils_mod
@@ -6,7 +6,7 @@ subroutine draineCrossSection(lambda, nLambda, aMin, aMax, qDist, &
   implicit none
   character(len=80) :: dataDirectory, filename
   real :: lambda(*)
-  real :: aMin, aMax, qDist, normFac
+  real :: aMin, aMax, qDist, a0, pDist, normFac
   character(len=*) :: grainType
   integer, parameter :: nDist = 100
   integer :: nLambda
@@ -115,7 +115,8 @@ subroutine draineCrossSection(lambda, nLambda, aMin, aMax, qDist, &
               loga2 = logAmin+(logAmax-logAmin)*real(i)/real(nDist-1)
               a1 = exp(loga1)
               a2 = exp(loga2)
-              tot = tot + 0.5*(a1**(qDist) + a2**(qDist))*(a2-a1)
+              tot = tot + 0.5*(a1**(-qDist) * exp(-(a1/a0)**pDist)  &
+                   + a2**(-qDist) * exp(-(a2/a0)**pDist))*(a2-a1)
            enddo
            normFac = 1./tot
 
@@ -145,9 +146,10 @@ subroutine draineCrossSection(lambda, nLambda, aMin, aMax, qDist, &
                  om = om2
               endif
 
-              kappaAbs(j) = kappaAbs(j) + normFac*a**(qDist)*da * q * pi * a**2
-              kappaExt(j) = kappaExt(j) + normFac*a**(qDist)*da * q/(1.-om) * pi * a**2
-              kappaSca(j) = kappaSca(j) + normFac*a**(qDist)*da * om*q/(1.-om) * pi * a**2
+              fac = normFac * a**(-qDist) * exp(-(a/a0)**pDist) * da
+              kappaAbs(j) = kappaAbs(j) + fac * q * pi * a**2
+              kappaExt(j) = kappaExt(j) + fac * q/(1.-om) * pi * a**2
+              kappaSca(j) = kappaSca(j) + fac * om*q/(1.-om) * pi * a**2
            enddo
 
            write(*,*) kappaAbs(j), kappaExt(j), kappaSca(j)
@@ -195,7 +197,8 @@ subroutine draineCrossSection(lambda, nLambda, aMin, aMax, qDist, &
               loga2 = logAmin+(logAmax-logAmin)*real(i)/real(nDist-1)
               a1 = exp(loga1)
               a2 = exp(loga2)
-              tot = tot + 0.5*(a1**(qDist) + a2**(qDist)) *(a2-a1)
+              tot = tot + 0.5*(a1**(-qDist)*exp(-(a1/a0)**pDist)  &
+                   + a2**(-qDist)*exp(-(a2/a0)**pDist)) * (a2-a1)
            enddo
            normFac = 1./tot
 
@@ -219,9 +222,11 @@ subroutine draineCrossSection(lambda, nLambda, aMin, aMax, qDist, &
                  q = q1
                  om = om1
               endif
-              kappaAbs(j) = kappaAbs(j) + normFac*a**(qDist)*da * q * pi * a**2
-              kappaExt(j) = kappaExt(j) + normFac*a**(qDist)*da * q/(1.-om)* pi * a**2
-              kappaSca(j) = kappaSca(j) + normFac*a**(qDist)*da * om*q/(1.-om)* pi * a**2
+
+              fac = normFac * a**(-qDist) * exp(-(a/a0)**pDist) * da
+              kappaAbs(j) = kappaAbs(j) + fac * q * pi * a**2
+              kappaExt(j) = kappaExt(j) + fac * q/(1.-om)* pi * a**2
+              kappaSca(j) = kappaSca(j) + fac * om*q/(1.-om)* pi * a**2
 
            enddo
         endif
@@ -260,7 +265,7 @@ subroutine draineCrossSection(lambda, nLambda, aMin, aMax, qDist, &
               qSca = (8./3.)*(x**4)* abs( (thism**2 - 1)/(thism**2 + 2))**2
               qAbs = -4. * x * aimag( (thism**2 - 1)/(thism**2 + 2) )
               qExt = qSca + qAbs
-              fac = a**(qDist)*(a2-a1)
+              fac = a**(-qDist)*exp(-(a/a0)**pDist)*(a2-a1)
               kappaSca(i) = kappaSca(i) + qSca * pi * a**2 * fac
               kappaAbs(i) = kappaAbs(i) + qAbs * pi * a**2 * fac
               kappaExt(i) = kappaExt(i) + qExt * pi * a**2 * fac

@@ -82,6 +82,8 @@ contains
     real :: x0, x1, y0, y1, dx, dy
     real :: vPhi
 
+    write(*,*) "Distorting grid with spiral..."
+
     ! the z-axis (the direction of the angular momentum vector)
 
     zAxis = VECTOR(0.,0.,1.)
@@ -219,7 +221,7 @@ contains
              call locate(grid%phiAxis,grid%nPhi,phi,k)
              do j = min(j1,j2), max(j1,j2)
                 if (facGrid(i2,j,k) == 1.) then
-                   facGrid(i2,j,k) = 5.
+                   facGrid(i2,j,k) = 20.
                 endif
              enddo
           enddo
@@ -232,9 +234,7 @@ contains
           do k = 1, grid%nPhi
              grid%etaLine(i,j,k) = grid%etaLine(i,j,k) * facGrid(i,j,k)**2
              grid%chiLine(i,j,k) = grid%chiLine(i,j,k) * facGrid(i,j,k)**2
-             do m = 1, grid%nLambda
-                grid%kappaSca(i,j,k,m) = grid%kappaSca(i,j,k,m) * facGrid(i,j,k)
-             enddo
+             grid%kappaSca(i,j,k,1) = grid%kappaSca(i,j,k,1) * facGrid(i,j,k)
           enddo
        enddo
     enddo
@@ -242,7 +242,7 @@ contains
 
 
     deallocate(facGrid) ! free grid
-
+    write(*,*) "done."
 
   end subroutine distortGridSpiral
 
@@ -769,7 +769,5 @@ contains
        enddo
     enddo
   end subroutine distortWindCollision
-
-
 
 end module distortion_mod

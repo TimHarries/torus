@@ -243,73 +243,136 @@ contains
          4.78E+01,6.08E+01,7.09E+01,8.61E+01,1.03E+02,1.03E+02,1.03E+02,    &
          1.03E+02,1.03E+02/                                                     
       real :: lambda(*)
-      integer :: nLambda
-      real :: tempIm(npLnk), tempReal(npLnk)
+      integer :: nLambda, nRef
+      real, allocatable :: tempIm(:), tempReal(:), lamRef(:)
       integer :: i,j 
       real :: t
-      character(len=*) :: graintype
+      character(len=*), intent(in) :: graintype
+      character(len=80) :: filename, dataDirectory
       real :: mReal(*), mImg(*)
+
+
+
       select case(graintype)
          case("sil_ow")
+            allocate(tempIm(1:npLnk))
+            allocate(tempReal(1:npLnk))
+            allocate(lamRef(1:npLnk))
+            lamRef = lam_nk
+            nRef = npLnk
             tempReal = n_sil_ow
             tempIm = k_sil_ow
 
          case("sil_oc")
+            allocate(tempIm(1:npLnk))
+            allocate(tempReal(1:npLnk))
+            allocate(lamRef(1:npLnk))
+            lamRef = lam_nk
+            nRef = npLnk
             tempReal = n_sil_oc
             tempIm = k_sil_oc
             
          case("sil_dl")
+            allocate(tempIm(1:npLnk))
+            allocate(tempReal(1:npLnk))
+            allocate(lamRef(1:npLnk))
+            lamRef = lam_nk
+            nRef = npLnk
             tempReal = n_sil_dl
             tempIm = k_sil_dl
             
          case("amc_hn")
+            allocate(tempIm(1:npLnk))
+            allocate(tempReal(1:npLnk))
+            allocate(lamRef(1:npLnk))
+            lamRef = lam_nk
+            nRef = npLnk
             tempReal = n_amc_hn
             tempIm = k_amc_hn
             
          case("sic_pg")
+            allocate(tempIm(1:npLnk))
+            allocate(tempReal(1:npLnk))
+            allocate(lamRef(1:npLnk))
+            lamRef = lam_nk
+            nRef = npLnk
             tempReal = n_sic_pg
             tempIm = k_sic_pg
             
          case("gr1_dl")
+            allocate(tempIm(1:npLnk))
+            allocate(tempReal(1:npLnk))
+            allocate(lamRef(1:npLnk))
+            lamRef = lam_nk
+            nRef = npLnk
             tempReal = n_gr1_dl
             tempIm = k_gr1_dl
             
          case("gr2_dl")
+            allocate(tempIm(1:npLnk))
+            allocate(tempReal(1:npLnk))
+            allocate(lamRef(1:npLnk))
+            lamRef = lam_nk
+            nRef = npLnk
             tempReal = n_gr2_dl
             tempIm = k_gr2_dl
+
+         case("amc_zb")
+            call unixGetenv("TORUS_DATA", dataDirectory, i)
+            filename = trim(dataDirectory)//"/"//"amC-zb2.nk"
+            write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+            open(20,file=filename,status="old",form="formatted")
+            nRef = 1245
+            allocate(lamRef(1:nRef))
+            allocate(tempIm(1:nRef))
+            allocate(tempReal(1:nRef))
+            do i = 1, nRef
+               read(20,*) lamRef(i), tempReal(i), tempIm(i)
+            enddo
+            close(20)
+
+
+
          case DEFAULT
             write(*,'(a,a,a)') "! Grain type ", trim(graintype)," not recognised"
             stop
+       end select
+
+       do i = 1, nLambda            
+          call locate(lam_nk, npLnk, lambda(i)*angsToMicrons, j)
+          t = (lambda(i)*angsToMicrons - lam_nk(j))/(lam_nk(j+1) - lam_nk(j))
+          mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
+          mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
+       enddo
 
 
-      end select
-
-      do i = 1, nLambda
-
-         call locate(lam_nk, npLnk, lambda(i)*angsToMicrons, j)
-         t = (lambda(i)*angsToMicrons - lam_nk(j))/(lam_nk(j+1) - lam_nk(j))
-         mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
-         mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))
-
-      enddo
-
-    end subroutine getRefractiveIndex
+     end subroutine getRefractiveIndex
 
     
 
-    subroutine fillGridMie(grid, scale, aMin, aMax, qDist, grainType)
+     subroutine fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, grainType,  &
+         ngrain, abundance, grainname)
 
       implicit none
       type(GRIDTYPE) :: grid
-      real :: aMin, aMax, qDist
+      real :: aMin, aMax,a0, qDist, pDist
       real, allocatable :: sigmaAbs(:), sigmaSca(:), sigmaExt(:)
-      real :: abundance
       real :: scale
-      real, allocatable :: mReal(:), mImg(:)
+      real, allocatable :: mReal(:), mImg(:)          ! size = nlamda
+      real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
       real :: meanParticleMass
-      real :: getMeanMass
-      character(len=*) :: grainType
+      real :: getMeanMass2
+      real :: rayleigh, gsca
+      external getMeanMass2
+      character(len=*) :: grainType  ! 
+      integer, intent(in) :: ngrain  ! number of grain types
+      real, intent(in) :: abundance(ngrain)   ! relative abundance of grains
+      character(len=*) :: grainname(ngrain)   ! names of grains available
+      real :: sig_ext, sig_scat, sig_abs
+      real :: total_abundance
+
       integer :: i, j, k
+      
 
       scale = 1.
 
@@ -317,23 +380,94 @@ contains
       allocate(sigmaSca(1:grid%nLambda))
       allocate(sigmaExt(1:grid%nLambda))
 
-      abundance = 1.
 
       write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
+      write(*,*) "Dust law: n(a) = const * a^-q * Exp( -(a/a0)^p )"
+      write(*,*) "          where  amin < a < amax"
+      write(*,*) "    amin = ",  aMin
+      write(*,*) "    amax = ",  aMax 
+      write(*,*) "      a0 = ",  a0
+      write(*,*) "       q = ",  qDist
+      write(*,*) "       p = ",  pDist
+
+      open(20,file="albedo.dat",form="formatted",status="unknown")
 
       allocate(mReal(1:grid%nLambda))
       allocate(mImg(1:grid%nLambda))
 
-      call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)
+      if (graintype(1:5) == "mixed") then
+         ! Synthetic grains
+         
+         ! quick test for zero total abundance.
+         total_abundance = SUM(abundance)
+         if ( total_abundance <= 0.0 ) then
+            write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::fillGridMie."
+            write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
+            write(*,*) "  ==> Exiting the prograim ... "
+            stop 
+         end if
+
+         ! allocate mem for temp arrays
+         allocate(mReal2D(1:ngrain, 1:grid%nLambda))
+         allocate(mImg2D(1:ngrain, 1:grid%nLambda))
+         ! initializing the values
+         mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
+         
+         ! Find the index of refractions for all types of grains available
+         do j = 1, ngrain
+            call getRefractiveIndex(grid%lamArray, grid%nLambda, grainname(j), mReal, mImg)
+            mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
+            mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
+         end do
+
+         ! finding the cross sections
+         sigmaExt(:) = 0.0; sigmaAbs(:)=0.0; sigmaSca(:)=0.0 ! initializing the values
+
+         do i = 1, grid%nLambda
+            do j = 1, ngrain
+               call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
+                    mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
+               ! Weighting the cross section according to their abundance...            
+               sigmaExt(i) = sig_ext*abundance(j)+ sigmaExt(i)
+               sigmaAbs(i) = sig_abs*abundance(j)+ sigmaAbs(i)
+               sigmaSca(i) = sig_scat*abundance(j)+ sigmaSca(i)
+            end do
+            sigmaExt(i) =    sigmaExt(i)/total_abundance 
+            sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
+            sigmaSca(i) =    sigmaSca(i)/total_abundance 
+
+         write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i), &
+              sigmaSca(i),sigmaSca(i)/sigmaExt(i)
+         end do
+         close(20)
+
+      else 
+         ! Do a single grain calculations... 
+      
+         call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)
+         
+         do i = 1, grid%nLambda
+            call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i),  &
+                 mReal(i), mImg(i), sigmaExt(i), sigmaSca(i), sigmaAbs(i), gsca)
+            write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),&
+                 sigmaSca(i),sigmaSca(i)/sigmaExt(i)
+         enddo
+         close(20)
+
+      end if
+         
 
       write(*,*) "Dust law: ",aMin,aMax,qDist
       open(20,file="albedo.dat",form="formatted",status="unknown")
+      open(21,file="gfactor.dat",form="formatted",status="unknown")
       do i = 1, grid%nLambda
-         call mieDistCrossSection(aMin, aMax, qDist, grid%lamArray(i),  mReal(i), mImg(i), sigmaExt(i), &
-              sigmaSca(i), sigmaAbs(i))
+         call mieDistCrossSection(aMin, aMax, a0, qDist, pdist, grid%lamArray(i),  mReal(i), mImg(i), sigmaExt(i), &
+              sigmaSca(i), sigmaAbs(i), gSca)
+         write(21,*) grid%lamArray(i), gsca
          write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
       enddo
       close(20)
+      close(21)
 
       if (.not.grid%oneKappa) then
          if (grid%adaptive) then
@@ -383,40 +517,141 @@ contains
          write(*,'(a,i4)') "Filling the oneKappa arrays: ",grid%nLambda
 
          
-         meanParticleMass = getMeanMass(aMin, aMax, qDist)
-         grid%oneKappaAbs(1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
-         grid%oneKappaSca(1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
+         meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
+         grid%oneKappaAbs(1,1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
+         grid%oneKappaSca(1,1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
+
+         open(20,file="albedo.dat",form="formatted",status="unknown")
+         do i = 1, grid%nLambda
+            rayleigh = (8.*pi**2)/(grid%lamArray(i)*angstromtocm)* &
+                 aimag((cmplx(mreal(i),mimg(i))**2-cmplx(1.,0.))/(cmplx(mreal(i),mimg(i))**2+cmplx(2.,0.)))*(amin*microntocm)**3
+            rayleigh = rayleigh / meanParticleMass
+            write(20,*) grid%lamArray(i),(grid%oneKappaAbs(1,i)+grid%oneKappaSca(1,i))/1.e10, &
+                 grid%oneKappaAbs(1,i)/1.e10,grid%oneKappaSca(1,i)/1.e10, &
+                 grid%oneKappaSca(1,i)/(grid%oneKappaAbs(1,i)+grid%oneKappaSca(1,i)),rayleigh
+         enddo
+         close(20)
+
+         
+
+
       endif
 
   write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
 end subroutine fillGridMie
 
-    subroutine setKappaTest(grid, scale, aMin, aMax, qDist, grainType)
+    subroutine setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
+         ngrain, abundance, grainname, lambdaTau)
 
       implicit none
       type(GRIDTYPE) :: grid
-      real :: aMin, aMax, qDist
+      real :: aMin, aMax, a0, qDist, pDist
       real :: sigmaAbs, sigmaSca, sigmaExt
-      real :: abundance
       real :: scale
       real, allocatable :: mReal(:), mImg(:)
+      real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
       character(len=*) :: grainType
-      integer :: i
-      scale = 1.
+      integer, intent(in) :: ngrain  ! number of grain types
+      real, intent(in) :: abundance(ngrain)   ! relative abundance of grains
+      character(len=*) :: grainname(ngrain)   ! names of grains available
+      real :: sig_ext, sig_scat, sig_abs
+      real :: total_abundance, gsca
+      real :: meanParticleMass
+      real :: lambdaTau
+      real :: getMeanMass2
 
-      abundance = 1.
+      integer :: i, j 
+
+      scale = 1.
+      allocate(mReal(1:grid%nLambda))
+      allocate(mImg(1:grid%nLambda))
+      call locate(grid%lamArray, grid%nLambda, lambdaTau, i)
+
+
+      write(*,*) "kappa test set for: ",grid%lamarray(i)
+
 
       write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
 
-      allocate(mReal(1:grid%nLambda))
-      allocate(mImg(1:grid%nLambda))
-      call locate(grid%lamArray, grid%nLambda, 5500., i)
-      call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)
-      call mieDistCrossSection(aMin, aMax, qDist, grid%lamArray(i),  mReal(i), mImg(i), sigmaExt, &
-              sigmaSca, sigmaAbs)
-      grid%kappaTest = sigmaExt * 1.e10
+      if (graintype(1:5) == "mixed") then
+         ! Synthetic grains
+         
+         ! quick test for zero total abundance.
+         total_abundance = SUM(abundance)
+         if ( total_abundance <= 0.0 ) then
+            write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::setKappaTest."
+            write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
+            write(*,*) "  ==> Exiting the prograim ... "
+            stop 
+         end if
 
-end subroutine setKappaTest
+         ! allocate mem for temp arrays
+         allocate(mReal2D(1:ngrain, 1:grid%nLambda))
+         allocate(mImg2D(1:ngrain, 1:grid%nLambda))
+         ! initializing the values
+         mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
+         
+         ! Find the index of refractions for all types of grains available
+         do j = 1, ngrain
+            call getRefractiveIndex(grid%lamArray, grid%nLambda, grainname(j), mReal, mImg)
+            mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
+            mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
+         end do
+
+         ! finding the cross sections
+         sigmaExt = 0.0; sigmaAbs=0.0; sigmaSca=0.0 ! initializing the values
+
+         do j = 1, ngrain
+            call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
+                 mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs ,gsca)
+
+            ! Weighting the cross section according to their abundance...            
+            sigmaExt = sig_ext*abundance(j)+ sigmaExt
+            sigmaAbs = sig_abs*abundance(j)+ sigmaAbs
+            sigmaSca = sig_scat*abundance(j)+ sigmaSca
+         end do
+         sigmaExt =    sigmaExt/total_abundance 
+         sigmaAbs =    sigmaAbs/total_abundance 
+         sigmaSca =    sigmaSca/total_abundance 
+         
+      else 
+         ! Do a single grain calculations...       
+         call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)         
+            call mieDistCrossSection(aMin, aMax, a0, qDist, pDist,grid%lamArray(i),  &
+                 mReal(i), mImg(i), sigmaExt, sigmaSca, sigmaAbs, gsca)
+      end if
+      meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
+         
+      grid%kappaTest = sigmaExt * 1.e10 / meanParticleMass
+
+      write(*,*) "kappa test is: ",grid%kappatest
+    end subroutine setKappaTest
+
+    subroutine setKappa(kappaAbs, kappaSca, lambda, nLambda, aMin, aMax, a0, qDist, pDist, grainType)
+
+      implicit none
+      real :: aMin, aMax, qDist, a0, pDist
+      real :: sigmaAbs, sigmaSca, sigmaExt
+      real, allocatable :: mReal(:), mImg(:)
+      character(len=*) :: grainType
+      real :: lambda(:), kappaAbs(:), kappaSca(:), gSca
+      integer :: nLambda
+      integer :: i
+
+      write(*,'(a)') "Setting kappas for: ",trim(grainType)
+
+      allocate(mReal(1:nLambda))
+      allocate(mImg(1:nLambda))
+      call getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg)
+      do i = 1, nLambda
+         call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, lambda(i),  mReal(i), mImg(i), sigmaExt, &
+             sigmaSca, sigmaAbs, gSca)
+         kappaAbs(i) = sigmaAbs * 1.e10
+         kappaSca(i) = sigmaSca * 1.e10
+      enddo
+    end subroutine setKappa
+      
+
 
 recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
   type(octal), pointer   :: thisOctal
@@ -436,12 +671,84 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
              end if
           end do
        else
-          thisOctal%kappaAbs(subcell,1:nLambda) = sigmaAbs(1:nLambda) * thisOctal%rho(subcell) * 1.e10
-          thisOctal%kappaSca(subcell,1:nLambda) = sigmaSca(1:nLambda) * thisOctal%rho(subcell) * 1.e10
+          if (thisOctal%inFlow(subcell)) then
+             thisOctal%kappaAbs(subcell,1:nLambda)   &
+                  = sigmaAbs(1:nLambda) * thisOctal%rho(subcell) * 1.e10
+             thisOctal%kappaSca(subcell,1:nLambda)   &
+                  = sigmaSca(1:nLambda) * thisOctal%rho(subcell) * 1.e10
+          else
+             thisOctal%kappaAbs(subcell,1:nLambda)   &
+                  = 0.0
+             thisOctal%kappaSca(subcell,1:nLambda)   &
+                  = 0.0
+          end if
+             
        endif
     enddo
   end subroutine fillAMRgridMie
 
+
+  subroutine dustPropertiesfromFile(filename, nlambda, lambda, kappaAbs, kappaSca)
+    implicit none
+    character(len=*) :: filename
+    integer :: nlambda
+    real :: lambda(*)
+    real :: kappaAbs(*), kappaSca(*)
+    real :: sigmaExt(1000),sigmaSca(1000), kappa(1000), albedo(1000), tlam(1000)
+    real :: tSca(1000), tAbs(1000), sigmaAbs(1000)
+    character(len=40) :: filetype
+    integer :: npts, i, j
+
+    write(*,'(a,a)') "Reading dust properties from: ",trim(filename)
+    open(20, file=filename, status="old", form="formatted")
+    read(20,'(a)') filetype
+
+    select case (filetype)
+
+       case("kenny")
+          npts = 1
+10        read(20,*,end=20) tlam(npts), sigmaExt(npts),sigmaSca(npts),kappa(npts)
+          npts = npts + 1
+          goto 10
+20        continue
+          npts = npts - 1
+          close(20)
+          albedo(1:npts) = sigmaSca(1:npts) / sigmaExt(1:npts)
+
+          tAbs(1:npts) = (1.-albedo(1:npts))*kappa(1:npts)
+          tSca(1:npts) = albedo(1:npts)*kappa(1:npts)
+          
+          tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
+
+       case("jenny")
+          npts = 1
+30        read(20,*,end=40) tlam(npts), sigmaAbs(npts),sigmaSca(npts)
+          npts = npts + 1
+          goto 30
+40        continue
+          npts = npts - 1
+          close(20)
+          tAbs(1:npts) = sigmaAbs(1:npts)
+          tSca(1:npts) = sigmaSca(1:npts)
+          tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
+
+       case DEFAULT
+          write(*,'(a)') "! Dust properties file has unknown type",trim(filetype)
+          stop
+
+    end select
+
+    do i = 1, nLambda
+       call locate(tlam,npts,lambda(i),j)
+       kappaAbs(i) = logint(lambda(i), tlam(j), tlam(j+1), tAbs(j), tAbs(j+1))*1.e10
+       kappaSca(i) = logint(lambda(i), tlam(j), tlam(j+1), tSca(j), tSca(j+1))*1.e10
+    enddo
+
+!    write(*,*) "Correcting xsections by dust-to-gas ratio!!!!!!!!"
+!    kappaAbs(1:nLambda) = kappaAbs(1:nLambda) * 0.01
+!    kappaSca(1:nLambda) = kappaSca(1:nLambda) * 0.01
+
+  end subroutine dustPropertiesfromFile
 
 
   end module dust_mod

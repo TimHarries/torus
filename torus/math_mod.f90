@@ -270,7 +270,7 @@ contains
 
 
 
-  type (VECTOR) pure function interpGridVelocity(grid,  i1, i2, i3, t1, t2, t3)
+  type (VECTOR) function interpGridVelocity(grid,  i1, i2, i3, t1, t2, t3)
     implicit none
     type(GRIDTYPE), intent(in) :: grid
     integer, intent(in)        :: i1,i2,i3
@@ -302,6 +302,32 @@ contains
 
   end  function interpGridVelocity
 
+  type (VECTOR) pure function interpGridVector(thisVec, n1, n2, n3, &
+       i1, i2, i3, t1, t2, t3)
+    implicit none
+    integer, intent(in) :: n1, n2, n3
+    type(VECTOR), intent(in) :: thisVec(1:n1,1:n2,1:n3)
+    integer, intent(in)        :: i1,i2,i3
+    real, intent(in)           :: t1, t2, t3
+    integer                    :: j1,j2,j3
+
+
+    j1 = min(i1+1,n1)
+    j2 = min(i2+1,n2)
+    j3 = min(i3+1,n3)
+
+    interpGridVector = &
+         ((1.d0-t1)  * (1.d0-t2) * (1.d0-t3)) * thisVec(i1  , i2   , i3   ) + &
+         ((t1   )  * (1.d0-t2) * (1.d0-t3))* thisVec(j1, i2   , i3   ) + &
+         ((t1   )  * (t2   ) * (1.d0-t3))* thisVec(j1, j2 , i3   ) + &
+         ((1.d0-t1)  * (t2   ) * (t3   ))* thisVec(i1  , j2 , j3 ) + &
+         ((1.d0-t1)  * (t2   ) * (1.d0-t3))* thisVec(i1  , j2 , i3   ) + &
+         ((t1   )  * (1.d0-t2) * (t3   ))* thisVec(j1, i2   , j3 ) + &
+         ((1.d0-t1)  * (1.d0-t2) * (t3   ))* thisVec(i1  , i2   , j3 ) + &
+         ((t1   )  * (t2   ) * (t3   ))* thisVec(j1, j2 , j3 )
+
+  end  function interpGridVector
+
 
   ! spline interpolation
   ! this subroutine computes the line of sight directional derivative
@@ -312,19 +338,20 @@ contains
     implicit none
     type(GRIDTYPE), intent(in) :: grid        ! the opacity grid
     type(VECTOR), intent(in)   :: direction   ! vector
-    type(VECTOR), intent(in)   :: position    ! vectors
+    type(OCTALVECTOR), intent(in)   :: position    ! vectors
     integer, intent(in)        :: i1, i2, i3  ! indices
    
     real            :: t1, t2, t3             ! multipliers
-    type(VECTOR)    :: position1, position2
+    type(VECTOR)    :: position1, position2, position_tmp
     type(VECTOR)    :: rHat
-    real            :: r, theta, mu, phi      ! spherical polar coords
+    real(kind=doublekind)            :: r, theta, mu, phi      ! spherical polar coords
     integer         :: j1, j2, j3             ! indices
     real, parameter :: h = 1.                 ! factor
     logical         :: hit
     real            :: dr
     real            :: phi1, phi2, dphi, dx
     real            :: dy, dz, dtheta
+    type(octalvector)   :: octalvec_tmp
 
     hit = .false.
 
@@ -347,7 +374,7 @@ contains
        else
           dtheta = abs(acos(grid%muAxis(grid%nMu))-acos(grid%muAxis(grid%nMu-1)))
        endif
-       dr = h * min(dr, r*dtheta)
+       dr = h * min(dr, real(r)*dtheta)
     endif
 
 
@@ -366,8 +393,8 @@ contains
     call getPolar(position, r, theta, phi)
 
     ! get a new position a little way back from current position
-
-    position1 = position - dr * direction
+    position_tmp = position
+    position1 = position_tmp - dr * direction
 
     ! this might be inside core or outside grid- 
     ! in which case just use the current
@@ -379,7 +406,8 @@ contains
           position1 = position
           hit = .true.
        endif
-       call getPolar(position1, r, theta, phi)
+       octalvec_tmp = position1
+       call getPolar(octalvec_tmp, r, theta, phi)
        mu = position1%z/r
     else 
        if (outsideGrid(position1, grid)) then
@@ -396,8 +424,8 @@ contains
 
     ! now go forward a bit from current position
 
-
-    position2 = position + dr * direction
+    position_tmp = position
+    position2 = position_tmp + dr * direction
     r = modulus(position2)
 
 
@@ -408,7 +436,8 @@ contains
           position2 = position
           hit = .true.
        endif
-       call getPolar(position2,r, theta, phi)
+       octalvec_tmp = position2
+       call getPolar(octalvec_tmp,r, theta, phi)
        mu = position2%z/r
     else
        if (outsideGrid( position2, grid)) then
@@ -441,6 +470,7 @@ contains
   end function directionalDeriv
 
 
+
   
   subroutine computeCoreEmissionProfile(xArray, sourceSpectrum, nLambda, &
        lamLine, velFWHM, relInt)
@@ -461,6 +491,81 @@ contains
     enddo
   end subroutine computeCoreEmissionProfile
 
+
+  subroutine computeProbDist1D(grid)
+    type(GRIDTYPE) :: grid
+    real(kind=doubleKind) :: tot, V, dr, dtheta, dphi
+    integer :: i,j,k,n
+    
+    tot = 0.
+    n = 0
+    do i = 1, grid%na1
+       do j = 1, grid%na2
+          do k = 1, grid%na3
+             if (i > 1) then
+                dr = grid%rAxis(i)-grid%rAxis(i-1)
+             else
+                dr = grid%rAxis(i+1)-grid%rAxis(i)
+             endif
+             if (j > 1) then
+                dtheta = abs(acos(grid%muAxis(j))-acos(grid%muAxis(j-1)))
+             else
+                dtheta = abs(acos(grid%muAxis(j+1))-acos(grid%muAxis(j)))
+             endif
+             if (k > 1) then
+                dphi = grid%phiAxis(k)-grid%phiAxis(k-1)
+             else
+                dphi = grid%phiAxis(k+1)-grid%phiAxis(k)
+             endif
+             v = grid%rAxis(i)**2 * sqrt(1.-grid%muAxis(j)**2) * dr * dtheta * dphi
+             n = n + 1
+             grid%oneProbLine(n)  = grid%etaLine(i,j,k) * V * grid%biasLine(i)
+             grid%oneProbCont(n)  = grid%etaCont(i,j,k) * V
+          enddo
+       enddo
+    enddo
+    do i = 2, grid%nProb
+       grid%oneProbLine(i) = grid%oneProbLine(i) + grid%oneProbLine(i-1)
+       grid%oneProbCont(i) = grid%oneProbCont(i) + grid%oneProbCont(i-1)
+    enddo
+    grid%oneProbLine = grid%oneProbLine - grid%oneProbLine(1)
+    grid%oneProbCont = grid%oneProbCont / grid%oneProbCont(grid%nProb)
+  end subroutine computeProbDist1D
+
+  subroutine getLinePosition(grid, r, mu, phi, i1, i2, i3)
+    
+    type(GRIDTYPE), intent(inout) :: grid
+    integer :: i1, i2, i3, i
+    real :: r, mu, phi
+    real(kind=doubleKind) :: r1
+
+    call random_number(r1)
+    call locate(grid%oneProbLine, grid%nProb, r1, i)
+    i1 = grid%cellIndex(i,1)
+    i2 = grid%cellIndex(i,2)
+    i3 = grid%cellIndex(i,3)
+    r = grid%rAxis(i1)
+    mu = grid%muAxis(i2)
+    phi = grid%phiAxis(i3)
+  end subroutine getLinePosition
+
+  subroutine getContPosition(grid, r, mu, phi, i1, i2, i3)
+    
+    type(GRIDTYPE), intent(inout) :: grid
+    integer :: i1, i2, i3, i
+    real :: r, mu, phi
+    real(kind=doubleKind) :: r1
+
+    call random_number(r1)
+    call locate(grid%oneProbCont, grid%nProb, r1, i)
+    i1 = grid%cellIndex(i,1)
+    i2 = grid%cellIndex(i,2)
+    i3 = grid%cellIndex(i,3)
+    r = grid%rAxis(i1)
+    mu = grid%muAxis(i2)
+    phi = grid%phiAxis(i3)
+  end subroutine getContPosition
+    
 
   subroutine computeProbDist(grid, totalLineEmission, totalContEmission, lambda0, useBias)
 
@@ -497,12 +602,6 @@ contains
           chi = grid%chiLine
        endif
 
-       ! if grid%biasLine and grid%biasCont have not been allocated, we will do 
-       !   a dummy allocation here so that we are not passing an uninitialized 
-       !   pointer.
-       if (.not. associated(grid%biasLine)) allocate(grid%biasLine(0))
-       if (.not. associated(grid%biasCont)) allocate(grid%biasCont(0))
-       
        call computeProbDist2(grid, grid%cartesian, grid%xProbDistLine,&
               grid%xAxis, grid%nx, grid%yProbDistLine, grid%yAxis, grid%ny,&
               grid%zProbDistLine, grid%zAxis, grid%nz, grid%rProbDistLine, &
@@ -527,11 +626,23 @@ contains
               grid%zProbDistCont, grid%zAxis, grid%nz, grid%rProbDistCont, &
               grid%rAxis, grid%nr, grid%muProbDistCont, grid%muAxis, &
               grid%nMu, grid%phiProbDistCont, grid%phiAxis, grid%nphi, &
-              grid%etaCont, chi, grid%biasCont,totalContEmission, .false.,&
+              grid%etaCont*1.e10, chi, grid%biasCont,totalContEmission, .false.,&
               lambda0, useBias)
 
+       totalContEmission = totalContEmission / 1.e10 
 
        deallocate(chi)
+
+       if (.not.grid%cartesian) then
+          open(66,file="etarun.dat",form="formatted",status="unknown")
+          do i = 1, grid%nr
+             write(66,*) grid%rAxis(i), grid%etaLine(i,1,1)/grid%etaLine(1,1,1), grid%etaCont(i,1,1)/grid%etaCont(1,1,1), &
+                  grid%rProbDistLine(i), grid%rProbDistCont(i), grid%biasLine(i), grid%biasCont(i)
+          enddo
+          close(66)
+       endif
+
+
 
     else ! the grid is adaptive
 
@@ -613,19 +724,42 @@ contains
     real :: rProbDist(:), muProbDist(:,:), phiProbDist(:,:,:)
     real :: xAxis(:), yAxis(:), zAxis(:)
     real :: rAxis(:), muAxis(:), phiAxis(:)
+    real :: tmp2, fac2
     real, allocatable :: tmp(:) ! ,tmp2(:)
     real(kind=doubleKind) :: dV
 
-    bias = 1.d0
+
+    if (grid%polar) then
+       bias = 1.d0
+    endif
     totalEmission = 0.
 
     write(*,*) "Computing probability distributions..."
 
-
     if (useBias) then
+
        if (.not.cartesian) then
           bias = 1.d0
           if (lineEmission) then
+             do i = 1, grid%nr
+                do j = 1, grid%nMu
+                   do k = 1, grid%nPhi
+                      if (grid%inUse(i,j,k)) then
+                         nu = cSpeed / (lambda0*angstromtocm)
+                         tauSob = chi(i,j,k)*rAxis(i)/nu/modulus(grid%velocity(i,j,k))
+                         if (tauSob < 0.1) then
+                            escProb=1.d0-tauSob*0.5*(  1.d0 - tauSob/3.0* ( 1.d0 - tauSob*0.25*(1.d0 -0.20e0*tauSob)))
+                         else if (tauSob < 15.e0) then
+                            escProb = (1.d0 - exp(-tauSob))/tauSob
+                         else
+                            escProb = 1.d0/tauSob
+                         endif
+                         grid%biasLine3d(i,j,k) = max(1.e-6,escProb)
+                      endif
+                   enddo
+                enddo
+             enddo
+
              do i = nr, 1, -1
                 nu = cSpeed / (lambda0*angstromtocm)
                 tauSob = chi(i,1,1)*rAxis(i)/nu/modulus(grid%velocity(i,1,1))
@@ -637,7 +771,7 @@ contains
                    escProb = 1.d0/tauSob
                 endif
                 bias(i) = escProb
-                bias(i) = max(1.e-7,bias(i))
+                bias(i) = max(1.e-6,bias(i))
              enddo
              
 !             allocate(tmp(1:nr))
@@ -660,11 +794,28 @@ contains
 !             deallocate(tmp2)
 
           else
+             do i = 1, grid%nr
+                do j = 1, grid%nMu
+                   do k = 1, grid%nPhi
+                      if (grid%inUse(i,j,k)) then
+                         tmp2 = (grid%kappaAbs(i,j,k,1)+grid%kappaSca(i,j,k,1))
+                         if (i < grid%nr) then
+                            dr = grid%rAxis(i+1)-grid%rAxis(i)
+                         else
+                            dr = grid%rAxis(i)-grid%rAxis(i-1)
+                         endif
+                         tmp2 = tmp2 * dr
+                         grid%biasCont3D(i,j,k) = max(exp(-tmp2),1.e-7)
+                      endif
+                   enddo
+                enddo
+             enddo
+
 
              allocate(tmp(1:nr))
              tmp = 0.
              do i = 1, nr
-                tmp(i) = sqrt((grid%kappaAbs(i,1,1,1)+grid%kappaSca(i,1,1,1))*grid%kappaAbs(i,1,1,1))
+                tmp(i) = sqrt((grid%kappaAbs(i,grid%nmu/2,1,1)+grid%kappaSca(i,grid%nmu/2,1,1))*grid%kappaAbs(i,grid%nmu/2,1,1))
              enddo
              do i = 1, nr
                 tau1 = 1.e-20
@@ -676,15 +827,15 @@ contains
              enddo
              deallocate(tmp)
 
-             bias(1:nr) = 1.
+!             bias(1:nr) = 1.
 
           endif
           
-!          bias(1) = bias(2)
-!          do i = nr,2,-1
-!             bias(i) = 0.5*(bias(i-1)+bias(i))
-!          enddo
-!          bias(1) = bias(2)
+          bias(1) = bias(2)
+          do i = nr,2,-1
+             bias(i) = 0.5*(bias(i-1)+bias(i))
+          enddo
+          bias(1) = bias(2)
           
 
        endif
@@ -877,11 +1028,20 @@ contains
 
                 call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
 
-                fac = interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)
-                tot = tot +  fac * dV * &
-                     logint(r,rAxis(i1),rAxis(i1+1),bias(i1),bias(i1+1))
+                fac2 = interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)
+                if (.not.grid%inStar(i,j,k).and.grid%inUse(i,j,k)) then
+                   if (lineEmission) then
+                      fac = grid%biasLine3D(i1,i2,i3)
+                   else
+                      fac = grid%biasCont3D(i1,i2,i3)
+                   endif
+                   tot = tot + dble(fac2)*dV*fac
+                endif
 
-                totalEmission = totalEmission  + fac*dV
+!                tot = tot +  fac * dV * &
+!                     logint(r,rAxis(i1),rAxis(i1+1),bias(i1),bias(i1+1))
+
+                totalEmission = totalEmission  + fac2*dV
 
              enddo
           enddo
@@ -925,8 +1085,8 @@ contains
                 call getIndices(grid, rVec, i1, i2, i3, t1, t1, t3)
 
 
-!                tot = tot + interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)*dV
-                tot = tot + eta(i,j,k)
+                tot = tot + interpGridScalar3(eta,nr,nmu,nphi,i1, i2, i3, t1, t2, t3)*dV
+!                tot = tot + eta(i,j,k)*dv
 
              enddo
              muProbDist(i,j) = tot
@@ -994,19 +1154,29 @@ contains
 
        write(*,*) "phi done..."
 
-
-       if (useBias) then
-          do i = 1, nr
-             bias(i) = bias(i) * totalEmission/scaleFac
-          enddo
-          if (lineEmission) then
-             open(21,file="prob.dat",form="formatted",status="unknown")
-             do i = 1, nr
-                write(21,*) i,rAxis(i),rProbDist(i),bias(i)*scaleFac/totalEmission
-             enddo
-             close(21)
-          endif
+       write(*,*) "Bias correction: ",totalEmission/scaleFac
+       if (lineEmission) then
+          where(grid%inUse)
+             grid%biasLine3d = grid%biasLine3d * totalEmission/scaleFac
+          end where
+       else
+          where(grid%inUse)
+             grid%biasCont3D = grid%biasCont3d * totalEmission/scaleFac
+          end where
        endif
+
+!       if (useBias) then
+!          do i = 1, nr
+!             bias(i) = bias(i) * totalEmission/scaleFac
+!          enddo
+!          if (lineEmission) then
+!             open(21,file="prob.dat",form="formatted",status="unknown")
+!             do i = 1, nr
+!                write(21,*) i,rAxis(i),rProbDist(i),bias(i)*scaleFac/totalEmission
+!             enddo
+!             close(21)
+!          endif
+!       endif
 
 
     endif
@@ -1026,15 +1196,13 @@ contains
     real(kind=doubleKind), intent(inout) :: totalContEmission
     
     type(octal), pointer  :: child 
-    real(kind=doubleKind) :: dV
+    real(kind=doubleKind) :: dV,r1,r2
+    type(octalvector)     :: rvec
     integer               :: subcell
     integer               :: i
 
-real :: etaCont(8)
-real :: biasCont3D(8)
-
     
-    do subcell = 1, 8, 1
+    do subcell = 1, thisOctal%maxChildren, 1
 
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -1049,7 +1217,15 @@ real :: biasCont3D(8)
             
        else
 
-          dV = real(thisOctal%subcellSize, kind=doubleKind) ** 3.0_db
+          if (thisOctal%threed) then
+             dV = real(thisOctal%subcellSize, kind=doubleKind) ** 3.0_db
+          else
+             rVec = subcellCentre(thisOctal,subcell)
+             r1 = rVec%x-thisOctal%subcellSize/2.
+             r2 = rVec%x+thisOctal%subcellSize/2.
+             dv = pi * (r2**2 - r1**2) * thisOctal%subcellSize
+          endif
+
 
           totalLineProb = totalLineProb + dV * &
               real(thisOctal%etaLine(subcell), kind=doubleKind) * &
@@ -1104,8 +1280,18 @@ real :: biasCont3D(8)
     end if
 
 
-    thisOctal%probDistLine = thisOctal%probDistLine / totalLineProb
-    thisOctal%probDistCont = thisOctal%probDistCont / totalContProb
+    if (totalLineProb /= 0.0d0) then
+       thisOctal%probDistLine = thisOctal%probDistLine / totalLineProb
+    else
+       thisOctal%probDistLine = 1.0d0
+    end if
+    
+    if (totalContProb /= 0.0d0) then
+       thisOctal%probDistCont = thisOctal%probDistCont / totalContProb
+    else
+       thisOctal%probDistCont = 1.0d0
+    end if
+
     thisOctal%biasLine3D = thisOctal%biasLine3D * biasCorrectionLine
     thisOctal%biasCont3D = thisOctal%biasCont3D * biasCorrectionCont
     

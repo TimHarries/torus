@@ -150,24 +150,24 @@ contains
           else
              tau_mn = tau_mn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - &
                                    (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
-             tau_mn = tau_mn / (directionalderiv(grid,rvec,i1,i2,i3,direction)/1.e10)
+             tau_mn = tau_mn / (directionalderiv(grid,s2o(rvec),i1,i2,i3,direction)/1.e10)
           end if
-          if (tau_mn < 1.e-20) then
-             tau_mn = 1.e-20 
+          if (tau_mn < 0.) then
+             tau_mn = 1.e-10 
           endif
 
-          if (tau_mn < 0.1) then
-             escProb = 1.0-tau_mn*0.5*(1.0 - tau_mn/3.0*(1. - tau_mn*0.25*(1.0 - 0.20*tau_mn)))
-          else if (tau_mn < 15.) then
-             escProb = (1.0-exp(-tau_mn))/tau_mn
-          else
-             escProb = 1./tau_mn
-          end if
-          beta_mn = beta_mn + escprob * domega
+        if (tau_mn < 0.1) then
+          escProb = 1.0-tau_mn*0.5*(1.0 - tau_mn/3.0*(1. - tau_mn*0.25*(1.0 - 0.20*tau_mn)))
+        else if (tau_mn < 15.) then
+          escProb = (1.0-exp(-tau_mn))/tau_mn
+        else
+          escProb = 1./tau_mn
+        end if
+        beta_mn = beta_mn + escprob * domega
 
        enddo
     enddo
-    beta_mn = beta_mn / totOmega 
+   beta_mn = beta_mn / totOmega 
 
 !   if ((m == 1).and.(n == 2)) beta_mn = beta_mn * 100.
 !    write(*,*) totOmega/fourPi
@@ -310,7 +310,7 @@ contains
                                                                    startOctal=octalCopy) / 1.e10)
                       end if
                    else
-                      tau_cmn = tau_cmn / (directionalderiv(grid,rVec,i1,i2,i3,direction)/1.e10)
+                      tau_cmn = tau_cmn / (directionalderiv(grid,s2o(rVec),i1,i2,i3,direction)/1.e10)
                    end if
                 endif
 
@@ -443,7 +443,7 @@ contains
                       tau_cmn = 0. !abs(tau_cmn)
                    endif
                    tau_cmn = tau_cmn  / (cSpeed / lambdaTrans(m,n))
-                   tau_cmn = tau_cmn / (directionalderiv(grid,rvec,i1,i2,i3,direction)/1.e10)
+                   tau_cmn = tau_cmn / (directionalderiv(grid,s2o(rvec),i1,i2,i3,direction)/1.e10)
                 endif
 
                 if (tau_cmn < 0.1) then
@@ -508,7 +508,8 @@ contains
     integer :: ierr
 
 
-    debugInfo = .true.
+!    debugInfo = .true.
+    debugInfo = .false.
     oneD = .false.
     twoD = .false.
     threeD = .true.
@@ -649,7 +650,7 @@ contains
           !$OMP DEFAULT(NONE) &
           !$OMP PRIVATE(i1, i2, i3) &
           !$OMP SHARED(grid) &
-          !$OMP SHARED(lte, tolx, tolf, hnu1, hnu2, nuArray1, nnu1, nuarray2, nnu2) &
+          !$OMP SHARED(lte, hnu1, hnu2, nuArray1, nnu1, nuarray2, nnu2) &
           !$OMP SHARED(isBinary, debugInfo) &
           !$OMP PRIVATE(i, visFrac1, visFrac2, rVec, nTot, percentDone) &
           !$OMP PRIVATE(departCoeffAll, xAll) 
@@ -812,7 +813,7 @@ contains
                    !$OMP DEFAULT(NONE) &
                    !$OMP PRIVATE(i1, i2, i3) &
                    !$OMP SHARED(grid) &
-                   !$OMP SHARED(lte, tolx, tolf, hnu1, hnu2, nuArray1, nnu1, nuarray2, nnu2) &
+                   !$OMP SHARED(lte, hnu1, hnu2, nuArray1, nnu1, nuarray2, nnu2) &
                    !$OMP SHARED(isBinary, debugInfo, iiter) &
                    !$OMP PRIVATE(i, visFrac1, visFrac2, rVec, nTot, percentDone) &
                    !$OMP PRIVATE(departCoeffAll, xAll, oldLevels, sinTheta, ang) 
@@ -1119,7 +1120,7 @@ contains
 
 
 
-  real pure function BoltzSaha(m, Ne, t)
+  real(kind=doubleKind) pure function BoltzSaha(m, Ne, t)
   
     integer, intent(in)              :: m
     real(kind=doubleKind), intent(in):: Ne, t
@@ -1132,11 +1133,11 @@ contains
   end function BoltzSaha
 
 
-  real pure function boltzmann(m, N0, t)
+  real(kind=doubleKind) pure function boltzmann(m, N0, t)
   
     integer, intent(in)              :: m
     real(kind=doubleKind), intent(in):: N0, t
-    real                             :: z0
+    real(kind=doubleKind)            :: z0
 
     z0 = SUM(gDegen(1:15)*exp(-eTrans(1:15)/(kev*t)))
     boltzmann = (gDegen(m)/z0)*n0*exp(-eTrans(m)/(kev*t))
@@ -1646,7 +1647,7 @@ contains
   end function equation8
  
 
-  real (kind=doubleKind) pure function equation14(nPop, grid, i1, i2, i3, thisOctal, thisSubcell)
+  real (kind=doubleKind) function equation14(nPop, grid, i1, i2, i3, thisOctal, thisSubcell)
 
     type(GRIDTYPE), intent(in)   :: grid
     integer, intent(in)          :: i1, i2, i3, nPop
@@ -1726,6 +1727,7 @@ contains
     freq = ((13.598-eTrans(n))*1.602192e-12)/hcgs
     if ((freq < nuArray(1)) .or.(freq > nuArray(nNu))) then
        write(*,*) "error in integral1",nNu,freq,nuArray(1),nuArray(nNu)
+do ; enddo       
        jnu = 1.e-28
        iMin = 1
     else
@@ -1987,7 +1989,7 @@ contains
     integer, intent(in)            :: n
     integer                        :: i, k
     integer                        :: indx(np)
-    real(kind=doubleKind),intent(in):: tolx, tolf
+    real(kind=doubleKind)          :: tolx, tolf
     real(kind=doubleKind)          :: errf, d, errx
     real(kind=doubleKind)          :: alpha(np,np),beta(np)
     type(octal), pointer, optional :: thisOctal 
@@ -2438,11 +2440,22 @@ contains
     real                        :: transe
     real(kind=doubleKind)       :: freq
     type(vector)                :: rVec
-    real(kind=doubleKind)       :: Ne1, Ne2
+!    real(kind=doubleKind)       :: Ne1, Ne2
     logical                     :: ok
     type(octal), pointer        :: thisOctal => null()
     real                        :: departCoeff(maxLevels)
-    logical                     :: debugInfo = .true.
+!    logical                     :: debugInfo = .true.
+    logical                     :: debugInfo = .false.
+    real(kind=doubleKind), parameter :: CI = 2.07d-16   ! in cgs units
+    real(kind=doubleKind), parameter :: E0 = 13.6 ! [eV] Ground state energy of HI
+    real(kind=doubleKind)            :: T,ne, x
+
+!real(kind=doubleKind)            :: ne1, ne2, tmp, phit_tmp
+
+    integer       ::   ioctal_beg, ioctal_end  
+ 
+
+
 
     ! Initialize the data arrays (lambdaTrans, bEinstein, fStrength) defined at the top of this module.
     call map_transition_arrays(maxLevels)
@@ -2466,31 +2479,69 @@ contains
     ! get an array of octals comprising the entire tree
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
 
+
+    ! default loop indecies
+    ioctal_beg = 1
+    ioctal_end = nOctal
+
+
+
+
     ! now loop over all octals
     print *, "   calculating LTE values..." 
-    do iOctal = 1, nOctal
+    do iOctal = ioctal_beg, ioctal_end
        thisOctal => octalArray(iOctal)%content
-       do iSubcell = 1, 8
+       do iSubcell = 1, thisOctal%maxChildren
           if (octalArray(iOctal)%inUse(iSubcell)) then
              nTot = dble(thisOctal%rho(iSubcell) / mHydrogen)
              
-             phiT = 1.5e0_db*log10(2.e0_db*pi*mElectron*kErg*thisOctal%temperature(iSubcell)) - &
-                      3.e0_db*log10(hCgs) + &
-                      log10(exp(-13.6e0_db/(kEV*real(thisOctal%temperature(iSubcell),kind=db))))
-             phiT = 10.e0_db**phiT             
+ !            phiT = 1.5e0_db*log10(2.e0_db*pi*mElectron*kErg*thisOctal%temperature(iSubcell)) - &
+ !                     3.e0_db*log10(hCgs) + &
+ !                     log10(exp(-13.6e0_db/(kEV*real(thisOctal%temperature(iSubcell),kind=db))))
+ !            phiT = 10.e0_db**phiT  
+ !            
+ !            call solveQuadDble(1.e0_db, phiT, -1.e0_db*phiT*real(nTot,kind=doublekind), Ne1, Ne2, ok)
+ !            thisOctal%Ne(iSubcell) = min(max(Ne1,Ne2),nTot)
+
+             !==========================================================================
+             !
+             ! Note:           1         h^2
+             !         CI =   ---( ------------------)^3/2  = 2.07x10^-16 (in cgs)
+             !                 2     2 Pi m k 
+             !
+             ! where m is the mass of electron.
+             ! See page 49-50 of "Fundation of Radiation Hydrodynamic" by Mihalas & Mihalas.
+
+             T = thisOctal%temperature(iSubcell)
+             x = E0/(kev*T)
+             phiT = CI*Z_HI(maxLevels,T)*EXP(x) / T**1.5d0
+
+             ! Solving for phi(T)*ne^2 + 2ne -n =0 for ne, and choosing the physical
+             ! solution ... 
+             ne = (SQRT(nTot*phiT+1.0d0) -1.0d0)/phiT
+             ne = min(ne, nTot) ! to avoid unphysical solution.
              
-             call solveQuadDble(1.e0_db, phiT, -1.e0_db*phiT*real(nTot,kind=doublekind), Ne1, Ne2, ok)
-             thisOctal%Ne(iSubcell) = min(max(Ne1,Ne2),nTot)
-             thisOctal%nTot(iSubcell) = nTot 
+             if (ne<0) then
+                write(*,*) 'Error:: ne (electron density) < 0  in stateq_mod::amrStateq!!!'
+                stop
+             end if
+
+             thisOctal%Ne(iSubcell) = ne
+             !==========================================================================
+             
+             thisOctal%nTot(iSubcell) = nTot
              do m = 1, maxlevels
-                thisOctal%n(iSubcell,m) =               &
-                   boltzsaha(m,thisOctal%ne(iSubcell),real(thisOctal%temperature(iSubcell),kind=db))
+                thisOctal%n(iSubcell,m) =  boltzsaha(m,ne,T)                   
              enddo
           endif
        enddo
 
     enddo
+
+
+
     print *, "   ...LTE calculations complete." 
+
 
 
     if (.not.lte) then
@@ -2501,10 +2552,10 @@ contains
        visFrac2 = 0.
        isBinary = .false.
        
-       do iOctal = 1, nOctal
+       do iOctal = ioctal_beg, ioctal_end
        if (debugInfo) print *, 'Octal #',iOctal
           thisOctal => octalArray(iOctal)%content
-          do iSubcell = 1, 8, 1
+          do iSubcell = 1, thisOctal%maxChildren, 1
              if (octalArray(iOctal)%inUse(iSubcell) .and. &
                 (thisOctal%nTot(iSubcell) > 1.0)) then
 
@@ -2512,7 +2563,7 @@ contains
                 xAll(maxLevels+1) = thisOctal%Ne(iSubcell)
                 rVec = subcellCentre(thisOctal,iSubcell)
 
-                call mnewt(grid, 20, xAll, maxlevels+1, tolx, tolf, hNu1, nuArray1(1:nNu1), nNu1, &
+                call mnewt(grid, 20, xAll, maxlevels+1, tolx, tolf, hNu1, nuArray1, nNu1, &
                            hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                            isBinary, thisOctal, iSubcell)
                            
@@ -2522,9 +2573,7 @@ contains
                    do i = 1 , maxLevels
                       departCoeff(i) = real(xall(i))/boltzSaha(i, thisOctal%Ne(iSubcell),          &
                                                          real(thisOctal%temperature(iSubcell),kind=db))
-                      write(*,'(a5,i3,1p,e12.3,e12.3,e12.3)') '     ',i,departCoeff(i),xall(i),&
-                                                                      xall(i)/departCoeff(i)                     
-                      
+                      write(*,'(a5,i3,1p,e12.3,e12.3)') '     ',i,departCoeff(i),xall(i)
                    enddo
                 end if   
                 
@@ -2532,7 +2581,10 @@ contains
           enddo
        enddo
        
+
+
        deallocate(xall)
+
        print *, "   non-LTE calculations complete..." 
        
     endif
@@ -2540,7 +2592,7 @@ contains
     write(*,'(a,f8.1)') "Generating opacities for ",lambdaTrans(nLower, nUpper)*1.e8
 
     do iOctal = 1, nOctal
-       do iSubcell = 1, 8
+       do iSubcell = 1, octalArray(iOctal)%content%maxChildren
           if (octalArray(iOctal)%inUse(iSubcell)) then
                   
              octalArray(iOctal)%content%kappaSca(iSubcell,1) = &
@@ -2624,6 +2676,31 @@ contains
        enddo
     enddo
 
+!!$    !=============================================================
+!!$    ! Following is used for testing the integratePathAMR routine.
+!!$    ! This should be removed after the tests....
+!!$    !=============================================================
+!!$    do iOctal = 1, nOctal
+!!$       do iSubcell = 1, octalArray(iOctal)%content%maxChildren
+!!$          if (octalArray(iOctal)%inUse(iSubcell)) then
+!!$             octalArray(iOctal)%content%etaLine(iSubcell)    = 1.e-20
+!!$             octalArray(iOctal)%content%etaCont(iSubcell)    = 1.e-20
+!!$             octalArray(iOctal)%content%kappaSca(iSubcell,1) = 1.e-20
+!!$             
+!!$             ! Setting it same as the density
+!!$             octalArray(iOctal)%content%kappaAbs(iSubcell,1) =  &
+!!$                  octalArray(iOctal)%content%Rho(iSubcell)
+!!$
+!!$             octalArray(iOctal)%content%chiLine(iSubcell)    =      &
+!!$                  octalArray(iOctal)%content%Rho(iSubcell)
+!!$
+!!$          end if
+!!$       enddo
+!!$    enddo
+!!$    !==============================================================================
+!!$    !============ THE END OF TESTITNG SECTION..===================================
+!!$    !==============================================================================
+
     deallocate(octalArray)
 
   end subroutine amrStateq
@@ -2653,6 +2730,40 @@ contains
     end do
 
   end subroutine map_transition_arrays
+
+
+
+  !
+  ! Computes the partition function of hydrogen (HI)
+  ! 
+  
+  function Z_HI(nmax, T) RESULT(out)
+    implicit none
+    double precision  :: out 
+    integer, intent(in) :: nmax       ! maximum level used for the hydrogen
+    double precision, intent(in) :: T ! Temperature in Kelvin
+    !    
+    integer :: i 
+    double precision :: sum
+    double precision, parameter :: E0 = 13.605691d0     ! ground level engery  in [eV]
+    double precision, parameter :: k = 8.617342d-5      ! [eV/K]      ! Boltzmann constant
+    double precision  :: x
+    double precision  :: exp_minus_x
+
+    sum = 0.0d0
+    do i = 1, nmax
+       x = E0*(1.0d0-1.0d0/dble(i*i))/(k*T)
+       if (x < 0.001) then ! use approximation
+          exp_minus_x = 1.0d0 - x + 0.5d0*x*x - x*x*x/3.0d0
+       else
+          exp_minus_x = EXP(-x)
+       end if
+       sum = sum + 2.0d0*dble(i*i) * exp_minus_x
+    end do
+    
+    out = sum
+
+  end function Z_HI
 
 end module stateq_mod
 

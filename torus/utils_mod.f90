@@ -16,13 +16,19 @@ module utils_mod
 
   interface locate
      module procedure locate_single
-     module procedure locate_double
+     module procedure locate_octal
   end interface
 
   interface hunt
      module procedure hunt_single
-     module procedure hunt_double
+     module procedure hunt_octal
   end interface
+
+  interface sort
+     module procedure sortsingle
+     module procedure sortdouble
+  end interface
+
 
 contains
 
@@ -40,7 +46,7 @@ contains
 
     y = b*b-4.*a*c
 
-    if (y >= -1.e-2) then
+    if (y >= 0.) then
        x1 = (-b + sqrt(abs(y)))/(2.*a)
        x2 = (-b - sqrt(abs(y)))/(2.*a)
     else
@@ -71,7 +77,6 @@ contains
        ok = .false.
        x1 = -b/(2.d0*a)
        x2 = -b/(2.d0*a)
-       stop
     endif
 
   end subroutine solveQuadDble
@@ -181,7 +186,7 @@ contains
 
   ! sort an array
 
-  SUBROUTINE SORT(N,RA)
+  SUBROUTINE SORTsingle(N,RA)
     INTEGER N, L, IR, I, J
     REAL RRA
     REAL RA(N)
@@ -217,7 +222,45 @@ contains
     ENDIF
     RA(I)=RRA
     GO TO 10
-  END subroutine sort
+  END subroutine sortsingle
+
+  SUBROUTINE SORTdouble(N,RA)
+    INTEGER N, L, IR, I, J
+    REAL(kind=doubleKind) RRA
+    REAL(kind=doubleKind) RA(N)
+    L=N/2+1
+    IR=N
+10  CONTINUE
+    IF(L.GT.1)THEN
+       L=L-1
+       RRA=RA(L)
+    ELSE
+       RRA=RA(IR)
+       RA(IR)=RA(1)
+       IR=IR-1
+       IF(IR.EQ.1)THEN
+          RA(1)=RRA
+          RETURN
+       ENDIF
+    ENDIF
+    I=L
+    J=L+L
+20  IF(J.LE.IR)THEN
+       IF(J.LT.IR)THEN
+          IF(RA(J).LT.RA(J+1))J=J+1
+       ENDIF
+       IF(RRA.LT.RA(J))THEN
+          RA(I)=RA(J)
+          I=J
+          J=J+J
+       ELSE
+          J=IR+1
+       ENDIF
+       GO TO 20
+    ENDIF
+    RA(I)=RRA
+    GO TO 10
+  END subroutine sortdouble
 
   ! sort an array by indexing
 
@@ -380,10 +423,11 @@ contains
     GO TO 3
   END SUBROUTINE HUNT_single
 
-  pure SUBROUTINE HUNT_double(XX,N,X,JLO)
-    REAL(kind=doubleKind), INTENT(IN) :: XX(*)
+
+  pure SUBROUTINE HUNT_octal(XX,N,X,JLO)
+    REAL(kind=octalKind), INTENT(IN) :: XX(*)
     INTEGER, INTENT(IN) :: N
-    REAL(kind=doubleKind), INTENT(IN)    :: X
+    REAL(kind=octalKind), INTENT(IN)    :: X
     INTEGER, INTENT(INOUT) :: JLO
     INTEGER :: JHI, INC, JM
     LOGICAL ASCND
@@ -426,7 +470,9 @@ contains
        JHI=JM
     ENDIF
     GO TO 3
-  end SUBROUTINE HUNT_double
+  end SUBROUTINE HUNT_octal
+
+
 
   pure subroutine getDerivs(x, y, n, derivs)
     implicit none
@@ -464,7 +510,7 @@ contains
 
   end function logInterp
 
-    PURE SUBROUTINE LOCATE_single(XX,N,X,J)
+  PURE SUBROUTINE LOCATE_single(XX,N,X,J)
     real, intent(in)    :: XX(*)
     integer,intent(in)  :: n
     real,intent(in)     :: x
@@ -484,11 +530,12 @@ contains
       J=JL
     END SUBROUTINE LOCATE_single
   
-    PURE SUBROUTINE LOCATE_double(XX,N,X,J)
-    real(kind=doubleKind), intent(in) :: XX(*)
-    integer, intent(in)               :: n
-    real(kind=doubleKind), intent(in) :: x
-    integer,intent(out)               :: j
+
+    PURE SUBROUTINE LOCATE_octal(XX,N,X,J)
+    real(kind=octalKind), intent(in) :: XX(*)
+    integer, intent(in)              :: n
+    real(kind=octalKind), intent(in) :: x
+    integer,intent(out)              :: j
     integer :: jl, ju,jm
       JL=1
       JU=N+1
@@ -502,7 +549,7 @@ contains
       GO TO 10
       ENDIF
       J=JL
-    END SUBROUTINE LOCATE_double
+    END SUBROUTINE LOCATE_octal
 
     real function gasdev()
       implicit none
@@ -629,7 +676,7 @@ contains
     function char2int(a) RESULT(out)
       implicit none 
       integer :: out
-      character*(*), intent(in) :: a
+      character(LEN=*), intent(in) :: a
       integer :: ierr
       
       read(a, *, IOSTAT = ierr) out
@@ -657,7 +704,7 @@ contains
     ! The length of output character is 50.
     function tail_num_to_char(strings, number) RESULT(out)
       character(LEN=50) :: out
-      character*(*), intent(in) :: strings
+      character(LEN=*), intent(in) :: strings
       integer, intent(in) :: number
       character(LEN=50) :: char_number
       integer :: length, n
@@ -704,7 +751,338 @@ contains
 666   continue
     end function findilambda
 
-    
+    real function interpLinearSingle(xArray, yArray, n, x)
+      real :: xarray(:), yArray(:)
+      real :: x, t
+      integer :: n, i
+      logical :: ok
+      i = findIlambda(x, xArray, n, ok)
+      if (i == 1) then
+         t = (x - xArray(i))/(xArray(i+1)-xArray(i))
+         interpLinearSingle = yArray(i) + t * (yArray(i+1)-yArray(i))
+      else if (i == n) then
+         t = (x - xArray(i-1))/(xArray(i)-xArray(i-1))
+         interpLinearSingle = yArray(i-1) + t * (yArray(i)-yArray(i-1))
+      else
+         if (x < xArray(i)) then
+            t = (x - xArray(i-1))/(xArray(i)-xArray(i-1))
+            Interplinearsingle = yArray(i-1) + t * (yArray(i)-yArray(i-1))
+         else
+            t = (x - xArray(i))/(xArray(i+1)-xArray(i))
+            interpLinearSingle = yArray(i) + t * (yArray(i+1)-yArray(i))
+         endif
+      endif
+    end function interpLinearSingle
+
+    real(kind=doubleKind) function interpLinearDouble(xArray, yArray, n, x)
+      real(kind=doubleKind) :: xarray(:), yArray(:)
+      real(kind=doubleKind) :: x, t
+      integer :: n, i
+      logical :: ok
+      i = findIlambda(real(x), real(xArray), n, ok)
+      if (i == 1) then
+         t = (x - xArray(i))/(xArray(i+1)-xArray(i))
+         interpLinearDouble = yArray(i) + t * (yArray(i+1)-yArray(i))
+      else if (i == n) then
+         t = (x - xArray(i-1))/(xArray(i)-xArray(i-1))
+         interpLinearDouble = yArray(i-1) + t * (yArray(i)-yArray(i-1))
+      else
+         if (x < xArray(i)) then
+            t = (x - xArray(i-1))/(xArray(i)-xArray(i-1))
+            interpLinearDouble = yArray(i-1) + t * (yArray(i)-yArray(i-1))
+         else
+            t = (x - xArray(i))/(xArray(i+1)-xArray(i))
+            interpLinearDouble = yArray(i) + t * (yArray(i+1)-yArray(i))
+         endif
+      endif
+    end function interpLinearDouble
+
+    real(kind=doubleKind) function interpLogLinearDouble(xArray, yArray, n, x)
+      real(kind=doubleKind) :: xarray(:), yArray(:)
+      real(kind=doubleKind) :: x, t
+      integer :: n, i
+      logical :: ok
+      i = findIlambda(real(x), real(xArray), n, ok)
+      if (i == 1) then
+         t = (x - xArray(i))/(xArray(i+1)-xArray(i))
+         interpLogLinearDouble = 10.d0**(log10(yArray(i)) + t * (log10(yArray(i+1))-log10(yArray(i))))
+      else if (i == n) then
+         t = (x - xArray(i-1))/(xArray(i)-xArray(i-1))
+         interpLogLinearDouble = 10.d0**(log10(yArray(i-1)) + t * (log10(yArray(i))-log10(yArray(i-1))))
+      else
+         if (x < xArray(i)) then
+            t = (x - xArray(i-1))/(xArray(i)-xArray(i-1))
+            interpLogLinearDouble = 10.d0**(log10(yArray(i-1)) + t * (log10(yArray(i))-log10(yArray(i-1))))
+         else
+            t = (x - xArray(i))/(xArray(i+1)-xArray(i))
+            interpLogLinearDouble = 10.d0**(log10(yArray(i)) + t * (log10(yArray(i+1))-log10(yArray(i))))
+         endif
+      endif
+    end function interpLogLinearDouble
+         
+
+
+    function convertToJanskies(flux, wavelength) result (newflux)
+      real(kind=doubleKind) :: flux   ! in erg/s/cm^2/A
+      real(kind=doubleKind) :: wavelength ! in A
+      real(kind=doubleKind) :: newFlux, nu
+
+      nu  = cspeed / (wavelength * angstromtocm)
+      newFlux = flux * (cSpeed * 1.e8)/ nu**2 ! from /A to /Hz
+
+      newFlux = newFlux * 1.e23 ! to janskies
+    end function convertToJanskies
+
+    subroutine voigt ( n, x, y, k )
+
+      !     to calculate the faddeeva function with relative error less than 10^(-4).
+
+      ! arguments
+      integer n                                                         ! in   number of points
+      real    x(0:n-1)                                                  ! in   input x array
+      real    y                                                         ! in   input y value >=0.0
+      real    k(0:n-1)                                                  ! out  real (voigt) array
+
+      ! constants
+      real        rrtpi                                                 ! 1/sqrt(pi)
+      parameter ( rrtpi = 0.56418958 )
+      real        y0,       y0py0,         y0q                          ! for cpf12 algorithm
+      parameter ( y0 = 1.5, y0py0 = y0+y0, y0q = y0*y0  )
+      real  c(0:5), s(0:5), t(0:5)
+      save  c,      s,      t
+      !     save preserves values of c, s and t (static) arrays between procedure calls
+      data c / 1.0117281,     -0.75197147,        0.012557727, &
+               0.010022008,   -0.00024206814,     0.00000050084806 /
+      data s / 1.393237,       0.23115241,       -0.15535147, &
+               0.0062183662,   0.000091908299,   -0.00000062752596 /
+      data t / 0.31424038,     0.94778839,        1.5976826,&
+               2.2795071,      3.0206370,         3.8897249 /
+
+      ! local variables
+      integer i, j                                                      ! loop variables
+      integer rg1, rg2, rg3                                             ! y polynomial flags
+      real abx, xq, yq, yrrtpi                                          ! |x|, x^2, y^2, y/sqrt(pi)
+      real xlim0, xlim1, xlim2, xlim3, xlim4                            ! |x| on region boundaries
+      real a0, d0, d2, e0, e2, e4, h0, h2, h4, h6                       ! w4 temporary variables
+      real p0, p2, p4, p6, p8, z0, z2, z4, z6, z8
+      real xp(0:5), xm(0:5), yp(0:5), ym(0:5)                           ! cpf12 temporary values
+      real mq(0:5), pq(0:5), mf(0:5), pf(0:5)
+      real d, yf, ypy0, ypy0q  
+
+      !**** start of executable code *****************************************
+
+      yq  = y*y                                                         ! y^2
+      yrrtpi = y*rrtpi                                                  ! y/sqrt(pi)
+
+      if ( y .ge. 70.55 ) then                                          ! all points
+         do i = 0, n-1                                                   ! in region 0
+            xq   = x(i)*x(i)
+            k(i) = yrrtpi / (xq + yq)
+         enddo
+         return
+      endif
+
+      rg1 = 1                                                           ! set flags
+      rg2 = 1
+      rg3 = 1
+
+      xlim0 = sqrt ( 15100.0 + y*(40.0 - y*3.6) )                       ! y<70.55
+      if ( y .ge. 8.425 ) then
+         xlim1 = 0.0
+      else
+         xlim1 = sqrt ( 164.0 - y*(4.3 + y*1.8) )
+      endif
+      xlim2 = 6.8 - y
+      xlim3 = 2.4*y
+      xlim4 = 18.1*y + 1.65
+      if ( y .le. 0.000001 ) then                                       ! when y<10^-6
+         xlim1 = xlim0                                                    ! avoid w4 algorithm
+         xlim2 = xlim0
+      endif
+
+      do i = 0, n-1                                                     ! loop over all points
+         abx = abs ( x(i) )                                               ! |x|
+         xq  = abx*abx                                                    ! x^2
+         if     ( abx .ge. xlim0 ) then                                   ! region 0 algorithm
+            k(i) = yrrtpi / (xq + yq)
+
+         elseif ( abx .ge. xlim1 ) then                                   ! humlicek w4 region 1
+            if ( rg1 .ne. 0 ) then                                          ! first point in region 1
+               rg1 = 0
+               a0 = yq + 0.5                                                  ! region 1 y-dependents
+               d0 = a0*a0
+               d2 = yq + yq - 1.0
+            endif
+            d = rrtpi / (d0 + xq*(d2 + xq))
+            k(i) = d*y   *(a0 + xq)
+
+         elseif ( abx .gt. xlim2 ) then                                   ! humlicek w4 region 2 
+            if ( rg2 .ne. 0 ) then                                          ! first point in region 2
+               rg2 = 0
+               h0 =  0.5625 + yq*(4.5 + yq*(10.5 + yq*(6.0 + yq)))            ! region 2 y-dependents
+               h2 = -4.5    + yq*(9.0 + yq*( 6.0 + yq* 4.0))
+               h4 = 10.5    - yq*(6.0 - yq*  6.0)
+               h6 = -6.0    + yq* 4.0
+               e0 =  1.875  + yq*(8.25 + yq*(5.5 + yq))
+               e2 =  5.25   + yq*(1.0  + yq* 3.0)
+               e4 =  0.75*h6
+            endif
+            d = rrtpi / (h0 + xq*(h2 + xq*(h4 + xq*(h6 + xq))))
+            k(i) = d*y   *(e0 + xq*(e2 + xq*(e4 + xq)))
+
+         elseif ( abx .lt. xlim3 ) then                                   ! humlicek w4 region 3
+            if ( rg3 .ne. 0 ) then                                          ! first point in region 3
+               rg3 = 0
+               z0 = 272.1014     + y*(1280.829 + y*(2802.870 + y*(3764.966&    ! region 3 y-dependents
+                    + y*(3447.629 + y*(2256.981 + y*(1074.409 + y*(369.1989&
+                    + y*(88.26741 + y*(13.39880 + y)))))))))
+               z2 = 211.678      + y*(902.3066 + y*(1758.336 + y*(2037.310&
+                    + y*(1549.675 + y*(793.4273 + y*(266.2987&
+                    + y*(53.59518 + y*5.0)))))))
+               z4 = 78.86585     + y*(308.1852 + y*(497.3014 + y*(479.2576&
+                    + y*(269.2916 + y*(80.39278 + y*10.0)))))
+               z6 = 22.03523     + y*(55.02933 + y*(92.75679 + y*(53.59518&
+                    + y*10.0)))
+               z8 = 1.496460     + y*(13.39880 + y*5.0)
+               p0 = 153.5168     + y*(549.3954 + y*(919.4955 + y*(946.8970&
+                    + y*(662.8097 + y*(328.2151 + y*(115.3772 + y*(27.93941&
+                    + y*(4.264678 + y*0.3183291))))))))
+               p2 = -34.16955    + y*(-1.322256+ y*(124.5975 + y*(189.7730&
+                    + y*(139.4665 + y*(56.81652 + y*(12.79458&
+                    + y*1.2733163))))))
+               p4 = 2.584042     + y*(10.46332 + y*(24.01655 + y*(29.81482&
+                    + y*(12.79568 + y*1.9099744))))
+               p6 = -0.07272979  + y*(0.9377051+ y*(4.266322 + y*1.273316))
+               p8 = 0.0005480304 + y*0.3183291
+            endif
+            d = 1.7724538 / (z0 + xq*(z2 + xq*(z4 + xq*(z6 + xq*(z8+xq)))))
+            k(i) = d*(p0 + xq*(p2 + xq*(p4 + xq*(p6 + xq*p8))))
+
+         else                                                             ! humlicek cpf12 algorithm
+            ypy0 = y + y0
+            ypy0q = ypy0*ypy0
+            k(i) = 0.0
+            do j = 0, 5
+               d = x(i) - t(j)
+               mq(j) = d*d
+               mf(j) = 1.0 / (mq(j) + ypy0q)
+               xm(j) = mf(j)*d
+               ym(j) = mf(j)*ypy0
+               d = x(i) + t(j)
+               pq(j) = d*d
+               pf(j) = 1.0 / (pq(j) + ypy0q)
+               xp(j) = pf(j)*d
+               yp(j) = pf(j)*ypy0
+            enddo
+
+            if ( abx .le. xlim4 ) then                                      ! humlicek cpf12 region i
+               do j = 0, 5
+                  k(i) = k(i) + c(j)*(ym(j)+yp(j)) - s(j)*(xm(j)-xp(j))
+               enddo
+
+            else                                                            ! humlicek cpf12 region ii
+               yf   = y + y0py0
+               do j = 0, 5
+                  k(i) = k(i) &
+                       + (c(j)*(mq(j)*mf(j)-y0*ym(j)) + s(j)*yf*xm(j)) / (mq(j)+y0q) &
+                       + (c(j)*(pq(j)*pf(j)-y0*yp(j)) - s(j)*yf*xp(j)) / (pq(j)+y0q)
+               enddo
+               k(i) = y*k(i) + exp ( -xq )
+            endif
+         endif
+      enddo
+    end subroutine voigt
+
+    real function bigLambda(N_HII, temperature, Ne)
+      real :: N_HII
+      real :: temperature
+      real :: Ne
+
+      real, parameter :: C_rad  = 1.
+      real, parameter :: C_vdw = 0.
+      real, parameter :: C_stark =1.
+
+! see Muzerolle et al. 2001 ApJ 550 944
+
+      bigLambda = C_rad + C_vdw*(N_HII / 1.e16)*(temperature/5000.)*0.3 + C_stark*(Ne/1.e12)**0.6666
+    end function bigLambda
+
+
+    subroutine resampleRay(lambda, nTau, projVel, newLambda, newNTau)
+      real :: lambda(:)
+      real :: projVel(:)
+      integer :: nTau, newNtau
+      real :: newLambda(:)
+      real,allocatable :: dProjVel(:)
+      integer :: nAdd = 5
+      integer :: i, j
+      allocate(dProjVel(1:nTau))
+      dProjVel  = 0.
+      dProjVel(2:nTau) = projVel(2:nTau) - projVel(1:nTau-1)
+
+      newNTau = 0
+      do i = 2, nTau
+         if (abs(dProjVel(i)) > 50.) then
+            do j = 1, nAdd
+               newNtau = newNtau + 1
+               newLambda(newNTau) = real(j-1)/real(nAdd) * real(lambda(i)-lambda(i-1)) + lambda(i-1)
+            enddo
+         else
+            newNtau = newNtau + 1
+            newLambda(newNTau) = lambda(i-1)
+         endif
+      enddo
+      newNtau = newNtau + 1
+      newLambda(newNTau) = lambda(nTau)
+      deallocate(dProjVel)
+    end subroutine resampleRay
+               
+    subroutine linearResample(xArray, yArray, nX, newXarray, newNx)
+      real :: xArray(:), yArray(:)
+      integer :: nx, newNx
+      real :: newXarray(:)
+      real, allocatable :: newYarray(:)
+      integer :: i, j
+
+      allocate(newYarray(1:newNx))
+      do i = 1, newNx
+         call hunt(xArray, nx, newXarray(i), j)
+         newYarray(i) = yArray(j) + yArray(j+1)*(newXarray(i)-xArray(j))/(xArray(j+1)-xArray(j))
+      enddo
+      yArray(1:newNx) = newYArray(1:newNx)
+      deallocate(newYarray)
+    end subroutine linearResample
+
+
+
+    function spiraldist(x,y,k,phase) result(d)
+      integer :: i, nr = 100, imin
+      real :: x,y,k,d,theta,ktheta
+      real :: r,t1,t2,theta1,theta2,phase
+      logical :: converged
+      d = 1.e30
+      theta1 = -phase
+      theta2 = twoPi-phase
+      converged = .false.
+      do while(.not.converged)
+         do i = 1, nr
+            theta = theta1+(theta2-theta1)*real(i-1)/real(nr-1)
+            ktheta = k * (theta+phase)
+            r = (x-ktheta*cos(theta+phase))**2 + (y-ktheta*sin(theta+phase))**2
+            if (r < d) then
+               d=r
+               imin = i
+            endif
+         enddo
+         t1 = theta1+(theta2-theta1)*real(imin-2)/real(nr-1)
+         t2 = theta1+(theta2-theta1)*real(imin)/real(nr-1)
+         theta1 = max(t1,-phase)
+         theta2 = t2
+         if (abs(theta1-theta2)/twopi < 1.e-4) converged = .true.
+      enddo
+      d = sqrt(d)
+    end function spiraldist
+
 
 end module utils_mod
 

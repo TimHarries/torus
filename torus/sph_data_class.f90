@@ -24,16 +24,23 @@ module sph_data_class
        get_pt_mass, &
        get_rhon_min, &
        get_rhon_max, &
+       get_spins, &
        max_distance, &
-       info
+       info, &
+       get_stellar_disc_parameters, &
+       stellar_disc_exists, &
+       find_inclinations
+  
+  
+  
 
 
   ! At a given time (time)
   type sph_data
-     private  ! Believe me. It's better to be private!    
+!     private  ! Believe me. It's better to be private!    
      double precision :: udist, umass, utime    ! Units of distance, mass, time in cgs
      !                                          ! (umass is M_sol, udist=0.1 pc)
-     integer          :: npart                  ! Number of gas particles
+     integer          :: npart                  ! Total number of gas particles (field+disc)
      double precision :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
      double precision :: gaspartmass            ! Mass of each gas particle
@@ -45,7 +52,15 @@ module sph_data_class
      double precision, pointer, dimension(:) :: x,y,z
      !
      double precision, pointer, dimension(:) :: ptmass ! Masses of stars
-     
+     ! 
+     !
+     ! Some extra data for the stellar disk.
+     ! Note: the units used here are diffrent from the ones used above!     
+     logical :: have_stellar_disc            ! T if the following data are assigned
+     double precision, pointer, dimension(:) :: discrad ! in [10^10cm]
+     double precision, pointer, dimension(:) :: discmass   ! in [g]
+     double precision, pointer, dimension(:) :: spinx, spiny, spinz
+          
   end type sph_data
 
   
@@ -56,12 +71,13 @@ contains
   ! 
   ! Initializes an object with parameters (if possible).
   ! 
-  subroutine init_sph_data(this, udist, umass, utime, npart, time, nptmass, gaspartmass)
+  subroutine init_sph_data(this, udist, umass, utime, npart,  time, nptmass, &
+       gaspartmass)
     implicit none
     type(sph_data), intent(inout) :: this
     double precision, intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
     !                                                       ! (umass is M_sol, udist=0.1 pc)
-    integer, intent(in)           :: npart                  ! Number of gas particles
+    integer, intent(in)           :: npart                  ! Number of gas particles (field+disc)
     double precision, intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass                ! Number of stars/brown dwarfs
     double precision, intent(in)  :: gaspartmass            ! Mass of each gas particle
@@ -91,6 +107,9 @@ contains
     
     ! -- for mass of stars
     ALLOCATE(this%ptmass(nptmass))
+
+    !
+    this%have_stellar_disc = .false. 
     
     
   end subroutine init_sph_data
@@ -107,23 +126,24 @@ contains
     character(LEN=*), intent(in)  :: filename
     !   
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
+!    double precision :: udist, umass, utime,  time,  gaspartmass, discpartmass
+!    integer*4 :: npart,  nsph, nptmass
     double precision :: udist, umass, utime,  time,  gaspartmass
     integer :: npart,  nptmass
     double precision, allocatable :: dummy(:)     
 
-!    ! for debug
-!    double precision :: d, r
-!    integer :: i
-    
+
     open(unit=LUIN, file=TRIM(filename), form='unformatted')
     
 
     ! reading in the first line
-    READ(LUIN) udist, umass, utime, npart, time, nptmass, gaspartmass
+    READ(LUIN) udist, umass, utime, npart, time, &
+         nptmass, gaspartmass
 
 
     ! initilaizing the sph_data object (allocating arrays, saving parameters and so on....)
-    call init_sph_data(this, udist, umass, utime, npart, time, nptmass, gaspartmass)
+    call init_sph_data(this, udist, umass, utime, npart, time, nptmass,&
+         gaspartmass)
 
 
     ! reading the positions  of gas particles and stars,
@@ -147,29 +167,71 @@ contains
     READ(LUIN) this%z
 
     READ(LUIN) this%ptmass
+   
+
 
     DEALLOCATE(dummy)
 
-    !
-    ! JUST for testting...
-    ! Should be deleted here later.
-    !this%npart=1000
-
-!    !
-!    ! For debug...
-!    !
-!    ! reassign the position of gas particles randomly
-!    d=max_distance(this)*4.0d0
-!    do i=1,npart
-!       call random_number(r)
-!       this%xn(i) = -d/2.0d0 + d*r
-!       call random_number(r)
-!       this%yn(i) = -d/2.0d0 + d*r
-!       call random_number(r)
-!       this%zn(i) = -d/2.0d0 + d*r
-!    end do
     
   end subroutine read_sph_data
+
+
+
+  !
+  !
+  ! Read in the data from a file, allocate the array memory, and store the
+  ! the number of gas and stars in this object.
+  !
+  subroutine read_stellar_disc_data(this, filename)
+    implicit none
+    type(sph_data), intent(inout) :: this
+    character(LEN=*), intent(in)  :: filename
+    ! 
+    integer, parameter  :: LUIN = 10 ! logical unit # of the data file
+    integer :: nstar
+    integer :: i, dum_i
+    character(LEN=1) :: dum_a
+    double precision, parameter :: M_sun = 1.989e33 ! [grams]
+
+    open(unit=LUIN, file=TRIM(filename), status='old')
+    
+
+    nstar = this%nptmass
+
+    ! reading in the header
+    do i = 1, 6
+       READ(LUIN, *) dum_a
+    end do
+
+
+    ! allocating arrays
+    ! --- for stellar discs
+    ALLOCATE(this%discrad(nstar))
+    ALLOCATE(this%discmass(nstar))
+    ALLOCATE(this%spinx(nstar))
+    ALLOCATE(this%spiny(nstar))
+    ALLOCATE(this%spinz(nstar))
+
+
+    write(*,*) ' '
+    write(*,*) 'Reading Matthew''s stellar disc data....'
+    write(*,*) ' '
+
+    
+    do i=1, nstar 
+       read(luin, *) dum_i, this%discrad(i), this%discmass(i), &
+            this%spinx(i), this%spiny(i), this%spinz(i)
+       ! convert the mass into grams
+       this%discmass(i) = this%discmass(i)*M_sun  ![g]
+    end do
+
+
+    this%have_stellar_disc = .true.    
+
+
+  end subroutine read_stellar_disc_data
+  
+
     
 
   !
@@ -236,6 +298,7 @@ contains
     type(sph_data), intent(in) :: this
     out = this%gaspartmass
   end function get_gaspartmass
+    
     
 
   !
@@ -420,6 +483,24 @@ contains
   end function get_rhon_max
 
 
+
+  !
+  ! retuns the spin direction of i_th star
+  !
+  subroutine get_spins(this, i, sx, sy, sz) 
+    implicit none
+    type(sph_data), intent(in) :: this
+    integer, intent(in) :: i 
+    double precision, intent(out) :: sx, sy, sz 
+    
+    sx = this%spinx(i)
+    sy = this%spiny(i)
+    sz = this%spinz(i)
+    
+  end subroutine get_spins
+
+
+
   !
   ! Prints basic infomation
   !
@@ -445,14 +526,14 @@ contains
     write(UN,'(a)') '######################################################'
     write(UN,'(a)') 'SPH data info :'
     write(UN,'(a)') ' '    
-    write(UN,*)     'Units of length         : ', get_udist(this), ' [cm]'
-    write(UN,*)     'Units of mass           : ', get_umass(this), ' [g]'
-    write(UN,*)     'Units of time           : ', get_utime(this),  ' [s]' 
+    write(UN,*)     'Units of length            : ', get_udist(this), ' [cm]'
+    write(UN,*)     'Units of mass              : ', get_umass(this), ' [g]'
+    write(UN,*)     'Units of time              : ', get_utime(this),  ' [s]' 
     write(UN,'(a)') ' '    
-    write(UN,*)     'Number of stars         : ',  get_nptmass(this)
-    write(UN,*)     'Number of gas particles : ',  get_npart(this)   
-    write(UN,*)     'Time of data dump       : ',  tmp, ' [Myr]'    
-    write(UN,*)     'Mass (gas particle)     : ',  get_gaspartmass(this)*get_umass(this), ' [g]'    
+    write(UN,*)     '# of stars                 : ',  get_nptmass(this)
+    write(UN,*)     '# of gas particles (total) : ',  get_npart(this)   
+    write(UN,*)     'Time of data dump          : ',  tmp, ' [Myr]'    
+    write(UN,*)     'Mass (gas particle)        : ',  get_gaspartmass(this)*get_umass(this), ' [g]'    
     write(UN,'(a)') '#######################################################'
     write(UN,'(a)') ' '
     write(Un,'(a)') ' '
@@ -460,6 +541,101 @@ contains
     if (filename(1:1) /= '*')  close(UN)
 
   end subroutine info
+
+
+
+  !
+  ! Returns the parameters for stellar disc of i-th star
+  ! in the data.
+  ! x, y, z are in [udist] ... See the type definition section.
+  subroutine get_stellar_disc_parameters(this, i, discrad, discmass, &
+       spinx, spiny, spinz)
+    implicit none    
+    type(sph_data), intent(in) :: this
+    integer, intent(in) :: i
+    double precision, intent(out) :: discrad    ! in [10^10cm] 
+    double precision, intent(out) :: discmass   ! in [grams] 
+    double precision, intent(out) :: spinx, spiny, spinz
+    logical, save :: first_time = .true.
+    
+    ! quick check
+    if (first_time) then
+       if (this%have_stellar_disc) then
+          first_time = .false.
+       else
+          write(*,*) "Error:: You did not read in the stellar disc data! &
+               &[get_stellar_disc_parameters]."
+          stop
+       end if
+    end if
+    
+    discrad = this%discrad(i)    ! in [10^10cm] 
+    discmass = this%discmass(i)  ! in [grams] 
+    spinx = this%spinx(i)
+    spiny = this%spiny(i)
+    spinz = this%spinz(i)
+        
+  end subroutine get_stellar_disc_parameters
+
+
+  !
+  !
+  !
+  function stellar_disc_exists(this) RESULT(out)
+    implicit none
+    logical :: out
+    type(sph_data), intent(in) :: this
+    out = this%have_stellar_disc
+  end function stellar_disc_exists
+
+
+
+
+  !
+  ! Compute the inclination angles  angle between the spin ]
+  ! axis and the observer. The results will be written in 
+  ! a file. 
+  !
+  subroutine find_inclinations(this, obs_x, obs_y, obs_z, outfilename)
+    implicit none
+    type(sph_data), intent(in) :: this
+    double precision, intent(in) :: obs_x,  obs_y, obs_z  ! directions cosines of of observer.
+    character(LEN=*), intent(in) :: outfilename 
+    double precision :: r1, r2, inc, dp, pi
+    double precision :: sx, sy, sz ! spins
+    integer :: i
+
+    open(unit=43, file=TRIM(ADJUSTL(outfilename)), status="replace")
+
+    pi = 2.0d0*acos(0.0d0)
+
+    write(43, '(a)') "#   star ID    ------   inclination [deg]"
+
+    ! just in case the vectors are not normalized.
+    r1 = SQRT(obs_x*obs_x + obs_y*obs_y + obs_z*obs_z)
+    do i = 1, this%nptmass       
+       call get_spins(this, i , sx, sy, sz)
+       ! just in case the vectors are not normalized.
+       r2 = SQRT(sx*sx+sy*sy+sz*sz)
+    
+       ! inclinations
+       dp = obs_x*sx + obs_y*sy + obs_z*sz  ! dot product
+
+       inc = ACOS(dp/r1/r2)*(180.d0/Pi)   ! degrees
+       if (inc>180.d0) inc = inc-180.d0
+       if (inc>90.d0) inc = 90.0 - (inc-90.d0)
+       write(43, '(1x, i5, 2x, f6.1)') i, inc
+       
+    end do
+    
+
+    close(43)
+
+  end subroutine find_inclinations
+    
+
+
+
     
 end module sph_data_class
 

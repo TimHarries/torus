@@ -4,24 +4,28 @@ module source_mod
   use constants_mod
   use vector_mod
   use utils_mod
+  use octal_mod
 
   implicit none
 
-  public
+  public 
+
 
   type SOURCETYPE
-     type(VECTOR) :: position            ! [10^10cm]
+     type(DOUBLEVECTOR)    :: position   ! [10^10cm]
      real(kind=doubleKind) :: radius     ! [10^10cm]
      real(kind=doubleKind) :: luminosity ! [erg/s]
      real(kind=doubleKind) :: teff       ! [K]
-     type(SPECTRUMTYPE) :: spectrum      ! [???]
+     type(SPECTRUMTYPE)    :: spectrum   ! [???]
   end type SOURCETYPE
+
+
 
   contains
 
     function newSource(position, luminosity, radius, teff, spectrum)
       type(SOURCETYPE) :: newSource
-      type(VECTOR), intent(in) :: position
+      type(DOUBLEVECTOR), intent(in) :: position
       real(kind=doubleKind), intent(in) :: luminosity, radius, teff
       type(SPECTRUMTYPE) :: spectrum
       newSource%position = position
@@ -74,14 +78,156 @@ module source_mod
       endif
 
     end subroutine randomSource
-    
+
+    subroutine distanceToSource(source, nSource, rVec, uHat, hitSource, distance)
+      integer :: nSource
+      type(SOURCETYPE) :: source(nSource)
+      type(DOUBLEVECTOR) :: rVec, uHat
+      real(kind=doubleKind) :: distance, cosTheta, sintheta
+      logical :: hitSource
+      integer :: i
+
+      hitSource = .false.
+      distance = 1.d30
+      mainloop: do i = 1, nSource
+         cosTheta = (uHat .dot. (source(i)%position - rVec))/modulus(source(i)%position - rVec)
+         if (cosTheta < 0.) then ! source is behind you
+            cycle mainloop
+         endif
+         sinTheta = sqrt(max(0.d0,1.d0 - cosTheta*cosTheta))
+         if (source(i)%radius > (modulus(source(i)%position - rVec)*sinTheta)) then
+            distance = min(distanceToSphere(rVec, uHat, source(i)%position, source(i)%radius),distance)
+            hitSource = .true. ! bang
+         endif
+      enddo mainloop
+    end subroutine distanceToSource
+
     subroutine getPhotonPositionDirection(source, position, direction, rHat)
       type(SOURCETYPE) :: source
-      type(VECTOR) :: position, direction, rHat
+      type(OCTALVECTOR) :: position, direction, rHat
 
-      rHat = randomUnitVector()
+
+!      ! simply treating as a point source
+!      position = source%position
+!      direction = randomUnitDoubleVector()
+
+      !
+      ! uncomment below for a finite-size source.
+      !
+      rHat = randomUnitDoubleVector()
       position = source%position + source%radius*rHat
-      direction = fromPhotosphereVector(rHat)
+      ! A limb darkening law should be applied here for 
+      ! for general case here.....
+      direction = fromPhotoSphereoctalVector(rHat)
+      ! -- using a new routine in this module (RK)
+!      direction = random_direction_from_sphere(rHat)
     end subroutine getPhotonPositionDirection
+
+
+
+
+  function distanceToSphere(rVec, uHat, centre, radius) result (distance)
+    real(kind=doubleKind) :: distance, radius
+    real(kind=doubleKind) :: x1, x2,a,b,c,d,costheta
+    logical :: ok
+    type(DOUBLEVECTOR) :: rVec, uHat, centre
+
+    d = modulus(centre - rVec)
+    cosTheta = (uHat .dot. (centre-rVec)) / d
+
+    a = 1.d0
+    b = -2.d0*d*cosTheta
+    c = d**2 - radius**2
+    call solveQuadDble(a, b, c, x1, x2, ok)
+    if (.not.ok) then 
+       write(*,*) "! Distance to sphere called with no intersection"
+    endif
+    if ((x1 > 0.).and.(x2 > 0.)) then
+       distance = min(x1, x2)
+    else
+       if (x1 > 0.) then
+          distance = x1
+       else
+          distance = x2
+       endif
+    endif
+    if (distance < 0.) then
+       write(*,*) "! screw up in distance to sphere"
+    endif
+  end function distanceToSphere
+
+
+
+
+    !
+    ! For a given octal and sourcetyupe objects, this routine checks 
+    ! if the source is with in the range this octal.
+    
+    function source_within_octal(this, an_octal) RESULT(out)
+      implicit none
+      logical :: out 
+      type(sourcetype), intent(in) :: this
+      type(octal), intent(in) :: an_octal 
+      
+      real(kind=octalkind) :: xc, yc, zc ! position of the octal center.
+      real(kind=octalkind) :: d          ! size of the subcell
+      real(kind=octalkind) :: x, y, z    ! position of the source.
+      
+      xc = an_octal%centre%x
+      yc = an_octal%centre%y
+      zc = an_octal%centre%z
+      d  = an_octal%subcellsize
+
+      x = this%position%x
+      y = this%position%y
+      z = this%position%z
+      
+    if ( x > (xc+d) ) then
+       out = .false.
+    else if ( x < (xc-d)) then
+       out = .false.      
+    elseif ( y > (yc+d) ) then
+       out = .false.
+    elseif ( y < (yc-d)) then
+       out = .false.
+    elseif ( z > (zc+d) ) then
+       out = .false.
+    elseif ( z < (zc-d)) then
+       out = .false.
+    else
+       out = .true.
+    end if
+
+  end function source_within_octal
+
+
+
+
+  !
+  ! Pick a random direction (with length 1) from the surface of a sphere. 
+  ! If the direction points inward of the sphere, it will be rejected, and a new one will 
+  ! be calculated. 
+  !
+  ! note: rvec is a vector which connects a point on the surface of the sphere and its origin.
+  !       The length of the rvec does not matther when passed to this routine as long as 
+  !        it has a correct direction, this routine should work.
+  function random_direction_from_sphere(rvec) RESULT(out)
+    implicit none
+    type(octalvector) :: out 
+    !
+    type(octalvector), intent(in) :: rvec
+    !
+    type(octalvector) :: dir 
+    real(kind=octalkind) :: inner_product
+    
+    inner_product = -1.0d0
+    do while (inner_product<0.0d0) 
+       dir = randomUnitOctalVector()
+       inner_product = dir .dot. rvec
+    end do
+    
+    out = dir
+
+  end function random_direction_from_sphere
 
   end module source_mod

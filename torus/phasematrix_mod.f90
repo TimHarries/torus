@@ -108,6 +108,29 @@ contains
 
   end function fillRayleigh
 
+  ! this sets up a Rayleigh phase matrix
+
+  type(PHASEMATRIX) function fillIsotropic(costheta)
+
+
+    type(PHASEMATRIX) :: b
+    real :: costheta
+    real :: cos2t
+
+    cos2t = costheta*costheta
+
+    b%element = 0.
+    b%element(1,1) = 1.
+    b%element(1,2) = 0.
+    b%element(2,1) = 0.
+    b%element(2,2) = 0.
+    b%element(3,3) = 0.
+    b%element(4,4) = 0.
+
+    fillIsotropic = b
+
+  end function fillIsotropic
+
   ! this writes out a 4x4 phase matrix - used for debugging
 
   subroutine writePhaseMatrix(a)
@@ -160,7 +183,7 @@ contains
     real, allocatable :: cosArray(:)
     type(VECTOR) :: tVec, perpVec, newVec
     
-    type(PHASEMATRIX) :: miePhase(nLambda, nMuMie)
+    type(PHASEMATRIX),intent(in) :: miePhase(nLambda, nMuMie)
     
 
     allocate(prob(1:nMuMie))
@@ -179,8 +202,6 @@ contains
     enddo
     prob(1:nMuMie) = prob(1:nMuMie)/prob(nMuMie)
     call random_number(r)
-    if ((abs(r))     < ( epsilon(1.0))) r =       epsilon(1.0)
-    if ((abs(r-1.0)) > (-epsilon(1.0))) r = 1.0 - epsilon(1.0)
     call locate(prob, nMuMie, r, j)
     cosTheta = cosArray(j) + &
          (cosArray(j+1)-cosArray(j))*(r - prob(j))/(prob(j+1)-prob(j))
@@ -197,32 +218,39 @@ contains
     theta = acos(min(1.,max(-1.,costheta)))
     newVec = arbitraryRotate(oldDirection, theta, perpVec)
     newVec = arbitraryRotate(newVec, phi, oldDirection)
+    call normalize(newvec)
 
     Deallocate(cosArray)
     deallocate(prob)
 
+    call normalize(newvec)
     newDirectionMie = newVec
     
 
   end function newDirectionMie
-subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
-     normalizeSpectrum, useNdf, sed)
 
+subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
+     normalizeSpectrum, useNdf, sed, objectDistance, jansky, SI, dustySed)
+     
   implicit none
   integer :: nLambda
   character(len=*) :: outFile
   real :: xArray(nLambda)
   logical :: useNdf
+  logical :: jansky
   integer :: nOuterLoop
   logical :: normalizeSpectrum, sed
+  real(kind=doubleKind) :: objectDistance, area
   type(STOKESVECTOR) :: yArray(nLambda), errorArray(nOuterloop,nLambda)
   type(STOKESVECTOR),pointer :: ytmpArray(:)
   real, allocatable :: meanQ(:), meanU(:), sigQ(:), sigU(:)
-  real, allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
-  real, allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
+  real(kind=doubleKind), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
+  real(kind=doubleKind), allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
   real :: tot
   real :: x
   integer :: i
+  logical :: SI
+  logical :: dustysed
 
   allocate(ytmpArray(1:nLambda))
 
@@ -243,21 +271,24 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
 !  x = 1./x
 
 !  x = 
+  write(*,*) "starting to write spectrum"
 
   if (normalizeSpectrum) then
      if (yArray(1)%i /= 0.) then
         x = 1.d0/yArray(1)%i
      else
-        x  = 1.d0
+       x  = 1.d0
      endif
   else
      x = 1.d0
   endif
 
-
+  write(*,*) "scaling by ",x
+  
   do i = 1, nLambda
      ytmpArray(i) = yArray(i) * x
   enddo
+
 
   where(errorArray%i /= 0.)
      errorArray%q = errorArray%q / errorArray%i
@@ -274,32 +305,71 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
      sigU(i) = sqrt(sum((errorArray(1:nOuterLoop,i)%u-meanU(i))**2)/real(nOuterLoop-1))
   enddo
 
+  write(*,*) "setting up stokes"
+
   stokes_i = ytmpArray%i
   stokes_q = ytmpArray%q
   stokes_u = ytmpArray%u
   stokes_qv = (ytmpArray%i * sigQ)**2
   stokes_uv = (ytmpArray%i * sigU)**2
 
-  if (sed) then
-     write(*,'(a)') "Writing spectrum as normalized lambda F_lambda"
-     dlam(1) = (xArray(2)-xArray(1))
-     dlam(nlambda) = (xArray(nLambda)-xArray(nLambda-1))
-     do i = 2, nLambda-1
-        dlam(i) = 0.5*((xArray(i+1)+xArray(i))-(xArray(i)+xArray(i-1)))
-     enddo
 
+  dlam(1) = (xArray(2)-xArray(1))
+  dlam(nlambda) = (xArray(nLambda)-xArray(nLambda-1))
+  do i = 2, nLambda-1
+     dlam(i) = 0.5*((xArray(i+1)+xArray(i))-(xArray(i)+xArray(i-1)))
+  enddo
+
+  if (.not.normalizeSpectrum) then
+     ! convert from erg/s to erg/s/A
      stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
+     stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
+     stokes_u(1:nLambda) = stokes_u(1:nLambda) / dlam(1:nLambda)
+     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
+     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
+     
+! convert to erg/s/A to erg/s/cm^2/A
+     
+     area =  objectDistance**2  ! (nb flux is alread per sterad)
+     !
+     stokes_i(1:nLambda) = stokes_i(1:nLambda) / area
+     stokes_q(1:nLambda) = stokes_q(1:nLambda) / area
+     stokes_u(1:nLambda) = stokes_u(1:nLambda) / area
+     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / area**2
+     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / area**2
+  
 
-     tot = 0.
+     stokes_i(1:nLambda) = stokes_i(1:nLambda) * 1.d20
+     stokes_q(1:nLambda) = stokes_q(1:nLambda)  * 1.d20
+     stokes_u(1:nLambda) = stokes_u(1:nLambda)  * 1.d20
+     stokes_qv(1:nLambda) = stokes_qv(1:nLambda)  * 1.d40
+     stokes_uv(1:nLambda) = stokes_uv(1:nLambda)  * 1.d40
+     
+  if (jansky) then
      do i = 1, nLambda
-        tot = tot + stokes_i(i)* dlam(i)
+        stokes_i(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
+        stokes_q(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
+        stokes_u(i) = convertToJanskies(dble(stokes_i(i)), dble(xArray(i)))
+        stokes_qv(i) = convertToJanskies(sqrt(dble(stokes_qv(i))), dble(xArray(i)))**2
+        stokes_uv(i) = convertToJanskies(sqrt(dble(stokes_uv(i))), dble(xArray(i)))**2
      enddo
+  endif
+endif
 
-     stokes_i = stokes_i / tot
-     stokes_q = stokes_q / tot
-     stokes_u = stokes_u / tot
-     stokes_qv = stokes_qv / tot**2
-     stokes_uv = stokes_uv / tot**2
+  if (sed) then
+     write(*,'(a)') "Writing spectrum as lambda F_lambda"
+
+
+!     tot = 0.
+!     do i = 1, nLambda
+!        tot = tot + stokes_i(i)* dlam(i)
+!     enddo
+!
+!     stokes_i = stokes_i / tot
+!     stokes_q = stokes_q / tot
+!     stokes_u = stokes_u / tot
+!     stokes_qv = stokes_qv / tot**2
+!     stokes_uv = stokes_uv / tot**2
      
      stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda)
      stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)
@@ -308,13 +378,51 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
      stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2
   endif
 
+  if (dustysed) then
+     write(*,'(a)') "Writing spectrum as normalized lambda (microns) vs lambda F_lambda"
+
+     xArray(1:nLambda) = xArray(1:nLambda) / 1.e4
+     dlam(1:nLambda) = dlam(1:nLambda) / 1.e4
+    
+     tot = 0.
+     do i = 1, nLambda
+        tot = tot + stokes_i(i)* dlam(i)
+     enddo
+
+      
+     stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda) / tot
+     stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda) / tot
+     stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda) / tot
+     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2 / tot**2
+     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2 / tot**2
+
+
+  endif
+
+
+  if (SI) then
+     write(*,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (microns * W/m^2)"
+
+     xArray(1:nLambda) = xArray(1:nLambda) / 1.e4
+     
+     stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda) * 10.
+     stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda) * 10.
+     stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda) * 10.
+     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2  * 100.
+     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2 * 100.
+  endif
+
   if (useNdf) then
-     call wrtsp(nLambda,stokes_i,stokes_q,stokes_qv,stokes_u, &
-          stokes_uv,xArray,outFile)
+     write(*,*) "Writing spectrum to ",trim(outfile),".sdf"
+     call wrtsp(nLambda,real(stokes_i),real(stokes_q),real(stokes_qv), &
+          real(stokes_u), &
+          real(stokes_uv),xArray,outFile)
   else
+     write(*,*) "Writing spectrum to ",trim(outfile),".dat"
+55   format(6(1x,1PE16.6))
      open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
      do i = 1, nLambda
-        write(20,*) xArray(i),stokes_i(i), stokes_q(i), stokes_qv(i), &
+        write(20,55) xArray(i),stokes_i(i), stokes_q(i), stokes_qv(i), &
              stokes_u(i), stokes_uv(i)
      enddo
      close(20)

@@ -6,6 +6,8 @@ module kind_mod
   integer, parameter :: si = singleKind
   integer, parameter :: doubleKind = 2
   integer, parameter :: db = doubleKind
+  integer, parameter :: quadKind = 2
+  integer, parameter :: qd = quadKind
   integer, parameter :: octalKind = 2
   integer, parameter :: oc = octalKind
 

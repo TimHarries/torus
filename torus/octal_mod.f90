@@ -34,6 +34,30 @@ MODULE octal_mod
 !       |________|________|/________\ x
 !                                   /
 
+! OK - now for the nightmare of the 2D case, as implemented by TJH
+! started on 25/08/04
+
+
+!       z
+!       |
+!       |
+!       |
+!       |
+!       |--------|--------+
+!       |        |        |
+!       |        |        |
+!       |    3   |   4    |
+!       |        |        |   Diagram showing the convention used here for
+!       |________|________|   numbering the subcells of each octal.
+!       |        |        |
+!       |        |        |
+!       |    1   |   2    |
+!       |        |        |
+!       |________|________|________\ x
+!                                  /
+
+
+
   TYPE octalWrapper
     TYPE(octal), POINTER  :: content => NULL()
     LOGICAL(KIND=logicKind), DIMENSION(8) :: inUse
@@ -48,7 +72,10 @@ MODULE octal_mod
     INTEGER                            :: nDepth       ! depth of octal. root is 1, it's childen are 2...
     INTEGER                            :: nChildren    ! how many pointers to children there are (max 8)
     INTEGER                            :: indexChild(8)! index of child array containing
-                                                       !   pointer to each subcell's child (if it exists) 
+                                                        ! pointer to each subcell's child (if it exists) 
+    LOGICAL                            :: threeD        ! this is a three-dimensional octal
+    LOGICAL                            :: twoD          ! this is a two-dimensioanl octal (quartal?!)
+    INTEGER                            :: maxChildren   ! this is 8 for three-d and 4 for two-d
     TYPE(octal), DIMENSION(:), POINTER :: child
     LOGICAL, DIMENSION(8)              :: hasChild
     TYPE(octal), POINTER               :: parent          
@@ -85,6 +112,8 @@ MODULE octal_mod
     ! Should be allocated with # of gas particles in this octal
     INTEGER, POINTER                   :: gas_particle_list(:)  ! SPH index of the particles in this octal
     
+    INTEGER, DIMENSION(8)                :: dusttype
+
   END TYPE octal
  
 CONTAINS 
@@ -101,28 +130,43 @@ CONTAINS
     
     d = thisOctal%subcellSize / 2.0_oc
 
-    SELECT CASE (nChild)
-      CASE (1)    
-        subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * yHatOctal) - (d * zHatOctal)
-      CASE (2)    
-        subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * yHatOctal) - (d * zHatOctal)
-      CASE (3)    
-        subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * yHatOctal) - (d * zHatOctal)
-      CASE (4)    
-        subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) - (d * zHatOctal)
-      CASE (5)    
-        subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * yHatOctal) + (d * zHatOctal)
-      CASE (6)    
-        subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * yHatOctal) + (d * zHatOctal)
-      CASE (7)    
-        subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
-      CASE (8)    
-        subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
-      CASE DEFAULT
-        PRINT *, "Invalid nChild passed to subcellCentre"
-!        DO ; END DO
-    END SELECT   
-    
+    if (thisOctal%threeD) then  !do the three-d case as per diagram
+       SELECT CASE (nChild)
+       CASE (1)    
+          subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * yHatOctal) - (d * zHatOctal)
+       CASE (2)    
+          subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * yHatOctal) - (d * zHatOctal)
+       CASE (3)    
+          subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * yHatOctal) - (d * zHatOctal)
+       CASE (4)    
+          subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) - (d * zHatOctal)
+       CASE (5)    
+          subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * yHatOctal) + (d * zHatOctal)
+       CASE (6)    
+          subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * yHatOctal) + (d * zHatOctal)
+       CASE (7)    
+          subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
+       CASE (8)    
+          subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
+       CASE DEFAULT
+          PRINT *, "Invalid nChild passed to subcellCentre threed case"
+          DO ; END DO
+       END SELECT
+    else
+       SELECT CASE (nChild)
+       CASE (1)    
+          subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * zHatOctal)
+       CASE (2)    
+          subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * zHatOctal)
+       CASE (3)    
+          subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * zHatOctal)
+       CASE (4)    
+          subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * zHatOctal)
+       CASE DEFAULT
+          PRINT *, "Invalid nChild passed to subcellCentre twoD case"
+          DO ; END DO
+       END SELECT
+    endif
   END FUNCTION subcellCentre
 
 
@@ -151,36 +195,36 @@ CONTAINS
 
     ! Fortran check the condidtion from
     ! the top, so this should work, and it is faster...
-    if ( x > (x0+dp) ) then
-       out = .false.
-    else if ( x < (x0-dm)) then
-       out = .false.      
-    elseif ( y > (y0+dp) ) then
-       out = .false.
-    elseif ( y < (y0-dm)) then
-       out = .false.
-    elseif ( z > (z0+dp) ) then
-       out = .false.
-    elseif ( z < (z0-dm)) then
-       out = .false.
-    else
-       out = .true.
-    end if
 
-    !    if ( x <= (x0+dp) .and.  x >= (x0-dm) ) then
-    !       if ( y <= (y0+dp) .and.  y >= (y0-dm) )  then
-    !	  if ( z <= (z0+dp) .and.  z >= (z0-dm) )  then
-    !	     out = .true.
-    !	  else
-    !	     out = .false.
-    !	  end if
-    !       else
-    !	  out = .false.
-    !       end if
-    !    else
-    !       out = .false.
-    !    end if
-
+    if (this%threeD) then
+       if ( x > (x0+dp) ) then
+          out = .false.
+       else if ( x < (x0-dm)) then
+          out = .false.      
+       elseif ( y > (y0+dp) ) then
+          out = .false.
+       elseif ( y < (y0-dm)) then
+          out = .false.
+       elseif ( z > (z0+dp) ) then
+          out = .false.
+       elseif ( z < (z0-dm)) then
+          out = .false.
+       else
+          out = .true.
+       end if
+    else ! two-D case
+       if ( x > (x0+dp) ) then
+          out = .false.
+       else if ( x < (x0-dm)) then
+          out = .false.      
+       elseif ( z > (z0+dp) ) then
+          out = .false.
+       elseif ( z < (z0-dm)) then
+          out = .false.
+       else
+          out = .true.
+       end if
+    endif
   end function within_subcell
 
   

@@ -35,6 +35,19 @@ module grid_mod
   private :: writeReal1D, writeReal2D, writeDouble2D
   private :: readReal1D,  readReal2D,  readDouble2D
 
+
+  interface getIndices
+     module procedure getIndices_single
+     module procedure getIndices_octal
+  end interface
+
+  interface outsideGrid
+     module procedure outsideGrid_single
+     module procedure outsideGrid_double
+     module procedure outsideGrid_octal
+  end interface
+     
+
 contains
 
   ! function to initialize a cartesian grid
@@ -259,6 +272,7 @@ contains
     integer :: ierr
     integer :: ilambda
     real    :: lamStart, lamEnd
+    integer :: i, j, k
     logical :: ok, flatspec
 
     initPolarGrid%lineEmission = .false. ! the default
@@ -396,6 +410,7 @@ contains
 
     initPolarGrid%inStar = .false.
 
+    allocate(initPolarGrid%dvbydr(1:nr,1:nmu,1:nphi))
 
 
     allocate(initPolarGrid%rAxis(1:nr))
@@ -405,6 +420,27 @@ contains
 
     allocate(initPolarGrid%biasLine(1:nr))
     allocate(initPolarGrid%biasCont(1:nr))
+
+
+    allocate(initPolarGrid%oneProbCont(1:initPolarGrid%nProb))
+    allocate(initPolarGrid%oneProbLine(1:initPolarGrid%nProb))
+    k = nr*nMu*nPhi
+    allocate(initPolarGrid%cellIndex(1:k,1:3))
+    
+    initPolargrid%nProb = 0
+    do i = 1, nr
+       do j = 1, nMu
+          do k = 1, nPhi
+             initPolargrid%nProb = initPolargrid%nProb + 1
+             initPolargrid%cellIndex(initPolargrid%nProb,1) = i
+             initPolargrid%cellIndex(initPolargrid%nProb,2) = j
+             initPolargrid%cellIndex(initPolargrid%nProb,3) = k
+          enddo
+       enddo
+    enddo
+    allocate(initPolarGrid%oneProbCont(1:initPolargrid%nProb))
+    allocate(initPolarGrid%oneProbLine(1:initPolargrid%nProb))
+
 
     initPolarGrid%biasLine = 1.
     initPolarGrid%biasCont = 1.
@@ -417,6 +453,24 @@ contains
     initPolarGrid%na1 = nr
     initPolarGrid%na2 = nmu
     initPolarGrid%na3 = nphi
+
+    allocate(initPolarGrid%biasLine3D(1:nr, 1:nmu, 1:nphi), stat=ierr)
+    if (ierr /=0) then
+       write(*,'(a)') "! Cannot allocate grid memory"
+       ok = .false.
+       goto 666
+    endif
+
+    allocate(initPolarGrid%biasCont3D(1:nr, 1:nmu, 1:nphi), stat=ierr)
+    if (ierr /=0) then
+       write(*,'(a)') "! Cannot allocate grid memory"
+       ok = .false.
+       goto 666
+    endif
+
+    initPolarGrid%biasLine3D = 1.
+    initPolarGrid%biasCont3D = 1.
+    
 
 
     initPolarGrid%nlambda = nlambda
@@ -465,8 +519,8 @@ contains
     type(GRIDTYPE), intent(out) :: grid                 ! the grid
     real, intent(out)   :: theta1, theta2
     
-    integer :: i,ilambda                   ! counters
-    
+    integer :: ilambda                   ! counters
+
     ! ok for now
     ok = .true.
 
@@ -475,8 +529,8 @@ contains
 
 
     if (oneKappa) then
-       allocate(grid%oneKappaAbs(1:nLambda))
-       allocate(grid%oneKappaSca(1:nLambda))
+       allocate(grid%oneKappaAbs(nDustType,1:nLambda))
+       allocate(grid%oneKappaSca(nDustType,1:nLambda))
     endif
 
     grid%lineEmission = lineEmission
@@ -492,6 +546,38 @@ contains
 
     select case (geometry)
     
+    case("melvin")
+       continue
+
+    case("benchmark")
+       grid%geometry = "benchmark"
+       grid%rCore = rCore
+       grid%lCore = fourPi * rCore**2 * stefanBoltz * teff**4 * 1.e20
+       grid%rInner = rInner
+       grid%rOuter = rOuter
+
+    case("shakara")
+       grid%geometry = "shakara"
+       grid%rCore = rCore
+       grid%lCore = fourPi * rCore**2 * stefanBoltz * teff**4 * 1.e20
+       grid%rInner = rInner
+       grid%rOuter = rOuter
+
+    case("clumpydisc")
+       grid%geometry = "clumpydisc"
+       grid%rCore = rCore
+       grid%lCore = fourPi * rCore**2 * stefanBoltz * teff**4 * 1.e20
+       grid%rInner = rInner
+       grid%rOuter = rOuter
+
+    case("aksco")
+       grid%geometry = "aksco"
+       grid%rCore = rCore
+       grid%lCore = fourPi * rCore**2 * stefanBoltz * teff**4 * 1.e20
+       grid%rInner = rInner
+       grid%rOuter = rOuter
+
+
     case ("ttauri") 
        call initTTauriAMR(grid,Laccretion,Taccretion,&
                            sAccretion,newContFile,theta1,theta2)
@@ -501,9 +587,15 @@ contains
     case ("testamr")
        call initTestAMR(grid)
 
+    case ("proto")
+       call initProtoAMR(grid)
+
     case("cluster","wr104")
        call initClusterAMR(grid)
        
+    case("spiralwind")
+       grid%rCore = rCore / 1.e10
+
     case DEFAULT
        print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'
        print *, '            for use with an adaptive grid.'
@@ -779,7 +871,7 @@ contains
   end subroutine fillGridEllipse
 
 
-  subroutine fillGridDisk(grid, rhoNought, rCore, rInner, rOuter, openingAngle, height, &
+  subroutine fillGridDisk(grid, rhoNought, rCore, rInner, rOuter, height, &
        mCore, diskTemp)
 
 
@@ -787,22 +879,15 @@ contains
     type(GRIDTYPE) :: grid
     integer, parameter :: nRad = 100
     real :: rOuter, rInner, rCore
-    real :: lamStart, lamEnd
-    integer :: nLambda
     type(VECTOR) :: rVec, vVec
     real :: r 
-    real :: tauMidplane = 1.
     real :: rho, rhoNought
-    real :: openingAngle
     real :: diskTemp
     real :: height, theta
     real :: vel, mCore
     type(VECTOR) :: spinAxis
     integer :: i, j, k, nMu
     real :: sinTheta
-    real :: hNought
-    real :: rIndex
-
 
     grid%geometry = "disk"
     grid%lineEmission = .true.
@@ -827,28 +912,6 @@ contains
        stop
     endif
 
-    if ((height /= 0.).and.(openingAngle /=0.)) then
-       write(*,*) "Both height and opening angle specified in input. Aborting."
-       stop
-    endif
-
-    if ((height == 0.).and.(openingAngle ==0.)) then
-       write(*,*) "Neither height and opening angle specified in input. Aborting."
-       stop
-    endif
-
-    if (openingangle /= 0.) then
-       rIndex = 1.
-    else
-       rIndex = 2.
-    endif
-
-    if (openingangle /= 0.) then
-       hNought = rInner * tan(openingAngle / 2.)
-       height = hNought
-    endif
-
-
     theta = asin(3.*height/rOuter)
 
     write(*,'(a,f7.3,a)') "Using a finer latitude grid within ",theta*radtodeg," deg of the equator"
@@ -870,7 +933,6 @@ contains
 
     call writeAxes(grid)
 
-
     do i = 1, grid%nr
        do j = 1, grid%nMu
           do k = 1, grid%nPhi
@@ -879,17 +941,14 @@ contains
                            grid%rAxis(i)*sin(grid%phiAxis(k))*sinTheta, &
                            grid%rAxis(i)*grid%muAxis(j))
              r = grid%rAxis(i)
-             rho = rhoNought * (rInner/r)**rIndex
+             rho = rhoNought * (rInner/r)**2
              if (sqrt(rVec%x**2 + rVec%y**2) > rInner) then
-                if (openingAngle /= 0.) then
-                   height = hNought * (r / rInner)
-                endif
                 grid%rho(i,j,k) = rho * exp(-abs(rVec%z/height))
                 rVec = rVec / r
                 vVec = rVec  .cross. spinAxis
                 if (modulus(vVec) /= 0.) then
                    call normalize(vVec)
-                   vel = sqrt(bigG * mCore / (r*1.e10)) / cSpeed
+                   vel = sqrt(bigG * mCore / r) / cSpeed
                    vVec = vel  * vVec 
                    grid%velocity(i,j,k) = vVec
                 endif
@@ -903,14 +962,11 @@ contains
        do j = 1, grid%nmu
           do k = 1, grid%nphi
              if (grid%rho(i,j,k) /= 0.) then
-                grid%kappaSca(i,j,k,1) = max(1.e-30,grid%rho(i,j,k) * sigmaE*1.e10)
+                grid%kappaSca(i,j,k,1) = max(1.e-30,grid%rho(i,j,k) * sigmaE)
              endif
           enddo
        enddo
     enddo
-
-
-
 
   end subroutine fillGridDisk
 
@@ -1547,7 +1603,7 @@ contains
     implicit none
     logical :: opaqueCore, firstPlot
     type(GRIDTYPE) :: grid
-    real, dimension(:,:), intent(in) :: contTau
+    real :: contTau(2000,*)
     type(VECTOR) :: viewVec
     type(VECTOR) :: coolStarPosition
     integer :: i, j, npix
@@ -1556,14 +1612,12 @@ contains
     logical, allocatable :: inuse(:,:)
     real :: tr(6)
     real :: fg, bg, dx, dz
-    real :: angle1, angle2
     integer :: resolution
     real :: sampleFreq
     integer :: i1, i2, i3
     real :: r, mu, phi
     character(len=*) :: device
     real(kind=octalKind) :: x, y, z
-    real :: smallOffset
     type(octalVector) :: startPoint
    integer :: pgbegin
 
@@ -1816,11 +1870,11 @@ contains
     grid%lineEmission = .false.
 
     grid%rCore = rCool
-    sigmaScaBlue = (34.+6.6)*sigmaE
-    sigmaAbsBlue = 1.e-5 * sigmaE
+    sigmaScaBlue = (34.+6.6)*sigmaE * 1.e10
+    sigmaAbsBlue = 1.e-5 * sigmaE * 1.e10
 
-    sigmaScaRed = 1.e-5 * sigmaE
-    sigmaAbsRed = 1.e-5 * sigmaE
+    sigmaScaRed = 1.e-5 * sigmaE * 1.e10
+    sigmaAbsRed = 1.e-5 * sigmaE * 1.e10
 
     write(*,'(a)') "Filling raman grid..."
     allocate(grid%kappaAbsRed(1:grid%nx, 1:grid%ny, 1:grid%nz, 1:1),stat=ierr)
@@ -1863,7 +1917,7 @@ contains
                 v =  max(1.e5,vinf*(1.-rCool/r)**beta)
                 grid%velocity(i,j,k) = (v/cSpeed) * rHat
                 !                grid%velocity(i,j,k)%z = grid%velocity(i,j,k)%z * fac**2
-                rho = mdot / (4.* pi * r**2 * v)
+                rho = mdot / (4.* pi * (r*1.e10)**2 * v)
                 rho = rho / mHydrogen                
                 grid%kappaAbs(i,j,k,1:1) = sigmaAbsBlue * rho
                 grid%kappaSca(i,j,k,1:1) = sigmaScaBlue * rho
@@ -1874,18 +1928,21 @@ contains
                 !                rho = rho / mHydrogen
                 !                rho = rho  * exp (rCool/min(r,0.1*rCool)-1.)
                 rho = 1.e12
-                grid%kappaAbs(i,j,k,1:1) = sigmaAbsBlue * rho
-                grid%kappaSca(i,j,k,1:1) = sigmaScaBlue * rho
-                grid%kappaAbsRed(i,j,k,1:1) = sigmaAbsRed * rho
-                grid%kappaScaRed(i,j,k,1:1) = sigmaScaRed * rho
+                grid%kappaAbs(i,j,k,1:1) = 100.
+                grid%kappaSca(i,j,k,1:1) = 100.
+                grid%kappaAbsRed(i,j,k,1:1) = 100.
+                grid%kappaScaRed(i,j,k,1:1) = 100.
                 grid%velocity(i,j,k) = VECTOR(0.,0.,0.)
              endif
           enddo
        enddo
     enddo
-    grid%kappaAbs(1:grid%nx, 1:grid%ny, 1:grid%nz, 1:1) = 1.e-30
-    grid%kappaAbsRed(1:grid%nx, 1:grid%ny, 1:grid%nz, 1:1) = 1.e-30
-    grid%kappaScaRed(1:grid%nx, 1:grid%ny, 1:grid%nz, 1:1) = 1.e-30
+!    grid%kappaAbs(1:grid%nx, 1:grid%ny, 1:grid%nz, 1:1) = 1.e-30
+!    grid%kappaAbsRed(1:grid%nx, 1:grid%ny, 1:grid%nz, 1:1) = 1.e-30
+!    grid%kappaScaRed(1:grid%nx, 1:grid%ny, 1:grid%nz, 1:1) = 1.e-30
+    grid%etaLine(1:grid%nx, 1:grid%ny, 1:grid%nz) = 1.e-30
+    grid%chiLine(1:grid%nx, 1:grid%ny, 1:grid%nz) = 1.e-30
+    grid%etaCont(1:grid%nx, 1:grid%ny, 1:grid%nz) = 1.e-30
   end subroutine fillGridRaman
 
 
@@ -1975,17 +2032,32 @@ contains
              rHat = VECTOR(cos(grid%phiAxis(k))*sinTheta, &
                   sin(grid%phiAxis(k))*sinTheta, &
                   grid%muAxis(j))
-             grid%velocity(i,j,k) = (1.e5*logInterp(v,nr,r,grid%rAxis(i))/cSpeed) * rHat
-             grid%temperature(i,j,k) = logInterp(t, nr, r, grid%rAxis(i))*1.e4
-             grid%chiLine(i,j,k) = (logInterp(chil, nr, r, grid%rAxis(i)))*fac**2
-             grid%etaLine(i,j,k) = (logInterp(etal, nr,r, grid%rAxis(i)))*fac**2
-             grid%sigma(i, j, k) = sigma(i)
-             grid%kappaSca(i,j,k,1:grid%nLambda) = logInterp(escat, nr, r, grid%rAxis(i))*fac
-             tmp = logInterp(chi, nr, r,grid%rAxis(i))-grid%kappaSca(i,j,k,1)
-             grid%kappaAbs(i,j,k,1) = max(1.e-20,tmp)
+             if (i < nr) then
+                grid%velocity(i,j,k) = (1.e5*logInterp(v,nr,r,grid%rAxis(i))/cSpeed) * rHat
+                grid%temperature(i,j,k) = logInterp(t, nr, r, grid%rAxis(i))*1.e4
+                grid%chiLine(i,j,k) = (logInterp(chil, nr, r, grid%rAxis(i)))*fac**2
+                grid%etaLine(i,j,k) = (logInterp(etal, nr,r, grid%rAxis(i)))*fac**2
+                grid%etaCont(i,j,k) = (logInterp(eta, nr,r, grid%rAxis(i)))*fac**2
+                grid%sigma(i, j, k) = sigma(i)
+                grid%kappaSca(i,j,k,1) = logInterp(escat, nr, r, grid%rAxis(i))*fac
+                tmp = logInterp(chi, nr, r,grid%rAxis(i))-grid%kappaSca(i,j,k,1)
+                grid%kappaAbs(i,j,k,1) = max(1.e-20,tmp)
+             else
+                grid%velocity(i,j,k) = (1.e5*v(i)/cSpeed) * rHat
+                grid%temperature(i,j,k) = t(i)*1.e4
+                grid%chiLine(i,j,k) = chil(i)*fac**2
+                grid%etaLine(i,j,k) = etal(i)*fac**2
+                grid%sigma(i, j, k) = sigma(i)
+                grid%kappaSca(i,j,k,1) = escat(i)*fac
+                tmp = logInterp(chi, nr, r,grid%rAxis(i))-grid%kappaSca(i,j,k,1)
+                grid%etaCont(i,j,k) = eta(i)*fac**2
+                grid%kappaAbs(i,j,k,1) = max(1.e-20,tmp)
+             endif
           enddo
        enddo
     enddo
+
+!    grid%etaLine(1:grid%nr, 1:grid%nMu, 1:grid%nPhi) = grid%etaLine(1:grid%nr, 1:grid%nMu, 1:grid%nPhi) * fourPi
 
     write(*,*) "Finished reading opacities and filling grid"
 
@@ -2527,23 +2599,53 @@ contains
 
   end subroutine fillGridBinary
 
-  logical pure function outsideGrid(posVec, grid)
+  logical pure function outsideGrid_single(posVec, grid)    
     type(GRIDTYPE), intent(in) :: grid
     type(VECTOR), intent(in)   :: posVec
 
-    outSideGrid = .false.
+    outSideGrid_single = .false.
 
     if ((posVec%x > grid%xAxis(grid%nx)) .or. &
          (posVec%y > grid%yAxis(grid%ny)) .or. &
          (posVec%z > grid%zAxis(grid%nz)) .or. &
          (posVec%x < grid%xAxis(1)) .or. &
          (posVec%y < grid%yAxis(1)) .or. &
-         (posVec%z < grid%zAxis(1))) outsideGrid = .true.
+         (posVec%z < grid%zAxis(1))) outsideGrid_single = .true.
 
-  end function outsideGrid
+  end function outsideGrid_single
+
+  logical pure function outsideGrid_double(posVec, grid)
+    type(GRIDTYPE), intent(in) :: grid
+    type(DOUBLEVECTOR), intent(in)   :: posVec
+
+    outSideGrid_double = .false.
+
+    if ((posVec%x > grid%xAxis(grid%nx)) .or. &
+         (posVec%y > grid%yAxis(grid%ny)) .or. &
+         (posVec%z > grid%zAxis(grid%nz)) .or. &
+         (posVec%x < grid%xAxis(1)) .or. &
+         (posVec%y < grid%yAxis(1)) .or. &
+         (posVec%z < grid%zAxis(1))) outsideGrid_double = .true.
+
+  end function outsideGrid_double
+
+  logical pure function outsideGrid_octal(posVec, grid)
+    type(GRIDTYPE), intent(in) :: grid
+    type(OCTALVECTOR), intent(in)   :: posVec
+
+    outSideGrid_octal = .false.
+    
+    if ((posVec%x > grid%xAxis(grid%nx)) .or. &
+         (posVec%y > grid%yAxis(grid%ny)) .or. &
+         (posVec%z > grid%zAxis(grid%nz)) .or. &
+         (posVec%x < grid%xAxis(1)) .or. &
+         (posVec%y < grid%yAxis(1)) .or. &
+         (posVec%z < grid%zAxis(1))) outsideGrid_octal = .true.
+    
+  end function outsideGrid_octal
 
 
-  subroutine getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
+  subroutine getIndices_single(grid, rVec, i1, i2, i3, t1, t2, t3)
     ! making this PURE may cause problems with XL Fortran
     type(GRIDTYPE), intent(in) :: grid
     type(VECTOR), intent(in)   :: rVec
@@ -2622,7 +2724,92 @@ contains
 
     endif
 
-  end subroutine getIndices
+  end subroutine getIndices_single
+
+
+
+  subroutine getIndices_octal(grid, rVec, i1, i2, i3, t1, t2, t3)
+    ! making this PURE may cause problems with XL Fortran
+    type(GRIDTYPE), intent(in)          :: grid
+    type(OCTALVECTOR), intent(in)       :: rVec
+    integer, intent(out)                :: i1, i2, i3
+    real(kind=octalkind), intent(out)   :: t1, t2 ,t3
+    real(kind=octalkind)                :: r, theta, phi, mu
+
+    if (grid%cartesian) then
+
+       !       if (rVec%x < grid%xAxis(1)) then
+       !          write(*,*) rVec%x,grid%xAxis(1)
+       !          stop
+       !       endif
+       !       if (rVec%y < grid%yAxis(1)) then
+       !          write(*,*) rVec%y,grid%yAxis(1)
+       !          stop
+       !       endif
+       !       if (rVec%z < grid%zAxis(1)) then
+       !          write(*,*) rVec%z,grid%zAxis(1)
+       !          stop
+       !       endif
+       !       if (rVec%x > grid%xAxis(grid%nx)) then
+       !          write(*,*) rVec%x,grid%xAxis(grid%nx)
+       !          stop
+       !       endif
+       !       if (rVec%y > grid%yAxis(grid%ny)) then
+       !          write(*,*) rVec%y,grid%yAxis(grid%ny)
+       !          stop
+       !       endif
+       !       if (rVec%z > grid%zAxis(grid%nz)) then
+       !          write(*,*) rVec%z,grid%zAxis(grid%nz)
+       !          stop
+       !       endif
+
+
+       call hunt(grid%xAxis, grid%nx, real(rvec%x), i1)
+       call hunt(grid%yAxis, grid%ny, real(rvec%y), i2)
+       call hunt(grid%zAxis, grid%nz, real(rvec%z), i3)
+       if (i1 == grid%nx) i1 = i1 - 1
+       if (i2 == grid%ny) i2 = i2 - 1
+       if (i3 == grid%nz) i3 = i3 - 1
+
+       t1 = (rVec%x-grid%xAxis(i1))/(grid%xAxis(i1+1)-grid%xAxis(i1))
+       t2 = (rVec%y-grid%yAxis(i2))/(grid%yAxis(i2+1)-grid%yAxis(i2))
+       t3 = (rVec%z-grid%zAxis(i3))/(grid%zAxis(i3+1)-grid%zAxis(i3))
+
+!       if ((abs(t1) > 1.) .or. (abs(t2) > 1.) .or. (abs(t3) > 1.)) then
+!          write(*,*) "bug in getindices"
+!          write(*,*) "t1,t2,t3",t1, t2, t3
+!          write(*,*) "rVec",rVec
+!          write(*,*) "xaxis",grid%xAxis(1),grid%xAxis(grid%nx)
+!          write(*,*) "yaxis",grid%yAxis(1),grid%yAxis(grid%ny)
+!          write(*,*) "zaxis",grid%zAxis(1),grid%zAxis(grid%nz)
+!       endif
+
+    else
+
+       call getPolar(rVec, r, theta, phi)
+       mu = rVec%z/r
+       call hunt(grid%rAxis, grid%nr, real(r), i1)
+       if (i1 == 0) then
+          i1 = 1
+       endif
+       if (i1 == grid%nr) i1 = grid%nr-1
+
+       t1 = (r-grid%rAxis(i1))/(grid%rAxis(i1+1)-grid%rAxis(i1))
+
+
+       call hunt(grid%muAxis, grid%nMu, real(mu), i2)
+       if (i2 == grid%nMu) i2 = grid%nMu-1
+       t2 = (mu-grid%muAxis(i2))/(grid%muAxis(i2+1)-grid%muAxis(i2))
+
+       call hunt(grid%phiAxis, grid%nPhi, real(phi), i3)
+       if (i3 == grid%nPhi) i3=i3-1
+       t3 = (phi-grid%phiAxis(i3))/(grid%phiAxis(i3+1)-grid%phiAxis(i3))
+
+    endif
+
+  end subroutine getIndices_octal
+
+
 
   subroutine writeGridPopulations(filename, grid, nLevels)
 
@@ -2687,7 +2874,7 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa,grid%rinner, &
                grid%rOuter
                
     else
@@ -2704,14 +2891,15 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
-               grid%rOuter
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa,grid%rinner, &
+               grid%router
+       
                
     end if 
     
     call writeReal1D(grid%lamarray,fileFormatted)
-    call writeReal1D(grid%oneKappaAbs,fileFormatted)
-    call writeReal1D(grid%oneKappaSca,fileFormatted)
+    call writeReal2D(grid%oneKappaAbs,fileFormatted)
+    call writeReal2D(grid%oneKappaSca,fileFormatted)
 
     if (error /=0) then
        print *, 'Panic: write error in writeAMRgrid'
@@ -2756,7 +2944,8 @@ contains
                   thisOctal%biasCont3D, thisOctal%probDistLine,              &
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
-                  thisOctal%subcellSize
+                  thisOctal%subcellSize,thisOctal%threed, thisOctal%twoD,    &
+                  thisOctal%maxChildren, thisOctal%dustType
        else
           write(iostat=error,unit=20) thisOctal%nDepth, thisOctal%nChildren, &
                   thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
@@ -2766,7 +2955,8 @@ contains
                   thisOctal%biasCont3D, thisOctal%probDistLine,              &
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
-                  thisOctal%subcellSize
+                  thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
+                  thisOctal%maxChildren, thisOctal%dustType
        end if 
        if (.not.grid%oneKappa) then
           call writeReal2D(thisOctal%kappaAbs,fileFormatted)
@@ -2834,8 +3024,7 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,  &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,  &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,      &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa,grid%rInner,&
-               grid%rOuter
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner, grid%rOuter
     else
        read(unit=20,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
                grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius,&
@@ -2845,16 +3034,14 @@ contains
                grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,  &
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,  &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,      &
-               grid%nOctals, grid%smoothingFactor, grid%oneKappa,grid%rInner,& 
-               grid%rOuter
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner, grid%rOuter
     end if
-
     call readReal1D(grid%lamarray,fileFormatted)
-    call readReal1D(grid%oneKappaAbs,fileFormatted)
-    call readReal1D(grid%oneKappaSca,fileFormatted)
+    call readReal2D(grid%oneKappaAbs,fileFormatted)
+    call readReal2D(grid%oneKappaSca,fileFormatted)
     
     if (error /=0) then
-       print *, 'Panic: read error in readAMRgrid 1, iostat error = ', error
+       print *, 'Panic: read error in readAMRgrid 1'
        stop
     end if
     
@@ -2918,7 +3105,8 @@ contains
                   thisOctal%biasCont3D, thisOctal%probDistLine,              &
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
-                  thisOctal%subcellSize
+                  thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
+                  thisOctal%maxChildren, thisOctal%dustType
        else
           read(unit=20,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
                   thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
@@ -2928,7 +3116,8 @@ contains
                   thisOctal%biasCont3D, thisOctal%probDistLine,              &
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
-                  thisOctal%subcellSize
+                  thisOctal%subcellSize, thisOctal%threeD,  thisOctal%twoD,  &
+                  thisOctal%maxChildren, thisOctal%dustType
        end if
 
 
@@ -3796,7 +3985,7 @@ contains
     type(GRIDTYPE) :: grid
     integer :: i, j, k
     integer :: i1, i2, i3, j1, j2
-    real :: zPrime, yPrime, r, r1, fac, ang
+    real :: zPrime, yPrime, r, fac, ang
     logical :: resonanceLine
     type(VECTOR) :: rHat, rVec, vHat
     real :: surfaceVel, vel, theta
@@ -3962,11 +4151,11 @@ contains
                (xDisk(j+1)-xDisk(j))
 
           rVec = VECTOR(r * cos(grid%phiAxis(i2)), &
-               r1 * sin(grid%phiAxis(i2)), &
+               r * sin(grid%phiAxis(i2)), &
                -thickness/2.)
           call getIndices(grid, rVec, i, j1, k, t1, t2, t3)
           rVec = VECTOR(r * cos(grid%phiAxis(i2)), &
-               r1 * sin(grid%phiAxis(i2)), &
+               r * sin(grid%phiAxis(i2)), &
                thickness/2.)
           call getIndices(grid, rVec, i, j2, k, t1, t2, t3)
           write(*,*) i1,j1,j2
@@ -4357,18 +4546,18 @@ contains
 
 
   subroutine fillGridWind(grid, mDot, rStar, tEff, v0, vterm, beta, &
-       lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper)
+       lte, contFluxFile, writePops, readPops, popFilename, nLower, nUpper, vrot)
 
     implicit none
-    real :: mDot, rStar, tEff, v0, vTerm, beta
+    real :: mDot, rStar, tEff, v0, vTerm, beta, vrot
     integer :: i, j, k
     character(len=*) :: popFilename, contFluxFile
     logical :: readPops, writePops, lte
     integer :: nLower, nUpper
     real :: sinTheta
-    type(VECTOR) :: rHat, rVec
-    real :: vel
-    real :: x, dx
+    type(VECTOR) :: rHat, rVec, vvec, spinAxis
+    real :: vel, beta1, beta2, vext, v1, r
+    real :: x, dx, dv, mcore
     type(GRIDTYPE) :: grid
 
     grid%geometry = "wind"
@@ -4385,7 +4574,6 @@ contains
     dx = 1.e-3
     do i = 1, grid%nr
        grid%rAxis(i) = x * rStar / 1.e10
-       write(*,*) i, x
        x = x + dx
        dx = dx * 1.2
     enddo
@@ -4395,10 +4583,9 @@ contains
     grid%rStar1 = grid%rCore
     grid%rStar2 = 0.
     grid%starPos1 = VECTOR(0.,0.,0.)
-    grid%starPos2 = VECTOR(1.e30,0.,0.)
+    grid%starPos2 = VECTOR(1.e10,0.,0.)
     grid%temperature = 0.9 * tEff
     grid%lineEmission = .true.
-    
     do i = 1, grid%nr
        do j = 1, grid%nMu
           do k = 1, grid%nPhi
@@ -4408,12 +4595,52 @@ contains
                   grid%rAxis(i)*grid%muAxis(j))
              rHat = rVec
              call normalize(rHat)
-             vel = v0 + (vTerm - v0) * (1. - grid%rAxis(1)/grid%rAxis(i))**beta
+             v1 = vterm* (3.*abs(grid%muAxis(j))+1.)/4.
+             vel = v0 + (v1 - v0) * (1. - grid%rAxis(1)/grid%rAxis(i))**beta
+             dv = grid%rAxis(1)*((vTerm-v0)*beta*(1. - grid%rAxis(1)/grid%rAxis(i))**(beta-1.))/grid%rAxis(i)**2
+
+!             beta1 = 1.5
+!             beta2 = 3.
+!             vext = 500.*1.e5
+!             vel = v0 + (vterm-vext-v0)*(1. -grid%rAxis(1)/grid%rAxis(i))**beta1 + &
+!                  vext*(1. -grid%rAxis(1)/grid%rAxis(i))**beta2
+!            dv = (grid%rAxis(1)*beta1*(vTerm-Vext-v0)*(1. -grid%rAxis(1)/grid%rAxis(i))**(beta1-1.))/grid%rAxis(i)**2 &
+!                  + (grid%rAxis(1)*beta2*vext*(1.-grid%rAxis(1)/grid%rAxis(i))**(beta2-1.))/grid%rAxis(i)**2
+
              grid%velocity(i,j,k) = (vel / cSpeed) * rHat
+             grid%dVbyDr(i,j,k) = dv * rHat
              grid%rho(i,j,k) = mDot / (fourPi * vel * grid%rAxis(i)**2 * 1.e20)
+             grid%inStar(i,j,k) = .false.
+             grid%inUse(i,j,k) = .true.
           enddo
        enddo
     enddo
+
+    if (vrot /= 0.) then
+       mCore = 10. * mSol
+       spinAxis = VECTOR( 0., 0., 1.)
+       do i = 1, grid%nr
+          do j = 1, grid%nMu
+             do k = 1, grid%nPhi
+                sinTheta = sqrt(1.-grid%muAxis(j)**2)
+                rVec = VECTOR(grid%rAxis(i)*cos(grid%phiAxis(k))*sinTheta, &
+                     grid%rAxis(i)*sin(grid%phiAxis(k))*sinTheta, &
+                     grid%rAxis(i)*grid%muAxis(j))
+                r = grid%rAxis(i)
+                rVec = rVec / r
+                vVec = rVec  .cross. spinAxis
+                if (modulus(vVec) /= 0.) then
+                   call normalize(vVec)
+                   vel = sqrt(bigG * mCore / (r*1.e10)) / cSpeed
+                   vVec = vel  * vVec 
+                   grid%velocity(i,j,k) = grid%velocity(i,j,k) +  vVec
+                endif
+             enddo
+          enddo
+       enddo
+    endif
+
+
 
 !    grid%rho = grid%rho * 0.375
 !    write(*,'(a)') "! Assuming N(H)/N(He) = 1.5"
@@ -4426,7 +4653,7 @@ contains
   
   subroutine writeAxes(grid)
     type(GRIDTYPE) :: grid
-    integer :: i, j, k
+    integer :: i
 
 
     if (.not.grid%cartesian) then
@@ -4434,7 +4661,7 @@ contains
        write(*,*) "-------------------------"
        write(*,*) " "
        do i = 1, grid%nr
-          write(*,'(i4,f8.1)') i, grid%rAxis(i)/(rSol/1.e10)
+          write(*,'(i4,f8.1)') i, grid%rAxis(i)/rSol
        enddo
        write(*,*) " "
 
@@ -4749,12 +4976,24 @@ contains
     grid%lineEmission = .false.
   end subroutine initTestAmr
 
+  subroutine initProtoAmr(grid)
+    use input_variables
+    type(GRIDTYPE) :: grid
+
+    grid%geometry = "proto"
+
+    grid%rCore = rCore / 1.e10
+    grid%lCore = fourPi * stefanBoltz * grid%rCore**2 * 1.e20 * teff**4
+    grid%rInner = rInner / 1.e10
+    grid%rOuter = rOuter / 1.e10
+    grid%lineEmission = .false.
+  end subroutine initProtoAmr
+
 
 
   subroutine fancyAMRplot(grid, device)
     type(GRIDTYPE) :: grid
     character(len=*) device
-    real :: scaleFac
     integer :: i, pgbeg
 
     i =  pgbeg(0,device, 2, 2)
@@ -4773,16 +5012,11 @@ contains
   subroutine dofancyAMRplot(grid, device, scaleFac)
     type(GRIDTYPE) :: grid
     character(len=*) device
-    type(OCTALVECTOR) :: rVec
-    type(OCTAL), pointer :: oldOctal, thisOctal
+    type(OCTAL), pointer ::  thisOctal
     real :: scaleFac
-    integer :: i, j, k, n
-    integer :: thisSubcell, oldSubcell
+    integer :: oldSubcell
     real :: rhoMin, rhoMax
-    real :: rho
-    real :: x, y, z, t
-    integer :: ilo, ihi, idx
-    logical :: plotCell
+    integer :: ilo, ihi, i
 
     write(*,*) "Fancy plotting to: ",trim(device)
 
@@ -4826,7 +5060,7 @@ contains
   integer :: subcell, i, ilo, ihi, idx
   real :: t
   
-  do subcell = 1, 8
+  do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -4894,7 +5128,7 @@ contains
     real :: box_size
     real :: offset
     double precision  :: tmp
-    type(octalVector) :: pos
+    type(octalVector) :: pos, dir
     
     
     write(*,*) "draw_cells_on_density plotting to: ",trim(device)
@@ -4936,6 +5170,21 @@ contains
     if (plane(1:3) == 'x-y') then  
        do j = 1, n
           do i = 1, n
+
+
+             pos = Vector(xmap(i),ymap(j),-d/2.0d0)
+             dir = Vector(0.0d0, 1.0d0, 1.0d0)
+
+
+             ! using the function in density_mod.f90
+             tmp = ABS( density(pos, grid) )
+             if (tmp<=0) tmp=1.0e-36
+             f(i,j) = LOG10(tmp)
+             fmin = min(f(i,j),fmin)
+             fmax = max(f(i,j),fmax)
+             
+
+
              pos = Vector(xmap(i),ymap(j),0.0d0)
              ! using the function in density_mod.f90
              tmp = ABS( density(pos, grid) )
@@ -4950,7 +5199,7 @@ contains
           do i = 1, n
              pos = Vector(0.0d0, ymap(i), zmap(j))
              ! using the function in density_mod.f90
-             tmp = ABS( density(pos, grid) )
+            tmp = ABS( density(pos, grid) )
              if (tmp<=0) tmp=1.0e-36
              f(i,j) = LOG10(tmp)
              fmin = min(f(i,j),fmin)
@@ -5056,7 +5305,7 @@ contains
     
     ! draw wedge
     offset = 0
-    CALL PGWEDG('BI', 4.0, 5.0, FMIN, FMAX+offset, 'pixel value')
+    CALL PGWEDG('BI', 4.0, 5.0, FMIN, FMAX, 'pixel value')
     CALL PGSCH(0.6)
 
 !    CALL FIDDLE
@@ -5066,6 +5315,261 @@ contains
     
     ! deallocate(a_root)
   end subroutine draw_cells_on_density
+
+
+
+  !
+  ! Plots column density  (g/cm^3) on log scale on a specified plane
+  ! (This is based on draw_cells_on_density routine above.)
+  subroutine plot_column_density(grid, plane, device,  &
+       nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, value_3rd_dim) 
+    implicit none
+    type(GRIDTYPE), intent(in) :: grid
+    ! must be 'x-y', 'y-z' , 'z-x' or 'x-z'
+    character(LEN=*), intent(in)  :: plane
+    character(len=*), intent(in)  :: device
+    ! To put the markers to indicate the important points in the plots.
+    integer, intent(in) :: nmarker           ! number of markers
+    real, intent(in)    :: xmarker(nmarker)  ! position of x
+    real, intent(in)    :: ymarker(nmarker)  ! position of y
+    real, intent(in)    :: zmarker(nmarker)  ! position of z
+    real, intent(in)    :: width_3rd_dim     ! Use this to restrict the markers to be plotted..  
+    logical, intent(in) :: show_value_3rd_dim! If T, the value of the third dimension will be shown.
+    real, intent(in)              :: value_3rd_dim 
+    !
+    type(OCTAL), pointer :: root
+    real :: d, dd, off
+    real :: xc, yc , zc, v3
+
+    ! For plotting density
+    integer :: pgbeg
+    integer :: n, ncol, nlev
+!    parameter (n=1000, ncol=32, nlev=10)
+    parameter (n=100, ncol=32, nlev=10)
+    integer :: i,j,ci1,ci2
+    real :: f(n,n),fmin,fmax,tr(6)
+    double precision  :: xmap(n), ymap(n), zmap(n), x1, y1, z1
+    real :: box_size
+    real :: offset
+    double precision  :: tmp
+    type(octalVector) :: pos, dir
+    
+    
+    write(*,*) "plot_column_density plotting to: ",trim(device)
+
+    ! retriving the address to the root of the tree.
+    root => grid%octreeRoot
+    
+    ! setup the density 
+    box_size = REAL(grid%octreeRoot%subcellsize)*2.0
+    d = box_size
+    off=0.01
+    dd= d*(1.0-off)
+
+
+    ! position of the root node
+    xc = real(root%centre%x)
+    yc = real(root%centre%y)
+    zc = real(root%centre%z)
+
+
+    ! The transformation matrix TR is used to calculate the world
+    ! coordinates of the center of the cell that represents each
+    ! array element. The world coordinates of the center of the cell
+    ! corresponding to array element f(I,J) are given by
+    !        X = TR(1) + TR(2)*I + TR(3)*J
+    !        Y = TR(4) + TR(5)*I + TR(6)*J
+    
+    TR = 0.0
+    TR(1) = -d/2.0
+    TR(4) = -d/2.0
+    TR(2) = d/real(n)
+    TR(6) = d/real(n)
+    
+    
+    x1 =  - dd/2.0d0+xc
+    y1 =  - dd/2.0d0+yc
+    z1 =  - dd/2.0d0+zc
+    
+    do i = 1, n
+       xmap(i) = x1 + dble(i-1)*dd/dble(n-1) + off/2.0
+       ymap(i) = y1 + dble(i-1)*dd/dble(n-1) + off/2.0
+       zmap(i) = z1 + dble(i-1)*dd/dble(n-1) + off/2.0
+    end do
+    
+    fmin = 1.0e20
+    fmax = -1.0e20
+    
+    if (plane(1:3) == 'x-y') then  
+       do j = 1, n
+          do i = 1, n
+             dir = Vector(0.0d0, 0.0d0, 1.0d0)
+             pos = Vector(xmap(i),ymap(j),-dd/2.0d0+zc)
+             ! using the function in amr_mod.f90
+             tmp = ABS( columnDensity(grid, pos, dir, 1.0) )
+             if (tmp<=0) tmp=1.0e-36
+             f(i,j) = LOG10(tmp)
+!             f(i,j) = tmp
+             fmin = min(f(i,j),fmin)
+             fmax = max(f(i,j),fmax)
+          end do
+       end do
+    elseif (plane(1:3) == 'y-z') then  
+       do j = 1, n
+          do i = 1, n
+             dir = Vector(1.0d0, 0.0d0, 0.0d0)
+             pos = Vector(-dd/2.0d0+xc, ymap(i), zmap(j))
+             ! using the function in amr_mod.f90
+             tmp = ABS( columnDensity(grid, pos, dir, 1.0) )
+             if (tmp<=0) tmp=1.0e-36
+             f(i,j) = LOG10(tmp)
+!             f(i,j) = tmp
+             fmin = min(f(i,j),fmin)
+             fmax = max(f(i,j),fmax)
+          end do
+       end do
+    elseif (plane(1:3) == 'z-x') then  
+       do j = 1, n
+          do i = 1, n
+             dir = Vector(0.0d0, 1.0d0, 0.0d0)
+             pos = Vector(xmap(j),-dd/2.0d0+yc, zmap(i))
+             ! using the function in amr_mod.f90
+             tmp = ABS( columnDensity(grid, pos, dir, 1.0) )
+             if (tmp<=0) tmp=1.0e-36
+             f(i,j) = LOG10(tmp)
+!             f(i,j) = tmp
+             fmin = min(f(i,j),fmin)
+             fmax = max(f(i,j),fmax)
+          end do
+       end do
+    elseif (plane(1:3) == 'x-z') then  
+       do j = 1, n
+          do i = 1, n
+             dir = Vector(0.0d0, -1.0d0, 0.0d0)
+             pos = Vector(xmap(i),dd/2.0d0+yc, zmap(j))
+             ! using the function in amr_grid.f90
+             tmp = ABS( columnDensity(grid, pos, dir, 1.0) )
+             if (tmp<=0) tmp=1.0e-36
+             f(i,j) = LOG10(tmp)
+!             f(i,j) = tmp
+             fmin = min(f(i,j),fmin)
+             fmax = max(f(i,j),fmax)
+          end do
+       end do
+    end if
+
+
+
+    ! Just for safty
+    if(fmin == fmax) then
+       fmin = fmin-fmin/10.0
+       fmax = fmax+fmax/10.0
+    end if
+
+    !
+    ! FOR DEBUG
+    !
+!    fmin = -7.0
+
+
+    ! Open plot device and set up coordinate system. We will plot the
+    !image within a unit square.
+    !
+    IF (PGBEG(0,device,1,1) .NE. 1) STOP
+    CALL PGQCOL(CI1, CI2)
+    IF (CI2.LT. 15+NCOL) THEN
+       WRITE (*,*) 'This program requires a device with at least',&
+            15+NCOL,' colors'
+       STOP
+    END IF
+    CALL PGPAGE
+
+    !    CALL PGSCR(0, 0.0, 0.3, 0.2)
+    !    CALL PGSVP(0.05,0.95,0.05,0.95)
+
+    call setvp
+
+
+
+    do i = 1, n
+       xmap(i) = -d/2.0d0 + dble(i-1)*d/dble(n-1)
+       ymap(i) = -d/2.0d0 + dble(i-1)*d/dble(n-1)
+       zmap(i) = -d/2.0d0 + dble(i-1)*d/dble(n-1)
+    end do
+
+
+    if (plane(1:3) == 'x-y') then
+       CALL PGWNAD(real(xmap(1)), real(xmap(n)), real(ymap(1)), real(ymap(n)))
+    elseif (plane(1:3) == 'y-z') then
+       CALL PGWNAD(real(ymap(1)), real(ymap(n)), real(zmap(1)), real(zmap(n)))
+    elseif (plane(1:3) == 'z-x') then
+       CALL PGWNAD(real(zmap(1)), real(zmap(n)), real(xmap(1)), real(xmap(n)))
+    elseif (plane(1:3) == 'x-z') then
+       CALL PGWNAD(real(xmap(1)), real(xmap(n)), real(zmap(1)), real(zmap(n)))
+    end if
+    
+        
+    ! Setting the color range and etc..e
+    call palett(2, 1.0, 0.5)
+    
+    ! Plot the image
+    CALL PGIMAG(f,N,N, 1, N, 1, N,  fmin, fmax, TR)
+
+
+    !
+    ! Annotation.
+    !
+    CALL PGSCI(1)
+
+    CALL PGMTXT('t',1.0,0.0,0.0,' ')
+    !CALL PGBOX('bcnts',0.0,0,'bcnts',0.0,0)
+    CALL PGBOX('bcntsi',0.0,0,'bcntsiv',0.0,0)
+    
+    if (plane(1:3) == 'x-y') then
+       CALL PGMTXT('B',3.0,1.0,1.0,'x [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'y [10\u10\dcm]')
+    elseif (plane(1:3) == 'y-z') then
+       CALL PGMTXT('B',3.0,1.0,1.0,'y [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'z [10\u10\dcm]')
+    elseif (plane(1:3) == 'z-x') then 
+       CALL PGMTXT('B',3.0,1.0,1.0,'z [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'x [10\u10\dcm]')
+    elseif (plane(1:3) == 'x-z') then 
+       CALL PGMTXT('B',3.0,1.0,1.0,'x [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'z [10\u10\dcm]')
+    end if
+    
+    ! draw boxies
+    call PGSFS(2)  ! we don't want to fill in a box
+
+!    ! this is a recursive routine
+!    call draw_rectangle(root, plane)
+
+
+    !
+    ! Draw the markers on the plot with the value of the third dimension.
+    ! -- using a routine in this module.    
+    call draw_markers(nmarker, xmarker, ymarker, zmarker, &
+         plane, value_3rd_dim, width_3rd_dim, show_value_3rd_dim)
+
+
+
+
+    ! routines in pixplot_module    
+    
+    ! draw wedge
+    offset = 0
+    CALL PGWEDG('BI', 4.0, 5.0, FMIN, FMAX+offset, "LOG10( [g/cm\u3\d] )")
+    CALL PGSCH(0.6)
+
+!    CALL FIDDLE
+    CALL PGASK(.FALSE.)  
+
+    call PGEND
+    
+    ! deallocate(a_root)
+  end subroutine plot_column_density
+
 
 
 
@@ -5086,9 +5590,9 @@ contains
     integer :: subcell, i
     !real :: t
     
-    real  :: x,y,z,h,w  
+    real  :: x,y,z,h,w, eps
     
-    do subcell = 1, 8
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -5104,31 +5608,43 @@ contains
           w = thisOctal%subcellSize  ! width
           x = rVec%x; y = rVec%y; z = rVec%z
 
-	  if (present(val_3rd_dim)) then
-	     if ( plane(1:3) == "x-y" .and.  &
-		  rVec%z > (val_3rd_dim-h) .and.  rVec%z < (val_3rd_dim+h)) then
-		call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
-	     elseif ( plane(1:3) == "y-z" .and. &
-		  rVec%x > (val_3rd_dim-h) .and.  rVec%x < (val_3rd_dim+h)) then
-		call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
-	     elseif ( plane(1:3) == "z-x" .and.  &
-		  rVec%y > (val_3rd_dim-h) .and.  rVec%y < (val_3rd_dim+h)) then
-		call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
-	     elseif ( plane(1:3) == "x-z" .and.  &
-		  rVec%y > (val_3rd_dim-h) .and.  rVec%y < (val_3rd_dim+h)) then
-		call PGRECT(x-w/2.0, x+w/2.0, z-h/2.0, z+h/2.0)
-	     end if	     
-	  else
-	     if (plane(1:3) == 'x-y' .and.  ABS(rVec%z) < h ) then
-		call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
-	     elseif (plane(1:3) == 'y-z' .and. ABS(rVec%x) < h ) then
-		call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
-	     elseif (plane(1:3) == 'z-x' .and. ABS(rVec%y) < h ) then
-		call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
-	     elseif (plane(1:3) == 'x-z' .and. ABS(rVec%y) < h ) then
-		call PGRECT(x-w/2.0, x+w/2.0, z-h/2.0, z+h/2.0)
-	     end if
-	  end if
+          if (present(val_3rd_dim)) then
+!            if ( plane(1:3) == "x-y" .and.  &
+!               rVec%z > (val_3rd_dim-h) .and.  rVec%z < (val_3rd_dim+h)) then
+!               call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+!            elseif ( plane(1:3) == "y-z" .and. &
+!               rVec%x > (val_3rd_dim-h) .and.  rVec%x < (val_3rd_dim+h)) then
+!               call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
+!            elseif ( plane(1:3) == "z-x" .and.  &
+!               rVec%y > (val_3rd_dim-h) .and.  rVec%y < (val_3rd_dim+h)) then
+!               call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
+!            elseif ( plane(1:3) == "x-z" .and.  &
+!               rVec%y > (val_3rd_dim-h) .and.  rVec%y < (val_3rd_dim+h)) then
+!               call PGRECT(x-w/2.0, x+w/2.0, z-h/2.0, z+h/2.0)
+!            end if
+             
+             eps = h/20.0
+             if ( plane(1:3) == "x-y" .and. (ABS(rVec%z-val_3rd_dim)-h/2.0) < eps) then
+                call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+             elseif ( plane(1:3) == "y-z" .and. (ABS(rVec%x-val_3rd_dim)-h/2.0) < eps) then 
+                call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
+             elseif ( plane(1:3) == "z-x" .and. (ABS(rVec%y-val_3rd_dim)-h/2.0) < eps) then 
+                call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
+             elseif ( plane(1:3) == "x-z" .and. (ABS(rVec%y-val_3rd_dim)-h/2.0) < eps) then 
+                call PGRECT(x-w/2.0, x+w/2.0, z-h/2.0, z+h/2.0)
+             end if
+
+          else
+             if (plane(1:3) == 'x-y' .and.  ABS(rVec%z) < h ) then
+                call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+             elseif (plane(1:3) == 'y-z' .and. ABS(rVec%x) < h ) then
+                call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
+             elseif (plane(1:3) == 'z-x' .and. ABS(rVec%y) < h ) then
+                call PGRECT(z-w/2.0, z+w/2.0, x-h/2.0, x+h/2.0)
+             elseif (plane(1:3) == 'x-z' .and. ABS(rVec%y) < h ) then
+                call PGRECT(x-w/2.0, x+w/2.0, z-h/2.0, z+h/2.0)
+             end if
+          end if
 
           
        endif
@@ -5141,58 +5657,78 @@ contains
   ! This overlays the AMR grid values on the grid structure using PGPLOT
   ! routines. 
   !
-  subroutine plot_AMR_values(grid, name, plane, val_3rd_dim,  device, logscale, withgrid)
+  subroutine plot_AMR_values(grid, name, plane, value_3rd_dim,  device, logscale, withgrid, &
+       nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac, ilam)
     implicit none
     type(gridtype), intent(in) :: grid
     character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
-    !                                       ! or "etaCont"
+    !                                       ! "etaCont", "Vx", "Vy" or "Vz"
     character(len=*), intent(in)  :: plane  ! must be 'x-y', 'y-z', 'z-x' or' x-z'
     ! The value of the third dimension.
     ! For example, if plane = "x-y", the third dimension is the value of z.
-    ! Then, when  val_3rd_dim = 0.0, this will plot the density (and the grid)
+    ! Then, when  valuel_3rd_dim = 0.0, this will plot the density (and the grid)
     ! on the z=0 plane, and so on...
-    real, intent(in)              :: val_3rd_dim 
+    real, intent(in)              :: value_3rd_dim 
     character(len=*), intent(in)  :: device ! PGPLOT plotting device
     logical, intent(in)           :: logscale ! logscale if T, linear if not
     logical, intent(in)           :: withgrid ! plot
+    real, intent(in),optional     :: boxfac
+    integer, intent(in),optional     :: ilam
+    ! To put the markers to indicate the important points in the plots.
+    integer, intent(in),optional :: nmarker           ! number of markers
+    real, intent(in),optional    :: xmarker(:)  ! position of x
+    real, intent(in),optional    :: ymarker(:)  ! position of y
+    real, intent(in),optional    :: zmarker(:)  ! position of z
+    real, intent(in),optional    :: width_3rd_dim     ! Use this to restrict the markers to be plotted..  
+    logical, intent(in),optional :: show_value_3rd_dim! If T, the value of the third dimension will be shown.
+
     !
     type(octal), pointer :: root
 
     !integer :: thisSubcell, oldSubcell
     real :: d
+    real :: xc, yc , zc
     
     ! For plotting density
     integer :: pgbeg
     integer :: n, ncol, nlev
     parameter (n=1500, ncol=32, nlev=10)
-    integer :: i,j,ci1,ci2, ilo, ihi 
+    integer :: ci1,ci2, ilo, ihi 
     real :: valuemax, valuemin
-    
-    real :: box_size
-    double precision  :: tmp
-    type(octalVector) :: pos
+        
+    real :: box_size, fac
     character(LEN=30) :: char_val
+    character(LEN=30) :: label_wd
+    integer, parameter :: luout = 26
+    character(LEN=50) :: filename_prof
+    real   :: v3
     
     write(*,*) " "
     write(*,*) "plot_AMR_values plotting to: ",trim(device)
-    write(*,*) " "
 
     ! retriving the address to the root of the tree.
     root => grid%octreeRoot
     
     !
     box_size = REAL(grid%octreeRoot%subcellsize)*2.0
-    d = box_size ! the whole box!
-    
+    d = box_size
+    if (PRESENT(boxfac)) d = d * boxfac
+
+    ! position of the root node
+    xc = real(root%centre%x)
+    yc = real(root%centre%y)
+    zc = real(root%centre%z)
 
     ! Finding the plotting range
-    valueMin = 1.e35
-    valueMax = -1.e35
-    call minMaxValue(root, name, plane, ValueMin, ValueMax)
+    valueMin = 1.e30
+    valueMax = -1.e30
+    call minMaxValue(root, name, plane, ValueMin, ValueMax, grid, ilam)
     
     if (logscale) then
-       if (valueMax<=0) valueMax=1.0e-35
+       if (valueMax<=0) valueMax=1.0e-30
        if (valueMin<=0) valueMin=valueMax*1.0e-6
+
+!       if (name.eq."rho") valuemin = valuemax * 1.e-10
        write(*,*) "Value Range: ",log10(valueMin), " -- ", log10(valueMax)
     else
        write(*,*) "Value Range: ",valueMin, " -- ", valueMax
@@ -5201,9 +5737,23 @@ contains
     !
     ! For safty
     if (valueMin == valueMax) then
-       valueMax = valueMax + valueMax/10.0
+       if (valueMax /= 0.0) then
+          valueMax = valueMax + valueMax/10.0
+       else
+          valueMax = valueMax + 1.0e6
+       end if
     end if
+
+!    if (name.eq."temperature") then
+!       valueMax = 1500.
+!       valueMin = 100.
+!    endif
     
+!    !=================================================
+!    ! Just for hardwaring manupulations.
+!    ! Comment the lines below after a use.
+!    valueMax = 10.0**1.6
+!    valueMin = 10.0**0.9
     
     ! Open plot device and set up coordinate system. We will plot the
     !image within a unit square.
@@ -5222,7 +5772,24 @@ contains
 
     call setvp
 
-    CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+    ! Setting the plot boundaries.
+    select case(plane)
+    case("x-y")
+       CALL PGWNAD(-d/2.0+xc, d/2.0+xc, -d/2.0+yc, d/2.0+yc)
+       v3 = root%centre%z
+    case("y-z")
+       CALL PGWNAD(-d/2.0+yc, d/2.0+yc, -d/2.0+zc, d/2.0+zc)
+       v3 = root%centre%x
+    case("z-x")
+       CALL PGWNAD(-d/2.0+zc, d/2.0+zc, -d/2.0+xc, d/2.0+xc)
+       v3 = root%centre%y
+    case("x-z")
+       CALL PGWNAD(-d/2.0+xc, d/2.0+xc, -d/2.0+zc, d/2.0+zc)
+       if (present(boxfac).and.grid%octreeRoot%twod) then
+          CALL PGWNAD(0., d, -d/2.0, d/2.0)
+       endif
+       v3 = root%centre%y
+    end select
 
     call palett(2, 1.0, 0.5)
 
@@ -5231,48 +5798,89 @@ contains
 
     !
     ! Calling a recursive function in this module
-    call plot_values(root, name, plane, val_3rd_dim, logscale, valueMax, valueMin, ilo, ihi)
+    call plot_values(root, name, plane, value_3rd_dim, logscale, valueMax, valueMin, ilo, ihi, grid, ilam)
+
+
+    ! writing the radial profile of the values on the specified plane.
+    filename_prof = 'profile_'//TRIM(ADJUSTL(name))//'_'//TRIM(ADJUSTL(plane))//'.dat' 
+    open(unit=luout, file = TRIM(ADJUSTL(filename_prof)), status='replace')
+!    write(luout, '(a, 2x, 1PE18.4)') '#  The 3rd dimension value = ', value_3rd_dim
+!    write(luout, '(a)') '#  format :  distance [10^10cm]  --  values [?]'  
+
+
+    call radial_profile(root, name, plane, v3, luout, root%centre, grid)
+    close(luout)
 
     !
     ! Annotation.
     !
     CALL PGSCI(1)
-    CALL PGMTXT('t',1.0,0.5,0.0, TRIM(name))
+!    CALL PGMTXT('t',1.0,0.5,0.0, TRIM(name))
     !CALL PGBOX('bcnts',0.0,0,'bcnts',0.0,0)
     CALL PGBOX('bcntsi',0.0,0,'bcntsiv',0.0,0)
 
-    write(char_val, '(1PE9.1)') val_3rd_dim
+    write(char_val, '(1PE9.1)') value_3rd_dim
     
     if (plane(1:3) == 'x-y') then
-       CALL PGMTXT('B',3.0,1.0,1.0,'X')
-       CALL PGMTXT('LV',3.0,0.8,1.0,'Y')
-       CALL PGMTXT('T',1.0,0.0,0.0, 'Z='//TRIM(char_val))
+       CALL PGMTXT('B',3.0,1.0,1.0,'X [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'Y [10\u10\dcm]')
+!       CALL PGMTXT('T',1.0,0.0,0.0, 'Z='//TRIM(char_val))
     elseif (plane(1:3) == 'y-z') then
-       CALL PGMTXT('B',3.0,1.0,1.0,'Y')
-       CALL PGMTXT('LV',3.0,0.8,1.0,'Z')
-       CALL PGMTXT('T',1.0,0.0,0.0, 'X='//TRIM(char_val))
+       CALL PGMTXT('B',3.0,1.0,1.0,'Y [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'Z [10\u10\dcm]')
+!       CALL PGMTXT('T',1.0,0.0,0.0, 'X='//TRIM(char_val))
     elseif (plane(1:3) == 'z-x') then 
-       CALL PGMTXT('B',3.0,1.0,1.0,'Z')
-       CALL PGMTXT('LV',3.0,0.8,1.0,'X')
-       CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
+       CALL PGMTXT('B',3.0,1.0,1.0,'Z [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'X [10\u10\dcm]')
+!       CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
     elseif (plane(1:3) == 'x-z') then 
-       CALL PGMTXT('B',3.0,1.0,1.0,'X')
-       CALL PGMTXT('LV',3.0,0.8,1.0,'Z')
-       CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
+       CALL PGMTXT('B',3.0,1.0,1.0,'X [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'Z [10\u10\dcm]')
+!       CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
     end if
+
     
+    !
+    ! Draw grids..
+    !
     if (withgrid) then
        ! draw boxies
        call PGSFS(2)  ! we don't want to fill in a box this time
+       call PGSCI(0) ! changing the color index.
        ! this is a recursive routine in this module
-       call draw_rectangle(root, plane, val_3rd_dim)
+       call draw_rectangle(root, plane, value_3rd_dim)
+       call PGSCI(1) ! change color index to default.
     end if
 
+
+    
+    !
+    ! Draw the markers on the plot with the value of the third dimension.
+    ! -- using a routine in this module.    
+    if (present(nmarker)) then
+       call draw_markers(nmarker, xmarker, ymarker, zmarker, &
+            plane, value_3rd_dim, width_3rd_dim, show_value_3rd_dim)
+    endif
+
+
+    !
     ! draw wedge
+    !
+
+    select case (name)
+    case ("rho")
+       label_wd = "LOG10( [g/cm\u3\d] )"
+    case ("temperature")
+       label_wd = "LOG10( [Kelvin] )"
+    case default
+       label_wd = "Pixcel Value"
+    end select
+       
+
     if(logscale) then
-       CALL PGWEDG('BI', 4.0, 5.0, log10(valueMin), log10(valueMax), 'pixel value')
+       CALL PGWEDG('BI', 4.0, 5.0, log10(valueMin), log10(valueMax), TRIM(ADJUSTL(label_wd)) )
     else
-       CALL PGWEDG('BI', 4.0, 5.0, valueMin, valueMax, 'pixel value')
+       CALL PGWEDG('BI', 4.0, 5.0, valueMin, valueMax, TRIM(ADJUSTL(label_wd)))
     end if
     
     CALL PGSCH(0.6)
@@ -5290,12 +5898,12 @@ contains
   ! This is modefied from plotZplane
   !
   recursive subroutine plot_values(thisOctal, name, plane, val_3rd_dim, &
-       logscale, valueMax, valueMin, ilo, ihi)
+       logscale, valueMax, valueMin, ilo, ihi, grid, ilam)
     implicit none
     !
     type(octal), pointer   :: thisOctal
     character(len=*), intent(in)  :: name     ! "rho", "temperature", chiLine", "etaLine",  
-    !                                         !  or "etaCont"
+    !                                         ! "etaCont", "Vx", "Vy" or "Vz"
     character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z', 'z-x', 'x-z'
     ! The value of the third dimension.
     ! For example, if plane = "x-y", the third dimension is the value of z.
@@ -5305,33 +5913,36 @@ contains
     logical, intent(in)           :: logscale ! logscale if T, linear if not
     real, intent(in) :: valueMin, valueMax
     integer, intent(in) :: ilo, ihi
+    integer, intent(in),optional :: ilam
     !
     !
     type(octal), pointer  :: child 
     type(octalvector) :: rvec
+    type(gridtype) :: grid
     real :: value
 
     integer :: subcell, i, idx
     real :: t
     real :: xp, yp, xm, ym, zp, zm
-    double precision :: d, L
+    double precision :: d, L, eps
     logical :: plot_this_subcell
   
-    do subcell = 1, 8
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call plot_values(child, name, plane, val_3rd_dim, &
-                     logscale, valueMax, valueMin, ilo, ihi)
+                     logscale, valueMax, valueMin, ilo, ihi, grid, ilam)
                 exit
              end if
           end do
        else
           rVec = subcellCentre(thisOctal,subcell)
-	  L = thisOctal%subcellSize
+          L = thisOctal%subcellSize
           d = L/2.0d0
+          eps = d/100.0d0
           xp = REAL(rVec%x + d)
           xm = REAL(rVec%x - d)
           yp = REAL(rVec%y + d)
@@ -5340,31 +5951,35 @@ contains
           zm = REAL(rVec%z - d)     
           
           plot_this_subcell = .false.
-          if ( plane(1:3) == "x-y" .and.  &
-               rVec%z > (val_3rd_dim-L) .and.  rVec%z < (val_3rd_dim+L)) then
+          if ( plane(1:3) == "x-y" .and. (ABS(rVec%z-val_3rd_dim)-d) < eps) then
              plot_this_subcell = .true.      
-          elseif ( plane(1:3) == "y-z" .and. &
-               rVec%x > (val_3rd_dim-L) .and.  rVec%x < (val_3rd_dim+L)) then
+          elseif ( plane(1:3) == "y-z" .and. (ABS(rVec%x-val_3rd_dim)-d) < eps) then 
              plot_this_subcell = .true.
-          elseif ( plane(1:3) == "z-x" .and.  &
-               rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
+          elseif ( plane(1:3) == "z-x" .and. (ABS(rVec%y-val_3rd_dim)-d) < eps) then 
              plot_this_subcell = .true.
-          elseif ( plane(1:3) == "x-z" .and.  &
-	       rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
+          elseif ( plane(1:3) == "x-z" .and. (ABS(rVec%y-val_3rd_dim)-d) < eps) then 
              plot_this_subcell = .true.
           else
              plot_this_subcell = .false.
           end if
-          
-!          if ( plane(1:3) == "x-y" .and. ABS(rVec%z) < 2.0d0*d) then
+
+!          if ( plane(1:3) == "x-y" .and.  &
+!               rVec%z > (val_3rd_dim-L) .and.  rVec%z < (val_3rd_dim+L)) then
+!             plot_this_subcell = .true.      
+!          elseif ( plane(1:3) == "y-z" .and. &
+!               rVec%x > (val_3rd_dim-L) .and.  rVec%x < (val_3rd_dim+L)) then
 !             plot_this_subcell = .true.
-!          elseif ( plane(1:3) == "y-z" .and. ABS(rVec%x) < 2.0d0*d) then
+!          elseif ( plane(1:3) == "z-x" .and.  &
+!               rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
 !             plot_this_subcell = .true.
-!          elseif ( plane(1:3) == "z-x" .and. ABS(rVec%y) < 2.0d0*d) then
+!          elseif ( plane(1:3) == "x-z" .and.  &
+!             rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
 !             plot_this_subcell = .true.
 !          else
 !             plot_this_subcell = .false.
 !          end if
+
+
           
           if (plot_this_subcell) then
              select case (name)
@@ -5378,6 +5993,16 @@ contains
                 value = thisOctal%etaLine(subcell)
              case("etaCont")
                 value = thisOctal%etaCont(subcell)
+             case("Vx")
+                value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
+             case("Vy")
+                value = thisOctal%velocity(subcell)%y * cSpeed/1.0d5 ![km/s]
+             case("Vz")
+                value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
+             case("tau")
+                value = thisOctal%rho(subcell)*thisOctal%subcellsize * &
+                     (grid%oneKappaAbs(thisOctal%dusttype(subcell),ilam) + &
+                      grid%oneKappaSca(thisOctal%dusttype(subcell),ilam))
              case default
                 write(*,*) "Error:: unknow name passed to grid_mod::plot_values."
                 stop
@@ -5415,6 +6040,8 @@ contains
     end do
 
   end subroutine plot_values
+
+
   
   recursive subroutine minMaxDensity(thisOctal, rhoMin, rhoMax)
 
@@ -5423,7 +6050,7 @@ contains
   real :: rhoMin, rhoMax
   integer :: subcell, i
   
-  do subcell = 1, 8
+  do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -5448,15 +6075,17 @@ contains
   !
   !  Recursively finds the min and max values of "name"d value.
   !
-  recursive subroutine minMaxValue(thisOctal, name, plane, valueMin, valueMax)
+  recursive subroutine minMaxValue(thisOctal, name, plane, valueMin, valueMax, grid, ilam)
     implicit none
     type(octal), pointer   :: thisOctal
+    type(gridtype) :: grid
     character(LEN=*), intent(in) :: name ! See the options in plot_AMR_values
     character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z' or 'z-x' 
     real, intent(inout) :: valueMin, valueMax
     !
     type(octal), pointer  :: child 
     integer :: subcell, i
+    integer, intent(in), optional :: ilam
     real :: value
     !
     real :: xp, yp, xm, ym, zp, zm
@@ -5465,13 +6094,13 @@ contains
     type(octalvector) :: rvec
     
   
-    do subcell = 1, 8
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call minMaxValue(child, name, plane, valueMin, valueMax)
+                call minMaxValue(child, name, plane, valueMin, valueMax, grid, ilam)
                 exit
              end if
           end do
@@ -5485,16 +6114,17 @@ contains
           zp = REAL(rVec%z + d)
           zm = REAL(rVec%z - d)          
 
-!          use_this_subcell = .false.
-!          if ( plane(1:3) == "x-y" .and. ABS(rVec%z) < d*2.0d0) then
-!             use_this_subcell = .true.
-!          elseif ( plane(1:3) == "y-z" .and. ABS(rVec%x) < d*2.0d0) then
-!             use_this_subcell = .true.
-!          elseif ( plane(1:3) == "z-x" .and. ABS(rVec%y) < d*2.0d0) then
-!             use_this_subcell = .true.
-!          else
-!             use_this_subcell = .false.
-!          end if
+          use_this_subcell = .false.
+          if ( plane(1:3) == "x-y" .and. ABS(rVec%z) < d*2.0d0) then
+             use_this_subcell = .true.
+          elseif ( plane(1:3) == "y-z" .and. ABS(rVec%x) < d*2.0d0) then
+             use_this_subcell = .true.
+          elseif ( plane(1:3) == "z-x" .and. ABS(rVec%y) < d*2.0d0) then
+             use_this_subcell = .true.
+          else
+             use_this_subcell = .false.
+          end if
+
           use_this_subcell = thisOctal%inFlow(subcell)
 
           if (use_this_subcell) then
@@ -5509,6 +6139,16 @@ contains
                 value = thisOctal%etaLine(subcell)
              case("etaCont")
                 value = thisOctal%etaCont(subcell)
+             case("Vx")
+                value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
+             case("Vy")
+                value = thisOctal%velocity(subcell)%y * cSpeed/1.0d5 ![km/s]
+             case("Vz")
+                value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
+             case("tau")
+                value = thisOctal%rho(subcell)*thisOctal%subcellsize * &
+                     (grid%oneKappaAbs(thisOctal%dusttype(subcell),ilam) + &
+                      grid%oneKappaSca(thisOctal%dusttype(subcell),ilam))
              case default
                 write(*,*) "Error:: unknow name passed to MinMaxValue."
                 stop
@@ -5545,7 +6185,7 @@ contains
 
 
     if (thisGrid%adaptive) then
-
+       nOctals=0; nVoxels=0
        call countVoxels(thisGrid%octreeRoot,nOctals,nVoxels)
     
        write(UN,'(a)') ' '
@@ -5596,7 +6236,8 @@ contains
   !
   ! It overlay the AMR grid values for a give number of planes sequentially.
   ! Uses the plot_AMR_values routine in this module.
-  subroutine plot_AMR_planes(grid, name, plane,  nplane, filename, logscale, withgrid)
+  subroutine plot_AMR_planes(grid, name, plane,  nplane, filename, logscale, withgrid, &
+       nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
     implicit none
     type(gridtype), intent(in) :: grid
     character(len=*), intent(in)  :: name     ! "rho", "temperature", chiLine", "etaLine", 
@@ -5606,16 +6247,38 @@ contains
     character(len=*), intent(in)  :: filename ! the head of filename
     logical, intent(in)           :: logscale ! logscale if T, linear if not
     logical, intent(in)           :: withgrid ! plot
+
+    ! To put the markers to indicate the important points in the plots.
+    integer, intent(in) :: nmarker           ! number of markers
+    real, intent(in)    :: xmarker(nmarker)  ! position of x
+    real, intent(in)    :: ymarker(nmarker)  ! position of y
+    real, intent(in)    :: zmarker(nmarker)  ! position of z
+    logical, intent(in) :: show_value_3rd_dim! If T, the value of the third dimension will be shown.    
+
     !
     integer :: i
     real    :: val_3rd_dim
-    integer :: d   ! the size of the largest cell.
+    real    :: d   ! the size of the largest cell.
     character(LEN=50) :: device
+    real :: d0  ! off set for the cell center.
 
-    d = grid%octreeRoot%subcellSize*2
-    
+
+    d = grid%octreeRoot%subcellSize*2.0
+
+    select case(plane)
+    case("x-y")
+       d0=grid%octreeRoot%centre%z
+    case("y-z")
+       d0=grid%octreeRoot%centre%x
+    case("z-x", "x-z")
+       d0=grid%octreeRoot%centre%y
+    case default
+       write(*,*) "Error:: Unknown name for plane passed to plot_AMR_planes."
+       stop
+    end select
+
     do i = 1, nplane
-       val_3rd_dim = -d/2.0 + real(i-1)*d/real(nplane-1)
+       val_3rd_dim = d0 -d/2.0 + real(i-1)*d/real(nplane-1)
 
        ! Setting up the name for the output file....
        ! using a function in utils_mod.f90
@@ -5623,10 +6286,264 @@ contains
        device = TRIM(device)//".ps/vcps"
        
        call plot_AMR_values(grid, name, plane, val_3rd_dim, &
-            device, logscale, withgrid)
+            device, logscale, withgrid, &
+            nmarker, xmarker, ymarker, zmarker, d, show_value_3rd_dim)
     end do
 
   end subroutine plot_AMR_planes
+
+
+
+  ! 
+  ! Given a set of position arrays (xmarker, ymarker, zmarker), this 
+  !routine plots the points only when the value of the third dimension is 
+  ! within in the width of the third dimension specified in an input 
+  ! parameter (width_3rd_dim) from value_3rd_dim.
+  !
+  ! Note:This routine assumes that a PGPLOT device is already open.
+  !
+  subroutine draw_markers(nmarker, xmarker, ymarker, zmarker, &
+       plane, value_3rd_dim, width_3rd_dim, show_value_3rd_dim) 
+    implicit none
+    integer, intent(in) :: nmarker  ! number of markers
+    real, intent(in) :: xmarker(nmarker)
+    real, intent(in) :: ymarker(nmarker)
+    real, intent(in) :: zmarker(nmarker)
+    character(LEN=*), intent(in) :: plane
+    real, intent(in) :: value_3rd_dim
+    real, intent(in) :: width_3rd_dim
+    ! If T, write the values of the thrid dimension in text (next to the point).
+    logical, intent(in) :: show_value_3rd_dim  
+    !
+    character(LEN=30) :: text
+    integer :: i
+    
+
+    !
+    ! Draw the markers on the plot with the value of the third dimension.
+    !   
+
+    ! Draw points first..
+    if (nmarker /=0) then  ! plots markers
+       if (plane(1:3) == 'x-y') then           
+          do i = 1, nmarker
+             if ( ABS(zmarker(i)-value_3rd_dim) < width_3rd_dim/2.0 ) then
+                call PGPT1(xmarker(i), ymarker(i), 21) 
+                if (show_value_3rd_dim) then
+                   write(text, '(1PE13.5)') zmarker(i)
+                   call PGTEXT(xmarker(i), ymarker(i), TRIM(text))
+                end if
+             end if
+          end do
+       elseif (plane(1:3) == 'y-z') then
+          do i = 1, nmarker
+             if ( ABS(xmarker(i)-value_3rd_dim) < width_3rd_dim/2.0 ) then
+                call PGPT1(ymarker(i), zmarker(i), 21) 
+                if (show_value_3rd_dim) then
+                   write(text, '(1PE13.5)') xmarker(i)
+                   call PGTEXT(ymarker(i), zmarker(i), TRIM(text))
+                end if
+             end if
+          end do
+       elseif (plane(1:3) == 'z-x') then 
+          do i = 1, nmarker
+             if ( ABS(ymarker(i)-value_3rd_dim) < width_3rd_dim/2.0 ) then                
+                call PGPT1(zmarker(i), xmarker(i), 21) 
+                if (show_value_3rd_dim) then
+                   write(text, '(1PE13.5)') ymarker(i)
+                   call PGTEXT(zmarker(i), xmarker(i), TRIM(text))
+                end if
+             end if
+          end do
+       elseif (plane(1:3) == 'x-z') then 
+          do i = 1, nmarker
+             if ( ABS(ymarker(i)-value_3rd_dim) < width_3rd_dim/2.0 ) then
+                call PGPT1(xmarker(i), zmarker(i), 21)
+                if (show_value_3rd_dim) then
+                   write(text, '(1PE13.5)') ymarker(i)
+                   call PGTEXT(xmarker(i), zmarker(i), TRIM(text))
+                end if
+             end if
+          end do
+       end if
+    else
+       ! do nothing
+       continue
+    end if
+
+  end subroutine draw_markers
+
+
+
+  !
+  ! Routine to shift the poistion of stars in a cluster to be at the center of leaf node
+  ! assuming (hoping) that no two stars are in the same cell. This is done to avoid 
+  ! or minimize the asymmetry in the temperature map computed later. 
+  ! Note: this must be done only after computing the octree tree without the disc.
+  !       If you want to include the disc, you must recompute the grid with new postion...
+  ! 
+
+  subroutine move_stars_to_cell_center(a_cluster, grid)
+    implicit none
+    type(cluster), intent(inout) :: a_cluster
+    type(gridtype), intent(in) :: grid
+
+    integer :: nstar
+    integer :: i 
+    type(sourcetype) :: a_star
+    type(octalvector) :: position, newposition
+    type(OCTAL), pointer :: thisOctal
+
+    
+    nstar = get_nstar(a_cluster)
+
+    write (*, *) " "
+    write (*, *) "Shifting the star positions...."
+    write (*, *) " "
+    write (*, *) "-- i --- old position and new position "     
+    do i = 1, nstar       
+       ! Finding the position of the stars in the list,
+       a_star = get_a_star(a_cluster,i)         
+       position = OCTALVECTOR(a_star%position%x, a_star%position%y, a_star%position%z)
+
+       ! Finding the octal which contains the position.
+       call amrGridValues(grid%octreeRoot, position, foundOctal=thisOctal)
+
+       newposition = thisOctal%centre
+       
+       write(*,*) i, position 
+       write(*,*) i, newposition 
+       
+       ! shifting the position to new position (the cell center).
+       a_star%position = newposition 
+
+       ! reinserting the star in the cluster.
+       call put_a_star(a_cluster, a_star, i)
+
+
+    end do
+
+    write(*,*) " "
+    write(*,*) "Finished shifting the stars ..."
+    write(*,*) " "
+    
+              
+  end subroutine move_stars_to_cell_center
+
+
+
+  !  
+  !  This subrouine recursively writes out the distance from the center of the
+  !  given plane,  with a give value of the 3rd dimension, and the correcsponding 
+  !  value stored in a octal to a file specified by the logical unit number. 
+  !  
+  recursive subroutine radial_profile(thisOctal, name, plane, val_3rd_dim, luout, center, grid)
+    implicit none
+    !
+    type(octal), pointer   :: thisOctal
+    type(gridtype) :: grid
+    character(len=*), intent(in)  :: name     ! "rho", "temperature", chiLine", "etaLine",  
+    !                                         ! "etaCont", "Vx", "Vy" or "Vz"
+    character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z', 'z-x', 'x-z'
+    ! The value of the third dimension.
+    ! For example, if plane = "x-y", the third dimension is the value of z.
+    ! Then, when  val_3rd_dim = 0.0, this will plot the density (and the grid)
+    ! on the z=0 plane, and so on...
+    real, intent(in)              :: val_3rd_dim 
+    integer, intent(in) :: luout  ! file unit number for the output
+    type(octalvector), intent(in) :: center   ! position of the center of the root node
+    !
+    !
+    type(octal), pointer  :: child 
+    type(octalvector) :: rvec
+    real :: value
+
+    integer :: subcell, i, idx
+    real :: t
+    real :: xp, yp, xm, ym, zp, zm
+    double precision :: d, L, eps, distance
+    logical :: use_this_subcell
+
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call radial_profile(child, name, plane, val_3rd_dim, &
+                     luout, center, grid)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          L = thisOctal%subcellSize
+          d = L/2.0d0
+          eps = d/1000.0d0
+          xp = REAL(rVec%x + d)
+          xm = REAL(rVec%x - d)
+          yp = REAL(rVec%y + d)
+          ym = REAL(rVec%y - d)
+          zp = REAL(rVec%z + d)
+          zm = REAL(rVec%z - d)     
+          
+          use_this_subcell = .false.
+          if ( plane(1:3) == "x-y" .and. (ABS(rVec%z-val_3rd_dim)-d) < eps) then
+             use_this_subcell = .true.      
+          elseif ( plane(1:3) == "y-z" .and. (ABS(rVec%x-val_3rd_dim)-d) < eps) then 
+             use_this_subcell = .true.
+          elseif ( plane(1:3) == "z-x" .and. (ABS(rVec%y-val_3rd_dim)-d) < eps) then 
+             use_this_subcell = .true.
+          elseif ( plane(1:3) == "x-z" .and. (ABS(rVec%y-val_3rd_dim)-d) < eps) then 
+             use_this_subcell = .true.
+          else
+             use_this_subcell = .false.
+          end if
+          
+          if ((plane(1:3)=="x-y").and.(thisOctal%twoD)) then
+             use_this_subcell = .false.
+             if  ( ((rVec%z-L/2.d0) < 0.d0).and.((rvec%z+L/2.d0) >= 0.)) use_this_subcell = .true.
+          endif
+
+          
+          if (use_this_subcell) then
+             select case (name)
+             case("rho")
+                value = thisOctal%rho(subcell)
+             case("temperature")
+                value = thisOctal%temperature(subcell)
+             case("chiLine")
+                value = thisOctal%chiLine(subcell)
+             case("etaLine")
+                value = thisOctal%etaLine(subcell)
+             case("etaCont")
+                value = thisOctal%etaCont(subcell)
+             case("Vx")
+                value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
+             case("Vy")
+                value = thisOctal%velocity(subcell)%y * cSpeed/1.0d5 ![km/s]
+             case("Vz")
+                value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
+             case("tau")
+                value = thisOctal%rho(subcell)*thisOctal%subcellsize*grid%kappaTest
+             case default
+                write(*,*) "Error:: unknow name passed to grid_mod::radial_profile."
+                stop
+             end select
+
+             distance = modulus(rvec)   ! length of the vector
+             write(luout, '(2(2x, 1PE18.4))')  distance, value
+
+
+          end if
+       end if
+
+    end do
+
+  end subroutine radial_profile
+
+
     
 end module grid_mod
 

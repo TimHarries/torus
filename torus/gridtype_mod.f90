@@ -7,6 +7,7 @@ module gridtype_mod
   use kind_mod
   use vector_mod                      ! vector math
   use octal_mod                       ! octal type for amr  
+  use gaussian_mod
 
   implicit none
 
@@ -32,8 +33,8 @@ module gridtype_mod
      logical :: hitcore
      real :: diskRadius
      logical :: oneKappa                        
-     real, pointer :: oneKappaAbs(:) => null()
-     real, pointer :: oneKappaSca(:) => null()
+     real, pointer :: oneKappaAbs(:,:) => null()
+     real, pointer :: oneKappaSca(:,:) => null()
      real :: kappaTest
      type(VECTOR) :: diskNormal
      real :: dipoleOffset
@@ -48,10 +49,16 @@ module gridtype_mod
      real, pointer :: etaCont(:,:,:)             ! line emissivity
      real, pointer :: sigma(:,:,:)               ! radial velocity gradient
      type(VECTOR), pointer :: velocity(:,:,:)    ! velocity grid
+     type(vector), pointer :: dVbydr(:,:,:)            ! velocity gradient
      real, pointer :: rAxis(:)                   ! r-axis
 
-     real, pointer :: biasCont(:) => null()      ! radial bias for cont
-     real, pointer :: biasLine(:) => null()      ! radial bias for line
+     real(kind=doubleKind),pointer :: oneProbLine(:)
+     real(kind=doubleKind),pointer :: oneProbCont(:)
+     integer :: nProb
+     integer, pointer :: cellIndex(:,:)
+
+     real, pointer :: biasCont(:)                ! radial bias for cont
+     real, pointer :: biasLine(:)                ! radial bias for line
 
      real, pointer :: muAxis(:)                  ! mu-axis
      real, pointer :: phiAxis(:)                 ! phi-axis
@@ -88,6 +95,8 @@ module gridtype_mod
 
      real :: rStar1, rStar2, lumRatio
 
+     real :: densityScaleFac
+
      real :: tempSource
 
      type(VECTOR) :: starPos1, starPos2
@@ -113,6 +122,8 @@ module gridtype_mod
        !    subcells. we store this because it is used frequently in calculations.
      integer :: nOctals                              ! total number of octals 
      real    :: smoothingFactor                      ! inter-cell maximum ratio before smooth
+     integer :: ng
+     type(GAUSSIAN), pointer :: gArray(:)
 
   end type GRIDTYPE
 

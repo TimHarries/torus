@@ -358,19 +358,45 @@ contains
   end function dbNubyDt
 
 
+!!$  real(kind=doubleKind) function bLambda(lambda,T)
+!!$    
+!!$    real(kind=doubleKind) :: fac1, fac2, fac3,  T, lambda
+!!$
+!!$    fac1 = (2.*hCgs*cSpeed**2)/(lambda *1.d-8)**5
+!!$    fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T) 
+!!$    if (fac3 > 100.d0) then
+!!$       fac2 = 0.d0
+!!$    else
+!!$       fac2 = 1.d0/(exp(fac3) - 1.d0)
+!!$    endif
+!!$    bLambda = fac1 * fac2
+!!$  end function bLambda
+  
+  !
+  ! Plancks function B_lambda(T)
+  ! in [erg cm^-2 s^-2 cm^-1 sr^-1]
   real(kind=doubleKind) function bLambda(lambda,T)
-    
-    real(kind=doubleKind) :: fac1, fac2, fac3,  T, lambda
+    implicit none
+    real(kind=doublekind), intent(in)  :: T       ! temperature in Kelvinslambda
+    real(kind=doublekind), intent(in)  :: lambda  ! wavelength in Angstrom
+    real(kind=doubleKind) :: x, y, lambda_cm
 
-    fac1 = (2.*hCgs*cSpeed**2)/(lambda *1.d-8)**5
-    fac3 =  (hCgs * cSpeed)/ (lambda * 1.d-8 * kErg * T) 
-    if (fac3 > 100.d0) then
-       fac2 = 0.d0
+    lambda_cm = lambda *1.d-8  ! wavelength in cm
+    x =  (hCgs * cSpeed)/ (lambda_cm * kErg * T) 
+    y = (2.0d0*hCgs*cSpeed**2)/(lambda_cm)**5
+
+    if (x > 100.d0) then      ! applying Wien's law
+       bLambda = y * EXP(-x)
+    elseif ( x < 0.01) then   ! applying Raylegh-Jeans law
+       bLambda = 2.0d0*(cSpeed/lambda_cm**4) *kErg*T
+       ! -- [erg cm^-2 s^-2 cm^-1 sr^-1]
     else
-       fac2 = 1.d0/(exp(fac3) - 1.d0)
+       blambda = y / (exp(x) - 1.d0)
+       ! -- [erg cm^-2 s^-2 cm^-1 sr^-1]
     endif
-    bLambda = fac1 * fac2
+    
   end function bLambda
+
 
   real(kind=doubleKind) function dbLambdabydT(lambda,T)
     

@@ -67,6 +67,10 @@ module vector_mod
      module procedure addSingle
      module procedure addDouble
      module procedure addOctal
+     module procedure addOctalDouble
+     module procedure addDoubleOctal
+     module procedure addOctalSingle
+     module procedure addSingleOctal
   end interface
 
   ! subtract
@@ -94,6 +98,8 @@ module vector_mod
      module procedure dotProdSingle
      module procedure dotProdDouble
      module procedure dotProdOctal
+     module procedure dotProdOctalSingle
+     module procedure dotProdSingleOctal
   end interface
 
   ! cross product
@@ -102,6 +108,8 @@ module vector_mod
      module procedure crossProdSingle
      module procedure crossProdDouble
      module procedure crossProdOctal
+     module procedure crossProdOctalSingle
+     module procedure crossProdSingleOctal 
   end interface
   
   interface modulus
@@ -157,6 +165,13 @@ module vector_mod
     module procedure getPolarDouble
     module procedure getPolarOctal
   end interface
+
+  interface fromPhotophereVector
+     module procedure fromPhotosphereSingleVector
+     module procedure fromPhotosphereDoubleVector
+     module procedure fromPhotosphereOctalVector
+  end interface
+
   
   type(VECTOR), parameter :: xHat = VECTOR(1., 0., 0.)
   type(VECTOR), parameter :: yHat = VECTOR(0., 1., 0.)
@@ -198,6 +213,23 @@ contains
 
   end function dotProdOctal
 
+  real(kind=octalKind) pure function dotProdSingleOctal(a , b)
+    type(Vector), intent(in) :: a
+    type(octalVector), intent(in) :: b
+
+    dotProdSingleOctal = a%x*b%x + a%y*b%y + a%z*b%z
+
+  end function dotProdSingleOctal
+
+
+  real(kind=octalKind) pure function dotProdOctalSingle(a , b)
+    type(octalVector), intent(in) :: a
+    type(Vector), intent(in) :: b
+
+    dotProdOctalSingle = a%x*b%x + a%y*b%y + a%z*b%z
+
+  end function dotProdOctalSingle
+
 
   ! the cross product function
 
@@ -228,6 +260,25 @@ contains
     crossProdOctal%z =  (a%x*b%y - a%y*b%x)
   end function crossProdOctal
 
+  type(octalVector) pure function crossProdOctalSingle(a,b)
+    type(octalVector), intent(in) :: a
+    type(Vector), intent(in) :: b
+
+    crossProdOctalSingle%x =  (a%y*b%z - a%z*b%y)
+    crossProdOctalSingle%y = -(a%x*b%z - a%z*b%x)
+    crossProdOctalSingle%z =  (a%x*b%y - a%y*b%x)
+  end function crossProdOctalSingle
+
+  type(octalVector) pure function crossProdSingleOctal(a,b)
+    type(Vector), intent(in) :: a
+    type(octalVector), intent(in) :: b
+
+    crossProdSingleOctal%x =  (a%y*b%z - a%z*b%y)
+    crossProdSingleOctal%y = -(a%x*b%z - a%z*b%x)
+    crossProdSingleOctal%z =  (a%x*b%y - a%y*b%x)
+  end function crossProdSingleOctal
+
+
 
   ! normalization subroutine - checks for zero vector
 
@@ -257,6 +308,7 @@ contains
     if (m == 0.0_db) then
        write(*,'(a)') "! Attempt to normalize the zero vector"
        a = doubleVector(1.0_db,0.0_db,0.0_db)
+
     else
       a%x = a%x / m
       a%y = a%y / m
@@ -274,6 +326,7 @@ contains
     if (m == 0.0_oc) then
        WRITE(*,'(a)') "! Attempt to normalize the zero vector"
        a = octalVector(1.0_oc,0.0_oc,0.0_oc)
+          
     else
       a%x = a%x / m
       a%y = a%y / m
@@ -451,6 +504,46 @@ contains
     addOctal%z = a%z + b%z
 
   end function addOctal
+
+  type(octalVector) pure function addOctalDouble(a,b)
+    type(octalVector), intent(in) :: a
+    type(doubleVector), intent(in) :: b
+
+    addOctalDouble%x = a%x + b%x
+    addOctalDouble%y = a%y + b%y
+    addOctalDouble%z = a%z + b%z
+
+  end function addOctalDouble
+
+  type(octalVector) pure function addDoubleOctal(a,b)
+    type(doubleVector), intent(in) :: a
+    type(octalVector), intent(in) :: b
+
+    addDoubleOctal%x = a%x + b%x
+    addDoubleOctal%y = a%y + b%y
+    addDoubleOctal%z = a%z + b%z
+
+  end function addDoubleOctal
+
+  type(octalVector) pure function addSingleOctal(a,b)
+    type(Vector), intent(in) :: a
+    type(octalVector), intent(in) :: b
+
+    addSingleOctal%x = a%x + b%x
+    addSingleOctal%y = a%y + b%y
+    addSingleOctal%z = a%z + b%z
+
+  end function addSingleOctal
+
+  type(octalVector) pure function addOctalSingle(a,b)
+    type(octalVector), intent(in) :: a
+    type(Vector), intent(in) :: b
+
+    addOctalSingle%x = a%x + b%x
+    addOctalSingle%y = a%y + b%y
+    addOctalSingle%z = a%z + b%z
+
+  end function addOctalSingle
 
 
   ! subtract two vectors
@@ -768,6 +861,33 @@ contains
   end function randomUnitVector
 
 
+  type(DOUBLEVECTOR) function randomUnitDoubleVector()
+    real(kind=doublekind) :: r1, r2, u, v, w, t, ang
+    call random_number(r1)
+    w = 2.*r1 - 1.
+    t = sqrt(1.0-w*w)
+    call random_number(r2)
+    ang = pi*(2.*r2-1.)
+    u = t*cos(ang)
+    v = t*sin(ang)
+
+    randomUnitDoubleVector = DOUBLEVECTOR(u,v,w)
+  end function randomUnitDoubleVector
+
+  type(OCTALVECTOR) function randomUnitOctalVector()
+    real(kind=octalkind) :: r1, r2, u, v, w, t, ang
+    call random_number(r1)
+    w = 2.0d0*r1 - 1.0d0
+    t = sqrt(1.0d0-w*w)
+    call random_number(r2)
+    ang = pi*(2.0d0*r2-1.0d0)
+    u = t*cos(ang)
+    v = t*sin(ang)
+
+    randomUnitOctalVector = OCTALVECTOR(u,v,w)
+  end function randomUnitOctalVector
+
+
   type (VECTOR) function intersectionLinePlaneSingle(r0, rHat, nHat, d, ok)
 
 ! finds the intersection between a line and a plane
@@ -777,7 +897,7 @@ contains
     type(VECTOR), intent(in) :: r0, rHat ! equation of line
     type(VECTOR), intent(in) :: nHat     ! the normal to the plane
     real, intent(in) :: d                ! minimum distance of plane from origin
-    logical, intent(out) :: ok           ! is there in intersection?
+    logical, intent(out) :: ok            ! is there in intersection?
     real :: fac
 
     ok = .false.
@@ -787,11 +907,11 @@ contains
           intersectionLinePlaneSingle = r0 + (fac  * rHat )
           ok = .true.
        else
-          intersectionLinePlaneSingle = VECTOR(0.,0.,0.)
+          intersectionLinePlaneSingle = OCTALVECTOR(0.d0,0.d0,0.d0)
           ok = .false.
        endif
     else
-       intersectionLinePlaneSingle = VECTOR(0.,0.,0.)
+       intersectionLinePlaneSingle = OCTALVECTOR(0.d0,0.d0,0.d0)
        ok = .false.
     endif
 
@@ -1137,8 +1257,8 @@ contains
     arbitraryRotateOctal = q
     
   end function arbitraryRotateOctal
-
-  type(VECTOR) function fromPhotosphereVector(rVec)
+  
+  type(VECTOR) function fromPhotosphereSingleVector(rVec)
     real :: ang, z
     type(VECTOR) :: norm, zAxis, v, rVec, n
     
@@ -1165,11 +1285,133 @@ contains
     ang = ang * twoPi
     v = arbitraryRotateSingle(v, ang, norm)
 
-    fromPhotosphereVector = v
-  end function fromPhotosphereVector
+    fromPhotosphereSingleVector = v
+  end function fromPhotosphereSingleVector
+  type(DOUBLEVECTOR) function fromPhotosphereDoubleVector(rVec)
+    real(kind=doublekind) :: ang, z
+    type(DOUBLEVECTOR) :: norm, zAxis, v, rVec, n
+    
+    zAxis = DOUBLEVECTOR(0.,0.,1.)
+
+    do while (ABS(rVec .dot. zAxis) == 1.0)
+       ! choose another one
+       rVec = randomUnitDoubleVector()
+    end do
+    
+    norm = rVec
+    call normalize(norm)
+
+    call random_number(z)
+    z = sqrt(z)
+    
+    ang = acos(z)
+    n = norm .cross. zAxis
+    call normalize(n)
+    v = norm
+    
+    v = arbitraryRotate(v, real(ang), n)
+    call random_number(ang)
+    ang = ang * twoPi
+    v = arbitraryRotate(v, real(ang), norm)
+
+    fromPhotosphereDoubleVector = v
+  end function fromPhotosphereDoubleVector
+
+
+  type(OCTALVECTOR) function fromPhotosphereOctalVector(rVec)
+    real(kind=octalkind) :: ang, z
+    type(OCTALVECTOR) :: norm, zAxis, v, rVec, n
+    
+    zAxis = OCTALVECTOR(0.0d0,0.0d0,1.0d0)
+
+    do while (ABS(rVec .dot. zAxis) == 1.0d0)
+       ! choose another one
+       rVec = randomUnitOctalVector()
+    end do
+    
+    norm = rVec
+    call normalize(norm)
+
+    call random_number(z)
+    z = sqrt(z)
+    
+    ang = acos(z)
+    n = norm .cross. zAxis
+    call normalize(n)
+    v = norm
+    
+    v = arbitraryRotate(v, real(ang), n)
+    call random_number(ang)
+    ang = ang * twoPi
+    v = arbitraryRotate(v, real(ang), norm)
+
+    call normalize(v)
+
+    fromPhotosphereOctalVector = v
+  end function fromPhotosphereOctalVector
+
+
 
 
 
   
+  subroutine bezier(a, b, c, d, t, bPoint)
+    real :: t
+    type(VECTOR) :: a, b, c, d, bPoint
+    type(VECTOR) :: ab, bc, cd, abbc, bccd
+
+    call linterp(ab, a, b, t)
+    call linterp(bc, b, c, t)
+    call linterp(cd, c, d, t)
+    call linterp(abbc, ab, bc, t)
+    call linterp(bccd, bc, cd, t)
+    call linterp(bPoint, abbc, bccd, t)
+  end subroutine bezier
+
+
+  subroutine linterp(thisPoint, a, b, t)
+    type(VECTOR) :: thisPoint, a, b
+    real :: t
+
+    thisPoint = a + t*(b-a)
+  end subroutine linterp
+    
+
+
+
+  ! Convertiong single vector to octalvector
+  function s2o(vec_sngl) RESULT(out)
+    implicit none
+    type(octalvector) :: out 
+    type(vector), intent(in) :: vec_sngl 
+    
+    out%x = vec_sngl%x
+    out%y = vec_sngl%y
+    out%z = vec_sngl%z
+  end function s2o
+
+
+  ! Convertiong single vector to octalvector
+  function o2s(vec_oct) RESULT(out)
+    implicit none
+    type(vector) :: out 
+    type(octalvector), intent(in) :: vec_oct
+    
+    out%x = vec_oct%x
+    out%y = vec_oct%y
+    out%z = vec_oct%z   
+  end function o2s
+   
+
+  function projectToXZ(rVec) result (out)
+    implicit none
+    type(OCTALVECTOR) :: OUT
+    type(OCTALVECTOR),intent(in) :: rVec
+    out%x = sqrt(rVec%x**2 + rVec%y**2)
+    out%y = 0.d0
+    out%z = rVec%z
+  end function projectToXZ
+
+
 end module vector_mod
 

@@ -1,5 +1,5 @@
 
-      subroutine mieDistPhaseMatrix(aMin, aMax, qDist, lambda, &
+      subroutine mieDistPhaseMatrix(aMin, aMax, a0, qDist, pDist, lambda, &
                                 costheta, mieMatrix, cmr, cmi)
 
       use constants_mod
@@ -12,7 +12,7 @@
       real :: normFac, dMu
       real :: cosTheta
       integer :: nMu = 20
-      real :: aMin, aMax, qDist, lambda, aFac
+      real :: aMin, aMax, a0, qDist, pDist, lambda, aFac
       integer :: nDist
       real ::  x, cmr, cmi,  t, theta, costh, rn, p1, p2
       real :: logamax, logamin
@@ -44,11 +44,13 @@
 !     .                                                         .
 !     .  arrays are set for a maximum size parameter of 200     .
 !     ...........................................................
-      complex cm,ci,cim,f(1000),g(1000),s1,s2
+!      complex cm,ci,cim,f(1000),g(1000),s1,s2
+      complex cm,ci,cim,f(10000),g(10000),s1,s2 !tjh
       common /cfcom/ f,g,cnrm
-      real :: pnmllg(1001),cnrm(1000)
+!      real :: pnmllg(1001),cnrm(1000)
+      real :: pnmllg(10001),cnrm(10000)
       real, parameter :: rtd = 180.0/pi
-      real :: a, da, gfac
+      real :: a, da, gfac, dist
       real :: a1,a2,loga1,loga2
       real :: tot
       real :: p11tot, pltot, p33p11tot, p34p11tot
@@ -72,12 +74,13 @@
       logamin = log(aMin)
       logamax = log(aMax)
       do i = 1, nDist-1
-           loga1 = logAmin+(logAmax-logAmin)*real(i-1)/real(nDist-1)
-           loga2 = logAmin+(logAmax-logAmin)*real(i)/real(nDist-1)
-           a1 = exp(loga1)
-           a2 = exp(loga2)
-           tot = tot + 0.5*(a1**(qDist) + a2**(qDist))*(a2-a1)
-          enddo
+         loga1 = logAmin+(logAmax-logAmin)*real(i-1)/real(nDist-1)
+         loga2 = logAmin+(logAmax-logAmin)*real(i)/real(nDist-1)
+         a1 = exp(loga1)
+         a2 = exp(loga2)
+         tot = tot + 0.5*(a1**(-qDist)*exp(-(a1/a0)**pDist) &
+              + a2**(-qDist)*exp(-(a2/a0)**pDist))*(a2-a1)
+      enddo
       aFac = 1./tot
 
       do i = 1 , nDist-1
@@ -137,10 +140,11 @@
        pl = -2.0*(abs(s2)**2-abs(s1)**2)/(p11)
        p33p11 = 4.0*real(s1*conjg(s2))/(p11)
        p34p11 = 4.0*aimag(s2*conjg(s1))/(p11)
-       p11tot = p11tot + aFac*a**(qDist)*da*p11
-       pltot = pltot-aFac*a**(qDist)*da*pl
-       p33p11tot = p33p11tot + aFac*a**(qDist)*da*p33p11
-       p34p11tot = p34p11tot + aFac*a**(qDist)*da*p34p11
+       dist = a**(-qDist)*exp(-(a/a0)**pDist)
+       p11tot = p11tot + aFac*dist*da*p11
+       pltot = pltot-aFac*dist*da*pl
+       p33p11tot = p33p11tot + aFac*dist*da*p33p11
+       p34p11tot = p34p11tot + aFac*dist*da*p34p11
 
        enddo
 
@@ -225,10 +229,11 @@
        pl = -2.0*(abs(s2)**2-abs(s1)**2)/(p11)
        p33p11 = 4.0*real(s1*conjg(s2))/(p11)
        p34p11 = 4.0*aimag(s2*conjg(s1))/(p11)
-       p11tot = p11tot + aFac*a**(qDist)*da*p11
-       pltot = pltot-aFac*a**(qDist)*da*pl
-       p33p11tot = p33p11tot + aFac*a**(qDist)*da*p33p11
-       p34p11tot = p34p11tot + aFac*a**(qDist)*da*p34p11
+       dist = a**(-qDist)*exp(-(a/a0)**pDist)
+       p11tot = p11tot + aFac*dist*da*p11
+       pltot = pltot-aFac*dist*da*pl
+       p33p11tot = p33p11tot + aFac*dist*da*p33p11
+       p34p11tot = p34p11tot + aFac*dist*da*p34p11
 
        enddo
 
@@ -255,9 +260,11 @@
 !     .    Light by Small Particles (Wiley- Interscience,New       .
 !     .    York,1983), p.100                                       .
 !     ..............................................................
-      complex b,z,cm,ci,hkl(1001),an,amat(1000),f(1000),g(1000)
+!      complex b,z,cm,ci,hkl(1001),an,amat(1000),f(1000),g(1000)
+      complex b,z,cm,ci,hkl(10001),an,amat(10000),f(10000),g(10000) !tjh
       common /cfcom/ f,g,cnrm
-      dimension cnrm(1000)
+!      dimension cnrm(1000)
+      dimension cnrm(10000) ! tjh
       ci = (0.0,1.0)
 !     ......................................................
 !     .  set the number of terms required for convergence  .
@@ -326,7 +333,8 @@
 !     .  arrays are set for nc = 226 maximum            .
 !     ...................................................
       complex hankel(nc)
-      dimension bj(226),by(226),t(3)
+      integer, parameter :: nmax = 1000001
+      dimension bj(nmax),by(nmax),t(3)
 !     ................................................
 !     .  by(*) calculation - obtain the zeroeth and  .
 !     .                      first order functions   .

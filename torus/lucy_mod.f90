@@ -17,39 +17,41 @@ contains
   subroutine lucyRadiativeEquilibrium(grid, miePhase, nMuMie, nLambda, lamArray, temperature, nLucy)
 
     type(GRIDTYPE) :: grid
-    type(VECTOR) :: rVec, uHat, uNew
+    type(OCTALVECTOR) :: uHat, uNew
+    type(OCTALVECTOR) :: rVec
     integer :: nlucy
-    integer :: nLambda, nMuMie
+    integer,intent(in) :: nLambda, nMuMie
     type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
     real :: lamArray(:)
-    real(kind=doubleKind), allocatable :: distanceGrid(:, :, :)
-    real(kind=doubleKind) :: r
+    real(kind=octalKind), allocatable :: distanceGrid(:, :, :)
+    real(kind=octalKind) :: r
     integer, parameter :: nFreq = 100
     integer :: i, j, k
-    real(kind=doubleKind) :: freq(nFreq), dnu(nFreq), probDistPlanck(nFreq), probDistJnu(nFreq)
-    real(kind=doubleKind) :: temperature
+    real(kind=octalKind) :: freq(nFreq), dnu(nFreq), probDistPlanck(nFreq), probDistJnu(nFreq)
+    real(kind=octalKind) :: temperature
     integer :: nMonte, iMonte, nScat, nAbs
-    real(kind=doubleKind) :: thisFreq,  logFreqStart, logFreqEnd
-    real(kind=doubleKind) :: albedo
+    real(kind=octalKind) :: thisFreq,  logFreqStart, logFreqEnd
+    real(kind=octalKind) :: albedo
     logical :: escaped
     integer :: i1, i2, i3
-    real :: t1, t2, t3
-    real(kind=doubleKind) :: thisLam
+    real(kind=octalkind) :: t1, t2, t3
+    real(kind=octalKind) :: thisLam
     integer :: iLam
     integer :: nInf
-    real(kind=doubleKind) :: t
+    real(kind=octalKind) :: t
     integer :: nt
-    real(kind=doubleKind) :: ang
+    real(kind=octalKind) :: ang
     integer :: iIter, nIter = 5
-    real(kind=doubleKind) :: kabs
-    real(kind=doubleKind) ::  kappaP, norm
-    real(kind=doubleKind) :: adot, V, epsOverDeltaT
-    real(kind=doubleKind) :: newT, deltaT
-    real(kind=doubleKind) :: meanDeltaT
-    real(kind=doubleKind) :: dx, dy, tr(6), fg, bg
-    real(kind=doubleKind), allocatable :: tempImage(:,:)
+    real(kind=octalKind) :: kabs
+    real(kind=octalKind) ::  kappaP, norm
+    real(kind=octalKind) :: adot, V, epsOverDeltaT
+    real(kind=octalKind) :: newT, deltaT
+    real(kind=octalKind) :: meanDeltaT
+    real(kind=octalKind) :: dx, dy, tr(6), fg, bg
+    real(kind=octalKind), allocatable :: tempImage(:,:)
     integer :: nDT
-    real(kind=doubleKind) :: totalEmission
+    real(kind=octalKind) :: totalEmission
+    type(vector) :: vec_tmp
 
     allocate(tempImage(1:grid%nx,1:grid%ny))
 
@@ -97,9 +99,11 @@ contains
                (r - probDistPlanck(j))/(probDistPlanck(j+1)-probDistPlanck(j))
 
 
-          rVec  = grid%rCore * randomUnitVector()
-          uHat = fromPhotosphereVector(rVec)
-          if ( (rVec .dot. uHat) < 0.) uHat = (-1.) * uHat
+          rVec  = real(grid%rCore, kind=octalkind) * randomUnitOctalVector()
+!          uHat = fromPhotosphereVector(rVec)
+          ! -- using a new routine in source_mod.f90 (RK)
+          uHat = random_direction_from_sphere(rVec)
+          if ( (rVec .dot. uHat) < 0.) uHat = (-1.d0) * uHat
 
           do while(.not.escaped)
              call toNextEvent(grid, rVec, uHat, escaped, distanceGrid, thisFreq, nLambda, lamArray)
@@ -115,12 +119,12 @@ contains
                 if (.not.grid%oneKappa) then
                    albedo = grid%kappaSca(i1,i2,i3,iLam)/(grid%kappaSca(i1,i2,i3,iLam)+grid%kappaAbs(i1,i2,i3,iLam))
                 else
-                   albedo = grid%oneKappaSca(iLam) / (grid%oneKappaSca(iLam)+grid%oneKappaAbs(iLam))
+                   albedo = grid%oneKappaSca(1,iLam) / (grid%oneKappaSca(1,iLam)+grid%oneKappaAbs(1,iLam))
                 endif
                 call random_number(r)
                 if (r < albedo) then
-
-                   uNew = newDirectionMie(uhat, real(thisLam), lamArray, nLambda, miePhase, nMuMie)
+                   vec_tmp=uhat 
+                   uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nMuMie)
 
                    nScat = nScat + 1
                    uHat = uNew
@@ -135,7 +139,7 @@ contains
                          if (.not.grid%oneKappa) then
                             kabs = grid%kappaAbs(i1,i2,i3,iLam)
                          else
-                            kabs = grid%oneKappaAbs(iLam) * grid%rho(i1,i2,i3)
+                            kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
                          endif
                          probDistJnu(i) = probDistJnu(i-1) + &
                              (bnu(freq(i),dble(grid%temperature(i1,i2,i3)))) &
@@ -183,7 +187,7 @@ contains
                          if (.not.grid%oneKappa) then
                             kabs = grid%kappaAbs(i1,i2,i3,iLam)
                          else
-                            kabs = grid%oneKappaAbs(iLam) * grid%rho(i1,i2,i3)
+                            kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
                          endif
 
                          kappaP = kappaP + kabs * &
@@ -210,7 +214,7 @@ contains
                          if (.not.grid%oneKappa) then
                             kabs = grid%kappaAbs(i1,i2,i3,iLam)
                          else
-                            kabs = grid%oneKappaAbs(iLam) * grid%rho(i1,i2,i3)
+                            kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
                          endif
                          kappaP = kappaP + kabs * &
                               bnu(freq(i),dble(grid%temperature(i1,i2,i3))) * dnu(i)
@@ -266,7 +270,7 @@ contains
        nT = 0
        do j = 1, 100
           ang = twoPi * real(j-1)/100.
-          rVec = VECTOR(r*cos(ang), r*sin(ang),0.)
+          rVec = OCTALVECTOR(r*cos(ang), r*sin(ang),0.)
           call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
           if (grid%inUse(i1,i2,i3)) then
              nT = nT + 1
@@ -294,50 +298,71 @@ contains
   end subroutine lucyRadiativeEquilibrium
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope)
-
+       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD)
+    implicit none
     type(GRIDTYPE) :: grid
-    type(SOURCETYPE) :: source(*), thisSource
     integer :: nSource
+    type(SOURCETYPE) :: source(nsource), thisSource
     integer :: nLucy
-    type(VECTOR) ::  uHat, uNew, rVec, rHat
-    type(OCTALVECTOR) :: octVec
+    logical :: twoD
+    ! threshold value for undersampled cell in percent (for stopping iteration).
+    real, intent(in) :: percent_undersampled_min  
+    type(OCTALVECTOR) ::  uHat, uNew, rVec, rHat
+    type(OCTALVECTOR) :: octVec,avedirection
     type(OCTAL), pointer :: thisOctal
-    integer :: nLambda, nMuMie
+    integer, intent(in)  :: nLambda, nMuMie
     type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
-    real  :: lamArray(:)
-    real(kind=doubleKind) :: r
+!    real  :: lamArray(:)
+    real  :: lamArray(nLambda)
+    real(kind=octalKind) :: r
     real :: massEnvelope, scaleFac
-    real(kind=doubleKind) :: totalMass
+    real(kind=octalKind) :: totalMass
     integer :: nFreq
     integer :: i, j
-    real(kind=doubleKind) :: freq(2000), dnu(2000), probDistJnu(2000)
-!    real(kind=doubleKind) :: probDistPlanck(nFreq)
+    real(kind=octalKind) :: freq(2000), dnu(2000), probDistJnu(2000)
+!    real(kind=octalKind) :: probDistPlanck(nFreq)
     real :: kappaScaReal, kappaAbsReal
     integer :: nMonte, iMonte, nScat, nAbs
-    real(kind=doubleKind) :: thisFreq
-    real(kind=doubleKind) :: albedo
+    real(kind=octalKind) :: thisFreq
+    real(kind=octalKind) :: albedo
     logical :: escaped
-    real(kind=doubleKind) :: t1
-    real(kind=doubleKind) :: thisLam,wavelength
+    real(kind=octalKind) :: t1
+    real(kind=octalKind) :: thisLam,wavelength
     integer :: iSource
     integer :: nRemoved
     real :: Tthresh
     integer :: iLam
     integer :: nInf
-    integer :: iIter, nIter = 5
-    real(kind=doubleKind) ::   epsOverDeltaT
-    real(kind=doubleKind) :: meanDeltaT
+    integer :: iIter, nIter
+    real(kind=octalKind) ::   epsOverDeltaT
+    real(kind=octalKind) :: meanDeltaT
     integer :: nDT, nUndersampled
-    real(kind=doubleKind) :: totalEmission
+    real(kind=octalKind) :: totalEmission
     integer :: subcell
     real :: treal
-    real(kind=doubleKind) :: lCore
-    real(kind=doubleKind) :: kabs
+    real(kind=octalKind) :: lCore
+    real(kind=octalKind) :: kabs
+    type(vector) :: vec_tmp
+    real :: dummy(1)
+    real(kind=octalKind)::  dT_sum ! [Kelvins]  the sum of the temperature change
+    real(kind=octalKind)::  dT_min ! [kelvins]  the minimum change of temperature
+    real(kind=octalKind)::  dT_max ! [kelvins]  the maximum change of temperature
+    real(kind=octalKind)::  dT_over_T_max ! [kelvins]  the maximum fractional change of temperature
+    character(len=30) :: tfilename1, tfilename2
+    logical, save :: first_time_to_open_file = .true.
+    integer, parameter :: LU_OUT = 42
+    integer :: iIter_grand
+    real(kind=octalKind)::  dT_mean_new, dT_mean_old ! [Kelvins]
+    logical :: converged
+    real:: percent_undersampled
+    integer :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
+
+    integer       :: imonte_beg, imonte_end  ! the index boundary for the photon loops.
+
+
 
 
     nMonte = nLucy
-
     nFreq = nLambda
     do i = 1, nFreq
        freq(nFreq-i+1) = cSpeed / (lamArray(i)*1.e-8)
@@ -350,10 +375,25 @@ contains
     dnu(1) = freq(2)-freq(1)
     dnu(nFreq) = freq(nFreq)-freq(nFreq-1)
 
+! if we are in two-D then we make a quick remap of the density grid
+! to ensure that we don't have numerical effects due to sampling
+! differences as a function of azimuth
+
+    if (twoD) then
+       call remapDistanceGrid(grid%octreeRoot, grid)
+       call zeroDistanceGrid(grid%octreeRoot)       ! distance grid in the first instance is used to store the total cell
+                                                    ! volume corresponding to the mapping of the 3d -> 2d
+       call setupCellVolumes(grid%octreeRoot,grid)  ! these volumes are set up here
+       call normCellVolumes(grid%octreeRoot,grid)   ! etaLine is used as a placeholder for a fractional volume in the
+                                                    ! 3d to 2d mapping
+    endif
+
+
+! writing the grid before the iteration...
+      call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
 
 
 !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
-
 
     write(*,'(a)') "Computing lucy radiative equilibrium in AMR..."
 
@@ -364,44 +404,107 @@ contains
     enddo
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
+    iIter_grand = 0
     nRemoved = 1
-    do while (nRemoved > 0)
-    do iIter = 1, nIter
-!       call plot_AMR_values(grid, "temperature", "x-y", 0.0, "/xs", .false., .true.)
+    converged = .false.
+    dT_mean_new = 10.0d0
+    dT_mean_old = 10.0d0
 
+    do while (.not.converged)
+       ! ensure we do at least three iterations
+       ! before removing the high temperature cells.
+       if (iIter_grand>1) then
+          nIter = 1
+       else
+          nIter = 1
+       end if
+
+    do iIter = 1, nIter
+
+       iIter_grand =  iIter_grand + 1  ! total number of iterations so far
+
+       write(tfilename1, '(a,i2.2,a)') "lucy_iter_",iIter_grand,".gif/gif"
+       write(tfilename2, '(a,i2.2,a)') "lucy_iter_zoom",iIter_grand,".gif/gif"
+
+       ! Plotting the intermidiate temperature steps
+       call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
+            "rho_temp_xz.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+       call plot_AMR_values(grid, "rho", "x-y", real(grid%octreeRoot%centre%y), &
+            "rho_temp_xy.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+            "lucy_temp_xz.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+            "lucy_zoom_xz.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+            tfilename1, .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+            tfilename2, .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+       call plot_AMR_values(grid, "temperature", "x-y", real(grid%octreeRoot%centre%z), &
+            "lucy_temp_xy.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+       call plot_AMR_values(grid, "temperature", "y-z", real(grid%octreeRoot%centre%x), &
+            "lucy_temp_yz.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+       call polardump(grid)
 
        call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
        
        call zeroDistanceGrid(grid%octreeRoot)
-       write(*,*) "Iteration",iIter,",",nmonte," photons"
+       write(*,*) " "
+       write(*,*) "Iteration",iIter_grand,",",nmonte," photons"
+
+
+
+
+!$OMP PARALLEL DEFAULT(NONE) &
+!$OMP PRIVATE(iMonte, iSource, thisSource, rVec, uHat, rHat) &
+!$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
+!$OMP PRIVATE(thisOctal, kappaScaReal, kappaAbsReal, albedo, r) &
+!$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
+!$OMP PRIVATE(kabs,i, j, T1) &
+!$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub) &
+!$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie) &
+!$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
+!$OMP SHARED(dnu, nFreq, freq, nMonte) &
+!$OMP SHARED(nAbs, nScat, nInf) 
+ 
+       nInf_sub = 0
+       nScat_sub = 0
+       nAbs_sub = 0
        nInf = 0
        nScat = 0
        nAbs = 0
-       do iMonte = 1, nMonte
+
+       imonte_beg=1; imonte_end=nMonte  ! default value
+
+
+
+!!$OMP DO SCHEDULE(DYNAMIC,10)
+!$OMP DO SCHEDULE(STATIC,10)
+       avedirection = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+       do iMonte = imonte_beg, imonte_end
 
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
-           
-          call getPhotonPositionDirection(thisSource, rVec, uHat, rHat)
+          call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
+          avedirection = avedirection + uHat
           escaped = .false.
           call getWavelength(thisSource%spectrum, wavelength)
           thisFreq = cSpeed/(wavelength / 1.e8)
 
-!          call random_number(r)
-!          call locate(probDistPlanck, nFreq, r, j)
-!          thisFreq = freq(j) + (freq(j+1) - freq(j))* &
-!               (r - probDistPlanck(j))/(probDistPlanck(j+1)-probDistPlanck(j))
-!          rVec  = grid%rCore * randomUnitVector()
-!          uHat = fromPhotosphereVector(rVec)
-
-
-
-          if ( (rVec .dot. uHat) < 0.) uHat = (-1.) * uHat
-
           do while(.not.escaped)
-             call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray)
 
-             if (escaped) nInf = nInf + 1
+!$OMP CRITICAL (tonext)
+             call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD)
+!$OMP END CRITICAL (tonext)
+
+             if (escaped) nInf_sub = nInf_sub + 1
 
              if (.not. escaped) then
 
@@ -410,20 +513,25 @@ contains
                 octVec = rVec 
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, iLambda=iLam, &
                      kappaSca=kappaScaReal, kappaAbs=kappaAbsReal, grid=grid)
-                albedo = kappaScaReal / (kappaScaReal + kappaAbsReal)
+                if (kappaScaReal+kappaAbsReal /= 0.0) then
+                   albedo = kappaScaReal / (kappaScaReal + kappaAbsReal)
+                else
+                   albedo = 0.5
+                end if
+	        albedo = min(albedo,0.9999d0)
 
                 call random_number(r)
                 if (r < albedo) then
-
-                   uNew = newDirectionMie(uhat, real(thisLam), lamArray, nLambda, miePhase, nMuMie)
-                   nScat = nScat + 1
+                   vec_tmp = uhat
+                   uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nMuMie)
+                   nScat_sub = nScat_sub + 1
                    uHat = uNew
 
                 else
                    call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-                        foundSubcell=subcell, temperature=treal, grid=grid)
+                        foundSubcell=subcell, temperature=treal,grid=grid)
                    t1 = dble(treal)
-                   nAbs = nAbs + 1
+                   nAbs_sub = nAbs_sub + 1
                    probDistJnu(1) = 0.
                    do i = 2, nFreq
                       thisLam = (cSpeed / freq(i)) * 1.e8
@@ -432,7 +540,7 @@ contains
                          if (.not.grid%oneKappa) then
                             kabs = thisOctal%kappaAbs(subcell,ilam)
                          else
-                            kabs = grid%oneKappaAbs(iLam) * thisOctal%rho(subcell)
+                            kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
                          endif
                          probDistJnu(i) = probDistJnu(i-1) + &
                               bnu(freq(i),t1) * kabs * dnu(i)
@@ -452,9 +560,24 @@ contains
              endif
           enddo
        enddo
-       write(*,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
-       write(*,'(a,f7.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
-       write(*,'(a,f7.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
+!$OMP END DO
+!$OMP CRITICAL (update)
+      nScat = nScat_sub  + nScat   ! sum from each thread for OpenMP
+      nInf = nInf_sub    + nInf    ! sum from each thread for OpenMP
+      nAbs = nAbs_sub    + nAbs    ! sum from each thread for OpenMP
+!$OMP END CRITICAL (update)
+
+!$OMP BARRIER
+!$OMP END PARALLEL
+
+
+
+
+
+          write(*,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
+          write(*,'(a,f13.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
+          write(*,'(a,f13.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
+
 
 
 
@@ -466,24 +589,78 @@ contains
 
 
        totalEmission = 0.
-       call calculateTemperatureCorrections(grid%octreeRoot, totalEmission, epsOverDeltaT, &
-       nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled)
 
-       write(*,'(a,i5)') "Number of undersampled cells: ",nUndersampled
-       write(*,'(a,f8.2)') "Percentage of undersampled cells: ",100.*real(nUndersampled)/real(nDt)
+! If we are doing the computation in 2D then we need to remap the distancegrid before
+! calculating the temperature corrections
+
+       if (twoD) then
+          write(*,*) "! Remapping the distance grid attributes..."
+          call remapDistanceGrid(grid%octreeRoot, grid)
+          call resetDistanceGrid(grid%octreeRoot)
+          write(*,*) "done."
+       endif
+
+       call calculateTemperatureCorrections(.true., grid%octreeRoot, totalEmission, epsOverDeltaT, &
+       nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
+       dT_sum, dT_min, dT_max, dT_over_T_max)
+
+       if (twoD) then
+          write(*,*) "! Remapping the distance grid attributes..."
+          call remapDistanceGrid(grid%octreeRoot, grid)
+          call resetDistanceGrid(grid%octreeRoot)
+          write(*,*) "done."
+       endif
+
+
+       percent_undersampled  = 100.*real(nUndersampled)/real(nDt)
+       dT_mean_old = dT_mean_new  ! save this for the next iteration
+       dT_mean_new = dT_sum/real(nDt)
+
+
+
+
+
+       write(*,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
+       write(*,*) "Minimum change in temperature : ", dT_min, " Kelvins"
+       write(*,*) "Maximum change in temperature : ", dT_max, " Kelvins"
+      write(*,*) "Maximum fractional change in temperature : ", dT_over_T_max
+       write(*,'(a,i8)') "Number of undersampled cells: ",nUndersampled
+       write(*,'(a,f8.2)') "Percentage of undersampled cells: ",percent_undersampled
        write(*,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
        write(*,*) "Total emission",totalEmission
+
+       
+       !
+       ! writing the info above to a file.
+10     format(a3, a12, 3(2x, a12),     4(2x, a12),     (2x, a12))
+11     format(3x, i12, 3(2x, 1PE12.4), 4(2x, 1PE12.4), (2x, i12))
+       if (first_time_to_open_file) then
+          open(unit=LU_OUT, file='convergence_lucy.dat', status='replace')
+          first_time_to_open_file=.false.
+          write(LU_OUT, 10) "#", "iteration", "Mean dT [K]", "Min dT [K]", "Max dT [K]", &
+               "% bad cells", "Eta dust/*", "Eta Total", "Max dT/T", "nMonte"
+       else
+          open(unit=LU_OUT, file='convergence_lucy.dat', status='old', position='append')
+       end if
+
+       write(LU_OUT, 11) iIter_grand, dT_sum/real(nDt), dT_min, dT_max, & 
+            100.*real(nUndersampled)/real(nDt), totalEmission /lCore *1.e30, &
+            totalEmission, dT_over_T_max, nMonte
+       
+       close(LU_OUT)
+
 
        call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
        
     enddo
 
-    Tthresh = 2000.
 
-    write(*,*) "Removing dust with T > Tthresh: ",Tthresh
 
     nRemoved = 0
-    call removeDust(grid%octreeRoot, Tthresh, nRemoved)
+    if (iIter_Grand > 1) then
+       write(*,*) "Removing dust with T > Tthresh: ",Tthresh
+       call removeDust(grid%octreeRoot, Tthresh, nRemoved)
+    endif
 
     write(*,*) "Number of cells removed: ",nRemoved
 
@@ -497,6 +674,29 @@ contains
     endif
 
 
+    !
+    ! check the convergence
+    !
+    if (percent_undersampled>percent_undersampled_min) then
+       converged = .false.
+       nMonte = nMonte*2  ! increases the number of iterations!
+    elseif (nRemoved > 3   &
+         .or. iIter_grand < 20 &
+         .or. (dT_mean_new-dT_mean_old)/((dT_mean_new+dT_mean_old)/2.0) > 0.05) then
+       converged = .false.
+    else 
+       converged = .true.
+    end if
+
+!    converged = .true.
+!    write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
+
+
+!    !
+!    ! Write grid structure to a tmp file.
+!    !
+      call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
+       
   enddo
 
 
@@ -507,11 +707,11 @@ contains
 
     ! Lucy 1999, A&A, 344, 282 Equation 3
 
-    real(kind=doubleKind) :: temperature
+    real(kind=octalKind) :: temperature
     integer :: nFreq
-    real(kind=doubleKind) :: freq(*)
-    real(kind=doubleKind) :: probDist(*)
-    real(kind=doubleKind) :: dnu(*)
+    real(kind=octalKind) :: freq(*)
+    real(kind=octalKind) :: probDist(*)
+    real(kind=octalKind) :: dnu(*)
 
     integer :: i
 
@@ -532,19 +732,19 @@ contains
 
 
    type(GRIDTYPE) :: grid
-   type(VECTOR) :: rVec, uHat
+   type(OCTALVECTOR) :: rVec, uHat
    integer :: i1, i2, i3
-   real :: t1, t2, t3
-   real(kind=doubleKind) :: tval, tau, r
+   real(kind=octalkind) :: t1, t2, t3
+   real(kind=octalKind) :: tval, tau, r
    real :: lamArray(*)
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
-   real(kind=doubleKind) :: thisTau
-   real(kind=doubleKind) :: kabs, ksca
-   real(kind=doubleKind) :: thisFreq
-   real(kind=doubleKind) :: distanceGrid(1:grid%nx, 1:grid%ny, 1:grid%nz)
-   real(kind=doubleKind) :: thisLam
+   real(kind=octalKind) :: thisTau
+   real(kind=octalKind) :: kabs, ksca
+   real(kind=octalKind) :: thisFreq
+   real(kind=octalKind) :: distanceGrid(1:grid%nx, 1:grid%ny, 1:grid%nz)
+   real(kind=octalKind) :: thisLam
    integer :: iLam
 
     stillinGrid = .true.
@@ -566,8 +766,8 @@ contains
        kabs = grid%kappaAbs(i1,i2,i3,iLam)
        ksca = grid%kappaSca(i1,i2,i3,iLam)
     else
-       kabs = grid%oneKappaAbs(iLam) * grid%rho(i1,i2,i3)
-       ksca = grid%oneKappaSca(iLam) * grid%rho(i1,i2,i3)
+       kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
+       ksca = grid%oneKappaSca(1,iLam) * grid%rho(i1,i2,i3)
     endif
 
     thisTau = tVal * (kabs + ksca)
@@ -587,7 +787,7 @@ contains
           if (.not.grid%oneKappa) then
              kabs = grid%kappaAbs(i1,i2,i3,iLam)
           else
-             kabs = grid%oneKappaAbs(iLam) * grid%rho(i1,i2,i3)
+             kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
           endif
           distanceGrid(i1,i2,i3) = distanceGrid(i1,i2,i3) + tVal * kabs
        endif
@@ -602,8 +802,8 @@ contains
              kabs = grid%kappaAbs(i1,i2,i3,iLam)
              ksca = grid%kappaSca(i1,i2,i3,iLam)
           else
-             kabs = grid%oneKappaAbs(iLam) * grid%rho(i1,i2,i3)
-             ksca = grid%oneKappaSca(iLam) * grid%rho(i1,i2,i3)
+             kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
+             ksca = grid%oneKappaSca(1,iLam) * grid%rho(i1,i2,i3)
           endif
           thisTau = tVal * (kabs+ksca)
           if (tVal == 0.) then
@@ -623,7 +823,7 @@ contains
           if (.not.grid%oneKappa) then
              kabs = grid%kappaAbs(i1,i2,i3,iLam)
           else
-             kabs = grid%oneKappaAbs(iLam) * grid%rho(i1,i2,i3)
+             kabs = grid%oneKappaAbs(1,iLam) * grid%rho(i1,i2,i3)
           endif
           distanceGrid(i1,i2,i3) = distanceGrid(i1,i2,i3) + (tVal*tau/thisTau) * kabs
        endif
@@ -648,8 +848,9 @@ contains
    use grid_mod
    implicit none
    type(GRIDTYPE) :: grid
-   type(VECTOR) :: posVec, direction, norm(6), p3(6)
-   real(kind=doubleKind) :: t(6),tval,denom(6)
+   type(OCTALVECTOR) :: direction
+   type(OCTALVECTOR) :: posVec, norm(6), p3(6)
+   real(kind=octalkind) :: t(6),tval,denom(6)
    integer :: i,j
    logical :: ok, thisOk(6)
    integer :: i1, i2, i3
@@ -671,7 +872,7 @@ contains
    p3(6) = VECTOR(0.,0.,grid%zAxis(i3))
 
    thisOk = .true.
-
+   
    do i = 1, 6
 
       denom(i) = norm(i) .dot. direction
@@ -733,7 +934,7 @@ contains
   type(octal), pointer  :: child 
   integer :: subcell, i
   
-  do subcell = 1, 8
+  do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -751,52 +952,83 @@ contains
   end subroutine zeroDistanceGrid
 
 
-  recursive subroutine calculateTemperatureCorrections(thisOctal, totalEmission, epsOverDeltaT, &
-       nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled)
+  recursive subroutine calculateTemperatureCorrections(this_is_root, thisOctal, totalEmission, &
+       epsOverDeltaT, nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
+       dT_sum, dT_min, dT_max, dT_over_T_max)
 
-    real(kind=doubleKind) :: totalEmission
+    logical, intent(in) :: this_is_root    ! T if thisOctal is a root node.
+    real(kind=octalKind) :: totalEmission
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     type(gridtype) :: grid
     integer :: subcell, i
-    real(kind=doubleKind) :: V, epsOverDeltaT
-    real(kind=doubleKind) :: adot
-    real(kind=doubleKind) :: kappaP, norm
-    real(kind=doubleKind) :: thisLam
+    integer, parameter :: minCrossings = 30
+    real(kind=octalKind) :: V, epsOverDeltaT
+    real(kind=octalKind) :: adot
+    real(kind=octalKind) :: kappaP, norm
+    real(kind=octalKind) :: thisLam
     integer :: ilam, nLambda
-    real(kind=doubleKind) :: newT, deltaT
-    integer :: ndt
-    real(kind=doubleKind) :: kabs
+    real(kind=octalKind) :: newT, deltaT
+    integer, intent(inout) :: nDt
+    real(kind=octalKind), intent(inout) :: dT_sum ! [Kelvins]  the sum of the temperature change
+    real(kind=octalKind), intent(inout) :: dT_min ! [kelvins]  the minimum change of temperature
+    real(kind=octalKind), intent(inout) :: dT_max ! [kelvins]  the maximum change of temperature
+    ! [kelvins]  the maximum fractional change of temperature
+    real(kind=octalKind), intent(inout) :: dT_over_T_max 
+
+    real(kind=octalKind) :: kabs
     real :: lamArray(*)
     integer :: nFreq
-    real(kind=doubleKind) :: freq(*)
-    real(kind=doubleKind) :: dnu(*)
+    real(kind=octalKind) :: freq(*)
+    real(kind=octalKind) :: dnu(*)
     integer :: nUndersampled
-    do subcell = 1, 8
+    integer, save  :: nwarning = 0
+    integer, parameter :: nmaxwarning = 200000
+    real :: r1, r2
+    type(VECTOR) :: rVec
+
+    if(this_is_root) then !initialize some values
+       dT_sum = 0.0
+       dT_min = 1.0e10
+       dT_max = 0.0
+       nDT = 0
+       dT_over_T_max = 0.0
+    end if
+    
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calculateTemperatureCorrections(child, totalEmission, epsOverDeltaT, &
-                     nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled)
+                call calculateTemperatureCorrections(.false., child, totalEmission, epsOverDeltaT, &
+                     nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled, &
+                     dT_sum, dT_min, dT_max, dT_over_T_max)
                 exit
              end if
           end do
        else
           if (thisOctal%inFlow(subcell)) then
-             v = thisOctal%subcellSize**3
+             if (thisOctal%threed) then
+                v = thisOctal%subcellSize**3
+             else
+                rVec = subcellCentre(thisOctal,subcell)
+                r1 = rVec%x-thisOctal%subcellSize/2.
+                r2 = rVec%x+thisOctal%subcellSize/2.
+                v = pi * (r2**2 - r1**2) * thisOctal%subcellSize
+             endif
              adot = epsoverDeltaT * (1.d0 / v) * thisOctal%distancegrid(subcell) / 1.d30
              kappaP = 0.d0
              norm = 0.d0
              do i = 1, nFreq
-                thisLam = (cSpeed / freq(i)) * 1.e8
+                thisLam = (cSpeed / freq(i)) * 1.d8
                 call hunt(lamArray, nLambda, real(thisLam), iLam)
                 if ((iLam >=1) .and. (iLam <= nLambda)) then
                    if (.not.grid%oneKappa) then
                       kabs = thisOctal%kappaAbs(subcell,iLam)
                    else
-                      kabs = grid%oneKappaAbs(iLam) * thisOctal%rho(subcell)
+                      kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
                    endif
                    kappaP = kappaP + dble(kabs) * &
                         dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))
@@ -810,17 +1042,31 @@ contains
                 newT = (pi / stefanBoltz) * aDot / (fourPi * kappaP)
                 newT = newT**0.25
              else
-                newT = 1.e-3
+                newT = 10.0
              endif
              deltaT = newT - thisOctal%temperature(subcell)
-             if (deltaT > 10000.) then
-                write(*,*) deltaT, thisOctal%nCrossings(subcell)
+             if ((deltaT > 10000.).and.(thisOctal%nCrossings(subcell) .ge. minCrossings)) then
+                if (nwarning < nmaxwarning) then
+                   write(*,*) "Warning:: deltaT > 10000 kelvins calculateTemperatureCorrections.", &
+                        deltaT, thisOctal%nCrossings(subcell), &
+                        modulus(subcellcentre(thisOctal,subcell))/grid%rinner,thisOctal%rho(subcell), &
+                        dble(1./grid%rinner)*subcellcentre(thisOctal,subcell) 
+                   nwarning = nwarning + 1
+                elseif (nwarning == nmaxwarning) then
+                   write(*,*) " "
+                   write(*,*) " ==> Suppressing the further delatT > 1000 Kelvins  wanrning .... "
+                   write(*,*) " "
+                   nwarning = nwarning + 1
+                else
+                   continue
+                end if                   
                 !                write(*,*) deltaT, thisOctal%temperature(subcell), newT
                 !                write(*,*) adot,kappap,thisOctal%rho(subcell)
              endif
-             if (thisOctal%nCrossings(subcell) .ge. 5) then
+             if (thisOctal%nCrossings(subcell) .ge. minCrossings) then
                 thisOctal%temperature(subcell) = max(1.e-3,thisOctal%temperature(subcell) + real(0.8 * deltaT))
              else
+                deltaT = 0.
                 nUnderSampled = nUndersampled + 1
              endif
              kappaP = 0.d0
@@ -832,7 +1078,7 @@ contains
                    if (.not.grid%oneKappa) then
                       kabs = thisOctal%kappaAbs(subcell,iLam)
                    else
-                      kabs = grid%oneKappaAbs(iLam) * thisOctal%rho(subcell)
+                      kabs = grid%oneKappaAbs(1,iLam) * thisOctal%rho(subcell)
                    endif
                    
                    kappaP = kappaP + dble(kabs) * &
@@ -844,26 +1090,33 @@ contains
              thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * (thisOctal%temperature(subcell)**4)
              totalEmission = totalEmission + thisOctal%etaCont(subcell) * V
              nDT = nDT  + 1
+             dT_sum = dT_sum + ABS(deltaT)
+             dT_min = MIN(deltaT, dT_min)
+             dT_max = MAX(deltaT, dT_max)
+             if (newT>0.0) dT_over_T_max = MAX(ABS(deltaT)/newT, dT_over_T_max)
           else 
              thisOctal%etaCont(subcell) = 0.
           endif
        endif
     enddo
-     end subroutine calculateTemperatureCorrections
+  end subroutine calculateTemperatureCorrections
 
   subroutine intersectCubeAMR(grid, posVec, direction, tval)
-   use vector_mod
-   use grid_mod
    implicit none
-   type(GRIDTYPE) :: grid
-   type(VECTOR) :: posVec, direction, norm(6), p3(6)
+   type(GRIDTYPE), intent(in)    :: grid
+   type(OCTALVECTOR), intent(in) :: posVec
+   type(OCTALVECTOR), intent(in) :: direction
+   real(kind=octalkind), intent(out) :: tval
+   !
+   type(OCTALVECTOR) :: norm(6), p3(6)
    type(OCTAL),pointer :: thisOctal
    type(OCTALVECTOR) :: subcen, point
    integer :: subcell
    
-   real(kind=doubleKind) :: t(6),tval,denom(6)
+   real(kind=octalKind) :: t(6),denom(6)
    integer :: i,j
    logical :: ok, thisOk(6)
+
 
    point = posVec
 
@@ -871,37 +1124,34 @@ contains
    subcen =  subcellCentre(thisOctal,subcell)
    ok = .true.
 
-   norm(1) = VECTOR(1., 0., 0.)
-   norm(2) = VECTOR(0., 1., 0.)
-   norm(3) = VECTOR(0., 0., 1.)
-   norm(4) = VECTOR(-1., 0., 0.)
-   norm(5) = VECTOR(0., -1., 0.)
-   norm(6) = VECTOR(0., 0., -1.)
+   norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
+   norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
+   norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+   norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
+   norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
+   norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
 
-   p3(1) = VECTOR(subcen%x+thisOctal%subcellsize/2., 0., 0.)
-   p3(2) = VECTOR(0., subcen%y+thisOctal%subcellsize/2. ,0.)
-   p3(3) = VECTOR(0.,0.,subcen%z+thisOctal%subcellsize/2.)
-   p3(4) = VECTOR(subcen%x-thisOctal%subcellsize/2., 0., 0.)
-   p3(5) = VECTOR(0.,subcen%y-thisOctal%subcellsize/2.,0.)
-   p3(6) = VECTOR(0.,0.,subcen%z-thisOctal%subcellsize/2.)
+   p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
+   p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
+   p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
+   p3(4) = OCTALVECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
+   p3(5) = OCTALVECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
+   p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
 
    thisOk = .true.
 
    do i = 1, 6
 
       denom(i) = norm(i) .dot. direction
-      if (denom(i) /= 0.) then
+      if (denom(i) /= 0.0d0) then
          t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
       else
          thisOk(i) = .false.
-         t(i) = 0.
+         t(i) = 0.0d0
       endif
       if (t(i) < 0.) thisOk(i) = .false.
 !      if (denom > 0.) thisOK(i) = .false.
  enddo
-
-
-
 
   
   j = 0
@@ -912,6 +1162,7 @@ contains
   if (j == 0) ok = .false.
    
   if (.not.ok) then
+     write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
      write(*,*) direction%x,direction%y,direction%z
      write(*,*) t(1:6)
      stop
@@ -938,27 +1189,120 @@ contains
 
   end subroutine intersectCubeAMR
 
+  subroutine intersectCubeAMR2D(grid, posVec, direction, tval)
+
+! this is to find a cell intersection for a 2D AMR grid
+! which is essentially a 2D-grid that projects into
+! a 3D cylindrical coordinate system
 
 
- subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray)
+   implicit none
+   type(GRIDTYPE), intent(in)    :: grid
+   type(OCTALVECTOR), intent(in) :: posVec
+   type(OCTALVECTOR), intent(in) :: direction
+   real(kind=octalkind), intent(out) :: tval
+   !
+   type(OCTALVECTOR) :: norm(6), p3(6)
+   type(OCTAL),pointer :: thisOctal
+   type(OCTALVECTOR) :: subcen, point
+   real :: dx, dz ! directions in cylindrical coords
+   integer :: subcell
+   real(kind=doubleKind) :: compX, compZ,currentX,currentZ
+   real(kind=doubleKind) :: distToZBoundary, distToXboundary
+   real(kind=octalKind) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
+   integer :: i,j
+   logical :: ok, thisOk(6)
+   type(OCTALVECTOR) :: xHat, zHAt
+
+   point = posVec
+
+   call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
+   subcen =  subcellCentre(thisOctal,subcell)
+   ok = .true.
+
+
+   r1 = subcen%x - thisOctal%subcellSize/2.
+   r2 = subcen%x + thisOctal%subcellSize/2.
+   d = sqrt(point%x**2+point%y**2)
+   xHat = VECTOR(point%x, point%y,0.d0)
+   call normalize(xHat)
+
+   cosmu =((-1.d0)*xHat).dot.direction
+   call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
+   if (.not.ok) then
+      write(*,*) "Quad solver failed in intersectcubeamr2d"
+      do;enddo
+   endif
+   distTor2 = max(x1,x2)
+
+   theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+   cosmu = xHat.dot.direction
+   mu = acos(max(-1.d0,min(1.d0,cosmu)))
+   distTor1 = 1.e30
+   if (mu  < theta ) then
+      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+      if (.not.ok) then
+         write(*,*) "Quad solver failed in intersectcubeamr2d"
+         do;enddo
+      endif
+      distTor1 = max(x1,x2)
+   endif
+         
+   distToXboundary = min(distTor1, distTor2)
+
+
+   zHat = VECTOR(0.d0, 0.d0, 1.d0)
+   compZ = zHat.dot.direction
+   currentZ = point%z
+
+   if (compZ /= 0.d0 ) then
+      if (compZ > 0.d0) then
+         distToZboundary = (subcen%z + thisOctal%subcellsize/2. - currentZ ) / compZ
+      else
+         distToZboundary = abs((subcen%z - thisOctal%subcellsize/2. - currentZ ) / compZ)
+      endif
+   else
+      disttoZboundary = 1.e30
+   endif
+
+   tVal = min(distToZboundary, distToXboundary)
+   tval = max(tval * 1.0001d0,dble(thisOctal%subCellSize/10000.d0))
+   if (tVal > 1.e29) then
+      write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+      write(*,*) "subcen",subcen
+      write(*,*) "x,z",currentX,currentZ
+   endif
+   if (tval < 0.) then
+      write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+      write(*,*) "subcen",subcen
+      write(*,*) "x,z",currentX,currentZ
+   endif
+
+  end subroutine intersectCubeAMR2D
+
+
+
+ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, twoD)
 
 
    type(GRIDTYPE) :: grid
-   type(VECTOR) :: rVec, uHat
-   type(OCTALVECTOR) :: octVec
+   type(OCTALVECTOR) :: rVec, uHat, octVec,thisOctVec,octVec2D
    type(OCTAL), pointer :: thisOctal
    type(OCTAL),pointer :: oldOctal
-   integer :: subcell
-   real(kind=doubleKind) :: tval, tau, r
+   type(OCTAL),pointer :: foundOctal
+   integer :: subcell, isubcell
+   real(kind=octalKind) :: tval, tau, r
    real :: lamArray(*)
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
+   logical :: twoD
    real :: kappaScaReal, kappaAbsReal
-   real(kind=doubleKind) :: thisTau
-   real(kind=doubleKind) :: thisFreq
-   real(kind=doubleKind) :: thisLam
+   real(kind=octalKind) :: thisTau
+   real(kind=octalKind) :: thisFreq
+   real(kind=octalKind) :: thisLam
    integer :: iLam
+   logical ::inFlow
 
     stillinGrid = .true.
     escaped = .false.
@@ -972,70 +1316,157 @@ contains
 
     call random_number(r)
     tau = -log(r)
-    call intersectCubeAMR(grid, rVec, uHat, tVal)
+    if (grid%octreeRoot%threed) then
+       call intersectCubeAMR(grid, rVec, uHat, tVal)
+    else
+       call intersectCubeAMR2D(grid, rVec, uHat, tVal)
+    endif
     octVec = rVec
-    call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, &
-         foundSubcell=subcell, kappaSca=kappaScaReal, kappaAbs=kappaAbsReal, grid=grid)
-    oldOctal => thisOctal
-    thisTau = tVal * dble(kappaAbsReal + kappaScaReal)
+    thisOctVec = rVec
+    octVec2D = projecttoXZ(octVec)
 
+    call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, &
+         foundSubcell=subcell, kappaSca=kappaScaReal, kappaAbs=kappaAbsReal, &
+         grid=grid, inFlow=inFlow)
+    oldOctal => thisOctal
+
+    if (inFlow) then
+       thisTau = dble(tVal) * dble(kappaAbsReal + kappaScaReal)
+    else
+       thisTau = 1.0e-28
+    end if
 
     do while(stillinGrid .and. (tau > thisTau)) 
        rVec = rVec + tVal * uHat
 
        octVec = rVec
+
        if (.not.inOctal(grid%octreeRoot, octVec)) then
           stillinGrid = .false.
           escaped = .true.
-       else     
-          thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal * dble(kappaAbsReal)
-          thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
        endif
 
+
+
+
+
+! two cases here now. in the 2D case we only update the distance grid in a single plane (y=0, x>=0)
+
+       if (.not.twoD) then
+
+          thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
+               + tVal * dble(kappaAbsReal)
+          thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+          
+       else
+          
+          thisOctVec = subcellCentre(thisOctal,subcell)
+          call find2Doctal(thisOctVec, grid, foundOctal, isubcell)
+          foundOctal%distanceGrid(isubcell) = foundOctal%distanceGrid(isubcell) &
+               + tVal * dble(kappaAbsReal)
+          foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
+       endif
 
        if (stillinGrid) then
           call random_number(r)
           tau = -log(r)
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, &
-               foundSubcell=subcell, kappaSca=kappaScaReal, kappaAbs=kappaAbsReal, grid=grid)
+               foundSubcell=subcell, kappaSca=kappaScaReal, kappaAbs=kappaAbsReal, &
+               grid=grid, inFlow=inFlow)
           oldOctal => thisOctal
-          call intersectCubeAMR(grid, rVec, uHat, tVal)
+          thisOctVec = octVec
+          if (grid%octreeRoot%threed) then
+             call intersectCubeAMR(grid, rVec, uHat, tVal)
+          else
+             call intersectCubeAMR2D(grid, rVec, uHat, tVal)
+          endif
           octVec = rVec
-          thisTau = dble(tVal) * dble(kappaAbsReal + kappaScaReal)
-          if (tVal == 0.) then
+
+          if (inFlow) then
+             thisTau = dble(tVal) * dble(kappaAbsReal + kappaScaReal)
+          else
+             thisTau = 1.0e-28
+          end if
+
+          if (tVal == 0.0d0) then
              escaped = .true.
              stillingrid = .false.
           endif
        endif
     enddo
 
+
+    if (.not.inOctal(grid%octreeRoot, octVec))  escaped = .true.
+
+    
+       
+
     if (.not.escaped) then
        octVec = rVec
-       if (.not.inOctal(grid%octreeRoot, octVec)) then
-          write(*,*) "octVec",octVec
-          write(*,*) "size",grid%octreeRoot%subcellsize
-          stop
-       endif
+       octVec2D = projectToXZ(octVec)
+!       if (.not.inOctal(grid%octreeRoot, octVec)) then
+!          write(*,*) "Error:: Photon location is out of boundaries, but its status is not ESCAPED."
+!          write(*,*) "        .... [lucy_mod::toNextEventAMR]"
+!          write(*,*) "octVec-centre = ",octVec-grid%octreeRoot%centre
+!          write(*,*) "cell size = ",grid%octreeRoot%subcellsize
+!          stop
+!       endif
        if (dble(tau)/thisTau .gt. 1.d0) then
           write(*,*) "tau prob",tau,thisTau
        endif
-       call intersectCubeAMR(grid, rVec, uHat, tVal)
-       call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLam, foundOctal=thisOctal, foundSubcell=subcell, &
-            kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid)
-          if (thisTau > 1.e-30) then
-             thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsReal)
+       if (grid%octreeRoot%threed) then
+          call intersectCubeAMR(grid, rVec, uHat, tVal)
+       else
+          call intersectCubeAMR2D(grid, rVec, uHat, tVal)
+       endif
+       call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLam, &
+            foundOctal=thisOctal, foundSubcell=subcell, &
+            kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid, inFlow=inFlow)
+       thisOctVec = octVec
+       if (.not.inFlow) kappaAbsReal =0.0d0
+
+       if (thisTau > 1.e-30) then
+
+          
+          if (.not.twoD) then
+
+             thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
+                  + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsReal)
              thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
-             oldOctal => thisOctal
+          
+          else
+          
+             thisOctVec = subcellCentre(thisOctal,subcell)
+             call find2Doctal(thisOctVec, grid, foundOctal, isubcell)
+             foundOctal%distanceGrid(isubcell) = foundOctal%distanceGrid(isubcell) &
+                  + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsReal)
+             foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
+
           endif
+
+          oldOctal => thisOctal
+          
+       endif
 
        if (tau > thisTau) then
           write(*,*) "tau > thistau"
           stop
        endif
-       if (thisTau > 1.e-30) then
+
+
+!       ! We limit the maxiumum number of the interaction in a single
+!       ! cell.  (RK modefied this part, june-11-2003)
+!       !      
+!       if (thisOctal%nCrossings(subcell) > 1000) then
+!           thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
+!            + tVal * dble(kappaAbsReal)
+!          rVec = rVec + tVal * uHat
+!          stillinGrid = .false.
+!       elseif (thisTau > 1.e-30) then
           rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
-       endif
+!       endif
     endif
+
 
  end subroutine toNextEventAMR
 
@@ -1046,7 +1477,7 @@ contains
   integer :: nRemoved
   integer :: subcell, i
   
-  do subcell = 1, 8
+  do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -1058,10 +1489,10 @@ contains
           end do
        else
           if (thisOctal%temperature(subcell) > Tthresh) then
-             write(*,*) "cell removed with T at ",thisOctal%temperature(subcell)
+!             write(*,*) "cell removed with T at ",thisOctal%temperature(subcell)
              thisOctal%inFlow(subcell) = .false.
              thisOctal%etaCont(subcell) = 1.e-30
-             thisOctal%rho(subcell) = 1.e-20
+             thisOctal%rho(subcell) = 1.e-27
              thisOctal%temperature(subcell) = 1.e-3
              nRemoved = nRemoved + 1
           endif
@@ -1069,30 +1500,205 @@ contains
     enddo
   end subroutine removeDust
 
-  recursive subroutine setbiasAMR(thisOctal, grid)
-  type(gridtype) :: grid
+
+
+
+
+
+  subroutine find2Doctal(rVec, grid, foundOctal, subcell)
+    type(GRIDTYPE) :: grid
+    type(OCTALVECTOR) :: rVec, rotVec
+    type(OCTAL), pointer :: foundOctal, resultOctal
+    integer :: subcell
+    real(kind=octalKind) :: r
+
+! This subroutine finds the location of an octal in the y=0, x>=0 plane
+! that corresponds to the position vector rVec when it is rotated
+! into the y=0 plane 
+
+
+    rotVec%z = rVec%z     ! the new vector has the same "z" value
+
+    r = sqrt(rVec%x**2 + rVec%y**2) ! distance from z-axis
+
+    rotVec%y = 0.
+
+    rotVec%x = r
+
+! now we find the octal and subcell that rotVec lies in
+
+    call findSubcellTD(rotVec, grid%ocTreeRoot, resultOctal, subcell)
+    foundOctal => resultOctal
+
+  end subroutine find2Doctal
+
+  recursive subroutine remapDistanceGrid(thisOctal, grid)
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
+    type(OCTALVECTOR) :: rVec, rotVec
+    real(kind=octalKind) :: r
+    integer :: subcell, j, isub
+
+! this routine remaps the distance grid attribute of a two-D plane
+! (which is y=0, x>=0) onto a three-D grid
+
+    do isub = 1, thisOctal%maxChildren, 1
+      if ( thisOctal%hasChild(isub) ) then
+        ! if the current subcell has a child, call this subroutine on
+        !   each of its children
+        do j = 1, thisOctal%nchildren
+          if ( thisOctal%indexchild(j) == isub ) then
+            child => thisoctal%child(j)
+            call remapdistancegrid(child, grid)
+            exit
+          end if
+        end do
+      else
+        ! if the current subcell does not have a child, then do the remap
+
+        rVec = subcellCentre(thisOctal, isub)
+
+        rotVec%z = rVec%z     ! the new vector has the same "z" value
+    
+        r = sqrt(rVec%x**2 + rVec%y**2) ! distance from z-axis
+    
+        rotVec%y = 0.
+
+        rotVec%x = r
+
+        ! now we find the octal and subcell that rotVec lies in
+
+        call findSubcellTD(rotVec, grid%ocTreeRoot, resultOctal, subcell)
+        foundOctal=>resultOctal
+
+! we have added the path lengths over all cells in 3d to a 2d plane. we therefore need to correct
+! the path length summation by the fractional volume that this cell in the 2d plane corresponds
+! to. ncrossings we keep as is - it is used in a statistical sense here.
+
+        thisOctal%chiLine(isub) = foundOctal%distanceGrid(subcell) * foundOctal%etaLine(subcell)
+        thisOctal%nCrossings(isub) = foundOctal%nCrossings(subcell)
+
+        thisOctal%rho(isub) = foundOctal%rho(subcell)
+        thisOctal%temperature(isub) = foundOctal%temperature(subcell)
+
+      end if
+    end do
+  end subroutine remapDistanceGrid
+
+  recursive subroutine setupCellVolumes(thisOctal, grid)
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
+    type(OCTALVECTOR) :: rVec, rotVec
+    real(kind=octalKind) :: r
+    integer :: subcell, j, isub
+
+! this routine remaps the distance grid attribute of a two-D plane
+! (which is y=0, x>=0) onto a three-D grid
+
+    do isub = 1, thisOctal%maxChildren, 1
+      if ( thisOctal%hasChild(isub) ) then
+        ! if the current subcell has a child, call this subroutine on
+        !   each of its children
+        do j = 1, thisOctal%nchildren
+          if ( thisOctal%indexchild(j) == isub ) then
+            child => thisoctal%child(j)
+            call setupCellVolumes(child, grid)
+            exit
+          end if
+        end do
+      else
+        ! if the current subcell does not have a child, then do the remap
+
+        rVec = subcellCentre(thisOctal, isub)
+
+        rotVec%z = rVec%z     ! the new vector has the same "z" value
+    
+        r = sqrt(rVec%x**2 + rVec%y**2) ! distance from z-axis
+    
+        rotVec%y = 0.
+
+        rotVec%x = r
+
+        ! now we find the octal and subcell that rotVec lies in
+
+        call findSubcellTD(rotVec, grid%ocTreeRoot, resultOctal, subcell)
+        foundOctal=>resultOctal
+
+        foundOctal%distanceGrid(subcell) = foundOctal%distanceGrid(subcell) + thisOctal%subcellsize**3
+        foundOctal%nCrossings(subcell) = foundOctal%nCrossings(subcell) + 1
+
+      end if
+    end do
+  end subroutine setupCellVolumes
+
+
+  recursive subroutine normCellVolumes(thisOctal, grid)
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child, foundOctal, resultOctal
+    type(OCTALVECTOR) :: rVec, rotVec
+    real(kind=octalKind) :: r
+    integer :: subcell, j, isub
+
+! this routine remaps the distance grid attribute of a two-D plane
+! (which is y=0, x>=0) onto a three-D grid
+
+    do isub = 1, thisOctal%maxChildren, 1
+      if ( thisOctal%hasChild(isub) ) then
+        ! if the current subcell has a child, call this subroutine on
+        !   each of its children
+        do j = 1, thisOctal%nchildren
+          if ( thisOctal%indexchild(j) == isub ) then
+            child => thisoctal%child(j)
+            call normCellVolumes(child, grid)
+            exit
+          end if
+        end do
+      else
+        ! if the current subcell does not have a child, then do the remap
+
+        rVec = subcellCentre(thisOctal, isub)
+
+        rotVec%z = rVec%z     ! the new vector has the same "z" value
+    
+        r = sqrt(rVec%x**2 + rVec%y**2) ! distance from z-axis
+    
+        rotVec%y = 0.
+
+        rotVec%x = r
+
+        ! now we find the octal and subcell that rotVec lies in
+
+        call findSubcellTD(rotVec, grid%ocTreeRoot, resultOctal, subcell)
+        foundOctal=>resultOctal
+
+! etaline is used as a placeholder here. it corresponds to the fractional volume occupied by the cell in
+! the 2d plane compared to the total volume of the 3d space
+
+        thisOctal%etaLine(isub) = thisOctal%subcellsize**3 / foundOctal%distanceGrid(subcell)
+
+      end if
+    end do
+  end subroutine normCellVolumes
+
+  recursive subroutine resetDistanceGrid(thisOctal)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   integer :: subcell, i
-  real :: r
   
-  do subcell = 1, 8
+  do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call setBiasAMR(child, grid)
+                call resetDistanceGrid(child)
                 exit
              end if
           end do
        else
-          r = modulus(subcellcentre(thisOctal, subcell)) / grid%rInner
-          thisOctal%biasCont3D(subcell) = r
+          thisOctal%distanceGrid(subcell) = thisOctal%chiline(subcell) 
        endif
     enddo
-  end subroutine setBiasAMR
-
+  end subroutine resetDistanceGrid
 
 end module lucy_mod
-

@@ -18,30 +18,60 @@ module input_variables
   character(len=10) :: geometry
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi
-  
+
+  integer :: nClumps
   character(len=80) :: distortionType
   integer :: nPhase
   integer :: nStartPhase, nEndPhase
 
   logical :: lineEmission
+  logical :: resonanceLine
   real :: probContPhoton
 
+  logical :: sed, jansky, SIsed, inArcsec, dustySED
 
   ! variables to do with dust
-  
-  character(len=80) :: grainType
+
+  character(len=80) :: grainType ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl
   real :: grainSize
   logical :: mie
+  real :: dusttogas
+  logical :: dustfile
   real :: probDust
+  integer :: nDustType
+  logical :: forcedWavelength
+  real :: usePhotonWavelength
+
+
+  !
+  ! abundances of different types of dust grains. These will be used when 
+  ! the graintype assigned is "mixed."
+  integer, parameter :: ngrain  = 7 ! number of grain types implemented.
+  real :: X_grain(ngrain)    ! abundaunce 
+  character(LEN=30) :: grainname(ngrain)
+  data grainname /"sil_ow", "sil_oc", "sil_dl", "amc_hn", &
+       &          "sic_pg", "gr1_dl", "gr2_dl"/
+  ! Note ::
+  !   X_grain(1) => sil_ow 
+  !   X_grain(2) => sil_oc
+  !   X_grain(3) => sil_dl
+  !   X_grain(4) => amc_hn
+  !   X_grain(5) => sic_pg
+  !   X_grain(6) => gr1_dl
+  !   X_grain(7) => gr2_dl
+  
+
 
 
   ! torus images
 
   real :: slitPA, slitWidth, slitLength
+  real :: imageSizeinArcsec
   real :: vfwhm, pfwhm, vSys
   integer :: nSlit, np, nv
   type(VECTOR) :: slitPosition1, slitPosition2
   logical :: stokesImage
+  real :: setImageSize
   real :: vMin, vMax
   real :: gridDistance
 
@@ -49,10 +79,24 @@ module input_variables
   character(LEN=30) :: filter_set_name  ! name of filter set used for images
 
   ! variables to do with dust
-  
+  !
   integer :: nSpiral
-  real :: aMin, aMax, qDist
+  ! size distribution of dust grain is now assumed to have 
+  ! the following form:
+  !  
+  !   n(a) =  const * a^-q * e^((-a/a0)^p)
+  real :: aMin    !  The maximun size in microns. 
+  real :: aMax    !  The minimum size in microns.
+  real :: qDist   !  q exponet in the equation above.
+  real :: a0      !  scale length in the equation above.
+  real :: pDist   !  p exponet in the equation above.
 
+
+  ! Flag to include accreation disc in sph dust model or not
+  logical :: disc_on
+
+  ! restrcting a calculation to a certain star in cluster geometry
+  integer :: idx_restrict_star 
 
   ! variables for clumped wind models
 
@@ -66,7 +110,14 @@ module input_variables
   character(len=80) :: intProFilename
   character(len=80) :: intProFilename2
   character(len=80) :: device, opacityDataFile
+  character(len=80) :: dustfilename(10)
   logical :: useNdf 
+  
+  ! plane to be plotted by plot_AMR_planes and plot_AMR_values
+  ! Choose one of the following: "x-y", "y-z", "z-x" or "x-z"
+  logical :: plot_maps 
+  character(len=3)  :: plane_for_plot  
+  logical :: show_value_3rd_dim    ! If T, the value of the third dimension will be shown.
 
 
   ! output arrays
@@ -75,8 +126,13 @@ module input_variables
   real :: lamStart, lamEnd
   logical :: lamLinear
   logical :: oneKappa
+  logical :: lamfile
+  character(len=80):: lamfilename
 
   real :: lambdatau  ! Wavelength at which testing optical depth computed [A]
+  real :: lambdaSmooth
+  real :: tauSmoothMax, tauSmoothMin
+  real :: tauRad
 
   ! variables for a second source of radiation
 
@@ -85,6 +141,8 @@ module input_variables
   real :: binarySep
   real :: momRatio
 
+
+  real :: rpower ! radial density power  r^-rpower
 
   ! model flags
   
@@ -104,7 +162,7 @@ module input_variables
   ! model parameters
   
   real :: height
-  real :: openingangle
+  real :: sigma0
   real :: rMin, rMaj
   real :: shellFrac
   real :: Teff
@@ -113,10 +171,9 @@ module input_variables
   real :: contrast
   real :: rCore, rInner
   real :: rTorus, rOuter
-  real :: rho
+  real :: rho, rho0
   real :: scale
-  real :: mCore, diskTemp
-  real :: tauDisk
+  real :: mCore, diskTemp, mDisc
   real :: scaleDensity
   real :: vRot
   real :: mdot
@@ -146,6 +203,8 @@ module input_variables
   logical :: coreEmissionLine
   real :: velWidthCoreEmission
 
+
+  real :: vContrast
 
   ! misc
 
@@ -182,7 +241,11 @@ module input_variables
   real :: mdot1, mdot2
   logical :: readPops, writePops
   logical :: readLucy, writeLucy
+  real :: tThresh
   character(len=80) :: lucyFilename
+  logical :: redolucy
+  character(len=80) :: lucyFilenameIn
+  character(len=80) :: lucyFilenameOut
   real :: mass1, mass2
   real :: temp1, temp2
   character(len=80) :: popFilename
@@ -190,17 +253,20 @@ module input_variables
   logical :: lte
   logical :: curtains, enhance
   real :: dipoleOffset
+  logical :: twoD
 
   ! adaptive mesh stuff 
   logical :: gridUsesAMR    ! true if grid is adaptive
+  logical :: amr2d          ! a two-d AMR grid only
   real(kind=doubleKind) :: limitScalar  ! value for controlling grid subdivision 
   real(kind=doubleKind) :: limitScalar2 ! value for controlling grid subdivision 
   real :: amrGridSize          ! length of each side of the (cubic) grid 
-  real :: amrGridCentreX       ! x-coordinate of grid centre 
-  real :: amrGridCentreY       ! y-coordinate of grid centre 
-  real :: amrGridCentreZ       ! z-coordinate of grid centre 
+  real(kind=doublekind) :: amrGridCentreX       ! x-coordinate of grid centre 
+  real(kind=doublekind) :: amrGridCentreY       ! y-coordinate of grid centre 
+  real(kind=doublekind) :: amrGridCentreZ       ! z-coordinate of grid centre 
   logical :: doSmoothGrid   ! whether to correct large differences in the size
                             !   of adjacent grid cells
+  logical :: doSmoothGridTau! smooth according to chris's algorithm
   real :: smoothFactor      ! maximum ratio between adjacent cell sizes before
                             !   smoothing is applied 
   real :: sampleFreq        ! maximum number of samples made per subcell
@@ -233,9 +299,11 @@ module input_variables
   ! lucy radiative equ
 
   logical :: lucyRadiativeEq
+  logical :: solveVerticalHydro
   integer :: nLucy
   logical :: narrowBandImage
   logical :: useInterp
+  real    :: lucy_undersampled  
 
 
   !  Input parameters for bipolar jets geometry.
@@ -292,6 +360,9 @@ module input_variables
   real :: Rdisk_max  ! The minimum  of the disk in 10^10 cm.
   real :: h_disk     ! Thickness of the disk in 10^10 cm.
   real :: rho_scale  ! The density in the units of rho max for disk wind.     
+
+  real :: tauExtra   ! foreground optical depth
+  real :: tauExtra2  ! foreground optical depth
   
 end module input_variables
 

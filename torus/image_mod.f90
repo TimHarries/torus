@@ -140,7 +140,7 @@ module image_mod
      
 
    subroutine addPhotonToImage(viewVec, rotationAxis, thisImageSet, nImage, thisPhoton, &
-                               thisVel, weight, filters)
+                               thisVel, weight, filters, center)
      
      integer, intent(in) :: nImage  ! number of images in a set
      type(IMAGETYPE), intent(inout) :: thisImageSet(nImage)
@@ -151,27 +151,33 @@ module image_mod
      real :: thisVel, velincgs
      real :: weight
      type(filter_set), intent(in) :: filters     
+     type(octalvector), intent(in) :: center  ! the center of the model space. [10^10cm]
      !
      integer :: i
      real :: filter_response
 
-     velIncgs = thisVel! * cSpeed/1.e5
+     velIncgs = thisVel * cSpeed/1.e5
 
 !     write(*,*) thisvel,thisimage%vMax,thisimage%vMin
 
 
+
      do i = 1, nImage
-        if ((velincgs < thisImageSet(i)%vMax) .and. (velincgs > thisImageSet(i)%vMin)) then
+!        if ((velincgs < thisImageSet(i)%vMax) .and. (velincgs > thisImageSet(i)%vMin)) then
            xProj =  rotationAxis .cross. viewVec
            call normalize(xProj)
            yProj = viewVec .cross. xProj
            call normalize(yProj)
            
-           xDist = thisPhoton%position .dot. xProj
-           yDist = thisPhoton%position .dot. yProj
+!           xDist = (thisPhoton%position - center) .dot. xProj
+!           yDist = (thisPhoton%position - center) .dot. yProj
+
+           xDist = (thisPhoton%position) .dot. xProj
+           yDist = (thisPhoton%position) .dot. yProj
            
            xPix = nint(xDist / thisImageSet(i)%scale)
            yPix = nint(yDist / thisImageSet(i)%scale)
+
 
            if ((xPix >= -thisImageSet(i)%nSize) .and. &
                 (yPix >= -thisImageSet(i)%nSize) .and. &
@@ -179,7 +185,6 @@ module image_mod
                 (yPix <= thisImageSet(i)%nSize)) then
               ! using a filter response function in filter_set_class here
               filter_response = real( pass_a_filter(filters, i, dble(thisPhoton%lambda)) )
-              
               thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
                    + thisPhoton%stokes * weight * filter_response
               thisImageSet(i)%vel(xPix,yPix) = thisImageSet(i)%vel(xPix, yPix)  &
@@ -188,7 +193,7 @@ module image_mod
                    + (thisPhoton%stokes%i*weight*filter_response)
 
            endif
-        endif
+!        endif
      end do
 
      end subroutine addPhotonToImage
@@ -211,20 +216,39 @@ module image_mod
      end subroutine freePVImage
 
 
-     subroutine writeImage(thisImage, filename)
+     subroutine writeImage(thisImage, filename, objectDistance, inArcsec, &
+          lambda_center, bandwidth)
 
-       type(IMAGETYPE) :: thisImage
-       character(len=*) :: filename
+       type(IMAGETYPE),intent(in) :: thisImage
+       character(len=*), intent(in) :: filename
+       real(kind=doubleKind), intent(in) :: objectDistance ! in [cm]
+       real(kind=doubleKind), intent(in) :: lambda_center ! of the filter in [A]
+       real(kind=doubleKind), intent(in) :: bandwidth     ! of the filter in [A]
+       !
        real, allocatable :: piximageI(:,:)
        real, allocatable :: piximageQ(:,:)
        real, allocatable :: piximageU(:,:)
        real, allocatable :: piximageV(:,:)
        real, allocatable :: piximageVel(:,:)
-
+       real(kind=doubleKind) :: area
+       real :: imScale
+       real :: physicalPixelSize
+       real :: angularPixelSize
+       real :: pixelArea
+       logical :: inArcsec
+       real(kind=doubleKind) :: scale, convert, c_in_m_per_sec
 
        integer :: nSize, nPix, i, j
+
        nSize = thisImage%nSize
        nPix = 2*thisImage%nSize + 1
+
+
+       physicalPixelSize = 1.e10 * (thisImage%scale * 2.) / real(nPix)
+       angularPixelSize = physicalPixelSize / objectDistance
+       pixelArea = (angularPixelSize * radtoDeg * 3600.)**2 ! square arcsec
+
+       area = objectDistance**2
 
        allocate(pixImageI(1:nPix,1:nPix))
        allocate(pixImageQ(1:nPix,1:nPix))
@@ -233,12 +257,47 @@ module image_mod
        allocate(pixImageVel(1:nPix,1:nPix))
        pixImageVel = 0.
 
+
+       ! Note: stokes parameters are in erg/s/pix^2/sr, and we now converting 
+       ! them to Stokes Flux using a right conversion factor.
+
+       physicalPixelSize = 1.e10 * (thisImage%scale * 2.) / real(nPix)
+       angularPixelSize = physicalPixelSize / objectDistance
+       pixelArea = (angularPixelSize * radtoDeg * 3600.)**2 ! square arcsec
+       
+       ! 
+       area =(2.0*thisImage%scale)**2 * 1.0d20  ! cm^2
+
+       scale = ( (thisImage%scale*1.e10)/objectDistance )**2  
+       ! Conversion factor (1 Jy = 9.57e-13 erg/s/cm^2/A at 5600 A)
+       ! and the fact that 
+       !             F_lambda[erg/s/cm^2/A] = (c/lambda^2) * F_nu [erg/s/cm^2/Hz] 
+       !                                    = (c/lambda^2) * 1.0e-23 F_nu[Jy]
+       c_in_m_per_sec = 2.998d8 ! [m/s]
+       convert = c_in_m_per_sec/((lambda_center*1.d-10)**2)  * 1.0d-23 * 1.0d-10 
+       ! --- should be in per angstrome now.
+
+       convert = 1.0e20/convert/area/bandwidth ! [Jy/(erg/s/cm^2/A)/A] = [Jy/(erg/s/cm^2)]
+       ! -- NB: 1.0e20 factor is the offset made in energyPerPhoton in main routine!
+
+       scale = scale * convert
+
+       !
+       write(*,*) " "
+       write(*,*) "================================================================="
+       write(*,*) "Image Scale Factor =", scale, " [Jy/(erg/s)*sr*(cm^2*A)/(cm^2*A)]"
+       write(*,*) "================================================================="
+       write(*,*) " "
+       !
+
        do i = 1 , nPix
           do j = 1 , nPix
-             pixImageI(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%i
-             pixImageQ(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%q
-             pixImageU(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%u
-             pixImageV(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%v
+             pixImageI(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%i * scale ![Jy]
+             pixImageQ(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%q * scale ![Jy]
+             pixImageU(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%u * scale ![Jy]
+             pixImageV(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%v * scale ![Jy]
+             ! Now the images are in Janskies!
+
              if (thisImage%totWeight(i-1-nSize,j-1-nSize) /= 0.) then
                 pixImageVel(i,j) = thisImage%vel(i-1-nSize,j-1-nSize)/ &
                      thisImage%totWeight(i-1-nSize,j-1-nSize)
@@ -246,8 +305,14 @@ module image_mod
           enddo
        enddo
 
+       if (.not.inArcsec) then
+          imscale = thisIMage%scale
+       else
+          imscale = ((thisImage%scale * 1.e10) / objectDistance) * radtodeg * 3600.
+       endif
+
        call writeImagef77(pixImageI, pixImageQ, pixImageU, &
-            pixImageV, pixImageVel, thisImage%scale, &
+            pixImageV, pixImageVel, imscale, &
             thisImage%nSize, nPix, filename)
 
        deallocate(pixImageI)

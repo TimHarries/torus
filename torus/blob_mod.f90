@@ -76,10 +76,10 @@ contains
     ! put it between 1 and 10 stellar radii
 
     if (atBase) then
-       r = grid%rAxis(1)*1.000001
+       r = grid%rAxis(1)*1.05
     else
        call random_number(r1)
-       r = (1. + 9. * sqrt(r1)) *grid%rAxis(1)
+       r = (1.05 + 9. * sqrt(r1)) *grid%rAxis(1)
     endif
 
     ! random latitude
@@ -100,7 +100,7 @@ contains
     ! radius random between 0.01 and 0.1 stellar radii
 
     call random_number(r1)
-    blobs(iBlob)%radius = (0.01 + 0.09*r1)*grid%rAxis(1)
+    blobs(iBlob)%radius = 0.5*grid%raxis(1) !(0.01 + 0.09*r1)*grid%rAxis(1)
 
     ! find the position of the blob within the opacity grid
 
@@ -134,7 +134,7 @@ contains
     type(GRIDTYPE) :: grid               ! the opacity grid          
     real :: t1, t2, t3                   
     integer :: i, j, i1, i2, i3          ! counters
-    integer ::   nTimes = 1000    ! the number of time segments
+    integer ::   nTimes = 100000    ! the number of time segments
     real :: dTime, thisdTime, timeScale, vel
 
     ! the time increment
@@ -171,7 +171,7 @@ contains
 
              ! is the blob outside 20 core radii? If so, switch it off
 
-             if ((modulus(blobs(j)%position)/grid%rAxis(1)) > 20.) then
+             if ((modulus(blobs(j)%position)/grid%rAxis(1)) > 10.) then
                 blobs(j)%inUse = .false.
                 EXIT
 
@@ -246,7 +246,7 @@ contains
        
        
        if (blobs(m)%inUse) then
-          write(*,*) "blob: ",m
+!          write(*,*) "blob: ",m
           ! loop over grid
           
           do i = 1, grid%nr
@@ -262,11 +262,11 @@ contains
                       ! distort by a 3D gaussian
                    
                       
-                      facGrid(i,j,k) = facgrid(i,j,k) + fac2 * exp(-fac1)
+                      facGrid(i,j,k) = min(facgrid(i,j,k) + fac2 * exp(-fac1),blobs(m)%contrast)
                       r = modulus(posGrid(i,j,k)/grid%rAxis(1))
-                      if ((fac1 < 1.) .and. (r > 5.) .and. (r < 10.)) then
-                         write(*,*) r,facGrid(i,j,k)
-                      endif
+!                      if ((fac1 < 1.) .and. (r > 1.) .and. (r < 3.)) then
+!                         write(*,*) r,facGrid(i,j,k)
+!                      endif
                    endif
 
 
@@ -282,13 +282,13 @@ contains
  ! but doesn't seem to work at the moment, despite the fact
  ! the arrays are conformable
 
-    do i = 1, grid%nr
-       do j = 1, grid%nMu
-          do k = 1, grid%nPhi
-             if (facGrid(i,j,k) == 1.) facGrid(i,j,k) = 1.e-20
-          enddo
-       enddo
-    enddo
+!    do i = 1, grid%nr
+!       do j = 1, grid%nMu
+!          do k = 1, grid%nPhi
+!             if (facGrid(i,j,k) < 1.01) facGrid(i,j,k) = 1.e-20
+!          enddo
+!       enddo
+!    enddo
              
  
 
@@ -301,12 +301,12 @@ contains
              grid%chiLine(i,j,k) = grid%chiLine(i,j,k)*facGrid(i,j,k)**2
              grid%etaLine(i,j,k) = grid%etaLine(i,j,k)*facGrid(i,j,k)**2
 
+             
+
              ! scattering opacities go like f
 
-             do m = 1, grid%nLambda
-                grid%kappaSca(i,j,k,m) = &
-                     grid%kappaSca(i,j,k,m)*facGrid(i,j,k)
-             enddo
+             grid%kappaSca(i,j,k,1) = &
+                  grid%kappaSca(i,j,k,1)*facGrid(i,j,k)
 
           enddo
        enddo
@@ -440,17 +440,20 @@ contains
 
   ! read in the blob configuration from a file
 
-  subroutine readBlobs(filename, maxBlobs, blobs)
+  subroutine readBlobs(filename, maxBlobs, blobs, quiet)
 
     character(len=*) :: filename     ! the filename
     type(BLOBTYPE) :: blobs(*)       ! blob array
     integer :: maxBlobs              ! max number of blobs
     integer :: i                     ! counter
     integer :: nBlobs                ! actual no of blobs
+    logical :: quiet
 
     ! info for user
 
-    write(*,'(a,a)') "Reading blob configuration from: ",trim(filename)
+    if (.not.quiet) then
+       write(*,'(a,a)') "Reading blob configuration from: ",trim(filename)
+    endif
 
     ! file must already exist
 
@@ -478,6 +481,64 @@ contains
 
     close(40) ! close file
   end subroutine readBlobs
+
+  subroutine writeBlobPgp(viewVec, t1, t2, nphase, maxBlobs)
+    integer :: i,j
+    real :: t1,t2
+    real :: thisTime
+    character(len=80) :: blobfile, outfile
+    integer :: maxBlobs
+    integer :: nPhase
+    type(VECTOR) :: viewVec
+    type(BLOBTYPE), allocatable :: blobs(:)
+    real :: oldVel
+    real :: projVel
+    logical :: firstTime
+
+    allocate(blobs(1:maxBlobs))
+    
+
+    write(outfile,'(a)') "blobs.pgp"
+    open(20,file=outfile,form='formatted',status='unknown')
+    do j=maxBlobs,maxBlobs-100,-1
+       firsttime=.true.
+       oldVel = 0.
+       write(*,*) j
+       do i = 1, nPhase
+          write(blobfile,'(a,i3.3,a)') "run",i,".blob"
+          call readBlobs(blobfile, maxBlobs, blobs, .true.)
+          thisTime = t1 + real(i-1)*(t2-t1)/real(nPhase-1)
+          projVel = blobs(j)%velocity .dot. viewVec
+          if (blobs(j)%inUse) then
+             if (firsttime) then
+                write(20,*) "move",projVel*1.e5,thisTime
+                oldVel = abs(projVel)
+                firsttime = .false.
+             else
+                if (abs(projVel) > oldVel) then
+                   if (projVel < 0.) then
+                      write(20,*) "sci 4"
+                   else
+                      write(20,*) "sci 2"
+                   endif
+                   write(20,*) "draw",projVel*1.e5, thisTime
+                   oldVel = abs(projVel)
+                else
+                   write(20,*) "move",projVel*1.e5, thisTime
+                   oldVel = abs(projVel)
+                endif
+             endif
+          endif
+       enddo
+    enddo
+    close(20)
+    deallocate(blobs)
+  end subroutine writeBlobPgp
+
+      
+  
+  
+
 
 end module blob_mod
 

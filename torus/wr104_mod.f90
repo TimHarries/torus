@@ -12,62 +12,38 @@ module wr104_mod
   end type particle_list
 
 contains
-  
-  subroutine readWR104Particles(filename, sphData)
+
+  subroutine readWR104Particles(filename, sphData, objectDistance)
     type(sph_data), intent(inout) :: sphData
     character(len=*) :: filename
-    integer :: i
-    double precision :: udist, umass, utime    ! Units of distance, mass, time
-    integer          :: npart                  ! Number of gas particles
-    double precision :: time                   ! Time of sph data dump (in units of utime)
-    integer          :: nptmass                ! Number of stars/brown dwarfs
-    double precision :: gaspartmass            ! Mass of each gas particles
-
-    double precision :: dummy  ! position of gas particles
-
-
-
+    integer :: npart
+    real(kind=doubleKind) objectDistance
     write(*,'(a,a)') "Reading particles from: ",trim(filename)
     open(20,file=filename,status="old",form="unformatted")
     read(20) npart
 
-    uDist = 200. * autocm / 300.
-    uMass = 1.
-    uTime = 1.e6
-    time = 1.e6
-    nptmass = 1
-    gaspartmass = 1.0d-24
 
-    ! initilaizing the sph_data object
-    ! using a routine in sph_data_class.  (Allocating the memory for arrays and etc..)
-    call init_sph_data(sphData, udist, umass, utime, npart, time, nptmass, gaspartmass)
+    ALLOCATE(sphData%xn(npart))
+    ALLOCATE(sphData%yn(npart))
+    ALLOCATE(sphData%zn(npart))
+    ALLOCATE(sphData%rhon(npart))
+    ALLOCATE(sphData%x(1),sphdata%y(1),sphdata%z(1))
+    ALLOCATE(sphData%ptmass(1))
+
+! assume that the units are 1 mil
+
+    sphData%uDist = 1.e-3/3600. ! from milliarcsec to degrees
+    sphData%uDist = sphData%uDist * degtorad ! to radians
+    sphData%uDist = 1.e10 !sphData%uDist * objectDistance ! cm 
+    
+    sphData%uMass = 1.
+    sphData%uTime = 1.e6
 
 
-    ! reading the X poistion of particles
-    do i = 1, npart
-       read(20) dummy
-       call put_position_gas_particle(sphData, i, "x", dummy) ! saving the value
-    end do
-
-    ! reading the y poistion of particles
-    do i = 1, npart
-       read(20) dummy
-       call put_position_gas_particle(sphData, i, "y", dummy) ! saving the value
-    end do
-    ! reading the z poistion of particles
-    do i = 1, npart
-       read(20) dummy
-       call put_position_gas_particle(sphData, i, "z", dummy) ! saving the value
-    end do
-
+    sphData%npart = npart
+    sphData%rhon = 1.
+    read(20) sphData%xn(1:npart), sphdata%yn(1:npart), sphData%zn(1:npart)
     close(20)
-
-    ! setting the density to one everywhere.. 
-    do i = 1, npart
-       call put_rhon(sphData, i, 1.0d0)
-    end do
-
-
     write(*,'(a)') "Done."
 
   end subroutine readWR104Particles
