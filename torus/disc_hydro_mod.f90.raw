@@ -1,0 +1,316 @@
+! this module solves the vertical density structure of a disc
+! by repeated calls to the lucy algorithm and iteratively solving the
+! equation of hydrostatic equilibrium
+
+! written by tjh
+
+! v1.0 on 16/3/04
+
+module disc_hydro_mod
+
+  use input_variables
+  use gridtype_mod
+  use kind_mod
+  use constants_mod
+  use vector_mod
+  use utils_mod
+  use octal_mod
+  use amr_mod
+  use density_mod
+  use source_mod
+  use phasematrix_mod
+  use lucy_mod
+
+  implicit none
+
+  public
+
+contains
+  
+  subroutine solveHydro(temperature, zAxis, rho, nz, &
+       radius, mStar, sigma0, rDisk, converged, drho)
+    integer, intent(in) :: nz ! number of vertical grid points
+    real(kind=singleKind),intent(in) :: temperature(1:nz)  ! temperature
+    real(kind=singleKind),intent(inout) :: rho(1:nz)         ! density
+    real(kind=singleKind),intent(in) :: zAxis(1:nz)       ! z grid
+    real :: mStar, rDisk                      ! stellar mass, disk mass and radius
+    real :: radius                                   ! radius at disc midplane
+    real :: sigma0                                   ! surface density at rinner
+    integer :: i
+    logical :: converged
+    real :: mu ! mean molecular weight
+    real, allocatable :: oldRho(:)
+    real :: dz
+    real :: fac, fac2, scalefac
+    real, allocatable :: lnrho(:)
+    real :: dtdz ! temperature gradient
+    real :: sigma
+    real :: drho
+
+    mu = 2.3 ! mean mole mass assuming pure H_2/He
+
+    allocate(oldRho(1:nz), lnrho(1:nz))
+    oldRho(1:nz) = rho(1:nz)
+
+    converged = .false.
+
+    lnrho(1) = 0.
+    do i = 2, nz
+       dz = (zAxis(i)-zAxis(i-1))
+       dTdz = (temperature(i)-temperature(i-1))/dz
+       fac = (mu * mHydrogen * bigG * mStar * zAxis(i)/ (kErg * radius**3))/1.e30
+       fac2 = -1.*(dTdz + fac)/temperature(i)
+       lnrho(i) = lnrho(i-1) + fac2 * dz
+    enddo
+
+    ! now integrate over the column to get the surface density
+    ! 
+
+    rho(1:nz) = exp(lnrho(1:nz))
+    sigma = 0.
+    do i = 2,nz
+       dz = (zAxis(i)-zAxis(i-1))
+       sigma = sigma + 0.5*(rho(i)+rho(i-1))* dz
+    enddo
+
+    ! rescale the density to retain the 1/r surface density fall-off
+
+    scalefac = 0.5 * (sigma0*(autocm/(radius*1.e10))) / sigma ! factor of 0.5 cos only integrating over half disc vertically
+    rho(1:nz) = rho(1:nz) * scalefac
+
+    ! now check for convergence. maximum fractional change in
+    ! density should be less than 1%.
+
+    do i = 1, nz
+       if (oldRho(i) /= 0.) then
+          drho = max(drho, abs((rho(i)-oldrho(i))/oldrho(i)))
+       endif
+    enddo
+    if (drho < 0.01) converged = .true.
+
+    deallocate(oldRho)
+  end subroutine solveHydro
+
+
+  subroutine getTemperatureDensityRun(grid, zAxis, rho, temperature, xPos, yPos, nz, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    integer :: nz
+    real :: rho(:), temperature(:), zAxis(:)
+    real :: xPos, yPos
+    integer :: subcell
+    real :: rhotemp, temptemp
+    real :: direction
+    type(OCTALVECTOR) :: currentPos, temp
+
+    nz = 0
+
+    currentPos = OCTALVECTOR(xPos, yPos, direction*0.0001)
+
+    do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
+       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+            foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
+       if (thisOctal%inFlow(subcell)) then
+          nz = nz + 1
+          temperature(nz) = temptemp
+          rho(nz) = rhotemp
+          temp = subCellCentre(thisOctal, subcell)
+          zAxis(nz) = temp%z
+          currentPos = OCTALVECTOR(xPos, yPos, zAxis(nz)+direction*thisOctal%subcellsize*1.01)
+       else
+          currentPos = OCTALVECTOR(xPos, yPos, grid%octreeRoot%subcellsize*1.01)
+       endif
+    end do
+    zAxis(1:nz) = abs(zAxis(1:nz)) * 1.e10  ! convert to cm
+  end subroutine getTemperatureDensityRun
+
+  subroutine putDensityRun(grid, zAxis, rho, nz, xPos, yPos, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    integer :: nz
+    real :: xPos, yPos
+    real :: zAxis(:), rho(:)
+    integer :: i, subcell
+    real :: direction
+    type(octalvector) :: currentPos
+    
+
+    do i = 1, nz
+       currentPos = OCTALVECTOR(xPos, yPos, direction*zAxis(i)/1.e10)
+       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+            foundSubcell=subcell)
+	thisOctal%rho(subcell) = rho(i)
+       if (thisOctal%rho(subcell) > 1.e-30) then
+          thisOctal%inFlow(subcell) = .true. 
+       else
+          thisOctal%inFlow(subcell) = .false.
+       endif
+    enddo
+  end subroutine putDensityRun
+
+
+  recursive subroutine throughoutMidpane(grid, thisOctal, mStar, sigma0, rDisk, drho)
+
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real :: zAxis(1000), rho(1000), temperature(1000)
+    real :: mStar, sigma0, rDisk
+    integer :: nz
+    real :: xpos, ypos, radius, drho
+    type(octalvector) :: temp
+    logical :: converged 
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call throughoutMidpane(grid, child, mStar, sigma0, rDisk, drho)
+                exit
+             end if
+          end do
+       else
+          
+          ! check if subcell is in midplane
+          
+          temp = subcellCentre(thisOctal, subcell)
+          if  ( ((temp%z-thisOctal%subcellSize/2.) < 0.).and. &
+               (temp%z+thisOctal%subcellSize/2.) >= 0.) then
+             
+             ! if it is then perform the hydrostatic equilibrium
+             
+             xPos = temp%x
+             yPos = temp%y
+             radius = sqrt(xPos**2 + yPos**2)
+             if ((radius > grid%rInner).and.(radius < grid%rOuter)) then
+             
+                call getTemperatureDensityRun(grid, zAxis, rho, temperature, xPos, yPos, nz, +1.)
+
+                if (nz > 1) then
+                   call solveHydro(temperature, zAxis, rho, nz, radius, mStar, sigma0, rDisk, converged, drho)                
+
+                   call putDensityRun(grid, zAxis, rho, nz, xPos, yPos, +1.)
+                endif
+
+                call getTemperatureDensityRun(grid, zAxis, rho, temperature, xPos, yPos, nz, -1.)
+
+                if (nz > 1) then
+                   call solveHydro(temperature, zAxis, rho, nz, radius, mStar, sigma0, rDisk, converged, drho)
+                
+                   call putDensityRun(grid, zAxis, rho, nz, xPos, yPos, -1.)
+                endif
+
+
+             endif
+             
+          endif
+          
+       endif
+    enddo
+  end subroutine throughoutMidpane
+
+  subroutine verticalHydrostatic(grid, mStar, sigma0, rDisk, miePhase, nMuMie, nLambda, lamArray, &
+       source, nSource, nLucy, massEnvelope, tThresh, twoD, expectedMass)
+
+!$MPI include 'mpif.h'
+
+    type(GRIDTYPE) :: grid
+    real :: mStar, sigma0, rDisk, expectedMass, scaleFac
+    logical :: converged
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource
+    integer :: nLucy
+    integer :: nLambda, nMuMie
+    type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
+    real  :: lamArray(:)
+    real :: massEnvelope
+    real :: tthresh, drho
+    integer :: nIter
+    integer, parameter :: maxIter = 10
+    character(len=20) :: plotfile
+    real(kind=doubleKind) totalMass
+    logical :: twoD
+
+!$MPI    ! For MPI implementations
+!$MPI    integer       ::   my_rank        ! my processor rank
+!$MPI    integer       ::   ierr           ! error flag
+!$MPI
+!$MPI
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+
+
+
+
+    converged = .false.
+    nIter = 1
+    totalMass = 0.
+    call findTotalMass(grid%octreeRoot, totalMass)
+
+
+!$MPI    if(my_rank == 0) &
+    write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
+
+
+!$MPI    if(my_rank == 0) then
+    write(plotfile,'(a,i3.3,a)') "rho",0,".gif/gif"
+    call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false.)
+!$MPI    endif
+
+    do while(.not.converged)
+    
+!$MPI    if(my_rank == 0) then
+       write(*,*) "Starting iteration number",nIter
+       write(*,*) "Calling the lucy algorithm to get temperature..."
+!$MPI    endif
+
+
+       call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, & 
+            nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twoD)
+
+       
+!$MPI    if(my_rank == 0) &
+       write(*,*) "Solving the vertical hydrostatic equilibrium..."
+       drho = 0.
+       call throughoutMidpane(grid, grid%octreeRoot, mStar, sigma0, rDisk, drho)
+
+!$MPI    if(my_rank == 0) &
+       write(*,*) "Maximum fractional change in density: ",drho
+
+       totalMass = 0.
+       call findTotalMass(grid%octreeRoot, totalMass)
+       write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
+
+       scalefac = expectedMass/totalMass
+       call scaleDensityAMR(grid%octreeRoot, scaleFac)
+!$MPI    if(my_rank == 0) &
+       write(*,*) "Rescaled density to give expected total disc mass"
+
+
+
+
+!$MPI    if(my_rank == 0) then
+       write(plotfile,'(a,i3.3,a)') "rho",niter,".gif/gif"
+       call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false.)
+       write(plotfile,'(a,i3.3,a)') "temp",niter,".gif/gif"
+       call plot_AMR_values(grid, "temperature", "x-z", 0.0, plotfile, .true., .false.)
+!$MPI    endif
+
+       nIter = nIter + 1
+
+       if (nIter > maxIter) then
+!$MPI    if(my_rank == 0) &
+          write(*,*) "Maximum number of iterations exceeded. Aborting."
+          converged = .true.
+       endif
+       
+    enddo
+
+  end subroutine verticalHydrostatic
+
+end module disc_hydro_mod
+

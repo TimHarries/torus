@@ -1,0 +1,83 @@
+PROG =	
+
+SRCS =	atom_mod.f90 blob_mod.f90 constants_mod.f90 cont_read.f90 \
+	distortion_mod.f90 draineCrossSection.f90 fillGridMie.f90 \
+	fillGridRayleigh.f90 fillGridThomson.f90 fillGridTio.f90 \
+	fillGridTorus.f90 getMeanMass.f90 getRefractiveIndex.f90 grid_mod.f90 \
+	image_mod.f90 inputs_mod.f90 integratePath.f90 intersectCube.f90 \
+	kind_mod.f90 math_mod.f90 mieDistPhaseMatrix.f90 miePhaseMatrix.f90 \
+	phasematrix_mod.f90 photon_mod.f90 rayleighCrossSection.f90 \
+	readTioCrossSection.f90 stateq_mod.f90 tio_mod.f90 torusMain.f90 \
+	TTauri_mod.f90 unix_mod.f90 utils_mod.f90 vector_mod.f90 image_f77.f \
+	mieCrossSection.f mieDistCrossSection.f palette.f readIntPro.f
+
+OBJS =	atom_mod.o blob_mod.o constants_mod.o cont_read.o distortion_mod.o \
+	draineCrossSection.o fillGridMie.o fillGridRayleigh.o \
+	fillGridThomson.o fillGridTio.o fillGridTorus.o getMeanMass.o \
+	getRefractiveIndex.o grid_mod.o image_mod.o inputs_mod.o \
+	integratePath.o intersectCube.o kind_mod.o math_mod.o \
+	mieDistPhaseMatrix.o miePhaseMatrix.o phasematrix_mod.o photon_mod.o \
+	rayleighCrossSection.o readTioCrossSection.o stateq_mod.o tio_mod.o \
+	torusMain.o TTauri_mod.o unix_mod.o utils_mod.o vector_mod.o \
+	image_f77.o mieCrossSection.o mieDistCrossSection.o palette.o \
+	readIntPro.o
+
+LIBS =	
+
+CC = cc
+CFLAGS = -O
+FC = f77
+FFLAGS = -O
+F90 = f90
+F90FLAGS = -O
+LDFLAGS = -s
+
+all: $(PROG)
+
+$(PROG): $(OBJS)
+	$(F90) $(LDFLAGS) -o $@ $(OBJS) $(LIBS)
+
+clean:
+	rm -f $(PROG) $(OBJS) *.mod
+
+.SUFFIXES: $(SUFFIXES) .f90
+
+.f90.o:
+	$(F90) $(F90FLAGS) -c $<
+
+atom_mod.o: constants_mod.o kind_mod.o
+blob_mod.o: constants_mod.o grid_mod.o math_mod.o vector_mod.o
+cont_read.o: math_mod.o
+distortion_mod.o: blob_mod.o constants_mod.o grid_mod.o vector_mod.o
+draineCrossSection.o: constants_mod.o unix_mod.o utils_mod.o
+fillGridMie.o: constants_mod.o grid_mod.o
+fillGridRayleigh.o: constants_mod.o grid_mod.o
+fillGridThomson.o: constants_mod.o grid_mod.o
+fillGridTio.o: constants_mod.o grid_mod.o
+fillGridTorus.o: constants_mod.o vector_mod.o
+getMeanMass.o: constants_mod.o
+getRefractiveIndex.o: constants_mod.o unix_mod.o utils_mod.o
+grid_mod.o: atom_mod.o constants_mod.o kind_mod.o utils_mod.o vector_mod.o
+image_mod.o: constants_mod.o phasematrix_mod.o photon_mod.o vector_mod.o
+inputs_mod.o: constants_mod.o unix_mod.o vector_mod.o
+integratePath.o: constants_mod.o grid_mod.o math_mod.o photon_mod.o \
+	vector_mod.o
+intersectCube.o: grid_mod.o vector_mod.o
+math_mod.o: constants_mod.o grid_mod.o kind_mod.o utils_mod.o vector_mod.o
+mieDistPhaseMatrix.o: phasematrix_mod.o
+miePhaseMatrix.o: phasematrix_mod.o
+photon_mod.o: constants_mod.o grid_mod.o math_mod.o phasematrix_mod.o \
+	utils_mod.o vector_mod.o
+readTioCrossSection.o: unix_mod.o utils_mod.o
+stateq_mod.o: constants_mod.o grid_mod.o math_mod.o vector_mod.o
+torusMain.o: TTauri_mod.o blob_mod.o constants_mod.o distortion_mod.o \
+	grid_mod.o image_mod.o inputs_mod.o math_mod.o phasematrix_mod.o \
+	photon_mod.o stateq_mod.o unix_mod.o utils_mod.o vector_mod.o
+TTauri_mod.o: atom_mod.o constants_mod.o grid_mod.o kind_mod.o stateq_mod.o \
+	utils_mod.o vector_mod.o
+unix_mod.o: 
+utils_mod.o: constants_mod.o kind_mod.o unix_mod.o vector_mod.o
+vector_mod.o: constants_mod.o
+image_f77.o: /star/include/dat_par /star/include/sae_par \
+	/star/include/dat_par /star/include/sae_par
+# DO NOT DELETE
