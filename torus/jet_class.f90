@@ -203,6 +203,7 @@ contains
     a = this%a
     b = this%b
     V0 = this%V0
+    Vinf = this%Vinf
     beta = this%beta
     gamma = this%gamma
     limitscalar = this%limitscalar

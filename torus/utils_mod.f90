@@ -1278,13 +1278,16 @@ contains
     end function bigGamma
 
 
-    subroutine resampleRay(lambda, nTau, projVel, maxtau, newLambda, newNTau)
+    subroutine resampleRay(lambda, nTau, projVel, maxtau, newLambda, newNTau, &
+         inFlow, newInFlow)
       use  input_variables, only: lamstart, lamend, nlambda, lamline
       integer, intent(in) :: nTau, maxtau
       real, intent(in) :: lambda(nTau)
       real(double), intent(in) :: projVel(nTau)
       integer, intent(inout) :: newNtau
       real, intent(inout)  :: newLambda(maxtau)
+      logical, intent(inout)  :: InFlow(nTau)
+      logical, intent(inout)  :: newInFlow(maxtau)
       !
       real,allocatable :: dProjVel(:)
       integer :: nAdd 
@@ -1310,14 +1313,17 @@ contains
             do j = 1, nAdd+1
                newNtau = newNtau + 1
                newLambda(newNTau) = real(j-1)*dlam + lambda(i-1)
+               newInFlow(newNTau) = inFlow(i-1)
             enddo
          else
             newNtau = newNtau + 1
             newLambda(newNTau) = lambda(i-1)
+            newInFlow(newNTau) = inFlow(i-1)
          endif
       enddo
       newNtau = newNtau + 1
       newLambda(newNTau) = lambda(nTau)
+      newInFlow(newNTau) = inFlow(nTau)
       deallocate(dProjVel)
     end subroutine resampleRay
 

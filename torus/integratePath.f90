@@ -1838,7 +1838,8 @@ end subroutine integratePathAMR
     real(double) :: projVel(maxTau)
     real :: kabs(maxtau), ksca(maxtau)                ! opacities
 !    real :: temperature(maxtau)
-    real :: newLambda(maxtau)
+    real    :: newLambda(maxtau)
+    logical :: newInFlow(maxtau)
 !    real :: Ne(maxtau)
     real :: N_HI(maxtau)
 !    real :: x                                         ! multipliers
@@ -1859,7 +1860,7 @@ end subroutine integratePathAMR
     integer :: newNtau
     real :: T, lam, tmp
     real :: sqrt_pi
-    real(double) :: dtau
+    real(double) :: dtau, taul
     ! initialize variables
     sqrt_pi = SQRT(pi)
     hitcore = .false.
@@ -1909,8 +1910,9 @@ end subroutine integratePathAMR
 
     ! find the projected velocity [c]
     Vn1 = uHat .dot. vVec         ! projected velocity of the local gas at emission location
-    Vn2 = velocity(1) .dot. vVec  ! projected velocity of the local gas at this location
-    thisVel = Vn1 + (lambda0-wavelength)/lambda0
+    Vn2 = velocity(1) .dot. uHat  ! projected velocity of the local gas at this location
+!    thisVel = Vn1 + (lambda0-wavelength)/lambda0
+    thisVel = (wavelength-lambda0)/lambda0
 
 
     escProb = 1.
@@ -1937,7 +1939,6 @@ end subroutine integratePathAMR
 
     ! projected velocities 
     forall (i = 1:nTau)
-       ! Shifting to CMF
        projVel(i) = dble(velocity(i) .dot. uHat)  ! (+ve when moving toward.)
     end forall
     
@@ -1992,13 +1993,16 @@ end subroutine integratePathAMR
  
 
      ! Additional points along a ray are inserted near the velocity changes fast.
-     call resampleRay(lambda, nTau, projVel, maxtau, newLambda, newNTau)
+     call resampleRay(lambda, nTau, projVel, maxtau, &
+          newLambda, newNTau, InFlow, newInFlow)
      if (newNTau > maxTau) then 
         print *, "Error:: newNtau > newNx_max in integratePathStark."
         print *, "        newNtau     = ", newNTau
         print *, "        maxTau   = ", maxTau
         stop
      end if
+
+     inFlow(1:nTau) = newInFlow(1:nTau)  ! updating the inFlow flags.
 
      ! Now interpolate on to newly sampled ray    
      call linearResample_dble(lambda, projVel, nTAu, newLambda, newNtau)
@@ -2009,7 +2013,7 @@ end subroutine integratePathAMR
      call linearResample(lambda, temperature, nTAu, newLambda, newNtau)
      call linearResample_dble(lambda, Ne, nTAu, newLambda, newNtau)
      nTau = newNtau
-     lambda(1:nTau) = newLambda(1:nTau)    
+     lambda(1:nTau) = newLambda(1:nTau)
      dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)
 
 
@@ -2031,19 +2035,21 @@ end subroutine integratePathAMR
     ! line photons
     nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
     nu = cSpeed / (wavelength*angstromtocm)  ! freq of this photon
-    nu_p = nu
+!    nu_p = nu
+    nu_p = nu0/(1.0d0+thisVel)
     if (.not.contPhoton) then
        tauAbsLine(1) = 0. 
        do i = 2, nTau
-          if (inFlow(i)) then
-             ! Evaluating the values in the mid point
+!          if (inFlow(i)) then
+          if (.true.) then
+            ! Evaluating the values in the mid point
              T_mid = 0.5d0*(temperature(i-1)+temperature(i))
              Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
              N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
              chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
              T_mid = MAX(T_mid, 3000.0d0) ! [K]  To avoid a tiny Doppler width
              
-             Vrel = projVel(i) -  Vn2  ! relative velocity
+             Vrel = 0.5d0*(projVel(i-1)+projVel(i)) -  Vn2  ! relative velocity
              
              ! The line centre of absorption profile shifted by Doppler.
              !          nu0_p = nu0/(1.0d0-projVel(i-1))  ! [Hz] 
@@ -2061,7 +2067,13 @@ end subroutine integratePathAMR
           end if
           tauAbsLine(i) = tauAbsLine(i-1) +  dtau
        enddo
-          tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau) + tauAbsLine(1:nTau)
+       taul = tauAbsLine(nTau)
+       if (taul == 0.0d0) then
+          escProb = 1.0d0
+       else
+          escProb = (1.0d0-exp(-taul))/taul
+       end if
+       tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau) + tauAbsLine(1:nTau)
     else ! just contiuum photone
        tauExt(1:nTau) = tauSca(1:nTau) + tauAbs(1:nTau)
     endif
@@ -2086,11 +2098,13 @@ end subroutine integratePathAMR
        do j = 1, nLambda
           ! compute projected velocity of this bin  
 !          lam = (lambda0 - wavelength) + grid%lamArray(j)
-          lam = wavelength + (grid%lamArray(j)-lambda0)
+          thisVel = (wavelength -lambda0)/lambda0  + (grid%lamArray(j)-lambda0)/lambda0
+          lam = (1.0d0+thisVel)*lambda0
           nu = cSpeed / (lam*angstromtocm)  ! freq of this photon
           nu_p = nu   ! photon freq (CMF) at this location
           do i = 2, nTau
-             if (inFlow(i)) then
+!             if (inFlow(i)) then
+             if (.true.) then
                 ! Evaluating the values in the mid point
                 T_mid = 0.5d0*(temperature(i-1)+temperature(i))
                 Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
@@ -2098,7 +2112,7 @@ end subroutine integratePathAMR
                 chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
                 T_mid = MAX(T_mid, 3000.0d0) ! [K]  To avoid a tiny Doppler width
                 
-                Vrel = projVel(i) -  Vn2  ! relative velocity
+                Vrel = 0.5d0*(projVel(i-1)+projVel(i)) -  Vn2  ! relative velocity
                 
                 ! The line centre of absorption profile shifted by Doppler.
                 nu0_p = nu0/(1.0d0+Vrel)  
