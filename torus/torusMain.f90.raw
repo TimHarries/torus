@@ -877,10 +877,7 @@ program torus
 
      if (readPops .or. readPhasePops .or. readLucy) then 
 
-!$MPI        if (my_rank==0) then
         if (readLucy) call readAMRgrid(lucyFilenameIn,readFileFormatted,grid)
-!$MPI        end if
-
 
         if (readPhasePops) then ! need to get the right file for the phase
           write(tempChar,'(i3.3)') nStartPhase

@@ -464,7 +464,12 @@ contains
           endif
        endif
     enddo
-    photoFlux = photoFlux / photoOmega
+    if (photoOmega>0) then
+       photoFlux = photoFlux / photoOmega
+    else
+       ! the point must be below the surafce!!
+       photoFlux = 1.0e-20
+    end if
   
   end function photoFluxIntegral
 
