@@ -523,7 +523,8 @@ contains
     real(oct)  :: cellSize, d
     real(double) :: rho_disc, mass_cell
     TYPE(octalVector)     :: cellCentre
-    integer, parameter :: nr = 250
+    integer, parameter :: nr = 100  ! low resolution
+!    integer, parameter :: nr = 250  ! Hi resolution
     real(double) :: r
     integer :: i
     !
@@ -535,8 +536,6 @@ contains
 
     if (first_time) then  ! setup ref. r grid
        do i = 1, nr
-!          rGrid(i) = log10(this%rIn)+dble(i-1)/dble(nr-1)*(log10(this%rOut)-log10(this%rIn))
-
           ! this should not depend on the size of the model boundary box.
           rGrid(i) = log10(this%rIn)+dble(i-1)/dble(nr-1)*(log10(Rmax)-log10(this%rIn))
        enddo

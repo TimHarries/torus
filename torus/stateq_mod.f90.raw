@@ -2441,6 +2441,8 @@ contains
     integer                        :: negativeErrors
     logical, intent(out), optional :: needRestart
     integer, intent(in), optional  :: maxNegatives
+    integer, parameter             :: ntrial_min = 4  ! minimum number of tiral
+    integer                        :: n_iteration
     
     if (size(x) /= n) then 
       print *, 'In subroutine mnewt_stateq, we are assuming argumnent ''n'' = SIZE(x),',&
@@ -2451,7 +2453,8 @@ contains
     negativeErrors = 0
     needRestart = .false.
 
-      do k = 1, ntrial
+    n_iteration = MAX(ntrial, ntrial_min)
+      do k = 1, n_iteration
         if (debug) print *, 'Trial ',k      
         
         call setupMatrices(x,alpha,beta,n,rVec, i1, i2, i3, grid,Hnu1, nuArray1, nNu1, Hnu2, &
@@ -2472,8 +2475,8 @@ contains
         !if (debug) print *, "errf,tolf",errf,tolf
 !        if ((errf.le.tolf) .and. all(x > 0.0_db)) then 
 
-        ! Now allows for at least two iteration. (RK changed this)
-        if ((errf.le.tolf) .and. all(x > 0.0_db) .and. k>2) then 
+        ! Now allows for at least ntrial_min iterations. (RK changed this)
+        if ((errf.le.tolf) .and. all(x > 0.0_db) .and. k>ntrial_min) then 
            if (debug) print *, k, 'trials.'
            return
         end if
@@ -2487,8 +2490,8 @@ contains
           x(i)=x(i)+beta(i)
         end do 
         !if (debug) print *, "errx,tolx",errx,tolx
-        ! Now allows for at least two iteration. (RK changed this)
-        if ((errx.le.tolx) .and. all(x > 0.0_db) .and. k>2) then
+        ! Now allows for at least ntrial_min iterations. (RK changed this)
+        if ((errx.le.tolx) .and. all(x > 0.0_db) .and. k>ntrial_min) then
            if (debug) print *, k, 'trials.'
            return
         end if
@@ -2498,7 +2501,8 @@ contains
         needRestart = .true.
       end if
 
-      print *, ntrial, 'trials' 
+!      print *, ntrial, 'trials' 
+      print *, n_iteration, 'trials' 
 
   end subroutine mnewt_stateq
 
@@ -2813,8 +2817,8 @@ contains
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
 !    real(double),parameter :: tolx = 1.e6_db   ! tolerance
 !    real(double),parameter :: tolf = 1.e6_db  ! tolerance
-    real(double),parameter :: tolx = 1.e4_db   ! tolerance
-    real(double),parameter :: tolf = 1.e4_db  ! tolerance
+    real(double),parameter :: tolx = 1.e0_db   ! tolerance
+    real(double),parameter :: tolf = 1.e0_db  ! tolerance
     integer                     :: returnVal     ! status value
     real(double),dimension(1:maxLevels+1) :: xall
     real(double)       :: nTot

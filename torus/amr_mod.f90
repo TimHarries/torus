@@ -707,7 +707,7 @@ CONTAINS
   SUBROUTINE startReturnSamples (startPoint,direction,grid,          &
              sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
              usePops,iLambda,error,lambda,kappaAbs,kappaSca,velocity,&
-             velocityDeriv,chiLine,levelPop,rho, temperature, Ne)
+             velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow)
     ! samples the grid at points along the path.
     ! this should be called by the program, instead of calling 
     !   returnSamples directly, because this checks the start and finish
@@ -743,7 +743,8 @@ CONTAINS
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: rho        ! density at sample points
     real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL:: levelPop ! level populations
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: temperature! temperature [K] at sample points
-    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: Ne       ! electron density
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: Ne ! electron density
+    logical,DIMENSION(:),INTENT(INOUT),OPTIONAL  ::inFlow   ! flag to tell if the point is inflow
 
     TYPE(octalVector)       :: locator 
                        ! 'locator' is used to indicate a point that lies within the  
@@ -895,7 +896,8 @@ CONTAINS
                      lambda,usePops,iLambda,error,margin,endLength,           &
                      kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,   &
                      velocityDeriv=velocityDeriv,chiLine=chiLine,             &
-                     levelPop=levelPop,rho=rho, temperature=temperature, Ne=Ne)
+                     levelPop=levelPop,rho=rho, temperature=temperature,      &
+                     Ne=Ne, inFlow=inFlow)
       
        IF (error < 0)  RETURN
 
@@ -916,7 +918,8 @@ CONTAINS
                     maxSamples,abortRay,lambda,usePops,iLambda,error,margin, &
                     distanceLimit,kappaAbs=kappaAbs,kappaSca=kappaSca,       &
                     velocity=velocity,velocityDeriv=velocityDeriv,           &
-                    chiLine=chiLine,levelPop=levelPop,rho=rho,temperature=temperature, Ne=Ne)
+                    chiLine=chiLine,levelPop=levelPop,rho=rho,               &
+                    temperature=temperature, Ne=Ne, inFlow=inFlow)
 
        END IF
 
@@ -942,6 +945,7 @@ CONTAINS
          IF (PRESENT(Ne))            Ne(nSamples) = 0.0
          IF (PRESENT(rho))           rho(nSamples) = 0.0
          IF (PRESENT(temperature))   temperature(nSamples) = 0.0
+         IF (PRESENT(inFlow))        inFlow = .false.
        END IF
        
     ELSE
@@ -960,7 +964,8 @@ CONTAINS
                    usePops,iLambda,error,margin,distanceLimit,                &
                    kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,     &
                    velocityDeriv=velocityDeriv,chiLine=chiLine,               &
-                   levelPop=levelPop,rho=rho,temperature=temperature, Ne=Ne)
+                   levelPop=levelPop,rho=rho,temperature=temperature,         &
+                   Ne=Ne, inFlow=inFlow)
     END IF
       
   END SUBROUTINE startReturnSamples
@@ -969,7 +974,7 @@ CONTAINS
   RECURSIVE SUBROUTINE returnSamples (currentPoint,startPoint,locator,direction, &
              octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,usePops, &
              iLambda,error,margin,distanceLimit,kappaAbs,kappaSca,velocity,      &
-             velocityDeriv,chiLine,levelPop,rho,temperature, Ne)
+             velocityDeriv,chiLine,levelPop,rho,temperature, Ne, inFlow)
     ! this uses a recursive ray traversal algorithm to sample the octal
     !   grid at points along the path of the ray. 
     ! no checks are made that the ray lies within the boundaries of the
@@ -1016,6 +1021,7 @@ CONTAINS
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL   :: temperature! in [K]
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL   :: Ne         ! electron density
     real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL :: levelPop   ! level populations 
+    logical, DIMENSION(:),INTENT(INOUT),OPTIONAL       :: inFlow     ! inflow flag
     
 
 
@@ -1068,7 +1074,7 @@ CONTAINS
                     distanceLimit,kappaAbs=kappaAbs,kappaSca=kappaSca,       &
                     velocity=velocity,velocityDeriv=velocityDeriv,           &
                     chiLine=chiLine,levelPop=levelPop,rho=rho,               &
-                    temperature=temperature, Ne=Ne)
+                    temperature=temperature, Ne=Ne, inFlow=inFlow)
         
         ! after returning from the recursive subroutine, we may have 
         !   finished tracing the ray's path
@@ -1123,7 +1129,8 @@ CONTAINS
                           nSamples,maxSamples,usePops,iLambda,error,lambda,     &
                           kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
                           velocityDeriv=velocityDeriv,chiLine=chiLine,          &
-                          levelPop=levelPop,rho=rho,temperature=temperature,Ne=Ne)
+                          levelPop=levelPop,rho=rho,temperature=temperature,    &
+                          Ne=Ne, inFlow=inFlow)
         !END IF
 
         ! we add sampleLength to the distance from the last location
@@ -1148,7 +1155,8 @@ CONTAINS
                          nSamples,maxSamples,usePops,iLambda,error,lambda,     &
                          kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
                          velocityDeriv=velocityDeriv,chiLine=chiLine,          &
-                         levelPop=levelPop,rho=rho,temperature=temperature,Ne=Ne)
+                         levelPop=levelPop,rho=rho,temperature=temperature,    &
+                         Ne=Ne, inFlow=inFlow)
             ELSE
               EXIT
             END IF
@@ -1582,7 +1590,8 @@ CONTAINS
 
   SUBROUTINE takeSample(point,length,direction,grid,thisOctal,subcell,nSamples,&
                         maxSamples,usePops,iLambda,error,lambda,kappaAbs,      &
-                        kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,temperature,Ne) 
+                        kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,  &
+                        temperature,Ne,inFlow) 
   
     
     IMPLICIT NONE
@@ -1608,7 +1617,8 @@ CONTAINS
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: rho       ! density at sample points
     real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL :: levelPop  ! level populations
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL   :: Ne        ! electron density
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL   :: temperature ! in [K]
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL           :: temperature ! in [K]
+    logical,DIMENSION(:),INTENT(INOUT),OPTIONAL        :: inFlow     ! indicates if the cell is in use.
 
     TYPE(vector)                       :: directionReal ! direction vector (REAL values)
     TYPE(octal), POINTER               :: localPointer  ! pointer to the current octal
@@ -1646,7 +1656,8 @@ CONTAINS
                          N=levelPop(nSamples,:),                       &
                          grid=grid,                                    &
                          temperature=temperature(nSamples),            &
-                         Ne=Ne(nSamples)             &
+                         Ne=Ne(nSamples),                              &
+                         inFlow=inFlow(nSamples)                       &
                          )
     ELSE
       CALL amrGridValues(grid%octreeRoot,point,startOctal=localPointer,&
@@ -1661,7 +1672,8 @@ CONTAINS
                          chiLine=chiLine(nSamples),                    &
                          grid=grid,                                    &
                          temperature=temperature(nSamples),            &
-                         Ne=Ne(nSamples)             &
+                         Ne=Ne(nSamples),                              &
+                         inFlow=inFlow(nSamples)                       &
                          )
     END IF
 

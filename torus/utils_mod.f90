@@ -547,7 +547,7 @@ contains
     real,intent(in)     :: x
     integer,intent(out) :: j
     integer :: jl, ju,jm
-      JL=1
+      JL=0
       JU=N+1
 10    IF(JU-JL.GT.1)THEN
         JM=(JU+JL)/2
@@ -558,7 +558,18 @@ contains
         ENDIF
       GO TO 10
       ENDIF
-      j = jl
+
+      ! Will force to be between 1 and the array size -1.
+      if(x <= xx(1))then
+        j=1
+      else if(x>=xx(n))then
+        j=n-1
+      else
+        j=jl
+      end if
+
+      return
+
     END SUBROUTINE LOCATE_single
   
 
@@ -568,7 +579,7 @@ contains
     real(oct), intent(in) :: x
     integer,intent(out)              :: j
     integer :: jl, ju,jm
-      JL=1
+      JL=0
       JU=N+1
 10    IF(JU-JL.GT.1)THEN
         JM=(JU+JL)/2
@@ -579,7 +590,18 @@ contains
         ENDIF
       GO TO 10
       ENDIF
-      j = jl
+
+      ! Will force to be between 1 and the array size -1.
+      if(x <= xx(1))then
+        j=1
+      else if(x>=xx(n))then
+        j=n-1
+      else
+        j=jl
+      end if
+
+      return
+
     END SUBROUTINE LOCATE_octal
 
     real function gasdev()
