@@ -2732,7 +2732,7 @@ CONTAINS
       endif
       if (thisOctal%nDepth < 6) split = .true.
      
-   case ("cluster")
+   case ("cluster","wr104")
       ! Splits if the number of particle is more than a critical value (~3).
       
       ! using the function in amr_mod.f90
@@ -2740,19 +2740,12 @@ CONTAINS
 
       !
       if (nparticle > nint(amrLimitScalar) ) then
-         
-         split = .TRUE.
+	 
+	 split = .TRUE.
       else
-         split = .FALSE.
+	 split = .FALSE.
       end if
 
-
-
-
-   case ("wr104")
-
-
-      
    case DEFAULT
       PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
       PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
