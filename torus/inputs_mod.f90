@@ -114,10 +114,19 @@ subroutine inputs()
           "Size of adaptive mesh grid: ","(a,f6.1,1x,a)", 1000., ok, .true.) 
      call getReal("amrgridcentrex", amrGridCentreX, cLine, nLines, &
           "Grid centre X-coordinate: ","(a,f6.1,1x,a)", 0., ok, .false.) 
+        if (amrGridCentreX == 0.0) then 
+           print *, 'WARNING: amrGridCentreX == 0. This may cause numerical problems!'
+        end if
      call getReal("amrgridcentrey", amrGridCentreY, cLine, nLines, &
           "Grid centre Y-coordinate: ","(a,f6.1,1x,a)", 0., ok, .false.) 
+        if (amrGridCentreY == 0.0) then 
+           print *, 'WARNING: amrGridCentreY == 0. This may cause numerical problems!'
+        end if
      call getReal("amrgridcentrez", amrGridCentreZ, cLine, nLines, &
           "Grid centre Z-coordinate: ","(a,f6.1,1x,a)", 0., ok, .false.) 
+        if (amrGridCentreZ == 0.0) then 
+           print *, 'WARNING: amrGridCentreZ == 0. This may cause numerical problems!'
+        end if
      call getReal("limitscalar", limitScalar, cLine, nLines, &
           "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000., ok, .true.) 
      call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
@@ -636,8 +645,6 @@ endif
     secondSourcePosition = VECTOR(0.,0.,0.)
     call getReal("secondpos", secondSourcePosition%x, cLine, nLines, &
          "Second source distance: ","(a,e7.1,1x,a)", 1.e14, ok, .true.)
-    call getReal("lumratio", lumratio, cLine, nLines, &
-         "Luminosity Ratio (p/s): ","(a,f7.2,1x,a)", 1., ok, .true.)
  endif
 
  call getLogical("coreline", coreEmissionLine, cLine, nLines, &

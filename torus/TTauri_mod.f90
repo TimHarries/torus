@@ -15,6 +15,7 @@ module ttauri_mod
   use stateq_mod
   use math_mod
   use octal_mod
+  use parameters_mod
 
   implicit none
   
@@ -33,42 +34,40 @@ contains
     logical :: readPops, writePops, lte
     logical :: curtains
     real :: dipoleOffset
-    type(VECTOR) :: rVec, direction, uHat
+    type(VECTOR) :: rVec
     integer, parameter :: nPhi = 360
     integer, parameter :: nTheta = 201
     integer, parameter :: nR = 100
     integer :: i, j, k
     integer :: i1, i2, i3
-    integer :: iPhi, j1
     integer :: nLower, nUpper
     real :: ang
-    real :: totOmega, dOmega, dtheta, dphi,thisTau, totEsc
-    real :: chil, tauSob, escProb,t1,t2,t3, lamLine, nu
+    real :: t1,t2,t3, lamLine, nu
     real :: rInner, rOuter
     real :: theta1, theta2
     real :: thetaStart, thetaEnd
     real :: mDot, rStar, mStar
     real :: r, theta, phi
     real :: rM, y, rho
-    real :: nuArray(3000),fnu(3000), biasFac, fac
+    real :: nuArray(3000),fnu(3000), fac
     integer :: nNu
-    real :: tot, tot2
+    real :: tot
     type(VECTOR) :: vP, posVec
     real :: modVp
     real(kind=doublekind) :: Laccretion
     real :: Taccretion, sAccretion
     real :: minRho, maxRho
-    type(VECTOR) :: rHat, vHat
-    real :: rMag, mLoss, vTerm, dist, v0, vel
+    !type(VECTOR) :: rHat, vHat
+    real :: mLoss, vTerm, v0 ! vel, dist, rMag
     integer, parameter :: nCalvet = 22
-    integer :: iCalvet
-    real :: tCalvet(nCalvet) = (/10000.,10000.,10000.,10000.,10000.,10000.,10000., &
-                       9600., 9000., 8000.,7300.,6600., 6000., 5400., &
-                       5000., 5000., 5000., 5000., 5000., 5000., 5000., 5000./)
-    real :: rCalvet(nCalvet) = (/0.190, 0.270, 0.310, 0.360, 0.400, 0.450, &
-                                 0.569, 0.742, 0.938, 1.12, 1.31, 1.91, &
-                                 2.50, 3.10, 3.50, 3.90, 4.88, 5.89, 6.89, &
-                                 8.09, 9.04, 10.48 /)
+    !integer :: iCalvet
+    !real :: tCalvet(nCalvet) = (/10000.,10000.,10000.,10000.,10000.,10000.,10000., &
+    !                   9600., 9000., 8000.,7300.,6600., 6000., 5400., &
+    !                   5000., 5000., 5000., 5000., 5000., 5000., 5000., 5000./)
+    !real :: rCalvet(nCalvet) = (/0.190, 0.270, 0.310, 0.360, 0.400, 0.450, &
+    !                             0.569, 0.742, 0.938, 1.12, 1.31, 1.91, &
+    !                             2.50, 3.10, 3.50, 3.90, 4.88, 5.89, 6.89, &
+    !                             8.09, 9.04, 10.48 /)
 
 
 !    if (.not.grid%cartesian) then
@@ -95,7 +94,7 @@ contains
     grid%kappaSca = 1.e-30
     grid%kappaAbs = 1.e-30
 
-    grid%diskRadius = rOuter/1.e10
+    grid%diskRadius = rInner/1.e10
 
     grid%diskNormal = VECTOR(0.,0.,1.)
     grid%diskNormal = rotateX(grid%diskNormal, dipoleOffSet)
@@ -529,7 +528,7 @@ contains
   subroutine fillGridFlaredDisk(grid,meanParticleMass)
     type(GRIDTYPE) :: grid
     real :: diskMass, bigH, rho, bigR
-    real :: theta, rOuter, rHole
+    real :: rOuter, rHole
     integer :: i, j, k, nMu, n1, n2
     real :: rhoNought, sinTheta
     type(VECTOR) :: rVec

@@ -15,5 +15,9 @@ module parameters_mod
    real, parameter :: TTauriDiskRadius = 3.0 * TTauriRstar
    real, parameter :: TTauriMdot       = 1.e-7 * mSol / (365.25 * 24. * 3600.)
    real, parameter :: TTauriMloss      = 1.e-8 * mSol / (365.25 * 24. * 3600.)
+   ! we need to track the minimum and maximum densities of the
+   !   accretion flow 
+   real, save      :: TTauriMinRho = huge(1.0)
+   real, save      :: TTauriMaxRho = tiny(1.0)
 
 end module parameters_mod

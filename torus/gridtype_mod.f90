@@ -99,6 +99,7 @@ module gridtype_mod
      real(kind=octalKind) :: halfSmallestSubcell 
        ! 'halfSmallestSubcell' is half the vertex length of the grid's smallest
        !    subcells. we store this because it is used frequently in calculations.
+     integer :: nOctals                              ! total number of octals 
 
   end type GRIDTYPE
 

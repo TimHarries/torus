@@ -95,7 +95,7 @@ contains
     real :: lamStart, lamEnd                     ! start and end wavelengths
     real :: costheta                             ! cos scattering angle
     real :: ang                                  ! scattering angle
-    real :: r1, r2, r                            ! radii
+    real :: r1, r2                               ! radii
     integer :: i1, i2, i3                        ! position indices
     real :: t1,t2,t3                             ! interp factors
     real :: u,v,w,t                              ! direction components
@@ -104,8 +104,10 @@ contains
     real :: vRay, vOverCsqr
     real :: fac
     real :: nuRest
-    real :: theta, phi, mu
     type(octalVector) :: pointOctalVec
+    type(octal), pointer :: octalLocation
+    integer :: subcellLocation
+    
 !    real :: dx
 
 !    dx = abs(grid%xAxis(2) - grid%xAxis(1))
@@ -220,12 +222,16 @@ contains
     if (.not.grid%doRaman) then
        
        if (grid%adaptive) then
-          pointOctalVec = octalVector(outPhoton%position%x,&
-                                      outPhoton%position%y,&
-                                      outPhoton%position%z)
+          pointOctalVec = outPhoton%position
           if (.not.grid%resonanceLine) then
-             outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec) + &
-              thermalElectronVelocity(amrGridTemperature(grid%octreeRoot,pointOctalVec))
+                  
+             outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec,&
+                         foundOctal=octalLocation,foundSubcell=subcellLocation) 
+             
+             outPhoton%velocity = outPhoton%velocity + thermalElectronVelocity( &
+                    amrGridTemperature(grid%octreeRoot,pointOctalVec,&
+                    startOctal=octalLocation,actualSubcell=subcellLocation))
+             
           else
              outPhoton%velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec)
           end if
@@ -251,9 +257,7 @@ contains
        outPhoton%redPhoton = .true.
        
        if (grid%adaptive) then
-          pointOctalVec = octalVector(outPhoton%position%x,&
-                                      outPhoton%position%y,&
-                                      outPhoton%position%z)
+          pointOctalVec = outPhoton%position
           outPhoton%Velocity = amrGridVelocity(grid%octreeRoot,pointOctalVec)
        else
           call getIndices(grid, outPhoton%position, i1, i2, i3, t1, t2, t3)
@@ -286,7 +290,7 @@ contains
   subroutine initPhoton(thisPhoton, Grid, nLambda, lambda, sourceSpectrum, &
        lineEmission, lamLine,  &
        weightLinePhoton, weightContPhoton, contPhoton, flatspec, vRot, &
-       pencilBeam, secondSource, secondSourcePosition, lumRatio, &
+       pencilBeam, secondSource, secondSourcePosition, &
        ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias, &
        theta1,theta2, chanceHotRing, &
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, chanceDust, &
@@ -303,7 +307,6 @@ contains
     logical :: ok
     logical :: narrowBandImage
     real :: narrowBandMin, narrowBandMax  ! parameters for a narrow band image
-    real :: lumRatio
     real :: vo6
     real :: x,y,z
     real(kind=octalKind) :: xOctal, yOctal, zOctal
@@ -368,7 +371,6 @@ contains
 
     logical :: photonFromEnvelope
     real :: tempSpectrum(2000)
-    real :: thisFreq
     integer :: i
 
     type(octalVector) :: positionOctal     ! octalVector type version of thisPhoton%position
@@ -462,17 +464,17 @@ contains
                 
                 call random_number(r1)
                 r1 = r1 - 0.5  ! shift value mean value to zero
-                r1 = r1 * 0.99 ! to avoid any numerical accuracy problems
+                r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
                 xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
                 
                 call random_number(r2)
                 r2 = r2 - 0.5                                  
-                r2 = r2 * 0.99                                           
+                r2 = r2 * 0.995                                           
                 yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
                 
                 call random_number(r3)
                 r3 = r3 - 0.5                                  
-                r3 = r3 * 0.99                                           
+                r3 = r3 * 0.995                                           
                 zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
                 
                 
@@ -609,17 +611,17 @@ contains
                 
                 call random_number(r1)
                 r1 = r1 - 0.5  ! shift value mean value to zero
-                r1 = r1 * 0.99 ! to avoid any numerical accuracy problems
+                r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
                 xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
                 
                 call random_number(r2)
                 r2 = r2 - 0.5                                  
-                r2 = r2 * 0.99                                           
+                r2 = r2 * 0.995                                           
                 yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
                 
                 call random_number(r3)
                 r3 = r3 - 0.5                                  
-                r3 = r3 * 0.99                                           
+                r3 = r3 * 0.995                                           
                 zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
                 
                 
@@ -721,11 +723,11 @@ contains
                    if (r < grid%lumRatio) then
                       thisPhoton%position = grid%starPos1 + (1.01*(grid%rStar1) * randomUnitVector())
                       thisPhoton%fromStar1 = .true.
-                      call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
+                      !call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
                    else
                       thisPhoton%position = grid%starPos2 + (1.01*(grid%rStar2) * randomUnitVector())
                       thisPhoton%fromStar2 = .true.
-                      call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
+                      !call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
                    endif
 
                 case("ttauri")
@@ -775,11 +777,10 @@ contains
              
              if (grid%adaptive) then
                 do i = 1, nLambda
-                   positionOctal = octalVector(thisPhoton%position%x, &
-                                               thisPhoton%position%y, &
-                                               thisPhoton%position%z)
+                   positionOctal = thisPhoton%position
                    tempSpectrum(i) = blambda(dble(lambda(i)), &
-                      dble(amrGridTemperature(grid%octreeRoot,positionOctal,startOctal=sourceOctal)))&
+                      dble(amrGridTemperature(grid%octreeRoot,positionOctal,&
+                                    startOctal=sourceOctal,actualSubcell=subcell)))&
                       * sourceOctal%kappaAbs(subcell,iLambda)
                       ! ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ we should be calling an interpolation function here!
                       print *, 'In integratePathAMR, the tempSpectrum value is wrong! - needs fixed'
@@ -868,9 +869,7 @@ contains
 
        if (grid%geometry == "binary") then
           if (grid%adaptive) then 
-             octalPoint = octalVector(thisPhoton%position%x, &
-                                      thisPhoton%position%y, &
-                                      thisPhoton%position%z)  
+             octalPoint = thisPhoton%position  
              thisPhoton%velocity = amrGridVelocity(grid%octreeRoot,octalPoint)
           else  
             call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
@@ -994,6 +993,7 @@ contains
           if (grid%geometry == "rolf") then
              write(*,*) "Panic: in initPhoton, there is no code for handling ",&
                         "grid%geometry==rolf with an adaptive grid"
+             stop
           endif
 
           if (.not. ok) then
@@ -1012,17 +1012,17 @@ contains
              !!! this *should* be done in a better way.
              call random_number(r1)
              r1 = r1 - 0.5  ! shift value mean value to zero
-             r1 = r1 * 0.99 ! to avoid any numerical accuracy problems
+             r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
              xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
                
              call random_number(r2)
              r2 = r2 - 0.5                                  
-             r2 = r2 * 0.99                                           
+             r2 = r2 * 0.995                                           
              yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
                 
              call random_number(r3)
              r3 = r3 - 0.5                                  
-             r3 = r3 * 0.99                                           
+             r3 = r3 * 0.995                                           
              zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
              
 
@@ -1111,10 +1111,9 @@ contains
        if (.not.thisPhoton%resonanceLine) then
                
           if (grid%adaptive) then
-             octalPoint = octalVector(thisPhoton%position%x, &
-                                      thisPhoton%position%y, &
-                                      thisPhoton%position%z)  
-             thisPhoton%velocity = amrGridVelocity(grid%octreeRoot,octalPoint)
+             octalPoint = thisPhoton%position  
+             thisPhoton%velocity = amrGridVelocity(grid%octreeRoot,octalPoint)!,&
+                                       !startOctal=sourceOctal,actualSubcell=subcell)
           
           else
              thisPhoton%velocity = &
@@ -1130,7 +1129,12 @@ contains
        endif
 
        if (grid%geometry == "donati") then
-          thisPhoton%velocity = thisPhoton%velocity + thermalHydrogenVelocity(grid%temperature(i1,i2,i3))
+          if (grid%adaptive) then
+             thisPhoton%velocity = thisPhoton%velocity + &
+                                   thermalHydrogenVelocity(amrGridTemperature(grid%octreeRoot,octalPoint))
+          else
+             thisPhoton%velocity = thisPhoton%velocity + thermalHydrogenVelocity(grid%temperature(i1,i2,i3))
+          end if
        endif
 
 

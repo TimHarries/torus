@@ -26,8 +26,10 @@ contains
 
   subroutine solveQuad(a, b, c, x1, x2,ok)
     implicit none
-    real :: x1, x2, a, b, c, y
-    logical :: ok
+    real,intent(in)     :: a, b, c
+    real,intent(out)    :: x1, x2
+    real                :: y
+    logical,intent(out) :: ok
 
     ok = .true.
 
@@ -47,8 +49,10 @@ contains
 
   subroutine solveQuadDble(a, b, c, x1, x2,ok)
     implicit none
-    real(kind=doubleKind) :: x1, x2, a, b, c, y
-    logical :: ok
+    real(kind=doubleKind),intent(in) :: a, b, c
+    real(kind=doubleKind),intent(out):: x1, x2
+    real(kind=doubleKind)            :: y
+    logical,intent(out)              :: ok
 
     ok = .true.
 
@@ -69,11 +73,11 @@ contains
 
   ! return a blackbody function
 
-  real function blackBody(temperature, wavelength)
+  real pure function blackBody(temperature, wavelength)
 
-    real :: temperature
-    real :: wavelength
-    real :: nu, fac
+    real,intent(in) :: temperature
+    real,intent(in) :: wavelength
+    real            :: nu, fac
 
     nu = cSpeed / (wavelength*angstromToCm)
     fac= log(2.)+log(hCgs) + 3.*log(nu) - 2.*log(cSpeed)
@@ -212,11 +216,12 @@ contains
 
   ! sort an array by indexing
 
-  SUBROUTINE INDEXX(N,ARRIN,INDX)
-    INTEGER N, J, L, IR, I, INDXT
-    REAL Q
-    REAL ARRIN(*)
-    INTEGER INDX(*)
+  PURE SUBROUTINE INDEXX(N,ARRIN,INDX)
+    INTEGER, INTENT(IN)  :: N
+    REAL, INTENT(IN)     :: ARRIN(*)
+    INTEGER, INTENT(OUT) :: INDX(*)
+    INTEGER              :: J, L, IR, I, INDXT
+    REAL                 :: Q
     DO  J=1,N
        INDX(J)=J
     ENDDO
@@ -322,12 +327,13 @@ contains
 
   ! locate in a grid via bisection but starting at jlo
 
-  SUBROUTINE HUNT(XX,N,X,JLO)
-    INTEGER N, JM
-    REAL X
-    INTEGER JLO, JHI, INC
+  pure SUBROUTINE HUNT(XX,N,X,JLO)
+    REAL, INTENT(IN) :: XX(*)
+    INTEGER, INTENT(IN) :: N
+    REAL, INTENT(IN)    :: X
+    INTEGER, INTENT(INOUT) :: JLO
+    INTEGER :: JHI, INC, JM
     LOGICAL ASCND
-    REAL XX(*)
     IF (X .LE. XX(1)) THEN
        JLO = 1
        RETURN
@@ -369,10 +375,12 @@ contains
     GO TO 3
   END SUBROUTINE HUNT
 
-  subroutine getDerivs(x, y, n, derivs)
+  pure subroutine getDerivs(x, y, n, derivs)
     implicit none
-    integer :: i, n
-    real :: x(*), y(*), derivs(*)
+    integer,intent(in) :: n
+    real,intent(in)    :: x(*), y(*)           
+    real,intent(out)   :: derivs(*)
+    integer            :: i
 
     do i = 2, n-1
        derivs(i) = log(y(i-1)/y(i+1)) / log(x(i-1)/x(i+1)) * y(i)/x(i)
@@ -390,10 +398,10 @@ contains
   end subroutine getDerivs
 
   real function logInterp(y, ny, x, xi)
-    real :: y(*), x(*), xi
-    integer :: ny, i
-    real :: t
-    save i
+    real, intent(in)    :: y(*), x(*), xi
+    integer, intent(in) :: ny
+    integer, save       :: i
+    real                :: t
 
     call locate(x, ny, xi, i)
     
@@ -403,11 +411,12 @@ contains
 
   end function logInterp
 
-  SUBROUTINE LOCATE_single(XX,N,X,J)
-    real :: XX(*)
-    integer :: n
-    real :: x
-    integer :: j, jl, ju,jm
+    PURE SUBROUTINE LOCATE_single(XX,N,X,J)
+    real, intent(in)    :: XX(*)
+    integer,intent(in)  :: n
+    real,intent(in)     :: x
+    integer,intent(out) :: j
+    integer :: jl, ju,jm
       JL=1
       JU=N+1
 10    IF(JU-JL.GT.1)THEN
@@ -422,11 +431,12 @@ contains
       J=JL
     END SUBROUTINE LOCATE_single
   
-    SUBROUTINE LOCATE_double(XX,N,X,J)
-    real(kind=doubleKind) :: XX(*)
-    integer :: n
-    real(kind=doubleKind) :: x
-    integer :: j, jl, ju,jm
+    PURE SUBROUTINE LOCATE_double(XX,N,X,J)
+    real(kind=doubleKind), intent(in) :: XX(*)
+    integer, intent(in)               :: n
+    real(kind=doubleKind), intent(in) :: x
+    integer,intent(out)               :: j
+    integer :: jl, ju,jm
       JL=1
       JU=N+1
 10    IF(JU-JL.GT.1)THEN
@@ -536,7 +546,7 @@ contains
 ! Calculates a random maxwellian velocity using the 
 ! rejection method.
 
-      real :: mass, temperature
+      real, intent(in) :: mass, temperature
       real :: x, y, t, u, vel
       logical :: ok
 

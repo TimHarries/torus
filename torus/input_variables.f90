@@ -77,7 +77,6 @@ module input_variables
 
   logical :: secondSource                    ! second photon source?
   type(VECTOR) :: secondSourcePosition       ! the position of it
-  real :: lumRatio                           ! lumonsity ratio
   real :: binarySep
   real :: momRatio
 

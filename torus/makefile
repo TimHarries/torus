@@ -51,7 +51,7 @@ depends:
 
 
 clean:
-	@/bin/rm -f *.o *~ *.mod ${EXE} ./make.depends
+	@/bin/rm -f *.o *~ *.mod *.il *.pc *.d ${EXE} ./make.depends
 
 
 include make.depends

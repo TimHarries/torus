@@ -121,7 +121,7 @@
         *)
         touch make.depends
         make -e depends
-        make -e -j 2 $*
+        make -e $*
         ;;
    esac
         

@@ -501,23 +501,15 @@ contains
               grid%etaLine, chi, grid%biasLine, totalLineEmission, .true.,&
               lambda0, useBias)
 
-
        if (grid%cartesian) then
-          do i = 1, grid%nx
-             do j = 1, grid%ny
-                do k = 1, grid%nz
-                   chi(i,j,k) = grid%kappaAbs(i,j,k,1)
-                enddo
-             enddo
-          enddo
+          forall (i=1:grid%nx, j=1:grid%ny, k=1:grid%nz)
+             chi(i,j,k) = grid%kappaAbs(i,j,k,1)
+          end forall
+
        else
-          do i = 1, grid%nr
-             do j = 1, grid%nmu
-                do k = 1, grid%nphi
-                   chi(i,j,k) = grid%kappaAbs(i,j,k,1)
-                enddo
-             enddo
-          enddo
+          forall (i=1:grid%nr, j=1:grid%nmu, k=1:grid%nphi)
+             chi(i,j,k) = grid%kappaAbs(i,j,k,1)
+          end forall
        endif
 
        call computeProbDist2(grid, grid%cartesian, grid%xProbDistCont,&
@@ -595,7 +587,7 @@ contains
     real :: rProbDist(:), muProbDist(:,:), phiProbDist(:,:,:)
     real :: xAxis(:), yAxis(:), zAxis(:)
     real :: rAxis(:), muAxis(:), phiAxis(:)
-    real, allocatable :: tmp(:),tmp2(:)
+    real, allocatable :: tmp(:) ! ,tmp2(:)
     real(kind=doubleKind) :: dV
 
     bias = 1.d0
@@ -1095,9 +1087,9 @@ contains
 
   type(VECTOR) function thermalElectronVelocity(temperature)
     real :: temperature
-    type(VECTOR) :: rHat
-    real :: vel
-    real :: sigmaVel
+    !type(VECTOR) :: rHat
+    !real :: vel
+    !real :: sigmaVel
 
 !    rHat = randomUnitVector()    
 !    sigmaVel = 100.e0*sqrt( kConst * temperature / (mElectron/1000.))
@@ -1111,9 +1103,9 @@ contains
 
   type(VECTOR) function thermalHydrogenVelocity(temperature)
     real :: temperature
-    type(VECTOR) :: rHat
-    real :: vel
-    real :: sigmaVel
+    !type(VECTOR) :: rHat
+    !real :: vel
+    !real :: sigmaVel
  
     thermalHydrogenVelocity = maxwellianVelocity(mHydrogen, temperature)/cSpeed
 

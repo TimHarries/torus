@@ -1479,26 +1479,42 @@ contains
     integer :: i1, i2, i3
     real :: r, mu, phi
     character(len=*) :: device
+    integer :: x, z
+    real :: smallOffset
+    type(octalVector) :: samplePoint
+
 
     if (grid%adaptive) then
        
        resolution = 100 
        allocate(plane(resolution,resolution))
 
-       angle1 = 0.0
-       angle2 = 0.0
-       sampleFreq = 2.0
-       call columnDensity(grid,angle1,angle2,resolution,sampleFreq,plane)   
-       dx = REAL(grid%octreeRoot%subcellSize) * 2.0 / REAL(resolution) 
-       dz = dx 
-       tr(1) =  - dx + grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
-       tr(2) = dx
+       ! we will try to slightly offset our sampling points w.r.t.
+       !   the subcell walls to reduce numerical problems.
+       smallOffset = grid%halfSmallestSubcell * 0.1
+       
+       tr(1) = grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
+       tr(2) = 0.995 * grid%octreeRoot%subcellSize * 2.0 / real(resolution)
        tr(3) = 0.
-       tr(4) =  - dz + grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize
+       tr(4) = grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize
        tr(5) = 0.
-       tr(6) = dz
+       tr(6) = 0.995 * grid%octreeRoot%subcellSize * 2.0 / real(resolution)
+       do i = 1, resolution
+          do j = 1, resolution
+             x = tr(1) + tr(2)*i
+             z = tr(1) + tr(2)*j
+             samplePoint = octalVector(x,grid%octreeRoot%centre%y+smallOffset,z)
+             plane(i,j) = amrGridDensity(grid%octreeRoot,samplePoint)
+          enddo
+       enddo
+
+       !angle1 = 0.0
+       !angle2 = 0.0
+       !sampleFreq = 2.0
+       !call columnDensity(grid,angle1,angle2,resolution,sampleFreq,plane)   
+
        where (plane < 1.0) 
-          plane = 0.1
+          plane = 1.0
        end where
        plane = log10(plane)
        fg = MAXVAL(plane)
@@ -1911,6 +1927,9 @@ contains
     real :: x,y,tr(6),r,phi
     real :: rMax,rMin,fac
     logical, allocatable :: usedArray(:,:)
+    real :: smallOffset
+    type(octalVector) :: samplePoint
+    type(vector) :: velocityVector
 
 
     call pgbegin(0,device,1,1)
@@ -1924,7 +1943,33 @@ contains
     xArray = 0.
     yArray = 0.
 
-    if (grid%cartesian) then
+    if (grid%adaptive) then
+
+       ! we will try to slightly offset our sampling points w.r.t.
+       !   the subcell walls to reduce numerical problems.
+       smallOffset = grid%halfSmallestSubcell * 0.1
+         
+       ! also need to make sure we do not try to sample outside the grid.  
+       tr(1) = grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
+       tr(2) = 0.995 * grid%octreeRoot%subcellSize * 2.0 / real(nx)
+       tr(3) = 0.
+       tr(4) = grid%octreeRoot%centre%z - grid%octreeRoot%subcellSize
+       tr(5) = 0.
+       tr(6) = 0.995 * grid%octreeRoot%subcellSize * 2.0 / real(ny)
+       do i = 1, nx
+          do j = 1, ny
+             x = tr(1) + tr(2)*i
+             y = tr(1) + tr(2)*j
+             samplePoint = octalVector(x,grid%octreeRoot%centre%y+smallOffset,y)
+             velocityVector = amrGridVelocity(grid%octreeRoot,samplePoint)
+             xArray(i,j) = velocityVector%x*cSpeed
+             yArray(i,j) = velocityVector%z*cSpeed
+          enddo
+       enddo
+
+       
+
+    elseif (grid%cartesian) then
        tr(1) = grid%xAxis(1)
        tr(2) = (grid%xAxis(grid%nx)-grid%xAxis(1)) / real(nx)
        tr(3) = 0.
