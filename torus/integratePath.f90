@@ -2022,7 +2022,7 @@ end subroutine integratePathAMR
     if (.not.contPhoton) then
        tauAbsLine(1) = 0. 
        do i = 2, nTau
-!          T = MAX(temperature(i-1), 3.0) ! [K] 
+!         T = MAX(temperature(i-1), 3.0) ! [K] 
           T = MAX(temperature(i-1), 3000.0) ! [K]  To avoid a tiny Doppler width
           ! The line centre of absorption profile shifted by Doppler.
           nu0_p = nu0/(1.0d0-projVel(i-1))  ! [Hz] 
@@ -2065,7 +2065,8 @@ end subroutine integratePathAMR
           nu = cSpeed / (lam*angstromtocm)  ! freq of this photon
           nu_p = nu  ! CMF freqency
           do i = 2, nTau
-             T = MAX(temperature(i-1), 3.0) ! [K]   to avoid infinity
+!             T = MAX(temperature(i-1), 3.0) ! [K]   to avoid infinity
+             T = MAX(temperature(i-1), 3000.0) ! [K]  To avoid a tiny Doppler width
              ! The line centre of absorption profile shifted by Doppler.
              nu0_p = nu0/(1.0d0-projVel(i-1))  
              DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T/meanMoleMass)  ! [Hz]
