@@ -1190,7 +1190,7 @@ CONTAINS
     ! Specify the ratio of extra length to give it for "locater" to the 
     ! "halfSmallestSubcell" size.
 !    REAL(oct), parameter :: frac =1.e-6_oc  
-    REAL(oct), parameter :: frac =1.e-22_oc  
+    REAL(oct), parameter :: frac =1.e-2_oc  
 
     if (threed) then
        
@@ -1519,12 +1519,6 @@ CONTAINS
           disttoZboundary = 1.e30
        endif
 
-!       ! Because of some truncation error, the value could be a small
-!       ! negative value (e.g. -1.0e-15). When this occur, we set the value to be a
-!       ! large number, so the other distance will be picked in the following statement.
-!       ! (This is a quick fix.   Ryuichi Kurosawa)
-!       if (distToZboundary <=0) distToZboundary = 1.e20
-!       if (distToXboundary <=0) distToXboundary = 1.e20
        
        tVal = min(distToZboundary, distToXboundary)
        if (tVal > 1.e29) then
@@ -1533,15 +1527,12 @@ CONTAINS
           write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
           write(*,*) "x,z = ",currentX,currentZ
           stop 
-!          do;enddo
-       endif
-       if (tval <= 0.) then
+       elseif (tval <= 0.) then
           write(*,*) "Error :: tVal <= 0  [amr_mod:getExitPoint]."
           write(*,*) "tVal,compZ, distToZboundary,disttoxboundary = "
           write(*,*) tVal,compZ, distToZboundary,disttoxboundary
           write(*,*) "x,z = ",currentX,currentZ
           stop
-!          do;enddo
        endif
        
        minWallDistance = tVal
@@ -4298,7 +4289,8 @@ CONTAINS
     END IF
 
     ! we will initialise the bias distribution
-    thisOctal%biasLine3D(subcell) = 1000.0
+!    thisOctal%biasLine3D(subcell) = 1000.0
+    thisOctal%biasLine3D(subcell) = 1.0
   
   END SUBROUTINE calcTTauriTemperature
   

@@ -111,8 +111,8 @@ ifeq ($(SYSTEM), linuxintel)
     F95COMP=ifort
     F77COMP=ifort
 #    FASTFLAG= -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
-    FASTFLAG= -I/usr/include/nptl -L/usr/lib/nptl
-    DEBUGFLAG=-g -O0 
+    FASTFLAG= -I/usr/include/nptl -L/usr/lib/nptl -zero
+    DEBUGFLAG=-g -O0 -zero
     MATHTRAP=-mp
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel
@@ -130,11 +130,11 @@ endif
 ifeq ($(SYSTEM), mpiintel)
     TOP=$(HOME)/mpi_intel
     TOP2=$(HOME)/mpi_g77
-    F95COMP=${TOP}/bin/mpif77 -I${TOP}/include -mp
+    F95COMP=${TOP}/bin/mpif77 -I${TOP}/include -mp 
     F77COMP=${TOP2}/bin/mpif77 -I${TOP2}/include 
-    FASTFLAG= -O2 -I/usr/include/nptl -L/usr/lib/nptl
+    FASTFLAG= -O2 -I/usr/include/nptl -L/usr/lib/nptl -zero
     #DEBUGFLAG=-g -O0 -CA -CU -CV -CS -CB  
-    DEBUGFLAG=-g -O0 -CA -CV -CS -CB  
+    DEBUGFLAG=-g -O0 -CA -CV -CS -CB -zero
     MATHTRAP= 
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel

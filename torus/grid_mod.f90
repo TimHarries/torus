@@ -6138,15 +6138,17 @@ contains
     call plot_values(root, name, plane, value_3rd_dim, logscale, valueMax, valueMin, ilo, ihi, grid, ilam)
 
 
-    ! writing the radial profile of the values on the specified plane.
-    filename_prof = 'profile_'//TRIM(ADJUSTL(name))//'_'//TRIM(ADJUSTL(plane))//'.dat' 
-    open(unit=luout, file = TRIM(ADJUSTL(filename_prof)), status='replace')
-!    write(luout, '(a, 2x, 1PE18.4)') '#  The 3rd dimension value = ', value_3rd_dim
-!    write(luout, '(a)') '#  format :  distance [10^10cm]  --  values [?]'  
+! Comment out the following if you want the pix value as a function of distance from 
+! the center of the gird. Useful for some cases.
 
-
-    call radial_profile(root, name, plane, v3, luout, root%centre, grid)
-    close(luout)
+!    ! writing the radial profile of the values on the specified plane.
+!    filename_prof = 'profile_'//TRIM(ADJUSTL(name))//'_'//TRIM(ADJUSTL(plane))//'.dat' 
+!    open(unit=luout, file = TRIM(ADJUSTL(filename_prof)), status='replace')
+!!    write(luout, '(a, 2x, 1PE18.4)') '#  The 3rd dimension value = ', value_3rd_dim
+!!    write(luout, '(a)') '#  format :  distance [10^10cm]  --  values [?]'  
+!
+!    call radial_profile(root, name, plane, v3, luout, root%centre, grid)
+!    close(luout)
 
     !
     ! Annotation.

@@ -1946,12 +1946,11 @@ end subroutine integratePathAMR
     enddo
     
     !
-    ! Number dennsity of HI N_H = N_HI + Np, but Np=Ne
+    ! Number density of HI N_H = N_HI + Np, but Np=Ne
     N_HI(1:ntau) = rho(1:ntau)/meanMoleMass - Ne(1:nTau)
 
     
     iStart = 1
-    
     if (usePops) then
        chil=((pi*eCharge**2)/(mElectron*cSpeed))*fStrength
        chiLine(1:nTau) = 1.e10 * chil * (levelPop(1:nTau,mLevel)&
@@ -2023,7 +2022,8 @@ end subroutine integratePathAMR
     if (.not.contPhoton) then
        tauAbsLine(1) = 0. 
        do i = 2, nTau
-          T = MAX(temperature(i-1), 3.0) ! [K] 
+!          T = MAX(temperature(i-1), 3.0) ! [K] 
+          T = MAX(temperature(i-1), 3000.0) ! [K]  To avoid a tiny Doppler width
           ! The line centre of absorption profile shifted by Doppler.
           nu0_p = nu0/(1.0d0-projVel(i-1))  ! [Hz] 
           DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T/meanMoleMass) !eq 7  [Hz]
@@ -2277,7 +2277,8 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   ! test along x-axis 
   !
   octVec = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-  position = (octVec*R)
+!  position = (octVec*R)
+  position = (octVec*R) + grid%starPos1
   call integratePath(gridUsesAMR, starkBroadening, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
@@ -2301,7 +2302,8 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   ! test along y-axis 
   !
   octVec = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-  position = (octVec*R)
+!  position = (octVec*R)
+  position = (octVec*R) + grid%starPos1
   call integratePath(gridUsesAMR, starkBroadening, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
@@ -2325,7 +2327,8 @@ subroutine test_optical_depth(gridUsesAMR, starkBroadening, &
   ! test along z-axis 
   !
   octVec = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-  position = (octVec*R)
+!  position = (octVec*R)
+  position = (octVec*R) + grid%starPos1
   call integratePath(gridUsesAMR, starkBroadening, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &

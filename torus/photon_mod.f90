@@ -336,7 +336,8 @@ contains
        theta1,theta2, chanceHotRing, &
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
-       filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength)
+       filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, &
+       starkBroadening)
 
     implicit none
 
@@ -417,6 +418,7 @@ contains
 
     logical :: forcedWavelength
     real :: usePhotonWavelength
+    logical, intent(in) ::  starkBroadening
 
     real :: tempr
 
@@ -990,9 +992,10 @@ contains
                 x1 = 0.5*(lambda(ilambda-1)+lambda(ilambda))
                 x2 = 0.5*(lambda(ilambda+1)+lambda(ilambda))
              endif
-             call random_number(r)
+!             call random_number(r)
 !          thisPhoton%lambda = x1+r*(x2-x1)
           else
+             call random_number(r1)
              iLambda = int(r1 * real(nLambda)) + 1
              thisPhoton%lambda = lambda(ilambda)
           endif
@@ -1420,7 +1423,11 @@ contains
                 ! of the Voigt profile.
                 N_HI = MAX((rho/mHydrogen - Ne), 1.d-25) ! number density of HI.
                 nu = cSpeed_dbl/dble(lamline*angstromtocm)  ! [Hz]
-                Gamma = bigGamma(dble(N_HI), dble(temperature), dble(Ne), nu)
+                if (starkBroadening) then
+                   Gamma = bigGamma(dble(N_HI), dble(temperature), dble(Ne), nu)
+                else
+                   Gamma = 0.0d0
+                end if
                 nu_shuffled = random_Lorentzian_frequency(nu, Gamma) ! [Hz]                
                 lambda_shuffled = (cSpeed_dbl/nu_shuffled)*1.e8  ! [A]
                 ! ==> This will be assigend to the photon later.

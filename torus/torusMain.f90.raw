@@ -2753,7 +2753,7 @@ program torus
                 chanceHotRing, &
                 nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto,&
                 narrowBandImage, vmin, vmax, source, nSource, rHatinStar, energyPerPhoton, filters, mie, &
-                curtains, starSurface, forcedWavelength, usePhotonWavelength)
+                curtains, starSurface, forcedWavelength, usePhotonWavelength, starkBroadening)
            if (thisPhoton%linePhoton) then
               junk1 = junk1 + thisPhoton%position%z
               rHat = rHat + thisPhoton%velocity
@@ -2898,7 +2898,7 @@ program torus
                       theta1, theta2, chanceHotRing,  &
                       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto,&
                       narrowBandImage, vMin, vMax, source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
-                      curtains, starSurface, forcedWavelength, usePhotonWavelength)
+                      curtains, starSurface, forcedWavelength, usePhotonWavelength, starkBroadening)
                  if (thisPhoton%resonanceLine) then
                     r1 = real(i)/real(nPhotons/nOuterLoop)
                     thisPhoton%lambda = xArray(1) + r1*(xArray(nLambda)-xArray(1))
@@ -3002,11 +3002,19 @@ program torus
                  endif
                  t = rHat .dot. outVec
 
-                 if (lineEmission) then
-                    obs_weight = abs(t)*exp(-tauExt(nTau)) / pi
-                 else
-                    obs_weight = oneOnFourPi*abs(t)*exp(-tauExt(nTau))
-                 endif
+!                 if (t < 0.0) then 
+                    ! The photon directs inward of the star...
+                    ! this should be taken care by integratepth routine
+                    ! by producing a large tau but just in case this was not taken care.
+                    ! -- (RK)
+!                    obs_weight = 1.0e-30
+!                 else
+                    if (lineEmission) then
+                       obs_weight = abs(t)*exp(-tauExt(nTau)) / pi
+                    else
+                       obs_weight = oneOnFourPi*abs(t)*exp(-tauExt(nTau))
+                    endif
+!                 end if
                  observedlambda = thisPhoton%lambda
               endif
 
