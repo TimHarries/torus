@@ -19,11 +19,14 @@ module ttauri_mod
 
   implicit none
   
-  public
+  public :: fillGridMagneticAccretion, &
+       &    infallEnhancment, &
+       &    initInfallEnhancement, &
+       &    fillGridFlaredDisk
 
 
 contains
-
+  
   subroutine fillGridMagneticAccretion(grid,contfile1, popFileName, &
          readPops, writePops, lte, lamLine, Laccretion, Taccretion, &
          sAccretion, curtains, dipoleOffset, nLower, nUpper, theta1, theta2)

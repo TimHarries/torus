@@ -30,7 +30,8 @@ module grid_mod
   implicit none
 
   public
-
+  private :: writeReal1D, writeReal2D, writeDouble2D
+  private :: readReal1D,  readReal2D,  readDouble2D
 
 contains
 
@@ -480,7 +481,8 @@ contains
     case ("ttauri") 
        call initTTauriAMR(grid,Laccretion,Taccretion,&
                            sAccretion,newContFile)
-
+    case ("jets") 
+       call initJetsAMR(grid)
     case DEFAULT
        print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'
        print *, '            for use with an adaptive grid.'
@@ -1508,7 +1510,7 @@ contains
              plane(i,j) = columnDensity(grid,startPoint,yHatOctal,1.0)
           enddo
        enddo
-       
+       plane = plane * 1.0e20
        where (plane > 1.0) 
           plane = log(plane)
        elsewhere
@@ -2433,9 +2435,9 @@ contains
 
   end subroutine fillGridBinary
 
-  logical function outsideGrid(posVec, grid)
-    type(GRIDTYPE) :: grid
-    type(VECTOR) :: posVec
+  logical pure function outsideGrid(posVec, grid)
+    type(GRIDTYPE), intent(in) :: grid
+    type(VECTOR), intent(in)   :: posVec
 
     outSideGrid = .false.
 
@@ -2449,12 +2451,12 @@ contains
   end function outsideGrid
 
 
-  subroutine getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
-    type(GRIDTYPE) :: grid
-    type(VECTOR) :: rVec
-    integer :: i1, i2, i3
-    real :: t1, t2 ,t3
-    real :: r, theta, phi, mu
+  pure subroutine getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
+    type(GRIDTYPE), intent(in) :: grid
+    type(VECTOR), intent(in)   :: rVec
+    integer, intent(out)       :: i1, i2, i3
+    real, intent(out)          :: t1, t2 ,t3
+    real                       :: r, theta, phi, mu
 
     if (grid%cartesian) then
 
@@ -2555,6 +2557,277 @@ contains
 
   end subroutine writeGridPopulations
 
+  
+  subroutine writeAMRgrid(filename,fileFormatted,grid)
+    ! writes out the 'grid' for an adaptive mesh geometry  
+
+    implicit none
+  
+    character(len=*)           :: filename
+    logical, intent(in)        :: fileFormatted
+    type(GRIDTYPE), intent(in) :: grid
+    
+    integer, dimension(8) :: timeValues ! system date and time
+    integer               :: error      ! error code
+
+    if (fileFormatted) then 
+       open(unit=20,iostat=error, file=filename, form="formatted", status="replace")
+    else 
+       open(unit=20,iostat=error, file=filename, form="unformatted", status="replace")
+    end if        
+    
+    write(*,'(a,a)') "Writing populations file to: ",trim(filename)
+    
+    call date_and_time(values=timeValues)
+    
+    if (fileFormatted) then 
+            
+       ! write a time stamp to the file
+       write(unit=20,fmt=*,iostat=error) timeValues(:)
+           
+       ! write the variables that are stored in the top-level 'grid' structure
+       write(unit=20,fmt=*,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
+               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
+               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore, &
+               grid%lCore, grid%chanceWindOverTotalContinuum,                 &
+               grid%lineEmission, grid%contEmission, grid%doRaman,            &
+               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
+               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
+               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
+               grid%nOctals, grid%smoothingFactor 
+               
+    else
+            
+       ! write a time stamp to the file
+       write(unit=20,iostat=error) timeValues(:)
+    
+       ! write the variables that are stored in the top-level 'grid' structure
+       write(unit=20,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
+               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
+               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore, &
+               grid%lCore, grid%chanceWindOverTotalContinuum,                 &
+               grid%lineEmission, grid%contEmission, grid%doRaman,            &
+               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
+               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
+               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
+               grid%nOctals, grid%smoothingFactor 
+               
+    end if 
+    
+    call writeReal1D(grid%lamarray,fileFormatted)
+
+    if (error /=0) then
+       print *, 'Panic: write error in writeAMRgrid'
+       stop
+    end if
+
+    ! now we call the recursive subroutine to store the tree structure 
+    if (associated(grid%octreeRoot)) then
+       if (fileFormatted) then 
+          write(unit=20,fmt=*) .true.
+       else
+          write(unit=20) .true.
+       end if
+       call writeOctreePrivate(grid%octreeRoot,fileFormatted)
+    end if
+
+    if (error /=0) then
+       print *, 'Panic: write error in writeAMRgrid'
+       stop
+    end if
+
+    endfile 20
+    close(unit=20)
+    
+  contains
+  
+    recursive subroutine writeOctreePrivate(thisOctal,fileFormatted)
+       ! writes out an octal from the grid octree
+
+       type(octal), intent(in), target :: thisOctal
+       logical, intent(in)             :: fileFormatted
+
+       type(octal), pointer :: thisChild
+       integer              :: iChild
+       
+       if (fileFormatted) then 
+          write(iostat=error,fmt=*,unit=20) thisOctal%nDepth, thisOctal%nChildren,&
+                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
+                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+                  thisOctal%subcellSize
+       else
+          write(iostat=error,unit=20) thisOctal%nDepth, thisOctal%nChildren, &
+                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
+                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+                  thisOctal%subcellSize
+       end if 
+       call writeReal2D(thisOctal%kappaAbs,fileFormatted)
+       call writeReal2D(thisOctal%kappaSca,fileFormatted)
+       call writeDouble2D(thisOctal%N,fileFormatted)
+       
+       if (thisOctal%nChildren > 0) then 
+          do iChild = 1, thisOctal%nChildren, 1
+             thisChild => thisOctal%child(iChild)
+             call writeOctreePrivate(thisChild,fileFormatted)
+          end do
+       end if
+
+    end subroutine writeOctreePrivate
+    
+    
+  end subroutine writeAMRgrid
+ 
+
+  
+  subroutine readAMRgrid(filename,fileFormatted,grid)
+    ! reads in a previously saved 'grid' for an adaptive mesh geometry  
+
+    character(len=*)            :: filename
+    logical, intent(in)         :: fileFormatted
+    type(GRIDTYPE), intent(out) :: grid
+    
+    integer, dimension(8) :: timeValues    ! system date and time
+    integer               :: dummy         
+    integer               :: error         ! status code
+    logical               :: octreePresent ! true if grid has an octree
+
+    if (fileFormatted) then
+       open(unit=20, iostat=error, file=filename, form="formatted", status="old")
+       ! read the file's time stamp
+       read(unit=20,fmt=*,iostat=error) timeValues
+    else
+       open(unit=20, iostat=error, file=filename, form="unformatted", status="old")
+       ! read the file's time stamp
+       read(unit=20,iostat=error) timeValues
+    end if
+
+    write(*,'(a,a)') "Reading populations file from: ",trim(filename)
+    print *, ' - data file written at: ',timeValues(1),'/',timeValues(2),'/',&
+                          timeValues(3),'  ',timeValues(5),':',timeValues(6)
+                          
+    ! read the variables to be stored in the top-level 'grid' structure
+    if (fileFormatted) then
+       read(unit=20,fmt=*,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
+               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius,&
+               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore,&
+               grid%lCore, grid%chanceWindOverTotalContinuum,                &
+               grid%lineEmission, grid%contEmission, grid%doRaman,           &
+               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,  &
+               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,  &
+               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,      &
+               grid%nOctals, grid%smoothingFactor 
+    else
+       read(unit=20,fmt=*,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
+               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius,&
+               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore,&
+               grid%lCore, grid%chanceWindOverTotalContinuum,                &
+               grid%lineEmission, grid%contEmission, grid%doRaman,           &
+               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,  &
+               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,  &
+               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,      &
+               grid%nOctals, grid%smoothingFactor 
+    end if
+
+    call readReal1D(grid%lamarray,fileFormatted)
+    
+    if (error /=0) then
+       print *, 'Panic: read error in readAMRgrid'
+       stop
+    end if
+    
+    ! now we call the recursive subroutine to read the tree structure 
+    if (fileFormatted) then
+       read(unit=20,fmt=*) octreePresent
+    else
+       read(unit=20) octreePresent
+    end if
+     
+    if (octreePresent) then
+       allocate(grid%octreeRoot)
+       call readOctreePrivate(grid%octreeRoot,null(),fileFormatted)
+    end if
+
+    if (error /=0) then
+       print *, 'Panic: read error in readAMRgrid'
+       stop
+    end if
+    
+    ! check that we are at the end of the file
+    if (fileFormatted) then
+       read(unit=20,fmt=*, iostat=error) dummy
+    else
+       read(unit=20, iostat=error) dummy
+    end if
+    if (error == 0) then
+       print *, 'Panic: read error (expected end of file) in readAMRgrid'
+       stop
+    end if
+    
+    close(unit=20)
+    
+  contains
+   
+    recursive subroutine readOctreePrivate(thisOctal,parent,fileFormatted)
+       ! read in an octal to the grid octree
+
+       type(octal), pointer :: thisOctal
+       type(octal), pointer :: parent
+       logical, intent(in)  :: fileFormatted
+
+       type(octal), pointer :: thisChild
+       integer              :: iChild
+
+       thisOctal%parent => parent
+       
+       if (fileFormatted) then
+          read(unit=20,fmt=*,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
+                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
+                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+                  thisOctal%subcellSize
+       else
+          read(unit=20,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
+                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
+                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+                  thisOctal%subcellSize
+       end if
+       
+       call readReal2D(thisOctal%kappaAbs,fileFormatted)
+       call readReal2D(thisOctal%kappaSca,fileFormatted)
+       call readDouble2D(thisOctal%N,fileFormatted)
+       
+       if (thisOctal%nChildren > 0) then 
+          allocate(thisOctal%child(1:thisOctal%nChildren)) 
+          do iChild = 1, thisOctal%nChildren, 1
+             thisChild => thisOctal%child(iChild)
+             call readOctreePrivate(thisChild,thisOctal,fileFormatted)
+          end do
+       end if
+
+    end subroutine readOctreePrivate
+ 
+  end subroutine readAMRgrid
+
+  
   subroutine readGridPopulations(filename, grid, nLevels)
 
     type(GRIDTYPE) :: grid
@@ -4061,7 +4334,6 @@ contains
     real :: sinTheta
     type(VECTOR) :: rHat, rVec
     real :: vel
-    integer, parameter :: maxLevels = 9
     real :: x, dx
     type(GRIDTYPE) :: grid
 
@@ -4278,6 +4550,157 @@ contains
     enddo
   end subroutine fillmuAxisDisk
 
+  subroutine writeReal1D(variable,fileFormatted)
+
+     real,dimension(:),pointer :: variable
+     logical, intent(in)       :: fileFormatted
+
+     if (fileFormatted) then
+        if (associated(variable)) then
+           write(unit=20,fmt=*) .true.
+           write(unit=20,fmt=*) SIZE(variable)
+           write(unit=20,fmt=*) variable
+        else
+           write(unit=20,fmt=*) .false.
+        end if
+     else
+        if (associated(variable)) then
+           write(unit=20) .true.
+           write(unit=20) SIZE(variable)
+           write(unit=20) variable
+        else
+           write(unit=20) .false.
+        end if
+     end if
+             
+  end subroutine writeReal1D
+    
+  subroutine writeReal2D(variable,fileFormatted)
+
+     real,dimension(:,:),pointer :: variable
+     logical, intent(in)         :: fileFormatted
+
+     if (fileFormatted) then
+        if (associated(variable)) then
+           write(unit=20,fmt=*) .true.
+           write(unit=20,fmt=*) SIZE(variable,1),SIZE(variable,2)
+           write(unit=20,fmt=*) variable
+        else
+           write(unit=20) .false.
+        end if
+     else
+        if (associated(variable)) then
+           write(unit=20) .true.
+           write(unit=20) SIZE(variable,1),SIZE(variable,2)
+           write(unit=20) variable
+        else
+           write(unit=20) .false.
+        end if
+     end if 
+    
+  end subroutine writeReal2D
+
+  subroutine writeDouble2D(variable,fileFormatted)
+
+     real(kind=doubleKind),dimension(:,:),pointer :: variable
+     logical, intent(in)                          :: fileFormatted
+
+     if (fileFormatted) then
+        if (associated(variable)) then
+           write(unit=20,fmt=*) .true.
+           write(unit=20,fmt=*) SIZE(variable,1),SIZE(variable,2)
+           write(unit=20,fmt=*) variable
+        else
+           write(unit=20) .false.
+        end if
+     else
+        if (associated(variable)) then
+           write(unit=20) .true.
+           write(unit=20) SIZE(variable,1),SIZE(variable,2)
+           write(unit=20) variable
+        else
+           write(unit=20) .false.
+        end if
+     end if
+    
+  end subroutine writeDouble2D
+
+  subroutine readReal1D(variable,fileFormatted)
+
+     real,dimension(:),pointer :: variable
+     logical, intent(in)       :: fileFormatted
+     logical                   :: present 
+     integer                   :: length
+
+     if (fileFormatted) then
+        read(unit=20,fmt=*) present
+        if (present) then
+           read(unit=20,fmt=*) length
+           allocate(variable(length))
+           read(unit=20,fmt=*) variable
+        end if
+     else
+        read(unit=20) present
+        if (present) then
+           read(unit=20) length
+           allocate(variable(length))
+           read(unit=20) variable
+        end if
+     end if
+    
+  end subroutine readReal1D
+    
+  subroutine readReal2D(variable,fileFormatted)
+
+     real,dimension(:,:),pointer :: variable
+     logical, intent(in)       :: fileFormatted
+     logical                   :: present 
+     integer                   :: length1
+     integer                   :: length2
+
+     if (fileFormatted) then
+        read(unit=20,fmt=*) present
+        if (present) then
+           read(unit=20,fmt=*) length1, length2
+           allocate(variable(length1,length2))
+           read(unit=20,fmt=*) variable
+        end if
+     else
+        read(unit=20,fmt=*) present
+        if (present) then
+           read(unit=20,fmt=*) length1, length2
+           allocate(variable(length1,length2))
+           read(unit=20,fmt=*) variable
+        end if
+     endif
+    
+  end subroutine readReal2D
+
+  subroutine readDouble2D(variable,fileFormatted)
+
+     real(kind=doubleKind),dimension(:,:),pointer :: variable
+     logical, intent(in)       :: fileFormatted
+     logical                   :: present 
+     integer                   :: length1
+     integer                   :: length2
+     
+     if (fileFormatted) then
+        read(unit=20,fmt=*) present
+        if (present) then
+           read(unit=20,fmt=*) length1, length2
+           allocate(variable(length1,length2))
+           read(unit=20,fmt=*) variable
+        end if
+     else
+        read(unit=20) present
+        if (present) then
+           read(unit=20) length1, length2
+           allocate(variable(length1,length2))
+           read(unit=20) variable
+        end if
+     end if
+
+  end subroutine readDouble2D
 
 end module grid_mod
 

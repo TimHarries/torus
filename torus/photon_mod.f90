@@ -20,6 +20,8 @@ module photon_mod
   use amr_mod               ! adaptive grid routines
   use utils_mod
   use phasematrix_mod
+  use jets_mod
+  
   implicit none
 
   public
@@ -374,6 +376,8 @@ contains
     integer :: i
 
     type(octalVector) :: positionOctal     ! octalVector type version of thisPhoton%position
+
+    real :: z_rand, phi_rand, theta_rand
     
     ! set up the weights and the stokes intensities (zero at emission)
 
@@ -745,7 +749,27 @@ contains
                    else
                       thisPhoton%position = (r*randomUnitVector())
                    endif
-                                      
+
+		case("jets")
+		   ! For now, photons are emitted only from the surface of the central star.
+
+		   ! picking the positions
+		   call random_number(z_rand)
+		   z_rand = -1.0 + 2.0*z_rand   ! uniform between -1 and 1
+		   theta_rand = ACOS(z_rand)
+		   call random_number(phi_rand)
+		   phi_rand = phi_rand*2.0*Pi
+
+		   ! using a routine in rho_vel_temp_mod module
+		   r = get_jets_parameter("Rmin")
+
+		   x = r*Cos(phi_rand)*Sin(theta_rand)
+		   y = r*Sin(phi_rand)*Sin(theta_rand)
+		   z = r*z_rand
+
+		   rHat = vector(x,y,z)
+		   
+		   thisPhoton%position = r * rHat
 
                 case DEFAULT
                    thisPhoton%position = (r*randomUnitVector())

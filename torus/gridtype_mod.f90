@@ -10,6 +10,9 @@ module gridtype_mod
 
   implicit none
 
+  integer, parameter :: statEqMaxLevels = 6      ! number of stateq levels
+                                                 ! (specified as a parameter for speed)
+
   public
 
   type GRIDTYPE
@@ -92,8 +95,9 @@ module gridtype_mod
      logical(kind=1), pointer :: inStar(:,:,:)
      logical(kind=1), pointer :: inUse(:,:,:)
 
+     integer :: maxLevels = statEqMaxLevels          ! number of stateq levels 
+     
      ! adaptive mesh refinement stuff
-     integer :: maxLevels                            ! number of stateq levels 
      type(octal), POINTER :: octreeRoot => NULL()    ! root of adaptive mesh octree 
      integer :: maxDepth                             ! maximum depth of octree
      real(kind=octalKind) :: halfSmallestSubcell 

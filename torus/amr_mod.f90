@@ -7,7 +7,7 @@ MODULE amr_mod
   USE octal_mod           ! type definition for the grid elements
   USE gridtype_mod        ! type definition for the 3-d grid 
   USE parameters_mod      ! parameters for specific geometries
-
+  USE jets_mod            ! 
 
   IMPLICIT NONE
 
@@ -31,6 +31,9 @@ CONTAINS
 
     CASE ("ttauri")
       CALL calcTTauriMassVelocity(thisOctal,subcell,grid)
+      
+    CASE ("jets")
+      CALL calcJetsMassVelocity(thisOctal,subcell,grid)
       
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
@@ -73,6 +76,8 @@ CONTAINS
     grid%octreeRoot%subcellSize = size/2.0_oc
     grid%octreeRoot%centre = centre
     grid%octreeRoot%indexChild = -999 ! values are undefined
+    grid%octreeRoot%probDistLine = 0.0
+    grid%octreeRoot%probDistCont = 0.0
     NULLIFY(grid%octreeRoot%parent)   ! tree root does not have a parent
     NULLIFY(grid%octreeRoot%child)    ! tree root does not yet have children
     
@@ -195,6 +200,8 @@ CONTAINS
     parent%child(newChildIndex)%indexChild = -999 ! values are undefined
     parent%child(newChildIndex)%nDepth = parent%nDepth + 1
     parent%child(newChildIndex)%centre = subcellCentre(parent,nChild)
+    parent%child(newChildIndex)%probDistLine = 0.0
+    parent%child(newChildIndex)%probDistCont = 0.0
 
     ! put some data in the eight subcells of the new child
     DO subcell = 1, 8
@@ -256,10 +263,11 @@ CONTAINS
   
   
   RECURSIVE SUBROUTINE getOctalArray(thisOctal,array,counter) 
-  ! returns an array of pointers to all of the subcells in the grid.
+    ! returns an array of pointers to all of the subcells in the grid.
     ! NB because fortran cannot create arrays of pointers, the output
     !   array is actually of a derived type which *contains* the 
     !   pointer to an octal.
+    ! counter should be set to 0 before this routine is called
 
     IMPLICIT NONE
 
@@ -270,10 +278,13 @@ CONTAINS
     INTEGER              :: i
     TYPE(octal), POINTER :: child
 
-
+    ! if this is the root of the tree, we initialize the counter
+    IF (.NOT. ASSOCIATED(thisOctal%parent)) counter = 0
+    
     counter = counter + 1 
     array(counter)%content => thisOctal
-    array(counter)%inUse = .TRUE. 
+    !array(counter)%inUse = .TRUE. 
+    array(counter)%inUse = .NOT. thisOctal%hasChild 
     
     IF ( thisOctal%nChildren > 0 ) THEN
       DO i = 1, thisOctal%nChildren, 1
@@ -303,10 +314,8 @@ CONTAINS
     LOGICAL, INTENT(INOUT) :: gridConverged
     
     TYPE(octal), POINTER   :: child
-    TYPE(octalWrapper), DIMENSION(:), ALLOCATABLE :: octalArray
   
-    INTEGER :: subcell, i 
-    INTEGER :: counter ! used by getOctalArray
+    INTEGER :: subcell, iChild
      
     ! all of the work that must be done recursively goes here: 
     DO subcell = 1, 8, 1
@@ -317,36 +326,27 @@ CONTAINS
         CALL calcTTauriTemperature(thisOctal,subcell)
         gridConverged = .TRUE.
         
+      CASE ("jets")
+        CALL calcJetsTemperature(thisOctal,subcell, grid)
+        gridConverged = .TRUE.
+        
       CASE DEFAULT
         WRITE(*,*) "! Unrecognised grid geometry: ",trim(grid%geometry)
         STOP
       
       END SELECT
       
-      IF ( thisOctal%hasChild(subcell) )  THEN
-      ! find the index of the child and call finishGrid on it
-        DO i = 1, 8, 1
-          IF ( thisOctal%indexChild(i) == subcell ) THEN 
-            child => thisOctal%child(i)
-            CALL finishGrid(child,grid,gridConverged)
-            EXIT 
-          END IF
-        END DO
-      END IF
-      
+    END DO
+   
+    DO iChild = 1, thisOctal%nChildren, 1
+      child => thisOctal%child(iChild)
+      CALL finishGrid(child,grid,gridConverged)
     END DO
 
     ! any stuff that gets done *after* the finishGrid recursion goes here:
     IF (.NOT. ASSOCIATED(thisOctal%parent)) THEN
-
-       ! we create an array of pointers to the all of the array's octals.
-       ALLOCATE(octalArray(grid%nOctals))
-       counter = 0 
-       CALL getOctalArray(grid%octreeRoot,octalArray,counter) 
-       !
-       ! [do the statistical equilibrium setup here]
-       !
-       DEALLOCATE(octalArray)
+     
+      ! nothing at the moment
 
     END IF
 
@@ -480,9 +480,8 @@ CONTAINS
    
    
     ! geometry-specific tests should go here
-    SELECT CASE (grid%geometry)
+    IF (grid%geometry(1:6) == "ttauri" .OR. grid%geometry(1:4) == "jets") THEN
       
-    CASE ("ttauri")
        ! need to test for both star and disc intersections 
       
        ! we will find out when and where the photon leaves the simulation space 
@@ -591,13 +590,13 @@ CONTAINS
          rho(nSamples) = 0.0
        END IF
        
-    CASE DEFAULT       
+    ELSE 
        CALL returnSamples(currentPoint,startPoint,locator,directionNormalized,octree, &
                  grid,sampleFreq,nSamples,maxSamples,&
                  abortRay,lambda,kappaAbs,kappaSca,velocity,&
                  velocityDeriv,chiLine,levelPop,rho,usePops,iLambda,error,&
                  margin,distanceLimit)
-    END SELECT
+    END IF
       
    
 
@@ -2374,17 +2373,20 @@ CONTAINS
     TYPE(gridtype), INTENT(IN) :: grid
     LOGICAL                    :: split          
 
-    REAL                  :: criticalValue
+    REAL, SAVE            :: criticalValue
     REAL(KIND=doubleKind) :: criticalValueDouble
     REAL(KIND=octalKind)  :: cellSize
     TYPE(octalVector)     :: searchPoint
     TYPE(octalVector)     :: cellCentre
     REAL                  :: x, y, z
     INTEGER               :: i
-   
+    DOUBLE PRECISION      :: total_mass
+    DOUBLE PRECISION      :: ave_density
+    INTEGER, PARAMETER    :: nsample = 400
+    LOGICAL, SAVE         :: first_time = .true.
 
-    IF ( grid%geometry == "ttauri" ) THEN
-    
+    IF ( grid%geometry(1:6) == "ttauri" .or. grid%geometry(1:4) == "jets") THEN
+       
       ! the density is only sampled at the centre of the grid
       ! we will search in each subcell to see if any point exceeds the 
       ! threshold density
@@ -2393,36 +2395,58 @@ CONTAINS
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
     
-      ! calculate the threshold density for the subcell
-      criticalValueDouble = REAL(amrLimitScalar,KIND=doubleKind) / cellSize**3.0_oc
-      IF ( criticalValueDouble >= HUGE(amrLimitScalar)) THEN
-        PRINT *, 'In decideSplit, criticalValue exceeds floating point limit'
-        STOP
-      END IF
-      criticalValue = amrLimitScalar / cellSize**3.0
+      !! calculate the threshold density for the subcell
+      !!criticalValueDouble = REAL(amrLimitScalar,KIND=doubleKind) / cellSize**3.0_oc
+
+      if (first_time) then
+	 ! calculate the threshold mass for the subcell
+	 criticalValueDouble = REAL(amrLimitScalar,KIND=doubleKind)
+	 
+	 IF ( criticalValueDouble >= HUGE(amrLimitScalar)) THEN
+	    PRINT *, 'In decideSplit, criticalValue exceeds floating point limit'
+	    STOP
+	 END IF
+	 criticalValue = amrLimitScalar
+	 first_time = .false.
+      end if
 
       ! check the density of random points in the current cell - 
       !   if any of them exceed the critical density, set the flag
       !   indicating the cell is to be split, and return from the function
       split = .FALSE.
-      DO i = 1, 400, 1
-        searchPoint = cellCentre
+      ave_density = 0.0d0
+      DO i = 1, nsample
+	searchPoint = cellCentre
         CALL RANDOM_NUMBER(x)
         CALL RANDOM_NUMBER(y)
         CALL RANDOM_NUMBER(z)
         searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=octalKind) 
         searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=octalKind) 
         searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=octalKind) 
-!print *, TTauriDensity(searchPoint,grid), criticalValue
-        IF ( TTauriDensity(searchPoint,grid) > criticalValue ) THEN
-          split = .TRUE.
-          RETURN
-        END IF
-      END DO  
+
+	IF (grid%geometry(1:6) == "ttauri") then
+	   ave_density  = TTauriDensity(searchPoint,grid) + ave_density
+	ELSE IF (grid%geometry(1:4) == "jets") then
+	   ave_density  = JetsDensity(searchPoint,grid) + ave_density
+	ELSE
+	   PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
+	   PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
+	   PRINT *, 'Exiting the program .... '
+	   STOP
+	END IF
+      END DO
+
+      ave_density = ave_density/nsample
+      total_mass = ave_density*cellSize*cellSize*cellSize
+
+      IF (total_mass > criticalValue) then
+	 split = .TRUE.
+	 RETURN
+      END IF
 
     ELSE
-      PRINT *,'In decideSplit, there is no procedure for handling this geometry'
-      STOP
+     PRINT *,'In decideSplit, there is no procedure for handling this geometry'
+     STOP
     END IF
 
   END FUNCTION decideSplit
@@ -2460,7 +2484,7 @@ CONTAINS
                  nSamples,maxSamples,distances,dummy,dummy, &
                  dummyVel,dummy,dummy,dummyPops,densities,.false.,&
                  hitCore,.false.,1,error)
-
+ 
     IF (nSamples <= 1 .OR. error /= 0)  THEN  
       rho = 0.0
     ELSE
@@ -2775,13 +2799,13 @@ CONTAINS
     IF ( thisOctal%inFlow(subcell) ) THEN
       rho = thisOctal%rho(subcell)
       thisOctal%temperature(subcell) = MAX(5000.0, &
-        7000.0 - ((2500.0 * rho/mHydrogen - TTauriMinRho) / (TTauriMaxRho/TTauriMinRho)))
+        7000.0 - ((2500.0 * rho/mHydrogen - TTauriMinRho) / (TTauriMaxRho-TTauriMinRho)))
     ELSE
-      thisOctal%temperature(subcell) = 0.0
+      thisOctal%temperature(subcell) = 6500.0
     END IF
 
     ! we will initialise the bias distribution
-    thisOctal%biasLine3D(subcell) = 1.0
+    thisOctal%biasLine3D(subcell) = 1000.0
   
   END SUBROUTINE calcTTauriTemperature
 
@@ -2796,7 +2820,7 @@ CONTAINS
 
     implicit none
     
-    type(GRIDTYPE), intent(out)        :: grid                
+    type(GRIDTYPE), intent(inout)      :: grid                
     real(kind=doublekind), intent(out) :: Laccretion 
     real, intent(out)                  :: Taccretion 
     real, intent(out)                  :: sAccretion
@@ -2876,7 +2900,7 @@ CONTAINS
 
 
   end subroutine initTTauriAMR
-
-
+  
+  
 END MODULE amr_mod
 

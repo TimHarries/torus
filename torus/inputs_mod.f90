@@ -2,6 +2,7 @@ module inputs_mod
 
 use utils_mod
 use input_variables
+use jets_mod
 
 implicit none
 
@@ -139,6 +140,21 @@ subroutine inputs()
      end if
      call getReal("samplefreq", sampleFreq, cLine, nLines, &
           "Max samples per AMR subcell: ","(a,f6.1,1x,a)", 2., ok, .true.) 
+     call getString("popfile", popFilename, cLine, nLines, &
+          "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
+     call getLogical("writepops", writePops, cLine, nLines, &
+          "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+     call getLogical("readpops", readPops, cLine, nLines, &
+          "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+     if (readPops .and. writePops) &
+        write(*,'(a)') "WARNING: both readPops and writePops set."
+     if (readPops) &
+        call getLogical("readfileformatted", readFileFormatted, cLine, nLines, &
+             "Populations input file is formatted: ","(a,1l,1x,a)", .false., ok, .false.)
+     if (writePops) &
+        call getLogical("writefileformatted", writeFileFormatted, cLine, nLines, &
+             "Populations output file will be formatted: ","(a,1l,1x,a)", .false., ok, .false.)
+      
      
   else    
 
@@ -870,7 +886,56 @@ endif
 
 
 
+ ! For bipolar jets geometry
 
+ if (geometry(1:4) ==  "jets") then
+    call getLogical("lte", lte, cLine, nLines, &
+	 "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getString("contflux", contFluxFile, cLine, nLines, &
+	 "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+    call getString("popfile", popFilename, cLine, nLines, &
+	 "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
+    call getLogical("writepops", writePops, cLine, nLines, &
+	 "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+    call getLogical("readpops", readPops, cLine, nLines, &
+	 "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+    call getLogical("curtains", curtains, cLine, nLines, &
+            "Curtains of accretion: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getReal("dipoleoffset", dipoleOffset, cLine, nLines, &
+         "Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
+    dipoleOffset = dipoleOffset * degToRad
+    call getInteger("nlower", nLower, cLine, nLines,"Lower level: ", &
+	 & "(a,i2,a)",2,ok,.true.)
+    
+    call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ", &
+	 & "(a,i2,a)",3,ok,.true.)
+
+    
+    call getReal("Rmin_bp", Rmin_bp, cLine, nLines, &
+	 "Radius of central star  [10^10cm] : ","(a,f5.1,a)", 1.0, ok, .true.)
+    call getReal("Rmax_bp", Rmax_bp, cLine, nLines, &
+	 "Cutoff radius in [10^10 cm] : ","(a,f5.1,a)", 10.0, ok, .true.)
+    call getReal("Vinf_bp", Vinf_bp, cLine, nLines, &
+	 "Terminal velocity in  [kms] : ","(a,f5.1,a)", 250.0, ok, .true.)
+    call getReal("beta_bp", beta_bp, cLine, nLines, &
+	 "Beta in the beta-belocity law [-] : ","(a,f5.1,a)", 0.5, ok, .true.)
+    call getReal("Vo_bp", Vo_bp, cLine, nLines, &
+	 "A small offset in V in  [km/s] : ","(a,f5.1,a)", 5.0, ok, .true.)
+    call getReal("Mdot_bp", Mdot_bp, cLine, nLines, &
+	 "Mass loss rate in jets  [M_solar/yr] : ","(a,1PE7.1,a)", 1.0e-9, ok, .true.)
+    call getReal("theta_o_bp", theta_o_bp, cLine, nLines, &
+	 "Half opening angle [degrees] : ","(a,f5.1,a)", 30.0, ok, .true.)
+    call getReal("Tcore_bp", Tcore_bp, cLine, nLines, &
+	 "Temperature at the core at Rmin in [10^4 K] : ","(a,f5.1,a)", 5.0, ok, .true.)
+    call getReal("e6_bp", e6_bp, cLine, nLines, &
+	 "Exponet in tempereture eq. [-] : ","(a,f5.1,a)", 1.0, ok, .true.)
+
+    ! save the variables in an object in jets_mod module.
+    call set_jets_parameters(Rmin_bp, Rmax_bp, Vinf_bp, beta_bp,  Vo_bp, &
+	 & Mdot_bp, theta_o_bp, Tcore_bp, e6_bp)
+    
+ end if
+ 
 
 !   mdot = mdot*msol/(365.25*24.*3600.)
 !   vterm = vterm * 1.e5

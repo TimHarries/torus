@@ -44,7 +44,8 @@ module constants_mod
   real, parameter :: kConst = 1.380662e-23   ! J/k
   real, parameter :: kErg = 1.380626e-16     ! erg/k
   real, parameter :: kev = 8.6171e-5         ! erg/k
-  real, parameter :: sigmaE = 6.65e-25       ! cm^2
+  !real, parameter :: sigmaE = 6.65e-25       ! cm^2 updated by nhs
+  real, parameter :: sigmaE = 6.6525e-25       ! cm^2
   real, parameter :: eCharge = 4.803242384E-10 ! 
 
   real, parameter :: ergToEv = 6.24145e11   

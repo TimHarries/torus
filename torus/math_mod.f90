@@ -270,12 +270,12 @@ contains
 
 
 
-  type (VECTOR) function interpGridVelocity(grid,  i1, i2, i3, t1, t2, t3)
+  type (VECTOR) pure function interpGridVelocity(grid,  i1, i2, i3, t1, t2, t3)
     implicit none
-    type(GRIDTYPE) :: grid
-    integer i1,i2,i3
-    integer j1,j2,j3
-    real :: t1, t2, t3
+    type(GRIDTYPE), intent(in) :: grid
+    integer, intent(in)        :: i1,i2,i3
+    real, intent(in)           :: t1, t2, t3
+    integer                    :: j1,j2,j3
 
 
     if (grid%cartesian) then
@@ -307,21 +307,24 @@ contains
   ! this subroutine computes the line of sight directional derivative
   ! numerical - ie completely generalized
 
-  real function directionalDeriv(grid, position, i1, i2, i3 , direction)
+  real pure function directionalDeriv(grid, position, i1, i2, i3 , direction)
 
     implicit none
-    type(GRIDTYPE) :: grid                       ! the opacity grid
-    integer :: i1, i2, i3, j1, j2, j3            ! indices
-    real :: t1, t2, t3                           ! multipliers
-    type(VECTOR) :: direction, position          ! vectors
-    type(VECTOR) :: position1, position2
-    type(VECTOR) :: rHat
-    real :: r, theta, mu, phi                    ! spherical polar coords
-    real, parameter  :: h = 1.                  ! factor
-    logical :: hit
-    real :: dr
-    real :: phi1, phi2, dphi, dx
-    real :: dy, dz, dtheta
+    type(GRIDTYPE), intent(in) :: grid        ! the opacity grid
+    type(VECTOR), intent(in)   :: direction   ! vector
+    type(VECTOR), intent(in)   :: position    ! vectors
+    integer, intent(in)        :: i1, i2, i3  ! indices
+   
+    real            :: t1, t2, t3             ! multipliers
+    type(VECTOR)    :: position1, position2
+    type(VECTOR)    :: rHat
+    real            :: r, theta, mu, phi      ! spherical polar coords
+    integer         :: j1, j2, j3             ! indices
+    real, parameter :: h = 1.                 ! factor
+    logical         :: hit
+    real            :: dr
+    real            :: phi1, phi2, dphi, dx
+    real            :: dy, dz, dtheta
 
     hit = .false.
 
@@ -552,7 +555,14 @@ contains
                                                  biasCorrectionCont, &
                                                  totalLineProb,&
                                                  totalContProb)
+
+        totalLineEmission = REAL(totalLineEmissionDouble)
+        totalContEmission = REAL(totalContEmissionDouble)
+        
+
         write(*,*) "Distributions done"
+
+       
  
     endif
 

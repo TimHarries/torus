@@ -39,6 +39,7 @@ program torus
   use input_variables         ! variables filled by inputs subroutine
   use lucy_mod
   use amr_mod
+  use jets_mod
 
   implicit none
 
@@ -381,6 +382,8 @@ program torus
 
   if ((geometry == "ttauri").and.(.not.enhance)) rotateView = .true.
 
+  if ((geometry(1:4) == "jets").and.(.not.enhance)) rotateView = .true.
+
   if (doRaman) then
         rotateView = .true.
         rotateDirection = 1.
@@ -536,37 +539,49 @@ program torus
   ! if the grid uses an adaptive mesh, create it
      
   if (gridUsesAMR) then
-     amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
-     write(*,*) "Starting initial set up of adaptive grid..."
-     call initFirstOctal(grid,amrGridCentre,amrGridSize)
-     call splitGrid(grid%octreeRoot,limitScalar,grid)
-     write(*,*) "...initial adaptive grid configuration complete"
-
-     if (doSmoothGrid) then
-       write(*,*) "Smoothing adaptive grid structure..."
-       gridConverged = .false.
-       do
-          call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged)
-          if (gridConverged) exit
-       end do
-       write(*,*) "...grid smoothing complete"
-     end if
+     if (readPops) then 
+        call readAMRgrid(popFilename,readFileFormatted,grid)
+     else
+        amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
+        write(*,*) "Starting initial set up of adaptive grid..."
+        call initFirstOctal(grid,amrGridCentre,amrGridSize)
+        call splitGrid(grid%octreeRoot,limitScalar,grid)
+        write(*,*) "...initial adaptive grid configuration complete"
+  
+        if (doSmoothGrid) then
+           write(*,*) "Smoothing adaptive grid structure..."
+           gridConverged = .false.
+           do
+              call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged)
+              if (gridConverged) exit
+           end do
+           write(*,*) "...grid smoothing complete"
+        end if
    
-     nOctals = 0
-     nVoxels = 0
-     call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-     write(*,*) "Adaptive grid contains: ",nOctals," octals"
-     write(*,*) "                      : ",nVoxels," unique voxels"
-     grid%nOctals = nOctals
+        nOctals = 0
+        nVoxels = 0
+        call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+        write(*,*) "Adaptive grid contains: ",nOctals," octals"
+        write(*,*) "                      : ",nVoxels," unique voxels"
+        grid%nOctals = nOctals
 
-     write(*,*) "Calling routines to finalize the grid variables..."
-     gridConverged = .false.
+        write(*,*) "Calling routines to finalize the grid variables..."
+        gridConverged = .false.
      
-     do 
-        call finishGrid(grid%octreeRoot,grid,gridConverged)
-        if (gridConverged) exit
-     end do
-     write(*,*) "...final adaptive grid configuration complete"
+        do
+           call finishGrid(grid%octreeRoot,grid,gridConverged)
+           if (gridConverged) exit
+        end do
+        write(*,*) "...final adaptive grid configuration complete"
+     end if ! (readPops) 
+
+     !  calculate the statistical equilibrium (and hence the emissivities 
+     !  and the opacities) for all of the subcells in an
+     !  adaptive octal grid.
+     !  Using a routine in stateq_mod module.
+     call amrStateq(grid, contfluxfile, lte, nLower, nUpper)
+     
+     if (writePops) call writeAMRgrid(popFilename,writeFileFormatted,grid)
 
   else ! grid is not adaptive
            
@@ -620,8 +635,8 @@ program torus
         case("hourglass")
            call fillGridHourglass(grid)
         case("ttauri")
-              call fillGridMagneticAccretion(grid,contfluxfile, popFileName, &
-                   readPops, writePops, lte,  lamLine, Laccretion, Taccretion, sAccretion, &
+	   call fillGridMagneticAccretion(grid,contfluxfile, popFileName, &
+		readPops, writePops, lte,  lamLine, Laccretion, Taccretion, sAccretion, &
                    curtains, dipoleOffset, nLower, nUpper, theta1, theta2)
         case("ttwind")
            call fillGridTTauriWind(grid,contfluxfile, popFileName, &
@@ -2308,9 +2323,11 @@ print *, 'nu = ',nu
      write(*,*) " "
 
      call systemInfo(startTime,nPhotons)
-
-     print *, tooFewSamples, ' rays had 2 or less samples.'
-     print *, BoundaryProbs, ' rays had numerical problems with octal boundaries.'
+     
+     if (grid%adaptive) then
+        print *, tooFewSamples, ' rays had 2 or less samples.'
+        print *, BoundaryProbs, ' rays had numerical problems with octal boundaries.'
+     end if
 
      if (.not.grid%cartesian.and.(grid%rCore /= 0.)) then
         if (wtot_line /= 0.) write(*,*) "Mean radius of line formation",meanr_line/wtot_line/grid%rCore

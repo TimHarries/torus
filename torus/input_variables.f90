@@ -190,6 +190,8 @@ module input_variables
   real :: smoothFactor      ! maximum ratio between adjacent cell sizes before
                             !   smoothing is applied 
   real :: sampleFreq        ! maximum number of samples made per subcell
+  logical :: readFileFormatted  ! whether 'grid' input  file is formatted
+  logical :: writeFileFormatted ! whether 'grid' output file is formatted
 
 
   integer :: nPhotons
@@ -219,5 +221,48 @@ module input_variables
 
   logical :: narrowBandImage
   logical :: useInterp
+
+
+  !  Input parameters for bipolar jets geometry.
+  !
+  !  Bipolar flow. Flow into cones with openning angle theta_o around
+  !  z-axis as the symetry axis.
+  !
+  !  The velocity is assumed to follow the classical
+  !  beta velocity law with an offset:
+  !
+  !  In this formulation:
+  !
+  !                    Mdot
+  !  rho(r) = ------------------------------
+  !            4Pi V(r) r^2 (1-Cos(theta_o))
+  !
+  !  and
+  !                         r*
+  !   V(r) =  Vinf * ( 1 - --- )^beta + Vo
+  !                         r
+  !
+  !   where Vinf is the terminal speed and
+  !         Vo is the offeset speed.
+  ! theta_o  is "half" opening angle.
+  !
+  ! For temperature structure of the bipolar is assumed as:
+  !                Rmin
+  !    T = Tcore*(------)^e6
+  !                  R
+  !  
+  !===============================================================  
+  real :: Rmin_bp    ! radius of central star  [10^10cm]
+  real :: Rmax_bp    ! cutoff radius in [10^10 cm]
+  real :: Vinf_bp    ! terminal velocity in  [kms]
+  real :: beta_bp    ! beta in the beta-belocity law [-]
+  real :: Vo_bp      ! a small offset in V in  [km/s]  
+  real :: Mdot_bp    ! mass loss rate in jets [M_solar/yr]
+  real :: theta_o_bp ! half opening angle [degrees]
+
+  real :: Tcore_bp   ! temperature at the core at Rmin in [10^4 K]
+  real :: e6_bp      ! an exponet of in tempereture eq. [-]
   
 end module input_variables
+
+
