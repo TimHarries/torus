@@ -558,6 +558,13 @@ program torus
      write(*,*) "Adaptive grid contains: ",nOctals," octals"
      write(*,*) "                      : ",nVoxels," unique voxels"
      grid%nOctals = nOctals
+
+     write(*,*) "Creating neighbour pointers..."
+     
+     call createNeighbourLinks(grid%octreeRoot,grid)
+     
+     write(*,*) "...neighbour pointers created..."
+     
      write(*,*) "Calling routines to finalize the grid variables..."
      gridConverged = .false.
      

@@ -31,12 +31,12 @@ MODULE octal_mod
 !                                   /
 
   TYPE octalWrapper
-    TYPE(octal), POINTER :: content
+    TYPE(octal), POINTER  :: content => NULL()
+    LOGICAL(KIND=logicKind), DIMENSION(8) :: inUse
   END TYPE octalWrapper
  
   TYPE wrapperArray
     TYPE(octalWrapper), DIMENSION(:), POINTER :: wrappers   ! a number of octal wrappers  
-    INTEGER, DIMENSION(:), POINTER            :: subcellIDs ! numbers of the subcells 
   END TYPE wrapperArray
 
   TYPE octal
@@ -72,7 +72,7 @@ MODULE octal_mod
       !   any of the normal AMR routines. They should probably be removed in the future.
     
     REAL(KIND=octalKind)               :: subcellSize    ! the size (length of a vertex) of each subcell
-    TYPE(wrapperArray),DIMENSION(:), POINTER :: neighbours     ! pointers to neighbouring subcells
+    TYPE(wrapperArray),DIMENSION(:),POINTER :: neighbours ! pointers to neighbouring subcells
     
   END TYPE octal
  

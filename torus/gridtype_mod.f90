@@ -100,6 +100,7 @@ module gridtype_mod
        ! 'halfSmallestSubcell' is half the vertex length of the grid's smallest
        !    subcells. we store this because it is used frequently in calculations.
      integer :: nOctals                              ! total number of octals 
+     real    :: smoothingFactor                      ! inter-cell maximum ratio before smooth
 
   end type GRIDTYPE
 

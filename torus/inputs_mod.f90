@@ -134,6 +134,8 @@ subroutine inputs()
      if (doSmoothGrid) then
        call getReal("smoothfactor", smoothFactor, cLine, nLines, &
             "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 5., ok, .false.)
+     else
+       smoothFactor = 0.0      
      end if
      call getReal("samplefreq", sampleFreq, cLine, nLines, &
           "Max samples per AMR subcell: ","(a,f6.1,1x,a)", 2., ok, .true.) 

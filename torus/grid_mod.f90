@@ -529,6 +529,7 @@ contains
     grid%cartesian = .false.
 
     grid%resonanceLine = .false.
+    grid%smoothingFactor = smoothFactor
 
   end subroutine initAMRgrid
 
