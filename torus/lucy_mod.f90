@@ -293,8 +293,8 @@ contains
 
   end subroutine lucyRadiativeEquilibrium
 
-  subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, nLambda, lamArray, temperature, &
-       source, nSource, nLucy)
+  subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, nLambda, lamArray, &
+       source, nSource, nLucy, massEnvelope)
 
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(*), thisSource
@@ -307,14 +307,15 @@ contains
     type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
     real  :: lamArray(:)
     real(kind=doubleKind) :: r
+    real :: massEnvelope, scaleFac
+    real(kind=doubleKind) :: totalMass
     integer :: nFreq
     integer :: i, j
     real(kind=doubleKind) :: freq(2000), dnu(2000), probDistJnu(2000)
-    real(kind=doubleKind) :: temperature
 !    real(kind=doubleKind) :: probDistPlanck(nFreq)
     real :: kappaScaReal, kappaAbsReal
     integer :: nMonte, iMonte, nScat, nAbs
-    real(kind=doubleKind) :: thisFreq,  logFreqStart, logFreqEnd
+    real(kind=doubleKind) :: thisFreq
     real(kind=doubleKind) :: albedo
     logical :: escaped
     real(kind=doubleKind) :: t1
@@ -324,11 +325,9 @@ contains
     real :: Tthresh
     integer :: iLam
     integer :: nInf
-    real(kind=doubleKind) :: ang
     integer :: iIter, nIter = 5
-    integer :: nt
     real(kind=doubleKind) ::   epsOverDeltaT
-    real(kind=doubleKind) :: meanDeltaT, meant
+    real(kind=doubleKind) :: meanDeltaT
     integer :: nDT, nUndersampled
     real(kind=doubleKind) :: totalEmission
     integer :: subcell
@@ -368,6 +367,8 @@ contains
     nRemoved = 1
     do while (nRemoved > 0)
     do iIter = 1, nIter
+       call plot_AMR_values(grid, "temperature", "x-y", 0.0, "/xs", .false., .true.)
+
 
        call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
        
@@ -485,6 +486,17 @@ contains
     call removeDust(grid%octreeRoot, Tthresh, nRemoved)
 
     write(*,*) "Number of cells removed: ",nRemoved
+
+    if (grid%geometry == "wr104") then
+
+       totalMass = 0.
+       call findTotalMass(grid%octreeRoot, totalMass)
+       scaleFac = massEnvelope / totalMass
+       write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+       call scaleDensityAMR(grid%octreeRoot, scaleFac)
+    endif
+
+
   enddo
 
 
@@ -572,8 +584,6 @@ contains
            (rVec%z < grid%zAxis(1))) then
           stillinGrid = .false.
           escaped = .true.
-          
-       else
           if (.not.grid%oneKappa) then
              kabs = grid%kappaAbs(i1,i2,i3,iLam)
           else
@@ -758,7 +768,7 @@ contains
     integer :: ndt
     real(kind=doubleKind) :: meanDeltaT 
     real(kind=doubleKind) :: kabs
-    real :: lamArray(*), dlam(2000)
+    real :: lamArray(*)
     integer :: nFreq
     real(kind=doubleKind) :: freq(*)
     real(kind=doubleKind) :: dnu(*)
@@ -979,7 +989,7 @@ contains
        if (.not.inOctal(grid%octreeRoot, octVec)) then
           stillinGrid = .false.
           escaped = .true.
-       else
+       else     
           thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) + tVal * dble(kappaAbsReal)
           thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
        endif

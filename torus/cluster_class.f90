@@ -296,8 +296,13 @@ contains
     thisOctal%etaCont(subcell) = 1.e-30
     ! Make sure this is true oterwise it won't be calculated
     ! in Lucy's radiative equiiliburium rouinine!!!    
-    thisOctal%inFlow(subcell) = .true.  
-    
+
+    if (thisOctal%rho(subcell) > 1.d-20) then
+       thisOctal%inFlow(subcell) = .true.  
+    else
+       thisOctal%inFlow(subcell) = .false.
+    endif
+       
   end subroutine assign_grid_values
   
 
@@ -309,12 +314,13 @@ contains
   ! This routine can be used for example, in addNewChild and initFirstOctal
   ! in amr_mod.f90
   !
-  subroutine assign_density(thisOctal,subcell, sphData)
+  subroutine assign_density(thisOctal,subcell, sphData, geometry)
     implicit none
     type(octal), intent(inout) :: thisOctal
     integer, intent(in) :: subcell
     !type(gridtype), intent(in) :: grid
     type(sph_data), intent(in) :: sphData
+    character(len=*), intent(in) :: geometry
     !
     double precision :: density_ave
     integer :: nparticle    
@@ -323,8 +329,13 @@ contains
     ! using the function in amr_mod.f90
     call find_n_particle_in_subcell(nparticle, density_ave, sphData, thisOctal, subcell)
     ! assign density to the subcell
-    thisOctal%rho(subcell) = density_ave
-    ! This should be in [g/cm^3]
+    select case (geometry)
+       case ("cluster")
+          thisOctal%rho(subcell) = density_ave
+          ! This should be in [g/cm^3]
+       case("wr104")
+          thisOctal%rho(subcell) = max(1.d-30,real(nparticle)/ thisOctal%subcellsize**3)
+    end select
 
   end subroutine assign_density
   
@@ -472,12 +483,5 @@ contains
   end subroutine find_n_particle_in_subcell
 
 
-
-
-
   
-  
-
-  
-  
-end module cluster_class
+ end module cluster_class

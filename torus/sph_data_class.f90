@@ -28,7 +28,7 @@ module sph_data_class
 
   ! At a given time (time)
   type sph_data
-     private  ! Believe me. It's better to be private!    
+!     private  ! Believe me. It's better to be private!    
      double precision :: udist, umass, utime    ! Units of distance, mass, time in cgs
      !                                          ! (umass is M_sol, udist=0.1 pc)
      integer          :: npart                  ! Number of gas particles

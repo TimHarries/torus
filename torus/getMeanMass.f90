@@ -19,7 +19,7 @@ real function getMeanMass(aMin, aMax, qDist)
         ah = 10.**(a1 + (a2 - a1) * real(i)/real(n-1))
         a = (ah+al)/2.
         da = ah-al
-        vol = (4./3.)* pi * a**3
+        vol = (4./3.)* pi * (a*microntocm)**3
         fac = da*0.5*(al**qDist + ah*qDist)
         mass = vol * density
         getMeanMass = getMeanMass + mass*fac
@@ -29,6 +29,36 @@ real function getMeanMass(aMin, aMax, qDist)
      getMeanMass = getMeanMass / tot
 
 end function getMeanMass
+
+
+real function getMeanRadius(aMin, aMax, qDist)
+
+  use constants_mod
+
+  implicit none
+  real :: aMin, aMax, qDist
+  real :: tot, a1, a2, a, fac
+  real :: ah, al, da, radius
+  integer :: i
+  integer, parameter :: n = 1000
+     a1 = log10(aMin)
+     a2 = log10(aMax)
+     getMeanRadius = 0.
+     tot = 0.
+     do i = 1, n-1
+        al = 10.**(a1 + (a2 - a1) * real(i-1)/real(n-1))
+        ah = 10.**(a1 + (a2 - a1) * real(i)/real(n-1))
+        a = (ah+al)/2.
+        da = ah-al
+        radius = a * microntocm
+        fac = da*0.5*(al**qDist + ah*qDist)
+        getMeanRadius = getMeanRadius + a*fac
+        tot = tot + fac
+     enddo
+     getMeanRadius = getMeanRadius / tot
+
+end function getMeanRadius
+
 
 
 

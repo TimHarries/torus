@@ -112,8 +112,6 @@ subroutine inputs()
   call getLogical("gridusesamr", gridUsesAMR, cLine, nLines, &
        "Grid uses adaptive mesh refinement: ","(a,1l,1x,a)", .false., ok, .false.)
 
-  call getString("filter_set_name", filter_set_name, cLine, nLines, &
-       "Name of filter set: ","(a,a,1x,a)","step_functions", ok, .false.)
   
   
   if (gridUsesAMR) then
@@ -266,6 +264,12 @@ subroutine inputs()
      vTerm = vTerm * 1.e5
      mdot = mdot*msol/(365.25*24.*3600.)
 
+  endif
+
+  if (geometry .eq. "wr104") then
+     call getReal("massenv", massEnvelope, cLine, nLines, &
+          "Envelope dust mass (Moon masses): ","(a,f5.2,a)", 10., ok, .true.)
+     massEnvelope = massEnvelope * mMoon
   endif
 
   if (geometry .eq. "resonance") then
@@ -656,20 +660,21 @@ endif
 
 
  if (mie) then
-    call getLogical("lucy", lucyRadiativeEq, cLine, nLines, &
+    call getLogical("lucyrad", lucyRadiativeEq, cLine, nLines, &
          "Lucy radiative equ.: ","(a,1l,1x,a)", .false., ok, .true.)
     if (lucyRadiativeEq) then
        call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i8,a)",20000,ok,.true.)
     endif
-
+   call getReal("probdust", probDust, cLine, nLines, &
+       "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
 
     oneKappa = .true.
-   call getString("gridfile", popFilename, cLine, nLines, &
-        "Grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getLogical("writegrid", writePops, cLine, nLines, &
-        "Write grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("readgrid", readPops, cLine, nLines, &
-          "Read grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getString("lucyfile", lucyFilename, cLine, nLines, &
+        "Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+   call getLogical("writelucy", writeLucy, cLine, nLines, &
+        "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("readlucy", readLucy, cLine, nLines, &
+          "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
  endif
 
 
@@ -869,6 +874,9 @@ endif
        call getReal("lmax", vmax, cLine, nLines, &
             "Maximum wavelength for image (angs): ", "(a,1pe10.2,1x,a)", 20000., ok, .true.)
     endif
+  call getString("filter_set_name", filter_set_name, cLine, nLines, &
+       "Name of filter set: ","(a,a,1x,a)","step_functions", ok, .true.)
+
  endif
 
  call getLogical("pvimage", doPVimage, cLine, nLines, &

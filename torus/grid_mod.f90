@@ -501,7 +501,7 @@ contains
     case ("testamr")
        call initTestAMR(grid)
 
-    case("cluster")
+    case("cluster","wr104")
        call initClusterAMR(grid)
        
     case DEFAULT
@@ -5455,7 +5455,7 @@ contains
 !          else
 !             use_this_subcell = .false.
 !          end if
-          use_this_subcell = .true.
+          use_this_subcell = thisOctal%inFlow(subcell)
 
           if (use_this_subcell) then
              select case (name)

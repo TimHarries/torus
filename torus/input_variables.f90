@@ -32,6 +32,7 @@ module input_variables
   character(len=80) :: grainType
   real :: grainSize
   logical :: mie
+  real :: probDust
 
 
   ! torus images
@@ -127,6 +128,7 @@ module input_variables
   real :: dustBlobDistance, phiDustBlob
   real :: xDustBlobSize, yDustBlobSize, zDustBlobSize
 
+  real :: massEnvelope
 
   ! raman scattering model parameters
 
@@ -177,6 +179,8 @@ module input_variables
   real :: radius1, radius2
   real :: mdot1, mdot2
   logical :: readPops, writePops
+  logical :: readLucy, writeLucy
+  character(len=80) :: lucyFilename
   real :: mass1, mass2
   real :: temp1, temp2
   character(len=80) :: popFilename

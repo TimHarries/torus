@@ -45,15 +45,13 @@ CONTAINS
     CASE ("testamr")
        CALL calcTestDensity(thisOctal,subcell,grid)
        
-    CASE("cluster")
+    CASE("cluster", "wr104")
        ! using a routine in cluster_class.f90
-       call assign_density(thisOctal,subcell, sphData)
+       call assign_density(thisOctal,subcell, sphData, grid%geometry)
        
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
       STOP
-
-    CASE("wr104")
 
     END SELECT
  
@@ -116,32 +114,32 @@ CONTAINS
     grid%octreeRoot%etaCont = 1.e-30
     grid%octreeRoot%N = 1.e-30
 
-
-    if(grid%geometry(1:7) == "cluster") then
-       ! Initially we copy the idecies of particles (in SPH data)
-       ! to the root node. The indecies will copy over to
-       ! to the subcells if the particles are in the subcells.
-       ! This will allow us to work with the subsets of gas particle
-       ! list hence reduces the computation time when we are 
-       ! splitting/constructing the octree data structure. 
-       !
-       ! Using the routine in grid_mod.f90
-       call copy_sph_index_to_root(grid, sphData)
-       !
-       DO subcell = 1, 8
-          ! calculate the values at the centre of each of the subcells
-          CALL calcValuesAMR(grid%octreeRoot,subcell,grid, sphData)
-          ! label the subcells
-          grid%octreeRoot%label(subcell) = subcell
-       END DO
-    else
-       DO subcell = 1, 8
-          ! calculate the values at the centre of each of the subcells
-          CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
-          ! label the subcells
-          grid%octreeRoot%label(subcell) = subcell    
-       END DO
-    end if
+    select case (grid%geometry)
+       case("cluster", "wr104")
+          ! Initially we copy the idecies of particles (in SPH data)
+          ! to the root node. The indecies will copy over to
+          ! to the subcells if the particles are in the subcells.
+          ! This will allow us to work with the subsets of gas particle
+          ! list hence reduces the computation time when we are 
+          ! splitting/constructing the octree data structure. 
+          !
+          ! Using the routine in grid_mod.f90
+          call copy_sph_index_to_root(grid, sphData)
+          !
+          DO subcell = 1, 8
+             ! calculate the values at the centre of each of the subcells
+             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, sphData)
+             ! label the subcells
+             grid%octreeRoot%label(subcell) = subcell
+          END DO
+       case DEFAULT
+          DO subcell = 1, 8
+             ! calculate the values at the centre of each of the subcells
+             CALL calcValuesAMR(grid%octreeRoot,subcell,grid)
+             ! label the subcells
+             grid%octreeRoot%label(subcell) = subcell
+          END DO
+       end select
     
 
 
@@ -279,24 +277,27 @@ CONTAINS
     parent%child(newChildIndex)%N = 1.e-30
 
 
-    if (present(sphData) .and. grid%geometry(1:7) =="cluster") then
-       ! updates the sph particle linked list.           
-       call update_particle_list(parent, nChild, newChildIndex, sphData)
-       
-       ! put some data in the eight subcells of the new child
-       DO subcell = 1, 8 
-          CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData)
-          parent%child(newChildIndex)%label(subcell) = counter
-          counter = counter + 1
-       END DO
-    else
-       ! put some data in the eight subcells of the new child
-       DO subcell = 1, 8 
-          CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid)
-          parent%child(newChildIndex)%label(subcell) = counter
-          counter = counter + 1
-       END DO          
-    end if
+    select case (grid%geometry)
+       case("cluster","wr104")
+          if (present(sphData))  then
+             ! updates the sph particle linked list.           
+             call update_particle_list(parent, nChild, newChildIndex, sphData)
+             
+             ! put some data in the eight subcells of the new child
+             DO subcell = 1, 8 
+                CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData)
+                parent%child(newChildIndex)%label(subcell) = counter
+                counter = counter + 1
+             END DO
+          endif
+       case DEFAULT
+          ! put some data in the eight subcells of the new child
+          DO subcell = 1, 8 
+             CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid)
+             parent%child(newChildIndex)%label(subcell) = counter
+             counter = counter + 1
+          END DO
+    end select
     
  
     ! check for a new maximum depth 
@@ -334,8 +335,10 @@ CONTAINS
     logical :: splitThis
 
     splitThis = .false.
-    DO subcell = 1, 8, 1
+    subcell = 1
+    do while ((.not.splitThis).and.(subcell <= 8))
        IF (decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid,sphData))splitThis = .true.
+       subcell = subcell + 1
     enddo
 
          ! tjh changed from
@@ -425,12 +428,10 @@ CONTAINS
       CASE ("testamr")
         gridConverged = .TRUE.
 
-      CASE ("wr104")
-        gridConverged = .TRUE.
 
-      CASE ("cluster")
-        call assign_grid_values(thisOctal,subcell, grid)
-        gridConverged = .TRUE.
+      CASE ("cluster","wr104")
+	call assign_grid_values(thisOctal,subcell, grid)
+	gridConverged = .TRUE.
 
       CASE DEFAULT
         WRITE(*,*) "! Unrecognised grid geometry: ",trim(grid%geometry)
@@ -2746,6 +2747,9 @@ CONTAINS
 	 split = .FALSE.
       end if
 
+
+
+      
    case DEFAULT
       PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
       PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
@@ -3342,6 +3346,49 @@ CONTAINS
   end subroutine copy_sph_index_to_root
 
     
+  recursive subroutine scaleDensityAMR(thisOctal, scaleFac)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  real :: scaleFac
+  
+  do subcell = 1, 8
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call scaleDensityAMR(child, scaleFac)
+                exit
+             end if
+          end do
+       else
+          thisOctal%rho(subcell) = max(1.e-30,thisOctal%rho(subcell) * scaleFac)
+       endif
+    enddo
+  end subroutine scaleDensityAMR
+
+  recursive subroutine findTotalMass(thisOctal, totalMass)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(kind=doubleKind) :: totalMass
+  integer :: subcell, i
+  
+  do subcell = 1, 8
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findtotalMass(child, totalMass)
+                exit
+             end if
+          end do
+       else
+          totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * thisOctal%subcellSize**3
+       endif
+    enddo
+  end subroutine findTotalMass
 
 
 END MODULE amr_mod

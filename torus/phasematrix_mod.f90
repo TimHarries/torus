@@ -203,6 +203,123 @@ contains
     
 
   end function newDirectionMie
+subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
+     normalizeSpectrum, useNdf, sed)
+
+  implicit none
+  integer :: nLambda
+  character(len=*) :: outFile
+  real :: xArray(nLambda)
+  logical :: useNdf
+  integer :: nOuterLoop
+  logical :: normalizeSpectrum, sed
+  type(STOKESVECTOR) :: yArray(nLambda), errorArray(nOuterloop,nLambda)
+  type(STOKESVECTOR),pointer :: ytmpArray(:)
+  real, allocatable :: meanQ(:), meanU(:), sigQ(:), sigU(:)
+  real, allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
+  real, allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
+  real :: tot
+  real :: x
+  integer :: i
+
+  allocate(ytmpArray(1:nLambda))
+
+  allocate(meanQ(1:nLambda))
+  allocate(meanU(1:nLambda))
+  allocate(sigQ(1:nLambda))
+  allocate(sigU(1:nLambda))
+
+  allocate(dlam(1:nLambda))
+  allocate(stokes_i(1:nLambda))
+  allocate(stokes_q(1:nLambda))
+  allocate(stokes_qv(1:nLambda))
+  allocate(stokes_u(1:nLambda))
+  allocate(stokes_uv(1:nLambda))
+
+!  x = SUM(yArray(1:min(10,nLambda))%i)/real(min(10,nLambda))
+
+!  x = 1./x
+
+!  x = 
+
+  if (normalizeSpectrum) then
+     if (yArray(1)%i /= 0.) then
+        x = 1.d0/yArray(1)%i
+     else
+        x  = 1.d0
+     endif
+  else
+     x = 1.d0
+  endif
+
+
+  do i = 1, nLambda
+     ytmpArray(i) = yArray(i) * x
+  enddo
+
+  where(errorArray%i /= 0.)
+     errorArray%q = errorArray%q / errorArray%i
+     errorArray%u = errorArray%u / errorArray%i
+  end where
+
+  do i = 1, nLambda
+     meanQ(i) = sum(errorArray(1:nOuterLoop,i)%q) / real(nOuterLoop)
+     meanU(i) = sum(errorArray(1:nOuterLoop,i)%u) / real(nOuterLoop)
+  enddo
+
+  do i = 1, nLambda
+     sigQ(i) = sqrt(sum((errorArray(1:nOuterLoop,i)%q-meanQ(i))**2)/real(nOuterLoop-1))
+     sigU(i) = sqrt(sum((errorArray(1:nOuterLoop,i)%u-meanU(i))**2)/real(nOuterLoop-1))
+  enddo
+
+  stokes_i = ytmpArray%i
+  stokes_q = ytmpArray%q
+  stokes_u = ytmpArray%u
+  stokes_qv = (ytmpArray%i * sigQ)**2
+  stokes_uv = (ytmpArray%i * sigU)**2
+
+  if (sed) then
+     write(*,'(a)') "Writing spectrum as normalized lambda F_lambda"
+     dlam(1) = (xArray(2)-xArray(1))
+     dlam(nlambda) = (xArray(nLambda)-xArray(nLambda-1))
+     do i = 2, nLambda-1
+        dlam(i) = 0.5*((xArray(i+1)+xArray(i))-(xArray(i)+xArray(i-1)))
+     enddo
+
+     stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
+
+     tot = 0.
+     do i = 1, nLambda
+        tot = tot + stokes_i(i)* dlam(i)
+     enddo
+
+     stokes_i = stokes_i / tot
+     stokes_q = stokes_q / tot
+     stokes_u = stokes_u / tot
+     stokes_qv = stokes_qv / tot**2
+     stokes_uv = stokes_uv / tot**2
+     
+     stokes_i(1:nLambda) = stokes_i(1:nLambda) * xArray(1:nLambda)
+     stokes_q(1:nLambda) = stokes_q(1:nLambda) * xArray(1:nLambda)
+     stokes_u(1:nLambda) = stokes_u(1:nLambda) * xArray(1:nLambda)
+     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) * xArray(1:nLambda)**2
+     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) * xArray(1:nLambda)**2
+  endif
+
+  if (useNdf) then
+     call wrtsp(nLambda,stokes_i,stokes_q,stokes_qv,stokes_u, &
+          stokes_uv,xArray,outFile)
+  else
+     open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
+     do i = 1, nLambda
+        write(20,*) xArray(i),stokes_i(i), stokes_q(i), stokes_qv(i), &
+             stokes_u(i), stokes_uv(i)
+     enddo
+     close(20)
+  endif
+
+end subroutine writeSpectrum
+
 
 end module phasematrix_mod
 

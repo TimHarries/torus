@@ -306,6 +306,8 @@ contains
       real :: abundance
       real :: scale
       real, allocatable :: mReal(:), mImg(:)
+      real :: meanParticleMass
+      real :: getMeanMass
       character(len=*) :: grainType
       integer :: i, j, k
 
@@ -379,8 +381,11 @@ contains
          grid%kappaSca = grid%kappaSca * 1.e10
       else
          write(*,'(a,i4)') "Filling the oneKappa arrays: ",grid%nLambda
-         grid%oneKappaAbs(1:grid%nLambda) = sigmaAbs(1:grid%nLambda) * 1.e10
-         grid%oneKappaSca(1:grid%nLambda) = sigmaSca(1:grid%nLambda) * 1.e10
+
+         
+         meanParticleMass = getMeanMass(aMin, aMax, qDist)
+         grid%oneKappaAbs(1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
+         grid%oneKappaSca(1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
       endif
 
   write(*,'(a)') "mie cross-sections done. Note 10^10 factor"

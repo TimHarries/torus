@@ -113,8 +113,22 @@ module spectrum_mod
     subroutine normalizedSpectrum(spectrum)
       type(SPECTRUMTYPE) :: spectrum
       allocate(spectrum%normflux(1:spectrum%nLambda))
-      spectrum%normflux(1:spectrum%nLambda) = spectrum%flux(1:spectrum%nLambda)*spectrum%dlambda(1:spectrum%nLambda)
-      spectrum%normflux(1:spectrum%nLambda) = spectrum%normflux(1:spectrum%nLambda) / SUM(spectrum%normflux(1:spectrum%nLambda))
+      spectrum%normflux(1:spectrum%nLambda) = spectrum%flux(1:spectrum%nLambda) &
+           / SUM(spectrum%flux(1:spectrum%nLambda)*spectrum%dlambda(1:spectrum%nLambda))
     end subroutine normalizedSpectrum
+
+    real(kind=doubleKind) function returnNormValue(spectrum, lambda)
+      type(SPECTRUMTYPE) :: spectrum
+      real(kind=doubleKind) :: lambda, t
+      integer :: i
+
+      if ((lambda < spectrum%lambda(1)).or.(lambda > spectrum%lambda(spectrum%nlambda))) then
+         returnNormValue = 0. 
+      else
+         call locate(spectrum%lambda,spectrum%nLambda, lambda, i)
+         t = (lambda - spectrum%lambda(i))/(spectrum%lambda(i+1) - spectrum%lambda(i))
+         returnNormValue = spectrum%normFlux(i) + t * (spectrum%normFlux(i+1) - spectrum%normFlux(i))
+      endif
+    end function returnNormValue
          
   end module spectrum_mod

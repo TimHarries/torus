@@ -80,7 +80,7 @@ contains
   ! this subroutine performs a scattering
 
   subroutine scatterPhoton(grid, thisPhoton, givenVec, outPhoton, mie, &
-        miePhase, nLambda, nMuMie, lamStart, lamEnd)
+        miePhase, nLambda, nMuMie)
 
     
     type(GRIDTYPE) :: grid                       ! the opacity grid
@@ -95,7 +95,6 @@ contains
     integer :: nLambda                           ! size of wavelength array
     integer :: nMumie                            ! number of mu angles for mie
     type(PHASEMATRIX) :: miePhase(nLambda, nMumie) ! mie phase matrices
-    real :: lamStart, lamEnd                     ! start and end wavelengths
     real :: costheta                             ! cos scattering angle
     real :: ang                                  ! scattering angle
     real :: r1, r2                               ! radii
@@ -177,7 +176,7 @@ contains
           
           ! do the same for a mie scattering
           
-          i = int(real(nLambda)*(thisPhoton%lambda-lamStart)/(lamEnd-lamStart))+1
+          call locate(grid%lamArray, nLambda, outPhoton%lambda, i)
           j = int(0.5*(costheta+1.d0)*real(nmumie))+1
           outPhoton%stokes = apply(miePhase(i,j), outPhoton%stokes)
           
@@ -298,7 +297,7 @@ contains
        pencilBeam, secondSource, secondSourcePosition, &
        ramanSourceVelocity, vo6, contWindPhoton, directionalWeight,useBias, &
        theta1,theta2, chanceHotRing, &
-       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, chanceDust, &
+       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar)
 
     implicit none
@@ -349,7 +348,7 @@ contains
     type(octal), pointer :: sourceOctal        ! randomly selected octal
     type(octal), pointer :: foundOctal       
     integer :: subcell
-    real :: chanceDust
+    real :: probDust, weightDust, weightPhoto
 
 
     ! Spot stuff
@@ -373,7 +372,7 @@ contains
     real :: theta1, theta2                     ! defines hot ring of accretion for TTaus
     real :: chanceHotRing                      ! chance of core photon in ttauri accretion ring
     real :: thisTheta, thisPhi
-
+    real :: x1, x2
     real :: tempXProbDist(2000)
     real :: rgrid(19),tgrid(19)
     integer :: j
@@ -452,9 +451,12 @@ contains
     contwindphoton = .false.
 
     call random_number(r)
-    if (r < chanceDust) then
+    if (r < probDust) then
        photonFromEnvelope = .true.
        contWindPhoton = .true.
+       thisPhoton%stokes = thisPhoton%stokes * weightDust
+    else
+       thisPhoton%stokes = thisPhoton%stokes * weightPhoto
     endif
 
 
@@ -825,6 +827,19 @@ contains
           thisPhoton%lambda = lambda(iLambda)
           weight = dlam(i)
           thisPhoton%stokes = thisPhoton%stokes * (weight / tot) * real(nLambda)
+          call random_number(r)
+          if (iLambda == 1) then
+             x1 = lambda(1)
+             x2 = 0.5*(lambda(1)+lambda(2))
+          else if (iLambda == nLambda) then
+             x1 = 0.5*(lambda(nLambda)+lambda(nLambda-1))
+             x2 = lambda(nLambda)
+          else
+             x1 = 0.5*(lambda(ilambda-1)+lambda(ilambda))
+             x2 = 0.5*(lambda(ilambda+1)+lambda(ilambda))
+          endif
+          call random_number(r)
+          thisPhoton%lambda = x1+r*(x2-x1)
        endif
 
 
@@ -899,7 +914,13 @@ contains
 !                call getWavelength(source(thisSource)%spectrum, rd)
 !                thisPhoton%stokes = thisPhoton%stokes * 0.
 !                thisPhoton%lambda = real(rd)
-                thisPhoton%stokes = thisPhoton%stokes * real(source(thissource)%spectrum%normflux(iLambda))
+             do i = 2, nLambda-1
+                dlam(i) = 0.5*((lambda(i+1)+lambda(i))-(lambda(i)+lambda(i-1)))
+             enddo
+             dlam(1) = lambda(2)-lambda(1)
+             dlam(nLambda) = lambda(nlambda)-lambda(nLambda-1)
+                thisPhoton%stokes = thisPhoton%stokes * &
+                     (real(returnNormValue(source(thissource)%spectrum,dble(thisPhoton%lambda)))*dlam(ilambda))
              endif
           endif
           

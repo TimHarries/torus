@@ -186,6 +186,7 @@ module image_mod
                    + velincgs * (thisPhoton%stokes%i*weight*filter_response)
               thisImageSet(i)%totWeight(xPix,yPix) = thisImageSet(i)%totWeight(xPix,yPix) &
                    + (thisPhoton%stokes%i*weight*filter_response)
+
            endif
         endif
      end do

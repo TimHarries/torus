@@ -674,6 +674,36 @@ contains
     end function tail_num_to_char
 
 
+    integer function findIlambda(lambda, xArray, nLambda, ok)
+      implicit none
+      integer :: nlambda, i
+      real :: lambda
+      real :: xArray(nLambda)
+      logical :: ok
+      
+      ok = .true.
+      
+      if (lambda < (xArray(1))) then
+         findiLambda = 1
+         ok = .false.
+         goto 666
+      endif
+      if (lambda > (xArray(nLambda))) then
+         findiLambda = nLambda
+         ok = .false.
+         goto 666
+      endif
+      
+      call locate(xArray, nLambda, lambda, i)
+      if (i /= nLambda) then
+         if (lambda > 0.5*(xArray(i)+xArray(i+1))) then
+            i= i+1
+         endif
+      endif
+      findilambda = min(i,nLambda)
+666   continue
+    end function findilambda
+
     
 
 end module utils_mod

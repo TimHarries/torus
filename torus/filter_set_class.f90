@@ -11,7 +11,7 @@ module filter_set_class
   !  3. "NIC1          " : 1+3 different square filters using similar 
   !                        bands as in HST NIC1 Medium Band Filters.
   !                        c.f. http://www.stsci.edu/hst/nicmos/design/filters
-
+  use utils_mod
 
   public::  &
        make_filter_set, &
@@ -95,10 +95,12 @@ contains
     type(filter), intent(in) :: this_filter
     double precision, intent(in) :: wavelength ! in [A]
     ! 
-    integer :: n, i, j 
+    integer :: n,  i
     double precision :: tmp
 
-    n = SIZE(this_filter%wavelength)
+
+    n = this_filter%nLambda
+
     if (wavelength < this_filter%wavelength(1) &
          .or.                                  &
          wavelength > this_filter%wavelength(n) ) then
@@ -106,21 +108,25 @@ contains
     else
        ! interpolate the value.
        
-       ! finding the index first
-       j = 0
-       do i = 1, n-1
-          if (wavelength >= this_filter%wavelength(i) &
-               .or.                                  &
-               wavelength < this_filter%wavelength(i+1) ) then
-             ! found the index
-             j = i
-             exit 
-          end if
-       end do
+!       ! finding the index first
+!       j = 0
+!       do i = 1, n-1
+!          if (wavelength >= this_filter%wavelength(i) &
+!               .or.                                  &
+!               wavelength < this_filter%wavelength(i+1) ) then
+!             ! found the index
+!             j = i
+!             exit 
+!          end if
+!       end do
 
-       if (j==0) then ! something went wrong.
+! changed by TJH 19/2/03
+
+       call locate(this_filter%wavelength, n, wavelength, i)
+
+       if (i==0) then ! something went wrong.
           write(*,*) " "
-          write(*,*) "Error:: j = 0 in filter_set_class::response."
+          write(*,*) "Error:: i = 0 in filter_set_class::response."
           stop
        end if
 
@@ -132,6 +138,7 @@ contains
             
        out = tmp * (wavelength - this_filter%wavelength(i))  &
             &        + this_filter%response_function(i) 
+
     end if
     
   end function response

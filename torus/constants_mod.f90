@@ -64,6 +64,7 @@ module constants_mod
   real, parameter :: mHydrogen = 1.67e-24        ! g
   real, parameter :: mSol = 1.9891e33            ! g
   real, parameter :: mEarth = 5.98e27            ! g
+  real, parameter :: mMoon = 7.349e25            ! g
   real, parameter :: bigG = 6.67259e-8           ! cgs
   real, parameter :: mElectron = 9.109565D-28    ! g
 
