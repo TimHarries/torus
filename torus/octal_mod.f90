@@ -122,6 +122,7 @@ MODULE octal_mod
     
     INTEGER, DIMENSION(8)                :: dusttype
     INTEGER :: parentSubcell
+    logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
 
 
   END TYPE octal

@@ -342,7 +342,7 @@ contains
     integer :: subcell
     real :: treal
     real(oct) :: lCore
-    real(oct) :: kabs
+    real      :: kabs
     type(vector) :: vec_tmp
     real :: dummy(1)
     real(oct)::  dT_sum ! [Kelvins]  the sum of the temperature change
@@ -649,13 +649,20 @@ contains
                       thisLam = (cSpeed / freq(i)) * 1.e8
                       call hunt(lamArray, nLambda, real(thisLam), iLam)
                       if ((ilam >=1).and.(ilam <= nlambda)) then
-                         if (.not.grid%oneKappa) then
-                            kabs = thisOctal%kappaAbs(subcell,ilam)
-                         else
-                            kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
-                         endif
+
+                         ! tjh added on 7/4/05 - stop direct addressing of octal kappa arrays
+                         ! to allow implemntation of gas opacities...
+
+                         call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
+                              actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
+
+!                         if (.not.grid%oneKappa) then
+!                            kabs = thisOctal%kappaAbs(subcell,ilam)
+!                         else
+!                            kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
+!                         endif
                          probDistJnu(i) = probDistJnu(i-1) + &
-                              bnu(freq(i),t1) * kabs * dnu(i)
+                              bnu(freq(i),t1) * dble(kabs) * dnu(i)
                       endif
                    enddo
                    if (probDistJnu(nFreq) /= 0.) then
@@ -1133,7 +1140,7 @@ contains
     ! [kelvins]  the maximum fractional change of temperature
     real(oct), intent(inout) :: dT_over_T_max 
 
-    real(oct) :: kabs
+    real :: kabs
     real :: lamArray(*)
     integer :: nFreq
     real(oct) :: freq(*)
@@ -1182,11 +1189,18 @@ contains
                 thisLam = (cSpeed / freq(i)) * 1.d8
                 call hunt(lamArray, nLambda, real(thisLam), iLam)
                 if ((iLam >=1) .and. (iLam <= nLambda)) then
-                   if (.not.grid%oneKappa) then
-                      kabs = thisOctal%kappaAbs(subcell,iLam)
-                   else
-                      kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
-                   endif
+
+                   ! tjh added on 7/4/05 - stop direct addressing of octal kappa arrays
+                   ! to allow implemntation of gas opacities...
+                   
+                   call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
+                        actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
+
+!                   if (.not.grid%oneKappa) then
+!                      kabs = thisOctal%kappaAbs(subcell,iLam)
+!                   else
+!                      kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
+!                   endif
                    kappaP = kappaP + dble(kabs) * &
                         dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))
                    norm = norm + dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))

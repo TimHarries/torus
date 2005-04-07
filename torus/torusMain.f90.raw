@@ -59,7 +59,8 @@ program torus
   use disc_class
   use discwind_class
   use jet_class
-!$MPI   use parallel_mod
+  use gas_opacity_mod
+!$mpi   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
 !$MPI   !use MPI
 
@@ -381,6 +382,9 @@ program torus
 
   real    :: tmp
   type(octalvector) :: vec_offset
+
+! gas opacity stuff
+
 
   
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
@@ -853,6 +857,10 @@ program torus
              grid%onekappaSca(i,1:grid%nLambda))
      enddo
   endif
+
+  call createTioGrid(10, 1.e-6, 10000., grid%nLambda, xArray)
+
+  
 
 
   ! if the grid uses an adaptive mesh, create it

@@ -276,8 +276,8 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  unix_mod.f90  inputs_mod.f90 stateq_mod.f90 utils_mod.f90   gaussian_mod.f90  \
  grid_mod.f90 math_mod.f90  \
  phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 distortion_mod.f90 \
- image_mod.f90 TTauri_mod.f90 puls_mod.f90 disc_hydro_mod.f90 torusMain.f90  \
- integratePath.f90 readIntPro.f90 \
+ image_mod.f90 TTauri_mod.f90 puls_mod.f90 disc_hydro_mod.f90 gas_opacity_mod.f90 \
+ torusMain.f90 integratePath.f90 readIntPro.f90 \
  mieDistPhaseMatrix.f90 gridtype_mod.f90 \
  getRefractiveIndex.f90 draineCrossSection.f90 \
  readTioCrossSection.f90 rayleighCrossSection.f90 \

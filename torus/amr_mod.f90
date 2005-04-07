@@ -17,6 +17,7 @@ MODULE amr_mod
   USE density_mod
   USE wr104_mod
   USE utils_mod
+  USE gas_opacity_mod
   USE math_mod2!, only : mnewt  
 
   IMPLICIT NONE
@@ -199,6 +200,7 @@ CONTAINS
     grid%octreeRoot%nTot = -9.9e9
     grid%octreeRoot%changed = .false.
     grid%octreeRoot%dustType = 1
+    grid%octreeRoot%gasOpacity = .false.
 
     select case (grid%geometry)
        case("cluster")
@@ -1835,13 +1837,17 @@ CONTAINS
            if (.not.grid%oneKappa) then
               kappaAbs = resultOctal%kappaAbs(subcell,iLambda)
            else
-              IF (.NOT.PRESENT(lambda)) THEN
-                 kappaAbs = grid%oneKappaAbs(resultOctal%dustType(subcell),iLambda)*resultOctal%rho(subcell)
-              ELSE
-                 kappaAbs = logint(lambda, grid%lamArray(ilambda), grid%lamArray(ilambda+1), &
-                 grid%oneKappaAbs(resultOctal%dustType(subcell),iLambda)*resultOctal%rho(subcell), &
-                 grid%oneKappaAbs(resultOctal%dustType(subcell),iLambda+1)*resultOctal%rho(subcell))
-              ENDIF
+              if (resultOctal%gasOpacity) then
+                 call returnKappaValue(resultOctal%temperature(subcell), lambda, kappaAbs)
+              else
+                 IF (.NOT.PRESENT(lambda)) THEN
+                    kappaAbs = grid%oneKappaAbs(resultOctal%dustType(subcell),iLambda)*resultOctal%rho(subcell)
+                 ELSE
+                    kappaAbs = logint(lambda, grid%lamArray(ilambda), grid%lamArray(ilambda+1), &
+                         grid%oneKappaAbs(resultOctal%dustType(subcell),iLambda)*resultOctal%rho(subcell), &
+                         grid%oneKappaAbs(resultOctal%dustType(subcell),iLambda+1)*resultOctal%rho(subcell))
+                 ENDIF
+              endif
            endif
         ELSE
           PRINT *, 'In amrGridValues, can''t evaluate ''kappaAbs'' without',&
@@ -1855,13 +1861,17 @@ CONTAINS
            if (.not.grid%oneKappa) then
               kappaSca = resultOctal%kappaSca(subcell,iLambda)
            else
-              IF (.NOT.PRESENT(lambda)) THEN
-                 kappaSca = grid%oneKappaSca(resultOctal%dustType(subcell),iLambda)*resultOctal%rho(subcell)
-              ELSE
-                 kappaSca = logint(lambda, grid%lamArray(ilambda), grid%lamArray(ilambda+1), &
-                 grid%oneKappaSca(resultOctal%dustType(subcell),iLambda)*resultOctal%rho(subcell), &
-                     grid%oneKappaSca(resultOctal%dustType(subcell),iLambda+1)*resultOctal%rho(subcell))
-              ENDIF
+              if (resultOctal%gasOpacity) then
+                 call returnKappaValue(resultOctal%temperature(subcell), lambda, kappaAbs)
+              else
+                 IF (.NOT.PRESENT(lambda)) THEN
+                    kappaSca = grid%oneKappaSca(resultOctal%dustType(subcell),iLambda)*resultOctal%rho(subcell)
+                 ELSE
+                    kappaSca = logint(lambda, grid%lamArray(ilambda), grid%lamArray(ilambda+1), &
+                         grid%oneKappaSca(resultOctal%dustType(subcell),iLambda)*resultOctal%rho(subcell), &
+                         grid%oneKappaSca(resultOctal%dustType(subcell),iLambda+1)*resultOctal%rho(subcell))
+                 ENDIF
+              endif
            endif
         ELSE
           PRINT *, 'In amrGridValues, can''t evaluate ''kappaSca'' without',&
@@ -5418,6 +5428,7 @@ CONTAINS
        parent%child(newChildIndex)%etaCont = 1.e-30
        parent%child(newChildIndex)%N = 1.e-30
        parent%child(newChildIndex)%dusttype = 1
+       parent%child(newChildIndex)%gasOpacity = .false.
        parent%child(newChildIndex)%Ne = 1.e-30
        parent%child(newChildIndex)%temperature = 3.0
        parent%child(newChildIndex)%nTot = 1.e-30
