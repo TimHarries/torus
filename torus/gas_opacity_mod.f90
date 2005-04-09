@@ -42,7 +42,7 @@ subroutine readTio(nLines,lambda,kappa,excitation,g)
   allocate(jlow(1:nLines))
 
 
-  open(20,file="/h/th/plez/TiO.dat",status="old",form="formatted")
+  open(20,file="/home/th/plez/TiO.dat",status="old",form="formatted")
 
   write(*,*) "Reading all ",nLines," TiO transitions..."
 
@@ -71,6 +71,13 @@ subroutine readTio(nLines,lambda,kappa,excitation,g)
   kappa(1:nLines) = alpha(1:nLines) / (16.*mHydrogen + 48.*mHydrogen) ! divide by mass of Tio
 
   kappa(1:nLines) = kappa(1:nLines) / (4.*pi) ! ?!
+
+
+
+  kappa(1:nLines) = kappa(1:nLines) * 1.e10 ! to code units
+
+  kappa(1:nLines) = kappa(1:nLines) * 1.e-8 ! abundance
+  
 
   write(*,*) "Done."
 
@@ -133,29 +140,78 @@ subroutine createTioGrid(nTemps, t1, t2, nLam, lamArray)
   real :: g(12000000)
   real :: kappa(12000000)
   real :: lambda(12000000)
+  logical :: gridReadFromdisc
 
   write(*,*) "Creating TiO opacity look-up table..."
 
-  TioLookupTable%nTemps = nTemps
-  TioLookupTable%nLam = nLam
+  write(*,*) "Attempting to read a previous look-up table."
 
-  allocate(TioLookupTable%tempArray(1:nTemps))
-  allocate(TioLookupTable%lamArray(1:nLam))
-  allocate(TioLookupTable%kapArray(1:nTemps, 1:nLam))
+  call readTioGrid(nTemps, nLam, gridReadFromDisc)
 
-  TioLookupTable%lamArray(1:nLam) = lamArray(1:nLam)
-
-  call readTio(nLines, lambda, kappa, excitation, g)
-
-  do i = 1, nTemps
-     TioLookupTable%tempArray(i) = t1 + (t2-t1)*real(i-1)/real(nTemps)
-  enddo
-  do i = 1, nTemps
-     call createTioSample(TioLookupTable%tempArray(i), lamArray, TioLookupTable%kapArray(i,1:nLam), nLam, &
-          nLines, lambda, kappa, g, excitation)
-  enddo
+  if (.not.gridReadFromDisc) then
+     write(*,*) "Correct lookup table not available, creating..."
+     TioLookupTable%nTemps = nTemps
+     TioLookupTable%nLam = nLam
+     
+     allocate(TioLookupTable%tempArray(1:nTemps))
+     allocate(TioLookupTable%lamArray(1:nLam))
+     allocate(TioLookupTable%kapArray(1:nTemps, 1:nLam))
+     
+     TioLookupTable%lamArray(1:nLam) = lamArray(1:nLam)
+     
+     call readTio(nLines, lambda, kappa, excitation, g)
+     
+     do i = 1, nTemps
+        TioLookupTable%tempArray(i) = t1 + (t2-t1)*real(i-1)/real(nTemps-1)
+     enddo
+     do i = 1, nTemps
+        call createTioSample(TioLookupTable%tempArray(i), lamArray, TioLookupTable%kapArray(i,1:nLam), nLam, &
+             nLines, lambda, kappa, g, excitation)
+     enddo
+     call writeTioGrid()
+  endif
   write(*,*) "TiO opacity lookup table complete."
 end subroutine createTioGrid
+
+subroutine readTioGrid(wantedntemps, wantednlam, gridreadfromdisc)
+  integer :: wantednTemps, wantednlam
+  integer :: nTemps, nLam
+  logical :: gridreadFromDisc
+
+  gridReadFromDisc = .false.
+
+  open(21, file="tiolookuptable.dat", status="old", form="unformatted",err=666)
+  read(21) nTemps, nLam
+
+  if ((nTemps /= wantedNtemps).or.(nLam /= wantednLam)) then
+     write(*,*) "TiO lookup-table on disc is not of correct size"
+     goto 666
+  endif
+
+  TioLookupTable%nTemps = nTemps
+  TioLookupTable%nLam = nLam
+     
+  allocate(TioLookupTable%tempArray(1:nTemps))
+  allocate(TioLookupTable%lamArray(1:nLam))
+  allocate(TioLookupTable%kapArray(1:nTemps, 1:nLam))   
+  read(21) TioLookupTable%tempArray(1:nTemps)
+  read(21) TioLookupTable%lamArray(1:nLam)
+  read(21) TioLookupTable%kapArray(1:nTemps, 1:nLam)
+  close(21)
+  gridReadFromDisc = .true.
+666 continue
+end subroutine readTioGrid
+
+subroutine writeTioGrid()
+
+  open(21, file="tiolookuptable.dat", status="unknown", form="unformatted")
+  write(21) tioLookupTable%nTemps, tioLookupTable%nLam
+  write(21) TioLookupTable%tempArray(1:TioLookupTable%nTemps)
+  write(21) TioLookupTable%lamArray(1:TioLookupTable%nLam)
+  write(21) TioLookupTable%kapArray(1:TioLookupTable%nTemps, 1:TioLookupTable%nLam)
+  close(21)
+
+end subroutine writeTioGrid
 
 
 subroutine returnKappaArray(temperature, TioLookupTable, kappaAbs, KappaSca)
@@ -179,7 +235,7 @@ subroutine returnKappaArray(temperature, TioLookupTable, kappaAbs, KappaSca)
   kappaSca(1:TioLookupTable%nLam) = 1.e-30
 end subroutine returnKappaArray
 
-subroutine returnKappaValue(temperature, lambda, kappaAbs, kappaSca)
+subroutine returnGasKappaValue(temperature, lambda, kappaAbs, kappaSca)
   real :: temperature
   real :: lambda
   real, optional :: kappaAbs, kappaSca
@@ -210,6 +266,6 @@ subroutine returnKappaValue(temperature, lambda, kappaAbs, kappaSca)
      kappaSca = 1.e-30
   endif
 
-end subroutine returnKappaValue
+end subroutine returnGasKappaValue
   
 end module gas_opacity_mod

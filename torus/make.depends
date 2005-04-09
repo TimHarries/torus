@@ -103,7 +103,6 @@ torusMain.o: TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
 TTauri_mod.o: amr_mod.o atom_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
 	kind_mod.o math_mod.o octal_mod.o parameters_mod.o stateq_mod.o \
 	utils_mod.o vector_mod.o
-unix_mod.o: 
 utils_mod.o: constants_mod.o input_variables.o kind_mod.o unix_mod.o \
 	vector_mod.o
 vector_mod.o: constants_mod.o kind_mod.o

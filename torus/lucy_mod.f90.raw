@@ -485,13 +485,16 @@ contains
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             "lucy_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004) 
+       call plot_AMR_values(grid, "etaCont", "x-z", real(grid%octreeRoot%centre%y), &
+            "etacont_zoom_xz.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             tfilename1, .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             tfilename2, .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004)
        call plot_AMR_values(grid, "temperature", "x-y", real(grid%octreeRoot%centre%z), &
             "lucy_temp_xy.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
@@ -1249,8 +1252,12 @@ contains
                    if (.not.grid%oneKappa) then
                       kabs = thisOctal%kappaAbs(subcell,iLam)
                    else
-                      kabs = grid%oneKappaAbs(thisOctal%dusttype(subcell),iLam) * thisOctal%rho(subcell)
+                   call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
+                        actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
+!                      kabs = grid%oneKappaAbs(thisOctal%dusttype(subcell),iLam) * thisOctal%rho(subcell)
                    endif
+
+
                    
                    kappaP = kappaP + dble(kabs) * &
                         dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell)))) * dble(dnu(i)) 
@@ -1258,7 +1265,8 @@ contains
                 endif
              enddo
              kappaP = kappaP / norm / 1.e10
-             thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * (thisOctal%temperature(subcell)**4)
+             thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * &
+                  (thisOctal%temperature(subcell)**4)
              totalEmission = totalEmission + thisOctal%etaCont(subcell) * V
              nDT = nDT  + 1
              dT_sum = dT_sum + ABS(deltaT)

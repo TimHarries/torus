@@ -823,9 +823,7 @@ program torus
      enddo
   endif
 
-  call createTioGrid(10, 1.e-6, 10000., grid%nLambda, xArray)
-
-  
+  call createTioGrid(20, 1.e-6, 20000., grid%nLambda, xArray)
 
 
   ! if the grid uses an adaptive mesh, create it
@@ -864,7 +862,7 @@ program torus
           phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
           call readAMRgrid(phasePopFilename,readFileFormatted,grid)
         else ! just read the normal pops file
-          call readAMRgrid(popFilename,readFileFormatted,grid)
+          if (readpops) call readAMRgrid(popFilename,readFileFormatted,grid)
         end if 
         if (forceLineChange) then
            write (*,'(A,I1,A,I1,A)') 'Recalculating for n =',nUpper,' /',nLower,'levels...'
@@ -1556,6 +1554,10 @@ program torus
      call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
           "etacont.ps/vcps", .true., .false.,  &
           nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+     call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
+          "etacont_zoom.ps/vcps", .true., .false.,  &
+          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
+     show_value_3rd_dim, boxfac = 0.0004)
      call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
           "temperature.ps/vcps", .true., .false., &
           nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
@@ -1840,7 +1842,7 @@ program torus
                    source, nSource, nLucy, massEnvelope, tThresh, twod, mDisc)
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 5)
+                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 10)
            endif
 
         endif

@@ -9,7 +9,8 @@
 KNOWN_SYSTEM=no
 debug = no
 profile= no
-PATH2G2C=/usr/lib/gcc-lib/i386-redhat-linux/3.2.2
+#PATH2G2C=/usr/lib/gcc-lib/i386-redhat-linux/3.2.2
+PATH2G2C=/usr/lib/gcc/i586-mandrake-linux-gnu/3.4.1/
 
 ifeq ($(SYSTEM), g95)
     F95COMP=g95
