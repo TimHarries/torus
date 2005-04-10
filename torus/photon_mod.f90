@@ -24,6 +24,7 @@ module photon_mod
   use source_mod
   use filter_set_class
   use surface_mod
+  use kind_mod
 
   implicit none
 
@@ -414,7 +415,7 @@ contains
     real :: tot
     real :: weight
 
-    real :: biasWeight
+    real(double) :: biasWeight
 
     logical :: forcedWavelength
     real :: usePhotonWavelength
@@ -1335,7 +1336,7 @@ contains
              if (useBias) then
                 biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
              else
-                biasWeight = 1.0
+                biasWeight = 1.0_db
              end if
 
           end if ! (.not. OK)

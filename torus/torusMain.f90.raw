@@ -1787,7 +1787,7 @@ program torus
        nSource = 1
        teff = 30000.
        allocate(source(1:1))
-       source(1)%luminosity = fourPi * (10.*rsol)**2 * stefanBoltz * teff**4
+       source(1)%luminosity = fourPi * (10.*rsol)*(10.*rsol) * stefanBoltz * teff**4
        source(1)%radius = 10.*rSol / 1.e10
        source(1)%teff = teff
        source(1)%position = VECTOR(0.,0.,0.)

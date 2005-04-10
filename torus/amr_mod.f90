@@ -6458,39 +6458,38 @@ CONTAINS
              end if
           end do
        else
-          d = thisOctal%subcellsize 
-          rVec = subcellCentre(thisOctal,subcell)
-          if (thisOctal%threed) then
-             dV = d*d*d
-          else
-             dv = 2.0_db*pi*d*d*rVec%x
-          endif
-          
-          nu  = cSpeed / (lambda0*angstromtocm)
-
-          tauSob = thisOctal%chiline(subcell)  / nu
-          tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, dir_obs, &
-               startOctal=thisOctal)
-
-          if (tauSob < 0.01) then
-             escProb = 1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
-          else if (tauSob < 15.) then
-             escProb = (1.0d0-exp(-tauSob))/tauSob
-          else
-             escProb = 1.d0/tauSob
-          end if          
-          escProb = max(escProb, 1.d-7)
-
-          !
           if (thisOctal%inflow(subcell)) then
+             d = thisOctal%subcellsize 
+             rVec = subcellCentre(thisOctal,subcell)
+             if (thisOctal%threed) then
+                dV = d*d*d
+             else
+                dv = 2.0_db*pi*d*d*rVec%x
+             endif
+             
+             nu  = cSpeed / (lambda0*angstromtocm)
+             
+             tauSob = thisOctal%chiline(subcell)  / nu
+             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, dir_obs, &
+                  startOctal=thisOctal)
+          
+             if (tauSob < 0.01) then
+                escProb = 1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
+             else if (tauSob < 15.) then
+                escProb = (1.0d0-exp(-tauSob))/tauSob
+             else
+                escProb = 1.d0/tauSob
+             end if
+             escProb = max(escProb, 1.d-7)
+          
              thisOctal%biasCont3D(subcell) = 1.0
              thisOctal%biasLine3D(subcell) = SQRT(escProb)  ! good one to use 
-          else
-             thisOctal%biasCont3D(subcell) = 1.0e-20
-             thisOctal%biasLine3D(subcell) = 1.0e-20
+          else  ! this subcell is not "inFlow"
+             thisOctal%biasCont3D(subcell) = 1.0d-100
+             thisOctal%biasLine3D(subcell) = 1.0d-100
           end if
-
-       endif
+          
+       endif ! if (thisOctal%hasChild(subcell)) then
     enddo
   end subroutine set_bias_ttauri
 
@@ -6517,39 +6516,38 @@ CONTAINS
              end if
           end do
        else
-          d = thisOctal%subcellsize 
-          rVec = subcellCentre(thisOctal,subcell)
-          if (thisOctal%threed) then
-             dV = d*d*d
-          else
-             dv = 2.0_db*pi*d*d*rVec%x
-          endif
-          
-          nu  = cSpeed / (lambda0*angstromtocm)
-
-          tauSob = thisOctal%chiline(subcell)  / nu
-          tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, dir_obs, &
-               startOctal=thisOctal)
-
-          if (tauSob < 0.01) then
-             escProb = 1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
-          else if (tauSob < 15.) then
-             escProb = (1.0d0-exp(-tauSob))/tauSob
-          else
-             escProb = 1.d0/tauSob
-          end if          
-          escProb = max(escProb, 1.d-7)
-
-          dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
-
-          !
           if (thisOctal%inflow(subcell)) then
+             d = thisOctal%subcellsize 
+             rVec = subcellCentre(thisOctal,subcell)
+             if (thisOctal%threed) then
+                dV = d*d*d
+             else
+                dv = 2.0_db*pi*d*d*rVec%x
+             endif
+          
+             nu  = cSpeed / (lambda0*angstromtocm)
+
+             tauSob = thisOctal%chiline(subcell)  / nu
+             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, dir_obs, &
+                  startOctal=thisOctal)
+
+             if (tauSob < 0.01) then
+                escProb = 1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
+             else if (tauSob < 15.) then
+                escProb = (1.0d0-exp(-tauSob))/tauSob
+             else
+                escProb = 1.d0/tauSob
+             end if
+             escProb = max(escProb, 1.d-7)
+
+             dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
+
 !             thisOctal%biasCont3D(subcell) = EXP(-dtau_cont)
              thisOctal%biasCont3D(subcell) = 1.0  ! no bias for contiuum
              thisOctal%biasLine3D(subcell) = SQRT(escProb)  ! good one to use 
-          else
-             thisOctal%biasCont3D(subcell) = 1.0e-20
-             thisOctal%biasLine3D(subcell) = 1.0e-20
+          else  ! this subcell is not "inFlow".
+             thisOctal%biasCont3D(subcell) = 1.0d-150
+             thisOctal%biasLine3D(subcell) = 1.0d-150
           end if
 
        endif

@@ -11,6 +11,7 @@
 module phasematrix_mod
 
   use utils_mod
+  use kind_mod
   implicit none
 
   public
@@ -25,10 +26,10 @@ module phasematrix_mod
   ! the stokes vector includes each of the stokes intensities
 
   type STOKESVECTOR
-     real :: i
-     real :: q
-     real :: u
-     real :: v
+     real(double) :: i
+     real(double) :: q
+     real(double) :: u
+     real(double) :: v
   end type STOKESVECTOR
 
   ! + signifies adding two stokes vectors
@@ -41,6 +42,7 @@ module phasematrix_mod
 
   interface operator(*)
      module procedure multStokes
+     module procedure multStokes_dble
   end interface
 
 contains
@@ -164,6 +166,20 @@ contains
     multStokes%v = a%v * b
 
   end function multStokes
+
+
+  type(STOKESVECTOR) pure function multStokes_dble(a , b)
+    type(STOKESVECTOR), intent(in) :: a
+    real(double), intent(in) :: b
+
+    multStokes_dble%i = a%i * b
+    multStokes_dble%q = a%q * b
+    multStokes_dble%u = a%u * b
+    multStokes_dble%v = a%v * b
+
+  end function multStokes_dble
+
+
 
   type(VECTOR) function newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nMuMie)
     type(VECTOR), intent(in) :: oldDirection
