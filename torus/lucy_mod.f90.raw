@@ -1212,11 +1212,11 @@ contains
              kappaP = kappaP / norm /1.d10
              
              
-             if (kappaP /= 0.) then
+             if (kappaP > 1.e-25) then
                 newT = dble(pi / stefanBoltz) * aDot / (dble(fourPi) * kappaP)
                 newT = newT**0.25d0
              else
-                newT = 10.0
+                newT = thisOctal%temperature(subcell)
              endif
              deltaT = newT - thisOctal%temperature(subcell)
              if ((deltaT > 10000.).and.(thisOctal%nCrossings(subcell) .ge. minCrossings)) then
@@ -1225,6 +1225,7 @@ contains
                         deltaT, thisOctal%nCrossings(subcell), &
                         modulus(subcellcentre(thisOctal,subcell))/grid%rinner,thisOctal%rho(subcell), &
                         dble(1./grid%rinner)*subcellcentre(thisOctal,subcell) 
+                   write(*,*) "kappap",kappap,"adot",adot
                    nwarning = nwarning + 1
                 elseif (nwarning == nmaxwarning) then
                    write(*,*) " "

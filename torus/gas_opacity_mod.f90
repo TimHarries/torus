@@ -2,6 +2,7 @@ module gas_opacity_mod
 
 use constants_mod
 use utils_mod
+
 implicit none
 
 type TioKappaGrid
@@ -12,8 +13,25 @@ type TioKappaGrid
    real, pointer :: kapArray(:,:) => null()
 end type TioKappaGrid
 
+type tsujiPPtable
+   integer :: nAtoms
+   integer :: nTemps
+   integer :: nPressures
+   real, pointer :: pp(:,:,:) => null()
+   real, pointer :: temperature(:) => null()
+   real, pointer :: logPressure(:) => null()
+end type tsujiPPtable
+
+type tsujiKPtable
+   integer :: nMolecules 
+   character(len=3), pointer :: molecule(:) => null()
+   real, pointer :: a(:,:) => null()
+end type tsujiKPtable
+
 
 type(tioKappaGrid), save :: TioLookuptable
+type(tsujiPPtable), save :: tsujipplookuptable
+type(tsujiKPtable), save :: tsujikplookuptable
 
 contains
 
@@ -72,12 +90,7 @@ subroutine readTio(nLines,lambda,kappa,excitation,g)
 
   kappa(1:nLines) = kappa(1:nLines) / (4.*pi) ! ?!
 
-
-
   kappa(1:nLines) = kappa(1:nLines) * 1.e10 ! to code units
-
-  kappa(1:nLines) = kappa(1:nLines) * 1.e-8 ! abundance
-  
 
   write(*,*) "Done."
 
@@ -235,13 +248,17 @@ subroutine returnKappaArray(temperature, TioLookupTable, kappaAbs, KappaSca)
   kappaSca(1:TioLookupTable%nLam) = 1.e-30
 end subroutine returnKappaArray
 
-subroutine returnGasKappaValue(temperature, lambda, kappaAbs, kappaSca)
+subroutine returnGasKappaValue(temperature, rho, lambda, kappaAbs, kappaSca)
   real :: temperature
-  real :: lambda
+  real :: lambda, rho
   real, optional :: kappaAbs, kappaSca
   real :: t1, t2
+  real :: pressure, mu
   integer :: i, j
 
+  mu = 2.46
+
+  pressure = rho * kErg * temperature / (mu * mHydrogen)
 
   if ((temperature < TioLookupTable%tempArray(1)).or.(temperature > TioLookupTable%tempArray(TioLookupTable%nTemps))) then
      write(*,*) "! TiO temperature is outside opacity array bounds"
@@ -260,12 +277,221 @@ subroutine returnGasKappaValue(temperature, lambda, kappaAbs, kappaSca)
                 (   t1) * (1.-t2) * tiolookupTable%kapArray(i+1, j  ) + &
                 (1.-t1) * (   t2) * tiolookupTable%kapArray(i  , j+1) + &
                 (   t1) * (   t2) * tiolookupTable%kapArray(i+1, j+1) 
+     kappaAbs = kappaAbs * ppMolecule(temperature, pressure, 12)/pressure
   endif
 
   if (PRESENT(kappaSca)) then
-     kappaSca = 1.e-30
+     kappaSca = 0.
+!     kappaSca = kappaSca + (hydrogenRayXsection(lambda)/mHydrogen)*1.e10
   endif
 
 end subroutine returnGasKappaValue
   
+real function hydrogenRayXsection(lambda)
+
+  implicit none
+  real :: lambda ! in angstrom
+  real(double) :: freq, fac, freq0, gamma0
+  real :: einsteinA(1:6), lambdaTrans(1:6)
+  integer :: i
+
+  data einsteinA  / 0.000D0 , 4.699D8 , 5.575D7 , 1.278D7 , 4.125D6 , 1.644D6 /
+  data lambdaTrans / 0.00000D-8 , 1215.67D-8 , 1025.72D-8 , 992.537D-8 , 949.743D-8 , 937.803D-8 /
+
+  hydrogenRayXsection = 0.
+  do i = 2, 6
+
+     freq = dble(cSpeed) / dble(lambda*angstromtoCm)
+     freq0 = dble(cSpeed) / dble(lambdaTrans(i))
+     gamma0 =  dble(einsteinA(i)/fourPi)
+
+     fac = freq**4 / ((freq0**2 - freq**2)**2 + (gamma0*freq)**2)
+
+     hydrogenRayXsection = hydrogenRayXsection + sigmaE * fac
+
+  enddo
+
+end function hydrogenRayXsection
+
+subroutine readTsujiPPTable()
+  implicit none
+!  type(tsujiPPtable) :: tsujiPPlookuptable
+  character(Len=80) :: junk
+  real :: pp(9,5,16)
+  integer :: i, j
+  character(len=80) :: filename, dataDirectory
+
+  tsujiPPlookuptable%nTemps = 16
+  tsujiPPlookuptable%nAtoms = 5
+  tsujiPPlookuptable%nPressures = 9
+  allocate(tsujiPPlookuptable%temperature(1:16))
+  allocate(tsujiPPlookuptable%logPressure(1:9))
+  allocate(tsujiPPlookuptable%pp(1:9,1:5,1:16))
+
+  call unixGetenv("TORUS_DATA", dataDirectory, i)
+  filename = trim(dataDirectory)//"/"//"tsuji_pp.dat"
+
+  open(20,file=filename,form="formatted",status="old")
+  read(20,*) tsujiPPlookuptable%temperature(1:16)
+  tsujiPPlookuptable%temperature(1:16) = 5040.0 / tsujiPPlookuptable%temperature(1:16)
+  do i = 1, 9
+     tsujiPPlookuptable%logPressure(i) = real(i-1)
+     do j = 1, 5
+        read(20,'(15x,16f7.2)') tsujiPPlookuptable%pp(i,j,1:16)
+     enddo
+  enddo
+  close(20)
+end subroutine readTsujiPPTable
+
+subroutine readTsujiKPtable()
+  implicit none
+  character(len=80) :: junk, dataDirectory, filename
+  integer :: i
+
+  tsujikplookuptable%nMolecules = 12
+  allocate(tsujikplookuptable%molecule(1:12))
+  allocate(tsujikplookuptable%a(1:12,1:5))
+
+  call unixGetenv("TORUS_DATA", dataDirectory, i)
+  filename = trim(dataDirectory)//"/"//"tsuji_kp.dat"
+
+  open(20, file=filename, form = "formatted", status="old")
+  read(20,'(a)') junk
+  do i = 1, 12
+     read(20,'(a3, 1x, 5e12.4)') tsujikplookuptable%molecule(i), tsujikplookuptable%a(i,1:5)
+  enddo
+  close(20)
+end subroutine readTsujiKPtable
+
+
+real function logKp(temperature, nMol)
+  implicit none
+  real :: temperature
+  integer :: nMol
+  real :: theta, thisTemp
+
+  logKp = 0.
+
+  thisTemp  = min(max(temperature, tsujiPPlookuptable%temperature(1)), &
+       tsujiPPlookuptable%temperature(tsujiPPlookuptable%nTemps))
+
+  theta = 5040./thisTemp
+
+  logKp = tsujikplookuptable%a(nMol,1) + &
+       tsujikplookuptable%a(nMol,2) * theta + &
+       tsujikplookuptable%a(nMol,3) * theta**2 + &
+       tsujikplookuptable%a(nMol,4) * theta**3 + &
+       tsujikplookuptable%a(nMol,5) * theta**4
+
+end function logKp
+
+real function PPatom(temperature, pressure, nAtom)
+  implicit none
+  real :: temperature, pressure
+  integer :: nAtom
+  real :: thisTemp
+  real :: logP, theta
+  integer :: ip, it
+  real :: t1, t2
+
+
+  logP = log10(pressure)
+  logP = min(max(logP, tsujiPPlookuptable%logPressure(1)), &
+       tsujiPPlookuptable%logPressure(tsujiPPlookuptable%nPressures))
+  thisTemp  = min(max(temperature, tsujiPPlookuptable%temperature(1)), &
+       tsujiPPlookuptable%temperature(tsujiPPlookuptable%nTemps))
+
+  call locate(tsujiPPlookuptable%logPressure, tsujiPPlookuptable%nPressures, &
+       logP, ip)
+  t1 = (logP - tsujiPPlookuptable%logPressure(ip)) / &
+       (tsujiPPlookuptable%logPressure(ip+1) - tsujiPPlookuptable%logPressure(ip))
+  
+  call locate(tsujiPPlookuptable%temperature, tsujiPPlookuptable%nTemps, &
+       thistemp, it)
+  t2 = (thistemp - tsujiPPlookuptable%temperature(it)) / &
+       (tsujiPPlookuptable%temperature(it+1) - tsujiPPlookuptable%temperature(it))
+  PPatom = (1.-t1) * (1.-t2) * tsujipplookupTable%pp(ip  , nAtom, it  ) + &
+             (   t1) * (1.-t2) * tsujipplookupTable%pp(ip+1, nAtom, it  ) + &
+             (1.-t1) * (   t2) * tsujipplookupTable%pp(ip  , nAtom, it+1) + &
+             (   t1) * (   t2) * tsujipplookupTable%pp(ip+1, nAtom, it+1) 
+
+
+  PPatom = 10.**PPatom
+end function PPatom
+ 
+real function PPmolecule(temperature, pressure, nMol)
+  implicit none
+  real :: temperature, pressure
+  integer :: nMol
+  real :: kp
+  real :: p1, p2
+
+  kp = 10.**(logKp(temperature, nMol))
+
+  select case(nMol)
+
+     case(1) ! H2
+        p1 = PPatom(temperature, pressure, 1)
+        ppMolecule = p1 * p1 / kp
+
+     case(2) ! C2
+        p1 = PPatom(temperature, pressure, 2)
+        ppMolecule = p1 * p1 / kp
+
+     case(3) ! CH
+        p1 = PPatom(temperature, pressure, 1)
+        p2 = PPatom(temperature, pressure, 2)
+        ppMolecule = p1 * p2 / kp
+
+     case(4) ! N2
+        p1 = PPatom(temperature, pressure, 3)
+        ppMolecule = p1 * p1 / kp
+
+     case(5) ! NH
+        p1 = PPatom(temperature, pressure, 1)
+        p2 = PPatom(temperature, pressure, 3)
+        ppMolecule = p1 * p2 / kp
+
+     case(6) ! NO 
+        p1 = PPatom(temperature, pressure, 3)
+        p2 = PPatom(temperature, pressure, 4)
+        ppMolecule = p1 * p2 / kp
+
+     case(7) ! O2
+        p1 = PPatom(temperature, pressure, 4)
+        ppMolecule = p1 * p1 / kp
+        
+     case(8) ! OH
+        p1 = PPatom(temperature, pressure, 1)
+        p2 = PPatom(temperature, pressure, 4)
+        ppMolecule = p1 * p2 / kp
+        
+     case(9) ! H2O
+        p1 = PPatom(temperature, pressure, 1)
+        p2 = PPatom(temperature, pressure, 4)
+        ppMolecule = p1 * p1 * p2 / kp
+
+     case(10) ! CO
+        p1 = PPatom(temperature, pressure, 2)
+        p2 = PPatom(temperature, pressure, 4)
+        ppMolecule = p1 * p2 / kp
+
+     case(11) ! CO2
+        p1 = PPatom(temperature, pressure, 2)
+        p2 = PPatom(temperature, pressure, 4)
+        ppMolecule = p1 * p2 * p2 / kp
+
+     case(12) ! TiO
+        p1 = PPatom(temperature, pressure, 4)
+        p2 = PPatom(temperature, pressure, 5)
+        ppMolecule = p1*p2 / kp
+
+     case DEFAULT
+       write(*,*) "Molecule number ",nMol, " out of range."
+       stop
+
+   end select
+
+ end function PPmolecule
+
 end module gas_opacity_mod

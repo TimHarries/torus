@@ -7127,12 +7127,12 @@ CONTAINS
     endif
 
     if (PRESENT(kappaAbs)) then
-       call returnGasKappaValue(temperature, tlambda, kappaAbs=kappaAbsGas)
+       call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaAbs=kappaAbsGas)
        kappaAbs = kappaAbs + kappaAbsGas*thisOctal%rho(subcell)
     endif
 
     if (PRESENT(kappaSca)) then
-       call returnGasKappaValue(temperature, tlambda, kappaSca=kappaScaGas)
+       call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaSca=kappaScaGas)
        kappaSca = kappaSca + kappaScaGas*thisOctal%rho(subcell)
     endif
 
