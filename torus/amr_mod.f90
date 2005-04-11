@@ -6485,10 +6485,12 @@ CONTAINS
              thisOctal%biasCont3D(subcell) = 1.0
              thisOctal%biasLine3D(subcell) = SQRT(escProb)  ! good one to use 
           else  ! this subcell is not "inFlow"
-             thisOctal%biasCont3D(subcell) = 1.0d-100
-             thisOctal%biasLine3D(subcell) = 1.0d-100
+             thisOctal%biasCont3D(subcell) = 1.0d-150
+             thisOctal%biasLine3D(subcell) = 1.0d-150
           end if
-          
+          ! just in case ....
+          thisOctal%biasCont3D(subcell) = MAX(thisOctal%biasCont3D(subcell), 1.0d-150)
+          thisOctal%biasLine3D(subcell) = MAX(thisOctal%biasLine3D(subcell), 1.0d-150)          
        endif ! if (thisOctal%hasChild(subcell)) then
     enddo
   end subroutine set_bias_ttauri
@@ -6542,14 +6544,16 @@ CONTAINS
 
              dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
 
-!             thisOctal%biasCont3D(subcell) = EXP(-dtau_cont)
-             thisOctal%biasCont3D(subcell) = 1.0  ! no bias for contiuum
+             thisOctal%biasCont3D(subcell) = EXP(-dtau_cont)
+!             thisOctal%biasCont3D(subcell) = 1.0  ! no bias for contiuum
              thisOctal%biasLine3D(subcell) = SQRT(escProb)  ! good one to use 
           else  ! this subcell is not "inFlow".
              thisOctal%biasCont3D(subcell) = 1.0d-150
              thisOctal%biasLine3D(subcell) = 1.0d-150
           end if
-
+          ! just in case ....
+          thisOctal%biasCont3D(subcell) = MAX(thisOctal%biasCont3D(subcell), 1.0d-150)
+          thisOctal%biasLine3D(subcell) = MAX(thisOctal%biasLine3D(subcell), 1.0d-150)
        endif
     enddo
   end subroutine set_bias_cmfgen

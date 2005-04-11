@@ -399,6 +399,8 @@ program torus
 !$MPI  integer ::   tempInt        !
 !$MPI  real, dimension(:), allocatable :: tempRealArray
 !$MPI  real, dimension(:), allocatable :: tempRealArray2
+!$MPI  real(double), dimension(:), allocatable :: tempDoubleArray
+!$MPI  real(double), dimension(:), allocatable :: tempDoubleArray2
 !$MPI  integer, dimension(:), allocatable :: photonBelongsRank
 !$MPI  integer, parameter :: tag = 0
 !$MPI  logical :: rankComplete
@@ -858,8 +860,14 @@ program torus
      enddo
   endif
 
-  call createTioGrid(20, 1.e-6, 20000., grid%nLambda, xArray)
 
+  if (geometry(1:6) /= "ttauri" .and. geometry(1:6) /= "cmfgen"   .and.   &
+       geometry(1:9) /= "luc_cir3d" .and. geometry(1:7) /= "cluster") then 
+     ! This routine may cause trouble with MPI routine! 
+     ! Propably multiple nodes are trying to write to a same file at a same time.
+     call createTioGrid(20, 1.e-6, 20000., grid%nLambda, xArray)
+
+  end if
 
   ! if the grid uses an adaptive mesh, create it
      
@@ -3897,24 +3905,24 @@ program torus
 !$MPI
 !$MPI   ! we have to syncronize the 'yArray' after each inner photon loop to
 !$MPI   !   get the statistics right  
-!$MPI     allocate(tempRealArray(SIZE(yArray)))
+!$MPI     allocate(tempDoubleArray(SIZE(yArray)))
 !$MPI     tempRealArray = 0.0
-!$MPI     call MPI_REDUCE(yArray%i,tempRealArray,SIZE(yArray),MPI_REAL,&
+!$MPI     call MPI_REDUCE(yArray%i,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
 !$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     yArray%i = tempRealArray 
-!$MPI     tempRealArray = 0.0
-!$MPI     call MPI_REDUCE(yArray%q,tempRealArray,SIZE(yArray),MPI_REAL,&
+!$MPI     yArray%i = tempDoubleArray 
+!$MPI     tempDoubleArray = 0.0
+!$MPI     call MPI_REDUCE(yArray%q,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
 !$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     yArray%q = tempRealArray 
-!$MPI     tempRealArray = 0.0
-!$MPI     call MPI_REDUCE(yArray%u,tempRealArray,SIZE(yArray),MPI_REAL,&
+!$MPI     yArray%q = tempDoubleArray 
+!$MPI     tempDoubleArray = 0.0
+!$MPI     call MPI_REDUCE(yArray%u,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
 !$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     yArray%u = tempRealArray 
-!$MPI     tempRealArray = 0.0
-!$MPI     call MPI_REDUCE(yArray%v,tempRealArray,SIZE(yArray),MPI_REAL,&
+!$MPI     yArray%u = tempDoubleArray 
+!$MPI     tempDoubleArray = 0.0
+!$MPI     call MPI_REDUCE(yArray%v,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
 !$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     yArray%v = tempRealArray 
-!$MPI     deallocate(tempRealArray)
+!$MPI     yArray%v = tempDoubleArray 
+!$MPI     deallocate(tempDoubleArray)
 !$MPI
 !$MPI     print *,'Process ',my_rank,' finished syncing output. Waiting to continue...' 
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
@@ -3952,28 +3960,32 @@ program torus
 !$MPI   do i = 1, nImage
 !$MPI     allocate(tempRealArray(SIZE(obsImageSet(i)%pixel)))
 !$MPI     allocate(tempRealArray2(SIZE(obsImageSet(i)%pixel)))
+!$MPI     allocate(tempDoubleArray(SIZE(obsImageSet(i)%pixel)))
+!$MPI     allocate(tempDoubleArray2(SIZE(obsImageSet(i)%pixel)))
 !$MPI     tempRealArray = 0.0
 !$MPI     tempRealArray2 = 0.0
+!$MPI     tempDoubleArray = 0.0
+!$MPI     tempDoubleArray2 = 0.0
 !$MPI
-!$MPI     tempRealArray = reshape(obsImageSet(i)%pixel%i,(/SIZE(tempRealArray)/))
-!$MPI     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+!$MPI     tempDoubleArray = reshape(obsImageSet(i)%pixel%i,(/SIZE(tempDoubleArray)/))
+!$MPI     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
 !$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     obsImageSet(i)%pixel%i = reshape(tempRealArray2,SHAPE(obsImageSet(i)%pixel%i))
+!$MPI     obsImageSet(i)%pixel%i = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%i))
 !$MPI
-!$MPI     tempRealArray = reshape(obsImageSet(i)%pixel%q,(/SIZE(tempRealArray)/))
-!$MPI     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+!$MPI     tempDoubleArray = reshape(obsImageSet(i)%pixel%q,(/SIZE(tempDoubleArray)/))
+!$MPI     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
 !$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     obsImageSet(i)%pixel%q = reshape(tempRealArray2,SHAPE(obsImageSet(i)%pixel%q))
+!$MPI     obsImageSet(i)%pixel%q = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%q))
 !$MPI
-!$MPI     tempRealArray = reshape(obsImageSet(i)%pixel%u,(/SIZE(tempRealArray)/))
-!$MPI     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+!$MPI     tempDoubleArray = reshape(obsImageSet(i)%pixel%u,(/SIZE(tempDoubleArray)/))
+!$MPI     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
 !$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     obsImageSet(i)%pixel%u = reshape(tempRealArray2,SHAPE(obsImageSet(i)%pixel%u))
+!$MPI     obsImageSet(i)%pixel%u = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%u))
 !$MPI
-!$MPI     tempRealArray = reshape(obsImageSet(i)%pixel%v,(/SIZE(tempRealArray)/))
-!$MPI     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+!$MPI     tempDoubleArray = reshape(obsImageSet(i)%pixel%v,(/SIZE(tempDoubleArray)/))
+!$MPI     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
 !$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     obsImageSet(i)%pixel%v = reshape(tempRealArray2,SHAPE(obsImageSet(i)%pixel%v))
+!$MPI     obsImageSet(i)%pixel%v = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%v))
 !$MPI
 !$MPI
 !$MPI     tempRealArray = reshape(obsImageSet(i)%vel,(/SIZE(tempRealArray)/))
@@ -3988,6 +4000,8 @@ program torus
 !$MPI
 !$MPI     deallocate(tempRealArray)
 !$MPI     deallocate(tempRealArray2)
+!$MPI     deallocate(tempDoubleArray)
+!$MPI     deallocate(tempDoubleArray2)
 !$MPI   end do
 !$MPI     if (doRaman) then
 !$MPI        print *, 'MPI o6Image not implemented!'
@@ -3997,17 +4011,17 @@ program torus
 !$MPI
 !$MPI if (doPvimage) then
 !$MPI   do iSlit = 1, nSlit
-!$MPI     allocate(tempRealArray(SIZE(pvImage(i)%pixel)))
-!$MPI     allocate(tempRealArray2(SIZE(pvImage(i)%pixel)))
+!$MPI     allocate(tempDoubleArray(SIZE(pvImage(i)%pixel)))
+!$MPI     allocate(tempDoubleArray2(SIZE(pvImage(i)%pixel)))
 !$MPI
-!$MPI     tempRealArray = reshape(pvImage(i)%pixel,(/SIZE(tempRealArray)/))
-!$MPI     tempRealArray2 = 0.0
-!$MPI     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
+!$MPI     tempDoubleArray = reshape(pvImage(i)%pixel,(/SIZE(tempDoubleArray)/))
+!$MPI     tempDoubleArray2 = 0.0
+!$MPI     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
 !$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     pvImage(i)%pixel = reshape(tempRealArray2,SHAPE(pvImage(i)%pixel))
+!$MPI     pvImage(i)%pixel = reshape(tempDoubleArray2,SHAPE(pvImage(i)%pixel))
 !$MPI
-!$MPI     deallocate(tempRealArray)
-!$MPI     deallocate(tempRealArray2)
+!$MPI     deallocate(tempDoubleArray)
+!$MPI     deallocate(tempDoubleArray2)
 !$MPI
 !$MPI     allocate(tempRealArray(SIZE(pvImage(i)%vAxis)))
 !$MPI     tempRealArray = 0.0
