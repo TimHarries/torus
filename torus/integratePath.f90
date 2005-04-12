@@ -1346,7 +1346,8 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
      ! as arguments because NAG compiler do not like it!  (RK)
 
 
-     linePhotonAlbedo(1:nTau) = kSca(1:nTau) / (kSca(1:nTau)+kAbs(1:nTau)+chiLine(1:nTau))
+!     linePhotonAlbedo(1:nTau) = kSca(1:nTau) / (kSca(1:nTau)+kAbs(1:nTau)+chiLine(1:nTau))
+     linePhotonAlbedo(1:nTau) = kSca(1:nTau) / (kSca(1:nTau)+kAbs(1:nTau))
 
 
 
@@ -2312,7 +2313,8 @@ end subroutine integratePathAMR
              chil = chil/(1.0d0+projVel_mid)
              dtau = chil*dL(i-1)
              ! line albedo added here - tjh
-             kappa_total = (kSca(i) + kAbs(i) + chil)
+!             kappa_total = (kSca(i) + kAbs(i) + chil)
+             kappa_total = (kSca(i) + kAbs(i))  ! don't include line opacity for albedo
              if (kappa_total >0.0) then
                 linePhotonAlbedo(i) = kSca(i) / kappa_total
              else

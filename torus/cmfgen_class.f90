@@ -27,7 +27,9 @@ module cmfgen_class
        get_cmfgen_data_array, &
        get_cmfgen_data_array_element, &
        put_cmfgen_Rmin, &
-       get_cmfgen_Rmin
+       get_cmfgen_Rmin, &
+       put_cmfgen_Rmax, &
+       get_cmfgen_Rmax
        
 
 
@@ -39,6 +41,7 @@ module cmfgen_class
   type cmfgen_data
      private
      real(double)      :: Rmin          ! Minimum radius  [10^10cm]
+     real(double)      :: Rmax          ! Maximum radius  [10^10cm]
      ! header info in the OPACITY_DATA
      character(LEN=12) :: format_date ! Revised format date
      character(LEN=12) :: model_id    ! Model ID
@@ -276,7 +279,7 @@ contains
 
     ri = MODULUS(point)
 
-    if (ri<cmfgen_opacity%Rmin .or. ri>cmfgen_opacity%r(cmfgen_opacity%nd)) then 
+    if (ri<cmfgen_opacity%Rmin .or. ri>cmfgen_opacity%Rmax) then 
        out = rho_min  ! just assign a small value and return
     else       
        ! using a routine in utils_mod
@@ -370,12 +373,15 @@ contains
     r = modulus( point )   ! [10^10cm]
                       
     ! test if the point lies within the star
-    IF ( r > cmfgen_opacity%Rmin .AND. r < cmfgen_opacity%r(cmfgen_opacity%nd)) THEN
+    IF ( r >= cmfgen_opacity%Rmin .AND. r <= cmfgen_opacity%Rmax) THEN
        thisOctal%inFlow(subcell) = .TRUE.       
        thisOctal%inStar(subcell) = .FALSE.
-    ELSEIF (r <= cmfgen_opacity%Rmin) THEN
+    ELSEIF (r < cmfgen_opacity%Rmin) THEN
        thisOctal%inFlow(subcell) = .FALSE.
        thisOctal%inStar(subcell) = .TRUE.
+    ELSEIF (r > cmfgen_opacity%Rmax) THEN
+       thisOctal%inFlow(subcell) = .FALSE.
+       thisOctal%inStar(subcell) = .FALSE.
     ELSE
        thisOctal%inFlow(subcell) = .FALSE.
        thisOctal%inStar(subcell) = .FALSE.            
@@ -504,6 +510,22 @@ contains
     real(double) :: Rmin
     Rmin = cmfgen_opacity%Rmin
   end function get_cmfgen_Rmin
+
+
+  subroutine put_cmfgen_Rmax(Rmax)
+    implicit none
+    real(double), intent(in) :: Rmax
+    cmfgen_opacity%Rmax = Rmax
+  end subroutine put_cmfgen_Rmax
+
+  !
+  !
+  !
+  function get_cmfgen_Rmax() RESULT(Rmax)
+    implicit none
+    real(double) :: Rmax
+    Rmax = cmfgen_opacity%Rmax
+  end function get_cmfgen_Rmax
 
 
 end module cmfgen_class

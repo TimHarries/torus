@@ -702,6 +702,7 @@ program torus
      onekappa=.false.
      call read_cmfgen_data("OPACITY_DATA")
      call put_cmfgen_Rmin(CMFGEN_Rmin)  ! in [10^10cm]
+     call put_cmfgen_Rmax(dble(amrGridSize)/2.0d0)  ! in [10^10cm]
   end if
   !==========================================================================
   !==========================================================================
@@ -864,20 +865,22 @@ program torus
      enddo
   endif
 
-  call readTsujiPPTable()
-  call readTsujiKPTable()
 
-!  do i = 1, tsujiPPlookuptable%nTemps
-!     stot = tsujiPPlookuptable%temperature(i)
-!     write(99,*) stot,PPmolecule(stot, 1000., 12)
-!  enddo
-
-  call createTioGrid(20, 1.e-6, 20000., grid%nLambda, xArray)
 
   if (geometry(1:6) /= "ttauri" .and. geometry(1:6) /= "cmfgen"   .and.   &
        geometry(1:9) /= "luc_cir3d" .and. geometry(1:7) /= "cluster") then 
+
      ! This routine may cause trouble with MPI routine! 
      ! Propably multiple nodes are trying to write to a same file at a same time.
+
+     call readTsujiPPTable()
+     call readTsujiKPTable()
+     
+     !  do i = 1, tsujiPPlookuptable%nTemps
+     !     stot = tsujiPPlookuptable%temperature(i)
+     !     write(99,*) stot,PPmolecule(stot, 1000., 12)
+     !  enddo
+     
      call createTioGrid(20, 1.e-6, 20000., grid%nLambda, xArray)
 
   end if
