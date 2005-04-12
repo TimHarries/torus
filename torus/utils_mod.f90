@@ -1997,6 +1997,166 @@ contains
   end subroutine stripSimilarValues
        
 
+  !
+  !
+  ! A safer way to write message.
+  subroutine write_message(filename, message)
+    implicit none
+    character(LEN=*), intent(in) :: filename
+    character(LEN=*), intent(in) :: message
+    integer, parameter :: luout = 82
+    logical, save :: first_time =  .true.
+    !
+    
+    if (first_time) then
+       open(unit=luout, file=filename, status="replace")
+       first_time = .false.
+    else
+       open(unit=luout, file=filename, status="old", position="append")
+    end if
+
+
+    write(luout, "(a)") TRIM(ADJUSTL(message))
+
+    close(luout)
+
+  end subroutine write_message
+
+
+
+  !
+  !
+  ! A safer way to write message with an integer value.
+  subroutine write_message_int(filename, message, val)
+    implicit none
+    character(LEN=*), intent(in) :: filename
+    character(LEN=*), intent(in) :: message
+    integer, intent(in) :: val
+    integer, parameter :: luout = 82
+    logical, save :: first_time =  .true.
+    !
+    
+    if (first_time) then
+       open(unit=luout, file=filename, status="replace")
+       first_time = .false.
+    else
+       open(unit=luout, file=filename, status="old", position="append")
+    end if
+
+
+    write(luout, *) TRIM(ADJUSTL(message)), "==>", val
+
+    close(luout)
+
+  end subroutine write_message_int
+
+
+  !
+  !
+  ! A safer way to write message with an real value.
+  subroutine write_message_real(filename, message, val)
+    implicit none
+    character(LEN=*), intent(in) :: filename
+    character(LEN=*), intent(in) :: message
+    real, intent(in) :: val
+    integer, parameter :: luout = 82
+    logical, save :: first_time =  .true.
+    !
+    
+    if (first_time) then
+       open(unit=luout, file=filename, status="replace")
+       first_time = .false.
+    else
+       open(unit=luout, file=filename, status="old", position="append")
+    end if
+
+
+    write(luout, *) TRIM(ADJUSTL(message)), "==>", val
+
+    close(luout)
+
+  end subroutine write_message_real
+
+
+  !
+  !
+  ! A safer way to write message with an real value.
+  subroutine write_message_dble(filename, message, val)
+    implicit none
+    character(LEN=*), intent(in) :: filename
+    character(LEN=*), intent(in) :: message
+    real(double), intent(in) :: val
+    integer, parameter :: luout = 82
+    logical, save :: first_time =  .true.
+    !
+    
+    if (first_time) then
+       open(unit=luout, file=filename, status="replace")
+       first_time = .false.
+    else
+       open(unit=luout, file=filename, status="old", position="append")
+    end if
+
+
+    write(luout, *) TRIM(ADJUSTL(message)), "==>", val
+
+    close(luout)
+
+  end subroutine write_message_dble
+
+
+  !
+  !
+  ! A safer way to write message with an real value.
+  subroutine write_message_logical(filename, message, val)
+    implicit none
+    character(LEN=*), intent(in) :: filename
+    character(LEN=*), intent(in) :: message
+    logical, intent(in) :: val
+    integer, parameter :: luout = 82
+    logical, save :: first_time =  .true.
+    !
+    
+    if (first_time) then
+       open(unit=luout, file=filename, status="replace")
+       first_time = .false.
+    else
+       open(unit=luout, file=filename, status="old", position="append")
+    end if
+
+
+    write(luout, *) TRIM(ADJUSTL(message)), "==>", val
+
+    close(luout)
+
+  end subroutine write_message_logical
+
+
+  !
+  !
+  ! A safer way to write message with an real value.
+  subroutine write_message_char(filename, message, val)
+    implicit none
+    character(LEN=*), intent(in) :: filename
+    character(LEN=*), intent(in) :: message
+    character(LEN=*), intent(in) :: val
+    integer, parameter :: luout = 82
+    logical, save :: first_time =  .true.
+    !
+    
+    if (first_time) then
+       open(unit=luout, file=filename, status="replace")
+       first_time = .false.
+    else
+       open(unit=luout, file=filename, status="old", position="append")
+    end if
+
+
+    write(luout, *) TRIM(ADJUSTL(message)), "==>", TRIM(ADJUSTL(val))
+
+    close(luout)
+
+  end subroutine write_message_char
 
 
 end module utils_mod

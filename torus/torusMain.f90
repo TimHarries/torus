@@ -383,6 +383,10 @@ program torus
   real    :: tmp
   type(octalvector) :: vec_offset
 
+  ! Name of the file to output various message from torus
+  character(LEN=7), parameter :: messageFile = "MESSAGE"
+  
+
 ! gas opacity stuff
 
 
@@ -2147,6 +2151,19 @@ program torus
   endif
 
 
+  ! prepare the filters for images here.
+  if (stokesimage) then        
+     ! bulid a filter to be used for imaging
+     ! -- using a routine in filter_set_class
+     call make_filter_set(filters, filter_set_name)
+     ! write filter info to standard output and to a file
+     if (my_rank==0) then
+     call info_filter_set(filters, "*") 
+     call info_filter_set(filters, "info_filter_set.dat")
+     endif 
+  end if
+
+
   
   if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d" .or. geometry == "cmfgen") then
     call emptySurface(starSurface)
@@ -2760,8 +2777,6 @@ program torus
      deallocate(contWeightArray)
 
 
-
-
      nContPhotons = nint(probContPhoton * real(nPhotons) / real(nOuterLoop))
 
      !
@@ -2827,6 +2842,7 @@ program torus
      ! Change bias for this viewing angle
      if ( (grid%geometry == "ttauri" .or. grid%geometry == "cmfgen" ) &
           .and. (useBias .and. iInclination==1) ) then
+!          .and. useBias ) then
 
         ! BIAS not working for iInclination /=1 case.
         ! THIS SHOULD BE FIXED LATER. MEANWHILE USING THE BIAS FOR THE FIRST INCLINATION
@@ -2891,7 +2907,6 @@ program torus
 
      end if
 
-
           ! zero the output arrays
 
      yArray(1)%i = 0.
@@ -2910,17 +2925,18 @@ program torus
      endif
      
      if (stokesimage) then
-        
-        ! bulid a filter to be used for imaging
-        ! -- using a routine in filter_set_class
-        call make_filter_set(filters, filter_set_name)
-
-        ! write filter info to standard output and to a file
-     if (my_rank==0) then
-        call info_filter_set(filters, "*") 
-        call info_filter_set(filters, "info_filter_set.dat")
-     endif 
-
+!! THIS SECTION MOVED OUTSIDE OF PHASE LOOP SINCE
+!!  THIS SHOULD BE DONE ONLY ONCE!
+!!        ! bulid a filter to be used for imaging
+!!        ! -- using a routine in filter_set_class
+!!        call make_filter_set(filters, filter_set_name)
+!!
+!!        ! write filter info to standard output and to a file
+!!     if (my_rank==0) then
+!!        call info_filter_set(filters, "*") 
+!!        call info_filter_set(filters, "info_filter_set.dat")
+!!     endif 
+!!
         ! number of images = number of filters
         nImage = get_nfilter(filters)
 
@@ -3038,6 +3054,10 @@ program torus
         write(*,*) "Average velocity",((cSpeed/1.e5)*(1./real(n)))*o2s(rHat)
      endif
 
+     !  These should be zero-ed for each viewing angle!
+     tooFewSamples = 0 
+     boundaryProbs = 0 
+     negativeOpacity = 0 
 
   if (my_rank==1) &
      call tune(6, "All Photon Loops")  ! Start a stopwatch
@@ -3898,27 +3918,26 @@ program torus
         
     end do mpiBlockLoop  
   end if ! (my_rank /= 0)
-
      write (*,'(A,I3,A,I3,A,I3,A)') 'Process ',my_rank, &
                       ' waiting to sync spectra... (',iOuterLoop,'/',nOuterLoop,')' 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
    ! we have to syncronize the 'yArray' after each inner photon loop to
-   !   get the statistics right  
+   !   get the statistics right 
      allocate(tempDoubleArray(SIZE(yArray)))
-     tempRealArray = 0.0
+     tempDoubleArray = 0.0_db
      call MPI_REDUCE(yArray%i,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      yArray%i = tempDoubleArray 
-     tempDoubleArray = 0.0
+     tempDoubleArray = 0.0_db
      call MPI_REDUCE(yArray%q,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      yArray%q = tempDoubleArray 
-     tempDoubleArray = 0.0
+     tempDoubleArray = 0.0_db
      call MPI_REDUCE(yArray%u,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      yArray%u = tempDoubleArray 
-     tempDoubleArray = 0.0
+     tempDoubleArray = 0.0_db
      call MPI_REDUCE(yArray%v,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      yArray%v = tempDoubleArray 
@@ -3964,8 +3983,8 @@ program torus
      allocate(tempDoubleArray2(SIZE(obsImageSet(i)%pixel)))
      tempRealArray = 0.0
      tempRealArray2 = 0.0
-     tempDoubleArray = 0.0
-     tempDoubleArray2 = 0.0
+     tempDoubleArray = 0.0_db
+     tempDoubleArray2 = 0.0_db
 
      tempDoubleArray = reshape(obsImageSet(i)%pixel%i,(/SIZE(tempDoubleArray)/))
      call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
@@ -4015,7 +4034,7 @@ program torus
      allocate(tempDoubleArray2(SIZE(pvImage(i)%pixel)))
 
      tempDoubleArray = reshape(pvImage(i)%pixel,(/SIZE(tempDoubleArray)/))
-     tempDoubleArray2 = 0.0
+     tempDoubleArray2 = 0.0_db
      call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      pvImage(i)%pixel = reshape(tempDoubleArray2,SHAPE(pvImage(i)%pixel))
@@ -4161,6 +4180,7 @@ program torus
            call freePVimage(pvImage(iSlit))
         enddo
      endif
+
 
      end do incLoop ! end of multiple inclination loop
      
