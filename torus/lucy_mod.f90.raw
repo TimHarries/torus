@@ -359,6 +359,7 @@ contains
     integer :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
     integer :: maxIter
     integer       :: imonte_beg, imonte_end  ! the index boundary for the photon loops.
+    real, allocatable :: kAbsArray(:)
 
 !$MPI    ! For MPI implementations
 !$MPI  ! For MPI implementations =====================================================
@@ -401,7 +402,7 @@ contains
 !$MPI    
 !$MPI    ! ============================================================================
 
-
+    allocate(kabsArray(1:nLambda))
 
 
 
@@ -472,6 +473,8 @@ contains
        write(tfilename1, '(a,i2.2,a)') "lucy_iter_",iIter_grand,".gif/gif"
        write(tfilename2, '(a,i2.2,a)') "lucy_iter_zoom",iIter_grand,".gif/gif"
 
+       call locate(lamArray, nLambda, 5500.,ilam)
+
        ! Plotting the intermidiate temperature steps
 !$MPI    if(my_rank == 0)  then
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
@@ -489,6 +492,9 @@ contains
        call plot_AMR_values(grid, "etaCont", "x-z", real(grid%octreeRoot%centre%y), &
             "etacont_zoom_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004) 
+       call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
+            "tau_zoom_xz.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004,ilam=ilam) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             tfilename1, .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004) 
@@ -633,6 +639,7 @@ contains
                 else
                    albedo = 0.5
                 end if
+
 	        albedo = min(albedo,0.9999d0)
 
                 call random_number(r)
@@ -644,7 +651,7 @@ contains
 
                 else
                    call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-                        foundSubcell=subcell, temperature=treal,grid=grid)
+                        foundSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
                    t1 = dble(treal)
                    nAbs_sub = nAbs_sub + 1
                    probDistJnu(1) = 0.
@@ -656,8 +663,8 @@ contains
                          ! tjh added on 7/4/05 - stop direct addressing of octal kappa arrays
                          ! to allow implemntation of gas opacities...
 
-                         call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
-                              actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
+!                         call amrGridValues(grid%octreeRoot, octVec, startOctal=thisOctal, &
+!                              actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
 
 !                         if (.not.grid%oneKappa) then
 !                            kabs = thisOctal%kappaAbs(subcell,ilam)
@@ -665,7 +672,7 @@ contains
 !                            kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
 !                         endif
                          probDistJnu(i) = probDistJnu(i-1) + &
-                              bnu(freq(i),t1) * dble(kabs) * dnu(i)
+                              bnu(freq(i),t1) * dble(kabsArray(ilam)) * dnu(i)
                       endif
                    enddo
                    if (probDistJnu(nFreq) /= 0.) then
@@ -675,6 +682,7 @@ contains
                       if (j == nFreq) j = nFreq -1
                       thisFreq = freq(j) + (freq(j+1) - freq(j))* &
                            (r - probDistJnu(j))/(probDistJnu(j+1)-probDistJnu(j))
+!                      write(*,*) cSpeed/thisFreq/angstromtocm
                    endif
                    uHat = randomUnitVector()
                 endif
@@ -866,6 +874,7 @@ contains
        
   enddo
 
+  deallocate(kAbsArray)
 
   end subroutine lucyRadiativeEquilibriumAMR
 
@@ -1129,7 +1138,7 @@ contains
     type(octal), pointer  :: child 
     type(gridtype) :: grid
     integer :: subcell, i
-    integer, parameter :: minCrossings = 50
+    integer, parameter :: minCrossings = 10
     real(oct) :: V, epsOverDeltaT
     real(oct) :: adot
     real(oct) :: kappaP, norm
@@ -1144,6 +1153,7 @@ contains
     real(oct), intent(inout) :: dT_over_T_max 
 
     real :: kabs
+    real :: kabsArray(1000)
     real :: lamArray(*)
     integer :: nFreq
     real(oct) :: freq(*)
@@ -1188,6 +1198,9 @@ contains
              adot = epsoverDeltaT * (thisOctal%distancegrid(subcell)/v) / 1.d30
              kappaP = 0.d0
              norm = 0.d0
+
+             call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
+                  actualSubcell=subcell, kappaAbsArray=kabsArray, grid=grid)
              do i = 1, nFreq
                 thisLam = (cSpeed / freq(i)) * 1.d8
                 call hunt(lamArray, nLambda, real(thisLam), iLam)
@@ -1196,15 +1209,15 @@ contains
                    ! tjh added on 7/4/05 - stop direct addressing of octal kappa arrays
                    ! to allow implemntation of gas opacities...
                    
-                   call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
-                        actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
+!                   call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
+!                        actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
 
 !                   if (.not.grid%oneKappa) then
 !                      kabs = thisOctal%kappaAbs(subcell,iLam)
 !                   else
 !                      kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
 !                   endif
-                   kappaP = kappaP + dble(kabs) * &
+                   kappaP = kappaP + dble(kabsArray(ilam)) * &
                         dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))
                    norm = norm + dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))
                 endif
@@ -1212,16 +1225,16 @@ contains
              kappaP = kappaP / norm /1.d10
              
              
-             if (kappaP > 1.e-25) then
+             if (kappaP /= 0.d0) then
                 newT = dble(pi / stefanBoltz) * aDot / (dble(fourPi) * kappaP)
                 newT = newT**0.25d0
              else
                 newT = thisOctal%temperature(subcell)
              endif
              deltaT = newT - thisOctal%temperature(subcell)
-             if ((deltaT > 10000.).and.(thisOctal%nCrossings(subcell) .ge. minCrossings)) then
+             if ((deltaT > 20000.).and.(thisOctal%nCrossings(subcell) .ge. minCrossings)) then
                 if (nwarning < nmaxwarning) then
-                   write(*,*) "Warning:: deltaT > 10000 kelvins calculateTemperatureCorrections.", &
+                   write(*,*) "Warning:: deltaT > 20000 kelvins calculateTemperatureCorrections.", &
                         deltaT, thisOctal%nCrossings(subcell), &
                         modulus(subcellcentre(thisOctal,subcell))/grid%rinner,thisOctal%rho(subcell), &
                         dble(1./grid%rinner)*subcellcentre(thisOctal,subcell) 
@@ -1246,21 +1259,18 @@ contains
              endif
              kappaP = 0.d0
              norm = 0.d0
+             if (.not.grid%oneKappa) then
+                kabsArray(1:nlambda) = thisOctal%kappaAbs(subcell,1:nlambda)
+             else
+                call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
+                     actualSubcell=subcell, kappaAbsArray=kabsArray, grid=grid)
+             endif
+
              do i = 1, nFreq
                 thisLam = (cSpeed / freq(i)) * 1.e8
                 call hunt(lamArray, nLambda, real(thisLam), iLam)
                 if ((iLam >=1) .and. (iLam <= nLambda)) then
-                   if (.not.grid%oneKappa) then
-                      kabs = thisOctal%kappaAbs(subcell,iLam)
-                   else
-                   call amrGridValues(grid%octreeRoot, subcellCentre(thisOctal,subcell), startOctal=thisOctal, &
-                        actualSubcell=subcell, kappaAbs=kabs, ilambda=ilam, grid=grid)
-!                      kabs = grid%oneKappaAbs(thisOctal%dusttype(subcell),iLam) * thisOctal%rho(subcell)
-                   endif
-
-
-                   
-                   kappaP = kappaP + dble(kabs) * &
+                   kappaP = kappaP + dble(kabsArray(ilam)) * &
                         dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell)))) * dble(dnu(i)) 
                    norm = norm + dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell)))) * dble(dnu(i)) 
                 endif

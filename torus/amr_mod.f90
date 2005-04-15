@@ -1716,7 +1716,8 @@ CONTAINS
                            velocity,velocityDeriv,temperature,kappaAbs,&
                            kappaSca,rho,chiLine,etaLine,etaCont, &
                            probDistLine,probDistCont,N,Ne,nTot,inflow,grid, &
-                           interp, departCoeff)
+                           interp, departCoeff,kappaAbsArray,kappaScaArray)
+
     ! POINT, direction --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
     !
 
@@ -1753,6 +1754,8 @@ CONTAINS
     REAL,INTENT(OUT),OPTIONAL         :: temperature
     REAL,INTENT(OUT),OPTIONAL         :: kappaAbs
     REAL,INTENT(OUT),OPTIONAL         :: kappaSca
+    REAL,INTENT(OUT),OPTIONAL         :: kappaAbsArray(:)
+    REAL,INTENT(OUT),OPTIONAL         :: kappaScaArray(:)
     REAL,INTENT(OUT),OPTIONAL         :: rho
     REAL,INTENT(OUT),OPTIONAL         :: chiLine
     REAL,INTENT(OUT),OPTIONAL         :: etaLine
@@ -1835,6 +1838,13 @@ CONTAINS
       IF (PRESENT(nTot))                 nTot = resultOctal%nTot(subcell)
       IF (PRESENT(departCoeff))   departCoeff = resultOctal%departCoeff(subcell,:)
       IF (PRESENT(inFlow))           inFlow = resultOctal%inFlow(subcell)     
+
+      IF (PRESENT(kappaAbsArray)) THEN
+         call returnKappa(grid, resultOctal, subcell, kappaAbsArray=kappaAbsArray)
+      ENDIF
+      IF (PRESENT(kappaScaArray)) THEN
+         call returnKappa(grid, resultOctal, subcell, kappaScaArray=kappaScaArray)
+      ENDIF
 
       IF (PRESENT(kappaAbs)) THEN 
         IF (PRESENT(iLambda)) THEN
@@ -5375,11 +5385,14 @@ CONTAINS
     if ((r > rInner).and.(r < rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-30)
-       thisOctal%temperature(subcell) = 10.
+       thisOctal%temperature(subcell) = 20.
        thisOctal%etaCont(subcell) = 0.
     endif
     if (thisOctal%rho(subcell) > 1.e-30) then
        thisOctal%inFlow(subcell) = .true.
+    else
+       thisOctal%inFlow(subcell) = .false.
+       thisOctal%temperature(subcell) = 3.
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
@@ -7189,19 +7202,20 @@ CONTAINS
 
   END SUBROUTINE amrUpdateGrid
 
-  subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs)
+  subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray)
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    integer :: ilambda
+    integer, optional :: ilambda
     real, optional :: lambda
-    real, optional :: kappaSca, kappaAbs
+    real, optional :: kappaSca, kappaAbs, kappaAbsArray(:), kappaScaArray(:)
     real :: temperature
     real :: kappaAbsGas, kappaScaGas
     real :: frac
     real :: tlambda
     real, parameter :: sublimationTemp = 1500., subRange = 100.
+    real :: tArray(1000)
 
     temperature = thisOctal%temperature(subcell)
     if (temperature < sublimationTemp) frac = 1.
@@ -7212,6 +7226,21 @@ CONTAINS
     endif
 
     frac = max(1.e-20,frac)
+
+
+    if (PRESENT(kappaAbsArray)) then
+       kappaAbsArray(1:grid%nLambda) = grid%oneKappaAbs(thisOctal%dustType(subcell),1:grid%nLambda)*thisOctal%rho(subcell) * frac
+       call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaAbsArray=tarray)
+       kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
+    endif
+
+    if (PRESENT(kappaScaArray)) then
+       kappaScaArray(1:grid%nLambda) = grid%oneKappaSca(thisOctal%dustType(subcell),1:grid%nLambda)*thisOctal%rho(subcell) * frac
+       call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaScaArray=tarray)
+       kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
+    endif
+
+
 
     if (PRESENT(kappaSca)) then
        IF (.NOT.PRESENT(lambda)) THEN
@@ -7225,6 +7254,11 @@ CONTAINS
     endif
 
     if (PRESENT(kappaAbs)) then
+       if (.not.PRESENT(lambda)) then
+          tlambda = grid%lamArray(iLambda)
+       else
+          tlambda = lambda
+       endif
        IF (.NOT.PRESENT(lambda)) THEN
           kappaAbs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLambda)*thisOctal%rho(subcell)
        else
@@ -7235,13 +7269,13 @@ CONTAINS
       kappaAbs = kappaAbs * frac
    endif
 
-    if (.not.PRESENT(lambda)) then
-       tlambda = grid%lamArray(iLambda)
-    else
-       tlambda = lambda
-    endif
 
     if (PRESENT(kappaAbs)) then
+       if (.not.PRESENT(lambda)) then
+          tlambda = grid%lamArray(iLambda)
+       else
+          tlambda = lambda
+       endif
        call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaAbs=kappaAbsGas)
        kappaAbs = kappaAbs + kappaAbsGas*thisOctal%rho(subcell)
     endif

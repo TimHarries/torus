@@ -1997,6 +1997,47 @@ contains
   end subroutine stripSimilarValues
        
 
+  subroutine convertByte4(iByte, ival)
+    integer(kind=1) :: ibyte(4), iswap
+    integer(kind=2) :: ubyte(4)
+    integer  :: ival
+
+    ubyte = ibyte
+    where (ubyte < 0) ubyte = ibyte + 256
+
+
+    ival = ubyte(1) + 256*ubyte(2) + 65536 * ubyte(3) + 16777200 * ubyte(4)
+
+  end subroutine convertByte4
+
+  subroutine convertByte2(iByte, ival)
+    integer(kind=1) :: ibyte(2), iswap
+    integer(kind=2) :: ubyte(2)
+    integer(kind=2)  :: ival
+
+    ubyte = ibyte
+    where (ubyte < 0) ubyte = ibyte + 256
+    ival = ubyte(1) + 256*ubyte(2) 
+
+  end subroutine convertByte2
+
+  subroutine wavenumbertoEv(array, narray)
+    integer :: nArray
+    real :: array(:), wavelength
+    integer :: i
+    real :: freq,energy
+    do i = 1, nArray
+       if (array(i) /= 0.) then
+          wavelength = 1./array(i)
+          freq = cSpeed / wavelength
+          energy = freq * hcgs
+          array(i) = energy * ergtoEv
+       else
+          array(i) = 1.e-20
+       endif
+    enddo
+  end subroutine wavenumbertoEv
+
   !
   !
   ! A safer way to write message.

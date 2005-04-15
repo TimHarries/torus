@@ -6266,6 +6266,7 @@ contains
     type(octalvector) :: rvec
     type(gridtype) :: grid
     real :: value
+    real :: kabs,ksca
     TYPE(vector)   :: Velocity
 
     integer :: subcell, i, idx
@@ -6356,9 +6357,9 @@ contains
                 velocity = amrGridVelocity(thisOctal, rvec)
                 value = velocity%z * cSpeed/1.0d5 ![km/s]
              case("tau")
-                value = thisOctal%rho(subcell)*thisOctal%subcellsize * &
-                     (grid%oneKappaAbs(thisOctal%dusttype(subcell),ilam) + &
-                      grid%oneKappaSca(thisOctal%dusttype(subcell),ilam))
+                call returnKappa(grid, thisOctal, subcell, ilam, grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
+                value = thisOctal%subcellsize * (kSca+kAbs)
+
              case default
                 write(*,*) "Error:: unknow name passed to grid_mod::plot_values."
                 stop
@@ -6448,6 +6449,7 @@ contains
     real :: value
     !
     real :: xp, yp, xm, ym, zp, zm
+    real :: ksca, kabs
     real(double) :: d
     logical :: use_this_subcell
     type(octalvector) :: rvec
@@ -6505,9 +6507,8 @@ contains
              case("Vz")
                 value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
              case("tau")
-                value = thisOctal%rho(subcell)*thisOctal%subcellsize * &
-                     (grid%oneKappaAbs(thisOctal%dusttype(subcell),ilam) + &
-                      grid%oneKappaSca(thisOctal%dusttype(subcell),ilam))
+                call returnKappa(grid, thisOctal, subcell, ilam, grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
+                value = thisOctal%subcellsize * (kSca+kAbs)
              case default
                 write(*,*) "Error:: unknow name passed to MinMaxValue."
                 stop

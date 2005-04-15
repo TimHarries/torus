@@ -875,13 +875,7 @@ program torus
 
      call readTsujiPPTable()
      call readTsujiKPTable()
-     
-     !  do i = 1, tsujiPPlookuptable%nTemps
-     !     stot = tsujiPPlookuptable%temperature(i)
-     !     write(99,*) stot,PPmolecule(stot, 1000., 12)
-     !  enddo
-     
-     call createTioGrid(20, 1.e-6, 20000., grid%nLambda, xArray)
+     call createAllMolecularTables(20, 1.e-6, 20000., grid%nLambda, xArray)
 
   end if
 
@@ -1948,7 +1942,7 @@ program torus
                    source, nSource, nLucy, massEnvelope, tThresh, twod, mDisc)
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 10)
+                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 20)
            endif
 
         endif
