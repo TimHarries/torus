@@ -125,6 +125,7 @@ MODULE octal_mod
     logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
 
 
+
   END TYPE octal
  
 CONTAINS 

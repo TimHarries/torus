@@ -2853,8 +2853,9 @@ program torus
 
      ! Change bias for this viewing angle
      if ( (grid%geometry == "ttauri" .or. grid%geometry == "cmfgen" ) &
-          .and. (useBias .and. iInclination==1) ) then
-!          .and. useBias ) then
+          .and. useBias ) then
+!          .and. (useBias .and. iInclination==1) ) then
+
 
         ! BIAS not working for iInclination /=1 case.
         ! THIS SHOULD BE FIXED LATER. MEANWHILE USING THE BIAS FOR THE FIRST INCLINATION
@@ -2889,7 +2890,7 @@ program torus
            chanceContinuum = 1.
            grid%chanceWindOverTotalContinuum = 0.
         endif
-        
+
         write(*,'(a,e12.3)') "Chance continuum emission in wind: ", grid%chanceWindOverTotalContinuum
 
         ! set up the line and continuum weights
@@ -3468,13 +3469,15 @@ program torus
               if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
                  goto 999 ; endif
 
-!           tau_bnd = tauExt(nTau) ! Optical depth to outer boundary.
-!           fac=1.0d0-exp(-tau_bnd)
-!           call random_number(r1)
-!           thisTau = min(-log(1.d0-r1*fac),tau_bnd)  
-!           escaped = .false.!
-           ! This is done so to force the first scattering if 
-           ! MAXSCAT>0. 
+            if (forceFirstScat) then ! this option is off by default.
+               tau_bnd = tauExt(nTau) ! Optical depth to outer boundary.
+               fac=1.0d0-exp(-tau_bnd)
+               call random_number(r1)
+               thisTau = min(-log(1.d0-r1*fac),tau_bnd)  
+               escaped = .false.!
+               ! This is done so to force the first scattering if 
+               ! MAXSCAT>0. 
+            end if
 
            ! DON'T FORCE THE FIRST SCATTERING
             

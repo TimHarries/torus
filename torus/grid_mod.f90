@@ -6266,6 +6266,7 @@ contains
     type(octalvector) :: rvec
     type(gridtype) :: grid
     real :: value
+    TYPE(vector)   :: Velocity
 
     integer :: subcell, i, idx
     real :: t
@@ -6343,11 +6344,17 @@ contains
              case("etaCont")
                 value = thisOctal%etaCont(subcell)
              case("Vx")
-                value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
+!                value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
+                velocity = amrGridVelocity(thisOctal, rvec)
+                value = velocity%x * cSpeed/1.0d5 ![km/s]
              case("Vy")
-                value = thisOctal%velocity(subcell)%y * cSpeed/1.0d5 ![km/s]
+!                value = thisOctal%velocity(subcell)%y * cSpeed/1.0d5 ![km/s]
+                velocity = amrGridVelocity(thisOctal, rvec)
+                value = velocity%y * cSpeed/1.0d5 ![km/s]
              case("Vz")
-                value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
+!                value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
+                velocity = amrGridVelocity(thisOctal, rvec)
+                value = velocity%z * cSpeed/1.0d5 ![km/s]
              case("tau")
                 value = thisOctal%rho(subcell)*thisOctal%subcellsize * &
                      (grid%oneKappaAbs(thisOctal%dusttype(subcell),ilam) + &

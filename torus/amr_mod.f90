@@ -1717,6 +1717,9 @@ CONTAINS
                            kappaSca,rho,chiLine,etaLine,etaCont, &
                            probDistLine,probDistCont,N,Ne,nTot,inflow,grid, &
                            interp, departCoeff)
+    ! POINT, direction --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
+    !
+
     ! returns one or more physical variables at a given point in the grid.
     ! optional arguments should be specified for all of the variables that
     !   are wanted.
@@ -1808,6 +1811,7 @@ CONTAINS
 
 !      IF (PRESENT(velocity))         velocity = resultOctal%velocity(subcell)
 
+       ! unrotated poistion should be passed here!
       IF (PRESENT(velocity))  velocity =amrGridVelocity(octalTree,point,foundOctal=resultOctal,&
                                         actualSubcell=subcell) 
 
@@ -1886,8 +1890,11 @@ CONTAINS
 
       IF (PRESENT(velocityDeriv)) THEN
         IF (PRESENT(direction) .AND. PRESENT(grid)) THEN
-          velocityDeriv = amrGridDirectionalDeriv(grid,point2,direction,&
+           ! unrotated poistion should be passed here!
+          velocityDeriv = amrGridDirectionalDeriv(grid,point,direction,&
                                                   startOctal=resultOctal)
+!          velocityDeriv = amrGridDirectionalDeriv(grid,point2,direction,&
+!                                                  startOctal=resultOctal)
         ELSE
           PRINT *, 'In amrGridValues, can''t evaluate ''velocityDeriv'' without',&
                    ' ''direction'' and ''grid''.'
@@ -1902,6 +1909,9 @@ CONTAINS
 
   FUNCTION amrGridVelocity(octalTree,point,startOctal,foundOctal,&
                                         foundSubcell,actualSubcell) 
+    ! POINT --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
+    !
+
     ! returns the velocity at a given point in the grid.
     ! this function can be called with just the first two arguments.
     !   and it will start at the root of the octal tree to locate
@@ -1933,19 +1943,30 @@ CONTAINS
     real(oct)           :: t1, t2, t3
     real :: phi
     type(vector) :: newvec
-    
+    TYPE(octalVector) :: point_local
+
+    if (octalTree%threeD) then
+       point_local = point
+    elseif (octalTree%twoD) then
+       ! roate "point" back to z-x plane!
+       point_local = projectToXZ(point)
+    else 
+       ! assume it's threeD for now
+       point_local = point
+    end if
+
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
         subcell = actualSubcell
       ELSE 
-        CALL findSubcellLocal(point,startOctal,subcell)
+        CALL findSubcellLocal(point_local,startOctal,subcell)
         IF (PRESENT(foundOctal))   foundOctal   => startOctal
         IF (PRESENT(foundSubcell)) foundSubcell =  subcell
       END IF
       resultOctal => startOctal
       
     ELSE
-      CALL findSubcellTD(point,octalTree,resultOctal,subcell)
+      CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal))   foundOctal   => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
 
@@ -1954,9 +1975,9 @@ CONTAINS
       inc = resultOctal%subcellSize / 2.0
       centre = subcellCentre(resultOctal,subcell)
       
-      t1 = MAX(0.0_oc, (point%x - (centre%x - inc)) / resultOctal%subcellSize)
-      t2 = MAX(0.0_oc, (point%y - (centre%y - inc)) / resultOctal%subcellSize)
-      t3 = MAX(0.0_oc, (point%z - (centre%z - inc)) / resultOctal%subcellSize)
+      t1 = MAX(0.0_oc, (point_local%x - (centre%x - inc)) / resultOctal%subcellSize)
+      t2 = MAX(0.0_oc, (point_local%y - (centre%y - inc)) / resultOctal%subcellSize)
+      t3 = MAX(0.0_oc, (point_local%z - (centre%z - inc)) / resultOctal%subcellSize)
 
 
       if (resultOctal%threed) then
@@ -2095,6 +2116,10 @@ CONTAINS
 
   FUNCTION amrGridDirectionalDeriv(grid,position,direction,startOctal,&
                                    foundOctal,foundSubcell) 
+    !
+    ! POINT --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
+    !
+
     ! returns the directional derivative of velocity at a given point
     !   in the grid.
     ! this function can be called with just the first three arguments
@@ -2110,6 +2135,9 @@ CONTAINS
 
     ! Note that the results of this function DO have a 1^10 factor in them. 
     !   (they are in cSpeed, but the distance is calculated 1e10cm)
+
+    ! THIS SHOULD WORK ALSO IN TWO-D CASE as long as position and direction
+    ! are both are not projected on z-x plane (un-rotated coodinates).
 
     IMPLICIT NONE
 
@@ -2129,6 +2157,7 @@ CONTAINS
     TYPE(octalVector)              :: position1
     TYPE(octalVector)              :: position2
     INTEGER                        :: subcell
+
     
     octalDirection = direction
     
@@ -2188,6 +2217,8 @@ CONTAINS
     
   FUNCTION amrGridKappaAbs(octalTree,point,iLambda,startOctal,&
                            foundOctal,foundSubcell,actualSubcell) 
+    ! POINT --> can be in both in roteated or unrotated coordinates for 2D case 
+    !
     ! returns the continuous absorption opacity at a given point in the grid.
     ! this function can be called with just the first two arguments.
     !   and it will start at the root of the octal tree to locate
@@ -2214,12 +2245,24 @@ CONTAINS
 
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
+    TYPE(octalVector) :: point_local
+
+    if (octalTree%threeD) then
+       point_local = point
+    elseif (octalTree%twoD) then
+       ! roate "point" back to z-x plane!
+       point_local = projectToXZ(point)
+    else 
+       ! assume it's threeD for now
+       point_local = point
+    end if
+
     
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
         subcell = actualSubcell
       ELSE 
-        CALL findSubcellLocal(point,startOctal,subcell)
+        CALL findSubcellLocal(point_local,startOctal,subcell)
         IF (PRESENT(foundOctal))   foundOctal   => startOctal
         IF (PRESENT(foundSubcell)) foundSubcell =  subcell
       END IF
@@ -2228,7 +2271,7 @@ CONTAINS
       amrGridKappaAbs = startOctal%kappaAbs(subcell,iLambda)
       
     ELSE
-      CALL findSubcellTD(point,octalTree,resultOctal,subcell)
+      CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal))   foundOctal   => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
 
@@ -2241,6 +2284,9 @@ CONTAINS
 
   FUNCTION amrGridKappaSca(octalTree,point,iLambda,startOctal,&
                            foundOctal,foundSubcell,actualSubcell) 
+    ! POINT --> can be in both in roteated or unrotated coordinates for 2D case 
+    !
+
     ! returns the scattering opacity at a given point in the grid.
     ! this function can be called with just the first two arguments.
     !   and it will start at the root of the octal tree to locate
@@ -2267,12 +2313,24 @@ CONTAINS
 
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
+    TYPE(octalVector) :: point_local
+
+    if (octalTree%threeD) then
+       point_local = point
+    elseif (octalTree%twoD) then
+       ! roate "point" back to z-x plane!
+       point_local = projectToXZ(point)
+    else 
+       ! assume it's threeD for now
+       point_local = point
+    end if
+
     
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
         subcell = actualSubcell
       ELSE 
-        CALL findSubcellLocal(point,startOctal,subcell)
+        CALL findSubcellLocal(point_local,startOctal,subcell)
         IF (PRESENT(foundOctal))   foundOctal   => startOctal
         IF (PRESENT(foundSubcell)) foundSubcell =  subcell
       END IF
@@ -2281,7 +2339,7 @@ CONTAINS
       amrGridKappaSca = startOctal%kappaSca(subcell,iLambda)
       
     ELSE
-      CALL findSubcellTD(point,octalTree,resultOctal,subcell)
+      CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal))   foundOctal   => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
 
@@ -2294,6 +2352,9 @@ CONTAINS
 
   FUNCTION amrGridTemperature(octalTree,point,startOctal,foundOctal,& 
                                         foundSubcell,actualSubcell) 
+    ! POINT --> can be in both in roteated or unrotated coordinates for 2D case 
+    !
+
     ! returns the temperature at a given point in the grid.
     ! this function can be called with just the first two arguments
     !   and it will start at the root of the octal tree to locate
@@ -2317,12 +2378,24 @@ CONTAINS
 
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
+    TYPE(octalVector) :: point_local
+
+    if (octalTree%threeD) then
+       point_local = point
+    elseif (octalTree%twoD) then
+       ! roate "point" back to z-x plane!
+       point_local = projectToXZ(point)
+    else 
+       ! assume it's threeD for now
+       point_local = point
+    end if
+
     
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
         subcell = actualSubcell
       ELSE 
-        CALL findSubcellLocal(point,startOctal,subcell)
+        CALL findSubcellLocal(point_local,startOctal,subcell)
         IF (PRESENT(foundOctal))   foundOctal   => startOctal
         IF (PRESENT(foundSubcell)) foundSubcell =  subcell
       END IF
@@ -2331,7 +2404,7 @@ CONTAINS
       amrGridTemperature = startOctal%temperature(subcell)
       
     ELSE
-      CALL findSubcellTD(point,octalTree,resultOctal,subcell)
+      CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal)) foundOctal => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
 
@@ -2344,6 +2417,9 @@ CONTAINS
 
   FUNCTION amrGridDensity(octalTree,point,startOctal,foundOctal,& 
                                         foundSubcell,actualSubcell) 
+    ! POINT --> can be in both in roteated or unrotated coordinates for 2D case 
+    !
+
     ! returns the density at a given point in the grid.
     ! this function can be called with just the first two arguments
     !   and it will start at the root of the octal tree to locate
@@ -2367,12 +2443,24 @@ CONTAINS
 
     TYPE(octal), POINTER           :: resultOctal
     INTEGER                        :: subcell
+    TYPE(octalVector) :: point_local
+
+    if (octalTree%threeD) then
+       point_local = point
+    elseif (octalTree%twoD) then
+       ! roate "point" back to z-x plane!
+       point_local = projectToXZ(point)
+    else 
+       ! assume it's threeD for now
+       point_local = point
+    end if
+
     
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
         subcell = actualSubcell
       ELSE 
-        CALL findSubcellLocal(point,startOctal,subcell)
+        CALL findSubcellLocal(point_local,startOctal,subcell)
         IF (PRESENT(foundOctal))   foundOctal   => startOctal
         IF (PRESENT(foundSubcell)) foundSubcell =  subcell
       END IF
@@ -2381,7 +2469,7 @@ CONTAINS
       amrGridDensity = startOctal%rho(subcell)
       
     ELSE
-      CALL findSubcellTD(point,octalTree,resultOctal,subcell)
+      CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal)) foundOctal => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
 
@@ -2525,6 +2613,8 @@ CONTAINS
 
 
   FUNCTION whichSubcell(thisOctal,point) RESULT (subcell)
+    ! POINT --> can be in both in roteated or unrotated coordinates for 2D case 
+    !
     ! returns the identification number (1-8) of the subcell of the 
     ! current octal which contains a given point
     ! NB this does NOT check that the point lies within the bounds of the octal!
@@ -6443,9 +6533,9 @@ CONTAINS
   real, intent(in)          :: lambda0                ! rest wavelength of line
   type(VECTOR), intent(in)  :: dir_obs           ! direction
   integer :: subcell, i
-  real(double) :: d, dV, r1, r2
-  type(octalvector)  :: rvec
-  real(double):: tausob, escprob, nu
+  real(double) :: d, dV, r
+  type(octalvector)  :: rvec, rhat
+  real(double):: tausob, escprob, nu, dtau_cont, dtau_line, nu0
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -6460,37 +6550,49 @@ CONTAINS
        else
           if (thisOctal%inflow(subcell)) then
              d = thisOctal%subcellsize 
+
              rVec = subcellCentre(thisOctal,subcell)
+             r = modulus(rvec)
+             if (r /= 0.0d0) then
+                rhat = rvec/r
+             else
+                rhat = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+             end if
+
              if (thisOctal%threed) then
                 dV = d*d*d
              else
                 dv = 2.0_db*pi*d*d*rVec%x
              endif
-             
-             nu  = cSpeed / (lambda0*angstromtocm)
-             
-             tauSob = thisOctal%chiline(subcell)  / nu
-             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, dir_obs, &
+             nu0  = cSpeed_dbl / dble(lambda0*angstromtocm)
+             tauSob = thisOctal%chiline(subcell)  / nu0
+              ! in a radial direction
+             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, o2s(rhat), &
                   startOctal=thisOctal)
-          
+           
              if (tauSob < 0.01) then
-                escProb = 1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
+                escProb = 1.0d0-tauSob*0.5d0*(1.0d0 -   &
+                     tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
              else if (tauSob < 15.) then
                 escProb = (1.0d0-exp(-tauSob))/tauSob
              else
                 escProb = 1.d0/tauSob
              end if
              escProb = max(escProb, 1.d-7)
-          
-             thisOctal%biasCont3D(subcell) = 1.0
-             thisOctal%biasLine3D(subcell) = SQRT(escProb)  ! good one to use 
+
+             dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
+             dtau_line = d*(thisOctal%chiline(subcell))  / nu0
+             !
+             thisOctal%biasCont3D(subcell) = EXP(-dtau_cont)
+             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
+
           else  ! this subcell is not "inFlow"
              thisOctal%biasCont3D(subcell) = 1.0d-150
              thisOctal%biasLine3D(subcell) = 1.0d-150
           end if
           ! just in case ....
           thisOctal%biasCont3D(subcell) = MAX(thisOctal%biasCont3D(subcell), 1.0d-150)
-          thisOctal%biasLine3D(subcell) = MAX(thisOctal%biasLine3D(subcell), 1.0d-150)          
+          thisOctal%biasLine3D(subcell) = MAX(thisOctal%biasLine3D(subcell), 1.0d-150)       
        endif ! if (thisOctal%hasChild(subcell)) then
     enddo
   end subroutine set_bias_ttauri
@@ -6503,9 +6605,9 @@ CONTAINS
   real, intent(in)          :: lambda0                ! rest wavelength of line
   type(VECTOR), intent(in)  :: dir_obs           ! direction
   integer :: subcell, i
-  real(double) :: d, dV, r1, r2
-  type(octalvector)  :: rvec
-  real(double):: tausob, escprob, nu, dtau_cont
+  real(double) :: d, dV, r
+  type(octalvector)  :: rvec, rhat
+  real(double):: tausob, escprob, nu, dtau_cont, dtau_line, nu0
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -6513,28 +6615,39 @@ CONTAINS
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call set_bias_ttauri(child, grid, lambda0, dir_obs)
+                call set_bias_cmfgen(child, grid, lambda0, dir_obs)
                 exit
              end if
           end do
+
        else
           if (thisOctal%inflow(subcell)) then
              d = thisOctal%subcellsize 
+
              rVec = subcellCentre(thisOctal,subcell)
+             r = modulus(rvec)
+             if (r /= 0.0d0) then
+                rhat = rvec/r
+             else
+                rhat = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+             end if
+
              if (thisOctal%threed) then
                 dV = d*d*d
              else
                 dv = 2.0_db*pi*d*d*rVec%x
              endif
-          
-             nu  = cSpeed / (lambda0*angstromtocm)
-
-             tauSob = thisOctal%chiline(subcell)  / nu
-             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, dir_obs, &
+             
+             nu0  = cSpeed / (lambda0*angstromtocm)
+             
+             tauSob = thisOctal%chiline(subcell)  / nu0
+             ! in a radial direction
+             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, o2s(rhat), &
                   startOctal=thisOctal)
-
+             
              if (tauSob < 0.01) then
-                escProb = 1.0d0-tauSob*0.5d0*(1.0d0 - tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
+                escProb = 1.0d0-tauSob*0.5d0*(1.0d0 -   &
+                     tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
              else if (tauSob < 15.) then
                 escProb = (1.0d0-exp(-tauSob))/tauSob
              else
@@ -6543,19 +6656,21 @@ CONTAINS
              escProb = max(escProb, 1.d-7)
 
              dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
-
+             dtau_line = d*(thisOctal%chiline(subcell))  / nu0
+             !
              thisOctal%biasCont3D(subcell) = EXP(-dtau_cont)
-!             thisOctal%biasCont3D(subcell) = 1.0  ! no bias for contiuum
-             thisOctal%biasLine3D(subcell) = SQRT(escProb)  ! good one to use 
-          else  ! this subcell is not "inFlow".
+             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
+!             thisOctal%biasLine3D(subcell) = SQRT(escProb)*thisOctal%biasCont3D(subcell)
+          else  ! this subcell is not "inFlow"
              thisOctal%biasCont3D(subcell) = 1.0d-150
              thisOctal%biasLine3D(subcell) = 1.0d-150
           end if
           ! just in case ....
           thisOctal%biasCont3D(subcell) = MAX(thisOctal%biasCont3D(subcell), 1.0d-150)
-          thisOctal%biasLine3D(subcell) = MAX(thisOctal%biasLine3D(subcell), 1.0d-150)
-       endif
+          thisOctal%biasLine3D(subcell) = MAX(thisOctal%biasLine3D(subcell), 1.0d-150)          
+       endif ! if (thisOctal%hasChild(subcell)) then
     enddo
+
   end subroutine set_bias_cmfgen
 
 

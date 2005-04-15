@@ -1320,9 +1320,9 @@ contains
              zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
              
 
-!just for testing ... 
-             thisPhoton%position = octalCentre
-!             thisPhoton%position = vector(xOctal,yOctal,zOctal)
+!!just for testing ... 
+!             thisPhoton%position = octalCentre
+             thisPhoton%position = vector(xOctal,yOctal,zOctal)
                 
 
              if (sourceOctal%twod) then

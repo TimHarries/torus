@@ -1372,6 +1372,9 @@ endif
  call getLogical("line", lineEmission, cLine, nLines, &
    "Line emission: ","(a,1l,a)", .false., ok, .false.)
 
+ call getLogical("forceFirstScat", forceFirstScat, cLine, nLines, &
+   "Forces the first scattering? : ","(a,1l,a)", .false., ok, .false.)
+
  if (lineEmission.or.doRaman.or.geometry.eq."planet") then
 
     call getReal("lamline", lamLine, cLine, nLines, &

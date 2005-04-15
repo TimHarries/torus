@@ -1389,17 +1389,17 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
      ! projected velocities 
 
-!     if (contPhoton) then
-!        forall (i = 1:nTau)
-!           projVel(i) = velocity(i) .dot. uHat
-!        end forall
-!     else
-!        projVel(1:nTau) = thisVel
-!     endif
+     if (contPhoton) then
+        forall (i = 1:nTau)
+           projVel(i) = velocity(i) .dot. uHat
+        end forall
+     else
+        projVel(1:nTau) = thisVel
+     endif
 
-     forall (i = 1:nTau)
-        projVel(i) = velocity(i) .dot. uHat  ! (+ve when moving toward!)
-     end forall
+!     forall (i = 1:nTau)
+!        projVel(i) = velocity(i) .dot. uHat  ! (+ve when moving toward!)
+!     end forall
 
 
      dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)  
@@ -1579,12 +1579,15 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                  do j = 1, nLambda, 1
 
                     ! compute projected velocity of this bin
-
                     thisVel = real(j-1)/real(nLambda-1)
-!                    thisVel = lamStart + thisVel*(lamEnd-lamStart)
-                    thisVel = grid%lamArray(j)
-                    thisVel = (lambda0-thisVel)/lambda0  + (uHat .dot. vVec)  &
-                         - (wavelength - lambda0)/lambda0 ! (+ve if moving toward)
+                    thisVel = lamStart + thisVel*(lamEnd-lamStart)
+                    thisVel = (thisVel-lambda0)/lambda0
+                    thisVel = -thisVel  + (uHat .dot. vVec) - (wavelength - lambda0)/lambda0
+
+!                    thisVel = real(j-1)/real(nLambda-1)
+!                    thisVel = grid%lamArray(j)
+!                    thisVel = (lambda0-thisVel)/lambda0  + (uHat .dot. vVec)  &
+!                         - (wavelength - lambda0)/lambda0 ! (+ve if moving toward)
                     
                     ! loop through the projected velocities to find the resonance zones
  
@@ -2313,8 +2316,8 @@ end subroutine integratePathAMR
              chil = chil/(1.0d0+projVel_mid)
              dtau = chil*dL(i-1)
              ! line albedo added here - tjh
-!             kappa_total = (kSca(i) + kAbs(i) + chil)
-             kappa_total = (kSca(i) + kAbs(i))  ! don't include line opacity for albedo
+             kappa_total = (kSca(i) + kAbs(i) + chil)
+!             kappa_total = (kSca(i) + kAbs(i))  ! don't include line opacity for albedo
              if (kappa_total >0.0) then
                 linePhotonAlbedo(i) = kSca(i) / kappa_total
              else
