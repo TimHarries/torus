@@ -841,7 +841,7 @@ program torus
      grid%nopacity = nLambda
   end if
 
-  
+
   errorArray(1:nOuterLoop,1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
 
   if (doRaman) then
@@ -952,6 +952,11 @@ program torus
               write(*,*) "this data file. This should be changed in future...."
               stop
            else 
+              write(*,*) "Warning:: The number of the wavelength bins in the data file "
+              write(*,*) "      does not macth with that specifed in your parameter file."
+              write(*,*) "nlambda(old) = ", grid%nlambda
+              write(*,*) "nlambda(new) = ", nlambda
+              write(*,*) "==> We recompute the wavelength array with new nlambda value, and continue."
               ! update the wavelength array.
               ! It over writes whatever the wavelength you had in your file!
               deallocate(grid%lamArray)
@@ -1576,7 +1581,7 @@ program torus
     close(21)
   end if ! windtest
 
- 
+
   ! Print the infomation on the grid to the standard ouput.
   ! -- using a routine in grid_mod.f90
 !$MPI  if(my_rank == 0)  then  
@@ -2474,7 +2479,7 @@ program torus
      write(*,'(a)') "Some basic model parameters"
      write(*,'(a)') "---------------------------"
      write(*,*) " "
-       
+
      ! THE FOLLOWING STATEMENT IS DANGEROUS. ACCORDING TO INPUT_MOD.F90 
      ! NOT ALL THE GEOMETRY HAS RCORE VALUES, AND SAME UNITS!
      ! THIS SHOULD BE DONE IN INITAMRGRID ROUTINE AS SOME GEOMETRY HAS
@@ -2485,6 +2490,7 @@ program torus
      !
      ! Performs various optical depth tests here...
      !
+
 !$MPI        if (my_rank==0) &
      call test_optical_depth(gridUsesAMR, VoigtProf, &
           amrGridCentre, sphericityTest,  &
@@ -3464,6 +3470,7 @@ program torus
                  goto 999 ; endif
 
             if (forceFirstScat) then ! this option is off by default.
+               ! Useful for optically thin case (to get correct scatterng flux).
                tau_bnd = tauExt(nTau) ! Optical depth to outer boundary.
                fac=1.0d0-exp(-tau_bnd)
                call random_number(r1)
@@ -3471,19 +3478,17 @@ program torus
                escaped = .false.!
                ! This is done so to force the first scattering if 
                ! MAXSCAT>0. 
+            else
+               call random_number(r1)
+               fac = 1.
+               thistau = -log(max(1.e-10,(1. - r1)))
+               if (thistau .gt. tauExt(nTau)) then
+                  escaped = .true.  
+               else
+                  escaped = .false.  
+               endif
             end if
 
-           ! DON'T FORCE THE FIRST SCATTERING
-            
-           
-           call random_number(r1)
-           fac = 1.
-           thistau = -log(max(1.e-10,(1. - r1)))
-           if (thistau .gt. tauExt(nTau)) then
-              escaped = .true.  
-           else
-              escaped = .false.  
-           endif
 
 
            if (thisPhoton%contPhoton) escProb = 1.

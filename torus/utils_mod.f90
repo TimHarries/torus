@@ -2149,6 +2149,33 @@ contains
   !
   !
   ! A safer way to write message with an real value.
+  subroutine write_message_vec(filename, message, val)
+    implicit none
+    character(LEN=*), intent(in) :: filename
+    character(LEN=*), intent(in) :: message
+    type(vector), intent(in) :: val
+    integer, parameter :: luout = 82
+    logical, save :: first_time =  .true.
+    !
+    
+    if (first_time) then
+       open(unit=luout, file=filename, status="replace")
+       first_time = .false.
+    else
+       open(unit=luout, file=filename, status="old", position="append")
+    end if
+
+
+    write(luout, *) TRIM(ADJUSTL(message)), "==>", val
+
+    close(luout)
+
+  end subroutine write_message_vec
+
+
+  !
+  !
+  ! A safer way to write message with an real value.
   subroutine write_message_logical(filename, message, val)
     implicit none
     character(LEN=*), intent(in) :: filename

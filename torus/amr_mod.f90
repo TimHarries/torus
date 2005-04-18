@@ -4501,12 +4501,15 @@ CONTAINS
       rho = thisOctal%rho(subcell)
       thisOctal%temperature(subcell) = MAX(5000.0, &
         7000.0 - ((2500.0 * rho/mHydrogen - TTauriMinRho) / (TTauriMaxRho-TTauriMinRho)))
+      ! we will initialise the bias distribution
+      thisOctal%biasLine3D(subcell) = 1.0
+      thisOctal%biasCont3D(subcell) = 1.0
     ELSE
       thisOctal%temperature(subcell) = 6500.0
+      thisOctal%biasLine3D(subcell) = 1.0d-150
+      thisOctal%biasCont3D(subcell) = 1.0d-150
     END IF
 
-    ! we will initialise the bias distribution
-    thisOctal%biasLine3D(subcell) = 1.0
 
   
   END SUBROUTINE calcTTauriTemperature

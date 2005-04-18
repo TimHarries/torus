@@ -1884,7 +1884,8 @@ end subroutine integratePathAMR
     real, allocatable, save  :: velocityDeriv(:)   ! directional derivative (size=maxTau)
     real, allocatable, save :: dL(:)     ! distance increment array (size=maxTau)
     real(double), allocatable, save :: projVel(:)   ! (size=maxTau)
-    real, allocatable, save :: kabs(:), ksca(:)     ! (size=maxTau)
+    real, allocatable, save :: ksca(:)              ! (size=maxTau)
+    real, allocatable, save :: kabs(:)              ! (size=maxTau)
     real, allocatable, save :: newL(:)              ! (size=maxTau)
     logical, allocatable, save :: newInFlow(:)      ! size=maxtau
     real, allocatable, save :: N_HI(:)              ! size = maxTau
@@ -1923,7 +1924,8 @@ end subroutine integratePathAMR
        ALLOCATE(velocityDeriv(maxTau)) 
        ALLOCATE(dL(maxTau))
        ALLOCATE(projVel(maxTau))
-       ALLOCATE(kabs(maxTau), ksca(maxTau))
+       ALLOCATE(kabs(maxTau))
+       ALLOCATE(ksca(maxTau))
        ALLOCATE(newL(maxTau))   
        ALLOCATE(newInFlow(maxTau))
        ALLOCATE(N_HI(maxTau))
@@ -2139,73 +2141,65 @@ end subroutine integratePathAMR
 !      dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
 
 
-!---------------------------------------------------------------
-!---------------------------------------------------------------
+! !---------------------------------------------------------------
+! !---------------------------------------------------------------
 !     !
 !     ! Finding the initial optical depth scales...
 !     ! and resample points along the ray.
-!     if (contPhoton) then
-!        tauAbs(1) = 1.0e-25
-!        tauSca(1) = 1.0e-25
-!        tauExt(1) = 1.0e-25
-!        do i = 2, nTau
-!           if (inflow(i)) then
-!              if (inflow(i-1)) then
-!                 tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-!                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
-!              else
-!                 tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
-!                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
-!              end if
-!           else
-!              tauSca(i) = tauSca(i-1)
-!              tauAbs(i) = tauAbs(i-1)
-!           end if
-!           tauExt(i) = tauSca(i) + tauAbs(i)
-!        end do
-!     else ! line photon
-!        nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
-!        nu = cSpeed / (wavelength*angstromtocm)  ! freq of this photon
-!        nu_p = nu  ! freq in the rest frame of local gas
+
+!     nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
+!     nu = cSpeed / (wavelength*angstromtocm)  ! freq of this photon
+!     nu_p = nu  ! freq in the rest frame of local gas
+!     if (.not.contPhoton) then
 !        tauAbs(1) = 1.0e-25
 !        tauSca(1) = 1.0e-25
 !        tauExt(1) = 1.0e-25
 !        tauAbsLine(1) = 1.0e-25
+!        linePhotonAlbedo(i) = 1.0e-25
 !        do i = 2, nTau
 !           if (inflow(i)) then
 !              ! Evaluating the values in the mid point
-!              !             T_mid = 0.5d0*(temperature(i-1)+temperature(i))
-!              !             Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
-!              !             N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
-!              !             chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-!              !             projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
-         
-!              T_mid = temperature(i-1)
-!              Ne_mid = Ne(i-1)
-!              N_HI_mid = N_HI(i-1)
-!              chiline_mid = chiline(i-1)
-!              projVel_mid = projVel(i-1)
-         
+!              if (inflow(i-1)) then
+!                 T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+!                 Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+!                 N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+!                 chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+!                 projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+!              else
+!                 T_mid = temperature(i-1)
+!                 Ne_mid = Ne(i-1)
+!                 N_HI_mid = N_HI(i-1)
+!                 chiline_mid = chiline(i-1)
+!                 projVel_mid = projVel(i-1)
+!              end if
 !              T_mid = MAX(T_mid, 10.0d0) ! [K]  To avoid a tiny Doppler width
-         
-         
+                          
 !              ! relative velocity wrt the location of photon (CMF)
 !              Vrel = projVel_mid -  Vn1
-         
+             
 !              ! The line centre of absorption profile shifted by Doppler.
 !              nu0_p = nu0/(1.0d0-Vrel)  ! [Hz] 
-         
+
+             
 !              DopplerWidth = nu0_p/cSpeed * sqrt(2.*kErg*T_mid/meanMoleMass) !eq 7  [Hz]
-         
+             
 !              a = bigGamma(N_HI_mid, T_mid, Ne_mid, nu0_p) / (fourPi * DopplerWidth) ! [-]
 !              deltaNu = nu_p - nu0_p     !  [Hz]
 !              dv = deltaNu/DopplerWidth  ! [-]
 !              Hay = voigtn(a,dv)
 !              chil = chiLine_mid / (sqrt_pi*DopplerWidth) * Hay ! equation 5
 !              ! transform this back to observer's frame value
-!              chil = chil/(1.0+projVel_mid)
+!              chil = chil/(1.0d0+projVel_mid)
 !              dtau = chil*dL(i-1)
-         
+!              ! line albedo added here - tjh
+!              kappa_total = (kSca(i) + kAbs(i) + chil)
+! !             kappa_total = (kSca(i) + kAbs(i))  ! don't include line opacity for albedo
+!              if (kappa_total >0.0) then
+!                 linePhotonAlbedo(i) = kSca(i) / kappa_total
+!              else
+!                 linePhotonAlbedo(i) = 0.0
+!              end if
+
 !              tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
 !              if (inflow(i-1)) then
 !                 tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
@@ -2214,8 +2208,9 @@ end subroutine integratePathAMR
 !                 tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
 !                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
 !              end if
-!           else ! not inflow
-!              tauAbsLine(i) = tauAbsLine(i-1) 
+!           else ! not in flow
+!              linePhotonAlbedo(i) = 0.0
+!              tauAbsLine(i) = tauAbsLine(i-1)
 !              tauSca(i) = tauSca(i-1)
 !              tauAbs(i) = tauAbs(i-1)
 !           end if
@@ -2223,7 +2218,29 @@ end subroutine integratePathAMR
 !        enddo
 !        taul =  tauAbsLine(nTau)
 !        tau_tot =  tauExt(nTau)
-!     endif
+!        escProb = 1.0
+!     else  ! continuum photon
+!        escProb = 1.0
+!        tauAbs(1) = 1.0e-25
+!        tauSca(1) = 1.0e-25
+!        tauExt(1) = 1.0e-25
+!        do i = 2, nTau
+!           if (inflow(i)) then
+!              if (inflow(i-1))then
+!                 tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+!                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+!              else
+!                 tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+!                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+!              end if
+!           else 
+!              tauSca(i) = tauSca(i-1)
+!              tauAbs(i) = tauAbs(i-1)
+!           end if
+!           tauExt(i) = tauSca(i) + tauAbs(i)
+!        end do
+!     endif 
+
 
 !     ! Now resample rays using tauExt values
 !     dtau_max = 0.1
@@ -2259,8 +2276,8 @@ end subroutine integratePathAMR
 
 !     Ne(1:ntau) = ABS(Ne(1:ntau))  ! just for safty
 
-!---------------------------------------------------------------
-!---------------------------------------------------------------
+! !---------------------------------------------------------------
+! !---------------------------------------------------------------
 
   
 
@@ -2290,11 +2307,11 @@ end subroutine integratePathAMR
                 chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
                 projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
              else
-                T_mid = temperature(i-1)
-                Ne_mid = Ne(i-1)
-                N_HI_mid = N_HI(i-1)
-                chiline_mid = chiline(i-1)
-                projVel_mid = projVel(i-1)
+                T_mid = temperature(i)
+                Ne_mid = Ne(i)
+                N_HI_mid = N_HI(i)
+                chiline_mid = chiline(i)
+                projVel_mid = projVel(i)
              end if
              T_mid = MAX(T_mid, 10.0d0) ! [K]  To avoid a tiny Doppler width
                           
@@ -2317,7 +2334,7 @@ end subroutine integratePathAMR
              dtau = chil*dL(i-1)
              ! line albedo added here - tjh
              kappa_total = (kSca(i) + kAbs(i) + chil)
-!             kappa_total = (kSca(i) + kAbs(i))  ! don't include line opacity for albedo
+!             kappa_total = (kSca(i) + kAbs(i))  
              if (kappa_total >0.0) then
                 linePhotonAlbedo(i) = kSca(i) / kappa_total
              else
@@ -2329,8 +2346,8 @@ end subroutine integratePathAMR
                 tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
              else
-                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
-                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i)
+                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i)
              end if
           else ! not in flow
              linePhotonAlbedo(i) = 0.0
@@ -2354,8 +2371,8 @@ end subroutine integratePathAMR
                 tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
              else
-                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
-                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i)
+                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i)
              end if
           else 
              tauSca(i) = tauSca(i-1)
@@ -2387,11 +2404,11 @@ end subroutine integratePathAMR
                    chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
                    projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
                 else                
-                   T_mid = temperature(i-1)
-                   Ne_mid = Ne(i-1)
-                   N_HI_mid = N_HI(i-1)
-                   chiline_mid = chiline(i-1)
-                   projVel_mid = projVel(i-1)
+                   T_mid = temperature(i)
+                   Ne_mid = Ne(i)
+                   N_HI_mid = N_HI(i)
+                   chiline_mid = chiline(i)
+                   projVel_mid = projVel(i)
                 end if
 
                 T_mid = MAX(T_mid, 10.0d0) ! [K]  To avoid a tiny Doppler width                
@@ -2588,6 +2605,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   
   real(oct) :: R
 
+
   allocate(lambda(maxTau), tauExt(maxTau), tauAbs(maxTau), tauSca(maxTau), linePhotonAlbedo(maxtau))
   
   nlambda = grid%nlambda
@@ -2740,7 +2758,6 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   ! Compute the optical depth on x-y and z-x planes
   !  
   
-
      ! 
      ! X-Y plane 
      !
@@ -2756,7 +2773,6 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
         x1 = cos(theta); x2 = sin(theta)
         octVec = OCTALVECTOR(x1, x2, 0.0)
         !           call Normalize(octVec)  ! just in case ..
-
         ! position of emission
 !        position = (octVec*R) + amrGridCentre
         position = (octVec*R) + grid%starPos1
@@ -2769,7 +2785,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
              .false., nUpper, nLower, 0., 0., 0., junk,&
              sampleFreq,Error,&
              useinterp, rStar, coolStarPosition)
-           
+
         write(UNOUT1, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
         
         ! line 
@@ -2781,14 +2797,14 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
              .false., nUpper, nLower, 0., 0., 0., junk,&
              sampleFreq,Error, &
              useinterp, rStar, coolStarPosition)
-           
+
         write(UNOUT2, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
         
      end do
 
      close(UNOUT1)
      close(UNOUT2)
-     
+
      
      ! 
      ! Z-X plane 
@@ -2809,7 +2825,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
         ! position of emission
 !        position = (octVec*R)  + amrGridCentre
         position = (octVec*R) + grid%starPos1
-        
+
         ! continuum
         call IntegratePath(gridUsesAMR, VoigtProf, &
              wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
@@ -2821,7 +2837,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
              useinterp, rStar, coolStarPosition)
         
         write(UNOUT1, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
-        
+
         ! line 
         call IntegratePath(gridUsesAMR, VoigtProf, &
              wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
@@ -2844,7 +2860,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
        
   end if
 
-     
+
      
 end subroutine test_optical_depth
 
