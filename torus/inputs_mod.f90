@@ -1436,6 +1436,10 @@ endif
  call getLogical("ndf", useNdf, cLine, nLines, &
   "Use NDF format files: ","(a,1l,a)",.true., ok, .false.)
 
+
+ call getLogical("doplots", doplots, cLine, nLines, &
+  "Plot outputs: ","(a,1l,a)",.true., ok, .false.)
+
  call getString("device", device, cLine, nLines, &
   "Plot device: ","(a,a,1x,a)","/xs", ok, .false.)
 

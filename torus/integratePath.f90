@@ -2338,7 +2338,7 @@ end subroutine integratePathAMR
              if (kappa_total >0.0) then
                 linePhotonAlbedo(i) = kSca(i) / kappa_total
              else
-                linePhotonAlbedo(i) = 0.0
+               linePhotonAlbedo(i) = 0.0
              end if
 
              tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)

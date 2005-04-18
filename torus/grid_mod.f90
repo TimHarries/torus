@@ -6003,6 +6003,7 @@ contains
   !
   subroutine plot_AMR_values(grid, name, plane, value_3rd_dim,  device, logscale, withgrid, &
        nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac, ilam)
+    use input_variables, only: doplots
     implicit none
     type(gridtype), intent(in) :: grid
     character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
@@ -6046,6 +6047,8 @@ contains
     integer, parameter :: luout = 26
     character(LEN=50) :: filename_prof
     real   :: v3
+
+    if (.not.doplots) goto 666
     
     write(*,*) " "
     write(*,*) "plot_AMR_values plotting to: ",trim(device)
@@ -6235,6 +6238,8 @@ contains
     CALL PGASK(.FALSE.)  
 
     call PGEND
+
+666 continue
     
     ! deallocate(a_root)
   end subroutine plot_AMR_values

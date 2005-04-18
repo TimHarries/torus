@@ -130,7 +130,8 @@ module input_variables
   
   ! plane to be plotted by plot_AMR_planes and plot_AMR_values
   ! Choose one of the following: "x-y", "y-z", "z-x" or "x-z"
-  logical :: plot_maps 
+  logical :: plot_maps
+  logical :: doplots
   character(len=3)  :: plane_for_plot  
   logical :: show_value_3rd_dim    ! If T, the value of the third dimension will be shown.
 
