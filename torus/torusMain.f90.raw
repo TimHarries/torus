@@ -3296,7 +3296,7 @@ program torus
 
               if (thisPhoton%linePhoton) then
 !                 if (tauExt(ntau) < 10) write(*,*) escProb,tauExt(ntau),ntau
-                 if (tauExt(nTau) < 1.) escProb = 0.
+!                 if (tauExt(nTau) < 1.) escProb = 0.
                  
                  vray = -(thisPhoton%velocity .dot. outVec)
                  vovercsqr = modulus(thisPhoton%velocity)**2
