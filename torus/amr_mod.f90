@@ -1509,10 +1509,10 @@ CONTAINS
       DO ; END DO ; STOP ! sit in loop for debugging purposes
     END IF
 
-    else
+    else       
 
-    ! two-d case written by TJH on 27/1/05
-    ! this code isn't ugly and it does work !!!!
+       ! two-d case written by TJH on 27/1/05
+       ! this code isn't ugly and it does work !!!!
 
 !xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
@@ -1535,8 +1535,8 @@ CONTAINS
 !                do;enddo
              endif
              distTor2 = max(x1,x2)      
-             
-             
+         
+         
              theta = asin(max(-1.d0,min(1.d0,r1 / d)))
              cosmu = xDir.dot.direction
              mu = acos(max(-1.d0,min(1.d0,cosmu)))
@@ -1572,7 +1572,7 @@ CONTAINS
           disttoZboundary = 1.e30
        endif
 
-       
+   
        tVal = min(distToZboundary, distToXboundary)
        if (tval <= 0.) tval = 1.0e-5
        if (tVal > 1.e29) then
@@ -1588,9 +1588,9 @@ CONTAINS
           write(*,*) "x,z = ",currentX,currentZ
           stop
        endif
-       
+   
        minWallDistance = tVal
-       
+   
        exitPoint = currentPoint + tval * direction
        locator = exitPoint + frac*halfSmallestSubcell * direction
 
@@ -1599,6 +1599,7 @@ CONTAINS
     endif
 
   END SUBROUTINE getExitPoint 
+
 
 
   SUBROUTINE takeSample(point,length,direction,grid,thisOctal,subcell,nSamples,&
@@ -4502,8 +4503,8 @@ CONTAINS
       thisOctal%temperature(subcell) = MAX(5000.0, &
         7000.0 - ((2500.0 * rho/mHydrogen - TTauriMinRho) / (TTauriMaxRho-TTauriMinRho)))
       ! we will initialise the bias distribution
-      thisOctal%biasLine3D(subcell) = 1.0
-      thisOctal%biasCont3D(subcell) = 1.0
+      thisOctal%biasLine3D(subcell) = 1.0d0
+      thisOctal%biasCont3D(subcell) = 1.0d0
     ELSE
       thisOctal%temperature(subcell) = 6500.0
       thisOctal%biasLine3D(subcell) = 1.0d-150

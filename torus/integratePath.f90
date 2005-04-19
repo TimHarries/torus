@@ -87,6 +87,10 @@ module path_integral
                  contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
                  redRegion, usePops, mLevel, nLevel, &
                  fStrength, gM, gN, sampleFreq,error)
+!            ! FOR DEBUG ONLY
+!            if (.not. contPhoton .and. tauExt(ntau) < 1.0d-2) then
+!               error = -70
+!            end if
          else
             call integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                  lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
@@ -2301,11 +2305,16 @@ end subroutine integratePathAMR
           if (inflow(i)) then
              ! Evaluating the values in the mid point
              if (inflow(i-1)) then
-                T_mid = 0.5d0*(temperature(i-1)+temperature(i))
-                Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
-                N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
-                chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-                projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+!                T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+!                Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+!                N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+!                chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+!                projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+                T_mid = temperature(i-1)
+                Ne_mid = Ne(i-1)
+                N_HI_mid = N_HI(i-1)
+                chiline_mid = chiline(i-1)
+                projVel_mid = projVel(i-1)
              else
                 T_mid = temperature(i)
                 Ne_mid = Ne(i)
@@ -2343,8 +2352,10 @@ end subroutine integratePathAMR
 
              tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
              if (inflow(i-1)) then
-                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+!                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+!                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
              else
                 tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i)
                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i)
@@ -2368,8 +2379,10 @@ end subroutine integratePathAMR
        do i = 2, nTau
           if (inflow(i)) then
              if (inflow(i-1))then
-                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+!                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+!                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
              else
                 tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i)
                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i)
@@ -2398,11 +2411,16 @@ end subroutine integratePathAMR
              if (inflow(i)) then
                 ! Evaluating the values in the mid point
                 if (inflow(i-1)) then
-                   T_mid = 0.5d0*(temperature(i-1)+temperature(i))
-                   Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
-                   N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
-                   chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-                   projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+!                   T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+!                   Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+!                   N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+!                   chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+!                   projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+                   T_mid = temperature(i-1)
+                   Ne_mid = Ne(i-1)
+                   N_HI_mid = N_HI(i-1)
+                   chiline_mid = chiline(i-1)
+                   projVel_mid = projVel(i-1)
                 else                
                    T_mid = temperature(i)
                    Ne_mid = Ne(i)

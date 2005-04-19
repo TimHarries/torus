@@ -988,25 +988,26 @@ program torus
           call writeAMRgrid(popFilename,writeFileFormatted,grid)
         end if
 
-
-        ! Plotting the slices of planes
-        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_grid.ps/vcps",.true., .true.,&
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_zoom.ps/vcps",.true., .false.,&
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.01)
-        call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
-             "Vx.ps/vcps", .false., .false.,  &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-        call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
-             "Vy.ps/vcps", .false., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-        call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
-             "Vz.ps/vcps", .false., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        if(plot_maps) then
+           ! Plotting the slices of planes
+           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+                "rho_grid.ps/vcps",.true., .true.,&
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+                "rho_zoom.ps/vcps",.true., .false.,&
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.01)
+           call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
+                nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+           call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
+                "Vx.ps/vcps", .false., .false.,  &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
+                "Vy.ps/vcps", .false., .false., &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
+                "Vz.ps/vcps", .false., .false., &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        end if
 !$MPI end if  ! (my_rank==0)--------------------------------------------------------
 !$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr)  ! 
 
@@ -1117,31 +1118,32 @@ program torus
           call writeAMRgrid(popFilename,writeFileFormatted,grid)
         end if
 
-        ! Plotting the slices of planes
-        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_grid.ps/vcps",.true., .true.,&
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_zoom.ps/vcps",.true., .false.,&
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.01)
-        call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
-             "Vx.ps/vcps", .false., .false.,  &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-        call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
-             "Vy.ps/vcps", .false., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-        call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
-             "Vz.ps/vcps", .false., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-        call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
-             "temperature.ps/vcps", .true., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-        call plot_AMR_values(grid, "temperature", "x-y", 0., &
-             "temperature2.ps/vcps", .true., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-
+        if(plot_maps) then
+           ! Plotting the slices of planes
+           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+                "rho_grid.ps/vcps",.true., .true.,&
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+                "rho_zoom.ps/vcps",.true., .false.,&
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.01)
+           call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
+                nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+           call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
+                "Vx.ps/vcps", .false., .false.,  &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
+                "Vy.ps/vcps", .false., .false., &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
+                "Vz.ps/vcps", .false., .false., &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
+                "temperature.ps/vcps", .true., .false., &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "temperature", "x-y", 0., &
+                "temperature2.ps/vcps", .true., .false., &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        end if
 
 !     ! plotting column density (new routine in grid_mod.f90)
 !     if (grid%geometry == "luc_cir3d") then 
@@ -1631,47 +1633,47 @@ program torus
      !
      ! See grid_mod.f90 for details.
      !
-   
-     ! Plotting some grid values
-     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-          "rho_grid.ps/vcps",.true., .true.,&
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-          "rho_zoom.ps/vcps",.true., .false.,&
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.005)
-     call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-          nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-     call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
-          "Vx.ps/vcps", .false., .false.,  &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
-          "Vy.ps/vcps", .false., .false., &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
-          "Vz.ps/vcps", .false., .false., &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-          "etacont.ps/vcps", .true., .false.,  &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-          "etacont_zoom.ps/vcps", .true., .false.,  &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
-     show_value_3rd_dim, boxfac = 0.0004)
-     call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
-          "temperature.ps/vcps", .true., .false., &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     call plot_AMR_values(grid, "temperature", "x-y", 0., &
-          "temperature2.ps/vcps", .true., .false., &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     if (lineEmission) then
-        call plot_AMR_values(grid, "etaLine", plane_for_plot, val_3rd_dim,  &
-             "etaline.ps/vcps", .true., .false., & 
+     if(plot_maps) then
+        ! Plotting some grid values
+        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+             "rho_grid.ps/vcps",.true., .true.,&
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-        call plot_AMR_values(grid, "chiLine", plane_for_plot, val_3rd_dim,  &
-             "chiline.ps/vcps", .true., .false., &
-           nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-     end if
-
+        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+             "rho_zoom.ps/vcps",.true., .false.,&
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.005)
+        call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
+             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
+             "Vx.ps/vcps", .false., .false.,  &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
+             "Vy.ps/vcps", .false., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
+             "Vz.ps/vcps", .false., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
+             "etacont.ps/vcps", .true., .false.,  &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
+             "etacont_zoom.ps/vcps", .true., .false.,  &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
+             show_value_3rd_dim, boxfac = 0.0004)
+        call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
+             "temperature.ps/vcps", .true., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "temperature", "x-y", 0., &
+             "temperature2.ps/vcps", .true., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        if (lineEmission) then
+           call plot_AMR_values(grid, "etaLine", plane_for_plot, val_3rd_dim,  &
+                "etaline.ps/vcps", .true., .false., & 
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "chiLine", plane_for_plot, val_3rd_dim,  &
+                "chiline.ps/vcps", .true., .false., &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        end if
+     end if  ! plot_maps
 !     ! plotting column density (new routine in grid_mod.f90)
 !     if (grid%geometry(1:7) == "cluster") then 
 !       call plot_column_density(grid, plane_for_plot,  "column_density.ps/vcps", &

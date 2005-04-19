@@ -727,12 +727,12 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
 
   real, parameter :: cSpeed = 2.99792458e10  ! cm/s
   real, parameter :: pi = 3.141592654
-  integer(kind=1) :: ibyte(4), ibyte2(2), ibyte3(2)
+  integer(kind=single) :: ibyte(4), ibyte2(2), ibyte3(2)
   integer :: iwl
-  integer(kind=2) :: igflog, ielo
+  integer(kind=double) :: igflog, ielo
   integer :: iso
-  real(kind=2) :: ratiolog, wlvac
-  real(kind=2) :: freq, congf, elo
+  real(kind=double) :: ratiolog, wlvac
+  real(kind=double) :: freq, congf, elo
   real :: TABLOG(32768)
   real :: xiso(4),  e(273201)
   INTEGER :: QUANTUMS(8,273201)
