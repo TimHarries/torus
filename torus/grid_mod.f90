@@ -6251,7 +6251,7 @@ contains
     !
     type(octal), pointer   :: thisOctal
     character(len=*), intent(in)  :: name     ! "rho", "temperature", chiLine", "etaLine",  
-    !                                         ! "etaCont", "Vx", "Vy" or "Vz"
+    !                                         ! "etaCont", "Vx", "Vy" or "Vz", "dV_dR"
     character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z', 'z-x', 'x-z'
     ! The value of the third dimension.
     ! For example, if plane = "x-y", the third dimension is the value of z.
@@ -6265,7 +6265,7 @@ contains
     !
     !
     type(octal), pointer  :: child 
-    type(octalvector) :: rvec
+    type(octalvector) :: rvec, rhat
     type(gridtype) :: grid
     real :: value
     real :: kabs,ksca
@@ -6358,6 +6358,11 @@ contains
 !                value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
                 velocity = amrGridVelocity(thisOctal, rvec)
                 value = velocity%z * cSpeed/1.0d5 ![km/s]
+             case("dV_dR")
+                ! The directional derivative the velocity field in radial direction.
+                rhat = rvec
+                call normalize(rhat)
+                value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
              case("tau")
                 call returnKappa(grid, thisOctal, subcell, ilam, grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
                 value = thisOctal%subcellsize * (kSca+kAbs)
@@ -6454,7 +6459,7 @@ contains
     real :: ksca, kabs
     real(double) :: d
     logical :: use_this_subcell
-    type(octalvector) :: rvec
+    type(octalvector) :: rvec, rhat, velocity
     
   
     do subcell = 1, thisOctal%maxChildren
@@ -6508,6 +6513,11 @@ contains
                 value = thisOctal%velocity(subcell)%y * cSpeed/1.0d5 ![km/s]
              case("Vz")
                 value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
+             case("dV_dR")
+                ! The directional derivative the velocity field in radial direction.
+                rhat = rvec
+                call normalize(rhat)
+                value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
              case("tau")
                 call returnKappa(grid, thisOctal, subcell, ilam, grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
                 value = thisOctal%subcellsize * (kSca+kAbs)

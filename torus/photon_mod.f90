@@ -556,7 +556,7 @@ contains
           if (photonFromEnvelope) then
              if (grid%adaptive) then 
 
-                do ! dummy loop, in case we pick a position inside a star
+                do  ! dummy loop, in case we pick a position inside a star
 
                   call random_number(randomDouble)
                   ! we search through the tree to find the subcell that contains the
@@ -565,6 +565,7 @@ contains
                   call locateContProbAMR(randomDouble,sourceOctal,subcell)
                   if (.not.sourceOctal%inFlow(subcell)) then
                     write(*,'(a)') "! Photon in cell that's not in flow. Screw-up in locatecontProbAmr"
+                    stop
                   endif
                   octalCentre = subcellCentre(sourceOctal,subcell)
 
@@ -1286,6 +1287,10 @@ contains
              call random_number(randomDouble)
              sourceOctal => grid%octreeRoot
              call locateLineProbAMR(randomDouble,sourceOctal,subcell)
+             if (.not.sourceOctal%inFlow(subcell)) then
+                write(*,'(a)') "Photon in cell that's not in flow. Screw-up in locateLineProbAmr!"
+                stop
+             endif
 
 
              octalCentre = subcellCentre(sourceOctal,subcell)

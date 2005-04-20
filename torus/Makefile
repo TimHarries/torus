@@ -384,8 +384,9 @@ disc_hydro_mod.o : disc_hydro_mod.f90.raw lucy_mod.o amr_mod.o constants_mod.o g
         endif
 	$(F90) -c disc_hydro_mod.f90
 
-stateq_mod.o: stateq_mod.f90.raw  constants_mod.o grid_mod.o gridtype_mod.o integratePath.o \
-        jets_mod.o math_mod.o opacity_lte_mod.o vector_mod.o hyd_col_coeff.o parallel_mod.o
+stateq_mod.o: cmfgen_class.o constants_mod.o grid_mod.o gridtype_mod.o \
+	hyd_col_coeff.o input_variables.o integratePath.o jets_mod.o \
+	math_mod.o opacity_lte_mod.o parallel_mod.o utils_mod.o vector_mod.o 
         ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' stateq_mod.f90.raw > stateq_mod.f90
         else
@@ -403,15 +404,16 @@ parallel_mod.o: parallel_mod.f90.raw
 	$(F90) -c parallel_mod.f90
 
 
-torusMain.o: torusMain.f90.raw TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
-	cluster_utils.o constants_mod.o disc_class.o disc_hydro_mod.o \
-	discwind_class.o distortion_mod.o dust_mod.o filter_set_class.o \
-	grid_mod.o gridtype_mod.o image_mod.o input_variables.o inputs_mod.o \
-	integratePath.o isochrone_class.o jet_class.o jets_mod.o \
-	kind_mod.o luc_cir3d_class.o lucy_mod.o math_mod.o phasematrix_mod.o \
-	photon_mod.o puls_mod.o source_mod.o spectrum_mod.o sph_data_class.o \
-	stateq_mod.o surface_mod.o timing.o unix_mod.o utils_mod.o \
-	vector_mod.o wr104_mod.o
+torusMain.o: TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
+	cluster_utils.o cmfgen_class.o constants_mod.o disc_class.o \
+	disc_hydro_mod.o discwind_class.o distortion_mod.o dust_mod.o \
+	filter_set_class.o gas_opacity_mod.o grid_mod.o gridtype_mod.o \
+	image_mod.o input_variables.o inputs_mod.o integratePath.o \
+	isochrone_class.o jet_class.o jets_mod.o kind_mod.o luc_cir3d_class.o \
+	lucy_mod.o math_mod.o phasematrix_mod.o photon_mod.o puls_mod.o \
+	source_mod.o spectrum_mod.o sph_data_class.o stateq_mod.o \
+	surface_mod.o timing.o unix_mod.o utils_mod.o vector_mod.o \
+	wr104_mod.o 
 
 
         ifeq ($(MK_MPI_SRC), yes)

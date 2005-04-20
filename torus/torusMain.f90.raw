@@ -988,26 +988,6 @@ program torus
           call writeAMRgrid(popFilename,writeFileFormatted,grid)
         end if
 
-        if(plot_maps) then
-           ! Plotting the slices of planes
-           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-                "rho_grid.ps/vcps",.true., .true.,&
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-                "rho_zoom.ps/vcps",.true., .false.,&
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.01)
-           call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-                nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-           call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
-                "Vx.ps/vcps", .false., .false.,  &
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-           call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
-                "Vy.ps/vcps", .false., .false., &
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-           call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
-                "Vz.ps/vcps", .false., .false., &
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-        end if
 !$MPI end if  ! (my_rank==0)--------------------------------------------------------
 !$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr)  ! 
 
@@ -1592,9 +1572,6 @@ program torus
 !$MPI  end if
 
 
-  if (mie) then
-  
-     endif
 
 
   !
@@ -1671,6 +1648,9 @@ program torus
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
            call plot_AMR_values(grid, "chiLine", plane_for_plot, val_3rd_dim,  &
                 "chiline.ps/vcps", .true., .false., &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "dV_dR", plane_for_plot, val_3rd_dim,  &
+                "dv_dr.ps/vcps", .true., .false., &
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
         end if
      end if  ! plot_maps
@@ -1959,8 +1939,8 @@ program torus
 !$MPI        end if
 
      endif     
-!     if (grid%geometry == "testamr") call setBiasAMR(grid%octreeRoot, grid)
-! ==== LINE ABOVE WAS MOVED TO LATER FOR CLEARITY ========================
+
+
 !$MPI     if (my_rank==1) &
      call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
@@ -1995,21 +1975,6 @@ program torus
      end if 
 
 
-! THESE LINES ARE MOVED TO OUTSIDE OF IF (LUCY..) BLOCK
-!      !
-!      ! Setting the emission bias.
-!      !
-!      if (grid%geometry == "testamr") then
-!         call setBiasAMR(grid%octreeRoot, grid)
-!      elseif (grid%geometry == "cluster") then
-!         ! Computing the emission bias based on the optical depth at
-!         ! 2 microns. 
-!         call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
-!      elseif (grid%geometry == "ttauri") then
-!         ! --using a routine in amr_mod
-!         call set_bias_ttauri(grid%octreeRoot, grid)
-!      end if
-
 
      ! Plotting the slices of planes
 !$MPI        if (my_rank==0) then
@@ -2038,6 +2003,10 @@ program torus
      ! Computing the emission bias based on the optical depth at
      ! 2 microns. 
      call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
+  elseif (grid%geometry == "ttauri") then
+     call set_bias_ttauri(grid%octreeRoot, grid, lamline)
+  elseif (grid%geometry == "cmfgen") then
+     call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
   end if
   
 !$MPI        if (my_rank==0) then
@@ -2853,76 +2822,8 @@ program torus
 
      end if
 
-     ! Change bias for this viewing angle
-     if ( (grid%geometry == "ttauri" .or. grid%geometry == "cmfgen" ) &
-          .and. useBias ) then
-!          .and. (useBias .and. iInclination==1) ) then
 
-
-        ! BIAS not working for iInclination /=1 case.
-        ! THIS SHOULD BE FIXED LATER. MEANWHILE USING THE BIAS FOR THE FIRST INCLINATION
-        ! FOR ALL INCLINATION IS NOT SO.... (RK)
-        ! --using a routine in amr_mod
-        write(*,*) "Setting emissin bias for ttauri geometry ..."
-        if (grid%geometry == "ttauri") &
-             call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
-        if (grid%geometry == "cmfgen") &
-             call set_bias_cmfgen(grid%octreeRoot, grid, lamline, outVec)
-        ! recompute the cummulitive probability distribution
-        call computeProbDist(grid, totLineEmission, &
-             totWindContinuumEmission,lamline, useBias)
-        ! convert from per steradian
-        totLineEmission = totLineEmission * fourPi
-        totWindContinuumEmission = totwindContinuumEmission * fourPi
-        totWindContinuumEmission = totWindContinuumEmission * (nuStart - nuEnd)
-
-        !updating same info
-        totContinuumEmission = totCoreContinuumEmission + totWindContinuumEmission
-
-        write(*,'(a,e12.3)') "Continuum emission: ", totContinuumEmission
-
-        if ((totContinuumEmission + totLineEmission) /= 0.) then
-           chanceLine = totLineEmission/(totContinuumEmission + totLineEmission)
-           chanceContinuum = totContinuumEmission / &
-                (totContinuumEmission + totLineEmission)
-           grid%chanceWindOverTotalContinuum = totWindContinuumEmission &
-                / max(1.d-30,totContinuumEmission)
-        else
-           chanceLine =0.
-           chanceContinuum = 1.
-           grid%chanceWindOverTotalContinuum = 0.
-        endif
-
-        write(*,'(a,e12.3)') "Chance continuum emission in wind: ", grid%chanceWindOverTotalContinuum
-
-        ! set up the line and continuum weights
-        if ((probLinePhoton /= 0.).and.(probContphoton /= 0.)) then
-           weightLinePhoton = chanceLine / probLinePhoton
-           weightContPhoton = chanceContinuum / probContPhoton / real(nLambda)
-        else
-           if (probLinePhoton == 0.) then
-              weightLinePhoton = 0.
-              weightContPhoton = 1.
-           else
-              weightLinePhoton = 1.
-              weightContPhoton = 0.
-           endif
-        endif
-
-        write(*,*) "Line photon weight: ", weightLinePhoton
-        write(*,*) "Continuum photon weight: ", weightContPhoton
-        write(*,*) " "
-        write(*,*) "Line photon prob: ", probLinePhoton
-        write(*,*) "Continuum photon prob: ", probContPhoton
-
-        energyPerPhoton =  (totLineEmission + totContinuumEmission) / dble(nPhotons)
-
-        write(*,*) "Energy per photon: ", energyPerPhoton
-        write(*,*) "chance line",chanceline
-
-     end if
-
-          ! zero the output arrays
+     ! zero the output arrays
 
      yArray(1)%i = 0.
      yArray(1)%q = 0.

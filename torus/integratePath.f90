@@ -87,10 +87,6 @@ module path_integral
                  contPhoton, lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, &
                  redRegion, usePops, mLevel, nLevel, &
                  fStrength, gM, gN, sampleFreq,error)
-!            ! FOR DEBUG ONLY
-!            if (.not. contPhoton .and. tauExt(ntau) < 1.0d-2) then
-!               error = -70
-!            end if
          else
             call integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
                  lambda, tauExt, tauAbs, tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb,&
@@ -2365,6 +2361,7 @@ end subroutine integratePathAMR
              tauAbsLine(i) = tauAbsLine(i-1)
              tauSca(i) = tauSca(i-1)
              tauAbs(i) = tauAbs(i-1)
+             linePhotonAlbedo(i) = 1.0e-25
           end if
           tauExt(i) = tauSca(i) + tauAbs(i) + tauAbsLine(i)
        enddo
@@ -2642,8 +2639,8 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   if (grid%geometry == "cluster") then
      R = 1.0d-3
   else
-     R = 1.001*rStar
-!     R = 0.1d0*rStar
+!     R = 1.001*rStar
+     R = 0.01d0*rStar
   end if
   if (gridUsesAMR) then
 

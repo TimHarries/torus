@@ -957,7 +957,8 @@ CONTAINS
          IF (PRESENT(Ne))            Ne(nSamples) = 0.0
          IF (PRESENT(rho))           rho(nSamples) = 0.0
          IF (PRESENT(temperature))   temperature(nSamples) = 0.0
-         IF (PRESENT(inFlow))        inFlow = .false.
+!         IF (PRESENT(inFlow))        inFlow = .false.
+         IF (PRESENT(inFlow))        inFlow(nSamples) = .false.
        END IF
        
     ELSE
@@ -6543,16 +6544,15 @@ CONTAINS
     enddo
   end subroutine setBiasAMR
 
-  recursive subroutine set_bias_ttauri(thisOctal, grid, lambda0, dir_obs)
+  recursive subroutine set_bias_ttauri(thisOctal, grid, lambda0)
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal
+  real, intent(in)       :: lambda0                ! rest wavelength of line
   type(octal), pointer  :: child 
-  real, intent(in)          :: lambda0                ! rest wavelength of line
-  type(VECTOR), intent(in)  :: dir_obs           ! direction
   integer :: subcell, i
-  real(double) :: d, dV, r
+  real(double) :: d, dV, r, nu0, tauSob, escProb
   type(octalvector)  :: rvec, rhat
-  real(double):: tausob, escprob, nu, dtau_cont, dtau_line, nu0
+  real(double):: dtau_cont, dtau_line
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -6560,7 +6560,7 @@ CONTAINS
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call set_bias_ttauri(child, grid, lambda0, dir_obs)
+                call set_bias_ttauri(child, grid, lambda0)
                 exit
              end if
           end do
@@ -6581,9 +6581,10 @@ CONTAINS
              else
                 dv = 2.0_db*pi*d*d*rVec%x
              endif
+
              nu0  = cSpeed_dbl / dble(lambda0*angstromtocm)
-             tauSob = thisOctal%chiline(subcell)  / nu0
               ! in a radial direction
+             tauSob = thisOctal%chiline(subcell)  / nu0
              tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, o2s(rhat), &
                   startOctal=thisOctal)
            
@@ -6597,11 +6598,14 @@ CONTAINS
              end if
              escProb = max(escProb, 1.d-7)
 
+
              dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
              dtau_line = d*(thisOctal%chiline(subcell))  / nu0
              !
-             thisOctal%biasCont3D(subcell) = EXP(-dtau_cont)
-             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
+             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
+             thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
+!             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
+!             thisOctal%biasLine3D(subcell) = EXP(-dtau_line*d*rVec%x)*thisOctal%biasCont3D(subcell)
 
           else  ! this subcell is not "inFlow"
              thisOctal%biasCont3D(subcell) = 1.0d-150
@@ -6615,16 +6619,15 @@ CONTAINS
   end subroutine set_bias_ttauri
 
 
-  recursive subroutine set_bias_cmfgen(thisOctal, grid, lambda0, dir_obs)
+  recursive subroutine set_bias_cmfgen(thisOctal, grid, lambda0)
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real, intent(in)          :: lambda0                ! rest wavelength of line
-  type(VECTOR), intent(in)  :: dir_obs           ! direction
   integer :: subcell, i
-  real(double) :: d, dV, r
+  real(double) :: d, dV, r, tauSob, escProb
   type(octalvector)  :: rvec, rhat
-  real(double):: tausob, escprob, nu, dtau_cont, dtau_line, nu0
+  real(double):: dtau_cont, dtau_line, nu0, xc, xl
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -6632,7 +6635,7 @@ CONTAINS
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call set_bias_cmfgen(child, grid, lambda0, dir_obs)
+                call set_bias_cmfgen(child, grid, lambda0)
                 exit
              end if
           end do
@@ -6654,14 +6657,13 @@ CONTAINS
              else
                 dv = 2.0_db*pi*d*d*rVec%x
              endif
-             
-             nu0  = cSpeed / (lambda0*angstromtocm)
-             
+
+             nu0  = cSpeed_dbl / dble(lambda0*angstromtocm)
+              ! in a radial direction
              tauSob = thisOctal%chiline(subcell)  / nu0
-             ! in a radial direction
              tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, o2s(rhat), &
                   startOctal=thisOctal)
-             
+           
              if (tauSob < 0.01) then
                 escProb = 1.0d0-tauSob*0.5d0*(1.0d0 -   &
                      tauSob/3.0d0*(1. - tauSob*0.25d0*(1.0d0 - 0.20d0*tauSob)))
@@ -6671,13 +6673,16 @@ CONTAINS
                 escProb = 1.d0/tauSob
              end if
              escProb = max(escProb, 1.d-7)
-
+             
              dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
              dtau_line = d*(thisOctal%chiline(subcell))  / nu0
+             xc = dv*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
+             xl = dv*(thisOctal%chiline(subcell))  / nu0
              !
-             thisOctal%biasCont3D(subcell) = EXP(-dtau_cont)
-             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
-!             thisOctal%biasLine3D(subcell) = SQRT(escProb)*thisOctal%biasCont3D(subcell)
+             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
+             thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
+!             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
+
           else  ! this subcell is not "inFlow"
              thisOctal%biasCont3D(subcell) = 1.0d-150
              thisOctal%biasLine3D(subcell) = 1.0d-150
