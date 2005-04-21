@@ -957,8 +957,8 @@ CONTAINS
          IF (PRESENT(Ne))            Ne(nSamples) = 0.0
          IF (PRESENT(rho))           rho(nSamples) = 0.0
          IF (PRESENT(temperature))   temperature(nSamples) = 0.0
-!         IF (PRESENT(inFlow))        inFlow = .false.
-         IF (PRESENT(inFlow))        inFlow(nSamples) = .false.
+         IF (PRESENT(inFlow))        inFlow = .false.
+!         IF (PRESENT(inFlow))        inFlow(nSamples) = .false.
        END IF
        
     ELSE
@@ -6602,8 +6602,10 @@ CONTAINS
              dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
              dtau_line = d*(thisOctal%chiline(subcell))  / nu0
              !
-             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
-             thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
+             thisOctal%biasCont3D(subcell) = MAX(dV, 1.d-7) ! Limits the minimum value
+             thisOctal%biasLine3D(subcell) = dV*thisOctal%biasCont3D(subcell)
+!             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
+!             thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line*d*rVec%x)*thisOctal%biasCont3D(subcell)
 
@@ -6655,7 +6657,7 @@ CONTAINS
              if (thisOctal%threed) then
                 dV = d*d*d
              else
-                dv = 2.0_db*pi*d*d*rVec%x
+                dv = 2.0_db*pi*d*d*(SQRT(rVec%x*rVec%x  + rVec%y*rVec%y))
              endif
 
              nu0  = cSpeed_dbl / dble(lambda0*angstromtocm)
@@ -6679,6 +6681,8 @@ CONTAINS
              xc = dv*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
              xl = dv*(thisOctal%chiline(subcell))  / nu0
              !
+!             thisOctal%biasCont3D(subcell) = dV
+!             thisOctal%biasLine3D(subcell) = dV*dV
              thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
              thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)

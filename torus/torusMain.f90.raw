@@ -1997,18 +1997,20 @@ program torus
   !
   ! Setting the emission bias.
   !
-  if (grid%geometry == "testamr") then
-     call setBiasAMR(grid%octreeRoot, grid)
-  elseif (grid%geometry == "cluster") then
-     ! Computing the emission bias based on the optical depth at
-     ! 2 microns. 
-     call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
-  elseif (grid%geometry == "ttauri") then
-     call set_bias_ttauri(grid%octreeRoot, grid, lamline)
-  elseif (grid%geometry == "cmfgen") then
-     call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
+  if (useBias) then
+     if (grid%geometry == "testamr") then
+        call setBiasAMR(grid%octreeRoot, grid)
+     elseif (grid%geometry == "cluster") then
+        ! Computing the emission bias based on the optical depth at
+        ! 2 microns. 
+        call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
+     elseif (grid%geometry == "ttauri") then
+        call set_bias_ttauri(grid%octreeRoot, grid, lamline)
+     elseif (grid%geometry == "cmfgen") then
+        call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
+     end if
   end if
-  
+
 !$MPI        if (my_rank==0) then
   if (geometry == "shakara") call polardump(grid)
 !$MPI        endif

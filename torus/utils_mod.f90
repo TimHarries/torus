@@ -1128,7 +1128,7 @@ contains
       IF(A .EQ. 0.0D0  ) THEN
          ! ---- Normal Doppler brodening.         
          IF (V2 < 1.D-10) THEN
-            VOIGTN = 1.0D0 + V2*(1.0D0 + 0.5D0*(1.0D0 + V2/6.0D0))
+            VOIGTN = 1.0D0 + V2*(1.0D0 + 0.5D0*V2*(1.0D0 + V2/6.0D0))
          ELSE
             VOIGTN = EXP(-V2)
          END IF
