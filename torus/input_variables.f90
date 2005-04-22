@@ -300,6 +300,7 @@ module input_variables
   logical :: ttau_disc_on       ! T to include disc
   logical :: ttau_discwind_on   ! T to include disc wind.
   logical :: ttau_jet_on        ! T to include jets.
+  logical :: ttau_fuzzy_edge    ! T to use fuzzy edge for accretion flow.
 
   !--------------------------------------------------------------------
 

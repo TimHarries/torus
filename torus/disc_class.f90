@@ -384,13 +384,16 @@ contains
        n = 4
     endif
 
-    
+
     if (thisOctal%hasChild(subcell)) then
-       ! find the index of the new child and decend the tree
        do i = 1, n
-          childPointer => thisOctal%child(i)
-          CALL add_alpha_disc(childPointer,grid,this)
+          if (thisOctal%indexChild(i) == subcell) then
+             childPointer => thisOctal%child(i)
+             CALL add_alpha_disc(childPointer,grid,this)
+             exit
+          end if
        end do
+
     else   
 
        ! get the size and the position of the centre of the current cell
@@ -413,6 +416,7 @@ contains
           end if
        end if
     end IF
+
     
    END SUBROUTINE add_alpha_disc
 

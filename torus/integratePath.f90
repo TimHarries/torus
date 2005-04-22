@@ -1987,11 +1987,27 @@ end subroutine integratePathAMR
        error = -10
        return
     end if
+
+    ! Special case for the photon hits the core.
+    ! Set same array values here and exit immediately.
+    if (hitcore) then
+       escProb = 0.0d0
+       if (contPhoton) then
+          tauCont(nTau,1:nLambda) = 1.e20
+       else ! line
+          linePhotonAlbedo(1:nTau) = 0.0d0
+       end if
+       tauExt(nTau) = 1.e20
+       tauSca(nTau) = 1.e-20
+       tauAbs(nTau) = 1.e20
+       return
+    endif
+
       
-    L(1) = 1.0e-25
-    
+
      ! Some elements of L array could be dupulicated, so we removed them since
      ! they could potentially cause problems in interpolation routines used later.
+    L(1) = 1.0e-25    
       newntau = 0
       do i = 1, ntau-1       
          if (L(i) /= L(i+1)) then
@@ -2285,7 +2301,8 @@ end subroutine integratePathAMR
     !
     ! Now we compute optical depth again with improved samping
     !
-    !
+    !    
+
 
     ! line photons
     nu0 = cSpeed / (lambda0*angstromtocm)    ! line center frequency
@@ -2301,16 +2318,16 @@ end subroutine integratePathAMR
           if (inflow(i)) then
              ! Evaluating the values in the mid point
              if (inflow(i-1)) then
-                T_mid = 0.5d0*(temperature(i-1)+temperature(i))
-                Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
-                N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
-                chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-                projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
-!                T_mid = temperature(i-1)
-!                Ne_mid = Ne(i-1)
-!                N_HI_mid = N_HI(i-1)
-!                chiline_mid = chiline(i-1)
-!                projVel_mid = projVel(i-1)
+!                T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+!                Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+!                N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+!                chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+!                projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+                T_mid = temperature(i-1)
+                Ne_mid = Ne(i-1)
+                N_HI_mid = N_HI(i-1)
+                chiline_mid = chiline(i-1)
+                projVel_mid = projVel(i-1)
              else
                 T_mid = temperature(i)
                 Ne_mid = Ne(i)
@@ -2389,6 +2406,8 @@ end subroutine integratePathAMR
           end if
           tauExt(i) = tauSca(i) + tauAbs(i)
        end do
+       ! special case when the photon hits the core.
+
     endif 
 
     

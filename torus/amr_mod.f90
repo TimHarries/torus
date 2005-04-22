@@ -957,8 +957,7 @@ CONTAINS
          IF (PRESENT(Ne))            Ne(nSamples) = 0.0
          IF (PRESENT(rho))           rho(nSamples) = 0.0
          IF (PRESENT(temperature))   temperature(nSamples) = 0.0
-         IF (PRESENT(inFlow))        inFlow = .false.
-!         IF (PRESENT(inFlow))        inFlow(nSamples) = .false.
+         IF (PRESENT(inFlow))        inFlow(nSamples) = .false.
        END IF
        
     ELSE
@@ -4302,6 +4301,201 @@ CONTAINS
 
   END SUBROUTINE calcTTauriMassVelocity
 
+
+  !
+  !  Given a octal object, this routine will "reassign" the values of density at the outer
+  !  edge of the T Taur accretion stream. THIS ROUTINE SHOULD BE CALLED AS A POST PROCESS (AFTER THE 
+  !  NORMAL DENSITY OF ACCRETION FLOW HAS BEEN ASSIGNED). It has to be done this way since 
+  !  if we were to assined very small density, the cells at the edge will not split (because they
+  !  are split by the total mass, c.f. decideSplit routine in this module).
+  !  
+  RECURSIVE SUBROUTINE TTauri_fuzzy_edge(thisOctal)
+    use input_variables, only: TTauriRinner, TTauriRouter
+
+    IMPLICIT NONE
+    TYPE(OCTAL), POINTER :: thisOctal    
+    !
+    TYPE(OCTAL), POINTER :: childPointer  
+    INTEGER              :: subcell, i    ! loop counters
+    TYPE(octalVector)     :: rvec
+    integer :: n
+    real(double) :: r, theta, rM, rM_center, h, w, p, rho
+    real(double) :: rM_fuzzy_in, rM_fuzzy_out  ! beginning of the fuzzy edges
+    !
+    real(double), parameter :: scale = 7.0d0  ! a scale in exponential decay of density.
+    !
+    
+    if (thisOctal%threeD) then
+       n = 8
+    else
+       n = 4
+    endif
+
+    do subcell = 1, n    
+       if (thisOctal%hasChild(subcell)) then
+          ! find the index of the new child and decend the tree
+          do i = 1, n
+             if (thisOctal%indexChild(i) == subcell) then
+                childPointer => thisOctal%child(i)
+                CALL TTauri_fuzzy_edge(childPointer)
+                exit
+             end if
+          end do
+       else 
+          ! This is a leaf, so modefiy the density value if required.
+          if (thisOctal%inFlow(subcell)) then
+             ! get the size and the position of the centre of the current cell
+             rVec = subcellCentre(thisOctal,subcell)
+             r = modulus(rvec)
+             
+             if (r/=0.0d0) then
+                theta = ACOS( MIN(ABS(rVec%z/r),0.995_oc) )
+             else
+                theta=0.01
+             end if
+             
+             if (theta == 0.0d0) theta = 0.01
+             rM  = r / SIN(theta)**2
+             
+             ! bias more toward the edges of the accreation stream
+             h = 0.5d0*(TTauriRouter - TTauriRinner)*1.0d-10  ! [10^10cm] distance from the centere to edge
+             rM_center = 0.5d0*(TTauriRouter + TTauriRinner)*1.0d-10 ! [10^10cm]   
+             
+             ! The fuzzy density starts from a 5-th of the thickness (2h) 
+             ! below the surface.
+             w = 0.2d0*h;  ! a fifth for now
+             rM_fuzzy_in  = TTauriRinner*1.0d-10 + w   ! [10^10cm]
+             rM_fuzzy_out = TTauriRouter*1.0d-10 - w   ! [10^10cm]
+             
+             ! If the point is close to the edge, we make it fuzzy
+             if ( rM < rM_fuzzy_in) then
+!                thisOctal%rho(subcell) =  1.0d-13  ! limit the minimum value...
+                p = (rM_fuzzy_in-rM)
+                rho = thisOctal%rho(subcell)* EXP(-scale*p/w)
+                thisOctal%rho(subcell) =  MAX(rho, 1d-25)  ! limit the minimum value...
+             elseif (rM > rM_fuzzy_out) then
+                p = (rM - rM_fuzzy_out)
+                rho = thisOctal%rho(subcell)* EXP(-scale*p/w)
+                thisOctal%rho(subcell) =  MAX(rho, 1d-25)  ! limit the minimum value...
+             else
+                ! don't touch the density, and just continue
+                continue
+             end if
+
+          end if  ! if inflow
+
+       end IF
+
+    end do
+
+  END SUBROUTINE TTauri_fuzzy_edge
+
+
+  ! find the total mass in accretion flow
+  ! Before the initial call the total mass must be set to zero
+  ! The output should be in grams.
+  RECURSIVE SUBROUTINE TTauri_accretion_mass(thisOctal, grid, total_mass)
+    use input_variables, only: TTauriRinner, TTauriRouter
+
+    IMPLICIT NONE
+    TYPE(OCTAL), POINTER :: thisOctal    
+    TYPE(gridtype), INTENT(INOUT)    :: grid
+    real(double), intent(inout) :: total_mass
+    !
+    TYPE(OCTAL), POINTER :: childPointer  
+    INTEGER              :: subcell, i    ! loop counters
+    TYPE(octalVector)     :: point
+    integer :: n
+    real(double) :: d, dV
+    !
+    
+    if (thisOctal%threeD) then
+       n = 8
+    else
+       n = 4
+    endif
+
+    do subcell = 1, n    
+       if (thisOctal%hasChild(subcell)) then
+          ! find the index of the new child and decend the tree
+          do i = 1, n
+             if (thisOctal%indexChild(i) == subcell) then
+                childPointer => thisOctal%child(i)
+                CALL TTauri_accretion_mass(childPointer, grid, total_mass)
+                exit
+             end if
+          end do
+       else 
+          point = subcellCentre(thisOctal,subcell)
+          ! This is a leaf, so modefiy the density value if required.
+          if (thisOctal%inFlow(subcell) .and. TTauriInFlow(point,grid)) then
+             d = thisOctal%subcellsize  ! [10^10cm]
+             if (thisOctal%threed) then
+                dV = d*d*d   ! [10^30cm]
+             else
+                dv = 2.0_db*pi*d*d*SQRT(point%x*point%x + point%y*point%y)  ! [10^30cm]
+             endif
+             total_mass = total_mass + thisOctal%rho(subcell) * dV*1.0d30  ! [g]
+
+             total_mass = total_mass + thisOctal%rho(subcell) * dV*1.0d30  ! [g]
+          end if  ! if inflow
+
+       end IF
+
+    end do
+
+  END SUBROUTINE TTauri_accretion_mass
+
+
+  ! Scale the density in the accretion flow by the scale factor passed on this routine.
+  ! Before the initial call the total mass must be set to zero
+  RECURSIVE SUBROUTINE TTauri_accretion_scale_density(thisOctal, grid, scale)
+    use input_variables, only: TTauriRinner, TTauriRouter
+
+    IMPLICIT NONE
+    TYPE(OCTAL), POINTER :: thisOctal    
+    TYPE(gridtype), INTENT(INOUT)    :: grid
+    real(double), intent(in) :: scale
+    !
+    TYPE(OCTAL), POINTER :: childPointer  
+    INTEGER              :: subcell, i    ! loop counters
+    TYPE(octalVector)     :: point
+    integer :: n
+    real(double) :: rho
+
+    !
+    
+    if (thisOctal%threeD) then
+       n = 8
+    else
+       n = 4
+    endif
+
+    do subcell = 1, n    
+       if (thisOctal%hasChild(subcell)) then
+          ! find the index of the new child and decend the tree
+          do i = 1, n
+             if (thisOctal%indexChild(i) == subcell) then
+                childPointer => thisOctal%child(i)
+                CALL TTauri_accretion_scale_density(childPointer, grid, scale)
+                exit
+             end if
+          end do
+       else 
+          point = subcellCentre(thisOctal,subcell)
+          ! This is a leaf, so modefiy the density value if required.
+          if (thisOctal%inFlow(subcell) .and. TTauriInFlow(point,grid)) then
+             rho = thisOctal%rho(subcell) * scale
+             thisOctal%rho(subcell) = rho
+          end if  ! if inflow
+       end IF
+
+    end do
+
+  END SUBROUTINE TTauri_accretion_scale_density
+
+
+
   subroutine infallEnhancmentAMR(grid, distortionVector, nVec, timeStep, doDistortion, &
                                  particleMass, alreadyDoneInfall)
     ! creates an increase in the accretion rate for a T Tauri geometry.
@@ -6597,9 +6791,10 @@ CONTAINS
              dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
              dtau_line = d*(thisOctal%chiline(subcell))  / nu0
              !
-             thisOctal%biasCont3D(subcell) = MAX(dV, 1.d-7) ! Limits the minimum value
-             thisOctal%biasLine3D(subcell) = dV*thisOctal%biasCont3D(subcell)
-!             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
+!             thisOctal%biasCont3D(subcell) = MAX(dV, 1.d-7) ! Limits the minimum value
+!             thisOctal%biasLine3D(subcell) = dV*thisOctal%biasCont3D(subcell)
+             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
+             thisOctal%biasLine3D(subcell) = thisOctal%rho(subcell)*thisOctal%biasCont3D(subcell)
 !             thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line*d*rVec%x)*thisOctal%biasCont3D(subcell)
@@ -6616,6 +6811,64 @@ CONTAINS
   end subroutine set_bias_ttauri
 
 
+  recursive subroutine set_bias_ttauri2(thisOctal, grid)
+    use input_variables, only: TTauriRinner, TTauriRouter
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: r
+    type(octalvector)  :: rvec
+    real(double)::  rM, theta,  h, rM_center
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call set_bias_ttauri2(child, grid)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%inflow(subcell)) then
+             
+             rVec = subcellCentre(thisOctal,subcell)
+             r = modulus(rvec)
+             
+             if (r/=0.0d0) then
+                theta = ACOS(MIN(ABS(rVec%z/r),0.995_oc))
+             else
+                theta=0.01
+             end if
+
+             if (theta == 0.0d0) theta = 0.01
+             rM  = r / SIN(theta)**2
+
+             ! bias more toward the edges of the accreation stream
+             h = 0.5d0*(TTauriRouter - TTauriRinner)*1.0d-10           ! [10^10cm]   
+             rM_center = 0.5d0*(TTauriRouter + TTauriRinner)*1.0d-10   ![10^10cm]   
+             
+             thisOctal%biasCont3D(subcell) = 1.0d0  ! no bias for contiuum
+             thisOctal%biasLine3D(subcell) = EXP(10.0d0*ABS(rM - rM_center)/h)
+!             if (ABS(rM - rM_center)/h > 0.95d0) then
+!                thisOctal%biasLine3D(subcell) = 1.0d5
+!             else
+!                thisOctal%biasLine3D(subcell) = 1.0d0
+!             end if
+          else  ! this subcell is not "inFlow"
+             thisOctal%biasCont3D(subcell) = 1.0d-150
+             thisOctal%biasLine3D(subcell) = 1.0d-150
+          end if
+          ! just in case ....
+          thisOctal%biasCont3D(subcell) = MAX(thisOctal%biasCont3D(subcell), 1.0d-150)
+          thisOctal%biasLine3D(subcell) = MAX(thisOctal%biasLine3D(subcell), 1.0d-150)       
+       endif ! if (thisOctal%hasChild(subcell)) then
+    enddo
+  end subroutine set_bias_ttauri2
+
+
   recursive subroutine set_bias_cmfgen(thisOctal, grid, lambda0)
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal
@@ -6624,7 +6877,7 @@ CONTAINS
   integer :: subcell, i
   real(double) :: d, dV, r, tauSob, escProb
   type(octalvector)  :: rvec, rhat
-  real(double):: dtau_cont, dtau_line, nu0, xc, xl
+  real(double):: dtau_cont, dtau_line, nu0, xc, xl, nr, dr, dA
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -6652,7 +6905,9 @@ CONTAINS
              if (thisOctal%threed) then
                 dV = d*d*d
              else
-                dv = 2.0_db*pi*d*d*(SQRT(rVec%x*rVec%x  + rVec%y*rVec%y))
+                dr = d
+                dA = 2.0_db*pi*(SQRT(rVec%x*rVec%x  + rVec%y*rVec%y))*dr
+                dV = d*dA
              endif
 
              nu0  = cSpeed_dbl / dble(lambda0*angstromtocm)
@@ -6675,12 +6930,13 @@ CONTAINS
              dtau_line = d*(thisOctal%chiline(subcell))  / nu0
              xc = dv*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
              xl = dv*(thisOctal%chiline(subcell))  / nu0
+             nr=dA/d**2  ! Approximate number of cells (for spherical case) in dr stripe
              !
 !             thisOctal%biasCont3D(subcell) = dV
 !             thisOctal%biasLine3D(subcell) = dV*dV
-             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
-             thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
-!             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
+             thisOctal%biasCont3D(subcell) = MAX( (EXP(-dtau_cont)), 1.d-7) ! Limits the minimum value
+!             thisOctal%biasLine3D(subcell) = (escProb*nr)*thisOctal%biasCont3D(subcell)
+             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
 
           else  ! this subcell is not "inFlow"
              thisOctal%biasCont3D(subcell) = 1.0d-150

@@ -866,6 +866,8 @@ endif
       "Include TTauri disc wind?: ", "(a,1l,1x,a)", .false., ok, .false.)
  call getLogical("ttau_jet_on", ttau_jet_on, cLine, nLines, &
         "Include TTauri jets?: ", "(a,1l,1x,a)", .false., ok, .false.)
+ call getLogical("ttau_fuzzy_edge", ttau_fuzzy_edge, cLine, nLines, &
+        "Uses fuzzy edge for accretion flow: ", "(a,1l,1x,a)", .false., ok, .false.)
 
  ! Use this paremeter to turn off the alpha disc when the 
  ! grid read in has alpha disc

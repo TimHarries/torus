@@ -382,6 +382,7 @@ program torus
 
   real    :: tmp
   type(octalvector) :: vec_offset
+  real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
 
   ! Name of the file to output various message from torus
   character(LEN=7), parameter :: messageFile = "MESSAGE"
@@ -1018,7 +1019,36 @@ program torus
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
            write(*,*) "...initial adaptive grid configuration complete"
-           if (geometry=="ttauri") then
+
+           ! This section is getting rather long. Maybe this should be done in 
+           ! wrapper subroutine in amr_mod.f90.
+           if (geometry=="ttauri") then 
+              ! Finding the total mass in the accretion flow
+              mass_accretion_old = 0.0d0
+              call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_old)
+              write(*,*) " "
+              write(*,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
+
+              if (ttau_fuzzy_edge) then
+                 write(*,*) "Fuzzy edge for TTauri accreation stream will be used..."
+                 call ttauri_fuzzy_edge(grid%octreeRoot)
+
+                 ! We now have to correct the density of the accretion flow 
+                 ! due to the fuzziness introduced above.
+                 mass_accretion_new = 0.0d0
+                 call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_new)
+                 write(*,*) "Total mass in accretion flow (after fuzzy edge) is ",  mass_accretion_new, "[g]"
+                 mass_scale = mass_accretion_old/mass_accretion_new
+                 write(*,*) "Scaling the density by ", mass_scale , "[g]"
+
+                 call TTauri_accretion_scale_density(grid%octreeRoot, grid, mass_scale) 
+                 ! Check to see if it has scaled correctly.
+                 mass_accretion_new = 0.0d0
+                 call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_new)                 
+                 write(*,*) "Total mass in accretion flow after rescaling: ", mass_accretion_new, "[g]"
+                 write(*,*) " "  
+              end if
+
               if (ttau_discwind_on) then
                  write(*,*) " "
                  write(*,*) "Adding TTauri disc wind to magnetosphere model... "
@@ -2004,7 +2034,8 @@ program torus
         ! 2 microns. 
         call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
      elseif (grid%geometry == "ttauri") then
-        call set_bias_ttauri(grid%octreeRoot, grid, lamline)
+!        call set_bias_ttauri(grid%octreeRoot, grid, lamline)
+        call set_bias_ttauri2(grid%octreeRoot, grid)
      elseif (grid%geometry == "cmfgen") then
         call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
      end if
