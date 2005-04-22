@@ -2002,8 +2002,8 @@ contains
        
 
   subroutine convertByte4(iByte, ival)
-    integer(kind=1) :: ibyte(4), iswap
-    integer(kind=2) :: ubyte(4)
+    integer(kind=single) :: ibyte(4), iswap
+    integer(kind=single) :: ubyte(4)
     integer  :: ival
 
     ubyte = ibyte
@@ -2015,9 +2015,9 @@ contains
   end subroutine convertByte4
 
   subroutine convertByte2(iByte, ival)
-    integer(kind=1) :: ibyte(2), iswap
-    integer(kind=2) :: ubyte(2)
-    integer(kind=2)  :: ival
+    integer(kind=single) :: ibyte(2), iswap
+    integer(kind=single) :: ubyte(2)
+    integer(kind=single)  :: ival
 
     ubyte = ibyte
     where (ubyte < 0) ubyte = ibyte + 256

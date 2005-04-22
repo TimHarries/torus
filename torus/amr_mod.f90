@@ -7216,6 +7216,7 @@ CONTAINS
   END SUBROUTINE amrUpdateGrid
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray)
+    use input_variables, only: includeGasOpacity
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -7243,16 +7244,19 @@ CONTAINS
 
     if (PRESENT(kappaAbsArray)) then
        kappaAbsArray(1:grid%nLambda) = grid%oneKappaAbs(thisOctal%dustType(subcell),1:grid%nLambda)*thisOctal%rho(subcell) * frac
-       call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaAbsArray=tarray)
-       kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
+       if (includeGasOpacity) then
+          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaAbsArray=tarray)
+          kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
+       endif
     endif
-
+       
     if (PRESENT(kappaScaArray)) then
        kappaScaArray(1:grid%nLambda) = grid%oneKappaSca(thisOctal%dustType(subcell),1:grid%nLambda)*thisOctal%rho(subcell) * frac
-       call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaScaArray=tarray)
-       kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
+       if (includeGasOpacity) then
+          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaScaArray=tarray)
+          kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
+       endif
     endif
-
 
 
     if (PRESENT(kappaSca)) then
@@ -7283,20 +7287,22 @@ CONTAINS
    endif
 
 
-    if (PRESENT(kappaAbs)) then
-       if (.not.PRESENT(lambda)) then
-          tlambda = grid%lamArray(iLambda)
-       else
-          tlambda = lambda
-       endif
-       call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaAbs=kappaAbsGas)
-       kappaAbs = kappaAbs + kappaAbsGas*thisOctal%rho(subcell)
-    endif
-
-    if (PRESENT(kappaSca)) then
-       call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaSca=kappaScaGas)
-       kappaSca = kappaSca + kappaScaGas*thisOctal%rho(subcell)
-    endif
+   if (includeGasOpacity) then
+      if (PRESENT(kappaAbs)) then
+         if (.not.PRESENT(lambda)) then
+            tlambda = grid%lamArray(iLambda)
+         else
+            tlambda = lambda
+         endif
+         call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaAbs=kappaAbsGas)
+         kappaAbs = kappaAbs + kappaAbsGas*thisOctal%rho(subcell)
+      endif
+      
+      if (PRESENT(kappaSca)) then
+         call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaSca=kappaScaGas)
+         kappaSca = kappaSca + kappaScaGas*thisOctal%rho(subcell)
+      endif
+   endif
 
   end subroutine returnKappa
 END MODULE amr_mod

@@ -1138,7 +1138,7 @@ contains
     type(octal), pointer  :: child 
     type(gridtype) :: grid
     integer :: subcell, i
-    integer, parameter :: minCrossings = 10
+    integer, parameter :: minCrossings = 50
     real(oct) :: V, epsOverDeltaT
     real(oct) :: adot
     real(oct) :: kappaP, norm

@@ -1337,6 +1337,9 @@ endif
  call getLogical("tio", fillTio, cLine, nLines, &
    "TiO opacity: ","(a,1l,a)", .false., ok, .false.)
 
+ call getLogical("gasopacity", includeGasOpacity, cLine, nLines, &
+   "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
+
  if (fillTio.or.mie  &
       .or. (geometry == "ttauri" .and. ttau_disc_on) ) then
 
@@ -1421,6 +1424,11 @@ endif
  call getInteger("maxscat", maxScat, cLine, nLines, &
       "Max no of scatters: ","(a,i4,1x,a)", 1, ok, .false.)
 
+ if (maxscat == 1) then
+    write(*,*) "maxscat: USEAGE CHANGED, now limits maximum no of scatterings"
+    write(*,*) "maxscat: You don't want to set this to 1."
+    stop
+ endif
 
 
 

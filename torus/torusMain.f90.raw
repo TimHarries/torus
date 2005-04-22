@@ -867,8 +867,7 @@ program torus
 
 
 
-  if (geometry(1:6) /= "ttauri" .and. geometry(1:6) /= "cmfgen"   .and.   &
-       geometry(1:9) /= "luc_cir3d" .and. geometry(1:7) /= "cluster") then 
+  if (includeGasOpacity) then
 
      ! This routine may cause trouble with MPI routine! 
      ! Propably multiple nodes are trying to write to a same file at a same time.
@@ -1929,7 +1928,7 @@ program torus
                    source, nSource, nLucy, massEnvelope, tThresh, twod, mDisc)
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 20)
+                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 5)
            endif
 
         endif
@@ -3252,7 +3251,7 @@ program torus
                     statArray(iLambda) = statArray(iLambda) + 1.
                  endif
                  if (stokesImage) then
-                    thisVel = observedLambda
+                    thisVel = 0. ! no velocity for dust continuum
                     call addPhotonToImage(viewVec, rotationAxis, obsImageSet, nImage, thisPhoton,&
                          thisVel, obs_weight, filters, grid%octreeRoot%centre)
 
@@ -3640,6 +3639,7 @@ program torus
 
 
                     if (stokesImage) then
+                       thisVel = 0. ! no velocity for dust continuum emission
                        call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage,  &
                             obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
                     endif

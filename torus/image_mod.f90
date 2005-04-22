@@ -160,6 +160,7 @@ module image_mod
 
      velIncgs = thisVel! * cSpeed/1.e5 
 
+
      ! observed wavelength should be Doppler shifted by local gas velocity
      if (thisPhoton%contPhoton) then
         if (PRESENT(lambda0_cont)) then
@@ -172,7 +173,6 @@ module image_mod
      end if
 
 !     write(*,*) thisvel,thisimage%vMax,thisimage%vMin
-
 
 
      do i = 1, nImage
@@ -191,12 +191,14 @@ module image_mod
            yPix = nint(yDist / thisImageSet(i)%scale)
 
 
+
            if ((xPix >= -thisImageSet(i)%nSize) .and. &
                 (yPix >= -thisImageSet(i)%nSize) .and. &
                 (xPix <= thisImageSet(i)%nSize) .and. &
                 (yPix <= thisImageSet(i)%nSize)) then
               ! using a filter response function in filter_set_class here
               filter_response = real( pass_a_filter(filters, i, lambda_obs ))
+              
               
               thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
                    + thisPhoton%stokes * weight * filter_response
