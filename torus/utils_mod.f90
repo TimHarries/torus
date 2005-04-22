@@ -2017,7 +2017,7 @@ contains
   subroutine convertByte2(iByte, ival)
     integer(kind=single) :: ibyte(2), iswap
     integer(kind=single) :: ubyte(2)
-    integer(kind=single)  :: ival
+    integer(kind=double)  :: ival
 
     ubyte = ibyte
     where (ubyte < 0) ubyte = ibyte + 256
