@@ -4363,7 +4363,9 @@ CONTAINS
              
              ! The fuzzy density starts from a 5-th of the thickness (2h) 
              ! below the surface.
-             w = 0.2d0*h;  ! a fifth for now
+             w = 0.2d0*h;  ! a fifth for now  ! Halpha067 model
+!             w = 0.3d0*h;  ! a fifth for now  ! Halpha080 model
+!             w = 0.1d0*h;  ! a fifth for now  ! Halpha081 model
              rM_fuzzy_in  = TTauriRinner*1.0d-10 + w   ! [10^10cm]
              rM_fuzzy_out = TTauriRouter*1.0d-10 - w   ! [10^10cm]
              
@@ -6741,7 +6743,7 @@ CONTAINS
   integer :: subcell, i
   real(double) :: d, dV, r, nu0, tauSob, escProb
   type(octalvector)  :: rvec, rhat
-  real(double):: dtau_cont, dtau_line
+  real(double):: dtau_cont, dtau_line, rho
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -6791,11 +6793,14 @@ CONTAINS
              dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
              dtau_line = d*(thisOctal%chiline(subcell))  / nu0
              !
+             rho = thisOctal%rho(subcell)
 !             thisOctal%biasCont3D(subcell) = MAX(dV, 1.d-7) ! Limits the minimum value
 !             thisOctal%biasLine3D(subcell) = dV*thisOctal%biasCont3D(subcell)
-             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
-             thisOctal%biasLine3D(subcell) = thisOctal%rho(subcell)*thisOctal%biasCont3D(subcell)
+!             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
+             thisOctal%biasCont3D(subcell) = 1.0d0
+!             thisOctal%biasLine3D(subcell) = thisOctal%rho(subcell)*thisOctal%biasCont3D(subcell)
 !             thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
+             thisOctal%biasLine3D(subcell) = 1.0d0/(rho*rho)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line*d*rVec%x)*thisOctal%biasCont3D(subcell)
 
@@ -6851,12 +6856,15 @@ CONTAINS
              rM_center = 0.5d0*(TTauriRouter + TTauriRinner)*1.0d-10   ![10^10cm]   
              
              thisOctal%biasCont3D(subcell) = 1.0d0  ! no bias for contiuum
-             thisOctal%biasLine3D(subcell) = EXP(10.0d0*ABS(rM - rM_center)/h)
-!             if (ABS(rM - rM_center)/h > 0.95d0) then
-!                thisOctal%biasLine3D(subcell) = 1.0d5
-!             else
-!                thisOctal%biasLine3D(subcell) = 1.0d0
-!             end if
+!             thisOctal%biasLine3D(subcell) = 1.0d0/(dtau_line*d*rvec%x)
+!             thisOctal%biasLine3D(subcell) = 1.0d0/thisOctal%rho(subcell)
+!             thisOctal%biasLine3D(subcell) = EXP(10.0d0*ABS(rM - rM_center)/h)
+!             if (ABS(rM - rM_center)/h > 0.80d0) then
+             if (ABS(rM - rM_center)/h > 0.40d0) then
+                thisOctal%biasLine3D(subcell) = 1.0d5
+             else
+                thisOctal%biasLine3D(subcell) = 1.0d-150
+             end if
           else  ! this subcell is not "inFlow"
              thisOctal%biasCont3D(subcell) = 1.0d-150
              thisOctal%biasLine3D(subcell) = 1.0d-150
