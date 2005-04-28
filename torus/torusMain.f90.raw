@@ -927,14 +927,13 @@ program torus
         ! for some geometries, it is valid to alter the 'dipoleOffset parameter
         !   for a grid we've already created. 
         if (geometry(1:6) == "ttauri") then 
-          if (ABS(grid%dipoleOffset/dipoleoffset-1.0) > 0.01) then 
-            write(*,'(a,f5.2,a)') 'Using new dipole offset value (',&
-                                     dipoleOffset*radToDeg,'deg)'
-            grid%dipoleOffset = dipoleOffset                         
-            grid%diskNormal = VECTOR(0.,0.,1.)
-            grid%diskNormal = rotateX(grid%diskNormal,grid%dipoleOffSet)
-            
-          end if
+!           if (ABS(grid%dipoleOffset/dipoleoffset-1.0) > 0.01) then 
+           write(*,'(a,f5.2,a)') 'Using new dipole offset value (',&
+                dipoleOffset*radToDeg,'deg)'
+           grid%dipoleOffset = dipoleOffset                         
+           grid%diskNormal = VECTOR(0.,0.,1.)
+           grid%diskNormal = rotateX(grid%diskNormal,grid%dipoleOffSet)
+!          end if
         end if
 
         ! In case, a user is using a new nlambda (number of wavelength bins)

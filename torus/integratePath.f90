@@ -1924,7 +1924,7 @@ end subroutine integratePathAMR
        ALLOCATE(velocityDeriv(maxTau)) 
        ALLOCATE(dL(maxTau))
        ALLOCATE(projVel(maxTau))
-       ALLOCATE(kabs(maxTau))
+       ALLOCATE(kabs(maxTau))       
        ALLOCATE(ksca(maxTau))
        ALLOCATE(newL(maxTau))   
        ALLOCATE(newInFlow(maxTau))
@@ -1988,25 +1988,16 @@ end subroutine integratePathAMR
        return
     end if
 
-     ! Special case for the photon hits the core.
-     ! Set same array values here and exit immediately.
-     if (hitcore) then
-        escProb = 0.0d0
-        if (contPhoton) then
-           tauCont(1:nTau,1:nLambda) = 1.e20
-        else ! line
-           linePhotonAlbedo(1:nTau) = 0.0d0
-        end if
-        tauExt(1:nTau) = 1.e20
-        tauSca(1:nTau) = 1.e-20
-        tauAbs(1:nTau) = 1.e20
-        return
-     endif
-
+!    ! Shift the velocities in CMF of the current location of photon
+!    velocity(1) = VECTOR(0.0d0, 0.0d0, 0.0d0)
+!    forall (i = 2:nTau)
+!       ! (+ve when moving toward in the direction of photon.)
+!       velocity(i) = velocity(i) - vvec  ! vector+array operation here
+!    end forall
       
 
-     ! Some elements of L array could be dupulicated, so we removed them since
-     ! they could potentially cause problems in interpolation routines used later.
+    ! Some elements of L array could be dupulicated, so we removed them since
+    ! they could potentially cause problems in interpolation routines used later.
     L(1) = 1.0e-25    
       newntau = 0
       do i = 1, ntau-1       
@@ -2089,41 +2080,35 @@ end subroutine integratePathAMR
 
 
     
-!      ! Additional points along a ray are inserted around the 
-!      ! the constant velocity surface (e.g. the projected velocity along a ray is 
-!      ! slowly changing...) for accuracy.
-!      !
-!      ! Additional points along a ray are inserted near the velocity changes fast.
-!      call resampleRay(L, nTau, projVel, maxtau, &
-!           newL, newNTau, InFlow, newInFlow)
-!      if (newNTau > maxTau) then 
-!         print *, "Error:: newNtau > newNx_max in integratePathVoigtProf. (1)"
-!         print *, "        newNtau     = ", newNTau
-!         print *, "        maxTau   = ", maxTau
-!         stop
-!      end if
+!       ! Additional points along a ray are inserted around the 
+!       ! the constant velocity surface (e.g. the projected velocity along a ray is 
+!       ! slowly changing...) for accuracy.
+!       !
+!       ! Additional points along a ray are inserted near the velocity changes fast.
+!       call resampleRay(L, nTau, projVel, maxtau, &
+!            newL, newNTau, InFlow, newInFlow)
+!       if (newNTau > maxTau) then 
+!          print *, "Error:: newNtau > newNx_max in integratePathVoigtProf. (1)"
+!          print *, "        newNtau     = ", newNTau
+!          print *, "        maxTau   = ", maxTau
+!          stop
+!       end if
 
-!      inFlow(1:nTau) = newInFlow(1:nTau)  ! updating the inFlow flags.
+!       inFlow(1:nTau) = newInFlow(1:nTau)  ! updating the inFlow flags.
 
-!      ! Now interpolate on to newly sampled ray    
-!      call linearResample_dble(L, projVel, nTAu, newL, newNtau)
-!      call linearResample(L, tauSca, nTAu, newL, newNtau)
-!      call linearResample(L, tauAbs, nTAu, newL, newNtau)
-!      call linearResample(L, kSca, nTAu, newL, newNtau)
-!      call linearResample(L, kAbs, nTAu, newL, newNtau)
-!      call linearResample(L, chiline, nTAu, newL, newNtau)
-!      call linearResample(L, N_HI, nTAu, newL, newNtau)
-!      call linearResample(L, temperature, nTAu, newL, newNtau)
-!      call linearResample_dble(L, Ne, nTAu, newL, newNtau)
+!       ! Now interpolate on to newly sampled ray    
+!       call linearResample_dble(L, projVel, nTAu, maxTau, newL, newNtau)
+!       call linearResample(L, kSca, nTAu, maxTau, newL, newNtau)
+!       call linearResample(L, kAbs, nTAu, maxTau, newL, newNtau)
+!       call linearResample(L, chiline, nTAu, maxTau, newL, newNtau)
+!       call linearResample(L, temperature, nTAu, maxTau, newL, newNtau)
+!       call linearResample(L, N_HI, nTAu, maxTau, newL, newNtau)
+!       call linearResample_dble(L, Ne, nTAu, maxTau, newL, newNtau)
 
-
-!      call linearResample(L, kSca, nTAu, newL, newNtau)
-!      call linearResample(L, kAbs, nTAu, newL, newNtau)
-
-!      nTau = newNtau
-!      L(1:nTau) = newL(1:nTau)
-!      L(1) = 1.0e-25
-!      dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
+!       nTau = newNtau
+!       L(1:nTau) = newL(1:nTau)
+!       L(1) = 1.0e-25
+!       dL(1:nTau-1) = L(2:nTau) - L(1:nTau-1)
 
 !      ! Additional points along a ray are inserted near resonance zones.
 !      ! Here velocities are in observer's frame ...
@@ -2318,16 +2303,16 @@ end subroutine integratePathAMR
           if (inflow(i)) then
              ! Evaluating the values in the mid point
              if (inflow(i-1)) then
-                T_mid = 0.5d0*(temperature(i-1)+temperature(i))
-                Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
-                N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
-                chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-                projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
-!                T_mid = temperature(i-1)
-!                Ne_mid = Ne(i-1)
-!                N_HI_mid = N_HI(i-1)
-!                chiline_mid = chiline(i-1)
-!                projVel_mid = projVel(i-1)
+!                T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+!                Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+!                N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+!                chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+!                projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+                T_mid = temperature(i-1)
+                Ne_mid = Ne(i-1)
+                N_HI_mid = N_HI(i-1)
+                chiline_mid = chiline(i-1)
+                projVel_mid = projVel(i-1)
              else
                 T_mid = temperature(i)
                 Ne_mid = Ne(i)
@@ -2339,6 +2324,7 @@ end subroutine integratePathAMR
                           
              ! relative velocity wrt the location of photon (CMF)
              Vrel = projVel_mid -  Vn1
+!             Vrel = projVel_mid
              
              ! The line centre of absorption profile shifted by Doppler.
              nu0_p = nu0/(1.0d0-Vrel)  ! [Hz] 
@@ -2365,10 +2351,10 @@ end subroutine integratePathAMR
 
              tauAbsLine(i) = tauAbsLine(i-1) +  abs(dtau)
              if (inflow(i-1)) then
-                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
-!                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
-!                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+!                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+!                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
              else
                 tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i)
                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i)
@@ -2392,10 +2378,10 @@ end subroutine integratePathAMR
        do i = 2, nTau
           if (inflow(i)) then
              if (inflow(i-1))then
-                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
-                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
-!                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
-!                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
+!                tauSca(i) = tauSca(i-1) + dL(i-1)*(0.5*(ksca(i)+ksca(i-1)))
+!                tauAbs(i) = tauAbs(i-1) + dL(i-1)*(0.5*(kabs(i)+kabs(i-1)))
+                tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i-1)
+                tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i-1)
              else
                 tauSca(i) = tauSca(i-1) + dL(i-1)*ksca(i)
                 tauAbs(i) = tauAbs(i-1) + dL(i-1)*kabs(i)
@@ -2426,16 +2412,16 @@ end subroutine integratePathAMR
              if (inflow(i)) then
                 ! Evaluating the values in the mid point
                 if (inflow(i-1)) then
-                   T_mid = 0.5d0*(temperature(i-1)+temperature(i))
-                   Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
-                   N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
-                   chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
-                   projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
-!                   T_mid = temperature(i-1)
-!                   Ne_mid = Ne(i-1)
-!                   N_HI_mid = N_HI(i-1)
-!                   chiline_mid = chiline(i-1)
-!                   projVel_mid = projVel(i-1)
+!                   T_mid = 0.5d0*(temperature(i-1)+temperature(i))
+!                   Ne_mid = 0.5d0*(Ne(i-1)+Ne(i))
+!                   N_HI_mid = 0.5d0*(N_HI(i-1)+N_HI(i))
+!                   chiline_mid = 0.5d0*(chiline(i-1)+chiline(i))
+!                   projVel_mid = 0.5d0*(projVel(i-1)+projVel(i))
+                   T_mid = temperature(i-1)
+                   Ne_mid = Ne(i-1)
+                   N_HI_mid = N_HI(i-1)
+                   chiline_mid = chiline(i-1)
+                   projVel_mid = projVel(i-1)
                 else                
                    T_mid = temperature(i)
                    Ne_mid = Ne(i)
@@ -2447,6 +2433,7 @@ end subroutine integratePathAMR
                 T_mid = MAX(T_mid, 10.0d0) ! [K]  To avoid a tiny Doppler width                
                 ! relative velocity wrt the location of photon (CMF)
                 Vrel = projVel_mid -  Vn1
+!                Vrel = projVel_mid
              
                 ! The line centre of absorption profile shifted by Doppler.
                 nu0_p = nu0/(1.0d0-Vrel)  
@@ -2470,6 +2457,21 @@ end subroutine integratePathAMR
     else  ! for optically thin line option
        tauCont(1:nTau,1:nLambda) = 0.
     end if
+
+
+    ! Special case for the photon hits the core.
+    ! Set same array values here and exit immediately.
+    if (hitcore) then
+       if (contPhoton) then
+          tauCont(nTau,1:nLambda) = 1.e20
+       else ! line
+          linePhotonAlbedo(nTau) = 0.0d0
+       end if
+       tauExt(nTau) = 2.e20
+       tauSca(nTau) = 1.e-20
+       tauAbs(nTau) = 1.e20
+    endif
+
 
   end subroutine integratePathVoigtProf
   
@@ -2888,8 +2890,60 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 
      close(UNOUT1)
      close(UNOUT2)
-        
 
+!=== FOR DEBUG ONLY REMOVE THIS SECTION LATER ===========================================
+     ! 
+     ! Z-X plane 
+     !
+     open(unit=UNOUT1, file = 'tau_zx_plane_test.dat', status ='replace')
+     open(unit=UNOUT2, file = 'taul_zx_plane_test.dat', status ='replace')
+        
+     write(UNOUT1, '(a)') '#    phi [deg]  -- tau(total) -- tau(abs) -- tau(scat) -- ntau'        
+     write(UNOUT2, '(a)') '#    phi [deg]  -- taul(total) -- taul(abs) -- taul(scat) -- ntau'
+     
+     ! direction of the beam...
+     do i = 1, ntest
+        theta = 2.0d0*Pi*real(i-1)/real(ntest-1) + 0.01
+        x1 = cos(theta); x2 = sin(theta)
+        octVec = OCTALVECTOR(x2, 0.0, x1)
+        !          call Normalize(octVec)  ! just in case ..
+        
+        ! position of emission
+!        position =  OCTALVECTOR(9.5d0, 0.0d0, 11.0d0) ! in a middle of stream
+        position =  OCTALVECTOR(34.0d0, 0.0d0, 6.0d0) ! in a middle of stream
+!        position = (octVec*R) + grid%starPos1
+
+        ! continuum
+        call IntegratePath(gridUsesAMR, VoigtProf, &
+             wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
+             position, octVec, grid, lambda, tauExt, tauAbs, &
+             tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .true. , &
+             lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
+             .false., nUpper, nLower, 0., 0., 0., junk,&
+             sampleFreq,Error,&
+             useinterp, rStar, coolStarPosition)
+        
+        write(UNOUT1, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
+
+        ! line 
+        call IntegratePath(gridUsesAMR, VoigtProf, &
+             wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  &
+             position, octVec, grid, lambda, tauExt, tauAbs, &
+             tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
+             lamStart, lamEnd, nLambda, tauCont, hitCore, thinLine, lineResAbs, .false., &
+             .false., nUpper, nLower, 0., 0., 0., junk,&
+             sampleFreq,Error, &
+             useinterp, rStar, coolStarPosition)
+        
+        write(UNOUT2, *)    theta*180.0/Pi,  tauExt(ntau), tauAbs(ntau), tauSca(ntau), ntau
+        
+     end do
+
+
+     close(UNOUT1)
+     close(UNOUT2)
+
+!=== FOR DEBUG ONLY REMOVE THIS SECTION LATER ===========================================
        
   end if
 

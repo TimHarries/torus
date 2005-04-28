@@ -602,7 +602,9 @@ contains
                    ! need to check the position is not inside the star
                    if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) exit
                 else
-                   exit
+!                   exit
+                   ! pick another one
+                   continue
                 end if
 
                 end do 
@@ -1281,6 +1283,7 @@ contains
           ok = .false.
           if (.not. ok) then
 
+           do  ! dummy loop, in case we pick a position inside a star ===========
 
              ! we search through the tree to find the subcell that contains the
              !   probability value 'randomDouble'
@@ -1328,6 +1331,19 @@ contains
 !!just for testing ... 
 !             thisPhoton%position = octalCentre
              thisPhoton%position = vector(xOctal,yOctal,zOctal)
+
+             if (grid%geometry(1:7) == "ttauri" .or.  &
+                  grid%geometry(1:9) == "luc_cir3d".or. &
+                  grid%geometry(1:6) == "cmfgen") then
+                ! need to check the position is not inside the star
+                if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) exit
+             else
+                ! exit
+                ! pick another one
+                continue
+             end if
+
+            end do
                 
 
              if (sourceOctal%twod) then
@@ -1336,13 +1352,13 @@ contains
                 thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
              endif
 
-            !!! need to call an interpolation routine, rather than
-            !!!   use subcell central value
-             if (useBias) then
-                biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
-             else
-                biasWeight = 1.0_db
-             end if
+!            !!! need to call an interpolation routine, rather than
+!            !!!   use subcell central value
+!             if (useBias) then
+!                biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
+!             else
+!                biasWeight = 1.0_db
+!             end if
 
           end if ! (.not. OK)
 

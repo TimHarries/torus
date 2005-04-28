@@ -957,7 +957,7 @@ CONTAINS
          IF (PRESENT(Ne))            Ne(nSamples) = 0.0
          IF (PRESENT(rho))           rho(nSamples) = 0.0
          IF (PRESENT(temperature))   temperature(nSamples) = 0.0
-         IF (PRESENT(inFlow))        inFlow(nSamples) = .false.
+         IF (PRESENT(inFlow))        inFlow(nSamples) = .true.
        END IF
        
     ELSE
@@ -4322,7 +4322,8 @@ CONTAINS
     real(double) :: r, theta, rM, rM_center, h, w, p, rho
     real(double) :: rM_fuzzy_in, rM_fuzzy_out  ! beginning of the fuzzy edges
     !
-    real(double), parameter :: scale = 7.0d0  ! a scale in exponential decay of density.
+!    real(double), parameter :: scale = 7.0d0  ! a scale in exponential decay of density.
+    real(double), parameter :: scale = 10.0d0  ! a scale in exponential decay of density.
     !
     
     if (thisOctal%threeD) then
@@ -4349,7 +4350,7 @@ CONTAINS
              r = modulus(rvec)
              
              if (r/=0.0d0) then
-                theta = ACOS( MIN(ABS(rVec%z/r),0.995_oc) )
+                theta = ACOS( MIN(ABS(rVec%z/r),0.998_oc) )
              else
                 theta=0.01
              end if
@@ -4363,9 +4364,11 @@ CONTAINS
              
              ! The fuzzy density starts from a 5-th of the thickness (2h) 
              ! below the surface.
-             w = 0.2d0*h;  ! a fifth for now  ! Halpha067 model
-!             w = 0.3d0*h;  ! a fifth for now  ! Halpha080 model
-!             w = 0.1d0*h;  ! a fifth for now  ! Halpha081 model
+!             w = 0.1d0*h;  ! Halpha081 model
+!             w = 0.2d0*h;  ! a fifth for now  ! Halpha067 model
+!             w = 0.25d0*h;  ! Halpha083 model
+             w = 0.3d0*h;  ! Halpha080 model
+
              rM_fuzzy_in  = TTauriRinner*1.0d-10 + w   ! [10^10cm]
              rM_fuzzy_out = TTauriRouter*1.0d-10 - w   ! [10^10cm]
              
@@ -6843,7 +6846,7 @@ CONTAINS
              r = modulus(rvec)
              
              if (r/=0.0d0) then
-                theta = ACOS(MIN(ABS(rVec%z/r),0.995_oc))
+                theta = ACOS(MIN(ABS(rVec%z/r),0.998_oc))
              else
                 theta=0.01
              end if

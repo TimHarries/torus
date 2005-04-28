@@ -26,8 +26,7 @@ module density_mod
   
   private :: &
        print_geometry_list, &
-       TTauriDensity, &
-       TTauriDensityFuzzy
+       TTauriDensity
   
 contains
 
@@ -148,7 +147,7 @@ contains
     pointVec = (point - starPosn) * 1.e10_oc
     r = modulus( pointVec ) 
     
-    theta = ACOS(MIN(ABS(pointVec%z/r),0.995_oc))
+    theta = ACOS(MIN(ABS(pointVec%z/r),0.998_oc))
     rM  = r / SIN(theta)**2
     y = SIN(theta)**2 
 
@@ -167,7 +166,7 @@ contains
       END IF 
    
     ! test if the point lies outside the accretion stream
-    ELSE IF ((rM > TTauriRinner) .AND. (rM < TTauriRouter )) THEN
+    ELSE IF ((rM > TTauriRinner*0.99d0) .AND. (rM < TTauriRouter*1.01d0 )) THEN
       TTauriInFlow = .TRUE.
 
     ELSE
@@ -221,74 +220,6 @@ contains
     END IF
     
   end function TTauriDensity
-
-
-  ! Similar to TTauriDensity but density decreases exponentially near the edge
- real function TTauriDensityFuzzy(point,grid,ignoreDisk) result(rho) 
-    ! given a position in the grid, we calculate the elapsed free-fall duration
-    ! from the disc surface, and then use the mass accretion rate at the time
-    ! when the material left the disc. 
-
-    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
-                               TTauriMstar
-    use flowSpeedVariables
-    
-    type(GRIDTYPE), intent(in)    :: grid
-    type(octalVector), intent(in) :: point
-    logical, optional, intent(in) :: ignoreDisk
-    real :: y
-
-    TYPE(octalVector) :: starPosn
-    TYPE(octalVector) :: pointVec
-
-    real(oct) :: r, theta, Rm,  Rin_fuzzy, Rout_fuzzy, Rc, dR, h, w
-    real(oct), parameter  :: scale = 0.3_oc
-    real :: TTauriMdotLocal
-
-    starPosn = grid%starPos1
-    pointVec = (point - starPosn) * 1.e10_oc
-    r = modulus( pointVec ) 
-
-    theta = ACOS(MIN(ABS(pointVec%z/r),0.995_oc))
-    Rm  = r / SIN(theta)**2
-
-    y = SIN(theta)**2 
-
-    IF (TTauriInFlow(point,grid,ignoreDisk)) then 
-    
-      ! we call the accretion rate function to determine the appropriate value.
-      TTauriMdotLocal = TTauriVariableMdot(point,grid,ignoreDisk)
-
-      rho = (TTauriMdotLocal * TTauriRstar) / (4.0 * pi * &
-            (TTauriRStar/TTauriRinner - TTauriRstar/TTauriRouter)) &
-            * (r**(-5.0/2.0) / SQRT( 2.0 * bigG * TTauriMstar )) &
-            * (SQRT( 4.0 - 3.0*y) / SQRT( 1.0 - y)) 
-
-      ! If the point is close to the edge, we make it fuzzy
-      if ( Rm < Rin_fuzzy ) then
-         w = TTauriRouter-TTauriRinner
-         h = w*scale
-         Rc = (TTauriRouter+TTauriRinner)*0.5_oc
-         Rin_fuzzy = TTauriRinner + h
-         dR = Rin_fuzzy-Rc         
-         rho = rho*EXP(-dR/w)
-      elseif ( Rm > Rout_fuzzy ) then
-         w = TTauriRouter-TTauriRinner
-         h = w*scale
-         Rc = (TTauriRouter+TTauriRinner)*0.5_oc
-         Rout_fuzzy = TTauriRouter - h
-         dR = Rc-Rout_fuzzy
-         rho = rho*EXP(-dR/w)
-      end if
-
-      rho = max(rho,1.e-25)
-    ELSE
-      rho = 1.e-25
-      RETURN
-    END IF
-    
-  end function TTauriDensityFuzzy
-
 
 
 
