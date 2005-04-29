@@ -103,13 +103,14 @@ program torus
 
   ! optical depth variables
 
+
   integer, parameter :: maxTau = 1000000, maxLambda = 500
   integer :: nTau
   real, allocatable :: contTau(:,:)
 
 
   real :: scaleFac
-
+  real :: dopShift  ! velocity shift in terms of thermal line width
 !  real :: tauExt(maxTau)
 !  real :: tauAbs(maxTau)
 !  real :: tauSca(maxTau)
@@ -2033,8 +2034,8 @@ program torus
         ! 2 microns. 
         call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
      elseif (grid%geometry == "ttauri") then
-!        call set_bias_ttauri(grid%octreeRoot, grid, lamline)
-        call set_bias_ttauri2(grid%octreeRoot, grid)
+        call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
+!        call set_bias_ttauri2(grid%octreeRoot, grid)
      elseif (grid%geometry == "cmfgen") then
         call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
      end if
@@ -3139,7 +3140,7 @@ program torus
                       theta1, theta2, chanceHotRing,  &
                       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto,&
                       narrowBandImage, vMin, vMax, source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
-                      curtains, starSurface, forcedWavelength, usePhotonWavelength, VoigtProf)
+                      curtains, starSurface, forcedWavelength, usePhotonWavelength, VoigtProf, dopShift=dopShift)
                  if (thisPhoton%resonanceLine) then
                     r1 = real(i)/real(nPhotons/nOuterLoop)
                     thisPhoton%lambda = xArray(1) + r1*(xArray(nLambda)-xArray(1))
@@ -3149,14 +3150,14 @@ program torus
 
 !           write(*,*) "after init",thisPhoton%stokes%i,contwindphoton
            observedLambda = thisPhoton%lambda
-           if (thisPhoton%contPhoton) then
-
-              meanr_cont = meanr_cont + modulus(thisPhoton%position)*thisPhoton%stokes%i
-              wtot_cont = wtot_cont + thisPhoton%stokes%i
-           else
-              meanr_line = meanr_line + modulus(thisPhoton%position)*thisPhoton%stokes%i
-              wtot_line = wtot_line + thisPhoton%stokes%i
-           endif
+!           if (thisPhoton%contPhoton) then
+!
+!              meanr_cont = meanr_cont + modulus(thisPhoton%position)*thisPhoton%stokes%i
+!              wtot_cont = wtot_cont + thisPhoton%stokes%i
+!           else
+!              meanr_line = meanr_line + modulus(thisPhoton%position)*thisPhoton%stokes%i
+!              wtot_line = wtot_line + thisPhoton%stokes%i
+!           endif
 
 
 
@@ -3229,7 +3230,25 @@ program torus
               if (thisPhoton%resonanceLine) escProb = 1.
 
               if (thisPhoton%linePhoton) then
-!                 if (tauExt(ntau) < 10) write(*,*) escProb,tauExt(ntau),ntau
+!
+!                 if (tauExt(nTau) < 0.1)  then
+!!                    do j = 1,ntau
+!!                       write(*,*) lambda(j),tauExt(j)
+!!                    enddo
+!!                    write(*,*) " "
+!                    tauExt(Ntau) = 1.e20
+!                    tauAbs(nTau) = 1.e20
+!                    tauSca(nTau) = 1.e-20
+!                 endif
+
+!!                 if (tauExt(ntau) < 10.) then
+!!                    write(*,*) sqrt(thisPhoton%position%x**2 + thisPhoton%position%y**2),thisPhoton%position%z,dopshift
+!                    write(99,*) sqrt(thisPhoton%position%x**2 + thisPhoton%position%y**2),thisPhoton%position%z,dopshift
+!                    if ((sqrt(thisPhoton%position%x**2 + thisPhoton%position%y**2)<grid%rCore).and. &
+!                         (thisPhoton%position%z < 0.)) then
+!                       write(*,*) "SCREW UP"
+!                    endif
+!                 endif
 !                 if (tauExt(nTau) < 1.) escProb = 0.
                  
                  vray = -(thisPhoton%velocity .dot. outVec)
@@ -3860,7 +3879,8 @@ program torus
            deallocate(linePhotonalbedo)
            deallocate(contTau)
            deallocate(contWeightArray)
-
+           
+!           call plotspec(xArray, yArray, nLambda)
 
         enddo innerPhotonLoop
 !$OMP END DO

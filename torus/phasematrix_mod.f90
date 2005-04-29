@@ -434,6 +434,36 @@ endif
 end subroutine writeSpectrum
 
 
+subroutine plotspec(xArray, yArray, nLambda)
+  implicit none
+  real :: xArray(*)
+  type(STOKESVECTOR) :: yArray(*)
+  integer :: nLambda
+  real, save :: x(1000), y(1000)
+  logical, save :: firsttime = .true.
+
+  if (firstTime) then
+     firstTime = .false.
+     x(1:nLambda) = xArray(1:nLambda)
+     y(1:nLambda) = yArray(1:nLambda)%i
+     call pgbegin(0,"/xs",1,1)
+     call pgenv(x(1),x(nlambda),0.,12.,0,0)
+  endif
+
+  if (.not.firstTime) then
+     call pgsci(0)
+     if (y(1) /= 0.) then
+        call pgbin(nlambda,x,y,.true.)
+     endif
+     if (yArray(1)%i /= 0.) then
+        x(1:nLambda) = xArray(1:nLambda)
+        y(1:nLambda) = yArray(1:nLambda)%i/yArray(1)%i
+        call pgsci(1)
+        call pgbin(nlambda,x,y,.true.)
+     endif
+  endif
+end subroutine plotspec
+
 end module phasematrix_mod
 
 

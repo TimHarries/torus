@@ -878,6 +878,17 @@ contains
       maxwellianVelocity = vel * randomUnitVector()
     end function maxwellianVelocity
 
+    real function fvmaxwellian(v, mass, temperature)
+
+! calculated value of f(v) for a maxwellian speed distribution
+
+      real, intent(in) :: v, mass, temperature
+      real :: fac, fac2
+
+      fac = (4./sqrt(pi))*(mass/(2.*kErg*temperature))**1.5
+      fac2 = v**2 * exp(-mass*v**2 / (2.*Kerg*temperature))
+      fvmaxwellian = fac * fac2
+    end function fvmaxwellian
 
 
     ! Computes a random Lorentzian frequency using rejection method 
@@ -1459,6 +1470,9 @@ contains
       dvel = dvel/4.0  ! to be safe  
 !      dvel = dvel/10.0  ! to be safe  
 !      dProjVel(1)  = 0.
+
+      dvel = 1.e5/cspeed ! 1 km/s
+
       dProjVel(1:nTau-1) = projVel(2:nTau) - projVel(1:nTau-1)
       dProjVel(nTau)  = 0.0
 
@@ -1686,12 +1700,15 @@ contains
 
 
 
-    subroutine log_linear_resample(xArray, yArray, nX, newXarray, newNx)
+
+
+    subroutine log_linear_resample(xArray, yArray, nX, nx_max, newXarray, newNx)
       implicit none
       real, intent(in)    :: xArray(:)
       real, intent(inout) :: yArray(:)
       integer, intent(in) :: nx, newNx
       real, intent(in)    :: newXarray(:)
+      integer :: nx_max
       !
       real :: newYarray(newNx) ! automatic array
       integer :: i, j
@@ -1716,12 +1733,13 @@ contains
 
 
 
-    subroutine log_linear_resample_dble(xArray, yArray, nX, newXarray, newNx)
+    subroutine log_linear_resample_dble(xArray, yArray, nX, nx_max, newXarray, newNx)
       implicit none      
       real, intent(in)            :: xArray(:)
       real(double), intent(inout) :: yArray(:)
       integer, intent(in)         :: nx, newNx
       real, intent(in)            :: newXarray(:)
+      integer :: nx_max
       !
       real(double) :: newYarray(newNx) ! automatic array
       integer      :: i, j

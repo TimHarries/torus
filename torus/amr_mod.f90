@@ -6738,7 +6738,7 @@ CONTAINS
     enddo
   end subroutine setBiasAMR
 
-  recursive subroutine set_bias_ttauri(thisOctal, grid, lambda0)
+  recursive subroutine set_bias_ttauri(thisOctal, grid, lambda0, outVec)
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal
   real, intent(in)       :: lambda0                ! rest wavelength of line
@@ -6746,6 +6746,7 @@ CONTAINS
   integer :: subcell, i
   real(double) :: d, dV, r, nu0, tauSob, escProb
   type(octalvector)  :: rvec, rhat
+  type(VECTOR) :: outVec
   real(double):: dtau_cont, dtau_line, rho
   
   do subcell = 1, thisOctal%maxChildren
@@ -6754,7 +6755,7 @@ CONTAINS
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call set_bias_ttauri(child, grid, lambda0)
+                call set_bias_ttauri(child, grid, lambda0, outVec)
                 exit
              end if
           end do
@@ -6779,7 +6780,7 @@ CONTAINS
              nu0  = cSpeed_dbl / dble(lambda0*angstromtocm)
               ! in a radial direction
              tauSob = thisOctal%chiline(subcell)  / nu0
-             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, o2s(rhat), &
+             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, outVec, &
                   startOctal=thisOctal)
            
              if (tauSob < 0.01) then
@@ -6790,7 +6791,7 @@ CONTAINS
              else
                 escProb = 1.d0/tauSob
              end if
-             escProb = max(escProb, 1.d-7)
+             escProb = min(1.d-2,max(escProb, 1.d-5))
 
 
              dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
@@ -6802,8 +6803,8 @@ CONTAINS
 !             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
              thisOctal%biasCont3D(subcell) = 1.0d0
 !             thisOctal%biasLine3D(subcell) = thisOctal%rho(subcell)*thisOctal%biasCont3D(subcell)
-!             thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
-             thisOctal%biasLine3D(subcell) = 1.0d0/(rho*rho)
+             thisOctal%biasLine3D(subcell) = escProb
+!             thisOctal%biasLine3D(subcell) = 1.0d0/(rho*rho)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line*d*rVec%x)*thisOctal%biasCont3D(subcell)
 

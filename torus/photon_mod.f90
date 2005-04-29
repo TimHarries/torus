@@ -338,7 +338,8 @@ contains
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, &
-       VoigtProf)
+       VoigtProf, dopShift)
+    use input_variables, only : nphotons
 
     implicit none
 
@@ -350,6 +351,8 @@ contains
     integer :: nLambda, iLambda                ! wavelength indices
     logical :: useBias
     real :: weightContPhoton, weightLinePhoton ! the photon weights
+    real, optional :: dopShift
+    real :: vTherm
     logical :: contWindPhoton                  ! is this continuum photon produced in the wind
     logical :: ok
     logical :: narrowBandImage
@@ -371,7 +374,9 @@ contains
     real :: sinTheta      
     real(oct) :: t1, t2, t3                         ! multipliers
     real :: temp
-
+    integer, parameter :: nv = 100
+    real :: dv(nv)
+    real :: vArray(nv), pv(nv), vbias(nv)
     real :: vPhi                               ! azimuthal velocities
     real :: kabs
     real :: ang                                ! angle
@@ -390,6 +395,7 @@ contains
     type(VECTOR) :: secondSourcePosition       ! the position of it
     type(VECTOR) :: ramanSourceVelocity        ! what it says
     type(VECTOR) :: rVel
+    real :: rMag
     type(octalVector) :: octalPoint            ! 
     type(octal), pointer :: sourceOctal        ! randomly selected octal
     type(octal), pointer :: foundOctal       
@@ -406,6 +412,8 @@ contains
     real :: thetaSpot, phiSpot             ! spot coords
     logical :: spotPhoton
   
+    real :: fac
+
     type(VECTOR) :: rSpot, tVec
 
     real :: chanceSpot
@@ -1352,14 +1360,6 @@ contains
                 thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
              endif
 
-!            !!! need to call an interpolation routine, rather than
-!            !!!   use subcell central value
-!             if (useBias) then
-!                biasWeight = biasWeight * 1.0_db / sourceOctal%biasLine3D(subcell)
-!             else
-!                biasWeight = 1.0_db
-!             end if
-
           end if ! (.not. OK)
 
        else ! grid has polar coordinates
@@ -1460,6 +1460,37 @@ contains
                 ! Setting the velocity at the emission location + offset 
                 !  velocity (rVel) by the thermal motion of gas.
                 rVel = thermalHydrogenVelocity(temperature)  ! [C] (vector)
+                vTherm = sqrt(2.* kErg * temperature/mHydrogen)/cSpeed
+!                if (thisPhoton%linePhoton) then
+!
+!                   do i = 1, nv
+!                      vArray(i) = real(i-1)/real(nv-1) * 5. * vTherm
+!                      if (vArray(i) /= 0.) then
+!                         vbias(i) = 1./fvmaxwellian(vArray(i)*cSpeed, mHydrogen, temperature)
+!                      else
+!                         vbias(i) = 1.
+!                      endif
+!                   enddo
+!
+!                   fac = 0.
+!                   pv(1) = 0.
+!                   do i  = 2, nv
+!                      dv(i) = vArray(i)-vArray(i-1)
+!                      pv(i) = fvmaxwellian(vArray(i)*cSpeed, mHydrogen, temperature)
+!                      fac = fac + pv(i) * dv(i)
+!                      pv(i) = pv(i-1) + pv(i) * vbias(i) * dv(i)
+!                   enddo
+!                   vBias(1:nv) = vBias(1:nv) * fac / pv(nv)
+!                   pv(1:nv) = pv(1:nv) / pv(nv)
+!
+!                   call random_number(r)
+!                   call locate(pv, nv, r, i)
+!                   
+!
+!                   rVel = vArray(i) *  randomUnitVector()
+!                   thisPhoton%stokes = thisPhoton%stokes  * (1./vbias(i))
+!                endif
+                dopShift = modulus(rVel)/vTherm - 1.
                 thisPhoton%velocity = velocity + rVel
                 
                 ! We shuffle the emission frequency acoording to the shape 
