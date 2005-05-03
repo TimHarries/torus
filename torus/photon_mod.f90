@@ -608,11 +608,13 @@ contains
                      grid%geometry(1:9) == "luc_cir3d".or. &
                      grid%geometry(1:6) == "cmfgen") then
                    ! need to check the position is not inside the star
-                   if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) exit
+                   if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) then
+                      exit
+                   else
+                      continue ! pick another one
+                   endif
                 else
-!                   exit
-                   ! pick another one
-                   continue
+                   exit
                 end if
 
                 end do 
