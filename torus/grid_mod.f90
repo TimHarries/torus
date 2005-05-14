@@ -6338,6 +6338,7 @@ contains
              select case (name)
              case("rho")
                 value = thisOctal%rho(subcell)
+                if (thisOctal%diffusionApprox(subcell)) value = 1.e-3
              case("temperature")
                 value = thisOctal%temperature(subcell)
              case("chiLine")

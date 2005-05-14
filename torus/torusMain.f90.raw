@@ -60,6 +60,8 @@ program torus
   use discwind_class
   use jet_class
   use gas_opacity_mod
+  use diffusion_mod
+
 !$mpi   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
 !$MPI   !use MPI
@@ -1075,7 +1077,7 @@ program torus
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau) then
               write(*,*) "Smoothing adaptive grid structure for optical depth..."
-              do j = iSmoothLam, nLambda
+              do j = iSmoothLam, ismoothLam !nLambda
                  do
                     gridConverged = .true.
                     call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false.)
@@ -1932,10 +1934,22 @@ program torus
         call findTotalMass(grid%octreeRoot, totalMass)
         write(*,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
 	if (geometry == "shakara") then
-        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*autocm) ! defined at 1AU
+
+!        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*autocm) ! defined at 1AU
+
+
+           sigma0 = totalMass * real(betaDisc-alphaDisc+2) / & 
+                (twoPi*((rOuter*1.e10)**(betaDisc-alphaDisc+2) - (rInner*1.e10)**(betaDisc-alphaDisc+2))*1.*auToCm)
         write(*,*) "Sigma0: ",sigma0
 	endif
      endif
+
+
+     if (geometry .eq. "shakara") then
+        call defineDiffusionZone(grid)
+     endif
+
+
 
 
 !$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr)

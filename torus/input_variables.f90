@@ -188,10 +188,12 @@ module input_variables
   real :: radius, kfac, xfac
   real :: contrast
   real :: rCore, rInner
+  real :: rSublimation
   real :: rTorus, rOuter
   real :: rho, rho0
   real :: scale
   real :: mCore, diskTemp, mDisc
+  real :: alphaDisc, betaDisc
   real :: scaleDensity
   real :: vRot
   real :: mdot

@@ -19,6 +19,7 @@ MODULE amr_mod
   USE utils_mod
   USE gas_opacity_mod
   USE math_mod2!, only : mnewt  
+  USE atom_mod
 
   IMPLICIT NONE
 
@@ -201,6 +202,8 @@ CONTAINS
     grid%octreeRoot%changed = .false.
     grid%octreeRoot%dustType = 1
     grid%octreeRoot%gasOpacity = .false.
+    grid%octreeRoot%diffusionApprox = .false.
+    grid%octreeRoot%diffusionProb = 0.d0
 
     select case (grid%geometry)
        case("cluster")
@@ -1717,7 +1720,7 @@ CONTAINS
                            velocity,velocityDeriv,temperature,kappaAbs,&
                            kappaSca,rho,chiLine,etaLine,etaCont, &
                            probDistLine,probDistCont,N,Ne,nTot,inflow,grid, &
-                           interp, departCoeff,kappaAbsArray,kappaScaArray)
+                           interp, departCoeff,kappaAbsArray,kappaScaArray, rosselandKappa, kappap)
 
     ! POINT, direction --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
     !
@@ -1757,6 +1760,8 @@ CONTAINS
     REAL,INTENT(OUT),OPTIONAL         :: kappaSca
     REAL,INTENT(OUT),OPTIONAL         :: kappaAbsArray(:)
     REAL,INTENT(OUT),OPTIONAL         :: kappaScaArray(:)
+    REAL,INTENT(OUT), OPTIONAL        :: rosselandKappa
+    REAL,INTENT(OUT), OPTIONAL        :: kappap
     REAL,INTENT(OUT),OPTIONAL         :: rho
     REAL,INTENT(OUT),OPTIONAL         :: chiLine
     REAL,INTENT(OUT),OPTIONAL         :: etaLine
@@ -1845,6 +1850,14 @@ CONTAINS
       ENDIF
       IF (PRESENT(kappaScaArray)) THEN
          call returnKappa(grid, resultOctal, subcell, kappaScaArray=kappaScaArray)
+      ENDIF
+
+      IF (PRESENT(rosselandKappa)) THEN
+         call returnKappa(grid, resultOctal, subcell, rosselandKappa=rosselandKappa)
+      ENDIF
+
+      IF (PRESENT(kappap)) THEN
+         call returnKappa(grid, resultOctal, subcell, kappap=kappap)
       ENDIF
 
       IF (PRESENT(kappaAbs)) THEN 
@@ -3869,7 +3882,7 @@ CONTAINS
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**1.25
-      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.5)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.3)) split = .true.
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
 
@@ -5587,12 +5600,17 @@ CONTAINS
        thisOctal%temperature(subcell) = 20.
        thisOctal%etaCont(subcell) = 0.
     endif
-    if (thisOctal%rho(subcell) > 1.e-30) then
+    if (thisOctal%rho(subcell) > 1.e-20) then
        thisOctal%inFlow(subcell) = .true.
     else
        thisOctal%inFlow(subcell) = .false.
        thisOctal%temperature(subcell) = 3.
     endif
+
+!    if ((r < rSublimation).and.thisOctal%inFlow(subcell)) then
+!       thisOctal%temperature(subcell) = 2000.
+!    endif
+
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
@@ -5739,6 +5757,8 @@ CONTAINS
        parent%child(newChildIndex)%temperature = 3.0
        parent%child(newChildIndex)%nTot = 1.e-30
        parent%child(newChildIndex)%changed = .false.
+       parent%child(newChildIndex)%diffusionApprox = .false.
+       parent%child(newChildindex)%diffusionProb = 0.d0
 
        if (present(sphData)) then
           ! updates the sph particle list.           
@@ -5860,7 +5880,7 @@ CONTAINS
              end if
           end do
        else
-          if (thisOctal%inFlow(subcell)) then
+!          if (thisOctal%inFlow(subcell)) then
              if (thisOctal%threed) then
                 totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * thisOctal%subcellSize**3
              else
@@ -5874,7 +5894,7 @@ CONTAINS
              if (PRESENT(minRho)) minRho = min(dble(thisOctal%rho(subcell)), minRho)
              if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
           endif
-       endif
+!       endif
     enddo
   end subroutine findTotalMass
 
@@ -7478,7 +7498,8 @@ CONTAINS
 
   END SUBROUTINE amrUpdateGrid
 
-  subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray)
+  subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
+       rosselandKappa, kappap)
     use input_variables, only: includeGasOpacity
     implicit none
     type(GRIDTYPE) :: grid
@@ -7487,22 +7508,28 @@ CONTAINS
     integer, optional :: ilambda
     real, optional :: lambda
     real, optional :: kappaSca, kappaAbs, kappaAbsArray(:), kappaScaArray(:)
+    real, optional :: rosselandKappa
+    real, optional :: kappap
     real :: temperature
     real :: kappaAbsGas, kappaScaGas
     real :: frac
     real :: tlambda
     real, parameter :: sublimationTemp = 1500., subRange = 100.
     real :: tArray(1000)
+    real(double) :: freq, dfreq, bnutot, norm
+    integer :: i
 
     temperature = thisOctal%temperature(subcell)
-    if (temperature < sublimationTemp) frac = 1.
-    if (temperature > (sublimationTemp+subRange)) frac = 0.
-    
-    if ((temperature > sublimationTemp).and.(temperature < (sublimationTemp+subRange))) then
-       frac = 1.-(temperature-sublimationTemp)/subRange
-    endif
+!    if (temperature < sublimationTemp) frac = 1.
+!    if (temperature > (sublimationTemp+subRange)) frac = 0.
+!    
+!    if ((temperature > sublimationTemp).and.(temperature < (sublimationTemp+subRange))) then
+!       frac = 1.-(temperature-sublimationTemp)/subRange
+!    endif
 
-    frac = max(1.e-20,frac)
+!    frac = max(1.e-20,frac)
+
+    frac = 1.
 
 
     if (PRESENT(kappaAbsArray)) then
@@ -7566,6 +7593,42 @@ CONTAINS
          kappaSca = kappaSca + kappaScaGas*thisOctal%rho(subcell)
       endif
    endif
+
+   if (PRESENT(rosselandKappa)) then
+
+      rosselandKappa = 0.
+      Bnutot = 0.
+      if (thisOctal%inFlow(subcell)) then
+         do i =  grid%nLambda,2,-1
+            freq = cSpeed / (grid%lamArray(i)*1.e-8)
+            dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
+            rosselandKappa = rosselandKappa + bnu(freq, dble(temperature)) * dFreq / &
+                 ((grid%oneKappaabs(thisOctal%dustType(subcell),i)+grid%oneKappaSca(thisOctal%dustType(subcell),i))*frac)
+            bnutot = bnutot + bnu(freq, dble(temperature)) * dfreq
+         enddo
+         if (rosselandkappa /= 0.) then
+            rosselandKappa = (bnutot / rosselandKappa)
+         endif
+      endif
+   endif
+
+
+   if (PRESENT(kappap)) then
+      kappaP = 0.d0
+      norm = 0.d0
+      do i = grid%nLambda,2,-1
+         freq = cSpeed / (grid%lamArray(i)*1.e-8)
+         dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
+         kappaP = kappaP + dble(grid%oneKappaAbs(thisOctal%dusttype(subcell),i)) * &
+                        dble(bnu(dble(freq),dble(thisOctal%temperature(subcell))))  * dfreq
+         norm = norm + dble(bnu(dble(freq),dble(thisOctal%temperature(subcell))))  * dfreq
+      enddo
+      kappaP = kappaP / norm /1.d10
+   endif
+
+
+         
+
 
   end subroutine returnKappa
 END MODULE amr_mod

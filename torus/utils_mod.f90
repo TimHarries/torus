@@ -2249,6 +2249,159 @@ contains
   end subroutine write_message_char
 
 
+!
+!     ******************************************************************
+!
+     SUBROUTINE POLFIT(X,Y,SIGMAY,NPTS,NTERMS,MODE,A,CHISQR)
+!
+!  Bevingtons polynomial least-sqaures fitting routine
+!
+!
+!     DECLARE EVERYTHING TO BE REAL*8
+!
+      IMPLICIT REAL*8(A-H,O-Z)
+      INTEGER NMAX, NTERMS, N, J, I, NPTS, MODE, K, L
+!
+!     SET UP ARRAYS
+!
+      DIMENSION X(*), Y(*), SIGMAY(*), A(*)
+      DIMENSION ARRAY(20,20), SUMX(1000), SUMY(1000)
+!
+!     ACCUMULATE WEIGHTED SUMS
+!
+      NMAX  =  2*NTERMS - 1
+      DO N  =  1, NMAX
+        SUMX(N)  =  0.0D0
+      ENDDO
+      DO J  =  1, NTERMS
+        SUMY(J)  =  0.0D0
+      ENDDO
+      CHISQ  =  0.0D0
+      DO I  =  1, NPTS
+        XI  =  X(I)
+        YI  =  Y(I)
+        IF (MODE.LT.0) THEN
+          IF (YI.LT.0) THEN
+            WEIGHT  =  -1.0D0/YI
+          ELSEIF (YI.EQ.0) THEN
+            GOTO 50
+          ELSE
+            WEIGHT  =  1.0D0/YI
+          ENDIF
+        ELSEIF (MODE.EQ.0) THEN
+          GOTO 50
+        ELSE
+          WEIGHT  =  1.0D0/SIGMAY(I)**2
+        ENDIF
+        GOTO 100
+   50   CONTINUE
+        WEIGHT  =  1.0D0
+  100   CONTINUE
+        XTERM  =  WEIGHT
+        DO N  =  1, NMAX
+          SUMX(N)  =  SUMX(N) + XTERM
+          XTERM  =  XTERM*XI
+        ENDDO
+        YTERM  =  WEIGHT*YI
+        DO N  =  1, NTERMS
+          SUMY(N)  =  SUMY(N) + YTERM
+          YTERM  =  YTERM*XI
+        ENDDO
+        CHISQ  =  CHISQ + WEIGHT*YI**2
+      ENDDO
+!
+!     CONSTRUCT MATRICES AND CALCULATE COEFFICIENTS
+!
+      DO J  =  1, NTERMS
+        DO K  =  1, NTERMS
+          N  =  J + K - 1
+          ARRAY(J,K)  =  SUMX(N)
+        ENDDO
+      ENDDO
+      DELTA  =  DETERM(ARRAY,NTERMS)
+      IF (DELTA.NE.0) THEN
+        DO L  =  1, NTERMS
+          DO J  =  1, NTERMS
+            DO K  =  1, NTERMS
+              N  =  J + K - 1
+              ARRAY(J,K)  =  SUMX(N)
+            ENDDO
+            ARRAY(J,L)  =  SUMY(J)
+          ENDDO
+          A(L)  =  DETERM(ARRAY,NTERMS)/DELTA
+        ENDDO
+!
+!     CALCULATE CHI SQUARE
+!
+        DO J  =  1, NTERMS
+          CHISQ  =  CHISQ - 2.0D0*A(J)*SUMY(J)
+          DO K  =  1, NTERMS
+            N  =  J + K - 1
+            CHISQ  =  CHISQ + A(J)*A(K)*SUMX(N)
+          ENDDO
+        ENDDO
+        FREE  =  dble(NPTS-NTERMS)
+        CHISQR  =  CHISQ/FREE
+      ELSE
+        CHISQR  =  0.0D0
+        DO J  =  1, NTERMS
+          A(J)  =  0.0D0
+        ENDDO
+      ENDIF
+    END SUBROUTINE POLFIT
+
+!     ******************************************************************
+!     ****  FUNCTION DETERM  *******************************************
+!     ******************************************************************
+!
+! Bevington again
+!
+      FUNCTION DETERM(ARRAY,NORDER)
+!
+!     DECLARE EVERYTHING TO BE REAL*8
+!
+      IMPLICIT REAL*8(A-H,O-Z)
+      DIMENSION ARRAY(20,20)
+      INTEGER I, J, K, K1, NORDER
+      DETERM  =  1.0D0
+
+      DO K  =  1, NORDER
+!
+!     INTERCHANGE COLUMNS IF DIAGONAL ELEMENT IS ZERO
+!
+        IF (ARRAY(K,K).NE.0) GOTO 100
+        DO J  =  K, NORDER
+          IF (ARRAY(K,J).NE.0) GOTO 50
+        ENDDO
+        DETERM  =  0.0D0
+        GOTO 200
+   50   CONTINUE
+        DO I  =  K, NORDER
+          SAVE  =  ARRAY(I,J)
+          ARRAY(I,J)  =  ARRAY(I,K)
+          ARRAY(I,K)  =  SAVE
+        ENDDO
+        DETERM  =  -DETERM
+!
+!     SUBTRACT ROW K FROM THE LOWER ROWS TO GET A DIAGONAL MATRIX
+!
+  100   CONTINUE
+        DETERM  =  DETERM*ARRAY(K,K)
+        IF (K.LT.NORDER) THEN
+          K1  =  K + 1
+          DO I  =  K1, NORDER
+            DO J  =  K1, NORDER
+              ARRAY(I,J)  =  ARRAY(I,J) - &
+                            ARRAY(I,K)*ARRAY(K,J)/ARRAY(K,K)
+            ENDDO
+          ENDDO
+        ENDIF
+      ENDDO
+  200 CONTINUE
+    END FUNCTION DETERM
+
+
+
 end module utils_mod
 
 

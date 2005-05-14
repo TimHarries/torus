@@ -750,7 +750,7 @@ contains
     use input_variables
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(octalVector), INTENT(IN) :: point
-    real :: r, h, rhoOut, warpHeight,alphaDisc,betaDisc
+    real :: r, h, rhoOut, warpHeight
     real :: kspiral
     real :: xpoint,ypoint,rscale,r1,fac
     integer :: nspiral1
@@ -765,8 +765,6 @@ contains
 
     kspiral = grid%rOuter/Pi
 
-    alphaDisc = 2.25
-    betaDisc = 1.25
 
     rhoOut = 1.e-30
     r = sqrt(point%x**2 + point%y**2)

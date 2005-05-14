@@ -1586,6 +1586,9 @@ endif
    call getReal("rinner", rInner, cLine, nLines, &
        "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
 
+   call getReal("rsub", rSublimation, cLine, nLines, &
+       "Dust sublimation radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
    call getReal("router", rOuter, cLine, nLines, &
        "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
 
@@ -1604,8 +1607,15 @@ endif
    call getReal("mdisc", mDisc, cLine, nLines, &
        "Disc mass (solar masses): ","(a,f5.3,a)", 1.e-4, ok, .true.)
 
+   call getReal("alphadisc", alphaDisc, cLine, nLines, &
+       "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+   call getReal("betadisc", betaDisc, cLine, nLines, &
+       "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
    rCore = rCore * rSol / 1.e10
    rInner = rInner * rCore
+   rSublimation = rSublimation * rCore
    rOuter = rOuter * autoCm / 1.e10
    height = height * autoCm / 1.e10
    mCore = mCore * mSol

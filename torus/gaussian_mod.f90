@@ -65,11 +65,9 @@ contains
     real :: z, ang
     type(VECTOR) :: position
     type(GAUSSIAN) :: gArray(ng)
-    real :: r1, r, h, alphaDisc, betaDisc, sigma
+    real :: r1, r, h, sigma
     real :: rAxis(1000),rProb(1000), massWeight(1000), clumpMass
     integer :: i
-    alphaDisc = 2.25
-    betaDisc = 1.25
     
     do i = 1, 1000
        rAxis(i) = log10(rInner) + real(i-1)/999.*(log10(rOuter)-log10(rInner))

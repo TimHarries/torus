@@ -29,6 +29,8 @@ contains
   
   subroutine solveHydro(temperature, zAxis, subcellsize, rho, nz, &
        radius, mStar, sigma0, rDisk, converged, drho)
+
+    use input_variables, only: alphaDisc, betaDisc
     integer, intent(in) :: nz ! number of vertical grid points
     real(single),intent(in) :: subcellSize(1:nz)  ! size of this subcell
     real(single),intent(in) :: temperature(1:nz)  ! temperature
@@ -81,6 +83,10 @@ contains
     ! rescale the density to retain the 1/r surface density fall-off
 
     scalefac = 0.5 * (sigma0*(autocm/(radius*1.e10))) / sigma ! factor of 0.5 cos only integrating over half disc vertically
+
+
+    scalefac = 0.5 * (sigma0 * (radius*1.e10/autoCm)**(betaDisc-alphaDisc)) / sigma
+
 !    scalefac = fractgap(dble(radiusAU)) / (sqrt(radiusAU) * (1 + exp(-100.*(radiusAU-rSmooth))) * sigma)
 !    scalefac = scalefac * 0.5 * rho0 * Msol / autocm**2
     rho(1:nz) = rho(1:nz) * scalefac

@@ -9,6 +9,8 @@ module lucy_mod
   use spectrum_mod
   use parallel_mod
   use timing
+  use diffusion_mod
+
   implicit none
 
 
@@ -323,6 +325,7 @@ contains
     real(oct) :: freq(2000), dnu(2000), probDistJnu(2000)
 !    real(oct) :: probDistPlanck(nFreq)
     real :: kappaScaReal, kappaAbsReal
+    integer :: nDiffusion
     integer :: nMonte, iMonte, nScat, nAbs
     real(oct) :: thisFreq
     real(oct) :: albedo
@@ -360,6 +363,8 @@ contains
     integer :: maxIter
     integer       :: imonte_beg, imonte_end  ! the index boundary for the photon loops.
     real, allocatable :: kAbsArray(:)
+    logical :: photonInDiffusionZone
+    real :: diffusionZoneTemp
 
 !$MPI    ! For MPI implementations
 !$MPI  ! For MPI implementations =====================================================
@@ -480,6 +485,9 @@ contains
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+       call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
+            "rho_temp_zoom.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac = 0.01) 
        call plot_AMR_values(grid, "rho", "x-y", real(grid%octreeRoot%centre%y), &
             "rho_temp_xy.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
@@ -488,19 +496,19 @@ contains
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             "lucy_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
        call plot_AMR_values(grid, "etaCont", "x-z", real(grid%octreeRoot%centre%y), &
             "etacont_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
        call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
             "tau_zoom_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004,ilam=ilam) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             tfilename1, .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             tfilename2, .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004)
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01)
        call plot_AMR_values(grid, "temperature", "x-y", real(grid%octreeRoot%centre%z), &
             "lucy_temp_xy.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
@@ -600,6 +608,7 @@ contains
 
 !!$OMP DO SCHEDULE(DYNAMIC,10)
 !$OMP DO SCHEDULE(STATIC,10)
+       nDiffusion = 0
        avedirection = OCTALVECTOR(0.d0, 0.d0, 0.d0)
        photonloop: do iMonte = imonte_beg, imonte_end
 
@@ -619,13 +628,18 @@ contains
           do while(.not.escaped)
 
 !$OMP CRITICAL (tonext)
-             call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD,imonte)
+             call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD,imonte, &
+                  photonInDiffusionZone, diffusionZoneTemp)
+
 !$OMP END CRITICAL (tonext)
 
-!             write(*,*) imonte,rvec,thisFreq
-!             if (iMonte == 14) stop
-
              If (escaped) nInf_sub = nInf_sub + 1
+
+             if (photonInDiffusionZone) then
+                nDiffusion = nDiffusion + 1
+             endif
+                
+
 
              if (.not. escaped) then
 
@@ -640,19 +654,36 @@ contains
                    albedo = 0.5
                 end if
 
+                ! photon is always absorbed/reprocessed if it has come from diffusion zone
+
+                if (PhotonInDiffusionZone) albedo = 0. 
+
 	        albedo = min(albedo,0.9999d0)
 
                 call random_number(r)
-                if (r < albedo) then
+
+                ! scattering case
+                if (r < albedo) then 
+
+
                    vec_tmp = uhat
                    uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nMuMie)
                    nScat_sub = nScat_sub + 1
                    uHat = uNew
 
                 else
+
                    call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                         foundSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
                    t1 = dble(treal)
+
+                   ! if the photon has come from the diffusion zone then it has to be
+                   ! reprocessed using the appropriate temperature
+
+                   if (photonInDiffusionZone) then
+                      t1 = dble(diffusionZoneTemp)
+                   endif
+
                    nAbs_sub = nAbs_sub + 1
                    probDistJnu(1) = 0.
                    do i = 2, nFreq
@@ -772,6 +803,9 @@ contains
        nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
+       call defineDiffusionZone(grid)
+       call throughoutMidplanediff(grid)
+
        if (twoD) then
           write(*,*) "! Remapping the distance grid attributes..."
           call remapDistanceGrid(grid%octreeRoot, grid)
@@ -789,6 +823,7 @@ contains
 
 
 !$MPI       if (my_rank==0) then
+       write(*,*) "Number of photons entering diffusion zone", ndiffusion
        write(*,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
        write(*,*) "Minimum change in temperature : ", dT_min, " Kelvins"
        write(*,*) "Maximum change in temperature : ", dT_max, " Kelvins"
@@ -1138,7 +1173,7 @@ contains
     type(octal), pointer  :: child 
     type(gridtype) :: grid
     integer :: subcell, i
-    integer, parameter :: minCrossings = 50
+    integer, parameter :: minCrossings = 5
     real(oct) :: V, epsOverDeltaT
     real(oct) :: adot
     real(oct) :: kappaP, norm
@@ -1225,7 +1260,7 @@ contains
              kappaP = kappaP / norm /1.d10
              
              
-             if (kappaP /= 0.d0) then
+             if (kappaP /= 0.) then
                 newT = dble(pi / stefanBoltz) * aDot / (dble(fourPi) * kappaP)
                 newT = newT**0.25d0
              else
@@ -1255,7 +1290,9 @@ contains
                 thisOctal%temperature(subcell) = max(1.e-3,thisOctal%temperature(subcell) + real(0.8 * deltaT))
              else
                 deltaT = 0.
-                nUnderSampled = nUndersampled + 1
+                if (.not.thisOctal%diffusionApprox(subcell)) then
+                   nUnderSampled = nUndersampled + 1
+                endif
              endif
              kappaP = 0.d0
              norm = 0.d0
@@ -1472,15 +1509,16 @@ contains
 
 
 
- subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, twoD, imonte)
+ subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, twoD, imonte, &
+      photonInDiffusionZone, diffusionZoneTemp)
 
 
    type(GRIDTYPE) :: grid
    type(OCTALVECTOR) :: rVec, uHat, octVec,thisOctVec,octVec2D
-   type(OCTAL), pointer :: thisOctal
+   type(OCTAL), pointer :: thisOctal, tempOctal, sourceOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: foundOctal
-   integer :: subcell, isubcell
+   integer :: subcell, isubcell, tempSubcell, sourceSubcell
    real(oct) :: tval, tau, r
    real :: lamArray(*)
    integer :: nLambda
@@ -1494,10 +1532,14 @@ contains
    integer :: iLam
    logical ::inFlow
    integer :: imonte
+   real :: diffusionZoneTemp
+   logical :: photonInDiffusionZone
+   real(double) :: prob
 
     stillinGrid = .true.
     escaped = .false.
-
+    photonInDiffusionZone = .false.
+       
 
 
     thisLam = (cSpeed / thisFreq) * 1.e8
@@ -1506,6 +1548,8 @@ contains
        write(*,*) "ilam errro",ilam
     endif
 
+! select an initial random tau and find distance to next cell
+
     call random_number(r)
     tau = -log(r)
     if (grid%octreeRoot%threed) then
@@ -1513,8 +1557,6 @@ contains
     else
        call intersectCubeAMR2D(grid, rVec, uHat, tVal)
     endif
-
-!    if (iMonte == 13) write(*,*) "tval",tval,uHat,rVec
 
 
     octVec = rVec
@@ -1532,16 +1574,38 @@ contains
        thisTau = 1.0e-28
     end if
 
-!    if (iMonte == 13) write(*,*) "thisTau",thisTau
-
+! if tau > thisTau then the photon has traversed a cell with no interactions
 
     do while(stillinGrid .and. (tau > thisTau)) 
+
+! add on the distance to the next cell
+
        rVec = rVec + tVal * uHat
 
        octVec = rVec
 
-!    if (iMonte == 13) write(*,*) "octvec",octvec
+! It is here that the photon path has potentially entered a cell
+! in the diffusion approximation zone. In this case we have to return
+! a position _before_ the photon enters the cell, and we need to
+! tell the main photon loop that the photon has been absorbed
+! and needs to re-emitted with a temperature corresponding to
+! the top layer of the diffusion zone (this will conserve
+! energy, and will create the appropriate boundary condition
+! at the surface of the diffusion zone.
 
+       call amrGridValues(grid%octreeRoot, octVec,  foundOctal=tempOctal, &
+            foundSubcell=tempsubcell)
+       if (tempOctal%diffusionApprox(tempsubcell)) then
+          photonInDiffusionZone = .true.
+          diffusionZoneTemp = tempOctal%temperature(subcell)
+          sourceOctal => grid%octreeRoot
+          call random_number(prob)
+          call locateDiffusionProbAMR(prob, sourceOctal, sourceSubcell)
+          rVec = subcellCentre(sourceOctal, sourcesubcell)
+       endif
+
+
+! check whether the photon has escaped from the grid
 
        if (.not.inOctal(grid%octreeRoot, octVec)) then
           stillinGrid = .false.
@@ -1549,10 +1613,9 @@ contains
        endif
 
 
-
-
-
 ! two cases here now. in the 2D case we only update the distance grid in a single plane (y=0, x>=0)
+
+! update the distance grid
 
        if (.not.twoD) then
 
@@ -1567,7 +1630,19 @@ contains
           foundOctal%distanceGrid(isubcell) = foundOctal%distanceGrid(isubcell) &
                + tVal * dble(kappaAbsReal)
           foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
+
        endif
+
+! now we need to return with the previous point (approximately) as the interaction
+! point if the photon has entered the diffusion zone
+
+       if (photonInDiffusionZone) then
+          rVec = rVec - tVal * uHat
+          goto 666
+       endif
+         
+
+! now if the photon is in the grid choose a new random tau
 
        if (stillinGrid) then
           call random_number(r)
@@ -1577,6 +1652,9 @@ contains
                grid=grid, inFlow=inFlow)
           oldOctal => thisOctal
           thisOctVec = octVec
+
+! calculate the distance to the next cell
+
           if (grid%octreeRoot%threed) then
              call intersectCubeAMR(grid, rVec, uHat, tVal)
           else
@@ -1584,10 +1662,10 @@ contains
           endif
           octVec = rVec
 
+! calculate the optical depth to the next cell boundary
+
           if (inFlow) then
              thisTau = dble(tVal) * dble(kappaAbsReal + kappaScaReal)
-!             if (imonte == 13) write(*,*) "inflow",tval,thisTau,thisOctal%rho(subcell)
-!             if (imonte == 13) write(*,*) "inflow",kappaAbsReal,kappaScaReal
           else
              thisTau = 1.0e-28
           end if
@@ -1596,13 +1674,20 @@ contains
              escaped = .true.
              stillingrid = .false.
           endif
-       endif
-    enddo
+       endif ! still in grid
 
+! if photon is still in grid and  tau > tau_to_the_next_cell then loop round again
+! choosing a new tau
+
+
+    enddo
+    
+
+! the photon may have escaped the grid...
 
     if (.not.inOctal(grid%octreeRoot, octVec))  escaped = .true.
 
-    
+ ! if not the photon must interact in this cell
        
 
     if (.not.escaped) then
@@ -1629,7 +1714,8 @@ contains
        thisOctVec = octVec
        if (.not.inFlow) kappaAbsReal =0.0d0
 
-!       if (iMonte == 13) write(*,*) "octVec in not escaped",octVec,thisTau
+
+! update the distance grid
 
        if (thisTau > 1.e-30) then
 
@@ -1659,19 +1745,13 @@ contains
           stop
        endif
 
+! move the requisite distance within the cell and return
 
-!       ! We limit the maxiumum number of the interaction in a single
-!       ! cell.  (RK modefied this part, june-11-2003)
-!       !      
-!       if (thisOctal%nCrossings(subcell) > 1000) then
-!           thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
-!            + tVal * dble(kappaAbsReal)
-!          rVec = rVec + tVal * uHat
-!          stillinGrid = .false.
-!       elseif (thisTau > 1.e-30) then
-          rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
-!       endif
+       rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
+
     endif
+
+666 continue
 
  end subroutine toNextEventAMR
 
