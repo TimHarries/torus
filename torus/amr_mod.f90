@@ -1720,7 +1720,8 @@ CONTAINS
                            velocity,velocityDeriv,temperature,kappaAbs,&
                            kappaSca,rho,chiLine,etaLine,etaCont, &
                            probDistLine,probDistCont,N,Ne,nTot,inflow,grid, &
-                           interp, departCoeff,kappaAbsArray,kappaScaArray, rosselandKappa, kappap)
+                           interp, departCoeff,kappaAbsArray,kappaScaArray, rosselandKappa, kappap, &
+                           atthistemperature)
 
     ! POINT, direction --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
     !
@@ -1762,6 +1763,7 @@ CONTAINS
     REAL,INTENT(OUT),OPTIONAL         :: kappaScaArray(:)
     REAL,INTENT(OUT), OPTIONAL        :: rosselandKappa
     REAL,INTENT(OUT), OPTIONAL        :: kappap
+    REAL,INTENT(IN), OPTIONAL         :: atThisTemperature
     REAL,INTENT(OUT),OPTIONAL         :: rho
     REAL,INTENT(OUT),OPTIONAL         :: chiLine
     REAL,INTENT(OUT),OPTIONAL         :: etaLine
@@ -1853,11 +1855,21 @@ CONTAINS
       ENDIF
 
       IF (PRESENT(rosselandKappa)) THEN
-         call returnKappa(grid, resultOctal, subcell, rosselandKappa=rosselandKappa)
+         if (PRESENT(atthistemperature)) then
+            call returnKappa(grid, resultOctal, subcell, rosselandKappa=rosselandKappa, &
+                 atthisTemperature=atthisTemperature)
+         else
+            call returnKappa(grid, resultOctal, subcell, rosselandKappa=rosselandKappa)
+         endif
       ENDIF
 
       IF (PRESENT(kappap)) THEN
-         call returnKappa(grid, resultOctal, subcell, kappap=kappap)
+         if (PRESENT(atthistemperature)) then
+            call returnKappa(grid, resultOctal, subcell, kappap=kappap, &
+                 atthistemperature=atthistemperature)
+         else
+            call returnKappa(grid, resultOctal, subcell, kappap=kappap)
+         endif
       ENDIF
 
       IF (PRESENT(kappaAbs)) THEN 
@@ -7499,7 +7511,7 @@ CONTAINS
   END SUBROUTINE amrUpdateGrid
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
-       rosselandKappa, kappap)
+       rosselandKappa, kappap, atthistemperature)
     use input_variables, only: includeGasOpacity
     implicit none
     type(GRIDTYPE) :: grid
@@ -7510,6 +7522,7 @@ CONTAINS
     real, optional :: kappaSca, kappaAbs, kappaAbsArray(:), kappaScaArray(:)
     real, optional :: rosselandKappa
     real, optional :: kappap
+    real, optional :: atthistemperature
     real :: temperature
     real :: kappaAbsGas, kappaScaGas
     real :: frac
@@ -7595,7 +7608,9 @@ CONTAINS
    endif
 
    if (PRESENT(rosselandKappa)) then
-
+      if (PRESENT(atthistemperature)) then
+         temperature = atthistemperature
+      endif
       rosselandKappa = 0.
       Bnutot = 0.
       if (thisOctal%inFlow(subcell)) then
@@ -7607,21 +7622,24 @@ CONTAINS
             bnutot = bnutot + bnu(freq, dble(temperature)) * dfreq
          enddo
          if (rosselandkappa /= 0.) then
-            rosselandKappa = (bnutot / rosselandKappa)
+            rosselandKappa = (bnutot / rosselandKappa)/1.d10
          endif
       endif
    endif
 
 
    if (PRESENT(kappap)) then
+      if (PRESENT(atthistemperature)) then
+         temperature = atthistemperature
+      endif
       kappaP = 0.d0
       norm = 0.d0
       do i = grid%nLambda,2,-1
          freq = cSpeed / (grid%lamArray(i)*1.e-8)
          dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
          kappaP = kappaP + dble(grid%oneKappaAbs(thisOctal%dusttype(subcell),i)) * &
-                        dble(bnu(dble(freq),dble(thisOctal%temperature(subcell))))  * dfreq
-         norm = norm + dble(bnu(dble(freq),dble(thisOctal%temperature(subcell))))  * dfreq
+                        dble(bnu(dble(freq),dble(temperature)))  * dfreq
+         norm = norm + dble(bnu(dble(freq),dble(temperature)))  * dfreq
       enddo
       kappaP = kappaP / norm /1.d10
    endif

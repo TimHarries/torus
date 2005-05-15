@@ -17,7 +17,7 @@ contains
 
 
 
-  subroutine solveDiffusion(grid, zArray, xPos, temperature, rho, diffApprox, nz, flux)
+  subroutine solveDiffusion(grid, zArray, xPos, temperature, rho,  diffApprox, nz)
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -28,7 +28,9 @@ contains
     type(OCTALVECTOR) :: octVec
     real :: temperature(*)
     real :: rho(*)
-    real :: flux
+    real :: flux(1000)
+    real :: jd(1000), kappa_ross(1000), kappap(1000)
+    real :: tau(1000)
     logical :: diffApprox(*)
     real, allocatable :: dTdZ(:), newTemperature(:), frac(:)
     real :: kappa
@@ -37,100 +39,113 @@ contains
     real(double) :: tReal(1000),zReal(1000),rhoReal(1000)
     integer :: nReal
     real :: bigJ
-    real :: dtdz1, dfdz
+    real :: dtdz1, dfdz(1000)
     integer :: istart
     real :: safetemp
-    real :: kappap
-    real :: dJdz
+    real :: dJdz(1000)
+    real :: t0, t1, fac
 
     allocate(dTdZ(1:nz))
     allocate(newTemperature(1:nz))
     allocate(frac(1:nz))
 
-    converged = .false.
-
-    nIter = 0
-    do while(.not.converged)
-
 ! now take the first nreal points in the temperature/z run
 ! which correspond to temperatures that have be calculated
 ! via the lucy algorithm
 
-       nReal = 0
-       do i = 1, nz
-!          if (.not.diffusionApprox(i)) then
-          if (temperature(i) > 100.) then
-             nReal = nReal + 1
-             tReal(nReal) = temperature(i)
-             zReal(nReal) = zArray(i)
-             rhoReal(nReal) = rho(i)
-          else
-             iStart = i ! first element of diffusion array
-             exit
-          endif
-       enddo
+    write(*,*) "starting diffusion calculation..."
+
+    nReal = 0
+    do i = 1, nz
+       !          if (.not.diffusionApprox(i)) then
+       if (temperature(i) > 100.) then
+          nReal = nReal + 1
+          tReal(nReal) = temperature(i)
+          zReal(nReal) = zArray(i)
+          rhoReal(nReal) = rho(i)
+       else
+          iStart = i ! first element of diffusion array
+          exit
+       endif
+    enddo
+    
+ 
+    dTdz1 = getTempGradient(nReal, tReal, zReal)
+!    write(*,*) (treal(nreal)-treal(nreal-1))/(zReal(nreal)-zreal(nreal-1)) /1.e10
+!    dtdz1 = (treal(nreal)-treal(nreal-1))/(zReal(nreal)-zreal(nreal-1)) /1.e10 
+    
+    converged = .false.
+
+    octVec = VECTOR(xPos, 0., zReal(nReal))
+    call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
+         foundSubcell=subcell, rosselandKappa=kappa, grid=grid, ilambda = 32)
+
+    flux(iStart-1) = -16.* stefanBoltz * treal(nreal)**3 * dtdz1 / (3.* kappa * rhoreal(nreal))
+    write(*,*) flux(istart-1)
+
+!    flux(istart-1) = -stefanBoltz*treal(nreal)**4 
+    jd(iStart-1) = flux(iStart-1) / twoPi
+
+
+    t0 = 100.
+    t1 = treal(nreal)
+    fac = log(t1/t0)/zreal(nreal)
+    do i = iStart,nz
+       temperature(i) = t0 * exp(fac*zArray(i))
+    enddo
+
+
+    nIter = 0
+    do while(.not.converged)
        
 
-
-       dTdz1 = getTempGradient(nReal, tReal, zReal)
-       write(*,*) "dtdz1",dtdz1
-      write(*,*) (treal(nreal)-treal(nreal-1))/(zReal(nreal)-zreal(nreal-1)) /1.e10
-       dtdz1 = (treal(nreal)-treal(nreal-1))/(zReal(nreal)-zreal(nreal-1)) /1.e10 
-
-       octVec = VECTOR(xPos, 0., zReal(nReal))
-
-       call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-            foundSubcell=subcell, rosselandKappa=kappa, grid=grid, ilambda = 32)
-
-
-       do i = 1, nreal
-          write(*,*) i,treal(i)
-       enddo
-
-       do i = 1, nz
+       do i = 1, nz+1
           newTemperature(i) = temperature(i)
        enddo
 
-       flux = -16.* stefanBoltz * tReal(nreal)**3 * dtdz1 / (3.* kappa * rhoreal(nreal)/1.e10)
        
+       ! first calculate the opacities
 
-       write(*,'(i2,1p,8e12.3)') 0, zreal(nreal), treal(nreal), dtdz1, dfdz, flux, bigJ, &
-            (stefanBoltz * treal(nreal)**4)/pi,djdz
-       do i = iStart, nz
-
-          flux = max(-1.e10,-16.* stefanBoltz * newtemperature(i)**3 * dtdz1 / (3.* kappa * rho(i)/1.e10))
-          newtemperature(i) = newtemperature(i-1) + dtdz1 *  (zArray(i)-zArray(i-1)) * 1.e10
-          newTemperature(i) = max(10., newTemperature(i))
-          
+       do i = iStart, nz+1
           octVec = VECTOR(xPos, 0., zArray(i))
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-               foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
+               foundSubcell=subcell, rosselandKappa=kappa_ross(i), kappap=kappap(i), grid=grid, &
+               atthistemperature=newtemperature(i))
+          write(*,*) i,zArray(i),kappa_ross(i),kappap(i)
+       enddo
+       
 
-
-          thisOctal%diffusionApprox(subcell) = .true.
-
-          safetemp = thisOctal%temperature(subcell)
-          thisOctal%temperature(subcell) = newtemperature(i)
-          call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-               foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
-          thisOctal%temperature(subcell) = safetemp
-
-          dtdz1 = max(1.e10,(flux * 3. * kappa *rho(i)/1.e10) / (-16. * stefanBoltz * newtemperature(i)**3))
-
-
-          write(*,'(i2,1p,8e12.3)') i, zArray(i), newtemperature(i), dtdz1, dfdz, flux, bigJ, &
-               (stefanBoltz * newtemperature(i)**4)/pi,djdz
+       flux(nz+1) = 0.
+       jd(nz+1) = -0.9*(stefanBoltz*newtemperature(nz+1)**4 / pi)
+       djdz(nz+1) = -3. * kappa_ross(nz+1) * rho(nz+1) * flux(nz+1) / fourPi
+       dfdz(nz+1) = fourPi * kappap(nz+1) * rho(nz+1) * ( (stefanBoltz*newtemperature(nz+1)**4 /pi)-jd(nz+1))
+       do i = nz, iStart,-1
+          flux(i) = flux(i+1) + dfdz(i+1) * (zArray(i)-zArray(i-1)) * 1.e10
+          jd(i) = jd(i+1) + djdz(i+1)  * (zArray(i)-zArray(i-1)) * 1.e10
+          dfdz(i) = fourPi * kappap(i) * rho(i) * ( (stefanBoltz*newtemperature(i)**4 /pi)-jd(i))
+          djdz(i) = 3. * kappa_ross(i) * rho(i) * flux(i) / fourPi
        enddo
 
+!       do i = iStart, nz
+!          dfdz(i) = fourPi * kappap(i) * rho(i) * ( (stefanBoltz*newtemperature(i)**4 /pi)-jd(i))
+!          flux(i) = flux(i-1) + dfdz(i) * (zArray(i)-zArray(i-1)) * 1.e10
+!          djdz(i) = -3. * kappa_ross(i) * rho(i) * flux(i) / fourPi
+!          jd(i) = jd(i-1) + djdz(i)  * (zArray(i)-zArray(i-1)) * 1.e10
+!       enddo
 
+
+
+       temperature(1:nz) = newTemperature(1:nz)
+
+       do i = nz+1,istart,-1
+          write(*,'(i3,1p,6e12.3)') i, zArray(i), temperature(i),flux(i), dfdz(i),jd(i), djdz(i)
+       enddo
 
 
        nIter = nIter + 1000
        if (nIter > 10) converged = .true.
-
+       stop
     enddo
-
-    temperature(1:nz) = newTemperature(1:nz)
 
     deallocate(newTemperature, frac, dTdZ)
 
@@ -165,7 +180,7 @@ contains
        call getTemperatureDensityRunDiff(grid, zAxis, subcellsize, rho, temperature, diffApprox, xPos, yPos, nz, -1.)
 
        if (nz > 1) then
-          call solveDiffusion(grid, zAxis, xPos, temperature, rho, diffapprox, nz, flux)
+          call solveDiffusion(grid, zAxis, xPos, temperature, rho, diffapprox, nz)
 !          
 
           call putTemperatureRunDiff(grid, zAxis, temperature, nz, xPos, yPos, -1.)
@@ -312,8 +327,8 @@ contains
     do j = 2, nx
        octVec = OCTALVECTOR(xAxis(j), 0., 0.)
        call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-            foundSubcell=subcell, rosselandKappa=kappa, grid=grid, ilambda = 32)
-       rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + kappa * thisOctal%rho(subcell) *  subcellsize(j)
+            foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
+       rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + kappa * thisOctal%rho(subcell) *  subcellsize(j)*1.e10
        if (rosselandOpticalDepth(j) > diffDepth) then
           xStart = xAxis(j)
           exit
@@ -342,7 +357,7 @@ contains
           octVec = OCTALVECTOR(xpos, 0., zAxis(j))
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell, rosselandkappa=kappa, grid=grid)
-          rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + kappa * thisOctal%rho(subcell) * subcellsize(j)
+          rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + kappa * thisOctal%rho(subcell) * subcellsize(j)*1.e10
           if (rosselandOpticalDepth(j) > diffDepth) then
              thisOctal%diffusionApprox(subcell) = .true.
 
@@ -376,7 +391,7 @@ contains
           octVec = OCTALVECTOR(xpos, 0., zAxis(j))
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell, rosselandKappa=kappa, grid=grid, ilambda=32)
-          rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + kappa * thisOctal%rho(subcell) * subcellsize(j)
+          rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + kappa * thisOctal%rho(subcell) * subcellsize(j)*1.e10
           if (rosselandOpticalDepth(j) > diffDepth) then
              thisOctal%diffusionApprox(subcell) = .true.
           else
@@ -397,7 +412,6 @@ contains
 
     tot = 0.d0
     call sumDiffusionProb(grid%octreeRoot, tot)
-    write(*,*) "sum",tot
     call normDiffusionProb(grid%octreeRoot, tot)
 
 

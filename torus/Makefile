@@ -284,7 +284,7 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  readTioCrossSection.f90 rayleighCrossSection.f90 \
  fillGridTio.f90 fillGridRayleigh.f90 fillGridMie.f90 \
  intersectCube.f90 fillGridThomson.f90 cont_read.f90 getMeanMass.f90 \
- input_variables.f90 amr_mod.f90 octal_mod.f90 parameters_mod.f90 \
+ input_variables.f90 amr_mod.f90 octal_mod.f90 parameters_mod.f90 diffusion_mod.f90 \
  lucy_mod.f90 jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 \
  wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 pixplot_module.f90 \
  sph_data_class.f90 cluster_class.f90 linked_list_class.f90 timing.f90 \
@@ -293,7 +293,7 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  hyd_col_coeff.f90 rotation_variables.f90 function_variables.f90 \
  flow_speed_variables.f90 clump_mod.f90 parallel_mod.f90 \
  discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
- jet_class.f90 cmfgen_class.f90 diffusion_mod.f90
+ jet_class.f90 cmfgen_class.f90 
 
 
 F77SOURCE= image_f77.f mieDistCrossSection.f palette.f\
