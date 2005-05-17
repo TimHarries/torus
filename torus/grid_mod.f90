@@ -6347,6 +6347,9 @@ contains
                 value = thisOctal%etaLine(subcell)
              case("etaCont")
                 value = thisOctal%etaCont(subcell)
+             case("crossings")
+                value = thisOctal%nCrossings(subcell)
+                if (thisOctal%diffusionApprox(subcell)) value = 1.e6
              case("Vx")
 !                value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
                 velocity = amrGridVelocity(thisOctal, rvec)
@@ -6369,7 +6372,7 @@ contains
                 value = thisOctal%subcellsize * (kSca+kAbs)
 
              case default
-                write(*,*) "Error:: unknow name passed to grid_mod::plot_values."
+                write(*,*) "Error:: unknown name passed to grid_mod::plot_values."
                 stop
              end select
 
@@ -6508,6 +6511,9 @@ contains
                 value = thisOctal%etaLine(subcell)
              case("etaCont")
                 value = thisOctal%etaCont(subcell)
+             case("crossings")
+                value = thisOctal%ncrossings(subcell)
+                if (thisOctal%diffusionApprox(subcell)) value = 1.e6
              case("Vx")
                 value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
              case("Vy")

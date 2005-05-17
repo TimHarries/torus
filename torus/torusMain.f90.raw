@@ -1945,15 +1945,15 @@ program torus
      endif
 
 
-     if (geometry .eq. "shakara") then
-        call defineDiffusionZone(grid)
-     endif
 
 
 
 
 !$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
+     if (geometry .eq. "shakara") then
+        call defineDiffusionZone(grid)
+     endif
 
 
   if (lucyRadiativeEq) then

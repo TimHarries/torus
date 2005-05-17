@@ -125,6 +125,7 @@ MODULE octal_mod
     logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
     logical, dimension(8)                 :: diffusionApprox
     real(double), dimension(8) :: diffusionProb
+    logical, dimension(8) :: undersampled
 
 
   END TYPE octal

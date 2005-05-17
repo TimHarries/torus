@@ -5609,7 +5609,7 @@ CONTAINS
     if ((r > rInner).and.(r < rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-30)
-       thisOctal%temperature(subcell) = 20.
+       thisOctal%temperature(subcell) = 500.
        thisOctal%etaCont(subcell) = 0.
     endif
     if (thisOctal%rho(subcell) > 1.e-20) then
