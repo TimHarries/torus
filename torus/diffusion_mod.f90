@@ -86,23 +86,6 @@ contains
 
     if (thisOctal%undersampled(subcell)) then
        ok = .false.
-
-!       if (zReal(nreal) < 0.) then
-!          octVec = VECTOR(xPos, 0., zReal(nReal-1))
-!          call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-!               foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
-!          write(*,*) zReal(nreal-1),thisOctal%undersampled(subcell),thisOctal%diffusionApprox(subcell)
-!          octVec = VECTOR(xPos, 0., zReal(nReal))
-!          call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-!               foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
-!          write(*,*) zReal(nreal),thisOctal%undersampled(subcell),thisOctal%diffusionApprox(subcell)
-!          octVec = VECTOR(xPos, 0., zReal(nReal+1))
-!          call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-!               foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
-!          write(*,*) zReal(nreal+1),thisOctal%undersampled(subcell),thisOctal%diffusionApprox(subcell)
-!          write(*,*) " "
-!       endif
-
        goto 666
     endif
 
@@ -110,15 +93,14 @@ contains
     firr =  stefanBoltz * treal(nreal)**4 
 
 
-!    flux(istart-1) = -stefanBoltz*treal(nreal)**4 
     jd(iStart-1) = flux(iStart-1) / twoPi
 
 
     t0 = 1000.
     t1 = treal(nreal)
-    fac = log(t1/t0)/zreal(nreal)
+    fac = log(t1/t0)/abs(zreal(nreal))
     do i = iStart,nz
-       temperature(i) = t0 * exp(fac*zArray(i))
+       temperature(i) = t0 * exp(fac*abs(zArray(i)))
     enddo
 
     zarray(nz+1) = 0.
@@ -188,15 +170,8 @@ contains
           gammad(i) = fourPi * kappap(i)*rho(i)*jd(i)
           dfraddz(i) = 0.!lambdad(i) - gammad(i) - gammairr(i)
           djdz(i) = -(3./fourPi) * kappa_ross(i) * rho(i) * (frad(i)-fi(i))
-if (zArray(istart-1)<0.)            write(*,'(i3,1p,7e12.3)') i, zArray(i), newtemperature(i), frad(i), fd(i), fi(i), jd(i), djdz(i)
+          if (zArray(istart-1)<0.) write(*,'(i3,1p,7e12.3)') i, zArray(i), newtemperature(i), frad(i), fd(i), fi(i), jd(i), djdz(i)
        enddo
-
-!       do i = iStart, nz
-!          dfdz(i) = fourPi * kappap(i) * rho(i) * ( (stefanBoltz*newtemperature(i)**4 /pi)-jd(i))
-!          flux(i) = flux(i-1) + dfdz(i) * (zArray(i)-zArray(i-1)) * 1.e10
-!          djdz(i) = -3. * kappa_ross(i) * rho(i) * flux(i) / fourPi
-!          jd(i) = jd(i-1) + djdz(i)  * (zArray(i)-zArray(i-1)) * 1.e10
-!       enddo
 
 
 
@@ -298,7 +273,7 @@ if (zArray(istart-1)<0.)            write(*,'(i3,1p,7e12.3)') i, zArray(i), newt
              temperature(nz) = temptemp
              diffApprox(nz) = thisOctal%diffusionApprox(subcell)
              rho(nz) = rhotemp
-             zAxis(nz) = temp%z
+             zAxis(nz) = abs(temp%z)
              subcellsize(nz) = thisOctal%subcellsize
           endif
           currentPos = OCTALVECTOR(xPos, yPos, temp%z+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
@@ -325,7 +300,7 @@ if (zArray(istart-1)<0.)            write(*,'(i3,1p,7e12.3)') i, zArray(i), newt
     type(octalvector) :: currentPos
     
     do i = 1, nz
-       currentPos = OCTALVECTOR(xPos, yPos, zAxis(i))
+       currentPos = OCTALVECTOR(xPos, yPos, -1.*direction*zAxis(i))
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell)
        if (thisOctal%diffusionApprox(subcell)) then
@@ -398,7 +373,8 @@ if (zArray(istart-1)<0.)            write(*,'(i3,1p,7e12.3)') i, zArray(i), newt
        octVec = OCTALVECTOR(xAxis(j), 0., 0.)
        call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
             foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
-       rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + kappa * thisOctal%rho(subcell) *  subcellsize(j)*1.e10
+       rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + &
+            kappa * thisOctal%rho(subcell) *  subcellsize(j)*1.e10
        if (rosselandOpticalDepth(j) > diffDepth) then
           xStart = xAxis(j)
           exit
@@ -460,14 +436,14 @@ if (zArray(istart-1)<0.)            write(*,'(i3,1p,7e12.3)') i, zArray(i), newt
           octVec = OCTALVECTOR(xpos, 0., zAxis(j))
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell, rosselandKappa=kappa, grid=grid, ilambda=32)
-          rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + kappa * thisOctal%rho(subcell) * subcellsize(j)*1.e10
+          rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + &
+               kappa * thisOctal%rho(subcell) * subcellsize(j)*1.e10
           if (rosselandOpticalDepth(j) > diffDepth) then
              thisOctal%diffusionApprox(subcell) = .true.
           else
              thisOctal%diffusionApprox(subcell) = .false.
           endif
        enddo
-
 
        ! now put in boundary at bottom of diffusion zone
 
