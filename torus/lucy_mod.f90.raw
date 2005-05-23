@@ -891,7 +891,9 @@ contains
 !$MPI    debugOutput = .false.
 !$MPI endif
 
-       call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
+       if (iiter_grand > 1) then
+          call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
+       endif
        call defineDiffusionZone(grid)
 
     enddo

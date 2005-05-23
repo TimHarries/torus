@@ -34,8 +34,9 @@ contains
     real :: tau(1000)
     logical :: diffApprox(*)
     real(double) :: dTdZ(1000), newTemperature(1000), frac(1000)
+    real :: oldVal, thisVal
     real :: kappa
-    integer :: i, nIter
+    integer :: i, nIter, j
     logical :: converged
     real(double) :: tReal(1000),zReal(1000),rhoReal(1000)
     integer :: nReal
@@ -45,6 +46,7 @@ contains
     integer :: istart
     real :: safetemp
     real(double) :: dJdz(1000)
+    real :: nextJd, nextfd, nextfdiff
     real :: t0, t1, fac
     real(double) :: firr, gammairr(1000),frad(1000)
     real(double) :: fd(1000), dfddz(1000), fdiff(1000)
@@ -116,19 +118,24 @@ contains
     call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
          foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
 
-    dtdz(iStart-1) = (3.*kappa*rho(istart-1)*influx)/(16.*stefanBoltz*temperature(istart-2)**3)
+!    dtdz(iStart-1) = (3.*kappa*rho(istart-1)*influx)/(16.*stefanBoltz*temperature(istart-2)**3)
 
 
+!    if (influx/fourPi < stefanBoltz*temperature(istart-1)**4 / fourPi) then
+!       write(*,*) "fluxerror"
+!       ok = .false.
+!       goto 666
+!    endif
 
     nIter = 0
     do while(.not.converged)
-       
+       write(*,*) "iteration",niter+1
 
        do i = 1, nz+1
           newTemperature(i) = temperature(i)
        enddo
 
-       do i = iStart-1, nz
+       do i = iStart, nz
           octVec = VECTOR(xPos, 0., zArray(i))
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell, rosselandKappa=kappa, grid=grid, &
@@ -156,64 +163,146 @@ contains
           jdiff(i) = (-fdiff(i) / fourPi)
           gammadiff(i) = fourPi * kappaP(i) * rho(i) * jdiff(i)
        enddo
+       
+       fdiff(nz) = 0.
+       gammadiff(nz) = 0.
+       dtdz(nz) = 0.
 
-
+    fdiff(istart-1)  = -influx * 0.1
        fd(istart-1) = -fdiff(istart-1)
-       jd(istart-1) = stefanBoltz*newtemperature(istart-1)**4 / pi - jdiff(istart-1)
+       jd(istart-1) = stefanBoltz*newtemperature(istart-1)**4 / pi
+
+
        frad(iStart-1) = fdiff(iStart-1) + fd(iStart-1)
        djdz(istart-1) = (3./fourPi) * kappa_ross(istart-1) * rho(istart-1) * fd(istart-1)
        lambdad(istart-1) = fourPi * kappap(istart-1)*rho(istart-1)*(stefanBoltz*newtemperature(istart-1)**4 /pi)
        gammad(istart-1) = fourPi * kappap(istart-1)*rho(istart-1)*jd(istart-1)
-       dfraddz(istart-1) = 0. !lambdad(istart-1) - gammad(istart-1) - gammairr(istart-1)
        dfddz(iStart-1) = lambdad(istart-1) - gammad(istart-1)
        zArray(nz+1) = 0.
        if (debugoutput) write(*,'(i3,8a12)') 0,"z","t","dfddz","fd","fdiff","jd","djdz","jdiff"
-       i = istart-1
+        i = istart-1
         if (debugoutput) write(*,'(i3,1p,8e12.3)') &
              i, zArray(i), newtemperature(i), dfddz(i), fd(i), fdiff(i), jd(i), djdz(i), jdiff(i)
        do i = iStart, nz
-          frad(i) = frad(i-1) + dfraddz(i-1) * (zArray(i)-zArray(i-1)) * 1.e10
-          fd(i) = -fdiff(i)
-!          fd(i) = fd(i-1) + dfddz(i-1) * (zArray(i)-zArray(i-1)) * 1.e10
-          if (fd(i) < 0.) fd(i) = 0.
-          jd(i) = jd(i-1) + djdz(i-1)  * (zArray(i)-zArray(i-1)) * 1.e10
-          newtemperature(i) = pi*(jdiff(i)+jd(i))/stefanBoltz
-          if (newTemperature(i) > 0.) then
-             newTemperature(i) = newTemperature(i)**0.25
-          else
-             ok = .false.
-!             exit
-             if (debugoutput) write(*,*) "screw up", fdiff(istart-1),stefanBoltz*treal(nreal)**4
-!             dtdz(istart-1) = 0.5 * dtdz(istart-1)
-             newtemperature(1:nz) = temperature(1:nz)
-             goto 666
-          endif
-!          dfddz(i) = fourPi * kappap(i) * rho(i) *( (stefanBoltz*newtemperature(i)**4 /pi)-jd(i))
-          octVec = VECTOR(xPos, 0., zArray(i))
-!          call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-!               foundSubcell=subcell, rosselandKappa=kappa_ross(i), kappap=kappap(i), grid=grid, &
-!               atthistemperature=newtemperature(i))
 
+          
+!          fd(i) = jd(i-1) + dfdz(i-1)  * (zArray(i)-zArray(i-1)) * 1.e10             
+!          jd(i) = jd(i-1) + djdz(i-1)  * (zArray(i)-zArray(i-1)) * 1.e10             
+
+
+          oldVal = returnFluxDiff(real(newtemperature(i)), i-1, i, fd, jd, gammadiff, &
+               kappa_ross, kappap, rho, zArray, temperature, nz, &
+                      nextJd, nextFd, nextfDiff)
+
+          do j = 1, 100
+             fac = temperature(i)-500.*real(j-1)/99.
+             thisVal = returnFluxDiff(fac, i-1, i, fd, jd, gammadiff, &
+                  kappa_ross, kappap, rho, zArray, temperature, nz, &
+                         nextJd, nextFd, nextfDiff)
+
+             if (thisVal * oldVal < 0.) then
+                newtemperature(i) = fac
+                exit
+             else
+                oldVal = thisVal
+             endif
+          end do
+
+          fd(i) = nextFd
+          jd(i) = nextJd
+          fdiff(i) = nextfdiff
+
+          octVec = VECTOR(xPos, 0., zArray(i))
           lambdad(i) = fourPi * kappap(i)*rho(i)*(stefanBoltz*newtemperature(i)**4 /pi)
           gammad(i) = fourPi * kappap(i)*rho(i)*jd(i)
-          dfraddz(i) = 0. ! lambdad(i) - gammad(i) - gammairr(i)
           dfddz(i) = lambdad(i) - gammad(i)
           djdz(i) = (3./fourPi) * kappa_ross(i) * rho(i) * fd(i)
           if (debugoutput) &
                write(*,'(i3,1p,8e12.3)') i, zArray(i), newtemperature(i), dfddz(i), fd(i), fdiff(i), jd(i), djdz(i), jdiff(i)
        enddo
 
+!       fd(nz) = -fdiff(nz)
+!       jd(nz) = stefanBoltz*newtemperature(nz)**4 / pi
+!       djdz(nz) = -(3./fourPi) * kappa_ross(nz) * rho(nz) * fd(nz)
+!       lambdad(nz) = fourPi * kappap(nz)*rho(nz)*(stefanBoltz*newtemperature(nz)**4 /pi)
+!       gammad(nz) = fourPi * kappap(nz)*rho(nz)*jd(nz)
+!       dfddz(nz) = lambdad(nz) - gammad(nz)
+!       zArray(nz+1) = 0.
+!       if (debugoutput) write(*,'(i3,8a12)') 0,"z","t","dfddz","fd","fdiff","jd","djdz","jdiff"
+!       i = nz
+!        if (debugoutput) write(*,'(i3,1p,8e12.3)') &
+!             i, zArray(i), newtemperature(i), dfddz(i), fd(i), fdiff(i), jd(i), djdz(i), jdiff(i)
+!       do i = nz-1,istart-1,-1
+!!          fd(i) = -fdiff(i)
+!!          fd(i) = fd(i+1) + dfddz(i+1)  * (zArray(i+1)-zArray(i)) * 1.e10             
+!!          jd(i) = jd(i+1) + djdz(i+1)  * (zArray(i+1)-zArray(i)) * 1.e10             
+!          
+!          oldVal = returnFluxDiff(real(newtemperature(i+1)), i+1, i, fd, jd, kappa_ross, kappap, rho, zArray, temperature, nz, &
+!                      nextJd, nextFd, nextfDiff)
+!
+!          do j = 1, 100
+!             fac = temperature(i+1)+1.*real(j-1)/100.
+!             thisVal = returnFluxDiff(fac, i+1, i, fd, jd, kappa_ross, kappap, rho, zArray, temperature, nz, &
+!                         nextJd, nextFd, nextfDiff)
+!
+!             if (thisVal * oldVal < 0.) then
+!                newtemperature(i) = fac
+!                exit
+!             else
+!                oldVal = thisVal
+!             endif
+!          end do
+! 
+!          fd(i) = nextFd
+!          jd(i) = nextjd
+!          fdiff(i) = nextfdiff
+!            
+!!          newtemperature(i) = pi*(jdiff(i)+jd(i))/stefanBoltz
+!          if (newTemperature(i) > 0.) then
+!             newTemperature(i) = newTemperature(i)**0.25
+!          else
+!             ok = .false.
+!             exit
+!             if (debugoutput) write(*,*) "screw up", fdiff(istart-1),stefanBoltz*treal(nreal)**4
+!             newtemperature(1:nz) = temperature(1:nz)
+!             goto 666
+!          endif
+
+!          octVec = VECTOR(xPos, 0., zArray(i))
+!          call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
+!               foundSubcell=subcell, rosselandKappa=kappa_ross(i), kappap=kappap(i), grid=grid, &
+!               atthistemperature=real(newtemperature(i)))
+
+!          lambdad(i) = fourPi * kappap(i)*rho(i)*(stefanBoltz*newtemperature(i)**4 /pi)
+!          gammad(i) = fourPi * kappap(i)*rho(i)*jd(i)
+!          dfddz(i) = lambdad(i) - gammad(i)
+!          djdz(i) = -(3./fourPi) * kappa_ross(i) * rho(i) * fd(i)
+
+!          if (debugoutput) &
+
+!               write(*,'(i3,1p,8e12.3)') i, zArray(i), newtemperature(i), dfddz(i), fd(i), fdiff(i), jd(i), djdz(i), jdiff(i)
+!          write(*,*)   nextJd, nextFd, nextfDiff
+
+!       enddo
+
 555 continue
        temperature(1:nz) = newTemperature(1:nz)
 
-       do i = istart, nz
-          dtdz(i) = (temperature(i)-temperature(i-1))/(zArray(i)-Zarray(i-1)) / 1.e10
+       do i = nz - 1, istart-1
+          dtdz(i) = (temperature(i+1)-temperature(i))/(zArray(i+1)-Zarray(i)) / 1.e10
        enddo
 
+       write(*,*) "fdiff",fdiff(istart-1),-influx,treal(nreal)
+
+!       if (abs(fdiff(istart-1) < abs(influx))) then
+!          temperature(nz) = temperature(nz) + 10.
+!       else
+!          temperature(nz) = temperature(nz) - 10.
+!       endif
 
 
        nIter = nIter + 1
-       if (nIter > 5) then
+       if (nIter > 2) then
           converged = .true.
 !          stop
        endif
@@ -233,7 +322,7 @@ contains
     logical :: diffApprox(10000)
     logical :: converged, debugoutput
     real :: xAxis(100000)
-    integer :: nx, i
+    integer :: nx, i, j
     real :: flux
     logical :: ok
 
@@ -254,7 +343,10 @@ contains
     xPos = grid%halfSmallestSubcell
     yPos = 0.
 
-    do i = 1, nx
+    call locate(xaxis, nx, 14.*rsol/1.e10, j)
+    write(*,*) "Solving from x=2*rinner only!!!!!!!!!!!!!!!!!!"
+
+    do i = j, nx
        radius = xAxis(i)
        xPos = xAxis(i)
        call getTemperatureDensityRunDiff(grid, zAxis, subcellsize, rho, temperature, diffApprox, xPos, yPos, nz, -1.)
@@ -909,7 +1001,7 @@ contains
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundSubcell=Subcell, grid=grid)
           cVec = subcellCentre(thisOctal, subcell)
           area = pi*((cVec%x+thisOctal%subcellSize)**2-(cVec%x-thisOctal%subcellSize)**2) * 1.e20
-          thisOctal%incidentflux(subcell) = thisOctal%nDiffusion(subcell)*epsOverdT / area 
+          thisOctal%incidentflux(subcell) = thisOctal%nDiffusion(subcell)*epsOverdT / area / 2.
        endif
        
        iBoundary = 0
@@ -925,12 +1017,34 @@ contains
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundSubcell=Subcell, grid=grid)
           cVec = subcellCentre(thisOctal, subcell)
           area = pi*((cVec%x+thisOctal%subcellSize/2.)**2-(cVec%x-thisOctal%subcellSize/2.)**2) * 1.e20
-          thisOctal%incidentflux(subcell) = thisOctal%nDiffusion(subcell)*epsOverdT / area 
+          thisOctal%incidentflux(subcell) = thisOctal%nDiffusion(subcell)*epsOverdT / area  /2.
        endif
     enddo
   end subroutine calcIncidentFlux
-    
-       
+
+  real function returnFluxDiff(thisTemp, ival, jval, fd, jd, gammadiff, &
+       kappa_ross, kappap, rho, zAxis, temperature, nz, &
+       nextJd, nextFd, nextfDiff)
+       real :: thisTemp
+       integer :: ival, jval
+       real(double) :: fd(*), gammadiff(*)
+       real :: jd(*), kappa_ross(*), kappap(*)
+       real :: rho(*), zAxis(*), temperature(*)
+       integer :: nz
+       real :: djdz, dfddz, dtdz
+       real :: nextjd, nextfd, nextfdiff
+
+
+       dfddz = fourPi * kappap(ival) * rho(ival) * (stefanBoltz*temperature(ival)**4/pi - jd(ival))
+       nextFd = fd(ival) + dfddz * (zAxis(jval)-zAxis(ival)) * 1.e10
+       dtdz = (thisTemp-temperature(ival))/(zAxis(jval)-zAxis(ival)) / 1.e10
+       nextFdiff = (-16.*stefanBoltz*thisTemp**3)/(3.*kappa_ross(jval)*rho(jval)) * dtdz
+       djdz = -3./fourPi * kappa_ross(ival) * rho(ival) * nextfd
+       nextJd = jd(ival) +  djdz * (zAxis(jval)-zAxis(ival)) * 1.e10
+
+       returnFluxdiff = nextFdiff + nextFd
+       write(*,*) thisTemp,temperature(ival),nextfd,nextfDiff,returnFluxdiff
+  end function returnFluxDiff
 end module diffusion_mod
 
 
