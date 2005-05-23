@@ -344,6 +344,7 @@ contains
     integer :: nDT, nUndersampled
     real(oct) :: totalEmission
     integer :: subcell
+    logical :: debugOutput
     real :: treal
     real(oct) :: lCore
     real      :: kabs
@@ -456,6 +457,9 @@ contains
     enddo
 !$MPI    if(my_rank == 0) &
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
+
+    call defineDiffusionZone(grid)
+
 
     iIter_grand = 0
     nRemoved = 1
@@ -688,9 +692,9 @@ contains
                    ! if the photon has come from the diffusion zone then it has to be
                    ! reprocessed using the appropriate temperature
 
-!                   if (photonInDiffusionZone) then
-!                      t1 = dble(diffusionZoneTemp)
-!                  endif
+                   if (photonInDiffusionZone) then
+                      t1 = dble(diffusionZoneTemp)
+                  endif
 
                    nAbs_sub = nAbs_sub + 1
                    thisPhotonAbs = thisPhotonAbs + 1
@@ -819,9 +823,9 @@ contains
           write(*,*) "done."
        endif
 
-       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
-            "crossings.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac = 0.002) 
+!       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
+!            "crossings.ps/vcps", .true., .false., &
+!            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac = 0.002) 
 
        call calculateTemperatureCorrections(.true., grid%octreeRoot, totalEmission, epsOverDeltaT, &
        nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
@@ -879,9 +883,16 @@ contains
 
 !$MPI if (my_rank==0) &       
        call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
-       
-!       call defineDiffusionZone(grid)
-       call throughoutMidplanediff(grid)
+
+       debugoutput = .true.
+!$MPI if (my_rank==0)  then
+!$MPI    debugOutput = .true.       
+!$MPI  else
+!$MPI    debugOutput = .false.
+!$MPI endif
+
+       call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
+       call defineDiffusionZone(grid)
 
     enddo
 
@@ -1185,6 +1196,8 @@ contains
           thisOctal%distanceGrid(subcell) = 0.d0
           thisOctal%nCrossings(subcell) = 0
           thisOctal%undersampled(subcell) = .false.
+          thisOctal%incidentFlux(subcell) = 0.
+          thisOCtal%nDiffusion(subcell) = 0.
        endif
     enddo
   end subroutine zeroDistanceGrid
@@ -1200,7 +1213,7 @@ contains
     type(octal), pointer  :: child 
     type(gridtype) :: grid
     integer :: subcell, i
-    integer, parameter :: minCrossings = 5
+    integer, parameter :: minCrossings = 10
     real(oct) :: V, epsOverDeltaT
     real(oct) :: adot
     real(oct) :: kappaP, norm
@@ -1623,12 +1636,15 @@ contains
             foundSubcell=tempsubcell)
        if (tempOctal%diffusionApprox(tempsubcell)) then
           photonInDiffusionZone = .true.
+          tempOctal%nDiffusion(tempsubcell) = tempOctal%nDiffusion(tempsubcell) + abs(uHat%z)
           diffusionZoneTemp = tempOctal%temperature(subcell)
           sourceOctal => grid%octreeRoot
 !          call random_number(prob)
 !          call locateDiffusionProbAMR(prob, sourceOctal, sourceSubcell)
 !          rVec = subcellCentre(sourceOctal, sourcesubcell)
+          rVec = octVec
           call diffPhotonPosition(grid, tempOctal, tempsubcell, rVec)
+          octVec = rVec
           call amrGridValues(grid%octreeRoot, rVec,  foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
           if (tempOctal%diffusionApprox(tempsubcell)) then
@@ -1799,7 +1815,9 @@ contains
 !          call random_number(prob)
 !          call locateDiffusionProbAMR(prob, sourceOctal, sourceSubcell)
 !          rVec = subcellCentre(sourceOctal, sourcesubcell)
+          rVec = octVec
           call diffPhotonPosition(grid, tempOctal, tempsubcell, rVec)
+          octVec = rVec
           call amrGridValues(grid%octreeRoot, rVec,  foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
           if (tempOctal%diffusionApprox(tempsubcell)) then
@@ -1913,6 +1931,7 @@ contains
 !$MPI    real, allocatable :: nCrossings(:)
 !$MPI    real, allocatable :: tempRealArray(:)
 !$MPI    real(double), allocatable :: distanceGrid(:),tempDoubleArray(:)
+!$MPI    real, allocatable :: nDiffusion(:)
 !$MPI    integer :: np, ierr,my_rank, nIndex
 !$MPI
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
@@ -1927,10 +1946,11 @@ contains
 !$MPI    nVoxels = 0
 !$MPI    call countVoxels(grid%octreeRoot,nOctals,nVoxels)
 !$MPI    allocate(nCrossings(1:nVoxels))
+!$MPI    allocate(nDiffusion(1:nVoxels))
 !$MPI    allocate(distanceGrid(1:nVoxels))
 !$MPI
 !$MPI    nIndex = 0
-!$MPI    call packValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings)
+!$MPI    call packValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings,ndiffusion)
 !$MPI
 !$MPI
 !$MPI    allocate(tempDoubleArray(nVoxels))
@@ -1945,6 +1965,11 @@ contains
 !$MPI    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
 !$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
 !$MPI    nCrossings = tempRealArray 
+!$MPI
+!$MPI    tempRealArray = 0.0
+!$MPI    call MPI_ALLREDUCE(nDiffusion,tempRealArray,nVoxels,MPI_REAL,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI    nDiffusion = tempRealArray 
 !$MPI    
 !$MPI    deallocate(tempRealArray)
 !$MPI    deallocate(tempDoubleArray)
@@ -1952,7 +1977,7 @@ contains
 !$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI    
 !$MPI    nIndex = 0
-!$MPI    call unpackValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings)
+!$MPI    call unpackValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings,nDiffusion)
 !$MPI
 !$MPI
 !$MPI  end subroutine updateGridMPI
@@ -2155,11 +2180,12 @@ contains
     enddo
   end subroutine resetDistanceGrid
 
-  recursive subroutine packvalues(thisOctal,nIndex,distanceGrid,nCrossings)
+  recursive subroutine packvalues(thisOctal,nIndex,distanceGrid,nCrossings, nDiffusion)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
   real :: nCrossings(:)
+  real :: nDiffusion(:)
   integer :: nIndex
   integer :: subcell, i
   
@@ -2169,7 +2195,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call packvalues(child,nIndex,distanceGrid,nCrossings)
+                call packvalues(child,nIndex,distanceGrid,nCrossings,nDiffusion)
                 exit
              end if
           end do
@@ -2177,15 +2203,17 @@ contains
           nIndex = nIndex + 1
           distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
           nCrossings(nIndex) = real(thisOctal%nCrossings(subcell))
+          nDiffusion(nIndex) = thisOctal%nDiffusion(subcell)
        endif
     enddo
   end subroutine packvalues
 
-  recursive subroutine unpackvalues(thisOctal,nIndex,distanceGrid,nCrossings)
+  recursive subroutine unpackvalues(thisOctal,nIndex,distanceGrid,nCrossings, nDiffusion)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real(double) :: distanceGrid(:)
   real :: ncrossings(:)
+  real :: ndiffusion(:)
   integer :: nIndex
   integer :: subcell, i
   
@@ -2195,7 +2223,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unpackvalues(child,nIndex,distanceGrid,nCrossings)
+                call unpackvalues(child,nIndex,distanceGrid,nCrossings,nDiffusion)
                 exit
              end if
           end do
@@ -2203,6 +2231,7 @@ contains
           nIndex = nIndex + 1
           thisOctal%distanceGrid(subcell) = distanceGrid(nIndex)
           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
+          thisOctal%nDiffusion(subcell) = nDiffusion(nIndex)
        endif
     enddo
   end subroutine unpackvalues

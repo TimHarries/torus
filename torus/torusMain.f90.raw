@@ -1951,10 +1951,6 @@ program torus
 
 !$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
-     if (geometry .eq. "shakara") then
-        call defineDiffusionZone(grid)
-     endif
-
 
   if (lucyRadiativeEq) then
 !$MPI  if (my_rank==1) &
@@ -1972,7 +1968,7 @@ program torus
                    source, nSource, nLucy, massEnvelope, tThresh, twod, mDisc)
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 5)
+                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 10)
            endif
 
         endif

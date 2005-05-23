@@ -203,7 +203,10 @@ CONTAINS
     grid%octreeRoot%dustType = 1
     grid%octreeRoot%gasOpacity = .false.
     grid%octreeRoot%diffusionApprox = .false.
+    grid%octreeRoot%leftHandDiffusionBoundary = .false.
     grid%octreeRoot%diffusionProb = 0.d0
+    grid%octreeRoot%incidentFlux = 0.
+    grid%octreeRoot%nDiffusion = 0.
 
     select case (grid%geometry)
        case("cluster")
@@ -5609,10 +5612,10 @@ CONTAINS
     if ((r > rInner).and.(r < rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-30)
-       thisOctal%temperature(subcell) = 500.
+       thisOctal%temperature(subcell) = 100.
        thisOctal%etaCont(subcell) = 0.
     endif
-    if (thisOctal%rho(subcell) > 1.e-20) then
+    if (thisOctal%rho(subcell) > 1.e-22) then
        thisOctal%inFlow(subcell) = .true.
     else
        thisOctal%inFlow(subcell) = .false.
@@ -5770,7 +5773,11 @@ CONTAINS
        parent%child(newChildIndex)%nTot = 1.e-30
        parent%child(newChildIndex)%changed = .false.
        parent%child(newChildIndex)%diffusionApprox = .false.
+       parent%child(newChildIndex)%leftHandDiffusionBoundary = .false.
        parent%child(newChildindex)%diffusionProb = 0.d0
+       parent%child(newChildindex)%nDiffusion  = 0.
+       parent%child(newChildindex)%incidentFlux = 0.
+       
 
        if (present(sphData)) then
           ! updates the sph particle list.           

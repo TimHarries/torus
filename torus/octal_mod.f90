@@ -124,9 +124,11 @@ MODULE octal_mod
     INTEGER :: parentSubcell
     logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
     logical, dimension(8)                 :: diffusionApprox
+    logical, dimension(8)                 :: leftHandDiffusionBoundary
     real(double), dimension(8) :: diffusionProb
     logical, dimension(8) :: undersampled
-
+    real, dimension(8) :: nDiffusion
+    real, dimension(8)    :: incidentFlux
 
   END TYPE octal
  
