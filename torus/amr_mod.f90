@@ -3567,7 +3567,7 @@ CONTAINS
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell  
 
-    use input_variables, only: height
+    use input_variables, only: height, betadisc
     IMPLICIT NONE
     TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
@@ -3896,8 +3896,8 @@ CONTAINS
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-      hr = height * (r / (100.d0*autocm/1.d10))**1.25
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.3)) split = .true.
+      hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.7)) split = .true.
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
 
@@ -5612,10 +5612,10 @@ CONTAINS
     if ((r > rInner).and.(r < rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
        thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-30)
-       thisOctal%temperature(subcell) = 100.
+       thisOctal%temperature(subcell) = 200.
        thisOctal%etaCont(subcell) = 0.
     endif
-    if (thisOctal%rho(subcell) > 1.e-22) then
+    if (thisOctal%rho(subcell) > 1.e-24) then
        thisOctal%inFlow(subcell) = .true.
     else
        thisOctal%inFlow(subcell) = .false.

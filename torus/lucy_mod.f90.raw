@@ -326,6 +326,7 @@ contains
 !    real(oct) :: probDistPlanck(nFreq)
     real :: kappaScaReal, kappaAbsReal
     integer :: nDiffusion
+    integer :: nDiffusion_sub
     integer :: nMonte, iMonte, nScat, nAbs
     integer :: thisPhotonAbs
     real(oct) :: thisFreq
@@ -385,13 +386,14 @@ contains
 !$MPI    real, save, allocatable  :: buffer_real(:)     
 !$MPI    logical, save  :: first_time = .true.
 !$MPI
-!!$MPI    ! find the number of the processors for the first time.    
-!!$MPI    if (first_time) then
-!!$MPI       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-!!$MPI       allocate(buffer_real(n_proc))
-!!$MPI       first_time = .false.
-!!$MPI    end if
+!$MPI    ! find the number of the processors for the first time.    
+!$MPI    if (first_time) then
+!$MPI       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
+!$MPI       allocate(buffer_real(n_proc))
+!$MPI       first_time = .false.
+!$MPI    end if
 !$MPI
+!!$MPI       allocate(buffer_real(n_proc))
 !$MPI
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
 !$MPI    !  Get my process rank # 
@@ -400,7 +402,6 @@ contains
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
 !$MPI    
-!$MPI       allocate(buffer_real(n_proc))
 !$MPI    if (my_rank .eq. 0) then
 !$MPI       print *, ' '
 !$MPI       print *, 'Lucy radiative equilibrium routine computed by ', n_proc, ' processors.'
@@ -541,7 +542,7 @@ contains
 !$OMP PRIVATE(thisOctal, kappaScaReal, kappaAbsReal, albedo, r) &
 !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
 !$OMP PRIVATE(kabs,i, j, T1) &
-!$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub) &
+!$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub) &
 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie) &
 !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
 !$OMP SHARED(dnu, nFreq, freq, nMonte) &
@@ -550,9 +551,11 @@ contains
        nInf_sub = 0
        nScat_sub = 0
        nAbs_sub = 0
+       nDiffusion_sub = 0
        nInf = 0
        nScat = 0
        nAbs = 0
+       nDiffusion = 0
 
        imonte_beg=1; imonte_end=nMonte  ! default value
 
@@ -613,7 +616,6 @@ contains
 
 !!$OMP DO SCHEDULE(DYNAMIC,10)
 !$OMP DO SCHEDULE(STATIC,10)
-       nDiffusion = 0
        avedirection = OCTALVECTOR(0.d0, 0.d0, 0.d0)
        photonloop: do iMonte = imonte_beg, imonte_end
 
@@ -643,7 +645,7 @@ contains
              If (escaped) nInf_sub = nInf_sub + 1
 
              if (photonInDiffusionZone) then
-                nDiffusion = nDiffusion + 1
+                nDiffusion_sub = nDiffusion_sub + 1
              endif
                 
 
@@ -756,6 +758,7 @@ contains
       nScat = nScat_sub  + nScat   ! sum from each thread for OpenMP
       nInf = nInf_sub    + nInf    ! sum from each thread for OpenMP
       nAbs = nAbs_sub    + nAbs    ! sum from each thread for OpenMP
+      nDiffusion = nDiffusion_sub   + nDiffusion    ! sum from each thread for OpenMP
 !$OMP END CRITICAL (update)
 
 !$OMP BARRIER
@@ -793,6 +796,10 @@ contains
 !$MPI       call MPI_ALLGATHER(REAL(nAbs), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
 !$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 !$MPI       nAbs = INT(SUM(buffer_real))
+!$MPI
+!$MPI       call MPI_ALLGATHER(REAL(nDiffusion), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+!$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+!$MPI       nDiffusion = INT(SUM(buffer_real))
 !$MPI
 !$MPI       
 !$MPI       if(my_rank == 0) then
@@ -894,7 +901,7 @@ contains
        if (iiter_grand > 1) then
           call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
        endif
-       call defineDiffusionZone(grid)
+!       call defineDiffusionZone(grid)
 
     enddo
 
@@ -1215,7 +1222,7 @@ contains
     type(octal), pointer  :: child 
     type(gridtype) :: grid
     integer :: subcell, i
-    integer, parameter :: minCrossings = 10
+    integer, parameter :: minCrossings = 5
     real(oct) :: V, epsOverDeltaT
     real(oct) :: adot
     real(oct) :: kappaP, norm
