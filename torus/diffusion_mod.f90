@@ -637,7 +637,17 @@ contains
     found = .false.
 
     if (thisOctal%leftHandDiffusionBoundary(subcell)) then
-       rVec = rVec - xHatOctal * (0.5d0*tempOctal%subcellSize+grid%halfsmallestsubcell*0.01d0)
+       do while (.not.found)
+          rVec = rVec - xHatOctal * (0.5d0*tempOctal%subcellSize+grid%halfsmallestsubcell*0.01d0)
+          call amrGridValues(grid%octreeRoot, rVec, startOctal=oldOctal, &
+               foundOctal=tempOctal, foundSubcell=tempsubcell)
+          if (.not.tempOctal%diffusionApprox(tempSubcell)) then
+             found = .true.
+          else
+             oldOctal => tempOctal
+             rVec = subcellCentre(tempOctal, tempSubcell)
+          endif
+       enddo
     else
        do while (.not.found)
           
@@ -948,6 +958,7 @@ contains
   end if
 
   thisOctal%diffusionApprox = .false.
+  thisOctal%leftHandDiffusionBoundary = .false.
 
 
 end subroutine setNoDiffusion
@@ -1100,7 +1111,6 @@ end subroutine setNoDiffusion
 
 
 end module diffusion_mod
-
 
 
 
