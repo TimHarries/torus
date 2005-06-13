@@ -71,7 +71,8 @@ contains
     real(double) :: tval
     integer               :: nTau                   ! size of optical depth arrays
     type(octalvector)     :: rVec                   ! position vector
-    real :: kappaScaReal, kappaAbsReal, etaCont
+    real(double) :: kappaScaReal, kappaAbsReal
+    real :: etaCont
     real(oct) :: chi, eta, tau
     real(quad)  :: integral
     integer :: ilambda

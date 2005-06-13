@@ -751,8 +751,8 @@ CONTAINS
     REAL, DIMENSION(:), INTENT(INOUT)  :: lambda     ! path distances of sample locations
 
     
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaAbs   ! continuous absorption opacities
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca   ! scattering opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaAbs   ! continuous absorption opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca   ! scattering opacities
     TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: velocityDeriv ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: chiLine    ! line opacities
@@ -1030,8 +1030,8 @@ CONTAINS
     real(oct), INTENT(IN)    :: distanceLimit ! max length of ray before aborting
     LOGICAL, INTENT(IN)                 :: usePops      ! whether to use level populations
     
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: kappaAbs      ! continuous absorption opacities
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca     ! scattering opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL :: kappaAbs      ! continuous absorption opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca     ! scattering opacities
     TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocityDeriv ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: chiLine       ! line opacities
@@ -1629,8 +1629,8 @@ CONTAINS
     INTEGER, INTENT(IN)                :: iLambda   ! wavelength index
     INTEGER, INTENT(INOUT)             :: error     ! error code
     
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: kappaAbs  ! continuous absorption opacities
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: kappaSca  ! scattering opacities 
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL          :: kappaAbs  ! continuous absorption opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL          :: kappaSca  ! scattering opacities 
     TYPE(vector), DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: velocityDeriv   ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: chiLine   ! line opacities
@@ -1760,10 +1760,10 @@ CONTAINS
     TYPE(vector),INTENT(OUT),OPTIONAL :: velocity
     REAL,INTENT(OUT),OPTIONAL         :: velocityDeriv
     REAL,INTENT(OUT),OPTIONAL         :: temperature
-    REAL,INTENT(OUT),OPTIONAL         :: kappaAbs
-    REAL,INTENT(OUT),OPTIONAL         :: kappaSca
-    REAL,INTENT(OUT),OPTIONAL         :: kappaAbsArray(:)
-    REAL,INTENT(OUT),OPTIONAL         :: kappaScaArray(:)
+    REAL(double),INTENT(OUT),OPTIONAL         :: kappaAbs
+    REAL(double),INTENT(OUT),OPTIONAL         :: kappaSca
+    REAL(double),INTENT(OUT),OPTIONAL         :: kappaAbsArray(:)
+    REAL(double),INTENT(OUT),OPTIONAL         :: kappaScaArray(:)
     REAL,INTENT(OUT), OPTIONAL        :: rosselandKappa
     REAL,INTENT(OUT), OPTIONAL        :: kappap
     REAL,INTENT(IN), OPTIONAL         :: atThisTemperature
@@ -3897,7 +3897,7 @@ CONTAINS
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.7)) split = .true.
+      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.3)) split = .true.
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
 
@@ -3954,6 +3954,7 @@ CONTAINS
     INTEGER, PARAMETER                :: maxSamples = 10000
     REAL, DIMENSION(maxSamples)       :: distances, densities
     REAL, DIMENSION(maxSamples)       :: dummy
+    REAL(double), DIMENSION(maxSamples)       :: ddummy
     real(double), DIMENSION(maxSamples,1) :: dummyPops
     TYPE(vector),DIMENSION(maxSamples):: dummyVel
     LOGICAL                           :: hitCore
@@ -3968,7 +3969,7 @@ CONTAINS
                 
     CALL startReturnSamples(startPoint,direction,grid,sampleFreq,     &
                  nSamples,maxSamples,.false.,.false.,hitCore,.false.,1,error, &
-                 distances,kappaAbs=dummy,kappaSca=dummy,velocity=dummyVel,&
+                 distances,kappaAbs=ddummy,kappaSca=ddummy,velocity=dummyVel,&
                  velocityDeriv=dummy,chiLine=dummy,                &
                  levelPop=dummyPops,rho=densities)
  
@@ -5554,7 +5555,7 @@ CONTAINS
        if ((r > rInner).and.(r < rOuter)) then
           hr = height * (r/rd)**1.125
           thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
-          thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-33)
+          thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.d-33)
           thisOctal%temperature(subcell) = 100.
           thisOctal%inFlow(subcell) = .true.
           thisOctal%etaCont(subcell) = 0.
@@ -5602,25 +5603,21 @@ CONTAINS
     
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
-
-    thisOctal%rho(subcell) = 1.e-33
+    thisOctal%inflow(subcell) = .true.
+    thisOctal%rho(subcell) = tiny(thisoctal%rho(subcell))
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
-    thisOctal%inFlow(subcell) = .false.
     rd = rOuter / 2.
     r = sqrt(rVec%x**2 + rVec%y**2)
     if ((r > rInner).and.(r < rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
-       thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.e-30)
-       thisOctal%temperature(subcell) = 200.
+       thisOctal%rho(subcell) = thisOctal%rho(subcell)
+       thisOctal%temperature(subcell) = 20.
        thisOctal%etaCont(subcell) = 0.
+       thisOctal%inflow(subcell) = .true.
     endif
-    if (thisOctal%rho(subcell) > 1.e-24) then
-       thisOctal%inFlow(subcell) = .true.
-    else
-       thisOctal%inFlow(subcell) = .false.
-       thisOctal%temperature(subcell) = 3.
-    endif
+
+    if ((r + thisOctal%subcellsize/2.d0) < rInner) thisOctal%inflow(subcell) = .false.
 
 !    if ((r < rSublimation).and.thisOctal%inFlow(subcell)) then
 !       thisOctal%temperature(subcell) = 2000.
@@ -5874,7 +5871,7 @@ CONTAINS
              end if
           end do
        else
-          thisOctal%rho(subcell) = max(1.e-30,thisOctal%rho(subcell) * scaleFac)
+          thisOctal%rho(subcell) = thisOctal%rho(subcell) * scaleFac
        endif
     enddo
   end subroutine scaleDensityAMR
@@ -7501,7 +7498,7 @@ CONTAINS
 
 !        newDensity = TTauriDensity(subcellCentre(thisOctal,iSubcell),grid)
          newDensity = Density(subcellCentre(thisOctal,iSubcell),grid)
-          IF ( ABS((newDensity/(MAX(thisOctal%rho(iSubcell),1.e-25))-1.0)) > 0.1 ) &
+          IF ( ABS((newDensity/(MAX(thisOctal%rho(iSubcell),1.d-25))-1.0)) > 0.1 ) &
             thisOctal%changed(iSubcell) = .TRUE.
          
         CALL calcTTauriMassVelocity(thisOctal,iSubcell,grid)
@@ -7526,7 +7523,7 @@ CONTAINS
     integer :: subcell
     integer, optional :: ilambda
     real, optional :: lambda
-    real, optional :: kappaSca, kappaAbs, kappaAbsArray(:), kappaScaArray(:)
+    real(double), optional :: kappaSca, kappaAbs, kappaAbsArray(:), kappaScaArray(:)
     real, optional :: rosselandKappa
     real, optional :: kappap
     real, optional :: atthistemperature
@@ -7573,7 +7570,7 @@ CONTAINS
        IF (.NOT.PRESENT(lambda)) THEN
           kappaSca = grid%oneKappaSca(thisOctal%dustType(subcell),iLambda)*thisOctal%rho(subcell)
        else
-          kappaSca = logint(lambda, grid%lamArray(ilambda), grid%lamArray(ilambda+1), &
+          kappaSca = logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
                grid%oneKappaSca(thisOctal%dustType(subcell),iLambda)*thisOctal%rho(subcell), &
                grid%oneKappaSca(thisOctal%dustType(subcell),iLambda+1)*thisOctal%rho(subcell))
        endif
@@ -7589,7 +7586,7 @@ CONTAINS
        IF (.NOT.PRESENT(lambda)) THEN
           kappaAbs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLambda)*thisOctal%rho(subcell)
        else
-          kappaAbs = logint(lambda, grid%lamArray(ilambda), grid%lamArray(ilambda+1), &
+          kappaAbs = logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
                grid%oneKappaAbs(thisOctal%dustType(subcell),iLambda)*thisOctal%rho(subcell), &
                grid%oneKappaAbs(thisOctal%dustType(subcell),iLambda+1)*thisOctal%rho(subcell))
        endif

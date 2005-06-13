@@ -106,7 +106,7 @@ program torus
   ! optical depth variables
 
 
-  integer, parameter :: maxTau = 1000000, maxLambda = 500
+  integer, parameter :: maxTau = 10000, maxLambda = 500
   integer :: nTau
   real, allocatable :: contTau(:,:)
 
@@ -269,7 +269,7 @@ program torus
   real :: junk
   character(len=80) :: plotFile
 
-  real :: thisChi, thisSca, albedo
+  real(double) :: thisChi, thisSca, albedo
   logical :: normalizeSpectrum
   integer :: currentScat
   logical :: redRegion
@@ -334,7 +334,8 @@ program torus
 
   type(OCTALVECTOR) :: amrGridCentre ! central coordinates of grid
   type(OCTALVECTOR) :: octVec
-  real :: meant, treal, ang, meaneta, eta, kabs
+  real :: meant, treal, ang, meaneta, eta
+  real(double) :: kabs
   integer, parameter :: nrGrid = 1000
   real :: rGrid(nrGrid), drGrid(nrgrid),prGrid(nrGrid)
   integer :: nt
@@ -1937,9 +1938,12 @@ program torus
 
 !        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*autocm) ! defined at 1AU
 
+!           sigma0 = totalMass * real(betaDisc-alphaDisc+2) / & 
+!                (twoPi*((rOuter*1.e10)**(betaDisc-alphaDisc+2) - (rInner*1.e10)**(betaDisc-alphaDisc+2))*1.*auToCm)
 
-           sigma0 = totalMass * real(betaDisc-alphaDisc+2) / & 
-                (twoPi*((rOuter*1.e10)**(betaDisc-alphaDisc+2) - (rInner*1.e10)**(betaDisc-alphaDisc+2))*1.*auToCm)
+           sigma0 = rho0 * (rinner*1.e10/(1.*autocm))**alphaDisc * &
+	(height*1.e10) * (autocm / (100.d0*autocm))**betaDisc * sqrt(twopi)
+
         write(*,*) "Sigma0: ",sigma0
 	endif
      endif

@@ -378,7 +378,7 @@ contains
     real :: dv(nv)
     real :: vArray(nv), pv(nv), vbias(nv)
     real :: vPhi                               ! azimuthal velocities
-    real :: kabs
+    real(double) :: kabs
     real :: ang                                ! angle
     logical :: contPhoton                      ! is this a continuum photon?
     logical :: lineEmission                    ! is there line emission?

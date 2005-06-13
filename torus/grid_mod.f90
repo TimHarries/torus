@@ -6038,7 +6038,7 @@ contains
     integer :: n, ncol, nlev
     parameter (n=1500, ncol=32, nlev=10)
     integer :: ci1,ci2, ilo, ihi 
-    real :: valuemax, valuemin
+    real(double) :: valuemax, valuemin
         
     real :: box_size, fac
     character(LEN=30) :: char_val
@@ -6065,14 +6065,14 @@ contains
     zc = real(root%centre%z)
 
     ! Finding the plotting range
-    valueMin = 1.e30
-    valueMax = -1.e30
+    valueMin = 1.d30
+    valueMax = -1.d30
     call minMaxValue(root, name, plane, ValueMin, ValueMax, grid, ilam)
-    
+        
     if (logscale) then
-       if (valueMax<=0) valueMax=1.0e-30
-       if (valueMin<=0) valueMin=valueMax*1.0e-6
-
+       if (valueMax<=0) valueMax=tiny(valueMax)
+       if (valueMin<=0) valueMin=tiny(valueMin)
+       if ((log10(valueMax)-log10(valueMin)) > 20.d0) valueMin = 1.d-20 * valueMax
 !       if (name.eq."rho") valuemin = valuemax * 1.e-10
        write(*,*) "Value Range: ",log10(valueMin), " -- ", log10(valueMax)
     else
@@ -6225,9 +6225,9 @@ contains
        
 
     if(logscale) then
-       CALL PGWEDG('BI', 4.0, 5.0, log10(valueMin), log10(valueMax), TRIM(ADJUSTL(label_wd)) )
+       CALL PGWEDG('BI', 4.0, 5.0, real(log10(valueMin)), real(log10(valueMax)), TRIM(ADJUSTL(label_wd)) )
     else
-       CALL PGWEDG('BI', 4.0, 5.0, valueMin, valueMax, TRIM(ADJUSTL(label_wd)))
+       CALL PGWEDG('BI', 4.0, 5.0, real(valueMin), real(valueMax), TRIM(ADJUSTL(label_wd)))
     end if
     
     CALL PGSCH(0.6)
@@ -6259,7 +6259,7 @@ contains
     ! on the z=0 plane, and so on...
     real, intent(in)              :: val_3rd_dim 
     logical, intent(in)           :: logscale ! logscale if T, linear if not
-    real, intent(in) :: valueMin, valueMax
+    real(double), intent(in) :: valueMin, valueMax
     integer, intent(in) :: ilo, ihi
     integer, intent(in),optional :: ilam
     !
@@ -6267,8 +6267,8 @@ contains
     type(octal), pointer  :: child 
     type(octalvector) :: rvec, rhat
     type(gridtype) :: grid
-    real :: value
-    real :: kabs,ksca
+    real(double) :: value
+    real(double) :: kabs,ksca
     TYPE(vector)   :: Velocity
 
     integer :: subcell, i, idx
@@ -6338,7 +6338,7 @@ contains
              select case (name)
              case("rho")
                 value = thisOctal%rho(subcell)
-                if (thisOctal%diffusionApprox(subcell)) value = 1.e-3
+                if (thisOctal%diffusionApprox(subcell)) value = 1.d-3
              case("temperature")
                 value = thisOctal%temperature(subcell)
              case("chiLine")
@@ -6452,15 +6452,15 @@ contains
     type(gridtype) :: grid
     character(LEN=*), intent(in) :: name ! See the options in plot_AMR_values
     character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z' or 'z-x' 
-    real, intent(inout) :: valueMin, valueMax
+    real(double), intent(inout) :: valueMin, valueMax
     !
     type(octal), pointer  :: child 
     integer :: subcell, i
     integer, intent(in), optional :: ilam
-    real :: value
+    real(double) :: value
     !
     real :: xp, yp, xm, ym, zp, zm
-    real :: ksca, kabs
+    real(double) :: ksca, kabs
     real(double) :: d
     logical :: use_this_subcell
     type(octalvector) :: rvec, rhat, velocity
@@ -6927,6 +6927,150 @@ contains
 
   end subroutine radial_profile
 
+  subroutine dullemondplot(grid, rinner, router, angMax)
+    use input_variables, only : rcore
+    type(GRIDTYPE) :: grid
+    real :: rinner, router, angMax
+    real(double) :: r, ang
+    real :: tr(6)
+    integer :: nc
+    real :: tc(100), rc(100)
+    integer :: nx, ny
+    real, allocatable :: rhoimage(:,:),tempimage(:,:)
+    real :: dx, dy, fg, bg
+    integer :: i, j, k
+    integer :: ilo, ihi
+    real :: rtemp, ttemp
+    real(double), allocatable  :: kabs(:), ksca(:)   ! (size=maxTau)
+    real, allocatable :: lambda(:), dlambda(:)
+    real, allocatable :: tauSca(:), tauAbs(:), tauExt(:)
+    integer :: ilambda
+    integer :: maxTau = 10000
+    integer :: nr = 1000
+    integer :: error, nTau
+    logical :: hitcore
+    real :: rtau(1000)
+    real, allocatable :: dv(:), temp(:)
+    real,allocatable :: rho(:),chiline(:)
+    real(double), allocatable :: Levelpop(:,:),ne(:)
+    logical, allocatable :: inflow(:)
+    type(VECTOR),allocatable :: vel(:)
+    logical :: first
+
+    type(OCTALVECTOR) :: octVec, Uhatoctal, avecoctal
+    integer :: pgbegin
+
+    allocate(lambda(1:maxTau),dlambda(1:maxTau),ksca(1:maxtau),kabs(1:maxtau))
+    allocate(tauAbs(1:maxTau), tauSca(1:maxTau), tauExt(1:maxTau))
+    allocate(vel(1:maxTau), dv(1:maxTau),temp(1:maxtau), rho(1:maxtau))
+    allocate(chiline(1:maxTau),ne(1:maxTau),levelPop(1:maxtau,grid%maxLevels))
+    allocate(inflow(1:maxTau))
+    nx = 1000
+    ny = 1000
+
+    nc = 20
+    do i = 1, nc
+       tc(i) = real(i)*100.
+    enddo
+    do i = 1, nc
+       rc(i) = -8.-0.5*real(i-1)
+    enddo
+
+
+
+    dx = log10(rOuter/rInner)/real(nx)
+    dy = angMax/real(ny)
+    tr(1) =  - dx + log10(rInner)
+    tr(2) = dx
+    tr(3) = 0.
+    tr(4) =  - dy + 0.
+    tr(5) = 0.
+    tr(6) = dy
+
+
+    allocate(rhoImage(1:nx,1:ny),tempImage(1:nx,1:ny))
+    
+    do i = 1, nx
+       do j = 1, ny
+          r = log10(rinner)+real(i-1)*log10(rOuter/rInner)/real(nx-1)
+          r = 10.d0**r
+          ang = + pi /2. - angMax * real(j-1)/real(ny-1) 
+          octVec = OCTALVECTOR(r*sin(ang),0.d0,r*cos(ang))
+          call amrGridValues(grid%octreeRoot,octVec,rho=rtemp, temperature=ttemp)
+          rhoimage(i,j) = log10(max(1.e-30,rtemp))
+          tempimage(i,j) = ttemp
+       enddo
+    enddo
+
+    do i = 1, nr
+       ang = real(i-1)/real(nr-1) * pi/2.
+       uHatOctal = OCTALVECTOR(sin(ang), 0.d0, cos(ang))
+       aVecOctal = dble(rCore) * uhatOctal
+       ilambda = 32
+    
+       CALL startReturnSamples (aVecOctal,uHatOctal,grid,1.,nTau,       &
+            maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
+            lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=vel,velocityderiv=dv, &
+            temperature=temp, &
+            chiLine=chiLine,    &
+            levelPop=levelPop,rho=rho, &
+            Ne=Ne, inflow=inflow)
+
+       dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)  
+
+
+       tauAbs(1:2) = 0.
+       tauSca(1:2) = 0.
+
+       do j = 2, nTau, 1
+          tauSca(j) = tauSca(j-1) + dlambda(j-1)*0.5*(ksca(j-1)+ksca(j))
+          tauAbs(j) = tauAbs(j-1) + dlambda(j-1)*0.5*(kabs(j-1)+kabs(j))
+       enddo
+       tauExt(1:nTau) = tauSca(1:nTau)+tauAbs(1:nTau)
+       if (tauExt(nTau) > 1.) then
+          call locate(tauExt, nTau, 1., k)
+          rtau(i) = lambda(k) + (lambda(k+1)-lambda(k))*(1.-tauExt(k))/(tauExt(k+1)-tauExt(k))
+       else
+          rtau(i) = 0.
+       endif
+    enddo
+
+    
+    fg = -8.
+    bg = -18.
+    i = pgbegin(0,"dull.ps/cps",1,1)
+    call pgvport(0.1,0.9,0.1,0.9)
+    call pgqcir(ilo, ihi)
+    call pgscir(ilo, ihi)
+    call palette(1)
+
+    call pgwindow(log10(rinner),log10(router), 0., angMax)
+    call pgimag(rhoimage, nx, ny, 1, nx, 1, ny, fg, bg, tr)
+    call pgsci(2)
+    call pgcont(rhoimage, nx, ny, 1, nx, 1, ny, rc, nc, tr)
+    call pgsci(3)
+    call pgcont(tempimage, nx, ny, 1, nx, 1, ny, tc, nc, tr)
+    call pgsci(4)
+    first = .true.
+    do i = 2, nr
+       ang = pi/2. - real(i-1)/real(nr-1) * pi/2.
+       if (rTau(i) /= 0.) then
+          if (first) then
+             call pgmove(real(log10(rtau(i))), real(ang))
+             first = .false.
+          else
+             call pgdraw(real(log10(rtau(i))), real(ang))
+          endif
+       endif
+    enddo
+    call pgsci(1)
+    call pgwindow(log10(rinner/1.5e3),log10(router/1.5e3), 0., angMax)
+    call pgbox('bclnst',0.0,0,'bcnst',0.0,0)
+    call pglab("R [AU]","\gp/2 -\gt", " ")
+    call pgend
+    
+    deallocate(rhoimage,tempimage, ksca, kabs, lambda, dlambda)
+  end subroutine dullemondplot
 
     
 end module grid_mod

@@ -30,7 +30,7 @@ contains
   subroutine solveHydro(temperature, zAxis, subcellsize, rho, nz, &
        radius, mStar, sigma0, rDisk, converged, drho)
 
-    use input_variables, only: alphaDisc, betaDisc
+    use input_variables, only: alphaDisc, betaDisc, rinner
     integer, intent(in) :: nz ! number of vertical grid points
     real(single),intent(in) :: subcellSize(1:nz)  ! size of this subcell
     real(single),intent(in) :: temperature(1:nz)  ! temperature
@@ -46,16 +46,17 @@ contains
     real :: dz
     real :: fac, fac2
     real(double) :: scalefac
-    real, allocatable :: lnrho(:)
+    real(double), allocatable :: lnrho(:), doubleRho(:)
     real :: dtdz ! temperature gradient
-    real :: sigma
+    real(double) :: sigma
     real :: drho
+    real :: av
 
     mu = 2.3 ! mean mole mass assuming pure H_2/He
     radiusAU = (radius * 1.e10) / autocm
 
 
-    allocate(oldRho(1:nz), lnrho(1:nz))
+    allocate(oldRho(1:nz), lnrho(1:nz),doubleRho(1:nz))
     oldRho(1:nz) = rho(1:nz)
 
     converged = .false.
@@ -72,24 +73,31 @@ contains
     ! now integrate over the column to get the surface density
     ! 
 
-    rho(1:nz) = exp(lnrho(1:nz))
+    doublerho(1:nz) = exp(lnrho(1:nz))
+
+
     sigma = 0.
     do i = 1,nz
-!       dz = (zAxis(i)-zAxis(i-1))
-       sigma = sigma + rho(i) * subcellSize(i) * 1.e10
-!       sigma = sigma + 0.5*(rho(i)+rho(i-1))* dz
+       sigma = sigma + doublerho(i) * dble(subcellSize(i)) * 1.d10
     enddo
 
     ! rescale the density to retain the 1/r surface density fall-off
 
     scalefac = 0.5 * (sigma0*(autocm/(radius*1.e10))) / sigma ! factor of 0.5 cos only integrating over half disc vertically
+    
+    fac =  1.d0-min(dble(radius - rInner)/(0.01d0*rinner),1.d0)
+    fac = exp(-fac*10.d0)
 
 
-    scalefac = 0.5 * (sigma0 * (radius*1.e10/autoCm)**(betaDisc-alphaDisc)) / sigma
+    scalefac = 0.5 * (sigma0 * fac * (radius*1.e10/autoCm)**(betaDisc-alphaDisc)) / sigma
 
 !    scalefac = fractgap(dble(radiusAU)) / (sqrt(radiusAU) * (1 + exp(-100.*(radiusAU-rSmooth))) * sigma)
 !    scalefac = scalefac * 0.5 * rho0 * Msol / autocm**2
-    rho(1:nz) = rho(1:nz) * scalefac
+
+!    write(*,*) radius, sigma0, sigma, &
+!	0.5 * (sigma0 * (radius*1.e10/autoCm)**(betaDisc-alphaDisc)), scalefac
+
+    rho(1:nz) = doublerho(1:nz) * scalefac
 
     ! now check for convergence. maximum fractional change in
     ! density should be less than 1%.
@@ -100,7 +108,7 @@ contains
        endif
     enddo
 
-    deallocate(oldRho)
+    deallocate(oldRho, doublerho)
   end subroutine solveHydro
 
 
@@ -124,14 +132,15 @@ contains
     do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
-!       if (thisOctal%inFlow(subcell)) then
        thisOctal%chiLine(subcell) = 1.e-30
+!       if (thisOctal%inFlow(subcell)) then
           nz = nz + 1
           temperature(nz) = temptemp
           rho(nz) = rhotemp
           temp = subCellCentre(thisOctal, subcell)
           zAxis(nz) = temp%z
           subcellsize(nz) = thisOctal%subcellsize
+!       endif
           currentPos = OCTALVECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
 !       else
 !          currentPos = OCTALVECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
@@ -344,7 +353,7 @@ contains
 !$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
        if (nIter == 1) then
-          maxIter = 2
+          maxIter = 3
        else
           maxIter = 1
        endif

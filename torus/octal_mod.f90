@@ -87,7 +87,7 @@ MODULE octal_mod
     TYPE(octal), POINTER               :: parent => null()         
     TYPE(octalVector)                  :: centre
 
-    REAL, DIMENSION(8)                 :: rho            ! density
+    REAL(double), DIMENSION(8)         :: rho            ! density
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
     TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures

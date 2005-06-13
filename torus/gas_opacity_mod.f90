@@ -308,7 +308,7 @@ subroutine returnGasKappaValue(temperature, rho, lambda, kappaAbs, kappaSca, kap
   type(molecularKappaGrid) :: LookupTable
   real :: temperature
   real, optional :: lambda
-  real :: rho
+  real(double) :: rho
   real, optional :: kappaAbs, kappaSca, kappaAbsArray(:), kappaScaArray(:)
   real :: t1, t2
   real :: pressure, mu

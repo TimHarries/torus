@@ -1188,7 +1188,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   real, allocatable, save  :: velocityDeriv(:)   ! directional derivative (size=maxTau)
   real, allocatable, save  :: dlambda(:)         ! distance increment array (size=maxTau)
   real(double), allocatable, save :: projVel(:)  ! (size=maxTau)
-  real, allocatable, save  :: kabs(:), ksca(:)   ! (size=maxTau)
+  real(double), allocatable, save  :: kabs(:), ksca(:)   ! (size=maxTau)
   !
   !
   type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
@@ -1884,8 +1884,8 @@ end subroutine integratePathAMR
     real, allocatable, save  :: velocityDeriv(:)   ! directional derivative (size=maxTau)
     real, allocatable, save :: dL(:)     ! distance increment array (size=maxTau)
     real(double), allocatable, save :: projVel(:)   ! (size=maxTau)
-    real, allocatable, save :: ksca(:)              ! (size=maxTau)
-    real, allocatable, save :: kabs(:)              ! (size=maxTau)
+    real(double), allocatable, save :: ksca(:)              ! (size=maxTau)
+    real(double), allocatable, save :: kabs(:)              ! (size=maxTau)
     real, allocatable, save :: newL(:)              ! (size=maxTau)
     logical, allocatable, save :: newInFlow(:)      ! size=maxtau
     real, allocatable, save :: N_HI(:)              ! size = maxTau
@@ -2094,8 +2094,8 @@ end subroutine integratePathAMR
 
        ! Now interpolate on to newly sampled ray    
        call linearResample_dble(L, projVel, nTAu, maxTau, newL, newNtau)
-       call log_linear_Resample(L, kSca, nTAu, maxTau, newL, newNtau)
-       call log_linear_Resample(L, kAbs, nTAu, maxTau, newL, newNtau)
+       call log_linear_Resample_dble(L, kSca, nTAu, maxTau, newL, newNtau)
+       call log_linear_Resample_dble(L, kAbs, nTAu, maxTau, newL, newNtau)
        call log_linear_Resample(L, chiline, nTAu, maxTau, newL, newNtau)
        call linearResample(L, temperature, nTAu, maxTau, newL, newNtau)
        call log_linear_Resample(L, N_HI, nTAu, maxTau, newL, newNtau)

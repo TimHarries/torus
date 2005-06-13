@@ -301,6 +301,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
+    use input_variables, only : rinner, router
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
@@ -324,7 +325,7 @@ contains
     integer :: i, j
     real(oct) :: freq(2000), dnu(2000), probDistJnu(2000)
 !    real(oct) :: probDistPlanck(nFreq)
-    real :: kappaScaReal, kappaAbsReal
+    real(double) :: kappaScadb, kappaAbsdb
     integer :: nDiffusion
     integer :: nDiffusion_sub
     integer :: nMonte, iMonte, nScat, nAbs
@@ -365,9 +366,10 @@ contains
     integer :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
     integer :: maxIter
     integer       :: imonte_beg, imonte_end  ! the index boundary for the photon loops.
-    real, allocatable :: kAbsArray(:)
+    real(double), allocatable :: kAbsArray(:)
     logical :: photonInDiffusionZone
     real :: diffusionZoneTemp
+    logical :: outputFlag
 
 !$MPI    ! For MPI implementations
 !$MPI  ! For MPI implementations =====================================================
@@ -445,6 +447,10 @@ contains
 !$MPI if (my_rank==0) &
       call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
 
+      outputFlag = .true.
+!$MPI if (my_rank/=0) outputFlag = .false.
+
+
 
 !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
 
@@ -459,7 +465,7 @@ contains
 !$MPI    if(my_rank == 0) &
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    call defineDiffusionZone(grid)
+    call defineDiffusionZone(grid, outputFlag, .true.)
 
 
     iIter_grand = 0
@@ -491,6 +497,9 @@ contains
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+
+       call dullemondplot(grid, rinner, router, 0.4)
+
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_zoom.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac = 0.01) 
@@ -656,14 +665,14 @@ contains
                 call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
-                     kappaSca=kappaScaReal, kappaAbs=kappaAbsReal, grid=grid)
+                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
 
                 if (thisOctal%diffusionApprox(subcell)) then
                    write(*,*) "photon in diffusion zone",photonindiffusionzone
                 endif
 
-                if (kappaScaReal+kappaAbsReal /= 0.0) then
-                   albedo = kappaScaReal / (kappaScaReal + kappaAbsReal)
+                if (kappaScadb+kappaAbsdb /= 0.0d0) then
+                   albedo = kappaScadb / (kappaScadb + kappaAbsdb)
                 else
                    albedo = 0.5
                 end if
@@ -694,9 +703,9 @@ contains
                    ! if the photon has come from the diffusion zone then it has to be
                    ! reprocessed using the appropriate temperature
 
-                   if (photonInDiffusionZone) then
-                      t1 = dble(diffusionZoneTemp)
-                  endif
+!                   if (photonInDiffusionZone) then
+!                      t1 = dble(diffusionZoneTemp)
+!                  endif
 
                    nAbs_sub = nAbs_sub + 1
                    thisPhotonAbs = thisPhotonAbs + 1
@@ -838,6 +847,12 @@ contains
        nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
+!$MPI       if (my_rank==0) &
+       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
+            "crossings.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac = 0.01) 
+
+
        if (twoD) then
           write(*,*) "! Remapping the distance grid attributes..."
           call remapDistanceGrid(grid%octreeRoot, grid)
@@ -898,10 +913,12 @@ contains
 !$MPI    debugOutput = .false.
 !$MPI endif
 
-       if (iiter_grand > 1) then
-          call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
+       call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
+       if (iiter_grand == 1) then
+          call defineDiffusionZone(grid, outputFlag, .true.)
+       else
+          call defineDiffusionZone(grid, outputFlag, .false.)
        endif
-!       call defineDiffusionZone(grid)
 
     enddo
 
@@ -1237,7 +1254,7 @@ contains
     real(oct), intent(inout) :: dT_over_T_max 
 
     real :: kabs
-    real :: kabsArray(1000)
+    real(double) :: kabsArray(1000)
     real :: lamArray(*)
     integer :: nFreq
     real(oct) :: freq(*)
@@ -1309,7 +1326,7 @@ contains
              kappaP = kappaP / norm /1.d10
              
              
-             if (kappaP /= 0.) then
+             if (kappaP /= 0.d0) then
                 newT = dble(pi / stefanBoltz) * aDot / (dble(fourPi) * kappaP)
                 newT = newT**0.25d0
              else
@@ -1362,7 +1379,7 @@ contains
                    norm = norm + dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell)))) * dble(dnu(i)) 
                 endif
              enddo
-             kappaP = kappaP / norm / 1.e10
+             kappaP = kappaP / norm / 1.d10
              thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * &
                   (thisOctal%temperature(subcell)**4)
              totalEmission = totalEmission + thisOctal%etaCont(subcell) * V
@@ -1574,7 +1591,7 @@ contains
    logical :: stillinGrid
    logical :: escaped
    logical :: twoD
-   real :: kappaScaReal, kappaAbsReal
+   real(double) :: kappaScaDb, kappaAbsDb
    real(oct) :: thisTau
    real(oct) :: thisFreq
    real(oct) :: thisLam
@@ -1612,12 +1629,12 @@ contains
     thisOctVec = rVec
 
     call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, &
-         foundSubcell=subcell, kappaSca=kappaScaReal, kappaAbs=kappaAbsReal, &
+         foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
          grid=grid, inFlow=inFlow)
     oldOctal => thisOctal
 
     if (inFlow) then
-       thisTau = dble(tVal) * dble(kappaAbsReal + kappaScaReal)
+       thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
     else
        thisTau = 1.0e-28
     end if
@@ -1677,7 +1694,7 @@ contains
        if (.not.twoD) then
 
           thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
-               + tVal * dble(kappaAbsReal)
+               + tVal * dble(kappaAbsdb)
           thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           
        else
@@ -1685,7 +1702,7 @@ contains
           thisOctVec = subcellCentre(thisOctal,subcell)
           call find2Doctal(thisOctVec, grid, foundOctal, isubcell)
           foundOctal%distanceGrid(isubcell) = foundOctal%distanceGrid(isubcell) &
-               + tVal * dble(kappaAbsReal)
+               + tVal * dble(kappaAbsdb)
           foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
 
        endif
@@ -1703,7 +1720,7 @@ contains
           call random_number(r)
           tau = -log(r)
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, &
-               foundSubcell=subcell, kappaSca=kappaScaReal, kappaAbs=kappaAbsReal, &
+               foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
                grid=grid, inFlow=inFlow)
           oldOctal => thisOctal
           thisOctVec = octVec
@@ -1720,7 +1737,7 @@ contains
 ! calculate the optical depth to the next cell boundary
 
           if (inFlow) then
-             thisTau = dble(tVal) * dble(kappaAbsReal + kappaScaReal)
+             thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
           else
              thisTau = 1.0e-28
           end if
@@ -1765,7 +1782,7 @@ contains
 !       endif
        call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal,iLambda=iLam, &
             foundOctal=thisOctal, foundSubcell=subcell, & 
-            kappaAbs=kappaAbsReal,kappaSca=kappaScaReal, grid=grid, inFlow=inFlow)
+            kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow)
        thisOctVec = octVec
 
 
@@ -1773,7 +1790,7 @@ contains
           write(*,*) "Photon in diff zone but not escaped"
        endif
 
-       if (.not.inFlow) kappaAbsReal =0.0d0
+       if (.not.inFlow) kappaAbsdb =0.0d0
 
 
 ! update the distance grid
@@ -1784,7 +1801,7 @@ contains
           if (.not.twoD) then
 
              thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
-                  + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsReal)
+                  + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsdb)
              thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           
           else
@@ -1792,7 +1809,7 @@ contains
              thisOctVec = subcellCentre(thisOctal,subcell)
              call find2Doctal(thisOctVec, grid, foundOctal, isubcell)
              foundOctal%distanceGrid(isubcell) = foundOctal%distanceGrid(isubcell) &
-                  + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsReal)
+                  + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsdb)
              foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
 
           endif

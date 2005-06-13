@@ -3948,7 +3948,7 @@ type(octal), pointer :: testOctal
 
     real, intent(in)                  :: Tsingle 
     real(double)             :: T
-    real, intent(in)                  :: rho
+    real(double), intent(in)                  :: rho
     real(double), intent(out):: Ne 
     real(double), intent(out):: nTot
     real(double), dimension(:), intent(out) :: levels

@@ -750,13 +750,13 @@ contains
     use input_variables
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(octalVector), INTENT(IN) :: point
-    real :: r, h, rhoOut, warpHeight
-    real :: kspiral
-    real :: xpoint,ypoint,rscale,r1,fac
+    real(double) :: r, h, rhoOut, warpHeight
+    real(double) :: kspiral
+    real(double) :: xpoint,ypoint,rscale,r1,fac
     integer :: nspiral1
-    real :: phase(10)
+    real(double) :: phase(10)
     integer :: i
-    real :: phi
+    real(double) :: phi
 
     nSpiral1 = 3
     do i = 1, nspiral1
@@ -766,21 +766,20 @@ contains
     kspiral = grid%rOuter/Pi
 
 
-    rhoOut = 1.e-30
+    rhoOut = tiny(rhoOut)
     r = sqrt(point%x**2 + point%y**2)
     phi = atan2(point%y,point%x)
     warpHeight = 0. !cos(phi) * rInner * sin(30.*degtorad) * sqrt(rinner / r)
     if ((r > rinner).and.(r < rOuter)) then
-       h = height * (r / (100.*autocm/1.e10))**betaDisc
-       rhoOut = rho0 * (rInner/r)**alphaDisc * exp(-0.5 * ((point%z-warpheight)/h)**2)
+       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+       rhoOut = dble(rho0) * (dble(rInner)/r)**dble(alphaDisc) * exp(-0.5d0 * (dble(point%z-warpheight)/h)**2)
 
-       fac =  1.-min((r - rInner)/(0.01*rinner),1.)
-       fac = exp(-fac*10.)
+       fac =  1.d0-min(dble(r - rInner)/(0.01d0*rinner),1.d0)
+       fac = exp(-fac*10.d0)
        rhoOut = rhoOut * fac
-
+       rhoOut = max(rhoOut, tiny(rhoOut))
     endif
 
-    rhoOut = max(rhoOut,1.e-30)
 
   end function shakaraSunyaevDisc
 
