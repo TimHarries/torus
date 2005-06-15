@@ -288,7 +288,7 @@ contains
    end if
   end subroutine throughoutMidpane
 
-  subroutine verticalHydrostatic(grid, mStar, sigma0, rDisk, miePhase, nMuMie, nLambda, lamArray, &
+  subroutine verticalHydrostatic(grid, mStar, sigma0, rDisk, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tThresh, twoD, expectedMass)
 
 !$MPI include 'mpif.h'
@@ -296,12 +296,13 @@ contains
 
     type(GRIDTYPE) :: grid
     real :: mStar, sigma0, rDisk, expectedMass, scaleFac
+    integer :: nDustType
     logical :: converged
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     integer :: nLucy
     integer :: nLambda, nMuMie
-    type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
+    type(PHASEMATRIX):: miePhase(1:nDusttype,1:nLambda, 1:nMuMie)
     real  :: lamArray(:)
     real :: massEnvelope
     real :: tthresh, drho
@@ -358,7 +359,7 @@ contains
           maxIter = 1
        endif
 
-       call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, & 
+       call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
             nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twoD, maxIter)
 
        

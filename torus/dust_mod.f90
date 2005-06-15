@@ -356,7 +356,7 @@ contains
       implicit none
       type(GRIDTYPE) :: grid
       integer :: thisDust
-      real :: aMin(:), aMax,a0, qDist, pDist
+      real :: aMin, aMax,a0, qDist, pDist
       real, allocatable :: sigmaAbs(:), sigmaSca(:), sigmaExt(:)
       real :: scale
       real, allocatable :: mReal(:), mImg(:)          ! size = nlamda
@@ -523,15 +523,15 @@ contains
          grid%oneKappaAbs(thisDust,1:grid%nLambda) = (sigmaAbs(thisDust:grid%nLambda) * 1.e10)/meanParticleMass
          grid%oneKappaSca(thisDust,1:grid%nLambda) = (sigmaSca(thisDust:grid%nLambda) * 1.e10)/meanParticleMass
 
-         write(albedoFilename,'(a,i2.2,a)') "albedo",thisDust".dat"
+         write(albedoFilename,'(a,i2.2,a)') "albedo",thisDust,".dat"
          open(20,file=albedoFilename,form="formatted",status="unknown")
          do i = 1, grid%nLambda
             rayleigh = (8.*pi**2)/(grid%lamArray(i)*angstromtocm)* &
                  aimag((cmplx(mreal(i),mimg(i))**2-cmplx(1.,0.))/(cmplx(mreal(i),mimg(i))**2+cmplx(2.,0.)))*(amin*microntocm)**3
             rayleigh = rayleigh / meanParticleMass
-            write(20,*) grid%lamArray(i),(grid%oneKappaAbs(1,i)+grid%oneKappaSca(1,i))/1.e10, &
-                 grid%oneKappaAbs(1,i)/1.e10,grid%oneKappaSca(1,i)/1.e10, &
-                 grid%oneKappaSca(1,i)/(grid%oneKappaAbs(1,i)+grid%oneKappaSca(1,i)),rayleigh
+            write(20,*) grid%lamArray(i),(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))/1.e10, &
+                 grid%oneKappaAbs(thisdust,i)/1.e10,grid%oneKappaSca(thisdust,i)/1.e10, &
+                 grid%oneKappaSca(thisdust,i)/(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i)),rayleigh
          enddo
          close(20)
 

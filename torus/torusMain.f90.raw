@@ -137,7 +137,7 @@ program torus
   integer :: itestlam, ismoothlam
   real :: xMin, xMax
   integer, parameter :: nXmie = 20, nMuMie = 20
-  type(PHASEMATRIX),allocatable :: miePhase(:, :)
+  type(PHASEMATRIX),allocatable :: miePhase(:,:, :)
   real :: particleMass, abundance
 
   ! torus images
@@ -748,7 +748,7 @@ program torus
   grid%lambda2 = lamline
 
 
-  allocate(miePhase(1:nLambda,1:nMumie))
+  allocate(miePhase(1:nDustType,1:nLambda,1:nMumie))
   allocate(kappaExt(1:nLambda))
   allocate(kappaAbs(1:nLambda))
   allocate(kappaSca(1:nLambda))
@@ -1226,7 +1226,7 @@ program torus
                  call add_alpha_disc(grid%octreeroot, grid, ttauri_disc)
                  ! finding the photon-dust interaction x-secions
                  call mieCrossSection(sigmaExt0, sigmaAbs0, sigmaSca0,  &
-                      aMin, aMax, a0, qDist, pDist, grainType, &
+                      aMin(1), aMax(1), a0(1), qDist(1), pDist(1), grainType, &
                       ngrain, X_grain, grainname, lamLine)
                  write(*,*) " "
                  write(*,*) "Photon-dust cross section at lambda = ", lamLine, " [A]"
@@ -1787,19 +1787,20 @@ program torus
       end if
 
 
-      do i = 1, nLambda
-         do j = 1, nMumie
-            mu = 2.*real(j-1)/real(nMumie-1)-1.
-            if (.not.isotropicScattering) then
-               call mieDistPhaseMatrix(aMin, aMax, a0, qDist, pDist, xArray(i), &
-                    mu, miePhase(i,j), mReal(i), mImg(i))               
+      do k = 1, nDustType
+         do i = 1, nLambda
+            do j = 1, nMumie
+               mu = 2.*real(j-1)/real(nMumie-1)-1.
+               if (.not.isotropicScattering) then
+                  call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
+                       mu, miePhase(k,i,j), mReal(i), mImg(i))               
                else
-                  miePhase(i,j) = fillIsotropic(mu)
+                  miePhase(k,i,j) = fillIsotropic(mu)
                endif
             !           miePhase(i,j) = fillRayleigh(mu)
+            end do
          end do
-      end do
-
+      enddo
 
      deallocate(mReal)
      deallocate(mImg)
@@ -1963,17 +1964,17 @@ program torus
      call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
  
      if (grid%cartesian .or. grid%polar) then
-        call lucyRadiativeEquilibrium(grid, miePhase, nMuMie, nLambda, xArray, dble(teff), nLucy)
+        call lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, xArray, dble(teff), nLucy)
      else
         if (readLucy .and. .not. redoLucy) then
            continue
         else
 
            if (solveVerticalHydro) then
-              call verticalHydrostatic(grid, mCore, sigma0, rInner, miePhase, nMuMie, nLambda, xArray, &
+              call verticalHydrostatic(grid, mCore, sigma0, rInner, miePhase, nDustType, nMuMie, nLambda, xArray, &
                    source, nSource, nLucy, massEnvelope, tThresh, twod, mDisc)
            else
-              call lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, & 
+              call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
                    nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 10)
            endif
 
@@ -3600,7 +3601,7 @@ program torus
                  
 
                  call scatterPhoton(grid, tempPhoton, outVec, obsPhoton, mie, &
-                       miePhase, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
+                       miePhase, nDustType, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
 
 
                  ! the o6 photon might get scattered towards the observer by a rayleigh scattering
@@ -3821,7 +3822,7 @@ program torus
 
 
                  call scatterPhoton(grid,thisPhoton, zeroVec, outPhoton, mie, &
-                       miePhase, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
+                       miePhase, nDustType, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
                  thisPhoton = outPhoton
 
                  call integratePath(gridUsesAMR, VoigtProf, &

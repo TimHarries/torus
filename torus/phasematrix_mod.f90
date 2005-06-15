@@ -83,6 +83,48 @@ contains
 
   end function apply
 
+  pure function applyMean(a, f,  n, b) result(c)
+
+    integer, intent(in) :: n
+    type(PHASEMATRIX), intent(in) :: a(n)
+    real(double), intent(in) :: f(:)
+    type(STOKESVECTOR), intent(in) :: b
+    type(STOKESVECTOR) :: c
+    integer :: i
+    type(PHASEMATRIX)  :: mean
+
+    mean%element = 0.
+    do i = 1 , n
+       mean%element = mean%element + f(i) * a(i)%element
+    enddo
+
+    ! perform the matrix multiplication
+    
+    c%i = mean%element(1,1) * b%i + &
+         mean%element(1,2) * b%q + &
+         mean%element(1,3) * b%u + &
+         mean%element(1,4) * b%v
+
+
+    c%q = mean%element(2,1) * b%i + &
+         mean%element(2,2) * b%q + &
+         mean%element(2,3) * b%u + &
+         mean%element(2,4) * b%v
+
+
+    c%u = mean%element(3,1) * b%i + &
+         mean%element(3,2) * b%q + &
+         mean%element(3,3) * b%u + &
+         mean%element(3,4) * b%v
+
+
+    c%v = mean%element(4,1) * b%i + &
+         mean%element(4,2) * b%q + &
+         mean%element(4,3) * b%u + &
+         mean%element(4,4) * b%v 
+
+  end function applyMean
+
 
   ! this sets up a Rayleigh phase matrix
 
@@ -181,18 +223,20 @@ contains
 
 
 
-  type(VECTOR) function newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nMuMie)
+  type(VECTOR) function newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
     type(VECTOR), intent(in) :: oldDirection
     real, intent(in) :: wavelength
+    real(double) :: dustTypeFraction(:)
+    integer :: nDustType
     integer, intent(in) :: nMuMie, nLambda
-    integer :: i, j
+    integer :: i, j, k
     real :: costheta, theta, r, phi
     real, intent(in) :: lamArray(:)
     real, allocatable :: prob(:)
     real, allocatable :: cosArray(:)
     type(VECTOR) :: tVec, perpVec, newVec
     
-    type(PHASEMATRIX) :: miePhase(nLambda, nMuMie)
+    type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
     
 
     allocate(prob(1:nMuMie))
@@ -204,7 +248,9 @@ contains
     prob = 0.
     do i = 1, nMuMie
        cosArray(i) = -1. + 2.*real(i-1)/real(nMuMie-1)
-       prob(i) = miePhase(j,i)%element(1,1)
+       do k = 1, nDustType
+          prob(i) = prob(i) + dustTypeFraction(k)*miePhase(k,j,i)%element(1,1)
+       enddo
     enddo
     do i = 2, nMuMie
        prob(i) = prob(i) + prob(i-1)

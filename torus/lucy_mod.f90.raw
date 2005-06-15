@@ -17,14 +17,15 @@ module lucy_mod
 contains
 
 
-  subroutine lucyRadiativeEquilibrium(grid, miePhase, nMuMie, nLambda, lamArray, temperature, nLucy)
+  subroutine lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, temperature, nLucy)
 
     type(GRIDTYPE) :: grid
     type(OCTALVECTOR) :: uHat, uNew
     type(OCTALVECTOR) :: rVec
     integer :: nlucy
+    integer :: nDustType
     integer,intent(in) :: nLambda, nMuMie
-    type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
+    type(PHASEMATRIX):: miePhase(1:nDustType,1:nLambda, 1:nMuMie)
     real :: lamArray(:)
     real(oct), allocatable :: distanceGrid(:, :, :)
     real(oct) :: r
@@ -51,6 +52,7 @@ contains
     real(oct) :: newT, deltaT
     real(oct) :: meanDeltaT
     real(oct) :: dx, dy, tr(6), fg, bg
+    real(double) :: dummy(1)
     real(oct), allocatable :: tempImage(:,:)
     integer :: nDT
     real(oct) :: totalEmission
@@ -127,7 +129,7 @@ contains
                 call random_number(r)
                 if (r < albedo) then
                    vec_tmp=uhat 
-                   uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nMuMie)
+                   uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, dummy)
 
                    nScat = nScat + 1
                    uHat = uNew
@@ -299,13 +301,14 @@ contains
 
   end subroutine lucyRadiativeEquilibrium
 
-  subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nMuMie, nLambda, lamArray, &
+  subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
     use input_variables, only : rinner, router
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: nSource
+    integer :: nDustType
     type(SOURCETYPE) :: source(nsource), thisSource
     integer :: nLucy
     logical :: twoD
@@ -315,7 +318,7 @@ contains
     type(OCTALVECTOR) :: octVec,avedirection
     type(OCTAL), pointer :: thisOctal
     integer, intent(in)  :: nLambda, nMuMie
-    type(PHASEMATRIX):: miePhase(1:nLambda, 1:nMuMie)
+    type(PHASEMATRIX):: miePhase(1:nDustType,1:nLambda, 1:nMuMie)
 !    real  :: lamArray(:)
     real  :: lamArray(nLambda)
     real(oct) :: r
@@ -690,7 +693,8 @@ contains
 
 
                    vec_tmp = uhat
-                   uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nMuMie)
+                   uNew = newDirectionMie(vec_tmp, real(thisLam), lamArray, nLambda, miePhase, nDustType, nMuMie, &
+                        thisOctal%dustTypeFraction(subcell, 1:nDusttype))
                    nScat_sub = nScat_sub + 1
                    uHat = uNew
 

@@ -202,8 +202,8 @@ CONTAINS
     grid%octreeRoot%changed = .false.
     grid%octreeRoot%dustType = 1
     ALLOCATE(grid%octreeRoot%dusttypefraction(8,  nDustType))
-    grid%octreeroot%dustTypeFraction(8,1:nDustType) = 0.d0
-    grid%octreeroot%dustTypeFraction(8,1) = 1.d0
+    grid%octreeroot%dustTypeFraction(1:8,1:nDustType) = 0.d0
+    grid%octreeroot%dustTypeFraction(1:8,1) = 1.d0
 
     grid%octreeRoot%gasOpacity = .false.
     grid%octreeRoot%diffusionApprox = .false.
@@ -5665,7 +5665,7 @@ CONTAINS
   
   SUBROUTINE addNewChildren(parent, grid, sphData, stellar_cluster, inherit, interp)
     ! adds all eight new children to an octal
-
+    use input_variables, only : nDustType
     IMPLICIT NONE
     
     TYPE(octal), POINTER :: parent     ! pointer to the parent octal 
@@ -5774,9 +5774,9 @@ CONTAINS
        parent%child(newChildIndex)%etaCont = 1.e-30
        parent%child(newChildIndex)%N = 1.e-30
        parent%child(newChildIndex)%dusttype = 1
-       ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  grid%nDustType))
-       parent%child(newChildIndex)%dustTypeFraction(8,1:grid%nDustType) = 0.d0
-       parent%child(newChildIndex)%dustTypeFraction(8,1) = 1.d0
+       ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
+       parent%child(newChildIndex)%dustTypeFraction(1:8,1:nDustType) = 0.d0
+       parent%child(newChildIndex)%dustTypeFraction(1:8,1) = 1.d0
        parent%child(newChildIndex)%gasOpacity = .false.
        parent%child(newChildIndex)%Ne = 1.e-30
        parent%child(newChildIndex)%temperature = 3.0
@@ -7529,7 +7529,7 @@ CONTAINS
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature)
-    use input_variables, only: includeGasOpacity
+    use input_variables, only: includeGasOpacity, nDustType
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -7565,7 +7565,7 @@ CONTAINS
     if (PRESENT(kappaAbsArray)) then
 
        kappaAbsArray(1:grid%nLambda) = 0.
-       do i = 1, grid%nDustType
+       do i = 1, nDustType
           kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + & 
                thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,1:grid%nLambda)*thisOctal%rho(subcell) * frac
        enddo
@@ -7573,12 +7573,14 @@ CONTAINS
           call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaAbsArray=tarray)
           kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
        endif
+!       write(*,*) nDustType,thisOctal%dusttypeFraction(subcell,1), grid%oneKappaAbs(1,1:grid%nLambda)
+
     endif
        
     if (PRESENT(kappaScaArray)) then
 
        kappaScaArray(1:grid%nLambda) = 0.
-       do i = 1, grid%nDustType
+       do i = 1, nDustType
           kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + & 
                thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,1:grid%nLambda)*thisOctal%rho(subcell) * frac
        enddo
@@ -7592,11 +7594,11 @@ CONTAINS
     if (PRESENT(kappaSca)) then
        IF (.NOT.PRESENT(lambda)) THEN
           kappaSca = 0
-          do i = 1, grid%nDustType
+          do i = 1, nDustType
              kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell) 
           enddo
        else
-          do i = 1, grid%nDustType
+          do i = 1, nDustType
              kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * &
                   logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
                   grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell), &
@@ -7614,17 +7616,18 @@ CONTAINS
        endif
        IF (.NOT.PRESENT(lambda)) THEN
           kappaAbs = 0
-          do i = 1, grid%nDustType
+          do i = 1, nDustType
              kappaAbs = thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
           enddo
        else
-          do i = 1, grid%nDustType
+          do i = 1, nDustType
              kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
                   logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
                   grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell), &
                   grid%oneKappaAbs(i,iLambda+1)*thisOctal%rho(subcell))
           enddo
        endif
+!       write(*,*) nDustType,thisOctal%dusttypeFraction(subcell,1), grid%oneKappaAbs(1,1:grid%nLambda)
       kappaAbs = kappaAbs * frac
    endif
 
@@ -7656,7 +7659,7 @@ CONTAINS
          do i =  grid%nLambda,2,-1
             freq = cSpeed / (grid%lamArray(i)*1.e-8)
             dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
-            do j = 1, grid%nDustType
+            do j = 1, nDustType
                rosselandKappa = rosselandKappa + thisOctal%dustTypeFraction(subcell, j) * bnu(freq, dble(temperature)) * dFreq / &
                  ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))*frac)
             enddo
@@ -7678,7 +7681,7 @@ CONTAINS
       do i = grid%nLambda,2,-1
          freq = cSpeed / (grid%lamArray(i)*1.e-8)
          dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
-         do j = 1, grid%nDustType
+         do j = 1, nDustType
             kappaP = kappaP + thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
                  dble(bnu(dble(freq),dble(temperature)))  * dfreq
          enddo

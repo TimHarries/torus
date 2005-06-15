@@ -84,13 +84,15 @@ contains
   ! this subroutine performs a scattering
 
   subroutine scatterPhoton(grid, thisPhoton, givenVec, outPhoton, mie, &
-        miePhase, nLambda, nMuMie, ttau_disc_on, alpha_disc_param)
+        miePhase, nDustType, nLambda, nMuMie, ttau_disc_on, alpha_disc_param, dustTypeFraction)
 
     
     type(GRIDTYPE) :: grid                       ! the opacity grid
     type(PHOTON) :: thisPhoton, outPhoton        ! current/output photon
     type(VECTOR) :: incoming, outgoing           ! directions
     type(VECTOR) :: obsNormal, refNormal         ! scattering normals
+    real(double), optional :: dustTypeFraction(:)
+    integer :: nDustType
     type(VECTOR) :: sVec, givenVec      ! vectors
     type(VECTOR) :: zAxis                        ! the z-axis
     type(PHASEMATRIX) :: rayleighPhase           ! rayleigh phase matrix
@@ -98,7 +100,7 @@ contains
     integer :: i, j                              ! counters
     integer :: nLambda                           ! size of wavelength array
     integer :: nMumie                            ! number of mu angles for mie
-    type(PHASEMATRIX), intent(in) :: miePhase(nLambda, nMumie) ! mie phase matrices   
+    type(PHASEMATRIX), intent(in) :: miePhase(nDustType, nLambda, nMumie) ! mie phase matrices   
     ! if the system has accretion disc around the obeject
     logical, intent(in) :: ttau_disc_on          
     ! to find if scattering occurs in the accretion disc
@@ -206,11 +208,7 @@ contains
           
           call locate(grid%lamArray, nLambda, outPhoton%lambda, i)
           j = int(0.5*(costheta+1.d0)*real(nmumie))+1
-          if (outPhoton%stokes%i > 1.e30) then
-             write(*,*) i,j, nlambda, nMuMie
-             call writePhaseMatrix(miePhase(i,j))
-          endif
-          outPhoton%stokes = apply(miePhase(i,j), outPhoton%stokes)
+          outPhoton%stokes = applyMean(miePhase(1:nDustType,i,j), dustTypeFraction, nDustType, outPhoton%stokes)
 
           
        endif
