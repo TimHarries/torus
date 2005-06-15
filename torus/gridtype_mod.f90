@@ -98,6 +98,7 @@ module gridtype_mod
      real :: rStar1, rStar2
      real :: lumRatio = -9.9e9
 
+     integer :: nDustType
      real :: densityScaleFac
 
      real :: tempSource = -9.9e9

@@ -351,11 +351,12 @@ contains
     
 
      subroutine fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, grainType,  &
-         ngrain, abundance, grainname)
+         ngrain, abundance, grainname, thisDust)
 
       implicit none
       type(GRIDTYPE) :: grid
-      real :: aMin, aMax,a0, qDist, pDist
+      integer :: thisDust
+      real :: aMin(:), aMax,a0, qDist, pDist
       real, allocatable :: sigmaAbs(:), sigmaSca(:), sigmaExt(:)
       real :: scale
       real, allocatable :: mReal(:), mImg(:)          ! size = nlamda
@@ -370,6 +371,7 @@ contains
       character(len=*) :: grainname(ngrain)   ! names of grains available
       real :: sig_ext, sig_scat, sig_abs
       real :: total_abundance
+      character(len=80) :: albedoFilename
 
       integer :: i, j, k
       
@@ -518,10 +520,11 @@ contains
 
          
          meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
-         grid%oneKappaAbs(1,1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
-         grid%oneKappaSca(1,1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
+         grid%oneKappaAbs(thisDust,1:grid%nLambda) = (sigmaAbs(thisDust:grid%nLambda) * 1.e10)/meanParticleMass
+         grid%oneKappaSca(thisDust,1:grid%nLambda) = (sigmaSca(thisDust:grid%nLambda) * 1.e10)/meanParticleMass
 
-         open(20,file="albedo.dat",form="formatted",status="unknown")
+         write(albedoFilename,'(a,i2.2,a)') "albedo",thisDust".dat"
+         open(20,file=albedoFilename,form="formatted",status="unknown")
          do i = 1, grid%nLambda
             rayleigh = (8.*pi**2)/(grid%lamArray(i)*angstromtocm)* &
                  aimag((cmplx(mreal(i),mimg(i))**2-cmplx(1.,0.))/(cmplx(mreal(i),mimg(i))**2+cmplx(2.,0.)))*(amin*microntocm)**3

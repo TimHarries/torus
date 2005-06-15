@@ -121,6 +121,7 @@ MODULE octal_mod
     LOGICAL(KIND=logic), DIMENSION(8) :: changed     ! octal has changed in some way since previous calculation    
     
     INTEGER, DIMENSION(8)                :: dusttype
+    real(double), dimension(:,:), pointer        :: dustTypeFraction => null() ! dust type fraction (sum=1)
     INTEGER :: parentSubcell
     logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
     logical, dimension(8)                 :: diffusionApprox

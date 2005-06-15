@@ -1347,20 +1347,29 @@ endif
 
 ! amin and amax are left as microns here
 
-    call getReal("amin", aMin, cLine, nLines, &
+    call getReal("amin", aMin(1), cLine, nLines, &
          "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .false.)
-
-    call getReal("amax", aMax, cLine, nLines, &
+    call getReal("amax", aMax(1), cLine, nLines, &
          "Max grain size (microns): ","(a,f8.5,1x,a)", 0.25, ok, .false.)
-
-    call getReal("qdist", qdist, cLine, nLines, &
+    call getReal("qdist", qdist(1), cLine, nLines, &
          "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .false. )
-
-    call getReal("a0", a0, cLine, nLines, &
+    call getReal("a0", a0(1), cLine, nLines, &
          "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .false.)
-
-    call getReal("pdist", pdist, cLine, nLines, &
+    call getReal("pdist", pdist(1), cLine, nLines, &
          "Exponet for exponetial cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
+
+    if (nDustType > 1) then
+       call getReal("amin2", aMin(2), cLine, nLines, &
+            "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
+       call getReal("amax2", aMax(2), cLine, nLines, &
+            "Max grain size (microns): ","(a,f8.5,1x,a)", 0.25, ok, .true.)
+       call getReal("qdist2", qdist(2), cLine, nLines, &
+            "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .true. )
+       call getReal("a02", a0(2), cLine, nLines, &
+            "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .true.)
+       call getReal("pdist2", pdist(2), cLine, nLines, &
+         "Exponet for exponetial cut off: ","(a,f4.1,1x,a)", 1.0, ok, .true. )
+    endif
 
  endif
 
@@ -1612,6 +1621,10 @@ endif
 
    call getReal("betadisc", betaDisc, cLine, nLines, &
        "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+   call getString("contflux", contFluxFile, cLine, nLines, &
+        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+
 
    rCore = rCore * rSol / 1.e10
    rInner = rInner * rCore

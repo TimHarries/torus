@@ -366,7 +366,7 @@ mpif.h :
 
 
 # Specific rules to make object files
-lucy_mod.o : lucy_mod.f90.raw amr_mod.o constants_mod.o grid_mod.o phasematrix_mod.o \
+lucy_mod.o : lucy_mod.f90.raw amr_mod.o constants_mod.o grid_mod.o phasematrix_mod.o diffusion_mod.o \
              source_mod.o spectrum_mod.o timing.o vector_mod.o parallel_mod.o
         ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' lucy_mod.f90.raw   > lucy_mod.f90

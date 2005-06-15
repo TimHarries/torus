@@ -101,11 +101,11 @@ module input_variables
   ! the following form:
   !  
   !   n(a) =  const * a^-q * e^((-a/a0)^p)
-  real :: aMin    !  The maximun size in microns. 
-  real :: aMax    !  The minimum size in microns.
-  real :: qDist   !  q exponet in the equation above.
-  real :: a0      !  scale length in the equation above.
-  real :: pDist   !  p exponet in the equation above.
+  real :: aMin(10)    !  The maximun size in microns. 
+  real :: aMax(10)    !  The minimum size in microns.
+  real :: qDist(10)   !  q exponet in the equation above.
+  real :: a0(10)      !  scale length in the equation above.
+  real :: pDist(10)   !  p exponet in the equation above.
 
 
   ! Flag to include accreation disc in sph dust model or not
