@@ -875,16 +875,16 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
              thisOctal%dustTypeFraction(subcell,2) = fac
           endif
 
-          temperature = thisOctal%temperature(subcell)
-          sublimationTemp = 1500. * thisOctal%rho(subcell)**(1.95e-2)
-          if (temperature < sublimationTemp) frac = 1.
-    
-          if (temperature > sublimationTemp) then
-             frac = exp(-dble((temperature-sublimationtemp)/subRange))
-          endif
-          
-          frac = max(frac,1.d-20)
-          thisOctal%dustTypeFraction(subcell,1:2) =  thisOctal%dustTypeFraction(subcell,1:2) * frac
+!          temperature = thisOctal%temperature(subcell)
+!          sublimationTemp = 1500. * thisOctal%rho(subcell)**(1.95e-2)
+!          if (temperature < sublimationTemp) frac = 1.
+!    
+!          if (temperature > sublimationTemp) then
+!             frac = exp(-dble((temperature-sublimationtemp)/subRange))
+!          endif
+!          
+!          frac = max(frac,1.d-20)
+!          thisOctal%dustTypeFraction(subcell,1:2) =  thisOctal%dustTypeFraction(subcell,1:2) * frac
 
              
 
