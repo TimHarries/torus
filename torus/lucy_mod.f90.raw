@@ -943,9 +943,9 @@ contains
           call fillDustShakara(grid, grid%octreeRoot)
        endif
 
-       if (iiter_grand > 1) then
+!       if (iiter_grand > 1) then
           call defineDiffusionZone(grid, outputFlag, .false.)
-       endif
+!       endif
 
     enddo
 
