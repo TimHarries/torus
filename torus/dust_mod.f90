@@ -519,9 +519,10 @@ contains
          write(*,'(a,i4)') "Filling the oneKappa arrays: ",grid%nLambda
 
          
+
          meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
-         grid%oneKappaAbs(thisDust,1:grid%nLambda) = (sigmaAbs(thisDust:grid%nLambda) * 1.e10)/meanParticleMass
-         grid%oneKappaSca(thisDust,1:grid%nLambda) = (sigmaSca(thisDust:grid%nLambda) * 1.e10)/meanParticleMass
+         grid%oneKappaAbs(thisDust,1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
+         grid%oneKappaSca(thisDust,1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
 
          write(albedoFilename,'(a,i2.2,a)') "albedo",thisDust,".dat"
          open(20,file=albedoFilename,form="formatted",status="unknown")
@@ -539,7 +540,7 @@ contains
 
 
       endif
-
+      deallocate(sigmaAbs, sigmaSca)
   write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
 end subroutine fillGridMie
 
@@ -834,5 +835,132 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
   end subroutine dustPropertiesfromFile
 
+  recursive subroutine fillDustShakara(grid, thisOctal)
+
+    use input_variables, only : rInner, rOuter
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(octalvector) :: rVec
+    real :: x, z
+    real :: height
+    real(double) :: fac, frac
+    real ::  temperature, sublimationTemp, subrange
+    
+    integer :: nx, subcell, i
+
+    subrange = 10.
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillDustShakara(grid, child)
+                exit
+             end if
+          end do
+       else
+
+          thisOctal%DustTypeFraction(subcell,1:2) = 0.d0
+          thisOctal%DustTypeFraction(subcell,1) = 1.d0
+          rVec = subcellCentre(thisOctal, subcell)
+          x = rVec%x
+          z = rVec%z
+          if ( (x > rInner).and.(x < rOuter)) then
+             call returnScaleHeight(grid, x, height)
+             fac = exp(-abs(z/height))
+             thisOctal%dustTypeFraction(subcell,1) = 1.d0 - fac
+             thisOctal%dustTypeFraction(subcell,2) = fac
+          endif
+
+          temperature = thisOctal%temperature(subcell)
+          sublimationTemp = 1500. * thisOctal%rho(subcell)**(1.95e-2)
+          if (temperature < sublimationTemp) frac = 1.
+    
+          if (temperature > sublimationTemp) then
+             frac = exp(-dble((temperature-sublimationtemp)/subRange))
+          endif
+          
+          frac = max(frac,1.d-20)
+          thisOctal%dustTypeFraction(subcell,1:2) =  thisOctal%dustTypeFraction(subcell,1:2) * frac
+
+             
+
+       end if
+    end do
+
+  end subroutine fillDustShakara
+
+  subroutine returnScaleHeight(grid, x,  height)
+    type(gridtype) :: grid
+    integer :: nz
+    real :: x, z(10000), height
+    real :: subcellsize(10000), rho(10000), temperature(10000)
+    real :: rho_over_e
+    integer :: i, j
+
+    call getTemperatureDensityRundust(grid, z, subcellsize, rho, temperature, x, 0., nz, 1.)
+
+
+    if (rho(2) >= rho(1)) then
+       height = 1.e20
+       goto 666
+    endif
+
+    rho_over_e = rho(1) / exp(1.)
+
+    if (rho_over_e < rho(nz)) then
+       height = z(nz) /1.e10
+    else
+       do i = 1, nz
+          if ((rho_over_e < rho(i)).and.(rho_over_e > rho(i+1))) then
+             j = i
+             exit
+          endif
+       enddo
+       height = z(j) + (z(j+1)-z(j))*(rho_over_e - rho(j))/(rho(j+1)-rho(i))
+       height = height / 1.e10
+    endif
+    666 continue
+  end subroutine returnScaleHeight
+
+  subroutine getTemperatureDensityRundust(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    integer :: nz
+    real :: rho(:), temperature(:), zAxis(:), subcellsize(:)
+    real :: xPos, yPos
+    integer :: subcell
+    real :: rhotemp, temptemp
+    real :: direction
+    type(OCTALVECTOR) :: currentPos, temp
+    real :: halfSmallestSubcell
+
+    nz = 0
+    halfSmallestSubcell = grid%halfSmallestSubcell
+
+    currentPos = OCTALVECTOR(xPos, yPos, direction*halfSmallestSubcell)
+
+    do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
+       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+            foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
+       thisOctal%chiLine(subcell) = 1.e-30
+!       if (thisOctal%inFlow(subcell)) then
+          nz = nz + 1
+          temperature(nz) = temptemp
+          rho(nz) = rhotemp
+          temp = subCellCentre(thisOctal, subcell)
+          zAxis(nz) = temp%z
+          subcellsize(nz) = thisOctal%subcellsize
+!       endif
+          currentPos = OCTALVECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+!       else
+!          currentPos = OCTALVECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
+!       endif
+    end do
+    zAxis(1:nz) = abs(zAxis(1:nz)) * 1.e10  ! convert to cm
+  end subroutine getTemperatureDensityRundust
 
   end module dust_mod

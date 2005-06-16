@@ -435,6 +435,8 @@ contains
 
        end if
 
+
+
        nIter = nIter + 1
 
        if (nIter > nHydro) then
@@ -474,6 +476,8 @@ contains
     end do
 
   end subroutine getxValues
+
+
 
 
 end module disc_hydro_mod

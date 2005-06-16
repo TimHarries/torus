@@ -39,7 +39,7 @@ module input_variables
 
   ! variables to do with dust
   
-  character(len=80) :: grainType ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl  
+  character(len=80) :: grainType(10) ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl  
   real :: grainSize
   logical :: mie
   logical :: includeGasOpacity
@@ -408,6 +408,7 @@ module input_variables
 
   integer :: nPhotons
   integer :: maxScat
+  logical :: noScattering
   
 
   ! sphericity test

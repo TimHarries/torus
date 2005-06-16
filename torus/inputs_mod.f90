@@ -969,23 +969,21 @@ endif
      "Dust properties filename: ","(a,a,1x,a)","none", ok, .true.)
  endif
 
-   if (nDustType > 1) then
-
-      do i = 1, nDustType
-         write(keyword,'(a,i1)') "kappafile",i
-         write(message,'(a,i1,a)') "Dust Properties filename ",i,": "
-         call getString(trim(keyword), dustFilename(i), cLine, nLines, &
-              message,"(a,a,1x,a)","none", ok, .true.)
-      enddo
-      
-   endif
+!   if (nDustType > 1) then
+!
+!      do i = 1, nDustType
+!         write(keyword,'(a,i1)') "kappafile",i
+!         write(message,'(a,i1,a)') "Dust Properties filename ",i,": "
+!         call getString(trim(keyword), dustFilename(i), cLine, nLines, &
+!              message,"(a,a,1x,a)","none", ok, .true.)
+!      enddo
+!      
+!   endif
 endif
 
 
 
  if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
-     call getString("graintype", grainType, cLine, nLines, &
-          "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
      ! read the relative abundances (which will be normalized later.)
      call getReal("x_sil_ow", X_grain(1), cLine, nLines, &
@@ -1347,18 +1345,22 @@ endif
 
 ! amin and amax are left as microns here
 
-    call getReal("amin", aMin(1), cLine, nLines, &
+     call getString("graintype1", grainType(1), cLine, nLines, &
+          "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
+    call getReal("amin1", aMin(1), cLine, nLines, &
          "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .false.)
-    call getReal("amax", aMax(1), cLine, nLines, &
+    call getReal("amax1", aMax(1), cLine, nLines, &
          "Max grain size (microns): ","(a,f8.5,1x,a)", 0.25, ok, .false.)
-    call getReal("qdist", qdist(1), cLine, nLines, &
+    call getReal("qdist1", qdist(1), cLine, nLines, &
          "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .false. )
-    call getReal("a0", a0(1), cLine, nLines, &
+    call getReal("a01", a0(1), cLine, nLines, &
          "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .false.)
-    call getReal("pdist", pdist(1), cLine, nLines, &
+    call getReal("pdist1", pdist(1), cLine, nLines, &
          "Exponet for exponetial cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
 
     if (nDustType > 1) then
+     call getString("graintype2", grainType(2), cLine, nLines, &
+          "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
        call getReal("amin2", aMin(2), cLine, nLines, &
             "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
        call getReal("amax2", aMax(2), cLine, nLines, &
@@ -1366,9 +1368,9 @@ endif
        call getReal("qdist2", qdist(2), cLine, nLines, &
             "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .true. )
        call getReal("a02", a0(2), cLine, nLines, &
-            "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .true.)
+            "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .false.)
        call getReal("pdist2", pdist(2), cLine, nLines, &
-         "Exponet for exponetial cut off: ","(a,f4.1,1x,a)", 1.0, ok, .true. )
+         "Exponet for exponetial cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
     endif
 
  endif
@@ -1588,6 +1590,9 @@ endif
 endif
 
  if (geometry .eq. "shakara") then
+
+    call getLogical("noscat", noScattering, cLine, nLines, &
+         "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
 
    call getReal("rcore", rCore, cLine, nLines, &
        "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)

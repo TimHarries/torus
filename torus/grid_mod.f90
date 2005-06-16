@@ -3034,7 +3034,7 @@ contains
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize,thisOctal%threed, thisOctal%twoD,    &
-                  thisOctal%maxChildren, thisOctal%dustType
+                  thisOctal%maxChildren, thisOctal%dustType, thisOctal%dustTypeFraction
        else
           write(iostat=error,unit=20) thisOctal%nDepth, thisOctal%nChildren, &
                   thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
@@ -3045,7 +3045,7 @@ contains
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
-                  thisOctal%maxChildren, thisOctal%dustType
+                  thisOctal%maxChildren, thisOctal%dustType, thisOctal%dustTypeFraction
        end if 
        if (.not.grid%oneKappa) then
 !          call writeReal2D(thisOctal%kappaAbs,fileFormatted)
@@ -3055,6 +3055,7 @@ contains
        endif
        call writeDouble2D(thisOctal%N,fileFormatted)
        call writeReal2D(thisOctal%departCoeff,fileFormatted)
+       call writeDouble2D(thisOctal%dustTypeFraction, fileFormatted)
        
        if (thisOctal%nChildren > 0) then 
           do iChild = 1, thisOctal%nChildren, 1
@@ -3235,7 +3236,9 @@ contains
        endif
        call readDouble2D(thisOctal%N,fileFormatted)
        call readReal2D(thisOctal%departCoeff,fileFormatted)
-       
+       call readDouble2D(thisOctal%dustTypeFraction, fileFormatted)
+
+
        if (thisOctal%nChildren > 0) then 
           allocate(thisOctal%child(1:thisOctal%nChildren)) 
           do iChild = 1, thisOctal%nChildren, 1
@@ -6347,6 +6350,8 @@ contains
                 value = thisOctal%etaLine(subcell)
              case("etaCont")
                 value = thisOctal%etaCont(subcell)
+             case("dusttype")
+                value = thisOctal%dustTypeFraction(subcell,1)
              case("crossings")
                 value = thisOctal%nCrossings(subcell)
                 if (thisOctal%diffusionApprox(subcell)) value = 1.e6
@@ -6368,7 +6373,7 @@ contains
                 call normalize(rhat)
                 value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
              case("tau")
-                call returnKappa(grid, thisOctal, subcell, ilam, grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
+                call returnKappa(grid, thisOctal, subcell, ilambda=ilam, lambda=grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
                 value = thisOctal%subcellsize * (kSca+kAbs)
 
              case default
@@ -6505,6 +6510,8 @@ contains
                 value = thisOctal%rho(subcell)
              case("temperature")
                 value = thisOctal%temperature(subcell)
+             case("dusttype")
+                value = thisOctal%dustTypeFraction(subcell,1)
              case("chiLine")
                 value = thisOctal%chiLine(subcell)
              case("etaLine")
@@ -6526,7 +6533,7 @@ contains
                 call normalize(rhat)
                 value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
              case("tau")
-                call returnKappa(grid, thisOctal, subcell, ilam, grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
+                call returnKappa(grid, thisOctal, subcell, ilambda=ilam, lambda=grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
                 value = thisOctal%subcellsize * (kSca+kAbs)
              case default
                 write(*,*) "Error:: unknow name passed to MinMaxValue."
@@ -6844,6 +6851,8 @@ contains
     integer :: subcell, i, idx
     real :: t
     real :: xp, yp, xm, ym, zp, zm
+    real(double) :: kabs, ksca
+    integer :: ilam
     real(double) :: d, L, eps, distance
     logical :: use_this_subcell
 
@@ -6908,8 +6917,9 @@ contains
                 value = thisOctal%velocity(subcell)%y * cSpeed/1.0d5 ![km/s]
              case("Vz")
                 value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
-             case("tau")
-                value = thisOctal%rho(subcell)*thisOctal%subcellsize*grid%kappaTest
+!             case("tau")
+!                call returnKappa(grid, thisOctal, subcell, ilam, grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
+!                value = thisOctal%subcellsize * (kSca+kAbs)
              case default
                 write(*,*) "Error:: unknow name passed to grid_mod::radial_profile."
                 stop

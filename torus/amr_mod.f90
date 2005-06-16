@@ -7598,6 +7598,7 @@ CONTAINS
              kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell) 
           enddo
        else
+          kappaSca = 0
           do i = 1, nDustType
              kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * &
                   logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
@@ -7615,11 +7616,12 @@ CONTAINS
           tlambda = lambda
        endif
        IF (.NOT.PRESENT(lambda)) THEN
-          kappaAbs = 0
+            kappaAbs = 0
           do i = 1, nDustType
              kappaAbs = thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
           enddo
        else
+          kappaAbs = 0
           do i = 1, nDustType
              kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
                   logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &

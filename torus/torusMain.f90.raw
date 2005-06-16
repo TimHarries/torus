@@ -123,7 +123,7 @@ program torus
   real, allocatable :: linePhotonAlbedo(:)
   real, allocatable :: lambda(:)
 
-  real, allocatable :: mReal(:), mImg(:)          ! size = nlambda
+  real, allocatable :: mReal(:,:), mImg(:,:)          ! size = nlambda
   real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
   real :: total_dust_abundance
 
@@ -542,7 +542,7 @@ program torus
   endif
 
   if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
-     meanDustParticleMass = getMeanMass2(amin, amax, a0, qDist, pdist, graintype)
+     meanDustParticleMass = getMeanMass2(amin(1), amax(1), a0(1), qDist(1), pdist(1), graintype(1))
      write(*,*) "mean dust particle mass: ",meanDustParticleMass
      if (meanDustParticleMass <=0.0) then 
         write(*,*) "Error: meanDustParticleMass <=0 in torusMain."
@@ -857,7 +857,7 @@ program torus
   if (mie .and. .not.dustfile) then
      write(*,*) "fill grid mie",nLambda,grid%nlambda
      do i = 1, nDustType
-        call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), grainType, &
+        call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), grainType(i), &
              ngrain, X_grain, grainname, i)
      enddo
      write(*,'(a,f5.2)') "!!!! Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
@@ -1132,6 +1132,17 @@ program torus
           call writeAMRgrid(popFilename,writeFileFormatted,grid)
         end if
 
+
+        if ((geometry == "shakara").and.(nDustType>1)) then
+           call fillDustShakara(grid, grid%octreeRoot)
+        endif
+
+        if (noScattering) then
+           write(*,*) "! WARNING: Scattering opacity turned off in model"
+           grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
+        endif
+        
+
         if(plot_maps) then
            ! Plotting the slices of planes
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
@@ -1156,6 +1167,9 @@ program torus
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
            call plot_AMR_values(grid, "temperature", "x-y", 0., &
                 "temperature2.ps/vcps", .true., .false., &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "dusttype", "x-z", 0., &
+                "dusttype.ps/vcps", .false., .false., &
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
         end if
 
@@ -1226,7 +1240,7 @@ program torus
                  call add_alpha_disc(grid%octreeroot, grid, ttauri_disc)
                  ! finding the photon-dust interaction x-secions
                  call mieCrossSection(sigmaExt0, sigmaAbs0, sigmaSca0,  &
-                      aMin(1), aMax(1), a0(1), qDist(1), pDist(1), grainType, &
+                      aMin(1), aMax(1), a0(1), qDist(1), pDist(1), grainType(1), &
                       ngrain, X_grain, grainname, lamLine)
                  write(*,*) " "
                  write(*,*) "Photon-dust cross section at lambda = ", lamLine, " [A]"
@@ -1732,10 +1746,10 @@ program torus
      ! construct the mie phase matrix
      write(*,'(a)') "Computing Mie phase grid..."
 
-     allocate(mReal(1:nLambda))
-     allocate(mImg(1:nLambda))
+     allocate(mReal(1:nDusttype,1:nLambda))
+     allocate(mImg(1:nDustType,1:nLambda))
 
-     if (graintype(1:5) == "mixed") then
+     if (graintype(1)(1:5) == "mixed") then
         ! Synthetic grains
          
         ! quick test for zero total dust abundance.
@@ -1751,38 +1765,40 @@ program torus
             stop 
          end if
 
-         ! allocate mem for temp arrays
-         allocate(mReal2D(1:ngrain, 1:nLambda))
-         allocate(mImg2D(1:ngrain, 1:nLambda))
-         ! initializing the values
-         mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
-         
-         ! Find the index of refractions for all types of grains available
-         do j = 1, ngrain
-            call getRefractiveIndex(xArray, nLambda, grainname(j), mReal, mImg)
-            mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
-            mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
-         end do
-
-         ! Finding the weighted average of the refractive index.
-         mReal(:) = 0.0; mImg(:) = 0.0
-         do i = 1, nLambda
-            do j = 1, ngrain
-               mReal(i) = mReal2D(j,i)*X_grain(j) + mReal(i)
-               mImg(i)  = mImg2D(j,i) *X_grain(j) + mImg(i)
-            end do
-            mReal(i) = mReal(i) / total_dust_abundance
-            mImg(i)  = mImg(i)  / total_dust_abundance
-         end do
-
-
-         deallocate(mReal2D)
-         deallocate(mImg2D)
+!         ! allocate mem for temp arrays
+!         allocate(mReal2D(1:ngrain, 1:nLambda))
+!         allocate(mImg2D(1:ngrain, 1:nLambda))
+!         ! initializing the values
+!         mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
+!         
+!         ! Find the index of refractions for all types of grains available
+!         do j = 1, ngrain
+!            call getRefractiveIndex(xArray, nLambda, grainname(j), mReal, mImg)
+!            mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
+!            mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
+!         end do
+!
+!         ! Finding the weighted average of the refractive index.
+!         mReal(:) = 0.0; mImg(:) = 0.0
+!         do i = 1, nLambda
+!            do j = 1, ngrain
+!               mReal(i) = mReal2D(j,i)*X_grain(j) + mReal(i)
+!               mImg(i)  = mImg2D(j,i) *X_grain(j) + mImg(i)
+!            end do
+!            mReal(i) = mReal(i) / total_dust_abundance
+!            mImg(i)  = mImg(i)  / total_dust_abundance
+!         end do
+!
+!
+!         deallocate(mReal2D)
+!         deallocate(mImg2D)
 
       else 
          ! Do a single grain calculations... 
 
-         call getRefractiveIndex(xArray, nLambda, graintype, mReal, mImg)
+	do i = 1, nDusttype
+           call getRefractiveIndex(xArray, nLambda, graintype(i), mReal(i,1:nLambda), mImg(i,1:nLambda))
+        enddo
          
       end if
 
@@ -1793,7 +1809,7 @@ program torus
                mu = 2.*real(j-1)/real(nMumie-1)-1.
                if (.not.isotropicScattering) then
                   call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
-                       mu, miePhase(k,i,j), mReal(i), mImg(i))               
+                       mu, miePhase(k,i,j), mReal(i,1:nLambda), mImg(i,1:nlambda))               
                else
                   miePhase(k,i,j) = fillIsotropic(mu)
                endif
@@ -1897,6 +1913,7 @@ program torus
   end select
 
   
+
 
      if (geometry == "wr104") then
 !        call IntegratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
@@ -3599,7 +3616,7 @@ program torus
 
                  tempPhoton = thisPhoton
                  
-
+                 
                  call scatterPhoton(grid, tempPhoton, outVec, obsPhoton, mie, &
                        miePhase, nDustType, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
 

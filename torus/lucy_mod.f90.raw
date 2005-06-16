@@ -1,7 +1,9 @@
 module lucy_mod
 
   use constants_mod
+
   use grid_mod
+  use dust_mod
   use vector_mod
   use phasematrix_mod
   use amr_mod
@@ -468,6 +470,11 @@ contains
 !$MPI    if(my_rank == 0) &
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
+
+    if ((grid%geometry == "shakara").and.(nDustType > 1)) then
+       call fillDustShakara(grid, grid%octreeRoot)
+    endif
+
     call defineDiffusionZone(grid, outputFlag, .true.)
 
 
@@ -486,9 +493,14 @@ contains
           nIter = 1
        end if
 
+
     do iIter = 1, nIter
 
        iIter_grand =  iIter_grand + 1  ! total number of iterations so far
+
+
+
+
 
        write(tfilename1, '(a,i2.2,a)') "lucy_iter_",iIter_grand,".gif/gif"
        write(tfilename2, '(a,i2.2,a)') "lucy_iter_zoom",iIter_grand,".gif/gif"
@@ -500,6 +512,10 @@ contains
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+
+       call plot_AMR_values(grid, "dusttype", "x-z", 0., &
+            "dusttype.ps/vcps", .false., .false., &
+           0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
 
        call dullemondplot(grid, rinner, router, 0.4)
 
@@ -519,8 +535,11 @@ contains
             "etacont_zoom_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
        call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
+            "tau.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,ilam=ilam) 
+       call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
             "tau_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.0004,ilam=ilam) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01,ilam=ilam) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             tfilename1, .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
@@ -917,10 +936,14 @@ contains
 !$MPI    debugOutput = .false.
 !$MPI endif
 
+
        call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
-       if (iiter_grand == 1) then
-          call defineDiffusionZone(grid, outputFlag, .true.)
-       else
+
+       if ((grid%geometry == "shakara").and.(nDustType > 1)) then
+          call fillDustShakara(grid, grid%octreeRoot)
+       endif
+
+       if (iiter_grand > 1) then
           call defineDiffusionZone(grid, outputFlag, .false.)
        endif
 
