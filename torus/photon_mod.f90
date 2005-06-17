@@ -457,7 +457,8 @@ contains
     type(octalVector) :: octalvec_tmp
     type(Vector) :: vec_tmp
     ! For Voigt Profile 
-    real :: temperature, rho, N_HI
+    real :: temperature,  N_HI
+    real(double) :: rho
     real(double) :: nu_shuffled, lambda_shuffled, nu, Gamma, Ne
     type(Vector) ::  velocity
 

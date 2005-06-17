@@ -760,7 +760,7 @@ CONTAINS
     TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: velocityDeriv ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: chiLine    ! line opacities
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: rho        ! density at sample points
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: rho        ! density at sample points
     real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL:: levelPop ! level populations
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: temperature! temperature [K] at sample points
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: Ne ! electron density
@@ -1039,7 +1039,7 @@ CONTAINS
     TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocityDeriv ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: chiLine       ! line opacities
-    REAL,DIMENSION(:),OPTIONAL               :: rho           ! density at sample points
+    REAL(double),DIMENSION(:),OPTIONAL               :: rho           ! density at sample points
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL   :: temperature! in [K]
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL   :: Ne         ! electron density
     real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL :: levelPop   ! level populations 
@@ -1638,7 +1638,7 @@ CONTAINS
     TYPE(vector), DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: velocityDeriv   ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: chiLine   ! line opacities
-    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: rho       ! density at sample points
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL          :: rho       ! density at sample points
     real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL :: levelPop  ! level populations
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL   :: Ne        ! electron density
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL           :: temperature ! in [K]
@@ -1771,7 +1771,7 @@ CONTAINS
     REAL,INTENT(OUT), OPTIONAL        :: rosselandKappa
     REAL,INTENT(OUT), OPTIONAL        :: kappap
     REAL,INTENT(IN), OPTIONAL         :: atThisTemperature
-    REAL,INTENT(OUT),OPTIONAL         :: rho
+    REAL(double),INTENT(OUT),OPTIONAL         :: rho
     REAL,INTENT(OUT),OPTIONAL         :: chiLine
     REAL,INTENT(OUT),OPTIONAL         :: etaLine
     REAL,INTENT(OUT),OPTIONAL         :: etaCont
@@ -3902,6 +3902,10 @@ CONTAINS
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
       if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.3)) split = .true.
+      if (r < 10.*grid%rInner) then
+         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.1)) split = .true.
+      endif
+
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
 
@@ -3953,10 +3957,11 @@ CONTAINS
     TYPE(octalVector), INTENT(IN)     :: direction
     REAL, INTENT(IN)  :: sampleFreq
 
-    REAL                              :: rho
+    REAL(double)                              :: rho
 
     INTEGER, PARAMETER                :: maxSamples = 10000
-    REAL, DIMENSION(maxSamples)       :: distances, densities
+    REAL, DIMENSION(maxSamples)       :: distances
+    real(double), dimension(maxSamples) :: densities
     REAL, DIMENSION(maxSamples)       :: dummy
     REAL(double), DIMENSION(maxSamples)       :: ddummy
     real(double), DIMENSION(maxSamples,1) :: dummyPops
@@ -5233,8 +5238,8 @@ CONTAINS
             SELECT CASE (variable)
 
             CASE ('hartmann_logNH')
-              CALL amrGridValues(grid%octreeRoot,point,rho=value) 
-              valueDouble = (value/(mHydrogen*curtainsFill))
+              CALL amrGridValues(grid%octreeRoot,point,rho=valueDouble) 
+              valueDouble = (valueDouble/(mHydrogen*curtainsFill))
               logarithmic = .TRUE.
             
             CASE ('hartmann_temperature')
@@ -5274,8 +5279,8 @@ CONTAINS
               logarithmic = .TRUE.
               
             CASE ('hartmann_NH')
-              CALL amrGridValues(grid%octreeRoot,point,rho=value)
-              valueDouble = value/(mHydrogen*curtainsFill)
+              CALL amrGridValues(grid%octreeRoot,point,rho=valueDouble)
+              valueDouble = valueDouble/(mHydrogen*curtainsFill)
               logarithmic = .TRUE.
               
             CASE ('hartmann_departCoeff')
@@ -6669,7 +6674,8 @@ CONTAINS
     implicit none
     type(GRIDTYPE) :: grid
     integer :: nt = 200, nr = 400, i, j
-    real :: theta, r, t, dens
+    real :: theta, r, t
+    real(double) :: dens
     type(octal), pointer   :: thisOctal
     integer :: subcell
     type(OCTALVECTOR) :: rVec
@@ -6786,6 +6792,39 @@ CONTAINS
        endif
     enddo
   end subroutine setBiasAMR
+
+  recursive subroutine set_bias_shakara(thisOctal, grid)
+  use input_variables, only : rinner
+  type(gridtype) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real :: kap
+  real(double) :: tau
+  type(octalvector) :: rVec
+  integer :: subcell, i
+  real :: r
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call set_bias_shakara(child, grid)
+                exit
+             end if
+          end do
+       else
+          r = modulus(subcellcentre(thisOctal, subcell)) / rInner
+          thisOctal%biasCont3D(subcell) = 1.d0
+          if (thisOctal%diffusionApprox(subcell)) then
+             thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) * 1.e-5
+          endif
+       endif
+               
+
+    enddo
+  end subroutine set_bias_shakara
 
   recursive subroutine set_bias_ttauri(thisOctal, grid, lambda0, outVec)
   type(gridtype) :: grid

@@ -6950,7 +6950,8 @@ contains
     real :: dx, dy, fg, bg
     integer :: i, j, k
     integer :: ilo, ihi
-    real :: rtemp, ttemp
+    real(double) :: rtemp
+    real :: ttemp
     real(double), allocatable  :: kabs(:), ksca(:)   ! (size=maxTau)
     real, allocatable :: lambda(:), dlambda(:)
     real, allocatable :: tauSca(:), tauAbs(:), tauExt(:)
@@ -6961,7 +6962,8 @@ contains
     logical :: hitcore
     real :: rtau(1000)
     real, allocatable :: dv(:), temp(:)
-    real,allocatable :: rho(:),chiline(:)
+    real,allocatable :: chiline(:)
+    real(double), allocatable :: rho(:)
     real(double), allocatable :: Levelpop(:,:),ne(:)
     logical, allocatable :: inflow(:)
     type(VECTOR),allocatable :: vel(:)
@@ -7007,7 +7009,7 @@ contains
           ang = + pi /2. - angMax * real(j-1)/real(ny-1) 
           octVec = OCTALVECTOR(r*sin(ang),0.d0,r*cos(ang))
           call amrGridValues(grid%octreeRoot,octVec,rho=rtemp, temperature=ttemp)
-          rhoimage(i,j) = log10(max(1.e-30,rtemp))
+          rhoimage(i,j) = log10(max(1.d-30,rtemp))
           tempimage(i,j) = ttemp
        enddo
     enddo

@@ -2056,6 +2056,10 @@ program torus
   endif
 
 
+  if (grid%geometry == "shakara") then
+     call defineDiffusionZone(grid, .false., .false.)
+  endif
+
   
   !
   ! Setting the emission bias.
@@ -2072,6 +2076,8 @@ program torus
 !        call set_bias_ttauri2(grid%octreeRoot, grid)
      elseif (grid%geometry == "cmfgen") then
         call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
+     elseif (grid%geometry == "shakara") then
+        call set_bias_shakara(grid%octreeRoot, grid)
      end if
   end if
 

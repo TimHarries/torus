@@ -893,12 +893,72 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
   end subroutine fillDustShakara
 
+  recursive subroutine sublimateDust(grid, thisOctal)
+
+    use input_variables, only : rInner, rOuter
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(octalvector) :: rVec
+    real :: x, z
+    real :: height
+    real(double) :: fac, frac, newFrac, oldFrac, deltaFrac
+    real ::  temperature, sublimationTemp, subrange
+    
+    integer :: nx, subcell, i
+
+    subrange = 10.
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call sublimateDust(grid, child)
+                exit
+             end if
+          end do
+       else
+
+          temperature = thisOctal%oldtemperature(subcell)
+          sublimationTemp = max(500.d0,1500.d0 * thisOctal%rho(subcell)**(1.95d-2))
+          if (temperature < sublimationTemp) oldFrac = 1.
+    
+          if (temperature > sublimationTemp) then
+             oldfrac = exp(-dble((temperature-sublimationtemp)/subRange))
+          endif
+          oldfrac = max(oldfrac,1.d-20)
+
+          temperature = thisOctal%temperature(subcell)
+          sublimationTemp = max(500.d0,1500.d0 * thisOctal%rho(subcell)**(1.95d-2))
+          if (temperature < sublimationTemp) newFrac = 1.
+          
+          if (temperature > sublimationTemp) then
+             newfrac = exp(-dble((temperature-sublimationtemp)/subRange))
+          endif
+          newfrac = max(newfrac,1.d-20)
+
+          deltaFrac = newFrac - oldFrac
+
+          frac = oldFrac + 0.5 * deltaFrac
+
+          thisOctal%dustTypeFraction(subcell,:) =  thisOctal%dustTypeFraction(subcell,:) * frac
+
+             
+
+       end if
+    end do
+
+  end subroutine sublimateDust
+
   subroutine returnScaleHeight(grid, x,  height)
     type(gridtype) :: grid
     integer :: nz
     real :: x, z(10000), height
-    real :: subcellsize(10000), rho(10000), temperature(10000)
-    real :: rho_over_e
+    real :: subcellsize(10000), temperature(10000)
+    real(double) :: rho(10000)
+    real(double) :: rho_over_e
     integer :: i, j
 
     call getTemperatureDensityRundust(grid, z, subcellsize, rho, temperature, x, 0., nz, 1.)
@@ -909,11 +969,12 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
        goto 666
     endif
 
-    rho_over_e = rho(1) / exp(1.)
+    rho_over_e = rho(1) / exp(1.d0)
 
     if (rho_over_e < rho(nz)) then
        height = z(nz) /1.e10
     else
+       j = 1
        do i = 1, nz
           if ((rho_over_e < rho(i)).and.(rho_over_e > rho(i+1))) then
              j = i
@@ -930,10 +991,12 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     integer :: nz
-    real :: rho(:), temperature(:), zAxis(:), subcellsize(:)
+    real(double) :: rho(:)
+    real ::temperature(:), zAxis(:), subcellsize(:)
     real :: xPos, yPos
     integer :: subcell
-    real :: rhotemp, temptemp
+    real(double) :: rhotemp
+    real :: temptemp
     real :: direction
     type(OCTALVECTOR) :: currentPos, temp
     real :: halfSmallestSubcell

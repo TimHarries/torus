@@ -46,6 +46,7 @@ module input_variables
   logical :: isotropicScattering
   real :: dusttogas
   logical :: dustfile
+  logical :: variableDustSublimation
   real :: probDust
   integer :: nDustType
   logical :: forcedWavelength

@@ -885,6 +885,7 @@ endif
     stop
  endif
 
+
  if (mie) then
    write(*,'(a)') "Scattering phase matrix: Mie"
  elseif (geometry == "ttauri".and. ttau_disc_on) then
@@ -1629,6 +1630,10 @@ endif
 
    call getString("contflux", contFluxFile, cLine, nLines, &
         "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+
+   call getLogical("vardustsub", variableDustSublimation, cLine, nLines, &
+        "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
+
 
 
    rCore = rCore * rSol / 1.e10

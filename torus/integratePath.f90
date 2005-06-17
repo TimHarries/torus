@@ -1177,7 +1177,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   !
   ! WORK ARRAYS
   logical, save :: first_time = .true.
-  real, allocatable, save :: rho(:)         ! density (size=maxTau)
+  real(double), allocatable, save :: rho(:)         ! density (size=maxTau)
   real, allocatable, save :: temperature(:) ! temperature (size=maxTau)
   real(double), allocatable, save :: Ne(:)  ! electron density (size=maxTau)
   logical, allocatable, save :: inFlow(:)   ! inFlow flags (size=maxTau)   
@@ -1873,7 +1873,7 @@ end subroutine integratePathAMR
     !
     ! WORK ARRAYS
     logical, save :: first_time = .true.
-    real, allocatable, save :: rho(:)         ! density (size=maxTau)
+    real(double), allocatable, save :: rho(:)         ! density (size=maxTau)
     real, allocatable, save :: temperature(:) ! temperature (size=maxTau)
     real(double), allocatable, save :: Ne(:)  ! electron density (size=maxTau)
     logical, allocatable, save :: inFlow(:)   ! inFlow flags (size=maxTau)   

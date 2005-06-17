@@ -305,7 +305,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
-    use input_variables, only : rinner, router
+    use input_variables, only : rinner, router, variableDustSublimation
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
@@ -474,6 +474,11 @@ contains
     if ((grid%geometry == "shakara").and.(nDustType > 1)) then
        call fillDustShakara(grid, grid%octreeRoot)
     endif
+
+    if (variableDustSublimation) then
+       call sublimateDust(grid, grid%octreeRoot)
+    endif
+
 
     call defineDiffusionZone(grid, outputFlag, .true.)
 
@@ -943,9 +948,19 @@ contains
           call fillDustShakara(grid, grid%octreeRoot)
        endif
 
-!       if (iiter_grand > 1) then
+       if (variableDustSublimation) then
+          call sublimateDust(grid, grid%octreeRoot)
+       endif
+
+       if (variableDustSublimation) then
+          if (iiter_grand > 1) then
+             call defineDiffusionZone(grid, outputFlag, .false.)
+          endif
+       endif
+
+       if ((.not.variableDustsublimation).and.(iiter_grand == 1)) then
           call defineDiffusionZone(grid, outputFlag, .false.)
-!       endif
+       endif
 
     enddo
 
@@ -1350,7 +1365,11 @@ contains
                    norm = norm + dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell))))  * dble(dnu(i))
                 endif
              enddo
-             kappaP = kappaP / norm /1.d10
+             if (norm /= 0.d0) then
+                kappaP = kappaP / norm /1.d10
+             else
+                kappaP = 0.d0
+             endif
              
              
              if (kappaP /= 0.d0) then
@@ -1379,8 +1398,9 @@ contains
                 !                write(*,*) deltaT, thisOctal%temperature(subcell), newT
                 !                write(*,*) adot,kappap,thisOctal%rho(subcell)
              endif
+             thisOctal%oldTemperature(subcell) = thisOctal%temperature(subcell)
              if (thisOctal%nCrossings(subcell) .ge. minCrossings) then
-                thisOctal%temperature(subcell) = max(1.e-3,thisOctal%temperature(subcell) + real(0.8 * deltaT))
+                thisOctal%temperature(subcell) = max(2.8,thisOctal%temperature(subcell) + real(0.8 * deltaT))
              else
                 deltaT = 0.
                 if (.not.thisOctal%diffusionApprox(subcell)) then
@@ -1406,7 +1426,11 @@ contains
                    norm = norm + dble(bnu(dble(freq(i)),dble(thisOctal%temperature(subcell)))) * dble(dnu(i)) 
                 endif
              enddo
-             kappaP = kappaP / norm / 1.d10
+             if (norm /= 0.d0) then
+                kappaP = kappaP / norm / 1.d10
+             else
+                kappaP = TINY(kappaP)
+             endif
              thisOctal%etaCont(subcell) = fourPi * kappaP * (stefanBoltz/pi) * &
                   (thisOctal%temperature(subcell)**4)
              totalEmission = totalEmission + thisOctal%etaCont(subcell) * V

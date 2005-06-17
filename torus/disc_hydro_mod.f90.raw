@@ -119,7 +119,8 @@ contains
     real :: rho(:), temperature(:), zAxis(:), subcellsize(:)
     real :: xPos, yPos
     integer :: subcell
-    real :: rhotemp, temptemp
+    real(double) :: rhotemp	
+    real :: temptemp
     real :: direction
     type(OCTALVECTOR) :: currentPos, temp
     real :: halfSmallestSubcell

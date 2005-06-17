@@ -337,7 +337,8 @@ contains
     logical :: diffApprox(*)
     real :: xPos, yPos
     integer :: subcell
-    real :: rhotemp, temptemp
+    real(double) :: rhotemp
+    real :: temptemp
     real :: direction
     type(OCTALVECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
@@ -451,7 +452,7 @@ contains
     integer :: nBoundary
     real :: xStart
     integer :: iBoundary, boundarySubcell
-    real :: diffDepth = 20
+    real :: diffDepth = 10
     real(double) :: zApprox, eps
     real(double) :: tot
     real(double) :: zSize
@@ -572,7 +573,7 @@ contains
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell)
           zSize = thisOctal%subcellsize/2.d0
-          if ((zAxis(j)-zSize) <= zApprox) then
+          if ((zAxis(j)+zSize) <= zApprox) then !tjh change to plus from minus
              thisOctal%diffusionApprox(subcell) = .true.
              if (resetTemp) thisOctal%temperature(subcell) = 20.
              
@@ -596,7 +597,7 @@ contains
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell)
           zSize = thisOctal%subcellsize/2.d0
-          if (abs(zAxis(j)+zSize) <= zApprox) then
+          if (abs(zAxis(j)-zSize) <= zApprox) then
              thisOctal%diffusionApprox(subcell) = .true.
              if (resetTemp) thisOctal%temperature(subcell) = 20.
              ! put in the lefthand boundary of the diffusion zone if necessary
@@ -683,7 +684,8 @@ contains
     real :: xAxis(:), subcellsize(:)
     real :: zPos, yPos
     integer :: subcell
-    real :: rhotemp, temptemp
+    real(double) :: rhotemp
+    real ::temptemp
     real :: direction
     type(OCTALVECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
@@ -713,7 +715,8 @@ contains
     real :: zAxis(:), subcellsize(:)
     real :: xPos, yPos
     integer :: subcell
-    real :: rhotemp, temptemp
+    real(double) :: rhotemp
+    real :: temptemp
     real :: direction
     type(OCTALVECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
