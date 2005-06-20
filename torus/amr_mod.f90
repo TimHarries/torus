@@ -5612,7 +5612,7 @@ CONTAINS
     
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
-    thisOctal%inflow(subcell) = .true.
+    thisOctal%inflow(subcell) = .false.
     thisOctal%rho(subcell) = tiny(thisoctal%rho(subcell))
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
@@ -5620,7 +5620,6 @@ CONTAINS
     r = sqrt(rVec%x**2 + rVec%y**2)
     if ((r > rInner).and.(r < rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
-       thisOctal%rho(subcell) = thisOctal%rho(subcell)
        thisOctal%temperature(subcell) = 20.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
@@ -5632,7 +5631,7 @@ CONTAINS
     endif
 
 
-    if ((r + thisOctal%subcellsize/2.d0) < rInner) thisOctal%inflow(subcell) = .false.
+!    if ((r + thisOctal%subcellsize/2.d0) < rInner) thisOctal%inflow(subcell) = .false.
 
 !    if ((r < rSublimation).and.thisOctal%inFlow(subcell)) then
 !       thisOctal%temperature(subcell) = 2000.
@@ -7730,10 +7729,173 @@ CONTAINS
       enddo
       kappaP = kappaP / norm /1.d10
    endif
-
-
-         
-
-
+   
   end subroutine returnKappa
+   
+
+
+   real function tempNearbyCells(grid, thisOctal, thisSubcell)
+     type(GRIDTYPE) :: grid
+     type(OCTAL),pointer :: thisOctal
+     type(OCTAL),pointer :: nearbyOctal
+     integer :: thisSubcell
+     integer :: found
+     integer :: subcell
+     real(double) :: r
+     type(OCTALVECTOR) :: rVec, aVec
+     integer :: i, nMonte
+     real :: temp, meanTemp
+     integer :: nTemp
+     logical :: differentOctal
+     type(OCTALVECTOR), allocatable :: locator(:)
+     real(double) :: dSubcellcentre
+     type(OCTALVECTOR) :: thisSubcellCentre
+     integer :: nlocator, j
+     nMonte = 1000
+     meanTemp = 0.
+     nTemp = 0
+     
+    if (thisOctal%threed) then
+       nLocator = 26
+    else
+       nlocator = 8
+    endif
+
+    ALLOCATE(locator(nLocator))
+    thisSubcellCentre = subcellCentre(thisOctal,thisSubcell)
+    FORALL (i = 1:nLocator)
+       locator(i) = thisSubcellCentre
+    END FORALL
+     
+     ! Moving this distance in any direction will take us into a
+     ! neighbouring subcell.
+     dSubcellCentre = (0.5 * thisOctal%subcellSize) + grid%halfSmallestSubcell
+     
+        if (thisOctal%threed) then 
+
+           ! faces
+           locator(1)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(2)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(3)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(4)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(5)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(6)%z = thisSubcellCentre%z - dSubcellCentre
+           ! x-edges
+           locator(7)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(7)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(8)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(8)%z = thisSubcellCentre%z - dSubcellCentre
+           locator(9)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(9)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(10)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(10)%z = thisSubcellCentre%z - dSubcellCentre
+           ! y-edges
+           locator(11)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(11)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(12)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(12)%z = thisSubcellCentre%z - dSubcellCentre
+           locator(13)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(13)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(14)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(14)%z = thisSubcellCentre%z - dSubcellCentre
+           ! z-edges
+           locator(15)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(15)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(16)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(16)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(17)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(17)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(18)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(18)%y = thisSubcellCentre%y - dSubcellCentre
+           ! corners
+           locator(19)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(19)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(19)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(20)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(20)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(20)%z = thisSubcellCentre%z - dSubcellCentre
+           locator(21)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(21)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(21)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(22)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(22)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(22)%z = thisSubcellCentre%z - dSubcellCentre
+           locator(23)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(23)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(23)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(24)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(24)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(24)%z = thisSubcellCentre%z - dSubcellCentre
+           locator(25)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(25)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(25)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(26)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(26)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(26)%z = thisSubcellCentre%z - dSubcellCentre
+        else
+
+           ! edges
+
+           locator(1)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(2)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(3)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(4)%z = thisSubcellCentre%z - dSubcellCentre
+           ! corners
+           locator(5)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(5)%z = thisSubcellCentre%z + dSubcellCentre
+
+           locator(6)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(6)%z = thisSubcellCentre%z - dSubcellCentre
+
+           locator(7)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(7)%z = thisSubcellCentre%z + dSubcellCentre
+
+           locator(8)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(8)%z = thisSubcellCentre%z - dSubcellCentre
+
+
+        endif
+
+
+     do j = 1, nLocator
+        call amrGridValues(grid%octreeRoot,locator(j),foundOctal=nearbyOctal, &
+             foundsubcell=subcell, temperature=temp)
+        meanTemp = meanTemp + temp
+        ntemp = ntemp + 1
+     end do
+     if (nTemp > 0) then
+        tempNearbyCells = meanTemp/ real(nTemp)
+     else
+        tempNearbyCells = thisOctal%temperature(thisSubcell)
+     endif
+   end function tempNearbyCells
+
+
+
+
+  recursive subroutine estimateTempofUndersampled(grid, thisOctal)
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call estimateTempOfUndersampled(grid, child)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%undersampled(subcell)) then
+             thisOctal%temperature(subcell) = tempNearbyCells(grid, thisOctal, subcell)
+          endif
+       endif
+    enddo
+  end subroutine estimateTempofUndersampled
+
+
 END MODULE amr_mod

@@ -80,15 +80,15 @@ contains
  
     converged = .false.
 
-    do i = 1, iStart-1
-       octVec = VECTOR(xPos, 0., zArray(i))
-       call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-            foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
-       if (thisOctal%undersampled(subcell)) then
-          ok = .false.
-          goto 666
-       endif
-    enddo
+!    do i = 1, iStart-1
+!       octVec = VECTOR(xPos, 0., zArray(i))
+!       call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
+!            foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
+!       if (thisOctal%undersampled(subcell)) then
+!          ok = .false.
+!          goto 666
+!       endif
+!    enddo
 
     
 

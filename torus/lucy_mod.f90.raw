@@ -942,6 +942,14 @@ contains
 !$MPI endif
 
 
+!$MPI if (my_rank==0) & 
+       write(*,*) "Estimating temperature of undersampled cells"
+       do i = 1, 10
+          call estimateTempofUndersampled(grid, grid%octreeRoot)
+       enddo
+
+
+
        call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
 
        if ((grid%geometry == "shakara").and.(nDustType > 1)) then
@@ -958,7 +966,7 @@ contains
           endif
        endif
 
-       if ((.not.variableDustsublimation).and.(iiter_grand == 1)) then
+       if (.not.variableDustsublimation) then 
           call defineDiffusionZone(grid, outputFlag, .false.)
        endif
 
@@ -987,6 +995,7 @@ contains
     endif
 
 
+
     !
     ! check the convergence
     !
@@ -1001,8 +1010,8 @@ contains
        converged = .true.
     end if
 
-!    converged = .true.
-!    write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
+    converged = .true.
+    write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
 
 
 !    !
@@ -1687,7 +1696,7 @@ contains
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
     else
-       thisTau = 1.0e-28
+       thisTau = tiny(thisTau)
     end if
 
 ! if tau > thisTau then the photon has traversed a cell with no interactions
@@ -1790,7 +1799,7 @@ contains
           if (inFlow) then
              thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
           else
-             thisTau = 1.0e-28
+             thisTau = tiny(thisTau)
           end if
 
           if (tVal == 0.0d0) then
@@ -1823,7 +1832,7 @@ contains
 !          stop
 !       endif
        if (dble(tau)/thisTau .gt. 1.d0) then
-          write(*,*) "tau prob",tau,thisTau
+          write(*,*) "tau prob",thistau,Tau
        endif
 
 !       if (grid%octreeRoot%threed) then
@@ -1846,7 +1855,7 @@ contains
 
 ! update the distance grid
 
-       if (thisTau > 1.e-30) then
+       if (thisTau > tiny(thistau)) then
 
           
           if (.not.twoD) then
@@ -1930,9 +1939,9 @@ contains
           if (thisOctal%temperature(subcell) > Tthresh) then
              write(*,*) "cell removed with T at ",thisOctal%temperature(subcell)
              thisOctal%inFlow(subcell) = .false.
-             thisOctal%etaCont(subcell) = 1.e-30
-             thisOctal%rho(subcell) = 1.e-27
-             thisOctal%temperature(subcell) = 1.e-3
+             thisOctal%etaCont(subcell) = tiny(thisOctal%etacont(subcell))
+             thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
+             thisOctal%temperature(subcell) = 2.8
              nRemoved = nRemoved + 1
           endif
        endif

@@ -133,7 +133,7 @@ contains
     do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
-       thisOctal%chiLine(subcell) = 1.e-30
+       thisOctal%chiLine(subcell) = tiny(thisOctal%chiLine(subcell))
 !       if (thisOctal%inFlow(subcell)) then
           nz = nz + 1
           temperature(nz) = temptemp
@@ -180,6 +180,7 @@ contains
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
+    real(double) :: deltaRho, fac
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
@@ -193,12 +194,14 @@ contains
              end if
           end do
        else
-          if (thisOctal%chiLine(subcell) > 1.e-30) then
-             thisOctal%rho(subcell) = thisOctal%chiLine(subcell)
+
+          fac = 1.d0
+          deltaRho = thisOctal%chiLine(subcell)-thisOctal%rho(subcell)
+          thisOctal%rho(subcell) = thisOctal%rho(subcell) + fac * deltaRho
+          if (thisOctal%rho(subcell) > tiny(thisOctal%rho(subcell))) then
              thisOctal%inFlow(subcell) = .true. 
           else
-!             thisOctal%rho(subcell) = thisOctal%chiLine(subcell)
-             thisOctal%rho(subcell) = 1.e-30
+             thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
              thisOctal%inFlow(subcell) = .false.
           endif
        end if
@@ -307,6 +310,7 @@ contains
     real  :: lamArray(:)
     real :: massEnvelope
     real :: tthresh, drho
+    real :: temp
     integer :: maxIter
     integer :: nIter, j, ilamsmooth
     character(len=20) :: plotfile
@@ -355,9 +359,9 @@ contains
 !$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
        if (nIter == 1) then
-          maxIter = 3
+          maxIter = 2
        else
-          maxIter = 1
+          maxIter = 2
        endif
 
        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
@@ -380,6 +384,7 @@ contains
        call findTotalMass(grid%octreeRoot, totalMass)
        write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
+       
 
 
 
@@ -436,6 +441,9 @@ contains
 
        end if
 
+! writing the grid before the iteration...
+!$MPI if (my_rank==0) &
+      call writeAMRgrid("lucy_hydro_tmp.dat", .false., grid)
 
 
        nIter = nIter + 1
@@ -444,6 +452,11 @@ contains
 !$MPI    if(my_rank == 0) &
           write(*,*) "Maximum number of iterations exceeded. Aborting."
           converged = .true.
+       else
+          write(*,*) "calling set temperature..."
+          temp = 20.
+          call setTemperature(grid%octreeRoot, temp)
+          write(*,*) "done."
        endif
        
     enddo
@@ -479,6 +492,34 @@ contains
   end subroutine getxValues
 
 
+  recursive subroutine setTemperature(thisOctal, temperature)
+
+    use input_variables, only : rinner, router
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real :: temperature
+    type(octalvector) :: rvec
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setTemperature(child, temperature)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          if ((rVec%x > rinner).and.(rVec%x< rOuter)) then
+             thisOctal%temperature(subcell) = temperature
+          endif
+       end if
+    end do
+
+  end subroutine setTemperature
 
 
 end module disc_hydro_mod
