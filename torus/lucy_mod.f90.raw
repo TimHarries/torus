@@ -448,9 +448,6 @@ contains
     endif
 
 
-! writing the grid before the iteration...
-!$MPI if (my_rank==0) &
-      call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
 
       outputFlag = .true.
 !$MPI if (my_rank/=0) outputFlag = .false.
@@ -560,7 +557,7 @@ contains
        call polardump(grid)
 !$MPI    end if
 
-!$MPI       if (my_rank == 0) &
+!$MPI       if (my_rank == 1) &
        call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
        
        call zeroDistanceGrid(grid%octreeRoot)
@@ -810,7 +807,7 @@ contains
 !$MPI       ! comunications between processors. It may take a while....
 !$MPI       ! (Maybe faster to pack the values in 1D arrays and distribute.)
 !$MPI
-!$MPI       if(my_rank == 0) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
+!$MPI       if(my_rank == 1) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
 !$MPI       if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
 !$MPI    !   call update_octal_MPI(grid%octreeRoot, grid)
 
@@ -819,7 +816,7 @@ contains
 
 !$MPI       call updateGridMPI(grid)
 
-!$MPI       if(my_rank == 0) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
+!$MPI       if(my_rank == 1) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
 !$MPI
 !$MPI       ! collect some statical info from each node.
 !$MPI       call MPI_ALLGATHER(REAL(nInf), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
@@ -931,7 +928,7 @@ contains
        close(LU_OUT)
 !$MPI    end if   
 
-!$MPI if (my_rank==0) &       
+!$MPI if (my_rank==1) &       
        call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
 
        debugoutput = .true.
@@ -941,14 +938,11 @@ contains
 !$MPI    debugOutput = .false.
 !$MPI endif
 
-
-!$MPI if (my_rank==0) & 
-       write(*,*) "Estimating temperature of undersampled cells"
-       do i = 1, 10
+!$MPI if (my_rank==0) &       
+       write(*,*) "Estimating temperatures of undersampled cells..."
+       do i = 1, 1000
           call estimateTempofUndersampled(grid, grid%octreeRoot)
        enddo
-
-
 
        call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
 
@@ -966,11 +960,16 @@ contains
           endif
        endif
 
-       if (.not.variableDustsublimation) then 
+       if (.not.variableDustsublimation) then
           call defineDiffusionZone(grid, outputFlag, .false.)
        endif
 
-    enddo
+
+!$MPI if (my_rank==0) &
+      call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
+
+
+   enddo
 
 
 
@@ -995,7 +994,6 @@ contains
     endif
 
 
-
     !
     ! check the convergence
     !
@@ -1010,8 +1008,8 @@ contains
        converged = .true.
     end if
 
-    converged = .true.
-    write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
+!    converged = .true.
+!    write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
 
 
 !    !
@@ -1021,7 +1019,7 @@ contains
       call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
 !$MPI end if
        
-  enddo
+   enddo
 
   deallocate(kAbsArray)
 
@@ -1696,7 +1694,7 @@ contains
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
     else
-       thisTau = tiny(thisTau)
+       thisTau = 1.0e-28
     end if
 
 ! if tau > thisTau then the photon has traversed a cell with no interactions
@@ -1799,7 +1797,7 @@ contains
           if (inFlow) then
              thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
           else
-             thisTau = tiny(thisTau)
+             thisTau = 1.0e-28
           end if
 
           if (tVal == 0.0d0) then
@@ -1832,7 +1830,7 @@ contains
 !          stop
 !       endif
        if (dble(tau)/thisTau .gt. 1.d0) then
-          write(*,*) "tau prob",thistau,Tau
+          write(*,*) "tau prob",tau,thisTau
        endif
 
 !       if (grid%octreeRoot%threed) then
@@ -1855,7 +1853,7 @@ contains
 
 ! update the distance grid
 
-       if (thisTau > tiny(thistau)) then
+       if (thisTau > 1.e-30) then
 
           
           if (.not.twoD) then
@@ -1939,9 +1937,9 @@ contains
           if (thisOctal%temperature(subcell) > Tthresh) then
              write(*,*) "cell removed with T at ",thisOctal%temperature(subcell)
              thisOctal%inFlow(subcell) = .false.
-             thisOctal%etaCont(subcell) = tiny(thisOctal%etacont(subcell))
-             thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
-             thisOctal%temperature(subcell) = 2.8
+             thisOctal%etaCont(subcell) = 1.e-30
+             thisOctal%rho(subcell) = 1.e-27
+             thisOctal%temperature(subcell) = 1.e-3
              nRemoved = nRemoved + 1
           endif
        endif

@@ -5612,8 +5612,8 @@ CONTAINS
     
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
-    thisOctal%inflow(subcell) = .false.
-    thisOctal%rho(subcell) = tiny(thisoctal%rho(subcell))
+    thisOctal%inflow(subcell) = .true.
+    thisOctal%rho(subcell) = 1.e-30
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
     rd = rOuter / 2.
@@ -5625,13 +5625,11 @@ CONTAINS
        thisOctal%inflow(subcell) = .true.
 
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
-!       thisOctal%dustTypeFraction(subcell,1) = exp(-abs(rVec%z/h))
-!       thisOctal%dustTypeFraction(subcell,2) = 1.- exp(-abs(rVec%z/h))
     
     endif
 
 
-!    if ((r + thisOctal%subcellsize/2.d0) < rInner) thisOctal%inflow(subcell) = .false.
+    if ((r + thisOctal%subcellsize/2.d0) < rInner) thisOctal%inflow(subcell) = .false.
 
 !    if ((r < rSublimation).and.thisOctal%inFlow(subcell)) then
 !       thisOctal%temperature(subcell) = 2000.
@@ -7860,8 +7858,10 @@ CONTAINS
      do j = 1, nLocator
         call amrGridValues(grid%octreeRoot,locator(j),foundOctal=nearbyOctal, &
              foundsubcell=subcell, temperature=temp)
-        meanTemp = meanTemp + temp
-        ntemp = ntemp + 1
+        if (.not.nearbyOctal%diffusionApprox(subcell)) then
+           meanTemp = meanTemp + temp
+           ntemp = ntemp + 1
+        endif
      end do
      if (nTemp > 0) then
         tempNearbyCells = meanTemp/ real(nTemp)

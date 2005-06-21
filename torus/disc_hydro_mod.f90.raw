@@ -133,7 +133,7 @@ contains
     do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
-       thisOctal%chiLine(subcell) = tiny(thisOctal%chiLine(subcell))
+       thisOctal%chiLine(subcell) = 1.e-30
 !       if (thisOctal%inFlow(subcell)) then
           nz = nz + 1
           temperature(nz) = temptemp
@@ -180,7 +180,7 @@ contains
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    real(double) :: deltaRho, fac
+    real(double) :: deltaRho
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
@@ -194,15 +194,15 @@ contains
              end if
           end do
        else
-
-          fac = 1.d0
-          deltaRho = thisOctal%chiLine(subcell)-thisOctal%rho(subcell)
-          thisOctal%rho(subcell) = thisOctal%rho(subcell) + fac * deltaRho
-          if (thisOctal%rho(subcell) > tiny(thisOctal%rho(subcell))) then
-             thisOctal%inFlow(subcell) = .true. 
+          if (thisOctal%chiLine(subcell) > 1.e-30) then
+!             deltaRho = thisOctal%chiLine(subcell) - thisOctal%rho(subcell)
+!             thisOctal%rho(subcell) = thisOctal%rho(subcell) + 0.5d0 *deltaRho
+             thisOctal%rho(subcell) = thisOctal%chiLine(subcell)
+!             thisOctal%inFlow(subcell) = .true. 
           else
-             thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
-             thisOctal%inFlow(subcell) = .false.
+!             thisOctal%rho(subcell) = thisOctal%chiLine(subcell)
+             thisOctal%rho(subcell) = 1.e-30
+!             thisOctal%inFlow(subcell) = .false.
           endif
        end if
     end do
@@ -310,12 +310,12 @@ contains
     real  :: lamArray(:)
     real :: massEnvelope
     real :: tthresh, drho
-    real :: temp
     integer :: maxIter
     integer :: nIter, j, ilamsmooth
     character(len=20) :: plotfile
     real(double) totalMass
     logical :: twoD, gridConverged
+    real :: temp
 
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
@@ -384,7 +384,6 @@ contains
        call findTotalMass(grid%octreeRoot, totalMass)
        write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
-       
 
 
 
@@ -441,9 +440,6 @@ contains
 
        end if
 
-! writing the grid before the iteration...
-!$MPI if (my_rank==0) &
-      call writeAMRgrid("lucy_hydro_tmp.dat", .false., grid)
 
 
        nIter = nIter + 1
@@ -491,7 +487,6 @@ contains
 
   end subroutine getxValues
 
-
   recursive subroutine setTemperature(thisOctal, temperature)
 
     use input_variables, only : rinner, router
@@ -520,6 +515,7 @@ contains
     end do
 
   end subroutine setTemperature
+
 
 
 end module disc_hydro_mod

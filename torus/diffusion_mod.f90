@@ -452,7 +452,7 @@ contains
     integer :: nBoundary
     real :: xStart
     integer :: iBoundary, boundarySubcell
-    real :: diffDepth = 10
+    real :: diffDepth = 5
     real(double) :: zApprox, eps
     real(double) :: tot
     real(double) :: zSize
