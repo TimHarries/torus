@@ -402,11 +402,11 @@ contains
 
        call locate(grid%lamArray, grid%nLambda,lambdasmooth,ilamsmooth)
 
+!       if (.false.) then
+       if (doSmoothGridTau) then
 
-!       if (doSmoothGridTau) then
-
-       write(*,*) "Tau smoothing switched off"
-	if (.false.) then
+!       write(*,*) "Tau smoothing switched off"
+!	if (.true.) then
 !$MPI     if(my_rank == 0) &
           write(*,*) "Smoothing adaptive grid structure for optical depth..."
 !$MPI     if(my_rank == 0) &

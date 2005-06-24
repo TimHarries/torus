@@ -4,6 +4,8 @@ module dust_mod
   use grid_mod
   use constants_mod
   use amr_mod
+  use messages_mod
+
   implicit none
   public
 
@@ -320,7 +322,7 @@ contains
          case("amc_zb")
             call unixGetenv("TORUS_DATA", dataDirectory, i)
             filename = trim(dataDirectory)//"/"//"amC-zb2.nk"
-            write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+            if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
             open(20,file=filename,status="old",form="formatted")
             nRef = 1245
             allocate(lamRef(1:nRef))
@@ -334,7 +336,7 @@ contains
 
 
          case DEFAULT
-            write(*,'(a,a,a)') "! Grain type ", trim(graintype)," not recognised"
+            if (writeoutput) write(*,'(a,a,a)') "! Grain type ", trim(graintype)," not recognised"
             stop
        end select
 
@@ -383,14 +385,14 @@ contains
       allocate(sigmaExt(1:grid%nLambda))
 
 
-      write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
-      write(*,*) "Dust law: n(a) = const * a^-q * Exp( -(a/a0)^p )"
-      write(*,*) "          where  amin < a < amax"
-      write(*,*) "    amin = ",  aMin
-      write(*,*) "    amax = ",  aMax 
-      write(*,*) "      a0 = ",  a0
-      write(*,*) "       q = ",  qDist
-      write(*,*) "       p = ",  pDist
+      if (writeoutput) write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
+      if (writeoutput) write(*,*) "Dust law: n(a) = const * a^-q * Exp( -(a/a0)^p )"
+      if (writeoutput) write(*,*) "          where  amin < a < amax"
+      if (writeoutput) write(*,*) "    amin = ",  aMin
+      if (writeoutput) write(*,*) "    amax = ",  aMax 
+      if (writeoutput) write(*,*) "      a0 = ",  a0
+      if (writeoutput) write(*,*) "       q = ",  qDist
+      if (writeoutput) write(*,*) "       p = ",  pDist
 
       open(20,file="albedo.dat",form="formatted",status="unknown")
 
@@ -403,9 +405,9 @@ contains
          ! quick test for zero total abundance.
          total_abundance = SUM(abundance)
          if ( total_abundance <= 0.0 ) then
-            write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::fillGridMie."
-            write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
-            write(*,*) "  ==> Exiting the prograim ... "
+            if (writeoutput) write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::fillGridMie."
+            if (writeoutput) write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
+            if (writeoutput) write(*,*) "  ==> Exiting the prograim ... "
             stop 
          end if
 
@@ -459,7 +461,7 @@ contains
       end if
          
 
-      write(*,*) "Dust law: ",aMin,aMax,qDist
+      if (writeoutput) write(*,*) "Dust law: ",aMin,aMax,qDist
       open(20,file="albedo.dat",form="formatted",status="unknown")
       open(21,file="gfactor.dat",form="formatted",status="unknown")
       do i = 1, grid%nLambda
@@ -473,7 +475,7 @@ contains
 
       if (.not.grid%oneKappa) then
          if (grid%adaptive) then
-            write(*,'(a,i3)') "Filling AMR grid with mie cross sections...",grid%nLambda
+            if (writeoutput) write(*,'(a,i3)') "Filling AMR grid with mie cross sections...",grid%nLambda
             call fillAMRgridMie(grid%OctreeRoot, sigmaSca, sigmaAbs, grid%nLambda)
          endif
 
@@ -516,7 +518,7 @@ contains
          grid%kappaAbs = grid%kappaAbs * 1.e10
          grid%kappaSca = grid%kappaSca * 1.e10
       else
-         write(*,'(a,i4)') "Filling the oneKappa arrays: ",grid%nLambda
+         if (writeoutput) write(*,'(a,i4)') "Filling the oneKappa arrays: ",grid%nLambda
 
          
 
@@ -541,7 +543,7 @@ contains
 
       endif
       deallocate(sigmaAbs, sigmaSca)
-  write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
+  if (writeoutput) write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
 end subroutine fillGridMie
 
     subroutine setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
@@ -572,11 +574,11 @@ end subroutine fillGridMie
       call locate(grid%lamArray, grid%nLambda, lambdaTau, i)
 
 
-      write(*,*) "kappa test set for: ",grid%lamarray(i)
+      if (writeoutput) write(*,*) "kappa test set for: ",grid%lamarray(i)
 
 
       scale = 1.
-      write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
+      if (writeoutput) write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
 
       if (graintype(1:5) == "mixed") then
          ! Synthetic grains
@@ -629,7 +631,7 @@ end subroutine fillGridMie
          
       grid%kappaTest = sigmaExt * 1.e10 / meanParticleMass
 
-      write(*,*) "kappa test is: ",grid%kappatest
+      if (writeoutput) write(*,*) "kappa test is: ",grid%kappatest
     end subroutine setKappaTest
 
     subroutine setKappa(kappaAbs, kappaSca, lambda, nLambda, aMin, aMax, a0, qDist, pDist, grainType)
@@ -643,7 +645,7 @@ end subroutine fillGridMie
       integer :: nLambda
       integer :: i
 
-      write(*,'(a)') "Setting kappas for: ",trim(grainType)
+      if (writeoutput) write(*,'(a)') "Setting kappas for: ",trim(grainType)
 
       allocate(mReal(1:nLambda))
       allocate(mImg(1:nLambda))
@@ -874,19 +876,6 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
              thisOctal%dustTypeFraction(subcell,1) = 1.d0 - fac
              thisOctal%dustTypeFraction(subcell,2) = fac
           endif
-
-!          temperature = thisOctal%temperature(subcell)
-!          sublimationTemp = 1500. * thisOctal%rho(subcell)**(1.95e-2)
-!          if (temperature < sublimationTemp) frac = 1.
-!    
-!          if (temperature > sublimationTemp) then
-!             frac = exp(-dble((temperature-sublimationtemp)/subRange))
-!          endif
-!          
-!          frac = max(frac,1.d-20)
-!          thisOctal%dustTypeFraction(subcell,1:2) =  thisOctal%dustTypeFraction(subcell,1:2) * frac
-
-             
 
        end if
     end do

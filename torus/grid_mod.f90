@@ -29,10 +29,12 @@ module grid_mod
   use pixplot_module                  ! To use some plotting routines.
   use cluster_class
   use cmfgen_class
-  
+  use messages_mod
+
   implicit none
 
   public
+
   private :: writeReal1D, writeReal2D, writeDouble2D
   private :: readReal1D,  readReal2D,  readDouble2D
 
@@ -3111,8 +3113,8 @@ contains
        end if
     end if
 
-    write(*,'(a,a)') "Reading populations file from: ",trim(filename)
-    write(*,'(a,i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') ' - data file written at: ', &
+    if (writeoutput) write(*,'(a,a)') "Reading populations file from: ",trim(filename)
+    if (writeoutput) write(*,'(a,i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') ' - data file written at: ', &
                           timeValues(1),'/',timeValues(2),'/',&
                           timeValues(3),'  ',timeValues(5),':',timeValues(6)
                           
@@ -3160,7 +3162,7 @@ contains
        allocate(grid%octreeRoot)
        nOctal = 0
        call readOctreePrivate(grid%octreeRoot,null(),fileFormatted, nOctal, grid)
-       write(*,*) noctal,"octals read"
+!       write(*,*) noctal,"octals read"
     end if
 
     ! check that we are at the end of the file
@@ -3175,11 +3177,12 @@ contains
     
     close(unit=20)
 
-    
-    print *, 'setting ''geometry'':',trim(geometry),' previously:',trim(grid%geometry)
-    print *, 'setting ''dipoleOffset'':',dipoleOffset,' previously:',grid%dipoleOffset
-    print *, 'setting ''amr2donly'':',amr2donly,' previously:',grid%amr2donly
-    print *, 'setting ''statEq2d'':',' previously:', grid%statEq2d
+    if (writeoutput) then
+       print *, 'setting ''geometry'':',trim(geometry),' previously:',trim(grid%geometry)
+       print *, 'setting ''dipoleOffset'':',dipoleOffset,' previously:',grid%dipoleOffset
+       print *, 'setting ''amr2donly'':',amr2donly,' previously:',grid%amr2donly
+       print *, 'setting ''statEq2d'':',' previously:', grid%statEq2d
+    endif
     grid%geometry = trim(geometry)
     grid%dipoleOffset = dipoleOffset
     grid%amr2donly = amr2donly
@@ -3266,7 +3269,7 @@ contains
        write(*,'(a)') "! grid wrong size for populations file"
        stop
     endif
-    write(*,'(a,a)') "Reading populations file from: ",trim(filename)
+    if (writeoutput) write(*,'(a,a)') "Reading populations file from: ",trim(filename)
     do i = 1, grid%na1
        do j = 1, grid%na2
           do k = 1, grid%na3
@@ -3292,7 +3295,7 @@ contains
        write(*,'(a)') "! grid wrong size for populations file"
        stop
     endif
-    write(*,'(a,a)') "Reading populations file from: ",trim(filename)
+    if (writeoutput) write(*,'(a,a)') "Reading populations file from: ",trim(filename)
     do i = 1, grid%na1
        do j = 1, grid%na2
           do k = 1, grid%na3

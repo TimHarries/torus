@@ -351,6 +351,7 @@ contains
     integer :: nDT, nUndersampled
     real(oct) :: totalEmission
     integer :: subcell
+    logical :: leftHandBoundary
     logical :: debugOutput
     real :: treal
     real(oct) :: lCore
@@ -671,7 +672,7 @@ contains
 
 !$OMP CRITICAL (tonext)
              call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD,imonte, &
-                  photonInDiffusionZone, diffusionZoneTemp)
+                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary)
 
 !$OMP END CRITICAL (tonext)
 
@@ -773,7 +774,11 @@ contains
                    ! make sure diffused photon is moving out of diffusion zone
 
                    if (photonInDiffusionZone) then
-                      if ((octVec%z * uhat%z) < 0.) uHat = (-1.d0) * uHat
+                      if (.not.lefthandBoundary) then
+                         if ((octVec%z * uhat%z) < 0.) uHat = (-1.d0) * uHat
+                      else
+                         if ((octVec%x * uhat%x + octVec%y * uHat%y) > 0.) uHat = (-1.d0) * uHat
+                      endif
                    endif
 
                 endif
@@ -942,6 +947,7 @@ contains
        write(*,*) "Estimating temperatures of undersampled cells..."
        do i = 1, 1000
           call estimateTempofUndersampled(grid, grid%octreeRoot)
+          call updateTemps(grid, grid%octreeRoot)
        enddo
 
        call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
@@ -1634,7 +1640,7 @@ contains
 
 
  subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, twoD, imonte, &
-      photonInDiffusionZone, diffusionZoneTemp)
+      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary)
 
 
    type(GRIDTYPE) :: grid
@@ -1658,6 +1664,7 @@ contains
    integer :: imonte
    real :: diffusionZoneTemp
    logical :: photonInDiffusionZone
+   logical :: leftHandBoundary
    real(double) :: prob
 
     stillinGrid = .true.
@@ -1720,6 +1727,11 @@ contains
             foundSubcell=tempsubcell)
        if (tempOctal%diffusionApprox(tempsubcell)) then
           photonInDiffusionZone = .true.
+          if (tempOctal%leftHandDiffusionBoundary(subcell)) then
+             leftHandBoundary = .true.
+          else
+             leftHandBoundary = .false.
+          endif
           tempOctal%nDiffusion(tempsubcell) = tempOctal%nDiffusion(tempsubcell) + abs(uHat%z)
           diffusionZoneTemp = tempOctal%temperature(subcell)
           sourceOctal => grid%octreeRoot

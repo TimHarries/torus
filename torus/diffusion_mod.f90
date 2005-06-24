@@ -8,6 +8,7 @@ use constants_mod
 use gridtype_mod
 use amr_mod
 use vector_mod
+use messages_mod
 
 implicit none
 
@@ -452,7 +453,7 @@ contains
     integer :: nBoundary
     real :: xStart
     integer :: iBoundary, boundarySubcell
-    real :: diffDepth = 5
+    real :: diffDepth = 10
     real(double) :: zApprox, eps
     real(double) :: tot
     real(double) :: zSize
@@ -464,7 +465,7 @@ contains
     call getxAxisRun(grid, xAxis, subcellSize, 0., 0., nx, +1.)
 
 
-    write(*,*) "Defining diffusion zone..."
+    if (writeoutput) write(*,*) "Defining diffusion zone..."
 
     call zeroDiffusionProb(grid%octreeRoot)
 
@@ -492,7 +493,7 @@ contains
 
 
     call locate(xAxis, nx, xStart, iBoundary)
-
+    iBoundary = iBoundary + 1
 
     nBoundary = 0
 
@@ -617,7 +618,7 @@ contains
     deallocate(workarray)
 
 666 continue
-    write(*,*) "Done."
+    if (writeoutput) write(*,*) "Done."
 
   end subroutine defineDiffusionZone
 

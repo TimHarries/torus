@@ -652,16 +652,16 @@ contains
 
     else ! the grid is adaptive
 
-       write(*,*) "Computing probability distributions..."
+       call writeInfo("Computing probability distributions...",3)
 
           if (useBias) then
 !             write (*,*) 'Panic: computeProbDist2AMR does not have the ',&
 !                         'facility to useBias?'
 !             stop
-             write(*,*) " "
-             write(*,*) "======= WARNING == WARNING == WARNING =============="
-             write(*,*) "useBias = T option may not work properly...."
-             write(*,*) " "
+!             write(*,*) " "
+!             write(*,*) "======= WARNING == WARNING == WARNING =============="
+!             write(*,*) "useBias = T option may not work properly...."
+!             write(*,*) " "
           endif
         
         totalLineEmissionDouble = 0.0_db
@@ -684,9 +684,10 @@ contains
         else
            biasCorrectionCont = 1.0
         end if
-        
-        write(*,*) "Bias correction (line)      : ",biasCorrectionLine 
-        write(*,*) "Bias correction (continuum) : ",biasCorrectionCont 
+        if (writeoutput) then
+           write(*,*) "Bias correction (line)      : ",biasCorrectionLine 
+           write(*,*) "Bias correction (continuum) : ",biasCorrectionCont 
+        endif
     
         call computeProbDist3AMR(grid%octreeRoot,biasCorrectionLine, &
                                                  biasCorrectionCont, &

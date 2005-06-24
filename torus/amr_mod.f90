@@ -3586,6 +3586,7 @@ CONTAINS
     REAL                  :: x, y, z
     REAL(double) :: hr, rd, fac, warpHeight, phi
     INTEGER               :: i
+    real(double) :: thisTau, kappaSca, kappaAbs
     real(double)      :: total_mass
     real(double)      :: ave_density, rGrid(1000), r, dr
     INTEGER               :: nr, nr1, nr2
@@ -3907,7 +3908,19 @@ CONTAINS
       endif
 
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+
+
+
+!      if ((r > grid%rInner).and.(r < grid%rInner * 1.01)) then
+!         if ((abs(cellcentre%z)/hr < 5.)) then
+!            if (cellsize > 1.e-3 * grid%rInner) split = .true.
+!         endif
+!      endif
+
+
+
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
+
 
    case("clumpydisc")
       split = .false.
@@ -6474,6 +6487,7 @@ CONTAINS
     INTEGER              :: i, ilam
     TYPE(octalVector)    :: thisSubcellCentre
     REAL(oct) :: dSubcellCentre
+    real(double) :: kappaAbs, kappaSca
     TYPE(octal), POINTER :: child
     TYPE(octal), POINTER :: neighbour
     TYPE(octalVector), ALLOCATABLE, DIMENSION(:) :: locator
@@ -6503,6 +6517,14 @@ CONTAINS
         call smoothAMRgridTau(child,grid,gridConverged,  ilam, sphData, stellar_cluster, inheritProps)
       else
         thisSubcellCentre = subcellCentre(thisOctal,thisSubcell)
+
+        ! don't split outer edge of disc
+
+        if (grid%geometry == "shakara") then
+           if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%rinner*0.9) exit
+        endif
+           
+
         FORALL (i = 1:nLocator)
           locator(i) = thisSubcellCentre
         END FORALL
@@ -6596,9 +6618,9 @@ CONTAINS
 
         endif
 
-        thisTau = (grid%oneKappaAbs(thisOctal%dusttype(thissubcell),ilam) + &
-                   grid%oneKappaSca(thisOctal%dusttype(thissubcell),ilam)) * &
-                   thisOctal%subcellSize * thisOctal%rho(thisSubcell)
+        call returnKappa(grid, thisOctal, thissubcell, ilambda=ilam,  kappaSca=kappaSca, kappaAbs=kappaAbs)
+
+        thisTau = (kappaAbs + kappaSca) * thisOctal%subcellSize * thisOctal%rho(thisSubcell)
 
         DO i = 1, nLocator, 1
           IF ( inOctal(grid%octreeRoot,locator(i)) ) THEN
@@ -6610,9 +6632,8 @@ CONTAINS
             ! (and we'll hit cell boundaries, which is not good).
             IF ( neighbour%subcellSize >= thisOctal%subcellSize) THEN
 
-               thatTau = (grid%oneKappaAbs(neighbour%dusttype(subcell),ilam) + &
-                    grid%oneKappaSCa(neighbour%dusttype(subcell),ilam)) * &
-                    neighbour%subcellSize * neighbour%rho(subcell)
+               call returnKappa(grid, neighbour, subcell, ilambda=ilam,  kappaSca=kappaSca, kappaAbs=kappaAbs)
+               thatTau = (kappaSca + kappaAbs) * neighbour%subcellSize * neighbour%rho(subcell)
 
               ! Original critera was to split if:
               ! ((o1 - o2)/(o1+o2) > 0.5 .and. (o1 - o2) > 1)
@@ -6813,9 +6834,12 @@ CONTAINS
           end do
        else
           r = modulus(subcellcentre(thisOctal, subcell)) / rInner
-          thisOctal%biasCont3D(subcell) = 1.d0
+          thisOctal%biasCont3D(subcell) =  1.d0
+!          if ((r > 1.).and.(r < 1.05)) then
+!             thisOctal%biasCont3D(subcell) =  100.d0
+!          endif
           if (thisOctal%diffusionApprox(subcell)) then
-             thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) * 1.e-5
+             thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) * 1.e-2
           endif
        endif
                
@@ -7891,11 +7915,35 @@ CONTAINS
           end do
        else
           if (thisOctal%undersampled(subcell)) then
-             thisOctal%temperature(subcell) = tempNearbyCells(grid, thisOctal, subcell)
+             thisOctal%chiline(subcell) = tempNearbyCells(grid, thisOctal, subcell)
           endif
        endif
     enddo
   end subroutine estimateTempofUndersampled
+
+  recursive subroutine updateTemps(grid, thisOctal)
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call updateTemps(grid, child)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%undersampled(subcell)) then
+             thisOctal%temperature(subcell) = thisOctal%chiLine(subcell)
+          endif
+       endif
+    enddo
+  end subroutine updateTemps
 
 
 END MODULE amr_mod

@@ -61,6 +61,7 @@ program torus
   use jet_class
   use gas_opacity_mod
   use diffusion_mod
+  use messages_mod
 
 !$mpi   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
@@ -487,9 +488,13 @@ program torus
      o6yarray(i) = 1.d-10
   enddo
 
+  writeoutput = .true.
+!$MPI  if (my_rank/=0) writeoutput = .false.
+
+
   ! get the model parameters
 
-  call  inputs() ! variables are passed using the input_variables module
+  call inputs() ! variables are passed using the input_variables module
 
 
   objectDistance = griddistance * pctocm
@@ -519,7 +524,7 @@ program torus
 
   !
   if (nLambda > maxLambda) then
-     write(*,'(a,i3.3,a)') "nlambda is greater than the maximum value (",&
+     if (writeoutput) write(*,'(a,i3.3,a)') "nlambda is greater than the maximum value (",&
           maxLambda,")"
      stop
   endif
@@ -530,7 +535,6 @@ program torus
      hotSourcePosition = 0.75*secondSourcePosition
      coolStarPosition = (-0.25)*secondSourcePosition
      secondSourcePosition = hotSourcePosition
-     write(*,*) "hot",hotSourcePosition
   endif
 
   if (doRaman) screened = .true.
@@ -543,7 +547,7 @@ program torus
 
   if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
      meanDustParticleMass = getMeanMass2(amin(1), amax(1), a0(1), qDist(1), pdist(1), graintype(1))
-     write(*,*) "mean dust particle mass: ",meanDustParticleMass
+     if (writeoutput) write(*,*) "mean dust particle mass: ",meanDustParticleMass
      if (meanDustParticleMass <=0.0) then 
         write(*,*) "Error: meanDustParticleMass <=0 in torusMain."
         stop
@@ -815,10 +819,10 @@ program torus
         call locate(xArray, nLambda, lambdaTau, i)
         t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
         if (t1 > 0.5) then
-           write(*,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
+           if (writeoutput) write(*,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
            xArray(i+1) = lambdaTau
         else
-           write(*,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
+           if (writeoutput) write(*,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
            xArray(i) = lambdaTau
         endif
      endif
@@ -855,12 +859,12 @@ program torus
   endif
 
   if (mie .and. .not.dustfile) then
-     write(*,*) "fill grid mie",nLambda,grid%nlambda
+     if (writeoutput) write(*,*) "fill grid mie",nLambda,grid%nlambda
      do i = 1, nDustType
         call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), grainType(i), &
              ngrain, X_grain, grainname, i)
      enddo
-     write(*,'(a,f5.2)') "!!!! Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
+     if (writeoutput) write(*,'(a,f5.2)') "!!!! Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
      do i = 1, nDustType
         grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
         grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
@@ -900,8 +904,9 @@ program torus
   if (mie) then
      call locate(grid%lamArray, nLambda,lambdaTau,itestlam)
      call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-     write(*,*) "Test wavelength index: ",itestlam,ismoothlam
-     write(*,*) "Test Kappa Abs",grid%oneKappaAbs(1,itestLam)
+     grid%itestlam = iTestLam
+     if (writeoutput) write(*,*) "Test wavelength index: ",itestlam,ismoothlam
+     if (writeoutput) write(*,*) "Test Kappa Abs",grid%oneKappaAbs(1,itestLam)
   end if
 
   !===============================================================
@@ -1003,13 +1008,13 @@ program torus
 !$MPI  !  Later the other nodes reads in the same file.
 !$MPI if (my_rank == 0) then ! ----------------------------------------------------
         amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
-        write(*,*) "Starting initial set up of adaptive grid..."
+        if (writeoutput) write(*,*) "Starting initial set up of adaptive grid..."
 
         select case (geometry)
         case("cluster")
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData, young_cluster)
-           write(*,*) "...initial adaptive grid configuration complete"
+           if (writeoutput) write(*,*) "...initial adaptive grid configuration complete"
            call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
 
            !Removing the cells within 10^14 cm from the stars.
@@ -1018,12 +1023,12 @@ program torus
         case("wr104")
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData)
-           write(*,*) "...initial adaptive grid configuration complete"
+           if (writeoutput) write(*,*) "...initial adaptive grid configuration complete"
 
         case DEFAULT
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
-           write(*,*) "...initial adaptive grid configuration complete"
+           if (writeoutput) write(*,*) "...initial adaptive grid configuration complete"
 
            ! This section is getting rather long. Maybe this should be done in 
            ! wrapper subroutine in amr_mod.f90.
@@ -1031,55 +1036,55 @@ program torus
               ! Finding the total mass in the accretion flow
               mass_accretion_old = 0.0d0
               call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_old)
-              write(*,*) " "
-              write(*,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
+              if (writeoutput) write(*,*) " "
+              if (writeoutput) write(*,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
 
               if (ttau_fuzzy_edge) then
-                 write(*,*) "Fuzzy edge for TTauri accreation stream will be used..."
+                 if (writeoutput) write(*,*) "Fuzzy edge for TTauri accreation stream will be used..."
                  call ttauri_fuzzy_edge(grid%octreeRoot)
 
                  ! We now have to correct the density of the accretion flow 
                  ! due to the fuzziness introduced above.
                  mass_accretion_new = 0.0d0
                  call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_new)
-                 write(*,*) "Total mass in accretion flow (after fuzzy edge) is ",  mass_accretion_new, "[g]"
+                 if (writeoutput) write(*,*) "Total mass in accretion flow (after fuzzy edge) is ",  mass_accretion_new, "[g]"
                  mass_scale = mass_accretion_old/mass_accretion_new
-                 write(*,*) "Scaling the density by ", mass_scale , "[g]"
+                 if (writeoutput)  write(*,*) "Scaling the density by ", mass_scale , "[g]"
 
                  call TTauri_accretion_scale_density(grid%octreeRoot, grid, mass_scale) 
                  ! Check to see if it has scaled correctly.
                  mass_accretion_new = 0.0d0
                  call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_new)                 
-                 write(*,*) "Total mass in accretion flow after rescaling: ", mass_accretion_new, "[g]"
-                 write(*,*) " "  
+                 if (writeoutput) write(*,*) "Total mass in accretion flow after rescaling: ", mass_accretion_new, "[g]"
+                 if (writeoutput) write(*,*) " "  
               end if
 
               if (ttau_discwind_on) then
-                 write(*,*) " "
-                 write(*,*) "Adding TTauri disc wind to magnetosphere model... "
+                 if (writeoutput) write(*,*) " "
+                 if (writeoutput) write(*,*) "Adding TTauri disc wind to magnetosphere model... "
                  call add_discwind(grid%octreeRoot, grid, ttauri_discwind, limitscalar2)
-                 write(*,*) " "
+                 if (writeoutput) write(*,*) " "
               elseif (ttau_jet_on) then
-                 write(*,*) " "
-                 write(*,*) "Adding TTauri jets to magnetosphere model... "
+                 if (writeoutput) write(*,*) " "
+                 if (writeoutput) write(*,*) "Adding TTauri jets to magnetosphere model... "
                  call add_jet(grid%octreeRoot, grid, ttauri_jet)
                  call finish_grid_jet(grid%octreeroot, ttauri_jet)
-                 write(*,*) " "
+                 if (writeoutput) write(*,*) " "
               end if
            end if
            if (doSmoothGrid) then
-              write(*,*) "Smoothing adaptive grid structure..."
+              if (writeoutput) write(*,*) "Smoothing adaptive grid structure..."
               gridConverged = .false.
               do
                  call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops=.false.)
                  if (gridConverged) exit
               end do
-              write(*,*) "...grid smoothing complete"
+              if (writeoutput) write(*,*) "...grid smoothing complete"
            end if
            ! chris (26/05/04)
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau) then
-              write(*,*) "Smoothing adaptive grid structure for optical depth..."
+              if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
               do j = iSmoothLam, ismoothLam !nLambda
                  do
                     gridConverged = .true.
@@ -1087,17 +1092,17 @@ program torus
                     if (gridConverged) exit
                  end do
               enddo
-              write(*,*) "...grid smoothing complete"
+              if (writeoutput) write(*,*) "...grid smoothing complete"
               ! The tau smoothing may result in large differences in the size
               ! of neighbouring octals, so we smooth the grid again.
               if (doSmoothGrid) then
-                write(*,*) "Smoothing adaptive grid structure (again)..."
+                if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
                 gridConverged = .false.
                 do
                    call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false.)
                    if (gridConverged) exit
                 end do
-                write(*,*) "...grid smoothing complete"
+                if (writeoutput) write(*,*) "...grid smoothing complete"
               end if
            end if
 
@@ -1106,11 +1111,11 @@ program torus
         nOctals = 0
         nVoxels = 0
         call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-        write(*,*) "Adaptive grid contains: ",nOctals," octals"
-        write(*,*) "                      : ",nVoxels," unique voxels"
+        if (writeoutput) write(*,*) "Adaptive grid contains: ",nOctals," octals"
+        if (writeoutput) write(*,*) "                      : ",nVoxels," unique voxels"
         grid%nOctals = nOctals
 
-        write(*,*) "Calling routines to finalize the grid variables..."
+        if (writeoutput) write(*,*) "Calling routines to finalize the grid variables..."
         gridConverged = .false.
      
         do
@@ -1118,7 +1123,7 @@ program torus
            if (gridConverged) exit
         end do        
 
-        write(*,*) "...final adaptive grid configuration complete"
+        if (writeoutput) write(*,*) "...final adaptive grid configuration complete"
 
         call grid_info(grid, "*")
         call grid_info(grid, "info_grid.dat")
@@ -1138,7 +1143,7 @@ program torus
         endif
 
         if (noScattering) then
-           write(*,*) "! WARNING: Scattering opacity turned off in model"
+           if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
            grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
         endif
         
@@ -1217,7 +1222,7 @@ program torus
            !  and the opacities) for all of the subcells in an
            !  adaptive octal grid.
            !  Using a routine in stateq_mod module.
-           write(*,*) "Calling statistical equilibrium routines..."
+           if (writeoutput) write(*,*) "Calling statistical equilibrium routines..."
 !$MPI  if (my_rank==1) &
            call tune(6, "amrStateq") ! start a stopwatch  
            if (grid%geometry=="ttauri" .or.  &
@@ -1236,18 +1241,18 @@ program torus
               ! RK added the followings ------------------------------------------
               !  adding alpha disc to the grid
               if (ttau_disc_on) then
-                 write(*,*) "Adding an acreation disc ... "
+                 if (writeoutput) write(*,*) "Adding an acreation disc ... "
                  call add_alpha_disc(grid%octreeroot, grid, ttauri_disc)
                  ! finding the photon-dust interaction x-secions
                  call mieCrossSection(sigmaExt0, sigmaAbs0, sigmaSca0,  &
                       aMin(1), aMax(1), a0(1), qDist(1), pDist(1), grainType(1), &
                       ngrain, X_grain, grainname, lamLine)
-                 write(*,*) " "
-                 write(*,*) "Photon-dust cross section at lambda = ", lamLine, " [A]"
-                 write(*,*) "    sigma(tot) = ", sigmaExt0, " [cm^2]"
-                 write(*,*) "    sigma(abs) = ", sigmaAbs0, " [cm^2]"
-                 write(*,*) "    sigma(sca) = ", sigmaSca0, " [cm^2]"
-                 write(*,*) " "
+                 if (writeoutput) write(*,*) " "
+                 if (writeoutput) write(*,*) "Photon-dust cross section at lambda = ", lamLine, " [A]"
+                 if (writeoutput) write(*,*) "    sigma(tot) = ", sigmaExt0, " [cm^2]"
+                 if (writeoutput) write(*,*) "    sigma(abs) = ", sigmaAbs0, " [cm^2]"
+                 if (writeoutput) write(*,*) "    sigma(sca) = ", sigmaSca0, " [cm^2]"
+                 if (writeoutput) write(*,*) " "
                  call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, &
                       sigmaAbs0, sigmaSca0, meanDustParticleMass)
                  !
@@ -1261,8 +1266,8 @@ program torus
                       lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                       .false., nUpper, nLower, 0., 0., 0., junk,&
                       sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
-                 write(*,*) " ----  Vertical optical depth at r = 0.1 AU is ", tauExt(ntau)
-                 write(*,*) " ----                           at lambda =  ", lambdatau
+                 if (writeoutput) write(*,*) " ----  Vertical optical depth at r = 0.1 AU is ", tauExt(ntau)
+                 if (writeoutput) write(*,*) " ----                           at lambda =  ", lambdatau
 !                 write(*,*) "Rescaling scattering and absorption coefficients ... "
 !                 call finish_grid(grid%octreeroot, grid, ttauri_disc, tauExt(ntau)/100.0)
 !                 call integratePath(gridUsesAMR, VoigtProf, &
@@ -1276,7 +1281,7 @@ program torus
 !                 write(*,*) " ----                           at lambda =  ", lambdatau
                  deallocate(lambda,tauExt,tauAbs,tauSca,contTau,linePhotonalbedo)
 !                 write(*,*) ".. Finished rescaling scattering and absorption coefficients ... "
-                 write(*,*) ".. Finished adding an acreation disc ... "
+                 if (writeoutput) write(*,*) ".. Finished adding an acreation disc ... "
               end if
               !-------------------------------------------------------------------
 
@@ -1300,7 +1305,7 @@ program torus
 
 !$MPI  if (my_rank==1) &
            call tune(6, "amrStateq") ! stop a stopwatch  
-           write(*,*) "... statistical equilibrium routines complete"
+           if (writeoutput) write(*,*) "... statistical equilibrium routines complete"
 
 
 
@@ -1452,7 +1457,7 @@ program torus
            call fillGridResonance(grid, rCore, mDot, vTerm, beta, temp1)
 
         case DEFAULT
-           write(*,*) "! Unrecognised grid geometry: ",trim(geometry)
+           if (writeoutput) write(*,*) "! Unrecognised grid geometry: ",trim(geometry)
            goto 666
         end select
      endif ! (.not.plezModelOn)
@@ -1476,7 +1481,7 @@ program torus
         call distortGridSpiral(grid, vRot, nSpiral)
      case("rotation")
         call distortRotation(grid, vRot)
-        write(*,'(a,f5.1,a)') "Grid distorted by a rotational velocity of ", &
+        if (writeoutput) write(*,'(a,f5.1,a)') "Grid distorted by a rotational velocity of ", &
                                vRot/1.e5," km/s"
      case("test")
         call distortGridTest(grid)
@@ -1559,7 +1564,7 @@ program torus
           endif
        enddo
        if (nt > 0) then
-          write(21,*) r/grid%rInner,meant/real(nt), meaneta * r**2 * drgrid(i)/ real(nt)
+          if (writeoutput) write(21,*) r/grid%rInner,meant/real(nt), meaneta * r**2 * drgrid(i)/ real(nt)
        endif
     Enddo
     close(21)
@@ -1605,7 +1610,7 @@ program torus
           nt = nt + 1
        enddo
        if (nt > 0) then
-          write(21,*) r/grid%rInner,meanDepart/real(nt)
+          if (writeoutput) write(21,*) r/grid%rInner,meanDepart/real(nt)
        endif
     Enddo
     close(21)
@@ -1744,7 +1749,7 @@ program torus
 
   if (mie .or.  (grid%geometry == "ttauri" .and. ttau_disc_on)) then
      ! construct the mie phase matrix
-     write(*,'(a)') "Computing Mie phase grid..."
+     if (writeoutput) write(*,'(a)') "Computing Mie phase grid..."
 
      allocate(mReal(1:nDusttype,1:nLambda))
      allocate(mImg(1:nDustType,1:nLambda))
@@ -1820,7 +1825,7 @@ program torus
 
      deallocate(mReal)
      deallocate(mImg)
-     write(*,'(a)') "Completed."
+     if (writeoutput) write(*,'(a)') "Completed."
 
 
   endif
@@ -1928,32 +1933,32 @@ program torus
         totalMass = 0.d0
         call findTotalMass(grid%octreeRoot, totalMass)
         scaleFac = massEnvelope / totalMass
-        write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+        if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
         call scaleDensityAMR(grid%octreeRoot, scaleFac)
 
      else if (geometry == "cluster") then
         call find_average_temperature(grid, T_ave, T_mass, totalMass)
-        write(*,*) " "
-        write(*,'(a,1pe12.4, a5)') "Total dust mass in cluster  : ", TotalMass, " [g]"
-        write(*,'(a,1pe12.4, a5)') "Ave. temperature of cluster : ", T_ave,    " [K]"
-        write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature of cluster : ",T_mass,  " [K]"
-        write(*,*) " "
+        if (writeoutput) write(*,*) " "
+        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total dust mass in cluster  : ", TotalMass, " [g]"
+        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature of cluster : ", T_ave,    " [K]"
+        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature of cluster : ",T_mass,  " [K]"
+        if (writeoutput) write(*,*) " "
         ! computing the max, min and average tau at 2 micron (of all
         ! active cells)
         ilambda = findIlambda(20000.0, xArray, nLambda, ok)
         call find_max_min_ave_tau(grid, ilambda, tau_max, tau_min,  tau_ave)
-        write(*,*) " "
-        write(*,'(a,1pe12.4, a11)') "Max tau(1 micron) = ", tau_max, " [contiuum]"
-        write(*,'(a,1pe12.4, a11)') "Min tau(1 micron) = ", tau_min, " [contiuum]"
-        write(*,'(a,1pe12.4, a11)') "Ave tau(1 micron) = ", tau_ave, " [contiuum]"
-        write(*,*) " "
+        if (writeoutput) write(*,*) " "
+        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Max tau(1 micron) = ", tau_max, " [contiuum]"
+        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Min tau(1 micron) = ", tau_min, " [contiuum]"
+        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Ave tau(1 micron) = ", tau_ave, " [contiuum]"
+        if (writeoutput) write(*,*) " "
      end if
 
 
      if (mie) then
         totalMass =0.d0
         call findTotalMass(grid%octreeRoot, totalMass)
-        write(*,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
+        if (writeoutput) write(*,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
 	if (geometry == "shakara") then
 
 !        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*autocm) ! defined at 1AU
@@ -1964,7 +1969,7 @@ program torus
            sigma0 = rho0 * (rinner*1.e10/(1.*autocm))**alphaDisc * &
 	(height*1.e10) * (autocm / (100.d0*autocm))**betaDisc * sqrt(twopi)
 
-        write(*,*) "Sigma0: ",sigma0
+        if (writeoutput) write(*,*) "Sigma0: ",sigma0
 	endif
      endif
 
@@ -2096,7 +2101,7 @@ program torus
           do i = 1 , maxBlobs
              blobs(i)%inUse = .false.
           enddo
-          write(*,'(a)') "Running blobs for five days..."
+          if (writeoutput) write(*,'(a)') "Running blobs for five days..."
    
           ! now we run a few of days worth of blobs
   
@@ -2107,7 +2112,7 @@ program torus
              call addNewBlobs(grid, maxBlobs, blobs, blobTime, dTime, &
                               nCurrent, blobContrast)
              call moveBlobs(maxBlobs, blobs, 0., dTime, grid)
-             write(*,*) i,nCurrent
+             if (writeoutput) write(*,*) i,nCurrent
           enddo
   
           j = 0 
@@ -2115,7 +2120,7 @@ program torus
              if (blobs(i)%inUse) j = j + 1
           enddo
   
-          write(*,'(a,i3)') "Number of blobs after 5 days: ",j
+          if (writeoutput) write(*,'(a,i3)') "Number of blobs after 5 days: ",j
   
   
           dTime = 0.
@@ -2125,7 +2130,7 @@ program torus
   
           open(50,file="files.lis",status="unknown",form="formatted")
   
-          write(*,'(a)') "Running blobs and writing configuration files"
+          if (writeoutput) write(*,'(a)') "Running blobs and writing configuration files"
           do i = 1, nPhase
   
              grid%timeNow = timeStart + (timeEnd-timeStart)*real(i-1)/real(nPhase-1)	    
@@ -2161,7 +2166,7 @@ program torus
 
   if (doRaman) then
      ramanSourceVelocity = (ramVel/cSpeed)*VECTOR(0.,-1., 0.)
-     write(*,'(a,f7.1,a)') "Raman source speed: ",modulus(ramanSourceVelocity)*cSpeed/1.e5, " km/s"
+     if (writeoutput) write(*,'(a,f7.1,a)') "Raman source speed: ",modulus(ramanSourceVelocity)*cSpeed/1.e5, " km/s"
   endif
 
 
@@ -2170,12 +2175,12 @@ program torus
   !
   if (geometry == "ttauri") then
      rotationAxis = grid%diskNormal
-     write(*,*) "rotation axis",rotationAxis
+     if (writeoutput) write(*,*) "rotation axis",rotationAxis
   endif
 
   if (geometry == "luc_cir3d" .or. geometry == "cmfgen") then
      rotationAxis = VECTOR(0.,0.,1.)
-     write(*,*) "rotation axis",rotationAxis
+     if (writeoutput) write(*,*) "rotation axis",rotationAxis
   endif
 
   if (geometry == "donati") then
@@ -2201,7 +2206,7 @@ program torus
 
 
   if (modulus(thermalElectronVelocity(10000.)) == 0.) then
-     write(*,'(a)') "THERMAL ELECTRON BROADENING IS OFF!!!!!!!!!!!!!!!!!!!!!!!!!!"
+     if (writeoutput) write(*,'(a)') "THERMAL ELECTRON BROADENING IS OFF!!!!!!!!!!!!!!!!!!!!!!!!!!"
   endif
 
 
@@ -2250,16 +2255,16 @@ program torus
 
 
      if (rotateView.and.(nPhase /= 1)) then
-        write(*,'(a)') "Rotating view..."
+        if (writeoutput) write(*,'(a)') "Rotating view..."
         phi = -rotateDirection * twoPi * real(iPhase-1)/real(nPhase-1)
         viewVec =  arbitraryRotate(thisVec, phi, rotationAxis)
         outVec = (-1.) * viewVec
-        write(*,'(a,f5.2,a,f5.2,a,f5.2,a)') "View vector: (",viewVec%x,",", &
+        if (writeoutput) write(*,'(a,f5.2,a,f5.2,a,f5.2,a)') "View vector: (",viewVec%x,",", &
              viewVec%y,",",viewVec%z,")"
      endif
 
      if (phaseOffset /= 0.) then
-        write(*,'(a,f5.2)') "Rotating by phase offset: ",phaseOffset
+        if (writeoutput) write(*,'(a,f5.2)') "Rotating by phase offset: ",phaseOffset
         phi = twoPi * phaseOffset
         viewVec =  arbitraryRotate(viewVec, phi, rotationAxis)
         outVec = (-1.) * viewVec
@@ -2347,7 +2352,7 @@ program torus
            continue
            
         case DEFAULT
-           write(*,*) "! Unrecognised grid geometry: ",trim(geometry)
+           if (writeoutput) write(*,*) "! Unrecognised grid geometry: ",trim(geometry)
            goto 666
         end select
      endif
@@ -2372,11 +2377,11 @@ program torus
          !                    infallParticleMass, alreadyDoneInfall)
           if (.not. noPhaseUpdate .and. iPhase /= nStartPhase) then
 !$MPI if (my_rank == 0) then
-             write(*,*) "Modifying grid for new phase"
+             if (writeoutput) write(*,*) "Modifying grid for new phase"
              call amrUpdateGrid(limitScalar,limitScalar2,grid) 
              call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-             write(*,*) "Adaptive grid contains: ",nOctals," octals"
-             write(*,*) "                      : ",nVoxels," unique voxels"
+             if (writeoutput) write(*,*) "Adaptive grid contains: ",nOctals," octals"
+             if (writeoutput) write(*,*) "                      : ",nVoxels," unique voxels"
              grid%nOctals = nOctals
 
 !$MPI    if (writePhasePops) then
@@ -2398,7 +2403,7 @@ program torus
 !$MPI end if
 !$MPI call MPI_BARRIER(MPI_COMM_WORLD, ierr)    ! sync everybody here
 
-             write(*,*) "Recalculating statistical equilibrium after changing grid" 
+             if (writeoutput) write(*,*) "Recalculating statistical equilibrium after changing grid" 
              call amrStateq(grid, newContFluxFile, lte, nLower, nUpper,  &
                    starSurface, recalcPrevious=.true.)
 !$MPI         print *,'Process ',my_rank,' returned from amrStatEq. Waiting to sync...' 
@@ -2518,10 +2523,10 @@ program torus
      endif
 !$MPI end if
 
-     write(*,*) " "
-     write(*,'(a)') "Some basic model parameters"
-     write(*,'(a)') "---------------------------"
-     write(*,*) " "
+     if (writeoutput) write(*,*) " "
+     if (writeoutput) write(*,'(a)') "Some basic model parameters"
+     if (writeoutput) write(*,'(a)') "---------------------------"
+     if (writeoutput) write(*,*) " "
 
      ! THE FOLLOWING STATEMENT IS DANGEROUS. ACCORDING TO INPUT_MOD.F90 
      ! NOT ALL THE GEOMETRY HAS RCORE VALUES, AND SAME UNITS!
@@ -2564,17 +2569,17 @@ program torus
 
         totEnvelopeEmission = totDustContinuumEmission
         chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
-        write(*,*) "totdustemission",totdustcontinuumemission
-        write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
+        if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
+        if (writeoutput) write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
 
         weightDust = chanceDust / probDust
         weightPhoto = (1. - chanceDust) / (1. - probDust)
 
-        write(*,*) "WeightDust",weightDust
-        write(*,*) "WeightPhoto",weightPhoto
-        write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
+        if (writeoutput) write(*,*) "WeightDust",weightDust
+        if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
+        if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
         energyPerPhoton =  ((lCore + totEnvelopeEmission*1.d30) / dble(nPhotons))/1.d20
-        write(*,*) "Energy per photon: ", energyPerPhoton
+        if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
 
      endif
 
@@ -2594,7 +2599,7 @@ program torus
      if (doRaman) then
         call computeProbDist(grid, totLineEmission, &
              totWindContinuumEmission,lamline, .false.)
-        write(*,*) "Total Raman Line Emission: ",totLineEmission
+        if (writeoutput) write(*,*) "Total Raman Line Emission: ",totLineEmission
         weightLinePhoton = 1.
         weightContPhoton = 0.
         probLinePhoton = 1.
@@ -2644,7 +2649,7 @@ program torus
         !if (geometry == "ttauri" .or. geometry == "windtest") then
         if (geometry == "windtest") then
            totWindContinuumEmission = 0.
-           write(*,'(a)') "! Wind continuum emission switched off."
+           if (writeoutput) write(*,'(a)') "! Wind continuum emission switched off."
         endif
 
         if (lineOff) then
@@ -2652,7 +2657,7 @@ program torus
         endif
 
         nu = cSpeed / (lamLine * angstromtocm)
-        write(*,'(a,e12.3)') "Line emission: ",totLineEmission
+        if (writeoutput) write(*,'(a,e12.3)') "Line emission: ",totLineEmission
         select case(geometry)
            case("binary")
               call contread(contFluxFile, nu, totCoreContinuumEmission1)
@@ -2712,7 +2717,7 @@ program torus
         nuEnd = cSpeed / (lamEnd * angstromtocm)
 
         totWindContinuumEmission = totWindContinuumEmission * (nuStart - nuEnd)
-        write(*,'(a,e12.3)') "Wind cont emission: ",totWindContinuumEmission
+        if (writeoutput) write(*,'(a,e12.3)') "Wind cont emission: ",totWindContinuumEmission
 
 
 ! factor of four pi taken out from below - input continuum files are expected
@@ -2727,7 +2732,7 @@ program torus
            totCoreContinuumEmission = totCoreContinuumEmission1 + totCoreContinuumEmission2
            grid%lumRatio = totCoreContinuumEmission1 / totCoreContinuumEmission
 
-           write(*,*) "Binary luminosity ratio (p/s): ",totCoreContinuumEmission1/totCoreContinuumEmission2
+           if (writeoutput) write(*,*) "Binary luminosity ratio (p/s): ",totCoreContinuumEmission1/totCoreContinuumEmission2
         endif
            
         if (geometry == "ttauri") then
@@ -2755,18 +2760,18 @@ program torus
            chanceSpot = fSpot * blackBody(tSpot, 6562.8) / &
                 ((1.-fSpot)*blackBody(tEff, 6562.8) + &
                 (fSpot * blackBody(tSpot, 6562.8)))
-           write(*,'(a,f5.3)') "Spot chance at 6563A: ",chanceSpot
+           if (writeoutput) write(*,'(a,f5.3)') "Spot chance at 6563A: ",chanceSpot
         endif
 
 
 
 
-        write(*,'(a,e12.3)') "Total Core Continuum Emission: ",totCorecontinuumEmission
+        if (writeoutput) write(*,'(a,e12.3)') "Total Core Continuum Emission: ",totCorecontinuumEmission
 
 
         totContinuumEmission = totCoreContinuumEmission + totWindContinuumEmission
 
-        write(*,'(a,e12.3)') "Total Continuum emission: ", totContinuumEmission
+        if (writeoutput) write(*,'(a,e12.3)') "Total Continuum emission: ", totContinuumEmission
 
 
         if ((totContinuumEmission + totLineEmission) /= 0.) then
@@ -2783,7 +2788,7 @@ program torus
 
 
 
-        write(*,'(a,e12.3)') "Chance continuum emission in wind: ", grid%chanceWindOverTotalContinuum
+        if (writeoutput) write(*,'(a,e12.3)') "Chance continuum emission in wind: ", grid%chanceWindOverTotalContinuum
 
         ! set up the line and continuum weights
 
@@ -2993,10 +2998,12 @@ program torus
            
      endif
 
-     write(*,*) " "
-     write(*,'(a)') "Run-time messages"
-     write(*,'(a)') "-----------------"
-     write(*,*) " "
+     if (writeoutput) then
+        write(*,*) " "
+        write(*,'(a)') "Run-time messages"
+        write(*,'(a)') "-----------------"
+        write(*,*) " "
+     endif
      
 
      tot%i = 0.

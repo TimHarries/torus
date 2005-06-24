@@ -1,12 +1,15 @@
 module inputs_mod
 
+use messages_mod
 use utils_mod
 use input_variables
 use jets_mod
 
+
 implicit none
 
 public
+
 
 contains
 
@@ -25,7 +28,8 @@ subroutine inputs()
   character(len=80) :: cLine(200) 
   character(len=10) :: default
 
-
+  character(len=20) :: grainTypeLabel, aminLabel, aMaxLabel, a0label
+  character(len=20) :: qdistlabel, pdistlabel
   logical :: done
 
   ! character vars for unix environ
@@ -62,15 +66,17 @@ subroutine inputs()
      stop
   endif
 
-  write(*,*) " "
-  write(*,'(a)') "TORUS: spectropolarimetric scattering model"
-  write(*,'(a)') "-------------------------------------------"
-  write(*,*) " "
-
-
-  write(*,'(a)') "Input parameters"
-  write(*,'(a)') "----------------"
-  write(*,*) " "
+  if (writeoutput) then
+     write(*,*) " "
+     write(*,'(a)') "TORUS: spectropolarimetric scattering model"
+     write(*,'(a)') "-------------------------------------------"
+     write(*,*) " "
+     
+     
+     write(*,'(a)') "Input parameters"
+     write(*,'(a)') "----------------"
+     write(*,*) " "
+  endif
 
 
   call getInteger("nphotons", nPhotons, cLine, nLines, &
@@ -171,19 +177,19 @@ subroutine inputs()
           "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
      call getDouble("amrgridcentrex", amrGridCentreX, cLine, nLines, &
           "Grid centre X-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
-        if (amrGridCentreX == 0.0) then 
-           print *, 'WARNING: amrGridCentreX == 0. This may cause numerical problems!'
-        end if
+!        if (amrGridCentreX == 0.0) then 
+!           print *, 'WARNING: amrGridCentreX == 0. This may cause numerical problems!'
+!        end if
      call getDouble("amrgridcentrey", amrGridCentreY, cLine, nLines, &
           "Grid centre Y-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
-        if (amrGridCentreY == 0.0) then 
-           print *, 'WARNING: amrGridCentreY == 0. This may cause numerical problems!'
-        end if
+!        if (amrGridCentreY == 0.0) then 
+!           print *, 'WARNING: amrGridCentreY == 0. This may cause numerical problems!'
+!        end if
      call getDouble("amrgridcentrez", amrGridCentreZ, cLine, nLines, &
           "Grid centre Z-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
-        if (amrGridCentreZ == 0.0) then 
-           print *, 'WARNING: amrGridCentreZ == 0. This may cause numerical problems!'
-        end if
+!        if (amrGridCentreZ == 0.0) then 
+!           print *, 'WARNING: amrGridCentreZ == 0. This may cause numerical problems!'
+!        end if
      call getDouble("limitscalar", limitScalar, cLine, nLines, &
           "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000._db, ok, .true.) 
      call getDouble("limittwo", limitScalar2, cLine, nLines, &
@@ -228,7 +234,7 @@ subroutine inputs()
      call getLogical("2donly", amr2dOnly, cLine, nLines, &
           "Only use 2D plane in AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
      if (amr2dOnly .and. .not. statEq2d) then
-        write(*,'(a)') "WARNING: turning on statEq2d for amr2dOnly"
+        if (writeoutput) write(*,'(a)') "WARNING: turning on statEq2d for amr2dOnly"
         statEq2d = .true.
      end if
      if (statEq2d .and. ( (amrGridCentreX < 0.0) .or. (amrGridCentreY < 0.0) ))  & 
@@ -241,13 +247,14 @@ subroutine inputs()
      end if
 
      if (amr2d) then
-        write(*,*) "WARNING: amr grid is in two-d - switching off stateq2d"
+        if (writeoutput) write(*,*) "WARNING: amr grid is in two-d - switching off stateq2d"
         stateq2d = .false.
         amr2donly = .false.
      endif
 
-     if (readPops .and. writePops) &
-        write(*,'(a)') "WARNING: both readPops and writePops set."
+     if (readPops .and. writePops) then
+        if (writeoutput) write(*,'(a)') "WARNING: both readPops and writePops set."
+     endif
      call getLogical("readfileformatted", readFileFormatted, cLine, nLines, &
           "Populations input file is formatted: ","(a,1l,1x,a)", .false., ok, .false.)
      call getLogical("writefileformatted", writeFileFormatted, cLine, nLines, &
@@ -881,24 +888,24 @@ endif
  if (.not. ok) then
     mie = .true.
     default = " (default)"
-    write(*,*) "Error:: mie and iso_scatter must be defined in your parameter file."
+    if (writeoutput) write(*,*) "Error:: mie and iso_scatter must be defined in your parameter file."
     stop
  endif
 
 
  if (mie) then
-   write(*,'(a)') "Scattering phase matrix: Mie"
+   if (writeoutput) write(*,'(a)') "Scattering phase matrix: Mie"
  elseif (geometry == "ttauri".and. ttau_disc_on) then
-   write(*,'(a)') "Scattering phase matrix: Mie (disc) and Rayleigh (elsewhere)"
+   if (writeoutput) write(*,'(a)') "Scattering phase matrix: Mie (disc) and Rayleigh (elsewhere)"
   else
-   write(*,'(a)') "Scattering phase matrix: Rayleigh"
+   if (writeoutput) write(*,'(a)') "Scattering phase matrix: Rayleigh"
  endif
 
  call getLogical("iso_scatter", isotropicScattering, cLine, nLines, &
 "Isotropic scattering function: ","(a,1l,1x,a)",.false.,ok,.false.)
 
 if  (isotropicScattering) then
-   write(*,'(a)') "!!! ISOTROPIC SCATTERING PHASE MATRIX ENFORCED"
+   if (writeoutput) write(*,'(a)') "!!! ISOTROPIC SCATTERING PHASE MATRIX ENFORCED"
 endif
 
  if (mie) then
@@ -1013,12 +1020,12 @@ endif
  default = " "
  call findReal("kappasca", inputKappaSca, cLine, nLines, ok)
  if (ok) then
-   write(*,'(a,1pe12.4)') "Scattering cross-section: ",inputKappaSca
+   if (writeoutput) write(*,'(a,1pe12.4)') "Scattering cross-section: ",inputKappaSca
  endif
  default = " "
  call findReal("kappaabs", inputKappaAbs, cLine, nLines, ok)
  if (ok) then
-   write(*,'(a,1pe12.4)') "Absorption cross-section: ",inputKappaAbs
+   if (writeoutput) write(*,'(a,1pe12.4)') "Absorption cross-section: ",inputKappaAbs
  endif
 endif
 
@@ -1122,7 +1129,7 @@ endif
    call getReal("isothermtemp", isoThermTemp, cLine, nLines, &
          "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
    if (useHartmannTemp .and. isoTherm) then 
-      write(*,'(a)') "WARNING: useHartmannTemp and isoTherm6500 both specified!"
+      if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm6500 both specified!"
       stop
    end if
    if (useHartmannTemp) &
@@ -1346,33 +1353,36 @@ endif
 
 ! amin and amax are left as microns here
 
-     call getString("graintype1", grainType(1), cLine, nLines, &
-          "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
-    call getReal("amin1", aMin(1), cLine, nLines, &
-         "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .false.)
-    call getReal("amax1", aMax(1), cLine, nLines, &
-         "Max grain size (microns): ","(a,f8.5,1x,a)", 0.25, ok, .false.)
-    call getReal("qdist1", qdist(1), cLine, nLines, &
-         "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .false. )
-    call getReal("a01", a0(1), cLine, nLines, &
-         "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .false.)
-    call getReal("pdist1", pdist(1), cLine, nLines, &
-         "Exponet for exponetial cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
+    do i = 1, nDustType
+       write(grainTypeLabel, '(a,i1.1)') "graintype",i
+       write(aMinLabel, '(a,i1.1)') "amin",i
+       write(aMaxLabel, '(a,i1.1)') "amax",i
+       write(qDistLabel, '(a,i1.1)') "qdist",i
+       write(pDistLabel, '(a,i1.1)') "pdist",i
+       write(a0Label, '(a,i1.1)') "a0",i
+       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
+       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
+       if (writeoutput) write(*,*)
+       call getString(grainTypeLabel, grainType(i), cLine, nLines, &
+            "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
-    if (nDustType > 1) then
-     call getString("graintype2", grainType(2), cLine, nLines, &
-          "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
-       call getReal("amin2", aMin(2), cLine, nLines, &
+       call getReal(aminLabel, aMin(i), cLine, nLines, &
             "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
-       call getReal("amax2", aMax(2), cLine, nLines, &
+
+       call getReal(amaxLabel, aMax(i), cLine, nLines, &
             "Max grain size (microns): ","(a,f8.5,1x,a)", 0.25, ok, .true.)
-       call getReal("qdist2", qdist(2), cLine, nLines, &
+
+       call getReal(qDistLabel, qdist(i), cLine, nLines, &
             "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .true. )
-       call getReal("a02", a0(2), cLine, nLines, &
+
+       call getReal(a0Label, a0(i), cLine, nLines, &
             "Scale length of grain size (microns): ","(a,f8.5,1x,a)", 1.0e20, ok, .false.)
-       call getReal("pdist2", pdist(2), cLine, nLines, &
+
+
+       call getReal(pdistLabel, pdist(i), cLine, nLines, &
          "Exponet for exponetial cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
-    endif
+       if (writeoutput) write(*,*)
+    enddo
 
  endif
 
@@ -1439,8 +1449,8 @@ endif
       "Max no of scatters: ","(a,i4,1x,a)", 1, ok, .false.)
 
  if (maxscat == 1) then
-    write(*,*) "maxscat: USEAGE CHANGED, now limits maximum no of scatterings"
-    write(*,*) "maxscat: You don't want to set this to 1."
+    if (writeoutput) write(*,*) "maxscat: USEAGE CHANGED, now limits maximum no of scatterings"
+    if (writeoutput) write(*,*) "maxscat: You don't want to set this to 1."
     stop
  endif
 
@@ -1451,7 +1461,7 @@ endif
   "Output spectrum filename: ","(a,a,1x,a)","spectrum.dat", ok, .true.)
  call replaceDots(outFile, done)
  if (done) then
-    write(*,'(a,a)') "!!! Filename now: ",trim(outFile)
+    if (writeoutput) write(*,'(a,a)') "!!! Filename now: ",trim(outFile)
  endif
  
 
@@ -1802,7 +1812,7 @@ endif
 
 
  
- write(*,*) " "
+ if (writeoutput) write(*,*) " "
 
 666 continue
 end subroutine inputs
@@ -1818,7 +1828,7 @@ subroutine findReal(name, value, cLine, nLines, ok)
 
  ok = .false.
  do i = 1, nLines
-  j = len(name)
+  j = len_trim(name)
   if (trim(cLine(i)(1:j)) .eq. name) then
        ok = .true.
        read(cLine(i)(j+1:80),*) value
@@ -1837,7 +1847,7 @@ subroutine findReal(name, value, cLine, nLines, ok)
 
  ok = .false.
  do i = 1, nLines
-  j = len(name)
+  j = len_trim(name)
   if (trim(cLine(i)(1:j)) .eq. name) then
        ok = .true.
        read(cLine(i)(j+1:80),*) value
@@ -1856,7 +1866,7 @@ subroutine findInteger(name, value, cLine, nLines, ok)
 
  ok = .false.
  do i = 1, nLines
-  j = len(name)
+  j = len_trim(name)
   if (trim(cLine(i)(1:j)) .eq. name) then
        ok = .true.
        read(cLine(i)(j+1:),*) value
@@ -1875,7 +1885,7 @@ subroutine findLogical(name, value, cLine, nLines, ok)
 
  ok = .false.
  do i = 1, nLines
-  j = len(name)
+  j = len_trim(name)
   if (trim(cLine(i)(1:j)) .eq. name) then
        ok = .true.
        read(cLine(i)(j+1:),*) value
@@ -1894,7 +1904,7 @@ subroutine findString(name, value, cLine, nLines, ok)
 
  ok = .false.
  do i = 1, nLines
-  j = len(name)
+  j = len_trim(name)
   if (trim(cLine(i)(1:j)) .eq. name) then
        ok = .true.
        read(cLine(i)(j+1:),*) value
@@ -1919,14 +1929,14 @@ subroutine findString(name, value, cLine, nLines, ok)
   call findInteger(name, ival, cLine, nLines, ok)
   if (.not. ok) then
     if (musthave) then
-       write(*,'(a,a)') name, " must be defined"
+       if (writeoutput) write(*,'(a,a)') name, " must be defined"
        stop
     endif
     ival = idef
     default = " (default)"
   endif
   if (musthave.or.(ival /= idef)) then
-     write(*,format) trim(message),ival,default
+     if (writeoutput) write(*,format) trim(message),ival,default
   endif
  end subroutine getInteger
 
@@ -1946,14 +1956,14 @@ subroutine findString(name, value, cLine, nLines, ok)
   call findReal(name, rval, cLine, nLines, ok)
   if (.not. ok) then
     if (musthave) then
-       write(*,'(a,a)') name, " must be defined"
+       if (writeoutput) write(*,'(a,a)') name, " must be defined"
        stop
     endif
     rval = rdef
     default = " (default)"
  endif
  if (musthave) then
-    write(*,format) trim(message),rval,default
+    if (writeoutput) write(*,format) trim(message),rval,default
  endif
  end subroutine getReal
  
@@ -1974,14 +1984,14 @@ subroutine findString(name, value, cLine, nLines, ok)
   call findDouble(name, dval, cLine, nLines, ok)
   if (.not. ok) then
     if (musthave) then
-       write(*,'(a,a)') name, " must be defined"
+       if (writeoutput) write(*,'(a,a)') name, " must be defined"
        stop
     endif
     dval = ddef
     default = " (default)"
  endif
  if (musthave) then
-    write(*,format) trim(message),dval,default
+    if (writeoutput) write(*,format) trim(message),dval,default
  endif
  end subroutine getDouble
 
@@ -2002,13 +2012,13 @@ subroutine findString(name, value, cLine, nLines, ok)
   call findString(name, rval, cLine, nLines, ok)
   if (.not. ok) then
     if (musthave) then
-       write(*,'(a,a)') name, " must be defined"
+       if (writeoutput)  write(*,'(a,a)') name, " must be defined"
        stop
     endif
     rval = rdef
     default = " (default)"
   endif
-  write(*,format) trim(message),trim(rval),default
+  if (writeoutput)  write(*,format) trim(message),trim(rval),default
  end subroutine getString
 
 
@@ -2031,7 +2041,7 @@ subroutine findString(name, value, cLine, nLines, ok)
   call findLogical(name, rval, cLine, nLines, ok)
   if (.not. ok) then
     if (musthave) then
-       write(*,'(a,a)') name, " must be defined"
+       if (writeoutput) write(*,'(a,a)') name, " must be defined"
        stop
     endif
     rval = rdef
@@ -2046,7 +2056,7 @@ subroutine findString(name, value, cLine, nLines, ok)
 
 
   if (musthave .or. .not.thisIsDefault) then
-     write(*,'(a,a,a)') trim(message),trueOrFalse,default
+     if (writeoutput)  write(*,'(a,a,a)') trim(message),trueOrFalse,default
   endif
  end subroutine getLogical
 

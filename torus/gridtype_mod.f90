@@ -38,6 +38,7 @@ module gridtype_mod
      real, pointer :: oneKappaAbs(:,:) => null()
      real, pointer :: oneKappaSca(:,:) => null()
      real :: kappaTest
+     integer :: itestlam
      type(VECTOR) :: diskNormal
      real :: dipoleOffset
      character(len=20) :: geometry               ! type of geometry

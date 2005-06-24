@@ -293,7 +293,7 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  hyd_col_coeff.f90 rotation_variables.f90 function_variables.f90 \
  flow_speed_variables.f90 clump_mod.f90 parallel_mod.f90 \
  discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
- jet_class.f90 cmfgen_class.f90 
+ jet_class.f90 cmfgen_class.f90 messages_mod.f90
 
 
 F77SOURCE= image_f77.f mieDistCrossSection.f palette.f\
@@ -367,7 +367,7 @@ mpif.h :
 
 # Specific rules to make object files
 lucy_mod.o : lucy_mod.f90.raw amr_mod.o constants_mod.o grid_mod.o phasematrix_mod.o diffusion_mod.o \
-             source_mod.o spectrum_mod.o timing.o vector_mod.o parallel_mod.o dust_mod.o
+             source_mod.o spectrum_mod.o timing.o vector_mod.o parallel_mod.o dust_mod.o messages_mod.o
         ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' lucy_mod.f90.raw   > lucy_mod.f90
         else
@@ -376,7 +376,7 @@ lucy_mod.o : lucy_mod.f90.raw amr_mod.o constants_mod.o grid_mod.o phasematrix_m
 	$(F90) -c lucy_mod.f90
 
 disc_hydro_mod.o : disc_hydro_mod.f90.raw lucy_mod.o amr_mod.o constants_mod.o grid_mod.o phasematrix_mod.o \
-             source_mod.o spectrum_mod.o timing.o vector_mod.o
+             source_mod.o spectrum_mod.o timing.o vector_mod.o messages_mod.o
         ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
         else
@@ -386,7 +386,7 @@ disc_hydro_mod.o : disc_hydro_mod.f90.raw lucy_mod.o amr_mod.o constants_mod.o g
 
 stateq_mod.o: cmfgen_class.o constants_mod.o grid_mod.o gridtype_mod.o \
 	hyd_col_coeff.o input_variables.o integratePath.o jets_mod.o \
-	math_mod.o opacity_lte_mod.o parallel_mod.o utils_mod.o vector_mod.o 
+	math_mod.o opacity_lte_mod.o parallel_mod.o utils_mod.o vector_mod.o  messages_mod.o
         ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' stateq_mod.f90.raw > stateq_mod.f90
         else
@@ -413,7 +413,7 @@ torusMain.o: TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
 	lucy_mod.o math_mod.o phasematrix_mod.o photon_mod.o puls_mod.o \
 	source_mod.o spectrum_mod.o sph_data_class.o stateq_mod.o \
 	surface_mod.o timing.o unix_mod.o utils_mod.o vector_mod.o \
-	wr104_mod.o 
+	wr104_mod.o  messages_mod.o
 
 
         ifeq ($(MK_MPI_SRC), yes)
