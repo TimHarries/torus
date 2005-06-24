@@ -16,6 +16,7 @@ module math_mod
   use constants_mod       ! physical constants
   use utils_mod
   use kind_mod
+  use messages_mod
 
   implicit none
 

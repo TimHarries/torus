@@ -213,6 +213,25 @@ ifeq ($(SYSTEM), miracle)
    KNOWN_SYSTEM=yes
 endif
 
+ifeq ($(SYSTEM), ukaff1a)
+   F95COMP=mpif90 -qsuffix=f=f90
+   F77COMP=mpif77
+#   FASTFLAG=-O -OPT:Olimit=0 -mp -64
+#      FASTFLAG=-OPT:Olimit=0 -O -mp
+   DEBUGFLAG=-g
+   MATHTRAP= 
+   UNIXMOD=unix_mod.f90.miracle
+   KINDMOD=kind_mod.f90.miracle
+   EXE=torus.ukaff1a
+   F77FLAG= 
+   IMAGEF77=image_f77.f.miracle
+   SPECF77=spec_f77.f.miracle
+   F2CLIB= 
+   STARLIBS=-L/home/th/pgplot -lpgplot
+   MK_MPI_SRC = yes
+   KNOWN_SYSTEM=yes
+endif
+
 ifeq ($(SYSTEM), darwin)
     F95COMP=xlf95 -qsuffix=f=f90
     F77COMP=f77
