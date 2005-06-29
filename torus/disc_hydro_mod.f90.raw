@@ -412,7 +412,7 @@ contains
 !$MPI     if(my_rank == 0) &
           call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_before.ps/vcps", .true., .false., boxfac=0.005)
 
-          do j = ilamsmooth, ilamSmooth !grid%nlambda
+          do j = ilamsmooth, grid%nlambda
              do
                 gridConverged = .true.
                 call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j, inheritProps=.true.)

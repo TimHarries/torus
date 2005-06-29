@@ -494,7 +494,6 @@ contains
 
 
     call locate(xAxis, nx, xStart, iBoundary)
-    iBoundary = iBoundary + 1
 
     nBoundary = 0
 
