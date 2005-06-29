@@ -3903,9 +3903,9 @@ CONTAINS
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
       if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.3)) split = .true.
-      if (r < 10.*grid%rInner) then
-         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.1)) split = .true.
-      endif
+!      if (r < 10.*grid%rInner) then
+!         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.1)) split = .true.
+!      endif
 
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -6521,7 +6521,7 @@ CONTAINS
         ! don't split outer edge of disc
 
         if (grid%geometry == "shakara") then
-           if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%rinner*0.9) exit
+           if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%router*0.9) exit
         endif
            
 
@@ -6618,9 +6618,10 @@ CONTAINS
 
         endif
 
-        call returnKappa(grid, thisOctal, thissubcell, ilambda=ilam,  kappaSca=kappaSca, kappaAbs=kappaAbs)
+        call returnKappa(grid, thisOctal, thissubcell, ilambda=ilam,&
+             kappaSca=kappaSca, kappaAbs=kappaAbs)
 
-        thisTau = (kappaAbs + kappaSca) * thisOctal%subcellSize * thisOctal%rho(thisSubcell)
+        thisTau = (kappaAbs + kappaSca) * thisOctal%subcellSize !* thisOctal%rho(thisSubcell)
 
         DO i = 1, nLocator, 1
           IF ( inOctal(grid%octreeRoot,locator(i)) ) THEN
@@ -6632,8 +6633,9 @@ CONTAINS
             ! (and we'll hit cell boundaries, which is not good).
             IF ( neighbour%subcellSize >= thisOctal%subcellSize) THEN
 
-               call returnKappa(grid, neighbour, subcell, ilambda=ilam,  kappaSca=kappaSca, kappaAbs=kappaAbs)
-               thatTau = (kappaSca + kappaAbs) * neighbour%subcellSize * neighbour%rho(subcell)
+               call returnKappa(grid, neighbour, subcell, &
+                    ilambda=ilam,  kappaSca=kappaSca, kappaAbs=kappaAbs)
+               thatTau = (kappaSca + kappaAbs) * neighbour%subcellSize! * neighbour%rho(subcell)
 
               ! Original critera was to split if:
               ! ((o1 - o2)/(o1+o2) > 0.5 .and. (o1 - o2) > 1)
@@ -6834,10 +6836,10 @@ CONTAINS
           end do
        else
           r = modulus(subcellcentre(thisOctal, subcell)) / rInner
-          thisOctal%biasCont3D(subcell) =  1.d0
-!          if ((r > 1.).and.(r < 1.05)) then
-!             thisOctal%biasCont3D(subcell) =  10.d0
-!          endif
+          thisOctal%biasCont3D(subcell) =  sqrt(r)
+          if ((r > 1.).and.(r < 1.05)) then
+             thisOctal%biasCont3D(subcell) =  thisOctal%biasCont3D(subcell) * 10.d0
+          endif
 !          if (thisOctal%diffusionApprox(subcell)) then
 !             thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) * 1.e-2
 !          endif
@@ -7652,6 +7654,11 @@ CONTAINS
 
 
     if (PRESENT(kappaSca)) then
+       if (.not.PRESENT(lambda)) then
+          tlambda = grid%lamArray(iLambda)
+       else
+          tlambda = lambda
+       endif
        IF (.NOT.PRESENT(lambda)) THEN
           kappaSca = 0
           do i = 1, nDustType
@@ -7678,7 +7685,7 @@ CONTAINS
        IF (.NOT.PRESENT(lambda)) THEN
             kappaAbs = 0
           do i = 1, nDustType
-             kappaAbs = thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
+             kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
           enddo
        else
           kappaAbs = 0

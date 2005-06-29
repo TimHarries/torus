@@ -341,7 +341,7 @@ contains
 
 !$MPI    if(my_rank == 0) then
     write(plotfile,'(a,i3.3,a)') "rho",0,".gif/gif"
-    call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false.)
+    call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false.,boxfac=0.01)
 !$MPI    endif
 
     do while(.not.converged)
@@ -389,7 +389,7 @@ contains
 
 !$MPI    if(my_rank == 0) then
        write(plotfile,'(a,i3.3,a)') "rho",niter,".gif/gif"
-       call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false.)
+       call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false., boxfac=0.01)
        write(plotfile,'(a,i3.3,a)') "temp",niter,".gif/gif"
        call plot_AMR_values(grid, "temperature", "x-z", 0.0, plotfile, .true., .false.)
 !       write(plotfile,'(a,i3.3,a)') "tau",niter,".gif/gif"
@@ -412,7 +412,7 @@ contains
 !$MPI     if(my_rank == 0) &
           call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_before.ps/vcps", .true., .false., boxfac=0.005)
 
-          do j = ilamsmooth,grid%nlambda
+          do j = ilamsmooth, ilamSmooth !grid%nlambda
              do
                 gridConverged = .true.
                 call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j, inheritProps=.true.)

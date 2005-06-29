@@ -453,7 +453,7 @@ contains
     integer :: nBoundary
     real :: xStart
     integer :: iBoundary, boundarySubcell
-    real :: diffDepth = 10
+    real :: diffDepth = 20
     real(double) :: zApprox, eps
     real(double) :: tot
     real(double) :: zSize
@@ -479,6 +479,7 @@ contains
             foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
        rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + &
             kappa * thisOctal%rho(subcell) *  subcellsize(j)*1.e10
+!       write(*,*) xAxis(j),rosselandOpticalDepth(j)
        if (rosselandOpticalDepth(j) > diffDepth) then
           xStart = xAxis(j)
           exit
