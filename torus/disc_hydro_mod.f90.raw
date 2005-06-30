@@ -402,8 +402,8 @@ contains
 
        call locate(grid%lamArray, grid%nLambda,lambdasmooth,ilamsmooth)
 
-!       if (.false.) then
-       if (doSmoothGridTau) then
+       if (.false.) then
+!       if (doSmoothGridTau) then
 
 !       write(*,*) "Tau smoothing switched off"
 !	if (.true.) then
