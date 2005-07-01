@@ -112,8 +112,8 @@ CONTAINS
     CASE ("shakara","aksco")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
-!    CASE("ppdisk")
-!       CALL calcPPDiskDensity(thisOctal,subcell,grid)
+    CASE("ppdisk")
+       CALL calcPPDiskDensity(thisOctal,subcell,grid)
 
     CASE("melvin")
        CALL assign_melvin(thisOctal,subcell,grid)
@@ -658,6 +658,10 @@ CONTAINS
       CASE ("cluster","wr104")
         call assign_grid_values(thisOctal,subcell, grid)
         gridConverged = .TRUE.
+
+      CASE ("ppdisk")
+        gridConverged = .TRUE.
+
 
       CASE DEFAULT
         WRITE(*,*) "! Unrecognised grid geometry: ",trim(grid%geometry)
@@ -3571,7 +3575,7 @@ CONTAINS
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell  
 
-    use input_variables, only: height, betadisc
+    use input_variables, only: height, betadisc, rheight, flaringpower
     IMPLICIT NONE
     TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
@@ -3911,6 +3915,7 @@ CONTAINS
 
 
 
+
 !      if ((r > grid%rInner).and.(r < grid%rInner * 1.01)) then
 !         if ((abs(cellcentre%z)/hr < 5.)) then
 !            if (cellsize > 1.e-3 * grid%rInner) split = .true.
@@ -3920,6 +3925,20 @@ CONTAINS
 
 
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
+
+
+   case("ppdisk")
+      split = .false.
+      cellSize = thisOctal%subcellSize
+      cellCentre = subcellCentre(thisOctal,subCell)
+      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+! The 100 is because Tim's code uses the scale height at 100AU.
+!      hr = height * (r / (100.d0*autocm/1.d10))**1.25
+      hr = (auTocm * height * rHeight * (r / (rHeight*autocm/1.e10))**flaringPower)/1.e10
+      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.5)) split = .true.
+      if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+      if ((r+cellsize/2.d0) < grid%rinner) split = .false.
+
 
 
    case("clumpydisc")
@@ -5653,6 +5672,31 @@ CONTAINS
     thisOctal%etaLine = 1.e-30
   end subroutine shakaraDisk
 
+  ! chris (26/05/04)
+  subroutine calcPPDiskDensity(thisOctal, subcell, grid)
+
+    use input_variables
+    type(octal), intent(inout) :: thisOctal
+    integer, intent(in) :: subcell
+    type(gridtype), intent(in) :: grid
+
+    type(octalVector) :: rVec
+
+    rVec = subcellCentre(thisOctal,subcell)
+
+    thisOctal%rho(subcell) = density(rVec,grid)
+    thisOctal%temperature(subcell) = 10.
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 0.
+    thisOctal%chiLine = 0.
+
+  end subroutine calcPPDiskDensity
+
+
+
   subroutine assign_clumpydisc(thisOctal,subcell,grid)
 
     use input_variables
@@ -6836,7 +6880,7 @@ CONTAINS
           end do
        else
           r = modulus(subcellcentre(thisOctal, subcell)) / rInner
-          thisOctal%biasCont3D(subcell) =  sqrt(r)
+          thisOctal%biasCont3D(subcell) =  r
           if ((r > 1.).and.(r < 1.05)) then
              thisOctal%biasCont3D(subcell) =  thisOctal%biasCont3D(subcell) * 10.d0
           endif
@@ -7072,6 +7116,35 @@ CONTAINS
     enddo
 
   end subroutine set_bias_cmfgen
+
+
+  recursive subroutine setBiasPpdisk(thisOctal, grid)
+  use input_variables, only: height
+  type(gridtype) :: grid
+  type(OCTALVECTOR) :: rVec
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: r, hr
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setBiasPpdisk(child, grid)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellcentre(thisOctal, subcell)
+!          r = modulus(rVec)
+!          hr = height * (r / (100.*autocm/1.e10))**1.25
+          thisOctal%biasCont3D(subcell) = rVec%x**2.
+       endif
+    enddo
+  end subroutine setBiasPpdisk
 
 
   recursive subroutine massInAnn(thisOctal, r1, r2, mass)

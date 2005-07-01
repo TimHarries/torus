@@ -30,7 +30,7 @@ contains
   subroutine solveHydro(temperature, zAxis, subcellsize, rho, nz, &
        radius, mStar, sigma0, rDisk, converged, drho)
 
-    use input_variables, only: alphaDisc, betaDisc, rinner
+    use input_variables, only: alphaDisc, betaDisc, rinner, geometry
     integer, intent(in) :: nz ! number of vertical grid points
     real(single),intent(in) :: subcellSize(1:nz)  ! size of this subcell
     real(single),intent(in) :: temperature(1:nz)  ! temperature
@@ -40,6 +40,7 @@ contains
     real :: radius, radiusAU ! radius at disc midplane
     real :: sigma0                                   ! surface density at rinner
     integer :: i
+    real ::  smoothscalelength
     logical :: converged
     real :: mu ! mean molecular weight
     real, allocatable :: oldRho(:)
@@ -54,6 +55,7 @@ contains
 
     mu = 2.3 ! mean mole mass assuming pure H_2/He
     radiusAU = (radius * 1.e10) / autocm
+    smoothScaleLength = height * rHeight * (rSmooth/rHeight)**flaringPower
 
 
     allocate(oldRho(1:nz), lnrho(1:nz),doubleRho(1:nz))
@@ -90,6 +92,13 @@ contains
 
 
     scalefac = 0.5 * (sigma0 * fac * (radius*1.e10/autoCm)**(betaDisc-alphaDisc)) / sigma
+
+    if (geometry == "ppdisk") then
+       scalefac = fractgap(dble(radiusAU)) / (1. + 81.d0**(dble(rSmooth-radiusAU)/smoothScaleLength)) &
+            * (rHeight/radiusAU)**sigmaPower / sigma
+       scalefac = scalefac * 0.5 * rho0 * Msol / autocm**2
+    endif
+
 
 !    scalefac = fractgap(dble(radiusAU)) / (sqrt(radiusAU) * (1 + exp(-100.*(radiusAU-rSmooth))) * sigma)
 !    scalefac = scalefac * 0.5 * rho0 * Msol / autocm**2

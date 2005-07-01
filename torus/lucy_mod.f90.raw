@@ -520,7 +520,9 @@ contains
             "dusttype.ps/vcps", .false., .false., &
            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
 
-       call dullemondplot(grid, rinner, router, 0.4)
+       if (grid%geometry == "shakara") then
+          call dullemondplot(grid, rinner, router, 0.4)
+       endif
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_zoom.ps/vcps", .true., .false., &

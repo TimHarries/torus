@@ -614,6 +614,12 @@ contains
     case("spiralwind")
        grid%rCore = rCore / 1.e10
 
+    case("ppdisk")
+       grid%lineEmission = .false.
+       grid%rInner = rInner
+       grid%rOuter = rOuter
+
+
     case DEFAULT
        print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'
        print *, '            for use with an adaptive grid.'

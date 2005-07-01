@@ -1656,6 +1656,84 @@ endif
 
 endif
 
+if (geometry .eq. "ppdisk") then
+   call getReal("rsmooth", rSmooth, cLine, nLines, &
+       "Inner Smoothing Radius (AU): ","(a,f5.1,a)", 0.4, ok, .true.)
+
+   call getReal("height", height, cLine, nLines, &
+       "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+   call getReal("rheight", rHeight, cLine, nLines, &
+       "Scale height measured at (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+   call getReal("rgap", rGap, cLine, nLines, &
+       "Gap is at (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+   call getReal("mplanet", mPlanet, cLine, nLines, &
+       "Planet mass (Msol): ","(a,1pe8.5,a)",1.e-3,ok,.true.)
+
+   call getReal("gapalpha", gapViscAlpha, cLine, nLines, &
+       "alpha-parameter for gap viscosity: ","(a,1pe8.5,a)",1.e-4,ok,.true.)
+
+   call getReal("rho", rho0, cLine, nLines, &
+        "Density scaling factor: ","(a,f8.5,a)", 1., ok, .true.)
+
+   call getReal("flaringpower", flaringPower, cLine, nLines, &
+        "Disc flaring power: ","(a,f8.5,a)", 1.25, ok, .true.)
+
+   call getReal("sigmapower", sigmaPower, cLine, nLines, &
+        "Disc surface density power: ","(a,f8.5,a)", 0.5, ok, .true.)
+
+   call getReal("rinner", rInner, cLine, nLines, &
+       "Inner Radius (10^10 cm): ","(a,f8.2,a)", 1.5E2, ok, .true.)
+
+   call getReal("router", rOuter, cLine, nLines, &
+       "Outer Radius (10^10 cm): ","(a,f8.2,a)", 6.0E3, ok, .true.)
+
+   if (solveVerticalHydro) then
+      call getReal("mdisc", mDisc, cLine, nLines, &
+          "Disc mass (solar masses): ","(a,1pe8.2,a)", 1.e-4, ok, .true.)
+
+      call getReal("mcore", mCore, cLine, nLines, &
+          "Core mass (solar masses): ","(a,f5.1,a)", 0.5, ok, .true.)
+
+      mCore = mCore * mSol
+      mDisc = mDisc * mSol
+   end if
+
+   call getReal("teff", Teff, cLine, nLines, &
+        "Effective temp (K): ","(a,f7.0,a)", 5780., ok, .true.)
+
+   call getReal("mbol", Mbol, cLine, nLines, &
+        "Bolometric magnitude (mags): ","(a,f7.3,a)", 4.75, ok, .true.)
+
+   call getReal("rcore", rcore, cLine, nLines, &
+        "Core radius (solar radii): ","(a,f5.1,a)", 0., ok, .false.)
+
+   rCore = rCore * rSol
+
+! This is not ideal having to calculate the stellar radius here as well as in
+! torusMain - if the assumed bolometric magnitude of the sun changes, for
+! example, we must change code in both places
+   if (rCore .eq. 0.) then
+      rCore = sqrt((10.**((4.64-Mbol)/2.5)*lSol)/(4.*pi*stefanBoltz*Teff**4))
+   end if
+
+   if (rSmooth .eq. 0.) then
+!       source(1)%luminosity = 10.**((4.64-Mbol)/2.5)*lSol
+!       source(1)%radius = sqrt(source(1)%luminosity/(4.*pi*stefanBoltz*Teff**4))/1.d10
+!     rSmooth = 10 stellar radii if nothing else is specified
+!      rSmooth = 10.*sqrt((10.**((4.64-Mbol)/2.5)*lSol)/(4.*pi*stefanBoltz*Teff**4))/auToCm
+      rSmooth = 10.*rCore/auToCm
+   end if
+
+   if (rInner .eq. 0.) then
+      rInner = 0.5 * rSmooth * auToCm / 1.e10
+   end if
+endif
+
+
+
  if (geometry .eq. "clumpydisc") then
 
     call getInteger("nclumps", nClumps, cLine, nLines,"Number of clumps: ", &

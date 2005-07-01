@@ -75,6 +75,9 @@ contains
     case("shakara","aksco")
        out = shakaraSunyaevDisc(r_vec, grid)
 
+    case("ppdisk")
+       out = ppdiskDensity(r_vec, grid)
+
     case("clumpydisc")
        out = clumpydisc(r_vec, grid)
     case("luc_cir3d")
@@ -888,6 +891,122 @@ contains
     if (modulus(rVec) < grid%rInner) rhoOut = 1.e-33
 
   end function clumpyDisc
+
+  ! chris (26/05/04)
+  ! This returns the *dust* density (not the gas density) and assumes a fixed
+  ! gas:dust ratio.
+  ! chris (19/04/05)
+  ! Returns real density now (and has for some time).
+  function ppdiskDensity(point, grid)
+    use input_variables
+    use constants_mod
+    implicit none
+    REAL(double) :: ppdiskDensity
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+
+    REAL(double) :: R, rInnerAU, rOuterAU
+    REAL(double) :: scaleHeight, smoothScaleLength
+
+    R = sqrt((point%x)**2 + (point%y)**2) * (1.d10/auToCm)
+    rInnerAU = grid%rInner * (1.d10/auToCm)
+    rOuterAU = grid%rOuter * (1.d10/auToCm)
+
+    if ((R .lt. rInnerAU) .or. (R .gt. rOuterAU)) then
+       ppdiskDensity = 1.d-30
+    else
+!!       h = 0.15
+!!       R0 = 1. (AU) 1.5e3 (10^10 cm)
+!!       flaringPower = 1.5
+!!       rho0 = 1.d-4 (Msol/AU**3) 5.941284951d-11 (g/cm**3)
+!!       sigmaPower = 0.5
+!!
+
+!!       scaleHeight = h * (R/R0)**flaringPower
+!       scaleHeight = 0.15 * (R/1.d0)**1.5
+       scaleHeight = height * rHeight * (R/rHeight)**flaringPower
+
+!!       asdf = 1.d-4 or gap
+!!       ppdiskDensity = asdf * rho0/sqrt(pi)/scaleHeight * exp(-(R*z/scaleHeight)**2)/R**(sigmaPower)
+! rho0 is what it's supposed to be now. May include some test reduction
+! in density.
+! rho0 is actually the surface density at R0 (or rHeight)
+       ppdiskDensity = rho0/sqrt(2.*pi)/scaleHeight &
+                       * exp(-0.5*(point%z*(1.d10/auToCm)/scaleHeight)**2)*(rHeight/R)**sigmaPower
+
+! This test reduction is absorbed into rho0.
+!       ! Reduce disc density by some amount (for testing)
+!       ! The parameter 'rho' is a scaling factor here
+!       ppdiskDensity = rho0 * ppdiskDensity
+!!       ppdiskDensity = 1.d-2 * ppdiskDensity
+
+       ! Add a gap into the disc
+       ppdiskDensity = ppdiskDensity * fractgap(R)
+
+       ! Smooth the inner edge of the disc (at 0.4AU)
+!       ppdiskDensity = ppdiskDensity / (1 + exp(-100.*(R-0.4)))
+       smoothScaleLength = height * rHeight * (rSmooth/rHeight)**flaringPower
+!       ppdiskDensity = ppdiskDensity / (1. + exp(-(4.38/smoothScaleLength)*dble(R-rSmooth)))
+       ppdiskDensity = ppdiskDensity / (1. + 81.d0**(dble(rSmooth-R)/smoothScaleLength))
+
+       ! Convert the density to torus units (Msol/AU^3 --> g/cm^3)
+       ppdiskDensity = ppdiskDensity * 5.941284951d-7
+
+! We work in real mass now, rather than dust mass
+!       ! We assume the gas:dust ratio is 100:1
+!       ppdiskDensity = 1.d-2 * ppdiskDensity
+    end if
+  end function ppdiskDensity
+
+  function fractgap(R)
+      use constants_mod
+      use input_variables, only : rGap, height, mPlanet, gapViscAlpha
+      implicit none
+      REAL(double) :: x_nu, xmu, visc, const, xx, arg, fractgap, gapfloor, x, gapalph
+      REAL(double), INTENT(IN) :: R
+
+!====================== Matt's gap ========================
+!    x_nu = 2 *(MAX(3e-6,xmu)/3.0)**(1.0/3.0)
+!    xmu = planetmass
+!    visc = h_over_r**2 * gapalph
+!    gapalph = 0.004
+!
+!    function  fractgap(x,x_nu,xmu,visc,gapfloor)
+!      real fractgap
+!      if (gapfloor .lt. 0.) then
+!        fractgap=1.0
+!        return
+!      else
+!        const=-xmu/(3d0*3.1415926535d0*visc)
+!        xx=abs(x/x_nu)
+!        arg=const*(1d0+xx*(3d0+4.5d0*xx+4.5d0*xx*xx))
+!        fractgap=exp(arg*exp(-3d0*xx)) + gapfloor
+!      endif
+!      return
+!    end
+!==========================================================
+      gapfloor = 1.d-30
+!      gapfloor = 1.d-4
+!      xmu = 1.d-3
+      xmu = mPlanet
+!      gapalph = 0.0001
+      gapalph = gapViscAlpha
+      x_nu = 2 *(MAX(3d-6,xmu)/3.0)**(1.0/3.0)
+!      visc = 0.15**2 * gapalph
+      visc = height**2 * gapalph
+
+!      x = R - 1.d0
+      x = R - rGap
+
+      if (gapfloor .lt. 0.) then
+        fractgap=1.0
+      else
+        const=-xmu/(3.d0*pi*visc)
+        xx=abs(x/x_nu)
+        arg=const*(1d0+xx*(3d0+4.5d0*xx+4.5d0*xx*xx))
+        fractgap=exp(arg*exp(-3d0*xx)) + gapfloor
+      endif
+  end function fractgap
 
 
 

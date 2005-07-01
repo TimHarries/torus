@@ -186,6 +186,7 @@ module input_variables
   real :: rMin, rMaj
   real :: shellFrac
   real :: Teff
+  real :: Mbol
   real :: radius, kfac, xfac
   real :: contrast
   real :: rCore, rInner
@@ -206,6 +207,11 @@ module input_variables
   real :: maxHartTemp        ! maximum temperature of hartmann distribution                             
   logical :: isoTherm        ! use isothermal T Tauri accretion stream 
   real    :: isoThermTemp    ! If isoTherm is true, use this temperature in [K]
+
+  ! pp disk stuff
+  real :: rSmooth, rHeight, sigmaPower
+  real :: flaringPower, gapViscAlpha
+  real :: rGap, mPlanet
 
 
   ! single dust blob parameters (WR137 type model)

@@ -1908,6 +1908,23 @@ program torus
        call readSpectrum(source(1)%spectrum, contfluxfile)
        call normalizedSpectrum(source(1)%spectrum)
 
+    ! chris (26/05/04)
+    case ("ppdisk")
+       nSource = 1
+       allocate(source(1:nSource))
+!       source(1)%teff = 5780.
+       source(1)%teff = Teff
+!       source(1)%luminosity = 3.83d+32 
+!       source(1)%luminosity = 10.**((4.75-Mbol)/2.5) * lSol
+! Baraffe, et al. use 4.64 for solar bolometric magnitude
+       source(1)%luminosity = 10.**((4.64-Mbol)/2.5) * lSol
+!       source(1)%radius = 6.96d+0
+       source(1)%radius = sqrt(source(1)%luminosity/(4.*pi*stefanBoltz*Teff**4))/1.d10
+       source(1)%position = VECTOR(0.,0.,0.)
+
+       call fillSpectrumBB(source(1)%spectrum, dble(teff), dble(lamStart), dble(lamEnd), nLambda)
+       call normalizedSpectrum(source(1)%spectrum)
+
 
     case default
        ! Allocating the source array with size =0 to avoid, non-allocated array passed problem
@@ -1971,6 +1988,11 @@ program torus
 
         if (writeoutput) write(*,*) "Sigma0: ",sigma0
 	endif
+        if (geometry == "ppdisk") then
+           sigma0 = totalMass / ((amrgridsize**2 - twoPi*0.4)*1.e10*1.*autocm) ! defined at 1AU
+           if (writeoutput) write(*,*) "Sigma0: ",sigma0
+        endif
+
      endif
 
 
@@ -2083,6 +2105,8 @@ program torus
         call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
      elseif (grid%geometry == "shakara") then
         call set_bias_shakara(grid%octreeRoot, grid)
+     elseif (grid%geometry == "ppdisk") then
+        call setBiasPpdisk(grid%octreeRoot,grid)
      end if
   end if
 
