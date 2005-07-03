@@ -29,7 +29,8 @@ subroutine inputs()
   character(len=10) :: default
 
   character(len=20) :: grainTypeLabel, aminLabel, aMaxLabel, a0label
-  character(len=20) :: qdistlabel, pdistlabel
+  character(len=20) :: qdistlabel, pdistlabel, grainFracLabel
+  real :: grainFracTotal
   logical :: done
 
   ! character vars for unix environ
@@ -957,6 +958,10 @@ endif
     oneKappa = .true.
     nDustType = 1
     call getInteger("ndusttype", nDustType, cLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
+    if (nDustType .gt. maxDustTypes) then
+       if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
+       stop
+    end if
 
    call getLogical("twod", twoD, cLine, nLines, &
           "Do lucy algorithm under assumption of axisymmetry: ", &
@@ -1353,8 +1358,10 @@ endif
 
 ! amin and amax are left as microns here
 
+    grainFracTotal = 0.
     do i = 1, nDustType
        write(grainTypeLabel, '(a,i1.1)') "graintype",i
+       write(grainFracLabel, '(a,i1.1)') "grainfrac",i
        write(aMinLabel, '(a,i1.1)') "amin",i
        write(aMaxLabel, '(a,i1.1)') "amax",i
        write(qDistLabel, '(a,i1.1)') "qdist",i
@@ -1365,6 +1372,10 @@ endif
        if (writeoutput) write(*,*)
        call getString(grainTypeLabel, grainType(i), cLine, nLines, &
             "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
+
+       call getReal(grainFracLabel, grainFrac(i), cLine, nLines, &
+            "Grain fractional abundance: ","(a,f8.5,1x,a)",1. , ok, .false.)
+       grainFracTotal = grainFracTotal + grainFrac(i)
 
        call getReal(aminLabel, aMin(i), cLine, nLines, &
             "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
@@ -1380,9 +1391,14 @@ endif
 
 
        call getReal(pdistLabel, pdist(i), cLine, nLines, &
-         "Exponet for exponetial cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
+         "Exponent for exponential cut off: ","(a,f4.1,1x,a)", 1.0, ok, .false. )
        if (writeoutput) write(*,*)
     enddo
+
+    if ((grainFracTotal .ne. 1.).and.(geometry .eq. "ppdisk")) then
+       if (writeoutput) write (*,*) "Error: dust fractional abundances do not add up to 1."
+       stop
+    endif 
 
  endif
 
@@ -1483,6 +1499,9 @@ endif
 
  call getLogical("show_value_3rd_dim", show_value_3rd_dim, cLine, nLines, &
   "Display the third dimension on plot_AMR_value: ","(a,1l,a)",.false., ok, .false.)
+
+ call getReal("zoomfactor", zoomFactor, cLine, nLines, &
+      "Image zoom factor: ", "(a,1pe7.4,1x,a)", 0.01, ok, .false.)
 
  call getString("misc", misc, cLine, nLines, &
   "Miscallenous rubbish: ","(a,a,1x,a)","junk", ok, .false.)

@@ -882,6 +882,31 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
   end subroutine fillDustShakara
 
+  recursive subroutine fillDustUniform(grid, thisOctal)
+
+    use input_variables, only : maxDustTypes, nDustType, grainFrac
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillDustUniform(grid, child)
+                exit
+             end if
+          end do
+       else
+          thisOctal%dustTypeFraction(subcell,1:nDustType) = grainFrac(1:nDustType)
+       end if
+    end do
+
+  end subroutine fillDustUniform
+
   recursive subroutine sublimateDust(grid, thisOctal)
 
     use input_variables, only : rInner, rOuter

@@ -1142,6 +1142,10 @@ program torus
            call fillDustShakara(grid, grid%octreeRoot)
         endif
 
+        if ((geometry == "ppdisk").and.(nDustType>1)) then
+           call fillDustUniform(grid, grid%octreeRoot)
+        endif
+
         if (noScattering) then
            if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
            grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
@@ -1155,7 +1159,7 @@ program torus
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
                 "rho_zoom.ps/vcps",.true., .false.,&
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.01)
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
            call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
                 nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
            call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
@@ -1670,7 +1674,7 @@ program torus
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
         call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
              "rho_zoom.ps/vcps",.true., .false.,&
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, BOXFAC=0.005)
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
         call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
              nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
         call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
@@ -1688,7 +1692,7 @@ program torus
         call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
              "etacont_zoom.ps/vcps", .true., .false.,  &
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
-             show_value_3rd_dim, boxfac = 0.0004)
+             show_value_3rd_dim, boxfac=0.0004)
         call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
              "temperature.ps/vcps", .true., .false., &
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)

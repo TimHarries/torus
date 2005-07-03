@@ -305,7 +305,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
-    use input_variables, only : rinner, router, variableDustSublimation
+    use input_variables, only : rinner, router, variableDustSublimation, zoomFactor
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
@@ -473,6 +473,10 @@ contains
        call fillDustShakara(grid, grid%octreeRoot)
     endif
 
+    if ((grid%geometry == "ppdisk").and.(nDustType > 1)) then
+       call fillDustUniform(grid, grid%octreeRoot)
+    endif
+
     if (variableDustSublimation) then
        call sublimateDust(grid, grid%octreeRoot)
     endif
@@ -526,7 +530,7 @@ contains
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_zoom.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac = 0.01) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
        call plot_AMR_values(grid, "rho", "x-y", real(grid%octreeRoot%centre%y), &
             "rho_temp_xy.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
@@ -535,22 +539,22 @@ contains
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             "lucy_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
        call plot_AMR_values(grid, "etaCont", "x-z", real(grid%octreeRoot%centre%y), &
             "etacont_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
        call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
             "tau.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,ilam=ilam) 
        call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
             "tau_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01,ilam=ilam) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor,ilam=ilam) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             tfilename1, .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             tfilename2, .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01)
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor)
        call plot_AMR_values(grid, "temperature", "x-y", real(grid%octreeRoot%centre%z), &
             "lucy_temp_xy.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
@@ -956,6 +960,10 @@ contains
 
        if ((grid%geometry == "shakara").and.(nDustType > 1)) then
           call fillDustShakara(grid, grid%octreeRoot)
+       endif
+
+       if ((grid%geometry == "ppdisk").and.(nDustType > 1)) then
+          call fillDustUniform(grid, grid%octreeRoot)
        endif
 
        if (variableDustSublimation) then

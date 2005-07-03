@@ -913,7 +913,7 @@ contains
     rOuterAU = grid%rOuter * (1.d10/auToCm)
 
     if ((R .lt. rInnerAU) .or. (R .gt. rOuterAU)) then
-       ppdiskDensity = 1.d-30
+       ppdiskDensity = tiny(ppdiskDensity)
     else
 !!       h = 0.15
 !!       R0 = 1. (AU) 1.5e3 (10^10 cm)
@@ -985,7 +985,7 @@ contains
 !      return
 !    end
 !==========================================================
-      gapfloor = 1.d-30
+      gapfloor = tiny(gapfloor)
 !      gapfloor = 1.d-4
 !      xmu = 1.d-3
       xmu = mPlanet

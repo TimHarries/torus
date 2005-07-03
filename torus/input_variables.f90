@@ -39,7 +39,9 @@ module input_variables
 
   ! variables to do with dust
   
-  character(len=80) :: grainType(10) ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl  
+  integer, parameter :: maxDustTypes = 10
+  character(len=80) :: grainType(maxDustTypes) ! sil_ow, sil_oc, sil_dl, amc_hn, sic_pg, gr1_dl, gr2_dl  
+  real :: grainFrac(maxDustTypes)
   real :: grainSize
   logical :: mie
   logical :: includeGasOpacity
@@ -102,11 +104,11 @@ module input_variables
   ! the following form:
   !  
   !   n(a) =  const * a^-q * e^((-a/a0)^p)
-  real :: aMin(10)    !  The maximun size in microns. 
-  real :: aMax(10)    !  The minimum size in microns.
-  real :: qDist(10)   !  q exponet in the equation above.
-  real :: a0(10)      !  scale length in the equation above.
-  real :: pDist(10)   !  p exponet in the equation above.
+  real :: aMin(maxDustTypes)    !  The maximun size in microns. 
+  real :: aMax(maxDustTypes)    !  The minimum size in microns.
+  real :: qDist(maxDustTypes)   !  q exponet in the equation above.
+  real :: a0(maxDustTypes)      !  scale length in the equation above.
+  real :: pDist(maxDustTypes)   !  p exponet in the equation above.
 
 
   ! Flag to include accreation disc in sph dust model or not
@@ -136,6 +138,7 @@ module input_variables
   logical :: doplots
   character(len=3)  :: plane_for_plot  
   logical :: show_value_3rd_dim    ! If T, the value of the third dimension will be shown.
+  real :: zoomFactor
 
 
   ! output arrays

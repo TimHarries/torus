@@ -8,6 +8,7 @@ use constants_mod
 use gridtype_mod
 use amr_mod
 use vector_mod
+use messages_mod
 
 implicit none
 
@@ -80,15 +81,15 @@ contains
  
     converged = .false.
 
-    do i = 1, iStart-1
-       octVec = VECTOR(xPos, 0., zArray(i))
-       call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-            foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
-       if (thisOctal%undersampled(subcell)) then
-          ok = .false.
-          goto 666
-       endif
-    enddo
+!    do i = 1, iStart-1
+!       octVec = VECTOR(xPos, 0., zArray(i))
+!       call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
+!            foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
+!       if (thisOctal%undersampled(subcell)) then
+!          ok = .false.
+!          goto 666
+!       endif
+!    enddo
 
     
 
@@ -470,6 +471,7 @@ contains
     call getxAxisRun(grid, xAxis, subcellSize, 0., 0., nx, +1.)
 
 
+!$MPI if (my_rank==0) &       
     write(*,*) "Defining diffusion zones..."
 
     call zeroDiffusionProb(grid%octreeRoot)
@@ -484,12 +486,10 @@ contains
             foundSubcell=subcell, rosselandKappa=kappa, grid=grid)
        rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + &
             kappa * thisOctal%rho(subcell) *  subcellsize(j)*1.e10
-!write(*,*) kappa, thisOctal%rho(subcell), subcellsize(j), rosselandOpticalDepth(j)
        if (rosselandOpticalDepth(j) > diffDepth) then
           xStart = xAxis(j)
-!write(*,*) "nx: ", nx, "j: ", j, "xstart: ", xstart
           exit
-       ENDIF
+       endif
     enddo
     
 
@@ -564,7 +564,6 @@ contains
     sigma((i+1):nboundary) = 1.d0
 
     do zone = 1, nZones
-write(*,*) "Diffusion zone ", zone
 
     nZoneBoundary = rightBoundary(zone)-leftBoundary(zone)+1
     allocate(workarray(3*nZoneBoundary+3*20+3))
@@ -573,8 +572,6 @@ write(*,*) "Diffusion zone ", zone
     eps = 0.d0
 
 
-!write (*,*) nx, nZoneBoundary, xBoundary(leftBoundary(zone)), xBoundary(rightBoundary(zone)), &
-!            zBoundary(leftBoundary(zone)), zBoundary(rightBoundary(zone))
     call dpolft(nZoneBoundary, xBoundary(leftBoundary(zone):rightBoundary(zone)), &
          zBoundary(leftBoundary(zone):rightBoundary(zone)), sigma(leftBoundary(zone):rightBoundary(zone)), &
          npoly, npoly, eps,  rval, ierr, workarray)
@@ -594,7 +591,6 @@ write(*,*) "Diffusion zone ", zone
 
     do i = leftBoundaryX(zone), rightBoundaryX(zone)
        xPos = xAxis(i)
-write(*,*) xPos
        call getzAxisRun(grid, zAxis, subcellSize, xPos, yPos, nz, -1.)
 
        xval = log10(dble(xpos))
@@ -607,7 +603,7 @@ write(*,*) xPos
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell)
           zSize = thisOctal%subcellsize/2.d0
-          if ((zAxis(j)-zSize) <= zApprox) then
+          if ((zAxis(j)+zSize) <= zApprox) then
              thisOctal%diffusionApprox(subcell) = .true.
              if (resetTemp) thisOctal%temperature(subcell) = 20.
              
@@ -638,7 +634,7 @@ write(*,*) xPos
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell)
           zSize = thisOctal%subcellsize/2.d0
-          if (abs(zAxis(j)+zSize) <= zApprox) then
+          if (abs(zAxis(j)-zSize) <= zApprox) then
              thisOctal%diffusionApprox(subcell) = .true.
              if (resetTemp) thisOctal%temperature(subcell) = 20.
              ! put in the lefthand boundary of the diffusion zone if necessary
@@ -666,7 +662,7 @@ write(*,*) xPos
 
     end do
 
-    write(*,*) "Done."
+    if (writeoutput) write(*,*) "Done.", nZones, "diffusion zone(s) defined."
 
   end subroutine defineDiffusionZone
 
@@ -921,9 +917,8 @@ write(*,*) xPos
     type(OCTALVECTOR) :: rVec
     integer :: subcell
     integer :: nFreq, iLam
-    real(double) :: freq(1000), dnu(1000), thisLam, norm, r1, r2, v
+    real(double) :: freq(1000), dnu(1000), thisLam, norm, r1, r2, v, kappaP
     real(double) :: kabsArray(1000)
-    real :: kappaP
     integer :: i
 
 
