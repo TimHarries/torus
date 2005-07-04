@@ -56,15 +56,14 @@ module filter_set_class
        make_combo_filters, &
        make_halpha_filters, &
        make_pabeta_filters, &
-       make_brgamma_filters, &
-       make_natural_filters
+       make_brgamma_filters
 
        
   type filter_set
      private 
-     character(LEN=30) :: name   ! For now options are "sdss" or "step_functions"     
-     integer :: nfilter                ! number of filters
-     type(filter), pointer  :: filters(:)  ! filter set
+     character(LEN=30) :: name                       ! filter set name
+     integer :: nfilter                              ! number of filters
+     type(filter), pointer  :: filters(:) => null()  ! filter set
   end type filter_set
 
   
@@ -74,8 +73,8 @@ module filter_set_class
      ! Filter functions table
      integer ::  nlambda         ! # of elements in the table  
      ! The followin should be allocated by nf.
-     real(double), pointer :: response_function(:)    !  The values should be between 0-1.
-     real(double), pointer :: wavelength(:)           !  in Angstrome.
+     real(double), pointer :: response_function(:) => null() !  The values should be between 0-1.
+     real(double), pointer :: wavelength(:) => null()        !  in Angstrome.
   end type filter
 
 
@@ -132,10 +131,11 @@ contains
 
     n = this_filter%nLambda
 
-    if (wavelength < this_filter%wavelength(1) &
-         .or.                                  &
-         wavelength > this_filter%wavelength(n) ) then
+    if (wavelength < this_filter%wavelength(1) .or. &
+        wavelength > this_filter%wavelength(n) ) then
        out = 0.0d0
+    else if (wavelength == this_filter%wavelength(n)) then
+       out = this_filter%response_function(n)
     else
        ! interpolate the value.
        
@@ -149,13 +149,11 @@ contains
        end if
 
        ! Doing a simple linear interpolations!       
-       tmp =  (this_filter%response_function(i+1)-this_filter%response_function(i))  &
-            &                                    /                                   &
-            &      (this_filter%wavelength(i+1) - this_filter%wavelength(i))        
-       
-            
+       tmp =  (this_filter%response_function(i+1)-this_filter%response_function(i)) &
+              / (this_filter%wavelength(i+1) - this_filter%wavelength(i))
+
        out = tmp * (wavelength - this_filter%wavelength(i))  &
-            &        + this_filter%response_function(i) 
+             + this_filter%response_function(i) 
     end if
     
   end function response
@@ -170,36 +168,64 @@ contains
 
     type(filter_set), intent(inout) :: this_set
     character(LEN=*),  intent(in)  :: name
-    
+    type(filter) :: natural        ! One filter to pass everything
+
+    if (associated(this_set%filters)) then
+      write(*,*) " "
+      write(*,*) "Error: filter set", name, "already defined."
+      write(*,*) "Exiting the program ... "
+      stop
+    end if
+
+    !
+    ! Set up the natural filter
+    !
+    ! 100 A  to  0.36 mm
+    call init_filter(natural, "natural", 5, 100.0d0, 3.6d7)
+    natural%response_function(:) = 1.0d0  ! set everything to 1.0
+
+    !
+    ! Now store it in the set    
+    this_set%name = name
+    this_set%nfilter = 1
+
+    allocate(this_set%filters(1))
+
+    this_set%filters(1) = natural
+
     select case (name)
     case ("step_functions")
-       call make_step_functions(this_set, name)
+       call make_step_functions(this_set)
     case ("sdss") 
-       call make_sdss_filters(this_set, name)
+       call make_sdss_filters(this_set)
     case ("nic1") 
-       call make_nic1_filters(this_set, name)
+       call make_nic1_filters(this_set)
     case ("wr104") 
-       call make_wr104_filters(this_set, name)
+       call make_wr104_filters(this_set)
     case ("mips") 
-       call make_mips_filters(this_set, name)
+       call make_mips_filters(this_set)
     case ("irac") 
-       call make_irac_filters(this_set, name)
+       call make_irac_filters(this_set)
     case ("ukirt") 
-       call make_ukirt_filters(this_set, name)
+       call make_ukirt_filters(this_set)
     case ("combo") 
-       call make_combo_filters(this_set, name)
+       call make_combo_filters(this_set)
     case ("halpha") 
-       call make_halpha_filters(this_set, name)
+       call make_halpha_filters(this_set)
     case ("pabeta") 
-       call make_pabeta_filters(this_set, name)
+       call make_pabeta_filters(this_set)
     case ("brgamma") 
-       call make_brgamma_filters(this_set, name)
+       call make_brgamma_filters(this_set)
     case ("raman") 
-       call make_raman_filters(this_set, name)
+       call make_raman_filters(this_set)
     case ("midi") 
-       call make_midi_filters(this_set, name)
+       call make_midi_filters(this_set)
     case ("natural") 
-       call make_natural_filters(this_set, name)
+       ! Don't need to do anything as the natural filter is made already
+    case ("chris")
+       call make_ukirt_filters(this_set)
+       call make_irac_filters(this_set)
+       call make_mips_filters(this_set)
     case default
        write(*,*) " "
        write(*,*) "Error:: Unknown filter name passed to filter_set_class::init_filter_set."
@@ -215,27 +241,23 @@ contains
   ! making the filter sets for step_functions options
   !
   !
-  subroutine make_step_functions(this_set, name)
+  subroutine make_step_functions(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
     !
-    integer,  parameter :: nfilter=5  ! number of filters
+    integer,  parameter :: nfilter=4  ! number of filters
     integer,  parameter :: nlam=5  ! number of wavelegth samples
-    type(filter) :: natural        ! One filter to pass everything    
     type(filter) :: F5000A         ! optical (5000 Angstrome)
     type(filter) :: F001
     type(filter) :: F010
     type(filter) :: F100
 
-    !
-    ! Setting up the natural filter
-    !
-    ! 100 A  to  0.36 mm
-    call init_filter(natural, "natural", nlam, 100.0d0, 3.6d7)
-    natural%response_function(:) = 1.0d0  ! set everything to 1.0
-    
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
+
     ! 
     ! F5000A: 4500 to 5500 Angstrome
     call init_filter(F5000A, "F5000A",  nlam, 4500.d0, 5500.d0)
@@ -256,19 +278,27 @@ contains
     call init_filter(F100, "F100",  nlam, 90.0d4, 110.0d4)
     F100%response_function(:) = 1.0d0  ! set everything to 1.0
     
-
-    !
-    ! Now store them as a set    
-    this_set%name = name
-    this_set%nfilter = nfilter 
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
     
-    ALLOCATE(this_set%filters(nfilter))
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
 
-    this_set%filters(1) = natural
-    this_set%filters(2) = F5000A
-    this_set%filters(3) = F001
-    this_set%filters(4) = F010
-    this_set%filters(5) = F100
+    this_set%nfilter = new_nfilter
+    this_set%filters(old_nfilter+1) = F5000A
+    this_set%filters(old_nfilter+2) = F001
+    this_set%filters(old_nfilter+3) = F010
+    this_set%filters(old_nfilter+4) = F100
 
     ! finished
 
@@ -281,19 +311,22 @@ contains
   !
   ! Making Jim Gunn's Sloan Digital Sky Survey (SDSS) filters
   ! Data source: http://home.fnal.gov/~dtucker/ugriz/Filters/response.html
-  subroutine make_sdss_filters(this_set, name)
+  subroutine make_sdss_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
     !
-    integer,  parameter :: nfilter=6  ! number of filters
-    type(filter) :: natural           ! One filter to pass everything    
+    integer,  parameter :: nfilter=5  ! number of filters
     type(filter) :: u_filter     
     type(filter) :: g_filter
     type(filter) :: r_filter
     type(filter) :: i_filter
     type(filter) :: z_filter
+
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
 
     ! data arrays
     integer, parameter :: nu = 47
@@ -371,13 +404,6 @@ contains
 
 
     integer :: j
-    
-    !
-    ! Setting up the natural filter
-    !
-    ! 100 A  to  0.36 mm
-    call init_filter(natural, "natural", 5, 100.0d0, 3.6d7)
-    natural%response_function(:) = 1.0d0  ! set everything to 1.0
 
     !
     ! u_filter
@@ -421,22 +447,29 @@ contains
     do j = 1, nz
        z_filter%response_function(j) = dble(z(j))
     end do
-
-
-    !
-    ! Now save them as a set.
-    ! 
-    this_set%name = name
-    this_set%nfilter = 6 
     
-    ALLOCATE(this_set%filters(nfilter))
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
     
-    this_set%filters(1) = natural
-    this_set%filters(2) = u_filter
-    this_set%filters(3) = g_filter
-    this_set%filters(4) = r_filter
-    this_set%filters(5) = i_filter
-    this_set%filters(6) = z_filter
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
+
+    this_set%nfilter = new_nfilter
+    this_set%filters(old_nfilter+1) = u_filter
+    this_set%filters(old_nfilter+2) = g_filter
+    this_set%filters(old_nfilter+3) = r_filter
+    this_set%filters(old_nfilter+4) = i_filter
+    this_set%filters(old_nfilter+5) = z_filter
 
     ! finished
 
@@ -448,28 +481,24 @@ contains
   ! making the filter sets for nic1 options
   !
   !
-  subroutine make_nic1_filters(this_set, name)
+  subroutine make_nic1_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
     !
-    integer,  parameter :: nfilter=4  ! number of filters
+    integer,  parameter :: nfilter=3  ! number of filters
     integer,  parameter :: nlam=5  ! number of wavelegth samples
-    type(filter) :: natural        ! One filter to pass everything    
     ! Followings are similar to HST NIC1 Medium Band Filters.
     ! See http://www.stsci.edu/hst/nicmos/design/filters
     type(filter) :: F110M
     type(filter) :: F145M
     type(filter) :: F170M
 
-    !
-    ! Setting up the natural filter
-    !
-    ! 100 A  to  0.36 mm
-    call init_filter(natural, "natural", nlam, 100.0d0, 3.6d7)
-    natural%response_function(:) = 1.0d0  ! set everything to 1.0
-    
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
+
     ! F110M
     ! 1.0-1.2 microns
     call init_filter(F110M, "F110M",  nlam, 1.0d4, 1.2d4)
@@ -484,18 +513,27 @@ contains
     ! 1.6-1.8 microns
     call init_filter(F170M, "F170M",  nlam, 1.6d4, 1.8d4)
     F170M%response_function(:) = 1.0d0  ! set everything to 1.0
-
-    !
-    ! Now store them as a set    
-    this_set%name = name
-    this_set%nfilter = nfilter 
     
-    ALLOCATE(this_set%filters(nfilter))
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
+    
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
 
-    this_set%filters(1) = natural
-    this_set%filters(2) = F110M
-    this_set%filters(3) = F145M
-    this_set%filters(4) = F170M        
+    this_set%nfilter = new_nfilter
+    this_set%filters(old_nfilter+1) = F110M
+    this_set%filters(old_nfilter+2) = F145M
+    this_set%filters(old_nfilter+3) = F170M
 
     ! finished
 
@@ -507,26 +545,22 @@ contains
   ! making the filter sets for step_functions options
   !
   !
-  subroutine make_wr104_filters(this_set, name)
+  subroutine make_wr104_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
     !
-    integer,  parameter :: nfilter=4  ! number of filters
+    integer,  parameter :: nfilter=3  ! number of filters
     integer,  parameter :: nlam=5  ! number of wavelegth samples
-    type(filter) :: natural        ! One filter to pass everything    
     type(filter) :: H
     type(filter) :: ch4
     type(filter) :: pahcs
 
-    !
-    ! Setting up the natural filter
-    !
-    ! 100 A  to  0.36 mm
-    call init_filter(natural, "natural", nlam, 100.0d0, 3.6d7)
-    natural%response_function(:) = 1.0d0  ! set everything to 1.0
-    
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
+
     ! 
     ! H
     call init_filter(H, "H",  nlam, 1.5d4, 1.82d4)
@@ -542,18 +576,26 @@ contains
     call init_filter(pahcs, "pahcs",  nlam, 3.035d4, 3.125d4)
     pahcs%response_function(:) = 1.0d0  ! set everything to 1.0
     
-
-    !
-    ! Now store them as a set    
-    this_set%name = name
-    this_set%nfilter = nfilter 
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
     
-    ALLOCATE(this_set%filters(nfilter))
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
 
-    this_set%filters(1) = natural
-    this_set%filters(2) = H
-    this_set%filters(3) = ch4
-    this_set%filters(4) = pahcs
+    this_set%nfilter = new_nfilter
+    this_set%filters(old_nfilter+1) = H
+    this_set%filters(old_nfilter+2) = ch4
+    this_set%filters(old_nfilter+3) = pahcs
 
     ! finished
 
@@ -565,26 +607,22 @@ contains
   ! making the filter sets for mips options
   !
   !
-  subroutine make_mips_filters(this_set, name)
+  subroutine make_mips_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
     !
-    integer,  parameter :: nfilter=4  ! number of filters
+    integer,  parameter :: nfilter=3  ! number of filters
     integer,  parameter :: nlam=5  ! number of wavelegth samples
-    type(filter) :: natural        ! One filter to pass everything    
     type(filter) :: F024
     type(filter) :: F070
     type(filter) :: F160
 
-    !
-    ! Setting up the natural filter
-    !
-    ! 100 A  to  0.36 mm
-    call init_filter(natural, "natural", nlam, 100.0d0, 3.6d7)
-    natural%response_function(:) = 1.0d0  ! set everything to 1.0
-    
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
+
     ! 
     ! F024: center=24.0microns, width=4.7microns
     call init_filter(F024, "F024",  nlam, 21.65d4, 26.35d4)
@@ -599,22 +637,27 @@ contains
     ! F160: center=160.0microns, width=35.0microns
     call init_filter(F160, "F160",  nlam, 142.5d4, 177.5d4)
     F160%response_function(:) = 1.0d0  ! set everything to 1.0
-
-
-
     
-
-    !
-    ! Now store them as a set    
-    this_set%name = name
-    this_set%nfilter = nfilter 
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
     
-    ALLOCATE(this_set%filters(nfilter))
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
 
-    this_set%filters(1) = natural
-    this_set%filters(2) = F024
-    this_set%filters(3) = F070
-    this_set%filters(4) = F160
+    this_set%nfilter = new_nfilter
+    this_set%filters(old_nfilter+1) = F024
+    this_set%filters(old_nfilter+2) = F070
+    this_set%filters(old_nfilter+3) = F160
 
     ! finished
 
@@ -629,27 +672,23 @@ contains
   ! making the filter sets for mips options
   !
   !
-  subroutine make_irac_filters(this_set, name)
+  subroutine make_irac_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
     !
-    integer,  parameter :: nfilter=5  ! number of filters
+    integer,  parameter :: nfilter=4  ! number of filters
     integer,  parameter :: nlam=5  ! number of wavelegth samples
-    type(filter) :: natural        ! One filter to pass everything    
     type(filter) :: F3_6
     type(filter) :: F4_5
     type(filter) :: F5_8
     type(filter) :: F8_0
-    
-    !
-    ! Setting up the natural filter
-    !
-    ! 100 A  to  0.36 mm
-    call init_filter(natural, "natural", nlam, 100.0d0, 3.6d7)
-    natural%response_function(:) = 1.0d0  ! set everything to 1.0
-    
+
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
+
     ! 
     ! F3_6: center=3.6 microns, width=0.7 microns
     call init_filter(F3_6, "F3_6",  nlam, 3.2d4, 3.9d4)
@@ -669,22 +708,28 @@ contains
     ! F8_0: center=8.0 microns, width=3.0microns
     call init_filter(F8_0, "F8_0",  nlam, 6.5d4, 9.5d4)
     F8_0%response_function(:) = 1.0d0  ! set everything to 1.0
-
-
     
-
-    !
-    ! Now store them as a set    
-    this_set%name = name
-    this_set%nfilter = nfilter 
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
     
-    ALLOCATE(this_set%filters(nfilter))
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
 
-    this_set%filters(1) = natural
-    this_set%filters(2) = F3_6
-    this_set%filters(3) = F4_5
-    this_set%filters(4) = F5_8
-    this_set%filters(5) = F8_0
+    this_set%nfilter = new_nfilter
+    this_set%filters(old_nfilter+1) = F3_6
+    this_set%filters(old_nfilter+2) = F4_5
+    this_set%filters(old_nfilter+3) = F5_8
+    this_set%filters(old_nfilter+4) = F8_0
 
 
     ! finished
@@ -700,19 +745,22 @@ contains
   !
   ! Making J, H, L', M'  and K filters at UKIRT.
   ! Data source: http://www.ast.cam.ac.uk:81/JACpublic/UKIRT/instruments/ircam/filters.html/
-  subroutine make_ukirt_filters(this_set, name)
+  subroutine make_ukirt_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
     !
-    integer,  parameter :: nfilter=6  ! number of filters
-    type(filter) :: natural           ! One filter to pass everything    
+    integer,  parameter :: nfilter=5  ! number of filters
     type(filter) :: J_filter     
     type(filter) :: H_filter
     type(filter) :: L_filter
     type(filter) :: M_filter
     type(filter) :: K_filter
+
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
 
     ! data arrays
     integer, parameter :: nj = 28
@@ -782,13 +830,6 @@ contains
          /)
 
     integer :: i
-    
-    !
-    ! Setting up the natural filter
-    !
-    ! 100 A  to  0.36 mm
-    call init_filter(natural, "natural", 5, 100.0d0, 3.6d7)
-    natural%response_function(:) = 1.0d0  ! set everything to 1.0
 
     !
     ! J_filter
@@ -833,21 +874,29 @@ contains
        K_filter%response_function(i) = dble(K(i))*0.01d0
     end do
 
+    
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
+    
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
 
-    !
-    ! Now save them as a set.
-    ! 
-    this_set%name = name
-    this_set%nfilter = 6 
-    
-    ALLOCATE(this_set%filters(nfilter))
-    
-    this_set%filters(1) = natural
-    this_set%filters(2) = J_filter
-    this_set%filters(3) = H_filter
-    this_set%filters(4) = L_filter
-    this_set%filters(5) = M_filter
-    this_set%filters(6) = K_filter
+    this_set%nfilter = new_nfilter
+    this_set%filters(old_nfilter+1) = J_filter
+    this_set%filters(old_nfilter+2) = H_filter
+    this_set%filters(old_nfilter+3) = L_filter
+    this_set%filters(old_nfilter+4) = M_filter
+    this_set%filters(old_nfilter+5) = K_filter
 
     ! finished
 
@@ -861,44 +910,45 @@ contains
   ! making the filter sets for combo (V+ukirt+irac)
   !
   !
-  subroutine make_combo_filters(this_set, name)
+  subroutine make_combo_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
     !
-    integer,  parameter :: nfilter=11  ! number of filters
+    integer,  parameter :: nfilter=1  ! number of filters
     integer,  parameter :: nlam=5  ! number of wavelegth samples
     type(filter) :: V
-    ! subset of filters
-    type(filter_set) :: ukirt
-    type(filter_set) :: irac
+
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
 
 
     call init_filter(V, "V",  nlam, 5.055d3, 5.945d3)
     V%response_function(:) = 1.0d0  ! set everything to 1.0
-    call make_ukirt_filters(ukirt, "ukirt")
-    call make_irac_filters(irac, "irac")
 
-    !
-    ! Now store them as a set    
-    this_set%name = name
-    this_set%nfilter = nfilter 
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
     
-    ALLOCATE(this_set%filters(nfilter))
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
 
-    this_set%filters(1) = ukirt%filters(1) ! natural
-    this_set%filters(2) = V                ! V
-    this_set%filters(3) = ukirt%filters(2) ! J
-    this_set%filters(4) = ukirt%filters(3) ! H
-    this_set%filters(5) = ukirt%filters(4) ! L
-    this_set%filters(6) = ukirt%filters(5) ! M
-    this_set%filters(7) = ukirt%filters(6) ! K
-    this_set%filters(8) = irac%filters(2)  ! 3.6 microns
-    this_set%filters(9) = irac%filters(3)  ! 4.5 microns
-    this_set%filters(10) = irac%filters(4) ! 5.8 microns
-    this_set%filters(11) = irac%filters(5) ! 8.0 microns
+    this_set%nfilter = new_nfilter
+    this_set%filters(old_nfilter+1) = V                ! V
 
+    call make_ukirt_filters(this_set)
+    call make_irac_filters(this_set)
 
     ! finished
 
@@ -913,12 +963,11 @@ contains
   ! the reslution are hardwired for now.
   ! The first filter should start from the wavelength which correspoends
   ! to V ~ -400km/s and the last one should correspond to V~500km/s
-  subroutine make_halpha_filters(this_set, name)
+  subroutine make_halpha_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
-    integer,  parameter :: nfilter=31  ! number of filters
+    integer,  parameter :: nfilter=30  ! number of filters
     integer,  parameter :: nlam=5  ! number of wavelegth samples
     !
     real(double), parameter :: lambda0=6564.614d0     ! [A]  Line center wavelength
@@ -927,37 +976,45 @@ contains
     real(double) :: dlam, lam
     integer :: i 
     character(len=20) :: name_of_filter, dum_a
-    
-    ! Now store them as a set    
-    this_set%name = name         
-    this_set%nfilter = nfilter 
-    
-    ALLOCATE(this_set%filters(nfilter))
 
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
 
-    !
-    ! Setting up the natural filter 
-    !  --> Placing it at the last in the filter_Set array.
-    ! 100 A  to  0.36 mm
-    call init_filter(this_set%filters(nfilter), "H_alpha_natural", nlam, 100.0d0, 3.6d7)
-    this_set%filters(nfilter)%response_function(:) = 1.0d0  ! set everything to 1.0
-    
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
+
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
+
+    this_set%nfilter = new_nfilter
 
     ! 
-    ! Seeting up the rest of the filters
+    ! Setting up the rest of the filters
     ! 
     dlam =  lambda0/R   ! filter width
 
-    do i = 1, nfilter-1
+    do i = 1, nfilter
        write(dum_a, *) i
        if (i<10) then
           name_of_filter = "H_alpha0"//TRIM(ADJUSTL(dum_a))
        else
           name_of_filter = "H_alpha"//TRIM(ADJUSTL(dum_a))
        end if
-       call init_filter(this_set%filters(i), TRIM(ADJUSTL(name_of_filter)),  nlam, &
+       call init_filter(this_set%filters(old_nfilter+i), TRIM(ADJUSTL(name_of_filter)),  nlam, &
             lambda_min+dlam*dble(i-1),  lambda_min+dlam*dble(i))
-       this_set%filters(i)%response_function(:) = 1.0d0  ! set everything to 1.0
+       this_set%filters(old_nfilter+i)%response_function(:) = 1.0d0  ! set everything to 1.0
     end do
 
     ! finished
@@ -974,12 +1031,11 @@ contains
   ! the reslution are hardwired for now.
   ! The first filter should start from the wavelength which correspoends
   ! to V ~ -400km/s and the last one should correspond to V~500km/s
-  subroutine make_pabeta_filters(this_set, name)
+  subroutine make_pabeta_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
-    integer,  parameter :: nfilter=31  ! number of filters
+    integer,  parameter :: nfilter=30  ! number of filters
     integer,  parameter :: nlam=5  ! number of wavelegth samples
     !
     real(double), parameter :: lambda0=12818.1d0       ! [A]  Line center wavelength
@@ -988,37 +1044,45 @@ contains
     real(double) :: dlam, lam
     integer :: i 
     character(len=20) :: name_of_filter, dum_a
-    
-    ! Now store them as a set    
-    this_set%name = name         
-    this_set%nfilter = nfilter 
-    
-    ALLOCATE(this_set%filters(nfilter))
 
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
 
-    !
-    ! Setting up the natural filter 
-    !  --> Placing it at the last in the filter_Set array.
-    ! 100 A  to  0.36 mm
-    call init_filter(this_set%filters(nfilter), "Pa_beta_natural", nlam, 100.0d0, 3.6d7)
-    this_set%filters(nfilter)%response_function(:) = 1.0d0  ! set everything to 1.0
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
+
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
+
+    this_set%nfilter = new_nfilter
     
-
     ! 
-    ! Seeting up the rest of the filters
+    ! Setting up the rest of the filters
     ! 
     dlam =  lambda0/R   ! filter width
     
-    do i = 1, nfilter-1
+    do i = 1, nfilter
        write(dum_a, *) i
        if (i<10) then
           name_of_filter = "Pa_beta0"//TRIM(ADJUSTL(dum_a))
        else
           name_of_filter = "Pa_beta"//TRIM(ADJUSTL(dum_a))
        end if
-       call init_filter(this_set%filters(i), TRIM(ADJUSTL(name_of_filter)),  nlam, &
+       call init_filter(this_set%filters(old_nfilter+i), TRIM(ADJUSTL(name_of_filter)),  nlam, &
             lambda_min+dlam*dble(i-1),  lambda_min+dlam*dble(i))
-       this_set%filters(i)%response_function(:) = 1.0d0  ! set everything to 1.0
+       this_set%filters(old_nfilter+i)%response_function(:) = 1.0d0  ! set everything to 1.0
     end do
 
     ! finished
@@ -1036,12 +1100,11 @@ contains
   ! the reslution are hardwired for now.
   ! The first filter should start from the wavelength which correspoends
   ! to V ~ -400km/s and the last one should correspond to V~500km/s
-  subroutine make_brgamma_filters(this_set, name)
+  subroutine make_brgamma_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
-    integer,  parameter :: nfilter=31  ! number of filters
+    integer,  parameter :: nfilter=30  ! number of filters
     integer,  parameter :: nlam=5  ! number of wavelegth samples
     !
     real(double), parameter :: lambda0=21655.0d0       ! [A]  Line center wavelength
@@ -1050,37 +1113,45 @@ contains
     real(double) :: dlam, lam
     integer :: i 
     character(len=20) :: name_of_filter, dum_a
-    
-    ! Now store them as a set    
-    this_set%name = name         
-    this_set%nfilter = nfilter 
-    
-    ALLOCATE(this_set%filters(nfilter))
 
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
 
-    !
-    ! Setting up the natural filter 
-    !  --> Placing it at the last in the filter_Set array.
-    ! 100 A  to  0.36 mm
-    call init_filter(this_set%filters(nfilter), "Br_gamma_natural", nlam, 100.0d0, 3.6d7)
-    this_set%filters(nfilter)%response_function(:) = 1.0d0  ! set everything to 1.0
-    
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
+
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
+
+    this_set%nfilter = new_nfilter
 
     ! 
-    ! Seeting up the rest of the filters
+    ! Setting up the rest of the filters
     ! 
     dlam =  lambda0/R   ! filter width
 
-    do i = 1, nfilter-1
+    do i = 1, nfilter
        write(dum_a, *) i
        if (i<10) then
           name_of_filter = "Br_gamma0"//TRIM(ADJUSTL(dum_a))
        else
           name_of_filter = "Br_gamma"//TRIM(ADJUSTL(dum_a))
        end if
-       call init_filter(this_set%filters(i), TRIM(ADJUSTL(name_of_filter)),  nlam, &
+       call init_filter(this_set%filters(old_nfilter+i), TRIM(ADJUSTL(name_of_filter)),  nlam, &
             lambda_min+dlam*dble(i-1),  lambda_min+dlam*dble(i))
-       this_set%filters(i)%response_function(:) = 1.0d0  ! set everything to 1.0
+       this_set%filters(old_nfilter+i)%response_function(:) = 1.0d0  ! set everything to 1.0
     end do
 
     ! finished
@@ -1093,16 +1164,20 @@ contains
   ! making the filter sets for raman options
   !
   !
-  subroutine make_raman_filters(this_set, name)
+  subroutine make_raman_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
     !
     integer,  parameter :: nfilter=2  ! number of filters
     integer,  parameter :: nlam=5  ! number of wavelegth samples
     type(filter) :: filt6830        ! One filter to pass 6830 line
     type(filter) :: filt1032        ! UV (OVI 1032 Angstrome)
+
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
 
     !
     ! Setting up the 6830 filter
@@ -1114,16 +1189,27 @@ contains
     ! UV filter (1032)
     call init_filter(filt1032, "1032",  nlam, 1000.d0, 1050.d0)
     filt1032%response_function(:) = 1.0d0  ! set everything to 1.0
-
-    !
-    ! Now store them as a set    
-    this_set%name = name
-    this_set%nfilter = nfilter 
     
-    ALLOCATE(this_set%filters(nfilter))
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
+    
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
 
-    this_set%filters(1) = filt6830
-    this_set%filters(2) = filt1032
+    ! Did not use natural filter initially
+    this_set%nfilter = new_nfilter
+    this_set%filters(old_nfilter+1) = filt6830
+    this_set%filters(old_nfilter+2) = filt1032
 
     ! finished
 
@@ -1134,10 +1220,9 @@ contains
   ! making the filter sets for raman options
   !
   !
-  subroutine make_midi_filters(this_set, name)
+  subroutine make_midi_filters(this_set)
     implicit none 
     type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
     !
     !
     integer,  parameter :: nfilter=4  ! number of filters
@@ -1146,6 +1231,11 @@ contains
     type(filter) :: filt10        ! 10 micron passband
     type(filter) :: filt13        ! 13 micron passband
     type(filter) :: filtN             ! 13 micron passband
+
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
 
     !
     ! Setting up the 8 micron filter
@@ -1164,64 +1254,34 @@ contains
     ! 
     call init_filter(filtN, "N",  nlam, 75000.d0, 135000.d0)
     filtN%response_function(:) = 1.0d0  ! set everything to 1.0
-
-    !
-    ! Now store them as a set    
-    this_set%name = name
-    this_set%nfilter = nfilter 
     
-    ALLOCATE(this_set%filters(nfilter))
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
+    
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + nfilter
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
 
-    this_set%filters(1) = filt08
-    this_set%filters(2) = filt10
-    this_set%filters(3) = filt13
-    this_set%filters(4) = filtN
+    ! Did not use natural filter initially
+    this_set%nfilter = new_nfilter
+    this_set%filters(old_nfilter+1) = filt08
+    this_set%filters(old_nfilter+2) = filt10
+    this_set%filters(old_nfilter+3) = filt13
+    this_set%filters(old_nfilter+4) = filtN
 
     ! finished
 
     
   end subroutine make_midi_filters
-
-
-
-
-
-  !
-  ! making simple natural filter
-  !
-  !
-  subroutine make_natural_filters(this_set, name)
-    implicit none 
-    type(filter_set), intent(inout) :: this_set
-    character(LEN=*), intent(in) :: name
-    !
-    !
-    integer,  parameter :: nfilter=1  ! number of filters
-    integer,  parameter :: nlam=5  ! number of wavelegth samples
-    type(filter) :: natural        ! One filter to pass everything    
-
-    !
-    ! Setting up the natural filter
-    !
-    ! 100 A  to  0.36 mm
-    call init_filter(natural, "natural", nlam, 100.0d0, 3.6d7)
-    natural%response_function(:) = 1.0d0  ! set everything to 1.0
-
-
-    !
-    ! Now store them as a set    
-    this_set%name = name
-    this_set%nfilter = nfilter 
-    
-    ALLOCATE(this_set%filters(nfilter))
-
-    this_set%filters(1) = natural
-
-    ! finished
-
-    
-  end subroutine make_natural_filters
-  
 
 
 
