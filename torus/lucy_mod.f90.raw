@@ -970,15 +970,8 @@ contains
           call sublimateDust(grid, grid%octreeRoot)
        endif
 
-       if (variableDustSublimation) then
-          if (iiter_grand > 1) then
-             call defineDiffusionZone(grid, outputFlag, .false.)
-          endif
-       endif
+       call defineDiffusionZone(grid, outputFlag, .false.)
 
-       if (.not.variableDustsublimation) then
-          call defineDiffusionZone(grid, outputFlag, .false.)
-       endif
 
 
 !$MPI if (my_rank==0) &

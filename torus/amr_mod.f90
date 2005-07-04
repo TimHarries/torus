@@ -6880,13 +6880,13 @@ CONTAINS
           end do
        else
           r = modulus(subcellcentre(thisOctal, subcell)) / rInner
-          thisOctal%biasCont3D(subcell) =  r
+          thisOctal%biasCont3D(subcell) =  sqrt(r)
           if ((r > 1.).and.(r < 1.05)) then
              thisOctal%biasCont3D(subcell) =  thisOctal%biasCont3D(subcell) * 10.d0
           endif
-!          if (thisOctal%diffusionApprox(subcell)) then
-!             thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) * 1.e-2
-!          endif
+          if (thisOctal%diffusionApprox(subcell)) then
+             thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) * 1.e-2
+          endif
        endif
                
 

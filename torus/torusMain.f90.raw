@@ -1145,6 +1145,11 @@ program torus
         if ((geometry == "ppdisk").and.(nDustType>1)) then
            call fillDustUniform(grid, grid%octreeRoot)
         endif
+        
+        if (variableDustSublimation) then
+           call sublimateDust(grid, grid%octreeRoot)
+        endif
+
 
         if (noScattering) then
            if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
