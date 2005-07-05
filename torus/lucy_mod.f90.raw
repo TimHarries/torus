@@ -1291,13 +1291,13 @@ contains
        epsOverDeltaT, nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
+    use input_variables, only : minCrossings
     logical, intent(in) :: this_is_root    ! T if thisOctal is a root node.
     real(oct) :: totalEmission
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     type(gridtype) :: grid
     integer :: subcell, i
-    integer, parameter :: minCrossings = 5
     real(oct) :: V, epsOverDeltaT
     real(oct) :: adot
     real(oct) :: kappaP, norm

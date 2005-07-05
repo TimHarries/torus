@@ -948,6 +948,8 @@ endif
        call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
             "Minimum percentage of undersampled cell in lucy iteration: ", &
             "(a,f4.2,a)",30.0,ok,.false.)
+       call getInteger("mincrossings", minCrossings, cLine, nLines, &
+            "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.false.)
     endif
    call getReal("probdust", probDust, cLine, nLines, &
        "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)

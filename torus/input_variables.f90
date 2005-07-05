@@ -448,6 +448,7 @@ module input_variables
   logical :: narrowBandImage
   logical :: useInterp
   real    :: lucy_undersampled  
+  integer :: minCrossings
 
 
   !  Input parameters for bipolar jets geometry.
