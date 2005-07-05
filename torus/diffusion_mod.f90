@@ -471,8 +471,7 @@ contains
     call getxAxisRun(grid, xAxis, subcellSize, 0., 0., nx, +1.)
 
 
-!$MPI if (my_rank==0) &       
-    write(*,*) "Defining diffusion zones..."
+    if (writeoutput) write(*,*) "Defining diffusion zones..."
 
     call zeroDiffusionProb(grid%octreeRoot)
 
@@ -553,7 +552,7 @@ contains
     enddo
     if (inZone) then
        rightBoundary(nZones) = nBoundary
-       rightBoundaryX(nZones) = nx
+       rightBoundaryX(nZones) = nx - zeroCounter
     end if
 
     xBoundary(1:nBoundary) = log10(xBoundary(1:nBoundary))
