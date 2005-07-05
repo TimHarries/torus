@@ -7139,9 +7139,10 @@ CONTAINS
           end do
        else
           rVec = subcellcentre(thisOctal, subcell)
-!          r = modulus(rVec)
-!          hr = height * (r / (100.*autocm/1.e10))**1.25
           thisOctal%biasCont3D(subcell) = rVec%x**2.
+          if (thisOctal%diffusionApprox(subcell)) then
+             thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) * 1.e-2
+          endif
        endif
     enddo
   end subroutine setBiasPpdisk
