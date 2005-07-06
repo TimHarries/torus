@@ -16,6 +16,6 @@ module clump_mod
   ! if you change this, remember to update the read/write routines
   !   in grid_mod.
   
-  type(clumpType), dimension(:), allocatable :: clumps
+  type(clumpType), save, dimension(:), allocatable :: clumps
 
 end module clump_mod
