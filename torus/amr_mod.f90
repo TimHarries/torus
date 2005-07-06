@@ -3907,9 +3907,9 @@ CONTAINS
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
       if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.3)) split = .true.
-!      if (r < 5.*grid%rInner) then
-!         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.1)) split = .true.
-!      endif
+      if (r < 5.*grid%rInner) then
+         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.1)) split = .true.
+      endif
 
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
