@@ -394,14 +394,14 @@ contains
 !$MPI    real, save, allocatable  :: buffer_real(:)     
 !$MPI    logical, save  :: first_time = .true.
 !$MPI
-!$MPI    ! find the number of the processors for the first time.    
-!$MPI    if (first_time) then
+!!$MPI    ! find the number of the processors for the first time.    
+!!$MPI    if (first_time) then
 !$MPI       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-!$MPI       allocate(buffer_real(n_proc))
-!$MPI       first_time = .false.
-!$MPI    end if
-!$MPI
 !!$MPI       allocate(buffer_real(n_proc))
+!!$MPI       first_time = .false.
+!!$MPI    end if
+!$MPI
+!$MPI       allocate(buffer_real(n_proc))
 !$MPI
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
 !$MPI    !  Get my process rank # 
@@ -826,6 +826,7 @@ contains
 
 
 !$MPI       call updateGridMPI(grid)
+!$MPI       if(my_rank == 0) write(*,*) "Done update."
 
 !$MPI       if(my_rank == 1) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
 !$MPI
@@ -1029,6 +1030,9 @@ contains
 !$MPI end if
        
    enddo
+
+
+!$MPI deallocate(buffer_real)
 
   deallocate(kAbsArray)
 
@@ -2070,14 +2074,14 @@ contains
 !$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
 !$MPI    nDiffusion = tempRealArray 
 !$MPI    
-!$MPI    deallocate(tempRealArray)
-!$MPI    deallocate(tempDoubleArray)
+!$MPI    deallocate(tempRealArray, tempDoubleArray)
 !$MPI     
 !$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI    
 !$MPI    nIndex = 0
 !$MPI    call unpackValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings,nDiffusion)
 !$MPI
+!$MPI    deallocate(nCrossings, nDiffusion, distanceGrid)
 !$MPI
 !$MPI  end subroutine updateGridMPI
 
