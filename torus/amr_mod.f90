@@ -196,6 +196,7 @@ CONTAINS
     grid%octreeRoot%chiLine = -9.9e9
     grid%octreeRoot%etaLine = -9.9e9
     grid%octreeRoot%etaCont = -9.9e9 
+    grid%octreeRoot%rho = 1.e-30
     grid%octreeRoot%N = -9.9e9
     grid%octreeRoot%Ne = -9.9e9
     grid%octreeRoot%nTot = -9.9e9
@@ -5831,6 +5832,7 @@ CONTAINS
        parent%child(newChildIndex)%chiLine = 1.e-30
        parent%child(newChildIndex)%etaLine = 1.e-30
        parent%child(newChildIndex)%etaCont = 1.e-30
+       parent%child(newChildIndex)%density = 1.e-30
        parent%child(newChildIndex)%N = 1.e-30
        parent%child(newChildIndex)%dusttype = 1
        ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
