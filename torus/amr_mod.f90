@@ -6565,7 +6565,7 @@ CONTAINS
         ! don't split outer edge of disc
 
         if (grid%geometry == "shakara") then
-           if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%router*0.9) exit
+           if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%router*0.9) goto 666
         endif
            
 
@@ -6731,7 +6731,8 @@ CONTAINS
       thisSubcell = thisSubcell + 1 ! next subcell
       if (thisSubcell > thisOctal%maxChildren) exit ! loop through subcells in an octal
     end do ! loop through subcells in an octal
-
+666 continue
+    deallocate(locator)
   END SUBROUTINE smoothAMRgridTau
 
   subroutine polarDump(grid)
