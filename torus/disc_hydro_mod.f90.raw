@@ -55,7 +55,6 @@ contains
 
     mu = 2.3 ! mean mole mass assuming pure H_2/He
     radiusAU = (radius * 1.e10) / autocm
-    smoothScaleLength = height * rHeight * (rSmooth/rHeight)**flaringPower
 
 
     allocate(oldRho(1:nz), lnrho(1:nz),doubleRho(1:nz))
@@ -94,6 +93,7 @@ contains
     scalefac = 0.5 * (sigma0 * fac * (radius*1.e10/autoCm)**(betaDisc-alphaDisc)) / sigma
 
     if (geometry == "ppdisk") then
+       smoothScaleLength = height * rHeight * (rSmooth/rHeight)**flaringPower
        scalefac = fractgap(dble(radiusAU)) / (1. + 81.d0**(dble(rSmooth-radiusAU)/smoothScaleLength)) &
             * (rHeight/radiusAU)**sigmaPower / sigma
        scalefac = scalefac * 0.5 * rho0 * Msol / autocm**2

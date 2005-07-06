@@ -564,100 +564,102 @@ contains
 
     do zone = 1, nZones
 
-    nZoneBoundary = rightBoundary(zone)-leftBoundary(zone)+1
-    allocate(workarray(3*nZoneBoundary+3*20+3))
-
-    npoly = min((nZoneBoundary - 1), 10)
-    eps = 0.d0
-
-
-    call dpolft(nZoneBoundary, xBoundary(leftBoundary(zone):rightBoundary(zone)), &
-         zBoundary(leftBoundary(zone):rightBoundary(zone)), sigma(leftBoundary(zone):rightBoundary(zone)), &
-         npoly, npoly, eps,  rval, ierr, workarray)
-
-
-
-    if (outputFlag) then
-       open(66,file="boundary.dat",form="formatted",status="unknown")
-       do i = 1, nBoundary
-          call dp1vlu(nPoly, 0, xBoundary(i), tot, derivs, workarray)
-          write(66,*) 10.**xBoundary(i),zBoundary(i),tot
-       enddo
-       close(66)
-    endif
-
-
-
-    do i = leftBoundaryX(zone), rightBoundaryX(zone)
-       xPos = xAxis(i)
-       call getzAxisRun(grid, zAxis, subcellSize, xPos, yPos, nz, -1.)
-
-       xval = log10(dble(xpos))
-       call dp1vlu(nPoly, 0, xval, zApprox, derivs, workarray)
-
-       if (zApprox < 0.) zApprox = 0.
-
-       do j = 2, nz
-          octVec = OCTALVECTOR(xpos, 0., zAxis(j))
-          call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-               foundSubcell=subcell)
-          zSize = thisOctal%subcellsize/2.d0
-          if ((zAxis(j)+zSize) <= zApprox) then
-             thisOctal%diffusionApprox(subcell) = .true.
-             if (resetTemp) thisOctal%temperature(subcell) = 20.
+       nZoneBoundary = rightBoundary(zone)-leftBoundary(zone)+1
+       if (nZoneBoundary > 2) then
+          allocate(workarray(3*nZoneBoundary+3*20+3))
+          
+          npoly = min((nZoneBoundary - 1), 10)
+          eps = 0.d0
+          
+          
+          call dpolft(nZoneBoundary, xBoundary(leftBoundary(zone):rightBoundary(zone)), &
+               zBoundary(leftBoundary(zone):rightBoundary(zone)), sigma(leftBoundary(zone):rightBoundary(zone)), &
+               npoly, npoly, eps,  rval, ierr, workarray)
+          
+          
+          
+          if (outputFlag) then
+             open(66,file="boundary.dat",form="formatted",status="unknown")
+             do i = 1, nBoundary
+                call dp1vlu(nPoly, 0, xBoundary(i), tot, derivs, workarray)
+                write(66,*) 10.**xBoundary(i),zBoundary(i),tot
+             enddo
+             close(66)
+          endif
+          
+          
+          
+          do i = leftBoundaryX(zone), rightBoundaryX(zone)
+             xPos = xAxis(i)
+             call getzAxisRun(grid, zAxis, subcellSize, xPos, yPos, nz, -1.)
              
-             ! put in the lefthand boundary of the diffusion zone if necessary
-             if (i == leftBoundaryX(zone)) then
-                octVec = OCTALVECTOR(xAxis(leftBoundaryX(zone)), 0., zAxis(j))
-                call amrGridValues(grid%octreeRoot, octVec, foundOctal=boundaryOctal, &
-                     foundSubcell=boundarySubcell)
-                boundaryOctal%leftHandDiffusionBoundary(boundarySubcell) = .true.
-             endif
-             ! put in the righthand boundary of the diffusion zone if necessary
-             if (i == rightBoundaryX(zone)) then
-                octVec = OCTALVECTOR(xAxis(rightBoundaryX(zone)), 0., zAxis(j))
-                call amrGridValues(grid%octreeRoot, octVec, foundOctal=boundaryOctal, &
-                     foundSubcell=boundarySubcell)
-                boundaryOctal%rightHandDiffusionBoundary(boundarySubcell) = .true.
-             endif
-          else
-             thisOctal%diffusionApprox(subcell) = .false.
-          endif
-       enddo
+             xval = log10(dble(xpos))
+             call dp1vlu(nPoly, 0, xval, zApprox, derivs, workarray)
+             
+             if (zApprox < 0.) zApprox = 0.
+             
+             do j = 2, nz
+                octVec = OCTALVECTOR(xpos, 0., zAxis(j))
+                call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
+                     foundSubcell=subcell)
+                zSize = thisOctal%subcellsize/2.d0
+                if ((zAxis(j)+zSize) <= zApprox) then
+                   thisOctal%diffusionApprox(subcell) = .true.
+                   if (resetTemp) thisOctal%temperature(subcell) = 20.
+                   
+                   ! put in the lefthand boundary of the diffusion zone if necessary
+                   if (i == leftBoundaryX(zone)) then
+                      octVec = OCTALVECTOR(xAxis(leftBoundaryX(zone)), 0., zAxis(j))
+                      call amrGridValues(grid%octreeRoot, octVec, foundOctal=boundaryOctal, &
+                           foundSubcell=boundarySubcell)
+                      boundaryOctal%leftHandDiffusionBoundary(boundarySubcell) = .true.
+                   endif
+                   ! put in the righthand boundary of the diffusion zone if necessary
+                   if (i == rightBoundaryX(zone)) then
+                      octVec = OCTALVECTOR(xAxis(rightBoundaryX(zone)), 0., zAxis(j))
+                      call amrGridValues(grid%octreeRoot, octVec, foundOctal=boundaryOctal, &
+                           foundSubcell=boundarySubcell)
+                      boundaryOctal%rightHandDiffusionBoundary(boundarySubcell) = .true.
+                   endif
+                else
+                   thisOctal%diffusionApprox(subcell) = .false.
+                endif
+             enddo
 
 
-       call getzAxisRun(grid, zAxis, subcellSize, xPos, yPos, nz, +1.)
+             call getzAxisRun(grid, zAxis, subcellSize, xPos, yPos, nz, +1.)
 
-       do j = 2, nz
-          octVec = OCTALVECTOR(xpos, 0., zAxis(j))
-          call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-               foundSubcell=subcell)
-          zSize = thisOctal%subcellsize/2.d0
-          if (abs(zAxis(j)-zSize) <= zApprox) then
-             thisOctal%diffusionApprox(subcell) = .true.
-             if (resetTemp) thisOctal%temperature(subcell) = 20.
-             ! put in the lefthand boundary of the diffusion zone if necessary
-             if (i == leftBoundaryX(zone)) then
-                octVec = OCTALVECTOR(xAxis(leftBoundaryX(zone)), 0., zAxis(j))
-                call amrGridValues(grid%octreeRoot, octVec, foundOctal=boundaryOctal, &
-                     foundSubcell=boundarySubcell)
-                boundaryOctal%leftHandDiffusionBoundary(boundarySubcell) = .true.
-             endif
-             ! put in the righthand boundary of the diffusion zone if necessary
-             if (i == rightBoundaryX(zone)) then
-                octVec = OCTALVECTOR(xAxis(rightBoundaryX(zone)), 0., zAxis(j))
-                call amrGridValues(grid%octreeRoot, octVec, foundOctal=boundaryOctal, &
-                     foundSubcell=boundarySubcell)
-                boundaryOctal%rightHandDiffusionBoundary(boundarySubcell) = .true.
-             endif
-          else
-             thisOctal%diffusionApprox(subcell) = .false.
-          endif
-       enddo
+             do j = 2, nz
+                octVec = OCTALVECTOR(xpos, 0., zAxis(j))
+                call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
+                     foundSubcell=subcell)
+                zSize = thisOctal%subcellsize/2.d0
+                if (abs(zAxis(j)-zSize) <= zApprox) then
+                   thisOctal%diffusionApprox(subcell) = .true.
+                   if (resetTemp) thisOctal%temperature(subcell) = 20.
+                   ! put in the lefthand boundary of the diffusion zone if necessary
+                   if (i == leftBoundaryX(zone)) then
+                      octVec = OCTALVECTOR(xAxis(leftBoundaryX(zone)), 0., zAxis(j))
+                      call amrGridValues(grid%octreeRoot, octVec, foundOctal=boundaryOctal, &
+                           foundSubcell=boundarySubcell)
+                      boundaryOctal%leftHandDiffusionBoundary(boundarySubcell) = .true.
+                   endif
+                   ! put in the righthand boundary of the diffusion zone if necessary
+                   if (i == rightBoundaryX(zone)) then
+                      octVec = OCTALVECTOR(xAxis(rightBoundaryX(zone)), 0., zAxis(j))
+                      call amrGridValues(grid%octreeRoot, octVec, foundOctal=boundaryOctal, &
+                           foundSubcell=boundarySubcell)
+                      boundaryOctal%rightHandDiffusionBoundary(boundarySubcell) = .true.
+                   endif
+                else
+                   thisOctal%diffusionApprox(subcell) = .false.
+                endif
+             enddo
 
-    enddo
+          enddo
+          deallocate(workarray)
+       end if
     
-    deallocate(workarray)
 
     end do
 

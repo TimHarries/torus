@@ -2016,7 +2016,7 @@ program torus
 !$MPI  if (my_rank==1) &
      call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
  
-     if (grid%cartesian .or. grid%polar) then
+     if (.not.grid%adapative) then
         call lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, xArray, dble(teff), nLucy)
      else
         if (readLucy .and. .not. redoLucy) then
