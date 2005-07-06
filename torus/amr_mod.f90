@@ -5832,7 +5832,7 @@ CONTAINS
        parent%child(newChildIndex)%chiLine = 1.e-30
        parent%child(newChildIndex)%etaLine = 1.e-30
        parent%child(newChildIndex)%etaCont = 1.e-30
-       parent%child(newChildIndex)%density = 1.e-30
+       parent%child(newChildIndex)%rho = 1.e-30
        parent%child(newChildIndex)%N = 1.e-30
        parent%child(newChildIndex)%dusttype = 1
        ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
