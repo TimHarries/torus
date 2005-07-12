@@ -1872,7 +1872,7 @@ contains
 
 ! update the distance grid
 
-       if (thisTau > 1.e-30) then
+       if (thisTau > 0.d0) then
 
           
           if (.not.twoD) then

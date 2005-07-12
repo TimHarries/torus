@@ -1912,9 +1912,12 @@ program torus
        source(1)%position = VECTOR(0.,0.,0.)
        tmp = source(1)%radius * 1.e10  ! [cm]
        source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
-!       call fillSpectrumBB(source(1)%spectrum, dble(teff), &
-!            dble(lamStart), dble(lamEnd),nLambda)
-       call readSpectrum(source(1)%spectrum, contfluxfile)
+       if (contFluxfile .eq. "blackbody") then
+          call fillSpectrumBB(source(1)%spectrum, dble(teff), &
+               dble(lamStart), dble(lamEnd),nLambda)
+       else
+          call readSpectrum(source(1)%spectrum, contfluxfile)
+       endif
        call normalizedSpectrum(source(1)%spectrum)
 
     ! chris (26/05/04)
