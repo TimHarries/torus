@@ -2488,10 +2488,16 @@ contains
         call lubksb_f77(alpha,n,n,indx,beta)
         errx=0.
         do i = 1, n
-          errx=errx+abs(beta(i))
-          x(i)=x(i)+beta(i)
+           errx=errx+abs(beta(i))
+           if (.not.(all((x+beta)>0.d0))) then
+              x(i)=x(i)+beta(i) * 0.5d0 ! Under correction factor introduced by TJH 13/07/05
+           else
+              x(i)=x(i)+beta(i)
+           endif
         end do 
         !if (debug) print *, "errx,tolx",errx,tolx
+!        print *, "errx,tolx",errx,tolx
+!        write(*,*) x(1:n)
         ! Now allows for at least ntrial_min iterations. (RK changed this)
         if ((errx.le.tolx) .and. all(x > 0.0_db) .and. k>ntrial_min) then
            if (debug) print *, k, 'trials.'
