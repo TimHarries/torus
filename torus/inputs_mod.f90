@@ -44,6 +44,7 @@ subroutine inputs()
 
   contrast = 1.
   grainSize = 1.
+  nDustType = 1
 
   nBlobs = 0
   nLines = 0

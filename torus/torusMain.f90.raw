@@ -858,22 +858,25 @@ program torus
      errorArray(1:nOuterLoop,1:nLambda)%i = 1.e-20
   endif
 
-  if (mie .and. .not.dustfile) then
-     if (writeoutput) write(*,*) "fill grid mie",nLambda,grid%nlambda
-     do i = 1, nDustType
-        call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), grainType(i), &
-             ngrain, X_grain, grainname, i)
-     enddo
-     if (writeoutput) write(*,'(a,f5.2)') "!!!! Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
-     do i = 1, nDustType
-        grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
-        grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
-     enddo
-  else
-     do i = 1, nDustType
-        call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
-             grid%onekappaSca(i,1:grid%nLambda))
-     enddo
+  
+  if (mie) then
+     if (.not.dustfile) then
+        if (writeoutput) write(*,*) "fill grid mie",nLambda,grid%nlambda
+        do i = 1, nDustType
+           call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), grainType(i), &
+                ngrain, X_grain, grainname, i)
+        enddo
+        if (writeoutput) write(*,'(a,f5.2)') "!!!! Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
+        do i = 1, nDustType
+           grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
+           grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
+        enddo
+     else
+        do i = 1, nDustType
+           call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
+                grid%onekappaSca(i,1:grid%nLambda))
+        enddo
+     endif
   endif
 
 
@@ -1182,9 +1185,11 @@ program torus
            call plot_AMR_values(grid, "temperature", "x-y", 0., &
                 "temperature2.ps/vcps", .true., .false., &
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-           call plot_AMR_values(grid, "dusttype", "x-z", 0., &
-                "dusttype.ps/vcps", .false., .false., &
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           if (mie) then
+              call plot_AMR_values(grid, "dusttype", "x-z", 0., &
+                   "dusttype.ps/vcps", .false., .false., &
+                   nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           endif
         end if
 
 !     ! plotting column density (new routine in grid_mod.f90)
