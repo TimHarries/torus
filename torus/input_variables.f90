@@ -36,6 +36,7 @@ module input_variables
   integer :: nInclination  ! number of inclinations
   real :: firstInclination ! first inclination angle
   real :: lastInclination  !
+  real, allocatable :: inclinations(:)
 
   ! variables to do with dust
   
@@ -44,6 +45,8 @@ module input_variables
   real :: grainFrac(maxDustTypes)
   real :: grainSize
   logical :: mie
+  logical :: readMiePhase
+  logical :: writeMiePhase
   logical :: includeGasOpacity
   logical :: isotropicScattering
   real :: dusttogas
