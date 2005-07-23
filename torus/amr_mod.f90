@@ -955,7 +955,7 @@ CONTAINS
        
          nSamples = nSamples + 1
          IF (nSamples > maxSamples) THEN
-           PRINT *, "Error:: nSamples > maxSamples in takeSample subroutine"
+           PRINT *, "Error:: nSamples > maxSamples in startReturnSamples subroutine"
            PRINT *, "        nSamples   = ", nSamples
            PRINT *, "        maxSamples = ", maxSamples
            STOP
