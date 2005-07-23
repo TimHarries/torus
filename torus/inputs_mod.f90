@@ -151,14 +151,21 @@ subroutine inputs()
   call getInteger("ninc", nInclination, cLine, nLines, &
       "Number of inclination angles: ", "(a,i3,1x,a)", 1, ok, .false.)
   
-  call getReal("firstinc", firstInclination, cLine, nLines, &
-       "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
-       firstInclination = firstInclination * degToRad
-       
-  if (nInclination > 1) then 
-    call getReal("lastinc", lastInclination, cLine, nLines, &
-         "Last inclination angle (deg): ","(a,f4.1,1x,a)", 80., ok, .true.)
-         lastInclination = lastInclination * degToRad
+  allocate(inclinations(nInclination))
+  call findRealArray("inclinations", inclinations, cLine, nLines, ok)
+  if (ok) then
+     call getRealArray("inclinations", inclinations, cLine, nLines, &
+          "Inclinations (deg): ",'(a,4i4,1x,a)',90., ok, .false.)
+     inclinations(:) = inclinations(:) * degToRad
+  else
+     deallocate(inclinations)
+     call getReal("firstinc", firstInclination, cLine, nLines, &
+          "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
+          firstInclination = firstInclination * degToRad
+     if (nInclination > 1) &
+        call getReal("lastinc", lastInclination, cLine, nLines, &
+             "Last inclination angle (deg): ","(a,f4.1,1x,a)", 80., ok, .true.)
+             lastInclination = lastInclination * degToRad
   end if
 
   call getReal("scale", scale, cLine, nLines, &
@@ -910,6 +917,11 @@ if  (isotropicScattering) then
    if (writeoutput) write(*,'(a)') "!!! ISOTROPIC SCATTERING PHASE MATRIX ENFORCED"
 endif
 
+ call getLogical("readmiephase", readMiePhase, cLine, nLines, &
+      "Read miePhase from file: ","(a,1l,1x,a)", .false., ok, .false.)
+ call getLogical("writemiephase", writeMiePhase, cLine, nLines, &
+      "Write miePhase to file: ","(a,1l,1x,a)", .false., ok, .false.)
+
  if (mie) then
     call getLogical("forcedwavelength", forcedWavelength, cLine, nLines, &
          "Forced photon wavelength: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -959,7 +971,6 @@ endif
        "Temperature threshold for dust (K): ","(a,f8.2,a)", 1000., ok, .true.)
 
     oneKappa = .true.
-    nDustType = 1
     call getInteger("ndusttype", nDustType, cLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
     if (nDustType .gt. maxDustTypes) then
        if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
@@ -1384,7 +1395,7 @@ endif
             "Min grain size (microns): ","(a,f8.5,1x,a)", 0.005, ok,  .true.)
 
        call getReal(amaxLabel, aMax(i), cLine, nLines, &
-            "Max grain size (microns): ","(a,f8.5,1x,a)", 0.25, ok, .true.)
+            "Max grain size (microns): ","(a,f10.5,1x,a)", 0.25, ok, .true.)
 
        call getReal(qDistLabel, qdist(i), cLine, nLines, &
             "Grain power law: ","(a,f4.1,1x,a)", 3.5, ok, .true. )
@@ -1749,6 +1760,9 @@ if (geometry .eq. "ppdisk") then
       rSmooth = 10.*rCore/auToCm
    end if
 
+   ! rCore needs to be in units of 10^10 cm and this is not done elsewhere in this case
+   rCore = rCore / 1.e10
+
    if (rInner .eq. 0.) then
       rInner = 0.5 * rSmooth * auToCm / 1.e10
    end if
@@ -2013,6 +2027,25 @@ subroutine findString(name, value, cLine, nLines, ok)
  value = trim(value)
  end subroutine findString
 
+subroutine findRealArray(name, value, cLine, nLines, ok)
+ implicit none
+ character(len=*) :: name
+ real :: value(:)
+ character(len=80) :: cLine(*)
+ integer :: nLines
+ logical :: ok
+ integer :: i, j
+
+ ok = .false.
+ do i = 1, nLines
+  j = len_trim(name)
+  if (trim(cLine(i)(1:j)) .eq. name) then
+       ok = .true.
+       read(cLine(i)(j+1:),*) value
+  endif
+ end do
+ end subroutine findRealArray
+
  subroutine getInteger(name, ival, cLine, nLines, message, format, idef, ok, &
                        musthave)
   character(len=*) :: name
@@ -2160,5 +2193,29 @@ subroutine findString(name, value, cLine, nLines, ok)
   endif
  end subroutine getLogical
 
+ subroutine getRealArray(name, rval, cLine, nLines, message, format, rdef, ok, &
+                      musthave)
+  character(len=*) :: name
+  real :: rval(:)
+  logical :: musthave
+  character(len=80) :: cLine(*)
+  integer :: nLines
+  character(len=*) :: message, format
+  character(len=10) :: default
+  real :: rdef
+  logical :: ok
+  ok = .true.
+  default = " "
+  call findRealArray(name, rval, cLine, nLines, ok)
+  if (.not. ok) then
+    if (musthave) then
+       if (writeoutput)  write(*,'(a,a)') name, " must be defined"
+       stop
+    endif
+    rval(:) = rdef
+    default = " (default)"
+  endif
+  if (writeoutput)  write(*,*) trim(message),rval,default
+ end subroutine getRealArray
  
 end module inputs_mod
