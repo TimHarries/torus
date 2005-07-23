@@ -615,9 +615,11 @@ contains
        grid%rCore = rCore / 1.e10
 
     case("ppdisk")
+       grid%geometry = "ppdisk"
        grid%lineEmission = .false.
        grid%rInner = rInner
        grid%rOuter = rOuter
+       grid%rCore = rCore
 
 
     case DEFAULT
