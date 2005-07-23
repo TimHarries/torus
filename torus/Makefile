@@ -4,10 +4,12 @@
 #    2. make clean       : Clean up directory
 #    3. make debug=yes   : Make torus with debug option,
 #    4. make profile=yes : Make torus with profiler option
+#    5. make static=yes  : Make torus with static linking
 #-----------------------------------------------------------------
 
 KNOWN_SYSTEM=no
 debug = no
+static = no
 profile= no
 #PATH2G2C=/usr/lib/gcc-lib/i386-redhat-linux/3.2.2
 PATH2G2C=/usr/lib/gcc/i586-mandrake-linux-gnu/3.4.1/
@@ -18,6 +20,7 @@ ifeq ($(SYSTEM), g95)
     FASTFLAG= -O3
 #    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     DEBUGFLAG=-g
+    STATICFLAG=
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel
@@ -26,6 +29,7 @@ ifeq ($(SYSTEM), g95)
     IMAGEF77=image_f77.f.default
     SPECF77=spec_f77.f.default
     F2CLIB=-L$(PATH2G2C) -lg2c
+    STATICLIBS=
     STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
@@ -37,6 +41,7 @@ ifeq ($(SYSTEM), gfort)
 #    FASTFLAG= -O3
     FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -static
     DEBUGFLAG=-g 
+    STATICFLAG=
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel
@@ -45,6 +50,7 @@ ifeq ($(SYSTEM), gfort)
     IMAGEF77=image_f77.f.default
     SPECF77=spec_f77.f.default
     F2CLIB=-L$(PATH2G2C) -lg2c
+    STATICLIBS=
     STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
@@ -56,6 +62,7 @@ ifeq  ($(SYSTEM), linux)
    F77COMP=f77
    FASTFLAG=-O3 -w 
    DEBUGFLAG=-g -C=all
+   STATICFLAG=-Bstatic
    MATHTRAP=-ieee=stop
    UNIXMOD=unix_mod.f90.linux
    KINDMOD=kind_mod.f90.linux
@@ -64,6 +71,7 @@ ifeq  ($(SYSTEM), linux)
    IMAGEF77=image_f77.f.default
    SPECF77=spec_f77.f.default
    F2CLIB=-lg2c
+   STATICLIBS=-lpthread
    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
    MK_MPI_SRC = no
    KNOWN_SYSTEM=yes
@@ -74,6 +82,7 @@ ifeq ($(SYSTEM), alpha)
    F77COMP=f77
    FASTFLAG=-fast
    DEBUGFLAG=-g
+   STATICFLAG=
    MATHTRAP=-fpe3
    UNIXMOD=unix_mod.f90.osf
    EXE=torus
@@ -82,6 +91,7 @@ ifeq ($(SYSTEM), alpha)
    SPECF77=spec_f77.f.default
    KINDMOD=kind_mod.f90.osf
    F2CLIB= 
+   STATICLIBS=
    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
    MK_MPI_SRC = no
    KNOWN_SYSTEM=yes
@@ -94,6 +104,7 @@ ifeq ($(SYSTEM), mpilam)
    F77COMP=${TOP2}/bin/mpif77
    FASTFLAG=-O3 -I${TOP}/include  -dcfuns  -w 
    DEBUGFLAG=-g -I${TOP}/include  -dcfuns 
+   STATICFLAG=
 #   MATHTRAP=-ieee=stop
    MATHTRAP=
    UNIXMOD=unix_mod.f90.linux
@@ -103,6 +114,7 @@ ifeq ($(SYSTEM), mpilam)
    IMAGEF77=image_f77.f.default
    SPECF77=spec_f77.f.default
    F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
+   STATICLIBS=
    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
    MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes
@@ -115,6 +127,7 @@ ifeq ($(SYSTEM), mpich)
    F77COMP=${TOP2}/bin/mpif77
    FASTFLAG=-O3 -I${TOP}/include -dcfuns -w
    DEBUGFLAG=-g -I${TOP}/include -dcfuns
+   STATICFLAG=
 #   MATHTRAP=-ieee=stop
    MATHTRAP=
    UNIXMOD=unix_mod.f90.linux
@@ -124,6 +137,7 @@ ifeq ($(SYSTEM), mpich)
    IMAGEF77=image_f77.f.default
    SPECF77=spec_f77.f.default
    F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
+   STATICLIBS=
    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
    MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes
@@ -135,6 +149,7 @@ ifeq ($(SYSTEM), linuxintel)
 #    FASTFLAG= -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
     FASTFLAG= -I/usr/include/nptl -L/usr/lib/nptl -zero
     DEBUGFLAG=-g -O0 -zero
+    STATICFLAG=
     MATHTRAP=-mp
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel
@@ -143,6 +158,7 @@ ifeq ($(SYSTEM), linuxintel)
     IMAGEF77=image_f77.f.default
     SPECF77=spec_f77.f.default
     F2CLIB=-L$(PATH2G2C) -lg2c
+    STATICLIBS=
     STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
@@ -157,6 +173,7 @@ ifeq ($(SYSTEM), mpiintel)
     FASTFLAG= -O2 -I/usr/include/nptl -L/usr/lib/nptl -zero
     #DEBUGFLAG=-g -O0 -CA -CU -CV -CS -CB  
     DEBUGFLAG=-g -O0 -CA -CV -CS -CB -zero
+    STATICFLAG=
     MATHTRAP= 
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel
@@ -166,6 +183,7 @@ ifeq ($(SYSTEM), mpiintel)
     SPECF77=spec_f77.f.default
     F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi \
            -L$(PATH2G2C) -lg2c -lm
+    STATICLIBS=
     STARLIBS=-L/star/lib `ndf_link` `pgplot_link` 
     MK_MPI_SRC =yes
     KNOWN_SYSTEM=yes
@@ -179,6 +197,7 @@ ifeq ($(SYSTEM), mpig95)
    F77COMP=${TOP}/bin/mpif77 -w
    FASTFLAG=-O3 -I${TOP}/include  
    DEBUGFLAG=-g -I${TOP}/include  
+   STATICFLAG=
    MATHTRAP=-ieee=stop
    UNIXMOD=unix_mod.f90.linuxintel
    KINDMOD=kind_mod.f90.linuxintel
@@ -187,6 +206,7 @@ ifeq ($(SYSTEM), mpig95)
    IMAGEF77=image_f77.f.default
    SPECF77=spec_f77.f.default
    F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
+   STATICLIBS=
    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
    MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes
@@ -200,6 +220,7 @@ ifeq ($(SYSTEM), miracle)
    FASTFLAG=-O -OPT:Olimit=0 -mp -64
 #      FASTFLAG=-OPT:Olimit=0 -O -mp
    DEBUGFLAG=-g
+   STATICFLAG=
    MATHTRAP= 
    UNIXMOD=unix_mod.f90.miracle
    KINDMOD=kind_mod.f90.miracle
@@ -208,6 +229,7 @@ ifeq ($(SYSTEM), miracle)
    IMAGEF77=image_f77.f.miracle
    SPECF77=spec_f77.f.miracle
    F2CLIB= 
+   STATICLIBS=
    STARLIBS=-L/home/rk/pgplot -lpgplot -lX11
    MK_MPI_SRC = no
    KNOWN_SYSTEM=yes
@@ -219,6 +241,7 @@ ifeq ($(SYSTEM), ukaff1a)
 #   FASTFLAG=-O -OPT:Olimit=0 -mp -64
 #      FASTFLAG=-OPT:Olimit=0 -O -mp
    DEBUGFLAG=-g
+   STATICFLAG=
    MATHTRAP= 
    UNIXMOD=unix_mod.f90.miracle
    KINDMOD=kind_mod.f90.miracle
@@ -227,6 +250,7 @@ ifeq ($(SYSTEM), ukaff1a)
    IMAGEF77=image_f77.f.miracle
    SPECF77=spec_f77.f.miracle
    F2CLIB= 
+   STATICLIBS=
    STARLIBS=-L/home/th/pgplot -lpgplot
    MK_MPI_SRC = yes
    KNOWN_SYSTEM=yes
@@ -237,6 +261,7 @@ ifeq ($(SYSTEM), darwin)
     F77COMP=f77
     FASTFLAG=-O2
     DEBUGFLAG=-g
+    STATICFLAG=
     MATHTRAP= 
     UNIXMOD=unix_mod.f90.darwin
     KINDMOD=kind_mod.f90.darwin
@@ -245,6 +270,7 @@ ifeq ($(SYSTEM), darwin)
     IMAGEF77=image_f77.f.darwin
     SPECF77=spec_f77.f.darwin
     F2CLIB=
+    STATICLIBS=
     STARLIBS=-L/Users/mbate/Documents/ryuichi/pgplot -lpgplot 
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
@@ -256,6 +282,7 @@ ifeq ($(SYSTEM), ceres)
     F77COMP=xlf -qmoddir=/lscratch -I/lscratch -qsuffix=f=f -qnolm -O3 -qarch=pwr3 -qmaxmem=-1
     FASTFLAG=
     DEBUGFLAG=-g
+    STATICFLAG=
     MATHTRAP= 
     UNIXMOD=unix_mod.f90.aix
     KINDMOD=kind_mod.f90.aix
@@ -264,6 +291,7 @@ ifeq ($(SYSTEM), ceres)
     IMAGEF77=image_f77.f.miracle
     SPECF77=spec_f77.f.miracle
     F2CLIB= 
+    STATICLIBS=
     STARLIBS=-L/usr/lib -lxlf90 -lm -lc -lX11 -L${HOME}/software/pgplot -lpgplot
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
@@ -283,7 +311,10 @@ ifeq ($(profile), yes)
    ETCFLAG = -pg
 endif
 
-
+ifneq ($(static), yes)
+   STATICFLAG=
+   STATICLIBS=
+endif
 #
 #
 #
@@ -324,8 +355,8 @@ F77OBJ= $(F77SOURCE:.f=.o)
 
 ALLOBJ= $(F90OBJ) $(F77OBJ)
 
-F90=    $(F95COMP)   $(ETCFLAG) $(FASTFLAG) $(MATHTRAP)
-F77=    $(F77COMP)   $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(F77FLAG)
+F90=    $(F95COMP)   $(ETCFLAG) $(STATICFLAG) $(FASTFLAG) $(MATHTRAP)
+F77=    $(F77COMP)   $(ETCFLAG) $(STATICFLAG) $(FASTFLAG) $(MATHTRAP) $(F77FLAG)
 
 LIBDIR=
 LIBS=   
@@ -337,7 +368,7 @@ all: preprocess depends $(ALLOBJ)
 	@echo ""
 	@echo " Linking object files and libraries..........."
 	$(F90) -o $(EXE) \
-	$(MODOBJ) $(F77OBJ) $(F90OBJ) $(STARLIBS) $(F2CLIB)
+	$(MODOBJ) $(F77OBJ) $(F90OBJ) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
 	@echo " ... done"
    else
 	@echo ""
