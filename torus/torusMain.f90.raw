@@ -555,7 +555,11 @@ program torus
   endif
 
   probLinePhoton = 1. - probContPhoton
-  inclination = firstInclination
+  if (allocated(inclinations)) then
+     inclination = inclinations(1)
+  else
+     inclination = firstInclination
+  end if
   scale = scale * rSol
 
   rStar = 100.*rSol
@@ -1815,7 +1819,7 @@ program torus
       else 
          ! Do a single grain calculations... 
 
-	do i = 1, nDusttype
+        do i = 1, nDusttype
            call getRefractiveIndex(xArray, nLambda, graintype(i), mReal(i,1:nLambda), mImg(i,1:nLambda))
         enddo
          
@@ -1827,8 +1831,19 @@ program torus
             do j = 1, nMumie
                mu = 2.*real(j-1)/real(nMumie-1)-1.
                if (.not.isotropicScattering) then
-                  call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
-                       mu, miePhase(k,i,j), mReal(i,1:nLambda), mImg(i,1:nlambda))               
+                  if (readMiePhase) then
+                     open(144, file='miephasefile', status="old", form="unformatted")
+                     read(unit=144) miePhase
+                     close(144)
+                  else
+                     call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
+                          mu, miePhase(k,i,j), mReal(i,1:nLambda), mImg(i,1:nlambda))               
+                     if (writeMiePhase) then
+                        open(144, file='miephasefile', status="replace", form="unformatted")
+                        write(unit=144) miePhase
+                        close(144)
+                     end if
+                  end if
                else
                   miePhase(k,i,j) = fillIsotropic(mu)
                endif
@@ -2888,17 +2903,21 @@ program torus
        ! NB This loop is not indented in the code!
      
      if (nInclination > 1) then  
-        ! Now the inclinations are equally spaced in  cos(incination).
-        ! Asuuming that firstInclination < lastInclination <= pi/2
-        cos_inc_first = COS(firstInclination)
-        cos_inc_last = COS(lastInclination)
-        d_cos_inc = (cos_inc_first - cos_inc_last)/ REAL(nInclination-1)
-        cos_inc = cos_inc_first - d_cos_inc * REAL(iInclination-1)
-        inclination = max(ACOS(cos_inc),1.e-6)
+        if (allocated(inclinations)) then
+           inclination = max(inclinations(iInclination),1.e-6)
+        else
+           ! Now the inclinations are equally spaced in  cos(incination).
+           ! Asuuming that firstInclination < lastInclination <= pi/2
+           cos_inc_first = COS(firstInclination)
+           cos_inc_last = COS(lastInclination)
+           d_cos_inc = (cos_inc_first - cos_inc_last)/ REAL(nInclination-1)
+           cos_inc = cos_inc_first - d_cos_inc * REAL(iInclination-1)
+           inclination = max(ACOS(cos_inc),1.e-6)
 
 
-!       inclination = firstInclination + REAL(iInclination-1) * &
-!                       (lastInclination-firstInclination)/REAL(nInclination-1)
+!          inclination = firstInclination + REAL(iInclination-1) * &
+!                          (lastInclination-firstInclination)/REAL(nInclination-1)
+        end if
 
 
        write(*,*) " "
