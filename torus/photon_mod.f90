@@ -615,7 +615,7 @@ contains
                    else
                       continue ! pick another one
                    endif
-                else
+                else if (inOctal(grid%octreeRoot, thisPhoton%position)) then
                    exit
                 end if
 
@@ -810,7 +810,7 @@ contains
                      grid%geometry(1:6) == "cmfgen") then
                     ! need to check the position is not inside the star
                     if ((modulus(thisPhoton%position-s2o(grid%starPos1))) > grid%rStar1) exit
-                  else
+                  else if (inOctal(grid%octreeRoot, thisPhoton%position)) then
                     exit
                   end if
 
