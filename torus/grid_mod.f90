@@ -621,6 +621,13 @@ contains
        grid%rOuter = rOuter
        grid%rCore = rCore
 
+    case("wrshell")
+       grid%geometry = "wrshell"
+       grid%lineEmission = .false.
+       grid%rInner = rInner
+       grid%rOuter = rOuter
+       grid%rCore = rCore
+
 
     case DEFAULT
        print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'

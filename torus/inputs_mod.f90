@@ -815,6 +815,36 @@ endif
    rOuter = rOuter * rInner
   endif
 
+ if (geometry .eq. "wrshell") then
+
+   call getReal("rcore", rCore, cLine, nLines, &
+       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
+   call getreal("teff", teff, cLine, nLines, &
+        "Source temperature (K): ","(a,f7.0,1x,a)", 3000., ok, .true.)
+
+   call getReal("rinner", rInner, cLine, nLines, &
+       "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+   call getReal("router", rOuter, cLine, nLines, &
+       "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
+
+   call getReal("vterm", vterm, cLine, nLines, &
+       "Terminal velocity (km/s): ","(a,f7.1,a)", 20., ok, .true.)
+
+   call getReal("mdot", mdot, cLine, nLines, &
+        "Mass-loss rate (solar masses/year): ","(a,f7.3,a)", 1., ok, .true.)
+   
+   call getString("contflux", contFluxFile, cLine, nLines, &
+        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+
+   rCore = rCore * rSol / 1.e10
+   rInner = rInner * rCore
+   rOuter = rOuter * rInner
+   vTerm = vTerm * 1.e5
+   mdot = mdot*mSol/(365.25*24.*3600.)
+  endif
+
 
 
  if (geometry(1:4) .eq. "star") then 

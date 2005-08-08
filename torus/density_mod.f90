@@ -63,6 +63,9 @@ contains
     case("proto")
        out = protoDensity(r_vec,grid)
 
+    case("wrshell")
+       out = wrshellDensity(r_vec,grid)
+
     case("spiralwind")
        out = spiralWindDensity(r_vec, grid)
 
@@ -727,6 +730,20 @@ contains
        testDensity = grid%densityScaleFac*rho * (grid%rInner / r)**rPower
     endif
   end function protoDensity
+
+  function wrshellDensity(point, grid) result(testdensity)
+    use constants_mod
+    use input_variables
+    real :: testDensity
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+    real :: r
+    r = modulus(point)
+    testDensity = tiny(testDensity)
+    if ((r > grid%rInner).and.(r < grid%rOuter)) then
+       testDensity = mdot / (fourPi * r**2 * vTerm *1.e20)
+    endif
+  end function wrshellDensity
 
   real function benchmarkDensity(point, grid)
 

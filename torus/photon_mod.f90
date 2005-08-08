@@ -1019,13 +1019,15 @@ contains
              endif
 !             call random_number(r)
 !          thisPhoton%lambda = x1+r*(x2-x1)
+          elseif (grid%lineEmission .and. thisPhoton%contPhoton) then
+             !pick line center wavelength
+             thisPhoton%lambda = lamLine
           else
              call random_number(r1)
              iLambda = int(r1 * real(nLambda)) + 1
              thisPhoton%lambda = lambda(ilambda)
           endif
        endif
-
        
        if (.not.flatspec) then
           if (photonFromEnvelope) then

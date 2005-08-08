@@ -94,6 +94,9 @@ CONTAINS
     CASE("proto")
        CALL calcProtoDensity(thisOctal,subcell,grid)
 
+    CASE("wrshell")
+       CALL calcWRShellDensity(thisOctal,subcell,grid)
+
     CASE ("spiralwind")
        CALL spiralWindSubcell(thisOctal, subcell ,grid)
        
@@ -660,7 +663,7 @@ CONTAINS
         call assign_grid_values(thisOctal,subcell, grid)
         gridConverged = .TRUE.
 
-      CASE ("ppdisk")
+      CASE ("ppdisk","wrshell")
         gridConverged = .TRUE.
 
 
@@ -2195,6 +2198,7 @@ CONTAINS
     TYPE(vector), INTENT(IN)       :: direction
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
+    TYPE(octal),  POINTER         :: thisOctal, currentOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
 
     TYPE(octalVector)              :: octalDirection
@@ -2208,9 +2212,15 @@ CONTAINS
 
     
     octalDirection = direction
+
+    call amrGridValues(grid%octreeRoot,position,foundOctal=thisOctal,&
+                           foundSubcell=subcell)
     
+!    currentOctal => grid%octreeRoot
+!    thisOctal => grid%octreeRoot
+!    CALL findSubcellTD(position, currentOctal, thisOctal, subcell)
     ! dr is a small increment of distance
-    dr = grid%halfSmallestSubcell * 2.0 
+    dr = thisOctal%subcellSize 
 
     ! get a new position a little way back from current position
     position1 = position - (dr * octalDirection)
@@ -2256,7 +2266,6 @@ CONTAINS
     ELSE
        amrGridDirectionalDeriv = 1.e-20
     ENDIF
-    
     IF (.NOT. ABS(amrGridDirectionalDeriv) >= 1.e-10) &
        amrGridDirectionalDeriv = 1.e-10
 
@@ -3684,7 +3693,7 @@ CONTAINS
          end if
       end if
 
-   case ("testamr","proto")
+   case ("testamr","proto","wrshell")
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       split = .FALSE.
@@ -4185,7 +4194,7 @@ CONTAINS
     if (r /= 0.d0) then
        theta = ACOS( max(-1.d0,min(1.d0,pointVec%z / dble(r) )))
     else
-       theta = 90.d0
+       theta = pi/2.d0
     endif
     if (theta == 0.d0) theta=1.d-20
     rM  = r / SIN(theta)**2
@@ -4193,14 +4202,13 @@ CONTAINS
 
     ! test if the point lies within the star
     IF ( r < TTauriRstar ) THEN
-      TTauriVelocity = vector(1.e-25,1.e-25,1.e-25)
+      TTauriVelocity = vector(1.e-15,1.e-15,1.e-15)
       
     ! test if the point lies too close to the disk
     ELSE IF ( ABS(pointVec%z) < TTauriDiskHeight) THEN
-      TTauriVelocity = vector(1.e-25,1.e-25,1.e-25)
-   
+      TTauriVelocity = vector(1.e-14,1.e-14,1.e-14)
     ! test if the point lies outside the accretion stream
-    ELSE IF ((rM > TTauriRinner) .AND. (rM < TTauriRouter )) THEN
+    ELSE IF ((rM > TTauriRinner*0.99d0) .AND. (rM < TTauriRouter*1.01d0 )) THEN
   
       vP = vector(3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y)), &
                   0.0, &
@@ -4215,7 +4223,7 @@ CONTAINS
       TTauriVelocity = vP
 
     ELSE
-      TTauriVelocity = vector(1.e-25,1.e-25,1.e-25)
+      TTauriVelocity = vector(1.e-12,1.e-12,1.e-12)
     END IF
 
   END FUNCTION TTauriVelocity
@@ -4292,12 +4300,14 @@ CONTAINS
     REAL :: phi
     REAL :: r, rM, theta, y, ang, bigR, thetaStar
     REAL :: bigRstar, thetaStarHartmann, bigRstarHartmann, rMnorm
-    REAL :: tmp
+    REAL :: tmp, sum
+    integer :: i
 
     starPosn = grid%starPos1
 
     point = subcellCentre(thisOctal,subcell)
     pointVec = (point - starPosn) * 1.e10_oc
+    thisOctal%inflow(subcell) = .false.
     
     IF (TTauriInFlow(point,grid)) THEN
 !      thisOctal%rho(subcell) = TTauriDensity(point,grid)
@@ -4351,6 +4361,7 @@ CONTAINS
         rMnorm = MIN(rMnorm, 0.9999)
 !        thisOctal%temperature(subcell) = hartmannTemp(rMnorm, theta, maxHartTemp)
         thisOctal%temperature(subcell) = hartmannTemp2(rMnorm, theta, maxHartTemp)
+        thisOctal%inFlow(subcell) = .true.
      END IF
   ELSE
      thisOctal%inFlow(subcell) = .FALSE.
@@ -4369,6 +4380,18 @@ CONTAINS
   IF ((thisoctal%twod).and.(subcell == 4)) &
        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .false.)
   
+!  if (subcell ==4) then
+!     sum = 0.
+!     do i = 1, 9
+!        sum = sum + modulus(thisOctal%cornerVelocity(i))
+!     enddo
+!     if (sum < 1.e-10) then
+!        if (thisOctal%inflow(1).or.thisOctal%inflow(2).or.thisOctal%inflow(3).or.thisOctal%inflow(4)) then
+!           write(*,*) "velocity test",thisOctal%inflow(1:4)
+!           write(*,*) thisOCtal%cornervelocity(1:9)
+!        endif
+!     endif
+!  endif
 
   END SUBROUTINE calcTTauriMassVelocity
 
@@ -5566,6 +5589,35 @@ CONTAINS
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine calcProtoDensity
+
+  subroutine calcWRShellDensity(thisOctal,subcell,grid)
+
+    use input_variables
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    real :: r
+    TYPE(octalVector) :: rVec
+    
+    rVec = subcellCentre(thisOctal,subcell)
+    r = modulus(rVec)
+
+    thisOctal%rho(subcell) = 1.e-30
+    thisOctal%temperature(subcell) = 1.e-3
+    thisOctal%etaCont(subcell) = 1.e-30
+    thisOctal%inFlow(subcell) = .true.
+
+    if ((r > grid%rInner).and.(r < grid%rOuter)) then
+       thisOctal%rho(subcell) = density(rVec, grid)
+       thisOctal%temperature(subcell) = 10.
+       thisOctal%inFlow(subcell) = .true.
+       thisOctal%etaCont(subcell) = 0.
+    endif
+
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+  end subroutine calcWRShellDensity
 
   subroutine benchmarkDisk(thisOctal,subcell,grid)
 
@@ -8030,5 +8082,115 @@ CONTAINS
     enddo
   end subroutine updateTemps
 
+  subroutine amrGridDirectionalDeriv_sub(grid,position,direction,startOctal,&
+                                   foundOctal,foundSubcell) 
+    !
+    ! POINT --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
+    !
+
+    ! returns the directional derivative of velocity at a given point
+    !   in the grid.
+    ! this function can be called with just the first three arguments
+    !   and it will start at the root of the octal tree to locate
+    !   the correct octal.
+    ! if the foundOctal argument is supplied, it is made to point to 
+    !   the octal containing 'position'.
+    ! if the foundSubcell argument is supplied, it is made to point to 
+    !   the subcell containing 'position'.
+    ! if the startOctal argument is supplied, the function uses a 
+    !   local search for the correct octal starting at that octal.
+    !   NOTE that startOctal may be *changed* by this function! 
+
+    ! Note that the results of this function DO have a 1^10 factor in them. 
+    !   (they are in cSpeed, but the distance is calculated 1e10cm)
+
+    ! THIS SHOULD WORK ALSO IN TWO-D CASE as long as position and direction
+    ! are both are not projected on z-x plane (un-rotated coodinates).
+
+    IMPLICIT NONE
+
+    TYPE(gridtype), INTENT(IN)     :: grid 
+    REAL                           :: amrGridDirectionalDeriv
+    TYPE(octalVector), INTENT(IN)  :: position
+    TYPE(vector), INTENT(IN)       :: direction
+    TYPE(octal), OPTIONAL, POINTER :: startOctal
+    TYPE(octal), OPTIONAL, POINTER :: foundOctal
+    TYPE(octal),  POINTER         :: thisOctal, currentOctal
+    INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
+
+    TYPE(octalVector)              :: octalDirection
+    TYPE(octal), POINTER           :: firstOctal
+    real(oct)           :: dr, dx, dphi
+    real(oct)           :: r
+    real(oct)           :: phi1, phi2
+    TYPE(octalVector)              :: position1
+    TYPE(octalVector)              :: position2
+    INTEGER                        :: subcell
+
+    
+    octalDirection = direction
+
+    call amrGridValues(grid%octreeRoot,position,foundOctal=thisOctal,&
+                           foundSubcell=subcell)
+    
+!    currentOctal => grid%octreeRoot
+!    thisOctal => grid%octreeRoot
+!    CALL findSubcellTD(position, currentOctal, thisOctal, subcell)
+    ! dr is a small increment of distance
+    dr = thisOctal%subcellSize 
+
+    ! get a new position a little way back from current position
+    position1 = position - (dr * octalDirection)
+    
+    ! this might be inside core or outside grid - in which case
+    !   just use the current position as the first point
+
+    r = modulus(position1)
+    IF (.NOT. inOctal(grid%octreeRoot,position1) .OR. (r < grid%rCore)) THEN
+      position1 = position
+    END IF
+      
+    ! first line of sight velocity
+    phi1 = direction .dot. (AMRgridVelocity(grid%octreeRoot,position1,&
+                                            startOctal=startOctal,&
+                                            foundOctal=firstOctal))
+    
+    ! now go forward a bit from current position
+    position2 = position + (dr * octalDirection)
+
+    ! check we're still inside grid
+    r = modulus(position2)
+    IF (.NOT. inOctal(grid%octreeRoot,position2) .OR. (r < grid%rCore)) THEN
+      position2 = position
+    END IF
+
+    ! the second position l.o.s. velocity
+    phi2 = direction .dot. (AMRgridVelocity(grid%octreeRoot,position2,&
+                                            startOctal=firstOctal,&
+                                            foundOctal=foundOctal,&
+                                            foundSubcell=subcell))
+
+    IF (PRESENT(foundSubcell)) foundSubcell = subcell                                        
+
+    dx = modulus(position2 - position1)
+
+    dphi = phi2 - phi1
+
+    write(*,*) "phi1 phi2",phi1,phi2
+    write(*,*) "position1",position1
+    write(*,*) "position2",position2
+    write(*,*) "dx",dx
+
+    ! the line of sight velocity gradient
+
+    IF (ABS(dx) >= 1.e-20) THEN
+       amrGridDirectionalDeriv = (abs(dphi / dx))
+    ELSE
+       amrGridDirectionalDeriv = 1.e-20
+    ENDIF
+    IF (.NOT. ABS(amrGridDirectionalDeriv) >= 1.e-10) &
+       amrGridDirectionalDeriv = 1.e-10
+
+  END subroutine amrGridDirectionalDeriv_sub
 
 END MODULE amr_mod

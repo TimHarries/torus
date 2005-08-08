@@ -3047,6 +3047,7 @@ contains
     logical, intent(in) :: firstTime ! if this is the first run, we have to 
                                      !   calculate LTE values first.
     real(double), intent(in) :: NeFactor ! fudge factor for Ne
+    type(VECTOR) :: rVec
     real :: photoOmega, hotOmega
     logical :: needRestart ! non-physical solution flag
     logical, dimension(8) :: canUse ! flag for valid alternative subcells
@@ -3177,6 +3178,13 @@ contains
           do iSubcell = 1,  thisOctal%maxChildren, 1
              if (octalArray(iOctal)%inUse(iSubcell) .and. ((thisOctal%inFlow(iSubcell) .and. &
                 thisOctal%nTot(iSubcell) > 1.0) )) then
+                rVec = subcellCentre(thisOctal,iSubcell)
+                write(*,*) "beta_mn",beta_mn(2, 3, rVec, 1, 1, 1, grid, thisOctal, iSubcell)
+                write(*,*) "beta_cmn",beta_cmn(2, 3, rVec, 1, 1, 1, grid, 1, thisOctal, iSubcell)
+                if (beta_mn(2, 3, rVec, 1, 1, 1, grid, thisOctal, iSubcell) < 0.1) then
+                   call beta_mn_sub(2, 3, rVec, 1, 1, 1, grid, thisOctal, iSubcell)
+                endif
+
                 if (recalcPrevious .and. .not. firstTime) then
                   ! calculate LTE values, and then scale by old coefficients
                   
@@ -3210,7 +3218,6 @@ contains
                 if (.not. propogateCoeffs .and. .not. firstTime) &
                        previousXall = xAll(1:maxLevels)
                        
-                rVec = subcellCentre(thisOctal,iSubcell)
 
                 !call photoSolidAngle(rVec, starSurface, hotOmega, photoOmega)
                 photoFlux1 = photoFluxIntegral(rVec, starSurface, SIZE(starSurface%nuArray))
@@ -3228,7 +3235,7 @@ contains
                            nuArray1, nNu1, &
                            hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
                            isBinary, thisOctal, iSubcell,   &
-                           needRestart=needRestart,maxNegatives=10)
+                           needRestart=needRestart,maxNegatives=20)
 
                 if (needRestart) then
 
@@ -3260,13 +3267,13 @@ contains
                       call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf, &
                            hNu1(1:nNu1), nuArray1, nNu1, &
                            hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
-                           isBinary, thisOctal, iSubcell, needRestart,maxNegatives=8)
+                           isBinary, thisOctal, iSubcell, needRestart,maxNegatives=20)
 
                       if (.not. needRestart) exit 
-                    end if
-                  
+                    end if 
+                 
                   end do
-                
+
                   if (needRestart) then
                     print *, 'None of the neighbouring subcells provided',&
                              ' suitable starting points.'
@@ -3281,7 +3288,7 @@ contains
                     call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, &
                          tolf, hNu1(1:nNu1), nuArray1, nNu1, &
                          hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
-                         isBinary, thisOctal, iSubcell, needRestart,maxNegatives=6)
+                         isBinary, thisOctal, iSubcell, needRestart,maxNegatives=20)
 
                     if (needRestart) then
                       print *, 'Starting from LTE in stateq did not stop numerical problem...'
@@ -3294,7 +3301,7 @@ contains
                       call mnewt_stateq(grid, ntrial_max, xAll, maxlevels+1, tolx, tolf,  &
                          hNu1(1:nNu1), nuArray1, nNu1, &
                          hNu2, nuArray2, nNu2, rVec, 1, 1, 1, visFrac1, visFrac2,&
-                         isBinary, thisOctal, iSubcell, needRestart,maxNegatives=12)
+                         isBinary, thisOctal, iSubcell, needRestart,maxNegatives=20)
                       
                       if (needRestart) then
                         print *, 'Multiplying Ne by a fudge factor did not stop numerical problem...'
@@ -3308,7 +3315,7 @@ contains
 
                   end if
                 end if
-                           
+666             continue
                 ! store the results
                 thisOctal%N(iSubcell,1:maxLevels) = xall(1:maxLevels)
                 thisOctal%Ne(iSubcell) = xall(maxLevels+1)
@@ -3332,6 +3339,8 @@ contains
                                       thisOctal%temperature(iSubcell),'  num. density: ',thisOctal%rho(iSubcell)/mHydrogen 
                    write (*,'(a,f8.4,a)') '    radius = ',&
                       modulus(subcellCentre(thisOctal,iSubcell) - starCentre)/grid%rStar1,' rStar'
+                   rvec = subcellCentre(thisOctal,iSubcell)
+
                    write(*,*) '  level   dep.coeff      N          N LTE     start N  '
                    do i = 1 , maxLevels
                       departCoeff(i) = real(xall(i))/boltzSaha(i, thisOctal%Ne(iSubcell),          &
@@ -3994,8 +4003,103 @@ type(octal), pointer :: testOctal
     end do
   end subroutine LTElevels
 
-end module stateq_mod
 
 !!! vim:set filetype=fortran :                                !!!
 !!! otherwise vim won't recognize a file with the suffix .raw !!!
 
+  subroutine beta_mn_sub(m, n, rVec, i1, i2, i3, grid, thisOctal, thisSubcell)
+
+    type(GRIDTYPE), intent(in)   :: grid
+    type(VECTOR), intent(in)     :: rVec
+    integer, intent(in)          :: i1, i2, i3
+    integer, intent(in)          :: m,n
+    real :: beta_mn
+    type(OCTAL), pointer,optional:: thisOctal
+    integer, intent(in),optional :: thisSubcell 
+    
+    type(VECTOR)      :: direction
+    integer           :: i, j
+    real              :: theta, phi
+    integer,parameter :: nTheta = 10
+    integer           :: nPhi
+    real              :: dTheta, dPhi, dOmega
+    real              :: totomega
+    real(double)              :: escprob,  tau_mn
+    type(octalVector) :: rVecOctal
+    type(OCTAL),pointer:: octalCopy
+    
+    dtheta = pi / real(ntheta-1)
+    beta_mn = 0.
+    totomega = 0.
+    
+    do i = 1, ntheta
+       theta = pi*real(i-1)/real(ntheta-1)
+       nphi = max(2,nint(real(ntheta)*sin(theta)))
+       dphi = twopi / real(nphi-1)
+       do j = 1, nphi-1
+          phi = twopi * real(j-1)/real(nphi-1)
+          direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
+          domega = sin(theta)*dtheta*dphi
+          totomega = totomega + domega
+
+!          call integratePath(real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
+!                   grid%velocity(i1,i2,i3), &
+!                   rVec, direction, grid, &
+!                   lambdaArray, tauExt, tauAbs, tauSca, maxTau, nTau, .false., &
+!                   escProb, .false., real(lambdaTrans(m,n))*1.e8, real(lambdaTrans(m,n))*1.e8, &
+!                   1, contTau, hitCore, .false.,.false., 0.,&
+!                   VECTOR(0.,0.,0.), 1., .true., m, n, real(fstrength(m,n)), real(gDegen(m)), real(gDegen(n)), &
+!                    tau_mn)
+
+          tau_mn = (pi*echarge**2)/(melectron*cspeed)
+          tau_mn = tau_mn * gDegen(m) * fStrength(m,n)
+          if (grid%adaptive) then
+             if (grid%geometry(1:4) == "jets")  then
+                tau_mn = tau_mn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
+                     (thisOctal%N(thisSubcell,n)/gDegen(n)))
+                tau_mn = tau_mn/dV_dn_jets(rVec, direction)
+             else
+                tau_mn = tau_mn * abs((thisOctal%N(thisSubcell,m)/gDegen(m)) - &
+                                      (thisOctal%N(thisSubcell,n)/gDegen(n))) ! eq 5.
+                rVecOctal = rVec
+                octalCopy => thisOctal
+                tau_mn = tau_mn / (amrGridDirectionalDeriv(grid,rVecOctal,direction, &
+                                                        startOctal=octalCopy) / 1.e10)
+             end if
+          else
+             tau_mn = tau_mn * abs((grid%n(i1,i2,i3,m)/gDegen(m)) - &
+                                   (grid%n(i1,i2,i3,n)/gDegen(n))) ! eq 5.
+             tau_mn = tau_mn / (directionalderiv(grid,s2o(rvec),i1,i2,i3,direction)/1.e10)
+          end if
+          write(*,*) i,j,tau_mn,(amrGridDirectionalDeriv(grid,rVecOctal,direction, &
+               startOctal=octalCopy) / 1.e10)
+          call amrGridDirectionalDeriv_sub(grid,rVecOctal,direction, &
+               startOctal=octalCopy)
+          
+          tau_mn = tau_mn *  lambdaTrans(m,n) / cSpeed_dbl
+
+          if (tau_mn < 1.e-20) then
+             tau_mn = 1.e-20 
+          endif
+
+          if (tau_mn < 0.1) then
+             escProb = 1.0-tau_mn*0.5*(1.0 - tau_mn/3.0*(1. - tau_mn*0.25*(1.0 - 0.20*tau_mn)))
+          else if (tau_mn < 15.) then
+             escProb = (1.0-exp(-tau_mn))/tau_mn
+          else
+             escProb = 1./tau_mn
+          end if
+          beta_mn = beta_mn + escprob * domega
+
+       enddo
+    enddo
+          write(*,*) thisoctal%cornervelocity(1:9)
+    beta_mn = beta_mn / totOmega 
+
+!   if ((m == 1).and.(n == 2)) beta_mn = beta_mn * 100.
+!    write(*,*) totOmega/fourPi
+!   write(*,*) m,n,beta_mn
+
+  end subroutine beta_mn_sub
+
+end module stateq_mod

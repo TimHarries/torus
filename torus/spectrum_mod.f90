@@ -74,7 +74,7 @@ module spectrum_mod
     subroutine readSpectrum(spectrum, filename)
       type(SPECTRUMTYPE) :: spectrum
       character(len=*) :: filename
-      real :: fTemp(60000),xTemp(60000)
+      real :: fTemp(1200000),xTemp(1200000)
       integer :: nLambda, i
 
       open(20,file=filename,form="formatted",status="old")

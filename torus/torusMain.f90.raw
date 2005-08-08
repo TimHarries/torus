@@ -1924,7 +1924,7 @@ program torus
           end if
        end do
 
-    case("shakara","clumpydisc")
+    case("shakara","clumpydisc","wrshell")
        nSource = 1
        allocate(source(1:1))
        source(1)%radius = grid%rCore
