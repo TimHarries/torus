@@ -45,10 +45,10 @@
 !     .  arrays are set for a maximum size parameter of 200     .
 !     ...........................................................
 !      complex cm,ci,cim,f(1000),g(1000),s1,s2
-      complex cm,ci,cim,f(10000),g(10000),s1,s2 !tjh
+      complex cm,ci,cim,f(1000000),g(1000000),s1,s2 !tjh
       common /cfcom/ f,g,cnrm
 !      real :: pnmllg(1001),cnrm(1000)
-      real :: pnmllg(10001),cnrm(10000)
+      real :: pnmllg(1000001),cnrm(1000000)
       real, parameter :: rtd = 180.0/pi
       real :: a, da, gfac, dist
       real :: a1,a2,loga1,loga2
@@ -261,10 +261,10 @@
 !     .    York,1983), p.100                                       .
 !     ..............................................................
 !      complex b,z,cm,ci,hkl(1001),an,amat(1000),f(1000),g(1000)
-      complex b,z,cm,ci,hkl(10001),an,amat(10000),f(10000),g(10000) !tjh
+      complex b,z,cm,ci,hkl(1000001),an,amat(1000000),f(1000000),g(1000000) !tjh
       common /cfcom/ f,g,cnrm
 !      dimension cnrm(1000)
-      dimension cnrm(10000) ! tjh
+      dimension cnrm(1000000) ! tjh
       ci = (0.0,1.0)
 !     ......................................................
 !     .  set the number of terms required for convergence  .
