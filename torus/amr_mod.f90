@@ -220,7 +220,7 @@ CONTAINS
        case("cluster")
           ! Initially we copy the idecies of particles (in SPH data)
           ! to the root node. The indecies will copy over to
-          ! to the subcells if the particles are in the subcells.
+           ! to the subcells if the particles are in the subcells.
           ! This will allow us to work with the subsets of gas particle
           ! list hence reduces the computation time when we are 
           ! splitting/constructing the octree data structure. 
@@ -2220,7 +2220,7 @@ CONTAINS
 !    thisOctal => grid%octreeRoot
 !    CALL findSubcellTD(position, currentOctal, thisOctal, subcell)
     ! dr is a small increment of distance
-    dr = thisOctal%subcellSize 
+    dr = thisOctal%subcellSize * 1.d-1
 
     ! get a new position a little way back from current position
     position1 = position - (dr * octalDirection)
@@ -7858,8 +7858,8 @@ CONTAINS
             freq = cSpeed / (grid%lamArray(i)*1.e-8)
             dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
             do j = 1, nDustType
-               rosselandKappa = rosselandKappa + thisOctal%dustTypeFraction(subcell, j) * bnu(freq, dble(temperature)) * dFreq / &
-                 ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))*frac)
+               rosselandKappa = rosselandKappa + bnu(freq, dble(temperature)) * dFreq / &
+                 ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))*thisOctal%dustTypeFraction(subcell, j))
             enddo
             bnutot = bnutot + bnu(freq, dble(temperature)) * dfreq
          enddo

@@ -1232,46 +1232,46 @@ contains
   end function boltzmann
 
 
-!  real(double) pure function oldcikt(i,t)
-!    !
-!    ! this function calculates the collisional ionization rate (see k&c and
-!    ! mihalas 1967 (apj 149 169) ).
-!    ! 
-!    integer, intent(in)              :: i        ! the level
-!    real(double),intent(in) :: t        ! the temperature
-!    
-!    real(double) :: t1                  
-!    real(double) :: gammait             ! see k&c
-!    real(double) :: lgt
-!    real(double) :: chi                 ! potential from i to k
-!    ! making cint a PARAMETER may cause problems with XL Fortran
-!    !  real(double) :: cint(5,10)
-!    !  cint = reshape(source=                                                                   &
-!    real(double), parameter :: cint(5,10) = reshape(source=                         &
-!         (/-0.4350000e0_db, 0.3000000e00_db,0.0000000e0_db, 0.0000000e0_db,0.00000000e0_db,  &
-!            1.9987261e1_db,-5.8906298e-5_db,0.0000000e0_db,-2.8185937e4_db,5.44441600e7_db,  &
-!            1.3935312e3_db,-1.6805859e02_db,0.0000000e0_db,-2.5390000e3_db,0.00000000e0_db,  &
-!            2.0684609e3_db,-3.3415820e02_db,0.0000000e0_db, 0.0000000e0_db,-7.6440625e3_db,  &
-!            3.2174844e3_db,-5.5882422e02_db,0.0000000e0_db, 0.0000000e0_db,-6.8632500e3_db,  &
-!            5.7591250e3_db,-1.5163125e03_db,8.1750000e1_db, 0.0000000e0_db,0.00000000e0_db,  &
-!            1.4614750e4_db,-4.8283750e03_db,3.9335938e2_db, 0.0000000e0_db,0.00000000e0_db,  &
-!            2.8279250e4_db,-1.0172750e04_db,9.1967968e2_db, 0.0000000e0_db,0.00000000e0_db,  &
-!            4.6799250e4_db,-1.7627500e04_db,1.6742031e3_db, 0.0000000e0_db,0.00000000e0_db,  &
-!           -7.4073000e4_db, 6.8599375e03_db,0.0000000e0_db, 2.0169800e5_db,0.00000000e0_db/),&
-!                                                                             shape=(/5,10/))
-!
-!    t1 = min(t,1.5e5_db)
-!    lgt=log10(t1)
-!    if (i .ne. 2) then 
-!       gammait=cint(1,i)+cint(2,i)*lgt+cint(3,i)*(lgt**2)+ &
-!            (cint(4,i)/lgt)+(cint(5,i)/(lgt**2))
-!    else
-!       gammait=cint(1,i)+cint(2,i)*t1+(cint(4,i)/t1)+(cint(5,i)/t1**2)
-!    endif
-!    chi=hydE0eV-eTrans(i)
-!    oldcikt=(5.465e-11)*sqrt(t1)*exp(-chi/(kev*t1))*gammait
-!
-!  end function oldcikt
+  real(double) pure function oldcikt(i,t)
+    !
+    ! this function calculates the collisional ionization rate (see k&c and
+    ! mihalas 1967 (apj 149 169) ).
+    ! 
+    integer, intent(in)              :: i        ! the level
+    real(double),intent(in) :: t        ! the temperature
+    
+    real(double) :: t1                  
+    real(double) :: gammait             ! see k&c
+    real(double) :: lgt
+    real(double) :: chi                 ! potential from i to k
+    ! making cint a PARAMETER may cause problems with XL Fortran
+    !  real(double) :: cint(5,10)
+    !  cint = reshape(source=                                                                   &
+    real(double), parameter :: cint(5,10) = reshape(source=                         &
+         (/-0.4350000e0_db, 0.3000000e00_db,0.0000000e0_db, 0.0000000e0_db,0.00000000e0_db,  &
+            1.9987261e1_db,-5.8906298e-5_db,0.0000000e0_db,-2.8185937e4_db,5.44441600e7_db,  &
+            1.3935312e3_db,-1.6805859e02_db,0.0000000e0_db,-2.5390000e3_db,0.00000000e0_db,  &
+            2.0684609e3_db,-3.3415820e02_db,0.0000000e0_db, 0.0000000e0_db,-7.6440625e3_db,  &
+            3.2174844e3_db,-5.5882422e02_db,0.0000000e0_db, 0.0000000e0_db,-6.8632500e3_db,  &
+            5.7591250e3_db,-1.5163125e03_db,8.1750000e1_db, 0.0000000e0_db,0.00000000e0_db,  &
+            1.4614750e4_db,-4.8283750e03_db,3.9335938e2_db, 0.0000000e0_db,0.00000000e0_db,  &
+            2.8279250e4_db,-1.0172750e04_db,9.1967968e2_db, 0.0000000e0_db,0.00000000e0_db,  &
+            4.6799250e4_db,-1.7627500e04_db,1.6742031e3_db, 0.0000000e0_db,0.00000000e0_db,  &
+           -7.4073000e4_db, 6.8599375e03_db,0.0000000e0_db, 2.0169800e5_db,0.00000000e0_db/),&
+                                                                             shape=(/5,10/))
+
+    t1 = min(t,1.5e5_db)
+    lgt=log10(t1)
+    if (i .ne. 2) then 
+       gammait=cint(1,i)+cint(2,i)*lgt+cint(3,i)*(lgt**2)+ &
+            (cint(4,i)/lgt)+(cint(5,i)/(lgt**2))
+    else
+       gammait=cint(1,i)+cint(2,i)*t1+(cint(4,i)/t1)+(cint(5,i)/t1**2)
+    endif
+    chi=hydE0eV-eTrans(i)
+    oldcikt=(5.465e-11)*sqrt(t1)*exp(-chi/(kev*t1))*gammait
+
+  end function oldcikt
   
   real(double) function cikt(i,t)
     !
@@ -1414,7 +1414,6 @@ contains
     if (j < i) then
        cijt = cijt / (exp(-chi) * 2.)
     endif
-
 
   end function cijt
 
@@ -1562,11 +1561,12 @@ contains
     real(double) :: freq
     integer, parameter :: debug = 0
     integer, save :: i = 0
-    real(double) :: Inu
+    real(double) :: Inu, phit
     real(double) :: tot
     real(double) :: fac1, fac2
 
     if (n == debug) write(*,*) " "
+
 
     ! we have one IF statement to decide whether we use the block containin the
     !   AMR version of the code. 
@@ -1670,6 +1670,8 @@ contains
        NStar = boltzSaha(n, thisOctal%Ne(thisSubcell),dble(thisOctal%temperature(thisSubcell)))
 
        fac1 = integral1(n,hnu1, nuArray1, nNu1, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)*visFrac1 
+
+
        if (binary) then
           fac2 = integral1(n,hnu2, nuArray2, nNu2, rVec, i1, i2, i3, grid, 2, thisOctal, thisSubcell)*visFrac2
        else
@@ -1682,10 +1684,18 @@ contains
    
        if (n == debug) then
           write(*,*) "Recombination: ",tot
+          phiT = 1.5d0*log10(2.d0*pi*mElectron*kErg*thisOctal%temperature(thissubcell)) - &
+               3.d0*log10(hCgs) + log10(exp(-1.0*hydE0eVdb/(kEV*thisOCtal%temperature(thissubcell))))
+          phiT = 10.d0**phiT
+
+          
+
+          write(*,*) thisOctal%ne(thissubcell)**2 * phit,nstar
+
           write(*,*) nstar, fac1, fac2, thisOctal%Ne(thisSubcell)* &
              cikt(n,real(thisOctal%temperature(thisSubcell),kind=db))
        endif
-       
+
        
        fac1 = integral2(n,hnu1, nuArray1, nNu1, rVec, grid, 1)*visFrac1 
  
@@ -1696,8 +1706,12 @@ contains
        endif
        
        if (.not. (n == 1 .and. LyContThick)) then
+
+
          tot = tot - thisOctal%N(thisSubcell,n)*(fac1 + fac2 + thisOctal%Ne(thisSubcell) * &
           cikt(n, real(thisOctal%temperature(thisSubcell),kind=db)))
+
+
        end if
    
        if (n == debug) then
@@ -1956,7 +1970,7 @@ contains
        tot = tot + 0.5*(fac1 + fac2)*(nuArray(imin+1)-freq)
        do i = iMin+1, nNu-1
           Jnu = 4.*w*hnu(i)
-          fac1  = (fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
+          fac1 = (fourPi/(hCgs*nuArray(i)))*annu(n,dble(nuArray(i)))* &
                ((2.*real(dble(hCgs)*dble(nuArray(i))**3) / (cSpeed*cSpeed)) + jnu) &
                *exp(-hCgs*nuArray(i)/(kErg*thisOctal%temperature(thisSubcell)))
           Jnu = 4.*w*hnu(i+1)
@@ -2443,7 +2457,7 @@ contains
     integer                        :: negativeErrors
     logical, intent(out), optional :: needRestart
     integer, intent(in), optional  :: maxNegatives
-    integer, parameter             :: ntrial_min = 4  ! minimum number of tiral
+    integer, parameter             :: ntrial_min = 1  ! minimum number of tiral
     integer                        :: n_iteration
     
     if (size(x) /= n) then 
@@ -2489,11 +2503,11 @@ contains
         errx=0.
         do i = 1, n
            errx=errx+abs(beta(i))
-           if (.not.(all((x+beta)>0.d0))) then
-              x(i)=x(i)+beta(i) * 0.5d0 ! Under correction factor introduced by TJH 13/07/05
-           else
+!           if (.not.(all((x+beta)>0.d0))) then
+!              x(i)=x(i)+beta(i) * 0.5d0 ! Under correction factor introduced by TJH 13/07/05
+!           else
               x(i)=x(i)+beta(i)
-           endif
+!           endif
         end do 
         !if (debug) print *, "errx,tolx",errx,tolx
 !        print *, "errx,tolx",errx,tolx
@@ -2825,8 +2839,8 @@ contains
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
 !    real(double),parameter :: tolx = 1.e6_db   ! tolerance
 !    real(double),parameter :: tolf = 1.e6_db  ! tolerance
-    real(double),parameter :: tolx = 1.e0_db   ! tolerance
-    real(double),parameter :: tolf = 1.e0_db  ! tolerance
+    real(double),parameter :: tolx = 1.e3_db   ! tolerance
+    real(double),parameter :: tolf = 1.e3_db  ! tolerance
     integer                     :: returnVal     ! status value
     real(double),dimension(1:maxLevels+1) :: xall
     real(double)       :: nTot
@@ -3179,11 +3193,11 @@ contains
              if (octalArray(iOctal)%inUse(iSubcell) .and. ((thisOctal%inFlow(iSubcell) .and. &
                 thisOctal%nTot(iSubcell) > 1.0) )) then
                 rVec = subcellCentre(thisOctal,iSubcell)
-                write(*,*) "beta_mn",beta_mn(2, 3, rVec, 1, 1, 1, grid, thisOctal, iSubcell)
-                write(*,*) "beta_cmn",beta_cmn(2, 3, rVec, 1, 1, 1, grid, 1, thisOctal, iSubcell)
-                if (beta_mn(2, 3, rVec, 1, 1, 1, grid, thisOctal, iSubcell) < 0.1) then
-                   call beta_mn_sub(2, 3, rVec, 1, 1, 1, grid, thisOctal, iSubcell)
-                endif
+!                write(*,*) "beta_mn",beta_mn(2, 3, rVec, 1, 1, 1, grid, thisOctal, iSubcell)
+!                write(*,*) "beta_cmn",beta_cmn(2, 3, rVec, 1, 1, 1, grid, 1, thisOctal, iSubcell)
+!                if (beta_mn(2, 3, rVec, 1, 1, 1, grid, thisOctal, iSubcell) < 0.1) then
+!                   call beta_mn_sub(2, 3, rVec, 1, 1, 1, grid, thisOctal, iSubcell)
+!                endif
 
                 if (recalcPrevious .and. .not. firstTime) then
                   ! calculate LTE values, and then scale by old coefficients
@@ -3194,14 +3208,16 @@ contains
 
                   thisOctal%Ne(iSubcell) = &
                     thisOctal%Ne(iSubcell) * thisOctal%departCoeff(iSubcell,maxLevels+1)      
-                  thisOctal%N(iSubcell,:) = &
-                    thisOctal%N(iSubcell,:) * thisOctal%departCoeff(iSubcell,1:maxLevels)      
                   
                 end if
-                
+
+
+
                 ! store the electron density so that we can use it for
                 !   comparison later.
                 NeLTE = thisOctal%Ne(iSubcell)
+
+
                 
                 ! if we are using starting values from the previous cell, apply
                 !   them now
@@ -3335,7 +3351,7 @@ contains
                 end if
                            
                 if (debugInfo) then
-                   write (*,'(a12,i1,a15,f7.0,a16,e10.1)') '   subcell #', iSubcell, '  temperature: ', & 
+                   write (*,'(a12,i1,a15,f7.0,a16,1pe10.2)') '   subcell #', iSubcell, '  temperature: ', & 
                                       thisOctal%temperature(iSubcell),'  num. density: ',thisOctal%rho(iSubcell)/mHydrogen 
                    write (*,'(a,f8.4,a)') '    radius = ',&
                       modulus(subcellCentre(thisOctal,iSubcell) - starCentre)/grid%rStar1,' rStar'
@@ -3959,7 +3975,7 @@ type(octal), pointer :: testOctal
 
   end function Z_HI
 
-  pure subroutine LTElevels(Tsingle,rho,Ne,nTot,levels,NeFactor)
+  subroutine LTElevels(Tsingle,rho,Ne,nTot,levels,NeFactor)
 
     real, intent(in)                  :: Tsingle 
     real(double)             :: T
@@ -3972,7 +3988,8 @@ type(octal), pointer :: testOctal
     integer, parameter                :: maxLevels = statEqMaxLevels 
     integer :: i
     integer, dimension(maxLevels), parameter :: allLevels = (/ (i,i=1,maxLevels) /)
-    real(double)             :: phiT
+    real(double)             :: phiT, ne1, ne2
+    logical :: ok
     
     !==========================================================================
     !
@@ -3986,7 +4003,8 @@ type(octal), pointer :: testOctal
     T = Tsingle
     
     nTot = rho/mHydrogen
-    phiT = 0.5d0*CI*Z_HI(maxLevels,T)*EXP(real(hydE0eV,kind=double)/(kev*T))
+    phiT = T**(-1.5d0)*CI*Z_HI(maxLevels,T)*EXP(real(hydE0eV,kind=double)/(kev*T))
+
 
     ! Solving for phi(T)*ne^2 + 2ne -n =0 for ne, and choosing the physical
     ! solution ... 
@@ -3994,7 +4012,21 @@ type(octal), pointer :: testOctal
     Ne = min(Ne, nTot)     ! to avoid unphysical solution.
 !    if (Ne<=0) Ne =nTot   ! to avoid unphysical solution.
     if (Ne<=0) Ne =1.0d-40 ! to avoid unphysical solution.
-   
+
+!    write(*,*) "rk ne",ne
+!
+    phiT = 1.5d0*log10(2.d0*pi*mElectron*kErg*T) - &
+         3.d0*log10(hCgs) + log10(exp(-1.0*hydE0eVdb/(kEV*T)))
+!                     
+    phiT = 10.d0**phiT
+!
+!
+    call solveQuadDble(1.d0, phiT, -1.d0*phiT*dble(nTot), ne1, ne2, ok)
+!  
+    ne = ne1
+!   
+!    write(*,*) "th ne",ne
+
     if (present(NeFactor)) Ne = Ne * NeFactor
     
 !    levels = boltzsaha(allLevels,Ne,T)  ! This is ok for elemental function...
@@ -4101,5 +4133,13 @@ type(octal), pointer :: testOctal
 !   write(*,*) m,n,beta_mn
 
   end subroutine beta_mn_sub
+
+  real function approxIonization(Tr, Te) result (f)
+    real :: tr , te
+! based on Milahas equation 5.45 - W = 0.5 for near photosphere
+
+    f = 0.5 * (Tr/Te)*exp(-hydE0Ev/(kEv*Tr))/(exp(-hydE0Ev/(Kev*Te)))
+  end function approxIonization
+    
 
 end module stateq_mod

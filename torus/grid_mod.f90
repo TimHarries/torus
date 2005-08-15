@@ -6170,15 +6170,14 @@ contains
 ! Comment out the following if you want the pix value as a function of distance from 
 ! the center of the gird. Useful for some cases.
 
-!    ! writing the radial profile of the values on the specified plane.
-!    filename_prof = 'profile_'//TRIM(ADJUSTL(name))//'_'//TRIM(ADJUSTL(plane))//'.dat' 
-!    open(unit=luout, file = TRIM(ADJUSTL(filename_prof)), status='replace')
-!!    write(luout, '(a, 2x, 1PE18.4)') '#  The 3rd dimension value = ', value_3rd_dim
-!!    write(luout, '(a)') '#  format :  distance [10^10cm]  --  values [?]'  
-!
-!    call radial_profile(root, name, plane, v3, luout, root%centre, grid)
-!    close(luout)
+    ! writing the radial profile of the values on the specified plane.
+    filename_prof = 'profile_'//TRIM(ADJUSTL(name))//'_'//TRIM(ADJUSTL(plane))//'.dat' 
+    open(unit=luout, file = TRIM(ADJUSTL(filename_prof)), status='replace')
+!    write(luout, '(a, 2x, 1PE18.4)') '#  The 3rd dimension value = ', value_3rd_dim
+!    write(luout, '(a)') '#  format :  distance [10^10cm]  --  values [?]'  
 
+    call radial_profile(root, name, plane, v3, luout, root%centre, grid)
+    close(luout)
     !
     ! Annotation.
     !
@@ -6939,8 +6938,7 @@ contains
 !                call returnKappa(grid, thisOctal, subcell, ilam, grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
 !                value = thisOctal%subcellsize * (kSca+kAbs)
              case default
-                write(*,*) "Error:: unknow name passed to grid_mod::radial_profile."
-                stop
+                value = 666.
              end select
 
 !             distance = modulus(rvec-center)   ! length of the vector

@@ -436,6 +436,8 @@ program torus
 !$MPI  if (my_rank==1) &
   call tune(6, "Torus Main") ! start a stopwatch  
 
+
+
   ! initialize
 
   useNdf = .true.
