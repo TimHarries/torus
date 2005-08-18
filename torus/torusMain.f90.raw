@@ -557,11 +557,18 @@ program torus
   endif
 
   probLinePhoton = 1. - probContPhoton
+
   if (allocated(inclinations)) then
      inclination = inclinations(1)
   else
      inclination = firstInclination
   end if
+  if (inclination .lt. 1.e-6) then
+     write(*,*) "Warning: inclination less than 1.e-6, now set to 1.e-6."
+     write(*,*) "         Did you specify an inclination of 0?"
+  end if
+  inclination = max(inclination, 1.e-6)
+
   scale = scale * rSol
 
   rStar = 100.*rSol
