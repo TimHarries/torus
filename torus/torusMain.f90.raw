@@ -655,8 +655,8 @@ program torus
   call normalize(normToRotation)
 
   originalViewVec%x = 0.
-  originalViewVec%y = -sin(firstInclination)
-  originalViewVec%z = -cos(firstInclination)
+  originalViewVec%y = -sin(inclination)
+  originalViewVec%z = -cos(inclination)
   viewVec = originalViewVec
 
   !=====================================================================
@@ -2259,7 +2259,7 @@ program torus
   normToRotation = rotationAxis .cross. yAxis
   call normalize(normToRotation)
 
-  tempVec  = arbitraryRotate(rotationAxis, firstInclination, normToRotation)
+  tempVec  = arbitraryRotate(rotationAxis, inclination, normToRotation)
   originalViewVec =  (-1.)*tempVec
 
 
