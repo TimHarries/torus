@@ -6611,8 +6611,14 @@ CONTAINS
     thisSubcell = 1
     do
       if (thisOctal%hasChild(thisSubcell)) then
-        child => thisOctal%child(thisOctal%indexChild(thisSubcell))
-        call smoothAMRgridTau(child,grid,gridConverged,  ilam, sphData, stellar_cluster, inheritProps)
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == thisSubcell) then
+              child => thisOctal%child(i)
+              call smoothAMRgridTau(child,grid,gridConverged,  ilam, sphData, stellar_cluster, inheritProps)
+              exit
+           end if
+        end do
       else
         thisSubcellCentre = subcellCentre(thisOctal,thisSubcell)
 
