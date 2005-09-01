@@ -11,8 +11,8 @@ module gridtype_mod
 
   implicit none
 
-  integer, parameter :: statEqMaxLevels =   14   ! number of stateq levels
-!  integer, parameter :: statEqMaxLevels =   6    ! number of stateq levels
+!  integer, parameter :: statEqMaxLevels =   14   ! number of stateq levels
+  integer, parameter :: statEqMaxLevels =   8    ! number of stateq levels
                                                  ! (specified as a parameter for speed)
 
   public

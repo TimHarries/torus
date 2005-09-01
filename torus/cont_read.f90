@@ -10,8 +10,8 @@ subroutine contread(filename,line_freq,hnu)
   use kind_mod
   
   implicit none
-  real nu(2000)         ! frequency grid
-  real hnugrid(2000)        ! intensity grid
+  real nu(200000)         ! frequency grid
+  real hnugrid(200000)        ! intensity grid
   real line_freq
   real(double) :: hnu
   character(len=80) :: filename

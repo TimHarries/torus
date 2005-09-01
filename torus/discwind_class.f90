@@ -29,6 +29,7 @@ module discwind_class
   private::  &
        &   int_discwind, &
        &   need_to_split, &
+       &   need_to_split2, &
        &   add_new_children, &
        &   fill_velocity_corners, &
        &   speed_of_sound, &
@@ -93,7 +94,8 @@ module discwind_class
   end interface
 
   interface ave_discwind_density
-     module procedure ave_discwind_density_fast
+     module procedure ave_discwind_density_max
+!     module procedure ave_discwind_density_fast
 !     module procedure ave_discwind_density_slow
   end interface
   
@@ -348,6 +350,7 @@ contains
     ! 
     Cs = speed_of_sound(this, rho)  ! [cm/s]    
     fac = 1.0d0 -  this%Rs/(s+this%Rs)  ! [-]
+    fac = fac**this%beta
 
     tmp = Cs + (this%f*escape_velocity(this, rho) - Cs)*fac  ! [cm/s]
     discwind_Vr = tmp
@@ -513,7 +516,7 @@ contains
     real(double) :: x, y, z, d     ! [cm]  
     real(double) :: rho    ! cylyndical distance [cm]
     real(double) :: r      ! distance from a souce displaced [cm]
-    real(double), parameter :: density_min = 1.0d-17  ! [g/cm^3]
+    real(double), parameter :: density_min = tiny(density_min)  ! [g/cm^3]
     real(double), parameter :: density_max = 1.0d-8   ! [g/cm^3]
     real(double) :: rho_sq, s, rp, fac
 
@@ -605,7 +608,8 @@ contains
        
        if (modulus(cellCentre) > this%Rmin) then 
           do while ((.not.splitThis).and.(subcell <= n))
-             IF (need_to_split(thisOctal,subcell,this, limitscalar)) then
+!             IF (need_to_split(thisOctal,subcell,this, limitscalar)) then
+             IF (need_to_split2(thisOctal,subcell,this)) then
                 splitThis = .true. 
              end IF
              subcell = subcell + 1
@@ -625,7 +629,9 @@ contains
     
   END SUBROUTINE add_discwind
 
-  
+
+  !
+  !
   ! This is based decideSplit in amr_mod.f90
   logical function need_to_split(thisOctal,subcell, this, limitscalar)
     
@@ -662,6 +668,64 @@ contains
                
 
   end function need_to_split
+
+
+  !
+  ! Split using the log-scaled radial grid.
+  logical function need_to_split2(thisOctal,subcell, this)
+
+    IMPLICIT NONE
+
+    TYPE(octal), POINTER       :: thisOctal
+    INTEGER, INTENT(IN)        :: subcell
+    type(discwind), intent(in) :: this
+    
+    real(oct)  :: cellSize, d
+    real(double) :: rho_disc, mass_cell
+    TYPE(octalVector)     :: cellCentre
+!    integer, parameter :: nr = 100  ! low resolution
+    integer, parameter :: nr = 250  ! Hi resolution
+    real(double) :: r
+    integer :: i
+    !
+    logical, save :: first_time = .true.
+    real(double) , save:: rGrid(nr)
+    real(double) :: Rmax = 1.5d5  ! [10^10cm] = 100 AU
+
+    need_to_split2 = .false.
+
+    if (first_time) then  ! setup ref. r grid
+       do i = 1, nr
+          ! this should not depend on the size of the model boundary box.
+          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(Rmax)-log10(this%Rmin))
+!          rGrid(i) = log10(this%Rmin)+dble(i-1)/dble(nr-1)*(log10(this%Rmax)-log10(this%Rmin))
+       enddo
+       do i = 1, nr
+          rGrid(i) = 10.d0**rGrid(i)
+       end do
+       first_time = .false.
+    end if
+
+    cellSize = (thisOctal%subcellSize)*2.0d0
+    cellCentre = subcellCentre(thisOctal, subcell)
+
+
+!    if (.not.in_jet_flow(this, cellCentre) ) then
+    if (.not.in_discwind(this, cellCentre%x, cellCentre%y, cellCentre%z) ) then
+       need_to_split2 = .false.
+    else
+       ! get the size and the position of the centre of the current cell
+       r = modulus(cellCentre)
+       call locate(rGrid,nr,r,i)
+       if (i > (nr-1)) i = nr-1
+       d = rGrid(i+1) - rGrid(i)
+       if (cellSize > d ) then
+          need_to_split2 = .true.
+       end if
+    endif
+  end function need_to_split2
+
+
   
   !
   !
@@ -735,6 +799,9 @@ contains
        NULLIFY(parent%child(newChildIndex)%child)
 
        ! set up the new child's variables
+       parent%child(newChildIndex)%threed = parent%threed
+       parent%child(newChildIndex)%twoD = parent%twod
+       parent%child(newChildIndex)%maxChildren = parent%maxChildren
        parent%child(newChildIndex)%parent => parent
        parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
        parent%child(newChildIndex)%hasChild = .false.
@@ -895,6 +962,59 @@ contains
     end if
 
   end function ave_discwind_density_fast
+
+
+
+
+  !
+  !
+  !
+  real(double) function ave_discwind_density_max(thisOctal,subcell, this)
+
+    IMPLICIT NONE
+
+    TYPE(octal), POINTER       :: thisOctal
+    INTEGER, INTENT(IN)        :: subcell
+    type(discwind), intent(in) :: this
+    
+    real(oct)  :: cellSize, x, y, z
+    TYPE(octalVector)     :: cellCentre 
+    real(double) :: c0, c1, c2, c3, c4, c5, c6, c7, c8, d
+
+    ! get the size and the position of the centre of the current cell
+    cellSize = thisOctal%subcellSize
+    cellCentre = subcellCentre(thisOctal, subcell)
+    x = cellcentre%x
+    y = cellcentre%y
+    z = cellcentre%z
+    d = cellsize/3.00
+    if (.not. thisOctal%threeD)  y = 0.0d0  ! 2D case
+
+    ! assigning density 
+    if (thisOctal%threeD)  then
+       c0 =  discwind_density(this, x, y, z)    
+       c1 =  discwind_density(this, x+d, y+d, z+d)
+       c2 =  discwind_density(this, x+d, y+d, z-d)
+       c3 =  discwind_density(this, x+d, y-d, z+d)
+       c4 =  discwind_density(this, x+d, y-d, z-d)
+       c5 =  discwind_density(this, x-d, y+d, z+d)
+       c6 =  discwind_density(this, x-d, y+d, z-d)
+       c7 =  discwind_density(this, x-d, y-d, z+d)
+       c8 =  discwind_density(this, x-d, y-d, z-d)
+       
+       ave_discwind_density_max =  &
+            (c0 + c1+ c2 + c3 + c4 + c5 + c6 + c7 + c8)/9.0d0
+    else  ! 2D case
+       c0 =  discwind_density(this, x, y, z)    
+       c1 =  discwind_density(this, x+d, y, z+d)
+       c2 =  discwind_density(this, x+d, y, z-d)
+       c3 =  discwind_density(this, x-d, y, z+d)
+       c4 =  discwind_density(this, x-d, y, z-d)
+       
+       ave_discwind_density_max =  max(c0, c1, c2, c3, c4)
+    end if
+
+  end function ave_discwind_density_max
 
 
     

@@ -1555,6 +1555,8 @@ contains
     integer, intent(in)         :: i1, i2, i3
     type(VECTOR), intent(in)    :: rVec
     type(OCTAL),pointer,optional:: thisOctal
+    real(double) :: ntot, x1,x2
+    logical :: ok
     integer,intent(in),optional :: thisSubcell
     integer :: m,n
     real(double) :: nstar
@@ -1669,8 +1671,8 @@ contains
 
        NStar = boltzSaha(n, thisOctal%Ne(thisSubcell),dble(thisOctal%temperature(thisSubcell)))
 
-       fac1 = integral1(n,hnu1, nuArray1, nNu1, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)*visFrac1 
 
+       fac1 = integral1(n,hnu1, nuArray1, nNu1, rVec, i1, i2, i3, grid, 1, thisOctal, thisSubcell)*visFrac1 
 
        if (binary) then
           fac2 = integral1(n,hnu2, nuArray2, nNu2, rVec, i1, i2, i3, grid, 2, thisOctal, thisSubcell)*visFrac2
@@ -2839,8 +2841,8 @@ contains
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
 !    real(double),parameter :: tolx = 1.e6_db   ! tolerance
 !    real(double),parameter :: tolf = 1.e6_db  ! tolerance
-    real(double),parameter :: tolx = 1.e3_db   ! tolerance
-    real(double),parameter :: tolf = 1.e3_db  ! tolerance
+    real(double),parameter :: tolx = 1.e2_db   ! tolerance
+    real(double),parameter :: tolf = 1.e2_db  ! tolerance
     integer                     :: returnVal     ! status value
     real(double),dimension(1:maxLevels+1) :: xall
     real(double)       :: nTot
@@ -4004,26 +4006,27 @@ type(octal), pointer :: testOctal
     
     nTot = rho/mHydrogen
     phiT = T**(-1.5d0)*CI*Z_HI(maxLevels,T)*EXP(real(hydE0eV,kind=double)/(kev*T))
+    phiT = T**(-1.5d0)*CI*2.*EXP(real(hydE0eV,kind=double)/(kev*T))
 
 
     ! Solving for phi(T)*ne^2 + 2ne -n =0 for ne, and choosing the physical
     ! solution ... 
-    Ne = (sqrt(nTot*phiT+1.0_db) -1.0_db)/phiT
+    Ne = (sqrt(2.d0*nTot*phiT+1.0_db) -1.0_db)/phiT
     Ne = min(Ne, nTot)     ! to avoid unphysical solution.
 !    if (Ne<=0) Ne =nTot   ! to avoid unphysical solution.
     if (Ne<=0) Ne =1.0d-40 ! to avoid unphysical solution.
 
 !    write(*,*) "rk ne",ne
 !
-    phiT = 1.5d0*log10(2.d0*pi*mElectron*kErg*T) - &
-         3.d0*log10(hCgs) + log10(exp(-1.0*hydE0eVdb/(kEV*T)))
+!    phiT = 1.5d0*log10(2.d0*pi*mElectron*kErg*T) - &
+!         3.d0*log10(hCgs) + log10(exp(-1.0*hydE0eVdb/(kEV*T)))
 !                     
-    phiT = 10.d0**phiT
+!    phiT = 10.d0**phiT
 !
 !
-    call solveQuadDble(1.d0, phiT, -1.d0*phiT*dble(nTot), ne1, ne2, ok)
+!    call solveQuadDble(1.d0, phiT, -1.d0*phiT*dble(nTot), ne1, ne2, ok)
 !  
-    ne = ne1
+!    ne = ne1
 !   
 !    write(*,*) "th ne",ne
 

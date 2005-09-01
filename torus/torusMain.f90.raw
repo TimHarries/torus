@@ -1268,7 +1268,7 @@ program torus
               ! RK added the followings ------------------------------------------
               !  adding alpha disc to the grid
               if (ttau_disc_on) then
-                 if (writeoutput) write(*,*) "Adding an acreation disc ... "
+                 if (writeoutput) write(*,*) "Adding an accretion disc ... "
                  call add_alpha_disc(grid%octreeroot, grid, ttauri_disc)
                  ! finding the photon-dust interaction x-secions
                  call mieCrossSection(sigmaExt0, sigmaAbs0, sigmaSca0,  &

@@ -32,6 +32,7 @@ module disc_class
        &   add_new_children, &
        &   assign_values, &
        &   keplerian_velocity
+ 
 
 
   !----------------------------------------------------------
@@ -277,23 +278,22 @@ contains
           
           ! now finding the scale size at (xpos, ypos, zpos)
 
-          if (density_out>rho_min) then
+!          if (density_out>rho_min) then
 
 !             p = abs(zdist/height)
              
 !             p = 0.2d0
 !             sizescale = (height) * (w/this%Rh)**p
-             sizescale = height
-             
 
-
+             sizescale = height ! (used until 24-may-05 with small ISM-like grains)
+!             sizescale = 1.0d-10*height             
                 
 !              ! limit the smallest and largest sizes
-!              sizescale = MAX(sizescale, 1.0d-1)
-!              sizescale = MIN(sizescale, 2.0d3)                
+              sizescale = MAX(sizescale, 1.0d-1)
+!              sizescale = MIN(sizescale, 1.0d02)                
 
              ! else takes the default density from the top.
-          end if
+!          end if
        endif
        !  given position can only be inside 1 disc at most (discs cannot overlap) 
        goto 10
@@ -310,7 +310,6 @@ contains
 
 !    if (radius > rmax) density_out = rho_min ! [g/cm^3]
     if (w > rmax) density_out = rho_min ! [g/cm^3]
-
 
 
   end function alpha_disc_density
@@ -335,8 +334,8 @@ contains
     if (logscale) then
        if (s<s_min) ss =s_min
        if (s>s_max) ss =s_max    
-       p = LOG(ds_max/ds_min) / (s_max - s_min)
-       out = ds_min * EXP(p*(ss-s_min))
+       p = LOG10(ds_max/ds_min) / (s_max - s_min)
+       out = ds_min * 10.0d0**(p*(ss-s_min))
     else ! linear scale
        if (s<s_min) ss =s_min
        if (s>s_max) ss =s_max   
@@ -387,15 +386,10 @@ contains
 
     if (thisOctal%hasChild(subcell)) then
        do i = 1, n
-          if (thisOctal%indexChild(i) == subcell) then
-             childPointer => thisOctal%child(i)
-             CALL add_alpha_disc(childPointer,grid,this)
-             exit
-          end if
+          childPointer => thisOctal%child(i)
+          CALL add_alpha_disc(childPointer,grid,this)
        end do
-
     else   
-
        ! get the size and the position of the centre of the current cell
        cellCentre = subcellCentre(thisOctal, subcell)
 
@@ -431,9 +425,10 @@ contains
     INTEGER, INTENT(IN)        :: subcell
     type(alpha_disc), intent(in) :: this
     
-    real(oct)  :: cellSize, x, y, z
+    real(oct)  :: cellSize, x, y, z, w, h
     real(double) :: rho_disc, scale_length
     TYPE(octalVector)     :: cellCentre 
+    logical:: close_to_disc
 
     ! get the size and the position of the centre of the current cell
     cellSize = thisOctal%subcellSize*2.0d0
@@ -441,20 +436,33 @@ contains
     x = cellcentre%x
     y = cellcentre%y
     z = cellcentre%z
-        
+    w = SQRT(x*x+y*y)
+    h = ABS(z)
 
-    if (in_alpha_disc(this, cellCentre) )then
+    close_to_disc = .false.
+    if (h < 10000.d0) close_to_disc =.true.
 
-       rho_disc = alpha_disc_density(this, x, y, z, scale_length)  
-       
-       if (cellsize > scale_length) then       
-          need_to_split = .true.  ! units in 10^10cm
+!    if (.not. close_to_disc .and. w > this%Rh .and. ABS(x-ThisOctal%subcellSize/2.0d0)>1.0d-3) then
+       ! Splits the two cells closer to the disc
+!       if (h < cellSize/2.0d0) then
+!          need_to_split = .true.
+!       end if
+!    else
+       if (in_alpha_disc(this, cellCentre) )then
+          
+          rho_disc = alpha_disc_density(this, x, y, z, scale_length)        
+          if (cellsize > scale_length) then       
+             !       if (cellsize >   scale_size(w,this%Rh, this%Rd, 1.0d0, 1.0d4, .true.)  ) then       
+             need_to_split = .true.  ! units in 10^10cm
+          else
+             need_to_split = .false.
+          end if
        else
           need_to_split = .false.
        end if
-    else
-       need_to_split = .false.
-    end if
+       
+!    end if
+
 
   end function need_to_split  
   !
@@ -668,7 +676,11 @@ contains
 !    elseif (thisOctal%rho(subcell) > rho_min) then
     elseif (in_alpha_disc(this,cellCentre) ) then 
        thisOctal%rho(subcell) = ave_alpha_disc_density(thisOctal, subcell, this)
+
        if (thisOctal%rho(subcell) > rho_min) thisOctal%inFlow(subcell) = .true.  
+!       ! This is set to false to avoide resampling in the very high optical depth
+!       ! in near the mid-plane of the disc
+!       if (thisOctal%rho(subcell) > rho_min) thisOctal%inFlow(subcell) = .false.  
 
        ! assigning dust opacity
        ! This part should be modefied for oneKappa option later.
@@ -677,12 +689,16 @@ contains
        thisOctal%kappaAbs(subcell,:) = sigmaAbs*fac
        thisOctal%kappaSca(subcell,:) = sigmaSca*fac
           
+       ! In future, the temperature (and maybe also density) structure(s)
+       ! should be calculated by Lucy's algorthem... But for now, we simply 
+       ! set it to 1000 K.
+       !
        thisOctal%temperature(subcell) = 1000.0
        thisOctal%biasCont3D(subcell) = 1.0e-30  ! should be no emission from disc
        thisOctal%biasLine3D(subcell) = 1.0e-30  ! should be no emission from disc
        thisOctal%etaLine(subcell) = 1.e-30
        thisOctal%etaCont(subcell) = 1.e-30
-       if (subcell == thisOctal%maxChildren) call fill_velocity_corners(this, thisOctal)          
+       thisOctal%chiLine(subcell) = 1.e-30
        thisOctal%velocity = keplerian_velocity(this,cellCentre)
 
     end if
@@ -780,13 +796,14 @@ contains
              thisOctal%inFlow(subcell) = .false.
              thisOctal%kappaAbs(subcell,:) = 1.0e-30
              thisOctal%kappaSca(subcell,:) = 1.0e-30          
-             thisOctal%temperature(subcell) = 6500.0
+             thisOctal%temperature(subcell) = 1000.0
              thisOctal%biasCont3D(subcell) = 1.0e-30  ! should be no emission from disc
              thisOctal%biasLine3D(subcell) = 1.0e-30  ! should be no emission from disc
              thisOctal%etaLine(subcell) = 1.e-30
              thisOctal%etaCont(subcell) = 1.e-30
              thisOctal%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
              thisOctal%velocity = vector(1.e-30,1.e-30,1.e-30)
+             thisOctal%rho(subcell) = rho_min
           end if
        end if
     end do
@@ -1026,7 +1043,6 @@ contains
 !    end if
     
   end function in_alpha_disc
-
 
 
 
