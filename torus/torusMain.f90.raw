@@ -3189,7 +3189,7 @@ program torus
 !$MPI     allocate(photonBelongsRank(nPhotons/nOuterLoop))
 !$MPI    
 !$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=40,tag=tag,&
-!$MPI                          setDebug=.false.)
+!$MPI                          setDebug=.true.)
 !$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
 !$MPI  end if
 !$MPI  !====================================================================================
@@ -3198,7 +3198,7 @@ program torus
 !$MPI    
 !$MPI  if (my_rank /= 0) then
 !$MPI    mpiBlockLoop: do  
-!$MPI      call mpiGetBlock(my_rank,iInner_beg, iInner_end,rankComplete,tag,setDebug=.false.)  
+!$MPI      call mpiGetBlock(my_rank,iInner_beg, iInner_end,rankComplete,tag,setDebug=.true.)  
 !$MPI      if (rankComplete) exit mpiBlockLoop  
 !$MPI    
 

@@ -14,6 +14,7 @@ module parallel_mod
 !$MPI    ! this routine will divide a task into many small blocks, and
 !$MPI    !   hand them out to processes that request work.
 !$MPI  
+!$MPI    use input_variables, only: blockhandout
 !$MPI    implicit none
 !$MPI    include 'mpif.h'  
 !$MPI  
@@ -36,9 +37,7 @@ module parallel_mod
 !$MPI    character*(MPI_MAX_ERROR_STRING) :: errorString
 !$MPI        !    ^ outdated, but required to work with MPI wrapper 
 !$MPI    integer :: errorLength, count
-!$MPI    logical :: blockHandout
 !$MPI
-!$MPI    blockHandout = .false.
 !$MPI
 !$MPI    if (present(setDebug)) then
 !$MPI      debugInfo = setDebug
@@ -178,6 +177,7 @@ module parallel_mod
 !$MPI  subroutine mpiGetBlock(myRank,startUnit,endUnit,allDone,tag,setDebug)
 !$MPI    ! this requests a work unit from the root process (which runs mpiBlockHandout)
 !$MPI  
+!$MPI    use input_variables, only: blockhandout
 !$MPI    implicit none
 !$MPI    include 'mpif.h'  
 !$MPI  
@@ -193,9 +193,7 @@ module parallel_mod
 !$MPI    !character, dimension(MPI_MAX_ERROR_STRING) :: errorString
 !$MPI    character*(MPI_MAX_ERROR_STRING) :: errorString
 !$MPI    integer :: errorLength, count
-!$MPI    logical  :: blockHandout
 !$MPI
-!$MPI    blockHandout = .false.
 !$MPI
 !$MPI    if (present(setDebug)) then
 !$MPI      debugInfo = setDebug
