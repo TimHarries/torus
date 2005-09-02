@@ -69,7 +69,6 @@ module parallel_mod
 !$MPI    if (.not.BlockHandout) then
 !$MPI       blockSize = nUnits / (nProc-1)
 !$MPI       iRank = 0
-!$MPI       write(*,*) blockSize,nUnits,nProc
 !$MPI     endif
 !$MPI    endUnit = startUnit + (blockSize - 1)
 !$MPI       
@@ -88,10 +87,9 @@ module parallel_mod
 !$MPI      call MPI_RECV(iRank,1,MPI_INTEGER,MPI_ANY_SOURCE,tag,MPI_COMM_WORLD,mpiStatus,iErr)
 !$MPI    else
 !$MPI      iRank = iRank + 1
+!$MPI      if (iRank .eq. (nProc-1)) endUnit=nUnits+1 ! last thread finishes rest
+!$MPI      if (iRank .eq. nProc) exit
 !$MPI    endif
-!$MPI
-!$MPI
-!$MPI
 !$MPI
 !$MPI
 !$MPI      if (debugInfo .and. iErr /= 0) then
@@ -158,7 +156,6 @@ module parallel_mod
 !$MPI        end if
 !$MPI        
 !$MPI        unitBelongsRank(startUnit:endUnit) = iRank
-!$MPI        
 !$MPI        call MPI_SEND(startUnit,1,MPI_INTEGER,iRank,tag,MPI_COMM_WORLD,iErr)
 !$MPI        if (debugInfo .and. iErr /= 0) print *, 'MPI return value = ',iErr
 !$MPI        call MPI_SEND(endUnit,1,MPI_INTEGER,iRank,tag,MPI_COMM_WORLD,iErr)
@@ -213,9 +210,9 @@ module parallel_mod
 !$MPI
 !$MPI    if (blockHandout) then
 !$MPI    call MPI_SEND(myRank,1,MPI_INTEGER,0,tag,MPI_COMM_WORLD,ierr)
-!$MPI    endif
 !$MPI    if (debugInfo .and. iErr /= 0) print *, 'MPI return value = ',iErr
 !$MPI    if (debugInfo) print *, 'Rank ', myRank, ' request sent'
+!$MPI    endif
 !$MPI    
 !$MPI    ! wait until we receive the block boundaries
 !$MPI    call MPI_RECV(startUnit,1,MPI_INTEGER,0,tag,MPI_COMM_WORLD,mpiStatus,ierr)

@@ -2818,7 +2818,7 @@ contains
     ! calculate the statistical equilibrium for the subcells in an
     !   adaptive octal grid.
 
-    USE input_variables, ONLY: LyContThick, statEq1stOctant
+    USE input_variables, ONLY: LyContThick, statEq1stOctant, blockHandout
   
 !$MPI    use parallel_mod
     implicit none
@@ -3390,6 +3390,7 @@ contains
 !$OMP BARRIER
 !$OMP END PARALLEL
 
+!$MPI if (.not.blockHandout) exit blockloop
 !$MPI end do blockLoop        
 !$MPI end if ! (my_rank /= 0)
 

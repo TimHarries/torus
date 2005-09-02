@@ -84,6 +84,9 @@ subroutine inputs()
   call getInteger("nphotons", nPhotons, cLine, nLines, &
        "Number of photons: ", "(a,i8,1x,a)", 100000, ok, .true.)
 
+  call getLogical("blockhandout", blockHandout, cLine, nLines, &
+        "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .true., ok, .false.)
+
 
   call getReal("distance", gridDistance, cLine, nLines, &
        "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)

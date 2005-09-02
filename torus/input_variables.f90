@@ -58,7 +58,7 @@ module input_variables
   real :: usePhotonWavelength
 
 
-
+  logical :: blockHandout
 
   !
   ! abundances of different types of dust grains. These will be used when 

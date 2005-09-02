@@ -305,7 +305,7 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
-    use input_variables, only : rinner, router, variableDustSublimation, zoomFactor
+    use input_variables, only : rinner, router, variableDustSublimation, zoomFactor, blockhandout
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
@@ -794,6 +794,7 @@ contains
 
        enddo photonLoop
 
+!$MPI if (.not.blockHandout) exit mpiblockloop        
 !$MPI    end do mpiBlockLoop  
 !$MPI  end if ! (my_rank /= 0)
 

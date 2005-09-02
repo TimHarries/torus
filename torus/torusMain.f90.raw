@@ -4004,7 +4004,7 @@ program torus
 
 
 
-        
+!$MPI if (.not.blockHandout) exit mpiblockloop        
 !$MPI    end do mpiBlockLoop  
 !$MPI  end if ! (my_rank /= 0)
 !$MPI     write (*,'(A,I3,A,I3,A,I3,A)') 'Process ',my_rank, &
