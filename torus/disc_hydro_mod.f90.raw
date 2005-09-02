@@ -254,7 +254,8 @@ contains
           call getTemperatureDensityRun(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, +1.)
 
           if (nz > 1) then
-             call solveHydro(temperature, zAxis, subcellsize, rho, nz, radius, mStar, sigma0, rDisk, converged, drho)                
+             call solveHydro(temperature, zAxis, subcellsize, rho, nz, radius, mStar, &
+                  sigma0, rDisk, converged, drho)                
 
              call putDensityRun(grid, zAxis, rho, nz, xPos, yPos, +1.)
           endif

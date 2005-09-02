@@ -58,6 +58,30 @@ ifeq ($(SYSTEM), osx)
     KNOWN_SYSTEM=yes
 endif
 
+ifeq ($(SYSTEM), macmpi)
+    F95COMP=g95 -I/Users/th/macmpi -fno-second-underscore
+    F77COMP=g95 -fno-second-underscore
+    FASTFLAG= -O3
+#    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    DEBUGFLAG=-g
+    STATICFLAG=
+    MATHTRAP=
+    UNIXMOD=unix_mod.f90.linuxintel
+    KINDMOD=kind_mod.f90.linuxintel
+    EXE=torus.macmpi
+    F77FLAG= -w -fno-second-underscore
+    IMAGEF77=image_f77.f.default
+    SPECF77=spec_f77.f.default
+#    F2CLIB=-L$(PATH2G2C) -lg2c
+    F2CLIB= -L/usr/local/lib -lg2c
+    STATICLIBS=
+    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`  -L/Users/th/macmpi -lmacmpi /System/Library/Frameworks/Carbon.framework/Carbon \
+-L/usr/lib -lSystemStubs
+#    STARLIBS=-L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM=yes
+endif
+
 ifeq ($(SYSTEM), gfort)
     F95COMP=gfc
     F77COMP=gfc

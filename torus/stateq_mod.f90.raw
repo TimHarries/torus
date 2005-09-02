@@ -3167,7 +3167,7 @@ contains
 !$MPI       print *, 'calcAMRstatEq routine  computed by ', np-1, ' processors.'
 !$MPI       print *, ' '
 !$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            maxBlockSize=10,setDebug=.false.)
+!$MPI                            maxBlockSize=10,setDebug=.true.)
 !$MPI    
 !$MPI    endif
 !$MPI    ! ============================================================================
@@ -3180,7 +3180,7 @@ contains
 
 !$MPI if (my_rank /= 0) then
 !$MPI  blockLoop: do     
-!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.true.)
 !$MPI   if (rankComplete) exit blockLoop 
 
 !$OMP DO SCHEDULE(DYNAMIC)

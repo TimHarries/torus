@@ -36,6 +36,9 @@ module parallel_mod
 !$MPI    character*(MPI_MAX_ERROR_STRING) :: errorString
 !$MPI        !    ^ outdated, but required to work with MPI wrapper 
 !$MPI    integer :: errorLength, count
+!$MPI    logical :: blockHandout
+!$MPI
+!$MPI    blockHandout = .false.
 !$MPI
 !$MPI    if (present(setDebug)) then
 !$MPI      debugInfo = setDebug
@@ -61,6 +64,13 @@ module parallel_mod
 !$MPI    if (present(maxBlockSize)) blockSize = MIN(maxBlockSize,blockSize)
 !$MPI    print *, 'Work unit blocksize = ', blockSize
 !$MPI
+!$MPI    ! th added this
+!$MPI
+!$MPI    if (.not.BlockHandout) then
+!$MPI       blockSize = nUnits / (nProc-1)
+!$MPI       iRank = 0
+!$MPI       write(*,*) blockSize,nUnits,nProc
+!$MPI     endif
 !$MPI    endUnit = startUnit + (blockSize - 1)
 !$MPI       
 !$MPI    allocate(rankComplete(nProc-1)) ! we don't need a status value for rank 0
@@ -70,15 +80,26 @@ module parallel_mod
 !$MPI      if (debugInfo) print *, 'At start of DO loop: ', startUnit, endUnit
 !$MPI      
 !$MPI      ! wait until we get sent the rank of a process needing a new block
+!$MPI
+!$MPI    ! th added if statement
+!$MPI
+!$MPI    if (blockHandout) then
 !$MPI      if (debugInfo) print *, 'Waiting for a block request...'
 !$MPI      call MPI_RECV(iRank,1,MPI_INTEGER,MPI_ANY_SOURCE,tag,MPI_COMM_WORLD,mpiStatus,iErr)
+!$MPI    else
+!$MPI      iRank = iRank + 1
+!$MPI    endif
+!$MPI
+!$MPI
+!$MPI
+!$MPI
 !$MPI
 !$MPI      if (debugInfo .and. iErr /= 0) then
 !$MPI        print *, 'MPI return value = ',iErr
 !$MPI        print *, 'source = ', mpiStatus(MPI_SOURCE)
 !$MPI        print *, 'tag = ', mpiStatus(MPI_TAG)
 !$MPI        print *, 'error = ', mpiStatus(MPI_ERROR)
-!$MPI        call MPI_ERROR_STRING(mpiStatus(MPI_ERROR),errorString,errorLength,iErr)
+!$MPI        !call MPI_ERROR_STRING(mpiStatus(MPI_ERROR),errorString,errorLength,iErr)
 !$MPI        print *, 'errorString = ', errorString(1:errorLength), iErr
 !$MPI        call MPI_GET_COUNT(mpiStatus,MPI_INTEGER,count,iErr)
 !$MPI        print *, 'count = ',count, iErr
@@ -175,6 +196,9 @@ module parallel_mod
 !$MPI    !character, dimension(MPI_MAX_ERROR_STRING) :: errorString
 !$MPI    character*(MPI_MAX_ERROR_STRING) :: errorString
 !$MPI    integer :: errorLength, count
+!$MPI    logical  :: blockHandout
+!$MPI
+!$MPI    blockHandout = .false.
 !$MPI
 !$MPI    if (present(setDebug)) then
 !$MPI      debugInfo = setDebug
@@ -184,7 +208,12 @@ module parallel_mod
 !$MPI    
 !$MPI    ! send 'my_rank' to indicate we need another block 
 !$MPI    if (debugInfo) print *, 'Rank ', myRank, ' requesting a block'
+!$MPI
+!$MPI    ! th added if statement
+!$MPI
+!$MPI    if (blockHandout) then
 !$MPI    call MPI_SEND(myRank,1,MPI_INTEGER,0,tag,MPI_COMM_WORLD,ierr)
+!$MPI    endif
 !$MPI    if (debugInfo .and. iErr /= 0) print *, 'MPI return value = ',iErr
 !$MPI    if (debugInfo) print *, 'Rank ', myRank, ' request sent'
 !$MPI    
@@ -196,7 +225,7 @@ module parallel_mod
 !$MPI        print *, 'source = ', mpiStatus(MPI_SOURCE)
 !$MPI        print *, 'tag = ', mpiStatus(MPI_TAG)
 !$MPI        print *, 'error = ', mpiStatus(MPI_ERROR)
-!$MPI        call MPI_ERROR_STRING(mpiStatus(MPI_ERROR),errorString,errorLength,iErr)
+!$MPI        !call MPI_ERROR_STRING(mpiStatus(MPI_ERROR),errorString,errorLength,iErr)
 !$MPI        print *, 'errorString = ', errorString(1:errorLength), iErr
 !$MPI        call MPI_GET_COUNT(mpiStatus,MPI_INTEGER,count,iErr)
 !$MPI        print *, 'count = ',count, iErr
@@ -209,7 +238,7 @@ module parallel_mod
 !$MPI        print *, 'source = ', mpiStatus(MPI_SOURCE)
 !$MPI        print *, 'tag = ', mpiStatus(MPI_TAG)
 !$MPI        print *, 'error = ', mpiStatus(MPI_ERROR)
-!$MPI        call MPI_ERROR_STRING(mpiStatus(MPI_ERROR),errorString,errorLength,iErr)
+!$MPI        !call MPI_ERROR_STRING(mpiStatus(MPI_ERROR),errorString,errorLength,iErr)
 !$MPI        print *, 'errorString = ', errorString(1:errorLength), iErr
 !$MPI        call MPI_GET_COUNT(mpiStatus,MPI_INTEGER,count,iErr)
 !$MPI        print *, 'count = ',count, iErr
