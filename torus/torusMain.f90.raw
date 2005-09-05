@@ -2147,7 +2147,9 @@ program torus
      elseif (grid%geometry == "shakara") then
         call set_bias_shakara(grid%octreeRoot, grid)
      elseif (grid%geometry == "ppdisk") then
-        call setBiasPpdisk(grid%octreeRoot,grid)
+        call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
+        call setDiscPhotosphereBias(grid, itestlam)
+!        call setBiasPpdisk(grid%octreeRoot,grid)
      end if
   end if
 
@@ -3188,8 +3190,8 @@ program torus
 !$MPI     !   which will calculate each photon
 !$MPI     allocate(photonBelongsRank(nPhotons/nOuterLoop))
 !$MPI    
-!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=40,tag=tag,&
-!$MPI                          setDebug=.true.)
+!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=4,tag=tag,&
+!$MPI                          setDebug=.false.)
 !$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
 !$MPI  end if
 !$MPI  !====================================================================================
@@ -3198,7 +3200,7 @@ program torus
 !$MPI    
 !$MPI  if (my_rank /= 0) then
 !$MPI    mpiBlockLoop: do  
-!$MPI      call mpiGetBlock(my_rank,iInner_beg, iInner_end,rankComplete,tag,setDebug=.true.)  
+!$MPI      call mpiGetBlock(my_rank,iInner_beg, iInner_end,rankComplete,tag,setDebug=.false.)  
 !$MPI      if (rankComplete) exit mpiBlockLoop  
 !$MPI    
 

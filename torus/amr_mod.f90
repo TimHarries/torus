@@ -3,6 +3,7 @@ MODULE amr_mod
   ! twod stuff added by tjh started 25/08/04
 
 
+  USE messages_mod
   USE vector_mod          ! vector maths routines
   USE kind_mod            ! variable kind parameters    
   USE octal_mod           ! type definition for the grid elements
@@ -7179,6 +7180,8 @@ CONTAINS
   end subroutine set_bias_cmfgen
 
 
+
+
   recursive subroutine setBiasPpdisk(thisOctal, grid)
   use input_variables, only: height
   type(gridtype) :: grid
@@ -8198,5 +8201,189 @@ CONTAINS
        amrGridDirectionalDeriv = 1.e-10
 
   END subroutine amrGridDirectionalDeriv_sub
+
+
+
+  subroutine setDiscPhotosphereBias(grid, iLam)
+    use input_variables, only: rgap
+    type(gridtype) :: grid
+    integer :: iLam
+    real :: xAxis(1:100000)
+    real :: tau(1:100000)
+    integer :: nx, i, i1, i2, iGap
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real(double) kappaSca, kappaAbs
+    type(OCTALVECTOR) :: octVec
+
+    write(*,*) "Setting disc photosphere bias..."
+    nx = 0
+    call getxValuesAMR(grid%octreeRoot, nx, xAxis)
+    call stripSimilarValues(xAxis,nx,real(1.d-5*grid%halfSmallestSubcell))
+
+    tau(1) = 0.
+    do i = 2, nx
+       octVec = OCTALVECTOR(xAxis(i), 0.d0, 0.d0)
+       CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
+       call returnKappa(grid, thisOctal, subcell, ilambda=ilam,&
+            kappaSca=kappaSca, kappaAbs=kappaAbs)
+       tau(i) = tau(i-1) + (xAxis(i)-xAxis(i-1)) * (kappaAbs + kappaSca)
+       call setVerticalBias(grid, xAxis(i), 0., ilam, thisTau=tau(i))
+       if (tau(i) > 5.) then
+          i1 = i
+          exit
+       endif
+    enddo
+       
+
+    call locate(xAxis, nx, rGap*autocm/1.e10, iGap)
+
+    tau(i+1) = 0.
+    do i = iGap, 1, -1
+       octVec = OCTALVECTOR(xAxis(i), 0.d0, 0.d0)
+       CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
+       call returnKappa(grid, thisOctal, subcell, ilambda=ilam,&
+            kappaSca=kappaSca, kappaAbs=kappaAbs)
+       tau(i) = tau(i+1) + (xAxis(i+1)-xAxis(i)) * (kappaAbs + kappaSca)
+       call setVerticalBias(grid, xAxis(i), 0., ilam, thisTau=tau(i))
+       if (tau(i) > 5.) then
+          i2 = i
+          exit
+       endif
+    enddo
+       
+
+    write(*,*) "range",xAxis(i1),xAxis(i2)
+    do i = i1, i2
+       call setVerticalBias(grid, xAxis(i), 0., ilam)
+    enddo
+
+    tau(i-1) = 0.
+    do i = iGap, nx
+       octVec = OCTALVECTOR(xAxis(i), 0.d0, 0.d0)
+       CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
+       tau(i) = tau(i-1) + (xAxis(i)-xAxis(i-1)) * (kappaAbs + kappaSca)
+       call setVerticalBias(grid, xAxis(i), 0., ilam, thisTau=tau(i))
+       if (tau(i) > 5.) then
+          i1 = i
+          exit
+       endif
+    enddo
+       
+    write(*,*) "from ",xAxis(i1)
+    do i = i1 , nx
+       call setVerticalBias(grid, xAxis(i), 0., ilam)
+    enddo
+
+
+
+
+
+
+
+
+    write(*,*) "Done."
+
+  end subroutine setDiscPhotosphereBias
+
+    
+
+  recursive subroutine getxValuesAMR(thisOctal, nx, xAxis)
+
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    type(octalvector) :: rVec
+    integer :: nx, subcell, i
+    real :: xAxis(:)
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getxValuesamr(child, nx, xAxis)
+                exit
+             end if
+          end do
+       else
+
+          rVec = subcellCentre(thisOctal, subcell)
+          nx = nx + 1
+          xAxis(nx) = rVec%x
+       end if
+    end do
+
+  end subroutine getxValuesAMR
+
+  subroutine setVerticalBias(grid, xPos, yPos, iLam, thisTau)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    real, optional :: thisTau
+    integer :: nz
+    real :: zAxis(100000)
+    real :: tau
+    real :: xPos, yPos
+    integer :: subcell
+    real(double) :: rhotemp
+    real :: temptemp
+    integer :: iLam
+    type(OCTALVECTOR) :: currentPos, temp
+    real :: halfSmallestSubcell
+    real(double) :: kappaSca, kappaAbs
+
+    nz = 0
+    tau = 0.
+    halfSmallestSubcell = grid%halfSmallestSubcell
+
+    ! bottom up
+
+    currentPos = OCTALVECTOR(xpos, yPos, -1.*grid%octreeRoot%subcellsize)
+    do while(currentPos%z < 0.)
+       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+            foundSubcell=subcell, rho=rhotemp, temperature=temptemp, grid=grid)
+       nz = nz + 1
+       temp = subCellCentre(thisOctal, subcell)
+       zAxis(nz) = temp%z
+
+       call returnKappa(grid, thisOctal, subcell, ilambda=ilam,&
+            kappaSca=kappaSca, kappaAbs=kappaAbs)
+
+
+       if (nz > 1) then
+          tau = tau + thisOctal%subcellsize*(kappaSca+kappaAbs)
+       endif
+       if (.not.present(thisTau)) then
+          thisOctal%biasCont3D(subcell) = max(1.e-6,exp(-tau))
+       else
+          thisOctal%biasCont3D(subcell) = max(1.e-6,exp(-thistau))
+       endif
+             
+       currentPos = OCTALVECTOR(xpos, yPos, zAxis(nz)+0.5*thisOctal%subcellsize+halfSmallestSubcell)
+    end do
+    
+    tau = 0.
+    nz = 0
+    currentPos = OCTALVECTOR(xpos, yPos, grid%octreeRoot%subcellsize)
+    do while(currentPos%z > 0.)
+       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+            foundSubcell=subcell, rho=rhotemp, temperature=temptemp, grid=grid)
+       nz = nz + 1
+       temp = subCellCentre(thisOctal, subcell)
+       zAxis(nz) = temp%z
+       call returnKappa(grid, thisOctal, subcell, ilambda=ilam,&
+            kappaSca=kappaSca, kappaAbs=kappaAbs)
+
+       if (nz > 1) then
+          tau = tau + thisOctal%subcellsize*(kappaAbs+kappaSca)
+       endif
+       thisOctal%biasCont3D(subcell) = max(1.e-6,exp(-tau))
+       currentPos = OCTALVECTOR(xpos, yPos, zAxis(nz)-0.5*thisOctal%subcellsize-halfSmallestSubcell)
+    end do
+    
+  end subroutine setVerticalBias
+
+
+
 
 END MODULE amr_mod

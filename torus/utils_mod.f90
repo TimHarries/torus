@@ -2039,7 +2039,7 @@ contains
     newnx = 1
     xtemp(newnx) = x(1)
     do i = 2, nx
-       if (abs((xtemp(newnx)-x(i))/x(i)) > xTol) then
+       if (abs(xtemp(newnx)-x(i)) > xTol) then
           newnx = newnx  + 1
           xtemp(newnx) = x(i)
        endif
