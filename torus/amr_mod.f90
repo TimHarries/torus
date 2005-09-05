@@ -7183,12 +7183,12 @@ CONTAINS
 
 
   recursive subroutine setBiasPpdisk(thisOctal, grid)
-  use input_variables, only: height
+  use input_variables, only: rInner
   type(gridtype) :: grid
   type(OCTALVECTOR) :: rVec
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real(double) :: r, hr
+  real(double) :: r
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -7202,8 +7202,17 @@ CONTAINS
              end if
           end do
        else
+!          r = modulus(subcellcentre(thisOctal, subcell)) / rInner
+!          thisOctal%biasCont3D(subcell) =  sqrt(r)
+!!          if ((r > 1.).and.(r < 1.05)) then
+!          if ((r > 1.).and.(r < 2.)) then
+!             thisOctal%biasCont3D(subcell) =  thisOctal%biasCont3D(subcell) * 10.d0
+!          endif
+
           rVec = subcellcentre(thisOctal, subcell)
           thisOctal%biasCont3D(subcell) = rVec%x**2.
+
+
           if (thisOctal%diffusionApprox(subcell)) then
              thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) * 1.e-2
           endif
