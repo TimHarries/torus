@@ -529,7 +529,7 @@ contains
              if (.not.inZone)  then
                 inZone = .true.
                 nZones = nZones + 1
-                if (nZones .gt. 10) then
+                if (nZones .gt. 20) then
                    write(*,*) "Too many diffusion zones"
                    stop
                 end if
