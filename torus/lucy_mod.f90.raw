@@ -657,7 +657,7 @@ contains
 !$MPI     !   which will calculate each photon
 !$MPI     allocate(photonBelongsRank(nMonte))
 !$MPI    
-!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=4,tag=tag,&
+!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=40,tag=tag,&
 !$MPI                          setDebug=.false.)
 !$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
 !$MPI  end if
