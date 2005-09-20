@@ -85,6 +85,7 @@ module parallel_mod
 !$MPI      if (debugInfo) print *, 'Waiting for a block request...'
 !$MPI      call MPI_RECV(iRank,1,MPI_INTEGER,MPI_ANY_SOURCE,tag,MPI_COMM_WORLD,mpiStatus,iErr)
 !$MPI    else
+!$MPI      iErr = 0
 !$MPI      iRank = iRank + 1
 !$MPI      if (iRank .eq. (nProc-1)) endUnit=nUnits+1 ! last thread finishes rest
 !$MPI      if (iRank .eq. nProc) exit
@@ -206,6 +207,7 @@ module parallel_mod
 !$MPI
 !$MPI    ! th added if statement
 !$MPI
+!$MPI    iErr = 0
 !$MPI    if (blockHandout) then
 !$MPI    call MPI_SEND(myRank,1,MPI_INTEGER,0,tag,MPI_COMM_WORLD,ierr)
 !$MPI    if (debugInfo .and. iErr /= 0) print *, 'MPI return value = ',iErr

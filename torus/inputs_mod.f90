@@ -39,6 +39,9 @@ subroutine inputs()
 
   character(len=20) :: keyword
   character(len=80) :: message
+  character(len=80) :: paramFile
+
+  integer :: error
 
   oneKappa = .false.
 
@@ -51,7 +54,14 @@ subroutine inputs()
 
   inputOK = .true.
 
-  open(unit=32, file='parameters.dat', status='old')
+  call unixGetEnv("TORUS_JOB_DIR",absolutePath)
+  write(*,*) absolutePath
+  paramFile = trim(absolutePath)//"parameters.dat"
+
+  open(unit=32, file=paramfile, status='old', iostat=error)
+  if (error /=0) then
+     print *, 'Panic: parameter file open error, file:',trim(paramFile) ; stop
+  end if
 
   do
      nLines = nLines + 1

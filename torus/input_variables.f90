@@ -14,6 +14,7 @@ module input_variables
   ! variables for the grid
 
   character(len=10) :: geometry
+  character(len=80) :: absolutePath
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi
 

@@ -61,10 +61,10 @@ endif
 ifeq ($(SYSTEM), macmpi)
     F95COMP=g95 -I/Users/th/macmpi -fno-second-underscore
     F77COMP=g95 -fno-second-underscore
-    FASTFLAG= -O3
+    FASTFLAG=
 #    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     DEBUGFLAG=-g
-    STATICFLAG=
+    STATICFLAG= -static
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel
@@ -73,10 +73,16 @@ ifeq ($(SYSTEM), macmpi)
     IMAGEF77=image_f77.f.default
     SPECF77=spec_f77.f.default
 #    F2CLIB=-L$(PATH2G2C) -lg2c
-    F2CLIB= -L/usr/local/lib -lg2c
+#    F2CLIB= -L/usr/local/lib -lg2c
     STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`  -L/Users/th/macmpi -lmacmpi /System/Library/Frameworks/Carbon.framework/Carbon \
--L/usr/lib -lSystemStubs
+    STARLIBS= /local-star/lib/libpgplot.a  -L/Users/th/macmpi -lmacmpi /System/Library/Frameworks/Carbon.framework/Carbon \
+-L/usr/lib -lSystemStubs /usr/X11R6/lib/libX11.a /usr/local/lib/libg2c.a \
+/star/lib/libndf.a /star/lib/libary.a \
+/star/lib/libhds.a /star/lib/liberr_standalone.a /star/lib/libpsx.a /star/lib/libchr.a /star/lib/libprm.a \
+/star/lib/libprm_a.a /star/lib/libast.a /star/lib/libast_wcslib.a /star/lib/libast_slalib.a /star/lib/libsla.a \
+/star/lib/libast_grf_2.0.a /star/lib/libast_grf_3.2.a /star/lib/libast_pass2.a /star/lib/libast_ems.a /star/lib/libemsf.a \
+/star/lib/libems.a /star/lib/libcnf.a 
+
 #    STARLIBS=-L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
     MK_MPI_SRC = yes
     KNOWN_SYSTEM=yes

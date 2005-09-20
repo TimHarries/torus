@@ -45,7 +45,18 @@ contains
 
 
   end subroutine unixTimes
-    
+
+  subroutine getCommandLine(cString)
+    character(len=*) :: cString
+
+    i = command_argument_count
+    write(*,*) "no of commands",i
+    if (i == 0) then
+       cString = ""
+    else
+       call get_command_argument(1, cString)
+    endif
+  end subroutine getCommandLine
 
 
 end module unix_mod

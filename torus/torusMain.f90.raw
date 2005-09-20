@@ -102,7 +102,8 @@ program torus
   real :: chanceLine, chanceContinuum
   real :: sTot
 
-  integer :: iseed(4)
+  integer :: isize
+  integer, allocatable :: iseed(:)
 
   ! optical depth variables
 
@@ -391,7 +392,8 @@ program torus
 
   ! Name of the file to output various message from torus
   character(LEN=7), parameter :: messageFile = "MESSAGE"
-  
+  real :: totFrac
+  integer :: nFrac
 
 ! gas opacity stuff
 
@@ -436,6 +438,20 @@ program torus
 !$MPI  if (my_rank==1) &
   call tune(6, "Torus Main") ! start a stopwatch  
 
+
+  ! set up a random seed
+  
+  call random_seed
+
+  call random_seed(size=iSize)
+  allocate(iSeed(1:iSize))
+  call random_seed(get=iSeed)
+
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+!$MPI  call random_seed(put=iseed)
+!$MPI write(*,*) my_rank,"random seed",iseed(1:isize)
+  deallocate(iSeed)
 
 
   ! initialize
@@ -1020,9 +1036,9 @@ program torus
 
      else  ! not reading a population file
 
-!$MPI  !  Let the rank 0 node to create a grid, then write out to a file.
-!$MPI  !  Later the other nodes reads in the same file.
-!$MPI if (my_rank == 0) then ! ----------------------------------------------------
+!!$MPI  !  Let the rank 0 node to create a grid, then write out to a file.
+!!$MPI  !  Later the other nodes reads in the same file.
+!!$MPI if (my_rank == 0) then ! ----------------------------------------------------
         amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
         if (writeoutput) write(*,*) "Starting initial set up of adaptive grid..."
 
@@ -1101,10 +1117,10 @@ program torus
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau) then
               if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
-              do j = iSmoothLam, nLambda
+              do j = iSmoothLam, iSmoothlam !nLambda
                  do
                     gridConverged = .true.
-                    call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false.)
+                    call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps=.true.)
                     if (gridConverged) exit
                  end do
               enddo
@@ -1115,7 +1131,7 @@ program torus
                 if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
                 gridConverged = .false.
                 do
-                   call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false.)
+                   call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false.,interpProps=.true.)
                    if (gridConverged) exit
                 end do
                 if (writeoutput) write(*,*) "...grid smoothing complete"
@@ -1163,7 +1179,7 @@ program torus
         endif
         
         if (variableDustSublimation) then
-           call sublimateDust(grid, grid%octreeRoot)
+           call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac)
         endif
 
 
@@ -1173,6 +1189,7 @@ program torus
         endif
         
 
+!$MPI if (my_rank == 0) then
         if(plot_maps) then
            ! Plotting the slices of planes
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
@@ -1204,6 +1221,7 @@ program torus
                    nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
            endif
         end if
+!$MPI endif
 
 !     ! plotting column density (new routine in grid_mod.f90)
 !     if (grid%geometry == "luc_cir3d") then 
@@ -1213,24 +1231,24 @@ program torus
 !     end if
 
 
-!$MPI       call writeAMRgrid(popFilename,writeFileFormatted,grid)
-!$MPI      
-!$MPI     ! now we can signal to the other processes (waiting above) that 
-!$MPI     !   they can read in the grid.
-!$MPI     print *,'Process ',my_rank,' signalling grid has become available...' 
-!$MPI
-!$MPI  end if ! (my_rank == 0) ---------------------------------------------
-!$MPI 
-!$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr)   
-!$MPI ! we hold all the non-root processes here until the grid has been
-!$MPI !  written (below) 
-!$MPI
-!$MPI if(my_rank /= 0) then        
-!$MPI   print *,'Process ',my_rank,' waiting for grid to become available...' 
-!$MPI   call readAMRgrid(popFilename,readFileFormatted,grid)
-!$MPI  end if
-!$MPI  ! Wait until everybody reads in the grid 
-!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!!$MPI       call writeAMRgrid(popFilename,writeFileFormatted,grid)
+!!$MPI      
+!!$MPI     ! now we can signal to the other processes (waiting above) that 
+!!$MPI     !   they can read in the grid.
+!!$MPI     print *,'Process ',my_rank,' signalling grid has become available...' 
+!!$MPI
+!!$MPI  end if ! (my_rank == 0) ---------------------------------------------
+!!$MPI 
+!!$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr)   
+!!$MPI ! we hold all the non-root processes here until the grid has been
+!!$MPI !  written (below) 
+!!$MPI
+!!$MPI if(my_rank /= 0) then        
+!!$MPI   print *,'Process ',my_rank,' waiting for grid to become available...' 
+!!$MPI   call readAMRgrid(popFilename,readFileFormatted,grid)
+!!$MPI  end if
+!!$MPI  ! Wait until everybody reads in the grid 
+!!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
         if (geometry == "ttauri" .or. geometry == "luc_cir3d" .or. geometry == "cmfgen") then
            nu = cSpeed / (lamLine * angstromtocm)
@@ -1757,15 +1775,6 @@ program torus
 
 
 
-  ! set up a random seed
-  
-  call random_seed
-
-!  iseed(1:4) = 1
-!  call random_seed(PUT=iseed)
-!  do i = 1,100
-!     write(*,*) "random seed off."
-!  enddo
   outVec = (-1.)* originalViewVec
 
 
@@ -2043,6 +2052,8 @@ program torus
 
 !$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
+
+     call random_seed
 
   if (lucyRadiativeEq) then
 !$MPI  if (my_rank==1) &
@@ -3128,6 +3139,8 @@ program torus
 !$MPI  if (my_rank==1) &
      call tune(6, "All Photon Loops")  ! Start a stopwatch
      
+     call random_seed
+
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
 !$OMP PARALLEL DEFAULT(NONE) &
@@ -3191,7 +3204,7 @@ program torus
 !$MPI     allocate(photonBelongsRank(nPhotons/nOuterLoop))
 !$MPI    
 !$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=4,tag=tag,&
-!$MPI                          setDebug=.false.)
+!$MPI                          setDebug=.true.)
 !$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
 !$MPI  end if
 !$MPI  !====================================================================================
@@ -3200,7 +3213,7 @@ program torus
 !$MPI    
 !$MPI  if (my_rank /= 0) then
 !$MPI    mpiBlockLoop: do  
-!$MPI      call mpiGetBlock(my_rank,iInner_beg, iInner_end,rankComplete,tag,setDebug=.false.)  
+!$MPI      call mpiGetBlock(my_rank,iInner_beg, iInner_end,rankComplete,tag,setDebug=.true.)  
 !$MPI      if (rankComplete) exit mpiBlockLoop  
 !$MPI    
 

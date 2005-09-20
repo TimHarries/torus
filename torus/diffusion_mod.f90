@@ -221,15 +221,15 @@ contains
   subroutine throughoutMidplaneDiff(grid, epsoverdt, debugoutput)
 
     type(GRIDTYPE) :: grid
-    real :: zAxis1(10000),temperature1(10000), subcellsize(10000)
-    real(double) ::  rho(10000) 
-    real :: zAxis2(10000), temperature2(10000)
+    real :: zAxis1(500000),temperature1(500000), subcellsize(500000)
+    real(double) ::  rho(500000) 
+    real :: zAxis2(500000), temperature2(500000)
     integer :: nz1, nz2
     real(oct) :: epsOverdt
     real :: xpos, ypos, radius, drho, smallestSubcell
-    logical :: diffApprox(10000)
+    logical :: diffApprox(500000)
     logical :: converged, debugoutput
-    real :: xAxis(100000)
+    real :: xAxis(500000)
     integer :: nx, i, j
     real :: flux
     logical :: ok1, ok2
@@ -431,27 +431,27 @@ contains
 
     use input_variables, only: rinner, router
     type(GRIDTYPE) :: grid
-    real :: zAxis(10000), rho(10000), temperature(10000), subcellsize(10000)
+    real :: zAxis(500000), rho(500000), temperature(500000), subcellsize(500000)
     integer :: nz
     real :: xpos, ypos, radius, drho, smallestSubcell
     logical :: resetTemp
     real(double) :: derivs(10)
     logical :: converged 
-    real :: xAxis(1000000)
+    real :: xAxis(50000000)
     integer :: nx, i
     real :: flux
-    real :: rosselandOpticalDepth(10000)
+    real :: rosselandOpticalDepth(500000)
     integer :: j
     type(OCTALVECTOR) :: octVec
     real :: kappa
     type(OCTAL), pointer :: thisOctal, boundaryOctal
     integer :: subcell
-    real(double) :: zBoundary(10000)
-    real(double) :: xBoundary(10000), sigma(10000), tboundary(10000)
+    real(double) :: zBoundary(500000)
+    real(double) :: xBoundary(500000), sigma(500000), tboundary(500000)
     real(double), allocatable :: workarray(:)
     integer, parameter :: maxPoly = 20
     integer :: nPoly = 10
-    real(double) :: apoly(maxPoly), chisq, rval(10000)
+    real(double) :: apoly(maxPoly), chisq, rval(500000)
     integer :: nBoundary
     real :: xStart
     integer :: iBoundary, boundarySubcell
@@ -860,6 +860,7 @@ contains
           end do
        else
           if (thisOctal%diffusionApprox(subcell)) then
+             thisOctal%oldtemperature(subcell) = thisOctal%temperature(subcell)
              thisOctal%temperature(subcell) = max(thisOctal%chiline(subcell),3.d0)
           endif
        endif
@@ -1098,10 +1099,10 @@ end subroutine setNoDiffusion
     integer :: subcell
     real(oct) :: epsoverdt
     integer :: nx
-    real :: xAxis(100000), zAxis(10000),  temperature(10000)
-    real(double) :: rho(10000)
-    real :: subcellSize(10000)
-    logical :: diffApprox(100000)
+    real :: xAxis(2000000), zAxis(2000000),  temperature(2000000)
+    real(double) :: rho(2000000)
+    real :: subcellSize(2000000)
+    logical :: diffApprox(20000000)
     real :: xpos, ypos
     integer :: i, j, nz
     real :: area

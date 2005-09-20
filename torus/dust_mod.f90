@@ -907,13 +907,15 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
   end subroutine fillDustUniform
 
-  recursive subroutine sublimateDust(grid, thisOctal)
+  recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac)
 
     use input_variables, only : rInner, rOuter
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     type(octalvector) :: rVec
+    real :: totFrac
+    integer :: nFrac
     real :: x, z
     real :: height
     real(double) :: fac, frac, newFrac, oldFrac, deltaFrac
@@ -921,7 +923,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     
     integer :: nx, subcell, i
 
-    subrange = 10.
+    subrange = 50.
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -929,7 +931,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call sublimateDust(grid, child)
+                call sublimateDust(grid, child, totFrac,nFrac)
                 exit
              end if
           end do
@@ -956,6 +958,11 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           deltaFrac = newFrac - oldFrac
 
           frac = oldFrac + 0.5 * deltaFrac
+
+          if (deltaFrac /= 0.) then
+             nfrac = nfrac + 1
+             totFrac = totFrac + abs(deltaFrac)
+          endif
 
           thisOctal%dustTypeFraction(subcell,:) =  thisOctal%dustTypeFraction(subcell,:) * frac
 

@@ -34,7 +34,7 @@ CONTAINS
    
     IMPLICIT NONE
 
-    TYPE(octal), INTENT(INOUT)    :: thisOctal   ! the octal being changed
+    TYPE(octal)    :: thisOctal   ! the octal being changed
     INTEGER, INTENT(IN)           :: subcell   ! the subcell being changed
     TYPE(gridtype), INTENT(INOUT) :: grid      ! the grid
     !
@@ -69,10 +69,21 @@ CONTAINS
        thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
        thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
+       thisOctal%dustTypeFraction = parentOctal%dustTypeFraction
     else if (interpolate) then
        parentOctal => thisOctal%parent
        parentSubcell = thisOctal%parentSubcell
-!       interpByOctal (thisOctal, thisProperty, logflag)
+       thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
+       thisOctal%inFlow(subcell) = parentOctal%inFlow(parentSubcell)
+       thisOctal%velocity(subcell) = parentOctal%velocity(parentSubcell)
+       thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
+       thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
+       thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
+       thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
+
+       parentOctal%hasChild = .false.
+       call interpFromParent(parentOctal, parentSubcell, subcell, grid, thisOctal%temperature(subcell), thisOctal%rho(subcell))
+       parentOctal%hasChild = .true.
     else
 
     SELECT CASE (grid%geometry)
@@ -2820,7 +2831,7 @@ CONTAINS
     endif
   END FUNCTION looseInOctal
 
-  RECURSIVE SUBROUTINE smoothAMRgrid(thisOctal,grid,factor,gridConverged, sphData, stellar_cluster, inheritProps)
+  RECURSIVE SUBROUTINE smoothAMRgrid(thisOctal,grid,factor,gridConverged, sphData, stellar_cluster, inheritProps, interpProps)
     ! checks whether each octal's neighbours are much bigger than it, 
     !   if so, makes the neighbours smaller.
     ! the 'needRestart' flag will be set if a change is made to the octree.
@@ -2836,6 +2847,7 @@ CONTAINS
     TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     LOGICAL, INTENT(IN)              :: inheritProps
+    logical, intent(in), optional :: interpProps
 
     INTEGER              :: i
     REAL(oct) :: halfSmallestSubcell
@@ -2900,7 +2912,7 @@ CONTAINS
           END IF
           ! tjh changed from
 !          CALL addNewChild(neighbour,subcell,grid)
-          call addNewChildren(neighbour, grid, sphData, stellar_cluster, inheritProps)
+          call addNewChildren(neighbour, grid, sphData, stellar_cluster, inheritProps, interpProps)
           gridConverged = .FALSE.
         ENDIF
       END IF
@@ -2910,7 +2922,7 @@ CONTAINS
     IF ( thisOctal%nChildren > 0 ) THEN
        DO i = 1, thisOctal%nChildren, 1 
           child => thisOctal%child(i)
-          CALL smoothAMRgrid(child,grid,factor,gridConverged, sphData, stellar_cluster, inheritProps)
+          CALL smoothAMRgrid(child,grid,factor,gridConverged, sphData, stellar_cluster, inheritProps, interpProps)
        END DO
     END IF
 
@@ -5459,7 +5471,7 @@ CONTAINS
     sAccretion = (fourPi * TTauriRstar**2)*abs(cos(theta1)-cos(theta2))!1.e20
     Taccretion = TaccretionDouble**0.25
 
-
+    write(*,*) contfluxfile
     open(20,file=contFluxFile,status="old",form="formatted")
     nnu = 1
 10  continue
@@ -5843,6 +5855,8 @@ CONTAINS
        parent%indexChild(7) = 7
        parent%indexChild(8) = 8
     endif
+
+
 
     do newChildIndex = 1, parent%maxChildren
 
@@ -6572,7 +6586,7 @@ CONTAINS
   ! the parameter file).
 
   RECURSIVE SUBROUTINE smoothAMRgridTau(thisOctal,grid,gridConverged, ilam, &
-                                        sphData, stellar_cluster, inheritProps)
+                                        sphData, stellar_cluster, inheritProps, interpProps)
     USE input_variables, ONLY : tauSmoothMax,tauSmoothMin
     IMPLICIT NONE
 
@@ -6582,6 +6596,7 @@ CONTAINS
     TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     LOGICAL, INTENT(IN) :: inheritProps
+    LOGICAL, INTENT(IN), optional :: interpProps
 
     INTEGER              :: i, ilam
     TYPE(octalVector)    :: thisSubcellCentre
@@ -6773,12 +6788,12 @@ CONTAINS
 !                call addNewChild(neighbour,subcell,grid)
 !                call addNewChild(thisOctal,thisSubcell,grid)
 
-                call addNewChildren(thisOctal, grid, sphData, stellar_cluster, inheritProps)
+                call addNewChildren(thisOctal, grid, sphData, stellar_cluster, inheritProps, interpProps)
                 ! If we are splitting two subcells in the same octal, we don't
                 ! need to addNewChildren to the neighbour. If we switch to
                 ! addNewChild this test becomes redundant.
                 if (.not. associated(thisOctal, neighbour)) then
-                  call addNewChildren(neighbour, grid, sphData, stellar_cluster, inheritProps)
+                  call addNewChildren(neighbour, grid, sphData, stellar_cluster, inheritProps, interpProps)
                 end if 
 
                 gridConverged = .FALSE.
@@ -8391,6 +8406,72 @@ CONTAINS
     end do
     
   end subroutine setVerticalBias
+
+  subroutine interpFromParent(parentOctal, parentsubcell, subcell, grid, temperature, density)
+    type(GRIDTYPE) :: grid
+    type(OCTAL) ::  parentOctal
+    integer :: parentsubcell, subcell
+    real :: temperature
+    real(double) :: density
+    real(double) :: rho(2,2)
+    real :: temp(2,2)
+    type(OCTALVECTOR) :: rVec, octVec
+    real(double) :: r, t1, t2
+
+
+    rVec = subcellCentre(parentOctal, parentsubcell)
+    r = (0.5d0*parentOctal%subcellSize) + 1.d-2*grid%halfSmallestSubcell
+
+    octVec = rVec + r * OCTALVECTOR(-1.d0,0.d0,-1.d0)
+    call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1,1), rho=rho(1,1))
+
+    octVec = rVec + r * OCTALVECTOR(1.d0,0.d0,-1.d0)
+    call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2,1), rho=rho(2,1))
+
+    octVec = rVec + r * OCTALVECTOR(-1.d0,0.d0,1.d0)
+    call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1,2), rho=rho(1,2))
+
+    octVec = rVec + r * OCTALVECTOR(1.d0,0.d0,1.d0)
+    call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2,2), rho=rho(2,2))
+
+
+    if (subcell == 1) then
+       t1 = 0.25d0
+       t2 = 0.25d0
+    endif
+
+    if (subcell == 2) then
+       t1 = 0.75d0
+       t2 = 0.25d0
+    endif
+
+    if (subcell == 3) then
+       t1 = 0.75d0
+       t2 = 0.25d0
+    endif
+
+    if (subcell == 4) then
+       t1 = 0.75d0
+       t2 = 0.75d0
+    endif
+    
+    rho = log10(rho)
+    temp = log10(temp)
+
+    density = rho(1,1) * (1.d0-t1)*(1.d0-t2) + &
+              rho(2,1) *       t1 *(1.d0-t2) + &
+              rho(1,2) * (1.d0-t1)* t2 + &
+              rho(2,2) *       t1 * t2
+    density = 10.d0**density
+
+
+    temperature = temp(1,1) * (1.d0-t1)*(1.d0-t2) + &
+              temp(2,1) *       t1 *(1.d0-t2) + &
+              temp(1,2) * (1.d0-t1)* t2 + &
+              temp(2,2) *       t1 * t2
+    temperature = 10.d0**temperature
+
+  end subroutine interpFromParent
 
 
 

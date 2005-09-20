@@ -3103,13 +3103,17 @@ contains
     integer               :: error         ! status code
     logical               :: octreePresent ! true if grid has an octree
     integer :: nOctal
-
+    character(len=80) :: absolutePath, inFile
     error = 0
 
+  call unixGetEnv("TORUS_JOB_DIR",absolutePath)
+  write(*,*) absolutePath
+  inFile = trim(absolutePath)//trim(filename)
+
     if (fileFormatted) then
-       open(unit=20, iostat=error, file=filename, form="formatted", status="old")
+       open(unit=20, iostat=error, file=inFile, form="formatted", status="old")
        if (error /=0) then
-         print *, 'Panic: file open error in readAMRgrid, file:',trim(filename) ; stop
+         print *, 'Panic: file open error in readAMRgrid, file:',trim(inFile) ; stop
        end if
        ! read the file's time stamp
        read(unit=20,fmt=*,iostat=error) timeValues 
@@ -3117,9 +3121,9 @@ contains
          print *, 'Panic: read error in readAMRgrid (formatted timeValues)' ; stop
        end if
     else
-       open(unit=20, iostat=error, file=filename, form="unformatted", status="old")
+       open(unit=20, iostat=error, file=inFile, form="unformatted", status="old")
        if (error /=0) then
-         print *, 'Panic: file open error in readAMRgrid, file:',trim(filename) ; stop
+         print *, 'Panic: file open error in readAMRgrid, file:',trim(inFile) ; stop
        end if
        ! read the file's time stamp
        read(unit=20,iostat=error) timeValues
@@ -6023,7 +6027,8 @@ contains
   ! routines. 
   !
   subroutine plot_AMR_values(grid, name, plane, value_3rd_dim,  device, logscale, withgrid, &
-       nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac, ilam)
+       nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac, ilam, xStart, &
+       xEnd, yStart, yEnd)
     implicit none
     type(gridtype), intent(in) :: grid
     character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
@@ -6038,6 +6043,7 @@ contains
     logical, intent(in)           :: logscale ! logscale if T, linear if not
     logical, intent(in)           :: withgrid ! plot
     real, intent(in),optional     :: boxfac
+    real, intent(in), optional :: xStart, xEnd, yStart, yEnd
     integer, intent(in),optional     :: ilam
     ! To put the markers to indicate the important points in the plots.
     integer, intent(in),optional :: nmarker           ! number of markers
@@ -6155,6 +6161,9 @@ contains
           CALL PGWNAD(0., d, -d/2.0, d/2.0)
        endif
        v3 = root%centre%y
+       if (present(xStart).and.present(xEnd).and.present(yStart).and.present(yEnd)) then
+          call pgwnad(xStart, xEnd, yStart, yEnd)
+       endif
     end select
 
     call palett(2, 1.0, 0.5)

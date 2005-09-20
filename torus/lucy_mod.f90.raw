@@ -12,6 +12,7 @@ module lucy_mod
   use parallel_mod
   use timing
   use diffusion_mod
+  use messages_mod
 
   implicit none
 
@@ -306,10 +307,13 @@ contains
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
     use input_variables, only : rinner, router, variableDustSublimation, zoomFactor, blockhandout
+    use input_variables, only : smoothFactor, doSmoothGrid, lambdasmooth
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: nSource
+    integer :: iSmoothLam
+    logical :: gridConverged
     integer :: nDustType
     type(SOURCETYPE) :: source(nsource), thisSource
     integer :: nLucy
@@ -362,8 +366,10 @@ contains
     real(oct)::  dT_min ! [kelvins]  the minimum change of temperature
     real(oct)::  dT_max ! [kelvins]  the maximum change of temperature
     real(oct)::  dT_over_T_max ! [kelvins]  the maximum fractional change of temperature
-    character(len=30) :: tfilename1, tfilename2
+    character(len=30) :: tfilename1, tfilename2, dustfile
     logical, save :: first_time_to_open_file = .true.
+    real :: totFrac
+    integer :: nFrac
     integer, parameter :: LU_OUT = 42
     integer :: iIter_grand
     real(oct)::  dT_mean_new, dT_mean_old ! [Kelvins]
@@ -374,6 +380,7 @@ contains
     integer       :: imonte_beg, imonte_end  ! the index boundary for the photon loops.
     real(double), allocatable :: kAbsArray(:)
     logical :: photonInDiffusionZone
+    logical :: doingDustSublimation
     real :: diffusionZoneTemp
     logical :: outputFlag
 
@@ -478,7 +485,9 @@ contains
     endif
 
     if (variableDustSublimation) then
-       call sublimateDust(grid, grid%octreeRoot)
+	totFrac = 0.
+        nFrac = 0
+       call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac)
     endif
 
 
@@ -491,6 +500,8 @@ contains
     dT_mean_new = 10.0d0
     dT_mean_old = 10.0d0
 
+    if (variableDustSublimation) doingDustSublimation = .true.
+
     do while (.not.converged)
        ! ensure we do at least three iterations
        ! before removing the high temperature cells.
@@ -500,13 +511,14 @@ contains
           nIter = 1
        end if
 
+       if (doingDustSublimation) then
+          nIter = 3
+          nMonte = 50000
+       endif
 
     do iIter = 1, nIter
 
        iIter_grand =  iIter_grand + 1  ! total number of iterations so far
-
-
-
 
 
        write(tfilename1, '(a,i2.2,a)') "lucy_iter_",iIter_grand,".gif/gif"
@@ -520,9 +532,15 @@ contains
             "rho_temp_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
 
+       write(dustfile,'(a,i3.3,a)') "dusttype",iIter_grand,".gif/gif"
+       call plot_AMR_values(grid, "dusttype", "x-z", 0., &
+            dustfile, .false., .false., &
+           0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor, &
+           xStart=1600., xEnd=2200., yStart=-300., yEnd=300.)
+
        call plot_AMR_values(grid, "dusttype", "x-z", 0., &
             "dusttype.ps/vcps", .false., .false., &
-           0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+           0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor)
 
        if (grid%geometry == "shakara") then
           call dullemondplot(grid, rinner, router, 0.4)
@@ -952,11 +970,32 @@ contains
 !$MPI endif
 
 !$MPI if (my_rank==0) &       
+
        write(*,*) "Estimating temperatures of undersampled cells..."
-       do i = 1, 1000
+       do i = 1, 100
           call estimateTempofUndersampled(grid, grid%octreeRoot)
           call updateTemps(grid, grid%octreeRoot)
        enddo
+
+
+       call defineDiffusionZone(grid, outputFlag, .false.)
+
+
+
+
+!$MPI if (my_rank==0) &
+      call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
+
+
+   enddo
+
+       if (.not.(variableDustSublimation.and.doingDustSublimation)) then
+          write(*,*) "Estimating temperatures of undersampled cells..."
+          do i = 1, 1000
+             call estimateTempofUndersampled(grid, grid%octreeRoot)
+             call updateTemps(grid, grid%octreeRoot)
+          enddo
+       endif
 
        call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
 
@@ -968,19 +1007,44 @@ contains
           call fillDustUniform(grid, grid%octreeRoot)
        endif
 
-       if (variableDustSublimation) then
-          call sublimateDust(grid, grid%octreeRoot)
+       if (variableDustSublimation.and.doingDustSublimation) then
+          totFrac = 0.
+          nFrac = 0
+          call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac)
+          if ((nfrac /= 0).and.(writeoutput)) then
+             write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
+          endif
+
+
+
+
+          if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
+          call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+          
+          do j = iSmoothLam, ismoothlam !nLambda
+             do
+                gridConverged = .true.
+                call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps = .true.)
+                if (gridConverged) exit
+             end do
+          enddo
+          if (writeoutput) write(*,*) "...grid smoothing complete"
+          ! The tau smoothing may result in large differences in the size
+          ! of neighbouring octals, so we smooth the grid again.
+          if (doSmoothGrid) then
+             if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
+             gridConverged = .false.
+             do
+                call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false., interpProps=.true.)
+                if (gridConverged) exit
+             end do
+             if (writeoutput) write(*,*) "...grid smoothing complete"
+          end if
+
        endif
 
+
        call defineDiffusionZone(grid, outputFlag, .false.)
-
-
-
-!$MPI if (my_rank==0) &
-      call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
-
-
-   enddo
 
 
 
@@ -1018,6 +1082,18 @@ contains
     else 
        converged = .true.
     end if
+
+    if (doingDustSublimation) then
+       if (iIter_grand < 300) then
+          converged = .false.
+       else
+          converged =.false.
+          doingDustSublimation = .false.
+          stop
+       endif
+    endif
+       
+
 
 !    converged = .true.
 !    write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
@@ -1565,7 +1641,7 @@ contains
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
    type(OCTALVECTOR), intent(in) :: posVec
-   type(OCTALVECTOR), intent(in) :: direction
+   type(OCTALVECTOR), intent(inout) :: direction
    real(oct), intent(out) :: tval
    !
    type(OCTALVECTOR) :: norm(6), p3(6)
@@ -1597,7 +1673,9 @@ contains
    call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
    if (.not.ok) then
       write(*,*) "Quad solver failed in intersectcubeamr2d"
-      do;enddo
+      direction = randomUnitVector()
+      x1 = thisoctal%subcellSize/2.d0
+      x2 = 0.d0
    endif
    distTor2 = max(x1,x2)
 
@@ -1609,7 +1687,9 @@ contains
       call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
       if (.not.ok) then
          write(*,*) "Quad solver failed in intersectcubeamr2d"
-         do;enddo
+         direction = randomUnitVector()
+         x1 = thisoctal%subcellSize/2.d0
+         x2 = 0.d0
       endif
       distTor1 = max(x1,x2)
    endif
@@ -1652,7 +1732,7 @@ contains
 
 
    type(GRIDTYPE) :: grid
-   type(OCTALVECTOR) :: rVec, uHat, octVec,thisOctVec, tvec
+   type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
    type(OCTAL), pointer :: thisOctal, tempOctal, sourceOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: foundOctal
