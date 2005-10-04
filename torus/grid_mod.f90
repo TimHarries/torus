@@ -581,6 +581,10 @@ contains
        grid%rInner = rInner
        grid%rOuter = rOuter
 
+    case("lexington")
+       grid%rInner = 1.e7
+       grid%rOuter = 1.e9
+
 
     case ("ttauri") 
        call initTTauriAMR(grid,theta1,theta2)
@@ -6369,6 +6373,9 @@ contains
                 value = thisOctal%rho(subcell)
 !                if (thisOctal%diffusionApprox(subcell)) value = 1.d-3
 
+             case("ionization")
+                value = thisOctal%nHI(subcell)/thisOctal%nh(subcell)
+
              case("temperature")
                 value = thisOctal%temperature(subcell)
              case("chiLine")
@@ -6535,6 +6542,8 @@ contains
              select case (name)
              case("rho")
                 value = thisOctal%rho(subcell)
+             case("ionization")
+                value = thisOctal%nHI(subcell)/thisOctal%nh(subcell)
              case("temperature")
                 value = thisOctal%temperature(subcell)
              case("dusttype")

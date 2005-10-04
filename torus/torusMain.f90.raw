@@ -63,6 +63,7 @@ program torus
   use gas_opacity_mod
   use diffusion_mod
   use messages_mod
+  use photoion_mod
 
 !$mpi   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
@@ -1921,6 +1922,18 @@ program torus
        call readSpectrum(source(2)%spectrum, "wr.flx")
        call normalizedSpectrum(source(2)%spectrum)
 
+    case("lexington")
+       nSource = 1
+       allocate(source(1:nSource)) 
+       source(1)%teff = 40000.  ! o star
+       source(1)%radius = 18.5 * rSol / 1.e10
+       source(1)%position = VECTOR(0.,0.,0.)
+       source(1)%luminosity = fourPi * stefanBoltz * (18.5*rSol)**2.0 * (source(1)%teff)**4
+       write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
+       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff),  dble(lamStart), dble(lamEnd),nLambda)
+       call normalizedSpectrum(source(1)%spectrum)
+
+
     case ("cluster")
        ! Extract some info from cluster object.
        nstar = get_nstar(young_cluster)  ! number of stars in the cluster
@@ -2055,6 +2068,11 @@ program torus
 
 
      call random_seed
+
+     if (photoIonization) then
+        call photoIonizationLoop(grid, source, nSource, nLambda, lamArray)
+        stop
+     endif
 
   if (lucyRadiativeEq) then
 !$MPI  if (my_rank==1) &

@@ -1104,6 +1104,13 @@ endif
  call getLogical("coreline", coreEmissionLine, cLine, nLines, &
    "Core Emission Line: ","(a,1l,a)", .false., ok, .false.)
 
+
+
+if (geometry == "lexington") then
+   photoionization = .true.
+endif
+
+
  if (geometry == "ttauri") then
    call getReal("ttaurirstar", TTauriRstar, cLine, nLines, &
         "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)

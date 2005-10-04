@@ -105,6 +105,14 @@ MODULE octal_mod
     real(double), DIMENSION(8) :: probDistCont  ! emissivity probabilty distribution
     real(double), DIMENSION(:,:), POINTER ::  N => null()! stateq level pops
     real(double), DIMENSION(8) :: Ne            ! electron density
+
+    real(double), DIMENSION(8) :: NH            ! total H no density
+    real(double), DIMENSION(8) :: NHI            ! neutral H
+    real(double), DIMENSION(8) :: NHII            ! HII
+    real(double), DIMENSION(8) :: NHeI            ! HeI
+    real(double), DIMENSION(8) :: NHeII            ! HeII
+
+
     real(double), DIMENSION(8) :: nTot          ! total density
     real, dimension(8) :: oldFrac ! Previous value of dust sublimation fraction
     REAL, DIMENSION(:,:), POINTER      :: departCoeff =>null()! temporary storage for departure coefficients

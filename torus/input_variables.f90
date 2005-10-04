@@ -17,7 +17,7 @@ module input_variables
   character(len=80) :: absolutePath
   integer :: nx,ny,nz
   integer :: nr, nmu, nphi
-
+  logical :: photoionization
   integer :: nClumps
   character(len=80) :: distortionType
   integer :: nPhase

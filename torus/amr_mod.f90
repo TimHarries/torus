@@ -106,6 +106,9 @@ CONTAINS
     CASE ("testamr")
        CALL calcTestDensity(thisOctal,subcell,grid)
 
+    CASE("lexington")
+       CALL calcLexington(thisOctal, subcell, grid)
+
     CASE("proto")
        CALL calcProtoDensity(thisOctal,subcell,grid)
 
@@ -672,7 +675,7 @@ CONTAINS
       CASE ("windtest")
         gridConverged = .TRUE.
 
-      CASE("benchmark","shakara","aksco", "melvin","clumpydisc")
+      CASE("benchmark","shakara","aksco", "melvin","clumpydisc","lexington")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104")
@@ -3710,12 +3713,12 @@ CONTAINS
          end if
       end if
 
-   case ("testamr","proto","wrshell")
+   case ("testamr","proto","wrshell", "lexington")
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       split = .FALSE.
-      nr1 = 5
-      nr2 = 30
+      nr1 = 10
+      nr2 = 50
       rGrid(1) = 1.
       rGrid(2) = 1.04
       rGrid(3) = 1.08
@@ -5542,6 +5545,40 @@ CONTAINS
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine calcTestDensity
+
+  subroutine calcLexington(thisOctal,subcell,grid)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    real :: r
+    TYPE(octalVector) :: rVec
+    
+    rVec = subcellCentre(thisOctal,subcell)
+    r = modulus(rVec)
+
+    thisOctal%rho(subcell) = 1.e-30
+    thisOctal%temperature(subcell) = 8000.
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%inFlow(subcell) = .true.
+
+    if ((r > 1.e7).and.(r < 1.e9)) then
+       thisOctal%rho(subcell) = 100.*mHydrogen
+       thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+       thisOctal%ne(subcell) = thisOctal%nh(subcell)
+       thisOctal%nhi(subcell) = 1.e-5
+       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+       thisOctal%etaCont(subcell) = 0.
+    endif
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+
+  end subroutine calcLexington
   
   
   subroutine initWindTestAMR(grid)
@@ -7757,7 +7794,7 @@ CONTAINS
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature)
-    use input_variables, only: includeGasOpacity, nDustType
+    use input_variables, only: includeGasOpacity, nDustType, photoionization
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -7776,6 +7813,7 @@ CONTAINS
     real :: tArray(1000)
     real(double) :: freq, dfreq, bnutot, norm
     integer :: i,j 
+    real :: e, h0, he0
 
     temperature = thisOctal%temperature(subcell)
 !    if (temperature < sublimationTemp) frac = 1.
@@ -7923,6 +7961,19 @@ CONTAINS
          norm = norm + dble(bnu(dble(freq),dble(temperature)))  * dfreq
       enddo
       kappaP = kappaP / norm /1.d10
+   endif
+
+   if (photoionization) then
+      if (PRESENT(kappaAbs)) then
+         e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
+         call phfit2(1, 1, 1 , e , h0)
+         call phfit2(2, 2, 1 , e , he0)
+         write(*,*) e,h0,he0
+         kappaAbs = kappaabs + (thisOctal%nHI(subcell) * h0) + (thisOctal%nHeI(subcell) * he0)
+      endif
+      if (PRESENT(kappaSca)) then
+         kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
+      endif
    endif
    
   end subroutine returnKappa
