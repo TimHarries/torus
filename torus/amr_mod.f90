@@ -69,7 +69,8 @@ CONTAINS
        thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
        thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
-       thisOctal%dustTypeFraction = parentOctal%dustTypeFraction
+       thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
+       thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
     else if (interpolate) then
        parentOctal => thisOctal%parent
        parentSubcell = thisOctal%parentSubcell
@@ -80,9 +81,11 @@ CONTAINS
        thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
        thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
+       thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
 
        parentOctal%hasChild = .false.
-       call interpFromParent(parentOctal, parentSubcell, subcell, grid, thisOctal%temperature(subcell), thisOctal%rho(subcell))
+       call interpFromParent(subcellCentre(thisOctal, subcell), thisOctal%subcellSize, grid, &
+            thisOctal%temperature(subcell), thisOctal%rho(subcell))
        parentOctal%hasChild = .true.
     else
 
@@ -137,7 +140,7 @@ CONTAINS
        CALL assign_clumpydisc(thisOctal, subcell, grid)
 
     CASE ("windtest")
-       CALL calcWindTestValues(thisOctal,subcell,grid)
+      CALL calcWindTestValues(thisOctal,subcell,grid)
        
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
@@ -227,6 +230,7 @@ CONTAINS
     grid%octreeRoot%diffusionProb = 0.d0
     grid%octreeRoot%incidentFlux = 0.
     grid%octreeRoot%nDiffusion = 0.
+    grid%octreeRoot%oldFrac = 1.
 
     select case (grid%geometry)
        case("cluster")
@@ -5915,7 +5919,7 @@ CONTAINS
        parent%child(newChildindex)%diffusionProb = 0.d0
        parent%child(newChildindex)%nDiffusion  = 0.
        parent%child(newChildindex)%incidentFlux = 0.
-       
+       parent%child(newChildindex)%oldFrac = 1.
 
        if (present(sphData)) then
           ! updates the sph particle list.           
@@ -8407,68 +8411,40 @@ CONTAINS
     
   end subroutine setVerticalBias
 
-  subroutine interpFromParent(parentOctal, parentsubcell, subcell, grid, temperature, density)
+  subroutine interpFromParent(centre, cellSize, grid, temperature, density)
     type(GRIDTYPE) :: grid
-    type(OCTAL) ::  parentOctal
-    integer :: parentsubcell, subcell
+    real(double) :: cellSize
     real :: temperature
     real(double) :: density
     real(double) :: rho(2,2)
     real :: temp(2,2)
-    type(OCTALVECTOR) :: rVec, octVec
+    type(OCTALVECTOR) :: centre, octVec
     real(double) :: r, t1, t2
 
 
-    rVec = subcellCentre(parentOctal, parentsubcell)
-    r = (0.5d0*parentOctal%subcellSize) + 1.d-2*grid%halfSmallestSubcell
+    r = cellSize/2.d0 + 0.1d0 * grid%halfSmallestSubcell
 
-    octVec = rVec + r * OCTALVECTOR(-1.d0,0.d0,-1.d0)
+    octVec = centre + r * OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1,1), rho=rho(1,1))
 
-    octVec = rVec + r * OCTALVECTOR(1.d0,0.d0,-1.d0)
+    octVec = centre + r * OCTALVECTOR(-1.d0,0.d0,0.d0)
     call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2,1), rho=rho(2,1))
 
-    octVec = rVec + r * OCTALVECTOR(-1.d0,0.d0,1.d0)
+    octVec = centre + r * OCTALVECTOR(0.d0,0.d0,-1.d0)
     call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1,2), rho=rho(1,2))
 
-    octVec = rVec + r * OCTALVECTOR(1.d0,0.d0,1.d0)
+    octVec = centre + r * OCTALVECTOR(0.d0,0.d0,+1.d0)
     call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2,2), rho=rho(2,2))
 
 
-    if (subcell == 1) then
-       t1 = 0.25d0
-       t2 = 0.25d0
-    endif
-
-    if (subcell == 2) then
-       t1 = 0.75d0
-       t2 = 0.25d0
-    endif
-
-    if (subcell == 3) then
-       t1 = 0.75d0
-       t2 = 0.25d0
-    endif
-
-    if (subcell == 4) then
-       t1 = 0.75d0
-       t2 = 0.75d0
-    endif
     
     rho = log10(rho)
     temp = log10(temp)
 
-    density = rho(1,1) * (1.d0-t1)*(1.d0-t2) + &
-              rho(2,1) *       t1 *(1.d0-t2) + &
-              rho(1,2) * (1.d0-t1)* t2 + &
-              rho(2,2) *       t1 * t2
+    density = sum(rho) / 4.d0
     density = 10.d0**density
 
-
-    temperature = temp(1,1) * (1.d0-t1)*(1.d0-t2) + &
-              temp(2,1) *       t1 *(1.d0-t2) + &
-              temp(1,2) * (1.d0-t1)* t2 + &
-              temp(2,2) *       t1 * t2
+    temperature = sum(temp) / 4.d0
     temperature = 10.d0**temperature
 
   end subroutine interpFromParent

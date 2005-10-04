@@ -38,7 +38,7 @@ endif
 ifeq ($(SYSTEM), osx)
     F95COMP=g95
     F77COMP=g95
-    FASTFLAG= -O3
+    FASTFLAG= -O3 -mcpu=G5 -mtune=G5
 #    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     DEBUGFLAG=-g
     STATICFLAG=
@@ -46,6 +46,29 @@ ifeq ($(SYSTEM), osx)
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel
     EXE=torus.osx
+    F77FLAG= -w -fno-second-underscore
+    IMAGEF77=image_f77.f.default
+    SPECF77=spec_f77.f.default
+#    F2CLIB=-L$(PATH2G2C) -lg2c
+    F2CLIB= -L/usr/local/lib -lg2c
+    STATICLIBS=
+    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+#    STARLIBS=-L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
+    MK_MPI_SRC = no
+    KNOWN_SYSTEM=yes
+endif
+
+ifeq ($(SYSTEM), gfortran)
+    F95COMP=gfortran
+    F77COMP=gfortran
+    FASTFLAG= -O3
+#    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    DEBUGFLAG=-g
+    STATICFLAG=
+    MATHTRAP=
+    UNIXMOD=unix_mod.f90.linuxintel
+    KINDMOD=kind_mod.f90.linuxintel
+    EXE=torus.gfortran
     F77FLAG= -w -fno-second-underscore
     IMAGEF77=image_f77.f.default
     SPECF77=spec_f77.f.default
@@ -147,6 +170,29 @@ ifeq ($(SYSTEM), alpha)
    STATICLIBS=
    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
    MK_MPI_SRC = no
+   KNOWN_SYSTEM=yes
+endif
+
+ifeq ($(SYSTEM), lamosx)
+   TOP=/usr/local
+   TOP2=/usr/local
+   F95COMP=${TOP}/bin/mpif77
+   F77COMP=${TOP2}/bin/mpif77
+   FASTFLAG=-O3 -I${TOP}/include  -dcfuns  -w 
+   DEBUGFLAG=-g -I${TOP}/include  -dcfuns 
+   STATICFLAG=
+#   MATHTRAP=-ieee=stop
+   MATHTRAP=
+   UNIXMOD=unix_mod.f90.linuxintel
+   KINDMOD=kind_mod.f90.linuxintel
+   EXE=torus.lamosx
+   F77FLAG=-fno-second-underscore -w
+   IMAGEF77=image_f77.f.default
+   SPECF77=spec_f77.f.default
+   F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm -L/usr/lib -lSystemStubs
+   STATICLIBS=
+   STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+   MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes
 endif
 
@@ -528,7 +574,7 @@ torusMain.o: TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
 
 
 clean:
-	@/bin/rm -f *.o *~ *.mod *.il *.pc *.d
+	@/bin/rm -f *.o *~ *.mod *.il *.pc *.d *.rnreg *.life *.cfg *.cse *.combine
 
 
 # including the dependency file

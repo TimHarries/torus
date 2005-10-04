@@ -24,7 +24,7 @@ contains
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     integer :: nz
-    real :: zArray(*)
+    real(double) :: zArray(*)
     real :: xPos
     logical :: debugoutput
     type(OCTALVECTOR) :: octVec
@@ -221,15 +221,17 @@ contains
   subroutine throughoutMidplaneDiff(grid, epsoverdt, debugoutput)
 
     type(GRIDTYPE) :: grid
-    real :: zAxis1(500000),temperature1(500000), subcellsize(500000)
+    real(double) :: zAxis1(500000), subcellsize(500000)
+    real :: temperature1(500000)
     real(double) ::  rho(500000) 
-    real :: zAxis2(500000), temperature2(500000)
+    real(double) :: zAxis2(500000)
+    real ::  temperature2(500000)
     integer :: nz1, nz2
     real(oct) :: epsOverdt
     real :: xpos, ypos, radius, drho, smallestSubcell
     logical :: diffApprox(500000)
     logical :: converged, debugoutput
-    real :: xAxis(500000)
+    real(double) :: xAxis(500000)
     integer :: nx, i, j
     real :: flux
     logical :: ok1, ok2
@@ -242,8 +244,8 @@ contains
 
     nx = 0
     call getxValuesdiff(grid%octreeRoot,nx,xAxis)
-    call stripSimilarValues(xAxis,nx,real(1.e-5*grid%halfSmallestSubcell))
-    xAxis(1:nx) = xAxis(1:nx) + 1.e-5*grid%halfSmallestSubcell
+    call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
+    xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
 
     xPos = grid%halfSmallestSubcell - grid%octreeRoot%subcellSize
     smallestSubcell = 2. * grid%halfSmallestSubcell
@@ -262,22 +264,22 @@ contains
        ok1 = .false.
        ok2 = .false.
 
-       call getTemperatureDensityRunDiff(grid, zAxis1, subcellsize, rho, temperature1, diffApprox, xPos, yPos, nz1, -1.)
+       call getTemperatureDensityRunDiff(grid, zAxis1, subcellsize, rho, temperature1, diffApprox, xPos, yPos, nz1, -1.d0)
 
        if (nz1 > 1) then
           call solveDiffusion(grid, zAxis1, xPos, temperature1, rho, diffapprox, nz1, ok1, debugoutput)
        endif
 
-       call getTemperatureDensityRunDiff(grid, zAxis2, subcellsize, rho, temperature2, diffApprox, xPos, yPos, nz2, +1.)
+       call getTemperatureDensityRunDiff(grid, zAxis2, subcellsize, rho, temperature2, diffApprox, xPos, yPos, nz2, +1.d0)
 
        if (nz2 > 1) then
           call solveDiffusion(grid, zAxis2, xPos, temperature2, rho, diffapprox, nz2, ok2, debugoutput)
        endif
-
+ 
        if (ok1.and.ok2) then
           call combineRuns(zAxis1, temperature1,  nz1, zAxis2, temperature2, nz2)
-          call putTemperatureRunDiff(grid, zAxis1, temperature1, nz1, xPos, yPos, -1.)
-          call putTemperatureRunDiff(grid, zAxis2, temperature2, nz2, xPos, yPos, +1.)
+          call putTemperatureRunDiff(grid, zAxis1, temperature1, nz1, xPos, yPos, -1.d0)
+          call putTemperatureRunDiff(grid, zAxis2, temperature2, nz2, xPos, yPos, +1.d0)
        endif
 
 
@@ -289,10 +291,11 @@ contains
 
   subroutine combineRuns(x1, y1, n1, x2, y2, n2)
     integer :: n1, n2
-    real :: x1(:), x2(:), y1(:), y2(:)
+    real(double) :: x1(:), x2(:)
+    real :: y1(:), y2(:)
     real :: yt1(10000), yt2(10000), yt
     integer :: i, j
-    real :: swap, t
+    real(double) :: swap, t
     
     
     do i = 1, n1/2
@@ -336,13 +339,14 @@ contains
     type(octal), pointer   :: thisOctal
     integer :: nz
     real(double) :: rho(*)
-    real :: temperature(*), zAxis(*), subcellsize(*)
+    real :: temperature(*)
+    real(double) :: zAxis(*), subcellsize(*)
     logical :: diffApprox(*)
     real :: xPos, yPos
     integer :: subcell
     real(double) :: rhotemp
     real :: temptemp
-    real :: direction
+    real(double) :: direction
     type(OCTALVECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
     logical :: someDiffusion
@@ -383,13 +387,14 @@ contains
     type(octal), pointer   :: thisOctal
     integer :: nz
     real :: xPos, yPos
-    real :: zAxis(:), temperature(:)
+    real(double) :: zAxis(:)
+    real :: temperature(:)
     integer :: i, subcell
-    real :: direction
+    real(double) :: direction
     type(octalvector) :: currentPos
     
     do i = 1, nz
-       currentPos = OCTALVECTOR(xPos, yPos, -1.*direction*zAxis(i))
+       currentPos = OCTALVECTOR(xPos, yPos, -1.d0*direction*zAxis(i))
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell)
        if (thisOctal%diffusionApprox(subcell)) then
@@ -404,7 +409,7 @@ contains
     type(octal), pointer  :: child
     type(octalvector) :: rVec
     integer :: nx, subcell, i
-    real :: xAxis(:)
+    real(double) :: xAxis(:)
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -431,13 +436,14 @@ contains
 
     use input_variables, only: rinner, router
     type(GRIDTYPE) :: grid
-    real :: zAxis(500000), rho(500000), temperature(500000), subcellsize(500000)
+    real(double) :: zAxis(500000), subcellsize(500000)
+    real :: rho(500000), temperature(500000)
     integer :: nz
     real :: xpos, ypos, radius, drho, smallestSubcell
     logical :: resetTemp
     real(double) :: derivs(10)
     logical :: converged 
-    real :: xAxis(50000000)
+    real(double) :: xAxis(50000000)
     integer :: nx, i
     real :: flux
     real :: rosselandOpticalDepth(500000)
@@ -453,9 +459,9 @@ contains
     integer :: nPoly = 10
     real(double) :: apoly(maxPoly), chisq, rval(500000)
     integer :: nBoundary
-    real :: xStart
+    real(double) :: xStart
     integer :: iBoundary, boundarySubcell
-    real :: diffDepth = 10
+    real :: diffDepth = 20
     real(double) :: zApprox, eps
     real(double) :: tot
     real(double) :: zSize
@@ -468,10 +474,11 @@ contains
     integer :: zone, nZones, zeroCounter, nZoneBoundary
     logical :: inZone
 
-    call getxAxisRun(grid, xAxis, subcellSize, 0., 0., nx, +1.)
+    call getxAxisRun(grid, xAxis, subcellSize, 0., 0., nx, +1.d0)
 
 
     if (writeoutput) write(*,*) "Defining diffusion zones..."
+!    if (writeoutput) write(*,*) "! left hand diffusion boundary is off!!!!"
 
     call zeroDiffusionProb(grid%octreeRoot)
 
@@ -494,8 +501,8 @@ contains
 
     nx = 0
     call getxValuesdiff(grid%octreeRoot,nx,xAxis)
-    call stripSimilarValues(xAxis,nx,real(1.e-5*grid%halfSmallestSubcell))
-    xAxis(1:nx) = xAxis(1:nx) + 1.e-5*grid%halfSmallestSubcell
+    call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
+    xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
 
 
     call locate(xAxis, nx, xStart, iBoundary)
@@ -739,12 +746,12 @@ contains
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     integer :: nx
-    real :: xAxis(:), subcellsize(:)
+    real(double) :: xAxis(:), subcellsize(:)
     real :: zPos, yPos
     integer :: subcell
     real(double) :: rhotemp
     real :: temptemp
-    real :: direction
+    real(double) :: direction
     type(OCTALVECTOR) :: currentPos, temp
     real :: halfSmallestSubcell
 
@@ -770,7 +777,7 @@ contains
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     integer :: nz
-    real :: zAxis(:), subcellsize(:)
+    real(double) :: zAxis(:), subcellsize(:)
     real :: xPos, yPos
     integer :: subcell
     real(double) :: rhotemp
@@ -784,14 +791,14 @@ contains
 
     currentPos = OCTALVECTOR(xpos, yPos, -1.*direction*grid%octreeRoot%subcellsize)
 
-    do while((-1.*direction*currentPos%z) > 0.)
+    do while((-1.d0*direction*currentPos%z) > 0.)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell, rho=rhotemp, temperature=temptemp, grid=grid)
        nz = nz + 1
        temp = subCellCentre(thisOctal, subcell)
        zAxis(nz) = temp%z
        subcellsize(nz) = thisOctal%subcellsize
-       currentPos = OCTALVECTOR(xpos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+       currentPos = OCTALVECTOR(xpos, yPos, zAxis(nz)+0.5d0*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
     end do
     
   end subroutine getzAxisRun
@@ -1099,9 +1106,10 @@ end subroutine setNoDiffusion
     integer :: subcell
     real(oct) :: epsoverdt
     integer :: nx
-    real :: xAxis(2000000), zAxis(2000000),  temperature(2000000)
+    real(double) :: xAxis(2000000), zAxis(2000000)
+    real :: temperature(2000000)
     real(double) :: rho(2000000)
-    real :: subcellSize(2000000)
+    real(double) :: subcellSize(2000000)
     logical :: diffApprox(20000000)
     real :: xpos, ypos
     integer :: i, j, nz
@@ -1109,14 +1117,14 @@ end subroutine setNoDiffusion
     integer :: iBoundary
     nx = 0
     call getxValuesdiff(grid%octreeRoot,nx,xAxis)
-    call stripSimilarValues(xAxis,nx,real(1.e-5*grid%halfSmallestSubcell))
-    xAxis(1:nx) = xAxis(1:nx) + 1.e-5*grid%halfSmallestSubcell
+    call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
+    xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
 
     iBoundary = 0
     do i = 1, nx
        xpos = xAxis(i)
        ypos = 0.
-       call getTemperatureDensityRunDiff(grid, zAxis, subcellsize, rho, temperature, diffApprox, xPos, yPos, nz, -1.)
+       call getTemperatureDensityRunDiff(grid, zAxis, subcellsize, rho, temperature, diffApprox, xPos, yPos, nz, -1.d0)
        do j = 1, nz
           if (diffApprox(j)) then
              iBoundary = j 
@@ -1132,7 +1140,7 @@ end subroutine setNoDiffusion
        endif
        
        iBoundary = 0
-       call getTemperatureDensityRunDiff(grid, zAxis, subcellsize, rho, temperature, diffApprox, xPos, yPos, nz, +1.)
+       call getTemperatureDensityRunDiff(grid, zAxis, subcellsize, rho, temperature, diffApprox, xPos, yPos, nz, +1.d0)
        do j = 1, nz
           if (diffApprox(j)) then
              iBoundary = j 

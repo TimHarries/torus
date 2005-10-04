@@ -1108,7 +1108,7 @@ program torus
               if (writeoutput) write(*,*) "Smoothing adaptive grid structure..."
               gridConverged = .false.
               do
-                 call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops=.false.)
+                 call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops=.false., interpProps=.true.)
                  if (gridConverged) exit
               end do
               if (writeoutput) write(*,*) "...grid smoothing complete"

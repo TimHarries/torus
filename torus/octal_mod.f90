@@ -106,6 +106,7 @@ MODULE octal_mod
     real(double), DIMENSION(:,:), POINTER ::  N => null()! stateq level pops
     real(double), DIMENSION(8) :: Ne            ! electron density
     real(double), DIMENSION(8) :: nTot          ! total density
+    real, dimension(8) :: oldFrac ! Previous value of dust sublimation fraction
     REAL, DIMENSION(:,:), POINTER      :: departCoeff =>null()! temporary storage for departure coefficients
     LOGICAL(KIND=logic), DIMENSION(8) :: inStar      ! point lies within star
     LOGICAL(KIND=logic), DIMENSION(8) :: inFlow      ! inside accretion flow region GET RID OF THIS?    

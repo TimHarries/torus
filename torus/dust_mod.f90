@@ -920,6 +920,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     real :: height
     real(double) :: fac, frac, newFrac, oldFrac, deltaFrac
     real ::  temperature, sublimationTemp, subrange
+    real :: underCorrect = 0.5
     
     integer :: nx, subcell, i
 
@@ -937,15 +938,6 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           end do
        else
 
-          temperature = thisOctal%oldtemperature(subcell)
-          sublimationTemp = max(500.d0,1500.d0 * thisOctal%rho(subcell)**(1.95d-2))
-          if (temperature < sublimationTemp) oldFrac = 1.
-    
-          if (temperature > sublimationTemp) then
-             oldfrac = exp(-dble((temperature-sublimationtemp)/subRange))
-          endif
-          oldfrac = max(oldfrac,1.d-20)
-
           temperature = thisOctal%temperature(subcell)
           sublimationTemp = max(500.d0,1500.d0 * thisOctal%rho(subcell)**(1.95d-2))
           if (temperature < sublimationTemp) newFrac = 1.
@@ -955,15 +947,16 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           endif
           newfrac = max(newfrac,1.d-20)
 
-          deltaFrac = newFrac - oldFrac
+          deltaFrac = newFrac - thisOctal%oldFrac(subcell)
 
-          frac = oldFrac + 0.5 * deltaFrac
+          frac = thisOctal%oldFrac(subcell) + underCorrect * deltaFrac
 
           if (deltaFrac /= 0.) then
              nfrac = nfrac + 1
              totFrac = totFrac + abs(deltaFrac)
           endif
 
+          thisOctal%oldFrac(subcell) = frac
           thisOctal%dustTypeFraction(subcell,:) =  thisOctal%dustTypeFraction(subcell,:) * frac
 
              

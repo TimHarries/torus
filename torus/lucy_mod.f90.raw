@@ -512,8 +512,12 @@ contains
        end if
 
        if (doingDustSublimation) then
-          nIter = 3
           nMonte = 50000
+          if (iIter_grand == 0) then
+             nIter = 3
+          else
+             nIter = 2
+          endif
        endif
 
     do iIter = 1, nIter
@@ -541,6 +545,9 @@ contains
        call plot_AMR_values(grid, "dusttype", "x-z", 0., &
             "dusttype.ps/vcps", .false., .false., &
            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor)
+       call plot_AMR_values(grid, "dusttype", "x-z", 0., &
+            "dusttype_full.ps/vcps", .false., .false., &
+           0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
 
        if (grid%geometry == "shakara") then
           call dullemondplot(grid, rinner, router, 0.4)
@@ -657,8 +664,8 @@ contains
 !$MPI     !   which will calculate each photon
 !$MPI     allocate(photonBelongsRank(nMonte))
 !$MPI    
-!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=40,tag=tag,&
-!$MPI                          setDebug=.false.)
+!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=4,tag=tag,&
+!$MPI                          setDebug=.true.)
 !$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
 !$MPI  end if
 !$MPI  !====================================================================================
@@ -667,7 +674,7 @@ contains
 !$MPI    
 !$MPI  if (my_rank /= 0) then
 !$MPI    mpiBlockLoop: do  
-!$MPI      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
+!$MPI      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.true.)  
 !$MPI      if (rankComplete) exit mpiBlockLoop  
 !$MPI    
 
@@ -1029,17 +1036,17 @@ contains
              end do
           enddo
           if (writeoutput) write(*,*) "...grid smoothing complete"
-          ! The tau smoothing may result in large differences in the size
-          ! of neighbouring octals, so we smooth the grid again.
-          if (doSmoothGrid) then
-             if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
-             gridConverged = .false.
-             do
-                call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false., interpProps=.true.)
-                if (gridConverged) exit
-             end do
-             if (writeoutput) write(*,*) "...grid smoothing complete"
-          end if
+!          ! The tau smoothing may result in large differences in the size
+!          ! of neighbouring octals, so we smooth the grid again.
+!          if (doSmoothGrid) then
+!             if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
+!             gridConverged = .false.
+!             do
+!                call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false., interpProps=.true.)
+!                if (gridConverged) exit
+!             end do
+!             if (writeoutput) write(*,*) "...grid smoothing complete"
+!          end if
 
        endif
 
@@ -1084,10 +1091,10 @@ contains
     end if
 
     if (doingDustSublimation) then
-       if (iIter_grand < 300) then
+       if (iIter_grand < 100) then
           converged = .false.
        else
-          converged =.false.
+          converged =.true.
           doingDustSublimation = .false.
           stop
        endif

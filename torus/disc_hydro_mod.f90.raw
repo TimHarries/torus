@@ -1,3 +1,4 @@
+
 ! this module solves the vertical density structure of a disc
 ! by repeated calls to the lucy algorithm and iteratively solving the
 ! equation of hydrostatic equilibrium
@@ -32,10 +33,10 @@ contains
 
     use input_variables, only: alphaDisc, betaDisc, rinner, geometry
     integer, intent(in) :: nz ! number of vertical grid points
-    real(single),intent(in) :: subcellSize(1:nz)  ! size of this subcell
+    real(double),intent(in) :: subcellSize(1:nz)  ! size of this subcell
     real(single),intent(in) :: temperature(1:nz)  ! temperature
-    real(single),intent(inout) :: rho(1:nz)         ! density
-    real(single),intent(in) :: zAxis(1:nz)       ! z grid
+    real(double),intent(inout) :: rho(1:nz)         ! density
+    real(double),intent(in) :: zAxis(1:nz)       ! z grid
     real :: mStar, rDisk                      ! stellar mass, disk mass and radius
     real :: radius, radiusAU ! radius at disc midplane
     real :: sigma0                                   ! surface density at rinner
@@ -67,7 +68,7 @@ contains
        dz = (zAxis(i)-zAxis(i-1))
        dTdz = (temperature(i)-temperature(i-1))/dz
        fac = (mu * mHydrogen * bigG * mStar * zAxis(i)/ (kErg * radius**3))/1.e30
-       fac2 = -1.*(dTdz + fac)/temperature(i)
+       fac2 = -1.d0*(dTdz + fac)/temperature(i)
        lnrho(i) = lnrho(i-1) + fac2 * dz
     enddo
 
@@ -125,7 +126,9 @@ contains
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     integer :: nz
-    real :: rho(:), temperature(:), zAxis(:), subcellsize(:)
+    real(double) :: rho(:)
+    real :: temperature(:)
+    real(double) :: zAxis(:), subcellsize(:)
     real :: xPos, yPos
     integer :: subcell
     real(double) :: rhotemp	
@@ -156,7 +159,7 @@ contains
 !          currentPos = OCTALVECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
 !       endif
     end do
-    zAxis(1:nz) = abs(zAxis(1:nz)) * 1.e10  ! convert to cm
+    zAxis(1:nz) = abs(zAxis(1:nz)) * 1.d10  ! convert to cm
   end subroutine getTemperatureDensityRun
 
   subroutine putDensityRun(grid, zAxis, rho, nz, xPos, yPos, direction)
@@ -164,13 +167,14 @@ contains
     type(octal), pointer   :: thisOctal
     integer :: nz
     real :: xPos, yPos
-    real :: zAxis(:), rho(:)
+    real(double) :: zAxis(:)
+    real(double) :: rho(:)
     integer :: i, subcell
     real :: direction
     type(octalvector) :: currentPos
     
     do i = 1, nz
-       currentPos = OCTALVECTOR(xPos, yPos, direction*zAxis(i)/1.e10)
+       currentPos = OCTALVECTOR(xPos, yPos, direction*zAxis(i)/1.d10)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell)
 ! original code moved to realPutDensity
@@ -221,18 +225,21 @@ contains
   subroutine throughoutMidpane(grid, mStar, sigma0, rDisk, drho)
 
     type(GRIDTYPE) :: grid
-    real :: zAxis(10000), rho(10000), temperature(10000), subcellsize(10000)
+    real(double) :: zAxis(10000)
+    real(double) :: rho(10000)
+    real :: temperature(10000)
+    real(double) :: subcellsize(10000)
     real :: mStar, sigma0, rDisk
     integer :: nz
     real :: xpos, ypos, radius, drho, smallestSubcell
     logical :: converged 
-    real :: xAxis(1000000)
+    real(double) :: xAxis(1000000)
     integer :: nx, i
 
     nx = 0
     call getxValues(grid%octreeRoot,nx,xAxis)
-    call stripSimilarValues(xAxis,nx,real(1.e-5*grid%halfSmallestSubcell))
-    xAxis(1:nx) = xAxis(1:nx) + 1.e-5*grid%halfSmallestSubcell
+    call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
+    xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
 
     xPos = grid%halfSmallestSubcell - grid%octreeRoot%subcellSize
     smallestSubcell = 2. * grid%halfSmallestSubcell
@@ -480,7 +487,7 @@ contains
     type(octal), pointer  :: child
     type(octalvector) :: rVec
     integer :: nx, subcell, i
-    real :: xAxis(:)
+    real(double) :: xAxis(:)
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then

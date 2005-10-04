@@ -13,6 +13,11 @@ module utils_mod
 
   public
 
+  interface stripSimilarValues
+     module procedure stripSimilarValuesDouble
+     module procedure stripSimilarValuesSingle
+  end interface
+
   interface locate
      module procedure locate_single
      module procedure locate_octal
@@ -974,21 +979,21 @@ contains
 
 
 
-    ! a functions to convert characters to integer 
-    function char2int(a) RESULT(out)
-      implicit none 
-      integer :: out
-      character, intent(in),dimension(:) :: a
-      integer :: ierr
-      
-      read(a, *, IOSTAT = ierr) out
-      if (ierr /= 0) then
-         print *, 'Error : Non-numerical characters passed to [char2int] &
-              & function in char_function_class module.'
-         stop
-      end if
-      
-    end function char2int
+!    ! a functions to convert characters to integer 
+!    function char2int(a) RESULT(out)
+!      implicit none 
+!      integer :: out
+!      character, intent(in),dimension(:) :: a
+!      integer :: ierr
+!      
+!      read(a, *, IOSTAT = ierr) out
+!      if (ierr /= 0) then
+!         print *, 'Error : Non-numerical characters passed to [char2int] &
+!              & function in char_function_class module.'
+!         stop
+!      end if
+!      
+!    end function char2int
   
   
     ! a function to convert integer to strings
@@ -2025,7 +2030,7 @@ contains
    
   END FUNCTION qsimp
 
-  subroutine stripSimilarValues(x, nx, xtol)
+  subroutine stripSimilarValuesSingle(x, nx, xtol)
     integer :: nx
     real :: x(:)
     real :: xtol
@@ -2047,7 +2052,31 @@ contains
 
     x(1:newnx) = xtemp(1:newnx)
     nx = newnx
-  end subroutine stripSimilarValues
+  end subroutine stripSimilarValuesSingle
+
+  subroutine stripSimilarValuesDouble(x, nx, xtol)
+    integer :: nx
+    real(double) :: x(:)
+    real(double) :: xtol
+    real(double), allocatable :: xtemp(:)
+    integer :: i, newNx
+
+    allocate(xtemp(1:nx))
+    
+    call sort(nx, x)
+
+    newnx = 1
+    xtemp(newnx) = x(1)
+    do i = 2, nx
+       if (abs(xtemp(newnx)-x(i)) > xTol) then
+          newnx = newnx  + 1
+          xtemp(newnx) = x(i)
+       endif
+    enddo
+
+    x(1:newnx) = xtemp(1:newnx)
+    nx = newnx
+  end subroutine stripSimilarValuesDouble
        
 
   subroutine convertByte4(iByte, ival)
