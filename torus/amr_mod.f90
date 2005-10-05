@@ -1908,9 +1908,9 @@ CONTAINS
 
       IF (PRESENT(kappaAbs)) THEN 
         IF (PRESENT(iLambda)) THEN
-           if (.not.grid%oneKappa) then
-              kappaAbs = resultOctal%kappaAbs(subcell,iLambda)
-           else
+!           if (.not.grid%oneKappa) then
+!              kappaAbs = resultOctal%kappaAbs(subcell,iLambda)
+!           else
               call returnKappa(grid, resultOctal, subcell, ilambda,&
               lambda=lambda, kappaAbs=kappaAbs)
 !              if (resultOctal%gasOpacity) then
@@ -1924,7 +1924,7 @@ CONTAINS
 !                         grid%oneKappaAbs(resultOctal%dustType(subcell),iLambda+1)*resultOctal%rho(subcell))
 !                 ENDIF
 !           endif
-        endif
+!        endif
         ELSE
           PRINT *, 'In amrGridValues, can''t evaluate ''kappaAbs'' without',&
                    ' ''iLambda''.'
@@ -1934,9 +1934,9 @@ CONTAINS
       
       IF (PRESENT(kappaSca)) THEN 
         IF (PRESENT(iLambda)) THEN
-           if (.not.grid%oneKappa) then
-              kappaSca = resultOctal%kappaSca(subcell,iLambda)
-           else
+!           if (.not.grid%oneKappa) then
+!              kappaSca = resultOctal%kappaSca(subcell,iLambda)
+!           else
               call returnKappa(grid, resultOctal, subcell, &
               ilambda,lambda=lambda, kappaSca=kappaSca)
 !              if (resultOctal%gasOpacity) then
@@ -1950,7 +1950,7 @@ CONTAINS
 !                         grid%oneKappaSca(resultOctal%dustType(subcell),iLambda+1)*resultOctal%rho(subcell))
 !           ENDIF
 !           endif
-        endif
+!        endif
         ELSE
           PRINT *, 'In amrGridValues, can''t evaluate ''kappaSca'' without',&
                    ' ''iLambda''.'
@@ -3717,7 +3717,7 @@ CONTAINS
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       split = .FALSE.
-      nr1 = 10
+      nr1 = 5
       nr2 = 50
       rGrid(1) = 1.
       rGrid(2) = 1.04
@@ -3735,7 +3735,7 @@ CONTAINS
       rgrid(1:nr) = 10.d0**rgrid(1:nr)
       r = modulus(cellcentre)
       if (thisOctal%nDepth < 6) split = .true.
-      if ((r < grid%rOuter).and.(r > grid%rinner)) then
+      if ((r < grid%rOuter).and.(r > grid%rinner*0.9)) then
          call locate(rGrid, nr, r, i)      
          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       endif
@@ -5557,21 +5557,23 @@ CONTAINS
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
 
-    thisOctal%rho(subcell) = 1.e-30
+    thisOctal%rho(subcell) = 1.e-5*mHydrogen
     thisOctal%temperature(subcell) = 8000.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
-    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhi(subcell) = 1.e-8
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-    thisOctal%inFlow(subcell) = .true.
+    thisOctal%inFlow(subcell) = .false.
 
-    if ((r > 1.e7).and.(r < 1.e9)) then
+    if (r > grid%rinner) then
+       thisOctal%inFlow(subcell) = .true.
        thisOctal%rho(subcell) = 100.*mHydrogen
        thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
        thisOctal%ne(subcell) = thisOctal%nh(subcell)
        thisOctal%nhi(subcell) = 1.e-5
        thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+       thisOctal%nHeI(subcell) = 0.1d0 *  thisOctal%nH(subcell)
        thisOctal%etaCont(subcell) = 0.
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)
@@ -7943,7 +7945,7 @@ CONTAINS
          endif
       endif
    endif
-
+   
 
    if (PRESENT(kappap)) then
       if (PRESENT(atthistemperature)) then
@@ -7968,7 +7970,6 @@ CONTAINS
          e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
          call phfit2(1, 1, 1 , e , h0)
          call phfit2(2, 2, 1 , e , he0)
-         write(*,*) e,h0,he0
          kappaAbs = kappaabs + (thisOctal%nHI(subcell) * h0) + (thisOctal%nHeI(subcell) * he0)
       endif
       if (PRESENT(kappaSca)) then

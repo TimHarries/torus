@@ -562,7 +562,7 @@ torusMain.o: torusMain.f90.raw TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o
 	lucy_mod.o math_mod.o phasematrix_mod.o photon_mod.o puls_mod.o \
 	source_mod.o spectrum_mod.o sph_data_class.o stateq_mod.o \
 	surface_mod.o timing.o unix_mod.o utils_mod.o vector_mod.o \
-	wr104_mod.o  messages_mod.o
+	wr104_mod.o  messages_mod.o photoion_mod.o
 
 
         ifeq ($(MK_MPI_SRC), yes)

@@ -111,7 +111,7 @@ MODULE octal_mod
     real(double), DIMENSION(8) :: NHII            ! HII
     real(double), DIMENSION(8) :: NHeI            ! HeI
     real(double), DIMENSION(8) :: NHeII            ! HeII
-
+    real(double), dimension(8) :: HIheating
 
     real(double), DIMENSION(8) :: nTot          ! total density
     real, dimension(8) :: oldFrac ! Previous value of dust sublimation fraction

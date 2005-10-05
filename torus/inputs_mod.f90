@@ -1108,6 +1108,7 @@ endif
 
 if (geometry == "lexington") then
    photoionization = .true.
+   onekappa = .true.
 endif
 
 

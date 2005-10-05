@@ -582,9 +582,10 @@ contains
        grid%rOuter = rOuter
 
     case("lexington")
-       grid%rInner = 1.e7
-       grid%rOuter = 1.e9
-
+       grid%rInner = 30.e7
+       grid%rOuter = 2.e9
+       grid%oneKappa = .true.
+       oneKappa = .true.
 
     case ("ttauri") 
        call initTTauriAMR(grid,theta1,theta2)
@@ -6253,7 +6254,7 @@ contains
     case ("temperature")
        label_wd = "LOG10( [Kelvin] )"
     case default
-       label_wd = "Pixcel Value"
+       label_wd = "Pixel Value"
     end select
        
 

@@ -35,6 +35,7 @@ contains
     real(double) :: kappaScadb, kappaAbsdb, nuHydrogen
     real(double) :: epsOverDeltaT
     real :: dummy(3)
+    integer :: nIter
 
     lCore = 0.d0
     do i = 1, nSource
@@ -44,14 +45,21 @@ contains
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
     
-    nMonte = 10000
+    nMonte = 100000
+    nIter = 0
 
     do 
-
+       nIter = nIter + 1
        call zeroDistanceGrid(grid%octreeRoot)
+       nInf=0
     call plot_AMR_values(grid, "ionization", "x-z", 0., &
          "ionization.ps/vcps", .true., .false., &
          0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+
+       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+            "lucy_temp_xz.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+
 
        write(*,*) "Running loop with ",nmonte," photons."
     do iMonte = 1, nMonte
@@ -74,7 +82,7 @@ contains
                 call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
-                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
+                     lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
 
                 ! recombination to continuum (equation 26 of Lucy MC trans prob II)
 
@@ -83,11 +91,9 @@ contains
                 call random_number(r)
 
                 nuhydrogen = 13.6 / ergtoev / hCgs
-                write(*,*) alpha1/alphaA
                 if (r < (alpha1 / alphaA)) then                
                    call random_number(r)
                    thisFreq = nuHydrogen * (1.d0 - ((kerg*thisOctal%temperature(subcell))/(hCgs*nuHydrogen)*log(r)))
-                   write(*,*) 1.e8*cSpeed / thisFreq
                 else
                    escaped = .true.
                 endif
@@ -98,8 +104,9 @@ contains
     epsOverDeltaT = (lCore) / dble(nInf)
 
     call calculateIonizationBalance(grid%octreeRoot, epsOverDeltaT)
+    call calculateThermalBalance(grid%octreeRoot, epsOverDeltaT)
     
-     enddo
+ enddo
 
   end subroutine photoIonizationloop
 
@@ -156,6 +163,9 @@ contains
     octVec = rVec
     thisOctVec = rVec
 
+    call locate(lamArray, nLambda, real(thisLam), iLam)
+
+
     call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  lambda=real(thisLam), foundOctal=thisOctal, &
          foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
          grid=grid, inFlow=inFlow)
@@ -163,7 +173,6 @@ contains
 
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
-       write(*,*) " tau to next cell",thistau
     else
        thisTau = 1.0e-28
     end if
@@ -195,6 +204,10 @@ contains
        call phfit2(1, 1, 1 , e , h0)
        thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
             + tVal * dble(h0 / (hCgs * thisFreq))
+
+          thisOctal%HIheating(subcell) = thisOctal%HIheating(subcell) &
+            + dble(tVal) * dble(h0 / (hCgs * thisFreq)) &
+            * (dble(hCgs * thisFreq) - dble(hCgs * nuHydrogen))
 
 
 
@@ -284,6 +297,11 @@ contains
           call phfit2(1, 1, 1 , e , h0)
           thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
             + (dble(tVal)*dble(tau)/thisTau) * dble(h0 / (hCgs * thisFreq))
+
+          thisOctal%HIheating(subcell) = thisOctal%HIheating(subcell) &
+            + (dble(tVal)*dble(tau)/thisTau) * dble(h0 / (hCgs * thisFreq)) &
+            * (dble(hCgs * thisFreq) - dble(hCgs * nuHydrogen))
+
           thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
           
 
@@ -602,6 +620,7 @@ contains
           thisOctal%undersampled(subcell) = .false.
           thisOctal%incidentFlux(subcell) = 0.
           thisOCtal%nDiffusion(subcell) = 0.
+          thisOctal%hIheating(subcell) = 0.d0
        endif
     enddo
   end subroutine zeroDistanceGrid
@@ -624,26 +643,117 @@ contains
              end if
           end do
        else
-          if (thisOctal%threed) then
-             v = thisOctal%subcellSize**3
-          else
-             rVec = subcellCentre(thisOctal,subcell)
-             r1 = rVec%x-thisOctal%subcellSize/2.d0
-             r2 = rVec%x+thisOctal%subcellSize/2.d0
-             v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+          if (thisOctal%inflow(subcell)) then
+             if (thisOctal%ncrossings(subcell) > 2) then
+                if (thisOctal%threed) then
+                   v = thisOctal%subcellSize**3
+                else
+                   rVec = subcellCentre(thisOctal,subcell)
+                   r1 = rVec%x-thisOctal%subcellSize/2.d0
+                   r2 = rVec%x+thisOctal%subcellSize/2.d0
+                   v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+                endif
+                ionizationCoeff = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 44 Lucy MC II
+                recombCoeff = thisOctal%ne(subcell) *  hRecombination(thisOctal%temperature(subcell))
+                if ((recombCoeff == 0.d0).or.((recombCoeff+ionizationCoeff) ==0.d0)) then
+                   write(*,*) "!",recombCoeff,ionizationCoeff,thisOctal%temperature(subcell)
+                else
+                   thisOctal%nHI(subcell) = thisOctal%nh(subcell) * recombCoeff/(ionizationCoeff  + recombCoeff)
+                   thisOctal%nHII(subcell) = thisOctal%nh(subcell)  - thisOctal%nhi(subcell)
+                   thisOctal%ne(subcell) = thisOctal%nhii(subcell)
+                endif
+             else
+                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+             endif
           endif
-
-          ionizationCoeff = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 44 Lucy MC II
-          recombCoeff = thisOctal%ne(subcell) *  hRecombination(thisOctal%temperature(subcell))
-          write(*,*) ionizationCoeff, recombCoeff
-          thisOctal%nHI(subcell) = thisOctal%nh(subcell) * recombCoeff/(ionizationCoeff  + recombCoeff)
-          thisOctal%nHII(subcell) = thisOctal%nh(subcell)  - thisOctal%nhi(subcell)
-          thisOctal%ne(subcell) = thisOctal%nhii(subcell)
-
-
        endif
     enddo
   end subroutine calculateIonizationBalance
+
+  recursive subroutine calculateThermalBalance(thisOctal, epsOverDeltaT)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
+  integer :: subcell, i
+  type(OCTALVECTOR) :: rVec
+  logical :: converged
+  real :: t1, t2, tm
+  real(double) :: y1, y2, ym, HIheating
+  real :: deltaT
+  real :: underCorrection = 0.5
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateThermalBalance(child, epsOverDeltaT)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%inflow(subcell)) then
+             if (thisOctal%ncrossings(subcell) > 2) then
+                if (thisOctal%threed) then
+                   v = thisOctal%subcellSize**3
+                else
+                   rVec = subcellCentre(thisOctal,subcell)
+                   r1 = rVec%x-thisOctal%subcellSize/2.d0
+                   r2 = rVec%x+thisOctal%subcellSize/2.d0
+                   v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+                endif
+                HIheating= thisOctal%nHi(subcell) * (epsOverDeltaT / (v * 1.d30))*thisOctal%hIheating(subcell) ! equation 21 of kenny's
+
+                if (HIheating == 0.d0) then
+                   thisOctal%temperature(subcell) = 1.e-3
+                else
+                   converged = .false.
+                   t1 = 1.e-5
+                   t2 = 5.e6
+                   y1 = (HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t1) - HIheating)
+                   y2 = (HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t2) - HIheating)
+                   if (y1*y2 > 0.d0) then
+                      write(*,*) "Insufficient range"
+                      write(*,*) "t1",t1,y1,HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t1),HIheating
+                      write(*,*) "t2",t2,y2,HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t2),HIheating
+                   endif
+                   
+                   ! find root of heating and cooling by bisection
+                   
+                   do while(.not.converged)
+                      tm = 0.5*(t1+t2)
+                      y1 = (HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t1) - HIheating) * 1.d20
+                      y2 = (HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t2) - HIheating) * 1.d20
+                      ym = (HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), tm) - HIheating) * 1.d20
+                      !                write(*,*) t1,t2,y1,y2
+                      !                write(*,*) hiheating,HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), tm)
+                      if (y1*ym < 0.d0) then
+                         t1 = t1
+                         t2 = tm
+                      else if (y2*ym < 0.d0) then
+                         t1 = tm
+                         t2 = t2
+                      else
+                         converged = .true.
+                         tm = 0.5*(t1+t2)
+                      endif
+                      
+                      if (abs((t1-t2)/t1) .le. 1.e-3) then
+                         converged = .true.
+                      endif
+                      
+                   enddo
+                   deltaT = tm - thisOctal%temperature(subcell)
+                   thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + underCorrection * deltaT
+                endif
+             else
+                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+             endif
+          endif
+       endif
+    enddo
+  end subroutine calculateThermalBalance
 
 
   function hRecombination(temperature) result (rate)
@@ -663,6 +773,45 @@ contains
 
     alpha1 = 1.58d-13 * (temperature/1.d4)**(-0.53d0)  ! kenny's photo paper equation 24
   end function recombToGround
+
+  function HHeCooling(nIon, ne, temperature) result (coolingRate)
+
+    real(double) :: nIon, ne
+    real :: temperature
+    real(double) :: coolingRate
+    real(double) :: gff
+    real :: rootTbeta1(31) = (/ 8.287e-11, 7.821e-11, 7.356e-11, 6.982e-11, 6.430e-11, 5.971e-11, 5.515e-11, 5.062e-11, 4.614e-11, &
+                               4.170e-11, 3.734e-11, 3.306e-11, 2.888e-11, 2.484e-11, 2.098e-11, 1.736e-11, 1.402e-11, 1.103e-11, &
+                               8.442e-12, 6.279e-12, 4.539e-12, 3.192e-11, 2.185e-12, 1.458e-12, 9.484e-13, 6.023e-13, 3.738e-13, &
+                               2.268e-13, 1.348e-13, 7.859e-14, 4.499e-14 /)
+
+    real :: rootTbeta2(31) = (/ 1.646e-11, 1.646e-11, 1.646e-11, 1.646e-11, 1.646e-11, 1.645e-11, 1.644e-11, 1.643e-11, 1.641e-11, &
+                                1.638e-11, 1.633e-11, 1.625e-11, 1.613e-11, 1.594e-11, 1.656e-11, 1.522e-11, 1.460e-11, 1.374e-11, &
+                                1.260e-11, 1.119e-11, 9.571e-12, 7.844e-12, 6.146e-12, 4.601e-12, 3.295e-12, 2.262e-12, 1.494e-12, &
+                                9.520e-13, 5.878e-13, 3.528e-13, 2.066e-13 /)
+
+    real :: logT(31) = (/ 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2, 4.4, 4.6, 4.8, 5.0, &
+                      5.2, 5.4, 5.6, 5.8, 6.0, 6.2, 6.4, 6.6, 6.8, 7.0 /)
+    real(double) :: fac, thisRootTbeta1, beta, thisRootTbeta2
+    real :: thisLogT
+    integer :: n
+
+    gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3)  ! Kenny equation 23
+
+    coolingRate = 1.42d-27 * nIon * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
+
+    thisLogT = log10(temperature)
+    call locate(logT, 31, thisLogT, n)
+    fac = (thisLogT - logT(n))/(logT(n+1)-logT(n))
+    thisRootTbeta1 = rootTbeta1(n) + (rootTbeta1(n+1)-rootTbeta1(n)) * fac
+
+    thisRootTbeta2 = rootTbeta2(n) + (rootTbeta2(n+1)-rootTbeta2(n)) * fac
+
+    beta = (thisrootTbeta1 + thisRootTbeta2) / sqrt(temperature)
+
+    coolingRate = coolingRate + ne * nion * kerg * temperature * beta
+
+  end function HHeCooling
 
 end module
 
