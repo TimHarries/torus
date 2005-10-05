@@ -45,7 +45,7 @@ contains
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
     
-    nMonte = 100000
+    nMonte = 50000
     nIter = 0
 
     do 
@@ -104,7 +104,7 @@ contains
     epsOverDeltaT = (lCore) / dble(nInf)
 
     call calculateIonizationBalance(grid%octreeRoot, epsOverDeltaT)
-    call calculateThermalBalance(grid%octreeRoot, epsOverDeltaT)
+!    call calculateThermalBalance(grid%octreeRoot, epsOverDeltaT)
     
  enddo
 
@@ -706,7 +706,7 @@ contains
                 HIheating= thisOctal%nHi(subcell) * (epsOverDeltaT / (v * 1.d30))*thisOctal%hIheating(subcell) ! equation 21 of kenny's
 
                 if (HIheating == 0.d0) then
-                   thisOctal%temperature(subcell) = 1.e-3
+                   thisOctal%temperature(subcell) = 3.
                 else
                    converged = .false.
                    t1 = 1.e-5
