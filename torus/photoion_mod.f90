@@ -32,7 +32,7 @@ contains
     real(double) :: r
     integer :: ilam
     integer :: nInf
-    real(double) :: kappaScadb, kappaAbsdb, nuHydrogen
+    real(double) :: kappaScadb, kappaAbsdb
     real(double) :: epsOverDeltaT
     real :: dummy(3)
     integer :: nIter
@@ -45,7 +45,7 @@ contains
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
     
-    nMonte = 50000
+    nMonte = 100000
     nIter = 0
 
     do 
@@ -90,7 +90,6 @@ contains
                 alpha1 = recombToGround(thisOctal%temperature(subcell))
                 call random_number(r)
 
-                nuhydrogen = 13.6 / ergtoev / hCgs
                 if (r < (alpha1 / alphaA)) then                
                    call random_number(r)
                    thisFreq = nuHydrogen * (1.d0 - ((kerg*thisOctal%temperature(subcell))/(hCgs*nuHydrogen)*log(r)))
@@ -104,7 +103,9 @@ contains
     epsOverDeltaT = (lCore) / dble(nInf)
 
     call calculateIonizationBalance(grid%octreeRoot, epsOverDeltaT)
-!    call calculateThermalBalance(grid%octreeRoot, epsOverDeltaT)
+    if (nIter > 2) then
+       call calculateThermalBalance(grid%octreeRoot, epsOverDeltaT)
+    endif
     
  enddo
 
@@ -206,7 +207,7 @@ contains
             + tVal * dble(h0 / (hCgs * thisFreq))
 
           thisOctal%HIheating(subcell) = thisOctal%HIheating(subcell) &
-            + dble(tVal) * dble(h0 / (hCgs * thisFreq)) &
+            + dble(tVal) * dble(h0 / (thisFreq * hCgs)) &
             * (dble(hCgs * thisFreq) - dble(hCgs * nuHydrogen))
 
 
@@ -299,7 +300,7 @@ contains
             + (dble(tVal)*dble(tau)/thisTau) * dble(h0 / (hCgs * thisFreq))
 
           thisOctal%HIheating(subcell) = thisOctal%HIheating(subcell) &
-            + (dble(tVal)*dble(tau)/thisTau) * dble(h0 / (hCgs * thisFreq)) &
+            + (dble(tVal)*dble(tau)/thisTau) * dble(h0 /  (thisFreq * hCgs)) &
             * (dble(hCgs * thisFreq) - dble(hCgs * nuHydrogen))
 
           thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
@@ -644,7 +645,7 @@ contains
           end do
        else
           if (thisOctal%inflow(subcell)) then
-             if (thisOctal%ncrossings(subcell) > 2) then
+             if (thisOctal%ncrossings(subcell) > 10) then
                 if (thisOctal%threed) then
                    v = thisOctal%subcellSize**3
                 else
@@ -694,7 +695,7 @@ contains
           end do
        else
           if (thisOctal%inflow(subcell)) then
-             if (thisOctal%ncrossings(subcell) > 2) then
+             if (thisOctal%ncrossings(subcell) > 10) then
                 if (thisOctal%threed) then
                    v = thisOctal%subcellSize**3
                 else

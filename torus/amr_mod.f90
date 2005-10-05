@@ -5573,7 +5573,7 @@ CONTAINS
        thisOctal%ne(subcell) = thisOctal%nh(subcell)
        thisOctal%nhi(subcell) = 1.e-5
        thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-       thisOctal%nHeI(subcell) = 0.1d0 *  thisOctal%nH(subcell)
+       thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
        thisOctal%etaCont(subcell) = 0.
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)
