@@ -1159,44 +1159,6 @@ program torus
 
         if (writeoutput) write(*,*) "...final adaptive grid configuration complete"
 
-  ! **************************************************************
-  ! FOR DEBUGGING (delete me later) 
-
-!DO iOuterLoop = 1, 1000  
-!  
-!! move the odd numbered children of the root octal to the wrong places
-!CALL deleteOctreeBranch(grid%octreeRoot%child(1),onlyChildren=.FALSE.,deletedBranch=branch1)
-!CALL deleteOctreeBranch(grid%octreeRoot%child(3),onlyChildren=.FALSE.,deletedBranch=branch3)
-!CALL deleteOctreeBranch(grid%octreeRoot%child(5),onlyChildren=.FALSE.,deletedBranch=branch5)
-!CALL deleteOctreeBranch(grid%octreeRoot%child(7),onlyChildren=.FALSE.,deletedBranch=branch7)
-!CALL insertOctreeBranch(grid%octreeRoot%child(7),branch1,onlyChildren=.FALSE.)
-!CALL insertOctreeBranch(grid%octreeRoot%child(5),branch3,onlyChildren=.FALSE.)
-!CALL insertOctreeBranch(grid%octreeRoot%child(3),branch5,onlyChildren=.FALSE.)
-!CALL insertOctreeBranch(grid%octreeRoot%child(1),branch7,onlyChildren=.FALSE.)
-!
-!! move the odd numbered children of the root octal back to the correct places
-!CALL deleteOctreeBranch(grid%octreeRoot%child(1),onlyChildren=.FALSE.,deletedBranch=branch1)
-!CALL deleteOctreeBranch(grid%octreeRoot%child(3),onlyChildren=.FALSE.,deletedBranch=branch3)
-!CALL deleteOctreeBranch(grid%octreeRoot%child(5),onlyChildren=.FALSE.,deletedBranch=branch5)
-!CALL deleteOctreeBranch(grid%octreeRoot%child(7),onlyChildren=.FALSE.,deletedBranch=branch7)
-!CALL insertOctreeBranch(grid%octreeRoot%child(7),branch1,onlyChildren=.FALSE.)
-!CALL insertOctreeBranch(grid%octreeRoot%child(5),branch3,onlyChildren=.FALSE.)
-!CALL insertOctreeBranch(grid%octreeRoot%child(3),branch5,onlyChildren=.FALSE.)
-!CALL insertOctreeBranch(grid%octreeRoot%child(1),branch7,onlyChildren=.FALSE.)
-!
-!! delete and reinsert the [even numbered children of the root octal]'s children 
-!CALL deleteOctreeBranch(grid%octreeRoot%child(2),onlyChildren=.TRUE.,deletedBranch=branch2)
-!CALL deleteOctreeBranch(grid%octreeRoot%child(4),onlyChildren=.TRUE.,deletedBranch=branch4)
-!CALL deleteOctreeBranch(grid%octreeRoot%child(6),onlyChildren=.TRUE.,deletedBranch=branch6)
-!CALL deleteOctreeBranch(grid%octreeRoot%child(8),onlyChildren=.TRUE.,deletedBranch=branch8)
-!CALL insertOctreeBranch(grid%octreeRoot%child(2),branch2,onlyChildren=.TRUE.)
-!CALL insertOctreeBranch(grid%octreeRoot%child(4),branch4,onlyChildren=.TRUE.)
-!CALL insertOctreeBranch(grid%octreeRoot%child(6),branch6,onlyChildren=.TRUE.)
-!CALL insertOctreeBranch(grid%octreeRoot%child(8),branch8,onlyChildren=.TRUE.)
-!
-!END DO 
-  ! **************************************************************
-
         call grid_info(grid, "*")
         call grid_info(grid, "info_grid.dat")
 

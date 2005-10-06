@@ -19,7 +19,7 @@ ifeq ($(SYSTEM), g95)
     F77COMP=g95
     FASTFLAG= -O3
 #    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG= -g -Wunset-vars -fbounds-check -fpointer=invalid -freal=nan -finteger=999 -flogical=none -ftrace=full
+    DEBUGFLAG=-g
     STATICFLAG=
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
@@ -40,7 +40,7 @@ ifeq ($(SYSTEM), osx)
     F77COMP=g95
     FASTFLAG= -O3 
 #    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG=-g -Wunset-vars -fbounds-check -fpointer=invalid -freal=nan -finteger=999 -flogical=none -ftrace=full
+    DEBUGFLAG=-g
     STATICFLAG=
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel

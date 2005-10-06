@@ -522,8 +522,6 @@ CONTAINS
     INTEGER              :: i
     TYPE(octal), POINTER :: child
 
-    NULLIFY(child)
-
     ! if this is the root of the tree, we initialize the counter
     IF (.NOT. ASSOCIATED(thisOctal%parent)) counter = 0
     
@@ -645,9 +643,7 @@ CONTAINS
     TYPE(octal), POINTER   :: child
   
     INTEGER :: subcell, iChild
-    
-    NULLIFY(child)
-    
+     
     ! all of the work that must be done recursively goes here: 
     DO subcell = 1, thisOctal%maxChildren, 1
    
@@ -721,7 +717,7 @@ CONTAINS
 
     IMPLICIT NONE
 
-    TYPE(OCTAL),INTENT(IN):: thisOctal 
+    TYPE(OCTAL), POINTER  :: thisOctal 
     INTEGER,INTENT(INOUT) :: nOctals   ! number of octals
     INTEGER,INTENT(INOUT) :: nVoxels   ! number of childless subcells
     
@@ -733,7 +729,8 @@ CONTAINS
     
       RECURSIVE SUBROUTINE countVoxelsPrivate(thisOctal)
       
-        TYPE(OCTAL), INTENT(IN) :: thisOctal 
+        TYPE(OCTAL), POINTER  :: thisOctal 
+        TYPE(OCTAL), POINTER  :: child
         INTEGER :: i
         
         nOctals = nOctals + 1
@@ -741,7 +738,8 @@ CONTAINS
         IF ( thisOctal%nChildren > 0 ) THEN
           ! call this subroutine recursively on each of its children
           DO i = 1, thisOctal%nChildren, 1
-            CALL countVoxelsPrivate(thisOctal%child(i))
+            child => thisOctal%child(i)
+            CALL countVoxelsPrivate(child)
           END DO
         END IF
 
@@ -802,7 +800,7 @@ CONTAINS
       
     TYPE(octalVector)       :: currentPoint ! current position of ray 
     LOGICAL                 :: abortRay     ! flag to signal completion of ray trace
-    TYPE(octal), POINTER    :: octree       ! the octree structure within 'grid'
+    TYPE(octal)             :: octree       ! the octree structure within 'grid'
     TYPE(octalVector)       :: directionNormalized
     real(oct)    :: distanceLimit ! max length of ray before aborting
     ! margin is the size of the region around the edge of a subcell
@@ -842,7 +840,7 @@ CONTAINS
 
     
     ! set up some variables
-    octree => grid%octreeRoot  
+    octree = grid%octreeRoot  
     abortRay = .FALSE.
     hitCore = .FALSE.
     directionNormalized = direction
@@ -6398,142 +6396,229 @@ CONTAINS
   end subroutine cameraPositions
 
 
-  SUBROUTINE deleteOctreeBranch(thisOctal,onlyChildren,deletedBranch)
+  !
+  !
+  !
+  SUBROUTINE deleteOctreeBranch(thisOctal,grid,onlyChildren)
     ! recursively deletes an octal's contents (and any children it has). 
-    ! if 'deletedBranch' pointer is supplied, the branch is copied there as it
-    !   is deleted.
-    ! if onlyChildren is set, the octal's variables are not changed, only
-    !   its children.
-    ! *** WARNINGS:                                                   ***
-    ! *** This does not delete the top octal itself -                 ***
-    ! ***   you must do this yourself after you call this subroutine! ***
-    ! *** If the octree being changed is part of a 'grid', you'll     ***
-    ! ***   have to fix grid%nOctals                                  ***
-
-    ! HOWTO use this subroutine:
-    ! 1. to "unrefine" part of the grid: call without a 'deletedBranch'
-    !    and the children of 'thisOctal' will all be removed.
-    ! 2. ...
+    ! NB This does not delete the top octal itself - 
+    !   you must do this yourself after you call this subroutine!
 
     IMPLICIT NONE
 
-    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! top of branch to be deleted
-    LOGICAL, INTENT(IN)            :: onlyChildren ! only delete this octal's *children*
-    TYPE(octal), INTENT(INOUT), TARGET, OPTIONAL :: deletedBranch ! optional copy of deleted branch
+    TYPE(octal), TARGET, INTENT(INOUT)     :: thisOctal ! top of branch to be deleted
+    TYPE(gridtype), INTENT(INOUT)  :: grid
+    LOGICAL, INTENT(IN), OPTIONAL  :: onlyChildren ! only delete this octals *children*
     
-    INTEGER :: iChild ! loop counter
+    TYPE(octal), POINTER           :: childPointer => null()
+    TYPE(octal), POINTER           :: localPointer => null()
+    INTEGER :: iChild
     
-    IF (PRESENT(deletedBranch)) THEN
-      
-      IF (.NOT. onlyChildren) THEN
-        ! need to copy variables from thisOctal to deletedBranch
-        deletedBranch = thisOctal
+    localPointer => thisOctal
+    
+    IF (PRESENT(onlyChildren)) THEN
+      IF (.NOT. onlyChildren) THEN 
+        IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs)
+        IF (ASSOCIATED(thisOctal%kappaSca)) DEALLOCATE(thisOctal%kappaSca)
+        IF (ASSOCIATED(thisOctal%N)) DEALLOCATE(thisOctal%N)
+        IF (ASSOCIATED(thisOctal%departCoeff)) DEALLOCATE(thisOctal%departCoeff)
+        IF (ASSOCIATED(thisOctal%gas_particle_list)) DEALLOCATE(thisOctal%gas_particle_list)
       END IF
-
-      ! now need to copy any children from thisOctal to deletedBranch
-      IF (thisOctal%nChildren > 0) THEN 
-        deletedBranch%child => thisOctal%child
-
-        DO iChild = 1, thisOctal%nChildren, 1
-          IF (onlyChildren) THEN
-            NULLIFY(deletedBranch%child(iChild)%parent)
-          ELSE
-            deletedBranch%child(iChild)%parent => deletedBranch
-          END IF
-        END DO
-
-        deletedBranch%nChildren = thisOctal%nChildren
-        deletedBranch%indexChild = thisOctal%indexChild
-        deletedBranch%hasChild = thisOctal%hasChild
-        deletedBranch%maxChildren = thisOctal%maxChildren
-
-      END IF ! octal has children
-
-      CALL deleteOctal(thisOctal,deleteChildren=.FALSE.)
-
-      ELSE ! no deletedBranch
-        
-        ! can delete everything
-        CALL deleteOctal(thisOctal,deleteChildren=.TRUE.)
-        
-      END IF ! PRESENT(deletedBranch)
-
+    ELSE
+        IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs)
+        IF (ASSOCIATED(thisOctal%kappaSca)) DEALLOCATE(thisOctal%kappaSca)
+        IF (ASSOCIATED(thisOctal%N)) DEALLOCATE(thisOctal%N)
+        IF (ASSOCIATED(thisOctal%departCoeff)) DEALLOCATE(thisOctal%departCoeff)
+        IF (ASSOCIATED(thisOctal%gas_particle_list)) DEALLOCATE(thisOctal%gas_particle_list)
+    END IF
+    
+    IF (thisOctal%nChildren > 0) THEN 
+      DO iChild = 1, thisOctal%nChildren, 1
+        childPointer => thisOctal%child(iChild)
+        CALL deleteOctreeBranchPrivate(childPointer,grid)
+        NULLIFY(childPointer)
+      END DO
+      
+      ! we now dellocate the children
+      DEALLOCATE(thisOctal%child) 
+      grid%nOctals = grid%nOctals - thisOctal%nChildren
       thisOctal%nChildren = 0
       thisOctal%indexChild = -999
-      thisOctal%hasChild = .FALSE.
-
-  END SUBROUTINE deleteOctreeBranch
+      thisOctal%hasChild(:) = .FALSE.
+      thisOctal%changed(:) = .TRUE.
+   END IF
+  CONTAINS
     
-  RECURSIVE SUBROUTINE deleteOctal(thisOctal,deleteChildren)
+    RECURSIVE SUBROUTINE deleteOctreeBranchPrivate(thisOctal,grid)
+ 
+      IMPLICIT NONE
 
-    TYPE(octal), INTENT(INOUT) :: thisOctal
-    LOGICAL, INTENT(IN) :: deleteChildren 
-    INTEGER :: iChild
+      TYPE(octal), TARGET, INTENT(INOUT)     :: thisOctal      ! top of branch to be deleted
+      TYPE(gridtype), INTENT(INOUT)  :: grid
+      
+      TYPE(octal), POINTER           :: childPointer => null()
+      TYPE(octal), POINTER           :: localPointer => null()
+      INTEGER :: iChild
 
-    IF (deleteChildren) THEN
-
-      DO iChild = 1, thisOctal%nChildren, 1
-        CALL deleteOctal(thisOctal%child(iChild),deleteChildren)
-      END DO
-      IF (ASSOCIATED(thisOctal%child)) DEALLOCATE(thisOctal%child)
-
-    END IF ! (deleteChildren)
-
-    IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs)
-    IF (ASSOCIATED(thisOctal%kappaSca)) DEALLOCATE(thisOctal%kappaSca)
-    IF (ASSOCIATED(thisOctal%N)) DEALLOCATE(thisOctal%N)
-    IF (ASSOCIATED(thisOctal%departCoeff)) DEALLOCATE(thisOctal%departCoeff)
-    IF (ASSOCIATED(thisOctal%gas_particle_list)) DEALLOCATE(thisOctal%gas_particle_list)
-
-  END SUBROUTINE deleteOctal
-
-  
-  SUBROUTINE insertOctreeBranch(thisOctal,branch,onlyChildren)
-    ! adds one octree into another.
-    ! use with care, it's not sensible to insert a tree anywhere - this 
-    !   subroutine is meant to be used when to replace a tree after it
-    !   was temporarily removed from the same location.
-    ! if onlyChildren is set, the octal's variables are not changed, only
-    !   its children.
+      localPointer => thisOctal
     
-    ! *** WARNINGS:                                                   ***
-    ! *** This does not delete the top octal of the branch itself -   ***
-    ! ***   you must do this yourself after you call this subroutine! ***
-    ! *** If the octree being changed is part of a 'grid', you'll     ***
-    ! ***   have to fix grid%nOctals                                  ***
+      IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs)
+      IF (ASSOCIATED(thisOctal%kappaSca)) DEALLOCATE(thisOctal%kappaSca)
+      IF (ASSOCIATED(thisOctal%N)) DEALLOCATE(thisOctal%N)
+      IF (ASSOCIATED(thisOctal%departCoeff)) DEALLOCATE(thisOctal%departCoeff)
+      IF (ASSOCIATED(thisOctal%gas_particle_list)) DEALLOCATE(thisOctal%gas_particle_list)
+
+      ! if the octal has any children, we must recursively delete them
+      !   from the tree 
+
+      IF (thisOctal%nChildren > 0) THEN 
+        DO iChild = 1, thisOctal%nChildren, 1
+          childPointer => thisOctal%child(iChild)
+          CALL deleteOctreeBranchPrivate(childPointer,grid)
+          NULLIFY(childPointer)
+        END DO
+
+        ! we now dellocate the children
+        DEALLOCATE(thisOctal%child) 
+        grid%nOctals = grid%nOctals - thisOctal%nChildren
+        thisOctal%nChildren = 0
+        thisOctal%indexChild = -999
+        thisOctal%hasChild(:) = .FALSE.
+        thisOctal%changed(:) = .TRUE.
+     END IF
+
+   END SUBROUTINE deleteOctreeBranchPrivate
+ END SUBROUTINE deleteOctreeBranch
+ 
+
+  SUBROUTINE insertOctreeBranch(branch,insertLocation,delete)
+    ! copies an orphaned branch back to a location within a tree. If 
+    !   'delete' is TRUE, the branch is deleted as it is copied.
+    ! NB This subroutine does not set the 'parent' pointer - you must
+    !   do this after you call it.
 
     IMPLICIT NONE
-
-    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! octal where branch is to
-                                                    !   be inserted
-    TYPE(octal), INTENT(INOUT) :: branch ! branch being inserted
-    LOGICAL, INTENT(IN) :: onlyChildren ! only insert the *children* on the
-                                        !   branch, leaving the other variables
-                                        !   of thisOctal unchanged
-    INTEGER :: iChild ! loop counter
+ 
+    TYPE(octal), POINTER :: branch ! the branch to be inserted
+    TYPE(octal), POINTER :: insertLocation ! the octal where the top of the
+                                           !   branch will be placed
+    LOGICAL, INTENT(IN)  :: delete ! TRUE for 'branch' to be deleted afterwards
     
-    IF (ASSOCIATED(thisOctal%child)) THEN
-      WRITE(*,*) "Error in insertOctreeBranch, attempt to overwrite existing children"
-      STOP
+    TYPE(octal), POINTER :: insertLocationPointer
+    
+    NULLIFY(insertLocationPointer)
+    
+    ! the octal structure contains allocatable array pointers. we must
+    !   create similarly sized arrays in the insertLocation octal before
+    !   copying the contents from the branch octal.
+    
+    IF (ASSOCIATED(branch%kappaAbs)) THEN                  
+      ALLOCATE(insertLocation%kappaAbs(SIZE(branch%kappaAbs,1),SIZE(branch%kappaAbs,2)))
+    ELSE
+      NULLIFY(insertLocation%kappaAbs)
     END IF
-
-    IF (.NOT. onlyChildren) thisOctal = branch
-
-    IF (ASSOCIATED(branch%child)) THEN
-      thisOctal%child => branch%child
-      NULLIFY(branch%child)
-
-      DO iChild = 1, SIZE(branch%child), 1
-        thisOctal%child(iChild)%parent => thisOctal
-      END DO
-        thisOctal%nChildren = branch%nChildren
-        thisOctal%indexChild = branch%indexChild
-        thisOctal%hasChild = branch%hasChild
-        thisOctal%maxChildren = branch%maxChildren
+         
+    IF (ASSOCIATED(branch%kappaSca)) THEN                  
+      ALLOCATE(insertLocation%kappaSca(SIZE(branch%kappaSca,1),SIZE(branch%kappaSca,2)))
+    ELSE
+      NULLIFY(insertLocation%kappaSca)
     END IF
+          
+    IF (ASSOCIATED(branch%N)) THEN                  
+      ALLOCATE(insertLocation%N(SIZE(branch%N,1),SIZE(branch%N,2)))
+    ELSE
+      NULLIFY(insertLocation%N)
+    END IF
+    
+!    IF (ASSOCIATED(branch%departCoeff)) THEN                  
+!      ALLOCATE(insertLocation%departCoeff(SIZE(branch%departCoeff,1),SIZE(branch%departCoeff,2)))
+!    ELSE
+!      NULLIFY(insertLocation%departCoeff)
+!    END IF
+    
+    ! now we can copy the data over.
+    insertLocation = branch 
+    
+    NULLIFY(insertLocation%child) ! assume no children
+    NULLIFY(insertLocation%parent) ! set this elsewhere
+   
+    ! recursively copy any children
+    IF (branch%nChildren > 0) THEN
+            
+      insertLocationPointer => insertLocation
+      CALL insertOctreeBranchPrivate(branch,insertLocationPointer,delete)
+      
+    ELSE IF (delete) THEN
+      ! optionally delete the octal      
+      DEALLOCATE(branch)
+    END IF
+      
+  CONTAINS
+    
+    RECURSIVE SUBROUTINE insertOctreeBranchPrivate(thisOctal,insertLocation,delete)
+      ! insert the octal's children into another location
+
+      TYPE(octal), INTENT(INOUT) :: thisOctal
+      TYPE(octal), POINTER       :: insertLocation
+      LOGICAL, INTENT(IN)        :: delete
+      
+      TYPE(octal), POINTER :: thisChild           
+      TYPE(octal), POINTER :: insertLocationChild 
+      INTEGER              :: iChild
+      NULLIFY(thisChild)
+      NULLIFY(insertLocationChild)
+      ALLOCATE(insertLocation%child(thisOctal%nChildren))
+      
+      DO iChild = 1, thisOctal%nChildren, 1
+      
+        thisChild => thisOctal%child(iChild)
+        insertLocationChild => insertLocation%child(iChild)
         
-  END SUBROUTINE insertOctreeBranch
+        IF (ASSOCIATED(thisChild%kappaAbs)) THEN                  
+          ALLOCATE(insertLocationChild%kappaAbs(                    &
+                     SIZE(thisChild%kappaAbs,1),SIZE(thisChild%kappaAbs,2)))
+        ELSE
+          NULLIFY(insertLocationChild%kappaAbs)
+        END IF
+         
+        IF (ASSOCIATED(thisChild%kappaSca)) THEN                  
+          ALLOCATE(insertLocationChild%kappaSca(                    &
+                     SIZE(thisChild%kappaSca,1),SIZE(thisChild%kappaSca,2)))
+        ELSE
+          NULLIFY(insertLocationChild%kappaSca)
+        END IF
+           
+        IF (ASSOCIATED(thisChild%N)) THEN                  
+          ALLOCATE(insertLocationChild%N(                           &
+                     SIZE(thisChild%N,1),SIZE(thisChild%N,2)))
+        ELSE
+          NULLIFY(insertLocationChild%N)
+        END IF
+     
+!        IF (ASSOCIATED(thisChild%departCoeff)) THEN                  
+!          ALLOCATE(insertLocationChild%departCoeff(                           &
+!                     SIZE(thisChild%departCoeff,1),SIZE(thisChild%departCoeff,2)))
+!        ELSE
+!          NULLIFY(insertLocationChild%departCoeff)
+!        END IF
+     
+        insertLocationChild = thisChild  
+        insertLocationChild = thisChild  
+        insertLocationChild%parent => insertLocation
+        
+        NULLIFY(insertLocationChild%child)
+           
+        IF (thisChild%nChildren > 0) THEN
+          CALL insertOctreeBranchPrivate(thisChild,insertLocationChild,delete)
+        END IF
+          
+      END DO
+      
+      IF (delete) DEALLOCATE(thisOctal%child)
 
+    END SUBROUTINE insertOctreeBranchPrivate
+  
+  END SUBROUTINE insertOctreeBranch
 
   ! chris (19/05/04)
   ! Smooths the AMR grid to ensure 'adequate' resolution at the boundary
@@ -7615,17 +7700,11 @@ CONTAINS
       ! if a child should no longer exist, we delete it.
       ! this doesn't work quite as well as it should do, because we do not
       ! delete the child itself (only IT'S children). 
-      
-      ! THIS NEEDS TO BE CHANGED TO WORK WITH THE NEW deleteOctreeBranch AND
-      ! deleteOctal
 
       TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
       TYPE(octal), POINTER :: thisChild, thisOctalPointer
 
       INTEGER :: iChild, iSubcell
-
-      PRINT *, "amrUpdateGridDelete needs to be fixed"
-      STOP
 
       DO iChild = 1, thisOctal%nChildren, 1
         
@@ -7638,7 +7717,7 @@ CONTAINS
         thisOctalPointer => thisOctal
         IF (.NOT. decideSplit(thisOctalPointer,iSubcell,amrLimitScalar,amrLimitScalar2,grid)) THEN
           PRINT *, 'Deleting unneeded children'
-          CALL  deleteOctal(thisChild,deleteChildren=.FALSE.)
+          CALL deleteOctreeBranch(thisChild,grid)
           thisOctal%changed(iSubcell) = .TRUE.
         ELSE
           CALL amrUpdateGridDelete(thisChild)
