@@ -73,6 +73,11 @@ MODULE octal_mod
     TYPE(octalListElement), POINTER :: next => NULL()
   END TYPE octalListElement
 
+  INTERFACE ASSIGNMENT(=)
+     MODULE PROCEDURE copyOctalComponents
+  END INTERFACE
+
+  
   TYPE octal
 
     INTEGER                            :: nDepth       ! depth of octal. root is 1, it's childen are 2...
@@ -82,7 +87,7 @@ MODULE octal_mod
     LOGICAL                            :: threeD        ! this is a three-dimensional octal
     LOGICAL                            :: twoD          ! this is a two-dimensioanl octal (quartal?!)
     INTEGER                            :: maxChildren   ! this is 8 for three-d and 4 for two-d
-    TYPE(octal), DIMENSION(:), POINTER :: child
+    TYPE(octal), DIMENSION(:), POINTER :: child => null()
     LOGICAL, DIMENSION(8)              :: hasChild
     TYPE(octal), POINTER               :: parent => null()         
     TYPE(octalVector)                  :: centre
@@ -257,6 +262,103 @@ CONTAINS
     endif
   end function within_subcell
 
+  SUBROUTINE copyOctalComponents(dest,source)
+    ! copy the components within an octal variable to a new octal variable
+    !
+    ! WARNING: this does not change the parent and child variables - you
+    !   must update those yourself elsewhere.
+ 
+    TYPE(octal), INTENT(INOUT) :: dest
+    TYPE(octal), INTENT(IN) :: source
+
+    dest%nDepth           = source%nDepth
+    dest%nChildren        = source%nChildren
+    dest%indexChild       = source%indexChild
+    dest%hasChild         = source%hasChild
+    dest%centre           = source%centre
+    dest%rho              = source%rho
+    dest%velocity         = source%velocity
+    dest%cornerVelocity   = source%cornerVelocity
+    dest%temperature      = source%temperature
+    dest%distanceGrid     = source%distanceGrid
+    dest%nCrossings       = source%nCrossings
+    dest%chiLine          = source%chiLine
+    dest%etaLine          = source%etaLine
+    dest%etaCont          = source%etaCont
+    dest%biasLine3D       = source%biasLine3D
+    dest%biasCont3D       = source%biasCont3D
+    dest%probDistLine     = source%probDistLine
+    dest%probDistCont     = source%probDistCont
+    dest%Ne               = source%Ne
+    dest%nTot             = source%nTot
+    dest%inStar           = source%inStar
+    dest%inFlow           = source%inFlow
+    dest%label            = source%label
+    dest%subcellSize      = source%subcellSize
+    dest%changed          = source%changed
+    dest%threeD           = source%threeD 
+    dest%twoD             = source%twoD   
+    dest%maxChildren      = source%maxChildren
+    dest%NH               = source%NH     
+    dest%NHI              = source%NHI    
+    dest%NHII             = source%NHII             
+    dest%NHeI             = source%NHeI             
+    dest%NHeII            = source%NHeII            
+    dest%HIheating        = source%HIheating        
+    dest%oldFrac          = source%oldFrac          
+    dest%dustType         = source%dustType         
+    dest%parentSubcell    = source%parentSubcell    
+    dest%gasOpacity       = source%gasOpacity       
+    dest%diffusionApprox  = source%diffusionApprox  
+    dest%leftHandDiffusionBoundary = source%leftHandDiffusionBoundary        
+    dest%rightHandDiffusionBoundary = source%rightHandDiffusionBoundary       
+    dest%diffusionProb    = source%diffusionProb
+    dest%underSampled     = source%underSampled
+    dest%nDiffusion       = source%nDiffusion
+    dest%incidentFlux     = source%incidentFlux
+
+    IF (ASSOCIATED(dest%kappaAbs)) DEALLOCATE (dest%kappaAbs)
+    IF (ASSOCIATED(dest%kappaSca)) DEALLOCATE (dest%kappaSca)
+    IF (ASSOCIATED(dest%N))        DEALLOCATE (dest%N)
+    IF (ASSOCIATED(dest%departCoeff)) DEALLOCATE (dest%departCoeff)
+    IF (ASSOCIATED(dest%gas_particle_list)) DEALLOCATE (dest%gas_particle_list)
+    
+    IF (ASSOCIATED(source%kappaAbs)) THEN                   
+      ALLOCATE(dest%kappaAbs( SIZE(source%kappaAbs,1),       &
+                              SIZE(source%kappaAbs,2)))
+      dest%kappaAbs = source%kappaAbs
+    END IF  
+
+    IF (ASSOCIATED(source%kappaSca)) THEN
+      ALLOCATE(dest%kappaSca( SIZE(source%kappaSca,1),       &
+                              SIZE(source%kappaSca,2)))
+      dest%kappaSca = source%kappaSca
+    END IF  
+
+    IF (ASSOCIATED(source%N)) THEN 
+      ALLOCATE(dest%N( SIZE(source%N,1),              &
+                       SIZE(source%N,2)))
+      dest%N = source%N
+    END IF  
+
+    IF (ASSOCIATED(source%departCoeff)) THEN
+      ALLOCATE(dest%departCoeff( SIZE(source%departCoeff,1),    &
+                                 SIZE(source%departCoeff,2)))
+      dest%departCoeff = source%departCoeff
+    END IF  
+
+    IF (ASSOCIATED(source%gas_particle_list)) THEN
+      ALLOCATE(dest%gas_particle_list(SIZE(source%gas_particle_list)))
+      dest%gas_particle_list = source%gas_particle_list
+    END IF  
+
+    IF (ASSOCIATED(source%dustTypeFraction)) THEN                   
+      ALLOCATE(dest%kappaAbs( SIZE(source%dustTypeFraction,1),       &
+                              SIZE(source%dustTypeFraction,2)))
+      dest%kappaAbs = source%kappaAbs
+    END IF  
+
+  END SUBROUTINE copyOctalComponents
   
   
 END MODULE octal_mod
