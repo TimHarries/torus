@@ -93,6 +93,9 @@ MODULE octal_mod
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
     REAL, DIMENSION(8)                 :: oldTemperature    ! grid subcell temperatures
     REAL(double), DIMENSION(8)         :: distanceGrid   ! distance crossing used by lucy R Eq
+
+
+
     INTEGER, DIMENSION(8)              :: nCrossings     ! no of photon crossings used by lucy R Eq
     REAL(double), DIMENSION(:,:), POINTER      :: kappaAbs => null() ! cont absorption opacities
     REAL(double), DIMENSION(:,:), POINTER      :: kappaSca => null() ! scattering opacities
@@ -111,7 +114,11 @@ MODULE octal_mod
     real(double), DIMENSION(8) :: NHII            ! HII
     real(double), DIMENSION(8) :: NHeI            ! HeI
     real(double), DIMENSION(8) :: NHeII            ! HeII
-    real(double), dimension(8) :: HIheating
+    real(double), dimension(8) :: Hheating
+    real(double), dimension(8) :: Heheating
+   
+    real(double), dimension(8) :: ionFrac(8,50)
+    real(double), dimension(8) :: photoIonCoeff(8,50)
 
     real(double), DIMENSION(8) :: nTot          ! total density
     real, dimension(8) :: oldFrac ! Previous value of dust sublimation fraction

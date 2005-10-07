@@ -45,7 +45,7 @@ contains
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
     
-    nMonte = 100000
+    nMonte = 1000000
     nIter = 0
 
     do 
@@ -59,7 +59,7 @@ contains
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             "lucy_temp_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
-
+       call dumpLexington(grid)
 
        write(*,*) "Running loop with ",nmonte," photons."
     do iMonte = 1, nMonte
@@ -102,9 +102,9 @@ contains
        end do
     epsOverDeltaT = (lCore) / dble(nInf)
 
-    call calculateIonizationBalance(grid%octreeRoot, epsOverDeltaT)
+    call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
     if (nIter > 2) then
-       call calculateThermalBalance(grid%octreeRoot, epsOverDeltaT)
+       call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
     endif
     
  enddo
@@ -199,20 +199,7 @@ contains
 
 ! update the distance grid
 
-       e = thisFreq * hCgs * ergtoEV
-
-
-       call phfit2(1, 1, 1 , e , h0)
-       thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
-            + tVal * dble(h0 / (hCgs * thisFreq))
-
-          thisOctal%HIheating(subcell) = thisOctal%HIheating(subcell) &
-            + dble(tVal) * dble(h0 / (thisFreq * hCgs)) &
-            * (dble(hCgs * thisFreq) - dble(hCgs * nuHydrogen))
-
-
-
-       thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+       call updateGrid(grid, thisOctal, subcell, thisFreq, tVal)
           
 
 ! now if the photon is in the grid choose a new random tau
@@ -293,18 +280,7 @@ contains
 
        if (thisTau > 0.d0) then
 
-
-          e = thisFreq * hCgs * ergtoEV
-          call phfit2(1, 1, 1 , e , h0)
-          thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
-            + (dble(tVal)*dble(tau)/thisTau) * dble(h0 / (hCgs * thisFreq))
-
-          thisOctal%HIheating(subcell) = thisOctal%HIheating(subcell) &
-            + (dble(tVal)*dble(tau)/thisTau) * dble(h0 /  (thisFreq * hCgs)) &
-            * (dble(hCgs * thisFreq) - dble(hCgs * nuHydrogen))
-
-          thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
-          
+          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau)
 
           oldOctal => thisOctal
           
@@ -621,48 +597,35 @@ contains
           thisOctal%undersampled(subcell) = .false.
           thisOctal%incidentFlux(subcell) = 0.
           thisOCtal%nDiffusion(subcell) = 0.
-          thisOctal%hIheating(subcell) = 0.d0
+          thisOctal%Hheating(subcell) = 0.d0
+          thisOctal%Heheating(subcell) = 0.d0
+          thisOctal%photoIonCoeff(subcell,:) = 0.d0
        endif
     enddo
   end subroutine zeroDistanceGrid
 
-  recursive subroutine calculateIonizationBalance(thisOctal, epsOverDeltaT)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
-  integer :: subcell, i
-  type(OCTALVECTOR) :: rVec
-  
-  do subcell = 1, thisOctal%maxChildren
+  recursive subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT)
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
+    integer :: subcell, i
+    type(OCTALVECTOR) :: rVec
+    
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calculateIonizationBalance(child, epsOverDeltaT)
+                call calculateIonizationBalance(grid, child, epsOverDeltaT)
                 exit
              end if
           end do
        else
           if (thisOctal%inflow(subcell)) then
              if (thisOctal%ncrossings(subcell) > 10) then
-                if (thisOctal%threed) then
-                   v = thisOctal%subcellSize**3
-                else
-                   rVec = subcellCentre(thisOctal,subcell)
-                   r1 = rVec%x-thisOctal%subcellSize/2.d0
-                   r2 = rVec%x+thisOctal%subcellSize/2.d0
-                   v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
-                endif
-                ionizationCoeff = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 44 Lucy MC II
-                recombCoeff = thisOctal%ne(subcell) *  hRecombination(thisOctal%temperature(subcell))
-                if ((recombCoeff == 0.d0).or.((recombCoeff+ionizationCoeff) ==0.d0)) then
-                   write(*,*) "!",recombCoeff,ionizationCoeff,thisOctal%temperature(subcell)
-                else
-                   thisOctal%nHI(subcell) = thisOctal%nh(subcell) * recombCoeff/(ionizationCoeff  + recombCoeff)
-                   thisOctal%nHII(subcell) = thisOctal%nh(subcell)  - thisOctal%nhi(subcell)
-                   thisOctal%ne(subcell) = thisOctal%nhii(subcell)
-                endif
+                call solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
              else
                 write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
@@ -671,25 +634,27 @@ contains
     enddo
   end subroutine calculateIonizationBalance
 
-  recursive subroutine calculateThermalBalance(thisOctal, epsOverDeltaT)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
-  integer :: subcell, i
-  type(OCTALVECTOR) :: rVec
-  logical :: converged
-  real :: t1, t2, tm
-  real(double) :: y1, y2, ym, HIheating
-  real :: deltaT
-  real :: underCorrection = 0.5
-  
-  do subcell = 1, thisOctal%maxChildren
+  recursive subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
+    real(double) :: totalHeating, nHii, nHeII
+    integer :: subcell, i
+    type(OCTALVECTOR) :: rVec
+    logical :: converged
+    real :: t1, t2, tm
+    real(double) :: y1, y2, ym, Hheating, Heheating
+    real :: deltaT
+    real :: underCorrection = 0.8
+    
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calculateThermalBalance(child, epsOverDeltaT)
+                call calculateThermalBalance(grid, child, epsOverDeltaT)
                 exit
              end if
           end do
@@ -704,31 +669,37 @@ contains
                    r2 = rVec%x+thisOctal%subcellSize/2.d0
                    v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
                 endif
-                HIheating= thisOctal%nHi(subcell) * (epsOverDeltaT / (v * 1.d30))*thisOctal%hIheating(subcell) ! equation 21 of kenny's
+                
+                Hheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance &
+                     * (epsOverDeltaT / (v * 1.d30))*thisOctal%Hheating(subcell) ! equation 21 of kenny's
+                Heheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,3) * grid%ion(3)%abundance &
+                     * (epsOverDeltaT / (v * 1.d30))*thisOctal%Heheating(subcell) ! equation 21 of kenny's
+                totalHeating = Hheating + HeHeating
 
-                if (HIheating == 0.d0) then
+                nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
+                nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
+                if (totalHeating == 0.d0) then
                    thisOctal%temperature(subcell) = 3.
                 else
                    converged = .false.
                    t1 = 1.e-5
                    t2 = 5.e6
-                   y1 = (HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t1) - HIheating)
-                   y2 = (HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t2) - HIheating)
+                   y1 = (HHecooling(nhii,nheii, thisOctal%ne(subcell), t1) - totalHeating)
+                   y2 = (HHecooling(nhii,nheii, thisOctal%ne(subcell), t2) - totalHeating)
                    if (y1*y2 > 0.d0) then
                       write(*,*) "Insufficient range"
-                      write(*,*) "t1",t1,y1,HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t1),HIheating
-                      write(*,*) "t2",t2,y2,HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t2),HIheating
+                      write(*,*) "t1",t1,y1,HHecooling(nhii,nheii, thisOctal%ne(subcell), t1),totalHeating
+                      write(*,*) "t2",t2,y2,HHecooling(nhii,nheii, thisOctal%ne(subcell), t2),totalHeating
                    endif
                    
                    ! find root of heating and cooling by bisection
                    
                    do while(.not.converged)
                       tm = 0.5*(t1+t2)
-                      y1 = (HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t1) - HIheating) * 1.d20
-                      y2 = (HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), t2) - HIheating) * 1.d20
-                      ym = (HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), tm) - HIheating) * 1.d20
-                      !                write(*,*) t1,t2,y1,y2
-                      !                write(*,*) hiheating,HHecooling(thisOctal%nHii(subcell), thisOctal%ne(subcell), tm)
+                      y1 = (HHecooling(nhii,nheii, thisOctal%ne(subcell), t1) - totalheating)
+                      y2 = (HHecooling(nhii,nheii, thisOctal%ne(subcell), t2) - totalheating)
+                      ym = (HHecooling(nhii,nheii, thisOctal%ne(subcell), tm) - totalheating)
+
                       if (y1*ym < 0.d0) then
                          t1 = t1
                          t2 = tm
@@ -775,44 +746,507 @@ contains
     alpha1 = 1.58d-13 * (temperature/1.d4)**(-0.53d0)  ! kenny's photo paper equation 24
   end function recombToGround
 
-  function HHeCooling(nIon, ne, temperature) result (coolingRate)
+  function HHeCooling(nHii, nHeii, ne, temperature) result (coolingRate)
 
-    real(double) :: nIon, ne
+    real(double) :: nHii, nHeii, ne
     real :: temperature
     real(double) :: coolingRate
     real(double) :: gff
-    real :: rootTbeta1(31) = (/ 8.287e-11, 7.821e-11, 7.356e-11, 6.982e-11, 6.430e-11, 5.971e-11, 5.515e-11, 5.062e-11, 4.614e-11, &
+    real :: rootTbetaH(31) = (/ 8.287e-11, 7.821e-11, 7.356e-11, 6.982e-11, 6.430e-11, 5.971e-11, 5.515e-11, 5.062e-11, 4.614e-11, &
                                4.170e-11, 3.734e-11, 3.306e-11, 2.888e-11, 2.484e-11, 2.098e-11, 1.736e-11, 1.402e-11, 1.103e-11, &
                                8.442e-12, 6.279e-12, 4.539e-12, 3.192e-11, 2.185e-12, 1.458e-12, 9.484e-13, 6.023e-13, 3.738e-13, &
                                2.268e-13, 1.348e-13, 7.859e-14, 4.499e-14 /)
 
-    real :: rootTbeta2(31) = (/ 1.646e-11, 1.646e-11, 1.646e-11, 1.646e-11, 1.646e-11, 1.645e-11, 1.644e-11, 1.643e-11, 1.641e-11, &
-                                1.638e-11, 1.633e-11, 1.625e-11, 1.613e-11, 1.594e-11, 1.656e-11, 1.522e-11, 1.460e-11, 1.374e-11, &
-                                1.260e-11, 1.119e-11, 9.571e-12, 7.844e-12, 6.146e-12, 4.601e-12, 3.295e-12, 2.262e-12, 1.494e-12, &
-                                9.520e-13, 5.878e-13, 3.528e-13, 2.066e-13 /)
+    real :: rootTbetaHe(18) = (/ 8.347e-11, 7.889e-11, 7.430e-11, 6.971e-11, 6.512e-11, 6.056e-11, 5.603e-11, 5.154e-11, 4.710e-11,&
+                               4.274e-11, 3.847e-11, 3.431e-11, 3.031e-11, 2.650e-11, 2.291e-11, 1.960e-11, 1.660e-11, 1.394e-11 /)
 
     real :: logT(31) = (/ 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2, 4.4, 4.6, 4.8, 5.0, &
                       5.2, 5.4, 5.6, 5.8, 6.0, 6.2, 6.4, 6.6, 6.8, 7.0 /)
-    real(double) :: fac, thisRootTbeta1, beta, thisRootTbeta2
+    real(double) :: fac, thisRootTbetaH, betaH, betaHe, thisRootTbetaHe
     real :: thisLogT
     integer :: n
 
     gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3)  ! Kenny equation 23
 
-    coolingRate = 1.42d-27 * nIon * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
+    coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
 
     thisLogT = log10(temperature)
     call locate(logT, 31, thisLogT, n)
     fac = (thisLogT - logT(n))/(logT(n+1)-logT(n))
-    thisRootTbeta1 = rootTbeta1(n) + (rootTbeta1(n+1)-rootTbeta1(n)) * fac
 
-    thisRootTbeta2 = rootTbeta2(n) + (rootTbeta2(n+1)-rootTbeta2(n)) * fac
+    thisRootTbetaH = rootTbetaH(n) + (rootTbetaH(n+1)-rootTbetaH(n)) * fac
 
-    beta = (thisrootTbeta1 + thisRootTbeta2) / sqrt(temperature)
 
-    coolingRate = coolingRate + ne * nion * kerg * temperature * beta
+    if (thisLogT < logT(18)) then
+       thisRootTbetaHe = rootTbetaHe(n) + (rootTbetaHe(n+1)-rootTbetaHe(n)) * fac
+    else
+       thisRootTbetaHe = 0.d0
+    endif
+
+    betaH = thisrootTbetaH / sqrt(temperature)
+    betaHe = thisrootTbetaHe / sqrt(temperature)
+
+    coolingRate = coolingRate + ne * nhii * kerg * temperature * betaH
+
+
+    coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
+
 
   end function HHeCooling
 
+  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance)
+    type(GRIDTYPE) :: grid
+    type(OCTAL) :: thisOctal
+    integer :: subcell
+    real(double) :: thisFreq, distance
+    integer :: i 
+    real :: e, xsec
+
+    thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+
+    e = thisFreq * hCgs * ergtoEV
+
+    do i = 1, grid%nIon
+       call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
+
+       thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
+            + distance * dble(xsec / (hCgs * thisFreq))
+
+       ! neutral H heating
+
+       if ((grid%Ion(i)%z == 1).and.(grid%Ion(i)%n == 1)) then
+          thisOctal%Hheating(subcell) = thisOctal%Hheating(subcell) &
+            + dble(distance) * dble(xsec / (thisFreq * hCgs)) &
+            * (dble(hCgs * thisFreq) - dble(hCgs * grid%ion(i)%nuThresh))
+       endif
+
+       ! neutral He heating
+
+       if ((grid%Ion(i)%z == 2).and.(grid%Ion(i)%n == 1)) then
+          thisOctal%Heheating(subcell) = thisOctal%Heheating(subcell) &
+            + dble(distance) * dble(xsec / (thisFreq * hCgs)) &
+            * (dble(hCgs * thisFreq) - dble(hCgs * grid%ion(i)%nuThresh))
+       endif
+
+    enddo
+
+  end subroutine updateGrid
+
+subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
+  implicit none
+  type(GRIDTYPE) :: grid
+  type(OCTAL) :: thisOctal
+  real(double) :: epsOverDeltaT, V
+  integer :: subcell
+  integer :: i, j, k
+  real(double), allocatable :: matrixA(:,:), MatrixB(:,:)
+  integer :: nIonizationStages
+  type(OCTALVECTOR) :: rVec
+  real(double) :: r1, r2
+  integer :: iStart, iEnd, iIon
+  real(double) :: chargeExchangeIonization, chargeExchangeRecombination
+
+  if (thisOctal%threed) then
+     v = thisOctal%subcellSize**3
+  else
+     rVec = subcellCentre(thisOctal,subcell)
+     r1 = rVec%x-thisOctal%subcellSize/2.d0
+     r2 = rVec%x+thisOctal%subcellSize/2.d0
+     v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+  endif
+
+  k = 1
+  do while(k <= grid%nIon)
+
+     iStart = k
+     iEnd = k+1
+     do while(grid%ion(istart)%z == grid%ion(iEnd)%z)
+        iEnd = iEnd + 1
+     enddo
+     iEnd = iEnd - 1
+     nIonizationStages = iEnd - iStart + 1
+
+!     write(*,*) "istart",istart,"iend",iend,"nionization",nIonizationStages
+
+     allocate(matrixA(1:nIonizationStages,1:nIonizationStages))
+     allocate(matrixB(1:nIonizationStages, 1))
+     
+     matrixA = 0.d0
+
+     do i = 1, nIonizationStages - 1
+        iIon = iStart+i-1
+!        write(*,*) i,iion,grid%ion(iion)%species
+
+        call getChargeExchangeRates(grid%ion(iion), thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
+             thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,2),  &
+        chargeExchangeIonization, chargeExchangeRecombination)
+
+        matrixA(i, i) = grid%ion(iIon)%abundance * thisOctal%nh(subcell)  * &
+             ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)! equation 44 Lucy MC II
+        matrixA(i, i) = max(1.d-30, matrixA(i, i))
+
+        matrixA(i, i+1) = -grid%ion(iIon+1)%abundance * thisOctal%nh(subcell) * &
+             (recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination)
+        matrixA(i, i+1) = min(-1.d-30, matrixA(i, i+1))
+
+        
+
+     enddo
+     do i = 1, nIonizationStages
+        matrixA(nIonizationStages,i) = 1.d0
+     enddo
+     matrixB = 0.d0
+     matrixB (nIonizationStages,1) = 1.d0
+
+     call gaussj(matrixA, nIonizationStages, nIonizationStages, matrixB, 1, 1)
+
+     do i = 1, nIonizationStages
+        iIon = istart+i-1
+        thisOctal%ionFrac(subcell, iIon) = matrixB(i,1)
+!        write(*,*) grid%ion(iIon)%species, thisOctal%ionFrac(subcell, iIon)
+     enddo
+!     write(*,*) " " 
+     deallocate(matrixA, matrixB)
+     k = iEnd + 1
+  end do
+  
+  thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
+
+end subroutine solveIonizationBalance
+
+
+function recombRate(thisIon, temperature) result (rate)
+  type(IONTYPE) :: thisIon
+  real :: temperature
+  real(double) :: rate
+  real :: a, b, t0, t1, c, d, f, t
+
+! recombinations INTO this species
+
+  select case(thisIon%z)
+
+     case(1)
+        select case(thisIon%n)
+           case(1) ! H I
+              a = 7.982e-11
+              b = 0.7480
+              t0 = 3.148e0
+              t1 = 7.036e5
+              rate = vernerFerland(a, temperature, t0, t1, b)
+           case DEFAULT
+              write(*,*) "No recombination rate for ",thisIon%species
+              rate = 0.
+        end select
+     case(2)
+        select case(thisIon%n)
+           case(2) ! He I 
+              a = 3.294e-11
+              b = 0.6910
+              t0 = 1.544e1
+              t1 = 3.676e7
+              rate = vernerFerland(a, temperature, t0, t1, b)
+           case(1) ! He II
+              a = 1.891e-10
+              b = 0.7524
+              t0 = 9.370e00
+              t1 = 2.774e6
+              rate = vernerFerland(a, temperature, t0, t1, b)
+           case DEFAULT
+              write(*,*) "No recombination rate for ",thisIon%species
+              rate  = 0.
+        end select
+     case(6)
+        select case(thisIon%n)
+           case(6) ! C I 
+              a = 0.0108
+              b = -1.075
+              c = 0.2810
+              d = -0.0193
+              f = -0.1127
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(5) ! C II
+              a = 1.8267
+              b = 4.1012
+              c = 4.8443
+              d = 0.2261
+              f = 0.5960
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(4) ! C III
+              a = 2.3196
+              b = 10.7328
+              c = 6.8830
+              d = -0.1824
+              f = 0.4101
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(3) ! C IV
+              a = 8.540e-11
+              b = 0.5247
+              t0 = 5.014e2
+              t1 = 1.479e7
+              rate = vernerFerland(a, temperature, t0, t1, b)
+           case(2) ! C V
+              a = 2.765e-10
+              b = 0.6858
+              t0 = 1.535e2
+              t1 = 2.556e7
+              rate = vernerFerland(a, temperature, t0, t1, b)
+           case DEFAULT
+              write(*,*) "No recombination rate for ",thisIon%species
+              rate  = 0.
+        end select
+     case(7)
+        select case(thisIon%n)
+           case(7) ! N I 
+              a = 0.0
+              b = 0.6310
+              c = 0.1990
+              d = -0.0197
+              f = 0.4398
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(6) ! N II
+              a = 0.0320
+              b = -0.6624
+              c = 4.3191
+              d = 0.0003
+              f = 0.5946
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(5) ! N III
+              a = -0.8806
+              b = 11.2406
+              c = 30.7066
+              d = -1.1721
+              f = 0.6127
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(4) ! N IV
+              a = 0.4134
+              b = -4.6319
+              c = 25.9172
+              d = -2.2290
+              f = 0.2360
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(3) ! N V
+              a = 1.169e-10
+              b = 0.5470
+              t0 = 6.793e2
+              t1 = 1.650e7
+              rate = vernerFerland(a, temperature, t0, t1, b)
+           case DEFAULT
+              write(*,*) "No recombination rate for ",thisIon%species
+              rate  = 0.
+        end select
+     case(8)
+        select case(thisIon%n)
+           case(8) ! O I 
+              a = 0.0
+              b = 0.0238
+              c = 0.0659
+              d = 0.0349
+              f = 0.5334
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(7) ! O II
+              a = -0.0036
+              b = 0.7519
+              c = 1.5252
+              d =-0.0838
+              f = 0.2769
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(6) ! O III
+              a = 0.0
+              b = 21.8790
+              c = 16.2730
+              d = -0.8020
+              f = 1.1899
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(5) ! O IV
+              a = 0.00061
+              b = 0.2269
+              c = 32.1419
+              d = 1.9939
+              f = -0.0646
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(4) ! O V
+              a = -2.8425
+              b = 0.2283
+              c = 40.4072
+              d = -3.4956
+              f = 1.7558
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case DEFAULT
+              write(*,*) "No recombination rate for ",thisIon%species
+              rate  = 0.
+        end select
+
+     case(10)
+        select case(thisIon%n) ! from nussbaumer and storey 1987
+           case(10) ! Ne I 
+              a = 0.0129
+              b =-0.1779
+              c = 0.9353
+              d =-0.0682
+              f = 0.4516
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(9) ! Ne II
+              a = 3.6781
+              b = 14.1481
+              c = 17.1175
+              d = -0.5017
+              f = 0.2313
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(8) ! Ne III
+              a =-0.0254
+              b = 5.53650
+              c = 17.0727
+              d = -0.7725
+              f = 0.1702
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(7) ! N IV
+              a = 0.7469
+              b =-3.2024
+              c = 12.1163
+              d =-1.0379
+              f = 1.8482
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case(6) ! N V
+              a = 19.9280
+              b = 235.0536
+              c = 12.5096
+              d = 9.1413
+              f = 0.1282
+              t = temperature / 10000.
+              rate = nussbaumerStorey1983(t,a,b,c,d,f)
+           case DEFAULT
+              write(*,*) "No recombination rate for ",thisIon%species
+              rate  = 0.
+        end select
+
+     case(16)
+        select case(thisIon%n) ! from nussbaumer and storey 1987
+           case(16) ! S I 
+              rate = 3.e-13
+           case(15) ! S II
+              rate = 3.e-12
+           case(14) ! S III
+              rate = 1.5e-11
+           case(13) ! S IV
+              rate = 2.5e-11
+           case DEFAULT
+              write(*,*) "No recombination rate for ",thisIon%species
+              rate  = 0.
+        end select
+
+
+
+  end select
+end function recombRate
+
+real function vernerFerland(a, t, t0, t1, b)
+  real :: a, t, t0, t1, b
+
+! based on Verner and Ferland (1996) ApJS 103 467
+
+  vernerFerland = a / (sqrt(t/t0) * (1.+sqrt(t/t0))**(1.-b) * (1.+sqrt(t/t1))**(1.+b))
+end function vernerFerland
+
+
+
+function nussbaumerStorey1983(t, a, b, c, d, f) result(rate)
+
+! based on Nussbaumer & Storey 1983 AA 126 75
+  real :: t, a, b, c, d, f, rate
+  rate = 1.e-12 * (a/t + b + c*t + d*t**2)*(t**(-1.5))*exp(-f/t)
+
+end function nussbaumerStorey1983
+
+
+function returnNe(thisOctal, subcell, ionArray, nion) result (ne)
+  real(double) :: ne, tot
+  integer :: subcell
+  type(OCTAL) :: thisOctal
+  type(IONTYPE) :: ionArray(:)
+  integer :: nion, i
+
+  tot = 0.d0 
+  do i = 1, nIon
+     tot = tot + ionArray(i)%abundance * thisOctal%nh(subcell) * &
+          thisOctal%ionFrac(subcell, i) * dble(ionArray(i)%z-ionArray(i)%n)
+  enddo
+  ne = tot
+end function returnNe
+
+subroutine dumpLexington(grid)
+  type(GRIDTYPE) :: grid
+  type(OCTAL), pointer :: thisOctal
+  integer :: subcell
+  integer :: i, j
+  real(double) :: r, theta
+  real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,neii,neiii
+  type(OCTALVECTOR) :: octVec
+
+  open(20,file="lexington.dat",form="formatted",status="unknown")
+
+  do i = 1, 50
+     r = (1.+5.d0*dble(i-1)/49.d0)*pctocm/1.e10
+
+     t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;neii=0;neiii=0
+     do j = 1, 100
+        call random_number(theta)
+        theta = theta * Pi
+        
+        octVec = OCTALVECTOR(r*sin(theta),0.d0,r*cos(theta))
+        
+        call amrgridvalues(grid%octreeRoot, octVec,  foundOctal=thisOctal, foundsubcell=subcell)
+        
+        HI = HI + thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
+        HeI = HeI + thisOctal%ionfrac(subcell,returnIonNumber("He I", grid%ion, grid%nIon))
+        OII = OII + thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
+        OIII = OIII + thisOctal%ionfrac(subcell,returnIonNumber("O III", grid%ion, grid%nIon))
+        CII = CII + thisOctal%ionfrac(subcell,returnIonNumber("C II", grid%ion, grid%nIon))
+        CIII = CIII + thisOctal%ionfrac(subcell,returnIonNumber("C III", grid%ion, grid%nIon))
+        CIV = CIV + thisOctal%ionfrac(subcell,returnIonNumber("C IV", grid%ion, grid%nIon))
+        NII = NII + thisOctal%ionfrac(subcell,returnIonNumber("N II", grid%ion, grid%nIon))
+        NIII = NIII + thisOctal%ionfrac(subcell,returnIonNumber("N III", grid%ion, grid%nIon))
+        NIV = NIV + thisOctal%ionfrac(subcell,returnIonNumber("N IV", grid%ion, grid%nIon))
+        NeII = NeII + thisOctal%ionfrac(subcell,returnIonNumber("Ne II", grid%ion, grid%nIon))
+        NeIII = NeIII + thisOctal%ionfrac(subcell,returnIonNumber("Ne III", grid%ion, grid%nIon))
+        t  = t + thisOctal%temperature(subcell)
+     enddo
+     hi = hi / 100.; hei = hei/100.; oii = oii/100; oiii = oiii/100.; cii=cii/100.
+     ciii = ciii/100; civ=civ/100.; nii =nii/100.; niii=niii/100.; niv=niv/100.
+     neii=neii/100.; neiii=neiii/100.; t=t/100.
+
+     write(20,'(f5.3,f12.1, 1p, 12e9.2)') r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,neii,neiii
+  enddo
+  close(20)
+end subroutine dumpLexington
+
+subroutine getChargeExchangeRates(thisIon, nHI, nHII, IonRate, recombRate)
+  type(IONTYPE) :: thisIon
+  real(double) :: nHI, nHII, ionRate, recombRate
+
+
+!  select case(thisIon%z)
+!     case(7)
+!        select case(thisIon%n)
+!
+! case(5)  ! N III
+
+  ionRate = 0.d0; recombRate =0.d0
+end subroutine getChargeExchangeRates
 end module
 

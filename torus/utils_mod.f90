@@ -2990,6 +2990,194 @@ subroutine DP1VLU (L, NDER, X, YFIT, YP, A)
   return
 end subroutine dp1vlu
 
+subroutine createRoman(n, roman)
+  integer :: n
+  character(len=*) :: roman
+
+  select case(n)
+     case(1)
+        roman = "I"
+     case(2)
+        roman = "II"
+     case(3)
+        roman = "III"
+     case(4)
+        roman = "IV"
+     case(5)
+        roman = "V"
+     case(6)
+        roman = "VI"
+     case(7)
+        roman = "VII"
+     case(8)
+        roman = "VIII"
+     case(9)
+        roman = "IX"
+     case(10)
+        roman = "X"
+     case(11)
+        roman = "XI"
+     case(12)
+        roman = "XII"
+     case(13)
+        roman = "XIII"
+     case(14)
+        roman = "XIV"
+     case(15)
+        roman = "XV"
+     case DEFAULT
+        write(*,*) "Can't create roman numeral for: ",n
+        roman = "???"
+  end select
+end subroutine createRoman
+
+subroutine returnElement(z, element)
+  character(len=2) :: element
+  integer :: z
+  select case(z)
+     case(1)
+        element = "H"
+     case(2)
+        element = "He"
+     case(3)
+        element = "Li"
+     case(4)
+        element = "Be"
+     case(5)
+        element = "B"
+     case(6)
+        element = "C"
+     case(7)
+        element = "N"
+     case(8)
+        element = "O"
+     case(9)
+        element = "F"
+     case(10)
+        element = "Ne"
+     case(11)
+        element = "Na"
+     case(12)
+        element = "Mg"
+     case(13)
+        element = "Al"
+     case(14)
+        element = "Si"
+     case(16)
+        element = "S"
+     case(18)
+        element = "Ar"
+     case(20)
+        element = "Ca"
+     case(26)
+        element = "Fe"
+     case DEFAULT
+        write(*,*) "returnElement :: Unknown element: ",z
+        element = "??"
+  end select
+end subroutine returnElement
+
+function returnAbundance(z) result(a)
+  integer :: z
+  real:: a
+
+  select case(z)
+     case(1)
+        a = 1.
+     case(2)
+        a = 0.1
+     case(6)
+        a = 22.e-5
+     case(7)
+        a = 4.e-5
+     case(8)
+        a = 33.e-5
+     case(10)
+        a = 5.e-5
+     case(16)
+        a = 0.9e-5
+     case DEFAULT
+        write(*,*) "No abundance set for z=",z
+        a = tiny(a)
+  end select
+end function returnAbundance
+
+SUBROUTINE GAUSSJ(A,N,NP,B,M,MP)
+  implicit none
+  integer, parameter :: nmax=50
+  integer :: n, m, np, mp, i, j, k, l, icol, irow
+  real(double) :: dum, pivinv
+  integer :: ll
+  real(double) A(NP,NP),B(NP,MP), big
+  integer :: IPIV(NMAX),INDXR(NMAX),INDXC(NMAX)
+  DO J=1,N
+     IPIV(J)=0
+  enddo
+  DO I=1,N
+     BIG=0.d0
+     DO  J=1,N
+        IF(IPIV(J).NE.1)THEN
+           DO  K=1,N
+              IF (IPIV(K).EQ.0) THEN
+                 IF (ABS(A(J,K)).GE.BIG)THEN
+                    BIG=ABS(A(J,K))
+                    IROW=J
+                    ICOL=K
+                 ENDIF
+              ELSE IF (IPIV(K).GT.1) THEN
+                 PAUSE 'Singular matrix'
+              ENDIF
+           enddo
+        ENDIF
+     enddo
+     IPIV(ICOL)=IPIV(ICOL)+1
+     IF (IROW.NE.ICOL) THEN
+        DO L=1,N
+           DUM=A(IROW,L)
+           A(IROW,L)=A(ICOL,L)
+           A(ICOL,L)=DUM
+        enddo
+        DO  L=1,M
+           DUM=B(IROW,L)
+           B(IROW,L)=B(ICOL,L)
+           B(ICOL,L)=DUM
+        enddo
+     ENDIF
+     INDXR(I)=IROW
+     INDXC(I)=ICOL
+     IF (A(ICOL,ICOL).EQ.0.) PAUSE 'Singular matrix.'
+     PIVINV=1./A(ICOL,ICOL)
+     A(ICOL,ICOL)=1.d0
+     DO L=1,N
+        A(ICOL,L)=A(ICOL,L)*PIVINV
+     enddo
+     DO L=1,M
+        B(ICOL,L)=B(ICOL,L)*PIVINV
+     enddo
+     DO LL=1,N
+        IF(LL.NE.ICOL)THEN
+           DUM=A(LL,ICOL)
+           A(LL,ICOL)=0.d0
+           DO L=1,N
+              A(LL,L)=A(LL,L)-A(ICOL,L)*DUM
+           enddo
+           DO L=1,M
+              B(LL,L)=B(LL,L)-B(ICOL,L)*DUM
+           enddo
+        ENDIF
+     enddo
+  enddo
+  DO  L=N,1,-1
+     IF(INDXR(L).NE.INDXC(L))THEN
+        DO K=1,N
+           DUM=A(K,INDXR(L))
+           A(K,INDXR(L))=A(K,INDXC(L))
+           A(K,INDXC(L))=DUM
+        enddo
+     ENDIF
+  enddo
+END SUBROUTINE GAUSSJ
+
 
 
 end module utils_mod

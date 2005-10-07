@@ -30,6 +30,7 @@ module grid_mod
   use cluster_class
   use cmfgen_class
   use messages_mod
+  use ion_mod
 
   implicit none
 
@@ -6375,8 +6376,7 @@ contains
 !                if (thisOctal%diffusionApprox(subcell)) value = 1.d-3
 
              case("ionization")
-                value = thisOctal%nHI(subcell)/thisOctal%nh(subcell)
-
+                value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
              case("temperature")
                 value = thisOctal%temperature(subcell)
              case("chiLine")
@@ -6544,7 +6544,7 @@ contains
              case("rho")
                 value = thisOctal%rho(subcell)
              case("ionization")
-                value = thisOctal%nHI(subcell)/thisOctal%nh(subcell)
+                value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
              case("temperature")
                 value = thisOctal%temperature(subcell)
              case("dusttype")

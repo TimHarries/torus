@@ -8,6 +8,7 @@ module gridtype_mod
   use vector_mod                      ! vector math
   use octal_mod                       ! octal type for amr  
   use gaussian_mod
+  use ion_mod
 
   implicit none
 
@@ -105,6 +106,9 @@ module gridtype_mod
      real :: tempSource = -9.9e9
 
      type(VECTOR) :: starPos1, starPos2
+     type(IONTYPE) :: ion(50)
+     integer :: nIon
+
 
      real :: lambda2 = -9.9e9
      real :: rInner = -9.9e9

@@ -5574,6 +5574,11 @@ CONTAINS
        thisOctal%nhi(subcell) = 1.e-5
        thisOctal%nhii(subcell) = thisOctal%ne(subcell)
        thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+       thisOctal%ionFrac(subcell,1) = 1.e-10
+       thisOctal%ionFrac(subcell,2) = 1.
+       thisOctal%ionFrac(subcell,3) = 1.e-10
+       thisOctal%ionFrac(subcell,4) = 1.
+
        thisOctal%etaCont(subcell) = 0.
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)
@@ -7970,7 +7975,8 @@ CONTAINS
          e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
          call phfit2(1, 1, 1 , e , h0)
          call phfit2(2, 2, 1 , e , he0)
-         kappaAbs = kappaabs + (thisOctal%nHI(subcell) * h0) + (thisOctal%nHeI(subcell) * he0)
+         kappaAbs = kappaabs + thisOctal%nh(subcell)*(grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0) &
+              + (grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0)
       endif
       if (PRESENT(kappaSca)) then
          kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
@@ -7998,7 +8004,7 @@ CONTAINS
      real(double) :: dSubcellcentre
      type(OCTALVECTOR) :: thisSubcellCentre
      integer :: nlocator, j
-     nMonte = 1000
+     nMonte = 10000
      meanTemp = 0.
      nTemp = 0
      

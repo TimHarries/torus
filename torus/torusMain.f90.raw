@@ -2070,6 +2070,10 @@ program torus
      call random_seed
 
      if (photoIonization) then
+
+        call addIons(grid%ion, grid%nion)
+
+
         call photoIonizationLoop(grid, source, nSource, nLambda, lamArray)
         stop
      endif
