@@ -35,7 +35,9 @@ contains
     real(double) :: kappaScadb, kappaAbsdb
     real(double) :: epsOverDeltaT
     real :: dummy(3)
+    real :: pops(10)
     integer :: nIter
+    real(double) :: crate
 
     lCore = 0.d0
     do i = 1, nSource
@@ -45,9 +47,17 @@ contains
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
     
-    nMonte = 1000000
+    nMonte = 100000
     nIter = 0
 
+!    pops = 0.
+!    call solvePops(grid%ion(returnIonNumber("N I", grid%ion, grid%nIon)),pops, 100.d0, 10000.)
+!    do i = 1, 5
+!       write(*,*) i, pops(i)
+!    enddo
+!    write(*,*) "SUM: ",sum(pops(1:5))
+!    call coolingRate(grid%ion(returnIonNumber("N I", grid%ion, grid%nIon)), 100.d0, 100.d0, 10000., crate)
+!    write(*,*) "cooling rate:",crate
     do 
        nIter = nIter + 1
        call zeroDistanceGrid(grid%octreeRoot)
@@ -103,9 +113,7 @@ contains
     epsOverDeltaT = (lCore) / dble(nInf)
 
     call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-    if (nIter > 2) then
-       call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
-    endif
+    call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
     
  enddo
 
@@ -627,7 +635,7 @@ contains
              if (thisOctal%ncrossings(subcell) > 10) then
                 call solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
              else
-                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+!                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
           endif
        endif
@@ -639,14 +647,16 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
-    real(double) :: totalHeating, nHii, nHeII
+    real(double) :: totalHeating, nHii, nHeII, nh
     integer :: subcell, i
     type(OCTALVECTOR) :: rVec
     logical :: converged
     real :: t1, t2, tm
     real(double) :: y1, y2, ym, Hheating, Heheating
     real :: deltaT
+    real(double) :: junk
     real :: underCorrection = 0.8
+    real :: pops(10)
     
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -678,27 +688,35 @@ contains
 
                 nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
                 nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
+                nh = thisOctal%nh(subcell)
+
                 if (totalHeating == 0.d0) then
                    thisOctal%temperature(subcell) = 3.
                 else
                    converged = .false.
-                   t1 = 1.e-5
-                   t2 = 5.e6
-                   y1 = (HHecooling(nhii,nheii, thisOctal%ne(subcell), t1) - totalHeating)
-                   y2 = (HHecooling(nhii,nheii, thisOctal%ne(subcell), t2) - totalHeating)
+                   t1 = 1.e1
+                   t2 = 20000.
+!                   call solvePops(grid%ion(returnIonNumber("O III", grid%ion, grid%nion)), pops, thisOctal%ne(subcell), t1)
+!                   do i = 1, 10
+!                      write(*,*) i,pops(i)
+!                   enddo
+!                   stop
+
+                   y1 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1) - totalHeating)
+                   y2 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2) - totalHeating)
                    if (y1*y2 > 0.d0) then
                       write(*,*) "Insufficient range"
-                      write(*,*) "t1",t1,y1,HHecooling(nhii,nheii, thisOctal%ne(subcell), t1),totalHeating
-                      write(*,*) "t2",t2,y2,HHecooling(nhii,nheii, thisOctal%ne(subcell), t2),totalHeating
+                      write(*,*) "t1",t1,y1,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1),totalHeating
+                      write(*,*) "t2",t2,y2,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2),totalHeating
                    endif
                    
                    ! find root of heating and cooling by bisection
                    
                    do while(.not.converged)
                       tm = 0.5*(t1+t2)
-                      y1 = (HHecooling(nhii,nheii, thisOctal%ne(subcell), t1) - totalheating)
-                      y2 = (HHecooling(nhii,nheii, thisOctal%ne(subcell), t2) - totalheating)
-                      ym = (HHecooling(nhii,nheii, thisOctal%ne(subcell), tm) - totalheating)
+                      y1 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1) - totalheating)
+                      y2 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2) - totalheating)
+                      ym = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), tm) - totalheating)
 
                       if (y1*ym < 0.d0) then
                          t1 = t1
@@ -718,9 +736,10 @@ contains
                    enddo
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = thisOctal%temperature(subcell) + underCorrection * deltaT
+!                   call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, thisOctal%ne(subcell), thisOctal%temperature(subcell), junk, .true.)
                 endif
              else
-                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+!                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
           endif
        endif
@@ -746,11 +765,13 @@ contains
     alpha1 = 1.58d-13 * (temperature/1.d4)**(-0.53d0)  ! kenny's photo paper equation 24
   end function recombToGround
 
-  function HHeCooling(nHii, nHeii, ne, temperature) result (coolingRate)
-
-    real(double) :: nHii, nHeii, ne
+  function HHeCooling(grid, thisOctal, subcell, nh, nHii, nHeii, ne, temperature) result (coolingRate)
+    type(OCTAL) :: thisOctal
+    integer :: subcell
+    type(GRIDTYPE) :: grid
+    real(double) :: nHii, nHeii, ne, nh
     real :: temperature
-    real(double) :: coolingRate
+    real(double) :: coolingRate, crate
     real(double) :: gff
     real :: rootTbetaH(31) = (/ 8.287e-11, 7.821e-11, 7.356e-11, 6.982e-11, 6.430e-11, 5.971e-11, 5.515e-11, 5.062e-11, 4.614e-11, &
                                4.170e-11, 3.734e-11, 3.306e-11, 2.888e-11, 2.484e-11, 2.098e-11, 1.736e-11, 1.402e-11, 1.103e-11, &
@@ -791,7 +812,8 @@ contains
 
     coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
 
-
+    call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate)
+    coolingRate = coolingRate + crate
   end function HHeCooling
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance)
@@ -845,6 +867,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
   real(double) :: r1, r2
   integer :: iStart, iEnd, iIon
   real(double) :: chargeExchangeIonization, chargeExchangeRecombination
+  logical :: ok
 
   if (thisOctal%threed) then
      v = thisOctal%subcellSize**3
@@ -898,7 +921,11 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
      matrixB = 0.d0
      matrixB (nIonizationStages,1) = 1.d0
 
-     call gaussj(matrixA, nIonizationStages, nIonizationStages, matrixB, 1, 1)
+     call gaussj(matrixA, nIonizationStages, nIonizationStages, matrixB, 1, 1, ok)
+     if (.not.ok) then
+        write(*,*) "Ionization balance failed for element: ",trim(grid%ion(istart)%species(1:2))
+        stop
+     endif
 
      do i = 1, nIonizationStages
         iIon = istart+i-1
@@ -1248,5 +1275,123 @@ subroutine getChargeExchangeRates(thisIon, nHI, nHII, IonRate, recombRate)
 
   ionRate = 0.d0; recombRate =0.d0
 end subroutine getChargeExchangeRates
+
+
+subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, deexcitation)
+  real :: excitation, deexcitation
+  type(IONTYPE) :: thisIon
+  integer :: iTransition, i
+  real :: temperature
+  real :: thisGamma
+  real :: t , fac
+
+  t = max(min(20000.,temperature),5000.)
+  call locate(thisIon%transition(iTransition)%t, thisIon%transition(iTransition)%ngamma, t, i)
+  fac = (t - thisIon%transition(iTransition)%t(i))/(thisIon%transition(iTransition)%t(i+1) - thisIon%transition(iTransition)%t(i))
+  thisGamma = thisIon%transition(iTransition)%gamma(i) + fac * (thisIon%transition(iTransition)%gamma(i+1) - thisIon%transition(iTransition)%gamma(i))
+
+  fac = (8.63e-6 / (thisIon%level(thisIon%transition(iTransition)%i)%g  * sqrt(temperature)) ) * thisGamma
+  fac = fac * exp(-thisIon%transition(iTransition)%energy / (kev*temperature))
+
+
+  excitation = fac
+  deexcitation = fac * thisIon%level(thisIon%transition(iTransition)%j)%g / thisIon%level(thisIon%transition(iTransition)%i)%g
+end subroutine getCollisionalRates
+
+
+subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, temperature, total, debug)
+  type(IONTYPE) :: ionArray(*)
+  integer :: nIons, subcell
+  type(OCTAL) :: thisOctal
+  real(double) :: ne, nh
+  real :: temperature
+  real(double) :: rate, total
+  real :: pops(10)
+  integer :: i, j
+  logical, optional :: debug
+
+  total = 0.d0
+  do j = 1, nIons
+     if (ionArray(j)%nTransitions > 0) then
+        call solvePops(ionArray(j), pops, ne, temperature)
+        rate = 0.d0
+        do i = 1, ionArray(j)%nTransitions
+           rate = rate + pops(ionArray(j)%transition(i)%j)*ionArray(j)%transition(i)%energy*ionArray(j)%transition(i)%a/ergtoev
+        enddo
+        rate = rate * ionArray(j)%abundance * nh * thisOctal%ionFrac(subcell, j)
+        if (present(debug)) then
+           if (debug) then
+              write(*,'(a,a,a,1p,e12.4,a,0p, f10.1,a,1pe12.4)') "Contribution from ",trim(ionArray(j)%species),":",rate," at T = ",temperature, &
+                   " ion frac ",thisOctal%ionFrac(subcell,j)
+           endif
+        endif
+     endif
+     total = total + rate
+  enddo
+end subroutine metalcoolingRate
+  
+
+subroutine solvePops(thisIon, pops, ne, temperature)
+  type(IONTYPE) :: thisIon
+  real(double) :: ne
+  real :: pops(*)
+  real :: temperature
+  real(double), allocatable :: matrixA(:,:), MatrixB(:,:), tempMatrix(:,:)
+  integer :: n, iTrans, i, j
+  real :: excitation, deexcitation, rateij, rateji
+  logical :: ok
+
+  n = thisIon%nLevels
+  allocate(matrixA(1:n+1, 1:n+1), matrixB(1:n+1, 1), tempMatrix(1:n+1,1:n+1))
+
+  matrixA = 1.d-30
+  matrixB = 0.d0
+  do iTrans = 1, thisIon%nTransitions
+     i = thisIon%transition(iTrans)%i
+     j = thisIon%transition(iTrans)%j
+     call getCollisionalRates(thisIon, iTrans, temperature, excitation, deexcitation)
+     rateij = max(1.e-30,excitation * ne)
+     rateji = max(1.e-30,deexcitation * ne + thisIon%transition(iTrans)%a)
+
+
+     matrixA(i,i) = matrixA(i,i)-rateij
+
+     matrixA(j,j) = matrixA(j,j)-rateji
+
+     matrixA(j,i) = matrixA(j,i) + rateij
+     matrixA(i,j) = matrixA(i,j) + rateji
+
+
+  enddo
+
+  do i = 1, n
+     matrixA(n+1,i) = 1.d0
+  enddo
+  matrixB = 0.d0
+  matrixB (n+1,1) = 1.d0
+  
+!  do i = 1, n+1
+!     write(*,'(1p,7e12.3)') matrixA(i,1:n)
+!  enddo
+
+  tempMatrix = matrixA
+  call gaussj(matrixA, n+1, n+1, matrixB, 1, 1, ok)
+  if (.not.ok) then
+     write(*,*) "Population solver failed for: ",thisIon%species
+     write(*,*) "nlevels",thisIon%nLevels,"ntrans",thisIon%nTransitions 
+     do i = 1, n+1
+        write(*,'(1p,9e12.3)') tempmatrix(i,1:n)
+     enddo
+     stop
+  endif
+
+  do i = 1, n
+     pops(i) = max(1.d-30,matrixB(i,1))
+  enddo
+
+  deallocate(matrixA, matrixB, tempMatrix)
+
+end subroutine solvePops
+
 end module
 

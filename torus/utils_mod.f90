@@ -3102,7 +3102,7 @@ function returnAbundance(z) result(a)
   end select
 end function returnAbundance
 
-SUBROUTINE GAUSSJ(A,N,NP,B,M,MP)
+SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
   implicit none
   integer, parameter :: nmax=50
   integer :: n, m, np, mp, i, j, k, l, icol, irow
@@ -3110,6 +3110,8 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP)
   integer :: ll
   real(double) A(NP,NP),B(NP,MP), big
   integer :: IPIV(NMAX),INDXR(NMAX),INDXC(NMAX)
+  logical :: ok
+  ok = .true.
   DO J=1,N
      IPIV(J)=0
   enddo
@@ -3125,7 +3127,9 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP)
                     ICOL=K
                  ENDIF
               ELSE IF (IPIV(K).GT.1) THEN
-                 PAUSE 'Singular matrix'
+                 write(*,*) '! Singular matrix'
+                 ok = .false.
+                 goto 666
               ENDIF
            enddo
         ENDIF
@@ -3145,7 +3149,11 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP)
      ENDIF
      INDXR(I)=IROW
      INDXC(I)=ICOL
-     IF (A(ICOL,ICOL).EQ.0.) PAUSE 'Singular matrix.'
+     IF (A(ICOL,ICOL).EQ.0.d0) then
+        write(*,*) 'Singular matrix.'
+        ok = .false.
+        goto 666
+     endif
      PIVINV=1./A(ICOL,ICOL)
      A(ICOL,ICOL)=1.d0
      DO L=1,N
@@ -3176,6 +3184,7 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP)
         enddo
      ENDIF
   enddo
+666 continue
 END SUBROUTINE GAUSSJ
 
 
