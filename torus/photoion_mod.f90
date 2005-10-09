@@ -113,7 +113,9 @@ contains
     epsOverDeltaT = (lCore) / dble(nInf)
 
     call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-    call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+    if (nIter > 2) then
+       call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+    endif
     
  enddo
 
@@ -648,11 +650,11 @@ contains
     type(octal), pointer  :: child 
     real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
     real(double) :: totalHeating, nHii, nHeII, nh
-    integer :: subcell, i
+    integer :: subcell, i, j
     type(OCTALVECTOR) :: rVec
     logical :: converged
     real :: t1, t2, tm
-    real(double) :: y1, y2, ym, Hheating, Heheating
+    real(double) :: y1, y2, ym, Hheating, Heheating, tot
     real :: deltaT
     real(double) :: junk
     real :: underCorrection = 0.8
@@ -684,7 +686,7 @@ contains
                      * (epsOverDeltaT / (v * 1.d30))*thisOctal%Hheating(subcell) ! equation 21 of kenny's
                 Heheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,3) * grid%ion(3)%abundance &
                      * (epsOverDeltaT / (v * 1.d30))*thisOctal%Heheating(subcell) ! equation 21 of kenny's
-                totalHeating = Hheating + HeHeating
+                totalHeating = (Hheating + HeHeating)
 
                 nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
                 nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
@@ -694,20 +696,45 @@ contains
                    thisOctal%temperature(subcell) = 3.
                 else
                    converged = .false.
-                   t1 = 1.e1
-                   t2 = 20000.
-!                   call solvePops(grid%ion(returnIonNumber("O III", grid%ion, grid%nion)), pops, thisOctal%ne(subcell), t1)
-!                   do i = 1, 10
-!                      write(*,*) i,pops(i)
-!                   enddo
-!                   stop
+                   t1 = 100.
+                   t2 = 1.e5
 
                    y1 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1) - totalHeating)
                    y2 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2) - totalHeating)
                    if (y1*y2 > 0.d0) then
-                      write(*,*) "Insufficient range"
+
+
+!                      tot = 0.
+!                      do i =1, grid%nion
+!                         if (grid%ion(i)%nTransitions > 0) then
+!                            write(98,*) grid%ion(i)%species
+!                            call solvePops(grid%ion(i), pops, thisOctal%ne(subcell), t1)
+!                            do j = 1, grid%ion(i)%nLevels
+!                               write(98,*) "level",j,pops(j)
+!                            enddo
+!                            
+!                            do j = 1, grid%ion(i)%nTransitions
+!                               write(98,*) j, pops(grid%ion(i)%transition(j)%j)*grid%ion(i)%transition(j)%energy*grid%ion(i)%transition(j)%a/ergtoev * &
+!                                    grid%ion(i)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,i)
+!                               tot = tot +  pops(grid%ion(i)%transition(j)%j)*grid%ion(i)%transition(j)%energy*grid%ion(i)%transition(j)%a/ergtoev * &
+!                                    grid%ion(i)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,i)
+!                         enddo
+!                      endif
+!                   enddo
+!                   write(98,*) "total",tot
+
+!                      write(*,*) "Insufficient range"
+!                      do i = 1, 1000
+!                         tm = real(i-1)/999.*(t2-t1)+t1
+!                         write(99,*) tm,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), tm),totalHeating
+!                         stop
+!                      enddo
+!                      stop
+
                       write(*,*) "t1",t1,y1,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1),totalHeating
                       write(*,*) "t2",t2,y2,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2),totalHeating
+                      tm = 60000.
+                      converged = .true.
                    endif
                    
                    ! find root of heating and cooling by bisection
@@ -729,7 +756,7 @@ contains
                          tm = 0.5*(t1+t2)
                       endif
                       
-                      if (abs((t1-t2)/t1) .le. 1.e-3) then
+                      if (abs((t1-t2)/t1) .le. 1.e-4) then
                          converged = .true.
                       endif
                       
@@ -775,7 +802,7 @@ contains
     real(double) :: gff
     real :: rootTbetaH(31) = (/ 8.287e-11, 7.821e-11, 7.356e-11, 6.982e-11, 6.430e-11, 5.971e-11, 5.515e-11, 5.062e-11, 4.614e-11, &
                                4.170e-11, 3.734e-11, 3.306e-11, 2.888e-11, 2.484e-11, 2.098e-11, 1.736e-11, 1.402e-11, 1.103e-11, &
-                               8.442e-12, 6.279e-12, 4.539e-12, 3.192e-11, 2.185e-12, 1.458e-12, 9.484e-13, 6.023e-13, 3.738e-13, &
+                               8.442e-12, 6.279e-12, 4.539e-12, 3.192e-12, 2.185e-12, 1.458e-12, 9.484e-13, 6.023e-13, 3.738e-13, &
                                2.268e-13, 1.348e-13, 7.859e-14, 4.499e-14 /)
 
     real :: rootTbetaHe(18) = (/ 8.347e-11, 7.889e-11, 7.430e-11, 6.971e-11, 6.512e-11, 6.056e-11, 5.603e-11, 5.154e-11, 4.710e-11,&
@@ -786,8 +813,10 @@ contains
     real(double) :: fac, thisRootTbetaH, betaH, betaHe, thisRootTbetaHe
     real :: thisLogT
     integer :: n
+    
+    coolingRate = 0.d0
 
-    gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3)  ! Kenny equation 23
+    gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3.d0)  ! Kenny equation 23
 
     coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
 
@@ -814,6 +843,8 @@ contains
 
     call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate)
     coolingRate = coolingRate + crate
+
+
   end function HHeCooling
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance)
@@ -844,7 +875,7 @@ contains
 
        ! neutral He heating
 
-       if ((grid%Ion(i)%z == 2).and.(grid%Ion(i)%n == 1)) then
+       if ((grid%Ion(i)%z == 2).and.(grid%Ion(i)%n == 2)) then
           thisOctal%Heheating(subcell) = thisOctal%Heheating(subcell) &
             + dble(distance) * dble(xsec / (thisFreq * hCgs)) &
             * (dble(hCgs * thisFreq) - dble(hCgs * grid%ion(i)%nuThresh))
@@ -1172,13 +1203,10 @@ function recombRate(thisIon, temperature) result (rate)
               rate = 1.5e-11
            case(13) ! S IV
               rate = 2.5e-11
-           case DEFAULT
-              write(*,*) "No recombination rate for ",thisIon%species
-              rate  = 0.
         end select
-
-
-
+     case DEFAULT
+        write(*,*) "No recombination rate for ",thisIon%species
+        rate  = 0.
   end select
 end function recombRate
 
@@ -1321,12 +1349,12 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
         rate = rate * ionArray(j)%abundance * nh * thisOctal%ionFrac(subcell, j)
         if (present(debug)) then
            if (debug) then
-              write(*,'(a,a,a,1p,e12.4,a,0p, f10.1,a,1pe12.4)') "Contribution from ",trim(ionArray(j)%species),":",rate," at T = ",temperature, &
+              write(100,'(a,a,a,1p,e12.4,a,0p, f10.1,a,1pe12.4)') "Contribution from ",trim(ionArray(j)%species),":",rate," at T = ",temperature, &
                    " ion frac ",thisOctal%ionFrac(subcell,j)
            endif
         endif
-     endif
      total = total + rate
+     endif
   enddo
 end subroutine metalcoolingRate
   
