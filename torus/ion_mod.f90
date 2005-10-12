@@ -14,7 +14,7 @@ module ion_mod
 
   type LEVELTYPE
      character(len=10) :: term
-     integer :: g
+     real :: g
      real(double) :: energy
   end type LEVELTYPE
 
@@ -169,6 +169,8 @@ contains
     
 function returnOuterShell(n) result (ishell)
   integer :: z, n, ishell
+! Shell numbers:
+! 1 - 1s, 2 - 2s, 3 - 2p, 4 - 3s, 5 - 3p, 6 - 3d, 7 - 4s. 
 
   if (n <= 2) then
      ishell = 1
@@ -266,23 +268,23 @@ subroutine addLevels(thisIon)
 !        call addLevel(thisIon, "1D_2", 3.20385d0, 2.)
 !        call addLevel(thisIon, "1S_0", 6.91220d0, 0.)
 
-     case("S II")
-        call addLevel(thisIon, "4S^0_3/2", 0.d0, 1.5)
-        call addLevel(thisIon, "2D^0_3/2", 1.841530d0, 1.5)
-        call addLevel(thisIon, "2D^0_5/2", 1.845471d0, 2.5)
-        call addLevel(thisIon, "2P^0_1/2", 3.040691d0, 0.5)
-        call addLevel(thisIon, "2P^0_3/2", 3.046482d0, 1.5)
+!     case("S II")
+!        call addLevel(thisIon, "4S^0_3/2", 0.d0, 1.5)
+!        call addLevel(thisIon, "2D^0_3/2", 1.841530d0, 1.5)
+!        call addLevel(thisIon, "2D^0_5/2", 1.845471d0, 2.5)
+!        call addLevel(thisIon, "2P^0_1/2", 3.040691d0, 0.5)
+!        call addLevel(thisIon, "2P^0_3/2", 3.046482d0, 1.5)
 !        call addLevel(thisIon, "4P_5/2", 9.83774d0, 2.5)
 !        call addLevel(thisIon, "4P_3/2", 9.880586d0, 1.5)
 !        call addLevel(thisIon, "4P_1/2", 9.914099d0, 0.5)
 
-     case("S III")
-        call addLevel(thisIon, "3P_0", 0.d0, 0.)
-        call addLevel(thisIon, "3P_1", 0.037033d0, 1.)
-        call addLevel(thisIon, "3P_2", 0.10329d0, 2.)
-        call addLevel(thisIon, "1D_2", 1.403841d0, 2.)
-        call addLevel(thisIon, "1S_0", 3.36753d0, 0.)
-        call addLevel(thisIon, "5S^0_2", 7.274391d0, 2.)
+!     case("S III")
+!        call addLevel(thisIon, "3P_0", 0.d0, 0.)
+!        call addLevel(thisIon, "3P_1", 0.037033d0, 1.)
+!        call addLevel(thisIon, "3P_2", 0.10329d0, 2.)
+!        call addLevel(thisIon, "1D_2", 1.403841d0, 2.)
+!        call addLevel(thisIon, "1S_0", 3.36753d0, 0.)
+!        call addLevel(thisIon, "5S^0_2", 7.274391d0, 2.)
      case DEFAULT
   end select
 end subroutine addLevels
@@ -298,7 +300,7 @@ subroutine addLevel(thisIon, term, energy, J)
   thisIon%nLevels = i
   thisIon%level(i)%term = term
   thisIon%level(i)%energy = energy
-  thisIon%level(i)%g = int(real(2.*J+1.))
+  thisIon%level(i)%g = real(2.*J+1.)
 end subroutine addLevel
 
 subroutine addTransitions(thisIon)
@@ -383,29 +385,29 @@ subroutine addTransitions(thisIon)
 !        call addTransition(thisIon,"3P_0", "3P_1", 3.60e5, 1.15-3, 3.31e-1, 3.50e-1, 3.51e-1, 3.50e-1)
 !        call addTransition(thisIon,"3P_0", "3P_2", 1.07e5, 2.18e-8, 3.00e-1, 3.07e-1, 3.03e-1, 2.98e-1)
 !        call addTransition(thisIon,"3P_1", "3P_2", 1.56e5, 5.97e-3, 1.09e0, 1.65e0, 1.65e0, 1.64e0)
-     case("S II")
-        call addTransition(thisIon,"2D^0_5/2", "4S^0_3/2", 6716.5, 2.60e-4, 4.90e0, 4.66e0, 4.44e0, 4.26e0)
-        call addTransition(thisIon,"2D^0_3/2", "4S^0_3/2", 6730.8, 8.82e-4, 3.27e0, 3.11e0, 2.97e0, 2.84e0)
-        call addTransition(thisIon,"2P^0_3/2", "4S^0_3/2", 4068.6, 2.25e-1, 1.67e0, 2.07e0, 1.98e0, 2.07e0)
-        call addTransition(thisIon,"2P^0_1/2", "4S^0_3/2", 4076.4, 9.06e-2, 8.31e-1, 8.97e-1, 9.87e-1, 1.03e0)
-        call addTransition(thisIon,"2D^0_5/2", "2D^0_3/2", 3.145e6, 3.35e-7, 7.90e0, 7.46e0, 7.11e0, 8.65e0)
-        call addTransition(thisIon,"2P^0_3/2", "2P^0_1/2", 2.14e6, 1.03-6, 2.02e0, 2.54e0, 2.13e0, 2.22e0)
-        call addTransition(thisIon,"2P^0_3/2", "2D^0_5/2", 10320.4, 1.79e-1, 5.93e0, 4.77e0, 4.75e0, 4.68e0)
-        call addTransition(thisIon,"2P^0_3/2", "2D^0_3/2", 10286.7, 1.33e-1, 3.41e0, 2.74e0, 2.74e0, 2.71e0)
-        call addTransition(thisIon,"2P^0_1/2", "2D^0_5/2", 10373.3, 7.79e-2, 2.47e0, 1.99e0, 1.99e0, 1.97e0)
-        call addTransition(thisIon,"2P^0_1/2", "2D^0_3/2", 10336.3, 1.63e-1, 2.20e0, 1.76e0, 1.76e0, 1.73e0)
-     case("S III")
-        call addTransition(thisIon,"1D_2", "3P_0", 8833.9, 5.82e-6, 9.07e0, 8.39e0, 8.29e0, 8.30e0)
-        call addTransition(thisIon,"1D_2", "3P_1", 9068.9, 2.21e-2, 9.07e0, 8.39e0, 8.29e0, 8.30e0)
-        call addTransition(thisIon,"1D_2", "3P_2", 9531.0, 5.76e-2, 9.07e0, 8.39e0, 8.29e0, 8.30e0)
-        call addTransition(thisIon,"1S_0", "3P_1", 3721.7, 7.96e-1, 1.16e0, 1.19e0, 1.21e0, 1.24e0)
-        call addTransition(thisIon,"1S_0", "3P_2", 3797.8, 1.05e-2, 1.16e0, 1.19e0, 1.21e0, 1.24e0)
-        call addTransition(thisIon,"1S_0", "1D_2", 6312.1, 2.22e0, 1.42e0, 1.88e0, 2.02e0, 2.08e0)
-        call addTransition(thisIon,"3P_1", "3P_0", 3.347e5, 4.72e-4, 2.64e0, 2.59e0, 2.38e0, 2.20e0)
-        call addTransition(thisIon,"3P_2", "3P_0", 1.20e5, 4.61e-8, 1.11e0, 1.15e0, 1.15e0, 1.14e0)
-        call addTransition(thisIon,"3P_2", "3P_1", 187129., 2.07e-3, 5.79e0, 5.81e0, 5.56e0, 5.32e0)
-        call addTransition(thisIon,"5S^0_2", "3P_1", 1683.5, 6.22e3, 0., 3.8e0, 3.7e0, 3.6e0)
-        call addTransition(thisIon,"5S^0_2", "3P_2", 1698.86, 1.70e4, 0., 3.8e0, 3.7e0, 3.6e0)
+!     case("S II")
+!        call addTransition(thisIon,"2D^0_5/2", "4S^0_3/2", 6716.5, 2.60e-4, 4.90e0, 4.66e0, 4.44e0, 4.26e0)
+!        call addTransition(thisIon,"2D^0_3/2", "4S^0_3/2", 6730.8, 8.82e-4, 3.27e0, 3.11e0, 2.97e0, 2.84e0)
+!        call addTransition(thisIon,"2P^0_3/2", "4S^0_3/2", 4068.6, 2.25e-1, 1.67e0, 2.07e0, 1.98e0, 2.07e0)
+!        call addTransition(thisIon,"2P^0_1/2", "4S^0_3/2", 4076.4, 9.06e-2, 8.31e-1, 8.97e-1, 9.87e-1, 1.03e0)
+!        call addTransition(thisIon,"2D^0_5/2", "2D^0_3/2", 3.145e6, 3.35e-7, 7.90e0, 7.46e0, 7.11e0, 8.65e0)
+!        call addTransition(thisIon,"2P^0_3/2", "2P^0_1/2", 2.14e6, 1.03-6, 2.02e0, 2.54e0, 2.13e0, 2.22e0)
+!        call addTransition(thisIon,"2P^0_3/2", "2D^0_5/2", 10320.4, 1.79e-1, 5.93e0, 4.77e0, 4.75e0, 4.68e0)
+!        call addTransition(thisIon,"2P^0_3/2", "2D^0_3/2", 10286.7, 1.33e-1, 3.41e0, 2.74e0, 2.74e0, 2.71e0)
+!        call addTransition(thisIon,"2P^0_1/2", "2D^0_5/2", 10373.3, 7.79e-2, 2.47e0, 1.99e0, 1.99e0, 1.97e0)
+!        call addTransition(thisIon,"2P^0_1/2", "2D^0_3/2", 10336.3, 1.63e-1, 2.20e0, 1.76e0, 1.76e0, 1.73e0)
+!     case("S III")
+!        call addTransition(thisIon,"1D_2", "3P_0", 8833.9, 5.82e-6, 9.07e0, 8.39e0, 8.29e0, 8.30e0)
+!        call addTransition(thisIon,"1D_2", "3P_1", 9068.9, 2.21e-2, 9.07e0, 8.39e0, 8.29e0, 8.30e0)
+!        call addTransition(thisIon,"1D_2", "3P_2", 9531.0, 5.76e-2, 9.07e0, 8.39e0, 8.29e0, 8.30e0)
+!        call addTransition(thisIon,"1S_0", "3P_1", 3721.7, 7.96e-1, 1.16e0, 1.19e0, 1.21e0, 1.24e0)
+!        call addTransition(thisIon,"1S_0", "3P_2", 3797.8, 1.05e-2, 1.16e0, 1.19e0, 1.21e0, 1.24e0)
+!        call addTransition(thisIon,"1S_0", "1D_2", 6312.1, 2.22e0, 1.42e0, 1.88e0, 2.02e0, 2.08e0)
+!        call addTransition(thisIon,"3P_1", "3P_0", 3.347e5, 4.72e-4, 2.64e0, 2.59e0, 2.38e0, 2.20e0)
+!        call addTransition(thisIon,"3P_2", "3P_0", 1.20e5, 4.61e-8, 1.11e0, 1.15e0, 1.15e0, 1.14e0)
+!        call addTransition(thisIon,"3P_2", "3P_1", 187129., 2.07e-3, 5.79e0, 5.81e0, 5.56e0, 5.32e0)
+!        call addTransition(thisIon,"5S^0_2", "3P_1", 1683.5, 6.22e3, 0., 3.8e0, 3.7e0, 3.6e0)
+!        call addTransition(thisIon,"5S^0_2", "3P_2", 1698.86, 1.70e4, 0., 3.8e0, 3.7e0, 3.6e0)
      case DEFAULT
    end select
 

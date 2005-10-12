@@ -24,7 +24,7 @@ contains
     real(double) :: alphaA, alpha1, v, lCore
     integer :: nMonte, iMonte
     integer :: subcell
-    integer :: i
+    integer :: i, j
     logical :: escaped
     real(double) :: wavelength, thisFreq
     real :: thisLam
@@ -38,6 +38,9 @@ contains
     real :: pops(10)
     integer :: nIter
     real(double) :: crate
+    real :: xsec, temp
+    real(double) :: luminosity1, luminosity2
+    type(IONTYPE) :: thisIon
 
     lCore = 0.d0
     do i = 1, nSource
@@ -46,15 +49,21 @@ contains
 !$MPI    if(my_rank == 0) &
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    
-    nMonte = 100000
+    nMonte = 10000
     nIter = 0
 
-!    pops = 0.
-!    call solvePops(grid%ion(returnIonNumber("N I", grid%ion, grid%nIon)),pops, 100.d0, 10000.)
-!    do i = 1, 5
-!       write(*,*) i, pops(i)
-!    enddo
+    pops = 0.
+    thisIon = grid%ion(returnIonNumber("O III", grid%ion, grid%nIon))
+    do i = 1, 5
+       temp = 5000. + 15000.*real(i-1)/4.
+       write(*,*) temp
+       call solvePops(thisIon,pops, 100.d0, temp)
+       do j = 1, thisIon%nLevels
+          write(*,*) j, pops(j)
+       enddo
+       write(*,*) "SUM: ",SUM(pops(1:thisIon%nlevels))
+    enddo
+       !   enddo
 !    write(*,*) "SUM: ",sum(pops(1:5))
 !    call coolingRate(grid%ion(returnIonNumber("N I", grid%ion, grid%nIon)), 100.d0, 100.d0, 10000., crate)
 !    write(*,*) "cooling rate:",crate
@@ -117,6 +126,24 @@ contains
        call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
     endif
     
+    call getForbiddenLineLuminosity(grid, "O I", 6300., luminosity1)
+    call getForbiddenLineLuminosity(grid, "O I", 6363., luminosity2)
+    write(*,'(a,f12.2)') "O I (6300+6363):",(luminosity1+luminosity2)/1.e36
+    call getForbiddenLineLuminosity(grid, "O II", 7320., luminosity1)
+    call getForbiddenLineLuminosity(grid, "O II", 7330., luminosity2)
+    write(*,'(a,f12.2)') "O II (7320+7330):",(luminosity1+luminosity2)/1.e36
+    call getForbiddenLineLuminosity(grid, "O II", 3726., luminosity1)
+    call getForbiddenLineLuminosity(grid, "O II", 3729., luminosity2)
+    write(*,'(a,f12.2)') "O II (3726+3729):",(luminosity1+luminosity2)/1.e36
+    call getForbiddenLineLuminosity(grid, "O III", 5007., luminosity1)
+    call getForbiddenLineLuminosity(grid, "O III", 4959., luminosity2)
+    write(*,'(a,f12.2)') "O III (5007+4959):",(luminosity1+luminosity2)/1.e36
+    call getForbiddenLineLuminosity(grid, "O III", 518145., luminosity1)
+    call getForbiddenLineLuminosity(grid, "O III", 883562., luminosity2)
+    write(*,'(a,f12.2)') "O III (52+88um):",(luminosity1+luminosity2)/1.e36
+    call getForbiddenLineLuminosity(grid, "O III", 4363., luminosity1)
+    write(*,'(a,f12.2)') "O III (4363):",(luminosity1)/1.e36
+
  enddo
 
   end subroutine photoIonizationloop
@@ -731,8 +758,10 @@ contains
 !                      enddo
 !                      stop
 
-                      write(*,*) "t1",t1,y1,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1),totalHeating
-                      write(*,*) "t2",t2,y2,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2),totalHeating
+                      write(*,*) "t1", &
+                           t1,y1,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1),totalHeating
+                      write(*,*) "t2", &
+                           t2,y2,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2),totalHeating
                       tm = 60000.
                       converged = .true.
                    endif
@@ -931,18 +960,34 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
         iIon = iStart+i-1
 !        write(*,*) i,iion,grid%ion(iion)%species
 
-        call getChargeExchangeRates(grid%ion(iion), thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
-             thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,2),  &
-        chargeExchangeIonization, chargeExchangeRecombination)
+        call getChargeExchangeRecomb(grid%ion(iion+1), thisOctal%temperature(subcell), &
+             thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
+             thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
+             chargeExchangeRecombination)
+
+        call getChargeExchangeIon(grid%ion(iion), thisOctal%temperature(subcell), &
+             thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
+             thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
+             chargeExchangeIonization)
 
         matrixA(i, i) = grid%ion(iIon)%abundance * thisOctal%nh(subcell)  * &
              ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)! equation 44 Lucy MC II
-        matrixA(i, i) = max(1.d-30, matrixA(i, i))
+        matrixA(i, i) = max(1.d-60, matrixA(i, i))
+
+!        write(*,*) "ionizationStage",i
+!        if (grid%ion(iion)%species(1:1) == "O") then
+!           write(*,*) "Ionization of O: photo:",(epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon),&
+!                "exchange", chargeExchangeIonization
+!        endif
 
         matrixA(i, i+1) = -grid%ion(iIon+1)%abundance * thisOctal%nh(subcell) * &
              (recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination)
         matrixA(i, i+1) = min(-1.d-30, matrixA(i, i+1))
 
+!        if (grid%ion(iion)%species(1:1) == "O") then
+!           write(*,*) "Recomb of O: photo:",recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell), &
+!                "exchange",chargeExchangeRecombination
+!        endif
         
 
      enddo
@@ -1148,7 +1193,9 @@ function recombRate(thisIon, temperature) result (rate)
 
      case(10)
         select case(thisIon%n) ! from nussbaumer and storey 1987
-           case(10) ! Ne I 
+           case(10) ! Ne I
+              rate = 0. ! section 4 of above paper
+           case(9) ! Ne II
               a = 0.0129
               b =-0.1779
               c = 0.9353
@@ -1156,7 +1203,7 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.4516
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
-           case(9) ! Ne II
+           case(8) ! Ne III
               a = 3.6781
               b = 14.1481
               c = 17.1175
@@ -1164,26 +1211,26 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.2313
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
-           case(8) ! Ne III
+           case(7) ! Ne IV
               a =-0.0254
-              b = 5.53650
+              b = 5.5365
               c = 17.0727
-              d = -0.7725
+              d = -0.7225
               f = 0.1702
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
-           case(7) ! N IV
-              a = 0.7469
-              b =-3.2024
-              c = 12.1163
-              d =-1.0379
-              f = 1.8482
+           case(6) ! Ne V
+              a = -0.0141
+              b = 33.8479
+              c = 43.1608
+              d =-1.6072
+              f = 0.1942
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
-           case(6) ! N V
+           case(5) ! Ne VI
               a = 19.9280
               b = 235.0536
-              c = 12.5096
+              c = 152.5096
               d = 9.1413
               f = 0.1282
               t = temperature / 10000.
@@ -1199,7 +1246,7 @@ function recombRate(thisIon, temperature) result (rate)
               rate = 3.e-13
            case(15) ! S II
               rate = 3.e-12
-           case(14) ! S III
+           case(14) ! S  III
               rate = 1.5e-11
            case(13) ! S IV
               rate = 2.5e-11
@@ -1250,7 +1297,7 @@ subroutine dumpLexington(grid)
   integer :: subcell
   integer :: i, j
   real(double) :: r, theta
-  real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,neii,neiii
+  real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
   type(OCTALVECTOR) :: octVec
 
   open(20,file="lexington.dat",form="formatted",status="unknown")
@@ -1258,7 +1305,7 @@ subroutine dumpLexington(grid)
   do i = 1, 50
      r = (1.+5.d0*dble(i-1)/49.d0)*pctocm/1.e10
 
-     t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;neii=0;neiii=0
+     t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0
      do j = 1, 100
         call random_number(theta)
         theta = theta * Pi
@@ -1277,33 +1324,120 @@ subroutine dumpLexington(grid)
         NII = NII + thisOctal%ionfrac(subcell,returnIonNumber("N II", grid%ion, grid%nIon))
         NIII = NIII + thisOctal%ionfrac(subcell,returnIonNumber("N III", grid%ion, grid%nIon))
         NIV = NIV + thisOctal%ionfrac(subcell,returnIonNumber("N IV", grid%ion, grid%nIon))
+        NeI = NeI + thisOctal%ionfrac(subcell,returnIonNumber("Ne I", grid%ion, grid%nIon))
         NeII = NeII + thisOctal%ionfrac(subcell,returnIonNumber("Ne II", grid%ion, grid%nIon))
         NeIII = NeIII + thisOctal%ionfrac(subcell,returnIonNumber("Ne III", grid%ion, grid%nIon))
+        NeIV = NeIV + thisOctal%ionfrac(subcell,returnIonNumber("Ne IV", grid%ion, grid%nIon))
         t  = t + thisOctal%temperature(subcell)
      enddo
      hi = hi / 100.; hei = hei/100.; oii = oii/100; oiii = oiii/100.; cii=cii/100.
      ciii = ciii/100; civ=civ/100.; nii =nii/100.; niii=niii/100.; niv=niv/100.
-     neii=neii/100.; neiii=neiii/100.; t=t/100.
+     nei=nei/100.;neii=neii/100.; neiii=neiii/100.; neiv=neiv/100.;t=t/100.
 
-     write(20,'(f5.3,f12.1, 1p, 12e9.2)') r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,neii,neiii
+     hi = log10(max(hi, 1e-10))
+     hei = log10(max(hei, 1e-10))
+     oii = log10(max(oii, 1e-10))
+     oiii = log10(max(oiii, 1e-10))
+     cii = log10(max(cii, 1e-10))
+     ciii = log10(max(ciii, 1e-10))
+     civ = log10(max(civ, 1e-10))
+     nii = log10(max(nii, 1e-10))
+     niii = log10(max(niii, 1e-10))
+     niv= log10(max(niv, 1e-10))
+     nei = log10(max(nei, 1e-10))
+     neii = log10(max(neii, 1e-10))
+     neiii = log10(max(neiii, 1e-10))
+     neiv = log10(max(neiv, 1e-10))
+
+     write(20,'(f5.3,f9.1,  14f8.3)') &
+          r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
   enddo
   close(20)
 end subroutine dumpLexington
 
-subroutine getChargeExchangeRates(thisIon, nHI, nHII, IonRate, recombRate)
-  type(IONTYPE) :: thisIon
-  real(double) :: nHI, nHII, ionRate, recombRate
+subroutine getChargeExchangeRecomb(parentIon, temperature, nHI, nHII, recombRate)
+  type(IONTYPE) :: parentIon
+  real(double) :: nHI, nHII,  recombRate
+  real :: t4, a, b, c, d
+  real :: temperature
+
+  recombRate  = 0.d0
+
+  select case(parentIon%z)
+     case(7)
+        select case(parentIon%n)
+           case(4) ! N IV
+              t4 = temperature / 1.e4
+              a = 3.05e-10
+              b = 0.60
+              c = 2.65
+              d = -0.93
+              recombRate  = kingdonFerland96(t4, a, b, c, d)
+        end select
+     case(8)
+        select case(parentIon%n)
+           case(7) ! O II
+              t4 = temperature / 1.e4
+              a = 1.04e-9
+              b = 3.15e-2
+              c = -0.61
+              d = -9.73
+              recombRate  = kingdonFerland96(t4, a, b, c, d)
+           case(6) ! OIII
+              t4 = temperature / 1.e4
+              a = 1.04e-9
+              b = 0.27
+              c = 2.02
+              d = -5.92
+              recombRate  = kingdonFerland96(t4, a, b, c, d)
+       end select
+   end select
+
+  recombRate = recombRate * nhi
+
+end subroutine getChargeExchangeRecomb
+
+subroutine getChargeExchangeIon(parentIon, temperature, nHI, nHII, IonRate)
+  type(IONTYPE) :: parentIon
+  real(double) :: nHI, nHII, ionRate
+  real :: temperature
+  real :: t4, a, b, c, d
+
+  IonRate = 0.d0
+
+  select case(parentIon%z)
+     case(7)
+        select case(parentIon%n)
+           case(7) ! N I charge exchange Ionization
+              t4 = temperature / 1.e4
+              a = 4.55e-12
+              b = -0.29
+              c = -0.92
+              d = -8.38
+              ionRate  = kingdonFerland96(t4, a, b, c, d)
+        end select
+     case(8)
+        select case(parentIon%n)
+           case(8) ! O I charge exchange ionization
+              t4 = temperature / 1.e4
+              a = 7.40e-11
+              b = 0.47
+              c = 24.37
+              d = -0.74
+              ionRate  = kingdonFerland96(t4, a, b, c, d)
+       end select
+   end select
+
+  ionRate = ionRate * nhii
+end subroutine getChargeExchangeIon
 
 
-!  select case(thisIon%z)
-!     case(7)
-!        select case(thisIon%n)
-!
-! case(5)  ! N III
-
-  ionRate = 0.d0; recombRate =0.d0
-end subroutine getChargeExchangeRates
-
+function kingdonFerland96(t4, a, b, c, d) result (alpha)
+  real :: alpha
+  real :: t4, a, b, c, d
+  alpha = a*(t4**b)*(1.+c*exp(d*t4))
+end function kingdonFerland96
+  
 
 subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, deexcitation)
   real :: excitation, deexcitation
@@ -1312,19 +1446,90 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
   real :: temperature
   real :: thisGamma
   real :: t , fac
+  real :: boltzFac
 
   t = max(min(20000.,temperature),5000.)
   call locate(thisIon%transition(iTransition)%t, thisIon%transition(iTransition)%ngamma, t, i)
   fac = (t - thisIon%transition(iTransition)%t(i))/(thisIon%transition(iTransition)%t(i+1) - thisIon%transition(iTransition)%t(i))
-  thisGamma = thisIon%transition(iTransition)%gamma(i) + fac * (thisIon%transition(iTransition)%gamma(i+1) - thisIon%transition(iTransition)%gamma(i))
+  thisGamma = thisIon%transition(iTransition)%gamma(i) + &
+       fac * (thisIon%transition(iTransition)%gamma(i+1) - thisIon%transition(iTransition)%gamma(i))
 
+  boltzFac =  exp(-thisIon%transition(iTransition)%energy / (kev*temperature))
   fac = (8.63e-6 / (thisIon%level(thisIon%transition(iTransition)%i)%g  * sqrt(temperature)) ) * thisGamma
-  fac = fac * exp(-thisIon%transition(iTransition)%energy / (kev*temperature))
+  excitation = fac * boltzFac
+  deexcitation = fac * thisIon%level(thisIon%transition(iTransition)%j)%g / thisIon%level(thisIon%transition(iTransition)%i)%g 
 
 
-  excitation = fac
-  deexcitation = fac * thisIon%level(thisIon%transition(iTransition)%j)%g / thisIon%level(thisIon%transition(iTransition)%i)%g
 end subroutine getCollisionalRates
+
+
+subroutine getForbiddenLineLuminosity(grid, species, wavelength, luminosity)
+  type(GRIDTYPE) :: grid
+  character(len=*) :: species
+  real :: wavelength
+  real(double) :: luminosity
+  integer :: iIon, iTrans, i
+
+  iTrans = 0
+  iIon = returnIonNumber(species, grid%ion, grid%nIon)
+  do i = 1, grid%ion(iIon)%nTransitions
+     if (abs(grid%ion(iIon)%transition(i)%lambda-wavelength)/wavelength  < 0.001) then
+        iTrans = i
+        exit
+     endif
+  enddo
+  if (iTrans == 0) then
+     write(*,*) "No transition found at ",wavelength, "Angstroms"
+     stop
+  endif
+  luminosity = 0.d0
+  call sumLineLuminosity(grid%octreeroot, luminosity, iIon, iTrans, grid)
+end subroutine getForbiddenLineLuminosity
+
+recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid)
+  type(GRIDTYPE) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i, iIon, iTrans
+  real(double) :: luminosity, v, r1, r2, rate
+  real :: pops(10)
+  type(OCTALVECTOR) :: rvec
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call sumLineLuminosity(child, luminosity, iIon, iTrans, grid)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%threed) then
+             v = thisOctal%subcellSize**3
+          else
+             rVec = subcellCentre(thisOctal,subcell)
+             r1 = rVec%x-thisOctal%subcellSize/2.d0
+             r2 = rVec%x+thisOctal%subcellSize/2.d0
+             v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+          endif
+        call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
+        rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
+             grid%ion(iion)%transition(itrans)%a/ergtoev
+        rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
+!        if (grid%ion(iion)%species=="O III") then
+!           write(*,'(12e12.3)') pops(grid%ion(iion)%transition(iTrans)%j),grid%ion(iion)%transition(itrans)%energy/ergtoev, &
+!             grid%ion(iion)%transition(itrans)%a, grid%ion(iion)%abundance, thisOctal%nh(subcell), &
+!             thisOctal%ionFrac(subcell, iion),rate
+!        endif
+
+
+        luminosity = luminosity + rate * v * 1.d30
+
+       endif
+    enddo
+  end subroutine sumLineLuminosity
 
 
 subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, temperature, total, debug)
@@ -1349,7 +1554,8 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
         rate = rate * ionArray(j)%abundance * nh * thisOctal%ionFrac(subcell, j)
         if (present(debug)) then
            if (debug) then
-              write(100,'(a,a,a,1p,e12.4,a,0p, f10.1,a,1pe12.4)') "Contribution from ",trim(ionArray(j)%species),":",rate," at T = ",temperature, &
+              write(100,'(a,a,a,1p,e12.4,a,0p, f10.1,a,1pe12.4)') "Contribution from ", &
+                   trim(ionArray(j)%species),":",rate," at T = ",temperature, &
                    " ion frac ",thisOctal%ionFrac(subcell,j)
            endif
         endif
