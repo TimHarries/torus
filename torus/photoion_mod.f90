@@ -39,9 +39,10 @@ contains
     integer :: nIter
     real(double) :: crate
     real :: xsec, temp, e, h0, he0
-    real(double) :: luminosity1, luminosity2
+    real(double) :: luminosity1, luminosity2, luminosity3
     type(IONTYPE) :: thisIon
     real(double) :: alpha21s, alpha21p, alpha23s
+    real :: excitation, deexcitation
 
 
     lCore = 0.d0
@@ -51,7 +52,7 @@ contains
 !$MPI    if(my_rank == 0) &
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 100000
+    nMonte = 10000
     nIter = 0
 
     pops = 0.
@@ -59,11 +60,20 @@ contains
     do i = 1, 5
        temp = 5000. + 15000.*real(i-1)/4.
        write(*,*) temp
-       call solvePops(thisIon,pops, 1.d0, temp, .true.)
+       call solvePops(thisIon,pops, 100.d0, temp, .true.)
        do j = 1, thisIon%nLevels
           write(*,*) j, pops(j)
        enddo
        write(*,*) "SUM: ",SUM(pops(1:thisIon%nlevels))
+       call getCollisionalRates(thisIon, 1, temp, excitation, deexcitation)
+       write(*,*) "ratios",pops(4)/pops(1),(100.d0*excitation)/(1.96e-2+6.74e-3)
+
+       write(*,*) (pops(4)*thisIon%transition(3)%a*thisIon%transition(3)%energy + &
+            pops(4)*thisIon%transition(2)%a*thisIon%transition(2)%energy) / &
+            (pops(5)*thisIon%transition(6)%a*thisIon%transition(6)%energy),  8.3*exp(3.3e4/temp)
+       write(*,*) cspeed/(thisIon%transition(3)%energy/ergtoev/hCgs)*1.e8,thisIon%transition(3)%a
+       write(*,*) pops(4)*thisIon%transition(3)%a*thisIon%transition(3)%energy, &
+            pops(4)*thisIon%transition(2)%a*thisIon%transition(2)%energy
     enddo
        !   enddo
 !    write(*,*) "SUM: ",sum(pops(1:5))
@@ -137,7 +147,8 @@ contains
                    alphaA = alpha1 + alpha21s + alpha21p + alpha23s
                    if ( (r <= alpha1/alphaA) ) then                   
                       ! recombination to continuum (equation 26 of Lucy MC trans prob II)
-                      thisFreq = grid%ion(3)%nuThresh * (1.d0 - ((kerg*thisOctal%temperature(subcell))/(hCgs*grid%ion(3)%nuthresh)*log(r)))
+                      thisFreq = grid%ion(3)%nuThresh * &
+                           (1.d0 - ((kerg*thisOctal%temperature(subcell))/(hCgs*grid%ion(3)%nuthresh)*log(r)))
                    else if ((r > alpha1/alphaA).and.(r <= (alpha1+alpha21s)/alphaA)) then
                       !two photon continuum
                       escaped = .true.
@@ -155,9 +166,9 @@ contains
     epsOverDeltaT = (lCore) / dble(nInf)
 
     call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-    if (nIter > 5) then
+!    if (nIter > 0) then
        call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
-    endif
+!    endif
     
     call getForbiddenLineLuminosity(grid, "O I", 6300., luminosity1)
     call getForbiddenLineLuminosity(grid, "O I", 6363., luminosity2)
@@ -171,11 +182,16 @@ contains
     call getForbiddenLineLuminosity(grid, "O III", 5007., luminosity1)
     call getForbiddenLineLuminosity(grid, "O III", 4959., luminosity2)
     write(*,'(a,f12.4)') "O III (5007+4959):",(luminosity1+luminosity2)/1.e37
+    call getForbiddenLineLuminosity(grid, "O III", 4363., luminosity3)
+    write(*,'(a,f12.4)') "O III (4363):",(luminosity3)/1.e37
+
+
+    write(*,*) (luminosity1 + luminosity2)/luminosity3, 8.3*exp(3.3e4/7000.)
+
+
     call getForbiddenLineLuminosity(grid, "O III", 518145., luminosity1)
     call getForbiddenLineLuminosity(grid, "O III", 883562., luminosity2)
     write(*,'(a,f12.4)') "O III (52+88um):",(luminosity1+luminosity2)/1.e37
-    call getForbiddenLineLuminosity(grid, "O III", 4363., luminosity1)
-    write(*,'(a,f12.4)') "O III (4363):",(luminosity1)/1.e37
 
 
     call getForbiddenLineLuminosity(grid, "Ne II", 1.28e5, luminosity1)
@@ -883,6 +899,7 @@ contains
     alpha1 = 1.58d-13 * (temperature/1.d4)**(-0.53d0)  ! kenny's photo paper equation 24
   end function recombToGround
 
+  
   function HHeCooling(grid, thisOctal, subcell, nh, nHii, nHeii, ne, temperature) result (coolingRate)
     type(OCTAL) :: thisOctal
     integer :: subcell
@@ -1547,9 +1564,11 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
        fac * (thisIon%transition(iTransition)%gamma(i+1) - thisIon%transition(iTransition)%gamma(i))
 
   boltzFac =  exp(-thisIon%transition(iTransition)%energy / (kev*temperature))
+
   fac = (8.63e-6 / (thisIon%level(thisIon%transition(iTransition)%i)%g  * sqrt(temperature)) ) * thisGamma
   excitation = fac * boltzFac
-  deexcitation = fac * thisIon%level(thisIon%transition(iTransition)%j)%g / thisIon%level(thisIon%transition(iTransition)%i)%g
+  deexcitation = fac * thisIon%level(thisIon%transition(iTransition)%j)%g &
+       / thisIon%level(thisIon%transition(iTransition)%i)%g
 
 !  if (thisIon%species == "O III") then
 !     if (iTransition ==1) then

@@ -22,7 +22,7 @@ module ion_mod
      integer :: i  ! lower level
      integer :: j  ! upper level
      real(double) :: lambda ! angstrom
-     real :: energy
+     real(double) :: energy
      integer :: nGamma
      real :: gamma(4)  ! collisional gamma at T = 5000, 10000, 15000 and 20000K
      real :: t(4) ! temperatures at which gammas are defined
@@ -441,6 +441,10 @@ subroutine addTransition(thisIon,term1, term2, lambda, a, gamma1, gamma2, gamma3
   thisLam = 1.e8*cSpeed / ((thisIon%level(j)%energy - thisIon%level(i)%energy)/ergToEv/hCgs)
 
   thisIon%transition(k)%energy = (thisIon%level(j)%energy - thisIon%level(i)%energy)
+  if (thisIon%transition(k)%energy < 0.) then
+     write(*,*) "negative energy for ",thisIon%species,term1,term2
+     stop
+  endif
 
 
   if (abs(thisLam-lambda)/lambda > 0.05) then
@@ -455,7 +459,7 @@ subroutine addTransition(thisIon,term1, term2, lambda, a, gamma1, gamma2, gamma3
   
   thisIon%transition(k)%nGamma = 0
   do m = 1, 4
-     if (gamma(m) /= 0) then
+     if (gamma(m) /= 0.) then
         thisIon%transition(k)%nGamma =  thisIon%transition(k)%nGamma + 1
         thisIon%transition(k)%gamma(thisIon%transition(k)%nGamma) = gamma(m)
         thisIon%transition(k)%t(thisIon%transition(k)%nGamma) = t(m)

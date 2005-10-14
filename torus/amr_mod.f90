@@ -5558,7 +5558,7 @@ CONTAINS
     r = modulus(rVec)
 
     thisOctal%rho(subcell) = 1.e-5*mHydrogen
-    thisOctal%temperature(subcell) = 8000.
+    thisOctal%temperature(subcell) = 7000.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
