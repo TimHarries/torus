@@ -7821,6 +7821,7 @@ CONTAINS
     real(double) :: freq, dfreq, bnutot, norm
     integer :: i,j 
     real :: e, h0, he0
+    real(double) :: kappaH, kappaHe
 
     temperature = thisOctal%temperature(subcell)
 !    if (temperature < sublimationTemp) frac = 1.
@@ -7975,8 +7976,9 @@ CONTAINS
          e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
          call phfit2(1, 1, 1 , e , h0)
          call phfit2(2, 2, 1 , e , he0)
-         kappaAbs = kappaabs + thisOctal%nh(subcell)*(grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0) &
-              + (grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0)
+         kappaH =  thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0
+         kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0
+         kappaAbs =kappaH + kappaHe
       endif
       if (PRESENT(kappaSca)) then
          kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10

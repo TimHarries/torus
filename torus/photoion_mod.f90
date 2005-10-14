@@ -33,14 +33,16 @@ contains
     integer :: ilam
     integer :: nInf
     real(double) :: kappaScadb, kappaAbsdb
-    real(double) :: epsOverDeltaT
+    real(double) :: epsOverDeltaT, kappaH, kappaHe
     real :: dummy(3)
     real :: pops(10)
     integer :: nIter
     real(double) :: crate
-    real :: xsec, temp
+    real :: xsec, temp, e, h0, he0
     real(double) :: luminosity1, luminosity2
     type(IONTYPE) :: thisIon
+    real(double) :: alpha21s, alpha21p, alpha23s
+
 
     lCore = 0.d0
     do i = 1, nSource
@@ -49,7 +51,7 @@ contains
 !$MPI    if(my_rank == 0) &
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 10000
+    nMonte = 100000
     nIter = 0
 
     pops = 0.
@@ -57,7 +59,7 @@ contains
     do i = 1, 5
        temp = 5000. + 15000.*real(i-1)/4.
        write(*,*) temp
-       call solvePops(thisIon,pops, 100.d0, temp)
+       call solvePops(thisIon,pops, 1.d0, temp, .true.)
        do j = 1, thisIon%nLevels
           write(*,*) j, pops(j)
        enddo
@@ -102,18 +104,49 @@ contains
                 octVec = rVec 
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
                      lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
-
-                ! recombination to continuum (equation 26 of Lucy MC trans prob II)
-
-                alphaA = hRecombination(thisOctal%temperature(subcell))
-                alpha1 = recombToGround(thisOctal%temperature(subcell))
+                e = (hCgs * thisFreq)*ergtoev
+                call phfit2(1, 1, 1 , e , h0)
+                call phfit2(2, 2, 1 , e , he0)
+                kappaH =  thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0
+                kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0
                 call random_number(r)
 
-                if (r < (alpha1 / alphaA)) then                
+                if (r < (kappaH/(kappaH + kappaHe))) then
+
+                  ! photon absorbed by H
+
+                   alphaA = hRecombination(thisOctal%temperature(subcell))
+                   alpha1 = recombToGround(thisOctal%temperature(subcell))
                    call random_number(r)
-                   thisFreq = nuHydrogen * (1.d0 - ((kerg*thisOctal%temperature(subcell))/(hCgs*nuHydrogen)*log(r)))
+
+
+
+                   if (r < (alpha1 / alphaA)) then                
+                      ! recombination to continuum (equation 26 of Lucy MC trans prob II)
+                      call random_number(r)
+                      thisFreq = nuHydrogen * (1.d0 - ((kerg*thisOctal%temperature(subcell))/(hCgs*nuHydrogen)*log(r)))
+                   else
+                      escaped = .true.
+                   endif
                 else
-                   escaped = .true.
+                  ! photon absorbed by He
+
+
+                   call calcHeRecombs(thisOctal%temperature(subcell), alpha1, alpha21s, alpha21p, alpha23s)
+                   call random_number(r)
+                   alphaA = alpha1 + alpha21s + alpha21p + alpha23s
+                   if ( (r <= alpha1/alphaA) ) then                   
+                      ! recombination to continuum (equation 26 of Lucy MC trans prob II)
+                      thisFreq = grid%ion(3)%nuThresh * (1.d0 - ((kerg*thisOctal%temperature(subcell))/(hCgs*grid%ion(3)%nuthresh)*log(r)))
+                   else if ((r > alpha1/alphaA).and.(r <= (alpha1+alpha21s)/alphaA)) then
+                      !two photon continuum
+                      escaped = .true.
+                   else if ( (r > (alpha1+alpha21s/alphaA)).and.(r <= (alpha1+alpha21s+alpha23s)/alphaA)) then
+                      ! ly alpha
+                      thisFreq = (21.2 / ergtoev)/hcgs
+                   else 
+                      thisFreq = (19.2 /ergtoev)/hcgs
+                   endif
                 endif
              endif
           enddo
@@ -122,27 +155,57 @@ contains
     epsOverDeltaT = (lCore) / dble(nInf)
 
     call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-    if (nIter > 2) then
+    if (nIter > 5) then
        call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
     endif
     
     call getForbiddenLineLuminosity(grid, "O I", 6300., luminosity1)
     call getForbiddenLineLuminosity(grid, "O I", 6363., luminosity2)
-    write(*,'(a,f12.2)') "O I (6300+6363):",(luminosity1+luminosity2)/1.e36
+    write(*,'(a,f12.4)') "O I (6300+6363):",(luminosity1+luminosity2)/1.e37
     call getForbiddenLineLuminosity(grid, "O II", 7320., luminosity1)
     call getForbiddenLineLuminosity(grid, "O II", 7330., luminosity2)
-    write(*,'(a,f12.2)') "O II (7320+7330):",(luminosity1+luminosity2)/1.e36
+    write(*,'(a,f12.4)') "O II (7320+7330):",(luminosity1+luminosity2)/1.e37
     call getForbiddenLineLuminosity(grid, "O II", 3726., luminosity1)
     call getForbiddenLineLuminosity(grid, "O II", 3729., luminosity2)
-    write(*,'(a,f12.2)') "O II (3726+3729):",(luminosity1+luminosity2)/1.e36
+    write(*,'(a,f12.4)') "O II (3726+3729):",(luminosity1+luminosity2)/1.e37
     call getForbiddenLineLuminosity(grid, "O III", 5007., luminosity1)
     call getForbiddenLineLuminosity(grid, "O III", 4959., luminosity2)
-    write(*,'(a,f12.2)') "O III (5007+4959):",(luminosity1+luminosity2)/1.e36
+    write(*,'(a,f12.4)') "O III (5007+4959):",(luminosity1+luminosity2)/1.e37
     call getForbiddenLineLuminosity(grid, "O III", 518145., luminosity1)
     call getForbiddenLineLuminosity(grid, "O III", 883562., luminosity2)
-    write(*,'(a,f12.2)') "O III (52+88um):",(luminosity1+luminosity2)/1.e36
+    write(*,'(a,f12.4)') "O III (52+88um):",(luminosity1+luminosity2)/1.e37
     call getForbiddenLineLuminosity(grid, "O III", 4363., luminosity1)
-    write(*,'(a,f12.2)') "O III (4363):",(luminosity1)/1.e36
+    write(*,'(a,f12.4)') "O III (4363):",(luminosity1)/1.e37
+
+
+    call getForbiddenLineLuminosity(grid, "Ne II", 1.28e5, luminosity1)
+    write(*,'(a,f12.4)') "Ne II (12.8um):",(luminosity1)/1.e37
+
+    call getForbiddenLineLuminosity(grid, "Ne III", 1.56e5, luminosity1)
+    write(*,'(a,f12.4)') "Ne III (15.5um):",(luminosity1)/1.e37
+
+    call getForbiddenLineLuminosity(grid, "Ne III", 3869., luminosity1)
+    call getForbiddenLineLuminosity(grid, "Ne III", 3968., luminosity2)
+    write(*,'(a,f12.4)') "Ne III (3869+3968):",(luminosity1+luminosity2)/1.e37
+
+
+    call getForbiddenLineLuminosity(grid, "S II", 6716., luminosity1)
+    call getForbiddenLineLuminosity(grid, "S II", 6731., luminosity2)
+    write(*,'(a,f12.4)') "S II (6716+6731):",(luminosity1+luminosity2)/1.e37
+
+    call getForbiddenLineLuminosity(grid, "S II", 4068., luminosity1)
+    call getForbiddenLineLuminosity(grid, "S II", 4076., luminosity2)
+    write(*,'(a,f12.4)') "S II (4068+4076):",(luminosity1+luminosity2)/1.e37
+
+
+    call getForbiddenLineLuminosity(grid, "S III", 1.87e5, luminosity1)
+    write(*,'(a,f12.4)') "S III (18.7um):",(luminosity1)/1.e37
+
+    call getForbiddenLineLuminosity(grid, "S III", 9532., luminosity1)
+    call getForbiddenLineLuminosity(grid, "S III", 9069., luminosity2)
+    write(*,'(a,f12.4)') "S III (4068+4076):",(luminosity1+luminosity2)/1.e37
+
+
 
  enddo
 
@@ -724,7 +787,7 @@ contains
                 else
                    converged = .false.
                    t1 = 100.
-                   t2 = 1.e5
+                   t2 = 100000.
 
                    y1 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1) - totalHeating)
                    y2 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2) - totalHeating)
@@ -754,7 +817,6 @@ contains
 !                      do i = 1, 1000
 !                         tm = real(i-1)/999.*(t2-t1)+t1
 !                         write(99,*) tm,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), tm),totalHeating
-!                         stop
 !                      enddo
 !                      stop
 
@@ -849,6 +911,10 @@ contains
 
     coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
 
+    if (coolingRate < 0.) then
+       write(*,*) "negative ff cooling",nhii,nheii,ne,gff,sqrt(temperature)
+    endif
+
     thisLogT = log10(temperature)
     call locate(logT, 31, thisLogT, n)
     fac = (thisLogT - logT(n))/(logT(n+1)-logT(n))
@@ -867,10 +933,20 @@ contains
 
     coolingRate = coolingRate + ne * nhii * kerg * temperature * betaH
 
+    if (ne * nhii * kerg * temperature * betaH < 0.) then
+       write(*,*) "negative H cooling",ne,nhii,kerg,temperature,betah
+    endif
 
     coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
 
+    if (ne * nheii * kerg * temperature * betaHe < 0.) then
+       write(*,*) "negative He cooling",ne,nheii,kerg,temperature,betaHe
+    endif
+
     call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate)
+    if (crate < 0.) then
+       write(*,*) "total negative metal cooling",crate
+    endif
     coolingRate = coolingRate + crate
 
 
@@ -1062,7 +1138,7 @@ function recombRate(thisIon, temperature) result (rate)
         select case(thisIon%n)
            case(6) ! C I 
               a = 0.0108
-              b = -1.075
+              b = -0.1075
               c = 0.2810
               d = -0.0193
               f = -0.1127
@@ -1147,12 +1223,20 @@ function recombRate(thisIon, temperature) result (rate)
      case(8)
         select case(thisIon%n)
            case(8) ! O I 
-              a = 0.0
-              b = 0.0238
-              c = 0.0659
-              d = 0.0349
-              f = 0.5334
               t = temperature / 10000.
+              if (t < 2.) then
+                 a = -0.0001
+                 b = 0.0001
+                 c = 0.0956
+                 d = 0.0193
+                 f = 0.4106
+              else
+                 a = 0.3715
+                 b = -0.0293
+                 c = -0.0597
+                 d = 0.0678
+                 f = 0.7993
+              endif
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
            case(7) ! O II
               a = -0.0036
@@ -1171,12 +1255,20 @@ function recombRate(thisIon, temperature) result (rate)
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
            case(5) ! O IV
-              a = 0.00061
-              b = 0.2269
-              c = 32.1419
-              d = 1.9939
-              f = -0.0646
               t = temperature / 10000.
+              if (t < 2.) then
+                 a = -0.3648
+                 b =  7.2698
+                 c =  17.2187
+                 d =  9.8335
+                 f = -0.0166
+              else
+                 a = -2.5053
+                 b = 3.4903
+                 c = 67.4128
+                 d = -3.4450
+                 f = 0.8501
+              endif
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
            case(4) ! O V
               a = -2.8425
@@ -1457,7 +1549,13 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
   boltzFac =  exp(-thisIon%transition(iTransition)%energy / (kev*temperature))
   fac = (8.63e-6 / (thisIon%level(thisIon%transition(iTransition)%i)%g  * sqrt(temperature)) ) * thisGamma
   excitation = fac * boltzFac
-  deexcitation = fac * thisIon%level(thisIon%transition(iTransition)%j)%g / thisIon%level(thisIon%transition(iTransition)%i)%g 
+  deexcitation = fac * thisIon%level(thisIon%transition(iTransition)%j)%g / thisIon%level(thisIon%transition(iTransition)%i)%g
+
+!  if (thisIon%species == "O III") then
+!     if (iTransition ==1) then
+!        write(*,*) thisGamma, boltzFac, fac, excitation, deexcitation
+!     endif
+!  endif
 
 
 end subroutine getCollisionalRates
@@ -1506,27 +1604,20 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
              end if
           end do
        else
+          rVec = subcellCentre(thisOctal,subcell)
           if (thisOctal%threed) then
              v = thisOctal%subcellSize**3
           else
-             rVec = subcellCentre(thisOctal,subcell)
              r1 = rVec%x-thisOctal%subcellSize/2.d0
              r2 = rVec%x+thisOctal%subcellSize/2.d0
              v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
           endif
-        call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
-        rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
-             grid%ion(iion)%transition(itrans)%a/ergtoev
-        rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
-!        if (grid%ion(iion)%species=="O III") then
-!           write(*,'(12e12.3)') pops(grid%ion(iion)%transition(iTrans)%j),grid%ion(iion)%transition(itrans)%energy/ergtoev, &
-!             grid%ion(iion)%transition(itrans)%a, grid%ion(iion)%abundance, thisOctal%nh(subcell), &
-!             thisOctal%ionFrac(subcell, iion),rate
-!        endif
-
-
-        luminosity = luminosity + rate * v * 1.d30
-
+          call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell))
+          rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
+               grid%ion(iion)%transition(itrans)%a/ergtoev
+          rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
+          luminosity = luminosity + rate * v * 1.d30
+          
        endif
     enddo
   end subroutine sumLineLuminosity
@@ -1552,11 +1643,16 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
            rate = rate + pops(ionArray(j)%transition(i)%j)*ionArray(j)%transition(i)%energy*ionArray(j)%transition(i)%a/ergtoev
         enddo
         rate = rate * ionArray(j)%abundance * nh * thisOctal%ionFrac(subcell, j)
+        if (rate < 0.) then
+           write(100,'(a,a,a,1p,e12.4,a,0p, f10.1,a,1pe12.4)') "Negative contribution from ", &
+                trim(ionArray(j)%species),":",rate," at T = ",temperature, &
+                " ion frac ",thisOctal%ionFrac(subcell,j)
+        endif
         if (present(debug)) then
            if (debug) then
-              write(100,'(a,a,a,1p,e12.4,a,0p, f10.1,a,1pe12.4)') "Contribution from ", &
-                   trim(ionArray(j)%species),":",rate," at T = ",temperature, &
-                   " ion frac ",thisOctal%ionFrac(subcell,j)
+                 write(100,'(a,a,a,1p,e12.4,a,0p, f10.1,a,1pe12.4)') "Contribution from ", &
+                      trim(ionArray(j)%species),":",rate," at T = ",temperature, &
+                      " ion frac ",thisOctal%ionFrac(subcell,j)
            endif
         endif
      total = total + rate
@@ -1565,7 +1661,7 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
 end subroutine metalcoolingRate
   
 
-subroutine solvePops(thisIon, pops, ne, temperature)
+subroutine solvePops(thisIon, pops, ne, temperature, debug)
   type(IONTYPE) :: thisIon
   real(double) :: ne
   real :: pops(*)
@@ -1574,6 +1670,7 @@ subroutine solvePops(thisIon, pops, ne, temperature)
   integer :: n, iTrans, i, j
   real :: excitation, deexcitation, rateij, rateji
   logical :: ok
+  logical, optional :: debug
 
   n = thisIon%nLevels
   allocate(matrixA(1:n+1, 1:n+1), matrixB(1:n+1, 1), tempMatrix(1:n+1,1:n+1))
@@ -1584,9 +1681,12 @@ subroutine solvePops(thisIon, pops, ne, temperature)
      i = thisIon%transition(iTrans)%i
      j = thisIon%transition(iTrans)%j
      call getCollisionalRates(thisIon, iTrans, temperature, excitation, deexcitation)
-     rateij = max(1.e-30,excitation * ne)
+     rateij = max(1.e-40,excitation * ne)
      rateji = max(1.e-30,deexcitation * ne + thisIon%transition(iTrans)%a)
 
+     if (PRESENT(debug)) then
+        if (debug) write(*,*) i, j, rateij, rateji
+     endif
 
      matrixA(i,i) = matrixA(i,i)-rateij
 
@@ -1609,6 +1709,15 @@ subroutine solvePops(thisIon, pops, ne, temperature)
 !  enddo
 
   tempMatrix = matrixA
+
+  if (PRESENT(debug)) then
+     if (debug) then
+        do i = 1, n+1
+           write(*,'(1p,9e12.3)') tempmatrix(i,1:n)
+        enddo
+     endif
+  endif
+
   call gaussj(matrixA, n+1, n+1, matrixB, 1, 1, ok)
   if (.not.ok) then
      write(*,*) "Population solver failed for: ",thisIon%species
@@ -1627,5 +1736,19 @@ subroutine solvePops(thisIon, pops, ne, temperature)
 
 end subroutine solvePops
 
+subroutine calcHeRecombs(te, alpha1, alpha21s, alpha21p, alpha23s)
+  real :: te, t
+  real(double) :: alpha1, alpha21s, alpha21p, alpha23s
+
+  t = te / 1.e4
+
+  alpha1 = 1.54e-13 * t**(-0.486)
+
+  alpha21s = 2.06e-14 * t**(-0.676)
+
+  alpha21p = 4.17e-14 * t**(-0.861)
+  
+  alpha23s = 2.10e-13 * t**(-0.778)
+end subroutine calcHeRecombs
 end module
 
