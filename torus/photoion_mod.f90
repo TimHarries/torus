@@ -61,41 +61,12 @@ contains
     do i = 1, nSource
        lCore = lCore + source(i)%luminosity
     enddo
-!$MPI    if(my_rank == 0) &
+
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 200000
+    nMonte = 100000
     nIter = 0
 
-    pops = 0.
-    thisIon = grid%ion(returnIonNumber("O III", grid%ion, grid%nIon))
-    do i = 1, 5
-       temp = 5000. + 15000.*real(i-1)/4.
-       write(*,*) temp
-       call solvePops(thisIon,pops, 100.d0, temp, .true.)
-       do j = 1, thisIon%nLevels
-          write(*,*) j, pops(j)
-       enddo
-       write(*,*) "SUM: ",SUM(pops(1:thisIon%nlevels))
-       call getCollisionalRates(thisIon, 1, temp, excitation, deexcitation)
-       write(*,*) "ratios",pops(4)/pops(1),(100.d0*excitation)/(1.96e-2+6.74e-3)
-
-       write(*,*) (pops(4)*thisIon%transition(3)%a*thisIon%transition(3)%energy + &
-            pops(4)*thisIon%transition(2)%a*thisIon%transition(2)%energy) / &
-            (pops(5)*thisIon%transition(6)%a*thisIon%transition(6)%energy),  8.3*exp(3.3e4/temp)
-       write(*,*) cspeed/(thisIon%transition(3)%energy/ergtoev/hCgs)*1.e8,thisIon%transition(3)%a
-       write(*,*) pops(4)*thisIon%transition(3)%a*thisIon%transition(3)%energy, &
-            pops(4)*thisIon%transition(2)%a*thisIon%transition(2)%energy
-
-       call getCollisionalRates(thisIon, 1, temp, excitation, deexcitation)
-       call getCollisionalRates(thisIon, 1, temp, excitation, deexcitation)
-
-
-    enddo
-       !   enddo
-!    write(*,*) "SUM: ",sum(pops(1:5))
-!    call coolingRate(grid%ion(returnIonNumber("N I", grid%ion, grid%nIon)), 100.d0, 100.d0, 10000., crate)
-!    write(*,*) "cooling rate:",crate
     do 
        nIter = nIter + 1
        call zeroDistanceGrid(grid%octreeRoot)
@@ -117,11 +88,7 @@ contains
        call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
        escaped = .false.
        call getWavelength(thisSource%spectrum, wavelength)
-!       if (wavelength < 912.) then
-!          photonPacketWeight = 0.1d0
-!       else
           photonPacketWeight = 1.d0
-!       endif
        thisFreq = cSpeed/(wavelength / 1.e8)
 
           do while(.not.escaped)
@@ -156,8 +123,8 @@ contains
                    if (r < (alpha1 / alphaA)) then                
                       ! recombination to continuum (equation 26 of Lucy MC trans prob II)
                       call random_number(r)
-!                      thisFreq = nuHydrogen * (1.d0 - ((kerg*thisOctal%temperature(subcell))/(hCgs*nuHydrogen)*log(r)))
                       call getSahaMilneFreq(htable, dble(thisOctal%temperature(subcell)), thisFreq)
+                      uHat =  randomUnitVector()
                    else
                       escaped = .true.
                    endif
@@ -171,16 +138,17 @@ contains
                    if ( (r <= alpha1/alphaA) ) then                   
                       ! recombination to continuum (equation 26 of Lucy MC trans prob II)
                       call getSahaMilneFreq(hetable, dble(thisOctal%temperature(subcell)), thisFreq)
-!                      thisFreq = grid%ion(3)%nuThresh * &
-!                           (1.d0 - ((kerg*thisOctal%temperature(subcell))/(hCgs*grid%ion(3)%nuthresh)*log(r)))
+                      uHat = randomUnitVector()
                    else if ((r > alpha1/alphaA).and.(r <= (alpha1+alpha21s)/alphaA)) then
                       !two photon continuum
                       escaped = .true.
                    else if ( (r > (alpha1+alpha21s/alphaA)).and.(r <= (alpha1+alpha21s+alpha23s)/alphaA)) then
                       ! ly alpha
                       thisFreq = (21.2 / ergtoev)/hcgs
+                      uHat = randomUnitVector()
                    else 
                       thisFreq = (19.2 /ergtoev)/hcgs
+                      uHat =  randomUnitVector()
                    endif
                 endif
              endif
@@ -189,22 +157,22 @@ contains
        end do
     epsOverDeltaT = (lCore) / dble(nInf)
 
+    write(*,*) "Calculating ionization and thermal equilibria"
     call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-!    if (nIter > 3) then
-       call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
-!    endif
+    call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+    write(*,*) "Done."
 
     fac = 2.06e37
 
-!    call getForbiddenLineLuminosity(grid, "N II", 1.22e6, luminosity1)
-!    write(*,'(a,f12.4)') "N II (122 um):",(luminosity1+luminosity2)/fac
-!
-!    call getForbiddenLineLuminosity(grid, "N II", 6584., luminosity1)
-!    call getForbiddenLineLuminosity(grid, "N II", 6548., luminosity2)
-!    write(*,'(a,f12.4)') "N II (6584+6548):",(luminosity1+luminosity2)/fac
-!
-!    call getForbiddenLineLuminosity(grid, "N III", 5.73e5, luminosity1)
-!    write(*,'(a,f12.4)') "N III (57.3 um):",(luminosity1+luminosity2)/fac
+    call getForbiddenLineLuminosity(grid, "N II", 1.22e6, luminosity1)
+    write(*,'(a,f12.4)') "N II (122 um):",(luminosity1+luminosity2)/fac
+
+    call getForbiddenLineLuminosity(grid, "N II", 6584., luminosity1)
+    call getForbiddenLineLuminosity(grid, "N II", 6548., luminosity2)
+    write(*,'(a,f12.4)') "N II (6584+6548):",(luminosity1+luminosity2)/fac
+
+    call getForbiddenLineLuminosity(grid, "N III", 5.73e5, luminosity1)
+    write(*,'(a,f12.4)') "N III (57.3 um):",(luminosity1+luminosity2)/fac
 
     
     call getForbiddenLineLuminosity(grid, "O I", 6300., luminosity1)
@@ -227,31 +195,31 @@ contains
     write(*,'(a,f12.4)') "O III (52+88um):",(luminosity1+luminosity2)/fac
 
 
-!    call getForbiddenLineLuminosity(grid, "Ne II", 1.28e5, luminosity1)
-!    write(*,'(a,f12.4)') "Ne II (12.8um):",(luminosity1)/fac
-!
-!    call getForbiddenLineLuminosity(grid, "Ne III", 1.56e5, luminosity1)
-!    write(*,'(a,f12.4)') "Ne III (15.5um):",(luminosity1)/fac
-!
-!    call getForbiddenLineLuminosity(grid, "Ne III", 3869., luminosity1)
-!    call getForbiddenLineLuminosity(grid, "Ne III", 3968., luminosity2)
-!    write(*,'(a,f12.4)') "Ne III (3869+3968):",(luminosity1+luminosity2)/fac
-!
-!
-!    call getForbiddenLineLuminosity(grid, "S II", 6716., luminosity1)
-!    call getForbiddenLineLuminosity(grid, "S II", 6731., luminosity2)
-!    write(*,'(a,f12.4)') "S II (6716+6731):",(luminosity1+luminosity2)/fac
-!
-!    call getForbiddenLineLuminosity(grid, "S II", 4068., luminosity1)
-!    call getForbiddenLineLuminosity(grid, "S II", 4076., luminosity2)
-!    write(*,'(a,f12.4)') "S II (4068+4076):",(luminosity1+luminosity2)/fac
-!
-!    call getForbiddenLineLuminosity(grid, "S III", 1.87e5, luminosity1)
-!    write(*,'(a,f12.4)') "S III (18.7um):",(luminosity1)/fac
-! 
-!    call getForbiddenLineLuminosity(grid, "S III", 9532., luminosity1)
-!    call getForbiddenLineLuminosity(grid, "S III", 9069., luminosity2)
-!    write(*,'(a,f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac
+    call getForbiddenLineLuminosity(grid, "Ne II", 1.28e5, luminosity1)
+    write(*,'(a,f12.4)') "Ne II (12.8um):",(luminosity1)/fac
+
+    call getForbiddenLineLuminosity(grid, "Ne III", 1.56e5, luminosity1)
+    write(*,'(a,f12.4)') "Ne III (15.5um):",(luminosity1)/fac
+
+    call getForbiddenLineLuminosity(grid, "Ne III", 3869., luminosity1)
+    call getForbiddenLineLuminosity(grid, "Ne III", 3968., luminosity2)
+    write(*,'(a,f12.4)') "Ne III (3869+3968):",(luminosity1+luminosity2)/fac
+
+
+    call getForbiddenLineLuminosity(grid, "S II", 6716., luminosity1)
+    call getForbiddenLineLuminosity(grid, "S II", 6731., luminosity2)
+    write(*,'(a,f12.4)') "S II (6716+6731):",(luminosity1+luminosity2)/fac
+
+    call getForbiddenLineLuminosity(grid, "S II", 4068., luminosity1)
+    call getForbiddenLineLuminosity(grid, "S II", 4076., luminosity2)
+    write(*,'(a,f12.4)') "S II (4068+4076):",(luminosity1+luminosity2)/fac
+
+    call getForbiddenLineLuminosity(grid, "S III", 1.87e5, luminosity1)
+    write(*,'(a,f12.4)') "S III (18.7um):",(luminosity1)/fac
+ 
+    call getForbiddenLineLuminosity(grid, "S III", 9532., luminosity1)
+    call getForbiddenLineLuminosity(grid, "S III", 9069., luminosity2)
+    write(*,'(a,f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac
 
 
 
@@ -1867,8 +1835,6 @@ subroutine createSahaMilneTables(hTable, heTable)
      hTable%Clyc(i,1:hTable%nFreq) = hTable%Clyc(i,1:hTable%nFreq) / hTable%Clyc(i,hTable%nFreq)
      heTable%Clyc(i,1:heTable%nFreq) = heTable%Clyc(i,1:heTable%nFreq) / hTable%Clyc(i,heTable%nFreq)
   end do
-  write(*,*) htable%freq(1:hTable%nfreq)
-  write(*,*) htable%clyc(1,1:hTable%nfreq)
 end subroutine createSahaMilneTables
 
 subroutine getSahaMilneFreq(table,temperature, thisFreq)

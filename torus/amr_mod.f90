@@ -3713,12 +3713,16 @@ CONTAINS
          end if
       end if
 
-   case ("testamr","proto","wrshell", "lexington")
+   case("lexington")
+      if (thisOctal%nDepth < 7) split = .true.
+
+      
+   case ("testamr","proto","wrshell")
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       split = .FALSE.
       nr1 = 5
-      nr2 = 100
+      nr2 = 50
       rGrid(1) = 1.
       rGrid(2) = 1.04
       rGrid(3) = 1.08
