@@ -36,11 +36,12 @@ module spectrum_mod
     end subroutine getWavelength
 
 
-    subroutine fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda)
+    subroutine fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda, biasToLyman)
 
       type(SPECTRUMTYPE) :: spectrum
       integer :: nLambda
       real(double) :: lamStart, lamEnd, teff
+      logical, optional :: biasToLyman
       real(double) :: logLamStart, logLamEnd
       integer :: i
 
@@ -68,7 +69,7 @@ module spectrum_mod
       spectrum%nLambda = nLambda
       where(spectrum%flux(1:spectrum%nLambda) == 0.d0) spectrum%flux = 1.e-30
 
-      call probSpectrum(spectrum)
+      call probSpectrum(spectrum, biasToLyman)
     end subroutine fillSpectrumBB
 
     subroutine readSpectrum(spectrum, filename)
@@ -101,12 +102,24 @@ module spectrum_mod
       call probSpectrum(spectrum)
     end subroutine readSpectrum
 
-    subroutine probSpectrum(spectrum)
+    subroutine probSpectrum(spectrum, biasToLyman)
       type(SPECTRUMTYPE) :: spectrum
+      logical, optional :: biasToLyman
+      real(double) :: fac
       integer :: i
       spectrum%prob = 0.d0
       do i = 2, spectrum%nLambda
-         spectrum%prob(i) = spectrum%prob(i-1) + spectrum%flux(i) * spectrum%dLambda(i)
+         fac = 1.d0
+         if (present(biasToLyman)) then
+            if (biasToLyman) then
+               if (spectrum%lambda(i) < 912.) then
+                  fac = 10.d0
+               else
+                  fac = 1.d0
+               endif
+            endif
+         endif
+         spectrum%prob(i) = spectrum%prob(i-1) + spectrum%flux(i) * spectrum%dLambda(i) * fac
       enddo
       spectrum%prob(1:spectrum%nLambda) = spectrum%prob(1:spectrum%nLambda) / spectrum%prob(spectrum%nLambda)
     end subroutine probSpectrum

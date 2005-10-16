@@ -584,7 +584,7 @@ contains
 
     case("lexington")
        grid%rInner = 30.e7
-       grid%rOuter = 1.47e30
+       grid%rOuter = 2.e09
        grid%oneKappa = .true.
        oneKappa = .true.
 

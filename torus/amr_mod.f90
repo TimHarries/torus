@@ -3718,7 +3718,7 @@ CONTAINS
       cellCentre = subcellCentre(thisOctal,subCell)
       split = .FALSE.
       nr1 = 5
-      nr2 = 50
+      nr2 = 100
       rGrid(1) = 1.
       rGrid(2) = 1.04
       rGrid(3) = 1.08
@@ -3730,7 +3730,7 @@ CONTAINS
 !         rgrid(i) = log10(grid%rInner)+dble(i-1)*(log10(4.*grid%rInner)-log10(grid%rInner))/dble(nr1-1)
 !      end do
       do i = 1, nr2
-         rgrid(nr1+i) = log10(1.2*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.2*grid%rInner))/dble(nr2)
+         rgrid(nr1+i) = log10(1.1*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.1*grid%rInner))/dble(nr2)
       end do
       rgrid(1:nr) = 10.d0**rgrid(1:nr)
       r = modulus(cellcentre)

@@ -1110,7 +1110,7 @@ program torus
               if (writeoutput) write(*,*) "Smoothing adaptive grid structure..."
               gridConverged = .false.
               do
-                 call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops=.false., interpProps=.true.)
+                 call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops=.false., interpProps=.false.)
                  if (gridConverged) exit
               end do
               if (writeoutput) write(*,*) "...grid smoothing complete"
@@ -1926,11 +1926,11 @@ program torus
        nSource = 1
        allocate(source(1:nSource)) 
        source(1)%teff = 40000.  ! o star
-       source(1)%radius = 18.5 * rSol / 1.e10
+       source(1)%radius = 18.51 * rSol / 1.e10
        source(1)%position = VECTOR(0.,0.,0.)
        source(1)%luminosity = fourPi * stefanBoltz * (18.51*rSol)**2.0 * (source(1)%teff)**4
        write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
-       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff),  10.d0, 10.d4,10000)
+       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff),  100.d0, 10.d4,10000)
        call normalizedSpectrum(source(1)%spectrum)
 
 
