@@ -3154,7 +3154,7 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
         ok = .false.
         goto 666
      endif
-     PIVINV=1./A(ICOL,ICOL)
+     PIVINV=1.d0/A(ICOL,ICOL)
      A(ICOL,ICOL)=1.d0
      DO L=1,N
         A(ICOL,L)=A(ICOL,L)*PIVINV

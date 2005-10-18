@@ -64,7 +64,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 200000
+    nMonte = 100000
     nIter = 0
 
     do 
@@ -974,9 +974,10 @@ contains
 
     do i = 1, grid%nIon
        call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
-
-       thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
-            + distance * dble(xsec / (hCgs * thisFreq)) * photonPacketWeight
+       if (xSec > 0.) then
+          thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
+               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
+       endif
 
        ! neutral H heating
 
@@ -1055,8 +1056,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
              chargeExchangeIonization)
 
 
-        matrixA(i, i) = grid%ion(iIon)%abundance * thisOctal%nh(subcell)  * &
-             ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)! equation 44 Lucy MC II
+        matrixA(i, i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)! equation 44 Lucy MC II
         matrixA(i, i) = max(1.d-60, matrixA(i, i))
 
 !        write(*,*) "ionizationStage",i
@@ -1065,9 +1065,8 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
 !                "exchange", chargeExchangeIonization
 !        endif
 
-        matrixA(i, i+1) = -grid%ion(iIon+1)%abundance * thisOctal%nh(subcell) * &
-             (recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination)
-        matrixA(i, i+1) = min(-1.d-30, matrixA(i, i+1))
+        matrixA(i, i+1) = -(recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination)
+        matrixA(i, i+1) = min(-1.d-50, matrixA(i, i+1))
 
 !        if (grid%ion(iion)%species(1:1) == "O") then
 !           write(*,*) "Recomb of O: photo:",recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell), &
@@ -1079,6 +1078,14 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
      do i = 1, nIonizationStages
         matrixA(nIonizationStages,i) = 1.d0
      enddo
+
+!     if (grid%ion(iion)%species(1:1) == "O") then
+!        do i = 1, nIonizationStages
+!           write(*,'(1p,9e12.3)') matrixA(i,1:nIonizationStages)
+!        enddo
+!     endif
+     
+
      matrixB = 0.d0
      matrixB (nIonizationStages,1) = 1.d0
 
@@ -1259,7 +1266,7 @@ function recombRate(thisIon, temperature) result (rate)
               a = 0.0
               b = 21.8790
               c = 16.2730
-              d = -0.8020
+              d = -0.7020
               f = 1.1899
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)

@@ -3714,7 +3714,7 @@ CONTAINS
       end if
 
    case("lexington")
-      if (thisOctal%nDepth < 7) split = .true.
+      if (thisOctal%nDepth < 6) split = .true.
       write(*,*) thisOctal%ndepth, split
       
    case ("testamr","proto","wrshell")
