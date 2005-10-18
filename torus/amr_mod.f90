@@ -5557,12 +5557,29 @@ CONTAINS
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r
     TYPE(octalVector) :: rVec
-    
+    integer, parameter :: it=177
+    real :: fac
+    real,save :: radius(it),temp(it)
+    integer :: i
+    logical,save :: firsttime = .true.
+
+    if (firsttime) then
+       open(20,file="/home/th/photoion/overview.txt", form="formatted",status="old")
+       do i = 1, it
+          read(20,*) radius(i),temp(i)
+          radius(i) = (radius(i)+30.e17) / 1.e10
+          temp(i) = 10.**temp(i) 
+       enddo
+       close(20)
+       firsttime = .false.
+    endif
+
+
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
 
-    thisOctal%rho(subcell) = 1.e-5*mHydrogen
-    thisOctal%temperature(subcell) = 7000.
+    thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
+    thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
@@ -5581,9 +5598,14 @@ CONTAINS
        thisOctal%ionFrac(subcell,1) = 1.e-10
        thisOctal%ionFrac(subcell,2) = 1.
        thisOctal%ionFrac(subcell,3) = 1.e-10
-       thisOctal%ionFrac(subcell,4) = 1.
-
+       thisOctal%ionFrac(subcell,4) = 1.       
        thisOctal%etaCont(subcell) = 0.
+       if ((r > radius(1)).and.(r < radius(it))) then
+          call locate(radius, it, r, i)
+          fac = (r-radius(i))/(radius(i+1)-radius(i))
+          thisOctal%temperature(subcell) = temp(i) + fac * (temp(i+1)-temp(i))
+       endif
+
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.

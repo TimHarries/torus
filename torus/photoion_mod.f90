@@ -64,16 +64,16 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 1000000
+    nMonte = 200000
     nIter = 0
 
     do 
        nIter = nIter + 1
        call zeroDistanceGrid(grid%octreeRoot)
        nInf=0
-    call plot_AMR_values(grid, "ionization", "x-z", 0., &
-         "ionization.ps/vcps", .true., .false., &
-         0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+       call plot_AMR_values(grid, "ionization", "x-z", 0., &
+            "ionization.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             "lucy_temp_xz.ps/vcps", .true., .false., &
@@ -81,15 +81,15 @@ contains
        call dumpLexington(grid)
 
        write(*,*) "Running loop with ",nmonte," photons."
-    do iMonte = 1, nMonte
+       do iMonte = 1, nMonte
 
-       call randomSource(source, nSource, iSource)
-       thisSource = source(iSource)
-       call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
-       escaped = .false.
-       call getWavelength(thisSource%spectrum, wavelength)
+          call randomSource(source, nSource, iSource)
+          thisSource = source(iSource)
+          call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
+          escaped = .false.
+          call getWavelength(thisSource%spectrum, wavelength)
           photonPacketWeight = 1.d0
-       thisFreq = cSpeed/(wavelength / 1.e8)
+          thisFreq = cSpeed/(wavelength / 1.e8)
 
           do while(.not.escaped)
 
@@ -97,7 +97,7 @@ contains
 
              if (.not. escaped) then
 
-                
+
                 thisLam = (cSpeed / thisFreq) * 1.e8
                 call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
@@ -110,26 +110,25 @@ contains
                 kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0
                 call random_number(r)
 
+
                 if (r < (kappaH/(kappaH + kappaHe))) then
 
-                  ! photon absorbed by H
+                   ! photon absorbed by H
 
                    alphaA = hRecombination(thisOctal%temperature(subcell))
                    alpha1 = recombToGround(thisOctal%temperature(subcell))
                    call random_number(r)
 
 
-
                    if (r < (alpha1 / alphaA)) then                
                       ! recombination to continuum (equation 26 of Lucy MC trans prob II)
-                      call random_number(r)
                       call getSahaMilneFreq(htable, dble(thisOctal%temperature(subcell)), thisFreq)
                       uHat =  randomUnitVector()
                    else
                       escaped = .true.
                    endif
                 else
-                  ! photon absorbed by He
+                   ! photon absorbed by He
 
 
                    call calcHeRecombs(thisOctal%temperature(subcell), alpha1, alpha21s, alpha21p, alpha23s)
@@ -142,7 +141,7 @@ contains
                    else if ((r > alpha1/alphaA).and.(r <= (alpha1+alpha21s)/alphaA)) then
                       !two photon continuum
                       escaped = .true.
-                   else if ( (r > (alpha1+alpha21s/alphaA)).and.(r <= (alpha1+alpha21s+alpha23s)/alphaA)) then
+                   else if ( (r > (alpha1+alpha21s)/alphaA).and.(r <= (alpha1+alpha21s+alpha23s)/alphaA)) then
                       ! ly alpha
                       thisFreq = (21.2 / ergtoev)/hcgs
                       uHat = randomUnitVector()
@@ -155,75 +154,75 @@ contains
           enddo
           nInf = nInf + 1
        end do
-    epsOverDeltaT = (lCore) / dble(nInf)
+       epsOverDeltaT = (lCore) / dble(nInf)
 
-    write(*,*) "Calculating ionization and thermal equilibria"
-    call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-    call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
-    write(*,*) "Done."
+       write(*,*) "Calculating ionization and thermal equilibria"
+       call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
+       !    call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+       write(*,*) "Done."
 
-    fac = 2.06e37
+       fac = 2.06e37
 
-    call getForbiddenLineLuminosity(grid, "N II", 1.22e6, luminosity1)
-    write(*,'(a,f12.4)') "N II (122 um):",(luminosity1+luminosity2)/fac
+       call getForbiddenLineLuminosity(grid, "N II", 1.22e6, luminosity1)
+       write(*,'(a,f12.4)') "N II (122 um):",(luminosity1+luminosity2)/fac
 
-    call getForbiddenLineLuminosity(grid, "N II", 6584., luminosity1)
-    call getForbiddenLineLuminosity(grid, "N II", 6548., luminosity2)
-    write(*,'(a,f12.4)') "N II (6584+6548):",(luminosity1+luminosity2)/fac
+       call getForbiddenLineLuminosity(grid, "N II", 6584., luminosity1)
+       call getForbiddenLineLuminosity(grid, "N II", 6548., luminosity2)
+       write(*,'(a,f12.4)') "N II (6584+6548):",(luminosity1+luminosity2)/fac
 
-    call getForbiddenLineLuminosity(grid, "N III", 5.73e5, luminosity1)
-    write(*,'(a,f12.4)') "N III (57.3 um):",(luminosity1+luminosity2)/fac
-
-    
-    call getForbiddenLineLuminosity(grid, "O I", 6300., luminosity1)
-    call getForbiddenLineLuminosity(grid, "O I", 6363., luminosity2)
-    write(*,'(a,f12.4)') "O I (6300+6363):",(luminosity1+luminosity2)/fac
-    call getForbiddenLineLuminosity(grid, "O II", 7320., luminosity1)
-    call getForbiddenLineLuminosity(grid, "O II", 7330., luminosity2)
-    write(*,'(a,f12.4)') "O II (7320+7330):",(luminosity1+luminosity2)/fac
-    call getForbiddenLineLuminosity(grid, "O II", 3726., luminosity1)
-    call getForbiddenLineLuminosity(grid, "O II", 3729., luminosity2)
-    write(*,'(a,f12.4)') "O II (3726+3729):",(luminosity1+luminosity2)/fac
-    call getForbiddenLineLuminosity(grid, "O III", 5007., luminosity1)
-    call getForbiddenLineLuminosity(grid, "O III", 4959., luminosity2)
-    write(*,'(a,f12.4)') "O III (5007+4959):",(luminosity1+luminosity2)/fac
-    call getForbiddenLineLuminosity(grid, "O III", 4363., luminosity3)
-    write(*,'(a,f12.4)') "O III (4363):",(luminosity3)/1.e37
-    write(*,*) (luminosity1 + luminosity2)/luminosity3, 8.3*exp(3.3e4/7000.)
-    call getForbiddenLineLuminosity(grid, "O III", 518145., luminosity1)
-    call getForbiddenLineLuminosity(grid, "O III", 883562., luminosity2)
-    write(*,'(a,f12.4)') "O III (52+88um):",(luminosity1+luminosity2)/fac
+       call getForbiddenLineLuminosity(grid, "N III", 5.73e5, luminosity1)
+       write(*,'(a,f12.4)') "N III (57.3 um):",(luminosity1+luminosity2)/fac
 
 
-    call getForbiddenLineLuminosity(grid, "Ne II", 1.28e5, luminosity1)
-    write(*,'(a,f12.4)') "Ne II (12.8um):",(luminosity1)/fac
-
-    call getForbiddenLineLuminosity(grid, "Ne III", 1.56e5, luminosity1)
-    write(*,'(a,f12.4)') "Ne III (15.5um):",(luminosity1)/fac
-
-    call getForbiddenLineLuminosity(grid, "Ne III", 3869., luminosity1)
-    call getForbiddenLineLuminosity(grid, "Ne III", 3968., luminosity2)
-    write(*,'(a,f12.4)') "Ne III (3869+3968):",(luminosity1+luminosity2)/fac
-
-
-    call getForbiddenLineLuminosity(grid, "S II", 6716., luminosity1)
-    call getForbiddenLineLuminosity(grid, "S II", 6731., luminosity2)
-    write(*,'(a,f12.4)') "S II (6716+6731):",(luminosity1+luminosity2)/fac
-
-    call getForbiddenLineLuminosity(grid, "S II", 4068., luminosity1)
-    call getForbiddenLineLuminosity(grid, "S II", 4076., luminosity2)
-    write(*,'(a,f12.4)') "S II (4068+4076):",(luminosity1+luminosity2)/fac
-
-    call getForbiddenLineLuminosity(grid, "S III", 1.87e5, luminosity1)
-    write(*,'(a,f12.4)') "S III (18.7um):",(luminosity1)/fac
- 
-    call getForbiddenLineLuminosity(grid, "S III", 9532., luminosity1)
-    call getForbiddenLineLuminosity(grid, "S III", 9069., luminosity2)
-    write(*,'(a,f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac
+       call getForbiddenLineLuminosity(grid, "O I", 6300., luminosity1)
+       call getForbiddenLineLuminosity(grid, "O I", 6363., luminosity2)
+       write(*,'(a,f12.4)') "O I (6300+6363):",(luminosity1+luminosity2)/fac
+       call getForbiddenLineLuminosity(grid, "O II", 7320., luminosity1)
+       call getForbiddenLineLuminosity(grid, "O II", 7330., luminosity2)
+       write(*,'(a,f12.4)') "O II (7320+7330):",(luminosity1+luminosity2)/fac
+       call getForbiddenLineLuminosity(grid, "O II", 3726., luminosity1)
+       call getForbiddenLineLuminosity(grid, "O II", 3729., luminosity2)
+       write(*,'(a,f12.4)') "O II (3726+3729):",(luminosity1+luminosity2)/fac
+       call getForbiddenLineLuminosity(grid, "O III", 5007., luminosity1)
+       call getForbiddenLineLuminosity(grid, "O III", 4959., luminosity2)
+       write(*,'(a,f12.4)') "O III (5007+4959):",(luminosity1+luminosity2)/fac
+       call getForbiddenLineLuminosity(grid, "O III", 4363., luminosity3)
+       write(*,'(a,f12.4)') "O III (4363):",(luminosity3)/1.e37
+       write(*,*) (luminosity1 + luminosity2)/luminosity3, 8.3*exp(3.3e4/7000.)
+       call getForbiddenLineLuminosity(grid, "O III", 518145., luminosity1)
+       call getForbiddenLineLuminosity(grid, "O III", 883562., luminosity2)
+       write(*,'(a,f12.4)') "O III (52+88um):",(luminosity1+luminosity2)/fac
 
 
+       call getForbiddenLineLuminosity(grid, "Ne II", 1.28e5, luminosity1)
+       write(*,'(a,f12.4)') "Ne II (12.8um):",(luminosity1)/fac
 
- enddo
+       call getForbiddenLineLuminosity(grid, "Ne III", 1.56e5, luminosity1)
+       write(*,'(a,f12.4)') "Ne III (15.5um):",(luminosity1)/fac
+
+       call getForbiddenLineLuminosity(grid, "Ne III", 3869., luminosity1)
+       call getForbiddenLineLuminosity(grid, "Ne III", 3968., luminosity2)
+       write(*,'(a,f12.4)') "Ne III (3869+3968):",(luminosity1+luminosity2)/fac
+
+
+       call getForbiddenLineLuminosity(grid, "S II", 6716., luminosity1)
+       call getForbiddenLineLuminosity(grid, "S II", 6731., luminosity2)
+       write(*,'(a,f12.4)') "S II (6716+6731):",(luminosity1+luminosity2)/fac
+
+       call getForbiddenLineLuminosity(grid, "S II", 4068., luminosity1)
+       call getForbiddenLineLuminosity(grid, "S II", 4076., luminosity2)
+       write(*,'(a,f12.4)') "S II (4068+4076):",(luminosity1+luminosity2)/fac
+
+       call getForbiddenLineLuminosity(grid, "S III", 1.87e5, luminosity1)
+       write(*,'(a,f12.4)') "S III (18.7um):",(luminosity1)/fac
+
+       call getForbiddenLineLuminosity(grid, "S III", 9532., luminosity1)
+       call getForbiddenLineLuminosity(grid, "S III", 9069., luminosity2)
+       write(*,'(a,f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac
+
+
+
+    enddo
 
   end subroutine photoIonizationloop
 
@@ -1054,6 +1053,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
              thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
              thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
              chargeExchangeIonization)
+
 
         matrixA(i, i) = grid%ion(iIon)%abundance * thisOctal%nh(subcell)  * &
              ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)! equation 44 Lucy MC II
