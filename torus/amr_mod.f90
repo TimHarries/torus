@@ -5564,7 +5564,7 @@ CONTAINS
     logical,save :: firsttime = .true.
 
     if (firsttime) then
-       open(20,file="/home/th/photoion/overview.txt", form="formatted",status="old")
+       open(20,file="overview.txt", form="formatted",status="old")
        do i = 1, it
           read(20,*) radius(i),temp(i)
           radius(i) = (radius(i)+30.e17) / 1.e10
@@ -5600,6 +5600,7 @@ CONTAINS
        thisOctal%ionFrac(subcell,3) = 1.e-10
        thisOctal%ionFrac(subcell,4) = 1.       
        thisOctal%etaCont(subcell) = 0.
+       thisOctal%temperature(subcell) = 8000.
        if ((r > radius(1)).and.(r < radius(it))) then
           call locate(radius, it, r, i)
           fac = (r-radius(i))/(radius(i+1)-radius(i))
