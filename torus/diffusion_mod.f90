@@ -443,7 +443,7 @@ contains
     logical :: resetTemp
     real(double) :: derivs(10)
     logical :: converged 
-    real(double) :: xAxis(50000000)
+    real(double) :: xAxis(5000000)
     integer :: nx, i
     real :: flux
     real :: rosselandOpticalDepth(500000)
