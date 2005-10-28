@@ -424,8 +424,8 @@ contains
 
        call locate(grid%lamArray, grid%nLambda,lambdasmooth,ilamsmooth)
 
-       if (.false.) then
-!       if (doSmoothGridTau) then
+!       if (.false.) then
+       if (doSmoothGridTau) then
 
 !       write(*,*) "Tau smoothing switched off"
 !	if (.true.) then
@@ -434,10 +434,10 @@ contains
 !$MPI     if(my_rank == 0) &
           call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_before.ps/vcps", .true., .false., boxfac=0.005)
 
-          do j = ilamsmooth, grid%nlambda
+          do j = ilamsmooth, ilamsmooth ! grid%nlambda
              do
                 gridConverged = .true.
-                call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j, inheritProps=.true.)
+                call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps = .true.)
                 if (gridConverged) exit
              end do
           enddo
@@ -450,7 +450,7 @@ contains
             write(*,*) "Smoothing adaptive grid structure (again)..."
             gridConverged = .false.
             do
-               call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged, inheritProps=.true.)
+               call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged, inheritProps=.false., interpProps=.true.)
                if (gridConverged) exit
             end do
 !$MPI     if(my_rank == 0) &

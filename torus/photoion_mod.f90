@@ -65,6 +65,7 @@ contains
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
     nMonte = 100000
+
     nIter = 0
 
     do 
@@ -159,7 +160,7 @@ contains
 
        write(*,*) "Calculating ionization and thermal equilibria"
        call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-       !    call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+!       call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
        write(*,*) "Done."
 
        fac = 2.06e37
@@ -803,24 +804,28 @@ contains
                    thisOctal%temperature(subcell) = 3.
                 else
                    converged = .false.
-                   t1 = 1000.
-                   t2 = 100000.
-                   ymin = 1.e30
-                   found = .false.
-                   do i = 1, 1000
-                      t1 = 1000.+99000.*real(i-1)/1000.
-                      t2 = 1000.+99000.*real(i)/1000.
-                      y1 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1) - totalHeating)
-                      y2 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2) - totalHeating)
-                      if (abs(y1) < ymin) then
-                         tm = t1
-                         ymin = abs(y1)
-                      endif
-                      if (y1*y2 < 0.d0) then
-                         found = .true.
-                         exit
-                      endif
-                   enddo
+!                   t1 = 1000.
+!                   t2 = 100000.
+!                   ymin = 1.e30
+!                   found = .false.
+!                   do i = 1, 1000
+!                      t1 = 1000.+99000.*real(i-1)/1000.
+!                      t2 = 1000.+99000.*real(i)/1000.
+!                      y1 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1) - totalHeating)
+!                      y2 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2) - totalHeating)
+!                      if (abs(y1) < ymin) then
+!                         tm = t1
+!                         ymin = abs(y1)
+!                      endif
+!                      if (y1*y2 < 0.d0) then
+!                         found = .true.
+!                         exit
+!                      endif
+!                   enddo
+
+                   t1 = 5000.
+                   t2 = 20000.
+                   found = .true.
 
                    if (found) then
                       y1 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1) - totalHeating)
@@ -831,7 +836,7 @@ contains
                               t1,y1,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1),totalHeating
                          write(*,*) "t2", &
                               t2,y2,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2),totalHeating
-                         tm = 60000.
+                         tm = 8000.
                          converged = .true.
                       endif
                    
@@ -854,7 +859,7 @@ contains
                             tm = 0.5*(t1+t2)
                          endif
                          
-                         if (abs((t1-t2)/t1) .le. 1.e-4) then
+                         if (abs((t1-t2)/t1) .le. 1.e-3) then
                             converged = .true.
                          endif
                       
@@ -1007,7 +1012,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
   real(double) :: epsOverDeltaT, V
   integer :: subcell
   integer :: i, j, k
-  real(double), allocatable :: matrixA(:,:), MatrixB(:,:)
+  real(double), allocatable :: matrixA(:,:), MatrixB(:,:), tempA(:,:)
   integer :: nIonizationStages
   type(OCTALVECTOR) :: rVec
   real(double) :: r1, r2
@@ -1036,9 +1041,8 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
      iEnd = iEnd - 1
      nIonizationStages = iEnd - iStart + 1
 
-!     write(*,*) "istart",istart,"iend",iend,"nionization",nIonizationStages
-
      allocate(matrixA(1:(nIonizationStages+1),1:(nIonizationStages+1)))
+     allocate(tempA(1:(nIonizationStages+1),1:(nIonizationStages+1)))
      allocate(matrixB(1:(nIonizationStages+1), 1))
      
      matrixA = 0.d0
@@ -1070,6 +1074,8 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
            matrixA(i,i-1) = ionRateInto
            matrixA(i,i) = -recombRateOutof - &
                 ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)
+           matrixA(i, i+1) = (recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * &
+                thisOctal%ne(subcell) + chargeExchangeRecombination)
         endif
 
         
@@ -1098,6 +1104,8 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
      matrixB = 0.d0
      matrixB (nIonizationStages+1,1) = 1.d0
 
+
+     tempA = matrixA
 !     do i = 1, nIonizationStages+1
 !        write(*,'(1p,9e12.3)') matrixA(i,1:nIonizationStages)
 !     enddo
@@ -1107,7 +1115,14 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
      call gaussj(matrixA, nIonizationStages+1, nIonizationStages+1, matrixB, 1, 1, ok)
      if (.not.ok) then
         write(*,*) "Ionization balance failed for element: ",trim(grid%ion(istart)%species(1:2))
-        stop
+        write(*,*) "temp",thisOctal%temperature(subcell)
+        write(*,*) "ne",thisOctal%ne(subcell)
+        do i = 1, nIonizationStages+1
+           write(*,'(1p,9e12.3)') tempA(i,1:nIonizationStages)
+        enddo
+        write(*,*) "setting element to neutral"
+        matrixB(1:nIonizationStages,1) = 0.d0
+        matrixB(1,1) = 1.d0
      endif
 
      do i = 1, nIonizationStages
@@ -1116,7 +1131,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
 !        write(*,*) grid%ion(iIon)%species, thisOctal%ionFrac(subcell, iIon)
      enddo
 !     write(*,*) " " 
-     deallocate(matrixA, matrixB)
+     deallocate(matrixA, matrixB, tempA)
      k = iEnd + 1
   end do
   
@@ -1797,10 +1812,14 @@ subroutine solvePops(thisIon, pops, ne, temperature, debug)
   if (.not.ok) then
      write(*,*) "Population solver failed for: ",thisIon%species
      write(*,*) "nlevels",thisIon%nLevels,"ntrans",thisIon%nTransitions 
+     write(*,*) "temp",temperature,"ne",ne
+     
      do i = 1, n+1
         write(*,'(1p,9e12.3)') tempmatrix(i,1:n)
      enddo
-     stop
+     matrixB = 0.d0
+     matrixB(1,1) = 1.d0
+     write(*,*) "Setting pops to ground state"
   endif
 
   do i = 1, n

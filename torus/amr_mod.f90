@@ -3714,8 +3714,11 @@ CONTAINS
       end if
 
    case("lexington")
-      if (thisOctal%nDepth < 6) split = .true.
-      write(*,*) thisOctal%ndepth, split
+      if (thisOctal%nDepth < 6) then
+         split = .true.
+      else
+         split = .false.
+      endif
       
    case ("testamr","proto","wrshell")
       cellSize = thisOctal%subcellSize 
@@ -5797,10 +5800,12 @@ CONTAINS
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
 
+
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
     
     endif
 
+    thisOctal%dustTypeFraction(subcell,:) =  thisOctal%dustTypeFraction(subcell,:) * 1.e-5
 
     if ((r + thisOctal%subcellsize/2.d0) < rInner) thisOctal%inflow(subcell) = .false.
 

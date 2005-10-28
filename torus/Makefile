@@ -38,7 +38,7 @@ endif
 ifeq ($(SYSTEM), osx)
     F95COMP=g95
     F77COMP=g95
-    FASTFLAG= -O3 
+    FASTFLAG= 
 #    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     DEBUGFLAG=-g
     STATICFLAG=

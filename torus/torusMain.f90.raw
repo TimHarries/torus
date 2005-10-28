@@ -1180,9 +1180,9 @@ program torus
            call fillDustUniform(grid, grid%octreeRoot)
         endif
         
-        if (variableDustSublimation) then
-           call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac)
-        endif
+!        if (variableDustSublimation) then
+!           call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac)
+!        endif
 
 
         if (noScattering) then

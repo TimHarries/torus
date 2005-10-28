@@ -103,7 +103,7 @@ contains
     call createIon(ionArray(nIon), 6, 3, 6.449e1) ! C IV
 
     nIon = nIon + 1
-    call createIon(ionArray(nIon), 6, 3, 3.921e2) ! C V
+    call createIon(ionArray(nIon), 6, 2, 3.921e2) ! C V
 
     nIon = nIon + 1
     call createIon(ionArray(nIon), 7, 7, 1.453e1) ! N I
@@ -144,11 +144,11 @@ contains
     nIon = nIon + 1
     call createIon(ionArray(nIon), 10, 8, 6.346e1) ! Ne III
 
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 10, 7, 9.712e1) ! Ne IV
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 10, 7, 9.712e1) ! Ne IV
 
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 10, 6, 1.262e2) ! Ne V
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 10, 6, 1.262e2) ! Ne V
 
     nIon = nIon + 1
     call createIon(ionArray(nIon), 16, 16, 1.036e1) ! S I

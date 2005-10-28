@@ -478,16 +478,11 @@ contains
 
     if ((grid%geometry == "shakara").and.(nDustType > 1)) then
        call fillDustShakara(grid, grid%octreeRoot)
+       call stripDustAway(grid%octreeRoot)
     endif
 
     if ((grid%geometry == "ppdisk").and.(nDustType > 1)) then
        call fillDustUniform(grid, grid%octreeRoot)
-    endif
-
-    if (variableDustSublimation) then
-	totFrac = 0.
-        nFrac = 0
-       call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac)
     endif
 
 
@@ -965,7 +960,6 @@ contains
        
        close(LU_OUT)
 !$MPI    end if   
-
 !$MPI if (my_rank==1) &       
        call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
 
@@ -1006,50 +1000,44 @@ contains
 
        call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
 
-       if ((grid%geometry == "shakara").and.(nDustType > 1)) then
-          call fillDustShakara(grid, grid%octreeRoot)
-       endif
+!       if ((grid%geometry == "shakara").and.(nDustType > 1)) then
+!          call fillDustShakara(grid, grid%octreeRoot)
+!       endif
 
        if ((grid%geometry == "ppdisk").and.(nDustType > 1)) then
           call fillDustUniform(grid, grid%octreeRoot)
        endif
 
-       if (variableDustSublimation.and.doingDustSublimation) then
+       if (variableDustSublimation) then
           totFrac = 0.
           nFrac = 0
           call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac)
           if ((nfrac /= 0).and.(writeoutput)) then
              write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
           endif
-
-
-
-
-          if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
-          call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
-          
-          do j = iSmoothLam, ismoothlam !nLambda
+          if (iIter_grand>=9) then
+             if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
+             call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+             
+             do j = iSmoothLam, ismoothlam !nLambda
+                do
+                   gridConverged = .true.
+                   call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps = .true.)
+                   if (gridConverged) exit
+                end do
+             enddo
+             if (writeoutput) write(*,*) "...grid smoothing complete"
+             ! The tau smoothing may result in large differences in the size
+             ! of neighbouring octals, so we smooth the grid again.
+             if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
+             gridConverged = .false.
              do
-                gridConverged = .true.
-                call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps = .true.)
+                call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false., interpProps=.true.)
                 if (gridConverged) exit
              end do
-          enddo
-          if (writeoutput) write(*,*) "...grid smoothing complete"
-!          ! The tau smoothing may result in large differences in the size
-!          ! of neighbouring octals, so we smooth the grid again.
-!          if (doSmoothGrid) then
-!             if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
-!             gridConverged = .false.
-!             do
-!                call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false., interpProps=.true.)
-!                if (gridConverged) exit
-!             end do
-!             if (writeoutput) write(*,*) "...grid smoothing complete"
-!          end if
-
+             if (writeoutput) write(*,*) "...grid smoothing complete"
+          endif
        endif
-
 
        call defineDiffusionZone(grid, outputFlag, .false.)
 
@@ -1091,12 +1079,11 @@ contains
     end if
 
     if (doingDustSublimation) then
-       if (iIter_grand < 100) then
+       if (iIter_grand < 21) then
           converged = .false.
        else
-          converged =.true.
           doingDustSublimation = .false.
-          stop
+          nMonte = nLucy
        endif
     endif
        

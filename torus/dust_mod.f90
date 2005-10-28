@@ -918,7 +918,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     integer :: nFrac
     real :: x, z
     real :: height
-    real(double) :: fac, frac, newFrac, oldFrac, deltaFrac
+    real(double) :: fac, frac, newFrac, oldFrac, deltaFrac, normFac
     real ::  temperature, sublimationTemp, subrange
     real :: underCorrect = 0.5
     
@@ -939,7 +939,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
        else
 
           temperature = thisOctal%temperature(subcell)
-          sublimationTemp = max(500.d0,1500.d0 * thisOctal%rho(subcell)**(1.95d-2))
+          sublimationTemp = max(200.d0,1500.d0 * thisOctal%rho(subcell)**(1.95d-2))
           if (temperature < sublimationTemp) newFrac = 1.
           
           if (temperature > sublimationTemp) then
@@ -957,9 +957,8 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           endif
 
           thisOctal%oldFrac(subcell) = frac
-          thisOctal%dustTypeFraction(subcell,:) =  thisOctal%dustTypeFraction(subcell,:) * frac
-
-             
+          normfac = SUM(thisOctal%dustTypeFraction(subcell,:))
+          thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * frac /normFac
 
        end if
     end do
@@ -1039,5 +1038,28 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     end do
     zAxis(1:nz) = abs(zAxis(1:nz)) * 1.e10  ! convert to cm
   end subroutine getTemperatureDensityRundust
+
+  recursive subroutine stripDustAway(thisOctal)
+
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call stripDustAway(child)
+                exit
+             end if
+          end do
+       else
+          thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * 1.d-5
+       end if
+    end do
+
+  end subroutine stripDustAway
 
   end module dust_mod
