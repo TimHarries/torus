@@ -7120,6 +7120,132 @@ contains
     deallocate(rhoimage,tempimage, ksca, kabs, lambda, dlambda)
   end subroutine dullemondplot
 
+  subroutine nattaplot(grid, rinner)
+    use input_variables, only : rcore
+    type(GRIDTYPE) :: grid
+    real :: rinner, router, angMax
+    real(double) :: r, ang
+    real :: tr(6)
+    integer :: nc
+    real :: tc(100), rc(100)
+    integer :: nx, ny
+    real, allocatable :: rhoimage(:,:),tempimage(:,:)
+    real :: dx, dy, fg, bg
+    integer :: i, j, k
+    integer :: ilo, ihi
+    real(double) :: rtemp
+    real :: ttemp
+    real(double), allocatable  :: kabs(:), ksca(:)   ! (size=maxTau)
+    real, allocatable :: lambda(:), dlambda(:)
+    real, allocatable :: tauSca(:), tauAbs(:), tauExt(:)
+    integer :: ilambda
+    integer :: maxTau = 10000
+    integer :: nr = 1000
+    integer :: error, nTau
+    logical :: hitcore
+    real :: rtau(1000)
+    real, allocatable :: dv(:), temp(:)
+    real,allocatable :: chiline(:)
+    real(double), allocatable :: rho(:)
+    real(double), allocatable :: Levelpop(:,:),ne(:)
+    logical, allocatable :: inflow(:)
+    type(VECTOR),allocatable :: vel(:)
+    logical :: first
+    real :: x, z
+    type(OCTALVECTOR) :: octVec, Uhatoctal, avecoctal
+    integer :: pgbegin
+
+    allocate(lambda(1:maxTau),dlambda(1:maxTau),ksca(1:maxtau),kabs(1:maxtau))
+    allocate(tauAbs(1:maxTau), tauSca(1:maxTau), tauExt(1:maxTau))
+    allocate(vel(1:maxTau), dv(1:maxTau),temp(1:maxtau), rho(1:maxtau))
+    allocate(chiline(1:maxTau),ne(1:maxTau),levelPop(1:maxtau,grid%maxLevels))
+    allocate(inflow(1:maxTau))
+    nx = 1000
+    ny = 1000
+
+    nc = 20
+    do i = 1, nc
+       tc(i) = real(i)*100.
+    enddo
+    do i = 1, nc
+       rc(i) = -8.-0.5*real(i-1)
+    enddo
+
+
+
+    dx = log10(rOuter/rInner)/real(nx)
+    dy = angMax/real(ny)
+    tr(1) =  - dx + log10(rInner)
+    tr(2) = dx
+    tr(3) = 0.
+    tr(4) =  - dy + 0.
+    tr(5) = 0.
+    tr(6) = dy
+
+
+
+    do i = 1, nr
+       ang = real(i-1)/real(nr-1) * pi/2.
+       uHatOctal = OCTALVECTOR(sin(ang), 0.d0, cos(ang))
+       aVecOctal = dble(rCore) * uhatOctal
+       ilambda = 32
+    
+       CALL startReturnSamples (aVecOctal,uHatOctal,grid,1.,nTau,       &
+            maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
+            lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=vel,velocityderiv=dv, &
+            temperature=temp, &
+            chiLine=chiLine,    &
+            levelPop=levelPop,rho=rho, &
+            Ne=Ne, inflow=inflow)
+
+       dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)  
+
+
+       tauAbs(1:2) = 0.
+       tauSca(1:2) = 0.
+
+       do j = 2, nTau, 1
+          tauSca(j) = tauSca(j-1) + dlambda(j-1)*0.5*(ksca(j-1)+ksca(j))
+          tauAbs(j) = tauAbs(j-1) + dlambda(j-1)*0.5*(kabs(j-1)+kabs(j))
+       enddo
+       tauExt(1:nTau) = tauSca(1:nTau)+tauAbs(1:nTau)
+       if (tauExt(nTau) > 1.) then
+          call locate(tauExt, nTau, 1., k)
+          rtau(i) = lambda(k) + (lambda(k+1)-lambda(k))*(1.-tauExt(k))/(tauExt(k+1)-tauExt(k))
+       else
+          rtau(i) = 0.
+       endif
+    enddo
+
+    
+    i = pgbegin(0,"natta.ps/cps",1,1)
+    call pgvport(0.1,0.9,0.1,0.9)
+
+    call pgwnad(rinner, rinner+0.2*autocm/1.e10, 0., 0.2*autocm/1.e10)
+    first = .true.
+    do i = 2, nr
+       ang = pi/2. - real(i-1)/real(nr-1) * pi/2.
+       x = rtau(i) * cos(ang)
+       z = rtau(i) * sin(ang)
+
+       if (rTau(i) /= 0.) then
+          if (first) then
+             call pgmove(x, z)
+             first = .false.
+          else
+             call pgdraw(x,z)
+          endif
+       endif
+    enddo
+    call pgsci(1)
+    call pgwnad(0., 0.2, 0., 0.2)
+    call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
+    call pglab("R [AU]","Z [AU]", " ")
+    call pgend
+    
+    deallocate(ksca, kabs, lambda, dlambda)
+  end subroutine nattaplot
+
     
 end module grid_mod
 

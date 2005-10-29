@@ -87,6 +87,7 @@ CONTAINS
        call interpFromParent(subcellCentre(thisOctal, subcell), thisOctal%subcellSize, grid, &
             thisOctal%temperature(subcell), thisOctal%rho(subcell))
        parentOctal%hasChild = .true.
+
     else
 
     SELECT CASE (grid%geometry)
@@ -233,7 +234,7 @@ CONTAINS
     grid%octreeRoot%diffusionProb = 0.d0
     grid%octreeRoot%incidentFlux = 0.
     grid%octreeRoot%nDiffusion = 0.
-    grid%octreeRoot%oldFrac = 1.
+    grid%octreeRoot%oldFrac = 1.e-5
 
     select case (grid%geometry)
        case("cluster")
@@ -2839,7 +2840,7 @@ CONTAINS
   END FUNCTION looseInOctal
 
   RECURSIVE SUBROUTINE smoothAMRgrid(thisOctal,grid,factor,gridConverged, sphData, stellar_cluster, inheritProps, interpProps)
-    ! checks whether each octal's neighbours are much bigger than it, 
+    ! checks whether each octsal's neighbours are much bigger than it, 
     !   if so, makes the neighbours smaller.
     ! the 'needRestart' flag will be set if a change is made to the octree.
     !   smoothAMRgrid should be called repeatedly until the flag is no 
@@ -2853,7 +2854,7 @@ CONTAINS
     LOGICAL, INTENT(INOUT)               :: gridConverged
     TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
-    LOGICAL, INTENT(IN)              :: inheritProps
+    LOGICAL, INTENT(IN),optional  :: inheritProps
     logical, intent(in), optional :: interpProps
 
     INTEGER              :: i
@@ -5995,7 +5996,7 @@ CONTAINS
        parent%child(newChildindex)%diffusionProb = 0.d0
        parent%child(newChildindex)%nDiffusion  = 0.
        parent%child(newChildindex)%incidentFlux = 0.
-       parent%child(newChildindex)%oldFrac = 1.
+       parent%child(newChildindex)%oldFrac = 1.d-5
 
        if (present(sphData)) then
           ! updates the sph particle list.           
@@ -6711,7 +6712,7 @@ CONTAINS
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == thisSubcell) then
               child => thisOctal%child(i)
-              call smoothAMRgridTau(child,grid,gridConverged,  ilam, sphData, stellar_cluster, inheritProps)
+              call smoothAMRgridTau(child,grid,gridConverged,  ilam, sphData, stellar_cluster, inheritProps, interpProps)
               exit
            end if
         end do

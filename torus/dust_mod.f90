@@ -918,9 +918,11 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     integer :: nFrac
     real :: x, z
     real :: height
-    real(double) :: fac, frac, newFrac, oldFrac, deltaFrac, normFac
+    real(double) :: fac, frac, newFrac, oldFrac, deltaFrac, normFac, thistau
     real ::  temperature, sublimationTemp, subrange
     real :: underCorrect = 0.5
+    integer :: ilambda
+    real(double) :: kappaSca, kappaAbs
     
     integer :: nx, subcell, i
 
@@ -939,7 +941,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
        else
 
           temperature = thisOctal%temperature(subcell)
-          sublimationTemp = max(200.d0,1500.d0 * thisOctal%rho(subcell)**(1.95d-2))
+          sublimationTemp = max(700.d0,2000.d0 * thisOctal%rho(subcell)**(1.95d-2))
           if (temperature < sublimationTemp) newFrac = 1.
           
           if (temperature > sublimationTemp) then
@@ -950,6 +952,15 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           deltaFrac = newFrac - thisOctal%oldFrac(subcell)
 
           frac = thisOctal%oldFrac(subcell) + underCorrect * deltaFrac
+
+          call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
+          call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+          thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
+          if (thisTau <= 1.) then
+             fac = thisOctal%oldFrac(subcell)*(thisTau + 0.1) / thisTau 
+             frac = min(fac, frac)
+!             write(*,*) fac, frac, thisTau, thisOctal%oldFrac(subcell)
+          endif
 
           if (deltaFrac /= 0.) then
              nfrac = nfrac + 1
@@ -1057,6 +1068,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           end do
        else
           thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * 1.d-5
+          thisOctal%oldFrac(subcell) = 1.d-5
        end if
     end do
 

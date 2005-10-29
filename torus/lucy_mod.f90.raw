@@ -509,9 +509,9 @@ contains
        if (doingDustSublimation) then
           nMonte = 50000
           if (iIter_grand == 0) then
-             nIter = 3
+             nIter = 1 !3
           else
-             nIter = 2
+             nIter = 1 !2
           endif
        endif
 
@@ -546,6 +546,7 @@ contains
 
        if (grid%geometry == "shakara") then
           call dullemondplot(grid, rinner, router, 0.4)
+          call nattaplot(grid, rinner)
        endif
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
@@ -1015,7 +1016,7 @@ contains
           if ((nfrac /= 0).and.(writeoutput)) then
              write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
           endif
-          if (iIter_grand>=3) then
+          if (iIter_grand>=10) then
              if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
              
@@ -1029,13 +1030,13 @@ contains
              if (writeoutput) write(*,*) "...grid smoothing complete"
              ! The tau smoothing may result in large differences in the size
              ! of neighbouring octals, so we smooth the grid again.
-!             if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
-!             gridConverged = .false.
-!             do
-!                call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false., interpProps=.true.)
-!                if (gridConverged) exit
-!             end do
-!             if (writeoutput) write(*,*) "...grid smoothing complete"
+             if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
+             gridConverged = .false.
+             do
+                call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false., interpProps=.true.)
+                if (gridConverged) exit
+             end do
+             if (writeoutput) write(*,*) "...grid smoothing complete"
           endif
        endif
 
@@ -1079,7 +1080,7 @@ contains
     end if
 
     if (doingDustSublimation) then
-       if (iIter_grand < 21) then
+       if (iIter_grand < 20) then
           converged = .false.
        else
           doingDustSublimation = .false.
