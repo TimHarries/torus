@@ -1016,7 +1016,7 @@ contains
           if ((nfrac /= 0).and.(writeoutput)) then
              write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
           endif
-          if (iIter_grand>=10) then
+          if ((iIter_grand>=10).and.(iIter_grand <=11)) then
              if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
              
