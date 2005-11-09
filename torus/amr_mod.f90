@@ -754,7 +754,7 @@ CONTAINS
 
   SUBROUTINE startReturnSamples (startPoint,direction,grid,          &
              sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
-             usePops,iLambda,error,lambda,kappaAbs,kappaSca,velocity,&
+             usePops,iLambda,error,lambda,kappaAbs,kappaSca,kappaRos,velocity,&
              velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow)
     ! samples the grid at points along the path.
     ! this should be called by the program, instead of calling 
@@ -785,6 +785,7 @@ CONTAINS
     
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaAbs   ! continuous absorption opacities
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca   ! scattering opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaRos   ! rosseland opacity
     TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: velocityDeriv ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: chiLine    ! line opacities
@@ -988,6 +989,7 @@ CONTAINS
          hitCore = .TRUE.
          IF (PRESENT(kappaSca))      kappaSca(nSamples) = 0.
          IF (PRESENT(kappaAbs))      kappaAbs(nSamples) = 1.e20
+         IF (PRESENT(kappaRos))      kappaRos(nSamples) = 1.e20
          IF (PRESENT(velocity))      velocity(nSamples) = vector(0.,0.,0.)
          IF (PRESENT(velocityDeriv)) velocityDeriv(nSamples) = 1.0
          IF (PRESENT(chiLine))       chiLine(nSamples) = 1.e20
@@ -1012,7 +1014,7 @@ CONTAINS
        CALL returnSamples(currentPoint,startPoint,locator,directionNormalized,&
                    octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,&
                    usePops,iLambda,error,margin,distanceLimit,                &
-                   kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,     &
+                   kappaAbs=kappaAbs,kappaSca=kappaSca,kappaRos=kappaRos, velocity=velocity,     &
                    velocityDeriv=velocityDeriv,chiLine=chiLine,               &
                    levelPop=levelPop,rho=rho,temperature=temperature,         &
                    Ne=Ne, inFlow=inFlow)
@@ -1023,7 +1025,7 @@ CONTAINS
   
   RECURSIVE SUBROUTINE returnSamples (currentPoint,startPoint,locator,direction, &
              octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,usePops, &
-             iLambda,error,margin,distanceLimit,kappaAbs,kappaSca,velocity,      &
+             iLambda,error,margin,distanceLimit,kappaAbs,kappaSca,kappaRos,velocity,      &
              velocityDeriv,chiLine,levelPop,rho,temperature, Ne, inFlow)
     ! this uses a recursive ray traversal algorithm to sample the octal
     !   grid at points along the path of the ray. 
@@ -1064,6 +1066,7 @@ CONTAINS
     
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL :: kappaAbs      ! continuous absorption opacities
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca     ! scattering opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaRos     ! rosseland opacity
     TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocityDeriv ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: chiLine       ! line opacities
@@ -1122,6 +1125,7 @@ CONTAINS
                     octree%child(subIndex),grid,sampleFreq,nSamples,         &
                     maxSamples,abortRay,lambda,usePops,iLambda,error,margin, &
                     distanceLimit,kappaAbs=kappaAbs,kappaSca=kappaSca,       &
+                    kappaRos=kappaRos,                                       &
                     velocity=velocity,velocityDeriv=velocityDeriv,           &
                     chiLine=chiLine,levelPop=levelPop,rho=rho,               &
                     temperature=temperature, Ne=Ne, inFlow=inFlow)
@@ -1177,7 +1181,7 @@ CONTAINS
         !                                       > sampleLength ) THEN
           CALL takeSample(currentPoint,length,direction,grid,octree,subcell,    &
                           nSamples,maxSamples,usePops,iLambda,error,lambda,     &
-                          kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
+                          kappaAbs=kappaAbs,kappaSca=kappaSca,kappaRos=kappaRos,velocity=velocity,&
                           velocityDeriv=velocityDeriv,chiLine=chiLine,          &
                           levelPop=levelPop,rho=rho,temperature=temperature,    &
                           Ne=Ne, inFlow=inFlow)
@@ -1203,7 +1207,7 @@ CONTAINS
             IF (trialLength >= 0.0_oc) THEN
               CALL takeSample(trialPoint,trialLength,direction,grid,octree,subcell, &
                          nSamples,maxSamples,usePops,iLambda,error,lambda,     &
-                         kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
+                         kappaAbs=kappaAbs,kappaSca=kappaSca,kappaRos=kappaRos,velocity=velocity,&
                          velocityDeriv=velocityDeriv,chiLine=chiLine,          &
                          levelPop=levelPop,rho=rho,temperature=temperature,    &
                          Ne=Ne, inFlow=inFlow)
@@ -1641,8 +1645,8 @@ CONTAINS
 
 
   SUBROUTINE takeSample(point,length,direction,grid,thisOctal,subcell,nSamples,&
-                        maxSamples,usePops,iLambda,error,lambda,kappaAbs,      &
-                        kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,  &
+                        maxSamples,usePops,iLambda,error,lambda,kappaAbs,     &
+                        kappaSca,kappaRos,velocity,velocityDeriv,chiLine,levelPop,rho,  &
                         temperature,Ne,inFlow) 
   
     
@@ -1663,6 +1667,7 @@ CONTAINS
     
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL          :: kappaAbs  ! continuous absorption opacities
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL          :: kappaSca  ! scattering opacities 
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL          :: kappaRos  ! rosseland opacity
     TYPE(vector), DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: velocityDeriv   ! sampled velocity derivatives
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL          :: chiLine   ! line opacities
@@ -1704,6 +1709,7 @@ CONTAINS
                          velocityDeriv=velocityDeriv(nSamples),        &
                          kappaAbs=kappaAbs(nSamples),                  &
                          kappaSca=kappaSca(nSamples),                  &
+                         rosselandkappa=kappaRos(nSamples),                  &
                          rho=rho(nSamples),                            &
                          N=levelPop(nSamples,:),                       &
                          grid=grid,                                    &
@@ -1720,6 +1726,7 @@ CONTAINS
                          velocityDeriv=velocityDeriv(nSamples),        &
                          kappaAbs=kappaAbs(nSamples),                  &
                          kappaSca=kappaSca(nSamples),                  &
+                         rosselandkappa=kappaRos(nSamples),                  &
                          rho=rho(nSamples),                            &
                          chiLine=chiLine(nSamples),                    &
                          grid=grid,                                    &
@@ -1796,7 +1803,7 @@ CONTAINS
     REAL(double),INTENT(OUT),OPTIONAL         :: kappaSca
     REAL(double),INTENT(OUT),OPTIONAL         :: kappaAbsArray(:)
     REAL(double),INTENT(OUT),OPTIONAL         :: kappaScaArray(:)
-    REAL,INTENT(OUT), OPTIONAL        :: rosselandKappa
+    REAL(double),INTENT(OUT), OPTIONAL        :: rosselandKappa
     REAL,INTENT(OUT), OPTIONAL        :: kappap
     REAL,INTENT(IN), OPTIONAL         :: atThisTemperature
     REAL(double),INTENT(OUT),OPTIONAL         :: rho
@@ -3715,7 +3722,7 @@ CONTAINS
       end if
 
    case("lexington")
-      if (thisOctal%nDepth < 6) then
+      if (thisOctal%nDepth < 8) then
          split = .true.
       else
          split = .false.
@@ -7842,7 +7849,7 @@ CONTAINS
     integer, optional :: ilambda
     real, optional :: lambda
     real(double), optional :: kappaSca, kappaAbs, kappaAbsArray(:), kappaScaArray(:)
-    real, optional :: rosselandKappa
+    real(double), optional :: rosselandKappa
     real, optional :: kappap
     real, optional :: atthistemperature
     real :: temperature

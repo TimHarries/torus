@@ -6376,7 +6376,7 @@ contains
 !                if (thisOctal%diffusionApprox(subcell)) value = 1.d-3
 
              case("ionization")
-                value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
+                value = thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
              case("temperature")
                 value = thisOctal%temperature(subcell)
              case("chiLine")
@@ -6544,7 +6544,7 @@ contains
              case("rho")
                 value = thisOctal%rho(subcell)
              case("ionization")
-                value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
+                value = thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
              case("temperature")
                 value = thisOctal%temperature(subcell)
              case("dusttype")
@@ -7135,7 +7135,7 @@ contains
     integer :: ilo, ihi
     real(double) :: rtemp
     real :: ttemp
-    real(double), allocatable  :: kabs(:), ksca(:)   ! (size=maxTau)
+    real(double), allocatable  :: kros(:)   ! (size=maxTau)
     real, allocatable :: lambda(:), dlambda(:)
     real, allocatable :: tauSca(:), tauAbs(:), tauExt(:)
     integer :: ilambda
@@ -7155,7 +7155,7 @@ contains
     type(OCTALVECTOR) :: octVec, Uhatoctal, avecoctal
     integer :: pgbegin
 
-    allocate(lambda(1:maxTau),dlambda(1:maxTau),ksca(1:maxtau),kabs(1:maxtau))
+    allocate(lambda(1:maxTau),dlambda(1:maxTau),kros(1:maxtau))
     allocate(tauAbs(1:maxTau), tauSca(1:maxTau), tauExt(1:maxTau))
     allocate(vel(1:maxTau), dv(1:maxTau),temp(1:maxtau), rho(1:maxtau))
     allocate(chiline(1:maxTau),ne(1:maxTau),levelPop(1:maxtau,grid%maxLevels))
@@ -7192,7 +7192,7 @@ contains
     
        CALL startReturnSamples (aVecOctal,uHatOctal,grid,1.,nTau,       &
             maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
-            lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=vel,velocityderiv=dv, &
+            lambda,kappaRos=kros,velocity=vel,velocityderiv=dv, &
             temperature=temp, &
             chiLine=chiLine,    &
             levelPop=levelPop,rho=rho, &
@@ -7201,14 +7201,11 @@ contains
        dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)  
 
 
-       tauAbs(1:2) = 0.
-       tauSca(1:2) = 0.
+       tauExt(1:2) = 0.
 
        do j = 2, nTau, 1
-          tauSca(j) = tauSca(j-1) + dlambda(j-1)*0.5*(ksca(j-1)+ksca(j))
-          tauAbs(j) = tauAbs(j-1) + dlambda(j-1)*0.5*(kabs(j-1)+kabs(j))
+          tauExt(j) = tauExt(j-1) + dlambda(j-1)*0.5*(kros(j-1)+kros(j))
        enddo
-       tauExt(1:nTau) = tauSca(1:nTau)+tauAbs(1:nTau)
        if (tauExt(nTau) > 1.) then
           call locate(tauExt, nTau, 1., k)
           rtau(i) = lambda(k) + (lambda(k+1)-lambda(k))*(1.-tauExt(k))/(tauExt(k+1)-tauExt(k))
@@ -7217,11 +7214,14 @@ contains
        endif
     enddo
 
+    do j = 1, nTau
+       write(*,*) lambda(j), TauExt(j)
+    enddo
     
     i = pgbegin(0,"natta.ps/cps",1,1)
     call pgvport(0.1,0.9,0.1,0.9)
 
-    call pgwnad(rinner, rinner+0.2*autocm/1.e10, 0., 0.2*autocm/1.e10)
+    call pgwnad(-0.05*autocm/1.e10+rinner, rinner+0.2*autocm/1.e10, 0., 0.25*autocm/1.e10)
     first = .true.
     do i = 2, nr
        ang = pi/2. - real(i-1)/real(nr-1) * pi/2.
@@ -7243,7 +7243,7 @@ contains
     call pglab("R [AU]","Z [AU]", " ")
     call pgend
     
-    deallocate(ksca, kabs, lambda, dlambda)
+    deallocate(kros,  lambda, dlambda)
   end subroutine nattaplot
 
     

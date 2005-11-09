@@ -993,7 +993,7 @@ contains
 
        if (.not.(variableDustSublimation.and.doingDustSublimation)) then
           write(*,*) "Estimating temperatures of undersampled cells..."
-          do i = 1, 1000
+          do i = 1, 100
              call estimateTempofUndersampled(grid, grid%octreeRoot)
              call updateTemps(grid, grid%octreeRoot)
           enddo
@@ -1016,11 +1016,11 @@ contains
           if ((nfrac /= 0).and.(writeoutput)) then
              write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
           endif
-          if ((iIter_grand>=10).and.(iIter_grand <=11)) then
+          if ((iIter_grand>=10).and.(iIter_grand <=20)) then
              if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
              
-             do j = iSmoothLam, ismoothlam !nLambda
+             do j = iSmoothLam, nLambda
                 do
                    gridConverged = .true.
                    call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps = .true.)

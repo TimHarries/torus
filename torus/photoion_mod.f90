@@ -64,7 +64,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 100000
+    nMonte = 1000000
 
     nIter = 0
 
@@ -142,7 +142,9 @@ contains
                       uHat = randomUnitVector()
                    else if ((r > alpha1/alphaA).and.(r <= (alpha1+alpha21s)/alphaA)) then
                       !two photon continuum
-                      escaped = .true.
+                      call twoPhotonContinuum(thisFreq)
+                      uHat =  randomUnitVector()
+                            
                    else if ( (r > (alpha1+alpha21s)/alphaA).and.(r <= (alpha1+alpha21s+alpha23s)/alphaA)) then
                       ! ly alpha
                       thisFreq = (21.2 / ergtoev)/hcgs
@@ -1071,6 +1073,11 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
            matrixA(i,i-1) = IonRateInto
            matrixA(i,i) = -recombRateOutof
         else
+!           matrixA(i,i-1) = ionRateInto
+!           matrixA(i,i) = -recombRateOutof - &
+!                ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)
+!           matrixA(i, i+1) = (recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * &
+!                thisOctal%ne(subcell) + chargeExchangeRecombination)
            matrixA(i,i-1) = ionRateInto
            matrixA(i,i) = -recombRateOutof - &
                 ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)
@@ -1106,13 +1113,23 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
 
 
      tempA = matrixA
-!     do i = 1, nIonizationStages+1
-!        write(*,'(1p,9e12.3)') matrixA(i,1:nIonizationStages)
-!     enddo
+     if (grid%ion(istart)%species(1:1) =="x") then
+        do i = 1, nIonizationStages+1
+           write(*,'(1p,9e12.3)') matrixA(i,1:nIonizationStages)
+        enddo
+     endif
 
 
 
      call gaussj(matrixA, nIonizationStages+1, nIonizationStages+1, matrixB, 1, 1, ok)
+
+     if (grid%ion(istart)%species(1:1) =="x") then
+        write(*,*) " "
+        write(*,'(1p,9e12.3)') matrixB(1:nIonizationStages,1)
+        write(*,*) " "
+     endif
+
+
      if (.not.ok) then
         write(*,*) "Ionization balance failed for element: ",trim(grid%ion(istart)%species(1:2))
         write(*,*) "temp",thisOctal%temperature(subcell)
@@ -1928,6 +1945,30 @@ subroutine getSahaMilneFreq(table,temperature, thisFreq)
   fac = (r - table%Clyc(i,j))/(table%Clyc(i,j+1)-table%cLyc(i,j))
   thisFreq = table%freq(j) + fac * (table%freq(j+1)-table%freq(j))
 end subroutine getSahaMilneFreq
+
+subroutine twoPhotonContinuum(thisFreq)
+
+! based on table ii of drake, victor, dalgarno, 1969, PhyRev Vol 180, pg 25
+
+  real(double) :: thisFreq
+  real :: y(21) = (/ 0., 0.025, 0.050, 0.075, 0.100, 0.125, 0.150, 0.175, 0.200, 0.225, 0.250, 0.275, 0.300, &
+       0.325, 0.350, 0.375, 0.400, 0.425, 0.450, 0.475, 0.500 /)
+  real :: hei(21) = (/ 0., 7.77e0, 2.52e1, 4.35e1, 5.99e1, 7.42e1, 8.64e1, 9.69e1, 1.06e2, 1.13e2, 1.20e2, 1.25e2, &
+       1.30e2, 1.34e2, 1.37e2, 1.40e2, 1.42e2, 1.43e2, 1.45e2, 1.45e2, 1.45e2 /)
+  real :: freq = 3.86e15, fac, r
+  real :: prob(21)
+  integer :: i
+  prob(1) = 0.
+  do i = 2, 21
+     prob(i) = prob(i-1) + (y(i)-y(i-1)) * hei(i)
+  enddo
+  prob(1:21) = prob(1:21)/prob(21)
+  call random_number(r)
+  call locate(prob, 21, r, i)
+  fac = y(i) + ((r - prob(i))/(prob(i+1)-prob(i)))*(y(i+1)-y(i))
+  thisFreq = (1.-fac)*freq
+end subroutine twoPhotonContinuum
+  
 
 end module
 

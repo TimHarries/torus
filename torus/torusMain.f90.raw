@@ -1119,7 +1119,7 @@ program torus
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau) then
               if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
-              do j = iSmoothLam, iSmoothlam !nLambda
+              do j = iSmoothLam, nLambda
                  do
                     gridConverged = .true.
                     call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps=.true.)
@@ -1926,9 +1926,9 @@ program torus
        nSource = 1
        allocate(source(1:nSource)) 
        source(1)%teff = 40000.  ! o star
-       source(1)%radius = 18.51 * rSol / 1.e10
+       source(1)%radius = 18.7 * rSol / 1.e10
        source(1)%position = VECTOR(0.,0.,0.)
-       source(1)%luminosity = fourPi * stefanBoltz * (18.51*rSol)**2.0 * (source(1)%teff)**4
+       source(1)%luminosity = fourPi * stefanBoltz * (18.7*rSol)**2.0 * (source(1)%teff)**4
        write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff),  50.d0, 100.d4,10000)
        call normalizedSpectrum(source(1)%spectrum)

@@ -31,12 +31,13 @@ contains
     real :: temperature(*)
     real(double) :: rho(*)
     real :: flux(1000)
-    real :: jd(1000), kappa_ross(1000), kappap(1000)
+    real :: jd(1000), kappap(1000)
+    real(double) :: kappa_ross(1000)
     real :: tau(1000)
     logical :: diffApprox(*)
     real(double) :: dTdZ(1000), newTemperature(1000), frac(1000)
     real :: oldVal, thisVal
-    real :: kappa
+    real(double) :: kappa
     integer :: i, nIter, j
     logical :: converged
     real(double) :: tReal(1000),zReal(1000),rhoReal(1000)
@@ -449,7 +450,7 @@ contains
     real :: rosselandOpticalDepth(500000)
     integer :: j
     type(OCTALVECTOR) :: octVec
-    real :: kappa
+    real(double) :: kappa
     type(OCTAL), pointer :: thisOctal, boundaryOctal
     integer :: subcell
     real(double) :: zBoundary(500000)
