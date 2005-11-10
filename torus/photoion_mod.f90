@@ -64,7 +64,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 200000
+    nMonte = 100000
 
     nIter = 0
 
@@ -161,12 +161,12 @@ contains
        epsOverDeltaT = (lCore) / dble(nInf)
 
 
-       do i = 1, 10
+!       do i = 1, 10
           write(*,*) "Calculating ionization and thermal equilibria",i
           call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
-          write(*,*) "Done."
-       enddo
+!          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+!          write(*,*) "Done."
+!       enddo
 
        fac = 2.06e37
 
@@ -801,6 +801,7 @@ contains
                      * (epsOverDeltaT / (v * 1.d30))*thisOctal%Heheating(subcell) ! equation 21 of kenny's
                 totalHeating = (Hheating + HeHeating)
 
+
                 nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
                 nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
                 nh = thisOctal%nh(subcell)
@@ -967,7 +968,7 @@ contains
     endif
     coolingRate = coolingRate + crate
 
-
+    coolingRate = coolingRate * 1.2
   end function HHeCooling
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight)
