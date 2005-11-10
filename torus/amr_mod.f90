@@ -3722,7 +3722,7 @@ CONTAINS
       end if
 
    case("lexington")
-      if (thisOctal%nDepth < 8) then
+      if (thisOctal%nDepth < 6) then
          split = .true.
       else
          split = .false.

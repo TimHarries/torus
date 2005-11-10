@@ -64,7 +64,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 1000000
+    nMonte = 100000
 
     nIter = 0
 
@@ -1020,8 +1020,9 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
   real(double) :: r1, r2
   integer :: iStart, iEnd, iIon
   real(double) :: chargeExchangeIonization, chargeExchangeRecombination
-  logical :: ok
+  logical :: ok, easyWay
   real(double) :: ionRateInto, recombRateOutof
+  real(double), allocatable :: xplus1overx(:)
 
   if (thisOctal%threed) then
      v = thisOctal%subcellSize**3
@@ -1043,10 +1044,57 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
      iEnd = iEnd - 1
      nIonizationStages = iEnd - iStart + 1
 
+     
+     easyWay = .true.
+
+     if (easyWay) then
+
+        allocate(xplus1overx(1:nIonizationStages-1))
+        do i = 1, nIonizationStages-1
+           iIon = iStart+i-1
+           call getChargeExchangeRecomb(grid%ion(iion+1), thisOctal%temperature(subcell), &
+                thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
+                thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
+                chargeExchangeRecombination)
+
+           call getChargeExchangeIon(grid%ion(iion), thisOctal%temperature(subcell), &
+                thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
+                thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
+                chargeExchangeIonization)
+
+
+           
+        
+           xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
+      max(1.e-30,(recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination))
+           if (grid%ion(iion)%species(1:1) =="O") write(*,*) i,xplus1overx(i)
+        enddo
+       thisOctal%ionFrac(subcell, iStart:iEnd) = 1.
+        do i = 1, nIonizationStages - 1
+           iIon = iStart+i-1
+           thisOctal%ionFrac(subcell,iIon+1) = thisOctal%ionFrac(subcell,iIon) * xplus1overx(i)
+           if (grid%ion(iion)%species(1:1) =="O") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
+        enddo
+        if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
+           thisOctal%ionFrac(subcell,iStart:iEnd) = &
+                max(1.e-30,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
+        else
+           thisOctal%ionFrac(subcell,iStart:iEnd) = 1.e-30
+        endif
+           
+        if (grid%ion(iion)%species(1:1) =="O") then
+           write(*,*) thisOctal%ionFrac(subcell,iStart:iEnd)
+           write(*,*) " "
+        endif
+
+        deallocate(xplus1overx)
+
+     else
+
      allocate(matrixA(1:(nIonizationStages+1),1:(nIonizationStages+1)))
      allocate(tempA(1:(nIonizationStages+1),1:(nIonizationStages+1)))
      allocate(matrixB(1:(nIonizationStages+1), 1))
-     
+ 
      matrixA = 0.d0
 
      do i = 1, nIonizationStages
@@ -1149,10 +1197,15 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
      enddo
 !     write(*,*) " " 
      deallocate(matrixA, matrixB, tempA)
-     k = iEnd + 1
-  end do
+
+  endif
+  k = iEnd + 1
+end do
   
-  thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
+
+
+
+thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
 
 end subroutine solveIonizationBalance
 
