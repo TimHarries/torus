@@ -64,7 +64,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 100000
+    nMonte = 200000
 
     nIter = 0
 
@@ -160,10 +160,13 @@ contains
        end do
        epsOverDeltaT = (lCore) / dble(nInf)
 
-       write(*,*) "Calculating ionization and thermal equilibria"
-       call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-!       call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
-       write(*,*) "Done."
+
+       do i = 1, 10
+          write(*,*) "Calculating ionization and thermal equilibria",i
+          call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
+          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+          write(*,*) "Done."
+       enddo
 
        fac = 2.06e37
 
@@ -1067,13 +1070,13 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
         
            xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
       max(1.e-30,(recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination))
-           if (grid%ion(iion)%species(1:1) =="O") write(*,*) i,xplus1overx(i)
+!           if (grid%ion(iion)%species(1:1) =="O") write(*,*) i,xplus1overx(i)
         enddo
        thisOctal%ionFrac(subcell, iStart:iEnd) = 1.
         do i = 1, nIonizationStages - 1
            iIon = iStart+i-1
            thisOctal%ionFrac(subcell,iIon+1) = thisOctal%ionFrac(subcell,iIon) * xplus1overx(i)
-           if (grid%ion(iion)%species(1:1) =="O") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
+!           if (grid%ion(iion)%species(1:1) =="O") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
         enddo
         if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
            thisOctal%ionFrac(subcell,iStart:iEnd) = &
@@ -1082,10 +1085,10 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
            thisOctal%ionFrac(subcell,iStart:iEnd) = 1.e-30
         endif
            
-        if (grid%ion(iion)%species(1:1) =="O") then
-           write(*,*) thisOctal%ionFrac(subcell,iStart:iEnd)
-           write(*,*) " "
-        endif
+!        if (grid%ion(iion)%species(1:1) =="O") then
+!           write(*,*) thisOctal%ionFrac(subcell,iStart:iEnd)
+!           write(*,*) " "
+!        endif
 
         deallocate(xplus1overx)
 
@@ -1214,7 +1217,7 @@ function recombRate(thisIon, temperature) result (rate)
   type(IONTYPE) :: thisIon
   real :: temperature
   real(double) :: rate
-  real(double) :: a, b, t0, t1, c, d, f, t
+  real(double) :: a, b, t0, t1, c, d, f, t, z
 
 ! recombinations INTO this species
 
@@ -1260,6 +1263,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = -0.1127
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 1
+              a = 5.068
+              b = -0.6192
+              c = -0.0815
+              d = 1.2910
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(5) ! C II
               a = 1.8267
               b = 4.1012
@@ -1268,6 +1277,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.5960
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 2
+              a = 5.434
+              b = -0.6116
+              c = 0.0694
+              d = 0.7866
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(4) ! C III
               a = 2.3196
               b = 10.7328
@@ -1276,6 +1291,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.4101
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 3
+              a = 4.742
+              b = -0.6167
+              c = 0.2960
+              d = 0.6167
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(3) ! C IV
               a = 8.540e-11
               b = 0.5247
@@ -1302,6 +1323,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.4398
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 1
+              a = 3.874
+              b = -0.6487
+              c = 0.
+              d = 1.
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(6) ! N II
               a = 0.0320
               b = -0.6624
@@ -1310,6 +1337,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.5946
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 2
+              a = 4.974
+              b = -0.6209
+              c = 0.
+              d = 1.
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(5) ! N III
               a = -0.8806
               b = 11.2406
@@ -1318,6 +1351,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.6127
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 3
+              a = 4.750
+              b = -0.5942
+              c = 0.8452
+              d = 2.8450
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(4) ! N IV
               a = 0.4134
               b = -4.6319
@@ -1326,6 +1365,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.2360
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 4
+              a = 4.626
+              b = -0.9521
+              c = 0.4729
+              d = -0.4477
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(3) ! N V
               a = 1.169e-10
               b = 0.5470
@@ -1354,6 +1399,12 @@ function recombRate(thisIon, temperature) result (rate)
                  f = 0.7993
               endif
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 1
+              a = 3.201
+              b = -0.6880
+              c = -0.0174
+              d = 1.7070
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(7) ! O II
               a = -0.0036
               b = 0.7519
@@ -1362,6 +1413,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.2769
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 2
+              a = 4.092
+              b = -0.6413
+              c = 0.
+              d = 1.
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(6) ! O III
               a = 0.0
               b = 21.8790
@@ -1370,6 +1427,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 1.1899
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 3
+              a = 4.890
+              b = -0.6213
+              c = 0.0184
+              d = 1.5550
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(5) ! O IV
               t = temperature / 10000.
               if (t < 2.) then
@@ -1386,6 +1449,12 @@ function recombRate(thisIon, temperature) result (rate)
                  f = 0.8501
               endif
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 4
+              a = 14.665
+              b = -0.5140
+              c = 2.7300
+              d = 0.2328
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(4) ! O V
               a = -2.8425
               b = 0.2283
@@ -1394,6 +1463,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 1.7558
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 5
+              a = 4.626
+              b = -0.9521
+              c = 0.4729
+              d = -0.4477
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case DEFAULT
               write(*,*) "No recombination rate for ",thisIon%species
               rate  = 0.
@@ -1402,7 +1477,12 @@ function recombRate(thisIon, temperature) result (rate)
      case(10)
         select case(thisIon%n) ! from nussbaumer and storey 1987
            case(10) ! Ne I
-              rate = 0. ! section 4 of above paper
+              z = 1
+              a = 7.317
+              b = -0.5358
+              c = 2.4130
+              d = 0.4176
+              rate = ppb1991(z, a, b, c, d, dble(temperature))
            case(9) ! Ne II
               a = 0.0129
               b =-0.1779
@@ -1411,6 +1491,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.4516
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 2
+              a = 11.80
+              b = -0.5404
+              c = 3.0300
+              d = 0.2050
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(8) ! Ne III
               a = 3.6781
               b = 14.1481
@@ -1419,6 +1505,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.2313
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 3
+              a = 5.841
+              b = -0.5921
+              c = 0.4498
+              d = 0.6395
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(7) ! Ne IV
               a =-0.0254
               b = 5.5365
@@ -1427,6 +1519,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.1702
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 4
+              a = 15.550
+              b = -0.4825
+              c = 3.2740
+              d = 0.3030
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(6) ! Ne V
               a = -0.0141
               b = 33.8479
@@ -1435,6 +1533,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.1942
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 5
+              a = 7.538
+              b = -0.5540
+              c = 1.2960
+              d = 0.3472
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case(5) ! Ne VI
               a = 19.9280
               b = 235.0536
@@ -1443,6 +1547,12 @@ function recombRate(thisIon, temperature) result (rate)
               f = 0.1282
               t = temperature / 10000.
               rate = nussbaumerStorey1983(t,a,b,c,d,f)
+              z = 6
+              a = 5.239
+              b = -0.5966
+              c = 0.7135
+              d = 0.4537
+              rate = rate + ppb1991(z, a, b, c, d, dble(temperature))
            case DEFAULT
               write(*,*) "No recombination rate for ",thisIon%species
               rate  = 0.
@@ -1479,9 +1589,22 @@ function nussbaumerStorey1983(t, a, b, c, d, f) result(rate)
 
 ! based on Nussbaumer & Storey 1983 AA 126 75
   real(double) :: t, a, b, c, d, f, rate
-  rate = 1.d-12 * (a/t + b + c*t + d*t**2)*(t**(-1.5d0))*exp(-f/t)
+  rate = (1.d-12) * ((a/t) + b + (c*t) + d*(t**2))*(t**(-1.5d0))*exp(-f/t)
 
 end function nussbaumerStorey1983
+
+function ppb1991(z, a, b, c, d, temperature) result(rate)
+
+! radiative recombination rates
+! based on Pequignot, Petitjean & Boisson (1991) A&A 251 680
+
+  real(double) :: z, a, b, c, d, temperature, t, rate
+
+  t = 1.d-4 * temperature / z**2
+
+  rate = 1.d-13 * z * (a*t**b)/(1.d0+c*t**d)
+
+end function ppb1991
 
 
 function returnNe(thisOctal, subcell, ionArray, nion) result (ne)
@@ -1511,14 +1634,16 @@ subroutine dumpLexington(grid, epsoverdt)
   type(OCTALVECTOR) :: rvec
   type(OCTALVECTOR) :: octVec
   real :: fac
+  real :: ne
 
   open(20,file="lexington.dat",form="formatted",status="unknown")
   open(21,file="orates.dat",form="formatted",status="unknown")
+  open(22,file="ne.dat",form="formatted",status="unknown")
 
   do i = 1, 50
      r = (1.+5.d0*dble(i-1)/49.d0)*pctocm/1.e10
 
-     t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0
+     t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0;ne=0.
 
      oirate = 0; oiirate = 0; oiiirate = 0; oivrate = 0
      do j = 1, 100
@@ -1551,6 +1676,7 @@ subroutine dumpLexington(grid, epsoverdt)
         NeII = NeII + thisOctal%ionfrac(subcell,returnIonNumber("Ne II", grid%ion, grid%nIon))
         NeIII = NeIII + thisOctal%ionfrac(subcell,returnIonNumber("Ne III", grid%ion, grid%nIon))
         NeIV = NeIV + thisOctal%ionfrac(subcell,returnIonNumber("Ne IV", grid%ion, grid%nIon))
+        ne = ne + thisOctal%ne(subcell)
 
 !        fac = thisOctal%nh(subcell) * returnAbundance(8) !* thisOctal%ionfrac(subcell,returnIonNumber("O I", grid%ion, grid%nIon))
         fac = 1.
@@ -1570,6 +1696,7 @@ subroutine dumpLexington(grid, epsoverdt)
      hi = hi / 100.; hei = hei/100.; oii = oii/100; oiii = oiii/100.; cii=cii/100.
      ciii = ciii/100; civ=civ/100.; nii =nii/100.; niii=niii/100.; niv=niv/100.
      nei=nei/100.;neii=neii/100.; neiii=neiii/100.; neiv=neiv/100.;t=t/100.
+     ne = ne / 100
 
      oirate = oirate / 100.
      oiirate = oiirate / 100.
@@ -1590,15 +1717,18 @@ subroutine dumpLexington(grid, epsoverdt)
      neii = log10(max(neii, 1e-10))
      neiii = log10(max(neiii, 1e-10))
      neiv = log10(max(neiv, 1e-10))
+     ne = log10(max(ne,1.e-10))
 
 
      write(21,'(f5.3,4e12.3)') r*1.e10/pctocm,oirate,oiirate,oiiirate,oivrate
 
      write(20,'(f5.3,f9.1,  14f8.3)') &
           r*1.e10/pctocm,t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
+     write(22,*) r*1.e10/pctocm,ne
   enddo
   close(20)
   close(21)
+  close(22)
 end subroutine dumpLexington
 
 subroutine getChargeExchangeRecomb(parentIon, temperature, nHI, nHII, recombRate)
@@ -2022,6 +2152,7 @@ subroutine twoPhotonContinuum(thisFreq)
   thisFreq = (1.-fac)*freq
 end subroutine twoPhotonContinuum
   
+
 
 end module
 
