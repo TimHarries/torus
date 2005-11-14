@@ -64,7 +64,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 100000
+    nMonte = 500000
 
     nIter = 0
 
@@ -169,63 +169,72 @@ contains
 !       enddo
 
        fac = 2.06e37
+       
+       luminosity1 = 0.d0
+       call getHbetaLuminosity(grid%octreeRoot, grid, luminosity1)
+       write(*,'(a,2f12.4)') "H beta :",luminosity1/1.e37,luminosity1/2.05e37
+       fac = luminosity1
+       
 
        call getForbiddenLineLuminosity(grid, "N II", 1.22e6, luminosity1)
-       write(*,'(a,f12.4)') "N II (122 um):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "N II (122 um):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.034*2.05e37)
 
        call getForbiddenLineLuminosity(grid, "N II", 6584., luminosity1)
        call getForbiddenLineLuminosity(grid, "N II", 6548., luminosity2)
-       write(*,'(a,f12.4)') "N II (6584+6548):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "N II (6584+6548):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.730*2.05e37)
 
        call getForbiddenLineLuminosity(grid, "N III", 5.73e5, luminosity1)
-       write(*,'(a,f12.4)') "N III (57.3 um):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "N III (57.3 um):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.292*2.05e37)
 
 
        call getForbiddenLineLuminosity(grid, "O I", 6300., luminosity1)
        call getForbiddenLineLuminosity(grid, "O I", 6363., luminosity2)
-       write(*,'(a,f12.4)') "O I (6300+6363):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "O I (6300+6363):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.0086*2.05e37)
+
        call getForbiddenLineLuminosity(grid, "O II", 7320., luminosity1)
        call getForbiddenLineLuminosity(grid, "O II", 7330., luminosity2)
-       write(*,'(a,f12.4)') "O II (7320+7330):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "O II (7320+7330):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.029*2.05e37)
+
        call getForbiddenLineLuminosity(grid, "O II", 3726., luminosity1)
        call getForbiddenLineLuminosity(grid, "O II", 3729., luminosity2)
-       write(*,'(a,f12.4)') "O II (3726+3729):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "O II (3726+3729):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(2.03*2.05e37)
+
        call getForbiddenLineLuminosity(grid, "O III", 5007., luminosity1)
        call getForbiddenLineLuminosity(grid, "O III", 4959., luminosity2)
-       write(*,'(a,f12.4)') "O III (5007+4959):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "O III (5007+4959):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(2.18*2.05e37)
+
        call getForbiddenLineLuminosity(grid, "O III", 4363., luminosity3)
-       write(*,'(a,f12.4)') "O III (4363):",(luminosity3)/1.e37
-       write(*,*) (luminosity1 + luminosity2)/luminosity3, 8.3*exp(3.3e4/7000.)
+       write(*,'(a,2f12.4)') "O III (4363):",(luminosity3)/1.e37,luminosity3/(0.0037*2.05e37)
        call getForbiddenLineLuminosity(grid, "O III", 518145., luminosity1)
        call getForbiddenLineLuminosity(grid, "O III", 883562., luminosity2)
-       write(*,'(a,f12.4)') "O III (52+88um):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "O III (52+88um):,",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/((1.06+1.22)*2.05e37)
 
 
        call getForbiddenLineLuminosity(grid, "Ne II", 1.28e5, luminosity1)
-       write(*,'(a,f12.4)') "Ne II (12.8um):",(luminosity1)/fac
+       write(*,'(a,2f12.4)') "Ne II (12.8um):",(luminosity1)/fac,luminosity1/(0.195*2.05e37)
 
        call getForbiddenLineLuminosity(grid, "Ne III", 1.56e5, luminosity1)
-       write(*,'(a,f12.4)') "Ne III (15.5um):",(luminosity1)/fac
+       write(*,'(a,2f12.4)') "Ne III (15.5um):",(luminosity1)/fac,luminosity1/(0.322*2.05e37)
 
        call getForbiddenLineLuminosity(grid, "Ne III", 3869., luminosity1)
        call getForbiddenLineLuminosity(grid, "Ne III", 3968., luminosity2)
-       write(*,'(a,f12.4)') "Ne III (3869+3968):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "Ne III (3869+3968):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.085*2.05e37)
 
 
        call getForbiddenLineLuminosity(grid, "S II", 6716., luminosity1)
        call getForbiddenLineLuminosity(grid, "S II", 6731., luminosity2)
-       write(*,'(a,f12.4)') "S II (6716+6731):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "S II (6716+6731):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.147*2.05e37)
 
        call getForbiddenLineLuminosity(grid, "S II", 4068., luminosity1)
        call getForbiddenLineLuminosity(grid, "S II", 4076., luminosity2)
-       write(*,'(a,f12.4)') "S II (4068+4076):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "S II (4068+4076):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.008*2.05e37)
 
        call getForbiddenLineLuminosity(grid, "S III", 1.87e5, luminosity1)
-       write(*,'(a,f12.4)') "S III (18.7um):",(luminosity1)/fac
+       write(*,'(a,2f12.4)') "S III (18.7um):",(luminosity1)/fac,luminosity1/(0.577*2.05e37)
 
        call getForbiddenLineLuminosity(grid, "S III", 9532., luminosity1)
        call getForbiddenLineLuminosity(grid, "S III", 9069., luminosity2)
-       write(*,'(a,f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac
+       write(*,'(a,2f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(1.22*2.05e37)
 
 
 
@@ -726,6 +735,40 @@ contains
        endif
     enddo
   end subroutine zeroDistanceGrid
+
+  recursive subroutine getHbetaluminosity(thisOctal, grid, luminosity)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  type(GRIDTYPE) :: grid
+  real(double) :: luminosity, v, r1, r2, hbeta
+  type(OCTALVECTOR) :: rVec
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call getHbetaLuminosity(child, grid, luminosity)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%threed) then
+             v = thisOctal%subcellSize**3
+          else
+             rVec = subcellCentre(thisOctal,subcell)
+             r1 = rVec%x-thisOctal%subcellSize/2.d0
+             r2 = rVec%x+thisOctal%subcellSize/2.d0
+             v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+          endif
+          hbeta = (2530.d0/thisOctal%temperature(subcell)**0.833) * thisOctal%ne(subcell) * thisOctal%ionFrac(subcell, 2) * &
+               thisOctal%nh(subcell)*grid%ion(1)%abundance*1.d-25
+          luminosity = luminosity + hbeta * (v*1.d30)
+       endif
+    enddo
+  end subroutine getHbetaluminosity
 
   recursive subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT)
     type(gridtype) :: grid
