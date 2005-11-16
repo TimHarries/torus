@@ -322,7 +322,7 @@ contains
     real, intent(in) :: percent_undersampled_min  
     type(OCTALVECTOR) ::  uHat, uNew, rVec, rHat
     type(OCTALVECTOR) :: octVec,avedirection
-    type(OCTAL), pointer :: thisOctal
+    type(OCTAL), pointer :: thisOctal, sOctal
     integer, intent(in)  :: nLambda, nMuMie
     type(PHASEMATRIX):: miePhase(1:nDustType,1:nLambda, 1:nMuMie)
 !    real  :: lamArray(:)
@@ -509,7 +509,7 @@ contains
        end if
 
        if (doingDustSublimation) then
-          nMonte = 100000
+          nMonte = 1000000
           if (iIter_grand == 0) then
              nIter = 3
           else
@@ -720,6 +720,7 @@ contains
                 octVec = rVec 
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
                      kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
+                sOctal => thisOctal
 
                 if (thisOctal%diffusionApprox(subcell)) then
                    write(*,*) "photon in diffusion zone",photonindiffusionzone
@@ -751,7 +752,7 @@ contains
 
                 else
 
-                   call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
+                   call amrGridValues(grid%octreeRoot, octVec, startOctal=sOctal, foundOctal=thisOctal, &
                         foundSubcell=subcell, temperature=treal,grid=grid, kappaAbsArray=kAbsArray)
                    t1 = dble(treal)
 
@@ -1628,7 +1629,7 @@ contains
 
   end subroutine intersectCubeAMR
 
-  subroutine intersectCubeAMR2D(grid, posVec, direction, tval)
+  subroutine intersectCubeAMR2D(grid, posVec, direction, tval, sOctal)
 
 ! this is to find a cell intersection for a 2D AMR grid
 ! which is essentially a 2D-grid that projects into
@@ -1637,6 +1638,7 @@ contains
 
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
+   type(OCTAL), pointer :: sOctal
    type(OCTALVECTOR), intent(in) :: posVec
    type(OCTALVECTOR), intent(inout) :: direction
    real(oct), intent(out) :: tval
@@ -1655,7 +1657,7 @@ contains
 
    point = posVec
 
-   call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
+   call amrGridValues(grid%octreeRoot, point, startOctal=sOctal,foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
    subcen =  subcellCentre(thisOctal,subcell)
    ok = .true.
 
@@ -1731,7 +1733,7 @@ contains
    type(GRIDTYPE) :: grid
    type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
    type(OCTAL), pointer :: thisOctal, tempOctal, sourceOctal
-   type(OCTAL),pointer :: oldOctal
+   type(OCTAL),pointer :: oldOctal, sOctal
    type(OCTAL),pointer :: foundOctal
    integer :: subcell, isubcell, tempSubcell, sourceSubcell
    real(oct) :: tval, tau, r
@@ -1768,11 +1770,6 @@ contains
 
     call random_number(r)
     tau = -log(r)
-    if (grid%octreeRoot%threed) then
-       call intersectCubeAMR(grid, rVec, uHat, tVal)
-    else
-       call intersectCubeAMR2D(grid, rVec, uHat, tVal)
-    endif
 
 
     octVec = rVec
@@ -1782,6 +1779,15 @@ contains
          foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
          grid=grid, inFlow=inFlow)
     oldOctal => thisOctal
+    sOctal => thisOctal
+
+! moved from before call to amrgridvalues - th 16/11/05
+    if (grid%octreeRoot%threed) then
+       call intersectCubeAMR(grid, rVec, uHat, tVal)
+    else
+       call intersectCubeAMR2D(grid, rVec, uHat, tVal, sOctal)
+    endif
+
 
     if (inFlow) then
        thisTau = dble(tVal) * (kappaAbsdb + kappaScadb)
@@ -1808,8 +1814,9 @@ contains
 ! energy, and will create the appropriate boundary condition
 ! at the surface of the diffusion zone.
 
-       call amrGridValues(grid%octreeRoot, octVec,  foundOctal=tempOctal, &
+       call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
+       sOctal => tempOctal
        if (tempOctal%diffusionApprox(tempsubcell)) then
           photonInDiffusionZone = .true.
           if (tempOctal%leftHandDiffusionBoundary(subcell)) then
@@ -1826,8 +1833,9 @@ contains
           rVec = octVec
           call diffPhotonPosition(grid, tempOctal, tempsubcell, rVec)
           octVec = rVec
-          call amrGridValues(grid%octreeRoot, rVec,  foundOctal=tempOctal, &
+          call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
+          sOctal => tempOctal
           if (tempOctal%diffusionApprox(tempsubcell)) then
              write(*,*) "! error - photon produced in diffusion zone 1..."
           endif
@@ -1877,6 +1885,7 @@ contains
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,  foundOctal=thisOctal, &
                foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
                grid=grid, inFlow=inFlow)
+          sOctal => thisOctal
           oldOctal => thisOctal
           thisOctVec = octVec
 
@@ -1885,7 +1894,7 @@ contains
           if (grid%octreeRoot%threed) then
              call intersectCubeAMR(grid, rVec, uHat, tVal)
           else
-             call intersectCubeAMR2D(grid, rVec, uHat, tVal)
+             call intersectCubeAMR2D(grid, rVec, uHat, tVal, thisOctal)
           endif
           octVec = rVec
 
@@ -1987,7 +1996,7 @@ contains
 ! this is a workaround due to numerical problems with long pathlengths
 ! and small cells. needs fixing.
 
-       call amrGridValues(grid%octreeRoot, rVec,  foundOctal=tempOctal, &
+       call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
        if (tempOctal%diffusionApprox(tempsubcell)) then
           photonInDiffusionZone = .true.
@@ -1999,7 +2008,7 @@ contains
           rVec = octVec
           call diffPhotonPosition(grid, tempOctal, tempsubcell, rVec)
           octVec = rVec
-          call amrGridValues(grid%octreeRoot, rVec,  foundOctal=tempOctal, &
+          call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal,foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
           if (tempOctal%diffusionApprox(tempsubcell)) then
              write(*,*) "! error - photon produced in diffusion zone 2..."

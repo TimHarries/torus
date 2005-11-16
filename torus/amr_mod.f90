@@ -1040,7 +1040,7 @@ CONTAINS
 
     TYPE(octalVector), INTENT(INOUT)    :: currentPoint ! current ray position
     TYPE(octalVector), INTENT(IN)       :: startPoint   ! initial ray position
-    TYPE(octalVector)                   :: locator       
+    TYPE(octalVector)                   :: locator, rotloc
                   ! 'locator' is used to indicate a point that lies within the  
                   !   *next* cell of the octree that the ray will interesect.
                   !   initially this will be the same as the currentPoint
@@ -1095,7 +1095,12 @@ CONTAINS
 
     ! find which of the subcells the point lies in
     DO 
-      subcell = whichSubcell(octree,locator)
+       if (octree%twod) then
+          rotloc = projecttoxz(locator)
+       else
+          rotloc = locator
+       endif
+      subcell = whichSubcell(octree,rotloc)
 
       ! the IF statement below is for debugging
       !IF ( looseInOctal(octree,locator) .EQV. .FALSE. ) THEN
@@ -1843,6 +1848,7 @@ CONTAINS
       IF (PRESENT(actualSubcell)) THEN
         subcell = actualSubcell
       ELSE 
+    ! called with rotated position if 2d octal
         CALL findSubcellLocal(point2,startOctal,subcell)
         IF (PRESENT(foundOctal))   foundOctal   => startOctal
         IF (PRESENT(foundSubcell)) foundSubcell =  subcell
@@ -2037,6 +2043,7 @@ CONTAINS
       IF (PRESENT(actualSubcell)) THEN
         subcell = actualSubcell
       ELSE 
+         ! called with rotated point if necessary for 2d
         CALL findSubcellLocal(point_local,startOctal,subcell)
         IF (PRESENT(foundOctal))   foundOctal   => startOctal
         IF (PRESENT(foundSubcell)) foundSubcell =  subcell
@@ -2044,6 +2051,7 @@ CONTAINS
       resultOctal => startOctal
       
     ELSE
+         ! called with rotated point if necessary for 2d
       CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal))   foundOctal   => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
@@ -2355,6 +2363,7 @@ CONTAINS
       amrGridKappaAbs = startOctal%kappaAbs(subcell,iLambda)
       
     ELSE
+       ! rotated point used for 2d case
       CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal))   foundOctal   => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
@@ -2423,6 +2432,7 @@ CONTAINS
       amrGridKappaSca = startOctal%kappaSca(subcell,iLambda)
       
     ELSE
+      ! rotated point for 2d case
       CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal))   foundOctal   => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
@@ -2488,6 +2498,7 @@ CONTAINS
       amrGridTemperature = startOctal%temperature(subcell)
       
     ELSE
+       ! rotated point for 2d case
       CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal)) foundOctal => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
@@ -2553,6 +2564,7 @@ CONTAINS
       amrGridDensity = startOctal%rho(subcell)
       
     ELSE
+      ! rotated point for 2d case
       CALL findSubcellTD(point_local,octalTree,resultOctal,subcell)
       IF (PRESENT(foundOctal)) foundOctal => resultOctal
       IF (PRESENT(foundSubcell)) foundSubcell =  subcell
@@ -2697,12 +2709,14 @@ CONTAINS
 
 
   FUNCTION whichSubcell(thisOctal,point) RESULT (subcell)
-    ! POINT --> can be in both in roteated or unrotated coordinates for 2D case 
+    ! POINT --> MUST be pre-rotated for 2d case!!!!!!!!!!!!!!
     !
     ! returns the identification number (1-8) of the subcell of the 
     ! current octal which contains a given point
     ! NB this does NOT check that the point lies within the bounds of the octal!
   
+
+
     IMPLICIT NONE
     
     TYPE(octal), INTENT(IN)       :: thisOctal
@@ -2742,15 +2756,14 @@ CONTAINS
           END IF
        ENDIF
     else ! twoD case
-       rotpoint = projecttoxz(point)
-       IF ( rotpoint%x <= thisOctal%centre%x ) THEN
-          IF ( rotpoint%z <= thisOctal%centre%z ) THEN
+       IF ( point%x <= thisOctal%centre%x ) THEN
+          IF ( point%z <= thisOctal%centre%z ) THEN
              subcell = 1
           ELSE 
              subcell = 3
           ENDIF
        ELSE
-          IF (rotpoint%z <= thisOctal%centre%z) THEN
+          IF (point%z <= thisOctal%centre%z) THEN
              subcell = 2
           ELSE 
              subcell = 4
@@ -2983,6 +2996,7 @@ CONTAINS
     IMPLICIT NONE
 
     TYPE(octalVector), INTENT(IN) :: point
+    TYPE(octalVector) :: point_local
     TYPE(octal),POINTER    :: thisOctal
     INTEGER, INTENT(OUT)   :: subcell
     
@@ -2995,8 +3009,13 @@ CONTAINS
                               !   a loop going up and down the tree.
                               ! we will keep track of the progress of
                               !   the search using these flags.
-                              
-    CALL findSubcellLocalPrivate(point,thisOctal,subcell,&
+                             
+    if (thisOctal%twoD) then
+       point_local = projectToXZ(point)
+    else
+       point_local = point
+    endif
+    CALL findSubcellLocalPrivate(point_local,thisOctal,subcell,&
                                  haveDescended,boundaryProblem)
                                  
   CONTAINS
@@ -4705,7 +4724,6 @@ CONTAINS
       type(octalVector), intent(in) :: distortionVec(nVec)
       logical, intent(in) :: undoPrevious
       logical, intent(in) :: setAllChanged
-      
       integer, parameter :: nPhi = 360
       real(oct) :: phi
       integer :: containedParticles
@@ -4714,7 +4732,7 @@ CONTAINS
       integer :: iSubcell, iChild
       type(octal), pointer :: child
       type(octalVector) :: trueVector
-      type(octalVector) :: thisVec
+      type(octalVector) :: thisVec, thisVec2
  
       do iSubcell = 1, 8, 1
         if (thisOctal%hasChild(iSubcell)) then
@@ -4748,7 +4766,12 @@ CONTAINS
               thisVec = thisVec + starPos
 
               if (inOctal(thisOctal,thisVec)) then
-                if (whichSubcell(thisOctal,thisVec) == iSubcell) &
+                 if (thisOctal%twod) then
+                    thisVec2 = projecttoXZ(thisVec)
+                 else
+                    thisVec2 = thisVec
+                 endif
+                if (whichSubcell(thisOctal,thisVec2) == iSubcell) &
                   containedParticles = containedParticles + 1
                   
               else
@@ -4760,7 +4783,12 @@ CONTAINS
                   thisVec%z = starPos%z - (thisVec%z - starPos%z)
                   
                   if (inOctal(thisOctal,thisVec)) then
-                    if (whichSubcell(thisOctal,thisVec) == iSubcell) &
+                 if (thisOctal%twod) then
+                    thisVec2 = projecttoXZ(thisVec)
+                 else
+                    thisVec2 = thisVec
+                 endif
+                    if (whichSubcell(thisOctal,thisVec2) == iSubcell) &
                       containedParticles = containedParticles + 1
                   end if
                 end if

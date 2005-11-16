@@ -7182,7 +7182,7 @@ contains
     tr(5) = 0.
     tr(6) = dy
 
-
+    open(21, file="natta.dat", status="unknown", form="formatted")
 
     do i = 1, nr
        ang = real(i-1)/real(nr-1) * pi/2.
@@ -7213,10 +7213,6 @@ contains
           rtau(i) = 0.
        endif
     enddo
-
-    do j = 1, nTau
-       write(*,*) lambda(j), TauExt(j)
-    enddo
     
     i = pgbegin(0,"natta.ps/cps",1,1)
     call pgvport(0.1,0.9,0.1,0.9)
@@ -7227,7 +7223,7 @@ contains
        ang = pi/2. - real(i-1)/real(nr-1) * pi/2.
        x = rtau(i) * cos(ang)
        z = rtau(i) * sin(ang)
-
+       write(21,*) x/autocm, z/autocm
        if (rTau(i) /= 0.) then
           if (first) then
              call pgmove(x, z)
@@ -7242,6 +7238,7 @@ contains
     call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
     call pglab("R [AU]","Z [AU]", " ")
     call pgend
+    close(21)
     
     deallocate(kros,  lambda, dlambda)
   end subroutine nattaplot
