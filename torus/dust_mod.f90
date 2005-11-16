@@ -926,7 +926,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     
     integer :: nx, subcell, i
 
-    subrange = 50.
+    subrange = 1.
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -956,8 +956,8 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
           thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
-          if (thisTau <= 1.) then
-             fac = thisOctal%oldFrac(subcell)*(thisTau + 0.1) / thisTau 
+          if (thisTau <= 10.) then
+             fac = thisOctal%oldFrac(subcell)*(thisTau + 0.5) / thisTau 
              frac = min(fac, frac)
 !             write(*,*) fac, frac, thisTau, thisOctal%oldFrac(subcell)
           endif
@@ -1067,8 +1067,8 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
              end if
           end do
        else
-          thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * 1.d-5
-          thisOctal%oldFrac(subcell) = 1.d-5
+          thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * 1.d-10
+          thisOctal%oldFrac(subcell) = 1.d-10
        end if
     end do
 

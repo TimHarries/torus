@@ -476,9 +476,11 @@ contains
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
 
-    if ((grid%geometry == "shakara").and.(nDustType > 1)) then
-       call fillDustShakara(grid, grid%octreeRoot)
-       call stripDustAway(grid%octreeRoot)
+    if (grid%geometry == "shakara") then
+	if (nDustType > 1) then
+           call fillDustShakara(grid, grid%octreeRoot)
+        endif
+        call stripDustAway(grid%octreeRoot)
     endif
 
     if ((grid%geometry == "ppdisk").and.(nDustType > 1)) then
@@ -507,9 +509,9 @@ contains
        end if
 
        if (doingDustSublimation) then
-          nMonte = 50000
+          nMonte = 100000
           if (iIter_grand == 0) then
-             nIter = 1 !3
+             nIter = 3
           else
              nIter = 1 !2
           endif
@@ -1016,11 +1018,11 @@ contains
           if ((nfrac /= 0).and.(writeoutput)) then
              write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
           endif
-          if ((iIter_grand>=10).and.(iIter_grand <=20)) then
+          if ((iIter_grand>=1).and.(iIter_grand <=20)) then
              if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
              
-             do j = iSmoothLam, nLambda
+             do j = iSmoothLam, ismoothlam ! nLambda
                 do
                    gridConverged = .true.
                    call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps = .true.)
