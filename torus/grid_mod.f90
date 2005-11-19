@@ -7223,7 +7223,7 @@ contains
        ang = pi/2. - real(i-1)/real(nr-1) * pi/2.
        x = rtau(i) * cos(ang)
        z = rtau(i) * sin(ang)
-       write(21,*) x/autocm, z/autocm
+       write(21,*) 1.e10*x/autocm, 1.e10*z/autocm
        if (rTau(i) /= 0.) then
           if (first) then
              call pgmove(x, z)

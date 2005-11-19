@@ -509,7 +509,7 @@ contains
        end if
 
        if (doingDustSublimation) then
-          nMonte = 1000000
+          nMonte = 50000
           if (iIter_grand == 0) then
              nIter = 3
           else
@@ -1020,8 +1020,15 @@ contains
              write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
           endif
           if ((iIter_grand>=1).and.(iIter_grand <=20)) then
-             if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
+
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
+
+             if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+             call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
+             if (writeoutput) write(*,*) "done."
+
+
+             if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
              
              do j = iSmoothLam, ismoothlam ! nLambda
                 do
@@ -1813,9 +1820,15 @@ contains
 ! the top layer of the diffusion zone (this will conserve
 ! energy, and will create the appropriate boundary condition
 ! at the surface of the diffusion zone.
+!       write(*,*) "octvec",octvec
+!       write(*,*) sOctal%centre,sOctal%subcellSize
+!       call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
+!            foundSubcell=tempsubcell)
 
-       call amrGridValues(grid%octreeRoot, octVec,  startOctal=sOctal, foundOctal=tempOctal, &
+       call amrGridValues(grid%octreeRoot, octVec,  foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
+
+!       write(*,*) tempOctal%centre,tempsubcell
        sOctal => tempOctal
        if (tempOctal%diffusionApprox(tempsubcell)) then
           photonInDiffusionZone = .true.
