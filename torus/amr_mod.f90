@@ -6494,44 +6494,44 @@ CONTAINS
     INTEGER :: iChild ! loop counter
     
     IF (PRESENT(deletedBranch)) THEN
-      
-      IF (.NOT. onlyChildren) THEN
-        ! need to copy variables from thisOctal to deletedBranch
-        deletedBranch = thisOctal
-      END IF
-
-      ! now need to copy any children from thisOctal to deletedBranch
-      IF (thisOctal%nChildren > 0) THEN 
-        deletedBranch%child => thisOctal%child
-
-        DO iChild = 1, thisOctal%nChildren, 1
-          IF (onlyChildren) THEN
-            NULLIFY(deletedBranch%child(iChild)%parent)
-          ELSE
-            deletedBranch%child(iChild)%parent => deletedBranch
-          END IF
-        END DO
-
-        deletedBranch%nChildren = thisOctal%nChildren
-        deletedBranch%indexChild = thisOctal%indexChild
-        deletedBranch%hasChild = thisOctal%hasChild
-        deletedBranch%maxChildren = thisOctal%maxChildren
-
-      END IF ! octal has children
-
-      CALL deleteOctal(thisOctal,deleteChildren=.FALSE.)
-
-      ELSE ! no deletedBranch
-        
-        ! can delete everything
-        CALL deleteOctal(thisOctal,deleteChildren=.TRUE.)
-        
-      END IF ! PRESENT(deletedBranch)
-
-      thisOctal%nChildren = 0
-      thisOctal%indexChild = -999
-      thisOctal%hasChild = .FALSE.
-
+       
+       IF (.NOT. onlyChildren) THEN
+          ! need to copy variables from thisOctal to deletedBranch
+          deletedBranch = thisOctal
+       END IF
+       
+       ! now need to copy any children from thisOctal to deletedBranch
+       IF (thisOctal%nChildren > 0) THEN 
+          deletedBranch%child => thisOctal%child
+          
+          DO iChild = 1, thisOctal%nChildren, 1
+             IF (onlyChildren) THEN
+                NULLIFY(deletedBranch%child(iChild)%parent)
+             ELSE
+                deletedBranch%child(iChild)%parent => deletedBranch
+             END IF
+          END DO
+          
+          deletedBranch%nChildren = thisOctal%nChildren
+          deletedBranch%indexChild = thisOctal%indexChild
+          deletedBranch%hasChild = thisOctal%hasChild
+          deletedBranch%maxChildren = thisOctal%maxChildren
+          
+       END IF ! octal has children
+       
+       CALL deleteOctal(thisOctal,deleteChildren=.FALSE.)
+       
+    ELSE ! no deletedBranch
+       
+       ! can delete everything
+       CALL deleteOctal(thisOctal,deleteChildren=.TRUE.)
+       
+    END IF ! PRESENT(deletedBranch)
+    
+    thisOctal%nChildren = 0
+    thisOctal%indexChild = -999
+    thisOctal%hasChild = .FALSE.
+    
   END SUBROUTINE deleteOctreeBranch
     
   RECURSIVE SUBROUTINE deleteOctal(thisOctal,deleteChildren)
@@ -6539,6 +6539,7 @@ CONTAINS
     TYPE(octal), INTENT(INOUT) :: thisOctal
     LOGICAL, INTENT(IN) :: deleteChildren 
     INTEGER :: iChild
+    integer :: nVals
 
     IF (deleteChildren) THEN
 
@@ -6548,6 +6549,20 @@ CONTAINS
       IF (ASSOCIATED(thisOctal%child)) DEALLOCATE(thisOctal%child)
 
     END IF ! (deleteChildren)
+
+    write(*,*) "rho",thisOctal%rho(1:4)
+    write(*,*) "has child",thisOctal%hasChild(1:4)
+    write(*,*) "nchildren",thisOctal%nchildren
+
+    if (thisOctal%twoD) then
+       nVals = 4
+    else
+       nVals = 8
+    endif
+    thisOctal%parent%rho(thisOctal%parentSubcell) = SUM(thisOctal%rho(1:nVals))/dble(nVals)
+    thisOctal%parent%temperature(thisOctal%parentSubcell) = SUM(thisOctal%temperature(1:nVals))/dble(nVals)
+    thisOctal%dustTypeFraction(thisOctal%parentSubcell,:) = SUM(thisOctal%dustTypeFraction(1:nVals,:))/dble(nVals)
+
 
     IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs)
     IF (ASSOCIATED(thisOctal%kappaSca)) DEALLOCATE(thisOctal%kappaSca)
@@ -6915,26 +6930,34 @@ CONTAINS
     logical :: unrefine
     unrefine = .true.
 
+    write(*,*) "Starting unrefine"
     do subcell = 1, thisOctal%maxChildren
+       write(*,*) "subcell loop",subcell
        if (thisOctal%hasChild(subcell)) then
+          write(*,*) "Has child"
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
+                write(*,*) "calling unrefine"
                 call unrefineThinCells(child, grid, ilambda)
+                unrefine = .false.
                 exit
              end if
           end do
        else
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
           tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
+          write(*,*) "subcell",subcell,"tau",tau,"rho",thisOctal%rho(subcell)
        endif
        if (tau > 1.e-5) then
           unrefine = .false.
        endif
+       write(*,*) "unrefine",unrefine
     enddo
     if (unrefine) then
-       call deleteOctreeBranch(thisOctal,.true.)
+       write(*,*) "DELETEing this octal"
+       call deleteOctreeBranch(thisOctal%parent,.false.)
     endif
 
   end subroutine unrefineThinCells
