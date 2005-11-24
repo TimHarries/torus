@@ -1023,10 +1023,13 @@ contains
 
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
-             if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
-             call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
-             if (writeoutput) write(*,*) "done."
-
+!             if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+!             call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
+!             if (writeoutput) write(*,*) "done."
+!             call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
+!                  "unrefine.ps/vcps", .true., .false., &
+!                  0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+             
 
              if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
              

@@ -222,21 +222,32 @@ contains
   subroutine throughoutMidplaneDiff(grid, epsoverdt, debugoutput)
 
     type(GRIDTYPE) :: grid
-    real(double) :: zAxis1(500000), subcellsize(500000)
-    real :: temperature1(500000)
-    real(double) ::  rho(500000) 
-    real(double) :: zAxis2(500000)
-    real ::  temperature2(500000)
+    real(double),allocatable :: zAxis1(:), subcellsize(:)
+    real,allocatable :: temperature1(:)
+    real(double),allocatable ::  rho(:) 
+    real(double),allocatable :: zAxis2(:)
+    real, allocatable ::  temperature2(:)
     integer :: nz1, nz2
     real(oct) :: epsOverdt
     real :: xpos, ypos, radius, drho, smallestSubcell
-    logical :: diffApprox(500000)
+    logical, allocatable :: diffApprox(:)
     logical :: converged, debugoutput
-    real(double) :: xAxis(500000)
+    real(double), allocatable :: xAxis(:)
     integer :: nx, i, j
     real :: flux
     logical :: ok1, ok2
+    integer :: nOctals,nCells
 
+    call countVoxels(Grid%octreeRoot,nOctals,nCells)
+
+    allocate(zAxis1(nCells))
+    allocate(subcellSize(nCells))
+    allocate(temperature1(nCells))
+    allocate(rho(ncells))
+    allocate(zAxis2(ncells))
+    allocate(temperature2(nCells))
+    allocate(xAxis(ncells))
+    allocate(diffApprox(ncells))
 
     call calcIncidentFlux(grid, epsoverdt)
 
@@ -287,6 +298,16 @@ contains
     enddo
 
     call copyChilineTotemperature(grid%octreeRoot)
+
+
+    deallocate(diffApprox)
+    deallocate(zAxis1)
+    deallocate(subcellSize)
+    deallocate(temperature1)
+    deallocate(rho)
+    deallocate(zAxis2)
+    deallocate(temperature2)
+    deallocate(xAxis)
 
   end subroutine throughoutMidplaneDiff
 
@@ -437,28 +458,29 @@ contains
 
     use input_variables, only: rinner, router
     type(GRIDTYPE) :: grid
-    real(double) :: zAxis(500000), subcellsize(500000)
-    real :: rho(500000), temperature(500000)
+    real(double),allocatable :: zAxis(:), subcellsize(:)
+    real,allocatable :: rho(:), temperature(:)
     integer :: nz
     real :: xpos, ypos, radius, drho, smallestSubcell
     logical :: resetTemp
     real(double) :: derivs(10)
     logical :: converged 
-    real(double) :: xAxis(5000000)
+    real(double),allocatable :: xAxis(:)
     integer :: nx, i
     real :: flux
-    real :: rosselandOpticalDepth(500000)
+    real,allocatable :: rosselandOpticalDepth(:)
     integer :: j
     type(OCTALVECTOR) :: octVec
     real(double) :: kappa
     type(OCTAL), pointer :: thisOctal, boundaryOctal
     integer :: subcell
-    real(double) :: zBoundary(500000)
-    real(double) :: xBoundary(500000), sigma(500000), tboundary(500000)
+    real(double),allocatable :: zBoundary(:)
+    real(double),allocatable :: xBoundary(:), sigma(:), tboundary(:)
     real(double), allocatable :: workarray(:)
     integer, parameter :: maxPoly = 20
     integer :: nPoly = 10
-    real(double) :: apoly(maxPoly), chisq, rval(500000)
+    real(double) :: apoly(maxPoly), chisq
+    real(double), allocatable :: rval(:)
     integer :: nBoundary
     real(double) :: xStart
     integer :: iBoundary, boundarySubcell
@@ -474,6 +496,15 @@ contains
     integer :: leftBoundaryX(10), rightBoundaryX(10)
     integer :: zone, nZones, zeroCounter, nZoneBoundary
     logical :: inZone
+    integer :: nOctals, nCells
+
+    call countVoxels(grid%octreeRoot,nOctals,nCells)
+
+    allocate(zBoundary(ncells),xBoundary(ncells),sigma(ncells),tboundary(ncells),rval(ncells))
+    allocate(zAxis(ncells))
+    allocate(xAxis(ncells))
+    allocate(subcellsize(ncells))
+    allocate(rosselandOpticalDepth(ncells))
 
     call getxAxisRun(grid, xAxis, subcellSize, 0., 0., nx, +1.d0)
 
@@ -673,6 +704,12 @@ contains
 
     if (writeoutput) write(*,*) "Done.", nZones, "diffusion zone(s) defined."
 
+    deallocate(zBoundary,xBoundary,sigma,tboundary,rval)
+    deallocate(zAxis, xAxis)
+    deallocate(subcellsize)
+    deallocate(rosselandOpticalDepth)
+
+
   end subroutine defineDiffusionZone
 
 
@@ -747,7 +784,7 @@ contains
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     integer :: nx
-    real(double) :: xAxis(:), subcellsize(:)
+    real(double) :: xAxis(*), subcellsize(*)
     real :: zPos, yPos
     integer :: subcell
     real(double) :: rhotemp

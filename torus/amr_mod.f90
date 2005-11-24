@@ -287,91 +287,58 @@ CONTAINS
   END SUBROUTINE initFirstOctal
 
 
-! THIS ROUTINE IS NOW REDUNDANT AND HAS BEEN REPLACED BY ADDNEWCHILDEN!!!!!!
-  SUBROUTINE addNewChild(parent, nChild, grid, sphData, stellar_cluster)
+  SUBROUTINE addNewChild(parent, nChild, grid, sphData, stellar_cluster, &
+                         inherit, interp)
     ! adds one new child to an octal
-    ! NB this routine leaks memory when adding an additional child to an octal.
 
+    USE input_variables, ONLY : nDustType
     IMPLICIT NONE
     
-    TYPE(octal), POINTER :: parent     ! pointer to the parent octal 
+    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
     INTEGER, INTENT(IN)  :: nChild     ! the label (1-8) of the subcell gaining the child 
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
                                           !   calculate the variables stored in
                                           !   the tree.
-    TYPE(octal)   :: tempChildStorage  ! holder for existing children, while we
-                                       !   shuffle them around to make room for 
-                                       !   the new child.
+    ! For only cluster geometry ...
+    TYPE(sph_data), OPTIONAL, INTENT(IN) :: sphData 
+    TYPE(cluster), OPTIONAL, INTENT(IN)   :: stellar_cluster
+    LOGICAL, OPTIONAL :: inherit       ! inherit densities, temps, etc from parent
+    LOGICAL, OPTIONAL :: interp        ! interpolate densities, temps, etc from parent    
+    
     INTEGER       :: subcell           ! loop counter
+    INTEGER       :: iChild            ! loop counter
     INTEGER, SAVE :: counter = 9       ! keeps track of the current subcell label
                                        ! - this isn't very clever. might change it. 
     INTEGER       :: nChildren         ! number of children the parent octal has
     INTEGER       :: newChildIndex     ! the storage location for the new child
     INTEGER       :: error
+    logical :: inheritProps, interpolate
+    ! array of octals that may be needed for temporarily storing child octals
+    TYPE(wrapperArray) :: tempChildStorage
     
 
+    inheritProps = .false.
+    if (present(inherit)) then
+       inheritProps = inherit
+    endif
 
-    ! For only cluster geometry ...
-    TYPE(sph_data), optional, intent(in) :: sphData 
-    TYPE(cluster), optional, INTENT(IN)   :: stellar_cluster
+    interpolate = .false.
+    if (present(interp)) then
+       interpolate = interp
+    endif
+
 
     ! store the number of children that already exist
     nChildren = parent%nChildren
 
-    IF ( nChildren == 0 ) THEN
-      ! if there are no existing children, we can just allocate
-      ! the 'child' array with one item
-      ALLOCATE(parent%child(1), STAT=error)
-      IF ( error /= 0 ) THEN
-        PRINT *, 'Panic: allocation failed.'
-        STOP
-      END IF
-
-    ELSE 
-      ! check that child does not already exist
-      IF ( parent%hasChild(nChild) .EQV. .TRUE. ) THEN
-        PRINT *, 'Panic: in addNewChild, attempted to add a child ',&
-                 '       that already exists'
-        STOP
-      ENDIF
-      
-      ! if there are existing children, we must enlarge the allocated   
-      ! array. we need to use a temporary octal structure[1] and copy the  
-      ! existing children into it[2]; then increase the 'child' array size 
-      ! by one[3]; then copy the children back in[4]. 
-
-      ! [1]
-      ALLOCATE(tempChildStorage%child(1:nChildren), STAT=error)
-      IF ( error /= 0 ) THEN
-        PRINT *, 'Panic: allocation failed.'
-        STOP
-      END IF
-      
-      ![2]
-      tempChildStorage%child(1:nChildren) = parent%child(1:nChildren)
-
-      
-!      ![3] 
-!
-      ALLOCATE(parent%child(nChildren+1), STAT=error)
-      IF ( error /= 0 ) THEN
-        PRINT *, 'Panic: allocation failed.'
-        STOP
-      END IF
-
-      ![4]
-      parent%child(1:nChildren) = tempChildStorage%child(1:nChildren)   
-
-      
-      ! we should now release the temporary storage
-      DEALLOCATE(tempChildStorage%child, STAT=error)
-      IF ( error /= 0 ) THEN
-        PRINT *, 'Panic: deallocation failed.'
-        STOP
-      END IF
-      NULLIFY(tempChildStorage%child)  ! For safety
+    ! check that new child does not already exist
+    IF ( parent%hasChild(nChild) .EQV. .TRUE. ) THEN
+      PRINT *, 'Panic: in addNewChild, attempted to add a child ',&
+               '       that already exists'
+      STOP
     ENDIF
 
+    CALL growChildArray(parent, nNewChildren=1 )
 
     ! update the bookkeeping
     nChildren = nChildren + 1
@@ -383,74 +350,192 @@ CONTAINS
     parent%indexChild(newChildIndex) = nChild
 
     ! allocate any variables that need to be  
-    if (.not.grid%oneKappa) then
-       ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nLambda))
+    IF (.NOT.grid%oneKappa) THEN
+       ! The kappa arrays should be allocated with grid%nopacity instead of grid%nlambda
+       ! because for line calculation, there is only one kappa needed.
+       ! (but grid%nlambda is not 1). If you allocate the arrays with grid%nlambda,
+       ! it will be a huge waste of RAM. ---  (RK) 
+       ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nopacity))
+       ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nopacity))
+       ! ALLOCATE(parent%child(newChildIndex)%kappaAbs(8,grid%nlambda))
+       ! ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nlambda))
        parent%child(newChildIndex)%kappaAbs = 1.e-30
-       ALLOCATE(parent%child(newChildIndex)%kappaSca(8,grid%nLambda))
        parent%child(newChildIndex)%kappaSca = 1.e-30
-    endif
+    ENDIF
     ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
     NULLIFY(parent%child(newChildIndex)%child)
 
     ! set up the new child's variables
+    parent%child(newChildIndex)%threeD = parent%threeD
+    parent%child(newChildIndex)%twoD = parent%twoD
+    parent%child(newChildIndex)%maxChildren = parent%maxChildren
+    parent%child(newChildIndex)%twoD = parent%twoD
+    parent%child(newChildIndex)%inFlow = parent%inFlow
     parent%child(newChildIndex)%parent => parent
+    parent%child(newChildIndex)%parentSubcell = newChildIndex
     parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
     parent%child(newChildIndex)%hasChild = .false.
     parent%child(newChildIndex)%nChildren = 0
     parent%child(newChildIndex)%indexChild = -999 ! values are undefined
     parent%child(newChildIndex)%nDepth = parent%nDepth + 1
-    parent%child(newChildIndex)%centre = subcellCentre(parent,nChild)
+    parent%child(newChildIndex)%centre = subcellCentre(parent,newChildIndex)
     parent%child(newChildIndex)%probDistLine = 0.0
     parent%child(newChildIndex)%probDistCont = 0.0
     parent%child(newChildIndex)%biasLine3D = 1.0 
     parent%child(newChildIndex)%biasCont3D = 1.0 
     parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
     parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
-    parent%child(newChildIndex)%chiLine = -9.9e9
-    parent%child(newChildIndex)%etaLine = -9.9e9
-    parent%child(newChildIndex)%etaCont = -9.9e9 
-    parent%child(newChildIndex)%N = -9.9e9 
+    parent%child(newChildIndex)%chiLine = 1.e-30
+    parent%child(newChildIndex)%etaLine = 1.e-30
+    parent%child(newChildIndex)%etaCont = 1.e-30
+    parent%child(newChildIndex)%rho = 1.e-30
+    parent%child(newChildIndex)%N = 1.e-30
+    parent%child(newChildIndex)%dusttype = 1
+    ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
+    parent%child(newChildIndex)%dustTypeFraction(1:8,1:nDustType) = 0.d0
+    parent%child(newChildIndex)%dustTypeFraction(1:8,1) = 1.d0
+    parent%child(newChildIndex)%gasOpacity = .false.
+    parent%child(newChildIndex)%Ne = 1.e-30
+    parent%child(newChildIndex)%temperature = 3.0
+    parent%child(newChildIndex)%nTot = 1.e-30
     parent%child(newChildIndex)%changed = .false.
+    parent%child(newChildIndex)%diffusionApprox = .false.
+    parent%child(newChildIndex)%leftHandDiffusionBoundary = .false.
+    parent%child(newChildindex)%diffusionProb = 0.d0
+    parent%child(newChildindex)%nDiffusion  = 0.
+    parent%child(newChildindex)%incidentFlux = 0.
+    parent%child(newChildindex)%oldFrac = 1.
 
-
-    select case (grid%geometry)
-       case("cluster","wr104")
-          if (present(sphData))  then
-             ! updates the sph particle linked list.           
-             call update_particle_list(parent, nChild, newChildIndex, sphData)
-             
-             ! put some data in the eight subcells of the new child
-             DO subcell = 1, parent%maxChildren 
-                CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, &
-                     sphData, stellar_cluster)
-                parent%child(newChildIndex)%label(subcell) = counter
-                counter = counter + 1
-             END DO
-          endif
-       case DEFAULT
-          ! put some data in the eight subcells of the new child
-          DO subcell = 1, parent%maxChildren
-             CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid)
-             parent%child(newChildIndex)%label(subcell) = counter
-             counter = counter + 1
-          END DO
-    end select
+    IF (PRESENT(sphData)) THEN
+      ! updates the sph particle list.           
+!      CALL update_particle_list(parent, newChildIndex, newChildIndex, sphData)
+      write(*,*) "update_particle_list broken"
+    END IF 
     
- 
+    ! put some data in the eight subcells of the new child
+    DO subcell = 1, parent%maxChildren
+      CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData, &
+                         stellar_cluster, inherit=inheritProps, interp=interpolate)
+      parent%child(newChildIndex)%label(subcell) = counter
+      counter = counter + 1
+    END DO
+
     ! check for a new maximum depth 
     IF (parent%child(newChildIndex)%nDepth > grid%maxDepth) THEN
-      grid%maxDepth = parent%child(newChildIndex)%nDepth
-      grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
-                                2.0_oc**REAL(grid%maxDepth,kind=oct)
-      ! we store the value which is half the size of the 
-      !   smallest subcell because this is more useful for later
-      !   calculations.
+       grid%maxDepth = parent%child(newChildIndex)%nDepth
+       CALL setSmallestSubcell(grid)
     END IF
-
+    
   END SUBROUTINE addNewChild
-
-
   
+  SUBROUTINE growChildArray(parent, nNewChildren)
+    ! adds storage space for new children to an octal.
+    ! 
+    ! some of the bookkeeping must be done by the routine that calls
+    !   this one (e.g. making sure the new children are indexed).
+
+    IMPLICIT NONE
+    
+    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    INTEGER, INTENT(IN) :: nNewChildren ! number of children to add
+    
+    TYPE(wrapperArray):: tempChildStorage 
+      ! holder for existing children, while we shuffle them around to 
+      !   make room for new ones.
+                                       
+    INTEGER       :: iChild            ! loop counter
+    INTEGER       :: nChildren         ! number of children the parent octal has
+    INTEGER       :: error
+   
+    ! store the number of children that already exist
+    nChildren = parent%nChildren
+
+    IF ( nChildren == 0 ) THEN
+      ! if there are no existing children, we can just allocate
+      ! the 'child' array with the new size
+      ALLOCATE(parent%child(nNewChildren), STAT=error)
+      IF ( error /= 0 ) THEN
+        PRINT *, 'Panic: allocation failed in addNewChild.'
+        STOP
+      END IF
+
+    ELSE ! there are existing children
+     
+      ! check that there is not a full quota of children
+      IF ( (nChildren + nNewChildren) > parent%maxChildren ) THEN
+        PRINT *, 'Panic: in growChildArray, attempted to have too ',&
+                 '       many children: ',(nChildren + nNewChildren) 
+        STOP
+      ENDIF
+      
+      ! if there are existing children, we must enlarge the allocated   
+      ! array. we need to use temporary octals[1] and copy the  
+      ! existing children into them[2]; then increase the 'child' array size 
+      ! by one[3]; then copy the children back in[4]. 
+
+      ! [1]
+      ALLOCATE(tempChildStorage%wrappers(nChildren), STAT=error)
+      IF ( error /= 0 ) THEN
+        PRINT *, 'Panic: allocation failed in parent%nChildren. (A)'
+        STOP
+      END IF     
+
+      ! [2]
+      DO iChild = 1, nChildren, 1
+        
+        ALLOCATE(tempChildStorage%wrappers(iChild)%content, STAT=error)
+        IF ( error /= 0 ) THEN
+          PRINT *, 'Panic: allocation failed in parent%nChildren. (B)'
+          STOP
+        END IF           
+        tempChildStorage%wrappers(iChild)%inUse = .TRUE.
+               
+        CALL deleteOctreeBranch(parent%child(iChild),               &
+               onlyChildren=.FALSE.,                                &
+               deletedBranch=tempChildStorage%wrappers(iChild)%content)
+
+      END DO
+
+      ! [3]
+      DEALLOCATE(parent%child)
+      ALLOCATE(parent%child( nChildren + nNewChildren ), STAT=error)
+      IF ( error /= 0 ) THEN
+        PRINT *, 'Panic: allocation failed in parent%nChildren. (C)'
+        STOP
+      END IF
+
+      ! [4]
+      DO iChild = 1, nChildren, 1
+        
+        CALL insertOctreeBranch(parent%child(iChild),               &
+               branch=tempChildStorage%wrappers(iChild)%content,    &
+               onlyChildren=.FALSE.)                              
+               
+        if (associated(tempChildStorage%wrappers(iChild)%content)) then
+           DEALLOCATE(tempChildStorage%wrappers(iChild)%content, STAT=error)
+           if (error /= 0) then
+              write(*,*) "error",error
+              write(*,*) ichild
+              write(*,*) tempChildStorage%wrappers(ichild)%content%ndepth
+              parent%child(iChild)%rho = 1.d30
+!              do;enddo
+           endif
+        endif
+
+
+
+       NULLIFY(tempChildStorage%wrappers(iChild)%content)
+        tempChildStorage%wrappers(iChild)%inUse = .FALSE.
+
+      END DO
+      
+      ! can now clean up the temporary storage
+      DEALLOCATE(tempChildStorage%wrappers)
+      NULLIFY(tempChildStorage%wrappers)
+      
+    END IF ! ( nChildren == 0 )
+
+  END SUBROUTINE growChildArray
 
   RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid, &
        sphData, stellar_cluster, setChanged)
@@ -503,6 +588,106 @@ CONTAINS
       
 
   END SUBROUTINE splitGrid
+
+  RECURSIVE SUBROUTINE splitGrid2(thisOctal,amrLimitScalar,amrLimitScalar2,grid, &
+       sphData, stellar_cluster, setChanged)
+    ! uses an external function to decide whether to split a subcell of
+    !   the current octal. 
+
+    IMPLICIT NONE
+
+    TYPE(OCTAL), POINTER :: thisOctal
+    real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 
+      ! 'limitScalar' is the value the decideSplit function uses to
+      !   decide whether or not to split cell.
+    TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid through to the 
+                                          !   routines that this subroutine calls
+
+    ! Object containg the output from the (Mattew's) SPH code.
+    ! This will be just passed to decideSplit routine.
+    TYPE(sph_data), OPTIONAL, intent(in) :: sphData
+    TYPE(cluster), OPTIONAL,  intent(in) :: stellar_cluster
+    LOGICAL, INTENT(IN), OPTIONAL :: setChanged
+    !
+    TYPE(OCTAL), POINTER :: childPointer  
+    INTEGER              :: subcell, i    ! loop counters
+    logical :: splitThis
+    integer :: j, k
+
+    splitThis = .false.
+    subcell = 1
+!    do while ((.not.splitThis).and.(subcell <= thisOctal%maxChildren))
+
+    do subcell = 1, thisOctal%maxChildren
+       splitThis = .false.
+       IF (decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid,&
+            sphData, stellar_cluster))splitThis = .true.
+!       subcell = subcell + 1
+!    enddo
+
+         ! tjh changed from
+!        CALL addNewChild(thisOctal,subcell,grid)
+    IF (splitThis) then
+!       CALL addNewChildren(thisOctal, grid, sphData, stellar_cluster)
+       CALL addNewChild(thisOctal, subcell, grid, sphData, stellar_cluster) ! TJH employed revised addchild 23/11/05
+
+       IF (PRESENT(setChanged)) THEN
+         DO i = 1, thisOctal%nChildren, 1
+           IF (setChanged) thisOctal%child(i)%changed = .TRUE.
+         END DO
+       END IF
+       if (.not.thisOctal%hasChild(subcell)) then
+          write(*,*) "add child failed"
+          do; enddo
+       endif
+       do i = 1, thisOctal%nChildren
+          if (.not.thisOctal%hasChild(thisOctal%indexchild(i))) then
+             write(*,*) "octal children messed up"
+             do ; enddo
+          endif
+       enddo
+       do i = 1, thisOctal%maxChildren
+          k = -99
+          if (thisOctal%hasChild(i)) then
+             do j = 1, thisOctal%nChildren
+                if (thisOctal%indexChild(j) == i) then
+                   k = j
+                   exit
+                endif
+             enddo
+             if (k==-99) then
+                write(*,*) "subcell screwup"
+                do;enddo
+             endif
+          endif
+       enddo   
+
+       if (any(thisOctal%haschild(1:4)).and.(thisOctal%nChildren==0)) then
+          write(*,*) "nchildren screw up"
+          do;enddo
+       endif
+
+!       if ((thisOctal%nDepth > 10).and.(any(thisOctal%rho(1:4)<1.d-50))) then
+!          write(*,*) thisOctal%rho(1:4)
+!          do;enddo
+!       endif
+       
+
+       ! find the index of the new child and call splitGrid on it
+!       DO i = 1, thisOctal%maxChildren, 1
+       DO j = 1, thisOctal%nChildren
+          IF ( thisOctal%indexChild(j) == subcell ) THEN
+             childPointer => thisOctal%child(j)
+             CALL splitGrid2(childPointer,amrLimitScalar,amrLimitScalar2,grid,&
+                  sphData, stellar_cluster, setChanged)
+             EXIT
+          END IF
+       END DO
+!        END DO
+    ENDIF
+  enddo
+
+  END SUBROUTINE splitGrid2
 
   
   
@@ -1123,7 +1308,7 @@ CONTAINS
         ENDDO
         IF (subindex == -99) THEN
           PRINT *, ' Panic: subindex not found'
-          STOP
+          do; enddo
         ENDIF
 
         CALL returnSamples(currentPoint,startPoint,locator,direction,        &
@@ -3966,6 +4151,7 @@ CONTAINS
 
    case("shakara","aksco")
       split = .false.
+!      if (thisOctal%ndepth  < 6) split = .true.
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
@@ -6550,10 +6736,6 @@ CONTAINS
 
     END IF ! (deleteChildren)
 
-    write(*,*) "rho",thisOctal%rho(1:4)
-    write(*,*) "has child",thisOctal%hasChild(1:4)
-    write(*,*) "nchildren",thisOctal%nchildren
-
     if (thisOctal%twoD) then
        nVals = 4
     else
@@ -6561,7 +6743,7 @@ CONTAINS
     endif
     thisOctal%parent%rho(thisOctal%parentSubcell) = SUM(thisOctal%rho(1:nVals))/dble(nVals)
     thisOctal%parent%temperature(thisOctal%parentSubcell) = SUM(thisOctal%temperature(1:nVals))/dble(nVals)
-    thisOctal%dustTypeFraction(thisOctal%parentSubcell,:) = SUM(thisOctal%dustTypeFraction(1:nVals,:))/dble(nVals)
+    thisOctal%parent%dustTypeFraction(thisOctal%parentSubcell,:) = SUM(thisOctal%dustTypeFraction(1:nVals,:))/dble(nVals)
 
 
     IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs)
@@ -6928,40 +7110,409 @@ CONTAINS
     real(double) :: kappaAbs, kappaSca, tau
     integer :: subcell, i
     logical :: unrefine
+    integer :: nTau
+    integer :: nVals
+
     unrefine = .true.
 
-    write(*,*) "Starting unrefine"
+    ntau = 0
     do subcell = 1, thisOctal%maxChildren
-       write(*,*) "subcell loop",subcell
        if (thisOctal%hasChild(subcell)) then
-          write(*,*) "Has child"
+          unrefine = .false.
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                write(*,*) "calling unrefine"
                 call unrefineThinCells(child, grid, ilambda)
-                unrefine = .false.
                 exit
              end if
           end do
        else
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
           tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
-          write(*,*) "subcell",subcell,"tau",tau,"rho",thisOctal%rho(subcell)
+          ntau = ntau  + 1
        endif
        if (tau > 1.e-5) then
           unrefine = .false.
        endif
-       write(*,*) "unrefine",unrefine
     enddo
     if (unrefine) then
-       write(*,*) "DELETEing this octal"
-       call deleteOctreeBranch(thisOctal%parent,.false.)
+       call deleteChild(thisOctal%parent, thisOctal%parentSubcell, .true., grid, .true.)
     endif
 
   end subroutine unrefineThinCells
 
+  
+  RECURSIVE SUBROUTINE shrinkChildArray(parent, childrenToDelete,   &
+                                        adjustParent, grid, adjustGridInfo)
+    ! removes children from an octal.
+    ! can be used to "unrefine" part of the grid.
+    ! to remove a single child, call the 'deleteChild' wrapper instead.
+
+    IMPLICIT NONE
+    
+    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    LOGICAL, INTENT(IN), DIMENSION(parent%maxChildren) :: childrenToDelete
+      ! mask defining which children to get rid of 
+      ! NB childrenToDelete does not map to the index number in the 
+      !   %child array, it is the "real" number of the children (the 
+      !   number of the subcell that was refined when the child was
+      !   created).
+    LOGICAL, INTENT(IN) :: adjustParent 
+      ! whether the physical parameters stored in the parent's subcells
+      !   should be filled with data derived from the children being deleted.
+    TYPE(gridtype), INTENT(INOUT) :: grid 
+    LOGICAL, INTENT(IN) :: adjustGridInfo
+      ! whether these variables should be updated: 
+      !   grid%nOctals, grid%maxDepth, grid%halfSmallestSubcell
+    
+    TYPE(wrapperArray) :: tempChildStorage  
+      ! holder for remaining children, while we shrink the %child array 
+                                       
+    LOGICAL, DIMENSION(parent%maxChildren) :: checkMask 
+      ! used for testing the validity of the 'childrenToDelete' input
+      
+    integer, DIMENSION(SIZE(parent%indexChild)) :: temporaryIndexChild
+      ! used for assembling a valid indexChild array, to be used after
+      !   the children have been deleted
+      
+    LOGICAL, DIMENSION(parent%maxChildren) :: deleteMask
+      ! which of the elements of %child will be deleted
+        
+    INTEGER :: iChild ! loop counter
+    INTEGER :: nChildren ! number of children the parent octal has
+    INTEGER :: error
+    INTEGER :: nChildrenToDelete
+    TYPE(octal), POINTER :: thisChild ! convenient alias to current child 
+    LOGICAL :: deleteALLchildren ! are we getting rid of ALL the children
+    INTEGER :: nChildrenStay ! how many children will be left when done
+    INTEGER :: insertLocation ! the next location to use in tempChildStorage
+    INTEGER, SAVE :: recursionDepth = 0 ! depth of calls to this routine
+    INTEGER, SAVE :: maxDeletionDepth = 0 ! how far down have we deleted from?
+    LOGICAL :: checkGridDepth ! whether we need to check for a new grid%maxDepth
+    LOGICAL :: newMaxDepth ! whether grid%maxDepth is known to have changed
+    integer :: nvals, i
+
+    recursionDepth = recursionDepth + 1
+    IF ( recursionDepth == 1 ) THEN
+      checkGridDepth = .FALSE.
+      maxDeletionDepth = 0
+    END IF
+
+    ! we keep track of the lowest level in the grid that we have altered
+    maxDeletionDepth = MAX( maxDeletionDepth, (parent%nDepth+1) )
+    
+    NULLIFY(thisChild)
+    temporaryIndexChild = -999
+    
+    ! setup some useful accounting variables
+    nChildren = parent%nChildren
+    nChildrenToDelete = COUNT(childrenToDelete)
+    nChildrenStay = ( nChildren - nChildrenToDelete )
+    deleteALLchildren = ( nChildrenStay == 0 )
+    
+    IF ( deleteALLchildren ) THEN
+      ! maximum grid depth might change
+      checkGridDepth = .TRUE.
+    END IF
+    
+    ! some safety checks
+    error = 0
+    
+    IF ( nChildrenStay < 0 ) error = -1
+
+!    ! the following lines check that all the children to be deleted have 
+!    !   their %hasChild flag set.
+!    checkMask = IAND( childrenToDelete, parent%hasChild(1:SIZE(childrenToDelete)) )
+!    checkMask = IEOR( checkMask, childrenToDelete )
+!    IF ( ANY(checkMask) ) error = -2
+
+    IF (error /= 0) THEN
+      PRINT *, "In shrinkChildArray, attempting to delete a "
+      PRINT *, "child that doesn't exist."
+      PRINT *, error, childrenToDelete
+      STOP
+    END IF
+ 
+
+    ! we transform 'childrenToDelete' which is of SIZE(1:maxChildren) into
+    !   an array of SIZE(1:nChildren), so that it matches the %child
+    !   array
+    deleteMask(:) = .FALSE.
+    FORALL ( iChild = 1:parent%nChildren ) &
+      deleteMask(iChild) = childrenToDelete(parent%indexChild(iChild))
+    
+    IF ( .NOT. deleteALLchildren ) THEN    
+      ! we need to allocate some temporary storage for the children that 
+      !   are not going to be delayed so that we can reposition them
+      !   in the %child array.
+      ALLOCATE(tempChildStorage%wrappers(nChildrenStay), STAT=error)
+      IF ( error /= 0 ) THEN
+        PRINT *, 'Panic: allocation failed in shrinkChildArray. (A)'
+        STOP
+      END IF
+      
+      FORALL ( iChild = 1:nChildrenStay ) &
+        tempChildStorage%wrappers(iChild)%inUse = .FALSE.
+        
+      insertlocation = 1
+        
+    END IF  
+      
+    DO iChild = 1, parent%nChildren
+      thisChild => parent%child(iChild)
+
+      IF ( deleteMask(iChild) ) THEN
+        ! we want to delete this octal from the %child array
+
+        ! we might need to first delete some children of the child to be deleted.
+        ! this can be done with a recursive call to this subroutine
+        IF ( ANY(thisChild%hasChild(:)) ) THEN
+          ! maximum grid depth might change
+          checkGridDepth = .TRUE.
+          
+          CALL shrinkChildArray(parent=thisChild,                      &
+          childrenToDelete=thisChild%hasChild(1:thisChild%maxChildren),&
+          adjustParent=adjustParent,grid=grid,adjustGridInfo=adjustGridInfo)
+          
+          recursionDepth = recursionDepth - 1
+        END IF
+
+        IF (adjustParent) THEN
+          ! before deleting an octal, we want to use the information it
+          !   stores to change the physical parameters of the larger 
+          !   (parent) subcell.
+
+          ! **************************************************
+          ! *** Tim, call your "unrefine" code from here *****
+          ! **************************************************
+          ! e.g. this should take the mean of the densities: 
+           if (thischild%twoD) then
+              nVals = 4
+           else
+              nVals = 8
+           endif
+           parent%rho(parent%indexChild(iChild)) = SUM(thischild%rho(1:nVals))/dble(nVals)
+           parent%temperature(parent%indexChild(iChild)) = SUM(thischild%temperature(1:nVals))/dble(nVals)
+           parent%dustTypeFraction(parent%indexChild(iChild),:) = SUM(thischild%dustTypeFraction(1:nVals,:))/dble(nVals)
+          
+!          parent%rho(parent%indexChild(iChild)) =                            &
+!          SUM(thisChild%rho(1:parent%maxChildren)) / REAL(parent%maxChildren)
+        END IF    
+
+      ELSE 
+        ! we do not want to delete this child. 
+        ! instead we move it to the temporary storage array.
+
+        ALLOCATE(tempChildStorage%wrappers(insertlocation)%content, STAT=error)
+        IF ( error /= 0 ) THEN
+          PRINT *, 'Panic: allocation failed in shrinkChildArray. (B)'
+          STOP
+        END IF           
+        tempChildStorage%wrappers(insertlocation)%inUse = .TRUE.
+               
+        CALL deleteOctreeBranch(thisOctal=thisChild,                &
+               onlyChildren=.FALSE.,                                &
+               deletedBranch=tempChildStorage%wrappers(insertlocation)%content)
+               
+        temporaryIndexChild(insertLocation) = parent%indexChild(iChild)
+        
+        insertlocation = insertlocation + 1
+
+      END IF
+      
+      NULLIFY(thisChild)
+    END DO
+      
+    ! all the unwanted children have now been deleted.
+    ! we now get rid of the old %child array.
+    if (associated(parent%child)) DEALLOCATE(parent%child)!xxxxxxxxxxxxxxxxxxxxxxxxxxx
+    NULLIFY(parent%child) 
+    
+    ! if there are any remaining children, we need to create a new
+    !   %child array, and copy them back there.
+    IF ( .NOT. deleteALLchildren ) THEN    
+      
+      ALLOCATE(parent%child(nChildrenStay), STAT=error)
+      IF ( error /= 0 ) THEN
+        PRINT *, 'Panic: allocation failed in shrinkChildArray. (C)'
+        STOP
+      END IF
+
+      DO iChild = 1, nChildrenStay, 1
+        
+        CALL insertOctreeBranch(parent%child(iChild),               &
+               branch=tempChildStorage%wrappers(iChild)%content,    &
+               onlyChildren=.FALSE.)                              
+               
+        DEALLOCATE(tempChildStorage%wrappers(iChild)%content)
+        NULLIFY(tempChildStorage%wrappers(iChild)%content)
+        tempChildStorage%wrappers(iChild)%inUse = .FALSE.
+
+      END DO
+      
+      ! can now clean up the temporary storage
+      DEALLOCATE(tempChildStorage%wrappers)
+      NULLIFY(tempChildStorage%wrappers)
+
+    END IF
+
+    ! some bookkeeping
+    parent%nChildren = nChildrenStay
+    parent%indexChild(:) = temporaryIndexChild(:)
+
+
+
+!    parent%hasChild( 1:SIZE(childrenToDelete) ) =  &
+!         IEOR( parent%hasChild(1:SIZE(childrenToDelete)), childrenToDelete )
+
+    do i = 1, SIZE(childrenToDelete)
+       if ( (parent%hasChild(i).and.(.not.childrenToDelete(i))).or. &
+            (.not.parent%hasChild(i).and.(childrenToDelete(i))) ) then
+          parent%hasChild(i) = .true.
+       else
+          parent%hasChild(i) = .false.
+       endif
+    enddo
+
+
+    IF ( adjustGridInfo ) THEN
+      grid%nOctals = grid%nOctals - nChildrenToDelete
+
+      IF ( (recursionDepth == 1) .AND. checkGridDepth ) THEN
+        ! we should see whether the maximum depth of the grid has shrunk
+        
+        CALL updateMaxDepth(grid,searchLimit=maxDeletionDepth, &
+                            changeMade=newMaxDepth)
+        IF ( newMaxDepth ) CALL setSmallestSubcell(grid)
+
+      END IF
+    END IF
+
+  END SUBROUTINE shrinkChildArray
+  
+    
+  SUBROUTINE deleteChild(parent, childToDelete, adjustParent, &
+                         grid, adjustGridInfo)
+    ! removes one child from an octal.
+    ! can be used to "unrefine" part of the grid.
+    ! this is a simpler wrapper for the shrinkChildArray subroutine
+
+    IMPLICIT NONE
+    
+    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    INTEGER :: childToDelete ! number of the child to delete
+      ! NB childToDelete does not map to the index number in the 
+      !   %child array, it is the "real" number of the child (the 
+      !   number of the subcell that was refined when the child was
+      !   created).
+    LOGICAL, INTENT(IN) :: adjustParent 
+      ! whether the physical parameters stored in the parent's subcells
+      !   should be filled with data derived from the children being deleted.
+    TYPE(gridtype), INTENT(INOUT) :: grid 
+    LOGICAL, INTENT(IN) :: adjustGridInfo
+      ! whether these variables should be updated: 
+      !   grid%nOctals, grid%maxDepth, grid%halfSmallestSubcell
+
+    LOGICAL, DIMENSION(parent%maxChildren) :: deletionMask
+    
+    IF ( (childToDelete > parent%maxChildren) .OR.   &
+         (childToDelete < 0)                      ) THEN
+      PRINT *, "Invalid child number passed to deleteChild: ", childToDelete 
+      STOP
+    END IF
+    
+    deletionMask(:) = .FALSE.
+    deletionMask(childToDelete) = .TRUE.
+    
+    CALL shrinkChildArray(parent=parent,                 &
+                          childrenToDelete=deletionMask, &
+                          grid=grid,                     &
+                          adjustParent=adjustParent,     &
+                          adjustGridInfo=adjustGridInfo   )
+      
+  END SUBROUTINE deleteChild
+  SUBROUTINE updateMaxDepth(grid,searchLimit,changeMade)
+    ! if octals have been deleted from the grid, we may have to 
+    !   check whether the grid%maxDepth variable should be updated
+  
+    TYPE(gridtype), INTENT(INOUT)  :: grid
+    INTEGER, INTENT(IN), OPTIONAL :: searchLimit 
+      ! the depth at which to abandon the search.
+      ! e.g. if octals have been deleted from levels 2 and 3, pass 
+      !   "3" in here, and the search can be abandoned if an octal
+      !   of depth 4 is encountered anywhere
+    LOGICAL, INTENT(OUT), OPTIONAL :: changeMade
+      ! true if grid%maxDepth is actually changed
+
+    TYPE(octal), POINTER  :: thisOctal
+    INTEGER :: maxDepthFound
+    INTEGER :: oldMaxDepth
+    LOGICAL :: searchLimitReached
+
+    oldMaxDepth = grid%maxDepth
+    thisOctal => grid%octreeRoot
+    maxDepthFound = 0
+    searchLimitReached = .FALSE.
+    
+    CALL updateMaxDepthPrivate(thisOctal,maxDepthFound,       &
+                               searchLimitReached,searchLimit)
+    IF ( searchLimitReached .OR. ( maxDepthFound == oldMaxDepth ) ) THEN
+      IF ( PRESENT(changeMade) ) changeMade = .FALSE.
+    ELSE
+      IF ( PRESENT(changeMade) ) changeMade = .TRUE.
+      grid%maxDepth = maxDepthFound
+    END IF
+    
+    CONTAINS
+    
+      RECURSIVE SUBROUTINE updateMaxDepthPrivate(thisOctal,maxDepthFound,&
+                                          searchLimitReached,searchLimit)
+      
+        TYPE(OCTAL), TARGET, INTENT(IN) :: thisOctal 
+        INTEGER, INTENT(INOUT) :: maxDepthFound
+        LOGICAL, INTENT(INOUT) :: searchLimitReached
+        INTEGER, INTENT(IN), OPTIONAL :: searchLimit 
+        INTEGER :: iChild
+        
+        maxDepthFound = MAX( maxDepthFound, thisOctal%nDepth )
+        
+        IF ( thisOctal%nChildren > 0 ) THEN
+
+          IF ( PRESENT(searchLimit) ) THEN
+            IF ( (thisOctal%nDepth+1) > searchLimit ) THEN
+              searchLimitReached = .TRUE.
+              RETURN
+            END IF
+          END IF
+          
+          ! call this subroutine recursively on each of its children
+          DO iChild = 1, thisOctal%nChildren, 1
+            CALL updateMaxDepthPrivate(thisOctal%child(iChild),maxDepthFound,&
+                                          searchLimitReached,searchLimit)
+                                          
+            IF ( searchLimitReached ) RETURN
+          END DO
+        END IF
+
+      END SUBROUTINE updateMaxDepthPrivate
+
+  END SUBROUTINE updateMaxDepth
+
+  
+  SUBROUTINE setSmallestSubcell(grid)
+    ! calculates and stores the grid%halfSmallestSubcell value.
+    ! grid%maxDepth must already be set correctly.
+  
+    TYPE(gridtype), INTENT(INOUT) :: grid 
+    
+    ! we actually store the value which is half the size of the 
+    !   smallest subcell because this is more useful for later
+    !   calculations.
+    grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
+                                2.0_oc**REAL(grid%maxDepth,kind=oct)
+
+  END SUBROUTINE setSmallestSubcell
 
 
   recursive subroutine biasCentreVolume(thisOctal, boxSize)
@@ -7552,7 +8103,7 @@ CONTAINS
           ENDDO
           IF (subIndex == -99) THEN
             PRINT *, ' Panic: subindex not found'
-            STOP
+            do; enddo
           ENDIF
 
           child => thisOctal%child(subIndex)
@@ -7637,7 +8188,7 @@ CONTAINS
             ENDDO
             IF (subIndex == -99) THEN
                PRINT *, ' Panic: subindex not found'
-               STOP
+               do;enddo
             ENDIF
 
             child => thisOctal%child(subIndex)

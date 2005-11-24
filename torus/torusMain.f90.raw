@@ -171,7 +171,7 @@ program torus
   real, allocatable :: statArray(:)
   real, allocatable :: sourceSpectrum(:)
   real, allocatable :: sourceSpectrum2(:)
-
+  real :: dummy(1)
 !  logical :: resonanceLine
 
 
@@ -1197,6 +1197,16 @@ program torus
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
                 "rho_grid.ps/vcps",.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+!           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
+!           write(*,*) "Second refine"
+!           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
+           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+                "unrefine.ps/vcps",.true., .true.,&
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
+                "unref_tau.ps/vcps", .true., .false., &
+                0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,ilam=ismoothlam) 
+
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
                 "rho_zoom.ps/vcps",.true., .false.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
