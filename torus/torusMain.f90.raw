@@ -355,7 +355,7 @@ program torus
   integer           :: tooFewSamples ! number of errors from integratePathAMR
   integer           :: boundaryProbs ! number of errors from integratePathAMR
   integer           :: negativeOpacity ! number of errors from integratePathAMR
-
+  type(octal),pointer :: thisoctal
   real(double)           :: Ne         ! for testing
   real,dimension(statEqMAxLevels) :: meanDepart ! for testing
   real(double),dimension(statEqMAxLevels) :: levelPops  ! for testing
@@ -389,6 +389,7 @@ program torus
   real val_3rd_dim
 
   real    :: tmp
+  real(double) :: rtmp
   type(octalvector) :: vec_offset
   real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
 
@@ -1200,6 +1201,9 @@ program torus
 !           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
 !           write(*,*) "Second refine"
 !           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
+
+
+
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
                 "unrefine.ps/vcps",.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)

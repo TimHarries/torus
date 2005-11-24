@@ -227,7 +227,7 @@ CONTAINS
     ALLOCATE(grid%octreeRoot%dusttypefraction(8,  nDustType))
     grid%octreeroot%dustTypeFraction(1:8,1:nDustType) = 0.d0
     grid%octreeroot%dustTypeFraction(1:8,1) = 1.d0
-
+    grid%octreeRoot%inflow = .true.
     grid%octreeRoot%gasOpacity = .false.
     grid%octreeRoot%diffusionApprox = .false.
     grid%octreeRoot%leftHandDiffusionBoundary = .false.
@@ -453,7 +453,7 @@ CONTAINS
     IF ( nChildren == 0 ) THEN
       ! if there are no existing children, we can just allocate
       ! the 'child' array with the new size
-      ALLOCATE(parent%child(nNewChildren), STAT=error)
+      ALLOCATE(parent%child(1:nNewChildren), STAT=error)
       IF ( error /= 0 ) THEN
         PRINT *, 'Panic: allocation failed in addNewChild.'
         STOP
@@ -498,7 +498,8 @@ CONTAINS
 
       ! [3]
       DEALLOCATE(parent%child)
-      ALLOCATE(parent%child( nChildren + nNewChildren ), STAT=error)
+      ALLOCATE(parent%child(1:( nChildren + nNewChildren )), STAT=error)
+!      parent%child => NULL()
       IF ( error /= 0 ) THEN
         PRINT *, 'Panic: allocation failed in parent%nChildren. (C)'
         STOP
@@ -521,8 +522,6 @@ CONTAINS
 !              do;enddo
            endif
         endif
-
-
 
        NULLIFY(tempChildStorage%wrappers(iChild)%content)
         tempChildStorage%wrappers(iChild)%inUse = .FALSE.
@@ -6029,7 +6028,7 @@ CONTAINS
 
 !    thisOctal%dustTypeFraction(subcell,:) =  thisOctal%dustTypeFraction(subcell,:) * 1.e-5
 
-    if ((r + thisOctal%subcellsize/2.d0) < rInner) thisOctal%inflow(subcell) = .false.
+!    if ((r + thisOctal%subcellsize/2.d0) < rInner) thisOctal%inflow(subcell) = .false.
 
 !    if ((r < rSublimation).and.thisOctal%inFlow(subcell)) then
 !       thisOctal%temperature(subcell) = 2000.
@@ -6748,7 +6747,7 @@ CONTAINS
 
     IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs)
     IF (ASSOCIATED(thisOctal%kappaSca)) DEALLOCATE(thisOctal%kappaSca)
-    IF (ASSOCIATED(thisOctal%N)) DEALLOCATE(thisOctal%N)
+!    IF (ASSOCIATED(thisOctal%N)) DEALLOCATE(thisOctal%N)
     IF (ASSOCIATED(thisOctal%departCoeff)) DEALLOCATE(thisOctal%departCoeff)
     IF (ASSOCIATED(thisOctal%gas_particle_list)) DEALLOCATE(thisOctal%gas_particle_list)
 
@@ -6779,10 +6778,10 @@ CONTAINS
                                         !   of thisOctal unchanged
     INTEGER :: iChild ! loop counter
     
-    IF (ASSOCIATED(thisOctal%child)) THEN
-      WRITE(*,*) "Error in insertOctreeBranch, attempt to overwrite existing children"
-      STOP
-    END IF
+!    IF (ASSOCIATED(thisOctal%child)) THEN
+!      WRITE(*,*) "Error in insertOctreeBranch, attempt to overwrite existing children"
+!      STOP
+!    END IF
 
     IF (.NOT. onlyChildren) thisOctal = branch
 
@@ -6790,7 +6789,7 @@ CONTAINS
       thisOctal%child => branch%child
       NULLIFY(branch%child)
 
-      DO iChild = 1, SIZE(branch%child), 1
+      DO iChild = 1, SIZE(thisOctal%child), 1
         thisOctal%child(iChild)%parent => thisOctal
       END DO
         thisOctal%nChildren = branch%nChildren
@@ -7246,7 +7245,8 @@ CONTAINS
       ! we need to allocate some temporary storage for the children that 
       !   are not going to be delayed so that we can reposition them
       !   in the %child array.
-      ALLOCATE(tempChildStorage%wrappers(nChildrenStay), STAT=error)
+!      ALLOCATE(tempChildStorage%wrappers(nChildrenStay), STAT=error)
+      ALLOCATE(tempChildStorage%wrappers(nChildren), STAT=error) ! changed by th from above
       IF ( error /= 0 ) THEN
         PRINT *, 'Panic: allocation failed in shrinkChildArray. (A)'
         STOP
@@ -7298,9 +7298,9 @@ CONTAINS
           
 !          parent%rho(parent%indexChild(iChild)) =                            &
 !          SUM(thisChild%rho(1:parent%maxChildren)) / REAL(parent%maxChildren)
-        END IF    
+        END IF
 
-      ELSE 
+     ELSE 
         ! we do not want to delete this child. 
         ! instead we move it to the temporary storage array.
 
@@ -7322,7 +7322,7 @@ CONTAINS
       END IF
       
       NULLIFY(thisChild)
-    END DO
+   END DO
       
     ! all the unwanted children have now been deleted.
     ! we now get rid of the old %child array.

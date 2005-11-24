@@ -114,7 +114,7 @@ contains
 
     do i = 1, nz
        if (oldRho(i) /= 0.) then
-          drho = max(drho, abs(rho(i)-oldrho(i)))
+          drho = max(drho, abs(real(rho(i))-oldrho(i)))
        endif
     enddo
 

@@ -1113,7 +1113,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
            
         
            xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
-      max(1.e-30,(recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination))
+      max(1.d-30,(recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination))
 !           if (grid%ion(iion)%species(1:1) =="O") write(*,*) i,xplus1overx(i)
         enddo
        thisOctal%ionFrac(subcell, iStart:iEnd) = 1.
@@ -1124,7 +1124,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
         enddo
         if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
            thisOctal%ionFrac(subcell,iStart:iEnd) = &
-                max(1.e-30,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
+                max(1.d30,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
         else
            thisOctal%ionFrac(subcell,iStart:iEnd) = 1.e-30
         endif
@@ -2015,8 +2015,8 @@ subroutine solvePops(thisIon, pops, ne, temperature, debug)
      i = thisIon%transition(iTrans)%i
      j = thisIon%transition(iTrans)%j
      call getCollisionalRates(thisIon, iTrans, temperature, excitation, deexcitation)
-     rateij = max(1.e-40,excitation * ne)
-     rateji = max(1.e-30,deexcitation * ne + thisIon%transition(iTrans)%a)
+     rateij = max(1.d-40,excitation * ne)
+     rateji = max(1.d-30,deexcitation * ne + thisIon%transition(iTrans)%a)
 
      if (PRESENT(debug)) then
         if (debug) write(*,*) i, j, rateij, rateji

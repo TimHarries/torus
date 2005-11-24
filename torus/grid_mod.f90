@@ -6988,7 +6988,7 @@ contains
     integer :: ilo, ihi
     real(double) :: rtemp
     real :: ttemp
-    real(double), allocatable  :: kabs(:), ksca(:)   ! (size=maxTau)
+    real(double), allocatable  :: kabs(:), ksca(:), kros(:)   ! (size=maxTau)
     real, allocatable :: lambda(:), dlambda(:)
     real, allocatable :: tauSca(:), tauAbs(:), tauExt(:)
     integer :: ilambda
@@ -7008,7 +7008,8 @@ contains
     type(OCTALVECTOR) :: octVec, Uhatoctal, avecoctal
     integer :: pgbegin
 
-    allocate(lambda(1:maxTau),dlambda(1:maxTau),ksca(1:maxtau),kabs(1:maxtau))
+    allocate(lambda(1:maxTau),dlambda(1:maxTau),ksca(1:maxtau), &
+         kabs(1:maxtau), kros(1:maxtau))
     allocate(tauAbs(1:maxTau), tauSca(1:maxTau), tauExt(1:maxTau))
     allocate(vel(1:maxTau), dv(1:maxTau),temp(1:maxtau), rho(1:maxtau))
     allocate(chiline(1:maxTau),ne(1:maxTau),levelPop(1:maxtau,grid%maxLevels))
@@ -7058,7 +7059,7 @@ contains
     
        CALL startReturnSamples (aVecOctal,uHatOctal,grid,1.,nTau,       &
             maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
-            lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=vel,velocityderiv=dv, &
+            lambda,kappaAbs=kAbs,kappaSca=kSca,kappaRos=kros,velocity=vel,velocityderiv=dv, &
             temperature=temp, &
             chiLine=chiLine,    &
             levelPop=levelPop,rho=rho, &
@@ -7135,7 +7136,7 @@ contains
     integer :: ilo, ihi
     real(double) :: rtemp
     real :: ttemp
-    real(double), allocatable  :: kros(:)   ! (size=maxTau)
+    real(double), allocatable  :: kros(:),ksca(:),kabs(:)   ! (size=maxTau)
     real, allocatable :: lambda(:), dlambda(:)
     real, allocatable :: tauSca(:), tauAbs(:), tauExt(:)
     integer :: ilambda
@@ -7156,6 +7157,7 @@ contains
     integer :: pgbegin
 
     allocate(lambda(1:maxTau),dlambda(1:maxTau),kros(1:maxtau))
+    allocate(kabs(1:maxTau),ksca(1:maxTau))
     allocate(tauAbs(1:maxTau), tauSca(1:maxTau), tauExt(1:maxTau))
     allocate(vel(1:maxTau), dv(1:maxTau),temp(1:maxtau), rho(1:maxtau))
     allocate(chiline(1:maxTau),ne(1:maxTau),levelPop(1:maxtau,grid%maxLevels))
@@ -7192,7 +7194,8 @@ contains
     
        CALL startReturnSamples (aVecOctal,uHatOctal,grid,1.,nTau,       &
             maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
-            lambda,kappaRos=kros,velocity=vel,velocityderiv=dv, &
+            lambda,kappaAbs=kabs, kappaSca=ksca, &
+            kappaRos=kros,velocity=vel,velocityderiv=dv, &
             temperature=temp, &
             chiLine=chiLine,    &
             levelPop=levelPop,rho=rho, &
@@ -7240,7 +7243,7 @@ contains
     call pgend
     close(21)
     
-    deallocate(kros,  lambda, dlambda)
+    deallocate(kros, kabs, ksca, lambda, dlambda)
   end subroutine nattaplot
 
     
