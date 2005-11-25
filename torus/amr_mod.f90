@@ -6993,7 +6993,8 @@ CONTAINS
               ! depth less than some value (which should really be set in the
               ! parameter file).
 !              if (max(thisTau, thatTau).gt.0.5.and.min(thisTau, thatTau).lt.0.01) then
-              if (max(thisTau, thatTau).gt.tauSmoothMax.and.min(thisTau, thatTau).lt.tauSmoothMin) then
+              if ((max(thisTau, thatTau).gt.tauSmoothMax.and.min(thisTau, thatTau).lt.tauSmoothMin).or.&
+                   ((max(thisTau, thatTau)<5.).and.abs((thistau-thatTau)> 2.))) then
 !write (*,*) thisSubcellCentre%x, thisSubcellCentre%y, thisSubcellCentre%z, thisTau, thatTau, i
                 ! Because addNewChild is broken, we must use addNewChildren below,
                 ! which makes these tests on the current and neighbouring subcells

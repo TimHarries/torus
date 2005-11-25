@@ -1131,16 +1131,15 @@ program torus
               ! The tau smoothing may result in large differences in the size
               ! of neighbouring octals, so we smooth the grid again.
               if (doSmoothGrid) then
-                if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
-                gridConverged = .false.
-                do
-                   call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false.,interpProps=.true.)
-                   if (gridConverged) exit
-                end do
-                if (writeoutput) write(*,*) "...grid smoothing complete"
+                 if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
+                 gridConverged = .false.
+                 do
+                    call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false.,interpProps=.true.)
+                    if (gridConverged) exit
+                 end do
+                 if (writeoutput) write(*,*) "...grid smoothing complete"
               end if
-           end if
-
+           endif
         end select
    
         nOctals = 0

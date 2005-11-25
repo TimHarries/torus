@@ -569,8 +569,10 @@ contains
                 inZone = .true.
                 nZones = nZones + 1
                 if (nZones .gt. 20) then
-                   write(*,*) "Too many diffusion zones"
-                   stop
+                   write(*,*) "Too many diffusion zones. Setting no diffusion zone"
+                   call setNoDiffusion(grid%octreeRoot)
+                   nZones = 0
+                   goto 666
                 end if
                 leftBoundary(nZones) = nBoundary
                 leftBoundaryX(nZones) = i
@@ -702,7 +704,10 @@ contains
 
     end do
 
+666 continue
+
     if (writeoutput) write(*,*) "Done.", nZones, "diffusion zone(s) defined."
+
 
     deallocate(zBoundary,xBoundary,sigma,tboundary,rval)
     deallocate(zAxis, xAxis)

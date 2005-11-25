@@ -509,7 +509,7 @@ contains
        end if
 
        if (doingDustSublimation) then
-          nMonte = 50000
+          nMonte = 1000000
           if (iIter_grand == 0) then
              nIter = 3
           else
@@ -1030,26 +1030,26 @@ contains
 !                  "unrefine.ps/vcps", .true., .false., &
 !                  0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
              
-
-             if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
-             
-             do j = iSmoothLam, ismoothlam ! nLambda
+             if (iiter_grand > 7) then
+                if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."             
+                do j = iSmoothLam, ismoothlam ! nLambda
+                   do
+                      gridConverged = .true.
+                      call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps = .true.)
+                      if (gridConverged) exit
+                   end do
+                enddo
+                if (writeoutput) write(*,*) "...grid smoothing complete"
+                ! The tau smoothing may result in large differences in the size
+                ! of neighbouring octals, so we smooth the grid again.
+                if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
+                gridConverged = .false.
                 do
-                   gridConverged = .true.
-                   call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps = .true.)
+                   call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false., interpProps=.true.)
                    if (gridConverged) exit
                 end do
-             enddo
-             if (writeoutput) write(*,*) "...grid smoothing complete"
-             ! The tau smoothing may result in large differences in the size
-             ! of neighbouring octals, so we smooth the grid again.
-             if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
-             gridConverged = .false.
-             do
-                call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false., interpProps=.true.)
-                if (gridConverged) exit
-             end do
-             if (writeoutput) write(*,*) "...grid smoothing complete"
+                if (writeoutput) write(*,*) "...grid smoothing complete"
+             endif
           endif
        endif
 

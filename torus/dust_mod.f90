@@ -922,9 +922,12 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     real ::  temperature, sublimationTemp, subrange
     real :: underCorrect = 0.5
     integer :: ilambda
+    real :: tauStep
     real(double) :: kappaSca, kappaAbs
     
     integer :: nx, subcell, i
+
+    tauStep = 1.
 
     subrange = 1.
 
@@ -957,7 +960,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
           thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
           if (thisTau <= 10.) then
-             fac = thisOctal%oldFrac(subcell)*(thisTau + 0.5) / thisTau 
+             fac = thisOctal%oldFrac(subcell)*(thisTau + tauStep) / thisTau 
              frac = min(fac, frac)
 !             write(*,*) fac, frac, thisTau, thisOctal%oldFrac(subcell)
           endif
