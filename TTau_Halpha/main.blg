@@ -1,0 +1,47 @@
+This is BibTeX, Version 0.99c (Web2C 7.4.5)
+The top-level auxiliary file: main.aux
+The style file: mn.bst
+Database file #1: mnras.bib
+Warning--I didn't find a database entry for "shu:1995"
+You've used 67 entries,
+            2806 wiz_defined-function locations,
+            1824 strings with 23521 characters,
+and the built_in function-call counts, 29707 in all, are:
+= -- 2592
+> -- 1784
+< -- 37
++ -- 666
+- -- 597
+* -- 2473
+:= -- 5548
+add.period$ -- 2
+call.type$ -- 67
+change.case$ -- 466
+chr.to.int$ -- 67
+cite$ -- 67
+duplicate$ -- 1271
+empty$ -- 1848
+format.name$ -- 821
+if$ -- 5801
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 65
+newline$ -- 205
+num.names$ -- 270
+pop$ -- 525
+preamble$ -- 1
+purify$ -- 466
+quote$ -- 0
+skip$ -- 1058
+stack$ -- 0
+substring$ -- 1382
+swap$ -- 85
+text.length$ -- 4
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 597
+warning$ -- 0
+while$ -- 267
+width$ -- 0
+write$ -- 673
+(There was 1 warning)

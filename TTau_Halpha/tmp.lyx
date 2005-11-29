@@ -1,0 +1,7966 @@
+#LyX 1.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 221
+\textclass mn2e
+\begin_preamble
+\usepackage{lscape}
+\usepackage{times}
+
+\newcommand{\aap}{A\&A}
+\newcommand{\aaps}{A\&AS}
+\newcommand{\apj}{ApJ}
+\newcommand{\apjl}{\apj}
+\newcommand{\pasp}{PASP}
+\newcommand{\aj}{AJ}
+\newcommand{\mnras}{MNRAS}
+\newcommand{\apjs}{ApJS}
+\newcommand{\aapr}{A\&AR}
+\newcommand{\pasj}{PASJ}
+
+\newcommand{\kmps}{\mathrm{km~s^{-1}}}
+\newcommand\ion[2]{#1$\,${\sc {#2}}}   % ion, i.e., CII = \ion{C}{ii}
+\newcommand{\Kelvin}{\mathrm{K}}
+\end_preamble
+\options useAMS, usenatbib
+\language english
+\inputencoding auto
+\fontscheme default
+\graphics default
+\paperfontsize default
+\spacing single 
+\papersize Default
+\paperpackage a4
+\use_geometry 0
+\use_amsmath 0
+\use_natbib 0
+\use_numerical_citations 0
+\paperorientation portrait
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\defskip medskip
+\quotes_language english
+\quotes_times 2
+\papercolumns 2
+\papersides 1
+\paperpagestyle default
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+title[On H-$
+\backslash 
+alpha$ formation of T Tauri stars]{On formation of H-$
+\backslash 
+alpha$ from classical T Tauri stars: the disc, wind, and magnetospheric-accretion hybrid model}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+author[R. Kurosawa et
+\backslash 
+,al.]{Ryuichi Kurosawa
+\backslash 
+thanks{E-mail: rk@astro.ex.ac.uk}, Tim J. Harries and Neil H. Symington
+\backslash 
+
+\backslash 
+ School of Physics, University of Exeter, Stocker Road, Exeter EX4 4QL}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+date{Dates to be inserted}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+pagerange{
+\backslash 
+pageref{firstpage}--
+\backslash 
+pageref{lastpage}} 
+\backslash 
+pubyear{2005}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+maketitle
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{firstpage}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{abstract}
+\end_inset 
+
+
+\layout Standard
+
+We investigate the formation of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ from classical T\SpecialChar ~
+Tauri stars with a complex circumstellar geometry -- the
+ combination of mangnetisherical accretion, collimated steller wind, and
+ accretion disc.
+ AND MORE
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{abstract}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{keywords}
+\newline 
+stars:formation -- stars: individual: SU Aur -- circumstellar matter -- infrared: stars -- stars: pre-main-sequence
+\newline 
+
+\backslash 
+end{keywords}
+\end_inset 
+
+
+\layout Section
+
+Introduction 
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Introduction}
+
+\end_inset 
+
+
+\layout Standard
+
+T\SpecialChar ~
+Tauri stars (TTS) are young (
+\begin_inset Formula $<\sim3\times10^{6}\,\mathrm{yrs}$
+\end_inset 
+
+, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{appenzeller:1989}
+\end_inset 
+
+) low-mass stars, and known as progenitors of solar-type stars.
+ Classical T\SpecialChar ~
+Tauri stars (CTTS) exhibit strong H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ emission, and typically have spectral types of F--K.
+ Some of the most active CTTS show emission in higher Balmer lines and metal
+ lines (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+ion{Ca}{ii}
+\end_inset 
+
+\SpecialChar ~
+H and K).
+ They also exhibit an excess amount of continuum flux in the ultraviolet
+ (UV) and infrared (IR).
+ Their spectral energy distribution and polarization data suggest the presence
+ of a circumstellar disc, and it plays an important role in regulating dynamics
+ of gas flows around CTTS.
+\layout Standard
+
+Many observational studies (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{herbig:1962}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{edwards:1994}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{kenyon:1994}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{reipurth:1996}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{alencar:2000}
+\end_inset 
+
+) of CTTS line profles show that the evidence for both outward wind flows
+ and inward accretion flows, as seen in the blueshifted absorption features
+ in H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ profiles and the redshifted inverse P\SpecialChar ~
+Cygni (IPC) profiles.
+ Typical mass-loss rates of CTTS are about 
+\begin_inset Formula $10^{-9}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ to 
+\begin_inset Formula $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{kuhi:1964}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{edwards:1987}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{hartigan:1995}
+\end_inset 
+
+), and the mass-accretion rates are also about 
+\begin_inset Formula $10^{-9}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ to 
+\begin_inset Formula $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{kenyon:1987}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt*{bertout:1988}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{gullbring:1998}
+\end_inset 
+
+).
+ 
+\layout Standard
+
+Recent H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ spectro-astrometric observations by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{takami:2003}
+\end_inset 
+
+ show the direct evidence for the presence of bipolar and monopolar outflows
+ down to 
+\begin_inset Formula $\sim1\,\mathrm{AU}$
+\end_inset 
+
+ scale (e.g.
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+,
+\end_inset 
+
+CS\SpecialChar ~
+Cha and RU\SpecialChar ~
+Lup).
+ Similarly, ESO VLT observation of high-resolution (
+\begin_inset Formula $\mathrm{R=50\,000}$
+\end_inset 
+
+) two-dimensional spectral of edge-on CTTS (HH30
+\begin_inset Formula $^{*}$
+\end_inset 
+
+, HK\SpecialChar ~
+Tau\SpecialChar ~
+B, and HV\SpecialChar ~
+Tau\SpecialChar ~
+C) by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{appenzeller:2005}
+\end_inset 
+
+ show the extended (SCALE?) H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ emission in the direction perpendicular to the obscuring circumstellar
+ disc, and in both above and below the disc --- suggesting the presence
+ of the bipolar outflows.
+ In silightly larger scale, 
+\emph on 
+HST 
+\emph default 
+observation of HH30 (Burrorws et al 1996) shows the jet traced to within
+ 
+\begin_inset Formula $\lesssim30$
+\end_inset 
+
+\SpecialChar ~
+AU from the star.
+ The jet has a cone shape with an opening angle of 
+\begin_inset Formula $3^{\circ}$
+\end_inset 
+
+ between 70 and 700 AU.
+ (Originally from Konig and Pudritz 2000 review in PP IV).
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{alencar:2000}
+\end_inset 
+
+ found about 80 per cent of their samples (30 CTTS) show blueshifted absorption
+ componets in at least one of Balmer lines and Ca\SpecialChar ~
+K (most commonly in H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+).
+ 
+\layout Standard
+
+In a currently favoured model of accretion flows around CTTS, the accretion
+ discs are disrupted by the magnetosphere of stars which channels the gas
+ from the disc onto the surface of the stars (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{uchida:1985}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{koenigl:1991}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{cameron:1993}
+\end_inset 
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{shu:1994}
+\end_inset 
+
+).
+ This picture of the accretion flows is supported by the evidences that
+ CTTS have relatively strong (
+\begin_inset Formula $\sim10^{3}\mathrm{G}$
+\end_inset 
+
+) magnetic field (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt*{jonhs-krull:1999}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{guenther:1996}
+\end_inset 
+
+) and by the radiative transfer models which reproduce the observed profiles
+ for some TTS (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{muzerolle:2001}
+\end_inset 
+
+).
+ The magnetospherical accretion model naturally explains the blueward asymmetic
+ emission lines (seen in some of CTTS) caused by the partial occulation
+ of the flow by the disc, and the redshifted absorption componet at the
+ typical free-fall velocities (a few hundred 
+\begin_inset Formula $\mathrm{km\, s^{-1}}$
+\end_inset 
+
+) seen in some of CTTS.
+ 
+\layout Standard
+
+Dispite the success of the magnetosherical accretion model in explaining
+ the line profiles in some CTTS, the overwhelming observational evidences
+ for the outflow (mentoned above) in the CTTS profiles suggests that this
+ model is only a part of a whole picture.
+ Clearly, the modefification to include the outflowing wind/jet flow is
+ neccessary if one requires to predict the mass-accretion rate and the mass-loss
+ rate of CTTS by modelling their emission profiles (e.g.
+ H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+).
+\layout Standard
+
+Priory to the magnetospherical models, many alternative models had been
+ considered to explain the observed spectroscopic features mentioned earlier.
+ For example, 1.\SpecialChar ~
+the Alfv
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+'{e}
+\end_inset 
+
+n wave-driven wind model (e.g.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{decampli:1981}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{hartmann:1982}
+\end_inset 
+
+), 2.\SpecialChar ~
+turbulant boundary layer (between the accretion disc and stellar surface)
+ model (e.g.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{bertout:1988}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{basri:1989}
+\end_inset 
+
+), 3.\SpecialChar ~
+chromospheric model (e.g.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{calvet:1984}
+\end_inset 
+
+), and 4.\SpecialChar ~
+disc wind model (e.g.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{calvet:1992b}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{kwan:1995}
+\end_inset 
+
+).
+ Considering the sucess of the magnetospherical accretion flow model in
+ some cases and the observational eividences for the outflows, it is likely
+ that an improved spectroscopic model requires both inflow and outflow component
+s.
+ The combination of the magnetospheric accretion flow model with model 1
+ or 4 would be a reasonable starting point for an improved spectroscopic
+ model.
+ Although time consuming to explore a larger parameter space, more realistic
+ density, velocity and temperature structure from magnetohydrodynamic wind+accre
+tion models should be considered as inputs for an radiative transfer model
+ in the future.
+ 
+\layout Standard
+
+The magnetocentrifugal wind model, first proposed by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{blandford:1982}
+\end_inset 
+
+, has been often used to reproduce the large-scale wind structure of T Tauri
+ stars, or to model observed optical jets (e.g.\SpecialChar ~
+HH\SpecialChar ~
+30 jet by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{burrows:1996}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{ray:1996}
+\end_inset 
+
+).
+ The lanching of the wind from a Keplerian disc is typically done by treating
+ the equaotorial plane of the disc as a mass-injecting boundary condition
+ (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{ustyugova:1995}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{shu:1995}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{ouyed:1997}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{krasnopolsky:2003}
+\end_inset 
+
+).
+ Depending on the location of the open magnetic fields anchored to the disc,
+ two different types of winds are preoduced.
+ If the field is constrained to be near the co-rotation radius of stellar
+ magnetosphere, an 
+\begin_inset Quotes eld
+\end_inset 
+
+X-wind
+\begin_inset Quotes erd
+\end_inset 
+
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{shu:1994}
+\end_inset 
+
+ is produces.
+ If the open field lines are located in a wider area of the disc, a 
+\begin_inset Quotes eld
+\end_inset 
+
+disc-wind
+\begin_inset Quotes erd
+\end_inset 
+
+ similar to 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{koenigl:2000}
+\end_inset 
+
+ is produced 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{krasnopolsky:2003}
+\end_inset 
+
+.
+ Recent reviews on the jet/wind-disc connection can be found in 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{koenigl:2000}
+\end_inset 
+
+ and 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{pudritz:2005}
+\end_inset 
+
+.
+ 
+\layout Standard
+
+In this paper, we present a semi-emperical wind -- accretion disc -- magnetosphe
+rical accretion hybrid model for CTTS, and perform parametric studies of
+ the H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ formation.
+ This study should provide preliminary physical conditions which lead to
+ the wide varaiety of emission line profiles seen in the observation, and
+ would help to construct more comprehensive circumstellar models (e.g.
+ via MHD simulations) of T\SpecialChar ~
+Tauri stars.
+ the Using the model results, we examine the H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ spectroscopic classification used by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{reipurth:1996}
+\end_inset 
+
+, and compare models with observations.
+ We will also discuss whether our model is consistent with some predictions
+ made by the recentt MHD studies (e.g.\SpecialChar ~
+ 
+\begin_inset Formula $\mu=\dot{M}_{\mathrm{wind}}/\dot{M}_{\mathrm{acc}}\approx0.1$
+\end_inset 
+
+).
+\layout Standard
+
+In section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:model-configuration}
+
+\end_inset 
+
+, the model assumptions, and the basic model configurations are presented.
+ We discuss the radiaive transfer model used to compute the profiles in
+ section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:radiative-transfer-model}
+
+\end_inset 
+
+, and the results of model calculations are given in section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:Results}
+
+\end_inset 
+
+.
+ The closer examination and discussion of the results are presented in section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:Discussion}
+
+\end_inset 
+
+.
+ Finally, the summary of this work and the conclusion are in section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:Conclusions}
+
+\end_inset 
+
+.
+\layout Section
+
+Model configuration
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:model-configuration}
+
+\end_inset 
+
+
+\layout Standard
+
+To understand how the different part of the CTTS circumsterllar enviroment
+ contributes to the fomation of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+, the model spaced is devided into four different regions: 1.\SpecialChar ~
+Central contiuum
+ source, 2.\SpecialChar ~
+magnetosphere accretion flow, 3.\SpecialChar ~
+wind outflow, and 4.\SpecialChar ~
+accretion disc.
+ Fig.\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:overview}
+
+\end_inset 
+
+ depicts the relative location in the model space.
+ In all regions, the density is symmetric around the z-axis.
+ The innermost raius of the magnetsphere at the equotrial plane coincides
+ with the the inner radius of the accretion disc.
+ From the inner most part of the accretion disc, the gas freely fall, moving
+ along the magneic filed onto the surface of the star.
+ For the purpose of computational simplicity, the colliminated wind are
+ defined only in the outside of the largest radius of the magnesophere.
+ In the following subsections, the details of model components will be described.
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/overview2.eps
+	scale 60
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Basic Model Configuration. The system consist of four components: 1.~the continuum source located at the origin $
+\backslash 
+left( o 
+\backslash 
+right)$ of the cartisian coordinates $
+\backslash 
+left(x,y,z
+\backslash 
+right)$ -- the y-axis are into the paper, 2.~magnetospherical accretion flow, 3.~colliminated wind/jet outflow, and 4.~accretion disc. The density distribution is symmetric around the z-axis. The innermost raius of the magnetsphere (at the equotrial plane) coincides with the the inner radius of the accretion disc. From the inner most part of the accretion disc, the gas freely fall, moving along the magneic filed onto the surface of the star. For simplicit, the colliminated wind/jet exists outside of the largest radius of the magnesophere (dotted line). }
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:overview}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure*}
+\end_inset 
+
+
+\layout Subsection
+
+Contiuum Source
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sub:Contiuum-Source}
+
+\end_inset 
+
+
+\layout Standard
+
+Unless specified otherwise, we adopt stellar parameters of a typical classical
+ T\SpecialChar ~
+Tauri star (REF) for the central conitnuum source, i.e.
+ radius (
+\begin_inset Formula $R_{*}$
+\end_inset 
+
+), mass (
+\begin_inset Formula $M_{*}$
+\end_inset 
+
+), and effective temperature the photosphere (
+\begin_inset Formula $T_{\mathrm{ph}}$
+\end_inset 
+
+) are 
+\begin_inset Formula $2\, R_{\sun}$
+\end_inset 
+
+, 
+\begin_inset Formula $0.5\, M_{\sun}$
+\end_inset 
+
+, and 
+\begin_inset Formula $4000\,\mathrm{K}$
+\end_inset 
+
+ respectively.
+ The model atomsphere of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kurucz:1979}
+\end_inset 
+
+ equivallently 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kurucz:1993} 
+\end_inset 
+
+ with 
+\begin_inset Formula $T_{\mathrm{ph}}=4000\,\mathrm{K}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\log g_{*}=3.5$
+\end_inset 
+
+ (cgs) is used to continuum flux at H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+wavelength.
+ The parameters are summarised in Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:std_parameters}
+
+\end_inset 
+
+.
+\layout Standard
+
+The limb-darkening law used for the continuum source is 
+\begin_inset Formula $I\left(\mu\right)=I_{0}\left(1+b\mu\right)$
+\end_inset 
+
+ where 
+\begin_inset Formula $\mu=\cos\theta$
+\end_inset 
+
+ and 
+\begin_inset Formula $\theta$
+\end_inset 
+
+ is the polar angle.
+ 
+\begin_inset Formula $b$
+\end_inset 
+
+ is a parameter.
+ For no limb-darkening case, 
+\begin_inset Formula $b=0$
+\end_inset 
+
+, and for the Eddington approximation case 
+\begin_inset Formula $b=3/2$
+\end_inset 
+
+.
+ The former is used in all the calulcations presented here.
+ (Is this an ok assumption for T Tauri's? You need to check this.)
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{table*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset  Tabular
+<lyxtabular version="3" rows="3" columns="13">
+<features>
+<column alignment="left" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row topline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Parameters
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $R_{*}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $M_{*}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $T_{\mathrm{ph}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $R_{\mathrm{mi}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $R_{\mathrm{mo}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\dot{M}_{\mathrm{wind}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\beta$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $v_{\infty}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $b$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $R_{\mathrm{di}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $R_{\mathrm{do}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row bottomline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[R_{\sun}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[M_{\sun}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[\mathrm{K}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[R_{*}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[R_{*}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[M_{\sun}\,\mathrm{yr^{-1}}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[M_{\sun}\,\mathrm{yr^{-1}}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $[-]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $[\mathrm{km\, s^{-1}}]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $[-]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[R_{*}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[\mathrm{AU}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row bottomline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Standard
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $2.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $4000$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $2.2$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $3.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-7}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-8}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.2$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $200$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $4.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $2.2$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $100$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{The summary of the standard classical T~Tauri star model parameters.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{tab:std_parameters}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{table*}
+\end_inset 
+
+
+\layout Subsection
+
+Magnetosphere
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sub:Magnetosphere}
+
+\end_inset 
+
+
+\layout Standard
+
+We adopt the magnetospherical accretion flow model of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1994}
+\end_inset 
+
+, as done so by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+ and by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{symington:2005}
+\end_inset 
+
+, in which the gas accretion on to the stellar surface from the innermost
+ part of the accretion disc occurs through a dipolar stellar magnetic field.
+ The magnetic field is assumed to be so strong that the gas flow does not
+ affect the underlying magnetic field itself.
+ As shown in Fig.\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:overview}
+
+\end_inset 
+
+, the innermost radius (
+\begin_inset Formula $R_{\mathrm{mi}}$
+\end_inset 
+
+) of the magnetophere at the equatorial plane (
+\begin_inset Formula $z=0$
+\end_inset 
+
+) is assigned to be same as the inner radius (
+\begin_inset Formula $R_{\mathrm{di}}$
+\end_inset 
+
+) of the accretion disc where the flow is truncated.
+ In our models, 
+\begin_inset Formula $R_{\mathrm{mi}}$
+\end_inset 
+
+ and the outer radius (
+\begin_inset Formula $R_{\mathrm{mo}}$
+\end_inset 
+
+) of the magnetosphere (at the equaotrial plane) are set to be 
+\begin_inset Formula $2.2\, R_{\sun}$
+\end_inset 
+
+ and 
+\begin_inset Formula $3.0\, R_{\sun}$
+\end_inset 
+
+ respectively.
+ The former value corresponds to the corotation radius of the accretion
+ disc, and the geometry of the magnetic field/stream lines is kept constant
+ throghout this paper.
+ The geometry of the magnetosphere is identical to the 
+\begin_inset Quotes eld
+\end_inset 
+
+small/wide
+\begin_inset Quotes erd
+\end_inset 
+
+ model of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+.
+ 
+\layout Standard
+
+The magnetic field and the gas stream lines are assumed to have the following
+ simple form: 
+\begin_inset Formula $r=R_{\mathrm{m}}\sin^{2}\theta$
+\end_inset 
+
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep[see][]{ghosh:1977}
+\end_inset 
+
+ where 
+\begin_inset Formula $r$
+\end_inset 
+
+, and 
+\begin_inset Formula $\theta$
+\end_inset 
+
+ are coordinates of the field point (
+\begin_inset Formula $p$
+\end_inset 
+
+) in Fig.\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:overview}
+
+\end_inset 
+
+ in spheical coodinates, and 
+\begin_inset Formula $R_{\mathrm{m}}$
+\end_inset 
+
+is the radial distance to the field line at the equotorial plane (
+\begin_inset Formula $\theta=\pi/2$
+\end_inset 
+
+).
+ The range of 
+\begin_inset Formula $R_{\mathrm{m}}$
+\end_inset 
+
+is restricted between 
+\begin_inset Formula $R_{\mathrm{mi}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $R_{\mathrm{mo}}$
+\end_inset 
+
+ as mentioned above.
+ Using the field geometry above, the conservation of energy, and igoring
+ the rotation of magnetosphere, the velocity and the density of the accreting
+ gas along the steam line can be found.
+ See 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1994}
+\end_inset 
+
+ for details.
+ 
+\layout Standard
+
+In all of our models, the temperature structure of the magnetospheric used
+ by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1994}
+\end_inset 
+
+ is also adoped here.
+ The temperature structure was computed assuming a volumetric heating rate
+ which is proportional to 
+\begin_inset Formula $r^{-3}$
+\end_inset 
+
+, and using the energy balance of the radiative cooling rate of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1982}
+\end_inset 
+
+ and the heating rate 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{hartmann:1994}
+\end_inset 
+
+.
+ Although the temperature structure of the accretion steam could significantly
+ affect the line source function, for the purpose of the expolaring the
+ general characteristics of the H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ formation, this simple form is a reasonable assumption.
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{martin:1996}
+\end_inset 
+
+ presented the self-consistent determination of the thermal structure of
+ the inflowing gas along the dipole magnetic field, same as the one used
+ here, by solving the heat equation couple to trate equations for hydrogen.
+ He found that main heat source is adiabatic compression due to the convering
+ nature of the flow, and the major contirbutors of the cooling process are
+ bremsstrahling radiation and line emission from Ca\SpecialChar ~
+II and Mg\SpecialChar ~
+II ions.
+ The temerature sturcture of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{martin:1996}
+\end_inset 
+
+ qualitaively agrees with that of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{hartmann:1994}
+\end_inset 
+
+.
+ The sensitivty tests of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ on the temperature structure will be presented later (SPECIFY THE SECTION
+ LATER).
+ 
+\layout Standard
+
+As the infalling gas becomes closer to the stellar surface, it is decelerates
+ in a strong shock, and heated to 
+\begin_inset Formula $\sim10^{6}\,\mathrm{K}$
+\end_inset 
+
+ (with typical parameters).
+ The X-ray radiation produced in the shock will be absorbed by the gas located
+ near, and reemitted in optical and UV radiation (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{koenigl:1991}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{hartmann:1994}
+\end_inset 
+
+).
+ This will create hot rings near the stellar surface where the magnetic
+ field intersects with the surface.
+ For simplicity, the free-falling kinetic energy is assumed to be thermalized
+ in the radiating layer, and reemits as blackbody radiation (with a single
+ temerature).
+ With the parameters of the magnetosphere and the star given above (Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:std_parameters}
+
+\end_inset 
+
+), about 
+\begin_inset Formula $8$
+\end_inset 
+
+\SpecialChar ~
+per\SpecialChar ~
+cent of the surface is covered by the hot rings, and its temperature
+ is about 
+\begin_inset Formula $6400\,\mathrm{K}$
+\end_inset 
+
+.
+ If the mass-accretion rate is 
+\begin_inset Formula $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+, the ratio of this accretion luminosity to the photospheric luminosity
+ is about 
+\begin_inset Formula $0.5$
+\end_inset 
+
+.
+ The contiuum emission from the hot rings is taken into account when computing
+ the line profiles.
+ 
+\layout Subsection
+
+Colliminated Wind
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sub:wind_jet}
+
+\end_inset 
+
+
+\layout Standard
+
+JUSTTIFICATION OF USING THIS FORMULATION.
+ BREIFLY MENTIONED THE WORK DONE BY OTHERS.
+\layout Standard
+
+Based on the simple model of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{appenzeller:2005}
+\end_inset 
+
+, the following parametrisation of colliminated wind/jet (region 3 in Fig.\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:overview}
+
+\end_inset 
+
+) is adopeted.
+ The wind velocity field, 
+\begin_inset Formula $\mathbf{v}_{\mathrm{wind}}\left(r,\theta\right)$
+\end_inset 
+
+, is consist of radial and polar components which depend only on 
+\begin_inset Formula $r$
+\end_inset 
+
+ and 
+\begin_inset Formula $\theta$
+\end_inset 
+
+ respectively.
+ The radial componet 
+\begin_inset Formula $v_{r}\left(r\right)$
+\end_inset 
+
+ is assumed to be in the classical beta-velocity law 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep[c.f.][]{castor:1979}
+\end_inset 
+
+, and the azimuthal component 
+\begin_inset Formula $v_{\phi}$
+\end_inset 
+
+ is asuumed to be a constant fraction (
+\begin_inset Formula $\gamma$
+\end_inset 
+
+) of the Keplerian velocity for a given distance (
+\begin_inset Formula $w=\sqrt{x^{2}+y^{2}}$
+\end_inset 
+
+) from the symmetry axis (
+\begin_inset Formula $z$
+\end_inset 
+
+-axis) , i.e.:
+\layout Standard
+
+
+\begin_inset Formula \begin{eqnarray}
+\mathbf{v}_{\mathrm{wind}} & = & v_{r}\hat{\mathbf{r}}+v_{\phi}\hat{\mathbf{\bphi}}+v_{\theta}\hat{\btheta}\label{eq:wind_velocity_def}\end{eqnarray}
+
+\end_inset 
+
+where 
+\begin_inset Formula \begin{equation}
+v_{r}\left(r\right)=v_{r0}+v_{\infty}\left(1-\frac{R_{\mathrm{mo}}}{r}\right)^{\beta}\,,\label{eq:wind_velocity_radial_part}\end{equation}
+
+\end_inset 
+
+
+\begin_inset Formula \begin{equation}
+v_{\phi}\left(w\right)=\gamma\,\left(\frac{GM_{*}}{w}\right)^{1/2}\,,\label{eq:wind_velocity_azimuth_part}\end{equation}
+
+\end_inset 
+
+and 
+\begin_inset Formula \begin{equation}
+v_{\theta}\left(r,\theta\right)=v_{\theta0}\,\left(\frac{R_{\mathrm{mo}}}{r}\right)^{\alpha}\frac{\tan\theta}{\left|\tan\theta\right|}\,.\label{eq:wind_velocity_polar_part}\end{equation}
+
+\end_inset 
+
+Note that the base of the wind starts at 
+\begin_inset Formula $r=R_{\mathrm{mo}}$
+\end_inset 
+
+, and the range of the polar angle is restricted to 
+\begin_inset Formula $\theta>\left|\theta_{\mathrm{disc}}\right|$
+\end_inset 
+
+ where 
+\begin_inset Formula $\theta_{\mathrm{disc}}$
+\end_inset 
+
+ is the openning angle of the accretion disc, to avoid the overlap.
+ 
+\begin_inset Formula $v_{r0}$
+\end_inset 
+
+is the small radial velocity at the base of the wind (
+\begin_inset Formula $r=R_{\mathrm{mo}}$
+\end_inset 
+
+).
+ Normally, 
+\begin_inset Formula $v_{r0}=10\,\mathrm{km\, s^{-1}}$
+\end_inset 
+
+, approximately the thermal velocity of hydrogen with 
+\begin_inset Formula $T=7500\,\mathrm{K}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\gamma=0.05$
+\end_inset 
+
+ (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{appenzeller:2005}
+\end_inset 
+
+) are used.
+ The dependency of 
+\begin_inset Formula $v_{r}$
+\end_inset 
+
+ in polar direction (
+\begin_inset Formula $\theta=0$
+\end_inset 
+
+) on the values of wind accerelation parameter 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ is shown in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:wind_vr_rho}
+
+\end_inset 
+
+.
+ All other parameters describing the wind are fixed as the standard values
+ given in Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:std_parameters}
+
+\end_inset 
+
+.
+ 
+\layout Standard
+
+Further, the density of the wind is assumed to be axi-symmetric and separable
+ in 
+\begin_inset Formula $r$
+\end_inset 
+
+ and 
+\begin_inset Formula $\theta$
+\end_inset 
+
+ for computationaly simpliciy, i.e., 
+\layout Standard
+
+
+\begin_inset Formula \begin{equation}
+\rho\left(r,\theta\right)=P\left(r\right)\, F\left(\theta\right)\label{eq:wind_density_def}\end{equation}
+
+\end_inset 
+
+ with 
+\begin_inset Formula \begin{equation}
+F\left(\theta\right)=n\,\cos^{b}\theta\label{eq:wind_density_theta}\end{equation}
+
+\end_inset 
+
+ where 
+\begin_inset Formula $b$
+\end_inset 
+
+ is normally positive even number (for the density symmetric about the equtotria
+l plane), and 
+\begin_inset Formula $n$
+\end_inset 
+
+ is the angular normalisation constant.
+ For 
+\begin_inset Formula $b=0$
+\end_inset 
+
+, the wind is sherically symmetic exept for the parts dirupted by the accretion
+ disc.
+ The larger the value of 
+\begin_inset Formula $b$
+\end_inset 
+
+, the higher the degree of the collimination.
+ By integrating equation\SpecialChar ~
+
+\begin_inset LatexCommand \ref{eq:wind_density_theta}
+
+\end_inset 
+
+ over angles and normalising the integral to 
+\begin_inset Formula $4\pi$
+\end_inset 
+
+, one finds 
+\begin_inset Formula \begin{equation}
+n=\frac{1+b}{1-\cos^{1+b}\theta_{\mathrm{wind}}}\,.\label{eq:wind_density_theta_norm}\end{equation}
+
+\end_inset 
+
+ Asumming the total mass-loss rate by the wind/jet is 
+\begin_inset Formula $\dot{M}_{\mathrm{wind}}$
+\end_inset 
+
+ and the mass-flux conserves in time, the radial part of the density function
+ is reduced to 
+\begin_inset Formula $P\left(r\right)=\dot{M}_{\mathrm{wind}}\,\left[4\pi r^{2}v_{r}\left(r\right)\right]^{-1}$
+\end_inset 
+
+; hence, Equation\SpecialChar ~
+
+\begin_inset LatexCommand \ref{eq:wind_density_def}
+
+\end_inset 
+
+ becomes 
+\begin_inset Formula \begin{equation}
+\rho\left(r,\theta\right)=\frac{n\,\cos^{b}\theta\,\dot{M}_{\mathrm{wind}}}{4\pi r^{2}\, v_{r}\left(r\right)}\,.\label{eq:wind_density_final}\end{equation}
+
+\end_inset 
+
+ For a given mass-accretion rate, the wind mass-loss rate in our typical
+ model is assined from the ratio of mass-loss to mass-accretion rate (
+\begin_inset Formula $\dot{M}_{\mathrm{wind}}/\dot{M}_{\mathrm{acc}}\approx0.1$
+\end_inset 
+
+), indicated by both observations and magnetohydrodynamical calculations
+ (see e.g.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{koenigl:2000}
+\end_inset 
+
+).
+ 
+\layout Standard
+
+Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:wind_vr_rho}
+
+\end_inset 
+
+ shows the values of 
+\begin_inset Formula $\rho$
+\end_inset 
+
+ in polar direction (
+\begin_inset Formula $\theta=0$
+\end_inset 
+
+) for different values of 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ with all other parameters fixed as the standard values (Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:std_parameters}
+
+\end_inset 
+
+).
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset  Tabular
+<lyxtabular version="3" rows="1" columns="2">
+<features>
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename plots/discwind_vr_pol.eps
+	lyxscale 55
+	scale 45
+	keepAspectRatio
+	clip
+
+\end_inset 
+
+\SpecialChar ~
+\SpecialChar ~
+\SpecialChar ~
+\SpecialChar ~
+\SpecialChar ~
+\SpecialChar ~
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename plots/density_wind_pol.eps
+	lyxscale 55
+	scale 45
+	keepAspectRatio
+	clip
+
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Note
+collapsed false
+
+\layout Standard
+
+Maybe you should plot 
+\begin_inset Formula $v_{\phi}$
+\end_inset 
+
+here also!
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{The dependency of the wind velocity and density structures on the wind accerelation parameter $
+\backslash 
+beta$. The radial component of the wind/jet velocity (equation~
+\backslash 
+ref{eq:wind_velocity_radial_part}) in polar direction, $
+\backslash 
+theta = 0$ as a function of radius is shown on left. The wind density (equation~
+\backslash 
+ref{eq:wind_density_final} along polar direction as a function of radius is shown on right. For all $
+\backslash 
+beta$ values, the density is normalized to the desnity at the base of the wind in polar direction, i.e. $
+\backslash 
+rho_0 = 
+\backslash 
+rho
+\backslash 
+left(R_
+\backslash 
+mathrm{mo},0
+\backslash 
+right)$.  The smaller the value of $
+\backslash 
+beta$, the faster the accerelation of the wind. For the raidus ($r/R_{
+\backslash 
+mathrm{mo}} < 10$, both velocity and density are sensitive to the value of $
+\backslash 
+beta$. For all $
+\backslash 
+beta$ values, the radial velocity of the wind reaches the terminal velocity ($
+\backslash 
+sim 210
+\backslash 
+,
+\backslash 
+kmps$ by  $r/R_{
+\backslash 
+mathrm{mo}} 
+\backslash 
+sim 1000$. The initial velocity $V_{0}=10
+\backslash 
+,
+\backslash 
+kmps$, which approximately corresponds to the thermal velocity of a hydrogen atom at 7500~K,  is used for all $v_{r}$ plots. Beyound $r/R_{
+\backslash 
+mathrm{mo}}= 100$, little difference is seen in the polar density with diffrent $
+\backslash 
+beta$ values.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:wind_vr_rho}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Subsection
+
+Accretion disc
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sub:Accretion-disc}
+
+\end_inset 
+
+
+\layout Standard
+
+Region 4 in Fig.\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:overview}
+
+\end_inset 
+
+
+\layout Subsubsection
+
+Density and velocity
+\layout Standard
+
+Although it is possible, in our model, to compute the dust-sublimination
+ radius and the vertical hydrostatic structure of the accretion disc self-consis
+tently (assuming the radial dependecy of the mid-plane density) by using
+ the interative Monte Calro radative transfer technique (c.f.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{walker:2004}
+\end_inset 
+
+), we find it to be too time consuming for the purpose of this paper --
+ understanding the general characteristic of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ profile shapes hence exploring a large parameter space.
+ For this reason, we adopt a simple analytical disc model, the steady 
+\begin_inset Formula $\alpha$
+\end_inset 
+
+-disc `standard model' (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{shakura:1973}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt*{frank:2002}
+\end_inset 
+
+) with the inner radius fixed at the inner radius of the magnetosphere (at
+ equatorial plane).
+ The disc density disribution is given by 
+\layout Standard
+
+
+\begin_inset Formula \begin{equation}
+\rho_{\mathrm{d}}\left(w,z\right)=\Sigma\left(w\right)\,\frac{1}{\sqrt{2\pi}h\left(w\right)}e^{-\left(\frac{z}{2h\left(w\right)}\right)^{2}}\label{eq:disc-density-function}\end{equation}
+
+\end_inset 
+
+ where 
+\begin_inset Formula $w$
+\end_inset 
+
+, 
+\begin_inset Formula $h$
+\end_inset 
+
+, 
+\begin_inset Formula $z$
+\end_inset 
+
+ and 
+\begin_inset Formula $\Sigma$
+\end_inset 
+
+ are the distance from the symmetry axis, the scale height, the distance
+ from the disc plane, and the surface density at the mid-plane, respectively.
+ The mid-plane surface density and the scale height are given as: 
+\begin_inset Formula \begin{equation}
+\Sigma\left(w\right)=\frac{5M_{\mathrm{d}}}{8\pi R_{\mathrm{do}}^{2}}\, w^{-3/4}\label{eq:density-midplane}\end{equation}
+
+\end_inset 
+
+ where 
+\begin_inset Formula $R_{\mathrm{do}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $M_{\mathrm{d}}$
+\end_inset 
+
+ are the disc radius and the disc mass respectively.
+\begin_inset Formula \begin{equation}
+h\left(w\right)=0.05\, R_{\mathrm{do}}\, w^{9/8}\,.\label{eq:scale-height}\end{equation}
+
+\end_inset 
+
+ With these parameters, the disc is slightly flared.
+ The inner radius of the disc is set to 
+\begin_inset Formula $R_{\mathrm{di}}=R_{\mathrm{mi}}$
+\end_inset 
+
+ (the inner radius of the magnetosphere at the equaotrial plane), which
+ is approximatly same as the co-rotating radius of the system with the paramters
+ in Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:std_parameters}
+
+\end_inset 
+
+.
+ The disc mass, 
+\begin_inset Formula $M_{\mathrm{d}}$
+\end_inset 
+
+, of an object is assumed to be 1/100 of the central mass (
+\begin_inset Formula $M_{*}$
+\end_inset 
+
+), and the disc radius (
+\begin_inset Formula $R_{\mathrm{di}}$
+\end_inset 
+
+) to be 100\SpecialChar ~
+au.
+ The velocity of the gas/dust in the disc is assumed to be Keplerian.
+\layout Subsubsection
+
+Dust model
+\layout Standard
+
+To calculate the dust scattering and absorption cross section as a function
+ of wavelength, the optical constants of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{draine:1984}
+\end_inset 
+
+ for amorphous carbon grains and 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hanner:1988}
+\end_inset 
+
+ for silicate grains are used.
+ The model uses the 
+\begin_inset Quotes eld
+\end_inset 
+
+large grain
+\begin_inset Quotes erd
+\end_inset 
+
+ dust model of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{wood:2002}
+\end_inset 
+
+ in which the dust grain size distribution is described by the following
+ function:
+\begin_inset Formula \begin{equation}
+n\left(a\right)da=\left(C_{\mathrm{C}}+C_{\mathrm{Si}}\right)\, a^{-p}\exp\left[-\left(\frac{a}{a_{c}}\right)^{q}\right]da\label{eq:grain-dist-function}\end{equation}
+
+\end_inset 
+
+ where 
+\begin_inset Formula $a$
+\end_inset 
+
+ is the grain size restricted between 
+\begin_inset Formula $a_{\mathrm{min}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $a_{\mathrm{max}}$
+\end_inset 
+
+, and 
+\begin_inset Formula $C_{\mathrm{C}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $C_{\mathrm{Si}}$
+\end_inset 
+
+ are the terms set by requiring the grains to completely deplete a solar
+ abundance carbon and silicon.
+ The parameters adopted in our model are: 
+\begin_inset Formula $C_{\mathrm{C}}=1.32\times10^{-17}$
+\end_inset 
+
+, 
+\begin_inset Formula $C_{\mathrm{Si}}=1.05\times10^{-17}$
+\end_inset 
+
+, 
+\begin_inset Formula $p=3.0$
+\end_inset 
+
+, 
+\begin_inset Formula $q=0.6$
+\end_inset 
+
+, 
+\begin_inset Formula $a_{\mathrm{\mathrm{min}}}=0.1\,\mathrm{\mathrm{\mathrm{\mu m}}}$
+\end_inset 
+
+, 
+\begin_inset Formula $a_{\mathrm{\mathrm{max}}}=1000\,\mathrm{\mathrm{\mathrm{\mu m}}}$
+\end_inset 
+
+, and 
+\begin_inset Formula $a_{c}=50\,\mathrm{\mathrm{\mathrm{\mu m}}}$
+\end_inset 
+
+.
+ This corresponds to Model\SpecialChar ~
+1 of the dust model used by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{wood:2002}
+\end_inset 
+
+.
+ See also their Fig.\SpecialChar ~
+3 The relative number of each grain is assumed to be
+ that of solar abundance, C/H
+\begin_inset Formula $\sim3.5\times10^{-4}$
+\end_inset 
+
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{anders:1989}
+\end_inset 
+
+ and Si/H
+\begin_inset Formula $\sim3.6\times10^{-5}$
+\end_inset 
+
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{grevesse:1993}
+\end_inset 
+
+ which are similar to values found in the ISM model of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{mathis:1977}
+\end_inset 
+
+ and 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet*{kim:1994}
+\end_inset 
+
+.
+ Similar abundances were used in the circumstellar disc models of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{cotera:2001}
+\end_inset 
+
+.
+ 
+\layout Section
+
+Radiative transfer model
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:radiative-transfer-model}
+
+\end_inset 
+
+
+\layout Standard
+
+We have extended the TORUS radiative transfer code (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{harries:2000}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{kurosawa:2004a}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{symington:2005}
+\end_inset 
+
+) to compute the H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ profiles from pre-main-sequence stars which are surrounded by one or more
+ of the followings: the magnetospherical accretion flow, the out-flowing
+ colliminated wind, and the accreation disc.
+ Previously in 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{symington:2005}
+\end_inset 
+
+, the model used in the three-dimentional (3-D) adaptive mesh refinement
+ (AMR) to inverstigate the line variability mainly associated with roational
+ motion of complex geometrical configurations of magnetospherical flow (see
+ also 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt*{kurosawa:2005a}
+\end_inset 
+
+).
+ We modefied the code to handle the two-dimentional (2-D) density distribution,
+ and restricted our models to be axi-symmetric.
+ It was done so in order to enable us to explore rather large number of
+ parameter spaces (c.f.\SpecialChar ~
+section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:model-configuration}
+
+\end_inset 
+
+).
+ Note that the velocity field is still in 3-D -- the third component can
+ be calculated by using the symmetry for a given value of azimutal angle.
+ The examples of how the AMR grid for the purpose of the radiative transfer
+ is constructed are presented in e.g.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{wolf:1999}
+\end_inset 
+
+, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kurosawa:2001a}
+\end_inset 
+
+ and 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{steinacker:2003} 
+\end_inset 
+
+.
+\layout Standard
+
+The computation of the H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ is devided in two parts: 1.\SpecialChar ~
+the source function calculation (
+\begin_inset Formula $S_{\nu}$
+\end_inset 
+
+) and 2.\SpecialChar ~
+the observed flux/profile calulcation.
+ In the first process, we have utilized the method by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{klein:1978}
+\end_inset 
+
+ (see also 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{rybicki:1978}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1994}
+\end_inset 
+
+) in which the Sobolev approximation method is applied.
+ The population of the bound states of hydrogen are assumed to be in statistical
+ equilibrium, and the gas to be in radiative equilibrium.
+ Our hydrogen atom model consist of 14 bound state and continuum.
+ Readers are refer to 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{klein:1978}
+\end_inset 
+
+ for details.
+ (AND MORE..)
+\layout Standard
+
+To compute the observed line profile, the Monte Calro radiative transfer
+ method (e.g.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{hillier:1991}
+\end_inset 
+
+) using the Soblev escape-probabiliy can be used when I.\SpecialChar ~
+a large velocity
+ gradiant is present in the gas flow, and II.\SpecialChar ~
+the intrinsic line width is
+ negleible compared to the Doppler broadeing of the line.
+ In our earlier models (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{harries:2000}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{symington:2005}
+\end_inset 
+
+), this method was used to compute the line profiles since the condition
+ I and II are resonably satisfied.
+ However, as noted and demonstrated by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+, even with a moderate amount of mass-accretion rate (
+\begin_inset Formula $~10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+), Stark broadening becomes important in the optically thick H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ line.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+ (MORE REF HERE) also pointed out that the observed H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+profiles from CTTS typically have the wings extending to 
+\begin_inset Formula $500\,\mathrm{km\, s^{-1}}$
+\end_inset 
+
+(e.g.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+cite{edwards:1994}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{reipurth:1996}
+\end_inset 
+
+) which cannot be explained by the infall velocity of the gas along the
+ magneosphere.
+ 
+\layout Standard
+
+To implement the broadening meachanism, two modedifications to our previous
+ model (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{symington:2005}
+\end_inset 
+
+) are necessary.
+ First, the emission and absorption profiles must be replaced by a Voigt
+ profle which is defined as: 
+\begin_inset Formula \begin{equation}
+H\left(a,y\right)\equiv\frac{a}{\pi}\int_{-\infty}^{\infty}\frac{e^{-y'^{2}}}{\left(y-y'\right)^{2}+a^{2}}\, dy'\label{eq:voigt_profile_def}\end{equation}
+
+\end_inset 
+
+ where 
+\begin_inset Formula $a=\Gamma/4\pi\Delta\nu_{\mathrm{D}}$
+\end_inset 
+
+, 
+\begin_inset Formula $y=\left(\nu-\nu_{0}\right)/\Delta\nu_{\mathrm{D}}$
+\end_inset 
+
+, and 
+\begin_inset Formula $y'=\left(\nu'-\nu_{0}\right)/\Delta\nu_{\mathrm{D}}$
+\end_inset 
+
+ (c.f.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{mihalas:1978}
+\end_inset 
+
+).
+ 
+\begin_inset Formula $\nu_{0}$
+\end_inset 
+
+ is the line centre frequency, and 
+\begin_inset Formula $\Delta\nu_{\mathrm{D}}$
+\end_inset 
+
+ is the Doppler line width of hydrogen atom (due to its thermal motion)
+ which is given by 
+\begin_inset Formula $\Delta\nu_{\mathrm{D}}=\left(2kT/m_{\mathrm{H}}\right)^{1/2}\times\left(\nu_{0}/c\right)$
+\end_inset 
+
+ where 
+\begin_inset Formula $m_{\mathrm{H}}$
+\end_inset 
+
+ is the mass of a hydrogen atom.
+ The damping constant 
+\begin_inset Formula $\Gamma$
+\end_inset 
+
+, which depends on the physical condition of the gas, is parameterised by
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet*{vernazza:1973}
+\end_inset 
+
+ as follows:
+\layout Standard
+
+
+\begin_inset Formula \begin{eqnarray}
+\Gamma & = & C_{\mathrm{rad}}+C_{\mathrm{vdW}}\left(\frac{n_{\mathrm{HI}}}{10^{16}\,\mathrm{cm^{-3}}}\right)\left(\frac{T}{5000\,\mathrm{K}}\right)^{0.3}\nonumber \\
+ &  & +\, C_{\mathrm{Stark}}\left(\frac{n_{e}}{10^{12}\,\mathrm{cm^{-3}}}\right)^{2/3}\label{eq:dampimg_constant_def}\end{eqnarray}
+
+\end_inset 
+
+ where 
+\begin_inset Formula $n_{\mathrm{H\, I}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $n_{e}$
+\end_inset 
+
+ are the number density of neutral hydrogens and that of free electrons.
+ Also, 
+\begin_inset Formula $C_{\mathrm{rad}}$
+\end_inset 
+
+, 
+\begin_inset Formula $C_{\mathrm{vdW}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $C_{\mathrm{Stark}}$
+\end_inset 
+
+ are natural broadening, van der Waals broadening, and linear Stark broadening
+ constants respectively.
+ We simply adopt this parameterization along with the values of broadening
+ constants for H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ from 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{luttermoser:1992}
+\end_inset 
+
+, i.e.
+ 
+\begin_inset Formula $C_{\mathrm{rad}}=6.5\times10^{-4}$
+\end_inset 
+
+\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+AA
+\end_inset 
+
+, 
+\begin_inset Formula $C_{\mathrm{vdW}}=4.4\times10^{-4}$
+\end_inset 
+
+\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+AA
+\end_inset 
+
+\SpecialChar ~
+ and 
+\begin_inset Formula $C_{\mathrm{Stark}}=1.17\times10^{-3}$
+\end_inset 
+
+\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+AA
+\end_inset 
+
+.
+ In terms of level populations and the Voigt profile, the line opacity for
+ the transition 
+\begin_inset Formula $i\rightarrow j$
+\end_inset 
+
+ can be written as: 
+\begin_inset Formula \begin{equation}
+\chi_{l}=\frac{\pi^{1/2}e^{2}}{m_{e}c}f_{ij}n_{j}\left(1-\frac{g_{j}n_{i}}{g_{i}n_{j}}\right)H\left(a,y\right)\label{eq:line_opacity}\end{equation}
+
+\end_inset 
+
+ where 
+\begin_inset Formula $f_{ij}$
+\end_inset 
+
+, 
+\begin_inset Formula $n_{i}$
+\end_inset 
+
+, 
+\begin_inset Formula $n_{j}$
+\end_inset 
+
+, 
+\begin_inset Formula $g_{i}$
+\end_inset 
+
+and 
+\begin_inset Formula $g_{j}$
+\end_inset 
+
+ are the oscillator strength, the population of 
+\begin_inset Formula $i$
+\end_inset 
+
+-th level, the population of 
+\begin_inset Formula $j$
+\end_inset 
+
+-th level, the degeneracy of the 
+\begin_inset Formula $i$
+\end_inset 
+
+-th level, and the degeneracy of the 
+\begin_inset Formula $j$
+\end_inset 
+
+-th level respectively.
+ 
+\begin_inset Formula $m_{e}$
+\end_inset 
+
+and 
+\begin_inset Formula $e$
+\end_inset 
+
+ are the electron mass and charge (c.f.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{mihalas:1978}
+\end_inset 
+
+).
+ 
+\layout Standard
+
+The second modefication in our model is the replacement of the method of
+ solving the formal solution from the Monte Calro radiative transfer method
+ with Sobolev approximation to the direct integration method.
+ Similarly to the notation used by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+, we specify the cylindical coordinates 
+\begin_inset Formula $\left(p,\, q,\, t\right)$
+\end_inset 
+
+ which is the original stellar coordinate system 
+\begin_inset Formula $\left(\rho,\,\phi,\, z\right)$
+\end_inset 
+
+ rotated (around 
+\begin_inset Formula $y$
+\end_inset 
+
+ axis) by the inclination of the line of sight, i.e.
+ the 
+\begin_inset Formula $t$
+\end_inset 
+
+-axis coinsides with the line of sight.
+ The observed flux (
+\begin_inset Formula $F_{\nu}$
+\end_inset 
+
+) is given by: 
+\begin_inset Formula \begin{equation}
+F_{\nu}=\frac{1}{4\pi d^{2}}\int_{0}^{p_{\mathrm{max}}}\int_{0}^{2\pi}p\,\sin q\, I_{\nu}\mathrm{\, d}q\,\mathrm{d}p\label{eq:flux_integral}\end{equation}
+
+\end_inset 
+
+where 
+\begin_inset Formula $d$
+\end_inset 
+
+, 
+\begin_inset Formula $p_{\mathrm{max}}$
+\end_inset 
+
+, and 
+\begin_inset Formula $I_{\nu}$
+\end_inset 
+
+ are the distance to an observer, the maximum extent to the model space
+ in the projected (rotated) plane, and the specific intensity (
+\begin_inset Formula $I_{\nu}$
+\end_inset 
+
+) in the direction on observer at the outer boundary.
+ For a given ray along 
+\begin_inset Formula $t$
+\end_inset 
+
+, the specific intensity is given by:
+\begin_inset Formula \begin{equation}
+I_{\nu}=I_{0}e^{-\tau_{\infty}}+\int_{t_{0}}^{t_{\infty}}S_{\nu}\left(t\right)\, e^{-\tau}\mathrm{d}\tau\label{eq:formal_sol_integral}\end{equation}
+
+\end_inset 
+
+ where 
+\begin_inset Formula $I_{0}$
+\end_inset 
+
+ and 
+\begin_inset Formula $S_{\nu}$
+\end_inset 
+
+ are the intensity at the boundary on the opposite to the observer and the
+ source function (
+\begin_inset Formula $\eta_{\nu}/\chi_{\nu}$
+\end_inset 
+
+) of the stellar atmosphere/wind at a frequency 
+\begin_inset Formula $\nu$
+\end_inset 
+
+.
+ For a ray which intersects with the stellar core, 
+\begin_inset Formula $I_{0}$
+\end_inset 
+
+ is computed from the stellar stompshere mode of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kurucz:1979}
+\end_inset 
+
+ as descibed in section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sub:Contiuum-Source}
+
+\end_inset 
+
+, and 
+\begin_inset Formula $I_{0}=0$
+\end_inset 
+
+ otherwise.
+ The initial position of each ray is assigned to be at the center of the
+ surface element (
+\begin_inset Formula $\mathrm{d}A=p\,\sin q\,\mathrm{d}q\,\mathrm{dp}$
+\end_inset 
+
+).
+ The code excution time is proportional to 
+\begin_inset Formula $n_{p}\, n_{q}\, n_{\nu}$
+\end_inset 
+
+ where 
+\begin_inset Formula $n_{p}$
+\end_inset 
+
+ and 
+\begin_inset Formula $n_{q}$
+\end_inset 
+
+ are the number of cylindical radial and angluar points for the flux integration
+, and 
+\begin_inset Formula $n_{\nu}$
+\end_inset 
+
+is the number of frequency points.
+ In the models presented in the next (section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:Results}
+
+\end_inset 
+
+), 
+\begin_inset Formula $n_{p}=180$
+\end_inset 
+
+, 
+\begin_inset Formula $n_{q}=100$
+\end_inset 
+
+, and 
+\begin_inset Formula $n_{\nu}=101$
+\end_inset 
+
+ are used unless specified otherwise.
+ The linearliy spaced radial grid is used for the area where the ray intersects
+ with magnetpshere, and the logarithmically spaced grid is used for the
+ wind and the accretion disc regions.
+\layout Standard
+
+The optical depth 
+\begin_inset Formula $\tau$
+\end_inset 
+
+ is equation\SpecialChar ~
+
+\begin_inset LatexCommand \ref{eq:formal_sol_integral}
+
+\end_inset 
+
+ is defined as: 
+\begin_inset Formula \[
+\tau\left(t\right)\equiv\int_{t}^{\infty}\chi_{\nu}\left(t'\right)\,\mathrm{d}t'\]
+
+\end_inset 
+
+ where 
+\begin_inset Formula $\chi_{\nu}$
+\end_inset 
+
+ is the opacity of media the ray passes through.
+ 
+\begin_inset Formula $\tau_{\infty}$
+\end_inset 
+
+ is the total optical depth measured from the initial ray point to the observer
+ (or to the outer boundary closer to the observer).
+ Initially, the optical depth segments 
+\begin_inset Formula $\mathrm{d\tau}$
+\end_inset 
+
+ are computed at the intersections of a ray with the original AMR grid in
+ which the opacity and emissivity infomation are stored.
+ For high opticale depth models, additional points are inserted between
+ the original points along the ray, and 
+\begin_inset Formula $\eta_{\nu}$
+\end_inset 
+
+ are 
+\begin_inset Formula $\chi_{\nu}$
+\end_inset 
+
+ values are interpolated to those points to ensure 
+\begin_inset Formula $\mathrm{d}\tau<0.05$
+\end_inset 
+
+ for the all ray segments.
+\layout Standard
+
+For a point in the magnetosphere and the wind flows, the emissivity and
+ the opacity of the media are given as:
+\begin_inset Formula \begin{equation}
+\left\{ \begin{array}{rcl}
+\eta_{\nu} & = & \eta_{\mathrm{c}}^{\mathrm{H}}+\eta_{l}^{\mathrm{H}}\\
+\chi_{\nu} & = & \chi_{c}^{\mathrm{H}}+\chi_{l}^{\mathrm{H}}+\sigma_{\mathrm{es}}\end{array}\right.\label{eq:emiss_opa_gas}\end{equation}
+
+\end_inset 
+
+where 
+\begin_inset Formula $\eta_{\mathrm{c}}^{\mathrm{H}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\eta_{l}^{\mathrm{H}}$
+\end_inset 
+
+ are the continuum and line emissivity of hydrogen.
+ 
+\begin_inset Formula $\chi_{c}^{\mathrm{H}}$
+\end_inset 
+
+, 
+\begin_inset Formula $\chi_{l}^{\mathrm{H}}$
+\end_inset 
+
+, and 
+\begin_inset Formula $\sigma_{\mathrm{es}}$
+\end_inset 
+
+ are the contiuum, line opacity (equation\SpecialChar ~
+
+\begin_inset LatexCommand \ref{eq:line_opacity}
+
+\end_inset 
+
+) of hydrogen, and the electron scattering opacity.
+ Similarly, for a point in the accretion disc,
+\layout Standard
+
+
+\begin_inset Formula \begin{equation}
+\left\{ \begin{array}{rcl}
+\eta_{\nu} & = & 0\\
+\chi_{\nu} & = & \kappa_{\mathrm{abs}}^{\mathrm{dust}}+\kappa_{\mathrm{sca}}^{\mathrm{dust}}\end{array}\right.\label{eq:emiss_opa_dust}\end{equation}
+
+\end_inset 
+
+ where 
+\begin_inset Formula $\kappa_{\mathrm{abs}}^{\mathrm{dust}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\kappa_{\mathrm{sca}}^{\mathrm{dust}}$
+\end_inset 
+
+ are the dust absorption, and scattering opacity which are calculated using
+ the dust property described in section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{eq:grain-dist-function}
+
+\end_inset 
+
+.
+ For computational simplicity, we assumed that the dust emissivity is zero.
+ Since the disc mass of CTTS are rather small (
+\begin_inset Formula $\sim0.1\,\mathrm{M_{\sun}}$
+\end_inset 
+
+) and low temperature (
+\begin_inset Formula $<\sim1600\,\mathrm{K}$
+\end_inset 
+
+), the continuum flux contribution at H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ wavelength is expected to be neglegible (e.g.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{chiang:1997}
+\end_inset 
+
+).
+ The scattering flux by the accretion may become important for H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ for the edge-on (
+\begin_inset Formula $i\sim90^{\circ}$
+\end_inset 
+
+) cases in which the disc obscures the stellar surface -- the main source
+ of contiuum flux.
+ We examine this effect later in section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sub:model-acc-disc-wind}
+
+\end_inset 
+
+.
+\layout Section
+
+Results
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Results}
+
+\end_inset 
+
+
+\layout Subsection
+
+Magnetosphere
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sub:model-acc}
+
+\end_inset 
+
+
+\layout Standard
+
+Using the standard parameters (Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:std_parameters}
+
+\end_inset 
+
+) for the central star and the magentosphere, we examine the dependency
+ of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ on the temperature (
+\begin_inset Formula $T_{\mathrm{max}}$
+\end_inset 
+
+) of accretion flow and the mass accretion rate (
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}$
+\end_inset 
+
+), as similarly done by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+ for H
+\begin_inset Formula $\beta$
+\end_inset 
+
+.
+ The hot ring temperature is computed from the avilable kinetic energy of
+ the free-falling gas as describe by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1994}
+\end_inset 
+
+ while 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+ used the constant hot ring temperature (
+\begin_inset Formula $8000\,\mathrm{K}$
+\end_inset 
+
+) for most of their models.
+ The accretion luminosity (
+\begin_inset Formula $L_{\mathrm{acc}}$
+\end_inset 
+
+) of models with 
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ is about a half of the total luminosity (without the hot ring) of the star,
+ and 
+\begin_inset Formula $L_{\mathrm{acc}}$
+\end_inset 
+
+is proportional to 
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}$
+\end_inset 
+
+.
+ The results are placed in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_acc_models}
+
+\end_inset 
+
+.
+ Overall dependency on 
+\begin_inset Formula $T_{\mathrm{max}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}$
+\end_inset 
+
+ are similar to that of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+.
+ In general, the line strength becomes weaker as the accretion rate and
+ the temperature become smaller.
+ The red-shifted absorption becomes less visible for higher accretion rate
+ and temperature models in which the flux in the damping wings become important.
+ Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:broadening}
+
+\end_inset 
+
+ shows an example of the effect of the boradening of H alpha (with 
+\begin_inset Formula $T_{\mathrm{max}}=7500\,\mathrm{K}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+) due to the damping constants as described in section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:radiative-transfer-model}
+
+\end_inset 
+
+.
+ Although the maximum flux of the model with the broadening is almost identical
+ to that of the model with no damping constant (
+\begin_inset Formula $\Gamma=0$
+\end_inset 
+
+), a significant increase of the line flux in both red and blue wings of
+ seen in the model with broadening.
+ A weak red-shifted absorption component (which is a signiture of the magnetosph
+erical accretion) is weakened or eliminated by the flux in broadened wing.
+ 
+\layout Standard
+
+Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:ha_ew_acc_models}
+
+\end_inset 
+
+ shows the EW for the models shown in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_acc_models}
+
+\end_inset 
+
+.
+ About a half of the models shown the figure agree with the observed EW
+ values of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ from 30 TTS presented by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{alencar:2000}
+\end_inset 
+
+ who found the EW of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ ranges from 
+\begin_inset Formula $\sim3$
+\end_inset 
+
+\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+AA
+\end_inset 
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+,
+\end_inset 
+
+ to 
+\begin_inset Formula $\sim160$
+\end_inset 
+
+\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+AA
+\end_inset 
+
+, and the mean to be 
+\begin_inset Formula $\sim55$
+\end_inset 
+
+\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+AA
+\end_inset 
+
+.
+ For the lowest 
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}$
+\end_inset 
+
+ models, the EW values are smaller than the minimum EW observed by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{alencar:2000}
+\end_inset 
+
+, and for some models the EWs are negative.
+ Since the target selection criteria of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{alencar:2000}
+\end_inset 
+
+ is not stated in their paper, we can not conclude that these low 
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}$
+\end_inset 
+
+models disagree with the observation.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{reipurth:1996}
+\end_inset 
+
+, who measured the EW of 43 TTS and found similar distribution of EW values,
+ mentioned that their EW measurements are underrepresenting real samples
+ since the selection of the targerts are based on the strong H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ emission in H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ surveys.
+\layout Standard
+
+The dependency of the profile on the inclination angle (
+\begin_inset Formula $i$
+\end_inset 
+
+) is demonstrated in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:acc_inclination_effect}
+
+\end_inset 
+
+.
+ The model uses the same paramters as in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:broadening}
+
+\end_inset 
+
+ (with broadening, 
+\begin_inset Formula $T_{\mathrm{max}}=7500\,\mathrm{K}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+).
+ The figure show that the peak (normalized) flux decrease as the inclination
+ angle increases.
+ Similarly, the equivalent width also decreases as the inclination increases.
+ Because of the geometry of the magnsepsherical accretion (c.f.
+ Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:overview}
+
+\end_inset 
+
+) and of the presence of the gas with the highest velocity close to the
+ stellar surface, the highest red-shifted line-of-sight velocity is visible
+ only at the high incination angles.
+ This explains the wider appearence of the profile with 
+\begin_inset Formula $i=80^{\circ}$
+\end_inset 
+
+compared to the relatively narrow line appearence of the profile with 
+\begin_inset Formula $i=10^{\circ}$
+\end_inset 
+
+.
+ Although not show here, a similar depdency on the inclination angle is
+ found for the models with different temperatures (
+\begin_inset Formula $T_{\mathrm{max}}=6500$
+\end_inset 
+
+, 
+\begin_inset Formula $8500$
+\end_inset 
+
+, 
+\begin_inset Formula $9500\,\mathrm{K}$
+\end_inset 
+
+).
+ 
+\layout Standard
+
+As seen in the models of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1994}
+\end_inset 
+
+ and 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+, our models also show the blue-shifted peak and the blue-ward asymmetry
+ caused by the occultation of the accretion flow by the equotrial disc and
+ the stellar disc.
+ On the hand, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{alencar:2000}
+\end_inset 
+
+ (see their Fig.\SpecialChar ~
+9) found a substential fraction of the observed H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ profiles also shows the 
+\begin_inset Quotes eld
+\end_inset 
+
+red-shifted
+\begin_inset Quotes erd
+\end_inset 
+
+ peak, and the P\SpecialChar ~
+Cygni profiles which can not be explained by the magnetospherica
+l accretion model alone.
+ In addition, a recent study by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{appenzeller:2005}
+\end_inset 
+
+ showed that the equivalent width of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ increases as the inclination angle increases.
+ Our model with the magnetospherical accreation flow clearly disagrees with
+ their finding.
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/atlas_ha_i55_acc_model_new3.eps
+	scale 45
+	clip
+
+\end_inset 
+
+ 
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{H$
+\backslash 
+alpha$ model profiles for wide ranges of mass accretion rate ($
+\backslash 
+dot{M}_
+\backslash 
+mathrm{acc}$) and temperature ($T_{
+\backslash 
+mathrm{max}}$). The profiles are computed using only magnetospherical accretion flow (i.e. no wind/jet).  All the profiles are computed using the parameters of the 'standard' model (Table~
+\backslash 
+ref{tab:std_parameters}) and inclination $i=55^{
+\backslash 
+circ}$. The temperature (indicated along the vertical axis) of the model increase from top to bottom, and the mass accretion rate (indicated by the values in $
+\backslash 
+mathrm{M_{
+\backslash 
+odot}
+\backslash 
+,yr^{-1}}$ at the top) increases from left to right. The profiles are similar to those of 
+\backslash 
+citet{muzerolle:2001}, available on-line (http://cfa--www.harvard.edu/cfa/youngstars/models/magnetospheric
+\backslash 
+_models.html). }
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:atlas_acc_models}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{table}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset  Tabular
+<lyxtabular version="3" rows="6" columns="4">
+<features>
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row topline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $T_{\mathrm{max}}\,\,\left(\mathrm{K}\right)$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}$
+\end_inset 
+
+ \SpecialChar ~
+
+\begin_inset Formula $\left(\mathrm{M_{\sun}\, yr^{-1}}\right)$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-7}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-8}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-9}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row topline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $6500$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $17.9$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.1$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $7500$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $25.2$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-0.9$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-0.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $8500$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $68.3$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $6.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-0.7$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row bottomline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $9500$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $98.6$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $52.4$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $1.3$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{The summary of H$
+\backslash 
+alpha$ equivalent widths from the magnetospherical accretion flow models show in Figure~
+\backslash 
+ref{fig:atlas_acc_models}.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{tab:ha_ew_acc_models}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{table}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/broadening.eps
+	scale 45
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Effect of the line broadening for H$
+\backslash 
+alpha$. The model computed with the damping constant ($
+\backslash 
+Gamma$), described in section~
+\backslash 
+ref{sec:radiative-transfer-model} (solid),  is compared with the one with no damping constant, $
+\backslash 
+Gamma=0$ (dashed).  Both models are computed with  $T_{
+\backslash 
+mathrm{max}}=7500~
+\backslash 
+Kelvin$,  $i=55^{
+\backslash 
+circ}$, and the standard parameters given in Table~
+\backslash 
+ref{tab:std_parameters}. The two models have similar peak flux levels (around $V 
+\backslash 
+sim 0~
+\backslash 
+kmps$), but the total flux and the EW of the line increased drastically for the model with the damping constant. The broaded wings extend to $
+\backslash 
+sim 
+\backslash 
+pm 900 
+\backslash 
+kmps$.  The redshifted absorption feature (very weakly) seen in the  $
+\backslash 
+Gamma=0$ model are not seen in the model with the broadening.  }
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:broadening}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/acc_inc_effect.eps
+	scale 45
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Dependecy of H$
+\backslash 
+alpha$ profiles on inclination ($i$).  The profiles are computed with the magneospherical accretion flow using the standard parameters given in Table~
+\backslash 
+ref{tab:std_parameters} and $T_{
+\backslash 
+mathrm{max}}=7500~
+\backslash 
+Kelvin$. The solid, dotted, and dashed lines are for $i=10^{
+\backslash 
+circ}$, $55^{
+\backslash 
+circ}$, and $80^{
+\backslash 
+circ}$ respectively. As the inclination becomes larger, the peak flux and the equivalent width of the line becomes smaller.  Similar dependency is seen in the models with $T_{
+\backslash 
+mathrm{max}}=6500, 8500, 9500$~K (not shown here). }
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:acc_inclination_effect}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Subsection
+
+Wind
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sub:model-wind}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/atlas_ha_i55_wind_only_final.eps
+	scale 90
+	keepAspectRatio
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{H$
+\backslash 
+alpha$ model profiles computed with wide ranges of the isothermal wind temperature ($T_{
+\backslash 
+mathrm{wind}}$) and the wind accerelation rate ($
+\backslash 
+beta$). The profiles are computed with only wind (no magnetospherical accretion flow or accretion disc). The 'standard' model (Table~
+\backslash 
+ref{tab:std_parameters}) are applied here. The wind mass-loss rate ($
+\backslash 
+dot{M}_{
+\backslash 
+mathrm{wind}}$), the inclination ($i$) and the degree of collimination ($b$) are fixed at $10^{-8}~{
+\backslash 
+mathrm{M_{
+\backslash 
+sun}~yr^{-1}}}$,  $55^{
+\backslash 
+circ}$ and $4.0$
+\backslash 
+, respectively. The temperature (indicated along the vertical axis) of the model increase from top to bottom, and the wind accerelation rate increases from left to right. The P~Cygni profile are seen for lower $T_{
+\backslash 
+mathrm{wind}}$ and lower $
+\backslash 
+beta$ (slow accerelation) models.  The postion of the absorption the component moves toward the line centre as $
+\backslash 
+beta$ increases. The effect of line broadening becomes more prominant for higher $T_
+\backslash 
+mathrm{wind}$ and higher $
+\backslash 
+beta$ models.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:atlas_wind_model}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+As mentioned in earlier, the magnetopsherical accretion flow model alone
+ cannot explain some of the feartures seen in observations.
+ As an alternative model, we now examine formation of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ in a simple collimated wind as described in section 
+\begin_inset LatexCommand \ref{sub:wind_jet}
+
+\end_inset 
+
+.
+ The basic wind model parameters introduced earlier are 
+\begin_inset Formula $\gamma$
+\end_inset 
+
+, 
+\begin_inset Formula $\beta$
+\end_inset 
+
+, 
+\begin_inset Formula $v_{\infty}$
+\end_inset 
+
+, 
+\begin_inset Formula $b$
+\end_inset 
+
+, 
+\begin_inset Formula $\theta_{\mathrm{wind}}$
+\end_inset 
+
+, 
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\dot{M}_{\mathrm{wind}}$
+\end_inset 
+
+.
+ To minimize the number of parameters to be explored, we initially adopte
+ 
+\begin_inset Formula $\gamma=0.05$
+\end_inset 
+
+, 
+\begin_inset Formula $v_{\infty}=200\,\kmps$
+\end_inset 
+
+ 
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+citep{appenzeller:2005}
+\end_inset 
+
+ and 
+\begin_inset Formula $\dot{M}_{\mathrm{wind}}=10^{-8}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+.
+ Futher, the angular extent of the wind (the opening angle of the wind)
+ is assumed to be 
+\begin_inset Formula $\theta_{\mathrm{wind}}=80^{\circ}$
+\end_inset 
+
+.
+ The degree of collimination is initially chosen to be 
+\begin_inset Formula $b=4$
+\end_inset 
+
+, i.e.
+ the ratio of the density in polar direction to the density at the edge
+ of the wind closest to the accretion disc is about 
+\begin_inset Formula $\left(\cos0^{\circ}/\cos80^{\circ}\right)^{4}\approx10^{3}$
+\end_inset 
+
+, for given radii.
+ For simplicity, the wind temperature 
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+ is assumed to be isothermal\SpecialChar \@.
+ Although the line is potentially sensitive
+ to the temperature structure of the wind, determination of a self-consistent
+ wind temperature is beyound the scope of this paper.
+ Readers are refered to 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1982}
+\end_inset 
+
+ in which the wind temperature structure is determined by balancing the
+ radiative cooling rate (assuming optically thin) with the MHD wave heating
+ rate.
+ With these parameters kept constant, we examine the characterstics of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ profiles, as a function of the wind accereation paramter 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ and the isothermal wind temperature 
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+.
+ Dependency on the other parameters will be discussed later in this section.
+\layout Standard
+
+Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_wind_disc_model}
+
+\end_inset 
+
+ shows the profile computed at a middle inclination angle 
+\begin_inset Formula $i=55^{\circ}$
+\end_inset 
+
+ for the range of the wind temperature between 
+\begin_inset Formula $7000\,\mathrm{K}$
+\end_inset 
+
+ and 
+\begin_inset Formula $9000\,\mathrm{K}$
+\end_inset 
+
+, and for the range of 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ between 
+\begin_inset Formula $0.2$
+\end_inset 
+
+ and 
+\begin_inset Formula $2.0$
+\end_inset 
+
+.
+ The P\SpecialChar ~
+Cygni profile are prominant in the models with lower values of 
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ (colder and faster accerelation wind).
+ As the value of 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ increases, the postion of the blue-shifted absorption component moves toward
+ the line centre.
+ which can be seen clearly in the 
+\begin_inset Formula $T_{\mathrm{wind}}=7000\,\mathrm{K}$
+\end_inset 
+
+ models.
+ While the velocity position of absorption component for the fastest accereation
+ (
+\begin_inset Formula $\beta=0.2$
+\end_inset 
+
+) is almost at the terminal velocity (
+\begin_inset Formula $v_{\infty}\sim200\,\kmps$
+\end_inset 
+
+), that for the slowest wind accerelation model (
+\begin_inset Formula $\beta=4.0$
+\end_inset 
+
+) is located close the line centre (
+\begin_inset Formula $\sim50\,\kmps$
+\end_inset 
+
+).
+ As one can see in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:wind_vr_rho}
+
+\end_inset 
+
+, the column density of the gas moving at 
+\begin_inset Formula $v_{\infty}$
+\end_inset 
+
+ increases as the wind accerelates faster since the gas moving at 
+\begin_inset Formula $v_{\infty}$
+\end_inset 
+
+ becomes closer to the photosphere.
+ At the location where the absorption occurs, the gas is moving faster for
+ the models with the faster wind acceralation models; hence, the location
+ of the absorption component is bluer as 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ becomes smaller (as the wind accerelates faster).
+ The figure also shows that the intensity of the emission component increases
+ as 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ increases for a given 
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+.
+ This is mainly because the density near the photosphere increases (more
+ material near the photosphere) as the value of 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ increases (Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:wind_vr_rho}
+
+\end_inset 
+
+); hence, the emissivity of increases.
+ 
+\layout Standard
+
+Unlike the magnetospherical accretion only models (Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_acc_models}
+
+\end_inset 
+
+), the inverse P\SpecialChar ~
+Cygni profiles are not seen here.
+ Interestingly, the blue-ward asymmetry is still seen in seen some of the
+ models (e.g.\SpecialChar ~
+
+\begin_inset Formula $T_{\mathrm{wind}}=9000\,\mathrm{K}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\beta=1.0$
+\end_inset 
+
+).
+ This is mainly caused by the occultation of the line emission region, which
+ is moving away from an observer, by the finite-size steller disc, but not
+ due to the asymmetry of the wind as we can see next.
+\layout Standard
+
+The dependency of the profile on the wind anisotoropy parameter 
+\begin_inset Formula $b$
+\end_inset 
+
+ is demonstrated in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:effect_wind_b_param}
+
+\end_inset 
+
+.
+ Three models presented in the figure have the same mass-loss (
+\begin_inset Formula $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+) and the inclination angle (
+\begin_inset Formula $i=55^{\circ}$
+\end_inset 
+
+).
+ The P\SpecialChar ~
+Cygni profile feature becomes more prominant, and the line flux becomes
+ smaller as the wind becomes more isotropic (smaller 
+\begin_inset Formula $b$
+\end_inset 
+
+ value).
+ For a fixed mass-loss rate, the column density of along the line of a sight
+ to the observer at a medium inclination angle (e.g.\SpecialChar ~
+
+\begin_inset Formula $i=55^{\circ}$
+\end_inset 
+
+) increases as 
+\begin_inset Formula $b$
+\end_inset 
+
+ decreases (c.f.\SpecialChar ~
+equation\SpecialChar ~
+
+\begin_inset LatexCommand \ref{eq:wind_density_final}
+
+\end_inset 
+
+); hence, causing more absorption.
+ Futher more, the value of the highest density the wind has becomes smaller
+ for the.
+ As the wind becomes more isotropic, the high gas concentrated more in the
+ polar direction has to be speard in the wider angular angles.
+ This results in a smaller highest density region in the wind; hence smaller
+ line emissivity.
+ Note that even for the isotropic case (
+\begin_inset Formula $b=0$
+\end_inset 
+
+) the emission component is still not symmetric around the line centre,
+ and the peak is in blue.
+ A similar profile is found even when the wind opening angle 
+\begin_inset Formula $\theta_{\mathrm{wind}}$
+\end_inset 
+
+ is extended to 
+\begin_inset Formula $90^{\circ}$
+\end_inset 
+
+(completely spherical wind).
+ 
+\layout Standard
+
+The effect of varing the wind mass-loss rate is shown in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:effect_wind_mdot}
+
+\end_inset 
+
+.
+ The line is very sentitive to the mass-loss rate.
+ With all other parameters fixed constnat, 
+\begin_inset Formula $\dot{M}_{\mathrm{wind}}$
+\end_inset 
+
+ acts as an scaling factor of the wind density (equation\SpecialChar ~
+
+\begin_inset LatexCommand \ref{eq:wind_density_final}
+
+\end_inset 
+
+).
+ For the formation of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+, the recombination process and the subsequent downward transition to 
+\begin_inset Formula $n=3$
+\end_inset 
+
+ level.
+ Assuming the ionization faction remains constant, the recombination rate
+ is proportional to the density squared.
+ We have found the line flux of the models in the figure is approximatedly
+ proportionaly to the square of the mass-loss rate.
+ This very sensitive nature of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ would make the line a good candiated for a mass-loss rate indicator; however,
+ without solving the ambiguity of the emission component from the magnetospheric
+al accretion flow and the wind, and without knowing the detailed temperature
+ sturcture of the wind, it could provide us a misleading a mass-loss rate
+ estimate of a T Tauri star.
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/windonly_B_effect2.eps
+	scale 45
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{The effect of wind collimation. The dependecy of the line profiles on the wind anisotropy parameter $b$ for the models with $
+\backslash 
+left(T_{
+\backslash 
+mathrm{wind}},~
+\backslash 
+beta 
+\backslash 
+right) = 
+\backslash 
+left( 9000
+\backslash 
+Kelvin, 0.5
+\backslash 
+right)$ is shown. All the other parameters are same as in Figure~
+\backslash 
+ref{fig:atlas_wind_model}.  The P~Cygni profile feature become prominant for the spherical wind models (especially in $
+\backslash 
+beta=0.5$ model) since the collumn density of along the line of a sight of the observer at a medium inclination angle ($i=55^{
+\backslash 
+circ}$) increases for lower $b$ values for a fixed mass-loss rate of the wind. The blue-ward asymmetry is still present even in the isotropic wind case ($b=0$).}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:effect_wind_b_param}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/windonly_mdot_effect.eps
+	scale 45
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{The effect of the wind mass-loss rate.  The profiles computed with $
+\backslash 
+left(T_{
+\backslash 
+mathrm{wind}},~
+\backslash 
+beta 
+\backslash 
+right) = 
+\backslash 
+left( 9000
+\backslash 
+Kelvin, 0.5
+\backslash 
+right)$, and  $
+\backslash 
+dot{M}_{
+\backslash 
+mathrm{wind}} = 1.0 
+\backslash 
+times 10^{-8}~
+\backslash 
+mathrm{M_{
+\backslash 
+sun}
+\backslash 
+,yr^{-1}}$
+\backslash 
+, (solid),  $0.5 
+\backslash 
+times 10^{-8}~
+\backslash 
+mathrm{M_{
+\backslash 
+sun}
+\backslash 
+,yr^{-1}}$
+\backslash 
+, (dotted), and $0.25 
+\backslash 
+times 10^{-8}~
+\backslash 
+mathrm{M_{
+\backslash 
+sun}
+\backslash 
+,yr^{-1}}$
+\backslash 
+, (dashed) are shown above. The models are computed with only the wind component (no magnetospherical accretion flow or  accretion disc). With all other parameter fixed constant, the mass-loss rate behaves as a scaling factor for the wind density (equation~
+\backslash 
+ref{eq:wind_density_final}.)}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:effect_wind_mdot}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Subsection
+
+Disc 
+\begin_inset Formula $+$
+\end_inset 
+
+wind
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sub:model-disc-wind}
+
+\end_inset 
+
+
+\layout Standard
+
+Next, we examine the effect of the size of the inner radius of the disc
+ and the distribution of the H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ emission region.
+ Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:effect_alpha_disc}
+
+\end_inset 
+
+ shows the wind emission profiles computed with and without the accretion
+ disc at 
+\begin_inset Formula $i=55^{\circ}$
+\end_inset 
+
+.
+ The H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ images (projected on to the plane perpendicular to the observer at the
+ location of the star) are also shown in the same figure.
+ Both models use the same paramters as in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_wind_model}
+
+\end_inset 
+
+, but with 
+\begin_inset Formula $\beta=0.5$
+\end_inset 
+
+ and 
+\begin_inset Formula $T_{\mathrm{wind}}=9000\,\mathrm{K}$
+\end_inset 
+
+).
+ The model without the disc can be also considered as a model with a large
+ inner radius of the accretion disc, in which none of the wind emission
+ region is blocked by the disc --- provided the inclination angle is so
+ high and the disc is not or slightly fleared.
+ 
+\layout Standard
+
+The bipolar nature of the wind is clearly seen in the images.
+ The most of the wind emission occurs within a few to a several (depdending
+ mainly on the value of 
+\begin_inset Formula $\beta$
+\end_inset 
+
+) stellar radii.
+ The figure also shows that the accretion disc blocks the half of the wind
+ emission, but it does not block the steller disc at this inclination.
+ If the disc is much more flared (if the opening angle exceeds 
+\begin_inset Formula $45^{\circ}$
+\end_inset 
+
+at the outer edge of the accretion disc), the occultation of the stellear
+ disc by the accretion could be seen at this inclination angle.
+ Although it is not shown here, the contiuum level of the two models are
+ identical.
+ The line equivalent width of the model without the disc is about twice
+ that of the model with the disc.
+ The images were computed with a fast wind accereation rate (
+\begin_inset Formula $\beta=0.5$
+\end_inset 
+
+).
+ The extent of the line emission is smaller (
+\begin_inset Formula $\sim0.2\,\mathrm{AU}$
+\end_inset 
+
+ or 
+\begin_inset Formula $\sim20\, R_{*}$
+\end_inset 
+
+) compared to the spectro-astrometric observations of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{takami:2003}
+\end_inset 
+
+ for RU\SpecialChar ~
+Lup and CS Cha which have 1--5 AU scale outflows
+\begin_inset Foot
+collapsed true
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+citet{takami:2003}
+\end_inset 
+
+ also showed that some objects (e.g\SpecialChar ~
+Z CMa and AS\SpecialChar ~
+353A) show the outflows of
+ larger scale (
+\begin_inset Formula $>50\,\mathrm{AU}$
+\end_inset 
+
+) which could be formed by shocks rather than MHD-wave heating (e.g.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{hartmann:1982}
+\end_inset 
+
+) or X-ray heating (e.g.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{shang:2002}
+\end_inset 
+
+).
+ 
+\end_inset 
+
+; however, if a slower wind acceration rate ( 
+\begin_inset Formula $\beta=4$
+\end_inset 
+
+) is the emission region become slightly larger (
+\begin_inset Formula $\sim0.4$
+\end_inset 
+
+\SpecialChar ~
+AU).
+ 
+\layout Standard
+
+Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_wind_disc_model}
+
+\end_inset 
+
+ summaries H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ profiles computed with the same parameters as in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_wind_model}
+
+\end_inset 
+
+, but with insertion of the accretion disc.
+ The inner and the outer radii of the accretion disc are 
+\begin_inset Formula $R_{\mathrm{di}}=R_{\mathrm{mi}}=2.2R_{*}$
+\end_inset 
+
+ and 
+\begin_inset Formula $100\,\mathrm{AU}$
+\end_inset 
+
+ respectively, and the disc is slightly flared (see section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sub:Accretion-disc}
+
+\end_inset 
+
+).
+ Similar to the case in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:effect_alpha_disc}
+
+\end_inset 
+
+, the line flux of the models with accretion disc creases to about the half
+ of that without the accretion disc.
+ The overall behaviour of the line profile shapes as functions of 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ and 
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+ are the same as the cases for the models without the accretion disc.
+ The lines appear less broaden, and the blue-asymmerty becomes slightly
+ larger for the models with the disc.
+ 
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+ 
+\layout Standard
+
+
+\begin_inset  Tabular
+<lyxtabular version="3" rows="1" columns="3">
+<features>
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/disc_nodisc_compare.eps
+	lyxscale 50
+	scale 30
+	clip
+
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/wind_thindisc.eps
+	lyxscale 50
+	scale 30
+	rotateAngle 270
+	rotateOrigin leftTop
+
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/wind_nodisc.eps
+	lyxscale 50
+	scale 30
+	rotateAngle 270
+	rotateOrigin leftTop
+
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Comparison of of the wind model with and without the optically-thick and geometrically-thin disc.  The latter can be also equivalent to a model with a large inner radius of the accretion disc in which none of the wind emission region is not blocked provided the inclination is moderate. The left panel shows the profile computed with $i=55^{
+\backslash 
+circ}$, $
+\backslash 
+beta=0.5$ and $T_{
+\backslash 
+mathrm{wind}} = 9000~
+\backslash 
+mathrm{K}$ (see text for other parameters used). The line profile of the model with the disc (solid) is similar to the model without the disc (dashed), but the latter is slightly more symmetric than the former. The line equivalent width of the model without the disc is about 2 times that of the model with the disc. The blueward asymmetry is present also in the profile computed without the disc. The H$
+\backslash 
+alpha$ image (project in the plane of the observer) for the model with the disc (middle panel) and that for the model without (right plane) are also shown. The image flux is computed by integrating the specific flux over the wavelength range ($-800
+\backslash 
+,
+\backslash 
+kmps < v < 800
+\backslash 
+,
+\backslash 
+kmps$. The flux is in an arbitrary units and in logarithmic (base $10$) scale. }
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:effect_alpha_disc}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/atlas_ha_i55_wind_alpha_final.eps
+	scale 90
+	keepAspectRatio
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Same as Figure~
+\backslash 
+ref{fig:atlas_wind_model} but with the accretion disc (the standard $
+\backslash 
+alpha$ disc) included in these models.  All the profiles are computed at $i=55^
+\backslash 
+circ$. The line fluxes are about the half of those without the accretion disc as the disc block about the half of the line emission region. The overall behaviour of the line profile shapes as functions of $
+\backslash 
+beta$ and $T_{
+\backslash 
+mathrm{wind}}$ are the same as the cases for the models without the accretion disc. The lines appear less broaden, and the blue-asymmerty becomes slightly larger for the models with the disc.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:atlas_wind_disc_model}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Subsection
+
+Magnetosphere 
+\begin_inset Formula $+$
+\end_inset 
+
+ disc 
+\begin_inset Formula $+$
+\end_inset 
+
+wind
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sub:model-acc-disc-wind}
+
+\end_inset 
+
+
+\layout Standard
+
+Next, we examine the characteristics of the line profiles arising from the
+ combination of the magnetospherical accretion flow, the wind, and the accretion
+ disc.
+ For simplicity, the parameters for the magnetosphere (
+\begin_inset Formula $T_{\mathrm{max}}=7500\,\mathrm{K}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ are fixed as in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_acc_models}
+
+\end_inset 
+
+), and the wind mass-loss rate 
+\begin_inset Formula $\dot{M}_{\mathrm{wind}}=10^{-8}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ (i.e.\SpecialChar ~
+
+\begin_inset Formula $\dot{M}_{\mathrm{wind}}=0.1\,\dot{M}_{\mathrm{acc}}$
+\end_inset 
+
+) as in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_wind_acc_model}
+
+\end_inset 
+
+.
+ The results computed with 
+\begin_inset Formula $i=55^{\circ}$
+\end_inset 
+
+are given in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_wind_acc_model}
+
+\end_inset 
+
+ .
+\layout Standard
+
+In most of the cases, the profiles are understood as a simple flux sum of
+ the magnetospherical component and the wind component.
+ While the emission from the magnetosphere dominates for the models with
+ smaller 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ and 
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+ (the faster accerelation and the colder wind models), the emission from
+ the wind dominates for the models with larger 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ and 
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+ (the slower accerelation and the hotter models).
+ The P\SpecialChar ~
+Cygni profile feature becomes less prominant for the models with with
+ larger 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ and 
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+ as wind emission in the wings become more important.
+ 
+\layout Standard
+
+The line profile computed with only the magnetospherical flow is also shown
+ in the same figure as a comparison.
+ Interestingly, the low 
+\begin_inset Formula $\beta$
+\end_inset 
+
+ and 
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+models show not only the blue-shifted absorption features, but also the
+ red-shifted absorption feature although the latter nerver seems to go below
+ the continuum level.
+ The blue-shifted feature is clearly caused by the wind; however, the red-shifte
+d abosrption at first seems impossible to be explained by the wind absorption
+ since the gas in the ouflowing wind located between the magnetosphere and
+ an observer is always moving toward the observer (blue-shifted).
+ 
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/atlas_ha_i55_wind_acc_alpha_final.eps
+	scale 90
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Same as Figure~
+\backslash 
+ref{fig:atlas_wind_disc_model}, but the models include the magnetospherical accretion flow (with $T_{
+\backslash 
+mathrm{
+\backslash 
+max}}=7500~
+\backslash 
+mathrm{K}$ and $
+\backslash 
+dot{M}_{
+\backslash 
+mathrm{acc}}=10^{-8}
+\backslash 
+,
+\backslash 
+mathrm{M_{
+\backslash 
+sun}
+\backslash 
+,yr^{-1}}$ as in Figure~
+\backslash 
+ref{fig:atlas_acc_models}). While the emission from the magnetosphere dominates for the models with smaller $
+\backslash 
+beta$ and $T_{
+\backslash 
+mathrm{wind}}$ (the faster accerelation and the colder wind models), the emission from the wind domnates for the models with models with larger $
+\backslash 
+beta$ and $T_{
+\backslash 
+mathrm{wind}}$  (the slower accerelation and the hotter models). For a comparison, the profile computed with only the magensopherical accretion flow (dotted) is overlayed in the $T_{
+\backslash 
+mathrm{wind}}=7000~
+\backslash 
+mathrm{K}$ and $
+\backslash 
+beta=0.2$ panel. }
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:atlas_wind_acc_model}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/summary.eps
+	scale 45
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Comparison of the profiles computed with the magnetosphere, the wind, the disc, and their combinations. The model configureations used above are: 1.~magnetosphere only (solid), 2.~wind only (dash-dot), 3.~wind$+$disc (dash), and 4.~magnetopshere$+$wind$+$disc (dot).  The parameters used for the aboves are $T_{
+\backslash 
+mathrm{max}}=7500
+\backslash 
+,
+\backslash 
+Kelvin$, $
+\backslash 
+dot{M}_{acc}=10^-7
+\backslash 
+,
+\backslash 
+mathrm{M_{
+\backslash 
+sun}
+\backslash 
+,yr^{-1}}$, $
+\backslash 
+dot{M}_{
+\backslash 
+mathrm{wind}}=10^-8
+\backslash 
+,
+\backslash 
+mathrm{M_{
+\backslash 
+sun}
+\backslash 
+,yr^{-1}}$, $T_{
+\backslash 
+mathrm{wind}}=8000
+\backslash 
+,
+\backslash 
+Kelvin$, and $
+\backslash 
+beta=0.5$.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:summary_beta05_t8000}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Subsection
+
+Summary
+\layout Section
+
+Discussion
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Discussion}
+
+\end_inset 
+
+
+\layout Subsection
+
+Classification scheme proposed by Reipurth et.
+ al (1996)
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{reipurth:1996}
+\end_inset 
+
+proposed the two-dimentional classification of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ emission profiles of T\SpecialChar ~
+Tauri stars and Herbig Ae/Be stars.
+ Their classification scheme contains four classes (I, II, III and IV) differenc
+iated by the ratio of the secondary-to-primary emission components in the
+ profiles.
+ Each classes are devided into two sub-classes (B and R) which depends whether
+ the absorption componet is on the blue or red side.
+ Readers are refered to Fig.\SpecialChar ~
+4 of their paper.
+ Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:atlas_reipurth}
+
+\end_inset 
+
+ shows the sample model profiles which are classified according to the definitio
+n of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{reipurth:1996}
+\end_inset 
+
+.
+ The combinatioin of the wind, magnetospherical accretion, and accretion
+ disc can reasonably reproduce all the classes of the profiles seen in observati
+ons.
+ The model parameters used to reproduce the profiles in the figure are given
+ in Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:classification}
+
+\end_inset 
+
+ along with the comments on possible physical conditions which leads to
+ the profiles in each class.
+ 
+\layout Standard
+
+Within the parameter space covered, we find it is difficult to produce Type
+ I type profile, which is very symmetric around the line centre and without
+ any absorption feature, if the wind component is added in the model.
+ a
+\layout Standard
+
+a
+\layout Standard
+
+a
+\layout Standard
+
+a
+\layout Standard
+
+a
+\layout Standard
+
+a
+\layout Standard
+
+a
+\layout Standard
+
+a
+\layout Standard
+
+a
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/atlas_reipurth_like.eps
+	scale 65
+	keepAspectRatio
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Sample H$
+\backslash 
+alpha$ model profiles which charactersize the classfication by 
+\backslash 
+citet{reipurth:1996}. The combination of magnetospherical accretion flow, the accretion disc, and the colliminated wind model can reasonably reproduce wide ranges of H$
+\backslash 
+alpha$ profiles seen in observations.  The model parameters and short comments are summarised in Table~
+\backslash 
+ref{tab:classification}. The horizontal axises are velocities in $
+\backslash 
+kmps$, and the vertical axises are nomalized fluxes.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:atlas_reipurth}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{table*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset  Tabular
+<lyxtabular version="3" rows="9" columns="8">
+<features>
+<column alignment="left" valignment="top" width="0">
+<column alignment="left" valignment="top" width="0">
+<column alignment="left" valignment="top" width="0">
+<column alignment="left" valignment="top" width="0">
+<column alignment="left" valignment="top" width="0">
+<column alignment="left" valignment="top" width="0">
+<column alignment="left" valignment="top" width="0">
+<column alignment="left" valignment="top" width="0">
+<row topline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $i$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $T_{\mathrm{max}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\dot{M}_{\mathrm{wind}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $T_{\mathrm{wind}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\beta$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Comment
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Class
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left(\mathrm{deg.}\right)$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left(\mathrm{M_{\sun}\, yr^{-1}}\right)$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left(10^{3}\,\mathrm{K}\right)$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left(\mathrm{M_{\sun}\, yr^{-1}}\right)$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left(10^{3}\,\mathrm{K}\right)$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left(-\right)$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row topline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+I
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $55$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-7}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $7.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Accretion dominated possibly without the wind at a mid inclination.
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+II-B
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula -
+
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-8}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $9.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.2$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Wind dominated, fast wind accerelation rate, low inclination
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+III-B
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-7}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $7.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-8}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $8.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $2.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Accretion and wind, with slow wind accerelation rate, low inclination
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+IV-B
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $55$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-8}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $8.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Wind dominated, mid accretion rate, mid inclination 
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+II-R
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $80$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-7}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $7.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-8}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $9.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $2.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Wind dominated, with slow wind accerelation rate, high inclination
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+III-R
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $80$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-8}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $9.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Wind dominated, slow wind acceralation rate, high inclination 
+\end_inset 
+</cell>
+</row>
+<row bottomline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+IV-R
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $55$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-9}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $9.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Accreetion dominated possibly without the wind at a mid inclination.
+\end_inset 
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{The summary model parameters for the profiles in Figure~
+\backslash 
+ref{fig:atlas_reipurth} and brief comments.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{tab:classification}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{table*}
+\end_inset 
+
+
+\layout Subsection
+
+Comparisons with observations
+\layout Standard
+
+For a demonstrative purpose, we performed preliminary model fit of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ observarions.
+ We also present a model prediction for an H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ spectro-astrometry observation of T Tauri star.
+ 
+\layout Subsection
+
+Which wind model is correct?
+\layout Standard
+
+Disc wind model? Jet model? How can we test it observationary?
+\layout Section
+
+Conclusions
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Conclusions}
+
+\end_inset 
+
+
+\layout Standard
+
+We presented the detailed study of the H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ formation from the circumstealler material of classical T\SpecialChar ~
+Tauri stars.
+ AND MORE.
+\layout Standard
+
+Future studies include: 
+\layout Enumerate
+
+Improvement of the wind model.
+ Temperature structure estimate by Hartmann() Alancar's paper.
+ Disc-wind model of Branford and ...
+\layout Enumerate
+
+Try it with MHD model.
+\layout Enumerate
+
+Include the scattering flux term although this requires 
+\begin_inset Formula $N_{\phi}\times N_{\theta}$
+\end_inset 
+
+ more times to compute a profile.
+ 
+\layout Enumerate
+
+Polarization study to explore the geometry and the rotation of the disc.
+ 
+\layout Enumerate
+
+Gas in the accretion disc (inner most part and the outer layer of the disc).
+\layout Enumerate
+
+Variability study using a 3D model.
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+section*{Acknowledgements}
+\end_inset 
+
+
+\layout Standard
+
+RK is supported by PPARC standard grand PPA/G/S/2001/00081.
+ 
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+%----------------------------------------------------
+\layout Standard
+% Bibliography follows here.
+\layout Standard
+%-----------------------------------------------------
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+
+\layout Standard
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+bibliographystyle{mn}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+bibliography{mnras}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{lastpage}
+
+\end_inset 
+
+
+\the_end

@@ -1,0 +1,45 @@
+This is BibTeX, Version 0.99c (Web2C 7.5.3)
+The top-level auxiliary file: kurosawa.aux
+The style file: mn.bst
+Database file #1: mnras.bib
+You've used 85 entries,
+            2806 wiz_defined-function locations,
+            1911 strings with 26719 characters,
+and the built_in function-call counts, 38936 in all, are:
+= -- 3351
+> -- 2493
+< -- 42
++ -- 930
+- -- 843
+* -- 3317
+:= -- 7295
+add.period$ -- 2
+call.type$ -- 85
+change.case$ -- 620
+chr.to.int$ -- 85
+cite$ -- 85
+duplicate$ -- 1610
+empty$ -- 2335
+format.name$ -- 1127
+if$ -- 7553
+int.to.chr$ -- 1
+int.to.str$ -- 1
+missing$ -- 83
+newline$ -- 259
+num.names$ -- 342
+pop$ -- 695
+preamble$ -- 1
+purify$ -- 620
+quote$ -- 0
+skip$ -- 1337
+stack$ -- 0
+substring$ -- 1768
+swap$ -- 103
+text.length$ -- 4
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 759
+warning$ -- 0
+while$ -- 338
+width$ -- 0
+write$ -- 852

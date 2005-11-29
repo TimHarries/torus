@@ -1,0 +1,9 @@
+//MuPAD-SESSION
+a+b
+//EVAL
+plot(plot::MuPADCube())
+//EVAL
+plotfunc2d(sin(x), cos(x), x=-PI..PI)
+//EVAL
+
+//INPUT

@@ -1,0 +1,1664 @@
+#LyX 1.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 221
+\textclass mn2e
+\begin_preamble
+\usepackage{lscape}
+\usepackage{times}
+
+\newcommand{\aap}{A\&A}
+\newcommand{\apj}{ApJ}
+\newcommand{\apjl}{\apj}
+\newcommand{\pasp}{PASP}
+\newcommand{\aj}{AJ}
+\newcommand{\mnras}{MNRAS}
+\newcommand{\apjs}{ApJS}
+\newcommand{\aapr}{A\&AR}
+\newcommand{\pasj}{PASJ}
+\newcommand{\kmps}{\mathrm{km~s^{-1}}}
+\end_preamble
+\options useAMS, usenatbib
+\language english
+\inputencoding auto
+\fontscheme default
+\graphics default
+\paperfontsize default
+\spacing single 
+\papersize Default
+\paperpackage a4
+\use_geometry 0
+\use_amsmath 0
+\use_natbib 0
+\use_numerical_citations 0
+\paperorientation portrait
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\defskip medskip
+\quotes_language english
+\quotes_times 2
+\papercolumns 2
+\papersides 1
+\paperpagestyle default
+
+\layout Standard
+
+
+\begin_inset Formula $ $
+\end_inset 
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+title[H-$
+\backslash 
+alpha$ formation of T Tauri stars]{Formation of H-$
+\backslash 
+alpha$ from classical T Tauri stars: the disc, wind, and magnetospheric-accretion hybrid model}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+author[R. Kurosawa et
+\backslash 
+,al.]{Ryuichi Kurosawa
+\backslash 
+thanks{E-mail: rk@astro.ex.ac.uk} and Tim J. Harries 
+\backslash 
+
+\backslash 
+ School of Physics, University of Exeter, Stocker Road, Exeter EX4 4QL}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+date{Dates to be inserted}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+pagerange{
+\backslash 
+pageref{firstpage}--
+\backslash 
+pageref{lastpage}} 
+\backslash 
+pubyear{2005}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+maketitle
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{firstpage}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{abstract}
+\end_inset 
+
+
+\layout Standard
+
+We investigate the formation of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ from classical T\SpecialChar ~
+Tauri stars with a complex circumstellar geometry -- the
+ combination of mangnetisherical accretion, out-flowing jet/stellar wind,
+ and accretion disc.
+ AND MORE
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{abstract}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{keywords}
+\newline 
+stars:formation -- stars: individual: SU Aur -- circumstellar matter -- infrared: stars -- stars: pre-main-sequence
+\newline 
+
+\backslash 
+end{keywords}
+\end_inset 
+
+
+\layout Section
+
+Introduction 
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Introduction}
+
+\end_inset 
+
+
+\layout Standard
+
+T\SpecialChar ~
+Tauri stars (TTS) are young (
+\begin_inset Formula $<\sim3\times10^{6}\,\mathrm{yrs}$
+\end_inset 
+
+, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{appenzeller:1989}
+\end_inset 
+
+) low-mass stars, and known as progenitors of solar-type stars.
+ Classical T\SpecialChar ~
+Tauri stars (CTTS) exhibit strong H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ emission, and typically have spectral types of F--K.
+ Some of the most active CTTS show emission in higher Balmer lines and metal
+ lines (e.g., Ca\SpecialChar ~
+II H and K).
+ They also exhibit an excess amount of continuum flux in the ultraviolet
+ (UV) and infrared (IR).
+ 
+\layout Standard
+
+Line profile studies of CTTS show that the evidence for both outward wind
+ flows and inward accretion flows, as seen in the blueshifted absorption
+ features in H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ profiles (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{herbig:1962}
+\end_inset 
+
+) and the inverse P\SpecialChar ~
+Cygni (IPC) profiles (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{kenyon:1994}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{edwards:1994}
+\end_inset 
+
+) respectively.
+ Typical mass-loss rates of CTTS are about 
+\begin_inset Formula $10^{-9}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ to 
+\begin_inset Formula $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{kuhi:1964}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{edwards:1987}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{hartigan:1995}
+\end_inset 
+
+), and the mass-accretion rates are also about 
+\begin_inset Formula $10^{-9}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ to 
+\begin_inset Formula $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+ (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{kenyon:1987}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt*{bertout:1988}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{gullbring:1998}
+\end_inset 
+
+).
+ 
+\layout Standard
+
+In a currently favoured model of accretion flows around CTTS, the accretion
+ discs are disrupted by the magnetosphere of stars which channels the gas
+ from the disc onto the surface of the stars (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{uchida:1985}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{koenigl:1991}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{cameron:1993}
+\end_inset 
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{shu:1994}
+\end_inset 
+
+).
+ This picture of the accretion flows is supported by the evidences that
+ CTTS have relatively strong (
+\begin_inset Formula $\sim10^{3}\mathrm{G}$
+\end_inset 
+
+) magnetic field (e.g., 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt*{jonhs-krull:1999}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{guenther:1996}
+\end_inset 
+
+) and by the radiative transfer models which reproduce the observed profiles
+ for some TTS (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{muzerolle:2001}
+\end_inset 
+
+).
+\layout Subsection
+
+Review on recent observations
+\layout Subsubsection
+
+Evidence for the hot wind
+\layout Itemize
+
+Re14344cent study of the infrared He I (
+\begin_inset Formula $\lambda10830$
+\end_inset 
+
+) and the ultraviolet C III (
+\begin_inset Formula $\lambda977$
+\end_inset 
+
+) and O VI (
+\begin_inset Formula $\lambda1032$
+\end_inset 
+
+) by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{dupree:2005}
+\end_inset 
+
+ for the classical T\SpecialChar ~
+Tauri star TW Hydrae 
+\layout Subsubsection
+
+Evidence for Jet in H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+
+\layout Itemize
+
+Evidence for the contribution of the jet: 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{appenzeller:2005}
+\end_inset 
+
+ obtained two-dimensional high resolution (
+\begin_inset Formula $R=50000$
+\end_inset 
+
+) spectra of three edge-on T\SpecialChar ~
+Tauri stars (HH30
+\begin_inset Formula $^{*}$
+\end_inset 
+
+, HK\SpecialChar ~
+Tau\SpecialChar ~
+B, and HV\SpecialChar ~
+Tau\SpecialChar ~
+C), and found that parts of the jet emission are directly
+ visible not only in the forbidden lines, but also in 
+\begin_inset Formula $\mathrm{H}\alpha$
+\end_inset 
+
+.
+ Using the Taurus-Auriga CTTSs with reliably known inclinations, they found
+ a correlation between the 
+\begin_inset Formula $\mathrm{H}\alpha$
+\end_inset 
+
+ equilvalent width and the inclination angle.
+ ==> Scale?
+\layout Subsubsection
+
+Evidence for the winds in H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+
+\layout Subsubsection
+
+Jets and outflow
+\layout Itemize
+
+
+\emph on 
+HST 
+\emph default 
+observation of HH30 (Burrorws et al 1996) shows the jet traced to within
+ 
+\begin_inset Formula $\lesssim30$
+\end_inset 
+
+\SpecialChar ~
+AU from the star.
+ The jet has a cone shape with an opening angle of 
+\begin_inset Formula $3^{\circ}$
+\end_inset 
+
+ between 70 and 700 AU.
+ (Originally from Konig and Pudritz 2000 review in PP IV).
+\layout Subsection
+
+Review on theories
+\layout Subsubsection
+
+Wind models
+\layout Standard
+
+A self-similar analytical model of winds origination from an accretion disc
+ was presented by
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{blandford:1982}
+\end_inset 
+
+.
+\layout Subsection
+
+Intent of this paper
+\layout Itemize
+
+Physical meaning of the classification
+\layout Itemize
+
+How good is H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ to be used for mass-loss rate.
+ Is 
+\begin_inset Quotes eld
+\end_inset 
+
+the golden-ratio
+\begin_inset Quotes erd
+\end_inset 
+
+ 
+\begin_inset Formula $\mu=\dot{M}_{\mathrm{out}}/\dot{M}_{in}=0.1$
+\end_inset 
+
+ is universal? Is it consistent with the ones indicated by other theoretical
+ and observational studies?
+\layout Section
+
+Radiative transfer model
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:radiative-transfer-model}
+
+\end_inset 
+
+
+\layout Section
+
+Model configuration
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:model-configuration}
+
+\end_inset 
+
+
+\layout Standard
+
+Here I will descibe the geomegtry, density, temperature and so on.
+\layout Standard
+
+To understand how the different part of the CTTS circumsterllar enviroment
+ contributes the the fomation of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+, the model spaced is devided into four different parts: 1.\SpecialChar ~
+Central contiuum
+ source, 2.\SpecialChar ~
+magnetosphere accretion flow, 3.\SpecialChar ~
+wind/Jet outflow, and 4.\SpecialChar ~
+accretion
+ disc.
+ Fig.\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:overview}
+
+\end_inset 
+
+ depicts their relative location in the model space.
+ AND MORE.
+ SUMMARY TABLE OF FIDUCIAL PARAMETERS?
+\layout Standard
+
+In the following subsections, the details of model components are given.
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/overview2.eps
+	scale 60
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Basic Model Configuration. The system consist of four components: 1.~the continuum source located at the origin $
+\backslash 
+left( o 
+\backslash 
+right)$ of the cartisian coordinates $
+\backslash 
+left(x,y,z
+\backslash 
+right)$ -- the y-axis are into the paper, 2.~magnetospherical accretion flow, 3.~colliminated wind/jet outflow, and 4.~accretion disc. The density distribution is symmetric around the z-axis. The innermost raius of the magnetsphere (at the equotrial plane) coincides with the the inner radius of the accretion disc. From the inner most part of the accretion disc, the gas freely fall, moving along the magneic filed onto the surface of the star. For simplicit, the colliminated wind/jet exists outside of the largest radius of the magnesophere (dotted line).  }
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:overview}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure*}
+\end_inset 
+
+
+\layout Subsection
+
+Contiuum Source
+\layout Standard
+
+Unless specified otherwise, we adopt stellar parameters of a typical classical
+ T\SpecialChar ~
+Tauri star (REF) for the central conitnuum source, i.e.
+ radius (
+\begin_inset Formula $R_{*}$
+\end_inset 
+
+), mass (
+\begin_inset Formula $M_{*}$
+\end_inset 
+
+), and effective temperature the photosphere (
+\begin_inset Formula $T_{\mathrm{ph}}$
+\end_inset 
+
+) are 
+\begin_inset Formula $2\, R_{\sun}$
+\end_inset 
+
+, 
+\begin_inset Formula $0.5\, M_{\sun}$
+\end_inset 
+
+, and 
+\begin_inset Formula $4000\,\mathrm{K}$
+\end_inset 
+
+ respectively.
+ The model atomsphere of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kurucz1979}
+\end_inset 
+
+ equivallently 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kurucz:1993} 
+\end_inset 
+
+ with 
+\begin_inset Formula $T_{\mathrm{ph}}=4000\,\mathrm{K}$
+\end_inset 
+
+ and 
+\begin_inset Formula $\log g_{*}=3.5$
+\end_inset 
+
+ (cgs) is used to continuum flux at H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+wavelength.
+ The parameters are summarised in Table\SpecialChar ~
+.
+\layout Standard
+
+The limb-darkening law used for the continuum source is 
+\begin_inset Formula $I\left(\mu\right)=I_{0}\left(1+b\mu\right)$
+\end_inset 
+
+ where 
+\begin_inset Formula $\mu=\cos\theta$
+\end_inset 
+
+ and 
+\begin_inset Formula $\theta$
+\end_inset 
+
+ is the polar angle.
+ 
+\begin_inset Formula $b$
+\end_inset 
+
+ is a parameter.
+ For no limb-darkening case, 
+\begin_inset Formula $b=0$
+\end_inset 
+
+, and for the Eddington approximation case 
+\begin_inset Formula $b=3/2$
+\end_inset 
+
+.
+ The former is used in all the calulcations presented here.
+ (Is this an ok assumption for T Tauri's? You need to check this.)
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{table*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset  Tabular
+<lyxtabular version="3" rows="3" columns="7">
+<features>
+<column alignment="left" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row topline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Parameters
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $R_{*}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $M_{*}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $T_{\mathrm{ph}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $r_{\mathrm{mi}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $r_{\mathrm{mo}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\dot{M}_{\mathrm{acc}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row bottomline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[R_{\sun}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[M_{\sun}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[\mathrm{K}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[R_{\sun}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[R_{\sun}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[M_{\sun}\,\mathrm{yr^{-1}}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row bottomline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Standard
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $2.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $4000$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $4.4$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $6.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10^{-6}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{The summary of the standard classical T~Tauri star model parameters.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{tab:std_parameters}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{table*}
+\end_inset 
+
+
+\layout Subsection
+
+Magnetosphere
+\layout Standard
+
+We adopt the magnetospherical accretion flow model of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1994}
+\end_inset 
+
+, as done so by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+ and by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{symington:2005}
+\end_inset 
+
+, in which the gas accretion on to the stellar surface from the innermost
+ part of the accretion disc occurs through a dipolar stellar magnetic field.
+ The magnetic field is assumed to be so strong that the gas flow does not
+ affect the underlying magnetic field itself.
+ As shown in Fig.\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:overview}
+
+\end_inset 
+
+, the innermost radius (
+\begin_inset Formula $R_{\mathrm{mi}}$
+\end_inset 
+
+) of the magnetophere at the equatorial plane (
+\begin_inset Formula $z=0$
+\end_inset 
+
+) is assigned to be same as the inner radius (
+\begin_inset Formula $R_{\mathrm{di}}$
+\end_inset 
+
+) of the accretion disc where the flow is truncated.
+ In our models, 
+\begin_inset Formula $R_{\mathrm{mi}}$
+\end_inset 
+
+ and the outer radius (
+\begin_inset Formula $R_{\mathrm{mo}}$
+\end_inset 
+
+) of the magnetosphere (at the equaotrial plane) are set to be 
+\begin_inset Formula $4.4\, R_{\sun}$
+\end_inset 
+
+ and 
+\begin_inset Formula $6.0\, R_{\sun}$
+\end_inset 
+
+ respectively.
+ The former value corresponds to the corotation radius of the accretion
+ disc, and the geometry of the magnetic field/stream lines is kept constant
+ throghout this paper.
+ The geometry of the magnetosphere is identical to the 
+\begin_inset Quotes eld
+\end_inset 
+
+small/wide
+\begin_inset Quotes erd
+\end_inset 
+
+ model of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2001}
+\end_inset 
+
+.
+ 
+\layout Standard
+
+The magnetic field and the gas stream lines are assumed to have the following
+ simple form: 
+\begin_inset Formula $r=r_{\mathrm{m}}\sin^{2}\theta$
+\end_inset 
+
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep[see][]{ghosh:1977}
+\end_inset 
+
+ where 
+\begin_inset Formula $r$
+\end_inset 
+
+, and 
+\begin_inset Formula $\theta$
+\end_inset 
+
+ are coordinates of the field point (
+\begin_inset Formula $p$
+\end_inset 
+
+) in Fig.\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:overview}
+
+\end_inset 
+
+ in spheical coodinates, and 
+\begin_inset Formula $r_{\mathrm{m}}$
+\end_inset 
+
+is the radial distance to the field line at the equotorinph-iarticle_query.pdfal
+ plane (
+\begin_inset Formula $\theta=\pi/2$
+\end_inset 
+
+).
+ The range of 
+\begin_inset Formula $r_{\mathrm{m}}$
+\end_inset 
+
+is restricted between 
+\begin_inset Formula $r_{\mathrm{mi}}$
+\end_inset 
+
+ and 
+\begin_inset Formula $r_{\mathrm{mo}}$
+\end_inset 
+
+ as mentioned above.
+ Using the field geometry above, the conservation of energy, and igoring
+ the rotation of magnetosphere, the velocity and the density of the accreting
+ gas along the steam line can be found.
+ See 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1994}
+\end_inset 
+
+ for details.
+ 
+\layout Standard
+
+The simple temperature structure of the magnetospheric used by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1994}
+\end_inset 
+
+ is also adoped here.
+ This temperature structure was computed assuming a volumetric heating rate
+ which is proportional to 
+\begin_inset Formula $r^{-3}$
+\end_inset 
+
+, and using the energy balance of the radiative cooling rate of 
+\backslash 
+citet{hartmann:1982} and the heating rate 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{hartmann:1994}
+\end_inset 
+
+.
+ Although the temperature structure of the accretion steam could significantly
+ affect the line source function, for the purpose of the expolaring the
+ general characteristics of the H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ formation, this simple form is a reasonable assumption.
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{martin:1996}
+\end_inset 
+
+ presented the self-consistent determination of the thermal structure of
+ the inflowing gas along the dipole magnetic field, same as the one used
+ here, by solving the heat equation couple to trate equations for hydrogen.
+ He found that main heat source is adiabatic compression due to the convering
+ nature of the flow, and the major contirbutors of the cooling process are
+ bremsstrahling radiation and line emission from Ca\SpecialChar ~
+II and Mg\SpecialChar ~
+II ions.
+ The temerature sturcture of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{martin:1996}
+\end_inset 
+
+ qualitaively agrees with that of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{hartmann:1994}
+\end_inset 
+
+.
+ The sensitivty tests of H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ on the temperature structure will be presented later (SPECIFY THE SECTION
+ LATER).
+ 
+\layout Standard
+
+As the infalling gas becomes closer to the stellar surface, it is decelerates
+ in a strong shock, and heated to 
+\begin_inset Formula $\sim10^{6}\,\mathrm{K}$
+\end_inset 
+
+ (with typical parameters).
+ The X-ray radiation produced in the shock will be absorbed by the gas located
+ near, and reemitted in optical and UV radiation (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{koenigl:1991}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{hartmann:1994}
+\end_inset 
+
+).
+ This will create hot rings near the stellar surface where the magnetic
+ field intersects with the surface.
+ For simplicity, the free-falling kinetic energy is assumed to be thermalized
+ in the radiating layer, and reemits as blackbody radiation (with a single
+ temerature).
+ With the parameters of the magnetosphere and the star given above (REFER
+ TO A TABLE LATER), about 
+\begin_inset Formula $8$
+\end_inset 
+
+\SpecialChar ~
+per\SpecialChar ~
+cent of the surface is covered by the hot rings, and its temperature
+ is about 
+\begin_inset Formula $6400\,\mathrm{K}$
+\end_inset 
+
+.
+ If the mass-accretion rate is 
+\begin_inset Formula $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+\end_inset 
+
+, the ratio of this accretion luminosity to the photospheric luminosity
+ is about 
+\begin_inset Formula $0.5$
+\end_inset 
+
+.
+ The contiuum emission from the hot rings is taken into account when computing
+ the line profiles.
+\layout Subsection
+
+Wind
+\layout Subsubsection
+
+Colliminated wind model
+\layout Subsubsection
+
+Disc-wind model
+\layout Subsection
+
+Accretion disc
+\layout Section
+
+Results
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Results}
+
+\end_inset 
+
+
+\layout Subsection
+
+Magnetosphere only
+\layout Itemize
+
+NOTES on temperature structure dependecy.
+ Accroding to 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{hartmann:1994}
+\end_inset 
+
+ ...
+ Temperature decrease in the outer magneosphere causes a quick drop of the
+ number density of 
+\begin_inset Formula $n=2$
+\end_inset 
+
+ population for HI.
+ This results in a lower optical depth for Balmer lines in the outer magnetoshpe
+re.
+ 
+\layout Subsection
+
+Magnetosphere 
+\begin_inset Formula $+$
+\end_inset 
+
+ wind/jet
+\layout Subsection
+
+Magetosphere 
+\begin_inset Formula $+$
+\end_inset 
+
+ disc
+\layout Subsection
+
+Magentosphere 
+\begin_inset Formula $+$
+\end_inset 
+
+ disc 
+\begin_inset Formula $+$
+\end_inset 
+
+ wind/jet
+\layout Subsection
+
+Summary
+\layout Section
+
+Classifcations
+\layout Section
+
+Discussion (Speculations)
+\layout Section
+
+Conclusions
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Conclusions}
+
+\end_inset 
+
+
+\layout Standard
+
+We presented the detailed study of the H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+ formation from the circumstealler material of classical T\SpecialChar ~
+Tauri stars.
+ 
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+section*{Acknowledgements}
+\end_inset 
+
+
+\layout Standard
+
+RK is supported by PPARC standard grand PPA/G/S/2001/00081.
+ 
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+%----------------------------------------------------
+\layout Standard
+% Bibliography follows here.
+\layout Standard
+%-----------------------------------------------------
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+
+\layout Standard
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+bibliographystyle{mn}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+bibliography{mnras}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{lastpage}
+
+\end_inset 
+
+
+\the_end

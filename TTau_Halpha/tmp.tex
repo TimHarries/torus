@@ -1,0 +1,1318 @@
+%% LyX 1.3 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[oneside,english,useAMS, usenatbib]{mn2e}
+\usepackage[T1]{fontenc}
+\usepackage[latin1]{inputenc}
+\setcounter{tocdepth}{3}
+\usepackage{graphicx}
+\usepackage{amssymb}
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+%% Bold symbol macro for standard LaTeX users
+\newcommand{\boldsymbol}[1]{\mbox{\boldmath $#1$}}
+
+%% Because html converters don't know tabularnewline
+\providecommand{\tabularnewline}{\\}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% User specified LaTeX commands.
+\usepackage{lscape}
+\usepackage{times}
+
+\newcommand{\aap}{A\&A}
+\newcommand{\aaps}{A\&AS}
+\newcommand{\apj}{ApJ}
+\newcommand{\apjl}{\apj}
+\newcommand{\pasp}{PASP}
+\newcommand{\aj}{AJ}
+\newcommand{\mnras}{MNRAS}
+\newcommand{\apjs}{ApJS}
+\newcommand{\aapr}{A\&AR}
+\newcommand{\pasj}{PASJ}
+
+\newcommand{\kmps}{\mathrm{km~s^{-1}}}
+\newcommand\ion[2]{#1$\,${\sc {#2}}}   % ion, i.e., CII = \ion{C}{ii}
+\newcommand{\Kelvin}{\mathrm{K}}
+
+\usepackage{babel}
+\makeatother
+\begin{document}
+\title[On H-$\alpha$ formation of T Tauri stars]{On formation of H-$\alpha$ from classical T Tauri stars: the disc, wind, and magnetospheric-accretion hybrid model}
+
+\author[R. Kurosawa et\,al.]{Ryuichi Kurosawa\thanks{E-mail: rk@astro.ex.ac.uk}, Tim J. Harries and Neil H. Symington\\ School of Physics, University of Exeter, Stocker Road, Exeter EX4 4QL}
+
+\date{Dates to be inserted}
+
+\pagerange{\pageref{firstpage}--\pageref{lastpage}} \pubyear{2005}
+
+\maketitle
+
+\label{firstpage}
+
+\begin{abstract}
+
+We investigate the formation of H$\alpha$ from classical T~Tauri
+stars with a complex circumstellar geometry -- the combination of
+mangnetisherical accretion, collimated steller wind, and accretion
+disc. AND MORE
+
+\end{abstract}
+
+\begin{keywords}
+stars:formation -- stars: individual: SU Aur -- circumstellar matter -- infrared: stars -- stars: pre-main-sequence
+\end{keywords}
+
+
+\section{Introduction }
+
+\label{sec:Introduction}
+
+T~Tauri stars (TTS) are young ($<\sim3\times10^{6}\,\mathrm{yrs}$,
+\citealt{appenzeller:1989}) low-mass stars, and known as progenitors
+of solar-type stars. Classical T~Tauri stars (CTTS) exhibit strong
+H$\alpha$ emission, and typically have spectral types of F--K. Some
+of the most active CTTS show emission in higher Balmer lines and metal
+lines (e.g., \ion{Ca}{ii}~H and K). They also exhibit an excess
+amount of continuum flux in the ultraviolet (UV) and infrared (IR).
+Their spectral energy distribution and polarization data suggest the
+presence of a circumstellar disc, and it plays an important role in
+regulating dynamics of gas flows around CTTS.
+
+Many observational studies (e.g., \citealt{herbig:1962}; \citealt{edwards:1994};
+\citealt{kenyon:1994}; \citealt{reipurth:1996}; \citealt{alencar:2000})
+of CTTS line profles show that the evidence for both outward wind
+flows and inward accretion flows, as seen in the blueshifted absorption
+features in H$\alpha$ profiles and the redshifted inverse P~Cygni
+(IPC) profiles. Typical mass-loss rates of CTTS are about $10^{-9}\,\mathrm{M_{\sun}\, yr^{-1}}$
+to $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$ (e.g., \citealt{kuhi:1964};
+\citealt{edwards:1987}; \citealt{hartigan:1995}), and the mass-accretion
+rates are also about $10^{-9}\,\mathrm{M_{\sun}\, yr^{-1}}$ to $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+(e.g., \citealt{kenyon:1987}; \citealt*{bertout:1988}; \citealt{gullbring:1998}). 
+
+Recent H$\alpha$ spectro-astrometric observations by \citet{takami:2003}
+show the direct evidence for the presence of bipolar and monopolar
+outflows down to $\sim1\,\mathrm{AU}$ scale (e.g.\,CS~Cha and RU~Lup).
+Similarly, ESO VLT observation of high-resolution ($\mathrm{R=50\,000}$)
+two-dimensional spectral of edge-on CTTS (HH30$^{*}$, HK~Tau~B,
+and HV~Tau~C) by \citet{appenzeller:2005} show the extended (SCALE?)
+H$\alpha$ emission in the direction perpendicular to the obscuring
+circumstellar disc, and in both above and below the disc --- suggesting
+the presence of the bipolar outflows. In silightly larger scale, \emph{HST}
+observation of HH30 (Burrorws et al 1996) shows the jet traced to
+within $\lesssim30$~AU from the star. The jet has a cone shape with
+an opening angle of $3^{\circ}$ between 70 and 700 AU. (Originally
+from Konig and Pudritz 2000 review in PP IV). \citealt{alencar:2000}
+found about 80 per cent of their samples (30 CTTS) show blueshifted
+absorption componets in at least one of Balmer lines and Ca~K (most
+commonly in H$\alpha$). 
+
+In a currently favoured model of accretion flows around CTTS, the
+accretion discs are disrupted by the magnetosphere of stars which
+channels the gas from the disc onto the surface of the stars (e.g.,
+\citealt{uchida:1985}; \citealt{koenigl:1991}; \citealt{cameron:1993}\citealt{shu:1994}).
+This picture of the accretion flows is supported by the evidences
+that CTTS have relatively strong ($\sim10^{3}\mathrm{G}$) magnetic
+field (e.g., \citealt*{jonhs-krull:1999}; \citealt{guenther:1996})
+and by the radiative transfer models which reproduce the observed
+profiles for some TTS (\citealt{muzerolle:2001}). The magnetospherical
+accretion model naturally explains the blueward asymmetic emission
+lines (seen in some of CTTS) caused by the partial occulation of the
+flow by the disc, and the redshifted absorption componet at the typical
+free-fall velocities (a few hundred $\mathrm{km\, s^{-1}}$) seen
+in some of CTTS. 
+
+Dispite the success of the magnetosherical accretion model in explaining
+the line profiles in some CTTS, the overwhelming observational evidences
+for the outflow (mentoned above) in the CTTS profiles suggests that
+this model is only a part of a whole picture. Clearly, the modefification
+to include the outflowing wind/jet flow is neccessary if one requires
+to predict the mass-accretion rate and the mass-loss rate of CTTS
+by modelling their emission profiles (e.g. H$\alpha$).
+
+Priory to the magnetospherical models, many alternative models had
+been considered to explain the observed spectroscopic features mentioned
+earlier. For example, 1.~the Alfv\'{e}n wave-driven wind model (e.g.~\citealt{decampli:1981};
+\citealt{hartmann:1982}), 2.~turbulant boundary layer (between the
+accretion disc and stellar surface) model (e.g.~\citealt{bertout:1988};
+\citealt{basri:1989}), 3.~chromospheric model (e.g.~\citealt{calvet:1984}),
+and 4.~disc wind model (e.g. \citealt{calvet:1992b}; \citealt{kwan:1995}).
+Considering the sucess of the magnetospherical accretion flow model
+in some cases and the observational eividences for the outflows, it
+is likely that an improved spectroscopic model requires both inflow
+and outflow components. The combination of the magnetospheric accretion
+flow model with model 1 or 4 would be a reasonable starting point
+for an improved spectroscopic model. Although time consuming to explore
+a larger parameter space, more realistic density, velocity and temperature
+structure from magnetohydrodynamic wind+accretion models should be
+considered as inputs for an radiative transfer model in the future. 
+
+The magnetocentrifugal wind model, first proposed by \citet{blandford:1982},
+has been often used to reproduce the large-scale wind structure of
+T Tauri stars, or to model observed optical jets (e.g.~HH~30 jet
+by \citealt{burrows:1996}; \citealt{ray:1996}). The lanching of
+the wind from a Keplerian disc is typically done by treating the equaotorial
+plane of the disc as a mass-injecting boundary condition (e.g., \citealt{ustyugova:1995};
+\citet{shu:1995}; \citealt{ouyed:1997}; \citealt{krasnopolsky:2003}).
+Depending on the location of the open magnetic fields anchored to
+the disc, two different types of winds are preoduced. If the field
+is constrained to be near the co-rotation radius of stellar magnetosphere,
+an {}``X-wind'' \citep{shu:1994} is produces. If the open field
+lines are located in a wider area of the disc, a {}``disc-wind''
+similar to \citet{koenigl:2000} is produced \citet{krasnopolsky:2003}.
+Recent reviews on the jet/wind-disc connection can be found in \citet{koenigl:2000}
+and \citet{pudritz:2005}. 
+
+In this paper, we present a semi-emperical wind -- accretion disc
+-- magnetospherical accretion hybrid model for CTTS, and perform parametric
+studies of the H$\alpha$ formation. This study should provide preliminary
+physical conditions which lead to the wide varaiety of emission line
+profiles seen in the observation, and would help to construct more
+comprehensive circumstellar models (e.g. via MHD simulations) of T~Tauri
+stars. the Using the model results, we examine the H$\alpha$ spectroscopic
+classification used by \citet{reipurth:1996}, and compare models
+with observations. We will also discuss whether our model is consistent
+with some predictions made by the recentt MHD studies (e.g.~ $\mu=\dot{M}_{\mathrm{wind}}/\dot{M}_{\mathrm{acc}}\approx0.1$).
+
+In section~\ref{sec:model-configuration}, the model assumptions,
+and the basic model configurations are presented. We discuss the radiaive
+transfer model used to compute the profiles in section~\ref{sec:radiative-transfer-model},
+and the results of model calculations are given in section~\ref{sec:Results}.
+The closer examination and discussion of the results are presented
+in section~\ref{sec:Discussion}. Finally, the summary of this work
+and the conclusion are in section~\ref{sec:Conclusions}.
+
+
+\section{Model configuration}
+
+\label{sec:model-configuration}
+
+To understand how the different part of the CTTS circumsterllar enviroment
+contributes to the fomation of H$\alpha$, the model spaced is devided
+into four different regions: 1.~Central contiuum source, 2.~magnetosphere
+accretion flow, 3.~wind outflow, and 4.~accretion disc. Fig.~\ref{fig:overview}
+depicts the relative location in the model space. In all regions,
+the density is symmetric around the z-axis. The innermost raius of
+the magnetsphere at the equotrial plane coincides with the the inner
+radius of the accretion disc. From the inner most part of the accretion
+disc, the gas freely fall, moving along the magneic filed onto the
+surface of the star. For the purpose of computational simplicity,
+the colliminated wind are defined only in the outside of the largest
+radius of the magnesophere. In the following subsections, the details
+of model components will be described.
+
+\begin{figure*}
+
+\begin{center}
+
+\includegraphics[%
+  scale=0.6]{figures/overview2.eps}
+
+\end{center}
+
+\caption{Basic Model Configuration. The system consist of four components: 1.~the continuum source located at the origin $\left( o \right)$ of the cartisian coordinates $\left(x,y,z\right)$ -- the y-axis are into the paper, 2.~magnetospherical accretion flow, 3.~colliminated wind/jet outflow, and 4.~accretion disc. The density distribution is symmetric around the z-axis. The innermost raius of the magnetsphere (at the equotrial plane) coincides with the the inner radius of the accretion disc. From the inner most part of the accretion disc, the gas freely fall, moving along the magneic filed onto the surface of the star. For simplicit, the colliminated wind/jet exists outside of the largest radius of the magnesophere (dotted line). }
+
+\label{fig:overview}
+
+\end{figure*}
+
+
+\subsection{Contiuum Source}
+
+\label{sub:Contiuum-Source}
+
+Unless specified otherwise, we adopt stellar parameters of a typical
+classical T~Tauri star (REF) for the central conitnuum source, i.e.
+radius ($R_{*}$), mass ($M_{*}$), and effective temperature the
+photosphere ($T_{\mathrm{ph}}$) are $2\, R_{\sun}$, $0.5\, M_{\sun}$,
+and $4000\,\mathrm{K}$ respectively. The model atomsphere of \citet{kurucz:1979}
+equivallently \citet{kurucz:1993}  with $T_{\mathrm{ph}}=4000\,\mathrm{K}$
+and $\log g_{*}=3.5$ (cgs) is used to continuum flux at H$\alpha$wavelength.
+The parameters are summarised in Table~\ref{tab:std_parameters}.
+
+The limb-darkening law used for the continuum source is $I\left(\mu\right)=I_{0}\left(1+b\mu\right)$
+where $\mu=\cos\theta$ and $\theta$ is the polar angle. $b$ is
+a parameter. For no limb-darkening case, $b=0$, and for the Eddington
+approximation case $b=3/2$. The former is used in all the calulcations
+presented here. (Is this an ok assumption for T Tauri's? You need
+to check this.)
+
+\begin{table*}
+
+\begin{center}
+
+\begin{tabular}{lcccccccccccc}
+\hline 
+Parameters&
+$R_{*}$&
+$M_{*}$&
+$T_{\mathrm{ph}}$&
+$R_{\mathrm{mi}}$&
+$R_{\mathrm{mo}}$&
+$\dot{M}_{\mathrm{acc}}$&
+$\dot{M}_{\mathrm{wind}}$&
+$\beta$&
+$v_{\infty}$&
+$m$&
+$R_{\mathrm{di}}$&
+$R_{\mathrm{do}}$\tabularnewline
+&
+$\left[R_{\sun}\right]$&
+$\left[M_{\sun}\right]$&
+$\left[\mathrm{K}\right]$&
+$\left[R_{*}\right]$&
+$\left[R_{*}\right]$&
+$\left[M_{\sun}\,\mathrm{yr^{-1}}\right]$&
+$\left[M_{\sun}\,\mathrm{yr^{-1}}\right]$&
+$[-]$&
+$[\mathrm{km\, s^{-1}}]$&
+$[-]$&
+$\left[R_{\sun}\right]$&
+$\left[\mathrm{AU}\right]$\tabularnewline
+\hline
+Standard&
+$2.0$&
+$0.5$&
+$4000$&
+$2.2$&
+$3.0$&
+$10^{-7}$&
+$10^{-8}$&
+$0.2$&
+$200$&
+$2.0$&
+$2.0$&
+$100$\tabularnewline
+\hline
+\end{tabular}
+
+\end{center}
+
+\caption{The summary of the standard classical T~Tauri star model parameters.}
+
+\label{tab:std_parameters}
+
+\end{table*}
+
+
+\subsection{Magnetosphere}
+
+\label{sub:Magnetosphere}
+
+We adopt the magnetospherical accretion flow model of \citet{hartmann:1994},
+as done so by \citet{muzerolle:2001} and by \citet{symington:2005},
+in which the gas accretion on to the stellar surface from the innermost
+part of the accretion disc occurs through a dipolar stellar magnetic
+field. The magnetic field is assumed to be so strong that the gas
+flow does not affect the underlying magnetic field itself. As shown
+in Fig.~\ref{fig:overview}, the innermost radius ($R_{\mathrm{mi}}$)
+of the magnetophere at the equatorial plane ($z=0$) is assigned to
+be same as the inner radius ($R_{\mathrm{di}}$) of the accretion
+disc where the flow is truncated. In our models, $R_{\mathrm{mi}}$
+and the outer radius ($R_{\mathrm{mo}}$) of the magnetosphere (at
+the equaotrial plane) are set to be $2.2\, R_{\sun}$ and $3.0\, R_{\sun}$
+respectively. The former value corresponds to the corotation radius
+of the accretion disc, and the geometry of the magnetic field/stream
+lines is kept constant throghout this paper. The geometry of the magnetosphere
+is identical to the {}``small/wide'' model of \citet{muzerolle:2001}. 
+
+The magnetic field and the gas stream lines are assumed to have the
+following simple form: $r=R_{\mathrm{m}}\sin^{2}\theta$ \citep[see][]{ghosh:1977}
+where $r$, and $\theta$ are coordinates of the field point ($p$)
+in Fig.~\ref{fig:overview} in spheical coodinates, and $R_{\mathrm{m}}$is
+the radial distance to the field line at the equotorial plane ($\theta=\pi/2$).
+The range of $R_{\mathrm{m}}$is restricted between $R_{\mathrm{mi}}$
+and $R_{\mathrm{mo}}$ as mentioned above. Using the field geometry
+above, the conservation of energy, and igoring the rotation of magnetosphere,
+the velocity and the density of the accreting gas along the steam
+line can be found. See \citet{hartmann:1994} for details. 
+
+In all of our models, the temperature structure of the magnetospheric
+used by \citet{hartmann:1994} is also adoped here. The temperature
+structure was computed assuming a volumetric heating rate which is
+proportional to $r^{-3}$, and using the energy balance of the radiative
+cooling rate of \citet{hartmann:1982} and the heating rate \citep{hartmann:1994}.
+Although the temperature structure of the accretion steam could significantly
+affect the line source function, for the purpose of the expolaring
+the general characteristics of the H$\alpha$ formation, this simple
+form is a reasonable assumption.\citet{martin:1996} presented the
+self-consistent determination of the thermal structure of the inflowing
+gas along the dipole magnetic field, same as the one used here, by
+solving the heat equation couple to trate equations for hydrogen.
+He found that main heat source is adiabatic compression due to the
+convering nature of the flow, and the major contirbutors of the cooling
+process are bremsstrahling radiation and line emission from Ca~II
+and Mg~II ions. The temerature sturcture of \citet{martin:1996}
+qualitaively agrees with that of \citep{hartmann:1994}. The sensitivty
+tests of H$\alpha$ on the temperature structure will be presented
+later (SPECIFY THE SECTION LATER). 
+
+As the infalling gas becomes closer to the stellar surface, it is
+decelerates in a strong shock, and heated to $\sim10^{6}\,\mathrm{K}$
+(with typical parameters). The X-ray radiation produced in the shock
+will be absorbed by the gas located near, and reemitted in optical
+and UV radiation (\citealt{koenigl:1991}; \citealt{hartmann:1994}).
+This will create hot rings near the stellar surface where the magnetic
+field intersects with the surface. For simplicity, the free-falling
+kinetic energy is assumed to be thermalized in the radiating layer,
+and reemits as blackbody radiation (with a single temerature). With
+the parameters of the magnetosphere and the star given above (Table~\ref{tab:std_parameters}),
+about $8$~per~cent of the surface is covered by the hot rings,
+and its temperature is about $6400\,\mathrm{K}$. If the mass-accretion
+rate is $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$, the ratio of this
+accretion luminosity to the photospheric luminosity is about $0.5$.
+The contiuum emission from the hot rings is taken into account when
+computing the line profiles. 
+
+
+\subsection{Wind}
+
+\label{sub:wind_jet}
+
+
+\subsubsection{Colliminated wind model}
+
+JUSTTIFICATION OF USING THIS FORMULATION. BREIFLY MENTIONED THE WORK
+DONE BY OTHERS.
+
+Based on the simple model of \citet{appenzeller:2005}, the following
+parametrisation of colliminated wind/jet (region 3 in Fig.~\ref{fig:overview})
+is adopeted. The wind velocity field, $\mathbf{v}_{\mathrm{wind}}\left(r,\theta\right)$,
+is consist of radial and polar components which depend only on $r$
+and $\theta$ respectively. The radial componet $v_{r}\left(r\right)$
+is assumed to be in the classical beta-velocity law \citep[c.f.][]{castor:1979},
+and the azimuthal component $v_{\phi}$ is asuumed to be a constant
+fraction ($\gamma$) of the Keplerian velocity for a given distance
+($w=\sqrt{x^{2}+y^{2}}$) from the symmetry axis ($z$-axis) , i.e.:
+
+\begin{eqnarray}
+\mathbf{v}_{\mathrm{wind}} & = & v_{r}\hat{\mathbf{r}}+v_{\phi}\hat{\mathbf{\bphi}}+v_{\theta}\hat{\btheta}\label{eq:wind_velocity_def}\end{eqnarray}
+where \begin{equation}
+v_{r}\left(r\right)=v_{r0}+v_{\infty}\left(1-\frac{R_{\mathrm{mo}}}{r}\right)^{\beta}\,,\label{eq:wind_velocity_radial_part}\end{equation}
+\begin{equation}
+v_{\phi}\left(w\right)=\gamma\,\left(\frac{GM_{*}}{w}\right)^{1/2}\,,\label{eq:wind_velocity_azimuth_part}\end{equation}
+and \begin{equation}
+v_{\theta}\left(r,\theta\right)=v_{\theta0}\,\left(\frac{R_{\mathrm{mo}}}{r}\right)^{\alpha}\frac{\tan\theta}{\left|\tan\theta\right|}\,.\label{eq:wind_velocity_polar_part}\end{equation}
+Note that the base of the wind starts at $r=R_{\mathrm{mo}}$, and
+the range of the polar angle is restricted to $\theta>\left|\theta_{\mathrm{disc}}\right|$
+where $\theta_{\mathrm{disc}}$ is the openning angle of the accretion
+disc, to avoid the overlap. $v_{r0}$is the small radial velocity
+at the base of the wind ($r=R_{\mathrm{mo}}$). Normally, $v_{r0}=10\,\mathrm{km\, s^{-1}}$,
+approximately the thermal velocity of hydrogen with $T=7500\,\mathrm{K}$
+and $\gamma=0.05$ (\citealt{appenzeller:2005}) are used. The dependency
+of $v_{r}$ in polar direction ($\theta=0$) on the values of wind
+accerelation parameter $\beta$ is shown in Figure~\ref{fig:wind_vr_rho}.
+All other parameters describing the wind are fixed as the standard
+values given in Table~\ref{tab:std_parameters}. 
+
+Further, the density of the wind is assumed to be axi-symmetric and
+separable in $r$ and $\theta$ for computationaly simpliciy, i.e., 
+
+\begin{equation}
+\rho\left(r,\theta\right)=P\left(r\right)\, F\left(\theta\right)\label{eq:wind_density_def}\end{equation}
+ with \begin{equation}
+F\left(\theta\right)=n\,\cos^{b}\theta\label{eq:wind_density_theta}\end{equation}
+ where $b$ is normally positive even number (for the density symmetric
+about the equtotrial plane), and $n$ is the angular normalisation
+constant. For $b=0$, the wind is sherically symmetic exept for the
+parts dirupted by the accretion disc. The larger the value of $b$,
+the higher the degree of the collimination. By integrating equation~\ref{eq:wind_density_theta}
+over angles and normalising the integral to $4\pi$, one finds \begin{equation}
+n=\frac{1+b}{1-\cos^{1+b}\theta_{\mathrm{wind}}}\,.\label{eq:wind_density_theta_norm}\end{equation}
+ Asumming the total mass-loss rate by the wind/jet is $\dot{M}_{\mathrm{wind}}$
+and the mass-flux conserves in time, the radial part of the density
+function is reduced to $P\left(r\right)=\dot{M}_{\mathrm{wind}}\,\left[4\pi r^{2}v_{r}\left(r\right)\right]^{-1}$;
+hence, Equation~\ref{eq:wind_density_def} becomes \begin{equation}
+\rho\left(r,\theta\right)=\frac{n\,\cos^{b}\theta\,\dot{M}_{\mathrm{wind}}}{4\pi r^{2}\, v_{r}\left(r\right)}\,.\label{eq:wind_density_final}\end{equation}
+ For a given mass-accretion rate, the wind mass-loss rate in our typical
+model is assined from the ratio of mass-loss to mass-accretion rate
+($\dot{M}_{\mathrm{wind}}/\dot{M}_{\mathrm{acc}}\approx0.1$), indicated
+by both observations and magnetohydrodynamical calculations (see e.g.
+\citealt{koenigl:2000}). 
+
+Figure~\ref{fig:wind_vr_rho} shows the values of $\rho$ in polar
+direction ($\theta=0$) for different values of $\beta$ with all
+other parameters fixed as the standard values (Table~\ref{tab:std_parameters}).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure*}
+
+\begin{center}
+
+\begin{tabular}{cc}
+\includegraphics[%
+  clip,
+  scale=0.45]{plots/discwind_vr_pol.eps}~~~~~~&
+\includegraphics[%
+  clip,
+  scale=0.45]{plots/density_wind_pol.eps}\tabularnewline
+\end{tabular}
+
+\end{center}
+
+
+
+\caption{The dependency of the wind/jet velocity and density structures on the wind accerelation parameter $\beta$. The radial component of the wind/jet velocity (equation~\ref{eq:wind_velocity_radial_part}) in polar direction, $\theta = 0$ as a function of radius is shown on left. The wind/jet density (equation~\ref{eq:wind_density_final} along polar direction as a function of radius is right. The smaller the value of $\beta$, the faster the accerelation of the wind. For the raidus ($r/R_{\mathrm{mo}} < 10$, both velocity and density are sensitive to the value of $\beta$. For all $\beta$ values, the radial velocity of the wind reaches the terminal velocity ($\sim 210\,\kmps$ by  $r/R_{\mathrm{mo}} \sim 1000$. The initial velocity $V_{0}=10\,\kmps$, which approximately corresponds to the thermal velocity of a hydrogen atom at 7500~K,  is used for all $v_{r}$ plots. Beyound $r/R_{\mathrm{mo}}= 100$, little difference is seen in the polar density with diffrent $\beta$ values.}
+
+\label{fig:wind_vr_rho}
+
+\end{figure*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsubsection{Disc-wind model}
+
+GIVE MORE CONVINCING MOTIVIATION FOR USING THIS MODEL. THIS SECTION
+MAY BE DELETED.
+
+Alternative to the colliminated wind model, the kinematic disc-wind
+mode of \citet{knigge:1995} in which a wind originating from the
+surface of the accretion disc with a biconical outflow geometry (Fig.~XXX)
+will be presented next. The model was originally developed for describing
+the formation of the UV resonance lines in the winds of cataclystic
+variable (CV) stars. 
+
+
+\subsection{Accretion disc}
+
+\label{sub:Accretion-disc}
+
+Region 4 in Fig.~\ref{fig:overview}
+
+
+\subsubsection{Density and velocity}
+
+Although it is possible, in our model, to compute the dust-sublimination
+radius and the vertical hydrostatic structure of the accretion disc
+self-consistently (assuming the radial dependecy of the mid-plane
+density) by using the interative Monte Calro radative transfer technique
+(c.f.~\citet{walker:2004}), we find it to be too time consuming
+for the purpose of this paper -- understanding the general characteristic
+of H$\alpha$ profile shapes hence exploring a large parameter space.
+For this reason, we adopt a simple analytical disc model, the steady
+$\alpha$-disc `standard model' (\citealt{shakura:1973}; \citealt*{frank:2002})
+with the inner radius fixed at the inner radius of the magnetosphere
+(at equatorial plane). The disc density disribution is given by 
+
+\begin{equation}
+\rho_{\mathrm{d}}\left(w,z\right)=\Sigma\left(w\right)\,\frac{1}{\sqrt{2\pi}h\left(w\right)}e^{-\left(\frac{z}{2h\left(w\right)}\right)^{2}}\label{eq:disc-density-function}\end{equation}
+ where $w$, $h$, $z$ and $\Sigma$ are the distance from the symmetry
+axis, the scale height, the distance from the disc plane, and the
+surface density at the mid-plane, respectively. The mid-plane surface
+density and the scale height are given as: \begin{equation}
+\Sigma\left(w\right)=\frac{5M_{\mathrm{d}}}{8\pi R_{\mathrm{d}}^{2}}\, w^{-3/4}\label{eq:density-midplane}\end{equation}
+ where $R_{\mathrm{do}}$ and $M_{\mathrm{d}}$ are the disc radius
+and the disc mass respectively.\begin{equation}
+h\left(w\right)=0.05\, R_{\mathrm{do}}\, w^{9/8}\,.\label{eq:scale-height}\end{equation}
+ With these parameters, the disc is slightly flared. The inner radius
+of the disc is set to $R_{\mathrm{di}}=R_{\mathrm{mi}}$ (the inner
+radius of the magnetosphere at the equaotrial plane), which is approximatly
+same as the co-rotating radius of the system with the paramters in
+Table~\ref{tab:std_parameters}. The disc mass, $M_{\mathrm{d}}$,
+of an object is assumed to be 1/100 of the central mass ($M_{*}$),
+and the disc radius ($R_{\mathrm{di}}$) to be 100~au. The velocity
+of the gas/dust in the disc is assumed to be Keplerian.
+
+
+\subsubsection{Dust model}
+
+To calculate the dust scattering and absorption cross section as a
+function of wavelength, the optical constants of \citet{draine:1984}
+for amorphous carbon grains and \citet{hanner:1988} for silicate
+grains are used. The model uses the {}``large grain'' dust model
+of \citet{wood:2002} in which the dust grain size distribution is
+described by the following function:\begin{equation}
+n\left(a\right)da=\left(C_{\mathrm{C}}+C_{\mathrm{Si}}\right)\, a^{-p}\exp\left[-\left(\frac{a}{a_{c}}\right)^{q}\right]da\label{eq:grain-dist-function}\end{equation}
+ where $a$ is the grain size restricted between $a_{\mathrm{min}}$
+and $a_{\mathrm{max}}$, and $C_{\mathrm{C}}$ and $C_{\mathrm{Si}}$
+are the terms set by requiring the grains to completely deplete a
+solar abundance carbon and silicon. The parameters adopted in our
+model are: $C_{\mathrm{C}}=1.32\times10^{-17}$, $C_{\mathrm{Si}}=1.05\times10^{-17}$,
+$p=3.0$, $q=0.6$, $a_{\mathrm{\mathrm{min}}}=0.1\,\mathrm{\mathrm{\mathrm{\mu m}}}$,
+$a_{\mathrm{\mathrm{max}}}=1000\,\mathrm{\mathrm{\mathrm{\mu m}}}$,
+and $a_{c}=50\,\mathrm{\mathrm{\mathrm{\mu m}}}$. This corresponds
+to Model~1 of the dust model used by \citet{wood:2002}. See also
+their Fig.~3 The relative number of each grain is assumed to be that
+of solar abundance, C/H$\sim3.5\times10^{-4}$ \citep{anders:1989}
+and Si/H$\sim3.6\times10^{-5}$ \citep{grevesse:1993} which are similar
+to values found in the ISM model of \citet{mathis:1977} and \citet*{kim:1994}.
+Similar abundances were used in the circumstellar disc models of \citet{cotera:2001}. 
+
+
+\section{Radiative transfer model}
+
+\label{sec:radiative-transfer-model}
+
+We have extended the TORUS radiative transfer code (\citealt{harries:2000};
+\citealt{kurosawa:2004a}; \citealt{symington:2005}) to compute the
+H$\alpha$ profiles from pre-main-sequence stars which are surrounded
+by one or more of the followings: the magnetospherical accretion flow,
+the out-flowing colliminated wind, and the accreation disc. Previously
+in \citet{symington:2005}, the model used in the three-dimentional
+(3-D) adaptive mesh refinement (AMR) to inverstigate the line variability
+mainly associated with roational motion of complex geometrical configurations
+of magnetospherical flow (see also \citealt*{kurosawa:2005a}). We
+modefied the code to handle the two-dimentional (2-D) density distribution,
+and restricted our models to be axi-symmetric. It was done so in order
+to enable us to explore rather large number of parameter spaces (c.f.~section~\ref{sec:model-configuration}).
+Note that the velocity field is still in 3-D -- the third component
+can be calculated by using the symmetry for a given value of azimutal
+angle. The examples of how the AMR grid for the purpose of the radiative
+transfer is constructed are presented in e.g. \citet{wolf:1999},
+\citet{kurosawa:2001a} and \citet{steinacker:2003} .
+
+The computation of the H$\alpha$ is devided in two parts: 1.~the
+source function calculation and 2.~the observed flux/profile calulcation.
+In the first process, we have utilized the method by \citet{klein:1978}
+(see also \citealt{rybicki:1978}; \citet{hartmann:1994}) in which
+the Sobolev approximation method is applied. The population of the
+bound states of hydrogen are assumed to be in statistical equilibrium,
+and the gas to be in radiative equilibrium. Our hydrogen atom model
+consist of 14 bound state and continuum. Readers are refer to \citet{klein:1978}
+for details. (AND MORE..)
+
+To compute the observed line profile, the Monte Calro radiative transfer
+method (e.g. \citealt{hillier:1991}) using the Soblev escape-probabiliy
+can be used when I.~a large velocity gradiant is present in the gas
+flow, and II.~the intrinsic line width is negleible compared to the
+Doppler broadeing of the line. In our earlier models (\citealt{harries:2000};
+\citealt{symington:2005}), this method was used to compute the line
+profiles since the condition I and II are resonably satisfied. However,
+as noted and demonstrated by \citet{muzerolle:2001}, even with a
+moderate amount of mass-accretion rate ($~10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$),
+Stark broadening becomes important in the optically thick H$\alpha$
+line. \citet{muzerolle:2001} (MORE REF HERE) also pointed out that
+the observed H$\alpha$profiles from CTTS typically have the wings
+extending to $500\,\mathrm{km\, s^{-1}}$(e.g.~\cite{edwards:1994};
+\citet{reipurth:1996}) which cannot be explained by the infall velocity
+of the gas along the magneosphere. 
+
+To implement the broadening meachanism, two modedifications to our
+previous model (\citealt{symington:2005}) are necessary. First, the
+emission and absorption profiles must be replaced by a Voigt profle
+which is defined as: \begin{equation}
+H\left(a,y\right)\equiv\frac{a}{\pi}\int_{-\infty}^{\infty}\frac{e^{-y'^{2}}}{\left(y-y'\right)^{2}+a^{2}}\, dy'\label{eq:voigt_profile_def}\end{equation}
+ where $a=\Gamma/4\pi\Delta\nu_{\mathrm{D}}$, $y=\left(\nu-\nu_{0}\right)/\Delta\nu_{\mathrm{D}}$,
+and $y'=\left(\nu'-\nu_{0}\right)/\Delta\nu_{\mathrm{D}}$ (c.f. \citealt{mihalas:1978}).
+$\nu_{0}$ is the line centre frequency, and $\Delta\nu_{\mathrm{D}}$
+is the Doppler line width of hydrogen atom (due to its thermal motion)
+which is given by $\Delta\nu_{\mathrm{D}}=\left(2kT/m_{\mathrm{H}}\right)^{1/2}\times\left(\nu_{0}/c\right)$
+where $m_{\mathrm{H}}$ is the mass of a hydrogen atom. The damping
+constant $\Gamma$, which depends on the physical condition of the
+gas, is parameterised by \citet*{vernazza:1973} as follows:
+
+\begin{eqnarray}
+\Gamma & = & C_{\mathrm{rad}}+C_{\mathrm{vdW}}\left(\frac{n_{\mathrm{HI}}}{10^{16}\,\mathrm{cm^{-3}}}\right)\left(\frac{T}{5000\,\mathrm{K}}\right)^{0.3}\nonumber \\
+ &  & +\, C_{\mathrm{Stark}}\left(\frac{n_{e}}{10^{12}\,\mathrm{cm^{-3}}}\right)^{2/3}\label{eq:dampimg_constant_def}\end{eqnarray}
+ where $n_{\mathrm{H\, I}}$ and $n_{e}$ are the number density of
+neutral hydrogens and that of free electrons. Also, $C_{\mathrm{rad}}$,
+$C_{\mathrm{vdW}}$ and $C_{\mathrm{Stark}}$ are natural broadening,
+van der Waals broadening, and linear Stark broadening constants respectively.
+We simply adopt this parameterization along with the values of broadening
+constants for H$\alpha$ from \citet{luttermoser:1992}, i.e. $C_{\mathrm{rad}}=6.5\times10^{-4}$~\AA,
+$C_{\mathrm{vdW}}=4.4\times10^{-4}$~\AA~ and $C_{\mathrm{Stark}}=1.17\times10^{-3}$~\AA.
+In terms of level populations and the Voigt profile, the line opacity
+for the transition $i\rightarrow j$ can be written as: \begin{equation}
+\chi_{l}=\frac{\pi^{1/2}e^{2}}{m_{e}c}f_{ij}n_{j}\left(1-\frac{g_{j}n_{i}}{g_{i}n_{j}}\right)H\left(a,y\right)\label{eq:line_opacity}\end{equation}
+ where $f_{ij}$, $n_{i}$, $n_{j}$, $g_{i}$and $g_{j}$ are the
+oscillator strength, the population of $i$-th level, the population
+of $j$-th level, the degeneracy of the $i$-th level, and the degeneracy
+of the $j$-th level respectively. $m_{e}$and $e$ are the electron
+mass and charge (c.f. \citealt{mihalas:1978}). 
+
+The second modefication in our model is the replacement of the method
+of solving the formal solution from the Monte Calro radiative transfer
+method with Sobolev approximation to the direct integration method.
+Similarly to the notation used by \citet{muzerolle:2001}, we specify
+the cylindical coordinates $\left(p,\, q,\, t\right)$ which is the
+original stellar coordinate system $\left(\rho,\,\phi,\, z\right)$
+rotated (around $y$ axis) by the inclination of the line of sight,
+i.e. the $t$-axis coinsides with the line of sight. The observed
+flux ($F_{\nu}$) is given by: \begin{equation}
+F_{\nu}=\frac{1}{4\pi d^{2}}\int_{0}^{p_{\mathrm{max}}}\int_{0}^{2\pi}p\,\sin q\, I_{\nu}\mathrm{\, d}q\,\mathrm{d}p\label{eq:flux_integral}\end{equation}
+where $d$, $p_{\mathrm{max}}$, and $I_{\nu}$ are the distance to
+an observer, the maximum extent to the model space in the projected
+(rotated) plane, and the specific intensity ($I_{\nu}$) in the direction
+on observer at the outer boundary. For a given ray along $t$, the
+specific intensity is given by:\begin{equation}
+I_{\nu}=I_{0}e^{-\tau_{\infty}}+\int_{-\infty}^{t_{0}}\eta_{\nu}\left(t\right)\, e^{-\tau\left(t\right)}\mathrm{d}t\label{eq:formal_sol_integral}\end{equation}
+ where $I_{0}$ and $\eta_{\nu}$ are the intensity at the boundary
+on the opposite to the observer and the emissivity of the stellar
+atmosphere/wind at a frequency $\nu$. For a ray which intersects
+with the stellar core, $I_{0}$ is computed from the stellar stompshere
+mode of \citet{kurucz:1979} as descibed in section~\ref{sub:Contiuum-Source},
+and $I_{0}=0$ otherwise. The initial position of each ray is assigned
+to be at the center of the surface element ($\mathrm{d}A=p\,\sin q\,\mathrm{d}q\,\mathrm{dp}$).
+The code excution time is proportional to $n_{p}\, n_{q}\, n_{\nu}$
+where $n_{p}$ and $n_{q}$ are the number of cylindical radial and
+angluar points for the flux integration, and $n_{\nu}$is the number
+of frequency points. In the models presented in the next (section~\ref{sec:Results}),
+$n_{p}=180$, $n_{q}=100$, and $n_{\nu}=101$ are used unless specified
+otherwise. The linearliy spaced radial grid is used for the area where
+the ray intersects with magnetpshere, and the logarithmically spaced
+grid is used for the wind and the accretion disc regions.
+
+The optical depth $\tau$ is equation~\ref{eq:formal_sol_integral}
+is defined as: \[
+\tau\left(t\right)\equiv\int_{-\infty}^{t}\chi_{\nu}\left(t'\right)\,\mathrm{d}t'\]
+ where $\chi_{\nu}$ is the opacity of media the ray passes through.
+$\tau_{\infty}$ is the total optical depth measured from the initial
+ray point to the observer (or to the outer boundary closer to the
+observer). Initially, the optical depth segments $\mathrm{d\tau}$
+are computed at the intersections of a ray with the original AMR grid
+in which the opacity and emissivity infomation are stored. For high
+opticale depth models, additional points are inserted between the
+original points along the ray, and $\eta_{\nu}$ are $\chi_{\nu}$
+values are interpolated to those points to ensure $\mathrm{d}\tau<0.05$
+for the all ray segments.
+
+For a point in the magnetosphere and the wind flows, the emissivity
+and the opacity of the media are given as:\begin{equation}
+\left\{ \begin{array}{rcl}
+\eta_{\nu} & = & \eta_{\mathrm{c}}^{\mathrm{H}}+\eta_{l}^{\mathrm{H}}\\
+\chi_{\nu} & = & \chi_{c}^{\mathrm{H}}+\chi_{l}^{\mathrm{H}}+\sigma_{\mathrm{es}}\end{array}\right.\label{eq:emiss_opa_gas}\end{equation}
+where $\eta_{\mathrm{c}}^{\mathrm{H}}$ and $\eta_{l}^{\mathrm{H}}$
+are the continuum and line emissivity of hydrogen. $\chi_{c}^{\mathrm{H}}$,
+$\chi_{l}^{\mathrm{H}}$, and $\sigma_{\mathrm{es}}$ are the contiuum,
+line opacity (equation~\ref{eq:line_opacity}) of hydrogen, and the
+electron scattering opacity. Similarly, for a point in the accretion
+disc,
+
+\begin{equation}
+\left\{ \begin{array}{rcl}
+\eta_{\nu} & = & 0\\
+\chi_{\nu} & = & \kappa_{\mathrm{abs}}^{\mathrm{dust}}+\kappa_{\mathrm{sca}}^{\mathrm{dust}}\end{array}\right.\label{eq:emiss_opa_dust}\end{equation}
+ where $\kappa_{\mathrm{abs}}^{\mathrm{dust}}$ and $\kappa_{\mathrm{sca}}^{\mathrm{dust}}$
+are the dust absorption, and scattering opacity which are calculated
+using the dust property described in section~\ref{eq:grain-dist-function}.
+For computational simplicity, we assumed that the dust emissivity
+is zero. Since the disc mass of CTTS are rather small ($\sim0.1\,\mathrm{M_{\sun}}$)
+and low temperature ($<\sim1600\,\mathrm{K}$), the continuum flux
+contribution at H$\alpha$ wavelength is expected to be neglegible
+(e.g.~\citealt{chiang:1997}). The scattering flux by the accretion
+may become important for H$\alpha$ for the edge-on ($i\sim90^{\circ}$)
+cases in which the disc obscures the stellar surface -- the main source
+of contiuum flux. We examine this effect later in section~\ref{sub:model-acc-disc-wind}.
+
+
+\section{Results}
+
+\label{sec:Results}
+
+
+\subsection{Magnetosphere}
+
+\label{sub:model-acc}
+
+Using the standard parameters (Table~\ref{tab:std_parameters}) for
+the central star and the magentosphere, we examine the dependency
+of H$\alpha$ on the temperature ($T_{\mathrm{max}}$) of accretion
+flow and the mass accretion rate ($\dot{M}_{\mathrm{acc}}$), as similarly
+done by \citet{muzerolle:2001} for H$\beta$. The hot ring temperature
+is computed from the avilable kinetic energy of the free-falling gas
+as describe by \citet{hartmann:1994} while \citet{muzerolle:2001}
+used the constant hot ring temperature ($8000\,\mathrm{K}$) for most
+of their models. The accretion luminosity ($L_{\mathrm{acc}}$) of
+models with $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+is about a half of the total luminosity (without the hot ring) of
+the star, and $L_{\mathrm{acc}}$is proportional to $\dot{M}_{\mathrm{acc}}$.
+The results are placed in Figure~\ref{fig:atlas_acc_models}. Overall
+dependency on $T_{\mathrm{max}}$ and $\dot{M}_{\mathrm{acc}}$ are
+similar to that of \citet{muzerolle:2001}. In general, the line strength
+becomes weaker as the accretion rate and the temperature become smaller.
+The red-shifted absorption becomes less visible for higher accretion
+rate and temperature models in which the flux in the damping wings
+become important. Figure~\ref{fig:broadening} shows an example of
+the effect of the boradening of H alpha (with $T_{\mathrm{max}}=7500\,\mathrm{K}$
+and $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$)
+due to the damping constants as described in section~\ref{sec:radiative-transfer-model}.
+Although the maximum flux of the model with the broadening is almost
+identical to that of the model with no damping constant ($\Gamma=0$),
+a significant increase of the line flux in both red and blue wings
+of seen in the model with broadening. A weak red-shifted absorption
+component (which is a signiture of the magnetospherical accretion)
+is weakened or eliminated by the flux in broadened wing. 
+
+Table~\ref{tab:ha_ew_acc_models} shows the EW for the models shown
+in Figure~\ref{fig:atlas_acc_models}. About a half of the models
+shown the figure agree with the observed EW values of H$\alpha$ from
+30 TTS presented by \citet{alencar:2000} who found the EW of H$\alpha$
+ranges from $\sim3$~\AA\, to $\sim160$~\AA, and the mean to
+be $\sim55$~\AA. For the lowest $\dot{M}_{\mathrm{acc}}$ models,
+the EW values are smaller than the minimum EW observed by \citet{alencar:2000},
+and for some models the EWs are negative. Since the target selection
+criteria of \citet{alencar:2000} is not stated in their paper, we
+can not conclude that these low $\dot{M}_{\mathrm{acc}}$models disagree
+with the observation. \citet{reipurth:1996}, who measured the EW
+of 43 TTS and found similar distribution of EW values, mentioned that
+their EW measurements are underrepresenting real samples since the
+selection of the targerts are based on the strong H$\alpha$ emission
+in H$\alpha$ surveys.
+
+The dependency of the profile on the inclination angle ($i$) is demonstrated
+in Figure~\ref{fig:acc_inclination_effect}. The model uses the same
+paramters as in Figure~\ref{fig:broadening} (with broadening, $T_{\mathrm{max}}=7500\,\mathrm{K}$
+and $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$).
+The figure show that the peak (normalized) flux decrease as the inclination
+angle increases. Similarly, the equivalent width also decreases as
+the inclination increases. Because of the geometry of the magnsepsherical
+accretion (c.f. Figure~\ref{fig:overview}) and of the presence of
+the gas with the highest velocity close to the stellar surface, the
+highest red-shifted line-of-sight velocity is visible only at the
+high incination angles. This explains the wider appearence of the
+profile with $i=80^{\circ}$compared to the relatively narrow line
+appearence of the profile with $i=10^{\circ}$. Although not show
+here, a similar depdency on the inclination angle is found for the
+models with different temperatures ($T_{\mathrm{max}}=6500$, $8500$,
+$9500\,\mathrm{K}$). 
+
+As seen in the models of \citet{hartmann:1994} and \citet{muzerolle:2001},
+our models also show the blue-shifted peak and the blue-ward asymmetry
+caused by the occultation of the accretion flow by the equotrial disc
+and the stellar disc. On the hand, \citealt{alencar:2000} (see their
+Fig.~9) found a substential fraction of the observed H$\alpha$ profiles
+also shows the {}``red-shifted'' peak, and the P~Cygni profiles
+which can not be explained by the magnetospherical accretion model
+alone. In addition, a recent study by \citet{appenzeller:2005} showed
+that the equivalent width of H$\alpha$ increases as the inclination
+angle increases. Our model with the magnetospherical accreation flow
+clearly disagrees with their finding.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure}
+
+\begin{center}
+
+\includegraphics[%
+  clip,
+  scale=0.45]{figures/atlas_ha_i55_acc_model_new3.eps} 
+
+\end{center}
+
+\caption{H$\alpha$ model profiles for wide ranges of mass accretion rate ($\dot{M_\mathrm{acc}}$) and temperature ($T_{\mathrm{max}}$). The profiles are computed using only magnetospherical accretion flow (i.e. no wind/jet).  All the profiles are computed using the parameters of the 'standard' model (Table~\ref{tab:std_parameters}) and inclination $i=55^{\circ}$. The temperature (indicated along the vertical axis) of the model increase from top to bottom, and the mass accretion rate (indicated by the values in $\mathrm{M_{\odot}\,yr^{-1}}$ at the top) increases from left to right. The profiles are similar to those of \citet{muzerolle:2001}, available on-line (http://cfa--www.harvard.edu/cfa/youngstars/models/magnetospheric\_models.html). }
+
+\label{fig:atlas_acc_models}
+
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{table}
+
+\begin{center}
+
+\begin{tabular}{cccc}
+\hline 
+$T_{\mathrm{max}}\,\,\left(\mathrm{K}\right)$&
+&
+$\dot{M}_{\mathrm{acc}}$ ~$\left(\mathrm{M_{\sun}\, yr^{-1}}\right)$&
+\tabularnewline
+&
+$10^{-7}$&
+$10^{-8}$&
+$10^{-9}$\tabularnewline
+\hline 
+$6500$&
+$17.9$&
+$0.1$&
+$0.0$\tabularnewline
+$7500$&
+$25.2$&
+$-0.9$&
+$-0.5$\tabularnewline
+$8500$&
+$68.3$&
+$6.5$&
+$-0.7$\tabularnewline
+$9500$&
+$98.6$&
+$52.4$&
+$1.3$\tabularnewline
+\hline
+\end{tabular}
+
+\end{center}
+
+\caption{The summary of H$\alpha$ equivalent widths from the magnetospherical accretion flow models show in Figure~\ref{fig:atlas_acc_models}.}
+
+\label{tab:ha_ew_acc_models}
+
+\end{table}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure}
+
+\begin{center}
+
+\includegraphics[%
+  clip,
+  scale=0.45]{figures/broadening.eps}
+
+\end{center}
+
+\caption{Effect of the line broadening for H$\alpha$. The model computed with the damping constant ($\Gamma$), described in section~\ref{sec:radiative-transfer-model} (solid),  is compared with the one with no damping constant, $\Gamma=0$ (dashed).  Both models are computed with  $T_{\mathrm{max}}=7500~\Kelvin$,  $i=55^{\circ}$, and the standard parameters given in Table~\ref{tab:std_parameters}. The two models have similar peak flux levels (around $V \sim 0~\kmps$), but the total flux and the EW of the line increased drastically for the model with the damping constant. The broaded wings extend to $\sim \pm 900 \kmps$.  The redshifted absorption feature (very weakly) seen in the  $\Gamma=0$ model are not seen in the model with the broadening.  }
+
+\label{fig:broadening}
+
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure}
+
+\begin{center}
+
+\includegraphics[%
+  clip,
+  scale=0.45]{figures/acc_inc_effect.eps}
+
+\end{center}
+
+\caption{Dependecy of H$\alpha$ profiles on inclination ($i$).  The profiles are computed with the magneospherical accretion flow using the standard parameters given in Table~\ref{tab:std_parameters} and $T_{\mathrm{max}}=7500~\Kelvin$. The solid, dotted, and dashed lines are for $i=10^{\circ}$, $55^{\circ}$, and $80^{\circ}$ respectively. As the inclination becomes larger, the peak flux and the equivalent width of the line becomes smaller.  Similar dependency is seen in the models with $T_{\mathrm{max}}=6500, 8500, 9500$~K (not shown here). }
+
+\label{fig:acc_inclination_effect}
+
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Collimated Wind}
+
+\label{sub:model-wind}
+
+As mentioned in earlier, the magnetopsherical accretion flow model
+alone cannot explain some of the feartures seen in observations. As
+an alternative model, we now examine formation of H$\alpha$ in a
+simple collimated wind as described in section \ref{sub:wind_jet}.
+The basic wind model parameters introduced earlier are $\gamma$,
+$\beta$, $v_{\infty}$, $b$, $\theta_{\mathrm{wind}}$, $T_{\mathrm{wind}}$
+and $\dot{M}_{\mathrm{wind}}$. To minimize the number of parameters
+to be explored, we initially adopte $\gamma=0.05$, $v_{\infty}=200\,\kmps$
+\citep{appenzeller:2005} and $\dot{M}_{\mathrm{wind}}=10^{-8}\,\mathrm{M_{\sun}\, yr^{-1}}$.
+Futher, the angular extent of the wind is assumed to be close to the
+edge of the accretion disc, i.e. $\theta_{\mathrm{wind}}=80^{\circ}$;
+however, in this section, a simple optically-thick and geometrically-thin
+(i.e. opaque and zero-thickness) disc instead of the standard $\alpha$-disc
+(section~\ref{sub:Accretion-disc}) is used in all models for speed.
+The effect of replacing the geometrically thin disc with the $\alpha$-disc
+will be discussed later in this section. The degree of collimination
+is initially chosen to be $b=4$, i.e. the ratio of the density in
+polar direction to the density at the edge of the wind closest to
+the accretion disc is about $\left(\cos0^{\circ}/\cos80^{\circ}\right)^{4}\approx10^{3}$,
+for given radii. With these parameters kept constant, we examine the
+characterstics of H$\alpha$ profiles, as a function of the wind accereation
+paramter $\beta$ and the isothermal wind temperature $T_{\mathrm{wind}}$.
+Dependency on the other parameters will be discussed later in this
+section.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure*}
+
+\begin{center}
+
+\includegraphics[%
+  clip,
+  scale=0.9]{figures/atlas_ha_i55_wind_model.eps}
+
+\end{center}
+
+\caption{H$\alpha$ model profiles computed with wide ranges of the isothermal wind temperature ($T_{\mathrm{wind}}$) and the wind accerelation rate ($\beta$). The profiles are computed with only wind/jet (no magnetospherical accretion flow). The parameters of the 'standard' model (Table~\ref{tab:std_parameters}) are used. The wind mass-loss rate ($\dot{M}_{\mathrm{wind}}$), the inclination ($i$) and the degree of collimination ($b$) are fixed at $10^{-8}~{\mathrm{M_{\sun}~yr^{-1}}}$,  $55^{\circ}$ and $4.0$\, respectively. The temperature (indicated along the vertical axis) of the model increase from top to bottom, and the wind accerelation rate increases from left to right. The P~Cygni profile are seen for lower $T_{\mathrm{wind}}$ and lower $\beta$ (slow accerelation) models.  The postion of the absorption the component moves toward the line centre as $\beta$ increases. The effect of line broadening becomes more prominant for higher $T_\mathrm{wind}$ and higher $\beta$ models.}
+
+\label{fig:atlas_wind_model}
+
+\end{figure*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+The results are shown in Figure~\ref{fig:atlas_wind_model}. The
+P~Cygni profile are seen only in the models with lower $T_{\mathrm{wind}}$
+and $\beta$ (colder and faster accerelation wind). As the value of
+$\beta$ increases, the postion of the blue-shifted absorption component
+moves toward the line centre. For the slowest wind accerelation models
+($\beta=4.0$), the absorption components appear to be located at
+the line centre, giving the appearence of the double-peak emission
+profile. The line strength is very senstive to the temperature of
+the wind. Although the line should be also sensitive to the temperature
+structure of the wind itself, determination of a self-consistent wind
+temperature is beyound the scope of this paper. Readers are refered
+to \citet{hartmann:1982} in which the wind temperature structure
+is determined by balancing the radiative cooling rate (assuming optically
+thin) with the MHD wave heating rate. 
+
+The effect of line broadening becomes more prominant for higher $T_{\mathrm{wind}}$
+and higher $\beta$ models. Unlike the magnetospherical accretion
+only models (Figure~\ref{fig:atlas_acc_models}), the inverse P~Cygni
+profiles are not seen here. Interestingly, in some models (e.g. $T_{\mathrm{wind}}=9000\,\mathrm{K}$
+and $\beta=1.0$ model), the absorption componet is present at slightly
+red-ward of the line centre, causing the blue-ward asymmetry seen
+in the magnetospherical accretion models. The blue-ward asymetry are
+caused by: 1. the accretion disc placed at the equotorial plane and
+the finited-size steller disc blocking a part of the line emission
+region moving away from an observer, 2.~the much larger optical depth
+for the line emitted from the opposite side of the observer where
+the gas is moving away from the observer. Because of the broad wings
+of the Voigt profile, the line photon intereacts with the gas with
+much wider range of the projected velocity space.
+
+The dependency of the profile on the wind anisotoropy parameter $b$
+is demonstrated in Figure~\ref{fig:effect_wind_b_param}. The line
+peak closer to the line centre and the profile becomes slightly more
+symmetric around the line centre for the isotropic ($b=0$) compared
+to the cases with the colliminated wind ($b=4$). The P~Cygni profile
+feature become prominant for the spherical wind models (especially
+in $\beta=0.5$ model) because the collumn density of along the line
+of a sight of the observer at a medium inclination angle ($i=55^{\circ}$)
+increases as the wind becomes more spherical for a given value of
+the wind mass-loss rate. 
+
+Next, we examine the effect of the size of the inner radius of the
+disc and the distribution of the H$\alpha$ emission region. Figure~\ref{fig:effect_thin_disc}
+shows the wind emission profile computed with and without the equotorial
+accretion disc. The latter can be also considered as a model with
+a large inner radius of the accretion disc in which none of the wind
+emission region is not blocked provided the inclination is moderate.
+The profile shapes of the models are very similar to each other, but
+the one without the accretion disc is slightly more symmetric than
+the other. As one expects, the line equivalent width of the model
+without the disc is about twice of the model with the disc. Interestingly,
+the blueward asymmetry is present also in the profile computed without
+the disc. This is mainly caused by the occultaion of a part of emission
+region by the steller disc and the fact that the wind (density distribution)
+is asymmetric. The H$\alpha$ image (project in the plane of the observer
+at the location of the star) for the model with the disc (middle panel)
+and that for the model without (right plane) are also shown in the
+same figure. The images weere computed with a fast wind accereation
+rate ($\beta=0.5$). The extent of the line emission is smaller ($\sim0.2\,\mathrm{AU}$
+or $\sim20\, R_{*}$) compared to the spectro-astrometric observations
+of \citet{takami:2003} for RU~Lup and CS Cha which have 1--5 AU
+scale outflows%
+\footnote{\citet{takami:2003} also showed that some objects (e.g~Z CMa and
+AS~353A) show the outflows of larger scale ($>50\,\mathrm{AU}$)
+which could be formed by shocks rather than MHD-wave heating (e.g.
+\citealt{hartmann:1982}) or X-ray heating (e.g.~\citealt{shang:2002}). %
+}; however, if a slower wind acceration rate ( $\beta=4$) is the emission
+region become larger slightly ($\sim0.4$~AU).
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure*}
+
+\begin{center}
+
+\begin{tabular}{cc}
+\includegraphics[%
+  clip,
+  scale=0.45]{figures/wind_b_effect.eps}&
+\includegraphics[%
+  clip,
+  scale=0.45]{figures/windonly_B_effect.eps}\tabularnewline
+\end{tabular}
+
+\end{center}
+
+\caption{The effect of wind collimation. The dependecy of the line profiles on the wind anisotropy parameter $b$ for the models with $\left(T_{\mathrm{wind}},~\beta \right) = \left( 9000\Kelvin, 0.5\right)$  is shown on left, and that with $\left(T_{\mathrm{wind}},~\beta \right) = \left( 9000\Kelvin, 1.0\right)$ on right. All the other parameters are same as in Figure~\ref{fig:atlas_wind_model}.  The degree of the blue-ward asymmetry of the profiles is slightly lower for the spherical (isotroptic) wind model ($b=0$, dashed) compared to the collimated wind (anisotoropic) wind models ($b=4$, solid).  The P~Cygni profile feature become prominant for the spherical wind models (especially in $\beta=0.5$ model) since the collumn density of along the line of a sight of the observer at a medium inclination angle ($i=55^{\circ}$) increases for lower $b$ values for a fixed mass-loss rate of the wind. }
+
+\label{fig:effect_wind_b_param}
+
+\end{figure*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure*}
+
+\begin{center}
+
+\begin{tabular}{ccc}
+\includegraphics[%
+  clip,
+  scale=0.3]{figures/disc_nodisc_compare.eps}&
+\includegraphics[%
+  scale=0.3,
+  angle=270,
+  origin=lt]{figures/wind_thindisc.eps}&
+\includegraphics[%
+  scale=0.3,
+  angle=270,
+  origin=lt]{figures/wind_nodisc.eps}\tabularnewline
+\end{tabular}
+
+\end{center}
+
+\caption{Comparison of of the wind model with and without the optically-thick and geometrically-thin disc.  The latter can be also equivalent to a model with a large inner radius of the accretion disc in which none of the wind emission region is not blocked provided the inclination is moderate. The left panel shows the profile computed with $i=55^{\circ}$, $\beta=0.5$ and $T_{\mathrm{wind}} = 9000~\mathrm{K}$ (see text for other parameters used). The line profile of the model with the disc (solid) is similar to the model without the disc (dashed), but the latter is slightly more symmetric than the former. The line equivalent width of the model without the disc is about 2 times that of the model with the disc. The blueward asymmetry is present also in the profile computed without the disc. The H$\alpha$ image (project in the plane of the observer) for the model with the disc (middle panel) and that for the model without (right plane) are also shown. The image flux is computed by integrating the specific flux over the wavelength range ($-800\,\kmps < v < 800\,\kmps$. The flux is in an arbitrary units and in logarithmic (base $10$) scale. }
+
+\label{fig:effect_thin_disc}
+
+\end{figure*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Magnetosphere $+$ wind}
+
+\label{sub:model-acc-wind}
+
+Next, we examine the characteristics of the line profiles arising
+from the combination of the magnetospherical accretion flow and the
+wind. For simplicity, we fix the parameters for the magnetosphere
+($T_{\mathrm{max}}=7500\,\mathrm{K}$ and $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$
+as in Figure~\ref{fig:atlas_acc_models}), and use the constant wind
+mass-loss rate $\dot{M}_{\mathrm{wind}}=10^{-8}\,\mathrm{M_{\sun}\, yr^{-1}}$
+(i.e.~$\dot{M}_{\mathrm{wind}}=0.1\,\dot{M}_{\mathrm{acc}}$). Figure~\ref{fig:atlas_wind_acc_model}
+shows the results for $i=55^{\circ}$ and the same combinations of
+$T_{\mathrm{wind}}$ and $\beta$ used in section~\ref{sub:model-acc-wind}
+(Figure~\ref{fig:atlas_wind_model}). 
+
+While the emission from the magnetosphere dominates for the models
+with smaller $\beta$ and $T_{\mathrm{wind}}$ (the faster accerelation
+and the colder wind models), the emission from the wind dominates
+for the models with larger $\beta$ and $T_{\mathrm{wind}}$ (the
+slower accerelation and the hotter models). The P~Cygni profile feature
+becomes less prominant in some of the models because the additional
+emission from the magnetosphere extending in the wings. In most of
+the cases, the profiles are understood as a simple sum of the magnetospherilcal
+component and the wind component. 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure*}
+
+\begin{center}
+
+\includegraphics[%
+  clip,
+  scale=0.9]{figures/atlas_ha_i55_wind_acc_model.eps}
+
+\end{center}
+
+\caption{Same as Figure~\ref{fig:atlas_wind_model}, but the models include the magnetospherical accretion flow (with $T_{\mathrm{\max}}=7500~\mathrm{K}$ and $\dot{M}_{\mathrm{acc}}=10^{-8}\,\mathrm{M_{\sun}\,yr^{-1}}$ as in Figure~\ref{fig:atlas_acc_models}). While the emission from the magnetosphere dominates for the models with smaller $\beta$ and $T_{\mathrm{wind}}$ (the faster accerelation and the colder wind models), the emission from the wind domnates for the models with models with larger $\beta$ and $T_{\mathrm{wind}}$  (the slower accerelation and the hotter models). The P~Cygni profile feature becomes less prominant in some of the models because of the extra emission from the magnetosphere extends in the wings.}
+
+\label{fig:atlas_wind_acc_model}
+
+\end{figure*}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\subsection{Magentosphere $+$ disc $+$ wind}
+
+\label{sub:model-acc-disc-wind}
+
+\begin{itemize}
+\item Flux contribution by scattering of photon by disc?
+\end{itemize}
+
+\subsection{Summary}
+
+
+\section{Discussion}
+
+\label{sec:Discussion}
+
+
+\subsection{Classification scheme proposed by Reipurth et. al (1996)}
+
+\citet{reipurth:1996}proposed the two-dimentional classification
+of H$\alpha$ emission profiles of T~Tauri stars and Herbig Ae/Be
+stars. Their classification scheme contains four classes (I, II, III
+and IV) differenciated by the ratio of the secondary-to-primary emission
+components in the profiles. Each classes are devided into two sub-classes
+(B and R) which depends whether the absorption componet is on the
+blue or red side. Readers are refered to Fig.~4 of their paper. Figure~\ref{fig:atlas_reipurth}
+shows the sample profiles which are classified according to the definition
+of \citet{reipurth:1996}. The corresponding model parameters are
+given in Table~\ref{tab:classification}. As we can see from this
+figure, the combinatioin of the wind, magnetospherical accretion,
+and accretion disc can reasonably reproduce all the classes of the
+profiles seen in observations. 
+
+Within the parameter space covered, we find it is difficult to produce
+Type I type profile, which is very symmetric around the line centre
+and without any absorption feature, if the wind component is added
+in the model. Type II-B are 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{figure}
+
+\begin{center}
+
+\includegraphics[%
+  clip,
+  scale=0.65]{figures/atlas_reipurth_like.eps}
+
+\end{center}
+
+\caption{Sample H$\alpha$ model profiles which charactersize the classfication by \citet{reipurth:1996}. The combination of magnetospherical accretion flow, the accretion disc, and the colliminated wind model can reasonably reproduce wide ranges of H$\alpha$ profiles seen in observations.  The model parameters and short comments are summarised in Table~\ref{tab:classification}. The horizontal axises are velocities in $\kmps$, and the vertical axises are nomalized fluxes.  }
+
+\label{fig:atlas_reipurth}
+
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{table*}
+
+\begin{center}
+
+\begin{tabular}{llllllll}
+\hline 
+&
+$i$&
+$\dot{M}_{\mathrm{acc}}$&
+$T_{\mathrm{max}}$&
+$\dot{M}_{\mathrm{wind}}$&
+$T_{\mathrm{wind}}$&
+$\beta$&
+Comment\tabularnewline
+Class&
+$\left(\mathrm{deg.}\right)$&
+$\left(\mathrm{M_{\sun}\, yr^{-1}}\right)$&
+$\left(10^{3}\,\mathrm{K}\right)$&
+$\left(\mathrm{M_{\sun}\, yr^{-1}}\right)$&
+$\left(10^{3}\,\mathrm{K}\right)$&
+$\left(-\right)$&
+\tabularnewline
+\hline 
+I&
+$55$&
+$10^{-7}$&
+$7.5$&
+$-$&
+$-$&
+$-$&
+Accretion dominated possibly without the wind at a mid inclination.\tabularnewline
+II-B&
+$10$&
+$10^{-7}$&
+$7.5$&
+$10^{-8}$&
+$9.0$&
+$1.0$&
+Accretion and wind, mid wind accerelation rate, low inclination\tabularnewline
+III-B&
+$10$&
+$10^{-7}$&
+$7.5$&
+$10^{-8}$&
+$8.0$&
+$2.0$&
+Accretion and wind, with slow wind accerelation rate, low inclination\tabularnewline
+IV-B&
+$55$&
+$-$&
+$-$&
+$10^{-8}$&
+$8.0$&
+$0.5$&
+Accretion dominated (low accretion rate), mid inclination \tabularnewline
+II-R&
+$55$&
+$10^{-7}$&
+$7.5$&
+$10^{-8}$&
+$9.0$&
+$2.0$&
+Wind dominated, with fast wind accerelation rate, mid inclination\tabularnewline
+III-R&
+$80$&
+$10^{-7}$&
+$7.5$&
+$10^{-8}$&
+$9.0$&
+$1.0$&
+Wind dominated, slow wind acceralation rate, high inclination \tabularnewline
+IV-R&
+$55$&
+$10^{-9}$&
+$9.5$&
+$-$&
+$-$&
+$-$&
+Accreetion dominated possibly without the wind at a mid inclination.\tabularnewline
+\hline
+\end{tabular}
+
+\end{center}
+
+\caption{The summary model parameters for the profiles in Figure~\ref{fig:atlas_reipurth} and brief comments.}
+
+\label{tab:classification}
+
+\end{table*}
+
+
+\subsection{Comparisons with observations}
+
+For a demonstrative purpose, we performed preliminary model fit of
+H$\alpha$ observarions 
+
+\begin{itemize}
+\item other possible model? Better wind model?
+\item Any other bussiness?
+\end{itemize}
+
+\section{Conclusions}
+
+\label{sec:Conclusions}
+
+We presented the detailed study of the H$\alpha$ formation from the
+circumstealler material of classical T~Tauri stars. AND MORE.
+
+Future studies include: 
+
+\begin{enumerate}
+\item Improvement of the wind model. Temperature structure estimate by Hartmann()
+Alancar's paper. Disc-wind model of Branford and ...
+\item Try it with MHD model.
+\item Include the scattering flux term although this requires $N_{\phi}\times N_{\theta}$
+more times to compute a profile. 
+\item Polarization study to explore the geometry and the rotation of the
+disc. 
+\item Gas in the accretion disc (inner most part and the outer layer of
+the disc).
+\item Variability study using a 3D model.
+\end{enumerate}
+\section*{Acknowledgements}
+
+RK is supported by PPARC standard grand PPA/G/S/2001/00081. 
+
+%
+
+%
+
+%
+
+%----------------------------------------------------
+
+% Bibliography follows here.
+
+%-----------------------------------------------------
+
+%
+
+%
+
+%
+
+
+
+
+
+\bibliographystyle{mn}
+
+\bibliography{mnras}
+
+%
+
+\label{lastpage}
+\end{document}
