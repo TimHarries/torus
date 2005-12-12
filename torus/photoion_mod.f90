@@ -21,6 +21,7 @@ contains
 
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
+    use input_variables, only : smoothFactor
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -53,6 +54,8 @@ contains
     real(double) :: alpha21s, alpha21p, alpha23s, photonPacketWeight
     real :: excitation, deexcitation, excitation2
     real :: fac
+    logical :: gridConverged
+
     type(SAHAMILNETABLE) :: hTable, heTable
 
     call createSahaMilneTables(hTable, heTable)
@@ -64,7 +67,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 500000
+    nMonte = 200000
 
     nIter = 0
 
@@ -72,11 +75,11 @@ contains
        nIter = nIter + 1
        nInf=0
        call plot_AMR_values(grid, "ionization", "x-z", 0., &
-            "ionization.ps/vcps", .true., .false., &
+            "ionization.ps/vcps", .true., .true., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-            "lucy_temp_xz.ps/vcps", .true., .false., &
+            "lucy_temp_xz.ps/vcps", .false., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
        epsoverdeltat = lcore/dble(nMonte)
        call dumpLexington(grid, epsoverdeltat)
@@ -121,7 +124,6 @@ contains
                    alpha1 = recombToGround(thisOctal%temperature(subcell))
                    call random_number(r)
                    
-
                    if (r < (alpha1 / alphaA)) then                
                       ! recombination to continuum (equation 26 of Lucy MC trans prob II)
                       call getSahaMilneFreq(htable, dble(thisOctal%temperature(subcell)), thisFreq)
@@ -129,9 +131,10 @@ contains
                    else
                       escaped = .true.
                    endif
-                else
-                   ! photon absorbed by He
 
+                else
+
+                   ! photon absorbed by He
 
                    call calcHeRecombs(thisOctal%temperature(subcell), alpha1, alpha21s, alpha21p, alpha23s)
                    call random_number(r)
@@ -142,17 +145,22 @@ contains
                       uHat = randomUnitVector()
                    else if ((r > alpha1/alphaA).and.(r <= (alpha1+alpha21s)/alphaA)) then
                       !two photon continuum
-                      call twoPhotonContinuum(thisFreq)
-                      uHat =  randomUnitVector()
-                            
-                   else if ( (r > (alpha1+alpha21s)/alphaA).and.(r <= (alpha1+alpha21s+alpha23s)/alphaA)) then
+                      call random_number(r)
+                      if (r < 0.56) then
+                         call twoPhotonContinuum(thisFreq)
+                         uHat =  randomUnitVector()
+                      else
+                         escaped = .true.
+                      endif
+                   else if ( (r > (alpha1+alpha21s)/alphaA).and.(r <= (alpha1+alpha21s+alpha21p)/alphaA)) then
                       ! ly alpha
                       thisFreq = (21.2 / ergtoev)/hcgs
                       uHat = randomUnitVector()
                    else 
-                      thisFreq = (19.2 /ergtoev)/hcgs
+                      thisFreq = (19.8 /ergtoev)/hcgs
                       uHat =  randomUnitVector()
                    endif
+!                   write(*,*) 1.e8*cspeed/thisFreq,hCgs*thisFreq*ergtoev
                 endif
              endif
           enddo
@@ -161,12 +169,12 @@ contains
        epsOverDeltaT = (lCore) / dble(nInf)
 
 
-!       do i = 1, 10
+       do i = 1, 3
           write(*,*) "Calculating ionization and thermal equilibria",i
           call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-!          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
-!          write(*,*) "Done."
-!       enddo
+          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+          write(*,*) "Done."
+       enddo
 
        fac = 2.06e37
        
@@ -177,14 +185,14 @@ contains
        
 
        call getForbiddenLineLuminosity(grid, "N II", 1.22e6, luminosity1)
-       write(*,'(a,2f12.4)') "N II (122 um):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.034*2.05e37)
+       write(*,'(a,2f12.4)') "N II (122 um):",(luminosity1)/fac,(luminosity1)/(0.034*2.05e37)
 
        call getForbiddenLineLuminosity(grid, "N II", 6584., luminosity1)
        call getForbiddenLineLuminosity(grid, "N II", 6548., luminosity2)
        write(*,'(a,2f12.4)') "N II (6584+6548):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.730*2.05e37)
 
        call getForbiddenLineLuminosity(grid, "N III", 5.73e5, luminosity1)
-       write(*,'(a,2f12.4)') "N III (57.3 um):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.292*2.05e37)
+       write(*,'(a,2f12.4)') "N III (57.3 um):",(luminosity1)/fac,(luminosity1+luminosity2)/(0.292*2.05e37)
 
 
        call getForbiddenLineLuminosity(grid, "O I", 6300., luminosity1)
@@ -205,6 +213,7 @@ contains
 
        call getForbiddenLineLuminosity(grid, "O III", 4363., luminosity3)
        write(*,'(a,2f12.4)') "O III (4363):",(luminosity3)/1.e37,luminosity3/(0.0037*2.05e37)
+
        call getForbiddenLineLuminosity(grid, "O III", 518145., luminosity1)
        call getForbiddenLineLuminosity(grid, "O III", 883562., luminosity2)
        write(*,'(a,2f12.4)') "O III (52+88um):,",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/((1.06+1.22)*2.05e37)
@@ -237,6 +246,22 @@ contains
        write(*,'(a,2f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(1.22*2.05e37)
 
 
+       call locate(grid%lamArray, grid%nLambda,900.,ilam)
+
+       if ((niter > 2).and.(nIter < 8)) then
+          if (writeoutput) write(*,*) "Smoothing adaptive grid structure for ionization..."
+          call smoothAMRgridIonization(grid%octreeRoot,grid,gridConverged,ilam,inheritprops = .false., interpProps = .false.)
+          if (writeoutput) write(*,*) "...grid smoothing complete"
+          if (writeoutput) write(*,*) "Smoothing adaptive grid structure..."
+          gridConverged = .false.
+          do
+             call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops=.false., interpProps=.false.)
+             if (gridConverged) exit
+          end do
+          if (writeoutput) write(*,*) "...grid smoothing complete"
+       endif
+
+!       nMonte = nMonte * 2
 
     enddo
 
@@ -813,7 +838,7 @@ contains
     real(double) :: y1, y2, ym, ymin, Hheating, Heheating, tot
     real :: deltaT
     real(double) :: junk
-    real :: underCorrection = 0.8
+    real :: underCorrection = 1.
     real :: pops(10)
     
     do subcell = 1, thisOctal%maxChildren
@@ -844,36 +869,19 @@ contains
                      * (epsOverDeltaT / (v * 1.d30))*thisOctal%Heheating(subcell) ! equation 21 of kenny's
                 totalHeating = (Hheating + HeHeating)
 
-
                 nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
                 nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
                 nh = thisOctal%nh(subcell)
 
+                
+
                 if (totalHeating == 0.d0) then
-                   thisOctal%temperature(subcell) = 3.
+                   thisOctal%temperature(subcell) = 1.e-3
                 else
                    converged = .false.
-!                   t1 = 1000.
-!                   t2 = 100000.
-!                   ymin = 1.e30
-!                   found = .false.
-!                   do i = 1, 1000
-!                      t1 = 1000.+99000.*real(i-1)/1000.
-!                      t2 = 1000.+99000.*real(i)/1000.
-!                      y1 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1) - totalHeating)
-!                      y2 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2) - totalHeating)
-!                      if (abs(y1) < ymin) then
-!                         tm = t1
-!                         ymin = abs(y1)
-!                      endif
-!                      if (y1*y2 < 0.d0) then
-!                         found = .true.
-!                         exit
-!                      endif
-!                   enddo
 
                    t1 = 5000.
-                   t2 = 20000.
+                   t2 = 15000.
                    found = .true.
 
                    if (found) then
@@ -881,11 +889,11 @@ contains
                       y2 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2) - totalHeating)
                       if (y1*y2 > 0.d0) then
 
-                         write(*,*) "t1", &
-                              t1,y1,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1),totalHeating
-                         write(*,*) "t2", &
-                              t2,y2,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2),totalHeating
-                         tm = 8000.
+!                         write(*,*) "t1", &
+!                              t1,y1,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1),totalHeating
+!                         write(*,*) "t2", &
+!                              t2,y2,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2),totalHeating
+                         tm = 5000.
                          converged = .true.
                       endif
                    
@@ -906,9 +914,10 @@ contains
                          else
                             converged = .true.
                             tm = 0.5*(t1+t2)
+                            write(*,*) t1, t2, y1,y2,ym
                          endif
                          
-                         if (abs((t1-t2)/t1) .le. 1.e-3) then
+                         if (abs((t1-t2)/t1) .le. 1.e-4) then
                             converged = .true.
                          endif
                       
@@ -966,12 +975,42 @@ contains
     real(double) :: fac, thisRootTbetaH, betaH, betaHe, thisRootTbetaHe
     real :: thisLogT
     integer :: n
-    
+    real(double) :: log10te,betarec, coolrec, betaff, coolff
+    real :: ch12, ch13, ex12, ex13, th12, th13, coolcoll, te4, teused
+        real, parameter                :: hcRyd = &    ! constant: h*c*Ryd (Ryd at inf used) [erg]
+             & 2.1799153e-11
+
     coolingRate = 0.d0
 
     gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3.d0)  ! Kenny equation 23
 
     coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
+
+    log10te = thisLogT
+
+            ! collisional excitation of Hydrogen
+            ! Mathis, Ly alpha, beta
+            ch12 = 2.47e-8
+            ch13 = 1.32e-8
+            ex12 = -0.228
+            ex13 = -0.460
+            th12 = 118338.
+            th13 = 140252.
+            teused = temperature
+            te4 = temperature / 1.e4
+            if (TeUsed > 5000.) then 
+             
+                coolColl = (ch12*exp(-th12/TeUsed)*Te4**ex12 + &
+                     & ch13*exp(-th13/TeUsed)*Te4**ex13) * &
+                     & hcRyd*nh*Ne
+
+             else
+
+                coolColl = 0.
+     
+             end if
+             coolingrate = coolingrate + coolcoll
+
 
     if (coolingRate < 0.) then
        write(*,*) "negative ff cooling",nhii,nheii,ne,gff,sqrt(temperature)
@@ -995,9 +1034,12 @@ contains
 
     coolingRate = coolingRate + ne * nhii * kerg * temperature * betaH
 
+
+
     if (ne * nhii * kerg * temperature * betaH < 0.) then
        write(*,*) "negative H cooling",ne,nhii,kerg,temperature,betah
     endif
+
 
     coolingRate = coolingRate + ne * nheii * kerg * temperature * betaHe
 
@@ -1011,7 +1053,6 @@ contains
     endif
     coolingRate = coolingRate + crate
 
-    coolingRate = coolingRate * 1.2
   end function HHeCooling
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight)
@@ -1109,8 +1150,6 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
                 thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
                 chargeExchangeIonization)
 
-
-           
         
            xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
       max(1.d-30,(recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination))
@@ -1124,7 +1163,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
         enddo
         if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
            thisOctal%ionFrac(subcell,iStart:iEnd) = &
-                max(1.d30,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
+                max(1.d-30,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
         else
            thisOctal%ionFrac(subcell,iStart:iEnd) = 1.e-30
         endif
@@ -1606,12 +1645,16 @@ function recombRate(thisIon, temperature) result (rate)
         select case(thisIon%n) ! from nussbaumer and storey 1987
            case(16) ! S I 
               rate = 3.e-13
+              rate = rate + svs1982(dble(temperature), 4.10D-13, 6.30D-1)
            case(15) ! S II
               rate = 3.e-30 ! page 1344, para 2, kenny's paper
+              rate = rate + svs1982(dble(temperature), 1.80D-12, 6.86D-1)
            case(14) ! S  III
               rate = 1.5e-11
+              rate = rate + svs1982(dble(temperature), 2.70D-12, 7.45D-1)
            case(13) ! S IV
               rate = 2.5e-11
+              rate = rate + svs1982(dble(temperature), 5.70D-12, 7.55D-1)
         end select
      case DEFAULT
         write(*,*) "No recombination rate for ",thisIon%species
@@ -1650,6 +1693,15 @@ function ppb1991(z, a, b, c, d, temperature) result(rate)
 
 end function ppb1991
 
+function svs1982(t, alpharad, xrad) result (rate)
+
+! radiative recombination rates based on
+! Shull and Van Steenberg, 1992, ApJS, 48, 95
+
+  real(double) :: t, alpharad, xrad, rate
+
+  rate = alpharad * (t /1.d4)**(-xrad)
+end function svs1982
 
 function returnNe(thisOctal, subcell, ionArray, nion) result (ne)
   real(double) :: ne, tot
@@ -1868,7 +1920,8 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
   real :: t , fac
   real :: boltzFac
 
-  t = max(min(20000.,temperature),5000.)
+  t = max(min(real(thisIon%transition(iTransition)%t(thisIon%transition(iTransition)%ngamma)),temperature), &
+       real(thisIon%transition(iTransition)%t(1)))
   call locate(thisIon%transition(iTransition)%t, thisIon%transition(iTransition)%ngamma, t, i)
   fac = (t - thisIon%transition(iTransition)%t(i))/(thisIon%transition(iTransition)%t(i+1) - thisIon%transition(iTransition)%t(i))
   thisGamma = thisIon%transition(iTransition)%gamma(i) + &
@@ -1879,6 +1932,7 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
   fac = (8.63e-6 / sqrt(temperature)) * thisGamma
 
   deexcitation =  fac / thisIon%level(thisIon%transition(iTransition)%j)%g
+
   excitation =  fac / thisIon%level(thisIon%transition(iTransition)%i)%g * boltzFac
 
 !  excitation = fac * boltzFac
@@ -1886,6 +1940,9 @@ subroutine getCollisionalRates(thisIon, iTransition, temperature, excitation, de
 !       / thisIon%level(thisIon%transition(iTransition)%i)%g
 
 !  if (thisIon%species == "O III") then
+!     do i = 1, thisIon%transition(1)%ngamma
+!        write(*,*) i,thisIon%transition(1)%t(i),thisIon%transition(1)%gamma(i)
+!     enddo
 !     if (iTransition ==1) then
 !        write(*,*) thisGamma, boltzFac, fac, excitation, deexcitation
 !     endif
@@ -2000,77 +2057,86 @@ subroutine solvePops(thisIon, pops, ne, temperature, debug)
   real(double) :: ne
   real :: pops(*)
   real :: temperature
-  real(double), allocatable :: matrixA(:,:), MatrixB(:,:), tempMatrix(:,:)
+  real(double), allocatable :: matrixA(:,:), MatrixB(:), tempMatrix(:,:), qeff(:,:)
   integer :: n, iTrans, i, j
-  real :: excitation, deexcitation, rateij, rateji
+  real :: excitation, deexcitation, rateij, rateji, arateji
   logical :: ok
   logical, optional :: debug
 
   n = thisIon%nLevels
-  allocate(matrixA(1:n+1, 1:n+1), matrixB(1:n+1, 1), tempMatrix(1:n+1,1:n+1))
+  allocate(matrixA(1:n, 1:n), matrixB(1:n), tempMatrix(1:n,1:n), qeff(1:n,1:n))
 
   matrixA = 1.d-30
   matrixB = 0.d0
+
+  matrixA(1,:) = 1.d0
+  matrixB(1) = 1.d0
+
   do iTrans = 1, thisIon%nTransitions
-     i = thisIon%transition(iTrans)%i
-     j = thisIon%transition(iTrans)%j
+     i = thision%transition(itrans)%i
+     j = thision%Transition(itrans)%j
      call getCollisionalRates(thisIon, iTrans, temperature, excitation, deexcitation)
-     rateij = max(1.d-40,excitation * ne)
-     rateji = max(1.d-30,deexcitation * ne + thisIon%transition(iTrans)%a)
-
-     if (PRESENT(debug)) then
-        if (debug) write(*,*) i, j, rateij, rateji
-     endif
-
-     matrixA(i,i) = matrixA(i,i)-rateij
-
-     matrixA(j,j) = matrixA(j,j)-rateji
-
-     matrixA(j,i) = matrixA(j,i) + rateij
-     matrixA(i,j) = matrixA(i,j) + rateji
-
-
+     qeff(i,j) = excitation
+     qeff(j,i) = deexcitation
   enddo
 
-  do i = 1, n
-     matrixA(n+1,i) = 1.d0
+  do i = 2, n
+     do j = 1, n
+
+        do iTrans = 1, thisIon%nTransitions
+           if (((i == thision%transition(itrans)%i).and.(j == thision%Transition(itrans)%j)).or. &
+               ((i == thision%transition(itrans)%j).and.(j == thision%Transition(itrans)%i))) then
+              arateji =  thisIon%transition(iTrans)%a
+              
+              matrixA(i,j) = matrixA(i,j) + ne * qeff(j, i)
+              matrixA(i,i) = matrixA(i,i) - ne * qeff(i, j)
+              if (j > i) then
+                 matrixA(i,j) = matrixA(i,j) + arateji
+              else
+                 matrixA(i,i) = matrixA(i,i) - arateji
+              endif
+
+           endif
+        enddo
+
+     enddo
   enddo
-  matrixB = 0.d0
-  matrixB (n+1,1) = 1.d0
-  
-!  do i = 1, n+1
-!     write(*,'(1p,7e12.3)') matrixA(i,1:n)
-!  enddo
 
   tempMatrix = matrixA
 
   if (PRESENT(debug)) then
      if (debug) then
-        do i = 1, n+1
+        do i = 1, n
            write(*,'(1p,9e12.3)') tempmatrix(i,1:n)
         enddo
      endif
   endif
+  
+  call luSlv(matrixA, matrixB, n)
 
-  call gaussj(matrixA, n+1, n+1, matrixB, 1, 1, ok)
+  matrixB(1:n) = matrixB(1:n) / SUM(matrixB(1:n))
+  
+  ok = .true.
+
   if (.not.ok) then
      write(*,*) "Population solver failed for: ",thisIon%species
+     write(*,*) matrixB(1:n)
      write(*,*) "nlevels",thisIon%nLevels,"ntrans",thisIon%nTransitions 
      write(*,*) "temp",temperature,"ne",ne
      
-     do i = 1, n+1
+     do i = 1, n
         write(*,'(1p,9e12.3)') tempmatrix(i,1:n)
      enddo
      matrixB = 0.d0
-     matrixB(1,1) = 1.d0
+     matrixB(1) = 1.d0
      write(*,*) "Setting pops to ground state"
   endif
 
   do i = 1, n
-     pops(i) = max(1.d-30,matrixB(i,1))
+     pops(i) = max(1.d-30,matrixB(i))
   enddo
 
-  deallocate(matrixA, matrixB, tempMatrix)
+  deallocate(matrixA, matrixB, tempMatrix, qeff)
 
 end subroutine solvePops
 
@@ -2092,7 +2158,7 @@ end subroutine calcHeRecombs
 
 subroutine createSahaMilneTables(hTable, heTable)
   type(SAHAMILNETABLE) :: hTable, heTable
-  real(double) :: nu0_h, nu0_he, nufinal
+  real(double) :: nu0_h, nu0_he, nufinal_h, nufinal_he
   integer :: nFreq, nTemp
   integer :: i, j
   real :: e
@@ -2115,11 +2181,12 @@ subroutine createSahaMilneTables(hTable, heTable)
   nu0_h = 13.6d0/ergtoev/hcgs
   nu0_he = 24.59d0/ergtoev/hcgs
 
-  nufinal = 6.d0*nu0_he 
+  nufinal_h = 2.d0*nu0_h
+  nufinal_he = 2.d0*nu0_he
 
   do i = 1, nFreq
-     hTable%freq(i) = log10(nu0_h) + (log10(nuFinal)-log10(nu0_h))*dble(i-1)/dble(nFreq-1)
-     heTable%freq(i) = log10(nu0_he) + (log10(nuFinal)-log10(nu0_he))*dble(i-1)/dble(nFreq-1)
+     hTable%freq(i) = log10(nu0_h) + (log10(nuFinal_h)-log10(nu0_h))*dble(i-1)/dble(nFreq-1)
+     heTable%freq(i) = log10(nu0_he) + (log10(nuFinal_he)-log10(nu0_he))*dble(i-1)/dble(nFreq-1)
   enddo
   hTable%freq(1:hTable%nFreq) = 10.d0**hTable%freq(1:hTable%nfreq)
   heTable%freq(1:hTable%nFreq) = 10.d0**heTable%freq(1:hTable%nfreq)
@@ -2147,16 +2214,17 @@ subroutine createSahaMilneTables(hTable, heTable)
         hTable%Clyc(i,j) = hTable%Clyc(i,j-1) + jnu * dfreq
 !        write(*,*) i,j,htable%clyc(i,j),(hTable%freq(j)/cSpeed)**2,hTable%temp(i)**1.5d0,dble(hxsec), &
 !             exp(-hcgs*(hTable%freq(j)-nu0_h)/(kerg*hTable%temp(i)))
+
         e = heTable%freq(j) * hcgs * ergtoev
         call phfit2(2, 2, 1 , e , hexsec)
 
         dFreq = heTable%freq(j)-heTable%freq(j-1)
-        jnu = 2.d0*heTable%freq(j)**2 * heTable%temp(i)**(-1.5d0) * dble(hexsec) &
-             * exp(-hcgs*(heTable%freq(j)-nu0_h)/(kerg*heTable%temp(i)))
+        jnu = 2.d0*(heTable%freq(j)/cSpeed)**2 * heTable%temp(i)**(-1.5d0) * dble(hexsec) &
+             * exp(-hcgs*(heTable%freq(j)-nu0_he)/(kerg*heTable%temp(i)))
         heTable%Clyc(i,j) = heTable%Clyc(i,j-1) + jnu * dfreq
      enddo
      hTable%Clyc(i,1:hTable%nFreq) = hTable%Clyc(i,1:hTable%nFreq) / hTable%Clyc(i,hTable%nFreq)
-     heTable%Clyc(i,1:heTable%nFreq) = heTable%Clyc(i,1:heTable%nFreq) / hTable%Clyc(i,heTable%nFreq)
+     heTable%Clyc(i,1:heTable%nFreq) = heTable%Clyc(i,1:heTable%nFreq) / heTable%Clyc(i,heTable%nFreq)
   end do
 end subroutine createSahaMilneTables
 
@@ -2190,10 +2258,13 @@ subroutine twoPhotonContinuum(thisFreq)
      prob(i) = prob(i-1) + (y(i)-y(i-1)) * hei(i)
   enddo
   prob(1:21) = prob(1:21)/prob(21)
-  call random_number(r)
-  call locate(prob, 21, r, i)
-  fac = y(i) + ((r - prob(i))/(prob(i+1)-prob(i)))*(y(i+1)-y(i))
-  thisFreq = (1.-fac)*freq
+  thisFreq = 0.
+  do while((thisFreq*hcgs*ergtoev) < 13.6)
+     call random_number(r)
+     call locate(prob, 21, r, i)
+     fac = y(i) + ((r - prob(i))/(prob(i+1)-prob(i)))*(y(i+1)-y(i))
+     thisFreq = (1.-fac)*freq
+  enddo
 end subroutine twoPhotonContinuum
   
 

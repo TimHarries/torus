@@ -2,13 +2,15 @@
 # Usage :: 
 #    1. make             : Make torus with optimization flag(s)
 #    2. make clean       : Clean up directory
-#    3. make debug=yes   : Make torus with debug option,
-#    4. make profile=yes : Make torus with profiler option
-#    5. make static=yes  : Make torus with static linking
+#    3. make pgplot=no   : Use pgplot stubs rather than library
+#    4. make debug=yes   : Make torus with debug option,
+#    5. make profile=yes : Make torus with profiler option
+#    6. make static=yes  : Make torus with static linking
 #-----------------------------------------------------------------
 
 KNOWN_SYSTEM=no
 debug = no
+pgplot = yes
 static = no
 profile= no
 #PATH2G2C=/usr/lib/gcc-lib/i386-redhat-linux/3.2.2
@@ -30,7 +32,8 @@ ifeq ($(SYSTEM), g95)
     SPECF77=spec_f77.f.default
     F2CLIB=-L$(PATH2G2C) -lg2c
     STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+    STARLIBS=-L/star/lib `ndf_link`
+    PGLIBS=-L/star/lib `pgplot_link`
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
 endif
@@ -52,7 +55,8 @@ ifeq ($(SYSTEM), osx)
 #    F2CLIB=-L$(PATH2G2C) -lg2c
     F2CLIB= -L/usr/local/lib -lg2c
     STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+    STARLIBS=-L/star/lib `ndf_link` 
+    PGLIBS=-L/star/lib `pgplot_link`
 #    STARLIBS=-L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
@@ -75,7 +79,8 @@ ifeq ($(SYSTEM), gfortran)
 #    F2CLIB=-L$(PATH2G2C) -lg2c
     F2CLIB= -L/usr/local/lib -lg2c
     STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+    STARLIBS=-L/star/lib `ndf_link`
+    PGLIBS=-L/star/lib `pgplot_link`
 #    STARLIBS=-L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
@@ -127,7 +132,8 @@ ifeq ($(SYSTEM), gfort)
     SPECF77=spec_f77.f.default
     F2CLIB=-L$(PATH2G2C) -lg2c
     STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+    STARLIBS=-L/star/lib `ndf_link` 
+    PGLIBS=-L/star/lib `pgplot_link`
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
 endif
@@ -148,7 +154,8 @@ ifeq  ($(SYSTEM), linux)
    SPECF77=spec_f77.f.default
    F2CLIB=-lg2c
    STATICLIBS=-lpthread
-   STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+   STARLIBS=-L/star/lib `ndf_link`
+   PGLIBS=-L/star/lib `pgplot_link`
    MK_MPI_SRC = no
    KNOWN_SYSTEM=yes
 endif
@@ -168,7 +175,8 @@ ifeq ($(SYSTEM), alpha)
    KINDMOD=kind_mod.f90.osf
    F2CLIB= 
    STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+   STARLIBS=-L/star/lib `ndf_link`
+   PGLIBS=-L/star/lib `pgplot_link`
    MK_MPI_SRC = no
    KNOWN_SYSTEM=yes
 endif
@@ -191,7 +199,8 @@ ifeq ($(SYSTEM), lamosx)
    SPECF77=spec_f77.f.default
    F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm -L/usr/lib -lSystemStubs
    STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+   STARLIBS=-L/star/lib `ndf_link` 
+   PGLIBS=-L/star/lib `pgplot_link`
    MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes
 endif
@@ -214,7 +223,8 @@ ifeq ($(SYSTEM), mpilam)
    SPECF77=spec_f77.f.default
    F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
    STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+   STARLIBS=-L/star/lib `ndf_link` 
+   PGLIBS=-L/star/lib `pgplot_link`
    MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes
 endif
@@ -237,7 +247,8 @@ ifeq ($(SYSTEM), mpich)
    SPECF77=spec_f77.f.default
    F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
    STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+   STARLIBS=-L/star/lib `ndf_link`
+   PGLIBS=-L/star/lib `pgplot_link`
    MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes
 endif
@@ -258,7 +269,8 @@ ifeq ($(SYSTEM), linuxintel)
     SPECF77=spec_f77.f.default
     F2CLIB=-L$(PATH2G2C) -lg2c
     STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+    STARLIBS=-L/star/lib `ndf_link` 
+    PGLIBS=-L/star/lib `pgplot_link`
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
 endif
@@ -283,7 +295,8 @@ ifeq ($(SYSTEM), mpiintel)
     F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi \
            -L$(PATH2G2C) -lg2c -lm
     STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` `pgplot_link` 
+    STARLIBS=-L/star/lib `ndf_link` 
+    PGLIBS=-L/star/lib `pgplot_link`
     MK_MPI_SRC =yes
     KNOWN_SYSTEM=yes
 endif
@@ -306,7 +319,8 @@ ifeq ($(SYSTEM), mpig95)
    SPECF77=spec_f77.f.default
    F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
    STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link` `pgplot_link`
+   STARLIBS=-L/star/lib `ndf_link` 
+   PGLIBS=-L/star/lib `pgplot_link`
    MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes
 endif
@@ -329,7 +343,8 @@ ifeq ($(SYSTEM), miracle)
    SPECF77=spec_f77.f.miracle
    F2CLIB= 
    STATICLIBS=
-   STARLIBS=-L/home/rk/pgplot -lpgplot -lX11
+   STARLIBS=
+   PGLIBS=-L/home/rk/pgplot -lpgplot -lX11
    MK_MPI_SRC = no
    KNOWN_SYSTEM=yes
 endif
@@ -350,7 +365,8 @@ ifeq ($(SYSTEM), ukaff1a)
    SPECF77=spec_f77.f.miracle
    F2CLIB= 
    STATICLIBS=
-   STARLIBS=-L/home/th/pgplot -lpgplot
+   STARLIBS=
+   PGLIBS=-L/home/th/pgplot -lpgplot
    MK_MPI_SRC = yes
    KNOWN_SYSTEM=yes
 endif
@@ -370,7 +386,8 @@ ifeq ($(SYSTEM), darwin)
     SPECF77=spec_f77.f.darwin
     F2CLIB=
     STATICLIBS=
-    STARLIBS=-L/Users/mbate/Documents/ryuichi/pgplot -lpgplot 
+    STARLIBS=
+    PGLIBS=-L/Users/mbate/Documents/ryuichi/pgplot -lpgplot 
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
 endif
@@ -391,7 +408,8 @@ ifeq ($(SYSTEM), ceres)
     SPECF77=spec_f77.f.miracle
     F2CLIB= 
     STATICLIBS=
-    STARLIBS=-L/usr/lib -lxlf90 -lm -lc -lX11 -L${HOME}/software/pgplot -lpgplot
+    STARLIBS=
+    PGLIBS=-L/usr/lib -lxlf90 -lm -lc -lX11 -L${HOME}/software/pgplot -lpgplot
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
 endif
@@ -404,6 +422,13 @@ ifeq ($(debug), yes)
 else 
    DEBUGFLAG=
    ETCFLAG =$(DEBUGFLAG)
+endif
+
+ifeq ($(pgplot), no)
+   PGSTUBS= pgplot_stubs.o
+   PGLIBS= 
+else 
+   PGSTUBS= 
 endif
 
 ifeq ($(profile), yes)
@@ -442,8 +467,10 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  hyd_col_coeff.f90 rotation_variables.f90 function_variables.f90 \
  flow_speed_variables.f90 clump_mod.f90 parallel_mod.f90 \
  discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
- jet_class.f90 cmfgen_class.f90 messages_mod.f90
+ jet_class.f90 cmfgen_class.f90 messages_mod.f90 
 
+PGSOURCE= pgplot_stubs.f90
+PGOBJ= $(PGSOURCE:.f90=.o)
 
 F77SOURCE= image_f77.f mieDistCrossSection.f palette.f\
            spec_f77.f bhmie.f phfit2.f
@@ -452,7 +479,7 @@ F90OBJ= $(F90SOURCE:.f90=.o)
 
 F77OBJ= $(F77SOURCE:.f=.o)
 
-ALLOBJ= $(F90OBJ) $(F77OBJ)
+ALLOBJ= $(F90OBJ) $(F77OBJ) $(PGOBJ)
 
 F90=    $(F95COMP)   $(ETCFLAG) $(STATICFLAG) $(FASTFLAG) $(MATHTRAP)
 F77=    $(F77COMP)   $(ETCFLAG) $(STATICFLAG) $(FASTFLAG) $(MATHTRAP) $(F77FLAG)
@@ -467,7 +494,7 @@ all: preprocess depends $(ALLOBJ)
 	@echo ""
 	@echo " Linking object files and libraries..........."
 	$(F90) -o $(EXE) \
-	$(MODOBJ) $(F77OBJ) $(F90OBJ) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
+	$(MODOBJ) $(F77OBJ) $(F90OBJ) $(PGSTUBS) $(PGLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
 	@echo " ... done"
    else
 	@echo ""

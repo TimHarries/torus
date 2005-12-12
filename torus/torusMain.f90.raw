@@ -1943,7 +1943,7 @@ program torus
        source(1)%position = VECTOR(0.,0.,0.)
        source(1)%luminosity = fourPi * stefanBoltz * (18.7*rSol)**2.0 * (source(1)%teff)**4
        write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
-       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff),  50.d0, 100.d4,10000)
+       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff),  25.d0, 100.d4,10000)
        call normalizedSpectrum(source(1)%spectrum)
 
 

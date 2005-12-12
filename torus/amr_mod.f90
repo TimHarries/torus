@@ -57,10 +57,11 @@ CONTAINS
     if (present(interp)) then
        interpolate = interp
     endif
-
-    if (inheritProps) then
        parentOctal => thisOctal%parent
        parentSubcell = thisOctal%parentSubcell
+
+
+    if (inheritProps) then
        thisOctal%rho(subcell) = parentOctal%rho(parentSubcell)
        thisOctal%temperature(subcell) = parentOctal%temperature(parentSubcell)
        thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
@@ -72,8 +73,6 @@ CONTAINS
        thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
     else if (interpolate) then
-       parentOctal => thisOctal%parent
-       parentSubcell = thisOctal%parentSubcell
        thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
        thisOctal%inFlow(subcell) = parentOctal%inFlow(parentSubcell)
        thisOctal%velocity(subcell) = parentOctal%velocity(parentSubcell)
@@ -109,6 +108,9 @@ CONTAINS
 
     CASE("lexington")
        CALL calcLexington(thisOctal, subcell, grid)
+       if (thisOctal%nDepth > 1) then
+          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       endif
 
     CASE("proto")
        CALL calcProtoDensity(thisOctal,subcell,grid)
@@ -3925,10 +3927,13 @@ CONTAINS
       end if
 
    case("lexington")
-      if (thisOctal%nDepth < 7) then
+      if (thisOctal%nDepth < 5) then
          split = .true.
       else
          split = .false.
+      endif
+      if (modulus(subcellCentre(thisoctal,subcell)) < 2.*grid%rinner) then
+         if (thisOctal%nDepth < 7) split = .true.
       endif
       
    case ("testamr","proto","wrshell")
@@ -5810,6 +5815,7 @@ CONTAINS
     thisOctal%nhi(subcell) = 1.e-8
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     thisOctal%inFlow(subcell) = .false.
+    thisOctal%ionFrac(subcell,:) = 1.e-10
 
     if (r > grid%rinner) then
        thisOctal%inFlow(subcell) = .true.
@@ -6191,12 +6197,14 @@ CONTAINS
        parent%child(newChildIndex)%indexChild = -999 ! values are undefined
        parent%child(newChildIndex)%nDepth = parent%nDepth + 1
        parent%child(newChildIndex)%centre = subcellCentre(parent,newChildIndex)
+       parent%child(newChildIndex)%ionFrac = 1.e-30
        parent%child(newChildIndex)%probDistLine = 0.0
        parent%child(newChildIndex)%probDistCont = 0.0
        parent%child(newChildIndex)%biasLine3D = 1.0 
        parent%child(newChildIndex)%biasCont3D = 1.0 
        parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
        parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+       parent%child(newChildIndex)%photoIonCoeff = 0.d0
        parent%child(newChildIndex)%chiLine = 1.e-30
        parent%child(newChildIndex)%etaLine = 1.e-30
        parent%child(newChildIndex)%etaCont = 1.e-30
@@ -6993,19 +7001,23 @@ CONTAINS
               ! depth less than some value (which should really be set in the
               ! parameter file).
 !              if (max(thisTau, thatTau).gt.0.5.and.min(thisTau, thatTau).lt.0.01) then
-              if ((max(thisTau, thatTau).gt.tauSmoothMax.and.min(thisTau, thatTau).lt.tauSmoothMin).or.&
-                   ((max(thisTau, thatTau)<5.).and.abs((thistau-thatTau)> 2.))) then
+!              if ((max(thisTau, thatTau).gt.tauSmoothMax.and.min(thisTau, thatTau).lt.tauSmoothMin).or.&
+!                   ((max(thisTau, thatTau)<5.).and.(abs(thistau-thatTau)> 2.))) then
+
+               if ((max(thisTau, thatTau).gt.tauSmoothMax.and.min(thisTau, thatTau).lt.tauSmoothMin)) then
+
+
 !write (*,*) thisSubcellCentre%x, thisSubcellCentre%y, thisSubcellCentre%z, thisTau, thatTau, i
                 ! Because addNewChild is broken, we must use addNewChildren below,
                 ! which makes these tests on the current and neighbouring subcells
                 ! insufficient. We perform them anyway.
                 IF ( neighbour%hasChild(subcell) ) THEN 
                   PRINT *, "neighbour already has child"
-                  STOP
+                  do;enddo
                 END IF
                 IF ( thisOctal%hasChild(thisSubcell) ) THEN 
                   PRINT *, "thisOctal already has child"
-                  STOP
+                  do;enddo
                 END IF
                 ! Note that the version of addNewChild called here does not
                 ! support sphData, etc.
@@ -7113,7 +7125,7 @@ CONTAINS
     integer :: nTau
     integer :: nVals
 
-    unrefine = .true.
+    Unrefine = .true.
 
     ntau = 0
     do subcell = 1, thisOctal%maxChildren
@@ -8563,7 +8575,11 @@ CONTAINS
 
    if (photoionization) then
       if (PRESENT(kappaAbs)) then
-         e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
+         if (present(lambda)) then
+            e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
+         else
+            e = (hCgs * (cSpeed / (grid%lamArray(iLambda) * 1.e-8))) * ergtoev
+         endif
          call phfit2(1, 1, 1 , e , h0)
          call phfit2(2, 2, 1 , e , he0)
          kappaH =  thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0
@@ -9100,6 +9116,233 @@ CONTAINS
   end subroutine interpFromParent
 
 
+  RECURSIVE SUBROUTINE smoothAMRgridIonization(thisOctal,grid,gridConverged, ilam, &
+                                        sphData, stellar_cluster, inheritProps, interpProps)
+    USE input_variables, ONLY : tauSmoothMax,tauSmoothMin
+    IMPLICIT NONE
+
+    TYPE(octal), POINTER             :: thisOctal
+    TYPE(gridtype), INTENT(INOUT   ) :: grid 
+    LOGICAL, INTENT(INOUT)               :: gridConverged
+    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
+    TYPE(cluster), optional, intent(in)  :: stellar_cluster
+    LOGICAL, INTENT(IN) :: inheritProps
+    LOGICAL, INTENT(IN), optional :: interpProps
+
+    INTEGER              :: i, ilam
+    TYPE(octalVector)    :: thisSubcellCentre
+    REAL(oct) :: dSubcellCentre
+    real(double) :: kappaAbs, kappaSca
+    TYPE(octal), POINTER :: child
+    TYPE(octal), POINTER :: neighbour
+    TYPE(octalVector), ALLOCATABLE, DIMENSION(:) :: locator
+    INTEGER              :: subcell
+    INTEGER              :: thisSubcell
+    REAL                 :: thisTau, thatTau, tauDiff
+    INTEGER              :: nLocator
+    
+    ! For each subcell, we find the coordinates of at least one point in every
+    ! neighbouring subcell. The optical depths are compared and if one cell is
+    ! optically thick while the other is optically thin with an optical depth
+    ! less than some value, both cells are split. There may be up to 26
+    ! neighbouring subcells.
+
+    if (thisOctal%threed) then
+       nLocator = 26
+    else
+       nlocator = 8
+    endif
+
+    ALLOCATE(locator(nLocator))
+
+    thisSubcell = 1
+    do
+      if (thisOctal%hasChild(thisSubcell)) then
+        ! find the child
+        do i = 1, thisOctal%nChildren, 1
+           if (thisOctal%indexChild(i) == thisSubcell) then
+              child => thisOctal%child(i)
+              call smoothAMRgridIonization(child,grid,gridConverged,  ilam, sphData, stellar_cluster, inheritProps, interpProps)
+              exit
+           end if
+        end do
+      else
+        thisSubcellCentre = subcellCentre(thisOctal,thisSubcell)
+
+        ! don't split outer edge of disc
+
+        if (grid%geometry == "shakara") then
+           if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%router*0.9) goto 666
+        endif
+           
+
+        FORALL (i = 1:nLocator)
+          locator(i) = thisSubcellCentre
+        END FORALL
+
+        ! Moving this distance in any direction will take us into a
+        ! neighbouring subcell.
+        dSubcellCentre = (0.5 * thisOctal%subcellSize) + grid%halfSmallestSubcell
+
+        if (thisOctal%threed) then 
+
+           ! faces
+           locator(1)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(2)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(3)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(4)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(5)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(6)%z = thisSubcellCentre%z - dSubcellCentre
+           ! x-edges
+           locator(7)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(7)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(8)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(8)%z = thisSubcellCentre%z - dSubcellCentre
+           locator(9)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(9)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(10)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(10)%z = thisSubcellCentre%z - dSubcellCentre
+           ! y-edges
+           locator(11)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(11)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(12)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(12)%z = thisSubcellCentre%z - dSubcellCentre
+           locator(13)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(13)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(14)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(14)%z = thisSubcellCentre%z - dSubcellCentre
+           ! z-edges
+           locator(15)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(15)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(16)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(16)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(17)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(17)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(18)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(18)%y = thisSubcellCentre%y - dSubcellCentre
+           ! corners
+           locator(19)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(19)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(19)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(20)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(20)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(20)%z = thisSubcellCentre%z - dSubcellCentre
+           locator(21)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(21)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(21)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(22)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(22)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(22)%z = thisSubcellCentre%z - dSubcellCentre
+           locator(23)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(23)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(23)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(24)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(24)%y = thisSubcellCentre%y + dSubcellCentre
+           locator(24)%z = thisSubcellCentre%z - dSubcellCentre
+           locator(25)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(25)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(25)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(26)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(26)%y = thisSubcellCentre%y - dSubcellCentre
+           locator(26)%z = thisSubcellCentre%z - dSubcellCentre
+        else
+
+           ! edges
+
+           locator(1)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(2)%z = thisSubcellCentre%z + dSubcellCentre
+           locator(3)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(4)%z = thisSubcellCentre%z - dSubcellCentre
+           ! corners
+           locator(5)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(5)%z = thisSubcellCentre%z + dSubcellCentre
+
+           locator(6)%x = thisSubcellCentre%x + dSubcellCentre
+           locator(6)%z = thisSubcellCentre%z - dSubcellCentre
+
+           locator(7)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(7)%z = thisSubcellCentre%z + dSubcellCentre
+
+           locator(8)%x = thisSubcellCentre%x - dSubcellCentre
+           locator(8)%z = thisSubcellCentre%z - dSubcellCentre
+
+
+        endif
+
+
+        thisTau = thisOctal%ionFrac(thisSubcell,1)
+
+        DO i = 1, nLocator, 1
+          IF ( inOctal(grid%octreeRoot,locator(i)) ) THEN
+            neighbour => thisOctal
+            CALL findSubcellLocal(locator(i),neighbour,subcell)
+
+            ! The neighbouring subcell must be larger than the current subcell
+            ! otherwise our locators won't cover all neighbouring subcells
+            ! (and we'll hit cell boundaries, which is not good).
+            IF ( neighbour%subcellSize >= thisOctal%subcellSize) THEN
+
+               thatTau = neighbour%ionFrac(subcell,1)
+
+              ! Original critera was to split if:
+              ! ((o1 - o2)/(o1+o2) > 0.5 .and. (o1 - o2) > 1)
+!              tauDiff = abs(thisTau - thatTau)
+!!              if ((tauDiff.gt.1000000.0).and. &
+!              if ((tauDiff.gt.1.).and. &
+!!                  .not.((thisTau.gt.5.).and.(thatTau.gt.5.)).and. &
+!                  ((tauDiff/(thisTau + thatTau)).gt.0.5)) then
+
+              ! Critera for cell splitting is that one cell is optically think
+              ! (tau > 1) and the other is optically thin with an optical
+              ! depth less than some value (which should really be set in the
+              ! parameter file).
+!              if (max(thisTau, thatTau).gt.0.5.and.min(thisTau, thatTau).lt.0.01) then
+!              if ((max(thisTau, thatTau).gt.tauSmoothMax.and.min(thisTau, thatTau).lt.tauSmoothMin).or.&
+!                   ((max(thisTau, thatTau)<5.).and.(abs(thistau-thatTau)> 2.))) then
+
+               if ((abs(thisTau-thatTau) > 0.5).and. &
+                    (thisOctal%photoIonCoeff(subcell,1) /= 0.d0)) then
+
+
+!write (*,*) thisSubcellCentre%x, thisSubcellCentre%y, thisSubcellCentre%z, thisTau, thatTau, i
+                ! Because addNewChild is broken, we must use addNewChildren below,
+                ! which makes these tests on the current and neighbouring subcells
+                ! insufficient. We perform them anyway.
+                IF ( neighbour%hasChild(subcell) ) THEN 
+                  PRINT *, "neighbour already has child"
+                  do;enddo
+                END IF
+                IF ( thisOctal%hasChild(thisSubcell) ) THEN 
+                  PRINT *, "thisOctal already has child"
+                  do;enddo
+                END IF
+                ! Note that the version of addNewChild called here does not
+                ! support sphData, etc.
+!                call addNewChild(neighbour,subcell,grid)
+!                call addNewChild(thisOctal,thisSubcell,grid)
+
+                call addNewChildren(thisOctal, grid, sphData, stellar_cluster, inheritProps, interpProps)
+                ! If we are splitting two subcells in the same octal, we don't
+                ! need to addNewChildren to the neighbour. If we switch to
+                ! addNewChild this test becomes redundant.
+                if (.not. associated(thisOctal, neighbour)) then
+                  call addNewChildren(neighbour, grid, sphData, stellar_cluster, inheritProps, interpProps)
+                end if 
+
+                gridConverged = .FALSE.
+                exit ! loop through locators, move onto next subcell
+             end if ! grid must be refined
+            ENDIF ! neighbour subcell is larger
+         END IF ! in grid
+      END DO ! loop through locators
+
+      end if ! thisOctal%hasChild(thisSubcell)
+      thisSubcell = thisSubcell + 1 ! next subcell
+      if (thisSubcell > thisOctal%maxChildren) exit ! loop through subcells in an octal
+    end do ! loop through subcells in an octal
+666 continue
+    deallocate(locator)
+  END SUBROUTINE smoothAMRgridIonization
 
 
 END MODULE amr_mod

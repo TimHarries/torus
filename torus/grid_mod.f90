@@ -6502,7 +6502,7 @@ contains
     real :: xp, yp, xm, ym, zp, zm
     real(double) :: ksca, kabs
     real(double) :: d
-    logical :: use_this_subcell
+    logical :: use_this_subcell, update
     type(octalvector) :: rvec, rhat, velocity
     
   
@@ -6540,6 +6540,7 @@ contains
           use_this_subcell = thisOctal%inFlow(subcell)
 
           if (use_this_subcell) then
+             update =.true.
              select case (name)
              case("rho")
                 value = thisOctal%rho(subcell)
@@ -6547,6 +6548,7 @@ contains
                 value = thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
              case("temperature")
                 value = thisOctal%temperature(subcell)
+                if (value < 3.)  update = .false.
              case("dusttype")
                 value = thisOctal%dustTypeFraction(subcell,1)
              case("chiLine")
@@ -6576,9 +6578,10 @@ contains
                 write(*,*) "Error:: unknow name passed to MinMaxValue."
                 stop
              end select
-          
-             valueMax = MAX(valueMax, value)
-             valueMin = Min(valueMin, value)
+             if (update) then
+                valueMax = MAX(valueMax, value)
+                valueMin = Min(valueMin, value)
+             endif
           end if
         end if
     enddo

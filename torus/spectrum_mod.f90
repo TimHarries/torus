@@ -67,7 +67,7 @@ module spectrum_mod
          spectrum%flux(i) = bLambda(spectrum%lambda(i), dble(teff))
       enddo
       spectrum%nLambda = nLambda
-      where(spectrum%flux(1:spectrum%nLambda) == 0.d0) spectrum%flux = 1.e-30
+      where(spectrum%flux(1:spectrum%nLambda) == 0.d0) spectrum%flux = 1.d-100
 
       call probSpectrum(spectrum, biasToLyman)
     end subroutine fillSpectrumBB

@@ -3187,6 +3187,80 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
 666 continue
 END SUBROUTINE GAUSSJ
 
+  ! this procedure performs the solution of linear equations
+  subroutine luSlv(a, b, n)
+    implicit none
+    
+    integer, intent(in)                  :: n 
+
+    double precision,& 
+         & intent(inout), dimension(:,:) :: a
+    double precision,&
+         & intent(inout), dimension(:)   :: b    
+    
+    call lured(a,n)
+    
+    call reslv(a,b,n)
+  end subroutine luSlv
+  
+  subroutine lured(a,n)
+    implicit none
+    
+    integer, intent(in)                  :: n
+    
+    double precision,&
+         & intent(inout), dimension(:,:)    :: a
+    
+    ! local variables
+    integer          :: i, j, k                    ! counters
+    
+    double precision :: factor                     ! general calculation factor
+    
+    if (n == 1) return
+    
+    do i = 1, n-1
+       do k = i+1, n
+          factor = a(k,i)/a(i,i)
+          do j = i+1, n
+             a(k, j) = a(k, j) - a(i, j) * factor
+          end do
+       end do
+    end do
+  end subroutine lured
+  
+  subroutine reslv(a,b,n)
+    implicit none 
+    
+    integer, intent(in)              :: n
+    
+    double precision,&
+         & intent(inout), dimension(:,:) :: a
+    double precision,&        
+         & intent(inout), dimension(:)   :: b
+    
+    ! local variables
+    integer    :: i, j, k, l              ! counters
+
+    if (n == 1) then
+       b(n) = b(n) / a(n,n)
+       return
+    end if
+    
+    do i = 1, n-1
+       do j = i+1, n
+          b(j) = b(j) - b(i)*a(j, i)/ a(i, i)
+       end do
+    end do
+    b(n) = b(n) / a(n,n)
+    do i = 1, n-1
+       k = n-i
+       l = k+1
+       do j = l, n
+          b(k) = b(k) - b(j)*a(k, j)
+       end do
+       b(k) = b(k) / a(k,k)
+    end do
+  end subroutine reslv
 
 
 end module utils_mod
