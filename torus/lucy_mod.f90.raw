@@ -1026,14 +1026,19 @@ contains
 
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
-!             if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
-!             call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
-!             if (writeoutput) write(*,*) "done."
-!             call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-!                  "unrefine.ps/vcps", .true., .false., &
-!                  0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
-             
-             if (iiter_grand > 7) then
+             if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+             gridconverged = .false.
+             do while(.not.gridconverged)
+                gridconverged = .true.
+                call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
+             end do
+             if (writeoutput) then
+                write(*,*) "done."
+             call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
+                  "unrefine.ps/vcps", .true., .false., &
+                  0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+             endif
+             if ((iiter_grand > 5).and.(iIter_grand < 10)) then
                 if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."             
                 do j = iSmoothLam, ismoothlam ! nLambda
                    do
