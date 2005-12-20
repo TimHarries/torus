@@ -323,6 +323,8 @@ program torus
   real :: chanceSpot                     ! chance of spot
   logical :: spotPhoton                  ! photon from spot?
 
+  logical :: doneone
+
   real :: loglamStart, logLamEnd
 
   real :: chanceDust = 0.
@@ -1197,7 +1199,11 @@ program torus
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
                 "rho_grid.ps/vcps",.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-!           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
+           gridconverged = .false.
+           do while(.not.gridconverged)
+              gridconverged = .true.
+              call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
+           end do
 !           write(*,*) "Second refine"
 !           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
 

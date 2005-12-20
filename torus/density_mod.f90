@@ -368,7 +368,7 @@ contains
     if (TTauriInFlow(point,grid,ignoreDisk)) then
       
       theta = acos( pointVec%z  / r )
-      if (abs(modulo(theta,pi)) > 1.e-10 ) then 
+      if (abs(modulo(theta,real(pi))) > 1.e-10 ) then 
         rM  = r / sin(theta)**2
       else
         rM = huge(rM)

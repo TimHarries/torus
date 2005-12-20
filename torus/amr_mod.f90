@@ -7120,44 +7120,74 @@ CONTAINS
   end subroutine verticalDump
 
 
-  recursive subroutine unrefineThinCells(thisOctal, grid, ilambda)
+  recursive subroutine unrefineThinCells(thisOctal, grid, ilambda, converged)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
+    type(octal), pointer  :: child , thisChild
     integer :: ilambda
     real(double) :: kappaAbs, kappaSca, tau
-    integer :: subcell, i
-    logical :: unrefine
+    integer :: subcell, i, j
+    logical :: unrefine, ok, converged
     integer :: nTau
     integer :: nVals
 
     Unrefine = .true.
 
     ntau = 0
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          unrefine = .false.
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call unrefineThinCells(child, grid, ilambda)
-                exit
-             end if
-          end do
-       else
-          call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
-          tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
-          ntau = ntau  + 1
-       endif
-       if (tau > 1.e-5) then
-          unrefine = .false.
-       endif
-    enddo
-    if (unrefine) then
-       call deleteChild(thisOctal%parent, thisOctal%parentSubcell, .true., grid, .true.)
-    endif
 
+    ok = .true.    
+    if (thisOctal%nChildren == 0) then
+       ok = .false.
+    else
+       do i = 1, thisOctal%maxChildren
+          if (thisOctal%child(i)%nChildren > 0) then
+             ok = .false.
+             exit
+          endif
+       enddo
+    endif
+    if (ok) then
+       do i = 1, thisOctal%maxChildren
+          do j = 1, thisOctal%child(i)%maxChildren
+             thisChild => thisOctal%child(i)
+             call returnKappa(grid, thisChild, j, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
+             tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
+             if (tau > 1.e-5) then
+                ok = .false.
+                exit
+             endif
+          enddo
+       enddo
+    endif
+    if (ok) then
+       do i = 1, thisOctal%maxChildren
+           if (thisOctal%child(i)%twoD) then
+              nVals = 4
+           else
+              nVals = 8
+           endif
+           thisOctal%rho(i) = SUM(thisOctal%child(i)%rho(1:nVals))/dble(nVals)
+           thisOctal%temperature(i) = SUM(thisOctal%child(i)%temperature(1:nVals))/dble(nVals)
+           thisOctal%dustTypeFraction(i,:) = SUM(thisOctal%child(i)%dustTypeFraction(1:nVals,:))/dble(nVals)
+           IF (ASSOCIATED(thisOctal%child(i)%kappaAbs)) DEALLOCATE(thisOctal%child(i)%kappaAbs)
+           IF (ASSOCIATED(thisOctal%child(i)%kappaSca)) DEALLOCATE(thisOctal%child(i)%kappaSca)
+           IF (ASSOCIATED(thisOctal%child(i)%departCoeff)) DEALLOCATE(thisOctal%child(i)%departCoeff)
+           IF (ASSOCIATED(thisOctal%child(i)%gas_particle_list)) DEALLOCATE(thisOctal%child(i)%gas_particle_list)
+        enddo
+        deallocate(thisOctal%child)
+        thisOctal%nChildren = 0
+        thisOctal%hasChild = .false.
+        converged = .false.
+     else
+        if (thisOctal%nChildren > 0) then
+           do i = 1, thisOctal%maxChildren
+              if (thisOctal%child(i)%nChildren > 0) then
+                 child => thisOctal%child(i)
+                    call unrefineThinCells(child, grid, ilambda, converged)
+              endif
+           enddo
+        endif
+     endif
   end subroutine unrefineThinCells
 
   
