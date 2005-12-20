@@ -480,7 +480,9 @@ contains
 	if (nDustType > 1) then
            call fillDustShakara(grid, grid%octreeRoot)
         endif
-        call stripDustAway(grid%octreeRoot)
+	if (variableDustsublimation) then
+           call stripDustAway(grid%octreeRoot)
+        endif
     endif
 
     if ((grid%geometry == "ppdisk").and.(nDustType > 1)) then
@@ -497,6 +499,7 @@ contains
     dT_mean_new = 10.0d0
     dT_mean_old = 10.0d0
 
+    doingDustSublimation = .false.
     if (variableDustSublimation) doingDustSublimation = .true.
 
     do while (.not.converged)
@@ -509,7 +512,7 @@ contains
        end if
 
        if (doingDustSublimation) then
-          nMonte = 1000000
+          nMonte = 100000
           if (iIter_grand == 0) then
              nIter = 3
           else

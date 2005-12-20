@@ -888,8 +888,9 @@ contains
 
 ! Calculates a random maxwellian velocity using the 
 ! rejection method.
-
-      real, intent(in) :: mass, temperature
+      
+      real(double), intent(in) :: mass
+      real, intent(in) ::  temperature
       real :: x, y, t, u, vel
       logical :: ok
 
@@ -3085,17 +3086,17 @@ function returnAbundance(z) result(a)
      case(1)
         a = 1.
      case(2)
-        a = 0.1
+        a = 1.e-10 ! 0.1
      case(6)
-        a = 22.e-5
+        a =  1.e-10 !22.e-5
      case(7)
-        a = 4.e-5
+        a = 1.e-10 !4.e-5
      case(8)
-        a = 33.e-5
+        a = 1.e-4 !33.e-5
      case(10)
-        a = 5.e-5
+        a = 1.e-10 !5.e-5
      case(16)
-        a = 0.9e-5
+        a = 1.e-10 !0.9e-5
      case DEFAULT
         write(*,*) "No abundance set for z=",z
         a = tiny(a)

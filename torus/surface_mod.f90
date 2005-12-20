@@ -269,7 +269,7 @@ contains
 !        Taccretion = 8000.0
 !! FOR DEBUG==================================================
         surface%element(iElement)%hotFlux(:) = &
-           pi*blackbody(REAL(tAccretion), 1.e8*cSpeed/surface%nuArray(:)) !* &
+           pi*blackbody(REAL(tAccretion), 1.e8*real(cSpeed)/surface%nuArray(:)) !* &
 !                  ((1.e20*surface%element(iElement)%area)/(fourPi*TTauriRstar**2))
         surface%element(iElement)%temperature = Taccretion
       else 

@@ -72,6 +72,9 @@ CONTAINS
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
        thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
+       thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
+       thisOctal%ne(subcell) = parentOctal%ne(parentsubcell)
     else if (interpolate) then
        thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
        thisOctal%inFlow(subcell) = parentOctal%inFlow(parentSubcell)
@@ -81,6 +84,9 @@ CONTAINS
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
        thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
+       thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
+       thisOctal%ne(subcell) = parentOctal%ne(parentsubcell)
 
        parentOctal%hasChild = .false.
        call interpFromParent(subcellCentre(thisOctal, subcell), thisOctal%subcellSize, grid, &
@@ -3122,7 +3128,7 @@ CONTAINS
         IF ( neighbour%subcellSize > (factor * thisOctal%subcellSize) ) THEN
           IF ( neighbour%hasChild(subcell) ) THEN 
             PRINT *, "neighbour already has child"
-            STOP
+            do;enddo
           END IF
           ! tjh changed from
 !          CALL addNewChild(neighbour,subcell,grid)
@@ -5786,7 +5792,7 @@ CONTAINS
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r
     TYPE(octalVector) :: rVec
-    integer, parameter :: it=177
+    integer, parameter :: it=171 ! or 177
     real :: fac
     real,save :: radius(it),temp(it)
     integer :: i
@@ -6564,7 +6570,7 @@ CONTAINS
        rhoOut = mdot / (fourPi * (r*1.e10)**2 * v)
        rHat = rVec / r
        octVec = rVec
-       thisOctal%rho(subcell) = rhoOut* returnSpiralFactor(octVec, 10.*grid%rCore/twoPi, grid)
+       thisOctal%rho(subcell) = rhoOut* returnSpiralFactor(octVec, 10.*grid%rCore/real(twoPi), grid)
        thisOctal%temperature(subcell) = Teff
        thisOctal%velocity(subcell)  = (v/cSpeed) * rHat
        thisOctal%inFlow(subcell) = .true.
@@ -8579,6 +8585,7 @@ CONTAINS
             e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
          else
             e = (hCgs * (cSpeed / (grid%lamArray(iLambda) * 1.e-8))) * ergtoev
+            write(*,*) "! using rough grid"
          endif
          call phfit2(1, 1, 1 , e , h0)
          call phfit2(2, 2, 1 , e , he0)
@@ -8587,7 +8594,7 @@ CONTAINS
          kappaAbs =kappaH + kappaHe
       endif
       if (PRESENT(kappaSca)) then
-         kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
+         kappaSca = 0.d0 !kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
       endif
    endif
    
@@ -8930,7 +8937,7 @@ CONTAINS
     enddo
        
 
-    call locate(xAxis, nx, rGap*autocm/1.e10, iGap)
+    call locate(xAxis, nx, rGap*real(autocm)/1.e10, iGap)
 
     tau(i+1) = 0.
     do i = iGap, 1, -1

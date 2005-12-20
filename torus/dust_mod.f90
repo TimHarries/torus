@@ -341,7 +341,7 @@ contains
        end select
 
        do i = 1, nLambda            
-          call locate(lam_nk, npLnk, lambda(i)*angsToMicrons, j)
+          call locate(lam_nk, npLnk, lambda(i)*real(angsToMicrons), j)
           t = (lambda(i)*angsToMicrons - lam_nk(j))/(lam_nk(j+1) - lam_nk(j))
           mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
           mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         

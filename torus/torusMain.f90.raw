@@ -1923,14 +1923,14 @@ program torus
        allocate(source(1:nSource)) 
        source(1)%teff = 30000.  ! o star
        source(1)%radius = 20. * rSol / 1.e10
-       source(1)%position = (VECTOR(0.,0.,1.)*autocm)/1.e10
+       source(1)%position = (VECTOR(0.,0.,1.)*real(autocm))/1.e10
        source(1)%luminosity = fourPi * stefanBoltz * (20.*rSol)**2.0 * (source(1)%teff)**4
        call readSpectrum(source(1)%spectrum, "ostar.flx")
        call normalizedSpectrum(source(1)%spectrum)
 
        source(2)%teff = 40000.             ! wr star 
        source(2)%radius = 20. * rSol / 1.e10
-       source(2)%position = (VECTOR(0.,0.,-1)*autocm)/1.e10
+       source(2)%position = (VECTOR(0.,0.,-1)*real(autocm))/1.e10
        source(2)%luminosity = 0.5 * source(1)%luminosity
        call readSpectrum(source(2)%spectrum, "wr.flx")
        call normalizedSpectrum(source(2)%spectrum)
@@ -1938,10 +1938,10 @@ program torus
     case("lexington")
        nSource = 1
        allocate(source(1:nSource)) 
-       source(1)%teff = 40000.  ! o star
-       source(1)%radius = 18.7 * rSol / 1.e10
+       source(1)%teff = 20000.  ! o star
+       source(1)%radius = 104.2 * rSol / 1.e10
        source(1)%position = VECTOR(0.,0.,0.)
-       source(1)%luminosity = fourPi * stefanBoltz * (18.7*rSol)**2.0 * (source(1)%teff)**4
+       source(1)%luminosity = fourPi * stefanBoltz * (104.2*rSol)**2.0 * (source(1)%teff)**4
        write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff),  25.d0, 100.d4,10000)
        call normalizedSpectrum(source(1)%spectrum)
@@ -2055,7 +2055,7 @@ program torus
         if (writeoutput) write(*,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
 	if (geometry == "shakara") then
 
-!        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*autocm) ! defined at 1AU
+!        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*real(autocm)) ! defined at 1AU
 
 !           sigma0 = totalMass * real(betaDisc-alphaDisc+2) / & 
 !                (twoPi*((rOuter*1.e10)**(betaDisc-alphaDisc+2) - (rInner*1.e10)**(betaDisc-alphaDisc+2))*1.*auToCm)

@@ -1324,7 +1324,7 @@ stop
 !    vel = gasdev()*sigmaVel/cSpeed
 
 
-    thermalElectronVelocity = maxwellianVelocity(mElectron,temperature)/cSpeed
+    thermalElectronVelocity = maxwellianVelocity(mElectron,temperature)/real(cSpeed)
 
 
   end function thermalElectronVelocity
@@ -1335,7 +1335,7 @@ stop
     !real :: vel
     !real :: sigmaVel
  
-    thermalHydrogenVelocity = maxwellianVelocity(mHydrogen, temperature)/cSpeed
+    thermalHydrogenVelocity = maxwellianVelocity(mHydrogen, temperature)/real(cSpeed)
 
 
   end function thermalHydrogenVelocity

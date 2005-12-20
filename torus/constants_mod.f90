@@ -12,70 +12,69 @@ module constants_mod
 
   ! pi stuff
   
-  real, parameter :: pi = 3.141592654
+  real(double), parameter :: pi = 3.1415926535897932_db
   real(double), parameter :: piDouble = 3.1415926535897932_db
-  real, parameter :: twoPi = 2.*pi
-  real, parameter :: fourPi = 4.*pi
-  real, parameter :: piBy4 = pi/4.
-  real, parameter :: oneOnFourPi = 1./(4.*pi)
-  real, parameter :: oneOnTwoPi = 1./(2.*pi)
-  real, parameter :: degToRad = pi/180.
-  real, parameter :: radToDeg = 180./pi
-  real, parameter :: oneByRootTwo = 1./1.4142136
-  real, parameter :: radiansToArcSec = radToDeg * 60. * 60.
-  real, parameter :: arcsec = 1./3600. * degtorad
+  real(double), parameter :: twoPi = 2.d0*pi
+  real(double), parameter :: fourPi = 4.d0*pi
+  real(double), parameter :: piBy4 = pi/4.d0
+  real(double), parameter :: oneOnFourPi = 1.d0/(4.d0*pi)
+  real(double), parameter :: oneOnTwoPi = 1.d0/(2.d0*pi)
+  real(double), parameter :: degToRad = pi/180.d0
+  real(double), parameter :: radToDeg = 180.d0/pi
+  real(double), parameter :: oneByRootTwo = 1.d0/1.4142136d0
+  real(double), parameter :: radiansToArcSec = radToDeg * 60.d0 * 60.d0
+  real(double), parameter :: arcsec = 1.d0/3600.d0 * degtorad
 
 
   ! times
 
-  real, parameter :: secsToYears = 1./(365.25*24.*3600.)
+  real(double), parameter :: secsToYears = 1.d0/(365.25d0*24.d0*3600.d0)
   
 
   ! lengths
 
-  real, parameter :: angstrom = 1.e-10
-  real, parameter :: micron = 1.e-6
+  real(double), parameter :: angstrom = 1.d-10
+  real(double), parameter :: micron = 1.d-6
   real, parameter :: angsToMicrons = angstrom/micron
-  real, parameter :: centimeter = 1.e-2
-  real, parameter :: micronTocm = micron/centimeter
-  real, parameter :: angstromToCm = angstrom/centimeter
-  real, parameter :: rSol = 6.96e10              ! cm
-  real, parameter :: auToCm = 1.495979e13
-  real, parameter :: pcToCm = 3.0856776e18
+  real(double), parameter :: centimeter = 1.d-2
+  real(double), parameter :: micronTocm = micron/centimeter
+  real(double), parameter :: angstromToCm = angstrom/centimeter
+  real(double), parameter :: rSol = 6.96d10              ! cm
+  real(double), parameter :: auToCm = 1.495979d13
+  real(double), parameter :: pcToCm = 3.0856776d18
 
   ! atomic
 
-  real, parameter :: hConst = 6.626176e-34   ! Js
-  real, parameter :: hCgs = 6.626205e-27
-  real, parameter :: kConst = 1.380662e-23   ! J/k
-  real, parameter :: kErg = 1.380626e-16     ! erg/k
-  real, parameter :: kev = 8.6171e-5         ! erg/k
-  !real, parameter :: sigmaE = 6.65e-25       ! cm^2 updated by nhs
-  real, parameter :: sigmaE = 6.6525e-25       ! cm^2
-  real, parameter :: eCharge = 4.803242384E-10 ! 
-  real, parameter :: hydE0eV = 13.598433       ! eV
+  real(double), parameter :: hConst = 6.626176d-34   ! Js
+  real(double), parameter :: hCgs = 6.626205d-27
+  real(double), parameter :: kConst = 1.380662d-23   ! J/k
+  real(double), parameter :: kErg = 1.380626d-16     ! erg/k
+  real(double), parameter :: kev = 8.6171d-5         ! erg/k
+  real(double), parameter :: sigmaE = 6.6525d-25       ! cm^2
+  real(double), parameter :: eCharge = 4.803242384d-10 ! 
+  real(double), parameter :: hydE0eV = 13.598433       ! eV
   real(double),parameter :: hydE0eVdb = 13.598433_db! eV
 
-  real, parameter :: ergToEv = 6.24145e11   
+  real(double), parameter :: ergToEv = 6.24145d11   
 
   real(double), parameter :: nuHydrogen = (hydE0eVdb/(ergToEv)) / (hCgs)
 
 
-  real, parameter :: stefanBoltz = 5.6705e-5 ! erg/cm^2 s
-  real, parameter :: lSol = 3.85e33          !erg/s
+  real(double), parameter :: stefanBoltz = 5.6705d-5 ! erg/cm^2 s
+  real(double), parameter :: lSol = 3.85d33          !erg/s
   ! speeds
 
-  real, parameter :: cSpeed = 2.99792458e10  ! cm/s
+  real(double), parameter :: cSpeed = 2.99792458d10  ! cm/s
   real(double), parameter :: cSpeed_dbl = 2.99792458d10  ! cm/s
 
   ! masses
 
-  real, parameter :: mHydrogen = 1.6733e-24      ! g
-  real, parameter :: mSol = 1.9891e33            ! g
-  real, parameter :: mEarth = 5.98e27            ! g
-  real, parameter :: mMoon = 7.349e25            ! g
-  real, parameter :: bigG = 6.67259e-8           ! cgs
-  real, parameter :: mElectron = 9.109565D-28    ! g
+  real(double), parameter :: mHydrogen = 1.6733d-24      ! g
+  real(double), parameter :: mSol = 1.9891d33            ! g
+  real(double), parameter :: mEarth = 5.98d27            ! g
+  real(double), parameter :: mMoon = 7.349d25            ! g
+  real(double), parameter :: bigG = 6.67259d-8           ! cgs
+  real(double), parameter :: mElectron = 9.109565D-28    ! g
 
 end module constants_mod
 

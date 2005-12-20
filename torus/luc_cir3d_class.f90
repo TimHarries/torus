@@ -308,7 +308,7 @@ contains
     
 
     ! changing units to speed of light
-    out = out/cSpeed                                  ! [c]
+    out = out/real(cSpeed)                                  ! [c]
 
 
     ! Vz flips sign if z is negative.

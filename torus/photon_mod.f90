@@ -1137,7 +1137,7 @@ contains
           thisPhoton%direction%y = v
           thisPhoton%direction%z = w
           vec_tmp = thisPhoton%direction
-          rotatedVec = rotateY(vec_tmp, 30.*degToRad)
+          rotatedVec = rotateY(vec_tmp, 30.*real(degToRad))
           thisPhoton%direction = rotatedVec
        endif
 
@@ -1566,7 +1566,7 @@ contains
 
        if (grid%doRaman) then
           thisPhoton%velocity = &
-               maxwellianVelocity(16.*mHydrogen, grid%tempSource)/cSpeed
+               maxwellianVelocity(16.d0*mHydrogen, grid%tempSource)/real(cSpeed)
        endif
 
 

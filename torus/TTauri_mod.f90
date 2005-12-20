@@ -252,7 +252,7 @@ contains
     
     open(22,file="star_plus_acc.dat",form="formatted",status="unknown")
     do i = 1, nNu
-       fNu(i) = fNu(i) + blackbody(tAccretion, 1.e8*cSpeed/ nuArray(i))*(1.e20*sAccretion/(fourPi*rStar**2))
+       fNu(i) = fNu(i) + blackbody(tAccretion, real(1.d8*cSpeed / nuArray(i)))*(1.e20*sAccretion/(fourPi*rStar**2))
        write(22,*) nuArray(i), fNu(i)
     enddo
     close(22)

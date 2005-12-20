@@ -1109,6 +1109,9 @@ endif
 if (geometry == "lexington") then
    photoionization = .true.
    onekappa = .true.
+   call getReal("rinner", rInner, cLine, nLines, &
+       "Inner Radius (10^17cm): ","(a,f5.1,a)", 30., ok, .true.)
+   rinner = rinner * 1.e7
 endif
 
 

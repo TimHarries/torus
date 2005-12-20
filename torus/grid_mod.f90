@@ -583,7 +583,7 @@ contains
        grid%rOuter = rOuter
 
     case("lexington")
-       grid%rInner = 30.e7
+       grid%rInner = rinner
        grid%rOuter = 2.e09
        grid%oneKappa = .true.
        oneKappa = .true.
@@ -3438,7 +3438,7 @@ contains
     do i = 1, grid%nx
        do j = 1, grid%ny
           do k = 1, grid%nz
-             grid%velocity(i,j,k) = grid%velocity(i,j,k) / cSpeed
+             grid%velocity(i,j,k) = grid%velocity(i,j,k) / real(cSpeed)
           enddo
        enddo
     enddo
