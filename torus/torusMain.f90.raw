@@ -2186,6 +2186,7 @@ program torus
   ! Setting the emission bias.
   !
   if (useBias) then
+     write(*,*) "Setting emission bias..."
      if (grid%geometry == "testamr") then
         call setBiasAMR(grid%octreeRoot, grid)
      elseif (grid%geometry == "cluster") then
@@ -2198,12 +2199,20 @@ program torus
      elseif (grid%geometry == "cmfgen") then
         call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
      elseif (grid%geometry == "shakara") then
-        call set_bias_shakara(grid%octreeRoot, grid)
+        if (forcedWavelength) then
+           call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
+           call set_bias_shakara(grid%octreeRoot, grid, ilam=itestlam, ross=.false.)
+        else
+           call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
+           call set_bias_shakara(grid%octreeRoot, grid, ilam=1, ross=.true.)
+        endif
+           
      elseif (grid%geometry == "ppdisk") then
         call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
         call setDiscPhotosphereBias(grid, itestlam)
 !        call setBiasPpdisk(grid%octreeRoot,grid)
      end if
+     write(*,*) "Done."
   end if
 
 !$MPI        if (my_rank==0) then
@@ -3836,6 +3845,7 @@ program torus
                  endif
 
                  thruStar = .false.
+
 
                  if (.not.flatSpec.and.(.not.hitCore).and.(.not.thruStar)) then
 

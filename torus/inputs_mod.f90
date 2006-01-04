@@ -1524,7 +1524,7 @@ endif
    "Electron scattering: ","(a,1l,a)", .false., ok, .false.)
 
  call getLogical("usebias", usebias, cLine, nLines, &
-   "Variance reduction: ","(a,1l,a)", .true., ok, .false.)
+   "Variance reduction: ","(a,1l,a)", .true., ok, .true.)
 
  call getLogical("interp", useInterp, cLine, nLines, &
    "Use opacity interpolation: ","(a,1l,a)", .true., ok, .false.)

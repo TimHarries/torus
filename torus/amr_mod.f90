@@ -7619,15 +7619,16 @@ CONTAINS
     enddo
   end subroutine setBiasAMR
 
-  recursive subroutine set_bias_shakara(thisOctal, grid)
+  recursive subroutine set_bias_shakara(thisOctal, grid, ilam, ross)
   use input_variables, only : rinner
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: kap
-  real(double) :: tau
+  real(double) :: tau, kappaAbs, kappaSca
   type(octalvector) :: rVec
-  integer :: subcell, i
+  logical :: ross
+  integer :: subcell, i, ilam
   real :: r
   
   do subcell = 1, thisOctal%maxChildren
@@ -7636,21 +7637,20 @@ CONTAINS
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call set_bias_shakara(child, grid)
+                call set_bias_shakara(child, grid, ilam, ross)
                 exit
              end if
           end do
        else
-          r = modulus(subcellcentre(thisOctal, subcell)) / rInner
-          thisOctal%biasCont3D(subcell) =  sqrt(r)
-          if ((r > 1.).and.(r < 1.05)) then
-             thisOctal%biasCont3D(subcell) =  thisOctal%biasCont3D(subcell) * 10.d0
+          if (.not.ross) then
+             call returnKappa(grid, thisOctal, subcell, ilam, kappaAbs=kappaAbs, kappaSca=kappaSca)
+          else
+             call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa=kappaAbs)
+             kappaSca = 0.d0
           endif
-          if (thisOctal%diffusionApprox(subcell)) then
-             thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) * 1.e-2
-          endif
+          tau = thisOctal%subcellSize*(kappaAbs + kappaSca)
+          thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-7)
        endif
-               
 
     enddo
   end subroutine set_bias_shakara
