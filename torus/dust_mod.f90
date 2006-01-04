@@ -959,7 +959,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
           thisTau = (kappaAbs+kappaSca)*thisOctal%subcellSize
-          if (thisTau <= 10.) then
+          if (thisTau <= 5.) then
              fac = thisOctal%oldFrac(subcell)*(thisTau + tauStep) / thisTau 
              frac = min(fac, frac)
 !             write(*,*) fac, frac, thisTau, thisOctal%oldFrac(subcell)

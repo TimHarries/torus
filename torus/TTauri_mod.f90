@@ -199,8 +199,8 @@ contains
              call getIndices(grid, posVec, i1, i2, i3, t1, t2 ,t3)
              grid%velocity(i1,i2,i3) = vP
              grid%rho(i1,i2,i3) = rho
-             minRho = min(minRho, rho/mHydrogen)
-             maxRho = max(maxRho, rho/mHydrogen)
+             minRho = min(minRho, rho/real(mHydrogen))
+             maxRho = max(maxRho, rho/real(mHydrogen))
              grid%inUse(i1,i2,i3) = .true.
           enddo
        enddo
@@ -212,7 +212,7 @@ contains
        do j = 1, grid%na2
           do k = 1, grid%na3
              if (grid%inUse(i,j,k).and.(.not.grid%inStar(i,j,k))) then
-                grid%temperature(i,j,k) = max(5000.,7500.-2500.*(grid%rho(i,j,k)/mHydrogen - minRho)/(maxRho - minRho))
+                grid%temperature(i,j,k) = max(5000.,7500.-2500.*(grid%rho(i,j,k)/real(mHydrogen) - minRho)/(maxRho - minRho))
              endif
           enddo
        enddo

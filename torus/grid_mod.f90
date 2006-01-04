@@ -1001,7 +1001,7 @@ contains
        do j = 1, grid%nmu
           do k = 1, grid%nphi
              if (grid%rho(i,j,k) /= 0.) then
-                grid%kappaSca(i,j,k,1) = max(1.e-30,grid%rho(i,j,k) * sigmaE)
+                grid%kappaSca(i,j,k,1) = max(1.e-30,grid%rho(i,j,k) * real(sigmaE))
              endif
           enddo
        enddo
@@ -1087,7 +1087,7 @@ contains
        do j = 1, grid%ny
           do k = 1, grid%nz
              if (grid%rho(i,j,k) /= 0.) then
-                grid%kappaSca(i,j,k,1) = max(1.e-30,grid%rho(i,j,k) * sigmaE)
+                grid%kappaSca(i,j,k,1) = max(1.e-30,grid%rho(i,j,k) * real(sigmaE))
              endif
           enddo
        enddo
@@ -4080,7 +4080,7 @@ contains
        do j = 1, grid%ny
           do k = 1, grid%nz
              if (grid%rho(i,j,k) /= 0.) then
-                grid%kappaSca(i,j,k,1) = max(1.e-30,grid%rho(i,j,k) * sigmaE)
+                grid%kappaSca(i,j,k,1) = max(1.e-30,grid%rho(i,j,k) * real(sigmaE))
              endif
           enddo
        enddo
@@ -7062,7 +7062,7 @@ contains
     
        CALL startReturnSamples (aVecOctal,uHatOctal,grid,1.,nTau,       &
             maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
-            lambda,kappaAbs=kAbs,kappaSca=kSca,kappaRos=kros,velocity=vel,velocityderiv=dv, &
+            lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=vel,velocityderiv=dv, &
             temperature=temp, &
             chiLine=chiLine,    &
             levelPop=levelPop,rho=rho, &
@@ -7124,10 +7124,10 @@ contains
     deallocate(rhoimage,tempimage, ksca, kabs, lambda, dlambda)
   end subroutine dullemondplot
 
-  subroutine nattaplot(grid, rinner)
-    use input_variables, only : rcore
+  subroutine nattaplot(grid)
+    use input_variables, only : rcore, rinner, router
     type(GRIDTYPE) :: grid
-    real :: rinner, router, angMax
+    real :: angMax
     real(double) :: r, ang
     real :: tr(6)
     integer :: nc
@@ -7198,7 +7198,7 @@ contains
        CALL startReturnSamples (aVecOctal,uHatOctal,grid,1.,nTau,       &
             maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
             lambda,kappaAbs=kabs, kappaSca=ksca, &
-            kappaRos=kros,velocity=vel,velocityderiv=dv, &
+            velocity=vel,velocityderiv=dv, &
             temperature=temp, &
             chiLine=chiLine,    &
             levelPop=levelPop,rho=rho, &
@@ -7210,7 +7210,7 @@ contains
        tauExt(1:2) = 0.
 
        do j = 2, nTau, 1
-          tauExt(j) = tauExt(j-1) + dlambda(j-1)*0.5*(kros(j-1)+kros(j))
+          tauExt(j) = tauExt(j-1) + dlambda(j-1)*0.5*(kabs(j-1)+kabs(j))
        enddo
        if (tauExt(nTau) > 1.) then
           call locate(tauExt, nTau, 1., k)
@@ -7223,7 +7223,7 @@ contains
     i = pgbegin(0,"natta.ps/cps",1,1)
     call pgvport(0.1,0.9,0.1,0.9)
 
-    call pgwnad(-0.05*autocm/1.e10+rinner, rinner+0.2*autocm/1.e10, 0., 0.25*autocm/1.e10)
+    call pgwnad(-0.05*real(autocm)/1.e10+rinner, rinner+0.2*real(autocm)/1.e10, 0., 0.25*real(autocm)/1.e10)
     first = .true.
     do i = 2, nr
        ang = pi/2. - real(i-1)/real(nr-1) * pi/2.

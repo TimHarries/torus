@@ -551,7 +551,7 @@ contains
 
        if (grid%geometry == "shakara") then
           call dullemondplot(grid, rinner, router, 0.4)
-          call nattaplot(grid, rinner)
+          call nattaplot(grid)
        endif
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
@@ -665,8 +665,8 @@ contains
 !$MPI     !   which will calculate each photon
 !$MPI     allocate(photonBelongsRank(nMonte))
 !$MPI    
-!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=4,tag=tag,&
-!$MPI                          setDebug=.true.)
+!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=10,tag=tag,&
+!$MPI                          setDebug=.false.)
 !$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
 !$MPI  end if
 !$MPI  !====================================================================================
@@ -675,7 +675,7 @@ contains
 !$MPI    
 !$MPI  if (my_rank /= 0) then
 !$MPI    mpiBlockLoop: do  
-!$MPI      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.true.)  
+!$MPI      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
 !$MPI      if (rankComplete) exit mpiBlockLoop  
 !$MPI    
 
@@ -1026,21 +1026,23 @@ contains
 
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
-             if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
-             gridconverged = .false.
-             do while(.not.gridconverged)
-                gridconverged = .true.
-                call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
-             end do
-             if (writeoutput) then
-                write(*,*) "done."
-             call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-                  "unrefine.ps/vcps", .true., .false., &
-                  0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
-             endif
-             if ((iiter_grand > 5).and.(iIter_grand < 10)) then
+             if ((iiter_grand == 2) .or. (iiter_grand == 10)) then
+
+                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+                gridconverged = .false.
+                do while(.not.gridconverged)
+                   gridconverged = .true.
+                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
+                end do
+                if (writeoutput) then
+                   write(*,*) "done."
+                   call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
+                        "unrefine.ps/vcps", .true., .false., &
+                        0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+                endif
+
                 if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."             
-                do j = iSmoothLam, ismoothlam ! nLambda
+                do j = iSmoothLam, ismoothlam !nLambda
                    do
                       gridConverged = .true.
                       call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps = .true.)
@@ -1101,7 +1103,7 @@ contains
     end if
 
     if (doingDustSublimation) then
-       if (iIter_grand < 20) then
+       if (iIter_grand < 10) then
           converged = .false.
        else
           doingDustSublimation = .false.

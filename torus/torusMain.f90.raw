@@ -1122,7 +1122,7 @@ program torus
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau) then
               if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
-              do j = iSmoothLam, iSmoothlam !nLambda
+              do j = iSmoothLam, nLambda
                  do
                     gridConverged = .true.
                     call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps=.true.)
@@ -1144,6 +1144,13 @@ program torus
            endif
         end select
    
+        gridconverged = .false.
+        do while(.not.gridconverged)
+           gridconverged = .true.
+           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
+        end do
+
+
         nOctals = 0
         nVoxels = 0
         call countVoxels(grid%octreeRoot,nOctals,nVoxels)
@@ -1162,8 +1169,9 @@ program torus
         if (writeoutput) write(*,*) "...final adaptive grid configuration complete"
 
         call grid_info(grid, "*")
+!$MPI if (my_rank == 0) then
         call grid_info(grid, "info_grid.dat")
-
+!$MPI endif
 
         if (writePhasePops) then
           write(tempChar,'(i3.3)') nStartPhase
@@ -1199,22 +1207,6 @@ program torus
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
                 "rho_grid.ps/vcps",.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-           gridconverged = .false.
-           do while(.not.gridconverged)
-              gridconverged = .true.
-              call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
-           end do
-!           write(*,*) "Second refine"
-!           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam)
-
-
-
-           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-                "unrefine.ps/vcps",.true., .true.,&
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-           call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
-                "unref_tau.ps/vcps", .true., .false., &
-                0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,ilam=ismoothlam) 
 
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
                 "rho_zoom.ps/vcps",.true., .false.,&
@@ -3264,7 +3256,7 @@ program torus
 !$MPI    
 !$MPI  if (my_rank /= 0) then
 !$MPI    mpiBlockLoop: do  
-!$MPI      call mpiGetBlock(my_rank,iInner_beg, iInner_end,rankComplete,tag,setDebug=.true.)  
+!$MPI      call mpiGetBlock(my_rank,iInner_beg, iInner_end,rankComplete,tag,setDebug=.false.)  
 !$MPI      if (rankComplete) exit mpiBlockLoop  
 !$MPI    
 
@@ -3404,6 +3396,7 @@ program torus
                if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
                   goto 999; endif
 
+!                  write(*,*) thisPhoton%lambda/1.e4,tauExt(ntau)
 
 
               if (.not. gridUsesAMR) call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)

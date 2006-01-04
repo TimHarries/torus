@@ -1188,7 +1188,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   real, allocatable, save  :: velocityDeriv(:)   ! directional derivative (size=maxTau)
   real, allocatable, save  :: dlambda(:)         ! distance increment array (size=maxTau)
   real(double), allocatable, save :: projVel(:)  ! (size=maxTau)
-  real(double), allocatable, save  :: kabs(:), ksca(:)   ! (size=maxTau)
+  real(double), allocatable, save  :: kabs(:), ksca(:)  ! (size=maxTau)
   !
   !
   type(octalVector)         :: aVecOctal              ! octalVector version of 'aVec'
@@ -1270,7 +1270,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
      ! sample the grid along the path of the ray
      CALL startReturnSamples (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
                               maxTau,thin_disc_on,opaqueCore,hitcore,usePops,iLambda,error,&
-                              lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
+                              lambda,kappaAbs=kAbs,kappaSca=kSca, velocity=velocity,&
                               velocityDeriv=velocityDeriv,chiLine=chiLine,    &
                               levelPop=levelPop,rho=rho, &
                               temperature=temperature, Ne=Ne, inflow=inflow)
@@ -1974,7 +1974,7 @@ end subroutine integratePathAMR
     
     CALL startReturnSamples (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
          maxTau,thin_disc_on,opaqueCore,hitcore,usePops,iLambda,error,&
-         L,kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
+         L,kappaAbs=kAbs,kappaSca=kSca, velocity=velocity,&
          velocityDeriv=velocityDeriv,chiLine=chiLine,    &
          levelPop=levelPop,rho=rho, &
          temperature=temperature, Ne=Ne, inFlow=inFlow)

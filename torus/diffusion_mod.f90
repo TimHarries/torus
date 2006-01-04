@@ -596,12 +596,13 @@ contains
        rightBoundaryX(nZones) = nx - zeroCounter
     end if
 
-    xBoundary(1:nBoundary) = log10(xBoundary(1:nBoundary))
-
-
-    call locate(xBoundary, nBoundary,xBoundary(1)*1.05d0, i)
-    sigma(1:i) = 100.d0
-    sigma((i+1):nboundary) = 1.d0
+    
+    if (nZones > 0) then
+       xBoundary(1:nBoundary) = log10(xBoundary(1:nBoundary))
+       call locate(xBoundary, nBoundary,xBoundary(1)*1.05d0, i)
+       sigma(1:i) = 100.d0
+       sigma((i+1):nboundary) = 1.d0
+    endif
 
     do zone = 1, nZones
 
