@@ -448,11 +448,7 @@ contains
           if (doSmoothGrid) then
 !$MPI     if(my_rank == 0) &
             write(*,*) "Smoothing adaptive grid structure (again)..."
-            gridConverged = .false.
-            do
-               call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged, inheritProps=.false., interpProps=.true.)
-               if (gridConverged) exit
-            end do
+            call smoothAMRgrid(grid,smoothFactor, inheritProps=.false., interpProps=.true.)
 !$MPI     if(my_rank == 0) &
             write(*,*) "...grid smoothing complete"
           end if

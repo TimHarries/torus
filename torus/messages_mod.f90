@@ -15,6 +15,9 @@ module messages_mod
   logical :: outputWarnings
   logical :: outputInfo
   integer :: verbosityLevel
+  integer, parameter :: TRIVIAL = 1
+  integer, parameter :: FORINFO = 2
+  integer, parameter :: IMPORTANT = 3
   
 contains
 
@@ -46,7 +49,7 @@ contains
 
 
     if (writeoutput.and.thisoutputInfo) then
-       write(*,'(a)') trim(wstring)
+       write(*,'(a,a)') "! ",trim(wstring)
     endif
   end subroutine writeInfo
 

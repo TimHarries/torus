@@ -397,6 +397,7 @@ program torus
 
   ! Name of the file to output various message from torus
   character(LEN=7), parameter :: messageFile = "MESSAGE"
+  character(len=80) :: message
   real :: totFrac
   integer :: nFrac
 
@@ -455,7 +456,7 @@ program torus
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 !$MPI  call random_seed(put=iseed)
-!$MPI write(*,*) my_rank,"random seed",iseed(1:isize)
+!!$MPI write(*,*) my_rank,"random seed",iseed(1:isize)
   deallocate(iSeed)
 
 
@@ -512,6 +513,9 @@ program torus
   enddo
 
   writeoutput = .true.
+  outputwarnings = .true.
+  outputinfo = .true.
+
 !$MPI  if (my_rank/=0) writeoutput = .false.
 
 
@@ -547,8 +551,9 @@ program torus
 
   !
   if (nLambda > maxLambda) then
-     if (writeoutput) write(*,'(a,i3.3,a)') "nlambda is greater than the maximum value (",&
+     write(message,'(a,i3.3,a)') "nlambda is greater than the maximum value (",&
           maxLambda,")"
+     call writeFatal(message)
      stop
   endif
 
@@ -570,9 +575,9 @@ program torus
 
   if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
      meanDustParticleMass = getMeanMass2(amin(1), amax(1), a0(1), qDist(1), pdist(1), graintype(1))
-     if (writeoutput) write(*,*) "mean dust particle mass: ",meanDustParticleMass
      if (meanDustParticleMass <=0.0) then 
-        write(*,*) "Error: meanDustParticleMass <=0 in torusMain."
+        write(message,*) "Error: meanDustParticleMass <=0 in torusMain."
+        call writeFatal(message)
         stop
      end if
   endif
@@ -585,8 +590,8 @@ program torus
      inclination = firstInclination
   end if
   if (inclination .lt. 1.e-6) then
-     write(*,*) "Warning: inclination less than 1.e-6, now set to 1.e-6."
-     write(*,*) "         Did you specify an inclination of 0?"
+     call writeWarning("inclination less than 1.e-6, now set to 1.e-6.")
+     call writeWarning("Did you specify an inclination of 0?")
   end if
   inclination = max(inclination, 1.e-6)
 
@@ -853,10 +858,12 @@ program torus
         call locate(xArray, nLambda, lambdaTau, i)
         t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
         if (t1 > 0.5) then
-           if (writeoutput) write(*,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
+           write(message,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
+           call writeInfo(message, TRIVIAL)
            xArray(i+1) = lambdaTau
         else
-           if (writeoutput) write(*,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
+           write(message,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
+           call writeInfo(message, TRIVIAL)
            xArray(i) = lambdaTau
         endif
      endif
@@ -895,12 +902,12 @@ program torus
   
   if (mie) then
      if (.not.dustfile) then
-        if (writeoutput) write(*,*) "fill grid mie",nLambda,grid%nlambda
         do i = 1, nDustType
            call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), grainType(i), &
                 ngrain, X_grain, grainname, i)
         enddo
-        if (writeoutput) write(*,'(a,f5.2)') "!!!! Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
+        write(message,'(a,f5.2)') "Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
+        call writeInfo(message, FORINFO)
         do i = 1, nDustType
            grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
            grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
@@ -942,8 +949,8 @@ program torus
      call locate(grid%lamArray, nLambda,lambdaTau,itestlam)
      call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
      grid%itestlam = iTestLam
-     if (writeoutput) write(*,*) "Test wavelength index: ",itestlam,ismoothlam
-     if (writeoutput) write(*,*) "Test Kappa Abs",grid%oneKappaAbs(1,itestLam)
+     write(message,*) "Test wavelength index: ",itestlam,ismoothlam
+     call writeInfo(message, TRIVIAL)
   end if
 
   !===============================================================
@@ -967,17 +974,18 @@ program torus
           if (readpops) call readAMRgrid(popFilename,readFileFormatted,grid)
         end if 
         if (forceLineChange) then
-           write (*,'(A,I1,A,I1,A)') 'Recalculating for n =',nUpper,' /',nLower,'levels...'
+           write (message,'(A,I1,A,I1,A)') 'Recalculating for n =',nUpper,' /',nLower,'levels...'
+           call writeInfo(message, IMPORTANT)
            call generateOpacitiesAMR(grid, nLower, nUpper)
-           print *, '...level change done.'
         end if
 
         ! for some geometries, it is valid to alter the 'dipoleOffset parameter
         !   for a grid we've already created. 
         if (geometry(1:6) == "ttauri") then 
 !           if (ABS(grid%dipoleOffset/dipoleoffset-1.0) > 0.01) then 
-           write(*,'(a,f5.2,a)') 'Using new dipole offset value (',&
+           write(message,'(a,f5.2,a)') 'Using new dipole offset value (',&
                 dipoleOffset*radToDeg,'deg)'
+           call writeInfo(message, IMPORTANT)
            grid%dipoleOffset = dipoleOffset                         
            grid%diskNormal = VECTOR(0.,0.,1.)
            grid%diskNormal = rotateX(grid%diskNormal,grid%dipoleOffSet)
@@ -1045,13 +1053,13 @@ program torus
 !!$MPI  !  Later the other nodes reads in the same file.
 !!$MPI if (my_rank == 0) then ! ----------------------------------------------------
         amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
-        if (writeoutput) write(*,*) "Starting initial set up of adaptive grid..."
+        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
 
         select case (geometry)
         case("cluster")
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData, young_cluster)
-           if (writeoutput) write(*,*) "...initial adaptive grid configuration complete"
+           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
            call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
 
            !Removing the cells within 10^14 cm from the stars.
@@ -1060,12 +1068,12 @@ program torus
         case("wr104")
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData)
-           if (writeoutput) write(*,*) "...initial adaptive grid configuration complete"
+           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
         case DEFAULT
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid)
-           if (writeoutput) write(*,*) "...initial adaptive grid configuration complete"
+           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
            ! This section is getting rather long. Maybe this should be done in 
            ! wrapper subroutine in amr_mod.f90.
@@ -1073,20 +1081,22 @@ program torus
               ! Finding the total mass in the accretion flow
               mass_accretion_old = 0.0d0
               call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_old)
-              if (writeoutput) write(*,*) " "
-              if (writeoutput) write(*,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
+              write(message,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
+              call writeInfo(message,FORINFO)
 
               if (ttau_fuzzy_edge) then
-                 if (writeoutput) write(*,*) "Fuzzy edge for TTauri accreation stream will be used..."
+                 call writeInfo("Fuzzy edge for TTauri accreation stream will be used.",FORINFO)
                  call ttauri_fuzzy_edge(grid%octreeRoot)
 
                  ! We now have to correct the density of the accretion flow 
                  ! due to the fuzziness introduced above.
                  mass_accretion_new = 0.0d0
                  call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_new)
-                 if (writeoutput) write(*,*) "Total mass in accretion flow (after fuzzy edge) is ",  mass_accretion_new, "[g]"
+                 write(message,*) "Total mass in accretion flow (after fuzzy edge) is ",  mass_accretion_new, "[g]"
+                 call writeInfo(message, FORINFO)
                  mass_scale = mass_accretion_old/mass_accretion_new
-                 if (writeoutput)  write(*,*) "Scaling the density by ", mass_scale , "[g]"
+                 write(message,*) "Scaling the density by ", mass_scale , "[g]"
+                 call writeInfo(message, FORINFO)
 
                  call TTauri_accretion_scale_density(grid%octreeRoot, grid, mass_scale) 
                  ! Check to see if it has scaled correctly.
@@ -1110,18 +1120,14 @@ program torus
               end if
            end if
            if (doSmoothGrid) then
-              if (writeoutput) write(*,*) "Smoothing adaptive grid structure..."
-              gridConverged = .false.
-              do
-                 call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops=.false., interpProps=.false.)
-                 if (gridConverged) exit
-              end do
-              if (writeoutput) write(*,*) "...grid smoothing complete"
+              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+              call smoothAMRgrid(grid,smoothFactor,inheritprops=.false., interpProps=.false.)
+              call writeInfo("...grid smoothing complete", TRIVIAL)
            end if
            ! chris (26/05/04)
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau) then
-              if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."
+              call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
               do j = iSmoothLam, nLambda
                  do
                     gridConverged = .true.
@@ -1129,26 +1135,24 @@ program torus
                     if (gridConverged) exit
                  end do
               enddo
-              if (writeoutput) write(*,*) "...grid smoothing complete"
+              call writeInfo("...grid smoothing complete", TRIVIAL)
               ! The tau smoothing may result in large differences in the size
               ! of neighbouring octals, so we smooth the grid again.
               if (doSmoothGrid) then
-                 if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
-                 gridConverged = .false.
-                 do
-                    call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops = .false.,interpProps=.true.)
-                    if (gridConverged) exit
-                 end do
-                 if (writeoutput) write(*,*) "...grid smoothing complete"
+                 call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+                 call smoothAMRgrid(grid,smoothFactor,inheritprops = .false.,interpProps=.true.)
+                 call writeInfo("...grid smoothing complete", TRIVIAL)
               end if
            endif
         end select
    
+        call writeInfo("Unrefining optically thin cells...", TRIVIAL)
         gridconverged = .false.
         do while(.not.gridconverged)
            gridconverged = .true.
            call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
         end do
+        call writeInfo("Done.", TRIVIAL)
 
 
         nOctals = 0

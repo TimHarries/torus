@@ -90,6 +90,9 @@ subroutine inputs()
      write(*,*) " "
   endif
 
+  call getInteger("verbosity", verbosityLevel, cLine, nLines, &
+       "Verbosity level: ", "(a,i8,1x,a)", 1, ok, .false.)
+
 
   call getInteger("nphotons", nPhotons, cLine, nLines, &
        "Number of photons: ", "(a,i8,1x,a)", 100000, ok, .true.)
