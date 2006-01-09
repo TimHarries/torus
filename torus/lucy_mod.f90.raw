@@ -1005,7 +1005,9 @@ contains
           enddo
        endif
 
+       call writeInfo("Getting temperatures in diffusion zone", TRIVIAL)
        call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
+       call writeInfo("Done.", TRIVIAL)
 
 !       if ((grid%geometry == "shakara").and.(nDustType > 1)) then
 !          call fillDustShakara(grid, grid%octreeRoot)

@@ -6957,7 +6957,7 @@ IF ( .NOT. gridConverged ) RETURN
     IF ( ASSOCIATED(dest%child) ) THEN
       PRINT *, "Problem in copyOctalComponents:"
       PRINT *, "destination seems to have some children"
-      STOP
+      do;enddo
     END IF
     CALL deleteOctal(dest, deleteChildren=.FALSE., adjustParent=.FALSE. )
 

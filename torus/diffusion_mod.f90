@@ -256,9 +256,10 @@ contains
 
     nx = 0
     call getxValuesdiff(grid%octreeRoot,nx,xAxis)
+    write(*,*) nx, "values"
     call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
     xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
-
+    write(*,*) nx," values after strip"
     xPos = grid%halfSmallestSubcell - grid%octreeRoot%subcellSize
     smallestSubcell = 2. * grid%halfSmallestSubcell
     

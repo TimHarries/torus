@@ -1128,7 +1128,7 @@ program torus
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau) then
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-              do j = iSmoothLam, nLambda
+              do j = iSmoothLam, ismoothlam !nLambda
                  do
                     gridConverged = .true.
                     call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps=.true.)

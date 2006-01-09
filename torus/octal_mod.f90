@@ -82,7 +82,7 @@ MODULE octal_mod
     LOGICAL                            :: threeD        ! this is a three-dimensional octal
     LOGICAL                            :: twoD          ! this is a two-dimensioanl octal (quartal?!)
     INTEGER                            :: maxChildren   ! this is 8 for three-d and 4 for two-d
-    TYPE(octal), DIMENSION(:), POINTER :: child
+    TYPE(octal), DIMENSION(:), POINTER :: child => NULL()
     LOGICAL, DIMENSION(8)              :: hasChild
     TYPE(octal), POINTER               :: parent => null()         
     TYPE(octalVector)                  :: centre
