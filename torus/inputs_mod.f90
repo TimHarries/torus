@@ -1007,6 +1007,11 @@ endif
        call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
             "Minimum percentage of undersampled cell in lucy iteration: ", &
             "(a,f4.2,a)",30.0,ok,.false.)
+
+       call getReal("diffdepth", diffDepth, cLine, nLines, &
+            "Depth of diffusion zone (in Rosseland optical depths): ", &
+            "(a,f5.1,a)",10.0,ok,.false.)
+
        call getInteger("mincrossings", minCrossings, cLine, nLines, &
             "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.false.)
     endif

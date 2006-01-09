@@ -256,10 +256,8 @@ contains
 
     nx = 0
     call getxValuesdiff(grid%octreeRoot,nx,xAxis)
-    write(*,*) nx, "values"
     call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
     xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
-    write(*,*) nx," values after strip"
     xPos = grid%halfSmallestSubcell - grid%octreeRoot%subcellSize
     smallestSubcell = 2. * grid%halfSmallestSubcell
     
@@ -457,7 +455,7 @@ contains
 
   subroutine defineDiffusionZone(grid, outputFlag, resetTemp)
 
-    use input_variables, only: rinner, router
+    use input_variables, only: rinner, router, diffDepth
     type(GRIDTYPE) :: grid
     real(double),allocatable :: zAxis(:), subcellsize(:)
     real,allocatable :: rho(:), temperature(:)
@@ -485,7 +483,6 @@ contains
     integer :: nBoundary
     real(double) :: xStart
     integer :: iBoundary, boundarySubcell
-    real :: diffDepth = 20
     real(double) :: zApprox, eps
     real(double) :: tot
     real(double) :: zSize

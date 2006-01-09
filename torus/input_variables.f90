@@ -61,6 +61,8 @@ module input_variables
 
   logical :: blockHandout
 
+
+  real :: diffDepth  ! depth of diffusion zone - in units of rosseland optical depth
   !
   ! abundances of different types of dust grains. These will be used when 
   ! the graintype assigned is "mixed."
