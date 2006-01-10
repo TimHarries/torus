@@ -7608,7 +7608,7 @@ IF ( .NOT. gridConverged ) RETURN
           endif
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
           tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
-          if (tau > 1.e-5) unrefine = .false.
+          if (tau > 1.e-10) unrefine = .false.
        endif
     enddo
 

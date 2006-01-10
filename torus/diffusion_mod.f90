@@ -490,8 +490,9 @@ contains
     logical :: outputFlag
     integer :: ierr
     real(double) :: xval
-    integer :: leftBoundary(10), rightBoundary(10)
-    integer :: leftBoundaryX(10), rightBoundaryX(10)
+    integer, parameter :: maxZones = 100
+    integer :: leftBoundary(maxZones), rightBoundary(maxZones)
+    integer :: leftBoundaryX(maxZones), rightBoundaryX(maxZones)
     integer :: zone, nZones, zeroCounter, nZoneBoundary
     logical :: inZone
     integer :: nOctals, nCells
@@ -566,7 +567,7 @@ contains
              if (.not.inZone)  then
                 inZone = .true.
                 nZones = nZones + 1
-                if (nZones .gt. 20) then
+                if (nZones .gt. maxZones) then
                    write(*,*) "Too many diffusion zones. Setting no diffusion zone"
                    call setNoDiffusion(grid%octreeRoot)
                    nZones = 0

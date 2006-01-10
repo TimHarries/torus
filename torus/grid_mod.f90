@@ -6373,7 +6373,7 @@ contains
              select case (name)
              case("rho")
                 value = thisOctal%rho(subcell)
-!                if (thisOctal%diffusionApprox(subcell)) value = 1.d-3
+                if (thisOctal%diffusionApprox(subcell)) value = 1.d-30
 
              case("ionization")
                 value = thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))

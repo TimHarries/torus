@@ -512,7 +512,7 @@ contains
        end if
 
        if (doingDustSublimation) then
-          nMonte = 100000
+          nMonte = 1000000
           if (iIter_grand == 0) then
              nIter = 3
           else
@@ -1028,7 +1028,7 @@ contains
 
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
-             if ((iiter_grand == 2) .or. (iiter_grand == 10)) then
+             if (iiter_grand == 5) then
 
                 if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
                 gridconverged = .false.
@@ -1101,7 +1101,7 @@ contains
     end if
 
     if (doingDustSublimation) then
-       if (iIter_grand < 10) then
+       if (iIter_grand < 5) then
           converged = .false.
        else
           doingDustSublimation = .false.
