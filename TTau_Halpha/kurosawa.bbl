@@ -1,10 +1,5 @@
-\begin{thebibliography}{85}
+\begin{thebibliography}{80}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
-
-\bibitem[{{Akeson} {et~al.}(2002){Akeson}, {Ciardi}, {van Belle}, \&
-  {Creech-Eakman}}]{akeson:2002}
-{Akeson} R.~L., {Ciardi} D.~R., {van Belle} G.~T., {Creech-Eakman} M.~J., 2002,
-  \apj, 566, 1124
 
 \bibitem[{{Alencar} \& {Basri}(2000)}]{alencar:2000}
 {Alencar} S.~H.~P., {Basri} G., 2000, \aj, 119, 1881
@@ -23,9 +18,6 @@
 
 \bibitem[{{Appenzeller} \& {Mundt}(1989)}]{appenzeller:1989}
 {Appenzeller} I., {Mundt} R., 1989, \aapr, 1, 291
-
-\bibitem[{{Basri} \& {Batalha}(1990)}]{basri:1990}
-{Basri} G., {Batalha} C., 1990, \apj, 363, 654
 
 \bibitem[{{Basri} \& {Bertout}(1989)}]{basri:1989}
 {Basri} G., {Bertout} C., 1989, \apj, 341, 340
@@ -52,15 +44,8 @@
   {Hewett}}]{calvet:1992b}
 {Calvet} N., {Hartmann} L., {Hewett} R., 1992, \apj, 386, 229
 
-\bibitem[{{Calvet} {et~al.}(1994){Calvet}, {Hartmann}, {Kenyon}, \&
-  {Whitney}}]{calvet:1994}
-{Calvet} N., {Hartmann} L., {Kenyon} S.~J., {Whitney} B.~A., 1994, \apj, 434,
-  330
-
-\bibitem[{{Calvet} {et~al.}(2004){Calvet}, {Muzerolle}, {Brice{\~n}o},
-  {Hern{\'a}ndez}, {Hartmann}, {Saucedo}, \& {Gordon}}]{calvet:2004}
-{Calvet} N., {Muzerolle} J., {Brice{\~n}o} C., {Hern{\'a}ndez} J., {Hartmann}
-  L., {Saucedo} J.~L., {Gordon} K.~D., 2004, \aj, 128, 1294
+\bibitem[{{Camenzind}(1990)}]{camenzind:1990}
+{Camenzind} M., 1990, Reviews of Modern Astronomy, 3, 234
 
 \bibitem[{{Castor} {et~al.}(1975){Castor}, {Abbott}, \& {Klein}}]{castor:1975}
 {Castor} J.~I., {Abbott} D.~C., {Klein} R.~I., 1975, \apj, 195, 157
@@ -139,23 +124,13 @@ Grevesse N., Noels A., 1993, in Origin and Evolution of the Elements, N.\ P.,
 \bibitem[{{Herbig}(1962)}]{herbig:1962}
 {Herbig} G.~H., 1962, Advances in Astronomy and Astrophysics, 1, 47
 
-\bibitem[{{Herbst} {et~al.}(1987){Herbst}, {Booth}, {Koret}, {Zajtseva},
-  {Shakhovskaya}, {Vrba}, {Covino}, {Lines}, \& {Barksdale}}]{herbst:1987}
-{Herbst} W., {Booth} J.~F., {Koret} D.~L., {Zajtseva} G.~V., {Shakhovskaya}
-  H.~I., {Vrba} F.~J., {Covino} E., {Lines} R., {Barksdale} W., 1987, \aj, 94,
-  137
-
 \bibitem[{Hillier(1991)}]{hillier:1991}
 Hillier D.~J., 1991, \aap, 247, 455
 
 \bibitem[{{Johns-Krull} {et~al.}(1999){Johns-Krull}, {Valenti}, {Hatzes}, \&
-  {Kanaan}}]{jonhs-krull:1999}
+  {Kanaan}}]{johns-krull:1999}
 {Johns-Krull} C.~M., {Valenti} J.~A., {Hatzes} A.~P., {Kanaan} A., 1999, \apjl,
   510, L41
-
-\bibitem[{{Johns-Krull} {et~al.}(2000){Johns-Krull}, {Valenti}, \&
-  {Linsky}}]{johns-krull:2000}
-{Johns-Krull} C.~M., {Valenti} J.~A., {Linsky} J.~L., 2000, \apj, 539, 815
 
 \bibitem[{{Kenyon} \& {Hartmann}(1987)}]{kenyon:1987}
 {Kenyon} S.~J., {Hartmann} L., 1987, \apj, 323, 714
@@ -181,9 +156,6 @@ Hillier D.~J., 1991, \aap, 247, 455
 
 \bibitem[{{K\"{o}nigl} \& {Pudritz}(2000)}]{koenigl:2000}
 {K\"{o}nigl} A., {Pudritz} R.~E., 2000, Protostars and Planets IV, 759
-
-\bibitem[{{Koresko}(2000)}]{koresko:2000}
-{Koresko} C.~D., 2000, \apjl, 531, L147
 
 \bibitem[{{Krasnopolsky} {et~al.}(2003){Krasnopolsky}, {Li}, \&
   {Blandford}}]{krasnopolsky:2003}
@@ -260,7 +232,7 @@ Hillier D.~J., 1991, \aap, 247, 455
 \bibitem[{{Ray} {et~al.}(1996){Ray}, {Mundt}, {Dyson}, {Falle}, \&
   {Raga}}]{ray:1996}
 {Ray} T.~P., {Mundt} R., {Dyson} J.~E., {Falle} S.~A.~E.~G., {Raga} A.~C.,
-  1996, \apjl, 468, L103+
+  1996, \apjl, 468, L103
 
 \bibitem[{{Reipurth} {et~al.}(1996){Reipurth}, {Pedrosa}, \&
   {Lago}}]{reipurth:1996}
@@ -285,9 +257,15 @@ Hillier D.~J., 1991, \aap, 247, 455
   {Semenov}}]{steinacker:2003}
 {Steinacker} J., {Henning} T., {Bacmann} A., {Semenov} D., 2003, \aap, 401, 405
 
-\bibitem[{{Symington} {et~al.}(2005){Symington}, {Harries}, \&
+\bibitem[{{Symington} {et~al.}(2005{\natexlab{a}}){Symington}, {Harries}, \&
   {Kurosawa}}]{symington:2005}
-{Symington} N.~H., {Harries} T.~J., {Kurosawa} R., 2005, \mnras, 356, 1489
+{Symington} N.~H., {Harries} T.~J., {Kurosawa} R., 2005{\natexlab{a}}, \mnras,
+  356, 1489
+
+\bibitem[{{Symington} {et~al.}(2005{\natexlab{b}}){Symington}, {Harries},
+  {Kurosawa}, \& {Naylor}}]{symington:2005b}
+{Symington} N.~H., {Harries} T.~J., {Kurosawa} R., {Naylor} T.,
+  2005{\natexlab{b}}, \mnras, 358, 977
 
 \bibitem[{{Takami} {et~al.}(2003){Takami}, {Bailey}, \&
   {Chrysostomou}}]{takami:2003}
