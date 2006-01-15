@@ -29,13 +29,14 @@
 \bibitem[{{Blandford} \& {Payne}(1982)}]{blandford:1982}
 {Blandford} R.~D., {Payne} D.~G., 1982, \mnras, 199, 883
 
-\bibitem[{{Burrows} {et~al.}(1996){Burrows}, {Stapelfeldt}, {Watson}, {Krist},
-  {Ballester}, {Clarke}, {Hester}, {Hoessel}, {Holtzman}, {Mould}, {Scowen}, \&
-  {Trauger}}]{burrows:1996}
+\bibitem[{{Burrows} {et~al.}(????){Burrows}, {Stapelfeldt}, {Watson}, {Krist},
+  {Ballester}, {Clarke}, {Crisp}, {Gallagher}, {Griffiths}, {Hester},
+  {Hoessel}, {Holtzman}, {Mould}, {Scowen}, {Trauger}, \&
+  {Westphal}}]{burrows:1996}
 {Burrows} C.~J., {Stapelfeldt} K.~R., {Watson} A.~M., {Krist} J.~E.,
-  {Ballester} G.~E., {Clarke} J.~T., {Hester} J.~J., {Hoessel} J.~G.,
-  {Holtzman} J.~A., {Mould} J.~R., {Scowen} P.~A., {Trauger}
-  J.~T.~and{Westphal} J.~A., 1996, \apj, 473, 437
+  {Ballester} G.~E., {Clarke} J.~T., {Crisp} D., {Gallagher} J.~S., {Griffiths}
+  R.~E., {Hester} J.~J., {Hoessel} J.~G., {Holtzman} J.~A., {Mould} J.~R.,
+  {Scowen} P.~A., {Trauger} J.~T., {Westphal} J.~A., ????
 
 \bibitem[{{Calvet} {et~al.}(1984){Calvet}, {Basri}, \& {Kuhi}}]{calvet:1984}
 {Calvet} N., {Basri} G., {Kuhi} L.~V., 1984, \apj, 277, 725
@@ -71,7 +72,7 @@
 {Draine} B.~T., {Lee} H.~M., 1984, \apj, 285, 89
 
 \bibitem[{{Drew} {et~al.}(1998){Drew}, {Proga}, \& {Stone}}]{drew:1998}
-{Drew} J.~E., {Proga} D., {Stone} J.~M., 1998, \mnras, 296, L6+
+{Drew} J.~E., {Proga} D., {Stone} J.~M., 1998, \mnras, 296, L6
 
 \bibitem[{{Edwards} {et~al.}(1987){Edwards}, {Cabrit}, {Strom}, {Heyer},
   {Strom}, \& {Anderson}}]{edwards:1987}
@@ -86,8 +87,8 @@
 {Finkenzeller} U., {Mundt} R., 1984, \aaps, 55, 109
 
 \bibitem[{{Frank} {et~al.}(2002){Frank}, {King}, \& {Raine}}]{frank:2002}
-{Frank} J., {King} A., {Raine} D.~J., 2002, {Accretion Power in Astrophysics:
-  Third Edition}. Cambridge Univ.\, Press, Cambridge, p. 398
+{Frank} J., {King} A., {Raine} D.~J., 2002, {Accretion Power in Astrophysics,
+  3rd edn.} Cambridge Univ.\, Press, Cambridge, p. 398
 
 \bibitem[{{Ghosh} {et~al.}(1977){Ghosh}, {Pethick}, \& {Lamb}}]{ghosh:1977}
 {Ghosh} P., {Pethick} C.~J., {Lamb} F.~K., 1977, \apj, 217, 578
@@ -227,7 +228,7 @@ Hillier D.~J., 1991, \aap, 247, 455
 {Ouyed} R., {Pudritz} R.~E., 1997, \apj, 482, 712
 
 \bibitem[{{Pudritz} \& {Banerjee}(2005)}]{pudritz:2005}
-{Pudritz} R.~E., {Banerjee} R., 2005, ArXiv Astrophysics e-prints
+{Pudritz} R.~E., {Banerjee} R., 2005, in IAU Symposium, pp. 163--173
 
 \bibitem[{{Ray} {et~al.}(1996){Ray}, {Mundt}, {Dyson}, {Falle}, \&
   {Raga}}]{ray:1996}
