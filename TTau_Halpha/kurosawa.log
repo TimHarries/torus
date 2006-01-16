@@ -1,4 +1,4 @@
-This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  15 JAN 2006 23:04
+This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  16 JAN 2006 10:46
 entering extended mode
 **kurosawa
 (./kurosawa.tex
@@ -339,19 +339,14 @@ Underfull \hbox (badness 2418) in paragraph at lines 2299--2301
 
 (./kurosawa.bbl [18] [19]) [20
 
-] (./kurosawa.aux
-
-Package natbib Warning: Citation(s) may have changed.
-(natbib)                Rerun to get citations correct.
-
-) ) 
+] (./kurosawa.aux) ) 
 Here is how much of TeX's memory you used:
  2185 strings out of 94500
  25450 string characters out of 1172833
- 88515 words of memory out of 3500000
+ 88693 words of memory out of 3500000
  5289 multiletter control sequences out of 10000+50000
  51921 words of font info for 103 fonts, out of 500000 for 2000
  580 hyphenation exceptions out of 1000
  31i,14n,34p,1399b,419s stack positions out of 1500i,500n,5000p,200000b,5000s
 
-Output written on kurosawa.dvi (20 pages, 138096 bytes).
+Output written on kurosawa.dvi (20 pages, 138104 bytes).
