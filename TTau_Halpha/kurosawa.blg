@@ -2,52 +2,44 @@ This is BibTeX, Version 0.99c (Web2C 7.5.4)
 The top-level auxiliary file: kurosawa.aux
 The style file: mn.bst
 Database file #1: mnras.bib
-I was expecting a `,' or a `}'---line 1949 of file mnras.bib
- :     
- :     title = "{Hubble Space Telescope Observations of the Disk and Jet of HH 30}",
-(Error may have been on previous line)
-I'm skipping whatever remains of this entry
-Warning--empty year in burrows:1996; set to ????
-Warning--empty journal in burrows:1996
 You've used 80 entries,
             2806 wiz_defined-function locations,
-            1885 strings with 25772 characters,
-and the built_in function-call counts, 36550 in all, are:
-= -- 3153
+            1888 strings with 25844 characters,
+and the built_in function-call counts, 36595 in all, are:
+= -- 3159
 > -- 2310
 < -- 42
 + -- 863
 - -- 780
-* -- 3101
-:= -- 6829
+* -- 3103
+:= -- 6835
 add.period$ -- 2
 call.type$ -- 80
 change.case$ -- 579
 chr.to.int$ -- 79
-cite$ -- 82
-duplicate$ -- 1526
-empty$ -- 2213
+cite$ -- 80
+duplicate$ -- 1527
+empty$ -- 2218
 format.name$ -- 1047
-if$ -- 7105
+if$ -- 7120
 int.to.chr$ -- 2
 int.to.str$ -- 1
 missing$ -- 77
 newline$ -- 244
 num.names$ -- 322
-pop$ -- 658
+pop$ -- 650
 preamble$ -- 1
 purify$ -- 579
 quote$ -- 0
-skip$ -- 1259
+skip$ -- 1268
 stack$ -- 0
-substring$ -- 1666
+substring$ -- 1676
 swap$ -- 109
 text.length$ -- 5
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 714
-warning$ -- 2
-while$ -- 319
+warning$ -- 0
+while$ -- 320
 width$ -- 0
-write$ -- 801
-(There was 1 error message)
+write$ -- 803
