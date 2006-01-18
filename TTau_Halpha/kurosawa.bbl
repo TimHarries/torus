@@ -1,4 +1,4 @@
-\begin{thebibliography}{80}
+\begin{thebibliography}{67}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
 \bibitem[{{Alencar} \& {Basri}(2000)}]{alencar:2000}
@@ -19,9 +19,6 @@
 \bibitem[{{Appenzeller} \& {Mundt}(1989)}]{appenzeller:1989}
 {Appenzeller} I., {Mundt} R., 1989, \aapr, 1, 291
 
-\bibitem[{{Basri} \& {Bertout}(1989)}]{basri:1989}
-{Basri} G., {Bertout} C., 1989, \apj, 341, 340
-
 \bibitem[{{Bertout} {et~al.}(1988){Bertout}, {Basri}, \&
   {Bouvier}}]{bertout:1988}
 {Bertout} C., {Basri} G., {Bouvier} J., 1988, \apj, 330, 350
@@ -38,13 +35,6 @@
   R.~E., {Hester} J.~J., {Hoessel} J.~G., {Holtzman} J.~A., {Mould} J.~R.,
   {Scowen} P.~A., {Trauger} J.~T., {Westphal} J.~A., 1996, \apj, 473, 437
 
-\bibitem[{{Calvet} {et~al.}(1984){Calvet}, {Basri}, \& {Kuhi}}]{calvet:1984}
-{Calvet} N., {Basri} G., {Kuhi} L.~V., 1984, \apj, 277, 725
-
-\bibitem[{{Calvet} {et~al.}(1992){Calvet}, {Hartmann}, \&
-  {Hewett}}]{calvet:1992b}
-{Calvet} N., {Hartmann} L., {Hewett} R., 1992, \apj, 386, 229
-
 \bibitem[{{Camenzind}(1990)}]{camenzind:1990}
 {Camenzind} M., 1990, Reviews of Modern Astronomy, 3, 234
 
@@ -59,14 +49,6 @@
 
 \bibitem[{{Collier Cameron} \& {Campbell}(1993)}]{cameron:1993}
 {Collier Cameron} A., {Campbell} C.~G., 1993, \aap, 274, 309
-
-\bibitem[{{Cotera} {et~al.}(2001){Cotera}, {Whitney}, {Young}, {Wolff}, {Wood},
-  {Povich}, {Schneider}, {Rieke}, \& {Thompson}}]{cotera:2001}
-{Cotera} A.~S., {Whitney} B.~A., {Young} E., {Wolff} M.~J., {Wood} K., {Povich}
-  M., {Schneider} G., {Rieke} M., {Thompson} R., 2001, \apj, 556, 958
-
-\bibitem[{{Decampli}(1981)}]{decampli:1981}
-{Decampli} W.~M., 1981, \apj, 244, 124
 
 \bibitem[{{Draine} \& {Lee}(1984)}]{draine:1984}
 {Draine} B.~T., {Lee} H.~M., 1984, \apj, 285, 89
@@ -96,9 +78,6 @@
 \bibitem[{Grevesse \& Noels(1993)}]{grevesse:1993}
 Grevesse N., Noels A., 1993, in Origin and Evolution of the Elements, N.\ P.,
   E.\ V.-F., M.\ C., eds., Cambridge Univ.\, Press, Cambridge, p.~15
-
-\bibitem[{{Guenther} \& {Emerson}(1996)}]{guenther:1996}
-{Guenther} E.~W., {Emerson} J.~P., 1996, \aap, 309, 777
 
 \bibitem[{{Gullbring} {et~al.}(1998){Gullbring}, {Hartmann}, {Briceno}, \&
   {Calvet}}]{gullbring:1998}
@@ -174,32 +153,14 @@ Hillier D.~J., 1991, \aap, 247, 455
   {Symington}}]{kurosawa:2005a}
 {Kurosawa} R., {Harries} T.~J., {Symington} N.~H., 2005, \mnras, 358, 671
 
-\bibitem[{{Kurosawa} \& {Hillier}(2001)}]{kurosawa:2001a}
-{Kurosawa} R., {Hillier} D.~J., 2001, \aap, 379, 336
-
 \bibitem[{{Kurucz}(1979)}]{kurucz:1979}
 {Kurucz} R.~L., 1979, \apjs, 40, 1
-
-\bibitem[{{Kurucz}(1993)}]{kurucz:1993}
----, 1993, VizieR Online Data Catalog, 6039, 0
-
-\bibitem[{{Kwan} \& {Tademaru}(1995)}]{kwan:1995}
-{Kwan} J., {Tademaru} E., 1995, \apj, 454, 382
 
 \bibitem[{{Long} \& {Knigge}(2002)}]{long:2002}
 {Long} K.~S., {Knigge} C., 2002, \apj, 579, 725
 
 \bibitem[{{Luttermoser} \& {Johnson}(1992)}]{luttermoser:1992}
 {Luttermoser} D.~G., {Johnson} H.~R., 1992, \apj, 388, 579
-
-\bibitem[{{Malbet} {et~al.}(2005){Malbet}, {Benisty}, {De Wit}, {Kraus},
-  {Meilland}, {Millour}, {Tatulli}, {Berger}, {Chesneau}, {Hofmann}, {Isella},
-  {Natta}, {Petrov}, {Preibisch}, {Stee}, {Testi}, {Weigelt}, \& {AMBER
-  Collaboration}}]{malbet:2005}
-{Malbet} F., {Benisty} M., {De Wit} W.~J., {Kraus} S., {Meilland} A., {Millour}
-  F., {Tatulli} E., {Berger} J.~., {Chesneau} O., {Hofmann} K.~., {Isella} A.,
-  {Natta} A., {Petrov} R., {Preibisch} T., {Stee} P., {Testi} L., {Weigelt} G.,
-  {AMBER Collaboration}, 2005, ArXiv Astrophysics e-prints
 
 \bibitem[{{Martin}(1996)}]{martin:1996}
 {Martin} S.~C., 1996, \apj, 470, 537
@@ -254,10 +215,6 @@ Hillier D.~J., 1991, \aap, 247, 455
 {Shu} F.~H., {Najita} J., {Ostriker} E., {Wilkin} F., {Ruden} S., {Lizano} S.,
   1994, \apj, 429, 781
 
-\bibitem[{{Steinacker} {et~al.}(2003){Steinacker}, {Henning}, {Bacmann}, \&
-  {Semenov}}]{steinacker:2003}
-{Steinacker} J., {Henning} T., {Bacmann} A., {Semenov} D., 2003, \aap, 401, 405
-
 \bibitem[{{Symington} {et~al.}(2005{\natexlab{a}}){Symington}, {Harries}, \&
   {Kurosawa}}]{symington:2005}
 {Symington} N.~H., {Harries} T.~J., {Kurosawa} R., 2005{\natexlab{a}}, \mnras,
@@ -289,18 +246,10 @@ Hillier D.~J., 1991, \aap, 247, 455
 {Vink} J.~S., {Drew} J.~E., {Harries} T.~J., {Oudmaijer} R.~D., {Unruh} Y.,
   2005, \mnras, 359, 1049
 
-\bibitem[{{Walker} {et~al.}(2004){Walker}, {Wood}, {Lada}, {Robitaille},
-  {Bjorkman}, \& {Whitney}}]{walker:2004}
-{Walker} C., {Wood} K., {Lada} C.~J., {Robitaille} T., {Bjorkman} J.~E.,
-  {Whitney} B., 2004, \mnras, 351, 607
-
 \bibitem[{{Whitney} {et~al.}(2003){Whitney}, {Wood}, {Bjorkman}, \&
   {Wolff}}]{whitney:2003a}
 {Whitney} B.~A., {Wood} K., {Bjorkman} J.~E., {Wolff} M.~J., 2003, \apj, 591,
   1049
-
-\bibitem[{Wolf {et~al.}(1999)Wolf, Henning, \& Stecklum}]{wolf:1999}
-Wolf S., Henning T., Stecklum B., 1999, A\&A, 349, 839
 
 \bibitem[{{Wood} {et~al.}(2002){Wood}, {Wolff}, {Bjorkman}, \&
   {Whitney}}]{wood:2002}

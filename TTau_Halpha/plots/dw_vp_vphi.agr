@@ -1,7 +1,7 @@
 # Grace project file
 #
-@version 50114
-@page size 585, 600
+@version 50118
+@page size 448, 459
 @page scroll 5%
 @page inout 5%
 @link page off
@@ -54,7 +54,7 @@
 @timestamp rot 0
 @timestamp font 0
 @timestamp char size 1.000000
-@timestamp def "Tue Nov  8 13:07:03 2005"
+@timestamp def "Wed Jan 18 22:52:10 2006"
 @r0 off
 @link r0 to g0
 @r0 type above
@@ -101,16 +101,10 @@
 @g0 fixedpoint format general general
 @g0 fixedpoint prec 6, 6
 @with g0
-@    world xmin 0.0001
-@    world xmax 103.237622
-@    world ymin -10
-@    world ymax 190
+@    world 0.0001, -10, 103.237622, 190
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view xmin 0.115909
-@    view xmax 0.888636
-@    view ymin 0.153846
-@    view ymax 0.871795
+@    view 0.115909, 0.153683, 0.888636, 0.870871
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -130,7 +124,7 @@
 @    xaxis  bar color 1
 @    xaxis  bar linestyle 1
 @    xaxis  bar linewidth 1.0
-@    xaxis  label "\f{Times-Italic}l  \f{Times-Roman}(AU)"
+@    xaxis  label "\f{Times-Italic}l  \f{Times-Roman}(au)"
 @    xaxis  label layout para
 @    xaxis  label place auto
 @    xaxis  label char size 1.000000
@@ -181,7 +175,7 @@
 @    yaxis  bar color 1
 @    yaxis  bar linestyle 1
 @    yaxis  bar linewidth 1.0
-@    yaxis  label "\f{Times-Italic}V\sp\N   \f{Times-Roman} (km/s)"
+@    yaxis  label "\f{Times-Italic}v\sp\N   \f{Times-Roman} (km/s)"
 @    yaxis  label layout para
 @    yaxis  label place auto
 @    yaxis  label char size 1.000000
@@ -229,7 +223,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.2, 0.820512821
+@    legend 0.2, 0.81964285763
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
