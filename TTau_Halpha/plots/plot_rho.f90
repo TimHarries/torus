@@ -4,7 +4,7 @@ program plot_rho
 
   real*8, parameter :: pi =3.141592654d0
   ! Parameters 
-  real*8 :: m, theta_wind, Mdot_wind, V0, Vinf, R_mo, beta, r_star
+  real*8 :: m, theta_wind, Mdot_wind, V0, Vinf, R_mo, beta, r_star, R_star_cm
 
   real*8 :: R_min, R_max
   integer, parameter :: nr = 200
@@ -18,21 +18,23 @@ program plot_rho
 
   ! setup parameters
   R_star = 2.0d0  ! [R_sun]
-  m = 2.0d0                           ! [-]
-  theta_wind = 80.0d0 * (pi/180.0d0)  ! [rad]
+  R_star_cm = R_star*6.960d10  ! [R_sun]
+  m = 0.0
+  theta_wind = 30.0d0 * (pi/180.0d0)  ! [rad]
   Mdot_wind  = 1.0d-8 * 1.98892d33 / 31536000.0d0  ! [grams/s]
 !  V0 = 20.0       * 1.0d5   ! [cm/s]
 !  V0 = 2.0       * 1.0d5   ! [cm/s]
   V0 = 10.0       * 1.0d5   ! [cm/s]
   Vinf = 200.0d0  * 1.0d5   ! [cm/s]
-  R_mo = 3.0d0*R_star * 6.960d10  ! [cm]
+  R_mo = 3.0d0*R_star_cm    ! [cm]
   beta = 2.0d0
+
 !  gamma = 0.05
 !  M_star = 2.0 * 1.9891d33  !  [g]
 
   ! setting up r and theta
-  rmin = R_mo
-  rmax = 1000.0d0*R_mo
+  rmin = 1.000001*R_star_cm
+  rmax = 1000.0d0*R_star_cm
   log10_rmin = log10(rmin); log10_rmax = log10(rmax)
   log10_dr = (log10_rmax-log10_rmin)/dble(nr-1)
   do i = 1, nr 
@@ -47,20 +49,18 @@ program plot_rho
   do j = 1, nt
      do i = 1, nr
         density(i,j) = rho(r(i), theta(j), m, theta_wind, Mdot_wind, &
-             V0, Vinf, R_mo, beta) ! [g/cm^2]
+             V0, Vinf, R_star_cm, beta) ! [g/cm^2]
      end do
   end do
 
-  ! normalize the density at r=R_mo and theta = 0
-!  rho0 = rho(R_mo, 0.0d0, m, theta_wind, Mdot_wind, &
-!       V0, Vinf, R_mo, beta)
-  rho0 = rho(R_mo, 0.0d0, m, theta_wind, Mdot_wind, &
-       V0, Vinf, R_mo, 1.0d0) ! normaizing with beta=1.0 density
+  ! normalize the density at r=R* and theta = 0
+  rho0 = rho(R_star_cm, 0.0d0, m, theta_wind, Mdot_wind, &
+       V0, Vinf, R_star_cm, 1.0d0) ! normaizing with beta=1.0 density
 
   density(:,:) = density(:,:)/rho0  
 
   ! normalise r value with r_star
-  r(:) = r(:) / R_mo
+  r(:) = r(:) / R_star_cm
   
   
   ! now write results
@@ -75,8 +75,8 @@ program plot_rho
   do i = 1, nr
      write(66,22) r(i), density(i,1)   
      write(67,22) r(i), density(i,2)
-     write(68,22) r(i), Vr(r(i)*R_mo, V0, Vinf, R_mo, beta)*1.0d-5  ! Vr in [km/s]
-     r_cm = r(i)*R_mo  ! [cm]
+     write(68,22) r(i), Vr(r(i)*R_star_cm, V0, Vinf, R_star_cm, beta)*1.0d-5  ! Vr in [km/s]
+     r_cm = r(i)*R_star_cm  ! [cm]
      write(69,22) r(i), beta * (Vinf/r_cm) * (1.0d0/r(i))**2 * (1.0d0-(1.0d0/r(i)))**(beta-1.0d0)  ! [cm/s^2]
      write(70,22) r(i), density(i,1)*rho0  ! [g/cm^3]
   end do
