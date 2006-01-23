@@ -186,23 +186,6 @@ section~\ref{sec:Discussion}, and our summary and conclusions are
 presented in section~\ref{sec:Conclusions}.
 
 
-\section{Model configuration}
-
-\label{sec:model-configuration}
-
-In order to understand how the different parts of the CTTS
-circumstellar environment contribute to the formation of H$\alpha$,
-the model space is divided into four different regions: (1)~a central
-continuum source, (2)~the magnetospheric accretion flow, (3)~the wind
-outflow, and (4)~the accretion disc. Fig.~\ref{fig:config_dipolar}
-depicts the relative location of the regions in the model space.  The
-density is assumed to be rotationally symmetric around the
-$z$-axis. The innermost radius of the magnetosphere at the equatorial
-plane coincides with the the inner radius of the accretion disc. From
-the innermost part of the accretion disc, the gas falls freely, moving
-along the magnetic field onto the surface of the star.  In the
-following subsections we describe the details of model components.
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% \begin{figure*}
 
@@ -257,6 +240,25 @@ following subsections we describe the details of model components.
 
 \end{figure}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+\section{Model configuration}
+
+\label{sec:model-configuration}
+
+In order to understand how the different parts of the CTTS
+circumstellar environment contribute to the formation of H$\alpha$,
+the model space is divided into four different regions: (1)~a central
+continuum source, (2)~the magnetospheric accretion flow, (3)~the wind
+outflow, and (4)~the accretion disc. Fig.~\ref{fig:config_dipolar}
+depicts the relative location of the regions in the model space.  The
+density is assumed to be rotationally symmetric around the
+$z$-axis. The innermost radius of the magnetosphere at the equatorial
+plane coincides with the the inner radius of the accretion disc. From
+the innermost part of the accretion disc, the gas falls freely, moving
+along the magnetic field onto the surface of the star.  In the
+following subsections we describe the details of model components.
+
 
 \subsection{The continuum source}
 
@@ -430,6 +432,46 @@ details of the two outflow structures.
 
 \label{sub:wind_jet}
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure*}
+
+  \begin{center}
+
+    \begin{tabular}{cc}
+      \includegraphics[%
+	clip,
+	scale=0.45]{plots/discwind_vr_pol.eps}~~~~~~&
+      \includegraphics[%
+	clip,
+	scale=0.45]{plots/density_wind_pol.eps}\tabularnewline
+    \end{tabular}
+
+  \end{center}
+  \caption{The dependency of the bipolar wind velocity and density
+    structure on the wind acceleration parameter $\beta$. The radial
+    component of the wind velocity
+    (equation~\ref{eq:wind_velocity_radial_part}) in polar direction,
+    $\theta = 0$ as a function of radius is shown on the left. The wind
+    density (equation~\ref{eq:wind_density_final} along polar direction as
+    a function of radius is shown on the right. For all $\beta$ values, the
+    density is normalised to the density at the base of the wind in polar
+    direction, i.e. $\rho_0 = \rho\left(R_\mathrm{mo},0\right)$.  The
+    smaller the value of $\beta$, the faster the acceleration of the
+    wind. For the radii $r/R_{\mathrm{mo}} < 10$, both velocity and
+    density are sensitive to the value of $\beta$. For all $\beta$ values,
+    the radial velocity of the wind reaches the terminal velocity ($\sim
+    210\,\kmps$) by $r/R_{\mathrm{mo}} \sim 1000$. The initial velocity
+    $V_{0}=10\,\kmps$, which approximately corresponds to the thermal
+    velocity of a hydrogen atom at 7500~K, is used for all $v_{r}$
+    plots.}
+
+  \label{fig:wind_vr_rho}
+
+\end{figure*}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 In a similar fashion to the simple model of \citet{appenzeller:2005},
 the following parametrisation of collimated bipolar wind (region 3 in
 Fig.~\ref{fig:config_dipolar}) is adopted. The wind velocity field,
@@ -519,48 +561,38 @@ reference values (Table~\ref{tab:std_parameters}).  The density is
 relatively sensitive to the value of $\beta$ for $r<10\,
 R_{\mathrm{mo}}$.
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{figure*}
-
-  \begin{center}
-
-    \begin{tabular}{cc}
-      \includegraphics[%
-	clip,
-	scale=0.45]{plots/discwind_vr_pol.eps}~~~~~~&
-      \includegraphics[%
-	clip,
-	scale=0.45]{plots/density_wind_pol.eps}\tabularnewline
-    \end{tabular}
-
-  \end{center}
-  \caption{The dependency of the bipolar wind velocity and density
-    structure on the wind acceleration parameter $\beta$. The radial
-    component of the wind velocity
-    (equation~\ref{eq:wind_velocity_radial_part}) in polar direction,
-    $\theta = 0$ as a function of radius is shown on the left. The wind
-    density (equation~\ref{eq:wind_density_final} along polar direction as
-    a function of radius is shown on the right. For all $\beta$ values, the
-    density is normalised to the density at the base of the wind in polar
-    direction, i.e. $\rho_0 = \rho\left(R_\mathrm{mo},0\right)$.  The
-    smaller the value of $\beta$, the faster the acceleration of the
-    wind. For the radii $r/R_{\mathrm{mo}} < 10$, both velocity and
-    density are sensitive to the value of $\beta$. For all $\beta$ values,
-    the radial velocity of the wind reaches the terminal velocity ($\sim
-    210\,\kmps$) by $r/R_{\mathrm{mo}} \sim 1000$. The initial velocity
-    $V_{0}=10\,\kmps$, which approximately corresponds to the thermal
-    velocity of a hydrogen atom at 7500~K, is used for all $v_{r}$
-    plots.}
-
-  \label{fig:wind_vr_rho}
-
-\end{figure*}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 \subsubsection{The disc wind}
 
 \label{sub:Alternative-model-disc-wind}
+
+
+\citet*{knigge:1995} introduced the {}``split-monopole'' kinematic
+disc-wind model in their studies of the UV resonance lines formed
+in the winds of cataclysmic variable stars. His formalism provides
+a simple parameterisation of a disc wind that has similar properties 
+to those found by  MHD modelling. In this model, the outflow
+arises from the surface of the rotating accretion disc, and has a
+biconical geometry. The specific angular momentum is assumed to be
+conserved along a stream line, and the poloidal velocity component
+is assumed to be simply a radial from vertically displaced {}``sources''
+from the central star.  Here we briefly describe the disc-wind model, and
+readers are referred to \citet{knigge:1995} and \citet{long:2002} for
+details.
+
+The four basic parameters of the model are: (1)~the mass-loss rate,
+(2)~the degree of the wind collimation, (3)~the velocity gradient, and
+(4)~the wind temperature. The basic configuration of the disc-wind
+model is shown in Figure~\ref{fig:config_discwind}. The disc wind
+originates from the disc surface, but the {}``source'' point ($S$),
+from which the stream lines diverges, are placed at distance $d$ above
+and below the centre of the star.  The angle of the mass-loss
+launching from the disc is controlled by changing the value of
+$d$. The mass-loss launching occurs between $R_{\mathrm{wi}}$ and
+$R_{\mathrm{wo}}$ where the former is set to be equal to the outer
+radius of the magnetosphere ($R_{\mathrm{mo}}$) and the latter is set
+to $1$~au as in \citealt{krasnopolsky:2003}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{figure}
@@ -589,31 +621,7 @@ R_{\mathrm{mo}}$.
 \end{figure}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\citet*{knigge:1995} introduced the {}``split-monopole'' kinematic
-disc-wind model in their studies of the UV resonance lines formed
-in the winds of cataclysmic variable stars. His formalism provides
-a simple parameterisation of a disc wind that has similar properties 
-to those found by  MHD modelling. In this model, the outflow
-arises from the surface of the rotating accretion disc, and has a
-biconical geometry. The specific angular momentum is assumed to be
-conserved along a stream line, and the poloidal velocity component
-is assumed to be simply a radial from vertically displaced {}``sources''
-from the central star.  Here we briefly describe the disc-wind model, and
-readers are referred to \citet{knigge:1995} and \citet{long:2002} for
-details.
 
-The four basic parameters of the model are: (1)~the mass-loss rate,
-(2)~the degree of the wind collimation, (3)~the velocity gradient, and
-(4)~the wind temperature. The basic configuration of the disc-wind
-model is shown in Figure~\ref{fig:config_discwind}. The disc wind
-originates from the disc surface, but the {}``source'' point ($S$),
-from which the stream lines diverges, are placed at distance $d$ above
-and below the centre of the star.  The angle of the mass-loss
-launching from the disc is controlled by changing the value of
-$d$. The mass-loss launching occurs between $R_{\mathrm{wi}}$ and
-$R_{\mathrm{wo}}$ where the former is set to be equal to the outer
-radius of the magnetosphere ($R_{\mathrm{mo}}$) and the latter is set
-to $1$~au as in \citealt{krasnopolsky:2003}.
 
 The local mass-loss rate per unit area ($\dot{m}$) is assumed to
 be proportional to the mid-plane temperature of the disc, and is a
@@ -684,6 +692,10 @@ line (passing through
 $w_{i}=\left(R_{\mathrm{wi}}+R_{\mathrm{wo}}\right)/2$ on the disc
 plane ($z=0$) for different values of the wind acceleration parameter
 $\beta$.
+
+
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{figure*}
