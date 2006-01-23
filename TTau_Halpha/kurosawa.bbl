@@ -1,4 +1,4 @@
-\begin{thebibliography}{67}
+\begin{thebibliography}{69}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
 \bibitem[{{Alencar} \& {Basri}(2000)}]{alencar:2000}
@@ -103,6 +103,11 @@ Grevesse N., Noels A., 1993, in Origin and Evolution of the Elements, N.\ P.,
 
 \bibitem[{{Herbig}(1962)}]{herbig:1962}
 {Herbig} G.~H., 1962, Advances in Astronomy and Astrophysics, 1, 47
+
+\bibitem[{{Herbig} \& {Bell}(1988)}]{herbig:1988}
+{Herbig} G.~H., {Bell} K.~R., 1988, {Catalog of emission line stars of the
+  orion population}, Vol.~3. Lick Observatory Bulletin, Santa Cruz: Lick
+  Observatory
 
 \bibitem[{Hillier(1991)}]{hillier:1991}
 Hillier D.~J., 1991, \aap, 247, 455
@@ -245,6 +250,9 @@ Hillier D.~J., 1991, \aap, 247, 455
   {Unruh}}]{vink:2005}
 {Vink} J.~S., {Drew} J.~E., {Harries} T.~J., {Oudmaijer} R.~D., {Unruh} Y.,
   2005, \mnras, 359, 1049
+
+\bibitem[{{White} \& {Basri}(2003)}]{white:2003}
+{White} R.~J., {Basri} G., 2003, \apj, 582, 1109
 
 \bibitem[{{Whitney} {et~al.}(2003){Whitney}, {Wood}, {Bjorkman}, \&
   {Wolff}}]{whitney:2003a}
