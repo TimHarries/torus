@@ -1,4 +1,4 @@
-\begin{thebibliography}{69}
+\begin{thebibliography}{67}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
 \bibitem[{{Alencar} \& {Basri}(2000)}]{alencar:2000}
@@ -40,9 +40,6 @@
 
 \bibitem[{{Castor} {et~al.}(1975){Castor}, {Abbott}, \& {Klein}}]{castor:1975}
 {Castor} J.~I., {Abbott} D.~C., {Klein} R.~I., 1975, \apj, 195, 157
-
-\bibitem[{{Castor} \& {Lamers}(1979)}]{castor:1979}
-{Castor} J.~I., {Lamers} H.~J.~G.~L.~M., 1979, \apjs, 39, 481
 
 \bibitem[{{Chiang} \& {Goldreich}(1997)}]{chiang:1997}
 {Chiang} E.~I., {Goldreich} P., 1997, \apj, 490, 368
@@ -210,10 +207,6 @@ Hillier D.~J., 1991, \aap, 247, 455
 
 \bibitem[{{Shakura} \& {Sunyaev}(1973)}]{shakura:1973}
 {Shakura} N.~I., {Sunyaev} R.~A., 1973, \aap, 24, 337
-
-\bibitem[{{Shang} {et~al.}(2002){Shang}, {Glassgold}, {Shu}, \&
-  {Lizano}}]{shang:2002}
-{Shang} H., {Glassgold} A.~E., {Shu} F.~H., {Lizano} S., 2002, \apj, 564, 853
 
 \bibitem[{{Shu} {et~al.}(1994){Shu}, {Najita}, {Ostriker}, {Wilkin}, {Ruden},
   \& {Lizano}}]{shu:1994}

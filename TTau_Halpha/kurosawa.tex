@@ -192,6 +192,36 @@ along the magnetic field onto the surface of the star.  In the
 following subsections we describe the details of model components.
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure*}
+
+  \begin{center}
+    
+    \includegraphics[%
+      scale=0.6]{figures/discwind.eps}
+    
+  \end{center}
+
+  \caption{Basic model configuration of the disc-wind, magnetosphere
+    hybrid model. The system consist of four components: (1)~the
+    continuum source located at the origin $\left( o \right)$ of the
+    cartesian coordinates $\left(x,y,z\right)$ -- the $y$-axis is into
+    the paper, (2)~the magnetospheric accretion flow, (3)~the disc
+    wind, and (4)~the accretion disc. The disc wind originates from
+    the disc surface between $w_{i}=R_{\mathrm{wi}}$ and
+    $w_{i}=R_{\mathrm{wo}}$ where $w_{i}$ is the distance from the $z$
+    axis on the equatorial plane.  The wind source
+    points ($S$), from which the stream lines diverges, are placed at
+    distance $d$ above and below the star. The degree of wind
+    collimation is controlled by changing the value of $d$.}
+
+  \label{fig:config_discwind}
+
+\end{figure*}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
 \subsection{The continuum source}
 
 \label{sub:Continuum-Source}
@@ -230,18 +260,16 @@ taken into account when computing the line profiles.
 
 \begin{center}
 
-\begin{tabular}{lccccccccccc}
+\begin{tabular}{lccccccccc}
 \hline 
 Parameters&
-$R_{*}$&
+$R_{*}$&  
 $M_{*}$&
 $T_{\mathrm{ph}}$&
 $R_{\mathrm{mi}}$&
 $R_{\mathrm{mo}}$&
 $\dot{M}_{\mathrm{acc}}$&
 $\dot{M}_{\mathrm{wind}}$&
-$v_{\infty}$&
-$b$&
 $R_{\mathrm{di}}$&
 $R_{\mathrm{do}}$\tabularnewline
 &
@@ -252,8 +280,6 @@ $\left[R_{*}\right]$&
 $\left[R_{*}\right]$&
 $\left[M_{\sun}\,\mathrm{yr^{-1}}\right]$&
 $\left[M_{\sun}\,\mathrm{yr^{-1}}\right]$&
-$[\mathrm{km\, s^{-1}}]$&
-$[-]$&
 $\left[R_{*}\right]$&
 $\left[\mathrm{au}\right]$\tabularnewline
 \hline
@@ -265,8 +291,6 @@ $2.2$&
 $3.0$&
 $10^{-7}$&
 $10^{-8}$&
-$210$&
-$4.0$&
 $2.2$&
 $100$\tabularnewline
 \hline
@@ -287,7 +311,7 @@ in which the gas accretion on to the stellar surface from the innermost
 part of the accretion disc occurs through a dipolar stellar magnetic
 field. The magnetic field is assumed to be so strong that the gas
 flow does not affect the underlying magnetic field itself. As shown
-in Fig.~\ref{fig:config_dipolar}, the innermost radius ($R_{\mathrm{mi}}$)
+in Fig.~\ref{ig:config_discwind} (region~2), the innermost radius ($R_{\mathrm{mi}}$)
 of the magnetosphere at the equatorial plane ($z=0$) is assigned
 to be same as the inner radius ($R_{\mathrm{di}}$) of the accretion
 disc where the flow is truncated. In our models, $R_{\mathrm{mi}}$
@@ -303,12 +327,13 @@ following simple form:
       r=R_{\mathrm{m}}\sin^{2}\theta
   \label{eq:dipole}
 \end{equation}
-\citep*[see][]{ghosh:1977} where $r$, and $\theta$ are coordinates
-of the field point ($p$) in Fig.~\ref{fig:config_dipolar} in spherical
-coordinates, and $R_{\mathrm{m}}$ is the radial distance to the field
-line at the equatorial plane ($\theta=\pi/2$). The range of
-$R_{\mathrm{m}}$ is restricted between $R_{\mathrm{mi}}$ and
-$R_{\mathrm{mo}}$. Using the field geometry above and conservation of
+\citep*[see][]{ghosh:1977} where $r$, and $\theta$ are the radial and
+the polar component of a field point position vector in the accretion
+stream.  $R_{\mathrm{m}}$ is the radial distance to the field
+line at the equatorial plane ($\theta=\pi/2$), and its value is
+restricted between $R_{\mathrm{mi}}$ and 
+$R_{\mathrm{mo}}$ (Figure~\ref{fig:config_discwind}). 
+Using the field geometry above and conservation of
 energy, the velocity and the density of the accreting gas along the
 steam line are found as in \citet{hartmann:1994}.
 
@@ -328,8 +353,8 @@ radiation and line emission from Ca~II and Mg~II ions. The results of
 \citet{hartmann:1994}.
 
 
-\subsection{The disc-wind outflow geometru}
-\label{sub:wind_jet}
+\subsection{The disc wind}
+\label{sub:model-disc-wind}
 
 The magneto-centrifugal wind paradigm, first proposed by
 \citet{blandford:1982}, has been often used to model the large-scale
@@ -375,34 +400,7 @@ launching from the disc is controlled by changing the value of
 $d$. The mass-loss launching occurs between $R_{\mathrm{wi}}$ and
 $R_{\mathrm{wo}}$ where the former is set to be equal to the outer
 radius of the magnetosphere ($R_{\mathrm{mo}}$) and the latter is set
-to $1$~au as in \citealt{krasnopolsky:2003}.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\begin{figure}
-
-  \begin{center}
-    
-    \includegraphics[%
-      scale=0.32]{figures/discwind.eps}
-    
-  \end{center}
-
-  \caption{Basic model configuration of the disc-wind, magnetosphere
-    hybrid model. The system consist of four components: (1)~the continuum
-    source located at the origin $\left( o \right)$ of the cartesian
-    coordinates $\left(x,y,z\right)$ -- the $y$-axis is into the paper,
-    (2)~the magnetospheric accretion flow, (3)~the disc wind, and
-    (4)~the geometrically thin (but opaque) accretion disc. The disc wind
-    originates from the disc surface between $w_{i}=R_{wi}$ and
-    $w_{i}=R_{wo}$.  The wind source points ($S$), from which the stream
-    lines diverges, are placed at distance $d$ above and below the
-    star. The degree of wind collimation is controlled by changing the
-    value of $d$. }
-
-  \label{fig:config_discwind}
-
-\end{figure}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+to $1$~au as in \citet{krasnopolsky:2003}.
 
 
 
@@ -429,7 +427,7 @@ value of $\alpha$ is set to 1.3. The constant of proportionality in
 equation~\ref{eq:discwind-massloss-w} is found by integrating
 $\dot{m}$ from $R_{\mathrm{wi}}$ to $R_{\mathrm{wo}}$, and the
 normalising the value to the total mass-loss rate
-$\dot{M}_{\mathrm{dw}}$.
+$\dot{M}_{\mathrm{wind}}$.
 
 The azimuthal/rotational component of the wind velocity
 $v_{\phi}\left(w,z\right)$ is computed from the Keplerian rotational
@@ -456,7 +454,8 @@ launching point on the disc, the constant scale factor of the
 asymptotic terminal velocity to the local escape velocity (from the
 wind emerging point on the disc), and the distance from the disc
 surface along stream lines respectively. $R_{s}$ is the wind scale
-length (=10\, $R_{\mathrm{mi}}$, \citealt{long:2002}).
+length, and its value is set to 10~$R_{\mathrm{mi}}$ by following
+\citet{long:2002}). 
 
 Assuming mass-flux conservation and using the velocity field defined
 above, the disc wind density as a function of $w$ and $l$ can be
@@ -464,12 +463,12 @@ written as
 \begin{equation}
   \rho\left(w_{i},l\right) =
   \frac{\dot{m}\left(w_{i}\right)}{v_{p}\left(w_{i},l\right)\,\left|\cos\delta\right|}\,\left\{ 
-  \frac{d}{Q\left(w_{i},l\right)\,\cos\delta}\right\} ^{2}
+  \frac{d}{D\left(w_{i},l\right)\,\cos\delta}\right\} ^{2}
   \label{eq:discwind-density}
 \end{equation} 
-where $Q$ and $\delta$ are the distance from the source point ($S$) to
+where $D$ and $\delta$ are the distance from the source point ($S$) to
 a point along the stream line and the angle between the stream line
-and the disc normal respectively. Figure~\ref{fig:discwind_vr_rho}
+and the disc normal, respectively. Figure~\ref{fig:discwind_vr_rho}
 shows the density and the velocity components along the mid stream
 line (passing through
 $w_{i}=\left(R_{\mathrm{wi}}+R_{\mathrm{wo}}\right)/2$ on the disc
@@ -529,8 +528,7 @@ We adopt a simple analytical accretion disc model, the $\alpha$-disc
 `standard model' (\citealt{shakura:1973}; \citealt*{frank:2002}) with
 the inner radius fixed at the inner radius of the magnetosphere at
 equatorial plane. This corresponds to Region 4 in
-Fig.~\ref{fig:config_dipolar}.
-
+Fig.~\ref{fig:config_discwind}.  
 
 \subsubsection{Density and velocity}
 
@@ -561,6 +559,18 @@ mass, $M_{\mathrm{d}}$, is assumed to be 1/100 of the stellar mass
 ($M_{*}$), and the outer disc radius ($R_{\mathrm{di}}$) is
 100~au. The velocity of the gas/dust in the disc is assumed to be
 Keplerian.
+
+Because of the geometrical constraints imposed by the magnetosphere
+and the disc wind, the finite height of the $\alpha$ disc causes an
+undesirable interface problem at the boundary; hence, the inner part
+($R_{\mathrm{di}} < w < R_{\mathrm{wo}}$) of the disc is replaced by
+the geometrically thin (but opaque) disc. Since the emissivity of the
+disc at the optical wavelength is negligible and the disc scale height
+is relatively small in the inner part of disc, this replacement is
+reasonable.  On the other hand, the finite height of the disc at the
+outer part is important for determining the shape of the H$\alpha$
+profiles observed at high inclinations, as we will see in section~XXX.
+
 
 
 \subsubsection{Dust model}
@@ -833,9 +843,6 @@ with the lowest mass accretion rates fall below the minimum EW
 observed by  \citet{alencar:2000}, while several models would
 be designated as weak-lined T~Tauri stars (WTTS) using the traditional
 10\,\AA\ cut-off \citep[e.g.][]{herbig:1988}.
-
-xxxx Changed xxxxx
-
 \citet{white:2003} empirically showed that the full width of H$\alpha$ at 10
 per~cent of its peak flux (10 per~cent width) is a better
 indicator for an accretion than the EW criteria. They proposed that a
@@ -853,17 +860,23 @@ has  $T_{\mathrm{max}}=7500\,\mathrm{K}$ and
 $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$).  The
 figure shows that the peak (normalised) flux decreases as the
 inclination angle increases, as does the EW.  The line flux and the
-EWs decreases since the fraction of the accretion stream blocked by
-the photosphere increases as the inclination increase. 
+EWs decrease mainly because the fraction of the accretion stream
+blocked by the photosphere increases as the inclination increases.
+The line EW in Figure~\ref{fig:acc_inclination_effect} changes from
+32\,\AA\, to 21\,\AA\, as the inclination changes from $10^\circ$ to
+$80^\circ$, i.e. the fractional change of 0.65.  On the other hand,
+the 10~per~cent width of the line changes from 290~$\kmps$ to
+470~$\kmps$; hence,
+the fractional change is 1.6.  The both values are relatively
+sensitive to the inclination angle.
 
-xxxx Changed xxxxx
 
 Because of the geometry of the
-magnetospheric accretion (c.f. Figure~\ref{fig:config_dipolar}) and of
+magnetospheric accretion (c.f. Figure~\ref{fig:config_discwind}) and of
 the presence of the gas with the highest velocity close to the stellar
 surface, the highest red-shifted line-of-sight velocity is visible
 only at the high inclination angles. This explains the wider
-appearance of the profile with $i=80^{\circ}$compared to the
+appearance of the profile with $i=80^{\circ}$ compared to the
 relatively narrow line appearance of the profile with
 $i=10^{\circ}$.  A similar EW dependence on
 inclination angle is found for the models with different 
@@ -871,8 +884,8 @@ magnetospheric temperatures and the mass-accretion rates.
 
 Our models show a blue-shifted line peak and
 a blueward asymmetry caused by occultation of the accretion
-flow by the stellar photosphere (see also \citet{hartmann:1994} and
-\citet{muzerolle:2001}). However, \citealt{alencar:2000} (see their Fig.~9)
+flow by the stellar photosphere (see also \citealt{hartmann:1994};
+\citealt{muzerolle:2001}). However, \citealt{alencar:2000} (see their Fig.~9)
 found a substantial fraction
 of the observed H$\alpha$ profiles show a red-shifted
 peak. Furthermore, a recent study by
@@ -1097,17 +1110,9 @@ $200$\tabularnewline
 
 
 
-\subsection{The disc-wind model}
+\subsection{Disc-wind only models}
 
 \label{sub:result-discwind-knigge}
-
-In this section we examine profiles produced using our alternative
-kinematic model of the outflow: the disc wind. This type of outflow
-has been predicted by several MHD calculations (e.g. \citet{koenigl:2000};
- \citealt{krasnopolsky:2003}), and broadly consists of a wind with
-a latitudinal density-dependence with density increasing towards
-the equator (see~\ref{sub:model-disc-wind}), in contrast with the 
-bipolar stellar wind.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1123,10 +1128,10 @@ bipolar stellar wind.
 
   \caption{H$\alpha$ profiles computed with the disc-wind only.
      The wind mass-loss rate is fixed at
-    $\dot{M}_{\mathrm{dw}}=10^{-8}\,\mathrm{M_{\sun}\,yr^{-1}}$, and the line
+    $\dot{M}_{\mathrm{wind}}=10^{-8}\,\mathrm{M_{\sun}\,yr^{-1}}$, and the line
     profiles are computed with different combinations of the wind
     acceleration rate ($\beta$) and isothermal disc-wind temperature
-    ($T_{\mathrm{dw}}$). The wind emission grows as the values of
+    ($T_{\mathrm{wind}}$). The wind emission grows as the values of
     $\beta$ and $T_{\mathrm{wind}}$ increase.   As in the
     bipolar wind models (Figure~\ref{fig:atlas_wind_model}), the position
     of the wind absorption moves toward the line centre as $\beta$ becomes
@@ -1136,6 +1141,8 @@ bipolar stellar wind.
 
 \end{figure*}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{figure*}
@@ -1153,10 +1160,10 @@ bipolar stellar wind.
     Figure~\ref{fig:atlas_discwind_only}, but  also
     include the magnetospheric accretion flow
     ($T_{\mathrm{\max}}=7500~\mathrm{K}$ and
-    $\dot{M}_{\mathrm{acc}}=10^{-8}\,\mathrm{M_{\sun}\,yr^{-1}}$). While
+    $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\,yr^{-1}}$). While
     the emission from the magnetosphere dominates for the models with
-    smaller $\beta$ and $T_{\mathrm{dw}}$, the emission from the wind dominates the
-    profiles for models with larger $\beta$ and $T_{\mathrm{dw}}$.  The contribution
+    smaller $\beta$ and $T_{\mathrm{wind}}$, the emission from the wind dominates the
+    profiles for models with larger $\beta$ and $T_{\mathrm{wind}}$.  The contribution
     of the magnetosphere can be judged from the profiles computed with
     the magnetosphere only (dotted lines).}
 
@@ -1165,19 +1172,103 @@ bipolar stellar wind.
 \end{figure*}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+In this section, we examine profiles produced using the 
+the disc wind outflow model described in
+section~\ref{sub:model-disc-wind}. This type of outflow 
+has been predicted by several MHD calculations (e.g. \citet{koenigl:2000};
+ \citealt{krasnopolsky:2003}), and broadly consists of a wind with
+its density increasing toward the equatorial plane. 
 
-Firstly, we consider the disc-wind models without the magnetosphere.
+GEOMETRY? REFERENCE MODEL?
+
+The parameters used for the
+central star are as in section~\ref{sub:Continuum-Source}, and the
+disc-wind parameters are summarised in
+Table~\ref{tab:std_discwind_parameters}.
+
+Although the line is potentially
+sensitive to the temperature structure of the wind, determination of a
+self-consistent wind temperature is beyond the scope of this
+paper. Readers are refereed to \citet{hartmann:1982} in which the wind
+temperature structure is determined by balancing the radiative cooling
+rate (assuming optically thin) with the MHD wave heating rate.
+We pragmatically assume that the wind is isothermal at $T_{\mathrm{wind}}$. 
+
+
+Initially we examine the characteristics of the
+H$\alpha$ profile  as a function of the wind acceleration parameter
+$\beta$ and the isothermal wind temperature
+$T_{\mathrm{wind}}$.  Figure~\ref{fig:atlas_discwind_only} shows profiles computed at  $i=55^{\circ}$
+ for a range of wind temperatures
+between $7000\,\mathrm{K}$ and $9000\,\mathrm{K}$, and  $\beta$ between $0.2$ and $2.0$. 
+
+
+Classical P~Cygni profiles are prominent
+in the models with lower values of $T_{\mathrm{wind}}$ and $\beta$
+(a colder and faster accelerating wind). As the value of $\beta$
+increases, the position of the blue-shifted absorption component moves
+toward the line centre -- this can be seen clearly in the
+$T_{\mathrm{wind}}=7000\,\mathrm{K}$ models. The velocity position
+ of the absorption component of the fastest accelerating wind
+($\beta=0.2$) is almost at the terminal velocity ($v_{\infty}\sim
+210\,\kmps$), that for the slowest wind acceleration model
+($\beta=4.0$) is located close the line centre ($\sim 50\,\kmps$). 
+
+ As
+one can see in Figure~\ref{fig:wind_vr_rho}, the column density of the
+gas moving at $v_{\infty}$ increases as the wind acceleration becomes
+larger since the gas moving at $v_{\infty}$ becomes closer to the
+photosphere. At the location where the absorption occurs, the gas is
+moving faster for the models with the faster wind acceleration models;
+hence, the location of the absorption component is bluer as $\beta$
+becomes smaller (as the wind acceleration faster). The figure also
+shows that the intensity of the emission component increases as
+$\beta$ increases for a given $T_{\mathrm{wind}}$. This is mainly
+because the density near the photosphere increases as the value of
+$\beta$ increases (Figure~\ref{fig:wind_vr_rho}); hence, the
+emissivity of increases. Unlike the magnetospheric accretion only
+models (Figure~\ref{fig:atlas_acc_models}), the inverse P~Cygni
+profiles are not seen here, nor the blue-ward asymmetry. Because of
+the absorption component in P~Cygni profile, most of the profiles show
+red-ward asymmetry except for the low temperature wind models with
+high inclinations (not shown here).
+
+
+The effect of varying the wind mass-loss rate is shown in Figure~\ref{fig:effect_wind_mdot}.
+The line is very sensitive to the mass-loss rate. With all other parameters
+fixed constant, $\dot{M}_{\mathrm{wind}}$ acts as an scaling factor
+of the wind density (equation~\ref{eq:wind_density_final}). The
+important processes in forming H$\alpha$ emission are the
+recombination process and the subsequent downward transition to $n=3$
+level. Assuming the ionisation fraction remains constant, the
+recombination rate is proportional to the square 
+of wind density. We have found the line flux of the models in the
+figure is approximately proportional to the square of the mass-loss
+rate. This very sensitive nature of H$\alpha$ would make the line
+a good candidate for a mass-loss rate indicator; however, without
+solving the ambiguity of the emission component from the magnetospheric
+accretion flow and the wind, and without knowing the detailed temperature
+structure of the wind, it could provide us a misleading a mass-loss
+rate estimate of a T Tauri star.
+
+
+
+
+
+
+
+
+
 Figure~\ref{fig:atlas_discwind_only} shows the H$\alpha$ profiles
 computed using only the disc-wind component
 (c.f. Figure~\ref{fig:config_discwind}) for the same isothermal
-disc-wind temperature ($T_{\mathrm{dw}}$) and the wind acceleration
+disc-wind temperature ($T_{\mathrm{wind}}$) and the wind acceleration
 parameter ($\beta$) ranges used for the bipolar wind models
 (c.f. Figures~\ref{fig:atlas_wind_model} and
-\ref{fig:atlas_disc_wind_acc_model}).  The parameters used for the
-central star are as in section~\ref{sub:Continuum-Source}, and the
-disc-wind parameters are summarised in
-Table~\ref{tab:std_discwind_parameters}.  The figure shows that the
-wind emission increases as $\beta$ and $T_{\mathrm{dw}}$ increase. The
+\ref{fig:atlas_disc_wind_acc_model}).  
+
+  The figure shows that the
+wind emission increases as $\beta$ and $T_{\mathrm{wind}}$ increase. The
 $\beta$ dependence arises simply because for large $\beta$ there is a
 greater mass of wind material close to the star.  As with the bipolar
 wind models, the location of the P-Cyg absorption component moves
@@ -1193,13 +1284,19 @@ dependency on the disc wind mass-loss rate of the profile shape is
 similar to that of the bipolar wind models
 (Figure~\ref{fig:effect_mdot_disc_wind_acc}).
 
+
+\subsection{Disc--wind--magnetosphere  hybrid models}
+
+\label{sub:result-discwind-hybrid}
+
+
 We now consider the models computed with a combination of the
 disc-wind and the magnetospheric accretion components. The
 parameters used for the magnetosphere are set to be same as in the
 case for Figure~\ref{fig:acc_inclination_effect}.  
 The mass-loss rate of the disc wind is set to
-$\dot{M}_{\mathrm{dw}}=10^{-8}\,\mathrm{M_{\sun}\, yr^{-1}}$
-(i.e.~$\mu=\dot{M}_{\mathrm{dw}}/\dot{M}_{\mathrm{acc}}=0.1$).
+$\dot{M}_{\mathrm{wind}}=10^{-8}\,\mathrm{M_{\sun}\, yr^{-1}}$
+(i.e.~$\mu=\dot{M}_{\mathrm{wind}}/\dot{M}_{\mathrm{acc}}=0.1$).
 Figure~\ref{fig:atlas_discwind_acc_model} shows the models profiles
 computed using the same ranges of the disc-wind temperature and the
 wind acceleration parameter as in the previous cases.
@@ -1208,16 +1305,16 @@ As in the disc-wind only models
 (Figure~\ref{fig:atlas_discwind_only}), the location of the absorption
 component moves toward the line centre as the value of $\beta$
 increases.  The figure shows that in
-the models with smaller $\beta$ and $T_{\mathrm{dw}}$, the line
+the models with smaller $\beta$ and $T_{\mathrm{wind}}$, the line
 emission from the magnetosphere dominates, while this situation reverses for the
-models with larger $\beta$ and $T_{\mathrm{dw}}$. The model with
-$\left(T_{\mathrm{dw}},\,\beta\right)=\left(9000\,\mathrm{K},\,2.0\right)$
+models with larger $\beta$ and $T_{\mathrm{wind}}$. The model with
+$\left(T_{\mathrm{wind}},\,\beta\right)=\left(9000\,\mathrm{K},\,2.0\right)$
 results in an H$\alpha$ profile that is far too strong to be compatible
  with observations (\citet{reipurth:1996} and \citet{alencar:2000});
  however, the lower mass-loss rate models (while keeping $\mu$ constant)
  produce the profiles with the line strengths comparable to observations.
 Although the models in Figure~\ref{fig:atlas_discwind_acc_model} are
-computed with limited ranges of  $T_{\mathrm{dw}}$ and $\beta$, the
+computed with limited ranges of  $T_{\mathrm{wind}}$ and $\beta$, the
 resulting profiles exhibit a wide variety of line profile shapes,
 many of  which are similar to the types of H$\alpha$ profiles seen in the
 observations (c.f.~\citealt{reipurth:1996}).   
@@ -1232,8 +1329,6 @@ only model with $\left(T_{\mathrm{wind}},\,\beta\right)=\left(8000\,\mathrm{K},\
  $\left(T_{\mathrm{wind}},\,\beta\right)=\left(9000\,\mathrm{K},\,0.5\right)$
 (in Figure~\ref{fig:atlas_discwind_acc_model}) give very similar profiles.
 
-
-xxxx paragraph below may need changing after new models are added xxxx
 
 The general characteristics of the profiles from the disc-wind, magnetosphere
 hybrid model (Figure~\ref{fig:atlas_discwind_acc_model}) are very
@@ -1264,7 +1359,7 @@ section~\ref{sub:Alternative-model-disc-wind}.}
 $d$&
 $R_{\mathrm{wi}}$&
 $R_{\mathrm{wo}}$&
-$\dot{M}_{\mathrm{dw}}$&
+$\dot{M}_{\mathrm{wind}}$&
 $p$&
 $f$&
 $R_{\mathrm{s}}$\tabularnewline
@@ -1465,7 +1560,7 @@ P-Cyg profile.
 \caption{The summary model parameters for the profiles in
 Figure~\ref{fig:atlas_reipurth} and brief comments. The temperatures
 are in $10^{3}\,\Kelvin$. $\dot{M}_{\mathrm{acc}}$ and
-$\dot{M}_{\mathrm{dw}}$ are in $\mathrm{M_{\sun}\,yr^{-1}}$.}
+$\dot{M}_{\mathrm{wind}}$ are in $\mathrm{M_{\sun}\,yr^{-1}}$.}
 
 \label{tab:classification}
 
@@ -1477,8 +1572,8 @@ $\dot{M}_{\mathrm{dw}}$ are in $\mathrm{M_{\sun}\,yr^{-1}}$.}
 $i$&
 $\dot{M}_{\mathrm{acc}}$&
 $T_{\mathrm{max}}$&
-$\dot{M}_{\mathrm{dw}}$&
-$T_{\mathrm{dw}}$&
+$\dot{M}_{\mathrm{wind}}$&
+$T_{\mathrm{wind}}$&
 $\beta$&
 Comment\tabularnewline
 Class&
@@ -1725,7 +1820,7 @@ the H$\alpha$ formation from their complex to circumstellar
 environment to understand the wide variety of H$\alpha$ profiles seen
 in observations. The two types of wind models considered are (1)~the
 bipolar wind model in which the wind originates from the star itself
-(section~\ref{sub:wind_jet}; Figure~\ref{fig:config_dipolar}), and
+(section~\ref{sub:model-disc-wind}; Figure~\ref{fig:config_dipolar}), and
 (2)~the disc-wind model in which the wind originates from the inner
 part of the accretion disc
 (section~\ref{sub:Alternative-model-disc-wind};
