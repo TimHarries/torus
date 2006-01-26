@@ -1,4 +1,4 @@
-This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  26 JAN 2006 00:13
+This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  26 JAN 2006 13:53
 entering extended mode
 **kurosawa
 (./kurosawa.tex
@@ -118,62 +118,62 @@ File: babel.def 2004/11/20 v3.8d Babel common definitions
 )) (./kurosawa.aux)
 \openout1 = `kurosawa.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 39.
-LaTeX Font Info:    ... okay on input line 39.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 39.
-LaTeX Font Info:    ... okay on input line 39.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 39.
-LaTeX Font Info:    ... okay on input line 39.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 39.
-LaTeX Font Info:    ... okay on input line 39.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 39.
-LaTeX Font Info:    ... okay on input line 39.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 39.
-LaTeX Font Info:    ... okay on input line 39.
-LaTeX Font Info:    Try loading font information for T1+ptm on input line 39.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 37.
+LaTeX Font Info:    ... okay on input line 37.
+LaTeX Font Info:    Try loading font information for T1+ptm on input line 37.
 
 (/usr/share/texmf/tex/latex/psnfss/t1ptm.fd
 File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
 )
 LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <17.28> not available
-(Font)              Font shape `T1/ptm/b/n' tried instead on input line 51.
-LaTeX Font Info:    Try loading font information for U+eur on input line 51.
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 49.
+LaTeX Font Info:    Try loading font information for U+eur on input line 49.
 
 (/usr/share/texmf/tex/latex/amsfonts/ueur.fd
 File: ueur.fd 2002/01/19 v2.2g AMS font definitions
 )
-LaTeX Font Info:    Try loading font information for U+msa on input line 51.
+LaTeX Font Info:    Try loading font information for U+msa on input line 49.
 
 (/usr/share/texmf/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2002/01/19 v2.2g AMS font definitions
 )
-LaTeX Font Info:    Try loading font information for U+msb on input line 51.
+LaTeX Font Info:    Try loading font information for U+msb on input line 49.
 
 (/usr/share/texmf/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2002/01/19 v2.2g AMS font definitions
 )
 LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <9> not available
-(Font)              Font shape `T1/ptm/b/n' tried instead on input line 55.
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 53.
 
-Underfull \hbox (badness 10000) in paragraph at lines 55--56
+Underfull \hbox (badness 10000) in paragraph at lines 53--54
 
  []
 
 LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <10> not available
-(Font)              Font shape `T1/ptm/b/n' tried instead on input line 80.
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 78.
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <8> not available
-(Font)              Font shape `T1/ptm/b/n' tried instead on input line 144.
-LaTeX Font Info:    Try loading font information for OMS+ptm on input line 144.
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 142.
+LaTeX Font Info:    Try loading font information for OMS+ptm on input line 142.
 
 
 (/usr/share/texmf/tex/latex/psnfss/omsptm.fd
 File: omsptm.fd 
 )
 LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <8> not available
-(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 144.
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 142.
  [1
 
 
@@ -181,7 +181,7 @@ LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <8> not available
 File: figures/discwind.eps Graphic file (type eps)
  <figures/discwind.eps>
 [2]
-Underfull \hbox (badness 2521) in paragraph at lines 379--391
+Underfull \hbox (badness 2521) in paragraph at lines 377--389
 []\T1/ptm/m/n/9 Knigge, Woods, & Drew (1995) in-tro-duced the ``split-
  []
 
@@ -197,12 +197,12 @@ File: plots/dw_vp_vphi.eps Graphic file (type eps)
 <plots/dw_vp_vphi.eps>
 File: plots/dw_rho.eps Graphic file (type eps)
  <plots/dw_rho.eps>
-Overfull \hbox (3.17484pt too wide) in paragraph at lines 487--495
+Overfull \hbox (3.17484pt too wide) in paragraph at lines 485--493
  [] 
  []
 
 [4]
-Underfull \hbox (badness 1400) in paragraph at lines 657--667
+Underfull \hbox (badness 1400) in paragraph at lines 655--665
 \T1/ptm/m/n/9 where $\OML/cmm/m/it/9 a \OT1/cmr/m/n/9 = ^^@\OML/cmm/m/it/9 =\OT
 1/cmr/m/n/9 4\OML/cmm/m/it/9 ^^Y\OT1/cmr/m/n/9 ^^A\OML/cmm/m/it/9 ^^W[]$\T1/ptm
 /m/n/9 , $\OML/cmm/m/it/9 y \OT1/cmr/m/n/9 = [] \OML/cmm/m/it/9 =\OT1/cmr/m/n/9
@@ -238,61 +238,77 @@ File: figures/discwind_mdot_effect.eps Graphic file (type eps)
 File: figures/atlas_ha_i55_acc_discwind_final.eps Graphic file (type eps)
 
 <figures/atlas_ha_i55_acc_discwind_final.eps> [9]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
 File: figures/discwind_mu_effect.eps Graphic file (type eps)
 
 <figures/discwind_mu_effect.eps>
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
+ [10]
 File: figures/atlas_reipurth_like_discwind.eps Graphic file (type eps)
 
-<figures/atlas_reipurth_like_discwind.eps> [10]
-Underfull \vbox (badness 1132) has occurred while \output is active []
+<figures/atlas_reipurth_like_discwind.eps>
+Underfull \vbox (badness 6741) has occurred while \output is active []
 
  [11]
-Overfull \hbox (3.74889pt too wide) in paragraph at lines 1645--1725
+Underfull \vbox (badness 2326) has occurred while \output is active []
+
+
+Overfull \hbox (3.74889pt too wide) in paragraph at lines 1719--1799
  [] 
  []
 
 File: figures/discwind_acc_inc_effect_m9_b1_t7000.eps Graphic file (type eps)
 <figures/discwind_acc_inc_effect_m9_b1_t7000.eps>
-File: figures/disc_wind_acc_inc_effect_m9_b2_t7000.eps Graphic file (type eps)
+File: figures/stellarwind_inc_effect.eps Graphic file (type eps)
 
-<figures/disc_wind_acc_inc_effect_m9_b2_t7000.eps>
-Underfull \hbox (badness 1275) in paragraph at lines 1790--1801
+<figures/stellarwind_inc_effect.eps>
+Underfull \hbox (badness 1275) in paragraph at lines 1864--1875
 \T1/ptm/m/n/9 ma-tions in the disc wind which mimic the den-sity dis-tri-bu-
  []
 
-File: figures/overview4.eps Graphic file (type eps)
-<figures/overview4.eps>
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [12]
+[12]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [13]
-Underfull \hbox (badness 1067) in paragraph at lines 1998--2000
+File: figures/overview4.eps Graphic file (type eps)
+
+<figures/overview4.eps>
+
+LaTeX Warning: Reference `atlas_hybrid' on page 14 undefined on input line 2027
+.
+
+
+Underfull \hbox (badness 1067) in paragraph at lines 2086--2088
 \T1/ptm/m/n/9 Authors thank Jorick Vink for pro-vid-ing us the H$\OML/cmm/m/it/
 9 $ \T1/ptm/m/n/9 data of
  []
 
 
-Underfull \hbox (badness 2418) in paragraph at lines 1998--2000
+Underfull \hbox (badness 2418) in paragraph at lines 2086--2088
 \T1/ptm/m/n/9 T Tau. This work is sup-ported by PPARC stan-dard grand
  []
 
-(./kurosawa.bbl [14]) [15
+(./kurosawa.bbl [14]
+Underfull \vbox (badness 2961) has occurred while \output is active []
 
-] (./kurosawa.aux) ) 
+) [15]
+(./kurosawa.aux)
+
+LaTeX Warning: There were undefined references.
+
+ ) 
 Here is how much of TeX's memory you used:
- 2123 strings out of 94500
+ 2125 strings out of 94500
  24355 string characters out of 1172833
- 87659 words of memory out of 3500000
- 5244 multiletter control sequences out of 10000+50000
+ 87581 words of memory out of 3500000
+ 5246 multiletter control sequences out of 10000+50000
  49391 words of font info for 94 fonts, out of 500000 for 2000
  580 hyphenation exceptions out of 1000
  31i,14n,34p,1489b,396s stack positions out of 1500i,500n,5000p,200000b,5000s
 
-Output written on kurosawa.dvi (15 pages, 104640 bytes).
+Output written on kurosawa.dvi (15 pages, 107836 bytes).

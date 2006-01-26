@@ -1399,20 +1399,30 @@ are similar to the types of H$\alpha$ profiles seen in the observations
 (c.f.~\citealt{reipurth:1996}).
 
 
+To quantify the relative amount of the wind emission compared to the
+that of the magnetosphere, we have computed the ratio the EW of the
+hybrid model in Figure~\ref{fig:atlas_hybrid} with the EW of the
+magnetosphere only model.   The EW ratio sometimes becomes below 1.0
+when the wind only contributes to the absorption, but not to the
+emission component of the resulting profile. 
+In some models (e.g.~with $T_{\mathrm{wind}}=8000\,\Kelvin$ and
+$\beta=2.0$), the contribution of the wind to the EW is much larger
+than that from the magnetosphere (EW ratio is 3.2). This clearly
+demonstrates that the difficulty of using the EW of H$\alpha$ as
+accretion indicator since it might as the indicator for the
+mass-loss.  We have also seen in Figure~\ref{fig:atlas_discwind_only}
+that the disc wind models without the magnetosphere can produce the
+H$\alpha$ line with significantly large EW. 
+If the line fit was applied to an observed H$\alpha$ line by ignoring
+the wind, the temperature and  
+the mass-accretion rate of the magnetospherical accretion flow could 
+be overestimated. A better approach to a model fit is a simultaneous
+fitting of multiple lines. For example, the near-infrared lines such
+as Pa$\beta$ and Br$\gamma$ should be used to determined the mass-loss
+rate since these lines are much less affected by the wind. Using the
+mass-loss rate from these lines, H$\alpha$ can be used to determine
+the wind mass-loss rate.
 
-An examination of the profiles in
-Figures~\ref{fig:atlas_discwind_only} and
-Figure~\ref{fig:atlas_hybrid} reveals some of problems
-with uniqueness that must inevitably occur when trying to assign an
-individual profile as wind or accretion dominated i.e. very similar
-profiles may arise from very different circumstellar geometries. For
-example, the disc-wind only model with
-$\left(T_{\mathrm{wind}},\,\beta\right)=\left(8000\,\mathrm{K},\,1.0\right)$
-in Figures~\ref{fig:atlas_discwind_only} and the accretion dominated
-model with
-$\left(T_{\mathrm{wind}},\,\beta\right)=\left(9000\,\mathrm{K},\,0.5\right)$
-in Figure~\ref{fig:atlas_hybrid} give very similar
-profiles.
 
 
 
@@ -1433,7 +1443,7 @@ profiles.
     ratio ($\mu=\dot{M}_{\mathrm{wind}}/\dot{M}_{\mathrm{acc}}$).  The
     H$\alpha$ profile computed with only the magnetospheric accretion
     (thick solid) is compared with the disc-wind-magnetosphere
-    hybrid models for $\mu =$ 0.025 (dash-dot), 0.1
+    hybrid models for $\mu =$ 0.05 (dash-dot), 0.1
     (solid) and 0.2 (dash). The magnetosphere used here has
     $T_{\mathrm{max}}=7500\,\Kelvin$ and
     $\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\,yr^{-1}}$.  The
@@ -1454,6 +1464,19 @@ profiles.
 
 
 
+An examination of the profiles in
+Figures~\ref{fig:atlas_discwind_only} and
+Figure~\ref{fig:atlas_hybrid} reveals some of problems
+with uniqueness that must inevitably occur when trying to assign an
+individual profile as wind or accretion dominated i.e. very similar
+profiles may arise from very different circumstellar geometries. For
+example, the disc-wind only model with
+$\left(T_{\mathrm{wind}},\,\beta\right)=\left(8000\,\mathrm{K},\,1.0\right)$
+in Figures~\ref{fig:atlas_discwind_only} and the accretion dominated
+model with
+$\left(T_{\mathrm{wind}},\,\beta\right)=\left(9000\,\mathrm{K},\,0.5\right)$
+in Figure~\ref{fig:atlas_hybrid} give very similar
+profiles.
 
 
 The effect of changing the ratio of the wind mass-loss rate to
@@ -1480,6 +1503,59 @@ with different types of the observed H$\alpha$ profiles will be given
 in section~\ref{sub:Classification-scheme-proposed}.
 
 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{table}
+
+  \caption{The ratio of the line equivalent width (EW) of the
+    disc-wind magnetosphere hybrid models in
+    Figure~\ref{fig:atlas_hybrid} to the EW of the magnetosphere only model. } 
+
+\label{tab:ew_ratio}
+
+\begin{center}
+
+\begin{tabular}{lccccc}
+\hline 
+$T_{\mathrm{max}}\,\,\left(\mathrm{K}\right)$&
+&
+$\beta$&
+&
+&
+\tabularnewline
+&
+&
+$0.2$&
+$0.5$&
+$1.0$&
+$2.0$\tabularnewline
+\hline 
+$7000$&
+&
+$1.1$&
+$.94$&
+$.89$&
+$.96$\tabularnewline
+$8000$&
+&
+$1.1$&
+$.92$&
+$1.2$&
+$3.2$\tabularnewline
+$9000$&
+&
+$1.0$&
+$1.1$&
+$7.5$&
+$36.$\tabularnewline
+\hline
+\end{tabular}
+
+\end{center}
+
+\end{table}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 
 
@@ -1749,7 +1825,7 @@ Accretion dominated. Low mass-accretion rate. Mid inclination.\tabularnewline
 	scale=0.45]{figures/discwind_acc_inc_effect_m9_b1_t7000.eps}&
       \includegraphics[%
 	clip,
-	scale=0.45]{figures/disc_wind_acc_inc_effect_m9_b2_t7000.eps}\tabularnewline
+	scale=0.45]{figures/stellarwind_inc_effect.eps}\tabularnewline
     \end{tabular}
     
   \end{center}
@@ -1851,9 +1927,16 @@ temperature ($T_{\mathrm{wind}}$)used here are $0.5$ and
 $9000\,\Kelvin$ respectively. All the other parameters are same as in
 the disc-wind magnetosphere model.  With this set of $\beta$ and
 $T_{\mathrm{wind}}$, the wind emission is comparable or a slightly
-greater than the emission from the magnetosphere. Because of the
-geometry of the wind, the P-Cyg absorption feature weakens as the
-inclination increases. The optical depth of the wind is much higher in
+greater than the emission from the magnetosphere. The profiles show
+rather complex absorption features because of the interaction of
+photons created in the wind with the magnetosphere. 
+While the blue-shifted absorption features are formed in the wind, the
+absorption features near the line centre and in the red wing (only for
+$i=10^\circ$) are caused by the wind emission by the magnetosphere
+which has a rather complex flow geometry. 
+Because of the geometry of the wind, the P-Cyg absorption feature
+weakens as the inclination increases. The optical depth of the wind is
+much higher in 
 the polar direction compared to that at higher inclination. For the
 same reason, the EW of the line increases as the inclination increase
 as clearly seen in the figure.  Although not shown here, this tendency
@@ -1939,6 +2022,13 @@ CTTS were well understood by this model.  This was not possible in the
 magnetospherical accretion only model presented in earlier works
 (e.g.~\citealt{muzerolle:2001}).
 
+The profiles computed with the hybrid model showed that the wind
+emission contribution becomes significantly larger than that from the
+magnetosphere (Figure~\ref{atlas_hybrid} and
+Table~\ref{tab:ew_ratio}).  Henceforth, a large H$\alpha$ equivalent
+width does not necessary indicate a large mass-accretion rate, but it
+could be caused by the mass-loss by the wind outflow. 
+
 Using the model results, we examined the H$\alpha$ spectroscopic
 classification proposed by \citet{reipurth:1996}, and discussed the
 basic physical conditions that reproduce the profiles in each
@@ -1953,7 +2043,7 @@ produce all 7 classes of profiles defined in \citet{reipurth:1996}.
 The value of $\mu$, 0.1,  suggested by both MHD calculations and observations
 (c.f.~\citep{koenigl:2000}) is consistent with the 
 disc-wind-magnetosphere models presented here. We found that the
-hybrid models with $0.025<\mu<0.2$ are also consistent with the type
+hybrid models with $0.05<\mu<0.2$ are also consistent with the type
 of the profiles seen in the observations (e.g~\citealt{reipurth:1996}).
 
 
