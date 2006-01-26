@@ -1,4 +1,4 @@
-This is pdfeTeX, Version 3.141592-1.20a-2.2 (Web2C 7.5.3) (format=latex 2005.9.1)  26 JAN 2006 16:55
+This is pdfeTeX, Version 3.141592-1.20a-2.2 (Web2C 7.5.3) (format=latex 2005.9.1)  26 JAN 2006 17:12
 entering extended mode
 **kurosawa.tex
 (./kurosawa.tex
@@ -212,4 +212,107 @@ Underfull \hbox (badness 1400) in paragraph at lines 654--664
 Underfull \vbox (badness 3792) has occurred while \output is active []
 
  [5]
-File: figures/a
+File: figures/atlas_ha_i55_acc_model_final.eps Graphic file (type eps)
+
+<figures/atlas_ha_i55_acc_model_final.eps>
+Underfull \vbox (badness 4608) has occurred while \output is active []
+
+File: figures/broadening.eps Graphic file (type eps)
+
+<figures/broadening.eps>
+File: figures/acc_inc_effect.eps Graphic file (type eps)
+ <figures/acc_inc_effect.eps> [6]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+File: figures/atlas_ha_i55_discwind_only_final.eps Graphic file (type eps)
+
+<figures/atlas_ha_i55_discwind_only_final.eps>
+Underfull \vbox (badness 7012) has occurred while \output is active []
+
+ [7]
+Underfull \vbox (badness 1910) has occurred while \output is active []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [8]
+File: figures/discwind_d_effect.eps Graphic file (type eps)
+
+<figures/discwind_d_effect.eps>
+File: figures/discwind_mdot_effect.eps Graphic file (type eps)
+ <figures/discwind_mdot_effect.eps>
+File: figures/atlas_ha_i55_acc_discwind_final.eps Graphic file (type eps)
+
+<figures/atlas_ha_i55_acc_discwind_final.eps>
+File: figures/discwind_mu_effect.eps Graphic file (type eps)
+ <figures/discwind_mu_effect.eps>
+[9]
+File: figures/discwind_hybrid_ha_image.eps Graphic file (type eps)
+ <figures/discwind_hybrid_ha_image.eps>
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+File: figures/atlas_reipurth_like_discwind.eps Graphic file (type eps)
+
+<figures/atlas_reipurth_like_discwind.eps> [10]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [11]
+Underfull \vbox (badness 2326) has occurred while \output is active []
+
+
+Overfull \hbox (3.74889pt too wide) in paragraph at lines 1710--1790
+ [] 
+ []
+
+File: figures/discwind_acc_inc_effect_m9_b1_t7000.eps Graphic file (type eps)
+<figures/discwind_acc_inc_effect_m9_b1_t7000.eps>
+File: figures/stellarwind_inc_effect.eps Graphic file (type eps)
+
+<figures/stellarwind_inc_effect.eps>
+Underfull \hbox (badness 1275) in paragraph at lines 1855--1866
+\T1/ptm/m/n/9 ma-tions in the disc wind which mimic the den-sity dis-tri-bu-
+ []
+
+[12]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [13]
+File: figures/overview4.eps Graphic file (type eps)
+
+<figures/overview4.eps>
+
+LaTeX Warning: Reference `atlas_hybrid' on page 14 undefined on input line 2018
+.
+
+
+Underfull \hbox (badness 1067) in paragraph at lines 2077--2079
+\T1/ptm/m/n/9 Authors thank Jorick Vink for pro-vid-ing us the H$\OML/cmm/m/it/
+9 $ \T1/ptm/m/n/9 data of
+ []
+
+
+Underfull \hbox (badness 2418) in paragraph at lines 2077--2079
+\T1/ptm/m/n/9 T Tau. This work is sup-ported by PPARC stan-dard grand
+ []
+
+(./kurosawa.bbl [14]) [15] (./kurosawa.aux)
+
+LaTeX Warning: There were undefined references.
+
+ ) 
+Here is how much of TeX's memory you used:
+ 2157 strings out of 95204
+ 25546 string characters out of 1184353
+ 2075247 words of memory out of 4530082
+ 5231 multiletter control sequences out of 10000+50000
+ 49391 words of font info for 94 fonts, out of 2000000 for 2000
+ 58 hyphenation exceptions out of 1000
+ 31i,14n,34p,1493b,397s stack positions out of 5000i,500n,6000p,200000b,40000s
+ 0 PDF objects out of 300000
+ 0 named destinations out of 131072
+ 1 words of extra memory for PDF output out of 65536
+
+Output written on kurosawa.dvi (15 pages, 106480 bytes).

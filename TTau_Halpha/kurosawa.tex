@@ -1463,7 +1463,7 @@ xxx add a sample halpha image from poster xxxx
 
     \includegraphics[%
       clip,
-      scale=0.45]{figures/discwind_hybrid_ha_image.eps}
+      scale=0.45,angle=270]{figures/discwind_hybrid_ha_image.eps}
     
   \end{center}
 
@@ -1558,7 +1558,8 @@ $36.$\tabularnewline
 \label{sec:Discussion}
 
 
-\subsection{Classification scheme proposed by Reipurth et. al (1996)}
+\subsection{The morphological classification
+ scheme proposed by Reipurth et. al (1996)}
 
 \label{sub:Classification-scheme-proposed}
 
@@ -1574,11 +1575,11 @@ $36.$\tabularnewline
   \end{center}
   
   \caption{Sample H$\alpha$ model profiles which characterise the
-    classification by \citet{reipurth:1996}. The combination of
-    magnetospheric accretion flow, the accretion disc, and the disc wind
-    model can reasonably reproduce wide ranges of H$\alpha$ profiles seen
-    in observations.  The model parameters used for each profile and
-    short comments are summarised in
+    classification scheme of \citet{reipurth:1996}. The combination of
+    magnetospheric accretion flow, the accretion disc, and the disc-wind
+    can reproduce the wide range of H$\alpha$ profiles seen
+    in observations.  The model parameters used for each profile along with
+    short comments are given in
     Table~\ref{tab:classification}. The horizontal axes 
     are velocities in $\kmps$, and the vertical axes are normalised
     flux.}
@@ -1590,39 +1591,41 @@ $36.$\tabularnewline
 
 
 
-\citet{reipurth:1996} proposed the two-dimensional classification
+\citet{reipurth:1996} proposed a two-dimensional classification
 of H$\alpha$ emission profiles of T~Tauri stars and Herbig Ae/Be
 stars. Their classification scheme contains four classes (I, II, III
 and IV) differentiated by the ratio of the secondary-to-primary emission
-components in the profiles. Each classes are divided into two sub-classes
-(B and R) which depends whether the absorption component is on the
-blue or red side. Readers are refereed to Fig.~4 of their paper.
-Figure~\ref{fig:atlas_reipurth} shows the sample model profiles
+components in the profiles. Each class is divided into two sub-classes
+(B and R) which depends whether the secondary peak is on the
+blue or red side of the primary peak. Readers are refereed to Fig.~4 of their paper.
+Figure~\ref{fig:atlas_reipurth} shows  sample model profiles
 which are classified according to the definition of \citet{reipurth:1996}.
-The combination of the disc wind, magnetospheric accretion, and
-accretion disc can reasonably reproduce all the classes of the profiles
+The combination of the disc wind, magnetospheric accretion flow, and
+the accretion disc can reproduce all the classes of the profiles
 seen in observations. The corresponding parameters of the
 disc-wind-magnetosphere hybrid model used to reproduce the profiles
 in the figure are summarised in Table~\ref{tab:classification} along
-with brief comments on possible physical conditions which leads to
-the profiles in each class. In the following, we will discuss each 
-classification type of \citet{reipurth:1996} based on our model
-results. 
-
+with brief comments on possible physical conditions which lead to
+the profiles in each class. Below we discuss the Reipurth scheme in the
+context of our models parameters.
 
 \textbf{Type~I}: 
-Using the samples of H$\alpha$ from 43 CTTS, \citet{reipurth:1996}
-found this type to be the second most common (26~per~cent) among
-them. Type~I (symmetric around line centres), is mainly
-produced in the magnetosphere.  Although not shown here, this type of
-profile can be also reproduced with the disc-wind-magnetosphere hybrid
-model with low inclination angles ($\lesssim 10^\circ$).  Since there is
-no material in the polar region in the disc wind model, the observer
-can look the magnetosphere almost directory for high inclination
-cases, provided that wind temperature is low enough so that the wind
-emission is negligible. 
+
+\citet{reipurth:1996} found that Type I profiles (symmetric around line centres) constituted 26~per~cent
+of the 43 CTTS H$\alpha$ profiles in their sample, making it the second most common
+morphological type. We find that Type~I  profiles are dominated by magnetospheric
+emission at rates in excess of $\appox 10^{-8}\, \dot{M_\odot}\,{\rm yr}^{-1}$. Type~I profiles
+appear at a wide range of inclinations (Figure~\ref{magnetosphere only inc dependence figure}).
+An object that displays a Type~I profile may have relatively weak disc wind, but in this
+case it must be viewed from the pole (in order that no wind material is seen projected
+against the stellar photosphere).
 
 \textbf{Type~II-B}:  
+
+These profiles have a secondary blue peak that is in excess of half the strength of the 
+primary peak, and comprised 16~per~cent of the Reipurth sample.
+
+
 This type can be produced by the disc-wind-magnetosphere hybrid models
 at moderate to high inclination angles with wide ranges of the wind
 acceleration rate ($0.2 \lesssim \beta  \lesssim 2.0$) and the wind
@@ -1634,6 +1637,9 @@ acceleration parameter should be relatively high ($\beta \gtrsim 2.0$).
 
 
 \textbf{Type~II-R}:  
+
+These
+
 The physical conditions which result in this type
 is very similar to those of Type~II-B according to the
 disc-wind-magnetosphere hybrid models. The main difference is between  
@@ -1642,6 +1648,9 @@ seen at higher inclination angles ($i \sim 80^\circ$) compared to Type
 II-B.  Commonly seen in the models with the disc wind only model.
 				   
 \textbf{Type~III-B}:
+
+xxx describe this type xxxx
+
 This type is the most commonly seen profiles in the CTTS H$\alpha$
 samples in \citet{reipurth:1996}. Interestingly, the most common
 profile type seen in the disc-wind-magnetosphere hybrid model are
@@ -1657,6 +1666,11 @@ inclination angles must be moderate to high ($ 60^\circ \lesssim i \lesssim
  80^\circ$).  
 
 \textbf{Type~III-R}: 
+
+
+xxx describe this type xxxx
+
+
 This is the least common type of the observed profile (2~per~cent)
 according to \citet{reipurth:1996}. Incidentally, we also found it
 difficult to reproduce this type of profile since this can be achieve
@@ -1670,6 +1684,10 @@ the observation can be understood by the required high inclination
 angle (almost edge-on) in our models.
 
 \textbf{Type~IV-B}: 
+
+xxx describe this type xxxx
+
+
 This type of the profiles is very similar to Type III-B, but the wind
 in this type of profile may be accelerating faster (a smaller $\beta$
 value) than that in Type~III-B.  In the models with the disc-wind,
@@ -1679,6 +1697,10 @@ parameters ($\beta \lesssim 0.5$).
 
 
 \textbf{Type~IV-R}: 
+
+xxx describe this type xxxx
+
+
 This is the second least common type of the observed profiles (5~per~cent)
 which shows the inverse P-Cyg profile shape.  This can be understood
 since the magnetospheric accretion model of \citet{hartmann:1994}
