@@ -563,12 +563,11 @@ and the disc wind, the finite height of the $\alpha$ disc causes an
 undesirable interface problem at the boundary; hence, the inner part
 ($R_{\mathrm{di}} < w < R_{\mathrm{wo}}$) of the disc is replaced by
 the geometrically thin (but opaque) disc. Since the emissivity of the
-disc at the optical wavelength is negligible and the disc scale height
-is relatively small in the inner part of disc, this replacement is
-reasonable.  On the other hand, the finite height of the disc at the
-outer part is important for determining the shape of the H$\alpha$
-profiles observed at high inclinations.
-
+disc at optical wavelengths is negligible, and the disc scale height
+is relatively small in the inner part of disc, this simplification is
+reasonable:  the most important factor in determining the shape of the 
+H$\alpha$ profiles is the finite height of the disc at large radii for large
+inclinations.
 
 
 \subsubsection{Dust model}
@@ -935,7 +934,11 @@ widths of the model H$\alpha$ profiles
 (Figure~\ref{fig:atlas_acc_models}) are summarised in
 Table~\ref{tab:ha_ten_percent_acc_models}.  Using the criteria of
 \citet{white:2003}, the half of the models shown in the figure can be
-classified as CTTS, and the other half as WTTS.
+classified as CTTS, and the other half as WTTS. However, the profiles corresponding
+to the WTTS designations have an inverse P-Cygni morphology that is rarely
+seen in observations (\citealt{reipurth:1996} and
+section~\ref{sub:Classification-scheme-proposed}).
+
 
 The dependency of the line profile on inclination angle ($i$) is
 demonstrated in Figure~\ref{fig:acc_inclination_effect}. The model
@@ -1140,8 +1143,8 @@ $9000\,\mathrm{K}$, and those with $\beta$ between $0.2$ and $2.0$,
 computed at inclination $i=55^{\circ}$.
 The morphology of the profile exhibited by the model changes from
 FU-Ori type (c.f.~\citealt{reipurth:1996}) for the models with small
-$\beta$ to the stronger emission types which are more commonly seen in
-the observed H$\alpha$ (c.f.~\citealt{reipurth:1996}) as the value of
+$\beta$ to the stronger emission types, which are more commonly seen in
+the observed H$\alpha$ (c.f.~\citealt{reipurth:1996}), as the value of
 $\beta$ increases.  
 Classical P~Cygni profiles are prominent
 in the models with lower values of $T_{\mathrm{wind}}$ and $\beta$
@@ -1155,25 +1158,15 @@ for the slowest wind acceleration model
 ($\beta=4.0$) is located close the line centre ($\sim 20\,\kmps$). 
 
 
-
-
- As one can see in Figure~\ref{fig:discwind_vr_rho}, the column density of the
-gas moving at $v_{\infty}$ increases as the wind acceleration becomes
-larger since the gas moving at $v_{\infty}$ becomes closer to the
-photosphere. At the location where the absorption occurs, the gas is
-moving faster for the models with the faster wind acceleration models;
-hence, the location of the absorption component is bluer as $\beta$
-becomes smaller (as the wind acceleration faster). The figure also
-shows that the intensity of the emission component increases as
-$\beta$ increases for a given $T_{\mathrm{wind}}$. This is mainly
+The intensity of the emission component increases as
+$\beta$ increases for a fixed $T_{\mathrm{wind}}$. This is mainly
 because the density near the photosphere increases as the value of
 $\beta$ increases (Figure~\ref{fig:discwind_vr_rho}); hence, the
-emissivity of increases. Unlike the magnetospheric accretion only
-models (Figure~\ref{fig:atlas_acc_models}), the inverse P~Cygni
-profiles are not seen here, nor the blue-ward asymmetry. Because of
-the absorption component in P~Cygni profile, most of the profiles show
-red-ward asymmetry except for the fast wind acceleration models
-($\beta=0.2$ and $0.5$)with low inclinations (not shown here).
+emissivity of increases. Most of the profiles show a red-ward asymmetry, mainly
+due to the presence of the classical P-Cygni absorption. However we find
+that the disc-wind models with the fastest acceleration ($\beta=0.2$ and $0.5$)
+and viewed at low inclinations, show a strong blue asymmetry due to
+occultation of the receding half of the outflow by the optically thick disc.
 
 
 
@@ -1191,7 +1184,7 @@ red-ward asymmetry except for the fast wind acceleration models
   \caption{The dependency of the H$\alpha$ profile on the source
     displacement parameter $d$. The line profiles are computed with 
     the wind parameter $T_{\mathrm{wind}} = 9000\Kelvin$ and $\beta  =
-    0.5$ for $i=55^{\circ}$.  The profiles in the figure uses $d = 
+    0.5$ for $i=55^{\circ}$.  The profiles in the figure use $d = 
     11~R_{*}$ (dashed),   $18~R_{*}$ (dash-dot) and $22~R_{*}$
     (dash-dot). All the other parameters are same as in
     Figure~\ref{fig:atlas_discwind_only}.  As the wind becomes more
@@ -1199,9 +1192,7 @@ red-ward asymmetry except for the fast wind acceleration models
     and the wind density is enhanced towards the symmetry axis
     ($z$); hence, the wind emission increases.  The absorption
     component is relatively insensitive to $d$ since the change in the
-    column density toward the observer is relatively small.  No
-    magnetospherical component is included. 
-  }
+    column density toward the observer is relatively small. }
   
   \label{fig:discwind_d_effect}
 
@@ -1227,10 +1218,8 @@ red-ward asymmetry except for the fast wind acceleration models
     2.0 \times 10^{-8}~\mathrm{M_{\sun}\,yr^{-1}}$\, (dashed), 
    $1.0 \times 10^{-8}~\mathrm{M_{\sun}\,yr^{-1}}$\, (solid), and 
    $0.5 \times 10^{-8}~\mathrm{M_{\sun}\,yr^{-1}}$\, (dash-dot) 
-    are shown above. The
-    models are computed with only the disc-wind component (no magnetospheric
-    accretion). With all other parameter fixed
-    constant, the mass-loss rate behaves as a scaling factor for the wind
+    are shown above. With all other parameter fixed, 
+    the mass-loss rate behaves as a scaling factor for the wind
     density (c.f.~equation~\ref{eq:discwind-density}).}
   
   \label{fig:discwind_mdot_effect}
@@ -1241,40 +1230,15 @@ red-ward asymmetry except for the fast wind acceleration models
 
 
 The effect of varying the wind mass-loss rate is shown in
-Figure~\ref{fig:discwind_mdot_effect}.  The line is very sensitive to the
-mass-loss rate. With all other parameters fixed constant,
-$\dot{M}_{\mathrm{wind}}$ acts as an scaling factor of the wind
-density (equation~\ref{eq:discwind-density}). The important processes
-in forming H$\alpha$ emission are the recombination process and the
-subsequent downward transition to $n=3$ level. Assuming the ionisation
-fraction remains constant, the recombination rate is proportional to
-the square of wind density; hence the line is very sensitive to the
-change in $\dot{M}_{\mathrm{wind}}$.  We have found the line flux of
-the models in the figure is approximately proportional to the square
-of the mass-loss rate. This very sensitive nature of H$\alpha$ would
-make the line a good candidate for a mass-loss rate indicator;
-however, without solving the ambiguity of the emission component from
-the magnetospheric accretion flow and the wind, and without knowing
-the detailed temperature structure of the wind, it could provide us a
-misleading a mass-loss rate estimate of a T Tauri star.
-
-
-
-By inspecting the model H$\alpha$ images computed (no shown here), we have
- found that the extent of the H$\alpha$ emission region is relatively
- small i.e.~$h\lesssim 0.2\,\mathrm{au}$ or $20\, R_{*}$ where h is the
- vertical distance from the disc when compared to the
- spectro-astrometric observations of \citet{takami:2003} 
-for RU~Lup and CS Cha which show 1--5~au scale outflows%
-\footnote{Their observations also show some objects
-(e.g~Z CMa and AS~353A) displaying the outflows in larger scale
-($>50\,\mathrm{au}$); however, this could be formed in shocks rather
-than MHD-wave heating (e.g. \citealt{hartmann:1982}) or X-ray heating
-(e.g.~\citealt{shang:2002}). %
-}. The extent of the line emission region becomes slightly
-larger ($\sim0.4$~au) if a slower wind acceleration rate (e,g,~$\beta=4$)
-is used.  
-
+Figure~\ref{fig:discwind_mdot_effect}. With all other parameters fixed,
+$\dot{M}_{\mathrm{wind}}$ acts as an scaling factor for the wind
+density (equation~\ref{eq:discwind-density}). The important process
+that populates the $n=3$ level is recombination, and therefore the
+line emissivity varies as the square of the density (assuming that the
+ionisation fraction remains constant); hence the line is very sensitive to 
+changes in $\dot{M}_{\mathrm{wind}}$.  We indeed find that  the line flux of
+the models is approximately proportional to the square
+of the mass-loss rate. 
 
 
 
@@ -1368,15 +1332,15 @@ $30$\tabularnewline
 
 
 
-We now consider the models computed with a combination of the
-disc-wind and the magnetospheric accretion components. The parameters
+We now consider models computed with a combination of the
+disc-wind and magnetospheric accretion components. The parameters
 used for the magnetosphere are  same as in 
 Figure~\ref{fig:acc_inclination_effect}, and  the mass-loss rate of
 the disc wind is 
 $\dot{M}_{\mathrm{wind}}=10^{-8}\,\mathrm{M_{\sun}\, yr^{-1}}$
 (i.e.~$\mu=\dot{M}_{\mathrm{wind}}/\dot{M}_{\mathrm{acc}}=0.1$).
 Figure~\ref{fig:atlas_hybrid} shows the models profiles
-computed using the same ranges of the disc-wind temperature and the
+computed using the same ranges of the disc-wind temperature and
 wind acceleration parameter as in the previous cases.
 
 As in the disc-wind only models
@@ -1390,7 +1354,7 @@ $\left(T_{\mathrm{wind}},\,\beta\right)=\left(9000\,\mathrm{K},\,2.0\right)$
 results in an H$\alpha$ profile that is far too strong to be
 compatible with observations (\citealt{reipurth:1996} and
 \citealt{alencar:2000}); however, the lower mass-loss rate models
-(while keeping $\mu$ constant) produce the profiles with the line
+(while keeping $\mu$ constant) produce profiles with the line
 strengths comparable to observations.  Although the models in
 Figure~\ref{fig:atlas_hybrid} are computed with limited
 ranges of $T_{\mathrm{wind}}$, $\beta$ and a fixed $i$, the resulting
@@ -1399,33 +1363,19 @@ are similar to the types of H$\alpha$ profiles seen in the observations
 (c.f.~\citealt{reipurth:1996}).
 
 
-To quantify the relative amount of the wind emission compared to the
-that of the magnetosphere, we have computed the ratio the EW of the
-hybrid model in Figure~\ref{fig:atlas_hybrid} with the EW of the
-magnetosphere only model.   The EW ratio sometimes becomes below 1.0
-when the wind only contributes to the absorption, but not to the
-emission component of the resulting profile. 
+In order to quantify the relative contributions of the wind emission and
+ the magnetosphere, we have computed the ratio the EW of the
+hybrid model in Figure~\ref{fig:atlas_hybrid} to the EW of the
+magnetosphere only model (Table~\ref{tab:ew_ratio}).
+This  ratio falls below 1.0 when the wind only contributes
+to the line absorption, but not to the emission. 
 In some models (e.g.~with $T_{\mathrm{wind}}=8000\,\Kelvin$ and
 $\beta=2.0$), the contribution of the wind to the EW is much larger
-than that from the magnetosphere (EW ratio is 3.2). This clearly
-demonstrates that the difficulty of using the EW of H$\alpha$ as
-accretion indicator since it might as the indicator for the
-mass-loss.  We have also seen in Figure~\ref{fig:atlas_discwind_only}
-that the disc wind models without the magnetosphere can produce the
+than that of the magnetosphere (EW ratio is 3.2). This clearly
+demonstrates that the difficulty of using the EW of H$\alpha$ alone as
+an accretion measure.   We have also seen in Figure~\ref{fig:atlas_discwind_only}
+that disc wind models {\em without}  a magnetosphere can produce an
 H$\alpha$ line with significantly large EW. 
-If the line fit was applied to an observed H$\alpha$ line by ignoring
-the wind, the temperature and  
-the mass-accretion rate of the magnetospherical accretion flow could 
-be overestimated. A better approach to a model fit is a simultaneous
-fitting of multiple lines. For example, the near-infrared lines such
-as Pa$\beta$ and Br$\gamma$ should be used to determined the mass-loss
-rate since these lines are much less affected by the wind. Using the
-mass-loss rate from these lines, H$\alpha$ can be used to determine
-the wind mass-loss rate.
-
-
-
-
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1442,7 +1392,7 @@ the wind mass-loss rate.
   \caption{The effect of the mass-loss rate to mass-accretion rate
     ratio ($\mu=\dot{M}_{\mathrm{wind}}/\dot{M}_{\mathrm{acc}}$).  The
     H$\alpha$ profile computed with only the magnetospheric accretion
-    (thick solid) is compared with the disc-wind-magnetosphere
+    (thick solid) is compared to the disc-wind-magnetosphere
     hybrid models for $\mu =$ 0.05 (dash-dot), 0.1
     (solid) and 0.2 (dash). The magnetosphere used here has
     $T_{\mathrm{max}}=7500\,\Kelvin$ and
@@ -1501,6 +1451,47 @@ cannot be explained by the magnetospheric accretion flow alone
 (e.g.~\citealt{muzerolle:2001}).  Comparison of the model profiles
 with different types of the observed H$\alpha$ profiles will be given
 in section~\ref{sub:Classification-scheme-proposed}.
+
+
+xxx add a sample halpha image from poster xxxx
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{figure}
+
+  \begin{center}
+
+    \includegraphics[%
+      clip,
+      scale=0.45]{figures/discwind_hybrid_ha_image.eps}
+    
+  \end{center}
+
+  \caption{An H$\alpha$ image of the disc-wind hybrid model viewed at an inclination
+  of 80$^\circ$. The false-colour scale shows logarithmic surface brightness (arbitrary
+  units) and the axes are linear dimensions in au.}
+
+  \label{fig:discwind_hybrid_ha_image}
+
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+xxxx alter text for consistency with above image xxxx
+
+By inspecting the model H$\alpha$ images computed (no shown here), we have
+found that the extent of the H$\alpha$ emission region is relatively
+small i.e.~$h\lesssim 0.2\,\mathrm{au}$ or $20\, R_{*}$ where h is the
+vertical distance from the disc when compared to the
+spectro-astrometric observations of \citet{takami:2003} 
+for RU~Lup and CS Cha which show 1--5~au scale outflows%
+\footnote{Their observations also show some objects
+(e.g~Z CMa and AS~353A) displaying the outflows in larger scale
+($>50\,\mathrm{au}$); however, this could be formed in shocks rather
+than MHD-wave heating (e.g. \citealt{hartmann:1982}) or X-ray heating
+(e.g.~\citealt{shang:2002}). %
+}. The extent of the line emission region becomes slightly
+larger ($\sim0.4$~au) if a slower wind acceleration rate (e,g,~$\beta=4$)
+is used.  
 
 
 

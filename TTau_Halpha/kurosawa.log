@@ -1,13 +1,10 @@
-This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  26 JAN 2006 13:53
+This is pdfeTeX, Version 3.141592-1.20a-2.2 (Web2C 7.5.3) (format=latex 2005.9.1)  26 JAN 2006 16:55
 entering extended mode
-**kurosawa
+**kurosawa.tex
 (./kurosawa.tex
 LaTeX2e <2003/12/01>
-Babel <v3.8d> and hyphenation patterns for american, french, german, ngerman, b
-ahasa, basque, bulgarian, catalan, croatian, czech, danish, dutch, esperanto, e
-stonian, finnish, greek, icelandic, irish, italian, latin, magyar, norsk, polis
-h, portuges, romanian, russian, serbian, slovak, slovene, spanish, swedish, tur
-kish, ukrainian, nohyphenation, loaded.
+Babel <v3.8d> and hyphenation patterns for american, french, german, ngerman, d
+utch, italian, norsk, portuges, spanish, swedish, nohyphenation, loaded.
 (./mn2e.cls
 Document Class: mn2e 2001/02/06 v2.2 LaTeX2e MN document class
 Document Style `MN' v2.2, released 2001 February 20
@@ -32,59 +29,61 @@ LaTeX Font Info:    Overwriting symbol font `UPM' in version `bold'
 \@footindent=\skip44
 \@leftskip=\skip45
 \c@dummy=\count85
-(/home/rk/lib/latex/AASTEX50/natbib.sty
-Package: natbib 1998/07/14 6.8c (PWD)
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/natbib/natbib.sty
+Package: natbib 2003/06/06 7.1 (PWD)
 \bibhang=\skip46
 \bibsep=\skip47
-LaTeX Info: Redefining \cite on input line 467.
+LaTeX Info: Redefining \cite on input line 518.
 \c@NAT@ctr=\count86
 )
 \c@table=\count87
 \c@figure=\count88
 \mathindent=\dimen103
 )
-(/usr/share/texmf/tex/latex/base/fontenc.sty
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/base/fontenc.sty
 Package: fontenc 2004/02/22 v1.99f Standard LaTeX package
 
-(/usr/share/texmf/tex/latex/base/t1enc.def
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/base/t1enc.def
 File: t1enc.def 2004/02/22 v1.99f Standard LaTeX file
 LaTeX Font Info:    Redeclaring font encoding T1 on input line 43.
 ))
-(/usr/share/texmf/tex/latex/base/inputenc.sty
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/base/inputenc.sty
 Package: inputenc 2004/02/05 v1.0d Input encoding file
 
-(/usr/share/texmf/tex/latex/base/latin1.def
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/base/latin1.def
 File: latin1.def 2004/02/05 v1.0d Input encoding file
 ))
-(/usr/share/texmf/tex/latex/psnfss/times.sty
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/psnfss/times.sty
 Package: times 2004/09/15 PSNFSS-v9.2 (SPQR) 
 )
-(/usr/share/texmf/tex/latex/graphics/graphicx.sty
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/graphics/graphicx.sty
 Package: graphicx 1999/02/16 v1.0f Enhanced LaTeX Graphics (DPC,SPQR)
 
-(/usr/share/texmf/tex/latex/graphics/keyval.sty
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/graphics/keyval.sty
 Package: keyval 1999/03/16 v1.13 key=value parser (DPC)
 \KV@toks@=\toks15
 )
-(/usr/share/texmf/tex/latex/graphics/graphics.sty
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/graphics/graphics.sty
 Package: graphics 2001/07/07 v1.0n Standard LaTeX Graphics (DPC,SPQR)
 
-(/usr/share/texmf/tex/latex/graphics/trig.sty
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/graphics/trig.sty
 Package: trig 1999/03/16 v1.09 sin cos tan (DPC)
 )
-(/home/rk/lib/latex/AASTEX50/graphics.cfg)
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/graphics/graphics.cfg
+File: graphics.cfg 2005/02/03 v1.3 graphics configuration of teTeX/TeXLive
+)
 Package graphics Info: Driver file: dvips.def on input line 80.
 
-(/usr/share/texmf/tex/latex/graphics/dvips.def
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/graphics/dvips.def
 File: dvips.def 1999/02/16 v3.0i Driver-dependant file (DPC,SPQR)
 ))
 \Gin@req@height=\dimen104
 \Gin@req@width=\dimen105
 )
-(/usr/share/texmf/tex/latex/amsfonts/amssymb.sty
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/amsfonts/amssymb.sty
 Package: amssymb 2002/01/22 v2.2d
 
-(/usr/share/texmf/tex/latex/amsfonts/amsfonts.sty
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/amsfonts/amsfonts.sty
 Package: amsfonts 2001/10/25 v2.2f
 \@emptytoks=\toks16
 LaTeX Font Info:    Redeclaring symbol font `AMSa' on input line 85.
@@ -99,13 +98,13 @@ LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
 LaTeX Font Info:    Redeclaring math symbol \leqslant on input line 117.
 LaTeX Font Info:    Redeclaring math symbol \geqslant on input line 124.
 )
-(/usr/share/texmf/tex/generic/babel/babel.sty
+(/usr/local/teTeX/share/texmf.tetex/tex/generic/babel/babel.sty
 Package: babel 2004/11/20 v3.8d The Babel package
 
-(/usr/share/texmf/tex/generic/babel/english.ldf
+(/usr/local/teTeX/share/texmf.tetex/tex/generic/babel/english.ldf
 Language: english 2004/06/14 v3.3o English support from the babel system
 
-(/usr/share/texmf/tex/generic/babel/babel.def
+(/usr/local/teTeX/share/texmf.tetex/tex/generic/babel/babel.def
 File: babel.def 2004/11/20 v3.8d Babel common definitions
 \babel@savecnt=\count89
 \U@D=\dimen106
@@ -115,7 +114,8 @@ File: babel.def 2004/11/20 v3.8d Babel common definitions
 \l@canadian = a dialect from \language\l@american 
 \l@australian = a dialect from \language\l@british 
 \l@newzealand = a dialect from \language\l@british 
-)) (./kurosawa.aux)
+))
+(./kurosawa.aux)
 \openout1 = `kurosawa.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 37.
@@ -131,25 +131,23 @@ LaTeX Font Info:    ... okay on input line 37.
 LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 37.
 LaTeX Font Info:    ... okay on input line 37.
 LaTeX Font Info:    Try loading font information for T1+ptm on input line 37.
-
-(/usr/share/texmf/tex/latex/psnfss/t1ptm.fd
+ (/usr/local/teTeX/share/texmf.tetex/tex/latex/psnfss/t1ptm.fd
 File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
 )
 LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <17.28> not available
 (Font)              Font shape `T1/ptm/b/n' tried instead on input line 49.
 LaTeX Font Info:    Try loading font information for U+eur on input line 49.
-
-(/usr/share/texmf/tex/latex/amsfonts/ueur.fd
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/amsfonts/ueur.fd
 File: ueur.fd 2002/01/19 v2.2g AMS font definitions
 )
 LaTeX Font Info:    Try loading font information for U+msa on input line 49.
 
-(/usr/share/texmf/tex/latex/amsfonts/umsa.fd
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2002/01/19 v2.2g AMS font definitions
 )
 LaTeX Font Info:    Try loading font information for U+msb on input line 49.
 
-(/usr/share/texmf/tex/latex/amsfonts/umsb.fd
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2002/01/19 v2.2g AMS font definitions
 )
 LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <9> not available
@@ -169,7 +167,7 @@ LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <8> not available
 LaTeX Font Info:    Try loading font information for OMS+ptm on input line 142.
 
 
-(/usr/share/texmf/tex/latex/psnfss/omsptm.fd
+(/usr/local/teTeX/share/texmf.tetex/tex/latex/psnfss/omsptm.fd
 File: omsptm.fd 
 )
 LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <8> not available
@@ -179,8 +177,8 @@ LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <8> not available
 
 ]
 File: figures/discwind.eps Graphic file (type eps)
- <figures/discwind.eps>
-[2]
+
+<figures/discwind.eps> [2]
 Underfull \hbox (badness 2521) in paragraph at lines 377--389
 []\T1/ptm/m/n/9 Knigge, Woods, & Drew (1995) in-tro-duced the ``split-
  []
@@ -202,7 +200,7 @@ Overfull \hbox (3.17484pt too wide) in paragraph at lines 485--493
  []
 
 [4]
-Underfull \hbox (badness 1400) in paragraph at lines 655--665
+Underfull \hbox (badness 1400) in paragraph at lines 654--664
 \T1/ptm/m/n/9 where $\OML/cmm/m/it/9 a \OT1/cmr/m/n/9 = ^^@\OML/cmm/m/it/9 =\OT
 1/cmr/m/n/9 4\OML/cmm/m/it/9 ^^Y\OT1/cmr/m/n/9 ^^A\OML/cmm/m/it/9 ^^W[]$\T1/ptm
 /m/n/9 , $\OML/cmm/m/it/9 y \OT1/cmr/m/n/9 = [] \OML/cmm/m/it/9 =\OT1/cmr/m/n/9
@@ -211,104 +209,7 @@ Underfull \hbox (badness 1400) in paragraph at lines 655--665
  []
 
 
-Underfull \vbox (badness 10000) has occurred while \output is active []
+Underfull \vbox (badness 3792) has occurred while \output is active []
 
  [5]
-File: figures/atlas_ha_i55_acc_model_final.eps Graphic file (type eps)
-
-<figures/atlas_ha_i55_acc_model_final.eps>
-File: figures/broadening.eps Graphic file (type eps)
- <figures/broadening.eps>
-File: figures/acc_inc_effect.eps Graphic file (type eps)
-
-<figures/acc_inc_effect.eps> [6]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-File: figures/atlas_ha_i55_discwind_only_final.eps Graphic file (type eps)
-
-<figures/atlas_ha_i55_discwind_only_final.eps> [7]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [8]
-File: figures/discwind_d_effect.eps Graphic file (type eps)
-
-<figures/discwind_d_effect.eps>
-File: figures/discwind_mdot_effect.eps Graphic file (type eps)
- <figures/discwind_mdot_effect.eps>
-File: figures/atlas_ha_i55_acc_discwind_final.eps Graphic file (type eps)
-
-<figures/atlas_ha_i55_acc_discwind_final.eps> [9]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-File: figures/discwind_mu_effect.eps Graphic file (type eps)
-
-<figures/discwind_mu_effect.eps>
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [10]
-File: figures/atlas_reipurth_like_discwind.eps Graphic file (type eps)
-
-<figures/atlas_reipurth_like_discwind.eps>
-Underfull \vbox (badness 6741) has occurred while \output is active []
-
- [11]
-Underfull \vbox (badness 2326) has occurred while \output is active []
-
-
-Overfull \hbox (3.74889pt too wide) in paragraph at lines 1719--1799
- [] 
- []
-
-File: figures/discwind_acc_inc_effect_m9_b1_t7000.eps Graphic file (type eps)
-<figures/discwind_acc_inc_effect_m9_b1_t7000.eps>
-File: figures/stellarwind_inc_effect.eps Graphic file (type eps)
-
-<figures/stellarwind_inc_effect.eps>
-Underfull \hbox (badness 1275) in paragraph at lines 1864--1875
-\T1/ptm/m/n/9 ma-tions in the disc wind which mimic the den-sity dis-tri-bu-
- []
-
-[12]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
-
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [13]
-File: figures/overview4.eps Graphic file (type eps)
-
-<figures/overview4.eps>
-
-LaTeX Warning: Reference `atlas_hybrid' on page 14 undefined on input line 2027
-.
-
-
-Underfull \hbox (badness 1067) in paragraph at lines 2086--2088
-\T1/ptm/m/n/9 Authors thank Jorick Vink for pro-vid-ing us the H$\OML/cmm/m/it/
-9 $ \T1/ptm/m/n/9 data of
- []
-
-
-Underfull \hbox (badness 2418) in paragraph at lines 2086--2088
-\T1/ptm/m/n/9 T Tau. This work is sup-ported by PPARC stan-dard grand
- []
-
-(./kurosawa.bbl [14]
-Underfull \vbox (badness 2961) has occurred while \output is active []
-
-) [15]
-(./kurosawa.aux)
-
-LaTeX Warning: There were undefined references.
-
- ) 
-Here is how much of TeX's memory you used:
- 2125 strings out of 94500
- 24355 string characters out of 1172833
- 87581 words of memory out of 3500000
- 5246 multiletter control sequences out of 10000+50000
- 49391 words of font info for 94 fonts, out of 500000 for 2000
- 580 hyphenation exceptions out of 1000
- 31i,14n,34p,1489b,396s stack positions out of 1500i,500n,5000p,200000b,5000s
-
-Output written on kurosawa.dvi (15 pages, 107836 bytes).
+File: figures/a
