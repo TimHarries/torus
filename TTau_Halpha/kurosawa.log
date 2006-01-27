@@ -1,4 +1,4 @@
-This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  27 JAN 2006 10:51
+This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  27 JAN 2006 11:50
 entering extended mode
 **kurosawa
 (./kurosawa.tex
@@ -249,8 +249,8 @@ File: figures/atlas_ha_i55_acc_discwind_final.eps Graphic file (type eps)
 File: figures/discwind_mu_effect.eps Graphic file (type eps)
  <figures/discwind_mu_effect.eps>
 [9]
-File: figures/discwind_hybrid_ha_image2.eps Graphic file (type eps)
- <figures/discwind_hybrid_ha_image2.eps>
+File: figures/discwind_hybrid_ha_image.eps Graphic file (type eps)
+ <figures/discwind_hybrid_ha_image.eps>
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 File: figures/atlas_reipurth_like_discwind.eps Graphic file (type eps)
@@ -298,57 +298,61 @@ Underfull \hbox (badness 2418) in paragraph at lines 2106--2108
  []
 
 (./kurosawa.bbl [14])
+
+LaTeX Warning: Reference `tab:std_paramters' on page 15 undefined on input line
+ 2135.
+
 File: figures/discwind_hybrid_mdot7_inc10.eps Graphic file (type eps)
- <figures/discwind_hybrid_mdot7_inc10.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2139--2139
+<figures/discwind_hybrid_mdot7_inc10.eps>
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2158--2158
  [] 
  []
 
 File: figures/discwind_hybrid_mdot7_inc55.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot7_inc55.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2144--2144
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2163--2163
  [][] 
  []
 
 File: figures/discwind_hybrid_mdot7_inc80.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot7_inc80.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2149--2149
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2168--2168
  [][] 
  []
 
 File: figures/discwind_hybrid_mdot8_inc10.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot8_inc10.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2168--2168
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2187--2187
  [] 
  []
 
 File: figures/discwind_hybrid_mdot8_inc55.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot8_inc55.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2173--2173
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2192--2192
  [][] 
  []
 
 File: figures/discwind_hybrid_mdot8_inc80.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot8_inc80.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2178--2178
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2197--2197
  [][] 
  []
 
 File: figures/discwind_hybrid_mdot9_inc10.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot9_inc10.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2197--2197
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2216--2216
  [] 
  []
 
 File: figures/discwind_hybrid_mdot9_inc55.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot9_inc55.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2202--2202
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2221--2221
  [][] 
  []
 
 File: figures/discwind_hybrid_mdot9_inc80.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot9_inc80.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2207--2207
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2226--2226
  [][] 
  []
 
@@ -364,14 +368,18 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
  [17
 
 ]
-(./kurosawa.aux) ) 
+(./kurosawa.aux)
+
+LaTeX Warning: There were undefined references.
+
+ ) 
 Here is how much of TeX's memory you used:
- 2150 strings out of 94500
- 25122 string characters out of 1172833
+ 2151 strings out of 94500
+ 25139 string characters out of 1172833
  87152 words of memory out of 3500000
- 5261 multiletter control sequences out of 10000+50000
+ 5262 multiletter control sequences out of 10000+50000
  49391 words of font info for 94 fonts, out of 500000 for 2000
  580 hyphenation exceptions out of 1000
  31i,14n,34p,1489b,396s stack positions out of 1500i,500n,5000p,200000b,5000s
 
-Output written on kurosawa.dvi (17 pages, 109568 bytes).
+Output written on kurosawa.dvi (17 pages, 110916 bytes).
