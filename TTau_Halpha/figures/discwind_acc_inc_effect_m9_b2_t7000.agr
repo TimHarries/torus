@@ -1,7 +1,7 @@
 # Grace project file
 #
-@version 50107
-@page size 609, 625
+@version 50118
+@page size 448, 459
 @page scroll 5%
 @page inout 5%
 @link page off
@@ -54,7 +54,7 @@
 @timestamp rot 0
 @timestamp font 0
 @timestamp char size 1.000000
-@timestamp def "Fri Nov 11 17:28:41 2005"
+@timestamp def "Thu Jan 26 21:40:34 2006"
 @r0 off
 @link r0 to g0
 @r0 type above
@@ -101,16 +101,10 @@
 @g0 fixedpoint format general general
 @g0 fixedpoint prec 6, 6
 @with g0
-@    world xmin -800
-@    world xmax 800
-@    world ymin -0.00635102088
-@    world ymax 12.9851841
+@    world -600, -0.00635102088, 600, 12.9851841
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view xmin 0.115866
-@    view xmax 0.888306
-@    view ymin 0.153850
-@    view ymax 0.871819
+@    view 0.115866, 0.153592, 0.888306, 0.870359
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -231,7 +225,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.656573957016, 0.820535812203
+@    legend 0.656573957016, 0.819161414718
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
