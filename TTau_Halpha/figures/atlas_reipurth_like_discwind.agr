@@ -54,7 +54,7 @@
 @timestamp rot 0
 @timestamp font 0
 @timestamp char size 1.000000
-@timestamp def "Wed Jan 11 16:18:18 2006"
+@timestamp def "Sun Jan 29 14:41:13 2006"
 @r0 off
 @link r0 to g0
 @r0 type above
@@ -109,8 +109,8 @@
 @    znorm 1
 @    view xmin 0.390000
 @    view xmax 0.602766
-@    view ymin 0.779175
-@    view ymax 0.979350
+@    view ymin 0.778881
+@    view ymax 0.978980
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -231,7 +231,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.656573957, 0.814359850405
+@    legend 0.656573957, 0.814052203372
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -320,8 +320,8 @@
 @    znorm 1
 @    view xmin 0.537234
 @    view xmax 0.750000
-@    view ymin 0.719290
-@    view ymax 0.919371
+@    view ymin 0.719018
+@    view ymax 0.919024
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -340,7 +340,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.793179286578
+@    legend 0.5, 0.792879641091
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -380,8 +380,8 @@
 @    znorm 1
 @    view xmin 0.250000
 @    view xmax 0.462766
-@    view ymin 0.519207
-@    view ymax 0.719290
+@    view ymin 0.519011
+@    view ymax 0.719018
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -501,7 +501,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.793179286578
+@    legend 0.5, 0.792879641091
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -590,8 +590,8 @@
 @    znorm 1
 @    view xmin 0.537234
 @    view xmax 0.750000
-@    view ymin 0.519207
-@    view ymax 0.719290
+@    view ymin 0.519011
+@    view ymax 0.719018
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -711,7 +711,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.793179286578
+@    legend 0.5, 0.792879641091
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -800,8 +800,8 @@
 @    znorm 1
 @    view xmin 0.250000
 @    view xmax 0.462766
-@    view ymin 0.319123
-@    view ymax 0.519207
+@    view ymin 0.319002
+@    view ymax 0.519011
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -921,7 +921,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.793179286578
+@    legend 0.5, 0.792879641091
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -1010,8 +1010,8 @@
 @    znorm 1
 @    view xmin 0.537234
 @    view xmax 0.750000
-@    view ymin 0.319123
-@    view ymax 0.519207
+@    view ymin 0.319002
+@    view ymax 0.519011
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -1131,7 +1131,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.793179286578
+@    legend 0.5, 0.792879641091
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -1215,13 +1215,13 @@
 @    world xmin -800
 @    world xmax 800
 @    world ymin 0
-@    world ymax 7.5
+@    world ymax 6.8
 @    stack world 0, 0, 0, 0
 @    znorm 1
 @    view xmin 0.250000
 @    view xmax 0.462766
-@    view ymin 0.119042
-@    view ymax 0.319123
+@    view ymin 0.118997
+@    view ymax 0.319002
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -1341,7 +1341,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.793179286578
+@    legend 0.5, 0.792879641091
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -1460,7 +1460,7 @@
 @    s1 errorbar riser clip length 0.100000
 @    s1 comment "/mount_nfs/tintin/SCRATCH/rk/models/TTauri/hybrid/adj120/amr_inc055_v.dat"
 @    s1 legend  ""
-@    s2 hidden false
+@    s2 hidden true
 @    s2 type xy
 @    s2 symbol 0
 @    s2 symbol size 1.000000
@@ -1509,6 +1509,55 @@
 @    s2 errorbar riser clip length 0.100000
 @    s2 comment "/mount_scratch/donald/rk/models/TTauri/hybrid/adw039/amr_inc055_v.dat"
 @    s2 legend  ""
+@    s3 hidden false
+@    s3 type xy
+@    s3 symbol 0
+@    s3 symbol size 1.000000
+@    s3 symbol color 1
+@    s3 symbol pattern 1
+@    s3 symbol fill color 1
+@    s3 symbol fill pattern 0
+@    s3 symbol linewidth 1.0
+@    s3 symbol linestyle 1
+@    s3 symbol char 65
+@    s3 symbol char font 0
+@    s3 symbol skip 0
+@    s3 line type 1
+@    s3 line linestyle 1
+@    s3 line linewidth 1.0
+@    s3 line color 1
+@    s3 line pattern 1
+@    s3 baseline type 0
+@    s3 baseline off
+@    s3 dropline off
+@    s3 fill type 0
+@    s3 fill rule 0
+@    s3 fill color 1
+@    s3 fill pattern 1
+@    s3 avalue off
+@    s3 avalue type 2
+@    s3 avalue char size 1.000000
+@    s3 avalue font 0
+@    s3 avalue color 1
+@    s3 avalue rot 0
+@    s3 avalue format general
+@    s3 avalue prec 3
+@    s3 avalue prepend ""
+@    s3 avalue append ""
+@    s3 avalue offset 0.000000 , 0.000000
+@    s3 errorbar on
+@    s3 errorbar place both
+@    s3 errorbar color 1
+@    s3 errorbar pattern 1
+@    s3 errorbar size 1.000000
+@    s3 errorbar linewidth 1.0
+@    s3 errorbar linestyle 1
+@    s3 errorbar riser linewidth 1.0
+@    s3 errorbar riser linestyle 1
+@    s3 errorbar riser clip off
+@    s3 errorbar riser clip length 0.100000
+@    s3 comment "/mount_scratch/donald/rk/models/TTauri/hybrid/adw091/amr_inc030_v.dat"
+@    s3 legend  ""
 @g7 on
 @g7 hidden false
 @g7 type XY
@@ -1528,8 +1577,8 @@
 @    znorm 1
 @    view xmin 0.537234
 @    view xmax 0.750000
-@    view ymin 0.119042
-@    view ymax 0.319123
+@    view ymin 0.118997
+@    view ymax 0.319002
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -1649,7 +1698,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.793179286578
+@    legend 0.5, 0.792879641091
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -2591,6 +2640,109 @@
        760.44328        1.0464406
        776.30211        1.0445603
        792.13864        1.0427947
+&
+@target G6.S3
+@type xy
+      -776.23519          1.01177
+      -760.39867         1.012266
+      -744.56214        1.0127955
+      -728.72561        1.0133585
+      -712.88908        1.0139604
+      -697.05256        1.0146032
+      -681.21603        1.0152924
+       -665.3795        1.0160308
+      -649.54297        1.0168251
+      -633.70645         1.017679
+      -617.86992        1.0185985
+      -602.03339        1.0195946
+      -586.19687        1.0206702
+      -570.36034        1.0218405
+      -554.52381        1.0231097
+      -538.68728        1.0244974
+      -522.85076          1.02601
+      -507.01423        1.0276702
+       -491.1777        1.0294927
+      -475.34117        1.0315052
+      -459.50465        1.0337288
+      -443.66812        1.0362013
+      -427.83159        1.0389536
+      -411.99506        1.0420388
+      -396.15854        1.0454981
+      -380.32201        1.0494173
+      -364.48548        1.0538568
+      -348.64896        1.0589431
+      -332.81243        1.0647751
+       -316.9759        1.0715267
+      -301.13937        1.0794157
+      -285.30285        1.0886877
+      -269.46632        1.0997208
+      -253.62979        1.1131712
+      -237.79326        1.1345513
+      -221.95674         1.106742
+      -206.12021       0.51012616
+      -190.28368       0.24655909
+      -174.44716       0.54936286
+      -158.61063        1.0809045
+       -142.7741        1.4419439
+      -126.93757        1.6613837
+      -111.10105        1.8837489
+      -95.264519        2.4129092
+      -79.427991        3.3213265
+      -63.591464        4.1622955
+      -47.754937        5.0671361
+      -31.918409        5.3970469
+      -16.081882        5.5741237
+     -0.24535465        5.5477589
+       15.591173        6.1620273
+         31.4277        6.0283996
+       47.264227        4.8265846
+       63.100755        3.9291007
+       78.937282        3.2531278
+       94.773809        2.4819481
+       110.61034        1.8833939
+       126.44686         1.610886
+       142.28339        1.4815965
+       158.11992        1.3298419
+       173.95645        1.2509966
+       189.79297         1.183859
+        205.6295        1.1415088
+       221.46603         1.136292
+       237.30256        1.1324345
+       253.13908        1.1232958
+       268.97561        1.1090779
+       284.81214        1.0967286
+       300.64866        1.0862313
+       316.48519        1.0773521
+       332.32172        1.0697655
+       348.15825         1.063256
+       363.99477        1.0576157
+        379.8313        1.0527099
+       395.66783        1.0484044
+       411.50436        1.0446149
+       427.34088        1.0412527
+       443.17741        1.0382673
+       459.01394        1.0355899
+       474.85046        1.0331921
+       490.68699        1.0310245
+       506.52352        1.0290689
+       522.36005        1.0272913
+       538.19657        1.0256748
+        554.0331        1.0241985
+       569.86963        1.0228448
+       585.70616        1.0216037
+       601.54268        1.0204599
+       617.37921        1.0194078
+       633.21574        1.0184325
+       649.05227        1.0175304
+       664.88879        1.0166921
+       680.72532        1.0159147
+       696.56185        1.0151896
+       712.39837        1.0145131
+        728.2349        1.0138809
+       744.07143          1.01329
+       759.90796        1.0127355
+       775.74448        1.0122157
+       791.58101        1.0117265
 &
 @target G7.S0
 @type xy

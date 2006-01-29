@@ -3,8 +3,8 @@ OBJ =  subs.o plot_discwind.o
 
 EXE=	pdw
 
-F90=	ifort -w -g
-F77=	ifort -w -g -fno-second-underscore
+F90=	g95 -w -g
+F77=	g95 -w -g -fno-second-underscore
 
 %.o : %.f90
 	$(F90) -c  $<

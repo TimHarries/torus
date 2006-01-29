@@ -1,4 +1,4 @@
-\begin{thebibliography}{69}
+\begin{thebibliography}{73}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
 \bibitem[{{Alencar} \& {Basri}(2000)}]{alencar:2000}
@@ -18,6 +18,11 @@
 
 \bibitem[{{Appenzeller} \& {Mundt}(1989)}]{appenzeller:1989}
 {Appenzeller} I., {Mundt} R., 1989, \aapr, 1, 291
+
+\bibitem[{{Baines} {et~al.}(2005){Baines}, {Oudmaijer}, {Porter}, \&
+  {Pozzo}}]{baines:2006}
+{Baines} D., {Oudmaijer} R., {Porter} J., {Pozzo} M., 2005, ArXiv Astrophysics
+  e-prints
 
 \bibitem[{{Bertout} {et~al.}(1988){Bertout}, {Basri}, \&
   {Bouvier}}]{bertout:1988}
@@ -181,6 +186,26 @@ Hillier D.~J., 1991, \aap, 247, 455
 {Mihalas} D., 1978, {Stellar atmospheres, 2nd edn}. W.\ H.\ Freeman and Co.,
   San Francisco
 
+\bibitem[{{Mohanty} {et~al.}(2005){Mohanty}, {Jayawardhana}, \&
+  {Basri}}]{mohanty:2005}
+{Mohanty} S., {Jayawardhana} R., {Basri} G., 2005, Memorie della Societa
+  Astronomica Italiana, 76, 303
+
+\bibitem[{{Monnier} {et~al.}(2005){Monnier}, {Millan-Gabet}, {Billmeier},
+  {Akeson}, {Wallace}, {Berger}, {Calvet}, {D'Alessio}, {Danchi}, {Hartmann},
+  {Hillenbrand}, {Kuchner}, {Rajagopal}, {Traub}, {Tuthill}, {Boden}, {Booth},
+  {Colavita}, {Gathright}, {Hrynevych}, {Le Mignant}, {Ligon}, {Neyman},
+  {Swain}, {Thompson}, {Vasisht}, {Wizinowich}, {Beichman}, {Beletic},
+  {Creech-Eakman}, {Koresko}, {Sargent}, {Shao}, \& {van Belle}}]{monnier:2005}
+{Monnier} J.~D., {Millan-Gabet} R., {Billmeier} R., {Akeson} R.~L., {Wallace}
+  D., {Berger} J.-P., {Calvet} N., {D'Alessio} P., {Danchi} W.~C., {Hartmann}
+  L., {Hillenbrand} L.~A., {Kuchner} M., {Rajagopal} J., {Traub} W.~A.,
+  {Tuthill} P.~G., {Boden} A., {Booth} A., {Colavita} M., {Gathright} J.,
+  {Hrynevych} M., {Le Mignant} D., {Ligon} R., {Neyman} C., {Swain} M.,
+  {Thompson} R., {Vasisht} G., {Wizinowich} P., {Beichman} C., {Beletic} J.,
+  {Creech-Eakman} M., {Koresko} C., {Sargent} A., {Shao} M., {van Belle} G.,
+  2005, \apj, 624, 832
+
 \bibitem[{{Muzerolle} {et~al.}(2001){Muzerolle}, {Calvet}, \&
   {Hartmann}}]{muzerolle:2001}
 {Muzerolle} J., {Calvet} N., {Hartmann} L., 2001, \apj, 550, 944
@@ -246,10 +271,14 @@ Hillier D.~J., 1991, \aap, 247, 455
   {Loeser}}]{vernazza:1973}
 {Vernazza} J.~E., {Avrett} E.~H., {Loeser} R., 1973, \apj, 184, 605
 
-\bibitem[{{Vink} {et~al.}(2005){Vink}, {Drew}, {Harries}, {Oudmaijer}, \&
-  {Unruh}}]{vink:2005}
+\bibitem[{{Vink} {et~al.}(2005{\natexlab{a}}){Vink}, {Drew}, {Harries},
+  {Oudmaijer}, \& {Unruh}}]{vink:2005}
 {Vink} J.~S., {Drew} J.~E., {Harries} T.~J., {Oudmaijer} R.~D., {Unruh} Y.,
-  2005, \mnras, 359, 1049
+  2005{\natexlab{a}}, \mnras, 359, 1049
+
+\bibitem[{{Vink} {et~al.}(2005{\natexlab{b}}){Vink}, {Harries}, \&
+  {Drew}}]{vink:2005a}
+{Vink} J.~S., {Harries} T.~J., {Drew} J.~E., 2005{\natexlab{b}}, \aap, 430, 213
 
 \bibitem[{{White} \& {Basri}(2003)}]{white:2003}
 {White} R.~J., {Basri} G., 2003, \apj, 582, 1109

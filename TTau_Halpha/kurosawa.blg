@@ -2,44 +2,44 @@ This is BibTeX, Version 0.99c (Web2C 7.5.4)
 The top-level auxiliary file: kurosawa.aux
 The style file: mn.bst
 Database file #1: mnras.bib
-You've used 69 entries,
+You've used 73 entries,
             2806 wiz_defined-function locations,
-            1834 strings with 24022 characters,
-and the built_in function-call counts, 30985 in all, are:
-= -- 2703
-> -- 1863
+            1854 strings with 25208 characters,
+and the built_in function-call counts, 34119 in all, are:
+= -- 2918
+> -- 2227
 < -- 39
-+ -- 696
-- -- 624
-* -- 2589
-:= -- 5756
++ -- 833
+- -- 756
+* -- 2931
+:= -- 6371
 add.period$ -- 3
-call.type$ -- 69
-change.case$ -- 483
-chr.to.int$ -- 68
-cite$ -- 69
-duplicate$ -- 1323
-empty$ -- 1936
-format.name$ -- 858
-if$ -- 6069
-int.to.chr$ -- 2
+call.type$ -- 73
+change.case$ -- 543
+chr.to.int$ -- 71
+cite$ -- 73
+duplicate$ -- 1398
+empty$ -- 2039
+format.name$ -- 1002
+if$ -- 6623
+int.to.chr$ -- 3
 int.to.str$ -- 1
-missing$ -- 66
-newline$ -- 211
-num.names$ -- 278
-pop$ -- 547
+missing$ -- 70
+newline$ -- 223
+num.names$ -- 294
+pop$ -- 612
 preamble$ -- 1
-purify$ -- 483
+purify$ -- 543
 quote$ -- 0
-skip$ -- 1107
+skip$ -- 1161
 stack$ -- 0
-substring$ -- 1454
-swap$ -- 99
+substring$ -- 1528
+swap$ -- 105
 text.length$ -- 6
 text.prefix$ -- 0
 top$ -- 0
-type$ -- 612
+type$ -- 648
 warning$ -- 0
-while$ -- 276
+while$ -- 291
 width$ -- 0
-write$ -- 694
+write$ -- 733

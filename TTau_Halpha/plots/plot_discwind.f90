@@ -30,7 +30,8 @@ program plot_discwind
   !==============================================
 
   ! set up L values
-  lmin = 1.0d-3           ! [10^10 cm]
+!  lmin = 1.0d-3           ! [10^10 cm]
+  lmin = 1.0d-6           ! [10^10 cm]
 !  lmax = 36.0d0*1000.d0  ! [10^10 cm]
   lmax = 150000.d0  ! [10^10 cm]
   log10_lmin = LOG10(lmin); log10_lmax = LOG10(lmax)
