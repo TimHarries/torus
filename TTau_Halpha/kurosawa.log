@@ -1,6 +1,6 @@
-This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  29 JAN 2006 19:28
+This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  30 JAN 2006 10:40
 entering extended mode
-**kurosawa.tex
+**kurosawa
 (./kurosawa.tex
 LaTeX2e <2003/12/01>
 Babel <v3.8d> and hyphenation patterns for american, french, german, ngerman, b
@@ -308,37 +308,37 @@ Overfull \hbox (1.5047pt too wide) in paragraph at lines 2196--2196
 
 File: figures/discwind_hybrid_mdot8_inc10.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot8_inc10.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2219--2219
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2223--2223
  [] 
  []
 
 File: figures/discwind_hybrid_mdot8_inc55.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot8_inc55.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2224--2224
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2228--2228
  [][] 
  []
 
 File: figures/discwind_hybrid_mdot8_inc80.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot8_inc80.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2229--2229
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2233--2233
  [][] 
  []
 
 File: figures/discwind_hybrid_mdot9_inc10.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot9_inc10.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2248--2248
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2252--2252
  [] 
  []
 
 File: figures/discwind_hybrid_mdot9_inc55.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot9_inc55.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2253--2253
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2257--2257
  [][] 
  []
 
 File: figures/discwind_hybrid_mdot9_inc80.eps Graphic file (type eps)
 <figures/discwind_hybrid_mdot9_inc80.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2258--2258
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2262--2262
  [][] 
  []
 
@@ -356,10 +356,10 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Here is how much of TeX's memory you used:
  2155 strings out of 94500
  25187 string characters out of 1172833
- 84602 words of memory out of 3500000
+ 84725 words of memory out of 3500000
  5266 multiletter control sequences out of 10000+50000
  49391 words of font info for 94 fonts, out of 500000 for 2000
  580 hyphenation exceptions out of 1000
- 31i,14n,34p,1188b,407s stack positions out of 1500i,500n,5000p,200000b,5000s
+ 31i,14n,34p,1184b,407s stack positions out of 1500i,500n,5000p,200000b,5000s
 
-Output written on kurosawa.dvi (17 pages, 115504 bytes).
+Output written on kurosawa.dvi (17 pages, 115652 bytes).
