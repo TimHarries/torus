@@ -10160,10 +10160,10 @@ the wind mass-loss rate (
 ).
  The inclination angle is simplify adopted from 
 \begin_inset ERT
-status Collapsed
+status Open
 
 \layout Standard
-
+g
 \backslash 
 citealt{akeson:2002}
 \end_inset 
