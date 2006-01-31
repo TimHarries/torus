@@ -82,7 +82,7 @@ CONTAINS
        thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
        thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
-       thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
+!       thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
        thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
@@ -90,7 +90,7 @@ CONTAINS
 
        parentOctal%hasChild(parentsubcell) = .false.
        call interpFromParent(subcellCentre(thisOctal, subcell), thisOctal%subcellSize, grid, &
-            thisOctal%temperature(subcell), thisOctal%rho(subcell))
+            thisOctal%temperature(subcell), thisOctal%rho(subcell), thisOctal%dusttypeFraction(subcell, :))
        parentOctal%hasChild(parentsubcell) = .true.
 
     else
@@ -141,6 +141,9 @@ CONTAINS
 
     CASE ("shakara","aksco")
        CALL shakaraDisk(thisOctal, subcell ,grid)
+
+    CASE ("warpeddisc")
+       CALL warpedDisk(thisOctal, subcell ,grid)
 
     CASE("ppdisk")
        CALL calcPPDiskDensity(thisOctal,subcell,grid)
@@ -847,7 +850,7 @@ CONTAINS
       CASE ("windtest")
         gridConverged = .TRUE.
 
-      CASE("benchmark","shakara","aksco", "melvin","clumpydisc","lexington")
+      CASE("benchmark","shakara","aksco", "melvin","clumpydisc","lexington", "warpeddisc")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104")
@@ -1930,7 +1933,7 @@ CONTAINS
                            velocity,velocityDeriv,temperature,kappaAbs,&
                            kappaSca,rho,chiLine,etaLine,etaCont, &
                            probDistLine,probDistCont,N,Ne,nTot,inflow,grid, &
-                           interp, departCoeff,kappaAbsArray,kappaScaArray, rosselandKappa, kappap, &
+                           interp, departCoeff,kappaAbsArray,kappaScaArray, dusttypeFraction, rosselandKappa, kappap, &
                            atthistemperature)
 
     ! POINT, direction --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
@@ -1978,6 +1981,7 @@ CONTAINS
     REAL,INTENT(OUT),OPTIONAL         :: chiLine
     REAL,INTENT(OUT),OPTIONAL         :: etaLine
     REAL,INTENT(OUT),OPTIONAL         :: etaCont
+    real(double), dimension(:), intent(out), optional :: dusttypeFraction
     real(double),INTENT(OUT),OPTIONAL :: probDistLine
     real(double),INTENT(OUT),OPTIONAL :: probDistCont
     real(double),DIMENSION(:),INTENT(OUT),OPTIONAL :: N
@@ -2057,6 +2061,8 @@ CONTAINS
       IF (PRESENT(nTot))                 nTot = resultOctal%nTot(subcell)
       IF (PRESENT(departCoeff))   departCoeff = resultOctal%departCoeff(subcell,:)
       IF (PRESENT(inFlow))           inFlow = resultOctal%inFlow(subcell)     
+
+      IF (PRESENT(dusttypeFraction))           dusttypeFraction = resultOctal%dusttypeFraction(subcell,:)     
 
       IF (PRESENT(kappaAbsArray)) THEN
          call returnKappa(grid, resultOctal, subcell, kappaAbsArray=kappaAbsArray)
@@ -2949,12 +2955,12 @@ CONTAINS
     
 
     if (thisOctal%threeD) then
-           IF (point%x <= thisOctal%centre%x - thisOctal%subcellSize ) THEN ; inOctal = .FALSE. 
-       ELSEIF (point%x >= thisOctal%centre%x + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSEIF (point%y <= thisOctal%centre%y - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSEIF (point%y >= thisOctal%centre%y + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSEIF (point%z <= thisOctal%centre%z - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSEIF (point%z >= thisOctal%centre%z + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+           IF (point%x < thisOctal%centre%x - thisOctal%subcellSize ) THEN ; inOctal = .FALSE. 
+       ELSEIF (point%x > thisOctal%centre%x + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+       ELSEIF (point%y < thisOctal%centre%y - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+       ELSEIF (point%y > thisOctal%centre%y + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+       ELSEIF (point%z < thisOctal%centre%z - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+       ELSEIF (point%z > thisOctal%centre%z + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
        ELSE  
           inOctal = .TRUE.
        ENDIF
@@ -3834,7 +3840,7 @@ IF ( .NOT. gridConverged ) RETURN
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell  
 
-    use input_variables, only: height, betadisc, rheight, flaringpower
+    use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router
     IMPLICIT NONE
     TYPE(octal)       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
@@ -4176,10 +4182,10 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.3)) split = .true.
-!      if (r < 5.*grid%rInner) then
-!         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.1)) split = .true.
-!      endif
+      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 1.)) split = .true.
+      if (r < 2.*grid%rInner) then
+         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
+      endif
 
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -4233,7 +4239,24 @@ IF ( .NOT. gridConverged ) RETURN
 !         endif
 !      endif
 
-     
+
+   case("warpeddisc")
+      split = .false.
+      cellSize = thisOctal%subcellSize 
+      cellCentre = subcellCentre(thisOctal,subCell)
+      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+      phi = atan2(cellcentre%y,cellcentre%x)
+      warpheight = 0.3 * rOuter * (r / rOuter)**2 * cos(phi)
+
+
+      if (r > rInner*0.8) then
+         hr = height * (r / (100.*autocm/1.e10))**1.25
+         fac = cellsize/hr
+         if (abs((cellCentre%z-warpHeight)/hr) < 5.) then
+            if (fac > 4.) split = .true.
+         endif
+         if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 2.)) split = .true.
+      endif
 
 
       
@@ -6048,18 +6071,45 @@ IF ( .NOT. gridConverged ) RETURN
     
     endif
 
-!    thisOctal%dustTypeFraction(subcell,:) =  thisOctal%dustTypeFraction(subcell,:) * 1.e-5
-
-!    if ((r + thisOctal%subcellsize/2.d0) < rInner) thisOctal%inflow(subcell) = .false.
-
-!    if ((r < rSublimation).and.thisOctal%inFlow(subcell)) then
-!       thisOctal%temperature(subcell) = 2000.
-!    endif
 
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine shakaraDisk
+
+  subroutine warpedDisk(thisOctal,subcell,grid)
+
+    use input_variables
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    real :: r, h, rd, r1
+    TYPE(octalVector) :: rVec
+    
+    rVec = subcellCentre(thisOctal,subcell)
+    r = modulus(rVec)
+    thisOctal%inflow(subcell) = .true.
+    thisOctal%rho(subcell) = 1.e-30
+    thisOctal%temperature(subcell) = 10.
+    thisOctal%etaCont(subcell) = 0.
+    rd = rOuter / 2.
+    r = sqrt(rVec%x**2 + rVec%y**2)
+    if ((r > rInner).and.(r < rOuter)) then
+       thisOctal%rho(subcell) = density(rVec, grid)
+       thisOctal%temperature(subcell) = 20.
+       thisOctal%etaCont(subcell) = 0.
+       thisOctal%inflow(subcell) = .true.
+
+
+       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+    
+    endif
+
+
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+  end subroutine warpedDisk
 
   ! chris (26/05/04)
   subroutine calcPPDiskDensity(thisOctal, subcell, grid)
@@ -6992,6 +7042,7 @@ IF ( .NOT. gridConverged ) RETURN
     dest%Hheating         = source%Hheating
     dest%Heheating        = source%Heheating
     dest%ionFrac          = source%ionFrac
+    dest%oldFrac          = source%oldFrac
     dest%photoIonCoeff    = source%photoIonCoeff
     dest%nTot             = source%nTot
     dest%inStar           = source%inStar
@@ -7322,7 +7373,7 @@ IF ( .NOT. gridConverged ) RETURN
 
         ! don't split outer edge of disc
 
-        if (grid%geometry == "shakara") then
+        if ((grid%geometry == "shakara").or.(grid%geometry == "warpeddisc")) then
            if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%router*0.9) goto 666
         endif
            
@@ -7608,7 +7659,10 @@ IF ( .NOT. gridConverged ) RETURN
           endif
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
           tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
-          if (tau > 1.e-10) unrefine = .false.
+          if (tau > 1.e-5) then
+             unrefine = .false.
+             exit
+          endif
        endif
     enddo
 
@@ -7619,6 +7673,47 @@ IF ( .NOT. gridConverged ) RETURN
     endif
 
   end subroutine unrefineThinCells
+
+  recursive subroutine unrefineThickCells(thisOctal, grid, ilambda, converged)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: ilambda
+    real(double) :: kappaAbs, kappaSca, tau
+    integer :: subcell, i, j
+    logical :: unrefine, ok, converged
+    integer :: nTau
+    integer :: nVals
+
+    unrefine = .true.
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unrefineThickCells(child, grid, ilambda, converged)
+                exit
+             end if
+          end do
+       else
+          if (.not.ASSOCIATED(thisOctal%dustTypeFraction)) then
+             write(*,*) "unalloc dusttypefraction!!"
+          endif
+          call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
+          tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
+          if (tau < 1.e4) unrefine = .false.
+       endif
+    enddo
+
+    if ((thisOctal%nChildren == 0).and.unrefine.and.converged) then
+       call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
+            grid = grid, adjustGridInfo = .true.)
+       converged = .false.
+    endif
+
+  end subroutine unrefineThickCells
 
   SUBROUTINE shrinkChildArray(parent, childrenToDelete, adjustParent )
     ! removes children from an octal.
@@ -8997,7 +9092,7 @@ IF ( .NOT. gridConverged ) RETURN
             dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
             do j = 1, nDustType
                rosselandKappa = rosselandKappa + bnu(freq, dble(temperature)) * dFreq / &
-                 ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))*thisOctal%dustTypeFraction(subcell, j))
+                 ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))*max(1.d-30,thisOctal%dustTypeFraction(subcell, j)))
             enddo
             bnutot = bnutot + bnu(freq, dble(temperature)) * dfreq
          enddo
@@ -9531,41 +9626,72 @@ IF ( .NOT. gridConverged ) RETURN
     
   end subroutine setVerticalBias
 
-  subroutine interpFromParent(centre, cellSize, grid, temperature, density)
+  subroutine interpFromParent(centre, cellSize, grid, temperature, density, dusttypeFraction)
     type(GRIDTYPE) :: grid
     real(double) :: cellSize
     real :: temperature
     real(double) :: density
-    real(double) :: rho(2,2)
-    real :: temp(2,2)
+    real(double) :: dusttypeFraction(:)
+    real(double), allocatable :: tdusttype(:,:)
+    real(double), allocatable :: rho(:)
+    real, allocatable :: temp(:)
     type(OCTALVECTOR) :: centre, octVec
     real(double) :: r, t1, t2
-
+    integer :: j
 
     r = cellSize/2.d0 + 0.1d0 * grid%halfSmallestSubcell
+    if (grid%octreeRoot%twod) then
+       j = 4
+       allocate(tDustType(1:j,1:SIZE(dusttypeFraction)))
+       allocate(rho(1:j), temp(1:j))
 
-    octVec = centre + r * OCTALVECTOR(1.d0, 0.d0, 0.d0)
-    call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1,1), rho=rho(1,1))
+       octVec = centre + r * OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:))
+       
+       octVec = centre + r * OCTALVECTOR(-1.d0,0.d0,0.d0)
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:))
+       
+       octVec = centre + r * OCTALVECTOR(0.d0,0.d0,-1.d0)
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:))
+       
+       octVec = centre + r * OCTALVECTOR(0.d0,0.d0,+1.d0)
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:))
+    else
+       j = 6
+       allocate(tDustType(1:j,1:SIZE(dusttypeFraction)))
+       allocate(rho(1:j), temp(1:j))
+       octVec = centre + r * OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1), rho=rho(1), dusttypeFraction=tdusttype(1,:))
+       
+       octVec = centre + r * OCTALVECTOR(-1.d0,0.d0,0.d0)
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2), rho=rho(2), dusttypeFraction=tdusttype(2,:))
+       
+       octVec = centre + r * OCTALVECTOR(0.d0,0.d0,-1.d0)
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(3), rho=rho(3), dusttypeFraction=tdusttype(3,:))
+       
+       octVec = centre + r * OCTALVECTOR(0.d0,0.d0,+1.d0)
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(4), rho=rho(4), dusttypeFraction=tdusttype(4,:))
 
-    octVec = centre + r * OCTALVECTOR(-1.d0,0.d0,0.d0)
-    call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2,1), rho=rho(2,1))
+       octVec = centre + r * OCTALVECTOR(0.d0,+1.d0,0.d0)
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(5), rho=rho(5), dusttypeFraction=tdusttype(5,:))
 
-    octVec = centre + r * OCTALVECTOR(0.d0,0.d0,-1.d0)
-    call amrGridValues(grid%octreeRoot, octVec, temperature=temp(1,2), rho=rho(1,2))
+       octVec = centre + r * OCTALVECTOR(0.d0,-1.d0,0.d0)
+       call amrGridValues(grid%octreeRoot, octVec, temperature=temp(6), rho=rho(6), dusttypeFraction=tdusttype(6,:))
 
-    octVec = centre + r * OCTALVECTOR(0.d0,0.d0,+1.d0)
-    call amrGridValues(grid%octreeRoot, octVec, temperature=temp(2,2), rho=rho(2,2))
-
-
-    
+    endif
+    tdusttype=log10(max(1.d-30,tdusttype))
+  
     rho = log10(rho)
     temp = log10(temp)
 
-    density = sum(rho) / 4.d0
+    density = sum(rho) / dble(j)
     density = 10.d0**density
 
-    temperature = sum(temp) / 4.d0
+    temperature = sum(temp) / real(j)
     temperature = 10.d0**temperature
+
+    dusttypeFraction=SUM(tdusttype(1:j,:)) / dble(j)
+    dusttypeFraction = 10.d0**dusttypeFraction
 
   end subroutine interpFromParent
 
@@ -9797,6 +9923,117 @@ IF ( .NOT. gridConverged ) RETURN
 666 continue
     deallocate(locator)
   END SUBROUTINE smoothAMRgridIonization
+  
+  recursive subroutine dumpdensitytemperature(thisOctal, unit)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i, unit
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call dumpdensitytemperature(child, unit)
+                exit
+             end if
+          end do
+       else
+          write(unit) thisOctal%rho(subcell),thisOctal%temperature(subcell)
+       end if
+    end do
+
+  end subroutine dumpdensitytemperature
+
+  recursive subroutine dumpdiffusion(thisOctal, unit)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i, unit
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call dumpdiffusion(child, unit)
+                exit
+             end if
+          end do
+       else
+          write(unit) thisOctal%diffusionApprox(subcell)
+       end if
+    end do
+
+  end subroutine dumpdiffusion
+
+  recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps)
+    use input_variables, only : tauSmoothMin, tauSmoothMax
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child, neighbourOctal, startOctal
+    logical, optional :: inheritProps, interpProps
+    integer :: subcell, i, ilambda
+    logical :: converged
+    real(double) :: kabs, ksca, r
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec
+    real :: thisTau, neighbourTau
+    integer :: neighbourSubcell, j
+    dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
+    dirVec(2) = OCTALVECTOR( 0.d0,+1.d0,  0.d0)
+    dirVec(3) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
+    dirVec(4) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
+    dirVec(5) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
+    dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+
+!    do subcell = 1, thisOctal%maxChildren
+    subcell = 1
+    do while (subcell < thisOctal%maxChildren)
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call myTauSmooth(child, grid, ilambda, converged, inheritProps, interpProps)
+                exit
+             end if
+          end do
+       else
+
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda,&
+               kappaSca=ksca, kappaAbs=kabs)
+
+          thisTau  = thisOctal%subcellSize * (ksca + kabs)
+
+          r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1
+          centre = subcellCentre(thisOctal, subcell)
+          do j = 1, 6
+             octVec = centre + r * dirvec(j)
+             if (inOctal(grid%octreeRoot, octVec)) then
+                startOctal => thisOctal
+                call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
+                     foundOctal=neighbourOctal, foundsubcell=neighbourSubcell, kappaSca=ksca, kappaAbs=kabs, ilambda=ilambda)
+                neighbourTau = thisOctal%subcellSize * (ksca + kabs)
+                !          write(*,*) thisTau, neighbourTau, thisOctal%rho(subcell), subcellCentre(thisoctal,subcell)
+                if ((min(thisTau, neighbourTau) < tauSmoothMin).and.(max(thisTau, neighbourTau) > tauSmoothMax)) then
+                   if (thisTau > neighbourTau) then
+                      call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                           inherit=inheritProps, interp=interpProps)
+                      converged = .false.
+                      subcell = 0
+                      exit
+                   endif
+                endif
+             endif
+          enddo
+       endif
+       subcell = subcell + 1
+    end do
+
+  end subroutine myTauSmooth
+
+  
 
 
 END MODULE amr_mod

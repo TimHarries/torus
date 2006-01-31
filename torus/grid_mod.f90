@@ -568,6 +568,13 @@ contains
        grid%rInner = rInner
        grid%rOuter = rOuter
 
+    case("warpeddisc")
+       grid%geometry = "warpeddisc"
+       grid%rCore = rCore
+       grid%lCore = fourPi * rCore**2 * stefanBoltz * teff**4 * 1.e20
+       grid%rInner = rInner
+       grid%rOuter = rOuter
+
     case("clumpydisc")
        grid%geometry = "clumpydisc"
        grid%rCore = rCore
@@ -6185,14 +6192,14 @@ contains
 ! Comment out the following if you want the pix value as a function of distance from 
 ! the center of the gird. Useful for some cases.
 
-    ! writing the radial profile of the values on the specified plane.
-    filename_prof = 'profile_'//TRIM(ADJUSTL(name))//'_'//TRIM(ADJUSTL(plane))//'.dat' 
-    open(unit=luout, file = TRIM(ADJUSTL(filename_prof)), status='replace')
-!    write(luout, '(a, 2x, 1PE18.4)') '#  The 3rd dimension value = ', value_3rd_dim
-!    write(luout, '(a)') '#  format :  distance [10^10cm]  --  values [?]'  
-
-    call radial_profile(root, name, plane, v3, luout, root%centre, grid)
-    close(luout)
+!    ! writing the radial profile of the values on the specified plane.
+!    filename_prof = 'profile_'//TRIM(ADJUSTL(name))//'_'//TRIM(ADJUSTL(plane))//'.dat' 
+!    open(unit=luout, file = TRIM(ADJUSTL(filename_prof)), status='replace')
+!!    write(luout, '(a, 2x, 1PE18.4)') '#  The 3rd dimension value = ', value_3rd_dim
+!!    write(luout, '(a)') '#  format :  distance [10^10cm]  --  values [?]'  
+!
+!    call radial_profile(root, name, plane, v3, luout, root%centre, grid)
+!    close(luout)
     !
     ! Annotation.
     !
@@ -6410,6 +6417,7 @@ contains
              case("tau")
                 call returnKappa(grid, thisOctal, subcell, ilambda=ilam, lambda=grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
                 value = thisOctal%subcellsize * (kSca+kAbs)
+                if (thisOctal%diffusionApprox(subcell)) value = 1.e-20
 
              case default
                 write(*,*) "Error:: unknown name passed to grid_mod::plot_values."
@@ -6574,6 +6582,8 @@ contains
              case("tau")
                 call returnKappa(grid, thisOctal, subcell, ilambda=ilam, lambda=grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
                 value = thisOctal%subcellsize * (kSca+kAbs)
+                if (thisOctal%diffusionApprox(subcell)) value = 1.e-20
+
              case default
                 write(*,*) "Error:: unknow name passed to MinMaxValue."
                 stop
@@ -7176,7 +7186,7 @@ contains
        rc(i) = -8.-0.5*real(i-1)
     enddo
 
-
+    angmax = pi/2.
 
     dx = log10(rOuter/rInner)/real(nx)
     dy = angMax/real(ny)

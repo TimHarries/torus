@@ -249,7 +249,7 @@ contains
     do i = 1, nMuMie
        cosArray(i) = -1. + 2.*real(i-1)/real(nMuMie-1)
        do k = 1, nDustType
-          prob(i) = prob(i) + dustTypeFraction(k)*miePhase(k,j,i)%element(1,1)
+          prob(i) = prob(i) + max(1.d-20,dustTypeFraction(k))*miePhase(k,j,i)%element(1,1)
        enddo
     enddo
     do i = 2, nMuMie

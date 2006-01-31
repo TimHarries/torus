@@ -496,6 +496,10 @@ contains
     integer :: zone, nZones, zeroCounter, nZoneBoundary
     logical :: inZone
     integer :: nOctals, nCells
+    integer :: ndiffcells 
+
+
+    ndiffcells = 0
 
     call countVoxels(grid%octreeRoot,nOctals,nCells)
 
@@ -515,7 +519,7 @@ contains
 
     call setNoDiffusion(grid%octreeRoot)
 
-
+    xStart = xAxis(nx)
     rosselandOpticalDepth(1) = 0.
     do j = 2, nx
        octVec = OCTALVECTOR(xAxis(j), 0., 0.)
@@ -528,7 +532,6 @@ contains
           exit
        endif
     enddo
-    
 
     nx = 0
     call getxValuesdiff(grid%octreeRoot,nx,xAxis)
@@ -545,6 +548,7 @@ contains
 
     do i = iBoundary, nx
        xPos = xAxis(i)
+       yPos = 0.
        first = .true.
 
        call getzAxisRun(grid, zAxis, subcellSize, xPos, yPos, nz, -1.)
@@ -555,6 +559,7 @@ contains
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell, rosselandkappa=kappa, grid=grid)
           rosselandOpticalDepth(j) = rosselandOpticalDepth(j-1) + kappa * thisOctal%rho(subcell) * subcellsize(j)*1.e10
+
           if (rosselandOpticalDepth(j) > diffDepth) then
 
              if (first) then
@@ -580,7 +585,7 @@ contains
           else
              if ((j == nz).and.inZone) then
                 zeroCounter = zeroCounter + 1
-                if ((zeroCounter == 3)) then
+                if ((zeroCounter == 5)) then
                    inZone = .false.
                    rightBoundary(nZones) = nBoundary
                    rightBoundaryX(nZones) = i - zeroCounter
@@ -606,7 +611,7 @@ contains
     do zone = 1, nZones
 
        nZoneBoundary = rightBoundary(zone)-leftBoundary(zone)+1
-       if (nZoneBoundary > 2) then
+       if (nZoneBoundary > 5) then
           allocate(workarray(3*nZoneBoundary+3*20+3))
           
           npoly = min((nZoneBoundary - 1), 10)
@@ -647,6 +652,7 @@ contains
                 if ((zAxis(j)+zSize) <= zApprox) then
                    thisOctal%diffusionApprox(subcell) = .true.
                    if (resetTemp) thisOctal%temperature(subcell) = 20.
+                   nDiffCells = nDiffCells  + 1
                    
                    ! put in the lefthand boundary of the diffusion zone if necessary
                    if (i == leftBoundaryX(zone)) then
@@ -678,6 +684,7 @@ contains
                 if (abs(zAxis(j)-zSize) <= zApprox) then
                    thisOctal%diffusionApprox(subcell) = .true.
                    if (resetTemp) thisOctal%temperature(subcell) = 20.
+                   nDiffCells = nDiffCells  + 1
                    ! put in the lefthand boundary of the diffusion zone if necessary
                    if (i == leftBoundaryX(zone)) then
                       octVec = OCTALVECTOR(xAxis(leftBoundaryX(zone)), 0., zAxis(j))
@@ -704,10 +711,13 @@ contains
 
     end do
 
+
 666 continue
 
     if (writeoutput) write(*,*) "Done.", nZones, "diffusion zone(s) defined."
 
+
+    write(*,*) nDiffCells, " cells defined in diff approx"
 
     deallocate(zBoundary,xBoundary,sigma,tboundary,rval)
     deallocate(zAxis, xAxis)
@@ -833,7 +843,6 @@ contains
     halfSmallestSubcell = grid%halfSmallestSubcell
 
     currentPos = OCTALVECTOR(xpos, yPos, -1.*direction*grid%octreeRoot%subcellsize)
-
     do while((-1.d0*direction*currentPos%z) > 0.)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell, rho=rhotemp, temperature=temptemp, grid=grid)

@@ -211,8 +211,8 @@ ifeq ($(SYSTEM), mpilam)
    F95COMP=${TOP}/bin/mpif95 -mismatch
    F77COMP=${TOP2}/bin/mpif77
    FASTFLAG=-O3 -I${TOP}/include  -dcfuns  -w 
-   DEBUGFLAG=-g -I${TOP}/include  -dcfuns 
-   STATICFLAG=
+   DEBUGFLAG=-g -C=all -nan -I${TOP}/include  -dcfuns 
+   STATICFLAG=-Bstatic
 #   MATHTRAP=-ieee=stop
    MATHTRAP=
    UNIXMOD=unix_mod.f90.linux

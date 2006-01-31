@@ -534,6 +534,7 @@ program torus
   grid%resonanceLine = resonanceLine
 
 
+  amrGridCentre = OCTALVECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
 
   
   ! For plotting routines used later in this program
@@ -1131,7 +1132,9 @@ program torus
               do j = iSmoothLam, ismoothlam !nLambda
                  do
                     gridConverged = .true.
-                    call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps=.true.)
+!                    call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps=.false.)
+                    call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, inheritProps = .false., interpProps = .false.)
+
                     if (gridConverged) exit
                  end do
               enddo
@@ -1140,19 +1143,27 @@ program torus
               ! of neighbouring octals, so we smooth the grid again.
               if (doSmoothGrid) then
                  call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
-                 call smoothAMRgrid(grid,smoothFactor,inheritprops = .false.,interpProps=.true.)
+                 call smoothAMRgrid(grid,smoothFactor,inheritprops = .false.,interpProps=.false.)
                  call writeInfo("...grid smoothing complete", TRIVIAL)
               end if
            endif
         end select
    
-        call writeInfo("Unrefining optically thin cells...", TRIVIAL)
-        gridconverged = .false.
-        do while(.not.gridconverged)
-           gridconverged = .true.
-           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
-        end do
-        call writeInfo("Done.", TRIVIAL)
+!        call writeInfo("Unrefining optically thin cells...", TRIVIAL)
+!        gridconverged = .false.
+!        do while(.not.gridconverged)
+!           gridconverged = .true.
+!           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
+!        end do
+!        call writeInfo("Done.", TRIVIAL)
+
+!        call writeInfo("Unrefining optically thick cells...", TRIVIAL)
+!        gridconverged = .false.
+!        do while(.not.gridconverged)
+!           gridconverged = .true.
+!           call unrefineThickCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
+!        end do
+!        call writeInfo("Done.", TRIVIAL)
 
 
         nOctals = 0
@@ -1971,7 +1982,7 @@ program torus
           end if
        end do
 
-    case("shakara","clumpydisc","wrshell")
+    case("shakara","clumpydisc","wrshell","warpeddisc")
        nSource = 1
        allocate(source(1:1))
        source(1)%radius = grid%rCore

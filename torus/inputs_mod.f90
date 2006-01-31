@@ -1695,7 +1695,7 @@ endif
 
 endif
 
- if (geometry .eq. "shakara") then
+ if ((geometry .eq. "shakara").or.(geometry .eq. "warpeddisc")) then
 
     call getLogical("noscat", noScattering, cLine, nLines, &
          "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)

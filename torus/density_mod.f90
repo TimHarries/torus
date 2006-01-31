@@ -78,6 +78,9 @@ contains
     case("shakara","aksco")
        out = shakaraSunyaevDisc(r_vec, grid)
 
+    case("warpeddisc")
+       out = warpedDisc(r_vec, grid)
+
     case("ppdisk")
        out = ppdiskDensity(r_vec, grid)
 
@@ -802,6 +805,35 @@ contains
 
 
   end function shakaraSunyaevDisc
+
+  function warpedDisc(point, grid) result (rhoOut)
+    use input_variables
+    TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(octalVector), INTENT(IN) :: point
+    real(double) :: r, h, rhoOut, warpHeight
+    real(double) :: kspiral
+    real(double) :: xpoint,ypoint,rscale,r1,fac
+    integer :: nspiral1
+    real(double) :: phase(10)
+    integer :: i
+    real(double) :: phi
+
+    rhoOut = tiny(rhoOut)
+    r = sqrt(point%x**2 + point%y**2)
+    phi = atan2(point%y,point%x)
+    warpheight = 0.3 * rOuter * (r / rOuter)**2 * cos(phi)
+
+    if ((r > rinner).and.(r < rOuter)) then
+       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
+       rhoOut = dble(rho0) * (dble(rInner)/r)**dble(alphaDisc) * exp(-0.5d0 * (dble(point%z-warpheight)/h)**2)
+       fac =  1.d0-min(dble(r - rInner)/(0.01d0*rinner),1.d0)
+       fac = exp(-fac*10.d0)
+       rhoOut = rhoOut * fac
+       rhoOut = max(rhoOut, tiny(rhoOut))
+    endif
+
+
+  end function warpedDisc
 
   real(double) function melvinDensity(point, grid) 
 

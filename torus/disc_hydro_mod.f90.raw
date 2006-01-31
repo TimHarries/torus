@@ -241,6 +241,7 @@ contains
     call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
     xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
 
+    write(*,*) "getxvalues after strip",nx
     xPos = grid%halfSmallestSubcell - grid%octreeRoot%subcellSize
     smallestSubcell = 2. * grid%halfSmallestSubcell
     
@@ -312,6 +313,8 @@ contains
   subroutine verticalHydrostatic(grid, mStar, sigma0, rDisk, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tThresh, twoD, expectedMass)
 
+    use input_variables, only : variableDustsublimation
+
 !$MPI include 'mpif.h'
 
 
@@ -333,7 +336,8 @@ contains
     real(double) totalMass
     logical :: twoD, gridConverged
     real :: temp
-
+    integer :: nOctals, nVoxels
+    character(len=80) :: ofile
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   ierr           ! error flag
@@ -381,6 +385,7 @@ contains
           maxIter = 2
        endif
 
+
        call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
             nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twoD, maxIter)
 
@@ -402,6 +407,8 @@ contains
 !$MPI    if(my_rank == 0) &
        write(*,*) "Maximum absolute change in density: ",drho
 
+
+
        totalMass = 0.
        call findTotalMass(grid%octreeRoot, totalMass)
        write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
@@ -422,17 +429,20 @@ contains
        ! Smooth the grid with respect to optical depth, if requested
 
 
-       call locate(grid%lamArray, grid%nLambda,lambdasmooth,ilamsmooth)
+       if (.not.variableDustSublimation) then
+          call locate(grid%lamArray, grid%nLambda,lambdasmooth,ilamsmooth)
 
-!       if (.false.) then
-       if (doSmoothGridTau) then
-
+          !       if (.false.) then
+          if (doSmoothGridTau) then
+             
 !       write(*,*) "Tau smoothing switched off"
 !	if (.true.) then
 !$MPI     if(my_rank == 0) &
           write(*,*) "Smoothing adaptive grid structure for optical depth..."
 !$MPI     if(my_rank == 0) &
           call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_before.ps/vcps", .true., .false., boxfac=0.005)
+
+
 
           do j = ilamsmooth, ilamsmooth !grid%nlambda
              do
@@ -448,16 +458,22 @@ contains
           if (doSmoothGrid) then
 !$MPI     if(my_rank == 0) &
             write(*,*) "Smoothing adaptive grid structure (again)..."
+
+
+
             call smoothAMRgrid(grid,smoothFactor, inheritProps=.false., interpProps=.true.)
 !$MPI     if(my_rank == 0) &
             write(*,*) "...grid smoothing complete"
           end if
 
+
+
+
 !$MPI     if(my_rank == 0) &
           call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_after.ps/vcps", .true., .false., boxfac=0.005)
 
        end if
-
+       endif
 
 
        nIter = nIter + 1
@@ -474,6 +490,12 @@ contains
        endif
        
     enddo
+
+    ! final call to sort out temperature
+
+    call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
+         nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twoD, maxIter)
+
 
   end subroutine verticalHydrostatic
 

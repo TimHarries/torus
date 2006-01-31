@@ -329,6 +329,7 @@ contains
     real  :: lamArray(nLambda)
     real(oct) :: r
     real :: massEnvelope, scaleFac
+    real :: tauMax
     real(oct) :: totalMass
     integer :: nFreq
     integer :: i, j
@@ -367,6 +368,7 @@ contains
     real(oct)::  dT_max ! [kelvins]  the maximum change of temperature
     real(oct)::  dT_over_T_max ! [kelvins]  the maximum fractional change of temperature
     character(len=30) :: tfilename1, tfilename2, dustfile
+    character(len=80) :: ofile
     logical, save :: first_time_to_open_file = .true.
     real :: totFrac
     integer :: nFrac
@@ -383,6 +385,7 @@ contains
     logical :: doingDustSublimation
     real :: diffusionZoneTemp
     logical :: outputFlag
+    integer :: noctals, nvoxels
 
 !$MPI    ! For MPI implementations
 !$MPI  ! For MPI implementations =====================================================
@@ -490,6 +493,7 @@ contains
     endif
 
 
+
     call defineDiffusionZone(grid, outputFlag, .true.)
 
 
@@ -512,7 +516,7 @@ contains
        end if
 
        if (doingDustSublimation) then
-          nMonte = 1000000
+          nMonte = 10000000
           if (iIter_grand == 0) then
              nIter = 3
           else
@@ -589,6 +593,13 @@ contains
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
        call polardump(grid)
 !$MPI    end if
+
+
+!$MPI       if (my_rank == 1) &
+!$MPI       call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
+!$MPI            "rho_temp_zoom1.ps/vcps", .true., .false., &
+!$MPI            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
+
 
 !$MPI       if (my_rank == 1) &
        call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
@@ -931,9 +942,6 @@ contains
        dT_mean_new = dT_sum/real(nDt)
 
 
-
-
-
 !$MPI       if (my_rank==0) then
        write(*,*) "Number of photons entering diffusion zone", ndiffusion
        write(*,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
@@ -978,8 +986,8 @@ contains
 !$MPI endif
 
 !$MPI if (my_rank==0) &       
-
        write(*,*) "Estimating temperatures of undersampled cells..."
+
        do i = 1, 100
           call estimateTempofUndersampled(grid, grid%octreeRoot)
           call updateTemps(grid, grid%octreeRoot)
@@ -987,6 +995,7 @@ contains
 
 
        call defineDiffusionZone(grid, outputFlag, .false.)
+
 
 
 
@@ -1003,11 +1012,14 @@ contains
              call estimateTempofUndersampled(grid, grid%octreeRoot)
              call updateTemps(grid, grid%octreeRoot)
           enddo
+          call defineDiffusionZone(grid, outputFlag, .false.)
        endif
+
 
        call writeInfo("Getting temperatures in diffusion zone", TRIVIAL)
        call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
        call writeInfo("Done.", TRIVIAL)
+
 
 !       if ((grid%geometry == "shakara").and.(nDustType > 1)) then
 !          call fillDustShakara(grid, grid%octreeRoot)
@@ -1020,15 +1032,17 @@ contains
        if (variableDustSublimation) then
           totFrac = 0.
           nFrac = 0
-          call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac)
+          tauMax = 1.e30
+          call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac, tauMax)
           if ((nfrac /= 0).and.(writeoutput)) then
              write(*,*) "Average absolute change in sublimation fraction: ",totFrac/real(nfrac)
           endif
-          if ((iIter_grand>=1).and.(iIter_grand <=20)) then
+!          if ((iIter_grand>=1).and.(iIter_grand <=20)) then
 
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
-             if (iiter_grand == 5) then
+             if (.true.) then
+!             if ((iiter_grand == 7).or.(iiter_grand == 8)) then
 
                 if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
                 gridconverged = .false.
@@ -1059,7 +1073,7 @@ contains
                 if (writeoutput) write(*,*) "...grid smoothing complete"
              endif
           endif
-       endif
+!       endif
 
        call defineDiffusionZone(grid, outputFlag, .false.)
 
@@ -1101,11 +1115,8 @@ contains
     end if
 
     if (doingDustSublimation) then
-       if (iIter_grand < 5) then
+       if (iIter_grand < 4) then
           converged = .false.
-       else
-          doingDustSublimation = .false.
-          nMonte = nLucy
        endif
     endif
        
