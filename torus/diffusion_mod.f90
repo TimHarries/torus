@@ -238,6 +238,18 @@ contains
     logical :: ok1, ok2
     integer :: nOctals,nCells
 
+    if (grid%octreeRoot%threed) then
+       write(*,*) "Finding vertical temperature runs in diffusion zone."
+       converged = .false.
+       do while(.not.converged)
+          converged = .true.
+          call findVerticalTempDiffusion(grid%octreeRoot, grid, converged)
+       enddo
+       write(*,*) "Done."
+       goto 666
+    endif
+
+
     call countVoxels(Grid%octreeRoot,nOctals,nCells)
 
     allocate(zAxis1(nCells))
@@ -307,7 +319,7 @@ contains
     deallocate(zAxis2)
     deallocate(temperature2)
     deallocate(xAxis)
-
+666 continue
   end subroutine throughoutMidplaneDiff
 
   subroutine combineRuns(x1, y1, n1, x2, y2, n2)
@@ -511,13 +523,24 @@ contains
 
     call getxAxisRun(grid, xAxis, subcellSize, 0., 0., nx, +1.d0)
 
+    call zeroDiffusionProb(grid%octreeRoot)
+
+    call setNoDiffusion(grid%octreeRoot)
+
+
+    if (grid%octreeRoot%threed) then
+       call setDiffusionOnCrossings(grid%octreeRoot)
+       goto 666
+    endif
+
 
     if (writeoutput) write(*,*) "Defining diffusion zones..."
 !    if (writeoutput) write(*,*) "! left hand diffusion boundary is off!!!!"
 
-    call zeroDiffusionProb(grid%octreeRoot)
 
-    call setNoDiffusion(grid%octreeRoot)
+
+
+
 
     xStart = xAxis(nx)
     rosselandOpticalDepth(1) = 0.
@@ -537,7 +560,6 @@ contains
     call getxValuesdiff(grid%octreeRoot,nx,xAxis)
     call stripSimilarValues(xAxis,nx,1.d-5*grid%halfSmallestSubcell)
     xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
-
 
     call locate(xAxis, nx, xStart, iBoundary)
 
@@ -1064,6 +1086,97 @@ contains
 
   end subroutine normDiffusionProb
 
+
+  recursive subroutine setDiffusionOnCrossings(thisOctal)
+    use input_variables, only : minCrossings
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: tot
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setDiffusionOnCrossings(child)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%nCrossings(subcell) < minCrossings) then
+             thisOctal%diffusionApprox(subcell) = .true.
+             thisOctal%etaline(subcell) = 0.0 
+          else
+             thisOctal%diffusionApprox(subcell) = .false.
+             thisOctal%etaline(subcell) = 1.e30
+          endif
+       endif
+    enddo
+  end subroutine setDiffusionOnCrossings
+
+  recursive subroutine findVerticalTempDiffusion(thisOctal, grid, converged)
+    use input_variables, only : minCrossings
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal, startOctal,foundOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    logical :: converged
+    type(OCTALVECTOR) :: v1, v2, centre, octVec
+    integer :: foundSubcell
+    real(double) :: r
+    real :: temp
+
+    v1 = OCTALVECTOR(0.d0, 0.d0, +1.d0)
+    v2 = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call findVerticalTempDiffusion(child, grid, converged)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%diffusionApprox(subcell).and.(thisOctal%etaLine(subcell) == 0.d0)) then
+             r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1
+             centre = subcellCentre(thisOctal, subcell)
+             octVec = centre + r * v1
+             if (inOctal(grid%octreeRoot, octVec)) then
+                startOctal => thisOctal
+                call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
+                     foundOctal=foundOctal, foundSubcell=foundSubcell,temperature=temp)
+                if (foundOctal%etaLine(foundSubcell) /= 0.) then
+                   thisOctal%temperature(subcell) = temp
+                   thisOctal%etaLine(subcell) = 1.e30
+                   converged = .false.
+                endif
+             endif
+             r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1
+             centre = subcellCentre(thisOctal, subcell)
+             octVec = centre + r * v2
+             if (inOctal(grid%octreeRoot, octVec)) then
+                startOctal => thisOctal
+                call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
+                     foundOctal=foundOctal, foundSubcell=foundSubcell,temperature=temp)
+                if (foundOctal%etaLine(foundSubcell) /= 0.) then
+                   thisOctal%temperature(subcell) = temp
+                   thisOctal%etaLine(subcell) = 1.e30
+                   converged = .false.
+                endif
+             endif
+          endif
+       endif
+    enddo
+  end subroutine findVerticalTempDiffusion
+
+
+
   recursive subroutine setNoDiffusion(thisOctal)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
@@ -1084,6 +1197,7 @@ contains
 
 
 end subroutine setNoDiffusion
+
 
 
 

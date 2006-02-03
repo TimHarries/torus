@@ -493,8 +493,9 @@ contains
     endif
 
 
-
-    call defineDiffusionZone(grid, outputFlag, .true.)
+    if (grid%octreeRoot%twoD) then
+       call defineDiffusionZone(grid, outputFlag, .true.)
+    endif
 
 
     iIter_grand = 0
@@ -988,7 +989,7 @@ contains
 !$MPI if (my_rank==0) &       
        write(*,*) "Estimating temperatures of undersampled cells..."
 
-       do i = 1, 100
+       do i = 1, 1
           call estimateTempofUndersampled(grid, grid%octreeRoot)
           call updateTemps(grid, grid%octreeRoot)
        enddo
@@ -1007,11 +1008,6 @@ contains
    enddo
 
        if (.not.(variableDustSublimation.and.doingDustSublimation)) then
-          write(*,*) "Estimating temperatures of undersampled cells..."
-          do i = 1, 100
-             call estimateTempofUndersampled(grid, grid%octreeRoot)
-             call updateTemps(grid, grid%octreeRoot)
-          enddo
           call defineDiffusionZone(grid, outputFlag, .false.)
        endif
 

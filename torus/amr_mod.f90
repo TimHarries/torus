@@ -431,6 +431,7 @@ CONTAINS
     parent%child(newChildindex)%nDiffusion  = 0.
     parent%child(newChildindex)%incidentFlux = 0.
     parent%child(newChildindex)%oldFrac = 1.
+    parent%child(newChildindex)%ncrossings = 10000
 
     IF (PRESENT(sphData)) THEN
       ! updates the sph particle list.           
@@ -4253,7 +4254,7 @@ IF ( .NOT. gridConverged ) RETURN
          hr = height * (r / (100.*autocm/1.e10))**1.25
          fac = cellsize/hr
          if (abs((cellCentre%z-warpHeight)/hr) < 5.) then
-            if (fac > 4.) split = .true.
+            if (fac > 3.) split = .true.
          endif
          if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 2.)) split = .true.
       endif
@@ -7642,8 +7643,7 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: nVals
 
     unrefine = .true.
-
-    do subcell = 1, thisOctal%maxChildren
+    do subcell = 1, thisOctal%nChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -7666,7 +7666,7 @@ IF ( .NOT. gridConverged ) RETURN
        endif
     enddo
 
-    if ((thisOctal%nChildren == 0).and.unrefine.and.converged) then
+    if ((thisOctal%nChildren == 0).and.unrefine) then
        call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
             grid = grid, adjustGridInfo = .true.)
        converged = .false.
