@@ -32,7 +32,7 @@ contains
     write(*,'(a,a)') "Reading particles from: ",trim(filename)
     open(20,file=filename,status="old",form="unformatted")
     read(20) npart
-
+    write(*,*) "Reading ",npart," particles"
 ! assume that the units are 1 mil
     uDist = 1.e-3/3600. ! from milliarcsec to degrees
     uDist = sphData%uDist * degtorad ! to radians
@@ -49,22 +49,22 @@ contains
     call init_sph_data(sphData, udist, umass, utime, npart, time, nptmass, gaspartmass)
 
 
-    ! reading the X poistion of particles
-    do i = 1, npart
-       read(20) dummy
-       call put_position_gas_particle(sphData, i, "x", dummy) ! saving the value
-    end do
-
-    ! reading the y poistion of particles
-    do i = 1, npart
-       read(20) dummy
-       call put_position_gas_particle(sphData, i, "y", dummy) ! saving the value
-    end do
-    ! reading the z poistion of particles
-    do i = 1, npart
-       read(20) dummy
-       call put_position_gas_particle(sphData, i, "z", dummy) ! saving the value
-    end do
+!    ! reading the X poistion of particles
+!    do i = 1, npart
+!       read(20) dummy
+!       call put_position_gas_particle(sphData, i, "x", dummy) ! saving the value
+!    end do
+!
+!    ! reading the y poistion of particles
+!    do i = 1, npart
+!       read(20) dummy
+!       call put_position_gas_particle(sphData, i, "y", dummy) ! saving the value
+!    end do
+!    ! reading the z poistion of particles
+!    do i = 1, npart
+!       read(20) dummy
+!       call put_position_gas_particle(sphData, i, "z", dummy) ! saving the value
+!    end do
 
     ALLOCATE(sphData%xn(npart))
     ALLOCATE(sphData%yn(npart))

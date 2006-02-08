@@ -1883,7 +1883,7 @@ program torus
                      close(144)
                   else
                      call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
-                          mu, miePhase(k,i,j), mReal(i,1:nLambda), mImg(i,1:nlambda))               
+                          mu, miePhase(k,i,j), mReal(k,i), mImg(k,i))               
                      if (writeMiePhase) then
                         open(144, file='miephasefile', status="replace", form="unformatted")
                         write(unit=144) miePhase

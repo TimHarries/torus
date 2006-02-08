@@ -388,9 +388,9 @@ CONTAINS
        parent%child(newChildIndex)%kappaAbs = 1.e-30
        parent%child(newChildIndex)%kappaSca = 1.e-30
     ENDIF
-    ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
     NULLIFY(parent%child(newChildIndex)%child)
 
+    ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
     ! set up the new child's variables
     parent%child(newChildIndex)%threeD = parent%threeD
     parent%child(newChildIndex)%twoD = parent%twoD
@@ -435,8 +435,8 @@ CONTAINS
 
     IF (PRESENT(sphData)) THEN
       ! updates the sph particle list.           
-!      CALL update_particle_list(parent, newChildIndex, newChildIndex, sphData)
-      write(*,*) "update_particle_list broken"
+      CALL update_particle_list(parent, newChildIndex, newChildIndex, sphData)
+!      write(*,*) "update_particle_list broken"
     END IF 
     
     ! put some data in the four/eight subcells of the new child
@@ -677,6 +677,11 @@ CONTAINS
                      sphData, stellar_cluster, setChanged)
       
     END DO 
+    
+    if (associated(thisOctal%gas_particle_list)) then
+       DEALLOCATE(thisOctal%gas_particle_list)
+    endif
+
 
   END SUBROUTINE splitGrid
   
@@ -4077,13 +4082,13 @@ IF ( .NOT. gridConverged ) RETURN
          split = .false.
       end if
 
-      ! Extra check
-      ! if # of SPH particle is greater than 5 then splits...
-      if (nparticle> 6) then
-         split = .true.
+!      ! Extra check
+!      ! if # of SPH particle is greater than 5 then splits...
+!      if (nparticle> 6) then
+!         split = .true.
 !      else
 !         split = .false.
-      end if
+!      end if
       
 
       if (include_disc(stellar_cluster)) then
@@ -4134,7 +4139,7 @@ IF ( .NOT. gridConverged ) RETURN
       else
          split = .FALSE.
       end if
-      
+      if (split) write(*,*) nParticle,thisOctal%ndepth
 
    case ("windtest")
 
@@ -6331,7 +6336,9 @@ IF ( .NOT. gridConverged ) RETURN
     integer              :: i             ! loop counters
     
 
-    DEALLOCATE(thisOctal%gas_particle_list)
+    IF (ASSOCIATED(thisOctal%gas_particle_list)) then
+       DEALLOCATE(thisOctal%gas_particle_list)
+    endif
     
     if ( thisOctal%nChildren > 0) then
        do i = 1, thisOctal%nChildren
