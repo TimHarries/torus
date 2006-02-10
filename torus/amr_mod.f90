@@ -435,7 +435,8 @@ CONTAINS
 
     IF (PRESENT(sphData)) THEN
       ! updates the sph particle list.           
-      CALL update_particle_list(parent, newChildIndex, newChildIndex, sphData)
+!      CALL update_particle_list(parent, newChildIndex, newChildIndex, sphData)
+      CALL update_particle_list(parent, iChild, newChildIndex, sphData)
 !      write(*,*) "update_particle_list broken"
     END IF 
     
@@ -678,9 +679,9 @@ CONTAINS
       
     END DO 
     
-    if (associated(thisOctal%gas_particle_list)) then
-       DEALLOCATE(thisOctal%gas_particle_list)
-    endif
+!    if (associated(thisOctal%gas_particle_list)) then
+!       DEALLOCATE(thisOctal%gas_particle_list)
+!    endif
 
 
   END SUBROUTINE splitGrid
@@ -4139,7 +4140,7 @@ IF ( .NOT. gridConverged ) RETURN
       else
          split = .FALSE.
       end if
-      if (split) write(*,*) nParticle,thisOctal%ndepth
+      cellCentre = subcellCentre(thisOctal,subCell)
 
    case ("windtest")
 
@@ -6169,7 +6170,7 @@ IF ( .NOT. gridConverged ) RETURN
   
   SUBROUTINE addNewChildren(parent, grid, sphData, stellar_cluster, inherit, interp)
     ! adds all eight new children to an octal
-    use input_variables, only : nDustType
+    use input_variables, only : nDustType, mie
     IMPLICIT NONE
     
     TYPE(octal), POINTER :: parent     ! pointer to the parent octal 
@@ -6252,8 +6253,8 @@ IF ( .NOT. gridConverged ) RETURN
           parent%child(newChildIndex)%kappaAbs = 1.e-30
           parent%child(newChildIndex)%kappaSca = 1.e-30
        endif
-       ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
        NULLIFY(parent%child(newChildIndex)%child)
+       ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
 
        ! set up the new child's variables
        parent%child(newChildIndex)%threed = parent%threed
