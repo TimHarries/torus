@@ -72,7 +72,9 @@ CONTAINS
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
        thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
-       thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       if (associated(thisOctal%ionFrac)) then
+          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       endif
        thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
        thisOctal%ne(subcell) = parentOctal%ne(parentsubcell)
     else if (interpolate) then
@@ -84,7 +86,9 @@ CONTAINS
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
 !       thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
-       thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       if (associated(thisOctal%ionFrac)) then
+          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       endif
        thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
        thisOctal%ne(subcell) = parentOctal%ne(parentsubcell)
 
@@ -6254,7 +6258,10 @@ IF ( .NOT. gridConverged ) RETURN
           parent%child(newChildIndex)%kappaSca = 1.e-30
        endif
        NULLIFY(parent%child(newChildIndex)%child)
-       ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
+
+       if (.not.mie) then
+          ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
+       endif
 
        ! set up the new child's variables
        parent%child(newChildIndex)%threed = parent%threed
@@ -6270,14 +6277,16 @@ IF ( .NOT. gridConverged ) RETURN
        parent%child(newChildIndex)%indexChild = -999 ! values are undefined
        parent%child(newChildIndex)%nDepth = parent%nDepth + 1
        parent%child(newChildIndex)%centre = subcellCentre(parent,newChildIndex)
-       parent%child(newChildIndex)%ionFrac = 1.e-30
+       if (associated(parent%child(newChildindex)%ionFrac)) parent%child(newChildIndex)%ionFrac = 1.e-30
        parent%child(newChildIndex)%probDistLine = 0.0
        parent%child(newChildIndex)%probDistCont = 0.0
        parent%child(newChildIndex)%biasLine3D = 1.0 
        parent%child(newChildIndex)%biasCont3D = 1.0 
        parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
        parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
-       parent%child(newChildIndex)%photoIonCoeff = 0.d0
+       if (associated(parent%child(newChildIndex)%photoIonCoeff)) then
+          parent%child(newChildIndex)%photoIonCoeff = 0.d0
+       endif
        parent%child(newChildIndex)%chiLine = 1.e-30
        parent%child(newChildIndex)%etaLine = 1.e-30
        parent%child(newChildIndex)%etaCont = 1.e-30
@@ -6913,6 +6922,12 @@ IF ( .NOT. gridConverged ) RETURN
 
       IF ( adjustGridInfo ) grid%nOctals = grid%nOctals - 1
 
+
+      IF (ASSOCIATED(thisOctal%ionFrac)) DEALLOCATE(thisOctal%ionFrac,STAT=error)
+      IF ( error /= 0 ) CALL deallocationError(error,location=2) 
+      NULLIFY(thisOctal%ionFrac)
+
+
       IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs,STAT=error)
       IF ( error /= 0 ) CALL deallocationError(error,location=2) 
       NULLIFY(thisOctal%kappaAbs)
@@ -7050,9 +7065,7 @@ IF ( .NOT. gridConverged ) RETURN
     dest%NHeII            = source%NHeII
     dest%Hheating         = source%Hheating
     dest%Heheating        = source%Heheating
-    dest%ionFrac          = source%ionFrac
     dest%oldFrac          = source%oldFrac
-    dest%photoIonCoeff    = source%photoIonCoeff
     dest%nTot             = source%nTot
     dest%inStar           = source%inStar
     dest%inFlow           = source%inFlow
@@ -7069,6 +7082,18 @@ IF ( .NOT. gridConverged ) RETURN
     dest%underSampled     = source%underSampled
     dest%nDiffusion       = source%nDiffusion
     dest%incidentFlux     = source%incidentFlux
+
+
+    if (associated(source%photoIonCoeff)) then
+       allocate(dest%photoIonCoeff(SIZE(source%photoIonCoeff,1),SIZE(source%photoIonCoeff,2)))
+       dest%photoIonCoeff          = source%photoIonCoeff
+    endif
+
+    if (associated(source%ionFrac)) then
+       allocate(dest%ionFrac(SIZE(source%ionFrac,1),SIZE(source%ionFrac,2)))
+       dest%ionFrac          = source%ionFrac
+    endif
+
 
     IF (ASSOCIATED(source%kappaAbs)) THEN                   
       ALLOCATE(dest%kappaAbs( SIZE(source%kappaAbs,1),       &

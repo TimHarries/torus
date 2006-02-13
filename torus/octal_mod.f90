@@ -117,8 +117,8 @@ MODULE octal_mod
     real(double), dimension(8) :: Hheating
     real(double), dimension(8) :: Heheating
    
-    real(double), dimension(8) :: ionFrac(8,50)
-    real(double), dimension(8) :: photoIonCoeff(8,50)
+    real(double), dimension(:,:), pointer  :: ionFrac
+    real(double), dimension(:,:), pointer  :: photoIonCoeff  => null()
 
     real(double), DIMENSION(8) :: nTot          ! total density
     real, dimension(8) :: oldFrac ! Previous value of dust sublimation fraction
