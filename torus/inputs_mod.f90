@@ -143,11 +143,13 @@ subroutine inputs()
  call getLogical("jansky", jansky, cLine, nLines, &
          "Write spectrum in janskies: ","(a,1l,1x,a)", .false., ok, .false.)
 
- call getLogical("inarcsec", inArcsec, cLine, nLines, &
+ call getLogical("inarcsec", imageinArcsec, cLine, nLines, &
          "Write image distances in arcseconds: ","(a,1l,1x,a)", .false., ok, .false.)
 
- call getReal("imagearcsec", imageSizeinArcsec, cLine, nLines, &
-         "Image size in arcseconds: ","(a,1l,1x,a)", 0.130, ok, .false.)
+ if (imageInArcSec) then
+    call getReal("imagearcsec", imageSizeinArcsec, cLine, nLines, &
+         "Image size in arcseconds: ","(a,f10.3,1x,a)", 0.130, ok, .true.)
+ endif
 
 
  call getLogical("sed", sed, cLine, nLines, &
@@ -1006,7 +1008,7 @@ endif
        call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
        call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
             "Minimum percentage of undersampled cell in lucy iteration: ", &
-            "(a,f4.2,a)",30.0,ok,.false.)
+            "(a,f4.2,a)",0.0,ok,.false.)
 
        call getReal("diffdepth", diffDepth, cLine, nLines, &
             "Depth of diffusion zone (in Rosseland optical depths): ", &
@@ -1605,9 +1607,6 @@ endif
     endif
   call getString("filter_set_name", filter_set_name, cLine, nLines, &
        "Name of filter set: ","(a,a,1x,a)","step_functions", ok, .false.)
-
-  call getLogical("imageInArcsec", imageInArcsec, cLine, nLines, &
-       "Write image in arcsec? : ","(a,1l,a)",.false., ok, .false.)
  endif
 
  call getLogical("pvimage", doPVimage, cLine, nLines, &

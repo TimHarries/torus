@@ -2425,6 +2425,11 @@ CONTAINS
     TYPE(octalVector)              :: position2
     INTEGER                        :: subcell
 
+
+    if (.not.grid%lineEmission) then
+       amrGridDirectionalDeriv = 1.e30
+       goto 666
+    endif
     
     octalDirection = direction
 
@@ -2483,7 +2488,7 @@ CONTAINS
     ENDIF
     IF (.NOT. ABS(amrGridDirectionalDeriv) >= 1.e-10) &
        amrGridDirectionalDeriv = 1.e-10
-
+666 continue
   END FUNCTION amrGridDirectionalDeriv
 
     
@@ -3290,6 +3295,8 @@ IF ( .NOT. gridConverged ) RETURN
            rVec = subcellCentre(thisOctal,subcell)
            write(*,*) rVec%x+thisOctal%subcellSize/2.
            write(*,*) rVec%x-thisOctal%subcellSize/2.
+           write(*,*) rVec%y+thisOctal%subcellSize/2.
+           write(*,*) rVec%y-thisOctal%subcellSize/2.
            write(*,*) rVec%z+thisOctal%subcellSize/2.
            write(*,*) rVec%z-thisOctal%subcellSize/2.
            do ; enddo

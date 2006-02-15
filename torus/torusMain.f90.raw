@@ -1070,6 +1070,11 @@ program torus
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData)
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+           if (doSmoothGrid) then
+              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+              call smoothAMRgrid(grid,smoothFactor,sphData=sphData, inheritprops=.false., interpProps=.false.)
+              call writeInfo("...grid smoothing complete", TRIVIAL)
+           end if
 
         case DEFAULT
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
@@ -3096,6 +3101,9 @@ program torus
            imageSize = setImageSize / 1.e10
         endif
 
+        if (imageInArcsec) then
+           imagesize = objectdistance * (imageSizeInArcsec / 3600.) * degtorad / 1.e10
+        endif
 
         ! Initializing the images ...
         do i = 1, nImage           

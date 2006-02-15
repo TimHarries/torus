@@ -117,7 +117,7 @@ MODULE octal_mod
     real(double), dimension(8) :: Hheating
     real(double), dimension(8) :: Heheating
    
-    real(double), dimension(:,:), pointer  :: ionFrac
+    real(double), dimension(:,:), pointer  :: ionFrac => null()
     real(double), dimension(:,:), pointer  :: photoIonCoeff  => null()
 
     real(double), DIMENSION(8) :: nTot          ! total density

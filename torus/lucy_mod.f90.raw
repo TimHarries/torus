@@ -994,8 +994,9 @@ contains
           call updateTemps(grid, grid%octreeRoot)
        enddo
 
-
-       call defineDiffusionZone(grid, outputFlag, .false.)
+       if (grid%octreeRoot%twoD) then
+          call defineDiffusionZone(grid, outputFlag, .false.)
+       endif
 
 
 
@@ -1008,7 +1009,9 @@ contains
    enddo
 
        if (.not.(variableDustSublimation.and.doingDustSublimation)) then
-          call defineDiffusionZone(grid, outputFlag, .false.)
+          if (grid%octreeRoot%twoD) then
+             call defineDiffusionZone(grid, outputFlag, .false.)
+          endif
        endif
 
 
@@ -1071,12 +1074,15 @@ contains
           endif
 !       endif
 
-       call defineDiffusionZone(grid, outputFlag, .false.)
+
+          if (grid%octreeRoot%twoD) then
+             call defineDiffusionZone(grid, outputFlag, .false.)
+          endif
 
 
 
     nRemoved = 0
-    if (iIter_Grand > 1) then
+    if (iIter_Grand > 3) then
 !$MPI if (my_rank==0) & 
        write(*,*) "Removing dust with T > Tthresh: ",Tthresh
        call removeDust(grid%octreeRoot, Tthresh, nRemoved)
