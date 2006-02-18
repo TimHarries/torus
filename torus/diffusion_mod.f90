@@ -1370,7 +1370,7 @@ end subroutine setNoDiffusion
 !          call returnKappa(grid, thisOctal, subcell, kappaAbs=kabs, ilambda=13)
 !          thisOctal%diffusionCoeff(subcell) = cSpeed / (3.d0 * kabs * 1.e10)
           call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
-          thisOctal%diffusionCoeff(subcell) = min(1.e-4,cSpeed / (3.d0 * kros * thisOctal%rho(subcell) * 1.e21))
+          thisOctal%diffusionCoeff(subcell) = min(1.e-3,cSpeed / (3.d0 * kros * thisOctal%rho(subcell) * 1.e21))
           thisOctal%eDens(subcell) = aRad * thisOctal%temperature(subcell)**4
           thisOctal%oldTemperature(subcell) = thisOctal%temperature(subcell)
        endif
@@ -1504,7 +1504,7 @@ end subroutine setNoDiffusion
                      + dCoeffHalf(0,0,1)*(eDens(0,0,1)-eDens(0,0,0)) &
                      - dCoeffHalf(0,0,-1)*(eDens(0,0,0)-eDens(0,0,-1)))
 
-                enPlus1 = max(enplus1, arad*1d4)
+                enPlus1 = max(enplus1, arad*(3.d0**4))  
                 thisOctal%eDens(subcell) = enPlus1
                 thisOctal%temperature(subcell) = (enPlus1 / aRad)**0.25d0
 !                write(*,*) eDens(0,0,0),eDens(-1,0,0),eDens(1,0,0),eDens(0,0,-1),eDens(0,0,1)
@@ -1527,6 +1527,7 @@ end subroutine setNoDiffusion
     logical :: gridConverged
     real :: dummy(1), dtMax
     integer :: niter
+    call resetDiffusionTemp(grid%octreeRoot, 10.)
     call setDiffusionCoeff(grid, grid%octreeRoot)
     gridconverged = .false.
     nIter = 0
@@ -1565,8 +1566,6 @@ end subroutine setNoDiffusion
        else
           if (thisOctal%undersampled(subcell)) then
              thisOctal%diffusionApprox(subcell) = .true.
-          else
-             thisOctal%diffusionApprox(subcell) = .false.
           endif
        end if
     end do
@@ -1600,6 +1599,29 @@ end subroutine setNoDiffusion
     end do
 
   end subroutine defineDiffusionOnRosseland
+
+  recursive subroutine resetDiffusionTemp(thisOctal, temp)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell
+    integer :: i
+    real :: temp
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call resetDiffusionTemp(child, temp)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%diffusionApprox(subcell)) thisOctal%temperature(subcell) = temp
+       end if
+    end do
+
+  end subroutine resetDiffusionTemp
 
    
 end module diffusion_mod
