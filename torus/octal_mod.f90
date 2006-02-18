@@ -119,6 +119,8 @@ MODULE octal_mod
    
     real(double), dimension(:,:), pointer  :: ionFrac => null()
     real(double), dimension(:,:), pointer  :: photoIonCoeff  => null()
+    real(double) :: diffusionCoeff(8)
+    real(double) :: eDens(8)
 
     real(double), DIMENSION(8) :: nTot          ! total density
     real, dimension(8) :: oldFrac ! Previous value of dust sublimation fraction

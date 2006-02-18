@@ -5820,20 +5820,35 @@ IF ( .NOT. gridConverged ) RETURN
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
 
-    thisOctal%rho(subcell) = 1.e-30
-    thisOctal%temperature(subcell) = 1.e-3
+    thisOctal%rho(subcell) = 1.e-20
+    thisOctal%temperature(subcell) = 30.
     thisOctal%etaCont(subcell) = 0.
-    thisOctal%inFlow(subcell) = .false.
+    thisOctal%inFlow(subcell) = .true.
 
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
        thisOctal%rho(subcell) = rho * (grid%rInner / r)**2 
-       thisOctal%temperature(subcell) = 10.
+       thisOctal%temperature(subcell) = 30.
        thisOctal%inFlow(subcell) = .true.
        thisOctal%etaCont(subcell) = 0.
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
+
+! for test of diffusion zone
+
+    thisOctal%diffusionApprox(subcell) = .false.
+    if ((r > grid%rinner).and.(r < grid%rinner*2.)) then
+       thisOctal%temperature(subcell) = 1000.
+    endif
+    if ((r > grid%rOuter*0.5).and.(r < grid%rOuter)) then
+       thisOctal%temperature(subcell) = 100.
+    endif
+    if ((r > grid%rinner*2.).and.(r < 0.5*grid%rOuter)) then
+       thisOctal%diffusionApprox(subcell) = .true.
+    endif
+    
+
   end subroutine calcTestDensity
 
   subroutine calcLexington(thisOctal,subcell,grid)

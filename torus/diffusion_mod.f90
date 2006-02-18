@@ -9,6 +9,7 @@ use gridtype_mod
 use amr_mod
 use vector_mod
 use messages_mod
+use grid_mod
 
 implicit none
 
@@ -1347,7 +1348,260 @@ end subroutine setNoDiffusion
        write(*,*) thisTemp,temperature(ival),nextfd,nextfDiff,returnFluxdiff
   end function returnFluxDiff
 
+  recursive subroutine setDiffusionCoeff(grid, thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    type(GRIDTYPE) :: grid
+    real(double) :: kRos, kabs
+    real :: kappap
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setDiffusionCoeff(grid, child)
+                exit
+             end if
+          end do
+       else
+!          call returnKappa(grid, thisOctal, subcell, kappaAbs=kabs, ilambda=13)
+!          thisOctal%diffusionCoeff(subcell) = cSpeed / (3.d0 * kabs * 1.e10)
+          call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
+          thisOctal%diffusionCoeff(subcell) = min(1.e-4,cSpeed / (3.d0 * kros * thisOctal%rho(subcell) * 1.e21))
+          thisOctal%eDens(subcell) = aRad * thisOctal%temperature(subcell)**4
+          thisOctal%oldTemperature(subcell) = thisOctal%temperature(subcell)
+       endif
+    enddo
+  end subroutine setDiffusionCoeff
 
+  recursive subroutine checkConvergence(thisOctal, tol, dtmax, converged)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    real :: deltaT, tol, dtmax
+    integer :: subcell, i
+    logical :: converged
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call checkConvergence(child, tol, dtMax, converged)
+                exit
+             end if
+          end do
+       else
+          deltaT = abs(thisOctal%temperature(subcell)-thisOctal%oldTemperature(subcell)) &
+                / thisOctal%oldTemperature(subcell)
+          dtMax = max(dtMax, deltaT)
+          if (deltaT > tol) converged = .false.
+          
+       endif
+    enddo
+  end subroutine checkConvergence
+
+  recursive subroutine gaussSeidelSweep(grid, thisOctal)
+    type(octal), pointer   :: thisOctal, neighbourOctal, startOctal
+    type(octal), pointer  :: child 
+    type(GRIDTYPE) :: grid
+    real(double) :: kRos
+    integer :: subcell, i, neighbourSubcell
+    real(double) :: eDens(-1:1,-1:1,-1:1)
+    real(double) :: dCoeff(-1:1,-1:1,-1:1)
+    real(double) :: dCoeffhalf(-1:1,-1:1,-1:1)
+    real(double) :: eNplus1
+    real(double) :: r
+    type(OCTALVECTOR) :: octVec
+    
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call gaussSeidelSweep(grid, child)
+                exit
+             end if
+          end do
+       else
+
+          if (thisOctal%diffusionApprox(subcell)) then
+             if (thisOctal%twoD) then
+                r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1
+                
+                eDens(0, 0, 0) = thisOctal%eDens(subcell)
+                dCoeff(0, 0, 0) = thisOctal%diffusionCoeff(subcell)
+                
+                ! positive x
+                
+                octVec = subcellCentre(thisOctal, subcell) + OCTALVECTOR(r, 0.d0, 0.d0)
+                if (inOctal(grid%octreeRoot, octVec)) then
+                   startOctal => thisOctal
+                   call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
+                        foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
+                   eDens(1, 0, 0) = neighbourOctal%eDens(neighboursubcell)
+                   dCoeff(1, 0, 0) = neighbourOctal%diffusionCoeff(neighboursubcell)
+                else
+                   eDens(1, 0, 0) = eDens(0, 0, 0)
+                   dCoeff(1, 0, 0) = dCoeff(0, 0, 0)
+                endif
+                ! negative x
+                
+                octVec = subcellCentre(thisOctal, subcell) - OCTALVECTOR(r, 0.d0, 0.d0)
+                if (inOctal(grid%octreeRoot, octVec)) then
+                   startOctal => thisOctal
+                   call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
+                        foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
+                   eDens(-1, 0, 0) = neighbourOctal%eDens(neighbourSubcell)
+                   dCoeff(-1, 0, 0) = neighbourOctal%diffusionCoeff(neighbourSubcell)
+                else
+                   eDens(-1, 0, 0) = eDens(0, 0, 0)
+                   dCoeff(-1, 0, 0) = dCoeff(0, 0, 0)
+                endif
+                
+                ! positive z
+                
+                octVec = subcellCentre(thisOctal, subcell) + OCTALVECTOR(0.d0, 0.d0, r)
+                if (inOctal(grid%octreeRoot, octVec)) then
+                   startOctal => thisOctal
+                   call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
+                        foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
+                   eDens(0, 0, 1) = neighbourOctal%eDens(neighbourSubcell)
+                   dCoeff(0, 0, 1) = neighbourOctal%diffusionCoeff(neighbourSubcell)
+                else
+                   eDens(0, 0, 1) = eDens(0, 0, 0)
+                   dCoeff(0, 0, 1) = dCoeff(0, 0, 0)
+                endif
+                
+                ! negative z
+                
+                octVec = subcellCentre(thisOctal, subcell) - OCTALVECTOR(0.d0, 0.d0, r)
+                if (inOctal(grid%octreeRoot, octVec)) then
+                   startOctal => thisOctal
+                   call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
+                        foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
+                   eDens(0,  0, -1) = neighbourOctal%eDens(neighbourSubcell)
+                   dCoeff(0, 0, -1) = neighbourOctal%diffusionCoeff(neighbourSubcell)
+                else
+                   eDens(0, 0, -1) = eDens(0, 0, 0)
+                   dCoeff(0, 0, -1) = dCoeff(0, 0, 0)
+                endif
+                
+                
+                dCoeffHalf(1, 0, 0) = 0.5d0 * (dCoeff(1, 0, 0) + dCoeff(0, 0, 0))
+                dCoeffHalf(-1, 0, 0) = 0.5d0 * (dCoeff(0, 0, 0) + dCoeff(-1, 0, 0))
+                dCoeffHalf(0, 0, 1) = 0.5d0 * (dCoeff(0, 0, 1) + dCoeff(0, 0, 0))
+                dCoeffHalf(0, 0, -1) = 0.5d0 * (dCoeff(0, 0, 0) + dCoeff(0, 0, -1))
+
+                
+                enplus1 = eDens(0,0,0) + 0.25d0 * (dCoeffHalf(1,0,0)*(eDens(1,0,0)-eDens(0,0,0)) &
+                     - dCoeffHalf(-1,0,0)*(eDens(0,0,0)-eDens(-1,0,0)) &
+                     + dCoeffHalf(0,0,1)*(eDens(0,0,1)-eDens(0,0,0)) &
+                     - dCoeffHalf(0,0,-1)*(eDens(0,0,0)-eDens(0,0,-1)))
+
+                enPlus1 = max(enplus1, arad*1d4)
+                thisOctal%eDens(subcell) = enPlus1
+                thisOctal%temperature(subcell) = (enPlus1 / aRad)**0.25d0
+!                write(*,*) eDens(0,0,0),eDens(-1,0,0),eDens(1,0,0),eDens(0,0,-1),eDens(0,0,1)
+!                write(*,*) dCoeffhalf(-1,0,0),dCoeffhalf(1,0,0),      &
+!                     dCoeffhalf(0,0,-1),dCoeffhalf(0,0,1)
+!                write(*,*) "dcoeff",dcoeff(0,0,0)
+!                write(*,*) enPlus1, thisOctal%temperature(subcell)
+
+             else
+                write(*,*) "3d gauss seidel not implemented."
+                stop
+             endif
+          endif
+       endif
+    enddo
+  end subroutine gaussSeidelSweep
+
+  subroutine solveArbitraryDiffusionZones(grid)
+    type(GRIDTYPE) :: grid
+    logical :: gridConverged
+    real :: dummy(1), dtMax
+    integer :: niter
+    call setDiffusionCoeff(grid, grid%octreeRoot)
+    gridconverged = .false.
+    nIter = 0
+     do while (.not.gridconverged)
+        nIter = nIter + 1
+        call gaussSeidelSweep(grid, grid%octreeRoot)
+        gridconverged = .true.
+        dtMax = -1.e30
+        call checkConvergence(grid%octreeRoot, 0.05, dtMax, gridconverged)
+        write(*,*) nIter," Maximum relative change in T:",dtMax
+        call setDiffusionCoeff(grid, grid%octreeRoot)
+        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+             "/xs", .true., .false., &
+             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+        if (nIter < 5) gridConverged = .false.
+     enddo
+   end subroutine solveArbitraryDiffusionZones
+
+
+  recursive subroutine defineDiffusionOnUndersampled(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell
+    integer :: i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call defineDiffusionOnUndersampled(child)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%undersampled(subcell)) then
+             thisOctal%diffusionApprox(subcell) = .true.
+          else
+             thisOctal%diffusionApprox(subcell) = .false.
+          endif
+       end if
+    end do
+
+  end subroutine defineDiffusionOnUndersampled
+
+  recursive subroutine defineDiffusionOnRosseland(grid, thisOctal)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell
+    integer :: i
+    real(double) :: kRos, tau
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call defineDiffusionOnRosseland(grid, child)
+                exit
+             end if
+          end do
+       else
+          call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
+          tau = kros * thisOctal%rho(subcell) * thisOctal%subcellSize *1.e10
+          if (tau > 10.) then
+             thisOctal%diffusionApprox(subcell) = .true.
+          endif
+       end if
+    end do
+
+  end subroutine defineDiffusionOnRosseland
+
+   
 end module diffusion_mod
 
 

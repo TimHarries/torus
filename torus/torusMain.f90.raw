@@ -2109,6 +2109,8 @@ program torus
         stop
      endif
 
+
+
   if (lucyRadiativeEq) then
 !$MPI  if (my_rank==1) &
      call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch

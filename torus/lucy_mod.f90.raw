@@ -493,9 +493,9 @@ contains
     endif
 
 
-    if (grid%octreeRoot%twoD) then
-       call defineDiffusionZone(grid, outputFlag, .true.)
-    endif
+!    if (grid%octreeRoot%twoD) then
+!       call defineDiffusionZone(grid, outputFlag, .true.)
+!    endif
 
 
     iIter_grand = 0
@@ -987,16 +987,19 @@ contains
 !$MPI endif
 
 !$MPI if (my_rank==0) &       
-       write(*,*) "Estimating temperatures of undersampled cells..."
+!       write(*,*) "Estimating temperatures of undersampled cells..."
+!       do i = 1, 1
+!          call estimateTempofUndersampled(grid, grid%octreeRoot)
+!          call updateTemps(grid, grid%octreeRoot)
+!       enddo
 
-       do i = 1, 1
-          call estimateTempofUndersampled(grid, grid%octreeRoot)
-          call updateTemps(grid, grid%octreeRoot)
-       enddo
+       call defineDiffusionOnUndersampled(grid%octreeRoot)
+       call solveArbitraryDiffusionZones(grid)
+       call defineDiffusionOnRosseland(grid, grid%octreeRoot)
 
-       if (grid%octreeRoot%twoD) then
-          call defineDiffusionZone(grid, outputFlag, .false.)
-       endif
+!       if (grid%octreeRoot%twoD) then
+!          call defineDiffusionZone(grid, outputFlag, .false.)
+!       endif
 
 
 
@@ -1008,16 +1011,16 @@ contains
 
    enddo
 
-       if (.not.(variableDustSublimation.and.doingDustSublimation)) then
-          if (grid%octreeRoot%twoD) then
-             call defineDiffusionZone(grid, outputFlag, .false.)
-          endif
-       endif
+!       if (.not.(variableDustSublimation.and.doingDustSublimation)) then
+!          if (grid%octreeRoot%twoD) then
+!             call defineDiffusionZone(grid, outputFlag, .false.)
+!          endif
+!       endif
 
 
-       call writeInfo("Getting temperatures in diffusion zone", TRIVIAL)
-       call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
-       call writeInfo("Done.", TRIVIAL)
+!       call writeInfo("Getting temperatures in diffusion zone", TRIVIAL)
+!       call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
+!       call writeInfo("Done.", TRIVIAL)
 
 
 !       if ((grid%geometry == "shakara").and.(nDustType > 1)) then
@@ -1075,9 +1078,9 @@ contains
 !       endif
 
 
-          if (grid%octreeRoot%twoD) then
-             call defineDiffusionZone(grid, outputFlag, .false.)
-          endif
+!          if (grid%octreeRoot%twoD) then
+!             call defineDiffusionZone(grid, outputFlag, .false.)
+!          endif
 
 
 

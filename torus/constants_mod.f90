@@ -76,6 +76,8 @@ module constants_mod
   real(double), parameter :: bigG = 6.67259d-8           ! cgs
   real(double), parameter :: mElectron = 9.109565D-28    ! g
 
+  real(double), parameter :: aRad = 4.d0 * stefanBoltz / cSpeed
+
 end module constants_mod
 
 
