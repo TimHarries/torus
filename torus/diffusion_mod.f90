@@ -1370,7 +1370,8 @@ end subroutine setNoDiffusion
 !          call returnKappa(grid, thisOctal, subcell, kappaAbs=kabs, ilambda=13)
 !          thisOctal%diffusionCoeff(subcell) = cSpeed / (3.d0 * kabs * 1.e10)
           call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
-          thisOctal%diffusionCoeff(subcell) = min(1.e-3,cSpeed / (3.d0 * kros * thisOctal%rho(subcell) * 1.e21))
+!          thisOctal%diffusionCoeff(subcell) = min(1.e-3,cSpeed / (3.d0 * kros * thisOctal%rho(subcell) * 1.e21))
+          thisOctal%diffusionCoeff(subcell) =  cSpeed / (kRos * thisOctal%rho(subcell) * 1.e20)
           thisOctal%eDens(subcell) = aRad * thisOctal%temperature(subcell)**4
           thisOctal%oldTemperature(subcell) = thisOctal%temperature(subcell)
        endif
@@ -1414,7 +1415,7 @@ end subroutine setNoDiffusion
     real(double) :: dCoeff(-1:1,-1:1,-1:1)
     real(double) :: dCoeffhalf(-1:1,-1:1,-1:1)
     real(double) :: eNplus1
-    real(double) :: r
+    real(double) :: r, gradE, bigR, lambda
     type(OCTALVECTOR) :: octVec
     
     
@@ -1492,12 +1493,21 @@ end subroutine setNoDiffusion
                    dCoeff(0, 0, -1) = dCoeff(0, 0, 0)
                 endif
                 
+                gradE = sqrt((eDens(1,0,0)-eDens(-1,0,0))**2 + &
+                     (eDens(0,1,0)-eDens(0,-1,0))** + &
+                     (eDens(0,0,1)-eDens(0,0,-1))**2) 
+                     gradE = abs(gradE) / (2.d0*thisOctal%subcellsize*1.e10)
+                call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
+                bigR = gradE / (eDens(0,0,0) * (kRos * thisOctal%rho(subcell)) * 1.e20)
+                lambda = (2.d0 * bigR) / (6.d0 + 3.d0*bigR + bigR**2)
+                write(*,*) lambda
                 
                 dCoeffHalf(1, 0, 0) = 0.5d0 * (dCoeff(1, 0, 0) + dCoeff(0, 0, 0))
                 dCoeffHalf(-1, 0, 0) = 0.5d0 * (dCoeff(0, 0, 0) + dCoeff(-1, 0, 0))
                 dCoeffHalf(0, 0, 1) = 0.5d0 * (dCoeff(0, 0, 1) + dCoeff(0, 0, 0))
                 dCoeffHalf(0, 0, -1) = 0.5d0 * (dCoeff(0, 0, 0) + dCoeff(0, 0, -1))
 
+                dCoeffHalf(-1:1,-1:1,-1:1) = dCoeffHalf(-1:1,-1:1,-1:1) * lambda
                 
                 enplus1 = eDens(0,0,0) + 0.25d0 * (dCoeffHalf(1,0,0)*(eDens(1,0,0)-eDens(0,0,0)) &
                      - dCoeffHalf(-1,0,0)*(eDens(0,0,0)-eDens(-1,0,0)) &

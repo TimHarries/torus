@@ -49,18 +49,18 @@ contains
     call init_sph_data(sphData, udist, umass, utime, npart, time, nptmass, gaspartmass)
 
 
-!    ! reading the X poistion of particles
+    ! reading the X poistion of particles
 !    do i = 1, npart
 !       read(20) dummy
 !       call put_position_gas_particle(sphData, i, "x", dummy) ! saving the value
 !    end do
-!
-!    ! reading the y poistion of particles
+
+    ! reading the y poistion of particles
 !    do i = 1, npart
 !       read(20) dummy
 !       call put_position_gas_particle(sphData, i, "y", dummy) ! saving the value
 !    end do
-!    ! reading the z poistion of particles
+    ! reading the z poistion of particles
 !    do i = 1, npart
 !       read(20) dummy
 !       call put_position_gas_particle(sphData, i, "z", dummy) ! saving the value
