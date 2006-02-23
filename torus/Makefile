@@ -560,6 +560,15 @@ disc_hydro_mod.o : disc_hydro_mod.f90.raw lucy_mod.o amr_mod.o constants_mod.o g
         endif
 	$(F90) -c disc_hydro_mod.f90
 
+diffusion_mod.o : diffusion_mod.f90.raw constants_mod.o gridtype_mod.o amr_mod.o vector_mod.o messages_mod.o \
+	grid_mod.o
+        ifeq ($(MK_MPI_SRC), yes)
+	   sed 's/\!$$MPI//g' diffusion_mod.f90.raw   > diffusion_mod.f90
+        else
+	   sed '/\!$$MPI/d'   diffusion_mod.f90.raw   > diffusion_mod.f90
+        endif
+	$(F90) -c diffusion_mod.f90
+
 stateq_mod.o: stateq_mod.f90.raw cmfgen_class.o constants_mod.o grid_mod.o gridtype_mod.o \
 	hyd_col_coeff.o input_variables.o integratePath.o jets_mod.o \
 	math_mod.o opacity_lte_mod.o parallel_mod.o utils_mod.o vector_mod.o  messages_mod.o
