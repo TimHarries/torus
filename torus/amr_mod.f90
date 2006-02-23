@@ -4201,9 +4201,9 @@ IF ( .NOT. gridConverged ) RETURN
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
       if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 1.)) split = .true.
-      if (r < 2.*grid%rInner) then
-         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
-      endif
+!      if (r < 2.*grid%rInner) then
+!         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
+!      endif
 
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -4271,7 +4271,7 @@ IF ( .NOT. gridConverged ) RETURN
          hr = height * (r / (100.*autocm/1.e10))**1.25
          fac = cellsize/hr
          if (abs((cellCentre%z-warpHeight)/hr) < 5.) then
-            if (fac > 3.) split = .true.
+            if (fac > 2.) split = .true.
          endif
          if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 2.)) split = .true.
       endif
@@ -6095,7 +6095,7 @@ IF ( .NOT. gridConverged ) RETURN
     r = sqrt(rVec%x**2 + rVec%y**2)
     if ((r > rInner).and.(r < rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
-       thisOctal%temperature(subcell) = 20.
+       thisOctal%temperature(subcell) = 10.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
 
@@ -9024,7 +9024,8 @@ IF ( .NOT. gridConverged ) RETURN
     real, parameter :: sublimationTemp = 1500., subRange = 100.
     real :: tArray(1000)
     real(double) :: freq, dfreq, bnutot, norm
-    integer :: i,j 
+    integer :: i,j,m
+    real :: fac
     real :: e, h0, he0
     real(double) :: kappaH, kappaHe
 
@@ -9139,22 +9140,32 @@ IF ( .NOT. gridConverged ) RETURN
       if (PRESENT(atthistemperature)) then
          temperature = atthistemperature
       endif
+      call locate(grid%tempRossArray, grid%nTempRossArray, temperature, m)
+      fac = (temperature - grid%tempRossArray(m))/(grid%tempRossArray(m+1)-grid%tempRossArray(m))
       rosselandKappa = 0.
-      Bnutot = 0.
-      if (thisOctal%inFlow(subcell)) then
-         do i =  grid%nLambda,2,-1
-            freq = cSpeed / (grid%lamArray(i)*1.e-8)
-            dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
-            do j = 1, nDustType
-               rosselandKappa = rosselandKappa + bnu(freq, dble(temperature)) * dFreq / &
-                 ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))*max(1.d-30,thisOctal%dustTypeFraction(subcell, j)))
-            enddo
-            bnutot = bnutot + bnu(freq, dble(temperature)) * dfreq
-         enddo
-         if (rosselandkappa /= 0.) then
-            rosselandKappa = (bnutot / rosselandKappa)/1.d10
-         endif
-      endif
+      
+      do i = 1, nDustType
+         rosselandKappa = rosselandKappa + (grid%kappaRossArray(i, m) + &
+              fac*(grid%kappaRossArray(i,m+1)-grid%kappaRossArray(i,m))) * &
+              max(1.d-30,thisOctal%dustTypeFraction(subcell, i))
+      enddo
+
+!      rosselandKappa = 0.
+!      Bnutot = 0.
+!      if (thisOctal%inFlow(subcell)) then
+!         do i =  grid%nLambda,2,-1
+!            freq = cSpeed / (grid%lamArray(i)*1.e-8)
+!            dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
+!            do j = 1, nDustType
+!               rosselandKappa = rosselandKappa + bnu(freq, dble(temperature)) * dFreq / &
+!                 ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))*max(1.d-30,thisOctal%dustTypeFraction(subcell, j)))
+!            enddo
+!            bnutot = bnutot + bnu(freq, dble(temperature)) * dfreq
+!         enddo
+!         if (rosselandkappa /= 0.) then
+!            rosselandKappa = (bnutot / rosselandKappa)/1.d10
+!         endif
+!      endif
    endif
    
 

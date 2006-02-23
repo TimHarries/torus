@@ -38,6 +38,9 @@ module gridtype_mod
      logical :: oneKappa                        
      real, pointer :: oneKappaAbs(:,:) => null()
      real, pointer :: oneKappaSca(:,:) => null()
+     real, pointer :: kappaRossArray(:,:) => null()
+     real, pointer :: tempRossArray(:) => null()
+     integer :: nTempRossArray
      real :: kappaTest
      integer :: itestlam
      type(VECTOR) :: diskNormal

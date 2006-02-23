@@ -919,6 +919,7 @@ program torus
                 grid%onekappaSca(i,1:grid%nLambda))
         enddo
      endif
+     call createRossArray(grid)
   endif
 
 

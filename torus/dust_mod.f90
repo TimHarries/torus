@@ -1086,4 +1086,33 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
   end subroutine stripDustAway
 
+  subroutine createRossArray(grid)
+    use input_variables, only : nDustType
+    type(GRIDTYPE) :: grid
+    integer :: i, j, k
+    real :: bNuTot, rosselandKappa, temperature
+    real(double) :: dFreq, Freq
+
+    do k = 1, grid%nTempRossArray
+       temperature = 3. + (2000.-3.)*real(k-1)/real(grid%nTempRossArray-1)
+
+       do j = 1, nDustType
+          rosselandKappa = 0.
+          Bnutot = 0.
+          do i =  grid%nLambda,2,-1
+             freq = cSpeed / (grid%lamArray(i)*1.e-8)
+             dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
+             rosselandKappa = rosselandKappa + bnu(freq, dble(temperature)) * dFreq / &
+                  (grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))
+             bnutot = bnutot + bnu(freq, dble(temperature)) * dfreq
+          enddo
+          if (rosselandkappa /= 0.) then
+             rosselandKappa = (bnutot / rosselandKappa)/1.d10
+          endif
+          grid%kappaRossArray(j,k) = rosselandKappa
+       enddo
+       grid%tempRossArray(k) = temperature
+    enddo
+  end subroutine createRossArray
+
   end module dust_mod

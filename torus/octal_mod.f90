@@ -92,6 +92,9 @@ MODULE octal_mod
     TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
     REAL, DIMENSION(8)                 :: oldTemperature    ! grid subcell temperatures
+    REAL(double), DIMENSION(8)                 :: oldeDens
+    REAL(double), DIMENSION(8)                 :: kappaRoss
+
     REAL(double), DIMENSION(8)         :: distanceGrid   ! distance crossing used by lucy R Eq
 
 

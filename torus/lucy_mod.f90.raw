@@ -96,7 +96,6 @@ contains
        nInf = 0
        nScat = 0
        nAbs = 0
-
        nMonte = nLucy
 
        do iMonte = 1, nMonte
@@ -115,7 +114,7 @@ contains
 
           do while(.not.escaped)
              call toNextEvent(grid, rVec, uHat, escaped, distanceGrid, thisFreq, nLambda, lamArray)
-
+                
              if (escaped) nInf = nInf + 1
 
              if (.not. escaped) then
@@ -320,7 +319,7 @@ contains
     logical :: twoD
     ! threshold value for undersampled cell in percent (for stopping iteration).
     real, intent(in) :: percent_undersampled_min  
-    type(OCTALVECTOR) ::  uHat, uNew, rVec, rHat
+    type(OCTALVECTOR) ::  uHat, uNew, rVec, rHat, olduHat
     type(OCTALVECTOR) :: octVec,avedirection
     type(OCTAL), pointer :: thisOctal, sOctal
     integer, intent(in)  :: nLambda, nMuMie
@@ -378,6 +377,7 @@ contains
     logical :: converged
     real:: percent_undersampled
     integer :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
+    integer :: nKilled
     integer :: maxIter
     integer       :: imonte_beg, imonte_end  ! the index boundary for the photon loops.
     real(double), allocatable :: kAbsArray(:)
@@ -634,6 +634,7 @@ contains
        nScat = 0
        nAbs = 0
        nDiffusion = 0
+       nKilled = 0
 
        imonte_beg=1; imonte_end=nMonte  ! default value
 
@@ -702,6 +703,7 @@ contains
 !$MPI !  if (MOD(i,n_proc) /= my_rank) goto 999
 
           thisPhotonAbs = 0
+          
 
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
@@ -774,13 +776,16 @@ contains
                    ! if the photon has come from the diffusion zone then it has to be
                    ! reprocessed using the appropriate temperature
 
-!                   if (photonInDiffusionZone) then
-!                      t1 = dble(diffusionZoneTemp)
-!                  endif
+                  if (photonInDiffusionZone) then
+                      t1 = dble(diffusionZoneTemp)
+                  endif
 
                    nAbs_sub = nAbs_sub + 1
                    thisPhotonAbs = thisPhotonAbs + 1
-                   if (thisPhotonAbs > 50000) cycle photonLoop
+                   if (thisPhotonAbs > 50000) then
+                      nKilled = nKilled + 1
+                      cycle photonLoop
+                   endif
 
                    probDistJnu(1) = 0.
                    do i = 2, nFreq
@@ -814,15 +819,14 @@ contains
                    endif
 
 
+                   oldUhat = uHat
                    uHat = randomUnitVector()
 
                    ! make sure diffused photon is moving out of diffusion zone
 
                    if (photonInDiffusionZone) then
-                      if (.not.lefthandBoundary) then
-                         if ((octVec%z * uhat%z) < 0.) uHat = (-1.d0) * uHat
-                      else
-                         if ((octVec%x * uhat%x + octVec%y * uHat%y) > 0.) uHat = (-1.d0) * uHat
+                      if ((oldUhat.dot.uHat)  > 0.) then
+                         uHat = (-1.d0) * uHat
                       endif
                    endif
 
@@ -883,6 +887,10 @@ contains
 !$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 !$MPI       nAbs = INT(SUM(buffer_real))
 !$MPI
+!$MPI       call MPI_ALLGATHER(REAL(nKilled), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+!$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+!$MPI       nKilled = INT(SUM(buffer_real))
+!$MPI
 !$MPI       call MPI_ALLGATHER(REAL(nDiffusion), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
 !$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 !$MPI       nDiffusion = INT(SUM(buffer_real))
@@ -892,6 +900,7 @@ contains
           write(*,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
           write(*,'(a,f13.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
           write(*,'(a,f13.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
+          write(*,'(a,f13.3)') "Fraction of photons killed: ",real(nKilled)/real(nMonte)
 !$MPI       end if
 
 
@@ -995,7 +1004,7 @@ contains
 
        call defineDiffusionOnUndersampled(grid%octreeRoot)
        call solveArbitraryDiffusionZones(grid)
-       call defineDiffusionOnRosseland(grid, grid%octreeRoot)
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot)
 
 !       if (grid%octreeRoot%twoD) then
 !          call defineDiffusionZone(grid, outputFlag, .false.)
@@ -1532,10 +1541,8 @@ contains
                 thisOctal%temperature(subcell) = max(2.8,thisOctal%temperature(subcell) + real(0.8 * deltaT))
              else
                 deltaT = 0.
-                if (.not.thisOctal%diffusionApprox(subcell)) then
-                   nUnderSampled = nUndersampled + 1
-                   thisOctal%undersampled(subcell) = .true.
-                endif
+                nUnderSampled = nUndersampled + 1
+                thisOctal%undersampled(subcell) = .true.
              endif
              kappaP = 0.d0
              norm = 0.d0
@@ -1765,12 +1772,13 @@ contains
 
 
    type(GRIDTYPE) :: grid
-   type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
+   type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, tHat
    type(OCTAL), pointer :: thisOctal, tempOctal, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal
-   type(OCTAL),pointer :: foundOctal
+   type(OCTAL),pointer :: foundOctal, endOctal
+   integer :: endSubcell
    integer :: subcell, isubcell, tempSubcell, sourceSubcell
-   real(oct) :: tval, tau, r
+   real(oct) :: tval, tau, r, tval2
    real :: lamArray(*)
    integer :: nLambda
    logical :: stillinGrid
@@ -1854,32 +1862,47 @@ contains
 
        call amrGridValues(grid%octreeRoot, octVec,  foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
-
-!       write(*,*) tempOctal%centre,tempsubcell
        sOctal => tempOctal
        if (tempOctal%diffusionApprox(tempsubcell)) then
+
+          call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp)
           photonInDiffusionZone = .true.
-          if (tempOctal%leftHandDiffusionBoundary(subcell)) then
-             leftHandBoundary = .true.
-          else
-             leftHandBoundary = .false.
-          endif
-          tempOctal%nDiffusion(tempsubcell) = tempOctal%nDiffusion(tempsubcell) + abs(uHat%z)
-          diffusionZoneTemp = tempOctal%temperature(subcell)
-          sourceOctal => grid%octreeRoot
-!          call random_number(prob)
-!          call locateDiffusionProbAMR(prob, sourceOctal, sourceSubcell)
-!          rVec = subcellCentre(sourceOctal, sourcesubcell)
-          rVec = octVec
-          call diffPhotonPosition(grid, tempOctal, tempsubcell, rVec)
+          rVec = subcellCentre(endOctal,endSubcell)
           octVec = rVec
           call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
           sOctal => tempOctal
           if (tempOctal%diffusionApprox(tempsubcell)) then
-             write(*,*) "! error - photon produced in diffusion zone 1..."
+             write(*,*) "moved to cell with diffapprox",tempOctal%diffusionApprox(tempsubcell)
           endif
+
        endif
+
+!       write(*,*) tempOctal%centre,tempsubcell
+!       sOctal => tempOctal
+!       if (tempOctal%diffusionApprox(tempsubcell)) then
+!          photonInDiffusionZone = .true.
+!          if (tempOctal%leftHandDiffusionBoundary(subcell)) then
+!             leftHandBoundary = .true.
+!          else
+!             leftHandBoundary = .false.
+!          endif
+!          tempOctal%nDiffusion(tempsubcell) = tempOctal%nDiffusion(tempsubcell) + abs(uHat%z)
+!          diffusionZoneTemp = tempOctal%temperature(subcell)
+!          sourceOctal => grid%octreeRoot
+!!          call random_number(prob)
+!!          call locateDiffusionProbAMR(prob, sourceOctal, sourceSubcell)
+!!          rVec = subcellCentre(sourceOctal, sourcesubcell)
+!          rVec = octVec
+!          call diffPhotonPosition(grid, tempOctal, tempsubcell, rVec)
+!          octVec = rVec
+!          call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
+!            foundSubcell=tempsubcell)
+!          sOctal => tempOctal
+!          if (tempOctal%diffusionApprox(tempsubcell)) then
+!             write(*,*) "! error - photon produced in diffusion zone 1..."
+!          endif
+!       endif
 
 
 ! check whether the photon has escaped from the grid
@@ -2040,18 +2063,15 @@ contains
             foundSubcell=tempsubcell)
        if (tempOctal%diffusionApprox(tempsubcell)) then
           photonInDiffusionZone = .true.
-          diffusionZoneTemp = tempOctal%temperature(subcell)
-          sourceOctal => grid%octreeRoot
-!          call random_number(prob)
-!          call locateDiffusionProbAMR(prob, sourceOctal, sourceSubcell)
-!          rVec = subcellCentre(sourceOctal, sourcesubcell)
-          rVec = octVec
-          call diffPhotonPosition(grid, tempOctal, tempsubcell, rVec)
+          call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp)
+          photonInDiffusionZone = .true.
+          rVec = subcellCentre(endOctal,endSubcell)
           octVec = rVec
           call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal,foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
           if (tempOctal%diffusionApprox(tempsubcell)) then
              write(*,*) "! error - photon produced in diffusion zone 2..."
+             write(*,*) Tau,thistau,tval
           endif
        endif
 
