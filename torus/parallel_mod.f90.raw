@@ -61,7 +61,7 @@ module parallel_mod
 !$MPI    blockSize = MAX(1,blockSize)
 !$MPI    if (present(minBlockSize)) blockSize = MAX(minBlockSize,blockSize) 
 !$MPI    if (present(maxBlockSize)) blockSize = MIN(maxBlockSize,blockSize)
-!$MPI    print *, 'Work unit blocksize = ', blockSize
+!$MPI  !  print *, 'Work unit blocksize = ', blockSize
 !$MPI
 !$MPI    ! th added this
 !$MPI

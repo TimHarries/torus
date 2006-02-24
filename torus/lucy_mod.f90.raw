@@ -498,6 +498,8 @@ contains
 !    endif
 
 
+    call defineDiffusionOnRosseland(grid,grid%octreeRoot)
+
     iIter_grand = 0
     nRemoved = 1
     converged = .false.
@@ -995,14 +997,13 @@ contains
 !$MPI    debugOutput = .false.
 !$MPI endif
 
-!$MPI if (my_rank==0) &       
-!       write(*,*) "Estimating temperatures of undersampled cells..."
 !       do i = 1, 1
 !          call estimateTempofUndersampled(grid, grid%octreeRoot)
 !          call updateTemps(grid, grid%octreeRoot)
 !       enddo
 
-       call defineDiffusionOnUndersampled(grid%octreeRoot)
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot)
+       call defineDiffusionOnUndersampled(grid%octreeroot)
        call solveArbitraryDiffusionZones(grid)
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
 

@@ -305,10 +305,10 @@ endif
 ifeq ($(SYSTEM), mpig95)
    TOP=/h/rk/mpi_g95
    TOP2=
-   F95COMP=${TOP}/bin/mpif77 -w
-   F77COMP=${TOP}/bin/mpif77 -w
-   FASTFLAG=-O3 -I${TOP}/include  
-   DEBUGFLAG=-g -I${TOP}/include  
+   F95COMP=/usr/local/bin/mpif90 -w
+   F77COMP=/usr/local/bin/mpif77 -w
+   FASTFLAG=-O3 -I/usr/local/include  
+   DEBUGFLAG=-g -I/usr/local/include  
    STATICFLAG=
    MATHTRAP=-ieee=stop
    UNIXMOD=unix_mod.f90.linuxintel
