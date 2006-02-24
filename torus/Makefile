@@ -211,7 +211,7 @@ ifeq ($(SYSTEM), mpilam)
    F95COMP=${TOP}/bin/mpif95 -mismatch
    F77COMP=${TOP2}/bin/mpif77
    FASTFLAG=-O3 -I${TOP}/include  -dcfuns  -w 
-   DEBUGFLAG=-g -C=all -nan -I${TOP}/include  -dcfuns 
+   DEBUGFLAG=-g -C=all  -I${TOP}/include  -dcfuns 
    STATICFLAG=-Bstatic
 #   MATHTRAP=-ieee=stop
    MATHTRAP=
@@ -561,7 +561,7 @@ disc_hydro_mod.o : disc_hydro_mod.f90.raw lucy_mod.o amr_mod.o constants_mod.o g
 	$(F90) -c disc_hydro_mod.f90
 
 diffusion_mod.o : diffusion_mod.f90.raw constants_mod.o gridtype_mod.o amr_mod.o vector_mod.o messages_mod.o \
-	grid_mod.o
+	grid_mod.o parallel_mod.o
         ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' diffusion_mod.f90.raw   > diffusion_mod.f90
         else

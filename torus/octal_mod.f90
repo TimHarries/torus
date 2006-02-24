@@ -91,6 +91,7 @@ MODULE octal_mod
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
     TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
+    real(double), dimension(8) :: eDens
     REAL, DIMENSION(8)                 :: oldTemperature    ! grid subcell temperatures
     REAL(double), DIMENSION(8)                 :: oldeDens
     REAL(double), DIMENSION(8)                 :: kappaRoss
@@ -123,7 +124,6 @@ MODULE octal_mod
     real(double), dimension(:,:), pointer  :: ionFrac => null()
     real(double), dimension(:,:), pointer  :: photoIonCoeff  => null()
     real(double) :: diffusionCoeff(8)
-    real(double) :: eDens(8)
 
     real(double), DIMENSION(8) :: nTot          ! total density
     real, dimension(8) :: oldFrac ! Previous value of dust sublimation fraction

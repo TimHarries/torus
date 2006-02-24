@@ -10,6 +10,7 @@ use amr_mod
 use vector_mod
 use messages_mod
 use grid_mod
+use parallel_mod
 
 implicit none
 
@@ -1367,7 +1368,6 @@ end subroutine setNoDiffusion
              end if
           end do
        else
-
           thisOctal%temperature(subcell) = (thisOctal%eDens(subcell)/arad)**0.25d0
 
           call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
@@ -1430,10 +1430,12 @@ end subroutine setNoDiffusion
   end subroutine checkConvergence
 
   subroutine jacobiSweep(grid,  tol, demax, converged)
+    use input_variables, only : blockhandout
 !$MPI    include 'mpif.h'
     type(octal), pointer   :: thisOctal, neighbourOctal, startOctal
     type(octal), pointer  :: child 
     type(GRIDTYPE) :: grid
+    integer :: my_rank, np, isubcell, ierr
     real(double) :: kRos
     real(double) :: tol, deMax
     logical :: converged
@@ -1449,7 +1451,6 @@ end subroutine setNoDiffusion
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
-    deMax = -1.d30
 
 !$MPI     logical :: dcAllocated
 !$MPI     integer, dimension(:), allocatable :: octalsBelongRank
@@ -1457,6 +1458,7 @@ end subroutine setNoDiffusion
 !$MPI     integer :: iRank
 !$MPI     integer :: tag = 0
 !$MPI     integer :: tempInt
+
 
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
 !$MPI    !  Get my process rank # 
@@ -1478,6 +1480,9 @@ end subroutine setNoDiffusion
 !$MPI    
 !$MPI    endif
 !$MPI    ! ============================================================================
+
+
+    deMax = -1.d30
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -1757,29 +1762,41 @@ end subroutine setNoDiffusion
 end subroutine jacobiSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
+!$MPI    include 'mpif.h'
     type(GRIDTYPE) :: grid
     logical :: gridConverged
     real :: dummy(1)
     real(double) :: deMax
     integer :: niter
     integer, parameter :: maxIter = 100
+    integer :: my_rank, ierr
+
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
 
     call seteDens(grid, grid%octreeRoot)
+!$MPI    if (my_rank == 0) write(*,*) "Setedens successfully compeleted."
 !    call resetDiffusionTemp(grid%octreeRoot, 100.)
     call setDiffusionCoeff(grid, grid%octreeRoot)
+!$MPI    if (my_rank == 0) write(*,*) "Setdiffusioncoeff successfully compeleted."
     gridconverged = .false.
     nIter = 0
      do while (.not.gridconverged)
         nIter = nIter + 1
         gridconverged = .true.
         deMax = -1.e30
+!$MPI    if (my_rank == 0) write(*,*) "Calling jacobi sweep"
         call jacobiSweep(grid, 0.05d0, demax, gridConverged)
+!$MPI    if (my_rank == 0) write(*,*) "jacobi sweep completed"
         call copyEdens(grid%octreeRoot)
         write(*,*) nIter," Maximum relative change in eDens:",deMax
         call setDiffusionCoeff(grid, grid%octreeRoot)
+!$MPI if (my_rank ==0) then
         call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
              "/xs", .true., .false., &
              0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+!$MPI endif
         if (nIter < 5) gridConverged = .false.
         if (nIter > maxIter) then
            write(*,*) "No solution found after ",maxIter," iterations"

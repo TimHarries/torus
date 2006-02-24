@@ -428,6 +428,7 @@ CONTAINS
     parent%child(newChildIndex)%Ne = 1.e-30
     parent%child(newChildIndex)%temperature = 3.0
     parent%child(newChildIndex)%nTot = 1.e-30
+    parent%child(newChildIndex)%eDens = 1.d-10
     parent%child(newChildIndex)%changed = .false.
     parent%child(newChildIndex)%diffusionApprox = .false.
     parent%child(newChildIndex)%leftHandDiffusionBoundary = .false.
