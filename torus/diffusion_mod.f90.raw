@@ -1732,7 +1732,6 @@ end subroutine setNoDiffusion
 !$MPI end do blockLoop       
 !$MPI end if ! (my_rank /= 0)
 
-
 !$MPI    allocate(tempDoubleArray(np))
 !$MPI    tempDoubleArray = 0.d0
 !$MPI    call MPI_ALLREDUCE(deMaxArray,tempDoubleArray,np,MPI_DOUBLE_PRECISION,&
@@ -1759,7 +1758,8 @@ end subroutine setNoDiffusion
 !$MPI          thisOctal => octalArray(iOctal)%content
 !$MPI          
 !$MPI          do iSubcell = 1, thisOctal%maxChildren
-!$MPI             if (octalArray(iOctal)%inUse(iSubcell)) then
+!$MPI             if (octalArray(iOctal)%inUse(iSubcell).and. &
+!$MPI                     octalArray(iOctal)%content%diffusionApprox(iSubcell)) then
 !$MPI                
 !$MPI                call MPI_BCAST(thisOctal%chiline(iSubcell), 1, MPI_DOUBLE_PRECISION,&
 !$MPI                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
@@ -1800,19 +1800,18 @@ end subroutine jacobiSweep
         nIter = nIter + 1
         gridconverged = .true.
         deMax = -1.e30
-!$MPI    if (my_rank == 0) write(*,*) "Calling jacobi sweep"
         call jacobiSweep(grid, 0.05d0, demax, gridConverged)
-!$MPI    if (my_rank == 0) write(*,*) "jacobi sweep completed"
         call copyEdens(grid%octreeRoot)
         call setDiffusionCoeff(grid, grid%octreeRoot)
-!$MPI if (my_rank == 0) then
-        write(*,*) nIter," Maximum relative change in eDens:",deMax
-        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-             "/xs", .true., .false., &
-             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
-!$MPI endif
-        if (nIter < 5) gridConverged = .false.
+!$MPI !if (my_rank == 0) then
+      !  write(*,*) nIter," Maximum relative change in eDens:",deMax
+!        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+!             "/xs", .true., .false., &
+!             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+!$MPI  !endif
+        if (nIter < 3) gridConverged = .false.
         if (nIter > maxIter) then
+!$MPI if (my_rank == 0) &
            write(*,*) "No solution found after ",maxIter," iterations"
            gridConverged = .true.
         endif
@@ -1846,6 +1845,7 @@ end subroutine jacobiSweep
   end subroutine defineDiffusionOnUndersampled
 
   recursive subroutine defineDiffusionOnRosseland(grid, thisOctal)
+    use input_variables, only : tauDiff 
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -1865,7 +1865,7 @@ end subroutine jacobiSweep
        else
           call returnKappa(grid, thisOctal, subcell, rosselandKappa=kros)
           tau = kros * thisOctal%rho(subcell) * thisOctal%subcellSize *1.e10
-          if (tau > 100.) then
+          if (tau > taudiff) then
              thisOctal%diffusionApprox(subcell) = .true.
           else
              thisOctal%diffusionApprox(subcell) = .false.

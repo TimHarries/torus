@@ -598,10 +598,6 @@ contains
 !$MPI    end if
 
 
-!$MPI       if (my_rank == 1) &
-!$MPI       call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-!$MPI            "rho_temp_zoom1.ps/vcps", .true., .false., &
-!$MPI            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
 
 
 !$MPI       if (my_rank == 1) &
@@ -1002,10 +998,16 @@ contains
 !          call updateTemps(grid, grid%octreeRoot)
 !       enddo
 
+!$MPI  if (my_rank == 1) &
+       call tune(6, "  Jacobi sweeps for diffusion zone ")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
        call defineDiffusionOnUndersampled(grid%octreeroot)
        call solveArbitraryDiffusionZones(grid)
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
+!$MPI  if (my_rank == 1) &
+       call tune(6, "  Jacobi sweeps for diffusion zone ")
+
+
 
 !       if (grid%octreeRoot%twoD) then
 !          call defineDiffusionZone(grid, outputFlag, .false.)

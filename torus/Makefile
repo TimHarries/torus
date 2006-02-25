@@ -302,9 +302,7 @@ ifeq ($(SYSTEM), mpiintel)
 endif
 
 
-ifeq ($(SYSTEM), mpig95)
-   TOP=/h/rk/mpi_g95
-   TOP2=
+ifeq ($(SYSTEM), openmpi)
    F95COMP=/usr/local/bin/mpif90 -w
    F77COMP=/usr/local/bin/mpif77 -w
    FASTFLAG=-O3 -I/usr/local/include  
@@ -313,11 +311,11 @@ ifeq ($(SYSTEM), mpig95)
    MATHTRAP=-ieee=stop
    UNIXMOD=unix_mod.f90.linuxintel
    KINDMOD=kind_mod.f90.linuxintel
-   EXE=torus.mpig95
+   EXE=torus.openmpi
    F77FLAG=-fno-second-underscore -w
    IMAGEF77=image_f77.f.default
    SPECF77=spec_f77.f.default
-   F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
+   F2CLIB=-I${TOP}/include  -L$(PATH2G2C) -lg2c -lm
    STATICLIBS=
    STARLIBS=-L/star/lib `ndf_link` 
    PGLIBS=-L/star/lib `pgplot_link`
@@ -439,6 +437,14 @@ ifneq ($(static), yes)
    STATICFLAG=
    STATICLIBS=
 endif
+
+ifeq ($(sph), yes)
+   MK_SPH_SRC = yes
+   MK_PRG_SRC = no
+else
+   MK_SPH_SRC = no
+   MK_PRG_SRC = yes
+endif
 #
 #
 #
@@ -495,6 +501,18 @@ all: preprocess depends $(ALLOBJ)
 	@echo " Linking object files and libraries..........."
 	$(F90) -o $(EXE) \
 	$(MODOBJ) $(F77OBJ) $(F90OBJ) $(PGSTUBS) $(PGLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
+	@echo " ... done"
+   else
+	@echo ""
+	@echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."
+	@echo "             ...setting SOURCE_VARIANT to unknown"
+   endif
+
+lib: preprocess depends $(ALLOBJ)
+   ifeq ($(KNOWN_SYSTEM), yes)
+	@echo ""
+	@echo " Linking object files making a library..........."
+	$(AR) $(ARFLAGS) libtorus.a $(ALLOBJ) 
 	@echo " ... done"
    else
 	@echo ""
@@ -606,6 +624,18 @@ torusMain.o: torusMain.f90.raw TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o
         else
 	   sed '/\!$$MPI/d' torusMain.f90.raw  > torusMain.f90
         endif
+        ifeq ($(MK_SPH_SRC), yes)
+	   sed 's/\!$$SPH//g' torusMain.f90  > tmp.f90
+        else
+	   sed '/\!$$SPH/d' torusMain.f90  > tmp.f90
+        endif
+	mv tmp.f90 torusMain.f90
+        ifeq ($(MK_PRG_SRC), yes)
+	   sed 's/\!$$PRG//g' torusMain.f90  > tmp.f90
+        else
+	   sed '/\!$$PRG/d' torusMain.f90 > tmp.f90
+        endif
+	mv tmp.f90 torusMain.f90
 	$(F90) -c torusMain.f90
 
 

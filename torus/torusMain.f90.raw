@@ -19,7 +19,12 @@
 ! RK : 12/02/03 Parallelized major loops in lucyStateEquilibriumAMR, stateqAMR, torusMain.
 
 
-program torus
+!$PRG program torus
+
+!$SPH subroutine torus(b_idim,b_x,b_y,b_z,b_rho,b_iphase, &
+!$SPH                  b_nptmass,b_listpm,b_pmass,b_udist,b_umass, &
+!$SPH                  b_utime,b_time,b_gaspartmass,b_temp)
+
 
   use constants_mod          ! physical constants
   use kind_mod               ! variable type KIND parameters
@@ -404,6 +409,19 @@ program torus
 ! gas opacity stuff
 
 
+!$SPH  integer :: b_idim,b_nptmass
+!$SPH  integer :: npart, nptmass, nacc
+!$SPH  integer :: iii, iiipart, iiigas
+!$SPH  integer :: b_iphase(b_idim), b_listpm(b_nptmass)
+!$SPH  real*8 :: b_x(b_idim),b_y(b_idim),b_z(b_idim),b_rho(b_idim)
+!$SPH  real*8 :: b_pmass(b_nptmass)
+!$SPH  real*8 :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
+!$SPH  real*8 :: b_temp(b_idim)
+!$SPH  real*8 :: xgas,ygas,zgas
+!$SPH  real :: tgas
+
+
+
   
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 !  integer ::   iphase_beg, iphase_end  ! the beginning and the end of the phase index.
@@ -696,6 +714,110 @@ program torus
   !=====================================================================
   ! INIIALIZATIONS BEFORE CALLING INITAMR ROUTINE SHOUDL BE HERE
   !=====================================================================
+
+  !
+  ! Special case
+  !
+!$SPH  if (geometry == "cluster") then
+!$SPH
+!$SPH     ! HSC
+!$SPH
+!$SPH     npart=0
+!$SPH     nptmass=0
+!$SPH     nacc=0
+!$SPH
+!$SPH     do iii=1,b_idim
+!$SPH       if (b_iphase(iii).ge.1) then
+!$SPH          nptmass=nptmass+1
+!$SPH       else if (b_iphase(iii).eq.-1) then
+!$SPH          nacc=nacc+1
+!$SPH       else
+!$SPH          npart=npart+1
+!$SPH       endif
+!$SPH     enddo
+!$SPH
+!$SPH     write(*,*)"nacc npart nptmass= ",nacc, npart, nptmass
+!$SPH     write(*,*)b_udist
+!$SPH     write(*,*)b_umass
+!$SPH     write(*,*)b_utime
+!$SPH     write(*,*)npart
+!$SPH     write(*,*)b_time
+!$SPH     write(*,*)nptmass
+!$SPH     write(*,*)b_gaspartmass
+!$SPH
+!$SPH     call init_sph_data(sphData, b_udist, b_umass, b_utime, npart, b_time, nptmass, &
+!$SPH                        b_gaspartmass)
+!$SPH
+!$SPH     ! read in the sph data from a file
+!$SPH     !call read_sph_data(sphData, "sph.dat")
+!$SPH
+!$SPH     iiipart=0
+!$SPH     iiigas=0
+!$SPH
+!$SPH     write(*,*)"npart= ",npart
+!$SPH     write(*,*)"nptmass= ",nptmass
+!$SPH     write(*,*)"idim= ",b_idim
+!$SPH
+!$SPH     sphData%nptmass=nptmass
+!$SPH
+!$SPH     write(*,*)"THERE 1"
+!$SPH
+!$SPH     do iii=1,b_idim
+!$SPH       if (b_iphase(iii).eq.0) then
+!$SPH         sphData%rhon(iiigas) = b_rho(iii)
+!$SPH         sphData%xn(iiigas) = b_x(iii)
+!$SPH         sphData%yn(iiigas) = b_y(iii)
+!$SPH         sphData%zn(iiigas) = b_z(iii)
+!$SPH         iiigas=iiigas+1
+!$SPH       else
+!$SPH         sphData%x(iiipart) = b_x(iii)
+!$SPH         sphData%y(iiipart) = b_y(iii)
+!$SPH         sphData%z(iiipart) = b_z(iii)
+!$SPH         sphData%ptmass(iiipart) = b_pmass(iii)
+!$SPH         iiipart=iiipart+1
+!$SPH       endif
+!$SPH     end do 
+!$SPH
+!$SPH     write(*,*)"THERE 2"
+!$SPH
+!$SPH     ! read in the sph data from a file
+!$SPH     ! call read_sph_data(sphData, "sph.dat")
+!$SPH     ! call read_stellar_disc_data(sphData, "stellar_disc.dat")
+!$SPH
+!$SPH     ! Writing basic info of this data
+!$SPH!$MPI     if(my_rank == 0)  then
+!$SPH
+!$SPH     write(*,*)"THERE 2b"
+!$SPH
+!$SPH     !call info(sphData, "*")
+!$SPH     write(*,*)"THERE 2b"
+!$SPH     call info(sphData, "info_sph.dat")
+!$SPH     write(*,*)"THERE 2c"
+!$SPH!$MPI     end if
+!$SPH
+!$SPH     write(*,*)"THERE 3"
+!$SPH
+!$SPH     ! reading in the isochrone data needed to build an cluster object.
+!$SPH     
+!$SPH     call new(isochrone_data, "dam98_0225")   
+!$SPH     call read_isochrone_data(isochrone_data)
+!$SPH     
+!$SPH     ! making a cluster object
+!$SPH     call new(young_cluster, sphData, dble(amrGridSize), disc_on)
+!$SPH     call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
+!$SPH
+!$SPH     write(*,*)"THERE 4"
+!$SPH     
+!$SPH     ! Wrting the stellar catalog readble for a human
+!$SPH!$MPI     if(my_rank == 0)  &
+!$SPH     call write_catalog(young_cluster, sphData)
+!$SPH  end if
+
+
+
+
+
+
   if (geometry == "cluster") then
      ! read in the sph data from a file
      call read_sph_data(sphData, "sph.dat")
@@ -2143,6 +2265,8 @@ program torus
 !$MPI     if (my_rank==1) &
      call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
+
+!$SPH goto 666 ! just jump to end for sph case
 
      if (grid%geometry(1:7) == "cluster") then
 !$MPI        if (my_rank==0) then
@@ -4378,11 +4502,32 @@ program torus
 !$MPI  if (my_rank==1) &
 call tune(6, "Torus Main") ! stop a stopwatch  
 
+!$SPH!  New HSC Stuff
+!$SPH!  Loop through sph gas particles and assign temperatures
+!$SPH
+!$SPH    write(*,*) "NOW -- TORUS - TEMPERATURE"
+!$SPH
+!$SPH     do i=1,b_idim
+!$SPH 
+!$SPH     write(*,*) "HERE 1"
+!$SPH  
+!$SPH       if (b_iphase(i).eq.0) then
+!$SPH          xgas=b_x(i)
+!$SPH          ygas=b_y(i)
+!$SPH          zgas=b_z(i)
+!$SPH          octVec = OCTALVECTOR(xgas,ygas,zgas)
+!$SPH          call amrGridValues(grid%octreeRoot, octVec, temperature=tgas, grid=grid)
+!$SPH          b_temp(i)=tgas
+!$SPH       endif
+!$SPH  
+!$SPH     enddo
+
+
 !$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI  call MPI_FINALIZE(ierr)
 
-
-  end program torus
+!$SPH   end subroutine torus
+!$PRG   end program torus
 
 !!! vim:set filetype=fortran :                                !!!  
 !!! otherwise vim won't recognize a file with the suffix .raw !!!

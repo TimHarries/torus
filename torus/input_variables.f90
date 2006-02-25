@@ -160,6 +160,7 @@ module input_variables
   real :: lambdaSmooth
   real :: tauSmoothMax, tauSmoothMin
   real :: tauRad
+  real :: tauDiff
 
   ! variables for a second source of radiation
 

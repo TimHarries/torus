@@ -1667,6 +1667,10 @@ endif
  call getReal("tauext2", tauExtra2, cLine, nLines, &
   "Foreground optical depth : ","(a,f7.1,a)",0., ok, .false.)
 
+ call getReal("taudiff", tauDiff, cLine, nLines, &
+  "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
+
+
  if (geometry(1:9) .eq. "benchmark") then
 
    call getReal("rcore", rCore, cLine, nLines, &
