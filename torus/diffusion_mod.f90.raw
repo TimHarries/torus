@@ -1429,7 +1429,7 @@ end subroutine setNoDiffusion
     enddo
   end subroutine checkConvergence
 
-  subroutine jacobiSweep(grid,  tol, demax, converged)
+  subroutine gaussSeidelSweep(grid,  tol, demax, converged)
     use input_variables, only : blockhandout
 !$MPI    include 'mpif.h'
     type(octal), pointer   :: thisOctal, neighbourOctal, startOctal
@@ -1437,9 +1437,7 @@ end subroutine setNoDiffusion
     type(GRIDTYPE) :: grid
     integer :: my_rank, np, isubcell, ierr
     real(double) :: kRos
-    real(double) :: tol, deMax
-    real(double), allocatable :: demaxArray(:)
-    real(double), allocatable :: tempDoubleArray(:)
+    real(double) :: tol, deMax, globalDeMax
     logical :: converged
     integer :: subcell, i, neighbourSubcell
     real(double) :: eDens(-1:1,-1:1,-1:1)
@@ -1448,6 +1446,7 @@ end subroutine setNoDiffusion
     real(double) :: eNplus1
     real(double) :: r, gradE, bigR, lambda
     real(double) :: DeltaT, DeltaX, deltaE
+    logical :: firstTime
     type(OCTALVECTOR) :: octVec
     integer                     :: nOctal        ! number of octals in grid
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
@@ -1464,6 +1463,7 @@ end subroutine setNoDiffusion
 
     np = 1
     my_rank = 1
+    firstTime = .true.
 
     deMax = -1.d30
 
@@ -1488,7 +1488,7 @@ end subroutine setNoDiffusion
 !$MPI    
 !$MPI    if (my_rank == 0) then
 !$MPI  !     print *, ' '
-!$MPI  !     print *, 'Jacobi sweep  computed by ', np-1, ' processors.'
+!$MPI  !     print *, 'Gauss-Seidel sweep  computed by ', np-1, ' processors.'
 !$MPI  !     print *, ' '
 !$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
 !$MPI                            maxBlockSize=100,setDebug=.false.)
@@ -1496,8 +1496,6 @@ end subroutine setNoDiffusion
 !$MPI    endif
 !$MPI    ! ============================================================================
 
-    allocate(demaxArray(1:np))
-    deMaxArray = 0.d0
     
     ! default loop indices
     ioctal_beg = 1
@@ -1712,16 +1710,21 @@ end subroutine setNoDiffusion
                         - dCoeffHalf(0,0,-1)*(eDens(0,0,0)-eDens(0,0,-1)))
                 endif
                 if (enPlus1 < 0.d0) then
-                   write(*,*) "Warning: negative energy density."
-                   enPlus1 = arad*(10.d0**4)
+                   if (firstTime) write(*,*) "Warning: negative energy density."
+		   firstTime = .false.
+                   deltaE = (enPlus1-thisOctal%oldeDens(subcell))
+                   enPlus1 = enPlus1 + 0.1d0 * deltaE ! undercorrect here
+                   if (enPlus1 < 0.d0) then
+                      enPlus1 = arad*(10.d0**4)
+                   endif
                 endif
-                !          thisOctal%eDens(subcell) = enPlus1
-                thisOctal%chiline(subcell) = enPlus1
-                !          thisOctal%temperature(subcell) = (enPlus1 / aRad)**0.25d0
+                          thisOctal%eDens(subcell) = enPlus1
+!                thisOctal%chiline(subcell) = enPlus1
+                          thisOctal%temperature(subcell) = (enPlus1 / aRad)**0.25d0
 
                 deltaE = abs(enPlus1-thisOctal%oldeDens(subcell)) &
                      / thisOctal%oldEdens(subcell)
-                deMaxArray(my_rank) = max(deMaxArray(my_rank), deltae)
+                deMax = max(deMax, deltaE)
              endif
 
           endif
@@ -1732,15 +1735,11 @@ end subroutine setNoDiffusion
 !$MPI end do blockLoop       
 !$MPI end if ! (my_rank /= 0)
 
-!$MPI    allocate(tempDoubleArray(np))
-!$MPI    tempDoubleArray = 0.d0
-!$MPI    call MPI_ALLREDUCE(deMaxArray,tempDoubleArray,np,MPI_DOUBLE_PRECISION,&
-!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI    deMax = MAXVAL(tempDoubleArray)
-!$MPI    deMaxArray = tempDoubleArray
-!$MPI   deallocate(tempDoubleArray)
+!$MPI    call MPI_ALLREDUCE(deMax,globalDeMax,np,MPI_DOUBLE_PRECISION,&
+!$MPI         MPI_MAX,MPI_COMM_WORLD,ierr)
+!$MPI    deMax = globalDeMax
 
-!$MPI  !   print *,'Process ',my_rank,' waiting to update values in Jacobi sweep...' 
+!$MPI  !   print *,'Process ',my_rank,' waiting to update values in Gauss-Seidel sweep...' 
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI
 !$MPI     ! have to send out the 'octalsBelongRank' array
@@ -1761,7 +1760,7 @@ end subroutine setNoDiffusion
 !$MPI             if (octalArray(iOctal)%inUse(iSubcell).and. &
 !$MPI                     octalArray(iOctal)%content%diffusionApprox(iSubcell)) then
 !$MPI                
-!$MPI                call MPI_BCAST(thisOctal%chiline(iSubcell), 1, MPI_DOUBLE_PRECISION,&
+!$MPI                call MPI_BCAST(thisOctal%eDens(iSubcell), 1, MPI_DOUBLE_PRECISION,&
 !$MPI                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
 !$MPI             end if
 !$MPI          
@@ -1769,14 +1768,13 @@ end subroutine setNoDiffusion
 !$MPI       end do
 !$MPI          
 !$MPI          
-!$MPI  !   print *,'Process ',my_rank,' finished updating values in Jacobi sweep...' 
+!$MPI  !   print *,'Process ',my_rank,' finished updating values in Gauss-Seidel sweep...' 
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
     
     if (deMax > tol) converged = .false.
     deallocate(octalArray)
-    deallocate(demaxArray)
-end subroutine jacobiSweep
+end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
 !$MPI    include 'mpif.h'
@@ -1800,11 +1798,11 @@ end subroutine jacobiSweep
         nIter = nIter + 1
         gridconverged = .true.
         deMax = -1.e30
-        call jacobiSweep(grid, 0.05d0, demax, gridConverged)
-        call copyEdens(grid%octreeRoot)
+        call gaussSeidelSweep(grid, 0.05d0, demax, gridConverged)
+!        call copyEdens(grid%octreeRoot)
         call setDiffusionCoeff(grid, grid%octreeRoot)
 !$MPI !if (my_rank == 0) then
-      !  write(*,*) nIter," Maximum relative change in eDens:",deMax
+!        write(*,*) nIter," Maximum relative change in eDens:",deMax
 !        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
 !             "/xs", .true., .false., &
 !             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
@@ -1844,9 +1842,10 @@ end subroutine jacobiSweep
 
   end subroutine defineDiffusionOnUndersampled
 
-  recursive subroutine defineDiffusionOnRosseland(grid, thisOctal)
+  recursive subroutine defineDiffusionOnRosseland(grid, thisOctal, nDiff)
     use input_variables, only : tauDiff 
     type(GRIDTYPE) :: grid
+    integer, optional :: nDiff
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     integer :: subcell
@@ -1858,7 +1857,7 @@ end subroutine jacobiSweep
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call defineDiffusionOnRosseland(grid, child)
+                call defineDiffusionOnRosseland(grid, child, nDiff)
                 exit
              end if
           end do
@@ -1867,6 +1866,7 @@ end subroutine jacobiSweep
           tau = kros * thisOctal%rho(subcell) * thisOctal%subcellSize *1.e10
           if (tau > taudiff) then
              thisOctal%diffusionApprox(subcell) = .true.
+             if (PRESENT(ndiff))  nDiff = nDiff + 1
           else
              thisOctal%diffusionApprox(subcell) = .false.
           endif

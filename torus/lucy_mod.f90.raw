@@ -385,7 +385,7 @@ contains
     logical :: doingDustSublimation
     real :: diffusionZoneTemp
     logical :: outputFlag
-    integer :: noctals, nvoxels
+    integer :: noctals, nvoxels, nCellsInDiffusion
 
 !$MPI    ! For MPI implementations
 !$MPI  ! For MPI implementations =====================================================
@@ -498,7 +498,8 @@ contains
 !    endif
 
 
-    call defineDiffusionOnRosseland(grid,grid%octreeRoot)
+    nCellsInDiffusion = 0
+    call defineDiffusionOnRosseland(grid,grid%octreeRoot, nCellsInDiffusion)
 
     iIter_grand = 0
     nRemoved = 1
@@ -923,9 +924,6 @@ contains
           write(*,*) "done."
        endif
 
-!       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
-!            "crossings.ps/vcps", .true., .false., &
-!            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac = 0.002) 
 
        call calculateTemperatureCorrections(.true., grid%octreeRoot, totalEmission, epsOverDeltaT, &
        nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
@@ -945,7 +943,7 @@ contains
        endif
 
 
-       percent_undersampled  = 100.*real(nUndersampled)/real(nDt)
+       percent_undersampled  = 100.*real(nUndersampled-nCellsInDiffusion)/real(nDt)
        dT_mean_old = dT_mean_new  ! save this for the next iteration
        dT_mean_new = dT_sum/real(nDt)
 
@@ -956,7 +954,7 @@ contains
        write(*,*) "Minimum change in temperature : ", dT_min, " Kelvins"
        write(*,*) "Maximum change in temperature : ", dT_max, " Kelvins"
       write(*,*) "Maximum fractional change in temperature : ", dT_over_T_max
-       write(*,'(a,i8)') "Number of undersampled cells: ",nUndersampled
+       write(*,'(a,i8)') "Number of undersampled cells: ",nUndersampled-nCellsinDiffusion
        write(*,'(a,f8.2)') "Percentage of undersampled cells: ",percent_undersampled
        write(*,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
        write(*,*) "Total emission",totalEmission
@@ -978,7 +976,7 @@ contains
        end if
 
        write(LU_OUT, 11) iIter_grand, dT_sum/real(nDt), dT_min, dT_max, & 
-            100.*real(nUndersampled)/real(nDt), totalEmission /lCore *1.e30, &
+            100.*real(nUndersampled-nCellsInDiffusion)/real(nDt), totalEmission /lCore *1.e30, &
             totalEmission, dT_over_T_max, nMonte
        
        close(LU_OUT)
@@ -999,13 +997,18 @@ contains
 !       enddo
 
 !$MPI  if (my_rank == 1) &
-       call tune(6, "  Jacobi sweeps for diffusion zone ")
+       call tune(6, "Gauss-Seidel sweeps")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
+!$MPI       if (my_rank==0) &
+       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
+            "crossings.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac = 0.01) 
        call defineDiffusionOnUndersampled(grid%octreeroot)
        call solveArbitraryDiffusionZones(grid)
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot)
+       nCellsInDiffusion = 0
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot, nCellsInDiffusion)
 !$MPI  if (my_rank == 1) &
-       call tune(6, "  Jacobi sweeps for diffusion zone ")
+       call tune(6, "Gauss-Seidel sweeps")
 
 
 
