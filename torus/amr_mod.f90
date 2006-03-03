@@ -229,7 +229,9 @@ CONTAINS
     grid%octreeRoot%biasLine3D = 1.0 
     grid%octreeRoot%biasCont3D = 1.0 
     grid%octreeRoot%velocity = vector(1.e-30,1.e-30,1.e-30)
-    grid%octreeRoot%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+    if (associated(grid%octreeRoot%cornerVelocity)) then
+       grid%octreeRoot%cornerVelocity= vector(1.e-30,1.e-30,1.e-30)
+    endif
     grid%octreeRoot%chiLine = -9.9e9
     grid%octreeRoot%etaLine = -9.9e9
     grid%octreeRoot%etaCont = -9.9e9 
@@ -245,9 +247,6 @@ CONTAINS
     grid%octreeRoot%inflow = .true.
     grid%octreeRoot%gasOpacity = .false.
     grid%octreeRoot%diffusionApprox = .false.
-    grid%octreeRoot%leftHandDiffusionBoundary = .false.
-    grid%octreeRoot%diffusionProb = 0.d0
-    grid%octreeRoot%incidentFlux = 0.
     grid%octreeRoot%nDiffusion = 0.
     grid%octreeRoot%oldFrac = 1.e-5
 
@@ -414,7 +413,9 @@ CONTAINS
     parent%child(newChildIndex)%biasLine3D = 1.0 
     parent%child(newChildIndex)%biasCont3D = 1.0 
     parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
-    parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+    if (associated(parent%child(newChildIndex)%cornerVelocity)) then
+       parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+    endif
     parent%child(newChildIndex)%chiLine = 1.e-30
     parent%child(newChildIndex)%etaLine = 1.e-30
     parent%child(newChildIndex)%etaCont = 1.e-30
@@ -431,10 +432,7 @@ CONTAINS
     parent%child(newChildIndex)%eDens = 1.d-10
     parent%child(newChildIndex)%changed = .false.
     parent%child(newChildIndex)%diffusionApprox = .false.
-    parent%child(newChildIndex)%leftHandDiffusionBoundary = .false.
-    parent%child(newChildindex)%diffusionProb = 0.d0
     parent%child(newChildindex)%nDiffusion  = 0.
-    parent%child(newChildindex)%incidentFlux = 0.
     parent%child(newChildindex)%oldFrac = 1.
     parent%child(newChildindex)%ncrossings = 10000
 
@@ -2239,6 +2237,8 @@ CONTAINS
 
     END IF
 
+    if (associated(resultOctal%cornerVelocity)) then
+
       inc = resultOctal%subcellSize / 2.0
       centre = subcellCentre(resultOctal,subcell)
       
@@ -2376,6 +2376,9 @@ CONTAINS
          amrGridVelocity = newVec
 
       endif
+   else
+      amrGridVelocity = resultOctal%velocity(subcell)
+   endif
 
 
 !    endif
@@ -6306,7 +6309,9 @@ IF ( .NOT. gridConverged ) RETURN
        parent%child(newChildIndex)%biasLine3D = 1.0 
        parent%child(newChildIndex)%biasCont3D = 1.0 
        parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
-       parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+       if (ASSOCIATED(parent%child(newChildIndex)%cornerVelocity)) then
+          parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+       endif
        if (associated(parent%child(newChildIndex)%photoIonCoeff)) then
           parent%child(newChildIndex)%photoIonCoeff = 0.d0
        endif
@@ -6325,10 +6330,7 @@ IF ( .NOT. gridConverged ) RETURN
        parent%child(newChildIndex)%nTot = 1.e-30
        parent%child(newChildIndex)%changed = .false.
        parent%child(newChildIndex)%diffusionApprox = .false.
-       parent%child(newChildIndex)%leftHandDiffusionBoundary = .false.
-       parent%child(newChildindex)%diffusionProb = 0.d0
        parent%child(newChildindex)%nDiffusion  = 0.
-       parent%child(newChildindex)%incidentFlux = 0.
        parent%child(newChildindex)%oldFrac = 1.d-5
 
        if (present(sphData)) then
@@ -7068,7 +7070,6 @@ IF ( .NOT. gridConverged ) RETURN
     dest%centre           = source%centre
     dest%rho              = source%rho
     dest%velocity         = source%velocity
-    dest%cornerVelocity   = source%cornerVelocity
     dest%temperature      = source%temperature
     dest%oldTemperature   = source%oldTemperature
     dest%distanceGrid     = source%distanceGrid
@@ -7099,13 +7100,15 @@ IF ( .NOT. gridConverged ) RETURN
     dest%parentSubcell    = source%parentSubcell    
     dest%gasOpacity       = source%gasOpacity       
     dest%diffusionApprox  = source%diffusionApprox  
-    dest%leftHandDiffusionBoundary = source%leftHandDiffusionBoundary        
-    dest%diffusionProb    = source%diffusionProb
-    dest%rightHandDiffusionBoundary = source%rightHandDiffusionBoundary       
     dest%underSampled     = source%underSampled
     dest%nDiffusion       = source%nDiffusion
-    dest%incidentFlux     = source%incidentFlux
 
+
+
+    if (associated(source%cornerVelocity)) then
+       allocate(dest%cornerVelocity(SIZE(source%cornerVelocity,1)))
+       dest%cornerVelocity   = source%cornerVelocity
+    endif
 
     if (associated(source%photoIonCoeff)) then
        allocate(dest%photoIonCoeff(SIZE(source%photoIonCoeff,1),SIZE(source%photoIonCoeff,2)))

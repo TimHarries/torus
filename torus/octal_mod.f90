@@ -89,7 +89,8 @@ MODULE octal_mod
 
     REAL(double), DIMENSION(8)         :: rho            ! density
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
-    TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
+!    TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
+    TYPE(vector), DIMENSION(:), pointer        :: cornerVelocity => null() ! velocity at corners of subcells
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
     real(double), dimension(8) :: eDens
     REAL, DIMENSION(8)                 :: oldTemperature    ! grid subcell temperatures
@@ -140,19 +141,15 @@ MODULE octal_mod
     ! contains the position+density+velocitiy of gas particles.
     ! Should be allocated with # of gas particles in this octal
     INTEGER, POINTER                   :: gas_particle_list(:) => null() ! SPH index of the particles in this octal
-    LOGICAL(KIND=logic), DIMENSION(8) :: changed     ! octal has changed in some way since previous calculation    
+    LOGICAL(KIND=logic), DIMENSION(8) :: changed     ! octal has changed in some way since previous calculation
     
     INTEGER, DIMENSION(8)                :: dusttype
     real(double), dimension(:,:), pointer        :: dustTypeFraction => null() ! dust type fraction (sum=1)
     INTEGER :: parentSubcell
     logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
     logical, dimension(8)                 :: diffusionApprox
-    logical, dimension(8)                 :: leftHandDiffusionBoundary
-    real(double), dimension(8) :: diffusionProb
-    logical, dimension(8)                 :: rightHandDiffusionBoundary
     logical, dimension(8) :: undersampled
     real, dimension(8) :: nDiffusion
-    real, dimension(8)    :: incidentFlux
 
   END TYPE octal
  
