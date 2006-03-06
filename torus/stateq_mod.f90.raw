@@ -3137,8 +3137,6 @@ contains
        ioctal_end = SIZE(octalArray)       
 
 
-!$OMP    ! FOR OpenMP IMPLEMENTATION=======================================================
-!$OMP    ! NOT WORKING YET WITH INTEL COMPILER!!!!!!
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(iOctal, thisOctal, iSubcell, NeLTE, xAll, previousXall, rVec) &
 !$OMP PRIVATE(photoFlux1, hNu1, nuArray1, previousSubcell, previousNeRatio) &

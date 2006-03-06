@@ -757,7 +757,6 @@ contains
           thisOctal%distanceGrid(subcell) = 0.d0
           thisOctal%nCrossings(subcell) = 0
           thisOctal%undersampled(subcell) = .false.
-          thisOctal%incidentFlux(subcell) = 0.
           thisOCtal%nDiffusion(subcell) = 0.
           thisOctal%Hheating(subcell) = 0.d0
           thisOctal%Heheating(subcell) = 0.d0

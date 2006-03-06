@@ -4092,20 +4092,21 @@ IF ( .NOT. gridConverged ) RETURN
       !
       total_mass = ave_density * (cellSize*1.e10_db)**3  ! should be in [g]
 
+
       if (total_mass > amrlimitscalar .and. nparticle > 0) then
          split = .true.
       else
          split = .false.
       end if
 
-!      ! Extra check
-!      ! if # of SPH particle is greater than 5 then splits...
-!      if (nparticle> 6) then
-!         split = .true.
-!      else
-!         split = .false.
-!      end if
-      
+      ! Extra check
+      ! if # of SPH particle is greater than 5 then splits...
+      if (nparticle> 5) then
+         split = .true.
+      else
+         split = .false.
+      end if
+!      write(*,*) nparticle,total_mass,amrlimitscalar
 
       if (include_disc(stellar_cluster)) then
       
@@ -9214,10 +9215,11 @@ IF ( .NOT. gridConverged ) RETURN
    
 
 
-   real function tempNearbyCells(grid, thisOctal, thisSubcell)
+   subroutine averageofNearbyCells(grid, thisOctal, thisSubcell, meantemp, meanrho)
      type(GRIDTYPE) :: grid
      type(OCTAL),pointer :: thisOctal
      type(OCTAL),pointer :: nearbyOctal
+     real(double) :: rho, meanRho
      integer :: thisSubcell
      integer :: found
      integer :: subcell
@@ -9233,6 +9235,7 @@ IF ( .NOT. gridConverged ) RETURN
      integer :: nlocator, j
      nMonte = 10000
      meanTemp = 0.
+     meanRho = 0.d0
      nTemp = 0
      
     if (thisOctal%threed) then
@@ -9339,28 +9342,33 @@ IF ( .NOT. gridConverged ) RETURN
 
      do j = 1, nLocator
         call amrGridValues(grid%octreeRoot,locator(j),foundOctal=nearbyOctal, &
-             foundsubcell=subcell, temperature=temp)
-        if (.not.nearbyOctal%diffusionApprox(subcell)) then
+             foundsubcell=subcell, temperature=temp, rho=rho)
+        if (rho /= 0.d0) then
            meanTemp = meanTemp + temp
+           meanRho = meanRho + log10(rho)
            ntemp = ntemp + 1
         endif
      end do
      if (nTemp > 0) then
-        tempNearbyCells = meanTemp/ real(nTemp)
+        meanTemp = meanTemp/ real(nTemp)
+        meanRho = meanRho /  dble(nTemp)
      else
-        tempNearbyCells = thisOctal%temperature(thisSubcell)
+        meanTemp = thisOctal%temperature(thisSubcell)
+        meanRho = log10(thisOctal%rho(thisSubcell))
      endif
+     meanRho = 10.d0**meanRho
      deallocate(locator)
-   end function tempNearbyCells
+   end subroutine averageofNearbyCells
 
 
-
-
-  recursive subroutine estimateTempofUndersampled(grid, thisOctal)
+  recursive subroutine estimateRhoOfEmpty(grid, thisOctal, sphData)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i
+    type(sph_data), intent(in) :: sphData
+    real :: temp
+    real(double) :: rho, rho_tmp
+    integer :: subcell, i, np
     
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -9368,17 +9376,23 @@ IF ( .NOT. gridConverged ) RETURN
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call estimateTempOfUndersampled(grid, child)
+                call estimateRhoOfEmpty(grid, child, sphData)
                 exit
              end if
           end do
        else
-          if (thisOctal%undersampled(subcell)) then
-             thisOctal%chiline(subcell) = tempNearbyCells(grid, thisOctal, subcell)
+          call find_n_particle_in_subcell(np, rho_tmp, sphData, &
+               thisOctal, subcell)
+          if (np < 1) then
+             call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
+             thisOctal%rho(subcell) = rho
           endif
        endif
     enddo
-  end subroutine estimateTempofUndersampled
+  end subroutine estimateRhoOfEmpty
+
+
+
 
   recursive subroutine updateTemps(grid, thisOctal)
     type(gridtype) :: grid

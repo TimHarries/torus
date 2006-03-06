@@ -82,13 +82,13 @@ contains
   ! 
   ! Initializes an object with parameters (if possible).
   ! 
-  subroutine init_sph_data(this, udist, umass, utime, npart,  time, nptmass, &
+  subroutine init_sph_data(this, udist, umass, utime, nactive, time, nptmass, &
        gaspartmass)
     implicit none
     type(sph_data), intent(inout) :: this
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
     !                                                       ! (umass is M_sol, udist=0.1 pc)
-    integer, intent(in)           :: npart                  ! Number of gas particles (field+disc)
+    integer, intent(in)           :: nactive                  ! Number of gas particles (field+disc)
     real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass                ! Number of stars/brown dwarfs
     real(double), intent(in)  :: gaspartmass            ! Mass of each gas particle
@@ -97,18 +97,18 @@ contains
     this%udist = udist
     this%umass = umass
     this%utime = utime
-    this%npart = npart
+    this%npart = nactive
     this%time = time
     this%nptmass = nptmass
-    this%gaspartmass =gaspartmass
+    this%gaspartmass = gaspartmass
 
 
     ! allocate arrays
     ! -- for gas particles
-    ALLOCATE(this%xn(npart))
-    ALLOCATE(this%yn(npart))
-    ALLOCATE(this%zn(npart))
-    ALLOCATE(this%rhon(npart))
+    ALLOCATE(this%xn(nactive))
+    ALLOCATE(this%yn(nactive))
+    ALLOCATE(this%zn(nactive))
+    ALLOCATE(this%rhon(nactive))
 
 
     ! -- for star positions

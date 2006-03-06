@@ -11,6 +11,7 @@ module cluster_class
   use octal_mod
   use gridtype_mod
   use isochrone_class
+  use messages_mod
   
   public :: new,  &
        &    kill_all, &
@@ -347,7 +348,7 @@ contains
                thisOctal, subcell)
           ! if this subcell intersect with any of the stellar disk
           ! in the cluster, then add the contribution from the stellar disc.
-          rho_disc_ave = 0.0d0
+          rho_disc_ave = 1.d-30
 
           if (a_cluster%disc_on) then
              if (stellar_disc_exists(sphData) .and.  &       
@@ -519,7 +520,6 @@ contains
     
     counter = 0
     rho_ave = 0.0d0
-    
     do i=1, npart
        ! Retriving the sph data index for this paritcle
        j = node%gas_particle_list(i)
@@ -529,7 +529,6 @@ contains
        
        ! convert units
        x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
-       
        ! quick check to see if this gas particle is
        ! belongs to this cell.
        if ( within_subcell(node, subcell, x, y, z) ) then
@@ -544,14 +543,12 @@ contains
     
     if (n>0) then
        rho_ave = rho_ave/dble(n)
+       rho_ave = rho_ave*udent  ! [g/cm^3]
     else
-       rho_ave = rho_min
+       rho_ave = 1.d-30
     end if
     
-    rho_ave = rho_ave*udent  ! [g/cm^3]
 
-    ! assuming dust density is 100 times smaller than the gas density
-    rho_ave = rho_ave/1.0d2 
 
   end subroutine find_n_particle_in_subcell
 
@@ -578,6 +575,7 @@ contains
 
     out = n
   end function n_stars_in_octal
+
 
 
   !
@@ -609,7 +607,8 @@ contains
                 if (np<=0) then ! apply correction 
                    parent_subcell = whichSubcell(thisOctal%parent, thisOctal%centre)
                    rho_ave = thisOctal%parent%rho(parent_subcell)
-                   thisOctal%rho(subcell)  = rho_ave                   
+                   thisOctal%rho(subcell)  = rho_ave                    
+                   if (thisOctal%parent%nDepth < 3) thisOctal%rho(subcell) = 1.d-19
                 else
                    ! do nothing 
                    continue
@@ -624,7 +623,7 @@ contains
                 parent_subcell = whichSubcell(thisOctal%parent, thisOctal%centre)
                 rho_ave = thisOctal%parent%rho(parent_subcell)
                 thisOctal%rho(subcell)  = rho_ave
-
+                if (thisOctal%parent%nDepth < 3) thisOctal%rho(subcell) = 1.d-19
              else
                 ! do nothing 
                 continue
@@ -650,6 +649,7 @@ contains
                    parent_subcell = whichSubcell(thisOctal%parent, thisOctal%centre)
                    rho_ave = thisOctal%parent%rho(parent_subcell)
                    thisOctal%rho(subcell)  = rho_ave                   
+                   if (thisOctal%parent%nDepth < 3) thisOctal%rho(subcell) = 1.d-19
                 else
                    ! do nothing 
                    continue
@@ -664,7 +664,7 @@ contains
                 parent_subcell = whichSubcell(thisOctal%parent, thisOctal%centre)
                 rho_ave = thisOctal%parent%rho(parent_subcell)
                 thisOctal%rho(subcell)  = rho_ave
-
+                if (thisOctal%parent%nDepth < 3) thisOctal%rho(subcell) = 1.d-19
              else
                 ! do nothing 
                 continue
@@ -791,9 +791,7 @@ contains
     real(double), parameter :: R_sun = 6.96d0           ! 10^10cm
 
     ! 
-    write(*,*) " "
-    write(*,*) "Stellar Cluster Catalog written in catalog.dat..."
-    write(*,*) " "
+    call writeInfo("Stellar Cluster Catalog written in catalog.dat...",TRIVIAL)
 
 
     open(unit=LUOF, file="catalog.dat", status="replace")

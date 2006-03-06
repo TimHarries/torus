@@ -367,7 +367,7 @@ contains
     real(oct)::  dT_max ! [kelvins]  the maximum change of temperature
     real(oct)::  dT_over_T_max ! [kelvins]  the maximum fractional change of temperature
     character(len=30) :: tfilename1, tfilename2, dustfile
-    character(len=80) :: ofile
+    character(len=80) :: ofile, message
     logical, save :: first_time_to_open_file = .true.
     real :: totFrac
     integer :: nFrac
@@ -468,7 +468,7 @@ contains
 !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
 
 !$MPI    if(my_rank == 0) &
-    write(*,'(a)') "Computing lucy radiative equilibrium in AMR..."
+    call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
 
 
     lCore = 0.d0
@@ -476,8 +476,8 @@ contains
        lCore = lCore + source(i)%luminosity
     enddo
 !$MPI    if(my_rank == 0) &
-    write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
-
+    write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
+    call writeInfo(message, TRIVIAL)
 
     if (grid%geometry == "shakara") then
 	if (nDustType > 1) then
@@ -500,6 +500,9 @@ contains
 
     nCellsInDiffusion = 0
     call defineDiffusionOnRosseland(grid,grid%octreeRoot, nCellsInDiffusion)
+
+    write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+    call writeInfo(message,IMPORTANT)
 
     iIter_grand = 0
     nRemoved = 1
@@ -606,8 +609,8 @@ contains
        
        call zeroDistanceGrid(grid%octreeRoot)
 !$MPI       if (my_rank == 0) then
-       write(*,*) " "
-       write(*,*) "Iteration",iIter_grand,",",nmonte," photons"
+       write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
+       call writeInfo(message, TRIVIAL)
 !$MPI       end if
 
 
@@ -616,14 +619,17 @@ contains
 !$OMP PARALLEL DEFAULT(NONE) &
 !$OMP PRIVATE(iMonte, iSource, thisSource, rVec, uHat, rHat) &
 !$OMP PRIVATE(escaped, wavelength, thisFreq, thisLam, iLam, octVec) &
-!$OMP PRIVATE(thisOctal, kappaScaReal, kappaAbsReal, albedo, r) &
+!$OMP PRIVATE(thisOctal, albedo, r) &
 !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
 !$OMP PRIVATE(kabs,i, j, T1) &
-!$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub) &
-!$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie) &
+!$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub, thisPhotonAbs) &
+!$OMP PRIVATE(twoD, photonInDiffusionZone, leftHandBoundary) &
+!$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
+!$OMP PRIVATE(oldUHat) &
+!$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
 !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
 !$OMP SHARED(dnu, nFreq, freq, nMonte) &
-!$OMP SHARED(nAbs, nScat, nInf) 
+!$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled, avedirection) 
  
        nInf_sub = 0
        nScat_sub = 0
@@ -691,10 +697,11 @@ contains
 !$MPI      if (rankComplete) exit mpiBlockLoop  
 !$MPI    
 
-
-!!$OMP DO SCHEDULE(DYNAMIC,10)
-!$OMP DO SCHEDULE(STATIC,10)
        avedirection = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+
+
+!!!!!$OMP DO SCHEDULE(DYNAMIC,10)
+!$OMP DO SCHEDULE(STATIC,10)
        photonloop: do iMonte = imonte_beg, imonte_end
 
 !$MPI !  if (MOD(i,n_proc) /= my_rank) cycle photonLoop
@@ -896,10 +903,14 @@ contains
 !$MPI
 !$MPI       
 !$MPI       if(my_rank == 0) then
-          write(*,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
-          write(*,'(a,f13.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
-          write(*,'(a,f13.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
-          write(*,'(a,f13.3)') "Fraction of photons killed: ",real(nKilled)/real(nMonte)
+          write(message,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
+          call writeInfo(message,TRIVIAL)
+          write(message,'(a,f13.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
+          call writeInfo(message,IMPORTANT)
+          write(message,'(a,f13.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
+          call writeInfo(message,IMPORTANT)
+          write(message,'(a,f13.3)') "Fraction of photons killed: ",real(nKilled)/real(nMonte)
+          call writeInfo(message,IMPORTANT)
 !$MPI       end if
 
 
@@ -932,7 +943,7 @@ contains
 !$MPI       if (my_rank==0) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac = 0.01) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
 
 
        if (twoD) then
@@ -949,15 +960,24 @@ contains
 
 
 !$MPI       if (my_rank==0) then
-       write(*,*) "Number of photons entering diffusion zone", ndiffusion
-       write(*,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
-       write(*,*) "Minimum change in temperature : ", dT_min, " Kelvins"
-       write(*,*) "Maximum change in temperature : ", dT_max, " Kelvins"
-      write(*,*) "Maximum fractional change in temperature : ", dT_over_T_max
-       write(*,'(a,i8)') "Number of undersampled cells: ",nUndersampled-nCellsinDiffusion
-       write(*,'(a,f8.2)') "Percentage of undersampled cells: ",percent_undersampled
-       write(*,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
-       write(*,*) "Total emission",totalEmission
+       write(message,*) "Number of photons entering diffusion zone", ndiffusion
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Minimum change in temperature : ", dT_min, " Kelvins"
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Maximum change in temperature : ", dT_max, " Kelvins"
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Maximum fractional change in temperature : ", dT_over_T_max
+       call writeInfo(message, TRIVIAL)
+       write(message,'(a,i8)') "Number of undersampled cells: ",nUndersampled-nCellsinDiffusion
+       call writeInfo(message, TRIVIAL)
+       write(message,'(a,f8.2)') "Percentage of undersampled cells: ",percent_undersampled
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
+       call writeInfo(message, TRIVIAL)
+       write(message,*) "Total emission",totalEmission
+       call writeInfo(message, TRIVIAL)
 
 
 
@@ -1002,11 +1022,14 @@ contains
 !$MPI       if (my_rank==0) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac = 0.01) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
        call defineDiffusionOnUndersampled(grid%octreeroot)
        call solveArbitraryDiffusionZones(grid)
        nCellsInDiffusion = 0
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, nCellsInDiffusion)
+       write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+       call writeInfo(message,IMPORTANT)
+
 !$MPI  if (my_rank == 1) &
        call tune(6, "Gauss-Seidel sweeps")
 
@@ -1108,7 +1131,9 @@ contains
     endif
 
 !$MPI if (my_rank==0) & 
-    write(*,*) "Number of cells removed: ",nRemoved
+    write(message,*) "Number of cells removed: ",nRemoved
+    call writeInfo(message, TRIVIAL)
+
 
     if (grid%geometry == "wr104") then
 
@@ -1409,7 +1434,6 @@ contains
           thisOctal%distanceGrid(subcell) = 0.d0
           thisOctal%nCrossings(subcell) = 0
           thisOctal%undersampled(subcell) = .false.
-          thisOctal%incidentFlux(subcell) = 0.
           thisOCtal%nDiffusion(subcell) = 0.
        endif
     enddo

@@ -254,10 +254,10 @@ ifeq ($(SYSTEM), mpich)
 endif
 
 ifeq ($(SYSTEM), linuxintel)
-    F95COMP=ifort
+    F95COMP=ifort 
     F77COMP=ifort
-#    FASTFLAG= -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
-    FASTFLAG= -I/usr/include/nptl -L/usr/lib/nptl -zero
+    FASTFLAG= -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
+#    FASTFLAG= -I/usr/include/nptl -L/usr/lib/nptl -zero 
     DEBUGFLAG=-g -O0 -zero
     STATICFLAG=
     MATHTRAP=-mp
@@ -512,7 +512,7 @@ lib: preprocess depends $(ALLOBJ)
    ifeq ($(KNOWN_SYSTEM), yes)
 	@echo ""
 	@echo " Linking object files making a library..........."
-	$(AR) $(ARFLAGS) libtorus.a $(ALLOBJ) 
+	$(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(F77OBJ)
 	@echo " ... done"
    else
 	@echo ""

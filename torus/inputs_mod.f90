@@ -78,17 +78,6 @@ subroutine inputs()
      stop
   endif
 
-  if (writeoutput) then
-     write(*,*) " "
-     write(*,'(a)') "TORUS: spectropolarimetric scattering model"
-     write(*,'(a)') "-------------------------------------------"
-     write(*,*) " "
-     
-     
-     write(*,'(a)') "Input parameters"
-     write(*,'(a)') "----------------"
-     write(*,*) " "
-  endif
 
   call getInteger("verbosity", verbosityLevel, cLine, nLines, &
        "Verbosity level: ", "(a,i8,1x,a)", 1, ok, .false.)
@@ -951,18 +940,18 @@ endif
 
 
  if (mie) then
-   if (writeoutput) write(*,'(a)') "Scattering phase matrix: Mie"
+   call writeInfo("Scattering phase matrix: Mie",TRIVIAL)
  elseif (geometry == "ttauri".and. ttau_disc_on) then
-   if (writeoutput) write(*,'(a)') "Scattering phase matrix: Mie (disc) and Rayleigh (elsewhere)"
+   call writeInfo("Scattering phase matrix: Mie (disc) and Rayleigh (elsewhere)")
   else
-   if (writeoutput) write(*,'(a)') "Scattering phase matrix: Rayleigh"
+   call writeInfo("Scattering phase matrix: Rayleigh")
  endif
 
  call getLogical("iso_scatter", isotropicScattering, cLine, nLines, &
 "Isotropic scattering function: ","(a,1l,1x,a)",.false.,ok,.false.)
 
 if  (isotropicScattering) then
-   if (writeoutput) write(*,'(a)') "!!! ISOTROPIC SCATTERING PHASE MATRIX ENFORCED"
+   call writeWarning("ISOTROPIC SCATTERING PHASE MATRIX ENFORCED")
 endif
 
  call getLogical("readmiephase", readMiePhase, cLine, nLines, &
@@ -1445,9 +1434,9 @@ endif
        write(qDistLabel, '(a,i1.1)') "qdist",i
        write(pDistLabel, '(a,i1.1)') "pdist",i
        write(a0Label, '(a,i1.1)') "a0",i
-       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
-       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
-       if (writeoutput) write(*,*)
+!       if (writeoutput) write(*,'(a,i1.1)') "Dust properties for grain ",i
+!       if (writeoutput) write(*,'(a,i1.1)') "-------------------------------"
+!       if (writeoutput) write(*,*)
        call getString(grainTypeLabel, grainType(i), cLine, nLines, &
             "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
@@ -2116,6 +2105,7 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
   character(len=*) :: name
   integer :: ival
   character(len=80) :: cLine(*)
+  character(len=100) :: output
   integer :: nLines
   character(len=*) :: message, format
   character(len=10) :: default
@@ -2134,7 +2124,8 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
     default = " (default)"
   endif
   if (musthave.or.(ival /= idef)) then
-     if (writeoutput) write(*,format) trim(message),ival,default
+     write(output,format) trim(message),ival,default
+     call writeInfo(output, TRIVIAL)
   endif
  end subroutine getInteger
 
@@ -2144,6 +2135,7 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
   real :: rval
   logical :: musthave
   character(len=80) :: cLine(*)
+  character(len=100) :: output
   integer :: nLines
   character(len=*) :: message, format
   character(len=10) :: default
@@ -2161,7 +2153,8 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
     default = " (default)"
  endif
  if (musthave) then
-    if (writeoutput) write(*,format) trim(message),rval,default
+    write(output,format) trim(message),rval,default
+    call writeInfo(output, TRIVIAL)
  endif
  end subroutine getReal
  
@@ -2172,6 +2165,7 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
   real(double) :: dval
   logical :: musthave
   character(len=80) :: cLine(*)
+  character(len=100) :: output
   integer :: nLines
   character(len=*) :: message, format
   character(len=10) :: default
@@ -2189,7 +2183,8 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
     default = " (default)"
  endif
  if (musthave) then
-    if (writeoutput) write(*,format) trim(message),dval,default
+    write(output,format) trim(message),dval,default
+    call writeInfo(output, TRIVIAL)
  endif
  end subroutine getDouble
 
@@ -2200,6 +2195,7 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
   character(len=*) :: rval
   logical :: musthave
   character(len=80) :: cLine(*)
+  character(len=100) :: output
   integer :: nLines
   character(len=*) :: message, format
   character(len=10) :: default
@@ -2216,7 +2212,8 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
     rval = rdef
     default = " (default)"
   endif
-  if (writeoutput)  write(*,format) trim(message),trim(rval),default
+  write(output,format) trim(message),trim(rval),default
+  call writeInfo(output, TRIVIAL)
  end subroutine getString
 
 
@@ -2226,6 +2223,7 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
   logical :: rval
   logical :: musthave
   character(len=80) :: cLine(*)
+  character(len=100) :: output
   integer :: nLines
   character(len=*) :: message, cformat
   character(len=10) :: default
@@ -2254,7 +2252,8 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
 
 
   if (musthave .or. .not.thisIsDefault) then
-     if (writeoutput)  write(*,'(a,a,a)') trim(message),trueOrFalse,default
+     write(output,'(a,a,a)') trim(message),trueOrFalse,default
+     call writeInfo(output, TRIVIAL)
   endif
  end subroutine getLogical
 
@@ -2264,6 +2263,7 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
   real :: rval(:)
   logical :: musthave
   character(len=80) :: cLine(*)
+  character(len=100) :: output
   integer :: nLines
   character(len=*) :: message, format
   character(len=10) :: default
@@ -2280,7 +2280,8 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
     rval(:) = rdef
     default = " (default)"
   endif
-  if (writeoutput)  write(*,*) trim(message),rval,default
+  write(output,*) trim(message),rval,default
+  call writeInfo(output, TRIVIAL)
  end subroutine getRealArray
  
 end module inputs_mod

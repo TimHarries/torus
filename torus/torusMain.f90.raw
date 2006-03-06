@@ -21,8 +21,8 @@
 
 !$PRG program torus
 
-!$SPH subroutine torus(b_idim,b_x,b_y,b_z,b_rho,b_iphase, &
-!$SPH                  b_nptmass,b_listpm,b_pmass,b_udist,b_umass, &
+!$SPH subroutine torus(b_idim,b_npart,b_nactive,b_xyzmh,b_rho,b_iphase, &
+!$SPH                  b_nptmass,b_listpm,b_udist,b_umass, &
 !$SPH                  b_utime,b_time,b_gaspartmass,b_temp)
 
 
@@ -409,12 +409,13 @@
 ! gas opacity stuff
 
 
-!$SPH  integer :: b_idim,b_nptmass
+!$SPH  integer :: b_idim,b_npart,b_nactive,b_nptmass
 !$SPH  integer :: npart, nptmass, nacc
 !$SPH  integer :: iii, iiipart, iiigas
-!$SPH  integer :: b_iphase(b_idim), b_listpm(b_nptmass)
-!$SPH  real*8 :: b_x(b_idim),b_y(b_idim),b_z(b_idim),b_rho(b_idim)
-!$SPH  real*8 :: b_pmass(b_nptmass)
+!$SPH  integer*1 :: b_iphase(b_idim)
+!$SPH  integer :: b_listpm(b_nptmass)
+!$SPH  real*8 :: b_xyzmh(5,b_idim)
+!$SPH  real*4 :: b_rho(b_idim)
 !$SPH  real*8 :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
 !$SPH  real*8 :: b_temp(b_idim)
 !$SPH  real*8 :: xgas,ygas,zgas
@@ -722,30 +723,8 @@
 !$SPH
 !$SPH     ! HSC
 !$SPH
-!$SPH     npart=0
-!$SPH     nptmass=0
-!$SPH     nacc=0
 !$SPH
-!$SPH     do iii=1,b_idim
-!$SPH       if (b_iphase(iii).ge.1) then
-!$SPH          nptmass=nptmass+1
-!$SPH       else if (b_iphase(iii).eq.-1) then
-!$SPH          nacc=nacc+1
-!$SPH       else
-!$SPH          npart=npart+1
-!$SPH       endif
-!$SPH     enddo
-!$SPH
-!$SPH     write(*,*)"nacc npart nptmass= ",nacc, npart, nptmass
-!$SPH     write(*,*)b_udist
-!$SPH     write(*,*)b_umass
-!$SPH     write(*,*)b_utime
-!$SPH     write(*,*)npart
-!$SPH     write(*,*)b_time
-!$SPH     write(*,*)nptmass
-!$SPH     write(*,*)b_gaspartmass
-!$SPH
-!$SPH     call init_sph_data(sphData, b_udist, b_umass, b_utime, npart, b_time, nptmass, &
+!$SPH     call init_sph_data(sphData, b_udist, b_umass, b_utime, b_nactive, b_time, b_nptmass, &
 !$SPH                        b_gaspartmass)
 !$SPH
 !$SPH     ! read in the sph data from a file
@@ -754,31 +733,32 @@
 !$SPH     iiipart=0
 !$SPH     iiigas=0
 !$SPH
-!$SPH     write(*,*)"npart= ",npart
-!$SPH     write(*,*)"nptmass= ",nptmass
-!$SPH     write(*,*)"idim= ",b_idim
+!$SPH     sphData%nptmass=b_nptmass
 !$SPH
-!$SPH     sphData%nptmass=nptmass
-!$SPH
-!$SPH     write(*,*)"THERE 1"
-!$SPH
-!$SPH     do iii=1,b_idim
+!$SPH     do iii=1,b_npart
 !$SPH       if (b_iphase(iii).eq.0) then
-!$SPH         sphData%rhon(iiigas) = b_rho(iii)
-!$SPH         sphData%xn(iiigas) = b_x(iii)
-!$SPH         sphData%yn(iiigas) = b_y(iii)
-!$SPH         sphData%zn(iiigas) = b_z(iii)
 !$SPH         iiigas=iiigas+1
-!$SPH       else
-!$SPH         sphData%x(iiipart) = b_x(iii)
-!$SPH         sphData%y(iiipart) = b_y(iii)
-!$SPH         sphData%z(iiipart) = b_z(iii)
-!$SPH         sphData%ptmass(iiipart) = b_pmass(iii)
+!$SPH         if (iiigas.GT.b_nactive) then
+!$SPH           write (*,*) 'iiigas>b_nactive',iiigas,b_nactive
+!$SPH           STOP
+!$SPH         endif
+!$SPH         sphData%rhon(iiigas) = b_rho(iii)
+!$SPH         sphData%xn(iiigas) = b_xyzmh(1,iii)
+!$SPH         sphData%yn(iiigas) = b_xyzmh(2,iii)
+!$SPH         sphData%zn(iiigas) = b_xyzmh(3,iii)
+!$SPH       elseif (b_iphase(iii).gt.0) then
 !$SPH         iiipart=iiipart+1
+!$SPH         if (iiipart.GT.b_nptmass) then
+!$SPH           write (*,*) 'iiipart>b_nptmass',iiipart,b_nptmass
+!$SPH           STOP
+!$SPH         endif
+!$SPH         sphData%x(iiipart) = b_xyzmh(1,iii)
+!$SPH         sphData%y(iiipart) = b_xyzmh(2,iii)
+!$SPH         sphData%z(iiipart) = b_xyzmh(3,iii)
+!$SPH         sphData%ptmass(iiipart) = b_xyzmh(4,iii)
 !$SPH       endif
-!$SPH     end do 
+!$SPH     end do
 !$SPH
-!$SPH     write(*,*)"THERE 2"
 !$SPH
 !$SPH     ! read in the sph data from a file
 !$SPH     ! call read_sph_data(sphData, "sph.dat")
@@ -787,15 +767,11 @@
 !$SPH     ! Writing basic info of this data
 !$SPH!$MPI     if(my_rank == 0)  then
 !$SPH
-!$SPH     write(*,*)"THERE 2b"
 !$SPH
 !$SPH     !call info(sphData, "*")
-!$SPH     write(*,*)"THERE 2b"
 !$SPH     call info(sphData, "info_sph.dat")
-!$SPH     write(*,*)"THERE 2c"
 !$SPH!$MPI     end if
 !$SPH
-!$SPH     write(*,*)"THERE 3"
 !$SPH
 !$SPH     ! reading in the isochrone data needed to build an cluster object.
 !$SPH     
@@ -806,7 +782,6 @@
 !$SPH     call new(young_cluster, sphData, dble(amrGridSize), disc_on)
 !$SPH     call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
 !$SPH
-!$SPH     write(*,*)"THERE 4"
 !$SPH     
 !$SPH     ! Wrting the stellar catalog readble for a human
 !$SPH!$MPI     if(my_rank == 0)  &
@@ -818,7 +793,7 @@
 
 
 
-  if (geometry == "cluster") then
+  if (geometry == "blurgh") then !!!!!!!!!
      ! read in the sph data from a file
      call read_sph_data(sphData, "sph.dat")
      call read_stellar_disc_data(sphData, "stellar_disc.dat")
@@ -1184,8 +1159,8 @@
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData, young_cluster)
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-           call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
-
+!           call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
+           call estimateRhoOfEmpty(grid, grid%octreeRoot, sphData)	
            !Removing the cells within 10^14 cm from the stars.
            call remove_too_close_cells(young_cluster,grid%octreeRoot,1.0d4)
 
@@ -1297,11 +1272,13 @@
         nOctals = 0
         nVoxels = 0
         call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-        if (writeoutput) write(*,*) "Adaptive grid contains: ",nOctals," octals"
-        if (writeoutput) write(*,*) "                      : ",nVoxels," unique voxels"
+        write(message,*) "Adaptive grid contains: ",nOctals," octals"
+        call writeInfo(message, TRIVIAL)
+        write(message,*) "                      : ",nVoxels," unique voxels"
+        call writeInfo(message, TRIVIAL)
         grid%nOctals = nOctals
 
-        if (writeoutput) write(*,*) "Calling routines to finalize the grid variables..."
+        call writeInfo("Calling routines to finalize the grid variables...",TRIVIAL)
         gridConverged = .false.
      
         do
@@ -1309,11 +1286,11 @@
            if (gridConverged) exit
         end do        
 
-        if (writeoutput) write(*,*) "...final adaptive grid configuration complete"
+        call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
-        call grid_info(grid, "*")
+!        call grid_info(grid, "*")
 !$MPI if (my_rank == 0) then
-        call grid_info(grid, "info_grid.dat")
+!        call grid_info(grid, "info_grid.dat")
 !$MPI endif
 
         if (writePhasePops) then
@@ -1821,7 +1798,7 @@
   ! Print the infomation on the grid to the standard ouput.
   ! -- using a routine in grid_mod.f90
 !$MPI  if(my_rank == 0)  then  
-  call grid_info(grid, "*")
+!  call grid_info(grid, "*")
   call grid_info(grid, "info_grid.dat")
 !$MPI  end if
 
@@ -1941,7 +1918,7 @@
 
   if (mie .or.  (grid%geometry == "ttauri" .and. ttau_disc_on)) then
      ! construct the mie phase matrix
-     if (writeoutput) write(*,'(a)') "Computing Mie phase grid..."
+     call writeInfo("Computing Mie phase grid...",TRIVIAL)
 
      allocate(mReal(1:nDusttype,1:nLambda))
      allocate(mImg(1:nDustType,1:nLambda))
@@ -2028,7 +2005,7 @@
 
      deallocate(mReal)
      deallocate(mImg)
-     if (writeoutput) write(*,'(a)') "Completed."
+     call writeInfo("Completed.",TRIVIAL)
 
 
   endif
@@ -2172,28 +2149,29 @@
         call scaleDensityAMR(grid%octreeRoot, scaleFac)
 
      else if (geometry == "cluster") then
-        call find_average_temperature(grid, T_ave, T_mass, totalMass)
-        if (writeoutput) write(*,*) " "
-        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total dust mass in cluster  : ", TotalMass, " [g]"
-        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature of cluster : ", T_ave,    " [K]"
-        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature of cluster : ",T_mass,  " [K]"
-        if (writeoutput) write(*,*) " "
-        ! computing the max, min and average tau at 2 micron (of all
-        ! active cells)
-        ilambda = findIlambda(20000.0, xArray, nLambda, ok)
-        call find_max_min_ave_tau(grid, ilambda, tau_max, tau_min,  tau_ave)
-        if (writeoutput) write(*,*) " "
-        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Max tau(1 micron) = ", tau_max, " [contiuum]"
-        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Min tau(1 micron) = ", tau_min, " [contiuum]"
-        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Ave tau(1 micron) = ", tau_ave, " [contiuum]"
-        if (writeoutput) write(*,*) " "
+!        call find_average_temperature(grid, T_ave, T_mass, totalMass)
+!        if (writeoutput) write(*,*) " "
+!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total dust mass in cluster  : ", TotalMass, " [g]"
+!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature of cluster : ", T_ave,    " [K]"
+!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature of cluster : ",T_mass,  " [K]"
+!        if (writeoutput) write(*,*) " "
+!        ! computing the max, min and average tau at 2 micron (of all
+!        ! active cells)
+!        ilambda = findIlambda(20000.0, xArray, nLambda, ok)
+!        call find_max_min_ave_tau(grid, ilambda, tau_max, tau_min,  tau_ave)
+!        if (writeoutput) write(*,*) " "
+!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Max tau(1 micron) = ", tau_max, " [contiuum]"
+!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Min tau(1 micron) = ", tau_min, " [contiuum]"
+!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Ave tau(1 micron) = ", tau_ave, " [contiuum]"
+!        if (writeoutput) write(*,*) " "
      end if
 
 
      if (mie) then
         totalMass =0.d0
         call findTotalMass(grid%octreeRoot, totalMass)
-        if (writeoutput) write(*,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
+        write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
+        call writeInfo(message, IMPORTANT)
 	if (geometry == "shakara") then
 
 !        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*real(autocm)) ! defined at 1AU
@@ -2250,7 +2228,7 @@
                    source, nSource, nLucy, massEnvelope, tThresh, twod, mDisc)
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 10)
+                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 5)
            endif
 
         endif
@@ -2316,9 +2294,9 @@
   endif
 
 
-  if (grid%geometry == "shakara") then
-     call defineDiffusionZone(grid, .false., .false.)
-  endif
+!  if (grid%geometry == "shakara") then
+!     call defineDiffusionZone(grid, .false., .false.)
+!  endif
 
   
   !
@@ -3348,10 +3326,8 @@
 !$OMP PRIVATE(outPhoton,intPathError) &
 !$OMP PRIVATE(nTau, escProb, spotPhoton) &
 !$OMP PRIVATE(lambda, tauExt, tauSca, tauAbs, contTau, contWeightArray) &
-!$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo) &
-
+!$OMP PRIVATE(rHatinStar, positionOc, linePhotonalbedo, dopShift, lineResAbs, tau_bnd) &
 !$OMP SHARED(grid) &
-
 !$OMP SHARED(meanr_Cont, wtot_cont,meanr_line,wtot_line, ntot) &
 !$OMP SHARED(nContPhotons, nPhotons, lineEmission, lamLine, nLambda) &
 !$OMP SHARED(weightLinePhoton, flatSpec, vRot, secondSource, secondSourcePosition) &
@@ -3369,7 +3345,8 @@
 !$OMP SHARED(probDust, WeightDust, WeightPhoto, source, nsource) &
 !$OMP SHARED(energyPerPhoton, filters, nUpper, nLower, nImage) &
 !$OMP SHARED(negativeOpacity, iInner_beg, iInner_end) &
-!$OMP SHARED(curtains, starSurface, VogitProf)
+!$OMP SHARED(curtains, starSurface, VoigtProf, nDustType, ttauri_disc, ttau_disc_on) &
+!$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat)
 
 
 
@@ -4509,12 +4486,11 @@ call tune(6, "Torus Main") ! stop a stopwatch
 !$SPH
 !$SPH     do i=1,b_idim
 !$SPH 
-!$SPH     write(*,*) "HERE 1"
 !$SPH  
 !$SPH       if (b_iphase(i).eq.0) then
-!$SPH          xgas=b_x(i)
-!$SPH          ygas=b_y(i)
-!$SPH          zgas=b_z(i)
+!$SPH          xgas=b_xyzmh(1,i)
+!$SPH          ygas=b_xyzmh(2,i)
+!$SPH          zgas=b_xyzmh(3,i)
 !$SPH          octVec = OCTALVECTOR(xgas,ygas,zgas)
 !$SPH          call amrGridValues(grid%octreeRoot, octVec, temperature=tgas, grid=grid)
 !$SPH          b_temp(i)=tgas

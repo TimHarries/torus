@@ -2970,7 +2970,7 @@ contains
        open(unit=20,iostat=error, file=filename, form="unformatted", status="replace")
     end if        
     
-    write(*,'(a,a)') "Writing populations file to: ",trim(filename)
+    call writeInfo("Writing AMR grid file to: "//trim(filename),TRIVIAL)
     
     call date_and_time(values=timeValues)
     
@@ -6050,6 +6050,7 @@ contains
     character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
     !                                       ! "etaCont", "Vx", "Vy" or "Vz"
     character(len=*), intent(in)  :: plane  ! must be 'x-y', 'y-z', 'z-x' or' x-z'
+    character(len=10) :: thisPlane
     ! The value of the third dimension.
     ! For example, if plane = "x-y", the third dimension is the value of z.
     ! Then, when  valuel_3rd_dim = 0.0, this will plot the density (and the grid)
@@ -6087,12 +6088,13 @@ contains
     character(LEN=30) :: char_val
     character(LEN=30) :: label_wd
     integer, parameter :: luout = 26
+    integer :: iPlane, nPlanes
+    character(len=80) :: message
     character(LEN=50) :: filename_prof
     real   :: v3
 
     
-    write(*,*) " "
-    write(*,*) "plot_AMR_values plotting to: ",trim(device)
+    call writeInfo("plot_AMR_values plotting to: "//trim(device), TRIVIAL)
 
     ! retriving the address to the root of the tree.
     root => grid%octreeRoot
@@ -6107,30 +6109,6 @@ contains
     yc = real(root%centre%y)
     zc = real(root%centre%z)
 
-    ! Finding the plotting range
-    valueMin = 1.d30
-    valueMax = -1.d30
-    call minMaxValue(root, name, plane, ValueMin, ValueMax, grid, ilam)
-        
-    if (logscale) then
-       if (valueMax<=0) valueMax=tiny(valueMax)
-       if (valueMin<=0) valueMin=tiny(valueMin)
-       if ((log10(valueMax)-log10(valueMin)) > 20.d0) valueMin = 1.d-20 * valueMax
-!       if (name.eq."rho") valuemin = valuemax * 1.e-10
-       write(*,*) "Value Range: ",log10(valueMin), " -- ", log10(valueMax)
-    else
-       write(*,*) "Value Range: ",valueMin, " -- ", valueMax
-    end if
-
-    !
-    ! For safty
-    if (valueMin == valueMax) then
-       if (valueMax /= 0.0) then
-          valueMax = valueMax + valueMax/10.0
-       else
-          valueMax = valueMax + 1.0e6
-       end if
-    end if
 
 !    if (name.eq."temperature") then
 !       valueMax = 1500.
@@ -6146,13 +6124,72 @@ contains
     ! Open plot device and set up coordinate system. We will plot the
     !image within a unit square.
     !
-    IF (PGBEG(0,device,1,1) .NE. 1) STOP
-    CALL PGQCOL(CI1, CI2)
-    IF (CI2.LT. 15+NCOL) THEN
-       WRITE (*,*) 'This program requires a device with at least',&
-            15+NCOL,' colors'
-       STOP
-    END IF
+
+    if (grid%octreeRoot%twod) then
+       nPlanes = 1
+    else
+       nPlanes = 3
+    endif
+
+    if (nPlanes == 1) then
+       IF (PGBEG(0,device,1,1) .NE. 1) STOP
+    else
+       IF (PGBEG(0,device,3,1) .NE. 1) STOP
+    endif
+
+    do iPlane = 1, nPlanes
+
+       if (nPlanes == 1) then
+           thisPlane = plane
+       else
+          select case(iPlane)
+             case(1)
+                thisPlane = "x-y"
+             case(2)
+                thisPlane = "x-z"
+             case(3)
+                thisPlane = "y-z"
+          end select
+       endif
+
+    ! Finding the plotting range
+    valueMin = 1.d30
+    valueMax = -1.d30
+    call minMaxValue(root, name, plane, ValueMin, ValueMax, grid, ilam)
+        
+    if (logscale) then
+       if (valueMax<=0) valueMax=tiny(valueMax)
+       if (valueMin<=0) valueMin=tiny(valueMin)
+       if ((log10(valueMax)-log10(valueMin)) > 20.d0) valueMin = 1.d-20 * valueMax
+!       if (name.eq."rho") valuemin = valuemax * 1.e-10
+       write(message,*) "Value Range: ",log10(valueMin), " -- ", log10(valueMax)
+       call writeInfo(message,TRIVIAL)
+    else
+       write(message,*) "Value Range: ",valueMin, " -- ", valueMax
+       call writeInfo(message,TRIVIAL)
+    end if
+
+    !
+    ! For safty
+    if (valueMin == valueMax) then
+       if (valueMax /= 0.0) then
+          valueMax = valueMax + valueMax/10.0
+       else
+          valueMax = valueMax + 1.0e6
+       end if
+    end if
+
+ 
+       if (iplane == 1) then
+          CALL PGQCOL(CI1, CI2)
+          IF (CI2.LT. 15+NCOL) THEN
+             WRITE (*,*) 'This program requires a device with at least',&
+                  15+NCOL,' colors'
+             STOP
+          END IF
+       endif
+
+
     CALL PGPAGE
 
     !    CALL PGSCR(0, 0.0, 0.3, 0.2)
@@ -6161,7 +6198,7 @@ contains
     call setvp
 
     ! Setting the plot boundaries.
-    select case(plane)
+    select case(thisplane)
     case("x-y")
        CALL PGWNAD(-d/2.0+xc, d/2.0+xc, -d/2.0+yc, d/2.0+yc)
        v3 = root%centre%z
@@ -6182,14 +6219,15 @@ contains
        endif
     end select
 
-    call palett(2, 1.0, 0.5)
-
-    call pgqcir(ilo, ihi)
+    if (iPlane == 1) then
+       call palett(2, 1.0, 0.5)
+       call pgqcir(ilo, ihi)
+    endif
 
 
     !
     ! Calling a recursive function in this module
-    call plot_values(root, name, plane, value_3rd_dim, logscale, valueMax, valueMin, ilo, ihi, grid, ilam)
+    call plot_values(root, name, thisplane, value_3rd_dim, logscale, valueMax, valueMin, ilo, ihi, grid, ilam)
 
 
 ! Comment out the following if you want the pix value as a function of distance from 
@@ -6213,19 +6251,19 @@ contains
 
     write(char_val, '(1PE9.1)') value_3rd_dim
     
-    if (plane(1:3) == 'x-y') then
+    if (thisplane(1:3) == 'x-y') then
        CALL PGMTXT('B',3.0,1.0,1.0,'X [10\u10\dcm]')
        CALL PGMTXT('L',3.0,1.0,1.0,'Y [10\u10\dcm]')
 !       CALL PGMTXT('T',1.0,0.0,0.0, 'Z='//TRIM(char_val))
-    elseif (plane(1:3) == 'y-z') then
+    elseif (thisplane(1:3) == 'y-z') then
        CALL PGMTXT('B',3.0,1.0,1.0,'Y [10\u10\dcm]')
        CALL PGMTXT('L',3.0,1.0,1.0,'Z [10\u10\dcm]')
 !       CALL PGMTXT('T',1.0,0.0,0.0, 'X='//TRIM(char_val))
-    elseif (plane(1:3) == 'z-x') then 
+    elseif (thisplane(1:3) == 'z-x') then 
        CALL PGMTXT('B',3.0,1.0,1.0,'Z [10\u10\dcm]')
        CALL PGMTXT('L',3.0,1.0,1.0,'X [10\u10\dcm]')
 !       CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
-    elseif (plane(1:3) == 'x-z') then 
+    elseif (thisplane(1:3) == 'x-z') then 
        CALL PGMTXT('B',3.0,1.0,1.0,'X [10\u10\dcm]')
        CALL PGMTXT('L',3.0,1.0,1.0,'Z [10\u10\dcm]')
 !       CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
@@ -6240,7 +6278,7 @@ contains
        call PGSFS(2)  ! we don't want to fill in a box this time
        call PGSCI(0) ! changing the color index.
        ! this is a recursive routine in this module
-       call draw_rectangle(root, plane, value_3rd_dim)
+       call draw_rectangle(root, thisplane, value_3rd_dim)
        call PGSCI(1) ! change color index to default.
     end if
 
@@ -6251,7 +6289,7 @@ contains
     ! -- using a routine in this module.    
     if (present(nmarker)) then
        call draw_markers(nmarker, xmarker, ymarker, zmarker, &
-            plane, value_3rd_dim, width_3rd_dim, show_value_3rd_dim)
+            thisplane, value_3rd_dim, width_3rd_dim, show_value_3rd_dim)
     endif
 
 
@@ -6275,11 +6313,12 @@ contains
        CALL PGWEDG('BI', 4.0, 5.0, real(valueMin), real(valueMax), TRIM(ADJUSTL(label_wd)))
     end if
     
-    CALL PGSCH(0.6)
+!    CALL PGSCH(0.6)
 
 !    CALL FIDDLE
     CALL PGASK(.FALSE.)  
 
+ enddo
     call PGEND
 
     

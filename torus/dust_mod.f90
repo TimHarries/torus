@@ -784,9 +784,11 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     real :: sigmaExt(1000),sigmaSca(1000), kappa(1000), albedo(1000), tlam(1000)
     real :: tSca(1000), tAbs(1000), sigmaAbs(1000)
     character(len=40) :: filetype
+    character(len=80) :: message
     integer :: npts, i, j
 
-    write(*,'(a,a)') "Reading dust properties from: ",trim(filename)
+    write(message,'(a,a)') "Reading dust properties from: ",trim(filename)
+    call writeInfo(message, TRIVIAL)
     open(20, file=filename, status="old", form="formatted")
     read(20,'(a)') filetype
 
