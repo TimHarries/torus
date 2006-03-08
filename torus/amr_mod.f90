@@ -229,9 +229,7 @@ CONTAINS
     grid%octreeRoot%biasLine3D = 1.0 
     grid%octreeRoot%biasCont3D = 1.0 
     grid%octreeRoot%velocity = vector(1.e-30,1.e-30,1.e-30)
-    if (associated(grid%octreeRoot%cornerVelocity)) then
-       grid%octreeRoot%cornerVelocity= vector(1.e-30,1.e-30,1.e-30)
-    endif
+    grid%octreeRoot%cornerVelocity= vector(1.e-30,1.e-30,1.e-30)
     grid%octreeRoot%chiLine = -9.9e9
     grid%octreeRoot%etaLine = -9.9e9
     grid%octreeRoot%etaCont = -9.9e9 
@@ -413,9 +411,7 @@ CONTAINS
     parent%child(newChildIndex)%biasLine3D = 1.0 
     parent%child(newChildIndex)%biasCont3D = 1.0 
     parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
-    if (associated(parent%child(newChildIndex)%cornerVelocity)) then
-       parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
-    endif
+    parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
     parent%child(newChildIndex)%chiLine = 1.e-30
     parent%child(newChildIndex)%etaLine = 1.e-30
     parent%child(newChildIndex)%etaCont = 1.e-30
@@ -2237,7 +2233,6 @@ CONTAINS
 
     END IF
 
-    if (associated(resultOctal%cornerVelocity)) then
 
       inc = resultOctal%subcellSize / 2.0
       centre = subcellCentre(resultOctal,subcell)
@@ -2376,9 +2371,6 @@ CONTAINS
          amrGridVelocity = newVec
 
       endif
-   else
-      amrGridVelocity = resultOctal%velocity(subcell)
-   endif
 
 
 !    endif
@@ -6310,9 +6302,7 @@ IF ( .NOT. gridConverged ) RETURN
        parent%child(newChildIndex)%biasLine3D = 1.0 
        parent%child(newChildIndex)%biasCont3D = 1.0 
        parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
-       if (ASSOCIATED(parent%child(newChildIndex)%cornerVelocity)) then
-          parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
-       endif
+       parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
        if (associated(parent%child(newChildIndex)%photoIonCoeff)) then
           parent%child(newChildIndex)%photoIonCoeff = 0.d0
        endif
@@ -7103,13 +7093,8 @@ IF ( .NOT. gridConverged ) RETURN
     dest%diffusionApprox  = source%diffusionApprox  
     dest%underSampled     = source%underSampled
     dest%nDiffusion       = source%nDiffusion
+    dest%cornerVelocity   = source%cornerVelocity
 
-
-
-    if (associated(source%cornerVelocity)) then
-       allocate(dest%cornerVelocity(SIZE(source%cornerVelocity,1)))
-       dest%cornerVelocity   = source%cornerVelocity
-    endif
 
     if (associated(source%photoIonCoeff)) then
        allocate(dest%photoIonCoeff(SIZE(source%photoIonCoeff,1),SIZE(source%photoIonCoeff,2)))

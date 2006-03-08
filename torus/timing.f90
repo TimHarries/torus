@@ -60,6 +60,8 @@ contains
 !    real :: etime
 !    external etime  ! libarary function
 
+
+    CALL setrteopts ('cpu_time_type=usertime')
     ! Initiallizing arrays if used for the fisrt time
     if (very_first_time) then
        do i=1,max_id

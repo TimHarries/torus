@@ -2130,7 +2130,7 @@
   end select
 
   
-
+  call writeInfo("Sources set up.",TRIVIAL)
 
      if (geometry == "wr104") then
 !        call IntegratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &

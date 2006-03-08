@@ -2969,7 +2969,6 @@ contains
     else 
        open(unit=20,iostat=error, file=filename, form="unformatted", status="replace")
     end if        
-    
     call writeInfo("Writing AMR grid file to: "//trim(filename),TRIVIAL)
     
     call date_and_time(values=timeValues)
@@ -3021,12 +3020,11 @@ contains
        end if
                
     end if 
-    
+
     call writeReal1D(grid%lamarray,fileFormatted)
     call writeReal2D(grid%oneKappaAbs,fileFormatted)
     call writeReal2D(grid%oneKappaSca,fileFormatted)
     call writeClumps(fileFormatted)
-
     ! now we call the recursive subroutine to store the tree structure 
     if (associated(grid%octreeRoot)) then
        if (fileFormatted) then 
@@ -3123,7 +3121,6 @@ contains
     error = 0
 
   call unixGetEnv("TORUS_JOB_DIR",absolutePath)
-  write(*,*) absolutePath
   inFile = trim(absolutePath)//trim(filename)
 
     if (fileFormatted) then

@@ -229,6 +229,13 @@ contains
 !$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
 !$MPI   if (rankComplete) exit blockLoop 
 
+
+!$OMP PARALLEL DEFAULT(NONE) &
+!$OMP PRIVATE(iOctal, eDens, dCoeff,subcell, thisOctal, octVec, startOctal, r) &
+!$OMP PRIVATE(neighbourOctal, neighbourSubcell, enplus1, firsttime, deltax, deltat) &
+!$OMP PRIVATE(deltaE, octalarray, grade, dcoeffhalf, lambda, bigr) &
+!$OMP SHARED(grid, tol, demax, ioctal_beg, ioctal_end) 
+!$OMP DO SCHEDULE(runtime)
     do iOctal =  iOctal_beg, iOctal_end
 
        thisOctal => octalArray(iOctal)%content
@@ -452,6 +459,9 @@ contains
           endif
        enddo
     enddo
+!$OMP END DO
+!$OMP BARRIER
+!$OMP END PARALLEL 
 
 !$MPI if (.not.blockHandout) exit blockloop
 !$MPI end do blockLoop       
@@ -536,6 +546,7 @@ end subroutine gaussSeidelSweep
            gridConverged = .true.
         endif
      enddo
+     write(*,*) "Gauss-seidel took ",niter, " iterations"
    end subroutine solveArbitraryDiffusionZones
 
 

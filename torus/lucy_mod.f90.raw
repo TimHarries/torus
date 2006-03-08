@@ -386,6 +386,7 @@ contains
     real :: diffusionZoneTemp
     logical :: outputFlag
     integer :: noctals, nvoxels, nCellsInDiffusion
+    integer :: omp_get_num_threads, omp_get_thread_num
 
 !$MPI    ! For MPI implementations
 !$MPI  ! For MPI implementations =====================================================
@@ -536,8 +537,8 @@ contains
        iIter_grand =  iIter_grand + 1  ! total number of iterations so far
 
 
-       write(tfilename1, '(a,i2.2,a)') "lucy_iter_",iIter_grand,".gif/gif"
-       write(tfilename2, '(a,i2.2,a)') "lucy_iter_zoom",iIter_grand,".gif/gif"
+!       write(tfilename1, '(a,i2.2,a)') "lucy_iter_",iIter_grand,".gif/gif"
+!       write(tfilename2, '(a,i2.2,a)') "lucy_iter_zoom",iIter_grand,".gif/gif"
 
        call locate(lamArray, nLambda, 5500.,ilam)
 
@@ -547,11 +548,11 @@ contains
             "rho_temp_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
 
-       write(dustfile,'(a,i3.3,a)') "dusttype",iIter_grand,".gif/gif"
-       call plot_AMR_values(grid, "dusttype", "x-z", 0., &
-            dustfile, .false., .false., &
-           0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor, &
-           xStart=1600., xEnd=2200., yStart=-300., yEnd=300.)
+!       write(dustfile,'(a,i3.3,a)') "dusttype",iIter_grand,".gif/gif"
+!       call plot_AMR_values(grid, "dusttype", "x-z", 0., &
+!            dustfile, .false., .false., &
+!           0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor, &
+!           xStart=1600., xEnd=2200., yStart=-300., yEnd=300.)
 
        call plot_AMR_values(grid, "dusttype", "x-z", 0., &
             "dusttype.ps/vcps", .false., .false., &
@@ -586,12 +587,12 @@ contains
        call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
             "tau_zoom_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor,ilam=ilam) 
-       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-            tfilename1, .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
-       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-            tfilename2, .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor)
+!       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+!            tfilename1, .true., .false., &
+!            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
+!       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+!            tfilename2, .true., .false., &
+!            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor)
        call plot_AMR_values(grid, "temperature", "x-y", real(grid%octreeRoot%centre%z), &
             "lucy_temp_xy.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
@@ -631,6 +632,7 @@ contains
 !$OMP SHARED(dnu, nFreq, freq, nMonte) &
 !$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled, avedirection) 
  
+       write(*,*) "num of threads",omp_get_num_threads()
        nInf_sub = 0
        nScat_sub = 0
        nAbs_sub = 0
@@ -700,8 +702,7 @@ contains
        avedirection = OCTALVECTOR(0.d0, 0.d0, 0.d0)
 
 
-!!!!!$OMP DO SCHEDULE(DYNAMIC,10)
-!$OMP DO SCHEDULE(STATIC,10)
+!$OMP DO SCHEDULE(runtime)
        photonloop: do iMonte = imonte_beg, imonte_end
 
 !$MPI !  if (MOD(i,n_proc) /= my_rank) cycle photonLoop
@@ -709,7 +710,6 @@ contains
 !$MPI !  if (MOD(i,n_proc) /= my_rank) goto 999
 
           thisPhotonAbs = 0
-          
 
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
@@ -722,11 +722,9 @@ contains
 
           do while(.not.escaped)
 
-!$OMP CRITICAL (tonext)
              call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD,imonte, &
                   photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary)
 
-!$OMP END CRITICAL (tonext)
 
              If (escaped) nInf_sub = nInf_sub + 1
 
@@ -861,7 +859,7 @@ contains
 
 
 
-
+      stop
 
 !$MPI       ! Summing the value in octal computed by each processors.
 !$MPI       ! This is a recursive function which involves the many 
@@ -1045,7 +1043,7 @@ contains
 
 !$MPI if (my_rank==0) &
       call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
-
+      call writeInfo("Grid written",TRIVIAL)
 
    enddo
 
@@ -1948,6 +1946,8 @@ contains
 
 ! update the distance grid
 
+!$OMP CRITICAL (changegrid)
+
        if (.not.twoD) then
 
           thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
@@ -1963,6 +1963,9 @@ contains
           foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
 
        endif
+
+!$OMP END CRITICAL (changegrid)
+
 
 ! now we need to return if the photon is in the diffusionzone
 
@@ -2055,6 +2058,8 @@ contains
 
        if (thisTau > 0.d0) then
 
+!$OMP CRITICAL (changegrid2)
+
           
           if (.not.twoD) then
 
@@ -2071,6 +2076,9 @@ contains
              foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
 
           endif
+
+!$OMP END CRITICAL (changegrid2)
+
 
           oldOctal => thisOctal
           

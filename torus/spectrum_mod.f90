@@ -9,12 +9,12 @@ module spectrum_mod
   public
 
   type SPECTRUMTYPE
-     real(double), pointer :: flux(:)
-     real(double), pointer :: normflux(:)
-     real(double), pointer :: normflux2(:)
-     real(double), pointer :: lambda(:)
-     real(double), pointer :: prob(:)
-     real(double), pointer :: dlambda(:)
+     real(double), pointer :: flux(:) => null()
+     real(double), pointer :: normflux(:) => null()
+     real(double), pointer :: normflux2(:) => null()
+     real(double), pointer :: lambda(:) => null()
+     real(double), pointer :: prob(:) => null()
+     real(double), pointer :: dlambda(:) => null()
      integer :: nLambda
   end type SPECTRUMTYPE
   
@@ -75,7 +75,7 @@ module spectrum_mod
     subroutine readSpectrum(spectrum, filename)
       type(SPECTRUMTYPE) :: spectrum
       character(len=*) :: filename
-      real :: fTemp(1200000),xTemp(1200000)
+      real :: fTemp(12000),xTemp(12000)
       integer :: nLambda, i
 
       open(20,file=filename,form="formatted",status="old")
