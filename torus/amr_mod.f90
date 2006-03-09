@@ -233,6 +233,7 @@ CONTAINS
     grid%octreeRoot%chiLine = -9.9e9
     grid%octreeRoot%etaLine = -9.9e9
     grid%octreeRoot%etaCont = -9.9e9 
+    grid%octreeRoot%nDirectPhotons = -1
     grid%octreeRoot%rho = 1.e-30
     grid%octreeRoot%N = -9.9e9
     grid%octreeRoot%Ne = -9.9e9
@@ -403,6 +404,7 @@ CONTAINS
     parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
     parent%child(newChildIndex)%hasChild = .false.
     parent%child(newChildIndex)%nChildren = 0
+    parent%child(newChildIndex)%nDirectPhotons = -1
     parent%child(newChildIndex)%indexChild = -999 ! values are undefined
     parent%child(newChildIndex)%nDepth = parent%nDepth + 1
     parent%child(newChildIndex)%centre = subcellCentre(parent,iChild)
@@ -7061,6 +7063,7 @@ IF ( .NOT. gridConverged ) RETURN
     dest%centre           = source%centre
     dest%rho              = source%rho
     dest%velocity         = source%velocity
+    dest%nDirectPhotons = source%nDirectPhotons
     dest%temperature      = source%temperature
     dest%oldTemperature   = source%oldTemperature
     dest%distanceGrid     = source%distanceGrid

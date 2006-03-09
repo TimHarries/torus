@@ -6436,6 +6436,13 @@ contains
              case("crossings")
                 value = thisOctal%nCrossings(subcell)
                 if (thisOctal%diffusionApprox(subcell)) value = 1.e6
+             case("direct")
+                if (thisOctal%ncrossings(subcell) > 0) then
+                   value = real(thisOctal%nDirectPhotons(subcell)) / real(thisOctal%nCrossings(subcell))
+                else
+                   value = 0.
+                endif
+
              case("Vx")
 !                value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
                 velocity = amrGridVelocity(thisOctal, rvec)
@@ -6607,6 +6614,12 @@ contains
              case("crossings")
                 value = thisOctal%ncrossings(subcell)
                 if (thisOctal%diffusionApprox(subcell)) value = 1.e6
+             case("direct")
+                if (thisOctal%ncrossings(subcell) > 0) then
+                   value = real(thisOctal%nDirectPhotons(subcell)) / real(thisOctal%nCrossings(subcell))
+                else
+                   value = 0.
+                endif
              case("Vx")
                 value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
              case("Vy")

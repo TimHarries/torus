@@ -130,6 +130,7 @@ MODULE octal_mod
     real, dimension(8) :: oldFrac ! Previous value of dust sublimation fraction
     REAL, DIMENSION(:,:), POINTER      :: departCoeff =>null()! temporary storage for departure coefficients
     LOGICAL(KIND=logic), DIMENSION(8) :: inStar      ! point lies within star
+    INTEGER, DIMENSION(8) :: nDirectPhotons
     LOGICAL(KIND=logic), DIMENSION(8) :: inFlow      ! inside accretion flow region GET RID OF THIS?    
     INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
       ! the subcell labels may be useful for debugging the code, but are not needed for

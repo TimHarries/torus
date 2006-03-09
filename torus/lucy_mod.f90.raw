@@ -385,7 +385,7 @@ contains
     logical :: photonInDiffusionZone
     logical :: doingDustSublimation
     real :: diffusionZoneTemp, temp
-    logical :: outputFlag
+    logical :: outputFlag, directPhoton, smoothconverged
     integer :: noctals, nvoxels, nCellsInDiffusion
     integer :: omp_get_num_threads, omp_get_thread_num
 
@@ -533,6 +533,8 @@ contains
           endif
        endif
 
+
+
     do iIter = 1, nIter
 
        iIter_grand =  iIter_grand + 1  ! total number of iterations so far
@@ -625,13 +627,15 @@ contains
 !$OMP PRIVATE(vec_tmp, uNew, Treal, subcell, probDistJnu) &
 !$OMP PRIVATE(kabs,i, j, T1) &
 !$OMP PRIVATE(nAbs_sub, nScat_sub, nInf_sub, nDiffusion_sub, thisPhotonAbs) &
-!$OMP PRIVATE(twoD, photonInDiffusionZone, leftHandBoundary) &
+!$OMP PRIVATE(twoD, photonInDiffusionZone, leftHandBoundary, directPhoton) &
 !$OMP PRIVATE(diffusionZoneTemp, kappaAbsdb, sOctal, kappaScadb, kAbsArray) &
 !$OMP PRIVATE(oldUHat) &
 !$OMP SHARED(grid, nLambda, lamArray,miePhase, nMuMie, nDustType) &
 !$OMP SHARED(imonte_beg, imonte_end, source, nsource) &
 !$OMP SHARED(dnu, nFreq, freq, nMonte) &
 !$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled, avedirection) 
+
+       call resetDirectGrid(grid%octreeRoot)
  
        nInf_sub = 0
        nScat_sub = 0
@@ -714,7 +718,7 @@ contains
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
-
+          directPhoton = .true.
 
 
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -722,6 +726,7 @@ contains
 
           if (tempOctal%diffusionApprox(tempsubcell)) then
              call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp)
+             directPhoton = .false.
              rVec = subcellCentre(thisOctal, subcell)
           endif
 
@@ -734,7 +739,7 @@ contains
           do while(.not.escaped)
 
              call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD,imonte, &
-                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary)
+                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton)
 
 
              If (escaped) nInf_sub = nInf_sub + 1
@@ -764,7 +769,10 @@ contains
                    albedo = 0.5
                 end if
 
+                directPhoton = .false.
+                
                 ! photon is always absorbed/reprocessed if it has come from diffusion zone
+
 
                 if (PhotonInDiffusionZone) albedo = 0. 
 
@@ -953,6 +961,10 @@ contains
             "crossings.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
 
+       call plot_AMR_values(grid, "direct", "x-z", real(grid%octreeRoot%centre%y), &
+            "direct.ps/vcps", .false., .true., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor)
+
 
        if (twoD) then
           write(*,*) "! Remapping the distance grid attributes..."
@@ -1009,6 +1021,11 @@ contains
        
        close(LU_OUT)
 !$MPI    end if   
+
+
+
+
+
 !$MPI if (my_rank==1) &       
        call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
 
@@ -1042,11 +1059,15 @@ contains
        call tune(6, "Gauss-Seidel sweeps")
 
 
-
-!       if (grid%octreeRoot%twoD) then
-!          call defineDiffusionZone(grid, outputFlag, .false.)
-!       endif
-
+       call writeInfo("Starting adaptive smooth...",TRIVIAL)
+       do
+          smoothConverged = .true.
+          call directPhotonSmooth(grid%octreeRoot, grid, smoothConverged, inheritProps = .true., interpProps = .false.)
+          if (smoothConverged) exit
+       end do
+       call writeInfo("Finished.",TRIVIAL)
+       nCellsinDiffusion = 0
+       call recountDiffusionCells(grid%octreeRoot, nCellsInDiffusion)
 
 
 
@@ -1807,7 +1828,7 @@ contains
 
 
  subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, twoD, imonte, &
-      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary)
+      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton)
 
 
    type(GRIDTYPE) :: grid
@@ -1817,6 +1838,7 @@ contains
    type(OCTAL),pointer :: foundOctal, endOctal
    integer :: endSubcell
    integer :: subcell, isubcell, tempSubcell, sourceSubcell
+   logical :: directPhoton
    real(oct) :: tval, tau, r, tval2
    real :: lamArray(*)
    integer :: nLambda
@@ -1906,6 +1928,7 @@ contains
 
           call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp)
           photonInDiffusionZone = .true.
+          directPhoton = .false.
           rVec = subcellCentre(endOctal,endSubcell)
           octVec = rVec
           call amrGridValues(grid%octreeRoot, rVec,  startOctal=sOctal, foundOctal=tempOctal, &
@@ -1963,7 +1986,7 @@ contains
           thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
                + tVal * dble(kappaAbsdb)
           thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
-          
+          if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
        else
           
           thisOctVec = subcellCentre(thisOctal,subcell)
@@ -1971,7 +1994,7 @@ contains
           foundOctal%distanceGrid(isubcell) = foundOctal%distanceGrid(isubcell) &
                + tVal * dble(kappaAbsdb)
           foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
-
+          if (directPhoton) foundOctal%nDirectPhotons(isubcell) = foundOctal%nDirectPhotons(isubcell)+1
        endif
 
 !$OMP END CRITICAL (changegrid)
@@ -2076,6 +2099,8 @@ contains
              thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
                   + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsdb)
              thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
+          if (directPhoton) thisOctal%nDirectPhotons(subcell) = thisOctal%nDirectPhotons(subcell)+1
+
           
           else
           
@@ -2084,6 +2109,7 @@ contains
              foundOctal%distanceGrid(isubcell) = foundOctal%distanceGrid(isubcell) &
                   + (dble(tVal)*dble(tau)/thisTau) * dble(kappaAbsdb)
              foundOctal%nCrossings(isubcell) = foundOctal%nCrossings(isubcell) + 1
+             if (directPhoton) foundOctal%nDirectPhotons(isubcell) = foundOctal%nDirectPhotons(isubcell)+1
 
           endif
 
@@ -2479,6 +2505,51 @@ contains
     enddo
   end subroutine resetDistanceGrid
 
+  recursive subroutine resetDirectGrid(thisOctal)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call resetDirectGrid(child)
+                exit
+             end if
+          end do
+       else
+          thisOctal%nDirectPhotons(subcell) = 0
+       endif
+    enddo
+  end subroutine resetDirectGrid
+
+  recursive subroutine recountDiffusionCells(thisOctal, ncells)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i
+  integer :: ncells
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call recountDiffusionCells(child, ncells)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%diffusionApprox(subcell)) then
+             ncells = ncells + 1
+          endif
+       endif
+    enddo
+  end subroutine recountDiffusionCells
+
   recursive subroutine packvalues(thisOctal,nIndex,distanceGrid,nCrossings, nDiffusion)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
@@ -2534,6 +2605,76 @@ contains
        endif
     enddo
   end subroutine unpackvalues
+
+  recursive subroutine directPhotonSmooth(thisOctal, grid, converged, inheritProps, interpProps)
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child, neighbourOctal, startOctal
+    logical, optional :: inheritProps, interpProps
+    integer :: subcell, i
+    logical :: converged
+    real(double) :: kabs, ksca, r
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec
+    real :: thisFac, neighbourFac
+    integer :: neighbourSubcell, j
+    dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
+    dirVec(2) = OCTALVECTOR( 0.d0,+1.d0,  0.d0)
+    dirVec(3) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
+    dirVec(4) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
+    dirVec(5) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
+    dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+
+!    do subcell = 1, thisOctal%maxChildren
+    subcell = 1
+    do while (subcell < thisOctal%maxChildren)
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call directPhotonSmooth(child, grid, converged, inheritProps, interpProps)
+                exit
+             end if
+          end do
+       else
+
+          if (thisOctal%nCrossings(subcell) > 0)  then
+             thisFac = real(thisOctal%nDirectPhotons(subcell)) / real(thisOctal%ncrossings(subcell))
+          else
+             thisFac = 0.
+          endif
+
+          r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell 
+          centre = subcellCentre(thisOctal, subcell)
+          do j = 1, 6
+             octVec = centre + r * dirvec(j)
+             if (inOctal(grid%octreeRoot, octVec)) then
+                startOctal => thisOctal
+                call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
+                     foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
+                if (neighbourOctal%nCrossings(neighboursubcell) > 0)  then
+                   neighbourFac = real(neighbourOctal%nDirectPhotons(neighboursubcell)) &
+                        / real(neighbourOctal%ncrossings(neighboursubcell))
+                else
+                   neighbourFac = 0.
+                endif
+                if ((min(thisFac, neighbourFac) == 0.0).and.(max(thisFac, neighbourFac) > 0.5)) then
+                   if ((thisFac >= 0.).and.(thisFac < neighbourFac)) then
+                      call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                           inherit=inheritProps, interp=interpProps)
+                      write(*,*) "split",thisFac,neighbourFac
+                      converged = .false.
+                      subcell = 0
+                      exit
+                   endif
+                endif
+             endif
+          enddo
+       endif
+       subcell = subcell + 1
+    end do
+
+  end subroutine directPhotonSmooth
 
 
 
