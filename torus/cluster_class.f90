@@ -256,7 +256,8 @@ contains
        x = x*length_units; y=y*length_units; z=z*length_units  ! [10^10cm]
        
        ! save it to a star
-       a_star%luminosity = luminosity     ! erg/sec
+       a_star%luminosity = luminosity * 100.    ! erg/sec
+       write(*,*) "Luminosity fudged"
        a_star%radius = radius             ! 10^10cm
        a_star%teff = temperature          ! Kelvins
        a_star%position = DoubleVector(x, y, z)  ! 10^10cm

@@ -550,10 +550,11 @@ end subroutine gaussSeidelSweep
    end subroutine solveArbitraryDiffusionZones
 
 
-  recursive subroutine defineDiffusionOnUndersampled(thisOctal)
+  recursive subroutine defineDiffusionOnUndersampled(thisOctal, nDiff)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     integer :: subcell
+    integer, optional :: nDiff
     integer :: i
 
     do subcell = 1, thisOctal%maxChildren
@@ -562,13 +563,16 @@ end subroutine gaussSeidelSweep
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call defineDiffusionOnUndersampled(child)
+                call defineDiffusionOnUndersampled(child, ndiff)
                 exit
              end if
           end do
        else
           if (thisOctal%undersampled(subcell)) then
              thisOctal%diffusionApprox(subcell) = .true.
+             if (PRESENT(nDiff)) then
+                nDiff = nDiff + 1
+             endif
           endif
        end if
     end do
@@ -600,8 +604,8 @@ end subroutine gaussSeidelSweep
           if (tau > taudiff) then
              thisOctal%diffusionApprox(subcell) = .true.
              if (PRESENT(ndiff))  nDiff = nDiff + 1
-          else
-             thisOctal%diffusionApprox(subcell) = .false.
+!          else
+!             thisOctal%diffusionApprox(subcell) = .false.
           endif
        end if
     end do

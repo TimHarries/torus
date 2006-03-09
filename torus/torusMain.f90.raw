@@ -415,7 +415,7 @@
 !$SPH  integer*1 :: b_iphase(b_idim)
 !$SPH  integer :: b_listpm(b_nptmass)
 !$SPH  real*8 :: b_xyzmh(5,b_idim)
-!$SPH  real*4 :: b_rho(b_idim)
+!$SPH  real*4 :: b_rho(b_idim), sphDistFac
 !$SPH  real*8 :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
 !$SPH  real*8 :: b_temp(b_idim)
 !$SPH  real*8 :: xgas,ygas,zgas
@@ -727,6 +727,8 @@
 !$SPH     call init_sph_data(sphData, b_udist, b_umass, b_utime, b_nactive, b_time, b_nptmass, &
 !$SPH                        b_gaspartmass)
 !$SPH
+!$SPH     sphDistfac  = get_udist(sphData)  ! [cm]
+!$SPH     sphDistfac = sphDistfac / 1.e10 ! to torus units
 !$SPH     ! read in the sph data from a file
 !$SPH     !call read_sph_data(sphData, "sph.dat")
 !$SPH
@@ -4482,22 +4484,24 @@ call tune(6, "Torus Main") ! stop a stopwatch
 !$SPH!  New HSC Stuff
 !$SPH!  Loop through sph gas particles and assign temperatures
 !$SPH
-!$SPH    write(*,*) "NOW -- TORUS - TEMPERATURE"
 !$SPH
-!$SPH     do i=1,b_idim
+!$SPH     iiigas=0
+!$SPH     do i=1,b_npart
 !$SPH 
-!$SPH  
 !$SPH       if (b_iphase(i).eq.0) then
-!$SPH          xgas=b_xyzmh(1,i)
-!$SPH          ygas=b_xyzmh(2,i)
-!$SPH          zgas=b_xyzmh(3,i)
+!$SPH          iiigas = iiigas + 1 
+!$SPH          xgas = b_xyzmh(1,i) * sphDistFac
+!$SPH          ygas = b_xyzmh(2,i) * sphDistFac
+!$SPH          zgas = b_xyzmh(3,i) * sphDistFac
 !$SPH          octVec = OCTALVECTOR(xgas,ygas,zgas)
 !$SPH          call amrGridValues(grid%octreeRoot, octVec, temperature=tgas, grid=grid)
-!$SPH          b_temp(i)=tgas
+!$SPH  !        write(*,*) i,xgas,ygas,zgas,tgas
+!$SPH          b_temp(iiigas)=tgas
 !$SPH       endif
 !$SPH  
 !$SPH     enddo
-
+  
+call writeInfo("TORUS exiting", FORINFO)
 
 !$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI  call MPI_FINALIZE(ierr)

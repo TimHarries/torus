@@ -321,7 +321,8 @@ contains
     real, intent(in) :: percent_undersampled_min  
     type(OCTALVECTOR) ::  uHat, uNew, rVec, rHat, olduHat
     type(OCTALVECTOR) :: octVec,avedirection
-    type(OCTAL), pointer :: thisOctal, sOctal
+    type(OCTAL), pointer :: thisOctal, sOctal, tempOctal
+    integer :: tempSubcell
     integer, intent(in)  :: nLambda, nMuMie
     type(PHASEMATRIX):: miePhase(1:nDustType,1:nLambda, 1:nMuMie)
 !    real  :: lamArray(:)
@@ -383,7 +384,7 @@ contains
     real(double), allocatable :: kAbsArray(:)
     logical :: photonInDiffusionZone
     logical :: doingDustSublimation
-    real :: diffusionZoneTemp
+    real :: diffusionZoneTemp, temp
     logical :: outputFlag
     integer :: noctals, nvoxels, nCellsInDiffusion
     integer :: omp_get_num_threads, omp_get_thread_num
@@ -500,7 +501,7 @@ contains
 
 
     nCellsInDiffusion = 0
-    call defineDiffusionOnRosseland(grid,grid%octreeRoot, nCellsInDiffusion)
+    call defineDiffusionOnRosseland(grid,grid%octreeRoot, ndiff=nCellsInDiffusion)
 
     write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
     call writeInfo(message,IMPORTANT)
@@ -632,7 +633,6 @@ contains
 !$OMP SHARED(dnu, nFreq, freq, nMonte) &
 !$OMP SHARED(nAbs, nScat, nInf, nDiffusion, nKilled, avedirection) 
  
-       write(*,*) "num of threads",omp_get_num_threads()
        nInf_sub = 0
        nScat_sub = 0
        nAbs_sub = 0
@@ -714,6 +714,17 @@ contains
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
+
+
+
+          call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
+            foundSubcell=tempsubcell)
+
+          if (tempOctal%diffusionApprox(tempsubcell)) then
+             call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp)
+             rVec = subcellCentre(thisOctal, subcell)
+          endif
+
           avedirection = avedirection + uHat
           escaped = .false.
           call getWavelength(thisSource%spectrum, wavelength)
@@ -859,7 +870,6 @@ contains
 
 
 
-      stop
 
 !$MPI       ! Summing the value in octal computed by each processors.
 !$MPI       ! This is a recursive function which involves the many 
@@ -1021,10 +1031,10 @@ contains
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
-       call defineDiffusionOnUndersampled(grid%octreeroot)
-       call solveArbitraryDiffusionZones(grid)
        nCellsInDiffusion = 0
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot, nCellsInDiffusion)
+       call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
+       call solveArbitraryDiffusionZones(grid)
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 
