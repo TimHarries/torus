@@ -1095,6 +1095,10 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     real :: bNuTot, rosselandKappa, temperature
     real(double) :: dFreq, Freq
 
+    if (grid%nTempRossArray == 0) then
+       call writeFatal("nTempRossArray is zero on call to createRossArray")
+    endif
+
     do k = 1, grid%nTempRossArray
        temperature = 3. + (2000.-3.)*real(k-1)/real(grid%nTempRossArray-1)
 

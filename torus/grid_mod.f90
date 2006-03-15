@@ -3110,7 +3110,7 @@ contains
 
     character(len=*)            :: filename
     logical, intent(in)         :: fileFormatted
-    type(GRIDTYPE), intent(out) :: grid
+    type(GRIDTYPE), intent(inout) :: grid
     
     integer, dimension(8) :: timeValues    ! system date and time
     integer               :: dummy         
@@ -3119,6 +3119,7 @@ contains
     integer :: nOctal
     character(len=80) :: absolutePath, inFile
     error = 0
+
 
   call unixGetEnv("TORUS_JOB_DIR",absolutePath)
   inFile = trim(absolutePath)//trim(filename)
@@ -3174,6 +3175,7 @@ contains
                grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
                grid%rOuter, grid%amr2dOnly
     end if    
+
     if (error /=0) then
        print *, 'Panic: read error in readAMRgrid 1'
        stop
@@ -3183,6 +3185,7 @@ contains
     call readReal2D(grid%oneKappaSca,fileFormatted)
     call readClumps(fileFormatted)
     
+
     ! now we call the recursive subroutine to read the tree structure 
     if (fileFormatted) then
        read(unit=20,fmt=*) octreePresent
@@ -3219,6 +3222,7 @@ contains
     grid%dipoleOffset = dipoleOffset
     grid%amr2donly = amr2donly
     grid%statEq2d = statEq2d
+
   contains
    
     recursive subroutine readOctreePrivate(thisOctal,parent,fileFormatted, noctal, grid)

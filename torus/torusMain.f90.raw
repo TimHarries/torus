@@ -1018,7 +1018,9 @@
                 grid%onekappaSca(i,1:grid%nLambda))
         enddo
      endif
+     call writeInfo("Creating Rosseland opacity lu table",TRIVIAL)
      call createRossArray(grid)
+     call writeInfo("Done.",TRIVIAL)
   endif
 
 
@@ -1064,6 +1066,7 @@
 
 
      if (readPops .or. readPhasePops .or. readLucy) then 
+
 
         if (readLucy) call readAMRgrid(lucyFilenameIn,readFileFormatted,grid)
 
