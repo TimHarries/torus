@@ -855,15 +855,14 @@ contains
     rStar = 10. * rSol
     H_0 = 10. * autocm
     mStar = 10. * mSol
-    mDot = 1.11e-4 * mSol / (365.25*24.*3600.) * dusttogas
+    mDot = 1.11e-4 * mSol / (365.25*24.*3600.)
     rCav = 50.*auTocm
     r_c = 50. * auTocm
     r_d = 1000. * auTocm
     openingAngle = 20. * degtoRad
     alpha = 1.875
     beta  = 1.125
-    rho0 = 2.e-7
-
+    rho0 = 2.e-5
 
     melvinDensity = 1.e-30
     r = modulus(point) * 1.e10
@@ -883,6 +882,8 @@ contains
     if ((bigR < r_d).and.(bigR > 10.*rStar)) then
        rhoDisc = rho0 * ((bigR/Rstar)**(-alpha))*exp(-(z**2 / (2.*H_R**2))) ! Eq 3
     endif
+    rhoDisc = 1.e-30
+
 
     melvinDensity = max(rhoDisc, rhoEnv)
 

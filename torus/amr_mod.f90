@@ -3892,7 +3892,14 @@ IF ( .NOT. gridConverged ) RETURN
 
    select case(grid%geometry)
 
-    case("ttauri","jets","spiralwind","melvin")
+    case("melvin")
+       split = .false.
+      cellSize = thisOctal%subcellSize 
+      cellCentre = subcellCentre(thisOctal,subCell)
+      if (thisOctal%nDepth < 4) split = .true.
+      if ((cellCentre%x  < 2.e6).and.(cellSize > 1.e5)) split = .true.
+
+    case("ttauri","jets","spiralwind")
       nsample = 40
       ! the density is only sampled at the centre of the grid
       ! we will search in each subcell to see if any point exceeds the 
@@ -3939,9 +3946,11 @@ IF ( .NOT. gridConverged ) RETURN
          total_mass = maxDensity * pi * ((searchPoint%x+cellsize/2.)**2-(searchPoint%x-cellsize/2.)**2)*cellsize*1.d30
       endif
 
-      thisScale = grid%rstar1/modulus(cellCentre)
-      ! weigting toward the smaller radial positions
-      total_mass = total_mass * thisScale**4
+      if (grid%geometry == "ttauri") then
+         thisScale = grid%rstar1/modulus(cellCentre)
+         ! weigting toward the smaller radial positions
+         total_mass = total_mass * thisScale**4
+      endif
 
       IF (total_mass > amrLimitScalar) then
          split = .TRUE.
