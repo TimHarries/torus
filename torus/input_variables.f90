@@ -419,6 +419,7 @@ module input_variables
   logical :: noPhaseUpdate  ! disable updating AMR grid at each phase
   logical :: amr2dOnly      ! only use cells in 2D plane through grid
   logical :: amr2d      ! only use cells in 2D plane through grid
+  logical :: cylindrical
   logical :: forceLineChange ! recalculate opacities for new transition 
   logical :: statEq1stOctant ! T if do stateqAMR routine for the octals in first octant
                              ! then later values are mapped to other octants.

@@ -5992,7 +5992,13 @@ contains
           rVec = subcellCentre(thisOctal,subcell)
           h = thisOctal%subcellSize  ! height
           w = thisOctal%subcellSize  ! width
-          x = rVec%x; y = rVec%y; z = rVec%z
+          if (.not.thisOctal%cylindrical) then
+             x = rVec%x; y = rVec%y; z = rVec%z
+          else
+             x  = sign(sqrt(rVec%x**2 + rvec%y**2), rvec%x)
+             y  = sign(sqrt(rVec%x**2 + rvec%y**2), rvec%y)
+             z  = rVec%z
+          endif
 
           if (present(val_3rd_dim)) then
 !            if ( plane(1:3) == "x-y" .and.  &
@@ -6009,9 +6015,13 @@ contains
 !               call PGRECT(x-w/2.0, x+w/2.0, z-h/2.0, z+h/2.0)
 !            end if
              
-             eps = h/20.0
+             eps = h/100.0
              if ( plane(1:3) == "x-y" .and. (ABS(rVec%z-val_3rd_dim)-h/2.0) < eps) then
-                call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+                if (.not.thisOctal%cylindrical) then
+                   call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+                else
+                   call draw_segment(thisOctal, subcell, .false.)
+                endif
              elseif ( plane(1:3) == "y-z" .and. (ABS(rVec%x-val_3rd_dim)-h/2.0) < eps) then 
                 call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
              elseif ( plane(1:3) == "z-x" .and. (ABS(rVec%y-val_3rd_dim)-h/2.0) < eps) then 
@@ -6019,10 +6029,13 @@ contains
              elseif ( plane(1:3) == "x-z" .and. (ABS(rVec%y-val_3rd_dim)-h/2.0) < eps) then 
                 call PGRECT(x-w/2.0, x+w/2.0, z-h/2.0, z+h/2.0)
              end if
-
           else
-             if (plane(1:3) == 'x-y' .and.  ABS(rVec%z) < h ) then
-                call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+             if (plane(1:3) == 'x-y' .and.  ABS(rVec%z) < h/2.d0 ) then
+                if (.not.thisOctal%cylindrical) then
+                   call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
+                else
+                   call draw_segment(thisOctal, subcell, .false.)
+                endif
              elseif (plane(1:3) == 'y-z' .and. ABS(rVec%x) < h ) then
                 call PGRECT(y-w/2.0, y+w/2.0, z-h/2.0, z+h/2.0)
              elseif (plane(1:3) == 'z-x' .and. ABS(rVec%y) < h ) then
@@ -6036,7 +6049,62 @@ contains
        endif
     enddo
   end subroutine draw_rectangle
-    
+
+
+  subroutine draw_segment(thisOctal, subcell, filled)
+    type(OCTAL) :: thisOctal
+    integer :: subcell
+    real :: phi1,phi2,r1,r2,ang
+    type(OCTALVECTOR) :: rVec
+    integer :: i
+    integer, parameter :: nAng = 100
+    integer ::npts
+    logical :: filled
+    real :: x(2*nAng+10), y(2*nAng+10)
+
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r1 = sqrt(rVec%x**2+rVec%y**2)-thisOctal%subcellsize/2.d0
+    r2 = sqrt(rVec%x**2+rVec%y**2)+thisOctal%subcellsize/2.d0
+
+    if (thisOctal%splitAzimuthally) then
+       phi1 = atan2(rvec%y,rvec%x) - thisOctal%dPhi/4.d0
+       phi2 = atan2(rvec%y,rvec%x) + thisOctal%dPhi/4.d0
+    else
+       phi1 = atan2(rvec%y,rvec%x) - thisOctal%dPhi/2.d0
+       phi2 = atan2(rvec%y,rvec%x) + thisOctal%dPhi/2.d0
+    endif
+    npts = 0
+
+    npts = npts + 1
+    x(npts) = r1 * cos(phi1)
+    y(npts) = r1 * sin(phi1)
+    npts = npts + 1
+    x(npts) = r2 * cos(phi1)
+    y(npts) = r2 * sin(phi1)
+    do i = 1, nang
+       ang = phi1+(phi2-phi1)*real(i-1)/real(nAng-1)
+       npts = npts + 1
+       x(npts) = r2 * cos(ang)
+       y(npts) = r2 * sin(ang)
+    enddo
+    npts = npts + 1
+    x(npts) = r1 * cos(phi2)
+    y(npts) = r1 * sin(phi2)
+    do i = 1, nAng
+       ang = phi2+(phi1-phi2)*real(i-1)/real(nAng-1)
+       npts = npts + 1
+       x(npts) = r1 * cos(ang)
+       y(npts) = r1 * sin(ang)
+    enddo
+    if (filled) then
+       call pgpoly(npts,x, y)
+    else
+       call pgline(npts, x, y)
+    endif
+  end subroutine draw_segment
+
+
 
 
   !
@@ -6199,26 +6267,54 @@ contains
     call setvp
 
     ! Setting the plot boundaries.
-    select case(thisplane)
-    case("x-y")
-       CALL PGWNAD(-d/2.0+xc, d/2.0+xc, -d/2.0+yc, d/2.0+yc)
-       v3 = root%centre%z
-    case("y-z")
-       CALL PGWNAD(-d/2.0+yc, d/2.0+yc, -d/2.0+zc, d/2.0+zc)
-       v3 = root%centre%x
-    case("z-x")
-       CALL PGWNAD(-d/2.0+zc, d/2.0+zc, -d/2.0+xc, d/2.0+xc)
-       v3 = root%centre%y
-    case("x-z")
-       CALL PGWNAD(-d/2.0+xc, d/2.0+xc, -d/2.0+zc, d/2.0+zc)
-       if (present(boxfac).and.grid%octreeRoot%twod) then
-          CALL PGWNAD(0., d, -d/2.0, d/2.0)
-       endif
-       v3 = root%centre%y
-       if (present(xStart).and.present(xEnd).and.present(yStart).and.present(yEnd)) then
-          call pgwnad(xStart, xEnd, yStart, yEnd)
-       endif
-    end select
+
+    if (.not.grid%octreeRoot%cylindrical) then
+       select case(thisplane)
+       case("x-y")
+          CALL PGWNAD(-d/2.0+xc, d/2.0+xc, -d/2.0+yc, d/2.0+yc)
+          v3 = root%centre%z
+       case("y-z")
+          CALL PGWNAD(-d/2.0+yc, d/2.0+yc, -d/2.0+zc, d/2.0+zc)
+          v3 = root%centre%x
+       case("z-x")
+          CALL PGWNAD(-d/2.0+zc, d/2.0+zc, -d/2.0+xc, d/2.0+xc)
+          v3 = root%centre%y
+       case("x-z")
+          CALL PGWNAD(-d/2.0+xc, d/2.0+xc, -d/2.0+zc, d/2.0+zc)
+          if (present(boxfac).and.grid%octreeRoot%twod) then
+             CALL PGWNAD(0., d, -d/2.0, d/2.0)
+          endif
+          v3 = root%centre%y
+          if (present(xStart).and.present(xEnd).and.present(yStart).and.present(yEnd)) then
+             call pgwnad(xStart, xEnd, yStart, yEnd)
+          endif
+       end select
+    else
+       select case(thisplane)
+       case("x-y")
+          CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+          v3 = root%centre%z
+       case("y-z")
+          CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+          v3 = root%centre%x
+       case("z-x")
+          CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+          v3 = root%centre%y
+       case("x-z")
+          CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+          if (present(boxfac).and.grid%octreeRoot%twod) then
+             CALL PGWNAD(0., d, -d/2.0, d/2.0)
+          endif
+          v3 = root%centre%y
+          if (present(xStart).and.present(xEnd).and.present(yStart).and.present(yEnd)) then
+             call pgwnad(xStart, xEnd, yStart, yEnd)
+          endif
+       end select
+    endif
+
+
+
+
 
     if (iPlane == 1) then
        call palett(2, 1.0, 0.5)
@@ -6277,10 +6373,11 @@ contains
     if (withgrid) then
        ! draw boxies
        call PGSFS(2)  ! we don't want to fill in a box this time
-       call PGSCI(0) ! changing the color index.
+       call PGSCI(1) ! changing the color index.
        ! this is a recursive routine in this module
        call draw_rectangle(root, thisplane, value_3rd_dim)
        call PGSCI(1) ! change color index to default.
+       call PGSFS(1)
     end if
 
 
@@ -6359,7 +6456,7 @@ contains
     integer :: subcell, i, idx
     real :: t
     real :: xp, yp, xm, ym, zp, zm
-    real(double) :: d, L, eps
+    real(double) :: d, L, eps, phi, phiFromplane, dphi
     logical :: plot_this_subcell
   
     do subcell = 1, thisOctal%maxChildren
@@ -6378,18 +6475,27 @@ contains
           L = thisOctal%subcellSize
           d = L/2.0d0
 !          eps = d/100.0d0
-          eps = d/10.0d0
+          eps = l/2.d0
 !          eps = d/5.0d0
 !          eps = 0.0d0
-          xp = REAL(rVec%x + d)
-          xm = REAL(rVec%x - d)
-          yp = REAL(rVec%y + d)
-          ym = REAL(rVec%y - d)
+          if (.not.thisOctal%cylindrical) then
+             xp = REAL(rVec%x + d)
+             xm = REAL(rVec%x - d)
+             yp = REAL(rVec%y + d)
+             ym = REAL(rVec%y - d)
+          else
+             xp = sign(sqrt(rVec%x**2+rVec%y**2) + d,rVec%x)
+             xm = sign(sqrt(rVec%x**2+rVec%y**2) - d,rVec%x)
+             yp = sign(sqrt(rVec%x**2+rVec%y**2) + d,rVec%y)
+             ym = sign(sqrt(rVec%x**2+rVec%y**2) - d,rVec%y)
+          endif
           zp = REAL(rVec%z + d)
           zm = REAL(rVec%z - d)     
           
           plot_this_subcell = .false.
-          if ( plane(1:3) == "x-y" .and. (ABS(rVec%z-val_3rd_dim)-d) < eps) then
+          
+          if ( plane(1:3) == "x-y" .and. ((ABS(rVec%z-val_3rd_dim)-d) < eps).and.(rVec%z>0.d0)) then
+!             write(*,*) rVec%z,val_3rd_dim,abs(rVec%z-val_3rd_dim)-d,eps
              plot_this_subcell = .true.      
           elseif ( plane(1:3) == "y-z" .and. (ABS(rVec%x-val_3rd_dim)-d) < eps) then 
              plot_this_subcell = .true.
@@ -6401,6 +6507,27 @@ contains
              plot_this_subcell = .false.
           end if
 
+!          if (plane(1:3)=="x-y") plot_this_subcell = .true.
+
+          if (thisOctal%cylindrical.and.(plane.ne."x-y")) then
+             plot_this_subcell = .false.
+             phi = atan2(rVec%y,rVec%x)
+             if (phi < 0.) phi = phi + twoPi
+             if (thisOctal%splitAzimuthally) then
+                dphi = thisOctal%dPhi / 4.d0
+             else
+                dphi = thisOctal%dPhi / 2.d0
+             endif
+             select case (plane)
+                case("y-z")
+                   phiFromPlane = min(abs(pi/2.d0-phi),abs(3.d0*pi/2.d0-phi))
+                case("z-x","x-z")
+                   phiFromPlane = min(phi,abs(phi-pi))
+             end select
+             if (phiFromPlane <= 2.*dphi) then
+                plot_this_subcell = .true.
+             endif
+          endif
 !          if ( plane(1:3) == "x-y" .and.  &
 !               rVec%z > (val_3rd_dim-L) .and.  rVec%z < (val_3rd_dim+L)) then
 !             plot_this_subcell = .true.      
@@ -6494,7 +6621,11 @@ contains
 
              select case (plane)
              case ("x-y")
-                call pgrect(xm, xp, ym, yp)
+                if (.not.thisOctal%cylindrical) then
+                   call pgrect(xm, xp, ym, yp)
+                else
+                   call draw_segment(thisOctal, subcell, .true.)
+                endif
              case ("y-z")
                 call pgrect(ym, yp, zm, zp)
              case ("z-x")

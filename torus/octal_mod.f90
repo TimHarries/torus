@@ -58,6 +58,7 @@ MODULE octal_mod
 
 
 
+
   TYPE octalWrapper
     TYPE(octal), POINTER  :: content => NULL()
     LOGICAL(KIND=logic), DIMENSION(8) :: inUse
@@ -81,6 +82,8 @@ MODULE octal_mod
                                                         ! pointer to each subcell's child (if it exists) 
     LOGICAL                            :: threeD        ! this is a three-dimensional octal
     LOGICAL                            :: twoD          ! this is a two-dimensioanl octal (quartal?!)
+    LOGICAL                            :: cylindrical   ! A three-d amr grid of x,z,phi
+    LOGICAL                            :: splitAzimuthally   ! A three-d amr grid of x,z,phi
     INTEGER                            :: maxChildren   ! this is 8 for three-d and 4 for two-d
     TYPE(octal), DIMENSION(:), POINTER :: child => NULL()
     LOGICAL, DIMENSION(8)              :: hasChild
@@ -113,7 +116,7 @@ MODULE octal_mod
     real(double), DIMENSION(8) :: probDistCont  ! emissivity probabilty distribution
     real(double), DIMENSION(:,:), POINTER ::  N => null()! stateq level pops
     real(double), DIMENSION(8) :: Ne            ! electron density
-
+    real(double)               :: phi, dphi
     real(double), DIMENSION(8) :: NH            ! total H no density
     real(double), DIMENSION(8) :: NHI            ! neutral H
     real(double), DIMENSION(8) :: NHII            ! HII
@@ -163,48 +166,105 @@ CONTAINS
 
     TYPE(octal), INTENT(IN) :: thisOctal 
     INTEGER, INTENT(IN)     :: nChild    ! index (1-8) of the subcell
-    
-    real(oct)    :: d 
-    
+    type(OCTALVECTOR) :: rVec, tVec
+    real(oct)    :: d, ang
+
     d = thisOctal%subcellSize * 0.5_oc
 
     if (thisOctal%threeD) then  !do the three-d case as per diagram
-       SELECT CASE (nChild)
-       CASE (1)    
-          subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * yHatOctal) - (d * zHatOctal)
-       CASE (2)    
-          subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * yHatOctal) - (d * zHatOctal)
-       CASE (3)    
-          subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * yHatOctal) - (d * zHatOctal)
-       CASE (4)    
-          subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) - (d * zHatOctal)
-       CASE (5)    
-          subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * yHatOctal) + (d * zHatOctal)
-       CASE (6)    
-          subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * yHatOctal) + (d * zHatOctal)
-       CASE (7)    
-          subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
-       CASE (8)    
-          subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
-       CASE DEFAULT
-          PRINT *, "Error:: Invalid nChild passed to subcellCentre threed case"
-          PRINT *, "        nChild = ", nChild 
-          STOP
-       END SELECT
-    else
-       SELECT CASE (nChild)
-       CASE (1)    
-          subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * zHatOctal)
-       CASE (2)    
-          subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * zHatOctal)
-       CASE (3)    
-          subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * zHatOctal)
-       CASE (4)    
-          subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * zHatOctal)
-       CASE DEFAULT
-          PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case"
-          PRINT *, "        nChild = ", nChild 
-          do;enddo
+       if (.not.thisOctal%cylindrical) then
+          SELECT CASE (nChild)
+          CASE (1)    
+             subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * yHatOctal) - (d * zHatOctal)
+          CASE (2)    
+             subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * yHatOctal) - (d * zHatOctal)
+          CASE (3)    
+             subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * yHatOctal) - (d * zHatOctal)
+          CASE (4)    
+             subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) - (d * zHatOctal)
+          CASE (5)    
+             subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * yHatOctal) + (d * zHatOctal)
+          CASE (6)    
+             subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * yHatOctal) + (d * zHatOctal)
+          CASE (7)    
+             subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
+          CASE (8)    
+             subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * yHatOctal) + (d * zHatOctal)
+          CASE DEFAULT
+             PRINT *, "Error:: Invalid nChild passed to subcellCentre threed case"
+             PRINT *, "        nChild = ", nChild 
+             STOP
+          END SELECT
+       else
+          rVec = OCTALVECTOR(sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2),0.d0,thisOctal%centre%z)
+          if (thisOctal%splitAzimuthally) then
+             SELECT CASE (nChild)
+             CASE (1)    
+                subcellCentre = rVec - (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-thisOctal%dphi/4.d0))
+             CASE (2)    
+                subcellCentre = rVec + (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-thisOctal%dphi/4.d0))
+             CASE (3)    
+                subcellCentre = rVec - (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-thisOctal%dphi/4.d0))
+             CASE (4)    
+                subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-thisOctal%dphi/4.d0))
+             CASE (5)    
+                subcellCentre = rVec - (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+thisOctal%dphi/4.d0))
+             CASE (6)    
+                subcellCentre = rVec + (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+thisOctal%dphi/4.d0))
+             CASE (7)    
+                subcellCentre = rVec - (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+thisOctal%dphi/4.d0))
+             CASE (8)    
+                subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+thisOctal%dphi/4.d0))
+             CASE DEFAULT
+                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case"
+                PRINT *, "        nChild = ", nChild 
+                do
+                enddo
+             END SELECT
+          else
+             SELECT CASE (nChild)
+             CASE (1)    
+                subcellCentre = rVec - (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
+             CASE (2)    
+                subcellCentre = rVec + (d * xHatOctal) - (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
+             CASE (3)    
+                subcellCentre = rVec - (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
+             CASE (4)    
+                subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
+                subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
+             CASE DEFAULT
+                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case"
+                PRINT *, "        nChild = ", nChild 
+                do
+                enddo
+             END SELECT
+          endif
+       endif
+ else
+    SELECT CASE (nChild)
+    CASE (1)    
+       subcellCentre = thisOctal%centre - (d * xHatOctal) - (d * zHatOctal)
+    CASE (2)    
+       subcellCentre = thisOctal%centre + (d * xHatOctal) - (d * zHatOctal)
+    CASE (3)    
+       subcellCentre = thisOctal%centre - (d * xHatOctal) + (d * zHatOctal)
+    CASE (4)    
+       subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * zHatOctal)
+    CASE DEFAULT
+       PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case"
+       PRINT *, "        nChild = ", nChild 
+       do;enddo
        END SELECT
     endif
   END FUNCTION subcellCentre
@@ -267,6 +327,6 @@ CONTAINS
     endif
   end function within_subcell
 
-  
-  
+
+
 END MODULE octal_mod

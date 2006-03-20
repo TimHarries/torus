@@ -306,7 +306,7 @@ contains
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
     use input_variables, only : rinner, router, variableDustSublimation, zoomFactor, blockhandout
-    use input_variables, only : smoothFactor, doSmoothGrid, lambdasmooth
+    use input_variables, only : smoothFactor, doSmoothGrid, lambdasmooth, plot_maps
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
@@ -546,6 +546,9 @@ contains
        call locate(lamArray, nLambda, 5500.,ilam)
 
        ! Plotting the intermidiate temperature steps
+
+       if (plot_maps) then
+
 !$MPI    if(my_rank == 0)  then
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_xz.ps/vcps", .true., .false., &
@@ -605,7 +608,7 @@ contains
        call polardump(grid)
 !$MPI    end if
 
-
+    endif
 
 
 !$MPI       if (my_rank == 1) &
@@ -1528,14 +1531,7 @@ contains
           end do
        else
           if (thisOctal%inFlow(subcell)) then
-             if (thisOctal%threed) then
-                v = thisOctal%subcellSize**3
-             else
-                rVec = subcellCentre(thisOctal,subcell)
-                r1 = rVec%x-thisOctal%subcellSize/2.d0
-                r2 = rVec%x+thisOctal%subcellSize/2.d0
-                v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
-             endif
+             v = cellVolume(thisOctal, subcell)
              adot = epsoverDeltaT * (thisOctal%distancegrid(subcell)/v) / 1.d30
              kappaP = 0.d0
              norm = 0.d0
@@ -1825,6 +1821,100 @@ contains
 
   end subroutine intersectCubeAMR2D
 
+  subroutine intersectCubeCylindrical(grid, posVec, direction, tval, sOctal)
+
+! this is to find a cell intersection for a 3D AMR grid
+! which is a cylindrical amr mesh
+
+
+   implicit none
+   type(GRIDTYPE), intent(in)    :: grid
+   type(OCTAL), pointer :: sOctal
+   type(OCTALVECTOR), intent(in) :: posVec
+   type(OCTALVECTOR), intent(inout) :: direction
+   real(oct), intent(out) :: tval
+   !
+   type(OCTALVECTOR) :: norm(6), p3(6)
+   type(OCTAL),pointer :: thisOctal
+   type(OCTALVECTOR) :: subcen, point
+   real :: dx, dz ! directions in cylindrical coords
+   integer :: subcell
+   real(double) :: compX, compZ,currentX,currentZ
+   real(double) :: distToZBoundary, distToXboundary
+   real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
+   integer :: i,j
+   logical :: ok, thisOk(6)
+   type(OCTALVECTOR) :: xHat, zHAt
+
+   point = posVec
+
+   call amrGridValues(grid%octreeRoot, point, startOctal=sOctal,foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
+   subcen =  subcellCentre(thisOctal,subcell)
+   ok = .true.
+
+
+   r1 = subcen%x - thisOctal%subcellSize/2.d0
+   r2 = subcen%x + thisOctal%subcellSize/2.d0
+   d = sqrt(point%x**2+point%y**2)
+   xHat = VECTOR(point%x, point%y,0.d0)
+   call normalize(xHat)
+
+   cosmu =((-1.d0)*xHat).dot.direction
+   call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
+   if (.not.ok) then
+      write(*,*) "Quad solver failed in intersectcubeamr2d"
+      direction = randomUnitVector()
+      x1 = thisoctal%subcellSize/2.d0
+      x2 = 0.d0
+   endif
+   distTor2 = max(x1,x2)
+
+   theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+   cosmu = xHat.dot.direction
+   mu = acos(max(-1.d0,min(1.d0,cosmu)))
+   distTor1 = 1.e30
+   if (mu  < theta ) then
+      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+      if (.not.ok) then
+         write(*,*) "Quad solver failed in intersectcubeamr2d"
+         direction = randomUnitVector()
+         x1 = thisoctal%subcellSize/2.d0
+         x2 = 0.d0
+      endif
+      distTor1 = max(x1,x2)
+   endif
+         
+   distToXboundary = min(distTor1, distTor2)
+
+
+   zHat = VECTOR(0.d0, 0.d0, 1.d0)
+   compZ = zHat.dot.direction
+   currentZ = point%z
+
+   if (compZ /= 0.d0 ) then
+      if (compZ > 0.d0) then
+         distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
+      else
+         distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
+      endif
+   else
+      disttoZboundary = 1.e30
+   endif
+
+   tVal = min(distToZboundary, distToXboundary) +0.0001d0*grid%halfsmallestsubcell
+   if (tVal > 1.e29) then
+      write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+      write(*,*) "subcen",subcen
+      write(*,*) "x,z",currentX,currentZ
+   endif
+   if (tval < 0.) then
+      write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+      write(*,*) "subcen",subcen
+      write(*,*) "x,z",currentX,currentZ
+   endif
+
+ end subroutine intersectCubeCylindrical
+
 
 
  subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, twoD, imonte, &
@@ -1885,11 +1975,14 @@ contains
     sOctal => thisOctal
 
 ! moved from before call to amrgridvalues - th 16/11/05
-    if (grid%octreeRoot%threed) then
-       call intersectCubeAMR(grid, rVec, uHat, tVal)
-    else
-       call intersectCubeAMR2D(grid, rVec, uHat, tVal, sOctal)
-    endif
+
+    call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal)
+
+!    if (grid%octreeRoot%threed) then
+!       call intersectCubeAMR(grid, rVec, uHat, tVal)
+!    else
+!       call intersectCubeAMR2D(grid, rVec, uHat, tVal, sOctal)
+!    endif
 
 
     if (inFlow) then
@@ -2021,11 +2114,13 @@ contains
 
 ! calculate the distance to the next cell
 
-          if (grid%octreeRoot%threed) then
-             call intersectCubeAMR(grid, rVec, uHat, tVal)
-          else
-             call intersectCubeAMR2D(grid, rVec, uHat, tVal, thisOctal)
-          endif
+          call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal)
+
+!          if (grid%octreeRoot%threed) then
+!             call intersectCubeAMR(grid, rVec, uHat, tVal)
+!          else
+!             call intersectCubeAMR2D(grid, rVec, uHat, tVal, thisOctal)
+!          endif
           octVec = rVec
 
 ! calculate the optical depth to the next cell boundary

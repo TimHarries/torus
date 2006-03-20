@@ -177,6 +177,7 @@ CONTAINS
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
+    use input_variables, only : cylindrical
 
     IMPLICIT NONE
     
@@ -212,14 +213,26 @@ CONTAINS
        grid%octreeRoot%twoD = .false.
        grid%octreeRoot%threeD = .true.
        grid%octreeRoot%maxChildren = 8
+       if (cylindrical) then
+          grid%octreeRoot%twoD = .false.
+          grid%octreeRoot%threeD = .true.
+          grid%octreeRoot%cylindrical = .true.
+          grid%octreeRoot%splitAzimuthally = .true.
+          grid%octreeRoot%maxChildren = 8
+          grid%octreeRoot%phi = pi
+          grid%octreeRoot%dPhi = twoPi
+       endif
     endif
-
-
     grid%octreeRoot%nDepth = 1
     grid%octreeRoot%nChildren = 0
     grid%octreeRoot%hasChild = .FALSE.
     grid%octreeRoot%subcellSize = size/2.0_oc
     grid%octreeRoot%centre = centre
+    if (cylindrical) then
+       grid%octreeRoot%centre%x = -size / 2.d0
+       grid%octreeRoot%centre%y = 0.d0
+       grid%octreeRoot%centre%z = 0.d0
+    endif
     grid%octreeRoot%indexChild = -999 ! values are undefined
     grid%octreeRoot%probDistLine = 0.0
     grid%octreeRoot%probDistCont = 0.0
@@ -301,7 +314,7 @@ CONTAINS
 
 
   SUBROUTINE addNewChild(parent, iChild, grid, adjustGridInfo, sphData, &
-                         stellar_cluster, inherit, interp )
+                         stellar_cluster, inherit, interp, splitAzimuthally)
     ! adds one new child to an octal
 
     USE input_variables, ONLY : nDustType
@@ -313,6 +326,7 @@ CONTAINS
                                           !   calculate the variables stored in
                                           !   the tree.
     LOGICAL, INTENT(IN) :: adjustGridInfo
+    LOGICAL, optional :: splitAzimuthally
       ! whether these variables should be updated: 
       !   grid%nOctals, grid%maxDepth, grid%halfSmallestSubcell    
     ! For only cluster geometry ...
@@ -327,6 +341,7 @@ CONTAINS
     INTEGER       :: nChildren         ! number of children the parent octal has
     INTEGER       :: newChildIndex     ! the storage location for the new child
     logical :: inheritProps, interpolate
+    type(OCTALVECTOR) :: rVec
     ! array of octals that may be needed for temporarily storing child octals
     
 
@@ -397,7 +412,30 @@ CONTAINS
     parent%child(newChildIndex)%threeD = parent%threeD
     parent%child(newChildIndex)%twoD = parent%twoD
     parent%child(newChildIndex)%maxChildren = parent%maxChildren
-    parent%child(newChildIndex)%twoD = parent%twoD
+    parent%child(newChildIndex)%cylindrical = parent%cylindrical
+
+
+    if (PRESENT(splitAzimuthally)) then
+       if (splitAzimuthally) then
+          parent%child(newChildIndex)%splitAzimuthally = .true.
+          parent%child(newChildIndex)%maxChildren = 8
+          rVec =  subcellCentre(parent,iChild)
+          parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
+          if (parent%child(newChildIndex)%phi < 0.d0) then
+             parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
+          endif
+          parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+!          write(*,*) parent%child(newChildIndex)%nDepth,parent%child(newChildIndex)%phi*radtodeg, &
+!               parent%child(newChildIndex)%dphi*radtodeg
+       else
+          parent%child(newChildIndex)%phi = parent%phi
+          parent%child(newChildIndex)%dphi = parent%dphi
+          parent%child(newChildIndex)%splitAzimuthally = .false.
+          parent%child(newChildIndex)%maxChildren = 4
+       endif
+    endif
+
+
     parent%child(newChildIndex)%inFlow = parent%inFlow
     parent%child(newChildIndex)%parent => parent
     parent%child(newChildIndex)%parentSubcell = iChild
@@ -614,15 +652,17 @@ CONTAINS
     !
     INTEGER              :: iSubcell, iIndex ! loop counters
     INTEGER              :: i, j, k
+    logical :: splitInAzimuth
 
 
     DO iSubcell = 1, thisOctal%maxChildren, 1
       
       IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,&
+            splitInAzimuth, &
             sphData, stellar_cluster)) THEN
 
         CALL addNewChild(thisOctal, iSubcell, grid, adjustGridInfo=.TRUE., &
-                         sphData=sphData, stellar_cluster=stellar_cluster)
+                         sphData=sphData, stellar_cluster=stellar_cluster, splitAzimuthally=splitInAzimuth)
        
         if (.not.thisOctal%hasChild(isubcell)) then
           write(*,*) "add child failed in splitGrid"
@@ -2897,48 +2937,110 @@ CONTAINS
     ! returns the identification number (1-8) of the subcell of the 
     ! current octal which contains a given point
     ! NB this does NOT check that the point lies within the bounds of the octal!
-  
+
 
 
     IMPLICIT NONE
-    
+
     TYPE(octal), INTENT(IN)       :: thisOctal
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(octalVector)             :: rotpoint
     INTEGER                       :: subcell
+    real(double) :: r, phi
+    integer :: i
 
-    if (thisOctal%threed) then
-       IF ( point%x < thisOctal%centre%x ) THEN
-          IF ( point%y < thisOctal%centre%y ) THEN
-             IF ( point%z < thisOctal%centre%z ) THEN
-                subcell = 1
+    if (thisOctal%threed) then ! threed case 
+
+       if (.not.thisOctal%cylindrical) then ! cartesian case
+
+          IF ( point%x < thisOctal%centre%x ) THEN
+             IF ( point%y < thisOctal%centre%y ) THEN
+                IF ( point%z < thisOctal%centre%z ) THEN
+                   subcell = 1
+                ELSE 
+                   subcell = 5
+                   
+                ENDIF
              ELSE 
-                subcell = 5
-                
-             ENDIF
-          ELSE 
-             IF (point%z < thisOctal%centre%z) THEN
-                subcell = 3
+                IF (point%z < thisOctal%centre%z) THEN
+                   subcell = 3
+                ELSE 
+                   subcell = 7
+                ENDIF
+             END IF
+          ELSE
+             IF (point%y < thisOctal%centre%y) THEN
+                IF (point%z < thisOctal%centre%z) THEN
+                   subcell = 2
+                ELSE 
+                   subcell = 6
+                ENDIF
              ELSE 
-                subcell = 7
-             ENDIF
-          END IF
-       ELSE
-          IF (point%y < thisOctal%centre%y) THEN
-             IF (point%z < thisOctal%centre%z) THEN
-                subcell = 2
-             ELSE 
-                subcell = 6
-             ENDIF
-          ELSE 
-             IF (point%z < thisOctal%centre%z) THEN
-                subcell = 4
-             ELSE 
-                subcell = 8
-             ENDIF
-          END IF
-       ENDIF
+                IF (point%z < thisOctal%centre%z) THEN
+                   subcell = 4
+                ELSE 
+                   subcell = 8
+                ENDIF
+             END IF
+          ENDIF ! cartesian case
+
+       else ! cylindrical case
+
+          r = sqrt(point%x**2+point%y**2)
+          phi = atan2(point%y, point%x)
+          if (phi < 0.d0) phi = phi + twoPi
+
+          if (thisOctal%splitAzimuthally) then ! azimuthal split case
+
+             if (phi <= thisOctal%phi) then
+                IF ( r <= sqrt(thisOctal%centre%x**2 + thisOctal%centre%y**2) ) THEN
+                   IF ( point%z <= thisOctal%centre%z ) THEN
+                      subcell = 1
+                   ELSE 
+                      subcell = 3
+                   ENDIF
+                ELSE
+                   IF (point%z <= thisOctal%centre%z) THEN
+                      subcell = 2
+                   ELSE 
+                      subcell = 4
+                   ENDIF
+                END IF
+             else
+                IF ( r <= sqrt(thisOctal%centre%x**2 + thisOctal%centre%y**2) ) THEN
+                   IF ( point%z <= thisOctal%centre%z ) THEN
+                      subcell = 5
+                   ELSE 
+                      subcell = 7
+                   ENDIF
+                ELSE
+                   IF (point%z <= thisOctal%centre%z) THEN
+                      subcell = 6
+                   ELSE 
+                      subcell = 8
+                   ENDIF
+                END IF
+             endif
+          else
+
+             IF ( r <= sqrt(thisOctal%centre%x**2 + thisOctal%centre%y**2) ) THEN
+                IF ( point%z <= thisOctal%centre%z ) THEN
+                   subcell = 1
+                ELSE 
+                   subcell = 3
+                ENDIF
+                ELSE
+                   IF (point%z <= thisOctal%centre%z) THEN
+                      subcell = 2
+                   ELSE 
+                      subcell = 4
+                   ENDIF
+                END IF
+             endif ! azi case
+          endif ! cylindrical
+
     else ! twoD case
+       
        IF ( point%x <= thisOctal%centre%x ) THEN
           IF ( point%z <= thisOctal%centre%z ) THEN
              subcell = 1
@@ -2966,18 +3068,36 @@ CONTAINS
     TYPE(octal), INTENT(IN)       :: thisOctal
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(octalVector)             :: octVec2D
+    real(double)                  :: r, phi, r1, dphi
     
 
     if (thisOctal%threeD) then
-           IF (point%x < thisOctal%centre%x - thisOctal%subcellSize ) THEN ; inOctal = .FALSE. 
-       ELSEIF (point%x > thisOctal%centre%x + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSEIF (point%y < thisOctal%centre%y - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSEIF (point%y > thisOctal%centre%y + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSEIF (point%z < thisOctal%centre%z - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSEIF (point%z > thisOctal%centre%z + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
-       ELSE  
-          inOctal = .TRUE.
-       ENDIF
+       if (.not.thisOctal%cylindrical) then
+          IF (point%x < thisOctal%centre%x - thisOctal%subcellSize ) THEN ; inOctal = .FALSE. 
+          ELSEIF (point%x > thisOctal%centre%x + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+          ELSEIF (point%y < thisOctal%centre%y - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+          ELSEIF (point%y > thisOctal%centre%y + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+          ELSEIF (point%z < thisOctal%centre%z - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+          ELSEIF (point%z > thisOctal%centre%z + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+          ELSE  
+             inOctal = .TRUE.
+          ENDIF
+       else
+          phi = atan2(point%y,point%x)
+          if (phi < 0.d0) phi = phi + twoPi
+          dphi = abs(phi - thisOctal%phi)
+          if (dPhi > pi) dPhi = dPhi - pi
+          r = sqrt(point%x**2 + point%y**2)
+          r1 = sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
+          IF     (r < r1 - thisOctal%subcellSize ) THEN ; inOctal = .FALSE. 
+          ELSEIF (r > r1 + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+          ELSEIF (dphi > thisOctal%dphi/2.d0) THEN ; inOctal = .FALSE.
+          ELSEIF (point%z < thisOctal%centre%z - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+          ELSEIF (point%z > thisOctal%centre%z + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
+          ELSE  
+             inOctal = .TRUE.
+          ENDIF
+       endif
     else ! twoD case
        octVec2D = projectToXZ(point)
            IF (octVec2D%x <  thisOctal%centre%x - thisOctal%subcellSize ) THEN ; inOctal = .FALSE. 
@@ -3227,6 +3347,8 @@ IF ( .NOT. gridConverged ) RETURN
     else
        point_local = point
     endif
+
+
     CALL findSubcellLocalPrivate(point_local,thisOctal,subcell,&
                                  haveDescended,boundaryProblem)
     if (present(prob)) prob = boundaryProblem
@@ -3279,6 +3401,14 @@ IF ( .NOT. gridConverged ) RETURN
         ! first check that we are not outside the grid
         IF ( thisOctal%nDepth == 1 ) THEN
           PRINT *, 'Panic: In findSubcellLocal, point is outside the grid'
+          write(*,*) point
+          write(*,*) sqrt(point%x**2+point%y**2)
+          write(*,*) atan2(point%y,point%x)*radtodeg
+          write(*,*) " "
+          write(*,*) thisOctal%centre
+          write(*,*) thisOctal%subcellSize
+          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
+          write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
            DO ; END DO
           boundaryProblem = .TRUE.
           RETURN
@@ -3290,19 +3420,29 @@ IF ( .NOT. gridConverged ) RETURN
            boundaryProblem = .TRUE.
            PRINT *, 'Panic: In findSubcellLocal, have descended and are now going back up'
            write(*,*) point
-           rVec = subcellCentre(thisOctal,subcell)
-           write(*,*) rVec%x+thisOctal%subcellSize/2.
-           write(*,*) rVec%x-thisOctal%subcellSize/2.
-           write(*,*) rVec%y+thisOctal%subcellSize/2.
-           write(*,*) rVec%y-thisOctal%subcellSize/2.
-           write(*,*) rVec%z+thisOctal%subcellSize/2.
-           write(*,*) rVec%z-thisOctal%subcellSize/2.
+           write(*,*) atan2(point%y,point%x)*radtodeg
+           write(*,*) sqrt(point%x**2 + point%y**2)
+           write(*,*) " "
+           write(*,*) thisOctal%nDepth
+           write(*,*) thisOctal%centre
+           write(*,*) thisOctal%subcellSize
+           write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
+           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
+           
+!           rVec = subcellCentre(thisOctal,subcell)
+!           write(*,*) rVec%x+thisOctal%subcellSize/2.
+!           write(*,*) rVec%x-thisOctal%subcellSize/2.
+!           write(*,*) rVec%y+thisOctal%subcellSize/2.
+!           write(*,*) rVec%y-thisOctal%subcellSize/2.
+!           write(*,*) rVec%z+thisOctal%subcellSize/2.
+!           write(*,*) rVec%z-thisOctal%subcellSize/2.
            do ; enddo
         endif
         
         IF ( thisOctal%nDepth /= 1 ) THEN
            thisOctal => thisOctal%parent
         ENDIF
+
         CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
        
       END IF    
@@ -3850,7 +3990,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
 
-  FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid, &
+  FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid, splitInAzimuth,&
        sphData, stellar_cluster) RESULT(split)
     ! returns true if the current voxel is to be subdivided. 
     ! decision is made by comparing 'amrLimitScalar' to some value
@@ -3860,6 +4000,7 @@ IF ( .NOT. gridConverged ) RETURN
     IMPLICIT NONE
     TYPE(octal)       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
+    LOGICAL, INTENT(INOUT) :: splitInAzimuth
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(sph_data), OPTIONAL, intent(in) :: sphData
@@ -3890,6 +4031,8 @@ IF ( .NOT. gridConverged ) RETURN
     logical :: close_to_star
     real(double)      :: thisScale
 
+    splitInAzimuth = .false.
+    
    select case(grid%geometry)
 
     case("melvin")
@@ -4283,7 +4426,10 @@ IF ( .NOT. gridConverged ) RETURN
          endif
          if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 2.)) split = .true.
       endif
-
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 30.)) then
+         split = .true.
+         splitInAzimuth = .true.
+      endif
 
       
    case DEFAULT
@@ -7066,11 +7212,15 @@ IF ( .NOT. gridConverged ) RETURN
     dest%nChildren        = source%nChildren
     dest%indexChild       = source%indexChild
     dest%threeD           = source%threeD 
+    dest%cylindrical      = source%cylindrical
+    dest%splitAzimuthally= source%splitAzimuthally
     dest%twoD             = source%twoD   
     dest%maxChildren      = source%maxChildren
     dest%hasChild         = source%hasChild
     dest%centre           = source%centre
     dest%rho              = source%rho
+    dest%phi              = source%phi
+    dest%dphi              = source%dphi
     dest%velocity         = source%velocity
     dest%nDirectPhotons = source%nDirectPhotons
     dest%temperature      = source%temperature
@@ -8916,6 +9066,7 @@ IF ( .NOT. gridConverged ) RETURN
 
       TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
       TYPE(octal), POINTER :: thisChild
+      logical :: splitInAzimuth
 
       INTEGER :: iChild, iSubcell
 
@@ -8927,7 +9078,7 @@ IF ( .NOT. gridConverged ) RETURN
           IF (thisOctal%indexChild(iSubcell) == iChild) EXIT
         END DO 
         
-        IF (.NOT. decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid)) THEN
+        IF (.NOT. decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,splitInAzimuth)) THEN
           PRINT *, 'Deleting unneeded children'
           CALL deleteChild(parent=thisOctal, childToDelete=iSubcell, &
                            adjustParent=.FALSE., grid=grid,          &
@@ -8950,6 +9101,7 @@ IF ( .NOT. gridConverged ) RETURN
       TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
       TYPE(octal), POINTER :: thisChild
       INTEGER :: iSubcell, j
+      logical :: splitInAzimuth
 
       DO iSubcell = 1, thisOctal%maxChildren, 1
         IF (thisOctal%hasChild(iSubcell)) THEN 
@@ -8962,9 +9114,9 @@ IF ( .NOT. gridConverged ) RETURN
             END IF
           END DO
         ELSE 
-          IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid)) THEN
+          IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,splitinAzimuth)) THEN
             PRINT *, 'Adding new child'
-            CALL addNewChild(thisOctal,iSubcell,grid,adjustGridInfo=.TRUE.)
+            CALL addNewChild(thisOctal,iSubcell,grid,adjustGridInfo=.TRUE.,splitAzimuthally=splitinAzimuth)
             thisOctal%child(iSubcell)%changed = .TRUE.
             grid%nOctals = grid%nOctals + 1
           END IF
@@ -10114,7 +10266,314 @@ IF ( .NOT. gridConverged ) RETURN
 
   end subroutine myTauSmooth
 
+
+  real(double) function cellVolume(thisOctal, subcell) result(v)
+    type(OCTAL) :: thisOctal
+    integer :: subcell
+    real(double) :: r1, r2, dphi
+    type(OCTALVECTOR) :: rVec
   
+    if (thisOctal%threed) then
+       if (.not.thisOctal%cylindrical) then
+          v = thisOctal%subcellsize**3
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          r1 = sqrt(rVec%x**2 + rVec%y**2) - thisOctal%subcellSize/2.d0
+          r2 = sqrt(rVec%x**2 + rVec%y**2) + thisOctal%subcellSize/2.d0
+          if (thisOctal%splitAzimuthally) then
+             dPhi = thisOctal%dPhi / 2.d0
+          else
+             dPhi = thisOctal%dPhi 
+          endif
+          v = (dphi/dble(twoPi)) * dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+       endif
+    else
+       rVec = subcellCentre(thisOctal,subcell)
+       r1 = rVec%x-thisOctal%subcellSize/2.d0
+       r2 = rVec%x+thisOctal%subcellSize/2.d0
+       v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+    endif
+  end function cellVolume
+  
+  subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal)
+
+
+   implicit none
+   type(GRIDTYPE), intent(in)    :: grid
+   type(OCTALVECTOR), intent(in) :: posVec
+   type(OCTALVECTOR), intent(inout) :: direction
+   type(OCTAL), pointer, optional :: sOctal
+   real(oct), intent(out) :: tval
+   !
+   type(OCTALVECTOR) :: norm(6), p3(6), thisNorm
+   type(OCTAL),pointer :: thisOctal
+   real(double) :: distTor1, distTor2, theta, mu
+   real(double) :: distToRboundary, compz,currentZ
+   real(double) :: phi, distToZboundary, ang1, ang2
+   type(OCTALVECTOR) :: subcen, point, xHat, zHat, rVec
+   integer :: subcell
+   real(double) :: distToSide1, distToSide2, distToSide
+   real(double) ::  compx,disttoxBoundary, currentX
+   real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
+   integer :: i,j
+   logical :: ok, thisOk(6)
+
+
+   point = posVec
+
+   if (PRESENT(sOctal)) then
+      call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid, startOctal=sOctal)
+   else
+      call amrGridValues(grid%octreeRoot, point, foundOctal=thisOctal, foundSubcell=subcell, grid=grid)
+   endif
+   subcen =  subcellCentre(thisOctal,subcell)
+
+   if (thisOctal%threed) then
+
+      if (.not.thisOctal%cylindrical) then
+         ok = .true.
+         
+         norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
+         norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
+         norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+         norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
+         norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
+         norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
+         
+         p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
+         p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
+         p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
+         p3(4) = OCTALVECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
+         p3(5) = OCTALVECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
+         p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
+
+         thisOk = .true.
+         
+         do i = 1, 6
+            
+            denom(i) = norm(i) .dot. direction
+            if (denom(i) /= 0.0d0) then
+               t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
+            else
+               thisOk(i) = .false.
+               t(i) = 0.0d0
+            endif
+            if (t(i) < 0.) thisOk(i) = .false.
+            !      if (denom > 0.) thisOK(i) = .false.
+         enddo
+         
+         
+         j = 0
+         do i = 1, 6
+            if (thisOk(i)) j=j+1
+         enddo
+         
+         if (j == 0) ok = .false.
+         
+         if (.not.ok) then
+            write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
+            write(*,*) direction%x,direction%y,direction%z
+            write(*,*) t(1:6)
+            stop
+         endif
+         
+         tval = minval(t, mask=thisOk)
+         tval = max(tval * 1.001d0,dble(thisOctal%subCellSize/1000.))
+         
+
+         if (tval == 0.) then
+            write(*,*) posVec
+            write(*,*) direction%x,direction%y,direction%z
+            write(*,*) t(1:6)
+            stop
+         endif
+         
+         if (tval > sqrt(3.)*thisOctal%subcellsize) then
+            !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
+            !     write(*,*) "direction",direction
+            !     write(*,*) t(1:6)
+            !     write(*,*) denom(1:6)
+         endif
+
+      else
+
+! now look at the cylindrical case
+
+         ! first do the inside and outside curved surfaces
+         r = sqrt(subcen%x**2 + subcen%y**2)
+         r1 = r - thisOctal%subcellSize/2.d0
+         r2 = r + thisOctal%subcellSize/2.d0
+         d = sqrt(point%x**2+point%y**2)
+         xHat = VECTOR(point%x, point%y,0.d0)
+         call normalize(xHat)
+      
+         cosmu =((-1.d0)*xHat).dot.direction
+         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
+         if (.not.ok) then
+            write(*,*) "Quad solver failed in intersectcubeamr2d"
+            direction = randomUnitVector()
+            x1 = thisoctal%subcellSize/2.d0
+            x2 = 0.d0
+         endif
+         distTor2 = max(x1,x2)
+         
+         theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+         cosmu = xHat.dot.direction
+         mu = acos(max(-1.d0,min(1.d0,cosmu)))
+         distTor1 = 1.e30
+         if (mu  < theta ) then
+            call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+            if (.not.ok) then
+               write(*,*) "Quad solver failed in intersectcubeamr2d"
+               direction = randomUnitVector()
+               x1 = thisoctal%subcellSize/2.d0
+               x2 = 0.d0
+            endif
+            distTor1 = max(x1,x2)
+         endif
+      
+         distToRboundary = min(distTor1, distTor2)
+
+         ! now do the upper and lower (z axis) surfaces
+      
+         zHat = VECTOR(0.d0, 0.d0, 1.d0)
+         compZ = zHat.dot.direction
+         currentZ = point%z
+      
+         if (compZ /= 0.d0 ) then
+            if (compZ > 0.d0) then
+               distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
+            else
+               distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
+            endif
+         else
+            disttoZboundary = 1.e30
+         endif
+      
+        
+         ! ok now we have to tackle the two angled sides...
+
+         ! find posvec to surface centre
+
+         phi = atan2(posVec%y,posVec%x)
+         if (phi < 0.d0) phi = phi + twoPi
+
+         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
+         if (thisOctal%splitAzimuthally) then
+            if (phi < thisOctal%phi) then
+               ang1 = thisOctal%phi - thisOctal%dPhi/2.d0
+               ang2 = thisOctal%phi
+            else
+               ang1 =  thisOctal%phi
+               ang2 = thisOctal%phi + thisOctal%dPhi/2.d0
+            endif
+         else
+            ang1 = thisOctal%phi - thisOctal%dPhi/2.d0
+            ang2 = thisOctal%phi + thisOctal%dPhi/2.d0
+         endif
+
+         rVec = rotateZ(rVec, -ang1)
+         thisnorm = rVec .cross. zHat
+         call normalize(thisnorm)
+         if ((thisnorm.dot.direction) /= 0.d0) then
+            distToSide1 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
+            if (distToSide1 < 0.d0) distToSide1 = 1.d30
+         endif
+         rVec = rotateZ(rVec, -ang2)
+         thisnorm = rVec .cross. zHat
+         call normalize(thisnorm)
+         if ((thisnorm.dot.direction) /= 0.d0) then
+            distToSide2 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
+            if (distToSide2 < 0.d0) distToSide2 = 1.d30
+         endif
+
+         distToSide = min(distToSide1, distToside2)
+
+         tVal = min(distToZboundary, distToRboundary, distToSide) +0.0001d0*grid%halfsmallestsubcell
+         if (tVal > 1.e29) then
+            write(*,*) "Cylindrical"
+            write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
+            write(*,*) "subcen",subcen
+            write(*,*) "x,z",currentX,currentZ
+         endif
+         if (tval < 0.) then
+            write(*,*) "Cylindrical"
+            write(*,*) tVal,distToZboundary,disttorboundary, disttoside
+            write(*,*) "subcen",subcen
+            write(*,*) "x,z",currentX,currentZ
+         endif
+
+      endif
+
+   else ! two-d grid case below
+
+      r1 = subcen%x - thisOctal%subcellSize/2.d0
+      r2 = subcen%x + thisOctal%subcellSize/2.d0
+      d = sqrt(point%x**2+point%y**2)
+      xHat = VECTOR(point%x, point%y,0.d0)
+      call normalize(xHat)
+      
+      cosmu =((-1.d0)*xHat).dot.direction
+      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
+      if (.not.ok) then
+         write(*,*) "Quad solver failed in intersectcubeamr2d"
+         direction = randomUnitVector()
+         x1 = thisoctal%subcellSize/2.d0
+         x2 = 0.d0
+      endif
+      distTor2 = max(x1,x2)
+      
+      theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+      cosmu = xHat.dot.direction
+      mu = acos(max(-1.d0,min(1.d0,cosmu)))
+      distTor1 = 1.e30
+      if (mu  < theta ) then
+         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+         if (.not.ok) then
+            write(*,*) "Quad solver failed in intersectcubeamr2d"
+            direction = randomUnitVector()
+            x1 = thisoctal%subcellSize/2.d0
+            x2 = 0.d0
+         endif
+         distTor1 = max(x1,x2)
+      endif
+      
+      distToXboundary = min(distTor1, distTor2)
+      
+      
+      zHat = VECTOR(0.d0, 0.d0, 1.d0)
+      compZ = zHat.dot.direction
+      currentZ = point%z
+      
+      if (compZ /= 0.d0 ) then
+         if (compZ > 0.d0) then
+            distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
+         else
+            distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
+         endif
+      else
+         disttoZboundary = 1.e30
+      endif
+      
+      tVal = min(distToZboundary, distToXboundary) +0.0001d0*grid%halfsmallestsubcell
+      if (tVal > 1.e29) then
+         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+         write(*,*) "subcen",subcen
+         write(*,*) "x,z",currentX,currentZ
+      endif
+      if (tval < 0.) then
+         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+         write(*,*) "subcen",subcen
+         write(*,*) "x,z",currentX,currentZ
+      endif
+      
+   endif
+
+
+ end subroutine distanceToCellBoundary
+
+
+
 
 
 END MODULE amr_mod

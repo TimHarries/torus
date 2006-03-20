@@ -1330,7 +1330,7 @@
         if(plot_maps) then
            ! Plotting the slices of planes
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-                "rho_grid.ps/vcps",.true., .true.,&
+                "rho_grid.ps/vcps",.true., .false.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &

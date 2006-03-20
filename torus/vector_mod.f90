@@ -788,6 +788,7 @@ contains
   end function rotateZOctal
 
 
+
   type(VECTOR) pure function rotateXSingle(a,b)
     type(VECTOR), intent(in) :: a
     real, intent(in) :: b   ! angle in radians

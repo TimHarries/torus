@@ -185,6 +185,9 @@ subroutine inputs()
   call getLogical("gridusesamr", gridUsesAMR, cLine, nLines, &
        "Grid uses adaptive mesh refinement: ","(a,1l,1x,a)", .false., ok, .false.)
 
+  call getLogical("cylindrical", cylindrical, cLine, nLines, &
+       "Grid uses 3D cylindical  coords: ","(a,1l,1x,a)", .false., ok, .false.)
+
   call getLogical("amr2d", amr2d, cLine, nLines, &
        "AMR grid is in two-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)
   
