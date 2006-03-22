@@ -6,6 +6,8 @@ MODULE octal_mod
 
   USE kind_mod
   USE vector_mod
+  USE messages_mod
+
 !  USE linked_list_class
   
   
@@ -89,7 +91,7 @@ MODULE octal_mod
     LOGICAL, DIMENSION(8)              :: hasChild
     TYPE(octal), POINTER               :: parent => null()         
     TYPE(octalVector)                  :: centre
-
+    real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
     TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
@@ -196,7 +198,7 @@ CONTAINS
              STOP
           END SELECT
        else
-          rVec = OCTALVECTOR(sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2),0.d0,thisOctal%centre%z)
+          rVec = OCTALVECTOR(thisOctal%r,0.d0,thisOctal%centre%z)
           if (thisOctal%splitAzimuthally) then
              SELECT CASE (nChild)
              CASE (1)    
@@ -268,6 +270,64 @@ CONTAINS
        END SELECT
     endif
   END FUNCTION subcellCentre
+
+  real(double) FUNCTION subcellRadius(thisOctal,nChild)
+    ! returns the radius of one of the subcells of the current octal 
+
+    IMPLICIT NONE
+
+    TYPE(octal), INTENT(IN) :: thisOctal 
+    INTEGER, INTENT(IN)     :: nChild    ! index (1-8) of the subcell
+    real(double) :: d
+
+    d = thisOctal%subcellSize * 0.5_oc
+
+    if (thisOctal%cylindrical) then
+       if (thisOctal%splitAzimuthally) then
+          SELECT CASE (nChild)
+             CASE (1)    
+                subcellRadius = thisOctal%r - d
+             CASE (2)    
+                subcellRadius = thisOctal%r + d
+             CASE (3)    
+                subcellRadius = thisOctal%r - d
+             CASE (4)    
+                subcellRadius = thisOctal%r + d
+             CASE (5)    
+                subcellRadius = thisOctal%r - d
+             CASE (6)    
+                subcellRadius = thisOctal%r + d
+             CASE (7)    
+                subcellRadius = thisOctal%r - d
+             CASE (8)    
+                subcellRadius = thisOctal%r + d
+             CASE DEFAULT
+                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case"
+                PRINT *, "        nChild = ", nChild 
+                do
+                enddo
+             END SELECT
+          else
+             SELECT CASE (nChild)
+             CASE (1)    
+                subcellRadius = thisOctal%r - d
+             CASE (2)    
+                subcellRadius = thisOctal%r + d
+             CASE (3)    
+                subcellRadius = thisOctal%r - d
+             CASE (4)    
+                subcellRadius = thisOctal%r + d
+             CASE DEFAULT
+                PRINT *, "Error:: Invalid nChild passed to subcellRadius non-split case"
+                PRINT *, "        nChild = ", nChild 
+                do
+                enddo
+             END SELECT
+          endif
+       else
+          call writeFatal("subcellRadius called for non-cylindrical grid")
+       endif
+     END FUNCTION subcellRadius
 
 
   !

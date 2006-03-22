@@ -1233,14 +1233,16 @@ stop
             
        else
 
-          if (thisOctal%threed) then
-             dV = real(thisOctal%subcellSize, kind=double) ** 3.0_db
-          else
-             rVec = subcellCentre(thisOctal,subcell)
-             r1 = rVec%x-thisOctal%subcellSize/2.
-             r2 = rVec%x+thisOctal%subcellSize/2.
-             dv = pi * (r2**2 - r1**2) * thisOctal%subcellSize
-          endif
+          dv = cellVolume(thisOctal, subcell)
+
+!          if (thisOctal%threed) then
+!             dV = real(thisOctal%subcellSize, kind=double) ** 3.0_db
+!          else
+!             rVec = subcellCentre(thisOctal,subcell)
+!             r1 = rVec%x-thisOctal%subcellSize/2.
+!             r2 = rVec%x+thisOctal%subcellSize/2.
+!             dv = pi * (r2**2 - r1**2) * thisOctal%subcellSize
+!          endif
 
 
           totalLineProb = totalLineProb + dV * &

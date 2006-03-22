@@ -161,6 +161,7 @@ module input_variables
   real :: tauSmoothMax, tauSmoothMin
   real :: tauRad
   real :: tauDiff
+  real :: eDensTol
 
   ! variables for a second source of radiation
 

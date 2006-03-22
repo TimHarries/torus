@@ -362,7 +362,7 @@
   integer           :: tooFewSamples ! number of errors from integratePathAMR
   integer           :: boundaryProbs ! number of errors from integratePathAMR
   integer           :: negativeOpacity ! number of errors from integratePathAMR
-  type(octal),pointer :: thisoctal
+  type(octal),pointer :: thisoctal, safeOctal
   real(double)           :: Ne         ! for testing
   real,dimension(statEqMAxLevels) :: meanDepart ! for testing
   real(double),dimension(statEqMAxLevels) :: levelPops  ! for testing
@@ -1228,11 +1228,11 @@
                  if (writeoutput) write(*,*) " "
               end if
            end if
-           if (doSmoothGrid) then
-              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
-              call smoothAMRgrid(grid,smoothFactor,inheritprops=.false., interpProps=.false.)
-              call writeInfo("...grid smoothing complete", TRIVIAL)
-           end if
+!           if (doSmoothGrid) then
+!              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+!              call smoothAMRgrid(grid,smoothFactor,inheritprops=.false., interpProps=.false.)
+!              call writeInfo("...grid smoothing complete", TRIVIAL)
+!           end if
            ! chris (26/05/04)
            ! Smooth the grid with respect to optical depth, if requested
            if (doSmoothGridTau) then
@@ -1240,20 +1240,31 @@
               do j = iSmoothLam, ismoothlam !nLambda
                  do
                     gridConverged = .true.
-!                    call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps=.false.)
                     call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, inheritProps = .false., interpProps = .false.)
 
                     if (gridConverged) exit
                  end do
               enddo
               call writeInfo("...grid smoothing complete", TRIVIAL)
+
+
+              do
+                 gridConverged = .true.
+                 call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+                      gridConverged,  inheritProps = .false., interpProps = .false.)
+                 write(*,*) grid%nOctals
+                 if (gridConverged) exit
+              end do
+
+
+
               ! The tau smoothing may result in large differences in the size
               ! of neighbouring octals, so we smooth the grid again.
-              if (doSmoothGrid) then
-                 call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
-                 call smoothAMRgrid(grid,smoothFactor,inheritprops = .false.,interpProps=.false.)
-                 call writeInfo("...grid smoothing complete", TRIVIAL)
-              end if
+!              if (doSmoothGrid) then
+!                 call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+!                 call smoothAMRgrid(grid,smoothFactor,inheritprops = .false.,interpProps=.false.)
+!                 call writeInfo("...grid smoothing complete", TRIVIAL)
+!              end if
            endif
         end select
    

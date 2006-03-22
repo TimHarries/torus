@@ -1062,13 +1062,13 @@ contains
        call tune(6, "Gauss-Seidel sweeps")
 
 
-       call writeInfo("Starting adaptive smooth...",TRIVIAL)
-       do
-          smoothConverged = .true.
-          call directPhotonSmooth(grid%octreeRoot, grid, smoothConverged, inheritProps = .true., interpProps = .false.)
-          if (smoothConverged) exit
-       end do
-       call writeInfo("Finished.",TRIVIAL)
+!       call writeInfo("Starting adaptive smooth...",TRIVIAL)
+!       do
+!          smoothConverged = .true.
+!          call directPhotonSmooth(grid%octreeRoot, grid, smoothConverged, inheritProps = .true., interpProps = .false.)
+!          if (smoothConverged) exit
+!       end do
+!       call writeInfo("Finished.",TRIVIAL)
        nCellsinDiffusion = 0
        call recountDiffusionCells(grid%octreeRoot, nCellsInDiffusion)
 
@@ -1946,6 +1946,7 @@ contains
    logical :: photonInDiffusionZone
    logical :: leftHandBoundary
    real(double) :: prob
+   integer :: i
 
     stillinGrid = .true.
     escaped = .false.
@@ -2029,6 +2030,29 @@ contains
           sOctal => tempOctal
           if (tempOctal%diffusionApprox(tempsubcell)) then
              write(*,*) "moved to cell with diffapprox",tempOctal%diffusionApprox(tempsubcell)
+             write(*,*) "endOctal",endOctal%diffusionApprox(endSubcell)
+             write(*,*) "temp octal",subcellCentre(tempOctal, tempSubcell),tempSubcell, tempOctal%rho(tempSubcell)
+             write(*,*) "end octal",subcellCentre(endOctal, endSubcell), endSubcell,endOctal%rho(endSubcell)
+             write(*,*) tempOctal%chiLine(tempSubcell),endOctal%chiLine(endSubcell)
+             write(*,*) tempOctal%chiLine(1:tempOctal%maxChildren)
+             write(*,*) tempOctal%splitAzimuthally, endOctal%splitAzimuthally
+             write(*,*) tempOctal%haschild(tempSubcell), endOctal%hasChild(endSubcell)
+             write(*,*) tempOctal%nDepth,endOctal%nDepth
+             write(*,*) tempOctal%phi*radtodeg,tempOctal%dphi*radtodeg
+             write(*,*) endOctal%phi*radtodeg,endOctal%dphi*radtodeg
+             write(*,*) tempOctal%r, endOctal%r
+             write(*,*) tempOctal%parent%chiline(1:tempOctal%parent%maxChildren)
+             write(*,*) endOctal%parent%chiline(1:endOctal%parent%maxChildren)
+             write(*,*) "temp"
+             do i = 1, tempOctal%parent%maxChildren
+                write(*,*) subcellCentre(tempOctal,i)
+             enddo
+             write(*,*) "end"
+             do i = 1, tempOctal%parent%maxChildren
+                write(*,*) subcellCentre(tempOctal,i)
+             enddo
+
+             do;enddo
           endif
 
        endif

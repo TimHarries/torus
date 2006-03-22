@@ -3065,7 +3065,9 @@ contains
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize,thisOctal%threed, thisOctal%twoD,    &
-                  thisOctal%maxChildren, thisOctal%dustType, thisOctal%dustTypeFraction
+                  thisOctal%maxChildren, thisOctal%dustType, thisOctal%dustTypeFraction, &
+                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+                  thisOctal%dPhi, thisOctal%r
        else
           write(iostat=error,unit=20) thisOctal%nDepth, thisOctal%nChildren, &
                   thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
@@ -3076,7 +3078,9 @@ contains
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
-                  thisOctal%maxChildren, thisOctal%dustType, thisOctal%dustTypeFraction
+                  thisOctal%maxChildren, thisOctal%dustType, thisOctal%dustTypeFraction, &
+                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+                  thisOctal%dPhi, thisOctal%r
        end if 
        if (.not.grid%oneKappa) then
 !          call writeReal2D(thisOctal%kappaAbs,fileFormatted)
@@ -3252,7 +3256,9 @@ contains
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
-                  thisOctal%maxChildren, thisOctal%dustType
+                  thisOctal%maxChildren, thisOctal%dustType, &
+                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+                  thisOctal%dPhi, thisOctal%r
        else
           read(unit=20,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
                   thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
@@ -3263,7 +3269,10 @@ contains
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize, thisOctal%threeD,  thisOctal%twoD,  &
-                  thisOctal%maxChildren, thisOctal%dustType
+                  thisOctal%maxChildren, thisOctal%dustType, &
+                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+                  thisOctal%dPhi, thisOctal%r
+
        end if
 
 

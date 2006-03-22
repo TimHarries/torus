@@ -577,34 +577,38 @@ contains
                     write(*,'(a)') "! Photon in cell that's not in flow. Screw-up in locatecontProbAmr"
                     stop
                   endif
-                  octalCentre = subcellCentre(sourceOctal,subcell)
 
-                  !!! we will just choose a random point within the subcell.
-                  !!! this *should* be done in a better way.
 
-                  call random_number(r1)
-                  r1 = r1 - 0.5  ! shift value mean value to zero
-                  r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
-                  xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+                  thisPhoton%position = randomPositionInCell(sourceOctal, subcell)
 
-                  call random_number(r2)
-                  r2 = r2 - 0.5                                  
-                  r2 = r2 * 0.9999                                          
-                  yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
-
-                
-                call random_number(r3)
-                r3 = r3 - 0.5                                  
-                r3 = r3 * 0.9999                                          
-                zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
-                
-                thisPhoton%position = vector(xOctal,yOctal,zOctal)
-
-                if (sourceOctal%twod) then
-                   call random_number(ang)
-                   ang = ang * twoPi
-                   thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
-                endif
+!                  octalCentre = subcellCentre(sourceOctal,subcell)
+!
+!                  !!! we will just choose a random point within the subcell.
+!                  !!! this *should* be done in a better way.
+!
+!                  call random_number(r1)
+!                  r1 = r1 - 0.5  ! shift value mean value to zero
+!                  r1 = r1 * 0.9999 ! to avoid any numerical accuracy problems
+!                  xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+!
+!                  call random_number(r2)
+!                  r2 = r2 - 0.5                                  
+!                  r2 = r2 * 0.9999                                          
+!                  yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
+!
+!                
+!                call random_number(r3)
+!                r3 = r3 - 0.5                                  
+!                r3 = r3 * 0.9999                                          
+!                zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
+!                
+!                thisPhoton%position = vector(xOctal,yOctal,zOctal)
+!
+!                if (sourceOctal%twod) then
+!                   call random_number(ang)
+!                   ang = ang * twoPi
+!                   thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
+!                endif
 
                 if (grid%geometry(1:7) == "ttauri" .or.  &
                      grid%geometry(1:9) == "luc_cir3d".or. &
