@@ -1228,13 +1228,19 @@
                  if (writeoutput) write(*,*) " "
               end if
            end if
-!           if (doSmoothGrid) then
-!              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
-!              call smoothAMRgrid(grid,smoothFactor,inheritprops=.false., interpProps=.false.)
-!              call writeInfo("...grid smoothing complete", TRIVIAL)
-!           end if
-           ! chris (26/05/04)
+           if (doSmoothgrid) then
+              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+              do
+                 gridConverged = .true.
+                 call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+                      gridConverged,  inheritProps = .false., interpProps = .false.)
+                 if (gridConverged) exit
+              end do
+              call writeInfo("...grid smoothing complete", TRIVIAL)
+           endif
+
            ! Smooth the grid with respect to optical depth, if requested
+
            if (doSmoothGridTau) then
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
               do j = iSmoothLam, ismoothlam !nLambda
@@ -1247,24 +1253,16 @@
               enddo
               call writeInfo("...grid smoothing complete", TRIVIAL)
 
-
-              do
-                 gridConverged = .true.
-                 call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
-                      gridConverged,  inheritProps = .false., interpProps = .false.)
-                 write(*,*) grid%nOctals
-                 if (gridConverged) exit
-              end do
-
-
-
-              ! The tau smoothing may result in large differences in the size
-              ! of neighbouring octals, so we smooth the grid again.
-!              if (doSmoothGrid) then
-!                 call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
-!                 call smoothAMRgrid(grid,smoothFactor,inheritprops = .false.,interpProps=.false.)
-!                 call writeInfo("...grid smoothing complete", TRIVIAL)
-!              end if
+              if (doSmoothgrid) then
+                 call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+                 do
+                    gridConverged = .true.
+                    call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+                         gridConverged,  inheritProps = .false., interpProps = .false.)
+                    if (gridConverged) exit
+                 end do
+                 call writeInfo("...grid smoothing complete", TRIVIAL)
+              endif
            endif
         end select
    
@@ -1341,11 +1339,11 @@
         if(plot_maps) then
            ! Plotting the slices of planes
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-                "rho_grid.ps/vcps",.true., .false.,&
+                "rho_grid.ps/vcps",.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-                "rho_zoom.ps/vcps",.true., .false.,&
+                "rho_zoom.ps/vcps",.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
            call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
                 nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
@@ -1863,7 +1861,7 @@
              "rho_grid.ps/vcps",.true., .true.,&
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
         call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_zoom.ps/vcps",.true., .false.,&
+             "rho_zoom.ps/vcps",.true., .true.,&
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
         call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
              nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)

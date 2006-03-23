@@ -6025,7 +6025,8 @@ contains
 !            end if
              
              eps = h/100.0
-             if ( plane(1:3) == "x-y" .and. (ABS(rVec%z-val_3rd_dim)-h/2.0) < eps) then
+             if ((rVec%z > 0.d0).and. plane(1:3) == "x-y" &
+                  .and. (ABS(rVec%z-val_3rd_dim)-h/2.0) < eps) then
                 if (.not.thisOctal%cylindrical) then
                    call PGRECT(x-w/2.0, x+w/2.0, y-h/2.0, y+h/2.0)
                 else
@@ -6070,15 +6071,19 @@ contains
     integer ::npts
     logical :: filled
     real :: x(2*nAng+10), y(2*nAng+10)
-
+    real :: x1, y1
 
     rVec = subcellCentre(thisOctal, subcell)
     r1 = sqrt(rVec%x**2+rVec%y**2)-thisOctal%subcellsize/2.d0
     r2 = sqrt(rVec%x**2+rVec%y**2)+thisOctal%subcellsize/2.d0
 
     if (thisOctal%splitAzimuthally) then
-       phi1 = atan2(rvec%y,rvec%x) - thisOctal%dPhi/4.d0
-       phi2 = atan2(rvec%y,rvec%x) + thisOctal%dPhi/4.d0
+       phi1 = atan2(rvec%y,rvec%x)
+       if (phi1  < 0.d0) phi1 = phi1 + twoPi
+       phi1 = phi1 - thisOctal%dPhi/4.d0
+       phi2 = atan2(rvec%y,rvec%x)
+       if (phi2  < 0.d0) phi2 = phi2 + twoPi
+       phi2 = phi2 + thisOctal%dPhi/4.d0
     else
        phi1 = atan2(rvec%y,rvec%x) - thisOctal%dPhi/2.d0
        phi2 = atan2(rvec%y,rvec%x) + thisOctal%dPhi/2.d0
@@ -6111,6 +6116,20 @@ contains
     else
        call pgline(npts, x, y)
     endif
+
+
+!    x1  = r1 * cos(thisOctal%phi)
+!    y1  = r1 * sin(thisOctal%phi)
+!    call pgqci(i)
+!    call pgmove(x1,y1)
+!    call pgsci(2)
+!    x1  = r2 * cos(thisOctal%phi)
+!    y1  = r2 * sin(thisOctal%phi)
+!    call pgdraw(x1,y1)
+!    call pgsci(i)
+
+
+
   end subroutine draw_segment
 
 
@@ -6179,6 +6198,7 @@ contains
     
     !
     box_size = REAL(grid%octreeRoot%subcellsize)*2.0
+    if (grid%octreeRoot%cylindrical) box_size = box_size * 2.0
     d = box_size
     if (PRESENT(boxfac)) d = d * boxfac
 
@@ -6233,8 +6253,10 @@ contains
     ! Finding the plotting range
     valueMin = 1.d30
     valueMax = -1.d30
-    call minMaxValue(root, name, plane, ValueMin, ValueMax, grid, ilam)
+    call minMaxValue(grid%octreeRoot, name, plane, ValueMin, ValueMax, grid, ilam)
         
+
+
     if (logscale) then
        if (valueMax<=0) valueMax=tiny(valueMax)
        if (valueMin<=0) valueMin=tiny(valueMin)
@@ -6325,15 +6347,16 @@ contains
 
 
 
-    if (iPlane == 1) then
+!    if (iPlane == 1) then
        call palett(2, 1.0, 0.5)
        call pgqcir(ilo, ihi)
-    endif
+!    endif
 
 
     !
     ! Calling a recursive function in this module
-    call plot_values(root, name, thisplane, value_3rd_dim, logscale, valueMax, valueMin, ilo, ihi, grid, ilam)
+    call plot_values(root, name, thisplane, value_3rd_dim, logscale, valueMax, valueMin, &
+         ilo, ihi, grid, ilam, withgrid)
 
 
 ! Comment out the following if you want the pix value as a function of distance from 
@@ -6379,15 +6402,15 @@ contains
     !
     ! Draw grids..
     !
-    if (withgrid) then
-       ! draw boxies
-       call PGSFS(2)  ! we don't want to fill in a box this time
-       call PGSCI(1) ! changing the color index.
-       ! this is a recursive routine in this module
-       call draw_rectangle(root, thisplane, value_3rd_dim)
-       call PGSCI(1) ! change color index to default.
-       call PGSFS(1)
-    end if
+!    if (withgrid) then
+!       ! draw boxies
+!       call PGSFS(2)  ! we don't want to fill in a box this time
+!       call PGSCI(1) ! changing the color index.
+!       ! this is a recursive routine in this module
+!       call draw_rectangle(root, thisplane, value_3rd_dim)
+!       call PGSCI(1) ! change color index to default.
+!       call PGSFS(1)
+!    end if
 
 
     
@@ -6437,7 +6460,7 @@ contains
   ! This is modefied from plotZplane
   !
   recursive subroutine plot_values(thisOctal, name, plane, val_3rd_dim, &
-       logscale, valueMax, valueMin, ilo, ihi, grid, ilam)
+       logscale, valueMax, valueMin, ilo, ihi, grid, ilam, withgrid)
     implicit none
     !
     type(octal), pointer   :: thisOctal
@@ -6452,6 +6475,7 @@ contains
     logical, intent(in)           :: logscale ! logscale if T, linear if not
     real(double), intent(in) :: valueMin, valueMax
     integer, intent(in) :: ilo, ihi
+    logical :: withgrid
     integer, intent(in),optional :: ilam
     !
     !
@@ -6475,7 +6499,7 @@ contains
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call plot_values(child, name, plane, val_3rd_dim, &
-                     logscale, valueMax, valueMin, ilo, ihi, grid, ilam)
+                     logscale, valueMax, valueMin, ilo, ihi, grid, ilam, withgrid)
                 exit
              end if
           end do
@@ -6559,7 +6583,7 @@ contains
              select case (name)
              case("rho")
                 value = thisOctal%rho(subcell)
-                if (thisOctal%diffusionApprox(subcell)) value = 1.d-30
+                if (thisOctal%diffusionApprox(subcell)) value = 1.
 
              case("ionization")
                 value = thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
@@ -6634,13 +6658,41 @@ contains
                    call pgrect(xm, xp, ym, yp)
                 else
                    call draw_segment(thisOctal, subcell, .true.)
+                   if (withgrid) then
+                      call PGSFS(2)  ! we don't want to fill in a box this time
+                      call PGSCI(1) ! changing the color index.
+                      call draw_segment(thisOctal, subcell, .false.)
+                      call PGSCI(1) ! change color index to default.
+                      call PGSFS(1)
+                   endif
                 endif
              case ("y-z")
                 call pgrect(ym, yp, zm, zp)
+                if (withgrid) then
+                   call PGSFS(2)  ! we don't want to fill in a box this time
+                   call PGSCI(1) ! changing the color index.
+                   call pgrect(ym, yp, zm, zp)
+                   call PGSCI(1) ! change color index to default.
+                   call PGSFS(1)
+                endif
              case ("z-x")
                 call pgrect(zm, zp, xm, xp)
+                if (withgrid) then
+                   call PGSFS(2)  ! we don't want to fill in a box this time
+                   call PGSCI(1) ! changing the color index.
+                   call pgrect(zm, zp, xm, xp)
+                   call PGSCI(1) ! change color index to default.
+                   call PGSFS(1)
+                endif
              case ("x-z")
                 call pgrect(xm, xp, zm, zp)
+                if (withgrid) then
+                   call PGSFS(2)  ! we don't want to fill in a box this time
+                   call PGSCI(1) ! changing the color index.
+                   call pgrect(xm, xp, zm, zp)
+                   call PGSCI(1) ! change color index to default.
+                   call PGSFS(1)
+                endif
              end select
 
           end if
@@ -6735,7 +6787,8 @@ contains
              use_this_subcell = .false.
           end if
 
-          use_this_subcell = thisOctal%inFlow(subcell)
+          use_this_subcell = .true. ! thisOctal%inFlow(subcell)
+
 
           if (use_this_subcell) then
              update =.true.
@@ -6746,7 +6799,7 @@ contains
                 value = thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
              case("temperature")
                 value = thisOctal%temperature(subcell)
-                if (value < 3.)  update = .false.
+!                if (value < 3.)  update = .false.
              case("dusttype")
                 value = thisOctal%dustTypeFraction(subcell,1)
              case("chiLine")
@@ -6784,12 +6837,12 @@ contains
                 write(*,*) "Error:: unknow name passed to MinMaxValue."
                 stop
              end select
-             if (update) then
+!             if (update) then
                 valueMax = MAX(valueMax, value)
                 valueMin = Min(valueMin, value)
-             endif
+!             endif
           end if
-        end if
+       end if
     enddo
 
   end subroutine minMaxValue

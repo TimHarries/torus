@@ -652,7 +652,7 @@ contains
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use input_variables, only : eDensTol
+    use input_variables, only : eDensTol, zoomfactor
 !$MPI    include 'mpif.h'
     type(GRIDTYPE) :: grid
     logical :: gridConverged
@@ -674,14 +674,18 @@ end subroutine gaussSeidelSweep
         nIter = nIter + 1
         gridconverged = .true.
         deMax = -1.e30
+!$MPI !if (my_rank == 0) then
+        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+             "/xs", .true., .false., &
+             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomfactor) 
         call gaussSeidelSweep(grid, edenstol, demax, gridConverged)
 !        call copyEdens(grid%octreeRoot)
         call setDiffusionCoeff(grid, grid%octreeRoot)
-!$MPI !if (my_rank == 0) then
-        write(*,*) nIter," Maximum relative change in eDens:",deMax
+!!$MPI !if (my_rank == 0) then
+!        write(*,*) nIter," Maximum relative change in eDens:",deMax
 !        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
 !             "/xs", .true., .false., &
-!             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=0.01) 
+!             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomfactor) 
 !$MPI  !endif
         if (nIter < 3) gridConverged = .false.
         if (nIter > maxIter) then

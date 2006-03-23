@@ -217,8 +217,8 @@ CONTAINS
           grid%octreeRoot%twoD = .false.
           grid%octreeRoot%threeD = .true.
           grid%octreeRoot%cylindrical = .true.
-          grid%octreeRoot%splitAzimuthally = .true.
-          grid%octreeRoot%maxChildren = 8
+          grid%octreeRoot%splitAzimuthally = .false.
+          grid%octreeRoot%maxChildren = 4
           grid%octreeRoot%phi = pi
           grid%octreeRoot%dPhi = twoPi
        endif
@@ -419,12 +419,7 @@ CONTAINS
     ! if splitAzimuthally is not present then we assume we are not
 
     if (cylindrical) then
-       rVec =  subcellCentre(parent,iChild)
-       parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
-       if (parent%child(newChildIndex)%phi < 0.d0) then
-          parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
-       endif
-!       parent%child(newChildIndex)%phi = parent%phi
+       parent%child(newChildIndex)%phi = parent%phi
        parent%child(newChildIndex)%dphi = parent%dphi
        parent%child(newChildIndex)%splitAzimuthally = .false.
        parent%child(newChildIndex)%maxChildren = 4
@@ -440,16 +435,13 @@ CONTAINS
           if (parent%child(newChildIndex)%phi < 0.d0) then
               parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
           endif
-          parent%child(newChildIndex)%dphi = parent%dphi/2.d0
-!          write(*,*) parent%child(newChildIndex)%nDepth,parent%child(newChildIndex)%phi*radtodeg, &
-!               parent%child(newChildIndex)%dphi*radtodeg
-       else
-          rVec =  subcellCentre(parent,iChild)
-          parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
-          if (parent%child(newChildIndex)%phi < 0.d0) then
-              parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
+          if (parent%splitAzimuthally) then
+             parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+          else
+             parent%child(newChildIndex)%dphi = parent%dphi
           endif
-!          parent%child(newChildIndex)%phi = parent%phi
+       else
+          parent%child(newChildIndex)%phi = parent%phi
           parent%child(newChildIndex)%dphi = parent%dphi
           parent%child(newChildIndex)%splitAzimuthally = .false.
           parent%child(newChildIndex)%maxChildren = 4
@@ -4467,16 +4459,20 @@ IF ( .NOT. gridConverged ) RETURN
          if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
       endif
 
-      if ((abs(r-rinner) < 0.5*rinner).and.(cellSize > 0.05*rInner)) then
-         split = .true.
-      endif
+!      if ((abs(r-rinner) < 0.5*rinner).and.(cellSize > 0.05*rInner)) then
+!         split = .true.
+!      endif
 
       if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 30.)) then
          split = .true.
          splitInAzimuth = .true.
       endif
-
       
+      if (r > rOuter*1.1d0) then
+         split = .false.
+         splitInAzimuth = .false.
+      endif
+
    case DEFAULT
       PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
       PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
@@ -6331,10 +6327,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%temperature(subcell) = 20.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
-
-
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
-    
     endif
 
 
@@ -10260,9 +10253,7 @@ IF ( .NOT. gridConverged ) RETURN
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
 
-!    do subcell = 1, thisOctal%maxChildren
-    subcell = 1
-    do while (subcell < thisOctal%maxChildren)
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -10280,7 +10271,8 @@ IF ( .NOT. gridConverged ) RETURN
           thisTau  = thisOctal%subcellSize * (ksca + kabs)
 
           r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1d0
-          centre = subcellCentre(thisOctal, subcell)
+          centre = subcellCentre(thisOctal, subcell) + &
+               (0.01d0*grid%halfSmallestsubcell)*OCTALVECTOR(+1.d0,+1.d0,+1.d0)
           if (.not.thisOctal%cylindrical) then
              nDir = 6
              dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
@@ -10312,14 +10304,12 @@ IF ( .NOT. gridConverged ) RETURN
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                            inherit=inheritProps, interp=interpProps)
                       converged = .false.
-                      subcell = 0
-                      exit
+                      return
                    endif
                 endif
              endif
           enddo
        endif
-       subcell = subcell + 1
     end do
 
   end subroutine myTauSmooth
@@ -10337,9 +10327,9 @@ IF ( .NOT. gridConverged ) RETURN
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
 
-!    do subcell = 1, thisOctal%maxChildren
-    subcell = 1
-    do while (subcell < thisOctal%maxChildren)
+
+
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -10351,8 +10341,9 @@ IF ( .NOT. gridConverged ) RETURN
           end do
        else
 
-          r = thisOctal%subcellSize !/2.d0 + 0.1d0*grid%halfSmallestSubcell
-          centre = subcellCentre(thisOctal, subcell)+(grid%halfSmallestSubcell*0.01d0)* randomUnitVector()
+          r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
+          centre = subcellCentre(thisOctal, subcell) + &
+               (0.01d0*grid%halfSmallestsubcell)*OCTALVECTOR(+1.d0,+1.d0,+1.d0)
           if (.not.thisOctal%cylindrical) then
              nDir = 6
              dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
@@ -10383,23 +10374,12 @@ IF ( .NOT. gridConverged ) RETURN
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                            inherit=inheritProps, interp=interpProps)
                       converged = .false.
-                      subcell = 0
-                      exit
+                      return
                 endif
-
-!                if ((neighbourOctal%nDepth < (thisOctal%ndepth-1))) then
-!                      call addNewChild(neighbourOctal,neighboursubcell,grid,adjustGridInfo=.TRUE., &
-!                           inherit=inheritProps, interp=interpProps)
-!                      converged = .false.
-!                      subcell = 0
-!                      exit
-!                endif
-
 
              endif
           enddo
        endif
-       subcell = subcell + 1
     end do
 
   end subroutine myScaleSmooth

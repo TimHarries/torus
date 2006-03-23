@@ -1051,8 +1051,18 @@ contains
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+            "temp_before_diff.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomfactor) 
+
        nCellsInDiffusion = 0
        call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
+
+       call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
+            "rho_before_diff.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomfactor) 
+
+
        call solveArbitraryDiffusionZones(grid)
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
