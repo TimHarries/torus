@@ -4459,9 +4459,9 @@ IF ( .NOT. gridConverged ) RETURN
          if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
       endif
 
-!      if ((abs(r-rinner) < 0.5*rinner).and.(cellSize > 0.05*rInner)) then
-!         split = .true.
-!      endif
+      if ((abs(r-rinner) < 0.5*rinner).and.(cellSize > 0.05*rInner)) then
+         split = .true.
+      endif
 
       if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 30.)) then
          split = .true.

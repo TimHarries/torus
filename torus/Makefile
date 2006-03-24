@@ -142,7 +142,7 @@ ifeq  ($(SYSTEM), linux)
 #   F95COMP=f95 -maxcontin=2500
    F95COMP=f95
    F77COMP=f77
-   FASTFLAG=-O3 -w 
+   FASTFLAG= -w 
    DEBUGFLAG=-g -C=all
    STATICFLAG=-Bstatic
    MATHTRAP=-ieee=stop
