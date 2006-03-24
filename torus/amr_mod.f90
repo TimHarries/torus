@@ -4477,7 +4477,7 @@ IF ( .NOT. gridConverged ) RETURN
          if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
       endif
 
-      if ((abs(r-rinner) < 0.5*rinner).and.(cellSize > 0.05*rInner)) then
+      if ((abs(r-rinner) < 0.5*rinner).and.(cellSize > 0.05*rInner).and.(abs(cellCentre%z) < 1000.d0)) then
          split = .true.
       endif
 

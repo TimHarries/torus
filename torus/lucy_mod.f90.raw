@@ -1960,7 +1960,7 @@ contains
     thisLam = (cSpeed / thisFreq) * 1.e8
     call hunt(lamArray, nLambda, real(thisLam), iLam)
     if ((ilam < 1).or.(ilam > nlambda)) then
-       write(*,*) "ilam errro",ilam
+       write(*,*) "ilam error in tonexteventamr",ilam,thislam
     endif
 
 ! select an initial random tau and find distance to next cell
