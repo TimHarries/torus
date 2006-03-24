@@ -419,8 +419,17 @@ CONTAINS
     ! if splitAzimuthally is not present then we assume we are not
 
     if (cylindrical) then
-       parent%child(newChildIndex)%phi = parent%phi
-       parent%child(newChildIndex)%dphi = parent%dphi
+       if (parent%splitAzimuthally) then
+          rVec =  subcellCentre(parent,iChild)
+          parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
+          if (parent%child(newChildIndex)%phi < 0.d0) then
+              parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
+          endif
+          parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+       else
+          parent%child(newChildIndex)%phi = parent%phi
+          parent%child(newChildIndex)%dphi = parent%dphi
+       endif
        parent%child(newChildIndex)%splitAzimuthally = .false.
        parent%child(newChildIndex)%maxChildren = 4
     endif
@@ -441,10 +450,19 @@ CONTAINS
              parent%child(newChildIndex)%dphi = parent%dphi
           endif
        else
+       if (parent%splitAzimuthally) then
+          rVec =  subcellCentre(parent,iChild)
+          parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
+          if (parent%child(newChildIndex)%phi < 0.d0) then
+              parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
+          endif
+          parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+       else
           parent%child(newChildIndex)%phi = parent%phi
           parent%child(newChildIndex)%dphi = parent%dphi
-          parent%child(newChildIndex)%splitAzimuthally = .false.
-          parent%child(newChildIndex)%maxChildren = 4
+       endif
+       parent%child(newChildIndex)%splitAzimuthally = .false.
+       parent%child(newChildIndex)%maxChildren = 4
        endif
     endif
 
