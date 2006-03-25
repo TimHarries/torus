@@ -1855,16 +1855,16 @@
      !
      ! See grid_mod.f90 for details.
      !
-!     if(plot_maps) then
+     if(plot_maps) then
         ! Plotting some grid values
-!        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-!             "rho_grid.ps/vcps",.true., .true.,&
-!             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-!        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-!             "rho_zoom.ps/vcps",.true., .true.,&
-!             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
-!        call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-!             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+             "rho_grid.ps/vcps",.true., .true.,&
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+             "rho_zoom.ps/vcps",.true., .true.,&
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
+        call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
+             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
 !        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
 !             "Vx.ps/vcps", .false., .false.,  &
 !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
@@ -1881,9 +1881,9 @@
 !             "etacont_zoom.ps/vcps", .true., .false.,  &
 !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
 !             show_value_3rd_dim, boxfac=0.0004)
-!        call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
-!             "temperature.ps/vcps", .true., .false., &
-!             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+        call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
+             "temperature.ps/vcps", .true., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 !        call plot_AMR_values(grid, "temperature", "x-y", 0., &
 !             "temperature2.ps/vcps", .true., .false., &
 !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
@@ -1898,7 +1898,7 @@
 !                "dv_dr.ps/vcps", .true., .false., &
 !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 !        end if
-!     end if  ! plot_maps
+     end if  ! plot_maps
 !     ! plotting column density (new routine in grid_mod.f90)
 !     if (grid%geometry(1:7) == "cluster") then 
 !       call plot_column_density(grid, plane_for_plot,  "column_density.ps/vcps", &
@@ -2049,6 +2049,18 @@
        call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
        call normalizedSpectrum(source(1)%spectrum)
        rstar = source(1)%radius
+
+    case("whitney")
+       nSource = 1
+       allocate(source(1:1))
+       source(1)%luminosity = fourPi * rStellar**2 * stefanBoltz * teff**4
+       source(1)%radius = rStellar / 1.e10
+       source(1)%teff = teff
+       source(1)%position = VECTOR(0.,0.,0.)
+       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
+       call normalizedSpectrum(source(1)%spectrum)
+       rstar = source(1)%radius
+
     case("wr104")
        nSource = 2
 

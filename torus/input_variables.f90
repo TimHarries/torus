@@ -123,6 +123,11 @@ module input_variables
   ! restrcting a calculation to a certain star in cluster geometry
   integer :: idx_restrict_star 
 
+  ! whitney stuff
+
+  real :: erInner, erOuter, drInner, drOuter, cavAngle, cavDens
+  real :: rStellar, mdotEnv, mEnv
+
   ! variables for clumped wind models
 
   integer :: nBlobs

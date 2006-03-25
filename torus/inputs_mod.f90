@@ -1693,6 +1693,68 @@ endif
 
 endif
 
+if (geometry == "whitney") then
+
+
+   call getReal("rstellar", rStellar, cLine, nLines, &
+       "Stellar radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+   rStellar = rStellar * rSol
+   
+   call getReal("teff", teff, cLine, nLines, &
+          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("mcore", mcore, cLine, nLines, &
+       "Stellar mass (solar masses): ","(a,f5.1,a)", 10., ok, .true.)
+   mcore = mcore * msol
+
+   call getReal("mdotenv", mdotenv, cLine, nLines, &
+       "Envelope infall rate (solar masses/year): ","(a,e10.3,a)", 20., ok, .true.)
+
+   mDotEnv = mDotEnv * mSol / (365.25d0*24.d0*3600.d0)
+
+   call getReal("menv", menv, cLine, nLines, &
+       "Envelope mass (solar masses): ","(a,e10.3,a)", 20., ok, .true.)
+
+   mEnv = mEnv * mSol
+
+   call getReal("erinner", erInner, cLine, nLines, &
+       "Envelope inner radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+   erInner = erInner * rStellar
+
+   call getReal("erouter", erOuter, cLine, nLines, &
+       "Envelope outer radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+   erOuter = erOuter * autocm
+
+   call getReal("mdisc", mDisc, cLine, nLines, &
+       "Disc mass (solar masses): ","(a,f5.3,a)", 1.e-4, ok, .true.)
+
+   mDisc  = mDisc * mSol
+
+   call getReal("drinner", drInner, cLine, nLines, &
+       "Disc inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+   drInner = drInner * rStellar
+
+   call getReal("drouter", drOuter, cLine, nLines, &
+       "Disc outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+   drOuter = drOuter * autocm
+
+
+   call getReal("cavdens", cavdens, cLine, nLines, &
+       "Cavity density (nh2/cm^3): ","(a,f5.1,a)", 10., ok, .true.)
+
+   cavDens = cavDens * mHydrogen
+
+   call getReal("cavangle", cavangle, cLine, nLines, &
+       "Cavity opening angle (deg): ","(a,f5.1,a)", 10., ok, .true.)
+
+   cavAngle = cavAngle * degtorad
+
+endif
+
  if ((geometry .eq. "shakara").or.(geometry .eq. "warpeddisc")) then
 
     call getLogical("noscat", noScattering, cLine, nLines, &

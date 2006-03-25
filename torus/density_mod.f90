@@ -734,6 +734,57 @@ contains
     endif
   end function protoDensity
 
+
+  real function whitneyDensity(point, grid)
+    use input_variables
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+    real :: r, mu, mu_0, muCavity, rhoEnv, r_c
+    real :: h, rhoDisc, alpha
+
+    muCavity = cos(cavAngle)
+
+    r = modulus(point)*1.e10
+
+    mu = (point%z*1.e10) /r
+
+    r_c = erInner
+    alpha = 2.25
+    beta = 1.25
+
+    rhoEnv = 1.e-30
+    if ((r > erInner).and.(r < erOuter)) then
+       mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
+       rhoEnv = (mdotenv / fourPi) * (bigG * mCore)**(-0.5) * r_c**(-1.5) * &
+       (r/r_c)**(-1.5) * (1. + abs(mu)/mu_0)**(-0.5) * &
+       (abs(mu)/mu_0 + (2.*mu_0**2 * r_c/r))**(-1.) ! equation 1 for Whitney 2003 ApJ 591 1049
+
+       rhoEnv = (Mdotenv/(8. * pi * r_c * sqrt(bigG * Mcore)))  ! Equation 1
+       rhoEnv = rhoEnv * 1./sqrt(1.+mu_0) * 1./sqrt(r)
+    endif
+
+    if (mu_0 > muCavity) then
+       rhoEnv = cavdens * mHydrogen
+    endif
+
+
+    
+    rho0  = mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*rStellar * rStellar**(alpha-beta) * ( &
+         (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) )
+
+    r = sqrt(point%x**2 + point%y**2)*1.e10
+    h = 0.01 * rStellar * (r/rStellar)**beta
+    rhoDisc = 1.e-30
+    if ((r > drInner).and.(r < drOuter)) then
+       rhoDisc = rho0 * (rStellar/r)**alpha &
+            * exp(-0.5*((point%z*1.e10)/h)**2)
+    endif
+
+
+    whitneyDensity = max(rhoEnv, rhoDisc)
+  end function whitneyDensity
+    
+
   function wrshellDensity(point, grid) result(testdensity)
     use constants_mod
     use input_variables
@@ -849,8 +900,6 @@ contains
 
 ! Envelope with cavity plus alpha disc model, as presented
 ! by Alvarez, Hoare and Lucas (2004).
-
-
     
     rStar = 10. * rSol
     H_0 = 10. * autocm

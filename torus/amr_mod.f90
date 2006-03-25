@@ -155,6 +155,9 @@ CONTAINS
     CASE("melvin")
        CALL assign_melvin(thisOctal,subcell,grid)
 
+    CASE("whitney")
+       CALL assign_whitney(thisOctal,subcell,grid)
+
     CASE("clumpydisc")
        CALL assign_clumpydisc(thisOctal, subcell, grid)
 
@@ -932,7 +935,8 @@ CONTAINS
       CASE ("windtest")
         gridConverged = .TRUE.
 
-      CASE("benchmark","shakara","aksco", "melvin","clumpydisc","lexington", "warpeddisc")
+      CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
+           "lexington", "warpeddisc", "whitney")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104")
@@ -1127,9 +1131,14 @@ CONTAINS
        ! need to test for both star and disc intersections 
       
        ! we will find out when and where the photon leaves the simulation space 
-       CALL getExitPoint(currentPoint,directionNormalized,locator,abortRay,error,&
-                         grid%halfSmallestSubcell,endPoint,octree%centre,        &
-                         (octree%subcellSize*2.0_oc),endLength,margin,grid%octreeRoot%threed) 
+
+       call getExitPoint2(currentPoint, directionNormalized ,locator, abortRay, error, &
+       grid%halfSmallestSubcell, endPoint, endLength, grid, octree, edgeofgrid=.true.)
+
+
+!       CALL getExitPoint(currentPoint,directionNormalized,locator,abortRay,error,&
+!                         grid%halfSmallestSubcell,endPoint,octree%centre,        &
+!                         (octree%subcellSize*2.0_oc),endLength,margin,grid%octreeRoot%threed) 
        endLength = endLength * distanceFraction
        
        ! need to reset some of the variables
@@ -1255,9 +1264,14 @@ CONTAINS
        
     ELSE
             
-       CALL getExitPoint(currentPoint,directionNormalized,locator,abortRay,error,&
-                         grid%halfSmallestSubcell,endPoint,octree%centre,        &
-                         (octree%subcellSize*2.0_oc),endLength,margin,grid%octreeRoot%threed) 
+
+       call getExitPoint2(currentPoint, directionNormalized ,locator, abortRay, error, &
+       grid%halfSmallestSubcell, endPoint, endLength, grid, octree, edgeofgrid=.true.)
+
+
+!       CALL getExitPoint(currentPoint,directionNormalized,locator,abortRay,error,&
+!                         grid%halfSmallestSubcell,endPoint,octree%centre,        &
+!                         (octree%subcellSize*2.0_oc),endLength,margin,grid%octreeRoot%threed) 
        distanceLimit = endLength * distanceFraction
        
        ! need to reset some of the variables
@@ -1404,9 +1418,15 @@ CONTAINS
 
         ! we find the exit point from the current subcell, 
         !  and also 'locator' - a point that lies in the *next* subcell 
-        CALL getExitPoint(currentPoint,direction,locator,abortRay,error, &
-                          grid%halfSmallestSubcell,exitPoint,centre,subcellSize,&
-                          minWallDistance,margin,grid%octreeRoot%threed)
+
+
+       call getExitPoint2(currentPoint, direction ,locator, abortRay, error, &
+       grid%halfSmallestSubcell, exitPoint, minWallDistance, grid, octree)
+
+
+!        CALL getExitPoint(currentPoint,direction,locator,abortRay,error, &
+!                          grid%halfSmallestSubcell,exitPoint,centre,subcellSize,&
+!                          minWallDistance,margin,grid%octreeRoot%threed, octree, subcell)
         IF ( abortRay .EQV. .TRUE. ) RETURN
 
         ! we now decide where we are going to sample the quantities
@@ -1491,6 +1511,42 @@ CONTAINS
 
 
   END SUBROUTINE returnSamples
+
+
+  subroutine getExitPoint2(currentPoint, direction ,locator, abortRay, error, &
+       halfSmallestSubcell, exitPoint, minWallDistance, grid, thisOctal, edgeOfGrid)
+
+
+    implicit none
+    type(GRIDTYPE) :: grid
+    type(OCTALVECTOR), intent(in) :: currentPoint
+    type(OCTALVECTOR), intent(in) :: direction
+    type(OCTALVECTOR), intent(out) :: locator    
+    logical, intent(inout) :: abortRay
+    type(OCTAL), target  :: thisOctal
+    integer, intent(inout) :: error
+    real(oct), INTENT(IN)    :: halfSmallestSubcell
+    type(OCTALVECTOR), intent(out) :: exitPoint
+    real(oct), intent(out) :: minWallDistance
+    type(OCTAL), pointer :: sOctal
+    logical, optional :: edgeOfGrid
+    
+    integer :: subcell
+
+    error = 0
+    abortRay = .false.
+
+    if (present(edgeofGrid)) then
+       call distanceToGridEdge(grid, currentPoint, direction, minWallDistance)
+    else
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPoint, direction, minWallDistance, sOctal)
+    endif
+
+    exitPoint = currentPoint + minWallDistance * direction
+    locator = currentPoint + (minWallDistance + 0.001d0*halfSmallestSubcell) * direction
+
+  end subroutine getExitPoint2
 
   
   SUBROUTINE getExitPoint(currentPoint,direction,locator,abortRay,error,    &
@@ -4047,6 +4103,7 @@ IF ( .NOT. gridConverged ) RETURN
     !   derived from information in the current cell  
 
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router
+    use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter
     IMPLICIT NONE
     TYPE(octal)       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
@@ -4091,6 +4148,29 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       if (thisOctal%nDepth < 4) split = .true.
       if ((cellCentre%x  < 2.e6).and.(cellSize > 1.e5)) split = .true.
+
+    case("whitney")
+       split = .false.
+       cellSize = thisOctal%subcellSize * 1.d10
+       cellCentre = 1.d10 * subcellCentre(thisOctal,subCell)
+       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+       if ((r > drInner).and.(r < drOuter)) then
+          hr = 0.01 * rStellar * (r / rStellar)**1.25
+          if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 1.)) split = .true.
+          if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+       endif
+       if (thisOctal%nDepth < 4) split = .true.
+       r = sqrt(cellCentre%x**2 + cellCentre%y**2)-cellsize/2.
+       if (abs(cellCentre%z) > erinner) then
+          if (r < erinner+abs(cellCentre%z)*tan(cavangle)) then
+             if (cellSize > (erinner+abs(cellCentre%z)*tan(cavangle))/4.) split = .true.
+          endif
+       endif
+       r = modulus(cellCentre)
+       if ((r < drOuter * 100.).and.(cellSize > 2.*drOuter)) split=.true.
+
+
+
 
     case("ttauri","jets","spiralwind")
       nsample = 40
@@ -6284,6 +6364,25 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine assign_melvin
+
+  subroutine assign_whitney(thisOctal,subcell,grid)
+
+    use input_variables
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    real :: r, hr, rd, r1
+    TYPE(octalVector) :: rVec
+    
+    rVec = subcellCentre(thisOctal,subcell)
+    thisOctal%rho(subcell) = whitneyDensity(rVec, grid)
+    thisOctal%temperature(subcell) = 10.
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+  end subroutine assign_whitney
 
 
 
@@ -10259,7 +10358,7 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine dumpdiffusion
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps)
-    use input_variables, only : tauSmoothMin, tauSmoothMax
+    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
@@ -10270,6 +10369,7 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
+    logical :: split
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -10282,6 +10382,8 @@ IF ( .NOT. gridConverged ) RETURN
              end if
           end do
        else
+
+          split = .true.
 
           call returnKappa(grid, thisOctal, subcell, ilambda=ilambda,&
                kappaSca=ksca, kappaAbs=kabs)
@@ -10316,7 +10418,12 @@ IF ( .NOT. gridConverged ) RETURN
                 call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
                      foundOctal=neighbourOctal, foundsubcell=neighbourSubcell, kappaSca=ksca, kappaAbs=kabs, ilambda=ilambda)
                 neighbourTau = thisOctal%subcellSize * (ksca + kabs)
-                if ((min(thisTau, neighbourTau) < tauSmoothMin).and.(max(thisTau, neighbourTau) > tauSmoothMax)) then
+
+                if ((grid%geometry.eq."whitney").and.&
+                     (modulus(subcellCentre(thisOctal,subcell)) > 0.9*erouter/1.e10)) split = .false.
+
+
+                if ((min(thisTau, neighbourTau) < tauSmoothMin).and.(max(thisTau, neighbourTau) > tauSmoothMax).and.split) then
 !                   write(*,*) modulus(subcellCentre(neighbourOctal, neighboursubcell)),thisOctal%ndepth,neighbourOctal%ndepth
                    if (thisTau > neighbourTau) then
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
@@ -10437,7 +10544,7 @@ IF ( .NOT. gridConverged ) RETURN
    implicit none
    type(GRIDTYPE), intent(in)    :: grid
    type(OCTALVECTOR), intent(in) :: posVec
-   type(OCTALVECTOR), intent(inout) :: direction
+   type(OCTALVECTOR), intent(in) :: direction
    type(OCTAL), pointer, optional :: sOctal
    real(oct), intent(out) :: tval
    !
@@ -10514,7 +10621,6 @@ IF ( .NOT. gridConverged ) RETURN
          endif
          
          tval = minval(t, mask=thisOk)
-         tval = max(tval * 1.001d0,dble(thisOctal%subCellSize/1000.))
          
 
          if (tval == 0.) then
@@ -10547,7 +10653,6 @@ IF ( .NOT. gridConverged ) RETURN
          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
          if (.not.ok) then
             write(*,*) "Quad solver failed in intersectcubeamr2d"
-            direction = randomUnitVector()
             x1 = thisoctal%subcellSize/2.d0
             x2 = 0.d0
          endif
@@ -10561,7 +10666,6 @@ IF ( .NOT. gridConverged ) RETURN
             call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
             if (.not.ok) then
                write(*,*) "Quad solver failed in intersectcubeamr2d"
-               direction = randomUnitVector()
                x1 = thisoctal%subcellSize/2.d0
                x2 = 0.d0
             endif
@@ -10628,7 +10732,7 @@ IF ( .NOT. gridConverged ) RETURN
 
          distToSide = min(distToSide1, distToside2)
 
-         tVal = min(distToZboundary, distToRboundary, distToSide) + 0.01d0*grid%halfsmallestsubcell
+         tVal = min(distToZboundary, distToRboundary, distToSide)
          if (tVal > 1.e29) then
             write(*,*) "Cylindrical"
             write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
@@ -10656,7 +10760,6 @@ IF ( .NOT. gridConverged ) RETURN
       call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
       if (.not.ok) then
          write(*,*) "Quad solver failed in intersectcubeamr2d"
-         direction = randomUnitVector()
          x1 = thisoctal%subcellSize/2.d0
          x2 = 0.d0
       endif
@@ -10670,7 +10773,6 @@ IF ( .NOT. gridConverged ) RETURN
          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
          if (.not.ok) then
             write(*,*) "Quad solver failed in intersectcubeamr2d"
-            direction = randomUnitVector()
             x1 = thisoctal%subcellSize/2.d0
             x2 = 0.d0
          endif
@@ -10694,7 +10796,7 @@ IF ( .NOT. gridConverged ) RETURN
          disttoZboundary = 1.e30
       endif
       
-      tVal = min(distToZboundary, distToXboundary) +0.0001d0*grid%halfsmallestsubcell
+      tVal = min(distToZboundary, distToXboundary)
       if (tVal > 1.e29) then
          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
          write(*,*) "subcen",subcen
@@ -10708,8 +10810,278 @@ IF ( .NOT. gridConverged ) RETURN
       
    endif
 
+   tVal = max(tVal, 0.0001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
 
  end subroutine distanceToCellBoundary
+
+  subroutine distanceToGridEdge(grid, posVec, direction, tVal)
+
+   implicit none
+   type(GRIDTYPE), intent(in)    :: grid
+   type(OCTALVECTOR), intent(in) :: posVec
+   type(OCTALVECTOR), intent(in) :: direction
+   real(oct), intent(out) :: tval
+   !
+   type(OCTALVECTOR) :: norm(6), p3(6), thisNorm
+   real(double) :: distTor1, distTor2, theta, mu
+   real(double) :: distToRboundary, compz,currentZ
+   real(double) :: phi, distToZboundary, ang1, ang2
+   type(OCTALVECTOR) :: subcen, point, xHat, zHat, rVec
+   integer :: subcell
+   real(double) :: distToSide1, distToSide2, distToSide
+   real(double) ::  compx,disttoxBoundary, currentX, subcellsize
+   real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
+   integer :: i,j
+   logical :: ok, thisOk(6)
+
+
+   point = posVec
+
+   subcen =  grid%octreeRoot%centre
+   subcellsize = grid%octreeRoot%subcellSize * 2.d0
+
+   if (grid%octreeRoot%threed) then
+
+      if (.not.grid%octreeRoot%cylindrical) then
+         ok = .true.
+         
+         norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
+         norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
+         norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+         norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
+         norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
+         norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
+         
+         p3(1) = OCTALVECTOR(subcen%x+subcellsize/2.0d0, subcen%y, subcen%z)
+         p3(2) = OCTALVECTOR(subcen%x, subcen%y+subcellsize/2.0d0 ,subcen%z)
+         p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+subcellsize/2.0d0)
+         p3(4) = OCTALVECTOR(subcen%x-subcellsize/2.0d0, subcen%y,  subcen%z)
+         p3(5) = OCTALVECTOR(subcen%x,subcen%y-subcellsize/2.0d0, subcen%z)
+         p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-subcellsize/2.0d0)
+
+         thisOk = .true.
+         
+         do i = 1, 6
+            
+            denom(i) = norm(i) .dot. direction
+            if (denom(i) /= 0.0d0) then
+               t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
+            else
+               thisOk(i) = .false.
+               t(i) = 0.0d0
+            endif
+            if (t(i) < 0.) thisOk(i) = .false.
+            !      if (denom > 0.) thisOK(i) = .false.
+         enddo
+         
+         
+         j = 0
+         do i = 1, 6
+            if (thisOk(i)) j=j+1
+         enddo
+         
+         if (j == 0) ok = .false.
+         
+         if (.not.ok) then
+            write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
+            write(*,*) direction%x,direction%y,direction%z
+            write(*,*) t(1:6)
+            stop
+         endif
+         
+         tval = minval(t, mask=thisOk)
+         
+
+         if (tval == 0.) then
+            write(*,*) posVec
+            write(*,*) direction%x,direction%y,direction%z
+            write(*,*) t(1:6)
+            stop
+         endif
+         
+         if (tval > sqrt(3.)*subcellsize) then
+            !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
+            !     write(*,*) "direction",direction
+            !     write(*,*) t(1:6)
+            !     write(*,*) denom(1:6)
+         endif
+
+      else
+
+! now look at the cylindrical case
+
+         ! first do the inside and outside curved surfaces
+         r = sqrt(subcen%x**2 + subcen%y**2)
+         r1 = r -subcellSize/2.d0
+         r2 = r +subcellSize/2.d0
+         d = sqrt(point%x**2+point%y**2)
+         xHat = VECTOR(point%x, point%y,0.d0)
+         call normalize(xHat)
+      
+         cosmu =((-1.d0)*xHat).dot.direction
+         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
+         if (.not.ok) then
+            write(*,*) "Quad solver failed in intersectcubeamr2d"
+            x1 = subcellSize/2.d0
+            x2 = 0.d0
+         endif
+         distTor2 = max(x1,x2)
+         
+         theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+         cosmu = xHat.dot.direction
+         mu = acos(max(-1.d0,min(1.d0,cosmu)))
+         distTor1 = 1.e30
+         if (mu  < theta ) then
+            call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+            if (.not.ok) then
+               write(*,*) "Quad solver failed in intersectcubeamr2d"
+               x1 = subcellSize/2.d0
+               x2 = 0.d0
+            endif
+            distTor1 = max(x1,x2)
+         endif
+      
+         distToRboundary = min(distTor1, distTor2)
+
+         ! now do the upper and lower (z axis) surfaces
+      
+         zHat = VECTOR(0.d0, 0.d0, 1.d0)
+         compZ = zHat.dot.direction
+         currentZ = point%z
+      
+         if (compZ /= 0.d0 ) then
+            if (compZ > 0.d0) then
+               distToZboundary = (subcen%z + subcellsize/2.d0 - currentZ ) / compZ
+            else
+               distToZboundary = abs((subcen%z - subcellsize/2.d0 - currentZ ) / compZ)
+            endif
+         else
+            disttoZboundary = 1.e30
+         endif
+      
+        
+         ! ok now we have to tackle the two angled sides...
+
+         ! find posvec to surface centre
+
+         phi = atan2(posVec%y,posVec%x)
+         if (phi < 0.d0) phi = phi + twoPi
+
+         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
+         if (grid%octreeRoot%splitAzimuthally) then
+            if (phi < grid%octreeRoot%phi) then
+               ang1 = grid%octreeRoot%phi - grid%octreeRoot%dPhi/2.d0
+               ang2 = grid%octreeRoot%phi
+            else
+               ang1 = grid%octreeRoot%phi
+               ang2 = grid%octreeRoot%phi + grid%octreeRoot%dPhi/2.d0
+            endif
+         else
+            ang1 = grid%octreeRoot%phi - grid%octreeRoot%dPhi/2.d0
+            ang2 = grid%octreeRoot%phi + grid%octreeRoot%dPhi/2.d0
+         endif
+
+         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
+         rVec = rotateZ(rVec, -ang1)
+         thisnorm = rVec .cross. zHat
+         call normalize(thisnorm)
+         if ((thisnorm.dot.direction) /= 0.d0) then
+            distToSide1 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
+            if (distToSide1 < 0.d0) distToSide1 = 1.d30
+         endif
+
+         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
+         rVec = rotateZ(rVec, -ang2)
+         thisnorm = rVec .cross. zHat
+         call normalize(thisnorm)
+         if ((thisnorm.dot.direction) /= 0.d0) then
+            distToSide2 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
+            if (distToSide2 < 0.d0) distToSide2 = 1.d30
+         endif
+
+         distToSide = min(distToSide1, distToside2)
+
+         tVal = min(distToZboundary, distToRboundary, distToSide)
+         if (tVal > 1.e29) then
+            write(*,*) "Cylindrical"
+            write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
+            write(*,*) "subcen",subcen
+            write(*,*) "x,z",currentX,currentZ
+         endif
+         if (tval < 0.) then
+            write(*,*) "Cylindrical"
+            write(*,*) tVal,distToZboundary,disttorboundary, disttoside
+            write(*,*) "subcen",subcen
+            write(*,*) "x,z",currentX,currentZ
+         endif
+
+      endif
+
+   else ! two-d grid case below
+
+      r1 = subcen%x - subcellSize/2.d0
+      r2 = subcen%x + subcellSize/2.d0
+      d = sqrt(point%x**2+point%y**2)
+      xHat = VECTOR(point%x, point%y,0.d0)
+      call normalize(xHat)
+      
+      cosmu =((-1.d0)*xHat).dot.direction
+      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
+      if (.not.ok) then
+         write(*,*) "Quad solver failed in intersectcubeamr2d"
+         x1 = subcellSize/2.d0
+         x2 = 0.d0
+      endif
+      distTor2 = max(x1,x2)
+      
+      theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+      cosmu = xHat.dot.direction
+      mu = acos(max(-1.d0,min(1.d0,cosmu)))
+      distTor1 = 1.e30
+      if (mu  < theta ) then
+         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+         if (.not.ok) then
+            write(*,*) "Quad solver failed in intersectcubeamr2d"
+            x1 = subcellSize/2.d0
+            x2 = 0.d0
+         endif
+         distTor1 = max(x1,x2)
+      endif
+      
+      distToXboundary = min(distTor1, distTor2)
+      
+      
+      zHat = VECTOR(0.d0, 0.d0, 1.d0)
+      compZ = zHat.dot.direction
+      currentZ = point%z
+      
+      if (compZ /= 0.d0 ) then
+         if (compZ > 0.d0) then
+            distToZboundary = (subcen%z + subcellsize/2.d0 - currentZ ) / compZ
+         else
+            distToZboundary = abs((subcen%z - subcellsize/2.d0 - currentZ ) / compZ)
+         endif
+      else
+         disttoZboundary = 1.e30
+      endif
+      
+      tVal = min(distToZboundary, distToXboundary)
+      if (tVal > 1.e29) then
+         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+         write(*,*) "subcen",subcen
+         write(*,*) "x,z",currentX,currentZ
+      endif
+      if (tval < 0.) then
+         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+         write(*,*) "subcen",subcen
+         write(*,*) "x,z",currentX,currentZ
+      endif
+      
+   endif
+
+   tVal = max(tVal, 1.d-6*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
+
+ end subroutine distanceToGridEdge
 
 
   subroutine writeCylindrical(thisOctal, subcell)

@@ -554,7 +554,7 @@ contains
 
     select case (geometry)
     
-    case("melvin")
+    case("melvin", "whitney")
        continue
 
     case("benchmark")
@@ -3065,7 +3065,7 @@ contains
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize,thisOctal%threed, thisOctal%twoD,    &
-                  thisOctal%maxChildren, thisOctal%dustType, thisOctal%dustTypeFraction, &
+                  thisOctal%maxChildren, thisOctal%dustType,  &
                   thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
                   thisOctal%dPhi, thisOctal%r
        else
@@ -3078,7 +3078,7 @@ contains
                   thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
-                  thisOctal%maxChildren, thisOctal%dustType, thisOctal%dustTypeFraction, &
+                  thisOctal%maxChildren, thisOctal%dustType, &
                   thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
                   thisOctal%dPhi, thisOctal%r
        end if 
@@ -3103,7 +3103,7 @@ contains
     
     
   end subroutine writeAMRgrid
- 
+
 
   
   subroutine readAMRgrid(filename,fileFormatted,grid)

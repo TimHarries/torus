@@ -1981,7 +1981,7 @@ contains
 ! moved from before call to amrgridvalues - th 16/11/05
 
     call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal)
-
+    tval = tval + 0.0001d0*grid%halfSmallestSubcell
 !    if (grid%octreeRoot%threed) then
 !       call intersectCubeAMR(grid, rVec, uHat, tVal)
 !    else
@@ -2142,6 +2142,7 @@ contains
 ! calculate the distance to the next cell
 
           call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal)
+          tval = tval + 0.0001d0*grid%halfSmallestSubcell
 
 !          if (grid%octreeRoot%threed) then
 !             call intersectCubeAMR(grid, rVec, uHat, tVal)
