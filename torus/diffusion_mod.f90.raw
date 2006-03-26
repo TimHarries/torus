@@ -824,6 +824,7 @@ end subroutine gaussSeidelSweep
     walkSubcell = startSubcell
     rVec = subcellCentre(walkOctal, walkSubcell)
 
+!    call random_number(r)
     do while(walkOctal%diffusionApprox(walkSubcell))
 
 
@@ -896,10 +897,31 @@ end subroutine gaussSeidelSweep
     enddo
     endOctal => walkOctal
     endSubcell = walkSubcell
-    endOctal%chiLine(endSubcell) = 12345.
-    endOctal%parent%chiLine(endOctal%parentSubcell) = 6789.
+
   end subroutine randomWalk
 
+  recursive subroutine unsetOnDirect(thisOctal)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell
+    integer :: i
+    real :: temp
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unsetOnDirect(child)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%nDirectPhotons(subcell) > 0) thisOctal%diffusionApprox(subcell) = .false.
+       end if
+    end do
+
+  end subroutine unsetOnDirect
 
 
 

@@ -4137,6 +4137,7 @@ IF ( .NOT. gridConverged ) RETURN
     logical, save :: first_time=.true.
     logical :: close_to_star
     real(double)      :: thisScale
+    logical,save  :: firstTime = .true.
 
     splitInAzimuth = .false.
     
@@ -4153,24 +4154,28 @@ IF ( .NOT. gridConverged ) RETURN
        split = .false.
        cellSize = thisOctal%subcellSize * 1.d10
        cellCentre = 1.d10 * subcellCentre(thisOctal,subCell)
+       nr1 = 0
+       nr2 = 150
+       nr = nr1 + nr2
+      do i = 1, nr2
+         rgrid(nr1+i) = log10(0.5*erInner)+dble(i)*(log10(erOuter)-log10(0.5*erInner))/dble(nr2)
+      end do
+      rgrid(1:nr) = 10.d0**rgrid(1:nr)
+      r = modulus(cellcentre)
+      if (thisOctal%nDepth < 8) split = .true.
+      if ((r < rGrid(nr)).and.(r > rGrid(1))) then
+         call locate(rGrid, nr, r, i)      
+         if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
+      endif
        r = sqrt(cellcentre%x**2 + cellcentre%y**2)
-       if ((r > drInner).and.(r < drOuter)) then
+       if ((r > drInner*0.9).and.(r < drOuter)) then
           hr = 0.01 * rStellar * (r / rStellar)**1.25
-          if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 1.)) split = .true.
+          if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 2.)) split = .true.
           if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
        endif
-       if (thisOctal%nDepth < 4) split = .true.
-       r = sqrt(cellCentre%x**2 + cellCentre%y**2)-cellsize/2.
-       if (abs(cellCentre%z) > erinner) then
-          if (r < erinner+abs(cellCentre%z)*tan(cavangle)) then
-             if (cellSize > (erinner+abs(cellCentre%z)*tan(cavangle))/4.) split = .true.
-          endif
-       endif
-       r = modulus(cellCentre)
-       if ((r < drOuter * 100.).and.(cellSize > 2.*drOuter)) split=.true.
 
 
-
+       
 
     case("ttauri","jets","spiralwind")
       nsample = 40
@@ -4578,6 +4583,14 @@ IF ( .NOT. gridConverged ) RETURN
       STOP
    end select
    
+
+   if (thisOctal%nDepth == 28) then
+      split = .false.
+      if (firstTime) then
+         call writeWarning("AMR cell depth capped at 28")
+         firstTime = .false.
+      endif
+   endif
 
   END FUNCTION decideSplit
 
@@ -10358,7 +10371,7 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine dumpdiffusion
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps)
-    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter
+    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, drouter
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
@@ -10370,6 +10383,9 @@ IF ( .NOT. gridConverged ) RETURN
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
     logical :: split
+    logical, save :: firsttime = .true.
+    integer, parameter :: maxDepth = 28
+    character(len=30) :: message
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -10421,6 +10437,20 @@ IF ( .NOT. gridConverged ) RETURN
 
                 if ((grid%geometry.eq."whitney").and.&
                      (modulus(subcellCentre(thisOctal,subcell)) > 0.9*erouter/1.e10)) split = .false.
+
+                if ((grid%geometry.eq."whitney").and.&
+                     (modulus(subcellCentre(thisOctal,subcell)) > 0.9*drouter/1.e10)) split = .false.
+
+
+                if (thisOctal%nDepth == maxDepth) then
+                   split = .false.
+                   if (firstTime) then
+                      write(message,'(a,i3)') "AMR cell depth capped at: ",maxDepth
+                      call writeWarning(message)
+                      firstTime = .false.
+                   endif
+                endif
+
 
 
                 if ((min(thisTau, neighbourTau) < tauSmoothMin).and.(max(thisTau, neighbourTau) > tauSmoothMax).and.split) then

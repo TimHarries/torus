@@ -741,6 +741,7 @@ contains
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r, mu, mu_0, muCavity, rhoEnv, r_c
     real :: h, rhoDisc, alpha
+    real(double) :: fac, dtheta
 
     muCavity = cos(cavAngle)
 
@@ -752,18 +753,26 @@ contains
     alpha = 2.25
     beta = 1.25
 
-    rhoEnv = 1.e-30
+    rhoEnv = cavdens * mHydrogen
     if ((r > erInner).and.(r < erOuter)) then
        mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
-       rhoEnv = (mdotenv / fourPi) * (bigG * mCore)**(-0.5) * r_c**(-1.5) * &
-       (r/r_c)**(-1.5) * (1. + abs(mu)/mu_0)**(-0.5) * &
-       (abs(mu)/mu_0 + (2.*mu_0**2 * r_c/r))**(-1.) ! equation 1 for Whitney 2003 ApJ 591 1049
+ ! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
+! this is from Momose et al. 1998 ApJ 504 314
 
-       rhoEnv = (Mdotenv/(8. * pi * r_c * sqrt(bigG * Mcore)))  ! Equation 1
-       rhoEnv = rhoEnv * 1./sqrt(1.+mu_0) * 1./sqrt(r)
+       rhoEnv = (mdotenv / fourPi) * (bigG * mCore)**(-0.5) * r**(-1.5) * &
+       (1. + abs(mu)/mu_0)**(-0.5) * &
+       (abs(mu)/mu_0 + (2.*mu_0**2 * r_c/r))**(-1.)
+
+!       fac =  1.d0-min(dble(r - erInner)/(0.02d0*erinner),1.d0)
+!       fac = exp(-fac*10.d0)
+!       rhoEnv = rhoEnv * fac
+!       rhoEnv = max(rhoEnv, tiny(rhoEnv))
     endif
 
     if (mu_0 > muCavity) then
+!       dtheta = (acos(mu_0)-acos(muCavity))
+!       fac =  1.d0-min(dble(r - drInner)/(0.02d0*erinner),1.d0)
+!       fac = exp(-fac*10.d0)
        rhoEnv = cavdens * mHydrogen
     endif
 
@@ -776,8 +785,11 @@ contains
     h = 0.01 * rStellar * (r/rStellar)**beta
     rhoDisc = 1.e-30
     if ((r > drInner).and.(r < drOuter)) then
-       rhoDisc = rho0 * (rStellar/r)**alpha &
-            * exp(-0.5*((point%z*1.e10)/h)**2)
+       rhoDisc = rho0 * (rStellar/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2)
+       fac =  1.d0-min(dble(r - drInner)/(0.02d0*drinner),1.d0)
+       fac = exp(-fac*10.d0)
+       rhoDisc = rhoDisc * fac
+       rhoDisc = max(rhoDisc, tiny(rhoDisc))
     endif
 
 

@@ -6625,9 +6625,9 @@ contains
                 call normalize(rhat)
                 value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
              case("tau")
-                call returnKappa(grid, thisOctal, subcell, ilambda=ilam, lambda=grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
-                value = thisOctal%subcellsize * (kSca+kAbs)
-                if (thisOctal%diffusionApprox(subcell)) value = 1.e-20
+                call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
+                value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
+                if (thisOctal%diffusionApprox(subcell)) value = 1.e10
 
              case default
                 write(*,*) "Error:: unknown name passed to grid_mod::plot_values."
@@ -6787,19 +6787,19 @@ contains
              use_this_subcell = .false.
           end if
 
-          use_this_subcell = .true. ! thisOctal%inFlow(subcell)
-
+          use_this_subcell = .true.
 
           if (use_this_subcell) then
              update =.true.
              select case (name)
              case("rho")
                 value = thisOctal%rho(subcell)
+                if (value < 1.e-20) update = .false.
              case("ionization")
                 value = thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
              case("temperature")
                 value = thisOctal%temperature(subcell)
-!                if (value < 3.)  update = .false.
+                if (value < 3.)  update = .false.
              case("dusttype")
                 value = thisOctal%dustTypeFraction(subcell,1)
              case("chiLine")
@@ -6829,18 +6829,18 @@ contains
                 call normalize(rhat)
                 value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
              case("tau")
-                call returnKappa(grid, thisOctal, subcell, ilambda=ilam, lambda=grid%lamArray(ilam), kappaSca=ksca, kappaAbs=kabs)
-                value = thisOctal%subcellsize * (kSca+kAbs)
-                if (thisOctal%diffusionApprox(subcell)) value = 1.e-20
+                call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
+                value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
+                if (thisOctal%diffusionApprox(subcell)) update = .false.
 
              case default
                 write(*,*) "Error:: unknow name passed to MinMaxValue."
                 stop
              end select
-!             if (update) then
+             if (update) then
                 valueMax = MAX(valueMax, value)
                 valueMin = Min(valueMin, value)
-!             endif
+             endif
           end if
        end if
     enddo

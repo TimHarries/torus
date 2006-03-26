@@ -712,6 +712,8 @@ contains
 !$OMP DO SCHEDULE(runtime)
        photonloop: do iMonte = imonte_beg, imonte_end
 
+          write(*,*) iMonte
+
 !$MPI !  if (MOD(i,n_proc) /= my_rank) cycle photonLoop
 
 !$MPI !  if (MOD(i,n_proc) /= my_rank) goto 999
@@ -1058,6 +1060,7 @@ contains
 
        call solveArbitraryDiffusionZones(grid)
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)
+       call unsetOnDirect(grid%octreeRoot)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 
@@ -1950,6 +1953,7 @@ contains
    logical :: leftHandBoundary
    real(double) :: prob
    integer :: i
+   real(double), parameter :: fudgeFac = 1.d-2
 
     stillinGrid = .true.
     escaped = .false.
@@ -1981,7 +1985,7 @@ contains
 ! moved from before call to amrgridvalues - th 16/11/05
 
     call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal)
-    tval = tval + 0.0001d0*grid%halfSmallestSubcell
+    tval = tval + fudgeFac * grid%halfSmallestSubcell
 !    if (grid%octreeRoot%threed) then
 !       call intersectCubeAMR(grid, rVec, uHat, tVal)
 !    else
@@ -2142,7 +2146,7 @@ contains
 ! calculate the distance to the next cell
 
           call distanceToCellBoundary(grid, rVec, uHat, tVal, sOctal)
-          tval = tval + 0.0001d0*grid%halfSmallestSubcell
+          tval = tval + fudgeFac*grid%halfSmallestSubcell
 
 !          if (grid%octreeRoot%threed) then
 !             call intersectCubeAMR(grid, rVec, uHat, tVal)
