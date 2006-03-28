@@ -210,7 +210,7 @@ subroutine inputs()
 !           print *, 'WARNING: amrGridCentreZ == 0. This may cause numerical problems!'
 !        end if
      call getDouble("limitscalar", limitScalar, cLine, nLines, &
-          "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000._db, ok, .true.) 
+          "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000._db, ok, .false.) 
      call getDouble("limittwo", limitScalar2, cLine, nLines, &
           "Second scalar limit for subcell division: ","(a,es9.3,1x,a)", 0._db, ok, .false.) 
      call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
@@ -235,11 +235,11 @@ subroutine inputs()
      call getReal("samplefreq", sampleFreq, cLine, nLines, &
           "Max samples per AMR subcell: ","(a,f6.1,1x,a)", 2., ok, .true.) 
      call getString("popfile", popFilename, cLine, nLines, &
-          "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
+          "Grid populations filename: ","(a,a,1x,a)","none", ok, .false.)
      call getLogical("writepops", writePops, cLine, nLines, &
-          "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+          "Write populations file: ","(a,1l,1x,a)", .false., ok, .false.)
      call getLogical("readpops", readPops, cLine, nLines, &
-          "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+          "Read populations file: ","(a,1l,1x,a)", .false., ok, .false.)
      call getLogical("writephasepops", writePhasePops, cLine, nLines, &
               "Write populations file at each phase: ","(a,1l,1x,a)", .false., ok, .false.)
      call getLogical("readphasepops", readPhasePops, cLine, nLines, &
@@ -1712,10 +1712,6 @@ if (geometry == "whitney") then
 
    mDotEnv = mDotEnv * mSol / (365.25d0*24.d0*3600.d0)
 
-   call getReal("menv", menv, cLine, nLines, &
-       "Envelope mass (solar masses): ","(a,e10.3,a)", 20., ok, .true.)
-
-   mEnv = mEnv * mSol
 
    call getReal("erinner", erInner, cLine, nLines, &
        "Envelope inner radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)

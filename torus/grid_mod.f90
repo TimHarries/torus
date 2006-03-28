@@ -554,8 +554,14 @@ contains
 
     select case (geometry)
     
-    case("melvin", "whitney")
-       continue
+    case("whitney")
+       grid%geometry = "whitney"
+       grid%rCore = rStellar/1.e10
+       grid%lCore = fourPi * rCore**2 * stefanBoltz * teff**4 * 1.e20
+       grid%rInner = erInner/1.e10
+       grid%rOuter = erOuter/1.e10
+       grid%starPos1 = vector(1.e-6,1.e-6,1.e-6)
+
 
     case("benchmark")
        grid%geometry = "benchmark"
@@ -6584,7 +6590,6 @@ contains
              case("rho")
                 value = thisOctal%rho(subcell)
                 if (thisOctal%diffusionApprox(subcell)) value = 1.
-
              case("ionization")
                 value = thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
              case("temperature")
@@ -6595,8 +6600,14 @@ contains
                 value = thisOctal%etaLine(subcell)
              case("etaCont")
                 value = thisOctal%etaCont(subcell)
-             case("dusttype")
+             case("dusttype1")
                 value = thisOctal%dustTypeFraction(subcell,1)
+             case("dusttype2")
+                value = thisOctal%dustTypeFraction(subcell,2)
+             case("dusttype3")
+                value = thisOctal%dustTypeFraction(subcell,3)
+             case("dusttype4")
+                value = thisOctal%dustTypeFraction(subcell,4)
              case("crossings")
                 value = thisOctal%nCrossings(subcell)
                 if (thisOctal%diffusionApprox(subcell)) value = 1.e6
@@ -6659,40 +6670,88 @@ contains
                 else
                    call draw_segment(thisOctal, subcell, .true.)
                    if (withgrid) then
+                      call pgqci(i)
                       call PGSFS(2)  ! we don't want to fill in a box this time
                       call PGSCI(1) ! changing the color index.
                       call draw_segment(thisOctal, subcell, .false.)
-                      call PGSCI(1) ! change color index to default.
                       call PGSFS(1)
+                      call pgsci(i)
                    endif
                 endif
              case ("y-z")
                 call pgrect(ym, yp, zm, zp)
                 if (withgrid) then
+                   call pgqci(i)
                    call PGSFS(2)  ! we don't want to fill in a box this time
                    call PGSCI(1) ! changing the color index.
                    call pgrect(ym, yp, zm, zp)
                    call PGSCI(1) ! change color index to default.
                    call PGSFS(1)
+                   call pgsci(i)
                 endif
+                if ((thisOctal%cylindrical).and.(thisOctal%dphi > 1.001d0*pi)) then
+                   ym = -ym
+                   yp = -yp
+                   call pgrect(ym, yp, zm, zp)
+                   if (withgrid) then
+                      call pgqci(i)
+                      call PGSFS(2)  ! we don't want to fill in a box this time
+                      call PGSCI(1) ! changing the color index.
+                      call pgrect(ym, yp, zm, zp)
+                      call PGSCI(1) ! change color index to default.
+                      call PGSFS(1)
+                      call pgsci(i)
+                   endif
+                endif
+
              case ("z-x")
                 call pgrect(zm, zp, xm, xp)
                 if (withgrid) then
+                      call pgqci(i)
                    call PGSFS(2)  ! we don't want to fill in a box this time
                    call PGSCI(1) ! changing the color index.
                    call pgrect(zm, zp, xm, xp)
-                   call PGSCI(1) ! change color index to default.
                    call PGSFS(1)
+                   call pgsci(i)
+                endif
+                if ((thisOctal%cylindrical).and.(thisOctal%dphi > 1.001d0*pi)) then
+                   xm = -xm
+                   xp = -xp
+                   call pgrect(zm, zp, xm, xp)
+                   if (withgrid) then
+                      call pgqci(i)
+                      call PGSFS(2)  ! we don't want to fill in a box this time
+                      call PGSCI(1) ! changing the color index.
+                      call pgrect(zm, zp, xm, xp)
+                      call PGSCI(i) ! change color index to default.
+                      call PGSFS(1)
+                   endif
                 endif
              case ("x-z")
                 call pgrect(xm, xp, zm, zp)
                 if (withgrid) then
+                   call pgqci(i)
                    call PGSFS(2)  ! we don't want to fill in a box this time
                    call PGSCI(1) ! changing the color index.
                    call pgrect(xm, xp, zm, zp)
-                   call PGSCI(1) ! change color index to default.
+                   call PGSCI(i) ! change color index to default.
                    call PGSFS(1)
                 endif
+                if ((thisOctal%cylindrical).and.(thisOctal%dphi > 1.001d0*pi)) then
+                   xm = -xm
+                   xp = -xp
+                   call pgrect(xm, xp, zm, zp)
+                   if (withgrid) then
+                      call pgqci(i)
+                      call PGSFS(2)  ! we don't want to fill in a box this time
+                      call PGSCI(1) ! changing the color index.
+                      call pgrect(xm, xp, zm, zp)
+                      call PGSCI(i) ! change color index to default.
+                      call PGSFS(1)
+                   endif
+                endif
+
+
              end select
 
           end if
@@ -6800,8 +6859,14 @@ contains
              case("temperature")
                 value = thisOctal%temperature(subcell)
                 if (value < 3.)  update = .false.
-             case("dusttype")
+             case("dusttype1")
                 value = thisOctal%dustTypeFraction(subcell,1)
+             case("dusttype2")
+                value = thisOctal%dustTypeFraction(subcell,2)
+             case("dusttype3")
+                value = thisOctal%dustTypeFraction(subcell,3)
+             case("dusttype4")
+                value = thisOctal%dustTypeFraction(subcell,4)
              case("chiLine")
                 value = thisOctal%chiLine(subcell)
              case("etaLine")
@@ -7319,7 +7384,7 @@ contains
        aVecOctal = dble(rCore) * uhatOctal
        ilambda = 32
     
-       CALL startReturnSamples (aVecOctal,uHatOctal,grid,1.,nTau,       &
+       CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,1.,nTau,       &
             maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
             lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=vel,velocityderiv=dv, &
             temperature=temp, &
@@ -7454,7 +7519,7 @@ contains
        aVecOctal = dble(rCore) * uhatOctal
        ilambda = 32
     
-       CALL startReturnSamples (aVecOctal,uHatOctal,grid,1.,nTau,       &
+       CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,1.,nTau,       &
             maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
             lambda,kappaAbs=kabs, kappaSca=ksca, &
             velocity=vel,velocityderiv=dv, &

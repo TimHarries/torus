@@ -1268,7 +1268,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
   if (.not. grid%lineEmission) then
 
      ! sample the grid along the path of the ray
-     CALL startReturnSamples (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
+     CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
                               maxTau,thin_disc_on,opaqueCore,hitcore,usePops,iLambda,error,&
                               lambda,kappaAbs=kAbs,kappaSca=kSca, velocity=velocity,&
                               velocityDeriv=velocityDeriv,chiLine=chiLine,    &
@@ -1336,7 +1336,7 @@ subroutine integratePathAMR(wavelength,  lambda0, vVec, aVec, uHat, Grid, &
 
      escProb = 1.
 
-     CALL startReturnSamples (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
+     CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,sampleFreq,nTau,       &
                               maxTau,thin_disc_on,opaqueCore,hitcore,usePops,iLambda,error,&
                               lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=velocity,&
                               velocityDeriv=velocityDeriv,chiLine=chiLine,    &
@@ -2589,7 +2589,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   type(vector), intent(in)  :: dir_obs            ! direction to the observer (unit vector)
   real, intent(in)          :: wavelength         ! the wavelength 
   real, intent(in)          :: lambda0            ! rest wavelength of line
-  type(GRIDTYPE), intent(in):: grid               ! the opacity grid
+  type(GRIDTYPE)            :: grid               ! the opacity grid
   !
   logical, intent(in)       :: thin_disc_on      ! T to include thin disc
   logical, intent(in)       :: opaqueCore         ! is the core opaque
@@ -2651,6 +2651,11 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   zeroVec = OCTALVECTOR(0.,0.,0.)
   
   !
+
+  if ((grid%starpos1%x == 0.).and.(grid%starpos1%y==0.).and.(grid%starpos1%z==0)) then
+     grid%starPos1 =vector ( 1.e-6,1.e-6,1.e-6)
+  endif
+
   ! The distance from the center from which a test ray starts.
   if (grid%geometry == "cluster") then
      R = 1.0d-3
@@ -2666,6 +2671,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   !
   octVec = OCTALVECTOR(1.d0, 0.d0, 0.d0)
 !  position = (octVec*R)
+  R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1
   call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
@@ -2690,8 +2696,10 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   ! test along y-axis 
   !
   octVec = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-!  position = (octVec*R)
-  position = (octVec*R) + grid%starPos1
+!  position = (octVec*R) 
+  R = max(R, 1.e-3*rSol/1.e10)
+
+ position = (octVec*R) + grid%starPos1
   call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
@@ -2716,6 +2724,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   !
   octVec = OCTALVECTOR(0.d0, 0.d0, 1.d0)
 !  position = (octVec*R)
+  R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1
   call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
@@ -2741,6 +2750,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   !
   octVec = s2o(dir_obs)
 !  position = (octVec*R) + amrGridCentre
+  R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1
   call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5), &

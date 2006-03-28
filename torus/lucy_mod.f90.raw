@@ -712,7 +712,6 @@ contains
 !$OMP DO SCHEDULE(runtime)
        photonloop: do iMonte = imonte_beg, imonte_end
 
-          write(*,*) iMonte
 
 !$MPI !  if (MOD(i,n_proc) /= my_rank) cycle photonLoop
 

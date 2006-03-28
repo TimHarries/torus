@@ -884,6 +884,10 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
   end subroutine fillDustShakara
 
+
+
+
+
   recursive subroutine fillDustUniform(grid, thisOctal)
 
     use input_variables, only : maxDustTypes, nDustType, grainFrac
@@ -1121,4 +1125,135 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     enddo
   end subroutine createRossArray
 
-  end module dust_mod
+
+
+  recursive subroutine fillDustWhitney(grid, thisOctal)
+    use input_variables
+    TYPE(octalVector) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+    real :: r, mu, mu_0, muCavity, rhoEnv, r_c
+    real :: h, rhoDisc, alpha
+    real(double) :: fac, dtheta
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    integer :: subcell, i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fillDustWhitney(grid, child)
+                exit
+             end if
+          end do
+       else
+
+          point = subcellCentre(thisOctal, subcell)
+          muCavity = cos(cavAngle/2.)
+          r = modulus(point)*1.e10
+          
+          mu = (point%z*1.e10) /r
+          
+          r_c = erInner
+          alpha = 2.25
+          beta = 1.25
+
+          rhoEnv = cavdens * mHydrogen
+
+! by default use envelope grains
+
+          thisOctal%dustTypeFraction(subcell,1:4) = 0.d0
+          thisOctal%dustTypeFraction(subcell,1:3) = 1.d0
+          
+
+          if ((r > erInner).and.(r < erOuter)) then
+             mu_0 = rtnewtdust(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
+             ! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
+             ! this is from Momose et al. 1998 ApJ 504 314
+
+             rhoEnv = (mdotenv / fourPi) * (bigG * mCore)**(-0.5) * r**(-1.5) * &
+                  (1. + abs(mu)/mu_0)**(-0.5) * &
+                  (abs(mu)/mu_0 + (2.*mu_0**2 * r_c/r))**(-1.)
+
+             fac =  1.d0-min(dble(r - erInner)/(0.02d0*erinner),1.d0)
+             fac = exp(-fac*10.d0)
+             rhoEnv = rhoEnv * fac
+             rhoEnv = max(rhoEnv, tiny(rhoEnv))
+          endif
+          
+          if (mu_0 > muCavity) then
+             !       dtheta = (acos(mu_0)-acos(muCavity))
+             !       fac =  1.d0-min(dble(r - drInner)/(0.02d0*erinner),1.d0)
+             !       fac = exp(-fac*10.d0)
+             rhoEnv = cavdens * 2.*mHydrogen
+
+             ! outflow cavity grains
+
+             thisOctal%dustTypeFraction(subcell,1:4) = 0.d0
+             thisOctal%dustTypeFraction(subcell,4) = 1.d0
+          endif
+
+
+    
+          rho0  = mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*rStellar * rStellar**(alpha-beta) * ( &
+               (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) )
+
+          r = sqrt(point%x**2 + point%y**2)*1.e10
+          h = 0.01 * rStellar * (r/rStellar)**beta
+          rhoDisc = 1.e-30
+          if ((r > drInner).and.(r < drOuter)) then
+             rhoDisc = rho0 * (rStellar/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2)
+             fac =  1.d0-min(dble(r - drInner)/(0.02d0*drinner),1.d0)
+             fac = exp(-fac*10.d0)
+             rhoDisc = rhoDisc * fac
+             rhoDisc = max(rhoDisc, tiny(rhoDisc))
+
+             if (rhoDisc > 2.e8*mHydrogen) then ! large midplane dust grains
+                thisOctal%dusttypeFraction(subcell,1:4) = 0.d0
+                thisOctal%dusttypeFraction(subcell,1) = 1.d0
+             else if (rhoDisc > rhoEnv) then  ! normal disc dust
+                thisOctal%dusttypeFraction(subcell,1:4) = 0.d0
+                thisOctal%dusttypeFraction(subcell,2) = 1.d0
+             endif
+          endif
+
+
+       endif
+    enddo
+
+  end subroutine fillDustWhitney
+
+  real function rtnewtdust(x1,x2,xacc, p1, p2) result(junk)
+
+    real :: x1, x2, xacc, p1, p2
+    integer :: jmax, j
+    real ::  dx, f, df
+    parameter (jmax=20)
+    junk = 0.5 * (x1+x2)
+    do j=1,jmax
+       call equation2dust(junk,f,df,p1,p2)
+       dx=f/df
+       junk=junk-dx
+       if((x1-junk)*(junk-x2).lt.0.) then
+          write(*,*) 'RTNEWT: jumped out of brackets',p1,p2,junk
+          stop
+       endif
+       if(abs(dx).lt.xacc) return
+    enddo
+    write(*,*) 'rtnewt exceeding maximum iterations'
+  end function rtnewtdust
+  
+
+  subroutine Equation2dust(mu0, eq2, deq2, r, mu)
+    real :: r, mu, mu0
+    real :: eq2, deq2
+
+    eq2 = mu0**3 + (r-1.)*mu0 -r*mu
+    deq2 = 3.*mu0**2 + r - 1.
+
+  end subroutine Equation2dust
+
+
+end module dust_mod

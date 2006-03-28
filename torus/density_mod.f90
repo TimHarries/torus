@@ -741,9 +741,9 @@ contains
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r, mu, mu_0, muCavity, rhoEnv, r_c
     real :: h, rhoDisc, alpha
-    real(double) :: fac, dtheta
+    real(double) :: fac, dtheta, theta0
 
-    muCavity = cos(cavAngle)
+    muCavity = cos(cavAngle/2.)
 
     r = modulus(point)*1.e10
 
@@ -763,17 +763,21 @@ contains
        (1. + abs(mu)/mu_0)**(-0.5) * &
        (abs(mu)/mu_0 + (2.*mu_0**2 * r_c/r))**(-1.)
 
-!       fac =  1.d0-min(dble(r - erInner)/(0.02d0*erinner),1.d0)
-!       fac = exp(-fac*10.d0)
-!       rhoEnv = rhoEnv * fac
-!       rhoEnv = max(rhoEnv, tiny(rhoEnv))
+       fac =  1.d0-min(dble(r - erInner)/(0.02d0*erinner),1.d0)
+       fac = exp(-fac*10.d0)
+       rhoEnv = rhoEnv * fac
+       rhoEnv = max(rhoEnv, tiny(rhoEnv))
     endif
 
-    if (mu_0 > muCavity) then
-!       dtheta = (acos(mu_0)-acos(muCavity))
-!       fac =  1.d0-min(dble(r - drInner)/(0.02d0*erinner),1.d0)
-!       fac = exp(-fac*10.d0)
-       rhoEnv = cavdens * mHydrogen
+    theta0=acos(mu_0)
+    
+
+    if (theta0 < cavAngle/2.d0) then
+       dtheta = abs(theta0-cavAngle/2.d0)
+       fac =  1.d0-min(dTheta/(0.017d0),1.d0)
+       fac = exp(-fac*10.d0)
+       rhoEnv = rhoEnv * fac
+       rhoEnv = max(dble(cavdens * mHydrogen),dble(rhoEnv))
     endif
 
 

@@ -8539,7 +8539,6 @@ IF ( .NOT. gridConverged ) RETURN
              thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-7)
           else
              call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa = kappaAbs)
-             kappaSca = 0.d0
              tau = thisOctal%subcellSize*(kappaAbs + kappaSca)*thisOctal%rho(subcell)*1.d10
              thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-7)
           endif
@@ -8547,6 +8546,66 @@ IF ( .NOT. gridConverged ) RETURN
 
     enddo
   end subroutine set_bias_shakara
+
+  recursive subroutine set_bias_rosseland(thisOctal, grid)
+  type(gridtype) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real :: kap
+  real(double) :: tau, kappaAbs, kappaSca
+  type(octalvector) :: rVec
+  logical :: ross
+  integer :: subcell, i, ilam
+  real :: r
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call set_bias_rosseland(child, grid)
+                exit
+             end if
+          end do
+       else
+          call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa = kappaAbs)
+          tau = thisOctal%subcellSize*kappaAbs*thisOctal%rho(subcell)*1.d10
+          thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-8)
+       endif
+    enddo
+  end subroutine set_bias_rosseland
+
+  recursive subroutine set_bias_whitney(thisOctal, grid)
+  use input_variables, only : erOuter
+  type(gridtype) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real :: kap
+  real(double) :: tau, kappaAbs, kappaSca
+  type(octalvector) :: rVec
+  logical :: ross
+  integer :: subcell, i, ilam
+  real(double) :: r
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call set_bias_whitney(child, grid)
+                exit
+             end if
+          end do
+       else
+          r = modulus(subcellCentre(thisoctal,subcell))
+          call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa = kappaAbs)
+             tau = thisOctal%subcellSize*kappaAbs*thisOctal%rho(subcell)*1.d10
+             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-15) * (1.d10*r/erOuter)**2
+       endif
+    enddo
+  end subroutine set_bias_whitney
 
   recursive subroutine set_bias_ttauri(thisOctal, grid, lambda0, outVec)
   type(gridtype) :: grid
@@ -10706,6 +10765,7 @@ IF ( .NOT. gridConverged ) RETURN
 
          ! now do the upper and lower (z axis) surfaces
       
+
          zHat = VECTOR(0.d0, 0.d0, 1.d0)
          compZ = zHat.dot.direction
          currentZ = point%z
@@ -10742,6 +10802,7 @@ IF ( .NOT. gridConverged ) RETURN
             ang2 = thisOctal%phi + thisOctal%dPhi/2.d0
          endif
 
+         distToSide1 = 1.e30
          rVec = OCTALVECTOR(r, 0.d0, 0.d0)
          rVec = rotateZ(rVec, -ang1)
          thisnorm = rVec .cross. zHat
@@ -10751,6 +10812,7 @@ IF ( .NOT. gridConverged ) RETURN
             if (distToSide1 < 0.d0) distToSide1 = 1.d30
          endif
 
+         distToSide2 = 1.e30
          rVec = OCTALVECTOR(r, 0.d0, 0.d0)
          rVec = rotateZ(rVec, -ang2)
          thisnorm = rVec .cross. zHat
@@ -10990,48 +11052,51 @@ IF ( .NOT. gridConverged ) RETURN
          endif
       
         
-         ! ok now we have to tackle the two angled sides...
-
-         ! find posvec to surface centre
-
-         phi = atan2(posVec%y,posVec%x)
-         if (phi < 0.d0) phi = phi + twoPi
-
-         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
-         if (grid%octreeRoot%splitAzimuthally) then
-            if (phi < grid%octreeRoot%phi) then
-               ang1 = grid%octreeRoot%phi - grid%octreeRoot%dPhi/2.d0
-               ang2 = grid%octreeRoot%phi
-            else
-               ang1 = grid%octreeRoot%phi
-               ang2 = grid%octreeRoot%phi + grid%octreeRoot%dPhi/2.d0
-            endif
-         else
-            ang1 = grid%octreeRoot%phi - grid%octreeRoot%dPhi/2.d0
-            ang2 = grid%octreeRoot%phi + grid%octreeRoot%dPhi/2.d0
-         endif
-
-         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
-         rVec = rotateZ(rVec, -ang1)
-         thisnorm = rVec .cross. zHat
-         call normalize(thisnorm)
-         if ((thisnorm.dot.direction) /= 0.d0) then
-            distToSide1 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
-            if (distToSide1 < 0.d0) distToSide1 = 1.d30
-         endif
-
-         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
-         rVec = rotateZ(rVec, -ang2)
-         thisnorm = rVec .cross. zHat
-         call normalize(thisnorm)
-         if ((thisnorm.dot.direction) /= 0.d0) then
-            distToSide2 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
-            if (distToSide2 < 0.d0) distToSide2 = 1.d30
-         endif
-
-         distToSide = min(distToSide1, distToside2)
+!         ! ok now we have to tackle the two angled sides...
+!
+!         ! find posvec to surface centre
+!
+!         phi = atan2(posVec%y,posVec%x)
+!         if (phi < 0.d0) phi = phi + twoPi
+!
+!         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
+!         if (grid%octreeRoot%splitAzimuthally) then
+!            if (phi < grid%octreeRoot%phi) then
+!               ang1 = grid%octreeRoot%phi - grid%octreeRoot%dPhi/2.d0
+!               ang2 = grid%octreeRoot%phi
+!            else
+!               ang1 = grid%octreeRoot%phi
+!               ang2 = grid%octreeRoot%phi + grid%octreeRoot%dPhi/2.d0
+!            endif
+!         else
+!            ang1 = grid%octreeRoot%phi - grid%octreeRoot%dPhi/2.d0
+!            ang2 = grid%octreeRoot%phi + grid%octreeRoot%dPhi/2.d0
+!         endif
+!
+!         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
+!         rVec = rotateZ(rVec, -ang1)
+!         thisnorm = rVec .cross. zHat
+!         call normalize(thisnorm)
+!         if ((thisnorm.dot.direction) /= 0.d0) then
+!            distToSide1 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
+!            if (distToSide1 < 0.d0) distToSide1 = 1.d30
+!         endif
+!
+!         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
+!         rVec = rotateZ(rVec, -ang2)
+!         thisnorm = rVec .cross. zHat
+!         call normalize(thisnorm)
+!         if ((thisnorm.dot.direction) /= 0.d0) then
+!            distToSide2 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
+!            if (distToSide2 < 0.d0) distToSide2 = 1.d30
+!         endif
+!
+!         distToSide = min(distToSide1, distToside2)
+         distToSide = 1.d30
 
          tVal = min(distToZboundary, distToRboundary, distToSide)
+
+         write(*,*) disttoside,disttoZboundary,disttoRboundary
          if (tVal > 1.e29) then
             write(*,*) "Cylindrical"
             write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
@@ -11219,5 +11284,171 @@ IF ( .NOT. gridConverged ) RETURN
        endif
     endif
   end function randomPositionInCell
+
+
+  SUBROUTINE startReturnSamples2(startPoint,direction,grid,          &
+             sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
+             usePops,iLambda,error,lambda,kappaAbs,kappaSca,velocity,&
+             velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow)
+    ! samples the grid at points along the path.
+    ! this should be called by the program, instead of calling 
+    !   returnSamples directly, because this checks the start and finish
+    !   points are within the grid bounds. returnSamples *assumes* this 
+    !   criterion is met. also, the path of the photon is checked for 
+    !   intersection with the stellar surface(s), disc etc. 
+ 
+    IMPLICIT NONE
+
+    TYPE(octalVector), INTENT(IN)      :: startPoint ! photon start point
+    TYPE(octalVector), INTENT(IN)      :: direction  ! photon direction 
+    TYPE(gridtype), INTENT(IN)         :: grid       ! the entire grid structure
+    REAL, INTENT(IN)                   :: sampleFreq ! the maximum number of
+!    real(oct), INTENT(IN)   :: sampleFreq ! the maximum number of 
+                       ! samples that will be made in any subcell of the octree. 
+                       
+    INTEGER, INTENT(OUT)             :: nSamples   ! number of samples made
+    INTEGER, INTENT(IN)                :: maxSamples ! size of sample arrays 
+    logical, intent(in)                :: thin_disc_on   ! T to include thin disc
+    LOGICAL, INTENT(IN)                :: opaqueCore ! true if the core is opaque
+    LOGICAL, INTENT(OUT)               :: hitCore    ! true if the core is opaque
+    LOGICAL, INTENT(IN)                :: usePops    ! whether to use level populations
+    INTEGER, INTENT(IN)                :: iLambda    ! wavelength index
+    INTEGER, INTENT(INOUT)             :: error      ! error code
+    REAL, DIMENSION(:), INTENT(INOUT)  :: lambda     ! path distances of sample locations
+    
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaAbs   ! continuous absorption opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca   ! scattering opacities
+    TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: velocityDeriv ! sampled velocity derivatives
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: chiLine    ! line opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: rho        ! density at sample points
+    real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL:: levelPop ! level populations
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: temperature! temperature [K] at sample points
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: Ne ! electron density
+    logical,DIMENSION(:),INTENT(INOUT),OPTIONAL  ::inFlow   ! flag to tell if the point is inflow
+
+    TYPE(octalVector)       :: locator 
+                       ! 'locator' is used to indicate a point that lies within the  
+                       !   *next* cell of the octree that the ray will interesect.
+                       !   initially this will be the same as the startPoint
+      
+    TYPE(octalVector)       :: currentPoint ! current position of ray 
+    LOGICAL                 :: abortRay     ! flag to signal completion of ray trace
+    TYPE(octal)             :: octree       ! the octree structure within 'grid'
+    TYPE(octalVector)       :: directionNormalized
+    real(oct)    :: distanceLimit ! max length of ray before aborting
+    ! margin is the size of the region around the edge of a subcell
+    !   where numerical inaccuracies may cause problems.
+    real(oct)    :: margin
+ 
+    ! variables for testing special cases (stellar intersections etc.)
+    TYPE(octalVector)       :: starPosition       ! position vector of stellar centre
+    TYPE(octalVector)       :: diskNormal         ! disk normal vector
+    real(oct)    :: rStar              ! stellar radius
+    real(oct)    :: endLength          ! max path length of photon
+    TYPE(octalVector)       :: endPoint           ! where photon leaves grid
+    LOGICAL                 :: absorbPhoton       ! photon will be absorbed
+    real(oct)    :: distanceFromOrigin ! closest distance of plane from origin
+    TYPE(octalVector)       :: diskIntersection   ! point of photon intersection with disk
+    real(oct)    :: starIntersectionDistance1 ! distance to first  intersection
+    real(oct)    :: starIntersectionDistance2 ! distance to second intersection
+    LOGICAL                 :: starIntersectionFound1 ! 1st star intersection takes place      
+    LOGICAL                 :: starIntersectionFound2 ! 2nd star intersection takes place      
+    LOGICAL                 :: intersectionFound  ! true when intersection takes place      
+    real(oct)    :: intersectionRadius ! disk radius when photon intersects
+    real(oct)    :: diskDistance       ! distance to disk intersection
+    real(oct)    :: distanceThroughStar! distance of chord through star
+    TYPE(octalVector)       :: dummyStartPoint    ! modified start point 
+    real(oct), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
+    
+    type(octalvector) :: currentPosition
+    type(octal), pointer :: sOctal, thisOctal
+    integer :: subcell
+    real(double) :: length, distToNextCell
+    ! we will abort tracking a photon just before it reaches the edge of the
+    !   simulation space. This is the fraction of the total distance to use:
+    real(oct), PARAMETER :: distanceFraction = 0.999_oc 
+
+
+    currentPosition = startPoint
+    locator = startPoint
+    nSamples = 0
+    length = 0.d0
+    endLength = 1.d30
+
+    absorbPhoton = .false.
+    hitcore = .false.
+
+    ! first we check for intersections with the star
+    starPosition = grid%starPos1
+    rStar = grid%rStar1 
+    CALL intersectionLineSphere(startPoint,direction,1.d30,starPosition, &
+         rStar,starIntersectionFound1,starIntersectionFound2,   &
+         starIntersectionDistance1,starIntersectionDistance2)
+    ! by passing a line segment to intersectionLineSphere, we ensure that we
+    !   do not find intersections with the star that take place after the 
+    !   photon has been absorbed by the disk.
+    IF (starIntersectionFound1) THEN
+       endLength = starIntersectionDistance1
+       IF (opaqueCore) absorbPhoton = .TRUE.
+    END IF
+    IF (.NOT. opaqueCore .AND. starIntersectionFound2) then
+       absorbPhoton = .false.
+       endLength = 1.d30
+    endif
+
+
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    do while (inOctal(grid%octreeRoot, currentPosition).and.(length < endLength))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+
+
+       call takeSample(currentPosition,length,direction,grid,thisOctal,subcell,nSamples,&
+                        maxSamples,usePops,iLambda,error,lambda,kappaAbs,     &
+                        kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,  &
+                        temperature,Ne,inFlow) 
+!       write(*,*) nsamples, length,kappaAbs(nSamples),kappaSca(nSamples)
+  
+       currentPosition = currentPosition + (distToNextCell+0.001d0*grid%halfSmallestSubcell)*direction
+       length = length + distToNextCell+0.001d0*grid%halfSmallestSubcell
+    end do
+
+
+    ! if the photon ends up in the disk or the star, we make sure it absorbed.
+    IF (absorbPhoton) THEN
+       
+       nSamples = nSamples + 1
+       IF (nSamples > maxSamples) THEN
+          PRINT *, "Error:: nSamples > maxSamples in startReturnSamples subroutine"
+          PRINT *, "        nSamples   = ", nSamples
+          PRINT *, "        maxSamples = ", maxSamples
+          STOP
+       END IF
+       
+       lambda(nSamples) = endLength
+       hitCore = .TRUE.
+       IF (PRESENT(kappaSca))      kappaSca(nSamples) = 0.
+       IF (PRESENT(kappaAbs))      kappaAbs(nSamples) = 1.e20
+       IF (PRESENT(velocity))      velocity(nSamples) = vector(0.,0.,0.)
+       IF (PRESENT(velocityDeriv)) velocityDeriv(nSamples) = 1.0
+       IF (PRESENT(chiLine))       chiLine(nSamples) = 1.e20
+       IF (PRESENT(levelPop))      levelPop(nSamples,:) = 0.0
+       IF (PRESENT(Ne))            Ne(nSamples) = 0.0
+       IF (PRESENT(rho))           rho(nSamples) = 0.0
+       IF (PRESENT(temperature))   temperature(nSamples) = 0.0
+       IF (PRESENT(inFlow))        inFlow(nSamples) = .true.
+    END IF
+
+
+
+  end SUBROUTINE startReturnSamples2
+
+
 
 END MODULE amr_mod

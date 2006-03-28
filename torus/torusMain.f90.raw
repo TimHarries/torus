@@ -1320,6 +1320,10 @@
            call fillDustShakara(grid, grid%octreeRoot)
         endif
 
+        if ((geometry == "whitney").and.(nDustType ==4)) then
+           call	fillDustWhitney(grid, thisOctal)	
+        endif
+
         if ((geometry == "ppdisk").and.(nDustType>1)) then
            call fillDustUniform(grid, grid%octreeRoot)
         endif
@@ -1363,9 +1367,12 @@
                 "temperature.ps/vcps", .true., .false., &
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
            if (mie) then
-              call plot_AMR_values(grid, "dusttype", "x-z", 0., &
-                   "dusttype.ps/vcps", .false., .false., &
-                   nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+              do i = 1, nDustType
+                 write(message,'(a,i1)') "dusttype",i
+                 call plot_AMR_values(grid, message, "x-z", 0., &
+                      trim(message)//".ps/vcps", .false., .false., &
+                      nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
+              enddo
            endif
         end if
 !$MPI endif
@@ -2330,31 +2337,35 @@
   !
   if (useBias) then
      write(*,*) "Setting emission bias..."
-     if (grid%geometry == "testamr") then
-        call setBiasAMR(grid%octreeRoot, grid)
-     elseif (grid%geometry == "cluster") then
-        ! Computing the emission bias based on the optical depth at
-        ! 2 microns. 
-        call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
-     elseif (grid%geometry == "ttauri") then
-        call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
-!        call set_bias_ttauri2(grid%octreeRoot, grid)
-     elseif (grid%geometry == "cmfgen") then
-        call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
-     elseif (grid%geometry == "shakara") then
-        if (forcedWavelength) then
+     select case(grid%geometry)
+        case("testamr")
+           call setBiasAMR(grid%octreeRoot, grid)
+        case("cluster")
+           ! Computing the emission bias based on the optical depth at
+           ! 2 microns. 
+           call assign_emission_bias(grid%octreeroot, grid, 20000.0, xArray, nLambda)
+        case("ttauri")
+           call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
+        case("cmfgen")
+           call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
+        case("shakara")
+           if (forcedWavelength) then
+              call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
+              call set_bias_shakara(grid%octreeRoot, grid, ilam=itestlam, ross=.false.)
+           else
+              call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
+              call set_bias_shakara(grid%octreeRoot, grid, ilam=1, ross=.true.)
+           endif
+        case("ppdisk")
            call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
-           call set_bias_shakara(grid%octreeRoot, grid, ilam=itestlam, ross=.false.)
-        else
-           call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
-           call set_bias_shakara(grid%octreeRoot, grid, ilam=1, ross=.true.)
-        endif
-           
-     elseif (grid%geometry == "ppdisk") then
-        call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
-        call setDiscPhotosphereBias(grid, itestlam)
-!        call setBiasPpdisk(grid%octreeRoot,grid)
-     end if
+           call setDiscPhotosphereBias(grid, itestlam)
+        case("whitney")
+           call set_bias_whitney(grid%octreeRoot, grid)
+        case("warpeddisc")
+           call set_bias_rosseland(grid%octreeRoot, grid)
+        case DEFAULT
+           continue
+     end select
      write(*,*) "Done."
   end if
 
@@ -3807,6 +3818,8 @@
 
               nScat = nScat + 1
 
+!              write(*,*) i,nscat,thisPhoton%stokes%i,thisPhoton%lambda, modulus(thisPhoton%position)*1.e10/drinner
+
               currentScat = currentScat  + 1
 
               ! find position of next interaction
@@ -3997,7 +4010,6 @@
 
                     ramanWeight = 1.
                     if (doRaman) ramanWeight = 6.6 / (34.+6.6)
-
                     obs_weight = oneOnFourPi*exp(-tauExt(nTau)) * ramanWeight
 
                     iLambda = findIlambda(observedlambda, xArray, nLambda, ok)
