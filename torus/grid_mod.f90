@@ -6083,17 +6083,23 @@ contains
     r1 = sqrt(rVec%x**2+rVec%y**2)-thisOctal%subcellsize/2.d0
     r2 = sqrt(rVec%x**2+rVec%y**2)+thisOctal%subcellsize/2.d0
 
-    if (thisOctal%splitAzimuthally) then
-       phi1 = atan2(rvec%y,rvec%x)
-       if (phi1  < 0.d0) phi1 = phi1 + twoPi
-       phi1 = phi1 - thisOctal%dPhi/4.d0
-       phi2 = atan2(rvec%y,rvec%x)
-       if (phi2  < 0.d0) phi2 = phi2 + twoPi
-       phi2 = phi2 + thisOctal%dPhi/4.d0
-    else
-       phi1 = atan2(rvec%y,rvec%x) - thisOctal%dPhi/2.d0
-       phi2 = atan2(rvec%y,rvec%x) + thisOctal%dPhi/2.d0
-    endif
+
+    phi1 = atan2(rvec%y,rvec%x)
+    phi1 = phi1 - returndPhi(thisOctal)
+    phi2 = atan2(rvec%y,rvec%x)
+    phi2 = phi2 + returndPhi(thisOctal)
+
+!    if (thisOctal%splitAzimuthally) then
+!       phi1 = atan2(rvec%y,rvec%x)
+!       if (phi1  < 0.d0) phi1 = phi1 + twoPi
+!       phi1 = phi1 - thisOctal%dPhi/4.d0
+!       phi2 = atan2(rvec%y,rvec%x)
+!       if (phi2  < 0.d0) phi2 = phi2 + twoPi
+!       phi2 = phi2 + thisOctal%dPhi/4.d0
+!    else
+!       phi1 = atan2(rvec%y,rvec%x) - thisOctal%dPhi/2.d0
+!       phi2 = atan2(rvec%y,rvec%x) + thisOctal%dPhi/2.d0
+!    endif
     npts = 0
 
     npts = npts + 1
@@ -6552,11 +6558,12 @@ contains
              plot_this_subcell = .false.
              phi = atan2(rVec%y,rVec%x)
              if (phi < 0.) phi = phi + twoPi
-             if (thisOctal%splitAzimuthally) then
-                dphi = thisOctal%dPhi / 4.d0
-             else
-                dphi = thisOctal%dPhi / 2.d0
-             endif
+             dphi = returndPhi(thisOctal)
+!             if (thisOctal%splitAzimuthally) then
+!                dphi = thisOctal%dPhi / 4.d0
+!             else
+!                dphi = thisOctal%dPhi / 2.d0
+!             endif
              select case (plane)
                 case("y-z")
                    phiFromPlane = min(abs(pi/2.d0-phi),abs(3.d0*pi/2.d0-phi))
@@ -6600,6 +6607,8 @@ contains
                 value = thisOctal%etaLine(subcell)
              case("etaCont")
                 value = thisOctal%etaCont(subcell)
+             case("dusttype")
+                value = thisOctal%dustTypeFraction(subcell,1)
              case("dusttype1")
                 value = thisOctal%dustTypeFraction(subcell,1)
              case("dusttype2")
@@ -6859,6 +6868,8 @@ contains
              case("temperature")
                 value = thisOctal%temperature(subcell)
                 if (value < 3.)  update = .false.
+             case("dusttype")
+                value = thisOctal%dustTypeFraction(subcell,1)
              case("dusttype1")
                 value = thisOctal%dustTypeFraction(subcell,1)
              case("dusttype2")
@@ -6899,7 +6910,7 @@ contains
                 if (thisOctal%diffusionApprox(subcell)) update = .false.
 
              case default
-                write(*,*) "Error:: unknow name passed to MinMaxValue."
+                write(*,*) "Error:: unknow name passed to MinMaxValue.",trim(name)
                 stop
              end select
              if (update) then

@@ -2003,8 +2003,10 @@ CONTAINS
       PRINT *, "Erro:: nSamples > maxSamples in takeSample subroutine"
       PRINT *, "nSamples   = ", nSamples
       PRINT *, "maxSamples = ", maxSamples      
+      write(*,*) lambda(nSamples-10:nSamples)
       STOP
     END IF
+
     
     lambda(nSamples) = length
     directionReal = direction
@@ -4103,7 +4105,7 @@ IF ( .NOT. gridConverged ) RETURN
     !   derived from information in the current cell  
 
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router
-    use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter
+    use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
     IMPLICIT NONE
     TYPE(octal)       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
@@ -4154,15 +4156,19 @@ IF ( .NOT. gridConverged ) RETURN
        split = .false.
        cellSize = thisOctal%subcellSize * 1.d10
        cellCentre = 1.d10 * subcellCentre(thisOctal,subCell)
-       nr1 = 0
-       nr2 = 150
+       nr1 = 50
+       nr2 = 10
        nr = nr1 + nr2
+
+      do i = 1, nr1
+         rgrid(i) = log10(0.5*drInner)+dble(i)*(log10(drOuter)-log10(0.5*drInner))/dble(nr1)
+      end do
       do i = 1, nr2
-         rgrid(nr1+i) = log10(0.5*erInner)+dble(i)*(log10(erOuter)-log10(0.5*erInner))/dble(nr2)
+         rgrid(nr1+i) = log10(drOuter)+dble(i)*(log10(erOuter)-log10(drInner))/dble(nr2)
       end do
       rgrid(1:nr) = 10.d0**rgrid(1:nr)
       r = modulus(cellcentre)
-      if (thisOctal%nDepth < 8) split = .true.
+      if (thisOctal%nDepth < 5) split = .true.
       if ((r < rGrid(nr)).and.(r > rGrid(1))) then
          call locate(rGrid, nr, r, i)      
          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
@@ -4173,7 +4179,10 @@ IF ( .NOT. gridConverged ) RETURN
           if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 2.)) split = .true.
           if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
        endif
-
+       dr = tan(cavAngle/2.) * abs(cellCentre%z)
+       if ( ((abs(cellCentre%x) - cellsize/2.) < dr).and.(cellSize > dr/4.) .and.(abs(cellCentre%z)>erInner)) then
+          split = .true.
+       endif
 
        
 
@@ -4554,7 +4563,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
       if (r > rInner*0.8) then
-         hr = height * (r / (100.*autocm/1.e10))**1.25
+         hr = height * (r / rOuter)**betaDisc
          fac = cellsize/hr
          if (abs((cellCentre%z-warpHeight)/hr) < 5.) then
             if (fac > 1.) split = .true.
@@ -6771,21 +6780,13 @@ IF ( .NOT. gridConverged ) RETURN
              end if
           end do
        else
-!          if (thisOctal%inFlow(subcell)) then
-             if (thisOctal%threed) then
-                totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * thisOctal%subcellSize**3
-             else
-                rVec = subcellCentre(thisOctal,subcell)
-                r1 = rVec%x - thisOctal%subcellSize/2.
-                r2 = rVec%x + thisOctal%subcellSize/2.
-                dv = pi * (r2**2-r1**2) * thisOctal%subcellSize
-                totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * dv
-             endif
+
+          dv = cellVolume(thisOctal, subcell)
+          totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * dv
                 
-             if (PRESENT(minRho)) minRho = min(dble(thisOctal%rho(subcell)), minRho)
-             if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
-          endif
-!       endif
+          if (PRESENT(minRho)) minRho = min(dble(thisOctal%rho(subcell)), minRho)
+          if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
+       endif
     enddo
   end subroutine findTotalMass
 
@@ -8575,6 +8576,35 @@ IF ( .NOT. gridConverged ) RETURN
        endif
     enddo
   end subroutine set_bias_rosseland
+
+  recursive subroutine set_bias_radius(thisOctal, p)
+  type(gridtype) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real :: kap
+  real(double) :: tau, kappaAbs, kappaSca
+  type(octalvector) :: rVec
+  logical :: ross
+  integer :: subcell, i, ilam
+  real :: r
+  integer :: p
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call set_bias_radius(child, p)
+                exit
+             end if
+          end do
+       else
+          thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) &
+               * modulus(subcellCentre(thisOctal, subcell))**p
+       endif
+    enddo
+  end subroutine set_bias_radius
 
   recursive subroutine set_bias_whitney(thisOctal, grid)
   use input_variables, only : erOuter
@@ -10612,11 +10642,12 @@ IF ( .NOT. gridConverged ) RETURN
           rVec = subcellCentre(thisOctal,subcell)
           r1 = sqrt(rVec%x**2 + rVec%y**2) - thisOctal%subcellSize/2.d0
           r2 = sqrt(rVec%x**2 + rVec%y**2) + thisOctal%subcellSize/2.d0
-          if (thisOctal%splitAzimuthally) then
-             dPhi = thisOctal%dPhi / 2.d0
-          else
-             dPhi = thisOctal%dPhi 
-          endif
+!          if (thisOctal%splitAzimuthally) then
+!             dPhi = thisOctal%dPhi / 2.d0
+!          else
+!             dPhi = thisOctal%dPhi 
+!          endif
+          dPhi = returndPhi(thisOctal)*2.d0
           v = (dphi/dble(twoPi)) * dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
        endif
     else
@@ -10762,6 +10793,9 @@ IF ( .NOT. gridConverged ) RETURN
          endif
       
          distToRboundary = min(distTor1, distTor2)
+         if (distToRboundary < 0.d0) then
+            distToRboundary = 1.e30
+         endif
 
          ! now do the upper and lower (z axis) surfaces
       
@@ -10789,18 +10823,21 @@ IF ( .NOT. gridConverged ) RETURN
          if (phi < 0.d0) phi = phi + twoPi
 
          rVec = OCTALVECTOR(r, 0.d0, 0.d0)
-         if (thisOctal%splitAzimuthally) then
-            if (phi < thisOctal%phi) then
-               ang1 = thisOctal%phi - thisOctal%dPhi/2.d0
-               ang2 = thisOctal%phi
-            else
-               ang1 =  thisOctal%phi
-               ang2 = thisOctal%phi + thisOctal%dPhi/2.d0
-            endif
-         else
-            ang1 = thisOctal%phi - thisOctal%dPhi/2.d0
-            ang2 = thisOctal%phi + thisOctal%dPhi/2.d0
-         endif
+
+         ang1 = thisOctal%phi - returndPhi(thisOctal)
+         ang2 = thisOctal%phi + returndPhi(thisOctal)
+!         if (thisOctal%splitAzimuthally) then
+!            if (phi < thisOctal%phi) then
+!               ang1 = thisOctal%phi - thisOctal%dPhi/2.d0
+!               ang2 = thisOctal%phi
+!            else
+!               ang1 =  thisOctal%phi
+!               ang2 = thisOctal%phi + thisOctal%dPhi/2.d0
+!            endif
+!         else
+!            ang1 = thisOctal%phi - thisOctal%dPhi/2.d0
+!            ang2 = thisOctal%phi + thisOctal%dPhi/2.d0
+!         endif
 
          distToSide1 = 1.e30
          rVec = OCTALVECTOR(r, 0.d0, 0.d0)
@@ -10902,7 +10939,8 @@ IF ( .NOT. gridConverged ) RETURN
       
    endif
 
-   tVal = max(tVal, 0.0001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
+   tVal = max(tVal, 0.001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
+
 
  end subroutine distanceToCellBoundary
 
@@ -11174,7 +11212,7 @@ IF ( .NOT. gridConverged ) RETURN
       
    endif
 
-   tVal = max(tVal, 1.d-6*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
+   tVal = max(tVal, 1.d-4*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
 
  end subroutine distanceToGridEdge
 
@@ -11204,7 +11242,7 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTALVECTOR) :: octalCentre
     real(double) :: r1, r2, r3
     real(double) :: xOctal, yOctal, zOctal
-    real(double) :: ang, ang1, ang2
+    real(double) :: ang, ang1, ang2, phi
 
 
     octalCentre = subcellCentre(thisOctal,subcell)
@@ -11251,13 +11289,19 @@ IF ( .NOT. gridConverged ) RETURN
           randomPositionInCell = VECTOR(xOctal,0.,zOctal)
           
           call random_number(r2)
-          if (thisOctal%splitAzimuthally) then
-             ang1 = thisOctal%phi - thisOctal%dphi/4.
-             ang2 = thisOctal%phi + thisOctal%dphi/4.
-          else
-             ang1 = thisOctal%phi - thisOctal%dphi/2.
-             ang2 = thisOctal%phi + thisOctal%dphi/2.
-          endif
+          phi = atan2(octalCentre%y, octalCentre%x)
+          if (phi < 0.d0) phi = phi + twoPi
+
+          ang1 = phi - returndPhi(thisOctal)
+          ang2 = phi + returndPhi(thisOctal)
+          
+!          if (thisOctal%splitAzimuthally) then
+!             ang1 = thisOctal%phi - thisOctal%dphi/4.
+!             ang2 = thisOctal%phi + thisOctal%dphi/4.
+!          else
+!             ang1 = thisOctal%phi - thisOctal%dphi/2.
+!             ang2 = thisOctal%phi + thisOctal%dphi/2.
+!          endif
           ang = ang1 + r2 * (ang2 - ang1)
           randomPositionInCell = rotateZ(randomPositionInCell, -ang)
 
@@ -11284,6 +11328,18 @@ IF ( .NOT. gridConverged ) RETURN
        endif
     endif
   end function randomPositionInCell
+
+
+  real(double) function returnDphi(thisOctal)
+    type(OCTAL)  :: thisOctal
+
+    if (thisOctal%splitAzimuthally) then
+       returndPhi = thisOctal%dPhi / 4.d0
+    else
+       returndPhi = thisOctal%dPhi / 2.d0
+    endif
+  end function returnDphi
+
 
 
   SUBROUTINE startReturnSamples2(startPoint,direction,grid,          &
@@ -11368,6 +11424,7 @@ IF ( .NOT. gridConverged ) RETURN
     ! we will abort tracking a photon just before it reaches the edge of the
     !   simulation space. This is the fraction of the total distance to use:
     real(oct), PARAMETER :: distanceFraction = 0.999_oc 
+    real(double) :: fudgeFac = 0.0001d0
 
 
     currentPosition = startPoint
@@ -11413,10 +11470,9 @@ IF ( .NOT. gridConverged ) RETURN
                         maxSamples,usePops,iLambda,error,lambda,kappaAbs,     &
                         kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,  &
                         temperature,Ne,inFlow) 
-!       write(*,*) nsamples, length,kappaAbs(nSamples),kappaSca(nSamples)
   
-       currentPosition = currentPosition + (distToNextCell+0.001d0*grid%halfSmallestSubcell)*direction
-       length = length + distToNextCell+0.001d0*grid%halfSmallestSubcell
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       length = length + distToNextCell+fudgeFac*grid%halfSmallestSubcell
     end do
 
 

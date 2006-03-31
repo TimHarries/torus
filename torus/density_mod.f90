@@ -753,7 +753,7 @@ contains
     alpha = 2.25
     beta = 1.25
 
-    rhoEnv = cavdens * mHydrogen
+    rhoEnv = 2.*cavdens * mHydrogen
     if ((r > erInner).and.(r < erOuter)) then
        mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
  ! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
@@ -774,10 +774,10 @@ contains
 
     if (theta0 < cavAngle/2.d0) then
        dtheta = abs(theta0-cavAngle/2.d0)
-       fac =  1.d0-min(dTheta/(0.017d0),1.d0)
+       fac =  1.d0-min(dTheta/(0.008d0),1.d0)
        fac = exp(-fac*10.d0)
        rhoEnv = rhoEnv * fac
-       rhoEnv = max(dble(cavdens * mHydrogen),dble(rhoEnv))
+      rhoEnv = 2. * cavdens * mHydrogen
     endif
 
 
@@ -787,7 +787,7 @@ contains
 
     r = sqrt(point%x**2 + point%y**2)*1.e10
     h = 0.01 * rStellar * (r/rStellar)**beta
-    rhoDisc = 1.e-30
+    rhoDisc = cavDens * 2. * mHydrogen
     if ((r > drInner).and.(r < drOuter)) then
        rhoDisc = rho0 * (rStellar/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2)
        fac =  1.d0-min(dble(r - drInner)/(0.02d0*drinner),1.d0)
@@ -862,7 +862,7 @@ contains
     warpHeight = 0. !cos(phi) * rInner * sin(30.*degtorad) * sqrt(rinner / r)
     if ((r > rinner).and.(r < rOuter)) then
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
-       rhoOut = dble(rho0) * (dble(rInner)/r)**dble(alphaDisc) * exp(-0.5d0 * (dble(point%z-warpheight)/h)**2)
+       rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(-0.5d0 * (dble(point%z-warpheight)/h)**2)
 
        fac =  1.d0-min(dble(r - rInner)/(0.01d0*rinner),1.d0)
        fac = exp(-fac*10.d0)
@@ -888,11 +888,15 @@ contains
     rhoOut = tiny(rhoOut)
     r = sqrt(point%x**2 + point%y**2)
     phi = atan2(point%y,point%x)
-    warpheight = 0.3 * rOuter * (r / rOuter)**2 * cos(phi)
+    warpheight =  0.3 * rOuter * (r / rOuter)**2 * cos(phi)
+
+    rho0  = mDisc *(betadisc-alphadisc+2.) / ( twoPi**1.5 * (height*1.e10)  &
+         * (rOuter*1.d10)**(alphadisc-betadisc) * ( &
+         ((router*1.d10)**(betadisc-alphadisc+2.)-(rInner*1.d10)**(betadisc-alphadisc+2.))) )
 
     if ((r > rinner).and.(r < rOuter)) then
-       h = height * (r / (100.d0*autocm/1.d10))**betaDisc
-       rhoOut = dble(rho0) * (dble(rInner)/r)**dble(alphaDisc) * exp(-0.5d0 * (dble(point%z-warpheight)/h)**2)
+       h = height * (r / rOuter)**betaDisc
+       rhoOut = dble(rho0) * (dble(rOuter)/r)**dble(alphaDisc) * exp(-0.5d0 * (dble(point%z-warpheight)/h)**2)
        fac =  1.d0-min(dble(r - rInner)/(0.02d0*rinner),1.d0)
        fac = exp(-fac*10.d0)
        rhoOut = rhoOut * fac

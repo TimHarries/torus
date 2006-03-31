@@ -66,19 +66,9 @@ module input_variables
   !
   ! abundances of different types of dust grains. These will be used when 
   ! the graintype assigned is "mixed."
-  integer, parameter :: ngrain  = 7 ! number of grain types implemented.
-  real :: X_grain(ngrain)    ! abundaunce 
-  character(LEN=30) :: grainname(ngrain)
-  data grainname /"sil_ow", "sil_oc", "sil_dl", "amc_hn", &
-       &          "sic_pg", "gr1_dl", "gr2_dl"/
-  ! Note ::
-  !   X_grain(1) => sil_ow 
-  !   X_grain(2) => sil_oc
-  !   X_grain(3) => sil_dl
-  !   X_grain(4) => amc_hn
-  !   X_grain(5) => sic_pg
-  !   X_grain(6) => gr1_dl
-  !   X_grain(7) => gr2_dl
+  integer :: ngrain 
+  real :: X_grain(10)    ! abundaunce 
+  character(LEN=30) :: grainname(10)
   
 
 

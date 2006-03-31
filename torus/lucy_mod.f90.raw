@@ -1059,7 +1059,7 @@ contains
 
        call solveArbitraryDiffusionZones(grid)
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)
-       call unsetOnDirect(grid%octreeRoot)
+!       call unsetOnDirect(grid%octreeRoot)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 

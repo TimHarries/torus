@@ -445,11 +445,13 @@ contains
                       octVec = subcellCentre(thisOctal, subcell)
                       phi = atan2(octVec%y,octVec%x)
                       if (phi < 0.d0) phi = phi + twopi
-                      if (thisOctal%splitAzimuthally) then
-                         DeltaPhi = thisOctal%dPhi/4.d0 * 1.01d0
-                      else
-                         DeltaPhi = thisOctal%dPhi/2.d0 * 1.01d0
-                      endif
+
+                      DeltaPhi = returndPhi(thisOctal) * 1.01d0
+!                      if (thisOctal%splitAzimuthally) then
+!                         DeltaPhi = thisOctal%dPhi/4.d0 * 1.01d0
+!                      else
+!                         DeltaPhi = thisOctal%dPhi/2.d0 * 1.01d0
+!                      endif
 
                       ! negative phi
 
@@ -880,7 +882,7 @@ end subroutine gaussSeidelSweep
              endif
              call amrgridvalues(grid%octreeRoot, rVec, startOctal=sOctal, foundOctal=walkOctal, foundSubcell=walkSubcell)
           else
-!             call random_number(r)
+             call random_number(r)
              rVec = subcellCentre(walkOctal, walkSubcell)
              rHat = OCTALVECTOR(rVec%x,rVec%y, 0.d0)
              call normalize(rHat)

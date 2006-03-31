@@ -256,7 +256,8 @@ endif
 ifeq ($(SYSTEM), linuxintel)
     F95COMP=ifort 
     F77COMP=ifort
-    FASTFLAG= -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
+#    FASTFLAG= -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
+    FASTFLAG= -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
 #    FASTFLAG= -I/usr/include/nptl -L/usr/lib/nptl -zero 
     DEBUGFLAG=-g -O0 -zero
     STATICFLAG=

@@ -133,6 +133,7 @@
   real, allocatable :: lambda(:)
 
   real, allocatable :: mReal(:,:), mImg(:,:)          ! size = nlambda
+  real, allocatable :: tmReal(:), tmImg(:)          ! size = nlambda
   real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
   real :: total_dust_abundance
 
@@ -593,14 +594,14 @@
      allocate(pvimage(1:nSlit))
   endif
 
-  if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
-     meanDustParticleMass = getMeanMass2(amin(1), amax(1), a0(1), qDist(1), pdist(1), graintype(1))
-     if (meanDustParticleMass <=0.0) then 
-        write(message,*) "Error: meanDustParticleMass <=0 in torusMain."
-        call writeFatal(message)
-        stop
-     end if
-  endif
+!  if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
+!     meanDustParticleMass = getMeanMass2(amin(1), amax(1), a0(1), qDist(1), pdist(1), graintype(1))
+!     if (meanDustParticleMass <=0.0) then 
+!        write(message,*) "Error: meanDustParticleMass <=0 in torusMain."
+!        call writeFatal(message)
+!        stop
+!     end if
+!  endif
 
   probLinePhoton = 1. - probContPhoton
 
@@ -613,7 +614,7 @@
      call writeWarning("inclination less than 1.e-6, now set to 1.e-6.")
      call writeWarning("Did you specify an inclination of 0?")
   end if
-  inclination = max(inclination, 1.e-6)
+  inclination = max(inclination, 1.e-4)
 
   scale = scale * rSol
 
@@ -649,6 +650,9 @@
   if (geometry == "betacep") rotateView = .true.
 
   if (geometry == "donati") rotateView = .true.
+
+
+  if (geometry == "warpeddisc") rotateView = .true.
 
   if ((geometry == "ttauri")) rotateView = .true.
 
@@ -1003,7 +1007,10 @@
   if (mie) then
      if (.not.dustfile) then
         do i = 1, nDustType
-           call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), grainType(i), &
+
+           call parseGrainType(graintype(i), ngrain, grainname, x_grain)
+
+           call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
                 ngrain, X_grain, grainname, i)
         enddo
         write(message,'(a,f5.2)') "Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
@@ -1243,7 +1250,7 @@
 
            if (doSmoothGridTau) then
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-              do j = iSmoothLam, ismoothlam !nLambda
+              do j = iSmoothLam, iSmoothlam !nLambda, 5
                  do
                     gridConverged = .true.
                     call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, inheritProps = .false., interpProps = .false.)
@@ -1321,7 +1328,7 @@
         endif
 
         if ((geometry == "whitney").and.(nDustType ==4)) then
-           call	fillDustWhitney(grid, thisOctal)	
+           call	fillDustWhitney(grid, grid%octreeRoot)	
         endif
 
         if ((geometry == "ppdisk").and.(nDustType>1)) then
@@ -1944,60 +1951,59 @@
      allocate(mReal(1:nDusttype,1:nLambda))
      allocate(mImg(1:nDustType,1:nLambda))
 
-     if (graintype(1)(1:5) == "mixed") then
+     allocate(tmReal(1:nLambda))
+     allocate(tmImg(1:nLambda))
+
+     
+     do k = 1, nDusttype
+
+        call parseGrainType(graintype(k), ngrain, grainname, x_grain)
+
         ! Synthetic grains
-         
+     
         ! quick test for zero total dust abundance.
         total_dust_abundance = SUM(X_grain)
         if ( total_dust_abundance <= 0.0 ) then
-!$MPI     if (my_rank==0) &
+           !$MPI     if (my_rank==0) &
            write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
-!$MPI     if (my_rank==0) &
+           !$MPI     if (my_rank==0) &
            write(*,*) "  ==> You probably forgot to assign dust abundance in your "// &
                 & "parameter file!"
-!$MPI     if (my_rank==0) &
+           !$MPI     if (my_rank==0) &
            write(*,*) "  ==> Exiting the prograim ... "
-            stop 
-         end if
+           stop 
+        end if
 
-!         ! allocate mem for temp arrays
-!         allocate(mReal2D(1:ngrain, 1:nLambda))
-!         allocate(mImg2D(1:ngrain, 1:nLambda))
-!         ! initializing the values
-!         mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
-!         
-!         ! Find the index of refractions for all types of grains available
-!         do j = 1, ngrain
-!            call getRefractiveIndex(xArray, nLambda, grainname(j), mReal, mImg)
-!            mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
-!            mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
-!         end do
-!
-!         ! Finding the weighted average of the refractive index.
-!         mReal(:) = 0.0; mImg(:) = 0.0
-!         do i = 1, nLambda
-!            do j = 1, ngrain
-!               mReal(i) = mReal2D(j,i)*X_grain(j) + mReal(i)
-!               mImg(i)  = mImg2D(j,i) *X_grain(j) + mImg(i)
-!            end do
-!            mReal(i) = mReal(i) / total_dust_abundance
-!            mImg(i)  = mImg(i)  / total_dust_abundance
-!         end do
-!
-!
-!         deallocate(mReal2D)
-!         deallocate(mImg2D)
-
-      else 
-         ! Do a single grain calculations... 
-
-        do i = 1, nDusttype
-           call getRefractiveIndex(xArray, nLambda, graintype(i), mReal(i,1:nLambda), mImg(i,1:nLambda))
-        enddo
+        ! allocate mem for temp arrays
+        allocate(mReal2D(1:ngrain, 1:nLambda))
+        allocate(mImg2D(1:ngrain, 1:nLambda))
+        ! initializing the values
+        mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
          
-      end if
+        ! Find the index of refractions for all types of grains available
+        do j = 1, ngrain
+           call getRefractiveIndex(xArray, nLambda, grainname(j), tmReal, tmImg)
+           mReal2D(j,:) = tmReal(:)  ! copying the values to a 2D maxtrix
+           mImg2D(j,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
+        end do
+
+        ! Finding the weighted average of the refractive index.
+        mReal(k,:) = 0.0; mImg(k,:) = 0.0
+        do i = 1, nLambda
+           do j = 1, ngrain
+              mReal(k,i) = mReal2D(j,i)*X_grain(j) + mReal(k,i)
+              mImg(k,i)  = mImg2D(j,i) *X_grain(j) + mImg(k,i)
+           end do
+           mReal(k,i) = mReal(k,i) / total_dust_abundance
+           mImg(k,i)  = mImg(k,i)  / total_dust_abundance
+        end do
 
 
+        deallocate(mReal2D)
+        deallocate(mImg2D)
+
+     enddo
+         
       do k = 1, nDustType
          do i = 1, nLambda
             do j = 1, nMumie
@@ -2363,6 +2369,7 @@
            call set_bias_whitney(grid%octreeRoot, grid)
         case("warpeddisc")
            call set_bias_rosseland(grid%octreeRoot, grid)
+!	   call set_bias_radius(grid%octreeRoot, 3)
         case DEFAULT
            continue
      end select
@@ -3131,7 +3138,7 @@
      
      if (nInclination > 1) then  
         if (allocated(inclinations)) then
-           inclination = max(inclinations(iInclination),1.e-6)
+           inclination = max(inclinations(iInclination),1.e-4)
         else
            ! Now the inclinations are equally spaced in  cos(incination).
            ! Asuuming that firstInclination < lastInclination <= pi/2
@@ -3139,7 +3146,7 @@
            cos_inc_last = COS(lastInclination)
            d_cos_inc = (cos_inc_first - cos_inc_last)/ REAL(nInclination-1)
            cos_inc = cos_inc_first - d_cos_inc * REAL(iInclination-1)
-           inclination = max(ACOS(cos_inc),1.e-6)
+           inclination = max(ACOS(cos_inc),1.e-4)
 
 
 !          inclination = firstInclination + REAL(iInclination-1) * &
@@ -3186,6 +3193,7 @@
 
      end if
 
+     write(*,*) "Viewing vector: ",viewVec
 
      ! zero the output arrays
 
@@ -3426,6 +3434,8 @@
 
 !$OMP DO SCHEDULE(DYNAMIC)
         innerPhotonLoop: do i = iInner_beg, iInner_end
+
+
 !$MPI !  if (MOD(i,n_proc) /= my_rank) cycle innerPhotonLoop
            ! The following six arrays must be allocated and deallocated for each 
            ! innerPhotonLoop to make the program work with OpenMP! (RK)

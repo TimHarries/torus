@@ -352,7 +352,7 @@ contains
 
     
 
-     subroutine fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, grainType,  &
+     subroutine fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, &
          ngrain, abundance, grainname, thisDust)
 
       implicit none
@@ -367,10 +367,9 @@ contains
       real :: getMeanMass2
       real :: rayleigh, gsca
       external getMeanMass2
-      character(len=*) :: grainType  ! 
       integer, intent(in) :: ngrain  ! number of grain types
-      real, intent(in) :: abundance(ngrain)   ! relative abundance of grains
-      character(len=*) :: grainname(ngrain)   ! names of grains available
+      real, intent(in) :: abundance(:)   ! relative abundance of grains
+      character(len=*) :: grainname(:)   ! names of grains available
       real :: sig_ext, sig_scat, sig_abs
       real :: total_abundance
       character(len=80) :: albedoFilename
@@ -394,71 +393,51 @@ contains
       if (writeoutput) write(*,*) "       q = ",  qDist
       if (writeoutput) write(*,*) "       p = ",  pDist
 
-      open(20,file="albedo.dat",form="formatted",status="unknown")
 
       allocate(mReal(1:grid%nLambda))
       allocate(mImg(1:grid%nLambda))
 
-      if (graintype(1:5) == "mixed") then
-         ! Synthetic grains
+      ! Synthetic grains
          
-         ! quick test for zero total abundance.
-         total_abundance = SUM(abundance)
-         if ( total_abundance <= 0.0 ) then
-            if (writeoutput) write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::fillGridMie."
-            if (writeoutput) write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
-            if (writeoutput) write(*,*) "  ==> Exiting the prograim ... "
-            stop 
-         end if
-
-         ! allocate mem for temp arrays
-         allocate(mReal2D(1:ngrain, 1:grid%nLambda))
-         allocate(mImg2D(1:ngrain, 1:grid%nLambda))
-         ! initializing the values
-         mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
-         
-         ! Find the index of refractions for all types of grains available
-         do j = 1, ngrain
-            call getRefractiveIndex(grid%lamArray, grid%nLambda, grainname(j), mReal, mImg)
-            mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
-            mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
-         end do
-
-         ! finding the cross sections
-         sigmaExt(:) = 0.0; sigmaAbs(:)=0.0; sigmaSca(:)=0.0 ! initializing the values
-
-         do i = 1, grid%nLambda
-            do j = 1, ngrain
-               call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
-                    mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
-               ! Weighting the cross section according to their abundance...            
-               sigmaExt(i) = sig_ext*abundance(j)+ sigmaExt(i)
-               sigmaAbs(i) = sig_abs*abundance(j)+ sigmaAbs(i)
-               sigmaSca(i) = sig_scat*abundance(j)+ sigmaSca(i)
-            end do
-            sigmaExt(i) =    sigmaExt(i)/total_abundance 
-            sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
-            sigmaSca(i) =    sigmaSca(i)/total_abundance 
-
-         write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i), &
-              sigmaSca(i),sigmaSca(i)/sigmaExt(i)
-         end do
-         close(20)
-
-      else 
-         ! Do a single grain calculations... 
-      
-         call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)
-         
-         do i = 1, grid%nLambda
-            call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i),  &
-                 mReal(i), mImg(i), sigmaExt(i), sigmaSca(i), sigmaAbs(i), gsca)
-            write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),&
-                 sigmaSca(i),sigmaSca(i)/sigmaExt(i)
-         enddo
-         close(20)
-
+      ! quick test for zero total abundance.
+      total_abundance = SUM(abundance)
+      if ( total_abundance <= 0.0 ) then
+         if (writeoutput) write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::fillGridMie."
+         if (writeoutput) write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
+         if (writeoutput) write(*,*) "  ==> Exiting the prograim ... "
+         stop 
       end if
+
+      ! allocate mem for temp arrays
+      allocate(mReal2D(1:ngrain, 1:grid%nLambda))
+      allocate(mImg2D(1:ngrain, 1:grid%nLambda))
+      ! initializing the values
+      mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
+         
+      ! Find the index of refractions for all types of grains available
+      do j = 1, ngrain
+         call getRefractiveIndex(grid%lamArray, grid%nLambda, grainname(j), mReal, mImg)
+         mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
+         mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
+      end do
+
+      ! finding the cross sections
+      sigmaExt(:) = 0.0; sigmaAbs(:)=0.0; sigmaSca(:)=0.0 ! initializing the values
+
+      do i = 1, grid%nLambda
+         do j = 1, ngrain
+            call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
+                 mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
+            ! Weighting the cross section according to their abundance...            
+            sigmaExt(i) = sig_ext*abundance(j)+ sigmaExt(i)
+            sigmaAbs(i) = sig_abs*abundance(j)+ sigmaAbs(i)
+            sigmaSca(i) = sig_scat*abundance(j)+ sigmaSca(i)
+         end do
+         sigmaExt(i) =    sigmaExt(i)/total_abundance 
+         sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
+         sigmaSca(i) =    sigmaSca(i)/total_abundance 
+         
+      end do
          
 
       if (writeoutput) write(*,*) "Dust law: ",aMin,aMax,qDist
@@ -520,9 +499,10 @@ contains
       else
          if (writeoutput) write(*,'(a,i4)') "Filling the oneKappa arrays: ",grid%nLambda
 
-         
-
-         meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
+         meanParticleMass = 0.
+         do i = 1, ngrain
+            meanParticleMass = meanParticleMass + getMeanMass2(aMin, aMax, a0, qDist, pDist, grainname(i))*abundance(i)
+         enddo
          grid%oneKappaAbs(thisDust,1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
          grid%oneKappaSca(thisDust,1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
 
@@ -1165,7 +1145,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 ! by default use envelope grains
 
           thisOctal%dustTypeFraction(subcell,1:4) = 0.d0
-          thisOctal%dustTypeFraction(subcell,1:3) = 1.d0
+          thisOctal%dustTypeFraction(subcell,3) = 1.d0
           
 
           if ((r > erInner).and.(r < erOuter)) then
@@ -1195,7 +1175,10 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
              thisOctal%dustTypeFraction(subcell,4) = 1.d0
           endif
 
-
+          if (r < erInner) then
+             thisOctal%dustTypeFraction(subcell,1:4) = 0.d0
+             thisOctal%dustTypeFraction(subcell,4) = 1.d0
+          endif
     
           rho0  = mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*rStellar * rStellar**(alpha-beta) * ( &
                (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) )
@@ -1210,7 +1193,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
              rhoDisc = rhoDisc * fac
              rhoDisc = max(rhoDisc, tiny(rhoDisc))
 
-             if (rhoDisc > 2.e8*mHydrogen) then ! large midplane dust grains
+             if (rhoDisc > 1.e-9) then ! large midplane dust grains
                 thisOctal%dusttypeFraction(subcell,1:4) = 0.d0
                 thisOctal%dusttypeFraction(subcell,1) = 1.d0
              else if (rhoDisc > rhoEnv) then  ! normal disc dust
@@ -1255,5 +1238,51 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
   end subroutine Equation2dust
 
+
+  subroutine parseGrainType(grainString, nTypes, name, abundance)
+
+    character(len=*) :: grainString
+    integer :: nTypes
+    character(len=*) :: name(:)
+    character(len=80) :: tempString
+    real :: abundance(:)
+    integer :: i, j
+
+    nTypes = 0
+
+    i = index(grainString,":")
+
+! not a mixed grain type
+
+    if (i == 0) then
+       nTypes = 1
+       name(1) = trim(grainString)
+       abundance(1) = 1.
+       goto 999
+    endif
+    tempString = grainString
+    do while (index(tempString,":") /=0)
+       i = index(tempString,":")
+       nTypes = nTypes + 1
+       name(nTypes) = tempString(1:i-1)
+       tempString(1:) = tempString(i+1:)
+       if (index(tempString,":") /=0 ) then
+          j = index(tempString,":")-1
+          read(tempString(1:j), *, err=666) abundance(nTypes)
+       else
+          j = len(trim(tempString))   
+          read(tempString(1:j), *,err=666) abundance(nTypes)
+          goto 999
+       endif
+       tempString(1:) = tempString(j+2:)
+    end do
+
+666 continue
+    write(*,*) "Error parsing graintype string"
+    write(*,*) "Grain string: ",trim(grainString)
+    write(*,*) "temp string: ",trim(tempString)
+    stop
+999 continue
+  end subroutine parseGrainType
 
 end module dust_mod
