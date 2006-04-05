@@ -1,0 +1,779 @@
+Dear Referee,
+
+Thank you very much for reviewing our paper, and for doing so in
+timely mannar.  We have reviewed our paper by considering your
+comments and suggestions very carefully.  
+The answers to your questions follows "*" marks before 
+the indented texts below.
+
+Kind regards,
+
+Ryuichi Kurosawa, Tim Harries and Neil Symington
+
+
+===================================================================
+General comments
+
+Introduction, 3rd paragraph: The blue-ward asymmetric emission is
+generated in magnetospheric accretion models not only by the
+occultation of the flow by the stellar photosphere, which occults
+mostly high velocity blue-shifted material, but also by the
+occultation of part of the receding flow by the inner disk, which
+occults mostly low velocity redshifted emission. Both effects (lack of
+low velocity red-shifted emission and lack of high velocity
+blue-shifted emission) contribute to generate the blue-ward asymmetry.
+
+   * Thank you for point that out. I replaced the sentence 
+     from 
+	  "... blue-ward asymmetric emission line 
+	    profiles as resulting from the partial occultation 
+	    of the flow by the stellar photosphere, .... 
+     to 
+
+	  "... blue-ward asymmetric emission line 
+	    profiles as resulting from the partial occultation 
+	    of the flow by the inner part of the accretion disc and by
+	    the stellar photosphere, .... "
+
+
+
+Section 2.1, 1st paragraph: The adopted parameters of a typical
+classical T Tauri star are listed in Table 1. I think that a mass
+accretion rate of 10^-8 Msun/yr is much more representative of a
+typical CTTS than 10^-7 Msun/yr. The values you adopted as typical for
+both Macc and Mwind rates are actually quite high compared to what is
+usually measured (see for ex. Gullbring et al. 1998). It is true that
+some CTTSs present such high Macc and Mwind rate values, but these are
+only a few. This is just a comment and does not invalidate your
+results since you ended up calculating profiles for Macc = 10^-7,
+10^-8 and 10^-9 Msun/yr, which clearly encompasses the whole range of
+measured Macc rates in CTTSs.
+
+    * I agree. A typical value of mass-accretion rate is ~3x10^-8
+      Msun/yr according to Gullbring et al. (1998) and  Calvet et al. (2004).
+      A slightly higher mass-accretion was used so that the line 
+      broadening can be seen more clearly, and because 
+      10^-7 is a nice round number. I clarify this point in caption of
+      Table 1.  
+
+
+Section 2.1, 2nd paragraph: A better reference to the accretion schock
+characteristics would be Calvet & Gullbring (1998) ApJ 509, 802 and
+Gullbring et al. (2000) ApJ 544, 927, instead of Konigl (1991) and
+Hartmann et al. (1994).
+
+     * I replaced the references as you suggested. 
+
+
+
+In this paragraph you obtain about 8% of the stellar surface covered
+by hot rings. This is quite a large value compared with the values
+obtained by Gullbring & Calvet in the papers cited above, which range
+rather from 0.1% to 1% for several CTTSs. But this could be due to the
+fact that you are using a large Macc rate (10^-7 Msun/yr) for a
+CTTS. Does this affect your results ? Was the hot ring surface
+coverage recalculated consistently when you computed models with 10^-8
+Msun/yr and 10^-9 Msun/yr ? In that case, what values were used ?
+
+   * The surface "area" covered by the hot rings depends only on 
+     the geometry of the magnetosphere (Rmi and Rmo); however, 
+     the total accretion luminosity (L_acc) depends on the
+     mass-accretion rate (Macc).
+     The surface intensity of the hot rings is computed according to 
+     this total luminosity due to accretion and by assuming they
+     radiates as a blackbody.  
+
+     If a smaller hot ring surface was adopted, the ring temperature
+     will increase in order to have a fixed L_acc for a given amount
+     of mass-accretion rate.  So, yes, we calculate the amount of
+     total "flux" according to a mass-accretion rate, but the surface
+     coverage does not change.  
+     
+     In our model, the hot ring simply acts
+     as a source of additional continuum source, but the total amount
+     of the additional continuum flux from the hot ring does not
+     change.  This means that the level population does not change;
+     hence, the H-alpha line strength is not affected by the change in
+     the area coverage of the rings provided that the change is not so
+     big. If the area coverage is much bigger (e.g. 30%), then the
+     geometry of the magnetosphere itself changes significantly.  This
+     would result in the line strength slightly for a fixed
+     inclination angle, but overall shape of the profile would not
+     change so much. For example, we used Rmi=2.2R* and Rmo = 3.0R*
+     (Small and Wide (SW) model of Muzerolle et al 2001) which results
+     in 8% hot ring coverage. If we were to use Rmi=2.2R* and Rmi =
+     2.8R* and Rmo=3.0* (Small and narrow (SN) model of Muzerolle et
+     al 2001), then the coverage would be 1% of the total surface,
+     which is more similar to the fraction estimated in Gullring et al
+     (2000).  If we look at the model comparison of Muzerolle et al
+     (2001) (see their Fig. 5), the line strength changes, but the
+     line profiles shape do not change much (except for the 10^3 K
+     model). We confirmed, by running additional models, the line
+     shapes do not change significantly for H-alpha by changing from
+     SW to SN model.
+
+     To make it clear about this point, I have inserted the following
+     texts near the end of the 2nd paragraph in  Section 2.1:
+
+        "In our model, the fraction of hot-ring coverage area is
+        determined only by the geometry of the magnetosphere (Section
+        2.2). Gullring et al (2000) estimated the fractions of the
+        hot-ring coverage area for three intermediate CTTS by using
+        the observed UV and optical spectra. They found the range of
+        fraction to be 0.3--3.0~per~cent.  This is smaller than the
+        value adopted here; however, even if we use 1~per~cent
+        hot-ring area coverage model (by changing the width of the
+        magnetosphere), we find the line shapes of H$\alpha$ do not
+        change significantly. "
+
+     Also I added the following sentence, just before the last
+     sentence in Section 2.1:
+
+        "The luminosity ratio and the temperature depend on a adopted
+         mass-accretion rate."  
+
+
+
+Sect. 2.2, 3rd paragraph: You say that the results of Martin (1996)
+qualitatively agree with those of Hartmann et al (1994). There is a
+comment about that in the Muzerolle et al (1998) (ApJ 492, 743) paper
+on page 751, where they also use the Hartmann et al (1994) law. They
+say that the Martin (1996) temperature distribution is inadequate to
+obtain line emission consistent with the observations, even at Halpha,
+while their temperature distribution generates profiles that look like
+the observed ones. So I think that you should not say that both
+temperatures agree, even qualitatively.  It gives the idea that they
+generate the same types of profiles, which is not true. The fact that
+they do not agree is actually a big problem, since the Hartmann et
+al. (1994) temperature structure, which is somewhat arbitrary,
+reproduces the observed profiles, while the Martin (1996) temperature
+structure, which was calculated consistently, does not. We are missing
+some physics in there.
+
+   * Thank you for reminding me this point. 
+     I removed the sentence, "The results of Martin(1996)
+     qualitatively agree with those of Hartmann et al. (1994)" from the
+     text, and added the following at end of the paragraph to reflect
+     your comments.
+
+        "Although the model of Martin (1996) seems to be more
+         comprehensive than that of Hartmann et al. (1994), Muzerolle
+         et al (1998) found that the line profile models computed
+         according to the temperature structure of the former do not
+         agree with observations while they do have much better
+         agreement when the temperature of the latter model was used. 
+	 The temperature structure of the magnetosphere is still a big
+         uncertainty in the accretion model; however, for a
+         heuristic reason, we adopted the model of Hartmann et
+         al. (1994). "
+
+
+
+Sect. 2.3, 4th paragraph: I could not follow you in the end of the
+paragraph. You have p=4*alpha*q and q = -1.15 from Whitney et
+al. (2003). You say that in order to be consistent with Krasnopolsky
+et al. (2003) who used p = -5/2, the value of alpha was set to
+0.76. Well, alpha=p/(4*q)=-2.5/(4*(-1.15))=0.54 and not 0.76.
+
+   * You are absolutely correct. This is my mistake.
+     It should be p=-7/2 which is the value used in the models.  
+     With p=-7/2,  
+         alpha=p/(4*q)=-3.5/(4*(-1.15)) = 0.76.
+
+	 ==> Corrected.
+
+Sect. 4.1, 1st paragraph Tmax is not defined. I know it is the maximum
+temperature of the accretion flow, but you must define it.
+
+   * I added the following sentences after the first sentence of the
+     same paragraph:
+       "The temperature structure of Hartmann et al. (1994, ApJ, 426,
+	669) is  adopted here, and the parameter Tmax sets
+	the maximum temperature of the accretion streams. "
+
+
+
+Sect. 4.1, 5th paragraph You say the EWs decrease as the inclination
+increases mainly because the fraction of the accretion stream blocked
+by the photosphere increases. I agree that the fraction of the
+accretion stream blocked by the photosphere increases a lot as the
+inclination increases (in Fig. 1, lower left funnel portion or z<0 and
+x<0 for an observer looking from the upper right corner), but the
+fraction blocked by the inner disk (at z<0 and x>0 in Fig. 1) also
+increases a lot and contributes to the decrease in the EWs. The
+photosphere mostly blocks blue-shifted material, while the inner disk
+mostly blocks redshifted material.
+
+   * You are absolutely right. I changed the sentence as you pointed
+     out.
+     
+     ORIGINAL 
+       "The line flux and the EWs decrease mainly because the fraction
+        of the accretion stream blocked by the photosphere increases
+        as the inclination increases."
+
+     REVISED
+       "The line flux and the EWs decrease mainly because (1) the
+        fraction of the accretion stream blocked by the photosphere
+        increases as the inclination increases (c.f. Fig. 1,
+        lower-left part of the accretion stream i.e.  z<0 and x<0),
+        and (2) the fraction of the accretion stream blocked by the
+        inner part of the accretion disc increases as the inclination
+        increases (c.f. Fig. 1, lower-right part of accretion stream
+        i.e. z<0 and x>0). While the photosphere mostly blocks the
+        blue-shifted part of the stream, the inner disc blocks the
+        red-shifted part."
+
+    
+
+
+
+Sect. 4.1, 6th paragraph I don't understand why the highest
+red-shifted line-of-sight velocity is visible only at the high
+inclination angles. Looking at Figure 1, at low inclinations (even at
+i=0) we actually see all the highest red-shifted material of the upper
+right funnel portion (z>0, x>0, for an observer looking from the upper
+right corner). Actually, looking at the profiles in Fig. 5, I don't
+see much of a change in the redshifted wing width (for example at v >
+120 km/s) with the increase in inclination. The blue-shifted wing
+changes more.
+
+   * Sorry. I meant to say "the blue-shifted" line-of-sight velocity
+     instead of the red-shifted ...  As you mentioned the difference
+     in the red wing is very small, but the difference in the blue
+     wing is small but visible. By reflecting these points, I have
+     made the correction as follows:
+
+       ORIGINAL
+       "..., the highest red-shifted line-of-sight velocity is visible
+        only at the high inclination angles. This explains the wider
+        appearance of the profile with i=80 deg. compared to the
+        relatively narrow line appearance of the profile with
+        i=10 deg."
+
+	
+       REVISED 
+       "..., the highest blue-shifted line-of-sight velocity is seen
+        only at the high inclination angles. For example, the
+        accretion stream close to the photosphere (~1 R*) above the
+        photosphere)on the upper-left quadrant in Fig.1 (x<0 and z>0)
+        will be more aligned with the line-of-sight of an observer in
+        the upper-right quadrant in the same figure (x>0 and z>0) as
+        the inclination increases.  This results in a slight increase
+        in the blue wing flux for a higher inclination model as seen
+        in Fig. 5."
+
+
+
+   * In addition to this correction, the last sentence in this
+     paragraph (Sect. 4.1, 6th paragraph), 
+
+     "A similar EW dependence on
+      inclination angle is found for the models with different 
+      magnetospheric temperatures and the mass-accretion rates."
+
+      was moved to the end of the previous paragraph (Sect. 4.1, 6th
+      paragraph) because it was out of place.
+
+
+
+
+
+
+Sect. 4.2, end of 2nd paragraph: You comment that the blue edge of the
+absorption component in the slowest wind acceleration model (beta=4.0)
+is located close to line centre (~20 km/s). But you don't show
+beta=4.0 models. Was that a mistake and you intended to say beta=2.0 ?
+I think you should cite the blue edge absorption component velocity of
+the fastest model shown in Fig.6, which is beta=2.0. It is easier for
+the reader to be able to check in the figure what you are explaining
+in the text, and you make your point in the same way.
+
+   * You are right again. I meant to say beta=2.0 instead of
+     beta=4.0.  ==> Corrected.
+
+
+
+Sect. 4.2, Table 4: Were does the value of p= -3/2 come from ? In
+Section 2.3 you said you would be consistent with the model of
+Krasnopolsky (2003) who used p= -5/2.
+
+   * It should be p= -7/2.  
+     A similar correction was made in Section 2.3 as you also pointed out.
+     Sorry for the careless mistakes.
+     ==> Corrected.
+
+
+Sect. 4.2, 4th paragraph: The opening angle is measured from the
+symmetry axis (z), then it should be given by theta_open=arctan(Rwi/d)
+instead of theta_open=arctan(d/Rwi). High values of d correspond to
+more collimated winds and therefore to smaller opening angles.
+
+   * My mistake again. It should have written as
+     theta_open=arctan(Rwi/d). 
+     ==> Corrected.
+
+
+Sect. 4.2, end of 4th paragraph: You say that you used d=44 Rstar for
+the disc wind models presented in the paper but Table 4 has d= 22
+Rstar listed. Which one is correct ? If Table 4 is a summary of the
+reference disc wind models used in Section 4.2, maybe you should not
+list d=22 Rstar, since you actually varied d in that section. Either
+you put the range of values used (from 2 Rstar to 88 Rstar, as in
+Fig. 7) or you don't put any value for d in Table 4.
+
+
+   * This is my mistake again. I got confused between R* and Rsun.
+     The largest displacement (d) model is "d=22R*." 
+     d=44R* and d=88R*
+     should be replaced with d = 22R*. "d=22R*" is the value used in 
+     the models shown in Figure 6.
+     ==> The values are corrected in the text and in the caption of
+     Figure 7.
+
+   * Deleted the entry for d from Table 4 as suggested.
+
+
+Sect. 4.2: A general comment on the wind models presented in this
+section. Blandford & Payne (1982) showed that in order to launch a
+wind magneto centrifugally, the poloidal component of the magnetic
+field must make an angle of less than 60 degrees with the disk
+surface. In order for that to be achieved in your model, you must have
+(supposing a flat disc, which should be reasonable for the inner disk
+regions):
+
+d < Rw*tg(theta), where theta = 90 - theta_open = 60 degrees is the
+angle between the field line and the disk surface (x axis).
+
+This means that for Rw = Rwi = 3 Rstar, you must have d < 5.2 Rstar
+and that for Rw = 1 au ~ 100 Rstar, you must have d < 173 Rstar
+
+The last condition is clearly satisfied in all your models, since d is
+always less than 173 Rstar. But the inner field lines, passing close
+to Rwi, do not satisfy the Blandford & Payne (1982) condition, since
+for that you would need to have d < 5.2 Rstar in all cases.
+
+In other words, if you fixed d = 44 Rstar in the disc wind models
+presented in the paper, as you say you did in the 4th paragraph of
+Sect. 4.2, for the wind to be launched centrifugally according to
+Blandford & Payne, the field lines must present Rw > d/tan(60), which
+is Rw > 25.4 Rstar. This means that field lines from Rwi = 3 Rstar to
+Rw = 25 Rstar will not be able to launch a wind magneto-centrifugally
+with d=44 Rstar.
+
+How do you launch the wind in the inner field line region ? If you
+cannot launch a wind in that region, how does it affect your results ?
+
+
+   * I noticed the launching angle (measured from disc plane)
+     condition of Blandford & Payne (1982) is not satisfied in the
+     inner region of our simple disc wind model.  This is was done so
+     that wind has a moderate amount of collimation. Since the stream
+     line is straight, the wind will never bend toward the symmetry
+     axis (z-axis) as the distance from the disc increases unlike the
+     model of Blandford & Payne (1982). We therefore used a larger
+     launching angle to simulate the stream lines in the far field (at
+     a larger distance from the disc plane) in their model.  This is
+     an intrinsic problem with approximating the stream lines with
+     straight lines. A better model is perhaps to compute the field
+     lines using Blandford & Payne (1982) model as done in
+     e.g. Alencar et al (2005, A&A, 440, 595).  Also, in our mode, if
+     the launching angle is too small (<60 deg.), the wind absorption
+     feature would not been seen for profiles computed with i<60
+     deg. since the wind stream line is straight and little material
+     is present in the line-of-sight to an observer in this case.
+     Since more than 50% of observed H-alpha profiles (e.g. Reipurth
+     1996, A&AS, 120, 229 and Alencar & Basri 2000, ApJ 119, 1881) are
+     affected by wind absorption, it was necessary for our model to
+     used the launching angle (at the inner most part) greater than 60
+     degrees to be more consistent with observation.
+
+     If the launching angle (measured from the disc plane) is 60 deg. at
+     the inner most part of the  wind, and the inclination angle
+     (measured from the symmetry  axis, z-axis) is less than 60 deg., little
+     absorption is expected, as demonstrated in Fig. 7.
+     The situation will however change if the
+     field/stream line is not straight and bending towards the
+     symmetry axis as the wind travel higher above the disc. 
+
+     In summary, this was necessary compromise in order (1) to be more
+     consistent with observation, and (2) to simulate more
+     "colliminated" wind (toward the symmetry axis).
+
+
+     To answer your question how it would effect our results, I run
+     additional models with d=5Rstar which satisfies the wind
+     launching condition of Blandford & Payne (1982) in all disc wind
+     zone in our model.  These models showed that the wind absorption
+     and emission features weakens,  but overall morphology dependence
+     of the profiles on the wind temperature and the wind acceleration rate
+     is very similar to what we found in the models shown in Figs. 6
+     and 9.  Hence, the major conclusions obtained by using the wind
+     models with a larger launching angle (at the very inner part of
+     the disc) presented in this paper would not differ from the
+     conclusions obtained from the disc wind models with d=5Rstar.
+
+
+     To clarify the points you raised above, I have inserted the
+     following in text (mostly the same as mentioned above).
+
+
+     After the 4th paragraph in Section 4.3, the following new
+     paragraphs are inserted: 
+
+       "Blandford & Payne (1982) showed that in order to launch a wind
+        from a disc plane magneto-centrifugally, the launching angle
+        (theta_L, measured from the equatorial disc plane) must be
+        less than 60 degrees. In our models, the wind launching zone
+        is restricted in between Rwi < wi < Rwo (see Fig. 1 and Table
+        1) with Rwi = 3 Rstar and Rwo=1 au.  This sets the upper limit
+        of the source displacement distance (d) to be around 5.2 Rstar
+        if we want to satisfy the launching angle condition of
+        Blandford & Payne (1982) for all the stream lines in our disc
+        wind model.  In the models presented in Fig. 6 (and later in
+        Fig. 9 in next section), we have adopted d =22 Rstar
+        instead. This means that some part of the disc wind (3Rstar <
+        wi < 25.4 Rstar) may not be able to be launched from the disc
+        plane according to the model of Blandford & Payne (1982).
+
+	We have used a larger launching angle or a larger source
+	displacement distance for the following two reasons: (1) to
+	simulate more 'colliminated' wind (toward the symmetry axis,
+	and (2) to be more consistent with the fraction of H-alpha
+	profiles affected by wind absorptions in observations.
+
+      	Since the stream lines in our simple disc wind are represented
+	by straight lines, the wind never bends toward the symmetry
+	axis (z-axis) as the distance from the disc increases unlike
+	the model of Blandford & Payne (1982). We therefore used a
+	larger launching angle to simulate the stream lines in the far
+	field (at a larger distance from the disc plane) in their
+	model.  This is an intrinsic problem with approximating the
+	stream lines with straight lines. A better model is perhaps to
+	compute the field lines using Blandford & Payne (1982) model
+	as done so in Alencar et al (2005, A&A, 440, 595).  Also, in
+	our mode, if the launching angle is too small (<60 deg.), the
+	wind absorption feature would be not been seen or would be
+	very small for profiles computed with i<60 deg.  If the
+	launching angle is 60 deg. at the inner most part of the wind,
+	and the inclination angle (measured from the symmetry axis,
+	z-axis) is less than 60 deg., little (wind) absorption is
+	expected, as demonstrated in Figure 7.  The situation will
+	however changes if the field/stream line is not straight and
+	bending towards the symmetry axis as the wind travel higher
+	above the disc.  Since more than 50 per cent of observed
+	H-alpha profiles (e.g. Reipurth 1996, A&AS, 120, 229 and
+	Alencar & Basri 2000, ApJ 119, 1881) are affected by wind
+	absorption, it was necessary for our model to used the
+	launching angle (at the inner most part) greater than 60
+	degrees to be more consistent with observations; although this
+	would mean that the launching angle condition of Blandford and
+	Payne (1982) is violated for wind from a very inner part of
+	the disc.
+
+	 In addition to the models given in Figs. 6 and 9, we have
+	 computed the models with d=5Rstar (not shown here) which
+	 satisfies the wind launching condition of Blandford & Payne
+	 (1982) in all parts of the disc wind zone in our model.
+	 These models showed that the wind absorption and emission
+	 features weaken, but overall morphology dependence of the
+	 profiles on the wind temperature rate and the wind
+	 acceleration rate is similar to what we found in the models
+	 shown in Figs. 6 and 9.  The minimum inclination angle at
+	 which the wind absorption becomes important is larger than
+	 that of the models with a larger source displacement (d = 22
+	 Rstar) as expected."
+
+
+
+
+Sect. 4.3, 1st paragraph: You say the parameters used for the
+magnetosphere are the same as in Fig.5, but in that figure you have
+models with 3 different inclinations. Did you calculate models for the
+three inclinations or just for i=55 degrees ? Please specify this in
+the text.
+
+   * All the models in Section 4 are computed at i=55 deg. The
+     profiles computed at 10 and 80 deg. are given in Appendix A. 
+     I see that is confusing. 
+     I corrected the sentence as follows:
+
+     ORIGINAL
+        "The parameters used for the magnetosphere are  same as in 
+         Fig. 5, ...."
+
+     REVISED
+        "The parameters used for the magnetosphere are same as in 
+         Fig. 5 (with i=55 deg.), ...."
+
+
+   * Also the last sentence is the same paragraph changed to reflect
+     your comment:
+
+     ORIGINAL
+       "Fig. 9 shows the models profiles computed 
+        using the same ranges of the disc-wind temperature and wind
+        acceleration parameter as in the previous cases."
+
+     REVISED
+       "Fig. 9 shows the models profiles computed (at $i=55^\circ$)
+        using the same ranges of the disc-wind temperature and wind
+        acceleration parameter as in the previous cases."
+
+
+Sect. 4.3, 5th paragraph: It is hard to see in Fig. 10 that the
+position of minimum flux in the absorption moves blue-ward. I actually
+don not see any difference between the models with mu=0.1 and 0.2.
+
+   * You are correct. I don't know why I said that.
+     I rephrase the sentence as follows
+
+     ORIGINAL 
+     "The figure shows that as $\mu$ increases the
+     P-Cygni absorption deepens only slightly, and the position of minimum
+     flux in the absorption trough appears to move blue-ward."
+
+     REVISED
+     "The figure shows that as $\mu$ increases the
+     P-Cygni absorption deepens only slightly." and the position of minimum
+     flux in the absorption trough appears to remain at same locations."
+
+
+
+Sect. 5.1, Type III-B: This is the most common profile type in the
+Reipurth et al. (1996) sample but you only find it in you Macc = 10^-7
+Msun/yr models, which is not a common or average value for Macc rate
+in CTTSs. As said in some previous comment, CTTSs tend to have Macc =
+10^-8 Msun/yr and only a few present Macc = 10^-7 Msun/yr. To what do
+you attribute that discrepancy between the data and the models ?
+
+   * I have run additional models with a typical mass accretion rate
+     (3x10^-8 Msun/yr, Gullbring et al. 1998; Calvet et al. 2004) for
+     CTTSs.  Please see
+     http://www.astro.ex.ac.uk/people/rk/profiles/extra
+
+     for the profile computed at i=10,55,80 and for beta=0.2, 0.5,
+     1.0, 2.0 Twind=7000, 8000, 9000, 10000K
+
+      According to these models which use a more typical
+      mass-accretion rate, Type III-B can be seen for at least in
+      three models with fast accelerating and high wind temperature
+      i.e. (beta, Twind) = (0.2, 10000K), (0.5, 9000K) and (0.5,
+      10000K).
+
+      A possible reason for not being able to find Type III profiles
+      in lower mass-accretion rate models (e.g. in Mdot_acc =
+      1.0x10^-8 Msun/yr models) is perhaps due to a wrong radial
+      dependence (p in Equation 3) of the mass-loss rate per unit area
+      used in our models.  This dependence shall be examined in more
+      carefully in future.
+
+      I added a following comments based on these additional runs.
+
+      "In addition to the models shown in Appendix A, we have run a
+      set of hybrid models (not shown here) with a typical
+      mass-accretion rate for CTTS i.e. 3x10^-8 Msun/yr (Gullbring et
+      al. 1998; Calvet et al. 2004) using i=10,55,80 with combinations
+      of beta=0.2, 0.5, 1.0, 2.0 and Twind=7000, 8000, 9000,
+      10000K. Based on these models, we found that Type III-B profiles
+      can be seen for at least in three models with fast accelerating
+      and high wind temperature at moderate inclination angle i.e. i =
+      55 degrees with (beta, Twind) = (0.2, 10000K), (0.5, 9000K) and
+      (0.5, 10000K).  A possible reason for not being able to find
+      Type III profiles in lower mass-accretion rate models (e.g. in
+      Mdot_acc = 1.0x10^-8 Msun/yr models) is perhaps due to a wrong
+      radial dependence (p in Equation 3) of the mass-loss rate per
+      unit area used in our models.  This dependence shall be examined
+      more carefully in future."
+
+
+
+
+Sect. 5.1, Type IV-R: In axisymmetric models (rotation and magnetic
+axis aligned) the inverse P Cygni profile really restricts the
+inclination angle to a small range. But there are observational
+evidences (SU Aur: Johns & Basri 1995, AA Tau: Bouvier et al. 2003,
+for example) for inclined magnetospheres and in that case you could
+see the accretion shock through the fast moving accretion flow at
+basically any inclination. It would only depend on a combination of
+the rotation axis and magnetic axis inclinations. In Halpha, in
+particular, it might still be difficult to see inverse P Cygni
+profiles because of the wide emission wings due to broadening effects
+(such as the Stark effect).
+
+   * Yes, you are quite right. I am aware of the effect of the
+     inclined magneto-axis CTTS models. In fact, I wrote a paper on SU
+     Aur Pa-beta line variability. H-alpha variability of of SU Aur
+     indeed shows a very complex line profile morphology dramatically
+     changing with its rotational phase (e.g.  Johns & Basri 1995, see
+     also their movie
+     http://sprg.ssl.berkeley.edu/~cmj/html/suaur.mpg).  Although it
+     does not look it has a clear IV-R type profile at any given
+     rotational phase for H-alpha, I am aware that Pa-beta line does
+     show IV-R type profile, and the strength of inverse P-Cyg or the
+     absorption features in the redwing changes as the rotational
+     phase changes (e.g. Kuorsawa et al, 2005, MNRAS, 358, 671).
+     
+     I wanted to restrict the cases for purely axi-symmetric
+     geometries in this paper for clarity of discussion.  In reality,
+     a situation may not be as simple as this classification, as we
+     know the lines are sometimes highly variable. This problem will
+     be tackled in near future. For a starter, I am currently
+     computing line profiles based on the MHD model of Romanova et al
+     (2003, ApJ, 595, 1009) who considered the disc accretion problem
+     with an inclined dipole magnetic field, and investigate if the
+     overall line variability features seen in the observation can be
+     explained by this model. I am working on the case with and
+     without the additional outflow (discwind or/and stellar wind).
+
+     I will clarify this point by adding the following near the end of
+     the first paragraph in Section 5.1 :
+
+       "Although in general H-alpha in the spectra of CTTS shows a
+        significant amount of variablity, which is in some cases
+        induced by the rotational motion of an inclined magnetosphere
+        (e.g. Johns &  Basri 1995; Bouvier et al. 2003), we restrict
+        our discussion in this section for the cases of axi-symmetric
+        geometries." 
+
+    Also a short comment is added at the end of Type IV-R section, 
+      
+       "The restriction in the inclination angle mentioned above would
+        be relaxed if the axis of the magnetosphere is tilted with
+        respect to the rotational axis since the line-of-sight to an
+        observer from the accretion hot rings will pass through a
+        different part of the magnetosphere as a rotational phase
+        changes (as it precesses around the rotational axis)." 
+
+
+
+
+
+
+Sect. 5.2, 3rd paragraph: What is the mass loss rate used in the
+stellar wind models ? This value should be added to the text. Matt &
+Pudritz (2005) suggest 10^-9 Msun/yr to solve the angular momentum
+problem.
+  
+   * Thank you for pointing this out.  I should have quoted the
+     mass-loss rate used in the models.    
+     In both models in Fig.13, Mdot_wind = 10^-8 Msun/yr is used so 
+     that mu=Mdot_wind/Mdot_acc = 0.1, and to be consistent with 
+     the mass-accretion rate (Mdot_acc=10^-7 Msun/yr) used for the
+     models in earlier in the paper. It seems that the ratio mu is an
+     important factor in Matt & Pudritz (2005) in balancing the
+     torques on a central star (their equation 3).
+     I tried the models with Mdot_wind = 10^-9 Msun/yr  (keeping
+     mu=0.1), and found the same inclination dependency for these
+     models, so the main conclusion of this section 
+     does not change when Mdot_wind is changed from 10^-9 Msun/yr to
+     10^-9 Msun/yr. 
+
+     To reflect your points, I added the following in the text 
+     (Sect. 5.2, 4th paragraph).
+
+     After the first sentence of the paragraph, I inserted:
+
+        "The mass-loss rate of the stellar wind in this model is 10^-8
+	Msun/yr, which is same as the mass-loss rate used in the
+	disc-wind magnetosphere hybrid model in the same figure.  In
+	both models, the mass-accretion rate of 10^-7 Msun/yr is
+	used."
+  
+     At the end of the paragraph, I inserted: 
+        "A similar inclination dependency of EW is found for lower
+        wind mass-loss rate models (e.g. Mdot_wind = 10^-9 Msun/yr)
+        while keeping mu=0.1."
+
+     Also in the figure caption of Figure 13  just before the last
+	sentence,  I added:
+	"The wind mass-loss rates used in both models are Mdot_wind =
+	10^-8 Msun/yr." 
+
+
+***** Spells and other minor comments
+
+Sect. 2.1, 2nd paragraph: ... and re-emitted optical and UV radiation.
+Maybe rephrase as: ... and re-emitted as optical and UV radiation.
+
+   * Corrected. 
+
+Sect. 2.2, 1st paragraph: Rmi and Rmo --> 2.2 Rsun and 3.0 Rsun should
+be 2.2 Rstar and 3.0 Rstar
+
+   * Corrected.
+
+
+Sect. 2.3, 5th paragraph: The Rs value is set to 10 Rmi. Shouldn't it
+be 10 Rwi, as in Table 4 ?
+
+   * Yes. Thank you for noticing. Changed it to Rwi,
+
+
+Sect. 2.3, caption of Figure 2: ...the density is approximately
+proportional to ~ l^2 It looks like ~ l^-2
+
+   * Yes, you are correct. My mistake again. It should be l^-2.
+     ==> corrected.
+
+
+Sect. 3, last paragraph: ...the dust property described in Section 10. 
+¨Section 10¨ should be ¨Section 2.4.2¨
+
+   * Corrected.
+
+
+Sect. 4.2, caption of Figure 7: The 88 Rstar model is represented by a
+solid line and not by a dash-dotted line as written.
+
+   * Corrected.
+
+In the same caption, "opening angel" should be "opening angle"
+  
+   * Corrected.
+
+Sect. 4.3, 4th paragraph: "Figures 6" should be "Fig. 6"
+   
+   * Corrected.
+
+Sect. 4.3, 5th paragraph: ...the flux peak increase and ...  ¨increase¨ 
+should be ¨increases¨
+
+   * Corrected.
+
+Sect. 4.3, caption of Figure 11: The parameter used for the
+magnetosphere are....  ¨parameter¨ should be ¨parameters¨
+
+   * Corrected.
+
+Sect. 5.2, 4th paragraph: The sentece below must be rewritten: ...This
+tendency (...) holds for the models with this wind models for wide
+ranges of beta...
+
+   * Changed the sentence 
+     From 
+     "This tendency of the inclination dependency holds for the models
+      with this wind models for wide ranges of beta and
+      T_wind providing that the emission from the wind is
+      greater than that of the magnetosphere."
+
+     To
+     "This inclination dependency of EW is seen in the models with
+      wide ranges of beta and T_wind, provided that the wind emission
+      of the model is dominating the emission from magnetosphere."
+
+
+
+
+In addition to the referee's suggestions, we noticed the following 
+minor mistakes in the original manuscript, and corrected.
+
+1. The mass-loss rate in figure a1 and figure a2 were miss-labeled in
+   the captions.  ==>  corrected.
+
+
+2. In Figure 13, the velocity ranges out the two plots should be
+   same for a better comparison. We changed the range of the 
+   right plot to -800km/s <V < 800 km/s.
+
+
