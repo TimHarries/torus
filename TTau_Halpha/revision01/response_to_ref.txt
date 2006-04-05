@@ -414,6 +414,13 @@ cannot launch a wind in that region, how does it affect your results ?
      conclusions obtained from the disc wind models with d=5Rstar.
 
 
+     These models (for  Mdot_acc=1x10^-8 Msun/yr & Mdot_wind=1x10^-9
+     Msun/yr cases) with d=5Rstar are posted on the following website.
+
+     http://www.astro.ex.ac.uk/people/rk/profiles/extra2
+
+
+
      To clarify the points you raised above, I have inserted the
      following in text (mostly the same as mentioned above).
 
