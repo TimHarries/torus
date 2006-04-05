@@ -3,7 +3,7 @@ Dear Referee,
 Thank you very much for reviewing our paper, and for doing so in
 timely mannar.  We have reviewed our paper by considering your
 comments and suggestions very carefully.  
-The answers to your questions follows "*" marks before 
+The answers to your questions follow "*" marks before 
 the indented texts below.
 
 Kind regards,
@@ -32,8 +32,8 @@ blue-shifted emission) contribute to generate the blue-ward asymmetry.
 
 	  "... blue-ward asymmetric emission line 
 	    profiles as resulting from the partial occultation 
-	    of the flow by the inner part of the accretion disc and by
-	    the stellar photosphere, .... "
+	    of the flow by the stellar photosphere and by the inner
+	    part of the accretion disc, .... " 
 
 
 
@@ -81,7 +81,7 @@ Msun/yr and 10^-9 Msun/yr ? In that case, what values were used ?
      mass-accretion rate (Macc).
      The surface intensity of the hot rings is computed according to 
      this total luminosity due to accretion and by assuming they
-     radiates as a blackbody.  
+     radiate as a blackbody.  
 
      If a smaller hot ring surface was adopted, the ring temperature
      will increase in order to have a fixed L_acc for a given amount
@@ -90,26 +90,25 @@ Msun/yr and 10^-9 Msun/yr ? In that case, what values were used ?
      coverage does not change.  
      
 
-     The level populations are relatively insensitive to the actual 
-     distribution of the hot spots on the stellar surface and
-     hence, the H-alpha line strength is not affected by the change in
-     the area coverage of the rings provided that the change is not too
+     The level populations are relatively insensitive to the actual
+     distribution of the hot spots on the stellar surface and hence,
+     the H-alpha line strength is not affected by the change in the
+     area coverage of the rings provided that the change is not too
      greate. If the area coverage is much bigger (e.g. 30%), then the
-     geometry of the magnetosphere itself must change significantly.  This
-     would result in the line strength slightly for a fixed
+     geometry of the magnetosphere itself must change significantly.
+     This would result in the line strength slightly for a fixed
      inclination angle, but overall shape of the profile would not
      change so much. For example, we used Rmi=2.2R* and Rmo = 3.0R*
      (Small and Wide (SW) model of Muzerolle et al 2001) which results
-     in 8% hot ring coverage. If we were to use Rmi=2.2R* and Rmi =
-     2.8R* and Rmo=3.0* (Small and narrow (SN) model of Muzerolle et
-     al 2001), then the coverage would be 1% of the total surface,
-     which is more similar to the fraction estimated in Gullbring et al
-     (2000).  If we look at the model comparison of Muzerolle et al
-     (2001) (see their Fig. 5), the line strength changes, but the
-     line profiles shape do not change much (except for the 10^3 K
-     model). We confirmed, by running additional models, the line
-     shapes do not change significantly for H-alpha by changing from
-     SW to SN model.
+     in 8% hot ring coverage. If we were to use Rmi =2.8R* and
+     Rmo=3.0R* (Small and narrow (SN) model of Muzerolle et al 2001),
+     then the coverage would be 1% of the total surface, which is more
+     similar to the fraction estimated in Gullbring et al (2000).  If
+     we look at the model comparison of Muzerolle et al (2001) (see
+     their Fig. 5), the line strength changes, but the line profiles
+     shape do not change much (except for the 10^3 K model). We
+     confirmed, by running additional models, the line shapes do not
+     change significantly for H-alpha by changing from SW to SN model.
 
      To make it clear about this point, I have inserted the following
      texts near the end of the 2nd paragraph in  Section 2.1:
@@ -155,12 +154,13 @@ some physics in there.
      right that Muzerolle could not reconcile the Martin T structure
      with observations. We have made the following change:
 
-        "Muzerolle et al (1998) found that the line profile models computed
-         according to the Martin (1996) temperature structure do not
-         agree with observations, unlike profiles based on the (less self-consistent)
-         Hartmann et al. (1994) temperature distribution.
-	 It is clear that The temperature structure of the magnetosphere is still a large
-         source of uncertainty in the accretion model; here  we adopted the model of Hartmann et
+        "Muzerolle et al (1998) found that the line profile models
+         computed according to the temperature structure of Martin (1996)
+         do not agree with observations, unlike profiles based on the
+         (less self-consistent) Hartmann et al. (1994) temperature
+         distribution.  It is clear that The temperature structure of
+         the magnetosphere is still a large source of uncertainty in
+         the accretion model; here we adopted the model of Hartmann et
          al. (1994). "
 
 
@@ -426,50 +426,43 @@ cannot launch a wind in that region, how does it affect your results ?
         wind model.  In the models presented in Fig. 6 (and later in
         Fig. 9 in next section), we have adopted d =22 Rstar
         instead. We have used this larger source
-	displacement distance for the following two reasons: (1) to
-	simulate a more 'colliminated' wind (toward the symmetry axis,
-	and (2) for greater consistency with the fraction of H-alpha
-	profiles affected by wind absorption in observations (ref xxxxx).
+	displacement distance for the following two reasons.
 
-      	Since the stream lines in our simple disc wind are represented
-	by straight lines, the wind never bends toward the symmetry
-	axis (z-axis) as the distance from the disc increases unlike
-	the model of Blandford & Payne (1982). We therefore used a
-	larger launching angle to simulate the stream lines in the far
-	field (at a larger distance from the disc plane) in their
-	model.  This is an intrinsic problem with approximating the
-	stream lines with straight lines.  Also, in
-	our mode, if the launching angle is too small (<60 deg.), the
-	wind absorption feature would be not been seen or would be
-	very small for profiles computed with i<60 deg.  If the
-	launching angle is 60 deg. at the inner most part of the wind,
-	and the inclination angle (measured from the symmetry axis,
-	z-axis) is less than 60 deg., little (wind) absorption is
-	expected, as demonstrated in Figure 7.  The situation will
-	however changes if the field/stream line is not straight and
-	bending towards the symmetry axis as the wind travel higher
-	above the disc.  Since more than 50 per cent of observed
-	H-alpha profiles (e.g. Reipurth 1996, A&AS, 120, 229 and
-	Alencar & Basri 2000, ApJ 119, 1881) are affected by wind
-	absorption, it was necessary for our model to used the
-	launching angle (at the inner most part) greater than 60
-	degrees to be more consistent with observations; although this
-	would mean that the launching angle condition of Blandford and
-	Payne (1982) is violated for wind from a very inner part of
-	the disc.
+      	First, we want to simulate a more 'colliminated' wind (toward
+	the symmetry axis).  Since the stream lines in our simple disc
+	wind are represented by straight lines, the wind never bends
+	toward the symmetry axis (z-axis) as the distance from the
+	disc increases unlike the model of Blandford & Payne
+	(1982). We therefore used a larger launching angle to simulate
+	the stream lines in the far field (at a larger distance from
+	the disc plane) in their model.  This is an intrinsic problem
+	with approximating the stream lines with straight lines.
 
-	 In addition to the models given in Figs. 6 and 9, we have
-	 computed the models with d=5Rstar (not shown here) which
-	 satisfies the wind launching condition of Blandford & Payne
-	 (1982) in all parts of the disc wind zone in our model.
-	 These models showed that the wind absorption and emission
-	 features weaken, but overall morphology dependence of the
-	 profiles on the wind temperature rate and the wind
-	 acceleration rate are similar to the models
-	 shown in Figs. 6 and 9.  The minimum inclination angle at
-	 which the wind absorption becomes important is larger than
-	 that of the models with a larger source displacement (d = 22
-	 Rstar) as expected."
+	Second, the larger source displacement model would provide a
+        greater consistency with the fraction of H-alpha profiles
+        affected by wind absorption seen in observations.  According
+        to the observations of Reipurth (1996, A&AS, 120, 229) and
+        Alencar & Basri (2000, ApJ 119, 1881), more than 50 per cent
+        of CTTS show wind absorption features in their H-alpha
+        profiles. In our model, if the launching angle is too small
+        (<60 deg.), the wind absorption feature would not be seen or
+        would be very small for profiles computed with i<60 deg., as
+        demonstrated in Fig. 7.  The situation will however change if
+        the field/stream line is not straight and bending towards the
+        symmetry axis as the wind travel higher above the disc.
+
+	In addition to the models given in Figs. 6 and 9, we have 
+	computed the models with d=5Rstar (not shown here) which 
+	satisfies the wind launching condition of Blandford & Payne 
+	(1982) in all parts of the disc wind zone in our model. 
+	These models showed that the wind absorption and emission 
+	features weaken, but overall morphology dependence of the 
+	profiles on the wind temperature  and the wind 
+	acceleration rate are similar to the models shown in Figs. 6 
+	and 9.  The minimum inclination angle at which the wind 
+	absorption becomes important is larger than that of the 
+	models with a larger source displacement (d = 22 Rstar) as 
+	expected."
 
 
 Sect. 4.3, 1st paragraph: You say the parameters used for the
@@ -556,8 +549,8 @@ you attribute that discrepancy between the data and the models ?
       clear that our model, as it stands, requires above-average (but
       perhaps not atypical) mass-accretion rates in order to produce
       Type III-B profiles. It is less clear whether the 14 Type-IIIB
-      objects found by Reipurth et al. consistute the highest
-      mass-accretors in their sample: the aveage EW for T~Tauri stars
+      objects found by Reipurth et al. constitute the highest
+      mass-accretors in their sample: the average EW for T~Tauri stars
       with Type III-B profiles is 69\AA, which is in the top quartile
       of their complete T~Tauri star sample, perhaps indicating that
       Type-IIIB profiles are associated with high EWs, and therefore
@@ -735,6 +728,7 @@ ranges of beta...
 
 
 
+**** Additional Corrections *********************************
 
 In addition to the referee's suggestions, we noticed the following 
 minor mistakes in the original manuscript, and corrected.
@@ -743,7 +737,7 @@ minor mistakes in the original manuscript, and corrected.
    the captions.  ==>  corrected.
 
 
-2. In Figure 13, the velocity ranges out the two plots should be
+2. In Figure 13, the velocity ranges of the two plots should be
    same for a better comparison. We changed the range of the 
    right plot to -800km/s <V < 800 km/s.
 

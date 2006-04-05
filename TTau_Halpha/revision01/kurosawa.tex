@@ -148,8 +148,8 @@ radiative transfer models which reproduce the gross characteristics of
 observed profiles for some CTTS (\citealt*{muzerolle:2001}). In
 particular the magnetospheric accretion (MA) model explains blue-ward
 asymmetric emission line profiles as resulting from the partial
-occultation of the flow  by the inner part of the accretion disc and
-by the stellar photosphere, while inverse 
+occultation of the flow by the stellar photosphere and by the inner
+part of the accretion disc, while inverse 
 P~Cygni profiles in the MA model result from inflowing material at
 near free-fall velocities seen projected against hotspots on the
 stellar surface.
@@ -269,7 +269,8 @@ using the observed UV and optical spectra. They found the range of
 fraction to be 0.3--3.0~per~cent.  This is smaller than the value adopted
 here; however, even if we use 1~per~cent hot-ring area
 coverage model (by changing the width of the magnetosphere), we
-find the line shapes of H$\alpha$ do not change significantly.
+find the line shapes of H$\alpha$ do not change significantly (see
+also Fig.~5 of \citealt{muzerolle:2001}).
 
 If the mass-accretion rate
 is $10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$, the ratio of the accretion
@@ -286,7 +287,7 @@ rings is taken into account when computing the line profiles.
   \times 10^{-8}\,\mathrm{M_{\sun}\, yr^{-1}}$
   (e.g. \citealt{gullbring:1998}; \citealt{calvet:2004}); however, a
   slightly higher mass-accretion rate is adopted here to demonstrate the 
-  effect of line-broadenings more clearly (c.f. Section~\ref{sub:model-acc}). }
+  effect of line-broadening more clearly (c.f. Section~\ref{sub:model-acc}). }
 \label{tab:std_parameters}
 
 \begin{center}
@@ -380,14 +381,13 @@ rate equations for hydrogen. He found that main heat source is
 adiabatic compression due to the converging nature of the flow, and
 the major contributors to the cooling process are bremsstrahlung
 radiation and line emission from Ca~II and Mg~II ions. 
-Although the model of \citet{martin:1996} seems to be more comprehensive
-than that of \citet{hartmann:1994}, \citet*{muzerolle:1998} found that
-the line profile models computed according to the temperature
-structure of the former do not agree with observations while they do
-have much better agreement when the temperature of the latter model was
-used.  The temperature structure of the magnetosphere is still a big
-uncertainty in the accretion model; however, for a heuristic reason,
-we adopted the model of \citet{hartmann:1994}.
+\citet*{muzerolle:1998} found that the line profile models computed
+according to the temperature structure of \citet{martin:1996} do not
+agree with observations, unlike profiles based on the (less
+self-consistent) \citet{hartmann:1994} temperature distribution.  It
+is clear that The temperature structure of the magnetosphere is still
+a large source of uncertainty in the accretion model; here we adopted
+the model of \citet{hartmann:1994}.
 
 
 
@@ -1304,50 +1304,42 @@ $d =22\, R_{*}$ instead. This means that some part of the disc
 wind ($3\,R_{*} < w_{i} < 25.4\,R_{*}$) may not be able to be launched
 from the disc plane according to the model of \citet{blandford:1982}.
 We have used a larger launching angle or a larger source displacement
-distance for the following two reasons: (1)~to simulate more
-\emph{collimated} wind (toward the symmetry axis, and (2)~to be more
-consistent with the fraction of H$\alpha$ profiles affected by wind
-absorptions in observations.
+distance for the following two reasons.
 
-Since the stream lines in our simple disc wind are represented by
-straight lines, the wind never bends toward the symmetry axis ($z$-axis)
-as the distance from the disc increases unlike the
-model of \citet{blandford:1982}. We therefore used a larger
-launching angle to simulate the stream lines in the far field (at a larger
-distance from the disc plane) in their model.  This is an intrinsic
-problem with approximating the stream lines with straight lines. A
-better model is perhaps to compute the field lines using
-\citet{blandford:1982} model as done so in \citet{alencar:2005}.
-Also, in our mode, if the launching angle is too small
-($<60^{\circ}$), the wind absorption feature would be not been seen
-or would be 
-very small for profiles computed with an inclination angle
-$i<60^{\circ}$.  If the launching angle is $60^{\circ}$ at the inner
-most part of the wind, and the inclination 
-angle (measured from the symmetry axis, $z$-axis) is less than $60^{\circ}$,
-little (wind) absorption is expected, as demonstrated in Fig.~\ref{fig:discwind_d_effect}.
-The situation will however change if the field/stream lines are not
-straight and bending towards the symmetry axis as the wind travel
-higher above the disc.  Since more than 50~per~cent of observed
-H$\alpha$ profiles (e.g. \citealt{reipurth:1996};
-\citealt{alencar:2000}) are affected by wind absorption, it was 
-necessary for our model to used the launching angle (at the inner most
-part) greater than $60^{\circ}$ to be more consistent with observations;
-although this would mean that the launching angle condition of
-\citet{blandford:1982} is violated for wind from a very inner part
-of the disc.
+First, we want to simulate a more \emph{colliminated} wind (toward
+the symmetry axis).  Since the stream lines in our simple disc
+wind are represented by straight lines, the wind never bends
+toward the symmetry axis ($z$-axis) as the distance from the
+disc increases unlike the model of \citet{blandford:1982}. We
+therefore used a larger launching angle to simulate 
+the stream lines in the far field (at a larger distance from
+the disc plane) in their model.  This is an intrinsic problem
+with approximating the stream lines with straight lines.
+
+Second, the larger source displacement model would provide a greater
+consistency with the fraction of H$\alpha$ profiles affected by wind
+absorption seen in observations.  According to the observations of
+\citet{reipurth:1996} and \citet{alencar:2000}, more than 50 per cent
+of CTTS show wind absorption features in their H$\alpha$
+profiles. In our model, if the launching angle is too small
+($\theta_{\mathrm{L}}<60^{\circ}$), the wind absorption feature would not be seen or
+would be very small for profiles computed with $i<60^{\circ}$, as
+demonstrated in Fig.~~\ref{fig:discwind_d_effect}.  The situation will
+however change if the field/stream line is not straight and bending
+towards the symmetry axis as the wind travel higher above the disc.
 
 In addition to the models given in Figs.~\ref{fig:atlas_discwind_only}
 and \ref{fig:atlas_hybrid}, we have computed the models with $d = 5\,
 R_{*}$ (not shown here) which satisfies the wind launching condition
-of \citet{blandford:1982} in all parts of the disc wind zone in our model.  These
-models showed that the wind absorption and emission features weaken,
-but overall morphology dependence of the profiles on the wind
-temperature rate and the wind acceleration rate is similar to what we
-found in the models shown in Figs.~\ref{fig:atlas_discwind_only} and
-\ref{fig:atlas_hybrid}.  The minimum inclination angle at which the
-wind absorption becomes important is larger than that of the models
-with a larger source displacement ($d = 22\, R_{*}$) as expected.
+of \citet{blandford:1982} in all parts of the disc wind zone in our
+model.  These models showed that the wind absorption and emission
+features weaken, but overall morphology dependence of the profiles on
+the wind temperature and the wind acceleration rate is similar to
+what we found in the models shown in
+Figs.~\ref{fig:atlas_discwind_only} and \ref{fig:atlas_hybrid}.  The
+minimum inclination angle at which the wind absorption becomes
+important is larger than that of the models with a larger source
+displacement ($d = 22\, R_{*}$) as expected.
 
 
 
@@ -1584,7 +1576,7 @@ mass-accretion rate
 ($\dot{M}_{\mathrm{acc}}=10^{-7}\,\mathrm{M_{\sun}\, yr^{-1}}$), the
 mass-loss rate is varied. The figure shows that as $\mu$ increases the
 P-Cygni absorption deepens only slightly, and the position of minimum
-flux in the absorption trough appears to remain at same positions.  On the other
+flux in the absorption trough appears to remain at same location.  On the other
 hand, the flux peak increases and the line wings become stronger as
 $\mu$ increases.  Although MHD models suggest
 (e.g.~\citealt{koenigl:2000}) that $\mu \sim 0.1$, the figure suggest
@@ -1762,10 +1754,10 @@ context of our models parameters. Readers are referred to
 Appendix~\ref{sec:appendix} for the complete model profiles used in 
 this discussion.          
 Although in general H$\alpha$ in the spectra of CTTS shows a
-significant amount of variablity, which is in some cases induced by
+significant amount of variablity, which may in some cases induced by
 the rotational motion of an inclined magnetosphere
 (e.g.~\citealt{johns:1995}; \citealt{bouvier:2003}), we restrict our
-discussion in this section for the cases of axi-symmetric geometries.
+discussion in this section to the axi-symmetric case only.
 
 
 
@@ -1819,27 +1811,24 @@ We find Type~III-B profiles only in our $\dot{M}_{{\rm acc}} = 10^{-7}\,
 a moderate inclination are necessary, or a slower accelerating wind
 viewed pole-on.  We do not see this profile type in our high
 inclination models.
-In addition to the models shown in Appendix~\ref{sec:appendix}, we
-have run a set of hybrid models (not shown here) with a typical
-mass-accretion rate for CTTS i.e. $3\times10^{-8}
-\mathrm{M_{\sun}\,yr^{-1}}$ (\citealt{gullbring:1998};
-\citealt{calvet:2004}) using $i=10^{\circ},55^{\circ},80^{\circ}$ with
-combinations of $\beta = 0.2, 0.5, 1.0, 2.0$ and
-$T_{\mathrm{wind}}=7000, 8000, 9000, 10000$~K. Based on these models,
-we found that Type~III-B profiles can be seen for at least in three
-models with fast accelerating and high wind temperature at moderate
-inclination angle i.e. $i = 55^{\circ}$ with $\left ( \beta,
-T_{\mathrm{wind}} \right ) = \left ( 0.2, 10000\,\Kelvin \right )$,
-$\left ( 0.5, 9000\,\Kelvin \right )$ and $\left ( 0.5, 10000\,\Kelvin
-\right )$.  A possible reason for not being able to find Type~III
-profiles in lower mass-accretion rate models (e.g. in
+Although Type~III-B profiles do not occur at
 $\dot{M}_{\mathrm{acc}} =
-1.0\times10^{-8}\,\mathrm{M_{\sun}\,yr^{-1}}$ models) is perhaps due
-to a wrong radial dependence ($p$ in
-equation~\ref{eq:discwind-massloss-w}) of the mass-loss rate per unit
-area adopted in our models.  This dependence shall be examined more
-carefully in future.
-
+1.0\times10^{-8}\,\mathrm{M_{\sun}\,yr^{-1}}$, we have examined
+the intermediate case of
+$\dot{M}_{\mathrm{acc}} =3\times10^{-8}\,\mathrm{M_{\sun}\,yr^{-1}}$, which may
+represent a typical T Tauri mass accretion rate
+(\citealt{gullbring:1998}; \citealt{calvet:2004}). We find that
+the models with fast accelerating, high temperature winds do
+display Type~III-B profiles. It is clear that our model, as it
+stands, requires above-average (but perhaps not atypical)
+mass-accretion rates in order to produce Type~III-B profiles. It
+is less clear whether the 14 Type~III-B objects found by
+\citet{reipurth:1996} constitute the highest mass-accretion rate
+objects in their sample: the average EW for T~Tauri stars with
+Type~III-B profiles is 69\AA, which is in the top quartile of
+their complete T~Tauri star sample, perhaps indicating that
+Type~III-B profiles are associated with high EWs, and therefore
+strong mass-accretion.
 
 
 
@@ -1895,11 +1884,10 @@ magnetospheric temperature than indicated by the
 accretion-rate/temperature relationship presented by
 \citet{muzerolle:2001}. 
 The restriction in the inclination angle mentioned above would be
-relaxed if the axis of the magnetosphere is tilted with respect to the
-rotational axis since the line-of-sight to an observer from the
-accretion hot rings will pass through a different part of the
-magnetosphere as a rotational phase changes (as it precesses around
-the rotational axis).
+relaxed if the axis of the magnetosphere was tilted with respect to the
+rotational axis since the line-of-sight from an observer to the hot
+rings will pass through  different parts of the 
+magnetosphere as the rotational phase changes.
 
 
 
@@ -2043,7 +2031,7 @@ Accretion dominated. Low mass-accretion rate. Mid inclination.\tabularnewline
     used in (1) are $T_{\mathrm{wind}}=7000~\mathrm{K}$ and
     $\beta=1.0$, and those in (2) are
     $T_{\mathrm{wind}}=9000~\mathrm{K}$ and $\beta=1.0$ respectively.
-    The wind mass-loss rates used in both models are
+    The wind mass-loss rates used in both models is
     $\dot{M}_{\mathrm{wind}}=10^{-8}~\mathrm{M_{\sun}~yr^{-1}}$ . 
     All the other parameters are same as in
     Sections~\ref{sub:result-discwind-hybrid} and

@@ -1,4 +1,4 @@
-This is TeX, Version 3.14159 (Web2C 7.4.5) (format=latex 2006.2.27)  5 APR 2006 12:04
+This is TeX, Version 3.14159 (Web2C 7.4.5) (format=latex 2006.2.27)  5 APR 2006 18:35
 **kurosawa
 (./kurosawa.tex
 LaTeX2e <2001/06/01>
@@ -230,20 +230,18 @@ File: fig08.eps Graphic file (type eps)
 <fig08.eps>
 File: fig09.eps Graphic file (type eps)
  <fig09.eps>
+Underfull \vbox (badness 1412) has occurred while \output is active []
+
 File: fig10.eps Graphic file (type eps)
- <fig10.eps>
+
+<fig10.eps>
 File: fig11.eps Graphic file (type eps)
  <fig11.eps> [10]
 File: fig12.eps Graphic file (type eps)
- <fig12.eps>
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
- [11]
+ <fig12.eps> [11]
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [12]
-Underfull \vbox (badness 10000) has occurred while \output is active []
-
 File: fig13a.eps Graphic file (type eps)
 
 <fig13a.eps>
@@ -258,7 +256,7 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 File: fig14.eps Graphic file (type eps)
 
 <fig14.eps>
-Underfull \hbox (badness 1975) in paragraph at lines 2191--2198
+Underfull \hbox (badness 1975) in paragraph at lines 2179--2186
 \T1/ptm/m/n/9 We have pre-sented disc-wind-magnetosphere hy-brid ra-dia-tive
  []
 
@@ -266,67 +264,71 @@ Underfull \hbox (badness 1975) in paragraph at lines 2191--2198
 Underfull \vbox (badness 6380) has occurred while \output is active []
 
  [15]
-Underfull \hbox (badness 2088) in paragraph at lines 2304--2308
+Underfull \hbox (badness 2088) in paragraph at lines 2292--2296
 \T1/ptm/m/n/9 We thank an anony-mous ref-eree who pro-vided us valu-able
  []
 
-[16]
-LaTeX Font Info:    Try loading font information for T1+pcr on input line 2678.
 
- (/usr/share/texmf/tex/latex/psnfss/t1pcr.fd
+Underfull \vbox (badness 2753) has occurred while \output is active []
+
+ [16]
+LaTeX Font Info:    Try loading font information for T1+pcr on input line 2666.
+
+
+(/usr/share/texmf/tex/latex/psnfss/t1pcr.fd
 File: t1pcr.fd 2001/06/04 font definitions for T1/pcr.
 )
 File: fig_a1_01.eps Graphic file (type eps)
  <fig_a1_01.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2688--2688
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2676--2676
  [] 
  []
 
 File: fig_a1_02.eps Graphic file (type eps)
 <fig_a1_02.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2693--2693
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2681--2681
  [][] 
  []
 
 File: fig_a1_03.eps Graphic file (type eps)
 <fig_a1_03.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2698--2698
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2686--2686
  [][] 
  []
 
 File: fig_a2_01.eps Graphic file (type eps)
 <fig_a2_01.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2725--2725
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2713--2713
  [] 
  []
 
 File: fig_a2_02.eps Graphic file (type eps)
 <fig_a2_02.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2730--2730
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2718--2718
  [][] 
  []
 
 File: fig_a2_03.eps Graphic file (type eps)
 <fig_a2_03.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2735--2735
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2723--2723
  [][] 
  []
 
 File: fig_a3_01.eps Graphic file (type eps)
 <fig_a3_01.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2754--2754
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2742--2742
  [] 
  []
 
 File: fig_a3_02.eps Graphic file (type eps)
 <fig_a3_02.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2759--2759
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2747--2747
  [][] 
  []
 
 File: fig_a3_03.eps Graphic file (type eps)
 <fig_a3_03.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2764--2764
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2752--2752
  [][] 
  []
 
@@ -344,10 +346,10 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Here is how much of TeX's memory you used:
  2210 strings out of 95847
  24830 string characters out of 1195948
- 87646 words of memory out of 1000001
+ 87227 words of memory out of 1000001
  5081 multiletter control sequences out of 10000+50000
  49713 words of font info for 95 fonts, out of 500000 for 1000
  14 hyphenation exceptions out of 1000
- 31i,14n,34p,1244b,497s stack positions out of 1500i,500n,5000p,200000b,5000s
+ 31i,14n,34p,1243b,508s stack positions out of 1500i,500n,5000p,200000b,5000s
 
-Output written on kurosawa.dvi (18 pages, 122920 bytes).
+Output written on kurosawa.dvi (18 pages, 121976 bytes).
