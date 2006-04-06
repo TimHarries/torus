@@ -521,6 +521,8 @@ module input_variables
   real :: C_vdw    ! Damping constant (van der Waals) in [A]
   real :: C_stark  ! Damping constant (Stark)         in [A]
 
+
+  real :: warpradius, warpsigma, warpFracHeight
   
 end module input_variables
 

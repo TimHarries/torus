@@ -210,7 +210,7 @@ ifeq ($(SYSTEM), mpilam)
    TOP2=/h/rk/mpi_g77
    F95COMP=${TOP}/bin/mpif95 -mismatch
    F77COMP=${TOP2}/bin/mpif77
-   FASTFLAG=-O3 -I${TOP}/include  -dcfuns  -w 
+   FASTFLAG= -I${TOP}/include  -dcfuns  -w 
    DEBUGFLAG=-g -C=all  -I${TOP}/include  -dcfuns 
    STATICFLAG=-Bstatic
 #   MATHTRAP=-ieee=stop

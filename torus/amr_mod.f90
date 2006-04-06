@@ -4106,6 +4106,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
+    use input_variables, only: warpFracHeight, warpRadius, warpSigma
     IMPLICIT NONE
     TYPE(octal)       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
@@ -4559,7 +4560,8 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       phi = atan2(cellcentre%y,cellcentre%x)
-      warpheight = 0.3 * rOuter * (r / rOuter)**2 * cos(phi)
+!      warpheight = 0.3 * rOuter * (r / rOuter)**2 * cos(phi)
+      warpheight  = cos(phi) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
 
 
       if (r > rInner*0.8) then
@@ -4571,7 +4573,7 @@ IF ( .NOT. gridConverged ) RETURN
          if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
       endif
 
-      if ((abs(r-rinner) < 0.5*rinner).and.(cellSize > 0.05*rInner).and.(abs(cellCentre%z) < 1000.d0)) then
+      if ((abs(r-rinner) < 0.9*rinner).and.(cellSize > 0.02*rInner).and.(abs(cellCentre%z) < 2.*hr)) then
          split = .true.
       endif
 
@@ -10460,7 +10462,7 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine dumpdiffusion
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps)
-    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, drouter
+    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, drouter, router, rinner
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
@@ -10468,7 +10470,7 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: subcell, i, ilambda
     logical :: converged
     real(double) :: kabs, ksca, r
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat, rVec
     real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
     logical :: split
@@ -10527,8 +10529,10 @@ IF ( .NOT. gridConverged ) RETURN
                 if ((grid%geometry.eq."whitney").and.&
                      (modulus(subcellCentre(thisOctal,subcell)) > 0.9*erouter/1.e10)) split = .false.
 
-                if ((grid%geometry.eq."whitney").and.&
-                     (modulus(subcellCentre(thisOctal,subcell)) > 0.9*drouter/1.e10)) split = .false.
+                rVec = subcellCentre(thisOctal,subcell)
+
+                if ((grid%geometry.eq."warpeddisc").and.&
+                     (sqrt(rVec%x**2+rVec%y**2)) > 0.9*router) split = .false.
 
 
                 if (thisOctal%nDepth == maxDepth) then
@@ -10547,6 +10551,8 @@ IF ( .NOT. gridConverged ) RETURN
                    if (thisTau > neighbourTau) then
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                            inherit=inheritProps, interp=interpProps)
+!                      write(*,*) thisOctal%nDepth,thisTau, neighbourTau,sqrt(rVec%x**2+rVec%y**2)/rinner,&
+!                           sqrt(rVec%x**2+rVec%y**2)/router
                       converged = .false.
                       return
                    endif
@@ -11424,7 +11430,7 @@ IF ( .NOT. gridConverged ) RETURN
     ! we will abort tracking a photon just before it reaches the edge of the
     !   simulation space. This is the fraction of the total distance to use:
     real(oct), PARAMETER :: distanceFraction = 0.999_oc 
-    real(double) :: fudgeFac = 0.0001d0
+    real(double) :: fudgeFac = 0.001d0
 
 
     currentPosition = startPoint

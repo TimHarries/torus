@@ -1751,7 +1751,7 @@ if (geometry == "whitney") then
 
 endif
 
- if ((geometry .eq. "shakara").or.(geometry .eq. "warpeddisc")) then
+ if (geometry .eq. "shakara") then
 
     call getLogical("noscat", noScattering, cLine, nLines, &
          "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -1763,7 +1763,7 @@ endif
        "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
 
    call getReal("rsub", rSublimation, cLine, nLines, &
-       "Dust sublimation radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+       "Dust sublimation radius (stellar radii): ","(a,f5.1,a)", 12., ok, .false.)
 
    call getReal("router", rOuter, cLine, nLines, &
        "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
@@ -1804,6 +1804,72 @@ endif
    height = height * autoCm / 1.e10
    mCore = mCore * mSol
    mDisc = mDisc * mSol
+
+endif
+
+ if (geometry .eq. "warpeddisc") then
+
+    call getLogical("noscat", noScattering, cLine, nLines, &
+         "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
+
+   call getReal("rcore", rCore, cLine, nLines, &
+       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
+   call getReal("rinner", rInner, cLine, nLines, &
+       "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+
+   call getReal("router", rOuter, cLine, nLines, &
+       "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+   call getReal("height", height, cLine, nLines, &
+       "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+   call getReal("warpradius", warpradius, cLine, nLines, &
+       "Warp radius (inner radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+   call getReal("warpsigma", warpsigma, cLine, nLines, &
+       "Warp sigma in radius (inner radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+   call getReal("warpheight", warpfracheight, cLine, nLines, &
+       "Fractional height of disc (warp radius): ","(a,f5.1,a)", 12., ok, .true.)
+
+   call getReal("teff", teff, cLine, nLines, &
+          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("rho", rho0, cLine, nLines, &
+          "Density (g/cm^3): ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("mcore", mCore, cLine, nLines, &
+       "Core mass (solar masses): ","(a,f5.1,a)", 0.5, ok, .true.)
+
+   call getReal("mdisc", mDisc, cLine, nLines, &
+       "Disc mass (solar masses): ","(a,f5.3,a)", 1.e-4, ok, .true.)
+
+   call getReal("alphadisc", alphaDisc, cLine, nLines, &
+       "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+   call getReal("betadisc", betaDisc, cLine, nLines, &
+       "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+   call getString("contflux", contFluxFile, cLine, nLines, &
+        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+
+   call getLogical("vardustsub", variableDustSublimation, cLine, nLines, &
+        "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
+
+
+
+   rCore = rCore * rSol / 1.e10
+   rInner = rInner * rCore
+   rSublimation = rSublimation * rCore
+   rOuter = rOuter * autoCm / 1.e10
+   height = height * autoCm / 1.e10
+   mCore = mCore * mSol
+   mDisc = mDisc * mSol
+
+   warpradius = warpradius * rinner
+   warpsigma = warpsigma * rinner
 
 endif
 

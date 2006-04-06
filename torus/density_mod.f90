@@ -888,7 +888,8 @@ contains
     rhoOut = tiny(rhoOut)
     r = sqrt(point%x**2 + point%y**2)
     phi = atan2(point%y,point%x)
-    warpheight =  0.3 * rOuter * (r / rOuter)**2 * cos(phi)
+!    warpheight =  0.3 * rOuter * (r / rOuter)**2 * cos(phi)
+    warpheight  = cos(phi) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
 
     rho0  = mDisc *(betadisc-alphadisc+2.) / ( twoPi**1.5 * (height*1.e10)  &
          * (rOuter*1.d10)**(alphadisc-betadisc) * ( &
@@ -897,7 +898,7 @@ contains
     if ((r > rinner).and.(r < rOuter)) then
        h = height * (r / rOuter)**betaDisc
        rhoOut = dble(rho0) * (dble(rOuter)/r)**dble(alphaDisc) * exp(-0.5d0 * (dble(point%z-warpheight)/h)**2)
-       fac =  1.d0-min(dble(r - rInner)/(0.02d0*rinner),1.d0)
+       fac =  1.d0-min(dble(r - rInner)/(0.05d0*rinner),1.d0)
        fac = exp(-fac*10.d0)
        rhoOut = rhoOut * fac
        rhoOut = max(rhoOut, tiny(rhoOut))

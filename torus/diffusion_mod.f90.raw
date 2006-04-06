@@ -182,6 +182,8 @@ contains
 !$MPI     integer :: iRank
 !$MPI     integer :: tag = 0
 !$MPI     integer :: tempInt
+!$MPI     real(double), allocatable :: eArray(:), tArray(:)
+!$MPI     integer :: nEdens, nVoxels
 
 
     np = 1
@@ -214,7 +216,7 @@ contains
 !$MPI  !     print *, 'Gauss-Seidel sweep  computed by ', np-1, ' processors.'
 !$MPI  !     print *, ' '
 !$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            maxBlockSize=100,setDebug=.false.)
+!$MPI                            setDebug=.false.)
 !$MPI    
 !$MPI    endif
 !$MPI    ! ============================================================================
@@ -612,11 +614,12 @@ contains
 !$MPI end do blockLoop       
 !$MPI end if ! (my_rank /= 0)
 
-!$MPI    call MPI_ALLREDUCE(deMax,globalDeMax,np,MPI_DOUBLE_PRECISION,&
+
+!$MPI    call MPI_ALLREDUCE(deMax,globalDeMax,1,MPI_DOUBLE_PRECISION,&
 !$MPI         MPI_MAX,MPI_COMM_WORLD,ierr)
 !$MPI    deMax = globalDeMax
 
-!$MPI  !   print *,'Process ',my_rank,' waiting to update values in Gauss-Seidel sweep...' 
+!$MPI !    print *,'Process ',my_rank,' waiting to update values in Gauss-Seidel sweep...' 
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI
 !$MPI     ! have to send out the 'octalsBelongRank' array
@@ -624,28 +627,37 @@ contains
 !$MPI                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI
-!$MPI       !
-!$MPI       ! Update the edens values of grid computed by all processors.
-!$MPI       !
-!$MPI       do iOctal = 1, SIZE(octalArray)
-!$MPI       !   print *,'Process ',my_rank,' starting octal ',iOctal 
-!$MPI
-!$MPI       !   if (my_rank==0)   print *,'Root reports rank ',octalsBelongRank(ioctal), 'for octal',ioctal
-!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+!$MPI     allocate(eArray(1:nVoxels))
+!$MPI     allocate(tArray(1:nVoxels))
+!$MPI     eArray = 0.d0
+!$MPI     call packEdens(octalArray, nEdens, eArray,octalsBelongRank)
+!$MPI     call MPI_ALLREDUCE(eArray,tArray,nEdens,MPI_DOUBLE_PRECISION,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI     eArray = tArray
+!$MPI     call unpackEdens(octalArray, nEdens, eArray)
+!$MPI     deallocate(eArray, tArray)
+!$MPI !      !
+!$MPI !      ! Update the edens values of grid computed by all processors.
+!$MPI !      !
+!$MPI !      do iOctal = 1, SIZE(octalArray)
+!$MPI !    !     print *,'Process ',my_rank,' starting octal ',iOctal 
+!$MPI !
+!$MPI !         thisOctal => octalArray(iOctal)%content
+!$MPI !         
+!$MPI !         do iSubcell = 1, thisOctal%maxChildren
+!$MPI !            if (octalArray(iOctal)%inUse(iSubcell).and. &
+!$MPI !                    octalArray(iOctal)%content%diffusionApprox(iSubcell)) then
+!$MPI !               
+!$MPI !               call MPI_BCAST(thisOctal%eDens(iSubcell), 1, MPI_DOUBLE_PRECISION,&
+!$MPI !                    octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+!$MPI !            end if
+!$MPI !         
+!$MPI !         end do
+!$MPI !      end do
 !$MPI          
-!$MPI          do iSubcell = 1, thisOctal%maxChildren
-!$MPI             if (octalArray(iOctal)%inUse(iSubcell).and. &
-!$MPI                     octalArray(iOctal)%content%diffusionApprox(iSubcell)) then
-!$MPI                
-!$MPI                call MPI_BCAST(thisOctal%eDens(iSubcell), 1, MPI_DOUBLE_PRECISION,&
-!$MPI                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-!$MPI             end if
 !$MPI          
-!$MPI          end do
-!$MPI       end do
-!$MPI          
-!$MPI          
-!$MPI  !   print *,'Process ',my_rank,' finished updating values in Gauss-Seidel sweep...' 
+!$MPI !    print *,'Process ',my_rank,' finished updating values in Gauss-Seidel sweep...' 
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
     
@@ -679,12 +691,12 @@ end subroutine gaussSeidelSweep
         call gaussSeidelSweep(grid, edenstol, demax, gridConverged)
 !        call copyEdens(grid%octreeRoot)
         call setDiffusionCoeff(grid, grid%octreeRoot)
-!$MPI !if (my_rank == 0) then
+!$MPI if (my_rank == 0) then
         write(*,*) nIter," Maximum relative change in eDens:",deMax
 !        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
 !             "/xs", .true., .false., &
 !             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomfactor) 
-!$MPI  !endif
+!$MPI  endif
         if (nIter < 3) gridConverged = .false.
         if (nIter > maxIter) then
 !$MPI if (my_rank == 0) &
@@ -932,6 +944,68 @@ end subroutine gaussSeidelSweep
     end do
 
   end subroutine unsetOnDirect
+
+!$MPI      subroutine packEdens(octalArray, nEdens, eArray, octalsBelongRank)
+!$MPI    include 'mpif.h'
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: octalsBelongRank(:)
+!$MPI        integer :: nEdens
+!$MPI        real(double) :: eArray(:)
+!$MPI        integer :: iOctal, iSubcell, my_rank, ierr
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nEdens = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI             if (octalArray(iOctal)%inUse(iSubcell).and. &
+!$MPI                     octalArray(iOctal)%content%diffusionApprox(iSubcell)) then
+!$MPI                
+!$MPI                 nEdens = nEdens + 1
+!$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
+!$MPI                   eArray(nEdens) = octalArray(iOctal)%content%eDens(iSubcell)
+!$MPI                 else 
+!$MPI                   eArray(nEdens) = 0.d0
+!$MPI                 endif
+!$MPI             end if
+!$MPI          
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine packEdens
+
+!$MPI      subroutine unpackEdens(octalArray, nEdens, eArray)
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: nEdens
+!$MPI        real(double) :: eArray(:)
+!$MPI        integer :: iOctal, iSubcell
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nEdens = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI             if (octalArray(iOctal)%inUse(iSubcell).and. &
+!$MPI                     octalArray(iOctal)%content%diffusionApprox(iSubcell)) then
+!$MPI                
+!$MPI                 nEdens = nEdens + 1
+!$MPI                 octalArray(iOctal)%content%eDens(iSubcell) = eArray(nEdens)
+!$MPI             end if
+!$MPI          
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine unpackEdens
+
 
 
 
