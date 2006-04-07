@@ -158,7 +158,7 @@ some physics in there.
          computed according to the temperature structure of Martin (1996)
          do not agree with observations, unlike profiles based on the
          (less self-consistent) Hartmann et al. (1994) temperature
-         distribution.  It is clear that The temperature structure of
+         distribution.  It is clear that the temperature structure of
          the magnetosphere is still a large source of uncertainty in
          the accretion model; here we adopted the model of Hartmann et
          al. (1994). "

@@ -1,4 +1,4 @@
-\begin{thebibliography}{79}
+\begin{thebibliography}{80}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
 \bibitem[{{Alencar} \& {Basri}(2000)}]{alencar:2000}
@@ -295,6 +295,10 @@ Hillier D.~J., 1991, \aap, 247, 455
   {Chechetkin}, \& {Lovelace}}]{ustyugova:1995}
 {Ustyugova} G.~V., {Koldoba} A.~V., {Romanova} M.~M., {Chechetkin} V.~M.,
   {Lovelace} R.~V.~E., 1995, \apjl, 439, L39
+
+\bibitem[{{Valenti} {et~al.}(1993){Valenti}, {Basri}, \&
+  {Johns}}]{valenti:1993}
+{Valenti} J.~A., {Basri} G., {Johns} C.~M., 1993, \aj, 106, 2024
 
 \bibitem[{{Vernazza} {et~al.}(1973){Vernazza}, {Avrett}, \&
   {Loeser}}]{vernazza:1973}

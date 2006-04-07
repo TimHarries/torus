@@ -1,14 +1,10 @@
-This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  5 APR 2006 22:44
-entering extended mode
+This is TeX, Version 3.14159 (Web2C 7.4.5) (format=latex 2006.2.27)  6 APR 2006 16:54
 **kurosawa
 (./kurosawa.tex
-LaTeX2e <2003/12/01>
-Babel <v3.8d> and hyphenation patterns for american, french, german, ngerman, b
-ahasa, basque, bulgarian, catalan, croatian, czech, danish, dutch, esperanto, e
-stonian, finnish, greek, icelandic, irish, italian, latin, magyar, norsk, polis
-h, portuges, romanian, russian, serbian, slovak, slovene, spanish, swedish, tur
-kish, ukrainian, nohyphenation, loaded.
-(/home/rk/lib/latex/MNRAS/mn2e.cls
+LaTeX2e <2001/06/01>
+Babel <v3.7h> and hyphenation patterns for american, french, german, ngerman, n
+ohyphenation, loaded.
+(/h/rk/lib/latex/MNRAS/mn2e.cls
 Document Class: mn2e 2001/02/06 v2.2 LaTeX2e MN document class
 Document Style `MN' v2.2, released 2001 February 20
 \math@groups=\toks14
@@ -32,7 +28,7 @@ LaTeX Font Info:    Overwriting symbol font `UPM' in version `bold'
 \@footindent=\skip44
 \@leftskip=\skip45
 \c@dummy=\count85
-(/home/rk/lib/latex/AASTEX50/natbib.sty
+(/h/rk/lib/latex/AASTEX50/natbib.sty
 Package: natbib 1998/07/14 6.8c (PWD)
 \bibhang=\skip46
 \bibsep=\skip47
@@ -44,20 +40,20 @@ LaTeX Info: Redefining \cite on input line 467.
 \mathindent=\dimen103
 )
 (/usr/share/texmf/tex/latex/base/fontenc.sty
-Package: fontenc 2004/02/22 v1.99f Standard LaTeX package
+Package: fontenc 2001/06/05 v1.94 Standard LaTeX package
 
 (/usr/share/texmf/tex/latex/base/t1enc.def
-File: t1enc.def 2004/02/22 v1.99f Standard LaTeX file
-LaTeX Font Info:    Redeclaring font encoding T1 on input line 43.
+File: t1enc.def 2001/06/05 v1.94 Standard LaTeX file
+LaTeX Font Info:    Redeclaring font encoding T1 on input line 38.
 ))
 (/usr/share/texmf/tex/latex/base/inputenc.sty
-Package: inputenc 2004/02/05 v1.0d Input encoding file
+Package: inputenc 2001/07/10 v0.99a Input encoding file 
 
 (/usr/share/texmf/tex/latex/base/latin1.def
-File: latin1.def 2004/02/05 v1.0d Input encoding file
+File: latin1.def 2001/07/10 v0.99a Input encoding file 
 ))
 (/usr/share/texmf/tex/latex/psnfss/times.sty
-Package: times 2004/09/15 PSNFSS-v9.2 (SPQR) 
+Package: times 2002/09/08 PSNFSS-v9.0a (SPQR) 
 )
 (/usr/share/texmf/tex/latex/graphics/graphicx.sty
 Package: graphicx 1999/02/16 v1.0f Enhanced LaTeX Graphics (DPC,SPQR)
@@ -72,7 +68,7 @@ Package: graphics 2001/07/07 v1.0n Standard LaTeX Graphics (DPC,SPQR)
 (/usr/share/texmf/tex/latex/graphics/trig.sty
 Package: trig 1999/03/16 v1.09 sin cos tan (DPC)
 )
-(/home/rk/lib/latex/AASTEX50/graphics.cfg)
+(/h/rk/lib/latex/AASTEX50/graphics.cfg)
 Package graphics Info: Driver file: dvips.def on input line 80.
 
 (/usr/share/texmf/tex/latex/graphics/dvips.def
@@ -100,22 +96,22 @@ LaTeX Font Info:    Redeclaring math symbol \leqslant on input line 117.
 LaTeX Font Info:    Redeclaring math symbol \geqslant on input line 124.
 )
 (/usr/share/texmf/tex/generic/babel/babel.sty
-Package: babel 2004/11/20 v3.8d The Babel package
+Package: babel 2001/03/01 v3.7h The Babel package
 
 (/usr/share/texmf/tex/generic/babel/english.ldf
-Language: english 2004/06/14 v3.3o English support from the babel system
+Language: english 2001/04/15 v3.3l English support from the babel system
 
 (/usr/share/texmf/tex/generic/babel/babel.def
-File: babel.def 2004/11/20 v3.8d Babel common definitions
+File: babel.def 2001/03/01 v3.7h Babel common definitions
 \babel@savecnt=\count89
 \U@D=\dimen106
 )
-\l@british = a dialect from \language\l@english 
-\l@UKenglish = a dialect from \language\l@english 
-\l@canadian = a dialect from \language\l@american 
-\l@australian = a dialect from \language\l@british 
-\l@newzealand = a dialect from \language\l@british 
-)) (./kurosawa.aux)
+\l@canadian = a dialect from \language\l@english 
+))
+(/usr/share/texmf/tex/latex/misc/url.sty
+\Urlmuskip=\muskip10
+Package: url 1999/03/28  ver 1.5x  Verb mode for urls, etc.
+) (./kurosawa.aux)
 \openout1 = `kurosawa.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 45.
@@ -260,7 +256,7 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 File: fig14.eps Graphic file (type eps)
 
 <fig14.eps>
-Underfull \hbox (badness 1975) in paragraph at lines 2179--2186
+Underfull \hbox (badness 1975) in paragraph at lines 2171--2178
 \T1/ptm/m/n/9 We have pre-sented disc-wind-magnetosphere hy-brid ra-dia-tive
  []
 
@@ -268,82 +264,67 @@ Underfull \hbox (badness 1975) in paragraph at lines 2179--2186
 Underfull \vbox (badness 6380) has occurred while \output is active []
 
  [15]
-Underfull \hbox (badness 2088) in paragraph at lines 2292--2296
+Underfull \hbox (badness 2088) in paragraph at lines 2284--2288
 \T1/ptm/m/n/9 We thank an anony-mous ref-eree who pro-vided us valu-able
  []
 
+[16]
+LaTeX Font Info:    Try loading font information for T1+pcr on input line 2658.
 
-Underfull \vbox (badness 2753) has occurred while \output is active []
-
- [16]
-LaTeX Font Info:    Try loading font information for T1+pcr on input line 2666.
-
-
-(/usr/share/texmf/tex/latex/psnfss/t1pcr.fd
+ (/usr/share/texmf/tex/latex/psnfss/t1pcr.fd
 File: t1pcr.fd 2001/06/04 font definitions for T1/pcr.
 )
-Underfull \hbox (badness 1152) in paragraph at lines 2648--2667
-\T1/ptm/m/n/9 the main text. The ra-tio ($\OML/cmm/m/it/9 ^^V$\T1/ptm/m/n/9 ) o
-f the mass-loss rate to mass-
- []
-
-
-Underfull \hbox (badness 1043) in paragraph at lines 2648--2667
-\OT1/cmr/m/n/9 10[] []$ \T1/ptm/m/n/9 (Fig. A2[]), and (3) $[] \OT1/cmr/m/n/9 =
- 10[] []$
- []
-
 File: fig_a1_01.eps Graphic file (type eps)
-<fig_a1_01.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2676--2676
+ <fig_a1_01.eps>
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2668--2668
  [] 
  []
 
 File: fig_a1_02.eps Graphic file (type eps)
 <fig_a1_02.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2681--2681
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2673--2673
  [][] 
  []
 
 File: fig_a1_03.eps Graphic file (type eps)
 <fig_a1_03.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2686--2686
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2678--2678
  [][] 
  []
 
 File: fig_a2_01.eps Graphic file (type eps)
 <fig_a2_01.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2713--2713
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2705--2705
  [] 
  []
 
 File: fig_a2_02.eps Graphic file (type eps)
 <fig_a2_02.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2718--2718
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2710--2710
  [][] 
  []
 
 File: fig_a2_03.eps Graphic file (type eps)
 <fig_a2_03.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2723--2723
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2715--2715
  [][] 
  []
 
 File: fig_a3_01.eps Graphic file (type eps)
 <fig_a3_01.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2742--2742
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2734--2734
  [] 
  []
 
 File: fig_a3_02.eps Graphic file (type eps)
 <fig_a3_02.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2747--2747
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2739--2739
  [][] 
  []
 
 File: fig_a3_03.eps Graphic file (type eps)
 <fig_a3_03.eps>
-Overfull \hbox (1.5047pt too wide) in paragraph at lines 2752--2752
+Overfull \hbox (1.5047pt too wide) in paragraph at lines 2744--2744
  [][] 
  []
 
@@ -359,12 +340,12 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
  [18]
 (./kurosawa.aux) ) 
 Here is how much of TeX's memory you used:
- 2189 strings out of 94500
- 24737 string characters out of 1172833
- 88273 words of memory out of 3500000
- 5300 multiletter control sequences out of 10000+50000
- 49713 words of font info for 95 fonts, out of 500000 for 2000
- 580 hyphenation exceptions out of 1000
- 31i,14n,34p,1243b,431s stack positions out of 1500i,500n,5000p,200000b,5000s
+ 2210 strings out of 95847
+ 24830 string characters out of 1195948
+ 87227 words of memory out of 1000001
+ 5081 multiletter control sequences out of 10000+50000
+ 49713 words of font info for 95 fonts, out of 500000 for 1000
+ 14 hyphenation exceptions out of 1000
+ 31i,14n,34p,1243b,512s stack positions out of 1500i,500n,5000p,200000b,5000s
 
-Output written on kurosawa.dvi (18 pages, 125236 bytes).
+Output written on kurosawa.dvi (18 pages, 122044 bytes).
