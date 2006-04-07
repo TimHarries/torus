@@ -1,0 +1,72 @@
+# HDJ-2453100        aveRV-RV (km/s)   sigma_RRV (km/s)      
+#---------------------------------------------------------
+@with G0
+@  subtitle "GY 5"
+@  s0 symbol size 0.500000
+@type xydy
+     20.22051          -0.09	0.48         
+     33.27776          0.09	0.24 
+&
+#@with G1
+#@subtitle "GY 37"
+#@  s0 symbol size 0.500000
+#@type xydy
+#     20.24814         0.69      1.30 
+#     35.28688         -0.69	0.57
+@with G1
+@subtitle "GY 141"
+@  s0 symbol size 0.500000
+@type xydy
+&
+     36.16016          -0.72	0.24
+     43.15707           0.72    0.08           
+&
+@with G2
+@subtitle "GY 310"
+@  s0 symbol size 0.500000
+@type xydy
+     20.32700          1.80	0.38
+     35.31139          -1.80    0.08               
+&
+@with G3
+@subtitle "USco 40"
+@  s0 symbol size 0.500000
+@type xydy
+     01.25900          -0.175   0.38
+     33.25324           0.175   0.08                
+&
+@with G4
+@subtitle "USco 53"
+@  s0 symbol size 0.500000
+@type xydy
+     00.39651          0.495   0.78
+     28.23079         -0.495   0.39                
+&
+@with G5
+@subtitle "USco 55"
+@  s0 symbol size 0.500000
+@type xydy
+     01.33509           0.495   0.01
+     28.30546          -0.495   0.19                
+&
+@with G6
+@subtitle "USco 66"
+@  s0 symbol size 0.500000
+@type xydy
+     01.29007          0.545   0.20
+     28.28683         -0.545   0.30                
+&
+@with G7
+@subtitle "USco 67"
+@  s0 symbol size 0.500000
+@type xydy
+     01.21481           0.41    0.39
+     28.21759          -0.41    0.22
+&
+@with G8
+@subtitle "USco 75"
+@  s0 symbol size 0.500000
+@type xydy
+     00.37453          1.565    0.31
+     33.09532         -1.565    1.33               
+&

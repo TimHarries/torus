@@ -1,0 +1,65 @@
+# HDJ-2453100         RV (km/s)   sigma_RRV (km/s)      
+#---------------------------------------------------------
+@with G0
+@subtitle "USco 100"
+@  s0 symbol size 0.500000
+@type xydy
+     01.30836          1.735    1.90
+     28.26425         -1.735    1.23               
+&
+@with G1
+@subtitle "USco 101"
+@  s0 symbol size 0.500000
+@type xydy
+     00.30191          0.925     0.50
+     28.14804         -0.925     0.34              
+&
+@with G2
+@subtitle "USco 104"
+@  s0 symbol size 0.500000
+@type xydy
+     00.27545          0.825     0.01
+     28.12391          -0.825    0.04               
+&
+@with G3
+@subtitle "USco 109"
+@  s0 symbol size 0.500000
+@type xydy
+     01.23587          0.13     0.11
+     33.11929          -0.13    0.02               
+&
+@with G4
+@subtitle "USco 112"
+@  s0 symbol size 0.500000
+@type xydy
+     00.34486          0.38     0.33
+     33.07139          -0.38    0.08               
+&
+@with G5
+@subtitle "USco 121"
+@  s0 symbol size 0.500000
+@type xydy
+     20.19466         1.48     0.08
+     28.18537         -1.48     0.01              
+&
+@with G6
+@subtitle "USco 128"
+@  s0 symbol size 0.500000
+@type xydy
+     39.28595          -0.235    0.49
+     43.09885           0.235    0.74           
+&
+@with G7
+@subtitle "USco 130"
+@  s0 symbol size 0.500000
+@type xydy
+     35.26060          0.06    0.15
+     39.34201          -0.06   0.39                
+&
+@with G8
+@subtitle "USco 132"
+@  s0 symbol size 0.500000
+@type xydy
+     37.28394          0.095        0.21
+     43.12719          -0.095       0.63
+&

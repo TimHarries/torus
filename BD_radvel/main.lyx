@@ -1,0 +1,8123 @@
+#LyX 1.3 created this file. For more info see http://www.lyx.org/
+\lyxformat 221
+\textclass mn2e
+\begin_preamble
+\usepackage{times}
+\usepackage{amssymb}
+
+\newcommand{\aap}{A\&A}
+\newcommand{\aaps}{A\&AS}
+\newcommand{\apj}{ApJ}
+\newcommand{\apjl}{\apj}
+\newcommand{\pasp}{PASP}
+\newcommand{\aj}{AJ}
+\newcommand{\mnras}{MNRAS}
+\newcommand{\apjs}{ApJS}
+\newcommand{\aapr}{A\&AR}
+\newcommand{\pasj}{PASJ}
+
+\newcommand{\kmps}{\mathrm{km~s^{-1}}}
+\newcommand\ion[2]{#1$\,${\sc {#2}}}   % ion, i.e., CII = \ion{C}{ii}
+\newcommand{\Kelvin}{\mathrm{K}}
+\end_preamble
+\options useAMS, usenatbib
+\language english
+\inputencoding auto
+\fontscheme default
+\graphics default
+\paperfontsize default
+\spacing single 
+\papersize Default
+\paperpackage a4
+\use_geometry 0
+\use_amsmath 0
+\use_natbib 0
+\use_numerical_citations 0
+\paperorientation portrait
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\defskip medskip
+\quotes_language english
+\quotes_times 2
+\papercolumns 2
+\papersides 1
+\paperpagestyle default
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+title[Radial and rotational velocities of young brown dwarfs candidates  in the Upper Sco and $
+\backslash 
+rho$~Oph]{Radial and rotational velocities of young brown dwarfs and very low-mass stars in Upper Scorpius OB association and $
+\backslash 
+rho$~Ophiuchi cloud core}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+author[R. Kurosawa et
+\backslash 
+,al.]{Ryuichi Kurosawa
+\backslash 
+thanks{E-mail: rk@astro.ex.ac.uk} and  Tim J.~Harries
+\backslash 
+
+\backslash 
+ School of Physics, University of Exeter, Stocker Road, Exeter EX4 4QL}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+date{Dates to be inserted}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+pagerange{
+\backslash 
+pageref{firstpage}--
+\backslash 
+pageref{lastpage}} 
+\backslash 
+pubyear{2006}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+maketitle
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{firstpage}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{abstract}
+\end_inset 
+
+
+\layout Standard
+
+We present the results of a radial velocity (RV) survey for 15 brown dwarfs
+ (BDs) and very low-mass (VLM) stars in the Upper Scorpius OB association
+ (UScoOB) and 3 BD candidates in the 
+\begin_inset Formula $\rho$
+\end_inset 
+
+\SpecialChar ~
+Ophiuchi dark cloud core.
+ We obtained high-resolution echelle spectra at VLT using Ultraviolet and
+ Visual Echelle Spectrograph (UVES) at two different epochs for each object,
+ and measured the shifts in their RVs to identify candidates for binary/multiple
+ systems in the sample.
+ We found no spectroscopic binary in our sample, based on the shape of cross-cor
+elation curves.
+ We found 9 out of 18 (50 per cent) in our sample show a significant RV
+ change in 4--33\SpecialChar ~
+d time scale, and are considered as binary/multiple `candidates.'
+ The fraction slightly decreases to 43 per cent (6 out of 14) if we consider
+ the objects only in the UScoOB.
+ These fractions do not necessary represent that of a real binary population
+ among young BDs and VLM stars since their true multiplicities are still
+ to be confirmed by follow-up spectroscopic monitoring.
+ Our RV-shift tests successfully detected the recently confirmed 3 binaries
+ in UScoOB via high-resolution imaging technique.
+ We found the RV dispersion of the objects in UScoOB is very similar to
+ that of the BDs and VLM stars in Chamaeleon\SpecialChar ~
+I (Cha\SpecialChar ~
+I) previously studied
+ by others.
+ We also measured the rotational velocities (
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+) of the samples, and found good agreements with earlier studies.
+ The distribution of 
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+ for the UScoOB objects peaks around 
+\begin_inset Formula $16.9\,\kmps$
+\end_inset 
+
+ which is also similar to that of the Cha\SpecialChar ~
+I population.
+ 
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{abstract}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{keywords}
+\newline 
+stars: binaries:spectroscopic -- stars: low-mass, brown dwarfs -- stars: formation -- stars:planetary system: formation
+\newline 
+
+\backslash 
+end{keywords}
+\end_inset 
+
+
+\layout Section
+
+Introduction 
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Introduction}
+
+\end_inset 
+
+
+\layout Standard
+
+Most stars are member of binary systems; hence, it is important for a star
+ formation theory to be able to predict the binary fraction, period distribution
+, and mass-ratio distribution of newly born stellar objects across a wide
+ range mass spectrum.
+ The study of the individual binary system is the only direct mean to determine
+ the fundamental stellar properties such as stellar masses and radii.
+ 
+\layout Standard
+
+Recent high resolution imaging studies of young brown dwarfs (BDs) and very
+ low-mass (VLM) stars have placed strong constraints on binaries with separation
+s of 
+\begin_inset Formula $\sim1-100\,\mathrm{au}$
+\end_inset 
+
+.
+ For example, Hubble Space Telescope (
+\emph on 
+HST
+\emph default 
+) observations of 
+\begin_inset Formula $\alpha$
+\end_inset 
+
+\SpecialChar ~
+Per and the Pleiades indicates a binary fraction (
+\begin_inset Formula $f$
+\end_inset 
+
+) of 
+\begin_inset Formula $>10$
+\end_inset 
+
+\SpecialChar ~
+per\SpecialChar ~
+cent with a bias towards separations (
+\begin_inset Formula $a$
+\end_inset 
+
+) of less than 
+\begin_inset Formula $15$
+\end_inset 
+
+\SpecialChar ~
+au, and a mass-ratio (
+\begin_inset Formula $q$
+\end_inset 
+
+) of 
+\begin_inset Formula $>0.7$
+\end_inset 
+
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{martin:2003}
+\end_inset 
+
+ for objects around and below the hydrogen burning limit (see also 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{bouy:2006}
+\end_inset 
+
+).
+ A similar lack of wide binaries were found in the field T-dwarf study 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{burgasser:2003}
+\end_inset 
+
+, while 
+\begin_inset Formula $f=15$
+\end_inset 
+
+\SpecialChar ~
+per\SpecialChar ~
+cent was determined by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{close:2003}
+\end_inset 
+
+ using the adaptive optics at Gemini North.
+ They also found an upper limit to the semi-major axis distribution of 
+\begin_inset Formula $\sim20\,\mathrm{au}$
+\end_inset 
+
+.
+ An 
+\emph on 
+HST
+\emph default 
+ study of more than 80 field last M and L dwarfs 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{gizis:2003}
+\end_inset 
+
+ indicated 
+\begin_inset Formula $f=15$
+\end_inset 
+
+\SpecialChar ~
+per\SpecialChar ~
+cent with separations in the range of 1.6--16\SpecialChar ~
+au.
+ For s small sample (12) of BDs and VLM stars (0.04--0.1\SpecialChar ~
+
+\begin_inset Formula $\mathrm{M_{\odot}}$
+\end_inset 
+
+) in Upper Scorpius OB association (UScoOB), 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kraus:2005}
+\end_inset 
+
+ found 
+\begin_inset Formula $f=25_{-8}^{+16}$
+\end_inset 
+
+\SpecialChar ~
+per\SpecialChar ~
+cent for 
+\begin_inset Formula $5\,\mathrm{au}<a<18\,\mathrm{au}$
+\end_inset 
+
+ by using similar imaging technique..
+ 
+\layout Standard
+
+Using Monte Carlo simulation techniques, the data from radial velocity surveys
+ available on literatures, and carefully considering the sensitivity and
+ sampling biases, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{maxted:2005} 
+\end_inset 
+
+ found an overall BD/VLM binary frequency of 32--45 per\SpecialChar ~
+cent assuming 
+\begin_inset Formula $f=15$
+\end_inset 
+
+\SpecialChar ~
+per\SpecialChar ~
+cent for 
+\begin_inset Formula $a>2.6$
+\end_inset 
+
+\SpecialChar ~
+au.
+ A recent photometric study 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{pinfield:2003}
+\end_inset 
+
+ of low-mass objects in Pleiades and Praesepe suggested, albeit indirectly,
+ 
+\begin_inset Formula $f$
+\end_inset 
+
+ as large as 50\SpecialChar ~
+per\SpecialChar ~
+cent.
+ which would only be compatible with direct imaging studies if 70--80\SpecialChar ~
+per\SpecialChar ~
+cent
+ of those binaries have 
+\begin_inset Formula $a<1\,\mathrm{au}$
+\end_inset 
+
+.
+ For a more comprehensive review of the current status of BD/VLM binary
+ fraction and the separation distribution, readers are refer to an excellent
+ article on multiplicity studies by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+cite{burgasser:2006}
+\end_inset 
+
+.
+\layout Standard
+
+The extensive imaging surveys provide excellent observational constraints
+ on wider BD+BD binaries, but it is now necessary to search for shorter
+ period BD+BD binaries systematically.
+ Binaries with the separation of less than 1\SpecialChar ~
+au are not resolved by current
+ imaging technique, but will be detectable as spectroscopic binaries, providing
+ the mass-ratio is not too extreme, and velocity separation is large enough.
+ The first BD+BD spectroscopic binary, PPl\SpecialChar ~
+15 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+ 
+\backslash 
+citep{basri:1999}
+\end_inset 
+
+ showed a double-peaked cross-correlation function with a maximum velocity
+ separation of 
+\begin_inset Formula $>70\,\kmps$
+\end_inset 
+
+.
+ The binary was found to have an eccentric orbit (
+\begin_inset Formula $e=0.4$
+\end_inset 
+
+) with a period of 
+\begin_inset Formula $\sim5.8\,\mathrm{d}$
+\end_inset 
+
+.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{basri:1999}
+\end_inset 
+
+ suggested that the formation process of substellar objects is biased towards
+ smaller separation binaries based on the short period of PPl\SpecialChar ~
+15 and the
+ lack of Pleiades BD binaries with separations 
+\begin_inset Formula $>40\,\mathrm{au}$
+\end_inset 
+
+.
+ Note that the median separation of binaries with solar-type primaries is
+ 30\SpecialChar ~
+au 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{duquennoy:1991}
+\end_inset 
+
+.
+ The pioneer works on the RV studies of BDs and VLMs are presented by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{guenther:2003}
+\end_inset 
+
+, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+cite{kenyon:2005}
+\end_inset 
+
+ and 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{joergens:2006}
+\end_inset 
+
+ who found a sevral binary candidates among them; however, the orbital parameter
+s and masses of binaries remains unknown because the follow-up spectroscopic
+ monitoring is lacking or still being taking places.
+ In addition to the follow-up observations, the number of BDs and VLM star
+ binary candidates should be increased to have a better statistics on the
+ short period binary parameters.
+ 
+\layout Standard
+
+The separation distribution of BD/VLM binaries is critical to understanding
+ their origin.
+ There are two main models for the formation of BDs and VLM stars.
+ First, they formed in a similar manner to higher mass stars, but from smaller-m
+ass, denser molecular cloud core (e.g.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{padoan:2002}
+\end_inset 
+
+).
+ Second, BD/VLM objects have low masses because they are ejected from the
+ dense core in which they form via dynamical interactions in multiple system,
+ cutting off their accretion before they have reached stellar masses (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{reipurth:2001}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{bate:2002}
+\end_inset 
+
+).
+ Alternatively, there is a third model in which a free-floating BD or planetary-
+mass object can be formed in the process of the photo-evaporation 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{whitworth:2004}
+\end_inset 
+
+.
+ The outer layers of a pre-stellar core (
+\begin_inset Formula $\sim0.2\,\mathrm{M_{\odot}}$
+\end_inset 
+
+) removed by the strong radiation pressure from the nearby massive O and
+ B stars before the accretion onto the protostar at core centre occurs.
+ Apparently, this is more relevant to the high-mass star forming clouds.
+ 
+\layout Standard
+
+Due to the dynamical interaction involved in the second model, BD/VLM binaries
+ that survive are generally expected to have small separations.
+ In the first model, wider binaries may be expected to be more common.
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{bate:2002}
+\end_inset 
+
+ suggested that close binaries (
+\begin_inset Formula $a<10\,\mathrm{au}$
+\end_inset 
+
+) do not form directly, but result from hardening of wider systems though
+ a combination of dynamical interactions, accretion and interactions with
+ circum-binary discs.
+ If BD/VLM binaries have formed through such mechanisms, one would expect
+ to find binaries with 1--10\SpecialChar ~
+au separations without also finding many with
+ separation 
+\begin_inset Formula $<1$
+\end_inset 
+
+\SpecialChar ~
+au.
+ If the absence/rarity of binaries with 1\SpecialChar ~
+au were found, it would support
+ the idea that they are ejected quickly from multiple systems before they
+ have undergone the interactions that shorten the periods.
+ 
+\layout Standard
+
+Our immediate aim is to identify spectroscopic and close BD/VLM binaries
+ using the high-resolution echelle spectroscopy at two epochs.
+ This experiment is sensitive to VLM binaries with separations of 
+\begin_inset Formula $<0.1$
+\end_inset 
+
+\SpecialChar ~
+au which corresponds to a period of 
+\begin_inset Formula $\sim10\,\mathrm{d}$
+\end_inset 
+
+.
+ A larger sample of candidates will enable us to measure the binary fraction
+ of these short-period/close binaries (once confirmed), and address whether
+ there is a significant population of 'hidden' VLM companions.
+ The long term goal of this project to follow up the binary candidates found
+ in this paper by spectroscopically monitoring them in different time scales,
+ enabling us to obtain the radial velocity curves and their minimum masses.
+ 
+\layout Standard
+
+In Section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:observation-reduction}
+
+\end_inset 
+
+.
+ we describe the observations and the data reduction.
+ The results of radial velocity and rotational velocity (
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+) measurements are presented in Sections\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sub:Radial-velocities}
+
+\end_inset 
+
+ and 
+\begin_inset LatexCommand \ref{sub:Radial-velocities}
+
+\end_inset 
+
+ respectively.
+ We discuss the binary/multiplicity fraction indicated by our RV survey
+ in Section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:Binary-frequency}
+
+\end_inset 
+
+.
+ Finally, conclusions will be given in Section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sec:Conclusions}
+
+\end_inset 
+
+.
+\layout Section
+
+Observations
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:observation-reduction}
+
+\end_inset 
+
+
+\layout Standard
+
+Our sample consist of 18 young very low-mass objects previously identified
+ in the star forming regions: 15 objects in the Upper Scorpius OB association
+ (
+\begin_inset Formula $\mathrm{d\approx145\, pc}$
+\end_inset 
+
+,
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+ 
+\backslash 
+citealt{dezeeuw:1999}
+\end_inset 
+
+) from the list of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{ardila:2000}
+\end_inset 
+
+ and 3 objects in the 
+\begin_inset Formula $\rho$
+\end_inset 
+
+\SpecialChar ~
+Ophiuchi cloud core (
+\begin_inset Formula $\mathrm{d\approx150\, pc}$
+\end_inset 
+
+, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{dezeeuw:1997}
+\end_inset 
+
+) from 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+ 
+\backslash 
+citet{luhman:1999}
+\end_inset 
+
+.
+ The spectral type of the objects spreads between M5 and M8.5, and the age
+ 
+\begin_inset Formula $<\sim10\,\mathrm{Myr}$
+\end_inset 
+
+ (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{luhman:1999}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{ardila:2000}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{muzerolle:2003}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{kraus:2005}
+\end_inset 
+
+).
+ The sample is not complete, and the selection is mainly based on the brightness
+ and the observability.
+ The basic known properties of the targets based on literatures is summarised
+ in Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:literatures}
+
+\end_inset 
+
+.
+\layout Standard
+
+We obtained high resolution spectra with the Kueyen telescope of VLT (Cerro
+ Parnal, Chile) using the UVES echelle spectrograph.
+ The observations were carried out between April 5, 2004 and May 15, 2005
+ in the service mode.
+ For each object, the spectra were obtained at two different epochs separated
+ by 4--33\SpecialChar ~
+d to increase the chance of detectability for multiplicities.
+ For each object at a given night, two separate spectra are obtained consecutive
+ly.
+ This will allow us to derive more reliable uncertainty estimates in the
+ RV values of our targets (c.f.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{joergens:2006}
+\end_inset 
+
+).
+ The data was obtained using the red arm of UVES spectrograph with two mosaic
+ CCDs (EEV + MIT/LL with 2k
+\begin_inset Formula $\times$
+\end_inset 
+
+4k pixels).
+ The wavelength coverage of 6708 -- 10,250\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+AA
+\backslash 
+,
+\end_inset 
+
+ and the spectral resolution 
+\begin_inset Formula $R\approx40,000$
+\end_inset 
+
+ were used.
+ Unfortnately, the litheum lines at 
+\begin_inset Formula $\lambda\lambda6707.76$
+\end_inset 
+
+,
+\begin_inset Formula $6707.93$
+\end_inset 
+
+ just fell shortward of the minimum wavelength.
+ The slit width and length of 1
+\begin_inset Quotes erd
+\end_inset 
+
+ and 12
+\begin_inset Quotes erd
+\end_inset 
+
+ are used respectively with a typical seeing of 0.8
+\begin_inset Quotes erd
+\end_inset 
+
+.
+ 
+\layout Standard
+
+The data were reduced by the standard ESO pipeline procedures for UVES echelle
+ spectra.
+ In summary, the data were corrected for bias, interorder background, sky
+ background, sky emission lines and cosmic ray hits.
+ Further, they were flattened, optimally extracted, and finally the different
+ orders were merged.
+ No binning was performed to achieve high resolution required for the RV
+ measurements.
+ The wavelength was calibrated using the Thorium-Argon arc spectra with
+ a typical value of the standard deviation of the dispersion solution of
+ 5\SpecialChar ~
+m
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+AA
+\backslash 
+,
+\end_inset 
+
+ which corresponds to 0.2\SpecialChar ~
+
+\begin_inset Formula $\kmps$
+\end_inset 
+
+ at the central wavelength 8600\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+AA
+\end_inset 
+
+.
+ However, the autoguiding of the telescope keeps the star at the centre
+ of the slit with about a tenth of the FWHM (
+\begin_inset Formula $1\,\kmps$
+\end_inset 
+
+) which sets the upper limit for the systematic error in the RV measurements
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{bailer-jones:2004}
+\end_inset 
+
+.
+ The accuracy of the wavelength calibration will be demonstrated in the
+ RV measurements of a RV standard in the following section.
+ A typical signal-to-noise ratio (S/N) per wavelength bin of the spectra
+ is about 15, and the heliocentric velocity correction was applied to the
+ final spectra.
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%==========================================
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{table*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{tab:literatures}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Summary of known properties of the targers from literatures: a.~
+\backslash 
+citet{luhman:1999} (original list for $
+\backslash 
+rho$~Oph), b.~
+\backslash 
+citet{ardila:2000} (original list for UScoOB),  c.~
+\backslash 
+citet{wilking:1999}, d.~
+\backslash 
+citet{muzerolle:2003}, e.~
+\backslash 
+citet{kraus:2005}, and f.~
+\backslash 
+citet{mohanty:2005}. }
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset  Tabular
+<lyxtabular version="3" rows="20" columns="6">
+<features>
+<column alignment="left" valignment="top" width="0">
+<column alignment="left" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row topline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Object
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Sp.
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+mass
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+RV
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $v\sin i$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Known multiple?
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[\mathrm{M_{\odot}}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[\mathrm{km\, s^{-1}}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[\mathrm{km\, s^{-1}}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row topline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+GY 5
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M7^{c}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.07^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.3\pm1.9^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $16.8\pm2.7^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+GY 141
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M8.5^{a}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.02^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $6.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+GY 310
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M8.5^{c}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.08^{\mathrm{a,d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $10.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 40
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M5^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.1^{\mathrm{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $37.5^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 53
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M5^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.1^{\mathrm{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $45.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 55
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M5.5^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.10+0.07^{\mathrm{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $12.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{yes^{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 66
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M6^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.07+0.07^{\mathrm{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-4.4\pm0.6^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $27.5^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{yes^{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 67
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M5.5^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.10^{\mathrm{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $18.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 75
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M6^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.07^{\mathrm{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-5.6\pm1.1^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $63.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 100
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M7^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.05^{\mathrm{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-8.9\pm0.6^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $50.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 101
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M5^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.05^{\mathrm{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 104
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M5^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.05^{\mathrm{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $16.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 109
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M6^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.07+0.04^{\mathrm{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-3.8\pm0.7^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $6.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{yes^{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 112
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M5.5^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.1^{\mathrm{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $8.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 121
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M6^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.02^{\mathrm{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-38.9\pm1.0^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 128
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M7^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.05^{\mathrm{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-3.0\pm1.6^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 130
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M7.5^{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.04^{\mathrm{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $14.0^{f}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row bottomline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 132
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\mathrm{M7^{b}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $0.05^{\mathrm{e}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-8.2\pm1.1^{\mathrm{d}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\SpecialChar \ldots{}
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{table*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%==========================================
+\end_inset 
+
+
+\layout Section
+
+Results
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Results}
+
+\end_inset 
+
+
+\layout Subsection
+
+Radial velocities
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sub:Radial-velocities}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%==========================================
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{table*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Summary of the observation, the heliocentric radial velocities ($
+\backslash 
+mathrm{RV}$) from two-epoch and the average rotational velocities ($v
+\backslash 
+sin i$). The uncetainties of relative radial velocties ($
+\backslash 
+sigma_{
+\backslash 
+mathrm{RRV}}$) with respect to the template star LHS~049 and the average radial velocties ($
+\backslash 
+overline{
+\backslash 
+mathrm{RV}}$) are also given. The last column indicates whether a target is a candidate for multiplicity i.e.~the measured radial velocity changes from two different epoch is larger than $1
+\backslash 
+,
+\backslash 
+sigma_{
+\backslash 
+mathrm{RRV}}$ of each others (c.f.~Fig.~
+\backslash 
+ref{fig:radvel01}).}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset  Tabular
+<lyxtabular version="3" rows="38" columns="8">
+<features>
+<column alignment="left" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<column alignment="right" valignment="top" width="0">
+<column alignment="right" valignment="top" width="0">
+<column alignment="right" valignment="top" width="0">
+<column alignment="right" valignment="top" width="0">
+<column alignment="right" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row topline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Object
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+Date
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+MDJ-2453100
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+RV
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\sigma_{\mathrm{RRV}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\overline{\mathrm{RV}}$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $v\sin i$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+candidate?
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[\mathrm{km\, s^{-1}}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[\mathrm{km\, s^{-1}}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[\mathrm{km\, s^{-1}}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $\left[\mathrm{km\, s^{-1}}\right]$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row topline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+GY 5
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+25
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+20.22051
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.14\pm0.84$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.68
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+08
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+33.27776
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-5.96\pm0.60$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.34
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.05\pm1.03$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $16.5\pm0.6$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+GY 141
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+11
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+36.16016
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-4.39\pm0.60$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.34
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May-18
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+43.15707
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-2.95\pm0.51$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.11
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-3.67\pm0.79$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $4.4\pm1.4$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+yes
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+GY 310
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+2004-Apr-25
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+20.327
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+00
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-4.83\pm0.74$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.54
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+2004-May-10
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+35.31139
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-8.43\pm0.51$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.11
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.63\pm0.90$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $11.1\pm6.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+yes
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 40
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+06
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+01.259
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+00
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-7.15\pm0.74$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.54
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+08
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+33.25324
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.80\pm0.51$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.11
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.98\pm0.90$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $34.2\pm0.5$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 53
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+05
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+00.39651
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-7.27\pm0.93$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+1.21
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May-03
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+28.23079
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-5.43\pm0.74$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.55
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.35\pm1.19$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $40.0\pm0.6$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 55
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+06
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+01.33509
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-5.39\pm0.50$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.02
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+03
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+28.30546
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.38\pm0.53$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.27
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.38\pm0.73$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $22.9\pm0.8$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+yes
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 66
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+0
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+6
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+01.29007
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-5.32\pm0.57$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.29
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May-03
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+28.28683
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.41\pm0.65$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.42
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-5.87\pm0.86$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $25.9\pm1.2$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 67
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+2004-Apr-06
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+01.21481
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.01\pm0.74$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.55
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+2004-May-03
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+28.21759
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.83\pm0.59$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.31
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.42\pm0.90$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $18.4\pm0.4$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 75
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+05
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+00.37453
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.75\pm0.67$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.44
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+08
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+33.09532
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-9.88\pm1.94$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+1.88
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-8.32\pm2.05$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $55.6\pm3.0$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+yes
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 100
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+0
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+6
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+01.30836
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.76\pm2.74$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+2.69
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+03
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+28.26425
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-10.23\pm1.80$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+1.73
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-8.47\pm3.28$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $43.7\pm3.2$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 101
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+05
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+00.30191
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-4.22\pm0.87$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.71
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+03
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+28.14804
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.07\pm0.69$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.48
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-5.15\pm1.11$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $19.1\pm0.3$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+yes
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 104
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+05
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+00.27545
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-5.83\pm0.50$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.02
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+03
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+28.12391
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-7.48\pm0.50$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.06
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.66\pm0.06$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $16.7\pm0.4$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+yes
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 109
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+06
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+01.23587
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-4.15\pm0.52$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.16
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May-08
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+33.11929
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-4.41\pm0.50$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.03
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-5.12\pm0.72$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $8.6\pm1.2$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+yes
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 112
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+Apr
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+05
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+00.34486
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-2.70\pm0.69$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.47
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+08
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+33.07139
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-3.46\pm0.51$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.11
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-3.08\pm0.86$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $5.8\pm1.2$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+yes
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 121
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+2004-Apr-25
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+20.19466
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-39.47\pm0.51$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.11
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+2004-May-03
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+28.18537
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-42.43\pm0.50$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.02
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-40.95\pm0.71$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $17.6\pm1.3$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+yes
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 128
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+14
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+39.28595
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-7.41\pm0.85$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.69
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May-18
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+43.09885
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-6.94\pm1.16$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+1.05
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-7.18\pm1.44$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $3.6\pm1.1$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 130
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+10
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+35.2606
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+0
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-4.83\pm0.54$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.21
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+14
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+39.34201
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-4.95\pm0.74$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.55
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-4.89\pm0.92$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $15.2\pm1.1$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+USco 132
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+2004-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+May
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+-
+\family default 
+\series default 
+\shape default 
+\size default 
+\emph default 
+\bar default 
+\noun default 
+\color default
+12
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+37.28394
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-7.18\pm0.58$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.30
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+</row>
+<row bottomline="true">
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+2004-Jun-18
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\family roman 
+\series medium 
+\shape up 
+\size normal 
+\emph off 
+\bar no 
+\noun off 
+\color none
+43.12719
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-7.37\pm1.02$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+0.89
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $-7.28\pm1.17$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Formula $9.1\pm0.7$
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+no
+\end_inset 
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{tab:summary_results}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{table*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%==========================================
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%==========================================
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/radvel_all01.eps
+	scale 130
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Relative radial velocities (RVs) of objects measured in two different epochs. The vertical axes indicate  the amount of deviation ($
+\backslash 
+Delta 
+\backslash 
+mathrm{RV}$) from the `average' radial velocitiy  ($
+\backslash 
+overline{
+\backslash 
+mathrm{RV}}$) in Table~
+\backslash 
+ref{tab:summary_results}), and the horizontal axes indicate the time of the observation in modified Julian date (MJD). The objects are considered to have a non-constant  RV when the error bars of two data points do not overlap each other. The non-constant RV objects are considered as binary/multiple candidates.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:radvel01}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%==========================================
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+addtocounter{figure}{-1}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%==========================================
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/radvel_all02.eps
+	scale 130
+	keepAspectRatio
+	clip
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{continued}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:radvel02}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%==========================================
+\end_inset 
+
+
+\layout Standard
+
+The radial velocities of each object are determined by using the cross-correlati
+on function of object spectra with that of a template star which has a spectra
+ type similar to those of our objects.
+ By visual inspections, the wavelength ranges used for the cross-correlation
+ calculations are chosen by avoiding the regions of spectra affected by
+ the telluric lines, the defects and the fringes (in near infrared) of CCDs,
+ The radial velocities of objects with respect to the template are obtained
+ by measuring the location of the peak in the cross-correlation function
+ which is fitted by the combination of two gaussian functions sharing their
+ centres and a constant term.
+ LHS\SpecialChar ~
+49 (Proxima Cen, M5.5) is chosen as the template for this purpose.
+ The radial velocity of the template object LHS\SpecialChar ~
+49 was obtained by measuring
+ the wavelength shifts of the prominent photospheric absorption features
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+ion{K}{i}
+\end_inset 
+
+\SpecialChar ~
+
+\begin_inset Formula $\lambda\lambda$
+\end_inset 
+
+7664.911,\SpecialChar ~
+7698.974.
+ This gives us 
+\begin_inset Formula $\mathrm{RV_{LHS49}=}-22.6\pm0.5\,\kmps$
+\end_inset 
+
+, which is in good agreement with the earlier measurement of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{garcia-sanchez:2001}
+\end_inset 
+
+ who found 
+\begin_inset Formula $\mathrm{RV_{LHS49}=}-21.7\pm1.8\,\kmps$
+\end_inset 
+
+.
+ The heliocentric RV of each object can be then calculated by adding 
+\begin_inset Formula $\mathrm{RV_{LHS49}}$
+\end_inset 
+
+ with the RV of each object with respect to LHS\SpecialChar ~
+49.
+ In the following measurements of the heliocentric radial velocities, our
+ measurement (
+\begin_inset Formula $\mathrm{RV_{LHS49}=}-22.6\pm0.5\,\kmps$
+\end_inset 
+
+) will be used for a consistency.
+ 
+\layout Standard
+
+Before applying the cross-correlation technique to out main targets, we
+ have applied the technique to the radial velocity standard HD\SpecialChar ~
+140538 for
+ which an high-accuracy RV measurement via the fixed-configuration, cross-disper
+sed échelle spectrograph Elodie 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{baranne:1996}
+\end_inset 
+
+ is available.
+ This was done so to ensure not only the validity of the cross-correlation
+ technique, but also the validity of the wavelength calibration.
+ In this test, we found the heliocentric 
+\begin_inset Formula $\mathrm{RV_{HD\,140538}=}18.8\pm0.6\,\kmps$
+\end_inset 
+
+ which is in good agreement with the Elodie radial velocity measurement
+ of 
+\begin_inset Formula $19.00\pm0.05\,\mathrm{km\, s^{-1}}$
+\end_inset 
+
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{udry:1999}
+\end_inset 
+
+.
+\layout Standard
+
+The result of the heliocentric RV measurements (from two epochs for each
+ object) is summarised in Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:summary_results}
+
+\end_inset 
+
+ along with the uncertainties.
+ The table also lists the uncertainties in the `relative' radial velocities
+ (
+\begin_inset Formula $\sigma_{\mathrm{RRV}}$
+\end_inset 
+
+) which is the uncertainties of RVs with respect to the template star.
+ The two consecutive measurements of RVs (from same nights) are used to
+ find the RV of the night, and their uncertainties are obtained from the
+ standard deviations of the mean (
+\begin_inset Formula $\sigma_{\mathrm{RRV}}$
+\end_inset 
+
+) and the uncertainty of the template RV value (c.f.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{joergens:2006}
+\end_inset 
+
+).
+ The 'average' radial velocities (
+\begin_inset Formula $\overline{\mathrm{RV}}$
+\end_inset 
+
+) of the two epochs are also given in the same table for a reference.
+ The 
+\begin_inset Formula $\overline{\mathrm{RV}}$
+\end_inset 
+
+ values of the objects in UScoOB are consistent with the earlier measurements
+ of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2003}
+\end_inset 
+
+ in Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:literatures}
+
+\end_inset 
+
+, except for the values for USco\SpecialChar ~
+66 and USco\SpecialChar ~
+75.
+ This difference is not surprising since the former is a known binary 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{kraus:2005}
+\end_inset 
+
+ and the latter is a non-constant RV object (a candidate for a multiple)
+ found in the RV-shift test which will be discussed next.
+ 
+\layout Standard
+
+For each object and for each RV measurement, the deviations (
+\begin_inset Formula $\Delta\mathrm{RV}$
+\end_inset 
+
+) from the average RV are computed and summaries in Fig.\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:radvel01}
+
+\end_inset 
+
+ along with their uncertainties (
+\begin_inset Formula $\sigma_{\mathrm{RRV}}$
+\end_inset 
+
+) in order to aid the identifications of multiplicity candidates.
+ Note that in computing 
+\begin_inset Formula $\Delta\mathrm{RV}$
+\end_inset 
+
+ we do not require the knowledge of absolute or the heliocentric radial
+ velocities, but only the relative velecities (with respect to a template).
+ We choose a object as a candidate when the 1
+\begin_inset Formula $\sigma_{\mathrm{RRV}}$
+\end_inset 
+
+ error bar from each RV measurement overlaps one another.
+ Using this simple criteria, the candidate were selected and indicated in
+ the same table (Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:summary_results}
+
+\end_inset 
+
+).
+ We found 9 out of 18 (50 per cent of) our sample are considered as candidates.
+ The recent observation of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kraus:2005}
+\end_inset 
+
+ (which was not known to authors at the time of our observation: April--May,
+ 2004) confirms that USco\SpecialChar ~
+65 and USco\SpecialChar ~
+66 are multiple systems, and USco\SpecialChar ~
+109
+ is most likely a multiple system.
+ In our RV-shift tests, we found all the multiples confirmed by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kraus:2005}
+\end_inset 
+
+ in our multiple candidates.
+ Further they found USco\SpecialChar ~
+67, 128, 130, 132 as non-multiple, and similarly
+ we found them as 'non-candidates' for multiplicity.
+ The discrepancy between their results and ours are only in USco\SpecialChar ~
+75 and USco\SpecialChar ~
+112.
+ While our results suggests that these are candidates for multiple systems,
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kraus:2005}
+\end_inset 
+
+ did not find them as multiple systems.
+ This difference may be caused by the difference in sensitivity (on a binary
+ separation) of the two different methods.
+ Another possible caused of the difference is that the uncertainties in
+ RVs may be underestimated.
+ The surface activities of the objects may also contribute noise in the
+ RV measuements; however, the levels of th noise is expeted be small for
+ BD and VLM stars (c.f.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{joergens:2006}
+\end_inset 
+
+).
+\layout Standard
+
+Finally, the histogram of the RVs using only the objects in UScoOB is given
+ in Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:vrad_vrot_histrogram}
+
+\end_inset 
+
+.
+ The total number of the objects is 14.
+ Note that USco\SpecialChar ~
+121 is excluded from the graph since it is identified as
+ a non-member of the UScoOB association based on the RV value (see Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:summary_results}
+
+\end_inset 
+
+).
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+ 
+\backslash 
+citet{muzerolle:2003}
+\end_inset 
+
+ also found it to be a likely non-member based on the radial velocity and
+ the low lithium abundance.
+ The distribution of the RVs in the figure was fitted by a gaussian function.
+ We found that the standard deviation and the peak position of the radial
+ velocity distribution are 
+\begin_inset Formula $1.2\,\kmps$
+\end_inset 
+
+ and 
+\begin_inset Formula $-5.9\,\kmps$
+\end_inset 
+
+ respectively.
+ The former is very similar to the standard deviation (0.9\SpecialChar ~
+
+\begin_inset Formula $\kmps$
+\end_inset 
+
+) of the radial velocity distribution of 9 BDs and VLM objects in Cha\SpecialChar ~
+I found
+ by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{joergens:2006b}
+\end_inset 
+
+.
+ They also studied the radial velocity distribution of more massive 25 T\SpecialChar ~
+Tauri
+ stars in Cha\SpecialChar ~
+I, and found the standard deviations (
+\begin_inset Formula $1.3\,\kmps$
+\end_inset 
+
+) is not significantly different from that of the brown dwarfs and the very
+ low-mass objects.
+ Unfortunately, we do not have the radial velocity measurements of the higher
+ mass counter parts (T\SpecialChar ~
+Tauri stars) in Upper Sco OB association.
+ This is also planned for a near future investigation as this is important
+ for the study of the mass dependency of the kinematics in a young stellar
+ cluster.
+ 
+\layout Standard
+
+According to the hydrodynamical calculation of a low-mass star forming cluster
+ of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+cite{bate:2003}
+\end_inset 
+
+ which yields a stellar density of 
+\begin_inset Formula $1.8\times10^{3}\,\mathrm{stars\, pc^{-3}}$
+\end_inset 
+
+, the rms dispersion (1-D) of the stars and the BDs is 
+\begin_inset Formula $1.2\,\kmps$
+\end_inset 
+
+.
+ Similarly for the model with a higher stellar density (
+\begin_inset Formula $2.6\times10^{3}\,\mathrm{stars\, pc^{-3}}$
+\end_inset 
+
+), the rms dispersion is 2.5\SpecialChar ~
+
+\begin_inset Formula $\kmps$
+\end_inset 
+
+ (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{bate:2005}
+\end_inset 
+
+).
+ The standard deviation of 
+\begin_inset Formula $\overline{\mathrm{RV}}$
+\end_inset 
+
+ (
+\begin_inset Formula $1.2\,\kmps$
+\end_inset 
+
+) found in our analysis is more comparable the lower stellar density model.
+ 
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%==========================================
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+begin{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+begin{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset  Tabular
+<lyxtabular version="3" rows="1" columns="2">
+<features>
+<column alignment="center" valignment="top" width="0">
+<column alignment="center" valignment="top" width="0">
+<row>
+<cell alignment="center" valignment="top" topline="true" leftline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/radvel_hist.eps
+	lyxscale 80
+	scale 45
+	clip
+
+\end_inset 
+
+
+\end_inset 
+</cell>
+<cell alignment="center" valignment="top" topline="true" leftline="true" rightline="true" usebox="none">
+\begin_inset Text
+
+\layout Standard
+
+
+\begin_inset Graphics
+	filename figures/vrot_hist.eps
+	lyxscale 80
+	scale 45
+	clip
+
+\end_inset 
+
+
+\end_inset 
+</cell>
+</row>
+</lyxtabular>
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+end{center}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+caption{Histogram of the average heliocentric radial velocities (left) and the rotational velocities (right) of 14 UScoOB BD and VLM objects listed in Table~
+\backslash 
+ref{tab:summary_results} (excluding USco~121, non-member). The gaussian fit (dash) of the radial velociity distribution gives the standard deviation of  $1.2
+\backslash 
+,
+\backslash 
+kmps$ and the peak position of $-5.9
+\backslash 
+,
+\backslash 
+kmps$.  The log-normal fit (dash-dot) of  the rotational velocity distribution gives  the standard deviation $27.8
+\backslash 
+,
+\backslash 
+kmps$ and the peak poistion $16.9
+\backslash 
+,
+\backslash 
+kmps$.}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{fig:vrad_vrot_histrogram}
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+end{figure*}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%==========================================
+\end_inset 
+
+
+\layout Subsection
+
+Rotational velocities
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sub:Rotational-velocities}
+
+\end_inset 
+
+
+\layout Standard
+
+The rotational velocities of the objects are determined by measuring the
+ widths of the cross correlation curves of the target spectra against a
+ templates spectra from an object which is known to have a very small rotational
+ velocity.
+ The line broadening of the targets are assumed to be dominated by rotational
+ broadening.
+ As in the cases for the radial velocity measurements, LHS\SpecialChar ~
+49 is chosen for
+ the template.
+ Using its known period (
+\begin_inset Formula $P\approx83\,\mathrm{d}$
+\end_inset 
+
+, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{benedict:1998}
+\end_inset 
+
+) and radius (
+\begin_inset Formula $R_{*}\approx0.145\,\mathrm{R_{\odot}}$
+\end_inset 
+
+ from the VLTI measurement by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{segransan:2003}
+\end_inset 
+
+), the rotational velocity of LHS\SpecialChar ~
+49 is estimated as 
+\begin_inset Formula $v\,\sin i=2\pi R_{*}/P\approx0.1\,\kmps$
+\end_inset 
+
+; hence, negligibly small.
+ 
+\layout Standard
+
+The width of the cross-correlation curves (
+\begin_inset Formula $\sigma_{\mathrm{CCF}}$
+\end_inset 
+
+) are calibrated with the rotational velocities (
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+) by cross correlating the template spectra against the same template spectra
+ with added rotation (convolved with a given 
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+), as similarly done by e.g.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{tinney:1998}
+\end_inset 
+
+, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{mohanty:2003}
+\end_inset 
+
+ and 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{white:2003}
+\end_inset 
+
+.
+ The linear limb-darkening law with a solar-like parameter (
+\begin_inset Formula $\epsilon=0.6$
+\end_inset 
+
+) was assumed in the formulation of the rotational profile described by
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{gray:1992}
+\end_inset 
+
+, his Eq.\SpecialChar ~
+17.12.
+ For each object, two measurements of rotational velocities are computed
+ from two independent spectra obtained at different epochs.
+ As similary done for the RV measurements, the mean and the standard deviation
+ of the mean are used as the final rotational velocity and its uncertainty.
+ The final results are placed in Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:summary_results}
+
+\end_inset 
+
+.
+ In general, our measurements are in good agreement with the earlier measurement
+s of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2003}
+\end_inset 
+
+ and 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{mohanty:2005}
+\end_inset 
+
+, given in Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:literatures}
+
+\end_inset 
+
+.
+ For example, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{muzerolle:2003}
+\end_inset 
+
+ found 
+\begin_inset Formula $v\,\sin i=16.8\pm2.7\,\mathrm{km\, s^{-1}}$
+\end_inset 
+
+ for GY\SpecialChar ~
+5 while we found 
+\begin_inset Formula $v\,\sin i=16.5\pm0.6\,\mathrm{km\, s^{-1}}$
+\end_inset 
+
+.
+ 
+\layout Standard
+
+The range of 
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+ found among our objects is 
+\begin_inset Formula $3.6$
+\end_inset 
+
+--
+\begin_inset Formula $55.6\,\kmps$
+\end_inset 
+
+, and a similar range is also found by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{mohanty:2005}
+\end_inset 
+
+.
+ The left panel of Figure\SpecialChar ~
+
+\begin_inset LatexCommand \ref{fig:vrad_vrot_histrogram}
+
+\end_inset 
+
+ shows the histogram of 
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+ distribution for the UScoOB objects (14 objects excluding USco 121, non
+ member).
+ The log-normal fit of this distribution gives the peak position at 
+\begin_inset Formula $16.9\,\kmps$
+\end_inset 
+
+ and the standard deviation 
+\begin_inset Formula $\sigma=27.8\,\kmps$
+\end_inset 
+
+.
+ Using the 
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+ data in 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{joergens:2001}
+\end_inset 
+
+, the same histogram bin size used for UScoOB obects and the log-normal
+ fit, we find the 
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+ distribution of the BD and VLM stars (8 objects) in Cha\SpecialChar ~
+I peaks at 
+\begin_inset Formula $15.4\,\kmps$
+\end_inset 
+
+, and has the standard deviation of 
+\begin_inset Formula $8.0\,\kmps$
+\end_inset 
+
+.
+ The peak of the distribution is similar to that of Upper Sco objects, but
+ the standard deviation of the distribution is significantly smaller than
+ that of the Upper Sco objects.
+ The difference maybe due to the very small number of samples.
+ A similar fit was applied to the 
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+ distribution of 14 T\SpecialChar ~
+Tauri stars in Cha\SpecialChar ~
+I using the data of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{joergens:2001}
+\end_inset 
+
+, and we found the peak at 
+\begin_inset Formula $17.0\,\kmps$
+\end_inset 
+
+ and the standard deviation 
+\begin_inset Formula $25.9\,\kmps$
+\end_inset 
+
+ which are very similar to those of the Upper Sco brown dwarf candidate
+ objects.
+ 
+\layout Section
+
+Binary frequency
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Binary-frequency}
+
+\end_inset 
+
+
+\layout Standard
+
+According to Table\SpecialChar ~
+
+\begin_inset LatexCommand \ref{tab:summary_results}
+
+\end_inset 
+
+, 9 out of 18 (50 per cent of) samples are considered as binary/multiple
+ candidates.
+ The fraction slightly decreases to 43 per cent (6 out of 14) if we consider
+ the objects only in the UScoOB.
+ These fractions are significantly larger than the binary fraction (25\SpecialChar ~
+per\SpecialChar ~
+cent,
+ 3 out of 12) found by the recent high-resolution imaging survey of brown
+ dwarfs and very low-mass objects (M5.5--M7.5 ) in the UScoOB 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citep{kraus:2005}
+\end_inset 
+
+.
+ The imaging surveys are sensitive to wider binaries (separation
+\begin_inset Formula $\gtrsim4\,\mathrm{au}$
+\end_inset 
+
+) while our technique is more sensitive to narrower (
+\begin_inset Formula $\lesssim1\,\mathrm{au}$
+\end_inset 
+
+) or shorter period (
+\begin_inset Formula $\sim10\,\mathrm{d}$
+\end_inset 
+
+) binaries.
+ However, our RV-shift test also detected all the binaries found in the
+ imaging survey of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kraus:2005}
+\end_inset 
+
+, demonstrating that the method is also effective in the systems with a
+ separation 5--18\SpecialChar ~
+au.
+ In Section\SpecialChar ~
+
+\begin_inset LatexCommand \ref{sub:Radial-velocities}
+
+\end_inset 
+
+, we have found all the binaries confirmed by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kraus:2005}
+\end_inset 
+
+ also as our binary/multiple candidates.
+ In addition to those samples commonly found, we have two more candidates
+ (USco\SpecialChar ~
+75 and USco\SpecialChar ~
+112) which are in the sample of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kraus:2005}
+\end_inset 
+
+, but not detected as binaries by them.
+ If we assume these objects are real binary/multiple systems but not detected
+ by the imaging survey because of possibly very small separations, their
+ multiplicity fraction would increase to 5 out of 9 (56\SpecialChar ~
+per\SpecialChar ~
+cent) which is
+ more consistent with the fraction suggested by our RV survey.
+\layout Standard
+
+Another possible reason for the different binary fraction suggested by our
+ data is that the uncertainties in the RV values may be underestimated.
+ Since the our suggested binary fraction is merely that for the binary `candidat
+es', the follow-up RV monitoring of the candidates must be done to confirm
+ the true multiplicity, and to determined firmer constraint on the binary/multip
+le faction in the UScoOB.
+ This is planned for a near future.
+ The binary fraction of slightly more massive pre-main-sequence stars was
+ studied by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kohler:2000}
+\end_inset 
+
+ using the K-band speckle interferometry of X-ray selected samples.
+ For the UScoOB members with spectral type M0--M5 (0.7--0.13\SpecialChar ~
+
+\begin_inset Formula $\mathrm{M_{\odot}}$
+\end_inset 
+
+), they found the binary fraction of 
+\begin_inset Formula $52\left(\pm10\right)$
+\end_inset 
+
+\SpecialChar ~
+per\SpecialChar ~
+cent (26 out of 50) with the separation 21--1000\SpecialChar ~
+au.
+ On the other hand, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kohler:2000}
+\end_inset 
+
+ found no wide (
+\begin_inset Formula $>20\,\mathrm{au}$
+\end_inset 
+
+) binary in their survey, and suggested that there may be a discontinuity
+ in separation distribution around 
+\begin_inset Formula $M_{*}\sim0.1\,\mathrm{M_{\odot}}$
+\end_inset 
+
+.
+ 
+\layout Standard
+
+A similar imaging survey of the brown dwarf candidates in Cha\SpecialChar ~
+I cloud by
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{neuhaeuser:2002}
+\end_inset 
+
+ and 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{neuhaeuser:2003}
+\end_inset 
+
+ also found the multiplicity rate 
+\begin_inset Formula $\lesssim10\,\mathrm{per\, cent}$
+\end_inset 
+
+ using 12 objects (Cha\SpecialChar ~
+H
+\begin_inset Formula $\alpha$
+\end_inset 
+
+\SpecialChar ~
+1--12 with M6--M8).
+ Using a subset of the same sample and the same radial velocity technique
+ used in this paper, 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{joergens:2006}
+\end_inset 
+
+ found only 11\SpecialChar ~
+per\SpecialChar ~
+cent (1 out of 9) of the sample showed non-constant RVs
+ in her multi-epoch data, indicating a much smaller multiplicity fraction.
+ It is unclear at this moment whether the difference is caused by the physical
+ nature of the two different star forming regions.
+\layout Section
+
+Conclusions
+\layout Standard
+
+
+\begin_inset LatexCommand \label{sec:Conclusions}
+
+\end_inset 
+
+
+\layout Standard
+
+We have presented two-epoch RV survey of 18 young BDs and VLM stars in UScoOB
+ and 
+\begin_inset Formula $\rho$
+\end_inset 
+
+\SpecialChar ~
+Oph dark cloud core using the high resolution UVES echelle spectroscopy
+ at VLT.
+ The amount of the shifts in RVs in time is used to identify the candidates
+ for multiplicity.
+ 
+\layout Standard
+
+We found 9 out of 18 objects (50\SpecialChar ~
+per\SpecialChar ~
+cent) are possible candidates in this
+ analysis.
+ For the objects in UScoOB, we found 6 out of 14 objects (43\SpecialChar ~
+per\SpecialChar ~
+cent) as
+ candidates.
+ Compared to the average binary fraction (
+\begin_inset Formula $\sim20\,\mathrm{per\, cent}$
+\end_inset 
+
+) of magnitude-limited imaging surveys for BDs and VLM stars (M6 and later)
+ in the field (c.f.\SpecialChar ~
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{burgasser:2006}
+\end_inset 
+
+), the fraction of the binary `candidates' found by this RV survey is significan
+tly higher.
+ The possible reasons to for the discrepancy are: (1) caused by the different
+ sensitivity on the binary separation in the imaging and RV technique, (2)
+ caused by possibly under estimated uncertainties in the measured RV values.
+ The true multiplicity of the candidates must be confirmed by follow-up
+ spectroscopy monitoring of candidates.
+ 
+\layout Standard
+
+We found a good agreement with the high resolution imaging survey of the
+ BD and VLM objects in UScoOB of 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kraus:2005}
+\end_inset 
+
+.
+ All three confirmed binaries in UScoOB by 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{kraus:2005}
+\end_inset 
+
+ are found as the multiplicity candidate this RV survey; however, we found
+ two objects (USco\SpecialChar ~
+75 and USco\SpecialChar ~
+112) also as binary candidates while they found
+ them as singles.
+\layout Standard
+
+From the distribution of RV values in UScoOB, we confirmed that USco\SpecialChar ~
+121
+ is most likely a non-member of the association, as similarly found so by
+ 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+ 
+\backslash 
+citet{muzerolle:2003}
+\end_inset 
+
+.
+ We found the RV dispersion of the objects in UScoOB is very similar to
+ that of the BDs and VLM stars in Chamaeleon\SpecialChar ~
+I (Cha\SpecialChar ~
+I) previously studied
+ by others.
+ The rotational velocities (
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+) of the samples are also measured.
+ The distribution of 
+\begin_inset Formula $v\,\sin i$
+\end_inset 
+
+ for the UScoOB objects peaks around 
+\begin_inset Formula $16.9\,\kmps$
+\end_inset 
+
+ which is similar to that of the Cha\SpecialChar ~
+I population.
+ 
+\layout Standard
+
+The follow-up spectroscopic observations of the binary candidates presented
+ here are planned in near future.
+ There are only a few RV variable binary candidates are identified from
+ the earlier surveys (
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{guenther:2003}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{kenyon:2005}
+\end_inset 
+
+; 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citealt{joergens:2006}
+\end_inset 
+
+).
+ As 
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+citet{burgasser:2006}
+\end_inset 
+
+ pointed out most of the current RV and imaging surveys use samples from
+ magnitude-limited survey, but one should attempt to use the samples from
+ volume-limited survey in order to find a correct statistics on binary parameter
+s more straight forwardly, i.e.
+ without correcting for bias.
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+
+\backslash 
+section*{Acknowledgements}
+\end_inset 
+
+
+\layout Standard
+
+This work is supported by PPARC rolling grant PP/C501609/1.
+ We thank the staff of VLT of the ESO for the observations carried out in
+ the service mode.
+ 
+\layout Standard
+
+
+\begin_inset ERT
+status Collapsed
+
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+%----------------------------------------------------
+\layout Standard
+% Bibliography follows here.
+\layout Standard
+%-----------------------------------------------------
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+%
+\layout Standard
+
+\layout Standard
+
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+bibliographystyle{mn}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+
+\backslash 
+bibliography{local}
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset ERT
+status Open
+
+\layout Standard
+%
+\end_inset 
+
+
+\layout Standard
+
+
+\begin_inset LatexCommand \label{lastpage}
+
+\end_inset 
+
+
+\the_end

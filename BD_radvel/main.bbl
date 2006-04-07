@@ -1,0 +1,49 @@
+\begin{thebibliography}{10}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+
+\bibitem[{{Ardila} {et~al.}(2000){Ardila}, {Mart{\'{\i}}n}, \&
+  {Basri}}]{ardila:2000}
+{Ardila} D., {Mart{\'{\i}}n} E., {Basri} G., 2000, \aj, 120, 479
+
+\bibitem[{{Bailer-Jones}(2004)}]{bailer-jones:2004}
+{Bailer-Jones} C.~A.~L., 2004, \aap, 419, 703
+
+\bibitem[{{Baranne} {et~al.}(1996){Baranne}, {Queloz}, {Mayor}, {Adrianzyk},
+  {Knispel}, {Kohler}, {Lacroix}, {Meunier}, {Rimbaud}, \&
+  {Vin}}]{baranne:1996}
+{Baranne} A., {Queloz} D., {Mayor} M., {Adrianzyk} G., {Knispel} G., {Kohler}
+  D., {Lacroix} D., {Meunier} J.-P., {Rimbaud} G., {Vin} A., 1996, \aaps, 119,
+  373
+
+\bibitem[{{Garc{\'{\i}}a-S{\'a}nchez}
+  {et~al.}(2001){Garc{\'{\i}}a-S{\'a}nchez}, {Weissman}, {Preston}, {Jones},
+  {Lestrade}, {Latham}, {Stefanik}, \& {Paredes}}]{garcia-sanchez:2001}
+{Garc{\'{\i}}a-S{\'a}nchez} J., {Weissman} P.~R., {Preston} R.~A., {Jones}
+  D.~L., {Lestrade} J.-F., {Latham} D.~W., {Stefanik} R.~P., {Paredes} J.~M.,
+  2001, \aap, 379, 634
+
+\bibitem[{{Joergens}(2006)}]{joergen:2006}
+{Joergens} V., 2006, \aap, 446, 1165
+
+\bibitem[{{Kraus} {et~al.}(2005){Kraus}, {White}, \&
+  {Hillenbrand}}]{kraus:2005}
+{Kraus} A.~L., {White} R.~J., {Hillenbrand} L.~A., 2005, \apj, 633, 452
+
+\bibitem[{{Luhman} \& {Rieke}(1999)}]{luhman:1999}
+{Luhman} K.~L., {Rieke} G.~H., 1999, \apj, 525, 440
+
+\bibitem[{{Muzerolle} {et~al.}(2003){Muzerolle}, {Hillenbrand}, {Calvet},
+  {Brice{\~n}o}, \& {Hartmann}}]{muzerolle:2003}
+{Muzerolle} J., {Hillenbrand} L., {Calvet} N., {Brice{\~n}o} C., {Hartmann} L.,
+  2003, \apj, 592, 266
+
+\bibitem[{{Udry} {et~al.}(1999){Udry}, {Mayor}, \& {Queloz}}]{udry:1999}
+{Udry} S., {Mayor} M., {Queloz} D., 1999, in ASP Conf. Ser. 185: IAU Colloq.
+  170: Precise Stellar Radial Velocities, {Hearnshaw} J.~B., {Scarfe} C.~D.,
+  eds., p. 367
+
+\bibitem[{{Wilking} {et~al.}(1999){Wilking}, {Greene}, \&
+  {Meyer}}]{wilking:1999}
+{Wilking} B.~A., {Greene} T.~P., {Meyer} M.~R., 1999, \aj, 117, 469
+
+\end{thebibliography}
