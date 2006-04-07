@@ -343,35 +343,67 @@ CONTAINS
     !
     TYPE(octalVector)     :: cellCenter
     real(double) :: x0, y0, z0  ! cell center
-    real(double) :: d, dp, dm
+    real(double) :: d, dp, dm, r, phi, r0, phi0, dphi
     real(double), parameter :: eps = 0.0d0
     
     d = (this%subcellSize)*0.5d0
     dp = d+eps
     dm = d-eps
+
     
     cellCenter = subcellCentre(this,subcell)
     x0=dble(cellCenter%x); y0=dble(cellCenter%y); z0=dble(cellCenter%z)
-
     ! Fortran check the condidtion from
     ! the top, so this should work, and it is faster...
 
     if (this%threeD) then
-       if ( x > (x0+dp) ) then
-          out = .false.
-       else if ( x < (x0-dm)) then
-          out = .false.      
-       elseif ( y > (y0+dp) ) then
-          out = .false.
-       elseif ( y < (y0-dm)) then
-          out = .false.
-       elseif ( z > (z0+dp) ) then
-          out = .false.
-       elseif ( z < (z0-dm)) then
-          out = .false.
+       if (.not.this%cylindrical) then
+          if ( x > (x0+dp) ) then
+             out = .false.
+          else if ( x < (x0-dm)) then
+             out = .false.      
+          elseif ( y > (y0+dp) ) then
+             out = .false.
+          elseif ( y < (y0-dm)) then
+             out = .false.
+          elseif ( z > (z0+dp) ) then
+             out = .false.
+          elseif ( z < (z0-dm)) then
+             out = .false.
+          else
+             out = .true.
+          end if
        else
-          out = .true.
-       end if
+          r = sqrt(x**2+y**2)
+          phi = atan2(y,x)
+          if (phi < 0.d0) phi = phi + twoPi
+          r0 = sqrt(x0**2 + y0**2)
+          phi0 = atan2(y0,x0)
+          
+          if (phi0 < 0.d0) phi0 = phi0 + twoPi
+          if (this%splitAzimuthally) then
+             dphi = this%dphi/4.d0
+          else
+             dphi = this%dphi/2.d0
+          endif
+
+          if ( z > (z0+dp) ) then
+             out = .false.
+          elseif ( z < (z0-dm)) then
+             out = .false.
+          elseif (r > (r0+dp)) then
+             out = .false.
+          elseif (r < (r0-dm)) then
+             out = .false.
+          elseif (phi > (phi0+dphi)) then
+             out = .false.
+          elseif (phi < (phi0-dphi)) then
+             out = .false.
+          else
+             out = .true.
+          end if
+       endif
+
     else ! two-D case
        if ( x > (x0+dp) ) then
           out = .false.
@@ -387,6 +419,46 @@ CONTAINS
     endif
   end function within_subcell
 
+
+  real(double) function cellVolume(thisOctal, subcell) result(v)
+    type(OCTAL) :: thisOctal
+    integer :: subcell
+    real(double) :: r1, r2, dphi
+    type(OCTALVECTOR) :: rVec
+  
+    if (thisOctal%threed) then
+       if (.not.thisOctal%cylindrical) then
+          v = thisOctal%subcellsize**3
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          r1 = sqrt(rVec%x**2 + rVec%y**2) - thisOctal%subcellSize/2.d0
+          r2 = sqrt(rVec%x**2 + rVec%y**2) + thisOctal%subcellSize/2.d0
+!          if (thisOctal%splitAzimuthally) then
+!             dPhi = thisOctal%dPhi / 2.d0
+!          else
+!             dPhi = thisOctal%dPhi 
+!          endif
+          dPhi = returndPhi(thisOctal)*2.d0
+          v = (dphi/dble(twoPi)) * dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+       endif
+    else
+       rVec = subcellCentre(thisOctal,subcell)
+       r1 = rVec%x-thisOctal%subcellSize/2.d0
+       r2 = rVec%x+thisOctal%subcellSize/2.d0
+       v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
+    endif
+  end function cellVolume
+
+
+  real(double) function returnDphi(thisOctal)
+    type(OCTAL)  :: thisOctal
+
+    if (thisOctal%splitAzimuthally) then
+       returndPhi = thisOctal%dPhi / 4.d0
+    else
+       returndPhi = thisOctal%dPhi / 2.d0
+    endif
+  end function returnDphi
 
 
 END MODULE octal_mod

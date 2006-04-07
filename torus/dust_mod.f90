@@ -893,6 +893,36 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
   end subroutine fillDustUniform
 
+
+  recursive subroutine sublimateDustWR104(thisOctal)
+    use input_variables, only : tThresh
+    type(OCTAL), pointer :: thisOctal, child
+    integer :: subcell, i
+    real(double) :: temperature
+    real(double), parameter :: subRange = 50.d0
+    real(double) :: frac
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call sublimateDustWR104(child)
+                exit
+             end if
+          end do
+       else
+          temperature = thisOctal%temperature(subcell)
+
+          frac = 1.d0
+          if (temperature > tThresh) then
+             frac = exp(-dble((temperature-tThresh)/subRange))
+          endif
+          thisOctal%dustTypeFraction(subcell,1) = frac
+       endif
+    end do
+  end subroutine sublimateDustWR104
+
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax)
 
     use input_variables, only : rInner, rOuter

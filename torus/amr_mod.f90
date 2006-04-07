@@ -213,6 +213,7 @@ CONTAINS
        grid%octreeRoot%threeD = .false.
        grid%octreeRoot%maxChildren = 4
     else
+       grid%octreeRoot%cylindrical = .false.
        grid%octreeRoot%twoD = .false.
        grid%octreeRoot%threeD = .true.
        grid%octreeRoot%maxChildren = 8
@@ -435,40 +436,40 @@ CONTAINS
        endif
        parent%child(newChildIndex)%splitAzimuthally = .false.
        parent%child(newChildIndex)%maxChildren = 4
-    endif
 
 
-    if (PRESENT(splitAzimuthally)) then
-       if (splitAzimuthally) then
-          parent%child(newChildIndex)%splitAzimuthally = .true.
-          parent%child(newChildIndex)%maxChildren = 8
-          rVec =  subcellCentre(parent,iChild)
-          parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
-          if (parent%child(newChildIndex)%phi < 0.d0) then
-              parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
-          endif
-          if (parent%splitAzimuthally) then
-             parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+       if (PRESENT(splitAzimuthally)) then
+          if (splitAzimuthally) then
+             parent%child(newChildIndex)%splitAzimuthally = .true.
+             parent%child(newChildIndex)%maxChildren = 8
+             rVec =  subcellCentre(parent,iChild)
+             parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
+             if (parent%child(newChildIndex)%phi < 0.d0) then
+                parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
+             endif
+             if (parent%splitAzimuthally) then
+                parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+             else
+                parent%child(newChildIndex)%dphi = parent%dphi
+             endif
           else
-             parent%child(newChildIndex)%dphi = parent%dphi
+             if (parent%splitAzimuthally) then
+                rVec =  subcellCentre(parent,iChild)
+                parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
+                if (parent%child(newChildIndex)%phi < 0.d0) then
+                   parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
+                endif
+                parent%child(newChildIndex)%dphi = parent%dphi/2.d0
+             else
+                parent%child(newChildIndex)%phi = parent%phi
+                parent%child(newChildIndex)%dphi = parent%dphi
+             endif
+             parent%child(newChildIndex)%splitAzimuthally = .false.
+             parent%child(newChildIndex)%maxChildren = 4
           endif
-       else
-       if (parent%splitAzimuthally) then
-          rVec =  subcellCentre(parent,iChild)
-          parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
-          if (parent%child(newChildIndex)%phi < 0.d0) then
-              parent%child(newChildIndex)%phi = parent%child(newChildIndex)%phi + twoPi 
-          endif
-          parent%child(newChildIndex)%dphi = parent%dphi/2.d0
-       else
-          parent%child(newChildIndex)%phi = parent%phi
-          parent%child(newChildIndex)%dphi = parent%dphi
        endif
-       parent%child(newChildIndex)%splitAzimuthally = .false.
-       parent%child(newChildIndex)%maxChildren = 4
-       endif
+       
     endif
-
 
     parent%child(newChildIndex)%inFlow = parent%inFlow
     parent%child(newChildIndex)%parent => parent
@@ -4117,7 +4118,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(cluster), OPTIONAL, intent(in) :: stellar_cluster
     LOGICAL                    :: split          
     real(oct)  :: cellSize
-    TYPE(octalVector)     :: searchPoint
+    TYPE(octalVector)     :: searchPoint, rVec
     TYPE(octalVector)     :: cellCentre
     REAL                  :: x, y, z
     REAL(double) :: hr, rd, fac, warpHeight, phi
@@ -4129,7 +4130,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double)      :: total_opacity, minDensity, maxDensity, thisDensity
     INTEGER               :: nsample = 400
     LOGICAL               :: inUse
-    INTEGER               :: nparticle
+    INTEGER               :: nparticle, limit
     real(double) :: dummyDouble
     real(double) :: fac1,fac2
     real(double) :: rho_disc_ave, scale_length
@@ -4438,16 +4439,42 @@ IF ( .NOT. gridConverged ) RETURN
             
    case ("wr104")
       ! Splits if the number of particle is more than a critical value (~3).
+      limit = nint(amrLimitScalar)
       
       call find_n_particle_in_subcell(nparticle, dummyDouble, sphData, thisOctal, subcell)
 
+      rVec = subcellCentre(thisOctal,subcell)
+      r = sqrt(rVec%x**2 + rVec%y**2)
+
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 89.)) then
+         splitInAzimuth = .true.
+         limit = nint(amrLimitScalar)*1000
+      endif
+
+      if ((r < 2.e6).and.(thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 31.)) then
+         limit = nint(amrLimitScalar)*100
+         splitInAzimuth = .true.
+      endif
+
+      if ((r < 2.e5).and.(thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
+         splitInAzimuth = .true.
+         limit = nint(amrLimitScalar)*1
+
+      endif
+
+
+
       !
-      if (nparticle > nint(amrLimitScalar) ) then 
+      if (nparticle > limit ) then 
 	 split = .TRUE.
       else
          split = .FALSE.
       end if
       cellCentre = subcellCentre(thisOctal,subCell)
+
+
+
+!      write(*,*) nparticle,thisOctal%nDepth,subcell
 
    case ("windtest")
 
@@ -4487,7 +4514,7 @@ IF ( .NOT. gridConverged ) RETURN
          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       endif
       if (thisOctal%nDepth < 4) split = .true.
-      
+
 
    case("shakara","aksco")
       split = .false.
@@ -10620,7 +10647,8 @@ IF ( .NOT. gridConverged ) RETURN
                 call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
                      foundOctal=neighbourOctal, foundsubcell=neighbourSubcell)
 
-                if ((thisOctal%nDepth < (neighbourOctal%ndepth-1))) then
+!                if ((thisOctal%nDepth < (neighbourOctal%ndepth-1))) then
+                if ((thisOctal%subcellSize/neighbourOctal%subcellSize) > factor) then
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                            inherit=inheritProps, interp=interpProps)
                       converged = .false.
@@ -10635,34 +10663,6 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine myScaleSmooth
 
 
-  real(double) function cellVolume(thisOctal, subcell) result(v)
-    type(OCTAL) :: thisOctal
-    integer :: subcell
-    real(double) :: r1, r2, dphi
-    type(OCTALVECTOR) :: rVec
-  
-    if (thisOctal%threed) then
-       if (.not.thisOctal%cylindrical) then
-          v = thisOctal%subcellsize**3
-       else
-          rVec = subcellCentre(thisOctal,subcell)
-          r1 = sqrt(rVec%x**2 + rVec%y**2) - thisOctal%subcellSize/2.d0
-          r2 = sqrt(rVec%x**2 + rVec%y**2) + thisOctal%subcellSize/2.d0
-!          if (thisOctal%splitAzimuthally) then
-!             dPhi = thisOctal%dPhi / 2.d0
-!          else
-!             dPhi = thisOctal%dPhi 
-!          endif
-          dPhi = returndPhi(thisOctal)*2.d0
-          v = (dphi/dble(twoPi)) * dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
-       endif
-    else
-       rVec = subcellCentre(thisOctal,subcell)
-       r1 = rVec%x-thisOctal%subcellSize/2.d0
-       r2 = rVec%x+thisOctal%subcellSize/2.d0
-       v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
-    endif
-  end function cellVolume
   
   subroutine distanceToCellBoundary(grid, posVec, direction, tVal, sOctal)
 
@@ -11335,16 +11335,6 @@ IF ( .NOT. gridConverged ) RETURN
     endif
   end function randomPositionInCell
 
-
-  real(double) function returnDphi(thisOctal)
-    type(OCTAL)  :: thisOctal
-
-    if (thisOctal%splitAzimuthally) then
-       returndPhi = thisOctal%dPhi / 4.d0
-    else
-       returndPhi = thisOctal%dPhi / 2.d0
-    endif
-  end function returnDphi
 
 
 

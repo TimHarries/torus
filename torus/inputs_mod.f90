@@ -228,7 +228,7 @@ subroutine inputs()
 
      if (doSmoothGrid) then
        call getReal("smoothfactor", smoothFactor, cLine, nLines, &
-            "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 5., ok, .false.)
+            "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 5., ok, .true.)
      else
        smoothFactor = 0.0      
      end if

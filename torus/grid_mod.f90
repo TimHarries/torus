@@ -6590,7 +6590,6 @@ contains
 !             plot_this_subcell = .false.
 !          end if
 
-
           
           if (plot_this_subcell) then
              select case (name)

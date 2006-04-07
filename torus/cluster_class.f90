@@ -403,7 +403,7 @@ contains
        case("wr104")
           call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
                thisOctal, subcell)          
-          thisOctal%rho(subcell) = max(1.d-30,real(nparticle)/ thisOctal%subcellsize**3)
+          thisOctal%rho(subcell) = max(1.d-30,dble(nparticle)/ cellVolume(thisOctal, subcell))
     end select
 
   end subroutine assign_density
@@ -433,37 +433,39 @@ contains
     ! Finding the number of particles in this subcell first
     call find_n_particle_in_subcell(nparticle, density_ave, sphData,&
          thisOctal, subcell)
-    ! Allocate the memory for new particle list of the child
-    ALLOCATE(thisOctal%child(newChildIndex)%gas_particle_list(nparticle))
 
-    ! # of particles in thisOctal
-    np = SIZE(thisOctal%gas_particle_list)
-
-    ! Units of length
-    udist = get_udist(sphData) / 1.0d10  ! [10^10cm]
+    if (nParticle > 0) then
+       ! Allocate the memory for new particle list of the child
+       ALLOCATE(thisOctal%child(newChildIndex)%gas_particle_list(nparticle))
        
-    k=0
-    do i = 1, np
-       ! extract the SPH index of particles in the parent cell.
-       j = thisOctal%gas_particle_list(i)
+       ! # of particles in thisOctal
+       np = SIZE(thisOctal%gas_particle_list)
        
-       ! copy this value if this particle is in this child.
-       ! Using a routine in sph_data_class. 
-       call get_position_gas_particle(sphData, j, x, y, z)
+       ! Units of length
+       udist = get_udist(sphData) / 1.0d10  ! [10^10cm]
        
-       ! convert units
-       x = x*udist; y = y*udist;  z = z*udist  ! [10^10cm]
-       
-       ! quick check to see if this gas particle
-       ! belongs to this child cell.
-       if ( within_subcell(thisOctal, subcell, x, y, z) ) then
-          k = k+1
-          ! add this particle index to this child using
-          ! a routine in linked_list_class.f90
-          thisOctal%child(newChildIndex)%gas_particle_list(k) = j
-       end if
-    end do
-
+       k=0
+       do i = 1, np
+          ! extract the SPH index of particles in the parent cell.
+          j = thisOctal%gas_particle_list(i)
+          
+          ! copy this value if this particle is in this child.
+          ! Using a routine in sph_data_class. 
+          call get_position_gas_particle(sphData, j, x, y, z)
+          
+          ! convert units
+          x = x*udist; y = y*udist;  z = z*udist  ! [10^10cm]
+          
+          ! quick check to see if this gas particle
+          ! belongs to this child cell.
+          if ( within_subcell(thisOctal, subcell, x, y, z) ) then
+             k = k+1
+             ! add this particle index to this child using
+             ! a routine in linked_list_class.f90
+             thisOctal%child(newChildIndex)%gas_particle_list(k) = j
+          end if
+       end do
+    endif
     
   end subroutine update_particle_list
 
@@ -513,34 +515,40 @@ contains
        first_time = .false.
     end if
 
-    
-    ! retriveing the number of the total gas particles
-    ! in "node".
-    ! -- using the function in linked_list_class.f90
-    npart = SIZE(node%gas_particle_list)
-    
-    counter = 0
-    rho_ave = 0.0d0
-    do i=1, npart
-       ! Retriving the sph data index for this paritcle
-       j = node%gas_particle_list(i)
-
-       ! retriving this posisiton of the gas particle.
-       call get_position_gas_particle(sphData, j, x, y, z)
+    if (associated(node%gas_particle_list)) then
        
-       ! convert units
-       x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
-       ! quick check to see if this gas particle is
-       ! belongs to this cell.
-       if ( within_subcell(node, subcell, x, y, z) ) then
-          counter = counter + 1
-          rho_ave = rho_ave + get_rhon(sphData, j) 
-       end if
+       ! retriveing the number of the total gas particles
+       ! in "node".
+       ! -- using the function in linked_list_class.f90
+       npart = SIZE(node%gas_particle_list)
        
-    end do
+       counter = 0
+       rho_ave = 0.0d0
+       do i=1, npart
+          ! Retriving the sph data index for this paritcle
+          j = node%gas_particle_list(i)
+          
+          ! retriving this posisiton of the gas particle.
+          call get_position_gas_particle(sphData, j, x, y, z)
+          
+          ! convert units
+          x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
+          ! quick check to see if this gas particle is
+          ! belongs to this cell.
+          if ( within_subcell(node, subcell, x, y, z) ) then
+             counter = counter + 1
+             rho_ave = rho_ave + get_rhon(sphData, j) 
+          end if
+          
+       end do
+       
+       n = counter
+       
+    else
 
-    n = counter
+       n = 0
 
+    endif
     
     if (n>0) then
        rho_ave = rho_ave/dble(n)

@@ -1180,11 +1180,14 @@
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData)
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-           if (doSmoothGrid) then
-              call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
-              call smoothAMRgrid(grid,smoothFactor,sphData=sphData, inheritprops=.false., interpProps=.false.)
-              call writeInfo("...grid smoothing complete", TRIVIAL)
-           end if
+           call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+           do
+              gridConverged = .true.
+              call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+                   gridConverged,  inheritProps = .false., interpProps = .false.)
+              if (gridConverged) exit
+           end do
+           call writeInfo("...grid smoothing complete", TRIVIAL)
 
         case DEFAULT
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
@@ -2079,9 +2082,9 @@
 
        allocate(source(1:nSource)) 
        source(1)%teff = 30000.  ! o star
-       source(1)%radius = 20. * rSol / 1.e10
+       source(1)%radius = 10. * rSol / 1.e10
        source(1)%position = (VECTOR(0.,0.,1.)*real(autocm))/1.e10
-       source(1)%luminosity = fourPi * stefanBoltz * (20.*rSol)**2.0 * (source(1)%teff)**4
+       source(1)%luminosity = fourPi * stefanBoltz * (10.*rSol)**2.0 * (source(1)%teff)**4
        call readSpectrum(source(1)%spectrum, "ostar.flx")
        call normalizedSpectrum(source(1)%spectrum)
 

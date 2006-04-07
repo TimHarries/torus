@@ -465,6 +465,9 @@ contains
       outputFlag = .true.
 !$MPI if (my_rank/=0) outputFlag = .false.
 
+!$MPI if (my_rank==0) &
+      call writeAMRgrid("lucy_first_grid.dat", .false., grid)
+
 
 
 !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
@@ -491,6 +494,10 @@ contains
     endif
 
     if ((grid%geometry == "ppdisk").and.(nDustType > 1)) then
+       call fillDustUniform(grid, grid%octreeRoot)
+    endif
+
+    if (grid%geometry == "wr104") then
        call fillDustUniform(grid, grid%octreeRoot)
     endif
 
@@ -1078,6 +1085,16 @@ contains
        call recountDiffusionCells(grid%octreeRoot, nCellsInDiffusion)
 
 
+       if (grid%geometry.eq."wr104") then
+              totalMass = 0.
+               call findTotalMass(grid%octreeRoot, totalMass)
+	        scaleFac = massEnvelope / totalMass
+                if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+                call scaleDensityAMR(grid%octreeRoot, scaleFac)
+
+          call sublimateDustWR104(grid%octreeRoot)
+       endif
+
 
 
 !$MPI if (my_rank==0) &
@@ -1160,16 +1177,16 @@ contains
 
 
 
-    nRemoved = 0
-    if (iIter_Grand > 3) then
-!$MPI if (my_rank==0) & 
-       write(*,*) "Removing dust with T > Tthresh: ",Tthresh
-       call removeDust(grid%octreeRoot, Tthresh, nRemoved)
-    endif
-
-!$MPI if (my_rank==0) & 
-    write(message,*) "Number of cells removed: ",nRemoved
-    call writeInfo(message, TRIVIAL)
+!    nRemoved = 0
+!    if (iIter_Grand > 3) then
+!!$MPI if (my_rank==0) & 
+!       write(*,*) "Removing dust with T > Tthresh: ",Tthresh
+!       call removeDust(grid%octreeRoot, Tthresh, nRemoved)
+!    endif
+!
+!!$MPI if (my_rank==0) & 
+!    write(message,*) "Number of cells removed: ",nRemoved
+!    call writeInfo(message, TRIVIAL)
 
 
     if (grid%geometry == "wr104") then
