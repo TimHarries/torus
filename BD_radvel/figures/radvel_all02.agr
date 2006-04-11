@@ -54,7 +54,7 @@
 @timestamp rot 0
 @timestamp font 0
 @timestamp char size 1.000000
-@timestamp def "Sun Mar 26 21:18:41 2006"
+@timestamp def "Tue Apr 11 00:33:17 2006"
 @r0 off
 @link r0 to g0
 @r0 type above
@@ -605,7 +605,7 @@
 @g2 fixedpoint format general general
 @g2 fixedpoint prec 6, 6
 @with g2
-@    world -15, -2, 40, 2
+@    world -12.25, -2, 42.75, 2
 @    stack world 0, 0, 0, 0
 @    znorm 1
 @    view 0.644118, 0.660903, 0.850000, 0.815402
@@ -1361,7 +1361,7 @@
 @g5 fixedpoint format general general
 @g5 fixedpoint prec 6, 6
 @with g5
-@    world 15, -2, 33, 2
+@    world 15.9, -2, 33.9, 2
 @    stack world 0, 0, 0, 0
 @    znorm 1
 @    view 0.644118, 0.429154, 0.850000, 0.583654
@@ -1613,7 +1613,7 @@
 @g6 fixedpoint format general general
 @g6 fixedpoint prec 6, 6
 @with g6
-@    world 37, -2, 45, 2
+@    world 37.4, -2, 45.4, 2
 @    stack world 0, 0, 0, 0
 @    znorm 1
 @    view 0.150000, 0.197405, 0.355882, 0.351905
@@ -1865,7 +1865,7 @@
 @g7 fixedpoint format general general
 @g7 fixedpoint prec 6, 6
 @with g7
-@    world 33.5, -1, 41, 1
+@    world 33.875, -1, 41.375, 1
 @    stack world 0, 0, 0, 0
 @    znorm 1
 @    view 0.397059, 0.197405, 0.602941, 0.351905
@@ -1888,7 +1888,7 @@
 @    xaxis  bar color 1
 @    xaxis  bar linestyle 1
 @    xaxis  bar linewidth 1.0
-@    xaxis  label "MJD - 2453100"
+@    xaxis  label "HJD - 2453100"
 @    xaxis  label layout para
 @    xaxis  label place spec
 @    xaxis  label place 0.000000, 0.050000
@@ -2119,7 +2119,7 @@
 @g8 fixedpoint format general general
 @g8 fixedpoint prec 6, 6
 @with g8
-@    world 35, -2, 45, 2
+@    world 38, -2, 45, 2
 @    stack world 0, 0, 0, 0
 @    znorm 1
 @    view 0.644118, 0.197405, 0.850000, 0.351905
@@ -2362,8 +2362,8 @@
 @    s1 legend  ""
 @target G0.S0
 @type xydy
-         1.30836            1.735             2.69
-        28.26425           -1.735             1.73
+       1.8179138            1.735             2.69
+       28.775293           -1.735             1.73
 &
 @target G0.S1
 @type xy
@@ -2372,8 +2372,8 @@
 &
 @target G1.S0
 @type xydy
-         0.30191            0.925             0.71
-        28.14804           -0.925             0.48
+       0.8120734            0.925             0.71
+       28.659166           -0.925             0.48
 &
 @target G1.S1
 @type xy
@@ -2382,8 +2382,8 @@
 &
 @target G2.S0
 @type xydy
-         0.27545            0.825             0.02
-        28.12391           -0.825             0.04
+       0.7850385            0.825             0.02
+       28.634948           -0.825             0.04
 &
 @target G2.S1
 @type xy
@@ -2392,8 +2392,8 @@
 &
 @target G3.S0
 @type xydy
-         1.23587             0.13             0.16
-        33.11929            -0.13             0.02
+       1.7453989             0.13             0.16
+       33.630488            -0.13             0.02
 &
 @target G3.S1
 @type xy
@@ -2402,8 +2402,8 @@
 &
 @target G4.S0
 @type xydy
-         0.34486             0.38             0.47
-        33.07139            -0.38             0.11
+       0.8552168             0.38             0.47
+       33.582637            -0.38             0.11
 &
 @target G4.S1
 @type xy
@@ -2412,8 +2412,8 @@
 &
 @target G5.S0
 @type xydy
-        20.19466             1.48             0.11
-        28.18537            -1.48             0.02
+       20.705941             1.48             0.11
+       28.696964            -1.48             0.02
 &
 @target G5.S1
 @type xy
@@ -2422,8 +2422,8 @@
 &
 @target G6.S0
 @type xydy
-        39.28595           -0.235             0.69
-        43.09885            0.235             1.05
+       39.797828           -0.235             0.69
+       43.610802            0.235             1.05
 &
 @target G6.S1
 @type xy
@@ -2432,8 +2432,8 @@
 &
 @target G7.S0
 @type xydy
-         35.2606             0.06             0.21
-        39.34201            -0.06             0.55
+       35.772409             0.06             0.21
+       39.853883            -0.06             0.55
 &
 @target G7.S1
 @type xy
@@ -2442,8 +2442,8 @@
 &
 @target G8.S0
 @type xydy
-        37.28394            0.095              0.3
-        43.12719           -0.095             0.89
+       39.826868            0.095              0.3
+       43.639114           -0.095             0.89
 &
 @target G8.S1
 @type xy
