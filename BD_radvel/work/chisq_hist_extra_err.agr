@@ -54,11 +54,11 @@
 @timestamp rot 0
 @timestamp font 0
 @timestamp char size 1.000000
-@timestamp def "Tue Apr 18 15:21:35 2006"
+@timestamp def "Wed Apr 19 18:54:22 2006"
 @with string
 @    string on
 @    string loctype view
-@    string 0.811475409836, 0.338698856064
+@    string 0.82131147541, 0.302470202994
 @    string color 1
 @    string rot 0
 @    string font 0
@@ -68,7 +68,7 @@
 @with string
 @    string on
 @    string loctype view
-@    string 0.559016393443, 0.670097877987
+@    string 0.559016393443, 0.669760398907
 @    string color 1
 @    string rot 0
 @    string font 0
@@ -129,8 +129,8 @@
 @    znorm 1
 @    view xmin 0.120000
 @    view xmax 0.880000
-@    view ymin 0.249686
-@    view ymax 0.775143
+@    view ymin 0.249560
+@    view ymax 0.774753
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -249,7 +249,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.656818182, 0.819115264015
+@    legend 0.656818182, 0.818702735824
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -376,7 +376,7 @@
 1.5 0
 2 0
 2.5 0
-3 3
+3 2
 3.5 0
 &
 @target G0.S1

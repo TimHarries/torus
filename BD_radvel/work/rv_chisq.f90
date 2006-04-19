@@ -7,7 +7,7 @@ program rv_chisq
   ! from two epochs, this program computes the chisq prob of 
   ! the RV being constant. 
 
-  integer, parameter :: nobj=18  ! number of objects in the list
+  integer, parameter :: nobj=17  ! number of objects in the list
   integer, parameter :: ntime=2  ! number of observations for each object
   real*8 :: RV(ntime, nobj)      ! radial velocities in km/s
   real*8 :: err_RV(ntime, nobj)  ! uncertainties in RV in km/s
