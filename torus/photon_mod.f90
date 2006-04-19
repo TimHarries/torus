@@ -754,60 +754,62 @@ contains
                   call locateContProbAMR(randomDouble,sourceOctal,subcell)
 
 
-                  octalCentre = subcellCentre(sourceOctal,subcell)
+!                  octalCentre = subcellCentre(sourceOctal,subcell)
+!
+!                  !!! we will just choose a random point within the subcell.
+!                  !!! this *should* be done in a better way.
+!
+!                  call random_number(r1)
+!                  r1 = r1 - 0.5  ! shift value mean value to zero
+!                  r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
+!                  xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+!
+!                  call random_number(r2)
+!                  r2 = r2 - 0.5                                  
+!                  r2 = r2 * 0.995                                           
+!                  yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
+!
+!                  call random_number(r3)
+!                  r3 = r3 - 0.5                                  
+!                  r3 = r3 * 0.995                                           
+!                  zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
+!
+!                octalCentre = subcellCentre(sourceOctal,subcell)
+!                
+!                !!! we will just choose a random point within the subcell.
+!                !!! this *should* be done in a better way.
+!                
+!                call random_number(r1)
+!                r1 = r1 - 0.5  ! shift value mean value to zero
+!                r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
+!                xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+!                
+!                if (sourceOctal%threed) then
+!                   call random_number(r2)
+!                   r2 = r2 - 0.5                                  
+!                   r2 = r2 * 0.995                                           
+!                   yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
+!                else
+!                   yOctal = 0.
+!                endif
+!                
+!                call random_number(r3)
+!                r3 = r3 - 0.5                                  
+!                r3 = r3 * 0.995                                           
+!                zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
+!                
+!                thisPhoton%position = vector(xOctal,yOctal,zOctal)
+!                                
+!                if (sourceOctal%twod) then
+!                   call random_number(ang)
+!                   ang = ang * twoPi
+!                   thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
+!                endif
 
-                  !!! we will just choose a random point within the subcell.
-                  !!! this *should* be done in a better way.
 
-                  call random_number(r1)
-                  r1 = r1 - 0.5  ! shift value mean value to zero
-                  r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
-                  xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+                thisPhoton%position = randomPositionInCell(sourceOctal, subcell)
 
-                  call random_number(r2)
-                  r2 = r2 - 0.5                                  
-                  r2 = r2 * 0.995                                           
-                  yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
 
-                  call random_number(r3)
-                  r3 = r3 - 0.5                                  
-                  r3 = r3 * 0.995                                           
-                  zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
-
-                octalCentre = subcellCentre(sourceOctal,subcell)
-                
-                !!! we will just choose a random point within the subcell.
-                !!! this *should* be done in a better way.
-                
-                call random_number(r1)
-                r1 = r1 - 0.5  ! shift value mean value to zero
-                r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
-                xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
-                
-                if (sourceOctal%threed) then
-                   call random_number(r2)
-                   r2 = r2 - 0.5                                  
-                   r2 = r2 * 0.995                                           
-                   yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
-                else
-                   yOctal = 0.
-                endif
-                
-                call random_number(r3)
-                r3 = r3 - 0.5                                  
-                r3 = r3 * 0.995                                           
-                zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
-                
-                
-                thisPhoton%position = vector(xOctal,yOctal,zOctal)
-                
-                if (sourceOctal%twod) then
-                   call random_number(ang)
-                   ang = ang * twoPi
-                   thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
-                endif
-
-                  thisPhoton%position = vector(xOctal,yOctal,zOctal)
 
                   if (grid%geometry(1:7) == "ttauri" .or. &
                        grid%geometry(1:9) == "luc_cir3d" .or. &
@@ -1054,7 +1056,8 @@ contains
                            foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=i)
                       tempSpectrum(i)= blambda(dble(lambda(i)), dble(tempr)) * dble(kabs) !/ dble(lambda(i))
                       totDouble = totDouble + tempSpectrum(i) * dlam(i)
-                      write(*,*) i,lambda(i),dlam(i),tempr,kabs,blambda(dble(lambda(i)), dble(tempr))
+                      write(*,*) i,lambda(i),dlam(i),tempr,kabs,blambda(dble(lambda(i)), dble(tempr)), &
+                           foundOctal%dustTypeFraction(subcell, 1),foundOctal%etaCont(subcell)
                    enddo
                    totDouble = 10.
                 endif
@@ -1087,7 +1090,7 @@ contains
 
                 thisPhoton%stokes = thisPhoton%stokes * interplinearSingle(real(lambda), &
                      real(tempSpectrum), nLambda, thisPhoton%lambda)
-             end if 
+             end if
           else
 
              if (nSource == 0) then

@@ -8046,10 +8046,11 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: subcell, i, j
     logical :: unrefine, ok, converged
     integer :: nTau
-    integer :: nVals
+    integer :: nVals, nc
 
     unrefine = .true.
-    do subcell = 1, thisOctal%nChildren
+    nc = 0
+    do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -8065,12 +8066,14 @@ IF ( .NOT. gridConverged ) RETURN
           endif
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaAbs=kappaAbs,kappaSca=kappaSca)
           tau = thisOctal%subcellSize*(kappaAbs+kappaSca)
-          if (tau > 1.e-5) then
+          nc = nc + 1
+          if (tau > 1.e-10) then
              unrefine = .false.
              exit
           endif
        endif
     enddo
+!    write(*,*) thisOctal%nChildren,unrefine,tau, nc,thisOctal%maxChildren
 
     if ((thisOctal%nChildren == 0).and.unrefine) then
        call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &

@@ -1276,13 +1276,13 @@
            endif
         end select
    
-!        call writeInfo("Unrefining optically thin cells...", TRIVIAL)
-!        gridconverged = .false.
-!        do while(.not.gridconverged)
-!           gridconverged = .true.
-!           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
-!        end do
-!        call writeInfo("Done.", TRIVIAL)
+        call writeInfo("Unrefining optically thin cells...", TRIVIAL)
+        gridconverged = .false.
+        do while(.not.gridconverged)
+           gridconverged = .true.
+           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
+        end do
+        call writeInfo("Done.", TRIVIAL)
 
 !        call writeInfo("Unrefining optically thick cells...", TRIVIAL)
 !        gridconverged = .false.
@@ -1915,6 +1915,17 @@
 !                "dv_dr.ps/vcps", .true., .false., &
 !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 !        end if
+
+           if (mie) then
+              do i = 1, nDustType
+                 write(message,'(a,i1)') "dusttype",i
+                 call plot_AMR_values(grid, message, "x-z", 0., &
+                      trim(message)//".ps/vcps", .false., .false., &
+                      nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
+              enddo
+           endif
+
+
      end if  ! plot_maps
 !     ! plotting column density (new routine in grid_mod.f90)
 !     if (grid%geometry(1:7) == "cluster") then 

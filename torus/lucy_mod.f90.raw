@@ -502,16 +502,12 @@ contains
     endif
 
 
-!    if (grid%octreeRoot%twoD) then
-!       call defineDiffusionZone(grid, outputFlag, .true.)
-!    endif
-
 
     nCellsInDiffusion = 0
     call defineDiffusionOnRosseland(grid,grid%octreeRoot, ndiff=nCellsInDiffusion)
-
     write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
     call writeInfo(message,IMPORTANT)
+
 
     iIter_grand = 0
     nRemoved = 1
@@ -531,18 +527,19 @@ contains
           nIter = 1
        end if
 
-       if (doingDustSublimation) then
-          nMonte = 10000000
-          if (iIter_grand == 0) then
-             nIter = 3
-          else
-             nIter = 1 !2
-          endif
-       endif
+!       if (doingDustSublimation) then
+!          nMonte = 10000000
+!          if (iIter_grand == 0) then
+!             nIter = 3
+!          else
+!             nIter = 1 !2
+!          endif
+!       endif
 
 
 
     do iIter = 1, nIter
+
 
        iIter_grand =  iIter_grand + 1  ! total number of iterations so far
 
@@ -1135,39 +1132,50 @@ contains
 
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
-             if (.true.) then
-!             if ((iiter_grand == 7).or.(iiter_grand == 8)) then
+             if (iiter_grand == 3) then
 
-                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
-                gridconverged = .false.
-                do while(.not.gridconverged)
-                   gridconverged = .true.
-                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
-                end do
-                if (writeoutput) then
-                   write(*,*) "done."
-                   call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-                        "unrefine.ps/vcps", .true., .false., &
-                        0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
-                endif
+!                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
+!                gridconverged = .false.
+!                do while(.not.gridconverged)
+!                   gridconverged = .true.
+!                   call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
+!                end do
+!                if (writeoutput) then
+!                   write(*,*) "done."
+!                   call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
+!                        "unrefine.ps/vcps", .true., .false., &
+!                        0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+!                endif
 
-                if (writeoutput) write(*,*) "Smoothing adaptive grid structure for optical depth..."             
-                do j = iSmoothLam, ismoothlam !nLambda
+                call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
+                do j = iSmoothLam, iSmoothlam !nLambda, 5
                    do
                       gridConverged = .true.
-                      call smoothAMRgridTau(grid%octreeRoot,grid,gridConverged,j,inheritprops = .false., interpProps = .true.)
+                      call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, inheritProps = .false., interpProps = .true.)
+                      
                       if (gridConverged) exit
                    end do
                 enddo
-                if (writeoutput) write(*,*) "...grid smoothing complete"
-                ! The tau smoothing may result in large differences in the size
-                ! of neighbouring octals, so we smooth the grid again.
-                if (writeoutput) write(*,*) "Smoothing adaptive grid structure (again)..."
-                call smoothAMRgrid(grid,smoothFactor,inheritprops = .false., interpProps=.true.)
-                if (writeoutput) write(*,*) "...grid smoothing complete"
-             endif
+                call writeInfo("...grid smoothing complete", TRIVIAL)
+                
+                call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
+                do
+                   gridConverged = .true.
+                   call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+                        gridConverged,  inheritProps = .false., interpProps = .true.)
+                   if (gridConverged) exit
+                end do
+                call writeInfo("...grid smoothing complete", TRIVIAL)
+
+
           endif
-!       endif
+
+          nCellsInDiffusion = 0
+          call defineDiffusionOnRosseland(grid,grid%octreeRoot, ndiff=nCellsInDiffusion)
+          write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+          call writeInfo(message,IMPORTANT)
+
+       endif
 
 
 !          if (grid%octreeRoot%twoD) then

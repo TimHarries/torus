@@ -899,7 +899,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     type(OCTAL), pointer :: thisOctal, child
     integer :: subcell, i
     real(double) :: temperature
-    real(double), parameter :: subRange = 50.d0
+    real(double), parameter :: subRange = 1.d-3
     real(double) :: frac
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -969,6 +969,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           deltaFrac = newFrac - thisOctal%oldFrac(subcell)
 
           frac = thisOctal%oldFrac(subcell) + underCorrect * deltaFrac
+          frac = max(frac, 1.d-20)
 
           normfac = SUM(thisOctal%dustTypeFraction(subcell,:))
 

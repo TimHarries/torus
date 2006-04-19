@@ -762,8 +762,8 @@ end subroutine gaussSeidelSweep
           if (tau > taudiff) then
              thisOctal%diffusionApprox(subcell) = .true.
              if (PRESENT(ndiff))  nDiff = nDiff + 1
-!          else
-!             thisOctal%diffusionApprox(subcell) = .false.
+          else
+             thisOctal%diffusionApprox(subcell) = .false.
           endif
        end if
     end do
