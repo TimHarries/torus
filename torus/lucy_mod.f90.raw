@@ -1132,7 +1132,7 @@ contains
 
              call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
 
-             if (iiter_grand == 3) then
+             if (iiter_grand > 3) then
 
 !                if (writeoutput) write(*,*) "Unrefining very optically thin octals..."
 !                gridconverged = .false.
