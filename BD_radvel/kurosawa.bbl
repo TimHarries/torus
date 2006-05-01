@@ -1,4 +1,4 @@
-\begin{thebibliography}{42}
+\begin{thebibliography}{40}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
 \bibitem[{{Ardila} {et~al.}(2000){Ardila}, {Mart{\'{\i}}n}, \&
@@ -17,6 +17,9 @@
 
 \bibitem[{{Basri} \& {Mart{\'{\i}}n}(1999)}]{basri:1999}
 {Basri} G., {Mart{\'{\i}}n} E.~L., 1999, \aj, 118, 2460
+
+\bibitem[{{Basri} \& {Reiners}(2006)}]{basri:2006}
+{Basri} G., {Reiners} A., 2006, ArXiv Astrophysics e-prints
 
 \bibitem[{{Bate}(2005)}]{bate:2005}
 {Bate} M.~R., 2005, \mnras, 363, 363
@@ -95,11 +98,6 @@
 {Kenyon} M.~J., {Jeffries} R.~D., {Naylor} T., {Oliveira} J.~M., {Maxted}
   P.~F.~L., 2005, \mnras, 356, 89
 
-\bibitem[{{K{\"o}hler} {et~al.}(2000){K{\"o}hler}, {Kunkel}, {Leinert}, \&
-  {Zinnecker}}]{kohler:2000}
-{K{\"o}hler} R., {Kunkel} M., {Leinert} C., {Zinnecker} H., 2000, \aap, 356,
-  541
-
 \bibitem[{{Kraus} {et~al.}(2005){Kraus}, {White}, \&
   {Hillenbrand}}]{kraus:2005}
 {Kraus} A.~L., {White} R.~J., {Hillenbrand} L.~A., 2005, \apj, 633, 452
@@ -130,16 +128,6 @@
   {Brice{\~n}o}, \& {Hartmann}}]{muzerolle:2003}
 {Muzerolle} J., {Hillenbrand} L., {Calvet} N., {Brice{\~n}o} C., {Hartmann} L.,
   2003, \apj, 592, 266
-
-\bibitem[{{Neuh{\"a}user} {et~al.}(2002){Neuh{\"a}user}, {Brandner}, {Alves},
-  {Joergens}, \& {Comer{\'o}n}}]{neuhaeuser:2002}
-{Neuh{\"a}user} R., {Brandner} W., {Alves} J., {Joergens} V., {Comer{\'o}n} F.,
-  2002, \aap, 384, 999
-
-\bibitem[{{Neuh{\"a}user} {et~al.}(2003){Neuh{\"a}user}, {Guenther}, \&
-  {Brandner}}]{neuhaeuser:2003}
-{Neuh{\"a}user} R., {Guenther} E., {Brandner} W., 2003, in IAU Symposium,
-  {Mart{\'{\i}}n} E., ed., p. 309
 
 \bibitem[{{Padoan} \& {Nordlund}(2002)}]{padoan:2002}
 {Padoan} P., {Nordlund} {\AA}., 2002, \apj, 576, 870
