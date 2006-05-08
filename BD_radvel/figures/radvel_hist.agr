@@ -54,7 +54,7 @@
 @timestamp rot 0
 @timestamp font 0
 @timestamp char size 1.000000
-@timestamp def "Sat Apr 29 23:51:44 2006"
+@timestamp def "Mon May  8 16:59:33 2006"
 @r0 off
 @link r0 to g0
 @r0 type above
@@ -542,9 +542,9 @@
 @    s6 type xy
 @    s6 symbol 0
 @    s6 symbol size 1.000000
-@    s6 symbol color 2
+@    s6 symbol color 1
 @    s6 symbol pattern 1
-@    s6 symbol fill color 2
+@    s6 symbol fill color 1
 @    s6 symbol fill pattern 0
 @    s6 symbol linewidth 1.0
 @    s6 symbol linestyle 1
@@ -554,7 +554,7 @@
 @    s6 line type 1
 @    s6 line linestyle 4
 @    s6 line linewidth 1.0
-@    s6 line color 2
+@    s6 line color 1
 @    s6 line pattern 1
 @    s6 baseline type 0
 @    s6 baseline off
@@ -576,7 +576,7 @@
 @    s6 avalue offset 0.000000 , 0.000000
 @    s6 errorbar on
 @    s6 errorbar place both
-@    s6 errorbar color 2
+@    s6 errorbar color 1
 @    s6 errorbar pattern 1
 @    s6 errorbar size 1.000000
 @    s6 errorbar linewidth 1.0
