@@ -1,0 +1,31 @@
+From no-reply@arXiv.org Tue May  9 15:11:48 2006
+Date: Tue, 9 May 2006 10:11:46 -0400
+From: send mail ONLY to astro-ph <no-reply@arXiv.org>
+Reply-To: astro-ph@arXiv.org
+To: rk@astro.ex.ac.uk
+Subject: astro-ph/0605234 password (SAVE)
+
+            *** SAVE THIS MESSAGE FOR FUTURE REFERENCE ***
+          (and forward to any collaborators for safekeeping)
+
+Your user/password combination for this paper is
+
+ User-ID: astro-ph/0605234
+ Password: e8g5x
+
+You will need this ID/password pair to do any of the following:
+
+  - to check the paper before it is announced
+  - to cross-list the paper 
+  - to add publication information
+  - to replace the paper with a revised version
+
+Keep this password safe -- all future replacements will require it.
+
+Paper: astro-ph/0605234
+From: Ryuichi Kurosawa <rk@astro.ex.ac.uk>
+
+Title: On the formation of H-alpha line emission around classical T Tauri stars
+Authors: Ryuichi Kurosawa (1), Tim J. Harries (1), Neil H. Symington (2) ((1)
+  University of Exeter, (2) University of St. Andrews)
+Comments: 18 pages, 17 figures. Accepted by MNRAS

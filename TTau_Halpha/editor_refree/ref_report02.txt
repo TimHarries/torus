@@ -1,0 +1,89 @@
+From cg@ras.org.uk Wed Apr 26 11:13:26 2006
+Date: Wed, 26 Apr 2006 06:13:19 -0400 (EDT)
+From: cg@ras.org.uk
+To: rk@astro.ex.ac.uk
+Subject: MNRAS: MN-06-0158-MJ.R1
+
+Dear Dr Kurosawa
+
+I attach the reviewer's comments on your revised manuscript entitled "On the formation of H|*alpha*| line emission around classical T Tauri stars", ref. MN-06-0158-MJ.R1, which you submitted to Monthly Notices of the Royal Astronomical Society.
+
+The reviewer, Silvia Alencar, has recommended some further, minor revision of your manuscript before it is reconsidered for publication.
+
+You should submit your further revised version, together with your response to the reviewer's comments via the Monthly Notices Manuscript Central site http://mc.manuscriptcentral.com/mnras .
+Enter your Author Centre, where you will find your manuscript title listed under "Manuscripts with Decisions."  Under "Actions," click on "Create a Revision."  Your manuscript reference will be appended to denote a revision.  
+
+IMPORTANT: do not submit your revised manuscript as a new paper!
+
+You will not be able to make your revisions to the originally submitted files of the manuscript on Manuscript Central.  Instead, you must delete the original files and abstract and replace them with your revised files.  Proof read the resulting PDF and HTML files that are generated carefully.
+
+When submitting your revised manuscript, you will be able to respond to the comments made by the reviewer in the space provided.  You should also use this space to document any changes you make to the original manuscript.  In order to expedite the processing of the revised manuscript, please be as specific as possible in your response to the reviewer.
+
+Because we are trying to facilitate timely publication of manuscripts submitted to MNRAS, your revised manuscript should be uploaded promptly. If you do not submit your revision within six months, we may consider it withdrawn and request it be resubmitted as a new submission.
+
+I look forward to receiving your revised manuscript.
+
+Best wishes,
+
+Claire Geeson
+Monthly Notices of the Royal Astronomical Society
+
+
+
+Reviewer's Comments:
+
+Reviewer: 1
+Comments to the Author
+Dear Ryuichi, Tim and Neil,
+
+I found the manuscript "On the formation of Halpha line emission around classical T Tauri stars" very interesting. It is excellent work and I was looking forward to reading it since our discussions at PPV.
+
+You have carefully answered all the many points I raised and made the appropriate modifications to the paper. I still have some minor comments, basically typos,  that I list below. I am very pleased with the paper as it is, and I recommend it for publication.
+
+With best wishes,
+
+ Silvia Alencar.
+
+*******************************
+Spells and other minor comments
+
+Sect. 2.2, 3rd paragraph:
+"The temperature structure of the magnetospheric used by Hartmann...." 
+"magnetospheric¨ should be "magnetosphere".
+
+Sect. 2.4.1, 1st paragraph:
+¨...the disc mass respectively.¨ should be replaced by ¨...the disc mass respectively, and¨
+
+Sect. 2.4.1, end of 1st paragraph:
+"..the outer disk radius (Rdi) is 100 au.¨
+¨Rdi¨ should be ¨Rdo"
+
+Sect. 4.1, 5th paragraph:
+after the mass accretion rate value, there is an extra closing parentheses.
+
+Sect. 4.2, end of 5th paragraph:
+For the  wind to be launched centrifugally according to Blandford & Payne, the field lines must present Rw > d/tan(60).  With d = 22 Rstar this corresponds to Rw > 12.7 Rstar, instead of 25.4 Rstar as you say in the end of the paragraph. I had calculated the value of 25.4 Rstar assuming that d = 44 Rstar, as was originally written in this section.
+
+Sect. 4.2, end of 7th paragraph:
+"... if the field/stream line is not straight and bending towards the symmetry axis as the wind travel higher above the disk.¨
+I think it reads better with "bends" instead of "bending"
+
+"travel" should be "travels"
+
+Sect. 4.2, end of 8th paragraph:
+"... we have computed the models with d= 5 Rstar (not shown here) which satisfies the ..."
+Either use "the model ... which satisfies..." or "models ... which satisfy..."
+
+Sect. 5.1, end of 1st paragraph:
+"...which may in some cases induced by the rotational motion..."
+"induced" should be "be induced¨
+
+Sect. 5.2, caption of Fig. 13:
+"The wind mass-loss rates used in both models is Mdot_wind = 10^-8 Msun/yr."
+"rates" should be "rate"
+
+Appendix A:
+"...(3) Macc = 10^-9 Msun/yr (Fig. A2)"
+"A2" should be "A3"
+
+

@@ -1,0 +1,51 @@
+Dear XXX
+
+Our paper titled, "On the formation of H-alpha line emission around
+classical T Tauri stars" has been just accepted by MNRAS.  I have
+included the abstract of the paper at the end of this email for you
+convenience.
+If you are interested, the preprint can be downloaded from either 
+
+http://www.arxiv.org/abs/astro-ph/0605234
+
+or 
+
+http://www.astro.ex.ac.uk/people/rk/profiles/
+
+Any comments and suggestions are much appreciated. 
+Thank you very much for your time. 
+
+Best regards, 
+
+Ryuichi Kurosawa
+
+
+-- ABSTRACT---------------------------------------------------------
+
+We present radiative transfer models of the circumstellar environment
+of classical T Tauri stars, concentrating on the formation of the
+H-alpha emission. The wide variety of line profiles seen in
+observations are indicative of both inflow and outflow, and we
+therefore employ a circumstellar structure that includes both
+magnetospheric accretion and a disc wind.  We perform systematic
+investigations of the model parameters for the wind and the
+magnetosphere to search for possible geometrical and physical
+conditions which lead to the types of profiles seen in
+observations. We find that the hybrid models can reproduce the wide
+range of profile types seen in observations, and that the most common
+profile types observed occupy a large volume of parameter
+space. Conversely, the most infrequently observed profile morphologies
+require a very specific set of models parameters.  We find our model
+profiles are consistent with the canonical value of the mass-loss rate
+to mass-accretion rate ratio (mu=0.1) found in earlier
+magneto-hydrodynamic calculations and observations, but the models
+with 0.05 < mu < 0.2 are still in accord with observed H-alpha
+profiles.  We investigate the wind contribution to the line profile as
+a function of model parameters, and examine the reliability of H-alpha
+as a mass accretion diagnostic. Finally, we examine the H-alpha
+spectroscopic classification used by Reipurth et. al, and discuss the
+basic physical conditions that are required to reproduce the profiles
+in each classified type.
+-------------------------------------------------------------------
+
+
