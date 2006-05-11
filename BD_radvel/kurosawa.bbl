@@ -1,4 +1,4 @@
-\begin{thebibliography}{40}
+\begin{thebibliography}{45}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
 \bibitem[{{Ardila} {et~al.}(2000){Ardila}, {Mart{\'{\i}}n}, \&
@@ -21,11 +21,16 @@
 \bibitem[{{Basri} \& {Reiners}(2006)}]{basri:2006}
 {Basri} G., {Reiners} A., 2006, ArXiv Astrophysics e-prints
 
-\bibitem[{{Bate}(2005)}]{bate:2005}
-{Bate} M.~R., 2005, \mnras, 363, 363
+\bibitem[{{Bate} \& {Bonnell}(2005)}]{bate:2005}
+{Bate} M.~R., {Bonnell} I.~A., 2005, \mnras, 356, 1201
 
-\bibitem[{{Bate} {et~al.}(2002){Bate}, {Bonnell}, \& {Bromm}}]{bate:2002}
-{Bate} M.~R., {Bonnell} I.~A., {Bromm} V., 2002, \mnras, 332, L65
+\bibitem[{{Bate} {et~al.}(2002{\natexlab{a}}){Bate}, {Bonnell}, \&
+  {Bromm}}]{bate:2002}
+{Bate} M.~R., {Bonnell} I.~A., {Bromm} V., 2002{\natexlab{a}}, \mnras, 332, L65
+
+\bibitem[{{Bate} {et~al.}(2002{\natexlab{b}}){Bate}, {Bonnell}, \&
+  {Bromm}}]{bate:2002b}
+---, 2002{\natexlab{b}}, \mnras, 336, 705
 
 \bibitem[{{Bate} {et~al.}(2003){Bate}, {Bonnell}, \& {Bromm}}]{bate:2003}
 ---, 2003, \mnras, 339, 577
@@ -102,6 +107,9 @@
   {Hillenbrand}}]{kraus:2005}
 {Kraus} A.~L., {White} R.~J., {Hillenbrand} L.~A., 2005, \apj, 633, 452
 
+\bibitem[{{Luhman}(2004)}]{luhman:2004}
+{Luhman} K.~L., 2004, \apj, 614, 398
+
 \bibitem[{{Luhman} \& {Rieke}(1999)}]{luhman:1999}
 {Luhman} K.~L., {Rieke} G.~H., 1999, \apj, 525, 440
 
@@ -112,6 +120,9 @@
 
 \bibitem[{{Maxted} \& {Jeffries}(2005)}]{maxted:2005}
 {Maxted} P.~F.~L., {Jeffries} R.~D., 2005, \mnras, 362, L45
+
+\bibitem[{{McCaughrean} \& {Andersen}(2002)}]{mccaughrean:2002}
+{McCaughrean} M.~J., {Andersen} M., 2002, \aap, 389, 513
 
 \bibitem[{{Mohanty} \& {Basri}(2003)}]{mohanty:2003}
 {Mohanty} S., {Basri} G., 2003, in The Future of Cool-Star Astrophysics: 12th
@@ -144,6 +155,15 @@
   {Forveille}, \& {Queloz}}]{segransan:2003}
 {S{\'e}gransan} D., {Kervella} P., {Forveille} T., {Queloz} D., 2003, \aap,
   397, L5
+
+\bibitem[{{Siegler} {et~al.}(2005){Siegler}, {Close}, {Cruz}, {Mart{\'{\i}}n},
+  \& {Reid}}]{siegler:2005}
+{Siegler} N., {Close} L.~M., {Cruz} K.~L., {Mart{\'{\i}}n} E.~L., {Reid} I.~N.,
+  2005, \apj, 621, 1023
+
+\bibitem[{{Stassun} {et~al.}(2006){Stassun}, {Mathieu}, \&
+  {Valenti}}]{stassun:2006}
+{Stassun} K.~G., {Mathieu} R.~D., {Valenti} J.~A., 2006, \nat, 440, 311
 
 \bibitem[{{Tinney} \& {Reid}(1998)}]{tinney:1998}
 {Tinney} C.~G., {Reid} I.~N., 1998, \mnras, 301, 1031

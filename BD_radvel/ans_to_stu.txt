@@ -1,0 +1,103 @@
+
+My first comment is a general one, which is that you might want to discuss
+the possibility that some of your binary candidates are actually pulsating
+objects. Pulsation has *not* been observed to date in young VLM stars and
+BDs, but is theoretically predicted (Palla & Barraffe 2005, A&A, 432, 57).
+RV variations could be as high as 6km/s for pulsations, but I think you can
+rule it out as periods are 1-5 hours so you would expect to see variations
+between the RV values you took for each object on the same night. In fact,
+the lack of rapid RV variability is an interesting result in itself.
+
+Other than that I have two science comment and a few typos.
+
+Science
+--------
+
+1) What is the largest systematic error which is *NOT* compatible with your
+chisq histogram? The value of 0.2 km/s used in section 4 seems plucked out
+of thin air. It is important to know what systematic error
+you can rule out, as it has such a strong effect on what binary fraction you
+claim.
+
+
+2) When calculating the underlying binary fraction, isn't the text
+description the wrong way round? Pb(x,n,p) is the probability of finding x
+positive events out of n trials, with each trial having a probability p of a
+positive event in each trial. It seems to me that you've measured x, and n
+and want to know the underlying value of p. In other words setting p to be
+4/17 and plotting Pb(x) seems like the wrong thing to do. Rather, you should
+set x to be 4, n to be 17 and plot Pb(p). In fact, I wonder if this is what
+you actually *have* done, as it gives a identical answer for the binary
+fraction to that reported in your paper.
+
+Note that, as which all things statistical, I'm not confident I'm right
+here!
+
+Typos
+-----
+
+Abstract - at *the* VLT
+   * corrected 
+
+Abstract - Chameleon I (Cha), previously studied by others (or omit
+previously studied by others altogether)
+
+   * Removed "previously studied by others altogether."
+
+Introduction - while f=15 percent was determined by Close et al (in the
+field?, at what mass?)
+
+   * 0.035--0.092 Msun. Sp.type = M8.0--L0.5.
+
+Introduction - for a small sample (12)
+
+   * ??? That is what I had there. You mean I should say "for a small
+     (12) sample of ..."?  That sounds better, so I replaced it.
+
+
+Introduction - is ther Basri & Reiners result for young stars or the field?
+
+   * The observation of Basri & Reiners (2006) is consist of  field
+     objects only,  but in his analysis section he combined his
+     results with the results from 
+     1. Guenther & Wuchterl (2003, A&A, 401, 677)  
+           -- Some are in clusters and some are in field
+     2. Joergens (2005, Rev. Mod. Astron, 18, 201) I did not find this
+           reference in ADS, but I think she used the same data as in 
+	   Joergens (2001, A&A, 379, L9)
+           -- in Cha I
+     3. Close et al (2003)
+	   -- field objects
+     4. Bouy et al (2003)
+          --  field objects 
+
+     
+
+
+Introduction - primaries is 30au (Duquennoy & Mayor 1991)
+
+   * Corrected.
+
+Introduction - pioneering works on the RVs
+
+   * Corrected
+
+Section 3.2 - UScoOB objects and a log-normal fit (otherwise it implies the
+same log-normal fit as for the UScoOB objects)
+
+   * Corrected.
+
+Section 3.2 - vsini distribution of 14 higher mass T Tauri stars (I know
+it's a tautology, but I got confused without it)
+
+   * I see what you mean. Corrected.
+
+Section 4 - by the time separation of the RV measurements used in the
+
+   * Corrected.
+
+Section 4 - is negligibly small for young VLM objects with
+
+   * Corrected.
+
+
