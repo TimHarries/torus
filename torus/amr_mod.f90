@@ -21,6 +21,7 @@ MODULE amr_mod
   USE gas_opacity_mod
   USE math_mod2!, only : mnewt  
   USE atom_mod
+  USE source_mod
 
   IMPLICIT NONE
 
@@ -157,6 +158,9 @@ CONTAINS
 
     CASE("whitney")
        CALL assign_whitney(thisOctal,subcell,grid)
+
+    CASE("toruslogo")
+       CALL assign_toruslogo(thisOctal,subcell,grid)
 
     CASE("clumpydisc")
        CALL assign_clumpydisc(thisOctal, subcell, grid)
@@ -944,7 +948,7 @@ CONTAINS
         call assign_grid_values(thisOctal,subcell, grid)
         gridConverged = .TRUE.
 
-      CASE ("ppdisk","wrshell")
+      CASE ("ppdisk","wrshell","toruslogo")
         gridConverged = .TRUE.
 
 
@@ -4580,6 +4584,15 @@ IF ( .NOT. gridConverged ) RETURN
 !         endif
 !      endif
 
+   case("toruslogo")
+      split = .false.
+      if (thisOctal%nDepth  < 6) split = .true.
+
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 30.)) then
+         split = .true.
+         splitInAzimuth = .true.
+      endif
+
 
    case("warpeddisc")
       split = .false.
@@ -6434,6 +6447,25 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine assign_whitney
+
+  subroutine assign_toruslogo(thisOctal,subcell,grid)
+
+    use input_variables
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    real :: r, hr, rd, r1
+    TYPE(octalVector) :: rVec
+    
+    rVec = subcellCentre(thisOctal,subcell)
+    thisOctal%rho(subcell) = toruslogoDensity(rVec)
+    thisOctal%temperature(subcell) = 10.
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+  end subroutine assign_toruslogo
 
 
 
@@ -11343,7 +11375,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   SUBROUTINE startReturnSamples2(startPoint,direction,grid,          &
              sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
-             usePops,iLambda,error,lambda,kappaAbs,kappaSca,velocity,&
+             usePops,iLambda,error,lambda,nSource,source,kappaAbs,kappaSca,velocity,&
              velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow)
     ! samples the grid at points along the path.
     ! this should be called by the program, instead of calling 
@@ -11353,6 +11385,8 @@ IF ( .NOT. gridConverged ) RETURN
     !   intersection with the stellar surface(s), disc etc. 
  
     IMPLICIT NONE
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
 
     TYPE(octalVector), INTENT(IN)      :: startPoint ! photon start point
     TYPE(octalVector), INTENT(IN)      :: direction  ! photon direction 
@@ -11435,23 +11469,28 @@ IF ( .NOT. gridConverged ) RETURN
     absorbPhoton = .false.
     hitcore = .false.
 
-    ! first we check for intersections with the star
-    starPosition = grid%starPos1
-    rStar = grid%rStar1 
-    CALL intersectionLineSphere(startPoint,direction,1.d30,starPosition, &
-         rStar,starIntersectionFound1,starIntersectionFound2,   &
-         starIntersectionDistance1,starIntersectionDistance2)
-    ! by passing a line segment to intersectionLineSphere, we ensure that we
-    !   do not find intersections with the star that take place after the 
-    !   photon has been absorbed by the disk.
-    IF (starIntersectionFound1) THEN
-       endLength = starIntersectionDistance1
-       IF (opaqueCore) absorbPhoton = .TRUE.
-    END IF
-    IF (.NOT. opaqueCore .AND. starIntersectionFound2) then
-       absorbPhoton = .false.
-       endLength = 1.d30
+    if (nSource == 0) then
+       ! first we check for intersections with the star
+       starPosition = grid%starPos1
+       rStar = grid%rStar1 
+       CALL intersectionLineSphere(startPoint,direction,1.d30,starPosition, &
+            rStar,starIntersectionFound1,starIntersectionFound2,   &
+            starIntersectionDistance1,starIntersectionDistance2)
+       ! by passing a line segment to intersectionLineSphere, we ensure that we
+       !   do not find intersections with the star that take place after the 
+       !   photon has been absorbed by the disk.
+       IF (starIntersectionFound1) THEN
+          endLength = starIntersectionDistance1
+          IF (opaqueCore) absorbPhoton = .TRUE.
+       END IF
+       IF (.NOT. opaqueCore .AND. starIntersectionFound2) then
+          absorbPhoton = .false.
+          endLength = 1.d30
+       endif
+    else
+       call distanceToSource(source, nSource, startPoint, direction, absorbPhoton, endLength)
     endif
+
 
 
 

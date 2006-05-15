@@ -572,8 +572,8 @@ contains
            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
 
        if (grid%geometry == "shakara") then
-          call dullemondplot(grid, rinner, router, 0.4)
-          call nattaplot(grid)
+          call dullemondplot(grid, rinner, router, 0.4, nSource, source)
+          call nattaplot(grid, nSource, source)
        endif
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
@@ -1534,7 +1534,7 @@ contains
     real(oct) :: dnu(*)
     integer :: nUndersampled
     integer, save  :: nwarning = 0
-    integer, parameter :: nmaxwarning = 200000
+    integer, parameter :: nmaxwarning = 20
     real(double) :: r1, r2
     type(OCTALVECTOR) :: rVec
 

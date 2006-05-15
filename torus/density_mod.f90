@@ -91,6 +91,10 @@ contains
 
     case("cmfgen")
        out = cmfgen_density(r_vec)  ! [g/cm^3]
+
+    case("toruslogo")
+       out = torusLogodensity(r_vec)  ! [g/cm^3]
+
        
     case default
        print *, 'Error:: Geometry option passed to [density_mod::density] '
@@ -1128,6 +1132,38 @@ contains
       endif
   end function fractgap
 
-
+  function torusLogoDensity(rVec) result(rho)
+    type(OCTALVECTOR) :: rVec
+    real(double) :: rho, phi, theta
+    integer :: i, j
+    character(len=50) :: logo(10)
+    logo(1) = "************    ****    *******    *     *  ******" 
+    logo(2) = "************   ******   *******    *     *  ******" 
+    logo(3) = "    ***        *    *   **   **    *     *  ***   " 
+    logo(4) = "    ***        *    *   **  ***    *     *  ***   " 
+    logo(5) = "    ***        *    *   *******    *     *  ******" 
+    logo(6) = "    ***        *    *   ****       *     *      **" 
+    logo(7) = "    ***        *    *   ** **      *     *      **" 
+    logo(8) = "    ***        *    *   **  **     *     *      **" 
+    logo(9) = "    ***        ******   **   **    *******  ******" 
+    logo(10)= "    ***         ****    **   **    *******  ******" 
+    phi = atan2(rVec%y,rVec%x)
+    if (phi < 0.d0) phi = phi + twoPi
+    theta = acos(rVec%z/modulus(rVec))-pi/2.
+    rho = 1.e-20
+    if ((modulus(rVec) > 1.5*rSol/1.e10).and.(modulus(rVec) < 2.*rSol/1.e10)) then
+       if ((phi < pi).and.(abs(theta)< pi/6.)) then
+          i = int(5.*theta/(pi/6.)+5.)+1
+          j = 51-(1+int(phi/pi*49.))
+          if ((i >= 1).and.(i<=10).and.(j>=1).and.(j<=50)) then
+             if (logo(i)(j:j) /= " ") then
+                rho = 1.e-12
+             else
+                rho = 1.e-17
+             endif
+          endif
+       endif
+    endif
+  end function torusLogoDensity
 
 end module density_mod 

@@ -554,6 +554,10 @@ contains
 
     select case (geometry)
     
+    case("toruslogo")
+       grid%geometry = "toruslogo"
+       grid%rStar1 = rSol/1.e10
+
     case("whitney")
        grid%geometry = "whitney"
        grid%rCore = rStellar/1.e10
@@ -7310,9 +7314,11 @@ contains
 
   end subroutine radial_profile
 
-  subroutine dullemondplot(grid, rinner, router, angMax)
+  subroutine dullemondplot(grid, rinner, router, angMax, nSource, source)
     use input_variables, only : rcore
     type(GRIDTYPE) :: grid
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
     real :: rinner, router, angMax
     real(double) :: r, ang
     real :: tr(6)
@@ -7396,7 +7402,7 @@ contains
     
        CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,1.,nTau,       &
             maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
-            lambda,kappaAbs=kAbs,kappaSca=kSca,velocity=vel,velocityderiv=dv, &
+            lambda,nSource,source,kappaAbs=kAbs,kappaSca=kSca,velocity=vel,velocityderiv=dv, &
             temperature=temp, &
             chiLine=chiLine,    &
             levelPop=levelPop,rho=rho, &
@@ -7458,8 +7464,10 @@ contains
     deallocate(rhoimage,tempimage, ksca, kabs, lambda, dlambda)
   end subroutine dullemondplot
 
-  subroutine nattaplot(grid)
+  subroutine nattaplot(grid, nSource, source)
     use input_variables, only : rcore, rinner, router
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
     type(GRIDTYPE) :: grid
     real :: angMax
     real(double) :: r, ang
@@ -7531,7 +7539,7 @@ contains
     
        CALL startReturnSamples2 (aVecOctal,uHatOctal,grid,1.,nTau,       &
             maxTau,.false.,.true.,hitcore,.false.,iLambda,error,&
-            lambda,kappaAbs=kabs, kappaSca=ksca, &
+            lambda, nSource, source, kappaAbs=kabs, kappaSca=ksca, &
             velocity=vel,velocityderiv=dv, &
             temperature=temp, &
             chiLine=chiLine,    &

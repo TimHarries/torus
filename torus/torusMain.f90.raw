@@ -656,6 +656,10 @@
 
   if ((geometry == "ttauri")) rotateView = .true.
 
+  if ((geometry == "toruslogo")) then
+     rotateView = .true.
+     rotateDirection = 1.
+  endif
   if ((geometry == "luc_cir3d")) rotateView = .true.
 
   if ((geometry == "cmfgen")) rotateView = .true.
@@ -1276,13 +1280,13 @@
            endif
         end select
    
-        call writeInfo("Unrefining optically thin cells...", TRIVIAL)
-        gridconverged = .false.
-        do while(.not.gridconverged)
-           gridconverged = .true.
-           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
-        end do
-        call writeInfo("Done.", TRIVIAL)
+!        call writeInfo("Unrefining optically thin cells...", TRIVIAL)
+!        gridconverged = .false.
+!        do while(.not.gridconverged)
+!           gridconverged = .true.
+!           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
+!        end do
+!        call writeInfo("Done.", TRIVIAL)
 
 !        call writeInfo("Unrefining optically thick cells...", TRIVIAL)
 !        gridconverged = .false.
@@ -1474,7 +1478,7 @@
                       tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
                       lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                       .false., nUpper, nLower, 0., 0., 0., junk,&
-                      sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
+                      sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition, nSource, source)              
                  if (writeoutput) write(*,*) " ----  Vertical optical depth at r = 0.1 AU is ", tauExt(ntau)
                  if (writeoutput) write(*,*) " ----                           at lambda =  ", lambdatau
 !                 write(*,*) "Rescaling scattering and absorption coefficients ... "
@@ -2085,6 +2089,17 @@
        source(1)%teff = teff
        source(1)%position = VECTOR(0.,0.,0.)
        call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
+       call normalizedSpectrum(source(1)%spectrum)
+       rstar = source(1)%radius
+
+    case("toruslogo")
+       nSource = 1
+       allocate(source(1:1))
+       source(1)%luminosity = lsol
+       source(1)%radius = rSol / 1.e10
+       source(1)%teff = 6000.
+       source(1)%position = VECTOR(0.,0.,0.)
+       call fillSpectrumBB(source(1)%spectrum, dble(6000),  dble(lamStart), dble(lamEnd),nLambda)
        call normalizedSpectrum(source(1)%spectrum)
        rstar = source(1)%radius
 
@@ -2847,7 +2862,8 @@
      call test_optical_depth(gridUsesAMR, VoigtProf, &
           amrGridCentre, sphericityTest,  &
           outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &
-          thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, maxTau)
+          thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, &
+          maxTau, nSource, source)
 
 !$MPI     ! Synchronizing everybody here.
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -3538,7 +3554,7 @@
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                          .false., nUpper, nLower, 0., 0., 0., junk,&
                          sampleFreq,intPathError, &
-                         useInterp, grid%Rstar1, coolStarPosition)
+                         useInterp, grid%Rstar1, coolStarPosition, nSource, source)
               if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
                  goto 999 ; endif
               if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
@@ -3571,7 +3587,7 @@
                          nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,&
                          .false., nUpper, nLower, 0., 0., 0., junk,&
                          sampleFreq,intPathError, &
-                         useInterp, grid%Rstar1, coolStarPosition)
+                         useInterp, grid%Rstar1, coolStarPosition, nSource, source)
 
                if (intPathError == -10) then
                     tooFewSamples = tooFewSamples + 1  
@@ -3781,7 +3797,7 @@
               nLambda, contTau, hitCore, thinLine, lineResAbs, .false.,  &
               .false., nUpper, nLower, 0., 0., 0., &
               junk,sampleFreq,intPathError, &
-              useInterp, grid%Rstar1, coolStarPosition)
+              useInterp, grid%Rstar1, coolStarPosition, nSource, source)
 
               if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
                  goto 999 ; endif
@@ -3962,7 +3978,7 @@
                             escProb, obsPhoton%contPhoton, lamStart, lamEnd, nLambda, contTau, hitCore, &
                             thinLine, lineResAbs, .false., .false., nUpper, nLower, 0., 0., 0.,&
                             junk, sampleFreq,intPathError, &
-                            useinterp, grid%Rstar1, coolStarPosition)
+                            useinterp, grid%Rstar1, coolStarPosition, nSource, source)
 
                    if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
                       goto 999 ; endif
@@ -4001,7 +4017,7 @@
                       nLambda, contTau, hitCore, &
                       thinLine, lineResAbs, redRegion, &
                       .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
-                      useInterp, grid%Rstar1, coolStarPosition)                 
+                      useInterp, grid%Rstar1, coolStarPosition, nSource, source)                 
 
                  if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
                     goto 999 ; endif
@@ -4182,7 +4198,7 @@
                             nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
                             .false., nUpper, nLower, 0.,&
                             0., 0., junk,sampleFreq,intPathError, &
-                            useInterp, grid%Rstar1, coolStarPosition)
+                            useInterp, grid%Rstar1, coolStarPosition, nSource, source)
 
                  if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
                     goto 999 ; endif

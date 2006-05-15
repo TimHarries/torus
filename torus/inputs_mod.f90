@@ -311,16 +311,16 @@ subroutine inputs()
 !            "Raman-scattering model: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
-  if (geometry(1:5) .eq. "torus") then
-     call getReal("rtorus", rTorus, cLine, nLines, &
-          "Radius of torus (AU): ","(a,f5.1,a)", 0.7, ok, .true.)
-     call getReal("router", rOuter, cLine, nLines, &
-          "Radius of torus x-section (AU): ","(a,f5.1,a)", 0.1, ok, .true.)
-     call getReal("teff", teff, cLine, nLines, &
-          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-     rTorus = rTorus * auTocm
-     rOuter = rOuter * auTocm
-  endif
+!  if (geometry(1:5) .eq. "torus") then
+!     call getReal("rtorus", rTorus, cLine, nLines, &
+!          "Radius of torus (AU): ","(a,f5.1,a)", 0.7, ok, .true.)
+!     call getReal("router", rOuter, cLine, nLines, &
+!          "Radius of torus x-section (AU): ","(a,f5.1,a)", 0.1, ok, .true.)
+!     call getReal("teff", teff, cLine, nLines, &
+!          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+!     rTorus = rTorus * auTocm
+!     rOuter = rOuter * auTocm
+!  endif
 
   if (geometry == "rolf") then
      call getReal("mdot", mdot, cLine, nLines, &
