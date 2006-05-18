@@ -8696,7 +8696,7 @@ IF ( .NOT. gridConverged ) RETURN
           r = modulus(subcellCentre(thisoctal,subcell))
           call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa = kappaAbs)
              tau = thisOctal%subcellSize*kappaAbs*thisOctal%rho(subcell)*1.d10
-             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-15) * (1.d10*r/erOuter)**2
+             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-15) * (1.d10*r/erOuter)
        endif
     enddo
   end subroutine set_bias_whitney
@@ -11503,11 +11503,15 @@ IF ( .NOT. gridConverged ) RETURN
        sOctal => thisOctal
        call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
 
-
-       call takeSample(currentPosition,length,direction,grid,thisOctal,subcell,nSamples,&
-                        maxSamples,usePops,iLambda,error,lambda,kappaAbs,     &
-                        kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,  &
-                        temperature,Ne,inFlow) 
+       if (nSamples < maxSamples) then
+          call takeSample(currentPosition,length,direction,grid,thisOctal,subcell,nSamples,&
+               maxSamples,usePops,iLambda,error,lambda,kappaAbs,     &
+               kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,  &
+               temperature,Ne,inFlow) 
+       else
+          call writeWarning("Reached maxSamples limit in ray trace")
+          exit
+       endif
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
        length = length + distToNextCell+fudgeFac*grid%halfSmallestSubcell

@@ -181,29 +181,31 @@ ifeq ($(SYSTEM), alpha)
    KNOWN_SYSTEM=yes
 endif
 
+
 ifeq ($(SYSTEM), lamosx)
-   TOP=/usr/local
-   TOP2=/usr/local
-   F95COMP=${TOP}/bin/mpif77
-   F77COMP=${TOP2}/bin/mpif77
-   FASTFLAG=-O3 -I${TOP}/include  -dcfuns  -w 
-   DEBUGFLAG=-g -I${TOP}/include  -dcfuns 
-   STATICFLAG=
-#   MATHTRAP=-ieee=stop
-   MATHTRAP=
-   UNIXMOD=unix_mod.f90.linuxintel
-   KINDMOD=kind_mod.f90.linuxintel
-   EXE=torus.lamosx
-   F77FLAG=-fno-second-underscore -w
-   IMAGEF77=image_f77.f.default
-   SPECF77=spec_f77.f.default
-   F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm -L/usr/lib -lSystemStubs
-   STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link` 
-   PGLIBS=-L/star/lib `pgplot_link`
-   MK_MPI_SRC=yes
-   KNOWN_SYSTEM=yes
+   RKHOME=/private/Network/Servers/cytosine.ex.ac.uk/physics309/Guanine/rk225
+   TOP=${RKHOME}/mpi_g95
+   TOP2=${RKHOME}/mpi_g95
+    F95COMP= ${TOP2}/bin/mpif77 
+    F77COMP= ${TOP2}/bin/mpif77 
+    FASTFLAG= -O0
+    DEBUGFLAG=-g  
+    LDFLAG= 
+    MATHTRAP=
+    UNIXMOD=unix_mod.f90.linuxintel
+    KINDMOD=kind_mod.f90.linuxintel
+    EXE=torus.lamosx
+    F77FLAG= -w -fno-second-underscore
+    IMAGEF77=image_f77.f.miracle
+    SPECF77=spec_f77.f.miracle
+#    STARLIBS=-L${RKHOME}/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    STARLIBS=-L${RKHOME}/pgplot -lpgplot -L/usr/X11R6/lib -lX11 
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM=yes
 endif
+
+
+
 
 ifeq ($(SYSTEM), mpilam)
    TOP=/h/rk/mpi_nag
