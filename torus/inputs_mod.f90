@@ -1662,6 +1662,9 @@ endif
  call getReal("taudiff", tauDiff, cLine, nLines, &
   "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
 
+ call getLogical("resetdiffusion", resetDiffusion, cLine, nLines, &
+  "Reset diffusion zones to false if thin: ","(a,1l,a)",.true., ok, .false.)
+
  call getReal("edenstol", eDensTol, cLine, nLines, &
   "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.05, ok, .false.)
 

@@ -738,7 +738,7 @@ end subroutine gaussSeidelSweep
   end subroutine defineDiffusionOnUndersampled
 
   recursive subroutine defineDiffusionOnRosseland(grid, thisOctal, nDiff)
-    use input_variables, only : tauDiff 
+    use input_variables, only : tauDiff, resetDiffusion
     type(GRIDTYPE) :: grid
     integer, optional :: nDiff
     type(octal), pointer   :: thisOctal
@@ -763,7 +763,7 @@ end subroutine gaussSeidelSweep
              thisOctal%diffusionApprox(subcell) = .true.
              if (PRESENT(ndiff))  nDiff = nDiff + 1
           else
-             thisOctal%diffusionApprox(subcell) = .false.
+             if (resetDiffusion) thisOctal%diffusionApprox(subcell) = .false.
           endif
        end if
     end do

@@ -1364,6 +1364,16 @@
                 "rho_zoom.ps/vcps",.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
 
+           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+                "for_jenny.ps/vcps",.true., .false.,&
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, &
+           fixValMin = 1.d-14, fixValMax=1.d-11)
+
+           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+                "for_jenny2.ps/vcps",.true., .false.,&
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, &
+           fixValMin = 1.d-18, fixValMax=1.d-15)
+
 !           call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
 !                nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
            if (grid%lineEmission) then

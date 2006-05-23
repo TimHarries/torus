@@ -4182,15 +4182,14 @@ IF ( .NOT. gridConverged ) RETURN
        r = sqrt(cellcentre%x**2 + cellcentre%y**2)
        if ((r > drInner*0.9).and.(r < drOuter)) then
           hr = 0.01 * rStellar * (r / rStellar)**1.25
-          if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 2.)) split = .true.
-          if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+          if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 1.)) split = .true.
+          if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 1.)) split = .true.
        endif
        dr = tan(cavAngle/2.) * abs(cellCentre%z)
        if ( ((abs(cellCentre%x) - cellsize/2.) < dr).and.(cellSize > dr/4.) .and.(abs(cellCentre%z)>erInner)) then
           split = .true.
        endif
 
-       
 
     case("ttauri","jets","spiralwind")
       nsample = 40

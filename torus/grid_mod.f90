@@ -6157,13 +6157,14 @@ contains
   !
   subroutine plot_AMR_values(grid, name, plane, value_3rd_dim,  device, logscale, withgrid, &
        nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac, ilam, xStart, &
-       xEnd, yStart, yEnd)
+       xEnd, yStart, yEnd, fixValMin,fixValMax)
     implicit none
     type(gridtype), intent(in) :: grid
     character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
     !                                       ! "etaCont", "Vx", "Vy" or "Vz"
     character(len=*), intent(in)  :: plane  ! must be 'x-y', 'y-z', 'z-x' or' x-z'
     character(len=10) :: thisPlane
+    real(double) , optional :: fixValMin, fixValMax
     ! The value of the third dimension.
     ! For example, if plane = "x-y", the third dimension is the value of z.
     ! Then, when  valuel_3rd_dim = 0.0, this will plot the density (and the grid)
@@ -6189,13 +6190,13 @@ contains
     !integer :: thisSubcell, oldSubcell
     real :: d
     real :: xc, yc , zc
+    real(double) :: valuemax, valuemin
     
     ! For plotting density
     integer :: pgbeg
     integer :: n, ncol, nlev
     parameter (n=1500, ncol=32, nlev=10)
     integer :: ci1,ci2, ilo, ihi 
-    real(double) :: valuemax, valuemin
         
     real :: box_size, fac
     character(LEN=30) :: char_val
@@ -6271,6 +6272,8 @@ contains
     valueMax = -1.d30
     call minMaxValue(grid%octreeRoot, name, plane, ValueMin, ValueMax, grid, ilam)
         
+    if (PRESENT(fixValMax)) valueMax = fixValMax
+    if (PRESENT(fixValMin)) valueMin = fixValMin
 
 
     if (logscale) then
@@ -6667,6 +6670,7 @@ contains
              end if
              
              if (t < 0.) t = 0.
+             if (t > 1.) t = 1.
              idx = int(t * real(ihi - ilo) + real(ilo))
 
              if (.not.thisOctal%inFlow(subcell)) idx = ilo
