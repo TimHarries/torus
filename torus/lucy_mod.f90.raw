@@ -138,7 +138,7 @@ contains
 
                 else
                    nAbs = nAbs + 1
-                   probDistJnu(1) = 0.
+                   probDistJnu(1) = 0.d0
                    do i = 2, nFreq
                       thisLam = (cSpeed / freq(i)) * 1.e8
                       call hunt(lamArray, nLambda, real(thisLam), iLam)
@@ -818,7 +818,7 @@ contains
                       cycle photonLoop
                    endif
 
-                   probDistJnu(1) = 0.
+                   probDistJnu(1) = 0.d0
                    do i = 2, nFreq
                       thisLam = (cSpeed / freq(i)) * 1.e8
                       call hunt(lamArray, nLambda, real(thisLam), iLam)
@@ -839,7 +839,7 @@ contains
                               bnu(freq(i),t1) * dble(kabsArray(ilam)) * dnu(i)
                       endif
                    enddo
-                   if (probDistJnu(nFreq) /= 0.) then
+                   if (probDistJnu(nFreq) /= 0.d0) then
                       probDistJnu(1:nFreq) = probDistJnu(1:nFreq) / probDistJnu(nFreq)
                       call random_number(r)
                       call locate(probDistJnu, nFreq, r, j)

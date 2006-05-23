@@ -743,20 +743,21 @@ contains
     use input_variables
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
-    real :: r, mu, mu_0, muCavity, rhoEnv, r_c
+    real :: r, mu, mu_0, muCavity, rhoEnv, r_c, rhoCavity
     real :: h, rhoDisc, alpha
-    real(double) :: fac, dtheta, theta0
+    real(double) :: fac, dtheta, theta0, theta
 
     muCavity = cos(cavAngle/2.)
 
     r = modulus(point)*1.e10
 
-    mu = (point%z*1.e10) /r
+    mu = (abs(point%z)*1.e10) /r
 
     r_c = erInner
     alpha = 2.25
     beta = 1.25
 
+    rhoCavity = 2.* cavDens * mHydrogen
     rhoEnv = 2.*cavdens * mHydrogen
     if ((r > erInner).and.(r < erOuter)) then
        mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
@@ -773,18 +774,6 @@ contains
        rhoEnv = max(rhoEnv, tiny(rhoEnv))
     endif
 
-    theta0=acos(mu_0)
-    
-
-    if (theta0 < cavAngle/2.d0) then
-       dtheta = abs(theta0-cavAngle/2.d0)
-       fac =  1.d0-min(dTheta/(0.008d0),1.d0)
-       fac = exp(-fac*10.d0)
-       rhoEnv = rhoEnv * fac
-      rhoEnv = 2. * cavdens * mHydrogen
-    endif
-
-
     
     rho0  = mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*rStellar * rStellar**(alpha-beta) * ( &
          (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) )
@@ -800,7 +789,12 @@ contains
        rhoDisc = max(rhoDisc, tiny(rhoDisc))
     endif
 
-
+    theta = acos(mu)
+    if (theta < cavAngle/2.d0)  then
+       rhoEnv = rhoCavity
+       write(*,*) "cavity density",rhoenv
+    endif
+    
     whitneyDensity = max(rhoEnv, rhoDisc)
   end function whitneyDensity
     
