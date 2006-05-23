@@ -1745,7 +1745,7 @@ if (geometry == "whitney") then
    call getReal("cavdens", cavdens, cLine, nLines, &
        "Cavity density (nh2/cm^3): ","(a,f5.1,a)", 10., ok, .true.)
 
-   cavDens = cavDens * mHydrogen
+   cavDens = 2. * cavDens * mHydrogen
 
    call getReal("cavangle", cavangle, cLine, nLines, &
        "Cavity opening angle (deg): ","(a,f5.1,a)", 10., ok, .true.)

@@ -757,8 +757,8 @@ contains
     alpha = 2.25
     beta = 1.25
 
-    rhoCavity = 2.* cavDens * mHydrogen
-    rhoEnv = 2.*cavdens * mHydrogen
+    rhoCavity = cavDens
+    rhoEnv = cavdens
     if ((r > erInner).and.(r < erOuter)) then
        mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
  ! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
@@ -780,7 +780,7 @@ contains
 
     r = sqrt(point%x**2 + point%y**2)*1.e10
     h = 0.01 * rStellar * (r/rStellar)**beta
-    rhoDisc = cavDens * 2. * mHydrogen
+    rhoDisc = cavDens
     if ((r > drInner).and.(r < drOuter)) then
        rhoDisc = rho0 * (rStellar/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2)
        fac =  1.d0-min(dble(r - drInner)/(0.02d0*drinner),1.d0)
@@ -791,8 +791,7 @@ contains
 
     theta = acos(mu)
     if (theta < cavAngle/2.d0)  then
-       rhoEnv = rhoCavity
-       write(*,*) "cavity density",rhoenv
+       rhoEnv = cavdens
     endif
     
     whitneyDensity = max(rhoEnv, rhoDisc)
