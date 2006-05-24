@@ -13,6 +13,9 @@ contains
 
   subroutine getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg)
 
+  ! gr1_dl - graphite orth  .25
+  ! gr2_dl - graphite para  .125
+
       integer, parameter :: npLnk = 98
       real(single) :: n_sil_ow(npLnk),k_sil_ow(npLnk),n_sil_oc(npLnk), &
              k_sil_oc(npLnk), n_sil_dl(npLnk), k_sil_dl(npLnk),             &
