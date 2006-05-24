@@ -837,6 +837,7 @@ contains
 !                         endif
                          probDistJnu(i) = probDistJnu(i-1) + &
                               bnu(freq(i),t1) * dble(kabsArray(ilam)) * dnu(i)
+                         probDistJnu(i) = max(probDistJnu(i),1.d-50)
                       endif
                    enddo
                    if (probDistJnu(nFreq) /= 0.d0) then
