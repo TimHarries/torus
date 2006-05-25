@@ -8605,6 +8605,7 @@ IF ( .NOT. gridConverged ) RETURN
              call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa = kappaAbs)
              tau = thisOctal%subcellSize*(kappaAbs + kappaSca)*thisOctal%rho(subcell)*1.d10
              thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-7)
+             if (writeoutput) write(*,*) thisOctal%biascont3d(subcell)
           endif
        endif
 
