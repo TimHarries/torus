@@ -20,7 +20,8 @@ module utils_mod
 
   interface locate
      module procedure locate_single
-     module procedure locate_octal
+!     module procedure locate_octal
+     module procedure locate_double
   end interface
 
   interface hunt
@@ -3086,17 +3087,17 @@ function returnAbundance(z) result(a)
      case(1)
         a = 1.
      case(2)
-        a = 1.e-10 ! 0.1
+        a =  0.1
      case(6)
-        a =  1.e-10 !22.e-5
+        a = 22.e-5
      case(7)
-        a = 1.e-10 !4.e-5
+        a = 4.e-5
      case(8)
-        a = 1.e-4 !33.e-5
+        a = 33.e-5
      case(10)
-        a = 1.e-10 !5.e-5
+        a = 5.e-5
      case(16)
-        a = 1.e-10 !0.9e-5
+        a = 0.9e-5
      case DEFAULT
         write(*,*) "No abundance set for z=",z
         a = tiny(a)

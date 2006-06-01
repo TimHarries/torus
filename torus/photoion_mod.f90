@@ -76,7 +76,7 @@ contains
     type(RECOMBTABLE) :: Hrecombtable
     type(GAMMATABLE) :: HIgammaTable
 
-    real(double) :: hRecombemissivity, lymanContemissivity
+    real(double) :: hRecombemissivity, hlymanContemissivity, helymanContEmissivity
     real(double) :: hiContEmissivity, forbiddenEmissivity
     real(double) :: probNonIonizing
 
@@ -137,30 +137,32 @@ contains
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
                      lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
 
-!                do i = 1, 10
-!                   thisOctal%temperature(subcell) = 8000.d0 + 4000.d0*real(i-1)/9.
-                call calcEmissivities(grid, thisOctal, subcell, hTable, higammatable, hRecombTable, &
-                     hRecombemissivity, lymanContemissivity, hiContEmissivity, forbiddenEmissivity)
-                hRecombemissivity = hRecombemissivity / fourpi
-                hiContEmissivity = hiContemissivity / fourPi
+                call calcEmissivities(grid, thisOctal, subcell, hTable, heTable, higammatable, hRecombTable, &
+                     hRecombemissivity, hlymanContemissivity, helymancontemissivity, hiContEmissivity, forbiddenEmissivity)
+
 
                 probNonIonizing = (hRecombEmissivity + hiContEmissivity + forbiddenEmissivity)  / &
-                     (hRecombEmissivity + hiContEmissivity + lymanContEmissivity + forbiddenEmissivity)
+                 (hRecombEmissivity + hiContEmissivity + hlymanContEmissivity + heLymanContEmissivity + forbiddenEmissivity)
 
-!                write(*,'(f7.1,1p,5e12.3,0p)') thisOctal%temperature(subcell), hRecombEmissivity,lymancontemissivity,&
+                probNonIonizing = 0.5
+
+!                write(*,'(f7.1,1p,6e12.3,0p)') thisOctal%temperature(subcell), hRecombEmissivity,hlymancontemissivity,&
+!                helymancontemissivity,&
 !                     hicontemissivity,forbiddenemissivity,probNonIonizing
-!                enddo
-!                stop
 
 
                 call random_number(r)
                 if (r < probNonIonizing) then
+                   rVec = randomUnitVector()
                    escaped = .true.
                 else
-                   call getSahaMilneFreq(htable,dble(thisOctal%temperature(subcell)), thisFreq)
-!                   thisfreq = (13.6/ergtoev)/hcgs
-!                   write(*,*) hRecombemissivity,lymancontEmissivity, hicontemissivity,probNonionizing
-!                   write(*,*) "forbidden",forbiddenEmissivity
+                   call random_number(r)
+                   if (r < hLymanContEmissivity/(hLymanContEmissivity+heLymanContEmissivity)) then
+                      call getSahaMilneFreq(htable,dble(thisOctal%temperature(subcell)), thisFreq)
+                   else
+                      call getSahaMilneFreq(hetable,dble(thisOctal%temperature(subcell)), thisFreq)
+                   endif
+                   rVec = randomUnitVector()
                 endif
              endif
           enddo
@@ -1759,7 +1761,7 @@ subroutine dumpLexington(grid, epsoverdt)
   open(22,file="ne.dat",form="formatted",status="unknown")
 
   do i = 1, 50
-     r = (1.+3.d0*dble(i-1)/49.d0)*pctocm/1.e10
+     r = (1.+4.d0*dble(i-1)/49.d0)*pctocm/1.e10
 
      t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0;ne=0.
 
@@ -2268,9 +2270,9 @@ subroutine createSahaMilneTables(hTable, heTable)
      heTable%Clyc(i,1:heTable%nFreq) = heTable%Clyc(i,1:heTable%nFreq) / heTable%Clyc(i,heTable%nFreq)
   end do
 
-  do j = 1, nFreq
-     write(99  ,*) htable%freq(j),htable%clyc(50,j)
-  enddo
+!  do j = 1, nFreq
+!     write(99  ,*) htable%freq(j),htable%clyc(50,j)
+!  enddo
 
 
 end subroutine createSahaMilneTables
@@ -2390,16 +2392,18 @@ subroutine createRecombTable(table, tablefilename)
 end subroutine createRecombTable
 
 
-subroutine calcEmissivities(grid, thisOctal, subcell, hTable, hiGammatable, hRecombTable, &
-     hRecombemissivity, lymanContemissivity, HIcontEmissivity, forbiddenEmissivity)
+subroutine calcEmissivities(grid, thisOctal, subcell, hTable, heTable, hiGammatable, hRecombTable, &
+     hRecombemissivity, hlymanContemissivity, helymanContemissivity, HIcontEmissivity, forbiddenEmissivity)
   type(GRIDTYPE) :: grid
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(SAHAMILNETABLE) :: hTable
+  type(SAHAMILNETABLE) :: heTable
   type(RECOMBTABLE) :: hRecombTable
   type(GAMMATABLE) :: hiGammaTable
   integer :: i, j
-  real(double) :: hRecombEmissivity, lymanContemissivity, fac, t, u
+  real(double) :: hRecombEmissivity, hlymanContemissivity, fac, t, u
+  real(double) :: helymanContEmissivity
   real(double) :: hiContemissivity, forbiddenEmissivity
 
   call locate(hRecombTable%temp, hRecombTable%nTemp, dble(thisOctal%temperature(subcell)), i)
@@ -2426,15 +2430,24 @@ subroutine calcEmissivities(grid, thisOctal, subcell, hTable, hiGammatable, hRec
   fac = (thisOctal%temperature(subcell) - hTable%temp(i)) &
        / (hTable%temp(i+1) - hTable%temp(i))
 
-  lymanContEmissivity = log10(hTable%emissivity(i)) + fac*(log10(hTable%emissivity(i+1)/htable%emissivity(i)))
-  lymanContEmissivity = 10.d0**lymanContEmissivity
-  lymanContEmissivity = lymanContEmissivity &
+  hlymanContEmissivity = log10(hTable%emissivity(i)) + fac*(log10(hTable%emissivity(i+1)/htable%emissivity(i)))
+  hlymanContEmissivity = 10.d0**hlymanContEmissivity
+  hlymanContEmissivity = hlymanContEmissivity &
        * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(1)%abundance)
+
+  call locate(hetable%temp, hetable%nTemp, dble(thisOctal%temperature(subcell)), i)
+  fac = (thisOctal%temperature(subcell) - heTable%temp(i)) &
+       / (heTable%temp(i+1) - heTable%temp(i))
+
+  helymanContEmissivity = log10(heTable%emissivity(i)) + fac*(log10(heTable%emissivity(i+1)/hetable%emissivity(i)))
+  helymanContEmissivity = 10.d0**helymanContEmissivity
+  helymanContEmissivity = helymanContEmissivity &
+       * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(3)%abundance)
+
 
   call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, thisOctal%nh(subcell),thisOctal%ne(subcell), &
   thisOctal%temperature(subcell), forbiddenEmissivity)
   
-  forbiddenEmissivity = forbiddenEmissivity/fourPi
 
 end subroutine calcEmissivities
 
@@ -2449,6 +2462,8 @@ function getGamma(table, temp) result (gamma)
 end function getGamma
   
 subroutine createHIgammaTable(table)
+
+! Ferland 1980 PASP 92 596
 
   type(GAMMATABLE) :: table
   real(double) :: coeff1(11,6), coeff2(11,6)
@@ -2505,6 +2520,48 @@ subroutine createHIgammaTable(table)
   enddo
 end subroutine createHIgammaTable
 
+subroutine createEmissivitySpectrum(nFreq, freq, spectrum, thisOctal, subcell, grid)
+  type(GRIDTYPE) :: grid
+  TYPE(OCTAL) :: thisOctal
+  integer :: subcell
+  integer :: nFreq
+  integer :: i
+  real(double) :: freq(:), spectrum(:)
+  real(double) :: nu0_h, nu0_he, jnu, dfreq
+  real :: e, hxsec, hexsec
+
+  ! do Saha-Milne continua for H/He
+  ! should have heavier ions here too
+
+  nu0_h = 13.6d0/ergtoev/hcgs
+  nu0_he = 24.59d0/ergtoev/hcgs
+
+
+  do i = 2, nFreq
+
+
+     dFreq = freq(i) - freq(i-1)
+     
+     e = freq(i) * hcgs* ergtoev
+     call phfit2(1, 1, 1 , e , hxsec)
+     
+     jnu = ((hcgs*freq(i)**3)/(cSpeed**2)) * &
+          ((hcgs**2) /(twoPi*mElectron*Kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
+          dble(hxsec/1.d10) *  exp(-hcgs*(freq(i)-nu0_h)/(kerg*thisOctal%temperature(subcell)))
+     jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(1)%abundance)
+     spectrum(i) = spectrum(i) + jnu * dFreq
+     
+     call phfit2(2, 2, 1 , e , hexsec)
+     
+     jnu = 2.d0*((hcgs*freq(i)**3)/(cSpeed**2)) * &
+          ((hCgs**2) / (twoPi*mElectron*kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
+          dble(hexsec/1.d10) * exp(-hcgs*(freq(i)-nu0_he)/(kerg*thisOctal%temperature(subcell)))
+     jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance)
+     spectrum(i) = spectrum(i) + jnu * dFreq
+     
+  enddo
+
+end subroutine createEmissivitySpectrum
      
 end module
 

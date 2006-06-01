@@ -4271,7 +4271,7 @@ IF ( .NOT. gridConverged ) RETURN
       else
          split = .false.
       endif
-      if (modulus(subcellCentre(thisoctal,subcell)) < 2.*grid%rinner) then
+      if (modulus(subcellCentre(thisoctal,subcell)) < 6.*grid%rinner) then
          if (thisOctal%nDepth < 7) split = .true.
       endif
       
@@ -6243,6 +6243,9 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%nhi(subcell) = 1.e-8
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     thisOctal%inFlow(subcell) = .false.
+    allocate(thisOctal%ionFrac(1:thisOctal%maxChildren, 1:grid%nIon))
+    allocate(thisOctal%photoionCoeff(1:thisOctal%maxChildren, 1:grid%nIon))
+
     thisOctal%ionFrac(subcell,:) = 1.e-10
 
     if (r > grid%rinner) then
@@ -8600,12 +8603,11 @@ IF ( .NOT. gridConverged ) RETURN
           if (.not.ross) then
              call returnKappa(grid, thisOctal, subcell, ilam, kappaAbs=kappaAbs, kappaSca=kappaSca)
              tau = thisOctal%subcellSize*(kappaAbs + kappaSca)
-             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-7)
+             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-4)
           else
              call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa = kappaAbs)
              tau = thisOctal%subcellSize*(kappaAbs + kappaSca)*thisOctal%rho(subcell)*1.d10
-             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-7)
-             if (writeoutput) write(*,*) thisOctal%biascont3d(subcell)
+             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-4)
           endif
        endif
 
@@ -9670,7 +9672,7 @@ IF ( .NOT. gridConverged ) RETURN
             e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
          else
             e = (hCgs * (cSpeed / (grid%lamArray(iLambda) * 1.e-8))) * ergtoev
-            write(*,*) "! using rough grid"
+!            write(*,*) "! using rough grid"
          endif
          call phfit2(1, 1, 1 , e , h0)
          call phfit2(2, 2, 1 , e , he0)

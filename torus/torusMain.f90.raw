@@ -69,6 +69,7 @@
   use diffusion_mod
   use messages_mod
   use photoion_mod
+  use molecular_mod
 
 !$mpi   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
@@ -407,6 +408,10 @@
   real :: totFrac
   integer :: nFrac
 
+! molecular line stuff
+  type(MOLECULETYPE) :: thisMolecule
+
+
 ! gas opacity stuff
 
 
@@ -537,6 +542,8 @@
   outputinfo = .true.
 
 !$MPI  if (my_rank/=0) writeoutput = .false.
+
+  
 
 
   ! get the model parameters
@@ -1066,6 +1073,11 @@
      write(message,*) "Test wavelength index: ",itestlam,ismoothlam
      call writeInfo(message, TRIVIAL)
   end if
+
+
+  if (photoionization) then
+        call addIons(grid%ion, grid%nion)
+     endif
 
   !===============================================================
   if (gridUsesAMR) then  !========================================
@@ -2134,10 +2146,10 @@
     case("lexington")
        nSource = 1
        allocate(source(1:nSource)) 
-       source(1)%teff = 20000.  ! o star
-       source(1)%radius = 104.2 * rSol / 1.e10
+       source(1)%teff = 40000.  ! o star
+       source(1)%radius = 18.67 * rSol / 1.e10
        source(1)%position = VECTOR(0.,0.,0.)
-       source(1)%luminosity = fourPi * stefanBoltz * (104.2*rSol)**2.0 * (source(1)%teff)**4
+       source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
        write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff),  25.d0, 100.d4,10000)
        call normalizedSpectrum(source(1)%spectrum)
@@ -2281,7 +2293,7 @@
 
      if (photoIonization) then
 
-        call addIons(grid%ion, grid%nion)
+!        call addIons(grid%ion, grid%nion)
 
 
         call photoIonizationLoop(grid, source, nSource, nLambda, lamArray)

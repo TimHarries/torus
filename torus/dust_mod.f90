@@ -444,16 +444,16 @@ contains
          
 
       if (writeoutput) write(*,*) "Dust law: ",aMin,aMax,qDist
-      open(20,file="albedo.dat",form="formatted",status="unknown")
-      open(21,file="gfactor.dat",form="formatted",status="unknown")
+      if (writeoutput) open(20,file="albedo.dat",form="formatted",status="unknown")
+      if (writeoutput) open(21,file="gfactor.dat",form="formatted",status="unknown")
       do i = 1, grid%nLambda
          call mieDistCrossSection(aMin, aMax, a0, qDist, pdist, grid%lamArray(i),  mReal(i), mImg(i), sigmaExt(i), &
               sigmaSca(i), sigmaAbs(i), gSca)
-         write(21,*) grid%lamArray(i), gsca
-         write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
+         if (writeoutput) write(21,*) grid%lamArray(i), gsca
+         if (writeoutput) write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
       enddo
-      close(20)
-      close(21)
+      if (writeoutput) close(20)
+      if (writeoutput) close(21)
 
       if (.not.grid%oneKappa) then
          if (grid%adaptive) then
@@ -510,16 +510,17 @@ contains
          grid%oneKappaSca(thisDust,1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
 
          write(albedoFilename,'(a,i2.2,a)') "albedo",thisDust,".dat"
-         open(20,file=albedoFilename,form="formatted",status="unknown")
+         if (writeoutput) open(20,file=albedoFilename,form="formatted",status="unknown")
          do i = 1, grid%nLambda
             rayleigh = (8.*pi**2)/(grid%lamArray(i)*angstromtocm)* &
                  aimag((cmplx(mreal(i),mimg(i))**2-cmplx(1.,0.))/(cmplx(mreal(i),mimg(i))**2+cmplx(2.,0.)))*(amin*microntocm)**3
             rayleigh = rayleigh / meanParticleMass
-            write(20,*) grid%lamArray(i),(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))/1.e10, &
+            if (writeoutput) &
+                 write(20,*) grid%lamArray(i),(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))/1.e10, &
                  grid%oneKappaAbs(thisdust,i)/1.e10,grid%oneKappaSca(thisdust,i)/1.e10, &
                  grid%oneKappaSca(thisdust,i)/(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i)),rayleigh
          enddo
-         close(20)
+         if (writeoutput) close(20)
 
          
 
