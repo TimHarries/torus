@@ -106,7 +106,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 400000
+    nMonte = 100000
 
     nIter = 0
 
@@ -172,6 +172,7 @@ contains
                    call addHydrogenLymanContinuum(nFreq, freq, spectrum, thisOctal, subcell, grid)
                    call addHigherHydrogenContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid)
                    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+                   call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                    if (firsttime) then
                       firsttime = .false.
                       do i = 1, nfreq
@@ -836,7 +837,8 @@ contains
              r2 = rVec%x+thisOctal%subcellSize/2.d0
              v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
           endif
-          hbeta = (10.d0**(-0.870d0*log10(thisOctal%temperature(subcell))+3.57d0)) * thisOctal%ne(subcell) * thisOctal%ionFrac(subcell, 2) * &
+          hbeta = (10.d0**(-0.870d0*log10(thisOctal%temperature(subcell))+3.57d0)) * &
+               thisOctal%ne(subcell) * thisOctal%ionFrac(subcell, 2) * &
                thisOctal%nh(subcell)*grid%ion(1)%abundance*1.d-25
           luminosity = luminosity + hbeta * (v*1.d30)
        endif
@@ -2777,8 +2779,32 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
 end function getPhotonFreq
 
 
+subroutine addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+
+  integer :: nFreq
+  real(double) :: spectrum(:), freq(:)
+  type(OCTAL) :: thisOctal
+  integer :: subcell
+  type(GRIDTYPE) :: grid
+  integer :: iIon, iTrans, j
+  real :: pops(10)
+  real(double) :: rate, lineFreq
 
 
+  do iIon = 3, grid%nIon
+     do iTrans = 1, grid%ion(iIon)%nTransitions
+        call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell), &
+             thisOctal%ionFrac(subcell,iion),thisOctal%nh(subcell))
+        rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
+             grid%ion(iion)%transition(itrans)%a/ergtoev
+        rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
+        lineFreq  =  (grid%ion(iion)%transition(itrans)%energy / ergtoEV) / hCgs
+        call locate(freq, nFreq, lineFreq, j)
+        spectrum(j) = spectrum(j) + rate
+     enddo
+  enddo
+
+end subroutine addForbiddenLines
   
 
 
