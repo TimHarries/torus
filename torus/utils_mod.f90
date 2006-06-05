@@ -3087,7 +3087,9 @@ function returnAbundance(z) result(a)
      case(1)
         a = 1.
      case(2)
-        a =  0.1
+!        a =  0.1
+        write(*,*) "NO HELIUM!!!!!!!!!!!!!!"
+        a = 1.e-10
      case(6)
         a = 22.e-5
      case(7)

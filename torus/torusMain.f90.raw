@@ -69,7 +69,6 @@
   use diffusion_mod
   use messages_mod
   use photoion_mod
-  use molecular_mod
 
 !$mpi   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
@@ -409,7 +408,7 @@
   integer :: nFrac
 
 ! molecular line stuff
-  type(MOLECULETYPE) :: thisMolecule
+!  type(MOLECULETYPE) :: thisMolecule
 
 
 ! gas opacity stuff
@@ -2151,7 +2150,7 @@
        source(1)%position = VECTOR(0.,0.,0.)
        source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
        write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
-       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff),  25.d0, 100.d4,10000)
+       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff),  2.5d0, 100.d4,10000)
        call normalizedSpectrum(source(1)%spectrum)
 
 

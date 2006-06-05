@@ -184,7 +184,7 @@ CONTAINS
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
-    use input_variables, only : cylindrical
+    use input_variables, only : cylindrical, photoionization
 
     IMPLICIT NONE
     
@@ -270,6 +270,16 @@ CONTAINS
     grid%octreeRoot%diffusionApprox = .false.
     grid%octreeRoot%nDiffusion = 0.
     grid%octreeRoot%oldFrac = 1.e-5
+    if (photoionization) then
+       allocate(grid%octreeRoot%ionFrac(1:grid%octreeRoot%maxChildren, 1:grid%nIon))
+       allocate(grid%octreeRoot%photoionCoeff(1:grid%octreeRoot%maxChildren, 1:grid%nIon))
+    endif
+
+    if (associated(grid%octreeRoot%ionFrac)) grid%octreeRoot%ionFrac = 1.e-30
+    
+    if (associated(grid%octreeRoot%photoIonCoeff)) then
+       grid%octreeRoot%photoIonCoeff = 0.d0
+    endif
 
     select case (grid%geometry)
        case("cluster")
@@ -326,7 +336,7 @@ CONTAINS
                          stellar_cluster, inherit, interp, splitAzimuthally)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : nDustType, cylindrical
+    USE input_variables, ONLY : nDustType, cylindrical, photoionization
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
@@ -513,6 +523,17 @@ CONTAINS
     parent%child(newChildindex)%nDiffusion  = 0.
     parent%child(newChildindex)%oldFrac = 1.
     parent%child(newChildindex)%ncrossings = 10000
+    if (photoionization) then
+       allocate(parent%child(newChildIndex)%ionFrac(1:parent%maxChildren, 1:grid%nIon))
+       allocate(parent%child(newChildIndex)%photoionCoeff(1:parent%maxChildren, 1:grid%nIon))
+    endif
+
+    if (associated(parent%child(newChildindex)%ionFrac)) parent%child(newChildIndex)%ionFrac = 1.e-30
+    
+    if (associated(parent%child(newChildIndex)%photoIonCoeff)) then
+       parent%child(newChildIndex)%photoIonCoeff = 0.d0
+    endif
+       
 
     IF (PRESENT(sphData)) THEN
       ! updates the sph particle list.           
@@ -6214,19 +6235,23 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r
     TYPE(octalVector) :: rVec
-    integer, parameter :: it=171 ! or 177
+    integer,save :: it
     real :: fac
-    real,save :: radius(it),temp(it)
+    real,save :: radius(200),temp(200)
     integer :: i
     logical,save :: firsttime = .true.
 
     if (firsttime) then
        open(20,file="overview.txt", form="formatted",status="old")
-       do i = 1, it
-          read(20,*) radius(i),temp(i)
-          radius(i) = (radius(i)+30.e17) / 1.e10
-          temp(i) = 10.**temp(i) 
-       enddo
+       it = 1
+77     continue
+       read(20,*,end=88) radius(it),temp(it)
+       radius(it) = (radius(it)+30.e17) / 1.e10
+       temp(it) = 10.**temp(it) 
+       it = it + 1
+       goto 77
+88     continue
+       it = it - 1
        close(20)
        firsttime = .false.
     endif
@@ -6243,10 +6268,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%nhi(subcell) = 1.e-8
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     thisOctal%inFlow(subcell) = .false.
-    allocate(thisOctal%ionFrac(1:thisOctal%maxChildren, 1:grid%nIon))
-    allocate(thisOctal%photoionCoeff(1:thisOctal%maxChildren, 1:grid%nIon))
 
-    thisOctal%ionFrac(subcell,:) = 1.e-10
 
     if (r > grid%rinner) then
        thisOctal%inFlow(subcell) = .true.
@@ -6590,7 +6612,7 @@ IF ( .NOT. gridConverged ) RETURN
   
   SUBROUTINE addNewChildren(parent, grid, sphData, stellar_cluster, inherit, interp)
     ! adds all eight new children to an octal
-    use input_variables, only : nDustType, mie
+    use input_variables, only : nDustType, mie, photoionization
     IMPLICIT NONE
     
     TYPE(octal), POINTER :: parent     ! pointer to the parent octal 
@@ -6693,16 +6715,12 @@ IF ( .NOT. gridConverged ) RETURN
        parent%child(newChildIndex)%indexChild = -999 ! values are undefined
        parent%child(newChildIndex)%nDepth = parent%nDepth + 1
        parent%child(newChildIndex)%centre = subcellCentre(parent,newChildIndex)
-       if (associated(parent%child(newChildindex)%ionFrac)) parent%child(newChildIndex)%ionFrac = 1.e-30
        parent%child(newChildIndex)%probDistLine = 0.0
        parent%child(newChildIndex)%probDistCont = 0.0
        parent%child(newChildIndex)%biasLine3D = 1.0 
        parent%child(newChildIndex)%biasCont3D = 1.0 
        parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
        parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
-       if (associated(parent%child(newChildIndex)%photoIonCoeff)) then
-          parent%child(newChildIndex)%photoIonCoeff = 0.d0
-       endif
        parent%child(newChildIndex)%chiLine = 1.e-30
        parent%child(newChildIndex)%etaLine = 1.e-30
        parent%child(newChildIndex)%etaCont = 1.e-30
@@ -6720,6 +6738,16 @@ IF ( .NOT. gridConverged ) RETURN
        parent%child(newChildIndex)%diffusionApprox = .false.
        parent%child(newChildindex)%nDiffusion  = 0.
        parent%child(newChildindex)%oldFrac = 1.d-5
+       if (photoionization) then
+          allocate(parent%child(newChildIndex)%ionFrac(1:parent%maxChildren, 1:grid%nIon))
+          allocate(parent%child(newChildIndex)%photoionCoeff(1:parent%maxChildren, 1:grid%nIon))
+       endif
+
+       if (associated(parent%child(newChildindex)%ionFrac)) parent%child(newChildIndex)%ionFrac = 1.e-30
+
+       if (associated(parent%child(newChildIndex)%photoIonCoeff)) then
+          parent%child(newChildIndex)%photoIonCoeff = 0.d0
+       endif
 
        if (present(sphData)) then
           ! updates the sph particle list.           
@@ -9551,6 +9579,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
     if (PRESENT(kappaSca)) then
+       kappaSca = 0.
        if (.not.PRESENT(lambda)) then
           tlambda = grid%lamArray(iLambda)
        else
@@ -9574,6 +9603,7 @@ IF ( .NOT. gridConverged ) RETURN
     endif
 
     if (PRESENT(kappaAbs)) then
+       kappaAbs = 0.
        if (.not.PRESENT(lambda)) then
           tlambda = grid%lamArray(iLambda)
        else
@@ -9668,6 +9698,7 @@ IF ( .NOT. gridConverged ) RETURN
 
    if (photoionization) then
       if (PRESENT(kappaAbs)) then
+         kappaAbs = 0. !!!!!!!!!!!!!!!!!!!!!!! need to change when dust included!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          if (present(lambda)) then
             e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
          else
@@ -9678,10 +9709,10 @@ IF ( .NOT. gridConverged ) RETURN
          call phfit2(2, 2, 1 , e , he0)
          kappaH =  thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0
          kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0
-         kappaAbs =kappaH + kappaHe
+         kappaAbs = kappaH + kappaHe
       endif
       if (PRESENT(kappaSca)) then
-         kappaSca = 0.d0 !kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
+         kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
       endif
    endif
    
