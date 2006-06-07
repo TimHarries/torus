@@ -27,10 +27,20 @@ end type RECOMBTABLE
 
 
 type GAMMATABLE
-   integer :: ntemp
+   integer :: nGamma
+   integer :: nFreq
+   integer :: nTemp
+   real(double), pointer :: freq(:)
    real(double), pointer :: temp(:)
-   real(double), pointer :: gamma(:)
+   real(double), pointer :: gamma(:,:)
 end type GAMMATABLE
+
+
+
+  real :: heIRecombinationFit(32, 3, 3)
+  real :: heIRecombinationLambda(32)
+  real :: heIRecombinationNe(3)
+  real :: heIIrecombinationLines(3:30, 2:16)
 
 contains
 
@@ -80,24 +90,26 @@ contains
     real(double) :: hiContEmissivity, forbiddenEmissivity
     real(double) :: probNonIonizing, probHydrogen
     real(double) :: freq(1000), spectrum(1000), nuStart, nuEnd
-    integer :: nFreq
+    integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
     nuStart = cSpeed / (10.d4 * 1.d-8)
     nuEnd =  1.d16
 
-    nFreq = 1000
     do i = 1, nFreq
        freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
        freq(i) = 10.d0**freq(i)
     enddo
 
+    call createGammaTable(HIgammaTable, 'gammaHI.dat')
 
     call createSahaMilneTables(hTable, heTable)
 
     call createRecombTable(Hrecombtable, 'e1b.d')
 
-    call createHIGammaTable(HIgammaTable)
 
+    call readHeIRecombinationLinesFit()
+
+    call readHeIIrecombination()
 
     lCore = 0.d0
     do i = 1, nSource
@@ -106,7 +118,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 100000
+    nMonte = 200000
 
     nIter = 0
 
@@ -170,18 +182,21 @@ contains
                 else
                    spectrum = 1.d-30
                    call addHydrogenLymanContinuum(nFreq, freq, spectrum, thisOctal, subcell, grid)
-                   call addHigherHydrogenContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid)
+                   call addHigherHydrogenContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, hiGammaTable)
                    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                    if (firsttime) then
                       firsttime = .false.
+                      open(67,file="pdf.dat",status="unknown",form="formatted")
                       do i = 1, nfreq
                          write(67,*) freq(i), spectrum(i)
                       enddo
+                      close(67)
                    endif
 
                    thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
-                   uHat = randomUnitVector() ! isotropic scattering
+!                   write(*,*) 1.e8*cSpeed/thisFreq
+                   uHat = randomUnitVector() ! isotropic emission
                 endif
                 
 
@@ -211,7 +226,7 @@ contains
        do i = 1, 3
           write(*,*) "Calculating ionization and thermal equilibria",i
           call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-!          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
           write(*,*) "Done."
        enddo
 
@@ -348,7 +363,7 @@ contains
     thisLam = (cSpeed / thisFreq) * 1.e8
     call hunt(lamArray, nLambda, real(thisLam), iLam)
     if ((ilam < 1).or.(ilam > nlambda)) then
-       write(*,*) "ilam errro",ilam
+       write(*,*) "ilam errro",ilam,thisLam
     endif
 
 ! select an initial random tau and find distance to next cell
@@ -829,14 +844,7 @@ contains
              end if
           end do
        else
-          if (thisOctal%threed) then
-             v = thisOctal%subcellSize**3
-          else
-             rVec = subcellCentre(thisOctal,subcell)
-             r1 = rVec%x-thisOctal%subcellSize/2.d0
-             r2 = rVec%x+thisOctal%subcellSize/2.d0
-             v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
-          endif
+          v = cellVolume(thisOctal, subcell)
           hbeta = (10.d0**(-0.870d0*log10(thisOctal%temperature(subcell))+3.57d0)) * &
                thisOctal%ne(subcell) * thisOctal%ionFrac(subcell, 2) * &
                thisOctal%nh(subcell)*grid%ion(1)%abundance*1.d-25
@@ -935,7 +943,7 @@ contains
                          converged = .true.
                       endif
                    
-                      ! find root of heating and cooling by bisection
+                      ! Find root of heating and cooling by bisection
                       
                       do while(.not.converged)
                          tm = 0.5*(t1+t2)
@@ -1023,9 +1031,9 @@ contains
     becool = 0.
     coolingRate = 0.d0
 
-    gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3.d0)  ! Kenny equation 23
-
-    coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
+!    gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3.d0)  ! Kenny equation 23
+!
+!    coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
 
     thisLogT = log10(temperature)
     log10te = thisLogT
@@ -1042,6 +1050,8 @@ contains
     coolFF = Nhii*Ne*betaFF*kerg*TeUsed/sqrt(TeUsed)
 
     becool = becool + coolfF
+
+    coolingRate = coolingRate + coolFF
 
     ! collisional excitation of Hydrogen
     ! Mathis, Ly alpha, beta
@@ -1114,10 +1124,13 @@ contains
     endif
 
 
+    
+
     call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate)
     if (crate < 0.) then
        write(*,*) "total negative metal cooling",crate
     endif
+!    write(*,*) coolingRate,crate,coolingRate/(coolingrate+crate)
     coolingRate = coolingRate + crate
 
   end function HHeCooling
@@ -1179,15 +1192,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
   real(double) :: ionRateInto, recombRateOutof
   real(double), allocatable :: xplus1overx(:)
 
-  if (thisOctal%threed) then
-     v = thisOctal%subcellSize**3
-  else
-     rVec = subcellCentre(thisOctal,subcell)
-     r1 = rVec%x-thisOctal%subcellSize/2.d0
-     r2 = rVec%x+thisOctal%subcellSize/2.d0
-     v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
-  endif
-
+  v = cellVolume(thisOctal, subcell)
   k = 1
   do while(k <= grid%nIon)
 
@@ -1219,7 +1224,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
 
         
            xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
-      max(1.d-30,(recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination))
+      max(1.d-50,(recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination))
 !           if (grid%ion(iion)%species(1:1) =="O") write(*,*) i,xplus1overx(i)
         enddo
        thisOctal%ionFrac(subcell, iStart:iEnd) = 1.
@@ -1230,9 +1235,9 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
         enddo
         if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
            thisOctal%ionFrac(subcell,iStart:iEnd) = &
-                max(1.d-30,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
+                max(1.d-50,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
         else
-           thisOctal%ionFrac(subcell,iStart:iEnd) = 1.e-30
+           thisOctal%ionFrac(subcell,iStart:iEnd) = 1.e-50
         endif
            
 !        if (grid%ion(iion)%species(1:1) =="O") then
@@ -1825,15 +1830,9 @@ subroutine dumpLexington(grid, epsoverdt)
         ne = thisOctal%ne(subcell)
 
         cooling = cooling + HHeCooling(grid, thisOctal, subcell, nh, nHii, nHeii, ne, thisOctal%temperature(subcell))
-        if (thisOctal%threed) then
-           v = thisOctal%subcellSize**3
-        else
-           rVec = subcellCentre(thisOctal,subcell)
-           r1 = rVec%x-thisOctal%subcellSize/2.d0
-           r2 = rVec%x+thisOctal%subcellSize/2.d0
-           v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
-        endif
-        
+
+        v = cellVolume(thisOctal, subcell)
+
         HI = HI + thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
         HeI = HeI + thisOctal%ionfrac(subcell,returnIonNumber("He I", grid%ion, grid%nIon))
         OII = OII + thisOctal%ionfrac(subcell,returnIonNumber("O II", grid%ion, grid%nIon))
@@ -2075,13 +2074,8 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
           end do
        else
           rVec = subcellCentre(thisOctal,subcell)
-          if (thisOctal%threed) then
-             v = thisOctal%subcellSize**3
-          else
-             r1 = rVec%x-thisOctal%subcellSize/2.d0
-             r2 = rVec%x+thisOctal%subcellSize/2.d0
-             v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
-          endif
+          v = cellVolume(thisOctal, subcell)
+
           call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell), &
                thisOctal%ionFrac(subcell,iion),thisOctal%nh(subcell))
           rate =  pops(grid%ion(iion)%transition(iTrans)%j) * grid%ion(iion)%transition(itrans)%energy * &
@@ -2385,15 +2379,7 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, totalHeatin
   real(double) :: hHeating, heHeating, totalHeating, v, r1, r2, epsOverDeltaT
   type(OCTALVECTOR) :: rVec
 
-  if (thisOctal%threed) then
-     v = thisOctal%subcellSize**3
-  else
-     rVec = subcellCentre(thisOctal,subcell)
-     r1 = rVec%x-thisOctal%subcellSize/2.d0
-     r2 = rVec%x+thisOctal%subcellSize/2.d0
-     v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
-  endif
-                
+  v = cellVolume(thisOctal, subcell)
   Hheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance &
        * (epsOverDeltaT / (v * 1.d30))*thisOctal%Hheating(subcell) ! equation 21 of kenny's
   Heheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,3) * grid%ion(3)%abundance &
@@ -2436,146 +2422,64 @@ subroutine createRecombTable(table, tablefilename)
 end subroutine createRecombTable
 
 
-subroutine calcEmissivities(grid, thisOctal, subcell, hTable, heTable, hiGammatable, hRecombTable, &
-     hRecombemissivity, hlymanContemissivity, helymanContemissivity, HIcontEmissivity, forbiddenEmissivity)
-  type(GRIDTYPE) :: grid
-  type(OCTAL) :: thisOctal
-  integer :: subcell
-  type(SAHAMILNETABLE) :: hTable
-  type(SAHAMILNETABLE) :: heTable
-  type(RECOMBTABLE) :: hRecombTable
-  type(GAMMATABLE) :: hiGammaTable
-  integer :: i, j
-  real(double) :: hRecombEmissivity, hlymanContemissivity, fac, t, u
-  real(double) :: helymanContEmissivity
-  real(double) :: hiContemissivity, forbiddenEmissivity
-  real(double) :: lymanAlpha
-
-
-  call locate(hRecombTable%temp, hRecombTable%nTemp, dble(thisOctal%temperature(subcell)), i)
-  call locate(hRecombTable%rho, hRecombTable%nRho, thisOctal%ne(subcell), j)
-  t = (thisOctal%temperature(subcell) - hRecombTable%temp(i)) / &
-       (hRecombTable%temp(i+1) - hRecombTable%temp(i))
-  u = (thisOctal%ne(subcell) - hRecombTable%rho(i)) / &
-       (hRecombTable%rho(i+1) - hRecombTable%rho(i))
-  hRecombEmissivity = (1.d0-t) * (1.d0-u) * log10(hRecombTable%emissivity(i,j)) + &
-       (     t) * (1.d0-u) * log10(hRecombTable%emissivity(i+1,j)) + &
-       (1.d0-t) * (     u) * log10(hRecombTable%emissivity(i,j+1)) + &
-       (     t) * (     u) * log10(hRecombTable%emissivity(i+1,j+1)) 
-  hRecombEmissivity = 10.d0**hRecombemissivity
-
-
-
-  hRecombEmissivity = hRecombemissivity * thisOctal%ne(subcell) * &
-       (thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(1)%abundance)
-
-  LymanAlpha = 10.d0**(-0.897*log10(thisOctal%temperature(subcell)) + 5.05d0) * &
-    thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * &
-    grid%ion(1)%abundance) * 1.d-25
 
   
-  hRecombEmissivity = hRecombEmissivity + LymanAlpha
-
-  hIcontEmissivity = getGamma(HiGammaTable, dble(thisOctal%temperature(subcell))) * &
-    thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * &
-    grid%ion(1)%abundance)
-
-
-
-
-  call locate(htable%temp, htable%nTemp, dble(thisOctal%temperature(subcell)), i)
-  fac = (thisOctal%temperature(subcell) - hTable%temp(i)) &
-       / (hTable%temp(i+1) - hTable%temp(i))
-
-  hlymanContEmissivity = log10(hTable%emissivity(i)) + fac*(log10(hTable%emissivity(i+1)/htable%emissivity(i)))
-  hlymanContEmissivity = 10.d0**hlymanContEmissivity
-  hlymanContEmissivity = hlymanContEmissivity &
-       * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(1)%abundance)
-
-  call locate(hetable%temp, hetable%nTemp, dble(thisOctal%temperature(subcell)), i)
-  fac = (thisOctal%temperature(subcell) - heTable%temp(i)) &
-       / (heTable%temp(i+1) - heTable%temp(i))
-
-  helymanContEmissivity = log10(heTable%emissivity(i)) + fac*(log10(heTable%emissivity(i+1)/hetable%emissivity(i)))
-  helymanContEmissivity = 10.d0**helymanContEmissivity
-  helymanContEmissivity = helymanContEmissivity &
-       * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(3)%abundance)
-
-
-  call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, thisOctal%nh(subcell),thisOctal%ne(subcell), &
-  thisOctal%temperature(subcell), forbiddenEmissivity)
-  
-
-end subroutine calcEmissivities
-
-function getGamma(table, temp) result (gamma)
-  type(GAMMATABLE) :: table
-  real(double) :: temp, gamma, fac
-  integer :: i
-  call locate(table%temp, table%nTemp, temp, i)
-  fac = (temp - table%temp(i))/(table%temp(i+1)-table%temp(i))
-  gamma = log10(table%gamma(i)) + fac * log10(table%gamma(i+1)/table%gamma(i))
-  gamma = 10.d0**gamma
-end function getGamma
-  
-subroutine createHIgammaTable(table)
+subroutine createGammaTable(table, thisfilename)
 
 ! Ferland 1980 PASP 92 596
 
   type(GAMMATABLE) :: table
-  real(double) :: coeff1(11,6), coeff2(11,6)
-  real(double) :: temp(6) = (/ 500.d0, 1000.d0, 2500.d0, 5000.d0, 10000.d0, 20000.d0 /)
-  real(double) :: sum, val, fac, freq(1000), freq1, freq2, dfreq
-  integer :: i, j, k
-  coeff1(1,1:6)  = (/ 2.92d-140, 3.03d-89, 5.83d-59, 4.07d-49, 2.11d-44, 3.29d-42 /)
-  coeff2(1,1:6)  = (/ 2.01d-37, 7.27d-38, 1.87d-38, 6.66d-39, 2.48d-39, 1.06d-39 /)
-  coeff1(2,1:6)  = (/ 6.10d-57, 7.37d-48, 1.00d-42, 3.23d-41, 1.37d-40, 2.32d-40 /)
-  coeff2(2,1:6)  = (/ 6.35d-38, 2.27d-38, 5.92d-39, 2.38d-39, 1.15d-39, 6.78d-40 /)
-  coeff1(3,1:6)  = (/ 6.25d-45, 4.89d-42, 1.48d-40, 3.38d-40, 4.26d-40, 4.23d-40 /)
-  coeff2(3,1:6)  = (/ 2.76d-38, 9.97d-37, 3.02d-39, 1.51d-39, 9.04d-40, 6.31d-40 /)
-  coeff1(4,1:6)  = (/ 1.24d-41, 1.69d-40, 5.32d-40, 6.26d-40, 5.93d-40, 5.21d-40 /)
-  coeff2(4,1:6)  = (/ 1.45d-38, 5.69d-49, 21.4d-39, 1.25d-39, 8.51d-40, 6.41d-40 /)
-  coeff1(5,1:6)  = (/ 1.96d-40, 5.96d-40, 8.46d-40, 7.98d-40, 6.90d-40, 5.84d-40 /)
-  coeff2(5,1:6)  = (/ 9.04d-39, 4.00d-39, 1.80d-39, 1.17d-39, 1.17d-39, 8.50d-40 /)
-  coeff1(6,1:6)  = (/ 6.46d-40, 1.03d-39, 1.05d-39, 9.04d-40, 7.56d-40, 6.31d-40 /)
-  coeff2(6,1:6)  = (/ 6.48d-39, 3.23d-39, 1.65d-39, 1.15d-39, 8.66d-40, 6.90d-40 /)
-  coeff1(7,1:6)  = (/ 1.16d-39, 1.35d-39, 1.18d-39, 9.79d-40, 8.06d-40, 6.69d-40 /)
-  coeff2(7,1:6)  = (/ 5.18d-39, 2.84d-39, 1.59d-39, 1.15d-39, 8.87d-40, 7.16d-40 /)
-  coeff1(8,1:6)  = (/ 1.60d-39, 1.58d-39, 1.27d-39, 1.04d-39, 8.47d-40, 7.02d-40 /)
-  coeff2(8,1:6)  = (/ 4.44d-39, 2.63d-39, 1.56d-39, 1.16d-39, 9.11d-40, 7.41d-40 /)
-  coeff1(9,1:6)  = (/ 1.93d-39, 1.74d-39, 1.34d-39, 1.08d-39, 8.82d-40, 7.31d-40 /)
-  coeff2(9,1:6)  = (/ 4.01d-39, 2.51d-39, 1.56d-39, 1.18d-39, 9.34d-39, 7.64d-40 /)
-  coeff1(10,1:6)  = (/ 2.17d-39, 1.86d-39, 1.39d-39, 1.12d-39, 9.14d-40, 7.57d-40 /)
-  coeff2(10,1:6)  = (/ 3.73d-39, 2.44d-39, 1.56d-39, 1.20d-39, 9.58d-40, 7.87d-40 /)
-  coeff1(11,1:6)  = (/ 2.36d-39, 1.95d-39, 1.44d-39, 1.16d-39, 9.42d-40, 7.81d-40 /)
-  coeff2(11,1:6)  = (/ 3.56d-39, 2.40d-39, 1.57d-39, 1.22d-39, 9.80d-40, 8.08d-40 /)
+  character(len=*) :: thisfilename
+  character(len=80) :: dataDirectory, filename
+  integer :: i, j
 
-  table%nTemp = 6
-  allocate(table%gamma(6), table%temp(6))
-  table%temp = temp
+  call unixGetenv("TORUS_DATA", dataDirectory, i)
+  filename = trim(dataDirectory)//"/"//thisfilename
 
-  do i = 1, 6
-     sum = 0.d0
-     do j = 1, 11
-        freq1 = nuHydrogen / dble((j+1)**2)
-        freq2 = nuHydrogen /dble(j**2)
-        do k = 1, 1000
-           freq(k) = log(freq1)+ (log(freq2)-log(freq1))*dble(k-1)/999.d0
-!           freq(k) = freq1 + (freq2-freq1)*dble(k-1)/999.d0
-        enddo
-        freq(1:1000) = exp(freq(1:1000))
-        do k = 2, 1000
-           dfreq = freq(k)-freq(k-1)
-           fac = (log(freq(k))-log(freq1))/(log(freq2)-log(freq1))
-!           fac = dble(k-1)/999.d0
-           val = log(coeff2(j,i)) + (log(coeff1(j,i))-log(coeff2(j,i)))*fac
-           sum = sum + exp(val)*dFreq
-        enddo
-     enddo
-     write(*,*) i,sum
-     table%gamma(i) = sum
+  open(40, file=filename, form="formatted", status="old")
+  read(40,*) table%nTemp, table%nFreq
+
+  allocate(table%freq(1:table%nFreq))
+  allocate(table%temp(1:table%nTemp))
+  allocate(table%gamma(table%nFreq, table%nTemp))
+
+  read(40,*)  table%temp(1:table%nTemp)
+
+  do i = 1, table%nFreq
+     read(40,*) table%freq(i), table%gamma(i,1:table%nTemp)
   enddo
-end subroutine createHIgammaTable
+
+  do i = 1, table%nFreq
+     table%freq(i) = table%freq(i) * nuHydrogen
+  enddo
+
+  where (table%gamma(1:table%nFreq,1:table%nTemp) == 0.d0)
+     table%gamma(1:table%nFreq,1:table%nTemp) = 1.d-10
+  end where
+  table%gamma(1:table%nFreq,1:table%nTemp) =log10(table%gamma(1:table%nFreq,1:table%nTemp))
+  table%freq(1:table%nFreq) = log10(table%freq(1:table%nFreq))
+  table%temp(1:table%nTemp) = log10(table%temp(1:table%nTemp))
+  close(40)
+end subroutine createGammaTable
+
+real(double) function returnGamma(table, temp, freq) result(out)
+  type(GAMMATABLE) :: table
+  real(double) :: temp , freq
+  integer :: i, j
+  real(double) :: tfac, ffac, gamma1, gamma2
+
+  call locate(table%temp, table%nTemp, log10(temp), i)
+  call locate(table%freq, table%nFreq, log10(freq), j)
+
+  tfac  = (log10(temp) - table%temp(i))/(table%temp(i+1) - table%temp(i))
+  ffac  = (log10(freq) - table%freq(j))/(table%freq(j+1) - table%freq(j))
+
+  gamma1 = table%gamma(j,i) + tfac*(table%gamma(j, i+1) - table%gamma(j,i))
+  gamma2 = table%gamma(j+1,i) + tfac*(table%gamma(j+1, i+1) - table%gamma(j+1,i))
+  out = gamma1 + ffac*(gamma2 - gamma1)
+  out = 10.d0**out
+
+end function returnGamma
 
 subroutine addHydrogenLymanContinuum(nFreq, freq, spectrum, thisOctal, subcell, grid)
   type(GRIDTYPE) :: grid
@@ -2604,7 +2508,7 @@ subroutine addHydrogenLymanContinuum(nFreq, freq, spectrum, thisOctal, subcell, 
           ((hcgs**2) /(twoPi*mElectron*Kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
           dble(hxsec/1.d10) *  exp(-hcgs*(freq(i)-nu0_h)/(kerg*thisOctal%temperature(subcell)))
      jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(1)%abundance)
-     spectrum(i) = spectrum(i) + jnu * dFreq * fourPi !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+     spectrum(i) = spectrum(i) + jnu * dFreq * fourPi 
      
   enddo
 
@@ -2632,74 +2536,26 @@ real(double) function HeIILymanEmissivity(thisOctal, subcell, grid) result(out)
 end function HeIILymanEmissivity
 
 
-subroutine addHigherHydrogenContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid)
+subroutine addHigherHydrogenContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, table)
 
 ! Ferland 1980 PASP 92 596
 
-
+  type(GAMMATABLE) :: table
   integer :: nFreq
   real(double) :: spectrum(:), freq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
+  integer :: i, iEnd
+  real(double) :: fac
 
-  real(double) :: sum, val, fac, fac2, fac3, freq1, freq2, dfreq, tfac
-  integer :: i1, i2
-  integer :: i, j, k
-
-  real(double) :: coeff1(11,6), coeff2(11,6), thisCoeff1, thisCoeff2
-  real(double) :: temp(6) = (/ 500.d0, 1000.d0, 2500.d0, 5000.d0, 10000.d0, 20000.d0 /)
-  coeff1(1,1:6)  = (/ 2.92d-140, 3.03d-89, 5.83d-59, 4.07d-49, 2.11d-44, 3.29d-42 /)
-  coeff2(1,1:6)  = (/ 2.01d-37, 7.27d-38, 1.87d-38, 6.66d-39, 2.48d-39, 1.06d-39 /)
-  coeff1(2,1:6)  = (/ 6.10d-57, 7.37d-48, 1.00d-42, 3.23d-41, 1.37d-40, 2.32d-40 /)
-  coeff2(2,1:6)  = (/ 6.35d-38, 2.27d-38, 5.92d-39, 2.38d-39, 1.15d-39, 6.78d-40 /)
-  coeff1(3,1:6)  = (/ 6.25d-45, 4.89d-42, 1.48d-40, 3.38d-40, 4.26d-40, 4.23d-40 /)
-  coeff2(3,1:6)  = (/ 2.76d-38, 9.97d-37, 3.02d-39, 1.51d-39, 9.04d-40, 6.31d-40 /)
-  coeff1(4,1:6)  = (/ 1.24d-41, 1.69d-40, 5.32d-40, 6.26d-40, 5.93d-40, 5.21d-40 /)
-  coeff2(4,1:6)  = (/ 1.45d-38, 5.69d-49, 21.4d-39, 1.25d-39, 8.51d-40, 6.41d-40 /)
-  coeff1(5,1:6)  = (/ 1.96d-40, 5.96d-40, 8.46d-40, 7.98d-40, 6.90d-40, 5.84d-40 /)
-  coeff2(5,1:6)  = (/ 9.04d-39, 4.00d-39, 1.80d-39, 1.17d-39, 1.17d-39, 8.50d-40 /)
-  coeff1(6,1:6)  = (/ 6.46d-40, 1.03d-39, 1.05d-39, 9.04d-40, 7.56d-40, 6.31d-40 /)
-  coeff2(6,1:6)  = (/ 6.48d-39, 3.23d-39, 1.65d-39, 1.15d-39, 8.66d-40, 6.90d-40 /)
-  coeff1(7,1:6)  = (/ 1.16d-39, 1.35d-39, 1.18d-39, 9.79d-40, 8.06d-40, 6.69d-40 /)
-  coeff2(7,1:6)  = (/ 5.18d-39, 2.84d-39, 1.59d-39, 1.15d-39, 8.87d-40, 7.16d-40 /)
-  coeff1(8,1:6)  = (/ 1.60d-39, 1.58d-39, 1.27d-39, 1.04d-39, 8.47d-40, 7.02d-40 /)
-  coeff2(8,1:6)  = (/ 4.44d-39, 2.63d-39, 1.56d-39, 1.16d-39, 9.11d-40, 7.41d-40 /)
-  coeff1(9,1:6)  = (/ 1.93d-39, 1.74d-39, 1.34d-39, 1.08d-39, 8.82d-40, 7.31d-40 /)
-  coeff2(9,1:6)  = (/ 4.01d-39, 2.51d-39, 1.56d-39, 1.18d-39, 9.34d-39, 7.64d-40 /)
-  coeff1(10,1:6)  = (/ 2.17d-39, 1.86d-39, 1.39d-39, 1.12d-39, 9.14d-40, 7.57d-40 /)
-  coeff2(10,1:6)  = (/ 3.73d-39, 2.44d-39, 1.56d-39, 1.20d-39, 9.58d-40, 7.87d-40 /)
-  coeff1(11,1:6)  = (/ 2.36d-39, 1.95d-39, 1.44d-39, 1.16d-39, 9.42d-40, 7.81d-40 /)
-  coeff2(11,1:6)  = (/ 3.56d-39, 2.40d-39, 1.57d-39, 1.22d-39, 9.80d-40, 8.08d-40 /)
-
-
-
-  call locate(temp, 6, dble(thisOctal%temperature(subcell)), i)
-  tfac  = (thisOctal%temperature(subcell) - temp(i))/(temp(i+1)-temp(i))
-  
-  do j = 1, 11
-     freq1 = nuHydrogen / dble((j+1)**2)
-     freq2 = nuHydrogen / dble(j**2)
-
-     if ((freq1 > freq(1)).and.(freq2 < freq(nFreq))) then
-        call locate(freq, nFreq, freq1, i1)
-        call locate(freq, nFreq, freq2, i2)
-        do k = i1, i2-1
-           fac = (log10(freq(k)) - log10(freq1))/(log10(freq2) - log10(freq1))
-           dfreq = freq(k) - freq(k-1)
-           thisCoeff1 = log10(coeff1(j,i)) + tfac * (log10(coeff1(j,i+1)) - log10(coeff1(j,i)))
-           thisCoeff2 = log10(coeff2(j,i)) + tfac * (log10(coeff2(j,i+1)) - log10(coeff2(j,i)))
-
-           val = thisCoeff2 + (thisCoeff1 - thisCoeff2)*fac
-           val = 10.d0**val
-           val = val * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * &
-                grid%ion(1)%abundance)
-           
-           spectrum(k) = spectrum(k) + val * dfreq
-        
-        enddo
-     endif
+  call locate(freq, nFreq, nuHydrogen, iEnd)
+  do i = 2, iEnd
+     fac = returnGamma(table, dble(thisOctal%temperature(subcell)) , freq(i))
+     fac = fac*1.d-40 ! units of 10^-40 erg/s/cm/cm/cm
+     spectrum(i) = spectrum(i) + fac*(freq(i)-freq(i-1))
   enddo
+
 end subroutine addHigherHydrogenContinuum
 
 
@@ -2770,7 +2626,9 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
      tSpec(i) = tSpec(i) + tSpec(i-1)
   enddo
   tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
-  tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
+  if (tSpec(nFreq) > 0.d0) then
+     tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
+  endif
 
   call random_number(r)
   call locate(tSpec, nFreq, r, i)
@@ -2807,6 +2665,95 @@ subroutine addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
 end subroutine addForbiddenLines
   
 
+subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+
+  integer :: nFreq
+  real(double) :: spectrum(:), freq(:)
+  type(OCTAL) :: thisOctal
+  integer :: subcell
+  type(GRIDTYPE) :: grid
+  integer :: i, j, k
+  real :: fac, t, aj ,bj, cj
+  real(double) :: lineFreq, lambda
+  real :: emissivity
+  real :: heII4686
+  integer :: ilow, iup
+
+  call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
+  fac = (log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i))
+
+  do j = 1, 32
+     aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
+     bj = heIrecombinationFit(j,i,2) + fac*(heIrecombinationfit(j,i+1,2)-heIrecombinationfit(j,i,2))
+     cj = heIrecombinationFit(j,i,3) + fac*(heIrecombinationfit(j,i+1,3)-heIrecombinationfit(j,i,3))
+     t = thisOctal%temperature(subcell)/1.e4
+     emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
+     emissivity = emissivity * thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
+          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance
+     lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
+     call locate(freq, nFreq, lineFreq, k)
+     spectrum(k) = spectrum(k) + emissivity
+  enddo
+
+
+  HeII4686 = 10.d0**(-0.997d0*log10(thisOctal%temperature(subcell))+5.16d0)
+  HeII4686 = HeII4686*thisOctal%ne(subcell)*thisOctal%nh(subcell)*thisOctal%ionFrac(subcell,4)*grid%ion(4)%abundance
+  
+  ! calculate emission due to HeI recombination lines [e-25 ergs/s/cm^3]                                                     
+  do iup = 30, 3, -1
+     do ilow = 2, min0(16, iup-1)
+        emissivity= HeIIrecombinationLines(iup, ilow)*HeII4686*1.d-25
+
+
+        lambda = 227.838 / (1./real(ilow**2)  - 1./real(iup**2))!!!!!!!!!!!!!!!!!!!
+        lineFreq = cSpeed/(lambda * 1.d-8)
+
+     call locate(freq, nFreq, lineFreq, k)
+     spectrum(k) = spectrum(k) + emissivity
+     end do
+  end do
+
+
+end subroutine addHeRecombinationLines
+
+subroutine readHeIRecombinationLinesFit()
+  character(len=80) :: filename, datadirectory
+  integer :: i
+
+  call unixGetenv("TORUS_DATA", dataDirectory, i)
+  filename = trim(dataDirectory)//"/"//"bss1999.dat"
+
+  open(40,file=filename,status="old",form="formatted")
+  do i = 1, 32
+     read(40, *) HeIRecombinationLambda(i), heIRecombinationFit(i,1,1:3), &
+           heIRecombinationFit(i,2,1:3),  heIRecombinationFit(i,3,1:3)
+  enddo
+  close(40)
+  HeiRecombinationFit(1:32, 1:3, 1:3) = log10(HeiRecombinationFit(1:32, 1:3, 1:3))
+  heIrecombinationNe(1) = 2.
+  heIrecombinationNe(2) = 4.
+  heIrecombinationNe(3) = 6.
+end subroutine readHeIRecombinationLinesFit
+
+
+subroutine readHeIIrecombination()
+  character(len=80) :: filename, datadirectory
+  integer :: iup, ilow, i
+
+
+  call unixGetenv("TORUS_DATA", dataDirectory, i)
+  filename = trim(dataDirectory)//"/"//"r2b0100.dat"
+
+  open(40,file=filename,status="old",form="formatted")
+  
+  ! read in HeII recombination lines [e-25 ergs*cm^3/s]                                                                      
+  ! (Storey and Hummer MNRAS 272(1995)41)                                                                                    
+  open(40, file=filename, status = "old",form="formatted")
+  do iup = 30, 3, -1
+     read(40,*) (HeIIRecombinationLines(iup, ilow), ilow = 2, min0(16, iup-1))
+  end do
+  close(40)
+end subroutine readHeIIrecombination
 
 end module
 

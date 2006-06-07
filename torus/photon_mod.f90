@@ -52,6 +52,8 @@ module photon_mod
      logical :: resonanceLine             ! resonance line photon?
   end type PHOTON
 
+
+
 contains
 
   ! this subroutine rotates the stokes vectors of a photon - this
