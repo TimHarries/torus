@@ -1,4 +1,4 @@
-\begin{thebibliography}{45}
+\begin{thebibliography}{46}
 \expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
 
 \bibitem[{{Ardila} {et~al.}(2000){Ardila}, {Mart{\'{\i}}n}, \&
@@ -142,6 +142,9 @@
 
 \bibitem[{{Padoan} \& {Nordlund}(2002)}]{padoan:2002}
 {Padoan} P., {Nordlund} {\AA}., 2002, \apj, 576, 870
+
+\bibitem[{{Palla} \& {Baraffe}(2005)}]{palla:2005}
+{Palla} F., {Baraffe} I., 2005, \aap, 432, L57
 
 \bibitem[{{Pinfield} {et~al.}(2003){Pinfield}, {Dobbie}, {Jameson}, {Steele},
   {Jones}, \& {Katsiyannis}}]{pinfield:2003}
