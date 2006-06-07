@@ -201,6 +201,7 @@ contains
     REAL(double) ::  LX,LX1,LX2,LY1,LY2,GR
     if ( (x.le.0.0d0).or.(x1.le.0.0d0).or.(x2.le.0.0d0)) then
        write(*,*) 'f.up in logint_dble',x,x1,x2,y1,y2
+       do;enddo
        stop
     endif
     LX=LOG(X)

@@ -82,7 +82,7 @@ contains
     call createIon(ionArray(nIon), 1, 1, 1.360e1) ! H I
 
     nIon = nIon + 1
-    call createIon(ionArray(nIon), 1, 0, 999.e9) ! H II
+    call createIon(ionArray(nIon), 1, 0, 1.e-10) ! H II
 
     nIon = nIon + 1
     call createIon(ionArray(nIon), 2, 2, 2.459e1) ! He I 
