@@ -3,6 +3,7 @@
 module photoion_mod
 
 use source_mod
+use timing
 use grid_mod
 use amr_mod
 use constants_mod
@@ -121,7 +122,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 100000
+    nMonte = 200000
 
     nIter = 0
 
@@ -143,6 +144,9 @@ contains
        call zeroDistanceGrid(grid%octreeRoot)
 
        write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter
+
+       call tune(6, "One photoionization itr")  ! start a stopwatch
+
        mainloop: do iMonte = 1, nMonte
 
           call randomSource(source, nSource, iSource)
@@ -177,7 +181,7 @@ contains
                    call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
                    call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
                    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-!                   call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+                   call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                    if (firsttime) then
                       firsttime = .false.
@@ -189,6 +193,7 @@ contains
                    endif
 
                    thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
+!                   write(*,*) 1.d8*cspeed/thisFreq, thisFreq*hCgs*ergtoev
                    uHat = randomUnitVector() ! isotropic emission
                 endif
                 
@@ -197,6 +202,9 @@ contains
           enddo
           nInf = nInf + 1
        end do mainloop
+
+       call tune(6, "One photoionization itr")  ! stop a stopwatch
+
        epsOverDeltaT = (lCore) / dble(nMonte)
 
 
@@ -1203,13 +1211,13 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
         
            xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
       max(1.d-50,(recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination))
-!           if (grid%ion(iion)%species(1:1) =="O") write(*,*) i,xplus1overx(i)
+!           if (grid%ion(iion)%species(1:1) =="C") write(*,*) i,xplus1overx(i)
         enddo
        thisOctal%ionFrac(subcell, iStart:iEnd) = 1.
         do i = 1, nIonizationStages - 1
            iIon = iStart+i-1
            thisOctal%ionFrac(subcell,iIon+1) = thisOctal%ionFrac(subcell,iIon) * xplus1overx(i)
-!           if (grid%ion(iion)%species(1:1) =="O") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
+!           if (grid%ion(iion)%species(1:1) =="C") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
         enddo
         if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
            thisOctal%ionFrac(subcell,iStart:iEnd) = &
@@ -1218,7 +1226,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
            thisOctal%ionFrac(subcell,iStart:iEnd) = 1.d-50
         endif
            
-!        if (grid%ion(iion)%species(1:1) =="O") then
+!        if (grid%ion(iion)%species(1:2) =="He") then
 !           write(*,*) thisOctal%ionFrac(subcell,iStart:iEnd)
 !           write(*,*) " "
 !        endif
@@ -2464,36 +2472,40 @@ subroutine addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
   TYPE(OCTAL) :: thisOctal
   integer :: subcell
   integer :: nFreq
-  integer :: i, j, k, iIon
+  integer :: i, j, k, iIon, n1, n2
   real(double) :: freq(:), spectrum(:)
   real(double) :: nu0_h, nu0_he, jnu, dfreq
   real :: e, hxsec, hexsec
   real(double), parameter :: statisticalWeight(3) = (/ 2.d0, 0.5d0, 2.d0 /)
 
+
   ! do Saha-Milne continua for H, HeI and HeII
 
-  do k = 1 , 1
+  do k = 1 , 2 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
      if (k == 1) iIon = 1
      if (k == 2) iIon = 3
      if (k == 3) iIon = 4
 
-     call locate(freq, nfreq, grid%ion(iIon)%nuThresh, j)
-
-     do i = j, nFreq
+     call locate(freq, nfreq, grid%ion(iIon)%nuThresh, n1)
+     n2 = nFreq
+     if (iIon == 3) then
+        call locate(freq, nfreq, grid%ion(iIon+1)%nuThresh, n2)
+     endif
+     do i = n1, n2
         dFreq = freq(i) - freq(i-1)
         
         e = freq(i) * hcgs* ergtoev
 
+
         call phfit2(grid%ion(iIon)%z, grid%ion(iIon)%n, grid%ion(iIon)%outerShell , e , hxsec)
         
-        
+
         jnu = statisticalWeight(k) * ((hcgs*freq(i)**3)/(cSpeed**2)) * &
              ((hcgs**2) /(twoPi*mElectron*Kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
              dble(hxsec/1.d10) *  exp(-hcgs*(freq(i)-grid%ion(iIon)%nuThresh)/(kerg*thisOctal%temperature(subcell)))
         jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance)
         spectrum(i) = spectrum(i) + jnu * dFreq * fourPi 
-        
      enddo
   enddo
 
@@ -2513,7 +2525,7 @@ subroutine addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, ta
   integer :: i, k, iEnd, iIon
   real(double) :: fac
 
-  do k = 1 , 1
+  do k = 1 , 3
 
      if (k == 1) iIon = 1
      if (k == 2) iIon = 3
@@ -2602,12 +2614,13 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
   tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
   if (tSpec(nFreq) > 0.d0) then
      tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
+     call random_number(r)
+     call locate(tSpec, nFreq, r, i)
+     fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
+     photonFreq = freq(i) + fac * (freq(i+1)-freq(i))
+  else
+     photonFreq = cSpeed / (1.d-8 * 100.e4)
   endif
-
-  call random_number(r)
-  call locate(tSpec, nFreq, r, i)
-  fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
-  photonFreq = freq(i) + fac * (freq(i+1)-freq(i))
 end function getPhotonFreq
 
 
@@ -2652,28 +2665,34 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
   real :: emissivity
   real :: heII4686
   integer :: ilow, iup
+  integer,parameter :: nHeIILyman = 4
+  real(double) :: heIILyman(4)
+  real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
 
-  ! HeI lines
 
-  call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
-  fac = (log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i))
 
-  do j = 1, 32
-     aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
-     bj = heIrecombinationFit(j,i,2) + fac*(heIrecombinationfit(j,i+1,2)-heIrecombinationfit(j,i,2))
-     cj = heIrecombinationFit(j,i,3) + fac*(heIrecombinationfit(j,i+1,3)-heIrecombinationfit(j,i,3))
-     t = thisOctal%temperature(subcell)/1.e4
-     emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
-     emissivity = emissivity * thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
-          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance
-     lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
-     call locate(freq, nFreq, lineFreq, k)
-     spectrum(k) = spectrum(k) + emissivity
-  enddo
+  ! HeI lines !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+!  call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
+!  fac = (log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i))
+!
+!  do j = 1, 32
+!     aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
+!     bj = heIrecombinationFit(j,i,2) + fac*(heIrecombinationfit(j,i+1,2)-heIrecombinationfit(j,i,2))
+!     cj = heIrecombinationFit(j,i,3) + fac*(heIrecombinationfit(j,i+1,3)-heIrecombinationfit(j,i,3))
+!     t = thisOctal%temperature(subcell)/1.e4
+!     emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
+!     emissivity = emissivity * thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
+!          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance
+!     lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
+!     call locate(freq, nFreq, lineFreq, k)
+!     spectrum(k) = spectrum(k) + emissivity
+!     write(*,*) j, emissivity
+!  enddo
+!
 
   HeII4686 = 10.d0**(-0.997d0*log10(thisOctal%temperature(subcell))+5.16d0)
-  HeII4686 = HeII4686*thisOctal%ne(subcell)*thisOctal%nh(subcell)*thisOctal%ionFrac(subcell,4)*grid%ion(4)%abundance
+  HeII4686 = HeII4686*thisOctal%ne(subcell)*thisOctal%nh(subcell)*thisOctal%ionFrac(subcell,5)*grid%ion(4)%abundance
   
   ! calculate emission due to HeII recombination lines [e-25 ergs/s/cm^3]                                                     
   do iup = 30, 3, -1
@@ -2688,6 +2707,26 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
      spectrum(k) = spectrum(k) + emissivity
      end do
   end do
+
+
+  ! He II Lyman series
+
+  heIILyman(1:4) = (/ 0.0334, 0.0682, 0.1849, 1. /)
+
+  ! calculate Lyman alpha first
+  HeIILyman(4) = 10.d0**(-0.792d0*log10(thisOctal%temperature(subcell))+6.01d0)
+  HeIILyman(4) = HeIILyman(4)*thisOctal%ne(subcell)*thisOctal%nh(subcell) * &
+       grid%ion(3)%abundance * thisOctal%ionFrac(subcell, 5) * 1.d-25
+
+  do i = 1, NHeIILyman-1
+     HeIILyman(i) = HeIILyman(i)*HeIILyman(4)
+  end do
+  do i = 1, nHeIILyman
+     lineFreq = freqHeIILyman(i) * nuHydrogen
+     call locate(freq, nFreq, lineFreq, k)
+     spectrum(k) = spectrum(k) + HeIILyman(i)
+  enddo
+
 
 
 end subroutine addHeRecombinationLines

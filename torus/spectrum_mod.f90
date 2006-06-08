@@ -113,7 +113,7 @@ module spectrum_mod
          if (present(biasToLyman)) then
             if (biasToLyman) then
                if (spectrum%lambda(i) < 912.) then
-                  fac = 10.d0
+                  fac = 100.d0
                else
                   fac = 1.d0
                endif
@@ -122,9 +122,9 @@ module spectrum_mod
          spectrum%prob(i) = spectrum%prob(i-1) + spectrum%flux(i) * spectrum%dLambda(i) * fac
       enddo
       spectrum%prob(1:spectrum%nLambda) = spectrum%prob(1:spectrum%nLambda) / spectrum%prob(spectrum%nLambda)
-!      do i = 1, spectrum%nLambda
-!         write(66,*) spectrum%lambda(i),spectrum%flux(i),spectrum%prob(i)
-!      enddo
+      do i = 1, spectrum%nLambda
+         write(66,*) spectrum%lambda(i),spectrum%flux(i),spectrum%prob(i)
+      enddo
     end subroutine probSpectrum
 
     subroutine normalizedSpectrum(spectrum)

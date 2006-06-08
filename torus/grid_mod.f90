@@ -6875,7 +6875,7 @@ contains
              case("ionization")
                 value = thisOctal%ionfrac(subcell,returnIonNumber("C IV", grid%ion, grid%nIon))
              case("photocoeff")
-                value = thisOctal%photoIonCoeff(subcell,7)
+                value = thisOctal%photoIonCoeff(subcell,8)
              case("temperature")
                 value = thisOctal%temperature(subcell)
                 if (value < 3.)  update = .false.
