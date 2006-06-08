@@ -2472,7 +2472,7 @@ subroutine addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
 
   ! do Saha-Milne continua for H, HeI and HeII
 
-  do k = 1 , 3
+  do k = 1 , 1
 
      if (k == 1) iIon = 1
      if (k == 2) iIon = 3
@@ -2491,34 +2491,13 @@ subroutine addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
         jnu = statisticalWeight(k) * ((hcgs*freq(i)**3)/(cSpeed**2)) * &
              ((hcgs**2) /(twoPi*mElectron*Kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
              dble(hxsec/1.d10) *  exp(-hcgs*(freq(i)-grid%ion(iIon)%nuThresh)/(kerg*thisOctal%temperature(subcell)))
-        jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,iIon) * grid%ion(iIon)%abundance)
+        jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance)
         spectrum(i) = spectrum(i) + jnu * dFreq * fourPi 
         
      enddo
   enddo
 
 end subroutine addLymanContinua
-
-
-real(double) function HeIILymanEmissivity(thisOctal, subcell, grid) result(out)
-  type(OCTAL) :: thisOctal
-  integer :: subcell
-  type(GRIDTYPE) :: grid
-  real(double) :: lineRatio(4),alpha
-
-! Storey and Hummer 1995 MNRAS 272 41
-
-  lineRatio(1) = 0.0334
-  lineRatio(2) = 0.0682
-  lineRatio(3) = 0.1849
-  lineRatio(4) = 1.0000
-  
-  alpha = 10.d0**(-0.792*log10(thisOctal%temperature(subcell))+0.601d0)
-  alpha = alpha * thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
-       thisOctal%ionFrac(subcell, 4) * grid%ion(4)%abundance
-  out = alpha * SUM(lineRatio(1:4)) * 1.d-25
-
-end function HeIILymanEmissivity
 
 
 subroutine addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, table)
@@ -2534,7 +2513,7 @@ subroutine addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, ta
   integer :: i, k, iEnd, iIon
   real(double) :: fac
 
-  do k = 1 , 3
+  do k = 1 , 1
 
      if (k == 1) iIon = 1
      if (k == 2) iIon = 3
@@ -2545,7 +2524,7 @@ subroutine addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, ta
         fac = returnGamma(table(k), dble(thisOctal%temperature(subcell)) , freq(i))
         fac = fac*1.d-40 ! units of 10^-40 erg/s/cm/cm/cm
         fac = fac * thisOctal%ne(subcell) * thisOctal%nh(subcell) &
-             * thisOctal%ionFrac(subcell,iIon) * grid%ion(iIon)%abundance
+             * thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance
         spectrum(i) = spectrum(i) + fac*(freq(i)-freq(i-1))
      enddo
   enddo
