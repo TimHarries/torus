@@ -1,7 +1,7 @@
 # Grace project file
 #
-@version 50118
-@page size 448, 459
+@version 50107
+@page size 609, 625
 @page scroll 5%
 @page inout 5%
 @link page off
@@ -54,7 +54,7 @@
 @timestamp rot 0
 @timestamp font 0
 @timestamp char size 1.000000
-@timestamp def "Tue Apr 11 00:33:17 2006"
+@timestamp def "Mon Jun 12 16:42:04 2006"
 @r0 off
 @link r0 to g0
 @r0 type above
@@ -101,10 +101,16 @@
 @g0 fixedpoint format general general
 @g0 fixedpoint prec 6, 6
 @with g0
-@    world -10, -5.5, 40, 5.5
+@    world xmin -10
+@    world xmax 40
+@    world ymin -1
+@    world ymax 1
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view 0.150000, 0.661070, 0.355882, 0.815608
+@    view xmin 0.150000
+@    view xmax 0.355882
+@    view ymin 0.660728
+@    view ymax 0.815186
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -183,7 +189,7 @@
 @    yaxis  label color 1
 @    yaxis  label place normal
 @    yaxis  tick on
-@    yaxis  tick major 2
+@    yaxis  tick major 0.5
 @    yaxis  tick minor ticks 1
 @    yaxis  tick default 6
 @    yaxis  tick place rounded true
@@ -223,7 +229,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.655744949, 0.810435364716
+@    legend 0.655744949, 0.810016007907
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -244,7 +250,7 @@
 @    frame pattern 1
 @    frame background color 0
 @    frame background pattern 0
-@    s0 hidden false
+@    s0 hidden true
 @    s0 type xydy
 @    s0 symbol 1
 @    s0 symbol size 0.500000
@@ -342,6 +348,55 @@
 @    s1 errorbar riser clip length 0.100000
 @    s1 comment "/donald/rk/project/docs/figures/bd_radvel/radvels/zero.dat"
 @    s1 legend  ""
+@    s2 hidden false
+@    s2 type xydy
+@    s2 symbol 1
+@    s2 symbol size 0.500000
+@    s2 symbol color 1
+@    s2 symbol pattern 1
+@    s2 symbol fill color 1
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 1.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 0
+@    s2 symbol skip 0
+@    s2 line type 0
+@    s2 line linestyle 1
+@    s2 line linewidth 1.0
+@    s2 line color 1
+@    s2 line pattern 1
+@    s2 baseline type 0
+@    s2 baseline off
+@    s2 dropline off
+@    s2 fill type 0
+@    s2 fill rule 0
+@    s2 fill color 1
+@    s2 fill pattern 1
+@    s2 avalue off
+@    s2 avalue type 2
+@    s2 avalue char size 1.000000
+@    s2 avalue font 0
+@    s2 avalue color 1
+@    s2 avalue rot 0
+@    s2 avalue format general
+@    s2 avalue prec 3
+@    s2 avalue prepend ""
+@    s2 avalue append ""
+@    s2 avalue offset 0.000000 , 0.000000
+@    s2 errorbar on
+@    s2 errorbar place both
+@    s2 errorbar color 1
+@    s2 errorbar pattern 1
+@    s2 errorbar size 1.000000
+@    s2 errorbar linewidth 1.0
+@    s2 errorbar linestyle 1
+@    s2 errorbar riser linewidth 1.0
+@    s2 errorbar riser linestyle 1
+@    s2 errorbar riser clip off
+@    s2 errorbar riser clip length 0.100000
+@    s2 comment "/donald/rk/paper/BD_radvel/figures/radvel_all02.dat"
+@    s2 legend  ""
 @g1 on
 @g1 hidden false
 @g1 type XY
@@ -353,10 +408,16 @@
 @g1 fixedpoint format general general
 @g1 fixedpoint prec 6, 6
 @with g1
-@    world -10, -2, 40, 2
+@    world xmin -10
+@    world xmax 40
+@    world ymin -2
+@    world ymax 2
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view 0.397059, 0.660903, 0.602941, 0.815402
+@    view xmin 0.397059
+@    view xmax 0.602941
+@    view ymin 0.660561
+@    view ymax 0.814980
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -475,7 +536,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.789522528892
+@    legend 0.5, 0.789113993353
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -496,7 +557,7 @@
 @    frame pattern 1
 @    frame background color 0
 @    frame background pattern 0
-@    s0 hidden false
+@    s0 hidden true
 @    s0 type xydy
 @    s0 symbol 1
 @    s0 symbol size 0.500000
@@ -594,6 +655,55 @@
 @    s1 errorbar riser clip length 0.100000
 @    s1 comment "/donald/rk/project/docs/figures/bd_radvel/radvels/zero.dat"
 @    s1 legend  ""
+@    s2 hidden false
+@    s2 type xydy
+@    s2 symbol 1
+@    s2 symbol size 0.500000
+@    s2 symbol color 1
+@    s2 symbol pattern 1
+@    s2 symbol fill color 1
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 1.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 0
+@    s2 symbol skip 0
+@    s2 line type 0
+@    s2 line linestyle 1
+@    s2 line linewidth 1.0
+@    s2 line color 1
+@    s2 line pattern 1
+@    s2 baseline type 0
+@    s2 baseline off
+@    s2 dropline off
+@    s2 fill type 0
+@    s2 fill rule 0
+@    s2 fill color 1
+@    s2 fill pattern 1
+@    s2 avalue off
+@    s2 avalue type 2
+@    s2 avalue char size 1.000000
+@    s2 avalue font 0
+@    s2 avalue color 1
+@    s2 avalue rot 0
+@    s2 avalue format general
+@    s2 avalue prec 3
+@    s2 avalue prepend ""
+@    s2 avalue append ""
+@    s2 avalue offset 0.000000 , 0.000000
+@    s2 errorbar on
+@    s2 errorbar place both
+@    s2 errorbar color 1
+@    s2 errorbar pattern 1
+@    s2 errorbar size 1.000000
+@    s2 errorbar linewidth 1.0
+@    s2 errorbar linestyle 1
+@    s2 errorbar riser linewidth 1.0
+@    s2 errorbar riser linestyle 1
+@    s2 errorbar riser clip off
+@    s2 errorbar riser clip length 0.100000
+@    s2 comment "/donald/rk/paper/BD_radvel/figures/radvel_all02.dat"
+@    s2 legend  ""
 @g2 on
 @g2 hidden false
 @g2 type XY
@@ -605,10 +715,16 @@
 @g2 fixedpoint format general general
 @g2 fixedpoint prec 6, 6
 @with g2
-@    world -12.25, -2, 42.75, 2
+@    world xmin -12.25
+@    world xmax 42.75
+@    world ymin -1.5
+@    world ymax 1.5
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view 0.644118, 0.660903, 0.850000, 0.815402
+@    view xmin 0.644118
+@    view xmax 0.850000
+@    view ymin 0.660561
+@    view ymax 0.814980
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -727,7 +843,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.789522528644
+@    legend 0.5, 0.789113993106
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -748,7 +864,7 @@
 @    frame pattern 1
 @    frame background color 0
 @    frame background pattern 0
-@    s0 hidden false
+@    s0 hidden true
 @    s0 type xydy
 @    s0 symbol 1
 @    s0 symbol size 0.500000
@@ -846,6 +962,55 @@
 @    s1 errorbar riser clip length 0.100000
 @    s1 comment "/donald/rk/project/docs/figures/bd_radvel/radvels/zero.dat"
 @    s1 legend  ""
+@    s2 hidden false
+@    s2 type xydy
+@    s2 symbol 1
+@    s2 symbol size 0.500000
+@    s2 symbol color 1
+@    s2 symbol pattern 1
+@    s2 symbol fill color 1
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 1.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 0
+@    s2 symbol skip 0
+@    s2 line type 0
+@    s2 line linestyle 1
+@    s2 line linewidth 1.0
+@    s2 line color 1
+@    s2 line pattern 1
+@    s2 baseline type 0
+@    s2 baseline off
+@    s2 dropline off
+@    s2 fill type 0
+@    s2 fill rule 0
+@    s2 fill color 1
+@    s2 fill pattern 1
+@    s2 avalue off
+@    s2 avalue type 2
+@    s2 avalue char size 1.000000
+@    s2 avalue font 0
+@    s2 avalue color 1
+@    s2 avalue rot 0
+@    s2 avalue format general
+@    s2 avalue prec 3
+@    s2 avalue prepend ""
+@    s2 avalue append ""
+@    s2 avalue offset 0.000000 , 0.000000
+@    s2 errorbar on
+@    s2 errorbar place both
+@    s2 errorbar color 1
+@    s2 errorbar pattern 1
+@    s2 errorbar size 1.000000
+@    s2 errorbar linewidth 1.0
+@    s2 errorbar linestyle 1
+@    s2 errorbar riser linewidth 1.0
+@    s2 errorbar riser linestyle 1
+@    s2 errorbar riser clip off
+@    s2 errorbar riser clip length 0.100000
+@    s2 comment "/donald/rk/paper/BD_radvel/figures/radvel_all02.dat"
+@    s2 legend  ""
 @g3 on
 @g3 hidden false
 @g3 type XY
@@ -857,10 +1022,16 @@
 @g3 fixedpoint format general general
 @g3 fixedpoint prec 6, 6
 @with g3
-@    world -10, -0.5, 45, 0.5
+@    world xmin -10
+@    world xmax 45
+@    world ymin -0.2
+@    world ymax 0.2
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view 0.150000, 0.429154, 0.355882, 0.583654
+@    view xmin 0.150000
+@    view xmax 0.355882
+@    view ymin 0.428932
+@    view ymax 0.583352
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -939,7 +1110,7 @@
 @    yaxis  label color 1
 @    yaxis  label place normal
 @    yaxis  tick on
-@    yaxis  tick major 0.2
+@    yaxis  tick major 0.1
 @    yaxis  tick minor ticks 1
 @    yaxis  tick default 6
 @    yaxis  tick place rounded true
@@ -979,7 +1150,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.789522528738
+@    legend 0.5, 0.7891139932
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -1000,7 +1171,7 @@
 @    frame pattern 1
 @    frame background color 0
 @    frame background pattern 0
-@    s0 hidden false
+@    s0 hidden true
 @    s0 type xydy
 @    s0 symbol 1
 @    s0 symbol size 0.500000
@@ -1098,6 +1269,55 @@
 @    s1 errorbar riser clip length 0.100000
 @    s1 comment "/donald/rk/project/docs/figures/bd_radvel/radvels/zero.dat"
 @    s1 legend  ""
+@    s2 hidden false
+@    s2 type xydy
+@    s2 symbol 1
+@    s2 symbol size 0.500000
+@    s2 symbol color 1
+@    s2 symbol pattern 1
+@    s2 symbol fill color 1
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 1.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 0
+@    s2 symbol skip 0
+@    s2 line type 0
+@    s2 line linestyle 1
+@    s2 line linewidth 1.0
+@    s2 line color 1
+@    s2 line pattern 1
+@    s2 baseline type 0
+@    s2 baseline off
+@    s2 dropline off
+@    s2 fill type 0
+@    s2 fill rule 0
+@    s2 fill color 1
+@    s2 fill pattern 1
+@    s2 avalue off
+@    s2 avalue type 2
+@    s2 avalue char size 1.000000
+@    s2 avalue font 0
+@    s2 avalue color 1
+@    s2 avalue rot 0
+@    s2 avalue format general
+@    s2 avalue prec 3
+@    s2 avalue prepend ""
+@    s2 avalue append ""
+@    s2 avalue offset 0.000000 , 0.000000
+@    s2 errorbar on
+@    s2 errorbar place both
+@    s2 errorbar color 1
+@    s2 errorbar pattern 1
+@    s2 errorbar size 1.000000
+@    s2 errorbar linewidth 1.0
+@    s2 errorbar linestyle 1
+@    s2 errorbar riser linewidth 1.0
+@    s2 errorbar riser linestyle 1
+@    s2 errorbar riser clip off
+@    s2 errorbar riser clip length 0.100000
+@    s2 comment "/donald/rk/paper/BD_radvel/figures/radvel_all02.dat"
+@    s2 legend  ""
 @g4 on
 @g4 hidden false
 @g4 type XY
@@ -1109,10 +1329,16 @@
 @g4 fixedpoint format general general
 @g4 fixedpoint prec 6, 6
 @with g4
-@    world -10, -1.2, 43, 1.2
+@    world xmin -10
+@    world xmax 43
+@    world ymin -0.5
+@    world ymax 0.5
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view 0.397059, 0.429154, 0.602941, 0.583654
+@    view xmin 0.397059
+@    view xmax 0.602941
+@    view ymin 0.428932
+@    view ymax 0.583352
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -1191,7 +1417,7 @@
 @    yaxis  label color 1
 @    yaxis  label place normal
 @    yaxis  tick on
-@    yaxis  tick major 0.5
+@    yaxis  tick major 0.25
 @    yaxis  tick minor ticks 1
 @    yaxis  tick default 6
 @    yaxis  tick place rounded true
@@ -1231,7 +1457,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.789522527992
+@    legend 0.5, 0.789113992454
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -1252,7 +1478,7 @@
 @    frame pattern 1
 @    frame background color 0
 @    frame background pattern 0
-@    s0 hidden false
+@    s0 hidden true
 @    s0 type xydy
 @    s0 symbol 1
 @    s0 symbol size 0.500000
@@ -1350,6 +1576,55 @@
 @    s1 errorbar riser clip length 0.100000
 @    s1 comment "/donald/rk/project/docs/figures/bd_radvel/radvels/zero.dat"
 @    s1 legend  ""
+@    s2 hidden false
+@    s2 type xydy
+@    s2 symbol 1
+@    s2 symbol size 0.500000
+@    s2 symbol color 1
+@    s2 symbol pattern 1
+@    s2 symbol fill color 1
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 1.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 0
+@    s2 symbol skip 0
+@    s2 line type 0
+@    s2 line linestyle 1
+@    s2 line linewidth 1.0
+@    s2 line color 1
+@    s2 line pattern 1
+@    s2 baseline type 0
+@    s2 baseline off
+@    s2 dropline off
+@    s2 fill type 0
+@    s2 fill rule 0
+@    s2 fill color 1
+@    s2 fill pattern 1
+@    s2 avalue off
+@    s2 avalue type 2
+@    s2 avalue char size 1.000000
+@    s2 avalue font 0
+@    s2 avalue color 1
+@    s2 avalue rot 0
+@    s2 avalue format general
+@    s2 avalue prec 3
+@    s2 avalue prepend ""
+@    s2 avalue append ""
+@    s2 avalue offset 0.000000 , 0.000000
+@    s2 errorbar on
+@    s2 errorbar place both
+@    s2 errorbar color 1
+@    s2 errorbar pattern 1
+@    s2 errorbar size 1.000000
+@    s2 errorbar linewidth 1.0
+@    s2 errorbar linestyle 1
+@    s2 errorbar riser linewidth 1.0
+@    s2 errorbar riser linestyle 1
+@    s2 errorbar riser clip off
+@    s2 errorbar riser clip length 0.100000
+@    s2 comment "/donald/rk/paper/BD_radvel/figures/radvel_all02.dat"
+@    s2 legend  ""
 @g5 on
 @g5 hidden false
 @g5 type XY
@@ -1361,10 +1636,16 @@
 @g5 fixedpoint format general general
 @g5 fixedpoint prec 6, 6
 @with g5
-@    world 15.9, -2, 33.9, 2
+@    world xmin 15.9
+@    world xmax 33.9
+@    world ymin -2
+@    world ymax 2
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view 0.644118, 0.429154, 0.850000, 0.583654
+@    view xmin 0.644118
+@    view xmax 0.850000
+@    view ymin 0.428932
+@    view ymax 0.583352
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -1483,7 +1764,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.789522528914
+@    legend 0.5, 0.789113993375
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -1504,7 +1785,7 @@
 @    frame pattern 1
 @    frame background color 0
 @    frame background pattern 0
-@    s0 hidden false
+@    s0 hidden true
 @    s0 type xydy
 @    s0 symbol 1
 @    s0 symbol size 0.500000
@@ -1602,6 +1883,55 @@
 @    s1 errorbar riser clip length 0.100000
 @    s1 comment "/donald/rk/project/docs/figures/bd_radvel/radvels/zero.dat"
 @    s1 legend  ""
+@    s2 hidden false
+@    s2 type xydy
+@    s2 symbol 1
+@    s2 symbol size 0.500000
+@    s2 symbol color 1
+@    s2 symbol pattern 1
+@    s2 symbol fill color 1
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 1.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 0
+@    s2 symbol skip 0
+@    s2 line type 0
+@    s2 line linestyle 1
+@    s2 line linewidth 1.0
+@    s2 line color 1
+@    s2 line pattern 1
+@    s2 baseline type 0
+@    s2 baseline off
+@    s2 dropline off
+@    s2 fill type 0
+@    s2 fill rule 0
+@    s2 fill color 1
+@    s2 fill pattern 1
+@    s2 avalue off
+@    s2 avalue type 2
+@    s2 avalue char size 1.000000
+@    s2 avalue font 0
+@    s2 avalue color 1
+@    s2 avalue rot 0
+@    s2 avalue format general
+@    s2 avalue prec 3
+@    s2 avalue prepend ""
+@    s2 avalue append ""
+@    s2 avalue offset 0.000000 , 0.000000
+@    s2 errorbar on
+@    s2 errorbar place both
+@    s2 errorbar color 1
+@    s2 errorbar pattern 1
+@    s2 errorbar size 1.000000
+@    s2 errorbar linewidth 1.0
+@    s2 errorbar linestyle 1
+@    s2 errorbar riser linewidth 1.0
+@    s2 errorbar riser linestyle 1
+@    s2 errorbar riser clip off
+@    s2 errorbar riser clip length 0.100000
+@    s2 comment "/donald/rk/paper/BD_radvel/figures/radvel_all02.dat"
+@    s2 legend  ""
 @g6 on
 @g6 hidden false
 @g6 type XY
@@ -1613,10 +1943,16 @@
 @g6 fixedpoint format general general
 @g6 fixedpoint prec 6, 6
 @with g6
-@    world 37.4, -2, 45.4, 2
+@    world xmin 37.4
+@    world xmax 45.4
+@    world ymin -1
+@    world ymax 1
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view 0.150000, 0.197405, 0.355882, 0.351905
+@    view xmin 0.150000
+@    view xmax 0.355882
+@    view ymin 0.197303
+@    view ymax 0.351723
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -1695,7 +2031,7 @@
 @    yaxis  label color 1
 @    yaxis  label place normal
 @    yaxis  tick on
-@    yaxis  tick major 1
+@    yaxis  tick major 0.5
 @    yaxis  tick minor ticks 1
 @    yaxis  tick default 6
 @    yaxis  tick place rounded true
@@ -1735,7 +2071,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.789522528447
+@    legend 0.5, 0.789113992909
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -1756,7 +2092,7 @@
 @    frame pattern 1
 @    frame background color 0
 @    frame background pattern 0
-@    s0 hidden false
+@    s0 hidden true
 @    s0 type xydy
 @    s0 symbol 1
 @    s0 symbol size 0.500000
@@ -1854,6 +2190,55 @@
 @    s1 errorbar riser clip length 0.100000
 @    s1 comment "/donald/rk/project/docs/figures/bd_radvel/radvels/zero.dat"
 @    s1 legend  ""
+@    s2 hidden false
+@    s2 type xydy
+@    s2 symbol 1
+@    s2 symbol size 0.500000
+@    s2 symbol color 1
+@    s2 symbol pattern 1
+@    s2 symbol fill color 1
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 1.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 0
+@    s2 symbol skip 0
+@    s2 line type 0
+@    s2 line linestyle 1
+@    s2 line linewidth 1.0
+@    s2 line color 1
+@    s2 line pattern 1
+@    s2 baseline type 0
+@    s2 baseline off
+@    s2 dropline off
+@    s2 fill type 0
+@    s2 fill rule 0
+@    s2 fill color 1
+@    s2 fill pattern 1
+@    s2 avalue off
+@    s2 avalue type 2
+@    s2 avalue char size 1.000000
+@    s2 avalue font 0
+@    s2 avalue color 1
+@    s2 avalue rot 0
+@    s2 avalue format general
+@    s2 avalue prec 3
+@    s2 avalue prepend ""
+@    s2 avalue append ""
+@    s2 avalue offset 0.000000 , 0.000000
+@    s2 errorbar on
+@    s2 errorbar place both
+@    s2 errorbar color 1
+@    s2 errorbar pattern 1
+@    s2 errorbar size 1.000000
+@    s2 errorbar linewidth 1.0
+@    s2 errorbar linestyle 1
+@    s2 errorbar riser linewidth 1.0
+@    s2 errorbar riser linestyle 1
+@    s2 errorbar riser clip off
+@    s2 errorbar riser clip length 0.100000
+@    s2 comment "/donald/rk/paper/BD_radvel/figures/radvel_all02.dat"
+@    s2 legend  ""
 @g7 on
 @g7 hidden false
 @g7 type XY
@@ -1865,10 +2250,16 @@
 @g7 fixedpoint format general general
 @g7 fixedpoint prec 6, 6
 @with g7
-@    world 33.875, -1, 41.375, 1
+@    world xmin 33.875
+@    world xmax 41.375
+@    world ymin -2
+@    world ymax 2
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view 0.397059, 0.197405, 0.602941, 0.351905
+@    view xmin 0.397059
+@    view xmax 0.602941
+@    view ymin 0.197303
+@    view ymax 0.351723
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -1949,7 +2340,7 @@
 @    yaxis  label color 1
 @    yaxis  label place normal
 @    yaxis  tick on
-@    yaxis  tick major 0.5
+@    yaxis  tick major 1
 @    yaxis  tick minor ticks 1
 @    yaxis  tick default 6
 @    yaxis  tick place rounded true
@@ -1989,7 +2380,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.789522528564
+@    legend 0.5, 0.789113993026
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -2010,7 +2401,7 @@
 @    frame pattern 1
 @    frame background color 0
 @    frame background pattern 0
-@    s0 hidden false
+@    s0 hidden true
 @    s0 type xydy
 @    s0 symbol 1
 @    s0 symbol size 0.500000
@@ -2108,6 +2499,55 @@
 @    s1 errorbar riser clip length 0.100000
 @    s1 comment "/donald/rk/project/docs/figures/bd_radvel/radvels/zero.dat"
 @    s1 legend  ""
+@    s2 hidden false
+@    s2 type xydy
+@    s2 symbol 1
+@    s2 symbol size 0.500000
+@    s2 symbol color 1
+@    s2 symbol pattern 1
+@    s2 symbol fill color 1
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 1.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 0
+@    s2 symbol skip 0
+@    s2 line type 0
+@    s2 line linestyle 1
+@    s2 line linewidth 1.0
+@    s2 line color 1
+@    s2 line pattern 1
+@    s2 baseline type 0
+@    s2 baseline off
+@    s2 dropline off
+@    s2 fill type 0
+@    s2 fill rule 0
+@    s2 fill color 1
+@    s2 fill pattern 1
+@    s2 avalue off
+@    s2 avalue type 2
+@    s2 avalue char size 1.000000
+@    s2 avalue font 0
+@    s2 avalue color 1
+@    s2 avalue rot 0
+@    s2 avalue format general
+@    s2 avalue prec 3
+@    s2 avalue prepend ""
+@    s2 avalue append ""
+@    s2 avalue offset 0.000000 , 0.000000
+@    s2 errorbar on
+@    s2 errorbar place both
+@    s2 errorbar color 1
+@    s2 errorbar pattern 1
+@    s2 errorbar size 1.000000
+@    s2 errorbar linewidth 1.0
+@    s2 errorbar linestyle 1
+@    s2 errorbar riser linewidth 1.0
+@    s2 errorbar riser linestyle 1
+@    s2 errorbar riser clip off
+@    s2 errorbar riser clip length 0.100000
+@    s2 comment "/donald/rk/paper/BD_radvel/figures/radvel_all02.dat"
+@    s2 legend  ""
 @g8 on
 @g8 hidden false
 @g8 type XY
@@ -2119,10 +2559,16 @@
 @g8 fixedpoint format general general
 @g8 fixedpoint prec 6, 6
 @with g8
-@    world 38, -2, 45, 2
+@    world xmin 38
+@    world xmax 45
+@    world ymin -0.5
+@    world ymax 0.5
 @    stack world 0, 0, 0, 0
 @    znorm 1
-@    view 0.644118, 0.197405, 0.850000, 0.351905
+@    view xmin 0.644118
+@    view xmax 0.850000
+@    view ymin 0.197303
+@    view ymax 0.351723
 @    title ""
 @    title font 0
 @    title size 1.500000
@@ -2201,7 +2647,7 @@
 @    yaxis  label color 1
 @    yaxis  label place normal
 @    yaxis  tick on
-@    yaxis  tick major 1
+@    yaxis  tick major 0.25
 @    yaxis  tick minor ticks 1
 @    yaxis  tick default 6
 @    yaxis  tick place rounded true
@@ -2241,7 +2687,7 @@
 @    altyaxis  off
 @    legend on
 @    legend loctype view
-@    legend 0.5, 0.789522528278
+@    legend 0.5, 0.78911399274
 @    legend box color 1
 @    legend box pattern 1
 @    legend box linewidth 1.0
@@ -2262,7 +2708,7 @@
 @    frame pattern 1
 @    frame background color 0
 @    frame background pattern 0
-@    s0 hidden false
+@    s0 hidden true
 @    s0 type xydy
 @    s0 symbol 1
 @    s0 symbol size 0.500000
@@ -2360,6 +2806,55 @@
 @    s1 errorbar riser clip length 0.100000
 @    s1 comment "/donald/rk/project/docs/figures/bd_radvel/radvels/zero.dat"
 @    s1 legend  ""
+@    s2 hidden false
+@    s2 type xydy
+@    s2 symbol 1
+@    s2 symbol size 0.500000
+@    s2 symbol color 1
+@    s2 symbol pattern 1
+@    s2 symbol fill color 1
+@    s2 symbol fill pattern 0
+@    s2 symbol linewidth 1.0
+@    s2 symbol linestyle 1
+@    s2 symbol char 65
+@    s2 symbol char font 0
+@    s2 symbol skip 0
+@    s2 line type 0
+@    s2 line linestyle 1
+@    s2 line linewidth 1.0
+@    s2 line color 1
+@    s2 line pattern 1
+@    s2 baseline type 0
+@    s2 baseline off
+@    s2 dropline off
+@    s2 fill type 0
+@    s2 fill rule 0
+@    s2 fill color 1
+@    s2 fill pattern 1
+@    s2 avalue off
+@    s2 avalue type 2
+@    s2 avalue char size 1.000000
+@    s2 avalue font 0
+@    s2 avalue color 1
+@    s2 avalue rot 0
+@    s2 avalue format general
+@    s2 avalue prec 3
+@    s2 avalue prepend ""
+@    s2 avalue append ""
+@    s2 avalue offset 0.000000 , 0.000000
+@    s2 errorbar on
+@    s2 errorbar place both
+@    s2 errorbar color 1
+@    s2 errorbar pattern 1
+@    s2 errorbar size 1.000000
+@    s2 errorbar linewidth 1.0
+@    s2 errorbar linestyle 1
+@    s2 errorbar riser linewidth 1.0
+@    s2 errorbar riser linestyle 1
+@    s2 errorbar riser clip off
+@    s2 errorbar riser clip length 0.100000
+@    s2 comment "/donald/rk/paper/BD_radvel/figures/radvel_all02.dat"
+@    s2 legend  ""
 @target G0.S0
 @type xydy
        1.8179138            1.735             2.69
@@ -2369,6 +2864,11 @@
 @type xy
              -30                0
               80                0
+&
+@target G0.S2
+@type xydy
+       1.8179138             0.05             0.44
+       28.775293            -0.05             0.36
 &
 @target G1.S0
 @type xydy
@@ -2380,6 +2880,11 @@
              -30                0
               80                0
 &
+@target G1.S2
+@type xydy
+       0.8120734             0.89             0.44
+       28.659166            -0.89             0.32
+&
 @target G2.S0
 @type xydy
        0.7850385            0.825             0.02
@@ -2389,6 +2894,11 @@
 @type xy
              -30                0
               80                0
+&
+@target G2.S2
+@type xydy
+       0.7850385             0.28             0.35
+       28.634948            -0.28             0.27
 &
 @target G3.S0
 @type xydy
@@ -2400,6 +2910,11 @@
              -30                0
               80                0
 &
+@target G3.S2
+@type xydy
+       1.7453989            -0.01             0.07
+       33.630488             0.01             0.09
+&
 @target G4.S0
 @type xydy
        0.8552168             0.38             0.47
@@ -2409,6 +2924,11 @@
 @type xy
              -30                0
               80                0
+&
+@target G4.S2
+@type xydy
+       0.8552168             0.23             0.05
+       33.582637            -0.23             0.07
 &
 @target G5.S0
 @type xydy
@@ -2420,6 +2940,11 @@
              -30                0
               80                0
 &
+@target G5.S2
+@type xydy
+       20.705941             0.86             0.74
+       28.696964            -0.86              0.2
+&
 @target G6.S0
 @type xydy
        39.797828           -0.235             0.69
@@ -2429,6 +2954,11 @@
 @type xy
              -30                0
               80                0
+&
+@target G6.S2
+@type xydy
+       39.797828            -0.36             0.09
+       43.610802             0.36              0.1
 &
 @target G7.S0
 @type xydy
@@ -2440,6 +2970,11 @@
              -30                0
               80                0
 &
+@target G7.S2
+@type xydy
+       35.772409            -0.01              0.8
+       39.853883             0.01             0.45
+&
 @target G8.S0
 @type xydy
        39.826868            0.095              0.3
@@ -2449,4 +2984,9 @@
 @type xy
              -30                0
               80                0
+&
+@target G8.S2
+@type xydy
+       39.826868            -0.03             0.18
+       43.639114             0.03              0.2
 &

@@ -2994,7 +2994,16 @@ Summary of the observations, the heliocentric radial velocities (
 \begin_inset Text
 
 \begin_layout Standard
-Object
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+0.81
 \end_layout
 
 \end_inset
@@ -3261,7 +3270,7 @@ GY 5
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.05\pm1.03$
+\begin_inset Formula $-6.39\pm2.19$
 \end_inset
 
 
@@ -3403,7 +3412,7 @@ GY 141
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-3.67\pm0.79$
+\begin_inset Formula $-3.81\pm0.91$
 \end_inset
 
 
@@ -3545,7 +3554,7 @@ GY 310
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.63\pm0.90$
+\begin_inset Formula $-6.73\pm1.16$
 \end_inset
 
 
@@ -3687,7 +3696,7 @@ USco 40
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.98\pm0.90$
+\begin_inset Formula $-6.81\pm0.74$
 \end_inset
 
 
@@ -3829,7 +3838,7 @@ USco 53
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.35\pm1.19$
+\begin_inset Formula $-7.75\pm0.95$
 \end_inset
 
 
@@ -3971,7 +3980,7 @@ USco 55
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.38\pm0.73$
+\begin_inset Formula $-6.38\pm0.71$
 \end_inset
 
 
@@ -4024,7 +4033,7 @@ USco 66
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-5.32\pm0.57$
+\begin_inset Formula $-7.24\pm0.95$
 \end_inset
 
 
@@ -4036,7 +4045,7 @@ USco 66
 \begin_inset Text
 
 \begin_layout Standard
-0.29
+0.81
 \end_layout
 
 \end_inset
@@ -4092,7 +4101,7 @@ USco 66
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.41\pm0.65$
+\begin_inset Formula $-8.38\pm1.32$
 \end_inset
 
 
@@ -4104,7 +4113,7 @@ USco 66
 \begin_inset Text
 
 \begin_layout Standard
-0.42
+1.22
 \end_layout
 
 \end_inset
@@ -4113,7 +4122,7 @@ USco 66
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-5.87\pm0.86$
+\begin_inset Formula $-7.81\pm1.63$
 \end_inset
 
 
@@ -4166,7 +4175,7 @@ USco 67
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.01\pm0.74$
+\begin_inset Formula $-7.07\pm0.67$
 \end_inset
 
 
@@ -4178,7 +4187,7 @@ USco 67
 \begin_inset Text
 
 \begin_layout Standard
-0.55
+0.44
 \end_layout
 
 \end_inset
@@ -4234,7 +4243,7 @@ USco 67
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.83\pm0.59$
+\begin_inset Formula $-5.70\pm0.58$
 \end_inset
 
 
@@ -4246,7 +4255,7 @@ USco 67
 \begin_inset Text
 
 \begin_layout Standard
-0.31
+0.30
 \end_layout
 
 \end_inset
@@ -4255,7 +4264,7 @@ USco 67
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.42\pm0.90$
+\begin_inset Formula $-6.38\pm0.88$
 \end_inset
 
 
@@ -4308,7 +4317,7 @@ USco 75
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.75\pm0.67$
+\begin_inset Formula $-6.80\pm0.70$
 \end_inset
 
 
@@ -4320,7 +4329,7 @@ USco 75
 \begin_inset Text
 
 \begin_layout Standard
-0.44
+0.50
 \end_layout
 
 \end_inset
@@ -4376,7 +4385,7 @@ USco 75
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-9.88\pm1.94$
+\begin_inset Formula $-6.16\pm0.78$
 \end_inset
 
 
@@ -4388,7 +4397,7 @@ USco 75
 \begin_inset Text
 
 \begin_layout Standard
-1.88
+0.60
 \end_layout
 
 \end_inset
@@ -4397,7 +4406,7 @@ USco 75
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-8.32\pm2.05$
+\begin_inset Formula $-6.48\pm1.05$
 \end_inset
 
 
@@ -4450,7 +4459,7 @@ USco 100
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.76\pm2.74$
+\begin_inset Formula $-7.37\pm0.67$
 \end_inset
 
 
@@ -4462,7 +4471,7 @@ USco 100
 \begin_inset Text
 
 \begin_layout Standard
-2.69
+0.44
 \end_layout
 
 \end_inset
@@ -4518,7 +4527,7 @@ USco 100
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-10.23\pm1.80$
+\begin_inset Formula $-7.47\pm0.62$
 \end_inset
 
 
@@ -4530,7 +4539,7 @@ USco 100
 \begin_inset Text
 
 \begin_layout Standard
-1.73
+0.36
 \end_layout
 
 \end_inset
@@ -4539,7 +4548,7 @@ USco 100
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-8.47\pm3.28$
+\begin_inset Formula $-7.42\pm0.91$
 \end_inset
 
 
@@ -4592,7 +4601,7 @@ USco 101
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-4.22\pm0.87$
+\begin_inset Formula $-3.25\pm0.66$
 \end_inset
 
 
@@ -4604,7 +4613,7 @@ USco 101
 \begin_inset Text
 
 \begin_layout Standard
-0.71
+0.44
 \end_layout
 
 \end_inset
@@ -4660,7 +4669,7 @@ USco 101
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.07\pm0.69$
+\begin_inset Formula $-5.03\pm0.60$
 \end_inset
 
 
@@ -4672,7 +4681,7 @@ USco 101
 \begin_inset Text
 
 \begin_layout Standard
-0.48
+0.32
 \end_layout
 
 \end_inset
@@ -4681,7 +4690,7 @@ USco 101
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-5.15\pm1.11$
+\begin_inset Formula $-4.14\pm0.89$
 \end_inset
 
 
@@ -4734,7 +4743,7 @@ USco 104
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-5.83\pm0.50$
+\begin_inset Formula $-7.05\pm0.61$
 \end_inset
 
 
@@ -4746,7 +4755,7 @@ USco 104
 \begin_inset Text
 
 \begin_layout Standard
-0.02
+0.35
 \end_layout
 
 \end_inset
@@ -4802,7 +4811,7 @@ USco 104
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-7.48\pm0.50$
+\begin_inset Formula $-7.62\pm0.57$
 \end_inset
 
 
@@ -4814,7 +4823,7 @@ USco 104
 \begin_inset Text
 
 \begin_layout Standard
-0.06
+0.27
 \end_layout
 
 \end_inset
@@ -4823,7 +4832,7 @@ USco 104
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.66\pm0.06$
+\begin_inset Formula $-7.33\pm0.83$
 \end_inset
 
 
@@ -4876,7 +4885,7 @@ USco 109
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-4.15\pm0.52$
+\begin_inset Formula $-4.72\pm0.50$
 \end_inset
 
 
@@ -4888,7 +4897,7 @@ USco 109
 \begin_inset Text
 
 \begin_layout Standard
-0.16
+0.07
 \end_layout
 
 \end_inset
@@ -4944,7 +4953,7 @@ USco 109
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-4.41\pm0.50$
+\begin_inset Formula $-4.70\pm0.51$
 \end_inset
 
 
@@ -4956,7 +4965,7 @@ USco 109
 \begin_inset Text
 
 \begin_layout Standard
-0.03
+0.09
 \end_layout
 
 \end_inset
@@ -4965,7 +4974,7 @@ USco 109
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-5.12\pm0.72$
+\begin_inset Formula $-4.71\pm0.72$
 \end_inset
 
 
@@ -5018,7 +5027,7 @@ USco 112
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-2.70\pm0.69$
+\begin_inset Formula $-2.95\pm0.50$
 \end_inset
 
 
@@ -5030,7 +5039,7 @@ USco 112
 \begin_inset Text
 
 \begin_layout Standard
-0.47
+0.05
 \end_layout
 
 \end_inset
@@ -5086,7 +5095,7 @@ USco 112
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-3.46\pm0.51$
+\begin_inset Formula $-3.41\pm0.51$
 \end_inset
 
 
@@ -5098,7 +5107,7 @@ USco 112
 \begin_inset Text
 
 \begin_layout Standard
-0.11
+0.07
 \end_layout
 
 \end_inset
@@ -5107,7 +5116,7 @@ USco 112
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-3.08\pm0.86$
+\begin_inset Formula $-3.18\pm0.71$
 \end_inset
 
 
@@ -5160,7 +5169,7 @@ USco 121
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-39.47\pm0.51$
+\begin_inset Formula $-40.76\pm0.90$
 \end_inset
 
 
@@ -5172,7 +5181,7 @@ USco 121
 \begin_inset Text
 
 \begin_layout Standard
-0.11
+0.74
 \end_layout
 
 \end_inset
@@ -5228,7 +5237,7 @@ USco 121
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-42.43\pm0.50$
+\begin_inset Formula $-42.48\pm0.54$
 \end_inset
 
 
@@ -5240,7 +5249,7 @@ USco 121
 \begin_inset Text
 
 \begin_layout Standard
-0.02
+0.20
 \end_layout
 
 \end_inset
@@ -5249,7 +5258,7 @@ USco 121
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-40.95\pm0.71$
+\begin_inset Formula $-41.62\pm1.04$
 \end_inset
 
 
@@ -5302,7 +5311,7 @@ USco 128
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-7.41\pm0.85$
+\begin_inset Formula $-7.03\pm0.51$
 \end_inset
 
 
@@ -5314,7 +5323,7 @@ USco 128
 \begin_inset Text
 
 \begin_layout Standard
-0.69
+0.09
 \end_layout
 
 \end_inset
@@ -5370,7 +5379,7 @@ USco 128
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-6.94\pm1.16$
+\begin_inset Formula $-6.32\pm0.51$
 \end_inset
 
 
@@ -5382,7 +5391,7 @@ USco 128
 \begin_inset Text
 
 \begin_layout Standard
-1.05
+0.10
 \end_layout
 
 \end_inset
@@ -5391,7 +5400,7 @@ USco 128
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-7.18\pm1.44$
+\begin_inset Formula $-6.68\pm0.72$
 \end_inset
 
 
@@ -5444,7 +5453,7 @@ USco 130
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-4.83\pm0.54$
+\begin_inset Formula $-3.92\pm0.94$
 \end_inset
 
 
@@ -5456,7 +5465,7 @@ USco 130
 \begin_inset Text
 
 \begin_layout Standard
-0.21
+0.80
 \end_layout
 
 \end_inset
@@ -5512,7 +5521,7 @@ USco 130
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-4.95\pm0.74$
+\begin_inset Formula $-3.90\pm0.67$
 \end_inset
 
 
@@ -5524,7 +5533,7 @@ USco 130
 \begin_inset Text
 
 \begin_layout Standard
-0.55
+0.45
 \end_layout
 
 \end_inset
@@ -5533,7 +5542,7 @@ USco 130
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-4.89\pm0.92$
+\begin_inset Formula $-3.91\pm1.16$
 \end_inset
 
 
@@ -5586,7 +5595,7 @@ USco 132
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-7.18\pm0.58$
+\begin_inset Formula $-6.68\pm0.53$
 \end_inset
 
 
@@ -5598,7 +5607,7 @@ USco 132
 \begin_inset Text
 
 \begin_layout Standard
-0.30
+0.18
 \end_layout
 
 \end_inset
@@ -5654,7 +5663,7 @@ USco 132
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-7.37\pm1.02$
+\begin_inset Formula $-6.61\pm0.54$
 \end_inset
 
 
@@ -5666,7 +5675,7 @@ USco 132
 \begin_inset Text
 
 \begin_layout Standard
-0.89
+0.20
 \end_layout
 
 \end_inset
@@ -5675,7 +5684,7 @@ USco 132
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $-7.28\pm1.17$
+\begin_inset Formula $-6.64\pm0.76$
 \end_inset
 
 
@@ -8938,7 +8947,7 @@ begin{table}
 \end_layout
 
 \begin_layout Caption
-Comparison of the 
+The 
 \begin_inset Formula $\chi^{2}$
 \end_inset
 
@@ -8946,13 +8955,7 @@ Comparison of the
 \begin_inset Formula $p$
 \end_inset
 
-), for each object being a RV constant, computed with an addition systematic
- error 
-\begin_inset Formula $\sigma_{\mathrm{sys}}$
-\end_inset
-
- (right), and without (left).
- The objects are listed in ascending order of 
+), for each object being a RV constant, listed in ascending order of 
 \begin_inset Formula $p$
 \end_inset
 
@@ -8976,57 +8979,11 @@ Comparison of the
 \begin_layout Standard
 \align center
 \begin_inset Tabular
-<lyxtabular version="3" rows="20" columns="4">
+<lyxtabular version="3" rows="19" columns="2">
 <features>
 <column alignment="left" valignment="top" width="0">
 <column alignment="center" valignment="top" width="0">
-<column alignment="left" valignment="top" width="0">
-<column alignment="center" valignment="top" width="0">
 <row topline="true">
-<cell alignment="left" valignment="top" topline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $\sigma_{\mathrm{sys}}=0.0\,\kmps$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" topline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" topline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $\sigma_{\mathrm{sys}}=0.2\,\kmps$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
 <cell alignment="left" valignment="top" usebox="none">
 \begin_inset Text
 
@@ -9037,29 +8994,7 @@ ID
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $p$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-obj.\InsetSpace ~
-ID
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
@@ -9077,17 +9012,26 @@ ID
 \begin_inset Text
 
 \begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
 USco\InsetSpace ~
-104
+112
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" usebox="none">
+<cell alignment="center" valignment="top" topline="true" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $4.3\times10^{-12}$
+\begin_inset Formula $8.9\times10^{-8}$
 \end_inset
 
 
@@ -9095,67 +9039,32 @@ USco\InsetSpace ~
 
 \end_inset
 </cell>
-<cell alignment="left" valignment="top" topline="true" usebox="none">
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
 USco\InsetSpace ~
-104
+128
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" topline="true" usebox="none">
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $3.5\times10^{-6}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-GY\InsetSpace ~
-310
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $1.8\times10^{-10}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-GY\InsetSpace ~
-310
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $2.0\times10^{-5}$
+\begin_inset Formula $1.3\times10^{-7}$
 \end_inset
 
 
@@ -9169,41 +9078,26 @@ GY\InsetSpace ~
 \begin_inset Text
 
 \begin_layout Standard
-GY\InsetSpace ~
-141
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+USco\InsetSpace ~
+40
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" usebox="none">
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $1.6\times10^{-4}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $\cdots$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $\cdots$
+\begin_inset Formula $5.8\times10^{-7}$
 \end_inset
 
 
@@ -9217,39 +9111,26 @@ GY\InsetSpace ~
 \begin_inset Text
 
 \begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
 USco\InsetSpace ~
 55
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" usebox="none">
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $7.2\times10^{-4}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-GY\InsetSpace ~
-141
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $5.8\times10^{-2}$
+\begin_inset Formula $2.4\times10^{-6}$
 \end_inset
 
 
@@ -9271,33 +9152,11 @@ GY\InsetSpace ~
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" usebox="none">
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
 \begin_inset Formula $\cdots$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-55
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $1.6\times10^{-1}$
 \end_inset
 
 
@@ -9311,17 +9170,26 @@ USco\InsetSpace ~
 \begin_inset Text
 
 \begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
 USco\InsetSpace ~
 101
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" usebox="none">
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $8.9\times10^{-2}$
+\begin_inset Formula $1.1\times10^{-3}$
 \end_inset
 
 
@@ -9329,17 +9197,160 @@ USco\InsetSpace ~
 
 \end_inset
 </cell>
+</row>
+<row>
 <cell alignment="left" valignment="top" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
-USco\InsetSpace ~
-130
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+GY\InsetSpace ~
+310
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" usebox="none">
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+\begin_inset Formula $1.6\times10^{-3}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+USco\InsetSpace ~
+67
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+\begin_inset Formula $1.0\times10^{-2}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+USco\InsetSpace ~
+53
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+\begin_inset Formula $9.8\times10^{-2}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+USco\InsetSpace ~
+104
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+\begin_inset Formula $2.0\times10^{-1}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+GY\InsetSpace ~
+141
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
@@ -9357,85 +9368,26 @@ USco\InsetSpace ~
 \begin_inset Text
 
 \begin_layout Standard
-USco\InsetSpace ~
-66
-\end_layout
 
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $9.2\times10^{-2}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-132
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $2.6\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
 USco\InsetSpace ~
 75
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" usebox="none">
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $2.8\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-101 
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $2.8\times10^{-1}$
+\begin_inset Formula $4.1\times10^{-1}$
 \end_inset
 
 
@@ -9449,407 +9401,158 @@ USco\InsetSpace ~
 \begin_inset Text
 
 \begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+USco\InsetSpace ~
+66
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+\begin_inset Formula $4.4\times10^{-1}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+GY\InsetSpace ~
+5
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+\begin_inset Formula $7.2\times10^{-1}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+USco\InsetSpace ~
+132
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+\begin_inset Formula $7.9\times10^{-1}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
+USco\InsetSpace ~
+100
+\end_layout
+
+\end_inset
+</cell>
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+\begin_inset Formula $8.6\times10^{-1}$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+</cell>
+</row>
+<row>
+<cell alignment="left" valignment="top" usebox="none">
+\begin_inset Text
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
 USco\InsetSpace ~
 109
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" usebox="none">
+<cell alignment="center" valignment="top" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $3.0\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-GY\InsetSpace ~
-5
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $2.8\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-112
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $3.1\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-75
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $3.9\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-132
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $3.2\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-66
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $4.3\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-130
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $3.2\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-128
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $4.6\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-GY\InsetSpace ~
-5
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $3.7\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-53
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $5.8\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-53 
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $4.2\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-40
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $6.0\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-67
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $4.8\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-112
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $6.5\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-128
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $5.4\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-100
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $6.6\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-</row>
-<row>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-100
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $6.2\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-67
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $7.0\times10^{-1}$
+\begin_inset Formula $8.6\times10^{-1}$
 \end_inset
 
 
@@ -9863,39 +9566,26 @@ USco\InsetSpace ~
 \begin_inset Text
 
 \begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\bar no
+\noun off
+\color none
 USco\InsetSpace ~
-40
+130
 \end_layout
 
 \end_inset
 </cell>
-<cell alignment="center" valignment="top" bottomline="true" usebox="none">
+<cell alignment="center" valignment="top" bottomline="true" rightline="true" usebox="none">
 \begin_inset Text
 
 \begin_layout Standard
-\begin_inset Formula $7.2\times10^{-1}$
-\end_inset
-
-
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="left" valignment="top" bottomline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-USco\InsetSpace ~
-109
-\end_layout
-
-\end_inset
-</cell>
-<cell alignment="center" valignment="top" bottomline="true" usebox="none">
-\begin_inset Text
-
-\begin_layout Standard
-\begin_inset Formula $7.1\times10^{-1}$
+\begin_inset Formula $9.8\times10^{-1}$
 \end_inset
 
 
