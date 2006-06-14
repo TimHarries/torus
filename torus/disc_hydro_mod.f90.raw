@@ -96,8 +96,13 @@ contains
     if (geometry == "ppdisk") then
        smoothScaleLength = height * rHeight * (rSmooth/rHeight)**flaringPower
        scalefac = fractgap(dble(radiusAU)) / (1. + 81.d0**(dble(rSmooth-radiusAU)/smoothScaleLength)) &
-            * (rHeight/radiusAU)**sigmaPower / sigma
-       scalefac = scalefac * 0.5 * rho0 * Msol / autocm**2
+            * (rHeight/radiusAU)**sigmaPower
+       scalefac = scalefac * rho0 * Msol / autocm**2
+
+!       scalefac in g/cm^3
+       write (137,*) radiusAU, scalefac
+
+       scalefac = scalefac * 0.5 / sigma
     endif
 
 
@@ -313,7 +318,7 @@ contains
   subroutine verticalHydrostatic(grid, mStar, sigma0, rDisk, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tThresh, twoD, expectedMass)
 
-    use input_variables, only : variableDustsublimation
+    use input_variables, only : variableDustsublimation, rGap
 
 !$MPI include 'mpif.h'
 
@@ -332,12 +337,13 @@ contains
     real :: tthresh, drho
     integer :: maxIter
     integer :: nIter, j, ilamsmooth
-    character(len=20) :: plotfile
+    character(len=40) :: plotfile
     real(double) totalMass
     logical :: twoD, gridConverged
     real :: temp
     integer :: nOctals, nVoxels
     character(len=80) :: ofile
+    real :: rGapCM
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   ierr           ! error flag
@@ -395,10 +401,18 @@ contains
        write(*,*) "Zeroing new density values..."
        call zeroChiline(grid%octreeRoot)       
 
+!$MPI    if(my_rank == 0) then
+       if (geometry == "ppdisk") open(unit=137, file='surface_density.dat', status='replace', form='formatted')
+!$MPI    endif
+
 !$MPI    if(my_rank == 0) &
        write(*,*) "Solving the vertical hydrostatic equilibrium..."
        drho = 0.
        call throughoutMidpane(grid, mStar, sigma0, rDisk, drho)
+
+!$MPI    if(my_rank == 0) then
+       if (geometry == "ppdisk") close(137)
+!$MPI    endif
 
 !$MPI    if(my_rank == 0) &
        write(*,*) "Updating cell densities..."
@@ -419,8 +433,33 @@ contains
 !$MPI    if(my_rank == 0) then
        write(plotfile,'(a,i3.3,a)') "rho",niter,".gif/gif"
        call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false., boxfac=0.01)
+
        write(plotfile,'(a,i3.3,a)') "temp",niter,".gif/gif"
        call plot_AMR_values(grid, "temperature", "x-z", 0.0, plotfile, .true., .false.)
+
+       ! chris
+       if (geometry == "ppdisk") then
+          rGapCM = rGap * autocm / 1.d10
+
+       write(plotfile,'(a,i3.3,a)') "rho",niter,".ps/vcps"
+       call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
+       write(plotfile,'(a,i3.3,a)') "rho_zoom",niter,".ps/vcps"
+       call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
+       write(plotfile,'(a,i3.3,a)') "rho_ultrazoom",niter,".ps/vcps"
+       call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.005)
+       write(plotfile,'(a,i3.3,a)') "rho_gapzoom",niter,".ps/vcps"
+       call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.,&
+            xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM)
+       write(plotfile,'(a,i3.3,a)') "temp",niter,".ps/vcps"
+       call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false.)
+       write(plotfile,'(a,i3.3,a)') "temp_zoom",niter,".ps/vcps"
+       call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
+       write(plotfile,'(a,i3.3,a)') "temp_ultrazoom",niter,".ps/vcps"
+       call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.005)
+       write(plotfile,'(a,i3.3,a)') "temp_gapzoom",niter,".ps/vcps"
+       call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.false., .false.,&
+            xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM, fixValMin=40.d0, fixValMax=200.d0)
+        end if
 !       write(plotfile,'(a,i3.3,a)') "tau",niter,".gif/gif"
 !       call plot_AMR_values(grid, "tau", "x-z", 0.0, plotfile, .true., .false.) !problem with passing ilam
 !$MPI    endif
@@ -496,6 +535,27 @@ contains
     call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
          nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twoD, maxIter)
 
+    ! chris
+    if (geometry == "ppdisk") then
+    write(plotfile,'(a,i3.3,a)') "rho_final.ps/vcps"
+    call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
+    write(plotfile,'(a,i3.3,a)') "rho_zoom_final.ps/vcps"
+    call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
+    write(plotfile,'(a,i3.3,a)') "rho_ultrazoom_final.ps/vcps"
+    call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.005)
+    write(plotfile,'(a,i3.3,a)') "rho_gapzoom_final.ps/vcps"
+    call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.,&
+         xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM)
+    write(plotfile,'(a,i3.3,a)') "temp_final.ps/vcps"
+    call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false.)
+    write(plotfile,'(a,i3.3,a)') "temp_zoom_final.ps/vcps"
+    call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
+    write(plotfile,'(a,i3.3,a)') "temp_ultrazoom_final.ps/vcps"
+    call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.005)
+    write(plotfile,'(a,i3.3,a)') "temp_gapzoom_final.ps/vcps"
+    call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.false., .false.,&
+         xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM, fixValMin=40.d0, fixValMax=200.d0)
+    end if
 
   end subroutine verticalHydrostatic
 
