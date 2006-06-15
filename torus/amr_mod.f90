@@ -6237,7 +6237,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octalVector) :: rVec
     integer,save :: it
     real :: fac
-    real,save :: radius(200),temp(200)
+    real,save :: radius(400),temp(400)
     integer :: i
     logical,save :: firsttime = .true.
 

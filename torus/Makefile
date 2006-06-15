@@ -622,6 +622,14 @@ stateq_mod.o: stateq_mod.f90.raw cmfgen_class.o constants_mod.o grid_mod.o gridt
         endif
 	$(F90) -c stateq_mod.f90
 
+photoion_mod.o: photoion_mod.f90.raw source_mod.o timing.o grid_mod.o amr_mod.o constants_mod.o messages_mod.o
+        ifeq ($(MK_MPI_SRC), yes)
+	   sed 's/\!$$MPI//g' photoion_mod.f90.raw > photoion_mod.f90
+        else
+	   sed '/\!$$MPI/d'   photoion_mod.f90.raw > photoion_mod.f90 
+        endif
+	$(F90) -c photoion_mod.f90
+
 
 parallel_mod.o: parallel_mod.f90.raw  
         ifeq ($(MK_MPI_SRC), yes)

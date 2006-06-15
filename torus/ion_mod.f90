@@ -105,8 +105,8 @@ contains
     nIon = nIon + 1
     call createIon(ionArray(nIon), 6, 3, 6.449e1) ! C IV
 
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 6, 2, 3.921e2) ! C V
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 6, 2, 3.921e2) ! C V
 
     nIon = nIon + 1
     call createIon(ionArray(nIon), 7, 7, 1.453e1) ! N I
@@ -120,8 +120,8 @@ contains
     nIon = nIon + 1
     call createIon(ionArray(nIon), 7, 4, 7.747e1) ! N IV
 
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 7, 3, 9.789e1) ! N V
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 7, 3, 9.789e1) ! N V
 
     nIon = nIon + 1
     call createIon(ionArray(nIon), 8, 8, 1.362e1) ! O I
@@ -135,8 +135,8 @@ contains
     nIon = nIon + 1
     call createIon(ionArray(nIon), 8, 5, 7.741e1) ! O IV
 
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 8, 4, 1.139e2) ! O V
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 8, 4, 1.139e2) ! O V
 
     nIon = nIon + 1
     call createIon(ionArray(nIon), 10, 10, 2.156e1) ! Ne I
@@ -289,6 +289,11 @@ subroutine addLevels(thisIon)
         call addLevel(thisIon, "1D_2", 1.403841d0, 2.)
         call addLevel(thisIon, "1S_0", 3.36753d0, 0.)
 !        call addLevel(thisIon, "5S^0_2", 7.274391d0, 2.)
+
+     case("S IV")
+        call addLevel(thisIon, "2P^0_1/2", 0.d0, 0.5)
+        call addLevel(thisIon, "2P^0_3/2", 0.117962d0, 1.5)
+
     case DEFAULT
   end select
 end subroutine addLevels
@@ -567,6 +572,13 @@ subroutine addTransitions(thisIon)
         gamma = (/  1.42  , 1.88  , 2.02  ,  2.08  /)
         call addTransition2(thisIon,"1S_0", "1D_2", 6312.1, 2.22e0, t, gamma, 4)
         deallocate(t, gamma)
+
+     case("S IV")
+        allocate(t(4), gamma(4))
+        gamma = (/  6.42, 6.42  , 6.41  , 6.40 /)
+        call addTransition2(thisIon,"2P^0_3/2", "2P^0_1/2", 105000., 7.73e-3, t, gamma, 4)
+        deallocate(t, gamma)
+
 
      case DEFAULT
    end select

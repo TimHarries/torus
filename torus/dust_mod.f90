@@ -427,6 +427,9 @@ contains
       ! finding the cross sections
       sigmaExt(:) = 0.0; sigmaAbs(:)=0.0; sigmaSca(:)=0.0 ! initializing the values
 
+      if (writeoutput) write(*,*) "Dust law: ",aMin,aMax,qDist
+      if (writeoutput) open(20,file="albedo.dat",form="formatted",status="unknown")
+      if (writeoutput) open(21,file="gfactor.dat",form="formatted",status="unknown")
       do i = 1, grid%nLambda
          do j = 1, ngrain
             call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
@@ -440,18 +443,10 @@ contains
          sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
          sigmaSca(i) =    sigmaSca(i)/total_abundance 
          
-      end do
-         
-
-      if (writeoutput) write(*,*) "Dust law: ",aMin,aMax,qDist
-      if (writeoutput) open(20,file="albedo.dat",form="formatted",status="unknown")
-      if (writeoutput) open(21,file="gfactor.dat",form="formatted",status="unknown")
-      do i = 1, grid%nLambda
-         call mieDistCrossSection(aMin, aMax, a0, qDist, pdist, grid%lamArray(i),  mReal(i), mImg(i), sigmaExt(i), &
-              sigmaSca(i), sigmaAbs(i), gSca)
          if (writeoutput) write(21,*) grid%lamArray(i), gsca
          if (writeoutput) write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
-      enddo
+      end do
+         
       if (writeoutput) close(20)
       if (writeoutput) close(21)
 

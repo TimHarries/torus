@@ -7,6 +7,8 @@ use timing
 use grid_mod
 use amr_mod
 use constants_mod
+use messages_mod
+
 implicit none
 
 type SAHAMILNETABLE
@@ -93,6 +95,50 @@ contains
     real(double) :: freq(1000), spectrum(1000), nuStart, nuEnd
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
+    integer :: iMonte_beg, iMonte_end
+!$MPI    ! For MPI implementations
+!$MPI  ! For MPI implementations =====================================================
+!$MPI  integer ::   my_rank        ! my processor rank
+!$MPI  integer ::   n_proc         ! The number of processes
+!$MPI  integer ::   ierr           ! error flag
+!$MPI  integer ::   n_rmdr, m      !
+!$MPI  integer ::   mphotons       ! number of photons (actual) 
+!$MPI  integer ::   tempInt        !
+!$MPI  real, dimension(:), allocatable :: tempRealArray
+!$MPI  real, dimension(:), allocatable :: tempRealArray2
+!$MPI  integer, dimension(:), allocatable :: photonBelongsRank
+!$MPI  integer, parameter :: tag = 0
+!$MPI  logical :: rankComplete
+!$MPI    ! data space to store values from all processors
+!$MPI    real, save, allocatable  :: buffer_real(:)     
+!$MPI    logical, save  :: first_time = .true.
+!$MPI
+!!$MPI    ! find the number of the processors for the first time.    
+!!$MPI    if (first_time) then
+!$MPI       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
+!!$MPI       allocate(buffer_real(n_proc))
+!!$MPI       first_time = .false.
+!!$MPI    end if
+!$MPI
+!$MPI       allocate(buffer_real(n_proc))
+!$MPI
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
+!$MPI    
+!$MPI    if (my_rank .eq. 0) then
+!$MPI       print *, ' '
+!$MPI       print *, 'Photoionization loop computed by ', n_proc, ' processors.'
+!$MPI       print *, ' '
+!$MPI    endif
+!$MPI    
+!$MPI    ! ============================================================================
+
+
+
     nuStart = cSpeed / (10.d4 * 1.d-8)
     nuEnd =  2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
     write(*,*) "shortest wavelength",1.d8*cspeed/nuEnd
@@ -122,32 +168,65 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 200000
+    nMonte = 100000
 
     nIter = 0
 
     do 
        nIter = nIter + 1
        nInf=0
-       call plot_AMR_values(grid, "ionization", "x-z", 0., &
-            "ionization.ps/vcps", .true., .true., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
-
-       call plot_AMR_values(grid, "photocoeff", "x-z", 0., &
-            "photocoeff.ps/vcps", .true., .true., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
-
-       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+       if (writeoutput) then
+          call plot_AMR_values(grid, "ionization", "x-z", 0., &
+               "ionization.ps/vcps", .true., .true., &
+               0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+          
+          call plot_AMR_values(grid, "photocoeff", "x-z", 0., &
+               "photocoeff.ps/vcps", .true., .true., &
+               0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+          
+          call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             "lucy_temp_xz.ps/vcps", .false., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
-       epsoverdeltat = lcore/dble(nMonte)
+          epsoverdeltat = lcore/dble(nMonte)
+       endif
        call zeroDistanceGrid(grid%octreeRoot)
 
        write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter
 
+!$MPI       if (my_rank == 1) &
        call tune(6, "One photoionization itr")  ! start a stopwatch
 
-       mainloop: do iMonte = 1, nMonte
+       iMonte_beg = 1
+       iMonte_end = nMonte
+
+!$MPI  !====================================================================================
+!$MPI  ! Splitting the innerPhoton loop for multiple processors.
+!$MPI  if (my_rank == 0) then
+!$MPI     print *, ' '
+!$MPI     print *, 'photonLoop computed by ', n_proc-1, ' processors.'
+!$MPI     print *, ' '
+!$MPI  endif
+!$MPI  if (my_rank == 0) then
+!$MPI     ! we will use an array to store the rank of the process
+!$MPI     !   which will calculate each photon
+!$MPI     allocate(photonBelongsRank(nMonte))
+!$MPI    
+!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=10,tag=tag,&
+!$MPI                          setDebug=.false.)
+!$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
+!$MPI  end if
+!$MPI  !====================================================================================
+
+!$MPI    
+!$MPI    
+!$MPI  if (my_rank /= 0) then
+!$MPI    mpiBlockLoop: do  
+!$MPI      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
+!$MPI      if (rankComplete) exit mpiBlockLoop  
+!$MPI    
+
+
+       mainloop: do iMonte = iMonte_beg, iMonte_end
 
           call randomSource(source, nSource, iSource)
           thisSource = source(iSource)
@@ -203,21 +282,43 @@ contains
           nInf = nInf + 1
        end do mainloop
 
+!$MPI if (.not.blockHandout) exit mpiblockloop        
+!$MPI    end do mpiBlockLoop  
+!$MPI  end if ! (my_rank /= 0)
+
+!$MPI       if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
+!$MPI    !   call update_octal_MPI(grid%octreeRoot, grid)
+
+!$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
+
+!$MPI       call updateGridMPI(grid)
+
+
+
+
+
+!$MPI       if (my_rank == 1) &
        call tune(6, "One photoionization itr")  ! stop a stopwatch
 
        epsOverDeltaT = (lCore) / dble(nMonte)
 
 
        do i = 1, 3
-          write(*,*) "Calculating ionization and thermal equilibria",i
+          if (writeoutput) &
+               write(*,*) "Calculating ionization and thermal equilibria",i
           call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+          if (nIter > 1) then
+             call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+          endif
+          if (writeoutput) &
           write(*,*) "Done."
        enddo
 
        call dumpLexington(grid, epsoverdeltat)
        fac = 2.06e37
        
+if (writeoutput) then
        luminosity1 = 0.d0
        call getHbetaLuminosity(grid%octreeRoot, grid, luminosity1)
        write(*,'(a,2f12.4)') "H beta :",luminosity1/1.e37,luminosity1/2.05e37
@@ -284,7 +385,7 @@ contains
        call getForbiddenLineLuminosity(grid, "S III", 9532., luminosity1)
        call getForbiddenLineLuminosity(grid, "S III", 9069., luminosity2)
        write(*,'(a,2f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(1.22*2.05e37)
-
+    endif
 
 
 !       if ((niter > 2).and.(nIter < 8)) then
@@ -912,7 +1013,7 @@ contains
                    converged = .false.
 
                    t1 = 5000.
-                   t2 = 20000.
+                   t2 = 40000.
                    found = .true.
 
                    if (found) then
@@ -986,12 +1087,13 @@ contains
   end function recombToGround
 
   
-  function HHeCooling(grid, thisOctal, subcell, nh, nHii, nHeii, ne, temperature) result (coolingRate)
+  function HHeCooling(grid, thisOctal, subcell, nh, nHii, nHeii, ne, temperature,debug) result (coolingRate)
     type(OCTAL) :: thisOctal
     integer :: subcell
     type(GRIDTYPE) :: grid
     real(double) :: nHii, nHeii, ne, nh
     real :: temperature
+    logical, optional :: debug
     real(double) :: coolingRate, crate
     real(double) :: gff
     real :: rootTbetaH(31) = (/ 8.287e-11, 7.821e-11, 7.356e-11, 6.982e-11, 6.430e-11, 5.971e-11, 5.515e-11, 5.062e-11, 4.614e-11, &
@@ -1009,7 +1111,7 @@ contains
     integer :: n
     real(double) :: log10te,betarec, coolrec, betaff, coolff
     real :: ch12, ch13, ex12, ex13, th12, th13, coolcoll, te4, teused
-    real :: becool
+    real(double) :: becool
     real, parameter                :: hcRyd = &    ! constant: h*c*Ryd (Ryd at inf used) [erg]
          & 2.1799153e-11
 
@@ -1017,9 +1119,9 @@ contains
     becool = 0.
     coolingRate = 0.d0
 
-!    gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3.d0)  ! Kenny equation 23
-!
-!    coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
+    gff = 1.1d0 + 0.34d0*exp(-(5.5d0 - log10(temperature))**2 / 3.d0)  ! Kenny equation 23
+
+    coolingRate = 1.42d-27 * (nHii+nHeii) * ne * gff * sqrt(temperature)  ! Kenny equation 22 (free-free)
 
     thisLogT = log10(temperature)
     log10te = thisLogT
@@ -1037,7 +1139,18 @@ contains
 
     becool = becool + coolfF
 
-    coolingRate = coolingRate + coolFF
+    ! cooling of gas due to recombination of H+
+    ! fits to Hummer, MNRAS 268(1994) 109, Table 1.  
+    ! least square fitting to m=4
+    betaRec = 9.4255985E-11 -4.04794384E-12*log10Te &
+         & -1.0055237E-11*log10Te*log10Te +  1.99266862E-12*log10Te*log10Te*log10Te&
+         & -1.06681387E-13*log10Te*log10Te*log10Te*log10Te
+    
+    coolRec = Nhii*Ne*betaRec*kerg*TeUsed/sqrt(TeUsed)
+    
+
+    becool = becool+ coolrec
+
 
     ! collisional excitation of Hydrogen
     ! Mathis, Ly alpha, beta
@@ -1063,6 +1176,14 @@ contains
 
     becool = becool +coolcoll
 
+    if (PRESENT(debug)) then
+       if (debug) then
+          if (becool /= 0.) then
+             write(*,*) coolff/becool, coolrec/becool, coolcoll/becool
+          endif
+       endif
+    endif
+
     if (coolingRate < 0.) then
        write(*,*) "negative ff cooling",nhii,nheii,ne,gff,sqrt(temperature)
     endif
@@ -1083,17 +1204,6 @@ contains
     betaHe = thisrootTbetaHe / sqrt(temperature)
 
 
-            ! cooling of gas due to recombination of H+
-            ! fits to Hummer, MNRAS 268(1994) 109, Table 1.  
-            ! least square fitting to m=4
-            betaRec = 9.4255985E-11 -4.04794384E-12*log10Te &
-                 & -1.0055237E-11*log10Te*log10Te +  1.99266862E-12*log10Te*log10Te*log10Te&
-                 & -1.06681387E-13*log10Te*log10Te*log10Te*log10Te
-
-            coolRec = Nhii*Ne*betaRec*kerg*TeUsed/sqrt(TeUsed)
-
-            becool = becool+ coolrec
-
     coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
 
 
@@ -1109,8 +1219,6 @@ contains
        write(*,*) "negative He cooling",ne,nheii,kerg,temperature,betaHe
     endif
 
-
-    
 
     call metalcoolingRate(grid%ion, grid%nIon, thisOctal, subcell, nh, ne, temperature, crate)
     if (crate < 0.) then
@@ -1796,7 +1904,7 @@ subroutine dumpLexington(grid, epsoverdt)
   open(22,file="ne.dat",form="formatted",status="unknown")
 
   do i = 1, 50
-     r = (1.+4.d0*dble(i-1)/49.d0)*pctocm/1.e10
+     r = (1.+7.d0*dble(i-1)/49.d0)*pctocm/1.e10
 
      t=0;hi=0; hei=0;oii=0;oiii=0;cii=0;ciii=0;civ=0;nii=0;niii=0;niv=0;nei=0;neii=0;neiii=0;neiv=0;ne=0.
 
@@ -2086,7 +2194,7 @@ subroutine metalcoolingRate(ionArray, nIons, thisOctal, subcell, nh, ne, tempera
   logical, optional :: debug
 
   total = 0.d0
-  do j = 3, nIons
+  do j = 5, nIons
      if (ionArray(j)%nTransitions > 0) then
         call solvePops(ionArray(j), pops, ne, temperature, thisOctal%ionFrac(subcell,j), thisOctal%nh(subcell))
         rate = 0.d0
@@ -2505,6 +2613,7 @@ subroutine addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
              ((hcgs**2) /(twoPi*mElectron*Kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
              dble(hxsec/1.d10) *  exp(-hcgs*(freq(i)-grid%ion(iIon)%nuThresh)/(kerg*thisOctal%temperature(subcell)))
         jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance)
+
         spectrum(i) = spectrum(i) + jnu * dFreq * fourPi 
      enddo
   enddo
@@ -2691,41 +2800,41 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
 !  enddo
 !
 
-  HeII4686 = 10.d0**(-0.997d0*log10(thisOctal%temperature(subcell))+5.16d0)
-  HeII4686 = HeII4686*thisOctal%ne(subcell)*thisOctal%nh(subcell)*thisOctal%ionFrac(subcell,5)*grid%ion(4)%abundance
-  
-  ! calculate emission due to HeII recombination lines [e-25 ergs/s/cm^3]                                                     
-  do iup = 30, 3, -1
-     do ilow = 2, min0(16, iup-1)
-        emissivity= HeIIrecombinationLines(iup, ilow)*HeII4686*1.d-25
-
-
-        lambda = 227.838 / (1./real(ilow**2)  - 1./real(iup**2))!!!!!!!!!!!!!!!!!!!
-        lineFreq = cSpeed/(lambda * 1.d-8)
-
-     call locate(freq, nFreq, lineFreq, k)
-     spectrum(k) = spectrum(k) + emissivity
-     end do
-  end do
-
+!  HeII4686 = 10.d0**(-0.997d0*log10(thisOctal%temperature(subcell))+5.16d0)
+!  HeII4686 = HeII4686*thisOctal%ne(subcell)*thisOctal%nh(subcell)*thisOctal%ionFrac(subcell,5)*grid%ion(4)%abundance
+!  
+!  ! calculate emission due to HeII recombination lines [e-25 ergs/s/cm^3]                                                     
+!  do iup = 30, 3, -1
+!     do ilow = 2, min0(16, iup-1)
+!        emissivity= HeIIrecombinationLines(iup, ilow)*HeII4686*1.d-25
+!
+!
+!        lambda = 227.838 / (1./real(ilow**2)  - 1./real(iup**2))!!!!!!!!!!!!!!!!!!!
+!        lineFreq = cSpeed/(lambda * 1.d-8)
+!
+!     call locate(freq, nFreq, lineFreq, k)
+!     spectrum(k) = spectrum(k) + emissivity
+!     end do
+!  end do
+!
 
   ! He II Lyman series
 
-  heIILyman(1:4) = (/ 0.0334, 0.0682, 0.1849, 1. /)
+!  heIILyman(1:4) = (/ 0.0334, 0.0682, 0.1849, 1. /)
 
-  ! calculate Lyman alpha first
-  HeIILyman(4) = 10.d0**(-0.792d0*log10(thisOctal%temperature(subcell))+6.01d0)
-  HeIILyman(4) = HeIILyman(4)*thisOctal%ne(subcell)*thisOctal%nh(subcell) * &
-       grid%ion(3)%abundance * thisOctal%ionFrac(subcell, 5) * 1.d-25
-
-  do i = 1, NHeIILyman-1
-     HeIILyman(i) = HeIILyman(i)*HeIILyman(4)
-  end do
-  do i = 1, nHeIILyman
-     lineFreq = freqHeIILyman(i) * nuHydrogen
-     call locate(freq, nFreq, lineFreq, k)
-     spectrum(k) = spectrum(k) + HeIILyman(i)
-  enddo
+!  ! calculate Lyman alpha first
+!  HeIILyman(4) = 10.d0**(-0.792d0*log10(thisOctal%temperature(subcell))+6.01d0)
+!  HeIILyman(4) = HeIILyman(4)*thisOctal%ne(subcell)*thisOctal%nh(subcell) * &
+!       grid%ion(3)%abundance * thisOctal%ionFrac(subcell, 5) * 1.d-25
+!
+!  do i = 1, NHeIILyman-1
+!     HeIILyman(i) = HeIILyman(i)*HeIILyman(4)
+!  end do
+!  do i = 1, nHeIILyman
+!     lineFreq = freqHeIILyman(i) * nuHydrogen
+!     call locate(freq, nFreq, lineFreq, k)
+!     spectrum(k) = spectrum(k) + HeIILyman(i)
+!  enddo
 
 
 
@@ -2769,6 +2878,136 @@ subroutine readHeIIrecombination()
   end do
   close(40)
 end subroutine readHeIIrecombination
+
+!$MPI  subroutine updateGridMPI(grid)
+!$MPI    implicit none
+!$MPI    include 'mpif.h'
+!$MPI    type(gridtype) :: grid
+!$MPI    integer :: nOctals, nVoxels
+!$MPI    real, allocatable :: nCrossings(:)
+!$MPI    real, allocatable :: tempRealArray(:)
+!$MPI    real(double), allocatable :: hHeating(:), heHeating(:)
+!$MPI    real(double), allocatable :: photoIonCoeff(:)
+!$MPI    real(double), allocatable :: tempDoubleArray(:)
+!$MPI    integer :: np, ierr,my_rank, nIndex
+!$MPI
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+!$MPI
+!$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI    nOctals = 0
+!$MPI    nVoxels = 0
+!$MPI    call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+!$MPI    allocate(nCrossings(1:nVoxels))
+!$MPI    allocate(hHeating(1:nVoxels))
+!$MPI    allocate(heHeating(1:nVoxels))
+!$MPI    allocate(photoIonCoeff(1:nVoxels, 1:grid%nIons))
+!$MPI
+!$MPI    nIndex = 0
+!$MPI    call packValues(grid%octreeRoot,,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+!$MPI
+!$MPI
+!$MPI    allocate(tempDoubleArray(nVoxels))
+!$MPI    allocate(tempRealArray(nVoxels))
+!$MPI
+!$MPI    do i = 1, grid%nIons
+!$MPI    tempDoubleArray = 0.d0
+!$MPI    call MPI_ALLREDUCE(photoIonCoeff(1:nVoxels,i),tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI    photoIonCoeff(1:nVoxels, i) = tempDoubleArray 
+!$MPI
+!$MPI    tempDoubleArray = 0.0
+!$MPI    call MPI_ALLREDUCE(hHeating,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI    hHeating = tempDoubleArray
+!$MPI
+!$MPI    tempDoubleArray = 0.0
+!$MPI    call MPI_ALLREDUCE(heHeating,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI    heHeating = tempDoubleArray
+!$MPI
+!$MPI    tempRealArray = 0.0
+!$MPI    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI    nCrossings = tempRealArray 
+!$MPI    
+!$MPI    deallocate(tempRealArray, tempDoubleArray)
+!$MPI     
+!$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI    
+!$MPI    nIndex = 0
+!$MPI    call unpackValues(grid%octreeRoot,,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+!$MPI
+!$MPI    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating)
+!$MPI
+!$MPI  end subroutine updateGridMPI
+
+  recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real :: nCrossings(:)
+  real(double) :: photoIonCoeff(:,:)
+  real(double) :: hHeating(:)
+  real(double) :: heHeating(:)
+
+  integer :: nIndex
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call packvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+                exit
+             end if
+          end do
+       else
+          nIndex = nIndex + 1
+          nCrossings(nIndex) = real(thisOctal%nCrossings(subcell))
+          photoIonCoeff(nIndex, :) = thisOctal%photoIonCoeff(subcell, :)
+          hHeating(nIndex) = thisOctal%hHeating(subcell)
+          heHeating(nIndex) = thisOctal%heHeating(subcell)
+       endif
+    enddo
+  end subroutine packvalues
+
+  recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real :: nCrossings(:)
+  real(double) :: photoIonCoeff(:,:)
+  real(double) :: hHeating(:)
+  real(double) :: heHeating(:)
+
+  integer :: nIndex
+  integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+                exit
+             end if
+          end do
+       else
+          nIndex = nIndex + 1
+           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
+          thisOctal%photoIonCoeff(subcell, :) = photoIonCoeff(nIndex, :)
+          thisOctal%hHeating(subcell) = hHeating(nIndex) 
+           thisOctal%heHeating(subcell) = heHeating(nIndex) 
+       endif
+    enddo
+  end subroutine unpackvalues
+
 
 end module
 
