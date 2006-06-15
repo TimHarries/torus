@@ -758,7 +758,7 @@ contains
     beta = 1.25
 
     rhoCavity = cavDens
-    rhoEnv = cavdens
+    rhoEnv = 1.d-30
     if ((r > erInner).and.(r < erOuter)) then
        mu_0 = rtnewt(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
  ! equation 1 for Whitney 2003 ApJ 591 1049 has a mistake in it
@@ -774,13 +774,12 @@ contains
        rhoEnv = max(rhoEnv, tiny(rhoEnv))
     endif
 
-    
     rho0  = mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*rStellar * rStellar**(alpha-beta) * ( &
          (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) )
 
     r = sqrt(point%x**2 + point%y**2)*1.e10
     h = 0.01 * rStellar * (r/rStellar)**beta
-    rhoDisc = cavDens
+    rhoDisc = 1.d-30
     if ((r > drInner).and.(r < drOuter)) then
        rhoDisc = rho0 * (rStellar/r)**alpha  * exp(-0.5*((point%z*1.e10)/h)**2)
        fac =  1.d0-min(dble(r - drInner)/(0.02d0*drinner),1.d0)

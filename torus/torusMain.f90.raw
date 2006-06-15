@@ -2417,7 +2417,7 @@
            call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
         case("cmfgen")
            call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
-        case("shakara")
+        case("shakara","ppdisk")
            if (forcedWavelength) then
               call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
               call set_bias_shakara(grid%octreeRoot, grid, ilam=itestlam, ross=.false.)
@@ -2425,9 +2425,9 @@
               call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
               call set_bias_shakara(grid%octreeRoot, grid, ilam=1, ross=.true.)
            endif
-        case("ppdisk")
-           call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
-           call setDiscPhotosphereBias(grid, itestlam)
+!        case("ppdisk")
+!           call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
+!           call setDiscPhotosphereBias(grid, itestlam)
         case("whitney")
            call set_bias_whitney(grid%octreeRoot, grid)
         case("warpeddisc")

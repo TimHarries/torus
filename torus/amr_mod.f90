@@ -8726,8 +8726,8 @@ IF ( .NOT. gridConverged ) RETURN
           r = modulus(subcellCentre(thisoctal,subcell))
           call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa = kappaAbs)
              tau = thisOctal%subcellSize*kappaAbs*thisOctal%rho(subcell)*1.d10
-             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-15) * (1.d10*r/erOuter)
-!             thisOctal%biasCont3D(subcell) = 1.d0/thisOctal%etacont(subcell)
+!             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-7) * sqrt(1.d10*r/erOuter)
+             thisOctal%biasCont3D(subcell) = 1.d0/(thisOctal%etacont(subcell)*cellVolume(thisOctal, subcell))
        endif
     enddo
   end subroutine set_bias_whitney

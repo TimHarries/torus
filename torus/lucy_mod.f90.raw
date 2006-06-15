@@ -841,7 +841,9 @@ contains
                       endif
                    enddo
                    if (probDistJnu(nFreq) /= 0.d0) then
-                      probDistJnu(1:nFreq) = probDistJnu(1:nFreq) / probDistJnu(nFreq)
+                      do i = 1, nFreq
+                         probDistJnu(i) = probDistJnu(i) / probDistJnu(nFreq)
+                      enddo
                       call random_number(r)
                       call locate(probDistJnu, nFreq, r, j)
                       if (j == nFreq) j = nFreq -1

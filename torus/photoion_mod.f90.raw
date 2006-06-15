@@ -2,6 +2,7 @@
 
 module photoion_mod
 
+use parallel_mod
 use source_mod
 use timing
 use grid_mod
@@ -49,8 +50,9 @@ contains
 
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
-    use input_variables, only : smoothFactor
+    use input_variables, only : smoothFactor, blockHandout
     implicit none
+!$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: nlambda
@@ -2883,11 +2885,11 @@ end subroutine readHeIIrecombination
 !$MPI    implicit none
 !$MPI    include 'mpif.h'
 !$MPI    type(gridtype) :: grid
-!$MPI    integer :: nOctals, nVoxels
+!$MPI    integer :: nOctals, nVoxels, i
 !$MPI    real, allocatable :: nCrossings(:)
 !$MPI    real, allocatable :: tempRealArray(:)
 !$MPI    real(double), allocatable :: hHeating(:), heHeating(:)
-!$MPI    real(double), allocatable :: photoIonCoeff(:)
+!$MPI    real(double), allocatable :: photoIonCoeff(:,:)
 !$MPI    real(double), allocatable :: tempDoubleArray(:)
 !$MPI    integer :: np, ierr,my_rank, nIndex
 !$MPI
@@ -2905,20 +2907,21 @@ end subroutine readHeIIrecombination
 !$MPI    allocate(nCrossings(1:nVoxels))
 !$MPI    allocate(hHeating(1:nVoxels))
 !$MPI    allocate(heHeating(1:nVoxels))
-!$MPI    allocate(photoIonCoeff(1:nVoxels, 1:grid%nIons))
+!$MPI    allocate(photoIonCoeff(1:nVoxels, 1:grid%nIon))
 !$MPI
 !$MPI    nIndex = 0
-!$MPI    call packValues(grid%octreeRoot,,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+!$MPI    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
 !$MPI
 !$MPI
 !$MPI    allocate(tempDoubleArray(nVoxels))
 !$MPI    allocate(tempRealArray(nVoxels))
 !$MPI
-!$MPI    do i = 1, grid%nIons
-!$MPI    tempDoubleArray = 0.d0
-!$MPI    call MPI_ALLREDUCE(photoIonCoeff(1:nVoxels,i),tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI    photoIonCoeff(1:nVoxels, i) = tempDoubleArray 
+!$MPI    do i = 1, grid%nIon
+!$MPI      tempDoubleArray = 0.d0
+!$MPI      call MPI_ALLREDUCE(photoIonCoeff(1:nVoxels,i),tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI          MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI       photoIonCoeff(1:nVoxels, i) = tempDoubleArray 
+!$MPI    enddo
 !$MPI
 !$MPI    tempDoubleArray = 0.0
 !$MPI    call MPI_ALLREDUCE(hHeating,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
@@ -2940,7 +2943,7 @@ end subroutine readHeIIrecombination
 !$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI    
 !$MPI    nIndex = 0
-!$MPI    call unpackValues(grid%octreeRoot,,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+!$MPI    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
 !$MPI
 !$MPI    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating)
 !$MPI
