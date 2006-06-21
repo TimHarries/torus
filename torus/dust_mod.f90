@@ -919,6 +919,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           endif
           thisOctal%dustTypeFraction(subcell,1) = frac
        endif
+       thisOctal%dustTypeFraction(subcell,1) = max(1.d-20, frac)
     end do
   end subroutine sublimateDustWR104
 
@@ -1078,10 +1079,11 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     zAxis(1:nz) = abs(zAxis(1:nz)) * 1.e10  ! convert to cm
   end subroutine getTemperatureDensityRundust
 
-  recursive subroutine stripDustAway(thisOctal)
+  recursive subroutine stripDustAway(thisOctal, fac)
 
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
+    real(double) :: fac
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
@@ -1090,13 +1092,13 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call stripDustAway(child)
+                call stripDustAway(child, fac)
                 exit
              end if
           end do
        else
-          thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * 1.d-10
-          thisOctal%oldFrac(subcell) = 1.d-10
+          thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * fac
+          thisOctal%oldFrac(subcell) = fac
        end if
     end do
 

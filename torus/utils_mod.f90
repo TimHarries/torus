@@ -1156,14 +1156,14 @@ contains
       REAL*8 VOIGTN,AA,VV
       !
       REAL*8 H(25)
-      DATA C1,C2/1.128379167095512D0  ,5.64189583547756D-1/
-      SAVE C1,C2
       !
       REAL*8 V,V2,V4,V6
       REAL*8 A,A2,A4,A6
       REAL*8 Z,Z2                       
       REAL*8 X,W
       REAL*8 C1,C2
+      DATA C1,C2/1.128379167095512D0  ,5.64189583547756D-1/
+      SAVE C1,C2
       !
       INTEGER*4 I,J
       !

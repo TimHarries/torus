@@ -489,7 +489,7 @@ contains
            call fillDustShakara(grid, grid%octreeRoot)
         endif
 	if (variableDustsublimation) then
-           call stripDustAway(grid%octreeRoot)
+           call stripDustAway(grid%octreeRoot,1.d-10)
         endif
     endif
 
@@ -499,6 +499,7 @@ contains
 
     if (grid%geometry == "wr104") then
        call fillDustUniform(grid, grid%octreeRoot)
+       call stripDustAway(grid%octreeRoot, 1.d-10)
     endif
 
 

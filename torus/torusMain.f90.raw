@@ -1266,7 +1266,7 @@
 
            ! Smooth the grid with respect to optical depth, if requested
 
-           if (doSmoothGridTau) then
+           if (doSmoothGridTau.and.mie) then
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
               do j = iSmoothLam, iSmoothlam !nLambda, 5
                  do
@@ -2330,7 +2330,7 @@
                    source, nSource, nLucy, massEnvelope, tThresh, twod, mDisc)
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 5)
+                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 10)
            endif
 
         endif

@@ -38,6 +38,28 @@ ifeq ($(SYSTEM), g95)
     KNOWN_SYSTEM=yes
 endif
 
+ifeq ($(SYSTEM), sun)
+    F95COMP=sunf95
+    F77COMP=sunf95
+    FASTFLAG= -O3
+#    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    DEBUGFLAG=-g
+    STATICFLAG=
+    MATHTRAP=
+    UNIXMOD=unix_mod.f90.linuxintel
+    KINDMOD=kind_mod.f90.linuxintel
+    EXE=torus.sun
+    F77FLAG= -w -fno-second-underscore
+    IMAGEF77=image_f77.f.default
+    SPECF77=spec_f77.f.default
+    F2CLIB=-L$(PATH2G2C) -lg2c
+    STATICLIBS=
+    STARLIBS=-L/star/lib `ndf_link`
+    PGLIBS=-L/star/lib `pgplot_link`
+    MK_MPI_SRC = no
+    KNOWN_SYSTEM=yes
+endif
+
 ifeq ($(SYSTEM), osx)
     F95COMP=g95
     F77COMP=g95
@@ -144,6 +166,7 @@ ifeq  ($(SYSTEM), linux)
    F77COMP=f77
    FASTFLAG= -w 
    DEBUGFLAG=-g -C=all
+   DEBUGFLAG=-g
    STATICFLAG=-Bstatic
    MATHTRAP=-ieee=stop
    UNIXMOD=unix_mod.f90.linux

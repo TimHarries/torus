@@ -327,65 +327,65 @@ if (writeoutput) then
        fac = luminosity1
        
 
-       call getForbiddenLineLuminosity(grid, "N II", 1.22e6, luminosity1)
+       call getForbiddenLineLuminosity(grid, "N II", 1.22d6, luminosity1)
        write(*,'(a,2f12.4)') "N II (122 um):",(luminosity1)/fac,(luminosity1)/(0.034*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "N II", 6584., luminosity1)
-       call getForbiddenLineLuminosity(grid, "N II", 6548., luminosity2)
+       call getForbiddenLineLuminosity(grid, "N II", 6584.d0, luminosity1)
+       call getForbiddenLineLuminosity(grid, "N II", 6548.d0, luminosity2)
        write(*,'(a,2f12.4)') "N II (6584+6548):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.730*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "N III", 5.73e5, luminosity1)
+       call getForbiddenLineLuminosity(grid, "N III", 5.73d5, luminosity1)
        write(*,'(a,2f12.4)') "N III (57.3 um):",(luminosity1)/fac,(luminosity1+luminosity2)/(0.292*2.05e37)
 
 
-       call getForbiddenLineLuminosity(grid, "O I", 6300., luminosity1)
-       call getForbiddenLineLuminosity(grid, "O I", 6363., luminosity2)
+       call getForbiddenLineLuminosity(grid, "O I", 6300.d0, luminosity1)
+       call getForbiddenLineLuminosity(grid, "O I", 6363.d0, luminosity2)
        write(*,'(a,2f12.4)') "O I (6300+6363):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.0086*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "O II", 7320., luminosity1)
-       call getForbiddenLineLuminosity(grid, "O II", 7330., luminosity2)
+       call getForbiddenLineLuminosity(grid, "O II", 7320.d0, luminosity1)
+       call getForbiddenLineLuminosity(grid, "O II", 7330.d0, luminosity2)
        write(*,'(a,2f12.4)') "O II (7320+7330):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.029*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "O II", 3726., luminosity1)
-       call getForbiddenLineLuminosity(grid, "O II", 3729., luminosity2)
+       call getForbiddenLineLuminosity(grid, "O II", 3726.d0, luminosity1)
+       call getForbiddenLineLuminosity(grid, "O II", 3729.d0, luminosity2)
        write(*,'(a,2f12.4)') "O II (3726+3729):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(2.03*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "O III", 5007., luminosity1)
-       call getForbiddenLineLuminosity(grid, "O III", 4959., luminosity2)
+       call getForbiddenLineLuminosity(grid, "O III", 5007.d0, luminosity1)
+       call getForbiddenLineLuminosity(grid, "O III", 4959.d0, luminosity2)
        write(*,'(a,2f12.4)') "O III (5007+4959):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(2.18*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "O III", 4363., luminosity3)
+       call getForbiddenLineLuminosity(grid, "O III", 4363.d0, luminosity3)
        write(*,'(a,2f12.4)') "O III (4363):",(luminosity3)/1.e37,luminosity3/(0.0037*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "O III", 518145., luminosity1)
-       call getForbiddenLineLuminosity(grid, "O III", 883562., luminosity2)
+       call getForbiddenLineLuminosity(grid, "O III", 518145.d0, luminosity1)
+       call getForbiddenLineLuminosity(grid, "O III", 883562.d0, luminosity2)
        write(*,'(a,2f12.4)') "O III (52+88um):,",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/((1.06+1.22)*2.05e37)
 
 
-       call getForbiddenLineLuminosity(grid, "Ne II", 1.28e5, luminosity1)
+       call getForbiddenLineLuminosity(grid, "Ne II", 1.28d5, luminosity1)
        write(*,'(a,2f12.4)') "Ne II (12.8um):",(luminosity1)/fac,luminosity1/(0.195*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "Ne III", 1.56e5, luminosity1)
+       call getForbiddenLineLuminosity(grid, "Ne III", 1.56d5, luminosity1)
        write(*,'(a,2f12.4)') "Ne III (15.5um):",(luminosity1)/fac,luminosity1/(0.322*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "Ne III", 3869., luminosity1)
-       call getForbiddenLineLuminosity(grid, "Ne III", 3968., luminosity2)
+       call getForbiddenLineLuminosity(grid, "Ne III", 3869.d0, luminosity1)
+       call getForbiddenLineLuminosity(grid, "Ne III", 3968.d0, luminosity2)
        write(*,'(a,2f12.4)') "Ne III (3869+3968):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.085*2.05e37)
 
 
-       call getForbiddenLineLuminosity(grid, "S II", 6716., luminosity1)
-       call getForbiddenLineLuminosity(grid, "S II", 6731., luminosity2)
+       call getForbiddenLineLuminosity(grid, "S II", 6716.d0, luminosity1)
+       call getForbiddenLineLuminosity(grid, "S II", 6731.d0, luminosity2)
        write(*,'(a,2f12.4)') "S II (6716+6731):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.147*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "S II", 4068., luminosity1)
-       call getForbiddenLineLuminosity(grid, "S II", 4076., luminosity2)
+       call getForbiddenLineLuminosity(grid, "S II", 4068.d0, luminosity1)
+       call getForbiddenLineLuminosity(grid, "S II", 4076.d0, luminosity2)
        write(*,'(a,2f12.4)') "S II (4068+4076):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(0.008*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "S III", 1.87e5, luminosity1)
+       call getForbiddenLineLuminosity(grid, "S III", 1.87d5, luminosity1)
        write(*,'(a,2f12.4)') "S III (18.7um):",(luminosity1)/fac,luminosity1/(0.577*2.05e37)
 
-       call getForbiddenLineLuminosity(grid, "S III", 9532., luminosity1)
-       call getForbiddenLineLuminosity(grid, "S III", 9069., luminosity2)
+       call getForbiddenLineLuminosity(grid, "S III", 9532.d0, luminosity1)
+       call getForbiddenLineLuminosity(grid, "S III", 9069.d0, luminosity2)
        write(*,'(a,2f12.4)') "S III (9532+9069):",(luminosity1+luminosity2)/fac,(luminosity1+luminosity2)/(1.22*2.05e37)
     endif
 
@@ -2129,14 +2129,19 @@ end subroutine getCollisionalRates
 subroutine getForbiddenLineLuminosity(grid, species, wavelength, luminosity)
   type(GRIDTYPE) :: grid
   character(len=*) :: species
-  real :: wavelength
+  real(double) :: wavelength
+  real(double) :: fac
   real(double) :: luminosity
   integer :: iIon, iTrans, i
 
   iTrans = 0
-  iIon = returnIonNumber(species, grid%ion, grid%nIon)
+  iIon = returnIonNumber(species, grid%ion, grid%nIon) 
   do i = 1, grid%ion(iIon)%nTransitions
-     if (abs(grid%ion(iIon)%transition(i)%lambda-wavelength)/wavelength  < 0.001) then
+     fac = grid%ion(iIon)%transition(i)%lambda
+     fac = fac - wavelength
+     fac = abs(fac)
+     fac = fac / wavelength
+     if (fac  < 0.001d0) then
         iTrans = i
         exit
      endif
@@ -2782,24 +2787,23 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
 
 
 
-  ! HeI lines !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ! HeI lines 
 
-!  call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
-!  fac = (log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i))
-!
-!  do j = 1, 32
-!     aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
-!     bj = heIrecombinationFit(j,i,2) + fac*(heIrecombinationfit(j,i+1,2)-heIrecombinationfit(j,i,2))
-!     cj = heIrecombinationFit(j,i,3) + fac*(heIrecombinationfit(j,i+1,3)-heIrecombinationfit(j,i,3))
-!     t = thisOctal%temperature(subcell)/1.e4
-!     emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
-!     emissivity = emissivity * thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
-!          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance
-!     lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
-!     call locate(freq, nFreq, lineFreq, k)
-!     spectrum(k) = spectrum(k) + emissivity
-!     write(*,*) j, emissivity
-!  enddo
+  call locate(heIrecombinationNe, 3, real(log10(thisOctal%ne(subcell))), i)
+  fac = (log10(thisOctal%ne(subcell)) - heIrecombinationNe(i))/(heIrecombinationNe(i+1)-heIrecombinationNe(i))
+
+  do j = 1, 32
+     aj = heIrecombinationFit(j,i,1) + fac*(heIrecombinationfit(j,i+1,1)-heIrecombinationfit(j,i,1))
+     bj = heIrecombinationFit(j,i,2) + fac*(heIrecombinationfit(j,i+1,2)-heIrecombinationfit(j,i,2))
+     cj = heIrecombinationFit(j,i,3) + fac*(heIrecombinationfit(j,i+1,3)-heIrecombinationfit(j,i,3))
+     t = thisOctal%temperature(subcell)/1.e4
+     emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
+     emissivity = emissivity * thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
+          thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance
+     lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
+     call locate(freq, nFreq, lineFreq, k)
+     spectrum(k) = spectrum(k) + emissivity
+  enddo
 !
 
 !  HeII4686 = 10.d0**(-0.997d0*log10(thisOctal%temperature(subcell))+5.16d0)
@@ -2855,7 +2859,7 @@ subroutine readHeIRecombinationLinesFit()
            heIRecombinationFit(i,2,1:3),  heIRecombinationFit(i,3,1:3)
   enddo
   close(40)
-  HeiRecombinationFit(1:32, 1:3, 1:3) = log10(HeiRecombinationFit(1:32, 1:3, 1:3))
+!  HeiRecombinationFit(1:32, 1:3, 1:3) = log10(HeiRecombinationFit(1:32, 1:3, 1:3))
   heIrecombinationNe(1) = 2.
   heIrecombinationNe(2) = 4.
   heIrecombinationNe(3) = 6.
