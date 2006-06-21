@@ -536,6 +536,7 @@ contains
          nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twoD, maxIter)
 
     ! chris
+!$MPI    if(my_rank == 0) then
     if (geometry == "ppdisk") then
     write(plotfile,'(a,i3.3,a)') "rho_final.ps/vcps"
     call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
@@ -556,6 +557,7 @@ contains
     call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.false., .false.,&
          xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM, fixValMin=40.d0, fixValMax=200.d0)
     end if
+!$MPI    endif
 
   end subroutine verticalHydrostatic
 
