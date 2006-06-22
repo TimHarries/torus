@@ -4293,7 +4293,7 @@ IF ( .NOT. gridConverged ) RETURN
          split = .false.
       endif
       if (modulus(subcellCentre(thisoctal,subcell)) < 6.*grid%rinner) then
-         if (thisOctal%nDepth < 6) split = .true.
+         if (thisOctal%nDepth < 7) split = .true.
       endif
       
    case ("testamr","proto","wrshell")

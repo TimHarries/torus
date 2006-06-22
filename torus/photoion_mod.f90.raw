@@ -97,7 +97,7 @@ contains
     real(double) :: freq(1000), spectrum(1000), nuStart, nuEnd
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
-    integer :: iMonte_beg, iMonte_end
+    integer :: iMonte_beg, iMonte_end, nSCat
 !$MPI    ! For MPI implementations
 !$MPI  ! For MPI implementations =====================================================
 !$MPI  integer ::   my_rank        ! my processor rank
@@ -143,7 +143,6 @@ contains
 
     nuStart = cSpeed / (10.d4 * 1.d-8)
     nuEnd =  2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
-    write(*,*) "shortest wavelength",1.d8*cspeed/nuEnd
 
     do i = 1, nFreq
        freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
@@ -193,7 +192,9 @@ contains
        endif
        call zeroDistanceGrid(grid%octreeRoot)
 
-       write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter
+       if (writeoutput) then
+          write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter
+       endif
 
 !$MPI       if (my_rank == 1) &
        call tune(6, "One photoionization itr")  ! start a stopwatch
@@ -240,8 +241,9 @@ contains
           if ((thisFreq*hcgs*ergtoev) < 13.6) then
              cycle mainloop
           endif
+          nScat = 0
           do while(.not.escaped)
-
+             nScat = nScat + 1
              call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, photonPacketWeight)
              if (.not. escaped) then
 
@@ -264,7 +266,7 @@ contains
                    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                    call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
                    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-                   if (firsttime) then
+                   if (firsttime.and.writeoutput) then
                       firsttime = .false.
                       open(67,file="pdf.dat",status="unknown",form="formatted")
                       do i = 1, nfreq
@@ -280,6 +282,10 @@ contains
                 
 
              endif
+             if (nScat > 10000) then
+                write(*,*) "Nscat exceeded 10000, forcing escape"
+                escaped = .true.
+             endif
           enddo
           nInf = nInf + 1
        end do mainloop
@@ -289,7 +295,6 @@ contains
 !$MPI  end if ! (my_rank /= 0)
 
 !$MPI       if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
-!$MPI    !   call update_octal_MPI(grid%octreeRoot, grid)
 
 !$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -317,10 +322,11 @@ contains
           write(*,*) "Done."
        enddo
 
-       call dumpLexington(grid, epsoverdeltat)
-       fac = 2.06e37
        
 if (writeoutput) then
+       call dumpLexington(grid, epsoverdeltat)
+       fac = 2.06e37
+
        luminosity1 = 0.d0
        call getHbetaLuminosity(grid%octreeRoot, grid, luminosity1)
        write(*,'(a,2f12.4)') "H beta :",luminosity1/1.e37,luminosity1/2.05e37
@@ -410,7 +416,7 @@ if (writeoutput) then
 
 !       nMonte = nMonte * 2
 
-    enddo
+ enddo
 
   end subroutine photoIonizationloop
 

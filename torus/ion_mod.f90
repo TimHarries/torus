@@ -8,7 +8,7 @@ module ion_mod
   use kind_mod
   use constants_mod
   use utils_mod
-
+  use messages_mod
 
   implicit none
 
@@ -166,6 +166,7 @@ contains
     call createIon(ionArray(nIon), 16, 13, 4.731e1) ! S IV
 
 
+    if (writeoutput) &
     write(*,*) "Added ",nion," species to photoionization calculation"
 
   end subroutine addIons
