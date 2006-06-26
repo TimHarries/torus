@@ -2160,7 +2160,8 @@
        source(1)%radius = 18.67 * rSol / 1.e10
        source(1)%position = VECTOR(0.,0.,0.)
        source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
-       write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
+       if (writeoutput) &
+            write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
        fac = 1.e8*cspeed/5.d16
        write(*,*) "Starting wavelength",fac
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 100.d4,1000)

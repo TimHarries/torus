@@ -212,7 +212,7 @@ ifeq ($(SYSTEM), lamosx)
     F95COMP= ${TOP2}/bin/mpif77 
     F77COMP= ${TOP2}/bin/mpif77 
     FASTFLAG= -O0
-    DEBUGFLAG=-g  
+    DEBUGFLAG=-g  -ftrace=full
     LDFLAG= 
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
@@ -222,7 +222,7 @@ ifeq ($(SYSTEM), lamosx)
     IMAGEF77=image_f77.f.miracle
     SPECF77=spec_f77.f.miracle
 #    STARLIBS=-L${RKHOME}/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
-    STARLIBS=-L${RKHOME}/pgplot -lpgplot -L/usr/X11R6/lib -lX11 
+    STARLIBS=-L${RKHOME}/pgplot -lpgplot -L/usr/X11R6/lib -lX11  -L/usr/lib -lSystemStubs
     MK_MPI_SRC = yes
     KNOWN_SYSTEM=yes
 endif

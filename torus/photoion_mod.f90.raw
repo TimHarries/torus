@@ -83,7 +83,7 @@ contains
     type(IONTYPE) :: thisIon
     real(double) :: alpha21s, alpha21p, alpha23s, photonPacketWeight
     real :: excitation, deexcitation, excitation2
-    real :: fac
+    real(double) :: fac
     logical :: gridConverged
     real(double) :: probEsc, albedo
 
@@ -1850,7 +1850,11 @@ function nussbaumerStorey1983(t, a, b, c, d, f) result(rate)
 
 ! based on Nussbaumer & Storey 1983 AA 126 75
   real(double) :: t, a, b, c, d, f, rate
-  rate = (1.d-12) * ((a/t) + b + (c*t) + d*(t**2))*(t**(-1.5d0))*exp(-f/t)
+  if (t ==0.d0) then
+     rate = tiny(rate)
+  else
+     rate = (1.d-12) * ((a/t) + b + (c*t) + d*(t**2))*(t**(-1.5d0))*exp(-f/t)
+  endif
 
 end function nussbaumerStorey1983
 
@@ -2503,7 +2507,7 @@ end function rateFit
 subroutine createRecombTable(table, tablefilename)
   type(RECOMBTABLE) :: table
   character(len=*) :: tablefilename
-  character(len=80) :: filename, datadirectory
+  character(len=200) :: filename, datadirectory
   integer :: ia, ib, ne, ncut, i
   real :: e(1000)
 
@@ -2537,7 +2541,7 @@ subroutine createGammaTable(table, thisfilename)
 
   type(GAMMATABLE) :: table
   character(len=*) :: thisfilename
-  character(len=80) :: dataDirectory, filename
+  character(len=200) :: dataDirectory, filename
   integer :: i, j
 
   call unixGetenv("TORUS_DATA", dataDirectory, i)
@@ -2853,7 +2857,7 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
 end subroutine addHeRecombinationLines
 
 subroutine readHeIRecombinationLinesFit()
-  character(len=80) :: filename, datadirectory
+  character(len=200) :: filename, datadirectory
   integer :: i
 
   call unixGetenv("TORUS_DATA", dataDirectory, i)
@@ -2873,7 +2877,7 @@ end subroutine readHeIRecombinationLinesFit
 
 
 subroutine readHeIIrecombination()
-  character(len=80) :: filename, datadirectory
+  character(len=200) :: filename, datadirectory
   integer :: iup, ilow, i
 
 
