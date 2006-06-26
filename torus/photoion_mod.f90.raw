@@ -169,7 +169,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 100000
+    nMonte = 200000
 
     nIter = 0
 
@@ -915,6 +915,7 @@ if (writeoutput) then
           thisOctal%Hheating(subcell) = 0.d0
           thisOctal%Heheating(subcell) = 0.d0
           thisOctal%photoIonCoeff(subcell,:) = 0.d0
+          thisOctal%distanceGrid(subcell) = 0.d0
        endif
     enddo
   end subroutine zeroDistanceGrid
@@ -1212,6 +1213,8 @@ if (writeoutput) then
     betaHe = thisrootTbetaHe / sqrt(temperature)
 
 
+    betah = betah * 2.d0 !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
     coolingRate = coolingRate +  ne * nhii * kerg * temperature * betaH
 
 
@@ -1239,9 +1242,10 @@ if (writeoutput) then
 
   subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight)
     type(GRIDTYPE) :: grid
-    type(OCTAL) :: thisOctal
+    type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    real(double) :: thisFreq, distance
+    real(double) :: thisFreq, distance, kappaAbs
+    real :: lambda
     real(double) :: photonPacketWeight
     integer :: i 
     real :: e, xsec
@@ -1249,6 +1253,8 @@ if (writeoutput) then
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
     e = thisFreq * hCgs * ergtoEV
+
+
 
     do i = 1, grid%nIon
        call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
@@ -1274,6 +1280,16 @@ if (writeoutput) then
        endif
 
     enddo
+
+
+
+    lambda = 1.e8*cSpeed/thisFreq
+
+    call returnKappa(grid, thisOctal, subcell, lambda=lambda, kappaAbs=kappaAbs, dustOnly=.true.)
+
+    thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
+         + dble(distance) * dble(kappaAbs)
+
 
   end subroutine updateGrid
 
@@ -2856,6 +2872,49 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
 
 end subroutine addHeRecombinationLines
 
+subroutine addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+
+  integer :: nFreq
+  real(double) :: spectrum(:), freq(:)
+  type(OCTAL), pointer :: thisOctal
+  integer :: subcell
+  type(GRIDTYPE) :: grid
+  integer :: nLambda
+  real :: lamArray(:)
+  integer :: i, iLam
+  real :: lambda, thisLam
+  real(double) :: dFreq
+  type(OCTALVECTOR) :: octVec
+  real(double), allocatable :: kabsArray(:)
+
+
+  allocate(kAbsArray(1:nlambda))
+  call amrGridValues(grid%octreeRoot, octVec,  foundOctal=thisOctal, &
+       foundSubcell=subcell, grid=grid, kappaAbsArray=kAbsArray)
+
+
+  do i = 2, nFreq
+     thisLam = (cSpeed / freq(i)) * 1.e8
+     dFreq = freq(i) - freq(i-1)
+     call hunt(lamArray, nLambda, real(thisLam), iLam)
+     if ((ilam >=1).and.(ilam <= nlambda)) then
+
+        spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * kAbsArray(iLam) * dFreq * fourPi
+
+     endif
+  enddo
+
+  deallocate(kAbsArray)
+
+end subroutine addDustContinuum
+
+
+
+
+
+
+
+
 subroutine readHeIRecombinationLinesFit()
   character(len=200) :: filename, datadirectory
   integer :: i
@@ -2905,6 +2964,7 @@ end subroutine readHeIIrecombination
 !$MPI    real(double), allocatable :: hHeating(:), heHeating(:)
 !$MPI    real(double), allocatable :: photoIonCoeff(:,:)
 !$MPI    real(double), allocatable :: tempDoubleArray(:)
+!$MPI    real(double), allocatable :: distanceGrid(:)
 !$MPI    integer :: np, ierr,my_rank, nIndex
 !$MPI
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
@@ -2921,10 +2981,11 @@ end subroutine readHeIIrecombination
 !$MPI    allocate(nCrossings(1:nVoxels))
 !$MPI    allocate(hHeating(1:nVoxels))
 !$MPI    allocate(heHeating(1:nVoxels))
+!$MPI    allocate(distanceGrid(1:nVoxels))
 !$MPI    allocate(photoIonCoeff(1:nVoxels, 1:grid%nIon))
 !$MPI
 !$MPI    nIndex = 0
-!$MPI    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+!$MPI    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
 !$MPI
 !$MPI
 !$MPI    allocate(tempDoubleArray(nVoxels))
@@ -2951,25 +3012,31 @@ end subroutine readHeIIrecombination
 !$MPI    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
 !$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
 !$MPI    nCrossings = tempRealArray 
+!$MPI
+!$MPI    tempDoublelArray = 0.0
+!$MPI    call MPI_ALLREDUCE(distanceGrid,tempRealArray,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI    distanceGrid = tempRealArray 
 !$MPI    
 !$MPI    deallocate(tempRealArray, tempDoubleArray)
 !$MPI     
 !$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI    
 !$MPI    nIndex = 0
-!$MPI    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+!$MPI    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
 !$MPI
-!$MPI    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating)
+!$MPI    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid)
 !$MPI
 !$MPI  end subroutine updateGridMPI
 
-  recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+  recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: nCrossings(:)
   real(double) :: photoIonCoeff(:,:)
   real(double) :: hHeating(:)
   real(double) :: heHeating(:)
+  real(double) :: distanceGrid(:)
 
   integer :: nIndex
   integer :: subcell, i
@@ -2980,7 +3047,7 @@ end subroutine readHeIIrecombination
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call packvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+                call packvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
                 exit
              end if
           end do
@@ -2990,17 +3057,19 @@ end subroutine readHeIIrecombination
           photoIonCoeff(nIndex, :) = thisOctal%photoIonCoeff(subcell, :)
           hHeating(nIndex) = thisOctal%hHeating(subcell)
           heHeating(nIndex) = thisOctal%heHeating(subcell)
+          distanceGrid(nIndex) = thisOctal%distanceGrid(subcell)
        endif
     enddo
   end subroutine packvalues
 
-  recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+  recursive subroutine unpackvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: nCrossings(:)
   real(double) :: photoIonCoeff(:,:)
   real(double) :: hHeating(:)
   real(double) :: heHeating(:)
+  real(double) :: distanceGrid(:)
 
   integer :: nIndex
   integer :: subcell, i
@@ -3011,19 +3080,22 @@ end subroutine readHeIIrecombination
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating)
+                call unpackvalues(child, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
                 exit
              end if
           end do
        else
           nIndex = nIndex + 1
-           thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
+          thisOctal%nCrossings(subcell) = int(nCrossings(nIndex))
           thisOctal%photoIonCoeff(subcell, :) = photoIonCoeff(nIndex, :)
           thisOctal%hHeating(subcell) = hHeating(nIndex) 
-           thisOctal%heHeating(subcell) = heHeating(nIndex) 
+          thisOctal%heHeating(subcell) = heHeating(nIndex) 
+          thisOctal%distanceGrid(subcell) = distanceGrid(nIndex) 
        endif
     enddo
   end subroutine unpackvalues
+
+
 
 
 end module

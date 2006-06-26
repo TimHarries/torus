@@ -2162,6 +2162,7 @@ CONTAINS
 
 ! this for possibility of twoD AMR grid
 
+
     point2 = point
 
     if (octaltree%twoD) then
@@ -9512,13 +9513,15 @@ IF ( .NOT. gridConverged ) RETURN
   END SUBROUTINE amrUpdateGrid
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
-       rosselandKappa, kappap, atthistemperature)
+       rosselandKappa, kappap, atthistemperature, dustOnly)
     use input_variables, only: includeGasOpacity, nDustType, photoionization
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     integer, optional :: ilambda
+    logical, optional :: dustOnly
+    logical :: thisDustOnly
     real, optional :: lambda
     real(double), optional :: kappaSca, kappaAbs, kappaAbsArray(:), kappaScaArray(:)
     real(double), optional :: rosselandKappa
@@ -9695,15 +9698,22 @@ IF ( .NOT. gridConverged ) RETURN
       enddo
       kappaP = kappaP / norm /1.d10
    endif
+   
+   if (present(dustonly)) then
+      thisdustOnly =  dustonly
+   else
+      thisdustonly = .false.
+   endif
 
-   if (photoionization) then
+
+   if (photoionization.and.(.not.thisDustOnly)) then
+
       if (PRESENT(kappaAbs)) then
-         kappaAbs = 0. !!!!!!!!!!!!!!!!!!!!!!! need to change when dust included!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
          if (present(lambda)) then
             e = (hCgs * (cSpeed / (lambda * 1.e-8))) * ergtoev
          else
             e = (hCgs * (cSpeed / (grid%lamArray(iLambda) * 1.e-8))) * ergtoev
-!            write(*,*) "! using rough grid"
+            !            write(*,*) "! using rough grid"
          endif
          call phfit2(1, 1, 1 , e , h0)
          call phfit2(2, 2, 1 , e , he0)
