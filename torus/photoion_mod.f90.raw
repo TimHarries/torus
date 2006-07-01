@@ -51,7 +51,8 @@ contains
 
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
-    use input_variables, only : smoothFactor, blockHandout, zoomFactor
+    use input_variables, only : smoothFactor, blockHandout, zoomFactor, &
+         nlucy
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
@@ -176,7 +177,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
 
-    nMonte = 200000
+    nMonte = nlucy
 
     nIter = 0
 
@@ -610,6 +611,8 @@ if (writeoutput) then
           
 
 
+       call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
+            foundSubcell=subcell)
        if (thisOctal%diffusionApprox(subcell)) then
           call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp)
           rVec = subcellCentre(endOctal,endSubcell)
@@ -674,6 +677,9 @@ if (writeoutput) then
        
 
     if (.not.escaped) then
+
+
+
        octVec = rVec
 !       if (.not.inOctal(grid%octreeRoot, octVec)) then
 !          write(*,*) "Error:: Photon location is out of boundaries, but its status is not ESCAPED."
@@ -722,11 +728,17 @@ if (writeoutput) then
        rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
 
 
-! this is a workaround due to numerical problems with long pathlengths
-! and small cells. needs fixing.
-
-       call amrGridValues(grid%octreeRoot, rVec,  foundOctal=tempOctal, &
+       octVec = rVec
+       call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal, iLambda=iLam,lambda=real(thisLam),&
+            foundOctal=thisOctal, foundSubcell=subcell)
+       if (thisOctal%diffusionApprox(subcell)) then
+          call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp)
+          rVec = subcellCentre(endOctal,endSubcell)
+          octVec = rVec
+          call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
+          uHat = randomUnitVector()
+       endif
 
     endif
 

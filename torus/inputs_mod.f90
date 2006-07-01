@@ -1110,6 +1110,19 @@ endif
  call getLogical("photoionization", photoionization, cLine, nLines, &
    "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
+ if (photoionization) then
+       call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
+       call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
+            "Minimum percentage of undersampled cell in lucy iteration: ", &
+            "(a,f4.2,a)",0.0,ok,.false.)
+
+       call getReal("diffdepth", diffDepth, cLine, nLines, &
+            "Depth of diffusion zone (in Rosseland optical depths): ", &
+            "(a,f5.1,a)",10.0,ok,.false.)
+
+       call getInteger("mincrossings", minCrossings, cLine, nLines, &
+            "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.false.)
+ endif
 
 
 if (geometry == "lexington") then
