@@ -3106,6 +3106,7 @@ function returnAbundance(z) result(a)
         write(*,*) "No abundance set for z=",z
         a = tiny(a)
   end select
+666 continue
 end function returnAbundance
 
 SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)

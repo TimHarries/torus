@@ -6604,9 +6604,9 @@ contains
                 value = thisOctal%rho(subcell)
                 if (thisOctal%diffusionApprox(subcell)) value = 1.
              case("ionization")
-                value = thisOctal%ionfrac(subcell,returnIonNumber("C IV", grid%ion, grid%nIon))
+                value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
              case("photocoeff")
-                value = thisOctal%photoIonCoeff(subcell,7)
+                value = thisOctal%photoIonCoeff(subcell,1)
              case("temperature")
                 value = thisOctal%temperature(subcell)
              case("chiLine")
@@ -6873,9 +6873,9 @@ contains
                 value = thisOctal%rho(subcell)
                 if (value < 1.e-20) update = .false.
              case("ionization")
-                value = thisOctal%ionfrac(subcell,returnIonNumber("C IV", grid%ion, grid%nIon))
+                value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
              case("photocoeff")
-                value = thisOctal%photoIonCoeff(subcell,8)
+                value = thisOctal%photoIonCoeff(subcell,1)
              case("temperature")
                 value = thisOctal%temperature(subcell)
                 if (value < 3.)  update = .false.

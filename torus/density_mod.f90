@@ -863,9 +863,9 @@ contains
        fac =  1.d0-min(dble(r - rInner)/(0.01d0*rinner),1.d0)
        fac = exp(-fac*10.d0)
        rhoOut = rhoOut * fac
-       rhoOut = max(rhoOut, tiny(rhoOut))
     endif
-
+    rhoOut = max(rhoOut, 100.d0*mHydrogen)
+       
 
   end function shakaraSunyaevDisc
 

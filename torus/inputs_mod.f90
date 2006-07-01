@@ -1015,7 +1015,7 @@ endif
    call getReal("tthresh", tthresh, cLine, nLines, &
        "Temperature threshold for dust (K): ","(a,f8.2,a)", 1000., ok, .true.)
 
-    oneKappa = .true.
+   oneKappa = .true.
     call getInteger("ndusttype", nDustType, cLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
     if (nDustType .gt. maxDustTypes) then
        if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
@@ -1105,6 +1105,10 @@ endif
 
  call getLogical("coreline", coreEmissionLine, cLine, nLines, &
    "Core Emission Line: ","(a,1l,a)", .false., ok, .false.)
+
+
+ call getLogical("photoionization", photoionization, cLine, nLines, &
+   "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
 
 

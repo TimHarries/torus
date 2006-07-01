@@ -9,6 +9,7 @@ use grid_mod
 use amr_mod
 use constants_mod
 use messages_mod
+use diffusion_mod
 
 implicit none
 
@@ -50,11 +51,15 @@ contains
 
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
-    use input_variables, only : smoothFactor, blockHandout
+    use input_variables, only : smoothFactor, blockHandout, zoomFactor
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal
+    type(OCTAL), pointer :: thisOctal, tempOctal, endOctal
+    integer :: nCellsInDiffusion
+    logical :: directPhoton
+    character(len=80) :: message
+    integer :: tempSubcell, endSubcell
     integer :: nlambda
     real :: lamArray(:)
     integer :: nSource
@@ -95,6 +100,8 @@ contains
     real(double) :: hiContEmissivity, forbiddenEmissivity
     real(double) :: probNonIonizing, probHydrogen
     real(double) :: freq(1000), spectrum(1000), nuStart, nuEnd
+    real(double) :: r1, kappaAbsGas, kappaAbsDust
+
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
     integer :: iMonte_beg, iMonte_end, nSCat
@@ -141,7 +148,7 @@ contains
 
 
 
-    nuStart = cSpeed / (10.d4 * 1.d-8)
+    nuStart = cSpeed / (1000.e4 * 1.d-8)
     nuEnd =  2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
 
     do i = 1, nFreq
@@ -176,20 +183,54 @@ contains
     do 
        nIter = nIter + 1
        nInf=0
+
+
+       nCellsInDiffusion = 0
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot, ndiff=nCellsInDiffusion)
+       write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+       call writeInfo(message,IMPORTANT)
+
+
        if (writeoutput) then
           call plot_AMR_values(grid, "ionization", "x-z", 0., &
                "ionization.ps/vcps", .true., .true., &
                0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+
           
+          call locate(lamArray, nLambda, 5500., ilam)
+          write(*,*) ilam
+          call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
+               "tau.ps/vcps", .true., .false., &
+               0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,ilam=ilam) 
+
           call plot_AMR_values(grid, "photocoeff", "x-z", 0., &
                "photocoeff.ps/vcps", .true., .true., &
                0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+
+       call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
+            "rho_temp_zoom.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
+
+       call plot_AMR_values(grid, "rho", "x-y", real(grid%octreeRoot%centre%y), &
+            "rho_temp_xy.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+
+       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+            "lucy_zoom_xz.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
           
           call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-            "lucy_temp_xz.ps/vcps", .false., .false., &
+            "lucy_temp_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
-          epsoverdeltat = lcore/dble(nMonte)
+
+          call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
+               "crossings.ps/vcps", .true., .false., &
+               0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
        endif
+
+
+       epsoverdeltat = lcore/dble(nMonte)
+
        call zeroDistanceGrid(grid%octreeRoot)
 
        if (writeoutput) then
@@ -235,12 +276,26 @@ contains
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
           escaped = .false.
+
+          call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
+            foundSubcell=tempsubcell)
+
+          if (tempOctal%diffusionApprox(tempsubcell)) then
+             call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp)
+             directPhoton = .false.
+             rVec = subcellCentre(thisOctal, subcell)
+          endif
+
+
           call getWavelength(thisSource%spectrum, wavelength)
+
           photonPacketWeight = 1.d0
           thisFreq = cSpeed/(wavelength / 1.e8)
-          if ((thisFreq*hcgs*ergtoev) < 13.6) then
-             cycle mainloop
-          endif
+
+
+!          if ((thisFreq*hcgs*ergtoev) < 13.6) then
+!             cycle mainloop
+!          endif
           nScat = 0
           do while(.not.escaped)
              nScat = nScat + 1
@@ -261,11 +316,25 @@ contains
                    uHat = randomUnitVector() ! isotropic scattering
                 else
                    spectrum = 1.d-30
-                   call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
-                   call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-                   call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-                   call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-                   call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+
+                   call returnKappa(grid, thisOctal, subcell, ilambda=ilam, kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
+                        kappaSca=kappaScadb, kappaAbs=kappaAbsdb)
+
+
+                   if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
+                      call random_number(r1)
+                      if (r1 < (kappaAbsGas / (kappaAbsGas + kappaAbsDust))) then  ! absorbed by gas rather than dust
+                         call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
+                         call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+                         call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+!                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+                         call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+                      else
+                         call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                      endif
+                   else ! non-ionizing photon must be absorbed by dust
+                         call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                   endif
                    if (firsttime.and.writeoutput) then
                       firsttime = .false.
                       open(67,file="pdf.dat",status="unknown",form="formatted")
@@ -282,7 +351,7 @@ contains
                 
 
              endif
-             if (nScat > 10000) then
+             if (nScat > 100000) then
                 write(*,*) "Nscat exceeded 10000, forcing escape"
                 escaped = .true.
              endif
@@ -311,16 +380,37 @@ contains
        epsOverDeltaT = (lCore) / dble(nMonte)
 
 
-       do i = 1, 3
+       do i = 1 , 3
           if (writeoutput) &
                write(*,*) "Calculating ionization and thermal equilibria",i
           call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-          if (nIter > 1) then
-             call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
-          endif
+          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
           if (writeoutput) &
-          write(*,*) "Done."
+               write(*,*) "Done."
        enddo
+
+!$MPI  if (my_rank == 1) &
+       call tune(6, "Gauss-Seidel sweeps")
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot)
+!$MPI       if (my_rank==0) &
+       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
+            "crossings.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+
+       nCellsInDiffusion = 0
+       call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
+
+
+       call solveArbitraryDiffusionZones(grid)
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)
+!       call unsetOnDirect(grid%octreeRoot)
+       write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
+       call writeInfo(message,IMPORTANT)
+
+!$MPI  if (my_rank == 1) &
+       call tune(6, "Gauss-Seidel sweeps")
+
+
 
        
 if (writeoutput) then
@@ -427,7 +517,8 @@ if (writeoutput) then
    type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
    type(OCTAL), pointer :: thisOctal, tempOctal, sourceOctal
    type(OCTAL),pointer :: oldOctal
-   type(OCTAL),pointer :: foundOctal
+   type(OCTAL),pointer :: foundOctal, endOctal
+   integer :: endSubcell
    real(double) :: photonPacketWeight
    integer :: subcell, isubcell, tempSubcell, sourceSubcell
    real(oct) :: tval, tau, r
@@ -448,6 +539,8 @@ if (writeoutput) then
    logical :: leftHandBoundary
    real(double) :: prob
    real :: e, h0
+   real :: lambda
+   integer :: ilambda
 
     stillinGrid = .true.
     escaped = .false.
@@ -513,8 +606,22 @@ if (writeoutput) then
 
 ! update the distance grid
 
-       call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight)
+       call updateGrid(grid, thisOctal, subcell, thisFreq, tVal, photonPacketWeight, ilam)
           
+
+
+       if (thisOctal%diffusionApprox(subcell)) then
+          call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp)
+          rVec = subcellCentre(endOctal,endSubcell)
+          octVec = rVec
+          call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
+            foundSubcell=tempsubcell)
+          uHat = randomUnitVector()
+       endif
+
+
+
+
 
 ! now if the photon is in the grid choose a new random tau
 
@@ -596,7 +703,9 @@ if (writeoutput) then
 
        if (thisTau > 0.d0) then
 
-          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight)
+          lambda = cSpeed*1.e8/thisFreq
+          call locate(lamArray, nLambda, lambda, ilambda)
+          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilambda)
 
           oldOctal => thisOctal
           
@@ -969,7 +1078,7 @@ if (writeoutput) then
        else
           if (thisOctal%inflow(subcell)) then
              if (thisOctal%ncrossings(subcell) > 10) then
-                call solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
+                call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
              else
 !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
@@ -988,7 +1097,7 @@ if (writeoutput) then
     type(OCTALVECTOR) :: rVec
     logical :: converged, found
     real :: t1, t2, tm
-    real(double) :: y1, y2, ym, ymin, Hheating, Heheating, tot
+    real(double) :: y1, y2, ym, ymin, Hheating, Heheating, tot, dustHeating
     real :: deltaT
     real(double) :: junk
     real :: underCorrection = 1.
@@ -1009,32 +1118,39 @@ if (writeoutput) then
              if (thisOctal%ncrossings(subcell) > 10) then
 
 
-                call getHeating(grid, thisOctal, subcell, hHeating, heHeating, totalHeating, epsOverDeltaT)
-
-                nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
-                nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
-                nh = thisOctal%nh(subcell)
-                
+                call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
 
                 if (totalHeating == 0.d0) then
                    thisOctal%temperature(subcell) = 1.e-3
                 else
                    converged = .false.
 
-                   t1 = 5000.
-                   t2 = 40000.
+                   t1 = 1.
+                   t2 = 30000.
                    found = .true.
 
                    if (found) then
-                      y1 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1) - totalHeating)
-                      y2 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2) - totalHeating)
+                      y1 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) &
+                           - totalHeating)
+                      y2 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2) &
+                           - totalHeating)
                       if (y1*y2 > 0.d0) then
+!                         do i = 1, 100
+!                            t1 = 40000.*real(i-1)/99.
+!                            y1 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) &
+!                                 - totalHeating)
+!                            write(*,*) t1,y1
+!                         enddo
 
-!                         write(*,*) "t1", &
-!                              t1,y1,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1),totalHeating
-!                         write(*,*) "t2", &
-!                              t2,y2,HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2),totalHeating
-                         tm = 5000.
+
+
+                         write(*,*) "t1", &
+                              t1,HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1), &
+                              totalHeating,thisOctal%rho(subcell)
+                         write(*,*) "t2", &
+                              t2,HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2), &
+                              totalHeating,thisOctal%rho(subcell)
+                         tm = t1
                          converged = .true.
                       endif
                    
@@ -1042,9 +1158,12 @@ if (writeoutput) then
                       
                       do while(.not.converged)
                          tm = 0.5*(t1+t2)
-                         y1 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t1) - totalheating)
-                         y2 = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), t2) - totalheating)
-                         ym = (HHecooling(grid, thisOctal, subcell, nh, nhii,nheii, thisOctal%ne(subcell), tm) - totalheating)
+                         y1 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) &
+                              - totalheating)
+                         y2 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2) &
+                              - totalheating)
+                         ym = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,tm) &
+                              - totalheating)
                          
                          if (y1*ym < 0.d0) then
                             t1 = t1
@@ -1058,7 +1177,7 @@ if (writeoutput) then
                             write(*,*) t1, t2, y1,y2,ym
                          endif
                          
-                         if (abs((t1-t2)/t1) .le. 1.e-4) then
+                         if (abs((t1-t2)/t1) .le. 1.e-2) then
                             converged = .true.
                          endif
                       
@@ -1066,7 +1185,7 @@ if (writeoutput) then
                    endif
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = &
-                        max(thisOctal%temperature(subcell) + underCorrection * deltaT,100.)
+                        max(thisOctal%temperature(subcell) + underCorrection * deltaT,1.e-3)
                 endif
              else
  !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
@@ -1096,14 +1215,15 @@ if (writeoutput) then
   end function recombToGround
 
   
-  function HHeCooling(grid, thisOctal, subcell, nh, nHii, nHeii, ne, temperature,debug) result (coolingRate)
-    type(OCTAL) :: thisOctal
+  function HHeCooling(grid, thisOctal, subcell, epsOverDeltaT, temperature, debug) result (coolingRate)
+    type(OCTAL),pointer :: thisOctal
     integer :: subcell
+    real(double) :: epsOverDeltaT
     type(GRIDTYPE) :: grid
     real(double) :: nHii, nHeii, ne, nh
     real :: temperature
     logical, optional :: debug
-    real(double) :: coolingRate, crate
+    real(double) :: coolingRate, crate, dustCooling
     real(double) :: gff
     real :: rootTbetaH(31) = (/ 8.287e-11, 7.821e-11, 7.356e-11, 6.982e-11, 6.430e-11, 5.971e-11, 5.515e-11, 5.062e-11, 4.614e-11, &
                                4.170e-11, 3.734e-11, 3.306e-11, 2.888e-11, 2.484e-11, 2.098e-11, 1.736e-11, 1.402e-11, 1.103e-11, &
@@ -1121,8 +1241,18 @@ if (writeoutput) then
     real(double) :: log10te,betarec, coolrec, betaff, coolff
     real :: ch12, ch13, ex12, ex13, th12, th13, coolcoll, te4, teused
     real(double) :: becool
+    real :: kappap
     real, parameter                :: hcRyd = &    ! constant: h*c*Ryd (Ryd at inf used) [erg]
          & 2.1799153e-11
+
+
+!    call solveIonizationBalance(grid, thisOctal, subcell,  temperature, epsOverdeltaT)
+                
+    nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
+    nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
+    nh = thisOctal%nh(subcell)
+    ne = thisOctal%ne(subcell)
+                
 
 
     becool = 0.
@@ -1170,6 +1300,7 @@ if (writeoutput) then
     th12 = 118338.
     th13 = 140252.
     te4 = temperature / 1.e4
+    coolColl = 0.
     if (TeUsed > 5000.) then 
        
        coolColl = (ch12*exp(-th12/TeUsed)*Te4**ex12 + &
@@ -1238,14 +1369,21 @@ if (writeoutput) then
 !    write(*,*) coolingRate,crate,coolingRate/(coolingrate+crate)
     coolingRate = coolingRate + crate
 
+    call returnKappa(grid, thisOctal, subcell, kappap=kappap)
+
+    dustCooling = fourPi * kappaP * (stefanBoltz/pi) * temperature**4
+
+    coolingRate = coolingRate + dustCooling
+
   end function HHeCooling
 
-  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight)
+  subroutine updateGrid(grid, thisOctal, subcell, thisFreq, distance, photonPacketWeight, ilambda)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    real(double) :: thisFreq, distance, kappaAbs
+    real(double) :: thisFreq, distance, kappaAbs,kappaAbsDust
     real :: lambda
+    integer :: ilambda
     real(double) :: photonPacketWeight
     integer :: i 
     real :: e, xsec
@@ -1283,21 +1421,20 @@ if (writeoutput) then
 
 
 
-    lambda = 1.e8*cSpeed/thisFreq
-
-    call returnKappa(grid, thisOctal, subcell, lambda=lambda, kappaAbs=kappaAbs, dustOnly=.true.)
+    call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaAbsDust=kappaAbsDust, kappaAbs=kappaAbs)
 
     thisOctal%distanceGrid(subcell) = thisOctal%distanceGrid(subcell) &
-         + dble(distance) * dble(kappaAbs)
+         + dble(distance) * dble(kappaAbsDust)
 
 
   end subroutine updateGrid
 
-subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
+subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOverdeltaT)
   implicit none
   type(GRIDTYPE) :: grid
   type(OCTAL) :: thisOctal
   real(double) :: epsOverDeltaT, V
+  real :: temperature
   integer :: subcell
   integer :: i, j, k
   real(double), allocatable :: matrixA(:,:), MatrixB(:,:), tempA(:,:)
@@ -1321,169 +1458,48 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, epsOverdeltaT)
      enddo
      iEnd = iEnd - 1
      nIonizationStages = iEnd - iStart + 1
-
      
-     easyWay = .true.
-
-     if (easyWay) then
-
-        allocate(xplus1overx(1:nIonizationStages-1))
-        do i = 1, nIonizationStages-1
-           iIon = iStart+i-1
-           call getChargeExchangeRecomb(grid%ion(iion+1), thisOctal%temperature(subcell), &
-                thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
-                thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
-                chargeExchangeRecombination)
-
-           call getChargeExchangeIon(grid%ion(iion), thisOctal%temperature(subcell), &
-                thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
-                thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
-                chargeExchangeIonization)
-
-        
-           xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
-      max(1.d-50,(recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * thisOctal%ne(subcell) + chargeExchangeRecombination))
-!           if (grid%ion(iion)%species(1:1) =="C") write(*,*) i,xplus1overx(i)
-        enddo
-       thisOctal%ionFrac(subcell, iStart:iEnd) = 1.
-        do i = 1, nIonizationStages - 1
-           iIon = iStart+i-1
-           thisOctal%ionFrac(subcell,iIon+1) = thisOctal%ionFrac(subcell,iIon) * xplus1overx(i)
-!           if (grid%ion(iion)%species(1:1) =="C") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
-        enddo
-        if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
-           thisOctal%ionFrac(subcell,iStart:iEnd) = &
-                max(1.d-50,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
-        else
-           thisOctal%ionFrac(subcell,iStart:iEnd) = 1.d-50
-        endif
-           
-!        if (grid%ion(iion)%species(1:2) =="He") then
-!           write(*,*) thisOctal%ionFrac(subcell,iStart:iEnd)
-!           write(*,*) " "
-!        endif
-
-        deallocate(xplus1overx)
-
-     else
-
-     allocate(matrixA(1:(nIonizationStages+1),1:(nIonizationStages+1)))
-     allocate(tempA(1:(nIonizationStages+1),1:(nIonizationStages+1)))
-     allocate(matrixB(1:(nIonizationStages+1), 1))
- 
-     matrixA = 0.d0
-
-     do i = 1, nIonizationStages
+     
+     allocate(xplus1overx(1:nIonizationStages-1))
+     do i = 1, nIonizationStages-1
         iIon = iStart+i-1
-!        write(*,*) i,iion,grid%ion(iion)%species
-
-        call getChargeExchangeRecomb(grid%ion(iion+1), thisOctal%temperature(subcell), &
+        call getChargeExchangeRecomb(grid%ion(iion+1), temperature, &
              thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
              thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
              chargeExchangeRecombination)
-
-        call getChargeExchangeIon(grid%ion(iion), thisOctal%temperature(subcell), &
+        
+        call getChargeExchangeIon(grid%ion(iion), temperature, &
              thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1),  &
              thisOctal%nh(subcell)*grid%ion(2)%abundance*thisOctal%ionFrac(subcell,2),  &
              chargeExchangeIonization)
-
-
-        if (i == 1) then
-           matrixA(i, i) = -((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)! equation 44 Lucy MC II
-           
-           matrixA(i, i+1) = (recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * &
-                thisOctal%ne(subcell) + chargeExchangeRecombination)
-        else if (i == nIonizationStages) then
-           matrixA(i,i-1) = IonRateInto
-           matrixA(i,i) = -recombRateOutof
-        else
-!           matrixA(i,i-1) = ionRateInto
-!           matrixA(i,i) = -recombRateOutof - &
-!                ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)
-!           matrixA(i, i+1) = (recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * &
-!                thisOctal%ne(subcell) + chargeExchangeRecombination)
-           matrixA(i,i-1) = ionRateInto
-           matrixA(i,i) = -recombRateOutof - &
-                ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)
-           matrixA(i, i+1) = (recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * &
-                thisOctal%ne(subcell) + chargeExchangeRecombination)
-        endif
-
         
-        if (i < nIonizationStages) then
-           ionRateInto = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization)
-           recombRateOutOf =  (recombRate(grid%ion(iIon),thisOctal%temperature(subcell)) * &
-                thisOctal%ne(subcell) + chargeExchangeRecombination)
-        endif
-
-
+        
+        xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
+             max(1.d-50,(recombRate(grid%ion(iIon),temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination))
+        !           if (grid%ion(iion)%species(1:1) =="C") write(*,*) i,xplus1overx(i)
      enddo
-
-     where(matrixA < 0.d0)
-        matrixA = min(matrixA,-1.d-30)
-     end where
-
-     where(matrixA >= 0.d0)
-        matrixA = max(matrixA,1.d-30)
-     end where
-
-     do i = 1, nIonizationStages
-        matrixA(nIonizationStages+1,i) = 1.d0
+     thisOctal%ionFrac(subcell, iStart:iEnd) = 1.
+     do i = 1, nIonizationStages - 1
+        iIon = iStart+i-1
+        thisOctal%ionFrac(subcell,iIon+1) = thisOctal%ionFrac(subcell,iIon) * xplus1overx(i)
+        !           if (grid%ion(iion)%species(1:1) =="C") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
      enddo
+     if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
+        thisOctal%ionFrac(subcell,iStart:iEnd) = &
+             max(1.d-50,thisOctal%ionFrac(subcell,iStart:iEnd))/SUM(thisOctal%ionFrac(subcell,iStart:iEnd))
+     else
+        thisOctal%ionFrac(subcell,iStart:iEnd) = 1.d-50
+     endif
      
 
-     matrixB = 0.d0
-     matrixB (nIonizationStages+1,1) = 1.d0
+        deallocate(xplus1overx)
 
+        k = iEnd + 1
+     end do
 
-     tempA = matrixA
-     if (grid%ion(istart)%species(1:1) =="x") then
-        do i = 1, nIonizationStages+1
-           write(*,'(1p,9e12.3)') matrixA(i,1:nIonizationStages)
-        enddo
-     endif
+     thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
 
-
-
-     call gaussj(matrixA, nIonizationStages+1, nIonizationStages+1, matrixB, 1, 1, ok)
-
-     if (grid%ion(istart)%species(1:1) =="x") then
-        write(*,*) " "
-        write(*,'(1p,9e12.3)') matrixB(1:nIonizationStages,1)
-        write(*,*) " "
-     endif
-
-
-     if (.not.ok) then
-        write(*,*) "Ionization balance failed for element: ",trim(grid%ion(istart)%species(1:2))
-        write(*,*) "temp",thisOctal%temperature(subcell)
-        write(*,*) "ne",thisOctal%ne(subcell)
-        do i = 1, nIonizationStages+1
-           write(*,'(1p,9e12.3)') tempA(i,1:nIonizationStages)
-        enddo
-        write(*,*) "setting element to neutral"
-        matrixB(1:nIonizationStages,1) = 0.d0
-        matrixB(1,1) = 1.d0
-     endif
-
-     do i = 1, nIonizationStages
-        iIon = istart+i-1
-        thisOctal%ionFrac(subcell, iIon) = matrixB(i,1)
-!        write(*,*) grid%ion(iIon)%species, thisOctal%ionFrac(subcell, iIon)
-     enddo
-!     write(*,*) " " 
-     deallocate(matrixA, matrixB, tempA)
-
-  endif
-  k = iEnd + 1
-end do
-  
-
-
-
-thisOctal%ne(subcell) = returnNe(thisOctal, subcell, grid%ion, grid%nion)
-
-end subroutine solveIonizationBalance
+   end subroutine solveIonizationBalance
 
 
 function recombRate(thisIon, temperature) result (rate)
@@ -1925,7 +1941,7 @@ subroutine dumpLexington(grid, epsoverdt)
   type(OCTALVECTOR) :: octVec
   real :: fac
   real(double) :: hHeating, heHeating, totalHeating, heating, nh, nhii, nheii, ne
-  real(double) :: cooling
+  real(double) :: cooling, dustHeating
   real :: netot
   open(20,file="lexington.dat",form="formatted",status="unknown")
   open(21,file="orates.dat",form="formatted",status="unknown")
@@ -1951,7 +1967,7 @@ subroutine dumpLexington(grid, epsoverdt)
         nh = thisOctal%nh(subcell)
         ne = thisOctal%ne(subcell)
 
-        cooling = cooling + HHeCooling(grid, thisOctal, subcell, nh, nHii, nHeii, ne, thisOctal%temperature(subcell))
+!        cooling = cooling + HHeCooling(grid, thisOctal, subcell, thisOctal%temperature(subcell))
 
         v = cellVolume(thisOctal, subcell)
 
@@ -1970,7 +1986,7 @@ subroutine dumpLexington(grid, epsoverdt)
         NeIII = NeIII + thisOctal%ionfrac(subcell,returnIonNumber("Ne III", grid%ion, grid%nIon))
         NeIV = NeIV + thisOctal%ionfrac(subcell,returnIonNumber("Ne IV", grid%ion, grid%nIon))
         netot = netot + thisOctal%ne(subcell)
-        call getHeating(grid, thisOctal, subcell, hHeating, heHeating, totalHeating, epsOverDT)
+        call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDT)
         heating = heating + totalHeating
 !        fac = thisOctal%nh(subcell) * returnAbundance(8) !* thisOctal%ionfrac(subcell,returnIonNumber("O I", grid%ion, grid%nIon))
         fac = 1.
@@ -2499,11 +2515,11 @@ subroutine getRecombs(rates, thision, temperature, ne, ionFrac, nh)
  end subroutine getRecombs
 
 
-subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, totalHeating, epsOverDeltaT)
+subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
   type(GRIDTYPE) :: grid
   type(OCTAL) :: thisOctal
   integer :: subcell
-  real(double) :: hHeating, heHeating, totalHeating, v, r1, r2, epsOverDeltaT
+  real(double) :: hHeating, heHeating, totalHeating, v, r1, r2, epsOverDeltaT, dustHeating
   type(OCTALVECTOR) :: rVec
 
   v = cellVolume(thisOctal, subcell)
@@ -2511,7 +2527,9 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, totalHeatin
        * (epsOverDeltaT / (v * 1.d30))*thisOctal%Hheating(subcell) ! equation 21 of kenny's
   Heheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,3) * grid%ion(3)%abundance &
        * (epsOverDeltaT / (v * 1.d30))*thisOctal%Heheating(subcell) ! equation 21 of kenny's
-  totalHeating = (Hheating + HeHeating)
+  dustHeating = (epsOverDeltaT / (v * 1.d30))*thisOctal%distanceGrid(subcell) ! equation 14 of Lucy 1999
+  totalHeating = (Hheating + HeHeating + dustHeating)
+  
 end subroutine getHeating
 
 function rateFit(a,b,t) result (rate)
@@ -2598,13 +2616,18 @@ real(double) function returnGamma(table, temp, freq) result(out)
   call locate(table%temp, table%nTemp, log10(temp), i)
   call locate(table%freq, table%nFreq, log10(freq), j)
 
-  tfac  = (log10(temp) - table%temp(i))/(table%temp(i+1) - table%temp(i))
-  ffac  = (log10(freq) - table%freq(j))/(table%freq(j+1) - table%freq(j))
+  if (log10(freq) >= table%freq(1)) then
+     tfac  = (log10(temp) - table%temp(i))/(table%temp(i+1) - table%temp(i))
+     ffac  = (log10(freq) - table%freq(j))/(table%freq(j+1) - table%freq(j))
+     
+     gamma1 = table%gamma(j,i) + tfac*(table%gamma(j, i+1) - table%gamma(j,i))
+     gamma2 = table%gamma(j+1,i) + tfac*(table%gamma(j+1, i+1) - table%gamma(j+1,i))
+     out = gamma1 + ffac*(gamma2 - gamma1)
+     out = 10.d0**out
+  else
+     out = tiny(out)
+  endif
 
-  gamma1 = table%gamma(j,i) + tfac*(table%gamma(j, i+1) - table%gamma(j,i))
-  gamma2 = table%gamma(j+1,i) + tfac*(table%gamma(j+1, i+1) - table%gamma(j+1,i))
-  out = gamma1 + ffac*(gamma2 - gamma1)
-  out = 10.d0**out
 
 end function returnGamma
 
@@ -2889,8 +2912,8 @@ subroutine addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nla
 
 
   allocate(kAbsArray(1:nlambda))
-  call amrGridValues(grid%octreeRoot, octVec,  foundOctal=thisOctal, &
-       foundSubcell=subcell, grid=grid, kappaAbsArray=kAbsArray)
+
+  call returnKappa(grid, thisOctal, subcell, kappaAbsArray=kAbsArray)
 
 
   do i = 2, nFreq
@@ -2899,7 +2922,7 @@ subroutine addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nla
      call hunt(lamArray, nLambda, real(thisLam), iLam)
      if ((ilam >=1).and.(ilam <= nlambda)) then
 
-        spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * kAbsArray(iLam) * dFreq * fourPi
+        spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * kAbsArray(iLam) *1.d10* dFreq * fourPi
 
      endif
   enddo

@@ -4293,10 +4293,13 @@ IF ( .NOT. gridConverged ) RETURN
       else
          split = .false.
       endif
-      if (modulus(subcellCentre(thisoctal,subcell)) < 6.*grid%rinner) then
+      if (modulus(subcellCentre(thisoctal,subcell)) < 60.*grid%rinner) then
          if (thisOctal%nDepth < 7) split = .true.
       endif
-      
+      if (modulus(subcellCentre(thisoctal,subcell)) < 6.*grid%rinner) then
+         if (thisOctal%nDepth < 9) split = .true.
+      endif
+
    case ("testamr","proto","wrshell")
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
@@ -6268,7 +6271,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
     thisOctal%nhi(subcell) = 1.e-8
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-    thisOctal%inFlow(subcell) = .false.
+    thisOctal%inFlow(subcell) = .true.
 
 
     if (r > grid%rinner) then
@@ -6295,6 +6298,15 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
+    thisOctal%dustTypeFraction(subcell,1)=0.d0
+    if (r < radius(it)*2.) then
+       thisOctal%dusttypeFraction(subcell, 1) = 0.d0
+    else
+       thisOctal%dusttypeFraction(subcell, 1) = 1.d0
+       thisOctal%rho(subcell) = 1.d5*mHydrogen
+       thisOctal%nh(subcell) = thisOctal%rho(subcell)/mHydrogen
+       thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
+    endif
 
   end subroutine calcLexington
   
@@ -6508,10 +6520,31 @@ IF ( .NOT. gridConverged ) RETURN
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
     thisOctal%inflow(subcell) = .true.
-    thisOctal%rho(subcell) = 1.e-30
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
     rd = rOuter / 2.
+
+    thisOctal%rho(subcell) = 100.*mHydrogen
+    thisOctal%nh(subcell) =  thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = 1.d-5 !thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    thisOctal%ionFrac(subcell,1) = 1.
+    thisOctal%ionFrac(subcell,2) = 1.e-5
+    thisOctal%ionFrac(subcell,3) = 1.
+    thisOctal%ionFrac(subcell,4) = 1.e-5
+    thisOctal%etaCont(subcell) = 0.
+
+    if (photoionization) then
+       thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+       thisOctal%ne(subcell) = 1.d-5!thisOctal%nh(subcell)
+       thisOctal%nhi(subcell) = 1.e-5
+       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    endif
+
+
+
     r = sqrt(rVec%x**2 + rVec%y**2)
     if ((r > rInner).and.(r < rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
@@ -6519,10 +6552,17 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
 
+       if (photoionization) then
+          thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+          thisOctal%ne(subcell) = 1.e-5!thisOctal%nh(subcell)
+          thisOctal%nhi(subcell) = 1.e-5
+          thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+       endif
 
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
     
     endif
+
 
 
     thisOctal%velocity = VECTOR(0.,0.,0.)
@@ -9513,22 +9553,20 @@ IF ( .NOT. gridConverged ) RETURN
   END SUBROUTINE amrUpdateGrid
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
-       rosselandKappa, kappap, atthistemperature, dustOnly)
+       rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas)
     use input_variables, only: includeGasOpacity, nDustType, photoionization
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     integer, optional :: ilambda
-    logical, optional :: dustOnly
-    logical :: thisDustOnly
     real, optional :: lambda
     real(double), optional :: kappaSca, kappaAbs, kappaAbsArray(:), kappaScaArray(:)
     real(double), optional :: rosselandKappa
+    real(double), optional :: kappaAbsDust, kappaScaDust, kappaAbsGas, kappaScaGas
     real, optional :: kappap
     real, optional :: atthistemperature
     real :: temperature
-    real :: kappaAbsGas, kappaScaGas
     real :: frac
     real :: tlambda
     real, parameter :: sublimationTemp = 1500., subRange = 100.
@@ -9559,10 +9597,10 @@ IF ( .NOT. gridConverged ) RETURN
           kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + & 
                thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,1:grid%nLambda)*thisOctal%rho(subcell) * frac
        enddo
-       if (includeGasOpacity) then
-          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaAbsArray=tarray)
-          kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
-       endif
+!       if (includeGasOpacity) then
+!          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaAbsArray=tarray)
+!          kappaAbsArray(1:grid%nLambda) = kappaAbsArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
+!       endif
 !       write(*,*) nDustType,thisOctal%dusttypeFraction(subcell,1), grid%oneKappaAbs(1,1:grid%nLambda)
 
     endif
@@ -9574,10 +9612,10 @@ IF ( .NOT. gridConverged ) RETURN
           kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + & 
                thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,1:grid%nLambda)*thisOctal%rho(subcell) * frac
        enddo
-       if (includeGasOpacity) then
-          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaScaArray=tarray)
-          kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
-       endif
+!       if (includeGasOpacity) then
+!          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaScaArray=tarray)
+!          kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
+!       endif
     endif
 
 
@@ -9604,6 +9642,7 @@ IF ( .NOT. gridConverged ) RETURN
        endif
        kappaSca = kappaSca * frac
     endif
+    if (PRESENT(kappaScaDust)) kappaScaDust = kappaSca
 
     if (PRESENT(kappaAbs)) then
        kappaAbs = 0.
@@ -9629,24 +9668,25 @@ IF ( .NOT. gridConverged ) RETURN
 !       write(*,*) nDustType,thisOctal%dusttypeFraction(subcell,1), grid%oneKappaAbs(1,1:grid%nLambda)
       kappaAbs = kappaAbs * frac
    endif
+   if (PRESENT(kappaAbsDust)) kappaAbsDust = kappaAbs
 
 
-   if (includeGasOpacity) then
-      if (PRESENT(kappaAbs)) then
-         if (.not.PRESENT(lambda)) then
-            tlambda = grid%lamArray(iLambda)
-         else
-            tlambda = lambda
-         endif
-         call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaAbs=kappaAbsGas)
-         kappaAbs = kappaAbs + kappaAbsGas*thisOctal%rho(subcell)
-      endif
-      
-      if (PRESENT(kappaSca)) then
-         call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaSca=kappaScaGas)
-         kappaSca = kappaSca + kappaScaGas*thisOctal%rho(subcell)
-      endif
-   endif
+!   if (includeGasOpacity) then
+!      if (PRESENT(kappaAbs)) then
+!         if (.not.PRESENT(lambda)) then
+!            tlambda = grid%lamArray(iLambda)
+!         else
+!            tlambda = lambda
+!         endif
+!         call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaAbs=kappaAbsGas)
+!         kappaAbs = kappaAbs + kappaAbsGas*thisOctal%rho(subcell)
+!      endif
+!      
+!      if (PRESENT(kappaSca)) then
+!         call returnGasKappaValue(temperature, thisOctal%rho(subcell), tlambda, kappaSca=kappaScaGas)
+!         kappaSca = kappaSca + kappaScaGas*thisOctal%rho(subcell)
+!      endif
+!   endif
 
    if (PRESENT(rosselandKappa)) then
       if (PRESENT(atthistemperature)) then
@@ -9692,21 +9732,20 @@ IF ( .NOT. gridConverged ) RETURN
          dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
          do j = 1, nDustType
             kappaP = kappaP + thisOctal%dustTypeFraction(subcell, j) * dble(grid%oneKappaAbs(j,i)) * &
+                 thisOctal%rho(subcell) *&
                  dble(bnu(dble(freq),dble(temperature)))  * dfreq
          enddo
          norm = norm + dble(bnu(dble(freq),dble(temperature)))  * dfreq
       enddo
-      kappaP = kappaP / norm /1.d10
+      if (norm /= 0.d0) then
+         kappaP = (kappaP / norm) /1.d10
+      else
+         kappaP = 1.d-30
+      endif
    endif
    
-   if (present(dustonly)) then
-      thisdustOnly =  dustonly
-   else
-      thisdustonly = .false.
-   endif
 
-
-   if (photoionization.and.(.not.thisDustOnly)) then
+   if (photoionization) then
 
       if (PRESENT(kappaAbs)) then
          if (present(lambda)) then
@@ -9719,11 +9758,13 @@ IF ( .NOT. gridConverged ) RETURN
          call phfit2(2, 2, 1 , e , he0)
          kappaH =  thisOctal%nh(subcell)*grid%ion(1)%abundance*thisOctal%ionFrac(subcell,1) * h0
          kappaHe = thisOctal%nh(subcell)*grid%ion(3)%abundance*thisOctal%ionFrac(subcell,3) * he0
-         kappaAbs = kappaH + kappaHe
+         kappaAbs = kappaAbs + (kappaH + kappaHe)
       endif
+      if (PRESENT(kappaAbsGas)) kappaAbsGas = (kappaH + kappaHe)
       if (PRESENT(kappaSca)) then
-         kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
+         kappaSca = kappaSca !+ thisOctal%ne(subcell) * sigmaE * 1.e10!!!!!!!!!!!!!!!!!!!!!!!!!!!
       endif
+      if (PRESENT(kappaScaGas)) kappaScaGas = 0.d0!thisOctal%ne(subcell) * sigmaE * 1.e10 !!!!!!!!!!!!!!!!
    endif
    
   end subroutine returnKappa
