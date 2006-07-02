@@ -1121,7 +1121,7 @@ endif
             "(a,f5.1,a)",10.0,ok,.false.)
 
        call getInteger("mincrossings", minCrossings, cLine, nLines, &
-            "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.false.)
+            "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.true.)
  endif
 
 

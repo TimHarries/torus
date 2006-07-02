@@ -25,7 +25,7 @@ module photon_mod
   use filter_set_class
   use surface_mod
   use kind_mod
-
+  use photoion_mod
   implicit none
 
   public
@@ -342,11 +342,12 @@ contains
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, &
        VoigtProf, dopShift)
-    use input_variables, only : nphotons
+    use input_variables, only : nphotons, photoionization
 
     implicit none
 
     integer :: nSource, thisSource
+    type(OCTAL), pointer :: thisOctal
     type(SOURCETYPE) :: source(:)
     type(SURFACETYPE) :: starSurface
     type(PHOTON) :: thisPhoton                 ! the photon
@@ -364,7 +365,7 @@ contains
     real :: vo6
     real :: x,y,z
     real(oct) :: xOctal, yOctal, zOctal
-    type(octalVector) :: octalCentre
+    type(octalVector) :: octalCentre, octVec
     type(filter_set) :: filterSet
     real :: directionalWeight
     real :: lambda(:), sourceSpectrum(:)       ! wavelength array/spectrum
@@ -1004,32 +1005,45 @@ contains
           call locate(lambda, nLambda, thisPhoton%lambda, ilambda)
        else
           if (mie) then
-             tot = SUM(dlam(1:nLambda))
-             call random_number(r1)
-             if (forcedWavelength) then
-                call locate(lambda, nlambda, usePhotonWavelength, ilambda)
+             if (.not.photoionization) then
+                tot = SUM(dlam(1:nLambda))
+                call random_number(r1)
+                if (forcedWavelength) then
+                   call locate(lambda, nlambda, usePhotonWavelength, ilambda)
+                else
+                   iLambda = int(r1 * real(nLambda)) + 1
+                endif
+                thisPhoton%lambda = lambda(ilambda)
+                weight = dlam(iLambda)
+                thisPhoton%stokes = thisPhoton%stokes * weight  * real(nLambda)
+                call random_number(r)
+                if (iLambda == 1) then
+                   x1 = lambda(1)
+                   x2 = 0.5*(lambda(1)+lambda(2))
+                else if (iLambda == nLambda) then
+                   x1 = 0.5*(lambda(nLambda)+lambda(nLambda-1))
+                   x2 = lambda(nLambda)
+                else
+                   x1 = 0.5*(lambda(ilambda-1)+lambda(ilambda))
+                   x2 = 0.5*(lambda(ilambda+1)+lambda(ilambda))
+                endif
+                !             call random_number(r)
+                !          thisPhoton%lambda = x1+r*(x2-x1)
              else
-                iLambda = int(r1 * real(nLambda)) + 1
+
+                octVec = thisPhoton%position
+                call amrgridvalues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundSubcell=subcell)
+                thisPhoton%lambda = &
+                     getRandomWavelengthPhotoion(grid, thisOctal, subcell, lambda, nLambda)
              endif
-             thisPhoton%lambda = lambda(ilambda)
-             weight = dlam(iLambda)
-             thisPhoton%stokes = thisPhoton%stokes * weight  * real(nLambda)
-             call random_number(r)
-             if (iLambda == 1) then
-                x1 = lambda(1)
-                x2 = 0.5*(lambda(1)+lambda(2))
-             else if (iLambda == nLambda) then
-                x1 = 0.5*(lambda(nLambda)+lambda(nLambda-1))
-                x2 = lambda(nLambda)
-             else
-                x1 = 0.5*(lambda(ilambda-1)+lambda(ilambda))
-                x2 = 0.5*(lambda(ilambda+1)+lambda(ilambda))
-             endif
-!             call random_number(r)
-!          thisPhoton%lambda = x1+r*(x2-x1)
-          elseif (grid%lineEmission .and. thisPhoton%contPhoton) then
-             !pick line center wavelength
-             thisPhoton%lambda = lamLine
+
+
+             elseif (grid%lineEmission .and. thisPhoton%contPhoton) then
+                !pick line center wavelength
+                thisPhoton%lambda = lamLine
+
+
+
           else
              call random_number(r1)
              iLambda = int(r1 * real(nLambda)) + 1

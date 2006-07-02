@@ -13,6 +13,8 @@ use diffusion_mod
 
 implicit none
 
+private :: intersectcubeamr
+
 type SAHAMILNETABLE
    integer :: nFreq 
    integer :: nTemp 
@@ -46,6 +48,7 @@ end type GAMMATABLE
   real :: heIRecombinationLambda(32)
   real :: heIRecombinationNe(3)
   real :: heIIrecombinationLines(3:30, 2:16)
+  type(GAMMATABLE) :: gammaTableArray(3) ! H, HeI, HeII
 
 contains
 
@@ -83,6 +86,7 @@ contains
     real :: dummy(3)
     real :: pops(10)
     integer :: nIter
+    logical :: converged
     real(double) :: crate
     real :: xsec, temp, e, h0, he0
     real(double) :: luminosity1, luminosity2, luminosity3
@@ -95,7 +99,6 @@ contains
 
     type(SAHAMILNETABLE) :: hTable, heTable
     type(RECOMBTABLE) :: Hrecombtable
-    type(GAMMATABLE) :: gammaTableArray(3) ! H, HeI, HeII
 
     real(double) :: hRecombemissivity, hlymanContemissivity, helymanContEmissivity
     real(double) :: hiContEmissivity, forbiddenEmissivity
@@ -180,8 +183,9 @@ contains
     nMonte = nlucy
 
     nIter = 0
-
-    do 
+    
+    converged = .false.
+    do while(.not.converged)
        nIter = nIter + 1
        nInf=0
 
@@ -224,9 +228,6 @@ contains
             "lucy_temp_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
 
-          call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
-               "crossings.ps/vcps", .true., .false., &
-               0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
        endif
 
 
@@ -380,6 +381,7 @@ contains
 
        epsOverDeltaT = (lCore) / dble(nMonte)
 
+       call  identifyUndersampled(grid%octreeRoot)
 
        do i = 1 , 3
           if (writeoutput) &
@@ -396,11 +398,14 @@ contains
 !$MPI       if (my_rank==0) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomfactor)
 
        nCellsInDiffusion = 0
        call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
 
+       call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
+            "rho_temp_zoom.ps/vcps", .true., .false., &
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
 
        call solveArbitraryDiffusionZones(grid)
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)
@@ -507,7 +512,12 @@ if (writeoutput) then
 
 !       nMonte = nMonte * 2
 
+    converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
  enddo
+
+  call  calcContinuumEmissivity(grid, thisOctal, nfreq, freq, spectrum, nlambda, lamArray)
+
 
   end subroutine photoIonizationloop
 
@@ -1089,7 +1099,7 @@ if (writeoutput) then
           end do
        else
           if (thisOctal%inflow(subcell)) then
-             if (thisOctal%ncrossings(subcell) > 10) then
+             if (.not.thisOctal%undersampled(subcell)) then
                 call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
              else
 !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
@@ -1127,7 +1137,7 @@ if (writeoutput) then
           end do
        else
           if (thisOctal%inflow(subcell)) then
-             if (thisOctal%ncrossings(subcell) > 10) then
+             if (.not.thisOctal%undersampled(subcell)) then
 
 
                 call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
@@ -3130,7 +3140,111 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine unpackvalues
 
+  recursive subroutine  identifyUndersampled(thisOctal)
+    use input_variables, only : minCrossings
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call identifyUndersampled(child)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%nCrossings(subcell) < minCrossings) then
+             thisOctal%undersampled(subcell) = .true.
+          else
+             thisOctal%undersampled(subcell) = .false.
+          endif
+       endif
+    enddo
+  end subroutine identifyUndersampled
 
+  recursive subroutine  calcContinuumEmissivity(grid, thisOctal, nfreq, freq, spectrum, nlambda, lamArray)
+    type(GRIDTYPE) :: grid
+    integer :: nFreq
+    real(double) :: freq(:), spectrum(:)
+    integer :: nLambda
+    real :: lamArray(:)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calcContinuumEmissivity(grid, child, nfreq, freq, spectrum, nlambda, lamArray)
+                exit
+             end if
+          end do
+       else
+          call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
+          call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+          call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+!         call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+          call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+          call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+          thisOctal%etaCont(subcell) = 0.d0
+          do i = 1, nFreq
+             thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + spectrum(i)
+          enddo
+       endif
+    enddo
+  end subroutine calcContinuumEmissivity
+
+
+  function getRandomWavelengthPhotoion(grid, thisOctal, subcell, lamArray, nLambda) result(thisLambda)
+
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real :: thisLambda
+    integer :: nFreq
+    real(double), allocatable :: freq(:), spectrum(:)
+    real(double) :: nuStart, nuEnd, thisFreq
+    integer :: nLambda
+    real :: lamArray(:)
+    integer :: i
+
+    nFreq = 1000
+
+    allocate(freq(1:nFreq), spectrum(1:nFreq))
+    nuStart = cSpeed / (1000.d4 * 1.d-8)
+    nuEnd =  2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
+
+    do i = 1, nFreq
+       freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
+       freq(i) = 10.d0**freq(i)
+    enddo
+
+    spectrum = 1.d-30
+
+    call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
+    call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+    !                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+    call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+    
+!    do i =1 , nFreq
+!       write(*,*) i, freq(i), spectrum(i)
+!    enddo
+
+    thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
+    thisLambda = 1.e8 * cSpeed / thisFreq
+
+    
+
+  end function getRandomWavelengthPhotoion
 
 
 end module
