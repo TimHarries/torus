@@ -512,7 +512,7 @@ if (writeoutput) then
 
 !       nMonte = nMonte * 2
 
-    converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (niter == 3) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  enddo
 
@@ -2944,7 +2944,7 @@ subroutine addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nla
      call hunt(lamArray, nLambda, real(thisLam), iLam)
      if ((ilam >=1).and.(ilam <= nlambda)) then
 
-        spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * kAbsArray(iLam) *1.d10* dFreq * fourPi
+        spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * kAbsArray(iLam) *1.d-10* dFreq * fourPi
 
      endif
   enddo

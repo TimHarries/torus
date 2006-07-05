@@ -26,6 +26,7 @@ module photon_mod
   use surface_mod
   use kind_mod
   use photoion_mod
+
   implicit none
 
   public
@@ -211,7 +212,7 @@ contains
           ! do the same for a mie scattering
           
           call locate(grid%lamArray, nLambda, outPhoton%lambda, i)
-          j = min(int(0.5*(costheta+1.d0)*real(nmumie))+1,nMuMie)
+          j = int(0.5*(costheta+1.d0)*real(nmumie))+1
           outPhoton%stokes = applyMean(miePhase(1:nDustType,i,j), &
                thisOctal%dustTypeFraction(subcell,1:nDustType), nDustType, outPhoton%stokes)
 
@@ -347,7 +348,6 @@ contains
     implicit none
 
     integer :: nSource, thisSource
-    type(OCTAL), pointer :: thisOctal
     type(SOURCETYPE) :: source(:)
     type(SURFACETYPE) :: starSurface
     type(PHOTON) :: thisPhoton                 ! the photon
@@ -366,6 +366,7 @@ contains
     real :: x,y,z
     real(oct) :: xOctal, yOctal, zOctal
     type(octalVector) :: octalCentre, octVec
+    type(OCTAL), pointer :: thisOctal
     type(filter_set) :: filterSet
     real :: directionalWeight
     real :: lambda(:), sourceSpectrum(:)       ! wavelength array/spectrum
@@ -1005,45 +1006,32 @@ contains
           call locate(lambda, nLambda, thisPhoton%lambda, ilambda)
        else
           if (mie) then
-             if (.not.photoionization) then
-                tot = SUM(dlam(1:nLambda))
-                call random_number(r1)
-                if (forcedWavelength) then
-                   call locate(lambda, nlambda, usePhotonWavelength, ilambda)
-                else
-                   iLambda = int(r1 * real(nLambda)) + 1
-                endif
-                thisPhoton%lambda = lambda(ilambda)
-                weight = dlam(iLambda)
-                thisPhoton%stokes = thisPhoton%stokes * weight  * real(nLambda)
-                call random_number(r)
-                if (iLambda == 1) then
-                   x1 = lambda(1)
-                   x2 = 0.5*(lambda(1)+lambda(2))
-                else if (iLambda == nLambda) then
-                   x1 = 0.5*(lambda(nLambda)+lambda(nLambda-1))
-                   x2 = lambda(nLambda)
-                else
-                   x1 = 0.5*(lambda(ilambda-1)+lambda(ilambda))
-                   x2 = 0.5*(lambda(ilambda+1)+lambda(ilambda))
-                endif
-                !             call random_number(r)
-                !          thisPhoton%lambda = x1+r*(x2-x1)
+             tot = SUM(dlam(1:nLambda))
+             call random_number(r1)
+             if (forcedWavelength) then
+                call locate(lambda, nlambda, usePhotonWavelength, ilambda)
              else
-
-                octVec = thisPhoton%position
-                call amrgridvalues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundSubcell=subcell)
-                thisPhoton%lambda = &
-                     getRandomWavelengthPhotoion(grid, thisOctal, subcell, lambda, nLambda)
+                iLambda = int(r1 * real(nLambda)) + 1
              endif
-
-
-             elseif (grid%lineEmission .and. thisPhoton%contPhoton) then
-                !pick line center wavelength
-                thisPhoton%lambda = lamLine
-
-
-
+             thisPhoton%lambda = lambda(ilambda)
+             weight = dlam(iLambda)
+             thisPhoton%stokes = thisPhoton%stokes * weight  * real(nLambda)
+             call random_number(r)
+             if (iLambda == 1) then
+                x1 = lambda(1)
+                x2 = 0.5*(lambda(1)+lambda(2))
+             else if (iLambda == nLambda) then
+                x1 = 0.5*(lambda(nLambda)+lambda(nLambda-1))
+                x2 = lambda(nLambda)
+             else
+                x1 = 0.5*(lambda(ilambda-1)+lambda(ilambda))
+                x2 = 0.5*(lambda(ilambda+1)+lambda(ilambda))
+             endif
+!             call random_number(r)
+!          thisPhoton%lambda = x1+r*(x2-x1)
+          elseif (grid%lineEmission .and. thisPhoton%contPhoton) then
+             !pick line center wavelength
+             thisPhoton%lambda = lamLine
           else
              call random_number(r1)
              iLambda = int(r1 * real(nLambda)) + 1
@@ -1057,35 +1045,41 @@ contains
              totDouble = 0.d0
              
              if (grid%adaptive) then
-                positionOctal = thisPhoton%position
-                call amrGridvalues(grid%octreeRoot,positionOctal,&
-                    foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=ilambda)
-                do i = 1, nLambda
-                call amrGridvalues(grid%octreeRoot,positionOctal,&
-                     foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=i)
-                   tempSpectrum(i)= blambda(dble(lambda(i)), dble(tempr)) * dble(kabs) !/ dble(lambda(i))
-                   totDouble = totDouble + tempSpectrum(i) * dlam(i)
-                enddo
-                if (totDouble == 0.d0) then
+
+                if (.not.photoionization) then
+                   positionOctal = thisPhoton%position
+                   call amrGridvalues(grid%octreeRoot,positionOctal,&
+                        foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=ilambda)
                    do i = 1, nLambda
                       call amrGridvalues(grid%octreeRoot,positionOctal,&
                            foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=i)
                       tempSpectrum(i)= blambda(dble(lambda(i)), dble(tempr)) * dble(kabs) !/ dble(lambda(i))
                       totDouble = totDouble + tempSpectrum(i) * dlam(i)
-                      write(*,*) i,lambda(i),dlam(i),tempr,kabs,blambda(dble(lambda(i)), dble(tempr)), &
-                           foundOctal%dustTypeFraction(subcell, 1),foundOctal%etaCont(subcell)
                    enddo
-                   totDouble = 10.
+                   if (totDouble == 0.d0) then
+                      do i = 1, nLambda
+                         call amrGridvalues(grid%octreeRoot,positionOctal,&
+                              foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=i)
+                         tempSpectrum(i)= blambda(dble(lambda(i)), dble(tempr)) * dble(kabs) !/ dble(lambda(i))
+                         totDouble = totDouble + tempSpectrum(i) * dlam(i)
+                         write(*,*) i,lambda(i),dlam(i),tempr,kabs,blambda(dble(lambda(i)), dble(tempr)), &
+                              foundOctal%dustTypeFraction(subcell, 1),foundOctal%etaCont(subcell)
+                      enddo
+                      totDouble = 10.
+                   endif
+
+
+                   tempSpectrum(1:nLambda) = tempSpectrum(1:nLambda) / totDouble
+
+                   if (totDouble<=0.0) totDouble = 1.0e-28   ! for safty
+
+                   thisPhoton%stokes = thisPhoton%stokes * real(tempSpectrum(iLambda))
+                else
+                   octVec = thisPhoton%position
+                   call amrgridvalues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundSubcell=subcell)
+                   thisPhoton%lambda = &
+                        getRandomWavelengthPhotoion(grid, thisOctal, subcell, lambda, nLambda)
                 endif
-
-
-                tempSpectrum(1:nLambda) = tempSpectrum(1:nLambda) / totDouble
-
-
-
-                if (totDouble<=0.0) totDouble = 1.0e-28   ! for safty
-
-                thisPhoton%stokes = thisPhoton%stokes * real(tempSpectrum(iLambda))
 
 
 !                thisPhoton%stokes = thisPhoton%stokes * interplinearSingle(real(lambda), &

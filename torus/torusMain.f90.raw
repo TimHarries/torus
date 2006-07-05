@@ -3628,7 +3628,7 @@
                          sampleFreq,intPathError, &
                          useInterp, grid%Rstar1, coolStarPosition, nSource, source)
 
-              write(*,*) thisPhoton%lambda, tauExt(nTau), thisPhoton%stokes%i
+!              write(*,*) thisPhoton%lambda, tauExt(nTau), thisPhoton%stokes%i
 
                if (intPathError == -10) then
                     tooFewSamples = tooFewSamples + 1  
