@@ -1075,10 +1075,13 @@ contains
 
                    thisPhoton%stokes = thisPhoton%stokes * real(tempSpectrum(iLambda))
                 else
+
                    octVec = thisPhoton%position
                    call amrgridvalues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundSubcell=subcell)
-                   thisPhoton%lambda = &
-                        getRandomWavelengthPhotoion(grid, thisOctal, subcell, lambda, nLambda)
+                   call  getWavelengthBiasPhotoion(grid, thisOctal, subcell, lambda, nLambda, ilambda, fac)
+                   thisPhoton%stokes = thisPhoton%stokes * fac
+
+                  
                 endif
 
 

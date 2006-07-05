@@ -94,6 +94,8 @@ module gridtype_mod
      real :: chanceWindOverTotalContinuum = -9.9e9   ! chance of continuum photon being produced
      ! in the wind rather than at the core
 
+     logical :: photoionization                     ! photoionization calculation done for this grid
+
      logical :: lineEmission                        ! is there line emission?
      logical :: contEmission                        ! is there continuum emission?
 

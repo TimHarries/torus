@@ -836,9 +836,9 @@ contains
     use input_variables
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(octalVector), INTENT(IN) :: point
-    real(double) :: r, h, rhoOut, warpHeight
+    real(double) :: r, h, rhoOut, warpHeight, fac
     real(double) :: kspiral
-    real(double) :: xpoint,ypoint,rscale,r1,fac
+    real(double) :: xpoint,ypoint,rscale,r1
     integer :: nspiral1
     real(double) :: phase(10)
     integer :: i
@@ -858,7 +858,9 @@ contains
     warpHeight = 0. !cos(phi) * rInner * sin(30.*degtorad) * sqrt(rinner / r)
     if ((r > rinner).and.(r < rOuter)) then
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
-       rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(-0.5d0 * (dble(point%z-warpheight)/h)**2)
+       fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
+       fac = max(-50.d0,fac)
+       rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
 
        fac =  1.d0-min(dble(r - rInner)/(0.01d0*rinner),1.d0)
        fac = exp(-fac*10.d0)

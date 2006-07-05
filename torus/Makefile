@@ -284,7 +284,7 @@ ifeq ($(SYSTEM), linuxintel)
 #    FASTFLAG= -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
     FASTFLAG= -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
 #    FASTFLAG= -I/usr/include/nptl -L/usr/lib/nptl -zero 
-    DEBUGFLAG=-g -O0 -zero
+    DEBUGFLAG=-g -O0 
     STATICFLAG=
     MATHTRAP=-mp
     UNIXMOD=unix_mod.f90.linuxintel

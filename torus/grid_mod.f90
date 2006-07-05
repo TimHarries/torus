@@ -603,6 +603,7 @@ contains
        grid%rOuter = rOuter
 
     case("lexington")
+       grid%rCore = 18.67 * rSol / 1.e10
        grid%rInner = rinner
        grid%rOuter = 2.e09
        grid%oneKappa = .true.
@@ -3001,7 +3002,7 @@ contains
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
                grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
-               grid%rOuter, grid%amr2dOnly
+               grid%rOuter, grid%amr2dOnly, grid%photoionization
        if (error /=0) then
          print *, 'Panic: write error in writeAMRgrid (formatted variables)' ; stop
        end if
@@ -3024,7 +3025,7 @@ contains
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
                grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
-               grid%rOuter, grid%amr2dOnly
+               grid%rOuter, grid%amr2dOnly, grid%photoionization
        if (error /=0) then
          print *, 'Panic: write error in writeAMRgrid (unformatted variables)' ; stop
        end if
@@ -3072,7 +3073,7 @@ contains
                   thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
                   thisOctal%etaCont, thisOctal%biasLine3D,                   &
                   thisOctal%biasCont3D, thisOctal%probDistLine,              &
-                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
+                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize,thisOctal%threed, thisOctal%twoD,    &
                   thisOctal%maxChildren, thisOctal%dustType,  &
@@ -3085,7 +3086,7 @@ contains
                   thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
                   thisOctal%etaCont, thisOctal%biasLine3D,                   &
                   thisOctal%biasCont3D, thisOctal%probDistLine,              &
-                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
+                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nh, thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
                   thisOctal%maxChildren, thisOctal%dustType, &
@@ -3097,6 +3098,9 @@ contains
 !          call writeReal2D(thisOctal%kappaSca,fileFormatted)
           call writeDouble2D(thisOctal%kappaAbs,fileFormatted)
           call writeDouble2D(thisOctal%kappaSca,fileFormatted)
+       endif
+       if (grid%photoionization) then
+          call writeDouble2D(thisOctal%ionFrac,fileFormatted)
        endif
        call writeDouble2D(thisOctal%N,fileFormatted)
        call writeReal2D(thisOctal%departCoeff,fileFormatted)
@@ -3176,7 +3180,7 @@ contains
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
                grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
-               grid%rOuter, grid%amr2dOnly
+               grid%rOuter, grid%amr2dOnly, grid%photoionization
     else
        read(unit=20,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive, & 
                grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
@@ -3187,7 +3191,7 @@ contains
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
                grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
-               grid%rOuter, grid%amr2dOnly
+               grid%rOuter, grid%amr2dOnly, grid%photoionization
     end if    
 
     if (error /=0) then
@@ -3263,7 +3267,7 @@ contains
                   thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
                   thisOctal%etaCont, thisOctal%biasLine3D,                   &
                   thisOctal%biasCont3D, thisOctal%probDistLine,              &
-                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
+                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
                   thisOctal%maxChildren, thisOctal%dustType, &
@@ -3276,7 +3280,7 @@ contains
                   thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
                   thisOctal%etaCont, thisOctal%biasLine3D,                   &
                   thisOctal%biasCont3D, thisOctal%probDistLine,              &
-                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nTot,      &
+                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
                   thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
                   thisOctal%subcellSize, thisOctal%threeD,  thisOctal%twoD,  &
                   thisOctal%maxChildren, thisOctal%dustType, &
@@ -3291,6 +3295,9 @@ contains
 !          call readReal2D(thisOctal%kappaSca,fileFormatted)
           call readDouble2D(thisOctal%kappaAbs,fileFormatted)
           call readDouble2D(thisOctal%kappaSca,fileFormatted)
+       endif
+       if (grid%photoionization) then
+          call readDouble2D(thisOctal%ionFrac,fileFormatted)
        endif
        call readDouble2D(thisOctal%N,fileFormatted)
        call readReal2D(thisOctal%departCoeff,fileFormatted)

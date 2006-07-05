@@ -14,6 +14,7 @@ C Arguments:
 
       INTEGER NANG
       REAL GSCA,QBACK,QEXT,QSCA,X
+      DOUBLE PRECISION JUNK
       COMPLEX REFREL
       COMPLEX S1(2*MXNANG-1),S2(2*MXNANG-1)
 
@@ -232,9 +233,18 @@ C*** Compute AN and BN:
           BN=BN/((DREFRL*D(N)+EN/DX)*XI-XI1)
 C
 C*** Augment sums for Qsca and g=<cos(theta)>
-          QSCA=QSCA+REAL((2.*EN+1.)*(ABS(AN)**2+ABS(BN)**2))
-          GSCA=GSCA+REAL(((2.*EN+1.)/(EN*(EN+1.)))*
-     &         (REALPART(AN)*REALPART(BN)+IMAGPART(AN)*IMAGPART(BN)))
+          junk = (ABS(AN)**2+ABS(BN)**2)
+          QSCA=QSCA+real(2.*EN+1.)*JUNK
+!          GSCA=GSCA+REAL(((2.*EN+1.)/(EN*(EN+1.)))*
+!     &         (REALPART(AN)*REALPART(BN)+IMAGPART(AN)*IMAGPART(BN)))
+
+! tjh changed above to this to get round fpe errors
+
+          JUNK = REAL(((2.*EN+1.)/(EN*(EN+1.))))
+          JUNK = JUNK *  
+     &       (REALPART(AN)*REALPART(BN)+IMAGPART(AN)*IMAGPART(BN))
+          GSCA=GSCA+JUNK
+
           IF(N.GT.1)THEN
               GSCA=GSCA+REAL(((EN-1.)*(EN+1.)/EN)*
      &        (REALPART(AN1)*REALPART(AN)+IMAGPART(AN1)*IMAGPART(AN)+

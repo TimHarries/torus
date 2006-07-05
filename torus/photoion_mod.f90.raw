@@ -28,7 +28,7 @@ type RECOMBTABLE
    integer :: nrho
    integer :: nTemp 
    real(double), pointer :: rho(:)
-   real(double), pointer :: temp(:)
+   real(double),  pointer :: temp(:)
    real(double), pointer :: emissivity(:, :)
 end type RECOMBTABLE
 
@@ -55,7 +55,7 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
     use input_variables, only : smoothFactor, blockHandout, zoomFactor, &
-         nlucy
+         nlucy, photoionization
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
@@ -160,6 +160,7 @@ contains
        freq(i) = 10.d0**freq(i)
     enddo
 
+
     call createGammaTable(gammaTableArray(1), 'gammaHI.dat')
     call createGammaTable(gammaTableArray(2), 'gammaHeI.dat')
     call createGammaTable(gammaTableArray(3), 'gammaHeII.dat')
@@ -185,6 +186,11 @@ contains
     nIter = 0
     
     converged = .false.
+
+!    call writeAmrGrid("photoion_tmp_grid.dat",.false.,grid)
+!    call readAmrGrid("photoion_tmp_grid.dat",.false.,grid)
+!    converged = .true.
+
     do while(.not.converged)
        nIter = nIter + 1
        nInf=0
@@ -203,7 +209,6 @@ contains
 
           
           call locate(lamArray, nLambda, 5500., ilam)
-          write(*,*) ilam
           call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
                "tau.ps/vcps", .true., .false., &
                0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,ilam=ilam) 
@@ -301,6 +306,7 @@ contains
           nScat = 0
           do while(.not.escaped)
              nScat = nScat + 1
+
              call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, photonPacketWeight)
              if (.not. escaped) then
 
@@ -516,8 +522,12 @@ if (writeoutput) then
 
  enddo
 
+ thisOctal => grid%octreeRoot
+ call writeInfo("Calculating continuum emissivities...",TRIVIAL)
   call  calcContinuumEmissivity(grid, thisOctal, nfreq, freq, spectrum, nlambda, lamArray)
+ call writeInfo("Done.",TRIVIAL)
 
+  call writeAmrGrid("photoion_tmp_grid.dat",.false.,grid)
 
   end subroutine photoIonizationloop
 
@@ -533,7 +543,7 @@ if (writeoutput) then
    real(double) :: photonPacketWeight
    integer :: subcell, isubcell, tempSubcell, sourceSubcell
    real(oct) :: tval, tau, r
-   real :: lamArray(*)
+   real :: lamArray(:)
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
@@ -551,7 +561,7 @@ if (writeoutput) then
    real(double) :: prob
    real :: e, h0
    real :: lambda
-   integer :: ilambda
+   integer :: ilambda, i
 
     stillinGrid = .true.
     escaped = .false.
@@ -559,7 +569,7 @@ if (writeoutput) then
 
 
     thisLam = (cSpeed / thisFreq) * 1.e8
-    call hunt(lamArray, nLambda, real(thisLam), iLam)
+    call locate(lamArray, nLambda, real(thisLam), iLam)
     if ((ilam < 1).or.(ilam > nlambda)) then
        write(*,*) "ilam errro",ilam,thisLam
     endif
@@ -641,6 +651,7 @@ if (writeoutput) then
        if (stillinGrid) then
           call random_number(r)
           tau = -log(r)
+          call locate(lamArray, nLambda, real(thisLam), iLam)
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,lambda=real(thisLam), foundOctal=thisOctal, &
                foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
                grid=grid, inFlow=inFlow)
@@ -719,9 +730,9 @@ if (writeoutput) then
 
        if (thisTau > 0.d0) then
 
-          lambda = cSpeed*1.e8/thisFreq
-          call locate(lamArray, nLambda, lambda, ilambda)
-          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilambda)
+!          lambda = cSpeed*1.e8/thisFreq
+!          call locate(lamArray, nLambda, lambda, ilambda)
+          call updateGrid(grid, thisOctal, subcell, thisFreq, dble(tval)*dble(tau)/thisTau, photonPacketWeight, ilam)
 
           oldOctal => thisOctal
           
@@ -2610,9 +2621,10 @@ subroutine createGammaTable(table, thisfilename)
   allocate(table%temp(1:table%nTemp))
   allocate(table%gamma(table%nFreq, table%nTemp))
 
+  table%temp = 0.d0
   read(40,*)  table%temp(1:table%nTemp)
 
-  do i = 1, table%nFreq
+  do i = 1, table%nFreq 
      read(40,*) table%freq(i), table%gamma(i,1:table%nTemp)
   enddo
 
@@ -3187,16 +3199,21 @@ end subroutine readHeIIrecombination
              end if
           end do
        else
-          call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
-          call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-          call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-!         call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-          call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-          call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
-          thisOctal%etaCont(subcell) = 0.d0
-          do i = 1, nFreq
-             thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + spectrum(i)
-          enddo
+          spectrum = 1.d-30
+          thisOctal%etaCont(subcell) = 1.d-40
+          if (thisOctal%temperature(subcell) > 1.5d0) then
+             call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
+             call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+             call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+             !         call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+             call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+             call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+             
+             do i = 1, nFreq
+                thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + spectrum(i)
+             enddo
+          endif
+
        endif
     enddo
   end subroutine calcContinuumEmissivity
@@ -3209,15 +3226,15 @@ end subroutine readHeIIrecombination
     integer :: subcell
     real :: thisLambda
     integer :: nFreq
-    real(double), allocatable :: freq(:), spectrum(:)
-    real(double) :: nuStart, nuEnd, thisFreq
+    real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:)
+    real(double) :: nuStart, nuEnd, thisFreq, r, fac
     integer :: nLambda
     real :: lamArray(:)
     integer :: i
 
     nFreq = 1000
 
-    allocate(freq(1:nFreq), spectrum(1:nFreq))
+    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq))
     nuStart = cSpeed / (1000.d4 * 1.d-8)
     nuEnd =  2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
 
@@ -3235,17 +3252,94 @@ end subroutine readHeIIrecombination
     call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
     call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
     
-!    do i =1 , nFreq
-!       write(*,*) i, freq(i), spectrum(i)
-!    enddo
 
-    thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
-    thisLambda = 1.e8 * cSpeed / thisFreq
+    do i = 1, nFreq
+       lamSpec(i) = cspeed/freq(i)
+       spectrum(i) = spectrum(i) * cspeed/(lamspec(i)**2)
+    enddo
+    lamSpec = lamSpec * 1.d8
 
+    allocate(tSpec(1:nFreq))
+  
+    tSpec(1:nFreq) = spectrum(1:nFreq)
+
+    do i = 2, nFreq
+       tSpec(i) = tSpec(i) + tSpec(i-1)
+    enddo
+    tSpec(1:nFreq) = tSpec(1:nFreq) - tSpec(1)
+    if (tSpec(nFreq) > 0.d0) then
+       tSpec(1:nFreq) = tSpec(1:nFreq) / tSpec(nFreq)
+       call random_number(r)
+       call locate(tSpec, nFreq, r, i)
+       fac = (r - tSpec(i)) / (tSpec(i+1)-tSpec(i))
+       thisLambda = lamspec(i) + fac * (lamspec(i+1)-lamspec(i))
+    else
+       thisLambda = 1000.e4
+  endif
     
+  deallocate(freq, spectrum, lamSpec)
 
   end function getRandomWavelengthPhotoion
 
+  subroutine getWavelengthBiasPhotoion(grid, thisOctal, subcell, lamArray, nLambda, ilambda, bias)
+
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    real :: thisLambda
+    integer :: nFreq
+    real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:)
+    real(double) :: nuStart, nuEnd, thisFreq, r, fac
+    integer :: nLambda
+    real :: lamArray(:)
+    real :: bias
+    integer :: ilambda
+    integer :: i
+
+    nFreq = nlambda
+
+    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), tSpec(1:nFreq))
+
+    do i = 1, nFreq
+       freq(i) = cSpeed/(lamArray(nFreq-i+1)*1.e-8)
+    enddo
+
+    spectrum = 1.d-30
+
+    call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
+    call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+    !                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+    call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+    
+
+    do i = 1, nFreq
+       lamSpec(i) = cspeed/freq(i)
+       spectrum(i) = spectrum(i) * cspeed/(lamspec(i)**2)
+    enddo
+    lamSpec = lamSpec * 1.d8
+
+    do i = 1, nFreq
+       tSpec(i) = spectrum(nFreq-i+1)
+    enddo
+    spectrum(1:nFreq) = tspec
+
+    do i = 1, nFreq
+       tSpec(i) = lamSpec(nFreq-i+1)
+    enddo
+    lamSpec(1:nFreq) = tspec
+
+    fac = 0.d0
+    do i = 2, nFreq
+       fac = fac + spectrum(i)*(lamSpec(i)-lamSpec(i-1))
+    enddo
+    bias = spectrum(iLambda)/fac
+
+
+    deallocate(freq, spectrum, lamSpec, tSpec)
+
+  end subroutine getWavelengthBiasPhotoion
 
 end module
 

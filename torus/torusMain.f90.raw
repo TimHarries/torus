@@ -553,6 +553,7 @@
   objectDistance = griddistance * pctocm
 
 
+  grid%photoionization = photoionization
   ! time elipsed since the beginning of the model
   grid%timeNow = phaseTime * REAL(nStartPhase-1)
   
@@ -2310,10 +2311,7 @@
 
 
      if (photoIonization) then
-
-!        call addIons(grid%ion, grid%nion)
-
-
+        grid%photoionization = .true.
         call photoIonizationLoop(grid, source, nSource, nLambda, lamArray)
      endif
 
@@ -2901,6 +2899,13 @@
      call test_optical_depth(gridUsesAMR, VoigtProf, &
           amrGridCentre, sphericityTest,  &
           outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &
+          thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, &
+          maxTau, nSource, source)
+
+!$MPI        if (my_rank==0) &
+     call test_optical_depth(gridUsesAMR, VoigtProf, &
+          amrGridCentre, sphericityTest,  &
+          outVec, 900.,  900., grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &
           thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, &
           maxTau, nSource, source)
 
@@ -3628,7 +3633,6 @@
                          sampleFreq,intPathError, &
                          useInterp, grid%Rstar1, coolStarPosition, nSource, source)
 
-!              write(*,*) thisPhoton%lambda, tauExt(nTau), thisPhoton%stokes%i
 
                if (intPathError == -10) then
                     tooFewSamples = tooFewSamples + 1  

@@ -4293,11 +4293,11 @@ IF ( .NOT. gridConverged ) RETURN
       else
          split = .false.
       endif
-      if (modulus(subcellCentre(thisoctal,subcell)) < 60.*grid%rinner) then
-         if (thisOctal%nDepth < 7) split = .true.
-      endif
+!      if (modulus(subcellCentre(thisoctal,subcell)) < 60.*grid%rinner) then
+!         if (thisOctal%nDepth < 7) split = .true.
+!      endif
       if (modulus(subcellCentre(thisoctal,subcell)) < 6.*grid%rinner) then
-         if (thisOctal%nDepth < 9) split = .true.
+         if (thisOctal%nDepth < 7) split = .true.
       endif
 
    case ("testamr","proto","wrshell")
@@ -6299,14 +6299,14 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
     thisOctal%dustTypeFraction(subcell,1)=0.d0
-    if (r < radius(it)*2.) then
-       thisOctal%dusttypeFraction(subcell, 1) = 0.d0
-    else
-       thisOctal%dusttypeFraction(subcell, 1) = 1.d0
-       thisOctal%rho(subcell) = 1.d5*mHydrogen
-       thisOctal%nh(subcell) = thisOctal%rho(subcell)/mHydrogen
-       thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
-    endif
+!    if (r < radius(it)*2.) then
+!       thisOctal%dusttypeFraction(subcell, 1) = 0.d0
+!    else
+!       thisOctal%dusttypeFraction(subcell, 1) = 1.d0
+!       thisOctal%rho(subcell) = 1.d2*mHydrogen
+!       thisOctal%nh(subcell) = thisOctal%rho(subcell)/mHydrogen
+!       thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
+!    endif
 
   end subroutine calcLexington
   
@@ -9692,8 +9692,13 @@ IF ( .NOT. gridConverged ) RETURN
       if (PRESENT(atthistemperature)) then
          temperature = atthistemperature
       endif
-      call locate(grid%tempRossArray, grid%nTempRossArray, temperature, m)
-      fac = (temperature - grid%tempRossArray(m))/(grid%tempRossArray(m+1)-grid%tempRossArray(m))
+      if (temperature < grid%tempRossArray(grid%nTempRossArray)) then
+         call locate(grid%tempRossArray, grid%nTempRossArray, temperature, m)
+         fac = (temperature - grid%tempRossArray(m))/(grid%tempRossArray(m+1)-grid%tempRossArray(m))
+      else
+         m = grid%nTempRossArray-1
+         fac = 1.
+      endif
       rosselandKappa = 0.
       
       do i = 1, nDustType
@@ -11014,7 +11019,11 @@ IF ( .NOT. gridConverged ) RETURN
       cosmu =((-1.d0)*xHat).dot.direction
       call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
       if (.not.ok) then
-         write(*,*) "Quad solver failed in intersectcubeamr2d"
+         write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
+         write(*,*) "xhat",xhat
+         write(*,*) "dir",direction
+         write(*,*) "point",point
+         do;enddo
          x1 = thisoctal%subcellSize/2.d0
          x2 = 0.d0
       endif
@@ -11027,7 +11036,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (mu  < theta ) then
          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
          if (.not.ok) then
-            write(*,*) "Quad solver failed in intersectcubeamr2d"
+            write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1
             x1 = thisoctal%subcellSize/2.d0
             x2 = 0.d0
          endif
