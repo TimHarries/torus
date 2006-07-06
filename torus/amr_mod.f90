@@ -6299,14 +6299,15 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
     thisOctal%dustTypeFraction(subcell,1)=0.d0
-!    if (r < radius(it)*2.) then
-!       thisOctal%dusttypeFraction(subcell, 1) = 0.d0
-!    else
-!       thisOctal%dusttypeFraction(subcell, 1) = 1.d0
-!       thisOctal%rho(subcell) = 1.d2*mHydrogen
-!       thisOctal%nh(subcell) = thisOctal%rho(subcell)/mHydrogen
-!       thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
-!    endif
+    if (r < radius(it)*2.) then
+       thisOctal%dusttypeFraction(subcell, 1) = 0.d0
+    else
+       thisOctal%dusttypeFraction(subcell, 1) = 1.d0
+       thisOctal%rho(subcell) = 1.d3*mHydrogen
+       thisOctal%temperature(subcell) = 10.
+       thisOctal%nh(subcell) = thisOctal%rho(subcell)/mHydrogen
+       thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
+    endif
 
   end subroutine calcLexington
   

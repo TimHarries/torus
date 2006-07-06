@@ -53,12 +53,15 @@ end type GAMMATABLE
 contains
 
 
-  subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray)
+  subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
+       lucyfileout, lucyfilein)
     use input_variables, only : smoothFactor, blockHandout, zoomFactor, &
          nlucy, photoionization
     implicit none
 !$MPI include 'mpif.h'
     type(GRIDTYPE) :: grid
+    character(len=*) :: lucyfileout, lucyfilein
+    logical :: readlucy, writelucy
     type(OCTAL), pointer :: thisOctal, tempOctal, endOctal
     integer :: nCellsInDiffusion
     logical :: directPhoton
@@ -187,9 +190,10 @@ contains
     
     converged = .false.
 
-!    call writeAmrGrid("photoion_tmp_grid.dat",.false.,grid)
-!    call readAmrGrid("photoion_tmp_grid.dat",.false.,grid)
-!    converged = .true.
+    if (readlucy) then
+       call readAmrGrid(lucyfilein,.false.,grid)
+       converged = .true.
+    endif
 
     do while(.not.converged)
        nIter = nIter + 1
@@ -527,9 +531,10 @@ if (writeoutput) then
   call  calcContinuumEmissivity(grid, thisOctal, nfreq, freq, spectrum, nlambda, lamArray)
  call writeInfo("Done.",TRIVIAL)
 
-  call writeAmrGrid("photoion_tmp_grid.dat",.false.,grid)
-
-  end subroutine photoIonizationloop
+ if (writelucy) then
+    call writeAmrGrid(lucyfileout,.false.,grid)
+ endif
+end subroutine photoIonizationloop
 
 
  subroutine toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight)
