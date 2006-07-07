@@ -11,6 +11,7 @@
 
 module photon_mod
 
+  use photoion_mod
   use vector_mod            ! the vector maths
   use constants_mod         ! physical constants
   use phasematrix_mod       ! phase matrix manipulation
@@ -25,7 +26,6 @@ module photon_mod
   use filter_set_class
   use surface_mod
   use kind_mod
-  use photoion_mod
 
   implicit none
 

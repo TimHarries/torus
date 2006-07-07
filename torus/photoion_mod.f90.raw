@@ -3346,5 +3346,32 @@ end subroutine readHeIIrecombination
 
   end subroutine getWavelengthBiasPhotoion
 
+  subroutine refineLambdaArray(lamArray, nLambda, grid)
+    type(GRIDTYPE) :: grid
+    real :: lamArray(:)
+    integer :: nLambda
+    integer :: i, j
+    real hLines(15)
+
+
+
+    hLines = (/ 1215.67, 1025.72, 992.537, 949.743, 937.803, 6562.80, &
+         4861.32, 4340.36, 4101.73, 18751.0, 12818.1, 10938.1, &
+         40512.0, 26252.0, 74578.0/)
+    do i = 1, 15
+       call insertBin(lamArray, nLambda, hLines(i), 1.)
+    enddo
+
+
+! refine for forbidden line transitions
+
+    do i = 1 , grid%nIon
+       do j = 1, grid%ion(i)%nTransitions
+          call insertBin(lamArray, nLambda, &
+               real(grid%ion(i)%transition(j)%lambda), 1.)
+       enddo
+    enddo
+  end subroutine refineLambdaArray
+
 end module
 

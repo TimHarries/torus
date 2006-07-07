@@ -504,7 +504,7 @@ endif
 F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  unix_mod.f90  inputs_mod.f90 stateq_mod.f90 utils_mod.f90   gaussian_mod.f90  \
  grid_mod.f90 math_mod.f90  \
- phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 distortion_mod.f90 \
+ phasematrix_mod.f90 blob_mod.f90 distortion_mod.f90 \
  image_mod.f90 TTauri_mod.f90 puls_mod.f90 disc_hydro_mod.f90 gas_opacity_mod.f90 \
  torusMain.f90 integratePath.f90 readIntPro.f90 \
  mieDistPhaseMatrix.f90 gridtype_mod.f90 \
@@ -514,7 +514,7 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  intersectCube.f90 fillGridThomson.f90 cont_read.f90 getMeanMass.f90 \
  input_variables.f90 amr_mod.f90 octal_mod.f90 parameters_mod.f90 diffusion_mod.f90 \
  lucy_mod.f90 jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 photoion_mod.f90 \
- wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 pixplot_module.f90 \
+ photon_mod.f90 wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 pixplot_module.f90 \
  sph_data_class.f90 cluster_class.f90 linked_list_class.f90 timing.f90 \
  isochrone_class.f90 filter_set_class.f90 ostar_mod.f90 formal_solutions.f90 \
  cluster_utils.f90 surface_mod.f90  math_mod2.f90 disc_class.f90 \
@@ -645,7 +645,8 @@ stateq_mod.o: stateq_mod.f90.raw cmfgen_class.o constants_mod.o grid_mod.o gridt
         endif
 	$(F90) -c stateq_mod.f90
 
-photoion_mod.o: photoion_mod.f90.raw source_mod.o timing.o grid_mod.o amr_mod.o constants_mod.o messages_mod.o
+photoion_mod.o: photoion_mod.f90.raw source_mod.o timing.o grid_mod.o amr_mod.o constants_mod.o messages_mod.o \
+	parallel_mod.o diffusion_mod.o
         ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' photoion_mod.f90.raw > photoion_mod.f90
         else

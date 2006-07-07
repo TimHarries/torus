@@ -969,6 +969,25 @@
         xArray(i) = 10.**xArray(i)
         yArray(i) = STOKESVECTOR(0.,0.,0.,0.)
      enddo
+
+     if (photoionization) then
+        xArray(1) = lamStart
+        xArray(2) = lamEnd
+        nCurrent = 2
+        call refineLambdaArray(xArray, nCurrent, grid)
+        nt = nLambda - nCurrent
+        do i = 1, nt
+           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
+           fac = 10.**fac
+           nCurrent=nCurrent + 1
+           xArray(nCurrent) = fac
+           call sort(nCurrent, xArray)
+        enddo
+        do i = 1, nLambda
+           write(*,*) i,Xarray(i)
+        enddo
+     endif
+
      if (mie) then
         call locate(xArray, nLambda, lambdaTau, i)
         t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))

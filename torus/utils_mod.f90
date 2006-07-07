@@ -3269,6 +3269,24 @@ END SUBROUTINE GAUSSJ
     end do
   end subroutine reslv
 
+  subroutine insertBin(xArray, nx, x, dx)
+    real :: x, xarray(:)
+    integer :: nx
+    real :: dx, xplus1, xplus2
+    integer :: i
+
+    if ((x > xArray(1)).and.(x < xArray(nx))) then
+       call locate(xArray, nx, x, i)
+       xplus2 = min(xArray(i+1)-0.01,x+dx/2.)
+       xplus1 = max(xArray(i)+0.01,x-dx/2.)
+       xArray(nx+1) = xplus1
+       xArray(nx+2) = xplus2
+       nx = nx + 2
+       call sort(nx, xArray)
+    endif
+  end subroutine insertBin
+    
+
 
 end module utils_mod
 
