@@ -940,6 +940,10 @@
   allocate(errorArray(1:nOuterLoop,1:nLambda))
 
 
+  if (photoionization) then
+     call addIons(grid%ion, grid%nion)
+  endif
+
 
 
   if (lamLinear) then
@@ -982,9 +986,6 @@
            nCurrent=nCurrent + 1
            xArray(nCurrent) = fac
            call sort(nCurrent, xArray)
-        enddo
-        do i = 1, nLambda
-           write(*,*) i,Xarray(i)
         enddo
      endif
 
@@ -1093,10 +1094,6 @@
      call writeInfo(message, TRIVIAL)
   end if
 
-
-  if (photoionization) then
-        call addIons(grid%ion, grid%nion)
-     endif
 
   !===============================================================
   if (gridUsesAMR) then  !========================================
@@ -2185,7 +2182,7 @@
             write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
        fac = 1.e8*cspeed/5.d16
        write(*,*) "Starting wavelength",fac
-       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 100.d4,1000)
+       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
        call normalizedSpectrum(source(1)%spectrum)
 
 

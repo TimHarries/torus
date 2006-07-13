@@ -226,6 +226,12 @@ contains
        call make_ukirt_filters(this_set)
        call make_irac_filters(this_set)
        call make_mips_filters(this_set)
+
+    case("pn") ! narrow band filters for photoionized regions
+       call make_narrow_filters(this_set,"Halpha", 6562.8d0, 50.d0)
+       call make_narrow_filters(this_set, "OIII", 5007.d0, 50.d0)
+       call make_narrow_filters(this_set, "SII", 6724.d0, 50.d0)
+
     case default
        write(*,*) " "
        write(*,*) "Error:: Unknown filter name passed to filter_set_class::init_filter_set."
@@ -1527,4 +1533,51 @@ contains
     if (filename(1:1) /= "*") close(UN)
   end subroutine info_filter_set
   
+
+  subroutine make_narrow_filters(this_set, name_of_filter, lam0, dlambda)
+    implicit none 
+    type(filter_set), intent(inout) :: this_set
+    !
+    integer,  parameter :: nlam=5  ! number of wavelegth samples
+    !
+    real(double) :: lam0, dlambda
+    integer :: i 
+    character(len=*) :: name_of_filter
+
+    type(filter_set) :: temp_set   ! temporary filter set
+    integer :: old_nfilter         ! number of filters in old set
+    integer :: new_nfilter         ! number of filters in new set
+    integer :: counter
+
+    ! Transfer old filters into a temporary filter set
+    old_nfilter = this_set%nfilter
+    allocate(temp_set%filters(old_nfilter))
+    do counter=1,old_nfilter,1
+      temp_set%filters(counter) = this_set%filters(counter)
+    end do
+    deallocate(this_set%filters)
+
+    ! Transfer old filters back into new filter set
+    new_nfilter = old_nfilter + 1
+    allocate(this_set%filters(new_nfilter))
+    do counter=1,old_nfilter,1
+      this_set%filters(counter) = temp_set%filters(counter)
+    end do
+    deallocate(temp_set%filters)
+
+    this_set%nfilter = new_nfilter
+
+    ! 
+    ! Setting up the rest of the filters
+    ! 
+    call init_filter(this_set%filters(new_nfilter), TRIM(ADJUSTL(name_of_filter)),  nlam, &
+            lam0-dlambda/2.d0,  lam0+dlambda/2.d0)
+    this_set%filters(new_nfilter)%response_function(:) = 1.0d0  ! set everything to 1.0
+
+    ! finished
+
+    
+  end subroutine make_narrow_filters
+
+
 end module filter_set_class

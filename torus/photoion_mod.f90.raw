@@ -106,7 +106,7 @@ contains
     real(double) :: hRecombemissivity, hlymanContemissivity, helymanContEmissivity
     real(double) :: hiContEmissivity, forbiddenEmissivity
     real(double) :: probNonIonizing, probHydrogen
-    real(double) :: freq(1000), spectrum(1000), nuStart, nuEnd
+    real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
     real(double) :: r1, kappaAbsGas, kappaAbsDust
 
     integer, parameter :: nFreq = 1000
@@ -162,6 +162,11 @@ contains
        freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
        freq(i) = 10.d0**freq(i)
     enddo
+    do i = 2, nFreq-1
+       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
+    enddo
+    dfreq(1) = 2.d0*(freq(2)-freq(1))
+    dfreq(nfreq) = 2.d0*(freq(nfreq)-freq(nfreq-1))
 
 
     call createGammaTable(gammaTableArray(1), 'gammaHI.dat')
@@ -336,16 +341,16 @@ contains
                    if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
                       call random_number(r1)
                       if (r1 < (kappaAbsGas / (kappaAbsGas + kappaAbsDust))) then  ! absorbed by gas rather than dust
-                         call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
-                         call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-                         call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-!                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-                         call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+                         call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+                         call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+                         call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+!                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+                         call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
                       else
-                         call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                         call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                       endif
                    else ! non-ionizing photon must be absorbed by dust
-                         call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+                         call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
                    endif
                    if (firsttime.and.writeoutput) then
                       firsttime = .false.
@@ -522,13 +527,16 @@ if (writeoutput) then
 
 !       nMonte = nMonte * 2
 
-    if (niter == 3) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+    call writeAmrGrid("photo_tmp.grid",.false.,grid)
+
+    if (niter == 6) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
  enddo
 
  thisOctal => grid%octreeRoot
  call writeInfo("Calculating continuum emissivities...",TRIVIAL)
-  call  calcContinuumEmissivity(grid, thisOctal, nfreq, freq, spectrum, nlambda, lamArray)
+  call  calcContinuumEmissivity(grid, thisOctal, nfreq, freq, dfreq, spectrum, nlambda, lamArray)
  call writeInfo("Done.",TRIVIAL)
 
  if (writelucy) then
@@ -1920,7 +1928,8 @@ function nussbaumerStorey1983(t, a, b, c, d, f) result(rate)
 
 ! based on Nussbaumer & Storey 1983 AA 126 75
   real(double) :: t, a, b, c, d, f, rate
-  if (t ==0.d0) then
+
+  if (t < 0.05d0) then
      rate = tiny(rate)
   else
      rate = (1.d-12) * ((a/t) + b + (c*t) + d*(t**2))*(t**(-1.5d0))*exp(-f/t)
@@ -2463,7 +2472,7 @@ subroutine createSahaMilneTables(hTable, heTable)
   do i = 1, nTemp
      hTable%Clyc(i,1) = 0.d0
      heTable%Clyc(i,1) = 0.d0
-     do j = 2, nFreq
+     do j = 1, nFreq
 
 
         e = hTable%freq(j) * hcgs* ergtoev
@@ -2670,14 +2679,14 @@ real(double) function returnGamma(table, temp, freq) result(out)
 
 end function returnGamma
 
-subroutine addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
+subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
   type(GRIDTYPE) :: grid
   TYPE(OCTAL) :: thisOctal
   integer :: subcell
   integer :: nFreq
   integer :: i, j, k, iIon, n1, n2
-  real(double) :: freq(:), spectrum(:)
-  real(double) :: nu0_h, nu0_he, jnu, dfreq
+  real(double) :: freq(:), spectrum(:), dfreq(:)
+  real(double) :: nu0_h, nu0_he, jnu
   real :: e, hxsec, hexsec
   real(double), parameter :: statisticalWeight(3) = (/ 2.d0, 0.5d0, 2.d0 /)
 
@@ -2696,33 +2705,35 @@ subroutine addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
         call locate(freq, nfreq, grid%ion(iIon+1)%nuThresh, n2)
      endif
      do i = n1, n2
-        dFreq = freq(i) - freq(i-1)
         
         e = freq(i) * hcgs* ergtoev
 
 
         call phfit2(grid%ion(iIon)%z, grid%ion(iIon)%n, grid%ion(iIon)%outerShell , e , hxsec)
         
+        if (thisOctal%temperature(subcell) > 1.) then
+           jnu = statisticalWeight(k) * ((hcgs*freq(i)**3)/(cSpeed**2)) * &
+                ((hcgs**2) /(twoPi*mElectron*Kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
+                dble(hxsec/1.d10) *  exp(-hcgs*(freq(i)-grid%ion(iIon)%nuThresh)/(kerg*thisOctal%temperature(subcell)))
+           jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance)
+        else
+           jnu = tiny(jnu)
+        endif
 
-        jnu = statisticalWeight(k) * ((hcgs*freq(i)**3)/(cSpeed**2)) * &
-             ((hcgs**2) /(twoPi*mElectron*Kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
-             dble(hxsec/1.d10) *  exp(-hcgs*(freq(i)-grid%ion(iIon)%nuThresh)/(kerg*thisOctal%temperature(subcell)))
-        jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance)
-
-        spectrum(i) = spectrum(i) + jnu * dFreq * fourPi 
+        spectrum(i) = spectrum(i) + jnu * dFreq(i) * fourPi 
      enddo
   enddo
 
 end subroutine addLymanContinua
 
 
-subroutine addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, table)
+subroutine addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, table)
 
 ! Ferland 1980 PASP 92 596
 
   type(GAMMATABLE) :: table(3)
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:)
+  real(double) :: spectrum(:), freq(:), dfreq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -2741,7 +2752,7 @@ subroutine addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, ta
         fac = fac*1.d-40 ! units of 10^-40 erg/s/cm/cm/cm
         fac = fac * thisOctal%ne(subcell) * thisOctal%nh(subcell) &
              * thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance
-        spectrum(i) = spectrum(i) + fac*(freq(i)-freq(i-1))
+        spectrum(i) = spectrum(i) + fac*dfreq(i)
      enddo
   enddo
 
@@ -2749,11 +2760,11 @@ end subroutine addHigherContinua
 
 
 
-subroutine addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+subroutine addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
 
 
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:)
+  real(double) :: spectrum(:), freq(:), dfreq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -2828,10 +2839,10 @@ real(double) function getPhotonFreq(nfreq, freq, spectrum) result(Photonfreq)
 end function getPhotonFreq
 
 
-subroutine addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+subroutine addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
 
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:)
+  real(double) :: spectrum(:), freq(:), dfreq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -2856,10 +2867,10 @@ subroutine addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
 end subroutine addForbiddenLines
   
 
-subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
 
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:)
+  real(double) :: spectrum(:), freq(:), dfreq(:)
   type(OCTAL) :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -2934,10 +2945,10 @@ subroutine addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, gr
 
 end subroutine addHeRecombinationLines
 
-subroutine addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
 
   integer :: nFreq
-  real(double) :: spectrum(:), freq(:)
+  real(double) :: spectrum(:), freq(:), dfreq(:)
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   type(GRIDTYPE) :: grid
@@ -2945,7 +2956,6 @@ subroutine addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nla
   real :: lamArray(:)
   integer :: i, iLam
   real :: lambda, thisLam
-  real(double) :: dFreq
   type(OCTALVECTOR) :: octVec
   real(double), allocatable :: kabsArray(:)
 
@@ -2955,13 +2965,13 @@ subroutine addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nla
   call returnKappa(grid, thisOctal, subcell, kappaAbsArray=kAbsArray)
 
 
-  do i = 2, nFreq
+  do i = 1, nFreq
      thisLam = (cSpeed / freq(i)) * 1.e8
-     dFreq = freq(i) - freq(i-1)
      call hunt(lamArray, nLambda, real(thisLam), iLam)
      if ((ilam >=1).and.(ilam <= nlambda)) then
 
-        spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * kAbsArray(iLam) *1.d-10* dFreq * fourPi
+        spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * &
+             kAbsArray(iLam) *1.d-10* dFreq(i) * fourPi
 
      endif
   enddo
@@ -3183,10 +3193,10 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine identifyUndersampled
 
-  recursive subroutine  calcContinuumEmissivity(grid, thisOctal, nfreq, freq, spectrum, nlambda, lamArray)
+  recursive subroutine  calcContinuumEmissivity(grid, thisOctal, nfreq, freq, dfreq, spectrum, nlambda, lamArray)
     type(GRIDTYPE) :: grid
     integer :: nFreq
-    real(double) :: freq(:), spectrum(:)
+    real(double) :: freq(:), spectrum(:), dfreq(:)
     integer :: nLambda
     real :: lamArray(:)
     type(octal), pointer   :: thisOctal
@@ -3199,7 +3209,7 @@ end subroutine readHeIIrecombination
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calcContinuumEmissivity(grid, child, nfreq, freq, spectrum, nlambda, lamArray)
+                call calcContinuumEmissivity(grid, child, nfreq, freq, dfreq, spectrum, nlambda, lamArray)
                 exit
              end if
           end do
@@ -3207,12 +3217,12 @@ end subroutine readHeIIrecombination
           spectrum = 1.d-30
           thisOctal%etaCont(subcell) = 1.d-40
           if (thisOctal%temperature(subcell) > 1.5d0) then
-             call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
-             call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-             call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+             call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+             call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+             call addHydrogenRecombinationLines(nfreq,  freq, dfreq, spectrum, thisOctal, subcell, grid)
              !         call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-             call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-             call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+             call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+             call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
              
              do i = 1, nFreq
                 thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + spectrum(i)
@@ -3231,7 +3241,7 @@ end subroutine readHeIIrecombination
     integer :: subcell
     real :: thisLambda
     integer :: nFreq
-    real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:)
+    real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:), dfreq(:)
     real(double) :: nuStart, nuEnd, thisFreq, r, fac
     integer :: nLambda
     real :: lamArray(:)
@@ -3239,7 +3249,7 @@ end subroutine readHeIIrecombination
 
     nFreq = 1000
 
-    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq))
+    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), dFreq(1:nFreq))
     nuStart = cSpeed / (1000.d4 * 1.d-8)
     nuEnd =  2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
 
@@ -3247,15 +3257,21 @@ end subroutine readHeIIrecombination
        freq(i) = log10(nuStart) + dble(i-1)/dble(nFreq-1) * (log10(nuEnd)-log10(nuStart))
        freq(i) = 10.d0**freq(i)
     enddo
+    do i = 2, nFreq-1
+       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
+    enddo
+    dfreq(1) = (freq(2)-freq(1))
+    dfreq(nfreq) = (freq(nfreq)-freq(nfreq-1))
+
 
     spectrum = 1.d-30
 
-    call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
-    call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
+    call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+    call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
     !                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+    call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
     
 
     do i = 1, nFreq
@@ -3286,14 +3302,15 @@ end subroutine readHeIIrecombination
 
   end function getRandomWavelengthPhotoion
 
-  subroutine getWavelengthBiasPhotoion(grid, thisOctal, subcell, lamArray, nLambda, ilambda, bias)
+  subroutine getWavelengthBiasPhotoion(grid, thisOctal, subcell, lamArray, dlam, nLambda, ilambda, bias)
 
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real :: thisLambda
     integer :: nFreq
-    real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:)
+    real(double), allocatable :: freq(:), dfreq(:), spectrum(:), tspec(:),lamspec(:)
+    real :: dlam(:), dlam2
     real(double) :: nuStart, nuEnd, thisFreq, r, fac
     integer :: nLambda
     real :: lamArray(:)
@@ -3303,25 +3320,36 @@ end subroutine readHeIIrecombination
 
     nFreq = nlambda
 
-    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), tSpec(1:nFreq))
+    allocate(freq(1:nFreq), spectrum(1:nFreq), lamSpec(1:nFreq), tSpec(1:nFreq), dfreq(1:nFreq))
 
     do i = 1, nFreq
        freq(i) = cSpeed/(lamArray(nFreq-i+1)*1.e-8)
     enddo
+    do i = 2, nFreq-1
+       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
+    enddo
+    dfreq(1) = (freq(2)-freq(1))
+    dfreq(nfreq) = (freq(nfreq)-freq(nfreq-1))
 
-    spectrum = 1.d-30
 
-    call addLymanContinua(nFreq, freq, spectrum, thisOctal, subcell, grid)
-    call addHigherContinua(nfreq, freq, spectrum, thisOctal, subcell, grid, GammaTableArray)
-    call addHydrogenRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    !                        call addHeRecombinationLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    call addForbiddenLines(nfreq, freq, spectrum, thisOctal, subcell, grid)
-    call addDustContinuum(nfreq, freq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
+    spectrum = 1.d-40
+
+    call addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addHigherContinua(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, GammaTableArray)
+    call addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    !                        call addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid)
+    call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
     
+
+    fac = 0.d0
+    do i = 1, nFreq
+       fac = fac + spectrum(i)
+    enddo
+
 
     do i = 1, nFreq
        lamSpec(i) = cspeed/freq(i)
-       spectrum(i) = spectrum(i) * cspeed/(lamspec(i)**2)
     enddo
     lamSpec = lamSpec * 1.d8
 
@@ -3333,14 +3361,15 @@ end subroutine readHeIIrecombination
     do i = 1, nFreq
        tSpec(i) = lamSpec(nFreq-i+1)
     enddo
-    lamSpec(1:nFreq) = tspec
+    lamSpec(1:nFreq)= tspec
 
-    fac = 0.d0
-    do i = 2, nFreq
-       fac = fac + spectrum(i)*(lamSpec(i)-lamSpec(i-1))
+    do i = 1, nFreq
+       dlam2 = 1.d8 * (cSpeed / freq(nFreq-i+1)**2) * dfreq(nFreq-i+1)
+!       write(*,*) i,1.d8*cspeed/freq(nfreq-i+1),lamspec(i),dlam2, dlam(i)
+       spectrum(i) = spectrum(i) / dlam2
     enddo
-    bias = spectrum(iLambda)/fac
 
+    bias = spectrum(iLambda)/fac
 
     deallocate(freq, spectrum, lamSpec, tSpec)
 

@@ -9768,9 +9768,9 @@ IF ( .NOT. gridConverged ) RETURN
       endif
       if (PRESENT(kappaAbsGas)) kappaAbsGas = (kappaH + kappaHe)
       if (PRESENT(kappaSca)) then
-         kappaSca = kappaSca !+ thisOctal%ne(subcell) * sigmaE * 1.e10!!!!!!!!!!!!!!!!!!!!!!!!!!!
+         kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
       endif
-      if (PRESENT(kappaScaGas)) kappaScaGas = 0.d0!thisOctal%ne(subcell) * sigmaE * 1.e10 !!!!!!!!!!!!!!!!
+      if (PRESENT(kappaScaGas)) kappaScaGas = thisOctal%ne(subcell) * sigmaE * 1.e10 
    endif
    
   end subroutine returnKappa

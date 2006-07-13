@@ -1078,7 +1078,7 @@ contains
 
                    octVec = thisPhoton%position
                    call amrgridvalues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundSubcell=subcell)
-                   call  getWavelengthBiasPhotoion(grid, thisOctal, subcell, lambda, nLambda, ilambda, fac)
+                   call  getWavelengthBiasPhotoion(grid, thisOctal, subcell, lambda, dlam, nLambda, ilambda, fac)
                    thisPhoton%stokes = thisPhoton%stokes * fac
 
                   
