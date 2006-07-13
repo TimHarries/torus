@@ -167,6 +167,9 @@ CONTAINS
 
     CASE ("windtest")
       CALL calcWindTestValues(thisOctal,subcell,grid)
+
+   CASE ("fractal")
+      thisOctal%rho = 100.d0 * mHydrogen
        
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
@@ -962,7 +965,7 @@ CONTAINS
         gridConverged = .TRUE.
 
       CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
-           "lexington", "warpeddisc", "whitney")
+           "lexington", "warpeddisc", "whitney","fractal")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104")
@@ -974,7 +977,7 @@ CONTAINS
 
 
       CASE DEFAULT
-        WRITE(*,*) "! Unrecognised grid geometry: ",trim(grid%geometry)
+        WRITE(*,*) "! Unrecognised grid geometry in finishgrid: ",trim(grid%geometry)
         STOP
       
       END SELECT
@@ -4299,6 +4302,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (modulus(subcellCentre(thisoctal,subcell)) < 6.*grid%rinner) then
          if (thisOctal%nDepth < 7) split = .true.
       endif
+
 
    case ("testamr","proto","wrshell")
       cellSize = thisOctal%subcellSize 
@@ -11642,6 +11646,63 @@ IF ( .NOT. gridConverged ) RETURN
 
   end SUBROUTINE startReturnSamples2
 
+
+  recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid)
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child
+    real :: rho, aFac
+    integer :: subcell, i, j
+    real, allocatable :: r(:), s(:)
+    real :: rmin, rmax, tot, fac, mean
+
+! based on method 2 of Hetem and Lepine 1993 A&A 270 451
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call splitGridFractal(child, rho, aFac, grid)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%nDepth < 6) then
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=.true., interp=.false.)
+             ! find the child
+             do j = 1, thisOctal%nChildren, 1
+                if (thisOctal%indexChild(j) == subcell) then
+                   child => thisOctal%child(j)
+                   exit
+                endif
+             enddo
+
+             allocate(r(1:thisOctal%maxChildren), s(1:thisOctal%maxChildren))
+             call random_number(r)
+             tot = sum(r)
+             mean = tot / real(thisOctal%maxChildren)
+             r = r / mean
+             rmin = minval(r)
+             rmax = maxval(r)
+             fac = (rmin/rmax)
+             fac = afac / fac
+             s = r * fac
+             tot=SUM(s)
+             s = s / tot
+             do j = 1, thisOctal%maxChildren
+                child%rho(j) = s(j) * thisOctal%rho(subcell) * &
+                     cellVolume(thisOctal, subcell)/cellVolume(child,j)
+             enddo
+             deallocate(r, s)
+
+          endif
+          
+          
+       endif
+    end do
+  end subroutine splitGridFractal
 
 
 END MODULE amr_mod

@@ -1221,6 +1221,11 @@
            end do
            call writeInfo("...grid smoothing complete", TRIVIAL)
 
+        case("fractal")
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
+           call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.3, grid)
+           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+
         case DEFAULT
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            call writeInfo("First octal initialized.", TRIVIAL)
