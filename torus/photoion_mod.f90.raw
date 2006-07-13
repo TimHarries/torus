@@ -3085,7 +3085,7 @@ end subroutine readHeIIrecombination
 !$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
 !$MPI    nCrossings = tempRealArray 
 !$MPI
-!$MPI    tempDoublelArray = 0.0
+!$MPI    tempDoubleArray = 0.0
 !$MPI    call MPI_ALLREDUCE(distanceGrid,tempRealArray,nVoxels,MPI_DOUBLE_PRECISION,&
 !$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
 !$MPI    distanceGrid = tempRealArray 
