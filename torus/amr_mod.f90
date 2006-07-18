@@ -6920,7 +6920,6 @@ IF ( .NOT. gridConverged ) RETURN
 
           dv = cellVolume(thisOctal, subcell)
           totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * dv
-                
           if (PRESENT(minRho)) minRho = min(dble(thisOctal%rho(subcell)), minRho)
           if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
        endif
@@ -11647,13 +11646,16 @@ IF ( .NOT. gridConverged ) RETURN
   end SUBROUTINE startReturnSamples2
 
 
-  recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid)
+  recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     real :: rho, aFac
     integer :: subcell, i, j
     real, allocatable :: r(:), s(:)
     real :: rmin, rmax, tot, fac, mean
+    logical :: converged
+
+    converged = .true.
 
 ! based on method 2 of Hetem and Lepine 1993 A&A 270 451
 
@@ -11663,12 +11665,12 @@ IF ( .NOT. gridConverged ) RETURN
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call splitGridFractal(child, rho, aFac, grid)
+                call splitGridFractal(child, rho, aFac, grid, converged)
                 exit
              end if
           end do
        else
-          if (thisOctal%nDepth < 6) then
+          if (thisOctal%Ndepth < 6) then
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=.true., interp=.false.)
              ! find the child
@@ -11696,7 +11698,8 @@ IF ( .NOT. gridConverged ) RETURN
                      cellVolume(thisOctal, subcell)/cellVolume(child,j)
              enddo
              deallocate(r, s)
-
+             converged = .false.
+             exit
           endif
           
           

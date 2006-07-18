@@ -6878,7 +6878,7 @@ contains
              select case (name)
              case("rho")
                 value = thisOctal%rho(subcell)
-                if (value < 1.e-20) update = .false.
+                if (value < 1.e-25) update = .false.
              case("ionization")
                 value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
              case("photocoeff")

@@ -1223,7 +1223,10 @@
 
         case("fractal")
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
-           call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.3, grid)
+           gridconverged = .false.
+           do while(.not.gridconverged) 
+              call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.3, grid, gridconverged)
+           enddo
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
         case DEFAULT
