@@ -602,7 +602,7 @@ contains
        grid%rInner = rInner
        grid%rOuter = rOuter
 
-    case("lexington")
+    case("lexington","fractal")
        grid%rCore = 18.67 * rSol / 1.e10
        grid%rInner = rinner
        grid%rOuter = 2.e09

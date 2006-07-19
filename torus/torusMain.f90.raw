@@ -2179,7 +2179,7 @@
        call readSpectrum(source(2)%spectrum, "wr.flx")
        call normalizedSpectrum(source(2)%spectrum)
 
-    case("lexington")
+    case("lexington","fractal")
        nSource = 1
        allocate(source(1:nSource)) 
        source(1)%teff = 40000.  ! o star

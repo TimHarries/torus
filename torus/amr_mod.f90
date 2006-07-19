@@ -11647,6 +11647,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
+    use input_variables, only : limitScalar
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     real :: rho, aFac
@@ -11670,7 +11671,7 @@ IF ( .NOT. gridConverged ) RETURN
              end if
           end do
        else
-          if (thisOctal%Ndepth < 6) then
+          if (thisOctal%rho(subcell)*cellVolume(thisOctal, subcell) > limitScalar) then
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=.true., interp=.false.)
              ! find the child
@@ -11688,9 +11689,8 @@ IF ( .NOT. gridConverged ) RETURN
              r = r / mean
              rmin = minval(r)
              rmax = maxval(r)
-             fac = (rmin/rmax)
-             fac = afac / fac
-             s = r * fac
+             fac = (afac*rmin-rmax)/(1.-afac)
+             s = r + fac
              tot=SUM(s)
              s = s / tot
              do j = 1, thisOctal%maxChildren
