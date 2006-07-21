@@ -2193,6 +2193,25 @@
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
        call normalizedSpectrum(source(1)%spectrum)
 
+    case("symbiotic")
+       nSource = 2
+       allocate(source(1:nSource)) 
+       source(1)%teff = 2500.  
+       source(1)%radius = 100. * rSol / 1.e10
+       source(1)%position = VECTOR(-250.*rSol/1.e10,0.,0.)
+       source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
+       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), 10.d0, 1000.d4,1000)
+       call normalizedSpectrum(source(1)%spectrum)
+
+       source(2)%teff = 150000.  
+       source(2)%radius = 5000.e5 / 1.e10 ! 5000 km
+       source(2)%position = VECTOR(250.*rSol/1.e10,0.,0.)
+       source(2)%luminosity = fourPi * stefanBoltz * (source(2)%radius*1.e10)**2.0 * (source(2)%teff)**4
+       call fillSpectrumBB(source(2)%spectrum, dble(source(2)%teff), 10.d0, 1000.d4,1000)
+       call normalizedSpectrum(source(2)%spectrum)
+       write(*,*) "!!!!!!! light ratio",source(1)%luminosity/source(2)%luminosity
+
+
 
     case ("cluster")
        ! Extract some info from cluster object.

@@ -602,6 +602,11 @@ contains
        grid%rInner = rInner
        grid%rOuter = rOuter
 
+    case("symbiotic")
+       grid%geometry = "symbiotic"
+       grid%oneKappa = .true.
+       oneKappa = .true.
+
     case("lexington","fractal")
        grid%rCore = 18.67 * rSol / 1.e10
        grid%rInner = rinner

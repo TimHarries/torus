@@ -593,6 +593,7 @@ end subroutine photoIonizationloop
     tau = -log(r)
 
     call distanceToCellBoundary(grid, rVec, uHat, tval)
+    tval = tval + 1.d-3*grid%halfSmallestSubcell
 
 
 !    if (grid%octreeRoot%threed) then
@@ -675,6 +676,9 @@ end subroutine photoIonizationloop
 
 
           call distanceToCellBoundary(grid, rVec, uHat, tval, sOctal=thisOctal)
+
+          tval = tval + 1.d-3*grid%halfSmallestSubcell
+
 !          if (grid%octreeRoot%threed) then
 !             call intersectCubeAMR(grid, rVec, uHat, tVal)
 !          else
@@ -1172,7 +1176,7 @@ end subroutine photoIonizationloop
                    converged = .false.
 
                    t1 = 1.
-                   t2 = 30000.
+                   t2 = 100000.
                    found = .true.
 
                    if (found) then
@@ -1190,13 +1194,20 @@ end subroutine photoIonizationloop
 
 
 
-                         write(*,*) "t1", &
-                              t1,HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1), &
-                              totalHeating,thisOctal%rho(subcell)
-                         write(*,*) "t2", &
-                              t2,HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2), &
-                              totalHeating,thisOctal%rho(subcell)
-                         tm = t1
+
+                         if (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) > totalHeating) then
+                            tm = t1
+                         else
+                            tm  = t2
+                         endif
+!                         write(*,*) "t1", &
+!                              t1,HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1), &
+!                              totalHeating,thisOctal%rho(subcell)
+
+!                         write(*,*) "t2", &
+!                              t2,HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2), &
+!                              totalHeating,thisOctal%rho(subcell)
+!                         tm = t1
                          converged = .true.
                       endif
                    

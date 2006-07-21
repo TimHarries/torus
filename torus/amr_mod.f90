@@ -123,6 +123,12 @@ CONTAINS
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
 
+    CASE("symbiotic")
+       CALL calcSymbiotic(thisOctal, subcell, grid)
+       if (thisOctal%nDepth > 1) then
+          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       endif
+
     CASE("proto")
        CALL calcProtoDensity(thisOctal,subcell,grid)
 
@@ -965,7 +971,7 @@ CONTAINS
         gridConverged = .TRUE.
 
       CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
-           "lexington", "warpeddisc", "whitney","fractal")
+           "lexington", "warpeddisc", "whitney","fractal","symbiotic")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104")
@@ -4303,6 +4309,13 @@ IF ( .NOT. gridConverged ) RETURN
          if (thisOctal%nDepth < 7) split = .true.
       endif
 
+   case("symbiotic")
+      if (thisOctal%nDepth < 5) then
+         split = .true.
+      else
+         split = .false.
+      endif
+
 
    case ("testamr","proto","wrshell")
       cellSize = thisOctal%subcellSize 
@@ -6314,6 +6327,39 @@ IF ( .NOT. gridConverged ) RETURN
 !    endif
 
   end subroutine calcLexington
+
+  subroutine calcSymbiotic(thisOctal,subcell,grid)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(octalVector) :: rVec
+    integer :: i
+    real(double) :: r, v, mdot
+
+
+    mDot = 1.e-8*mSol/(365.25*24.*3600.)
+
+    rVec = subcellCentre(thisOctal, subcell)
+
+    r = modulus(rVec - OCTALVECTOR(-250.d0*rSol/1.d10,0.d0,0.d0))
+    v = 10.e5 ! 10 km/s
+    thisOctal%rho(subcell) = mDot/(fourPi * r**2 * 1.d20 * v)
+
+    thisOctal%temperature(subcell) = 10.
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-8
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%inFlow(subcell) = .true.
+
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+    thisOctal%dustTypeFraction(subcell,1)=0.d0
+
+  end subroutine calcSymbiotic
   
   
   subroutine initWindTestAMR(grid)
@@ -8771,8 +8817,8 @@ IF ( .NOT. gridConverged ) RETURN
           r = modulus(subcellCentre(thisoctal,subcell))
           call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa = kappaAbs)
              tau = thisOctal%subcellSize*kappaAbs*thisOctal%rho(subcell)*1.d10
-!             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-7) * sqrt(1.d10*r/erOuter)
-             thisOctal%biasCont3D(subcell) = 1.d0/(thisOctal%etacont(subcell)*cellVolume(thisOctal, subcell))
+             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-4) * (1.d10*r/erOuter)
+!             thisOctal%biasCont3D(subcell) = 1.d0/(thisOctal%etacont(subcell)*cellVolume(thisOctal, subcell))
        endif
     enddo
   end subroutine set_bias_whitney
