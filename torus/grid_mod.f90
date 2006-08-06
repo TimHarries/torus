@@ -6460,9 +6460,17 @@ contains
 
     select case (name)
     case ("rho")
-       label_wd = "LOG10( [g/cm\u3\d] )"
+       if (logscale) then
+         label_wd = "LOG10( [g/cm\u3\d] )"
+       else
+         label_wd = "[g/cm\u3\d]"
+       end if
     case ("temperature")
-       label_wd = "LOG10( [Kelvin] )"
+       if (logscale) then
+         label_wd = "LOG10( [Kelvin] )"
+       else
+         label_wd = "[Kelvin]"
+       end if
     case default
        label_wd = "Pixel Value"
     end select
