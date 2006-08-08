@@ -82,6 +82,7 @@ module input_variables
   type(VECTOR) :: slitPosition1, slitPosition2
   logical :: stokesImage
   real :: setImageSize
+  real :: imageScale
   real :: vMin, vMax
   real :: gridDistance
 
@@ -304,6 +305,8 @@ module input_variables
   real :: TTauriRstar ! stellar radius (in R_sol units)
   real :: TTauriMstar ! stellar mass   (in M_sol units)
   real :: TTauriDiskHeight ! (in R_star units)
+  real :: TTauriDiskRin    ! (in R_star units)
+  real :: ThinDiskRin      ! (in R_star units)
   real :: curtainsPhi1s ! accretion curtains from (s)tart... 
   real :: curtainsPhi1e ! ... to (e)nd angle
   real :: curtainsPhi2s ! (all in degrees)
@@ -313,15 +316,25 @@ module input_variables
   real    :: curtain_width  ! Width of curtain in degrees.
 
   ! suboption for ttauri geometry
+  logical :: ttau_acc_on        ! T to include magnetosphere
   logical :: ttau_disc_on       ! T to include disc
   logical :: ttau_discwind_on   ! T to include disc wind.
   logical :: ttau_jet_on        ! T to include jets.
   logical :: ttau_fuzzy_edge    ! T to use fuzzy edge for accretion flow.
 
+  logical :: formalsol          ! T to perform formal solution
+  integer :: form_nphi          ! # of angular poins for formal integration
+  integer :: form_nr_core       ! # of radial poins for formal integration (core)
+  integer :: form_nr_acc        ! # of radial poins for formal integration (accretion)
+  integer :: form_nr_wind       ! # of radial poins for formal integration (wind)
+  logical :: do_pos_disp        ! if T perform position displace ment calculation
+
   !--------------------------------------------------------------------
 
-  ! Use this paremeter to turn off the alpha disc when the grid read in has alpha disc
-  logical :: ttau_turn_off_disc
+  ! Use this paremeter to turn off the alpha disc, jets and magnetosphere accretion
+  logical :: ttau_turn_off_disc  
+  logical :: ttau_turn_off_jet
+  logical :: ttau_turn_off_acc  ! magenetoshere
 
 
   !------ The disc wind parameters follows here -----------------------
@@ -366,6 +379,7 @@ module input_variables
 
 
   !----- For T Tauri Jets -----------------------------------------------------
+  real(double) :: JET_Rmin    !  [10^10cm]  The minimum raidus of jet
   real(double) :: JET_theta_j !  [radian]  jet opening angle
   !
   real(double) :: JET_Mdot    ! [Msun/yr] mass loss rate in the jets
@@ -392,8 +406,24 @@ module input_variables
   !---------------------------------------------------------------------------------
   real(double)    :: CMFGEN_Rmin       ! radius of central star  [10^10cm]
   !---------------------------------------------------------------------------------
+  
 
-
+  ! For "romanova" geometry --------------------------------------------------------
+  real(double)      :: ROM_Rs          ! radius of central star  [Rsun]. 
+  real(double)      :: ROM_Mass        ! [Msun]  Mass of the star
+  logical           :: ROM_isoT        ! if T isothermal othewise use data
+  real(double)      :: ROM_T_flow      ! [K]  Isothemal temperature of the flow
+  ! Reference values for dimensionless units used in Romanova's model
+  real(double)      :: ROM_r_ref       ! [cm] Reference length value
+  real(double)      :: ROM_rho_ref     ! [g/cm^3]  Reference density value
+  real(double)      :: ROM_T_ref       ! [T]       Reference temperature value
+  real(double)      :: ROM_v_ref       ! [cm/s]    Reference speed 
+  ! The tile angle of the magnetic axis 
+  real(double)      :: ROM_tilt        ! [degrees]  will be changed to [rad].
+  real(double)      :: ROM_Period      ! [day]  will be changed to [sec].
+  !
+  character(LEN=60) :: ROM_datafile    ! Name of the romanova's data file
+  !---------------------------------------------------------------------------------
 
 
   ! adaptive mesh stuff ---------------------------------------------------------

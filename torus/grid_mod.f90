@@ -634,6 +634,15 @@ contains
        grid%rStar1 = rStar
        grid%starPos1 = vector(0.,0.,0.)
 
+    case ("romanova") 
+       rStar  = ROM_Rs*Rsol/1.0d10   ! in [10^10cm] 
+       grid%rCore = rStar
+       grid%rStar1 = rStar
+       grid%rStar2 = 0.
+       grid%starPos1 = vector(0.,0.,0.)
+       grid%diskRadius = ThinDiskRin  ! [10^10cm]
+       grid%diskNormal = VECTOR(0.,0.,1.)
+
     case ("testamr")
        call initTestAMR(grid)
 
@@ -3036,11 +3045,12 @@ contains
        end if
                
     end if 
-
+    
     call writeReal1D(grid%lamarray,fileFormatted)
     call writeReal2D(grid%oneKappaAbs,fileFormatted)
     call writeReal2D(grid%oneKappaSca,fileFormatted)
     call writeClumps(fileFormatted)
+
     ! now we call the recursive subroutine to store the tree structure 
     if (associated(grid%octreeRoot)) then
        if (fileFormatted) then 
@@ -7375,6 +7385,7 @@ contains
     logical, allocatable :: inflow(:)
     type(VECTOR),allocatable :: vel(:)
     logical :: first
+    real(double),allocatable :: dummy(:)
 
     type(OCTALVECTOR) :: octVec, Uhatoctal, avecoctal
     integer :: pgbegin
@@ -7385,6 +7396,7 @@ contains
     allocate(vel(1:maxTau), dv(1:maxTau),temp(1:maxtau), rho(1:maxtau))
     allocate(chiline(1:maxTau),ne(1:maxTau),levelPop(1:maxtau,grid%maxLevels))
     allocate(inflow(1:maxTau))
+    allocate(dummy(1:maxTau))
     nx = 1000
     ny = 1000
 
@@ -7434,7 +7446,7 @@ contains
             temperature=temp, &
             chiLine=chiLine,    &
             levelPop=levelPop,rho=rho, &
-            Ne=Ne, inflow=inflow)
+            Ne=Ne, inflow=inflow, etaLine=dummy, etaCont=dummy)
 
        dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)  
 
@@ -7490,6 +7502,7 @@ contains
     call pgend
     
     deallocate(rhoimage,tempimage, ksca, kabs, lambda, dlambda)
+    deallocate(dummy)
   end subroutine dullemondplot
 
   subroutine nattaplot(grid, nSource, source)
@@ -7528,6 +7541,7 @@ contains
     real :: x, z
     type(OCTALVECTOR) :: octVec, Uhatoctal, avecoctal
     integer :: pgbegin
+    real(double), allocatable :: dummy(:)
 
     allocate(lambda(1:maxTau),dlambda(1:maxTau),kros(1:maxtau))
     allocate(kabs(1:maxTau),ksca(1:maxTau))
@@ -7535,6 +7549,7 @@ contains
     allocate(vel(1:maxTau), dv(1:maxTau),temp(1:maxtau), rho(1:maxtau))
     allocate(chiline(1:maxTau),ne(1:maxTau),levelPop(1:maxtau,grid%maxLevels))
     allocate(inflow(1:maxTau))
+    allocate(dummy(maxtau))
     nx = 1000
     ny = 1000
 
@@ -7572,7 +7587,7 @@ contains
             temperature=temp, &
             chiLine=chiLine,    &
             levelPop=levelPop,rho=rho, &
-            Ne=Ne, inflow=inflow)
+            Ne=Ne, inflow=inflow, etaCont=dummy, etaLine=dummy)
 
        dlambda(1:nTau-1) = lambda(2:nTau) - lambda(1:nTau-1)  
 
@@ -7617,6 +7632,7 @@ contains
     close(21)
     
     deallocate(kros, kabs, ksca, lambda, dlambda)
+    deallocate(dummy)
   end subroutine nattaplot
 
     

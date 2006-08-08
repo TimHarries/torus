@@ -95,7 +95,6 @@ MODULE octal_mod
     REAL(double), DIMENSION(8)         :: rho            ! density
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
     TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
-!    TYPE(vector), DIMENSION(:), pointer        :: cornerVelocity => null() ! velocity at corners of subcells
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
     real(double), dimension(8) :: eDens
     REAL, DIMENSION(8)                 :: oldTemperature    ! grid subcell temperatures
@@ -353,6 +352,7 @@ CONTAINS
     
     cellCenter = subcellCentre(this,subcell)
     x0=dble(cellCenter%x); y0=dble(cellCenter%y); z0=dble(cellCenter%z)
+
     ! Fortran check the condidtion from
     ! the top, so this should work, and it is faster...
 

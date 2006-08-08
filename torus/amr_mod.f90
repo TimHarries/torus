@@ -22,20 +22,22 @@ MODULE amr_mod
   USE math_mod2!, only : mnewt  
   USE atom_mod
   USE source_mod
+  USE romanova_class
 
   IMPLICIT NONE
 
 
 CONTAINS
 
-  SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, sphData, stellar_cluster, inherit, interp)
+  SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, sphData, stellar_cluster, inherit, interp, &
+       romData)
     ! calculates the variables describing one subcell of an octal.
     ! each geometry that can be used with AMR should be described here, 
     !   otherwise the program will print a warning and exit.
    
     IMPLICIT NONE
 
-    TYPE(octal)    :: thisOctal   ! the octal being changed
+    TYPE(octal), INTENT(INOUT)    :: thisOctal   ! the octal being changed
     INTEGER, INTENT(IN)           :: subcell   ! the subcell being changed
     TYPE(gridtype), INTENT(INOUT) :: grid      ! the grid
     !
@@ -43,6 +45,8 @@ CONTAINS
     TYPE(cluster), optional, INTENT(IN)   :: stellar_cluster
     LOGICAL, OPTIONAL :: inherit               ! inherit densities, temp, etc of parent
     LOGICAL, OPTIONAL :: interp                ! interpolate densities, temp, etc of parent
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
+    !
     TYPE(octal), POINTER :: parentOctal
     INTEGER :: parentSubcell
     LOGICAL :: inheritProps
@@ -113,6 +117,9 @@ CONTAINS
 
     CASE ("cmfgen")
       CALL cmfgen_mass_velocity(thisOctal,subcell)
+
+    CASE ("romanova")
+      CALL calc_romanova_mass_velocity(romData, thisOctal,subcell)
 
     CASE ("testamr")
        CALL calcTestDensity(thisOctal,subcell,grid)
@@ -189,7 +196,7 @@ CONTAINS
  
   END SUBROUTINE calcValuesAMR
 
-  SUBROUTINE initFirstOctal(grid, centre, size, twod, sphData, stellar_cluster, nDustType)
+  SUBROUTINE initFirstOctal(grid, centre, size, twod, sphData, stellar_cluster, nDustType, romData)
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
@@ -203,7 +210,9 @@ CONTAINS
       ! 'size' should be the vertex length of the cube that contains the whole
       !   of the simulation space, *not* the size of a subcell.
     TYPE(sph_data), optional, intent(in)   :: sphData   ! Matthew's SPH model data
-    TYPE(cluster), optional, INTENT(IN)   :: stellar_cluster
+    TYPE(cluster), optional, INTENT(IN)    :: stellar_cluster
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
+    !
     LOGICAL :: twod  ! true if this is a twoD amr grid
     INTEGER :: subcell ! loop counter 
     INTEGER :: nDustType ! number of different dust types
@@ -240,6 +249,8 @@ CONTAINS
           grid%octreeRoot%dPhi = twoPi
        endif
     endif
+
+
     grid%octreeRoot%nDepth = 1
     grid%octreeRoot%nChildren = 0
     grid%octreeRoot%hasChild = .FALSE.
@@ -260,7 +271,7 @@ CONTAINS
     grid%octreeRoot%biasLine3D = 1.0 
     grid%octreeRoot%biasCont3D = 1.0 
     grid%octreeRoot%velocity = vector(1.e-30,1.e-30,1.e-30)
-    grid%octreeRoot%cornerVelocity= vector(1.e-30,1.e-30,1.e-30)
+    grid%octreeRoot%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
     grid%octreeRoot%chiLine = -9.9e9
     grid%octreeRoot%etaLine = -9.9e9
     grid%octreeRoot%etaCont = -9.9e9 
@@ -294,7 +305,7 @@ CONTAINS
        case("cluster")
           ! Initially we copy the idecies of particles (in SPH data)
           ! to the root node. The indecies will copy over to
-           ! to the subcells if the particles are in the subcells.
+          ! to the subcells if the particles are in the subcells.
           ! This will allow us to work with the subsets of gas particle
           ! list hence reduces the computation time when we are 
           ! splitting/constructing the octree data structure. 
@@ -315,6 +326,18 @@ CONTAINS
           DO subcell = 1, grid%octreeRoot%maxChildren
              ! calculate the values at the centre of each of the subcells
              CALL calcValuesAMR(grid%octreeRoot,subcell,grid, sphData, stellar_cluster)
+             ! label the subcells
+             grid%octreeRoot%label(subcell) = subcell
+          END DO
+       case("romanova")
+          ! just checking..
+          if (.not. PRESENT(romData)) then
+             print *, "Error:: romData is not present in initFirstOctal!"
+             stop
+          end if
+          DO subcell = 1, grid%octreeRoot%maxChildren
+             ! calculate the values at the centre of each of the subcells
+             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, romData=romData)
              ! label the subcells
              grid%octreeRoot%label(subcell) = subcell
           END DO
@@ -342,10 +365,10 @@ CONTAINS
 
 
   SUBROUTINE addNewChild(parent, iChild, grid, adjustGridInfo, sphData, &
-                         stellar_cluster, inherit, interp, splitAzimuthally)
+                         stellar_cluster, inherit, interp, splitAzimuthally, romData)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : nDustType, cylindrical, photoionization
+    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
@@ -371,6 +394,9 @@ CONTAINS
     logical :: inheritProps, interpolate
     type(OCTALVECTOR) :: rVec
     ! array of octals that may be needed for temporarily storing child octals
+
+    ! For "romanova" geometry
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     
 
     inheritProps = .false.
@@ -519,9 +545,11 @@ CONTAINS
     parent%child(newChildIndex)%rho = 1.e-30
     parent%child(newChildIndex)%N = 1.e-30
     parent%child(newChildIndex)%dusttype = 1
-    ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
-    parent%child(newChildIndex)%dustTypeFraction(1:8,1:nDustType) = 0.d0
-    parent%child(newChildIndex)%dustTypeFraction(1:8,1) = 1.d0
+    if (mie) then
+       ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
+       parent%child(newChildIndex)%dustTypeFraction(1:8,1:nDustType) = 0.d0
+       parent%child(newChildIndex)%dustTypeFraction(1:8,1) = 1.d0
+    end if
     parent%child(newChildIndex)%gasOpacity = .false.
     parent%child(newChildIndex)%Ne = 1.e-30
     parent%child(newChildIndex)%temperature = 3.0
@@ -553,8 +581,9 @@ CONTAINS
     
     ! put some data in the four/eight subcells of the new child
     DO subcell = 1, parent%child(newChildIndex)%maxChildren
-      CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData, &
-                         stellar_cluster, inherit=inheritProps, interp=interpolate)
+      CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData=sphData, &
+                         stellar_cluster=stellar_cluster, inherit=inheritProps, &
+                         interp=interpolate, romData=romData)
       parent%child(newChildIndex)%label(subcell) = counter
       counter = counter + 1
     END DO
@@ -703,13 +732,14 @@ CONTAINS
 
 
   RECURSIVE SUBROUTINE splitGrid(thisOctal,amrLimitScalar,amrLimitScalar2,grid, &
-       sphData, stellar_cluster, setChanged)
+       sphData, stellar_cluster, setChanged, romData)
     ! uses an external function to decide whether to split a subcell of
     !   the current octal. 
 
     IMPLICIT NONE
 
-    TYPE(OCTAL), INTENT(INOUT) :: thisOctal
+    TYPE(OCTAL), intent(inout) :: thisOctal
+!    TYPE(OCTAL), POINTER :: thisOctal
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 
       ! 'limitScalar' is the value the decideSplit function uses to
       !   decide whether or not to split cell.
@@ -725,16 +755,25 @@ CONTAINS
     INTEGER              :: iSubcell, iIndex ! loop counters
     INTEGER              :: i, j, k
     logical :: splitInAzimuth
+    !
+    TYPE(OCTAL), POINTER :: childPointer  
+    INTEGER              :: subcell    ! loop counters
+    logical :: splitThis
+    !
+    ! For "romanova" geometry
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
+
 
 
     DO iSubcell = 1, thisOctal%maxChildren, 1
       
       IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,&
             splitInAzimuth, &
-            sphData, stellar_cluster)) THEN
+            sphData=sphData, stellar_cluster=stellar_cluster, romData=romData)) THEN
 
         CALL addNewChild(thisOctal, iSubcell, grid, adjustGridInfo=.TRUE., &
-                         sphData=sphData, stellar_cluster=stellar_cluster, splitAzimuthally=splitInAzimuth)
+                         sphData=sphData, stellar_cluster=stellar_cluster, &
+                         splitAzimuthally=splitInAzimuth, romData=romData)
        
         if (.not.thisOctal%hasChild(isubcell)) then
           write(*,*) "add child failed in splitGrid"
@@ -788,7 +827,7 @@ CONTAINS
     DO iIndex = 1, thisOctal%nChildren, 1
       
       CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
-                     sphData, stellar_cluster, setChanged)
+                     sphData, stellar_cluster, setChanged, romData=romData)
       
     END DO 
     
@@ -919,7 +958,7 @@ CONTAINS
   END SUBROUTINE sortOctalArray    
     
   
-  RECURSIVE SUBROUTINE finishGrid(thisOctal,grid,gridConverged)
+  RECURSIVE SUBROUTINE finishGrid(thisOctal,grid,gridConverged,romData)
     ! takes the octree grid that has been created using 'splitGrid'
     !   and calculates all the other variables in the model.
     ! this should be called once the structure of the grid is complete.
@@ -934,6 +973,7 @@ CONTAINS
     TYPE(octal), POINTER   :: thisOctal
     TYPE(gridtype)         :: grid
     LOGICAL, INTENT(INOUT) :: gridConverged
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     
     TYPE(octal), POINTER   :: child
   
@@ -962,6 +1002,10 @@ CONTAINS
 
       CASE ("cmfgen")
         CALL calc_cmfgen_temperature(thisOctal,subcell)
+        gridConverged = .TRUE.
+
+      CASE ("romanova")
+        CALL calc_romanova_temperature(romData, thisOctal,subcell)
         gridConverged = .TRUE.
         
       CASE ("testamr","proto")
@@ -992,7 +1036,7 @@ CONTAINS
    
     DO iChild = 1, thisOctal%nChildren, 1
       child => thisOctal%child(iChild)
-      CALL finishGrid(child,grid,gridConverged)
+      CALL finishGrid(child,grid,gridConverged,romData=romData)
     END DO
 
     ! any stuff that gets done *after* the finishGrid recursion goes here:
@@ -1050,7 +1094,8 @@ CONTAINS
   SUBROUTINE startReturnSamples (startPoint,direction,grid,          &
              sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
              usePops,iLambda,error,lambda,kappaAbs,kappaSca,velocity,&
-             velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow)
+             velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow, &
+             etaCont, etaLine)
     ! samples the grid at points along the path.
     ! this should be called by the program, instead of calling 
     !   returnSamples directly, because this checks the start and finish
@@ -1076,6 +1121,7 @@ CONTAINS
     INTEGER, INTENT(IN)                :: iLambda    ! wavelength index
     INTEGER, INTENT(INOUT)             :: error      ! error code
     REAL, DIMENSION(:), INTENT(INOUT)  :: lambda     ! path distances of sample locations
+
     
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaAbs   ! continuous absorption opacities
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca   ! scattering opacities
@@ -1087,6 +1133,8 @@ CONTAINS
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: temperature! temperature [K] at sample points
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: Ne ! electron density
     logical,DIMENSION(:),INTENT(INOUT),OPTIONAL  ::inFlow   ! flag to tell if the point is inflow
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaCont ! contiuum emissivity
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaLine ! line emissivity
 
     TYPE(octalVector)       :: locator 
                        ! 'locator' is used to indicate a point that lies within the  
@@ -1120,7 +1168,8 @@ CONTAINS
     real(oct)    :: diskDistance       ! distance to disk intersection
     real(oct)    :: distanceThroughStar! distance of chord through star
     TYPE(octalVector)       :: dummyStartPoint    ! modified start point 
-    real(oct), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
+!    real(oct), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
+    real(oct), PARAMETER :: fudgefactor = 1.000001 ! overestimates stellar size
     
     
     ! we will abort tracking a photon just before it reaches the edge of the
@@ -1161,7 +1210,8 @@ CONTAINS
    
     ! geometry-specific tests should go here
     IF (grid%geometry(1:6) == "ttauri" .OR. grid%geometry(1:4) == "jets" .or. &
-         grid%geometry(1:9) == "luc_cir3d" .or. grid%geometry(1:6) == "cmfgen" ) THEN
+         grid%geometry(1:9) == "luc_cir3d" .or. grid%geometry(1:6) == "cmfgen" .or. &
+         grid%geometry(1:8) == "romanova") THEN
       
        ! need to test for both star and disc intersections 
       
@@ -1246,7 +1296,7 @@ CONTAINS
                      kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,   &
                      velocityDeriv=velocityDeriv,chiLine=chiLine,             &
                      levelPop=levelPop,rho=rho, temperature=temperature,      &
-                     Ne=Ne, inFlow=inFlow)
+                     Ne=Ne, inFlow=inFlow, etaCont=etaCont, etaLine=etaLine)
       
        IF (error < 0)  RETURN
 
@@ -1268,7 +1318,8 @@ CONTAINS
                     distanceLimit,kappaAbs=kappaAbs,kappaSca=kappaSca,       &
                     velocity=velocity,velocityDeriv=velocityDeriv,           &
                     chiLine=chiLine,levelPop=levelPop,rho=rho,               &
-                    temperature=temperature, Ne=Ne, inFlow=inFlow)
+                    temperature=temperature, Ne=Ne, inFlow=inFlow,           &
+                    etaCont=etaCont, etaLine=etaLine)
 
        END IF
 
@@ -1295,6 +1346,8 @@ CONTAINS
          IF (PRESENT(rho))           rho(nSamples) = 0.0
          IF (PRESENT(temperature))   temperature(nSamples) = 0.0
          IF (PRESENT(inFlow))        inFlow(nSamples) = .true.
+         IF (PRESENT(etaCont))       etaCont(nSamples) = 1.e-20
+         IF (PRESENT(etaLine))       etaLine(nSamples) = 1.e-20
        END IF
        
     ELSE
@@ -1316,10 +1369,10 @@ CONTAINS
        CALL returnSamples(currentPoint,startPoint,locator,directionNormalized,&
                    octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,&
                    usePops,iLambda,error,margin,distanceLimit,                &
-                   kappaAbs=kappaAbs,kappaSca=kappaSca, velocity=velocity,     &
+                   kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,     &
                    velocityDeriv=velocityDeriv,chiLine=chiLine,               &
                    levelPop=levelPop,rho=rho,temperature=temperature,         &
-                   Ne=Ne, inFlow=inFlow)
+                   Ne=Ne,inFlow=inFlow,etaCont=etaCont,etaLine=etaLine)
     END IF
       
   END SUBROUTINE startReturnSamples
@@ -1328,7 +1381,8 @@ CONTAINS
   RECURSIVE SUBROUTINE returnSamples (currentPoint,startPoint,locator,direction, &
              octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,usePops, &
              iLambda,error,margin,distanceLimit,kappaAbs,kappaSca,velocity,      &
-             velocityDeriv,chiLine,levelPop,rho,temperature, Ne, inFlow)
+             velocityDeriv,chiLine,levelPop,rho,temperature, Ne, inFlow,         &
+             etaCont,etaLine)
     ! this uses a recursive ray traversal algorithm to sample the octal
     !   grid at points along the path of the ray. 
     ! no checks are made that the ray lies within the boundaries of the
@@ -1366,7 +1420,7 @@ CONTAINS
     real(oct), INTENT(IN)    :: distanceLimit ! max length of ray before aborting
     LOGICAL, INTENT(IN)                 :: usePops      ! whether to use level populations
     
-    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL :: kappaAbs      ! continuous absorption opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaAbs     ! continuous absorption opacities
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca     ! scattering opacities
     TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocityDeriv ! sampled velocity derivatives
@@ -1376,7 +1430,9 @@ CONTAINS
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL   :: Ne         ! electron density
     real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL :: levelPop   ! level populations 
     logical, DIMENSION(:),INTENT(INOUT),OPTIONAL       :: inFlow     ! inflow flag
-    
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaCont ! contiuum emissivity
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaLine ! line emissivity
+
 
 
     TYPE(octalVector)      :: exitPoint      ! where ray leaves current cell
@@ -1392,6 +1448,7 @@ CONTAINS
     INTEGER                :: subcell        ! current subcell 
     INTEGER                :: subIndex       ! octal's child index for current subcell 
     INTEGER                :: i
+    real(oct) :: dL
 
 
     ! find which of the subcells the point lies in
@@ -1424,7 +1481,7 @@ CONTAINS
         ENDDO
         IF (subindex == -99) THEN
           PRINT *, ' Panic: subindex not found'
-          do; enddo
+          STOP
         ENDIF
 
         CALL returnSamples(currentPoint,startPoint,locator,direction,        &
@@ -1433,7 +1490,8 @@ CONTAINS
                     distanceLimit,kappaAbs=kappaAbs,kappaSca=kappaSca,       &
                     velocity=velocity,velocityDeriv=velocityDeriv,           &
                     chiLine=chiLine,levelPop=levelPop,rho=rho,               &
-                    temperature=temperature, Ne=Ne, inFlow=inFlow)
+                    temperature=temperature, Ne=Ne, inFlow=inFlow,           &
+                    etaCont=etaCont,etaLine=etaLine)
         
         ! after returning from the recursive subroutine, we may have 
         !   finished tracing the ray's path
@@ -1453,15 +1511,13 @@ CONTAINS
 
         ! we find the exit point from the current subcell, 
         !  and also 'locator' - a point that lies in the *next* subcell 
+        CALL getExitPoint(currentPoint,direction,locator,abortRay,error, &
+                          grid%halfSmallestSubcell,exitPoint,centre,subcellSize,&
+                          minWallDistance,margin,grid%octreeRoot%threed)
 
+!       call getExitPoint2(currentPoint, direction ,locator, abortRay, error, &
+!       grid%halfSmallestSubcell, exitPoint, minWallDistance, grid, octree)
 
-       call getExitPoint2(currentPoint, direction ,locator, abortRay, error, &
-       grid%halfSmallestSubcell, exitPoint, minWallDistance, grid, octree)
-
-
-!        CALL getExitPoint(currentPoint,direction,locator,abortRay,error, &
-!                          grid%halfSmallestSubcell,exitPoint,centre,subcellSize,&
-!                          minWallDistance,margin,grid%octreeRoot%threed, octree, subcell)
         IF ( abortRay .EQV. .TRUE. ) RETURN
 
         ! we now decide where we are going to sample the quantities
@@ -1492,10 +1548,10 @@ CONTAINS
         !                                       > sampleLength ) THEN
           CALL takeSample(currentPoint,length,direction,grid,octree,subcell,    &
                           nSamples,maxSamples,usePops,iLambda,error,lambda,     &
-                          kappaAbs=kappaAbs,kappaSca=kappaSca, velocity=velocity,&
+                          kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
                           velocityDeriv=velocityDeriv,chiLine=chiLine,          &
                           levelPop=levelPop,rho=rho,temperature=temperature,    &
-                          Ne=Ne, inFlow=inFlow)
+                          Ne=Ne, inFlow=inFlow, etaCont=etaCont, etaLine=etaLine)
         !END IF
 
         ! we add sampleLength to the distance from the last location
@@ -1507,9 +1563,10 @@ CONTAINS
                        (REAL(trial,kind=oct) * sampleLength)) - length)
                        
           ! we only want to take a sample if we are still within the subcell
-          IF ( modulus(trialPoint - currentPoint) < minWallDistance ) THEN
+          dL = modulus(trialPoint - currentPoint)
+          IF (  dL < minWallDistance ) THEN
           
-            trialLength = length + modulus(trialPoint - currentPoint)
+            trialLength = length + dL
             IF (trialLength > distanceLimit) THEN
               abortRay = .TRUE.
               RETURN
@@ -1521,7 +1578,7 @@ CONTAINS
                          kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,&
                          velocityDeriv=velocityDeriv,chiLine=chiLine,          &
                          levelPop=levelPop,rho=rho,temperature=temperature,    &
-                         Ne=Ne, inFlow=inFlow)
+                         Ne=Ne, inFlow=inFlow, etaCont=etaCont, etaLine=etaLine)
             ELSE
               EXIT
             END IF
@@ -1895,7 +1952,8 @@ CONTAINS
     ! we should now have run out of possibilities
     ELSE
       PRINT *, 'Panic: Fell through direction finder!'
-      DO ; END DO ; STOP ! sit in loop for debugging purposes
+      stop
+!      DO ; END DO ; STOP ! sit in loop for debugging purposes
     END IF
 
     else       
@@ -1915,10 +1973,14 @@ CONTAINS
           if (modulus(xDir) /= 0.d0) then
              call normalize(xDir)       
              cosmu =((-1.d0)*xDir).dot.direction
-             call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
+             call solveQuadDble(1.d0, -2.d0*d*cosmu, d*d-r2*r2, x1, x2, ok)
              if (.not.ok) then
-                write(*,*) "Error:: Quad solver failed in [amr_mod::intersectcubeamr2d] (1)"
+                write(*,*) "Error:: Quad solver failed in [amr_mod::getExitPoint] (1)"
                 write(*,*) " Correctionn forced for now. If problem insistet, you need to fix it."
+                write(*,*) "           d = ", d
+                write(*,*) "      cosmud = ", cosmu
+                write(*,*) "          r2 = ", r2
+                write(*,*) "currentPoint = ", currentPoint
                 x1 = 1.0d-5; x2=1.0d-5
 !                stop
 !                do;enddo
@@ -1931,9 +1993,13 @@ CONTAINS
              mu = acos(max(-1.d0,min(1.d0,cosmu)))
              distTor1 = 1.e30
              if (mu  < theta ) then
-                call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+                call solveQuadDble(1.d0, -2.d0*d*cosmu, d*d-r1*r1, x1, x2, ok)
                 if (.not.ok) then
-                   write(*,*) "Quad solver failed in  [amr_mod::intersectcubeamr2d] (2)"
+                   write(*,*) "Quad solver failed in  [amr_mod::getExitPoint] (2)"
+                   write(*,*) "           d = ", d
+                   write(*,*) "      cosmud = ", cosmu
+                   write(*,*) "          r2 = ", r2
+                   write(*,*) "currentPoint = ", currentPoint
                    stop
 !                   do;enddo
                 endif
@@ -1992,9 +2058,9 @@ CONTAINS
 
 
   SUBROUTINE takeSample(point,length,direction,grid,thisOctal,subcell,nSamples,&
-                        maxSamples,usePops,iLambda,error,lambda,kappaAbs,     &
+                        maxSamples,usePops,iLambda,error,lambda,kappaAbs,      &
                         kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,  &
-                        temperature,Ne,inFlow) 
+                        temperature,Ne,inFlow,etaCont,etaLine) 
   
     
     IMPLICIT NONE
@@ -2022,6 +2088,9 @@ CONTAINS
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL   :: Ne        ! electron density
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL           :: temperature ! in [K]
     logical,DIMENSION(:),INTENT(INOUT),OPTIONAL        :: inFlow     ! indicates if the cell is in use.
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaCont ! contiuum emissivity
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaLine ! line emissivity
+
 
     TYPE(vector)                       :: directionReal ! direction vector (REAL values)
     TYPE(octal), POINTER               :: localPointer  ! pointer to the current octal
@@ -2038,7 +2107,7 @@ CONTAINS
       PRINT *, "Erro:: nSamples > maxSamples in takeSample subroutine"
       PRINT *, "nSamples   = ", nSamples
       PRINT *, "maxSamples = ", maxSamples      
-      write(*,*) lambda(nSamples-10:nSamples)
+      write(*,*) "lambda(nSamples-10:nSamples) = ", lambda(nSamples-10:nSamples)
       STOP
     END IF
 
@@ -2078,7 +2147,9 @@ CONTAINS
                          grid=grid,                                    &
                          temperature=temperature(nSamples),            &
                          Ne=Ne(nSamples),                              &
-                         inFlow=inFlow(nSamples)                       &
+                         inFlow=inFlow(nSamples),                      &
+                         etaCont=etaCont(nSamples),                    &
+                         etaLine=etaLine(nSamples)                     &                         
                          )
     END IF
 
@@ -2154,8 +2225,8 @@ CONTAINS
     REAL,INTENT(IN), OPTIONAL         :: atThisTemperature
     REAL(double),INTENT(OUT),OPTIONAL         :: rho
     REAL,INTENT(OUT),OPTIONAL         :: chiLine
-    REAL,INTENT(OUT),OPTIONAL         :: etaLine
-    REAL,INTENT(OUT),OPTIONAL         :: etaCont
+    REAL(double),INTENT(OUT),OPTIONAL         :: etaLine
+    REAL(double),INTENT(OUT),OPTIONAL         :: etaCont
     real(double), dimension(:), intent(out), optional :: dusttypeFraction
     real(double),INTENT(OUT),OPTIONAL :: probDistLine
     real(double),INTENT(OUT),OPTIONAL :: probDistCont
@@ -3289,7 +3360,8 @@ CONTAINS
     endif
   END FUNCTION looseInOctal
 
-  SUBROUTINE smoothAMRgrid(grid,factor,sphData, stellar_cluster, inheritProps, interpProps)
+  SUBROUTINE smoothAMRgrid(grid,factor,sphData, stellar_cluster, inheritProps, interpProps, &
+       romData)
     ! checks whether each octal's neighbours are much bigger than it, 
     !   if so, makes the neighbours smaller.
 
@@ -3299,6 +3371,7 @@ CONTAINS
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     LOGICAL, INTENT(IN),optional  :: inheritProps
     logical, intent(in), optional :: interpProps 
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     
     LOGICAL :: gridConverged
 
@@ -3306,17 +3379,19 @@ CONTAINS
 
     DO 
       gridConverged = .TRUE.
-      CALL smoothAMRgridPrivate(grid%octreeRoot,grid,gridConverged)
+      CALL smoothAMRgridPrivate(grid%octreeRoot,grid,gridConverged,romData)
       IF ( gridConverged ) EXIT 
     END DO
     
   CONTAINS
     
-    RECURSIVE SUBROUTINE smoothAMRgridPrivate(thisOctal,grid,gridConverged)
+    RECURSIVE SUBROUTINE smoothAMRgridPrivate(thisOctal,grid,gridConverged, &
+         romData)
 
       TYPE(octal), INTENT(INOUT), TARGET :: thisOctal
       TYPE(gridtype), INTENT(INOUT   ) :: grid 
       LOGICAL, INTENT(INOUT)               :: gridConverged
+      TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
 
       INTEGER              :: i
       REAL(oct) :: halfSmallestSubcell
@@ -3402,7 +3477,7 @@ CONTAINS
               neighbour%changed(1:neighbour%maxChildren) = .TRUE.
               call addNewChild(neighbour, subcell, grid, adjustGridInfo=.TRUE.,  &
                                sphData=sphData, stellar_cluster=stellar_cluster, &
-                               inherit=inheritProps, interp=interpProps)
+                               inherit=inheritProps, interp=interpProps, romData=romData)
               gridConverged = .FALSE.
           ENDIF
         END IF
@@ -3415,7 +3490,7 @@ IF ( .NOT. gridConverged ) RETURN
       ! call this subroutine recursively on each of any children.
       IF ( (.NOT. ANY(thisOctal%Changed)) .AND. thisOctal%nChildren > 0 ) THEN
         DO i = 1, thisOctal%nChildren, 1 
-          CALL smoothAMRgridPrivate(thisOctal%child(i),grid,gridConverged)
+          CALL smoothAMRgridPrivate(thisOctal%child(i),grid,gridConverged,romData=romData)
           !CALL checkAMRgrid(grid,checkNoctals=.FALSE.)                                  
         
 ! force return until algorithm is fixed
@@ -3553,7 +3628,8 @@ IF ( .NOT. gridConverged ) RETURN
           write(*,*) thisOctal%subcellSize
           write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
-           DO ; END DO
+!           DO ; END DO
+          STOP
           boundaryProblem = .TRUE.
           RETURN
         END IF
@@ -3580,7 +3656,8 @@ IF ( .NOT. gridConverged ) RETURN
 !           write(*,*) rVec%y-thisOctal%subcellSize/2.
 !           write(*,*) rVec%z+thisOctal%subcellSize/2.
 !           write(*,*) rVec%z-thisOctal%subcellSize/2.
-           do ; enddo
+!           do ; enddo
+           STOP
         endif
         
         IF ( thisOctal%nDepth /= 1 ) THEN
@@ -4135,7 +4212,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   FUNCTION decideSplit(thisOctal,subcell,amrLimitScalar,amrLimitScalar2,grid, splitInAzimuth,&
-       sphData, stellar_cluster) RESULT(split)
+       sphData, stellar_cluster,romData) RESULT(split)
     ! returns true if the current voxel is to be subdivided. 
     ! decision is made by comparing 'amrLimitScalar' to some value
     !   derived from information in the current cell  
@@ -4144,13 +4221,16 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
     use input_variables, only: warpFracHeight, warpRadius, warpSigma
     IMPLICIT NONE
-    TYPE(octal)       :: thisOctal
+    TYPE(octal), intent(inout) :: thisOctal
+!    TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
     LOGICAL, INTENT(INOUT) :: splitInAzimuth
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 ! used for split decision
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(sph_data), OPTIONAL, intent(in) :: sphData
     TYPE(cluster), OPTIONAL, intent(in) :: stellar_cluster
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
+    !
     LOGICAL                    :: split          
     real(oct)  :: cellSize
     TYPE(octalVector)     :: searchPoint, rVec
@@ -4222,8 +4302,8 @@ IF ( .NOT. gridConverged ) RETURN
        endif
 
 
-    case("ttauri","jets","spiralwind")
-      nsample = 40
+    case("ttauri","jets","spiralwind","romanova")
+      nsample = 100
       ! the density is only sampled at the centre of the grid
       ! we will search in each subcell to see if any point exceeds the 
       ! threshold density
@@ -4242,9 +4322,9 @@ IF ( .NOT. gridConverged ) RETURN
       DO i = 1, nsample
         searchPoint = cellCentre
         CALL RANDOM_NUMBER(x)
-        CALL RANDOM_NUMBER(y)
         CALL RANDOM_NUMBER(z)
         if (thisOctal%threed) then
+           CALL RANDOM_NUMBER(y)
            searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct)
            searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=oct) 
            searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
@@ -4253,8 +4333,12 @@ IF ( .NOT. gridConverged ) RETURN
            searchPoint%y = 0.d0
            searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct) 
         endif
-        ! using a generic density function in density_mod.f90
-        rho = density(searchPoint,grid)
+        if (grid%geometry=="romanova") then
+           rho = romanova_density(romData, searchPoint)
+        else
+           ! using a generic density function in density_mod.f90
+           rho = density(searchPoint,grid)
+        end if
         ave_density  =  rho + ave_density
         minDensity = min(minDensity, rho)
         maxDensity = max(maxDensity, rho)
@@ -4269,11 +4353,16 @@ IF ( .NOT. gridConverged ) RETURN
          total_mass = maxDensity * pi * ((searchPoint%x+cellsize/2.)**2-(searchPoint%x-cellsize/2.)**2)*cellsize*1.d30
       endif
 
-      if (grid%geometry == "ttauri") then
+
+      ! weigting toward the smaller radial positions
+      if (grid%geometry=="romanova") then
          thisScale = grid%rstar1/modulus(cellCentre)
-         ! weigting toward the smaller radial positions
+         total_mass = total_mass * thisScale**3
+      elseif (grid%geometry=="ttauri") then
+         thisScale = grid%rstar1/modulus(cellCentre)
          total_mass = total_mass * thisScale**4
-      endif
+      end if
+
 
       IF (total_mass > amrLimitScalar) then
          split = .TRUE.
@@ -4294,7 +4383,26 @@ IF ( .NOT. gridConverged ) RETURN
             ! Splits the two cells closer to the origin.
             if (r < cellSize*2.0d0)  split = .true.
          end if
+
+         !
+         ! We use a slightly higher resolution near the edge of the accretion flow
+!         if (ttau_fuzzy_edge) then
+            if (in_fuzzy_edge(cellCentre) ) then
+               if (total_mass*4.0d0 > amrLimitScalar) then
+               !               if (total_mass*20.0d0 > amrLimitScalar) then  ! for Halpha106
+               !               if (total_mass*40.0d0 > amrLimitScalar) then  ! for Halpha107
+                  !           ^^^^^ Note the extra factor here
+                  split = .TRUE.
+               end if
+            end if
+!         end if
+
       end if
+
+      if (grid%geometry == "romanova") then         
+         if (cellSize > 100.d0) split=.true.
+      end if
+
 
    case("lexington")
       if (thisOctal%nDepth < 5) then
@@ -4443,7 +4551,7 @@ IF ( .NOT. gridConverged ) RETURN
       else
          split = .false.
       end if
-!      write(*,*) nparticle,total_mass,amrlimitscalar
+      
 
       if (include_disc(stellar_cluster)) then
       
@@ -4907,7 +5015,7 @@ IF ( .NOT. gridConverged ) RETURN
     ELSE IF ( ABS(pointVec%z) < TTauriDiskHeight) THEN
       TTauriVelocity = vector(1.e-14,1.e-14,1.e-14)
     ! test if the point lies outside the accretion stream
-    ELSE IF ((rM > TTauriRinner*0.99d0) .AND. (rM < TTauriRouter*1.01d0 )) THEN
+    ELSE IF ((rM > TTauriRinner) .AND. (rM < TTauriRouter )) THEN
   
       vP = vector(3.0 * SQRT(y) * SQRT(1.0-y) / SQRT(4.0 - (3.0*y)), &
                   0.0, &
@@ -4980,7 +5088,7 @@ IF ( .NOT. gridConverged ) RETURN
     ! see Hartman, Hewett & Calvet 1994ApJ...426..669H 
 
     USE input_variables, ONLY : useHartmannTemp, maxHartTemp, TTauriRstar,&
-                                TTauriRinner, TTauriRouter
+                                TTauriRinner, TTauriRouter, ttau_acc_on
 
     IMPLICIT NONE
 
@@ -4999,75 +5107,80 @@ IF ( .NOT. gridConverged ) RETURN
     REAL :: phi
     REAL :: r, rM, theta, y, ang, bigR, thetaStar
     REAL :: bigRstar, thetaStarHartmann, bigRstarHartmann, rMnorm
-    REAL :: tmp, sum
-    integer :: i
+    REAL :: tmp
 
     starPosn = grid%starPos1
 
     point = subcellCentre(thisOctal,subcell)
     pointVec = (point - starPosn) * 1.e10_oc
-    thisOctal%inflow(subcell) = .false.
+
+    if (.not. ttau_acc_on) then
+       ! we don't include the magnetopsherical accretion
+       thisOctal%inFlow(subcell) = .FALSE.
+       thisOctal%rho(subcell) = 1.e-19
+       IF (useHartmannTemp) thisOctal%temperature(subcell) = 6500.0
+    else
     
-    IF (TTauriInFlow(point,grid)) THEN
+       IF (TTauriInFlow(point,grid)) THEN
 !      thisOctal%rho(subcell) = TTauriDensity(point,grid)
-      thisOctal%rho(subcell) = Density(point,grid)
-      thisOctal%inFlow(subcell) = .TRUE.
-      IF (useHartmannTemp) THEN
-        ! need to calculate the flow point AS IF the magnetosphere
-        !   was the same size as the one in the Hartmann et al paper
-        r = modulus( pointVec ) 
-        theta = acos( pointVec%z  / r )
+          thisOctal%rho(subcell) = Density(point,grid)
+          thisOctal%inFlow(subcell) = .TRUE.
+          IF (useHartmannTemp) THEN
+             ! need to calculate the flow point AS IF the magnetosphere
+             !   was the same size as the one in the Hartmann et al paper
+             r = modulus( pointVec ) 
+             theta = acos( pointVec%z  / r )
         
-        rM  = r / SIN(theta)**2
+             rM  = r / SIN(theta)**2
         
-        ! work out the intersection angle (at the stellar surface) for
-        !   the current flow line  
-        thetaStar = ASIN(SQRT(TTauriRstar/rM))
-        bigRstar = TTauriRstar * SIN(thetaStar) 
+             ! work out the intersection angle (at the stellar surface) for
+             !   the current flow line  
+             thetaStar = ASIN(SQRT(TTauriRstar/rM))
+             bigRstar = TTauriRstar * SIN(thetaStar) 
 
-        ! normalize the magnetic radius (0=inside, 1=outside)
-        rMnorm = (rM-TTauriRinner) / (TTauriRouter-TTauriRinner)
+             ! normalize the magnetic radius (0=inside, 1=outside)
+             rMnorm = (rM-TTauriRinner) / (TTauriRouter-TTauriRinner)
         
-        ! convert rM to Hartmann units
-        rM = 2.2*(2.0*rSol) + rMnorm*(0.8*(2.0*rSol))
+             ! convert rM to Hartmann units
+             rM = 2.2*(2.0*rSol) + rMnorm*(0.8*(2.0*rSol))
         
-        bigR = SQRT(pointVec%x**2+pointVec%y**2)
-        bigR = (bigR-bigRstar) / (TTauriRouter-bigRstar) ! so that we can rescale it
-        bigR = min(bigR,TTauriRouter)
-        bigR = max(bigR,0.0)
+             bigR = SQRT(pointVec%x**2+pointVec%y**2)
+             bigR = (bigR-bigRstar) / (TTauriRouter-bigRstar) ! so that we can rescale it
+             bigR = min(bigR,TTauriRouter)
+             bigR = max(bigR,0.0)
 
-        ! get the equivalent bigR for the Hartmann geometry
-        ! first work out the intersection angle (at the stellar surface) for
-        !   the current flow line  
-        thetaStarHartmann = ASIN(SQRT((2.0*rSol)/rM))
-        ! work out bigR for this point
-        bigRstarHartmann = (2.0*rSol) * SIN(thetaStarHartmann) 
+             ! get the equivalent bigR for the Hartmann geometry
+             ! first work out the intersection angle (at the stellar surface) for
+             !   the current flow line  
+             thetaStarHartmann = ASIN(SQRT((2.0*rSol)/rM))
+             ! work out bigR for this point
+             bigRstarHartmann = (2.0*rSol) * SIN(thetaStarHartmann) 
+             
+             bigR = bigRstarHartmann + (bigR * (3.0*(2.0*rSol) - bigRstarHartmann))
+             
+             r = (rM * bigR**2)**(1./3.) ! get r in the Hartmann setup
+             
+             ! get theta in the Hartmann setup
+             tmp = r/rM
+             ! quick fix for out of range argments (R. Kurosawa)
+             if (tmp > 1.0) tmp=1.0
+             if (tmp < -1.0) tmp = -1.0
+             theta = ASIN(SQRT(tmp))
+             theta = MIN(theta,REAL(pi/2.0-0.0001))
+             theta = MAX(theta,0.0001)
         
-        bigR = bigRstarHartmann + (bigR * (3.0*(2.0*rSol) - bigRstarHartmann))
-                           
-        r = (rM * bigR**2)**(1./3.) ! get r in the Hartmann setup
-        
-        ! get theta in the Hartmann setup
-        tmp = r/rM
-        ! quick fix for out of range argments (R. Kurosawa)
-        if (tmp > 1.0) tmp=1.0
-        if (tmp < -1.0) tmp = -1.0
-        theta = ASIN(SQRT(tmp))
-        theta = MIN(theta,real(pi/2.0)-0.0001)
-        theta = MAX(theta,0.0001)
-        
-        rMnorm = MAX(rMnorm, 0.0001)
-        rMnorm = MIN(rMnorm, 0.9999)
-!        thisOctal%temperature(subcell) = hartmannTemp(rMnorm, theta, maxHartTemp)
-        thisOctal%temperature(subcell) = hartmannTemp2(rMnorm, theta, maxHartTemp)
-        thisOctal%inFlow(subcell) = .true.
-     END IF
-  ELSE
-     thisOctal%inFlow(subcell) = .FALSE.
-!     thisOctal%rho(subcell) = 1.e-25
-     thisOctal%rho(subcell) = 1.e-19
-     IF (useHartmannTemp) thisOctal%temperature(subcell) = 6500.0
-  END IF
+             rMnorm = MAX(rMnorm, 0.0001)
+             rMnorm = MIN(rMnorm, 0.9999)
+             !        thisOctal%temperature(subcell) = hartmannTemp(rMnorm, theta, maxHartTemp)
+             thisOctal%temperature(subcell) = hartmannTemp2(rMnorm, theta, maxHartTemp)
+          END IF
+       ELSE  ! not inflow
+          thisOctal%inFlow(subcell) = .FALSE.
+          !     thisOctal%rho(subcell) = 1.e-25
+          thisOctal%rho(subcell) = 1.e-19
+          IF (useHartmannTemp) thisOctal%temperature(subcell) = 6500.0
+       END IF
+    end if ! ttau_acc_on
 
   thisOctal%velocity(subcell) = TTauriVelocity(point,grid)
   !thisOctal%velocity(subcell) = TTauriRotation(point,grid)    
@@ -5078,19 +5191,8 @@ IF ( .NOT. gridConverged ) RETURN
   
   IF ((thisoctal%twod).and.(subcell == 4)) &
        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .false.)
+
   
-!  if (subcell ==4) then
-!     sum = 0.
-!     do i = 1, 9
-!        sum = sum + modulus(thisOctal%cornerVelocity(i))
-!     enddo
-!     if (sum < 1.e-10) then
-!        if (thisOctal%inflow(1).or.thisOctal%inflow(2).or.thisOctal%inflow(3).or.thisOctal%inflow(4)) then
-!           write(*,*) "velocity test",thisOctal%inflow(1:4)
-!           write(*,*) thisOCtal%cornervelocity(1:9)
-!        endif
-!     endif
-!  endif
 
   END SUBROUTINE calcTTauriMassVelocity
 
@@ -5112,11 +5214,11 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER              :: subcell, i    ! loop counters
     TYPE(octalVector)     :: rvec
     integer :: n
-    real(double) :: r, theta, rM, rM_center, h, w, p, rho
+    real(double) :: r, theta, rM, w, p, rho
     real(double) :: rM_fuzzy_in, rM_fuzzy_out  ! beginning of the fuzzy edges
     !
-!    real(double), parameter :: scale = 7.0d0  ! a scale in exponential decay of density.
-    real(double), parameter :: scale = 10.0d0  ! a scale in exponential decay of density.
+    real(double), parameter :: scale = 7.0d0  ! a scale in exponential decay of density.
+!    real(double), parameter :: scale = 10.0d0  ! a scale in exponential decay of density.
     !
     
     if (thisOctal%threeD) then
@@ -5150,17 +5252,10 @@ IF ( .NOT. gridConverged ) RETURN
              
              if (theta == 0.0d0) theta = 0.01
              rM  = r / SIN(theta)**2
-             
-             ! bias more toward the edges of the accreation stream
-             h = 0.5d0*(TTauriRouter - TTauriRinner)*1.0d-10  ! [10^10cm] distance from the centere to edge
-             rM_center = 0.5d0*(TTauriRouter + TTauriRinner)*1.0d-10 ! [10^10cm]   
-             
+                          
              ! The fuzzy density starts from a 5-th of the thickness (2h) 
              ! below the surface.
-!             w = 0.1d0*h;  ! Halpha081 model
-!             w = 0.2d0*h;  ! a fifth for now  ! Halpha067 model
-!             w = 0.25d0*h;  ! Halpha083 model
-             w = 0.3d0*h;  ! Halpha080 model
+             w = get_fuzzy_width() ! [10^10cm] using a fucntion in this module
 
              rM_fuzzy_in  = TTauriRinner*1.0d-10 + w   ! [10^10cm]
              rM_fuzzy_out = TTauriRouter*1.0d-10 - w   ! [10^10cm]
@@ -5187,6 +5282,75 @@ IF ( .NOT. gridConverged ) RETURN
     end do
 
   END SUBROUTINE TTauri_fuzzy_edge
+
+
+  !
+  ! The function to check if a given point (rvec) is in "fuzzy" edge region
+  logical function  in_fuzzy_edge(rvec) 
+    use input_variables, only: TTauriRinner, TTauriRouter
+
+    IMPLICIT NONE    
+    TYPE(octalVector), intent(in):: rvec
+    real(double) :: r, theta, rM,  w
+    real(double) :: rM_fuzzy_in, rM_fuzzy_out  ! beginning of the fuzzy edges
+    !
+    !
+    r = modulus(rvec)
+    
+    if (r/=0.0d0) then
+       theta = ACOS( MIN(ABS(rVec%z/r),0.998_oc) )
+    else
+       theta=0.01
+    end if
+    
+    if (theta == 0.0d0) theta = 0.01
+    rM  = r / SIN(theta)**2
+    
+    
+    ! The fuzzy density starts from a 5-th of the thickness (2h) 
+    ! below the surface.
+    w = get_fuzzy_width() ! [10^10cm] using a fucntion in this module
+
+    rM_fuzzy_in  = TTauriRinner*1.0d-10 + w   ! [10^10cm]
+    rM_fuzzy_out = TTauriRouter*1.0d-10 - w   ! [10^10cm]
+             
+    ! If the point is close to the edge, we make it fuzzy
+    if ( rM < rM_fuzzy_in) then
+       in_fuzzy_edge = .true.
+    elseif (rM > rM_fuzzy_out) then
+       in_fuzzy_edge = .true.
+    else
+       in_fuzzy_edge = .false.
+    end if
+
+  end function in_fuzzy_edge
+
+
+
+  !
+  ! The function to check if a given point (rvec) is in "fuzzy" edge region
+  function  get_fuzzy_width()  RESULT(w)
+    use input_variables, only: TTauriRinner, TTauriRouter
+
+    IMPLICIT NONE    
+    real(double) :: w  ! width in  [10^10cm]
+    real(double) :: r, theta, rM, rM_center, h
+    real(double) :: rM_fuzzy_in, rM_fuzzy_out  ! beginning of the fuzzy edges
+    !
+    ! bias more toward the edges of the accreation stream
+    h = 0.5d0*(TTauriRouter - TTauriRinner)*1.0d-10  ! [10^10cm] distance from the centere to edge
+    rM_center = 0.5d0*(TTauriRouter + TTauriRinner)*1.0d-10 ! [10^10cm]   
+    
+    ! The fuzzy density starts from a 5-th of the thickness (2h) 
+    ! below the surface.
+             w = 0.1d0*h;  ! Halpha081 model
+!    w = 0.2d0*h;  ! a fifth for now  ! Halpha067 model
+!             w = 0.25d0*h;  ! Halpha083 model
+!             w = 0.3d0*h;  ! Halpha080 model
+
+
+  end function get_fuzzy_width
+
 
 
   ! find the total mass in accretion flow
@@ -5294,6 +5458,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
 
+
   subroutine infallEnhancmentAMR(grid, distortionVector, nVec, timeStep, doDistortion, &
                                  particleMass, alreadyDoneInfall)
     ! creates an increase in the accretion rate for a T Tauri geometry.
@@ -5369,6 +5534,7 @@ IF ( .NOT. gridConverged ) RETURN
       type(octalVector), intent(in) :: distortionVec(nVec)
       logical, intent(in) :: undoPrevious
       logical, intent(in) :: setAllChanged
+      
       integer, parameter :: nPhi = 360
       real(oct) :: phi
       integer :: containedParticles
@@ -5929,7 +6095,8 @@ IF ( .NOT. gridConverged ) RETURN
     REAL              :: value
     real(double) :: valueDouble
     TYPE(vector)      :: velocityValue
-    REAL              :: etaLine, chiLine
+    REAL(double)      :: etaLine
+    REAL              :: chiLine
     REAL,DIMENSION(grid%maxLevels) :: valueArraySingle
     REAL,DIMENSION(grid%maxLevels+1) :: departCoeff
     real(double),DIMENSION(grid%maxLevels) :: valueArrayDouble
@@ -6123,7 +6290,7 @@ IF ( .NOT. gridConverged ) RETURN
     use constants_mod
     use vector_mod
     use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
-                               TTauriMstar, dipoleOffset, contFluxFile
+                               TTauriMstar, dipoleOffset, contFluxFile, ThinDiskRin
 
     implicit none
     
@@ -6143,7 +6310,9 @@ IF ( .NOT. gridConverged ) RETURN
     grid%rStar1 = rStar
     grid%rStar2 = 0.
     grid%dipoleOffset = dipoleOffset
-    grid%diskRadius = TTauriRInner * 1.e-10
+!    grid%diskRadius = TTauriRInner * 1.e-10
+!    grid%diskRadius = TTauriDiskRin*rStar  ! [10^10cm]
+    grid%diskRadius = ThinDiskRin*rStar  ! [10^10cm]
     grid%diskNormal = VECTOR(0.,0.,1.)
     grid%diskNormal = rotateX(grid%diskNormal,grid%dipoleOffSet)
     grid%starPos1 = VECTOR(0.,0.,0.) ! in units of 1.e-10 cm
@@ -6166,7 +6335,7 @@ IF ( .NOT. gridConverged ) RETURN
     sAccretion = (fourPi * TTauriRstar**2)*abs(cos(theta1)-cos(theta2))!1.e20
     Taccretion = TaccretionDouble**0.25
 
-    write(*,*) contfluxfile
+!    write(*,*) contfluxfile
     open(20,file=contFluxFile,status="old",form="formatted")
     nnu = 1
 10  continue
@@ -6702,7 +6871,8 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine assign_clumpydisc
 
   
-  SUBROUTINE addNewChildren(parent, grid, sphData, stellar_cluster, inherit, interp)
+  SUBROUTINE addNewChildren(parent, grid, sphData, stellar_cluster, &
+       inherit, interp, romData)
     ! adds all eight new children to an octal
     use input_variables, only : nDustType, mie, photoionization
     IMPLICIT NONE
@@ -6724,6 +6894,13 @@ IF ( .NOT. gridConverged ) RETURN
 
     ! For only cluster geometry ...
     TYPE(sph_data), optional, intent(in) :: sphData
+
+    ! For "romanova" geometry
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
+
+    !
+    !
+    !
     
     inheritProps = .false.
     if (present(inherit)) then
@@ -6789,7 +6966,8 @@ IF ( .NOT. gridConverged ) RETURN
        endif
        NULLIFY(parent%child(newChildIndex)%child)
 
-       if (.not.mie) then
+       if (.not.mie .or. grid%geometry == "ttauri") then
+          ! ttauri geometry could contain dusty disc and gas both... (RK)
           ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
        endif
 
@@ -6819,9 +6997,11 @@ IF ( .NOT. gridConverged ) RETURN
        parent%child(newChildIndex)%rho = 1.e-30
        parent%child(newChildIndex)%N = 1.e-30
        parent%child(newChildIndex)%dusttype = 1
-       ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
-       parent%child(newChildIndex)%dustTypeFraction(1:8,1:nDustType) = 0.d0
-       parent%child(newChildIndex)%dustTypeFraction(1:8,1) = 1.d0
+       if (mie) then
+          ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
+          parent%child(newChildIndex)%dustTypeFraction(1:8,1:nDustType) = 0.d0
+          parent%child(newChildIndex)%dustTypeFraction(1:8,1) = 1.d0
+       end if
        parent%child(newChildIndex)%gasOpacity = .false.
        parent%child(newChildIndex)%Ne = 1.e-30
        parent%child(newChildIndex)%temperature = 3.0
@@ -6849,7 +7029,7 @@ IF ( .NOT. gridConverged ) RETURN
        ! put some data in the eight subcells of the new child
        DO subcell = 1, parent%maxChildren
           CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData, stellar_cluster,  &
-               inheritProps, interpolate)
+               inheritProps, interpolate, romData=romData)
           parent%child(newChildIndex)%label(subcell) = counter
           counter = counter + 1
        END DO
@@ -7876,7 +8056,8 @@ IF ( .NOT. gridConverged ) RETURN
   ! the parameter file).
 
   RECURSIVE SUBROUTINE smoothAMRgridTau(thisOctal,grid,gridConverged, ilam, &
-                                        sphData, stellar_cluster, inheritProps, interpProps)
+                                        sphData, stellar_cluster, &
+                                        inheritProps, interpProps, romData)
     USE input_variables, ONLY : tauSmoothMax,tauSmoothMin
     IMPLICIT NONE
 
@@ -7887,6 +8068,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     LOGICAL, INTENT(IN) :: inheritProps
     LOGICAL, INTENT(IN), optional :: interpProps
+    TYPE(romanova), optional, INTENT(IN)   :: romData  ! used for "romanova" geometry
 
     INTEGER              :: i, ilam
     TYPE(octalVector)    :: thisSubcellCentre
@@ -7922,7 +8104,8 @@ IF ( .NOT. gridConverged ) RETURN
         do i = 1, thisOctal%nChildren, 1
            if (thisOctal%indexChild(i) == thisSubcell) then
               child => thisOctal%child(i)
-              call smoothAMRgridTau(child,grid,gridConverged,  ilam, sphData, stellar_cluster, inheritProps, interpProps)
+              call smoothAMRgridTau(child,grid,gridConverged,  ilam, sphData, stellar_cluster, &
+                   inheritProps, interpProps, romData)
               ! force return until algorithm is fixed
               IF ( .NOT. gridConverged ) RETURN
               exit
@@ -8079,11 +8262,11 @@ IF ( .NOT. gridConverged ) RETURN
                 ! insufficient. We perform them anyway.
                 IF ( neighbour%hasChild(subcell) ) THEN 
                   PRINT *, "neighbour already has child"
-                  do;enddo
+                  STOP
                 END IF
                 IF ( thisOctal%hasChild(thisSubcell) ) THEN 
                   PRINT *, "thisOctal already has child"
-                  do;enddo
+                  STOP
                 END IF
                 ! Note that the version of addNewChild called here does not
                 ! support sphData, etc.
@@ -8092,19 +8275,19 @@ IF ( .NOT. gridConverged ) RETURN
 
               call addNewChild(neighbour, subcell, grid, adjustGridInfo=.TRUE.,  &
                                sphData=sphData, stellar_cluster=stellar_cluster, &
-                               inherit=inheritProps, interp=interpProps)
+                               inherit=inheritProps, interp=interpProps, romData=romData)
 !              call addNewChild(thisOctal, thissubcell, grid, adjustGridInfo=.TRUE.,  &
 !                               sphData=sphData, stellar_cluster=stellar_cluster, &
-!                               inherit=inheritProps, interp=interpProps)
+!                               inherit=inheritProps, interp=interpProps, romData=romData)
 !              write(*,*) "added new child",thisOctal%hasChild,thisOctal%nchildren
 
 
-!                call addNewChildren(thisOctal, grid, sphData, stellar_cluster, inheritProps, interpProps)
+!                call addNewChildren(thisOctal, grid, sphData, stellar_cluster, inheritProps, interpProps, romData)
                 ! If we are splitting two subcells in the same octal, we don't
                 ! need to addNewChildren to the neighbour. If we switch to
                 ! addNewChild this test becomes redundant.
 !                if (.not. associated(thisOctal, neighbour)) then
-!                  call addNewChildren(neighbour, grid, sphData, stellar_cluster, inheritProps, interpProps)
+!                  call addNewChildren(neighbour, grid, sphData, stellar_cluster, inheritProps, interpProps, romData)
 !                end if 
 
                 gridConverged = .FALSE.
@@ -8828,9 +9011,11 @@ IF ( .NOT. gridConverged ) RETURN
   type(octal), pointer   :: thisOctal
   real, intent(in)       :: lambda0                ! rest wavelength of line
   type(octal), pointer  :: child 
-  integer :: subcell, i
+  integer :: subcell, i, j
   real(double) :: d, dV, r, nu0, tauSob, escProb
-  type(octalvector)  :: rvec, rhat
+  real(double) :: tauSob_tmp, tauSob_sum, theta, phi, sin_theta
+  type(octalvector)  :: rvec, rhat, rvec_sample
+  integer :: nsample
   type(VECTOR) :: outVec
   real(double):: dtau_cont, dtau_line, rho
   
@@ -8863,9 +9048,27 @@ IF ( .NOT. gridConverged ) RETURN
              endif
 
              nu0  = cSpeed_dbl / dble(lambda0*angstromtocm)
-              ! in a radial direction
+
              tauSob = thisOctal%chiline(subcell)  / nu0
-             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, outVec, &
+
+!             ! Find the average tauSob over all azimuth positions
+!             nsample = 40
+!             tauSob_sum = 0.0d0
+!             do i = 1, nsample
+!                phi = 2.0d0*PIdouble*dble(i-1)/dble(nsample-1)
+!                theta = ACOS(rhat%z); sin_theta = SIN(theta)
+!                rvec_sample = OCTALVECTOR(r*cos(phi)*sin_theta, r*sin(phi)*sin_theta,  rvec%z)
+!                tauSob_tmp = tauSob / amrGridDirectionalDeriv(grid, rvec_sample, outVec, &
+!                  startOctal=thisOctal)
+!                tauSob_sum = tauSob_sum + tauSob_tmp
+!             end do
+!             tauSob = tauSob_sum/dble(nsample)
+
+             ! in obs direction, but works only for i=0 case.
+!             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, outVec, &
+!                  startOctal=thisOctal)
+             ! in a radial direction
+             tauSob = tauSob / amrGridDirectionalDeriv(grid, rvec, o2s(rhat), &
                   startOctal=thisOctal)
            
              if (tauSob < 0.01) then
@@ -8876,7 +9079,8 @@ IF ( .NOT. gridConverged ) RETURN
              else
                 escProb = 1.d0/tauSob
              end if
-             escProb = min(1.d-2,max(escProb, 1.d-5))
+             escProb = max(escProb, 1.d-5)
+!             escProb = min(1.d-2,max(escProb, 1.d-5))
 
 
              dtau_cont = d*(thisOctal%kappaAbs(subcell,1) + thisOctal%kappaSca(subcell,1))
@@ -8885,11 +9089,12 @@ IF ( .NOT. gridConverged ) RETURN
              rho = thisOctal%rho(subcell)
 !             thisOctal%biasCont3D(subcell) = MAX(dV, 1.d-7) ! Limits the minimum value
 !             thisOctal%biasLine3D(subcell) = dV*thisOctal%biasCont3D(subcell)
-!             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
-             thisOctal%biasCont3D(subcell) = 1.0d0
+             thisOctal%biasCont3D(subcell) = MAX(EXP(-dtau_cont), 1.d-7) ! Limits the minimum value
+!             thisOctal%biasCont3D(subcell) = 1.0d0
 !             thisOctal%biasLine3D(subcell) = thisOctal%rho(subcell)*thisOctal%biasCont3D(subcell)
-             thisOctal%biasLine3D(subcell) = escProb
-!             thisOctal%biasLine3D(subcell) = 1.0d0/(rho*rho)
+!             thisOctal%biasLine3D(subcell) = escProb*thisOctal%biasCont3D(subcell)
+             thisOctal%biasLine3D(subcell) = 1.0d0/SQRT(rho) * thisOctal%biasCont3D(subcell)
+!             thisOctal%biasLine3D(subcell) = 1.0d0/(rho**0.25)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line)*thisOctal%biasCont3D(subcell)
 !             thisOctal%biasLine3D(subcell) = EXP(-dtau_line*d*rVec%x)*thisOctal%biasCont3D(subcell)
 
@@ -9320,7 +9525,7 @@ IF ( .NOT. gridConverged ) RETURN
           ENDDO
           IF (subIndex == -99) THEN
             PRINT *, ' Panic: subindex not found'
-            do; enddo
+            STOP
           ENDIF
 
           child => thisOctal%child(subIndex)
@@ -9405,7 +9610,7 @@ IF ( .NOT. gridConverged ) RETURN
             ENDDO
             IF (subIndex == -99) THEN
                PRINT *, ' Panic: subindex not found'
-               do;enddo
+               STOP
             ENDIF
 
             child => thisOctal%child(subIndex)
@@ -9604,7 +9809,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas)
-    use input_variables, only: includeGasOpacity, nDustType, photoionization
+    use input_variables, only: includeGasOpacity, nDustType, photoionization, mie
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -9662,6 +9867,7 @@ IF ( .NOT. gridConverged ) RETURN
           kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + & 
                thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,1:grid%nLambda)*thisOctal%rho(subcell) * frac
        enddo
+
 !       if (includeGasOpacity) then
 !          call returnGasKappaValue(temperature, thisOctal%rho(subcell),  kappaScaArray=tarray)
 !          kappaScaArray(1:grid%nLambda) = kappaScaArray(1:grid%nLambda) + tarray(1:grid%nLambda)*thisOctal%rho(subcell)
@@ -9677,10 +9883,17 @@ IF ( .NOT. gridConverged ) RETURN
           tlambda = lambda
        endif
        IF (.NOT.PRESENT(lambda)) THEN
-          kappaSca = 0
-          do i = 1, nDustType
-             kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell) 
-          enddo
+          if (grid%oneKappa) then
+             kappaSca = 0
+             do i = 1, nDustType
+                kappaSca = kappaSca + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaSca(i,iLambda)*thisOctal%rho(subcell) 
+             enddo
+          else 
+             ! For line computation (without dust).
+             ! Needs modification for a model which include gas and dust here.
+             ! This is a temporarily solution
+             kappaSca = thisOctal%kappaSca(subcell,iLambda)
+          end if
        else
           kappaSca = 0
           do i = 1, nDustType
@@ -9702,10 +9915,17 @@ IF ( .NOT. gridConverged ) RETURN
           tlambda = lambda
        endif
        IF (.NOT.PRESENT(lambda)) THEN
-            kappaAbs = 0
-          do i = 1, nDustType
-             kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
-          enddo
+          if (grid%oneKappa) then
+             kappaAbs = 0
+             do i = 1, nDustType
+                kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell)
+             enddo
+          else
+             ! For line computation (without dust).
+             ! Needs modification for a model which include gas and dust here.
+             ! This is a temporarily solution
+             kappaAbs = thisOctal%kappaAbs(subcell,iLambda)
+          end if
        else
           kappaAbs = 0
           do i = 1, nDustType
@@ -10766,12 +10986,18 @@ IF ( .NOT. gridConverged ) RETURN
 
   end subroutine myTauSmooth
 
-  recursive subroutine myScaleSmooth(factor, thisOctal, grid,  converged, inheritProps, interpProps)
+  recursive subroutine myScaleSmooth(factor, thisOctal, grid,  converged, &
+       inheritProps, interpProps, sphData, stellar_cluster, romData)
     type(gridtype) :: grid
     real :: factor
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
     logical, optional :: inheritProps, interpProps
+    !
+    TYPE(sph_data), optional, INTENT(IN) :: sphData   ! Matthew's SPH data.
+    TYPE(cluster), optional, intent(in)  :: stellar_cluster
+    TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
+    !
     integer :: subcell, i, ilambda
     logical :: converged
     real(double) :: kabs, ksca, r
@@ -10787,7 +11013,8 @@ IF ( .NOT. gridConverged ) RETURN
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call myScaleSmooth(factor, child, grid, converged, inheritProps, interpProps)
+                call myScaleSmooth(factor, child, grid, converged, inheritProps, interpProps, &
+                     sphData=sphData, stellar_cluster=stellar_cluster, romData=romData)
                 exit
              end if
           end do
@@ -10825,7 +11052,8 @@ IF ( .NOT. gridConverged ) RETURN
 !                if ((thisOctal%nDepth < (neighbourOctal%ndepth-1))) then
                 if ((thisOctal%subcellSize/neighbourOctal%subcellSize) > factor) then
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                           inherit=inheritProps, interp=interpProps)
+                           inherit=inheritProps, interp=interpProps, &
+                           sphData=sphData, stellar_cluster=stellar_cluster, romData=romData)
                       converged = .false.
                       return
                 endif
@@ -11515,12 +11743,20 @@ IF ( .NOT. gridConverged ) RETURN
   end function randomPositionInCell
 
 
-
-
-  SUBROUTINE startReturnSamples2(startPoint,direction,grid,          &
-             sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
-             usePops,iLambda,error,lambda,nSource,source,kappaAbs,kappaSca,velocity,&
-             velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow)
+  !-----------------------------------------------------------------------------------
+  ! Base on startReturnSample of NHS. Optimized for a solving formal solution.
+  !    --- (R. Kurosawa)
+  ! Returns the amr grid values along a ray in the direction (direction) originated
+  ! from "startPoint".
+  ! Main differences from startReturnSample is:
+  !   1. If a ray encontour "thin disc", starting point will be shifted to the point
+  !      of insertersection. 
+  !------------------------------------------------------------------------------------
+  SUBROUTINE amr_values_along_ray (startPoint,direction,grid,          &
+             sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore, fromDisc, &
+             usePops,iLambda,error,lambda,kappaAbs,kappaSca,velocity,&
+             velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow, &
+             etaCont, etaLine)
     ! samples the grid at points along the path.
     ! this should be called by the program, instead of calling 
     !   returnSamples directly, because this checks the start and finish
@@ -11529,8 +11765,307 @@ IF ( .NOT. gridConverged ) RETURN
     !   intersection with the stellar surface(s), disc etc. 
  
     IMPLICIT NONE
-    integer :: nSource
-    type(SOURCETYPE) :: source(:)
+
+    TYPE(octalVector), INTENT(INOUT)   :: startPoint ! photon start point
+    TYPE(octalVector), INTENT(IN)      :: direction  ! photon direction 
+    TYPE(gridtype), INTENT(IN)         :: grid       ! the entire grid structure
+    REAL, INTENT(IN)                   :: sampleFreq ! the maximum number of
+!    real(oct), INTENT(IN)   :: sampleFreq ! the maximum number of 
+                       ! samples that will be made in any subcell of the octree. 
+                       
+    INTEGER, INTENT(OUT)               :: nSamples   ! number of samples made
+    INTEGER, INTENT(IN)                :: maxSamples ! size of sample arrays 
+    logical, intent(in)                :: thin_disc_on   ! T to include thin disc
+    LOGICAL, INTENT(IN)                :: opaqueCore ! true if the core is opaque
+    LOGICAL, INTENT(OUT)               :: hitCore    ! true if the core is opaque
+    LOGICAL, INTENT(OUT)               :: fromDisc   ! starting point the ray was adjusted to the disc
+    LOGICAL, INTENT(IN)                :: usePops    ! whether to use level populations
+    INTEGER, INTENT(IN)                :: iLambda    ! wavelength index
+    INTEGER, INTENT(INOUT)             :: error      ! error code
+    REAL, DIMENSION(:), INTENT(INOUT)  :: lambda     ! path distances of sample locations
+
+    
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaAbs   ! continuous absorption opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca   ! scattering opacities
+    TYPE(vector),DIMENSION(:),INTENT(INOUT),OPTIONAL :: velocity ! sampled velocities
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: velocityDeriv ! sampled velocity derivatives
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: chiLine    ! line opacities
+    REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: rho        ! density at sample points
+    real(double),DIMENSION(:,:),INTENT(INOUT),OPTIONAL:: levelPop ! level populations
+    REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: temperature! temperature [K] at sample points
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: Ne ! electron density
+    logical,DIMENSION(:),INTENT(INOUT),OPTIONAL  ::inFlow   ! flag to tell if the point is inflow
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaCont ! contiuum emissivity
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaLine ! line emissivity
+
+    TYPE(octalVector)       :: locator 
+                       ! 'locator' is used to indicate a point that lies within the  
+                       !   *next* cell of the octree that the ray will interesect.
+                       !   initially this will be the same as the startPoint
+      
+    TYPE(octalVector)       :: currentPoint ! current position of ray 
+    LOGICAL                 :: abortRay     ! flag to signal completion of ray trace
+    TYPE(octal)             :: octree       ! the octree structure within 'grid'
+    TYPE(octalVector)       :: directionNormalized
+    real(oct)    :: distanceLimit ! max length of ray before aborting
+    ! margin is the size of the region around the edge of a subcell
+    !   where numerical inaccuracies may cause problems.
+    real(oct)    :: margin
+ 
+    ! variables for testing special cases (stellar intersections etc.)
+    TYPE(octalVector)       :: starPosition       ! position vector of stellar centre
+    TYPE(octalVector)       :: diskNormal         ! disk normal vector
+    real(oct)    :: rStar              ! stellar radius
+    real(oct)    :: endLength          ! max path length of photon
+    TYPE(octalVector)       :: endPoint           ! where photon leaves grid
+    LOGICAL                 :: absorbPhoton       ! photon will be absorbed
+    real(oct)    :: distanceFromOrigin ! closest distance of plane from origin
+    TYPE(octalVector)       :: diskIntersection   ! point of photon intersection with disk
+    real(oct)    :: starIntersectionDistance1 ! distance to first  intersection
+    real(oct)    :: starIntersectionDistance2 ! distance to second intersection
+    LOGICAL                 :: starIntersectionFound1 ! 1st star intersection takes place      
+    LOGICAL                 :: starIntersectionFound2 ! 2nd star intersection takes place      
+    LOGICAL                 :: intersectionFound  ! true when intersection takes place      
+    real(oct)    :: intersectionRadius ! disk radius when photon intersects
+    real(oct)    :: diskDistance       ! distance to disk intersection
+    real(oct)    :: distanceThroughStar! distance of chord through star
+    TYPE(octalVector)       :: dummyStartPoint    ! modified start point 
+!    real(oct), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
+    real(oct), PARAMETER :: fudgefactor = 1.000001 ! overestimates stellar size
+    
+    
+    ! we will abort tracking a photon just before it reaches the edge of the
+    !   simulation space. This is the fraction of the total distance to use:
+    real(oct), PARAMETER :: distanceFraction = 0.999_oc 
+
+    ! used internally
+    TYPE(octalVector)       ::startPointNew       ! 
+!    TYPE(octalVector)       ::entryPoint       ! 
+ 
+    
+    ! we will abort tracking any rays which are too close to 
+    !   to a cell wall. The distance to use is defined by:
+    margin = 6.0_oc * REAL(grid%maxDepth,kind=oct) * EPSILON(1.0_oc)
+    ! some more experimentation is required to find out the best value for
+    !   margin.
+    
+    
+    ! set up some variables
+    octree = grid%octreeRoot  
+    abortRay = .FALSE.
+    hitCore = .FALSE.
+    fromDisc = .false.
+    directionNormalized = direction
+    CALL normalize(directionNormalized)
+    distanceLimit = HUGE(distanceLimit)
+    locator = startPoint
+    nSamples = 0
+    startPointnew = startPoint
+
+    currentPoint = startPointNew
+    
+    IF (.NOT. inOctal(octree,startpointnew)) THEN
+       
+      PRINT *, 'Attempting to find path between point(s) outwith the grid.'
+      PRINT *, ' in [amr_mod::amr_values_along_ray].'
+      PRINT *, ' ==> StartPoint = (', startPoint, ')'
+      error = -30
+
+      !
+      print *, "Set the size of the box should be more than the distance between "
+      print *, "the center of the star and the edge of the density field."
+
+      stop
+
+    ENDIF
+   
+   
+    ! geometry-specific tests should go here
+    IF (grid%geometry(1:6) == "ttauri" .OR. grid%geometry(1:4) == "jets" .or. &
+         grid%geometry(1:9) == "luc_cir3d" .or. grid%geometry(1:6) == "cmfgen" .or. &
+         grid%geometry(1:8) == "romanova" ) THEN
+      
+       ! need to test for both star and disc intersections 
+      
+       ! we will find out when and where the photon leaves the simulation space 
+       CALL getExitPoint(currentPoint,directionNormalized,locator,abortRay,error,&
+                         grid%halfSmallestSubcell,endPoint,octree%centre,        &
+                         (octree%subcellSize*2.0_oc),endLength,margin,grid%octreeRoot%threed) 
+
+       endLength = endLength * distanceFraction
+       
+       ! need to reset some of the variables
+       abortRay = .FALSE.
+       locator = startpointnew
+       
+       ! for the moment, we will just assume a 2-d disc.
+       absorbPhoton = .FALSE.
+       diskNormal = grid%diskNormal
+       starPosition = grid%starPos1
+                                  
+       ! find the (geometrycally thin) disk intersection point
+       if (grid%geometry == "luc_cir3d" .or. grid%geometry == "cmfgen" ) then
+          intersectionFound = .false.
+       else
+          if (thin_disc_on) then
+             distanceFromOrigin = modulus(grid%starPos1)
+             diskIntersection = intersectionLinePlane(startpointnew, directionNormalized,&
+                  diskNormal, distanceFromOrigin, intersectionFound)
+          else
+             intersectionFound = .false.
+          end if
+       end if
+
+       
+       IF (intersectionFound) THEN
+       
+         ! we need to check whether the photon passes through the disk's
+         !   central hole, or the outside of the outer radius of accretion disc.
+         intersectionRadius =  modulus(diskIntersection - starPosition)
+         IF (intersectionRadius > grid%diskRadius .and.  &
+              intersectionRadius < 1.5d5) THEN  ! assuming 100 AU disc size
+
+           ! we need to check whether the intersection occurs within our
+           !   simulation space.
+           diskDistance = modulus(diskIntersection-startpointnew)
+           IF (diskDistance < endLength) THEN
+              ! Ajdust the current poistion to the insersecting point
+              abortRay = .FALSE.
+              fromDisc = .true.
+              currentPoint = diskIntersection + (fudgefactor*direction)
+              startpointnew = currentPoint
+              endLength = fudgefactor*(endLength - diskDistance)
+              locator = currentPoint                  
+
+           else
+              ! no need to do any calculation for this ray.
+              abortRay = .TRUE.
+
+           END IF
+         END IF
+       END IF
+         
+         
+       ! now we check for intersections with the star
+
+       rStar = grid%rStar1 
+       CALL intersectionLineSphere(startpointnew,directionNormalized,endLength,starPosition, &
+                                   rStar,starIntersectionFound1,starIntersectionFound2,   &
+                                   starIntersectionDistance1,starIntersectionDistance2)
+       ! by passing a line segment to intersectionLineSphere, we ensure that we
+       !   do not find intersections with the star that take place after the 
+       !   photon has been absorbed by the disk.
+       IF (starIntersectionFound1) THEN
+       
+         endLength = starIntersectionDistance1
+         IF (opaqueCore) absorbPhoton = .TRUE.
+         
+       END IF
+
+       ! we trace the photon path until it encounters the disk, the star,
+       !   or the edge of the simulation space.
+       error = 0
+       CALL returnSamples(currentPoint,startpointnew,locator,directionNormalized,&
+                     octree,grid,sampleFreq,nSamples,maxSamples,abortRay,     &
+                     lambda,usePops,iLambda,error,margin,endLength,           &
+                     kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,   &
+                     velocityDeriv=velocityDeriv,chiLine=chiLine,             &
+                     levelPop=levelPop,rho=rho, temperature=temperature,      &
+                     Ne=Ne, inFlow=inFlow, etaCont=etaCont, etaLine=etaLine)
+      
+       IF (error < 0)  RETURN
+
+       IF (.NOT. opaqueCore .AND. starIntersectionFound2) THEN 
+         ! the photon passes through the star and continues on the other side.
+
+         ! we have to adjust the arguments to returnSamples to make the 
+         !   output arrays correct.
+         distanceThroughStar = fudgeFactor * &
+                      (starIntersectionDistance2 - starIntersectionDistance1)
+         currentPoint = currentPoint + distanceThroughStar * directionNormalized
+         locator = currentPoint
+         dummystartpoint = startpointnew + distanceThroughStar * directionNormalized
+         distanceLimit = endLength - distanceThroughStar
+           
+        CALL returnSamples(currentPoint,dummyStartPoint,locator,             &
+                    directionNormalized,octree,grid,sampleFreq,nSamples,     &
+                    maxSamples,abortRay,lambda,usePops,iLambda,error,margin, &
+                    distanceLimit,kappaAbs=kappaAbs,kappaSca=kappaSca,       &
+                    velocity=velocity,velocityDeriv=velocityDeriv,           &
+                    chiLine=chiLine,levelPop=levelPop,rho=rho,               &
+                    temperature=temperature, Ne=Ne, inFlow=inFlow,           &
+                    etaCont=etaCont, etaLine=etaLine)
+
+       END IF
+
+       ! if the photon ends up in the star, we make sure it absorbed.
+       IF (absorbPhoton) THEN
+       
+         nSamples = nSamples + 1
+         IF (nSamples > maxSamples) THEN
+           PRINT *, "Error:: nSamples > maxSamples in [amr_mod::amr_values_along_ray] "
+           PRINT *, "        nSamples   = ", nSamples
+           PRINT *, "        maxSamples = ", maxSamples
+           STOP
+         END IF
+         
+         lambda(nSamples) = lambda(nSamples-1)
+         hitCore = .TRUE.
+         IF (PRESENT(kappaSca))      kappaSca(nSamples) = 0.
+         IF (PRESENT(kappaAbs))      kappaAbs(1:nSamples) = 1.e20
+         IF (PRESENT(velocity))      velocity(nSamples) = vector(0.,0.,0.)
+         IF (PRESENT(velocityDeriv)) velocityDeriv(nSamples) = 1.0
+         IF (PRESENT(chiLine))       chiLine(1:nSamples) = 1.e20
+         IF (PRESENT(levelPop))      levelPop(nSamples,:) = 0.0
+         IF (PRESENT(Ne))            Ne(nSamples) = 0.0
+         IF (PRESENT(rho))           rho(nSamples) = 0.0
+         IF (PRESENT(temperature))   temperature(nSamples) = 0.0
+         IF (PRESENT(inFlow))        inFlow(nSamples) = .true.
+         IF (PRESENT(etaCont))       etaCont(nSamples) = 0.0
+         IF (PRESENT(etaLine))       etaLine(nSamples) = 0.0
+       END IF
+       
+    ELSE
+            
+       CALL getExitPoint(currentPoint,directionNormalized,locator,abortRay,error,&
+                         grid%halfSmallestSubcell,endPoint,octree%centre,        &
+                         (octree%subcellSize*2.0_oc),endLength,margin,grid%octreeRoot%threed) 
+       distanceLimit = endLength * distanceFraction
+       
+       ! need to reset some of the variables
+       abortRay = .FALSE.
+       locator = startpointnew
+       
+       CALL returnSamples(currentPoint,startpointnew,locator,directionNormalized,&
+                   octree,grid,sampleFreq,nSamples,maxSamples,abortRay,lambda,&
+                   usePops,iLambda,error,margin,distanceLimit,                &
+                   kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity,     &
+                   velocityDeriv=velocityDeriv,chiLine=chiLine,               &
+                   levelPop=levelPop,rho=rho,temperature=temperature,         &
+                   Ne=Ne,inFlow=inFlow,etaCont=etaCont,etaLine=etaLine)
+    END IF
+
+    ! The new starting point will be returned to a parent routine.
+    startpoint = startpointnew
+      
+  end SUBROUTINE amr_values_along_ray
+
+
+  !
+  ! What is the difference between this and the original startReturnSamples routine??????
+  ! 
+  SUBROUTINE startReturnSamples2(startPoint,direction,grid,          &
+             sampleFreq,nSamples,maxSamples,thin_disc_on, opaqueCore,hitCore,      &
+             usePops,iLambda,error,lambda,nSource,source,kappaAbs,kappaSca,velocity,&
+             velocityDeriv,chiLine,levelPop,rho, temperature, Ne, inflow, etaCont, etaLine)
+    ! samples the grid at points along the path.
+    ! this should be called by the program, instead of calling 
+    !   returnSamples directly, because this checks the start and finish
+    !   points are within the grid bounds. returnSamples *assumes* this 
+    !   criterion is met. also, the path of the photon is checked for 
+    !   intersection with the stellar surface(s), disc etc. 
+ 
+    IMPLICIT NONE
 
     TYPE(octalVector), INTENT(IN)      :: startPoint ! photon start point
     TYPE(octalVector), INTENT(IN)      :: direction  ! photon direction 
@@ -11548,6 +12083,9 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN)                :: iLambda    ! wavelength index
     INTEGER, INTENT(INOUT)             :: error      ! error code
     REAL, DIMENSION(:), INTENT(INOUT)  :: lambda     ! path distances of sample locations
+    integer, intent(in), optional      :: nSource
+    type(SOURCETYPE),intent(in), optional :: source(:)
+
     
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaAbs   ! continuous absorption opacities
     REAL(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: kappaSca   ! scattering opacities
@@ -11559,6 +12097,8 @@ IF ( .NOT. gridConverged ) RETURN
     REAL,DIMENSION(:),INTENT(INOUT),OPTIONAL  :: temperature! temperature [K] at sample points
     real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: Ne ! electron density
     logical,DIMENSION(:),INTENT(INOUT),OPTIONAL  ::inFlow   ! flag to tell if the point is inflow
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaCont ! contiuum emissivity
+    real(double),DIMENSION(:),INTENT(INOUT),OPTIONAL  :: etaLine ! line emissivity
 
     TYPE(octalVector)       :: locator 
                        ! 'locator' is used to indicate a point that lies within the  
@@ -11602,6 +12142,8 @@ IF ( .NOT. gridConverged ) RETURN
     !   simulation space. This is the fraction of the total distance to use:
     real(oct), PARAMETER :: distanceFraction = 0.999_oc 
     real(double) :: fudgeFac = 0.001d0
+    integer :: nSource_local
+
 
 
     currentPosition = startPoint
@@ -11609,11 +12151,21 @@ IF ( .NOT. gridConverged ) RETURN
     nSamples = 0
     length = 0.d0
     endLength = 1.d30
+    directionNormalized = direction
+    CALL normalize(directionNormalized)
 
     absorbPhoton = .false.
     hitcore = .false.
 
-    if (nSource == 0) then
+    ! Since not all gemoetry uses a "source" object, you need this 
+    ! statement (RK).
+    if (PRESENT(nSource)) then
+       nSource_local = nSource
+    else
+       nSource_local = 0
+    end if
+
+    if (nSource_local == 0) then
        ! first we check for intersections with the star
        starPosition = grid%starPos1
        rStar = grid%rStar1 
@@ -11632,9 +12184,54 @@ IF ( .NOT. gridConverged ) RETURN
           endLength = 1.d30
        endif
     else
-       call distanceToSource(source, nSource, startPoint, direction, absorbPhoton, endLength)
+       call distanceToSource(source, nSource_local, o2d(startPoint), o2d(direction), absorbPhoton, endLength)
     endif
 
+
+    !
+    ! geometry-specific tests should go here
+    !
+    IF (grid%geometry(1:6) == "ttauri" .OR. grid%geometry(1:4) == "jets" .or. &
+         grid%geometry(1:8) == "romanova") THEN
+      
+       ! need to reset some of the variables
+       abortRay = .FALSE.
+       locator = startPoint
+       
+       ! for the moment, we will just assume a 2-d disc.
+       absorbPhoton = .FALSE.
+       diskNormal = grid%diskNormal
+       starPosition = grid%starPos1
+                                  
+       ! find the (geometrycally thin) disk intersection point
+       if (thin_disc_on) then
+          distanceFromOrigin = modulus(grid%starPos1)
+          diskIntersection = intersectionLinePlane(startPoint, directionNormalized,&
+               diskNormal, distanceFromOrigin, intersectionFound)
+       else
+          intersectionFound = .false.
+       end if
+       
+       IF (intersectionFound) THEN
+       
+         ! we need to check whether the photon passes through the disk's
+         !   central hole, or the outside of the outer radius of accretion disc.
+         intersectionRadius =  modulus(diskIntersection - starPosition)
+         IF (intersectionRadius > grid%diskRadius .and.  &
+              intersectionRadius < 1.5d5) THEN  ! assuming 100 AU disc size
+!              intersectionRadius < grid%octreeRoot%subcellsize*2.0) THEN
+           absorbPhoton = .TRUE.
+
+           ! we need to check whether the intersection occurs within our
+           !   simulation space.
+           diskDistance = modulus(diskIntersection-startPoint)
+           ! now compare this distance with the endLength computed
+           ! earlier. 
+           endLength = min(endLength, diskDistance)
+         END IF
+       END IF
+       
+    end IF
 
 
 
@@ -11649,9 +12246,10 @@ IF ( .NOT. gridConverged ) RETURN
 
        if (nSamples < maxSamples) then
           call takeSample(currentPosition,length,direction,grid,thisOctal,subcell,nSamples,&
-               maxSamples,usePops,iLambda,error,lambda,kappaAbs,     &
-               kappaSca,velocity,velocityDeriv,chiLine,levelPop,rho,  &
-               temperature,Ne,inFlow) 
+               maxSamples,usePops,iLambda,error,lambda,&
+               kappaAbs=kappaAbs,kappaSca=kappaSca,velocity=velocity, velocityDeriv=velocityDeriv, &
+               chiLine=chiLine,levelPop=levelPop,rho=rho,  &
+               temperature=temperature,Ne=Ne,inFlow=inFlow, etaCont=etaCont, etaLine=etaLine) 
        else
           call writeWarning("Reached maxSamples limit in ray trace")
           exit
@@ -11685,6 +12283,9 @@ IF ( .NOT. gridConverged ) RETURN
        IF (PRESENT(rho))           rho(nSamples) = 0.0
        IF (PRESENT(temperature))   temperature(nSamples) = 0.0
        IF (PRESENT(inFlow))        inFlow(nSamples) = .true.
+       IF (PRESENT(etaLine))       etaLine(nSamples) = 0.0d0
+       IF (PRESENT(etaCont))       etaCont(nSamples) = 0.0d0
+
     END IF
 
 
@@ -11753,5 +12354,54 @@ IF ( .NOT. gridConverged ) RETURN
     end do
   end subroutine splitGridFractal
 
+  !
+  ! Recursively turn off the magnetosphere
+  !
+  RECURSIVE SUBROUTINE turn_off_magnetosphere(thisOctal,grid, Rmax)    
+    
+    IMPLICIT NONE
+    
+    TYPE(octal), POINTER   :: thisOctal
+    TYPE(gridtype)         :: grid
+    ! The outer radius of the magnetosphere.
+    real(double), intent(in) :: Rmax  ! [10^10cm] 
+    
+    TYPE(octal), POINTER   :: pChild
+    INTEGER :: subcell, n
+
+    if (thisOctal%threeD) then
+       n = 8
+    else
+       n =4
+    end if
+    
+
+    do subcell = 1, n
+       if (thisOctal%hasChild(subcell)) then
+          ! just decdend the tree branch
+          pChild => thisOctal%child(subcell)
+          CALL turn_off_magnetosphere(pChild,grid,Rmax)
+       else
+          ! turnning it off 
+!          if (TTauriInFlow(thisOctal%centre, grid)) then          
+          if ( (modulus(thisOctal%centre) <= Rmax .and. abs(thisOctal%centre%z)>5.0d0)  &
+               .or.  &
+               (modulus(thisOctal%centre) <= Rmax*1.01 .and. abs(thisOctal%centre%z)<5.0d0) ) then 
+             thisOctal%inFlow(subcell) = .false.
+             thisOctal%kappaAbs(subcell,:) = 1.0e-30
+             thisOctal%kappaSca(subcell,:) = 1.0e-30          
+             thisOctal%temperature(subcell) = 6500.0
+             thisOctal%biasCont3D(subcell) = 1.0e-30  
+             thisOctal%biasLine3D(subcell) = 1.0e-30  
+             thisOctal%etaLine(subcell) = 1.e-30
+             thisOctal%etaCont(subcell) = 1.e-30
+             thisOctal%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+             thisOctal%velocity = vector(1.e-30,1.e-30,1.e-30)
+             thisOctal%rho(subcell) = 1.0d-19
+          end if
+       end if
+    end do
+    
+  END SUBROUTINE turn_off_magnetosphere
 
 END MODULE amr_mod

@@ -12,7 +12,7 @@ module source_mod
 
 
   type SOURCETYPE
-     type(OCTALVECTOR)    :: position   ! [10^10cm]
+     type(DOUBLEVECTOR)    :: position   ! [10^10cm]
      real(double) :: radius     ! [10^10cm]
      real(double) :: luminosity ! [erg/s]
      real(double) :: teff       ! [K]
@@ -82,7 +82,7 @@ module source_mod
     subroutine distanceToSource(source, nSource, rVec, uHat, hitSource, distance)
       integer :: nSource
       type(SOURCETYPE) :: source(nSource)
-      type(OCTALVECTOR) :: rVec, uHat
+      type(DOUBLEVECTOR) :: rVec, uHat
       real(double) :: distance, cosTheta, sintheta
       logical :: hitSource
       integer :: i
@@ -130,7 +130,7 @@ module source_mod
     real(double) :: distance, radius
     real(double) :: x1, x2,a,b,c,d,costheta
     logical :: ok
-    type(OCTALVECTOR) :: rVec, uHat, centre
+    type(DOUBLEVECTOR) :: rVec, uHat, centre
 
     d = modulus(centre - rVec)
     cosTheta = (uHat .dot. (centre-rVec)) / d

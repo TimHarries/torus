@@ -219,6 +219,9 @@ module image_mod
        deallocate(thisImage%pixel)
        deallocate(thisImage%vel)
        deallocate(thisImage%totWeight)
+       NULLIFY(thisImage%pixel)
+       NULLIFY(thisImage%vel)
+       NULLIFY(thisImage%totWeight)
 
      end subroutine freeImage
 
@@ -547,6 +550,59 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
 
       deallocate(smoothed)
     end subroutine smoothPVimage
+
+
+    subroutine simply_writeImage(thisImage, filename)
+       
+       type(IMAGETYPE),intent(in) :: thisImage
+       character(len=*), intent(in) :: filename
+       !
+       real, allocatable :: piximageI(:,:)
+       real, allocatable :: piximageQ(:,:)
+       real, allocatable :: piximageU(:,:)
+       real, allocatable :: piximageV(:,:)
+       real, allocatable :: piximageVel(:,:)
+       real :: imScale
+
+       integer :: nSize, nPix, i, j
+
+       nSize = thisImage%nSize
+       nPix = 2*thisImage%nSize + 1
+
+
+       allocate(pixImageI(1:nPix,1:nPix))
+       allocate(pixImageQ(1:nPix,1:nPix))
+       allocate(pixImageU(1:nPix,1:nPix))
+       allocate(pixImageV(1:nPix,1:nPix))
+       allocate(pixImageVel(1:nPix,1:nPix))
+       pixImageVel = 0.
+
+
+       
+
+       do i = 1 , nPix
+          do j = 1 , nPix
+             pixImageI(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%i
+             pixImageQ(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%q
+             pixImageU(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%u
+             pixImageV(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%v
+          enddo
+       enddo
+
+       imscale = thisIMage%scale
+       
+       call writeImagef77(pixImageI, pixImageQ, pixImageU, &
+            pixImageV, pixImageVel, imscale, &
+            thisImage%nSize, nPix, filename)
+
+       deallocate(pixImageI)
+       deallocate(pixImageQ)
+       deallocate(pixImageU)
+       deallocate(pixImageV)
+       deallocate(pixImageVel)
+     
+     end subroutine simply_writeImage
+
       
 end module image_mod
 

@@ -342,7 +342,7 @@ contains
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, &
-       VoigtProf, dopShift)
+       VoigtProf, dirObs, dopShift)
     use input_variables, only : nphotons, photoionization
 
     implicit none
@@ -433,6 +433,7 @@ contains
     logical :: forcedWavelength
     real :: usePhotonWavelength
     logical, intent(in) ::  VoigtProf
+    type(vector), intent(in) :: dirObs  ! direction to an observer
 
     real :: tempr
 
@@ -465,6 +466,10 @@ contains
     real(double) :: rho
     real(double) :: nu_shuffled, lambda_shuffled, nu, Gamma, Ne
     type(Vector) ::  velocity
+    real(double) :: tauSob,  escProb
+    real :: chiline, dV_dn
+!    type(octal), pointer :: thisOctal
+    integer :: thisSubcell
 
     ! set up the weights and the stokes intensities (zero at emission)
 
@@ -614,9 +619,10 @@ contains
 !                   thisPhoton%position = rotateZ(thisPhoton%position, dble(ang))
 !                endif
 
-                if (grid%geometry(1:7) == "ttauri" .or.  &
-                     grid%geometry(1:9) == "luc_cir3d".or. &
-                     grid%geometry(1:6) == "cmfgen") then
+                if (grid%geometry(1:7) == "ttauri"    .or.  &
+                    grid%geometry(1:9) == "luc_cir3d" .or.  &
+                    grid%geometry(1:6) == "cmfgen"    .or.  &
+                    grid%geometry(1:8) == "romanova")  then
                    ! need to check the position is not inside the star
                    if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) then
                       exit
@@ -691,7 +697,7 @@ contains
           
           end if ! (photonFromEnvelope)
           
-       else ! grid has polar coordinates
+       else ! grid has polar coordinates  or grid%lineEmission==.true.
 
           ! if there is line emission, then the continuum photons can be produced either
           ! at the core, or in the wind itself.
@@ -815,12 +821,13 @@ contains
 
 
 
-                  if (grid%geometry(1:7) == "ttauri" .or. &
-                       grid%geometry(1:9) == "luc_cir3d" .or. &
-                     grid%geometry(1:6) == "cmfgen") then
+                  if (grid%geometry(1:7) == "ttauri"    .or. &
+                      grid%geometry(1:9) == "luc_cir3d" .or. &
+                      grid%geometry(1:6) == "cmfgen"    .or. &
+                      grid%geometry(1:8) == "romanova"          ) then
                     ! need to check the position is not inside the star
                     if ((modulus(thisPhoton%position-s2o(grid%starPos1))) > grid%rStar1) exit
-                  else if (inOctal(grid%octreeRoot, thisPhoton%position)) then
+                  else if (.not. inOctal(grid%octreeRoot, thisPhoton%position)) then
                     exit
                   end if
 
@@ -866,8 +873,10 @@ contains
                    biasWeight = 1.d0/biasWeight
                 endif
 
+                thisPhoton%position = VECTOR(x, y, z)
+
              endif
-             thisPhoton%position = VECTOR(x, y, z)
+
 
 
           else ! not (contWindPhoton)
@@ -937,7 +946,7 @@ contains
                       !call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
                    endif
 
-                case("ttauri", "luc_cir3d",  "cmfgen")
+                case("ttauri", "luc_cir3d",  "cmfgen", "romanova")
 
 !                   call random_number(r1)
 !                   if (r1 < chanceHotRing) then
@@ -964,6 +973,7 @@ contains
 !                      thisPhoton%position = (r*randomUnitVector())
 !                   endif
 
+
                    call getPhotoVec(starSurface, thisPhoton%position, thisPhoton%direction)
 
                 case("jets")
@@ -982,7 +992,7 @@ contains
              call normalize(thisPhoton%originalNormal)
 
           endif ! (contWindPhoton)
-
+          
        endif ! grid cartesian/adaptive/polar
 
        ! get wavelength
@@ -1038,6 +1048,7 @@ contains
              thisPhoton%lambda = lambda(ilambda)
           endif
        endif
+
        
        if (.not.flatspec) then
           if (photonFromEnvelope) then
@@ -1341,34 +1352,35 @@ contains
              end if
              !!! we will just choose a random point within the subcell.
              !!! this *should* be done in a better way.
-             call random_number(r1)
-             r1 = r1 - 0.5  ! shift value mean value to zero
-             r1 = r1 * 0.995 ! to avoid any numerical accuracy problems
-             xOctal = r1 * sourceOctal%subcellSize + octalCentre%x
+             call random_number(r1_oct)
+             r1_oct = r1_oct - 0.5d0  ! shift value mean value to zero
+             r1_oct = r1_oct * 0.995d0 ! to avoid any numerical accuracy problems
+             xOctal = r1_oct * sourceOctal%subcellSize + octalCentre%x
                
              if (sourceOctal%threed) then
-                call random_number(r2)
-                r2 = r2 - 0.5                                  
-                r2 = r2 * 0.995                                           
-                yOctal = r2 * sourceOctal%subcellSize + octalCentre%y
+                call random_number(r2_oct)
+                r2_oct = r2_oct - 0.5d0                                  
+                r2_oct = r2_oct * 0.995d0                                           
+                yOctal = r2_oct * sourceOctal%subcellSize + octalCentre%y
              else
-                yOctal = 0.
+                yOctal = 0.0d0
              endif
 
                 
-             call random_number(r3)
-             r3 = r3 - 0.5                                  
-             r3 = r3 * 0.995                                           
-             zOctal = r3 * sourceOctal%subcellSize + octalCentre%z
+             call random_number(r3_oct)
+             r3_oct = r3_oct - 0.5d0                                  
+             r3_oct = r3_oct * 0.995d0                                           
+             zOctal = r3_oct * sourceOctal%subcellSize + octalCentre%z
              
 
 !!just for testing ... 
 !             thisPhoton%position = octalCentre
              thisPhoton%position = vector(xOctal,yOctal,zOctal)
 
-             if (grid%geometry(1:7) == "ttauri" .or.  &
-                  grid%geometry(1:9) == "luc_cir3d".or. &
-                  grid%geometry(1:6) == "cmfgen") then
+             if (grid%geometry(1:7) == "ttauri"      .or.  &
+                  grid%geometry(1:9) == "luc_cir3d"  .or.  &
+                  grid%geometry(1:6) == "cmfgen"     .or.  &
+                  grid%geometry(1:8) == "romanova"          ) then
                 ! need to check the position is not inside the star
                 if ((modulus(thisPhoton%position-(s2o(grid%starPos1)))) > grid%rStar1) exit
              else

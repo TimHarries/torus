@@ -20,11 +20,8 @@
 ! RK : 07/07/05 Added the observed flux solver in oberver's frame. 
 
 
-!$PRG program torus
+ program torus
 
-!$SPH subroutine torus(b_idim,b_npart,b_nactive,b_xyzmh,b_rho,b_iphase, &
-!$SPH                  b_nptmass,b_listpm,b_udist,b_umass, &
-!$SPH                  b_utime,b_time,b_gaspartmass,b_temp)
 
 
   use constants_mod          ! physical constants
@@ -73,11 +70,8 @@
   use photoion_mod
   use formal_solutions
 !$mpi   use parallel_mod
-!$MPI   !use MPI__INCLUDE   
-!$MPI   !use MPI
 
   implicit none
-!$MPI   include 'mpif.h'  
 
   integer, parameter :: nOuterLoop = 10
   integer :: iOuterLoop
@@ -428,17 +422,6 @@
 ! gas opacity stuff
 
 
-!$SPH  integer :: b_idim,b_npart,b_nactive,b_nptmass
-!$SPH  integer :: npart, nptmass, nacc
-!$SPH  integer :: iii, iiipart, iiigas
-!$SPH  integer*1 :: b_iphase(b_idim)
-!$SPH  integer :: b_listpm(b_nptmass)
-!$SPH  real*8 :: b_xyzmh(5,b_idim)
-!$SPH  real*4 :: b_rho(b_idim), sphDistFac
-!$SPH  real*8 :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
-!$SPH  real*8 :: b_temp(b_idim)
-!$SPH  real*8 :: xgas,ygas,zgas
-!$SPH  real :: tgas
 
 
 
@@ -446,40 +429,10 @@
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 !  integer ::   iphase_beg, iphase_end  ! the beginning and the end of the phase index.
 
-!$MPI  ! For MPI implementations =====================================================
-!$MPI  integer ::   my_rank        ! my processor rank
-!$MPI  integer ::   n_proc         ! The number of processes
-!$MPI  integer ::   ierr           ! error flag
-!$MPI  integer ::   n_rmdr, m      !
-!$MPI  integer ::   mphotons       ! number of photons (actual) 
-!$MPI  integer ::   tempInt        !
-!$MPI  real, dimension(:), allocatable :: tempRealArray
-!$MPI  real, dimension(:), allocatable :: tempRealArray2
-!$MPI  real(double), dimension(:), allocatable :: tempDoubleArray
-!$MPI  real(double), dimension(:), allocatable :: tempDoubleArray2
-!$MPI  integer, dimension(:), allocatable :: photonBelongsRank
-!$MPI  integer, parameter :: tag = 0
-!$MPI  logical :: rankComplete
-!$MPI
-!$MPI  ! FOR MPI IMPLEMENTATION=======================================================
-!$MPI  !  initialize the system for running MPI
-!$MPI  call MPI_INIT(ierr) 
-!$MPI
-!$MPI  !  Get my process rank # 
-!$MPI  call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI  
-!$MPI  ! Find the total # of precessor being used in this run
-!$MPI  call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-!$MPI  
-!$MPI  call unixGetHostname(tempChar, tempInt) 
-!$MPI  print *, 'Process ', my_rank,' running on host ',TRIM(ADJUSTL(tempChar))
-!$MPI  
-!$MPI  !===============================================================================
 
 
   !
   ! For time statistics
-!$MPI  if (my_rank==1) &
   call tune(6, "Torus Main") ! start a stopwatch  
 
 
@@ -491,10 +444,6 @@
   allocate(iSeed(1:iSize))
   call random_seed(get=iSeed)
 
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-!$MPI  call random_seed(put=iseed)
-!!$MPI write(*,*) my_rank,"random seed",iseed(1:isize)
   deallocate(iSeed)
 
 
@@ -554,7 +503,6 @@
   outputwarnings = .true.
   outputinfo = .true.
 
-!$MPI  if (my_rank/=0) writeoutput = .false.
 
   
 
@@ -751,76 +699,6 @@
   !
   ! Special case
   !
-!$SPH  if (geometry == "cluster") then
-!$SPH
-!$SPH     ! HSC
-!$SPH
-!$SPH
-!$SPH     call init_sph_data(sphData, b_udist, b_umass, b_utime, b_nactive, b_time, b_nptmass, &
-!$SPH                        b_gaspartmass)
-!$SPH
-!$SPH     sphDistfac  = get_udist(sphData)  ! [cm]
-!$SPH     sphDistfac = sphDistfac / 1.e10 ! to torus units
-!$SPH     ! read in the sph data from a file
-!$SPH     !call read_sph_data(sphData, "sph.dat")
-!$SPH
-!$SPH     iiipart=0
-!$SPH     iiigas=0
-!$SPH
-!$SPH     sphData%nptmass=b_nptmass
-!$SPH
-!$SPH     do iii=1,b_npart
-!$SPH       if (b_iphase(iii).eq.0) then
-!$SPH         iiigas=iiigas+1
-!$SPH         if (iiigas.GT.b_nactive) then
-!$SPH           write (*,*) 'iiigas>b_nactive',iiigas,b_nactive
-!$SPH           STOP
-!$SPH         endif
-!$SPH         sphData%rhon(iiigas) = b_rho(iii)
-!$SPH         sphData%xn(iiigas) = b_xyzmh(1,iii)
-!$SPH         sphData%yn(iiigas) = b_xyzmh(2,iii)
-!$SPH         sphData%zn(iiigas) = b_xyzmh(3,iii)
-!$SPH       elseif (b_iphase(iii).gt.0) then
-!$SPH         iiipart=iiipart+1
-!$SPH         if (iiipart.GT.b_nptmass) then
-!$SPH           write (*,*) 'iiipart>b_nptmass',iiipart,b_nptmass
-!$SPH           STOP
-!$SPH         endif
-!$SPH         sphData%x(iiipart) = b_xyzmh(1,iii)
-!$SPH         sphData%y(iiipart) = b_xyzmh(2,iii)
-!$SPH         sphData%z(iiipart) = b_xyzmh(3,iii)
-!$SPH         sphData%ptmass(iiipart) = b_xyzmh(4,iii)
-!$SPH       endif
-!$SPH     end do
-!$SPH
-!$SPH
-!$SPH     ! read in the sph data from a file
-!$SPH     ! call read_sph_data(sphData, "sph.dat")
-!$SPH     ! call read_stellar_disc_data(sphData, "stellar_disc.dat")
-!$SPH
-!$SPH     ! Writing basic info of this data
-!$SPH!$MPI     if(my_rank == 0)  then
-!$SPH
-!$SPH
-!$SPH     !call info(sphData, "*")
-!$SPH     call info(sphData, "info_sph.dat")
-!$SPH!$MPI     end if
-!$SPH
-!$SPH
-!$SPH     ! reading in the isochrone data needed to build an cluster object.
-!$SPH     
-!$SPH     call new(isochrone_data, "dam98_0225")   
-!$SPH     call read_isochrone_data(isochrone_data)
-!$SPH     
-!$SPH     ! making a cluster object
-!$SPH     call new(young_cluster, sphData, dble(amrGridSize), disc_on)
-!$SPH     call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
-!$SPH
-!$SPH     
-!$SPH     ! Wrting the stellar catalog readble for a human
-!$SPH!$MPI     if(my_rank == 0)  &
-!$SPH     call write_catalog(young_cluster, sphData)
-!$SPH  end if
 
 
 
@@ -833,10 +711,8 @@
      call read_stellar_disc_data(sphData, "stellar_disc.dat")
 
      ! Writing basic info of this data
-!$MPI  if (my_rank==0) then
      call info(sphData, "*")
      call info(sphData, "info_sph.dat")
-!$MPI  end if ! (my_rank==0) 
      ! reading in the isochrone data needed to build an cluster object.
      call new(isochrone_data, "dam98_0225")   
      call read_isochrone_data(isochrone_data)
@@ -846,10 +722,8 @@
      call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
 
      ! Wrting the stellar catalog readble for a human
-!$MPI  if (my_rank==0) &
      call write_catalog(young_cluster, sphData)
      ! Finding the inclinations of discs seen from +z directions...
-!$MPI  if (my_rank==0) &
      call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
 
   elseif (geometry == "wr104") then
@@ -1131,7 +1005,6 @@
   if (gridUsesAMR) then  !========================================
   !===============================================================
 
-!$MPI  if (my_rank==1) &
      call tune(6, "AMR grid construction.")  ! start a stopwatch
 
 
@@ -1248,7 +1121,6 @@
 
 
 
-!$MPI if (my_rank == 0) then   !-----------------------------------------------
         if (writePhasePops) then
           write(tempChar,'(i3.3)') nStartPhase
           phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
@@ -1257,8 +1129,6 @@
           call writeAMRgrid(popFilename,writeFileFormatted,grid)
         end if
 
-!$MPI end if  ! (my_rank==0)--------------------------------------------------------
-!$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr)  ! 
 
 
      else  ! not reading a population file
@@ -1267,9 +1137,6 @@
 !! makes identical grid (this is achieve by passing a same a seed for
 !! the random number generator to all nodes.  (RK)
 !!
-!!$MPI  !  Let the rank 0 node to create a grid, then write out to a file.
-!!$MPI  !  Later the other nodes reads in the same file.
-!!$MPI if (my_rank == 0) then ! ----------------------------------------------------
         amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
         call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
 
@@ -1468,9 +1335,7 @@
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
 !        call grid_info(grid, "*")
-!$MPI if (my_rank == 0) then
 !        call grid_info(grid, "info_grid.dat")
-!$MPI endif
 
         if (writePhasePops) then
           write(tempChar,'(i3.3)') nStartPhase
@@ -1504,7 +1369,6 @@
         endif
         
 
-!$MPI if (my_rank == 0) then
         if(plot_maps) then
            ! Plotting the slices of planes
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
@@ -1556,7 +1420,6 @@
               enddo
            endif
         end if
-!$MPI endif
 
 !     ! plotting column density (new routine in grid_mod.f90)
 !     if (grid%geometry == "luc_cir3d") then 
@@ -1566,24 +1429,6 @@
 !     end if
 
 
-!!$MPI       call writeAMRgrid(popFilename,writeFileFormatted,grid)
-!!$MPI      
-!!$MPI     ! now we can signal to the other processes (waiting above) that 
-!!$MPI     !   they can read in the grid.
-!!$MPI     print *,'Process ',my_rank,' signalling grid has become available...' 
-!!$MPI
-!!$MPI  end if ! (my_rank == 0) ---------------------------------------------
-!!$MPI 
-!!$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr)   
-!!$MPI ! we hold all the non-root processes here until the grid has been
-!!$MPI !  written (below) 
-!!$MPI
-!!$MPI if(my_rank /= 0) then        
-!!$MPI   print *,'Process ',my_rank,' waiting for grid to become available...' 
-!!$MPI   call readAMRgrid(popFilename,readFileFormatted,grid)
-!!$MPI  end if
-!!$MPI  ! Wait until everybody reads in the grid 
-!!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
         if (geometry == "ttauri" .or. geometry == "luc_cir3d" .or. &
              geometry == "cmfgen" .or. geometry == "romanova") then
@@ -1606,15 +1451,12 @@
            !  adaptive octal grid.
            !  Using a routine in stateq_mod module.
            if (writeoutput) write(*,*) "Calling statistical equilibrium routines..."
-!$MPI  if (my_rank==1) &
            call tune(6, "amrStateq") ! start a stopwatch  
            if (grid%geometry=="ttauri" .or. grid%geometry(1:8)=="windtest" .or. &
                 grid%geometry(1:9)=="luc_cir3d" .or. geometry == "romanova") then
               call amrStateq(grid, newContFluxFile,lte, nLower, nUpper, &
                              starSurface, recalcPrevious=.false.)
 
-!$MPI   print *,'Process ',my_rank,' waiting for other amrStatEq calls to return...' 
-!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all the processes
               ! the 'lte' setting is intended so that a model with infall
               ! enhancement is first set up with LTE values. Only after we have 
               ! done the first time-dependent change so we calculate non-LTE 
@@ -1681,12 +1523,9 @@
 !                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, sigmaAbs0, sigmaSca0)
 !              end if
 
-!$MPI   print *,'Process ',my_rank,' waiting for other amrStatEq calls to return...' 
-!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all the processes
 
            end if ! (grid%geometry=="ttaur" .or. ...)
 
-!$MPI  if (my_rank==1) &
            call tune(6, "amrStateq") ! stop a stopwatch  
            if (writeoutput) write(*,*) "... statistical equilibrium routines complete"
 
@@ -1700,7 +1539,6 @@
            ! using the routine in sph_data_class
            call kill(sphData)
            ! using the routine in amr_mod.f90
-!$MPI if  (my_rank ==0) &
            call delete_particle_lists(grid%octreeRoot)
 
         elseif (geometry == "luc_cir3d") then
@@ -1720,7 +1558,6 @@
 
 
              
-!$MPI  if (my_rank==0)  then
      ! writing pop files after statEq routines
      if (writePhasePops) then
         write(tempChar,'(i3.3)') nStartPhase
@@ -1730,10 +1567,7 @@
      if (writePops) then
         call writeAMRgrid(popFilename,writeFileFormatted,grid)
      end if
-!$MPI  end if
-!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! sync here
 
-!$MPI  if (my_rank==1) &
    call tune(6, "AMR grid construction.") ! stop a stopwatch
 
 
@@ -1744,7 +1578,6 @@
 !     endif
 
      if (geometry(1:6) == "ttauri") then
-!$MPI if (my_rank==0) then
         call writeHartmannValues(grid,'hartmann_logNH')
         call writeHartmannValues(grid,'hartmann_logNe')
         call writeHartmannValues(grid,'hartmann_temperature')
@@ -1756,7 +1589,6 @@
         call writeHartmannValues(grid,'hartmann_NH')
         !call writeHartmannValues(grid,'hartmann_departCoeff')
         call writeHartmannValues(grid,'hartmann_N')
-!$MPI end if
      end if
 
   !=================================================================
@@ -2010,10 +1842,8 @@
 
   ! Print the infomation on the grid to the standard ouput.
   ! -- using a routine in grid_mod.f90
-!$MPI  if(my_rank == 0)  then  
 !  call grid_info(grid, "*")
   call grid_info(grid, "info_grid.dat")
-!$MPI  end if
 
 
 
@@ -2022,7 +1852,6 @@
   ! Plotting the various values stored in the AMR grid.
   !
 
-!$MPI   if (my_rank==0) then
 
   if(gridUsesAMR .and. plot_maps) then
 
@@ -2122,7 +1951,6 @@
      
   end if
 
-!$MPI  end if  ! if (my_rank ==0)
   
   ! The source spectrum is normally a black body
 
@@ -2165,12 +1993,9 @@
         ! quick test for zero total dust abundance.
         total_dust_abundance = SUM(X_grain)
         if ( total_dust_abundance <= 0.0 ) then
-!$MPI     if (my_rank==0) &
            write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
-!$MPI     if (my_rank==0) &
            write(*,*) "  ==> You probably forgot to assign dust abundance in your "// &
                 & "parameter file!"
-!$MPI     if (my_rank==0) &
            write(*,*) "  ==> Exiting the prograim ... "
            stop 
         end if
@@ -2479,7 +2304,6 @@
 
 
 
-!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
      call random_seed
@@ -2495,7 +2319,6 @@
 
 
   if (lucyRadiativeEq) then
-!$MPI  if (my_rank==1) &
      call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
  
      if (.not.grid%adaptive) then
@@ -2515,30 +2338,22 @@
 
         endif
         
-!$MPI        if (my_rank==0) then
         if (writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
-!$MPI        end if
 
      endif     
 
 
-!$MPI     if (my_rank==1) &
      call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
 
-!$SPH goto 666 ! just jump to end for sph case
 
      if (grid%geometry(1:7) == "cluster") then
-!$MPI        if (my_rank==0) then
         ! Finding apperant magnitudes and colors of the stars in cluster
         write (*,*) " "
         write (*,*) "Computing the magnitudes and colors of stars ..."
         ! -- note grid distance here is in [pc]
          call analyze_cluster(young_cluster,s2o(outVec),dble(gridDistance),grid)
 
-!$MPI        end if
-!$MPI     ! Synchronizing everybody here.
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
 
         ! restricting the sed and images calculations to the star 
@@ -2560,17 +2375,13 @@
 
 
      ! Plotting the slices of planes
-!$MPI        if (my_rank==0) then
      if (plot_maps) then
        call plot_AMR_planes(grid, "temperature", plane_for_plot, 3, "temperature", &
             .true., .false., nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
        call plot_AMR_planes(grid, "etaCont", plane_for_plot, 3, "etaCont", .true., .false., &
             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
      end if
-!$MPI        end if
 
-!$MPI     ! Synchronizing everybody here.
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
 
   endif
@@ -2619,9 +2430,7 @@
      write(*,*) "Done."
   end if
 
-!$MPI        if (my_rank==0) then
   if (geometry == "shakara") call polardump(grid)
-!$MPI        endif
 
 
   
@@ -2684,10 +2493,8 @@
 
 
   if (plotVelocity) then
-!$MPI if (my_rank==0) then
      write(*,*) ' Plotting velocity vectors...'
      call plotVelocityVectors(grid, "1.gif/GIF")
-!$MPI end if
   endif
 
 
@@ -2754,10 +2561,8 @@
      ! -- using a routine in filter_set_class
      call make_filter_set(filters, filter_set_name)
      ! write filter info to standard output and to a file
-!$MPI     if (my_rank==0) then
      call info_filter_set(filters, "*") 
      call info_filter_set(filters, "info_filter_set.dat")
-!$MPI     endif 
   end if
 
 
@@ -2918,7 +2723,6 @@
 
          !                    infallParticleMass, alreadyDoneInfall)
           if (.not. noPhaseUpdate .and. iPhase /= nStartPhase) then
-!$MPI if (my_rank == 0) then
              if (writeoutput) write(*,*) "Modifying grid for new phase"
              call amrUpdateGrid(limitScalar,limitScalar2,grid) 
              call countVoxels(grid%octreeRoot,nOctals,nVoxels)
@@ -2926,43 +2730,20 @@
              if (writeoutput) write(*,*) "                      : ",nVoxels," unique voxels"
              grid%nOctals = nOctals
 
-!$MPI    if (writePhasePops) then
-!$MPI        write(tempChar,'(i3.3)') iPhase
-!$MPI        phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
-!$MPI        call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
-!$MPI        print *,'Process ',my_rank,' finished writing phase pop grid...' 
-!$MPI        print *,'Process ',my_rank,' signalling grid has become available...' 
-!$MPI    end if
-!$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr)  ! XXX --> sync with XXX below
-!$MPI else ! my_rank /=0
-!$MPI    print *,'Process ',my_rank,' waiting for grid to become available...' 
-!$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr)  ! XXX --> synch with XXX above
-!$MPI    if (writePhasePops) then  ! then file should should be avialable
-!$MPI       write(tempChar,'(i3.3)') iPhase
-!$MPI       phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
-!$MPI       call readAMRgrid(phasePopFilename,readFileFormatted,grid)
-!$MPI     end if
-!$MPI end if
-!$MPI call MPI_BARRIER(MPI_COMM_WORLD, ierr)    ! sync everybody here
 
              if (writeoutput) write(*,*) "Recalculating statistical equilibrium after changing grid" 
              call amrStateq(grid, newContFluxFile, lte, nLower, nUpper,  &
                    starSurface, recalcPrevious=.true.)
-!$MPI         print *,'Process ',my_rank,' returned from amrStatEq. Waiting to sync...' 
-!$MPI         call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all processes
              if (ttau_disc_on) then
                 ! amrStateq will have messed up the disc, so we reset those cells
                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, &
                      sigmaAbs0, sigmaSca0, meanDustParticleMass)
              end if
-!$MPI if (my_rank == 0) then
              if (writePhasePops) then
                 write(tempChar,'(i3.3)') iPhase
                 phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
                 call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
              end if
-!$MPI end if
-!$MPI         call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all processes
 
              
           end if ! (.not. noPhaseUpdate .and. iPhase /= nStartPhase) 
@@ -3050,7 +2831,6 @@
 
 
 
-!$MPI if (my_rank == 0) then
      if (movie) then
         if (device(2:3) == "xs") then
            call plotGrid(grid, viewVec,  opaqueCore, &
@@ -3063,7 +2843,6 @@
         call plotGrid(grid, viewVec,  opaqueCore, &
              filename, contTau, foreground, background, coolStarPosition, firstPlot)
      endif
-!$MPI end if
 
      if (writeoutput) write(*,*) " "
      if (writeoutput) write(*,'(a)') "Some basic model parameters"
@@ -3081,16 +2860,12 @@
      ! Performs various optical depth tests here...
      !
 
-!$MPI if (my_rank==0) then
       if (.not. formalsol) then
         call test_optical_depth(gridUsesAMR, VoigtProf, &
              amrGridCentre, sphericityTest,  &
              outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &
              thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
       end if
-!$MPI end if
-!$MPI     ! Synchronizing everybody here.
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
 
@@ -3474,10 +3249,8 @@
 !!        call make_filter_set(filters, filter_set_name)
 !!
 !!        ! write filter info to standard output and to a file
-!!!$MPI     if (my_rank==0) then
 !!        call info_filter_set(filters, "*") 
 !!        call info_filter_set(filters, "info_filter_set.dat")
-!!!$MPI     endif 
 !!
         ! number of images = number of filters
         nImage = get_nfilter(filters)
@@ -3587,7 +3360,6 @@
      !===================================================================================
      if ((geometry == "ttauri" .or. geometry == "romanova") &
           .and. formalsol) then
-!$MPI  if (my_rank==1) &
         call tune(6, "One Formal Sol") ! start a stopwatch  
         write(*,*) " "
         write(*,*) "Started formal integration of flux...."
@@ -3617,7 +3389,6 @@
              do_pos_disp) 
         write(*,*) "...Finished  formal integration of flux...."
         write(*,*) " "
-!$MPI  if (my_rank==1) &
         call tune(6, "One Formal Sol") ! stop a stopwatch
         ! jumps to the end of inclination loops  (this should be replaced with while loop later)
         goto 777  
@@ -3655,7 +3426,6 @@
      boundaryProbs = 0 
      negativeOpacity = 0 
 
-!$MPI  if (my_rank==1) &
      call tune(6, "All Photon Loops")  ! Start a stopwatch
      
      call random_seed
@@ -3698,48 +3468,18 @@
 
 
 
-!$MPI  if (my_rank==1) &
         call tune(6, "One Outer Photon Loop") ! Start a stop watch
 
         ! default inner loop indices
         iInner_beg = 1
         iInner_end = nPhotons/nOuterLoop
 
-!$MPI  !====================================================================================
-!$MPI  ! Splitting the innerPhoton loop for multiple processors.
-!$MPI  if (my_rank == 0) then
-!$MPI     print *, ' '
-!$MPI     print *, 'innerPhotonLoop computed by ', n_proc-1, ' processors.'
-!$MPI     print *, ' '
-!$MPI  endif
-!$MPI  ! No need to use some processors if there are more processors
-!$MPI  ! than the number of photons....
-!$MPI  if (my_rank > nPhotons/nOuterLoop - 1)  goto 666
-!$MPI    
-!$MPI  if (my_rank == 0) then
-!$MPI     ! we will use an array to store the rank of the process
-!$MPI     !   which will calculate each photon
-!$MPI     allocate(photonBelongsRank(nPhotons/nOuterLoop))
-!$MPI    
-!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=40,tag=tag,&
-!$MPI                          setDebug=.false.)
-!$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
-!$MPI  end if
-!$MPI  !====================================================================================
 
-!$MPI    
-!$MPI    
-!$MPI  if (my_rank /= 0) then
-!$MPI    mpiBlockLoop: do  
-!$MPI      call mpiGetBlock(my_rank,iInner_beg, iInner_end,rankComplete,tag,setDebug=.false.)  
-!$MPI      if (rankComplete) exit mpiBlockLoop  
-!$MPI    
 
 !$OMP DO SCHEDULE(DYNAMIC)
         innerPhotonLoop: do i = iInner_beg, iInner_end
 
 
-!$MPI !  if (MOD(i,n_proc) /= my_rank) cycle innerPhotonLoop
            ! The following six arrays must be allocated and deallocated for each 
            ! innerPhotonLoop to make the program work with OpenMP! (RK)
            allocate(lambda(1:maxTau))
@@ -3749,7 +3489,6 @@
            allocate(linePhotonalbedo(1:maxTau))
            allocate(contTau(1:maxTau,1:nLambda)) 
            allocate(contWeightArray(1:nLambda))
-!$MPI !  if (MOD(i,n_proc) /= my_rank) goto 999
 
 
            ! continuum or line photon?
@@ -4540,151 +4279,20 @@
 
 
 
-!$MPI if (.not.blockHandout) exit mpiblockloop        
-!$MPI    end do mpiBlockLoop  
-!$MPI  end if ! (my_rank /= 0)
-!$MPI     write (*,'(A,I3,A,I3,A,I3,A)') 'Process ',my_rank, &
-!$MPI                      ' waiting to sync spectra... (',iOuterLoop,'/',nOuterLoop,')' 
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI
-!$MPI   ! we have to syncronize the 'yArray' after each inner photon loop to
-!$MPI   !   get the statistics right 
-!$MPI     allocate(tempDoubleArray(SIZE(yArray)))
-!$MPI     tempDoubleArray = 0.0_db
-!$MPI     call MPI_REDUCE(yArray%i,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     yArray%i = tempDoubleArray 
-!$MPI     tempDoubleArray = 0.0_db
-!$MPI     call MPI_REDUCE(yArray%q,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     yArray%q = tempDoubleArray 
-!$MPI     tempDoubleArray = 0.0_db
-!$MPI     call MPI_REDUCE(yArray%u,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     yArray%u = tempDoubleArray 
-!$MPI     tempDoubleArray = 0.0_db
-!$MPI     call MPI_REDUCE(yArray%v,tempDoubleArray,SIZE(yArray),MPI_DOUBLE_PRECISION,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     yArray%v = tempDoubleArray 
-!$MPI     deallocate(tempDoubleArray)
-!$MPI
-!$MPI     print *,'Process ',my_rank,' finished syncing output. Waiting to continue...' 
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
 
 
-!$MPI if (my_rank == 0) &
         write(*,'(i8,a,f7.3)') iOuterLoop*nPhotons/nOuterLoop," photons done"
 
         errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI  if (my_rank==1) &
         call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
      end do outerPhotonLoop ! outer photon loop
 
 
-!$MPI  if (my_rank==1) &
      call tune(6, "All Photon Loops")  ! Stop a stopwatch
 
-!$MPI     tempInt = 0
-!$MPI     call MPI_REDUCE(tooFewSamples,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
-!$MPI     tooFewSamples = tempInt
-!$MPI
-!$MPI     call MPI_REDUCE(boundaryProbs,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
-!$MPI     boundaryProbs = tempInt
-!$MPI
-!$MPI     call MPI_REDUCE(negativeOpacity,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
-!$MPI     negativeOpacity = tempInt
-!$MPI
-!$MPI     call MPI_REDUCE(nTot,tempInt,1,MPI_INTEGER,MPI_SUM,0, MPI_COMM_WORLD,ierr)
-!$MPI     nTot = tempInt
-!$MPI
-!$MPI if (stokesimage) then
-!$MPI   do i = 1, nImage
-!$MPI     allocate(tempRealArray(SIZE(obsImageSet(i)%pixel)))
-!$MPI     allocate(tempRealArray2(SIZE(obsImageSet(i)%pixel)))
-!$MPI     allocate(tempDoubleArray(SIZE(obsImageSet(i)%pixel)))
-!$MPI     allocate(tempDoubleArray2(SIZE(obsImageSet(i)%pixel)))
-!$MPI     tempRealArray = 0.0
-!$MPI     tempRealArray2 = 0.0
-!$MPI     tempDoubleArray = 0.0_db
-!$MPI     tempDoubleArray2 = 0.0_db
-!$MPI
-!$MPI     tempDoubleArray = reshape(obsImageSet(i)%pixel%i,(/SIZE(tempDoubleArray)/))
-!$MPI     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     obsImageSet(i)%pixel%i = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%i))
-!$MPI
-!$MPI     tempDoubleArray = reshape(obsImageSet(i)%pixel%q,(/SIZE(tempDoubleArray)/))
-!$MPI     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     obsImageSet(i)%pixel%q = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%q))
-!$MPI
-!$MPI     tempDoubleArray = reshape(obsImageSet(i)%pixel%u,(/SIZE(tempDoubleArray)/))
-!$MPI     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     obsImageSet(i)%pixel%u = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%u))
-!$MPI
-!$MPI     tempDoubleArray = reshape(obsImageSet(i)%pixel%v,(/SIZE(tempDoubleArray)/))
-!$MPI     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     obsImageSet(i)%pixel%v = reshape(tempDoubleArray2,SHAPE(obsImageSet(i)%pixel%v))
-!$MPI
-!$MPI
-!$MPI     tempRealArray = reshape(obsImageSet(i)%vel,(/SIZE(tempRealArray)/))
-!$MPI     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     obsImageSet(i)%vel = reshape(tempRealArray2,SHAPE(obsImageSet(i)%vel))
-!$MPI
-!$MPI     tempRealArray = reshape(obsImageSet(i)%totWeight,(/SIZE(tempRealArray)/))
-!$MPI     call MPI_REDUCE(tempRealArray,tempRealArray2,SIZE(tempRealArray),MPI_REAL,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     obsImageSet(i)%totWeight = reshape(tempRealArray2,SHAPE(obsImageSet(i)%totWeight))
-!$MPI
-!$MPI     deallocate(tempRealArray)
-!$MPI     deallocate(tempRealArray2)
-!$MPI     deallocate(tempDoubleArray)
-!$MPI     deallocate(tempDoubleArray2)
-!$MPI   end do
-!$MPI     if (doRaman) then
-!$MPI        print *, 'MPI o6Image not implemented!'
-!$MPI        stop
-!$MPI     endif
-!$MPI endif ! (stokesimage)
-!$MPI
-!$MPI if (doPvimage) then
-!$MPI   do iSlit = 1, nSlit
-!$MPI     allocate(tempDoubleArray(SIZE(pvImage(i)%pixel)))
-!$MPI     allocate(tempDoubleArray2(SIZE(pvImage(i)%pixel)))
-!$MPI
-!$MPI     tempDoubleArray = reshape(pvImage(i)%pixel,(/SIZE(tempDoubleArray)/))
-!$MPI     tempDoubleArray2 = 0.0_db
-!$MPI     call MPI_REDUCE(tempDoubleArray,tempDoubleArray2,SIZE(tempDoubleArray),MPI_DOUBLE_PRECISION,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     pvImage(i)%pixel = reshape(tempDoubleArray2,SHAPE(pvImage(i)%pixel))
-!$MPI
-!$MPI     deallocate(tempDoubleArray)
-!$MPI     deallocate(tempDoubleArray2)
-!$MPI
-!$MPI     allocate(tempRealArray(SIZE(pvImage(i)%vAxis)))
-!$MPI     tempRealArray = 0.0
-!$MPI     call MPI_REDUCE(pvImage(i)%vAxis,tempRealArray,SIZE(pvImage(i)%vAxis),MPI_REAL,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     pvImage(i)%vAxis = tempRealArray
-!$MPI     deallocate(tempRealArray)
-!$MPI
-!$MPI     allocate(tempRealArray(SIZE(pvImage(i)%pAxis)))
-!$MPI     tempRealArray = 0.0
-!$MPI     call MPI_REDUCE(pvImage(i)%pAxis,tempRealArray,SIZE(pvImage(i)%pAxis),MPI_REAL,&
-!$MPI                     MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     pvImage(i)%pAxis = tempRealArray
-!$MPI     deallocate(tempRealArray)
-!$MPI
-!$MPI   end do ! iSlit 
-!$MPI endif ! (doPvimage)
 
-!$MPI if (my_rank == 0) then 
      write(*,*) " "
      write(*,'(a)') "Model summary"
      write(*,'(a)') "-------------"
@@ -4700,7 +4308,6 @@
      write(*,*) " "
      write(*,*) "Average # of scattering per photon:: ", real(nTot)/real(nPhotons)
      write(*,*) " " 
-!$MPI end if 
 
 !     if (.not.grid%cartesian.and.(grid%rCore /= 0.)) then
 !        if (wtot_line /= 0.) write(*,*) "Mean radius of line formation",meanr_line/wtot_line/grid%rCore
@@ -4715,7 +4322,6 @@
 
      if (mie) normalizeSpectrum = .false.
 
-!$MPI if (my_rank == 0) then 
      if (nPhase == 1) then
 
 
@@ -4792,7 +4398,6 @@
            call plotSlitOnImage(obsImageSet(1), PVimage(iSlit), plotfile, gridDistance)
         enddo
      endif
-!$MPI end if ! (my_rank == 0)
 
      if (stokesImage) then
         do i = 1, nImage
@@ -4813,9 +4418,6 @@
        call emptySurface(starSurface)
      end if
 
-!$MPI if (my_rank /= 0 .and. .not.noPhaseUpdate) call freeGrid(grid)
-!$MPI   print *,'Process ',my_rank,' waiting inside end of phase loop...' 
-!$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
   enddo phaseLoop
 
 
@@ -4825,36 +4427,13 @@
 !  call freeGrid(grid)
 
 
-!$MPI  if (my_rank==1) &
 call tune(6, "Torus Main") ! stop a stopwatch  
 
-!$SPH!  New HSC Stuff
-!$SPH!  Loop through sph gas particles and assign temperatures
-!$SPH
-!$SPH
-!$SPH     iiigas=0
-!$SPH     do i=1,b_npart
-!$SPH 
-!$SPH       if (b_iphase(i).eq.0) then
-!$SPH          iiigas = iiigas + 1 
-!$SPH          xgas = b_xyzmh(1,i) * sphDistFac
-!$SPH          ygas = b_xyzmh(2,i) * sphDistFac
-!$SPH          zgas = b_xyzmh(3,i) * sphDistFac
-!$SPH          octVec = OCTALVECTOR(xgas,ygas,zgas)
-!$SPH          call amrGridValues(grid%octreeRoot, octVec, temperature=tgas, grid=grid)
-!$SPH  !        write(*,*) i,xgas,ygas,zgas,tgas
-!$SPH          b_temp(iiigas)=tgas
-!$SPH       endif
-!$SPH  
-!$SPH     enddo
   
 call writeInfo("TORUS exiting", FORINFO)
 
-!$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI  call MPI_FINALIZE(ierr)
 
-!$SPH   end subroutine torus
-!$PRG   end program torus
+   end program torus
 
 !!! vim:set filetype=fortran :                                !!!  
 !!! otherwise vim won't recognize a file with the suffix .raw !!!

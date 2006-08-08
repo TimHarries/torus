@@ -27,7 +27,8 @@ module vector_mod
        getPolar, &
        fromPhotosphereVector, &
        s2o, &
-       o2s        
+       o2s, &
+       o2d
        
   private :: &
        rmultSingle, rmultDouble, rmultOctal, rmultSingleReversed, rmultDoubleReversed, &
@@ -1423,7 +1424,7 @@ contains
 
 
 
-  ! Convertiong single vector to octalvector
+  ! Convertiong octalvector to single vector
   function o2s(vec_oct) RESULT(out)
     implicit none
     type(vector) :: out 
@@ -1433,6 +1434,18 @@ contains
     out%y = vec_oct%y
     out%z = vec_oct%z   
   end function o2s
+
+
+  ! Convertiong octalvector to doublevector
+  function o2d(vec_oct) RESULT(out)
+    implicit none
+    type(doublevector) :: out 
+    type(octalvector), intent(in) :: vec_oct
+    
+    out%x = vec_oct%x
+    out%y = vec_oct%y
+    out%z = vec_oct%z   
+  end function o2d
    
 
   function projectToXZ(rVec) result (out)

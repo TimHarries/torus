@@ -115,7 +115,8 @@ contains
        !cpu_time = ETIME(time_array) - cpu_start(id_num)
        call CPU_TIME(cputime)
        cputime = cputime - cpu_start(id_num)
-       minutes = NINT(cputime)/60
+!       minutes = NINT(cputime)/60 ! this is wrong! (RK)
+       minutes = INT(cputime/60.)
        seconds = MOD(cputime,60.)
        
 39     continue

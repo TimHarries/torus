@@ -7,7 +7,7 @@ module jet_class
   use vector_mod
 
   !  
-  ! Class definition for a simple kinematic model of jets from TTauri star
+  ! Class definition for a simple model of jets from TTauri star
   !
   ! Created: 31-jan-2005  (Ryuich Kurosawa)
  
@@ -454,6 +454,7 @@ contains
        if (modulus(cellCentre) > this%Rin .or. modulus(cellCentre) < this%Rout) then 
           do while ((.not.splitThis).and.(subcell <= n))
              IF (need_to_split2(thisOctal,subcell,this)) splitThis = .true.           
+!             IF (need_to_split(thisOctal,subcell,this)) splitThis = .true.           
              subcell = subcell + 1
           end do
           
@@ -491,7 +492,7 @@ contains
     cellCentre = subcellCentre(thisOctal, subcell)
 
 
-    if (.not.in_jet_flow(this, cellCentre) ) then
+    if (.not.in_jet_flow(this, cellCentre, thisOctal%subcellSize) ) then
        need_to_split = .false.
     else
        rho_disc = ave_jet_density(thisOctal, subcell, this)
@@ -525,13 +526,16 @@ contains
     real(double) :: rho_disc, mass_cell
     TYPE(octalVector)     :: cellCentre
 !    integer, parameter :: nr = 100  ! low resolution
-    integer, parameter :: nr = 250  ! Hi resolution
+    integer, parameter :: nr = 200   ! midium resolution
+!    integer, parameter :: nr = 280  ! Hi resolution
     real(double) :: r
     integer :: i
     !
     logical, save :: first_time = .true.
     real(double) , save:: rGrid(nr)
     real(double) :: Rmax = 1.5d5  ! [10^10cm] = 100 AU
+!    real(double) :: Rmax = 0.75d5  ! [10^10cm] = 50 AU
+!    real(double) :: Rmax = 1.5d3  ! [10^10cm] just testing
 
     need_to_split2 = .false.
 
@@ -550,7 +554,7 @@ contains
     cellCentre = subcellCentre(thisOctal, subcell)
 
 
-    if (.not.in_jet_flow(this, cellCentre) ) then
+    if (.not.in_jet_flow(this, cellCentre, thisOctal%subcellSize) ) then
        need_to_split2 = .false.
     else
        ! get the size and the position of the centre of the current cell
@@ -709,9 +713,10 @@ contains
     TYPE(octalVector)     :: cellCentre 
 
     cellCentre = subcellCentre(thisOctal, subcell)
-    if (in_jet_flow(this, cellCentre) ) then
+    if (in_jet_flow(this, cellCentre, thisOctal%subcellSize) ) then
        thisOctal%rho(subcell) = ave_jet_density(thisOctal, subcell, this)
-       if (thisOctal%rho(subcell) > rho_min) thisOctal%inFlow(subcell) = .true.         
+       ! To not waiste time for very tenuous gas
+       if (thisOctal%rho(subcell) > 1.01*rho_min) thisOctal%inFlow(subcell) = .true.         
        thisOctal%temperature(subcell)=this%T
        
        thisOctal%velocity = jet_velocity(this,cellCentre)
@@ -853,7 +858,19 @@ contains
           CALL turn_off_jet(pChild,grid, this)
        else
           ! turnning it off 
-          if (in_jet_flow(this, thisOctal%centre)) thisOctal%inFlow(subcell) = .false.
+          if (in_jet_flow(this, thisOctal%centre,thisOctal%subcellSize)) then
+             thisOctal%inFlow(subcell) = .false.
+             thisOctal%kappaAbs(subcell,:) = 1.0e-30
+             thisOctal%kappaSca(subcell,:) = 1.0e-30          
+             thisOctal%temperature(subcell) = 6500.0
+             thisOctal%biasCont3D(subcell) = 1.0e-30  ! should be no emission from disc
+             thisOctal%biasLine3D(subcell) = 1.0e-30  ! should be no emission from disc
+             thisOctal%etaLine(subcell) = 1.e-30
+             thisOctal%etaCont(subcell) = 1.e-30
+             thisOctal%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
+             thisOctal%velocity = vector(1.e-30,1.e-30,1.e-30)
+             thisOctal%rho(subcell) = rho_min
+          end if
        end if
     end do
     
@@ -890,7 +907,7 @@ contains
           CALL turn_on_jet(pChild,grid, this)
        else
           ! turnning it on
-          if (in_jet_flow(this, thisOctal%centre)) thisOctal%inFlow(subcell) = .true.
+          if (in_jet_flow(this, thisOctal%centre, thisOctal%subcellSize)) thisOctal%inFlow(subcell) = .true.
        end if
     end do
     
@@ -900,21 +917,28 @@ contains
   !
   ! Function to check if a given point is in jet flow
   ! 
-  function in_jet_flow(this, rvec) RESULT(out)
+  function in_jet_flow(this, rvec, subcellsize) RESULT(out)
     implicit none
     logical :: out
     !
     type(jet), intent(in) :: this
     type(octalvector), intent(in) :: rvec
+    real(double), optional, intent(in) :: subcellsize
     !
-    real(double) ::  w, r, x, y, z
+    real(double) ::  ww, r, x, y, z
     real(double) ::  cos_theta
     
     x = rvec%x; y =rvec%y; z = rvec%z
 
-    w = x*x + y*y
-    r = SQRT(w + z*z)
-    w = SQRT(w)
+    ! distance from z-axis
+    ww = x*x + y*y
+
+    if (PRESENT(subcellsize)) then
+       ! this will allow to split
+       ! the cell at the edge
+       ww = ABS(ww - 4.0d0*subcellsize*subcellsize)
+    end if
+    r = SQRT(ww + z*z)
 
     if (r < this%Rin) then
        out = .false.

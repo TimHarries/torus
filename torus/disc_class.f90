@@ -220,9 +220,12 @@ contains
     rmax = this%Rd
         
     ! these should be parameterized and put them in this object.
-!    alpha = 2.25d0
-    alpha = 0.75d0
-    beta = 1.125d0
+    alpha = 0.75d0   ! used for most of T Tau Halpha paper
+    beta = 1.125d0   ! used for most of T Tau Halpha paper
+
+!    alpha = 0.5d0   !  for a flared disc
+!    beta = 1.3d0    !  for a flared disc
+
     !
     !
     holesize = this%Rh  ! [10^10cm]
@@ -250,6 +253,8 @@ contains
     radius2 = w + zposi**2
     w = SQRT(w)
     radius = SQRT(radius2)
+
+!    if (radius > discrad/2.0d0) beta=4.0d0 ! flared for testing
 
     if (radius < discrad) then 
        q = SQRT(xposi**2 + yposi**2)
@@ -286,7 +291,7 @@ contains
 !             sizescale = (height) * (w/this%Rh)**p
 
              sizescale = height ! (used until 24-may-05 with small ISM-like grains)
-!             sizescale = 1.0d-10*height             
+!             sizescale = 5.0d0*height ! testing for flared disc
                 
 !              ! limit the smallest and largest sizes
               sizescale = MAX(sizescale, 1.0d-1)
@@ -1017,9 +1022,10 @@ contains
     real(double) :: theta_max 
     real(double) :: cos_theta, r, w
 
-!    theta_max = 30.0d0 ! degreee
-    theta_max = 70.0d0 ! degreees
-    theta_max = theta_max*3.4159d0/180.0d0  ! [radians]
+!    theta_max = 70.0d0 ! degrees
+!    theta_max = theta_max*3.4159d0/180.0d0  ! [radians] ! used by mistake
+    theta_max = 80.0d0 ! degrees
+    theta_max = theta_max*3.1459d0/180.0d0  ! [radians]
 
     x = rvec%x; y =rvec%y; z = rvec%z
     w = x*x+y*y
@@ -1035,12 +1041,14 @@ contains
     end if
 
 !    rho = alpha_disc_density(this, x, y, z, sizescale)
-!
-!    if (rho > rho_min)  then
-!       out = .true.
+
+!    if (w > this%Rh .and. r < this%Rd  &
+!         .and. (abs(z) < sizescale) ) then
+!       out =.true.
 !    else
 !       out = .false.
 !    end if
+
     
   end function in_alpha_disc
 

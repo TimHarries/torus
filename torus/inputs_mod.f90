@@ -5,11 +5,9 @@ use utils_mod
 use input_variables
 use jets_mod
 
-
 implicit none
 
 public
-
 
 contains
 
@@ -915,7 +913,27 @@ endif
    vRot = vRot * 1.e5
  endif
 
+ ! 
+ call getLogical("formalsol", formalsol, cLine, nLines, &
+        "Solve for formal solution (no photon loops)?: ", "(a,1l,1x,a)", .false., ok, .false.)
+ 
+if (formalsol) then
+   call getInteger("form_nphi", form_nphi, cLine, nLines, &
+        "# of angular poins for formal integration : ","(a,i4,a)", 30, ok, .true.)
+   call getInteger("form_nr_core", form_nr_core, cLine, nLines, &
+        "# of radial poins for formal integration (core) : ","(a,i4,a)", 30, ok, .true.)
+   call getInteger("form_nr_acc", form_nr_acc, cLine, nLines, &
+        "# of radial poins for formal integration (accretion) : ","(a,i4,a)", 30, ok, .true.)
+   call getInteger("form_nr_wind", form_nr_wind, cLine, nLines, &
+        "# of radial poins for formal integration (wind) : ","(a,i4,a)", 30, ok, .true.)
+   call getLogical("do_pos_disp", do_pos_disp, cLine, nLines, &
+        "Position displacement calculation on?: ", "(a,1l,1x,a)", .false., ok, .false.)
+end if
+
+
  ! sub option for ttauri geometry
+ call getLogical("ttau_acc_on", ttau_acc_on, cLine, nLines, &
+      "Include TTauri magnetosphere?: ", "(a,1l,1x,a)", .true., ok, .false.)
  call getLogical("ttau_disc_on", ttau_disc_on, cLine, nLines, &
       "Include TTauri Disc?: ", "(a,1l,1x,a)", .false., ok, .false.)
  call getLogical("ttau_discwind_on", ttau_discwind_on, cLine, nLines, &
@@ -928,7 +946,11 @@ endif
  ! Use this paremeter to turn off the alpha disc when the 
  ! grid read in has alpha disc
  call getLogical("ttau_turn_off_disc", ttau_turn_off_disc, cLine, nLines, &
-      "Alpha disc read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
+      "Alpha disc may be read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
+ call getLogical("ttau_turn_off_jet", ttau_turn_off_jet, cLine, nLines, &
+      "Jet may be read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
+ call getLogical("ttau_turn_off_acc", ttau_turn_off_acc, cLine, nLines, &
+      "Magnetosphere may be read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
  call findLogical("mie", mie, cLine, nLines, ok)
@@ -1053,30 +1075,35 @@ endif
 !   endif
 endif
 
+!
+! Now using new grain parameters e.g. grainTypeLabel which will be read in later....
+! The following should be removed later as they no longer needed.
 
+! ! if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
+!  if (mie .or. (geometry == "ttauri")) then
+!      call getString("graintype", grainType, cLine, nLines, &
+!           "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
 
- if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
+!      ! read the relative abundances (which will be normalized later.)
+!      call getReal("x_sil_ow", X_grain(1), cLine, nLines, &
+!           "Abundance(Si-Ow): ","(a,1pe8.2,a)",0.,ok,.false.)
+!      call getReal("x_sil_oc", X_grain(2), cLine, nLines, &
+!           "Abundance(Si-Oc): ","(a,1pe8.2,a)",0.,ok,.false.)
+!      call getReal("x_sil_dl", X_grain(3), cLine, nLines, &
+!           "Abundance(Si-DL): ","(a,1pe8.2,a)",0.,ok,.false.)
+!      call getReal("x_amc_hn", X_grain(4), cLine, nLines, &
+!           "Abundance(amC-Hn): ","(a,1pe8.2,a)",0.,ok,.false.)
+!      call getReal("x_sil_pg", X_grain(5), cLine, nLines, &
+!           "Abundance(Si-Pg): ","(a,1pe8.2,a)",0.,ok,.false.)
+!      call getReal("x_gr1_dl", X_grain(6), cLine, nLines, &
+!           "Abundance(grf1-DL): ","(a,1pe8.2,a)",0.,ok,.false.)
+!      call getReal("x_gr2_dl", X_grain(7), cLine, nLines, &
+!           "Abundance(grf2-DL): ","(a,1pe8.2,a)",0.,ok,.false.)        
 
-     ! read the relative abundances (which will be normalized later.)
-     call getReal("x_sil_ow", X_grain(1), cLine, nLines, &
-          "Abundance(Si-Ow): ","(a,1pe8.2,a)",0.,ok,.false.)
-     call getReal("x_sil_oc", X_grain(2), cLine, nLines, &
-          "Abundance(Si-Oc): ","(a,1pe8.2,a)",0.,ok,.false.)
-     call getReal("x_sil_dl", X_grain(3), cLine, nLines, &
-          "Abundance(Si-DL): ","(a,1pe8.2,a)",0.,ok,.false.)
-     call getReal("x_amc_hn", X_grain(4), cLine, nLines, &
-          "Abundance(amC-Hn): ","(a,1pe8.2,a)",0.,ok,.false.)
-     call getReal("x_sil_pg", X_grain(5), cLine, nLines, &
-          "Abundance(Si-Pg): ","(a,1pe8.2,a)",0.,ok,.false.)
-     call getReal("x_gr1_dl", X_grain(6), cLine, nLines, &
-          "Abundance(grf1-DL): ","(a,1pe8.2,a)",0.,ok,.false.)
-     call getReal("x_gr2_dl", X_grain(7), cLine, nLines, &
-          "Abundance(grf2-DL): ","(a,1pe8.2,a)",0.,ok,.false.)        
+!      call getReal("dusttogas", dusttoGas, cLine, nLines, &
+!           "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
 
-     call getReal("dusttogas", dusttoGas, cLine, nLines, &
-          "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
-
- endif
+!  endif
  
 
 
@@ -1137,7 +1164,7 @@ endif
  if (geometry == "ttauri") then
    call getReal("ttaurirstar", TTauriRstar, cLine, nLines, &
         "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)
-     TTauriRstar = TTauriRstar * rSol ! [10cm]
+     TTauriRstar = TTauriRstar * rSol ! [cm]
      rcore = TTauriRstar/1.0e10       ! [10^10cm]
    call getReal("ttaurimstar", TTauriMstar, cLine, nLines, &
         "T Tauri stellar mass (in M_sol): ","(a,f7.1,1x,a)", 0.8, ok, .true.)
@@ -1151,6 +1178,10 @@ endif
    call getReal("ttauridiskheight", TTauriDiskHeight, cLine, nLines, &
         "T Tauri disk height (in R_star): ","(a,f7.1,1x,a)", 6.e-2, ok, .false.)
      TTauriDiskHeight = TTauriDiskHeight * TTauriRstar
+   call getReal("ttauridiskrin", TTauriDiskRin, cLine, nLines, &
+        "T Tauri disk inner radius  (in R_star): ","(a,f7.1,1x,a)", TTauriRouter/TTauriRstar, ok, .false.)
+   call getReal("thindiskrin", ThinDiskRin, cLine, nLines, &
+        "Thin disk inner radius  (in R_star): ","(a,f7.1,1x,a)", TTauriRouter/TTauriRstar, ok, .false.)
    call getReal("curtainsphi1s", curtainsPhi1s, cLine, nLines, &
         "Curtains 1: Phi start: (degrees): ","(a,f7.1,1x,a)", 30.0, ok, .false.)
    call getReal("curtainsphi1e", curtainsPhi1e, cLine, nLines, &
@@ -1228,7 +1259,7 @@ endif
      call getReal("maxharttemp", maxHartTemp, cLine, nLines, &
            "Maximum of Hartmann temperature: ","(a,f7.1,1x,a)", 7436., ok, .false.)
    ! sub options for ttauri geometry
-   if (ttau_discwind_on) then
+!   if (ttau_discwind_on) then   ! commnted out here to make ttaur_turn_off_discwind to work
       ! --- parameters for ttauri wind
       call getDouble("DW_d", DW_d, cLine, nLines, &
            "Disc wind:: Wind soudce displacement [10^10cm]: ", &
@@ -1263,11 +1294,13 @@ endif
       call getDouble("DW_Twind", DW_Twind, cLine, nLines, &
            "Disc wind:: Isotherma temperature of disc wind [K]: ", &
            "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
-   end if
+!   end if
 
-   
-   if (ttau_jet_on) then
+!   if (ttau_jet_on) then  ! commented out here to make ttaur_turn_off_jet to work
       ! --- parameters for ttauri wind
+      call getDouble("JET_Rmin", JET_Rmin, cLine, nLines, &
+           "Minmium radius of Jet [10^10 cm]: ", &
+           "(a,es9.3,1x,a)", TTauriRouter/1.0d10, ok, .false.) 
       call getDouble("JET_theta_j", JET_theta_j, cLine, nLines, &
            "TTauri jets:: [deg]  jet opening angle: ", &
            "(a,es9.3,1x,a)", 80.0d0, ok, .true.) 
@@ -1298,7 +1331,7 @@ endif
            "TTauri jets:: [K]  Isothermal temperature of jets: ", &
            "(a,es9.3,1x,a)", 1.0d4, ok, .true.) 
 
-   end if
+!   end if
 
 
 endif
@@ -1386,6 +1419,71 @@ endif
  end if
 
 
+ if (geometry == "romanova") then
+      call getDouble("ROM_Rs", ROM_Rs, cLine, nLines, &
+           "radius of central star  [R_sun] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.) 
+      rcore = (ROM_Rs*rSol)/1.0e10       ! [10^10cm]
+      call getDouble("ROM_Mass", ROM_Mass, cLine, nLines, &
+           "Mass of the star [M_sun] : ", "(a,es9.3,1x,a)", 1.0d0, ok, .true.)       
+      call getLogical("ROM_isoT", ROM_isoT, cLine, nLines, &
+           "Switch on and off isothermal option: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getDouble("ROM_T_flow", ROM_T_flow, cLine, nLines, &
+           "Isothemal temperature of the flow [K] : ", &
+           "(a,es9.3,1x,a)", 1.0d4, ok, .true.)       
+      call getDouble("ROM_r_ref", ROM_r_ref, cLine, nLines, &
+           "Reference length value [cm] : ", &
+           "(a,es9.3,1x,a)", 1.0d0, ok, .true.)       
+      call getDouble("ROM_rho_ref", ROM_rho_ref, cLine, nLines, &
+           "Reference density value [g/cm^3] : ", &
+           "(a,es9.3,1x,a)", 1.0d0, ok, .true.)       
+      call getDouble("ROM_T_ref", ROM_T_ref, cLine, nLines, &
+           "Reference temperature value [K] : ", &
+           "(a,es9.3,1x,a)", 1.0d0, ok, .true.)       
+      call getDouble("ROM_v_ref", ROM_v_ref, cLine, nLines, &
+           "Reference speed value [cm/s] : ", &
+           "(a,es9.3,1x,a)", 1.0d0, ok, .true.)       
+      call getDouble("ROM_tilt", ROM_tilt, cLine, nLines, &
+           "Tilt angle of magnetic axis [deg.] : ", &
+           "(a,es9.3,1x,a)", 1.0d0, ok, .true.)       
+      ROM_tilt = ROM_tilt*piDouble/180.0d0  ! [rad.]
+      call getDouble("ROM_Period", ROM_Period, cLine, nLines, &
+           "Rotational Period of star [days] : ", &
+           "(a,es9.3,1x,a)", 1.0d0, ok, .true.)       
+      ! converting it to seconds
+      ROM_Period = ROM_Period*24.0d0*60.0d0*60.0d0   ! (sec)
+      call getString("ROM_datafile", ROM_datafile, cLine, nLines, &
+           "Filename of the data from Romanova: ","(a,a,1x,a)","none", ok, .true.)
+      ! The followings are actually common for a line calculations.
+      call getLogical("lte", lte, cLine, nLines, &
+           "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("lycontthick", LyContThick, cLine, nLines, &
+           "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
+      call getString("contflux", contFluxFile, cLine, nLines, &
+           "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+      call getString("popfile", popFilename, cLine, nLines, &
+           "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
+      call getLogical("writepops", writePops, cLine, nLines, &
+           "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+      call getLogical("readpops", readPops, cLine, nLines, &
+           "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+      call getLogical("writephasepops", writePhasePops, cLine, nLines, &
+           "Write populations file at each phase: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("readphasepops", readPhasePops, cLine, nLines, &
+           "Read populations file (specific phase): ","(a,1l,1x,a)", .false., ok, .false.)
+      call getLogical("enhance", enhance, cLine, nLines, &
+           "Accretion enhancement: ","(a,1l,1x,a)", .false., ok, .false.)
+      call getInteger("nlower", nLower, cLine, nLines,"Lower level: ",&
+           "(a,i2,a)",2,ok,.true.)
+      call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ", &
+           "(a,i2,a)",3,ok,.true.)
+      call getString("coreprofile", intProFilename, cLine, nLines, &
+           "Core profile: ","(a,a,1x,a)","none", ok, .false.)
+      ! for thin disc implementation
+      call getReal("thindiskrin", ThinDiskRin, cLine, nLines, &
+           "Thin disk inner radius  (10^10cm): ","(a,f7.1,1x,a)", 60.0, ok, .false.)
+ end if
+
+
  
  if (coreEmissionLine) then
     
@@ -1441,7 +1539,8 @@ endif
    "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
 
  if (fillTio.or.mie  &
-      .or. (geometry == "ttauri" .and. ttau_disc_on) ) then
+      .or. (geometry == "ttauri") ) then
+!      .or. (geometry == "ttauri" .and. ttau_disc_on) ) then
 
 ! amin and amax are left as microns here
 
@@ -1606,6 +1705,11 @@ endif
  call getReal("imagesize", setImageSize, cLine, nLines, &
       "Image size (AU): ", "(a,1pe10.2,1x,a)", 0., ok, .false.)
  setimagesize = setimagesize * auTocm
+
+ call getReal("imageScale", imageScale, cLine, nLines, &
+      "Fraction of original image size (-): ", "(a,1pe10.2,1x,a)", 1.0, ok, .false.)
+
+
 
  if (stokesImage) then
     if (.not.narrowBandImage) then

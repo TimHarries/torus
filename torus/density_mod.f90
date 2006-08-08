@@ -179,7 +179,7 @@ contains
       END IF 
    
     ! test if the point lies outside the accretion stream
-    ELSE IF ((rM > TTauriRinner*0.99d0) .AND. (rM < TTauriRouter*1.01d0 )) THEN
+    ELSE IF ((rM > TTauriRinner) .AND. (rM < TTauriRouter)) THEN
       TTauriInFlow = .TRUE.
 
     ELSE

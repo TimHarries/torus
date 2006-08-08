@@ -13,15 +13,14 @@ debug = no
 pgplot = yes
 static = no
 profile= no
-#PATH2G2C=/usr/lib/gcc-lib/i386-redhat-linux/3.2.2
-PATH2G2C=/usr/lib/gcc/i586-mandrake-linux-gnu/3.4.1/
+PATH2G2C=/usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 
 ifeq ($(SYSTEM), g95)
     F95COMP=g95
     F77COMP=g95
     FASTFLAG= -O3
-#    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG=-g
+#    FASTFLAG= -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    DEBUGFLAG=-g -fbounds-check -Wall
     STATICFLAG=
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
@@ -213,7 +212,6 @@ ifeq ($(SYSTEM), lamosx)
     F77COMP= ${TOP2}/bin/mpif77 
     FASTFLAG= -O0
     DEBUGFLAG=-g  -ftrace=full
-    LDFLAG= 
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel
@@ -226,7 +224,6 @@ ifeq ($(SYSTEM), lamosx)
     MK_MPI_SRC = yes
     KNOWN_SYSTEM=yes
 endif
-
 
 
 
@@ -307,10 +304,10 @@ ifeq ($(SYSTEM), mpiintel)
     TOP2=$(HOME)/mpi_g77
     F95COMP=${TOP}/bin/mpif77 -I${TOP}/include -mp 
     F77COMP=${TOP2}/bin/mpif77 -I${TOP2}/include 
-    FASTFLAG= -O2 -I/usr/include/nptl -L/usr/lib/nptl -zero
-    #DEBUGFLAG=-g -O0 -CA -CU -CV -CS -CB  
-    DEBUGFLAG=-g -O0 -CA -CV -CS -CB -zero
-    STATICFLAG=
+#    FASTFLAG= -O2 -I/usr/include/nptl -L/usr/lib/nptl -mp
+    FASTFLAG= -O -mp
+    LDFLAG= 
+    DEBUGFLAG=-g -O0 -CA -CV -CS -CB  -mp
     MATHTRAP= 
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel
@@ -417,27 +414,6 @@ ifeq ($(SYSTEM), omp)
    KNOWN_SYSTEM=yes
 endif
 
-ifeq ($(SYSTEM), darwin)
-    F95COMP=xlf95 -qsuffix=f=f90
-    F77COMP=f77
-    FASTFLAG=-O2
-    DEBUGFLAG=-g
-    STATICFLAG=
-    MATHTRAP= 
-    UNIXMOD=unix_mod.f90.darwin
-    KINDMOD=kind_mod.f90.darwin
-    EXE=torus.darwin
-    F77FLAG= 
-    IMAGEF77=image_f77.f.darwin
-    SPECF77=spec_f77.f.darwin
-    F2CLIB=
-    STATICLIBS=
-    STARLIBS=
-    PGLIBS=-L/Users/mbate/Documents/ryuichi/pgplot -lpgplot 
-    MK_MPI_SRC = no
-    KNOWN_SYSTEM=yes
-endif
-
 
 ifeq ($(SYSTEM), ceres)
     F95COMP=xlf95 -bloadmap:outp -qmoddir=/lscratch -I/lscratch -qsuffix=f=f90 -qnolm -O3 -qarch=pwr3 -qmaxmem=-1
@@ -459,6 +435,77 @@ ifeq ($(SYSTEM), ceres)
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
 endif
+
+
+
+ifeq ($(SYSTEM), mpig95)
+   TOP=/h/rk/mpi_g95
+   TOP2=
+   F95COMP=${TOP}/bin/mpif77 -w
+   F77COMP=${TOP}/bin/mpif77 -w
+#   FASTFLAG=-O3 -I${TOP}/include  
+   FASTFLAG=-O3 -I${TOP}/include  
+   DEBUGFLAG=-g  -I${TOP}/include  
+   LDFLAG= 
+   MATHTRAP=
+   UNIXMOD=unix_mod.f90.linuxintel
+   KINDMOD=kind_mod.f90.linuxintel
+   EXE=torus.mpig95
+   F77FLAG=-fno-second-underscore -w
+   IMAGEF77=image_f77.f.default
+   SPECF77=spec_f77.f.default
+   F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
+   STATICLIBS=
+   STARLIBS=-L/star/lib `ndf_link` 
+   PGLIBS=-L/star/lib `pgplot_link`
+   MK_MPI_SRC=yes
+   KNOWN_SYSTEM=yes
+endif
+
+ifeq ($(SYSTEM), darwin)
+    F95COMP=g95
+    F77COMP=g95
+    FASTFLAG= -O3
+    DEBUGFLAG=-g -fbounds-check -Wall
+    LDFLAG=
+    MATHTRAP=
+    UNIXMOD=unix_mod.f90.linuxintel
+    KINDMOD=kind_mod.f90.linuxintel
+    EXE=torus.darwin
+    F77FLAG= -w -fno-second-underscore
+    IMAGEF77=image_f77.f.miracle
+    SPECF77=spec_f77.f.miracle
+    STATICLIBS=
+    STARLIBS=-L$(HOME)/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs
+    PGLIBS=-L$(HOME)/pgplot
+    MK_MPI_SRC = no
+    KNOWN_SYSTEM=yes
+endif
+
+ifeq ($(SYSTEM), mpidarwin)
+   TOP=${HOME}/mpi_g95
+   TOP2=${HOME}/mpi_g95
+    F95COMP= ${TOP2}/bin/mpif77 
+    F77COMP= ${TOP2}/bin/mpif77 
+    FASTFLAG= -O3
+    DEBUGFLAG=-g  
+    LDFLAG= 
+    MATHTRAP=
+    UNIXMOD=unix_mod.f90.linuxintel
+    KINDMOD=kind_mod.f90.linuxintel
+    EXE=latticeQED
+    F77FLAG= -w -fno-second-underscore
+    IMAGEF77=image_f77.f.miracle
+    SPECF77=spec_f77.f.miracle
+    STATICLIBS= 
+    STARLIBS=-L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    PGLIBS=-L${HOME}/pgplot -lpgplot
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM=yes
+endif
+
+
+
 
 
 # Setting additional other options for special cases
@@ -504,7 +551,7 @@ endif
 F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  unix_mod.f90  inputs_mod.f90 stateq_mod.f90 utils_mod.f90   gaussian_mod.f90  \
  grid_mod.f90 math_mod.f90  \
- phasematrix_mod.f90 blob_mod.f90 distortion_mod.f90 \
+ phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 distortion_mod.f90 \
  image_mod.f90 TTauri_mod.f90 puls_mod.f90 disc_hydro_mod.f90 gas_opacity_mod.f90 \
  torusMain.f90 integratePath.f90 readIntPro.f90 \
  mieDistPhaseMatrix.f90 gridtype_mod.f90 \
@@ -514,14 +561,15 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  intersectCube.f90 fillGridThomson.f90 cont_read.f90 getMeanMass.f90 \
  input_variables.f90 amr_mod.f90 octal_mod.f90 parameters_mod.f90 diffusion_mod.f90 \
  lucy_mod.f90 jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 photoion_mod.f90 \
- photon_mod.f90 wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 pixplot_module.f90 \
+ wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 pixplot_module.f90 \
  sph_data_class.f90 cluster_class.f90 linked_list_class.f90 timing.f90 \
  isochrone_class.f90 filter_set_class.f90 ostar_mod.f90 formal_solutions.f90 \
  cluster_utils.f90 surface_mod.f90  math_mod2.f90 disc_class.f90 \
  hyd_col_coeff.f90 rotation_variables.f90 function_variables.f90 \
  flow_speed_variables.f90 clump_mod.f90 parallel_mod.f90 \
  discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
- jet_class.f90 cmfgen_class.f90 messages_mod.f90 
+ jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
+ romanova_class.f90 messages_mod.f90 
 
 PGSOURCE= pgplot_stubs.f90
 PGOBJ= $(PGSOURCE:.f90=.o)
@@ -608,6 +656,16 @@ mpif.h :
 
 
 # Specific rules to make object files
+formal_solutions.o : formal_solutions.f90.raw vector_mod.o  constants_mod.o grid_mod.o \
+                     integratePath.o octal_mod.o kind_mod.o surface_mod.o utils_mod.o \
+                     density_mod.o  parallel_mod.o image_mod.o timing.o
+        ifeq ($(MK_MPI_SRC), yes)
+	   sed 's/\!$$MPI//g' formal_solutions.f90.raw   > formal_solutions.f90
+        else
+	   sed '/\!$$MPI/d'   formal_solutions.f90.raw   > formal_solutions.f90
+        endif
+	$(F90) -c formal_solutions.f90
+
 lucy_mod.o : lucy_mod.f90.raw amr_mod.o constants_mod.o grid_mod.o phasematrix_mod.o diffusion_mod.o \
              source_mod.o spectrum_mod.o timing.o vector_mod.o parallel_mod.o dust_mod.o messages_mod.o
         ifeq ($(MK_MPI_SRC), yes)
@@ -673,7 +731,7 @@ torusMain.o: torusMain.f90.raw TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o
 	lucy_mod.o math_mod.o phasematrix_mod.o photon_mod.o puls_mod.o \
 	source_mod.o spectrum_mod.o sph_data_class.o stateq_mod.o \
 	surface_mod.o timing.o unix_mod.o utils_mod.o vector_mod.o \
-	wr104_mod.o  messages_mod.o photoion_mod.o
+	wr104_mod.o  messages_mod.o photoion_mod.o  romanova_class.o
 
 
         ifeq ($(MK_MPI_SRC), yes)

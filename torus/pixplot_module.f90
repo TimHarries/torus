@@ -8,11 +8,16 @@ module pixplot_module
   ! routines PGWEDG and PGCTAB.
   !-----------------------------------------------------------------------
 
+  public:: &
+       pixplot, &
+       palett, &
+       setvp, &
+       fiddle, &
+       outlin       
 
   contains
 
     
-    ! This is the main routine in this module.
     
     subroutine pixplot(F, MXI, MXJ, I1, I2, J1, J2, title)
             
@@ -201,6 +206,7 @@ module pixplot_module
       CALL PGEND
       !-----------------------------------------------------------------------
     END subroutine pixplot
+
 
     !
     !

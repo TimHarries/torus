@@ -77,13 +77,25 @@ contains
 
     ok = .true.
 
+    ! special case:
+    if (a == 0) then
+       if (b/=0) then
+          x1 = -c/b; x2 = -c/b 
+       else
+          write(*,*) "! quad solver failed (1):   (a,b,c) = ", a, b, c
+          ok = .false.
+          x1 = 0.0d0; x2 =0.0d0 
+       end if
+    end if
+
+
     y = b*b-4.d0*a*c
 
     if (y >= 0.) then
        x1 = (-b + sqrt(y))/(2.d0*a)
        x2 = (-b - sqrt(y))/(2.d0*a)
     else
-       write(*,*) "! quad solver failed",y,a,b,c
+       write(*,*) "! quad solver failed (2).:  (y,a,b,c) = ", y,a,b,c
        ok = .false.
        x1 = -b/(2.d0*a)
        x2 = -b/(2.d0*a)
@@ -91,7 +103,7 @@ contains
 
   end subroutine solveQuadDble
 
-  ! return a blackbody function
+  ! return a blackbody function [B_nu]
 
   real elemental function blackBody(temperature, wavelength)
 
@@ -201,7 +213,6 @@ contains
     REAL(double) ::  LX,LX1,LX2,LY1,LY2,GR
     if ( (x.le.0.0d0).or.(x1.le.0.0d0).or.(x2.le.0.0d0)) then
        write(*,*) 'f.up in logint_dble',x,x1,x2,y1,y2
-       do;enddo
        stop
     endif
     LX=LOG(X)
@@ -982,21 +993,21 @@ contains
 
 
 
-!    ! a functions to convert characters to integer 
-!    function char2int(a) RESULT(out)
-!      implicit none 
-!      integer :: out
-!      character, intent(in),dimension(:) :: a
-!      integer :: ierr
-!      
-!      read(a, *, IOSTAT = ierr) out
-!      if (ierr /= 0) then
-!         print *, 'Error : Non-numerical characters passed to [char2int] &
-!              & function in char_function_class module.'
-!         stop
-!      end if
-!      
-!    end function char2int
+    ! a functions to convert characters to integer 
+    function char2int(a) RESULT(out)
+      implicit none 
+      integer :: out
+      character, intent(in),dimension(:) :: a
+      integer :: ierr
+      
+      read(a, *, IOSTAT = ierr) out
+      if (ierr /= 0) then
+         print *, 'Error : Non-numerical characters passed to [char2int] &
+              & function in char_function_class module.'
+         stop
+      end if
+      
+    end function char2int
   
   
     ! a function to convert integer to strings
@@ -1175,15 +1186,15 @@ contains
       V2=V*V
       A2=A*A
       Z=A2+V2
-      IF(A .EQ. 0.0D0  ) THEN
-         ! ---- Normal Doppler brodening.         
-         IF (V2 < 1.D-04) THEN
-            VOIGTN = 1.0D0 + V2*(1.0D0 + 0.5D0*V2*(1.0D0 + V2/6.0D0))
-         ELSE
-            VOIGTN = EXP(-V2)
-         END IF
-         RETURN
-      END IF
+!      IF(A .EQ. 0.0D0  ) THEN
+!         ! ---- Normal Doppler brodening.         
+!         IF (V2 < 1.D-04) THEN
+!            VOIGTN = 1.0D0 + V2*(1.0D0 + 0.5D0*V2*(1.0D0 + V2/6.0D0))
+!         ELSE
+!            VOIGTN = EXP(-V2)
+!         END IF
+!         RETURN
+!      END IF
       IF(A .LE. 0.5D0  )GOTO 20
       IF(Z .LT. 10.D0  )GOTO 50
       !-----ASYMPTOTIC EXPANSION FOR LARGE MODULUS
@@ -1468,18 +1479,33 @@ contains
       real(double), intent(in) :: Ne           ! [#/cm^3]  nunmber density of electron
       real(double), intent(in) :: nu           ! [1/s]  line center frequency 
 
-      ! The following are set in input_variables module.
-      !  
-      ! real, parameter :: C_rad  =  0.   ! [A]  
-      ! real, parameter :: C_vdw =   0.   ! [A]
-      ! real, parameter :: C_stark = 0.   ! [A]
+      !------------------------------------------------------------
+      ! Quadratic Stark broadening (?): 
+      ! -- Good for most lines especially hot stars (Gray's comment)
+      !------------------------------------------------------------
+      !! see Muzerolle et al. 2001 ApJ 550 944
+      !bigGamma = &
+      !     &    C_rad  &
+      !     &  + C_vdw*(N_HI / 1.e16)*(temperature/5000.)**0.3 &
+      !     &  + C_stark*(Ne/1.e12)**0.6666  ! [Angstrom]
 
-      ! see Muzerolle et al. 2001 ApJ 550 944
+
+      !----------------------------------------------------------
+      ! Linear Stark broadening:
+      ! -- Good for Hydrogen lines
+      !---------------------------------------------------------
+      ! See Luttermoser & Johnson, 1992, ApJ, 388, 579
+      !  Note: smallGamma = bigGamma/(4*pi)
+      !        e.g. For H-alpha: C_rad   = 8.16e-3 [A], 
+      !                          C_vdw   = 5.53e-3 [A], 
+      !                          C_stark = 1.47e-2 [A], 
 
       bigGamma = &
            &    C_rad  &
            &  + C_vdw*(N_HI / 1.e16)*(temperature/5000.)**0.3 &
-           &  + C_stark*(Ne/1.e12)**0.6666  ! [Angstrom]
+           &  + C_stark*(Ne/1.e12)  ! [Angstrom]
+
+
 
       ! convert units 
       bigGamma = (bigGamma*1.e-8) * nu**2   / cSpeed  ! [1/s]
@@ -1487,6 +1513,7 @@ contains
     end function bigGamma
 
 
+    
     subroutine resampleRay(lambda, nTau, projVel, maxtau, newLambda, newNTau, &
          inFlow, newInFlow)
       use  input_variables, only: lamstart, lamend, nlambda, lamline
@@ -1498,7 +1525,7 @@ contains
       logical, intent(inout)  :: InFlow(nTau)
       logical, intent(inout)  :: newInFlow(maxtau)
       !
-      real :: dProjVel(nTau)  ! automatic array
+      real(double) :: dProjVel  ! automatic array
       integer :: nAdd 
       integer :: i, j
 !      real, parameter :: dvel  = 10.e5/cSpeed
@@ -1506,21 +1533,15 @@ contains
 
       ! -- using the values in input_variables module
       dvel = (lamend-lamstart)/lamline/real(nlambda-1)  ! should be in [c]
-      dvel = dvel/4.0  ! to be safe  
-!      dvel = dvel/10.0  ! to be safe  
-!      dProjVel(1)  = 0.
-
+      dvel = dvel/2.0  ! to be safe  
       dvel = 1.e5/cspeed ! 1 km/s
-
-      dProjVel(1:nTau-1) = projVel(2:nTau) - projVel(1:nTau-1)
-      dProjVel(nTau)  = 0.0
 
       newNTau = 0
       do i = 2, nTau
+         dProjVel = projVel(i) - projVel(i-1)
          ! if (i==2) we always add points
-         if (abs(dProjVel(i)) > dVel .or. i==2) then
-!            nAdd = nint(abs(ProjVel(i))/dVel)
-            nAdd = nint(abs(dProjVel(i))/dVel)
+         if (abs(dProjVel) > dVel .or. i==2) then
+            nAdd = nint(abs(dProjVel)/dVel)
             dlam = (lambda(i)-lambda(i-1))/real(nAdd+1)
             do j = 1, nAdd+1
                newNtau = newNtau + 1
@@ -1553,23 +1574,27 @@ contains
       real, intent(inout) :: newLambda(maxTau)
       logical, intent(inout)  :: InFlow(nTau)
       logical, intent(inout)  :: newInFlow(maxtau)
-      integer :: nClose = 10
-      integer :: nAdd = 10
+      integer,parameter :: nAdd = 50
+      integer,parameter :: nclose =10
+!      integer, parameter :: nAdd = 10
       integer :: i, j, n
       real :: dlam
+      logical :: in_res_zone
       
       ! loop through the projected velocities to find the resonance zones
       newNTau = 0
 
-      ! always add points between points near the current location of photon
-      n = min(nClose, nTau)
       ! check for the resonance zone(s)
-      do i = 2, nTau         
-         if ( ( i<n ) &
-              .or.    &            
-            ( (projVel(i-1) <= thisVel) .and. (thisVel < projVel(i)) ) &
+      do i = 2, nTau 
+         if ( ( projVel(i-1) <= thisVel  .and. thisVel < projVel(i) ) &
               .or. &
-              ( (projVel(i-1) >= thisVel) .and. (thisVel > projVel(i)) )   ) then
+              ( projVel(i-1) >= thisVel  .and. thisVel > projVel(i) )  )  then
+            in_res_zone = .true.
+         else
+            in_res_zone = .false.
+         end if
+
+         if (in_res_zone .or. i < nclose ) then
             ! adding extra points (linearly interporating between points).
             dlam = (lambda(i)-lambda(i-1))/real(nAdd+1)
             do j = 1, nAdd+1
@@ -1589,6 +1614,46 @@ contains
       newInFlow(newNTau) = inFlow(nTau)
     end subroutine resampleRay2
 
+    !
+    ! Add points where velocity is slowly changing.
+    ! NEED TO ADD ALPHA_DISC CHECK SECTION LATER! (IMPORTNAT IF DISC IS PRESENT)
+    subroutine resampleRay3(lambda, nTau, projVel, maxtau, newLambda, newNTau, &
+         inFlow, newInFlow)
+      integer, intent(in) :: nTau, maxtau
+      real, intent(in) :: lambda(nTau)
+      real(double), intent(in) :: projVel(nTau)
+      integer, intent(inout) :: newNtau
+      real, intent(inout)  :: newLambda(maxtau)
+      logical, intent(inout)  :: InFlow(nTau)
+      logical, intent(inout)  :: newInFlow(maxtau)
+      !
+      real(double) :: dProjVel  ! automatic array
+      integer,parameter :: nAdd = 5
+      integer :: i, j
+      real :: dvel, dlam
+
+      dvel = 10.e5/cspeed !10 km/s
+
+      newNTau = 0
+      do i = 2, nTau
+         dProjVel = projVel(i) - projVel(i-1)
+         if (abs(dProjVel) > dVel) then
+            dlam = (lambda(i)-lambda(i-1))/real(nAdd+1)
+            do j = 1, nAdd+1
+               newNtau = newNtau + 1
+               newLambda(newNTau) = real(j-1)*dlam + lambda(i-1)
+               newInFlow(newNTau) = inFlow(i-1)
+            enddo
+         else
+            newNtau = newNtau + 1
+            newLambda(newNTau) = lambda(i-1)
+            newInFlow(newNTau) = inFlow(i-1)
+         endif
+      enddo
+      newNtau = newNtau + 1
+      newLambda(newNTau) = lambda(nTau)
+      newInFlow(newNTau) = inFlow(nTau)
+    end subroutine resampleRay3
 
     
     subroutine resampleRay_tau(L, nTau, tau, dtau_max, maxtau, newL, newNTau,&
@@ -1603,27 +1668,26 @@ contains
       logical, intent(inout)  :: InFlow(nTau)
       logical, intent(inout)  :: newInFlow(maxtau)
       !
-      real, allocatable, save :: dtau(:) ! dtau(maxtau)  ! automatic array
+      real :: dtau  
       integer :: nAdd 
       integer :: i, j
 !      real, parameter :: dvel  = 10.e5/cSpeed
       real ::  dL
-      logical, save  :: first_time = .true.      
-      !
-      ! allocates memotry for work array for the first time.
-      if (first_time) then
-         first_time=.false.
-         ALLOCATE(dtau(maxtau))
-      end if
 
+      ! Now we devide the line seqment if the optical depth
+      ! is too large.
 
       ! Initial optical depth in each line sequemnt
-      dtau(1:nTau-1) = tau(2:nTau) - tau(1:nTau-1)
-
       newNTau = 0
       do i = 1, nTau-1
-         if (dtau(i) > dtau_max) then
-            nAdd = nint(dtau(i)/dtau_max)  ! this should be at least 1
+         dtau = tau(i+1) - tau(i)
+         if (dtau > dtau_max) then
+!            if (dtau < 20.0) then
+!            if (dtau < 2000.0) then
+               nAdd = nint(dtau/dtau_max)  ! this should be at least 1
+!            else
+!               nAdd = 10  ! to avoid a large number of points added
+!            end if
             dL = (L(i+1)-L(i))/real(nAdd+1)
             do j = 1, nAdd+1
                newNtau = newNtau + 1
@@ -1646,11 +1710,11 @@ contains
             newInFlow(newNTau) = inFlow(i)
          endif
       enddo
+
       newNtau = newNtau + 1
       newL(newNTau) = L(nTau)
       newInFlow(newNTau) = inFlow(nTau)
     end subroutine resampleRay_tau
-
 
 
 
@@ -1681,11 +1745,11 @@ contains
 
                
     subroutine linearResample(xArray, yArray, nX, nx_max, newXarray, newNx)
-      real :: xArray(:), yArray(:)
+      real(single) :: xArray(:), yArray(:)
       integer :: nx, newNx
       integer, intent(in) :: nx_max
-      real :: newXarray(:)
-      real, save, allocatable :: newYarray(:) ! newYarray(newNx) ! automatic array
+      real(single) :: newXarray(:)
+      real(single), save, allocatable :: newYarray(:) ! newYarray(newNx) ! automatic array
       integer :: i, j
       logical, save :: first_time = .true.
 
@@ -1711,12 +1775,12 @@ contains
 
 
     subroutine linearResample_dble(xArray, yArray, nX, nx_max, newXarray, newNx)
-      real :: xArray(:)
+      real(single) :: xArray(:)
       real(double) :: yArray(:)
       integer :: nx, newNx
       integer, intent(in) :: nx_max
-      real :: newXarray(:)
-      real, save, allocatable  :: newYarray(:) ! newYarray(newNx)  ! automatic array
+      real(single) :: newXarray(:)
+      real(single), save, allocatable  :: newYarray(:) ! newYarray(newNx)  ! automatic array
       integer :: i, j
       logical, save :: first_time = .true.
 
@@ -3286,6 +3350,90 @@ END SUBROUTINE GAUSSJ
     endif
   end subroutine insertBin
     
+
+  !
+  ! Compares the Lorentz profile and Voigt Profile
+  !
+  subroutine test_profiles()
+    implicit none
+    
+    integer, parameter :: nbin = 100
+    real(double) :: Lorentz(nbin), lambda(nbin), freq(nbin), Voigt_prof(nbin)
+    integer :: i, j  
+    integer :: nsample = 10000000
+    real(double) :: nu0, nu_rand, lam0, lam_min, lam_max, Gamma
+    real(double) :: nu_max, nu_min, lam_rand
+    real(double) :: c=2.99792458e10  ! cm/s
+    real(double) :: tmp, dlam, a, doppler, dnu, dv, T, N_HI, Ne
+    
+    lam_min = 6550.0d-8  ! cm
+    lam0    = 6562.8d-8  ! cm
+    lam_max = 6580.0d-8  ! cm
+    
+    nu_min = c/lam_max
+    nu0 = c/lam0
+    nu_max = c/lam_min
+    
+    ! sets up wavelength array
+    tmp = (lam_max-lam_min)/dble(nbin-1)
+    do i = 1, nbin
+       lambda(i) = lam_min + tmp*dble(i-1)
+       freq(i) = c/lambda(i)
+    end do
+    
+     
+    
+    ! take random samples
+!    Gamma = 3.48d11
+    T = 6000.0; N_HI=1.e-19; Ne=1.e-9
+    Gamma = bigGamma(N_HI, T, Ne, nu0)
+    !Gamma = 0.0d0
+
+    
+    dlam = lambda(2) - lambda(1)
+    
+    Lorentz(1:nbin) = 0.0d0
+    do i = 1, nsample
+       
+       nu_rand = random_Lorentzian_frequency(nu0, Gamma)
+       
+       lam_rand = c/nu_rand + dlam/2.0
+       
+       call locate(lambda, nbin, lam_rand, j)
+       
+       Lorentz(j) = Lorentz(j) + 1.0d0
+       
+    end do
+    
+    
+    ! No computes the Voigt profile
+    doppler = nu0/cSpeed * sqrt(2.*kErg*T/mHydrogen)
+    a = Gamma/4.0d0/3.141593d0/doppler
+    do i = 1, nbin
+       dnu = nu0 - freq(i)
+       dv = dnu/doppler
+       voigt_prof(i) = voigtn(a, dv)
+    end do
+    
+  
+    ! Renomarlize the profiles so that the max is 1
+    tmp = MAXVAL(Lorentz(1:nbin)) 
+    if (tmp/=0) Lorentz(:) = Lorentz(:)/tmp
+
+    tmp = MAXVAL(voigt_prof(1:nbin)) 
+    if (tmp/=0) voigt_prof(:) = voigt_prof(:)/tmp
+  
+    
+    ! writing the results in a file
+    
+    open(unit=66, file="lorentz_voigt.dat", status="replace")
+    do i = 1, nbin
+       write(66,*) lambda(i)*1.0d8, lorentz(i), voigt_prof(i)
+       !             [a]              
+    end do
+    close(66)
+    
+  end subroutine test_profiles
 
 
 end module utils_mod

@@ -6,10 +6,26 @@ module surface_mod
   use utils_mod
   use gridtype_mod
   use amr_mod
+  use romanova_class
 
   implicit none
 
-  public
+  public :: &
+       buildSphere, &
+       emptySurface, &
+       addElement, &
+       testSurface, &
+       createTTauriSurface, &
+       createHotRing, &
+       createSurface, &
+       createTTauriSurface2, &
+       sumSurface, &
+       createProbs, &
+       getPhotoVec, &
+       photoFluxIntegral, &
+       photoSolidAngle, &
+       whichElement, &
+       isHot
 
   type ELEMENTTYPE
      type(VECTOR) :: norm
@@ -49,6 +65,7 @@ contains
     integer :: nNuHotFlux
     integer :: returnVal
     real :: dummyReal
+    real :: nu, hnu
 
     surface%centre = centre
     surface%radius = radius
@@ -71,8 +88,9 @@ contains
     open(20,file=contfile,status="old",form="formatted")
     nNuHotFlux = 1
     do
-       read(20,*,iostat=returnVal) surface%nuArray(nNuHotFlux), surface%hnuArray(nNuHotFlux)
+       read(20,*,iostat=returnVal) nu, hnu
        if (returnVal /= 0) exit
+       surface%nuArray(nNuHotFlux)=nu;  surface%hnuArray(nNuHotFlux)=hnu
        nNuHotFlux = nNuHotFlux + 1
     end do
     close(unit=20)
@@ -217,6 +235,7 @@ contains
       write(*,'(a,f14.1)') "Accretion black-body temperature estimated to be about: ",&
                  (real(SUM(surface%totalAccretion),kind=db) / &
                  ((fourPi*(surface%radius*1.e10)**2.*stefanBoltz)*fillFactor) )**0.25
+      
     else
       print *, 'Surface does not contain accretion hotspots'
     end if
@@ -267,6 +286,7 @@ contains
         Taccretion = Taccretion**0.25
 !! FOR DEBUG==================================================
 !        Taccretion = 8000.0
+!        Taccretion = 7500.0
 !! FOR DEBUG==================================================
         surface%element(iElement)%hotFlux(:) = &
            pi*blackbody(REAL(tAccretion), 1.e8*real(cSpeed)/surface%nuArray(:)) !* &
@@ -319,6 +339,7 @@ contains
     !call createProbs(surface,lineFreq,coreContFlux)
   end subroutine createHotRing
 
+
   !
   !
   ! For a uniform suraface (for a general use)
@@ -342,6 +363,150 @@ contains
     call sumSurface(surface)
     
   end subroutine createSurface
+
+
+
+  !
+  !
+  ! Creating the surface with hot spots...
+  ! Similar to createTTauriSurface, but this routine 
+  ! finds the mass-flux hence the kinetic energy flux (F_k) across 
+  ! of the near the surface and its assumes its balanced with 
+  ! the blackbody radiation (F_b).  Ignorging the internal energy 
+  ! of the plasma.
+  !        
+  !  F_k = Vn (1/2 rho V^2)  and F_b = sigma*T^4
+  !
+  !             -->      ^       |-->|
+  !   where Vn = V .dot. n,  V = | V |.  Sigma is Stefan-Boltzmann constant.  
+  !
+  !-----------------------------------------------------------------------
+  ! This is for "romanova" geometry now, but can be generalized later. 
+  ! 
+  !
+  !
+  subroutine createTTauriSurface2(surface, grid, romData, lineFreq, &
+       coreContFlux, fAccretion)
+   
+    type(SURFACETYPE),intent(inout) :: surface
+    type(gridType), intent(in) :: grid
+    type(romanova), intent(in) :: romData
+    real(double), intent(in) :: coreContFlux
+    real, intent(in) :: lineFreq
+    real, intent(out) :: fAccretion ! erg s^-1 Hz^-1
+    !
+    integer :: iElement
+    type(octalVector) :: aboveSurface
+    real(double) :: Laccretion, Taccretion
+    real(double) :: rho, Vn
+    type(vector) :: V  ! velocity 
+    type(vector) :: n  ! normal vector
+    real(double) :: F_k, Vabs, T, T_eff, Tmax, Tmin, Tmean, Tsum, T_gas
+    real(double) :: T_ref, V_ref
+    real(double) :: units  ! unit conversion factor
+    integer :: nhot
+    ! Adiabatic exponent (It cannot be 1.0).
+!    real(double), parameter :: gam = 3.0d0/4.0d0 ! ideal gas monoatomic)
+    real(double), parameter :: gam = 1.1d0 ! Romanova's choice
+    real(double) :: tmp, fac, w
+    
+    print *, ' '
+    print *, 'Creating stellar surface elements by createTTauriSurface2.'
+
+    ! First check if the data is alive
+    if (.not. romanova_data_alive(romData)) then
+       print*, "Error:: romData (romanova's data) is not alive anymore. [createTTauriSurface2]."
+       stop
+    end if
+
+!    ! finding the effective temperature of the photosphere without hot spots first
+!    T_eff = (real(SUM(surface%totalPhotosphere),kind=db) / &
+!         (fourPi*(surface%radius*1.e10)**2.*stefanBoltz))**0.25
+!    print *, "  Effective temperature of the photosphere is : ", T_eff, " [K]."
+!    print *, "  The surface is will be flaged as hot surface T > T_eff ...."
+    
+    
+    !
+    nhot = 0       ! number of hot surface elemets
+    Tmin = 1.0d10  ! 
+    Tmax = 1.0d-10 !
+    Tsum = 0.0d0
+    do iElement = 1, SIZE(surface%element)
+       aboveSurface = surface%element(iElement)%position - surface%centre
+       aboveSurface = aboveSurface * 1.2_oc  ! location just above the surface element
+       
+       ! Finding the density and velocity at this position.
+       ! -- using the routines in romanova_class
+       rho = romanova_density(romData, aboveSurface)        ! [g/cm^3]
+       V = romanova_velocity(romData, aboveSurface)         ! [c]
+       T_gas = romanova_temperature(romData, aboveSurface)  ! [K]
+       n = surface%element(iElement)%norm
+       
+       Vabs = MODULUS(V)
+       Vn = DBLE( v .dot. n  )  
+       ! Unit vonversions [c] --> [cm/s]
+       Vn = Vn*cSpeed_dbl
+       Vabs = Vabs*cSpeed_dbl
+
+       ! finding the specific enthalpy (w) of gas note T=(P/rho) in Romanova's code
+       ! units and w = gam*(gam-1)^-1 * (P/rho), so we can convert T to w here.
+       ! Just need to be careful about the unit vonversion.
+       T_ref = get_dble_parameter(romData, "T_ref")
+       V_ref = get_dble_parameter(romData, "v_ref")
+       units = V_ref*V_ref/T_ref
+       fac = gam/(gam-1.0d0)    
+       
+       w = fac * T_gas * units   ! should be in cgs now.
+
+       tmp  = 0.5d0*Vabs*Vabs
+       tmp =  tmp + w
+
+       F_k = ABS(rho*Vn*tmp)     ! matter energy flux [erg/s/cm^2]
+
+
+       T = (F_k/DBLE(stefanBoltz))**0.25d0   ! effective temperature of the [K]
+
+!       !
+!       ! For debug ---------------
+!       !  Should be eliminated later. 
+!       T = 1.36d0*T
+       
+
+       ! For now, we define the surface to be "HOT" when T > 4000K. 
+       ! This shold be changed to be read from parameter file later. 
+
+       if (T > 4000.0d0) then 
+          ! in futire this should be somehow compared to the effective
+          ! temperature of photosphere. 
+          !       if (T > T_eff) then
+          nhot = nhot + 1
+          surface%element(iElement)%hot = .true.
+          allocate(surface%element(iElement)%hotFlux(surface%nNuHotFlux))
+          
+          surface%element(iElement)%hotFlux(:) = &
+               pi*blackbody(REAL(T), 1.e8*REAL(cSpeed)/surface%nuArray(:)) !* &
+          !                  ((1.e20*surface%element(iElement)%area)/(fourPi*TTauriRstar**2))
+         surface%element(iElement)%temperature = T
+         Tmin = MIN(Tmin, T)
+         Tmax = MAX(Tmax, T)
+         Tsum = Tsum + T
+      else 
+         surface%element(iElement)%hot = .false.
+      end if
+   end do
+
+   if (nhot > 0) then
+      write(*,*) "The minimum temperature of hot surface elements is ", Tmin
+      write(*,*) "The maximum temperature of hot surface elements is ", Tmax
+      write(*,*) "The average temperature of hot surface elements is ", Tsum/DBLE(nhot)
+   end if
+
+   call createProbs(surface,lineFreq,coreContFlux,fAccretion)
+   call sumSurface(surface)
+    
+ end subroutine createTTauriSurface2
+
+
 
 
 
@@ -498,6 +663,60 @@ contains
        endif
     enddo
   end subroutine photoSolidAngle
+
+
+
+  !
+  ! Given a surface object and a position vector,  
+  ! this routine find the element which has
+  ! the smallest angular distance from the position vector. 
+  ! The function returns the index of the elements in the surface
+  ! rather than the element itself.
+  function whichElement(thisSurface, position) RESULT(out)
+    implicit none
+    integer :: out
+    type(surfacetype), intent(in) :: thisSurface
+    type(vector) :: position
+    !
+    logical, save :: first_time = .true.
+    integer :: i 
+    real :: ip_max, ip
+    real :: imax
+    
+    
+    ! now we go through all the surface elements.
+    ! this is not a very smart thing to do....
+    ! What you really need is a better data structure.
+    ip_max = -1.0e20
+    imax =1 
+    do i = 1, thisSurface%nElements
+       ! finding the inner product of the surface position vector 
+       ! and the input position vector.
+       ip = position .dot. thisSurface%element(i)%position
+       ! normalize it just in case..
+       ip = ip / MODULUS(position)/ MODULUS(thisSurface%element(i)%position)
+
+       if (ip > ip_max) then
+          ip_max = ip
+          imax = i
+       end if
+    end do
+
+    out = imax
+
+  end function whichElement
+  
+
+  !
+  ! Given a surface, and an index of the surface elemnt
+  ! this function checks if the element is "hot" .
+  logical function isHot(thisSurface, i)
+    implicit none
+    type(surfacetype), intent(in) :: thisSurface
+    integer, intent(in) :: i
+    isHot = thisSurface%element(i)%hot
+  end function isHot
+    
 
 
 end module surface_mod

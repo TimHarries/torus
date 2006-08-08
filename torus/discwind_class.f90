@@ -21,6 +21,7 @@ module discwind_class
        &   in_discwind, &
        &   discwind_density, &
        &   discwind_Vr, &
+       &   discwind_Vphi, &
        &   ave_discwind_density, &
        &   add_discwind, &
        &   turn_on_discwind, &
@@ -356,6 +357,59 @@ contains
     discwind_Vr = tmp
  
   end function discwind_Vr
+
+
+  !
+  ! Assuming that angular momentum around z-axis conserves...
+  ! The output is in cm/s.
+  real(double) function discwind_Vphi(this, x, y, z)
+    implicit none
+    !
+    type(discwind), intent(in) :: this
+    real(double), intent(in) :: x, y, z      ! [10^10 cm] coordinates of a point
+    !
+    real(double) :: r  ! [10^10cm]  distance from the souce point
+    real(double) :: s  ! [10^10cm]  distance from the disc
+    real(double) :: d, rho  ! [10^10cm]  
+    real(double) :: rho_sq  ! [10^20 cm]
+    real(double) :: Cs       ! speed of sound in [cm/s]
+    real(double) :: fac, tmp
+    real(double) :: rho_i, z_dist, Vk
+    real(double), parameter :: G = 6.67259d-8 ! in cgs
+    real(double) :: Mstar
+
+    
+    d = this%d  ! [10^10cm]
+    rho_sq = x*x + y*y; rho = SQRT(rho_sq)
+    !
+    r = SQRT(rho_sq + (ABS(z)+d)**2)  ! [10^10cm]
+
+
+    ! finding the polar radius of the 
+    ! initial wind insection point on the disc by using geometry.
+    ! -- using similar triangles.
+    z_dist = d+ABS(z)
+    rho_i = (d/z_dist) * rho
+
+    ! Now compute the Keplerian orbital speed at this radius
+
+
+    Mstar = this%Mstar * 1.9891d33  ! converting from [Msun] to [g]
+
+    if (rho_i/=0) then
+       Vk = SQRT( G*Mstar / (rho_i*1.0d10) )  ! [cm/s]
+    else
+       Vk = 0.0d0
+    end if
+    
+    ! Now using the conservation of angular momentum around z...   
+    if (rho /= 0.0d0) then
+       discwind_Vphi = Vk * (rho_i/rho)   ! [10^10cm]
+    else
+       discwind_Vphi = 0.0d0  ! [10^10cm]
+    end if
+ 
+  end function discwind_Vphi
     
 
   !
@@ -377,8 +431,10 @@ contains
     type(vector) :: rp_vec  ! position vector orinined from a source points
     type(vector) :: dir_vec ! direction vector (from source)
     real(double) :: d       ! distance from the z=0 plane to the source
-    real(double) :: Vr      ! 
-
+    real(double) :: Vr,Vphi ! 
+    real(double) :: phi, theta
+    real(double) :: Vx, Vy, Vz
+    
     
     ! position
     x=r_vec%x; y=r_vec%y; z=r_vec%z   ! [10^10cm]
@@ -401,8 +457,17 @@ contains
        end if
 
        Vr = discwind_Vr(this,x, y, z) /c   ! in [c] the unit of the speed of light    
-              
-       discwind_velocity = Vr*dir_vec  ! (magnitude x direction)
+       Vphi = discwind_Vphi(this,x, y, z) /c   ! in [c] the unit of the speed of light    
+       
+       phi = ATAN2(y,x)
+       theta = ACOS( (ABS(z)+d) / rp )  ! origin shifted
+       
+       Vx = Vr*SIN(theta)*COS(phi) - Vphi*SIN(phi)      ! [c]
+       Vy = Vr*SIN(theta)*SIN(phi) + Vphi*COS(phi)      ! [c]
+       Vz = Vr*COS(theta)                               ! [c]
+       if (z <0 ) Vz = -Vz
+
+       discwind_velocity= VECTOR(Vx, Vy, Vz)  ! [c]
 
     else
 
@@ -418,16 +483,17 @@ contains
   ! 
   ! Function to check if a given point (xpos, ypos, zpos) are in the discwind zone
   ! 
-  logical function in_discwind(this, xpos,ypos,zpos)
+  logical function in_discwind(this, xpos,ypos,zpos, subcellsize)
     implicit none
     type(discwind), intent(in) :: this
     real(double), intent(in) :: xpos,ypos,zpos  ! should be in [10^10cm]
+    real(double), optional, intent(in) :: subcellsize
     !
     real(double) :: x, y, z     ! [10^10cm]  position with respect to the center of star
     real(double) :: R           ! [10^10cm]  cylindical radius 
     real(double) :: s1, s2      ! slope of the inner and outer edge of the wind
-    real(double) :: R1, R2      ! The range of the R allowed for the wind
-
+    real(double) :: R1, R2      ! The range of the R allowed for the win
+    real(double) :: dr
     ! position with respect to the center of the star
     x = xpos
     y = ypos
@@ -454,14 +520,22 @@ contains
 
 
     ! Now checks if in a vaild zone
-    if ( R>R1 .and. R<R2) then
+    if (PRESENT(subcellsize)) then
+       ! this will allow to split
+       ! the cell at the edge
+       dr = 2.0d0*subcellsize
+    else
+       dr = 0.0d0
+    end if
+    if ( (R+dr) >R1 .and. (R-dr)<R2 ) then
        in_discwind = .true.
     else
        in_discwind = .false.
     end if
 
-    ! set it false if in the disc
-    if (ABS(z) < this%Hdisc) in_discwind = .false.
+
+!    ! set it false if in the disc
+!    if (ABS(z) < this%Hdisc/2.0d0) in_discwind = .false.
 
   end function in_discwind
 
@@ -516,8 +590,8 @@ contains
     real(double) :: x, y, z, d     ! [cm]  
     real(double) :: rho    ! cylyndical distance [cm]
     real(double) :: r      ! distance from a souce displaced [cm]
-    real(double), parameter :: density_min = tiny(density_min)  ! [g/cm^3]
-    real(double), parameter :: density_max = 1.0d-8   ! [g/cm^3]
+    real(double), parameter :: density_min = tiny(density_min) ! [g/cm^3]
+    real(double), parameter :: density_max = 1.0d10            ! [g/cm^3]
     real(double) :: rho_sq, s, rp, fac
 
     if ( in_discwind(this, xpos, ypos, zpos) ) then
@@ -683,14 +757,18 @@ contains
     real(oct)  :: cellSize, d
     real(double) :: rho_disc, mass_cell
     TYPE(octalVector)     :: cellCentre
-!    integer, parameter :: nr = 100  ! low resolution
-    integer, parameter :: nr = 250  ! Hi resolution
+!    integer, parameter :: nr = 150  ! normal resolution
+    integer, parameter :: nr = 180  ! normal resolution
+!    integer, parameter :: nr = 40  ! low resolution
+
     real(double) :: r
     integer :: i
     !
     logical, save :: first_time = .true.
     real(double) , save:: rGrid(nr)
     real(double) :: Rmax = 1.5d5  ! [10^10cm] = 100 AU
+    TYPE(octalVector)     :: VecInnerEdge
+    real(double) :: wi, w
 
     need_to_split2 = .false.
 
@@ -711,11 +789,15 @@ contains
 
 
 !    if (.not.in_jet_flow(this, cellCentre) ) then
-    if (.not.in_discwind(this, cellCentre%x, cellCentre%y, cellCentre%z) ) then
+    if (.not.in_discwind(this, cellCentre%x, cellCentre%y, cellCentre%z, thisOctal%subcellSize) ) then
        need_to_split2 = .false.
     else
        ! get the size and the position of the centre of the current cell
-       r = modulus(cellCentre)
+!       r = modulus(cellCentre)  ! used in the paper
+       wi = sqrt(cellCentre%x*cellCentre%x + cellCentre%y*cellCentre%y)
+       VecInnerEdge = OctalVector(cellCentre%x, cellCentre%y, 0.0d0)* (this%Rmin/wi)
+       r = modulus(cellCentre-VecInnerEdge)  ! shift it to the inner edge of the disc
+!       r = ABS(wi-this%Rmin)  ! just a cylindical radius
        call locate(rGrid,nr,r,i)
        if (i > (nr-1)) i = nr-1
        d = rGrid(i+1) - rGrid(i)
@@ -823,7 +905,7 @@ contains
        x = parent%child(newChildIndex)%centre%x
        y = parent%child(newChildIndex)%centre%y
        z = parent%child(newChildIndex)%centre%z
-       parent%child(newChildIndex)%inFlow = in_discwind(this, x, y, z)
+       parent%child(newChildIndex)%inFlow = in_discwind(this, x, y, z, parent%subcellSize / 2.0_oc)
        parent%child(newChildIndex)%temperature = this%Twind
 
 

@@ -6,9 +6,12 @@ C Note: important that MXNANG be consistent with dimension of S1 and S2
 C       in calling routine!
       INTEGER MXNANG,NMXX
 C      PARAMETER(MXNANG=1000,NMXX=15000)
-c      PARAMETER(MXNANG=1000,NMXX=150000)
-c      PARAMETER(MXNANG=1000,NMXX=1000000)
-       PARAMETER(MXNANG=1000,NMXX=1500000)
+c     PARAMETER(MXNANG=1000,NMXX=150000)
+c Increase the size of array for larger grains (on 24-may-05 by RK)      
+      PARAMETER(MXNANG=500,NMXX=1500000)
+c     
+c      Used until 24-may-05      
+c       PARAMETER(MXNANG=1000,NMXX=100000)
 
 C Arguments:
 

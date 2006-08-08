@@ -467,6 +467,10 @@ endif
      write(*,*) "Writing spectrum to ",trim(outfile),".dat"
      open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
 33   format(6(1x, 1PE14.5))
+34   format(a1, a14, 5(a6))
+     ! You should always put a header!
+     write(20, "(a)") "# Writteng by writeSpectrum."
+     write(20,34)  "#", "xaxis", "I", "Q", "QV", "U", "UV"
      do i = 1, nLambda
         write(20,33) tmpXarray(i),stokes_i(i), stokes_q(i), stokes_qv(i), &
              stokes_u(i), stokes_uv(i)

@@ -14,7 +14,12 @@
       write(*,'(a,i3,a,i3)') "Writing image: ",npix," by ",npix
       
       i = index(filename, " ")
-      datfilename = filename(1:i-1)//".dat"
+      if (i .ne. 0) then
+         datfilename = filename(1:i-1)//".dat"
+      else
+         ! there is no extra space, so simpliy append the string.
+         datfilename = filename//".dat"
+      end if
 
       open(20, file=datfilename, status="unknown", form="formatted")
 
