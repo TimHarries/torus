@@ -43,6 +43,7 @@ module sph_data_class
   ! At a given time (time)
   type sph_data
 !     private  ! Believe me. It's better to be private!    
+     logical :: inUse
      real(double) :: udist, umass, utime    ! Units of distance, mass, time in cgs
      !                                          ! (umass is M_sol, udist=0.1 pc)
      integer          :: npart                  ! Total number of gas particles (field+disc)
@@ -143,6 +144,7 @@ contains
     integer :: npart,  nptmass
     real(double), allocatable :: dummy(:)     
 
+    this%inUse = .true.
 
     open(unit=LUIN, file=TRIM(filename), form='unformatted')
     

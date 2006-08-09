@@ -113,7 +113,7 @@
   ! for monte calro with high optical depth models
   !  integer, parameter :: maxTau = 2000000, maxLambda = 101
   ! for monte calro with optically thin model.  
-  integer, parameter :: maxTau = 200000, maxLambda = 101  
+  integer, parameter :: maxTau = 200000, maxLambda = 201  
   ! for direct integration
   !  integer, parameter :: maxTau = 8000, maxLambda = 101    
   !
@@ -704,6 +704,7 @@
 
 
 
+  sphData%inUse = .false.
 
   if (geometry == "cluster") then !!!!!!!!!
      ! read in the sph data from a file
@@ -947,6 +948,8 @@
 
            call parseGrainType(graintype(i), ngrain, grainname, x_grain)
 
+           write(*,*) "graintype",trim(graintype(i)), x_grain(i),amin(i),amax(i),a0(i),qdist(i),pdist(i)
+
            call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
                 ngrain, X_grain, grainname, i)
         enddo
@@ -966,7 +969,6 @@
      call createRossArray(grid)
      call writeInfo("Done.",TRIVIAL)
   endif
-
 
 
   if (includeGasOpacity) then

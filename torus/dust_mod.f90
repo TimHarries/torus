@@ -1117,7 +1117,6 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
     do k = 1, grid%nTempRossArray
        temperature = 3. + (2000.-3.)*real(k-1)/real(grid%nTempRossArray-1)
-
        do j = 1, nDustType
           rosselandKappa = 0.
           Bnutot = 0.

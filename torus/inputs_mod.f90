@@ -1038,6 +1038,10 @@ endif
        "Temperature threshold for dust (K): ","(a,f8.2,a)", 1000., ok, .true.)
 
    oneKappa = .true.
+
+   call getReal("dusttogas", dusttoGas, cLine, nLines, &
+        "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
+
     call getInteger("ndusttype", nDustType, cLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
     if (nDustType .gt. maxDustTypes) then
        if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
@@ -1100,8 +1104,6 @@ endif
 !      call getReal("x_gr2_dl", X_grain(7), cLine, nLines, &
 !           "Abundance(grf2-DL): ","(a,1pe8.2,a)",0.,ok,.false.)        
 
-!      call getReal("dusttogas", dusttoGas, cLine, nLines, &
-!           "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
 
 !  endif
  
@@ -1539,7 +1541,7 @@ endif
    "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
 
  if (fillTio.or.mie  &
-      .or. (geometry == "ttauri") ) then
+      .or. (geometry == "ttauri".and.mie) ) then
 !      .or. (geometry == "ttauri" .and. ttau_disc_on) ) then
 
 ! amin and amax are left as microns here

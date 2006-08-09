@@ -573,10 +573,12 @@ CONTAINS
        
 
     IF (PRESENT(sphData)) THEN
-      ! updates the sph particle list.           
-!      CALL update_particle_list(parent, newChildIndex, newChildIndex, sphData)
-      CALL update_particle_list(parent, iChild, newChildIndex, sphData)
-!      write(*,*) "update_particle_list broken"
+       if (sphData%inUse) then
+          ! updates the sph particle list.           
+          !      CALL update_particle_list(parent, newChildIndex, newChildIndex, sphData)
+          CALL update_particle_list(parent, iChild, newChildIndex, sphData)
+          !      write(*,*) "update_particle_list broken"
+       endif
     END IF 
     
     ! put some data in the four/eight subcells of the new child
