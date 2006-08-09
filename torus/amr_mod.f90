@@ -573,7 +573,7 @@ CONTAINS
        
 
     IF (PRESENT(sphData)) THEN
-       if (sphData%inUse) then
+       if (isAlive(sphData)) then
           ! updates the sph particle list.           
           !      CALL update_particle_list(parent, newChildIndex, newChildIndex, sphData)
           CALL update_particle_list(parent, iChild, newChildIndex, sphData)

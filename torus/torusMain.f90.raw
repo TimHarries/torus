@@ -825,8 +825,7 @@
 
 
 
-
-  sphData%inUse = .false.
+!  sphData%inUse = .false. !Now initialized in the object/derive type definition.
 
   if (geometry == "cluster") then !!!!!!!!!
      ! read in the sph data from a file
@@ -1471,7 +1470,7 @@
 
 !        call grid_info(grid, "*")
 !$MPI if (my_rank == 0) then
-!        call grid_info(grid, "info_grid.dat")
+        call grid_info(grid, "info_grid.dat")
 !$MPI endif
 
         if (writePhasePops) then

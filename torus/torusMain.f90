@@ -703,8 +703,7 @@
 
 
 
-
-  sphData%inUse = .false.
+!  sphData%inUse = .false. !Now initialized in the object/derive type definition.
 
   if (geometry == "cluster") then !!!!!!!!!
      ! read in the sph data from a file
@@ -1337,7 +1336,7 @@
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
 !        call grid_info(grid, "*")
-!        call grid_info(grid, "info_grid.dat")
+        call grid_info(grid, "info_grid.dat")
 
         if (writePhasePops) then
           write(tempChar,'(i3.3)') nStartPhase

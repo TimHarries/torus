@@ -39,6 +39,7 @@ module cluster_class
        &    assign_emission_bias, &
        &    restrict, &
        &    reassign_10K_temperature
+
   
   
   private :: int_cluster, int_cluster_alt,  compute_emission_bias

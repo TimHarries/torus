@@ -32,7 +32,8 @@ module sph_data_class
        info, &
        get_stellar_disc_parameters, &
        stellar_disc_exists, &
-       find_inclinations
+       find_inclinations, &
+       isAlive
   
   
   private:: &
@@ -43,7 +44,7 @@ module sph_data_class
   ! At a given time (time)
   type sph_data
 !     private  ! Believe me. It's better to be private!    
-     logical :: inUse
+     logical      :: inUse=.false.          ! Flag to indicate if this object is in use.
      real(double) :: udist, umass, utime    ! Units of distance, mass, time in cgs
      !                                          ! (umass is M_sol, udist=0.1 pc)
      integer          :: npart                  ! Total number of gas particles (field+disc)
@@ -93,6 +94,9 @@ contains
     real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass                ! Number of stars/brown dwarfs
     real(double), intent(in)  :: gaspartmass            ! Mass of each gas particle
+
+    ! Indicate that this object is in use
+    this%inUse = .true.
 
     ! save these values in this object
     this%udist = udist
@@ -144,7 +148,6 @@ contains
     integer :: npart,  nptmass
     real(double), allocatable :: dummy(:)     
 
-    this%inUse = .true.
 
     open(unit=LUIN, file=TRIM(filename), form='unformatted')
     
@@ -436,6 +439,8 @@ contains
     NULLIFY(this%xn, this%yn, this%zn)
     NULLIFY(this%x, this%y, this%z)
     NULLIFY(this%ptmass)
+    
+    this%inUse = .false.
 
   end subroutine kill_sph_data
     
@@ -645,7 +650,17 @@ contains
     close(43)
 
   end subroutine find_inclinations
-    
+
+
+  !
+  ! Interface function to get the status of SPH data object
+  !
+  pure function isAlive(this) RESULT(out)
+    implicit none
+    logical :: out
+    type(sph_data), intent(in) :: this
+    out = this%inUse
+  end function isAlive
 
 
 
