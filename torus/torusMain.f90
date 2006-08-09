@@ -3539,6 +3539,7 @@
 
            end select
 
+
 !           write(*,*) "after init",thisPhoton%stokes%i,contwindphoton
            observedLambda = thisPhoton%lambda
 !           if (thisPhoton%contPhoton) then
@@ -4255,10 +4256,10 @@
 !                  endif
 
 
-              endif  ! (.not. absorbed)
+               endif  ! (.not. absorbed)
 
 
-           enddo
+            enddo
            nTot = nTot + nScat
 
 999  continue  ! escape route for a bad photon
