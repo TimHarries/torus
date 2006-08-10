@@ -290,6 +290,7 @@ ifeq ($(SYSTEM), linuxintel)
     F77FLAG=-w
     IMAGEF77=image_f77.f.default
     SPECF77=spec_f77.f.default
+    PATH2G2C=/usr/lib
     F2CLIB=-L$(PATH2G2C) -lg2c
     STATICLIBS=
     STARLIBS=-L/star/lib `ndf_link` 

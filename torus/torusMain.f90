@@ -3814,6 +3814,7 @@
               junk,sampleFreq,intPathError, &
               useInterp, grid%Rstar1, coolStarPosition, nSource, source)
 
+
               if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
                  goto 999 ; endif
               if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
@@ -3850,7 +3851,6 @@
            ! Correcting the weight here... 
            ! escProb -- allowing for local emission
            thisPhoton%stokes = thisPhoton%stokes * real(fac) * escProb
-
 
            currentScat = 0
 
@@ -3982,7 +3982,6 @@
                  call scatterPhoton(grid, tempPhoton, outVec, obsPhoton, mie, &
                        miePhase, nDustType, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
 
-
                  ! the o6 photon might get scattered towards the observer by a rayleigh scattering
 
                  if (doRaman) then
@@ -3994,6 +3993,7 @@
                             thinLine, lineResAbs, .false., .false., nUpper, nLower, 0., 0., 0.,&
                             junk, sampleFreq,intPathError, &
                             useinterp, grid%Rstar1, coolStarPosition, nSource, source)
+
 
                    if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
                       goto 999 ; endif
@@ -4041,6 +4041,8 @@
                  if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
                     goto 999 ; endif
 
+
+
                  if (obsPhoton%linePhoton) then
 
                     
@@ -4066,6 +4068,7 @@
                     ramanWeight = 1.
                     if (doRaman) ramanWeight = 6.6 / (34.+6.6)
                     obs_weight = oneOnFourPi*exp(-tauExt(nTau)) * ramanWeight
+
 
                     iLambda = findIlambda(observedlambda, xArray, nLambda, ok)
                       
@@ -4211,6 +4214,7 @@
                             0., 0., junk,sampleFreq,intPathError, &
                             useInterp, grid%Rstar1, coolStarPosition, nSource, source)
 
+
                  if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
                     goto 999 ; endif
                  if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
@@ -4226,6 +4230,7 @@
                   else
                      escaped = .false.  
                   endif
+
 
 
 !                  if (maxScat == 1) then

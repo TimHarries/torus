@@ -976,6 +976,7 @@ contains
 
                    call getPhotoVec(starSurface, thisPhoton%position, thisPhoton%direction)
 
+
                 case("jets")
                    ! emission from the surface
 !                   r = get_jets_parameter("Rmin")
@@ -1153,7 +1154,13 @@ contains
                 endif
              endif
           endif
-          thisPhoton%direction = randomUnitVector()
+
+! the line below introduced a bug for photospheric photons
+! whose direction had been set earlier via 
+! a call to getPhotonPositionDirection
+
+!          thisPhoton%direction = randomUnitVector()
+
        else
           call random_number(r1)
           w = 1.d0 - r1*sin(5.*degToRad)
@@ -1170,6 +1177,7 @@ contains
           vec_tmp = thisPhoton%direction
           rotatedVec = rotateY(vec_tmp, 30.*real(degToRad))
           thisPhoton%direction = rotatedVec
+
        endif
 
 
@@ -1186,6 +1194,7 @@ contains
              t = (thisPhoton%direction .dot. rHat)
              directionalWeight = abs(2.*t)
           endif
+
 
 
 
