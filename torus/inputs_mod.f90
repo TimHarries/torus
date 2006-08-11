@@ -1933,6 +1933,54 @@ endif
 
 endif
 
+if (geometry .eq. "planetgap") then
+
+
+   call getReal("rcore", rCore, cLine, nLines, &
+       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
+   call getReal("rinner", rInner, cLine, nLines, &
+       "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+   call getReal("router", rOuter, cLine, nLines, &
+       "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+   call getReal("height", height, cLine, nLines, &
+       "Scale height (rcore): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+   call getReal("teff", teff, cLine, nLines, &
+          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("mdisc", mDisc, cLine, nLines, &
+       "Disc mass (solar masses): ","(a,f5.3,a)", 1.e-4, ok, .true.)
+
+   call getReal("alphadisc", alphaDisc, cLine, nLines, &
+       "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+   call getReal("betadisc", betaDisc, cLine, nLines, &
+       "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+   call getReal("mcore", mCore, cLine, nLines, &
+       "Core mass (solar masses): ","(a,f5.1,a)", 0.5, ok, .true.)
+
+   call getReal("rgap", rGap, cLine, nLines, &
+       "Radius of gap (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+   call getReal("mplanet", mPlanet, cLine, nLines, &
+       "Planet mass (Msol): ","(a,1pe8.5,a)",1.e-3,ok,.true.)
+
+   call getReal("gapalpha", gapViscAlpha, cLine, nLines, &
+       "Alpha-parameter for gap viscosity: ","(a,1pe8.5,a)",1.e-4,ok,.true.)
+
+
+   rCore = rCore * rSol / 1.e10
+   rInner = rInner * rCore
+   rOuter = rOuter * autoCm / 1.e10
+   mDisc = mDisc * mSol
+   mCore = mCore * mSol
+
+endif
+
  if (geometry .eq. "warpeddisc") then
 
     call getLogical("noscat", noScattering, cLine, nLines, &

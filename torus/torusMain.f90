@@ -409,7 +409,7 @@
   ! Name of the file to output various message from torus
   character(LEN=7), parameter :: messageFile = "MESSAGE"
   character(len=80) :: message
-  real :: totFrac
+  real :: totFrac, h
   integer :: nFrac
 
 ! molecular line stuff
@@ -1275,7 +1275,6 @@
                  do
                     gridConverged = .true.
                     call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, inheritProps = .false., interpProps = .false.)
-
                     if (gridConverged) exit
                  end do
               enddo
@@ -1355,7 +1354,7 @@
            call	fillDustWhitney(grid, grid%octreeRoot)	
         endif
 
-        if ((geometry == "ppdisk").and.(nDustType>1)) then
+        if (((geometry == "ppdisk").or.(geometry == "planetgap")).and.(nDustType>1)) then
            call fillDustUniform(grid, grid%octreeRoot)
         endif
         
@@ -2219,6 +2218,16 @@
        call fillSpectrumBB(source(1)%spectrum, dble(teff), dble(lamStart), dble(lamEnd), nLambda)
        call normalizedSpectrum(source(1)%spectrum)
 
+    case ("planetgap")
+       nSource = 1
+       allocate(source(1:nSource))
+       source(1)%teff = Teff
+       source(1)%luminosity = fourPi*(rcore*1.e10)**2 * stefanBoltz*teff**4
+       source(1)%radius = rCore
+       source(1)%position = VECTOR(0.,0.,0.)
+       call fillSpectrumBB(source(1)%spectrum, dble(teff), dble(lamStart), dble(lamEnd), nLambda)
+       call normalizedSpectrum(source(1)%spectrum)
+
 
     case default
        ! Allocating the source array with size =0 to avoid, non-allocated array passed problem
@@ -2295,6 +2304,16 @@
 	endif
         if (geometry == "ppdisk") then
            sigma0 = totalMass / ((amrgridsize**2 - twoPi*0.4)*1.e10*1.*autocm) ! defined at 1AU
+           if (writeoutput) write(*,*) "Sigma0: ",sigma0
+        endif
+
+        if (geometry == "planetgap") then
+           rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * height * (rCore*1.e10) &
+                * (rCore*1.e10)**(alphaDisc-betaDisc) * &
+                (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
+           h = height * rCore * 1.e10
+           sigma0 = rho0 * sqrt(twoPi) * h
+
            if (writeoutput) write(*,*) "Sigma0: ",sigma0
         endif
 

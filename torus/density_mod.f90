@@ -795,6 +795,28 @@ contains
     
     whitneyDensity = max(rhoEnv, rhoDisc)
   end function whitneyDensity
+
+  real function planetgapDensity(point, grid) result(rhoDisc)
+    use input_variables
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+    real(double) :: r, h, fac
+
+    rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * height * (rCore*1.e10) &
+         * (rCore*1.e10)**(alphaDisc-betaDisc) * &
+         (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
+    r = sqrt(point%x**2 + point%y**2)
+    h = height * rCore * (r/rCore)**betaDisc
+    rhoDisc = 1.d-30
+    if ((r > rInner).and.(r < rOuter)) then
+       rhoDisc = rho0 * (rCore/r)**alphaDisc  * exp(-0.5*(point%z/h)**2)
+       fac =  1.d0-min(dble(r - rInner)/(0.02d0*rinner),1.d0)
+       fac = exp(-fac*10.d0)
+       rhoDisc = rhoDisc * fac * fractGap2(r*1.e10/autocm)
+       rhoDisc = max(rhoDisc, tiny(rhoDisc))
+    endif
+
+  end function planetgapDensity
     
 
   function wrshellDensity(point, grid) result(testdensity)
@@ -1010,6 +1032,10 @@ contains
 
   end function clumpyDisc
 
+
+  
+
+
   ! chris (26/05/04)
   ! This returns the *dust* density (not the gas density) and assumes a fixed
   ! gas:dust ratio.
@@ -1126,6 +1152,70 @@ contains
       endif
   end function fractgap
 
+! TJH version of fractgap
+
+  function fractgap2(R)
+      use constants_mod
+      use input_variables, only : rGap, height, mPlanet, gapViscAlpha, alphaDisc,betaDisc, &
+           rCore
+      
+      implicit none
+      REAL(double) :: x_nu, xmu, visc, const, xx, arg, fractgap2, gapfloor, x, gapalph
+      real(double) :: gapheight
+      REAL(double), INTENT(IN) :: R
+
+!====================== Matt's gap ========================
+!    x_nu = 2 *(MAX(3e-6,xmu)/3.0)**(1.0/3.0)
+!    xmu = planetmass
+!    visc = h_over_r**2 * gapalph
+!    gapalph = 0.004
+!
+!    function  fractgap(x,x_nu,xmu,visc,gapfloor)
+!      real fractgap
+!      if (gapfloor .lt. 0.) then
+!        fractgap=1.0
+!        return
+!      else
+!        const=-xmu/(3d0*3.1415926535d0*visc)
+!        xx=abs(x/x_nu)
+!        arg=const*(1d0+xx*(3d0+4.5d0*xx+4.5d0*xx*xx))
+!        fractgap=exp(arg*exp(-3d0*xx)) + gapfloor
+!      endif
+!      return
+!    end
+!==========================================================
+
+! TJH added this
+      gapHeight = height*(rCore*1.e10/autocm)*((rCore*1.e10/autocm)/R)**betaDisc
+
+      gapHeight = 0.05
+
+      gapfloor = tiny(gapfloor)
+!      gapfloor = 1.d-4
+!      xmu = 1.d-3
+      xmu = mPlanet
+!      gapalph = 0.0001
+      gapalph = gapViscAlpha
+      x_nu = 2 *(MAX(3d-6,xmu)/3.0)**(1.0/3.0)
+!      visc = 0.15**2 * gapalpha
+
+! tjh 
+      visc = gapheight**2 * gapalph
+
+!      x = R - 1.d0
+      x = R - rGap
+
+      if (gapfloor .lt. 0.) then
+        fractgap2=1.0
+      else
+        const=-xmu/(3.d0*pi*visc)
+        xx=abs(x/x_nu)
+        arg=const*(1d0+xx*(3d0+4.5d0*xx+4.5d0*xx*xx))
+        fractgap2=exp(arg*exp(-3d0*xx)) + gapfloor
+      endif
+    end function fractgap2
+
+
   function torusLogoDensity(rVec) result(rho)
     type(OCTALVECTOR) :: rVec
     real(double) :: rho, phi, theta
@@ -1159,5 +1249,7 @@ contains
        endif
     endif
   end function torusLogoDensity
+
+
 
 end module density_mod 

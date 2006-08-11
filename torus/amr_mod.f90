@@ -172,6 +172,9 @@ CONTAINS
     CASE("whitney")
        CALL assign_whitney(thisOctal,subcell,grid)
 
+    CASE("planetgap")
+       CALL assign_planetgap(thisOctal,subcell,grid)
+
     CASE("toruslogo")
        CALL assign_toruslogo(thisOctal,subcell,grid)
 
@@ -1024,7 +1027,7 @@ CONTAINS
         call assign_grid_values(thisOctal,subcell, grid)
         gridConverged = .TRUE.
 
-      CASE ("ppdisk","wrshell","toruslogo")
+      CASE ("ppdisk","wrshell","toruslogo","planetgap")
         gridConverged = .TRUE.
 
 
@@ -4221,7 +4224,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
-    use input_variables, only: warpFracHeight, warpRadius, warpSigma
+    use input_variables, only: warpFracHeight, warpRadius, warpSigma, rsmooth
     IMPLICIT NONE
     TYPE(octal), intent(inout) :: thisOctal
 !    TYPE(octal), POINTER       :: thisOctal
@@ -4709,7 +4712,17 @@ IF ( .NOT. gridConverged ) RETURN
       hr = (auTocm * height * rHeight * (r / (rHeight*autocm/1.e10))**flaringPower)/1.e10
       if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.5)) split = .true.
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-      if ((r+cellsize/2.d0) < grid%rinner) split = .false.
+      if ((r+cellsize/2.d0) < rsmooth*autocm/1.e10) split = .false.
+
+   case("planetgap")
+      split = .false.
+      cellSize = thisOctal%subcellSize
+      cellCentre = subcellCentre(thisOctal,subCell)
+      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+      hr = height * rCore * (r/rCore)**betaDisc
+      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.5)) split = .true.
+      if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+      if ((r+cellsize/2.d0) < 0.9*grid%rinner) split = .false.
 
 
 
@@ -6706,6 +6719,23 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine assign_whitney
+
+  subroutine assign_planetgap(thisOctal,subcell,grid)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(octalVector) :: rVec
+    
+    rVec = subcellCentre(thisOctal,subcell)
+    thisOctal%rho(subcell) = planetgapDensity(rVec, grid)
+    thisOctal%temperature(subcell) = 10.
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+  end subroutine assign_planetgap
 
   subroutine assign_toruslogo(thisOctal,subcell,grid)
 
@@ -10973,6 +11003,7 @@ IF ( .NOT. gridConverged ) RETURN
                 if ((min(thisTau, neighbourTau) < tauSmoothMin).and.(max(thisTau, neighbourTau) > tauSmoothMax).and.split) then
 !                   write(*,*) modulus(subcellCentre(neighbourOctal, neighboursubcell)),thisOctal%ndepth,neighbourOctal%ndepth
                    if (thisTau > neighbourTau) then
+!                      write(*,*) thisTau,neighbourTau
                       call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                            inherit=inheritProps, interp=interpProps)
 !                      write(*,*) thisOctal%nDepth,thisTau, neighbourTau,sqrt(rVec%x**2+rVec%y**2)/rinner,&
