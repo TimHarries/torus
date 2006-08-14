@@ -812,7 +812,10 @@ contains
        rhoDisc = rho0 * (rCore/r)**alphaDisc  * exp(-0.5*(point%z/h)**2)
        fac =  1.d0-min(dble(r - rInner)/(0.02d0*rinner),1.d0)
        fac = exp(-fac*10.d0)
-       rhoDisc = rhoDisc * fac * fractGap2(r*1.e10/autocm)
+       rhoDisc = rhoDisc * fac 
+       if (planetGap) then
+          rhoDisc = rhoDisc * fractGap2(r*1.e10/autocm)
+       endif
        rhoDisc = max(rhoDisc, tiny(rhoDisc))
     endif
 

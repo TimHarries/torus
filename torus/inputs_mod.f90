@@ -1935,6 +1935,8 @@ endif
 
 if (geometry .eq. "planetgap") then
 
+   call getLogical("planetgap", planetGap, cLine, nLines, &
+        "Planet gap present: ", "(a,1l,1x,a)", .false., ok, .true.)
 
    call getReal("rcore", rCore, cLine, nLines, &
        "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)

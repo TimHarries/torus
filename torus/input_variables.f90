@@ -220,6 +220,7 @@ module input_variables
   real :: rSmooth, rHeight, sigmaPower
   real :: flaringPower, gapViscAlpha
   real :: rGap, mPlanet
+  logical :: planetGap
 
 
   ! single dust blob parameters (WR137 type model)

@@ -30,7 +30,7 @@ contains
   subroutine solveHydro(temperature, zAxis, subcellsize, rho, nz, &
        radius, mStar, sigma0, rDisk, converged, drho)
 
-    use input_variables, only: alphaDisc, betaDisc, rinner, geometry
+    use input_variables, only: alphaDisc, betaDisc, rinner, geometry, planetgap
     integer, intent(in) :: nz ! number of vertical grid points
     real(double),intent(in) :: subcellSize(1:nz)  ! size of this subcell
     real(single),intent(in) :: temperature(1:nz)  ! temperature
@@ -109,7 +109,10 @@ contains
 
        fac =  1.d0-min(dble(radius - rInner)/(0.02d0*rinner),1.d0)
        fac = exp(-fac*10.d0)
-       scalefac = sigma0 * (radius/rCore)**(betaDisc-alphaDisc) * fac * fractGap2(dble(radiusAU))
+       scalefac = sigma0 * (radius/rCore)**(betaDisc-alphaDisc) * fac 
+       if (planetGap) then
+          scalefac = scalefac * fractGap2(dble(radiusAU))
+       endif
        scalefac = scalefac * 0.5 / sigma
 
     endif
