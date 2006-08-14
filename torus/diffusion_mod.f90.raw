@@ -682,6 +682,10 @@ end subroutine gaussSeidelSweep
 
     call seteDens(grid, grid%octreeRoot)
     call setDiffusionCoeff(grid, grid%octreeRoot)
+
+!    call resetDiffusionTemp(grid%octreeRoot, 10.)
+
+
     gridconverged = .false.
     nIter = 0
      do while (.not.gridconverged)

@@ -4720,7 +4720,7 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * rCore * (r/rCore)**betaDisc
-      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.5)) split = .true.
+      if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.5)) split = .true.
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
       if ((r+cellsize/2.d0) < 0.9*grid%rinner) split = .false.
 

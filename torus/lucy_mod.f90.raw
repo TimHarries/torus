@@ -696,7 +696,7 @@ contains
 !$MPI     !   which will calculate each photon
 !$MPI     allocate(photonBelongsRank(nMonte))
 !$MPI    
-!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=10,tag=tag,&
+!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=100,tag=tag,&
 !$MPI                          setDebug=.false.)
 !$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
 !$MPI  end if
@@ -1062,7 +1062,6 @@ contains
 
        nCellsInDiffusion = 0
        call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
-
 
        call solveArbitraryDiffusionZones(grid)
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)

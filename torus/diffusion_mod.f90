@@ -599,6 +599,10 @@ end subroutine gaussSeidelSweep
 
     call seteDens(grid, grid%octreeRoot)
     call setDiffusionCoeff(grid, grid%octreeRoot)
+
+    call resetDiffusionTemp(grid%octreeRoot, 10.)
+
+
     gridconverged = .false.
     nIter = 0
      do while (.not.gridconverged)
@@ -609,9 +613,9 @@ end subroutine gaussSeidelSweep
 !        call copyEdens(grid%octreeRoot)
         call setDiffusionCoeff(grid, grid%octreeRoot)
         write(*,*) nIter," Maximum relative change in eDens:",deMax
-!        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-!             "/xs", .true., .false., &
-!             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomfactor) 
+        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+             "/xs", .true., .false., &
+             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomfactor) 
         if (nIter < 3) gridConverged = .false.
         if (nIter > maxIter) then
            write(*,*) "No solution found after ",maxIter," iterations"
