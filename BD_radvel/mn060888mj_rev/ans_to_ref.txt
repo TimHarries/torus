@@ -1,0 +1,134 @@
+Dear Referee,
+
+Thank you very much for reviewing our paper, and for doing so in
+timely mannar.  We have reviewed our paper by considering your
+comments and suggestions very carefully.  
+The answers to your questions follow "*" marks before 
+the indented texts below.
+
+Kind regards,
+
+Ryuichi Kurosawa (rk@astro.ex.ac.uk), 
+Tim Harries,
+Stuwart Littlefair
+
+==================================================================
+
+Important points:
+
+1) Several aspects of the analysis remain unclear, specifically with 
+respect to the determination of radial velocity variations, which is 
+of course the most important component of the paper. 
+
+   * In the following, we attempt to clarify the points raised by the
+     referee
+
+a) Most importantly, the precise meaning of sigma_rrv (i.e. column 5 
+of table 2) is not clear. How is this different from the uncertainties 
+listed directly with the radial velocity measurements in column 4? It 
+is stated that sigma_rrv is "the uncertainty of RV with respect to 
+the template star," but aren't the RVs in column 4 also determined 
+with respect to the template star? Perhaps the authors mean to say 
+that the uncertainties on the individual RVs include the uncertainty
+on the template star's absolute RV, whereas the sigma_rrv values do not?
+This is important for understanding the entire analysis, and must be
+clarified.
+
+    * 
+
+
+b) How was the radial-velocity template star observed, and when? I 
+presume that the template was observed with the same instrument and setup
+as the targets, but this should be stated explicitly if so, and
+relevant observational details should be provided as well.
+
+    * STATE THIS IN THE OBSERVATION SECTION. (METHOD, DATE AND SO ON)
+
+c) Why is the quoted uncertainty on the tested standard star so large
+(0.62 km/s) compared to the typical uncertainties listed in table 2 for
+the targets? I would have thought that the standard star's RV would be 
+more precisely determined, as it presumably has higher S/N. I suspect
+there is a simple explanation for this, but without an explanation I 
+began to doubt the better precisions quoted for most of the targets.
+
+    * 
+
+d) The explanation of the accuracy of the RV measurements needs to be
+improved. The entire experiment is predicated on the idea that the RV's
+from the two epochs do not suffer from large systematic errors, but the
+paper as written makes it very difficult for the skeptical reader to be
+so reassured. In Sec 2, the authors state that autoguiding errors limit
+the accuracy of the RVs to 1 km/s, but promise that their tests in Sec
+3.1 of an RV standard star show the systematic error to be very small. 
+However, the test in Sec 3.1 does not show this. In fact, the authors
+find an RV for that star that is 0.82 km/s different from the value
+published by the Elodie group. More importantly, even if the agreement
+with the published value were better, a single-epoch measurement does
+not by itself prove system stability. It seems to me that the authors'
+claim to negligible systematic errors is really based on the claim that
+the distribution of chi-squared probabilities in closely matches the 
+expected distribution (Fig 2). The authors essentially end up saying
+this in the paper, but obliquely in the 6th paragraph of Sec 3.1, and
+more directly in the penultimate paragraph of Sec 4. This text should
+be consolidated, placed sooner in the text, and the statement in Sec 2
+should be modified to explicitly connect the claim of accuracy to the
+chi-squared distribution.
+
+   *
+
+
+e) Regarding the distribution of chi-squared probabilities (Fig 2), is
+the match with the expected distribution really that good? For example, 
+it appears possible that the left-most bin is low compared to the 
+dashed line, but this may not be significant. Can this be quantified 
+statistically? 
+
+   *
+
+
+2) Is the binary fraction determined here potentially biased (to
+a higher value) by virtue of the magnitude-limited nature of the 
+target selection? The authors do state that the sample is not 
+complete, and in the final paragraph of the paper they state that 
+volume-limited surveys are preferable. But I think the authors should 
+comment explicitly (perhaps in Sec 4 or 5) in this with respect to 
+their study.
+
+   * 
+
+
+Minor points:
+
+1) Explain what is meant by "variance spectra" in Sec 3.1, paragraph 3.
+
+   * Added the following footnote on "variance spectra": 
+     "Defined by the variance of the chi-square fit to the signal
+      obtained during optimum extraction." 
+
+
+2) 1 percent should be 0.1 percent in Sec 3.1, paragraph 5.
+
+    * Corrected.
+
+3) In Fig 2 caption, the statement that the dashed line is "based on
+the RV uncertainties in the observations" is incorrect, I think. The
+chi-squared probability distribution depends only on the number of
+degrees of freedom (1 in this case), no? The vertical scaling of the
+figure is then just the total number of objects, right?
+
+    * You are absolutely right. This is my mistake. I have corrected
+      the sentence 
+
+      FROM
+       "The expected distribution (dashed) for RV constant objects
+        based on the RV uncertainties in the observations
+	(Table~\ref{tab:summary_results}) and based on the $\chi^{2}$
+	probability function is also shown for a comparison."
+
+
+      TO
+      "The expected distribution (dashed) for RV constant
+       objects is also shown for a comparison. The distribution is
+       normalized with the total number of objects that have $p<10^{-3}$."
+
+

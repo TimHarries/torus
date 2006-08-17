@@ -1,0 +1,254 @@
+This is pdfeTeX, Version 3.141592-1.21a-2.2 (Web2C 7.5.4) (format=latex 2005.9.13)  17 AUG 2006 22:41
+entering extended mode
+**kurosawa
+(./kurosawa.tex
+LaTeX2e <2003/12/01>
+Babel <v3.8d> and hyphenation patterns for american, french, german, ngerman, b
+ahasa, basque, bulgarian, catalan, croatian, czech, danish, dutch, esperanto, e
+stonian, finnish, greek, icelandic, irish, italian, latin, magyar, norsk, polis
+h, portuges, romanian, russian, serbian, slovak, slovene, spanish, swedish, tur
+kish, ukrainian, nohyphenation, loaded.
+(/home/rk/lib/latex/MNRAS/mn2e.cls
+Document Class: mn2e 2001/02/06 v2.2 LaTeX2e MN document class
+Document Style `MN' v2.2, released 2001 February 20
+\math@groups=\toks14
+LaTeX Font Info:    Overwriting symbol font `symbols' in version `bold'
+(Font)                  OMS/cmsy/b/n --> OMS/cmsy/b/n on input line 223.
+\symbmisymbols=\mathgroup4
+\symUPM=\mathgroup5
+LaTeX Font Info:    Overwriting symbol font `UPM' in version `bold'
+(Font)                  U/eur/m/n --> U/eur/b/n on input line 260.
+\symAMSa=\mathgroup6
+\SFB@measure=\dimen102
+\realparindent=\skip41
+\c@part=\count79
+\c@section=\count80
+\c@subsection=\count81
+\c@subsubsection=\count82
+\c@paragraph=\count83
+\c@subparagraph=\count84
+\@indentskip=\skip42
+\smallindent=\skip43
+\@footindent=\skip44
+\@leftskip=\skip45
+\c@dummy=\count85
+(/home/rk/lib/latex/AASTEX50/natbib.sty
+Package: natbib 1998/07/14 6.8c (PWD)
+\bibhang=\skip46
+\bibsep=\skip47
+LaTeX Info: Redefining \cite on input line 467.
+\c@NAT@ctr=\count86
+)
+\c@table=\count87
+\c@figure=\count88
+\mathindent=\dimen103
+)
+(/usr/share/texmf/tex/latex/base/fontenc.sty
+Package: fontenc 2004/02/22 v1.99f Standard LaTeX package
+
+(/usr/share/texmf/tex/latex/base/t1enc.def
+File: t1enc.def 2004/02/22 v1.99f Standard LaTeX file
+LaTeX Font Info:    Redeclaring font encoding T1 on input line 43.
+))
+(/usr/share/texmf/tex/latex/base/inputenc.sty
+Package: inputenc 2004/02/05 v1.0d Input encoding file
+
+(/usr/share/texmf/tex/latex/base/latin1.def
+File: latin1.def 2004/02/05 v1.0d Input encoding file
+))
+(/usr/share/texmf/tex/latex/graphics/graphicx.sty
+Package: graphicx 1999/02/16 v1.0f Enhanced LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texmf/tex/latex/graphics/keyval.sty
+Package: keyval 1999/03/16 v1.13 key=value parser (DPC)
+\KV@toks@=\toks15
+)
+(/usr/share/texmf/tex/latex/graphics/graphics.sty
+Package: graphics 2001/07/07 v1.0n Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texmf/tex/latex/graphics/trig.sty
+Package: trig 1999/03/16 v1.09 sin cos tan (DPC)
+)
+(/home/rk/lib/latex/AASTEX50/graphics.cfg)
+Package graphics Info: Driver file: dvips.def on input line 80.
+
+(/usr/share/texmf/tex/latex/graphics/dvips.def
+File: dvips.def 1999/02/16 v3.0i Driver-dependant file (DPC,SPQR)
+))
+\Gin@req@height=\dimen104
+\Gin@req@width=\dimen105
+)
+(/usr/share/texmf/tex/latex/graphics/color.sty
+Package: color 1999/02/16 v1.0i Standard LaTeX Color (DPC)
+
+(/usr/share/texmf/tex/latex/graphics/color.cfg
+File: color.cfg 2005/02/03 v1.3 color configuration of teTeX/TeXLive
+)
+Package color Info: Driver file: dvips.def on input line 125.
+
+(/usr/share/texmf/tex/latex/graphics/dvipsnam.def
+File: dvipsnam.def 1999/02/16 v3.0i Driver-dependant file (DPC,SPQR)
+))
+(/usr/share/texmf/tex/latex/psnfss/times.sty
+Package: times 2004/09/15 PSNFSS-v9.2 (SPQR) 
+)
+(/usr/share/texmf/tex/latex/amsfonts/amssymb.sty
+Package: amssymb 2002/01/22 v2.2d
+
+(/usr/share/texmf/tex/latex/amsfonts/amsfonts.sty
+Package: amsfonts 2001/10/25 v2.2f
+\@emptytoks=\toks16
+LaTeX Font Info:    Redeclaring symbol font `AMSa' on input line 85.
+LaTeX Font Info:    Overwriting symbol font `AMSa' in version `normal'
+(Font)                  U/msa/m/n --> U/msa/m/n on input line 85.
+LaTeX Font Info:    Overwriting symbol font `AMSa' in version `bold'
+(Font)                  U/msa/m/n --> U/msa/m/n on input line 85.
+\symAMSb=\mathgroup7
+LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
+(Font)                  U/euf/m/n --> U/euf/b/n on input line 132.
+)
+LaTeX Font Info:    Redeclaring math symbol \leqslant on input line 117.
+LaTeX Font Info:    Redeclaring math symbol \geqslant on input line 124.
+)
+(/usr/share/texmf/tex/generic/babel/babel.sty
+Package: babel 2004/11/20 v3.8d The Babel package
+
+(/usr/share/texmf/tex/generic/babel/english.ldf
+Language: english 2004/06/14 v3.3o English support from the babel system
+
+(/usr/share/texmf/tex/generic/babel/babel.def
+File: babel.def 2004/11/20 v3.8d Babel common definitions
+\babel@savecnt=\count89
+\U@D=\dimen106
+)
+\l@british = a dialect from \language\l@english 
+\l@UKenglish = a dialect from \language\l@english 
+\l@canadian = a dialect from \language\l@american 
+\l@australian = a dialect from \language\l@british 
+\l@newzealand = a dialect from \language\l@british 
+)) (./kurosawa.aux)
+\openout1 = `kurosawa.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 40.
+LaTeX Font Info:    ... okay on input line 40.
+LaTeX Font Info:    Try loading font information for T1+ptm on input line 40.
+
+(/usr/share/texmf/tex/latex/psnfss/t1ptm.fd
+File: t1ptm.fd 2001/06/04 font definitions for T1/ptm.
+)
+LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <17.28> not available
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 54.
+LaTeX Font Info:    Try loading font information for U+eur on input line 54.
+
+(/usr/share/texmf/tex/latex/amsfonts/ueur.fd
+File: ueur.fd 2002/01/19 v2.2g AMS font definitions
+)
+LaTeX Font Info:    Try loading font information for U+msa on input line 54.
+
+(/usr/share/texmf/tex/latex/amsfonts/umsa.fd
+File: umsa.fd 2002/01/19 v2.2g AMS font definitions
+)
+LaTeX Font Info:    Try loading font information for U+msb on input line 54.
+
+(/usr/share/texmf/tex/latex/amsfonts/umsb.fd
+File: umsb.fd 2002/01/19 v2.2g AMS font definitions
+)
+LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <9> not available
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 58.
+
+Underfull \hbox (badness 10000) in paragraph at lines 58--59
+
+ []
+
+LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <10> not available
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 83.
+
+Underfull \hbox (badness 1360) in paragraph at lines 99--123
+[]\T1/ptm/m/n/9 Recent high-resolution imag-ing stud-ies of brown dwarfs
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+LaTeX Font Info:    Font shape `T1/ptm/bx/n' in size <8> not available
+(Font)              Font shape `T1/ptm/b/n' tried instead on input line 137.
+LaTeX Font Info:    Try loading font information for OMS+ptm on input line 137.
+
+
+(/usr/share/texmf/tex/latex/psnfss/omsptm.fd
+File: omsptm.fd 
+)
+LaTeX Font Info:    Font shape `OMS/ptm/m/n' in size <8> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 137.
+ [1
+
+
+]
+Underfull \hbox (badness 2418) in paragraph at lines 160--167
+[]\T1/ptm/m/n/9 The first BD+BD eclips-ing bi-nary (2MASS J0532184--
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+File: fig01a.eps Graphic file (type eps)
+
+<fig01a.eps>
+File: fig01b.eps Graphic file (type eps)
+ <fig01b.eps> [2] [3]
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+File: fig02.eps Graphic file (type eps)
+
+<fig02.eps>
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [4]
+File: fig03.eps Graphic file (type eps)
+
+<fig03.eps>
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [5]
+Underfull \hbox (badness 1655) in paragraph at lines 1056--1074
+[]\T1/ptm/m/n/9 The range of $\OML/cmm/m/it/9 v  [] i$ \T1/ptm/m/n/9 found amon
+g our ob-jects is $\OT1/cmr/m/n/9 3\OML/cmm/m/it/9 :\OT1/cmr/m/n/9 6$\T1/ptm/m/
+n/9 --
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+File: fig04.eps Graphic file (type eps)
+
+<fig04.eps> [6] [7]
+File: fig05.eps Graphic file (type eps)
+ <fig05.eps>
+Overfull \hbox (3.46144pt too wide) in paragraph at lines 1187--1188
+ [] 
+ []
+
+[8] [9] (./kurosawa.aux) ) 
+Here is how much of TeX's memory you used:
+ 2233 strings out of 94500
+ 25484 string characters out of 1172833
+ 99720 words of memory out of 3500000
+ 5359 multiletter control sequences out of 10000+50000
+ 49391 words of font info for 94 fonts, out of 500000 for 2000
+ 580 hyphenation exceptions out of 1000
+ 31i,15n,34p,1012b,313s stack positions out of 1500i,500n,5000p,200000b,5000s
+
+Output written on kurosawa.dvi (9 pages, 69668 bytes).
