@@ -783,14 +783,29 @@ measurements of the heliocentric radial velocities, our measurement
 ($\mathrm{RV_{LHS49}=}-22.6\pm0.5\,\kmps$) will be used for consistency. 
 
 Before applying the cross-correlation technique to our main targets,
-we have applied the technique to the radial velocity standard HD~140538
+we have applied the technique to the radial velocity standard
+HD~140538 \textcolor{red}{(G2.5V)}
 for which an high-accuracy RV measurement via the fixed-configuration,
-cross-dispersed échelle spectrograph Elodie \citep{baranne:1996}
+cross-dispersed \'{e}celle spectrograph Elodie \citep{baranne:1996}
 is available. This was done so to ensure not only the validity of
 the cross-correlation technique, but also the validity of the wavelength
-calibration. In this test, we found the heliocentric $\mathrm{RV_{HD\,140538}=}19.18\pm0.62\,\kmps$
+calibration. In this test, we found the heliocentric 
+\textcolor{red}{
+$\mathrm{RV_{HD\,140538}=}19.17\pm0.40\,\kmps$
+}
 which is in good agreement with the Elodie radial velocity measurement
 of $19.00\pm0.05\,\mathrm{km\, s^{-1}}$ \citep*{udry:1999}.
+\textcolor{red}{
+  Note that the uncertainty in $\mathrm{RV_{HD\,140538}}$ was computed
+  by combining the uncertainty ($0.4~\kmps$) in the heliocentric RV of
+  the template star HD~74497 (G3V)) and the uncertainty in the
+  relative RV of HD~140538 ($0.02~\kmps$), measured with respect to
+  the template star.  Clearly, the former dominates in the uncertainty
+  in the value of $\mathrm{RV_{HD\,140538}}$ shown above. The
+  uncertainty in the heliocentric RV of the template is rather large
+  since it was determined from a few photospheric lines.
+}
+
 
 The result of the heliocentric RV measurements (from two epochs for
 each object) is summarised in Table~\ref{tab:summary_results} along
@@ -852,9 +867,22 @@ occupied by the RV variable candidates.  The
 expected distribution of $p$ computed consistently with our
 uncertainty measurements is also shown in the same figure. The RV
 constant population on the left side reasonably matches the expected
-curve. This reassures that our uncertainties in RV values are
-reasonable, and an additional systematic error may not be necessary in
-this analysis. 
+curve. 
+\textcolor{red}{To quantify this point, we have computed the
+chi-square probability to test the goodness of the fit of the expected
+distribution to the histogram. We restrict the fit to the first 4 bins
+from the left $\left(0 < -\log_{10}\left(p\right) < 2 \right)$ the
+histogram since the objects in the second bin from the right
+$\left(2.5 < -\log_{10}\left(p\right) < 3 \right)$ are `potentially'
+RV-variable object, although we have flagged them as the RV-constant
+objects. In this analysis, we find the probability of 0.5 which
+indicates that the fit is reasonable. Further, if we re-normalized the
+expected distribution, accounting for that fact we neglected the
+objects in the second bin from the right, we find the chi-square
+probability of the fit increases to 0.9.  This, in turn, indicates}
+that our uncertainties in RV values are reasonable, and an additional
+systematic error may not be necessary in this analysis.
+
 The boundary ($p=10^{-3}$) between the RV variable and the RV
 constants seems somewhat arbitrary, but here we simply adopt the
 definition of \citet{maxted:2005}.  Based on this criteria, there are
@@ -863,6 +891,9 @@ as one can see from the figure.   They are USco~112, USco~128,
 USco~40, and USco~55, and considered as our preliminary binary/multiple 
 candidates.  We will discuss the binary fraction and the expected binary
 detection probability later in Section~\ref{sec:Binary-fraction}. 
+
+
+
 
 
 %==========================================

@@ -20,9 +20,6 @@ Important points:
 respect to the determination of radial velocity variations, which is 
 of course the most important component of the paper. 
 
-   * In the following, we attempt to clarify the points raised by the
-     referee
-
 a) Most importantly, the precise meaning of sigma_rrv (i.e. column 5 
 of table 2) is not clear. How is this different from the uncertainties 
 listed directly with the radial velocity measurements in column 4? It 
@@ -34,7 +31,16 @@ on the template star's absolute RV, whereas the sigma_rrv values do not?
 This is important for understanding the entire analysis, and must be
 clarified.
 
-    * 
+ * Thank you for point this out. It was not clearly explained. 
+   You are correct. The uncertainties listed along with RV in the 4-th
+   column includes the uncertainty of the template
+   absolute/heliocentric RV, but \sigma_{RRV} values  in the 5th column do
+   not.  \sigma_{RRV} is the uncertainty "relative" RV (with respect
+   to the template but not to the sun). 
+
+   To clarify this I have added the following to 
+
+
 
 
 b) How was the radial-velocity template star observed, and when? I 
@@ -51,7 +57,50 @@ more precisely determined, as it presumably has higher S/N. I suspect
 there is a simple explanation for this, but without an explanation I 
 began to doubt the better precisions quoted for most of the targets.
 
-    * 
+    * The reason for the large uncertainty:
+      the uncertainty quoted here is for the "heliocentric" RV
+      which was computed from the error propagation using the uncertainty
+      in the RV value of a template star and the uncertainty in the RV
+      value of the object with respect to the template star.  Since we
+      have used a few photospheric lines to determine the RV of the
+      template, the uncertainty is rather large (0.4-0.5 km/s). On the
+      other hand, the uncertainty in the RV with respect to the
+      template star should be much smaller since it is determined by the
+      cross-correlation method. 
+
+    * Important note: 
+      While I was re-checking the RV calculation for
+      this RV standard (HD140538), I noticed the uncertainty in
+      the RV value with respect to a template by using 
+      the cross-correlation method was also rather large (0.37km/s). 
+      It should not be this large as the S/N of the object was order
+      of 100 as you pointed out.  
+      This led me to go back to my notes, and found that I
+      was using a template with a different spectral type (just for
+      this object). This was another reason which contributed the
+      large uncertainty. I have now recomputed the RV value of
+      HD140538 (G2.5V) with more appropriate template HD74497 (G3V), 
+      and the new heliocentric RV is
+
+          RV(HD140538) = 19.17  +/- 0.40 km/s.   --- (1)
+          
+      This has much better agreement with the Elodie measurment of 
+
+          RV(HD140538) = 19.00 +/- 0.05 km/s   --- (2)
+      
+      Note that the uncertainty in the RV of HD140538 with respect to
+      the template star was very small (0.02 km/s)
+      while the uncertainty is heliocentric RV of the template star is
+      0.4km/s which is the dominating error in (1) above.
+
+
+    * I have changed the RV value for HD140538 in the text based on
+      the recalculation mentioned above.  At the end of the same
+      paragraph (XXX-th paragraph, Section XXX), I now explain that
+      the uncertainty in (1) is dominated by the uncertainty in the RV
+      of the template star (HD74497) to avoid confusion.
+
+
 
 d) The explanation of the accuracy of the RV measurements needs to be
 improved. The entire experiment is predicated on the idea that the RV's
@@ -74,7 +123,8 @@ be consolidated, placed sooner in the text, and the statement in Sec 2
 should be modified to explicitly connect the claim of accuracy to the
 chi-squared distribution.
 
-   *
+   * 
+
 
 
 e) Regarding the distribution of chi-squared probabilities (Fig 2), is
@@ -83,7 +133,34 @@ it appears possible that the left-most bin is low compared to the
 dashed line, but this may not be significant. Can this be quantified 
 statistically? 
 
-   *
+   * I have computed the chi-square probability to test the goodness
+     of the fit of the expected distribution to the histogram. I
+     restricted the fit to the first four bins (from the left) of the
+     histogram since the objects in the second bin from the right are
+     "potentially"  RV variables (although we flagged them as the
+     RV-constant).  In this analysis, we found the chi-square
+     probability of ~0.5 (which is reasonable). Further if we
+     re-normalized the expected distribution taking into account for
+     the fact we ignored the objects in the right most two bins, the
+     chi-square probability becomes ~0.9. 
+
+     I have inserted the following paragraph in after XXX-th paragraph
+     in Section XXX to reflect this point.
+
+     "To quantify to point, we have computed the chi-square
+      probability to test the goodness of the fit of the expected
+      distribution to the histogram. We restrict the fit to the first
+      4 bins from the left (0< -log10(p) < 2) the histogram since the
+      objects in the second bin from the right ((2.5< -log10(p)<3) are
+      "potential" RV-variable object, although we have flagged them as
+      the RV-constant objects. In this analysis, we find the
+      probability of 0.5 which indicates that the fit is
+      reasonable. Further, if we re-normalized the expected
+      distribution, accounting for the fact we neglected the objects
+      in the second bin from the right, we find the chi-square
+      probability of the fit increases to 0.9."
+
+				   
 
 
 2) Is the binary fraction determined here potentially biased (to
