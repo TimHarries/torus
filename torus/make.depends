@@ -20,12 +20,12 @@ density_mod.o: clump_mod.o cmfgen_class.o constants_mod.o \
 	input_variables.o jets_mod.o luc_cir3d_class.o ostar_mod.o \
 	utils_mod.o vector_mod.o wr104_mod.o
 diffusion_mod.o: amr_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
-	input_variables.o messages_mod.o parallel_mod.o vector_mod.o
+	input_variables.o messages_mod.o parallel_mod.o vector_mod.o mpif.h
 disc_class.o: constants_mod.o dust_mod.o grid_mod.o gridtype_mod.o kind_mod.o \
 	octal_mod.o vector_mod.o
 disc_hydro_mod.o: amr_mod.o constants_mod.o density_mod.o gridtype_mod.o \
 	input_variables.o kind_mod.o lucy_mod.o octal_mod.o phasematrix_mod.o \
-	source_mod.o utils_mod.o vector_mod.o
+	source_mod.o utils_mod.o vector_mod.o mpif.h
 discwind_class.o: constants_mod.o grid_mod.o gridtype_mod.o kind_mod.o \
 	octal_mod.o vector_mod.o
 distortion_mod.o: blob_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
@@ -40,8 +40,8 @@ fillGridTio.o: constants_mod.o grid_mod.o gridtype_mod.o
 fillGridTorus.o: constants_mod.o vector_mod.o
 filter_set_class.o: utils_mod.o
 formal_solutions.o: constants_mod.o density_mod.o disc_class.o gridtype_mod.o \
-	image_mod.o integratePath.o kind_mod.o octal_mod.o surface_mod.o \
-	timing.o utils_mod.o vector_mod.o
+	image_mod.o integratePath.o kind_mod.o octal_mod.o parallel_mod.o \
+	surface_mod.o timing.o utils_mod.o vector_mod.o mpif.h
 gas_opacity_mod.o: constants_mod.o utils_mod.o
 gaussian_mod.o: constants_mod.o input_variables.o kind_mod.o utils_mod.o \
 	vector_mod.o
@@ -72,7 +72,7 @@ luc_cir3d_class.o: constants_mod.o kind_mod.o octal_mod.o vector_mod.o \
 	zeus_data_class.o
 lucy_mod.o: amr_mod.o constants_mod.o diffusion_mod.o dust_mod.o grid_mod.o \
 	input_variables.o messages_mod.o parallel_mod.o phasematrix_mod.o \
-	source_mod.o spectrum_mod.o timing.o vector_mod.o
+	source_mod.o spectrum_mod.o timing.o vector_mod.o mpif.h
 magnetic_mod.o: constants_mod.o gridtype_mod.o kind_mod.o octal_mod.o \
 	vector_mod.o
 math_mod.o: constants_mod.o grid_mod.o gridtype_mod.o kind_mod.o \
@@ -84,11 +84,12 @@ miePhaseMatrix.o: phasematrix_mod.o
 octal_mod.o: kind_mod.o messages_mod.o vector_mod.o
 opacity_lte_mod.o: atom_mod.o
 ostar_mod.o: constants_mod.o gridtype_mod.o input_variables.o vector_mod.o
+parallel_mod.o: input_variables.o mpif.h
 parameters_mod.o: constants_mod.o
 phasematrix_mod.o: kind_mod.o utils_mod.o
 photoion_mod.o: amr_mod.o constants_mod.o diffusion_mod.o grid_mod.o \
 	input_variables.o messages_mod.o parallel_mod.o source_mod.o timing.o \
-	vector_mod.o
+	vector_mod.o mpif.h
 photon_mod.o: amr_mod.o constants_mod.o disc_class.o filter_set_class.o \
 	grid_mod.o gridtype_mod.o input_variables.o kind_mod.o math_mod.o \
 	phasematrix_mod.o photoion_mod.o source_mod.o surface_mod.o \
@@ -103,7 +104,8 @@ spectrum_mod.o: atom_mod.o constants_mod.o utils_mod.o
 sph_data_class.o: kind_mod.o
 stateq_mod.o: cmfgen_class.o constants_mod.o grid_mod.o gridtype_mod.o \
 	hyd_col_coeff.o input_variables.o integratePath.o jets_mod.o \
-	math_mod.o opacity_lte_mod.o utils_mod.o vector_mod.o
+	math_mod.o opacity_lte_mod.o parallel_mod.o utils_mod.o vector_mod.o \
+	mpif.h
 surface_mod.o: amr_mod.o constants_mod.o gridtype_mod.o input_variables.o \
 	kind_mod.o romanova_class.o utils_mod.o vector_mod.o
 torusMain.o: TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
@@ -116,7 +118,7 @@ torusMain.o: TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
 	phasematrix_mod.o photoion_mod.o photon_mod.o puls_mod.o \
 	romanova_class.o source_mod.o spectrum_mod.o sph_data_class.o \
 	stateq_mod.o surface_mod.o timing.o unix_mod.o utils_mod.o \
-	vector_mod.o wr104_mod.o
+	vector_mod.o wr104_mod.o mpif.h
 TTauri_mod.o: amr_mod.o atom_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
 	kind_mod.o math_mod.o octal_mod.o parameters_mod.o stateq_mod.o \
 	utils_mod.o vector_mod.o
@@ -125,6 +127,3 @@ utils_mod.o: constants_mod.o input_variables.o kind_mod.o unix_mod.o \
 vector_mod.o: constants_mod.o kind_mod.o
 wr104_mod.o: kind_mod.o sph_data_class.o vector_mod.o
 zeus_data_class.o: kind_mod.o utils_mod.o vector_mod.o
-image_f77.o: /star/include/dat_par /star/include/sae_par \
-	/star/include/dat_par /star/include/sae_par
-spec_f77.o: /star/include/sae_par /star/include/dat_par

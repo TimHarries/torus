@@ -8937,11 +8937,11 @@ IF ( .NOT. gridConverged ) RETURN
           if (.not.ross) then
              call returnKappa(grid, thisOctal, subcell, ilam, kappaAbs=kappaAbs, kappaSca=kappaSca)
              tau = thisOctal%subcellSize*(kappaAbs + kappaSca)
-             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-4)
+             thisOctal%biasCont3D(subcell) = exp(-tau)
           else
              call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa = kappaAbs)
-             tau = thisOctal%subcellSize*(kappaAbs + kappaSca)*thisOctal%rho(subcell)*1.d10
-             thisOctal%biasCont3D(subcell) = MAX(exp(-tau),1.d-4)
+             tau = thisOctal%subcellSize*kappaAbs*thisOctal%rho(subcell)*1.d10
+             thisOctal%biasCont3D(subcell) = exp(-tau)
           endif
        endif
 

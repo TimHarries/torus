@@ -2617,7 +2617,7 @@
            call set_bias_ttauri(grid%octreeRoot, grid, lamline, outVec)
         case("cmfgen")
            call set_bias_cmfgen(grid%octreeRoot, grid, lamline)
-        case("shakara","ppdisk")
+        case("shakara","ppdisk","planetgap")
            if (forcedWavelength) then
               call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
               call set_bias_shakara(grid%octreeRoot, grid, ilam=itestlam, ross=.false.)
@@ -4602,7 +4602,13 @@
 !$MPI if (my_rank == 0) &
         write(*,'(i8,a,f7.3)') iOuterLoop*nPhotons/nOuterLoop," photons done"
 
-        errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
+        if (iOuterLoop == 1) then
+           errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
+        else
+           do i = 1, nLambda
+              errorArray(iOuterLoop,i) = yArray(i) - errorArray(iOuterLoop-1,i)
+           enddo
+        endif
 
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI  if (my_rank==1) &

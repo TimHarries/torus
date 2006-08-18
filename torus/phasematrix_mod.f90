@@ -38,6 +38,12 @@ module phasematrix_mod
      module procedure addStokes
   end interface
 
+  ! - signifies subtracting two stokes vectors
+
+  interface operator(-)
+     module procedure subStokes
+  end interface
+
   ! * multiplies a stokes vector by a constant
 
   interface operator(*)
@@ -196,6 +202,19 @@ contains
 
   end function addStokes
 
+  ! function to subtract to stokes vectors
+
+  type(STOKESVECTOR) pure function subStokes(a , b)
+    type(STOKESVECTOR), intent(in) :: a
+    type(STOKESVECTOR), intent(in) :: b
+
+    subStokes%i = a%i - b%i
+    subStokes%q = a%q - b%q
+    subStokes%u = a%u - b%u
+    subStokes%v = a%v - b%v
+
+  end function subStokes
+
   ! multiply a stokes vector by a constant
 
   type(STOKESVECTOR) pure function multStokes(a , b)
@@ -290,6 +309,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   implicit none
   integer, intent(in) :: nLambda
   character(len=*), intent(in) :: outFile
+  character(len=80) :: tfile
   real, intent(in) :: xArray(nLambda)
   logical, intent(in) :: useNdf
   logical, intent(in) :: jansky
@@ -299,14 +319,14 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   real(double) :: area
   real, intent(in) :: lamLine
   type(STOKESVECTOR), intent(in) :: yArray(nLambda), errorArray(nOuterloop,nLambda)
-  type(STOKESVECTOR), allocatable :: ytmpArray(:), tmpErrorArray(:,:)
+  type(STOKESVECTOR), allocatable :: ytmpArray(:), tmpErrorArray(:,:), ymedian(:)
   real, allocatable :: meanQ(:), meanU(:), sigQ(:), sigU(:)
   real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
-  real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:)
+  real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:), tArray(:)
   real, allocatable, dimension(:) :: tmpXarray
   real :: tot
   real :: x
-  integer :: i
+  integer :: i,j
   logical :: SI
 
   allocate(ytmpArray(1:nLambda))
@@ -325,6 +345,47 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   allocate(stokes_u(1:nLambda))
   allocate(stokes_uv(1:nLambda))
 
+  allocate(yMedian(1:nLambda))
+
+!  do j = 1, nOuterloop
+!     write(tfile,'(a,i2.2,a)') "errorarray",j,".dat"
+!     open(55,file=tfile,status="unknown",form="formatted")
+!     do i = 1, nLambda
+!        write(55,*) xarray(i),errorArray(j,i)%i
+!     enddo
+!    close(55)
+!  enddo
+
+  allocate(tArray(1:nLambda))
+  do i = 1,nLambda
+     do j = 1, nOuterLoop
+        tarray(j) = errorArray(j,i)%i
+     enddo
+     yMedian(i)%i = median(tArray, nOuterLoop)
+     do j = 1, nOuterLoop
+        tarray(j) = errorArray(j,i)%q
+     enddo
+     yMedian(i)%q = median(tArray, nOuterLoop)
+     do j = 1, nOuterLoop
+        tarray(j) = errorArray(j,i)%u
+     enddo
+     yMedian(i)%u = median(tArray, nOuterLoop)
+     do j = 1, nOuterLoop
+        tarray(j) = errorArray(j,i)%v
+     enddo
+     yMedian(i)%v = median(tArray, nOuterLoop)
+!
+!     yMedian(i)%i = SUM(errorArray(1:nOuterloop,i)%i)/dble(nOuterloop)
+!     yMedian(i)%q = SUM(errorArray(1:nOuterloop,i)%q)/dble(nOuterloop)
+!     yMedian(i)%u = SUM(errorArray(1:nOuterloop,i)%u)/dble(nOuterloop)
+!     yMedian(i)%v = SUM(errorArray(1:nOuterloop,i)%v)/dble(nOuterloop)
+
+  enddo
+  deallocate(tarray)
+  do i = 1, nLambda
+     yMedian(i) = yMedian(i) * dble(nouterloop)
+  enddo
+
 !  x = SUM(yArray(1:min(10,nLambda))%i)/real(min(10,nLambda))
 
 !  x = 1./x
@@ -333,8 +394,8 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   write(*,*) "starting to write spectrum"
 
   if (normalizeSpectrum) then
-     if (yArray(1)%i /= 0.) then
-        x = 1.d0/yArray(1)%i
+     if (yMedian(1)%i /= 0.) then
+        x = 1.d0/yMedian(1)%i
 !        x = 1.d0/yArray(nLambda)%i
      else
        x  = 1.d0
@@ -346,7 +407,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   write(*,*) "scaling by ",x
 !  
   do i = 1, nLambda
-     ytmpArray(i) = yArray(i) * x
+     ytmpArray(i) = yMedian(i) * x
   enddo
 
 

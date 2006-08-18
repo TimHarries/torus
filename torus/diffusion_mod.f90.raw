@@ -848,7 +848,7 @@ end subroutine gaussSeidelSweep
        nWalk = nWalk + 1
 
        if (startOctal%twoD) then
-!          call random_number(r)
+          call random_number(r)
           rVec = subcellCentre(walkOctal, walkSubcell)
           
           if (r < 0.25) then
