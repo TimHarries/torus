@@ -58,7 +58,6 @@ contains
     use input_variables, only : smoothFactor, blockHandout, zoomFactor, &
          nlucy, photoionization
     implicit none
- include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=*) :: lucyfileout, lucyfilein
     logical :: readlucy, writelucy
@@ -112,46 +111,6 @@ contains
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
     integer :: iMonte_beg, iMonte_end, nSCat
-    ! For MPI implementations
-  ! For MPI implementations =====================================================
-  integer ::   my_rank        ! my processor rank
-  integer ::   n_proc         ! The number of processes
-  integer ::   ierr           ! error flag
-  integer ::   n_rmdr, m      !
-  integer ::   mphotons       ! number of photons (actual) 
-  integer ::   tempInt        !
-  real, dimension(:), allocatable :: tempRealArray
-  real, dimension(:), allocatable :: tempRealArray2
-  integer, dimension(:), allocatable :: photonBelongsRank
-  integer, parameter :: tag = 0
-  logical :: rankComplete
-    ! data space to store values from all processors
-    real, save, allocatable  :: buffer_real(:)     
-    logical, save  :: first_time = .true.
-
-!    ! find the number of the processors for the first time.    
-!    if (first_time) then
-       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-!       allocate(buffer_real(n_proc))
-!       first_time = .false.
-!    end if
-
-       allocate(buffer_real(n_proc))
-
-    ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
-    ! Find the total # of precessor being used in this run
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-    
-    if (my_rank .eq. 0) then
-       print *, ' '
-       print *, 'Photoionization loop computed by ', n_proc, ' processors.'
-       print *, ' '
-    endif
-    
-    ! ============================================================================
 
 
 
@@ -253,37 +212,12 @@ contains
           write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter
        endif
 
-       if (my_rank == 1) &
        call tune(6, "One photoionization itr")  ! start a stopwatch
 
        iMonte_beg = 1
        iMonte_end = nMonte
 
-  !====================================================================================
-  ! Splitting the innerPhoton loop for multiple processors.
-  if (my_rank == 0) then
-     print *, ' '
-     print *, 'photonLoop computed by ', n_proc-1, ' processors.'
-     print *, ' '
-  endif
-  if (my_rank == 0) then
-     ! we will use an array to store the rank of the process
-     !   which will calculate each photon
-     allocate(photonBelongsRank(nMonte))
-    
-     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=10,tag=tag,&
-                          setDebug=.false.)
-     deallocate(photonBelongsRank) ! we don't really need this here. 
-  end if
-  !====================================================================================
 
-    
-    
-  if (my_rank /= 0) then
-    mpiBlockLoop: do  
-      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
-      if (rankComplete) exit mpiBlockLoop  
-    
 
 
        mainloop: do iMonte = iMonte_beg, iMonte_end
@@ -376,22 +310,15 @@ contains
           nInf = nInf + 1
        end do mainloop
 
- if (.not.blockHandout) exit mpiblockloop        
-    end do mpiBlockLoop  
-  end if ! (my_rank /= 0)
-
-       if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
-
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-
-
-       call updateGridMPI(grid)
 
 
 
 
 
-       if (my_rank == 1) &
+
+
+
+
        call tune(6, "One photoionization itr")  ! stop a stopwatch
 
        epsOverDeltaT = (lCore) / dble(nMonte)
@@ -407,10 +334,8 @@ contains
                write(*,*) "Done."
        enddo
 
-  if (my_rank == 1) &
        call tune(6, "Gauss-Seidel sweeps")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
-       if (my_rank==0) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomfactor)
@@ -428,7 +353,6 @@ contains
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 
-  if (my_rank == 1) &
        call tune(6, "Gauss-Seidel sweeps")
 
 
@@ -3037,80 +2961,6 @@ subroutine readHeIIrecombination()
   close(40)
 end subroutine readHeIIrecombination
 
-  subroutine updateGridMPI(grid)
-    implicit none
-    include 'mpif.h'
-    type(gridtype) :: grid
-    integer :: nOctals, nVoxels, i
-    real, allocatable :: nCrossings(:)
-    real, allocatable :: tempRealArray(:)
-    real(double), allocatable :: hHeating(:), heHeating(:)
-    real(double), allocatable :: photoIonCoeff(:,:)
-    real(double), allocatable :: tempDoubleArray(:)
-    real(double), allocatable :: distanceGrid(:)
-    integer :: np, ierr,my_rank, nIndex
-
-    ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
-    ! Find the total # of precessor being used in this run
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-    nOctals = 0
-    nVoxels = 0
-    call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-    allocate(nCrossings(1:nVoxels))
-    allocate(hHeating(1:nVoxels))
-    allocate(heHeating(1:nVoxels))
-    allocate(distanceGrid(1:nVoxels))
-    allocate(photoIonCoeff(1:nVoxels, 1:grid%nIon))
-
-    nIndex = 0
-    call packValues(grid%octreeRoot,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
-
-
-    allocate(tempDoubleArray(nVoxels))
-    allocate(tempRealArray(nVoxels))
-
-    do i = 1, grid%nIon
-      tempDoubleArray = 0.d0
-      call MPI_ALLREDUCE(photoIonCoeff(1:nVoxels,i),tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-          MPI_SUM,MPI_COMM_WORLD,ierr)
-       photoIonCoeff(1:nVoxels, i) = tempDoubleArray 
-    enddo
-
-    tempDoubleArray = 0.0
-    call MPI_ALLREDUCE(hHeating,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-         MPI_SUM,MPI_COMM_WORLD,ierr)
-    hHeating = tempDoubleArray
-
-    tempDoubleArray = 0.0
-    call MPI_ALLREDUCE(heHeating,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-         MPI_SUM,MPI_COMM_WORLD,ierr)
-    heHeating = tempDoubleArray
-
-    tempRealArray = 0.0
-    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
-         MPI_SUM,MPI_COMM_WORLD,ierr)
-    nCrossings = tempRealArray 
-
-    tempDoubleArray = 0.0
-    call MPI_ALLREDUCE(distanceGrid,tempRealArray,nVoxels,MPI_DOUBLE_PRECISION,&
-         MPI_SUM,MPI_COMM_WORLD,ierr)
-    distanceGrid = tempRealArray 
-    
-    deallocate(tempRealArray, tempDoubleArray)
-     
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-    
-    nIndex = 0
-    call unpackValues(grid%octreeRoot, nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
-
-    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid)
-
-  end subroutine updateGridMPI
 
   recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
   type(octal), pointer   :: thisOctal

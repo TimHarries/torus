@@ -127,3 +127,6 @@ utils_mod.o: constants_mod.o input_variables.o kind_mod.o unix_mod.o \
 vector_mod.o: constants_mod.o kind_mod.o
 wr104_mod.o: kind_mod.o sph_data_class.o vector_mod.o
 zeus_data_class.o: kind_mod.o utils_mod.o vector_mod.o
+image_f77.o: /star/include/dat_par /star/include/sae_par \
+	/star/include/dat_par /star/include/sae_par
+spec_f77.o: /star/include/sae_par /star/include/dat_par

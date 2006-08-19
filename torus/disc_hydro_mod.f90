@@ -332,7 +332,6 @@ contains
 
     use input_variables, only : variableDustsublimation, rGap
 
- include 'mpif.h'
 
 
     type(GRIDTYPE) :: grid
@@ -356,14 +355,6 @@ contains
     integer :: nOctals, nVoxels
     character(len=80) :: ofile
     real :: rGapCM
-    ! For MPI implementations
-    integer       ::   my_rank        ! my processor rank
-    integer       ::   ierr           ! error flag
-
-
-    ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
 
 
 
@@ -374,28 +365,21 @@ contains
     call findTotalMass(grid%octreeRoot, totalMass)
 
 
-    if(my_rank == 0) &
     write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
 
-    if(my_rank == 0) then
     write(plotfile,'(a,i3.3,a)') "rho",0,".gif/gif"
     call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false.,boxfac=0.01)
-    endif
 
     do while(.not.converged)
     
-    if(my_rank == 0) then
        write(*,*) "Starting iteration number",nIter
        write(*,*) "Calling the lucy algorithm to get temperature..."
-    endif
 
        totalMass = 0.
        call findTotalMass(grid%octreeRoot, totalMass)
 
 
-    print *,'Process ',my_rank,' waiting to do lucy.'
-    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
        if (nIter == 1) then
           maxIter = 2
@@ -409,28 +393,20 @@ contains
 
 
 
-    if(my_rank == 0) &
        write(*,*) "Zeroing new density values..."
        call zeroChiline(grid%octreeRoot)       
 
-    if(my_rank == 0) then
        if (geometry == "ppdisk") open(unit=137, file='surface_density.dat', status='replace', form='formatted')
-    endif
 
-    if(my_rank == 0) &
        write(*,*) "Solving the vertical hydrostatic equilibrium..."
        drho = 0.
        call throughoutMidpane(grid, mStar, sigma0, rDisk, drho)
 
-    if(my_rank == 0) then
        if (geometry == "ppdisk") close(137)
-    endif
 
-    if(my_rank == 0) &
        write(*,*) "Updating cell densities..."
        call realPutDensity(grid, grid%octreeRoot)
 
-    if(my_rank == 0) &
        write(*,*) "Maximum absolute change in density: ",drho
 
 
@@ -442,7 +418,6 @@ contains
 
 
 
-    if(my_rank == 0) then
        write(plotfile,'(a,i3.3,a)') "rho",niter,".gif/gif"
        call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false., boxfac=0.01)
 
@@ -474,7 +449,6 @@ contains
         end if
 !       write(plotfile,'(a,i3.3,a)') "tau",niter,".gif/gif"
 !       call plot_AMR_values(grid, "tau", "x-z", 0.0, plotfile, .true., .false.) !problem with passing ilam
-    endif
 
        ! chris (26/05/04)
        ! Smooth the grid with respect to optical depth, if requested
@@ -488,9 +462,7 @@ contains
              
 !       write(*,*) "Tau smoothing switched off"
 !	if (.true.) then
-     if(my_rank == 0) &
           write(*,*) "Smoothing adaptive grid structure for optical depth..."
-     if(my_rank == 0) &
           call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_before.ps/vcps", .true., .false., boxfac=0.005)
 
 
@@ -502,29 +474,24 @@ contains
                 if (gridConverged) exit
              end do
           enddo
-     if(my_rank == 0) &
           write(*,*) "...grid smoothing complete"
           ! The tau smoothing may result in large differences in the size
           ! of neighbouring octals, so we smooth the grid again.
           if (doSmoothGrid) then
-     if(my_rank == 0) &
             write(*,*) "Smoothing adaptive grid structure (again)..."
 
 
 
             call smoothAMRgrid(grid,smoothFactor, inheritProps=.false., interpProps=.true.)
-     if(my_rank == 0) &
             write(*,*) "...grid smoothing complete"
           end if
 
 
 
 
-     if(my_rank == 0) &
           call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_after.ps/vcps", .true., .false., boxfac=0.005)
           totalMass = 0.
           call findTotalMass(grid%octreeRoot, totalMass)
-    if(my_rank == 0) &
     write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
        end if
@@ -534,7 +501,6 @@ contains
        nIter = nIter + 1
 
        if (nIter > nHydro) then
-    if(my_rank == 0) &
           write(*,*) "Maximum number of iterations exceeded. Aborting."
           converged = .true.
        else
@@ -552,7 +518,6 @@ contains
          nLambda, lamArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twoD, maxIter)
 
     ! chris
-    if(my_rank == 0) then
     if (geometry == "ppdisk") then
     write(plotfile,'(a,i3.3,a)') "rho_final.ps/vcps"
     call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
@@ -573,7 +538,6 @@ contains
     call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.false., .false.,&
          xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM, fixValMin=40.d0, fixValMax=200.d0)
     end if
-    endif
 
   end subroutine verticalHydrostatic
 

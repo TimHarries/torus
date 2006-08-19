@@ -407,7 +407,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   write(*,*) "scaling by ",x
 !  
   do i = 1, nLambda
-     ytmpArray(i) = yMedian(i) * x
+     ytmpArray(i) = yArray(i) * x !!!!!!!!!!!!!
   enddo
 
 
