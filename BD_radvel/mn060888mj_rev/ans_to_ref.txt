@@ -35,11 +35,38 @@ clarified.
    You are correct. The uncertainties listed along with RV in the 4-th
    column includes the uncertainty of the template
    absolute/heliocentric RV, but \sigma_{RRV} values  in the 5th column do
-   not.  \sigma_{RRV} is the uncertainty "relative" RV (with respect
-   to the template but not to the sun). 
+   not.  
 
-   To clarify this I have added the following to 
+   To clarify this I have replace the following (in the XXXX-th paragraph in
+   Section 3.1) 
+   
+   FROM:
+   "The result of the heliocentric RV measurements (from two
+   epochs for each object) is summarised in Table 2 along with the
+   uncertainties. The table also lists the uncertainties in the
+   `relative' radial velocities (\sigma_{RRV}) which is the
+   uncertainty of RV with respect to the template star. "
 
+   TO:
+   "The result of the heliocentric RV measurements (from two
+   epochs for each object) is summarised in Table 2 along with their
+   uncertainties.  The uncertainties listed with the
+   absolute/heliocentric RV values in the 4-th and 6-th columns in the
+   table include the uncertainty of the absolute/heliocentric RV of
+   the template star. On the other hand, the uncertainties in the
+   `relative' radial velocities (\sigma_{RRV}) listed in the 5-th
+   column do not include the uncertainty of the template star. It is
+   \sigma_{RRV} that is relevant for the identification of RV variable
+   objects."  
+
+
+   * Also in the table caption of Table 2, I added the following sentence:
+
+      "N.B.~the uncertainties listed along with the heliocentric radial
+      velocities in column 4 and 6 includes the uncertainty in the
+      heliocentric RV of the template star, but \sigma_{RRV}
+      do not. "
+				   
 
 
 
@@ -161,7 +188,6 @@ statistically?
       probability of the fit increases to 0.9."
 
 				   
-
 
 2) Is the binary fraction determined here potentially biased (to
 a higher value) by virtue of the magnitude-limited nature of the 

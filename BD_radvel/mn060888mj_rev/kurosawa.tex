@@ -424,7 +424,14 @@ no\tabularnewline
 from two-epoch and the average rotational velocities ($v\sin i$).
 The uncertainties of relative radial velocities ($\sigma_{\mathrm{RRV}}$)
 with respect to the template star LHS~049 and the average radial
-velocities ($\overline{\mathrm{RV}}$) are also given. }
+velocities ($\overline{\mathrm{RV}}$) are also given.  
+\textcolor{red}{
+N.B.~the uncertainties listed along with the heliocentric radial
+velocities in column~4 and 6 includes the uncertainty in the
+heliocentric RV of the template star, but $\sigma_{\mathrm{RRV}}$
+do not.
+}
+}
 
 \label{tab:summary_results}
 
@@ -798,7 +805,7 @@ of $19.00\pm0.05\,\mathrm{km\, s^{-1}}$ \citep*{udry:1999}.
 \textcolor{red}{
   Note that the uncertainty in $\mathrm{RV_{HD\,140538}}$ was computed
   by combining the uncertainty ($0.4~\kmps$) in the heliocentric RV of
-  the template star HD~74497 (G3V)) and the uncertainty in the
+  the template star HD~74497 (G3V) and the uncertainty in the
   relative RV of HD~140538 ($0.02~\kmps$), measured with respect to
   the template star.  Clearly, the former dominates in the uncertainty
   in the value of $\mathrm{RV_{HD\,140538}}$ shown above. The
@@ -806,12 +813,19 @@ of $19.00\pm0.05\,\mathrm{km\, s^{-1}}$ \citep*{udry:1999}.
   since it was determined from a few photospheric lines.
 }
 
-
-The result of the heliocentric RV measurements (from two epochs for
-each object) is summarised in Table~\ref{tab:summary_results} along
-with the uncertainties. The table also lists the uncertainties in
-the `relative' radial velocities ($\sigma_{\mathrm{RRV}}$) which
-is the uncertainty of RV with respect to the template star. 
+\textcolor{red}{
+  The result of the heliocentric RV measurements (from two
+  epochs for each object) is summarised in Table 2 along with their
+  uncertainties.  The uncertainties listed with the
+  absolute/heliocentric RV values in the 4-th and 6-th columns in the
+  table include the uncertainty of the absolute/heliocentric RV of
+  the template star. On the other hand, the uncertainties in the
+  `relative' radial velocities ($\sigma_{\mathrm{RRV}}$) listed in the 5-th
+  column do not include the uncertainty of the template star. It is
+  $\sigma_{\mathrm{RRV}}$ that is relevant for the identification of RV variable
+  objects.  
+}
+ 
 To determine the $\sigma_{\mathrm{RRV}}$, we have used the following
 procedure: (1)~add random gaussian deviate noise to the object spectra using the
 corresponding variance spectra\footnote{\textcolor{red}{Defined by the variance of the
@@ -833,7 +847,7 @@ from the average RV are computed and summarized in Fig.~\ref{fig:radvel01}
 along with their uncertainties ($\sigma_{\mathrm{RRV}}$) in order
 to aid the identification of multiplicity candidates. Note that in
 computing $\Delta\mathrm{RV}$ we do not require the knowledge of
-absolute radial velocities, but only the relative
+absolute\textcolor{red}{/heliocentric} radial velocities, but only the relative
 velocities (with respect to a template). 
 We also  cross-correlated object spectra from the two epochs 
 (instead of using the spectra of the template LHS~49)  in order to find
@@ -869,7 +883,7 @@ uncertainty measurements is also shown in the same figure. The RV
 constant population on the left side reasonably matches the expected
 curve. 
 \textcolor{red}{To quantify this point, we have computed the
-chi-square probability to test the goodness of the fit of the expected
+$\chi^{2}$ probability to test the goodness of the fit of the expected
 distribution to the histogram. We restrict the fit to the first 4 bins
 from the left $\left(0 < -\log_{10}\left(p\right) < 2 \right)$ the
 histogram since the objects in the second bin from the right
@@ -878,7 +892,7 @@ RV-variable object, although we have flagged them as the RV-constant
 objects. In this analysis, we find the probability of 0.5 which
 indicates that the fit is reasonable. Further, if we re-normalized the
 expected distribution, accounting for that fact we neglected the
-objects in the second bin from the right, we find the chi-square
+objects in the second bin from the right, we find the $\chi^{2}$
 probability of the fit increases to 0.9.  This, in turn, indicates}
 that our uncertainties in RV values are reasonable, and an additional
 systematic error may not be necessary in this analysis.
@@ -920,7 +934,8 @@ detection probability later in Section~\ref{sec:Binary-fraction}.
   objects is also shown for a comparison.} The distribution is
   normalized with the total number of objects that have $p<10^{-3}$.
   The match between the expected distribution and the
-  histogram is reasonable, indicating that our uncertainty estimates
+  histogram is reasonable \textcolor{red}{(c.f.~Section~\ref{sub:Radial-velocities})},
+  indicating that our uncertainty estimates 
   in RV values are also reasonable.  }
 
 
