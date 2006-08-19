@@ -254,12 +254,27 @@ of the standard deviation of the dispersion solution of 5~m\AA\,
 which corresponds to 0.2~$\kmps$ at the central wavelength 8600~\AA.
 However, the autoguiding of the telescope keeps the star at the centre
 of the slit with about a tenth of the FWHM ($1\,\kmps$) which sets
-the upper limit for the systematic error in the RV measurements \citep{bailer-jones:2004}.
-The accuracy of the wavelength calibration will be demonstrated in
-the RV measurements of a RV standard in the following section. A typical
+the upper limit for the systematic error in the RV measurements
+\citep{bailer-jones:2004}.
+\textcolor{red}{
+As we will find out in the following section
+(Section~\ref{sub:Radial-velocities}), the systematic error may be
+ignored based on result of the $\chi^{2}$ probability analysis we
+performed without the introduction of assumed systematic error.
+}
+A typical
 signal-to-noise ratio (S/N) per wavelength bin of the spectra is about
 15, and the heliocentric velocity correction was applied to the final
 spectra.
+
+\textcolor{red}{
+In addition to the main targets in Table~\ref{tab:literatures}, we
+also obtained the spectra of LHS~49 (on 2004-April-17) and HD~140538
+(on 2004-May-06), which are the RV template and the RV standard
+stars respectively.  These data were obtained using the same telescope
+and the same instrument set up as for our main targets.  The S/N of
+the both objects were about 60. 
+}
 
 
 %==========================================
@@ -882,20 +897,36 @@ expected distribution of $p$ computed consistently with our
 uncertainty measurements is also shown in the same figure. The RV
 constant population on the left side reasonably matches the expected
 curve. 
-\textcolor{red}{To quantify this point, we have computed the
+\textcolor{red}{
+To quantify this point, we have computed the
 $\chi^{2}$ probability to test the goodness of the fit of the expected
 distribution to the histogram. We restrict the fit to the first 4 bins
-from the left $\left(0 < -\log_{10}\left(p\right) < 2 \right)$ the
+from the left $\left(0 < -\log_{10}p < 2 \right)$ the
 histogram since the objects in the second bin from the right
-$\left(2.5 < -\log_{10}\left(p\right) < 3 \right)$ are `potentially'
+$\left(2.5 < -\log_{10}p < 3 \right)$ are `potentially'
 RV-variable object, although we have flagged them as the RV-constant
 objects. In this analysis, we find the probability of 0.5 which
 indicates that the fit is reasonable. Further, if we re-normalized the
 expected distribution, accounting for that fact we neglected the
 objects in the second bin from the right, we find the $\chi^{2}$
-probability of the fit increases to 0.9.  This, in turn, indicates}
+probability of the fit increases to 0.9.  This, in turn, indicates
 that our uncertainties in RV values are reasonable, and an additional
-systematic error may not be necessary in this analysis.
+systematic error may not be necessary in this analysis. 
+}
+
+\textcolor{red}{
+There are two possible
+source of systematic errors: (1)~the RV shifts caused by surface/atmospheric
+activity, and (2)~the RV shifts due to the limit of the stability of
+autoguiding of the telescope.  \citet{joergens:2006} found that (1) is
+negligibly small for young VLM objects with $M_{*}<0.12\,M_{\sun}$.
+The size of RV errors caused by (2) is expected to be $<1\,\kmps$
+\citep{bailer-jones:2004}. Note that \citet{maxted:2005} found an
+additional systematic error was not needed to be added to the RV
+uncertainties of \citet{joergens:2006} who used the same instruments
+as ours, and used the same method of estimating the
+uncertainties.
+}
 
 The boundary ($p=10^{-3}$) between the RV variable and the RV
 constants seems somewhat arbitrary, but here we simply adopt the
@@ -1053,7 +1084,7 @@ comparable the lower stellar density model.
 
 \caption{Histogram of the average heliocentric radial velocities of 14 UScoOB BD and VLM
 objects listed in Table~\ref{tab:summary_results} (excluding USco~121,
-a non-member). The gaussian fit (dashed) of the radial velociity
+a non-member). The gaussian fit (dashed) of the radial velocity
 distribution gives a standard deviation of $1.0\,\kmps$ and the peak
 position of $-6.3\,\kmps$. }
 \label{fig:vrad_histrogram}
@@ -1106,7 +1137,7 @@ of $v\,\sin i$ distribution for the UScoOB objects (14 objects excluding
 USco 121, non member). The log-normal fit of this distribution gives
 the peak position at $16.9\,\kmps$ with a standard deviation $\sigma=27.8\,\kmps$.
 Using the $v\,\sin i$ data in \citet{joergens:2001}, the same histogram
-bin size used for UScoOB obects and a log-normal fit, we find the
+bin size used for UScoOB objects and a log-normal fit, we find the
 $v\,\sin i$ distribution of the BD and VLM stars (8 objects) in Cha~I
 peaks at $15.4\,\kmps$, and has the standard deviation of $8.0\,\kmps$.
 The peak of the distribution is similar to that of Upper Sco objects,
@@ -1133,7 +1164,7 @@ the Upper Sco brown dwarf candidates and VLM stars.
 objects listed in Table~\ref{tab:summary_results} (excluding USco~121,
 a non-member).  The log-normal fit (dashed) of the
 rotational velocity distribution gives a standard deviation
-$27.8\,\kmps$ and the peak poistion $16.9\,\kmps$.}
+$27.8\,\kmps$ and the peak position $16.9\,\kmps$.}
 \label{fig:vrot_histrogram}
 
 \end{figure}
@@ -1202,7 +1233,7 @@ semimajor axis $a$, we take the following procedure: (1)~for each
 object in our targets, we randomly select $10^5$ binaries using the
 assumption stated above for a given value of $a$, and compute the RV
 of the primary ($V_{1}$), (2)~evolve the orbit by the time separation
-of the RV measuremets used in the observations for this object, and
+of the RV measurements used in the observations for this object, and
 take another simulated measurement of RV ($V_{2}$), (3)~from $V_{1}$,
 $V_{2}$ and the average uncertainty in RV ($\sigma_{\mathrm{RRV}}$)
 from the observations, we compute the $\chi^{2}$ probability $p$,  and
@@ -1255,28 +1286,10 @@ measurements.
 %==========================================
 
 
-In Section~\ref{sub:Radial-velocities}
-(see Fig.~\ref{fig:chisq-test}), we found the histogram of the
-$\chi^{2}$ probability $p$, for the RV data fit assuming constant RV,
-reasonably matches the expected distribution.  This leads us to
-conclude that the uncertainty estimates in RV values are 
-reasonable.  There are two possible
-source of errors: (1)~the RV shifts caused by surface/atmospheric
-activity, and (2)~the RV shifts due to the limit of the stability of
-autoguiding of the telescope.  \citet{joergens:2006} found that (1) is
-negligibly small for young VLM objects with $M_{*}<0.12\,M_{\sun}$.
-The size of RV errors caused by (2) is expected to be $<1\,\kmps$
-\citep{bailer-jones:2004}. Note that \citet{maxted:2005} found an
-additional systematic error was not needed to be added to the RV
-uncertainties of \citet{joergens:2006} who used the same instruments
-as ours, and used the same method of estimating the
-uncertainties. Hence, we expect the systematic error to be much
-smaller than $1\,\kmps$ if one is required.
-
 An alternative explanation for the RV variations found in the binary
 candidates above is a type of stellar pulsations found by
 \citet{palla:2005}. They studied the non-adiabatic, linear
-instability of very VLM stars and BD during the deturium burning phase
+instability of very VLM stars and BD during the deuterium burning phase
 in the core, and found unstable fundamental modes in the time-scale
 between $\sim 1$ and $\sim 5$~h for the object mass from $0.02$ and
 $0.1\,\Msun$.  By using their pulsation periods and by assuming that the
@@ -1346,11 +1359,19 @@ As \citet{burgasser:2006} points out most of the current RV and
 imaging surveys use samples from magnitude-limited survey, but one
 should attempt to use the samples from volume-limited survey in order
 to find a correct statistics on binary parameters more straightforwardly,
-i.e. without correcting for bias.
+i.e. without correcting for bias. 
+\textcolor{red}{
+Finally, we note that the binary fraction found in this paper may be
+over-estimated because of the nature of our survey (magnitude-limited
+and incomplete), hence because of a possible bias towards the brighter
+objects.
+}
 
 \section*{Acknowledgements}
 
-We thank the staff of VLT of the ESO for carrying out the observations
+We would like to thank the anonymous referee for constructive
+comments and suggestions for improving the clarity of the manuscript.
+We also thank the staff of VLT of the ESO for carrying out the observations
 in service mode. RK is grateful for Rob Jeffries  and Tim Naylor for helpful
 suggestions on the data analysis presented in this paper. We also
 thank Matthew Bate for providing us valuable comments on
@@ -1385,7 +1406,7 @@ PP/C501609/1.
 {Basri} G., {Mart{\'{\i}}n} E.~L., 1999, \aj, 118, 2460
 
 \bibitem[{{Basri} \& {Reiners}(2006)}]{basri:2006}
-{Basri} G., {Reiners} A., 2006, preprint (astro-ph/0604259)
+{Basri} G., {Reiners} A., 2006, \aj, 132, 663
 
 \bibitem[{{Bate} \& {Bonnell}(2005)}]{bate:2005}
 {Bate} M.~R., {Bonnell} I.~A., 2005, \mnras, 356, 1201
@@ -1565,5 +1586,9 @@ PP/C501609/1.
 % LocalWords:  pinfield substellar duquennoy VLMs guenther joergens padoan CCDs
 % LocalWords:  reipurth whitworth dezeeuw ardila luhman muzerolle Kueyen Parnal
 % LocalWords:  LL ESO interorder autoguiding FWHM jones Oph wilking mohanty Sp
-% LocalWords:  GY USco LHS HJD gaussian Cen garcia sanchez HD RRV pc CCF exp
-% LocalWords:  obs
+% LocalWords:  GY USco LHS HJD gaussian Cen garcia sanchez HD RRV pc CCF exp AJ
+% LocalWords:  obs ApJ PASP MNRAS Chamaeleon semimajor siegler Praesepe stassun
+% LocalWords:  mccaughrean segransan tinney palla kenyon Jeffries Naylor Bromm
+% LocalWords:  natexlab Reiners Bonnell Moraux Brandner Baraffe ndez McElwain
+% LocalWords:  astro ph de Zeeuw de Zeeuw de Bruijne Hoogerwerf Lub Blaauw
+% LocalWords:  Battrick
