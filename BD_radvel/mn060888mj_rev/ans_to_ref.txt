@@ -48,24 +48,23 @@ clarified.
    uncertainty of RV with respect to the template star. "
 
    TO:
-   "The result of the heliocentric RV measurements (from two
-   epochs for each object) is summarised in Table 2 along with their
-   uncertainties.  The uncertainties listed with the
-   absolute/heliocentric RV values in the 4-th and 6-th columns in the
-   table include the uncertainty of the absolute/heliocentric RV of
-   the template star. On the other hand, the uncertainties in the
-   `relative' radial velocities (\sigma_{RRV}) listed in the 5-th
-   column do not include the uncertainty of the template star. It is
-   \sigma_{RRV} that is relevant for the identification of RV variable
-   objects."  
-
+   "The result of the heliocentric RV measurements (from two epochs
+    for each object) is summarised in Table 2 along with their
+    uncertainties.  The uncertainties listed in columns~4 and 6 along
+    with the absolute/heliocentric RV values include the uncertainty
+    of the absolute/heliocentric RV of the template star. On the other
+    hand, the uncertainties in the `relative' radial velocities
+    (sigma_RRV) listed in column~5 of the table do not
+    include the uncertainty of the template star. It is
+    sigma_RRV that is relevant for the identification of
+    RV variable objects."
 
    * Also in the table caption of Table 2, I added the following sentence:
 
       "N.B.~the uncertainties listed along with the heliocentric radial
-      velocities in column 4 and 6 includes the uncertainty in the
+      velocities in column~4 and 6 includes the uncertainty in the
       heliocentric RV of the template star, but \sigma_{RRV}
-      do not. "
+      in column~5 do not. "
 				   
 
 
@@ -176,14 +175,14 @@ chi-squared distribution.
       chi-square test shown later, 
 
     "As we will find out in the following section (Section 3.1), the
-     systematic error may be ignored based on result of the $\chi^{2}$
+     systematic error may be ignored based on the result of the $\chi^{2}$
      probability analysis we performed without the introduction of
-     assumed systematic error."
+     an assumed systematic error."
    
 
     * I have removed the sentence, "The accuracy of the wavelength
       calibration will be demonstrated in the RV measurements of a RV
-      standard in the following section" from Section; however, 
+      standard in the following section" from Section 2; however, 
       the RV measurement check of the RV standard with a known value
       remain in Section 3.1.
 
@@ -217,12 +216,12 @@ statistically?
      I have inserted the following paragraphs at the end of the 7-th
      paragraph in Section 3.1 to reflect this point.
 
-     "To quantify to point, we have computed the chi-square
+     "To quantify this point, we compute the chi-square
       probability to test the goodness of the fit of the expected
       distribution to the histogram. We restrict the fit to the first
-      4 bins from the left (0< -log10(p) < 2) the histogram since the
+      4 bins from the left (0< -log10(p) < 2) of the histogram since the
       objects in the second bin from the right ((2.5< -log10(p)<3) are
-      "potential" RV-variable object, although we have flagged them as
+      "potential" RV-variable, although we have flagged them as
       the RV-constant objects. In this analysis, we find the
       probability of 0.5 which indicates that the fit is
       reasonable. Further, if we re-normalized the expected
@@ -246,8 +245,8 @@ their study.
    * I have added the following sentence at the end of Section~5. 
      "Finally, we note that the binary fraction found in this paper
      may be over-estimated because of the nature of our survey
-     (magnitude-limited and incomplete), hence because of a possible
-     bias towards the brighter objects." 
+     (magnitude-limited and incomplete), and because of a possible
+     bias towards brighter objects." 
 
 
 Minor points:
@@ -256,7 +255,7 @@ Minor points:
 
    * Added the following footnote on "variance spectra": 
      "Defined by the variance of the chi-square fit to the signal
-      obtained during optimum extraction." 
+      obtained during optimum extraction (c.f. Horne 1986)." 
 
 
 2) 1 percent should be 0.1 percent in Sec 3.1, paragraph 5.
