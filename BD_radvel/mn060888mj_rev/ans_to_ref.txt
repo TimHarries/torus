@@ -41,8 +41,8 @@ clarified.
    Section 3.1) 
    
    FROM:
-   "The result of the heliocentric RV measurements (from two
-   epochs for each object) is summarised in Table 2 along with the
+   "The results of the heliocentric RV measurements (from two
+   epochs for each object) are summarised in Table 2 along with the
    uncertainties. The table also lists the uncertainties in the
    `relative' radial velocities (\sigma_{RRV}) which is the
    uncertainty of RV with respect to the template star. "
@@ -50,14 +50,14 @@ clarified.
    TO:
    "The result of the heliocentric RV measurements (from two epochs
     for each object) is summarised in Table 2 along with their
-    uncertainties.  The uncertainties listed in columns~4 and 6 along
-    with the absolute/heliocentric RV values include the uncertainty
-    of the absolute/heliocentric RV of the template star. On the other
-    hand, the uncertainties in the `relative' radial velocities
-    (sigma_RRV) listed in column~5 of the table do not
-    include the uncertainty of the template star. It is
-    sigma_RRV that is relevant for the identification of
-    RV variable objects."
+    uncertainties.  The uncertainties listed in columns~4 and 6
+    include the uncertainty of the absolute RV of the template star,
+    added in quadrature with the uncertainty found from the cross
+    correlation analysis. On the other hand, the uncertainties in the
+    relative radial velocities (sigma_RRV) listed in column~5 of the
+    table do not include the uncertainty of the template star. It is
+    sigma_RRV that is relevant for the identification of RV variable
+    objects."
 
    * Also in the table caption of Table 2, I added the following sentence:
 
@@ -176,7 +176,7 @@ chi-squared distribution.
       I have inserted the following to make the connection to the
       chi-square test shown later, 
 
-    "As we will find out in the following section (Section 3.1), the
+    "As we will demonstrate in the following section (Section 3.1), the
      systematic error may be ignored based on the result of the $\chi^{2}$
      probability analysis we performed without the introduction of
      an assumed systematic error."
@@ -190,9 +190,9 @@ chi-squared distribution.
 
 
     * The 6th-paragraph in Section 4 (starting with "In Section 3.1
-      ...",  was moved to Section 3.1 with some modification as you
-      suggested. This seemed to be a little out of place, as you
-      pointed out. 
+      ...", was moved to Section 3.1 (near the end of the 7th
+      paragraph) with some modification as you suggested. This seemed
+      to be a little out of place, as you pointed out.  
 
 
 
@@ -231,7 +231,7 @@ statistically?
       in the second bin from the right, we find the chi-square
       probability of the fit increases to 0.9. This, in turn,
       indicates that our uncertainties in RV values are reasonable,
-      and an additional systematic error may not be necessary in this
+      and an additional systematic error is not necessary in this
       analysis."
 
 				   
