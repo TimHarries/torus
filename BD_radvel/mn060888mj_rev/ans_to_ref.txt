@@ -1,16 +1,16 @@
 Dear Referee,
 
 Thank you very much for reviewing our paper, and for doing so in
-timely mannar.  We have reviewed our paper by considering your
+timely manner.  We have reviewed our paper by considering your
 comments and suggestions very carefully.  
 The answers to your questions follow "*" marks before 
-the indented texts below.
+the indented text below.
 
 Kind regards,
 
 Ryuichi Kurosawa (rk@astro.ex.ac.uk), 
 Tim Harries,
-Stuwart Littlefair
+Stuart Littlefair
 
 ==================================================================
 
@@ -31,13 +31,13 @@ on the template star's absolute RV, whereas the sigma_rrv values do not?
 This is important for understanding the entire analysis, and must be
 clarified.
 
- * Thank you for point this out. It was not clearly explained. 
+ * Thank you for pointing this out. It was not clearly explained. 
    You are correct. The uncertainties listed along with RV in the 4-th
    column includes the uncertainty of the template
    absolute/heliocentric RV, but \sigma_{RRV} values  in the 5th column do
    not.  
 
-   To clarify this I have replace the following (in the 3rd paragraph in
+   To clarify this I have replaced the following (in the 3rd paragraph in
    Section 3.1) 
    
    FROM:
@@ -123,7 +123,9 @@ began to doubt the better precisions quoted for most of the targets.
       Note that the uncertainty in the RV of HD140538 with respect to
       the template star was very small (0.02 km/s)
       while the uncertainty is heliocentric RV of the template star is
-      0.4km/s which is the dominating error in (1) above.
+      0.4km/s which is the dominating error in (1) above. This of
+      course has no impact on the results of the paper, which are
+      based on relative velocity measures.
 
 
     * I have changed the RV value for HD140538 in the text based on
