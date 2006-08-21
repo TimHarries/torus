@@ -4310,15 +4310,15 @@
 
         write(*,'(i8,a,f7.3)') iOuterLoop*nPhotons/nOuterLoop," photons done"
 
-        if (iOuterLoop == 1) then
-           errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
-        else
-           do i = 1, nLambda
-              errorArray(iOuterLoop,i) = yArray(i) - errorArray(iOuterLoop-1,i)
-           enddo
-        endif
+        errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
         call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
+
+
+        yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
+
+
+
      end do outerPhotonLoop ! outer photon loop
 
 

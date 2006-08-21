@@ -3445,13 +3445,10 @@ END SUBROUTINE GAUSSJ
     t(1:n) = y(1:n)
     
     call sort(n, t)
-    write(*,*) real(t(1:n))
     if (mod(n, 2) == 0) then ! even case
        median = (t(n/2)+t(n/2+1))/2.
-       write(*,*) "Even number so",n/2,n/2+1,median
     else
        median = t(n/2+1)
-       write(*,*) "Odd number so",n/2+1,median
     endif
     deallocate(t)
   end function median

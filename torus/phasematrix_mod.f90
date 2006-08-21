@@ -347,16 +347,16 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
 
   allocate(yMedian(1:nLambda))
 
-!  do j = 1, nOuterloop
-!     write(tfile,'(a,i2.2,a)') "errorarray",j,".dat"
-!     open(55,file=tfile,status="unknown",form="formatted")
-!     do i = 1, nLambda
-!        write(55,*) xarray(i),errorArray(j,i)%i
-!     enddo
-!    close(55)
-!  enddo
+  do j = 1, nOuterloop
+     write(tfile,'(a,i2.2,a)') "errorarray",j,".dat"
+     open(55,file=tfile,status="unknown",form="formatted")
+     do i = 1, nLambda
+        write(55,*) xarray(i),errorArray(j,i)%i
+     enddo
+    close(55)
+  enddo
 
-  allocate(tArray(1:nLambda))
+  allocate(tArray(1:nOuterLoop))
   do i = 1,nLambda
      do j = 1, nOuterLoop
         tarray(j) = errorArray(j,i)%i
@@ -383,6 +383,11 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   enddo
   deallocate(tarray)
   do i = 1, nLambda
+     write(79,*) xArray(i), ymedian(i)
+  enddo
+
+
+  do i = 1, nLambda
      yMedian(i) = yMedian(i) * dble(nouterloop)
   enddo
 
@@ -407,7 +412,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   write(*,*) "scaling by ",x
 !  
   do i = 1, nLambda
-     ytmpArray(i) = yArray(i) * x !!!!!!!!!!!!!
+     ytmpArray(i) = yMedian(i) * x !!!!!!!!!!!!!
   enddo
 
 
