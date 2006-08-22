@@ -155,7 +155,9 @@ not by itself prove system stability.
      error in this value is from the uncertainty in the RV
      measurement of the template star.  
    * I agree that this does not really prove "the stability" of the
-     system.  
+     system.  I have made a claim that the systematic error is likely 
+     negligible based on the chi-square as analysis given in Section
+     3.1 (as corrected in answer to e) below.).
 
 
 It seems to me that the authors'
@@ -245,10 +247,10 @@ comment explicitly (perhaps in Sec 4 or 5) in this with respect to
 their study.
 
    * I have added the following sentence at the end of Section~5. 
-     "Finally, we note that the binary fraction found in this paper
-     may be over-estimated because of the nature of our survey
-     (magnitude-limited and incomplete), and because of a possible
-     bias towards brighter objects." 
+     "It is possible that out binary fraction is an overestimate since
+     we are biased to brighter objects. However the lack of a double-lined
+     system suggests that a primary-to-secondary luminosity ratio of
+     >> 1 for the RV variables found in this paper."
 
 
 Minor points:
