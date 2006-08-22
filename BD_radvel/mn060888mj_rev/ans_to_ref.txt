@@ -247,8 +247,8 @@ comment explicitly (perhaps in Sec 4 or 5) in this with respect to
 their study.
 
    * I have added the following sentence at the end of Section~5. 
-     "It is possible that out binary fraction is an overestimate since
-     we are biased to brighter objects. However the lack of a double-lined
+     "It is possible that our binary fraction is an overestimate since
+     we are biased to brighter objects. However the lack of a double-line
      system suggests that a primary-to-secondary luminosity ratio of
      >> 1 for the RV variables found in this paper."
 
@@ -278,13 +278,13 @@ figure is then just the total number of objects, right?
       FROM
        "The expected distribution (dashed) for RV constant objects
         based on the RV uncertainties in the observations
-	(Table~\ref{tab:summary_results}) and based on the $\chi^{2}$
+	(Table 2) and based on the \chi^{2}
 	probability function is also shown for a comparison."
 
 
       TO
       "The expected distribution (dashed) for RV constant
-       objects is also shown for a comparison. The distribution is
-       normalized with the total number of objects that have $p<10^{-3}$."
+       objects is also shown for a comparison, and is normalized to
+       the total number of objects that have p >10^{-3}." 
 
 
