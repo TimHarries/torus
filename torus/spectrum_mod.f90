@@ -72,13 +72,15 @@ module spectrum_mod
       call probSpectrum(spectrum, biasToLyman)
     end subroutine fillSpectrumBB
 
-    subroutine readSpectrum(spectrum, filename)
+    subroutine readSpectrum(spectrum, filename, ok)
       type(SPECTRUMTYPE) :: spectrum
+      logical :: ok
       character(len=*) :: filename
       real :: fTemp(120000),xTemp(120000)
       integer :: nLambda, i
 
-      open(20,file=filename,form="formatted",status="old")
+      ok = .true.
+      open(20,file=filename,form="formatted",status="old", err=666)
       nLambda = 1
 10    continue
       read(20,*,end=20) xtemp(nLambda),fTemp(nLambda)
@@ -100,6 +102,12 @@ module spectrum_mod
       spectrum%dlambda(1) = xtemp(2)-xtemp(1)
       spectrum%dlambda(nLambda) = xtemp(nlambda)-xtemp(nLambda-1)
       call probSpectrum(spectrum)
+
+      goto 999
+
+666   ok = .false.
+999   continue
+
     end subroutine readSpectrum
 
     subroutine probSpectrum(spectrum, biasToLyman)

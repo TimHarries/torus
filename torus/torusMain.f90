@@ -69,6 +69,7 @@
   use messages_mod
   use photoion_mod
   use formal_solutions
+  use starburst_mod
 !$mpi   use parallel_mod
 
   implicit none
@@ -113,7 +114,7 @@
   ! for monte calro with high optical depth models
   !  integer, parameter :: maxTau = 2000000, maxLambda = 101
   ! for monte calro with optically thin model.  
-  integer, parameter :: maxTau = 200000, maxLambda = 201  
+  integer, parameter :: maxTau = 200000, maxLambda = 501  
   ! for direct integration
   !  integer, parameter :: maxTau = 8000, maxLambda = 101    
   !
@@ -419,8 +420,8 @@
   ! FOR DEBUG
   integer :: i_dum
 
-! gas opacity stuff
-
+! starburst stuff
+  real(double) :: burstMass
 
 
 
@@ -445,6 +446,7 @@
   call random_seed(get=iSeed)
 
   deallocate(iSeed)
+
 
 
   ! initialize
@@ -649,6 +651,8 @@
   if (geometry == "rolf") rotateView = .true.
 
   if (geometry == "disk") rotateView = .true.
+
+  if (geometry == "starburst") rotateView = .true.
 
   if (geometry == "wr104") then
      rotateView = .true.
@@ -893,6 +897,9 @@
            xArray(nCurrent) = fac
            call sort(nCurrent, xArray)
         enddo
+!        do i = 1, nlambda
+!           write(*,*) xArray(i)
+!        enddo
      endif
 
      if (mie) then
@@ -2111,6 +2118,19 @@
        call normalizedSpectrum(source(1)%spectrum)
        rstar = source(1)%radius
 
+
+    case("starburst")
+       call random_seed(size=iSize)
+       allocate(iSeed(1:iSize))
+       iseed = 2343245
+       call random_seed(put=iSeed)
+       deallocate(iSeed)
+
+       allocate(source(1:10000))
+       call createSources(nSource, source, "instantaneous", 1.d6, 1.d3, 1.d0)
+       call random_seed
+
+
     case("wr104")
        nSource = 2
 
@@ -2119,14 +2139,14 @@
        source(1)%radius = 10. * rSol / 1.e10
        source(1)%position = (VECTOR(0.,0.,1.)*real(autocm))/1.e10
        source(1)%luminosity = fourPi * stefanBoltz * (10.*rSol)**2.0 * (source(1)%teff)**4
-       call readSpectrum(source(1)%spectrum, "ostar.flx")
+       call readSpectrum(source(1)%spectrum, "ostar.flx", ok)
        call normalizedSpectrum(source(1)%spectrum)
 
        source(2)%teff = 40000.             ! wr star 
        source(2)%radius = 20. * rSol / 1.e10
        source(2)%position = (VECTOR(0.,0.,-1)*real(autocm))/1.e10
        source(2)%luminosity = 0.5 * source(1)%luminosity
-       call readSpectrum(source(2)%spectrum, "wr.flx")
+       call readSpectrum(source(2)%spectrum, "wr.flx", ok)
        call normalizedSpectrum(source(2)%spectrum)
 
     case("lexington","fractal")
@@ -2197,7 +2217,7 @@
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda)
        else
-          call readSpectrum(source(1)%spectrum, contfluxfile)
+          call readSpectrum(source(1)%spectrum, contfluxfile, ok)
        endif
        call normalizedSpectrum(source(1)%spectrum)
 

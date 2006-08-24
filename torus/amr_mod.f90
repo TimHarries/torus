@@ -130,6 +130,12 @@ CONTAINS
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
 
+    CASE("starburst")
+       CALL calcStarburst(thisOctal, subcell, grid)
+       if (thisOctal%nDepth > 1) then
+          thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
+       endif
+
     CASE("symbiotic")
        CALL calcSymbiotic(thisOctal, subcell, grid)
        if (thisOctal%nDepth > 1) then
@@ -1020,7 +1026,7 @@ CONTAINS
         gridConverged = .TRUE.
 
       CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
-           "lexington", "warpeddisc", "whitney","fractal","symbiotic")
+           "lexington", "warpeddisc", "whitney","fractal","symbiotic", "starburst")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104")
@@ -4422,6 +4428,13 @@ IF ( .NOT. gridConverged ) RETURN
          if (thisOctal%nDepth < 7) split = .true.
       endif
 
+   case("starburst")
+      if (thisOctal%nDepth < 5) then
+         split = .true.
+      else
+         split = .false.
+      endif
+
    case("symbiotic")
       if (thisOctal%nDepth < 5) then
          split = .true.
@@ -6499,7 +6512,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
-    thisOctal%dustTypeFraction(subcell,1)=0.d0
+!    thisOctal%dustTypeFraction(subcell,1)=0.d0
 !    if (r < radius(it)*2.) then
 !       thisOctal%dusttypeFraction(subcell, 1) = 0.d0
 !    else
@@ -6511,6 +6524,47 @@ IF ( .NOT. gridConverged ) RETURN
 !    endif
 
   end subroutine calcLexington
+
+  subroutine calcStarburst(thisOctal,subcell,grid)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    real :: r
+    TYPE(octalVector) :: rVec
+    integer,save :: it
+    real :: fac
+    integer :: i
+
+    rVec = subcellCentre(thisOctal,subcell)
+    r = modulus(rVec)
+
+    thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
+    thisOctal%temperature(subcell) = 10.
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-8
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%inFlow(subcell) = .true.
+    thisOctal%rho(subcell) = 100.*mHydrogen
+    thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
+    thisOctal%ne(subcell) = thisOctal%nh(subcell)
+    thisOctal%nhi(subcell) = 1.e-5
+    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    thisOctal%ionFrac(subcell,1) = 1.e-10
+    thisOctal%ionFrac(subcell,2) = 1.
+    thisOctal%ionFrac(subcell,3) = 1.e-10
+    thisOctal%ionFrac(subcell,4) = 1.       
+    thisOctal%etaCont(subcell) = 0.
+    thisOctal%temperature(subcell) = 8000.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%biasCont3D = 1.
+    thisOctal%etaLine = 1.e-30
+    thisOctal%dustTypeFraction(subcell,1)=0.d0
+
+  end subroutine calcStarburst
 
   subroutine calcSymbiotic(thisOctal,subcell,grid)
 

@@ -855,22 +855,22 @@ endif
 
 
 
- if (geometry(1:4) .eq. "star") then 
-   call getReal("radius", radius, cLine, nLines, &
-       "radius: ","(a,f5.1,a)", 100., ok, .true.)
-
-   call getReal("mdot", mdot, cLine, nLines, &
-       "Mdot (Msol/yr): ","(a,1pe8.2,a)",1.e-6,ok,.true.)
-
-
-   call getReal("velocity", vterm, cLine, nLines, &
-       "Wind velocity (km/s): ","(a,1pe8.2,a)",1.e1,ok,.true.)
-
-   call getReal("kfac", kfac, cLine, nLines, &
-       "kfac: ", "(a,f5.1,a)", 0.5, ok, .true.)
-
-
- endif
+! if (geometry(1:4) .eq. "star") then 
+!   call getReal("radius", radius, cLine, nLines, &
+!       "radius: ","(a,f5.1,a)", 100., ok, .true.)
+!
+!   call getReal("mdot", mdot, cLine, nLines, &
+!       "Mdot (Msol/yr): ","(a,1pe8.2,a)",1.e-6,ok,.true.)
+!
+!
+!   call getReal("velocity", vterm, cLine, nLines, &
+!       "Wind velocity (km/s): ","(a,1pe8.2,a)",1.e1,ok,.true.)
+!
+!   call getReal("kfac", kfac, cLine, nLines, &
+!       "kfac: ", "(a,f5.1,a)", 0.5, ok, .true.)
+!
+!
+! endif
 
 
  if (geometry == "raman") then
@@ -1152,6 +1152,11 @@ endif
        call getInteger("mincrossings", minCrossings, cLine, nLines, &
             "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.true.)
  endif
+
+if (geometry == "starburst") then
+   photoionization = .true.
+   onekappa = .true.
+endif
 
 
 if (geometry == "lexington") then

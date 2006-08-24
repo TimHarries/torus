@@ -147,8 +147,8 @@ contains
     nIon = nIon + 1
     call createIon(ionArray(nIon), 10, 8, 6.346e1) ! Ne III
 
-!    nIon = nIon + 1
-!    call createIon(ionArray(nIon), 10, 7, 9.712e1) ! Ne IV
+    nIon = nIon + 1
+    call createIon(ionArray(nIon), 10, 7, 9.712e1) ! Ne IV
 
 !    nIon = nIon + 1
 !    call createIon(ionArray(nIon), 10, 6, 1.262e2) ! Ne V

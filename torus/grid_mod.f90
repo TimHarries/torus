@@ -646,6 +646,16 @@ contains
     case ("testamr")
        call initTestAMR(grid)
 
+    case("starburst")
+       grid%rCore = 18.67 * rSol / 1.e10
+       grid%rInner = rinner
+       grid%rOuter = 2.e09
+       grid%oneKappa = .true.
+       oneKappa = .true.
+       grid%geometry = "starburst"
+       grid%lineEmission = .false.
+
+
     case ("proto")
        call initProtoAMR(grid)
 

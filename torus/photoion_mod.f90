@@ -329,7 +329,7 @@ contains
           if (writeoutput) &
                write(*,*) "Calculating ionization and thermal equilibria",i
           call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+!          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
           if (writeoutput) &
                write(*,*) "Done."
        enddo
@@ -338,7 +338,7 @@ contains
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomfactor)
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
 
        nCellsInDiffusion = 0
        call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
@@ -357,8 +357,8 @@ contains
 
 
 
-       
-if (writeoutput) then
+!       if (writeoutput) then
+if (.false.) then
        call dumpLexington(grid, epsoverdeltat)
        fac = 2.06e37
 
@@ -2407,7 +2407,7 @@ subroutine createSahaMilneTables(hTable, heTable)
   do i = 1, nTemp
      hTable%Clyc(i,1) = 0.d0
      heTable%Clyc(i,1) = 0.d0
-     do j = 1, nFreq
+     do j = 2, nFreq
 
 
         e = hTable%freq(j) * hcgs* ergtoev

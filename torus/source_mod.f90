@@ -16,6 +16,9 @@ module source_mod
      real(double) :: radius     ! [10^10cm]
      real(double) :: luminosity ! [erg/s]
      real(double) :: teff       ! [K]
+     real(double) :: initialMass ! [solar]
+     real(double) :: mass       ! [solar]
+     real(double) :: age        ! [years]
      type(SPECTRUMTYPE)    :: spectrum   ! [???]
   end type SOURCETYPE
 
@@ -60,7 +63,7 @@ module source_mod
 	    ! allocate array
 	    ALLOCATE(prob(1:nSource))
 	    ! Create the prob. dist. function.
-	    prob(1:nSource) = source(1:nSource)%luminosity
+	    prob(1:nSource) = source(1:nSource)%luminosity/lsol
 	    do i = 2, nSource
 	       prob(i) = prob(i) + prob(i-1)
 	    enddo
@@ -73,8 +76,10 @@ module source_mod
 	 
          call random_number(r)
          call locate(prob, nSource, r, iSource)
-         t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
-         if (t > 0.5) iSource = iSource + 1
+         if (iSource < nSource) then
+            t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
+            if (t > 0.5) iSource = iSource + 1
+         endif
       endif
 
     end subroutine randomSource

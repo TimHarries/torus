@@ -101,6 +101,8 @@ source_mod.o: constants_mod.o octal_mod.o spectrum_mod.o utils_mod.o \
 	vector_mod.o
 spectrum_mod.o: atom_mod.o constants_mod.o utils_mod.o
 sph_data_class.o: kind_mod.o
+starburst_mod.o: constants_mod.o kind_mod.o messages_mod.o source_mod.o \
+	utils_mod.o
 stateq_mod.o: cmfgen_class.o constants_mod.o grid_mod.o gridtype_mod.o \
 	hyd_col_coeff.o input_variables.o integratePath.o jets_mod.o \
 	math_mod.o opacity_lte_mod.o utils_mod.o vector_mod.o
@@ -115,8 +117,8 @@ torusMain.o: TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
 	luc_cir3d_class.o lucy_mod.o math_mod.o messages_mod.o \
 	phasematrix_mod.o photoion_mod.o photon_mod.o puls_mod.o \
 	romanova_class.o source_mod.o spectrum_mod.o sph_data_class.o \
-	stateq_mod.o surface_mod.o timing.o unix_mod.o utils_mod.o \
-	vector_mod.o wr104_mod.o
+	starburst_mod.o stateq_mod.o surface_mod.o timing.o unix_mod.o \
+	utils_mod.o vector_mod.o wr104_mod.o
 TTauri_mod.o: amr_mod.o atom_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
 	kind_mod.o math_mod.o octal_mod.o parameters_mod.o stateq_mod.o \
 	utils_mod.o vector_mod.o
