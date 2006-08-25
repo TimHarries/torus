@@ -276,7 +276,7 @@ contains
        integer :: nt, i
        thisTable%initialMass(nMass) = initMass
        
-       tfile = "/home/th/Schaller/"//trim(thisFile)
+       tfile = "/Users/th/Schaller/"//trim(thisFile)
        nt = 1
        open(31, file=tfile, status="old", form="formatted")
 10 continue
@@ -321,7 +321,7 @@ contains
 
        loggArray = (/ 000., 050., 100., 150., 200., 250., 300., 350., 400., 450., 500. /)
        if (firsttime) then
-          open(31, file="/home/th/Kurucz/filelist.dat", form="formatted", status="old")
+          open(31, file="/Users/th/Kurucz/filelist.dat", form="formatted", status="old")
           do i = 1, nFiles
              read(31, *) teff(i)
           end do
@@ -398,12 +398,12 @@ contains
        integer :: i
        
        call writeInfo("Reading Kurucz grid...",TRIVIAL)
-       tfile = "/home/th/Kurucz/files.dat"
+       tfile = "/Users/th/Kurucz/files.dat"
        open(31, file = tfile, status = "old", form="formatted")
        do i = 1, nFiles
           read(31,*) fluxfile
           label(i) = trim(fluxfile)
-          tfile = "/home/th/Kurucz/"//trim(fluxfile)
+          tfile = "/Users/th/Kurucz/"//trim(fluxfile)
           call readSpectrum(spectrum(i), tfile, ok)
        enddo
        close(31)

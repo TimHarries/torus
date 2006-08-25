@@ -2775,9 +2775,11 @@ subroutine addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal
         lineEmissivity = emissivity(iup, ilow) * Hbeta * 1.e-25
         energy = (hydE0eV / dble(iLow**2))-(hydE0eV / dble(iUp**2))
         lineFreq = cSpeed/lambdaTrans(iup, ilow)
-        call locate(freq, nFreq, lineFreq, i)
-        i = i + 1
-        spectrum(i) = spectrum(i) + lineEmissivity
+        if ((lineFreq > freq(1)).and.(lineFreq < freq(nfreq))) then
+           call locate(freq, nFreq, lineFreq, i)
+           i = i + 1
+           spectrum(i) = spectrum(i) + lineEmissivity
+        endif
      end do
   end do
 
@@ -2838,9 +2840,11 @@ subroutine addForbiddenLines(nfreq, freq, dfreq, spectrum, thisOctal, subcell, g
              grid%ion(iion)%transition(itrans)%a/ergtoev
         rate = rate * grid%ion(iion)%abundance * thisOctal%nh(subcell) * thisOctal%ionFrac(subcell, iion)
         lineFreq  =  (grid%ion(iion)%transition(itrans)%energy / ergtoEV) / hCgs
-        call locate(freq, nFreq, lineFreq, j)
-        j = j + 1
-        spectrum(j) = spectrum(j) + rate
+        if ((lineFreq > freq(1)).and.(lineFreq < freq(nfreq))) then
+           call locate(freq, nFreq, lineFreq, j)
+           j = j + 1
+           spectrum(j) = spectrum(j) + rate
+        endif
      enddo
   enddo
 
@@ -2879,8 +2883,10 @@ subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subc
      emissivity = aj * (t**bj) * exp(cj / t) ! Benjamin et al. 1999 ApJ 514 307
      emissivity = emissivity * thisOctal%ne(subcell) * thisOctal%nh(subcell) * &
           thisOctal%ionFrac(subcell, 3) * grid%ion(3)%abundance
+
      lineFreq = cspeed / (heiRecombinationLambda(j)*1.e-8)
      call locate(freq, nFreq, lineFreq, k)
+     k = k + 1
      spectrum(k) = spectrum(k) + emissivity
   enddo
 !
@@ -2947,12 +2953,10 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
 
   do i = 1, nFreq
      thisLam = (cSpeed / freq(i)) * 1.e8
-     call hunt(lamArray, nLambda, real(thisLam), iLam)
-     if ((ilam >=1).and.(ilam <= nlambda)) then
-
+     if ((thisLam >= lamArray(1)).and.(thisLam <= lamArray(nlambda))) then
+        call hunt(lamArray, nLambda, real(thisLam), iLam)
         spectrum(i) = spectrum(i) + bnu(freq(i), dble(thisOctal%temperature(subcell))) * &
              kAbsArray(iLam) *1.d-10* dFreq(i) * fourPi
-
      endif
   enddo
 

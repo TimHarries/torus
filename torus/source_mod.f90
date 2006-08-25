@@ -38,6 +38,11 @@ module source_mod
       newSource%spectrum = spectrum
     end function newSource
 
+
+
+
+
+
     subroutine randomSource(source, nSource, iSource)
       integer :: nSource
       type(SOURCETYPE) :: source(1:nSource)
@@ -83,6 +88,52 @@ module source_mod
       endif
 
     end subroutine randomSource
+
+
+    subroutine randomSourceNarrowband(source, nSource, iSource, lamArray, nLambda)
+      integer :: nSource
+      type(SOURCETYPE) :: source(1:nSource)
+      integer :: iSource
+      real, save, allocatable :: prob(:)
+      real :: lamArray(:)
+      integer :: nlambda
+      real :: r, t
+      real :: lRatio
+      integer :: i
+      logical, save :: first_time = .true.
+
+      if (nSource == 1) then
+         iSource = 1
+      else
+	 if (first_time) then
+	    ! allocate array
+	    ALLOCATE(prob(1:nSource))
+	    ! Create the prob. dist. function.
+            do i = 1, nLambda
+               prob(i) = &
+                    integrateNormSpectrumOverBand(source(i)%spectrum, dble(lamArray(1)) , &
+                    dble(lamArray(nLambda))) * &
+                    source(i)%luminosity/lsol
+            enddo
+	    do i = 2, nSource
+	       prob(i) = prob(i) + prob(i-1)
+	    enddo
+	    prob(1:nSource) = prob(1:nSource) - prob(1)
+	    prob(1:nSource) = prob(1:nSource) / prob(nSource)
+
+	    first_time = .false.
+	    
+	 end if
+	 
+         call random_number(r)
+         call locate(prob, nSource, r, iSource)
+         if (iSource < nSource) then
+            t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
+            if (t > 0.5) iSource = iSource + 1
+         endif
+      endif
+
+    end subroutine randomSourceNarrowBand
 
     subroutine distanceToSource(source, nSource, rVec, uHat, hitSource, distance)
       integer :: nSource

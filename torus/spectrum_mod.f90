@@ -35,6 +35,80 @@ module spectrum_mod
 
     end subroutine getWavelength
 
+    function integrateNormSpectrumOverBand(spectrum, lam1 , lam2) result(tot)
+      real(double) :: tot
+      type(SPECTRUMTYPE) :: spectrum
+      real(double) :: lam1, lam2, tlam1, tlam2
+      integer :: i1, i2, i
+
+      tlam1 = lam1
+      tlam2 = lam2
+
+      tlam1 = max(lam1, spectrum%lambda(1))
+      tlam2 = min(lam2, spectrum%lambda(spectrum%nLambda))
+
+      call locate(spectrum%lambda, spectrum%nLambda, tlam1, i1)
+      call locate(spectrum%lambda, spectrum%nLambda, tlam2, i2)
+      
+      if (i1 == i2) then 
+         tot = spectrum%normFlux(i1)*(tlam2 - tlam1)
+      else
+         tot = 0.d0
+         tot = tot + spectrum%normFlux(i1)*(spectrum%lambda(i1+1)-tlam1)
+         tot = tot + spectrum%normFlux(i2)*(tlam2-spectrum%lambda(i2))
+         do i = i1, i2-1
+            tot = tot + 0.5d0*(spectrum%normFlux(i+1)+spectrum%normFlux(i)) * &
+                 (spectrum%lambda(i+1)-spectrum%lambda(i))
+         enddo
+      endif
+    end function integrateNormSpectrumOverBand
+
+    subroutine getWavelengthOverBand(spectrum, lam1 , lam2, wavelength)
+      real(double) :: wavelength
+      type(SPECTRUMTYPE) :: spectrum
+      real(double) :: lam1, lam2, tlam1, tlam2
+      integer :: i1, i2, i
+      real(double), allocatable :: prob(:), lam(:)
+      real(double) :: t, r
+      integer :: nProb
+
+      tlam1 = lam1
+      tlam2 = lam2
+
+      tlam1 = max(lam1, spectrum%lambda(1))
+      tlam2 = min(lam2, spectrum%lambda(spectrum%nLambda))
+
+      call locate(spectrum%lambda, spectrum%nLambda, tlam1, i1)
+      call locate(spectrum%lambda, spectrum%nLambda, tlam2, i2)
+      
+      if (i1 == i2) then 
+         call random_number(r)
+         r = r - 0.5d0
+         wavelength = spectrum%lambda(i1) + r * spectrum%dlambda(i1)
+      else
+         allocate(prob(spectrum%nLambda), lam(spectrum%nLambda))
+         nProb = 1
+         prob(nProb) = spectrum%normFlux(i1)*(spectrum%lambda(i1+1)-tlam1)
+         lam(nProb) = 0.5d0*(tlam1+spectrum%lambda(i1+1))
+         do i = i1, i2-1
+            nProb = nProb + 1
+            prob(nProb) = 0.5d0*(spectrum%normFlux(i+1)+spectrum%normFlux(i)) * &
+                 (spectrum%lambda(i+1)-spectrum%lambda(i))
+            lam(nProb) = 0.5d0*(spectrum%lambda(i+1)+spectrum%lambda(i))
+         enddo
+         nProb = nProb + 1
+         prob(nProb) = spectrum%normFlux(i2)*(tlam2-spectrum%lambda(i2))
+         lam(nProb) = 0.5d0*(tlam2+spectrum%lambda(i2))
+         prob(1:nProb) = prob(1:nProb) - prob(1)
+         prob(1:nProb) = prob(1:nProb)/prob(nProb)
+         call random_number(r)
+         call locate(prob, nProb, r, i1)
+         t = (r - prob(i1))/(prob(i1+1)-prob(i1))
+         wavelength = lam(i1) + t * (lam(i1+1)-lam(i1))
+         deallocate(prob, lam)
+      endif
+    end subroutine getWavelengthOverBand
+
 
     subroutine fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda, biasToLyman)
 
@@ -130,9 +204,6 @@ module spectrum_mod
          spectrum%prob(i) = spectrum%prob(i-1) + spectrum%flux(i) * spectrum%dLambda(i) * fac
       enddo
       spectrum%prob(1:spectrum%nLambda) = spectrum%prob(1:spectrum%nLambda) / spectrum%prob(spectrum%nLambda)
-      do i = 1, spectrum%nLambda
-         write(66,*) spectrum%lambda(i),spectrum%flux(i),spectrum%prob(i)
-      enddo
     end subroutine probSpectrum
 
     subroutine normalizedSpectrum(spectrum)

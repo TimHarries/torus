@@ -2128,6 +2128,11 @@
 
        allocate(source(1:10000))
        call createSources(nSource, source, "instantaneous", 1.d6, 1.d3, 1.d0)
+       do i = 1, 100
+          call getWavelengthOverBand(source(1)%spectrum, 6500.d0 , 6600.d0, rtmp)
+          write(*,*) rtmp
+       enddo
+       stop
        call random_seed
 
 
