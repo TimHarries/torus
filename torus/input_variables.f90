@@ -69,7 +69,9 @@ module input_variables
   integer :: ngrain 
   real :: X_grain(10)    ! abundaunce 
   character(LEN=30) :: grainname(10)
-  
+
+  real :: h_abund, he_abund, c_abund, n_abund, &
+       o_abund, ne_abund, s_abund  
 
 
 

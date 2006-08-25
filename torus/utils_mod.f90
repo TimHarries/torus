@@ -3144,34 +3144,6 @@ subroutine returnElement(z, element)
   end select
 end subroutine returnElement
 
-function returnAbundance(z) result(a)
-  integer :: z
-  real:: a
-
-  select case(z)
-     case(1)
-        a = 1.
-     case(2)
-        a =  0.1
-!        write(*,*) "NO HELIUM!!!!!!!!!!!!!!"
-!        a = 1.e-10
-     case(6)
-!        write(*,*) "NO HEAVIES!!!!!!!!!!!!!!"
-        a = 22.e-5
-     case(7)
-        a = 4.e-5
-     case(8)
-        a = 33.e-5
-     case(10)
-        a = 5.e-5
-     case(16)
-        a = 0.9e-5
-     case DEFAULT
-        write(*,*) "No abundance set for z=",z
-        a = tiny(a)
-  end select
-666 continue
-end function returnAbundance
 
 SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
   implicit none
@@ -3337,16 +3309,28 @@ END SUBROUTINE GAUSSJ
     real :: x, xarray(:)
     integer :: nx
     real :: dx, xplus1, xplus2
-    integer :: i
+    integer :: i, j
 
     if ((x > xArray(1)).and.(x < xArray(nx))) then
-       call locate(xArray, nx, x, i)
-       xplus2 = min(xArray(i+1)-0.01,x+dx/2.)
-       xplus1 = max(xArray(i)+0.01,x-dx/2.)
-       xArray(nx+1) = xplus1
-       xArray(nx+2) = xplus2
-       nx = nx + 2
+!       call locate(xArray, nx, x, i)
+!       xplus2 = min(xArray(i+1)-0.01,x+dx/2.)
+!       xplus1 = max(xArray(i)+0.01,x-dx/2.)
+       xArray(nx+1) = x+dx/2.
+       xArray(nx+2) = x-dx/2.
+       xArray(nx+3) = x
+       nx = nx + 3
        call sort(nx, xArray)
+       i = 1
+       do while (i < nx)
+          if (xArray(i) == xArray(i+1)) then
+             do j = i, nx-1
+                xArray(j) = xArray(j+1)
+             enddo
+             nx = nx - 1
+          else
+             i = i + 1
+          endif
+       enddo
     endif
   end subroutine insertBin
     

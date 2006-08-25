@@ -114,7 +114,7 @@
   ! for monte calro with high optical depth models
   !  integer, parameter :: maxTau = 2000000, maxLambda = 101
   ! for monte calro with optically thin model.  
-  integer, parameter :: maxTau = 200000, maxLambda = 501  
+  integer, parameter :: maxTau = 20000, maxLambda = 1001  
   ! for direct integration
   !  integer, parameter :: maxTau = 8000, maxLambda = 101    
   !

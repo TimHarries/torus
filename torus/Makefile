@@ -20,7 +20,7 @@ ifeq ($(SYSTEM), g95)
     F77COMP=g95
     FASTFLAG= -O3
 #    FASTFLAG= -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG=-g -fbounds-check -Wall
+    DEBUGFLAG=-g -fbounds-check 
     STATICFLAG=
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
@@ -281,9 +281,9 @@ ifeq ($(SYSTEM), linuxintel)
 #    FASTFLAG= -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
     FASTFLAG= -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
 #    FASTFLAG= -I/usr/include/nptl -L/usr/lib/nptl -zero 
-    DEBUGFLAG=-g -O0 
+    DEBUGFLAG=-g
     STATICFLAG=
-    MATHTRAP=-mp
+    MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
     KINDMOD=kind_mod.f90.linuxintel
     EXE=torus.linuxintel

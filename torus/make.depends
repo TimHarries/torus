@@ -62,7 +62,8 @@ integratePath.o: amr_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
 	math_mod.o photon_mod.o vector_mod.o
 interp_mod.o: grid_mod.o vector_mod.o
 intersectCube.o: grid_mod.o gridtype_mod.o vector_mod.o
-ion_mod.o: constants_mod.o kind_mod.o messages_mod.o utils_mod.o
+ion_mod.o: constants_mod.o input_variables.o kind_mod.o messages_mod.o \
+	utils_mod.o
 irreg_grid_data_class.o: kind_mod.o
 isochrone_class.o: kind_mod.o
 jet_class.o: grid_mod.o gridtype_mod.o kind_mod.o octal_mod.o vector_mod.o

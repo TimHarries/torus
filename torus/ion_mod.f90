@@ -713,5 +713,38 @@ function returnLevel(ion, term) result(level)
   endif
 end function returnLevel
 
+function returnAbundance(z) result(a)
+
+  use input_variables, only : h_abund, he_abund, c_abund, n_abund, &
+       o_abund, ne_abund, s_abund
+  integer :: z
+  real:: a
+
+  select case(z)
+     case(1)
+        a = h_abund
+     case(2)
+        a =  he_abund
+!        write(*,*) "NO HELIUM!!!!!!!!!!!!!!"
+!        a = 1.e-10
+     case(6)
+!        write(*,*) "NO HEAVIES!!!!!!!!!!!!!!"
+        a = c_abund
+     case(7)
+        a = n_abund
+     case(8)
+        a = o_abund
+     case(10)
+        a = ne_abund
+     case(16)
+        a = s_abund
+     case DEFAULT
+        write(*,*) "No abundance set for z=",z
+        a = tiny(a)
+  end select
+666 continue
+end function returnAbundance
+
+
 end module ion_mod
 

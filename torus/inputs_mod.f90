@@ -2287,8 +2287,33 @@ endif
  end if
  
 
+    call getReal("h_abund", h_abund, cLine, nLines, &
+         "Hydrogen abdunance: ","(a,1PF8.3,a)", &
+         1., ok, .false.)
 
+    call getReal("he_abund", he_abund, cLine, nLines, &
+         "Helium abdunance: ","(a,1PF8.3,a)", &
+         0.1, ok, .false.)
 
+    call getReal("c_abund", c_abund, cLine, nLines, &
+         "Carbon abdunance: ","(a,1PF8.3,a)", &
+         22.e-5, ok, .false.)
+
+    call getReal("n_abund", n_abund, cLine, nLines, &
+         "Nitrogen abdunance: ","(a,1PF8.3,a)", &
+         4.e-5, ok, .false.)
+
+    call getReal("o_abund", o_abund, cLine, nLines, &
+         "Oxygen abdunance: ","(a,1PF8.3,a)", &
+         33.e-5, ok, .false.)
+
+    call getReal("ne_abund", ne_abund, cLine, nLines, &
+         "Neon abdunance: ","(a,1PF8.3,a)", &
+         5.e-5, ok, .false.)
+
+    call getReal("s_abund", s_abund, cLine, nLines, &
+         "Sulphur abdunance: ","(a,1PF8.3,a)", &
+         0.9e-5, ok, .false.)
 
  
  if (writeoutput) write(*,*) " "
