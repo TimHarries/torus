@@ -178,10 +178,9 @@ chi-squared distribution.
       I have inserted the following to make the connection to the
       chi-square test shown later, 
 
-    "As we will demonstrate in the following section (Section 3.1), the
-     systematic error may be ignored based on the result of the $\chi^{2}$
-     probability analysis we performed without the introduction of
-     an assumed systematic error."
+      "In fact, we find that any systematic error is negligible compared
+      to the random error associated with our radial velocity
+      measurements (see Section 3.1)."
    
 
     * I have removed the sentence, "The accuracy of the wavelength
