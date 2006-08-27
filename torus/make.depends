@@ -32,7 +32,7 @@ distortion_mod.o: blob_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
 	vector_mod.o
 draineCrossSection.o: constants_mod.o unix_mod.o utils_mod.o
 dust_mod.o: amr_mod.o constants_mod.o grid_mod.o gridtype_mod.o \
-	input_variables.o messages_mod.o
+	input_variables.o messages_mod.o phasematrix_mod.o
 fillGridMie.o: constants_mod.o grid_mod.o gridtype_mod.o
 fillGridRayleigh.o: constants_mod.o grid_mod.o gridtype_mod.o
 fillGridThomson.o: constants_mod.o grid_mod.o gridtype_mod.o

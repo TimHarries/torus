@@ -2556,5 +2556,66 @@ contains
   end subroutine directPhotonSmooth
 
 
+  recursive subroutine  calcContinuumEmissivityLucy(grid, thisOctal, nlambda, lamArray)
+    type(GRIDTYPE) :: grid
+    integer :: nLambda
+    real :: lamArray(:)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calcContinuumEmissivityLucy(grid, child, nlambda, lamArray)
+                exit
+             end if
+          end do
+       else
+          thisOctal%etaCont(subcell) = 1.d-40
+          if (thisOctal%temperature(subcell) > 1.d-3) then
+
+             call addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
+             
+          endif
+
+       endif
+    enddo
+  end subroutine calcContinuumEmissivityLucy
+
+
+subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
+
+  type(OCTAL), pointer :: thisOctal
+  integer :: subcell
+  type(GRIDTYPE) :: grid
+  integer :: nLambda
+  real :: lamArray(:)
+  integer :: i, iLam
+  real :: dlam
+  type(OCTALVECTOR) :: octVec
+  real(double), allocatable :: kabsArray(:)
+
+
+  allocate(kAbsArray(1:nlambda))
+
+  call returnKappa(grid, thisOctal, subcell, kappaAbsArray=kAbsArray)
+
+  thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
+
+  do i = 2, nLambda
+     dlam = lamArray(i)-lamArray(i-1)
+     thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) + &
+          bLambda(dble(lamArray(i)), dble(thisOctal%temperature(subcell))) * &
+             kAbsArray(i) *1.d-10* dlam * fourPi * 1.d-8 ! conversion from per cm to per A
+  enddo
+
+  deallocate(kAbsArray)
+
+end subroutine addDustContinuumLucy
+
 
 end module lucy_mod

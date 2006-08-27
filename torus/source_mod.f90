@@ -135,6 +135,22 @@ module source_mod
 
     end subroutine randomSourceNarrowBand
 
+    real(double) function sumSourceLuminosity(source, nsource, lam1, lam2) result (tot)
+      integer :: nSource
+      type(SOURCETYPE) :: source(:)
+      real :: lam1, lam2
+      integer :: i
+
+      tot = 0
+      do i = 1, nSource
+         tot = tot + integrateNormSpectrumOverBand(source(i)%spectrum, dble(lam1) , &
+                    dble(lam2)) * source(i)%luminosity
+      enddo
+    end function sumSourceLuminosity
+
+
+
+
     subroutine distanceToSource(source, nSource, rVec, uHat, hitSource, distance)
       integer :: nSource
       type(SOURCETYPE) :: source(nSource)

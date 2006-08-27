@@ -1,6 +1,7 @@
 module dust_mod
 
   use gridtype_mod
+  use phasematrix_mod
   use grid_mod
   use constants_mod
   use amr_mod
@@ -13,16 +14,16 @@ contains
 
   subroutine getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg)
 
-  ! gr1_dl - graphite orth  .25
-  ! gr2_dl - graphite para  .125
+    ! gr1_dl - graphite orth  .25
+    ! gr2_dl - graphite para  .125
 
-      integer, parameter :: npLnk = 98
-      real(single) :: n_sil_ow(npLnk),k_sil_ow(npLnk),n_sil_oc(npLnk), &
-             k_sil_oc(npLnk), n_sil_dl(npLnk), k_sil_dl(npLnk),             &
-             n_amc_hn(npLnk), k_amc_hn(npLnk), n_sic_pg(npLnk),             &
-             k_sic_pg(npLnk), n_gr1_dl(npLnk), k_gr1_dl(npLnk),             &
-             n_gr2_dl(npLnk), k_gr2_dl(npLnk), lam_nk(npLnk)                
-      DATA lam_nk/1.00E-02,2.00E-02,3.00E-02,4.00E-02,5.00E-02,             &
+    integer, parameter :: npLnk = 98
+    real(single) :: n_sil_ow(npLnk),k_sil_ow(npLnk),n_sil_oc(npLnk), &
+         k_sil_oc(npLnk), n_sil_dl(npLnk), k_sil_dl(npLnk),             &
+         n_amc_hn(npLnk), k_amc_hn(npLnk), n_sic_pg(npLnk),             &
+         k_sic_pg(npLnk), n_gr1_dl(npLnk), k_gr1_dl(npLnk),             &
+         n_gr2_dl(npLnk), k_gr2_dl(npLnk), lam_nk(npLnk)                
+    DATA lam_nk/1.00E-02,2.00E-02,3.00E-02,4.00E-02,5.00E-02,             &
          6.00E-02,8.00E-02,1.00E-01,1.20E-01,1.50E-01,2.00E-01,2.50E-01,    &
          3.00E-01,3.60E-01,4.40E-01,5.50E-01,7.00E-01,8.50E-01,1.00E+00,    &
          1.15E+00,1.30E+00,1.70E+00,2.00E+00,2.20E+00,2.70E+00,3.00E+00,    &
@@ -37,7 +38,7 @@ contains
          1.10E+02,1.20E+02,1.30E+02,1.40E+02,1.50E+02,2.00E+02,2.50E+02,    &
          3.00E+02,4.00E+02,5.00E+02,7.00E+02,1.30E+03,4.00E+03,1.30E+04,    &
          2.00E+04,3.60E+04/                                                 
-      DATA n_sil_ow/1.81E+00,1.81E+00,1.81E+00,1.81E+00,1.81E+00,           &
+    DATA n_sil_ow/1.81E+00,1.81E+00,1.81E+00,1.81E+00,1.81E+00,           &
          1.81E+00,1.81E+00,1.81E+00,1.81E+00,1.81E+00,1.81E+00,1.81E+00,    &
          1.81E+00,1.81E+00,1.82E+00,1.84E+00,1.85E+00,1.85E+00,1.85E+00,    &
          1.85E+00,1.85E+00,1.87E+00,1.88E+00,1.88E+00,1.89E+00,1.89E+00,    &
@@ -52,7 +53,7 @@ contains
          2.87E+00,2.87E+00,2.88E+00,2.88E+00,2.88E+00,2.89E+00,2.90E+00,    &
          2.90E+00,2.90E+00,2.90E+00,2.91E+00,2.91E+00,2.91E+00,2.91E+00,    &
          2.91E+00,2.91E+00/                                                 
-      DATA k_sil_ow/9.99E-02,9.99E-02,9.99E-02,9.99E-02,9.99E-02,           &
+    DATA k_sil_ow/9.99E-02,9.99E-02,9.99E-02,9.99E-02,9.99E-02,           &
          9.99E-02,9.99E-02,9.99E-02,9.99E-02,9.99E-02,9.99E-02,9.99E-02,    &
          9.99E-02,9.99E-02,9.08E-02,7.17E-02,6.03E-02,5.64E-02,5.46E-02,    &
          6.12E-02,6.75E-02,7.23E-02,7.33E-02,6.96E-02,6.19E-02,5.88E-02,    &
@@ -67,7 +68,7 @@ contains
          2.32E-01,2.22E-01,2.12E-01,2.02E-01,1.92E-01,1.42E-01,1.00E-01,    &
          9.09E-02,7.24E-02,5.39E-02,3.79E-02,2.15E-02,7.26E-03,2.39E-03,    &
          2.39E-03,2.39E-03/                                                 
-      DATA n_sil_oc/1.77E+00,1.77E+00,1.77E+00,1.77E+00,1.77E+00,           &
+    DATA n_sil_oc/1.77E+00,1.77E+00,1.77E+00,1.77E+00,1.77E+00,           &
          1.77E+00,1.77E+00,1.77E+00,1.77E+00,1.77E+00,1.77E+00,1.77E+00,    &
          1.77E+00,1.77E+00,1.79E+00,1.82E+00,1.83E+00,1.82E+00,1.81E+00,    &
          1.81E+00,1.81E+00,1.84E+00,1.85E+00,1.86E+00,1.87E+00,1.88E+00,    &
@@ -82,7 +83,7 @@ contains
          3.06E+00,3.06E+00,3.06E+00,3.06E+00,3.06E+00,3.07E+00,3.07E+00,    &
          3.07E+00,3.07E+00,3.08E+00,3.08E+00,3.08E+00,3.08E+00,3.08E+00,    &
          3.08E+00,3.08E+00/                                                 
-      DATA k_sil_oc/8.95E-02,8.95E-02,8.95E-02,8.95E-02,8.95E-02,           &
+    DATA k_sil_oc/8.95E-02,8.95E-02,8.95E-02,8.95E-02,8.95E-02,           &
          8.95E-02,8.95E-02,8.95E-02,8.95E-02,8.95E-02,8.95E-02,8.95E-02,    &
          8.95E-02,8.95E-02,8.23E-02,6.64E-02,5.09E-02,4.46E-02,4.69E-02,    &
          6.37E-02,7.89E-02,9.62E-02,1.03E-01,1.00E-01,9.27E-02,8.97E-02,    &
@@ -97,7 +98,7 @@ contains
          2.21E-01,2.12E-01,2.02E-01,1.92E-01,1.83E-01,1.35E-01,9.44E-02,    &
          8.56E-02,6.82E-02,5.07E-02,3.57E-02,2.02E-02,6.82E-03,2.29E-03,    &
          2.29E-03,2.29E-03/                                                 
-      DATA n_sil_dl/8.66E-01,8.66E-01,8.66E-01,8.25E-01,7.81E-01,           &
+    DATA n_sil_dl/8.66E-01,8.66E-01,8.66E-01,8.25E-01,7.81E-01,           &
          8.90E-01,1.29E+00,1.60E+00,1.87E+00,2.26E+00,1.93E+00,1.80E+00,    &
          1.76E+00,1.74E+00,1.73E+00,1.72E+00,1.72E+00,1.71E+00,1.71E+00,    &
          1.71E+00,1.71E+00,1.71E+00,1.71E+00,1.71E+00,1.70E+00,1.70E+00,    &
@@ -112,7 +113,7 @@ contains
          3.36E+00,3.37E+00,3.38E+00,3.39E+00,3.40E+00,3.41E+00,3.42E+00,    &
          3.42E+00,3.43E+00,3.43E+00,3.43E+00,3.43E+00,3.43E+00,3.43E+00,    &
          3.43E+00,3.43E+00/                                                 
-      DATA k_sil_dl/1.39E-01,1.39E-01,1.39E-01,2.55E-01,4.29E-01,           &
+    DATA k_sil_dl/1.39E-01,1.39E-01,1.39E-01,2.55E-01,4.29E-01,           &
          6.73E-01,8.78E-01,9.26E-01,7.22E-01,5.30E-01,5.32E-02,2.77E-02,    &
          2.84E-02,2.88E-02,2.91E-02,2.94E-02,2.97E-02,3.00E-02,3.03E-02,    &
          3.06E-02,3.09E-02,3.21E-02,3.31E-02,3.39E-02,3.60E-02,3.72E-02,    &
@@ -127,7 +128,7 @@ contains
          4.67E-01,4.33E-01,3.99E-01,3.65E-01,3.32E-01,2.48E-01,2.06E-01,    &
          1.65E-01,1.32E-01,9.87E-02,7.04E-02,3.83E-02,2.46E-02,2.46E-02,    &
          2.46E-02,2.46E-02/                                                 
-      DATA n_amc_hn/8.40E-01,8.40E-01,8.40E-01,8.40E-01,7.40E-01,           &
+    DATA n_amc_hn/8.40E-01,8.40E-01,8.40E-01,8.40E-01,7.40E-01,           &
          6.90E-01,9.30E-01,1.53E+00,1.74E+00,1.55E+00,1.22E+00,1.40E+00,    &
          1.60E+00,1.71E+00,1.78E+00,1.85E+00,1.94E+00,2.01E+00,2.11E+00,    &
          2.21E+00,2.31E+00,2.50E+00,2.63E+00,2.70E+00,2.82E+00,2.86E+00,    &
@@ -142,7 +143,7 @@ contains
          6.79E+00,6.99E+00,7.17E+00,7.37E+00,7.55E+00,8.50E+00,9.32E+00,    &
          1.01E+01,1.15E+01,1.25E+01,1.41E+01,1.65E+01,1.65E+01,1.65E+01,    &
          1.65E+01,1.65E+01/                                                 
-      DATA k_amc_hn/1.08E-01,1.08E-01,1.08E-01,1.08E-01,1.77E-01,           &
+    DATA k_amc_hn/1.08E-01,1.08E-01,1.08E-01,1.08E-01,1.77E-01,           &
          3.80E-01,9.00E-01,8.40E-01,5.60E-01,1.77E-01,3.21E-01,7.40E-01,    &
          7.20E-01,6.86E-01,6.70E-01,6.95E-01,7.70E-01,8.25E-01,9.00E-01,    &
          9.38E-01,9.60E-01,9.95E-01,1.02E+00,1.01E+00,9.96E-01,9.90E-01,    &
@@ -157,7 +158,7 @@ contains
          4.79E+00,4.97E+00,5.15E+00,5.33E+00,5.51E+00,6.41E+00,7.17E+00,    &
          7.92E+00,9.43E+00,1.04E+01,1.25E+01,1.41E+01,1.41E+01,1.41E+01,    &
          1.41E+01,1.41E+01/                                                 
-      DATA n_sic_pg/7.06E-01,7.06E-01,7.06E-01,7.06E-01,7.06E-01,           &
+    DATA n_sic_pg/7.06E-01,7.06E-01,7.06E-01,7.06E-01,7.06E-01,           &
          7.06E-01,7.06E-01,7.06E-01,9.69E-01,2.07E+00,4.29E+00,5.16E+00,    &
          4.75E+00,3.42E+00,2.59E+00,2.55E+00,2.51E+00,2.50E+00,2.47E+00,    &
          2.49E+00,2.50E+00,2.51E+00,2.55E+00,2.58E+00,2.65E+00,2.69E+00,    &
@@ -172,7 +173,7 @@ contains
          3.46E+00,3.46E+00,3.47E+00,3.48E+00,3.49E+00,3.51E+00,3.52E+00,    &
          3.52E+00,3.52E+00,3.52E+00,3.52E+00,3.52E+00,3.52E+00,3.52E+00,    &
          3.52E+00,3.52E+00/                                                 
-      DATA k_sic_pg/1.53E+00,1.53E+00,1.53E+00,1.53E+00,1.53E+00,           &
+    DATA k_sic_pg/1.53E+00,1.53E+00,1.53E+00,1.53E+00,1.53E+00,           &
          1.53E+00,1.53E+00,1.53E+00,1.43E+00,1.28E+00,1.06E+00,3.50E-01,    &
          2.50E-01,1.62E-01,1.04E-01,1.13E-01,1.21E-01,1.30E-01,1.44E-01,    &
          1.62E-01,1.80E-01,2.17E-01,2.63E-01,2.76E-01,2.77E-01,2.78E-01,    &
@@ -187,7 +188,7 @@ contains
          1.43E-01,1.39E-01,1.34E-01,1.29E-01,1.25E-01,1.01E-01,9.22E-02,    &
          8.30E-02,8.30E-02,8.30E-02,8.30E-02,8.30E-02,8.30E-02,8.30E-02,    &
          8.30E-02,8.30E-02/                                                 
-      DATA n_gr1_dl/9.81E-01,9.25E-01,8.48E-01,7.72E-01,7.23E-01,           &
+    DATA n_gr1_dl/9.81E-01,9.25E-01,8.48E-01,7.72E-01,7.23E-01,           &
          7.65E-01,9.91E-01,1.39E+00,2.57E+00,1.94E+00,1.61E+00,1.56E+00,    &
          1.93E+00,2.17E+00,2.35E+00,2.34E+00,2.29E+00,2.25E+00,2.23E+00,    &
          2.21E+00,2.20E+00,2.19E+00,2.18E+00,2.17E+00,2.17E+00,2.16E+00,    &
@@ -202,7 +203,7 @@ contains
          3.05E+00,3.19E+00,3.33E+00,3.46E+00,3.58E+00,4.15E+00,4.65E+00,    &
          5.10E+00,5.90E+00,6.59E+00,7.80E+00,9.33E+00,9.33E+00,9.33E+00,    &
          9.33E+00,9.33E+00/                                                 
-      DATA k_gr1_dl/3.08E-03,2.78E-02,9.28E-02,2.09E-01,3.70E-01,           &
+    DATA k_gr1_dl/3.08E-03,2.78E-02,9.28E-02,2.09E-01,3.70E-01,           &
          5.39E-01,9.54E-01,1.65E+00,6.55E-01,1.94E-01,2.75E-01,6.38E-01,    &
          8.16E-01,6.57E-01,4.79E-01,2.55E-01,1.41E-01,9.41E-02,6.96E-02,    &
          5.51E-02,4.60E-02,3.33E-02,2.87E-02,2.68E-02,2.42E-02,2.35E-02,    &
@@ -217,7 +218,7 @@ contains
          2.97E+00,3.12E+00,3.27E+00,3.40E+00,3.53E+00,4.12E+00,4.62E+00,    &
          5.08E+00,5.88E+00,6.58E+00,7.79E+00,9.32E+00,9.32E+00,9.32E+00,    &
          9.32E+00,9.32E+00/                                                 
-      DATA n_gr2_dl/9.80E-01,9.20E-01,8.39E-01,7.64E-01,5.55E-01,           &
+    DATA n_gr2_dl/9.80E-01,9.20E-01,8.39E-01,7.64E-01,5.55E-01,           &
          5.43E-01,1.01E+00,2.08E+00,1.87E+00,1.27E+00,6.88E-01,1.25E+00,    &
          2.39E+00,2.58E+00,2.66E+00,2.74E+00,2.87E+00,3.03E+00,3.19E+00,    &
          3.34E+00,3.47E+00,3.76E+00,3.94E+00,4.05E+00,4.29E+00,4.43E+00,    &
@@ -232,7 +233,7 @@ contains
          2.34E+01,2.05E+01,1.75E+01,1.49E+01,1.33E+01,1.33E+01,1.68E+01,    &
          2.11E+01,3.02E+01,3.89E+01,5.47E+01,7.40E+01,7.40E+01,7.40E+01,    &
          7.40E+01,7.40E+01/                                                 
-      DATA k_gr2_dl/3.09E-03,2.79E-02,9.38E-02,1.36E-01,3.62E-01,           &
+    DATA k_gr2_dl/3.09E-03,2.79E-02,9.38E-02,1.36E-01,3.62E-01,           &
          7.20E-01,1.48E+00,1.24E+00,3.38E-01,2.77E-01,1.09E+00,2.27E+00,    &
          2.08E+00,1.67E+00,1.56E+00,1.56E+00,1.68E+00,1.82E+00,1.94E+00,    &
          2.03E+00,2.12E+00,2.33E+00,2.48E+00,2.58E+00,2.82E+00,2.96E+00,    &
@@ -247,486 +248,486 @@ contains
          8.73E+00,8.70E+00,9.94E+00,1.24E+01,1.54E+01,2.94E+01,3.95E+01,    &
          4.78E+01,6.08E+01,7.09E+01,8.61E+01,1.03E+02,1.03E+02,1.03E+02,    &
          1.03E+02,1.03E+02/                                                     
-      real :: lambda(*)
-      integer :: nLambda, nRef
-      real, allocatable :: tempIm(:), tempReal(:), lamRef(:)
-      integer :: i,j 
-      real :: t
-      character(len=*), intent(in) :: graintype
-      character(len=80) :: filename, dataDirectory
-      real :: mReal(*), mImg(*)
+    real :: lambda(*)
+    integer :: nLambda, nRef
+    real, allocatable :: tempIm(:), tempReal(:), lamRef(:)
+    integer :: i,j 
+    real :: t
+    character(len=*), intent(in) :: graintype
+    character(len=80) :: filename, dataDirectory
+    real :: mReal(*), mImg(*)
 
 
 
-      select case(graintype)
-         case("sil_ow")
-            allocate(tempIm(1:npLnk))
-            allocate(tempReal(1:npLnk))
-            allocate(lamRef(1:npLnk))
-            lamRef = lam_nk
-            nRef = npLnk
-            tempReal = n_sil_ow
-            tempIm = k_sil_ow
+    select case(graintype)
+    case("sil_ow")
+       allocate(tempIm(1:npLnk))
+       allocate(tempReal(1:npLnk))
+       allocate(lamRef(1:npLnk))
+       lamRef = lam_nk
+       nRef = npLnk
+       tempReal = n_sil_ow
+       tempIm = k_sil_ow
 
-         case("sil_oc")
-            allocate(tempIm(1:npLnk))
-            allocate(tempReal(1:npLnk))
-            allocate(lamRef(1:npLnk))
-            lamRef = lam_nk
-            nRef = npLnk
-            tempReal = n_sil_oc
-            tempIm = k_sil_oc
-            
-         case("sil_dl")
-            allocate(tempIm(1:npLnk))
-            allocate(tempReal(1:npLnk))
-            allocate(lamRef(1:npLnk))
-            lamRef = lam_nk
-            nRef = npLnk
-            tempReal = n_sil_dl
-            tempIm = k_sil_dl
-            
-         case("amc_hn")
-            allocate(tempIm(1:npLnk))
-            allocate(tempReal(1:npLnk))
-            allocate(lamRef(1:npLnk))
-            lamRef = lam_nk
-            nRef = npLnk
-            tempReal = n_amc_hn
-            tempIm = k_amc_hn
-            
-         case("sic_pg")
-            allocate(tempIm(1:npLnk))
-            allocate(tempReal(1:npLnk))
-            allocate(lamRef(1:npLnk))
-            lamRef = lam_nk
-            nRef = npLnk
-            tempReal = n_sic_pg
-            tempIm = k_sic_pg
-            
-         case("gr1_dl")
-            allocate(tempIm(1:npLnk))
-            allocate(tempReal(1:npLnk))
-            allocate(lamRef(1:npLnk))
-            lamRef = lam_nk
-            nRef = npLnk
-            tempReal = n_gr1_dl
-            tempIm = k_gr1_dl
-            
-         case("gr2_dl")
-            allocate(tempIm(1:npLnk))
-            allocate(tempReal(1:npLnk))
-            allocate(lamRef(1:npLnk))
-            lamRef = lam_nk
-            nRef = npLnk
-            tempReal = n_gr2_dl
-            tempIm = k_gr2_dl
+    case("sil_oc")
+       allocate(tempIm(1:npLnk))
+       allocate(tempReal(1:npLnk))
+       allocate(lamRef(1:npLnk))
+       lamRef = lam_nk
+       nRef = npLnk
+       tempReal = n_sil_oc
+       tempIm = k_sil_oc
 
-         case("amc_zb")
-            call unixGetenv("TORUS_DATA", dataDirectory, i)
-            filename = trim(dataDirectory)//"/"//"amC-zb2.nk"
-            if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
-            open(20,file=filename,status="old",form="formatted")
-            nRef = 1245
-            allocate(lamRef(1:nRef))
-            allocate(tempIm(1:nRef))
-            allocate(tempReal(1:nRef))
-            do i = 1, nRef
-               read(20,*) lamRef(i), tempReal(i), tempIm(i)
-            enddo
-            close(20)
+    case("sil_dl")
+       allocate(tempIm(1:npLnk))
+       allocate(tempReal(1:npLnk))
+       allocate(lamRef(1:npLnk))
+       lamRef = lam_nk
+       nRef = npLnk
+       tempReal = n_sil_dl
+       tempIm = k_sil_dl
 
+    case("amc_hn")
+       allocate(tempIm(1:npLnk))
+       allocate(tempReal(1:npLnk))
+       allocate(lamRef(1:npLnk))
+       lamRef = lam_nk
+       nRef = npLnk
+       tempReal = n_amc_hn
+       tempIm = k_amc_hn
 
+    case("sic_pg")
+       allocate(tempIm(1:npLnk))
+       allocate(tempReal(1:npLnk))
+       allocate(lamRef(1:npLnk))
+       lamRef = lam_nk
+       nRef = npLnk
+       tempReal = n_sic_pg
+       tempIm = k_sic_pg
 
-         case DEFAULT
-            if (writeoutput) write(*,'(a,a,a)') "! Grain type ", trim(graintype)," not recognised"
-            stop
-       end select
+    case("gr1_dl")
+       allocate(tempIm(1:npLnk))
+       allocate(tempReal(1:npLnk))
+       allocate(lamRef(1:npLnk))
+       lamRef = lam_nk
+       nRef = npLnk
+       tempReal = n_gr1_dl
+       tempIm = k_gr1_dl
 
-       do i = 1, nLambda            
-          call locate(lam_nk, npLnk, lambda(i)*real(angsToMicrons), j)
-          t = (lambda(i)*angsToMicrons - lam_nk(j))/(lam_nk(j+1) - lam_nk(j))
-          mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
-          mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
+    case("gr2_dl")
+       allocate(tempIm(1:npLnk))
+       allocate(tempReal(1:npLnk))
+       allocate(lamRef(1:npLnk))
+       lamRef = lam_nk
+       nRef = npLnk
+       tempReal = n_gr2_dl
+       tempIm = k_gr2_dl
+
+    case("amc_zb")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       filename = trim(dataDirectory)//"/"//"amC-zb2.nk"
+       if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+       open(20,file=filename,status="old",form="formatted")
+       nRef = 1245
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       do i = 1, nRef
+          read(20,*) lamRef(i), tempReal(i), tempIm(i)
        enddo
+       close(20)
 
 
-     end subroutine getRefractiveIndex
 
-    
+    case DEFAULT
+       if (writeoutput) write(*,'(a,a,a)') "! Grain type ", trim(graintype)," not recognised"
+       stop
+    end select
 
-     subroutine fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, &
-         ngrain, abundance, grainname, thisDust)
-
-      implicit none
-      type(GRIDTYPE) :: grid
-      integer :: thisDust
-      real :: aMin, aMax,a0, qDist, pDist
-      real, allocatable :: sigmaAbs(:), sigmaSca(:), sigmaExt(:)
-      real :: scale
-      real, allocatable :: mReal(:), mImg(:)          ! size = nlamda
-      real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
-      real :: meanParticleMass
-      real :: getMeanMass2
-      real :: rayleigh, gsca
-      external getMeanMass2
-      integer, intent(in) :: ngrain  ! number of grain types
-      real, intent(in) :: abundance(:)   ! relative abundance of grains
-      character(len=*) :: grainname(:)   ! names of grains available
-      real :: sig_ext, sig_scat, sig_abs
-      real :: total_abundance
-      character(len=80) :: albedoFilename
-
-      integer :: i, j, k
-      
-
-      scale = 1.
-
-      allocate(sigmaAbs(1:grid%nLambda))
-      allocate(sigmaSca(1:grid%nLambda))
-      allocate(sigmaExt(1:grid%nLambda))
+    do i = 1, nLambda            
+       call locate(lam_nk, npLnk, lambda(i)*real(angsToMicrons), j)
+       t = (lambda(i)*angsToMicrons - lam_nk(j))/(lam_nk(j+1) - lam_nk(j))
+       mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
+       mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
+    enddo
 
 
-      if (writeoutput) write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
-      if (writeoutput) write(*,*) "Dust law: n(a) = const * a^-q * Exp( -(a/a0)^p )"
-      if (writeoutput) write(*,*) "          where  amin < a < amax"
-      if (writeoutput) write(*,*) "    amin = ",  aMin
-      if (writeoutput) write(*,*) "    amax = ",  aMax 
-      if (writeoutput) write(*,*) "      a0 = ",  a0
-      if (writeoutput) write(*,*) "       q = ",  qDist
-      if (writeoutput) write(*,*) "       p = ",  pDist
+  end subroutine getRefractiveIndex
 
 
-      allocate(mReal(1:grid%nLambda))
-      allocate(mImg(1:grid%nLambda))
 
-      ! Synthetic grains
-         
-      ! quick test for zero total abundance.
-      total_abundance = SUM(abundance)
-      if ( total_abundance <= 0.0 ) then
-         if (writeoutput) write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::fillGridMie."
-         if (writeoutput) write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
-         if (writeoutput) write(*,*) "  ==> Exiting the prograim ... "
-         stop 
-      end if
+  subroutine fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, &
+       ngrain, abundance, grainname, thisDust)
 
-      ! allocate mem for temp arrays
-      allocate(mReal2D(1:ngrain, 1:grid%nLambda))
-      allocate(mImg2D(1:ngrain, 1:grid%nLambda))
-      ! initializing the values
-      mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
-         
-      ! Find the index of refractions for all types of grains available
-      do j = 1, ngrain
-         call getRefractiveIndex(grid%lamArray, grid%nLambda, grainname(j), mReal, mImg)
-         mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
-         mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
-      end do
+    implicit none
+    type(GRIDTYPE) :: grid
+    integer :: thisDust
+    real :: aMin, aMax,a0, qDist, pDist
+    real, allocatable :: sigmaAbs(:), sigmaSca(:), sigmaExt(:)
+    real :: scale
+    real, allocatable :: mReal(:), mImg(:)          ! size = nlamda
+    real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
+    real :: meanParticleMass
+    real :: getMeanMass2
+    real :: rayleigh, gsca
+    external getMeanMass2
+    integer, intent(in) :: ngrain  ! number of grain types
+    real, intent(in) :: abundance(:)   ! relative abundance of grains
+    character(len=*) :: grainname(:)   ! names of grains available
+    real :: sig_ext, sig_scat, sig_abs
+    real :: total_abundance
+    character(len=80) :: albedoFilename
 
-      ! finding the cross sections
-      sigmaExt(:) = 0.0; sigmaAbs(:)=0.0; sigmaSca(:)=0.0 ! initializing the values
-
-      if (writeoutput) write(*,*) "Dust law: ",aMin,aMax,qDist
-      if (writeoutput) open(20,file="albedo.dat",form="formatted",status="unknown")
-      if (writeoutput) open(21,file="gfactor.dat",form="formatted",status="unknown")
-      do i = 1, grid%nLambda
-         do j = 1, ngrain
-            call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
-                 mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
-            ! Weighting the cross section according to their abundance...            
-            sigmaExt(i) = sig_ext*abundance(j)+ sigmaExt(i)
-            sigmaAbs(i) = sig_abs*abundance(j)+ sigmaAbs(i)
-            sigmaSca(i) = sig_scat*abundance(j)+ sigmaSca(i)
-         end do
-         sigmaExt(i) =    sigmaExt(i)/total_abundance 
-         sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
-         sigmaSca(i) =    sigmaSca(i)/total_abundance 
-         
-         if (writeoutput) write(21,*) grid%lamArray(i), gsca
-         if (writeoutput) write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
-      end do
-         
-      if (writeoutput) close(20)
-      if (writeoutput) close(21)
-
-      if (.not.grid%oneKappa) then
-         if (grid%adaptive) then
-            if (writeoutput) write(*,'(a,i3)') "Filling AMR grid with mie cross sections...",grid%nLambda
-            call fillAMRgridMie(grid%OctreeRoot, sigmaSca, sigmaAbs, grid%nLambda)
-         endif
-
-         if (grid%cartesian) then
-
-            do i = 1, grid%nx
-               do j = 1, grid%ny
-                  do k = 1, grid%nz
+    integer :: i, j, k
 
 
-                     if (grid%inUse(i,j,k)) then
-                        grid%kappaAbs(i,j,k,1:grid%nLambda) = sigmaAbs  * grid%rho(i,j,k)
-                        grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca  * grid%rho(i,j,k)
-                     endif
+    scale = 1.
 
-                     !      write(*,*) grid%kappaAbs(i,j,k,1:grid%nLambda),grid%kappaSca(i,j,k,1:grid%nLambda), grid%rho(i,j,k),scale
-                  enddo
-               enddo
-            enddo
-         endif
-
-         if (grid%polar) then
-            do i = 1, grid%nr
-               do j = 1, grid%nmu
-                  do k = 1, grid%nPhi
-
-                     grid%kappaAbs(i,j,k,1:grid%nLambda) = sigmaAbs * grid%rho(i,j,k)
-                     grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca * grid%rho(i,j,k)
-
-                  enddo
-               enddo
-            enddo
-
-         endif
-
-         where(grid%kappaAbs < 1.e-25) grid%kappaAbs = 1.e-25
-         where(grid%kappaSca < 1.e-25) grid%kappaSca = 1.e-25
+    allocate(sigmaAbs(1:grid%nLambda))
+    allocate(sigmaSca(1:grid%nLambda))
+    allocate(sigmaExt(1:grid%nLambda))
 
 
-         grid%kappaAbs = grid%kappaAbs * 1.e10
-         grid%kappaSca = grid%kappaSca * 1.e10
-      else
-         if (writeoutput) write(*,'(a,i4)') "Filling the oneKappa arrays: ",grid%nLambda
-
-         meanParticleMass = 0.
-         do i = 1, ngrain
-            meanParticleMass = meanParticleMass + getMeanMass2(aMin, aMax, a0, qDist, pDist, grainname(i))*abundance(i)
-         enddo
-         grid%oneKappaAbs(thisDust,1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
-         grid%oneKappaSca(thisDust,1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
-
-         write(albedoFilename,'(a,i2.2,a)') "albedo",thisDust,".dat"
-         if (writeoutput) open(20,file=albedoFilename,form="formatted",status="unknown")
-         do i = 1, grid%nLambda
-            rayleigh = (8.*pi**2)/(grid%lamArray(i)*angstromtocm)* &
-                 aimag((cmplx(mreal(i),mimg(i))**2-cmplx(1.,0.))/(cmplx(mreal(i),mimg(i))**2+cmplx(2.,0.)))*(amin*microntocm)**3
-            rayleigh = rayleigh / meanParticleMass
-            if (writeoutput) &
-                 write(20,*) grid%lamArray(i),(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))/1.e10, &
-                 grid%oneKappaAbs(thisdust,i)/1.e10,grid%oneKappaSca(thisdust,i)/1.e10, &
-                 grid%oneKappaSca(thisdust,i)/(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i)),rayleigh
-         enddo
-         if (writeoutput) close(20)
-
-         
+    if (writeoutput) write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
+    if (writeoutput) write(*,*) "Dust law: n(a) = const * a^-q * Exp( -(a/a0)^p )"
+    if (writeoutput) write(*,*) "          where  amin < a < amax"
+    if (writeoutput) write(*,*) "    amin = ",  aMin
+    if (writeoutput) write(*,*) "    amax = ",  aMax 
+    if (writeoutput) write(*,*) "      a0 = ",  a0
+    if (writeoutput) write(*,*) "       q = ",  qDist
+    if (writeoutput) write(*,*) "       p = ",  pDist
 
 
-      endif
-      deallocate(sigmaAbs, sigmaSca)
-  if (writeoutput) write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
-end subroutine fillGridMie
+    allocate(mReal(1:grid%nLambda))
+    allocate(mImg(1:grid%nLambda))
 
-    subroutine setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
-         ngrain, abundance, grainname, lambdaTau)
+    ! Synthetic grains
 
-      implicit none
-      type(GRIDTYPE) :: grid
-      real :: aMin, aMax, a0, qDist, pDist
-      real :: sigmaAbs, sigmaSca, sigmaExt
-      real :: scale
-      real, allocatable :: mReal(:), mImg(:)
-      real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
-      character(len=*) :: grainType
-      integer, intent(in) :: ngrain  ! number of grain types
-      real, intent(in) :: abundance(ngrain)   ! relative abundance of grains
-      character(len=*) :: grainname(ngrain)   ! names of grains available
-      real :: sig_ext, sig_scat, sig_abs
-      real :: total_abundance, gsca
-      real :: meanParticleMass
-      real :: lambdaTau
-      real :: getMeanMass2
+    ! quick test for zero total abundance.
+    total_abundance = SUM(abundance)
+    if ( total_abundance <= 0.0 ) then
+       if (writeoutput) write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::fillGridMie."
+       if (writeoutput) write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
+       if (writeoutput) write(*,*) "  ==> Exiting the prograim ... "
+       stop 
+    end if
 
-      integer :: i, j 
+    ! allocate mem for temp arrays
+    allocate(mReal2D(1:ngrain, 1:grid%nLambda))
+    allocate(mImg2D(1:ngrain, 1:grid%nLambda))
+    ! initializing the values
+    mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
 
-      scale = 1.
-      allocate(mReal(1:grid%nLambda))
-      allocate(mImg(1:grid%nLambda))
-      call locate(grid%lamArray, grid%nLambda, lambdaTau, i)
+    ! Find the index of refractions for all types of grains available
+    do j = 1, ngrain
+       call getRefractiveIndex(grid%lamArray, grid%nLambda, grainname(j), mReal, mImg)
+       mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
+       mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
+    end do
+
+    ! finding the cross sections
+    sigmaExt(:) = 0.0; sigmaAbs(:)=0.0; sigmaSca(:)=0.0 ! initializing the values
+
+    if (writeoutput) write(*,*) "Dust law: ",aMin,aMax,qDist
+    if (writeoutput) open(20,file="albedo.dat",form="formatted",status="unknown")
+    if (writeoutput) open(21,file="gfactor.dat",form="formatted",status="unknown")
+    do i = 1, grid%nLambda
+       do j = 1, ngrain
+          call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
+               mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs, gsca)
+          ! Weighting the cross section according to their abundance...            
+          sigmaExt(i) = sig_ext*abundance(j)+ sigmaExt(i)
+          sigmaAbs(i) = sig_abs*abundance(j)+ sigmaAbs(i)
+          sigmaSca(i) = sig_scat*abundance(j)+ sigmaSca(i)
+       end do
+       sigmaExt(i) =    sigmaExt(i)/total_abundance 
+       sigmaAbs(i) =    sigmaAbs(i)/total_abundance 
+       sigmaSca(i) =    sigmaSca(i)/total_abundance 
+
+       if (writeoutput) write(21,*) grid%lamArray(i), gsca
+       if (writeoutput) write(20,*) grid%lamArray(i),sigmaExt(i),sigmaAbs(i),sigmaSca(i),sigmaSca(i)/sigmaExt(i)
+    end do
+
+    if (writeoutput) close(20)
+    if (writeoutput) close(21)
+
+    if (.not.grid%oneKappa) then
+       if (grid%adaptive) then
+          if (writeoutput) write(*,'(a,i3)') "Filling AMR grid with mie cross sections...",grid%nLambda
+          call fillAMRgridMie(grid%OctreeRoot, sigmaSca, sigmaAbs, grid%nLambda)
+       endif
+
+       if (grid%cartesian) then
+
+          do i = 1, grid%nx
+             do j = 1, grid%ny
+                do k = 1, grid%nz
 
 
-      if (writeoutput) write(*,*) "kappa test set for: ",grid%lamarray(i)
+                   if (grid%inUse(i,j,k)) then
+                      grid%kappaAbs(i,j,k,1:grid%nLambda) = sigmaAbs  * grid%rho(i,j,k)
+                      grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca  * grid%rho(i,j,k)
+                   endif
+
+                   !      write(*,*) grid%kappaAbs(i,j,k,1:grid%nLambda),grid%kappaSca(i,j,k,1:grid%nLambda), grid%rho(i,j,k),scale
+                enddo
+             enddo
+          enddo
+       endif
+
+       if (grid%polar) then
+          do i = 1, grid%nr
+             do j = 1, grid%nmu
+                do k = 1, grid%nPhi
+
+                   grid%kappaAbs(i,j,k,1:grid%nLambda) = sigmaAbs * grid%rho(i,j,k)
+                   grid%kappaSca(i,j,k,1:grid%nLambda) = sigmaSca * grid%rho(i,j,k)
+
+                enddo
+             enddo
+          enddo
+
+       endif
+
+       where(grid%kappaAbs < 1.e-25) grid%kappaAbs = 1.e-25
+       where(grid%kappaSca < 1.e-25) grid%kappaSca = 1.e-25
 
 
-      scale = 1.
-      if (writeoutput) write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
+       grid%kappaAbs = grid%kappaAbs * 1.e10
+       grid%kappaSca = grid%kappaSca * 1.e10
+    else
+       if (writeoutput) write(*,'(a,i4)') "Filling the oneKappa arrays: ",grid%nLambda
 
-      if (graintype(1:5) == "mixed") then
-         ! Synthetic grains
-         
-         ! quick test for zero total abundance.
-         total_abundance = SUM(abundance)
-         if ( total_abundance <= 0.0 ) then
-            write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::setKappaTest."
-            write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
-            write(*,*) "  ==> Exiting the prograim ... "
-            stop 
-         end if
+       meanParticleMass = 0.
+       do i = 1, ngrain
+          meanParticleMass = meanParticleMass + getMeanMass2(aMin, aMax, a0, qDist, pDist, grainname(i))*abundance(i)
+       enddo
+       grid%oneKappaAbs(thisDust,1:grid%nLambda) = (sigmaAbs(1:grid%nLambda) * 1.e10)/meanParticleMass
+       grid%oneKappaSca(thisDust,1:grid%nLambda) = (sigmaSca(1:grid%nLambda) * 1.e10)/meanParticleMass
 
-         ! allocate mem for temp arrays
-         allocate(mReal2D(1:ngrain, 1:grid%nLambda))
-         allocate(mImg2D(1:ngrain, 1:grid%nLambda))
-         ! initializing the values
-         mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
-         
-         ! Find the index of refractions for all types of grains available
-         do j = 1, ngrain
-            call getRefractiveIndex(grid%lamArray, grid%nLambda, grainname(j), mReal, mImg)
-            mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
-            mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
-         end do
+       write(albedoFilename,'(a,i2.2,a)') "albedo",thisDust,".dat"
+       if (writeoutput) open(20,file=albedoFilename,form="formatted",status="unknown")
+       do i = 1, grid%nLambda
+          rayleigh = (8.*pi**2)/(grid%lamArray(i)*angstromtocm)* &
+               aimag((cmplx(mreal(i),mimg(i))**2-cmplx(1.,0.))/(cmplx(mreal(i),mimg(i))**2+cmplx(2.,0.)))*(amin*microntocm)**3
+          rayleigh = rayleigh / meanParticleMass
+          if (writeoutput) &
+               write(20,*) grid%lamArray(i),(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i))/1.e10, &
+               grid%oneKappaAbs(thisdust,i)/1.e10,grid%oneKappaSca(thisdust,i)/1.e10, &
+               grid%oneKappaSca(thisdust,i)/(grid%oneKappaAbs(thisdust,i)+grid%oneKappaSca(thisdust,i)),rayleigh
+       enddo
+       if (writeoutput) close(20)
 
-         ! finding the cross sections
-         sigmaExt = 0.0; sigmaAbs=0.0; sigmaSca=0.0 ! initializing the values
 
-         do j = 1, ngrain
-            call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
-                 mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs ,gsca)
 
-            ! Weighting the cross section according to their abundance...            
-            sigmaExt = sig_ext*abundance(j)+ sigmaExt
-            sigmaAbs = sig_abs*abundance(j)+ sigmaAbs
-            sigmaSca = sig_scat*abundance(j)+ sigmaSca
-         end do
-         sigmaExt =    sigmaExt/total_abundance 
-         sigmaAbs =    sigmaAbs/total_abundance 
-         sigmaSca =    sigmaSca/total_abundance 
-         
-      else 
-         ! Do a single grain calculations...       
-         call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)         
-         call mieDistCrossSection(aMin, aMax, a0, qDist, pDist,grid%lamArray(i),  &
-                 mReal(i), mImg(i), sigmaExt, sigmaSca, sigmaAbs, gsca)
-      end if
-      meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
-         
-      grid%kappaTest = sigmaExt * 1.e10 / meanParticleMass
 
-      if (writeoutput) write(*,*) "kappa test is: ",grid%kappatest
-    end subroutine setKappaTest
+    endif
+    deallocate(sigmaAbs, sigmaSca)
+    if (writeoutput) write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
+  end subroutine fillGridMie
 
-    subroutine setKappa(kappaAbs, kappaSca, lambda, nLambda, aMin, aMax, a0, qDist, pDist, grainType)
+  subroutine setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
+       ngrain, abundance, grainname, lambdaTau)
 
-      implicit none
-      real :: aMin, aMax, qDist, a0, pDist
-      real :: sigmaAbs, sigmaSca, sigmaExt
-      real, allocatable :: mReal(:), mImg(:)
-      character(len=*) :: grainType
-      real :: lambda(:), kappaAbs(:), kappaSca(:), gSca
-      integer :: nLambda
-      integer :: i
+    implicit none
+    type(GRIDTYPE) :: grid
+    real :: aMin, aMax, a0, qDist, pDist
+    real :: sigmaAbs, sigmaSca, sigmaExt
+    real :: scale
+    real, allocatable :: mReal(:), mImg(:)
+    real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
+    character(len=*) :: grainType
+    integer, intent(in) :: ngrain  ! number of grain types
+    real, intent(in) :: abundance(ngrain)   ! relative abundance of grains
+    character(len=*) :: grainname(ngrain)   ! names of grains available
+    real :: sig_ext, sig_scat, sig_abs
+    real :: total_abundance, gsca
+    real :: meanParticleMass
+    real :: lambdaTau
+    real :: getMeanMass2
 
-      if (writeoutput) write(*,'(a)') "Setting kappas for: ",trim(grainType)
+    integer :: i, j 
 
-      allocate(mReal(1:nLambda))
-      allocate(mImg(1:nLambda))
-      call getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg)
-      do i = 1, nLambda
-         call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, lambda(i),  mReal(i), mImg(i), sigmaExt, &
-             sigmaSca, sigmaAbs, gSca)
-         kappaAbs(i) = sigmaAbs * 1.e10
-         kappaSca(i) = sigmaSca * 1.e10
-      enddo
-    end subroutine setKappa
+    scale = 1.
+    allocate(mReal(1:grid%nLambda))
+    allocate(mImg(1:grid%nLambda))
+    call locate(grid%lamArray, grid%nLambda, lambdaTau, i)
 
+
+    if (writeoutput) write(*,*) "kappa test set for: ",grid%lamarray(i)
+
+
+    scale = 1.
+    if (writeoutput) write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
+
+    if (graintype(1:5) == "mixed") then
+       ! Synthetic grains
+
+       ! quick test for zero total abundance.
+       total_abundance = SUM(abundance)
+       if ( total_abundance <= 0.0 ) then
+          write(*,*) "Error:: total_abundance <= 0.0 in  grain_mod::setKappaTest."
+          write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
+          write(*,*) "  ==> Exiting the prograim ... "
+          stop 
+       end if
+
+       ! allocate mem for temp arrays
+       allocate(mReal2D(1:ngrain, 1:grid%nLambda))
+       allocate(mImg2D(1:ngrain, 1:grid%nLambda))
+       ! initializing the values
+       mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
+
+       ! Find the index of refractions for all types of grains available
+       do j = 1, ngrain
+          call getRefractiveIndex(grid%lamArray, grid%nLambda, grainname(j), mReal, mImg)
+          mReal2D(j,:) = mReal(:)  ! copying the values to a 2D maxtrix
+          mImg2D(j,:)  = mImg(:)   ! copying the values to a 2D maxtrix            
+       end do
+
+       ! finding the cross sections
+       sigmaExt = 0.0; sigmaAbs=0.0; sigmaSca=0.0 ! initializing the values
+
+       do j = 1, ngrain
+          call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, grid%lamArray(i), &
+               mReal2D(j,i), mImg2D(j,i), sig_ext, sig_scat, sig_abs ,gsca)
+
+          ! Weighting the cross section according to their abundance...            
+          sigmaExt = sig_ext*abundance(j)+ sigmaExt
+          sigmaAbs = sig_abs*abundance(j)+ sigmaAbs
+          sigmaSca = sig_scat*abundance(j)+ sigmaSca
+       end do
+       sigmaExt =    sigmaExt/total_abundance 
+       sigmaAbs =    sigmaAbs/total_abundance 
+       sigmaSca =    sigmaSca/total_abundance 
+
+    else 
+       ! Do a single grain calculations...       
+       call getRefractiveIndex(grid%lamArray, grid%nLambda, graintype, mReal, mImg)         
+       call mieDistCrossSection(aMin, aMax, a0, qDist, pDist,grid%lamArray(i),  &
+            mReal(i), mImg(i), sigmaExt, sigmaSca, sigmaAbs, gsca)
+    end if
+    meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
+
+    grid%kappaTest = sigmaExt * 1.e10 / meanParticleMass
+
+    if (writeoutput) write(*,*) "kappa test is: ",grid%kappatest
+  end subroutine setKappaTest
+
+  subroutine setKappa(kappaAbs, kappaSca, lambda, nLambda, aMin, aMax, a0, qDist, pDist, grainType)
+
+    implicit none
+    real :: aMin, aMax, qDist, a0, pDist
+    real :: sigmaAbs, sigmaSca, sigmaExt
+    real, allocatable :: mReal(:), mImg(:)
+    character(len=*) :: grainType
+    real :: lambda(:), kappaAbs(:), kappaSca(:), gSca
+    integer :: nLambda
+    integer :: i
+
+    if (writeoutput) write(*,'(a)') "Setting kappas for: ",trim(grainType)
+
+    allocate(mReal(1:nLambda))
+    allocate(mImg(1:nLambda))
+    call getRefractiveIndex(lambda, nLambda, graintype, mReal, mImg)
+    do i = 1, nLambda
+       call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, lambda(i),  mReal(i), mImg(i), sigmaExt, &
+            sigmaSca, sigmaAbs, gSca)
+       kappaAbs(i) = sigmaAbs * 1.e10
+       kappaSca(i) = sigmaSca * 1.e10
+    enddo
+  end subroutine setKappa
+
+  !
+  ! Computes Kappa at a single fgrequency/wavelength.
+  !
+  subroutine MieCrossSection(sigmaExt, sigmaAbs, sigmaSca, &
+       aMin, aMax, a0, qDist, pDist, grainType, &
+       ngrain, abundance, grainname, lambda)
+
+    implicit none
+    real, intent(out) :: sigmaExt, sigmaAbs, sigmaSca ! total, absorption and scattering  x-sections
+    real, intent(in) :: aMin, aMax, a0, qDist, pDist
+    character(len=*), intent(in) :: grainType
+    integer, intent(in) :: ngrain  ! number of grain types
+    real, intent(in) :: abundance(ngrain)   ! relative abundance of grains
+    character(len=*) :: grainname(ngrain)   ! names of grains available
+    real, intent(in) :: lambda  ! wavelength at which sigma are cmoputed
     !
-    ! Computes Kappa at a single fgrequency/wavelength.
+    real :: mReal(ngrain), mImg(ngrain)  ! automatic arrays
     !
-    subroutine MieCrossSection(sigmaExt, sigmaAbs, sigmaSca, &
-         aMin, aMax, a0, qDist, pDist, grainType, &
-         ngrain, abundance, grainname, lambda)
-
-      implicit none
-      real, intent(out) :: sigmaExt, sigmaAbs, sigmaSca ! total, absorption and scattering  x-sections
-      real, intent(in) :: aMin, aMax, a0, qDist, pDist
-      character(len=*), intent(in) :: grainType
-      integer, intent(in) :: ngrain  ! number of grain types
-      real, intent(in) :: abundance(ngrain)   ! relative abundance of grains
-      character(len=*) :: grainname(ngrain)   ! names of grains available
-      real, intent(in) :: lambda  ! wavelength at which sigma are cmoputed
-      !
-      real :: mReal(ngrain), mImg(ngrain)  ! automatic arrays
-      !
-      real :: sig_ext, sig_scat, sig_abs
-      real :: total_abundance, gsca
-      real :: meanParticleMass
-      real :: getMeanMass2
-      integer, parameter :: nlambda = 1
-      integer :: j 
-      ! dummy array for interface with subroutines
-      real :: lamArray(nlambda)   
-      real :: mRealArray(nlambda), mImgArray(nlambda)  ! automatic arrays
+    real :: sig_ext, sig_scat, sig_abs
+    real :: total_abundance, gsca
+    real :: meanParticleMass
+    real :: getMeanMass2
+    integer, parameter :: nlambda = 1
+    integer :: j 
+    ! dummy array for interface with subroutines
+    real :: lamArray(nlambda)   
+    real :: mRealArray(nlambda), mImgArray(nlambda)  ! automatic arrays
 
 
-      lamArray(:) = lambda  ! same for all elemets
-      if (graintype(1:5) == "mixed") then
-         ! Synthetic grains
-         
-         ! quick test for zero total abundance.
-         total_abundance = SUM(abundance)
-         if ( total_abundance <= 0.0 ) then
-            write(*,*) "Error:: total_abundance <= 0.0 in  dust_mod::getKappa."
-            write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
-            write(*,*) "  ==> Exiting the prograim ... "
-            stop 
-         end if
+    lamArray(:) = lambda  ! same for all elemets
+    if (graintype(1:5) == "mixed") then
+       ! Synthetic grains
 
-         ! initializing the values
-         mReal(:) = 0.0; mImg(:) = 0.0
-         
-         ! Find the index of refractions for all types of grains available
-         do j = 1, ngrain
-            call getRefractiveIndex(lamArray, nLambda, grainname(j), mRealArray, mImgArray)
-            mReal(j) = mRealArray(1) 
-            mImg(j)  = mImgArray(1)  
-         end do
+       ! quick test for zero total abundance.
+       total_abundance = SUM(abundance)
+       if ( total_abundance <= 0.0 ) then
+          write(*,*) "Error:: total_abundance <= 0.0 in  dust_mod::getKappa."
+          write(*,*) "  ==> You probably forgot to assign abundance in your parameter file!"
+          write(*,*) "  ==> Exiting the prograim ... "
+          stop 
+       end if
 
-         ! finding the cross sections
-         sigmaExt = 0.0; sigmaAbs=0.0; sigmaSca=0.0 ! initializing the values
+       ! initializing the values
+       mReal(:) = 0.0; mImg(:) = 0.0
 
-         do j = 1, ngrain
-            call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, lamArray(1), &
-                 mReal(j), mImg(j), sig_ext, sig_scat, sig_abs ,gsca)
+       ! Find the index of refractions for all types of grains available
+       do j = 1, ngrain
+          call getRefractiveIndex(lamArray, nLambda, grainname(j), mRealArray, mImgArray)
+          mReal(j) = mRealArray(1) 
+          mImg(j)  = mImgArray(1)  
+       end do
 
-            ! Weighting the cross section according to their abundance...            
-            sigmaExt = sig_ext*abundance(j)+ sigmaExt
-            sigmaAbs = sig_abs*abundance(j)+ sigmaAbs
-            sigmaSca = sig_scat*abundance(j)+ sigmaSca
-         end do
-         sigmaExt =    sigmaExt/total_abundance 
-         sigmaAbs =    sigmaAbs/total_abundance 
-         sigmaSca =    sigmaSca/total_abundance 
-         
-      else 
-         ! Do a single grain calculations... 
-         call getRefractiveIndex(lamArray, nLambda, graintype, mRealArray, mImgArray)         
-         call mieDistCrossSection(aMin, aMax, a0, qDist, pDist,lamArray(1),  &
-              mRealArray(1), mImgArray(1), sigmaExt, sigmaSca, sigmaAbs, gsca)
-      end if
+       ! finding the cross sections
+       sigmaExt = 0.0; sigmaAbs=0.0; sigmaSca=0.0 ! initializing the values
 
-      !      meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
-         
+       do j = 1, ngrain
+          call mieDistCrossSection(aMin, aMax, a0, qDist, pDist, lamArray(1), &
+               mReal(j), mImg(j), sig_ext, sig_scat, sig_abs ,gsca)
 
-    end subroutine MieCrossSection
+          ! Weighting the cross section according to their abundance...            
+          sigmaExt = sig_ext*abundance(j)+ sigmaExt
+          sigmaAbs = sig_abs*abundance(j)+ sigmaAbs
+          sigmaSca = sig_scat*abundance(j)+ sigmaSca
+       end do
+       sigmaExt =    sigmaExt/total_abundance 
+       sigmaAbs =    sigmaAbs/total_abundance 
+       sigmaSca =    sigmaSca/total_abundance 
+
+    else 
+       ! Do a single grain calculations... 
+       call getRefractiveIndex(lamArray, nLambda, graintype, mRealArray, mImgArray)         
+       call mieDistCrossSection(aMin, aMax, a0, qDist, pDist,lamArray(1),  &
+            mRealArray(1), mImgArray(1), sigmaExt, sigmaSca, sigmaAbs, gsca)
+    end if
+
+    !      meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
+
+
+  end subroutine MieCrossSection
 
 
 
-recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  integer :: nLambda
-  real :: sigmaSca(*), sigmaAbs(*)
-  integer :: subcell, i
-  
-  do subcell = 1, 8
+  recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: nLambda
+    real :: sigmaSca(*), sigmaAbs(*)
+    integer :: subcell, i
+
+    do subcell = 1, 8
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
@@ -748,7 +749,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
              thisOctal%kappaSca(subcell,1:nLambda)   &
                   = 0.0
           end if
-             
+
        endif
     enddo
   end subroutine fillAMRgridMie
@@ -773,36 +774,36 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
     select case (filetype)
 
-       case("kenny")
-          npts = 1
-10        read(20,*,end=20) tlam(npts), sigmaExt(npts),sigmaSca(npts),kappa(npts)
-          npts = npts + 1
-          goto 10
-20        continue
-          npts = npts - 1
-          close(20)
-          albedo(1:npts) = sigmaSca(1:npts) / sigmaExt(1:npts)
+    case("kenny")
+       npts = 1
+10     read(20,*,end=20) tlam(npts), sigmaExt(npts),sigmaSca(npts),kappa(npts)
+       npts = npts + 1
+       goto 10
+20     continue
+       npts = npts - 1
+       close(20)
+       albedo(1:npts) = sigmaSca(1:npts) / sigmaExt(1:npts)
 
-          tAbs(1:npts) = (1.-albedo(1:npts))*kappa(1:npts)
-          tSca(1:npts) = albedo(1:npts)*kappa(1:npts)
-          
-          tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
+       tAbs(1:npts) = (1.-albedo(1:npts))*kappa(1:npts)
+       tSca(1:npts) = albedo(1:npts)*kappa(1:npts)
 
-       case("jenny")
-          npts = 1
-30        read(20,*,end=40) tlam(npts), sigmaAbs(npts),sigmaSca(npts)
-          npts = npts + 1
-          goto 30
-40        continue
-          npts = npts - 1
-          close(20)
-          tAbs(1:npts) = sigmaAbs(1:npts)
-          tSca(1:npts) = sigmaSca(1:npts)
-          tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
+       tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
 
-       case DEFAULT
-          write(*,'(a)') "! Dust properties file has unknown type",trim(filetype)
-          stop
+    case("jenny")
+       npts = 1
+30     read(20,*,end=40) tlam(npts), sigmaAbs(npts),sigmaSca(npts)
+       npts = npts + 1
+       goto 30
+40     continue
+       npts = npts - 1
+       close(20)
+       tAbs(1:npts) = sigmaAbs(1:npts)
+       tSca(1:npts) = sigmaSca(1:npts)
+       tlam(1:npts) = tlam(1:npts) * 1.e4 ! microns to angstrom
+
+    case DEFAULT
+       write(*,'(a)') "! Dust properties file has unknown type",trim(filetype)
+       stop
 
     end select
 
@@ -812,9 +813,9 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
        kappaSca(i) = logint(lambda(i), tlam(j), tlam(j+1), tSca(j), tSca(j+1))*1.e10
     enddo
 
-!    write(*,*) "Correcting xsections by dust-to-gas ratio!!!!!!!!"
-!    kappaAbs(1:nLambda) = kappaAbs(1:nLambda) * 0.01
-!    kappaSca(1:nLambda) = kappaSca(1:nLambda) * 0.01
+    !    write(*,*) "Correcting xsections by dust-to-gas ratio!!!!!!!!"
+    !    kappaAbs(1:nLambda) = kappaAbs(1:nLambda) * 0.01
+    !    kappaSca(1:nLambda) = kappaSca(1:nLambda) * 0.01
 
   end subroutine dustPropertiesfromFile
 
@@ -829,7 +830,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     real :: height
     real(double) :: fac, frac
     real ::  temperature, sublimationTemp, subrange
-    
+
     integer :: nx, subcell, i
 
     subrange = 10.
@@ -940,7 +941,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     real :: underCorrect = 1.
     integer :: ilambda
     real(double) :: kappaSca, kappaAbs
-    
+
     integer :: nx, subcell, i
 
     subrange = 1.
@@ -960,7 +961,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           temperature = thisOctal%temperature(subcell)
           sublimationTemp = max(700.d0,2000.d0 * thisOctal%rho(subcell)**(1.95d-2))
           if (temperature < sublimationTemp) newFrac = 1.
-          
+
           if (temperature >= sublimationTemp) then
              newfrac = exp(-dble((temperature-sublimationtemp)/subRange))
           endif
@@ -980,7 +981,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
              thisOctal%dustTypeFraction(subcell,:) = 0.d0
              thisOctal%dustTypeFraction(subcell,1) = frac
           end if
-             
+
 
           call locate(grid%lamArray, grid%nLambda, 5500., iLambda)
           call returnKappa(grid, thisOctal, subcell, ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
@@ -1037,7 +1038,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
        height = z(j) + (z(j+1)-z(j))*(rho_over_e - rho(j))/(rho(j+1)-rho(i))
        height = height / 1.e10
     endif
-    666 continue
+666 continue
   end subroutine returnScaleHeight
 
   subroutine getTemperatureDensityRundust(grid, zAxis, subcellsize, rho, temperature, xPos, yPos, nz, direction)
@@ -1063,18 +1064,18 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
        call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
             foundSubcell=subcell, rho=rhotemp, temperature=temptemp)
        thisOctal%chiLine(subcell) = 1.e-30
-!       if (thisOctal%inFlow(subcell)) then
-          nz = nz + 1
-          temperature(nz) = temptemp
-          rho(nz) = rhotemp
-          temp = subCellCentre(thisOctal, subcell)
-          zAxis(nz) = temp%z
-          subcellsize(nz) = thisOctal%subcellsize
-!       endif
-          currentPos = OCTALVECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
-!       else
-!          currentPos = OCTALVECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
-!       endif
+       !       if (thisOctal%inFlow(subcell)) then
+       nz = nz + 1
+       temperature(nz) = temptemp
+       rho(nz) = rhotemp
+       temp = subCellCentre(thisOctal, subcell)
+       zAxis(nz) = temp%z
+       subcellsize(nz) = thisOctal%subcellsize
+       !       endif
+       currentPos = OCTALVECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+       !       else
+       !          currentPos = OCTALVECTOR(xPos, yPos, grid%octreeRoot%subcellsize+halfSmallestSubcell)
+       !       endif
     end do
     zAxis(1:nz) = abs(zAxis(1:nz)) * 1.e10  ! convert to cm
   end subroutine getTemperatureDensityRundust
@@ -1164,20 +1165,20 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
           point = subcellCentre(thisOctal, subcell)
           muCavity = cos(cavAngle/2.)
           r = modulus(point)*1.e10
-          
+
           mu = (point%z*1.e10) /r
-          
+
           r_c = erInner
           alpha = 2.25
           beta = 1.25
 
           rhoEnv = cavdens * mHydrogen
 
-! by default use envelope grains
+          ! by default use envelope grains
 
           thisOctal%dustTypeFraction(subcell,1:4) = 0.d0
           thisOctal%dustTypeFraction(subcell,3) = 1.d0
-          
+
 
           if ((r > erInner).and.(r < erOuter)) then
              mu_0 = rtnewtdust(-0.2 , 1.5 , 1.e-4, r/r_c, abs(mu))
@@ -1193,7 +1194,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
              rhoEnv = rhoEnv * fac
              rhoEnv = max(rhoEnv, tiny(rhoEnv))
           endif
-          
+
           if (mu_0 > muCavity) then
              !       dtheta = (acos(mu_0)-acos(muCavity))
              !       fac =  1.d0-min(dble(r - drInner)/(0.02d0*erinner),1.d0)
@@ -1210,7 +1211,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
              thisOctal%dustTypeFraction(subcell,1:4) = 0.d0
              thisOctal%dustTypeFraction(subcell,4) = 1.d0
           endif
-    
+
           rho0  = mDisc *(beta-alpha+2.) / ( twoPi**1.5 * 0.01*rStellar * rStellar**(alpha-beta) * ( &
                (drouter**(beta-alpha+2.)-drInner**(beta-alpha+2.))) )
 
@@ -1258,7 +1259,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     enddo
     write(*,*) 'rtnewt exceeding maximum iterations'
   end function rtnewtdust
-  
+
 
   subroutine Equation2dust(mu0, eq2, deq2, r, mu)
     real :: r, mu, mu0
@@ -1283,7 +1284,7 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
 
     i = index(grainString,":")
 
-! not a mixed grain type
+    ! not a mixed grain type
 
     if (i == 0) then
        nTypes = 1
@@ -1315,5 +1316,162 @@ recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     stop
 999 continue
   end subroutine parseGrainType
+
+
+  subroutine createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+
+    use input_variables, only : mie, dustFile, nDustType, graintype, ngrain, &
+         grainname, x_grain, amin, amax, a0, qdist, pdist, dustToGas, scale, &
+         dustfilename,  mie, isotropicScattering, readmiephase, writemiephase, ttau_disc_on
+    real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
+    real, allocatable :: mReal2D(:,:), mImg2D(:,:)
+    type(PHASEMATRIX), pointer :: miePhase(:,:,:)
+    integer :: nMuMie
+    real :: mu, total_dust_abundance
+    integer :: i, j, k
+    character(len=80) :: message
+
+
+    type(GRIDTYPE) :: grid
+    real :: xArray(:)
+    integer :: nLambda
+
+
+    if (associated(grid%onekappaAbs)) deallocate(grid%onekappaAbs)
+    if (associated(grid%onekappaSca)) deallocate(grid%onekappaSca)
+    if (associated(miePhase)) deallocate(miePhase)
+
+    allocate(grid%oneKappaAbs(1:nDustType, 1:nLambda), grid%oneKappaSca(1:nDustType, 1:nLambda))
+
+
+    ! Note: the first index should be either lambda or mu
+    !       in order to speedup the array operations!!!  (RK) 
+    allocate(miePhase(1:nDustType,1:nLambda,1:nMumie)) 
+
+
+    if (mie) then
+       if (.not.dustfile) then
+          do i = 1, nDustType
+
+             call parseGrainType(graintype(i), ngrain, grainname, x_grain)
+
+             write(*,*) "graintype",trim(graintype(i)), x_grain(i),amin(i),amax(i),a0(i),qdist(i),pdist(i)
+
+             call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
+                  ngrain, X_grain, grainname, i)
+          enddo
+          write(message,'(a,f5.2)') "Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
+          call writeInfo(message, FORINFO)
+          do i = 1, nDustType
+             grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
+             grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
+          enddo
+       else
+          do i = 1, nDustType
+             call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
+                  grid%onekappaSca(i,1:grid%nLambda))
+          enddo
+       endif
+       call writeInfo("Creating Rosseland opacity lu table",TRIVIAL)
+       call createRossArray(grid)
+       call writeInfo("Done.",TRIVIAL)
+    endif
+
+
+    if (mie .or.  (grid%geometry == "ttauri" .and. ttau_disc_on)) then
+       ! construct the mie phase matrix
+       call writeInfo("Computing Mie phase grid...",TRIVIAL)
+
+       allocate(mReal(1:nDusttype,1:nLambda))
+       allocate(mImg(1:nDustType,1:nLambda))
+
+       allocate(tmReal(1:nLambda))
+       allocate(tmImg(1:nLambda))
+
+
+       do k = 1, nDusttype
+
+          call parseGrainType(graintype(k), ngrain, grainname, x_grain)
+
+          ! Synthetic grains
+
+          ! quick test for zero total dust abundance.
+          total_dust_abundance = SUM(X_grain)
+          if ( total_dust_abundance <= 0.0 ) then
+             !$MPI     if (my_rank==0) &
+             write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
+             !$MPI     if (my_rank==0) &
+             write(*,*) "  ==> You probably forgot to assign dust abundance in your "// &
+                  & "parameter file!"
+             !$MPI     if (my_rank==0) &
+             write(*,*) "  ==> Exiting the prograim ... "
+             stop 
+          end if
+
+          ! allocate mem for temp arrays
+          allocate(mReal2D(1:ngrain, 1:nLambda))
+          allocate(mImg2D(1:ngrain, 1:nLambda))
+          ! initializing the values
+          mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
+
+          ! Find the index of refractions for all types of grains available
+          do j = 1, ngrain
+             call getRefractiveIndex(xArray, nLambda, grainname(j), tmReal, tmImg)
+             mReal2D(j,:) = tmReal(:)  ! copying the values to a 2D maxtrix
+             mImg2D(j,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
+          end do
+
+          ! Finding the weighted average of the refractive index.
+          mReal(k,:) = 0.0; mImg(k,:) = 0.0
+          do i = 1, nLambda
+             do j = 1, ngrain
+                mReal(k,i) = mReal2D(j,i)*X_grain(j) + mReal(k,i)
+                mImg(k,i)  = mImg2D(j,i) *X_grain(j) + mImg(k,i)
+             end do
+             mReal(k,i) = mReal(k,i) / total_dust_abundance
+             mImg(k,i)  = mImg(k,i)  / total_dust_abundance
+          end do
+
+
+          deallocate(mReal2D)
+          deallocate(mImg2D)
+
+       enddo
+
+       do k = 1, nDustType
+          do i = 1, nLambda
+             do j = 1, nMumie
+                mu = 2.*real(j-1)/real(nMumie-1)-1.
+                if (.not.isotropicScattering) then
+                   if (readMiePhase) then
+                      open(144, file='miephasefile', status="old", form="unformatted")
+                      read(unit=144) miePhase
+                      close(144)
+                   else
+                      call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
+                           mu, miePhase(k,i,j), mReal(k,i), mImg(k,i))               
+                      if (writeMiePhase) then
+                         open(144, file='miephasefile', status="replace", form="unformatted")
+                         write(unit=144) miePhase
+                         close(144)
+                      end if
+                   end if
+                else
+                   miePhase(k,i,j) = fillIsotropic(mu)
+                endif
+                !           miePhase(i,j) = fillRayleigh(mu)
+             end do
+          end do
+       enddo
+
+       deallocate(mReal)
+       deallocate(mImg)
+       call writeInfo("Completed.",TRIVIAL)
+
+
+    endif
+  end subroutine createDustCrossSectionPhaseMatrix
+
+
 
 end module dust_mod

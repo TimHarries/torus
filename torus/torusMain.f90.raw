@@ -1,5 +1,5 @@
 !
-!             T   O   R   U  S
+!            T   O   R   U  S
 !
 ! torus is a general purpose monte-carlo radiative transfer code used to
 ! produce polarized spectra of hot and cool stellar winds
@@ -157,7 +157,7 @@
   integer :: itestlam, ismoothlam
   real :: xMin, xMax
   integer, parameter :: nXmie = 20, nMuMie = 20
-  type(PHASEMATRIX),allocatable :: miePhase(:,:, :)
+  type(PHASEMATRIX), pointer :: miePhase(:,:, :)
   real :: particleMass, abundance
 
   ! torus images
@@ -1073,34 +1073,38 @@
      errorArray(1:nOuterLoop,1:nLambda)%i = 1.e-20
   endif
 
+! section replaced with call to subroutine - tjh 27/8/06
   
-  if (mie) then
-     if (.not.dustfile) then
-        do i = 1, nDustType
+!  if (mie) then
+!     if (.not.dustfile) then
+!        do i = 1, nDustType
+!
+!           call parseGrainType(graintype(i), ngrain, grainname, x_grain)
+!
+!           write(*,*) "graintype",trim(graintype(i)), x_grain(i),amin(i),amax(i),a0(i),qdist(i),pdist(i)
+!
+!           call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
+!                ngrain, X_grain, grainname, i)
+!        enddo
+!        write(message,'(a,f5.2)') "Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
+!        call writeInfo(message, FORINFO)
+!        do i = 1, nDustType
+!           grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
+!           grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
+!        enddo
+!     else
+!        do i = 1, nDustType
+!           call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
+!                grid%onekappaSca(i,1:grid%nLambda))
+!        enddo
+!     endif
+!     call writeInfo("Creating Rosseland opacity lu table",TRIVIAL)
+!     call createRossArray(grid)
+!     call writeInfo("Done.",TRIVIAL)
+!  endif
 
-           call parseGrainType(graintype(i), ngrain, grainname, x_grain)
+  call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
-           write(*,*) "graintype",trim(graintype(i)), x_grain(i),amin(i),amax(i),a0(i),qdist(i),pdist(i)
-
-           call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
-                ngrain, X_grain, grainname, i)
-        enddo
-        write(message,'(a,f5.2)') "Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
-        call writeInfo(message, FORINFO)
-        do i = 1, nDustType
-           grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
-           grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
-        enddo
-     else
-        do i = 1, nDustType
-           call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
-                grid%onekappaSca(i,1:grid%nLambda))
-        enddo
-     endif
-     call writeInfo("Creating Rosseland opacity lu table",TRIVIAL)
-     call createRossArray(grid)
-     call writeInfo("Done.",TRIVIAL)
-  endif
 
 
   if (includeGasOpacity) then
@@ -1191,16 +1195,16 @@
         ! This may not work for dust calculation...
         ! Copying the wavelength array to the grid
         if (grid%nlambda /= nlambda) then
-           if (mie .or. (grid%geometry == "ttauri" .and. ttau_disc_on)) then              
-              write(*,*) "Error:: The number of the wavelength bins in the data file "
-              write(*,*) "        does not macth with that specifed in your parameter file."
-              write(*,*) "nlambda(old) = ", grid%nlambda
-              write(*,*) "nlambda(new) = ", nlambda
-              write(*,*) " "
-              write(*,*) "Make the new nlambda same as the old one, otherwise you cannot use"
-              write(*,*) "this data file. This should be changed in future...."
-              stop
-           else 
+!           if (mie .or. (grid%geometry == "ttauri" .and. ttau_disc_on)) then              
+!              write(*,*) "Error:: The number of the wavelength bins in the data file "
+!              write(*,*) "        does not macth with that specifed in your parameter file."
+!              write(*,*) "nlambda(old) = ", grid%nlambda
+!              write(*,*) "nlambda(new) = ", nlambda
+!              write(*,*) " "
+!              write(*,*) "Make the new nlambda same as the old one, otherwise you cannot use"
+!              write(*,*) "this data file. This should be changed in future...."
+!!              stop
+!           else 
               write(*,*) "Warning:: The number of the wavelength bins in the data file "
               write(*,*) "      does not macth with that specifed in your parameter file."
               write(*,*) "nlambda(old) = ", grid%nlambda
@@ -1214,7 +1218,7 @@
                  grid%lamArray(i) = xArray(i)
               enddo
               grid%nLambda = nLambda
-           end if
+!           end if
         end if
 
         !
@@ -2152,98 +2156,100 @@
   xMin =  2.*pi*grainSize/(lamEnd*angstromToCm)
   xMax =  2.*pi*grainSize/(lamStart*angstromToCm)
 
-  if (mie .or.  (grid%geometry == "ttauri" .and. ttau_disc_on)) then
-     ! construct the mie phase matrix
-     call writeInfo("Computing Mie phase grid...",TRIVIAL)
+  ! section replaced by earlier subroutine call - tjh 27/8/06
 
-     allocate(mReal(1:nDusttype,1:nLambda))
-     allocate(mImg(1:nDustType,1:nLambda))
-
-     allocate(tmReal(1:nLambda))
-     allocate(tmImg(1:nLambda))
-
-     
-     do k = 1, nDusttype
-
-        call parseGrainType(graintype(k), ngrain, grainname, x_grain)
-
-        ! Synthetic grains
-     
-        ! quick test for zero total dust abundance.
-        total_dust_abundance = SUM(X_grain)
-        if ( total_dust_abundance <= 0.0 ) then
-!$MPI     if (my_rank==0) &
-           write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
-!$MPI     if (my_rank==0) &
-           write(*,*) "  ==> You probably forgot to assign dust abundance in your "// &
-                & "parameter file!"
-!$MPI     if (my_rank==0) &
-           write(*,*) "  ==> Exiting the prograim ... "
-           stop 
-        end if
-
-        ! allocate mem for temp arrays
-        allocate(mReal2D(1:ngrain, 1:nLambda))
-        allocate(mImg2D(1:ngrain, 1:nLambda))
-        ! initializing the values
-        mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
-         
-        ! Find the index of refractions for all types of grains available
-        do j = 1, ngrain
-           call getRefractiveIndex(xArray, nLambda, grainname(j), tmReal, tmImg)
-           mReal2D(j,:) = tmReal(:)  ! copying the values to a 2D maxtrix
-           mImg2D(j,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
-        end do
-
-        ! Finding the weighted average of the refractive index.
-        mReal(k,:) = 0.0; mImg(k,:) = 0.0
-        do i = 1, nLambda
-           do j = 1, ngrain
-              mReal(k,i) = mReal2D(j,i)*X_grain(j) + mReal(k,i)
-              mImg(k,i)  = mImg2D(j,i) *X_grain(j) + mImg(k,i)
-           end do
-           mReal(k,i) = mReal(k,i) / total_dust_abundance
-           mImg(k,i)  = mImg(k,i)  / total_dust_abundance
-        end do
-
-
-        deallocate(mReal2D)
-        deallocate(mImg2D)
-
-     enddo
-         
-      do k = 1, nDustType
-         do i = 1, nLambda
-            do j = 1, nMumie
-               mu = 2.*real(j-1)/real(nMumie-1)-1.
-               if (.not.isotropicScattering) then
-                  if (readMiePhase) then
-                     open(144, file='miephasefile', status="old", form="unformatted")
-                     read(unit=144) miePhase
-                     close(144)
-                  else
-                     call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
-                          mu, miePhase(k,i,j), mReal(k,i), mImg(k,i))               
-                     if (writeMiePhase) then
-                        open(144, file='miephasefile', status="replace", form="unformatted")
-                        write(unit=144) miePhase
-                        close(144)
-                     end if
-                  end if
-               else
-                  miePhase(k,i,j) = fillIsotropic(mu)
-               endif
-            !           miePhase(i,j) = fillRayleigh(mu)
-            end do
-         end do
-      enddo
-
-     deallocate(mReal)
-     deallocate(mImg)
-     call writeInfo("Completed.",TRIVIAL)
-
-
-  endif
+!  if (mie .or.  (grid%geometry == "ttauri" .and. ttau_disc_on)) then
+!     ! construct the mie phase matrix
+!     call writeInfo("Computing Mie phase grid...",TRIVIAL)
+!
+!     allocate(mReal(1:nDusttype,1:nLambda))
+!     allocate(mImg(1:nDustType,1:nLambda))
+!
+!     allocate(tmReal(1:nLambda))
+!     allocate(tmImg(1:nLambda))
+!
+!     
+!     do k = 1, nDusttype
+!
+!        call parseGrainType(graintype(k), ngrain, grainname, x_grain)
+!
+!        ! Synthetic grains
+!     
+!        ! quick test for zero total dust abundance.
+!        total_dust_abundance = SUM(X_grain)
+!        if ( total_dust_abundance <= 0.0 ) then
+!!$MPI     if (my_rank==0) &
+!           write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
+!!$MPI     if (my_rank==0) &
+!           write(*,*) "  ==> You probably forgot to assign dust abundance in your "// &
+!                & "parameter file!"
+!!$MPI     if (my_rank==0) &
+!           write(*,*) "  ==> Exiting the prograim ... "
+!           stop 
+!        end if
+!
+!        ! allocate mem for temp arrays
+!        allocate(mReal2D(1:ngrain, 1:nLambda))
+!        allocate(mImg2D(1:ngrain, 1:nLambda))
+!        ! initializing the values
+!        mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
+!         
+!        ! Find the index of refractions for all types of grains available
+!        do j = 1, ngrain
+!           call getRefractiveIndex(xArray, nLambda, grainname(j), tmReal, tmImg)
+!           mReal2D(j,:) = tmReal(:)  ! copying the values to a 2D maxtrix
+!           mImg2D(j,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
+!        end do
+!
+!        ! Finding the weighted average of the refractive index.
+!        mReal(k,:) = 0.0; mImg(k,:) = 0.0
+!        do i = 1, nLambda
+!           do j = 1, ngrain
+!              mReal(k,i) = mReal2D(j,i)*X_grain(j) + mReal(k,i)
+!              mImg(k,i)  = mImg2D(j,i) *X_grain(j) + mImg(k,i)
+!           end do
+!           mReal(k,i) = mReal(k,i) / total_dust_abundance
+!           mImg(k,i)  = mImg(k,i)  / total_dust_abundance
+!        end do
+!
+!
+!        deallocate(mReal2D)
+!        deallocate(mImg2D)
+!
+!     enddo
+!         
+!      do k = 1, nDustType
+!         do i = 1, nLambda
+!            do j = 1, nMumie
+!               mu = 2.*real(j-1)/real(nMumie-1)-1.
+!               if (.not.isotropicScattering) then
+!                  if (readMiePhase) then
+!                     open(144, file='miephasefile', status="old", form="unformatted")
+!                     read(unit=144) miePhase
+!                     close(144)
+!                  else
+!                     call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
+!                          mu, miePhase(k,i,j), mReal(k,i), mImg(k,i))               
+!                     if (writeMiePhase) then
+!                        open(144, file='miephasefile', status="replace", form="unformatted")
+!                        write(unit=144) miePhase
+!                        close(144)
+!                     end if
+!                  end if
+!               else
+!                  miePhase(k,i,j) = fillIsotropic(mu)
+!               endif
+!            !           miePhase(i,j) = fillRayleigh(mu)
+!            end do
+!         end do
+!      enddo
+!
+!     deallocate(mReal)
+!     deallocate(mImg)
+!     call writeInfo("Completed.",TRIVIAL)
+!
+!
+!  endif
 
   ! set up the sources
 
@@ -2257,7 +2263,9 @@
        source(1)%radius = grid%rCore
        source(1)%teff = teff
        source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
+!       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamstart), dble(lamEnd),nLambda)
+       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
+
        call normalizedSpectrum(source(1)%spectrum)
     case("melvin")
        nSource = 1
@@ -3076,6 +3084,10 @@
         end if
      endif
 
+
+
+     call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+
      ! if we are producing a movie then plot this phase
 
 
@@ -3139,17 +3151,17 @@
      weightPhoto = 1.
 
      if (mie) then
+
+        call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, xArray)
+
         call computeProbDist(grid, totLineEmission, &
              totDustContinuumEmission,lamline, .false.)
         totDustContinuumEmission = totdustContinuumEmission 
         lcore = grid%lCore
         if (nSource > 0) then
-           lCore = 0.
-           do i = 1, nSource
-              lCore = lCore + source(i)%luminosity
-           enddo
+           write(*,*) "!!!!! summing source over",xarray(1),xarray(nlambda)
+           lCore = sumSourceLuminosity(source, nsource, xArray(1), xArray(nLambda))
         endif
-
 
         totEnvelopeEmission = totDustContinuumEmission
         chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
@@ -3578,6 +3590,9 @@
      endif
 
 
+
+
+
      if (dopvImage) then
 
         if (nSlit  > 1) then
@@ -3662,33 +3677,6 @@
         ! jumps to the end of inclination loops  (this should be replaced with while loop later)
         goto 777  
      end if
-
-
-     if (grid%geometry == "donati") then
-        junk1 = 0.
-        rHat = VECTOR(0.,0.,0.)
-        n = 0
-        do i = 1, 100000
-           call initPhoton(thisPhoton, grid, nLambda, xArray, sourceSpectrum, &
-                lineEmission, lamLine, weightLinePhoton, &
-                weightContPhoton, contPhoton, flatspec, vRot, pencilBeam, &
-                secondSource, secondSourcePosition,  &
-                ramanSourceVelocity, vo6, contWindPhoton, directionalWeight, useBias, theta1, theta2, &
-                chanceHotRing, &
-                nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto,&
-                narrowBandImage, vmin, vmax, source, nSource, rHatinStar, energyPerPhoton, filters, mie, &
-                curtains, starSurface, forcedWavelength, usePhotonWavelength, VoigtProf, outVec)
-           if (thisPhoton%linePhoton) then
-              junk1 = junk1 + thisPhoton%position%z
-              rHat = rHat + thisPhoton%velocity
-              n = n + 1
-           endif
-           if (.not. gridUsesAMR) call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
-        enddo
-        write(*,*) "Average z position",junk1/real(n)
-        write(*,*) "Average velocity",((cSpeed/1.e5)*(1./real(n)))*o2s(rHat)
-     endif
-
 
      !  These should be zero-ed for each viewing angle!
      tooFewSamples = 0 
