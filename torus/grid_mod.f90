@@ -3168,6 +3168,9 @@ contains
     logical               :: octreePresent ! true if grid has an octree
     integer :: nOctal
     character(len=80) :: absolutePath, inFile
+    integer :: iJunk
+    real, pointer :: junk(:), junk2(:,:), junk3(:,:)
+
     error = 0
 
 
@@ -3203,7 +3206,7 @@ contains
                           
     ! read the variables to be stored in the top-level 'grid' structure
     if (fileFormatted) then
-       read(unit=20,fmt=*,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
+       read(unit=20,fmt=*,iostat=error) ijunk, grid%flatSpec, grid%adaptive,& 
                grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
                grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore, &
                grid%lCore, grid%chanceWindOverTotalContinuum,                 &
@@ -3214,7 +3217,7 @@ contains
                grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
                grid%rOuter, grid%amr2dOnly, grid%photoionization
     else
-       read(unit=20,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive, & 
+       read(unit=20,iostat=error) ijunk, grid%flatSpec, grid%adaptive, & 
                grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
                grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore, &
                grid%lCore, grid%chanceWindOverTotalContinuum,                 &
@@ -3230,9 +3233,16 @@ contains
        print *, 'Panic: read error in readAMRgrid 1'
        stop
     end if
-    call readReal1D(grid%lamarray,fileFormatted)
-    call readReal2D(grid%oneKappaAbs,fileFormatted)
-    call readReal2D(grid%oneKappaSca,fileFormatted)
+!    call readReal1D(grid%lamarray,fileFormatted)
+!    call readReal2D(grid%oneKappaAbs,fileFormatted)
+!    call readReal2D(grid%oneKappaSca,fileFormatted)
+
+
+    call readReal1D(junk,fileFormatted)
+    call readReal2D(junk2,fileFormatted)
+    call readReal2D(junk3,fileFormatted)
+    deallocate(junk, junk2, junk3)
+
     call readClumps(fileFormatted)
     
 

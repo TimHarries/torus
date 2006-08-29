@@ -192,7 +192,8 @@ CONTAINS
 
    CASE ("fractal")
       thisOctal%rho = 100.d0 * mHydrogen
-       
+      thisOctal%temperature = 8000.
+
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
       STOP

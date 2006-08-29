@@ -603,6 +603,105 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
      
      end subroutine simply_writeImage
 
+     subroutine writePPMAimage(tfile, rimage, gimage, bimage, nx, ny)
+       character(len=*) :: tfile
+       integer :: nx, ny
+       integer :: rimage(nx,ny), gimage(nx,ny), bimage(nx, ny)
+       integer :: i, j
+
+       open(33, file=tfile, form="formatted", status="unknown")
+       write(33,'(a,i3.3,1x,i3.3,1x,i3.3)') "P3 ", nx, ny, 255
+       do j = 1, ny
+          do i = 1, nx
+             write(33, '(i3.3,1x,i3.3,1x,i3.3)') rimage(i,j), gimage(i,j), bimage(i,j)
+          enddo
+       enddo
+       close(33)
+     end subroutine writePPMAimage
+
+     subroutine writeFalseColourPPM(tfile, image, nImage)
+       character(len=*) :: tfile
+       integer :: nImage
+       type(IMAGETYPE) :: image(:)
+       integer, allocatable :: rImage(:,:), gImage(:,:), bImage(:,:)
+       integer :: nx, ny
+       real :: f5, f95
+       real :: t
+       integer :: i,j, k, nsize
+
+       nSize = image(1)%nsize
+       nx = nSize*2+1
+       ny = nSize*2+1
+       allocate(rImage(nx, ny))
+       allocate(gImage(nx, ny))
+       allocate(bImage(nx, ny))
+       
+
+       f5 = imagePercentile(image(1), 5.)
+       f95 = imagePercentile(image(1), 95.)
+       write(*,*) f5, f95
+       do i = -nsize, nsize
+          do j = -nsize, nsize
+             t = (min(f95, max(f5, image(1)%pixel(i,j)%i))-f5)/(f95-f5)
+             rImage(i+nSize+1, j+nSize+1) = int(255.*t)
+          enddo
+       enddo
+
+       f5 = imagePercentile(image(2), 5.)
+       f95 = imagePercentile(image(2), 95.)
+       write(*,*) f5, f95
+       do i = -nsize, nsize
+          do j = -nsize, nsize
+             t = (min(f95, max(f5, image(2)%pixel(i,j)%i))-f5)/(f95-f5)
+             gImage(i+nSize+1, j+nSize+1) = int(255.*t)
+          enddo
+       enddo
+
+       f5 = imagePercentile(image(3), 5.)
+       f95 = imagePercentile(image(3), 95.)
+       write(*,*) f5, f95
+       do i = -nsize, nsize
+          do j = -nsize, nsize
+             t = (min(f95, max(f5, image(3)%pixel(i,j)%i))-f5)/(f95-f5)
+             bImage(i+nSize+1, j+nSize+1) = int(255.*t)
+          enddo
+       enddo
+
+
+       write(*,*) "calling writepmmaimage"
+       call writePPMAimage(tfile, rImage, gImage, bImage, nx, ny)
+       write(*,*) "done"
+
+       deallocate(rimage, gimage, bimage)
+
+     end subroutine writeFalseColourPPM
+
+     real function imagePercentile(image, limit) result (out)
+       type(IMAGETYPE) :: image
+       real :: limit
+       real, allocatable :: values(:)
+       integer :: nValues
+       integer :: i, j, k, n
+       
+
+       nValues = (2*image%nSize+1)**2
+
+       n = 0
+       allocate(values(nValues))
+       do i = -image%nsize,image%nsize
+          do j = -image%nSize,image%nSize
+             if (image%pixel(i,j)%i > 1.e-29) then
+                n = n + 1
+                values(n) = image%pixel(i,j)%i
+             endif
+          enddo
+       enddo
+       call sort(n, values)
+       k = nint(real(n)*limit/100.)
+       out = values(k)
+       deallocate(values)
+     end function imagePercentile
+
       
 end module image_mod
 

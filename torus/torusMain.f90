@@ -884,35 +884,37 @@
         yArray(i) = STOKESVECTOR(0.,0.,0.,0.)
      enddo
 
-     if (photoionization) then
-        xArray(1) = lamStart
-        xArray(2) = lamEnd
-        nCurrent = 2
-        call refineLambdaArray(xArray, nCurrent, grid)
-        nt = nLambda - nCurrent
-        do i = 1, nt
-           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
-           fac = 10.**fac
-           nCurrent=nCurrent + 1
-           xArray(nCurrent) = fac
-           call sort(nCurrent, xArray)
-        enddo
-!        do i = 1, nlambda
-!           write(*,*) xArray(i)
+!     if (photoionization) then
+!        xArray(1) = lamStart
+!        xArray(2) = lamEnd
+!        nCurrent = 2
+!        call refineLambdaArray(xArray, nCurrent, grid)
+!        nt = nLambda - nCurrent
+!        do i = 1, nt
+!           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
+!           fac = 10.**fac
+!           nCurrent=nCurrent + 1
+!           xArray(nCurrent) = fac
+!           call sort(nCurrent, xArray)
 !        enddo
-     endif
+!!        do i = 1, nlambda
+!!           write(*,*) xArray(i)
+!!        enddo
+!     endif
 
      if (mie) then
-        call locate(xArray, nLambda, lambdaTau, i)
-        t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
-        if (t1 > 0.5) then
-           write(message,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
-           call writeInfo(message, TRIVIAL)
-           xArray(i+1) = lambdaTau
-        else
-           write(message,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
-           call writeInfo(message, TRIVIAL)
-           xArray(i) = lambdaTau
+        if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then
+           call locate(xArray, nLambda, lambdaTau, i)
+           t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
+           if (t1 > 0.5) then
+              write(message,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
+              call writeInfo(message, TRIVIAL)
+              xArray(i+1) = lambdaTau
+           else
+              write(message,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
+              call writeInfo(message, TRIVIAL)
+              xArray(i) = lambdaTau
+           endif
         endif
      endif
 
@@ -1067,7 +1069,7 @@
         ! we have to update the wavelength array in the grid.
         ! This may not work for dust calculation...
         ! Copying the wavelength array to the grid
-        if (grid%nlambda /= nlambda) then
+!        if (grid%nlambda /= nlambda) then
 !           if (mie .or. (grid%geometry == "ttauri" .and. ttau_disc_on)) then              
 !              write(*,*) "Error:: The number of the wavelength bins in the data file "
 !              write(*,*) "        does not macth with that specifed in your parameter file."
@@ -1078,11 +1080,11 @@
 !              write(*,*) "this data file. This should be changed in future...."
 !!              stop
 !           else 
-              write(*,*) "Warning:: The number of the wavelength bins in the data file "
-              write(*,*) "      does not macth with that specifed in your parameter file."
-              write(*,*) "nlambda(old) = ", grid%nlambda
-              write(*,*) "nlambda(new) = ", nlambda
-              write(*,*) "==> We recompute the wavelength array with new nlambda value, and continue."
+!              write(*,*) "Warning:: The number of the wavelength bins in the data file "
+!              write(*,*) "      does not macth with that specifed in your parameter file."
+!              write(*,*) "nlambda(old) = ", grid%nlambda
+!              write(*,*) "nlambda(new) = ", nlambda
+!              write(*,*) "==> We recompute the wavelength array with new nlambda value, and continue."
               ! update the wavelength array.
               ! It over writes whatever the wavelength you had in your file!
               deallocate(grid%lamArray)
@@ -1092,7 +1094,7 @@
               enddo
               grid%nLambda = nLambda
 !           end if
-        end if
+!        end if
 
         !
         ! If the grid read from file contains ttauri disc or jet, you can turn it
@@ -1175,11 +1177,11 @@
            end do
            call writeInfo("...grid smoothing complete", TRIVIAL)
 
-        case("fractal")
+        case("starburst")
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
            gridconverged = .false.
            do while(.not.gridconverged) 
-              call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.3, grid, gridconverged)
+              call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.1, grid, gridconverged)
            enddo
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
@@ -2265,8 +2267,12 @@
        
   end select
 
-  
+  call randomSource(source, nSource, i, xArray, nLambda, initialize=.true.)  
+
   call writeInfo("Sources set up.",TRIVIAL)
+
+
+
 
      if (geometry == "wr104") then
 !        call IntegratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
@@ -2927,7 +2933,7 @@
 
      if (mie) then
 
-        call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, xArray)
+!        call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, xArray)
 
         call computeProbDist(grid, totLineEmission, &
              totDustContinuumEmission,lamline, .false.)
@@ -3457,6 +3463,10 @@
      call tune(6, "All Photon Loops")  ! Start a stopwatch
      
      call random_seed
+
+
+     call randomSource(source, nSource, i, xArray, nLambda, initialize=.true.)  
+
 
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
@@ -4418,6 +4428,10 @@
            ! bandwith of O6 image here later and replace 5000 and 1.0d0 below!
            !+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
            call writeImage(o6Image(1), specfile, objectDistance, imageInArcsec, 5000d0, 1.0d0)
+        endif
+        if (get_filter_set_name(filters) == "pn") then
+           write(specFile,'(a,a,i3.3)') trim(outfile),"_image",iPhase
+           call writeFalseColourPPM(trim(specfile)//".ppm", obsImageSet, 3)
         endif
 
      endif

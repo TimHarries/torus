@@ -20,7 +20,7 @@ ifeq ($(SYSTEM), g95)
     F77COMP=g95
     FASTFLAG= -O3
 #    FASTFLAG= -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG=-g -fbounds-check 
+    DEBUGFLAG=-g -fbounds-check  -ftrace=full
     STATICFLAG=
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel

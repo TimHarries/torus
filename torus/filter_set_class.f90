@@ -213,7 +213,7 @@ contains
        this_set%nfilter = 0
        call make_narrow_filters(this_set,"Halpha", 6562.8d0, 10.d0)
        call make_narrow_filters(this_set, "OIII", 5007.d0, 10.d0)
-       call make_narrow_filters(this_set, "SII", 6724.d0, 10.d0)
+       call make_narrow_filters(this_set, "SII", 6724.d0, 30.d0)
 
     case default
        write(*,*) " "

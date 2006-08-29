@@ -43,73 +43,76 @@ module source_mod
 
 
 
-    subroutine randomSource(source, nSource, iSource)
+!    subroutine randomSource(source, nSource, iSource)
+!      integer :: nSource
+!      type(SOURCETYPE) :: source(1:nSource)
+!      integer :: iSource
+!      real, save, allocatable :: prob(:)
+!      real :: r, t
+!      real :: lRatio
+!      integer :: i
+!      logical, save :: first_time = .true.
+!
+!      if (nSource == 1) then
+!         iSource = 1
+!      else if (nSource == 2) then
+!         lRatio = source(1)%luminosity / (source(1)%luminosity + source(2)%luminosity)
+!         call random_number(r)
+!         if ( r  < lRatio ) then
+!            iSource = 1
+!         else
+!            iSource = 2
+!         endif
+!      else if (nSource > 2) then
+!	 if (first_time) then
+!	    ! allocate array
+!	    ALLOCATE(prob(1:nSource))
+!	    ! Create the prob. dist. function.
+!	    prob(1:nSource) = source(1:nSource)%luminosity/lsol
+!	    do i = 2, nSource
+!	       prob(i) = prob(i) + prob(i-1)
+!	    enddo
+!	    prob(1:nSource) = prob(1:nSource) - prob(1)
+!	    prob(1:nSource) = prob(1:nSource) / prob(nSource)
+!
+!	    first_time = .false.
+!	    
+!	 end if
+!	 
+!         call random_number(r)
+!         call locate(prob, nSource, r, iSource)
+!         if (iSource < nSource) then
+!            t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
+!            if (t > 0.5) iSource = iSource + 1
+!         endif
+!      endif
+!
+!    end subroutine randomSource
+
+
+    subroutine randomSource(source, nSource, iSource, lamArray, nLambda, initialize)
       integer :: nSource
       type(SOURCETYPE) :: source(1:nSource)
       integer :: iSource
       real, save, allocatable :: prob(:)
+      real, optional :: lamArray(:)
+      integer,optional :: nlambda
       real :: r, t
       real :: lRatio
       integer :: i
-      logical, save :: first_time = .true.
-
-      if (nSource == 1) then
-         iSource = 1
-      else if (nSource == 2) then
-         lRatio = source(1)%luminosity / (source(1)%luminosity + source(2)%luminosity)
-         call random_number(r)
-         if ( r  < lRatio ) then
-            iSource = 1
-         else
-            iSource = 2
-         endif
-      else if (nSource > 2) then
-	 if (first_time) then
-	    ! allocate array
-	    ALLOCATE(prob(1:nSource))
-	    ! Create the prob. dist. function.
-	    prob(1:nSource) = source(1:nSource)%luminosity/lsol
-	    do i = 2, nSource
-	       prob(i) = prob(i) + prob(i-1)
-	    enddo
-	    prob(1:nSource) = prob(1:nSource) - prob(1)
-	    prob(1:nSource) = prob(1:nSource) / prob(nSource)
-
-	    first_time = .false.
-	    
-	 end if
-	 
-         call random_number(r)
-         call locate(prob, nSource, r, iSource)
-         if (iSource < nSource) then
-            t = (r - prob(iSource))/(prob(iSource+1) - prob(iSource))
-            if (t > 0.5) iSource = iSource + 1
-         endif
-      endif
-
-    end subroutine randomSource
-
-
-    subroutine randomSourceNarrowband(source, nSource, iSource, lamArray, nLambda)
-      integer :: nSource
-      type(SOURCETYPE) :: source(1:nSource)
-      integer :: iSource
-      real, save, allocatable :: prob(:)
-      real :: lamArray(:)
-      integer :: nlambda
-      real :: r, t
-      real :: lRatio
-      integer :: i
-      logical, save :: first_time = .true.
+      logical, optional :: initialize
 
       if (nSource == 1) then
          iSource = 1
       else
-	 if (first_time) then
+	 if (PRESENT(initialize)) then
 	    ! allocate array
-	    ALLOCATE(prob(1:nSource))
+	    if (allocated(prob)) then
+               deallocate(prob)
+            endif
+            ALLOCATE(prob(1:nSource))
 	    ! Create the prob. dist. function.
-            do i = 1, nLambda
+            do i = 1, nSource
                prob(i) = &
                     integrateNormSpectrumOverBand(source(i)%spectrum, dble(lamArray(1)) , &
                     dble(lamArray(nLambda))) * &
@@ -121,9 +124,7 @@ module source_mod
 	    prob(1:nSource) = prob(1:nSource) - prob(1)
 	    prob(1:nSource) = prob(1:nSource) / prob(nSource)
 
-	    first_time = .false.
-	    
-	 end if
+         end if
 	 
          call random_number(r)
          call locate(prob, nSource, r, iSource)
@@ -133,7 +134,7 @@ module source_mod
          endif
       endif
 
-    end subroutine randomSourceNarrowBand
+    end subroutine randomSource
 
     real(double) function sumSourceLuminosity(source, nsource, lam1, lam2) result (tot)
       integer :: nSource

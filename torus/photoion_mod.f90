@@ -460,7 +460,10 @@ if (.false.) then
 
  thisOctal => grid%octreeRoot
  call writeInfo("Calculating continuum emissivities...",TRIVIAL)
-  call  calcContinuumEmissivity(grid, thisOctal, nfreq, freq, dfreq, spectrum, nlambda, lamArray)
+
+
+
+  call  calcContinuumEmissivity(grid, thisOctal, nlambda, lamArray)
  call writeInfo("Done.",TRIVIAL)
 
  if (writelucy) then
@@ -2787,9 +2790,11 @@ subroutine addHydrogenRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal
        thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * &
        grid%ion(1)%abundance) * 1.d-25
   lineFreq = cSpeed/1215.67D-8
-  call locate(freq, nFreq, lineFreq, i)
-  i = i + 1
-  spectrum(i) = spectrum(i) + lymanAlpha
+  if ((lineFreq > freq(1)).and.(lineFreq < freq(nfreq))) then
+     call locate(freq, nFreq, lineFreq, i)
+     i = i + 1
+     spectrum(i) = spectrum(i) + lymanAlpha
+  endif
   
 
 end subroutine addHydrogenRecombinationLines
@@ -3103,23 +3108,39 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine identifyUndersampled
 
-  recursive subroutine  calcContinuumEmissivity(grid, thisOctal, nfreq, freq, dfreq, spectrum, nlambda, lamArray)
+  recursive subroutine  calcContinuumEmissivity(grid, thisOctal, nlambda, lamArray)
     type(GRIDTYPE) :: grid
     integer :: nFreq
-    real(double) :: freq(:), spectrum(:), dfreq(:)
+    real(double), allocatable :: freq(:), spectrum(:), dfreq(:)
     integer :: nLambda
     real :: lamArray(:)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-  
+
+
+    nFreq = nlambda
+
+    allocate(freq(1:nFreq), spectrum(1:nFreq), dfreq(1:nFreq))
+
+    do i = 1, nFreq
+       freq(i) = cSpeed/(lamArray(nFreq-i+1)*1.e-8)
+    enddo
+    do i = 2, nFreq-1
+       dfreq(i) = (freq(i+1)-freq(i-1))/2.d0
+    enddo
+    dfreq(1) = (freq(2)-freq(1))
+    dfreq(nfreq) = (freq(nfreq)-freq(nfreq-1))
+
+
+
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call calcContinuumEmissivity(grid, child, nfreq, freq, dfreq, spectrum, nlambda, lamArray)
+                call calcContinuumEmissivity(grid, child, nlambda, lamArray)
                 exit
              end if
           end do
@@ -3212,7 +3233,7 @@ end subroutine readHeIIrecombination
 
   end function getRandomWavelengthPhotoion
 
-  subroutine getWavelengthBiasPhotoion(grid, thisOctal, subcell, lamArray, dlam, nLambda, ilambda, bias)
+  subroutine getWavelengthBiasPhotoion(grid, thisOctal, subcell, lamArray, dlam, nLambda, ilambda, bias, useBias)
 
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -3221,12 +3242,16 @@ end subroutine readHeIIrecombination
     integer :: nFreq
     real(double), allocatable :: freq(:), dfreq(:), spectrum(:), tspec(:),lamspec(:)
     real :: dlam(:), dlam2
+    real(double), allocatable :: prob(:)
+    real(double) :: t
+    real :: thisLam
     real(double) :: nuStart, nuEnd, thisFreq, r, fac
     integer :: nLambda
     real :: lamArray(:)
     real :: bias
     integer :: ilambda
     integer :: i
+    logical :: useBias
 
     nFreq = nlambda
 
@@ -3252,34 +3277,50 @@ end subroutine readHeIIrecombination
     call addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, grid, nlambda, lamArray)
     
 
-    fac = 0.d0
-    do i = 1, nFreq
-       fac = fac + spectrum(i)
-    enddo
+
+    if (useBias) then
+       fac = 0.d0
+       do i = 1, nFreq
+          fac = fac + spectrum(i)
+       enddo
 
 
-    do i = 1, nFreq
-       lamSpec(i) = cspeed/freq(i)
-    enddo
-    lamSpec = lamSpec * 1.d8
+       do i = 1, nFreq
+          lamSpec(i) = cspeed/freq(i)
+       enddo
+       lamSpec = lamSpec * 1.d8
+       
+       do i = 1, nFreq
+          tSpec(i) = spectrum(nFreq-i+1)
+       enddo
+       spectrum(1:nFreq) = tspec
+       
+       do i = 1, nFreq
+          tSpec(i) = lamSpec(nFreq-i+1)
+       enddo
+       lamSpec(1:nFreq)= tspec
+       do i = 1, nFreq
+          dlam2 = 1.d8 * (cSpeed / freq(nFreq-i+1)**2) * dfreq(nFreq-i+1)
+          spectrum(i) = spectrum(i) / dlam2
+       enddo
+       bias = spectrum(iLambda)/fac
+    else
+       allocate(prob(1:nFreq))
+       prob(1:nFreq) = spectrum(1:nFreq)
+       do i = 2, nFreq
+          prob(i) = prob(i-1) + prob(i)
+       enddo
+       prob(1:nFreq) = prob(1:nFreq)-prob(1)
+       prob(1:nFreq) = prob(1:nFreq)/prob(nFreq)
+       call random_number(r)
+       call locate(prob, nFreq, r, i)
+       t = (r - prob(i))/(prob(i+1)-prob(i))
+       thisFreq = freq(i) + t * (freq(i+1)-freq(i))
+       thisLam = 1.d8 * cspeed/thisFreq
+       call locate(lamArray, nLambda, thisLam, iLambda)
+       bias = 1.d0
+    endif
 
-    do i = 1, nFreq
-       tSpec(i) = spectrum(nFreq-i+1)
-    enddo
-    spectrum(1:nFreq) = tspec
-
-    do i = 1, nFreq
-       tSpec(i) = lamSpec(nFreq-i+1)
-    enddo
-    lamSpec(1:nFreq)= tspec
-
-    do i = 1, nFreq
-       dlam2 = 1.d8 * (cSpeed / freq(nFreq-i+1)**2) * dfreq(nFreq-i+1)
-!       write(*,*) i,1.d8*cspeed/freq(nfreq-i+1),lamspec(i),dlam2, dlam(i)
-       spectrum(i) = spectrum(i) / dlam2
-    enddo
-
-    bias = spectrum(iLambda)/fac
 
     deallocate(freq, spectrum, lamSpec, tSpec)
 

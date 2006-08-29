@@ -243,7 +243,7 @@ module spectrum_mod
          call locate(spectrum%lambda, spectrum%nLambda, lam2, i2)
       
          if (i1 == i2) then 
-            returnNormValue2 = 1.d0 
+            returnNormValue2 = spectrum%flux(i1)/(spectrum%flux(i1)*(lam2-lam1))
          else
             tot = 0.d0
             tot = tot + spectrum%flux(i1)*(spectrum%lambda(i1+1)-lam1)
