@@ -1124,7 +1124,8 @@ contains
                      (sourceSpectrum(iLambda) * weightContPhoton)
              else
                 thisPhoton%stokes = thisPhoton%stokes * &
-                     real(returnNormValue(source(thissource)%spectrum,dble(thisPhoton%lambda)))
+                     real(returnNormValue2(source(thissource)%spectrum, &
+                     dble(thisPhoton%lambda), dble(lambda(1)), dble(lambda(nlambda))))
              endif
           endif
           

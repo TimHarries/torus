@@ -213,22 +213,52 @@ module spectrum_mod
            / SUM(spectrum%flux(1:spectrum%nLambda)*spectrum%dlambda(1:spectrum%nLambda))
     end subroutine normalizedSpectrum
 
-    real(double) function returnNormValue(spectrum, lambda)
+    real(double) function returnNormValue(spectrum, lambda, lam1, lam2)
       type(SPECTRUMTYPE) :: spectrum
-      real(double) :: lambda, t
+      real(double) :: lambda, t, lam1, lam2
       logical :: ok
       integer :: i
 
       if ((lambda < spectrum%lambda(1)).or.(lambda > spectrum%lambda(spectrum%nlambda))) then
          returnNormValue = 0. 
       else
-!         i = findIlambda(real(lambda), real(spectrum%lambda), spectrum%Nlambda, ok)
          call locate(spectrum%lambda,spectrum%nLambda, lambda, i)
          t = (lambda - spectrum%lambda(i))/(spectrum%lambda(i+1) - spectrum%lambda(i))
-!         t = 0.
          returnNormValue = spectrum%normFlux(i) + t * (spectrum%normFlux(i+1) - spectrum%normFlux(i))
-!         returnNormValue = interpLogLinearDouble(spectrum%lambda, spectrum%normFlux, spectrum%nLambda, lambda)
       endif
+
     end function returnNormValue
+
+    real(double) function returnNormValue2(spectrum, lambda, lam1, lam2)
+      type(SPECTRUMTYPE) :: spectrum
+      real(double) :: lambda, t, lam1, lam2, tot
+      logical :: ok
+      integer :: i, i1, i2
+
+      if ((lambda < lam1).or.(lambda > lam2)) then
+         returnNormValue2 = 0.d0 
+      else
+
+         call locate(spectrum%lambda, spectrum%nLambda, lam1, i1)
+         call locate(spectrum%lambda, spectrum%nLambda, lam2, i2)
+      
+         if (i1 == i2) then 
+            returnNormValue2 = 1.d0 
+         else
+            tot = 0.d0
+            tot = tot + spectrum%flux(i1)*(spectrum%lambda(i1+1)-lam1)
+            tot = tot + spectrum%flux(i2)*(lam2-spectrum%lambda(i2))
+            do i = i1, i2-1
+               tot = tot + 0.5d0*(spectrum%flux(i+1)+spectrum%flux(i)) * &
+                    (spectrum%lambda(i+1)-spectrum%lambda(i))
+            enddo
+            call locate(spectrum%lambda, spectrum%nLambda, lambda, i)
+            t = (lambda - spectrum%lambda(i))/(spectrum%lambda(i+1)-spectrum%lambda(i))
+            t = spectrum%flux(i)+t*(spectrum%flux(i+1)-spectrum%flux(i))
+            returnNormValue2 = t/tot
+         endif
+      endif
+
+    end function returnNormValue2
          
   end module spectrum_mod
