@@ -1155,8 +1155,8 @@ contains
       endif
   end function fractgap
 
-! TJH version of fractgap
 
+! TJH version of fractgap
   function fractgap2(R)
       use constants_mod
       use input_variables, only : rGap, height, mPlanet, gapViscAlpha, alphaDisc,betaDisc, &
@@ -1167,7 +1167,7 @@ contains
       real(double) :: gapheight
       REAL(double), INTENT(IN) :: R
 
-!====================== Matt's gap ========================
+!==================== Matthew's gap =======================
 !    x_nu = 2 *(MAX(3e-6,xmu)/3.0)**(1.0/3.0)
 !    xmu = planetmass
 !    visc = h_over_r**2 * gapalph
@@ -1189,9 +1189,12 @@ contains
 !==========================================================
 
 ! TJH added this
-      gapHeight = height*(rCore*1.e10/autocm)*((rCore*1.e10/autocm)/R)**betaDisc
-
-      gapHeight = 0.05
+!      gapHeight = 0.05
+!     gapHeight = dimensionless scale-height @ centre of gap
+!               = H / rGap
+!               = (h * R0 * (rGap / R0)**beta) / rGap
+!               = h * (rGap / R0)**(beta-1)
+      gapHeight = height * (rGap/(rCore*1.e10/autocm))**(betaDisc-1.)
 
       gapfloor = tiny(gapfloor)
 !      gapfloor = 1.d-4
@@ -1201,9 +1204,8 @@ contains
       gapalph = gapViscAlpha
       x_nu = 2 *(MAX(3d-6,xmu)/3.0)**(1.0/3.0)
 !      visc = 0.15**2 * gapalpha
-
 ! tjh 
-      visc = gapheight**2 * gapalph
+      visc = gapHeight**2 * gapalph
 
 !      x = R - 1.d0
       x = R - rGap
