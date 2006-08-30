@@ -124,6 +124,8 @@
   ! for direct integration
   !  integer, parameter :: maxTau = 8000, maxLambda = 101    
   !
+  ! for Chris
+  !  integer, parameter :: maxTau = 600000, maxLambda = 150
   integer :: nTau
   real, allocatable :: contTau(:,:)
 !  real::  contTau(maxTau,maxLambda)
@@ -1528,7 +1530,7 @@
                 "rho_zoom.ps/vcps",.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
 
-		   if (geometry == "ppdisk") then
+           if ((geometry == "ppdisk").or.(geometry == "planetgap")) then
               call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
                    "rho_ultrazoom.ps/vcps",.true., .false.,&
                    nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=0.005)
@@ -2075,11 +2077,11 @@
         call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
              "rho_zoom.ps/vcps",.true., .true.,&
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
-	    if (geometry == "ppdisk") then
+        if ((geometry == "ppdisk").or.(geometry == "planetgap")) then
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
                 "rho_ultrazoom.ps/vcps",.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=0.005)
-	    end if
+        end if
         call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
              nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
 !        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
