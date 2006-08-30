@@ -113,6 +113,10 @@ contains
        if (planetGap) then
           scalefac = scalefac * fractGap2(dble(radiusAU))
        endif
+
+!       scalefac in g/cm^3
+       write (137,*) radiusAU, scalefac
+
        scalefac = scalefac * 0.5 / sigma
 
     endif
@@ -414,7 +418,7 @@ contains
        call zeroChiline(grid%octreeRoot)       
 
 !$MPI    if(my_rank == 0) then
-       if (geometry == "ppdisk") open(unit=137, file='surface_density.dat', status='replace', form='formatted')
+       if ((geometry == "ppdisk").or.(geometry == "planetgap")) open(unit=137, file='surface_density.dat', status='replace', form='formatted')
 !$MPI    endif
 
 !$MPI    if(my_rank == 0) &
@@ -423,7 +427,7 @@ contains
        call throughoutMidpane(grid, mStar, sigma0, rDisk, drho)
 
 !$MPI    if(my_rank == 0) then
-       if (geometry == "ppdisk") close(137)
+       if ((geometry == "ppdisk").or.(geometry == "planetgap")) close(137)
 !$MPI    endif
 
 !$MPI    if(my_rank == 0) &
@@ -450,7 +454,7 @@ contains
        call plot_AMR_values(grid, "temperature", "x-z", 0.0, plotfile, .true., .false.)
 
        ! chris
-       if (geometry == "ppdisk") then
+       if ((geometry == "ppdisk").or.(geometry == "planetgap")) then
           rGapCM = rGap * autocm / 1.d10
 
        write(plotfile,'(a,i3.3,a)') "rho",niter,".ps/vcps"
@@ -553,7 +557,7 @@ contains
 
     ! chris
 !$MPI    if(my_rank == 0) then
-    if (geometry == "ppdisk") then
+    if ((geometry == "ppdisk").or.(geometry == "planetgap")) then
     write(plotfile,'(a,i3.3,a)') "rho_final.ps/vcps"
     call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
     write(plotfile,'(a,i3.3,a)') "rho_zoom_final.ps/vcps"
