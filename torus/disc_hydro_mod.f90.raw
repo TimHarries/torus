@@ -418,7 +418,8 @@ contains
        call zeroChiline(grid%octreeRoot)       
 
 !$MPI    if(my_rank == 0) then
-       if ((geometry == "ppdisk").or.(geometry == "planetgap")) open(unit=137, file='surface_density.dat', status='replace', form='formatted')
+       if ((geometry == "ppdisk").or.(geometry == "planetgap")) &
+          open(unit=137, file='surface_density.dat', status='replace', form='formatted')
 !$MPI    endif
 
 !$MPI    if(my_rank == 0) &
