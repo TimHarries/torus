@@ -107,7 +107,7 @@ contains
     real(double) :: hiContEmissivity, forbiddenEmissivity
     real(double) :: probNonIonizing, probHydrogen
     real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
-    real(double) :: r1, kappaAbsGas, kappaAbsDust
+    real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
 
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
@@ -319,15 +319,15 @@ contains
              call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, photonPacketWeight)
              if (.not. escaped) then
 
-
                 thisLam = (cSpeed / thisFreq) * 1.e8
                 call locate(lamArray, nLambda, real(thisLam), iLam)
                 octVec = rVec 
                 call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, foundsubcell=subcell,iLambda=iLam, &
                      lambda=real(thisLam), kappaSca=kappaScadb, kappaAbs=kappaAbsdb, grid=grid)
 
-
                 albedo = kappaScaDb / (kappaAbsdb + kappaScadb)
+
+
                 call random_number(r)
                 if (r < albedo) then
                    uHat = randomUnitVector() ! isotropic scattering
@@ -335,7 +335,7 @@ contains
                    spectrum = 1.d-30
 
                    call returnKappa(grid, thisOctal, subcell, ilambda=ilam, kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
-                        kappaSca=kappaScadb, kappaAbs=kappaAbsdb)
+                        kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
 
 
                    if ((thisFreq*hcgs*ergtoev) > 13.6) then ! ionizing photon
@@ -370,8 +370,26 @@ contains
              endif
              if (nScat > 100000) then
                 write(*,*) "Nscat exceeded 10000, forcing escape"
+                write(*,*) 1.e8*cspeed/thisFreq
+                write(*,*) albedo, kappaScaDb, kappaAbsdb,escat
+
+                thisLam = (cSpeed / thisFreq) * 1.e8
+                call locate(lamArray, nLambda, real(thisLam), iLam)
+
+                call returnKappa(grid, thisOctal, subcell, ilambda=ilam, kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
+                     kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
+                write(*,*) "thislam",thislam,ilam, lamArray(ilam)
+                write(*,*) lamArray(1:nLambda)
+                write(*,*) "kappaAbsDust",kappaAbsDust
+                write(*,*) "kappaAbsGas",kappaAbsGas
+                write(*,*) "kappaSca",kappaScadb
+                write(*,*) "kappaAbs",kappaAbsdb
+                write(*,*) "onekappaabs",grid%oneKappaAbs(1,ilam)
+                write(*,*) "onekappasca",grid%oneKappasca(1,ilam)
+
+
                 escaped = .true.
-             endif
+             Endif
           enddo
           nInf = nInf + 1
        end do mainloop
@@ -402,7 +420,7 @@ contains
           if (writeoutput) &
                write(*,*) "Calculating ionization and thermal equilibria",i
           call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-!          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
+          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
           if (writeoutput) &
                write(*,*) "Done."
        enddo
@@ -548,7 +566,7 @@ if (.false.) then
 end subroutine photoIonizationloop
 
 
- subroutine toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight)
+ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight)
 
    type(GRIDTYPE) :: grid
    type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec

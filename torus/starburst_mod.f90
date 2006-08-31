@@ -12,6 +12,7 @@ module starburst_mod
   use messages_mod
   use utils_mod
   use source_mod
+  use unix_mod
 
   implicit none
 
@@ -272,11 +273,14 @@ contains
        integer :: nMass
        real(double) :: initMass
        character(len=*) :: thisfile
-       character(len=80) :: tFile
+       character(len=80) :: tFile, datadirectory
        integer :: nt, i
        thisTable%initialMass(nMass) = initMass
        
-       tfile = "/home/th/Schaller/"//trim(thisFile)
+
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+
+       tfile = trim(dataDirectory)//"/Schaller/"//trim(thisFile)
        nt = 1
        open(31, file=tfile, status="old", form="formatted")
 10 continue
@@ -313,15 +317,18 @@ contains
        real(double) :: t
        real :: loggArray(11)
        logical, save :: firstTime = .true.
-       character(len=80) :: thisFile
+       character(len=80) :: thisFile, dataDirectory
        logical :: ok 
        integer :: nKurucz
        character(len=*) :: kLabel(:)
        type(SPECTRUMTYPE) :: kSpectrum(:)
 
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+
+
        loggArray = (/ 000., 050., 100., 150., 200., 250., 300., 350., 400., 450., 500. /)
        if (firsttime) then
-          open(31, file="/home/th/Kurucz/filelist.dat", form="formatted", status="old")
+          open(31, file=trim(dataDirectory)//"/Kurucz/filelist.dat", form="formatted", status="old")
           do i = 1, nFiles
              read(31, *) teff(i)
           end do
@@ -393,17 +400,20 @@ contains
        character(len=*) :: label(:)
        type(SPECTRUMTYPE) :: spectrum(:)
        integer :: nFiles
-       character(len=80) :: tfile,fluxfile
+       character(len=80) :: tfile,fluxfile,dataDirectory
        logical :: ok
        integer :: i
+
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
        
        call writeInfo("Reading Kurucz grid...",TRIVIAL)
-       tfile = "/home/th/Kurucz/files.dat"
+
+       tfile = trim(dataDirectory)//"/Kurucz/files.dat"
        open(31, file = tfile, status = "old", form="formatted")
        do i = 1, nFiles
           read(31,*) fluxfile
           label(i) = trim(fluxfile)
-          tfile = "/home/th/Kurucz/"//trim(fluxfile)
+          tfile = trim(dataDirectory)//"/Kurucz/"//trim(fluxfile)
           call readSpectrum(spectrum(i), tfile, ok)
        enddo
        close(31)

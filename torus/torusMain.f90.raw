@@ -185,7 +185,6 @@
   real :: lamIntPro(maxIntPro), intPro(maxIntPro)
   real, allocatable :: splineArray(:)
 
-  real, allocatable :: lamArray(:)
   real, allocatable :: statArray(:)
   real, allocatable :: sourceSpectrum(:)
   real, allocatable :: sourceSpectrum2(:)
@@ -948,7 +947,6 @@
   allocate(kappaExt(1:nLambda))
   allocate(kappaAbs(1:nLambda))
   allocate(kappaSca(1:nLambda))
-  allocate(lamArray(1:nLambda))
   allocate(statArray(1:nLambda))
   allocate(sourceSpectrum(1:nLambda))
   allocate(sourceSpectrum2(1:nLambda))
@@ -959,14 +957,9 @@
   sourceSpectrum = 1.
   sourceSpectrum2 = 1.
 
-  ! set up the wavelength array
-
-  do i = 1, nLambda
-     lamArray(i) = lamStart+(lamEnd-lamStart)*real(i-1)/real(nLambda-1)
-  enddo
 
   if (plezModelOn) then
-     call readTioCrossSection(lamArray, nLambda, kappaExt, kappaAbs, kappaSca)
+     call readTioCrossSection(xArray, nLambda, kappaExt, kappaAbs, kappaSca)
   endif
 
 
@@ -2544,7 +2537,7 @@
 
      if (photoIonization) then
         grid%photoionization = .true.
-        call photoIonizationLoop(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
+        call photoIonizationLoop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
              lucyfilenameout, lucyfilenamein)
      endif
 
