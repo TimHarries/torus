@@ -212,7 +212,7 @@ contains
           ! do the same for a mie scattering
           
           call locate(grid%lamArray, nLambda, outPhoton%lambda, i)
-          j = int(0.5*(costheta+1.d0)*real(nmumie))+1
+          j = min(int(0.5*(costheta+1.d0)*real(nmumie))+1, nMuMie)
           outPhoton%stokes = applyMean(miePhase(1:nDustType,i,j), &
                thisOctal%dustTypeFraction(subcell,1:nDustType), nDustType, outPhoton%stokes)
 
