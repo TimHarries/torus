@@ -11,7 +11,7 @@
 
 module photon_mod
 
-  use photoion_mod
+  use photoion_mod ! test
   use vector_mod            ! the vector maths
   use constants_mod         ! physical constants
   use phasematrix_mod       ! phase matrix manipulation

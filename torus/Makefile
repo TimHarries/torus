@@ -551,7 +551,7 @@ endif
 
 F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  unix_mod.f90  inputs_mod.f90 stateq_mod.f90 utils_mod.f90   gaussian_mod.f90  \
- grid_mod.f90 math_mod.f90  \
+ grid_mod.f90 math_mod.f90  photoion_mod.f90  \
  phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 distortion_mod.f90 \
  image_mod.f90 TTauri_mod.f90 puls_mod.f90 disc_hydro_mod.f90 gas_opacity_mod.f90 \
  torusMain.f90 integratePath.f90 readIntPro.f90 \
@@ -561,7 +561,7 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  fillGridTio.f90 fillGridRayleigh.f90 fillGridMie.f90 \
  intersectCube.f90 fillGridThomson.f90 cont_read.f90 getMeanMass.f90 \
  input_variables.f90 amr_mod.f90 octal_mod.f90 parameters_mod.f90 diffusion_mod.f90 \
- lucy_mod.f90 jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 photoion_mod.f90 \
+ lucy_mod.f90 jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 \
  wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 pixplot_module.f90 \
  sph_data_class.f90 cluster_class.f90 linked_list_class.f90 timing.f90 \
  isochrone_class.f90 filter_set_class.f90 ostar_mod.f90 formal_solutions.f90 \
@@ -629,6 +629,16 @@ preprocess:
 	ln -sf $(IMAGEF77) image_f77.f
 	ln -sf $(SPECF77) spec_f77.f
 	@echo " ... done"
+        ifeq ($(MK_MPI_SRC), yes)
+	   sed 's/\!$$MPI//g' photoion_mod.f90.raw > photoion_mod.f90
+        else
+	   sed '/\!$$MPI/d'   photoion_mod.f90.raw > photoion_mod.f90 
+        endif
+        ifeq ($(MK_MPI_SRC), yes)
+	   sed 's/\!$$MPI//g' formal_solutions.f90.raw   > formal_solutions.f90
+        else
+	   sed '/\!$$MPI/d'   formal_solutions.f90.raw   > formal_solutions.f90
+        endif
 
 
 depends: preprocess
@@ -732,7 +742,8 @@ torusMain.o: torusMain.f90.raw TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o
 	lucy_mod.o math_mod.o phasematrix_mod.o photon_mod.o puls_mod.o \
 	source_mod.o spectrum_mod.o sph_data_class.o stateq_mod.o \
 	surface_mod.o timing.o unix_mod.o utils_mod.o vector_mod.o \
-	wr104_mod.o  messages_mod.o photoion_mod.o  romanova_class.o
+	wr104_mod.o  messages_mod.o photoion_mod.o  romanova_class.o \
+	starburst_mod.o
 
 
         ifeq ($(MK_MPI_SRC), yes)
