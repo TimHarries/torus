@@ -3640,7 +3640,7 @@ IF ( .NOT. gridConverged ) RETURN
           write(*,*) thisOctal%subcellSize
           write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
-!           DO ; END DO
+           DO ; END DO
           STOP
           boundaryProblem = .TRUE.
           RETURN
@@ -6548,7 +6548,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%nhi(subcell) = 1.e-8
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     thisOctal%inFlow(subcell) = .true.
-    thisOctal%rho(subcell) = 1.e6*mHydrogen
+    thisOctal%rho(subcell) = 1.e4*mHydrogen
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
     thisOctal%nhi(subcell) = 1.e-5
@@ -10123,9 +10123,9 @@ IF ( .NOT. gridConverged ) RETURN
       endif
       if (PRESENT(kappaAbsGas)) kappaAbsGas = (kappaH + kappaHe)
       if (PRESENT(kappaSca)) then
-         kappaSca = kappaSca !+ thisOctal%ne(subcell) * sigmaE * 1.e10
+         kappaSca = kappaSca + thisOctal%ne(subcell) * sigmaE * 1.e10
       endif
-      if (PRESENT(kappaScaGas)) kappaScaGas = tiny(kappaScaGas) ! thisOctal%ne(subcell) * sigmaE * 1.e10 
+      if (PRESENT(kappaScaGas)) kappaScaGas = thisOctal%ne(subcell) * sigmaE * 1.e10 
    endif
    
   end subroutine returnKappa

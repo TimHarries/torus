@@ -129,6 +129,18 @@ contains
 !$MPI    real, save, allocatable  :: buffer_real(:)     
 !$MPI    logical, save  :: first_time = .true.
 !$MPI
+!$MPI     logical :: dcAllocated
+!$MPI     integer, dimension(:), allocatable :: octalsBelongRank
+!$MPI     logical :: rankComplete
+!$MPI     integer :: iRank
+!$MPI     integer :: tag = 0
+!$MPI     integer :: tempInt
+!$MPI     real(double), allocatable :: tempArray(:), tArray(:)
+!$MPI     integer ::  nVoxels
+
+
+
+
 !!$MPI    ! find the number of the processors for the first time.    
 !!$MPI    if (first_time) then
 !$MPI       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
@@ -416,14 +428,104 @@ contains
 
        call  identifyUndersampled(grid%octreeRoot)
 
+
+
+    np = 1
+    my_rank = 1
+    firstTime = .true.
+
+    deMax = -1.d30
+
+    allocate(octalArray(grid%nOctals))
+    nOctal = 0
+    call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+    if (nOctal /= grid%nOctals) then
+       write(*,*) "Screw up in get octal array", nOctal,grid%nOctals
+       stop
+    endif
+
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+!$MPI    
+!$MPI    ! we will use an array to store the rank of the process
+!$MPI    !   which will calculate each octal's variables
+!$MPI    allocate(octalsBelongRank(size(octalArray)))
+!$MPI    
+!$MPI    if (my_rank == 0) then
+!$MPI  !     print *, ' '
+!$MPI  !     print *, 'Gauss-Seidel sweep  computed by ', np-1, ' processors.'
+!$MPI  !     print *, ' '
+!$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
+!$MPI                            setDebug=.false.)
+!$MPI    
+!$MPI    endif
+!$MPI    ! ============================================================================
+
+    
+    ! default loop indices
+    ioctal_beg = 1
+    ioctal_end = nOctal
+
+
+!$MPI if (my_rank /= 0) then
+!$MPI  blockLoop: do     
+!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+!$MPI   if (rankComplete) exit blockLoop 
+
+
+!$OMP PARALLEL DEFAULT(NONE) &
+!$OMP PRIVATE(iOctal, eDens, dCoeff,subcell, thisOctal, octVec, startOctal, r) &
+!$OMP PRIVATE(neighbourOctal, neighbourSubcell, enplus1, firsttime, deltax, deltat) &
+!$OMP PRIVATE(deltaE, octalarray, grade, dcoeffhalf, lambda, bigr) &
+!$OMP SHARED(grid, tol, demax, ioctal_beg, ioctal_end) 
+!$OMP DO SCHEDULE(runtime)
+    if (writeoutput) &
+         write(*,*) "Calculating ionization and thermal equilibria"
+    do iOctal =  iOctal_beg, iOctal_end
+
+       thisOctal => octalArray(iOctal)%content
+
        do i = 1 , 3
-          if (writeoutput) &
-               write(*,*) "Calculating ionization and thermal equilibria",i
-          call calculateIonizationBalance(grid,grid%octreeRoot, epsOverDeltaT)
-          call calculateThermalBalance(grid, grid%octreeRoot, epsOverDeltaT)
-          if (writeoutput) &
-               write(*,*) "Done."
+          call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
+          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
        enddo
+
+    enddo
+!$OMP END DO
+!$OMP BARRIER
+!$OMP END PARALLEL 
+
+!$MPI if (.not.blockHandout) exit blockloop
+!$MPI end do blockLoop       
+!$MPI end if ! (my_rank /= 0)
+
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI
+!$MPI     ! have to send out the 'octalsBelongRank' array
+!$MPI     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
+!$MPI                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI
+!$MPI     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+!$MPI     allocate(tempArray(1:nVoxels))
+!$MPI     allocate(tArray(1:nVoxels))
+!$MPI     tArray = 0.d0
+!$MPI     tempArray = 0.d0
+!$MPI     call packEdens(octalArray, nVoxels, tArray,octalsBelongRank)
+!$MPI     call MPI_ALLREDUCE(tArray,tempArray,nNoxels,MPI_DOUBLE_PRECISION,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI     tArray = tempArray
+!$MPI     call unpackEdens(octalArray, nVoxels, tArray)
+!$MPI     deallocate(tempArray, tArray)
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI  if (my_rank == 1) &
+       call tune(6, "Done.")
+
+
 
 !$MPI  if (my_rank == 1) &
        call tune(6, "Gauss-Seidel sweeps")
@@ -666,15 +768,18 @@ end subroutine photoIonizationloop
           
 
 
-       call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
-            foundSubcell=subcell)
-       if (thisOctal%diffusionApprox(subcell)) then
-          call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp)
-          rVec = subcellCentre(endOctal,endSubcell)
-          octVec = rVec
-          call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
-            foundSubcell=tempsubcell)
-          uHat = randomUnitVector()
+       if (stillinGrid) then
+          
+          call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
+               foundSubcell=subcell)
+          if (thisOctal%diffusionApprox(subcell)) then
+             call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp)
+             rVec = subcellCentre(endOctal,endSubcell)
+             octVec = rVec
+             call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
+                  foundSubcell=tempsubcell)
+             uHat = randomUnitVector()
+          endif
        endif
 
 
@@ -683,7 +788,7 @@ end subroutine photoIonizationloop
 
 ! now if the photon is in the grid choose a new random tau
 
-       if (stillinGrid) then
+       if (stillingrid) then
           call random_number(r)
           tau = -log(r)
           call locate(lamArray, nLambda, real(thisLam), iLam)
@@ -786,6 +891,10 @@ end subroutine photoIonizationloop
        tVec = rVec
        rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
 
+       if (.not.inOctal(grid%octreeRoot, rVec)) then  ! this is only needed due to floating point boundary issues
+          escaped = .true.
+          goto 666
+       endif
 
        octVec = rVec
        call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal, iLambda=iLam,lambda=real(thisLam),&
@@ -1173,6 +1282,7 @@ end subroutine photoIonizationloop
     real(double) :: junk
     real :: underCorrection = 1.
     real :: pops(10)
+    integer :: nIter
     
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1194,6 +1304,7 @@ end subroutine photoIonizationloop
                 if (totalHeating == 0.d0) then
                    thisOctal%temperature(subcell) = 1.e-3
                 else
+                   nIter = 0
                    converged = .false.
 
                    t1 = 1.
@@ -1258,12 +1369,13 @@ end subroutine photoIonizationloop
                          if (abs((t1-t2)/t1) .le. 1.e-2) then
                             converged = .true.
                          endif
-                      
+                         niter = niter + 1
                       enddo
                    endif
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = &
                         max(thisOctal%temperature(subcell) + underCorrection * deltaT,1.e-3)
+                   write(*,*) thisOctal%temperature(subcell), niter
                 endif
              else
  !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
@@ -3563,6 +3675,60 @@ end subroutine readHeIIrecombination
 
      
   end subroutine refineLambdaArray
+
+!$MPI      subroutine packTemperatures(octalArray, nTemps, tArray, octalsBelongRank)
+!$MPI    include 'mpif.h'
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: octalsBelongRank(:)
+!$MPI        integer :: nTemps
+!$MPI        real(double) :: tArray(:)
+!$MPI        integer :: iOctal, iSubcell, my_rank, ierr
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nTemps = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI                 nTemps = nTemps + 1
+!$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
+!$MPI                   tArray(nTemps) = octalArray(iOctal)%content%temperature(iSubcell)
+!$MPI                 else 
+!$MPI                   tArray(nTemps) = 0.d0
+!$MPI                 endif
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine packTemperatures
+
+!$MPI      subroutine unpackTemperatures(octalArray, nTemps, tArray)
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: nTemps
+!$MPI        real(double) :: tArray(:)
+!$MPI        integer :: iOctal, iSubcell
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nTemps = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI                
+!$MPI                 nTemps = nTemps + 1
+!$MPI                 octalArray(iOctal)%content%temperature(iSubcell) = tArray(nTemps)
+!$MPI          
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine unpackTemperatures
+
 
 end module
 
