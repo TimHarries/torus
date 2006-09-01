@@ -14,6 +14,7 @@ use diffusion_mod
 implicit none
 
 private :: intersectcubeamr
+!$MPI private :: updateGridMPIphoto
 
 type SAHAMILNETABLE
    integer :: nFreq 
@@ -112,6 +113,9 @@ contains
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
     integer :: iMonte_beg, iMonte_end, nSCat
+    type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+    integer :: np, iOctal, iOctal_beg, iOctal_end, nOctal
+
 !$MPI    ! For MPI implementations
 !$MPI  ! For MPI implementations =====================================================
 !$MPI  integer ::   my_rank        ! my processor rank
@@ -131,11 +135,8 @@ contains
 !$MPI
 !$MPI     logical :: dcAllocated
 !$MPI     integer, dimension(:), allocatable :: octalsBelongRank
-!$MPI     logical :: rankComplete
 !$MPI     integer :: iRank
-!$MPI     integer :: tag = 0
-!$MPI     integer :: tempInt
-!$MPI     real(double), allocatable :: tempArray(:), tArray(:)
+!$MPI     real, allocatable :: tempArray(:), tArray(:)
 !$MPI     integer ::  nVoxels
 
 
@@ -415,8 +416,9 @@ contains
 !$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
-!$MPI       call updateGridMPI(grid)
+!$MPI       call updateGridMPIphoto(grid)
 
+!$MPI       if(my_rank == 0) write(*,*) "Done update_octal_MPI"
 
 
 
@@ -433,8 +435,6 @@ contains
     np = 1
     my_rank = 1
     firstTime = .true.
-
-    deMax = -1.d30
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -456,11 +456,8 @@ contains
 !$MPI    allocate(octalsBelongRank(size(octalArray)))
 !$MPI    
 !$MPI    if (my_rank == 0) then
-!$MPI  !     print *, ' '
-!$MPI  !     print *, 'Gauss-Seidel sweep  computed by ', np-1, ' processors.'
-!$MPI  !     print *, ' '
-!$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            setDebug=.false.)
+!$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=10,tag=tag,&
+!$MPI                            setDebug=.true.)
 !$MPI    
 !$MPI    endif
 !$MPI    ! ============================================================================
@@ -470,19 +467,16 @@ contains
     ioctal_beg = 1
     ioctal_end = nOctal
 
+!$MPI  if (my_rank == 1) &
+       call tune(6, "Temperature corrections")
+
 
 !$MPI if (my_rank /= 0) then
 !$MPI  blockLoop: do     
-!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.true.)
 !$MPI   if (rankComplete) exit blockLoop 
 
 
-!$OMP PARALLEL DEFAULT(NONE) &
-!$OMP PRIVATE(iOctal, eDens, dCoeff,subcell, thisOctal, octVec, startOctal, r) &
-!$OMP PRIVATE(neighbourOctal, neighbourSubcell, enplus1, firsttime, deltax, deltat) &
-!$OMP PRIVATE(deltaE, octalarray, grade, dcoeffhalf, lambda, bigr) &
-!$OMP SHARED(grid, tol, demax, ioctal_beg, ioctal_end) 
-!$OMP DO SCHEDULE(runtime)
     if (writeoutput) &
          write(*,*) "Calculating ionization and thermal equilibria"
     do iOctal =  iOctal_beg, iOctal_end
@@ -491,18 +485,17 @@ contains
 
        do i = 1 , 3
           call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
-          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+!          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
        enddo
 
     enddo
-!$OMP END DO
-!$OMP BARRIER
-!$OMP END PARALLEL 
 
 !$MPI if (.not.blockHandout) exit blockloop
 !$MPI end do blockLoop       
 !$MPI end if ! (my_rank /= 0)
 
+
+!$MPI write(*,*) "starting temp dist"
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI
 !$MPI     ! have to send out the 'octalsBelongRank' array
@@ -511,24 +504,27 @@ contains
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI
 !$MPI     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+!$MPI write(*,*) "octalsbelong rank sent out",nvoxels,noctal
 !$MPI     allocate(tempArray(1:nVoxels))
 !$MPI     allocate(tArray(1:nVoxels))
 !$MPI     tArray = 0.d0
 !$MPI     tempArray = 0.d0
-!$MPI     call packEdens(octalArray, nVoxels, tArray,octalsBelongRank)
-!$MPI     call MPI_ALLREDUCE(tArray,tempArray,nNoxels,MPI_DOUBLE_PRECISION,&
+!$MPI write(*,*) "calling pack temperatures"
+!$MPI     call packTemperatures(octalArray, nVoxels, tArray,octalsBelongRank)
+!$MPI write(*,*) "calling allreduce"
+!$MPI     call MPI_ALLREDUCE(tArray,tempArray,nVoxels,MPI_REAL,&
 !$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
 !$MPI     tArray = tempArray
-!$MPI     call unpackEdens(octalArray, nVoxels, tArray)
+!$MPI write(*,*) "calling unpack"
+!$MPI     call unpackTemperatures(octalArray, nVoxels, tArray)
 !$MPI     deallocate(tempArray, tArray)
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI  if (my_rank == 1) &
-       call tune(6, "Done.")
+!$MPI write(*,*) "done all"
 
 
 
 !$MPI  if (my_rank == 1) &
-       call tune(6, "Gauss-Seidel sweeps")
+       call tune(6, "Temperature corrections")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
 !$MPI       if (my_rank==0) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
@@ -1237,7 +1233,7 @@ end subroutine photoIonizationloop
     enddo
   end subroutine getHbetaluminosity
 
-  recursive subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT)
+  subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -1246,28 +1242,21 @@ end subroutine photoIonizationloop
     type(OCTALVECTOR) :: rVec
     
     do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call calculateIonizationBalance(grid, child, epsOverDeltaT)
-                exit
-             end if
-          end do
-       else
+
+       if (.not.thisOctal%hasChild(subcell)) then
+
           if (thisOctal%inflow(subcell)) then
              if (.not.thisOctal%undersampled(subcell)) then
                 call solveIonizationBalance(grid, thisOctal, subcell, thisOctal%temperature(subcell), epsOverdeltaT)
              else
-!                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
           endif
        endif
     enddo
   end subroutine calculateIonizationBalance
 
-  recursive subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+  subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -1284,65 +1273,41 @@ end subroutine photoIonizationloop
     real :: pops(10)
     integer :: nIter
     
+
     do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call calculateThermalBalance(grid, child, epsOverDeltaT)
-                exit
-             end if
-          end do
-       else
+
+       if (.not.thisOctal%hasChild(subcell)) then
+          
           if (thisOctal%inflow(subcell)) then
              if (.not.thisOctal%undersampled(subcell)) then
-
-
+                
+                
                 call getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating, totalHeating, epsOverDeltaT)
-
+                
                 if (totalHeating == 0.d0) then
                    thisOctal%temperature(subcell) = 1.e-3
                 else
                    nIter = 0
                    converged = .false.
-
+                   
                    t1 = 1.
                    t2 = 100000.
                    found = .true.
-
+                   
                    if (found) then
                       y1 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) &
                            - totalHeating)
                       y2 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2) &
                            - totalHeating)
                       if (y1*y2 > 0.d0) then
-!                         do i = 1, 100
-!                            t1 = 40000.*real(i-1)/99.
-!                            y1 = (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) &
-!                                 - totalHeating)
-!                            write(*,*) t1,y1
-!                         enddo
-
-
-
-
                          if (HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1) > totalHeating) then
                             tm = t1
                          else
                             tm  = t2
                          endif
-!                         write(*,*) "t1", &
-!                              t1,HHecooling(grid, thisOctal, subcell, epsOverDeltat,t1), &
-!                              totalHeating,thisOctal%rho(subcell)
-
-!                         write(*,*) "t2", &
-!                              t2,HHecooling(grid, thisOctal, subcell, epsOverDeltat,t2), &
-!                              totalHeating,thisOctal%rho(subcell)
-!                         tm = t1
                          converged = .true.
                       endif
-                   
+                      
                       ! Find root of heating and cooling by bisection
                       
                       do while(.not.converged)
@@ -1375,10 +1340,10 @@ end subroutine photoIonizationloop
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = &
                         max(thisOctal%temperature(subcell) + underCorrection * deltaT,1.e-3)
-                   write(*,*) thisOctal%temperature(subcell), niter
+                   !             write(*,*) thisOctal%temperature(subcell), niter
                 endif
              else
- !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
+                !                write(*,*) "Undersampled cell",thisOctal%ncrossings(subcell)
              endif
           endif
        endif
@@ -3221,7 +3186,7 @@ subroutine readHeIIrecombination()
   close(40)
 end subroutine readHeIIrecombination
 
-!$MPI  subroutine updateGridMPI(grid)
+!$MPI  subroutine updateGridMPIphoto(grid)
 !$MPI    implicit none
 !$MPI    include 'mpif.h'
 !$MPI    type(gridtype) :: grid
@@ -3281,9 +3246,9 @@ end subroutine readHeIIrecombination
 !$MPI    nCrossings = tempRealArray 
 !$MPI
 !$MPI    tempDoubleArray = 0.0
-!$MPI    call MPI_ALLREDUCE(distanceGrid,tempRealArray,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI    call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
 !$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI    distanceGrid = tempRealArray 
+!$MPI    distanceGrid = tempDoubleArray 
 !$MPI    
 !$MPI    deallocate(tempRealArray, tempDoubleArray)
 !$MPI     
@@ -3294,7 +3259,7 @@ end subroutine readHeIIrecombination
 !$MPI
 !$MPI    deallocate(nCrossings, photoIonCoeff, hHeating, heHeating, distanceGrid)
 !$MPI
-!$MPI  end subroutine updateGridMPI
+!$MPI  end subroutine updateGridMPIphoto
 
   recursive subroutine packvalues(thisOctal,nIndex,nCrossings, photoIonCoeff, hHeating, HeHeating, distanceGrid)
   type(octal), pointer   :: thisOctal
@@ -3681,7 +3646,7 @@ end subroutine readHeIIrecombination
 !$MPI        type(OCTALWRAPPER) :: octalArray(:)
 !$MPI        integer :: octalsBelongRank(:)
 !$MPI        integer :: nTemps
-!$MPI        real(double) :: tArray(:)
+!$MPI        real :: tArray(:)
 !$MPI        integer :: iOctal, iSubcell, my_rank, ierr
 !$MPI        type(OCTAL), pointer :: thisOctal
 !$MPI
@@ -3690,6 +3655,7 @@ end subroutine readHeIIrecombination
 !$MPI       ! Update the edens values of grid computed by all processors.
 !$MPI       !
 !$MPI       nTemps = 0
+!$MPI write(*,*) "size octal array",SIZE(octalarray)
 !$MPI       do iOctal = 1, SIZE(octalArray)
 !$MPI
 !$MPI          thisOctal => octalArray(iOctal)%content
@@ -3697,7 +3663,7 @@ end subroutine readHeIIrecombination
 !$MPI          do iSubcell = 1, thisOctal%maxChildren
 !$MPI                 nTemps = nTemps + 1
 !$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
-!$MPI                   tArray(nTemps) = octalArray(iOctal)%content%temperature(iSubcell)
+!$MPI                   tArray(nTemps) = thisOctal%temperature(isubcell)
 !$MPI                 else 
 !$MPI                   tArray(nTemps) = 0.d0
 !$MPI                 endif
@@ -3708,7 +3674,7 @@ end subroutine readHeIIrecombination
 !$MPI      subroutine unpackTemperatures(octalArray, nTemps, tArray)
 !$MPI        type(OCTALWRAPPER) :: octalArray(:)
 !$MPI        integer :: nTemps
-!$MPI        real(double) :: tArray(:)
+!$MPI        real :: tArray(:)
 !$MPI        integer :: iOctal, iSubcell
 !$MPI        type(OCTAL), pointer :: thisOctal
 !$MPI
@@ -3723,7 +3689,7 @@ end subroutine readHeIIrecombination
 !$MPI          do iSubcell = 1, thisOctal%maxChildren
 !$MPI                
 !$MPI                 nTemps = nTemps + 1
-!$MPI                 octalArray(iOctal)%content%temperature(iSubcell) = tArray(nTemps)
+!$MPI                 thisOctal%temperature(iSubcell) = tArray(nTemps)
 !$MPI          
 !$MPI          end do
 !$MPI       end do

@@ -273,7 +273,7 @@ contains
        integer :: nMass
        real(double) :: initMass
        character(len=*) :: thisfile
-       character(len=80) :: tFile, datadirectory
+       character(len=200) :: tFile, datadirectory
        integer :: nt, i
        thisTable%initialMass(nMass) = initMass
        
@@ -317,7 +317,7 @@ contains
        real(double) :: t
        real :: loggArray(11)
        logical, save :: firstTime = .true.
-       character(len=80) :: thisFile, dataDirectory
+       character(len=200) :: thisFile, dataDirectory
        logical :: ok 
        integer :: nKurucz
        character(len=*) :: kLabel(:)
@@ -400,7 +400,7 @@ contains
        character(len=*) :: label(:)
        type(SPECTRUMTYPE) :: spectrum(:)
        integer :: nFiles
-       character(len=80) :: tfile,fluxfile,dataDirectory
+       character(len=200) :: tfile,fluxfile,dataDirectory
        logical :: ok
        integer :: i
 
