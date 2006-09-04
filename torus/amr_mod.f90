@@ -6541,14 +6541,14 @@ IF ( .NOT. gridConverged ) RETURN
     r = modulus(rVec)
 
     thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
-    thisOctal%temperature(subcell) = 10.
+    thisOctal%temperature(subcell) = 5000.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
     thisOctal%nhi(subcell) = 1.e-8
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     thisOctal%inFlow(subcell) = .true.
-    thisOctal%rho(subcell) = 1.e4*mHydrogen
+    thisOctal%rho(subcell) = 1.e2*mHydrogen
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = thisOctal%nh(subcell)
     thisOctal%nhi(subcell) = 1.e-5
@@ -12405,7 +12405,8 @@ IF ( .NOT. gridConverged ) RETURN
              end if
           end do
        else
-          if (thisOctal%rho(subcell)*cellVolume(thisOctal, subcell) > limitScalar) then
+          if (thisOctal%nDepth < 5) then
+!          if (thisOctal%rho(subcell)*cellVolume(thisOctal, subcell) > limitScalar) then
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=.true., interp=.false.)
              ! find the child
@@ -12416,22 +12417,22 @@ IF ( .NOT. gridConverged ) RETURN
                 endif
              enddo
 
-             allocate(r(1:thisOctal%maxChildren), s(1:thisOctal%maxChildren))
-             call random_number(r)
-             tot = sum(r)
-             mean = tot / real(thisOctal%maxChildren)
-             r = r / mean
-             rmin = minval(r)
-             rmax = maxval(r)
-             fac = (afac*rmin-rmax)/(1.-afac)
-             s = r + fac
-             tot=SUM(s)
-             s = s / tot
-             do j = 1, thisOctal%maxChildren
-                child%rho(j) = s(j) * thisOctal%rho(subcell) * &
-                     cellVolume(thisOctal, subcell)/cellVolume(child,j)
-             enddo
-             deallocate(r, s)
+!             allocate(r(1:thisOctal%maxChildren), s(1:thisOctal%maxChildren))
+!             call random_number(r)
+!             tot = sum(r)
+!             mean = tot / real(thisOctal%maxChildren)
+!             r = r / mean
+!             rmin = minval(r)
+!             rmax = maxval(r)
+!             fac = (afac*rmin-rmax)/(1.-afac)
+!             s = r + fac
+!             tot=SUM(s)
+!             s = s / tot
+!             do j = 1, thisOctal%maxChildren
+!                child%rho(j) = s(j) * thisOctal%rho(subcell) * &
+!                     cellVolume(thisOctal, subcell)/cellVolume(child,j)
+!             enddo
+!             deallocate(r, s)
              converged = .false.
              exit
           endif

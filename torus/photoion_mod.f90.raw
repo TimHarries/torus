@@ -137,6 +137,7 @@ contains
 !$MPI     integer, dimension(:), allocatable :: octalsBelongRank
 !$MPI     integer :: iRank
 !$MPI     real, allocatable :: tempArray(:), tArray(:)
+!$MPI     real(double), allocatable :: tempArrayd(:), tArrayd(:)
 !$MPI     integer ::  nVoxels
 
 
@@ -433,7 +434,7 @@ contains
 
 
     np = 1
-    my_rank = 1
+!$MPI    my_rank = 1
     firstTime = .true.
 
     allocate(octalArray(grid%nOctals))
@@ -468,7 +469,7 @@ contains
     ioctal_end = nOctal
 
 !$MPI  if (my_rank == 1) &
-       call tune(6, "Temperature corrections")
+       call tune(6, "Temperature/ion corrections")
 
     if (writeoutput) &
          write(*,*) "Calculating ionization and thermal equilibria"
@@ -505,14 +506,39 @@ contains
 !$MPI     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
 !$MPI     allocate(tempArray(1:nVoxels))
 !$MPI     allocate(tArray(1:nVoxels))
+!$MPI     allocate(tempArrayd(1:nVoxels))
+!$MPI     allocate(tArrayd(1:nVoxels))
 !$MPI     tArray = 0.d0
 !$MPI     tempArray = 0.d0
+!$MPI     tArrayd = 0.d0
+!$MPI     tempArrayd = 0.d0
 !$MPI     call packTemperatures(octalArray, nVoxels, tArray,octalsBelongRank)
 !$MPI     call MPI_ALLREDUCE(tArray,tempArray,nVoxels,MPI_REAL,&
 !$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
 !$MPI     tArray = tempArray
 !$MPI     call unpackTemperatures(octalArray, nVoxels, tArray)
-!$MPI     deallocate(tempArray, tArray)
+!$MPI     tArray = 0.d0
+!$MPI     tempArray = 0.d0
+!$MPI     call packne(octalArray, nVoxels, tArrayd,octalsBelongRank)
+!$MPI     call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI     tArrayd = tempArrayd
+!$MPI     call unpackne(octalArray, nVoxels, tArrayd)
+!$MPI     do i = 1, grid%nIon
+!$MPI       tArrayd = 0.d0
+!$MPI       tempArrayd = 0.d0
+!$MPI       call packIonFrac(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+!$MPI       call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI       tArrayd = tempArrayd
+!$MPI       call unpackIonFrac(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+!$MPI     enddo
+
+
+
+
+
+!$MPI     deallocate(tempArray, tArray, tempArrayd, tArrayd)
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
 !$MPI deallocate(octalsBelongRank)
@@ -522,7 +548,7 @@ contains
          write(*,*) "Finished calculating ionization and thermal equilibria"
 
 !$MPI  if (my_rank == 1) &
-       call tune(6, "Temperature corrections")
+       call tune(6, "Temperature/ion corrections")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
 !$MPI       if (my_rank==0) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
@@ -3657,7 +3683,6 @@ end subroutine readHeIIrecombination
 !$MPI       ! Update the edens values of grid computed by all processors.
 !$MPI       !
 !$MPI       nTemps = 0
-!$MPI write(*,*) "size octal array",SIZE(octalarray)
 !$MPI       do iOctal = 1, SIZE(octalArray)
 !$MPI
 !$MPI          thisOctal => octalArray(iOctal)%content
@@ -3700,6 +3725,123 @@ end subroutine readHeIIrecombination
 !$MPI          end do
 !$MPI       end do
 !$MPI     end subroutine unpackTemperatures
+!$MPI
+!$MPI      subroutine packNe(octalArray, nTemps, tArray, octalsBelongRank)
+!$MPI    include 'mpif.h'
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: octalsBelongRank(:)
+!$MPI        integer :: nTemps
+!$MPI        real(double) :: tArray(:)
+!$MPI        integer :: iOctal, iSubcell, my_rank, ierr
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nTemps = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
+!$MPI                 nTemps = nTemps + 1
+!$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
+!$MPI                   tArray(nTemps) = thisOctal%ne(isubcell)
+!$MPI                 else 
+!$MPI                   tArray(nTemps) = 0.d0
+!$MPI                 endif
+!$MPI              endif
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine packNe
+
+!$MPI      subroutine unpackNe(octalArray, nTemps, tArray)
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: nTemps
+!$MPI        real(double) :: tArray(:)
+!$MPI        integer :: iOctal, iSubcell
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nTemps = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI                
+!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
+!$MPI                 nTemps = nTemps + 1
+!$MPI                 thisOctal%ne(iSubcell) = tArray(nTemps)
+!$MPI              endif
+!$MPI          
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine unpackne
+
+!$MPI      subroutine packIonFrac(octalArray, nTemps, tArray, octalsBelongRank, iIon)
+!$MPI    include 'mpif.h'
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: octalsBelongRank(:)
+!$MPI        integer :: nTemps
+!$MPI        real(double) :: tArray(:)
+!$MPI        integer :: iOctal, iSubcell, my_rank, ierr
+!$MPI        integer :: iIon
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nTemps = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
+!$MPI                 nTemps = nTemps + 1
+!$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
+!$MPI                   tArray(nTemps) = thisOctal%ionFrac(isubcell, iIon)
+!$MPI                 else 
+!$MPI                   tArray(nTemps) = 0.d0
+!$MPI                 endif
+!$MPI              endif
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine packIonFrac
+
+!$MPI      subroutine unpackIonFrac(octalArray, nTemps, tArray, octalsBelongRank, iIon)
+!$MPI    include 'mpif.h'
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: octalsBelongRank(:)
+!$MPI        integer :: nTemps
+!$MPI        real(double) :: tArray(:)
+!$MPI        integer :: iOctal, iSubcell, my_rank, ierr
+!$MPI        integer :: iIon
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nTemps = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
+!$MPI                 nTemps = nTemps + 1
+!$MPI                 thisOctal%ionFrac(isubcell, iIon) = tArray(nTemps) 
+!$MPI              endif
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine unpackIonFrac
 
 
 end module
