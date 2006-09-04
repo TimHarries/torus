@@ -2847,14 +2847,17 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
 
 
         call phfit2(grid%ion(iIon)%z, grid%ion(iIon)%n, grid%ion(iIon)%outerShell , e , hxsec)
-        
-        if (thisOctal%temperature(subcell) > 1.) then
-           jnu = statisticalWeight(k) * ((hcgs*freq(i)**3)/(cSpeed**2)) * &
-                ((hcgs**2) /(twoPi*mElectron*Kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
-                dble(hxsec/1.d10) *  exp(-hcgs*(freq(i)-grid%ion(iIon)%nuThresh)/(kerg*thisOctal%temperature(subcell)))
-           jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance)
-        else
-           jnu = tiny(jnu)
+        if (hxSec > 0.) then
+           if (thisOctal%temperature(subcell) > 100.) then
+              jnu = statisticalWeight(k) * ((hcgs*freq(i)**3)/(cSpeed**2)) * &
+                   ((hcgs**2) /(twoPi*mElectron*Kerg*thisOctal%temperature(subcell)))**(1.5d0) * &
+                   dble(hxsec/1.d10) *  &
+                   exp(-hcgs*(freq(i)-grid%ion(iIon)%nuThresh)/(kerg*thisOctal%temperature(subcell)))
+              jnu = jnu * thisOctal%ne(subcell) *(thisOctal%nh(subcell) * &
+                   thisOctal%ionFrac(subcell,iIon+1) * grid%ion(iIon)%abundance)
+           else
+              jnu = tiny(jnu)
+           endif
         endif
 
         spectrum(i) = spectrum(i) + jnu * dFreq(i) * fourPi 
