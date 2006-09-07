@@ -4449,23 +4449,23 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       split = .FALSE.
       nr1 = 5
-      nr2 = 50
+      nr2 = 100
       rGrid(1) = 1.
-      rGrid(2) = 1.04
-      rGrid(3) = 1.08
-      rGrid(4) = 1.050
-      rGrid(5) = 1.1
+      rGrid(2) = 1.01
+      rGrid(3) = 1.02
+      rGrid(4) = 1.04
+      rGrid(5) = 1.06
       rGrid(1:nr1) = log10(rGrid(1:nr1)*grid%rInner)
       nr = nr1 + nr2
 !      do i = 1, nr1
 !         rgrid(i) = log10(grid%rInner)+dble(i-1)*(log10(4.*grid%rInner)-log10(grid%rInner))/dble(nr1-1)
 !      end do
       do i = 1, nr2
-         rgrid(nr1+i) = log10(1.1*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.1*grid%rInner))/dble(nr2)
+         rgrid(nr1+i) = log10(1.06*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.1*grid%rInner))/dble(nr2)
       end do
       rgrid(1:nr) = 10.d0**rgrid(1:nr)
       r = modulus(cellcentre)
-      if (thisOctal%nDepth < 6) split = .true.
+      if (thisOctal%nDepth < 7) split = .true.
       if ((r < grid%rOuter).and.(r > grid%rinner*0.9)) then
          call locate(rGrid, nr, r, i)      
          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
@@ -6433,16 +6433,16 @@ IF ( .NOT. gridConverged ) RETURN
 
 ! for test of diffusion zone
 
-    thisOctal%diffusionApprox(subcell) = .false.
-    if ((r > grid%rinner).and.(r < grid%rinner*2.)) then
-       thisOctal%temperature(subcell) = 1000.
-    endif
-    if ((r > grid%rOuter*0.5).and.(r < grid%rOuter)) then
-       thisOctal%temperature(subcell) = 100.
-    endif
-    if ((r > grid%rinner*2.).and.(r < 0.5*grid%rOuter)) then
-       thisOctal%diffusionApprox(subcell) = .true.
-    endif
+!    thisOctal%diffusionApprox(subcell) = .false.
+!    if ((r > grid%rinner).and.(r < grid%rinner*2.)) then
+!       thisOctal%temperature(subcell) = 1000.
+!    endif
+!    if ((r > grid%rOuter*0.5).and.(r < grid%rOuter)) then
+!       thisOctal%temperature(subcell) = 100.
+!    endif
+!    if ((r > grid%rinner*2.).and.(r < 0.5*grid%rOuter)) then
+!       thisOctal%diffusionApprox(subcell) = .true.
+!    endif
     
 
   end subroutine calcTestDensity
@@ -12319,7 +12319,6 @@ IF ( .NOT. gridConverged ) RETURN
        END IF
        
     end IF
-
 
 
     CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)

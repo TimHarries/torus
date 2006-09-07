@@ -5424,6 +5424,8 @@ contains
     grid%geometry = "testamr"
 
     grid%rCore = rCore / 1.e10
+    grid%rStar1 = rCore / 1.e10
+    grid%starpos1 = VECTOR(1.e-30,1.e-30,1.e-30)
     grid%lCore = fourPi * stefanBoltz * grid%rCore**2 * 1.e20 * teff**4
     grid%rInner = rInner / 1.e10
     grid%rOuter = rOuter / 1.e10

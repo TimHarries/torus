@@ -3128,7 +3128,7 @@
      ! THIS SHOULD BE DONE IN INITAMRGRID ROUTINE AS SOME GEOMETRY HAS
      ! DONE SO.
      if (geometry /= "cmfgen") then	
-        grid%rStar1 = rcore       
+        grid%rStar1 = rcore/1.e10
      end if
      !
      ! Performs various optical depth tests here...
