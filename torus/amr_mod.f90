@@ -4451,22 +4451,22 @@ IF ( .NOT. gridConverged ) RETURN
       nr1 = 5
       nr2 = 100
       rGrid(1) = 1.
-      rGrid(2) = 1.01
-      rGrid(3) = 1.02
-      rGrid(4) = 1.04
-      rGrid(5) = 1.06
+      rGrid(2) = 1.001
+      rGrid(3) = 1.002
+      rGrid(4) = 1.004
+      rGrid(5) = 1.006
       rGrid(1:nr1) = log10(rGrid(1:nr1)*grid%rInner)
       nr = nr1 + nr2
 !      do i = 1, nr1
 !         rgrid(i) = log10(grid%rInner)+dble(i-1)*(log10(4.*grid%rInner)-log10(grid%rInner))/dble(nr1-1)
 !      end do
       do i = 1, nr2
-         rgrid(nr1+i) = log10(1.06*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.1*grid%rInner))/dble(nr2)
+         rgrid(nr1+i) = log10(1.006*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.1*grid%rInner))/dble(nr2)
       end do
       rgrid(1:nr) = 10.d0**rgrid(1:nr)
       r = modulus(cellcentre)
       if (thisOctal%nDepth < 7) split = .true.
-      if ((r < grid%rOuter).and.(r > grid%rinner*0.9)) then
+      if ((r < grid%rOuter).and.(r > grid%rinner*0.5)) then
          call locate(rGrid, nr, r, i)      
          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       endif
