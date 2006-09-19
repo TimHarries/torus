@@ -310,6 +310,51 @@ contains
     GO TO 10
   END subroutine sortdouble
 
+  SUBROUTINE SORTdouble2(N,RA,rb)
+    INTEGER N, L, IR, I, J
+    real(double) RRA, rrb
+    real(double) RA(N),rb(n)
+    L=N/2+1
+    IR=N
+10  CONTINUE
+    IF(L.GT.1)THEN
+       L=L-1
+       RRA=RA(L)
+       rrb = rb(L)
+    ELSE
+       RRA=RA(IR)
+       rrb=rb(ir)
+       RA(IR)=RA(1)
+       rb(ir) = rb(1)
+       IR=IR-1
+       IF(IR.EQ.1)THEN
+          RA(1)=RRA
+          rb(1) = rrb
+          RETURN
+       ENDIF
+    ENDIF
+    I=L
+    J=L+L
+20  IF(J.LE.IR)THEN
+       IF(J.LT.IR)THEN
+          IF(RA(J).LT.RA(J+1))J=J+1
+       ENDIF
+       IF(RRA.LT.RA(J))THEN
+          RA(I)=RA(J)
+          rb(i)=rb(j)
+          I=J
+          J=J+J
+       ELSE
+          J=IR+1
+       ENDIF
+       GO TO 20
+    ENDIF
+    RA(I)=RRA
+    rb(i) = rrb
+    GO TO 10
+  END subroutine sortdouble2
+
+
   ! sort an array by indexing
 
   PURE SUBROUTINE INDEXX(N,ARRIN,INDX)

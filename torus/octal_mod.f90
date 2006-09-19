@@ -94,6 +94,7 @@ MODULE octal_mod
     real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
+    real(double), dimension(8)         :: microturb
     TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
     real(double), dimension(8) :: eDens
@@ -119,6 +120,10 @@ MODULE octal_mod
     real(double), DIMENSION(8) :: Ne            ! electron density
     real(double)               :: phi, dphi
     real(double), DIMENSION(8) :: NH            ! total H no density
+    real(double), DIMENSION(8) :: NH2            ! total H2 no density
+    real(double), pointer :: molecularLevel(:,:) => null() ! molecular level populations
+    real(double), pointer :: jnu(:,:) => null() ! molecular level populations
+    real(double), pointer :: jnugrid(:,:) => null() ! molecular level populations
     real(double), DIMENSION(8) :: NHI            ! neutral H
     real(double), DIMENSION(8) :: NHII            ! HII
     real(double), DIMENSION(8) :: NHeI            ! HeI

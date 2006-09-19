@@ -163,6 +163,9 @@ CONTAINS
     CASE ("benchmark")
        CALL benchmarkDisk(thisOctal, subcell ,grid)
 
+    CASE ("molebench")
+       CALL molecularBenchmark(thisOctal, subcell ,grid)
+
     CASE ("shakara","aksco")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
@@ -289,6 +292,8 @@ CONTAINS
     grid%octreeRoot%rho = 1.e-30
     grid%octreeRoot%N = -9.9e9
     grid%octreeRoot%Ne = -9.9e9
+    grid%octreeRoot%nh2 = 1.d-30
+    grid%octreeRoot%microturb = 1.d-10
     grid%octreeRoot%nTot = -9.9e9
     grid%octreeRoot%changed = .false.
     grid%octreeRoot%dustType = 1
@@ -565,6 +570,7 @@ CONTAINS
     parent%child(newChildIndex)%temperature = 3.0
     parent%child(newChildIndex)%nTot = 1.e-30
     parent%child(newChildIndex)%eDens = 1.d-10
+    parent%child(newChildIndex)%microturb = 1.d-10
     parent%child(newChildIndex)%changed = .false.
     parent%child(newChildIndex)%diffusionApprox = .false.
     parent%child(newChildindex)%nDiffusion  = 0.
@@ -1027,7 +1033,8 @@ CONTAINS
         gridConverged = .TRUE.
 
       CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
-           "lexington", "warpeddisc", "whitney","fractal","symbiotic", "starburst")
+           "lexington", "warpeddisc", "whitney","fractal","symbiotic", "starburst", &
+           "molebench")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104")
@@ -4448,13 +4455,16 @@ IF ( .NOT. gridConverged ) RETURN
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       split = .FALSE.
-      nr1 = 5
+      nr1 = 8
       nr2 = 100
-      rGrid(1) = 1.
-      rGrid(2) = 1.001
-      rGrid(3) = 1.002
-      rGrid(4) = 1.004
-      rGrid(5) = 1.006
+      rgrid(1) = 0.1
+      rgrid(2) = 0.2
+      rgrid(3) = 0.5
+      rGrid(4) = 1.
+      rGrid(5) = 1.01
+      rGrid(6) = 1.02
+      rGrid(7) = 1.04
+      rGrid(8) = 1.08
       rGrid(1:nr1) = log10(rGrid(1:nr1)*grid%rInner)
       nr = nr1 + nr2
 !      do i = 1, nr1
@@ -4465,8 +4475,8 @@ IF ( .NOT. gridConverged ) RETURN
       end do
       rgrid(1:nr) = 10.d0**rgrid(1:nr)
       r = modulus(cellcentre)
-      if (thisOctal%nDepth < 7) split = .true.
-      if ((r < grid%rOuter).and.(r > grid%rinner*0.5)) then
+      if (thisOctal%nDepth < 5) split = .true.
+      if (r < grid%rOuter) then
          call locate(rGrid, nr, r, i)      
          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       endif
@@ -4483,8 +4493,10 @@ IF ( .NOT. gridConverged ) RETURN
       if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 0.2)) split = .true.
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
-      
 
+   case("molebench")
+      split = .false.
+      if (thisOctal%nDepth < 4) split = .true.
 
    case("luc_cir3d") 
       if (first_time) then
@@ -6416,7 +6428,7 @@ IF ( .NOT. gridConverged ) RETURN
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
 
-    thisOctal%rho(subcell) = 1.e-20
+    thisOctal%rho(subcell) = 1.e-30
     thisOctal%temperature(subcell) = 30.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .true.
@@ -6732,6 +6744,91 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine benchmarkDisk
+
+  subroutine molecularBenchmark(thisOctal,subcell,grid)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    logical, save :: firsttime = .true.
+    integer, parameter :: nr = 50
+    real,save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr)
+    real :: mu1, r1, t1
+    real(double) :: v1
+    integer :: i
+
+    type(OCTALVECTOR) :: vel
+
+    if (firsttime) then
+       open(31, file="model_1.dat", status="old", form="formatted")
+       do i = nr,1,-1
+          read(31,*) r(i), nh2(i), junk,t(i), v(i) , mu(i)
+       enddo
+       r = r / 1.e10
+       close(31)
+       firsttime = .false.
+    endif
+
+
+    r1 = modulus(subcellCentre(thisOctal,subcell))
+
+    thisOctal%temperature(subcell) = tcbr
+    thisOctal%rho(subcell) = 1.e-30
+    thisOctal%nh2(subcell) = 1.e-30
+    thisOctal%microTurb(subcell) = 1.d-10
+
+    if ((r1 > r(1)).and.(r1 < r(nr))) then
+       call locate(r, nr, r1, i)
+       t1 = (r1 - r(i))/(r(i+1)-r(i))
+       thisOctal%temperature(subcell) = t(i) + t1 * (t(i+1)-t(i))
+       thisOctal%rho(subcell) = (nh2(i) + t1 * (nh2(i+1)-nh2(i)))*2.*mhydrogen
+       thisOctal%nh2(subcell) = nh2(i) + t1 * (nh2(i+1)-nh2(i))
+       v1 = (v(i) + t1 * (v(i+1)-v(i)))*1.d5
+       vel = subcellCentre(thisOctal, subcell)
+       call normalize(vel)
+       thisOctal%velocity(subcell) = (v1 * vel)/cspeed
+       mu1 = mu(i) + t1 * (mu(i+1)-mu(i))
+       thisOctal%microturb(subcell) = max(1.d-10,mu1*(1.d5/cspeed))
+    endif
+   CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
+ 
+  end subroutine molecularBenchmark
+
+
+  TYPE(vector) FUNCTION moleBenchVelocity(point,grid)
+    type(OCTALVECTOR), intent(in) :: point
+    type(OCTALVECTOR) rHat
+    type(GRIDTYPE), intent(in) :: grid
+    logical, save :: firsttime = .true.
+    integer, parameter :: nr = 50
+    integer :: i
+    real,save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr)
+    real :: v1, t1, r1
+    type(VECTOR) :: vel
+    if (firsttime) then
+       open(31, file="model_1.dat", status="old", form="formatted")
+       do i = nr,1,-1
+          read(31,*) r(i), nh2(i), junk,t(i), v(i) , mu(i)
+       enddo
+       r = r / 1.e10
+       close(31)
+       firsttime = .false.
+    endif
+
+    r1 = modulus(point)
+    moleBenchVelocity = VECTOR(0.,0.,0.)
+    if ((r1 > r(1)).and.(r1 < r(nr))) then
+       call locate(r, nr, r1, i)
+       t1 = (r1 - r(i))/(r(i+1)-r(i))
+       v1 = (v(i) + t1 * (v(i+1)-v(i)))*1.d5
+       vel = point
+       call normalize(vel)
+       moleBenchVelocity = (v1/cSpeed) * vel
+    endif
+
+
+  end FUNCTION moleBenchVelocity
+
 
   subroutine assign_melvin(thisOctal,subcell,grid)
 
@@ -7874,11 +7971,18 @@ IF ( .NOT. gridConverged ) RETURN
     dest%underSampled     = source%underSampled
     dest%nDiffusion       = source%nDiffusion
     dest%cornerVelocity   = source%cornerVelocity
+    dest%nh2              = source%nh2
+    dest%microturb        = source%microturb
 
 
     if (associated(source%photoIonCoeff)) then
        allocate(dest%photoIonCoeff(SIZE(source%photoIonCoeff,1),SIZE(source%photoIonCoeff,2)))
        dest%photoIonCoeff          = source%photoIonCoeff
+    endif
+
+    if (associated(source%molecularLevel)) then
+       allocate(dest%molecularLevel(SIZE(source%molecularLevel,1),SIZE(source%molecularLevel,2)))
+       dest%molecularLevel          = source%molecularLevel
     endif
 
     if (associated(source%ionFrac)) then
@@ -12228,7 +12332,7 @@ IF ( .NOT. gridConverged ) RETURN
     ! we will abort tracking a photon just before it reaches the edge of the
     !   simulation space. This is the fraction of the total distance to use:
     real(oct), PARAMETER :: distanceFraction = 0.999_oc 
-    real(double) :: fudgeFac = 0.001d0
+    real(double) :: fudgeFac = 0.1d0
     integer :: nSource_local
 
 

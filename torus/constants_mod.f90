@@ -78,6 +78,9 @@ module constants_mod
 
   real(double), parameter :: aRad = 4.d0 * stefanBoltz / cSpeed
 
+    real(double), parameter :: Tcbr = 2.728d0 !K
+
+
 end module constants_mod
 
 

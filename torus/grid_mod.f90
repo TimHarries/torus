@@ -574,6 +574,9 @@ contains
        grid%rInner = rInner
        grid%rOuter = rOuter
 
+    case("molebench")
+       grid%geometry = "molebench"
+
     case("shakara")
        grid%geometry = "shakara"
        grid%rCore = rCore

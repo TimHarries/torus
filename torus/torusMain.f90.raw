@@ -73,6 +73,8 @@
   use photoion_mod
   use formal_solutions
   use starburst_mod
+  use molecular_mod
+
 !$mpi   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
 !$MPI   !use MPI
@@ -421,7 +423,8 @@
   integer :: nFrac
 
 ! molecular line stuff
-!  type(MOLECULETYPE) :: thisMolecule
+  type(MOLECULETYPE) :: co
+  real(double) :: temp(50)
 
   real(double), allocatable :: flux(:)
   ! FOR DEBUG
@@ -500,7 +503,6 @@
   deallocate(iSeed)
 
 
-
   ! initialize
 
   useNdf = .true.
@@ -559,8 +561,7 @@
 
 !$MPI  if (my_rank/=0) writeoutput = .false.
 
-  
-
+  call readMolecule(co, "hco_plus.dat")
 
   ! get the model parameters
 
@@ -2437,9 +2438,10 @@
        
   end select
 
-  call randomSource(source, nSource, i, xArray, nLambda, initialize=.true.)  
-
-  call writeInfo("Sources set up.",TRIVIAL)
+  if (nSource > 0) then
+     call randomSource(source, nSource, i, xArray, nLambda, initialize=.true.)  
+     call writeInfo("Sources set up.",TRIVIAL)
+  endif
 
 
 
@@ -2532,6 +2534,11 @@
 
 
      call random_seed
+
+     if (molecular) then
+        call molecularLoop(grid, co)
+        stop
+     endif
 
 
 
@@ -4271,7 +4278,6 @@
 
                  tempPhoton = thisPhoton
                  
-                 
                  call scatterPhoton(grid, tempPhoton, outVec, obsPhoton, mie, &
                        miePhase, nDustType, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
 
@@ -4369,6 +4375,7 @@
                     if (ok) then
                        yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*obs_weight
 
+!                       write(*,*) obsphoton%lambda,obsPhoton%stokes%i, obs_weight, nscat
                        statArray(iLambda) = statArray(iLambda) + 1.
                     endif
                     if (doRaman) then
@@ -4491,7 +4498,6 @@
                     endif
                  endif
 
-
                  call scatterPhoton(grid,thisPhoton, zeroVec, outPhoton, mie, &
                        miePhase, nDustType, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
                  thisPhoton = outPhoton
@@ -4558,6 +4564,10 @@
 
 
             enddo
+            
+            if (nscat >= maxScat) then
+               write(*,*) "Photon aborted after ",maxScat, " scatterings"
+            endif
            nTot = nTot + nScat
 
 999  continue  ! escape route for a bad photon
