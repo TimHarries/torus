@@ -122,6 +122,7 @@ MODULE octal_mod
     real(double), DIMENSION(8) :: NH            ! total H no density
     real(double), DIMENSION(8) :: NH2            ! total H2 no density
     real(double), pointer :: molecularLevel(:,:) => null() ! molecular level populations
+    real(double), pointer :: newmolecularLevel(:,:) => null() ! molecular level populations
     real(double), pointer :: jnu(:,:) => null() ! molecular level populations
     real(double), pointer :: jnugrid(:,:) => null() ! molecular level populations
     real(double), DIMENSION(8) :: NHI            ! neutral H

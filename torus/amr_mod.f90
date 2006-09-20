@@ -4259,7 +4259,8 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER               :: i
     real(double) :: thisTau, kappaSca, kappaAbs
     real(double)      :: total_mass
-    real(double)      :: ave_density, rGrid(1000), r, dr
+    real(double), save :: rgrid(1000)
+    real(double)      :: ave_density,  r, dr
     INTEGER               :: nr, nr1, nr2
     real(double)      :: total_opacity, minDensity, maxDensity, thisDensity
     INTEGER               :: nsample = 400
@@ -4495,8 +4496,27 @@ IF ( .NOT. gridConverged ) RETURN
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
 
    case("molebench")
+      cellCentre = subcellCentre(thisOctal, subcell)
       split = .false.
-      if (thisOctal%nDepth < 4) split = .true.
+      if (thisOctal%nDepth < 3) split = .true.
+         nr = 50
+      if (firsttime) then
+         open(31, file="model_1.dat", status="old", form="formatted")
+         do i = nr,1,-1
+            read(31,*) rgrid(i)
+         enddo
+         rgrid = rgrid / 1.e10
+         close(31)
+         firsttime = .false.
+      endif
+      rd = modulus(cellCentre)
+      call locate(rgrid, nr, rd, i)
+      if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
+      if (rd+thisOctal%subcellSize/2.d0 < rgrid(1)) split = .false.
+      if (rd-thisOctal%subcellSize/2.d0 > rgrid(nr)) split = .false.
+
+
+
 
    case("luc_cir3d") 
       if (first_time) then
