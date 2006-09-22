@@ -366,7 +366,7 @@ contains
     direction = randomUnitVector()
     rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
     call random_number(r)
-    deltaV = 0.d0 * thisOctal%microturb(subcell) * (2.d0*r-1.d0)!!!!!!!!!!!!!!!!!!
+    deltaV = 4.d0 * thisOctal%microturb(subcell) * (r-0.d5)!!!!!!!!!!!!!!!!!!
 
     iUpper = thisMolecule%iTransUpper(iTrans)
     iLower = thisMolecule%iTransLower(iTrans)
@@ -442,7 +442,7 @@ contains
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
           tau = tau + dtau
        enddo
-       currentPosition = currentPosition + distArray(ntau) * direction
+       currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
     enddo
     i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)
   end subroutine getRay
@@ -562,6 +562,9 @@ contains
           enddo
        end do
        call swapPops(grid%octreeRoot)
+
+       call writeAmrGrid("molecular_tmp.grid",.false.,grid)
+
        write(*,*) "Dumping results"
        call dumpresults(grid, thisMolecule)
     enddo
@@ -620,5 +623,206 @@ contains
   end subroutine calculateJbar
 
 
+  function intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV) result (i0)
+    type(OCTALVECTOR) :: position, direction, startPosition
+    type(GRIDTYPE) :: grid
+    type(MOLECULETYPE) :: thisMolecule
+    real(double) :: disttoGrid
+    integer :: itrans
+    real(double) :: i0
+    type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
+    integer :: fromSubcell
+    integer :: subcell
+    real(double) :: ds, phi, r
+    type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
+    type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
+    real(double) :: alphanu, snu, jnu
+    integer :: iLower , iUpper
+    real(double) :: dv, deltaV
+    integer :: i, icount
+    real(double) :: distArray(200), tval
+    integer :: nTau
+    real(double) :: nLower, nUpper
+    real(double) :: dTau, etaline, didtau, tau
+    real(double), parameter :: Tcbr = 2.782d0
+    real(double) :: intensityIntegral
+    real(double) :: dvAcrossCell
+
+    distToGrid = distanceToGridFromOutside(grid, position, direction)
+
+    if (distToGrid > 1.e29) then
+       write(*,*) "ray does not intersect grid",position,direction
+       i0 = 0.d0
+       goto 666
+    endif
+
+    iUpper = thisMolecule%iTransUpper(iTrans)
+    iLower = thisMolecule%iTransLower(iTrans)
+
+    currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
+
+    write(*,*) currentPosition,direction
+    i0 = 0.d0
+    intensityIntegral = 0.0
+    tau = 0.d0
+    rayVel = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+
+    thisOctal => grid%octreeRoot
+    icount = 0
+    do while(inOctal(grid%octreeRoot, currentPosition))
+       icount = icount + 1 
+
+       call findSubcellLocal(currentPosition, thisOctal, subcell)
+       call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+
+       write(*,*) "Test",currentPosition,direction,tval,grid%octreeRoot%subcellSize
+       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+       endPosition = currentPosition + tval * direction
+       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+
+       dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
+       dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
+
+       if (dvAcrossCell < 0.1) then
+          ntau = 2
+       else
+          ntau = 5
+       endif
+
+       distArray(1) = 0.d0
+       do i = 2, nTau
+          
+          distArray(i) = tval * dble(i-1)/dble(nTau-1)
+
+          startOctal => thisOctal
+          thisPosition = currentPosition + distArray(i)*direction
+          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+          thisVel= thisVel - rayVel
+
+
+          dv = (thisVel .dot. direction) + deltaV
+
+          alphanu = (hCgs*thisMolecule%transFreq(iTrans)/fourPi) * &
+               phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans)
+
+          nLower = thisOctal%molecularLevel(subcell,iLower) * thisMolecule%abundance * thisOctal%nh2(subcell)
+          nUpper = thisOctal%molecularLevel(subcell,iUpper) * thisMolecule%abundance * thisOctal%nh2(subcell)
+
+          alphanu = alphanu * (nLower * thisMolecule%einsteinBlu(iTrans) - &
+               nUpper * thisMolecule%einsteinBul(iTrans))
+
+          dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
+
+          etaLine = hCgs * thisMolecule%einsteinA(iTrans) * thisMolecule%transFreq(iTrans)
+          etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * thisOctal%molecularLevel(subcell, iUpper)
+          jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans)
+
+
+          if (alphanu /= 0.d0) then
+             snu = jnu/alphanu
+          else
+             snu = tiny(snu)
+          endif
+
+          i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+          tau = tau + dtau
+       enddo
+       currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
+    enddo
+    i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau) ! from far side
+666 continue 
+    i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) ! from nearside
+    write(*,*) icount,i0
+  end function intensityAlongRay
+
+  
+  subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec, distance)
+    type(GRIDTYPE) :: grid
+    type(MOLECULETYPE) :: thisMolecule
+    real(double) :: distance
+    integer :: itrans
+    integer :: nRay
+    type(OCTALVECTOR) :: rayPosition(1000)
+    real(double) :: da(1000), dOmega(1000)
+    type(OCTALVECTOR) :: viewVec
+    real(double) :: deltaV
+    integer :: iv, iray
+    real(double) :: flux, i0
+
+    call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+
+    open(42, file="spectrum.dat",status="unknown",form="formatted")
+    do iv = 1, 20
+       deltaV = 20.e5/cspeed * (2.d0*dble(iv-1)/19.d0-1.d0)
+       
+
+       flux = 0.d0
+       do iRay = 1, nRay
+          i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisMolecule, iTrans, deltaV)
+!          write(*,*) iray,nray,i0, domega(iray)
+          flux = flux + i0 ! * domega(iRay)
+       enddo
+       write(42, *) deltaV*cspeed/1.e5,flux/real(nray)
+    enddo
+    close(42)
+
+  end subroutine calculateMoleculeSpectrum
+
+
+  subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+    type(GRIDTYPE) :: grid
+    integer :: nRay
+    type(OCTALVECTOR) :: rayPosition(:), thisPos, viewVec
+    real(double) :: da(:), dOmega(:), distance
+    real(double) :: rGrid(50), dr(50), phigrid(10), dphi(10)
+    real(double) :: rMax
+    integer :: nr, nphi, ir, iphi
+    real(double) :: r1 , r2, phi1, phi2, phiOffset
+    real(double) :: xPos, yPos, zPos, cosInc, azimuth
+    
+    rmax = 2.d0 * grid%octreeRoot%subcellSize
+    nr = 50
+    nphi = 10
+    nray = 0
+
+    do ir = 1, nr
+       r1 = log10(rmax) * dble(ir-1)/dble(nr)
+       r2 = log10(rmax) * dble(ir)/dble(nr)
+       rgrid(ir) = 0.5d0 * (r1 + r2)
+       dr(ir) = 10.d0**r2-10.d0**r1
+    enddo
+    rGrid(1:nr) = 10.d0**rGrid(1:nr)
+    do iphi = 1, nPhi
+       phi1 = twoPi * dble(iphi-1)/dble(nPhi+1)
+       phi2 = twoPi * dble(iphi)/dble(nPhi+1)
+       phiGrid(iPhi) = 0.5d0 * (phi1 + phi2)
+       dphi(iPhi) = phi2 - phi1
+    enddo
+
+    do ir = 1, nr
+       r1 = rGrid(ir)
+       call random_number(phiOffset)
+       phiOffset = phiOffset * dphi(1)
+       do iPhi = 1, nPhi
+          phi1 = phiGrid(iPhi) + phiOffset
+          if (phi1 > twoPi) phi1 = phi1 - twoPi
+
+          xPos = r1 * sin(phi1)
+          yPos = 0.d0
+          zPos = r1 * cos(phi1)
+
+          thisPos = OCTALVECTOR(xpos, yPos, zPos)
+          cosInc = viewVec .dot. OCTALVECTOR(0.d0, 0.d0, 1.d0)
+          azimuth = atan2(viewVec%y, viewVec%x)
+
+! need to work out angles here!!!!!!!!!!!!!!!!
+
+          nRay = nRay + 1
+          rayposition(nRay) = thisPos + ((-1.d0*distance) * viewVec)
+          da(nRay) = pi*( (r1 + dr(ir))**2 - (r1 - dr(ir))**2) * dphi(iPhi)/twoPi
+          dOmega(nRay) = da(nRay) / (fourPi * distance**2)
+       enddo
+    enddo
+  end subroutine createRayGrid
 
 end module molecular_mod

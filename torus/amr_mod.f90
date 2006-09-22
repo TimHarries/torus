@@ -11499,8 +11499,10 @@ IF ( .NOT. gridConverged ) RETURN
 
    else ! two-d grid case below
 
+      write(*,*) "2d case"
       r1 = subcen%x - thisOctal%subcellSize/2.d0
       r2 = subcen%x + thisOctal%subcellSize/2.d0
+      write(*,*) r1,r2
       d = sqrt(point%x**2+point%y**2)
       xHat = VECTOR(point%x, point%y,0.d0)
       call normalize(xHat)
@@ -11517,9 +11519,10 @@ IF ( .NOT. gridConverged ) RETURN
          x2 = 0.d0
       endif
       distTor2 = max(x1,x2)
+      write(*,*) "r2",x1,x2,distTor2
       
       theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-      cosmu = xHat.dot.direction
+      cosmu = ((-1.d0)*xHat).dot.direction
       mu = acos(max(-1.d0,min(1.d0,cosmu)))
       distTor1 = 1.e30
       if (mu  < theta ) then
@@ -11529,7 +11532,8 @@ IF ( .NOT. gridConverged ) RETURN
             x1 = thisoctal%subcellSize/2.d0
             x2 = 0.d0
          endif
-         distTor1 = max(x1,x2)
+         distTor1 = min(x1,x2)
+      write(*,*) "r1",x1,x2,distTor1
       endif
       
       distToXboundary = min(distTor1, distTor2)
@@ -12614,5 +12618,169 @@ IF ( .NOT. gridConverged ) RETURN
     end do
     
   END SUBROUTINE turn_off_magnetosphere
+
+
+  function distanceToGridFromOutside(grid, posVec, direction) result (tval)
+    type(GRIDTYPE) :: grid
+    type(OCTALVECTOR) :: subcen, direction, posVec, point
+    type(OCTAL), pointer :: thisOctal
+    real(double) :: tval
+   type(OCTALVECTOR) :: norm(6), p3(6), thisNorm
+   real(double) :: distTor1, distTor2, theta, mu
+   real(double) :: distToRboundary, compz,currentZ
+   real(double) :: phi, distToZboundary, ang1, ang2
+   type(OCTALVECTOR) ::  xHat, zHat, rVec
+   integer :: subcell
+   real(double) :: distToSide1, distToSide2, distToSide
+   real(double) ::  compx,disttoxBoundary, currentX
+   real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
+   integer :: i,j
+   logical :: ok, thisOk(6)
+
+    tval = HUGE(tval)
+
+   point = posVec
+
+   subcen = grid%OctreeRoot%centre
+
+    thisOctal => grid%octreeRoot
+
+    if (thisOctal%threed.and.(.not.thisOctal%cylindrical)) then
+
+       write(*,*) " not done yet!"
+       stop
+          ! cube
+
+         ok = .true.
+         
+         norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
+         norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
+         norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+         norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
+         norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
+         norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
+         
+         p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
+         p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
+         p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
+         p3(4) = OCTALVECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
+         p3(5) = OCTALVECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
+         p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
+
+         thisOk = .true.
+         
+         do i = 1, 6
+            
+            denom(i) = norm(i) .dot. direction
+            if (denom(i) /= 0.0d0) then
+               t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
+            else
+               thisOk(i) = .false.
+               t(i) = 0.0d0
+            endif
+            if (t(i) < 0.) thisOk(i) = .false.
+            !      if (denom > 0.) thisOK(i) = .false.
+         enddo
+         
+         
+         j = 0
+         do i = 1, 6
+            if (thisOk(i)) j=j+1
+         enddo
+         
+         if (j == 0) ok = .false.
+         
+         if (.not.ok) then
+            write(*,*) "Error: j=0 (no intersection???) in lucy_mod::intersectCubeAMR. "
+            write(*,*) direction%x,direction%y,direction%z
+            write(*,*) t(1:6)
+            stop
+         endif
+         
+         tval = minval(t, mask=thisOk)
+         
+
+         if (tval == 0.) then
+            write(*,*) posVec
+            write(*,*) direction%x,direction%y,direction%z
+            write(*,*) t(1:6)
+            stop
+         endif
+         
+         if (tval > sqrt(3.)*thisOctal%subcellsize) then
+            !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
+            !     write(*,*) "direction",direction
+            !     write(*,*) t(1:6)
+            !     write(*,*) denom(1:6)
+         endif
+
+      else
+
+
+! now look at the cylindrical case
+
+         ! first do the inside and outside curved surfaces
+         r = sqrt(subcen%x**2 + subcen%y**2)
+         r1 = r + thisOctal%subcellSize
+         d = sqrt(point%x**2+point%y**2)
+         xHat = (-1.)*VECTOR(point%x, point%y,0.d0)
+         call normalize(xHat)
+               
+         theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+         cosmu = xHat.dot.direction
+         mu = acos(max(-1.d0,min(1.d0,cosmu)))
+         distTor1 = 1.e30
+         if (mu  < theta ) then
+            call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+            if (.not.ok) then
+               write(*,*) "Quad solver failed in intersectcubeamr2d"
+               x1 = thisoctal%subcellSize
+               x2 = 0.d0
+            endif
+            distTor1 = min(x1,x2)
+         endif
+      
+         distToRboundary = distTor1
+         if (distToRboundary < 0.d0) then
+            distToRboundary = 1.e30
+         endif
+
+         ! now do the upper and lower (z axis) surfaces
+      
+
+         zHat = VECTOR(0.d0, 0.d0, 1.d0)
+         compZ = zHat.dot.direction
+         currentZ = point%z
+      
+         if (compZ /= 0.d0 ) then
+            if (compZ > 0.d0) then
+               distToZboundary = (subcen%z + thisOctal%subcellsize - currentZ ) / compZ
+            else
+               distToZboundary = abs((subcen%z - thisOctal%subcellsize - currentZ ) / compZ)
+            endif
+         else
+            disttoZboundary = 1.e30
+         endif
+      
+        
+
+         tVal = min(distToZboundary, distToRboundary)
+         if (tVal > 1.e29) then
+            write(*,*) "Cylindrical"
+            write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
+            write(*,*) "subcen",subcen
+            write(*,*) "x,z",currentX,currentZ
+         endif
+         if (tval < 0.) then
+            write(*,*) "Cylindrical"
+            write(*,*) tVal,distToZboundary,disttorboundary, disttoside
+            write(*,*) "subcen",subcen
+            write(*,*) "x,z",currentX,currentZ
+         endif
+      endif
+
+    end function distanceToGridFromOutside
+
+
 
 END MODULE amr_mod

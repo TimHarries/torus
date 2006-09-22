@@ -2998,6 +2998,7 @@ contains
 
   
   subroutine writeAMRgrid(filename,fileFormatted,grid)
+    use input_variables, only : molecular
     ! writes out the 'grid' for an adaptive mesh geometry  
 
     implicit none
@@ -3137,6 +3138,14 @@ contains
        if (grid%photoionization) then
           call writeDouble2D(thisOctal%ionFrac,fileFormatted)
        endif
+       if (molecular) then
+          call writeDouble2D(thisOctal%molecularLevel,fileFormatted)
+          if (fileformatted) then
+             write(unit=20,iostat=error,fmt=*) thisOctal%microturb, thisOctal%nh2
+          else
+             write(unit=20,iostat=error) thisOctal%microturb, thisOctal%nh2
+          endif
+       endif
        call writeDouble2D(thisOctal%N,fileFormatted)
        call writeReal2D(thisOctal%departCoeff,fileFormatted)
        call writeDouble2D(thisOctal%dustTypeFraction, fileFormatted)
@@ -3158,7 +3167,7 @@ contains
   subroutine readAMRgrid(filename,fileFormatted,grid)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
-    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d
+    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular
     implicit none
 
     character(len=*)            :: filename
@@ -3343,6 +3352,15 @@ contains
        endif
        if (grid%photoionization) then
           call readDouble2D(thisOctal%ionFrac,fileFormatted)
+       endif
+       if (molecular) then
+          call readDouble2D(thisOctal%molecularLevel,fileFormatted)
+          if (fileformatted) then
+             read(unit=20,iostat=error,fmt=*) thisOctal%microturb, thisOctal%nh2
+          else
+             read(unit=20,iostat=error) thisOctal%microturb, thisOctal%nh2
+          endif
+
        endif
        call readDouble2D(thisOctal%N,fileFormatted)
        call readReal2D(thisOctal%departCoeff,fileFormatted)

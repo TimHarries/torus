@@ -1144,7 +1144,12 @@
 !$MPI  if (my_rank==1) &
      call tune(6, "AMR grid construction.")  ! start a stopwatch
 
+     call readAMRgrid("molecular_tmp.grid",.false.,grid)
+           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+                "rho_grid.ps/vcps",.true., .true.,&
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 
+     goto 667
 
      if (readPops .or. readPhasePops .or. readLucy) then 
 
@@ -2533,10 +2538,12 @@
 !$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
+667 continue
      call random_seed
 
      if (molecular) then
-        call molecularLoop(grid, co)
+!        call  molecularLoop(grid, co)
+        call calculateMoleculeSpectrum(grid, co, 1, OCTALVECTOR(0.d0, 1.d0, 0.d0), 100.d0*pctocm/1.d10)
         stop
      endif
 
