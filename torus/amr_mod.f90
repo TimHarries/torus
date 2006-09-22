@@ -11499,10 +11499,9 @@ IF ( .NOT. gridConverged ) RETURN
 
    else ! two-d grid case below
 
-      write(*,*) "2d case"
       r1 = subcen%x - thisOctal%subcellSize/2.d0
       r2 = subcen%x + thisOctal%subcellSize/2.d0
-      write(*,*) r1,r2
+
       d = sqrt(point%x**2+point%y**2)
       xHat = VECTOR(point%x, point%y,0.d0)
       call normalize(xHat)
@@ -11519,7 +11518,6 @@ IF ( .NOT. gridConverged ) RETURN
          x2 = 0.d0
       endif
       distTor2 = max(x1,x2)
-      write(*,*) "r2",x1,x2,distTor2
       
       theta = asin(max(-1.d0,min(1.d0,r1 / d)))
       cosmu = ((-1.d0)*xHat).dot.direction
@@ -11533,7 +11531,6 @@ IF ( .NOT. gridConverged ) RETURN
             x2 = 0.d0
          endif
          distTor1 = min(x1,x2)
-      write(*,*) "r1",x1,x2,distTor1
       endif
       
       distToXboundary = min(distTor1, distTor2)
@@ -11563,6 +11560,8 @@ IF ( .NOT. gridConverged ) RETURN
          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
          write(*,*) "subcen",subcen
          write(*,*) "x,z",currentX,currentZ
+            do;enddo
+
       endif
       
    endif

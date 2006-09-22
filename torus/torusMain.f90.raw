@@ -424,6 +424,8 @@
 
 ! molecular line stuff
   type(MOLECULETYPE) :: co
+  type(DATACUBE) :: cube
+
   real(double) :: temp(50)
 
   real(double), allocatable :: flux(:)
@@ -1144,12 +1146,8 @@
 !$MPI  if (my_rank==1) &
      call tune(6, "AMR grid construction.")  ! start a stopwatch
 
-     call readAMRgrid("molecular_tmp.grid",.false.,grid)
-           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-                "rho_grid.ps/vcps",.true., .true.,&
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-
-     goto 667
+!     call readAMRgrid("molecular_tmp.grid",.false.,grid)
+!     goto 667
 
      if (readPops .or. readPhasePops .or. readLucy) then 
 
@@ -2542,8 +2540,10 @@
      call random_seed
 
      if (molecular) then
-!        call  molecularLoop(grid, co)
-        call calculateMoleculeSpectrum(grid, co, 1, OCTALVECTOR(0.d0, 1.d0, 0.d0), 100.d0*pctocm/1.d10)
+        call  molecularLoop(grid, co)
+!        call calculateMoleculeSpectrum(grid, co, 1, OCTALVECTOR(0.d0, 1.d0, 0.d0), 100.d0*pctocm/1.d10)
+        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+        call plotDataCube(cube, 'cube.ps/vcps')
         stop
      endif
 

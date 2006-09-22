@@ -12,6 +12,8 @@ module molecular_mod
 
   implicit none
 
+
+
   type MOLECULETYPE
      character(len=10) :: molecule
      real :: molecularweight
@@ -28,15 +30,66 @@ module molecular_mod
      real(double), pointer :: itransUpper(:)
      real(double), pointer :: itransLower(:)
      real(double), pointer :: Eu(:)
+     integer, pointer :: iCollUpper(:,:)
+     integer, pointer :: iCollLower(:,:)
      integer :: nCollPart
      character(len=20), pointer :: collBetween(:)
      integer, pointer :: nCollTrans(:)
      integer, pointer :: nCollTemps(:)
      real(double), pointer :: collTemps(:,:)
-     real(double), pointer :: collRates(:,:,:,:)
+     real(double), pointer :: collRates(:,:,:)
   end type MOLECULETYPE
 
+
+  type DATACUBE
+     character(len=80) :: label
+     integer :: nx
+     integer :: ny
+     integer :: nv
+     real(double), pointer :: xAxis(:)
+     real(double), pointer :: yAxis(:)
+     real(double), pointer :: vAxis(:)
+     real(double), pointer :: intensity(:,:,:)
+  end type DATACUBE
+
 contains
+
+
+  subroutine initCube(thisCube, nx, ny, nv)
+    type(DATACUBE) :: thisCube
+    integer :: nx, ny, nv
+
+    thisCube%nx = nx
+    thisCube%ny = ny
+    thisCube%nv = nv
+    allocate(thisCube%xAxis(1:nx))
+    allocate(thisCube%yAxis(1:ny))
+    allocate(thisCube%vAxis(1:nv))
+    allocate(thisCube%intensity(1:nx,1:ny,1:nv))
+  end subroutine initCube
+
+  subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
+    type(DATACUBE) :: cube
+    real(double) :: xMin, xMax, yMax, yMin
+    integer :: i
+
+    do i = 1, cube%nx
+       cube%xAxis(i) = xmin + (xmax-xmin)*dble(i-1)/dble(cube%nx)
+    enddo
+    do i = 1, cube%ny
+       cube%yAxis(i) = ymin + (ymax-ymin)*dble(i-1)/dble(cube%ny)
+    enddo
+  end subroutine addSpatialAxes
+
+  subroutine addVelocityAxis(cube, vMin, vMax)
+    type(DATACUBE) :: cube
+    real(double) :: vMin, vMax
+    integer :: i
+
+    do i = 1, cube%nv
+       cube%vAxis(i) = vmin + (vmax-vmin)*dble(i-1)/dble(cube%nv)
+    enddo
+  end subroutine addVelocityAxis
 
   subroutine readMolecule(thisMolecule, molFilename)
     type(MOLECULETYPE) :: thisMolecule
@@ -127,12 +180,15 @@ contains
        read(30,*) thisMolecule%collTemps(iPart,1:thisMolecule%nCollTemps(ipart))
 
        allocate(thisMolecule%collRates(1:thisMolecule%nCollPart, &
-            1:thisMolecule%nLevels, 1:thisMolecule%nLevels, 1:thisMolecule%nCollTemps(ipart)))
-
+            1:thisMolecule%nCollTrans(iPart), 1:thisMolecule%nCollTemps(ipart)))
+       allocate(thisMolecule%iCollUpper(1:thisMolecule%nCollPart, 1:thisMolecule%nCollTrans(iPart)))
+       allocate(thisMolecule%iCollLower(1:thisMolecule%nCollPart, 1:thisMolecule%nCollTrans(iPart)))
+       thisMolecule%collRates = 0.d0
        read(30,*) junk
        do j = 1, thisMolecule%nCollTrans(iPart)
-          read(30,*) i, iUp, iLow, c(1:thisMolecule%nCollTemps(iPart))
-          thisMolecule%collRates(iPart, iUp, iLow, 1:thisMolecule%nCollTemps(iPart)) = c(1:thisMolecule%nCollTemps(iPart))
+          read(30,*) i, thisMolecule%iCollUpper(ipart,j), &
+               thisMolecule%iCollLower(ipart,j), c(1:thisMolecule%nCollTemps(iPart))
+          thisMolecule%collRates(iPart, j, 1:thisMolecule%nCollTemps(iPart)) = c(1:thisMolecule%nCollTemps(iPart))
        enddo
     enddo
     close(30)
@@ -150,7 +206,7 @@ contains
     real(double) :: arateji, boltzFac
     integer :: nLevels
     integer :: iLower, iUpper, iLevel, i, j
-    integer :: itrans, l, k
+    integer :: itrans, l, k, iPart
     real(double) :: collEx, colldeEx
 
     nLevels = thisMolecule%nLevels
@@ -179,17 +235,23 @@ contains
 
     enddo
 
-!    do k = 2, nLevels
-!       do l = 1, k - 1 
-!          boltzFac =  exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
-!          colldeEx = collRate(thisMolecule, temperature, k , l) * nh2 * (nh2 * thisMolecule%abundance)
-!          collEx = colldeEx * boltzFac
-!         matrixA(k,k) = matrixA(k,k) + colldeex
-!          matrixA(l,l) = matrixA(l,l) + collex
-!          matrixA(k,l) = matrixA(k,l) - collex
-!          matrixA(l,k) = matrixA(l,k) - collex -  colldeex
-!       enddo
-!    enddo
+    do iPart = 1, thisMolecule%nCollPart
+       do iTrans = 1, thisMolecule%nCollTrans(iPart)
+          k = thisMolecule%iCollUpper(iPart, iTrans)
+          l = thisMolecule%iCollLower(iPart, iTrans)
+
+          boltzFac =  exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
+
+          colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2 * (nh2 * thisMolecule%abundance)
+          collEx = colldeEx * boltzFac * thisMolecule%g(l)/thisMolecule%g(k)
+
+!          write(*,*) colldeex,collex,boltzfac,k,l,thisMolecule%energy(k),thismolecule%energy(l),temperature, nh2
+          matrixA(k,k) = matrixA(k,k) + colldeex
+          matrixA(l,l) = matrixA(l,l) + collex
+          matrixA(k,l) = matrixA(k,l) - collex
+          matrixA(l,k) = matrixA(l,k) - collex -  colldeex
+       enddo
+    enddo
 
 
   call luSlv(matrixA, matrixB, nLevels+1)
@@ -205,24 +267,23 @@ contains
   end subroutine solveLevels
 
 
-  real(double) function collRate(thisMolecule, temperature, i , j)
+  real(double) function collRate(thisMolecule, temperature, iPart, iTrans)
     type(MOLECULETYPE) :: thisMolecule
     real(double) :: temperature, r
-    integer :: i, j, k, iPart
+    integer :: i, iTrans, k, iPart
 
     collRate = 0.d0
 
-    do iPart = 1, thisMolecule%nCollPart
        
-       call locate(thisMolecule%collTemps(iPart,1:thisMolecule%nCollTemps(iPart)), &
-            thisMolecule%nCollTemps(iPart), temperature, k)
+    call locate(thisMolecule%collTemps(iPart,1:thisMolecule%nCollTemps(iPart)), &
+         thisMolecule%nCollTemps(iPart), temperature, k)
 
-       r = (temperature - thisMolecule%collTemps(iPart,k)) / &
-            (thisMolecule%collTemps(iPart,k+1) - thisMolecule%collTemps(iPart, k))
+    r = (temperature - thisMolecule%collTemps(iPart,k)) / &
+         (thisMolecule%collTemps(iPart,k+1) - thisMolecule%collTemps(iPart, k))
 
-       collRate = collRate + thisMolecule%collRates(iPart, i , j, k) + &
-            r * ( thisMolecule%collRates(iPart, i , j, k+1) -  thisMolecule%collRates(iPart, i , j, k))
-    enddo
+    collRate = collRate + thisMolecule%collRates(iPart, iTrans, k) + &
+         r * ( thisMolecule%collRates(iPart, iTrans, k+1) -  thisMolecule%collRates(iPart, iTrans, k))
+
   end function collRate
 
 
@@ -514,7 +575,7 @@ contains
     write(*,*) "Dumping results",log10(bnu(thisMolecule%transFreq(1),2.782d0))
     call dumpresults(grid, thisMolecule)
 
-    nRay = 10
+    nRay = 20
     allocate(ds(1:thisMolecule%nLevels, 1:nRay))
     allocate(phi(1:thisMolecule%nLevels, 1:nRay))
     allocate(i0(1:thisMolecule%nLevels, 1:nRay))
@@ -661,7 +722,6 @@ contains
 
     currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
 
-    write(*,*) currentPosition,direction
     i0 = 0.d0
     intensityIntegral = 0.0
     tau = 0.d0
@@ -675,7 +735,6 @@ contains
        call findSubcellLocal(currentPosition, thisOctal, subcell)
        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
 
-       write(*,*) "Test",currentPosition,direction,tval,grid%octreeRoot%subcellSize
        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
        endPosition = currentPosition + tval * direction
        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
@@ -731,8 +790,11 @@ contains
     enddo
     i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau) ! from far side
 666 continue 
-    i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) ! from nearside
-    write(*,*) icount,i0
+!    i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) ! from nearside
+
+    ! convert to brightness T
+
+    i0 = i0 * (cSpeed**2 / (2.d0 * thisMolecule%transFreq(iTrans)**2 * kerg))
   end function intensityAlongRay
 
   
@@ -742,27 +804,30 @@ contains
     real(double) :: distance
     integer :: itrans
     integer :: nRay
-    type(OCTALVECTOR) :: rayPosition(1000)
-    real(double) :: da(1000), dOmega(1000)
+    type(OCTALVECTOR) :: rayPosition(5000)
+    real(double) :: da(5000), dOmega(5000)
     type(OCTALVECTOR) :: viewVec
     real(double) :: deltaV
     integer :: iv, iray
+    integer :: nLambda
     real(double) :: flux, i0
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
+    nLambda = 50
+
     open(42, file="spectrum.dat",status="unknown",form="formatted")
-    do iv = 1, 20
-       deltaV = 20.e5/cspeed * (2.d0*dble(iv-1)/19.d0-1.d0)
+    do iv = 1, nlambda
+       deltaV = 1.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda)-1.d0)
        
 
        flux = 0.d0
        do iRay = 1, nRay
           i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisMolecule, iTrans, deltaV)
 !          write(*,*) iray,nray,i0, domega(iray)
-          flux = flux + i0 ! * domega(iRay)
+          flux = flux + i0  * domega(iRay) / sum(domega(1:nray))
        enddo
-       write(42, *) deltaV*cspeed/1.e5,flux/real(nray)
+       write(42, *) deltaV*cspeed/1.e5,flux
     enddo
     close(42)
 
@@ -774,27 +839,30 @@ contains
     integer :: nRay
     type(OCTALVECTOR) :: rayPosition(:), thisPos, viewVec
     real(double) :: da(:), dOmega(:), distance
-    real(double) :: rGrid(50), dr(50), phigrid(10), dphi(10)
+    real(double), allocatable :: rGrid(:), dr(:), phigrid(:), dphi(:)
     real(double) :: rMax
     integer :: nr, nphi, ir, iphi
     real(double) :: r1 , r2, phi1, phi2, phiOffset
     real(double) :: xPos, yPos, zPos, cosInc, azimuth
     
-    rmax = 2.d0 * grid%octreeRoot%subcellSize
-    nr = 50
+    rmax = 1.08d7
+    nr = 100
     nphi = 10
     nray = 0
+
+    allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
 
     do ir = 1, nr
        r1 = log10(rmax) * dble(ir-1)/dble(nr)
        r2 = log10(rmax) * dble(ir)/dble(nr)
+       r1 = 10.d0**r1
+       r2 = 10.d0**r2
        rgrid(ir) = 0.5d0 * (r1 + r2)
-       dr(ir) = 10.d0**r2-10.d0**r1
+       dr(ir) = r2 - r1
     enddo
-    rGrid(1:nr) = 10.d0**rGrid(1:nr)
     do iphi = 1, nPhi
-       phi1 = twoPi * dble(iphi-1)/dble(nPhi+1)
-       phi2 = twoPi * dble(iphi)/dble(nPhi+1)
+       phi1 = twoPi * dble(iphi-1)/dble(nPhi)
+       phi2 = twoPi * dble(iphi)/dble(nPhi)
        phiGrid(iPhi) = 0.5d0 * (phi1 + phi2)
        dphi(iPhi) = phi2 - phi1
     enddo
@@ -819,10 +887,175 @@ contains
 
           nRay = nRay + 1
           rayposition(nRay) = thisPos + ((-1.d0*distance) * viewVec)
-          da(nRay) = pi*( (r1 + dr(ir))**2 - (r1 - dr(ir))**2) * dphi(iPhi)/twoPi
+          da(nRay) = pi*( (r1 + dr(ir)/2.d0)**2 - (r1 - dr(ir)/2.d0)**2) * dphi(iPhi)/twoPi
           dOmega(nRay) = da(nRay) / (fourPi * distance**2)
        enddo
     enddo
+    write(*,*) sum(da(1:nRay)),pi*rmax**2
   end subroutine createRayGrid
+
+  subroutine createDataCube(cube, grid, viewVec, thisMolecule, iTrans)
+    type(MOLECULETYPE) :: thisMolecule
+    type(GRIDTYPE) :: grid
+    type(DATACUBE) :: cube
+    type(OCTALVECTOR) :: viewvec, rayPos, xProj, yProj
+    real(double) :: distance = 250.d0*pctocm/1.d10
+    real(double) :: deltaV
+    integer :: iTrans
+    integer :: i, j, k
+    real(double) :: r, xval, yval
+    integer :: nMonte, imonte
+
+    nMonte = 10
+
+    call initCube(cube, 100, 100, 50)
+    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize, +grid%octreeRoot%subcellSize, &
+         -grid%octreeRoot%subcellSize, grid%octreeRoot%subcellSize)
+    call addvelocityAxis(cube, -1.d0, 1.d0)
+
+    xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
+    call normalize(xProj)
+    yProj = viewVec .cross. xProj
+    call normalize(yProj)
+
+    do i = 1, cube%nx
+       do j = 1, cube%ny
+
+          do iMonte = 1, nMonte
+             call random_number(r)
+             xVal = cube%xAxis(i) + (r-0.5d0)*(cube%xAxis(2)-cube%xAxis(1))
+             call random_number(r)
+             yVal = cube%yAxis(j) + (r-0.5d0)*(cube%yAxis(2)-cube%yAxis(1))
+
+             rayPos =  (xval * xProj) + (yval * yProj)
+             raypos = rayPos + ((-1.d0*distance) * viewVec)
+             do k = 1, cube%nv
+                deltaV = cube%vAxis(k)*1.d5/cSpeed
+                cube%intensity(i,j,k) = intensityAlongRay(rayPos, viewVec, grid, thisMolecule, iTrans, deltaV)
+             enddo
+          enddo
+          cube%intensity(i,j,1:cube%nv) = cube%intensity(i,j,1:cube%nv) / dble(nMonte)
+       enddo
+    enddo
+  end subroutine createDataCube
+
+
+  subroutine plotDataCube(cube, device)
+    type(DATACUBE) :: cube
+    character(len=*) :: device
+    integer :: i, j
+    integer :: pgbegin
+    real, allocatable :: image(:,:)
+    integer :: nx, ny
+    real :: iMin, iMax
+    real :: tr(6)
+    real :: dx, dy
+    real(double), allocatable :: spec(:)
+    real :: vxs, vxe, vys, vye
+    real :: x1, x2, y1, y2
+    real :: sMax, Smin, range
+    integer :: nstep 
+
+    nx = cube%nx
+    ny = cube%ny
+
+    dx = (cube%Xaxis(nx) - cube%xAxis(1))/real(nx-1)
+    dy = (cube%yAxis(ny) - cube%yAxis(1))/real(ny-1)
+
+    tr(1) = cube%xAxis(1)-dx
+    tr(2) = dx
+    tr(3) = 0.
+    tr(4) = cube%yAxis(1)-dy
+    tr(5) = 0.
+    tr(6) = dy
+
+
+
+    allocate(image(1:nx, 1:ny))
+
+    do i = 1, nx
+       do j = 1, ny
+          image(i,j) = log10(sum(cube%intensity(i,j,1:cube%nv)))
+       enddo
+    enddo
+    iMin = MINVAL(image(1:nx,1:ny))
+    iMax = MAXVAL(image(1:nx,1:ny))
+
+    i =  pgbegin(0,device,1,1)
+    call pgvport(0.1, 0.9, 0.1, 0.9)
+    call pgwnad(real(cube%xAxis(1))-dx/2., real(cube%xAxis(nx))+dx/2., &
+         real(cube%yAxis(1))-dy/2., real(cube%yAxis(ny))+dy/2.)
+
+    call palette(3)
+
+    call pgimag(image, nx, ny, 1, nx, 1, ny, imin, imax, tr)
+       
+    call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
+
+    call pgqvp(0, x1, x2, y1, y2)
+
+    allocate(spec(1:cube%nv))
+
+    nStep = nx / 5
+
+    smin = 1.e30
+    smax = -1.e30
+    do i = 1, nx-1, nstep
+       do j = 1, ny-1, nstep
+          call getSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
+          sMax = MAX(sMax,MAXVAL(spec))
+          sMin = MIN(sMin,MINVAL(spec))
+       enddo
+    enddo
+
+    range = sMax - sMin
+    sMin = sMin - 0.2*range
+    sMax = sMax + 0.2*range
+
+    do i = 1, nx-1, nstep
+       do j = 1, ny-1, nstep
+          call getSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
+          vxs = x1 + (x2-x1)*real(i-1)/real(nx)
+          vxe = x1 + (x2-x1)*real(i+nstep-1)/real(nx)
+          vys = y1 + (y2-y1)*real(j-1)/real(ny)
+          vye = y1 + (y2-y1)*real(j+nstep-1)/real(ny)
+          call pgsci(3)
+          call pgvport(vxs, vxe, vys, vye)
+!          call pgbox('bc',0.0,0,'bc',0.0,0)
+          call pgwindow(real(cube%vAxis(1))-0.1, &
+               real(cube%vAxis(cube%nv))+0.1, &
+               smin, smax)
+          call pgline(cube%nv, real(cube%vAxis), &
+               real(spec))
+
+          call pgsci(1)
+       enddo
+    enddo
+          
+
+    call pgend
+
+
+
+
+  end subroutine plotDataCube
+  
+  subroutine getSpectrum(cube, ix1, ix2, iy1, iy2, spec)
+    type(DATACUBE) :: cube
+    integer :: ix1, ix2, iy1, iy2
+    real(double) ::  spec(:)
+    integer :: i,j, n
+    n = 0
+    spec = 0.d0
+    do i = ix1, ix2
+       do j = iy1, iy2
+          n = n + 1
+          spec(1:cube%nv) = spec(1:cube%nv) + cube%intensity(i,j,1:cube%nv)
+       enddo
+    enddo
+    spec = spec / dble(n)
+  end subroutine getSpectrum
+    
+
 
 end module molecular_mod
