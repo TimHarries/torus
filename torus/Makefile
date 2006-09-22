@@ -723,6 +723,15 @@ photoion_mod.o: photoion_mod.f90.raw source_mod.o timing.o grid_mod.o amr_mod.o 
         endif
 	$(F90) -c photoion_mod.f90
 
+molecular_mod.o: molecular_mod.f90.raw grid_mod.o amr_mod.o constants_mod.o messages_mod.o \
+	parallel_mod.o kind_mod.o utils_mod.o math_mod.o
+        ifeq ($(MK_MPI_SRC), yes)
+	   sed 's/\!$$MPI//g' molecular_mod.f90.raw > molecular_mod.f90
+        else
+	   sed '/\!$$MPI/d'   molecular_mod.f90.raw > molecular_mod.f90 
+        endif
+	$(F90) -c molecular_mod.f90
+
 
 parallel_mod.o: parallel_mod.f90.raw  
         ifeq ($(MK_MPI_SRC), yes)

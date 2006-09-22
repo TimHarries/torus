@@ -9,6 +9,7 @@ module molecular_mod
   use messages_mod
   use grid_mod
   use math_mod
+!$MPI    use parallel_mod
 
   implicit none
 
@@ -66,6 +67,9 @@ contains
     allocate(thisCube%yAxis(1:ny))
     allocate(thisCube%vAxis(1:nv))
     allocate(thisCube%intensity(1:nx,1:ny,1:nv))
+
+    thisCube%intensity = 0.d0
+
   end subroutine initCube
 
   subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
@@ -249,7 +253,7 @@ contains
           matrixA(k,k) = matrixA(k,k) + colldeex
           matrixA(l,l) = matrixA(l,l) + collex
           matrixA(k,l) = matrixA(k,l) - collex
-          matrixA(l,k) = matrixA(l,k) - collex -  colldeex
+          matrixA(l,k) = matrixA(l,k) - colldeex
        enddo
     enddo
 
@@ -554,6 +558,10 @@ contains
 
           
   subroutine molecularLoop(grid, thisMolecule)
+
+    use input_variables, only : blockhandout
+!$MPI    include 'mpif.h'
+
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
     type(OCTALVECTOR) :: position, direction
@@ -564,33 +572,83 @@ contains
     type(OCTAL), pointer :: thisOctal
     integer, parameter :: maxIter = 10
     logical :: converged
-    integer :: iRay, iTrans, iter
+    integer :: iRay, iTrans, iter,i 
     real(double), allocatable :: oldpops(:)
     real(double) :: fac
+!$MPI    ! For MPI implementations
+!$MPI    integer       ::   my_rank        ! my processor rank
+!$MPI    integer       ::   np             ! The number of processes
+!$MPI    integer       ::   ierr           ! error flag
+!$MPI    logical       ::   rankComplete
+
+     logical :: dcAllocated
+     integer, dimension(:), allocatable :: octalsBelongRank
+     real(double), allocatable :: tArrayd(:),tempArrayd(:)
+     integer :: nVoxels
+     integer :: ioctal_beg, ioctal_end, tag = 0
+
+
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
     call allocateMolecularLevels(grid, grid%octreeRoot, thisMolecule)
 
 
     call solveAllPops(grid, grid%octreeRoot, thisMolecule)
+!$MPI if (my_rank ==0 ) then
     write(*,*) "Dumping results",log10(bnu(thisMolecule%transFreq(1),2.782d0))
     call dumpresults(grid, thisMolecule)
-
-    nRay = 20
+!$MPI endif
+    nRay = 10
     allocate(ds(1:thisMolecule%nLevels, 1:nRay))
     allocate(phi(1:thisMolecule%nLevels, 1:nRay))
     allocate(i0(1:thisMolecule%nLevels, 1:nRay))
     allocate(tau(1:nRay))
 
     allocate(oldPops(1:thisMolecule%nLevels))
-    
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
 
     do while (.true.)
-       do iOctal = 1, grid%nOctals
-          write(*,*) iOctal
+
+
+    ! default loop indecies
+    ioctal_beg = 1
+    ioctal_end = SIZE(octalArray)       
+    
+
+
+!$MPI    
+!$MPI    ! we will use an array to store the rank of the process
+!$MPI    !   which will calculate each octal's variables
+!$MPI    allocate(octalsBelongRank(size(octalArray)))
+!$MPI    
+!$MPI    if (my_rank == 0) then
+!$MPI       print *, ' '
+!$MPI       print *, 'molecular  computed by ', np-1, ' processors.'
+!$MPI       print *, ' '
+!$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
+!$MPI                            maxBlockSize=10,setDebug=.false.)
+!$MPI    
+!$MPI    endif
+!$MPI    ! ============================================================================
+
+
+
+!$MPI if (my_rank /= 0) then
+!$MPI  blockLoop: do     
+!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+!$MPI   if (rankComplete) exit blockLoop 
+
+
+       do iOctal = ioctal_beg, ioctal_end
+!          write(*,*) iOctal,my_rank,ioctal_beg,ioctal_end
           thisOctal => octalArray(iOctal)%content
           do subcell = 1, thisOctal%maxChildren
              
@@ -622,12 +680,54 @@ contains
              endif
           enddo
        end do
+
+!$MPI if (.not.blockHandout) exit blockloop
+!$MPI end do blockLoop        
+!$MPI end if ! (my_rank /= 0)
+
+
+
+!$MPI       if(my_rank == 0) write(*,*) "Updating MPI grids"
+
+
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI
+!$MPI     ! have to send out the 'octalsBelongRank' array
+!$MPI     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
+!$MPI                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI
+!$MPI     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+!$MPI     allocate(tArrayd(1:nVoxels))
+!$MPI     allocate(tempArrayd(1:nVoxels))
+!$MPI     tArrayd = 0.d0
+!$MPI     tempArrayd = 0.d0
+!$MPI     do i = 1, thisMolecule%nLevels
+!$MPI       tArrayd = 0.d0
+!$MPI       call packMoleLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+!$MPI       call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI       tArrayd = tempArrayd
+!$MPI       call unpackMoleLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+!$MPI     enddo
+!$MPI     deallocate(tArrayd, tempArrayd)
+
+!$MPI       if(my_rank == 0) write(*,*) "Done updating"
+
+
+
+
        call swapPops(grid%octreeRoot)
 
-       call writeAmrGrid("molecular_tmp.grid",.false.,grid)
-
+!$MPI       if (my_rank == 0) &
+            call writeAmrGrid("molecular_tmp.grid",.false.,grid)
+!$MPI if (my_rank ==0 ) then
        write(*,*) "Dumping results"
        call dumpresults(grid, thisMolecule)
+!$MPI endif
+
+       deallocate(octalsBelongRank)
+
     enddo
 
   end subroutine molecularLoop
@@ -895,6 +995,8 @@ contains
   end subroutine createRayGrid
 
   subroutine createDataCube(cube, grid, viewVec, thisMolecule, iTrans)
+!$MPI    include 'mpif.h'
+
     type(MOLECULETYPE) :: thisMolecule
     type(GRIDTYPE) :: grid
     type(DATACUBE) :: cube
@@ -904,7 +1006,22 @@ contains
     integer :: iTrans
     integer :: i, j, k
     real(double) :: r, xval, yval
-    integer :: nMonte, imonte
+    integer :: nMonte, imonte, n
+    real(double), allocatable :: tempArray(:), tempArray2(:)
+    integer :: ix1, ix2
+!$MPI    ! For MPI implementations
+!$MPI    integer       ::   my_rank        ! my processor rank
+!$MPI    integer       ::   np             ! The number of processes
+!$MPI    integer       ::   ierr           ! error flag
+!$MPI    logical       ::   rankComplete
+
+
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
     nMonte = 10
 
@@ -918,7 +1035,15 @@ contains
     yProj = viewVec .cross. xProj
     call normalize(yProj)
 
-    do i = 1, cube%nx
+    ix1 = 1
+    ix2 = cube%nx
+ 
+!$MPI    ix1 = (my_rank) * (cube%nx / (np)) + 1
+!$MPI    ix2 = (my_rank+1) * (cube%nx / (np))
+!$MPI    if (my_rank == (np-1)) ix2 = cube%nx
+
+
+    do i = ix1, ix2
        do j = 1, cube%ny
 
           do iMonte = 1, nMonte
@@ -937,6 +1062,19 @@ contains
           cube%intensity(i,j,1:cube%nv) = cube%intensity(i,j,1:cube%nv) / dble(nMonte)
        enddo
     enddo
+
+!$MPI    n = (cube%nx*cube%ny*cube%nv)
+!$MPI    allocate(tempArray(1:n), tempArray2(1:n))
+!$MPI    tempArray = reshape(cube%intensity, (/  n /))
+
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+!$MPI       call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
+!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
+
+!$MPI    cube%intensity = reshape(tempArray2, (/ cube%nx, cube%ny, cube%nv /))
+!$MPI    deallocate(tempArray, tempArray2)
+
   end subroutine createDataCube
 
 
@@ -1056,6 +1194,65 @@ contains
     spec = spec / dble(n)
   end subroutine getSpectrum
     
+!$MPI      subroutine packMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
+!$MPI    include 'mpif.h'
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: octalsBelongRank(:)
+!$MPI        integer :: nTemps
+!$MPI        real(double) :: tArray(:)
+!$MPI        integer :: iOctal, iSubcell, my_rank, ierr
+!$MPI        integer :: iLevel
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nTemps = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
+!$MPI                 nTemps = nTemps + 1
+!$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
+!$MPI                   tArray(nTemps) = thisOctal%newMolecularLevel(isubcell, iLevel)
+!$MPI                 else 
+!$MPI                   tArray(nTemps) = 0.d0
+!$MPI                 endif
+!$MPI              endif
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine packMoleLevel
+
+!$MPI      subroutine unpackMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
+!$MPI    include 'mpif.h'
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: octalsBelongRank(:)
+!$MPI        integer :: nTemps
+!$MPI        real(double) :: tArray(:)
+!$MPI        integer :: iOctal, iSubcell, my_rank, ierr
+!$MPI        integer :: iLevel
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nTemps = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
+!$MPI                 nTemps = nTemps + 1
+!$MPI                 thisOctal%newMolecularLevel(isubcell, iLevel) = tArray(nTemps) 
+!$MPI              endif
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine unpackMoleLevel
 
 
 end module molecular_mod

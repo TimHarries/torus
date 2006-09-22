@@ -2543,6 +2543,7 @@
         call  molecularLoop(grid, co)
 !        call calculateMoleculeSpectrum(grid, co, 1, OCTALVECTOR(0.d0, 1.d0, 0.d0), 100.d0*pctocm/1.d10)
         call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+!$MPI if (my_rank == 0) &
         call plotDataCube(cube, 'cube.ps/vcps')
         stop
      endif
