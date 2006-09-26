@@ -206,7 +206,7 @@ contains
     real(double) :: jnu(:)
     real(double) :: nh2
     type(MOLECULETYPE) :: thisMolecule
-    real(double), allocatable :: matrixA(:,:), matrixB(:)
+    real(double), allocatable :: matrixA(:,:), matrixB(:), collMatrix(:,:), cTot(:)
     real(double) :: arateji, boltzFac
     integer :: nLevels
     integer :: iLower, iUpper, iLevel, i, j
@@ -225,6 +225,8 @@ contains
     matrixA(1:nLevels+1,nLevels+1) = 1.d-30
 
     matrixB(nLevels+1) = 1.d0
+    allocate(collMatrix(1:nLevels+1, 1:nLevels+1))
+
 
     do iTrans = 1, thisMolecule%nTrans
 
@@ -239,24 +241,42 @@ contains
 
     enddo
 
+
+    collMatrix = 0.d0
+
     do iPart = 1, thisMolecule%nCollPart
        do iTrans = 1, thisMolecule%nCollTrans(iPart)
+          
           k = thisMolecule%iCollUpper(iPart, iTrans)
           l = thisMolecule%iCollLower(iPart, iTrans)
 
           boltzFac =  exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
+          colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2! * (nh2 * thisMolecule%abundance)!!!!
+          collEx = colldeEx * boltzFac * thisMolecule%g(k)/thisMolecule%g(l)
 
-          colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2 * (nh2 * thisMolecule%abundance)
-          collEx = colldeEx * boltzFac * thisMolecule%g(l)/thisMolecule%g(k)
 
-!          write(*,*) colldeex,collex,boltzfac,k,l,thisMolecule%energy(k),thismolecule%energy(l),temperature, nh2
-          matrixA(k,k) = matrixA(k,k) + colldeex
-          matrixA(l,l) = matrixA(l,l) + collex
-          matrixA(k,l) = matrixA(k,l) - collex
-          matrixA(l,k) = matrixA(l,k) - colldeex
+          collMatrix(l, k) = collMatrix(l, k) + collEx
+          collMatrix(k, l) = collMatrix(k, l) + colldeEx
+
        enddo
     enddo
 
+    allocate(cTot(1:thisMolecule%nLevels))
+    cTot = 0.d0
+    do k = 1, thisMolecule%nLevels
+       do l = 1, thisMolecule%nLevels
+          cTot(k) = cTot(k) + collMatrix(k,l)
+       enddo
+    enddo
+
+    do i = 1, thisMolecule%nLevels
+          matrixA(i,i) = matrixA(i,i) + cTot(i)
+       do j = 1, thisMolecule%nLevels
+          if (i /= j) then
+             matrixA(i,j) = matrixA(i,j) - collMatrix(j, i)
+          endif
+       enddo
+    enddo
 
   call luSlv(matrixA, matrixB, nLevels+1)
 
@@ -266,7 +286,7 @@ contains
 
 
   
-  deallocate(matrixA, matrixB)
+  deallocate(matrixA, matrixB, collMatrix, cTot)
 
   end subroutine solveLevels
 
@@ -380,7 +400,7 @@ contains
           do i = 1, thisMolecule%nTrans
              thisOctal%jnu(subcell,i) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(subcell)))
           enddo
-
+          thisOctal%jnu = 1.d-30
        endif
     enddo
   end subroutine allocateMolecularLevels
@@ -431,7 +451,7 @@ contains
     direction = randomUnitVector()
     rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
     call random_number(r)
-    deltaV = 4.d0 * thisOctal%microturb(subcell) * (r-0.d5)!!!!!!!!!!!!!!!!!!
+    deltaV = 4.d0 * thisOctal%microturb(subcell) * (r-0.5d0)!!!!!!!!!!!!!!!!!!
 
     iUpper = thisMolecule%iTransUpper(iTrans)
     iLower = thisMolecule%iTransLower(iTrans)
@@ -648,7 +668,7 @@ contains
 
 
        do iOctal = ioctal_beg, ioctal_end
-!          write(*,*) iOctal,my_rank,ioctal_beg,ioctal_end
+          write(*,*) iOctal,ioctal_beg,ioctal_end
           thisOctal => octalArray(iOctal)%content
           do subcell = 1, thisOctal%maxChildren
              
@@ -726,7 +746,7 @@ contains
        call dumpresults(grid, thisMolecule)
 !$MPI endif
 
-       deallocate(octalsBelongRank)
+!$MPI       deallocate(octalsBelongRank)
 
     enddo
 
@@ -1023,11 +1043,11 @@ contains
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
-    nMonte = 10
+    nMonte = 1
 
     call initCube(cube, 100, 100, 50)
-    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize, +grid%octreeRoot%subcellSize, &
-         -grid%octreeRoot%subcellSize, grid%octreeRoot%subcellSize)
+    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
+         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
     call addvelocityAxis(cube, -1.d0, 1.d0)
 
     xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
@@ -1044,14 +1064,19 @@ contains
 
 
     do i = ix1, ix2
+       write(*,*) i
        do j = 1, cube%ny
 
           do iMonte = 1, nMonte
-             call random_number(r)
-             xVal = cube%xAxis(i) + (r-0.5d0)*(cube%xAxis(2)-cube%xAxis(1))
-             call random_number(r)
-             yVal = cube%yAxis(j) + (r-0.5d0)*(cube%yAxis(2)-cube%yAxis(1))
-
+             if (nMonte > 1) then
+                call random_number(r)
+                xVal = cube%xAxis(i) + (r-0.5d0)*(cube%xAxis(2)-cube%xAxis(1))
+                call random_number(r)
+                yVal = cube%yAxis(j) + (r-0.5d0)*(cube%yAxis(2)-cube%yAxis(1))
+             else
+                xVal = cube%xAxis(i)
+                yVal = cube%yAxis(j)
+             endif
              rayPos =  (xval * xProj) + (yval * yProj)
              raypos = rayPos + ((-1.d0*distance) * viewVec)
              do k = 1, cube%nv

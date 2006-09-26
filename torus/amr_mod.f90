@@ -6795,7 +6795,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%temperature(subcell) = tcbr
     thisOctal%rho(subcell) = 1.e-30
     thisOctal%nh2(subcell) = 1.e-30
-    thisOctal%microTurb(subcell) = 1.d-10
+    thisOctal%microTurb(subcell) = 0.159e5/cspeed
 
     if ((r1 > r(1)).and.(r1 < r(nr))) then
        call locate(r, nr, r1, i)
