@@ -1,0 +1,208 @@
+#LyX 1.4.2 created this file. For more info see http://www.lyx.org/
+\lyxformat 245
+\begin_document
+\begin_header
+\textclass report
+\begin_preamble
+
+
+\newsavebox{\PITT}
+\savebox{\PITT}[3.5in][l]
+  {\parbox[t]{3in}{ 
+   \rule{\textwidth}{0.5 mm} 
+   \vspace{0.1 cm}
+     Department of Physics\\
+     University of Nevada Las Vegas\\
+     \small Box 454002\\
+     \small 4505 Maryland Pkwy \\
+     \small Las Vegas, NV 89154-4002\\
+  \vspace{0.2 mm}
+  \rule{\textwidth}{0.5mm}
+ } }
+
+\newsavebox{\MYADD}
+\savebox{\MYADD}[3in][l]
+  {\parbox[t]{3in}{ 
+  \vspace{0.5 cm}
+     Ryuichi Kurosawa\\
+     \small E-mail : rk@physics.unlv.edu \\
+     Tel  : (702) 895 1776\\
+     Fax  : (702) 895 0804\\
+  \vspace{0.1 mm}
+ } }
+\end_preamble
+\language english
+\inputencoding default
+\fontscheme default
+\graphics default
+\paperfontsize 12
+\spacing single
+\papersize letterpaper
+\use_geometry true
+\use_amsmath 1
+\cite_engine basic
+\use_bibtopic false
+\paperorientation portrait
+\leftmargin 3cm
+\topmargin 0.5cm
+\rightmargin 3cm
+\bottommargin 0.5cm
+\secnumdepth 2
+\tocdepth 2
+\paragraph_separation indent
+\defskip medskip
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle empty
+\tracking_changes false
+\output_changes true
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+hbox{}
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+
+\backslash
+vskip  0.0cm
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+
+\backslash
+noindent
+\backslash
+usebox{
+\backslash
+PITT} 
+\backslash
+usebox{
+\backslash
+MYADD}
+\end_layout
+
+\begin_layout Standard
+
+\end_layout
+
+\begin_layout Standard
+
+
+\backslash
+vspace{1.0cm}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\InsetSpace ~
+
+\newline
+Production Editor
+\newline
+Monthly Notices of the RAS 
+\newline
+Blackwell Publishing 
+\newline
+101 George
+ Street 
+\newline
+Edinburgh 
+\newline
+EH2 3ES,
+\newline
+UK
+\end_layout
+
+\begin_layout Right Address
+\begin_inset ERT
+status collapsed
+
+\begin_layout Standard
+
+
+\backslash
+today
+\end_layout
+
+\end_inset
+
+
+\newline
+
+\newline
+
+\newline
+
+\newline
+
+\end_layout
+
+\begin_layout Standard
+\noindent
+Dear Editor
+\newline
+
+\end_layout
+
+\begin_layout Standard
+Please find the proof of the manuscript (mnr11005) for the publication in
+  Monthly Notices of the Royal Astronomical Society.
+ The Exclusive Licence Form is also included with this letter.
+ 
+\newline
+
+\newline
+
+\newline
+
+\newline
+
+\newline
+
+\newline
+
+\newline
+Best regards
+\newline
+
+\newline
+
+\newline
+
+\newline
+
+\newline
+
+\newline
+
+\newline
+Ryuichi Kurosawa
+\end_layout
+
+\end_body
+\end_document
