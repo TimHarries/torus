@@ -29,7 +29,7 @@ ifeq ($(SYSTEM), g95)
     F77FLAG= -w -fno-second-underscore
     IMAGEF77=image_f77.f.default
     SPECF77=spec_f77.f.default
-    F2CLIB=-L$(PATH2G2C) -lg2c
+#    F2CLIB=-L$(PATH2G2C) -lg2c
     STATICLIBS=
     STARLIBS=-L/star/lib `ndf_link`
     PGLIBS=-L/star/lib `pgplot_link`

@@ -28,8 +28,8 @@ module molecular_mod
      real(double), pointer :: einsteinBlu(:)
      real(double), pointer :: einsteinBul(:)
      real(double), pointer :: transfreq(:)
-     real(double), pointer :: itransUpper(:)
-     real(double), pointer :: itransLower(:)
+     integer, pointer :: itransUpper(:)
+     integer, pointer :: itransLower(:)
      real(double), pointer :: Eu(:)
      integer, pointer :: iCollUpper(:,:)
      integer, pointer :: iCollLower(:,:)
@@ -152,10 +152,10 @@ contains
        thisMolecule%itransUpper(i) = iUp
        thisMolecule%itransLower(i) = iLow
 
-       thisMolecule%einsteinBlu(i) = (thisMolecule%g(iUp)/thisMolecule%g(iLow)) * a * &
-            (cspeed**2)/(2.d0*hcgs*(freq*1.d9)**3)
-       thisMolecule%einsteinBul(i) = thisMolecule%einsteinBlu(i) &
-            * thisMolecule%g(iLow)/thisMolecule%g(iUp)
+       thisMolecule%einsteinBul(i) = a * (cspeed**2)/(2.d0*hcgs*(freq*1.d9)**3)
+
+       thisMolecule%einsteinBlu(i) = thisMolecule%einsteinBul(i) &
+            * thisMolecule%g(iUp)/thisMolecule%g(iLow)
 
     enddo
 
@@ -198,6 +198,102 @@ contains
     close(30)
     call writeInfo("Done.", IMPORTANT)
   end subroutine readMolecule
+
+  subroutine readBenchmarkMolecule(thisMolecule, molFilename)
+    type(MOLECULETYPE) :: thisMolecule
+    character(len=*) :: molFilename
+    character(len=80) :: junk, message
+    character(len=200):: dataDirectory, filename
+    integer :: i, j, iLow, iUp, iPart
+    real(double) :: a, freq, eu, c(20)
+
+    thisMolecule%abundance = 1.d-9 ! fixed at benchmark value here
+
+
+    open(30, file=molfilename, status="old", form="formatted")
+
+    read(30,'(a)') thisMolecule%molecule
+    call writeInfo("Reading data for molecule: "//trim(thisMolecule%molecule),IMPORTANT)
+
+    read(30,*) thisMolecule%molecularWeight
+
+    read(30,*) thisMolecule%nLevels, thisMolecule%nTrans
+
+    allocate(thisMolecule%energy(1:thisMolecule%nLevels))
+    allocate(thisMolecule%g(1:thisMolecule%nLevels))
+    allocate(thisMolecule%j(1:thisMolecule%nLevels))
+
+    allocate(thisMolecule%einsteinA(1:thisMolecule%nTrans))
+    allocate(thisMolecule%einsteinBul(1:thisMolecule%nTrans))
+    allocate(thisMolecule%einsteinBlu(1:thisMolecule%nTrans))
+    allocate(thisMolecule%transfreq(1:thisMolecule%nTrans))
+    allocate(thisMolecule%itransUpper(1:thisMolecule%nTrans))
+    allocate(thisMolecule%itransLower(1:thisMolecule%nTrans))
+    allocate(thisMolecule%eu(1:thisMolecule%nTrans))
+
+
+    read(30,'(7f11.7)') thisMolecule%energy(1:thisMolecule%nLevels)
+
+    thisMolecule%energy = thisMolecule%energy / 8065.541  ! per cm to ev
+       
+    write(*,*) "energy", thisMolecule%energy
+
+    read(30,*) thisMolecule%j(1:thisMolecule%nLevels)
+    write(*,*) "j",thisMolecule%j
+    thisMolecule%g(1:thisMolecule%nLevels) = 2.d0*thisMolecule%j(1:thisMolecule%nLevels) + 1.d0
+    write(*,*) "g",thismolecule%g
+
+    read(30,*) thisMolecule%itransUpper(1:thisMolecule%nTrans)
+    write(*,*) "iup",thisMolecule%iTransUpper
+    read(30,*) thisMolecule%itransLower(1:thisMolecule%nTrans)
+    write(*,*) "ilow",thisMolecule%iTransLower
+
+    read(30,*) thisMolecule%einsteinA(1:thisMolecule%nTrans)
+    write(*,*) "a",thismolecule%einsteinA
+ 
+    do i = 1, thisMolecule%nTrans
+
+       thisMolecule%transFreq(i) = ((thisMolecule%energy(thisMolecule%iTransUpper(i)) - &
+            thisMolecule%energy(thisMolecule%iTransLower(i)))/ergToEV)/hcgs
+
+       thisMolecule%einsteinBul(i) = thisMolecule%einsteinA(i) * (cspeed**2)/(2.d0*hcgs*thisMolecule%transFreq(i)**3)
+
+       thisMolecule%einsteinBlu(i) = thisMolecule%einsteinBul(i) &
+            * thisMolecule%g(thisMolecule%iTransUpper(i))/thisMolecule%g(thisMolecule%iTransLower(i))
+       write(*,*) i,thisMolecule%transFreq(i), thisMolecule%einsteinBul(i), thisMolecule%einsteinBlu(i)
+
+    enddo
+
+    read(30,*) junk
+
+    thisMolecule%nCollPart = 1
+    iPart = 1
+
+    allocate(thisMolecule%nCollTrans(1:thisMolecule%nCollPart))
+    allocate(thisMolecule%nCollTemps(1:thisMolecule%nCollPart))
+
+
+    allocate(thisMolecule%collTemps(1:thisMolecule%nCollPart, 1:4))
+
+    read(30,*) thisMolecule%nCollTrans(1), thisMolecule%nCollTemps(1),thisMolecule%collTemps(1,1:4)
+    write(*,*) "temp",thisMolecule%colltemps(1,1:4)
+
+    allocate(thisMolecule%iCollUpper(1:thisMolecule%nCollPart, 1:thisMolecule%nCollTrans(iPart)))
+    allocate(thisMolecule%iCollLower(1:thisMolecule%nCollPart, 1:thisMolecule%nCollTrans(iPart)))
+
+    allocate(thisMolecule%collRates(1:thisMolecule%nCollPart, &
+         1:thisMolecule%nCollTrans(iPart), 1:thisMolecule%nCollTemps(ipart)))
+
+    read(30,*) thisMolecule%iCollUpper(1, 1:thisMolecule%nCollTrans(1))
+    read(30,*) thisMolecule%iCollLower(1, 1:thisMolecule%nCollTrans(1))
+    do i = 1, thisMolecule%nCollTemps(1)
+       read(30,*) thisMolecule%collRates(iPart,  1:thisMolecule%nCollTrans(ipart), i)
+       write(*,*) "rates",i,thisMolecule%collRates(iPart, 1:thisMolecule%nCollTrans(ipart), i)
+    enddo
+
+    close(30)
+    call writeInfo("Done.", IMPORTANT)
+  end subroutine readBenchmarkMolecule
 
 
   subroutine solveLevels(nPops, jnu,  temperature, thisMolecule, nh2)
@@ -425,7 +521,7 @@ contains
     type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
     integer :: fromSubcell
     integer :: subcell
-    real(double) :: ds, phi, i0, r
+    real(double) :: ds, phi, i0, r, phi1, phi2
     integer :: iTrans
     type(OCTALVECTOR) :: position, direction, currentPosition, thisPosition, thisVel
     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
@@ -439,7 +535,7 @@ contains
     real(double) :: dTau, etaline, didtau, tau
     real(double), parameter :: Tcbr = 2.782d0
     real(double) :: intensityIntegral
-    real(double) :: dvAcrossCell
+    real(double) :: dvAcrossCell, projVel
 
     position = randomPositionInCell(fromOctal, fromsubcell)
 
@@ -453,16 +549,31 @@ contains
     call random_number(r)
     deltaV = 4.d0 * thisOctal%microturb(subcell) * (r-0.5d0)!!!!!!!!!!!!!!!!!!
 
+
+    phi1 = phiProf(deltaV, thisOctal%microturb(subcell))
+
     iUpper = thisMolecule%iTransUpper(iTrans)
     iLower = thisMolecule%iTransLower(iTrans)
 
     call distanceToCellBoundary(grid, position, direction, ds, sOctal=thisOctal)
 
     currentPosition = position + ds * direction
+    
+!    if (inOctal(grid%octreeRoot, currentPosition)) then
+!       thisVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal) 
+!       projVel = ((thisVel - rayVel).dot.direction) + deltaV
+!       
+!       phi2 = phiProf(projVel, thisOctal%microturb(subcell))
+!
+!    else
+!       phi2 = phi1
+!    endif
+       
+!    phi  = 0.5d0*(phi1 + phi2)
 
+    phi = phi1
     ds = ds * 1.d10
 
-    phi = phiProf(deltaV, thisOctal%microturb(subcell))
 
 
     i0 = 0.d0
@@ -481,13 +592,10 @@ contains
        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
 
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
-       dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
+       dvAcrossCell = abs(dvAcrossCell / (thisOctal%microturb(subcell)/2.35d0))
 
-       if (dvAcrossCell < 0.1) then
-          ntau = 2
-       else
-          ntau = 5
-       endif
+
+       nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200)
 
        distArray(1) = 0.d0
        do i = 2, nTau
@@ -782,7 +890,6 @@ contains
        alphanu = alphanu * (nLower * thisMolecule%einsteinBlu(iTrans) - &
             nUpper * thisMolecule%einsteinBul(iTrans)) * phi(iray)/thisMolecule%transFreq(iTrans)
        tau = alphaNu * ds(iray)
-       
 
        etaLine = hCgs * thisMolecule%einsteinA(iTrans) * thisMolecule%transFreq(iTrans)
        etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * thisOctal%molecularLevel(subcell, iUpper)
@@ -800,6 +907,8 @@ contains
     enddo
     
     jbar = (jBarExternal + jBarInternal)/dble(nRay)
+
+    jbar = jbar * 10.d0
 
   end subroutine calculateJbar
 
@@ -862,11 +971,7 @@ contains
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
 
-       if (dvAcrossCell < 0.1) then
-          ntau = 2
-       else
-          ntau = 5
-       endif
+       nTau = max(2, nint(dvAcrossCell*10.d0))
 
        distArray(1) = 0.d0
        do i = 2, nTau
@@ -919,6 +1024,8 @@ contains
 
   
   subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec, distance)
+!$MPI    include 'mpif.h'
+
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
     real(double) :: distance
@@ -931,33 +1038,68 @@ contains
     integer :: iv, iray
     integer :: nLambda
     real(double) :: flux, i0
+    real(double), allocatable :: vArray(:), spec(:), tempArray(:)
+    integer :: iv1, iv2, i
+!$MPI    ! For MPI implementations
+!$MPI    integer       ::   my_rank        ! my processor rank
+!$MPI    integer       ::   np             ! The number of processes
+!$MPI    integer       ::   ierr           ! error flag
+!$MPI    logical       ::   rankComplete
+
+
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
     nLambda = 50
 
-    open(42, file="spectrum.dat",status="unknown",form="formatted")
-    do iv = 1, nlambda
-       deltaV = 1.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda)-1.d0)
-       
+    iv1 = 1
+    iv2 = nLambda
+ 
+!$MPI    iv1 = (my_rank) * (nLambda / (np)) + 1
+!$MPI    iv2 = (my_rank+1) * (nLambda / (np))
+!$MPI    if (my_rank == (np-1)) iv2 = nLambda
 
-       flux = 0.d0
+
+    allocate(spec(1:nLambda), vArray(1:nLambda))
+    spec = 0.d0
+    do iv = 1, nLambda
+       vArray(iv) = 1.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda)-1.d0)
+    enddo
+    do iv = iv1, iv2
+       deltaV  = vArray(iv)
        do iRay = 1, nRay
           i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisMolecule, iTrans, deltaV)
-!          write(*,*) iray,nray,i0, domega(iray)
-          flux = flux + i0  * domega(iRay) / sum(domega(1:nray))
+          spec(iv) = spec(iv) + i0  * domega(iRay) / sum(domega(1:nray))
        enddo
-       write(42, *) deltaV*cspeed/1.e5,flux
+    enddo
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI     allocate(tempArray(1:nLambda))
+!$MPI       call MPI_ALLREDUCE(spec,tempArray,nLambda,MPI_DOUBLE_PRECISION,&
+!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI    spec(1:nLambda) = tempArray(1:nLambda)
+!$MPI     deallocate(tempArray)
+
+!$MPI    if (my_rank == 0) then
+    open(42, file="spectrum.dat",status="unknown",form="formatted")
+    do i = 1, nLambda
+       write(42, *) vArray(i)*cspeed/1.d5, spec(i)
     enddo
     close(42)
-
+!$MPI endif
+    deallocate(vArray, spec)
   end subroutine calculateMoleculeSpectrum
 
 
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
     type(GRIDTYPE) :: grid
     integer :: nRay
-    type(OCTALVECTOR) :: rayPosition(:), thisPos, viewVec
+    type(OCTALVECTOR) :: rayPosition(:), thisPos, viewVec, xProj,yProj
     real(double) :: da(:), dOmega(:), distance
     real(double), allocatable :: rGrid(:), dr(:), phigrid(:), dphi(:)
     real(double) :: rMax
@@ -999,19 +1141,19 @@ contains
           yPos = 0.d0
           zPos = r1 * cos(phi1)
 
-          thisPos = OCTALVECTOR(xpos, yPos, zPos)
-          cosInc = viewVec .dot. OCTALVECTOR(0.d0, 0.d0, 1.d0)
-          azimuth = atan2(viewVec%y, viewVec%x)
-
-! need to work out angles here!!!!!!!!!!!!!!!!
+          xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
+          call normalize(xProj)
+          yProj = viewVec .cross. xProj
+         call normalize(yProj)
 
           nRay = nRay + 1
-          rayposition(nRay) = thisPos + ((-1.d0*distance) * viewVec)
+         rayPosition(nray) =  (xPos * xProj) + (zPos * yProj)
+         rayposition(nray) = rayPosition(nRay) + ((-1.d0*distance) * viewVec)
+
           da(nRay) = pi*( (r1 + dr(ir)/2.d0)**2 - (r1 - dr(ir)/2.d0)**2) * dphi(iPhi)/twoPi
           dOmega(nRay) = da(nRay) / (fourPi * distance**2)
        enddo
     enddo
-    write(*,*) sum(da(1:nRay)),pi*rmax**2
   end subroutine createRayGrid
 
   subroutine createDataCube(cube, grid, viewVec, thisMolecule, iTrans)
