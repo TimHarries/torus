@@ -669,7 +669,8 @@ contains
           lambdaTrans(i, k) = lambdaTrans(k, i)
           ! aEinstein(k, i) = aEinstein(k, i) commented out by nhs
           freq = cspeed / lambdaTrans(i, k)
-          bEinstein(k, i) = ((dble(aEinstein(k,i))*dble(cspeed)**2) / (2.d0*dble(hcgs)*dble(freq)**3))
+          bEinstein(k, i) = ((dble(aEinstein(k,i))*dble(cspeed)**2) / &
+               (2.d0*dble(hcgs)*dble(freq)**3))
           bEinstein(i, k) = bEinstein(k,i) * gDegen(k) / gDegen(i)
           fStrength(k, i) = -gDegen(i) * fStrength(i,k) / gDegen(k)
        enddo

@@ -563,13 +563,18 @@
 
 !$MPI  if (my_rank/=0) writeoutput = .false.
 
-  call readbenchmarkMolecule(co, "hco_benchmark.dat")
 
   ! get the model parameters
 
   call inputs() ! variables are passed using the input_variables module
 
 !  call test_profiles()  ! Testing Lorentz profile with Voigt profile
+
+  if (molecular) then
+     call readbenchmarkMolecule(co, "hco_benchmark.dat")
+  endif
+
+
 
   objectDistance = griddistance * pctocm
 
@@ -4276,7 +4281,7 @@
 
               if (thisPhoton%stokes%i < reallySmall) then
                  absorbed = .true.
-!                 write(*,*) "! Small photon weight",thisPhoton%stokes%i
+!                 write(*,*) "! Small photon weight",thisPhoton%stokes%i,thisPhoton%lambda,albedo,hitcore
               endif
 
 

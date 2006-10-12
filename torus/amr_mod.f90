@@ -2629,7 +2629,6 @@ CONTAINS
          phi = atan2(point%y, point%x)
          newVec = rotateZ(amrGridVelocity, -phi)
          amrGridVelocity = newVec
-
       endif
 
 
@@ -4515,6 +4514,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (rd+thisOctal%subcellSize/2.d0 < rgrid(1)) split = .false.
       if (rd-thisOctal%subcellSize/2.d0 > rgrid(nr)) split = .false.
 
+      if (thisOctal%nDepth > 5) split = .false.
 
 
 
@@ -6811,7 +6811,6 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%microturb(subcell) = max(1.d-10,mu1*(1.d5/cspeed))
     endif
    CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
- 
   end subroutine molecularBenchmark
 
 
@@ -6834,7 +6833,6 @@ IF ( .NOT. gridConverged ) RETURN
        close(31)
        firsttime = .false.
     endif
-
     r1 = modulus(point)
     moleBenchVelocity = VECTOR(0.,0.,0.)
     if ((r1 > r(1)).and.(r1 < r(nr))) then
