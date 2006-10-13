@@ -15,6 +15,29 @@ static = no
 profile= no
 PATH2G2C=/usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 
+ifeq ($(SYSTEM), intelmac)
+    F95COMP=g95
+    F77COMP=g95
+    FASTFLAG= -O3
+#    FASTFLAG= -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    DEBUGFLAG=-g -fbounds-check  -ftrace=full
+    STATICFLAG=
+    MATHTRAP=
+    UNIXMOD=unix_mod.f90.linuxintel
+    KINDMOD=kind_mod.f90.linuxintel
+    EXE=torus.intelmac
+    F77FLAG= -w -fno-second-underscore
+    IMAGEF77=image_f77.f.miracle
+    SPECF77=spec_f77.f.miracle
+#    F2CLIB=-L$(PATH2G2C) -lg2c
+    STATICLIBS=
+#    STARLIBS=-L/star/lib `ndf_link`
+    PGLIBS=-L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa \
+ /System/Library/Frameworks/Cocoa.framework/Cocoa 
+    MK_MPI_SRC = no
+    KNOWN_SYSTEM=yes
+endif
+
 ifeq ($(SYSTEM), g95)
     F95COMP=g95
     F77COMP=g95
@@ -36,6 +59,7 @@ ifeq ($(SYSTEM), g95)
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
 endif
+
 
 ifeq ($(SYSTEM), sun)
     F95COMP=sunf95
@@ -71,14 +95,14 @@ ifeq ($(SYSTEM), osx)
     KINDMOD=kind_mod.f90.linuxintel
     EXE=torus.osx
     F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.default
-    SPECF77=spec_f77.f.default
+    IMAGEF77=image_f77.f.miracle
+    SPECF77=spec_f77.f.miracle
 #    F2CLIB=-L$(PATH2G2C) -lg2c
     F2CLIB= -L/usr/local/lib -lg2c
     STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` 
-    PGLIBS=-L/star/lib `pgplot_link`
-#    STARLIBS=-L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
+#    STARLIBS=-L/star/lib `ndf_link` 
+#    PGLIBS=-L/star/lib `pgplot_link`
+    STARLIBS=-L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
 endif

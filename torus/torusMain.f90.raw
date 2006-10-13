@@ -93,6 +93,8 @@
   real ::  weightDust=1.0, weightPhoto=1.0
   real :: inclination, cos_inc, cos_inc_first, cos_inc_last, d_cos_inc
   integer :: iInclination  
+  
+  character(len=80) :: valname, thisdevice
 
   real(double) :: energyPerPhoton
   real(double) :: objectDistance
@@ -1524,8 +1526,11 @@
 !$MPI if (my_rank == 0) then
         if(plot_maps) then
            ! Plotting the slices of planes
-           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-                "rho_grid.ps/vcps",.true., .true.,&
+        thisdevice = "rho_grid.ps/vcps"
+        valname = "rho"
+
+           call plot_AMR_values(grid, valname, plane_for_plot, val_3rd_dim, &
+                thisdevice,.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 
            call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
@@ -2073,8 +2078,10 @@
      !
      if(plot_maps) then
         ! Plotting some grid values
-        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_grid.ps/vcps",.true., .true.,&
+        thisdevice = "rho_grid.ps/vcps"
+        valname = "rho"
+        call plot_AMR_values(grid, valname, plane_for_plot, val_3rd_dim, &
+             thisdevice,.true., .true.,&
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
         call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
              "rho_zoom.ps/vcps",.true., .true.,&

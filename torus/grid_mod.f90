@@ -6319,9 +6319,9 @@ contains
     endif
 
     if (nPlanes == 1) then
-       IF (PGBEG(0,device,1,1) .NE. 1) STOP
+       IF (PGBEG(0,trim(device),1,1) .NE. 1) STOP
     else
-       IF (PGBEG(0,device,3,1) .NE. 1) STOP
+       IF (PGBEG(0,trim(device),3,1) .NE. 1) STOP
     endif
 
     do iPlane = 1, nPlanes
