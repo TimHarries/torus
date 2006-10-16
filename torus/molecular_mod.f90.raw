@@ -810,13 +810,17 @@ contains
                       call calculateJbar(thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
                            phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans))
                    enddo
-                   call solveLevels(thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels), &
+                   call solveLevels(thisOctal%molecularLevel(subcell,1:thisMolecule%nLevels), &
                         thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
                         dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
-                   fac = maxval((thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops)
-                   if (fac < 1.d-6) converged = .true.
+                   fac = maxval(abs((thisOctal%molecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops))
+!                   write(*,*) iter,fac
+!                   write(*,*) real(oldpops(1:6))
+!                   write(*,*) real(thisOctal%MolecularLevel(subcell,1:6))
+!                   if (fac < 1.d-6) converged = .true.
                    if (iter == maxIter) converged = .true.
                 enddo
+                thisOctal%newMolecularLevel = thisOctal%molecularLevel
              endif
           enddo
        end do

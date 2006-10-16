@@ -6808,6 +6808,7 @@ IF ( .NOT. gridConverged ) RETURN
        call normalize(vel)
        thisOctal%velocity(subcell) = (v1 * vel)/cspeed
        mu1 = mu(i) + t1 * (mu(i+1)-mu(i))
+
        thisOctal%microturb(subcell) = max(1.d-10,mu1*(1.d5/cspeed))
     endif
    CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
@@ -11385,6 +11386,8 @@ IF ( .NOT. gridConverged ) RETURN
          r2 = r + thisOctal%subcellSize/2.d0
          d = sqrt(point%x**2+point%y**2)
          xHat = VECTOR(point%x, point%y,0.d0)
+
+
          call normalize(xHat)
       
          cosmu =((-1.d0)*xHat).dot.direction
@@ -11397,7 +11400,7 @@ IF ( .NOT. gridConverged ) RETURN
          distTor2 = max(x1,x2)
          
          theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-         cosmu = xHat.dot.direction
+         cosmu =((-1.d0)*xHat).dot.direction
          mu = acos(max(-1.d0,min(1.d0,cosmu)))
          distTor1 = 1.e30
          if (mu  < theta ) then
@@ -11407,7 +11410,7 @@ IF ( .NOT. gridConverged ) RETURN
                x1 = thisoctal%subcellSize/2.d0
                x2 = 0.d0
             endif
-            distTor1 = max(x1,x2)
+            distTor1 = min(x1,x2)
          endif
       
          distToRboundary = min(distTor1, distTor2)

@@ -3719,7 +3719,6 @@
 
      call randomSource(source, nSource, i, xArray, nLambda, initialize=.true.)  
 
-
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
 !$OMP PARALLEL DEFAULT(NONE) &
