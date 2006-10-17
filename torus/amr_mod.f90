@@ -6774,7 +6774,7 @@ IF ( .NOT. gridConverged ) RETURN
     integer, parameter :: nr = 50
     real,save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr)
     real :: mu1, r1, t1
-    real(double) :: v1
+    real(double) :: v1, vDopp
     integer :: i
 
     type(OCTALVECTOR) :: vel
@@ -6809,7 +6809,13 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%velocity(subcell) = (v1 * vel)/cspeed
        mu1 = mu(i) + t1 * (mu(i+1)-mu(i))
 
-       thisOctal%microturb(subcell) = max(1.d-10,mu1*(1.d5/cspeed))
+       vDopp  = sqrt((kErg * thisOctal%temperature(subcell)) / (29.d0 * amu))/cSpeed
+
+
+!       thisOctal%microturb(subcell) = max(1.d-10,mu1*(1.d5/cspeed))
+
+       thisOctal%microturb(subcell) = vdopp
+
     endif
    CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
   end subroutine molecularBenchmark

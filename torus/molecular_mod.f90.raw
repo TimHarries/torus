@@ -498,8 +498,8 @@ contains
   function phiProf(dv, b) result (phi)
     real(double) :: dv, b
     real(double) :: fac, phi
-    phi = 1.d0 / (b * sqrt(pi))
-    fac = dv**2 / b**2
+    phi = 1.d0 / (b * sqrt(twoPi))
+    fac = dv**2 / (2.d0 * b**2)
     phi = phi * exp(-fac)
   end function phiProf
 
@@ -550,7 +550,11 @@ contains
     rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
 !    write(*,*) "rayvel",modulus(rayvel)*cspeed/1.d5
     call random_number(r)
-    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0)!!!!!!!!!!!!!!!!!!
+!    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0)
+
+    deltaV = 3.d0 * thisOctal%microturb(subcell) * 2.d0*(r-0.5d0)  ! +-3 sigma
+
+
 !    write(*,*) "deltav",deltav*cspeed/1.d5,thisOctal%microturb(subcell) * cspeed/1.e5
     deltaV = deltaV +  (rayVel .dot. direction)
 
@@ -572,9 +576,9 @@ contains
        phi2 = phi1
     endif
 
-    if (modulus(thisVel) /= 0.d0) &
-    phi  = 0.5d0*(phi1 + phi2)
-
+    phi  = (phi1 + phi2)/2.d0
+!    if (modulus(thisVel) /= 0.d0) &
+!    write(*,*) phi1,phi2,phi
     ds = ds * 1.d10
 
 
@@ -633,6 +637,7 @@ contains
              etaLine = hCgs * thisMolecule%einsteinA(iTrans) * thisMolecule%transFreq(iTrans)
              etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * thisOctal%molecularLevel(subcell, iUpper)
              jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans)
+
 
 
              if (alphanu /= 0.d0) then
@@ -711,7 +716,7 @@ contains
     integer :: nRay
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 10
+    integer, parameter :: maxIter = 100
     logical :: converged
     integer :: iRay, iTrans, iter,i 
     real(double), allocatable :: oldpops(:)
@@ -745,7 +750,7 @@ contains
     write(*,*) "Dumping results",log10(bnu(thisMolecule%transFreq(1),2.782d0))
     call dumpresults(grid, thisMolecule)
 !$MPI endif
-    nRay = 1000
+    nRay = 100
     allocate(ds(1:nRay))
     allocate(phi(1:nRay))
     allocate(i0(1:thisMolecule%nTrans, 1:nRay))
@@ -817,7 +822,7 @@ contains
 !                   write(*,*) iter,fac
 !                   write(*,*) real(oldpops(1:6))
 !                   write(*,*) real(thisOctal%MolecularLevel(subcell,1:6))
-!                   if (fac < 1.d-6) converged = .true.
+                   if (fac < 1.d-6) converged = .true.
                    if (iter == maxIter) converged = .true.
                 enddo
                 thisOctal%newMolecularLevel = thisOctal%molecularLevel
@@ -987,6 +992,7 @@ contains
        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
 
        nTau = max(2, nint(dvAcrossCell*10.d0))
+       ntau = 5
        distArray(1) = 0.d0
        do i = 2, nTau
           

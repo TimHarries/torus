@@ -70,6 +70,7 @@ module constants_mod
   ! masses
 
   real(double), parameter :: mHydrogen = 1.6733d-24      ! g
+  real(double), parameter :: amu = 1.6605402d-24         ! g
   real(double), parameter :: mSol = 1.9891d33            ! g
   real(double), parameter :: mEarth = 5.98d27            ! g
   real(double), parameter :: mMoon = 7.349d25            ! g
