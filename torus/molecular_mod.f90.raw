@@ -442,14 +442,14 @@ contains
              end if
           end do
        else
-          where(thisOctal%newMolecularLevel(subcell,:) /= 0.d0)
+          where(thisOctal%molecularLevel(subcell,:) /= 0.d0)
              maxFracChange = max(maxFracChange, &
-                  MAXVAL(abs((thisOctal%newMolecularLevel(subcell,:) - &
-                  thisOctal%molecularLevel(subcell,:)) / &
-                  thisOctal%newmolecularLevel(subcell,:))))
+                  MAXVAL(abs((thisOctal%newMolecularLevel(subcell,1:3) - &
+                  thisOctal%molecularLevel(subcell,1:3)) / &
+                  thisOctal%molecularLevel(subcell,1:3))))
           end where
-          thisOctal%molecularLevel(subcell,1:thisMolecule%nLevels) = &
-               thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels)
+          thisOctal%molecularLevel(subcell,:) = &
+               thisOctal%newmolecularLevel(subcell,:)
        endif
     enddo
   end subroutine swapPops
@@ -717,7 +717,7 @@ contains
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     type(OCTAL), pointer :: thisOctal
     integer, parameter :: maxIter = 100
-    logical :: converged
+    logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     real(double), allocatable :: oldpops(:)
     real(double) :: fac
@@ -734,6 +734,8 @@ contains
      integer :: ioctal_beg, ioctal_end, tag = 0
      real(double) :: maxFracChange
 
+     integer :: isize
+     integer, allocatable :: iseed(:)
 
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
 !$MPI    !  Get my process rank # 
@@ -762,12 +764,23 @@ contains
     nOctal = 0
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
 
-    do while (.true.)
+    call random_seed
+    
+    call random_seed(size=iSize)
+    allocate(iSeed(1:iSize))
+    call random_seed(get=iSeed)
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
+    gridConverged = .false.
 
-    ! default loop indecies
-    ioctal_beg = 1
-    ioctal_end = SIZE(octalArray)       
+    do while (.not.gridConverged)
+
+       call random_seed(put=iseed)   ! same seed for fixed rays
+
+       ! default loop indecies
+       ioctal_beg = 1
+       ioctal_end = SIZE(octalArray)       
     
 
 
@@ -785,6 +798,8 @@ contains
 !$MPI    
 !$MPI    endif
 !$MPI    ! ============================================================================
+
+
 
 
 
@@ -807,11 +822,11 @@ contains
                         thisMolecule)
                 enddo
                 iter = 0
-                converged = .false.
-                thisOctal%newMolecularLevel = thisOctal%molecularLevel
-                do while (.not.converged)
+                popsConverged = .false.
+                thisOctal%newMolecularLevel(subcell,:) = thisOctal%molecularLevel(subcell,:)
+                do while (.not.popsConverged)
                    iter = iter + 1
-                   oldpops = thisOctal%molecularLevel(subcell,1:thisMolecule%nLevels)
+                   oldpops = thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels)
                    do iTrans = 1, thisMolecule%nTrans
                       call calculateJbar(thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
                            phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
@@ -821,8 +836,8 @@ contains
                         thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
                         dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
                    fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops))
-                   if (fac < 1.d-6) converged = .true.
-                   if (iter == maxIter) converged = .true.
+                   if (fac < 1.d-6) popsConverged = .true.
+                   if (iter == maxIter) popsConverged = .true.
                 enddo
              endif
           enddo

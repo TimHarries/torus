@@ -4514,7 +4514,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (rd+thisOctal%subcellSize/2.d0 < rgrid(1)) split = .false.
       if (rd-thisOctal%subcellSize/2.d0 > rgrid(nr)) split = .false.
 
-!      if (thisOctal%nDepth > 5) split = .false.
+      if (thisOctal%nDepth > 5) split = .false.
 
 
 

@@ -85,6 +85,10 @@ subroutine pgsci(i)
   integer :: i
 end subroutine pgsci
 
+subroutine pgqci(i)
+  integer :: i
+end subroutine pgqci
+
 subroutine pgwnad(x1, x2, x3, x4)
   real :: x1,x2,x3,x4
 end subroutine pgwnad
@@ -92,6 +96,11 @@ end subroutine pgwnad
 subroutine pgsitf(i)
   integer :: i
 end subroutine pgsitf
+
+subroutine pgpoly(n, x, y)
+  integer :: n
+  real :: x(:), y(:)
+end subroutine pgpoly
 
 function pgopen(s1) result (i)
   integer :: i
