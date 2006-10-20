@@ -429,7 +429,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, iUpper, iLower
-    real(double) :: maxFracChange
+    real(double) :: maxFracChange, temp
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -443,11 +443,13 @@ contains
           end do
        else
           where(thisOctal%molecularLevel(subcell,:) /= 0.d0)
-             maxFracChange = max(maxFracChange, &
-                  MAXVAL(abs((thisOctal%newMolecularLevel(subcell,1:3) - &
-                  thisOctal%molecularLevel(subcell,1:3)) / &
-                  thisOctal%molecularLevel(subcell,1:3))))
+             temp = MAXVAL(abs((thisOctal%newMolecularLevel(subcell,1:6) - &
+                  thisOctal%molecularLevel(subcell,1:6)) / &
+                  thisOctal%molecularLevel(subcell,1:6)))
           end where
+          if (temp > maxFracChange) then
+             maxFracChange = temp
+          endif
           thisOctal%molecularLevel(subcell,:) = &
                thisOctal%newmolecularLevel(subcell,:)
        endif
@@ -716,9 +718,10 @@ contains
     integer :: nRay
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 100
+    integer, parameter :: maxIter = 100, maxRay = 100000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
+    integer :: iStage
     real(double), allocatable :: oldpops(:)
     real(double) :: fac
 !$MPI    ! For MPI implementations
@@ -733,9 +736,16 @@ contains
      integer :: nVoxels
      integer :: ioctal_beg, ioctal_end, tag = 0
      real(double) :: maxFracChange
-
+     logical :: fixedRays
      integer :: isize
      integer, allocatable :: iseed(:)
+     real(double) :: tolerance
+
+! blockhandout must be off for fixed ray case, otherwise setting the
+! seed is not enough to ensure the same directions are done for
+! each cell every iteration
+
+     blockHandout = .false. 
 
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
 !$MPI    !  Get my process rank # 
@@ -753,10 +763,6 @@ contains
     call dumpresults(grid, thisMolecule)
 !$MPI endif
     nRay = 100
-    allocate(ds(1:nRay))
-    allocate(phi(1:nRay))
-    allocate(i0(1:thisMolecule%nTrans, 1:nRay))
-    allocate(tau(1:nRay))
 
     allocate(oldPops(1:thisMolecule%nLevels))
 
@@ -772,16 +778,39 @@ contains
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
-    gridConverged = .false.
+    nRay = 100
 
-    do while (.not.gridConverged)
+    do iStage = 1, 2
 
-       call random_seed(put=iseed)   ! same seed for fixed rays
 
-       ! default loop indecies
-       ioctal_beg = 1
-       ioctal_end = SIZE(octalArray)       
-    
+       if (iStage == 1) then
+          fixedRays = .true.
+          tolerance = 1.d-2
+       else
+          fixedRays = .false.
+          tolerance = 1.d-4
+       endif
+
+       gridConverged = .false.
+
+       do while (.not.gridConverged)
+
+          allocate(ds(1:nRay))
+          allocate(phi(1:nRay))
+          allocate(i0(1:thisMolecule%nTrans, 1:nRay))
+          allocate(tau(1:nRay))
+          
+          
+          if (fixedRays) then
+             call random_seed(put=iseed)   ! same seed for fixed rays
+          else
+             call random_seed
+          endif
+
+          ! default loop indecies
+          ioctal_beg = 1
+          ioctal_end = SIZE(octalArray)       
+          
 
 
 !$MPI    
@@ -809,39 +838,42 @@ contains
 !$MPI   if (rankComplete) exit blockLoop 
 
 
-       do iOctal = ioctal_beg, ioctal_end
-          write(*,*) iOctal,ioctal_beg,ioctal_end
-          thisOctal => octalArray(iOctal)%content
-          do subcell = 1, thisOctal%maxChildren
-             
-             if (.not.thisOctal%hasChild(subcell)) then
+          do iOctal = ioctal_beg, ioctal_end
+!             write(*,*) iOctal,ioctal_beg,ioctal_end
+             thisOctal => octalArray(iOctal)%content
+             do subcell = 1, thisOctal%maxChildren
                 
-                do iRay = 1, nRay
-                   call getRay(grid, thisOCtal, subcell, position, direction, &
-                        ds(iRay), phi(iRay), i0(1:thisMolecule%nTrans,iRay), &
-                        thisMolecule)
-                enddo
-                iter = 0
-                popsConverged = .false.
-                thisOctal%newMolecularLevel(subcell,:) = thisOctal%molecularLevel(subcell,:)
-                do while (.not.popsConverged)
-                   iter = iter + 1
-                   oldpops = thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels)
-                   do iTrans = 1, thisMolecule%nTrans
-                      call calculateJbar(thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
-                           phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
-                           thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels))
+                if (.not.thisOctal%hasChild(subcell)) then
+                   
+                   do iRay = 1, nRay
+                      call getRay(grid, thisOCtal, subcell, position, direction, &
+                           ds(iRay), phi(iRay), i0(1:thisMolecule%nTrans,iRay), &
+                           thisMolecule)
                    enddo
-                   call solveLevels(thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels), &
-                        thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
-                        dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
-                   fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops))
-                   if (fac < 1.d-6) popsConverged = .true.
-                   if (iter == maxIter) popsConverged = .true.
-                enddo
-             endif
-          enddo
-       end do
+                   iter = 0
+                   popsConverged = .false.
+                   thisOctal%newMolecularLevel(subcell,:) = thisOctal%molecularLevel(subcell,:)
+                   do while (.not.popsConverged)
+                      iter = iter + 1
+                      oldpops = thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels)
+                      do iTrans = 1, thisMolecule%nTrans
+                         call calculateJbar(thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
+                              phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
+                              thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels))
+                      enddo
+                      call solveLevels(thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels), &
+                           thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
+                           dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
+                      fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops))
+                      if (fac < 1.d-10) popsConverged = .true.
+                      if (iter == maxIter) then
+                         popsConverged = .true.
+                         call writeWarning("Maximum number of iterations reached in pop solver")
+                      endif
+                   enddo
+                endif
+             enddo
+          end do
 
 !$MPI if (.not.blockHandout) exit blockloop
 !$MPI end do blockLoop        
@@ -849,10 +881,10 @@ contains
 
 
 
-!$MPI       if(my_rank == 0) write(*,*) "Updating MPI grids"
-
 
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI       if(my_rank == 0) write(*,*) "Updating MPI grids"
+
 !$MPI
 !$MPI     ! have to send out the 'octalsBelongRank' array
 !$MPI     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
@@ -878,21 +910,39 @@ contains
 
 
 
-       maxFracChange = -1.d30
-       call swapPops(grid%octreeRoot, maxFracChange)
-       write(*,*) "Maximum fractional change this iteration",maxFracChange
+          maxFracChange = -1.d30
+          call swapPops(grid%octreeRoot, maxFracChange)
+          write(*,*) "Maximum fractional change this iteration",maxFracChange
+          write(*,*) "Fractional change",maxFracChange,"tolerance",tolerance , &
+               "fixed rays",fixedrays,"nray",nray
 
-!$MPI       if (my_rank == 0) &
-            call writeAmrGrid("molecular_tmp.grid",.false.,grid)
-!$MPI if (my_rank ==0 ) then
-       write(*,*) "Dumping results"
-       call dumpresults(grid, thisMolecule)
-!$MPI endif
+          if (maxFracChange < tolerance) then
+             gridConverged = .true.
+          endif
+
+          
+          !$MPI       if (my_rank == 0) &
+          call writeAmrGrid("molecular_tmp.grid",.false.,grid)
+          !$MPI if (my_rank ==0 ) then
+          write(*,*) "Dumping results"
+          call dumpresults(grid, thisMolecule)
+          !$MPI endif
 
 !$MPI       deallocate(octalsBelongRank)
 
+          deallocate(ds, phi, i0, tau)
+          
+          if (.not.gridConverged) then
+             if (.not.fixedRays) nRay = nRay * 2
+          endif
+          if (nRay > maxRay) then
+             nRay = maxRay
+             call writeWarning("Maximum number of rays exceeded - capping")
+          endif
+       enddo
     enddo
-
+    write(*,*) "mole loop done."
+    stop
   end subroutine molecularLoop
 
 
