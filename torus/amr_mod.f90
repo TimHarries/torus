@@ -6809,12 +6809,12 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%velocity(subcell) = (v1 * vel)/cspeed
        mu1 = mu(i) + t1 * (mu(i+1)-mu(i))
 
-       vDopp  = sqrt((kErg * thisOctal%temperature(subcell)) / (29.d0 * amu))/cSpeed
+!       vDopp  = sqrt((kErg * thisOctal%temperature(subcell)) / (29.d0 * amu))/cSpeed
+!       thisOctal%microturb(subcell) = vdopp / 5.d0
 
 
-!       thisOctal%microturb(subcell) = max(1.d-10,mu1*(1.d5/cspeed))
+      thisOctal%microturb(subcell) = max(1.d-10,mu1*(1.d5/cspeed))
 
-       thisOctal%microturb(subcell) = vdopp
 
     endif
    CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)

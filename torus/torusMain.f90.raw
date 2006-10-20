@@ -574,6 +574,7 @@
 
   if (molecular) then
      call readbenchmarkMolecule(co, "hco_benchmark.dat")
+!     call readMolecule(co, "hco_plus.dat")
   endif
 
 

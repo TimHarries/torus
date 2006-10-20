@@ -237,8 +237,8 @@ contains
     thisMolecule%energy = thisMolecule%energy / 8065.541  ! per cm to ev
        
 
-    read(30,*) thisMolecule%j(1:thisMolecule%nLevels)
-    thisMolecule%g(1:thisMolecule%nLevels) = 2.d0*thisMolecule%j(1:thisMolecule%nLevels) + 1.d0
+    read(30,*) thisMolecule%g(1:thisMolecule%nLevels)
+    thisMolecule%j(1:thisMolecule%nLevels) = (thisMolecule%g(1:thisMolecule%nLevels) - 1.d0)/2.d0
 
     read(30,*) thisMolecule%itransUpper(1:thisMolecule%nTrans)
     read(30,*) thisMolecule%itransLower(1:thisMolecule%nTrans)
@@ -249,7 +249,6 @@ contains
 
        thisMolecule%transFreq(i) = ((thisMolecule%energy(thisMolecule%iTransUpper(i)) - &
             thisMolecule%energy(thisMolecule%iTransLower(i)))/ergToEV)/hcgs
-
        thisMolecule%einsteinBul(i) = thisMolecule%einsteinA(i) * (cspeed**2)/(2.d0*hcgs*thisMolecule%transFreq(i)**3)
 
        thisMolecule%einsteinBlu(i) = thisMolecule%einsteinBul(i) &
@@ -404,7 +403,6 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, iUpper, iLower
-    real, parameter :: Tcbr = 2.728
     real(double) :: etaLine
   
     do subcell = 1, thisOctal%maxChildren
@@ -425,14 +423,13 @@ contains
     enddo
   end subroutine solveAllPops
 
-  recursive subroutine  swapPops(thisOctal)
+  recursive subroutine  swapPops(thisOctal, maxFracChange)
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, iUpper, iLower
-    real, parameter :: Tcbr = 2.728
-    real(double) :: etaLine
+    real(double) :: maxFracChange
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -440,13 +437,19 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call swapPops(child)
+                call swapPops(child, maxFracChange)
                 exit
              end if
           end do
        else
-
-          thisOctal%molecularLevel(subcell,:) = thisOctal%newmolecularLevel(subcell,:)
+          where(thisOctal%newMolecularLevel(subcell,:) /= 0.d0)
+             maxFracChange = max(maxFracChange, &
+                  MAXVAL(abs((thisOctal%newMolecularLevel(subcell,:) - &
+                  thisOctal%molecularLevel(subcell,:)) / &
+                  thisOctal%newmolecularLevel(subcell,:))))
+          end where
+          thisOctal%molecularLevel(subcell,1:thisMolecule%nLevels) = &
+               thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels)
        endif
     enddo
   end subroutine swapPops
@@ -498,8 +501,8 @@ contains
   function phiProf(dv, b) result (phi)
     real(double) :: dv, b
     real(double) :: fac, phi
-    phi = 1.d0 / (b * sqrt(twoPi))
-    fac = dv**2 / (2.d0 * b**2)
+    phi = 1.d0 / (b * sqrt(Pi))
+    fac = dv**2 / b**2
     phi = phi * exp(-fac)
   end function phiProf
 
@@ -525,7 +528,6 @@ contains
     real(double) :: nLower, nUpper
     real(double) :: dTau, etaline, didtau
     real(double), allocatable :: tau(:)
-    real(double), parameter :: Tcbr = 2.782d0
     real(double) :: intensityIntegral
     real(double) :: dvAcrossCell, projVel
     integer :: iCount
@@ -548,14 +550,12 @@ contains
 !    endif
 
     rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
-!    write(*,*) "rayvel",modulus(rayvel)*cspeed/1.d5
+
     call random_number(r)
-!    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0)
 
-    deltaV = 3.d0 * thisOctal%microturb(subcell) * 2.d0*(r-0.5d0)  ! +-3 sigma
+    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0)
 
 
-!    write(*,*) "deltav",deltav*cspeed/1.d5,thisOctal%microturb(subcell) * cspeed/1.e5
     deltaV = deltaV +  (rayVel .dot. direction)
 
     projVel = deltaV - (rayVel .dot. direction)
@@ -732,7 +732,7 @@ contains
      real(double), allocatable :: tArrayd(:),tempArrayd(:)
      integer :: nVoxels
      integer :: ioctal_beg, ioctal_end, tag = 0
-
+     real(double) :: maxFracChange
 
 
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
@@ -808,24 +808,22 @@ contains
                 enddo
                 iter = 0
                 converged = .false.
+                thisOctal%newMolecularLevel = thisOctal%molecularLevel
                 do while (.not.converged)
                    iter = iter + 1
                    oldpops = thisOctal%molecularLevel(subcell,1:thisMolecule%nLevels)
                    do iTrans = 1, thisMolecule%nTrans
                       call calculateJbar(thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
-                           phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans))
+                           phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
+                           thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels))
                    enddo
-                   call solveLevels(thisOctal%molecularLevel(subcell,1:thisMolecule%nLevels), &
+                   call solveLevels(thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels), &
                         thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
                         dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
-                   fac = maxval(abs((thisOctal%molecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops))
-!                   write(*,*) iter,fac
-!                   write(*,*) real(oldpops(1:6))
-!                   write(*,*) real(thisOctal%MolecularLevel(subcell,1:6))
+                   fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops))
                    if (fac < 1.d-6) converged = .true.
                    if (iter == maxIter) converged = .true.
                 enddo
-                thisOctal%newMolecularLevel = thisOctal%molecularLevel
              endif
           enddo
        end do
@@ -865,8 +863,9 @@ contains
 
 
 
-
-       call swapPops(grid%octreeRoot)
+       maxFracChange = -1.d30
+       call swapPops(grid%octreeRoot, maxFracChange)
+       write(*,*) "Maximum fractional change this iteration",maxFracChange
 
 !$MPI       if (my_rank == 0) &
             call writeAmrGrid("molecular_tmp.grid",.false.,grid)
@@ -882,12 +881,12 @@ contains
   end subroutine molecularLoop
 
 
-  subroutine calculateJbar(thisOctal, subcell, thisMolecule, nRay, ds, phi, i0, iTrans, jbar)
+  subroutine calculateJbar(thisOctal, subcell, thisMolecule, nRay, ds, phi, i0, iTrans, jbar, nPops)
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     type(MOLECULETYPE) :: thisMolecule
     integer :: nRay
-    real(double) :: ds(:), phi(:), i0(:)
+    real(double) :: ds(:), phi(:), i0(:), nPops(:)
     integer :: iTrans
     real(double) :: jbar
     integer :: iRay
@@ -895,7 +894,7 @@ contains
     real(double) :: jBarInternal, jBarExternal
     real(double) :: alphanu, jnu, etaline
     integer :: iUpper, iLower
-    real(double) :: tau, snu
+    real(double) :: tau, snu, sumPhi
 
     jBarExternal = 0.d0
     jBarInternal = 0.d0
@@ -903,17 +902,18 @@ contains
     iUpper = thisMolecule%iTransUpper(iTrans)
     iLower = thisMolecule%iTransLower(iTrans)
 
+    sumPhi = 0.d0
     do iRay = 1, nRay
        alphanu = (hCgs*thisMolecule%transFreq(iTrans)/fourPi)
-       nLower = thisOctal%molecularLevel(subcell,iLower) * thisMolecule%abundance * thisOctal%nh2(subcell)
-       nUpper = thisOctal%molecularLevel(subcell,iUpper) * thisMolecule%abundance * thisOctal%nh2(subcell)
+       nLower = nPops(iLower) * thisMolecule%abundance * thisOctal%nh2(subcell)
+       nUpper = nPops(iUpper) * thisMolecule%abundance * thisOctal%nh2(subcell)
        
        alphanu = alphanu * (nLower * thisMolecule%einsteinBlu(iTrans) - &
             nUpper * thisMolecule%einsteinBul(iTrans)) * phi(iray)/thisMolecule%transFreq(iTrans)
        tau = alphaNu * ds(iray)
 
        etaLine = hCgs * thisMolecule%einsteinA(iTrans) * thisMolecule%transFreq(iTrans)
-       etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * thisOctal%molecularLevel(subcell, iUpper)
+       etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * nPops(iUpper)
        jnu = (etaLine/fourPi) * phi(iRay)/thisMolecule%transFreq(iTrans)
        
        if (alphanu /= 0.d0) then
@@ -922,13 +922,14 @@ contains
           snu = tiny(snu)
        endif
 
-       jBarExternal = jBarExternal + i0(iray) * exp(-tau)
-       jBarInternal = jBarInternal + snu * (1.d0 - exp(-tau))
+       jBarExternal = jBarExternal + i0(iray) * exp(-tau) * phi(iRay)
+       jBarInternal = jBarInternal + snu * (1.d0 - exp(-tau)) * phi(iRay)
 
+       sumPhi = sumPhi + phi(iRay)
     enddo
     
-    jbar = (jBarExternal + jBarInternal)/dble(nRay)
-
+!    jbar = (jBarExternal + jBarInternal)/dble(nRay)
+     jbar = (jBarExternal + jBarInternal)/sumPhi
 
   end subroutine calculateJbar
 
@@ -954,7 +955,6 @@ contains
     integer :: nTau
     real(double) :: nLower, nUpper
     real(double) :: dTau, etaline, didtau, tau
-    real(double), parameter :: Tcbr = 2.782d0
     real(double) :: intensityIntegral
     real(double) :: dvAcrossCell
 
