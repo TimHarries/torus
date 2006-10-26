@@ -12,7 +12,7 @@ module source_mod
 
 
   type SOURCETYPE
-     type(DOUBLEVECTOR)    :: position   ! [10^10cm]
+     type(OCTALVECTOR)    :: position   ! [10^10cm]
      real(double) :: radius     ! [10^10cm]
      real(double) :: luminosity ! [erg/s]
      real(double) :: teff       ! [K]
@@ -152,15 +152,17 @@ module source_mod
 
 
 
-    subroutine distanceToSource(source, nSource, rVec, uHat, hitSource, distance)
+    subroutine distanceToSource(source, nSource, rVec, uHat, hitSource, distance, sourcenumber)
       integer :: nSource
       type(SOURCETYPE) :: source(nSource)
-      type(DOUBLEVECTOR) :: rVec, uHat
+      type(OCTALVECTOR) :: rVec, uHat
+      integer, optional :: sourceNumber
       real(double) :: distance, cosTheta, sintheta
       logical :: hitSource
       integer :: i
 
       hitSource = .false.
+      if (present(sourceNumber)) sourceNumber = 0 
       distance = 1.d30
       mainloop: do i = 1, nSource
          cosTheta = (uHat .dot. (source(i)%position - rVec))/modulus(source(i)%position - rVec)
@@ -171,6 +173,7 @@ module source_mod
          if (source(i)%radius > (modulus(source(i)%position - rVec)*sinTheta)) then
             distance = min(distanceToSphere(rVec, uHat, source(i)%position, source(i)%radius),distance)
             hitSource = .true. ! bang
+            if (present(sourcenumber)) sourceNumber = i
          endif
       enddo mainloop
     end subroutine distanceToSource
@@ -203,7 +206,7 @@ module source_mod
     real(double) :: distance, radius
     real(double) :: x1, x2,a,b,c,d,costheta
     logical :: ok
-    type(DOUBLEVECTOR) :: rVec, uHat, centre
+    type(OCTALVECTOR) :: rVec, uHat, centre
 
     d = modulus(centre - rVec)
     cosTheta = (uHat .dot. (centre-rVec)) / d
@@ -302,5 +305,17 @@ module source_mod
     out = dir
 
   end function random_direction_from_sphere
+
+  real(double) function I_nu(source, nu) 
+    type(SOURCETYPE) :: source
+    real(double) :: nu, fnu, flambda, lam
+    integer :: i
+
+    lam = 1.d8 * cSpeed/ nu ! angs
+    call locate(source%spectrum%lambda, source%spectrum%nLambda, lam, i)
+    fLambda = source%spectrum%flux(i)
+    fnu = flambda * cSpeed/nu**2
+    i_nu = fnu / pi
+  end function I_nu
 
   end module source_mod

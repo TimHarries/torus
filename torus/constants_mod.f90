@@ -56,6 +56,7 @@ module constants_mod
   real(double),parameter :: hydE0eVdb = 13.598433_db! eV
 
   real(double), parameter :: ergToEv = 6.24145d11   
+  real(double), parameter :: evtoerg = 1.d0/6.24145d11   
 
   real(double), parameter :: nuHydrogen = (hydE0eVdb/(ergToEv)) / (hCgs)
 

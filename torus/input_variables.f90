@@ -19,6 +19,7 @@ module input_variables
   integer :: nr, nmu, nphi
   logical :: photoionization
   logical :: molecular
+  logical :: cmf
   integer :: nClumps
   character(len=80) :: distortionType
   integer :: nPhase

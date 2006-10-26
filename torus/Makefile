@@ -594,7 +594,9 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  flow_speed_variables.f90 clump_mod.f90 parallel_mod.f90 \
  discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
  jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
- romanova_class.f90 messages_mod.f90 starburst_mod.f90 molecular_mod.f90
+ romanova_class.f90 messages_mod.f90 starburst_mod.f90 molecular_mod.f90 \
+ modelatom_mod.f90 cmf_mod.f90
+	
 
 PGSOURCE= pgplot_stubs.f90
 PGOBJ= $(PGSOURCE:.f90=.o)
@@ -776,8 +778,7 @@ torusMain.o: torusMain.f90.raw TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o
 	source_mod.o spectrum_mod.o sph_data_class.o stateq_mod.o \
 	surface_mod.o timing.o unix_mod.o utils_mod.o vector_mod.o \
 	wr104_mod.o  messages_mod.o photoion_mod.o  romanova_class.o \
-	starburst_mod.o molecular_mod.o
-
+	starburst_mod.o molecular_mod.o cmf_mod.o
 
         ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' torusMain.f90.raw  > torusMain.f90

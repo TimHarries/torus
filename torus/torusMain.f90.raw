@@ -74,6 +74,8 @@
   use formal_solutions
   use starburst_mod
   use molecular_mod
+  use modelatom_mod
+  use cmf_mod
 
 !$mpi   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
@@ -449,7 +451,7 @@
 !$SPH  real*8 :: xgas,ygas,zgas
 !$SPH  real :: tgas
 
-
+  type(modelatom) :: thisAtom
 
   
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
@@ -565,12 +567,17 @@
 
 !$MPI  if (my_rank/=0) writeoutput = .false.
 
+  if (cmf) then
+     call readAtom(thisAtom,"H.atm")
+  endif
+  
 
   ! get the model parameters
 
   call inputs() ! variables are passed using the input_variables module
 
 !  call test_profiles()  ! Testing Lorentz profile with Voigt profile
+
 
   if (molecular) then
      call readbenchmarkMolecule(co, "hco_benchmark.dat")
@@ -2551,6 +2558,10 @@
 
 667 continue
      call random_seed
+
+     if (cmf) then
+        call atomLoop(grid, thisAtom, nsource, source)
+     endif
 
      if (molecular) then
         call  molecularLoop(grid, co)

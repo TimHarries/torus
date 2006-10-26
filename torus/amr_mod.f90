@@ -4457,9 +4457,9 @@ IF ( .NOT. gridConverged ) RETURN
       split = .FALSE.
       nr1 = 8
       nr2 = 100
-      rgrid(1) = 0.1
-      rgrid(2) = 0.2
-      rgrid(3) = 0.5
+      rgrid(1) = 0.7
+      rgrid(2) = 0.8
+      rgrid(3) = 0.99
       rGrid(4) = 1.
       rGrid(5) = 1.01
       rGrid(6) = 1.02
@@ -4476,7 +4476,7 @@ IF ( .NOT. gridConverged ) RETURN
       rgrid(1:nr) = 10.d0**rgrid(1:nr)
       r = modulus(cellcentre)
       if (thisOctal%nDepth < 5) split = .true.
-      if (r < grid%rOuter) then
+      if ((r-cellsize/2.) < grid%rOuter) then
          call locate(rGrid, nr, r, i)      
          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       endif
@@ -6703,6 +6703,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r
     TYPE(octalVector) :: rVec
+    real(double) :: v
     
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
@@ -6711,15 +6712,23 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%temperature(subcell) = 1.e-3
     thisOctal%etaCont(subcell) = 1.e-30
     thisOctal%inFlow(subcell) = .true.
+    thisOctal%velocity = VECTOR(0.,0.,0.)
 
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
-       thisOctal%temperature(subcell) = 10.
+       thisOctal%temperature(subcell) = 0.9*teff
        thisOctal%inFlow(subcell) = .true.
        thisOctal%etaCont(subcell) = 0.
-    endif
+       thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
+       v = 10.d5+(vterm-10.d5)*(1.d0 - grid%rinner/r)
+       thisOctal%microturb(subcell) = 10.d5/cspeed
+       thisOctal%velocity(subcell) = rVec
+       call normalize(thisOctal%velocity(subcell))
+       thisOctal%velocity(subcell) = thisOctal%velocity(subcell) * real(v/cSpeed)
 
-    thisOctal%velocity = VECTOR(0.,0.,0.)
+    endif
+    CALL fillVelocityCorners(thisOctal,grid,wrshellVelocity,thisOctal%threed)
+
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
   end subroutine calcWRShellDensity
@@ -6820,6 +6829,23 @@ IF ( .NOT. gridConverged ) RETURN
    CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
   end subroutine molecularBenchmark
 
+
+  TYPE(vector)  function wrshellVelocity(point, grid)
+    use input_variables, only : vterm
+    type(octalvector) :: point, rvec
+    type(GRIDTYPE) :: grid
+    real(double) :: v, r
+    rVec = point
+
+    r = modulus(rVec)
+    if ((r > grid%rInner).and.(r < grid%rOuter)) then
+
+       v = 10.d5+(vterm-10.d5)*(1.d0 - grid%rinner/r)
+       call normalize(rvec)
+       wrshellvelocity = rvec * (v/cSpeed)
+    endif
+
+  end function wrshellVelocity
 
   TYPE(vector) FUNCTION moleBenchVelocity(point,grid)
     type(OCTALVECTOR), intent(in) :: point
@@ -12405,7 +12431,7 @@ IF ( .NOT. gridConverged ) RETURN
           endLength = 1.d30
        endif
     else
-       call distanceToSource(source, nSource_local, o2d(startPoint), o2d(direction), absorbPhoton, endLength)
+       call distanceToSource(source, nSource_local, startPoint, direction, absorbPhoton, endLength)
     endif
 
 
