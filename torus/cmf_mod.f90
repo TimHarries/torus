@@ -39,6 +39,7 @@ contains
     real(double) :: partitionFunc
     real(double) :: fac, nh
     real(double) :: prate, rrate, Nstar
+    integer :: iJnu
 
     nLevels = thisAtom%nLevels
 
@@ -87,13 +88,13 @@ contains
        k = thisAtom%iUpper(iTrans)
        l = thisAtom%iLower(iTrans)
        if (thisAtom%transType(iTrans) == "RBB") then ! radiative BB rates
-
+          iJnu = thisAtom%indexRBB(iTrans)
           call returnEinsteinCoeffs(thisAtom, iTrans, a, Bul, Blu)
 
-          matrixA(k,k) = matrixA(k,k) - Bul * jnuLine(iTrans) - a
-          matrixA(l,l) = matrixA(l,l) - Blu * jnuLine(iTrans)
-          matrixA(k,l) = matrixA(k,l) + Blu * jnuLine(iTrans)
-          matrixA(l,k) = matrixA(l,k) + Bul * jnuLine(iTrans) + a
+          matrixA(k,k) = matrixA(k,k) - Bul * jnuLine(iJnu) - a
+          matrixA(l,l) = matrixA(l,l) - Blu * jnuLine(iJnu)
+          matrixA(k,l) = matrixA(k,l) + Blu * jnuLine(iJnu)
+          matrixA(l,k) = matrixA(l,k) + Bul * jnuLine(iJnu) + a
        endif
 
        if (thisAtom%transType(iTrans) == "CBB") then ! collision BB  rates
@@ -481,7 +482,7 @@ contains
     logical, allocatable :: hitPhotosphere(:)
     integer, parameter :: maxFreq = 2000
     real(double) :: freq(maxFreq), jnuCont(maxFreq)
-    integer :: nFreq, nhit
+    integer :: nFreq, nhit, iRBB
     real(double) :: nuStart, nuEnd
 
     nuStart = cSpeed / (100000.d0 * 1.d-8)
@@ -577,14 +578,15 @@ contains
                          call calculateJbarCont(nray, source, nSource, hitPhotosphere, sourceNumber, &
                               freq, nfreq, jnuCont, cosTheta, weight)
                          
-                         do iTrans = 1, thisAtom%nTrans
+                         do iRBB = 1, thisAtom%nRBBTrans
+                            iTrans = thisAtom%indexRBB(iRBB)
                             call calculateJbar(thisOctal, subcell, thisAtom, nRay, ds(1:nRay), &
                                  phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
                                  thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels), freq, nFreq, jnuCont, weight(1:nRay))
                             
                          enddo
                          call solveLevels(thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels+1), &
-                              thisOctal%jnu(subcell,1:thisAtom%nTrans),  &
+                              thisOctal%jnu(subcell,1:thisAtom%nRBBTrans),  &
                               dble(thisOctal%temperature(subcell)), thisAtom, thisOctal%ne(subcell), &
                               thisOctal%rho(subcell)/mHydrogen,&
                               jnuCont, freq, nfreq)
@@ -739,7 +741,7 @@ contains
           thisOctal%newmolecularLevel = 1.d-30
 
           if (.not.associated(thisOctal%jnu)) then
-             allocate(thisOctal%jnu(1:thisOctal%maxChildren, 1:thisAtom%nTrans))
+             allocate(thisOctal%jnu(1:thisOctal%maxChildren, 1:thisAtom%nRBBTrans))
           endif
 !          do i = 1, thisAtom%nTrans
 !             thisOctal%jnu(subcell,i) = bnu(thisAtom%transFreq(i), dble(thisOctal%temperature(subcell)))

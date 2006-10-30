@@ -9,6 +9,7 @@ module modelatom_mod
   use hyd_col_coeff
   use utils_mod
   use stateq_mod
+  use utils_mod
 
   type MODELATOM
      character(len=10) :: name
@@ -22,6 +23,8 @@ module modelatom_mod
      integer, pointer :: ionStage(:)
      integer, pointer :: nQuantum(:)
      integer :: nTrans
+     integer :: nRBBtrans
+     integer, pointer :: indexRBB(:)
      character(len=3), pointer :: transType(:) ! RBB, RBF, CBB, CBF etc
      real(double), pointer :: transFreq(:)
      integer, pointer :: iLower(:)
@@ -107,6 +110,25 @@ contains
           write(*,*) i,1.d8*cSpeed/thisAtom%transFreq(i),a, blu, bul
        endif
     enddo
+
+    thisAtom%nRBBtrans = 0
+    do i = 1, thisAtom%nTrans
+       if (thisAtom%transType(i) == "RBB") thisAtom%nRBBtrans = thisAtom%nRBBtrans + 1
+    enddo
+    write(*,*) "Number of radiative BB transitions",thisAtom%nRBBtrans
+
+    allocate(thisAtom%indexRBB(1:thisAtom%nRBBtrans))
+
+    j = 0
+    do i = 1, thisAtom%nTrans
+       if (thisAtom%transType(i) == "RBB") then
+           j = j + 1
+           thisAtom%indexRBB(j) = i
+        endif
+    enddo
+       
+
+
   end subroutine readAtom
 
 
@@ -193,7 +215,7 @@ contains
        stop
     endif
     select case(thisAtom%equation(iTrans))
-    case(4)
+    case(4,1,3)
        f = thisAtom%params(iTrans,1)
        iUpper = thisAtom%iUpper(iTrans)
        iLower = thisAtom%iLower(iTrans)
@@ -230,7 +252,9 @@ contains
   function collisionRate(thisAtom, iTrans, temperature) result(rate)
     type(MODELATOM) :: thisAtom
     integer :: iTrans
-    real(double) :: temperature, ne, rate
+    real(double) :: temperature, ne, rate, u0, u1, u2
+    real(double) :: logGamma
+    real(double) :: sigma0
 
     if (iTrans > thisAtom%nTrans) then
        call writeFatal("returnEinsteinCoeffs: iTrans greater than number of transitions")
@@ -247,6 +271,42 @@ contains
        select case(thisAtom%name)
        case("H") 
           rate = cijt_hyd_hillier(thisAtom%iLower(iTrans), thisAtom%iUpper(iTrans), temperature, thisAtom)
+
+       case("He") 
+          select case(thisAtom%equation(itrans))
+             case(2)
+                if (thisAtom%nParams(iTrans) == 1) then
+                   u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
+                   rate = 8.631d-6/(thisAtom%g(thisAtom%iLower(itrans))*sqrt(temperature)) * exp(-u0)
+                else
+                   call writeFatal("equn not implemented")
+                   stop
+                endif
+             case(5)
+                EH = hydE0eVdb * evtoErg
+                u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
+                rate = 5.465d-11 * sqrt(temperature)*thisAtom%params(itrans,1)
+                rate = rate * (EH/(hCgs*thisAtom%transFreq(iTrans)))**2 * u0 * expint(1, u0)
+             case(6)
+                EH = hydE0eVdb * evtoErg
+                u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
+                u1 = u0 + 0.2d0
+                rate = 5.465d-11 * sqrt(temperature)*thisAtom%params(itrans,1)
+                rate = rate * (EH/(hCgs*thisAtom%transFreq(iTrans)))**2 * u0 * (expint(1, u0) - &
+                     (u0/u1)*exp(-0.2)*expint(1,u1))
+            case(8)
+               logGamma = thisAtom%params(itrans,1) + thisAtom%params(iTrans,2) * &
+                    log10(temperature)+thisAtom%params(itrans,3)/(log10(temperature)**2)
+               rate = 5.465d-11 * sqrt(temperature) * exp(-(hCgs*thisAtom%transFreq(iTrans)/(kerg*temperature))) * logGamma
+             case(9)
+                u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
+                rate = 5.465d-11 * sqrt(temperature) * exp(-u0)*(1.d0+u0)
+             case DEFAULT
+                call writeFatal("CBB rate equation not implemented for He")
+                stop
+           end select
+               
+
        case DEFAULT
           call writeFatal("collisionRate: bound-bound collision type not implemented")
           stop
@@ -255,6 +315,20 @@ contains
        select case(thisAtom%name)
        case("H") 
           rate = cikt_hyd_hillier(thisAtom%iLower(iTrans), temperature, thisAtom)
+       case("He")
+          if (thisAtom%iLower(iTrans) <= 15) then
+             sigma0 = 1.64d0
+             u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
+             u1 = u0 + 0.27d0
+             u2 = u0 + 1.43d0
+             rate =  5.465d-11 * sqrt(temperature) *sigma0 * (u0*expint(1,u0) - (0.728d0*u0**2/u1)*expint(1,u1) - 0.189d0 * u0**2 &
+                  * exp(-u0)*((2.d0+u2)/u2*3))
+          else
+             write(*,*) "????"
+             sigma0 = 666.d0!!!!
+             u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
+             rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
+          endif
        case DEFAULT
           call writeFatal("collisionRate: bound-bound collision type not implemented2")
           stop
