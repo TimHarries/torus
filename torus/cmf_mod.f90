@@ -41,138 +41,159 @@ contains
     real(double) :: prate, rrate, Nstar
     integer :: iJnu
 
-    nLevels = thisAtom%nLevels
-
-    allocate(matrixA(1:nLevels+2,1:nLevels+2))
-    allocate(matrixB(1:nLevels+2))
-
-    matrixA = 1.d-30
-    matrixB = 0.d0
+    integer :: nAtom, iAtom, nMatrix
 
 
-    matrixA(nLevels+2,1:nLevels+1) = 1.d0
-    matrixB(nLevels+2) = nh
-
-! RHS of equation
-
-    do iTrans = 1, thisAtom%nTrans
-
-       k = thisAtom%iUpper(iTrans)
-       l = thisAtom%iLower(iTrans)
-
-       Nstar = boltzSahaGeneral2(thisAtom, 1, l, ne, temperature, &
-            SUM(npops(1:thisAtom%nLevels)))
-
-       if (thisAtom%transType(iTrans) == "RBF") then ! radiative recomb
-          recombratekl = 0.d0
-          do i = 2, nFreq
-             xSection = photoCrossSection(thisAtom, l, freq(i))
-             recombRatekl = recombRatekl + &
-                  (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
-                  exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
-          enddo
-          matrixB(l) = matrixB(l) - Nstar * recombratekl
-       endif
-       if (thisAtom%transType(iTrans) == "CBF") then ! collisional recomb
-
-          collEx = collisionRate(thisAtom, iTrans, temperature)
-          matrixB(l) = matrixB(l) - Nstar*collEx*ne
+    nMatrix = 0
+    do iAtom = 1, nAtom
+       if (thisAtom(iAtom)%name == "HI") then
+          nMatrix = nMatrix + thisAtom%nLevels+1
+       else
+          nMatrix = nMatrix + thisAtom%nLevels
        endif
     enddo
-
-    matrixB(nLevels+1) = -SUM(matrixB(1:nLevels))
-
-! LHS
-
-    do iTrans = 1, thisAtom%nTrans
-
-       k = thisAtom%iUpper(iTrans)
-       l = thisAtom%iLower(iTrans)
-       if (thisAtom%transType(iTrans) == "RBB") then ! radiative BB rates
-          iJnu = thisAtom%indexRBB(iTrans)
-          call returnEinsteinCoeffs(thisAtom, iTrans, a, Bul, Blu)
-
-          matrixA(k,k) = matrixA(k,k) - Bul * jnuLine(iJnu) - a
-          matrixA(l,l) = matrixA(l,l) - Blu * jnuLine(iJnu)
-          matrixA(k,l) = matrixA(k,l) + Blu * jnuLine(iJnu)
-          matrixA(l,k) = matrixA(l,k) + Bul * jnuLine(iJnu) + a
-       endif
-
-       if (thisAtom%transType(iTrans) == "CBB") then ! collision BB  rates
+    nMatrix = nMatrix + 1
+       
+       
 
 
-          collEx = collisionRate(thisAtom, iTrans, temperature)
-          boltzFac =  exp(-abs(thisAtom%energy(k)-thisAtom%energy(l)) / (kev*temperature))
-          colldeEx = collEx / (boltzFac * thisAtom%g(k)/thisAtom%g(l))
+    do iAtom = 1, nAtom
 
-          matrixA(k,k) = matrixA(k,k) - colldeex * ne
-          matrixA(l,l) = matrixA(l,l) - collex * ne
-          matrixA(k,l) = matrixA(k,l) + collex * ne
-          matrixA(l,k) = matrixA(l,k) + colldeex * ne
+       nLevels = thisAtom%nLevels
 
-       endif
+       allocate(matrixA(1:nLevels+1,1:nLevels+1))
+       allocate(matrixB(1:nLevels+1))
 
-! now do bound-free rates
+       matrixA = 1.d-30
+       matrixB = 0.d0
 
 
-       if (thisAtom%transType(iTrans) == "RBF") then ! photoionization
+       matrixA(nLevels+1,1:nLevels) = 1.d0
+       matrixB(nLevels+1) = nh
 
+       ! RHS of equation
 
-          l = thisAtom%iLower(iTrans)
-          k = thisAtom%iUpper(iTrans)
-
-          photoRatelk = 0.d0
-          do i = 2, nFreq
-             xSection = photoCrossSection(thisAtom, l, freq(i))
-             photoRatelk = photoRatelk + (jnuCont(i)/(hCgs*freq(i)))*xSection*(freq(i)-freq(i-1))
-!             write(*,*) i, jnucont(i),freq(i),xsection,freq(i)-freq(i-1)
-          enddo
-          photoRatelk = photoRatelk * fourPi
-             
-          recombratekl = 0.d0
-          do i = 2, nFreq
-             xSection = photoCrossSection(thisAtom, l, freq(i))
-             recombRatekl = recombRatekl + &
-                  (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
-                  exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
-          enddo
-
-          matrixA(l,l) = matrixA(l,l) - photoRatelk
-          matrixA(k,l) = matrixA(k,l) + photoRatelk
-
-       endif
-
-
-       if (thisAtom%transType(iTrans) == "CBF") then ! collisional ionization
+       do iTrans = 1, thisAtom%nTrans
 
           k = thisAtom%iUpper(iTrans)
           l = thisAtom%iLower(iTrans)
 
+          Nstar = boltzSahaGeneral(thisAtom, 1, l, ne, temperature, &
+               nh-SUM(npops(1:thisAtom%nLevels-1)))
 
-          collEx = collisionRate(thisAtom, iTrans, temperature)
+          if (thisAtom%transType(iTrans) == "RBF") then ! radiative recomb
+             recombratekl = 0.d0
+             do i = 2, nFreq
+                xSection = photoCrossSection(thisAtom, l, freq(i))
+                recombRatekl = recombRatekl + &
+                     (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
+                     exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
+             enddo
+             matrixB(l) = matrixB(l) - Nstar * recombratekl
+          endif
+          if (thisAtom%transType(iTrans) == "CBF") then ! collisional recomb
 
-          matrixA(l,l) = matrixA(l,l) - collex * ne
-          matrixA(k,l) = matrixA(k,l) + collex * ne
-       endif
+             collEx = collisionRate(thisAtom, iTrans, temperature)
+             matrixB(l) = matrixB(l) - Nstar*collEx*ne
+          endif
+       enddo
 
+       matrixB(nLevels) = -SUM(matrixB(1:nLevels-1))
+
+       ! LHS
+
+       do iTrans = 1, thisAtom%nTrans
+
+          k = thisAtom%iUpper(iTrans)
+          l = thisAtom%iLower(iTrans)
+          if (thisAtom%transType(iTrans) == "RBB") then ! radiative BB rates
+             iJnu = thisAtom%indexRBB(iTrans)
+             call returnEinsteinCoeffs(thisAtom, iTrans, a, Bul, Blu)
+
+             matrixA(k,k) = matrixA(k,k) - Bul * jnuLine(iJnu) - a
+             matrixA(l,l) = matrixA(l,l) - Blu * jnuLine(iJnu)
+             matrixA(k,l) = matrixA(k,l) + Blu * jnuLine(iJnu)
+             matrixA(l,k) = matrixA(l,k) + Bul * jnuLine(iJnu) + a
+          endif
+
+          if (thisAtom%transType(iTrans) == "CBB") then ! collision BB  rates
+
+
+             collEx = collisionRate(thisAtom, iTrans, temperature)
+             boltzFac =  exp(-abs(thisAtom%energy(k)-thisAtom%energy(l)) / (kev*temperature))
+             colldeEx = collEx / (boltzFac * thisAtom%g(k)/thisAtom%g(l))
+
+             matrixA(k,k) = matrixA(k,k) - colldeex * ne
+             matrixA(l,l) = matrixA(l,l) - collex * ne
+             matrixA(k,l) = matrixA(k,l) + collex * ne
+             matrixA(l,k) = matrixA(l,k) + colldeex * ne
+
+          endif
+
+          ! now do bound-free rates
+
+
+          if (thisAtom%transType(iTrans) == "RBF") then ! photoionization
+
+
+             l = thisAtom%iLower(iTrans)
+             k = thisAtom%iUpper(iTrans)
+
+             photoRatelk = 0.d0
+             do i = 2, nFreq
+                xSection = photoCrossSection(thisAtom, l, freq(i))
+                photoRatelk = photoRatelk + (jnuCont(i)/(hCgs*freq(i)))*xSection*(freq(i)-freq(i-1))
+             enddo
+             photoRatelk = photoRatelk * fourPi
+
+             recombratekl = 0.d0
+             do i = 2, nFreq
+                xSection = photoCrossSection(thisAtom, l, freq(i))
+                recombRatekl = recombRatekl + &
+                     (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
+                     exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
+             enddo
+
+             matrixA(l,l) = matrixA(l,l) - photoRatelk
+             matrixA(k,l) = matrixA(k,l) + photoRatelk
+
+          endif
+
+
+          if (thisAtom%transType(iTrans) == "CBF") then ! collisional ionization
+
+             k = thisAtom%iUpper(iTrans)
+             l = thisAtom%iLower(iTrans)
+
+
+             collEx = collisionRate(thisAtom, iTrans, temperature)
+
+             matrixA(l,l) = matrixA(l,l) - collex * ne
+             matrixA(k,l) = matrixA(k,l) + collex * ne
+          endif
+
+
+       enddo
+
+       do i = 1, nLevels+1
+          write(*,'(1p,100e10.1)') matrixA(i,1:nLevels+1),matrixB(i)
+       enddo
 
     enddo
 
-    do i = 1, nLevels+2
-       write(*,'(1p,100e10.1)') matrixA(i,1:nLevels+2),matrixB(i)
-    enddo
-
-    call luSlv(matrixA, matrixB, nLevels+2)
+    call luSlv(matrixA, matrixB, nLevels+1)
 
 
-    nPops(1:nLevels+1) = matrixB(1:nLevels+1)
 
-    do i = 1, nLevels
+
+    nPops(1:nLevels) = matrixB(1:nLevels)
+
+    do i = 1, nLevels-1
        write(*,*) i, nPops(i), nPops(i)/boltzSahaGeneral(thisAtom, 1, i, ne, temperature, nh)
     enddo
+    write(*,*) "nlevels",matrixB(nLevels)
     write(*,*) "nlevels+1",matrixB(nLevels+1)
-    write(*,*) "nlevels+2",matrixB(nLevels+2)
-    write(*,*) "sum",sum(nPops(1:nLevels))
+    write(*,*) "sum",sum(nPops(1:nLevels-1))
     write(*,*) "nh",nh
     deallocate(matrixA, matrixB)
 
@@ -605,25 +626,17 @@ contains
                                  thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels), freq, nFreq, jnuCont, weight(1:nRay))
                             
                          enddo
-                         call solveLevels(thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels+1), &
+                         call solveLevels(thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels), &
                               thisOctal%jnu(subcell,1:thisAtom%nRBBTrans),  &
                               dble(thisOctal%temperature(subcell)), thisAtom, thisOctal%ne(subcell), &
                               thisOctal%rho(subcell)/mHydrogen,&
                               jnuCont, freq, nfreq)
                          write(*,*) "ne fixed!"
-!                         thisOctal%ne(subcell) = thisOctal%newmolecularLevel(subcell,thisAtom%nLevels+1)
+!                         thisOctal%ne(subcell) = thisOctal%newmolecularLevel(subcell,thisAtom%nLevels)
 
-                         write(*,*) SUM(thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels)) / &
-                              thisOctal%newmolecularLevel(subcell,thisAtom%nLevels+1)
-!                         write(*,*) "iter",iter
-!                         do i = 1, thisAtom%nLevels
-!                            write(*,*) i, thisOctal%newMolecularLevel(subcell,i), &
-!                                 thisOctal%newMolecularLevel(subcell,i ) / &
-!                                 boltzSaha(i,thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))
-!                         enddo
-!                         write(*,*) "nk",thisOctal%newmolecularLevel(subcell,thisAtom%nlevels+1)
-!                         write(*,*) "ne",thisOctal%ne(subcell)
-!
+                         write(*,*) SUM(thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels-1)) / &
+                              thisOctal%newmolecularLevel(subcell,thisAtom%nLevels)
+
                          fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels) - oldpops)/oldpops))
                          write(*,*) iter,fac
                          if (fac < 1.d-4) popsConverged = .true.
@@ -749,7 +762,7 @@ contains
        else
 
           if (.not.associated(thisOctal%molecularLevel)) then
-             allocate(thisOctal%molecularLevel(1:thisOctal%maxChildren, 1:thisAtom%nLevels+1))
+             allocate(thisOctal%molecularLevel(1:thisOctal%maxChildren, 1:thisAtom%nLevels))
           endif
           thisOctal%molecularLevel = 1.d-30
 !          do i = 1, thisAtom%nLevels
@@ -757,10 +770,10 @@ contains
 !                  dble(thisOctal%temperature(subcell)))
 !          enddo
 
-          thisOctal%molecularLevel(subcell, thisAtom%nLevels+1) = thisOctal%rho(subcell)/mHydrogen
+          thisOctal%molecularLevel(subcell, thisAtom%nLevels) = thisOctal%rho(subcell)/mHydrogen
 
           if (.not.associated(thisOctal%newmolecularLevel)) then
-             allocate(thisOctal%newmolecularLevel(1:thisOctal%maxChildren, 1:thisAtom%nLevels+1))
+             allocate(thisOctal%newmolecularLevel(1:thisOctal%maxChildren, 1:thisAtom%nLevels))
           endif
           thisOctal%newmolecularLevel = 1.d-30
 

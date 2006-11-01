@@ -19,7 +19,6 @@ module modelatom_mod
      real(double) :: mass ! amu
      integer :: nLevels
      character(len=10), pointer :: level(:)
-     character(len=10) :: continuumLevel
      real(double), pointer :: energy(:)  ! erg
      real(double), pointer :: g(:)
      real(double) :: iPot
@@ -85,7 +84,6 @@ contains
        read(30,'(a120)') junk
        call splitIntoChunks(junk, nChunks, chunk)
        thisAtom%level(i) = chunk(1)
-       thisAtom%continuumLevel = chunk(2)
        read(chunk(3), *) thisAtom%energy(i)
        read(chunk(4), *) thisAtom%g(i)
     enddo
@@ -211,9 +209,6 @@ contains
           exit
        endif
     enddo
-    if (trim(cLevel) == trim(thisAtom%continuumLevel)) then
-       level = thisAtom%nLevels + 1
-    endif
 
     if (level == 0) then
        write(*,*) "Level not found: ",trim(cLevel)
@@ -574,11 +569,11 @@ contains
 
   end subroutine readTopbase
 
-  function BoltzSahaGeneral(thisAtom, nion, level, Ne, t, ntot) result(npop)
+  function BoltzSahaGeneral(thisAtom, nion, level, Ne, t, nk) result(npop)
   
     type(MODELATOM) :: thisAtom
     integer              :: nIon, level
-    real(double) :: Ne, t, nPop, ntot
+    real(double) :: Ne, t, nPop, nk
     real(double) ::  Ucoeff(5,5)
     real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
     uCoeff(1,1:5) = (/0.30103d0, -0.00001d0, 0.d0, 0.d0, 0.d0 /)
@@ -592,31 +587,15 @@ contains
           u1 = 1.d0
           N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
           N1overN0 = (10.d0**N1overN0)/pe
-          N0 = ntot
-          N1 = N0 * N1overN0
-          tot = n0+n1
-          n0 = n0 / tot
-          n1 = n1 / tot
-          Npop = N0 * ntot * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u0
+          n0 = nk / N1overn0
+          Npop = N0 * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u0
        case("HeI")
           u0 = 1.d0
           u1 = getUT(t, uCoeff(3,1:5))
-          u2 = 1.d0
           N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
           N1overN0 = (10.d0**N1overN0)/pe
-
-          N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
-          N2overN1 = (10.d0**N2overN1)/pe
-
-          n0 = ntot
-          n1 = n1overn0 * n0
-          n2 = n2overn1 * n1
-
-          tot = n0+n1+n2
-          n0 = n0 / tot
-          n1 = n1 / tot
-          n2 = n2 / tot
-          Npop = N0 * ntot * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u0
+          n0 = nk / N1overN0
+          Npop = N0 *  thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u0
        case("HeII")
           u0 = 1.d0
           u1 = getUT(t, uCoeff(3,1:5))
@@ -626,16 +605,8 @@ contains
 
           N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
           N2overN1 = (10.d0**N2overN1)/pe
-
-          n0 = ntot
-          n1 = n1overn0 * n0
-          n2 = n2overn1 * n1
-
-          tot = n0+n1+n2
-          n0 = n0 / tot
-          n1 = n1 / tot
-          n2 = n2 / tot
-          Npop = N1 * ntot * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u1
+          N1 = nk / N2overN1
+          Npop = N1 *  thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u1
        case DEFAULT
           write(*,*) "atom not recognised in boltzsahageneral ",thisAtom%name
           stop
@@ -654,25 +625,6 @@ contains
      ut = 10.d0**ut
    end function getUT
 
-  function BoltzSahaGeneral2(thisAtom, nion, level, Ne, t, ntot) result(npop)
-  
-    type(MODELATOM) :: thisAtom
-    integer              :: nIon, level
-    real(double) :: Ne, t, nPop, ntot
-    real(double) ::  Ucoeff(5,5)
-    real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
-    uCoeff(1,1:5) = (/0.30103d0, -0.00001d0, 0.d0, 0.d0, 0.d0 /)
-    uCoeff(2,1:5) = (/0.00000d0,  0.00000d0, 0.d0, 0.d0, 0.d0 /)
-    uCoeff(3,1:5) = (/0.30103d0,  0.00000d0, 0.d0, 0.d0, 0.d0 /)
-    select case(thisAtom%name)
-       case("HI")
-          u0 = getUT(t, uCoeff(1,1:5))
-          Npop =  ntot * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u0
-       case DEFAULT
-          write(*,*) "atom not recognised in boltzsahageneral ",thisAtom%name
-          stop
-     end select
-   end function BoltzSahaGeneral2
 
 
 end module modelatom_mod
