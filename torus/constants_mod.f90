@@ -53,6 +53,7 @@ module constants_mod
   real(double), parameter :: sigmaE = 6.6525d-25       ! cm^2
   real(double), parameter :: eCharge = 4.803242384d-10 ! 
   real(double), parameter :: hydE0eV = 13.598433       ! eV
+  real(double), parameter :: rydbergtoEv = 13.605692312d0 ! ev/ry
   real(double),parameter :: hydE0eVdb = 13.598433_db! eV
 
   real(double), parameter :: ergToEv = 6.24145d11   

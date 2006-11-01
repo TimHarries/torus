@@ -337,7 +337,7 @@ contains
           l = thisMolecule%iCollLower(iPart, iTrans)
 
           boltzFac =  exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
-          colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2! * (nh2 * thisMolecule%abundance)!!!!
+          colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2
           collEx = colldeEx * boltzFac * thisMolecule%g(k)/thisMolecule%g(l)
 
 

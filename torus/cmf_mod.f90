@@ -60,7 +60,8 @@ contains
        k = thisAtom%iUpper(iTrans)
        l = thisAtom%iLower(iTrans)
 
-       Nstar = boltzSaha(l, ne, temperature)
+       Nstar = boltzSahaGeneral2(thisAtom, 1, l, ne, temperature, &
+            SUM(npops(1:thisAtom%nLevels)))
 
        if (thisAtom%transType(iTrans) == "RBF") then ! radiative recomb
           recombratekl = 0.d0
@@ -157,15 +158,22 @@ contains
 
     enddo
 
-!    do i = 1, nLevels+2
-!       write(*,'(1p,18e10.1)') matrixA(i,1:17)
-!    enddo
+    do i = 1, nLevels+2
+       write(*,'(1p,100e10.1)') matrixA(i,1:nLevels+2),matrixB(i)
+    enddo
 
     call luSlv(matrixA, matrixB, nLevels+2)
 
 
     nPops(1:nLevels+1) = matrixB(1:nLevels+1)
 
+    do i = 1, nLevels
+       write(*,*) i, nPops(i), nPops(i)/boltzSahaGeneral(thisAtom, 1, i, ne, temperature, nh)
+    enddo
+    write(*,*) "nlevels+1",matrixB(nLevels+1)
+    write(*,*) "nlevels+2",matrixB(nLevels+2)
+    write(*,*) "sum",sum(nPops(1:nLevels))
+    write(*,*) "nh",nh
     deallocate(matrixA, matrixB)
 
 
@@ -381,6 +389,9 @@ contains
     real(double) :: tau, snu, sumPhi
     real(double) :: a, bul, blu
     integer :: i
+    logical :: first
+
+    first = .true.
     jBarExternal = 0.d0
     jBarInternal = 0.d0
 
@@ -398,6 +409,15 @@ contains
           call returnEinsteinCoeffs(thisAtom, iTrans, a, Bul, Blu)
 
           alphanu = alphanu * (nLower * Blu - nUpper * Bul) * phi(iray)/thisAtom%transFreq(iTrans)
+
+          if (alphanu < 0.d0) then
+             alphanu = 0.d0
+             if (first) then
+                write(*,*) "negative opacity warning",iUpper,iLower
+                first = .false.
+             endif
+          endif
+
           tau = alphaNu * ds(iray)
 
           etaLine = hCgs * a * thisAtom%transFreq(iTrans)
@@ -590,7 +610,11 @@ contains
                               dble(thisOctal%temperature(subcell)), thisAtom, thisOctal%ne(subcell), &
                               thisOctal%rho(subcell)/mHydrogen,&
                               jnuCont, freq, nfreq)
-                         thisOctal%ne(subcell) = thisOctal%newmolecularLevel(subcell,thisAtom%nLevels+1)
+                         write(*,*) "ne fixed!"
+!                         thisOctal%ne(subcell) = thisOctal%newmolecularLevel(subcell,thisAtom%nLevels+1)
+
+                         write(*,*) SUM(thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels)) / &
+                              thisOctal%newmolecularLevel(subcell,thisAtom%nLevels+1)
 !                         write(*,*) "iter",iter
 !                         do i = 1, thisAtom%nLevels
 !                            write(*,*) i, thisOctal%newMolecularLevel(subcell,i), &

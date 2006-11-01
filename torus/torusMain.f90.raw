@@ -452,6 +452,7 @@
 !$SPH  real :: tgas
 
   type(modelatom) :: thisAtom
+  type(TOPBASETYPE) :: thisBase
 
   
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
@@ -581,7 +582,8 @@
 !     call readMolecule(co, "hco_plus.dat")
   endif
   if (cmf) then
-     call readAtom(thisAtom,"HeI.atm")
+     call readAtom(thisAtom,"H.atm")
+
   endif
 
 

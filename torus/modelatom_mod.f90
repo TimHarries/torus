@@ -11,6 +11,8 @@ module modelatom_mod
   use stateq_mod
   use utils_mod
 
+  implicit none
+
   type MODELATOM
      character(len=10) :: name
      integer :: charge
@@ -20,6 +22,7 @@ module modelatom_mod
      character(len=10) :: continuumLevel
      real(double), pointer :: energy(:)  ! erg
      real(double), pointer :: g(:)
+     real(double) :: iPot
      integer, pointer :: ionStage(:)
      integer, pointer :: nQuantum(:)
      integer :: nTrans
@@ -32,7 +35,22 @@ module modelatom_mod
      integer, pointer :: equation(:)
      integer, pointer :: nParams(:)
      real(double), pointer :: params(:,:)
+     real(double), pointer :: fMatrix(:,:)
   end type MODELATOM
+
+  type TOPBASETYPE
+     character(len=10) :: atom
+     integer, pointer :: i(:)
+     integer :: nz
+     integer :: ne
+     integer,pointer :: islp(:)
+     integer, pointer  :: ilv(:)
+     real(double), pointer :: e(:)
+     integer :: nLevels
+     integer, pointer :: nFreq(:)
+     real(double), pointer :: freq(:,:)
+     real(double), pointer :: xSection(:,:)
+  end type TOPBASETYPE
 
 
 contains
@@ -72,7 +90,8 @@ contains
        read(chunk(4), *) thisAtom%g(i)
     enddo
 
-    thisAtom%energy = hydE0eVdb - (thisAtom%energy*hCgs*ergtoev) ! eV
+    thisAtom%iPot = abs(thisAtom%energy(1))*hCgs*ergtoev
+    thisAtom%energy = (thisAtom%energy(1) - thisAtom%energy)*hCgs*ergtoev ! eV
 
     read(30,*) thisAtom%nTrans
 
@@ -104,12 +123,12 @@ contains
     close(30)
     call writeInfo("Done.",TRIVIAL)
 
-    do i = 1, thisAtom%nTrans
-       if (thisAtom%transType(i) == "RBB") then
-          call returnEinsteinCoeffs(thisAtom, i, a, Bul, Blu)
-          write(*,*) i,1.d8*cSpeed/thisAtom%transFreq(i),a, blu, bul
-       endif
-    enddo
+!    do i = 1, thisAtom%nTrans
+!       if (thisAtom%transType(i) == "RBB") then
+!          call returnEinsteinCoeffs(thisAtom, i, a, Bul, Blu)
+!          write(*,*) i,1.d8*cSpeed/thisAtom%transFreq(i),a, blu, bul
+!       endif
+!    enddo
 
     thisAtom%nRBBtrans = 0
     do i = 1, thisAtom%nTrans
@@ -119,11 +138,14 @@ contains
 
     allocate(thisAtom%indexRBB(1:thisAtom%nRBBtrans))
 
+    allocate(thisAtom%fMatrix(1:thisAtom%nLevels,1:thisAtom%nLevels))
+    thisAtom%fMatrix =0.d0
     j = 0
     do i = 1, thisAtom%nTrans
        if (thisAtom%transType(i) == "RBB") then
            j = j + 1
            thisAtom%indexRBB(j) = i
+           thisAtom%fMatrix(thisAtom%iLower(i), thisAtom%iUpper(i)) = thisAtom%params(i,1)
         endif
     enddo
        
@@ -205,6 +227,7 @@ contains
     type(MODELATOM) :: thisAtom
     integer :: iTrans
     real(double) :: aEinstein, BulEinstein, BluEinstein, f
+    integer :: iUpper, iLower
 
     if (iTrans > thisAtom%nTrans) then
        call writeFatal("returnEinsteinCoeffs: iTrans greater than number of transitions")
@@ -230,18 +253,27 @@ contains
   end subroutine returnEinsteinCoeffs
 
 
-  function photoCrossSection(thisAtom, iLevel, nu)
+  real(double) function photoCrossSection(thisAtom, iLevel, nu)
     type(MODELATOM) :: thisAtom
     integer :: iLevel
     real(double) :: nu
+    character(len=2) :: shell
+    integer :: is
+    real :: x
     
     if (iLevel > thisAtom%nLevels) then
        call writeFatal("photocrosssection: Level greater than nlevels")
        stop
     endif
     select case(thisAtom%name)
-       case("H")
+       case("HI")
           photoCrossSection = annu_hyd(iLevel, nu)
+       case("HeI")
+          call phfit2(2,2,1,real(nu*hCgs*ergtoev), x)
+          photoCrossSection  = x * 1.d-10
+       case("HeII")
+          call phfit2(2,1,1,real(nu*hCgs*ergtoev), x)
+          photoCrossSection  = x * 1.d-10
        case DEFAULT
           call writeFatal("photocrosssection: atom not recognised")
           stop
@@ -255,6 +287,8 @@ contains
     real(double) :: temperature, ne, rate, u0, u1, u2
     real(double) :: logGamma
     real(double) :: sigma0
+    real :: x
+    real(double) :: fij, eh, gamma, logt
 
     if (iTrans > thisAtom%nTrans) then
        call writeFatal("returnEinsteinCoeffs: iTrans greater than number of transitions")
@@ -269,10 +303,10 @@ contains
     select case(thisAtom%transType(iTrans))
     case("CBB")
        select case(thisAtom%name)
-       case("H") 
+       case("HI") 
           rate = cijt_hyd_hillier(thisAtom%iLower(iTrans), thisAtom%iUpper(iTrans), temperature, thisAtom)
 
-       case("He") 
+       case("HeI") 
           select case(thisAtom%equation(itrans))
              case(2)
                 if (thisAtom%nParams(iTrans) == 1) then
@@ -297,7 +331,7 @@ contains
             case(8)
                logGamma = thisAtom%params(itrans,1) + thisAtom%params(iTrans,2) * &
                     log10(temperature)+thisAtom%params(itrans,3)/(log10(temperature)**2)
-               rate = 5.465d-11 * sqrt(temperature) * exp(-(hCgs*thisAtom%transFreq(iTrans)/(kerg*temperature))) * logGamma
+               rate = 5.465d-11 * sqrt(temperature) * exp(-(hCgs*thisAtom%transFreq(iTrans)/(kerg*temperature))) * (10.d0**logGamma)
              case(9)
                 u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
                 rate = 5.465d-11 * sqrt(temperature) * exp(-u0)*(1.d0+u0)
@@ -305,6 +339,12 @@ contains
                 call writeFatal("CBB rate equation not implemented for He")
                 stop
            end select
+       case("HeII") 
+          EH = hydE0eVdb * evtoErg
+          u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
+          fij = thisAtom%fMatrix(thisAtom%iLower(iTrans), thisAtom%iUpper(iTrans))
+          rate =  5.465d-11 * sqrt(temperature) * (EH/(Hcgs*thisAtom%transFreq(iTrans)))**2 &
+               * u0 * fij * exp(1.d0)* (u0*exp(-u0)*log(2.d0) + u0*expint(1,u0))
                
 
        case DEFAULT
@@ -313,24 +353,43 @@ contains
        end select
     case("CBF")
        select case(thisAtom%name)
-       case("H") 
+       case("HI") 
           rate = cikt_hyd_hillier(thisAtom%iLower(iTrans), temperature, thisAtom)
-       case("He")
+       case("HeI")
           if (thisAtom%iLower(iTrans) <= 15) then
              sigma0 = 1.64d0
-             u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
+             u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              u1 = u0 + 0.27d0
              u2 = u0 + 1.43d0
              rate =  5.465d-11 * sqrt(temperature) *sigma0 * (u0*expint(1,u0) - (0.728d0*u0**2/u1)*expint(1,u1) - 0.189d0 * u0**2 &
                   * exp(-u0)*((2.d0+u2)/u2*3))
           else
-             write(*,*) "????"
-             sigma0 = 666.d0!!!!
-             u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
+             call phfit2(2,2,1,real(thisAtom%ipot*1.01), x)
+             sigma0  = x * 1.d-10
+             u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
+             rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
+          endif
+       case("HeII")
+          if (thisAtom%iLower(iTrans) <= 10) then
+             if (thisAtom%iLower(iTrans) <= 3) then
+                gamma = thisAtom%params(iTrans,1)  + thisAtom%params(iTrans,2)*temperature + &
+                     thisAtom%params(iTrans,4)/temperature + &
+                     thisAtom%params(iTrans,5)/temperature**2
+             else
+                logt = log10(temperature)
+                gamma = thisAtom%params(iTrans,1)  + thisAtom%params(iTrans,2)*logt + thisAtom%params(iTrans,3)/logt +&
+                     thisAtom%params(iTrans,5)/logt**2
+             endif
+             rate =  5.465d-11 * sqrt(temperature) * &
+                  exp(-(thisAtom%iPot-thisAtom%energy(thisAtom%iLower(iTrans)))/(Kev*temperature)) * Gamma
+          else
+             call phfit2(2,1,1,real(thisAtom%ipot*1.01), x)
+             sigma0  = x * 1.d-10
+             u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
           endif
        case DEFAULT
-          call writeFatal("collisionRate: bound-bound collision type not implemented2")
+          call writeFatal("collisionRate: bound-free collision type not implemented")
           stop
        end select
     case DEFAULT
@@ -400,6 +459,7 @@ contains
     real(double) :: chi                 ! potential from i to k
     integer :: lower, upper
     real(double) :: factor
+    integer :: level
     real(double), parameter :: eTrans(23) =                      &
          (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /) 
 
@@ -448,6 +508,7 @@ contains
     integer, intent(in)              :: n     ! the level
     real(double), intent(in):: nu    ! the photon frequency
     real(double)            :: lam,e ! the photon wavelength
+    integer :: level
     real(double), parameter :: eTrans(23) =                      &
          (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /) 
 
@@ -463,5 +524,155 @@ contains
     endif
 
   end function annu_hyd
+
+  subroutine readTopbase(base, basefilename)
+    character(len=*) :: basefilename
+    character(len=200) :: dataDirectory, thisFilename
+    type(TOPBASETYPE) :: base
+    integer :: i, j
+    character(len=80) :: junk
+    integer, parameter :: maxFreq = 4000
+    
+    call writeInfo("Read TOPBASE data from: "//trim(baseFilename),TRIVIAL)
+
+    call unixGetenv("TORUS_DATA", dataDirectory, i)
+    thisfilename = trim(dataDirectory)//"/"//basefilename
+
+    open(30, file=thisfilename, status="old", form="formatted")
+
+
+    read(30,*) base%nLevels
+    read(30,'(a80)') junk
+    read(30,'(a80)') junk
+    read(30,'(a80)') junk
+
+    allocate(base%i(1:base%nLevels))
+    allocate(base%islp(1:base%nLevels))
+    allocate(base%ilv(1:base%nLevels))
+    allocate(base%e(1:base%nLevels))
+    allocate(base%nFreq(1:base%nLevels))
+    allocate(base%freq(1:base%nLevels, 1:maxFreq))
+    allocate(base%xSection(1:base%nLevels, 1:maxFreq))
+
+    do i = 1, base%nLevels
+       read(30,*) base%i(i), base%nz, base%ne, base%islp(i), base%ilv(i), base%e(i), base%nFreq(i)
+       if (base%nFreq(i) > maxFreq) then
+          write(*,*) "Not enough freq space ",base%nfreq(i),maxFreq
+          stop
+       endif
+       do j = 1, base%nFreq(i)
+          read(30,*) base%freq(i,j), base%xSection(i,j)
+       enddo
+    enddo
+    close(30)
+
+    base%e = abs(base%e)*rydbergtoev
+    base%e = base%e(1) - base%e
+    call writeInfo("Done.",TRIVIAL)
+
+
+
+  end subroutine readTopbase
+
+  function BoltzSahaGeneral(thisAtom, nion, level, Ne, t, ntot) result(npop)
+  
+    type(MODELATOM) :: thisAtom
+    integer              :: nIon, level
+    real(double) :: Ne, t, nPop, ntot
+    real(double) ::  Ucoeff(5,5)
+    real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
+    uCoeff(1,1:5) = (/0.30103d0, -0.00001d0, 0.d0, 0.d0, 0.d0 /)
+    uCoeff(2,1:5) = (/0.00000d0,  0.00000d0, 0.d0, 0.d0, 0.d0 /)
+    uCoeff(3,1:5) = (/0.30103d0,  0.00000d0, 0.d0, 0.d0, 0.d0 /)
+
+    pe = ne * kerg * t
+    select case(thisAtom%name)
+       case("HI")
+          u0 = getUT(t, uCoeff(1,1:5))
+          u1 = 1.d0
+          N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
+          N1overN0 = (10.d0**N1overN0)/pe
+          N0 = ntot
+          N1 = N0 * N1overN0
+          tot = n0+n1
+          n0 = n0 / tot
+          n1 = n1 / tot
+          Npop = N0 * ntot * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u0
+       case("HeI")
+          u0 = 1.d0
+          u1 = getUT(t, uCoeff(3,1:5))
+          u2 = 1.d0
+          N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
+          N1overN0 = (10.d0**N1overN0)/pe
+
+          N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
+          N2overN1 = (10.d0**N2overN1)/pe
+
+          n0 = ntot
+          n1 = n1overn0 * n0
+          n2 = n2overn1 * n1
+
+          tot = n0+n1+n2
+          n0 = n0 / tot
+          n1 = n1 / tot
+          n2 = n2 / tot
+          Npop = N0 * ntot * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u0
+       case("HeII")
+          u0 = 1.d0
+          u1 = getUT(t, uCoeff(3,1:5))
+          u2 = 1.d0
+          N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
+          N1overN0 = (10.d0**N1overN0)/pe
+
+          N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
+          N2overN1 = (10.d0**N2overN1)/pe
+
+          n0 = ntot
+          n1 = n1overn0 * n0
+          n2 = n2overn1 * n1
+
+          tot = n0+n1+n2
+          n0 = n0 / tot
+          n1 = n1 / tot
+          n2 = n2 / tot
+          Npop = N1 * ntot * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u1
+       case DEFAULT
+          write(*,*) "atom not recognised in boltzsahageneral ",thisAtom%name
+          stop
+     end select
+   end function BoltzSahaGeneral
+          
+
+   function getUT(t, coeff) result (ut)
+     real(double) :: t, coeff(:),  ut
+     real(double) :: logphi
+
+     logphi = 5040.d0/t
+
+     ut = coeff(1) + coeff(2)*logphi + coeff(3) * logphi**2 + &
+          coeff(4) * logphi**3 + coeff(5) * logphi**4
+     ut = 10.d0**ut
+   end function getUT
+
+  function BoltzSahaGeneral2(thisAtom, nion, level, Ne, t, ntot) result(npop)
+  
+    type(MODELATOM) :: thisAtom
+    integer              :: nIon, level
+    real(double) :: Ne, t, nPop, ntot
+    real(double) ::  Ucoeff(5,5)
+    real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
+    uCoeff(1,1:5) = (/0.30103d0, -0.00001d0, 0.d0, 0.d0, 0.d0 /)
+    uCoeff(2,1:5) = (/0.00000d0,  0.00000d0, 0.d0, 0.d0, 0.d0 /)
+    uCoeff(3,1:5) = (/0.30103d0,  0.00000d0, 0.d0, 0.d0, 0.d0 /)
+    select case(thisAtom%name)
+       case("HI")
+          u0 = getUT(t, uCoeff(1,1:5))
+          Npop =  ntot * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u0
+       case DEFAULT
+          write(*,*) "atom not recognised in boltzsahageneral ",thisAtom%name
+          stop
+     end select
+   end function BoltzSahaGeneral2
+
 
 end module modelatom_mod
