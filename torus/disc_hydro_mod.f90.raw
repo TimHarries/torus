@@ -404,7 +404,7 @@ contains
        if (nIter == 1) then
           maxIter = 2
        else
-          maxIter = 2
+          maxIter = 5
        endif
 
 
