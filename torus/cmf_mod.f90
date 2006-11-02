@@ -728,11 +728,11 @@ contains
              end if
           end do
        else
-          where(thisOctal%atomLevel(subcell,:,:) /= 0.d0)
+!          where(thisOctal%atomLevel(subcell,:,:) /= 0.d0)
              temp = MAXVAL(abs((thisOctal%newatomLevel(subcell,:,1:6) - &
                   thisOctal%atomLevel(subcell,:,1:6)) / &
                   thisOctal%atomLevel(subcell,:,1:6)))
-          end where
+!          end where
           if (temp > maxFracChange) then
              maxFracChange = temp
           endif

@@ -442,11 +442,11 @@ contains
              end if
           end do
        else
-          where(thisOctal%molecularLevel(subcell,:) /= 0.d0)
+!          where(thisOctal%molecularLevel(subcell,:) /= 0.d0)
              temp = MAXVAL(abs((thisOctal%newMolecularLevel(subcell,1:6) - &
                   thisOctal%molecularLevel(subcell,1:6)) / &
                   thisOctal%molecularLevel(subcell,1:6)))
-          end where
+!          end where
           if (temp > maxFracChange) then
              maxFracChange = temp
           endif
@@ -1343,7 +1343,8 @@ contains
     real(double), allocatable :: spec(:)
     real :: vxs, vxe, vys, vye
     real :: x1, x2, y1, y2
-    real :: sMax, Smin, range
+    real(double) :: sMax, Smin
+    real :: range
     integer :: nstep 
 
     nx = cube%nx

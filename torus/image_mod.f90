@@ -625,7 +625,7 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        type(IMAGETYPE) :: image(:)
        integer, allocatable :: rImage(:,:), gImage(:,:), bImage(:,:)
        integer :: nx, ny
-       real :: f5, f95
+       real(double) :: f5, f95
        real :: t
        integer :: i,j, k, nsize
 
