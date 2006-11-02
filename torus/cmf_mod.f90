@@ -46,15 +46,14 @@ contains
 
 
     nMatrix = 0
-    do iAtom = 1, nAtom
-          nMatrix = nMatrix + thisAtom(iAtom)%nLevels
-    enddo
+    nMatrix = nMatrix + thisAtom(1)%nLevels-1
+    nMatrix = nMatrix + thisAtom(2)%nLevels
     nMatrix = nMatrix + 1
        
     allocate(matrixA(1:nMatrix,1:nMatrix))
     allocate(matrixB(1:nMatrix))
 
-    matrixA = 1.d-30
+    matrixA = 0.d0
     matrixB = 0.d0
 
     
@@ -91,7 +90,7 @@ contains
           endif
        enddo
 
-       matrixB(nLevels+nOffset) = -SUM(matrixB(1+nOffset:nLevels-1+nOffset))
+       matrixB(nLevels+nOffset) = matrixB(nLevels+nOffset)-SUM(matrixB(1+nOffset:nLevels-1+nOffset))
 
        ! LHS
 
@@ -169,7 +168,7 @@ contains
 
 
        enddo
-       nOffset = nOffset + thisAtom(iAtom)%nLevels
+       nOffset = nOffset + thisAtom(iAtom)%nLevels-1
     enddo
 
     matrixB(nMatrix) = nh ! total number of atoms
@@ -177,8 +176,8 @@ contains
  
     nOffset = 0
     matrixA(nMatrix,1:thisAtom(1)%nLevels-1) = 1.d0
-    nOffset = nOffset + thisAtom(1)%nLevels
-    matrixA(nMatrix,1+nOffset:thisAtom(2)%nLevels-1+noffset) = 1.d0
+    nOffset = nOffset + thisAtom(1)%nLevels-1
+    matrixA(nMatrix,1+nOffset:thisAtom(2)%nLevels+noffset) = 1.d0
 
     
     
@@ -190,10 +189,9 @@ contains
     call luSlv(matrixA, matrixB, nMatrix)
     
     nOffset  = 0
-    do iAtom = 1, nAtom
-       nPops(iAtom,1:thisAtom(iAtom)%nLevels) = matrixB(1+nOffset:thisAtom(iAtom)%nLevels+nOffset)
-       nOffset = nOffset + thisAtom(iAtom)%nLevels
-    enddo
+    nPops(1,1:thisAtom(1)%nLevels-1) = matrixB(1:thisAtom(1)%nLevels-1)
+    nOffset = nOffset + thisAtom(1)%nLevels-1
+    nPops(2,1:thisAtom(2)%nLevels) = matrixB(1+nOffset:thisAtom(2)%nLevels+nOffset)
 
     deallocate(matrixA, matrixB)
 
