@@ -4238,6 +4238,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, rsmooth
+    use input_variables, only: rGap, gapWidth
     IMPLICIT NONE
     TYPE(octal), intent(inout) :: thisOctal
 !    TYPE(octal), POINTER       :: thisOctal
@@ -4768,6 +4769,11 @@ IF ( .NOT. gridConverged ) RETURN
       hr = height * rCore * (r/rCore)**betaDisc
       if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.5)) split = .true.
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+      ! Added in to get an extra level of refinement at the outer edge of the
+      ! gap. Cells at radii between that of the gap and (gap+gapWidth) must
+      ! have a resolution of a quarter of a scale height instead of a half...
+      if ((r > rGap*autocm/1e10) .and. (r < (rGap+1.5*gapWidth)*autocm/1e10) .and.  &
+          (abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.25)) split = .true.
       if ((r+cellsize/2.d0) < 0.9*grid%rinner) split = .false.
 
 
@@ -6832,7 +6838,8 @@ IF ( .NOT. gridConverged ) RETURN
 
   TYPE(vector)  function wrshellVelocity(point, grid)
     use input_variables, only : vterm
-    type(octalvector), intent(in) :: point, rvec
+    type(octalvector), intent(in) :: point
+    type(octalvector) :: rVec
     type(GRIDTYPE), intent(in) :: grid
     real(double) :: v, r
     rVec = point
