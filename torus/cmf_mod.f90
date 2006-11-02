@@ -23,6 +23,7 @@ contains
 
   subroutine solveLevels(nPops, jnuLine,  temperature, nAtom, thisAtom, ne, nh, jnuCont, freq, nfreq)
     integer :: nFreq
+    integer :: num(100)
     real(double) :: freq(:), jnuCont(:)
     real(double) :: nPops(:,:)
     real(double) :: temperature, ne
@@ -49,11 +50,15 @@ contains
     nMatrix = nMatrix + thisAtom(1)%nLevels-1
     nMatrix = nMatrix + thisAtom(2)%nLevels
     nMatrix = nMatrix + 1
+
+    do i = 1, nMatrix
+       num(i) = i
+    enddo
        
     allocate(matrixA(1:nMatrix,1:nMatrix))
     allocate(matrixB(1:nMatrix))
 
-    matrixA = 0.d0
+    matrixA = 1.d-30
     matrixB = 0.d0
 
     
@@ -180,9 +185,9 @@ contains
     matrixA(nMatrix,1+nOffset:thisAtom(2)%nLevels+noffset) = 1.d0
 
     
-    
+    write(*,'(4x,100i8)') num(1:nMatrix)
     do i = 1, nMatrix
-       write(*,'(1p,100e8.1)') matrixA(i,1:nMatrix),matrixB(i)
+       write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
     enddo
     
 
