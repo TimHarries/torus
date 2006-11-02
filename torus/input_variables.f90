@@ -223,7 +223,7 @@ module input_variables
   ! pp disk stuff
   real :: rSmooth, rHeight, sigmaPower
   real :: flaringPower, gapViscAlpha
-  real :: rGap, mPlanet
+  real :: rGap, mPlanet, gapWidth
   logical :: planetGap
 
 

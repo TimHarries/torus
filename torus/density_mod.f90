@@ -1220,6 +1220,63 @@ contains
       endif
     end function fractgap2
 
+subroutine calcPlanetMass
+   use input_variables, only : rGap, gapWidth, mPlanet
+
+   implicit none
+
+   real(double) :: frac, mPlanetOld, fracOld, rGapEdge
+
+   ! initial values
+   real(double) :: target = 1d-15       ! target density reduction
+   real(double) :: tol = 0.01           ! +/- tol * target
+   real(double) :: step = 0.0001        ! initial stepping in value of mPlanet
+   real(double) :: reduxFac = 0.5       ! step is reduced by this factor when homing in
+   integer :: maxIter = 100     ! maximum number of iterations before we give up
+   integer :: i = 0             ! iteration count
+   
+   rGapEdge = rGap - (0.5 * gapWidth)
+   mPlanet = 0.000
+   frac = fractgap2(rGapEdge)
+
+   do
+      i = i + 1
+      if (i > maxIter) then
+         write (*,*) "mPlanet solver: exceeded maximum iterations allowed (", maxIter, ")"
+         stop
+      end if
+
+      mPlanetOld = mPlanet
+      fracOld = frac
+      mPlanet = mPlanet + step
+      frac = fractgap2(rGapEdge)
+!      write (*,*) frac, mPlanet, step
+      if (abs(frac-target) < (tol * target)) then
+         exit
+      else if (frac < target) then
+         if (frac < fracOld) then
+            if (fracOld < target) then
+               step = -1. * step
+               frac = fracOld
+               mPlanet = mPlanetOld
+            else ! (fracOld > target)
+               step = -1. * (reduxFac * step)
+            end if
+         end if
+      else ! (frac > target)
+         if (frac > fracOld) then
+            if (fracOld < target) then
+               step = -1. * (reduxFac * step)
+            else ! (fracOld > target)
+               step = -1. * step
+               frac = fracOld
+               mPlanet = mPlanetOld
+            end if
+         end if
+      end if
+   end do
+end subroutine calcPlanetMass
+
 
   function torusLogoDensity(rVec) result(rho)
     type(OCTALVECTOR) :: rVec

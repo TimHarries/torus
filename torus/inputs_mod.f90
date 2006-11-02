@@ -1979,8 +1979,10 @@ if (geometry .eq. "planetgap") then
    call getReal("rgap", rGap, cLine, nLines, &
        "Radius of gap (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
-   call getReal("mplanet", mPlanet, cLine, nLines, &
-       "Planet mass (Msol): ","(a,1pe8.5,a)",1.e-3,ok,.true.)
+!   call getReal("mplanet", mPlanet, cLine, nLines, &
+!       "Planet mass (Msol): ","(a,1pe8.5,a)",1.e-3,ok,.true.)
+   call getReal("gapwidth", gapWidth, cLine, nLines, &
+       "Gap width (AU): ","(a,1pe8.4,a)",0.1,ok,.true.)
 
    call getReal("gapalpha", gapViscAlpha, cLine, nLines, &
        "Alpha-parameter for gap viscosity: ","(a,1pe8.5,a)",1.e-4,ok,.true.)
@@ -2625,5 +2627,5 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
   write(output,*) trim(message),rval,default
   call writeInfo(output, TRIVIAL)
  end subroutine getRealArray
- 
+
 end module inputs_mod

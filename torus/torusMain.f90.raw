@@ -577,6 +577,11 @@
 !  call test_profiles()  ! Testing Lorentz profile with Voigt profile
 
 
+  if(geometry == "planetgap") then
+     ! takes the gapWidth and calculates what mPlanet should be
+     call calcPlanetMass
+     write (*,*) "mPlanet set to ", mPlanet
+  end if
   if (molecular) then
      call readbenchmarkMolecule(co, "hco_benchmark.dat")
 !     call readMolecule(co, "hco_plus.dat")
