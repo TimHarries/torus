@@ -21,13 +21,13 @@ module cmf_mod
 
 contains
 
-  subroutine solveLevels(nPops, jnuLine,  temperature, thisAtom, ne, nh, jnuCont, freq, nfreq)
+  subroutine solveLevels(nPops, jnuLine,  temperature, nAtom, thisAtom, ne, nh, jnuCont, freq, nfreq)
     integer :: nFreq
     real(double) :: freq(:), jnuCont(:)
-    real(double) :: nPops(:)
+    real(double) :: nPops(:,:)
     real(double) :: temperature, ne
     real(double) :: jnuLine(:)
-    type(MODELATOM) :: thisAtom
+    type(MODELATOM) :: thisAtom(:)
     real(double), allocatable :: matrixA(:,:), matrixB(:), collMatrix(:,:), cTot(:)
     real(double) :: arateji, boltzFac
     integer :: nLevels
@@ -42,169 +42,178 @@ contains
     integer :: iJnu
 
     integer :: nAtom, iAtom, nMatrix
+    integer :: nOffset
 
 
     nMatrix = 0
     do iAtom = 1, nAtom
-       if (thisAtom(iAtom)%name == "HI") then
-          nMatrix = nMatrix + thisAtom%nLevels+1
-       else
-          nMatrix = nMatrix + thisAtom%nLevels
-       endif
+          nMatrix = nMatrix + thisAtom(iAtom)%nLevels
     enddo
     nMatrix = nMatrix + 1
        
-       
+    allocate(matrixA(1:nMatrix,1:nMatrix))
+    allocate(matrixB(1:nMatrix))
 
+    matrixA = 1.d-30
+    matrixB = 0.d0
+
+    
+       
+    nOffset  = 0
 
     do iAtom = 1, nAtom
 
-       nLevels = thisAtom%nLevels
-
-       allocate(matrixA(1:nLevels+1,1:nLevels+1))
-       allocate(matrixB(1:nLevels+1))
-
-       matrixA = 1.d-30
-       matrixB = 0.d0
-
-
-       matrixA(nLevels+1,1:nLevels) = 1.d0
-       matrixB(nLevels+1) = nh
+       nLevels = thisAtom(iAtom)%nLevels
 
        ! RHS of equation
 
-       do iTrans = 1, thisAtom%nTrans
+       do iTrans = 1, thisAtom(iAtom)%nTrans
 
-          k = thisAtom%iUpper(iTrans)
-          l = thisAtom%iLower(iTrans)
+          k = thisAtom(iAtom)%iUpper(iTrans)
+          l = thisAtom(iAtom)%iLower(iTrans)
 
-          Nstar = boltzSahaGeneral(thisAtom, 1, l, ne, temperature, &
-               nh-SUM(npops(1:thisAtom%nLevels-1)))
+          Nstar = boltzSahaGeneral(thisAtom(iAtom), 1, l, ne, temperature, nPops(iAtom,thisAtom(iATom)%nLevels))
 
-          if (thisAtom%transType(iTrans) == "RBF") then ! radiative recomb
+          if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! radiative recomb
              recombratekl = 0.d0
              do i = 2, nFreq
-                xSection = photoCrossSection(thisAtom, l, freq(i))
+                xSection = photoCrossSection(thisAtom(iAtom), l, freq(i))
                 recombRatekl = recombRatekl + &
                      (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
                      exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
              enddo
-             matrixB(l) = matrixB(l) - Nstar * recombratekl
+             matrixB(l+nOffset) = matrixB(l+nOffset) - Nstar * recombratekl
           endif
-          if (thisAtom%transType(iTrans) == "CBF") then ! collisional recomb
+          if (thisAtom(iAtom)%transType(iTrans) == "CBF") then ! collisional recomb
 
-             collEx = collisionRate(thisAtom, iTrans, temperature)
-             matrixB(l) = matrixB(l) - Nstar*collEx*ne
+             collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
+             matrixB(l+nOffset) = matrixB(l+nOffset) - Nstar*collEx*ne
           endif
        enddo
 
-       matrixB(nLevels) = -SUM(matrixB(1:nLevels-1))
+       matrixB(nLevels+nOffset) = -SUM(matrixB(1+nOffset:nLevels-1+nOffset))
 
        ! LHS
 
-       do iTrans = 1, thisAtom%nTrans
+       do iTrans = 1, thisAtom(iAtom)%nTrans
 
-          k = thisAtom%iUpper(iTrans)
-          l = thisAtom%iLower(iTrans)
-          if (thisAtom%transType(iTrans) == "RBB") then ! radiative BB rates
-             iJnu = thisAtom%indexRBB(iTrans)
-             call returnEinsteinCoeffs(thisAtom, iTrans, a, Bul, Blu)
+          k = thisAtom(iAtom)%iUpper(iTrans)
+          l = thisAtom(iAtom)%iLower(iTrans)
+          if (thisAtom(iAtom)%transType(iTrans) == "RBB") then ! radiative BB rates
+             iJnu = thisAtom(iAtom)%indexRBBTrans(iTrans)
+             call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
-             matrixA(k,k) = matrixA(k,k) - Bul * jnuLine(iJnu) - a
-             matrixA(l,l) = matrixA(l,l) - Blu * jnuLine(iJnu)
-             matrixA(k,l) = matrixA(k,l) + Blu * jnuLine(iJnu)
-             matrixA(l,k) = matrixA(l,k) + Bul * jnuLine(iJnu) + a
+             matrixA(k+nOffset,k+nOffset) = matrixA(k+nOffset,k+nOffset) - Bul * jnuLine(iJnu) - a
+             matrixA(l+nOffset,l+nOffset) = matrixA(l+nOffset,l+nOffset) - Blu * jnuLine(iJnu)
+             matrixA(k+nOffset,l+nOffset) = matrixA(k+nOffset,l+nOffset) + Blu * jnuLine(iJnu)
+             matrixA(l+nOffset,k+nOffset) = matrixA(l+nOffset,k+nOffset) + Bul * jnuLine(iJnu) + a
           endif
 
-          if (thisAtom%transType(iTrans) == "CBB") then ! collision BB  rates
+          if (thisAtom(iAtom)%transType(iTrans) == "CBB") then ! collision BB  rates
 
 
-             collEx = collisionRate(thisAtom, iTrans, temperature)
-             boltzFac =  exp(-abs(thisAtom%energy(k)-thisAtom%energy(l)) / (kev*temperature))
-             colldeEx = collEx / (boltzFac * thisAtom%g(k)/thisAtom%g(l))
+             collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
+             boltzFac =  exp(-abs(thisAtom(iAtom)%energy(k)-thisAtom(iAtom)%energy(l)) / (kev*temperature))
+             colldeEx = collEx / (boltzFac * thisAtom(iAtom)%g(k)/thisAtom(iAtom)%g(l))
 
-             matrixA(k,k) = matrixA(k,k) - colldeex * ne
-             matrixA(l,l) = matrixA(l,l) - collex * ne
-             matrixA(k,l) = matrixA(k,l) + collex * ne
-             matrixA(l,k) = matrixA(l,k) + colldeex * ne
+             matrixA(k+nOffset,k+nOffset) = matrixA(k+nOffset,k+nOffset) - colldeex * ne
+             matrixA(l+nOffset,l+nOffset) = matrixA(l+nOffset,l+nOffset) - collex * ne
+             matrixA(k+nOffset,l+nOffset) = matrixA(k+nOffset,l+nOffset) + collex * ne
+             matrixA(l+nOffset,k+nOffset) = matrixA(l+nOffset,k+nOffset) + colldeex * ne
 
           endif
 
           ! now do bound-free rates
 
 
-          if (thisAtom%transType(iTrans) == "RBF") then ! photoionization
+          if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
 
 
-             l = thisAtom%iLower(iTrans)
-             k = thisAtom%iUpper(iTrans)
+             l = thisAtom(iAtom)%iLower(iTrans)
+             k = thisAtom(iAtom)%iUpper(iTrans)
 
              photoRatelk = 0.d0
              do i = 2, nFreq
-                xSection = photoCrossSection(thisAtom, l, freq(i))
+                xSection = photoCrossSection(thisAtom(iAtom), l, freq(i))
                 photoRatelk = photoRatelk + (jnuCont(i)/(hCgs*freq(i)))*xSection*(freq(i)-freq(i-1))
              enddo
              photoRatelk = photoRatelk * fourPi
 
-             recombratekl = 0.d0
-             do i = 2, nFreq
-                xSection = photoCrossSection(thisAtom, l, freq(i))
-                recombRatekl = recombRatekl + &
-                     (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
-                     exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
-             enddo
+!             recombratekl = 0.d0
+!             do i = 2, nFreq
+!                xSection = photoCrossSection(thisAtom, l, freq(i))
+!                recombRatekl = recombRatekl + &
+!                     (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
+!                     exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
+!             enddo
 
-             matrixA(l,l) = matrixA(l,l) - photoRatelk
-             matrixA(k,l) = matrixA(k,l) + photoRatelk
+             matrixA(l+nOffset,l+nOffset) = matrixA(l+nOffset,l+nOffset) - photoRatelk
+             matrixA(k+nOffset,l+nOffset) = matrixA(k+nOffset,l+nOffset) + photoRatelk
+
 
           endif
 
 
-          if (thisAtom%transType(iTrans) == "CBF") then ! collisional ionization
+          if (thisAtom(iAtom)%transType(iTrans) == "CBF") then ! collisional ionization
 
-             k = thisAtom%iUpper(iTrans)
-             l = thisAtom%iLower(iTrans)
+             k = thisAtom(iAtom)%iUpper(iTrans)
+             l = thisAtom(iAtom)%iLower(iTrans)
 
 
-             collEx = collisionRate(thisAtom, iTrans, temperature)
+             collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
 
-             matrixA(l,l) = matrixA(l,l) - collex * ne
-             matrixA(k,l) = matrixA(k,l) + collex * ne
+             matrixA(l+nOffset,l+nOffset) = matrixA(l+nOffset,l+nOffset) - collex * ne
+             matrixA(k+nOffset,l+nOffset) = matrixA(k+nOffset,l+nOffset) + collex * ne
+
           endif
 
 
        enddo
-
-       do i = 1, nLevels+1
-          write(*,'(1p,100e10.1)') matrixA(i,1:nLevels+1),matrixB(i)
-       enddo
-
+       nOffset = nOffset + thisAtom(iAtom)%nLevels
     enddo
 
-    call luSlv(matrixA, matrixB, nLevels+1)
+    matrixB(nMatrix) = nh ! total number of atoms
+    
+ 
+    nOffset = 0
+    matrixA(nMatrix,1:thisAtom(1)%nLevels-1) = 1.d0
+    nOffset = nOffset + thisAtom(1)%nLevels
+    matrixA(nMatrix,1+nOffset:thisAtom(2)%nLevels-1+noffset) = 1.d0
 
-
-
-
-    nPops(1:nLevels) = matrixB(1:nLevels)
-
-    do i = 1, nLevels-1
-       write(*,*) i, nPops(i), nPops(i)/boltzSahaGeneral(thisAtom, 1, i, ne, temperature, nh)
+    
+    
+    do i = 1, nMatrix
+       write(*,'(1p,100e8.1)') matrixA(i,1:nMatrix),matrixB(i)
     enddo
-    write(*,*) "nlevels",matrixB(nLevels)
-    write(*,*) "nlevels+1",matrixB(nLevels+1)
-    write(*,*) "sum",sum(nPops(1:nLevels-1))
-    write(*,*) "nh",nh
+    
+
+    call luSlv(matrixA, matrixB, nMatrix)
+    
+    nOffset  = 0
+    do iAtom = 1, nAtom
+       nPops(iAtom,1:thisAtom(iAtom)%nLevels) = matrixB(1+nOffset:thisAtom(iAtom)%nLevels+nOffset)
+       nOffset = nOffset + thisAtom(iAtom)%nLevels
+    enddo
+
     deallocate(matrixA, matrixB)
+
+!    write(*,*) "H",SUM(nPops(1,1:thisAtom(1)%nLevels-1))
+!    write(*,*) "NP",npops(1,thisAtom(1)%nLevels)
+
+    write(*,*) "HeI",SUM(nPops(1,1:thisAtom(1)%nLevels-1))
+    write(*,*) "HeII",SUM(nPops(2,1:thisAtom(2)%nLevels-1))
+    write(*,*) "HeIII",nPops(2,thisAtom(2)%nLevels)
 
 
   end subroutine solveLevels
 
-  subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisAtom, source, nSource, &
-       hitPhotosphere, sourceNumber, cosTheta, weight)
+  subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, nAtom, thisAtom, source, nSource, &
+       hitPhotosphere, sourceNumber, cosTheta, weight, nRBBTrans, indexRBBTrans, indexAtom)
     type(SOURCETYPE) :: source(:)
+    integer :: nAtom
     integer :: nSource
-    type(MODELATOM) :: thisAtom
+    integer :: nRBBTrans, indexRBBTrans(:), indexAtom(:)
+    type(MODELATOM) :: thisAtom(:)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
     integer :: fromSubcell
@@ -231,8 +240,9 @@ contains
     logical :: hitPhotosphere, hitSource
     real(double) :: dv1, dv2
     real(double) :: weight
-    
-    allocate(tau(1:thisAtom%nTrans))
+    integer :: iAtom, iRBB
+
+    allocate(tau(1:nRBBTrans))
     
     position = randomPositionInCell(fromOctal, fromsubcell)
 
@@ -339,37 +349,38 @@ contains
 
           icount = icount + 1
 
-          do iTrans = 1, thisAtom%nTrans
+          do iRBB = 1, nRBBTRans
+             iAtom = indexAtom(iRBB)
+             iTrans = indexRBBTrans(iRBB)
 
-             if (thisAtom%transType(iTrans) == "RBB") then
+             if (thisAtom(iAtom)%transType(iTrans) == "RBB") then
 
-                call returnEinsteinCoeffs(thisAtom, iTrans, a, Bul, Blu)
+                call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
-                alphanu = (hCgs*thisAtom%transFreq(iTrans)/fourPi) * &
-                     phiProf(dv, thisOctal%microturb(subcell))/thisAtom%transFreq(iTrans)
+                alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
+                     phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
                 
-                iUpper = thisAtom%iUpper(iTrans)
-                iLower = thisAtom%iLower(iTrans)
+                iUpper = thisAtom(iAtom)%iUpper(iTrans)
+                iLower = thisAtom(iAtom)%iLower(iTrans)
                 
-                nLower = thisOctal%molecularLevel(subcell,iLower)
-                nUpper = thisOctal%molecularLevel(subcell,iUpper)
+                nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
+                nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
                 
                 alphanu = alphanu * (nLower * Blu - nUpper * Bul)
                 
                 dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
                 
-                etaLine = hCgs * a * thisAtom%transFreq(iTrans)
-                etaLine = etaLine * thisOctal%molecularLevel(subcell, iUpper)
-                jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom%transFreq(iTrans)
+                etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
+                etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
+                jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
                 
                 if (alphanu /= 0.d0) then
                    snu = jnu/alphanu
                 else
                    snu = tiny(snu)
                 endif
-                
-                i0(iTrans) = i0(iTrans) +  exp(-tau(iTrans)) * (1.d0-exp(-dtau))*snu
-                tau(iTrans) = tau(iTrans) + dtau
+                i0(iRBB) = i0(iRBB) +  exp(-tau(irBB)) * (1.d0-exp(-dtau))*snu
+                tau(iRBB) = tau(iRBB) + dtau
                 
 
              endif
@@ -487,14 +498,15 @@ contains
   end subroutine calculateJbarCont
 
 
-  subroutine atomLoop(grid, thisAtom, nSource, source)
+  subroutine atomLoop(grid, nAtom, thisAtom, nSource, source)
 
     use input_variables, only : blockhandout
- 
+
     type(SOURCETYPE) :: source(:)
     integer :: nSource
+    integer :: nAtom
     type(GRIDTYPE) :: grid
-    type(MODELATOM) :: thisAtom
+    type(MODELATOM) :: thisAtom(:)
     type(OCTALVECTOR) :: position, direction
     integer :: nOctal, iOctal, subcell
     real(double), allocatable :: ds(:), phi(:), i0(:,:), tau(:)
@@ -504,7 +516,7 @@ contains
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
-    real(double), allocatable :: oldpops(:)
+    real(double), allocatable :: oldpops(:,:)
     real(double) :: fac
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     logical :: dcAllocated
@@ -524,7 +536,10 @@ contains
     integer, parameter :: maxFreq = 2000
     real(double) :: freq(maxFreq), jnuCont(maxFreq)
     integer :: nFreq, nhit, iRBB
+    integer :: nRBBTrans
+    integer :: indexRBBTrans(1000), indexAtom(1000)
     real(double) :: nuStart, nuEnd
+    integer :: iAtom
 
     nuStart = cSpeed / (100000.d0 * 1.d-8)
     nuEnd = cSpeed / (50.d0 * 1.d-8)
@@ -535,22 +550,24 @@ contains
     enddo
     freq(1:nFreq) = 10.d0**freq(1:nFreq)
 
-     blockHandout = .false. 
+    blockHandout = .false. 
 
-    call allocateMolecularLevels(grid, grid%octreeRoot, thisAtom)
+    call createRRBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
+
+    call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans)
 
 
-!    call solveAllPops(grid, grid%octreeRoot, thisAtom, jnuCont, freq, nfreq)
+    !    call solveAllPops(grid, grid%octreeRoot, thisAtom, jnuCont, freq, nfreq)
 
 
-    allocate(oldPops(1:thisAtom%nLevels))
+    allocate(oldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
 
     call random_seed
-    
+
     call random_seed(size=iSize)
     allocate(iSeed(1:iSize))
     call random_seed(get=iSeed)
@@ -574,14 +591,14 @@ contains
 
           allocate(ds(1:nRay))
           allocate(phi(1:nRay))
-          allocate(i0(1:thisAtom%nTrans, 1:nRay))
+          allocate(i0(1:nRBBTrans, 1:nRay))
           allocate(tau(1:nRay))
           allocate(sourceNumber(1:nRay))
           allocate(cosTheta(1:nRay))
           allocate(weight(1:nRay))
           allocate(hitPhotosphere(1:nRay))
-          
-          
+
+
           if (fixedRays) then
              call random_seed(put=iseed)   ! same seed for fixed rays
           else
@@ -591,54 +608,65 @@ contains
           ! default loop indecies
           ioctal_beg = 1
           ioctal_end = SIZE(octalArray)       
-          
+
 
 
           do iOctal = ioctal_beg, ioctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
-                
+
                 if (.not.thisOctal%hasChild(subcell)) then
                    if (modulus(subcellCentre(thisOctal,subcell)) > source(1)%radius) then
                       nHit = 0
                       do iRay = 1, nRay
                          call getRay(grid, thisOCtal, subcell, position, direction, &
-                              ds(iRay), phi(iRay), i0(1:thisAtom%nTrans,iRay), &
-                              thisAtom, source, nSource, hitPhotosphere(iRay), sourceNumber(iray), &
-                              cosTheta(iRay), weight(iRay))
+                              ds(iRay), phi(iRay), i0(1:nRBBTrans,iRay), &
+                              nAtom, thisAtom, source, nSource, hitPhotosphere(iRay), sourceNumber(iray), &
+                              cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom)
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
                       write(*,*) "fraction of rays hitting core",real(nhit)/real(nray)
                       iter = 0
                       popsConverged = .false.
-                      thisOctal%newMolecularLevel(subcell,:) = thisOctal%molecularLevel(subcell,:)
+                      thisOctal%newatomLevel(subcell,:, :) = thisOctal%atomLevel(subcell,:, :)
+
+
                       do while (.not.popsConverged)
                          iter = iter + 1
-                         oldpops = thisOctal%newmolecularLevel(subcell,1:thisAtom%nLevels)
-                         
+                         oldpops = thisOctal%newatomLevel(subcell,1:nAtom,1:)
+
                          call calculateJbarCont(nray, source, nSource, hitPhotosphere, sourceNumber, &
                               freq, nfreq, jnuCont, cosTheta, weight)
-                         
-                         do iRBB = 1, thisAtom%nRBBTrans
-                            iTrans = thisAtom%indexRBB(iRBB)
-                            call calculateJbar(thisOctal, subcell, thisAtom, nRay, ds(1:nRay), &
-                                 phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
-                                 thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels), freq, nFreq, jnuCont, weight(1:nRay))
-                            
+
+                         do iRBB = 1, nRBBTrans
+                            iTrans = indexRBBTrans(iRBB)
+                            iAtom =  indexAtom(iRBB)
+                            call calculateJbar(thisOctal, subcell, thisAtom(iAtom), nRay, ds(1:nRay), &
+                                 phi(1:nRay), i0(iRBB,1:nRay), iTrans, thisOctal%jnu(subcell,iRBB), &
+                                 thisOctal%newAtomLevel(subcell,iAtom,1:), &
+                                 freq, nFreq, jnuCont, weight(1:nRay))
+
                          enddo
-                         call solveLevels(thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels), &
-                              thisOctal%jnu(subcell,1:thisAtom%nRBBTrans),  &
-                              dble(thisOctal%temperature(subcell)), thisAtom, thisOctal%ne(subcell), &
+
+                         call solveLevels(thisOctal%newatomLevel(subcell, 1:nAtom, 1:), &
+                              thisOctal%jnu(subcell,1:nRBBTrans),  &
+                              dble(thisOctal%temperature(subcell)), nAtom, thisAtom, thisOctal%ne(subcell), &
                               thisOctal%rho(subcell)/mHydrogen,&
                               jnuCont, freq, nfreq)
                          write(*,*) "ne fixed!"
-!                         thisOctal%ne(subcell) = thisOctal%newmolecularLevel(subcell,thisAtom%nLevels)
-
-                         write(*,*) SUM(thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels-1)) / &
-                              thisOctal%newmolecularLevel(subcell,thisAtom%nLevels)
-
-                         fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:thisAtom%nLevels) - oldpops)/oldpops))
+                         do iatom = 1, nAtom
+                            write(*,*) "Atom: ",thisAtom(iatom)%name
+                            do i = 1, thisAtom(iatom)%nLevels
+                               write(*,*) i,thisOctal%newAtomLevel(subcell,iatom,i),oldpops(iatom,i)
+                            enddo
+                         enddo
+                         fac = -1.d30
+                         do iAtom = 1, nAtom
+                            fac = max(fac,maxval(abs((thisOctal%newAtomLevel(subcell,1:nAtom,1:thisAtom(iAtom)%nLevels) &
+                                 - oldpops(1:nAtom,1:thisAtom(iAtom)%nLevels))/oldpops(1:nAtom,1:thisAtom(iAtom)%nLevels))))
+                         enddo
                          write(*,*) iter,fac
+                         stop
                          if (fac < 1.d-4) popsConverged = .true.
                          if (iter == maxIter) then
                             popsConverged = .true.
@@ -662,9 +690,9 @@ contains
              gridConverged = .true.
           endif
 
-         
+
           deallocate(ds, phi, i0, tau, sourceNumber, cosTheta, hitPhotosphere, weight)
-          
+
           if (.not.gridConverged) then
              if (.not.fixedRays) nRay = nRay * 2
           endif
@@ -678,37 +706,7 @@ contains
     stop
   end subroutine atomLoop
 
-  recursive subroutine  solveAllPops(grid, thisOctal, thisAtom, jnu, freq, nfreq)
-    type(GRIDTYPE) :: grid
-    type(MODELATOM) :: thisAtom
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
-    real(double) :: jnu(:), freq(:)
-    integer :: nfreq
-    integer :: subcell, i, iUpper, iLower
-    real(double) :: etaLine
-  
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call solveAllpops(grid, child, thisAtom, jnu, freq, nfreq)
-                exit
-             end if
-          end do
-       else
-          call solveLevels(thisOctal%molecularLevel(subcell,1:thisAtom%nLevels), &
-               thisOctal%jnu(subcell,1:thisAtom%nTrans),  &
-               dble(thisOctal%temperature(subcell)), thisAtom, thisOctal%ne(subcell), &
-               thisOctal%rho(subcell)/mHydrogen, jnu, freq, &
-               nFreq)
-       endif
-    enddo
-  end subroutine solveAllPops
-
-  recursive subroutine  swapPops(thisOctal, maxFracChange)
+  recursive  subroutine  swapPops(thisOctal, maxFracChange)
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom
     type(octal), pointer   :: thisOctal
@@ -727,68 +725,63 @@ contains
              end if
           end do
        else
-          where(thisOctal%molecularLevel(subcell,:) /= 0.d0)
-             temp = MAXVAL(abs((thisOctal%newMolecularLevel(subcell,1:6) - &
-                  thisOctal%molecularLevel(subcell,1:6)) / &
-                  thisOctal%molecularLevel(subcell,1:6)))
+          where(thisOctal%atomLevel(subcell,:,:) /= 0.d0)
+             temp = MAXVAL(abs((thisOctal%newatomLevel(subcell,:,1:6) - &
+                  thisOctal%atomLevel(subcell,:,1:6)) / &
+                  thisOctal%atomLevel(subcell,:,1:6)))
           end where
           if (temp > maxFracChange) then
              maxFracChange = temp
           endif
-          thisOctal%molecularLevel(subcell,:) = &
-               thisOctal%newmolecularLevel(subcell,:)
+          thisOctal%atomLevel(subcell,:,:) = &
+               thisOctal%newatomLevel(subcell,:,:)
        endif
     enddo
   end subroutine swapPops
 
-  recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisAtom)
+  recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans)
     type(GRIDTYPE) :: grid
-    type(MODELATOM) :: thisAtom
+    type(MODELATOM) :: thisAtom(:)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, iUpper, iLower
     real(double) :: etaLine
-  
+    integer :: nAtom
+    integer :: nRBBTrans
+    integer :: iatom
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call allocateMolecularLevels(grid, child, thisAtom)
+                call allocateLevels(grid, child, nAtom, thisAtom, nRBBTrans)
                 exit
              end if
           end do
        else
 
-          if (.not.associated(thisOctal%molecularLevel)) then
-             allocate(thisOctal%molecularLevel(1:thisOctal%maxChildren, 1:thisAtom%nLevels))
+          if (.not.associated(thisOctal%atomLevel)) then
+             allocate(thisOctal%atomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
           endif
-          thisOctal%molecularLevel = 1.d-30
-!          do i = 1, thisAtom%nLevels
-!             thisOctal%molecularLevel(subcell, i) = boltzSaha(i, thisOctal%ne(subcell), &
-!                  dble(thisOctal%temperature(subcell)))
-!          enddo
+          thisOctal%atomLevel(subcell,:,:) = 1.d-30
 
-          thisOctal%molecularLevel(subcell, thisAtom%nLevels) = thisOctal%rho(subcell)/mHydrogen
-
-          if (.not.associated(thisOctal%newmolecularLevel)) then
-             allocate(thisOctal%newmolecularLevel(1:thisOctal%maxChildren, 1:thisAtom%nLevels))
+          do iatom = 1, nAtom
+             thisOctal%atomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) = thisOctal%rho(subcell)/mHydrogen
+          enddo
+          if (.not.associated(thisOctal%newatomLevel)) then
+             allocate(thisOctal%newatomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
           endif
-          thisOctal%newmolecularLevel = 1.d-30
+          thisOctal%newatomLevel = 1.d-30
 
           if (.not.associated(thisOctal%jnu)) then
-             allocate(thisOctal%jnu(1:thisOctal%maxChildren, 1:thisAtom%nRBBTrans))
+             allocate(thisOctal%jnu(1:thisOctal%maxChildren, 1:nRBBTrans))
           endif
-!          do i = 1, thisAtom%nTrans
-!             thisOctal%jnu(subcell,i) = bnu(thisAtom%transFreq(i), dble(thisOctal%temperature(subcell)))
-!         enddo
-          
           thisOctal%jnu = 1.d-30
        endif
     enddo
-  end subroutine allocateMolecularLevels
-
+  end subroutine allocateLevels
+  
 
   subroutine randomRayDirection(probTowardsSource, point, source, nSource, direction, weight)
     type(OCTALVECTOR) :: point, direction, toStar

@@ -25,8 +25,8 @@ module modelatom_mod
      integer, pointer :: ionStage(:)
      integer, pointer :: nQuantum(:)
      integer :: nTrans
-     integer :: nRBBtrans
-     integer, pointer :: indexRBB(:)
+     integer :: nRBBTrans
+     integer :: indexRBBTrans(200)
      character(len=3), pointer :: transType(:) ! RBB, RBF, CBB, CBF etc
      real(double), pointer :: transFreq(:)
      integer, pointer :: iLower(:)
@@ -121,34 +121,14 @@ contains
     close(30)
     call writeInfo("Done.",TRIVIAL)
 
-!    do i = 1, thisAtom%nTrans
-!       if (thisAtom%transType(i) == "RBB") then
-!          call returnEinsteinCoeffs(thisAtom, i, a, Bul, Blu)
-!          write(*,*) i,1.d8*cSpeed/thisAtom%transFreq(i),a, blu, bul
-!       endif
-!    enddo
-
-    thisAtom%nRBBtrans = 0
-    do i = 1, thisAtom%nTrans
-       if (thisAtom%transType(i) == "RBB") thisAtom%nRBBtrans = thisAtom%nRBBtrans + 1
-    enddo
-    write(*,*) "Number of radiative BB transitions",thisAtom%nRBBtrans
-
-    allocate(thisAtom%indexRBB(1:thisAtom%nRBBtrans))
-
     allocate(thisAtom%fMatrix(1:thisAtom%nLevels,1:thisAtom%nLevels))
     thisAtom%fMatrix =0.d0
-    j = 0
     do i = 1, thisAtom%nTrans
        if (thisAtom%transType(i) == "RBB") then
-           j = j + 1
-           thisAtom%indexRBB(j) = i
            thisAtom%fMatrix(thisAtom%iLower(i), thisAtom%iUpper(i)) = thisAtom%params(i,1)
         endif
     enddo
        
-
-
   end subroutine readAtom
 
 
@@ -391,6 +371,10 @@ contains
        call writeFatal("collisionRate: collision type not implemented")
        stop
     end select
+    if (rate <0.d0) then
+       write(*,*) "negative CBF rate for atom ",thisAtom%name,thisAtom%iLower(iTrans),thisAtom%iUpper(iTrans)
+       rate = 1.d-30
+    endif
   end function collisionRate
 
   function cijt_hyd_hillier(i,j,t,thisAtom) result (cijt)
@@ -625,6 +609,29 @@ contains
      ut = 10.d0**ut
    end function getUT
 
+   subroutine createRRBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
+     integer :: nAtom
+     type(MODELATOM) :: thisAtom(:)
+     integer :: nRBBTrans
+     integer :: indexAtom(:)
+     integer :: indexRBBTrans(:)
+     integer :: iATom, iTrans
+
+     nRBBTrans = 0
+
+     do iAtom = 1, nAtom
+        thisAtom(iAtom)%nRBBTrans = 0
+        do iTrans = 1, thisAtom(iAtom)%nTrans
+           if (thisAtom(iAtom)%transType(iTrans) == "RBB") then
+              nRBBTrans = nRBBTrans + 1
+              indexAtom(nRBBTrans) = iAtom
+              indexRBBTrans(nRBBTrans) = iTrans
+              thisAtom(iAtom)%nRBBTrans = thisAtom(iAtom)%nRBBTrans + 1
+              thisAtom(iAtom)%indexRBBtrans(iTrans) = thisAtom(iAtom)%nRBBTrans
+           endif
+        enddo
+     enddo
+   end subroutine createRRBarrays
 
 
 end module modelatom_mod

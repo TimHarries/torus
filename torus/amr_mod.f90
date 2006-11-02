@@ -8036,6 +8036,16 @@ IF ( .NOT. gridConverged ) RETURN
        dest%molecularLevel          = source%molecularLevel
     endif
 
+    if (associated(source%atomLevel)) then
+       allocate(dest%atomLevel(SIZE(source%atomLevel,1),SIZE(source%atomLevel,2),SIZE(source%atomLevel,3)))
+       dest%atomLevel          = source%atomLevel
+    endif
+
+    if (associated(source%newatomLevel)) then
+       allocate(dest%newatomLevel(SIZE(source%newatomLevel,1),SIZE(source%newatomLevel,2),SIZE(source%newatomLevel,3)))
+       dest%newatomLevel          = source%newatomLevel
+    endif
+
     if (associated(source%ionFrac)) then
        allocate(dest%ionFrac(SIZE(source%ionFrac,1),SIZE(source%ionFrac,2)))
        dest%ionFrac          = source%ionFrac
