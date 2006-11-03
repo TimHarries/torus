@@ -333,11 +333,11 @@ contains
        case("HeI")
           if (thisAtom%iLower(iTrans) <= 15) then
              sigma0 = 1.64d0
-             u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
+             u0 = (thisAtom%iPot-thisAtom%energy(thisAtom%iLower(iTrans)))/(kEv*temperature)
              u1 = u0 + 0.27d0
              u2 = u0 + 1.43d0
              rate =  5.465d-11 * sqrt(temperature) *sigma0 * (u0*expint(1,u0) - (0.728d0*u0**2/u1)*expint(1,u1) - 0.189d0 * u0**2 &
-                  * exp(-u0)*((2.d0+u2)/u2*3))
+                  * exp(-u0)*((2.d0+u2)/u2**3))
           else
              call phfit2(2,2,1,real(thisAtom%ipot*1.01), x)
              sigma0  = x * 1.d-10
@@ -352,7 +352,7 @@ contains
                      thisAtom%params(iTrans,5)/temperature**2
              else
                 logt = log10(temperature)
-                gamma = thisAtom%params(iTrans,1)  + thisAtom%params(iTrans,2)*logt + thisAtom%params(iTrans,3)/logt +&
+                gamma = thisAtom%params(iTrans,1)  + thisAtom%params(iTrans,2)*logt + thisAtom%params(iTrans,3)*logt**2 +&
                      thisAtom%params(iTrans,5)/logt**2
              endif
              rate =  5.465d-11 * sqrt(temperature) * &

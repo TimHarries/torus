@@ -58,10 +58,11 @@ contains
     allocate(matrixA(1:nMatrix,1:nMatrix))
     allocate(matrixB(1:nMatrix))
 
-    matrixA = 1.d-30
+    matrixA = 1.d-10
     matrixB = 0.d0
 
-    
+    matrixB(nMatrix) = nh ! total number of atoms
+
        
     nOffset  = 0
 
@@ -76,7 +77,7 @@ contains
           k = thisAtom(iAtom)%iUpper(iTrans)
           l = thisAtom(iAtom)%iLower(iTrans)
 
-          Nstar = boltzSahaGeneral(thisAtom(iAtom), 1, l, ne, temperature, nPops(iAtom,thisAtom(iATom)%nLevels))
+          Nstar = boltzSahaGeneral(thisAtom(iAtom), 1, l, ne, temperature, nPops(iAtom,thisAtom(iAtom)%nLevels))
 
           if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! radiative recomb
              recombratekl = 0.d0
@@ -86,6 +87,7 @@ contains
                      (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
                      exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
              enddo
+
              matrixB(l+nOffset) = matrixB(l+nOffset) - Nstar * recombratekl
           endif
           if (thisAtom(iAtom)%transType(iTrans) == "CBF") then ! collisional recomb
@@ -95,6 +97,10 @@ contains
           endif
        enddo
 
+       if (iAtom == 1) &
+       matrixB(nLevels+nOffset) = matrixB(nLevels+nOffset)+SUM(matrixB(1+nOffset:nLevels-1+nOffset))
+
+       if (iAtom == 2) &
        matrixB(nLevels+nOffset) = matrixB(nLevels+nOffset)-SUM(matrixB(1+nOffset:nLevels-1+nOffset))
 
        ! LHS
@@ -176,7 +182,6 @@ contains
        nOffset = nOffset + thisAtom(iAtom)%nLevels-1
     enddo
 
-    matrixB(nMatrix) = nh ! total number of atoms
     
  
     nOffset = 0
@@ -205,7 +210,7 @@ contains
 
     write(*,*) "HeI",SUM(nPops(1,1:thisAtom(1)%nLevels-1))
     write(*,*) "HeII",SUM(nPops(2,1:thisAtom(2)%nLevels-1))
-    write(*,*) "HeIII",nPops(2,thisAtom(2)%nLevels)
+    write(*,*) "HeIII",nPops(2,thisAtom(2)%nLevels),matrixB(nMatrix)
 
 
   end subroutine solveLevels
@@ -448,7 +453,7 @@ contains
           if (alphanu < 0.d0) then
              alphanu = 0.d0
              if (first) then
-                write(*,*) "negative opacity warning",iUpper,iLower
+                write(*,*) "negative opacity warning",iUpper,iLower,nLower,nUpper
                 first = .false.
              endif
           endif
@@ -669,7 +674,6 @@ contains
                                  - oldpops(1:nAtom,1:thisAtom(iAtom)%nLevels))/oldpops(1:nAtom,1:thisAtom(iAtom)%nLevels))))
                          enddo
                          write(*,*) iter,fac
-                         stop
                          if (fac < 1.d-4) popsConverged = .true.
                          if (iter == maxIter) then
                             popsConverged = .true.
@@ -770,7 +774,8 @@ contains
           thisOctal%atomLevel(subcell,:,:) = 1.d-30
 
           do iatom = 1, nAtom
-             thisOctal%atomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) = thisOctal%rho(subcell)/mHydrogen
+             thisOctal%atomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) = 0.99d0*thisOctal%rho(subcell)/mHydrogen
+             thisOctal%atomLevel(subcell, iAtom, 1) = 1.d-2*thisOctal%rho(subcell)/mHydrogen
           enddo
           if (.not.associated(thisOctal%newatomLevel)) then
              allocate(thisOctal%newatomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))

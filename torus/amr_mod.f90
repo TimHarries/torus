@@ -6839,7 +6839,7 @@ IF ( .NOT. gridConverged ) RETURN
   TYPE(vector)  function wrshellVelocity(point, grid)
     use input_variables, only : vterm
     type(octalvector), intent(in) :: point
-    type(octalvector) :: rVec
+    type(octalvector) :: rvec
     type(GRIDTYPE), intent(in) :: grid
     real(double) :: v, r
     rVec = point
