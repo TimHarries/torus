@@ -3192,7 +3192,7 @@ end subroutine returnElement
 
 SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
   implicit none
-  integer, parameter :: nmax=50
+  integer, parameter :: nmax=100
   integer :: n, m, np, mp, i, j, k, l, icol, irow
   real(double) :: dum, pivinv
   integer :: ll
@@ -3481,6 +3481,102 @@ END SUBROUTINE GAUSSJ
     endif
     deallocate(t)
   end function median
+
+
+      subroutine ludcmp(a,n,np,indx,d)
+        integer :: nMax,n,np,indx(:)
+        real(double) :: vtiny,d
+      parameter (nmax=100)
+      real(double) :: a(np,np),vv(nmax)
+      integer :: i, j,k,imax
+      real(double) :: aamax, sum, dum
+      vtiny = 1.d-30
+      d=1.
+      do 12 i=1,n
+        aamax=0.d0
+        do 11 j=1,n
+          if (abs(a(i,j)).gt.aamax) aamax=abs(a(i,j))
+11      continue
+        if (aamax.eq.0.d0) pause 'singular matrix.'
+        vv(i)=1.d0/aamax
+12    continue
+      do 19 j=1,n
+        if (j.gt.1) then
+          do 14 i=1,j-1
+            sum=a(i,j)
+            if (i.gt.1)then
+              do 13 k=1,i-1
+                sum=sum-a(i,k)*a(k,j)
+13            continue
+              a(i,j)=sum
+            endif
+14        continue
+        endif
+        aamax=0.d0
+        do 16 i=j,n
+          sum=a(i,j)
+          if (j.gt.1)then
+            do 15 k=1,j-1
+              sum=sum-a(i,k)*a(k,j)
+15          continue
+            a(i,j)=sum
+          endif
+          dum=vv(i)*abs(sum)
+          if (dum.ge.aamax) then
+            imax=i
+            aamax=dum
+          endif
+16      continue
+        if (j.ne.imax)then
+          do 17 k=1,n
+            dum=a(imax,k)
+            a(imax,k)=a(j,k)
+            a(j,k)=dum
+17        continue
+          d=-d
+          vv(imax)=vv(j)
+        endif
+        indx(j)=imax
+        if(j.ne.n)then
+          if(a(j,j).eq.0.)a(j,j)=vtiny
+          dum=1.d0/a(j,j)
+          do 18 i=j+1,n
+            a(i,j)=a(i,j)*dum
+18        continue
+        endif
+19    continue
+      if(a(n,n).eq.0.d0)a(n,n)=vtiny
+      end subroutine
+
+      subroutine lubksb(a,n,np,indx,b)
+        integer :: np,n,ii,i,ll,j
+        integer :: indx(n)
+       real(double) ::  a(np,np),b(n)
+       real(double) :: sum
+      ii=0
+      do 12 i=1,n
+        ll=indx(i)
+        sum=b(ll)
+        b(ll)=b(i)
+        if (ii.ne.0)then
+          do 11 j=ii,i-1
+            sum=sum-a(i,j)*b(j)
+11        continue
+        else if (sum.ne.0.d0) then
+          ii=i
+        endif
+        b(i)=sum
+12    continue
+      do 14 i=n,1,-1
+        sum=b(i)
+        if(i.lt.n)then
+          do 13 j=i+1,n
+            sum=sum-a(i,j)*b(j)
+13        continue
+        endif
+        b(i)=sum/a(i,i)
+14    continue
+     end subroutine
 
 
 

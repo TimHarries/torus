@@ -30,6 +30,8 @@ contains
     real(double) :: jnuLine(:)
     type(MODELATOM) :: thisAtom(:)
     real(double), allocatable :: matrixA(:,:), matrixB(:), collMatrix(:,:), cTot(:)
+    integer, allocatable :: indx(:)
+    real(double) :: d 
     real(double) :: arateji, boltzFac
     integer :: nLevels
     integer :: iLower, iUpper, iLevel, i, j
@@ -41,15 +43,22 @@ contains
     real(double) :: fac, nh
     real(double) :: prate, rrate, Nstar
     integer :: iJnu
-
+    integer :: nHcons, nHeCons
     integer :: nAtom, iAtom, nMatrix
     integer :: nOffset
-
+    integer :: nHeIOffset, nHeIIOffset
+    logical :: ok
 
     nMatrix = 0
-    nMatrix = nMatrix + thisAtom(1)%nLevels-1
-    nMatrix = nMatrix + thisAtom(2)%nLevels
-    nMatrix = nMatrix + 1
+    nMatrix = nMatrix + thisAtom(1)%nLevels ! hydrogen
+    nMatrix = nMatrix + 1  ! hydrogen particle conservation
+    nHcons = nMatrix
+    nHeIOffset = nMatrix
+    nMatrix = nMatrix + thisAtom(2)%nLevels-1 ! hei
+    nHeIIOffset = nMatrix
+    nMatrix = nMatrix + thisAtom(3)%nLevels ! heii
+    nMatrix = nMatrix + 1 ! helium particle conservation
+    nHeCons = nMatrix
 
     do i = 1, nMatrix
        num(i) = i
@@ -58,11 +67,11 @@ contains
     allocate(matrixA(1:nMatrix,1:nMatrix))
     allocate(matrixB(1:nMatrix))
 
-    matrixA = 1.d-10
+    matrixA = 0.d0
     matrixB = 0.d0
 
-    matrixB(nMatrix) = nh ! total number of atoms
-
+    matrixB(nHcons) = nh ! total number 
+    matrixB(nHecons) = nh
        
     nOffset  = 0
 
@@ -97,10 +106,14 @@ contains
           endif
        enddo
 
+
        if (iAtom == 1) &
-       matrixB(nLevels+nOffset) = matrixB(nLevels+nOffset)+SUM(matrixB(1+nOffset:nLevels-1+nOffset))
+       matrixB(nLevels+nOffset) = matrixB(nLevels+nOffset)-SUM(matrixB(1+nOffset:nLevels-1+nOffset))
 
        if (iAtom == 2) &
+       matrixB(nLevels+nOffset) = matrixB(nLevels+nOffset)+SUM(matrixB(1+nOffset:nLevels-1+nOffset))
+
+       if (iAtom == 3) &
        matrixB(nLevels+nOffset) = matrixB(nLevels+nOffset)-SUM(matrixB(1+nOffset:nLevels-1+nOffset))
 
        ! LHS
@@ -179,15 +192,19 @@ contains
 
 
        enddo
-       nOffset = nOffset + thisAtom(iAtom)%nLevels-1
+       if (iAtom == 1)   nOffset = nHeIOffset 
+       if (iAtom == 2)   nOffset = nHeIIOffset
     enddo
 
     
- 
-    nOffset = 0
-    matrixA(nMatrix,1:thisAtom(1)%nLevels-1) = 1.d0
-    nOffset = nOffset + thisAtom(1)%nLevels-1
-    matrixA(nMatrix,1+nOffset:thisAtom(2)%nLevels+noffset) = 1.d0
+! H cons
+
+    matrixA(nHCons,1:thisAtom(1)%nLevels) = 1.d0
+
+ ! He Cons
+
+    matrixA(nHeCons,1+nHeIOffset:thisAtom(2)%nLevels-1+nHeIOffset) = 1.d0
+    matrixA(nHeCons,1+nHeIIOffset:thisAtom(3)%nLevels+nHeIIoffset) = 1.d0
 
     
     write(*,'(4x,100i8)') num(1:nMatrix)
@@ -196,22 +213,31 @@ contains
     enddo
     
 
-    call luSlv(matrixA, matrixB, nMatrix)
-    
+!    call luSlv(matrixA, matrixB, nMatrix)
+
+
+!    call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
+    allocate(indx(1:nMatrix))
+    call ludcmp(matrixA, nMatrix, nMatrix, indx, d)
+    call lubksb(matrixA, nMatrix, nMatrix, indx, matrixB)
+    deallocate(indx)
+
     nOffset  = 0
-    nPops(1,1:thisAtom(1)%nLevels-1) = matrixB(1:thisAtom(1)%nLevels-1)
-    nOffset = nOffset + thisAtom(1)%nLevels-1
-    nPops(2,1:thisAtom(2)%nLevels) = matrixB(1+nOffset:thisAtom(2)%nLevels+nOffset)
+    nPops(1,1:thisAtom(1)%nLevels) = matrixB(1:thisAtom(1)%nLevels)
+    nPops(2,1:thisAtom(2)%nLevels) = matrixB(1+nHeIOffset:thisAtom(2)%nLevels+nHeIOffset)
+    nPops(3,1:thisAtom(3)%nLevels) = matrixB(1+nHeIIOffset:thisAtom(3)%nLevels+nHeIIOffset)
 
     deallocate(matrixA, matrixB)
 
 !    write(*,*) "H",SUM(nPops(1,1:thisAtom(1)%nLevels-1))
 !    write(*,*) "NP",npops(1,thisAtom(1)%nLevels)
 
-    write(*,*) "HeI",SUM(nPops(1,1:thisAtom(1)%nLevels-1))
-    write(*,*) "HeII",SUM(nPops(2,1:thisAtom(2)%nLevels-1))
-    write(*,*) "HeIII",nPops(2,thisAtom(2)%nLevels),matrixB(nMatrix)
-
+    write(*,*) "H",SUM(nPops(1,1:thisAtom(1)%nLevels-1))
+    write(*,*) "HII", nPops(1,thisAtom(1)%nLevels)
+    write(*,*) "HeI",SUM(nPops(2,1:thisAtom(2)%nLevels-1))
+    write(*,*) "HeII",SUM(nPops(3,1:thisAtom(3)%nLevels-1))
+    write(*,*) "HeIII",nPops(3,thisAtom(3)%nLevels)
+    write(*,*) "Ne",ne
 
   end subroutine solveLevels
 
@@ -524,7 +550,9 @@ contains
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
-    real(double), allocatable :: oldpops(:,:)
+    real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:)
+    real(double) :: newNe, oldNe, dNe
+    real(double), parameter :: underCorrect = 0.8d0
     real(double) :: fac
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     logical :: dcAllocated
@@ -546,7 +574,7 @@ contains
     integer :: nFreq, nhit, iRBB
     integer :: nRBBTrans
     integer :: indexRBBTrans(1000), indexAtom(1000)
-    real(double) :: nuStart, nuEnd
+    real(double) :: nuStart, nuEnd, ne
     integer :: iAtom
 
     nuStart = cSpeed / (100000.d0 * 1.d-8)
@@ -569,6 +597,8 @@ contains
 
 
     allocate(oldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
+    allocate(newPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
+    allocate(dPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -580,7 +610,7 @@ contains
     allocate(iSeed(1:iSize))
     call random_seed(get=iSeed)
 
-    nRay = 1000
+    nRay = 100
 
     do iStage = 1, 2
 
@@ -637,12 +667,12 @@ contains
                       iter = 0
                       popsConverged = .false.
                       thisOctal%newatomLevel(subcell,:, :) = thisOctal%atomLevel(subcell,:, :)
+                      ne = thisOctal%ne(subcell)
 
 
                       do while (.not.popsConverged)
                          iter = iter + 1
                          oldpops = thisOctal%newatomLevel(subcell,1:nAtom,1:)
-
                          call calculateJbarCont(nray, source, nSource, hitPhotosphere, sourceNumber, &
                               freq, nfreq, jnuCont, cosTheta, weight)
 
@@ -655,21 +685,41 @@ contains
                                  freq, nFreq, jnuCont, weight(1:nRay))
 
                          enddo
-
-                         call solveLevels(thisOctal%newatomLevel(subcell, 1:nAtom, 1:), &
+                         newpops = thisOctal%newatomLevel(subcell, 1:nAtom, 1:)
+                         call solveLevels(newPops, &
                               thisOctal%jnu(subcell,1:nRBBTrans),  &
-                              dble(thisOctal%temperature(subcell)), nAtom, thisAtom, thisOctal%ne(subcell), &
+                              dble(thisOctal%temperature(subcell)), nAtom, thisAtom, ne, &
                               thisOctal%rho(subcell)/mHydrogen,&
                               jnuCont, freq, nfreq)
-                         write(*,*) "ne fixed!"
+
+                        dPops = newPops - thisOctal%newAtomLevel(subcell,1:nAtom,:) 
+
+                        thisOctal%newAtomLevel(subcell,1:nAtom,:)  = &
+                             thisOctal%newAtomLevel(subcell,1:nAtom,:)  + underCorrect * dPops
+                        newne = thisOctal%newAtomLevel(subcell, 1, thisAtom(1)%nLevels) ! H+
+                        newne = newne + SUM(thisOctal%newAtomLevel(subcell, 3, 1:thisAtom(3)%nLevels-1)) ! He+
+                        newne = newne + 2.d0*thisOctal%newAtomLevel(subcell, 3, thisAtom(3)%nLevels) ! He++
+                        dNe = newne - Ne
+
+                        ne = ne + undercorrect * dne
+
+
                          do iatom = 1, nAtom
                             write(*,*) "Atom: ",thisAtom(iatom)%name
                             do i = 1, thisAtom(iatom)%nLevels
-                               write(*,*) i,thisOctal%newAtomLevel(subcell,iatom,i),oldpops(iatom,i)
+                               write(*,*) i,thisOctal%newAtomLevel(subcell,iatom,i),oldpops(iatom,i), &
+                                    abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(oldpops(iAtom,i),1.d-20)) &
+                                    / max(oldpops(iAtom,i),1.d-20))
                             enddo
                          enddo
+                         write(*,*) "Ne: ",ne
                          fac = -1.d30
+                         where (oldPops == 0.d0)
+                            oldPops = 1.d-20
+                         end where
+
                          do iAtom = 1, nAtom
+
                             fac = max(fac,maxval(abs((thisOctal%newAtomLevel(subcell,1:nAtom,1:thisAtom(iAtom)%nLevels) &
                                  - oldpops(1:nAtom,1:thisAtom(iAtom)%nLevels))/oldpops(1:nAtom,1:thisAtom(iAtom)%nLevels))))
                          enddo
@@ -680,6 +730,7 @@ contains
                             call writeWarning("Maximum number of iterations reached in pop solver")
                          endif
                       enddo
+                      thisOctal%ne(subcell) = ne
                    endif
                 endif
              enddo
@@ -774,7 +825,7 @@ contains
           thisOctal%atomLevel(subcell,:,:) = 1.d-30
 
           do iatom = 1, nAtom
-             thisOctal%atomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) = 0.99d0*thisOctal%rho(subcell)/mHydrogen
+             thisOctal%atomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) = 0.1d0*thisOctal%rho(subcell)/mHydrogen
              thisOctal%atomLevel(subcell, iAtom, 1) = 1.d-2*thisOctal%rho(subcell)/mHydrogen
           enddo
           if (.not.associated(thisOctal%newatomLevel)) then
