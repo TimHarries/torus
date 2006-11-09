@@ -49,7 +49,9 @@ contains
     integer, allocatable :: nOffset(:)
     logical, allocatable :: continuumGround(:)
     integer, allocatable :: nCons(:)
-    logical :: ok
+    logical :: ok, debug
+
+    debug = .false.
 
 
 
@@ -227,17 +229,16 @@ contains
 
        enddo
 
-       write(*,*) iatom,"total ioniz",totPhotoIon,totcion
 
     enddo
 
     
-    
-    write(*,'(4x,100i8)') num(1:nMatrix)
-    do i = 1, nMatrix
-       write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
-    enddo
-    
+    if (debug) then
+       write(*,'(4x,100i8)') num(1:nMatrix)
+       do i = 1, nMatrix
+          write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
+       enddo
+    endif
 
 !    call luSlv(matrixA, matrixB, nMatrix)
     call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
@@ -266,8 +267,6 @@ contains
     enddo
     deallocate(matrixA, matrixB)
 
-!    write(*,*) "H",SUM(nPops(1,1:thisAtom(1)%nLevels-1))
-!    write(*,*) "NP",npops(1,thisAtom(1)%nLevels)
 
     do iAtom = 1, nAtom
        write(*,*) trim(thisAtom(iAtom)%name),SUM(nPops(iAtom,1:thisAtom(iAtom)%nLevels-1))
@@ -277,8 +276,9 @@ contains
 
   end subroutine solveLevels
 
-  subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, nAtom, thisAtom, source, nSource, &
-       hitPhotosphere, sourceNumber, cosTheta, weight, nRBBTrans, indexRBBTrans, indexAtom)
+  subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, &
+       hCol, HeIcol, HeIIcol, nAtom, thisAtom, source, nSource, &
+       hitPhotosphere, sourceNumber, cosTheta, weight, nRBBTrans, indexRBBTrans, indexAtom, nHAtom, nHeIAtom, nHeIIAtom)
     type(SOURCETYPE) :: source(:)
     integer :: nAtom
     integer :: nSource
@@ -289,6 +289,7 @@ contains
     integer :: fromSubcell
     integer :: subcell
     real(double) :: ds, phi, i0(:), r, phi1, phi2, cosTheta
+    real(double) :: Hcol, HeICol, HeIICol
     integer :: iTrans
     type(OCTALVECTOR) :: position, direction, currentPosition, thisPosition, thisVel
     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition, pvec
@@ -298,6 +299,7 @@ contains
     integer :: i
     real(double) :: distArray(200), tval
     integer :: nTau
+    integer :: nHatom, nHeIAtom, nHeIIAtom
     real(double) :: nLower, nUpper
     real(double) :: dTau, etaline, didtau
     real(double), allocatable :: tau(:)
@@ -371,7 +373,9 @@ contains
     ds = ds * 1.d10
 
 
-
+    Hcol = 0.d0
+    HeICol = 0.d0
+    HeIICol = 0.d0
     i0 = 0.d0
     intensityIntegral = 0.0
     tau = 0.d0
@@ -440,6 +444,20 @@ contains
                 
                 dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
                 
+                if (nHAtom /= 0) then
+                   Hcol = Hcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHatom, 1) ! just use ground state
+                endif
+
+                if (nHeIAtom /= 0) then
+                   HeIcol = HeIcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHeIatom, 1) ! just use ground state
+                endif
+
+                if (nHeIIAtom /= 0) then
+                   HeIIcol = HeIIcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHeIIatom, 1) ! just use ground state
+                endif
+
+
+
                 etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
                 etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
                 jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
@@ -491,9 +509,8 @@ contains
     real(double) :: tau, snu, sumPhi
     real(double) :: a, bul, blu
     integer :: i
-    logical :: first
+    logical,save :: first = .true.
 
-    first = .true.
     jBarExternal = 0.d0
     jBarInternal = 0.d0
 
@@ -546,14 +563,17 @@ contains
           
   end subroutine calculateJbar
 
-  subroutine calculateJbarCont(nray, source, nSource, hitPhotosphere, sourceNumber, freq, nfreq, jnuCont, cosTheta, weight)
+  subroutine calculateJbarCont(nray, source, nSource, hitPhotosphere, sourceNumber, freq, nfreq, &
+       Hcol, HeICol, HeIICol, jnuCont, cosTheta, weight)
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     logical :: hitPhotosphere(:)
     integer :: sourceNumber(:)
     integer :: nfreq
     real(double) :: freq(:), jnuCont(:), cosTheta(:), weight(:)
+    real(double) :: HCol(:), HeIcol(:), HeIICol(:)
     integer :: iray, nRay, i
+    real :: tau, xh, xhei, xheii
 
     jnuCont = 0.d0
     rayloop: do iRay = 1, nRay
@@ -561,7 +581,11 @@ contains
           cycle rayloop
        endif
        do i = 1, nFreq
-          jnuCont(i) = jnuCont(i) + weight(iRay)*i_nu(source(sourceNumber(iray)), freq(i))*cosTheta(iRay)
+          call phfit2(1,1,1,real(freq(i)*hCgs*ergtoev), xH)
+          call phfit2(2,2,1,real(freq(i)*hCgs*ergtoev), xHeI)
+          call phfit2(2,1,1,real(freq(i)*hCgs*ergtoev), xHeII)
+          tau = (hCol(iray)*xh + HeiCol(iray)*xHei + HeIIcol(iray)*xheii)*1.d-10
+          jnuCont(i) = jnuCont(i) + weight(iRay)*i_nu(source(sourceNumber(iray)), freq(i))*cosTheta(iRay)*exp(-tau)
        enddo
     end do rayloop
     jnuCont = jnuCont / SUM(weight(1:nRay))
@@ -580,7 +604,8 @@ contains
     type(OCTALVECTOR) :: position, direction
     integer :: nOctal, iOctal, subcell
     real(double), allocatable :: ds(:), phi(:), i0(:,:), tau(:)
-    integer :: nRay
+    real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
+    integer :: nRay,m
     type(OCTAL), pointer :: thisOctal
     integer, parameter :: maxIter = 100, maxRay = 100000
     logical :: popsConverged, gridConverged 
@@ -612,9 +637,11 @@ contains
     integer :: indexRBBTrans(1000), indexAtom(1000)
     real(double) :: nuStart, nuEnd, ne
     integer :: iAtom
-
+    integer :: nHAtom, nHeIAtom, nHeIIatom
     real(double) :: xAbund, yAbund
+    logical :: debug
 
+    debug = .false.
 
     xAbund = 0.71d0
     yAbund = 0.27d0
@@ -648,9 +675,15 @@ contains
 
     call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans)
 
-
-    !    call solveAllPops(grid, grid%octreeRoot, thisAtom, jnuCont, freq, nfreq)
-
+    nHAtom = 0
+    nHeIAtom = 0
+    nHeIIAtom = 0
+    do iAtom = 1, nAtom
+       if (thisAtom(iAtom)%name == "HI") nHatom = iAtom
+       if (thisAtom(iAtom)%name == "HeI") nHeIatom = iAtom
+       if (thisAtom(iAtom)%name == "HeII") nHeIIatom = iAtom
+    enddo
+       
 
     allocate(oldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
     allocate(newPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
@@ -687,6 +720,9 @@ contains
           allocate(phi(1:nRay))
           allocate(i0(1:nRBBTrans, 1:nRay))
           allocate(tau(1:nRay))
+          allocate(Hcol(1:nRay))
+          allocate(HeIcol(1:nRay))
+          allocate(HeIIcol(1:nRay))
           allocate(sourceNumber(1:nRay))
           allocate(cosTheta(1:nRay))
           allocate(weight(1:nRay))
@@ -714,12 +750,11 @@ contains
                       nHit = 0
                       do iRay = 1, nRay
                          call getRay(grid, thisOCtal, subcell, position, direction, &
-                              ds(iRay), phi(iRay), i0(1:nRBBTrans,iRay), &
+                              ds(iRay), phi(iRay), i0(1:nRBBTrans,iRay), Hcol(iray), HeICol(iRay), HeIICol(iRay),&
                               nAtom, thisAtom, source, nSource, hitPhotosphere(iRay), sourceNumber(iray), &
-                              cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom)
+                              cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom, nHatom, nHeIAtom, nHeIIatom)
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
-                      write(*,*) "fraction of rays hitting core",real(nhit)/real(nray)
                       iter = 0
                       popsConverged = .false.
                       thisOctal%newatomLevel(subcell,:, :) = thisOctal%atomLevel(subcell,:, :)
@@ -730,7 +765,7 @@ contains
                          iter = iter + 1
                          oldpops = thisOctal%newatomLevel(subcell,1:nAtom,1:)
                          call calculateJbarCont(nray, source, nSource, hitPhotosphere, sourceNumber, &
-                              freq, nfreq, jnuCont, cosTheta, weight)
+                              freq, nfreq, hCol, HeICol, HeIIcol, jnuCont, cosTheta, weight)
 
                          do iRBB = 1, nRBBTrans
                             iTrans = indexRBBTrans(iRBB)
@@ -784,6 +819,7 @@ contains
                         ne = ne + undercorrect * dne
 
 
+                        if (debug) then
                          do iatom = 1, nAtom
                             write(*,*) "Atom: ",thisAtom(iatom)%name
                             do i = 1, thisAtom(iatom)%nLevels-1
@@ -793,6 +829,7 @@ contains
                             enddo
                          enddo
                          write(*,*) "Ne: ",ne,dne
+                         endif
                          fac = -1.d30
                          where (oldPops == 0.d0)
                             oldPops = 1.d-20
@@ -829,7 +866,8 @@ contains
           endif
 
 
-          deallocate(ds, phi, i0, tau, sourceNumber, cosTheta, hitPhotosphere, weight)
+          deallocate(ds, phi, i0, tau, sourceNumber, cosTheta, hitPhotosphere, &
+               weight, hcol, heicol, heiicol)
 
           if (.not.gridConverged) then
              if (.not.fixedRays) nRay = nRay * 2
@@ -904,10 +942,6 @@ contains
           endif
           thisOctal%atomLevel(subcell,:,:) = 1.d-30
 
-          do iatom = 1, nAtom-1
-             thisOctal%atomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) = 0.01d0*thisOctal%rho(subcell)/mHydrogen
-             thisOctal%atomLevel(subcell, iAtom, 1) = 0.1*thisOctal%rho(subcell)/mHydrogen
-          enddo
           if (.not.associated(thisOctal%newatomLevel)) then
              allocate(thisOctal%newatomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
           endif
