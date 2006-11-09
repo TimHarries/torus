@@ -16,7 +16,9 @@ module modelatom_mod
   type MODELATOM
      character(len=10) :: name
      integer :: charge
+     integer :: nz
      real(double) :: mass ! amu
+     real(double) :: abundance
      integer :: nLevels
      character(len=10), pointer :: level(:)
      real(double), pointer :: energy(:)  ! erg
@@ -71,6 +73,7 @@ contains
     read(30,*) thisAtom%name
     write(message,'(a,a)') "Reading atom model from: ",trim(atomfilename)
     call writeInfo(message,TRIVIAL)
+    read(30,*) thisAtom%nz
     read(30,*) thisAtom%charge
     read(30,*) thisAtom%mass
     read(30,*) thisAtom%nLevels
@@ -263,7 +266,8 @@ contains
     real(double) :: logGamma
     real(double) :: sigma0
     real :: x
-    real(double) :: fij, eh, gamma, logt
+    real(double) :: fij, eh, gamma, logt, g
+    integer :: i, j
 
     if (iTrans > thisAtom%nTrans) then
        call writeFatal("returnEinsteinCoeffs: iTrans greater than number of transitions")
@@ -297,12 +301,14 @@ contains
                 rate = 5.465d-11 * sqrt(temperature)*thisAtom%params(itrans,1)
                 rate = rate * (EH/(hCgs*thisAtom%transFreq(iTrans)))**2 * u0 * expint(1, u0)
              case(6)
+                i = thisAtom%iLower(iTrans)
+                j = thisAtom%iUpper(iTrans)
                 EH = hydE0eVdb * evtoErg
                 u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
                 u1 = u0 + 0.2d0
-                rate = 5.465d-11 * sqrt(temperature)*thisAtom%params(itrans,1)
+                rate = 5.465d-11 * sqrt(temperature) * 4.d0 * thisAtom%params(itrans,1) 
                 rate = rate * (EH/(hCgs*thisAtom%transFreq(iTrans)))**2 * u0 * (expint(1, u0) - &
-                     (u0/u1)*exp(-0.2)*expint(1,u1))
+                     (u0/u1)*exp(-0.2d0)*expint(1,u1))
             case(8)
                logGamma = thisAtom%params(itrans,1) + thisAtom%params(iTrans,2) * &
                     log10(temperature)+thisAtom%params(itrans,3)/(log10(temperature)**2)
@@ -310,6 +316,8 @@ contains
              case(9)
                 u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
                 rate = 5.465d-11 * sqrt(temperature) * exp(-u0)*(1.d0+u0)
+                rate = rate * 1.d-2!!!!!!!!!!
+
              case DEFAULT
                 call writeFatal("CBB rate equation not implemented for He")
                 stop
@@ -340,9 +348,10 @@ contains
                   * exp(-u0)*((2.d0+u2)/u2**3))
           else
              call phfit2(2,2,1,real(thisAtom%ipot*1.01), x)
+             g = thisAtom%params(iTrans,2)
              sigma0  = x * 1.d-10
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
-             rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
+             rate = 1.55d13*thisAtom%params(itrans,2)*g*sigma0*exp(-u0)/u0 /sqrt(temperature)
           endif
        case("HeII")
           if (thisAtom%iLower(iTrans) <= 10) then
@@ -357,11 +366,13 @@ contains
              endif
              rate =  5.465d-11 * sqrt(temperature) * &
                   exp(-(thisAtom%iPot-thisAtom%energy(thisAtom%iLower(iTrans)))/(Kev*temperature)) * Gamma
+             rate = 0.d0
           else
              call phfit2(2,1,1,real(thisAtom%ipot*1.01), x)
              sigma0  = x * 1.d-10
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
+             rate = 0.d0
           endif
        case DEFAULT
           call writeFatal("collisionRate: bound-free collision type not implemented")
@@ -553,11 +564,11 @@ contains
 
   end subroutine readTopbase
 
-  function BoltzSahaGeneral(thisAtom, nion, level, Ne, t, nk) result(npop)
+  function BoltzSahaGeneral(thisAtom, nion, level, Ne, t) result(ratio)
   
     type(MODELATOM) :: thisAtom
     integer              :: nIon, level
-    real(double) :: Ne, t, nPop, nk
+    real(double) :: Ne, t, ratio, nk
     real(double) ::  Ucoeff(5,5)
     real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
     uCoeff(1,1:5) = (/0.30103d0, -0.00001d0, 0.d0, 0.d0, 0.d0 /)
@@ -571,15 +582,13 @@ contains
           u1 = 1.d0
           N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
           N1overN0 = (10.d0**N1overN0)/pe
-          n0 = nk / N1overn0
-          Npop = N0 * thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u0
+          ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
        case("HeI")
           u0 = 1.d0
           u1 = getUT(t, uCoeff(3,1:5))
           N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
           N1overN0 = (10.d0**N1overN0)/pe
-          n0 = nk / N1overN0
-          Npop = N0 *  thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u0
+          ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
        case("HeII")
           u0 = 1.d0
           u1 = getUT(t, uCoeff(3,1:5))
@@ -589,8 +598,7 @@ contains
 
           N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
           N2overN1 = (10.d0**N2overN1)/pe
-          N1 = nk / N2overN1
-          Npop = N1 *  thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t)) / u1
+          ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1 / N2overn1
        case DEFAULT
           write(*,*) "atom not recognised in boltzsahageneral ",thisAtom%name
           stop

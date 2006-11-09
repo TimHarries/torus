@@ -21,7 +21,7 @@ module cmf_mod
 
 contains
 
-  subroutine solveLevels(nPops, jnuLine,  temperature, nAtom, thisAtom, ne, nh, jnuCont, freq, nfreq)
+  subroutine solveLevels(nPops, jnuLine,  temperature, nAtom, thisAtom, ne, rho, jnuCont, freq, nfreq)
     integer :: nFreq
     integer :: num(100)
     real(double) :: freq(:), jnuCont(:)
@@ -31,6 +31,8 @@ contains
     type(MODELATOM) :: thisAtom(:)
     real(double), allocatable :: matrixA(:,:), matrixB(:), collMatrix(:,:), cTot(:)
     integer, allocatable :: indx(:)
+    real(double), allocatable :: vMatrix(:,:), wMatrix(:,:), xMatrix(:)
+    real(double) :: wMax, wMin
     real(double) :: d 
     real(double) :: arateji, boltzFac
     integer :: nLevels
@@ -40,53 +42,86 @@ contains
     real(double) :: a, Bul, Blu
     real(double) :: photoRatelk, recombRatekl, xSection
     real(double) :: partitionFunc
-    real(double) :: fac, nh
-    real(double) :: prate, rrate, Nstar
+    real(double) :: fac, rho
+    real(double) :: prate, rrate, NstarRatio, totRecomb, totPHotoIon, totcion
     integer :: iJnu
-    integer :: nHcons, nHeCons
     integer :: nAtom, iAtom, nMatrix
-    integer :: nOffset
-    integer :: nHeIOffset, nHeIIOffset
+    integer, allocatable :: nOffset(:)
+    logical, allocatable :: continuumGround(:)
+    integer, allocatable :: nCons(:)
     logical :: ok
 
+
+
+    allocate(nOffset(1:nAtom))
+    allocate(nCons(1:nAtom))
+    allocate(continuumGround(1:nAtom))
+    continuumGround = .false.
+
     nMatrix = 0
-    nMatrix = nMatrix + thisAtom(1)%nLevels ! hydrogen
-    nMatrix = nMatrix + 1  ! hydrogen particle conservation
-    nHcons = nMatrix
-    nHeIOffset = nMatrix
-    nMatrix = nMatrix + thisAtom(2)%nLevels-1 ! hei
-    nHeIIOffset = nMatrix
-    nMatrix = nMatrix + thisAtom(3)%nLevels ! heii
-    nMatrix = nMatrix + 1 ! helium particle conservation
-    nHeCons = nMatrix
+    nOffset(1) = 0
+    do iAtom = 1, nAtom
+
+       if (iAtom /= nAtom) then
+          if (thisAtom(iAtom)%nz /= thisAtom(iAtom+1)%nz) then ! if next atom is different element
+             nMatrix = nMatrix + thisAtom(iAtom)%nLevels 
+             nMatrix = nMatrix + 1  
+             nCons(iAtom) = nMatrix
+             nOffset(iAtom+1) = nMatrix
+          else
+             nMatrix = nMatrix + thisAtom(iAtom)%nLevels-1  ! continuum state of this atom is ground state of next
+             continuumGround(iAtom) = .true.
+             nOffset(iAtom+1) = nMatrix
+             nCons(iAtom) = 0
+          endif
+       else
+          nMatrix = nMatrix + thisAtom(iAtom)%nLevels  ! last atom
+          nMatrix = nMatrix + 1  
+          nCons(iAtom) = nMatrix
+       endif
+    enddo
+
+
+
+    allocate(matrixA(1:nMatrix,1:nMatrix))
+    allocate(matrixB(1:nMatrix))
+
+
+    matrixA = 0.d0
+    matrixB = 0.d0
+
+
 
     do i = 1, nMatrix
        num(i) = i
     enddo
        
-    allocate(matrixA(1:nMatrix,1:nMatrix))
-    allocate(matrixB(1:nMatrix))
 
-    matrixA = 0.d0
-    matrixB = 0.d0
+    do iAtom = 1, nAtom
+       if (nCons(iAtom) /= 0) then
+          matrixB(nCons(iAtom)) = thisAtom(iAtom)%abundance * rho
+          if (continuumGround(iAtom)) then
+             matrixA(nCons(iAtom),1+nOffset(iAtom):nOffset(iAtom)+thisAtom(iAtom)%nLevels-1) = 1.d0
+          else
+             matrixA(nCons(iAtom),1+nOffset(iAtom): nOffset(iAtom)+thisAtom(iAtom)%nLevels) = 1.d0
+          endif
+       endif
+    enddo
 
-    matrixB(nHcons) = nh ! total number 
-    matrixB(nHecons) = nh
-       
-    nOffset  = 0
 
     do iAtom = 1, nAtom
 
        nLevels = thisAtom(iAtom)%nLevels
 
-       ! RHS of equation
+       ! recombination rates
 
+       totRecomb = 0.d0
        do iTrans = 1, thisAtom(iAtom)%nTrans
 
           k = thisAtom(iAtom)%iUpper(iTrans)
           l = thisAtom(iAtom)%iLower(iTrans)
 
-          Nstar = boltzSahaGeneral(thisAtom(iAtom), 1, l, ne, temperature, nPops(iAtom,thisAtom(iAtom)%nLevels))
+          NstarRatio = boltzSahaGeneral(thisAtom(iAtom), 1, l, ne, temperature)
 
           if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! radiative recomb
              recombratekl = 0.d0
@@ -97,27 +132,25 @@ contains
                      exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
              enddo
 
-             matrixB(l+nOffset) = matrixB(l+nOffset) - Nstar * recombratekl
+             matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + NstarRatio * recombratekl
+             totRecomb = totRecomb + NstarRatio * recombratekl
           endif
           if (thisAtom(iAtom)%transType(iTrans) == "CBF") then ! collisional recomb
 
              collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
-             matrixB(l+nOffset) = matrixB(l+nOffset) - Nstar*collEx*ne
+             matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + NstarRatio*collEx*ne
+             totRecomb = totRecomb  + NstarRatio*collEx*ne
           endif
        enddo
 
+       matrixA(k+nOffset(iAtom), k+nOffset(iAtom)) = -totRecomb
 
-       if (iAtom == 1) &
-       matrixB(nLevels+nOffset) = matrixB(nLevels+nOffset)-SUM(matrixB(1+nOffset:nLevels-1+nOffset))
-
-       if (iAtom == 2) &
-       matrixB(nLevels+nOffset) = matrixB(nLevels+nOffset)+SUM(matrixB(1+nOffset:nLevels-1+nOffset))
-
-       if (iAtom == 3) &
-       matrixB(nLevels+nOffset) = matrixB(nLevels+nOffset)-SUM(matrixB(1+nOffset:nLevels-1+nOffset))
+       write(*,*) iatom,"total recomb",totrecomb*npops(iAtom,thisAtom(iatom)%nLevels)
 
        ! LHS
 
+       totPhotoIon = 0.d0
+       totcion = 0.d0
        do iTrans = 1, thisAtom(iAtom)%nTrans
 
           k = thisAtom(iAtom)%iUpper(iTrans)
@@ -126,10 +159,11 @@ contains
              iJnu = thisAtom(iAtom)%indexRBBTrans(iTrans)
              call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
-             matrixA(k+nOffset,k+nOffset) = matrixA(k+nOffset,k+nOffset) - Bul * jnuLine(iJnu) - a
-             matrixA(l+nOffset,l+nOffset) = matrixA(l+nOffset,l+nOffset) - Blu * jnuLine(iJnu)
-             matrixA(k+nOffset,l+nOffset) = matrixA(k+nOffset,l+nOffset) + Blu * jnuLine(iJnu)
-             matrixA(l+nOffset,k+nOffset) = matrixA(l+nOffset,k+nOffset) + Bul * jnuLine(iJnu) + a
+             matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - Bul * jnuLine(iJnu) - a
+             matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - Blu * jnuLine(iJnu)
+             matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + Blu * jnuLine(iJnu)
+             matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + Bul * jnuLine(iJnu) + a
+
           endif
 
           if (thisAtom(iAtom)%transType(iTrans) == "CBB") then ! collision BB  rates
@@ -139,10 +173,10 @@ contains
              boltzFac =  exp(-abs(thisAtom(iAtom)%energy(k)-thisAtom(iAtom)%energy(l)) / (kev*temperature))
              colldeEx = collEx / (boltzFac * thisAtom(iAtom)%g(k)/thisAtom(iAtom)%g(l))
 
-             matrixA(k+nOffset,k+nOffset) = matrixA(k+nOffset,k+nOffset) - colldeex * ne
-             matrixA(l+nOffset,l+nOffset) = matrixA(l+nOffset,l+nOffset) - collex * ne
-             matrixA(k+nOffset,l+nOffset) = matrixA(k+nOffset,l+nOffset) + collex * ne
-             matrixA(l+nOffset,k+nOffset) = matrixA(l+nOffset,k+nOffset) + colldeex * ne
+             matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - colldeex * ne
+             matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - collex * ne
+             matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + collex * ne
+             matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + colldeex * ne
 
           endif
 
@@ -170,9 +204,9 @@ contains
 !                     exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
 !             enddo
 
-             matrixA(l+nOffset,l+nOffset) = matrixA(l+nOffset,l+nOffset) - photoRatelk
-             matrixA(k+nOffset,l+nOffset) = matrixA(k+nOffset,l+nOffset) + photoRatelk
-
+             matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - photoRatelk
+             matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + photoRatelk
+             totphotoion=totphotoion + photoRatelk*npops(iatom,l)
 
           endif
 
@@ -185,27 +219,19 @@ contains
 
              collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
 
-             matrixA(l+nOffset,l+nOffset) = matrixA(l+nOffset,l+nOffset) - collex * ne
-             matrixA(k+nOffset,l+nOffset) = matrixA(k+nOffset,l+nOffset) + collex * ne
-
+             matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - collex * ne
+             matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + collex * ne
+             totcion = totcion + collex*ne*npops(iatom,l)
           endif
 
 
        enddo
-       if (iAtom == 1)   nOffset = nHeIOffset 
-       if (iAtom == 2)   nOffset = nHeIIOffset
+
+       write(*,*) iatom,"total ioniz",totPhotoIon,totcion
+
     enddo
 
     
-! H cons
-
-    matrixA(nHCons,1:thisAtom(1)%nLevels) = 1.d0
-
- ! He Cons
-
-    matrixA(nHeCons,1+nHeIOffset:thisAtom(2)%nLevels-1+nHeIOffset) = 1.d0
-    matrixA(nHeCons,1+nHeIIOffset:thisAtom(3)%nLevels+nHeIIoffset) = 1.d0
-
     
     write(*,'(4x,100i8)') num(1:nMatrix)
     do i = 1, nMatrix
@@ -214,29 +240,39 @@ contains
     
 
 !    call luSlv(matrixA, matrixB, nMatrix)
+    call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
+
+!    allocate(indx(1:nMatrix))
+!    call ludcmp(matrixA, nMatrix, nMatrix, indx, d)
+!    call lubksb(matrixA, nMatrix, nMatrix, indx, matrixB)
+!    deallocate(indx)
+
+!    allocate(wMatrix(1:nMatrix,1:nMatrix))
+!    allocate(vMatrix(1:nMatrix,1:nMatrix))
+!    allocate(xMatrix(1:nMatrix))
+!    call svdcmp(matrixA, nMatrix, nMatrix, nMatrix, nMatrix, wMatrix, vMatrix)
+!    wMax = maxval(wMatrix)
+!    wMin = 1.d-13 * wMax
+!    where (wMatrix < wMin)
+!       wMatrix = 0.d0
+!    end where
+!    call svbksb(matrixA, Wmatrix, vMatrix, nMatrix, nMatrix, nMatrix, nMatrix, matrixB, xmatrix)
+!    matrixB = xmatrix
+!    deallocate(wmatrix,vmatrix, xmatrix)
 
 
-!    call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
-    allocate(indx(1:nMatrix))
-    call ludcmp(matrixA, nMatrix, nMatrix, indx, d)
-    call lubksb(matrixA, nMatrix, nMatrix, indx, matrixB)
-    deallocate(indx)
-
-    nOffset  = 0
-    nPops(1,1:thisAtom(1)%nLevels) = matrixB(1:thisAtom(1)%nLevels)
-    nPops(2,1:thisAtom(2)%nLevels) = matrixB(1+nHeIOffset:thisAtom(2)%nLevels+nHeIOffset)
-    nPops(3,1:thisAtom(3)%nLevels) = matrixB(1+nHeIIOffset:thisAtom(3)%nLevels+nHeIIOffset)
-
+    do iAtom = 1, nAtom
+       nPops(iAtom,1:thisAtom(iAtom)%nLevels) = matrixB(1+nOffset(iAtom):thisAtom(1)%nLevels+nOffset(iAtom))
+    enddo
     deallocate(matrixA, matrixB)
 
 !    write(*,*) "H",SUM(nPops(1,1:thisAtom(1)%nLevels-1))
 !    write(*,*) "NP",npops(1,thisAtom(1)%nLevels)
 
-    write(*,*) "H",SUM(nPops(1,1:thisAtom(1)%nLevels-1))
-    write(*,*) "HII", nPops(1,thisAtom(1)%nLevels)
-    write(*,*) "HeI",SUM(nPops(2,1:thisAtom(2)%nLevels-1))
-    write(*,*) "HeII",SUM(nPops(3,1:thisAtom(3)%nLevels-1))
-    write(*,*) "HeIII",nPops(3,thisAtom(3)%nLevels)
+    do iAtom = 1, nAtom
+       write(*,*) trim(thisAtom(iAtom)%name),SUM(nPops(iAtom,1:thisAtom(iAtom)%nLevels-1))
+       write(*,*) trim(thisAtom(iAtom)%name)//"I",nPops(iAtom,thisAtom(iAtom)%nLevels)
+    enddo
     write(*,*) "Ne",ne
 
   end subroutine solveLevels
@@ -479,7 +515,7 @@ contains
           if (alphanu < 0.d0) then
              alphanu = 0.d0
              if (first) then
-                write(*,*) "negative opacity warning",iUpper,iLower,nLower,nUpper
+                write(*,*) "negative opacity warning",iUpper,iLower,nLower,nUpper,thisAtom%name
                 first = .false.
              endif
           endif
@@ -552,7 +588,7 @@ contains
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:)
     real(double) :: newNe, oldNe, dNe
-    real(double), parameter :: underCorrect = 0.8d0
+    real(double), parameter :: underCorrect = 1.d0
     real(double) :: fac
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     logical :: dcAllocated
@@ -576,6 +612,26 @@ contains
     integer :: indexRBBTrans(1000), indexAtom(1000)
     real(double) :: nuStart, nuEnd, ne
     integer :: iAtom
+
+    real(double) :: xAbund, yAbund
+
+
+    xAbund = 0.71d0
+    yAbund = 0.27d0
+
+    do iAtom = 1, nAtom
+       select case(thisAtom(iAtom)%name)
+          case("HI")
+             thisAtom(iAtom)%abundance = Xabund / mHydrogen
+          case("HeI")
+             thisAtom(iAtom)%abundance = Yabund / (4.d0*mHydrogen)
+          case("HeII")
+             thisAtom(iAtom)%abundance = Yabund / (4.d0*mHydrogen)
+           case DEFAULT
+              call writeFatal("Atom not recognised: "//trim(thisAtom(iAtom)%name))
+              stop
+        end select
+     enddo
 
     nuStart = cSpeed / (100000.d0 * 1.d-8)
     nuEnd = cSpeed / (50.d0 * 1.d-8)
@@ -689,16 +745,40 @@ contains
                          call solveLevels(newPops, &
                               thisOctal%jnu(subcell,1:nRBBTrans),  &
                               dble(thisOctal%temperature(subcell)), nAtom, thisAtom, ne, &
-                              thisOctal%rho(subcell)/mHydrogen,&
+                              thisOctal%rho(subcell),&
                               jnuCont, freq, nfreq)
 
                         dPops = newPops - thisOctal%newAtomLevel(subcell,1:nAtom,:) 
 
                         thisOctal%newAtomLevel(subcell,1:nAtom,:)  = &
                              thisOctal%newAtomLevel(subcell,1:nAtom,:)  + underCorrect * dPops
-                        newne = thisOctal%newAtomLevel(subcell, 1, thisAtom(1)%nLevels) ! H+
-                        newne = newne + SUM(thisOctal%newAtomLevel(subcell, 3, 1:thisAtom(3)%nLevels-1)) ! He+
-                        newne = newne + 2.d0*thisOctal%newAtomLevel(subcell, 3, thisAtom(3)%nLevels) ! He++
+                        where (abs(thisOctal%newAtomLevel(subcell,1:nAtom,:)) < 1.d-10)
+                           thisOctal%newAtomLevel(subcell,1:nAtom,:) = 1.d-10
+                        end where
+                        
+                        newNe = 0.d0
+                        do iAtom = 1, nAtom
+                           if (iAtom /= nAtom) then
+                              if (thisAtom(iAtom)%nz /= thisAtom(iAtom+1)%nz) then
+                                 newne =  newNe +  &
+                                      SUM(thisOctal%newAtomLevel(subcell, iAtom, 1:thisAtom(iAtom)%nLevels-1)) &
+                                      * dble(thisAtom(iAtom)%charge)
+                                 newne = newne + thisOctal%newAtomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) &
+                                      * dble((thisAtom(iAtom)%charge+1))
+                              else
+                                 newne =  newNe +  &
+                                      SUM(thisOctal%newAtomLevel(subcell, iAtom, 1:thisAtom(iAtom)%nLevels-1)) &
+                                      * dble(thisAtom(iAtom)%charge)
+                              endif
+                           else
+                              newne =  newNe +  &
+                                   SUM(thisOctal%newAtomLevel(subcell, iAtom, 1:thisAtom(iAtom)%nLevels-1)) &
+                                   * dble(thisAtom(iAtom)%charge)
+                              newne = newne + thisOctal%newAtomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) &
+                                   * dble((thisAtom(iAtom)%charge+1))
+                           endif
+                        enddo
+
                         dNe = newne - Ne
 
                         ne = ne + undercorrect * dne
@@ -706,13 +786,13 @@ contains
 
                          do iatom = 1, nAtom
                             write(*,*) "Atom: ",thisAtom(iatom)%name
-                            do i = 1, thisAtom(iatom)%nLevels
+                            do i = 1, thisAtom(iatom)%nLevels-1
                                write(*,*) i,thisOctal%newAtomLevel(subcell,iatom,i),oldpops(iatom,i), &
                                     abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(oldpops(iAtom,i),1.d-20)) &
                                     / max(oldpops(iAtom,i),1.d-20))
                             enddo
                          enddo
-                         write(*,*) "Ne: ",ne
+                         write(*,*) "Ne: ",ne,dne
                          fac = -1.d30
                          where (oldPops == 0.d0)
                             oldPops = 1.d-20
@@ -824,9 +904,9 @@ contains
           endif
           thisOctal%atomLevel(subcell,:,:) = 1.d-30
 
-          do iatom = 1, nAtom
-             thisOctal%atomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) = 0.1d0*thisOctal%rho(subcell)/mHydrogen
-             thisOctal%atomLevel(subcell, iAtom, 1) = 1.d-2*thisOctal%rho(subcell)/mHydrogen
+          do iatom = 1, nAtom-1
+             thisOctal%atomLevel(subcell, iAtom, thisAtom(iAtom)%nLevels) = 0.01d0*thisOctal%rho(subcell)/mHydrogen
+             thisOctal%atomLevel(subcell, iAtom, 1) = 0.1*thisOctal%rho(subcell)/mHydrogen
           enddo
           if (.not.associated(thisOctal%newatomLevel)) then
              allocate(thisOctal%newatomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
@@ -890,4 +970,18 @@ contains
        end do
     endif
   end subroutine randomRayDirection
+
+
+  subroutine multMatrix(n, a, b, c)
+    integer :: n
+    real(double) :: a(n,n), b(n), c(n)
+    integer :: i, j
+    do i = 1, n
+       c(i) = 0.d0
+       do j = 1, n
+          c(i) = c(i) + a(i,j)*b(j)
+       enddo
+    enddo
+  end subroutine multMatrix
+
 end module cmf_mod
