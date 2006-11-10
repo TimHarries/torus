@@ -758,6 +758,15 @@ molecular_mod.o: molecular_mod.f90.raw grid_mod.o amr_mod.o constants_mod.o mess
         endif
 	$(F90) -c molecular_mod.f90
 
+cmf_mod.o: cmf_mod.f90.raw grid_mod.o amr_mod.o constants_mod.o messages_mod.o \
+	parallel_mod.o kind_mod.o utils_mod.o math_mod.o modelatom_mod.o
+        ifeq ($(MK_MPI_SRC), yes)
+	   sed 's/\!$$MPI//g' cmf_mod.f90.raw > cmf_mod.f90
+        else
+	   sed '/\!$$MPI/d'   cmf_mod.f90.raw > cmf_mod.f90 
+        endif
+	$(F90) -c cmf_mod.f90
+
 
 parallel_mod.o: parallel_mod.f90.raw  
         ifeq ($(MK_MPI_SRC), yes)

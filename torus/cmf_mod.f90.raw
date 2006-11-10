@@ -49,7 +49,7 @@ contains
     integer, allocatable :: nOffset(:)
     logical, allocatable :: continuumGround(:)
     integer, allocatable :: nCons(:)
-    logical :: ok, debug
+    logical :: ok, debug, lymanAlpha
 
     debug = .false.
 
@@ -147,9 +147,8 @@ contains
 
        matrixA(k+nOffset(iAtom), k+nOffset(iAtom)) = -totRecomb
 
-       write(*,*) iatom,"total recomb",totrecomb*npops(iAtom,thisAtom(iatom)%nLevels)
 
-       ! LHS
+       lymanAlpha  = .false.
 
        totPhotoIon = 0.d0
        totcion = 0.d0
@@ -157,14 +156,19 @@ contains
 
           k = thisAtom(iAtom)%iUpper(iTrans)
           l = thisAtom(iAtom)%iLower(iTrans)
+
+          if ((k == 2).and.(l == 1)) lymanAlpha = .true.
+
           if (thisAtom(iAtom)%transType(iTrans) == "RBB") then ! radiative BB rates
              iJnu = thisAtom(iAtom)%indexRBBTrans(iTrans)
              call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
-             matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - Bul * jnuLine(iJnu) - a
-             matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - Blu * jnuLine(iJnu)
-             matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + Blu * jnuLine(iJnu)
-             matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + Bul * jnuLine(iJnu) + a
+             if (.not.lymanAlpha) then
+                matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - Bul * jnuLine(iJnu) - a
+                matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - Blu * jnuLine(iJnu)
+                matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + Blu * jnuLine(iJnu)
+                matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + Bul * jnuLine(iJnu) + a
+             endif
 
           endif
 
@@ -313,6 +317,8 @@ contains
     real(double) :: dv1, dv2
     real(double) :: weight
     integer :: iAtom, iRBB
+    real :: xH, xHeI, xHeII
+    real(double) :: dTauCont
 
     allocate(tau(1:nRBBTrans))
     
@@ -456,7 +462,15 @@ contains
                    HeIIcol = HeIIcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHeIIatom, 1) ! just use ground state
                 endif
 
+                call phfit2(1,1,1,real(thisAtom(iAtom)%transFreq(iTrans)*hCgs*ergtoev), xH)
+                call phfit2(2,2,1,real(thisAtom(iAtom)%transFreq(iTrans)*hCgs*ergtoev), xHeI)
+                call phfit2(2,1,1,real(thisAtom(iAtom)%transFreq(iTrans)*hCgs*ergtoev), xHeII)
 
+                dtauCont = ( thisOctal%atomLevel(subcell, nHatom, 1)*xh &
+                     +  thisOctal%atomLevel(subcell, nHeIatom, 1)*xHei &
+                     +  thisOctal%atomLevel(subcell, nHeIIatom, 1)*xheii)*(distArray(i)-distArray(i-1))
+
+                dTau = dTau + dTauCont
 
                 etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
                 etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
@@ -477,7 +491,13 @@ contains
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
        totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
     enddo
-
+    do iRBB = 1, nRBBTrans
+       iAtom = indexAtom(iRBB)
+       iTrans = indexRBBTrans(iRBB)
+       if (hitPhotosphere) then
+          i0(iRBB) = i0(iRBB) + weight*i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans))*cosTheta*exp(-tau(iRBB))
+       endif
+    enddo
     deallocate(tau)
   end subroutine getRay
 
@@ -557,7 +577,6 @@ contains
 
        jbar = (jBarExternal + jBarInternal)/sumPhi
        call locate(freq, nfreq, thisAtom%transFreq(iTrans), i)
-       jBar = jBar  + jnuCont(i)
 
     endif
           
@@ -595,6 +614,7 @@ contains
   subroutine atomLoop(grid, nAtom, thisAtom, nSource, source)
 
     use input_variables, only : blockhandout
+!$MPI    include 'mpif.h'
 
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -640,6 +660,11 @@ contains
     integer :: nHAtom, nHeIAtom, nHeIIatom
     real(double) :: xAbund, yAbund
     logical :: debug
+!$MPI    ! For MPI implementations
+!$MPI    integer       ::   my_rank        ! my processor rank
+!$MPI    integer       ::   np             ! The number of processes
+!$MPI    integer       ::   ierr           ! error flag
+!$MPI    logical       ::   rankComplete
 
     debug = .false.
 
@@ -669,7 +694,18 @@ contains
     enddo
     freq(1:nFreq) = 10.d0**freq(1:nFreq)
 
+! blockhandout must be off for fixed ray case, otherwise setting the
+! seed is not enough to ensure the same directions are done for
+! each cell every iteration
+
     blockHandout = .false. 
+
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
     call createRRBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
 
@@ -698,6 +734,9 @@ contains
     call random_seed(size=iSize)
     allocate(iSeed(1:iSize))
     call random_seed(get=iSeed)
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+
 
     nRay = 100
 
@@ -738,7 +777,29 @@ contains
           ! default loop indecies
           ioctal_beg = 1
           ioctal_end = SIZE(octalArray)       
+          
 
+
+!$MPI    
+!$MPI    ! we will use an array to store the rank of the process
+!$MPI    !   which will calculate each octal's variables
+!$MPI    allocate(octalsBelongRank(size(octalArray)))
+!$MPI    
+!$MPI    if (my_rank == 0) then
+!$MPI       print *, ' '
+!$MPI       print *, 'atomLoop  computed by ', np-1, ' processors.'
+!$MPI       print *, ' '
+!$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
+!$MPI                            maxBlockSize=10,setDebug=.false.)
+!$MPI    
+!$MPI    endif
+!$MPI    ! ============================================================================
+
+
+!$MPI if (my_rank /= 0) then
+!$MPI  blockLoop: do     
+!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+!$MPI   if (rankComplete) exit blockLoop 
 
 
           do iOctal = ioctal_beg, ioctal_end
@@ -853,6 +914,40 @@ contains
              enddo
           end do
 
+!$MPI if (.not.blockHandout) exit blockloop
+!$MPI end do blockLoop        
+!$MPI end if ! (my_rank /= 0)
+
+
+
+
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI       if(my_rank == 0) write(*,*) "Updating MPI grids"
+
+!$MPI
+!$MPI     ! have to send out the 'octalsBelongRank' array
+!$MPI     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
+!$MPI                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI
+!$MPI     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+!$MPI     allocate(tArrayd(1:nVoxels))
+!$MPI     allocate(tempArrayd(1:nVoxels))
+!$MPI     tArrayd = 0.d0
+!$MPI     tempArrayd = 0.d0
+!$MPI     do iAtom = 1, nAtom
+!$MPI       do i = 1, thisAtom(iAtom)%nLevels
+!$MPI         tArrayd = 0.d0
+!$MPI          call packAtomLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, iAtom, i)
+!$MPI          call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
+!$MPI            MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI            tArrayd = tempArrayd
+!$MPI          call unpackAtomLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, iAtom, i)
+!$MPI       enddo
+!$MPI     enddo
+!$MPI     deallocate(tArrayd, tempArrayd)
+
+!$MPI       if(my_rank == 0) write(*,*) "Done updating"
 
 
           maxFracChange = -1.d30
@@ -865,6 +960,7 @@ contains
              gridConverged = .true.
           endif
 
+!$MPI       deallocate(octalsBelongRank)
 
           deallocate(ds, phi, i0, tau, sourceNumber, cosTheta, hitPhotosphere, &
                weight, hcol, heicol, heiicol)
@@ -1017,5 +1113,65 @@ contains
        enddo
     enddo
   end subroutine multMatrix
+
+!$MPI      subroutine packAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
+!$MPI    include 'mpif.h'
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: octalsBelongRank(:)
+!$MPI        integer :: nTemps
+!$MPI        real(double) :: tArray(:)
+!$MPI        integer :: iOctal, iSubcell, my_rank, ierr, iAtom
+!$MPI        integer :: iLevel
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nTemps = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
+!$MPI                 nTemps = nTemps + 1
+!$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
+!$MPI                   tArray(nTemps) = thisOctal%newAtomLevel(isubcell, iAtom, iLevel)
+!$MPI                 else 
+!$MPI                   tArray(nTemps) = 0.d0
+!$MPI                 endif
+!$MPI              endif
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine packAtomLevel
+
+!$MPI      subroutine unpackAtomevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
+!$MPI    include 'mpif.h'
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: octalsBelongRank(:)
+!$MPI        integer :: nTemps
+!$MPI        real(double) :: tArray(:)
+!$MPI        integer :: iOctal, iSubcell, my_rank, ierr, iAtom
+!$MPI        integer :: iLevel
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI       !
+!$MPI       ! Update the edens values of grid computed by all processors.
+!$MPI       !
+!$MPI       nTemps = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
+!$MPI                 nTemps = nTemps + 1
+!$MPI                 thisOctal%newAtomLevel(isubcell, iAtom, iLevel) = tArray(nTemps) 
+!$MPI              endif
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine unpackAtomLevel
 
 end module cmf_mod
