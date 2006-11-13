@@ -14,6 +14,8 @@ real function getMeanMass(aMin, aMax, a0, qDist, pDist)
      select case(grainType)
        case("sil_dl")
           density = 3.6
+       case("draine_sil")
+          density = 3.5
        case("amc_hn","amc_zb","gr1_dl","gr2_dl")
           density = 2.
        case DEFAULT
@@ -66,6 +68,8 @@ real function getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
   select case(grainType)
   case("sil_dl")
      density = 3.6
+  case("draine_sil")
+     density = 3.5
   case("amc_hn","amc_zb","gr1_dl","gr2_dl")
      density = 2.   ! mean density of graphite 2 g /cm^3
   case DEFAULT

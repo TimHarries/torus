@@ -881,14 +881,17 @@ contains
     r = sqrt(point%x**2 + point%y**2)
     phi = atan2(point%y,point%x)
     warpHeight = 0. !cos(phi) * rInner * sin(30.*degtorad) * sqrt(rinner / r)
-    if ((r > rinner).and.(r < rOuter)) then
+    if (r < rOuter) then
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
        fac = -0.5d0 * (dble(point%z-warpheight)/h)**2
        fac = max(-50.d0,fac)
        rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
+       fac = 1.d0
+       if (r < rInner) then
+          fac = ((rInner - r)/(0.01*rInner))**2
+          fac = exp(-fac)
+       endif
 
-       fac =  1.d0-min(dble(r - rInner)/(0.01d0*rinner),1.d0)
-       fac = exp(-fac*10.d0)
        rhoOut = rhoOut * fac
     endif
     rhoOut = max(rhoOut, 100.d0*mHydrogen)

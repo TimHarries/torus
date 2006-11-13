@@ -4728,7 +4728,7 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 1.)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.5)) split = .true.
 !      if (r < 2.*grid%rInner) then
 !         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
 !      endif
@@ -4746,7 +4746,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
 
-      if ((r+cellsize/2.d0) < grid%rinner) split = .false.
+      if ((r+cellsize/2.d0) < grid%rinner*0.5) split = .false.
 
 
    case("ppdisk")
@@ -4851,10 +4851,10 @@ IF ( .NOT. gridConverged ) RETURN
    end select
    
 
-   if (thisOctal%nDepth == 28) then
+   if (thisOctal%nDepth == 27) then
       split = .false.
       if (firstTime) then
-         call writeWarning("AMR cell depth capped at 28")
+         call writeWarning("AMR cell depth capped at 27")
          firstTime = .false.
       endif
    endif
@@ -6991,11 +6991,13 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%nhi(subcell) = 1.e-5
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
-    thisOctal%ionFrac(subcell,1) = 1.
-    thisOctal%ionFrac(subcell,2) = 1.e-5
-    thisOctal%ionFrac(subcell,3) = 1.
-    thisOctal%ionFrac(subcell,4) = 1.e-5
-    thisOctal%etaCont(subcell) = 0.
+    if (associated(thisOctal%ionFrac)) then
+       thisOctal%ionFrac(subcell,1) = 1.
+       thisOctal%ionFrac(subcell,2) = 1.e-5
+       thisOctal%ionFrac(subcell,3) = 1.
+       thisOctal%ionFrac(subcell,4) = 1.e-5
+       thisOctal%etaCont(subcell) = 0.
+    endif
 
     if (photoionization) then
        thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
@@ -7007,7 +7009,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
     r = sqrt(rVec%x**2 + rVec%y**2)
-    if ((r > rInner).and.(r < rOuter)) then
+    if (r < rOuter) then
        thisOctal%rho(subcell) = density(rVec, grid)
        thisOctal%temperature(subcell) = 10.
        thisOctal%etaCont(subcell) = 0.
@@ -11155,7 +11157,7 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: neighbourSubcell, j, nDir
     logical :: split
     logical, save :: firsttime = .true.
-    integer, parameter :: maxDepth = 28
+    integer, parameter :: maxDepth = 27
     character(len=30) :: message
 
     do subcell = 1, thisOctal%maxChildren
