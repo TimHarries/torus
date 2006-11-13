@@ -5212,7 +5212,7 @@ contains
 
   subroutine writeDouble3D(variable,fileFormatted)
 
-     real(double),dimension(:,:),pointer :: variable
+     real(double),dimension(:,:,:),pointer :: variable
      logical, intent(in)                          :: fileFormatted
      integer :: error
 
@@ -5495,11 +5495,11 @@ contains
         end if
      end if
 
-  end subroutine readDouble3D
+  end subroutine readDouble2D
 
-  subroutine readDouble2D(variable,fileFormatted)
+  subroutine readDouble3D(variable,fileFormatted)
 
-     real(double),dimension(:,:),pointer :: variable
+     real(double),dimension(:,:,:),pointer :: variable
      logical, intent(in)       :: fileFormatted
      logical                   :: present 
      integer                   :: length1

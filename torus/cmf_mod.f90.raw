@@ -320,7 +320,8 @@ contains
     real(double) :: weight
     integer :: iAtom, iRBB
     real :: xH, xHeI, xHeII
-    real(double) :: dTauCont
+    real(double) :: dTauCont, phiAv, phiNorm
+    logical :: firstSubcell
 
     allocate(tau(1:nRBBTrans))
     
@@ -356,29 +357,6 @@ contains
 
     projVel = deltaV - (rayVel .dot. direction)
 
-    phi1 = phiProf(projVel, thisOctal%microturb(subcell))
-
-    call distanceToCellBoundary(grid, position, direction, ds, sOctal=thisOctal)
-
-    if (ds > disttosource) ds = disttoSource
-
-    currentPosition = position + ds * direction
-
-    totDist = totDist  + ds
-
-    phi2 = phi1 
-    if (inOctal(grid%octreeRoot, currentPosition)) then
-       thisVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal) 
-       projVel = deltaV - (thisVel.dot.direction)
-       
-       phi2 = phiProf(projVel, thisOctal%microturb(subcell))
-    else
-       phi2 = phi1
-    endif
-
-    phi  = (phi1 + phi2)/2.d0
-
-    ds = ds * 1.d10
 
 
     Hcol = 0.d0
@@ -389,8 +367,14 @@ contains
     tau = 0.d0
 
     hitPhotosphere = .false.
+    firstSubcell = .true.
+
+    currentPosition = position
 
     do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.hitPhotosphere))
+
+       phiAv = 0.d0
+       phiNorm = 0.d0
 
        call findSubcellLocal(currentPosition, thisOctal, subcell)
        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
@@ -399,6 +383,11 @@ contains
           tVal = distToSource - totDist
           hitPhotosphere = .true.
        endif
+
+       if (firstSubcell) then
+          ds = tval * 1.d10
+       endif
+
 
        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
        endPosition = currentPosition + tval * direction
@@ -439,9 +428,17 @@ contains
 
                 call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
+
                 alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
                      phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
                 
+                if (firstSubcell) then
+                   phiAv = phiAv + phiProf(dv, thisOctal%microturb(subcell)) * &
+                        (distArray(i)-distArray(i-1)) * 1.d10
+                   phiNorm = phiNorm + (distArray(i)-distArray(i-1)) * 1.d10
+                endif
+
+
                 iUpper = thisAtom(iAtom)%iUpper(iTrans)
                 iLower = thisAtom(iAtom)%iLower(iTrans)
                 
@@ -492,6 +489,12 @@ contains
        enddo
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
        totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
+
+       if (firstSubcell) then
+          phi = phiAv / phiNorm
+          firstSubcell = .false.
+       endif
+
     enddo
     do iRBB = 1, nRBBTrans
        iAtom = indexAtom(iRBB)
