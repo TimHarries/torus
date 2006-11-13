@@ -793,7 +793,7 @@ contains
           ioctal_end = SIZE(octalArray)       
           
 
-
+          ioctal_beg = 1998 !!!!!!!!!!!!!!!
 !$MPI    
 !$MPI    ! we will use an array to store the rank of the process
 !$MPI    !   which will calculate each octal's variables
@@ -822,7 +822,8 @@ contains
              do subcell = 1, thisOctal%maxChildren
 
                 if (.not.thisOctal%hasChild(subcell)) then
-                   if (modulus(subcellCentre(thisOctal,subcell)) > source(1)%radius) then
+                   if ((modulus(subcellCentre(thisOctal,subcell))-sqrt(2.d0)*thisOctal%subcellSize/2.d0) &
+                        > source(1)%radius) then
                       nHit = 0
                       write(*,*) "getting rays"
                       do iRay = 1, nRay
