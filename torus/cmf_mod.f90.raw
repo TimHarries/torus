@@ -322,6 +322,7 @@ contains
     real :: xH, xHeI, xHeII
     real(double) :: dTauCont, phiAv, phiNorm
     logical :: firstSubcell
+    integer :: nBug
 
     allocate(tau(1:nRBBTrans))
     
@@ -371,8 +372,10 @@ contains
 
     currentPosition = position
 
+    nBug = 0
     do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.hitPhotosphere))
 
+       nBug = 0
        phiAv = 0.d0
        phiNorm = 0.d0
 
@@ -404,8 +407,6 @@ contains
           nTau = min(max(2, nint(dvAcrossCell * 5.d0)),200)
        endif
 
-!       write(*,*) ntau,modulus(startVel)*cspeed/1.e5,thisOCtal%microturb(subcell)*cspeed/1.e5,tval, &
-!            dv1*cspeed/1.e5,dv2*cspeed/1.e5
        distArray(1) = 0.d0
        do i = 2, nTau
           
@@ -489,6 +490,10 @@ contains
        enddo
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
        totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
+
+       if (nBug > 10000) then
+          write(*,*) "bug",currentPosition,nTau,distArray(nTau),modulus(currentPosition)
+       endif
 
        if (firstSubcell) then
           phi = phiAv / phiNorm
@@ -819,6 +824,7 @@ contains
                 if (.not.thisOctal%hasChild(subcell)) then
                    if (modulus(subcellCentre(thisOctal,subcell)) > source(1)%radius) then
                       nHit = 0
+                      write(*,*) "getting rays"
                       do iRay = 1, nRay
                          call getRay(grid, thisOCtal, subcell, position, direction, &
                               ds(iRay), phi(iRay), i0(1:nRBBTrans,iRay), Hcol(iray), HeICol(iRay), HeIICol(iRay),&
@@ -826,6 +832,7 @@ contains
                               cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom, nHatom, nHeIAtom, nHeIIatom)
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
+                      write(*,*) "rays completed. hitphot frac (%)",100.*real(nHit)/real(nray)
                       iter = 0
                       popsConverged = .false.
                       thisOctal%newatomLevel(subcell,:, :) = thisOctal%atomLevel(subcell,:, :)
@@ -919,6 +926,7 @@ contains
                          endif
                       enddo
                       thisOctal%ne(subcell) = ne
+                      write(*,*) "nIter",iter
                    endif
                 endif
              enddo
