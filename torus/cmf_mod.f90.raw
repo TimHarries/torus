@@ -272,11 +272,13 @@ contains
     deallocate(matrixA, matrixB)
 
 
-    do iAtom = 1, nAtom
-       write(*,*) trim(thisAtom(iAtom)%name),SUM(nPops(iAtom,1:thisAtom(iAtom)%nLevels-1))
-       write(*,*) trim(thisAtom(iAtom)%name)//"I",nPops(iAtom,thisAtom(iAtom)%nLevels)
-    enddo
-    write(*,*) "Ne",ne
+    if (debug) then
+       do iAtom = 1, nAtom
+          write(*,*) trim(thisAtom(iAtom)%name),SUM(nPops(iAtom,1:thisAtom(iAtom)%nLevels-1))
+          write(*,*) trim(thisAtom(iAtom)%name)//"I",nPops(iAtom,thisAtom(iAtom)%nLevels)
+       enddo
+       write(*,*) "Ne",ne
+    endif
 
   end subroutine solveLevels
 
@@ -711,6 +713,10 @@ contains
 
     call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans)
 
+    !$MPI       if (my_rank == 0) &
+    call writeAmrGrid("atom_tmp.grid",.false.,grid)
+
+
     nHAtom = 0
     nHeIAtom = 0
     nHeIIAtom = 0
@@ -803,6 +809,7 @@ contains
 
 
           do iOctal = ioctal_beg, ioctal_end
+             write(*,*) iOctal,iOctal_beg,iOctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
 
@@ -879,18 +886,18 @@ contains
 
                         ne = ne + undercorrect * dne
 
-
+                        
                         if (debug) then
-                         do iatom = 1, nAtom
-                            write(*,*) "Atom: ",thisAtom(iatom)%name
-                            do i = 1, thisAtom(iatom)%nLevels-1
-                               write(*,*) i,thisOctal%newAtomLevel(subcell,iatom,i),oldpops(iatom,i), &
-                                    abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(oldpops(iAtom,i),1.d-20)) &
-                                    / max(oldpops(iAtom,i),1.d-20))
-                            enddo
-                         enddo
-                         write(*,*) "Ne: ",ne,dne
-                         endif
+                           do iatom = 1, nAtom
+                              write(*,*) "Atom: ",thisAtom(iatom)%name
+                              do i = 1, thisAtom(iatom)%nLevels-1
+                                 write(*,*) i,thisOctal%newAtomLevel(subcell,iatom,i),oldpops(iatom,i), &
+                                      abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(oldpops(iAtom,i),1.d-20)) &
+                                      / max(oldpops(iAtom,i),1.d-20))
+                              enddo
+                           enddo
+                           write(*,*) "Ne: ",ne,dne
+                        endif
                          fac = -1.d30
                          where (oldPops == 0.d0)
                             oldPops = 1.d-20
@@ -901,7 +908,7 @@ contains
                             fac = max(fac,maxval(abs((thisOctal%newAtomLevel(subcell,1:nAtom,1:thisAtom(iAtom)%nLevels) &
                                  - oldpops(1:nAtom,1:thisAtom(iAtom)%nLevels))/oldpops(1:nAtom,1:thisAtom(iAtom)%nLevels))))
                          enddo
-                         write(*,*) iter,fac
+                         if (debug) write(*,*) iter,fac
                          if (fac < 1.d-4) popsConverged = .true.
                          if (iter == maxIter) then
                             popsConverged = .true.
@@ -956,9 +963,15 @@ contains
           write(*,*) "Fractional change",maxFracChange,"tolerance",tolerance , &
                "fixed rays",fixedrays,"nray",nray
 
+          !$MPI       if (my_rank == 0) &
+          call writeAmrGrid("atom_tmp.grid",.false.,grid)
+
+
           if (maxFracChange < tolerance) then
              gridConverged = .true.
           endif
+
+
 
 !$MPI       deallocate(octalsBelongRank)
 
@@ -1146,7 +1159,7 @@ contains
 !$MPI       end do
 !$MPI     end subroutine packAtomLevel
 
-!$MPI      subroutine unpackAtomevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
+!$MPI      subroutine unpackAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
 !$MPI    include 'mpif.h'
 !$MPI        type(OCTALWRAPPER) :: octalArray(:)
 !$MPI        integer :: octalsBelongRank(:)

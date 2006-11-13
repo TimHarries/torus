@@ -2998,7 +2998,7 @@ contains
 
   
   subroutine writeAMRgrid(filename,fileFormatted,grid)
-    use input_variables, only : molecular
+    use input_variables, only : molecular, cmf
     ! writes out the 'grid' for an adaptive mesh geometry  
 
     implicit none
@@ -3149,6 +3149,11 @@ contains
        call writeDouble2D(thisOctal%N,fileFormatted)
        call writeReal2D(thisOctal%departCoeff,fileFormatted)
        call writeDouble2D(thisOctal%dustTypeFraction, fileFormatted)
+
+
+       if (cmf) then
+          call writeDouble3D(thisOctal%atomLevel,fileFormatted)
+       endif
        
        if (thisOctal%nChildren > 0) then 
           do iChild = 1, thisOctal%nChildren, 1
@@ -3167,7 +3172,7 @@ contains
   subroutine readAMRgrid(filename,fileFormatted,grid)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
-    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular
+    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf
     implicit none
 
     character(len=*)            :: filename
@@ -3365,6 +3370,10 @@ contains
        call readDouble2D(thisOctal%N,fileFormatted)
        call readReal2D(thisOctal%departCoeff,fileFormatted)
        call readDouble2D(thisOctal%dustTypeFraction, fileFormatted)
+
+       if (cmf) then
+          call readDouble3D(thisOctal%atomLevel,fileFormatted)
+       endif
 
 
        if (thisOctal%nChildren > 0) then 
@@ -5201,6 +5210,56 @@ contains
     
   end subroutine writeDouble2D
 
+  subroutine writeDouble3D(variable,fileFormatted)
+
+     real(double),dimension(:,:),pointer :: variable
+     logical, intent(in)                          :: fileFormatted
+     integer :: error
+
+     if (fileFormatted) then
+        if (associated(variable)) then
+           write(unit=20,fmt=*,iostat=error) .true.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble3D' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) SIZE(variable,1),SIZE(variable,2), SIZE(variable,3)
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble3D' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble3D' ; stop
+           end if
+        else
+           write(unit=20,fmt=*,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble3D' ; stop
+           end if
+        end if
+     else
+        if (associated(variable)) then
+           write(unit=20,iostat=error) .true.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble3D' ; stop
+           end if
+           write(unit=20,iostat=error) SIZE(variable,1),SIZE(variable,2), SIZE(variable,3)
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble3D' ; stop
+           end if
+           write(unit=20,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble3D' ; stop
+           end if
+        else
+           write(unit=20,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble3D' ; stop
+           end if
+        end if
+     end if
+    
+  end subroutine writeDouble3D
+
   subroutine writeClumps(fileFormatted)
 
      use clump_mod
@@ -5436,7 +5495,53 @@ contains
         end if
      end if
 
-  end subroutine readDouble2D
+  end subroutine readDouble3D
+
+  subroutine readDouble2D(variable,fileFormatted)
+
+     real(double),dimension(:,:),pointer :: variable
+     logical, intent(in)       :: fileFormatted
+     logical                   :: present 
+     integer                   :: length1
+     integer                   :: length2
+     integer                   :: length3
+     integer                   :: error
+     
+     if (fileFormatted) then
+        read(unit=20,fmt=*,iostat=error) present
+        if (error /=0) then 
+          print *, 'Panic: read error in readDouble3D' ; stop
+        end if
+        if (present) then
+           read(unit=20,fmt=*,iostat=error) length1, length2, length3
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble3D' ; stop
+           end if
+           allocate(variable(length1,length2,length3))
+           read(unit=20,fmt=*,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble3D' ; stop
+           end if
+        end if
+     else
+        read(unit=20,iostat=error) present
+        if (error /=0) then 
+          print *, 'Panic: read error in readDouble2D' ; stop
+        end if
+        if (present) then
+           read(unit=20,iostat=error) length1, length2, length3
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble3D' ; stop
+           end if
+           allocate(variable(length1,length2, length3))
+           read(unit=20,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble3D' ; stop
+           end if
+        end if
+     end if
+
+  end subroutine readDouble3D
 
   subroutine initTestAmr(grid)
     use input_variables
