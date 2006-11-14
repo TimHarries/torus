@@ -1008,7 +1008,7 @@ contains
     type(MODELATOM) :: thisAtom
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iUpper, iLower
+    integer :: subcell, i, iUpper, iLower, j, iAtom
     real(double) :: maxFracChange, temp
   
     do subcell = 1, thisOctal%maxChildren
@@ -1022,14 +1022,18 @@ contains
              end if
           end do
        else
-!          where(thisOctal%atomLevel(subcell,:,:) /= 0.d0)
-             temp = MAXVAL(abs((thisOctal%newatomLevel(subcell,:,1:6) - &
-                  thisOctal%atomLevel(subcell,:,1:6)) / &
-                  thisOctal%atomLevel(subcell,:,1:6)))
-!          end where
-          if (temp > maxFracChange) then
-             maxFracChange = temp
-          endif
+          do iAtom = 1, size(thisOctal%newAtomLevel,2)
+             do j = 1 , 6
+                if (thisOctal%atomLevel(subcell,iAtom,j) /= 0.d0) then
+                   temp = abs((thisOctal%newatomLevel(subcell,iAtom,j) - &
+                        thisOctal%atomLevel(subcell,iAtom,j)) / &
+                        thisOctal%atomLevel(subcell,iAtom,j))
+                   if (temp > maxFracChange) then
+                      maxFracChange = temp
+                   endif
+                endif
+             enddo
+          enddo
           thisOctal%atomLevel(subcell,:,:) = &
                thisOctal%newatomLevel(subcell,:,:)
        endif
@@ -1060,18 +1064,18 @@ contains
 
           if (.not.associated(thisOctal%atomLevel)) then
              allocate(thisOctal%atomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
+             thisOctal%atomLevel(subcell,:,:) = 1.d-30
           endif
-          thisOctal%atomLevel(subcell,:,:) = 1.d-30
 
           if (.not.associated(thisOctal%newatomLevel)) then
              allocate(thisOctal%newatomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
+             thisOctal%newatomLevel = 1.d-30
           endif
-          thisOctal%newatomLevel = 1.d-30
 
           if (.not.associated(thisOctal%jnu)) then
              allocate(thisOctal%jnu(1:thisOctal%maxChildren, 1:nRBBTrans))
+             thisOctal%jnu = 1.d-30
           endif
-          thisOctal%jnu = 1.d-30
        endif
     enddo
   end subroutine allocateLevels
@@ -1127,17 +1131,152 @@ contains
   end subroutine randomRayDirection
 
 
-  subroutine multMatrix(n, a, b, c)
-    integer :: n
-    real(double) :: a(n,n), b(n), c(n)
-    integer :: i, j
-    do i = 1, n
-       c(i) = 0.d0
-       do j = 1, n
-          c(i) = c(i) + a(i,j)*b(j)
+  function intensityAlongRay(position, direction, grid, thisAtom, iTrans, deltaV) result (i0)
+    type(OCTALVECTOR) :: position, direction, startPosition
+    type(GRIDTYPE) :: grid
+    type(MODELATOM) :: thisAtom
+    real(double) :: disttoGrid
+    integer :: itrans
+    real(double) :: i0
+    type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
+    integer :: fromSubcell
+    integer :: subcell
+    real(double) :: ds, phi, r
+    type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
+    type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
+    real(double) :: alphanu, snu, jnu
+    integer :: iLower , iUpper
+    real(double) :: dv, deltaV
+    integer :: i, icount
+    real(double) :: distArray(200), tval
+    integer :: nTau
+    real(double) :: nLower, nUpper
+    real(double) :: dTau, etaline, didtau, tau
+    real(double) :: intensityIntegral
+    real(double) :: dvAcrossCell
+
+    distToGrid = distanceToGridFromOutside(grid, position, direction)
+
+    if (distToGrid > 1.e29) then
+       write(*,*) "ray does not intersect grid",position,direction
+       i0 = 0.d0
+       goto 666
+    endif
+
+    iUpper = thisAtom%iUpper(iTrans)
+    iLower = thisAtom%iLower(iTrans)
+
+    currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
+
+    i0 = 0.d0
+    intensityIntegral = 0.0
+    tau = 0.d0
+    rayVel = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+
+    thisOctal => grid%octreeRoot
+    icount = 0
+    do while(inOctal(grid%octreeRoot, currentPosition))
+       icount = icount + 1 
+
+       call findSubcellLocal(currentPosition, thisOctal, subcell)
+       call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+
+       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+       endPosition = currentPosition + tval * direction
+       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+
+       dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
+       dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
+
+       dv1 = abs(deltaV - (startVel .dot. direction))
+       dv2 = abs(deltaV - (endVel .dot. direction))
+
+       nTau = 2
+       
+       if (max(dv1,dv2) < 4.d0*thisOctal%microturb(subcell)) then
+          nTau = min(max(2, nint(dvAcrossCell * 5.d0)),200)
+       endif
+
+       nTau = max(2, nint(dvAcrossCell*10.d0))
+       ntau = 5
+       distArray(1) = 0.d0
+       do i = 2, nTau
+
+          distArray(i) = tval * dble(i-1)/dble(nTau-1)
+
+          startOctal => thisOctal
+          thisPosition = currentPosition + distArray(i)*direction
+          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+          thisVel= thisVel - rayVel
+
+
+          dv = (thisVel .dot. direction) + deltaV
+
+          call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
+
+
+          alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
+               phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
+
+          if (firstSubcell) then
+             phiAv = phiAv + phiProf(dv, thisOctal%microturb(subcell)) * &
+                  (distArray(i)-distArray(i-1)) * 1.d10
+             phiNorm = phiNorm + (distArray(i)-distArray(i-1)) * 1.d10
+          endif
+
+
+          iUpper = thisAtom(iAtom)%iUpper(iTrans)
+          iLower = thisAtom(iAtom)%iLower(iTrans)
+
+          nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
+          nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
+
+          alphanu = alphanu * (nLower * Blu - nUpper * Bul)
+
+          dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
+
+          if (nHAtom /= 0) then
+             Hcol = Hcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHatom, 1) ! just use ground state
+          endif
+
+          if (nHeIAtom /= 0) then
+             HeIcol = HeIcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHeIatom, 1) ! just use ground state
+          endif
+
+          if (nHeIIAtom /= 0) then
+             HeIIcol = HeIIcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHeIIatom, 1) ! just use ground state
+          endif
+
+          call phfit2(1,1,1,real(thisAtom(iAtom)%transFreq(iTrans)*hCgs*ergtoev), xH)
+          call phfit2(2,2,1,real(thisAtom(iAtom)%transFreq(iTrans)*hCgs*ergtoev), xHeI)
+          call phfit2(2,1,1,real(thisAtom(iAtom)%transFreq(iTrans)*hCgs*ergtoev), xHeII)
+
+          dtauCont = ( thisOctal%atomLevel(subcell, nHatom, 1)*xh &
+               +  thisOctal%atomLevel(subcell, nHeIatom, 1)*xHei &
+               +  thisOctal%atomLevel(subcell, nHeIIatom, 1)*xheii)*(distArray(i)-distArray(i-1))
+
+          dTau = dTau + dTauCont
+
+          etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
+          etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
+          jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
+
+          if (alphanu /= 0.d0) then
+             snu = jnu/alphanu
+          else
+             snu = tiny(snu)
+          endif
+          i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+          tau = tau + dtau
+
        enddo
+       currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
     enddo
-  end subroutine multMatrix
+
+666 continue 
+
+  end function intensityAlongRay
+
 
 !$MPI      subroutine packAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
 !$MPI    include 'mpif.h'

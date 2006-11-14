@@ -4482,6 +4482,8 @@ IF ( .NOT. gridConverged ) RETURN
          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       endif
 
+      if (thisOctal%nDepth > 4) split = .false.
+
    case("benchmark")
       split = .false.
       cellSize = thisOctal%subcellSize 

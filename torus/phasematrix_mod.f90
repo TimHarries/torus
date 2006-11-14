@@ -507,7 +507,7 @@ endif
   endif
 
   if (SI) then
-     write(*,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (microns * W/m^2)"
+     write(*,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (W/m^2)"
 
      tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
      
