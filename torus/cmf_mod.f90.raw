@@ -17,7 +17,7 @@ module cmf_mod
   implicit none
 
   private
-  public:: atomLoop
+  public:: atomLoop, calculateAtomSpectrum
 
 contains
 
@@ -396,6 +396,8 @@ contains
        endPosition = currentPosition + tval * direction
        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
 
+       thisOctal%microTurb(subcell) = 10.d5/cspeed !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
        dv1 = abs(deltaV - (startVel .dot. direction))
@@ -445,11 +447,13 @@ contains
                 
                 nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
                 nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
+
                 
                 alphanu = alphanu * (nLower * Blu - nUpper * Bul)
                 
                 dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
                 
+
                 if (nHAtom /= 0) then
                    Hcol = Hcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHatom, 1) ! just use ground state
                 endif
@@ -483,7 +487,6 @@ contains
                 endif
                 i0(iRBB) = i0(iRBB) +  exp(-tau(irBB)) * (1.d0-exp(-dtau))*snu
                 tau(iRBB) = tau(iRBB) + dtau
-                
 
              endif
           enddo
@@ -793,7 +796,7 @@ contains
           ioctal_end = SIZE(octalArray)       
           
 
-          ioctal_beg = 1998 !!!!!!!!!!!!!!!
+
 !$MPI    
 !$MPI    ! we will use an array to store the rank of the process
 !$MPI    !   which will calculate each octal's variables
@@ -916,8 +919,8 @@ contains
 
                          do iAtom = 1, nAtom
 
-                            fac = max(fac,maxval(abs((thisOctal%newAtomLevel(subcell,1:nAtom,1:thisAtom(iAtom)%nLevels) &
-                                 - oldpops(1:nAtom,1:thisAtom(iAtom)%nLevels))/oldpops(1:nAtom,1:thisAtom(iAtom)%nLevels))))
+                            fac = max(fac,maxval(abs((thisOctal%newAtomLevel(subcell,iatom,1:thisAtom(iAtom)%nLevels-1) &
+                                 - oldpops(iAtom,1:thisAtom(iAtom)%nLevels-1))/oldpops(iAtom,1:thisAtom(iAtom)%nLevels-1))))
                          enddo
                          if (debug) write(*,*) iter,fac
                          if (fac < 1.d-4) popsConverged = .true.
@@ -1064,7 +1067,7 @@ contains
 
           if (.not.associated(thisOctal%atomLevel)) then
              allocate(thisOctal%atomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
-             thisOctal%atomLevel(subcell,:,:) = 1.d-30
+             thisOctal%atomLevel = 1.d-30
           endif
 
           if (.not.associated(thisOctal%newatomLevel)) then
@@ -1131,10 +1134,11 @@ contains
   end subroutine randomRayDirection
 
 
-  function intensityAlongRay(position, direction, grid, thisAtom, iTrans, deltaV) result (i0)
+  function intensityAlongRay(position, direction, grid, thisAtom, iAtom, iTrans, deltaV) result (i0)
     type(OCTALVECTOR) :: position, direction, startPosition
     type(GRIDTYPE) :: grid
-    type(MODELATOM) :: thisAtom
+    integer :: iAtom
+    type(MODELATOM) :: thisAtom(:)
     real(double) :: disttoGrid
     integer :: itrans
     real(double) :: i0
@@ -1154,6 +1158,24 @@ contains
     real(double) :: dTau, etaline, didtau, tau
     real(double) :: intensityIntegral
     real(double) :: dvAcrossCell
+    real(double) :: dv1, dv2
+    real(double) :: a, bul, blu
+    integer :: nHatom,nHeIAtom, nHeIIAtom
+    real(double) ::  dTauCont, HCol, HeICol, HeIICol
+    real :: xH, XheI, xHeII
+    logical :: firstSubcell
+    integer :: nAtom
+
+    nAtom = size(thisAtom,1)
+
+    nHAtom = 0
+    nHeIAtom = 0
+    nHeIIAtom = 0
+    do i = 1, nAtom
+       if (thisAtom(i)%name == "HI") nHatom = i
+       if (thisAtom(i)%name == "HeI") nHeIatom = i
+       if (thisAtom(i)%name == "HeII") nHeIIatom = i
+    enddo
 
     distToGrid = distanceToGridFromOutside(grid, position, direction)
 
@@ -1163,8 +1185,8 @@ contains
        goto 666
     endif
 
-    iUpper = thisAtom%iUpper(iTrans)
-    iLower = thisAtom%iLower(iTrans)
+    iUpper = thisAtom(iAtom)%iUpper(iTrans)
+    iLower = thisAtom(iAtom)%iLower(iTrans)
 
     currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
 
@@ -1181,11 +1203,15 @@ contains
        call findSubcellLocal(currentPosition, thisOctal, subcell)
        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
 
+
        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
        endPosition = currentPosition + tval * direction
        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
 
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
+
+       thisOctal%microTurb(subcell) = 10.d5/cspeed !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
 
        dv1 = abs(deltaV - (startVel .dot. direction))
@@ -1208,6 +1234,7 @@ contains
           thisPosition = currentPosition + distArray(i)*direction
           thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
           thisVel= thisVel - rayVel
+          thisOctal%microTurb(subcell) = 10.d5/cspeed !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
           dv = (thisVel .dot. direction) + deltaV
@@ -1218,12 +1245,6 @@ contains
           alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
                phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
 
-          if (firstSubcell) then
-             phiAv = phiAv + phiProf(dv, thisOctal%microturb(subcell)) * &
-                  (distArray(i)-distArray(i-1)) * 1.d10
-             phiNorm = phiNorm + (distArray(i)-distArray(i-1)) * 1.d10
-          endif
-
 
           iUpper = thisAtom(iAtom)%iUpper(iTrans)
           iLower = thisAtom(iAtom)%iLower(iTrans)
@@ -1232,6 +1253,8 @@ contains
           nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
 
           alphanu = alphanu * (nLower * Blu - nUpper * Bul)
+!          write(*,*) "alph",alphanu, nlower,blu,nupper,bul
+!          write(*,*) thisOctal%atomLevel(subcell,1,1:6)
 
           dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
 
@@ -1266,6 +1289,7 @@ contains
           else
              snu = tiny(snu)
           endif
+
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
           tau = tau + dtau
 
@@ -1276,6 +1300,141 @@ contains
 666 continue 
 
   end function intensityAlongRay
+
+  
+  subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iTrans, viewVec, distance)
+!$MPI    include 'mpif.h'
+
+    type(GRIDTYPE) :: grid
+    type(MODELATOM) :: thisAtom(:)
+    integer :: nAtom
+    real(double) :: distance
+    integer :: itrans
+    integer :: nRay
+    type(OCTALVECTOR) :: rayPosition(5000)
+    real(double) :: da(5000), dOmega(5000)
+    type(OCTALVECTOR) :: viewVec
+    real(double) :: deltaV
+    integer :: iv, iray
+    integer :: nLambda
+    real(double) :: flux, i0
+    real(double), allocatable :: vArray(:), spec(:), tempArray(:)
+    integer :: iv1, iv2, i
+!$MPI    ! For MPI implementations
+!$MPI    integer       ::   my_rank        ! my processor rank
+!$MPI    integer       ::   np             ! The number of processes
+!$MPI    integer       ::   ierr           ! error flag
+!$MPI    logical       ::   rankComplete
+
+
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+
+    call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+
+    nLambda = 50
+
+    iv1 = 1
+    iv2 = nLambda
+ 
+!$MPI    iv1 = (my_rank) * (nLambda / (np)) + 1
+!$MPI    iv2 = (my_rank+1) * (nLambda / (np))
+!$MPI    if (my_rank == (np-1)) iv2 = nLambda
+
+
+    allocate(spec(1:nLambda), vArray(1:nLambda))
+    spec = 0.d0
+    do iv = 1, nLambda
+       vArray(iv) = 4000.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
+    enddo
+    do iv = iv1, iv2
+       deltaV  = vArray(iv)
+       do iRay = 1, nRay
+          i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iTrans, deltaV)
+          spec(iv) = spec(iv) + i0  * domega(iRay) / sum(domega(1:nray))
+       enddo
+    enddo
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI     allocate(tempArray(1:nLambda))
+!$MPI       call MPI_ALLREDUCE(spec,tempArray,nLambda,MPI_DOUBLE_PRECISION,&
+!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI    spec(1:nLambda) = tempArray(1:nLambda)
+!$MPI     deallocate(tempArray)
+
+!$MPI    if (my_rank == 0) then
+    open(42, file="spectrum.dat",status="unknown",form="formatted")
+    do i = 1, nLambda
+       write(42, *) vArray(i)*cspeed/1.d5, spec(i)
+    enddo
+    close(42)
+!$MPI endif
+    deallocate(vArray, spec)
+  end subroutine calculateAtomSpectrum
+
+
+  subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+    type(GRIDTYPE) :: grid
+    integer :: nRay
+    type(OCTALVECTOR) :: rayPosition(:), thisPos, viewVec, xProj,yProj
+    real(double) :: da(:), dOmega(:), distance
+    real(double), allocatable :: rGrid(:), dr(:), phigrid(:), dphi(:)
+    real(double) :: rMax
+    integer :: nr, nphi, ir, iphi
+    real(double) :: r1 , r2, phi1, phi2, phiOffset
+    real(double) :: xPos, yPos, zPos, cosInc, azimuth
+    
+    rmax = 2000.
+    nr = 100
+    nphi = 10
+    nray = 0
+
+    allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
+
+    do ir = 1, nr
+       r1 = log10(rmax) * dble(ir-1)/dble(nr)
+       r2 = log10(rmax) * dble(ir)/dble(nr)
+       r1 = 10.d0**r1
+       r2 = 10.d0**r2
+       rgrid(ir) = 0.5d0 * (r1 + r2)
+       dr(ir) = r2 - r1
+    enddo
+    do iphi = 1, nPhi
+       phi1 = twoPi * dble(iphi-1)/dble(nPhi)
+       phi2 = twoPi * dble(iphi)/dble(nPhi)
+       phiGrid(iPhi) = 0.5d0 * (phi1 + phi2)
+       dphi(iPhi) = phi2 - phi1
+    enddo
+
+    do ir = 1, nr
+       r1 = rGrid(ir)
+       call random_number(phiOffset)
+       phiOffset = phiOffset * dphi(1)
+       do iPhi = 1, nPhi
+          phi1 = phiGrid(iPhi) + phiOffset
+          if (phi1 > twoPi) phi1 = phi1 - twoPi
+
+          xPos = r1 * sin(phi1)
+          yPos = 0.d0
+          zPos = r1 * cos(phi1)
+
+          xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
+          call normalize(xProj)
+          yProj = viewVec .cross. xProj
+         call normalize(yProj)
+
+          nRay = nRay + 1
+         rayPosition(nray) =  (xPos * xProj) + (zPos * yProj)
+         rayposition(nray) = rayPosition(nRay) + ((-1.d0*distance) * viewVec)
+
+          da(nRay) = pi*( (r1 + dr(ir)/2.d0)**2 - (r1 - dr(ir)/2.d0)**2) * dphi(iPhi)/twoPi
+          dOmega(nRay) = da(nRay) / (fourPi * distance**2)
+       enddo
+    enddo
+  end subroutine createRayGrid
 
 
 !$MPI      subroutine packAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)

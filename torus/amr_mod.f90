@@ -4482,7 +4482,7 @@ IF ( .NOT. gridConverged ) RETURN
          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       endif
 
-      if (thisOctal%nDepth > 4) split = .false.
+!      if (thisOctal%nDepth > 3) split = .false.
 
    case("benchmark")
       split = .false.
@@ -4730,7 +4730,7 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.5)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
 !      if (r < 2.*grid%rInner) then
 !         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
 !      endif
@@ -8598,6 +8598,14 @@ IF ( .NOT. gridConverged ) RETURN
 
     open(30, file="vert2.dat", status="unknown", form="formatted")
     call verticalDump(grid%octreeRoot, grid%rOuter/2.)
+    close(30)
+    open(30,file="radial.dat",status="unknown",form="formatted")
+    do i = 1, nr
+       r = grid%rInner + (grid%rOuter-grid%rInner)*(real(i-1)/real(nr-1))**3
+       rVec = OCTALVECTOR(dble(r), 0.d0, 0.d0)
+       call amrGridValues(grid%octreeRoot, rVec,temperature=t, rho=dens, foundoctal=thisOctal, foundsubcell=subcell)
+       write(30,*) r, t, dens
+    enddo
     close(30)
 
 
