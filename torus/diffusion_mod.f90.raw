@@ -697,9 +697,9 @@ end subroutine gaussSeidelSweep
         call setDiffusionCoeff(grid, grid%octreeRoot)
 !$MPI if (my_rank == 0) then
         write(*,*) nIter," Maximum relative change in eDens:",deMax
-        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-             "/xs", .true., .false., &
-             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomfactor) 
+!        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+!             "/xs", .true., .false., &
+!             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomfactor) 
 !$MPI  endif
         if (nIter < 3) gridConverged = .false.
         if (nIter > maxIter) then

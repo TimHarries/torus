@@ -254,7 +254,7 @@ contains
     integer :: i,j 
     real :: t
     character(len=*), intent(in) :: graintype
-    character(len=80) :: filename, dataDirectory
+    character(len=200) :: filename, dataDirectory
     real :: mReal(*), mImg(*)
 
 
