@@ -11348,7 +11348,7 @@ IF ( .NOT. gridConverged ) RETURN
    type(OCTAL), pointer, optional :: sOctal
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6), thisNorm
+   type(OCTALVECTOR) :: norm(6), p3(6), thisNorm, rDirection
    type(OCTAL),pointer :: thisOctal
    real(double) :: distTor1, distTor2, theta, mu
    real(double) :: distToRboundary, compz,currentZ
@@ -11447,31 +11447,39 @@ IF ( .NOT. gridConverged ) RETURN
          r2 = r + thisOctal%subcellSize/2.d0
          d = sqrt(point%x**2+point%y**2)
          xHat = VECTOR(point%x, point%y,0.d0)
-
-
          call normalize(xHat)
+         rDirection = OCTALVECTOR(direction%x, direction%y,0.d0)
+         compX = modulus(rDirection)
+         call normalize(rDirection)
       
-         cosmu =((-1.d0)*xHat).dot.direction
-         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-         if (.not.ok) then
-            write(*,*) "Quad solver failed in intersectcubeamr2d"
-            x1 = thisoctal%subcellSize/2.d0
-            x2 = 0.d0
-         endif
-         distTor2 = max(x1,x2)
-         
-         theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-         cosmu =((-1.d0)*xHat).dot.direction
-         mu = acos(max(-1.d0,min(1.d0,cosmu)))
-         distTor1 = 1.e30
-         if (mu  < theta ) then
-            call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+         distToR1 = 1.d30
+         distToR2 = 1.d30
+         if (compX /= 0.d0) then
+
+
+            cosmu =((-1.d0)*xHat).dot.rdirection
+
+            call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
             if (.not.ok) then
                write(*,*) "Quad solver failed in intersectcubeamr2d"
                x1 = thisoctal%subcellSize/2.d0
                x2 = 0.d0
             endif
-            distTor1 = min(x1,x2)
+            distTor2 = max(x1,x2)/CompX
+            
+            theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+            cosmu =((-1.d0)*xHat).dot.rdirection
+            mu = acos(max(-1.d0,min(1.d0,cosmu)))
+            distTor1 = 1.e30
+            if (mu  < theta ) then
+               call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+               if (.not.ok) then
+                  write(*,*) "Quad solver failed in intersectcubeamr2d"
+                  x1 = thisoctal%subcellSize/2.d0
+                  x2 = 0.d0
+               endif
+               distTor1 = min(x1,x2)/compX
+            endif
          endif
       
          distToRboundary = min(distTor1, distTor2)
@@ -11564,37 +11572,43 @@ IF ( .NOT. gridConverged ) RETURN
       r1 = subcen%x - thisOctal%subcellSize/2.d0
       r2 = subcen%x + thisOctal%subcellSize/2.d0
 
+      distToR1 = 1.d30
+      distToR2 = 1.d30
       d = sqrt(point%x**2+point%y**2)
       xHat = VECTOR(point%x, point%y,0.d0)
       call normalize(xHat)
-      
-      cosmu =((-1.d0)*xHat).dot.direction
-      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
-      if (.not.ok) then
-         write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
-         write(*,*) "xhat",xhat
-         write(*,*) "dir",direction
-         write(*,*) "point",point
-         do;enddo
-         x1 = thisoctal%subcellSize/2.d0
-         x2 = 0.d0
-      endif
-      distTor2 = max(x1,x2)
-      
-      theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-      cosmu = ((-1.d0)*xHat).dot.direction
-      mu = acos(max(-1.d0,min(1.d0,cosmu)))
-      distTor1 = 1.e30
-      if (mu  < theta ) then
-         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+      rDirection = OCTALVECTOR(direction%x, direction%y,0.d0)
+      compX = modulus(rDirection)
+      call normalize(rDirection)
+
+      if (compX /= 0.d0) then
+         cosmu =((-1.d0)*xHat).dot.rdirection
+         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
          if (.not.ok) then
-            write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1
-            x1 = thisoctal%subcellSize/2.d0
-            x2 = 0.d0
+            write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
+            write(*,*) "xhat",xhat
+            write(*,*) "dir",direction
+            write(*,*) "point",point
+            do;enddo
+               x1 = thisoctal%subcellSize/2.d0
+               x2 = 0.d0
+            endif
+            distTor2 = max(x1,x2)/compX
+            
+            theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+            cosmu = ((-1.d0)*xHat).dot.rdirection
+            mu = acos(max(-1.d0,min(1.d0,cosmu)))
+            distTor1 = 1.e30
+            if (mu  < theta ) then
+               call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+               if (.not.ok) then
+                  write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1
+                  x1 = thisoctal%subcellSize/2.d0
+                  x2 = 0.d0
+               endif
+               distTor1 = min(x1,x2)/compX
+            endif
          endif
-         distTor1 = min(x1,x2)
-      endif
-      
       distToXboundary = min(distTor1, distTor2)
       
       
@@ -12683,17 +12697,17 @@ IF ( .NOT. gridConverged ) RETURN
 
   function distanceToGridFromOutside(grid, posVec, direction) result (tval)
     type(GRIDTYPE) :: grid
-    type(OCTALVECTOR) :: subcen, direction, posVec, point
+    type(OCTALVECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
     type(OCTAL), pointer :: thisOctal
     real(double) :: tval
    type(OCTALVECTOR) :: norm(6), p3(6), thisNorm
    real(double) :: distTor1, distTor2, theta, mu
    real(double) :: distToRboundary, compz,currentZ
    real(double) :: phi, distToZboundary, ang1, ang2
-   type(OCTALVECTOR) ::  xHat, zHat, rVec
+   type(OCTALVECTOR) ::  zHat, rVec
    integer :: subcell
    real(double) :: distToSide1, distToSide2, distToSide
-   real(double) ::  compx,disttoxBoundary, currentX
+   real(double) ::  compx,disttoxBoundary, currentX, gridRadius
    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
    integer :: i,j
    logical :: ok, thisOk(6)
@@ -12783,24 +12797,32 @@ IF ( .NOT. gridConverged ) RETURN
          ! first do the inside and outside curved surfaces
          r = sqrt(subcen%x**2 + subcen%y**2)
          r1 = r + thisOctal%subcellSize
+         gridRadius = r1
          d = sqrt(point%x**2+point%y**2)
          xHat = (-1.)*VECTOR(point%x, point%y,0.d0)
          call normalize(xHat)
+         rDirection = VECTOR(direction%x, direction%y, 0.d0)
+         compX = modulus(rDirection)
+         call normalize(rDirection)
                
          theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-         cosmu = xHat.dot.direction
+         cosmu = xHat.dot.rdirection
          mu = acos(max(-1.d0,min(1.d0,cosmu)))
          distTor1 = 1.e30
-         if (mu  < theta ) then
-            call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-            if (.not.ok) then
-               write(*,*) "Quad solver failed in intersectcubeamr2d"
-               x1 = thisoctal%subcellSize
-               x2 = 0.d0
+         if (compx /= 0.d0) then
+            if (mu  < theta ) then
+               call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+               if (.not.ok) then
+                  write(*,*) "Quad solver failed in intersectcubeamr2d"
+                  x1 = thisoctal%subcellSize
+                  x2 = 0.d0
+               endif
+               distTor1 = min(x1,x2)/CompX
+               hitVec = posVec + distToR1 * direction
+               if (abs(hitVec%z) > thisOctal%subcellSize) distToR1 = 1.d30
             endif
-            distTor1 = min(x1,x2)
          endif
-      
+         
          distToRboundary = distTor1
          if (distToRboundary < 0.d0) then
             distToRboundary = 1.e30
@@ -12816,8 +12838,13 @@ IF ( .NOT. gridConverged ) RETURN
          if (compZ /= 0.d0 ) then
             if (compZ > 0.d0) then
                distToZboundary = (subcen%z + thisOctal%subcellsize - currentZ ) / compZ
+               hitVec = posVec + disttoZboundary * direction
+               if (sqrt(hitVec%x**2 + hitVec%y**2) > gridRadius) distToZboundary = 1.d30
+
             else
                distToZboundary = abs((subcen%z - thisOctal%subcellsize - currentZ ) / compZ)
+               hitVec = posVec + disttoZboundary * direction
+               if (sqrt(hitVec%x**2 + hitVec%y**2) > gridRadius) distToZboundary = 1.d30
             endif
          else
             disttoZboundary = 1.e30
@@ -12828,9 +12855,12 @@ IF ( .NOT. gridConverged ) RETURN
          tVal = min(distToZboundary, distToRboundary)
          if (tVal > 1.e29) then
             write(*,*) "Cylindrical"
+            write(*,*) "posVec",posvec
+            write(*,*) "direction",direction
             write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
             write(*,*) "subcen",subcen
             write(*,*) "x,z",currentX,currentZ
+            write(*,*) "x1,x2",x1,x2
          endif
          if (tval < 0.) then
             write(*,*) "Cylindrical"

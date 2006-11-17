@@ -1116,8 +1116,8 @@ contains
     real(double) :: distance
     integer :: itrans
     integer :: nRay
-    type(OCTALVECTOR) :: rayPosition(5000)
-    real(double) :: da(5000), dOmega(5000)
+    type(OCTALVECTOR) :: rayPosition(5000), posVec
+    real(double) :: da(5000), dOmega(5000), r
     type(OCTALVECTOR) :: viewVec
     real(double) :: deltaV
     integer :: iv, iray
@@ -1138,6 +1138,15 @@ contains
 !$MPI  
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+
+
+    do while (.true.)
+       viewVec = randomUnitVector()
+       posVec = (-distance)*viewVec
+       r = distanceToGridFromOutside(grid, posVec, viewVec)
+       posVec = posVec + r * viewVec
+       write(*,*) sqrt(posVec%x**2+posVec%y**2),posVec%z
+    enddo
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
