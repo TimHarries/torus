@@ -1,7 +1,7 @@
 module molecular_mod
 
 ! written by tjh
-
+! 21/11/06
 
   use kind_mod
   use constants_mod
