@@ -13,7 +13,8 @@ module molecular_mod
 
   implicit none
 
-
+! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
+! DATACUBE is used for data visualisation (intensity for x,y and v)
 
   type MOLECULETYPE
      character(len=10) :: molecule
@@ -55,7 +56,7 @@ module molecular_mod
 
 contains
 
-
+! Initialises cube - sets intensity for cube to 0 
   subroutine initCube(thisCube, nx, ny, nv)
     type(DATACUBE) :: thisCube
     integer :: nx, ny, nv
@@ -72,6 +73,7 @@ contains
 
   end subroutine initCube
 
+! Set spatial axes for datacube - Equally spaced (linearly) between min and max
   subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
     type(DATACUBE) :: cube
     real(double) :: xMin, xMax, yMax, yMin
@@ -80,11 +82,12 @@ contains
     do i = 1, cube%nx
        cube%xAxis(i) = xmin + (xmax-xmin)*dble(i-1)/dble(cube%nx)
     enddo
-    do i = 1, cube%ny
+    Do i = 1, cube%ny
        cube%yAxis(i) = ymin + (ymax-ymin)*dble(i-1)/dble(cube%ny)
     enddo
   end subroutine addSpatialAxes
 
+! Set velocity axis for datacube - Equally spaced (linearly) between min and max
   subroutine addVelocityAxis(cube, vMin, vMax)
     type(DATACUBE) :: cube
     real(double) :: vMin, vMax
@@ -95,6 +98,7 @@ contains
     enddo
   end subroutine addVelocityAxis
 
+! Read in molecular parameters from file - note: abundance hard-coded here
   subroutine readMolecule(thisMolecule, molFilename)
     type(MOLECULETYPE) :: thisMolecule
     character(len=*) :: molFilename
@@ -128,7 +132,7 @@ contains
     do i = 1, thisMolecule%nLevels
        read(30,*) j, thisMolecule%energy(i), thisMolecule%g(i), thisMolecule%j(i)
 
-       thisMolecule%energy(i) = thisMolecule%energy(i) / 8065.541  ! per cm to ev
+       thisMolecule%energy(i) = thisMolecule%energy(i) / 8065.541  ! convert from per cm to ev - e/hc (CGS)
        
     enddo
 
@@ -152,7 +156,7 @@ contains
        thisMolecule%itransUpper(i) = iUp
        thisMolecule%itransLower(i) = iLow
 
-       thisMolecule%einsteinBul(i) = a * (cspeed**2)/(2.d0*hcgs*(freq*1.d9)**3)
+       thisMolecule%einsteinBul(i) = a * (cspeed**2)/(2.d0*hcgs*(freq*1.d9)**3) ! transform Aul -> Bul
 
        thisMolecule%einsteinBlu(i) = thisMolecule%einsteinBul(i) &
             * thisMolecule%g(iUp)/thisMolecule%g(iLow)
@@ -199,6 +203,7 @@ contains
     call writeInfo("Done.", IMPORTANT)
   end subroutine readMolecule
 
+! Same routine for benchmark molecule (slightly different file formeat)
   subroutine readBenchmarkMolecule(thisMolecule, molFilename)
     type(MOLECULETYPE) :: thisMolecule
     character(len=*) :: molFilename
@@ -210,6 +215,7 @@ contains
     thisMolecule%abundance = 1.d-9 ! fixed at benchmark value here
 
 
+    call writeInfo("Opening file: "//trim(molfilename),TRIVIAL)
     open(30, file=molfilename, status="old", form="formatted")
 
     read(30,'(a)') thisMolecule%molecule
@@ -258,8 +264,8 @@ contains
 
     read(30,*) junk
 
-    thisMolecule%nCollPart = 1
-    iPart = 1
+    thisMolecule%nCollPart = 1 ! only one collision partner considered in benchmark
+    iPart = 1 ! follows from ^
 
     allocate(thisMolecule%nCollTrans(1:thisMolecule%nCollPart))
     allocate(thisMolecule%nCollTemps(1:thisMolecule%nCollPart))
@@ -285,7 +291,7 @@ contains
     call writeInfo("Done.", IMPORTANT)
   end subroutine readBenchmarkMolecule
 
-
+! solves rate equation in matrix format - equation 10
   subroutine solveLevels(nPops, jnu,  temperature, thisMolecule, nh2)
     real(double) :: nPops(:)
     real(double) :: temperature
@@ -304,16 +310,16 @@ contains
     allocate(matrixA(1:nLevels+1,1:nLevels+1))
     allocate(matrixB(1:nLevels+1))
 
-    matrixA = 1.d-30
-    matrixB = 0.d0
+    matrixA = 1.d-30 ! Initialise rates to negligible to avoid divisions by zero
+    matrixB = 0.d0 ! Solution vector - all components (except last) => equilibrium
 
-    matrixA(nLevels+1,1:nLevels+1) = 1.d0
-    matrixA(1:nLevels+1,nLevels+1) = 1.d-30
+    matrixA(nLevels+1,1:nLevels+1) = 1.d0 ! sum of all level populations
+    matrixA(1:nLevels+1,nLevels+1) = 1.d-30 ! fix highest population to small non-zero value
 
-    matrixB(nLevels+1) = 1.d0
+    matrixB(nLevels+1) = 1.d0 ! Sum over all levels = 1 - Conservation constraint
     allocate(collMatrix(1:nLevels+1, 1:nLevels+1))
 
-
+! This do loop calculates the contribution to transition rates of each level from every other level. NB emission is +ve here
     do iTrans = 1, thisMolecule%nTrans
 
        k = thisMolecule%iTransUpper(iTrans)
@@ -329,7 +335,7 @@ contains
 
 
     collMatrix = 0.d0
-
+! Calculate contribution from collisions - loop over all collision partners and all molecular levels
     do iPart = 1, thisMolecule%nCollPart
        do iTrans = 1, thisMolecule%nCollTrans(iPart)
           
@@ -337,7 +343,11 @@ contains
           l = thisMolecule%iCollLower(iPart, iTrans)
 
           boltzFac =  exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
+!<<<<<<< molecular_mod.f90.raw
+          colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2! * (nh2 * thisMolecule%abundance)!!!! What's happened here?
+!=======
           colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2
+!>>>>>>> 1.10
           collEx = colldeEx * boltzFac * thisMolecule%g(k)/thisMolecule%g(l)
 
 
@@ -351,7 +361,7 @@ contains
     cTot = 0.d0
     do k = 1, thisMolecule%nLevels
        do l = 1, thisMolecule%nLevels
-          cTot(k) = cTot(k) + collMatrix(k,l)
+          cTot(k) = cTot(k) + collMatrix(k,l) ! sum over all collisional rates out of each level
        enddo
     enddo
 
@@ -364,9 +374,8 @@ contains
        enddo
     enddo
 
+! finished creating equation 10, now solve it to find new level populations
   call luSlv(matrixA, matrixB, nLevels+1)
-
-
 
   nPops(1:nLevels) = matrixB(1:nLevels)
 
@@ -376,7 +385,7 @@ contains
 
   end subroutine solveLevels
 
-
+! Calculate collision rates between partners for given temperature
   real(double) function collRate(thisMolecule, temperature, iPart, iTrans)
     type(MOLECULETYPE) :: thisMolecule
     real(double) :: temperature, r
@@ -396,7 +405,7 @@ contains
 
   end function collRate
 
-
+! This subroutine solves eq.10 for all octals recursively from the bottom up (i.e. from smallest octal -> largest)
   recursive subroutine  solveAllPops(grid, thisOctal, thisMolecule)
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
@@ -408,21 +417,22 @@ contains
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
-          do i = 1, thisOctal%nChildren, 1
+          do i = 1, thisOctal%nChildren, 1 ! What's this?
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call solveAllpops(grid, child, thisMolecule)
                 exit
              end if
           end do
-       else
+       else ! once octal has no more children, solve for current parameter set
           call solveLevels(thisOctal%molecularLevel(subcell,1:thisMolecule%nLevels), &
                thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
                dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
        endif
     enddo
   end subroutine solveAllPops
-
+! this subroutine calculates the maximum fractional change in the first 6 (consider changing?) energy levels
+! NB 
   recursive subroutine  swapPops(thisOctal, maxFracChange)
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
@@ -448,14 +458,16 @@ contains
                   thisOctal%molecularLevel(subcell,1:6)))
 !          end where
           if (temp > maxFracChange) then
-             maxFracChange = temp
+             maxFracChange = temp ! update maxFracChange if fractional change is great => not converged yet
           endif
           thisOctal%molecularLevel(subcell,:) = &
-               thisOctal%newmolecularLevel(subcell,:)
+               thisOctal%newmolecularLevel(subcell,:) ! update molecular levels
        endif
     enddo
   end subroutine swapPops
 
+! This subroutine allocates memory to the octal for storing molecular level data *if* none currently exists then
+! stores the non-zero local emission coefficient   
   recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule)
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
@@ -497,9 +509,8 @@ contains
     enddo
   end subroutine allocateMolecularLevels
 
-
-
-
+! Equation 9 - calculating the doppler broadening due to a turbulent velocity field (b - constant locally)
+! NB b here = b*nu0/c in the paper
   function phiProf(dv, b) result (phi)
     real(double) :: dv, b
     real(double) :: fac, phi
@@ -508,9 +519,7 @@ contains
     phi = phi * exp(-fac)
   end function phiProf
 
-
-
-
+! Make a 'ray' with a random position - then use it to update intensity and opacity
   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule)
     type(MOLECULETYPE) :: thisMolecule
     type(GRIDTYPE) :: grid
@@ -545,51 +554,43 @@ contains
 
     direction = randomUnitVector()
     call random_number(r)
-!    if (r < 0.1) then
-!       direction = position
-!       call normalize(direction)
-!       direction = (-1.d0) * direction
-!    endif
 
-    rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
+    rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell) ! systematic velocity at rays current position
 
     call random_number(r)
 
-    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0)
+    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak. 
+    ! 4.3 corresponds to the width where the peak of the line profile has dropped to 1% of it's peak
+    ! microturulence is assumed gaussian - b is FULL WIDTH
 
+    deltaV = deltaV +  (rayVel .dot. direction) ! transform to take account of grid velocity
 
-    deltaV = deltaV +  (rayVel .dot. direction)
+    projVel = deltaV - (rayVel .dot. direction) ! transorm back to velocity relative to local flow
 
-    projVel = deltaV - (rayVel .dot. direction)
-
-    phi1 = phiProf(projVel, thisOctal%microturb(subcell))
+    phi1 = phiProf(projVel, thisOctal%microturb(subcell)) ! doppler broadening dependent on local (projected) velocity 
 
     call distanceToCellBoundary(grid, position, direction, ds, sOctal=thisOctal)
 
     currentPosition = position + ds * direction
 
-    phi2 = phi1 
-    if (inOctal(grid%octreeRoot, currentPosition)) then
+    phi2 = phi1 ! assume constant turbulence
+    if (inOctal(grid%octreeRoot, currentPosition)) then ! check that we're still on the grid
        thisVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal) 
        projVel = deltaV - (thisVel.dot.direction)
        
        phi2 = phiProf(projVel, thisOctal%microturb(subcell))
     else
-       phi2 = phi1
+       phi2 = phi1 ! if fell off grid then assume phi is unchanged
     endif
 
     phi  = (phi1 + phi2)/2.d0
 !    if (modulus(thisVel) /= 0.d0) &
 !    write(*,*) phi1,phi2,phi
-    ds = ds * 1.d10
-
-
+    ds = ds * 1.d10 ! convert from cm to torus units
 
     i0 = 0.d0
     intensityIntegral = 0.0
     tau = 0.d0
-
-
 
     do while(inOctal(grid%octreeRoot, currentPosition))
 
@@ -600,11 +601,10 @@ contains
        endPosition = currentPosition + tval * direction
        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
 
-       dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
-       dvAcrossCell = abs(dvAcrossCell / (thisOctal%microturb(subcell)/2.35d0))
+       dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction) ! start - end
+       dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
 
-
-       nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200)
+       nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200) ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
 !       write(*,*) ntau
 
        distArray(1) = 0.d0
@@ -623,7 +623,7 @@ contains
 
           do iTrans = 1, thisMolecule%nTrans
              alphanu = (hCgs*thisMolecule%transFreq(iTrans)/fourPi) * &
-                  phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans)
+                  phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans) ! Multiply by transfreq then divide by transFreq??
 
              iUpper = thisMolecule%iTransUpper(iTrans)
              iLower = thisMolecule%iTransLower(iTrans)
@@ -632,36 +632,35 @@ contains
              nUpper = thisOctal%molecularLevel(subcell,iUpper) * thisMolecule%abundance * thisOctal%nh2(subcell)
 
              alphanu = alphanu * (nLower * thisMolecule%einsteinBlu(iTrans) - &
-                  nUpper * thisMolecule%einsteinBul(iTrans))
+                  nUpper * thisMolecule%einsteinBul(iTrans)) ! Equation 8
 
-             dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
+             dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10 ! optical depth, dTau = alphanu*ds - between eqs (3) and (4)
 
              etaLine = hCgs * thisMolecule%einsteinA(iTrans) * thisMolecule%transFreq(iTrans)
-             etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * thisOctal%molecularLevel(subcell, iUpper)
-             jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans)
-
+             etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * thisOctal%molecularLevel(subcell, iUpper) 
+             jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans) ! jnu, emission coefficient - equation 7
 
 
              if (alphanu /= 0.d0) then
-                snu = jnu/alphanu
+                snu = jnu/alphanu ! Source function 
              else
                 snu = tiny(snu)
              endif
 
-             i0(iTrans) = i0(iTrans) +  exp(-tau(iTrans)) * (1.d0-exp(-dtau))*snu
-             tau(iTrans) = tau(iTrans) + dtau
+             i0(iTrans) = i0(iTrans) +  exp(-tau(iTrans)) * (1.d0-exp(-dtau))*snu ! summed radiation intensity from line integral + 2nd term is local radiation field 
+             tau(iTrans) = tau(iTrans) + dtau ! contribution to optical depth from this line integral
           enddo
        enddo
-       currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
+       currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction ! FUDGE - make sure that new position is in new cell
     enddo
     do iTrans = 1, thisMolecule%nTrans
-       i0(iTrans) = i0(iTrans) + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau(iTrans))
+       i0(iTrans) = i0(iTrans) + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau(iTrans)) ! check this?
     enddo
     deallocate(tau)
   end subroutine getRay
 
 
-
+! sample level populations at logarithmically spaced annuli
   subroutine dumpResults(grid, thisMolecule)
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
@@ -679,11 +678,11 @@ contains
     rinner = 1.e6
     router  = 4.6e7
     
-    nr = 20
+    nr = 20 ! number of rays used to sample distribution
     open(31,file="results.dat",status="unknown",form="formatted")
     do i = 1, nr
        r = log10(rinner) + dble(i-1)/dble(nr-1)*(log10(router) - log10(rinner))
-       r = 10.d0**r
+       r = 10.d0**r ! log(radius) -> radius
        pops = 0.d0
        jnu = 0.d0
        do j = 1 , 20
@@ -691,23 +690,23 @@ contains
           ang = ang * pi
           z = r*cos(ang)
           x = r*sin(ang)
-          posVec = OCTALVECTOR(x, 0.d0, z)
+          posVec = OCTALVECTOR(x, 0.d0, z) ! get put in octal on grid
           thisOctal => grid%octreeroot
-          call findSubcellLocal(posVec, thisOctal,subcell)
-          pops = pops + thisOctal%molecularLevel(subcell,1:10)
-          jnu = jnu + thisOctal%jnu(subcell,1)
+          call findSubcellLocal(posVec, thisOctal,subcell) 
+          pops = pops + thisOctal%molecularLevel(subcell,1:10) ! interested in first 10 levels
+          jnu = jnu + thisOctal%jnu(subcell,1) 
        enddo
-       pops = pops / 20.d0
-       jnu = jnu / 20.d0
-       write(31,*) real(r*1.d10), real(pops(1:6)),jnu
+       pops = pops / 20.d0 ! normalised level population at the 20 random positions 
+       jnu = jnu / 20.d0 ! normalised emission coefficient
+       write(31,*) real(r*1.d10), real(pops(1:6)),jnu ! real-time check that everything is fine
     enddo
     close(31)
   end subroutine dumpResults
 
-          
+! Does a lot of work - do more rays whilst problem not converged -            
   subroutine molecularLoop(grid, thisMolecule)
 
-    use input_variables, only : blockhandout
+    use input_variables, only : blockhandout ! ??
 !$MPI    include 'mpif.h'
 
     type(GRIDTYPE) :: grid
@@ -759,10 +758,10 @@ contains
 
     call solveAllPops(grid, grid%octreeRoot, thisMolecule)
 !$MPI if (my_rank ==0 ) then
-    write(*,*) "Dumping results",log10(bnu(thisMolecule%transFreq(1),2.782d0))
+    write(*,*) "Dumping results",log10(bnu(thisMolecule%transFreq(1),2.782d0)) ! can use cbr constant?
     call dumpresults(grid, thisMolecule)
 !$MPI endif
-    nRay = 100
+    nRay = 100 ! number of rays used to establish estimate of jnu and pops
 
     allocate(oldPops(1:thisMolecule%nLevels))
 
@@ -771,6 +770,10 @@ contains
     call getOctalArray(grid%octreeRoot,octalArray, nOctal)
 
     call random_seed
+
+    !$MPI       if (my_rank == 0) &
+    call writeAmrGrid("molecular_tmp.grid",.false.,grid)
+
     
     call random_seed(size=iSize)
     allocate(iSeed(1:iSize))
@@ -778,9 +781,9 @@ contains
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
-    nRay = 100
+    nRay = 100 ! ?!
 
-    do iStage = 1, 2
+    do iStage = 1, 2 ! fixed rays to reduce variance between cells or 2) random rays to ensure sufficient spatial sampling
 
 
        if (iStage == 1) then
@@ -807,7 +810,7 @@ contains
              call random_seed
           endif
 
-          ! default loop indecies
+          ! default loop indicies
           ioctal_beg = 1
           ioctal_end = SIZE(octalArray)       
           
@@ -838,8 +841,9 @@ contains
 !$MPI   if (rankComplete) exit blockLoop 
 
 
+! iterate over all octals, all rays, solving the system self-consistently
           do iOctal = ioctal_beg, ioctal_end
-!             write(*,*) iOctal,ioctal_beg,ioctal_end
+             write(*,*) iOctal,ioctal_beg,ioctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
                 
@@ -848,24 +852,24 @@ contains
                    do iRay = 1, nRay
                       call getRay(grid, thisOCtal, subcell, position, direction, &
                            ds(iRay), phi(iRay), i0(1:thisMolecule%nTrans,iRay), &
-                           thisMolecule)
+                           thisMolecule) ! does the hard work - populates i0 etc.
                    enddo
                    iter = 0
                    popsConverged = .false.
                    thisOctal%newMolecularLevel(subcell,:) = thisOctal%molecularLevel(subcell,:)
                    do while (.not.popsConverged)
                       iter = iter + 1
-                      oldpops = thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels)
+                      oldpops = thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels) ! retain old pops before calculating new one
                       do iTrans = 1, thisMolecule%nTrans
                          call calculateJbar(thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
                               phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
-                              thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels))
+                              thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels)) ! calculate updated Jbar
                       enddo
                       call solveLevels(thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels), &
                            thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
                            dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
-                      fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops))
-                      if (fac < 1.d-10) popsConverged = .true.
+                      fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops)) ! convergence criterion
+                      if (fac < 1.d-4) popsConverged = .true.
                       if (iter == maxIter) then
                          popsConverged = .true.
                          call writeWarning("Maximum number of iterations reached in pop solver")
@@ -910,7 +914,7 @@ contains
 
 
 
-          maxFracChange = -1.d30
+          maxFracChange = -1.d30 ! negative to ensure comparison?
           call swapPops(grid%octreeRoot, maxFracChange)
           write(*,*) "Maximum fractional change this iteration",maxFracChange
           write(*,*) "Fractional change",maxFracChange,"tolerance",tolerance , &
@@ -925,7 +929,7 @@ contains
           call writeAmrGrid("molecular_tmp.grid",.false.,grid)
           !$MPI if (my_rank ==0 ) then
           write(*,*) "Dumping results"
-          call dumpresults(grid, thisMolecule)
+          call dumpresults(grid, thisMolecule) ! find radial pops on final grid
           !$MPI endif
 
 !$MPI       deallocate(octalsBelongRank)
@@ -933,10 +937,10 @@ contains
           deallocate(ds, phi, i0, tau)
           
           if (.not.gridConverged) then
-             if (.not.fixedRays) nRay = nRay * 2
+             if (.not.fixedRays) nRay = nRay * 2 !double number of rays if convergence criterion not met and not using fixed rays - revise!!! Can get away with estimation?
           endif
           if (nRay > maxRay) then
-             nRay = maxRay
+             nRay = maxRay  ! stop when it's not feasible to do more rays - should never get here
              call writeWarning("Maximum number of rays exceeded - capping")
           endif
        enddo
@@ -966,7 +970,7 @@ contains
 
     iUpper = thisMolecule%iTransUpper(iTrans)
     iLower = thisMolecule%iTransLower(iTrans)
-
+! commented elsewhere in the code... is it possible to stick this in a module and reuse?
     sumPhi = 0.d0
     do iRay = 1, nRay
        alphanu = (hCgs*thisMolecule%transFreq(iTrans)/fourPi)
@@ -980,7 +984,6 @@ contains
        etaLine = hCgs * thisMolecule%einsteinA(iTrans) * thisMolecule%transFreq(iTrans)
        etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * nPops(iUpper)
        jnu = (etaLine/fourPi) * phi(iRay)/thisMolecule%transFreq(iTrans)
-       
        if (alphanu /= 0.d0) then
           snu = jnu/alphanu
        else
@@ -1022,6 +1025,9 @@ contains
     real(double) :: dTau, etaline, didtau, tau
     real(double) :: intensityIntegral
     real(double) :: dvAcrossCell
+    logical :: debug
+
+    debug = .true.
 
     distToGrid = distanceToGridFromOutside(grid, position, direction)
 
@@ -1033,9 +1039,13 @@ contains
 
     iUpper = thisMolecule%iTransUpper(iTrans)
     iLower = thisMolecule%iTransLower(iTrans)
-
-    currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
-
+    if (debug) write(*,*) "mod(direction)",modulus(direction)
+    if (debug) write(*,*) "position",position
+    if (debug) write(*,*) "disttogrid",disttogrid
+    if (debug) write(*,*) "halfsmallest",grid%halfSmallestSubcell
+    currentPosition = position + (distToGrid + grid%halfSmallestSubcell) * direction
+    if (debug) write(*,*) "currentpos",currentPosition,sqrt(currentPosition%x**2 + currentPosition%y**2), &
+         currentPosition%z
     i0 = 0.d0
     intensityIntegral = 0.0
     tau = 0.d0
@@ -1068,7 +1078,6 @@ contains
           thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
           thisVel= thisVel - rayVel
 
-
           dv = (thisVel .dot. direction) + deltaV
 
           alphanu = (hCgs*thisMolecule%transFreq(iTrans)/fourPi) * &
@@ -1094,19 +1103,157 @@ contains
           endif
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+          if (debug) write(*,*) "i0",i0,"tau",tau,"dtau",dtau,"snu",snu
           tau = tau + dtau
        enddo
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
     enddo
     i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau) ! from far side
+    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)
 666 continue 
-!    i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) ! from nearside
 
     ! convert to brightness T
-
+    write(*,*) "i0 pre"
     i0 = i0 * (cSpeed**2 / (2.d0 * thisMolecule%transFreq(iTrans)**2 * kerg))
+    WRITE(*,*) "i0 post"
   end function intensityAlongRay
 
+  function makeImageGrid(posvec,npixels,imageside,distance,grid,thisMolecule,iTrans) result (imagegrid)
+
+    type(GRIDTYPE) :: grid
+    type(MOLECULETYPE) :: thisMolecule
+    real(double) :: distance
+    integer :: itrans
+    type(OCTALVECTOR) :: viewVec
+    real(double) :: flux, i0
+    type(OCTALVECTOR) :: imagebasis1, imagebasis2, posvec, pixelcorner,newposvec
+    integer :: npixels
+    integer :: nsubpixels
+    real :: imagegrid(npixels,npixels)
+    integer :: i,j
+    real(double) :: imageside,pixelside, r1,dtgfo
+    real(double) :: max
+
+    imagebasis1 = posvec .cross. OCTALVECTOR(0.d0,0.d0,1.d0) ! gridvector
+    imagebasis2 = imagebasis1 .cross. posvec ! gridvector perp
+    call normalize(imagebasis1)
+    call normalize(imagebasis2)
+    
+    ! imageside = 3.d8 ! imagegrid size currently ~3r
+    pixelside = imageside / npixels
+
+    !write(*,*) perpvec1 .dot. perpvec2
+    !posvec = posvec * distance
+    imagebasis1 = imagebasis1 * pixelside ! rescale basis vectors so that stepsize is simplified 
+    imagebasis2 = imagebasis2 * pixelside
+    viewvec = (-1.d0) * posvec ! look *towards* origin from posvec   
+    posvec = posvec * distance ! now the grid will be far away!
+
+!    dtgfo = distancetogridfromoutside(grid,posvec,viewvec)
+    
+    write(*,*) posvec, "posvec", viewvec, "viewvec"
+    write(*,*) imagebasis1, "imagebasis1"
+    write(*,*) imagebasis2, "imagebasis2"
+    
+    pixelcorner = posvec - (dble(npixels)/2.d0)*(imagebasis2 - imagebasis1) + imagebasis1 ! fudge at the end to 'fit in' with the do loop
+    nsubpixels = 3
+    write(*,*) acos(((-1.d0)*viewvec .dot. pixelcorner)/sqrt(pixelcorner%x**2 + pixelcorner%y**2 + pixelcorner%z**2))
+    do j = 1,npixels
+       if (j == 1) then 
+          pixelcorner = pixelcorner - imagebasis1
+       else
+          pixelcorner = pixelcorner - (imagebasis1 + dble(npixels)*imagebasis2)
+       endif
+       do i = 1,npixels
+          imagegrid(i,j) = PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,imagebasis1,imagebasis2,grid,thisMolecule,iTrans)
+          !imagegrid(i,j) = distancetogridfromoutside(grid,pixelcorner,viewvec) - dtgfo
+          pixelcorner = pixelcorner + 1.d0 * imagebasis2
+       enddo
+    enddo
+    max = MAXVAL(imagegrid(:,:))
+    imagegrid = imagegrid / max
+    !do i = 1,npixels
+       !imagediff(i,j) =
+    write(*,*) imagegrid
+stop
+end function makeImageGrid
+
+function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
+                          imagebasis1,imagebasis2,grid,thisMolecule,iTrans)&
+                          result(totalpixelintensity)
+
+    type(GRIDTYPE) :: grid
+    type(MOLECULETYPE) :: thisMolecule
+    integer :: itrans
+    type(OCTALVECTOR) :: viewVec
+    real(double) :: flux, i0, totalpixelintensity
+    type(OCTALVECTOR) :: imagebasis1, imagebasis2, pixelbasis1, pixelbasis2, pixelcorner, newposvec
+    integer :: nsubpixels
+    real(double),allocatable :: subpixelgrid(:,:),testgrid(:,:)
+    integer :: i,j
+    real(double) :: pixelside,subpixelsize,max
+    integer :: failed
+
+ !write(*,*) "Goto used!"
+700 allocate(subpixelgrid(1:nsubpixels,1:nsubpixels))
+    allocate(testgrid(0:nsubpixels,0:nsubpixels))
+    !write(*,*) "Allocated"
+    pixelbasis1 = imagebasis1 / dble(nsubpixels)
+    pixelbasis2 = imagebasis2 / dble(nsubpixels)
+    newposvec = pixelcorner + (pixelbasis1 + pixelbasis2) / 2.d0
+    subpixelsize = (pixelside/nsubpixels)**2
+    totalpixelintensity = 0.d0
+    
+    do j = 1,nsubpixels
+       if (j /= 1) then 
+          newposvec = newposvec - (pixelbasis1 + dble(nsubpixels)*pixelbasis2)
+       else
+          newposvec = newposvec - pixelbasis1 
+       endif
+       
+       do i = 1,nsubpixels
+          i0 = intensityalongray(newposvec,viewvec,grid,thisMolecule,iTrans,100000.d0)
+!          write(*,*) i,j,i0
+          subpixelgrid(i,j) = i0 / subpixelsize
+          totalpixelintensity = totalpixelintensity + subpixelgrid(i,j) ! assumes constant instrument function
+          newposvec = newposvec + pixelbasis2
+       enddo
+    enddo
+
+    max = maxval(subpixelgrid(:,:))
+    write(*,*) subpixelgrid
+    testgrid(1:nsubpixels,1:nsubpixels) = subpixelgrid / max
+    testgrid(0,1:nsubpixels) = testgrid(1,1:nsubpixels)
+    testgrid(1:nsubpixels,0) = testgrid(1:nsubpixels,1)
+!    write(*,*) "Break"
+
+    do i = 2,nsubpixels
+       do j = 2,nsubpixels
+          if(failed /= 1) then
+             if(testgrid(i,j) > 1.d-2) then
+                if((abs(testgrid(i-1,j) - testgrid(i,j)) > 0.02 .or. abs(testgrid(i,j-1) - testgrid(i,j)) > 0.02)) then 
+
+                   if(nsubpixels < 7) then 
+                      nsubpixels = nsubpixels * 2
+                   else
+                      failed = 1
+                      write(*,*) "Sad :( because",testgrid(i,j),testgrid(i-1,j),testgrid(i,j-1)
+                   endif
+                
+                write(*,*) testgrid(:,:)
+                !if(nsubpixels > 31) stop
+                write(*,*) "OMG!","Trying",nsubpixels,"subpixels"
+                write(*,*) i,j
+                deallocate(subpixelgrid)
+                deallocate(testgrid)
+                goto 700
+             endif
+          endif
+       endif
+    enddo
+ enddo
+       
+  end function PixelIntensity
   
   subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec, distance)
 !$MPI    include 'mpif.h'
@@ -1124,7 +1271,17 @@ contains
     integer :: nLambda
     real(double) :: flux, i0
     real(double), allocatable :: vArray(:), spec(:), tempArray(:)
-    integer :: iv1, iv2, i
+    integer :: iv1, iv2, i,j
+    integer :: npixels
+    type(OCTALVECTOR) :: posvec
+    real(double), allocatable :: image(:,:)
+    real(double) :: dtgfo,th,ph,j0
+    real(double) :: xview,yview,zview,imageside,pixelside
+    real(double) :: works(24,6,2)
+    real(double) :: distancetest, r1
+!    real(double) :: zval
+!    real(double) :: zrarray(1000000)
+    real(double) :: faraway
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   np             ! The number of processes
@@ -1139,6 +1296,77 @@ contains
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
+<<<<<<< molecular_mod.f90.raw
+!------------------------------------------------------------------------------
+! call random_number(th)
+ !   call random_number(ph)
+    posVec = randomUnitVector() ! look in vector_mod for this
+!------------------------------------------------------------------------------
+!    posVec = OCTALVECTOR(1.d0,0.5d0,3.d0)
+    call normalize(posvec)
+!    do i=1,1000000
+!       posvec = randomUnitVector()
+!       !posvec = OCTALVECTOR(0.d0,-1.d0,-3.D-1)
+!       viewVec = (-1.d0)*posVec
+
+
+!       posvec = posvec * distance
+!       r1 = distanceToGridFromOutside(grid, posvec, viewvec)
+!       !posVec = posvec  + (r1 * viewvec)
+!       !write(*,*) sqrt(posVec%x**2 + posVec%y**2),posVec%z
+!       zrarray(i) = distanceToGridFromOutside(grid, posvec, viewvec)
+!    enddo
+!do i = 1,1000000
+!   zval = zval + zrarray(i)
+!enddo
+!write(*,*) zval
+
+npixels = 3
+allocate(image(1:npixels,1:npixels))
+!do j=0,5
+!   do i=0,23
+!      
+!      posVec = OCTALVECTOR(cos((i/24.d0)*twopi),sin(((j+1)/6.d0)*pi),sin((i/24.d0)*twopi))
+
+!    th = i*15/180.d0
+!    ph = j*60/180.d0
+
+!    xview = cos(th*twopi)*cos(ph*twopi)
+!    yview = sin(ph*twopi)
+!    zview = sin(th*twopi)*cos(ph*twopi) 
+!    !write(*,*) th, ph
+!    !write(*,*) xview,yview,zview
+!    !write(*,*) xview**2+yview**2+zview**2
+!    posvec = OCTALVECTOR(xview,yview,zview)
+
+
+!      write(*,*) "THETA",i*15
+!      call normalize(posvec)
+      faraway = 5.d0*grid%octreeroot%subcellsize
+      write(*,*) faraway, "faraway"
+      image = makeImageGrid(posvec,npixels,1.d7,faraway,grid,thisMolecule,1)
+      !image = image/image(2,)
+!      works(i+1,j+1,1) = image(npixels/2,npixels/2) - image(npixels/2,npixels/2 - 1)
+!      works(i+1,j+1,2) = i*15
+!      !works(1) = image(4,4) - image(4,3)
+!      write(*,*) "end THETA",i*15
+!   enddo
+!enddo
+!   do i=0,23 
+!      write(*,*) works(i+1,1,1), works(i+1,2,1), works(i+1,1,2)
+!      write(*,*) works(i+1,3,1), works(i+1,4,1), works(i+1,1,2)
+!      write(*,*) works(i+1,5,1), works(i+1,6,1), works(i+1,1,2)
+!enddo
+
+!write(*,*) image
+open(41, file="mmm.csv",status="unknown",form="formatted")
+    do i = 1, npixels
+          write(41, *) image(i,:)
+       enddo
+    close(41)
+stop
+call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+=======
 
     do while (.true.)
        viewVec = randomUnitVector()
@@ -1149,8 +1377,9 @@ contains
     enddo
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+>>>>>>> 1.12
 
-    nLambda = 50
+    nLambda = 5 !Used to be 50
 
     iv1 = 1
     iv2 = nLambda
@@ -1164,14 +1393,17 @@ contains
     spec = 0.d0
     do iv = 1, nLambda
        vArray(iv) = 1.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda)-1.d0)
-    enddo
+ enddo
     do iv = iv1, iv2
        deltaV  = vArray(iv)
+       write(*,*) iv
        do iRay = 1, nRay
           i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisMolecule, iTrans, deltaV)
           spec(iv) = spec(iv) + i0  * domega(iRay) / sum(domega(1:nray))
        enddo
     enddo
+
+
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI     allocate(tempArray(1:nLambda))
 !$MPI       call MPI_ALLREDUCE(spec,tempArray,nLambda,MPI_DOUBLE_PRECISION,&
@@ -1200,11 +1432,12 @@ contains
     integer :: nr, nphi, ir, iphi
     real(double) :: r1 , r2, phi1, phi2, phiOffset
     real(double) :: xPos, yPos, zPos, cosInc, azimuth
-    
+
     rmax = 1.08d7
     nr = 100
     nphi = 10
     nray = 0
+
 
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
 
@@ -1290,7 +1523,6 @@ contains
     call normalize(xProj)
     yProj = viewVec .cross. xProj
     call normalize(yProj)
-
     ix1 = 1
     ix2 = cube%nx
  
@@ -1301,6 +1533,7 @@ contains
 
     do i = ix1, ix2
        write(*,*) i
+	write(*,*) "You are here"
        do j = 1, cube%ny
 
           do iMonte = 1, nMonte
