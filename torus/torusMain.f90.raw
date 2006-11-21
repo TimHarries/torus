@@ -2576,7 +2576,8 @@
 
      if (cmf) then
         call atomLoop(grid, 3, thisAtom, nsource, source)
-        call calculateAtomSpectrum(grid, thisAtom, 1, 4, OCTALVECTOR(1.d0, 0.d0, 0.d0), 100.d0*pctocm/1.d10)
+        call calculateAtomSpectrum(grid, thisAtom, 3, 1, 4, OCTALVECTOR(1.d0, 0.d0, 0.d0), 100.d0*pctocm/1.d10, &
+             source, nsource)
         stop
      endif
 

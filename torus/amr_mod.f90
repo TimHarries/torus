@@ -6719,7 +6719,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%rho(subcell) = 1.e-30
     thisOctal%temperature(subcell) = 1.e-3
     thisOctal%etaCont(subcell) = 1.e-30
-    thisOctal%inFlow(subcell) = .true.
+    thisOctal%inFlow(subcell) = .false.
     thisOctal%velocity = VECTOR(0.,0.,0.)
 
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
@@ -6731,6 +6731,7 @@ IF ( .NOT. gridConverged ) RETURN
        v = 10.d5+(vterm-10.d5)*(1.d0 - grid%rinner/r)
        thisOctal%microturb(subcell) = 10.d5/cspeed
        thisOctal%velocity(subcell) = rVec
+       thisOctal%inFlow(subcell) = .true.
        call normalize(thisOctal%velocity(subcell))
        thisOctal%velocity(subcell) = thisOctal%velocity(subcell) * real(v/cSpeed)
 
@@ -6846,6 +6847,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: v, r
     rVec = point
 
+    wrShellVelocity = OCTALVECTOR(0.d0, 0.d0, 0.d0)
     r = modulus(rVec)
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
 

@@ -3153,6 +3153,11 @@ contains
 
        if (cmf) then
           call writeDouble3D(thisOctal%atomLevel,fileFormatted)
+          if (fileformatted) then
+             write(unit=20,iostat=error,fmt=*) thisOctal%microturb
+          else
+             write(unit=20,iostat=error) thisOctal%microturb
+          endif
        endif
        
        if (thisOctal%nChildren > 0) then 
@@ -3373,6 +3378,12 @@ contains
 
        if (cmf) then
           call readDouble3D(thisOctal%atomLevel,fileFormatted)
+          if (fileformatted) then
+             read(unit=20,iostat=error,fmt=*) thisOctal%microturb
+          else
+             read(unit=20,iostat=error) thisOctal%microturb
+          endif
+
        endif
 
 

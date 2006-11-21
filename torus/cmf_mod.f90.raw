@@ -44,6 +44,9 @@ contains
     real(double) :: partitionFunc
     real(double) :: fac, rho
     real(double) :: prate, rrate, NstarRatio, totRecomb, totPHotoIon, totcion
+    real(double) :: tot1, tot2
+    real(double) :: nuStart
+    integer :: iStart
     integer :: iJnu
     integer :: nAtom, iAtom, nMatrix
     integer, allocatable :: nOffset(:)
@@ -117,8 +120,10 @@ contains
 
        ! recombination rates
 
-       totRecomb = 0.d0
        do iTrans = 1, thisAtom(iAtom)%nTrans
+          totRecomb = 0.d0
+          tot1 = 0.d0
+          tot2 = 0.d0
 
           k = thisAtom(iAtom)%iUpper(iTrans)
           l = thisAtom(iAtom)%iLower(iTrans)
@@ -127,7 +132,11 @@ contains
 
           if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! radiative recomb
              recombratekl = 0.d0
-             do i = 2, nFreq
+             nuStart = (thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(l))*evtoerg/hcgs
+
+             call locate(freq, nfreq, nuStart, istart)
+
+             do i = istart, nFreq
                 xSection = photoCrossSection(thisAtom(iAtom), l, freq(i))
                 recombRatekl = recombRatekl + &
                      (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
@@ -135,17 +144,30 @@ contains
              enddo
 
              matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + NstarRatio * recombratekl
-             totRecomb = totRecomb + NstarRatio * recombratekl
+             tot1 = tot1  + NstarRatio * recombratekl
+!             totRecomb = totRecomb + NstarRatio * recombratekl
           endif
           if (thisAtom(iAtom)%transType(iTrans) == "CBF") then ! collisional recomb
 
              collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
              matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + NstarRatio*collEx*ne
-             totRecomb = totRecomb  + NstarRatio*collEx*ne
+             tot2 = tot2 + NstarRatio*collEx*ne
+!             totRecomb = totRecomb  + NstarRatio*collEx*ne
           endif
+
+          totRecomb =  tot1 + tot2
+          matrixA(k+nOffset(iAtom), k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom), k+nOffset(iAtom))-totRecomb
+
+          if ((thisAtom(iAtom)%transType(iTrans) == "CBF").or.(thisAtom(iAtom)%transType(iTrans) == "RBF")) then
+             if (iAtom == 1) then
+                  write(*,*) "radiative",tot1,"collisional",tot2, &
+                  "nstarratio",boltzSahaGeneral(thisAtom(iAtom), 1, 1, ne, temperature)
+               endif
+          endif
+
        enddo
 
-       matrixA(k+nOffset(iAtom), k+nOffset(iAtom)) = -totRecomb
+
 
 
        lymanAlpha  = .false.
@@ -396,7 +418,6 @@ contains
        endPosition = currentPosition + tval * direction
        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
 
-       thisOctal%microTurb(subcell) = 10.d5/cspeed !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
@@ -660,6 +681,8 @@ contains
     integer, allocatable :: iseed(:)
     real(double) :: tolerance
     integer, allocatable :: sourceNumber(:)
+    type(OCTALVECTOR) :: posVec
+    real(double) :: r
     real(double), allocatable :: cosTheta(:)
     real(double), allocatable :: weight(:)
     logical, allocatable :: hitPhotosphere(:)
@@ -670,7 +693,7 @@ contains
     integer :: indexRBBTrans(1000), indexAtom(1000)
     real(double) :: nuStart, nuEnd, ne
     integer :: iAtom
-    integer :: nHAtom, nHeIAtom, nHeIIatom
+    integer :: nHAtom, nHeIAtom, nHeIIatom, ir
     real(double) :: xAbund, yAbund
     logical :: debug
 !$MPI    ! For MPI implementations
@@ -679,7 +702,7 @@ contains
 !$MPI    integer       ::   ierr           ! error flag
 !$MPI    logical       ::   rankComplete
 
-    debug = .false.
+    debug = .true.
 
     xAbund = 0.71d0
     yAbund = 0.27d0
@@ -698,7 +721,7 @@ contains
         end select
      enddo
 
-    nuStart = cSpeed / (100000.d0 * 1.d-8)
+    nuStart = cSpeed / (1000000.d0 * 1.d-8)
     nuEnd = cSpeed / (50.d0 * 1.d-8)
 
     nfreq = maxFreq
@@ -819,16 +842,23 @@ contains
 !$MPI   if (rankComplete) exit blockLoop 
 
 
-          do iOctal = ioctal_beg, ioctal_end
-             write(*,*) iOctal,iOctal_beg,iOctal_end
-             thisOctal => octalArray(iOctal)%content
-             do subcell = 1, thisOctal%maxChildren
+!          do iOctal = ioctal_beg, ioctal_end
+!             write(*,*) iOctal,iOctal_beg,iOctal_end
+!             thisOctal => octalArray(iOctal)%content
+!             do subcell = 1, thisOctal%maxChildren
+
+          open(31, file="r.dat",status="unknown",form="formatted")
+          do ir = 1, 20
+             r = log10(20.d0*rsol/1.d10) + (log10(200.d0*rSol/1.d10)-log10(20.d0*rsol/1.d10))*real(ir-1)/19.d0
+             r = 10.d0**r
+             posVec = OCTALVECTOR(r, 0.d0, 0.d0)
+             thisOctal => grid%octreeRoot
+             call findSubcellLocal(posVec, thisOctal, subcell)
 
                 if (.not.thisOctal%hasChild(subcell)) then
                    if ((modulus(subcellCentre(thisOctal,subcell))-sqrt(2.d0)*thisOctal%subcellSize/2.d0) &
                         > source(1)%radius) then
                       nHit = 0
-                      write(*,*) "getting rays"
                       do iRay = 1, nRay
                          call getRay(grid, thisOCtal, subcell, position, direction, &
                               ds(iRay), phi(iRay), i0(1:nRBBTrans,iRay), Hcol(iray), HeICol(iRay), HeIICol(iRay),&
@@ -836,7 +866,6 @@ contains
                               cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom, nHatom, nHeIAtom, nHeIIatom)
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
-                      write(*,*) "rays completed. hitphot frac (%)",100.*real(nHit)/real(nray)
                       iter = 0
                       popsConverged = .false.
                       thisOctal%newatomLevel(subcell,:, :) = thisOctal%atomLevel(subcell,:, :)
@@ -902,7 +931,7 @@ contains
 
                         
                         if (debug) then
-                           do iatom = 1, nAtom
+                           do iatom = 1, 1
                               write(*,*) "Atom: ",thisAtom(iatom)%name
                               do i = 1, thisAtom(iatom)%nLevels-1
                                  write(*,*) i,thisOctal%newAtomLevel(subcell,iatom,i),oldpops(iatom,i), &
@@ -932,9 +961,17 @@ contains
                       thisOctal%ne(subcell) = ne
                       write(*,*) "nIter",iter
                    endif
+
+
                 endif
+
+                write(31,*) r/(20.d0*rsol/1.d10), thisOctal%newAtomLevel(subcell,1,3), thisOctal%ne(subcell), &
+                     thisOctal%newAtomLevel(subcell,1,3)/thisOctal%ne(subcell)**2
              enddo
-          end do
+             close(31)
+             stop
+!             enddo
+!          end do
 
 !$MPI if (.not.blockHandout) exit blockloop
 !$MPI end do blockLoop        
@@ -1043,6 +1080,39 @@ contains
     enddo
   end subroutine swapPops
 
+  recursive  subroutine  calcEtaLine(thisOctal, thisAtom, nAtom, iAtom, iTrans)
+    type(GRIDTYPE) :: grid
+    type(MODELATOM) :: thisAtom(:)
+    integer :: nAtom
+    integer :: iTrans
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, iUpper,  j, iAtom
+    real(double) :: a, bul, blu
+    real(double) :: etaLine
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calcEtaLine(child, thisAtom, nAtom, iAtom, iTrans)
+                exit
+             end if
+          end do
+       else
+
+          call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
+          iUpper = thisAtom(iatom)%iUpper(iTrans)
+          etaLine = hCgs * a * thisAtom(iatom)%transFreq(iTrans)
+          etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
+          thisOctal%etaLine(subcell) = etaLine / thisOctal%rho(subcell)**2
+          
+       endif
+    enddo
+  end subroutine calcEtaLine
+
   recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans)
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
@@ -1105,7 +1175,7 @@ contains
     chanceSource = omegaSubtendedBySource / fourPi
 
     weight = 1.d0
-
+ 
     call random_number(r)
 
     if (r < probTowardsSource) then
@@ -1134,18 +1204,22 @@ contains
   end subroutine randomRayDirection
 
 
-  function intensityAlongRay(position, direction, grid, thisAtom, iAtom, iTrans, deltaV) result (i0)
-    type(OCTALVECTOR) :: position, direction, startPosition
+  function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource) result (i0)
+    type(OCTALVECTOR) :: position, direction, startPosition, pvec
     type(GRIDTYPE) :: grid
-    integer :: iAtom
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
+    integer :: iAtom, nAtom
     type(MODELATOM) :: thisAtom(:)
     real(double) :: disttoGrid
     integer :: itrans
+    real(double) :: totDist
+    logical :: hitSource
     real(double) :: i0
     type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
     integer :: fromSubcell
     integer :: subcell
-    real(double) :: ds, phi, r
+    real(double) :: ds, phi, r, costheta
     type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
     real(double) :: alphanu, snu, jnu
@@ -1162,11 +1236,12 @@ contains
     real(double) :: a, bul, blu
     integer :: nHatom,nHeIAtom, nHeIIAtom
     real(double) ::  dTauCont, HCol, HeICol, HeIICol
+    real(double) :: distToSource
+    integer :: sourcenumber
     real :: xH, XheI, xHeII
     logical :: firstSubcell
-    integer :: nAtom
+    logical :: endLoopAtPhotosphere
 
-    nAtom = size(thisAtom,1)
 
     nHAtom = 0
     nHeIAtom = 0
@@ -1190,6 +1265,21 @@ contains
 
     currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
 
+
+
+    totDist = 0.d0
+    call distanceToSource(source, nSource, currentposition, direction, hitSource, disttoSource, sourcenumber)
+
+   if (hitSource) then
+      pVec = (currentposition + (direction * distToSource) - source(sourceNumber)%position)
+      call normalize(pVec)
+      cosTheta = -1.d0*(pVec.dot.direction)
+   endif
+
+
+
+!    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
+!         inOctal(grid%octreeRoot, currentPosition),distTogrid
     i0 = 0.d0
     intensityIntegral = 0.0
     tau = 0.d0
@@ -1197,11 +1287,18 @@ contains
 
     thisOctal => grid%octreeRoot
     icount = 0
-    do while(inOctal(grid%octreeRoot, currentPosition))
+    endLoopAtPhotosphere = .false.
+    do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere))
        icount = icount + 1 
 
        call findSubcellLocal(currentPosition, thisOctal, subcell)
        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+
+
+       if ((totDist + tval) > distTosource) then
+          tVal = distToSource - totDist
+          endLoopAtPhotosphere = .true.
+       endif
 
 
        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
@@ -1210,7 +1307,6 @@ contains
 
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
 
-       thisOctal%microTurb(subcell) = 10.d5/cspeed !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
 
@@ -1218,13 +1314,15 @@ contains
        dv2 = abs(deltaV - (endVel .dot. direction))
 
        nTau = 2
-       
+!       if (dvacrosscell > 10.d0) then
+!          write(*,*) "dvacrosscell",dvacrosscell,dv1*cspeed/1.d5,dv2*cspeed/1.d5
+!          write(*,*) modulus(startVel)*cspeed/1.d5,modulus(endVel)*cspeed/1.d5, modulus(thisOctal%velocity(subcell))*cspeed/1.d5
+!       endif
+
        if (max(dv1,dv2) < 4.d0*thisOctal%microturb(subcell)) then
-          nTau = min(max(2, nint(dvAcrossCell * 5.d0)),200)
+          nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200)
        endif
 
-       nTau = max(2, nint(dvAcrossCell*10.d0))
-       ntau = 5
        distArray(1) = 0.d0
        do i = 2, nTau
 
@@ -1234,7 +1332,6 @@ contains
           thisPosition = currentPosition + distArray(i)*direction
           thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
           thisVel= thisVel - rayVel
-          thisOctal%microTurb(subcell) = 10.d5/cspeed !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 
           dv = (thisVel .dot. direction) + deltaV
@@ -1251,10 +1348,9 @@ contains
 
           nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
           nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
-
           alphanu = alphanu * (nLower * Blu - nUpper * Bul)
-!          write(*,*) "alph",alphanu, nlower,blu,nupper,bul
-!          write(*,*) thisOctal%atomLevel(subcell,1,1:6)
+
+!          write(*,*) modulus(currentPosition),nUpper
 
           dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
 
@@ -1284,6 +1380,7 @@ contains
           etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
           jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
 
+
           if (alphanu /= 0.d0) then
              snu = jnu/alphanu
           else
@@ -1292,22 +1389,33 @@ contains
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
           tau = tau + dtau
-
+!          write(*,*) "i0",i0,"tau",tau,"snu",snu
        enddo
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
+       totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
     enddo
+
+    if (endLoopAtPhotosphere) then
+!       write(*,*) "i0",i0,i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans))*cosTheta*exp(-tau),tau
+!       write(*,*) "pos",modulus(currentPosition)/source(1)%radius
+       i0 = i0 + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans))*cosTheta*exp(-tau)
+    endif
+
+!    write(*,*) "tau",tau,"deltav",deltaV*cspeed/1.d5
 
 666 continue 
 
   end function intensityAlongRay
 
   
-  subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iTrans, viewVec, distance)
+  subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource)
 !$MPI    include 'mpif.h'
 
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
-    integer :: nAtom
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
+    integer :: nAtom, iAtom
     real(double) :: distance
     integer :: itrans
     integer :: nRay
@@ -1334,9 +1442,15 @@ contains
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
+
+    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+    call plot_AMR_values(grid, "etaLine", "x-z", 0.,  &
+         "etaline.ps/vcps", .true., .false.)
+
+
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
-    nLambda = 50
+    nLambda = 100
 
     iv1 = 1
     iv2 = nLambda
@@ -1349,13 +1463,13 @@ contains
     allocate(spec(1:nLambda), vArray(1:nLambda))
     spec = 0.d0
     do iv = 1, nLambda
-       vArray(iv) = 4000.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
+       vArray(iv) = 2000.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
     enddo
     do iv = iv1, iv2
        deltaV  = vArray(iv)
        do iRay = 1, nRay
-          i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iTrans, deltaV)
-          spec(iv) = spec(iv) + i0  * domega(iRay) / sum(domega(1:nray))
+          i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource) !minus v 
+          spec(iv) = spec(iv) + i0 * domega(iRay) 
        enddo
     enddo
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
@@ -1387,8 +1501,8 @@ contains
     real(double) :: r1 , r2, phi1, phi2, phiOffset
     real(double) :: xPos, yPos, zPos, cosInc, azimuth
     
-    rmax = 2000.
-    nr = 100
+    rmax = 100.*rsol/1.d10
+    nr = 50
     nphi = 10
     nray = 0
 
@@ -1399,6 +1513,8 @@ contains
        r2 = log10(rmax) * dble(ir)/dble(nr)
        r1 = 10.d0**r1
        r2 = 10.d0**r2
+!       r1 = rMax * dble(ir-1)/dble(nr)
+!       r2 = rMax * dble(ir)/dble(nr)
        rgrid(ir) = 0.5d0 * (r1 + r2)
        dr(ir) = r2 - r1
     enddo
@@ -1428,7 +1544,7 @@ contains
 
           nRay = nRay + 1
          rayPosition(nray) =  (xPos * xProj) + (zPos * yProj)
-         rayposition(nray) = rayPosition(nRay) + ((-1.d0*distance) * viewVec)
+         rayposition(nray) = rayPosition(nRay) + ((-1.d0*grid%octreeRoot%subcellSize*10.d0) * viewVec)
 
           da(nRay) = pi*( (r1 + dr(ir)/2.d0)**2 - (r1 - dr(ir)/2.d0)**2) * dphi(iPhi)/twoPi
           dOmega(nRay) = da(nRay) / (fourPi * distance**2)

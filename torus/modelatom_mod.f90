@@ -246,6 +246,8 @@ contains
     select case(thisAtom%name)
        case("HI")
           photoCrossSection = annu_hyd(iLevel, nu)
+!          call phfit2(1,1,1,real(nu*hCgs*ergtoev), x)
+!          photoCrossSection  = x * 1.d-10
        case("HeI")
           call phfit2(2,2,1,real(nu*hCgs*ergtoev), x)
           photoCrossSection  = x * 1.d-10
