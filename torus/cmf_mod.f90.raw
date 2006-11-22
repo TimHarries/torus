@@ -45,7 +45,7 @@ contains
     real(double) :: fac, rho
     real(double) :: prate, rrate, NstarRatio, totRecomb, totPHotoIon, totcion
     real(double) :: tot1, tot2
-    real(double) :: nuStart
+    real(double) :: nuStart,thisFreq,test
     integer :: iStart
     integer :: iJnu
     integer :: nAtom, iAtom, nMatrix
@@ -134,25 +134,39 @@ contains
              recombratekl = 0.d0
              nuStart = (thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(l))*evtoerg/hcgs
 
+             call locate(freq, nfreq, cspeed/(6562.8d-8), istart)
+
              call locate(freq, nfreq, nuStart, istart)
 
-             do i = istart, nFreq
+             do i = istart+1, nFreq
                 xSection = photoCrossSection(thisAtom(iAtom), l, freq(i))
                 recombRatekl = recombRatekl + &
                      (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
                      exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
              enddo
 
+!             thisFreq = (thisAtom(iatom)%iPot-thisAtom(iAtom)%energy(l))*evtoerg/hcgs
+!             write(*,*) "thisFreq",thisFreq,thisFreq*hcgs*ergtoev
+!             xSection = photoCrossSection(thisAtom(iAtom), l, thisFreq*1.01d0)
+!             test = (8.d0*pi/cspeed**2) * xSection *thisFreq**3*expint(1,hcgs*thisFreq/(kerg*temperature))
+!             write(*,*) "test",l,test,recombratekl
+
+
+
              matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + NstarRatio * recombratekl
              tot1 = tot1  + NstarRatio * recombratekl
-!             totRecomb = totRecomb + NstarRatio * recombratekl
+
           endif
+
+
           if (thisAtom(iAtom)%transType(iTrans) == "CBF") then ! collisional recomb
 
              collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
+
+
              matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + NstarRatio*collEx*ne
              tot2 = tot2 + NstarRatio*collEx*ne
-!             totRecomb = totRecomb  + NstarRatio*collEx*ne
+
           endif
 
           totRecomb =  tot1 + tot2
@@ -294,13 +308,13 @@ contains
     deallocate(matrixA, matrixB)
 
 
-    if (debug) then
+!    if (debug) then
        do iAtom = 1, nAtom
           write(*,*) trim(thisAtom(iAtom)%name),SUM(nPops(iAtom,1:thisAtom(iAtom)%nLevels-1))
           write(*,*) trim(thisAtom(iAtom)%name)//"I",nPops(iAtom,thisAtom(iAtom)%nLevels)
        enddo
-       write(*,*) "Ne",ne
-    endif
+       write(*,*) "Ne",ne,rho/mhydrogen
+!    endif
 
   end subroutine solveLevels
 
@@ -693,7 +707,7 @@ contains
     integer :: indexRBBTrans(1000), indexAtom(1000)
     real(double) :: nuStart, nuEnd, ne
     integer :: iAtom
-    integer :: nHAtom, nHeIAtom, nHeIIatom, ir
+    integer :: nHAtom, nHeIAtom, nHeIIatom, ir, ifreq
     real(double) :: xAbund, yAbund
     logical :: debug
 !$MPI    ! For MPI implementations
@@ -721,8 +735,8 @@ contains
         end select
      enddo
 
-    nuStart = cSpeed / (1000000.d0 * 1.d-8)
-    nuEnd = cSpeed / (50.d0 * 1.d-8)
+    nuStart = cSpeed / (8.d5 * 1.d-8)
+    nuEnd = cSpeed / (162.d0 * 1.d-8)
 
     nfreq = maxFreq
     do i = 1, nFreq
@@ -778,7 +792,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 100
+    nRay = 1000
 
     do iStage = 1, 2
 
@@ -848,8 +862,8 @@ contains
 !             do subcell = 1, thisOctal%maxChildren
 
           open(31, file="r.dat",status="unknown",form="formatted")
-          do ir = 1, 20
-             r = log10(20.d0*rsol/1.d10) + (log10(200.d0*rSol/1.d10)-log10(20.d0*rsol/1.d10))*real(ir-1)/19.d0
+          do ir = 1, 50
+             r = log10(20.d0*rsol/1.d10) + (log10(200.d0*rSol/1.d10)-log10(20.d0*rsol/1.d10))*real(ir-1)/49.d0
              r = 10.d0**r
              posVec = OCTALVECTOR(r, 0.d0, 0.d0)
              thisOctal => grid%octreeRoot
@@ -877,7 +891,6 @@ contains
                          oldpops = thisOctal%newatomLevel(subcell,1:nAtom,1:)
                          call calculateJbarCont(nray, source, nSource, hitPhotosphere, sourceNumber, &
                               freq, nfreq, hCol, HeICol, HeIIcol, jnuCont, cosTheta, weight)
-
                          do iRBB = 1, nRBBTrans
                             iTrans = indexRBBTrans(iRBB)
                             iAtom =  indexAtom(iRBB)
@@ -965,8 +978,10 @@ contains
 
                 endif
 
-                write(31,*) r/(20.d0*rsol/1.d10), thisOctal%newAtomLevel(subcell,1,3), thisOctal%ne(subcell), &
-                     thisOctal%newAtomLevel(subcell,1,3)/thisOctal%ne(subcell)**2
+                call locate(freq,nfreq,cspeed/6562.8d-8,ifreq)
+                write(31,*) real(r*1.e10), real(thisOctal%ne(subcell)), real(thisOctal%newAtomLevel(subcell,1,1:6)),&
+                     real(jnuCont(ifreq))
+
              enddo
              close(31)
              stop

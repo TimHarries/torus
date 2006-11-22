@@ -644,4 +644,46 @@ contains
    end subroutine createRRBarrays
 
 
+  real(double) function oldcikt_ma(i,t, thisAtom) 
+    !
+    ! this function calculates the collisional ionization rate (see k&c and
+    ! mihalas 1967 (apj 149 169) ).
+    ! 
+    integer, intent(in)              :: i        ! the level
+    real(double),intent(in) :: t        ! the temperature
+    type(MODELATOM) :: thisAtom
+    real(double) :: crap
+    real(double) :: t1                  
+    real(double) :: gammait             ! see k&c
+    real(double) :: lgt
+    real(double) :: chi                 ! potential from i to k
+    ! making cint a PARAMETER may cause problems with XL Fortran
+    !  real(double) :: cint(5,10)
+    !  cint = reshape(source=                                                                   &
+    real(double), parameter :: cint(5,10) = reshape(source=                         &
+         (/-0.4350000e0_db, 0.3000000e00_db,0.0000000e0_db, 0.0000000e0_db,0.00000000e0_db,  &
+            1.9987261e1_db,-5.8906298e-5_db,0.0000000e0_db,-2.8185937e4_db,5.44441600e7_db,  &
+            1.3935312e3_db,-1.6805859e02_db,0.0000000e0_db,-2.5390000e3_db,0.00000000e0_db,  &
+            2.0684609e3_db,-3.3415820e02_db,0.0000000e0_db, 0.0000000e0_db,-7.6440625e3_db,  &
+            3.2174844e3_db,-5.5882422e02_db,0.0000000e0_db, 0.0000000e0_db,-6.8632500e3_db,  &
+            5.7591250e3_db,-1.5163125e03_db,8.1750000e1_db, 0.0000000e0_db,0.00000000e0_db,  &
+            1.4614750e4_db,-4.8283750e03_db,3.9335938e2_db, 0.0000000e0_db,0.00000000e0_db,  &
+            2.8279250e4_db,-1.0172750e04_db,9.1967968e2_db, 0.0000000e0_db,0.00000000e0_db,  &
+            4.6799250e4_db,-1.7627500e04_db,1.6742031e3_db, 0.0000000e0_db,0.00000000e0_db,  &
+           -7.4073000e4_db, 6.8599375e03_db,0.0000000e0_db, 2.0169800e5_db,0.00000000e0_db/),&
+                                                                             shape=(/5,10/))
+
+    t1 = min(t,1.5e5_db)
+    lgt=log10(t1)
+    if (i .ne. 2) then 
+       gammait=cint(1,i)+cint(2,i)*lgt+cint(3,i)*(lgt**2)+ &
+            (cint(4,i)/lgt)+(cint(5,i)/(lgt**2))
+    else
+       gammait=cint(1,i)+cint(2,i)*t1+(cint(4,i)/t1)+(cint(5,i)/t1**2)
+    endif
+    chi=hydE0eV-thisAtom%energy(i)
+    oldcikt_ma=(5.465e-11)*sqrt(t1)*exp(-chi/(kev*t1))*gammait
+
+  end function oldcikt_ma
+
 end module modelatom_mod

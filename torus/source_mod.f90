@@ -314,8 +314,8 @@ module source_mod
     lam = 1.d8 * cSpeed/ nu ! angs
     call locate(source%spectrum%lambda, source%spectrum%nLambda, lam, i)
     fLambda = source%spectrum%flux(i)
-    fnu = flambda * cSpeed/nu**2
-    i_nu = fnu / pi
+    fnu = flambda * (cSpeed*1.d8) /nu**2 ! 1.d8 to go from cm/s to angs/c
+    i_nu = 1.5d0 * fnu / pi
   end function I_nu
 
   end module source_mod
