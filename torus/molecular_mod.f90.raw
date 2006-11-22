@@ -343,11 +343,7 @@ contains
           l = thisMolecule%iCollLower(iPart, iTrans)
 
           boltzFac =  exp(-abs(thisMolecule%energy(k)-thisMolecule%energy(l)) / (kev*temperature))
-!<<<<<<< molecular_mod.f90.raw
           colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2! * (nh2 * thisMolecule%abundance)!!!! What's happened here?
-!=======
-          colldeEx = collRate(thisMolecule, temperature, iPart, iTrans) * nh2
-!>>>>>>> 1.10
           collEx = colldeEx * boltzFac * thisMolecule%g(k)/thisMolecule%g(l)
 
 
@@ -1263,7 +1259,7 @@ function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
     real(double) :: distance
     integer :: itrans
     integer :: nRay
-    type(OCTALVECTOR) :: rayPosition(5000), posVec
+    type(OCTALVECTOR) :: rayPosition(5000)
     real(double) :: da(5000), dOmega(5000), r
     type(OCTALVECTOR) :: viewVec
     real(double) :: deltaV
@@ -1296,7 +1292,6 @@ function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
-<<<<<<< molecular_mod.f90.raw
 !------------------------------------------------------------------------------
 ! call random_number(th)
  !   call random_number(ph)
@@ -1366,18 +1361,16 @@ open(41, file="mmm.csv",status="unknown",form="formatted")
     close(41)
 stop
 call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
-=======
 
-    do while (.true.)
-       viewVec = randomUnitVector()
-       posVec = (-distance)*viewVec
-       r = distanceToGridFromOutside(grid, posVec, viewVec)
-       posVec = posVec + r * viewVec
-       write(*,*) sqrt(posVec%x**2+posVec%y**2),posVec%z
-    enddo
+!    do while (.true.)
+!       viewVec = randomUnitVector()
+!       posVec = (-distance)*viewVec
+!       r = distanceToGridFromOutside(grid, posVec, viewVec)
+!       posVec = posVec + r * viewVec
+!       write(*,*) sqrt(posVec%x**2+posVec%y**2),posVec%z
+!    enddo
 
-    call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
->>>>>>> 1.12
+!    call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
     nLambda = 5 !Used to be 50
 
