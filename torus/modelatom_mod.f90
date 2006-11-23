@@ -492,7 +492,7 @@ contains
 
   end function cikt_hyd_hillier
 
-  real(double) pure function annu_hyd(n,nu)
+  real(double) function annu_hyd(n,nu)
     !
     ! this subroutine calculates the photoionization x-section
     ! for hydrogen from the n-th level for a given freq photon.
@@ -512,7 +512,7 @@ contains
     if (e > (hydE0eV - eTrans(n))) then
        annu_hyd=1.044e-26_db*gii(n,1.e0_db,lam)*(lam**3)/dble(n)**5
     else
-       annu_hyd = 1.e-30_db
+       annu_hyd = 1.e-50_db
     endif
 
   end function annu_hyd
@@ -584,7 +584,11 @@ contains
           u1 = 1.d0
           N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
           N1overN0 = (10.d0**N1overN0)/pe
+
+!          n1overn0 = (2.d0*u1)/(ne*u0) * ((twoPi * melectron * kerg * t)/(hCgs**2))**1.5d0 * exp(-thisAtom%iPot/(kev*t))
+
           ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
+
        case("HeI")
           u0 = 1.d0
           u1 = getUT(t, uCoeff(3,1:5))

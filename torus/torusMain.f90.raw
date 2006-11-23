@@ -451,7 +451,7 @@
 !$SPH  real*8 :: xgas,ygas,zgas
 !$SPH  real :: tgas
 
-  type(modelatom) :: thisAtom(3)
+  type(modelatom) :: thisAtom(1)
   type(TOPBASETYPE) :: thisBase
 
   
@@ -588,8 +588,8 @@
   endif
   if (cmf) then
      call readAtom(thisAtom(1),"H.atm")
-     call readAtom(thisAtom(2),"HeI.atm")
-     call readAtom(thisAtom(3),"HeII.atm")
+!     call readAtom(thisAtom(2),"HeI.atm")
+!     call readAtom(thisAtom(3),"HeII.atm")
   endif
 
 
@@ -2583,8 +2583,8 @@
      call random_seed
 
      if (cmf) then
-        call atomLoop(grid, 3, thisAtom, nsource, source)
-        call calculateAtomSpectrum(grid, thisAtom, 3, 1, 4, OCTALVECTOR(1.d0, 0.d0, 0.d0), 100.d0*pctocm/1.d10, &
+        call atomLoop(grid, 1, thisAtom, nsource, source)
+        call calculateAtomSpectrum(grid, thisAtom, 1, 1, 4, OCTALVECTOR(1.d0, 0.d0, 0.d0), 100.d0*pctocm/1.d10, &
              source, nsource)
         stop
      endif
