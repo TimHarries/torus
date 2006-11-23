@@ -12714,6 +12714,9 @@ IF ( .NOT. gridConverged ) RETURN
    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
    integer :: i,j
    logical :: ok, thisOk(6)
+   logical :: debug
+
+
 
     tval = HUGE(tval)
 
@@ -12832,28 +12835,35 @@ IF ( .NOT. gridConverged ) RETURN
          endif
 
          ! now do the upper and lower (z axis) surfaces
-      
 
          zHat = VECTOR(0.d0, 0.d0, 1.d0)
          compZ = zHat.dot.direction
          currentZ = point%z
-      
+
+         debug = .false.
+         if(debug) then
+            write(*,*) "subcen",subcen
+            write(*,*) "thisoctal%subcellsize",thisoctal%subcellsize
+            write(*,*) "point", point
+            write(*,*) "posvec", posvec
+            write(*,*) "direction",direction
+         endif
+
          if (compZ /= 0.d0 ) then
             if (compZ > 0.d0) then
-               distToZboundary = (subcen%z + thisOctal%subcellsize - currentZ ) / compZ
-               hitVec = posVec + disttoZboundary * direction
+               distToZboundary= (subcen%z - thisOctal%subcellsize - currentZ ) / compZ                              
+               hitVec = posvec + disttoZboundary * direction
                if (sqrt(hitVec%x**2 + hitVec%y**2) > gridRadius) distToZboundary = 1.d30
-
             else
-               distToZboundary = abs((subcen%z - thisOctal%subcellsize - currentZ ) / compZ)
-               hitVec = posVec + disttoZboundary * direction
+               distToZboundary = abs((subcen%z + thisOctal%subcellsize - currentZ ) / compZ)
+               hitVec = posvec + disttoZboundary * direction
                if (sqrt(hitVec%x**2 + hitVec%y**2) > gridRadius) distToZboundary = 1.d30
             endif
          else
             disttoZboundary = 1.e30
          endif
       
-        
+         write(*,*) "Dr",disttorboundary,"Dz",disttozboundary        
 
          tVal = min(distToZboundary, distToRboundary)
          if (tVal > 1.e29) then

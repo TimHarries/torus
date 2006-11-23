@@ -1142,6 +1142,17 @@ endif
  call getLogical("molecular", molecular, cLine, nLines, &
    "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
 
+ if (molecular) then
+   call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
+        "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+   call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
+        "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+   call getLogical("writelucy", writeLucy, cLine, nLines, &
+        "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("readlucy", readLucy, cLine, nLines, &
+          "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+endif
+
  call getLogical("cmf", cmf, cLine, nLines, &
    "Compute CMF statistical equailibrium: ","(a,1l,a)", .false., ok, .false.)
 

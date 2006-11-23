@@ -1166,6 +1166,14 @@
   if (gridUsesAMR) then  !========================================
   !===============================================================
 
+! below is really yucky code - please change me
+
+     if (molecular.and.readlucy) then
+        call readAMRgrid(lucyfilenamein,.false.,grid)
+        goto 667
+     endif
+
+
 !$MPI  if (my_rank==1) &
      call tune(6, "AMR grid construction.")  ! start a stopwatch
 

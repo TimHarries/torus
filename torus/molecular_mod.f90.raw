@@ -1037,10 +1037,14 @@ contains
     iLower = thisMolecule%iTransLower(iTrans)
     if (debug) write(*,*) "mod(direction)",modulus(direction)
     if (debug) write(*,*) "position",position
+    if (debug) write(*,*) "direction",direction
     if (debug) write(*,*) "disttogrid",disttogrid
-    if (debug) write(*,*) "halfsmallest",grid%halfSmallestSubcell
+
     currentPosition = position + (distToGrid + grid%halfSmallestSubcell) * direction
-    if (debug) write(*,*) "currentpos",currentPosition,sqrt(currentPosition%x**2 + currentPosition%y**2), &
+    if (debug) write(*,*) "currentposbef",currentPosition,sqrt(currentPosition%x**2 + currentPosition%y**2), currentposition%z
+    if (debug) write(*,*) "halfsmallest",grid%halfSmallestSubcell
+    currentPosition = position + (distToGrid + 20.d0 * grid%halfSmallestSubcell) * direction
+    if (debug) write(*,*) "currentposaft",currentPosition,sqrt(currentPosition%x**2 + currentPosition%y**2), &
          currentPosition%z
     i0 = 0.d0
     intensityIntegral = 0.0
@@ -1078,7 +1082,7 @@ contains
 
           alphanu = (hCgs*thisMolecule%transFreq(iTrans)/fourPi) * &
                phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans)
-
+          
           nLower = thisOctal%molecularLevel(subcell,iLower) * thisMolecule%abundance * thisOctal%nh2(subcell)
           nUpper = thisOctal%molecularLevel(subcell,iUpper) * thisMolecule%abundance * thisOctal%nh2(subcell)
 
@@ -1090,8 +1094,6 @@ contains
           etaLine = hCgs * thisMolecule%einsteinA(iTrans) * thisMolecule%transFreq(iTrans)
           etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * thisOctal%molecularLevel(subcell, iUpper)
           jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans)
-
-
           if (alphanu /= 0.d0) then
              snu = jnu/alphanu
           else
@@ -1208,7 +1210,7 @@ function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
        endif
        
        do i = 1,nsubpixels
-          i0 = intensityalongray(newposvec,viewvec,grid,thisMolecule,iTrans,100000.d0)
+          i0 = intensityalongray(newposvec,viewvec,grid,thisMolecule,1,0.d0)
 !          write(*,*) i,j,i0
           subpixelgrid(i,j) = i0 / subpixelsize
           totalpixelintensity = totalpixelintensity + subpixelgrid(i,j) ! assumes constant instrument function
