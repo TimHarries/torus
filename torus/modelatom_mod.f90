@@ -261,10 +261,11 @@ contains
    end function photoCrossSection
 
 
-  function collisionRate(thisAtom, iTrans, temperature) result(rate)
+  function collisionRate(thisAtom, iTrans, temperature,label) result(rate)
     type(MODELATOM) :: thisAtom
     integer :: iTrans
     real(double) :: temperature, ne, rate, u0, u1, u2
+    character(len=*), optional :: label
     real(double) :: logGamma
     real(double) :: sigma0
     real :: x

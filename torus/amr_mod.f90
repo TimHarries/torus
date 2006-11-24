@@ -4477,7 +4477,7 @@ IF ( .NOT. gridConverged ) RETURN
       end do
       rgrid(1:nr) = 10.d0**rgrid(1:nr)
       r = modulus(cellcentre)
-      if (thisOctal%nDepth < 6) split = .true.
+      if (thisOctal%nDepth < 4) split = .true.
       if ((r-cellsize/2.) < grid%rOuter) then
          call locate(rGrid, nr, r, i)      
          if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.

@@ -181,10 +181,8 @@ contains
           totRecomb =  tot1 + tot2
           matrixA(k+nOffset(iAtom), k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom), k+nOffset(iAtom))-totRecomb
 
-
        enddo
 
-       write(*,*) "recomb rad/coll",radtot*npops(1,k),colltot*npops(1,k)
 
 
 
@@ -197,7 +195,7 @@ contains
           k = thisAtom(iAtom)%iUpper(iTrans)
           l = thisAtom(iAtom)%iLower(iTrans)
 
-          if ((k == 2).and.(l == 1)) lymanAlpha = .true.
+
 
           if (thisAtom(iAtom)%transType(iTrans) == "RBB") then ! radiative BB rates
              iJnu = thisAtom(iAtom)%indexRBBTrans(iTrans)
@@ -205,16 +203,15 @@ contains
 
 
 
-             if ((k==3).and.(l==2)) write(*,*) "jnu(halpha): ",jnuLine(iJnu)
+             call locate(freq, nfreq, thisAtom(iatom)%transFreq(itrans), istart)
 
-             jnu = jNuLine(iJnu) * 1.d-10
+             jnu = jNuLine(iJnu)
 
-             if (.not.lymanAlpha) then
-                matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - Bul * jnu - a
-                matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - Blu * jnu
-                matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + Blu * jnu
-                matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + Bul * jnu + a
-             endif
+
+             matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - Bul * jnu - a
+             matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - Blu * jnu
+             matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + Blu * jnu
+             matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + Bul * jnu + a
 
           endif
 
@@ -256,7 +253,6 @@ contains
              matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - photoRatelk
              matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + photoRatelk
              totphotoion=totphotoion + photoRatelk*npops(iatom,l)
-
           endif
 
 
@@ -315,13 +311,13 @@ contains
     deallocate(matrixA, matrixB)
 
 
-!    if (debug) then
+    if (debug) then
        do iAtom = 1, nAtom
           write(*,*) trim(thisAtom(iAtom)%name),SUM(nPops(iAtom,1:thisAtom(iAtom)%nLevels-1))
           write(*,*) trim(thisAtom(iAtom)%name)//"I",nPops(iAtom,thisAtom(iAtom)%nLevels)
        enddo
        write(*,*) "Ne",ne,rho/mhydrogen
-!    endif
+    endif
 
   end subroutine solveLevels
 
@@ -728,7 +724,7 @@ contains
 !$MPI    integer       ::   ierr           ! error flag
 !$MPI    logical       ::   rankComplete
 
-    debug = .true.
+    debug = .false.
 
 !    xAbund = 0.71d0
 !    yAbund = 0.27d0
@@ -807,7 +803,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 1000
+    nRay = 100
 
     do iStage = 1, 2
 
@@ -871,18 +867,18 @@ contains
 !$MPI   if (rankComplete) exit blockLoop 
 
 
-!          do iOctal = ioctal_beg, ioctal_end
-!             write(*,*) iOctal,iOctal_beg,iOctal_end
-!             thisOctal => octalArray(iOctal)%content
-!             do subcell = 1, thisOctal%maxChildren
+          do iOctal = ioctal_beg, ioctal_end
+             write(*,*) iOctal,iOctal_beg,iOctal_end
+             thisOctal => octalArray(iOctal)%content
+             do subcell = 1, thisOctal%maxChildren
 
-          open(31, file="r.dat",status="unknown",form="formatted")
-          do ir = 1, 50
-             r = log10(20.d0*rsol/1.d10) + (log10(2000.d0*rSol/1.d10)-log10(20.d0*rsol/1.d10))*real(ir-1)/49.d0
-             r = 10.d0**r
-             posVec = OCTALVECTOR(r, 0.d0, 0.d0)
-             thisOctal => grid%octreeRoot
-             call findSubcellLocal(posVec, thisOctal, subcell)
+!          open(31, file="r.dat",status="unknown",form="formatted")
+!          do ir = 1, 50
+!             r = log10(20.d0*rsol/1.d10) + (log10(2000.d0*rSol/1.d10)-log10(20.d0*rsol/1.d10))*real(ir-1)/49.d0
+!             r = 10.d0**r
+!             posVec = OCTALVECTOR(r, 0.d0, 0.d0)
+!             thisOctal => grid%octreeRoot
+!             call findSubcellLocal(posVec, thisOctal, subcell)
 
                 if (.not.thisOctal%hasChild(subcell)) then
                    if ((modulus(subcellCentre(thisOctal,subcell))-sqrt(2.d0)*thisOctal%subcellSize/2.d0) &
@@ -895,7 +891,6 @@ contains
                               cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom, nHatom, nHeIAtom, nHeIIatom)
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
-                      write(*,*) "sum of weights: ",SUM(weight(1:nRay))
                       iter = 0
                       popsConverged = .false.
                       thisOctal%newatomLevel(subcell,:, :) = thisOctal%atomLevel(subcell,:, :)
@@ -992,24 +987,24 @@ contains
                          endif
                       enddo
                       thisOctal%ne(subcell) = ne
-                      write(*,*) "nIter",iter
                    endif
 
 
                 endif
 
-                call locate(freq,nfreq,cspeed/6562.8d-8,ifreq)
-                nStar = boltzSahaGeneral(thisAtom(1), 1, 6, thisOctal%ne(subcell), &
-                     dble(thisOctal%temperature(subcell))) * &
-                     thisOctal%newAtomLevel(subcell, 1, thisAtom(1)%nLevels)
-                write(31,*) real(r*1.e10), real(thisOctal%ne(subcell)), real(thisOctal%newAtomLevel(subcell,1,1:6)),&
-                     real(jnuCont(ifreq)),real(nstar)
+!                call locate(freq,nfreq,cspeed/6562.8d-8,ifreq)
+!                nStar = boltzSahaGeneral(thisAtom(1), 1, 6, thisOctal%ne(subcell), &
+!                     dble(thisOctal%temperature(subcell))) * &
+!                     thisOctal%newAtomLevel(subcell, 1, thisAtom(1)%nLevels)
+!                write(31,*) real(r*1.e10), real(thisOctal%ne(subcell)), real(thisOctal%newAtomLevel(subcell,1,1:6)),&
+!                     real(jnuCont(ifreq)),real(nstar)
+
+!             enddo
+!             close(31)
+!             stop
 
              enddo
-             close(31)
-             stop
-!             enddo
-!          end do
+          end do
 
 !$MPI if (.not.blockHandout) exit blockloop
 !$MPI end do blockLoop        
