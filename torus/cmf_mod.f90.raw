@@ -842,6 +842,7 @@ contains
           ! default loop indecies
           ioctal_beg = 1
           ioctal_end = SIZE(octalArray)       
+
           
 
 
@@ -1139,8 +1140,9 @@ contains
           call returnEinsteinCoeffs(thisAtom(iatom), iTrans, a, Bul, Blu)
           iUpper = thisAtom(iatom)%iUpper(iTrans)
           etaLine = hCgs * a * thisAtom(iatom)%transFreq(iTrans)
-          etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
-          thisOctal%etaLine(subcell) = etaLine / thisOctal%rho(subcell)**2
+          etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom,iUpper)
+	  
+          thisOctal%etaLine(subcell) = etaLine 
           
        endif
     enddo
@@ -1541,8 +1543,8 @@ contains
     real(double) :: xPos, yPos, zPos, cosInc, azimuth
     
     rmax = 100.*rsol/1.d10
-    nr = 50
-    nphi = 10
+    nr = 100
+    nphi = 20
     nray = 0
 
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))

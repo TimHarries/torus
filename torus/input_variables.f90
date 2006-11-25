@@ -197,7 +197,9 @@ module input_variables
   real :: sigma0
   real :: rMin, rMaj
   real :: shellFrac
-  real :: Teff
+  real :: Teff, Teff1, Teff2
+  real :: rstar1, rstar2 
+  real :: mdot1, mdot2
   real :: Mbol
   real :: radius, kfac, xfac
   real :: contrast
@@ -255,7 +257,7 @@ module input_variables
 
   character(len=80) :: misc
 
-  character(len=80) :: contFluxFile, contFluxFile2
+  character(len=80) :: contFluxFile, contFluxFile1, contFluxFile2
   real :: phaseOffset
   logical :: lineOff
   real :: logMassLossRate
@@ -283,7 +285,6 @@ module input_variables
   real :: beta1, beta2
   real :: vTerm1 , vTerm2
   real :: radius1, radius2
-  real :: mdot1, mdot2
   logical :: readPops, writePops
   logical :: readPhasePops, writePhasePops
   logical :: readLucy, writeLucy

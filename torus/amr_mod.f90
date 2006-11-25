@@ -6704,6 +6704,79 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%etaLine = 1.e-30
   end subroutine calcProtoDensity
 
+
+  subroutine calcGammaVel(thisOctal, subcell, grid)
+    use input_variables
+    type(OCTAL), pointer :: thisOctal
+    type(GRIDTYPE) :: grid
+    real :: massRatio
+    integer :: subcell
+    integer, parameter :: nsteps = 1000
+    real :: ydist(nSteps), xDist(nSteps)
+    type(VECTOR) :: direction(nSteps)
+
+    massRatio = mass1/mass2
+
+    d1 = binarySep * (1./(massRatio+1.))
+    d2 = binarySep - d1
+
+    momRatio = (mdot1 * vterm1) / (mdot2 * vterm2)
+
+    write(*,'(a,f8.1)') "Wind momentum ratio: ", momRatio
+
+    curlyR = sqrt(momRatio)         ! = d1/d2 (Equ 1.) 
+    ! Stevens, Blondin & Pollock 1992
+    ! ApJ 386 265
+
+    stagPoint = binarySep * sqrt(momRatio) / (1. + sqrt(momRatio))
+
+    stagVec = VECTOR(0.,0.,-d1) + VECTOR(0., 0., stagPoint)
+
+    shockDirection = VECTOR(0.,0.,0.)
+
+
+    dx = (grid%octreeRoot%subcellSize%z-stagVec%z)/real(nsteps)
+    yDist(1) = dx*10.
+    xDist(1) = stagVec%z 
+    direction(1) = VECTOR(0.,1.,0.)
+    do j = 2,nsteps
+       xDist(j) = stagVec%z + real(j-1)*(grid%octreeroot%subcellsize%z-stagVec%z)/real(nSteps-1)
+       d1 = sqrt((xDist(j-1) + d1)**2 + yDist(j-1)**2)
+       d2 = sqrt((xDist(j-1) - d2)**2 + yDist(j-1)**2)
+
+       dybydx = ((curlyR*d2**2 + d1**2)*yDist(j-1)) / &
+            (curlyR *d2**2*(xDist(j-1)+d1) + d1**2*(xDist(j-1)-d2))
+
+       yDist(j) = yDist(j-1) + dx * dyBydx
+
+       direction(j) = VECTOR(dx,dybydx,0.)
+       call normalize(direction(j))
+    enddo
+
+    rVec = subcellCentre(thisOctal, subcell)
+    
+
+    call locate(xDist, nSteps, real(rVec%z), i)
+    if (rvec%y < ydist(i)) then
+       r = modulus(rVec - VECTOR(0.d0, 0.d0, -d1))
+       if (r > rStar1) then
+          v = 10.d5 + (vterm1-10.d5)*(1.d0 - rstar1/r)
+          thisOctal%rho(subcell) = mdot1 / (fourPi * r**2 * v)
+       endif
+    else
+       r = modulus(rVec - VECTOR(0.d0, 0.d0, +d2))
+       if (r > rStar2) then
+          v = 10.d5 + (vterm2-10.d5)*(1.d0 - rstar2/r)
+          thisOctal%rho(subcell) = mdot2 / (fourPi * r**2 * v)
+       endif
+    endif
+  end subroutine calcGammaVel
+
+    
+
+
+
+
   subroutine calcWRShellDensity(thisOctal,subcell,grid)
 
     use input_variables
@@ -12863,7 +12936,7 @@ IF ( .NOT. gridConverged ) RETURN
             disttoZboundary = 1.e30
          endif
       
-         write(*,*) "Dr",disttorboundary,"Dz",disttozboundary        
+!         write(*,*) "Dr",disttorboundary,"Dz",disttozboundary        
 
          tVal = min(distToZboundary, distToRboundary)
          if (tVal > 1.e29) then

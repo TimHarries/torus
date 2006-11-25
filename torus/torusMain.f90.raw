@@ -1180,10 +1180,10 @@
 !     call readAMRgrid("molecular_tmp.grid",.false.,grid)
 !     goto 667
 
-!     if (cmf) then
-!        call readAMRgrid("atom_tmp.grid",.false.,grid)
-!        goto 665
-!     endif
+     if (cmf) then
+        call readAMRgrid("atom_tmp.grid",.false.,grid)
+        goto 665
+     endif
 
      if (readPops .or. readPhasePops .or. readLucy) then 
 
@@ -2448,6 +2448,44 @@
        endif
        call normalizedSpectrum(source(1)%spectrum)
 
+    case("gammavel")
+       nSource = 2
+       allocate(source(1:2))
+
+
+       massRatio = mass1/mass2
+
+       d1 = binarySep * (1./(massRatio+1.))
+       d2 = binarySep - d1
+
+! source 1 is the WR star
+       source(1)%radius = rstar1
+       source(1)%teff = teff1
+       source(1)%position = VECTOR(0.,0.,-d1)
+       tmp = source(1)%radius * 1.e10  ! [cm]
+       source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
+       if (contFluxfile1 .eq. "blackbody") then
+          call fillSpectrumBB(source(1)%spectrum, dble(teff), &
+               dble(lamStart), dble(lamEnd),nLambda)
+       else
+          call readSpectrum(source(1)%spectrum, contfluxfile1, ok)
+       endif
+       call normalizedSpectrum(source(1)%spectrum)
+
+! source 2 is the WR star
+       source(2)%radius = rstar2
+       source(2)%teff = teff2
+       source(2)%position = VECTOR(0.,0.,d2)
+       tmp = source(2)%radius * 1.e10  ! [cm]
+       source(2)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(2)%teff)**4
+       if (contFluxfile2 .eq. "blackbody") then
+          call fillSpectrumBB(source(1)%spectrum, dble(teff), &
+               dble(lamStart), dble(lamEnd),nLambda)
+       else
+          call readSpectrum(source(1)%spectrum, contfluxfile2, ok)
+       endif
+       call normalizedSpectrum(source(2)%spectrum)
+
     ! chris (26/05/04)
     case ("ppdisk")
        nSource = 1
@@ -2583,7 +2621,7 @@
      call random_seed
 
      if (cmf) then
-        call atomLoop(grid, 1, thisAtom, nsource, source)
+!        call atomLoop(grid, 1, thisAtom, nsource, source)
         call calculateAtomSpectrum(grid, thisAtom, 1, 1, 4, OCTALVECTOR(1.d0, 0.d0, 0.d0), 100.d0*pctocm/1.d10, &
              source, nsource)
         stop
