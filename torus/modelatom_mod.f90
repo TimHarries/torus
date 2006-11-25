@@ -588,7 +588,11 @@ contains
 
 !          n1overn0 = (2.d0*u1)/(ne*u0) * ((twoPi * melectron * kerg * t)/(hCgs**2))**1.5d0 * exp(-thisAtom%iPot/(kev*t))
 
-          ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
+          if (N1overN0 /= 0.d0) then
+             ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
+          else
+             ratio = 1.d10
+          endif
 
        case("HeI")
           u0 = 1.d0
