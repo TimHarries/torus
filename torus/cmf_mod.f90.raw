@@ -882,8 +882,7 @@ contains
 !             call findSubcellLocal(posVec, thisOctal, subcell)
 
                 if (.not.thisOctal%hasChild(subcell)) then
-                   if ((modulus(subcellCentre(thisOctal,subcell))-sqrt(2.d0)*thisOctal%subcellSize/2.d0) &
-                        > source(1)%radius) then
+                   if (thisOctal%inflow(subcell)) then
                       nHit = 0
                       do iRay = 1, nRay
                          call getRay(grid, thisOCtal, subcell, position, direction, &

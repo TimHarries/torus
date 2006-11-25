@@ -689,6 +689,9 @@ contains
        grid%rOuter = rOuter
        grid%rCore = rCore
 
+    case("gammavel")
+       grid%geometry = "gammavel"
+
 
     case DEFAULT
        print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'

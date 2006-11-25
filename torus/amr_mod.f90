@@ -149,6 +149,9 @@ CONTAINS
     CASE("wrshell")
        CALL calcWRShellDensity(thisOctal,subcell,grid)
 
+    CASE("gammavel")
+       CALL calcGammaVel(thisOctal,subcell,grid)
+
     CASE ("spiralwind")
        CALL spiralWindSubcell(thisOctal, subcell ,grid)
        
@@ -757,6 +760,7 @@ CONTAINS
 
     IMPLICIT NONE
 
+
     TYPE(OCTAL), intent(inout) :: thisOctal
 !    TYPE(OCTAL), POINTER :: thisOctal
     real(double), INTENT(IN) :: amrLimitScalar, amrLimitScalar2 
@@ -1035,7 +1039,7 @@ CONTAINS
 
       CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
            "lexington", "warpeddisc", "whitney","fractal","symbiotic", "starburst", &
-           "molebench")
+           "molebench","gammavel")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104")
@@ -4239,7 +4243,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, rsmooth
-    use input_variables, only: rGap, gapWidth
+    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep
     IMPLICIT NONE
     TYPE(octal), intent(inout) :: thisOctal
 !    TYPE(octal), POINTER       :: thisOctal
@@ -4251,7 +4255,8 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(cluster), OPTIONAL, intent(in) :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     !
-    LOGICAL                    :: split          
+    LOGICAL                    :: split        
+    real(double) :: massratio, d1, d2
     real(oct)  :: cellSize
     TYPE(octalVector)     :: searchPoint, rVec
     TYPE(octalVector)     :: cellCentre
@@ -4451,6 +4456,38 @@ IF ( .NOT. gridConverged ) RETURN
       else
          split = .false.
       endif
+
+   case("gammavel")
+
+      if (thisOctal%nDepth < 6) then
+         split = .true.
+      else
+         split = .false.
+      endif
+      massRatio = mass1/mass2
+      
+      d1 = binarySep * (1./(massRatio+1.))
+      d2 = binarySep - d1
+
+      rVec = subcellCentre(thisOctal,subcell)
+
+      do i = 1, 100
+         rgrid(i) = log10(0.9d0) + (log10(100.d0) - log10(0.9d0))*dble(i-1)/99.d0
+      enddo
+      rgrid(1:100) = 10.d0**rgrid(1:100)
+
+      r = modulus(rVec - OCTALVECTOR(0.d0,0.d0,-d1))/rstar1
+      if ((r > rgrid(1)).and.(r<rgrid(99))) then
+         call locate(rgrid,100,r,i)
+         if (thisOctal%subcellsize/rstar1 > (rgrid(i+1)-rgrid(i))) split = .true.
+      endif
+
+      r = modulus(rVec - OCTALVECTOR(0.d0,0.d0,d2))/rstar2
+      if ((r > rgrid(1)).and.(r<rgrid(99))) then
+         call locate(rgrid,100,r,i)
+         if (thisOctal%subcellsize/rstar2 > (rgrid(i+1)-rgrid(i))) split = .true.
+      endif
+
 
 
    case ("testamr","proto","wrshell")
@@ -6707,13 +6744,20 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine calcGammaVel(thisOctal, subcell, grid)
     use input_variables
-    type(OCTAL), pointer :: thisOctal
+    type(OCTAL) :: thisOctal
     type(GRIDTYPE) :: grid
-    real :: massRatio
     integer :: subcell
+    real :: massRatio
     integer, parameter :: nsteps = 1000
     real :: ydist(nSteps), xDist(nSteps)
-    type(VECTOR) :: direction(nSteps)
+    real :: d1, d2, curlyR, dx, dybydx, ddash1, ddash2
+    type(VECTOR) :: direction(nSteps), stagVec, shockdirection
+    type(OCTALVECTOR) :: rvec,direction2
+    real :: stagpoint
+    real :: v, r
+    integer :: i, j
+
+    thisOctal%inflow(subcell) = .true.
 
     massRatio = mass1/mass2
 
@@ -6721,8 +6765,6 @@ IF ( .NOT. gridConverged ) RETURN
     d2 = binarySep - d1
 
     momRatio = (mdot1 * vterm1) / (mdot2 * vterm2)
-
-    write(*,'(a,f8.1)') "Wind momentum ratio: ", momRatio
 
     curlyR = sqrt(momRatio)         ! = d1/d2 (Equ 1.) 
     ! Stevens, Blondin & Pollock 1992
@@ -6735,17 +6777,17 @@ IF ( .NOT. gridConverged ) RETURN
     shockDirection = VECTOR(0.,0.,0.)
 
 
-    dx = (grid%octreeRoot%subcellSize%z-stagVec%z)/real(nsteps)
+    dx = (grid%octreeRoot%subcellSize-stagVec%z)/real(nsteps)
     yDist(1) = dx*10.
     xDist(1) = stagVec%z 
     direction(1) = VECTOR(0.,1.,0.)
     do j = 2,nsteps
-       xDist(j) = stagVec%z + real(j-1)*(grid%octreeroot%subcellsize%z-stagVec%z)/real(nSteps-1)
-       d1 = sqrt((xDist(j-1) + d1)**2 + yDist(j-1)**2)
-       d2 = sqrt((xDist(j-1) - d2)**2 + yDist(j-1)**2)
+       xDist(j) = stagVec%z + real(j-1)*(grid%octreeroot%subcellsize-stagVec%z)/real(nSteps-1)
+       ddash1 = sqrt((xDist(j-1) + d1)**2 + yDist(j-1)**2)
+       ddash2 = sqrt((xDist(j-1) - d2)**2 + yDist(j-1)**2)
 
-       dybydx = ((curlyR*d2**2 + d1**2)*yDist(j-1)) / &
-            (curlyR *d2**2*(xDist(j-1)+d1) + d1**2*(xDist(j-1)-d2))
+       dybydx = ((curlyR*ddash2**2 + ddash1**2)*yDist(j-1)) / &
+            (curlyR *ddash2**2*(xDist(j-1)+d1) + ddash1**2*(xDist(j-1)-d2))
 
        yDist(j) = yDist(j-1) + dx * dyBydx
 
@@ -6756,23 +6798,146 @@ IF ( .NOT. gridConverged ) RETURN
     rVec = subcellCentre(thisOctal, subcell)
     
 
-    call locate(xDist, nSteps, real(rVec%z), i)
-    if (rvec%y < ydist(i)) then
-       r = modulus(rVec - VECTOR(0.d0, 0.d0, -d1))
-       if (r > rStar1) then
-          v = 10.d5 + (vterm1-10.d5)*(1.d0 - rstar1/r)
-          thisOctal%rho(subcell) = mdot1 / (fourPi * r**2 * v)
+    if (rVec%z > xDist(1)) then
+       call locate(xDist, nSteps, real(rVec%z), i)
+       if (rvec%x > ydist(i)) then
+          direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+          call normalize(direction2)
+          r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+          if (r > rStar1) then
+             v = vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1
+             thisOctal%rho(subcell) = mdot1 / (fourPi * (r*1.d10)**2 * v)
+             thisOctal%temperature(subcell) = 0.9d0 * teff1
+             thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
+          endif
+       else
+          direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
+          call normalize(direction2)
+          r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
+          if (r > rStar2) then
+             v = vNought2 + (vterm2-vNought2)*(1.d0 - rstar2/r)**beta2
+             thisOctal%rho(subcell) = mdot2 / (fourPi * (r*1.d10)**2 * v)
+             thisOctal%temperature(subcell) = 0.9d0 * teff2
+             thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
+          endif
        endif
     else
-       r = modulus(rVec - VECTOR(0.d0, 0.d0, +d2))
-       if (r > rStar2) then
-          v = 10.d5 + (vterm2-10.d5)*(1.d0 - rstar2/r)
-          thisOctal%rho(subcell) = mdot2 / (fourPi * r**2 * v)
+       direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+       call normalize(direction2)
+       r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+       if (r > rStar1) then
+          v = vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1
+          thisOctal%rho(subcell) = mdot1 / (fourPi * (r*1.d10)**2 * v)
+          thisOctal%temperature(subcell) = 0.9d0 * teff1
+          thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
        endif
     endif
+
+
+    thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/mhydrogen)/cspeed
+
+    r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+    if (r < rStar1) thisOctal%inflow(subcell) = .false.
+    r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
+    if (r < rStar2) thisOctal%inflow(subcell) = .false.
+
+    CALL fillVelocityCorners(thisOctal,grid,gammaVelVelocity,thisOctal%threed)
+
   end subroutine calcGammaVel
 
     
+  TYPE(vector)  function gammaVelVelocity(point, grid)
+    use input_variables, only : vnought1, vnought2, vterm1, vterm2, beta1, beta2
+    use input_variables, only : rstar1, rstar2, mass1, mass2, mdot1, mdot2, binarySep
+
+    type(octalvector), intent(in) :: point
+    type(octalvector) :: rvec
+    type(GRIDTYPE), intent(in) :: grid
+    real(double) :: v, r
+    real :: massRatio
+    integer, parameter :: nsteps = 1000
+    real :: ydist(nSteps), xDist(nSteps)
+    real :: d1, d2, curlyR, dx, dybydx, ddash1, ddash2
+    real(double) :: momRatio
+    type(VECTOR) :: direction(nSteps), stagVec, shockdirection
+    type(OCTALVECTOR) :: direction2
+    real :: stagpoint
+    integer :: i, j
+
+
+    rVec = point
+
+    gammaVelVelocity = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+    r = modulus(rVec)
+
+    massRatio = mass1/mass2
+
+    d1 = binarySep * (1./(massRatio+1.))
+    d2 = binarySep - d1
+
+    momRatio = (mdot1 * vterm1) / (mdot2 * vterm2)
+
+    curlyR = sqrt(momRatio)         ! = d1/d2 (Equ 1.) 
+    ! Stevens, Blondin & Pollock 1992
+    ! ApJ 386 265
+
+    stagPoint = binarySep * sqrt(momRatio) / (1. + sqrt(momRatio))
+
+    stagVec = VECTOR(0.,0.,-d1) + VECTOR(0., 0., stagPoint)
+
+    shockDirection = VECTOR(0.,0.,0.)
+
+
+    dx = (grid%octreeRoot%subcellSize-stagVec%z)/real(nsteps)
+    yDist(1) = dx*10.
+    xDist(1) = stagVec%z 
+    direction(1) = VECTOR(0.,1.,0.)
+    do j = 2,nsteps
+       xDist(j) = stagVec%z + real(j-1)*(grid%octreeroot%subcellsize-stagVec%z)/real(nSteps-1)
+       ddash1 = sqrt((xDist(j-1) + d1)**2 + yDist(j-1)**2)
+       ddash2 = sqrt((xDist(j-1) - d2)**2 + yDist(j-1)**2)
+
+       dybydx = ((curlyR*ddash2**2 + ddash1**2)*yDist(j-1)) / &
+            (curlyR *ddash2**2*(xDist(j-1)+d1) + ddash1**2*(xDist(j-1)-d2))
+
+       yDist(j) = yDist(j-1) + dx * dyBydx
+
+       direction(j) = VECTOR(dx,dybydx,0.)
+       call normalize(direction(j))
+    enddo
+
+   
+    if (rVec%z > xDist(1)) then
+       call locate(xDist, nSteps, real(rVec%z), i)
+       if (rvec%x > ydist(i)) then
+          direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+          call normalize(direction2)
+          r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+          if (r > rStar1) then
+             v = vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1
+             gammaVelVelocity = dble(v/cspeed) * direction2
+          endif
+       else
+          direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
+          call normalize(direction2)
+          r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
+          if (r > rStar2) then
+             v = vNought2 + (vterm2-vNought2)*(1.d0 - rstar2/r)**beta2
+             gammaVelVelocity = dble(v/cspeed) * direction2
+          endif
+       endif
+    else
+       direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+       call normalize(direction2)
+       r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
+       if (r > rStar1) then
+          v = vNought1 + (vterm1-vNought1)*(1.d0 - rstar1/r)**beta1
+          gammaVelVelocity = dble(v/cspeed) * direction2
+       endif
+    endif
+
+
+  end function gammaVelVelocity
 
 
 
@@ -10062,7 +10227,6 @@ IF ( .NOT. gridConverged ) RETURN
       TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal
       TYPE(octal), POINTER :: thisChild
       logical :: splitInAzimuth
-
       INTEGER :: iChild, iSubcell
 
       DO iChild = 1, thisOctal%nChildren, 1

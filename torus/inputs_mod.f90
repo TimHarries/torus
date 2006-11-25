@@ -545,7 +545,7 @@ subroutine inputs()
    call getReal("radius1", radius1, cLine, nLines, &
         "Primary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
    call getReal("mdot1", mdot1, cLine, nLines, &
-        "Primary log mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
+        "Primary mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
    call getReal("temp1", temp1, cLine, nLines, &
         "Primary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
    call getReal("v01", vNought1, cLine, nLines, &
@@ -563,7 +563,7 @@ subroutine inputs()
    call getReal("radius2", radius2, cLine, nLines, &
         "Secondary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
    call getReal("mdot2", mdot2, cLine, nLines, &
-        "Secondary log mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
+        "Secondary mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
    call getReal("temp2", temp2, cLine, nLines, &
         "Secondary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
    call getReal("v02", vNought2, cLine, nLines, &
@@ -613,13 +613,80 @@ subroutine inputs()
    vNought2 = vNought2 * 1.e5 
    vterm1 = vterm1 * 1.e5
    vterm2 = vterm2 * 1.e5
-   mdot1 = (10.**mdot1)*msol/(365.25*24.*3600.)
-   mdot2 = (10.**mdot2)*msol/(365.25*24.*3600.)
+   mdot1 = 10.**mdot1*msol/(365.25*24.*3600.)
+   mdot2 = 10.**mdot2*msol/(365.25*24.*3600.)
    deflectionAngle = deflectionAngle * degTorad
 
 
    call getReal("rho", rho, cLine, nLines, &
         "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 0., ok, .false.)
+endif
+
+  if (geometry.eq."gammavel") then
+
+   call getReal("mass1", mass1, cLine, nLines, &
+        "Primary mass (msol): ","(a,f5.1,a)", 1., ok, .true.)
+   call getReal("rstar1", rstar1, cLine, nLines, &
+        "Primary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
+   call getReal("mdot1", mdot1, cLine, nLines, &
+        "Primary log mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
+   call getReal("teff1", teff1, cLine, nLines, &
+        "Primary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+   call getReal("v01", vNought1, cLine, nLines, &
+        "Primary wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+   call getReal("vterm1", vTerm1, cLine, nLines, &
+        "Primary wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+   call getReal("beta1", beta1, cLine, nLines, &
+        "Primary wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("mass2", mass2, cLine, nLines, &
+        "Secondary mass (msol): ","(a,f5.1,a)", 1., ok, .true.)
+   call getReal("rstar2", rstar2, cLine, nLines, &
+        "Secondary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
+   call getReal("mdot2", mdot2, cLine, nLines, &
+        "Secondary log mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
+   call getReal("teff2", teff2, cLine, nLines, &
+        "Secondary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+   call getReal("v02", vNought2, cLine, nLines, &
+        "Secondary wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+   call getReal("vterm2", vTerm2, cLine, nLines, &
+        "Secondary wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+   call getReal("beta2", beta2, cLine, nLines, &
+        "Secondary wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+
+
+   call getReal("binarysep", binarySep, cLine, nLines, &
+        "Binary separation (AU): ","(a,f7.1,a)", 4., ok, .true.)
+
+   call getReal("deflect", deflectionAngle, cLine, nLines, &
+        "Wind-wind deflection angle (degs): ","(a,f7.1,a)", 0., ok, .false.)
+
+   call getReal("shockwidth", shockWidth, cLine, nLines, &
+        "Shock width (binary separations): ","(a,f7.1,a)", 0.1, ok, .false.)
+
+   call getReal("shockfac", shockFac, cLine, nLines, &
+        "Shock density: ","(a,f7.1,a)", 10., ok, .false.)
+
+   call getString("contflux1", contFluxFile1, cLine, nLines, &
+        "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+   call getString("contflux2", contFluxFile2, cLine, nLines, &
+        "Continuum flux filename (secondary): ","(a,a,1x,a)","none", ok, .true.)
+
+
+
+   binarySep = binarySep * autocm / 1.e10
+   mass1 = mass1 * mSol
+   mass2 = mass2 * mSol
+   rstar1 = rstar1 * rSol / 1.d10
+   rstar2 = rstar2 * rSol / 1.d10
+   vNought1 = vNought1 * 1.e5 
+   vNought2 = vNought2 * 1.e5 
+   vterm1 = vterm1 * 1.e5
+   vterm2 = vterm2 * 1.e5
+   mdot1 = mdot1*msol/(365.25*24.*3600.)
+   mdot2 = mdot2*msol/(365.25*24.*3600.)
+   deflectionAngle = deflectionAngle * degTorad
+
 endif
 
  if (geometry .eq. "shell") then

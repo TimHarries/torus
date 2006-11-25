@@ -318,4 +318,46 @@ module source_mod
     i_nu = 1.5d0 * fnu / pi
   end function I_nu
 
+  logical function insideSource(thisOctal, subcell, nsource, source)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    type(OCTALVECTOR) :: rVec, corner
+    integer :: nsource
+    type(SOURCETYPE) :: source(:)
+    integer :: i
+    real(double) :: r
+
+    insideSource = .false.
+    rvec = subcellCentre(thisOctal, subcell)
+
+    do i = 1, nSource
+       
+       if (thisOctal%twoD) then
+          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0,0.d0,0.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+          corner = rVec - thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0,0.d0,0.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(0.d0,0.d0,1.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+          corner = rVec - thisOctal%subcellSize/2.d0 * OCTALVECTOR(0.d0,0.d0,1.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+       else
+          write(*,*) "insideSource not setup for threed octals"
+          stop
+       endif
+    enddo
+  end function insideSource
+
   end module source_mod

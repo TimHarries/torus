@@ -451,6 +451,8 @@
 !$SPH  real*8 :: xgas,ygas,zgas
 !$SPH  real :: tgas
 
+  real(double) ::  d1, d2, massRatio
+
   type(modelatom) :: thisAtom(1)
   type(TOPBASETYPE) :: thisBase
 
@@ -1180,10 +1182,10 @@
 !     call readAMRgrid("molecular_tmp.grid",.false.,grid)
 !     goto 667
 
-     if (cmf) then
-        call readAMRgrid("atom_tmp.grid",.false.,grid)
-        goto 665
-     endif
+!     if (cmf) then
+!        call readAMRgrid("atom_tmp.grid",.false.,grid)
+!        goto 665
+!     endif
 
      if (readPops .or. readPhasePops .or. readLucy) then 
 
@@ -1334,7 +1336,7 @@
 
         case("wr104")
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
-           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData)
+           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,sphData)
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
            call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
            do
@@ -2179,14 +2181,14 @@
   
   ! The source spectrum is normally a black body
 
-  if (.not.grid%lineEmission) then
-     stot = 0.
-     do i = 1, nLambda
-        sourceSpectrum(i) = bLambda(dble(xArray(i)), dble(teff))
-        stot = stot + sourceSpectrum(i)
-     enddo
-     sourceSpectrum  = sourceSpectrum / stot
-  endif
+!  if (.not.grid%lineEmission) then
+!     stot = 0.
+!     do i = 1, nLambda
+!        sourceSpectrum(i) = bLambda(dble(xArray(i)), dble(teff))
+!        stot = stot + sourceSpectrum(i)
+!     enddo
+!     sourceSpectrum  = sourceSpectrum / stot
+!  endif
 
 
 
@@ -2479,10 +2481,10 @@
        tmp = source(2)%radius * 1.e10  ! [cm]
        source(2)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(2)%teff)**4
        if (contFluxfile2 .eq. "blackbody") then
-          call fillSpectrumBB(source(1)%spectrum, dble(teff), &
+          call fillSpectrumBB(source(2)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda)
        else
-          call readSpectrum(source(1)%spectrum, contfluxfile2, ok)
+          call readSpectrum(source(2)%spectrum, contfluxfile2, ok)
        endif
        call normalizedSpectrum(source(2)%spectrum)
 
@@ -2621,7 +2623,7 @@
      call random_seed
 
      if (cmf) then
-!        call atomLoop(grid, 1, thisAtom, nsource, source)
+        call atomLoop(grid, 1, thisAtom, nsource, source)
         call calculateAtomSpectrum(grid, thisAtom, 1, 1, 4, OCTALVECTOR(1.d0, 0.d0, 0.d0), 100.d0*pctocm/1.d10, &
              source, nsource)
         stop
