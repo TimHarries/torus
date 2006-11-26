@@ -207,6 +207,7 @@ contains
 
              jnu = jNuLine(iJnu)
 
+             if (l==2.and.k==3) write(*,*)"jnu line (halpha) ",jnu
 
              matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - Bul * jnu - a
              matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - Blu * jnu
@@ -230,6 +231,9 @@ contains
           endif
 
           ! now do bound-free rates
+
+          call locate(freq, nfreq, cspeed / 6562.8d-8, istart)
+          write(*,*) "Jnu cont (halpha): ",jnuCont(istart)
 
 
           if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
@@ -572,6 +576,9 @@ contains
           iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq))*cosTheta*exp(-tauCont(iFreq))
        endif
     enddo
+    call locate(freq, nfreq, cspeed/6562.8d-8,iFreq)
+    write(*,*) "icont ",icont(ifreq)
+
 
     do iRBB = 1, nRBBTrans
        iAtom = indexAtom(iRBB)
@@ -579,6 +586,7 @@ contains
        if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
           i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans))*cosTheta*exp(-tau(iRBB))
        endif
+       if (thisAtom(iAtom)%iLower(iTrans)==2.and.thisAtom(iAtom)%iUpper(iTrans)==3) write(*,*) "inu line ",i0(irbb)
     enddo
     deallocate(tau)
   end subroutine getRay
@@ -648,6 +656,8 @@ contains
           else
              snu = tiny(snu)
           endif
+
+! need to include continuum here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           
           jBarExternal = jBarExternal + i0(iray) * exp(-tau) * phi(iRay) * weight(iRay)
           jBarInternal = jBarInternal + snu * (1.d0 - exp(-tau)) * phi(iRay) * weight(iRay)
@@ -729,12 +739,17 @@ contains
           endif
 
           jBarContExternal(iFreq) = jBarContExternal(iFreq) + iCont(iray, iFreq) * exp(-tau) * weight(iRay)
+!          write(*,*) 1.d8*cspeed/freq(iFreq)," icont(iray,ifreq)",iCont(iRay,iFreq),tau
           jBarContInternal(iFreq) = jBarContInternal(iFreq) + snu * (1.d0 - exp(-tau)) * weight(iRay)
           sumWeight(iFreq) = sumWeight(iFreq) + weight(iRay)
        enddo
     enddo
 
     jbarCont = (jBarContExternal + jBarContInternal)/sumWeight
+    call locate(freq,nfreq,cspeed/6562.8d-8,iFreq)
+    write(*,*) "jnuCont", jbarCont(ifreq), jbarContExternal(ifreq), jbarContInternal(ifreq), sumWeight(ifreq)
+    
+
 
   end subroutine calculateJbarCont
 
@@ -963,7 +978,7 @@ contains
                               ds(iRay), phi(iRay), i0(1:nRBBTrans,iRay), Hcol(iray), HeICol(iRay), HeIICol(iRay),&
                               nAtom, thisAtom, source, nSource, hitPhotosphere(iRay), sourceNumber(iray), &
                               cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom, nHatom, nHeIAtom, nHeIIatom, &
-                              nfreq, freq, iCont(iray,:))
+                              nfreq, freq, iCont(iray,1:nFreq))
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
                       iter = 0
