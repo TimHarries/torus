@@ -572,15 +572,16 @@ contains
     type(MODELATOM) :: thisAtom
     integer              :: nIon, level
     real(double) :: Ne, t, ratio, nk
-    real(double) ::  Ucoeff(5,5)
+    real(double), parameter ::  Ucoeff(5,5) =  reshape(source=  &
+        (/0.30103d0, -0.00001d0, 0.d0, 0.d0, 0.d0, &
+          0.00000d0,  0.00000d0, 0.d0, 0.d0, 0.d0, &
+          0.30103d0,  0.00000d0, 0.d0, 0.d0, 0.d0, &
+          0.00000d0,  0.00000d0, 0.d0, 0.d0, 0.d0, &
+          0.00000d0,  0.00000d0, 0.d0, 0.d0, 0.d0  /), shape=(/5,5/))
     real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
-    uCoeff(1,1:5) = (/0.30103d0, -0.00001d0, 0.d0, 0.d0, 0.d0 /)
-    uCoeff(2,1:5) = (/0.00000d0,  0.00000d0, 0.d0, 0.d0, 0.d0 /)
-    uCoeff(3,1:5) = (/0.30103d0,  0.00000d0, 0.d0, 0.d0, 0.d0 /)
-
     pe = ne * kerg * t
-    select case(thisAtom%name)
-       case("HI")
+    select case(thisAtom%nz)
+       case(1)
           u0 = getUT(t, uCoeff(1,1:5))
           u1 = 1.d0
           N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
@@ -593,23 +594,28 @@ contains
           else
              ratio = 1.d10
           endif
-
-       case("HeI")
-          u0 = 1.d0
-          u1 = getUT(t, uCoeff(3,1:5))
-          N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
-          N1overN0 = (10.d0**N1overN0)/pe
-          ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
-       case("HeII")
-          u0 = 1.d0
-          u1 = getUT(t, uCoeff(3,1:5))
-          u2 = 1.d0
-          N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
-          N1overN0 = (10.d0**N1overN0)/pe
-
-          N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
-          N2overN1 = (10.d0**N2overN1)/pe
-          ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1 / N2overn1
+       case(2)
+          select case(thisAtom%charge)
+             case(0)
+                u0 = 1.d0
+                u1 = getUT(t, uCoeff(3,1:5))
+                N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
+                N1overN0 = (10.d0**N1overN0)/pe
+                ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
+             case(1)
+                u0 = 1.d0
+                u1 = getUT(t, uCoeff(3,1:5))
+                u2 = 1.d0
+                N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
+                N1overN0 = (10.d0**N1overN0)/pe
+                
+                N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
+                N2overN1 = (10.d0**N2overN1)/pe
+                ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1 / N2overn1
+              case DEFAULT
+                 write(*,*) "wrong charge for He"
+                 stop
+             end select
        case DEFAULT
           write(*,*) "atom not recognised in boltzsahageneral ",thisAtom%name
           stop
@@ -694,5 +700,138 @@ contains
     oldcikt_ma=(5.465e-11)*sqrt(t1)*exp(-chi/(kev*t1))*gammait
 
   end function oldcikt_ma
+
+
+  function etaContHydrogen(freq, thisAtom, pops, nLevels, ne, temperature) result(eta)
+
+! bound-free and free-free continuum emissivity
+
+    type(MODELATOM) :: thisAtom
+    real(double) :: freq
+    real(double) :: pops(:)
+    integer :: nLevels
+    real(double) :: ne
+    real(double) :: temperature
+    real(double) :: nStar
+    real(double) :: eta
+    integer :: j
+    real(double) :: thresh, photonEnergy
+
+    eta=0.d0
+!    bound-free
+
+    do j=1, nLevels-1
+
+       thresh=(thisAtom%iPot - thisAtom%energy(j))
+       photonEnergy = freq * hCgs * ergtoEv
+       if (photonEnergy.ge.thresh) then
+          nStar = BoltzSahaGeneral(thisAtom, 1, j, Ne, temperature) * pops(nLevels)
+          eta = eta + nStar * annu_hyd(j,freq) * exp(-(hcgs*freq)/(kerg*temperature))
+       endif
+    enddo
+    
+! free-free
+
+    eta = eta + (ne**2) * alpkk_hyd(freq,temperature) * exp(-(hcgs*freq)/(kerg*temperature))
+  
+    eta=eta*real((2.0*dble(hcgs)*dble(freq)**3)/(dble(cspeed)**2))
+  
+  end function etaContHydrogen
+
+  Real(double) pure function alpkk_hyd(freq,t)
+     !
+     ! this function returns the free-free absorption coefficient for hydrogen
+     !
+     real(double), intent(in) :: freq,t
+     real(double)             :: wav,gauntf
+      
+     wav=1.e8_db*cSpeed/freq
+     gauntf=giii_hyd(1.e0_db,t,wav)
+     alpkk_hyd=gauntf*real(3.6d8/((dble(freq)**3)*sqrt(dble(t))))
+     
+   end function alpkk_hyd
+
+
+  real(double) pure function giii_hyd (z, t, wl)
+     !
+     !   ferland's fabulous functional fits
+     !
+     
+     real(double), intent(in) :: wl, t, z
+     real(double) :: c, u, ulog, gam2
+     integer               :: i,j,k, m
+     real(double) :: b2
+     real(double) :: frac, sum1, sum2, d
+     ! making coeff and a2 PARAMETERs may cause problems with XL Fortran
+     !  real(double) :: coeff(28) 
+     !  real(double) :: a2(7)
+     !  coeff =                                                           &
+     !     (/1.102d0       ,-0.1085d0     ,0.09775d0     ,-0.01125d0     ,&
+     !       1.2d0         ,-0.24016667d0 ,0.07675d0     ,-0.01658333d0  ,&
+     !       1.26d0        ,-0.313166667d0,0.15075d0     ,0.00241667d0   ,&
+     !       1.29d0        ,-0.4518333d0  ,0.12925d0     ,0.00258333d0   ,&
+     !       1.27d0        ,-0.579d0      ,0.092d0       ,-0.003d0       ,&
+     !       1.16d0        ,-0.707333d0   ,0.112d0       ,0.0053333333d0 ,&
+     !       0.883d0       ,-0.76885d0    ,0.190175d0    ,0.022675d0     /)
+     !  a2 = (/100.d0, 10.d0, 3.d0, 1.d0, 0.3d0, 0.1d0, 0.001d0/)
+       
+     real(double), parameter :: coeff(28) =                   & 
+        (/1.102d0       ,-0.1085d0     ,0.09775d0     ,-0.01125d0     ,&
+          1.2d0         ,-0.24016667d0 ,0.07675d0     ,-0.01658333d0  ,&
+          1.26d0        ,-0.313166667d0,0.15075d0     ,0.00241667d0   ,&
+          1.29d0        ,-0.4518333d0  ,0.12925d0     ,0.00258333d0   ,&
+          1.27d0        ,-0.579d0      ,0.092d0       ,-0.003d0       ,&
+          1.16d0        ,-0.707333d0   ,0.112d0       ,0.0053333333d0 ,&
+          0.883d0       ,-0.76885d0    ,0.190175d0    ,0.022675d0     /)
+     real(double), parameter :: a2(7) =                       &
+          (/100.d0, 10.d0, 3.d0, 1.d0, 0.3d0, 0.1d0, 0.001d0/)
+       
+       u = 1.44e+8 / (wl*t)
+       ulog = log10(u)
+       gam2 = 1.58e+5 * z*z/t
+       if (gam2.gt.a2(7)) go to 10
+         i = 7
+         j = 7
+         k = 7
+         frac = 0.5
+         go to 60
+   10  continue
+       if (gam2.lt.a2(1)) go to 20
+         i = 1
+         j = 1
+         k = 1
+         frac = 0.5
+         go to 60
+   20  continue
+       do 30 i = 2, 7
+           if (gam2.gt.a2(i)) go to 40
+   30  continue
+   40  continue
+       k = i - 1
+   50  continue
+       b2 = log10(a2(k))
+       c = log10(a2(i))
+       gam2 = log10(gam2)
+       frac = abs ((gam2-b2) / (b2-c))
+   60  continue
+       k = (k-1)*4
+       sum1 = coeff(k+1)
+       d = 1.0
+       do 70 m = 2, 4
+           d = d*ulog
+           sum1 = sum1 + coeff(k+m)*d
+   70  continue
+       sum1 = sum1 * (1.0 - frac)
+       i = (i-1)*4
+       sum2 = coeff(i+1)
+       d = 1.0
+       do 80 m = 2, 4
+           d = d*ulog
+           sum2 = sum2 + coeff(i+m)*d
+   80  continue
+       sum2 = sum2 * frac
+
+       giii_hyd = sum1 + sum2
+     end function giii_hyd
 
 end module modelatom_mod

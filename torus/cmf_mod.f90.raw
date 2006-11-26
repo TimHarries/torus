@@ -522,7 +522,14 @@ contains
                 etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
                 etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
                 jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
-                
+
+! add continuous bf and ff emissivity of hydrogen
+
+                if (nHatom /= 0) then
+                   jnu =jnu + etaContHydrogen(thisAtom(nHatom)%transFreq(iTrans), &
+                        thisAtom(nHatom), thisOctal%atomLevel(subcell,nHAtom, :), &
+                        thisAtom(nHatom)%nLevels, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))/fourPi
+                endif
                 if (alphanu /= 0.d0) then
                    snu = jnu/alphanu
                 else
@@ -1420,6 +1427,13 @@ contains
           etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
           jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
 
+! add continuous bf and ff emissivity of hydrogen
+          
+          if (nHatom /= 0) then
+             jnu =jnu + etaContHydrogen(thisAtom(nHatom)%transFreq(iTrans), &
+                  thisAtom(nHatom), thisOctal%atomLevel(subcell,nHAtom, :), &
+                  thisAtom(nHatom)%nLevels, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))/fourPi
+          endif
 
           if (alphanu /= 0.d0) then
              snu = jnu/alphanu

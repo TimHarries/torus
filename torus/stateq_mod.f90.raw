@@ -2913,7 +2913,7 @@ contains
     real, dimension(maxLevels)  :: previousXall
     real                        :: previousNeRatio      
     logical, parameter          :: debugInfo = .true.
-    type(octalVector)           :: starCentre 
+    Type(octalVector)           :: starCentre 
     real(double), parameter :: CI = 2.07d-16   ! in cgs units
     real(double)            :: T,ne, x    
     real(double), parameter :: NeFactor = 20.0_db ! NeFactor
