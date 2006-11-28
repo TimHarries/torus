@@ -139,12 +139,11 @@ contains
              recombratekl = 0.d0
              nuStart = (thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(l))*evtoerg/hcgs
 
-             call locate(freq, nfreq, cspeed/(6562.8d-8), istart)
 
              call locate(freq, nfreq, nuStart, istart)
 
              do i = istart+1, nFreq
-                xSection = photoCrossSection(thisAtom(iAtom), l, freq(i))
+                xSection = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i))
                 recombRatekl = recombRatekl + &
                      (fourPi/(hCgs*freq(i)))*xSection*((2.d0*hCgs*freq(i)**3)/cSpeed**2 + jnuCont(i)) * &
                      exp(-(hCgs*freq(i))/(kErg*temperature))*(freq(i)-freq(i-1))
@@ -162,6 +161,12 @@ contains
              matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + NstarRatio * recombratekl
              tot1 = tot1  + NstarRatio * recombratekl
 
+
+!          if ((l == 1).and.iatom==3) then
+!             write(*,*) "radiative recomb to ground state ",NstarRatio * recombratekl * &
+!                  npops(iatom,k)
+!          endif
+
           endif
 
 
@@ -173,6 +178,12 @@ contains
              matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + NstarRatio*collEx*ne
              tot2 = tot2 + NstarRatio*collEx*ne
 
+!             if ((l == 1).and.iatom==3) then
+!                write(*,*) "coll recomb to ground state ",NstarRatio * ne * colleX * &
+!                     npops(iatom,k) 
+!             endif
+
+
           endif
 
           radtot = radtot + tot1
@@ -181,10 +192,10 @@ contains
           totRecomb =  tot1 + tot2
           matrixA(k+nOffset(iAtom), k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom), k+nOffset(iAtom))-totRecomb
 
+
        enddo
 
-
-
+!       if (iatom == 3)        write(*,*) "total recomb: ",(radtot + colltot)*nPops(iatom,k)
 
        lymanAlpha  = .false.
 
@@ -207,7 +218,9 @@ contains
 
              jnu = jNuLine(iJnu)
 
-             if (l==2.and.k==3) write(*,*)"jnu line (halpha) ",jnu
+
+
+
 
              matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - Bul * jnu - a
              matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - Blu * jnu
@@ -232,8 +245,6 @@ contains
 
           ! now do bound-free rates
 
-          call locate(freq, nfreq, cspeed / 6562.8d-8, istart)
-          write(*,*) "Jnu cont (halpha): ",jnuCont(istart)
 
 
           if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
@@ -248,7 +259,7 @@ contains
 
              photoRatelk = 0.d0
              do i = istart+1, nFreq
-                xSection = photoCrossSection(thisAtom(iAtom), l, freq(i))
+                xSection = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i))
                 photoRatelk = photoRatelk + (jnuCont(i)/(hCgs*freq(i)))*xSection*(freq(i)-freq(i-1))
              enddo
              photoRatelk = photoRatelk * fourPi
@@ -257,6 +268,9 @@ contains
              matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - photoRatelk
              matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + photoRatelk
              totphotoion=totphotoion + photoRatelk*npops(iatom,l)
+!             if ((l == 1).and.iatom==3) then
+!                write(*,*) "total photoionization from ground state ",photoRatelk*npops(iatom,l)
+!             endif
           endif
 
 
@@ -276,16 +290,17 @@ contains
 
        enddo
 
+!          if (iatom == 3) write(*,*) "total photoionization: " , totphotoion, totcion
 
     enddo
 
     
-    if (debug) then
-       write(*,'(4x,100i8)') num(1:nMatrix)
-       do i = 1, nMatrix
-          write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
-       enddo
-    endif
+!    if (debug) then
+!       write(*,'(4x,100i8)') num(1:nMatrix)
+!       do i = 1, nMatrix
+!          write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
+!       enddo
+!    endif
 
 !    call luSlv(matrixA, matrixB, nMatrix)
     call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
@@ -368,7 +383,7 @@ contains
     real(double) :: weight
     integer :: iAtom, iRBB
     real :: xH, xHeI, xHeII
-    real(double) :: dTauCont, phiAv, phiNorm
+    real(double) :: dTauCont, phiAv, phiNorm, kappaBB
     logical :: firstSubcell
     integer :: nBug
     integer :: iFreq
@@ -471,22 +486,15 @@ contains
           thisPosition = currentPosition + distArray(i)*direction
           thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
 
+          alphanuCont = 0.d0
           do iFreq = 1, nFreq
 
-             call phfit2(1,1,1,real(freq(iFreq)*hCgs*ergtoev), xH)
-             call phfit2(2,2,1,real(freq(iFreq)*hCgs*ergtoev), xHeI)
-             call phfit2(2,1,1,real(freq(iFreq)*hCgs*ergtoev), xHeII)
-             
-             if (nHAtom /=0)  alphaNuCont(iFreq) =  thisOctal%atomLevel(subcell, nHatom, 1)*xh 
-             
-             if (nHeIatom /= 0) alphaNuCont(iFreq) = alphaNuCont(iFreq) + thisOctal%atomLevel(subcell, nHeIatom, 1) * xHeI
-             
-             if (nHeIIatom /= 0) alphaNuCont(iFreq) = alphaNuCont(iFreq) + thisOctal%atomLevel(subcell, nHeIIatom, 1) * xHeII
 
-             jnuCont(iFreq) = etaContHydrogen(freq(iFreq), &
-                  thisAtom(nHatom), thisOctal%atomLevel(subcell,nHAtom, :), &
-                  thisAtom(nHatom)%nLevels, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))/fourPi
-             
+             alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:))
+
+             jnuCont(iFreq) = bfEmissivity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
+                  dble(thisOctal%temperature(subcell)))/fourPi
+
              dTau = alphaNuCont(iFreq) *  (distArray(i)-distArray(i-1)) * 1.d10
                
              if (alphanuCont(ifreq) /= 0.d0) then
@@ -571,23 +579,24 @@ contains
        endif
 
     enddo
-    do iFreq = 1, nFreq
-       if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
+    if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
+       do iFreq = 1, nFreq
           iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq))*cosTheta*exp(-tauCont(iFreq))
-       endif
-    enddo
-    call locate(freq, nfreq, cspeed/6562.8d-8,iFreq)
-    write(*,*) "icont ",icont(ifreq)
+       enddo
+    endif
 
+!    call locate(freq, nfreq, cspeed/6562.8d-8,iFreq)
+!    write(*,*) "icont ",icont(ifreq)
 
-    do iRBB = 1, nRBBTrans
-       iAtom = indexAtom(iRBB)
-       iTrans = indexRBBTrans(iRBB)
-       if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
+    
+    if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
+       do iRBB = 1, nRBBTrans
+          iAtom = indexAtom(iRBB)
+          iTrans = indexRBBTrans(iRBB)
           i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans))*cosTheta*exp(-tau(iRBB))
-       endif
-       if (thisAtom(iAtom)%iLower(iTrans)==2.and.thisAtom(iAtom)%iUpper(iTrans)==3) write(*,*) "inu line ",i0(irbb)
-    enddo
+!       if (thisAtom(iAtom)%iLower(iTrans)==2.and.thisAtom(iAtom)%iUpper(iTrans)==3) write(*,*) "inu line ",i0(irbb)
+       enddo
+    endif
     deallocate(tau)
   end subroutine getRay
 
@@ -621,6 +630,8 @@ contains
     integer :: i
     logical,save :: first = .true.
 
+    jBarExternal = 0.d0
+    jBarInternal = 0.d0
 
     if (thisAtom%transType(iTrans) == "RBB") then
 
@@ -688,7 +699,7 @@ contains
     real(double) :: freq(:),  cosTheta(:), weight(:)
     integer :: iray, nRay, i
     real :: tau, xh, xhei, xheii
-    real(double), allocatable :: jBarContExternal(:), jBarContInternal(:), sumWeight(:)
+    real(double), allocatable :: jBarContExternal(:), jBarContInternal(:)
     integer :: nHatom, nHeIatom, nHeIIAtom
     real(double) :: alphanu
     integer :: iFreq
@@ -705,12 +716,10 @@ contains
 
     allocate(jBarContExternal(1:nFreq))
     allocate(jBarContInternal(1:nFreq))
-    allocate(sumWeight(1:nFreq))
 
     jBarCont = 0.d0
     jBarContInternal = 0.d0
     jBarContExternal = 0.d0
-    sumWeight = 0.d0
 
     do iRay = 1, nRay
        do iFreq = 1, nFreq
@@ -741,14 +750,10 @@ contains
           jBarContExternal(iFreq) = jBarContExternal(iFreq) + iCont(iray, iFreq) * exp(-tau) * weight(iRay)
 !          write(*,*) 1.d8*cspeed/freq(iFreq)," icont(iray,ifreq)",iCont(iRay,iFreq),tau
           jBarContInternal(iFreq) = jBarContInternal(iFreq) + snu * (1.d0 - exp(-tau)) * weight(iRay)
-          sumWeight(iFreq) = sumWeight(iFreq) + weight(iRay)
        enddo
     enddo
 
-    jbarCont = (jBarContExternal + jBarContInternal)/sumWeight
-    call locate(freq,nfreq,cspeed/6562.8d-8,iFreq)
-    write(*,*) "jnuCont", jbarCont(ifreq), jbarContExternal(ifreq), jbarContInternal(ifreq), sumWeight(ifreq)
-    
+    jbarCont = (jBarContExternal + jBarContInternal)/SUM(weight(1:nRay))
 
 
   end subroutine calculateJbarCont
@@ -814,11 +819,11 @@ contains
 
     debug = .false.
 
-!    xAbund = 0.71d0
-!    yAbund = 0.27d0
+    xAbund = 0.71d0
+    yAbund = 0.27d0
 
-    xAbund = 1.d0
-    yAbund = 0.d0
+!    xAbund = 1.d0
+!    yAbund = 0.d0
 
     do iAtom = 1, nAtom
        select case(thisAtom(iAtom)%name)
@@ -956,24 +961,23 @@ contains
 !$MPI   if (rankComplete) exit blockLoop 
 
 
-          do iOctal = ioctal_beg, ioctal_end
-             write(*,*) iOctal,iOctal_beg,iOctal_end
-             thisOctal => octalArray(iOctal)%content
-             do subcell = 1, thisOctal%maxChildren
+!          do iOctal = ioctal_beg, ioctal_end
+!             write(*,*) iOctal,iOctal_beg,iOctal_end
+!             thisOctal => octalArray(iOctal)%content
+!             do subcell = 1, thisOctal%maxChildren
 
-!          open(31, file="r.dat",status="unknown",form="formatted")
-!          do ir = 1, 50
-!             r = log10(20.d0*rsol/1.d10) + (log10(2000.d0*rSol/1.d10)-log10(20.d0*rsol/1.d10))*real(ir-1)/49.d0
-!             r = 10.d0**r
-!             posVec = OCTALVECTOR(r, 0.d0, 0.d0)
-!             thisOctal => grid%octreeRoot
-!             call findSubcellLocal(posVec, thisOctal, subcell)
+          open(31, file="r.dat",status="unknown",form="formatted")
+          do ir = 1, 50
+             r = log10(20.d0*rsol/1.d10) + (log10(2000.d0*rSol/1.d10)-log10(20.d0*rsol/1.d10))*real(ir-1)/49.d0
+             r = 10.d0**r
+             posVec = OCTALVECTOR(r, 0.d0, 0.d0)
+             thisOctal => grid%octreeRoot
+             call findSubcellLocal(posVec, thisOctal, subcell)
 
                 if (.not.thisOctal%hasChild(subcell)) then
                    if (thisOctal%inflow(subcell)) then
                       nHit = 0
                       do iRay = 1, nRay
-                         write(*,*) "iray",iray
                          call getRay(grid, thisOCtal, subcell, position, direction, &
                               ds(iRay), phi(iRay), i0(1:nRBBTrans,iRay), Hcol(iray), HeICol(iRay), HeIICol(iRay),&
                               nAtom, thisAtom, source, nSource, hitPhotosphere(iRay), sourceNumber(iray), &
@@ -1045,7 +1049,7 @@ contains
 
                         
                         if (debug) then
-                           do iatom = 1, 1
+                           do iatom = 1, size(thisAtom)
                               write(*,*) "Atom: ",thisAtom(iatom)%name
                               do i = 1, thisAtom(iatom)%nLevels-1
                                  nStar = boltzSahaGeneral(thisAtom(iAtom), 1, i, thisOctal%ne(subcell), &
@@ -1082,19 +1086,19 @@ contains
 
                 endif
 
-!                call locate(freq,nfreq,cspeed/6562.8d-8,ifreq)
-!                nStar = boltzSahaGeneral(thisAtom(1), 1, 6, thisOctal%ne(subcell), &
-!                     dble(thisOctal%temperature(subcell))) * &
-!                     thisOctal%newAtomLevel(subcell, 1, thisAtom(1)%nLevels)
-!                write(31,*) real(r*1.e10), real(thisOctal%ne(subcell)), real(thisOctal%newAtomLevel(subcell,1,1:6)),&
-!                     real(jnuCont(ifreq)),real(nstar)
-
-!             enddo
-!             close(31)
-!             stop
+                call locate(freq,nfreq,cspeed/6562.8d-8,ifreq)
+                nStar = boltzSahaGeneral(thisAtom(1), 1, 6, thisOctal%ne(subcell), &
+                     dble(thisOctal%temperature(subcell))) * &
+                     thisOctal%newAtomLevel(subcell, 1, thisAtom(1)%nLevels)
+                write(31,*) real(r*1.e10), real(thisOctal%ne(subcell)), real(thisOctal%newAtomLevel(subcell,1,1:6)),&
+                     real(jnuCont(ifreq)),real(nstar)
 
              enddo
-          end do
+             close(31)
+             stop
+
+!             enddo
+!          end do
 
 !$MPI if (.not.blockHandout) exit blockloop
 !$MPI end do blockLoop        
@@ -1479,30 +1483,9 @@ contains
 
           dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
 
-          if (nHAtom /= 0) then
-             Hcol = Hcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHatom, 1) ! just use ground state
-          endif
 
-          if (nHeIAtom /= 0) then
-             HeIcol = HeIcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHeIatom, 1) ! just use ground state
-          endif
-
-          if (nHeIIAtom /= 0) then
-             HeIIcol = HeIIcol + (distArray(i)-distArray(i-1)) * 1.d10 * thisOctal%atomLevel(subcell, nHeIIatom, 1) ! just use ground state
-          endif
-
-          call phfit2(1,1,1,real(thisAtom(iAtom)%transFreq(iTrans)*hCgs*ergtoev), xH)
-          call phfit2(2,2,1,real(thisAtom(iAtom)%transFreq(iTrans)*hCgs*ergtoev), xHeI)
-          call phfit2(2,1,1,real(thisAtom(iAtom)%transFreq(iTrans)*hCgs*ergtoev), xHeII)
-
-
-          if (nHAtom /=0) dtauCont =  thisOctal%atomLevel(subcell, nHatom, 1)*xh *(distArray(i)-distArray(i-1))
-
-          if (nHeIatom /= 0) dtauCont = dtauCont + thisOctal%atomLevel(subcell, nHeIatom, 1) * &
-               xHei *(distArray(i)-distArray(i-1))
-
-          if (nHeIIatom /= 0) dtauCont = dTauCont + thisOctal%atomLevel(subcell, nHeIIatom, 1) * &
-               xheii*(distArray(i)-distArray(i-1))
+          dTauCont = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:)) &
+               *  (distArray(i)-distArray(i-1)) * 1.d10
 
           dTau = dTau + dTauCont
 
@@ -1512,11 +1495,10 @@ contains
 
 ! add continuous bf and ff emissivity of hydrogen
           
-          if (nHatom /= 0) then
-             jnu =jnu + etaContHydrogen(thisAtom(nHatom)%transFreq(iTrans), &
-                  thisAtom(nHatom), thisOctal%atomLevel(subcell,nHAtom, :), &
-                  thisAtom(nHatom)%nLevels, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))/fourPi
-          endif
+          jnu = jnu +  bfEmissivity(thisAtom(iatom)%transFreq(iTrans), nAtom, thisAtom, &
+               thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
+                  dble(thisOctal%temperature(subcell)))/fourPi
+
 
           if (alphanu /= 0.d0) then
              snu = jnu/alphanu

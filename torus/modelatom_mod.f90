@@ -29,6 +29,8 @@ module modelatom_mod
      integer :: nTrans
      integer :: nRBBTrans
      integer :: indexRBBTrans(200)
+     integer :: nRBFTrans
+     integer :: indexRBFTrans(200)
      character(len=3), pointer :: transType(:) ! RBB, RBF, CBB, CBF etc
      real(double), pointer :: transFreq(:)
      integer, pointer :: iLower(:)
@@ -231,30 +233,66 @@ contains
   end subroutine returnEinsteinCoeffs
 
 
-  real(double) function photoCrossSection(thisAtom, iLevel, nu)
+  real(double) function photoCrossSection(thisAtom, iTrans, iLevel, nu)
     type(MODELATOM) :: thisAtom
+    integer :: iTrans
     integer :: iLevel
     real(double) :: nu
     character(len=2) :: shell
     integer :: is
     real :: x
-    
+    real(double) :: photonEnergy, lamMicrons
+    real(double) :: sigma0, nuThresh, alpha, s, gIIx, gIIy, gIIz
+    photoCrossSection = tiny(photoCrossSection)
+
     if (iLevel > thisAtom%nLevels) then
        call writeFatal("photocrosssection: Level greater than nlevels")
        stop
     endif
-    select case(thisAtom%name)
-       case("HI")
+    select case(thisAtom%nz)
+       case(1)
           photoCrossSection = annu_hyd(iLevel, nu)
 !          call phfit2(1,1,1,real(nu*hCgs*ergtoev), x)
 !          photoCrossSection  = x * 1.d-10
-       case("HeI")
-          call phfit2(2,2,1,real(nu*hCgs*ergtoev), x)
-          photoCrossSection  = x * 1.d-10
-       case("HeII")
-          call phfit2(2,1,1,real(nu*hCgs*ergtoev), x)
-          photoCrossSection  = x * 1.d-10
-       case DEFAULT
+       case(2)
+          select case(thisAtom%charge)
+             case(0)
+                call phfit2(2,2,1,real(nu*hCgs*ergtoev), x)
+                photoCrossSection  = x * 1.d-10
+                
+                photoCrossSection = 0.d0
+                photonEnergy = nu * hCgs * ergtoEv
+                lamMicrons = (cspeed/nu)/microntocm
+                if (photonEnergy > (thisAtom%iPot - thisAtom%energy(iLevel))) then
+                   photoCrossSection = (1.0499d-14 * lamMicrons**3) / dble(iLevel**5)
+                endif
+             case(1)
+                select case(thisAtom%equation(iTrans))
+                   case(1)
+                      nuThresh = (thisAtom%iPot-thisAtom%energy(thisAtom%iLower(iTrans)))*evtoerg/hCgs
+                      if (nu > nuThresh) then
+                         sigma0 = thisAtom%params(iTrans,1)
+                         alpha = thisAtom%params(iTrans,2)
+                         s = thisAtom%params(iTrans,3)
+                         photoCrossSection = sigma0 * (nuThresh/nu)**s * (alpha + (1.d0-alpha)*(nuThresh/nu))
+                      endif
+                   case(2)
+                      nuThresh = (thisAtom%iPot-thisAtom%energy(thisAtom%iLower(iTrans)))*evtoerg/hCgs
+                      if (nu > nuThresh) then
+                         sigma0 = thisAtom%params(iTrans,1)
+                         alpha = thisAtom%params(iTrans,2)
+                         s = thisAtom%params(iTrans,3)
+                         gIIx = thisAtom%params(iTrans,4)
+                         gIIy = thisAtom%params(iTrans,5)
+                         gIIz = thisAtom%params(iTrans,6)
+                         photoCrossSection = sigma0 * (nuThresh/nu)**s * (alpha + (1.d0-alpha)*(nuThresh/nu))!*gauntII(gIIx, GIIy, gIIz)
+                      endif
+                  end select
+!                call phfit2(2,1,1,real(nu*hCgs*ergtoev), x)
+!                photoCrossSection  = x * 1.d-10
+          end select
+
+      case DEFAULT
           call writeFatal("photocrosssection: atom not recognised")
           stop
      end select
@@ -319,7 +357,6 @@ contains
              case(9)
                 u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
                 rate = 5.465d-11 * sqrt(temperature) * exp(-u0)*(1.d0+u0)
-                rate = rate * 1.d-2!!!!!!!!!!
 
              case DEFAULT
                 call writeFatal("CBB rate equation not implemented for He")
@@ -330,8 +367,7 @@ contains
           u0 = Hcgs*thisAtom%transFreq(iTrans)/(kErg*temperature)
           fij = thisAtom%fMatrix(thisAtom%iLower(iTrans), thisAtom%iUpper(iTrans))
           rate =  5.465d-11 * sqrt(temperature) * (EH/(Hcgs*thisAtom%transFreq(iTrans)))**2 &
-               * u0 * fij * exp(1.d0)* (u0*exp(-u0)*log(2.d0) + u0*expint(1,u0))
-               
+               * fij * exp(1.d0)* (u0*exp(-u0)*log(2.d0) + u0*expint(1,u0))
 
        case DEFAULT
           call writeFatal("collisionRate: bound-bound collision type not implemented")
@@ -369,13 +405,11 @@ contains
              endif
              rate =  5.465d-11 * sqrt(temperature) * &
                   exp(-(thisAtom%iPot-thisAtom%energy(thisAtom%iLower(iTrans)))/(Kev*temperature)) * Gamma
-             rate = 0.d0
           else
              call phfit2(2,1,1,real(thisAtom%ipot*1.01), x)
              sigma0  = x * 1.d-10
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
-             rate = 0.d0
           endif
        case DEFAULT
           call writeFatal("collisionRate: bound-free collision type not implemented")
@@ -603,12 +637,8 @@ contains
                 N1overN0 = (10.d0**N1overN0)/pe
                 ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
              case(1)
-                u0 = 1.d0
                 u1 = getUT(t, uCoeff(3,1:5))
                 u2 = 1.d0
-                N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
-                N1overN0 = (10.d0**N1overN0)/pe
-                
                 N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
                 N2overN1 = (10.d0**N2overN1)/pe
                 ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1 / N2overn1
@@ -646,6 +676,7 @@ contains
 
      do iAtom = 1, nAtom
         thisAtom(iAtom)%nRBBTrans = 0
+        thisAtom(iAtom)%nRBFTrans = 0
         do iTrans = 1, thisAtom(iAtom)%nTrans
            if (thisAtom(iAtom)%transType(iTrans) == "RBB") then
               nRBBTrans = nRBBTrans + 1
@@ -653,6 +684,10 @@ contains
               indexRBBTrans(nRBBTrans) = iTrans
               thisAtom(iAtom)%nRBBTrans = thisAtom(iAtom)%nRBBTrans + 1
               thisAtom(iAtom)%indexRBBtrans(iTrans) = thisAtom(iAtom)%nRBBTrans
+           endif
+           if (thisAtom(iAtom)%transType(iTrans) == "RBF") then
+              thisAtom(iAtom)%nRBFTrans = thisAtom(iAtom)%nRBFTrans + 1
+              thisAtom(iAtom)%indexRBFtrans(thisAtom(iAtom)%nRBFTrans) = iTrans
            endif
         enddo
      enddo
@@ -833,5 +868,64 @@ contains
 
        giii_hyd = sum1 + sum2
      end function giii_hyd
+
+
+     function bfOpacity(freq, nAtom, thisAtom, pops) result(kappa)
+       real(double) :: freq
+       integer :: nAtom
+       type(MODELATOM) :: thisAtom(:)
+       real(double) :: pops(:,:)
+       integer :: iAtom
+       integer :: iTrans
+       real(double) :: kappa
+       integer :: i, j
+
+       kappa = 0.d0
+       do iAtom = 1, nAtom
+          do j = 1, thisAtom(iAtom)%nRBFtrans
+             iTrans = thisAtom(iAtom)%indexRBFtrans(j)
+             i = thisAtom(iAtom)%iLower(iTrans)
+             kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i,  freq) * pops(iAtom,i)
+          enddo
+       enddo
+     end function bfOpacity
+
+  function bfEmissivity(freq, nAtom, thisAtom, pops, ne, temperature) result(eta)
+
+! bound-free and free-free continuum emissivity
+
+    type(MODELATOM) :: thisAtom(:)
+    integer :: nAtom
+    real(double) :: freq
+    integer :: iTrans
+    real(double) :: pops(:,:)
+    integer :: nLevels
+    real(double) :: ne
+    real(double) :: temperature
+    real(double) :: nStar
+    real(double) :: eta
+    integer :: i, j, iAtom
+    real(double) :: thresh, photonEnergy
+
+    eta=0.d0
+
+!    bound-free
+
+    do iAtom = 1, nAtom
+       do  i = 1, thisAtom(iAtom)%nRBFtrans
+          iTrans = thisAtom(iAtom)%indexRBFtrans(i)
+          j = thisAtom(iAtom)%iLower(iTrans)
+          thresh=(thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(j))
+          photonEnergy = freq * hCgs * ergtoEv
+          if (photonEnergy.ge.thresh) then
+             nStar = BoltzSahaGeneral(thisAtom(iAtom), 1, j, Ne, temperature) * pops(iAtom,thisAtom(iatom)%nLevels)
+             eta = eta + nStar * photoCrossSection(thisAtom(iAtom), iTrans, j, freq) * exp(-(hcgs*freq)/(kerg*temperature))
+          endif
+       enddo
+    enddo
+    
+  end function bfEmissivity
+
+
 
 end module modelatom_mod

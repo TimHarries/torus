@@ -6956,12 +6956,12 @@ IF ( .NOT. gridConverged ) RETURN
     r = modulus(rVec)
 
     thisOctal%rho(subcell) = 1.e-30
-    thisOctal%temperature(subcell) = 1.e-3
+    thisOctal%temperature(subcell) = 0.9*teff
     thisOctal%etaCont(subcell) = 1.e-30
     thisOctal%inFlow(subcell) = .false.
     thisOctal%velocity = VECTOR(0.,0.,0.)
 
-    if ((r > grid%rInner).and.(r < grid%rOuter)) then
+    if (((r-thisOctal%subcellSize/2.d0) > grid%rInner).and.(r < grid%rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
        thisOctal%temperature(subcell) = 0.9*teff
        thisOctal%inFlow(subcell) = .true.
@@ -6976,6 +6976,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     endif
     CALL fillVelocityCorners(thisOctal,grid,wrshellVelocity,thisOctal%threed)
+
 
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
