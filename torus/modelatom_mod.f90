@@ -927,5 +927,56 @@ contains
   end function bfEmissivity
 
 
+  subroutine createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)
+    integer :: nAtom
+    type(MODELATOM) :: thisAtom(:)
+    integer :: nsource
+    type(SOURCETYPE) :: source(:)
+    integer :: nfreq
+    real(double) :: freq(:)
+    integer :: iAtom, iLevel
+    integer :: maxFreq, i
+    real(double) :: nuThresh, lamMin, lamMax
+    real(double) :: nuStart, nuEnd
+    integer :: nEven
 
+    nuStart = cSpeed / (8.d5 * 1.d-8)
+    nuEnd = cSpeed / (100.d0 * 1.d-8)
+
+    nEven = 50
+
+    do i = 1, nEven
+       freq(i) = log10(nuStart) + (dble(i-1)/dble(nEven-1))*(log10(nuEnd)-log10(nuStart))
+    enddo
+    freq(1:nEven) = 10.d0**freq(1:nEven)
+    nfreq = nEven
+
+
+! bound-free edges
+
+    do iAtom = 1, nAtom
+
+       do iLevel = 1, min(5,thisAtom(iAtom)%nLevels-1)
+          nuThresh = (thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(iLevel))*evtoerg/hCgs
+          nfreq = nfreq + 1
+          freq(nfreq) = nuthresh * 0.99d0
+          nfreq = nfreq + 1
+          freq(nfreq) = nuthresh * 1.01d0
+       enddo
+    enddo
+    lamMin = 1.d30
+    lamMax = -1.d30
+    do i = 1, nSource
+       if (source(i)%spectrum%lambda(1) < lamMin) lamMin = source(i)%spectrum%lambda(1)
+       if (source(i)%spectrum%lambda(source(i)%spectrum%nlambda) > lamMax) &
+            lamMax = source(i)%spectrum%lambda(source(i)%spectrum%nlambda)
+    enddo
+    nfreq = nfreq + 1
+    freq(nfreq) = cspeed/ (lamMin * 1.d-8)
+    nfreq = nfreq + 1
+    freq(nfreq) = cspeed/ (lamMax * 1.d-8)
+    call sort(nFreq, Freq)
+
+    Write(*,*) "Number of frequency points in continuum: ",nfreq
+  end subroutine createContFreqArray
 end module modelatom_mod

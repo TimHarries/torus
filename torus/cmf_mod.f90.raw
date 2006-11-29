@@ -56,7 +56,7 @@ contains
     integer, allocatable :: nCons(:)
     logical :: ok, debug, lymanAlpha
 
-    debug = .false.
+    debug = .true.
 
 
 
@@ -705,15 +705,6 @@ contains
     integer :: iFreq
     real(double) :: jnu, snu
 
-    nHAtom = 0
-    nHeIAtom = 0
-    nHeIIAtom = 0
-    do i = 1, nAtom
-       if (thisAtom(i)%name == "HI") nHatom = i
-       if (thisAtom(i)%name == "HeI") nHeIatom = i
-       if (thisAtom(i)%name == "HeII") nHeIIatom = i
-    enddo
-
     allocate(jBarContExternal(1:nFreq))
     allocate(jBarContInternal(1:nFreq))
 
@@ -723,21 +714,12 @@ contains
 
     do iRay = 1, nRay
        do iFreq = 1, nFreq
-          call phfit2(1,1,1,real(freq(iFreq)*hCgs*ergtoev), xH)
-          call phfit2(2,2,1,real(freq(iFreq)*hCgs*ergtoev), xHeI)
-          call phfit2(2,1,1,real(freq(iFreq)*hCgs*ergtoev), xHeII)
-             
-          if (nHAtom /= 0)  then
-             alphaNu = thisOctal%atomLevel(subcell, nHatom, 1) * xh 
-          endif
-             
-          if (nHeIatom /= 0) alphaNu = alphaNu + thisOctal%atomLevel(subcell, nHeIatom, 1)  * xHeI
-          
-          if (nHeIIatom /= 0) alphaNu = alphaNu + thisOctal%atomLevel(subcell, nHeIIatom, 1) * xHeII
 
-          jnu = etaContHydrogen(freq(iFreq), &
-               thisAtom(nHatom), thisOctal%atomLevel(subcell,nHAtom, :), &
-               thisAtom(nHatom)%nLevels, thisOctal%ne(subcell), dble(thisOctal%temperature(subcell)))/fourPi
+          alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:))
+
+          jnu =  bfEmissivity(freq(ifreq), nAtom, thisAtom, &
+               thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
+               dble(thisOctal%temperature(subcell)))/fourPi
           
           tau = alphaNu * ds(iray)
 
@@ -781,7 +763,7 @@ contains
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:)
     real(double) :: newNe, oldNe, dNe
-    real(double), parameter :: underCorrect = 1.d0
+    real(double), parameter :: underCorrect = 0.8D0
     real(double) :: fac
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     logical :: dcAllocated
@@ -802,7 +784,8 @@ contains
     real(double), allocatable :: iCont(:,:)
     logical, allocatable :: hitPhotosphere(:)
     integer, parameter :: maxFreq = 200
-    real(double) :: freq(maxFreq), jnuCont(maxFreq)
+    real(double) :: freq(maxFreq)
+    real(double), allocatable :: jnuCont(:)
     integer :: nFreq, nhit, iRBB
     integer :: nRBBTrans
     integer :: indexRBBTrans(1000), indexAtom(1000)
@@ -817,7 +800,7 @@ contains
 !$MPI    integer       ::   ierr           ! error flag
 !$MPI    logical       ::   rankComplete
 
-    debug = .false.
+    debug = .true.
 
     xAbund = 0.71d0
     yAbund = 0.27d0
@@ -839,18 +822,10 @@ contains
         end select
      enddo
 
-    nuStart = cSpeed / (8.d5 * 1.d-8)
-    nuEnd = cSpeed / (162.d0 * 1.d-8)
 
-    nfreq = maxFreq
-    do i = 1, nFreq
-       freq(i) = log10(nuStart) + (dble(i-1)/dble(nFreq-1))*(log10(nuEnd)-log10(nuStart))
-    enddo
-    freq(1:nFreq) = 10.d0**freq(1:nFreq)
+     call createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)
 
-! blockhandout must be off for fixed ray case, otherwise setting the
-! seed is not enough to ensure the same directions are done for
-! each cell every iteration
+     allocate(jnuCont(1:nFreq)) 
 
     blockHandout = .false. 
 
@@ -961,18 +936,18 @@ contains
 !$MPI   if (rankComplete) exit blockLoop 
 
 
-!          do iOctal = ioctal_beg, ioctal_end
-!             write(*,*) iOctal,iOctal_beg,iOctal_end
-!             thisOctal => octalArray(iOctal)%content
-!             do subcell = 1, thisOctal%maxChildren
+          do iOctal = ioctal_beg, ioctal_end
+             write(*,*) iOctal,iOctal_beg,iOctal_end
+             thisOctal => octalArray(iOctal)%content
+             do subcell = 1, thisOctal%maxChildren
 
-          open(31, file="r.dat",status="unknown",form="formatted")
-          do ir = 1, 50
-             r = log10(20.d0*rsol/1.d10) + (log10(2000.d0*rSol/1.d10)-log10(20.d0*rsol/1.d10))*real(ir-1)/49.d0
-             r = 10.d0**r
-             posVec = OCTALVECTOR(r, 0.d0, 0.d0)
-             thisOctal => grid%octreeRoot
-             call findSubcellLocal(posVec, thisOctal, subcell)
+!          open(31, file="r.dat",status="unknown",form="formatted")
+!          do ir = 1, 50
+!             r = log10(20.d0*rsol/1.d10) + (log10(2000.d0*rSol/1.d10)-log10(20.d0*rsol/1.d10))*real(ir-1)/49.d0
+!             r = 10.d0**r
+!             posVec = OCTALVECTOR(r, 0.d0, 0.d0)
+!             thisOctal => grid%octreeRoot
+!             call findSubcellLocal(posVec, thisOctal, subcell)
 
                 if (.not.thisOctal%hasChild(subcell)) then
                    if (thisOctal%inflow(subcell)) then
@@ -1016,8 +991,8 @@ contains
 
                         thisOctal%newAtomLevel(subcell,1:nAtom,:)  = &
                              thisOctal%newAtomLevel(subcell,1:nAtom,:)  + underCorrect * dPops
-                        where (abs(thisOctal%newAtomLevel(subcell,1:nAtom,:)) < 1.d-10)
-                           thisOctal%newAtomLevel(subcell,1:nAtom,:) = 1.d-10
+                        where (abs(thisOctal%newAtomLevel(subcell,1:nAtom,:)) < 1.d-30)
+                           thisOctal%newAtomLevel(subcell,1:nAtom,:) = 1.d-30
                         end where
                         
                         newNe = 0.d0
@@ -1062,6 +1037,7 @@ contains
                               enddo
                            enddo
                            write(*,*) "Ne: ",ne,dne
+                           write(*,*) "T: ",thisOctal%temperature(subcell)
                         endif
                          fac = -1.d30
                          where (oldPops == 0.d0)
@@ -1086,19 +1062,19 @@ contains
 
                 endif
 
-                call locate(freq,nfreq,cspeed/6562.8d-8,ifreq)
-                nStar = boltzSahaGeneral(thisAtom(1), 1, 6, thisOctal%ne(subcell), &
-                     dble(thisOctal%temperature(subcell))) * &
-                     thisOctal%newAtomLevel(subcell, 1, thisAtom(1)%nLevels)
-                write(31,*) real(r*1.e10), real(thisOctal%ne(subcell)), real(thisOctal%newAtomLevel(subcell,1,1:6)),&
-                     real(jnuCont(ifreq)),real(nstar)
-
-             enddo
-             close(31)
-             stop
+!                call locate(freq,nfreq,cspeed/6562.8d-8,ifreq)
+!                nStar = boltzSahaGeneral(thisAtom(1), 1, 6, thisOctal%ne(subcell), &
+!                     dble(thisOctal%temperature(subcell))) * &
+!                     thisOctal%newAtomLevel(subcell, 1, thisAtom(1)%nLevels)
+!                write(31,*) real(r*1.e10), real(thisOctal%ne(subcell)), real(thisOctal%newAtomLevel(subcell,1,1:6)),&
+!                     real(jnuCont(ifreq)),real(nstar)
 
 !             enddo
-!          end do
+!             close(31)
+!             stop
+
+             enddo
+          end do
 
 !$MPI if (.not.blockHandout) exit blockloop
 !$MPI end do blockLoop        

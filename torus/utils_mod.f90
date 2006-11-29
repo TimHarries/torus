@@ -275,7 +275,7 @@ contains
   SUBROUTINE SORTdouble(N,RA)
     INTEGER N, L, IR, I, J
     real(double) RRA
-    real(double) RA(N)
+    real(double) RA(:)
     L=N/2+1
     IR=N
 10  CONTINUE

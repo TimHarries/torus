@@ -6758,7 +6758,7 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: i, j
 
     thisOctal%inflow(subcell) = .true.
-
+    thisOctal%temperature(subcell) = teff1
     massRatio = mass1/mass2
 
     d1 = binarySep * (1./(massRatio+1.))

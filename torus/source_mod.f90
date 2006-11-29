@@ -312,6 +312,12 @@ module source_mod
     integer :: i
 
     lam = 1.d8 * cSpeed/ nu ! angs
+    if (lam < source%spectrum%lambda(1)) then
+       I_nu = tiny(i_nu)
+    endif
+    if (lam > source%spectrum%lambda(source%spectrum%nlambda)) then
+       I_nu = tiny(i_nu)
+    endif
     call locate(source%spectrum%lambda, source%spectrum%nLambda, lam, i)
     fLambda = source%spectrum%flux(i)
     fnu = flambda * (cSpeed*1.d8) /nu**2 ! 1.d8 to go from cm/s to angs/c
