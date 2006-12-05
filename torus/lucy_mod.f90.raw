@@ -1064,6 +1064,8 @@ contains
        call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
 
        call solveArbitraryDiffusionZones(grid)
+
+
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)
 !       call unsetOnDirect(grid%octreeRoot)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion

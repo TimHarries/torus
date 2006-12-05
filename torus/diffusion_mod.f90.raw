@@ -253,7 +253,7 @@ contains
              if (thisOctal%diffusionApprox(subcell)) then
 
                 if (thisOctal%twoD) then
-                   r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1
+                   r = thisOctal%subcellSize/2.d0 + grid%halfSmallestSubcell * 0.1d0
 
                    eDens(0, 0, 0) = thisOctal%eDens(subcell)
                    dCoeff(0, 0, 0) = thisOctal%diffusionCoeff(subcell)
@@ -317,7 +317,7 @@ contains
 
 
                    if (.not.thisOctal%cylindrical) then
-                      r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1
+                      r = thisOctal%subcellSize/2.d0 + grid%halfSmallestSubcell * 0.1d0
 
                       eDens(0, 0, 0) = thisOctal%eDens(subcell)
                       dCoeff(0, 0, 0) = thisOctal%diffusionCoeff(subcell)
@@ -410,7 +410,7 @@ contains
                       eDens(0, 0, 0) = thisOctal%eDens(subcell)
                       dCoeff(0, 0, 0) = thisOctal%diffusionCoeff(subcell)
 
-                      r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1
+                      r = thisOctal%subcellSize/2.d0 + grid%halfSmallestSubcell * 0.1d0
 
 
                       ! positive r
@@ -673,7 +673,7 @@ end subroutine gaussSeidelSweep
     real :: dummy(1)
     real(double) :: deMax
     integer :: niter
-    integer, parameter :: maxIter = 100
+    integer, parameter :: maxIter = 200
     integer :: my_rank, ierr
 
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
