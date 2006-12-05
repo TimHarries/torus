@@ -1,0 +1,184 @@
+module datacube_mod
+
+  use kind_mod
+  use vector_mod
+
+  implicit none
+
+  type DATACUBE
+     character(len=80) :: label
+     integer :: nx
+     integer :: ny
+     integer :: nv
+     real(double), pointer :: xAxis(:)
+     real(double), pointer :: yAxis(:)
+     real(double), pointer :: vAxis(:)
+     real(double), pointer :: intensity(:,:,:)
+  end type DATACUBE
+
+contains
+
+! Initialises cube - sets intensity for cube to 0 
+  subroutine initCube(thisCube, nx, ny, nv)
+    type(DATACUBE) :: thisCube
+    integer :: nx, ny, nv
+
+    thisCube%nx = nx
+    thisCube%ny = ny
+    thisCube%nv = nv
+    allocate(thisCube%xAxis(1:nx))
+    allocate(thisCube%yAxis(1:ny))
+    allocate(thisCube%vAxis(1:nv))
+    allocate(thisCube%intensity(1:nx,1:ny,1:nv))
+
+    thisCube%intensity = 0.d0
+
+  end subroutine initCube
+
+! Set spatial axes for datacube - Equally spaced (linearly) between min and max
+  subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
+    type(DATACUBE) :: cube
+    real(double) :: xMin, xMax, yMax, yMin
+    integer :: i
+
+    do i = 1, cube%nx
+       cube%xAxis(i) = xmin + (xmax-xmin)*dble(i-1)/dble(cube%nx)
+    enddo
+    Do i = 1, cube%ny
+       cube%yAxis(i) = ymin + (ymax-ymin)*dble(i-1)/dble(cube%ny)
+    enddo
+  end subroutine addSpatialAxes
+
+! Set velocity axis for datacube - Equally spaced (linearly) between min and max
+  subroutine addVelocityAxis(cube, vMin, vMax)
+    type(DATACUBE) :: cube
+    real(double) :: vMin, vMax
+    integer :: i
+
+    do i = 1, cube%nv
+       cube%vAxis(i) = vmin + (vmax-vmin)*dble(i-1)/dble(cube%nv)
+    enddo
+  end subroutine addVelocityAxis
+  subroutine plotDataCube(cube, device)
+    type(DATACUBE) :: cube
+    character(len=*) :: device
+    integer :: i, j
+    integer :: pgbegin
+    real, allocatable :: image(:,:)
+    integer :: nx, ny
+    real :: iMin, iMax
+    real :: tr(6)
+    real :: dx, dy
+    real(double), allocatable :: spec(:)
+    real :: vxs, vxe, vys, vye
+    real :: x1, x2, y1, y2
+    real(double) :: sMax, Smin
+    real :: range
+    integer :: nstep 
+
+    nx = cube%nx
+    ny = cube%ny
+
+    dx = (cube%Xaxis(nx) - cube%xAxis(1))/real(nx-1)
+    dy = (cube%yAxis(ny) - cube%yAxis(1))/real(ny-1)
+
+    tr(1) = cube%xAxis(1)-dx
+    tr(2) = dx
+    tr(3) = 0.
+    tr(4) = cube%yAxis(1)-dy
+    tr(5) = 0.
+    tr(6) = dy
+
+
+
+    allocate(image(1:nx, 1:ny))
+
+    do i = 1, nx
+       do j = 1, ny
+          image(i,j) = log10(sum(cube%intensity(i,j,1:cube%nv)))
+       enddo
+    enddo
+    iMin = MINVAL(image(1:nx,1:ny))
+    iMax = MAXVAL(image(1:nx,1:ny))
+    write(*,*) "min/max",imin,imax
+    i =  pgbegin(0,device,1,1)
+    write(*,*) "opening ",trim(device),i
+    call pgvport(0.1, 0.9, 0.1, 0.9)
+    call pgwnad(real(cube%xAxis(1))-dx/2., real(cube%xAxis(nx))+dx/2., &
+         real(cube%yAxis(1))-dy/2., real(cube%yAxis(ny))+dy/2.)
+
+    call palette(3)
+ 
+    call pgimag(image, nx, ny, 1, nx, 1, ny, imin, imax, tr)
+       
+    call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
+
+    call pgqvp(0, x1, x2, y1, y2)
+
+    allocate(spec(1:cube%nv))
+
+    nStep = nx / 5
+
+    smin = 1.e30
+    smax = -1.e30
+    do i = 1, nx-1, nstep
+       do j = 1, ny-1, nstep
+          call getSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
+          sMax = MAX(sMax,MAXVAL(spec))
+          sMin = MIN(sMin,MINVAL(spec))
+       enddo
+    enddo
+
+    range = sMax - sMin
+    sMin = sMin - 0.2*range
+    sMax = sMax + 0.2*range
+    write(*,*) "min/max",smin,smax
+
+    do i = 1, nx-1, nstep
+       do j = 1, ny-1, nstep
+          call getSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
+          vxs = x1 + (x2-x1)*real(i-1)/real(nx)
+          vxe = x1 + (x2-x1)*real(i+nstep-1)/real(nx)
+          vys = y1 + (y2-y1)*real(j-1)/real(ny)
+          vye = y1 + (y2-y1)*real(j+nstep-1)/real(ny)
+          call pgsci(3)
+          call pgvport(vxs, vxe, vys, vye)
+!          call pgbox('bc',0.0,0,'bc',0.0,0)
+          call pgwindow(real(cube%vAxis(1))-0.1, &
+               real(cube%vAxis(cube%nv))+0.1, &
+               real(smin), real(smax))
+
+          write(*,*) spec(1:cube%nv)
+          call pgline(cube%nv, real(cube%vAxis), &
+               real(spec))
+
+          call pgsci(1)
+       enddo
+    enddo
+          
+
+    call pgend
+
+
+
+
+  end subroutine plotDataCube
+
+  subroutine getSpectrum(cube, ix1, ix2, iy1, iy2, spec)
+    type(DATACUBE) :: cube
+    integer :: ix1, ix2, iy1, iy2
+    real(double) ::  spec(:)
+    integer :: i,j, n
+    n = 0
+    spec = 0.d0
+    do i = ix1, ix2
+       do j = iy1, iy2
+          n = n + 1
+          spec(1:cube%nv) = spec(1:cube%nv) + cube%intensity(i,j,1:cube%nv)
+       enddo
+    enddo
+    spec = spec / dble(n)
+  end subroutine getSpectrum
+
+
+end module datacube_mod

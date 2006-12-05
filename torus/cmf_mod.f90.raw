@@ -11,6 +11,7 @@ module cmf_mod
   use math_mod
   use modelatom_mod
   use source_mod
+  use datacube_mod
 
   !$MPI    use parallel_mod
 
@@ -1526,6 +1527,7 @@ contains
     real(double) :: flux, i0
     real(double), allocatable :: vArray(:), spec(:), tempArray(:)
     integer :: iv1, iv2, i
+    type(DATACUBE) :: cube
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   np             ! The number of processes
@@ -1540,6 +1542,10 @@ contains
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
+
+    call createDataCube(cube, grid, viewVec, nAtom, thisAtom, 3, 1, nSource, source)
+    call plotDataCube(cube, 'cube.ps/vcps')
+    stop
 
     call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
     call plot_AMR_values(grid, "etaLine", "x-z", 0.,  &
@@ -1649,6 +1655,103 @@ contains
        enddo
     enddo
   end subroutine createRayGrid
+
+
+  subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
+!$MPI    include 'mpif.h'
+
+    integer :: nSource
+    type(SOURCETYPE) :: source(:)
+    type(MODELATOM) :: thisAtom(:)
+    integer :: iAtom
+    integer :: nAtom
+    type(GRIDTYPE) :: grid
+    type(DATACUBE) :: cube
+    type(OCTALVECTOR) :: viewvec, rayPos, xProj, yProj
+    real(double) :: distance = 250.d0*pctocm/1.d10
+    real(double) :: deltaV
+    integer :: iTrans
+    integer :: i, j, k
+    real(double) :: r, xval, yval
+    integer :: nMonte, imonte, n
+    real(double), allocatable :: tempArray(:), tempArray2(:)
+    integer :: ix1, ix2
+
+!$MPI    ! For MPI implementations
+!$MPI    integer       ::   my_rank        ! my processor rank
+!$MPI    integer       ::   np             ! The number of processes
+!$MPI    integer       ::   ierr           ! error flag
+!$MPI    logical       ::   rankComplete
+
+
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+
+    nMonte = 1
+
+    call initCube(cube, 100, 100, 20)
+    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.9d0, +grid%octreeRoot%subcellSize*0.9d0, &
+         -grid%octreeRoot%subcellSize*0.9d0, grid%octreeRoot%subcellSize*0.9d0)
+    call addvelocityAxis(cube, -2000.d0, 2000.d0)
+
+    xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
+    call normalize(xProj)
+    yProj = viewVec .cross. xProj
+    call normalize(yProj)
+    ix1 = 1
+    ix2 = cube%nx
+ 
+
+!$MPI    ix1 = (my_rank) * (cube%nx / (np)) + 1
+!$MPI    ix2 = (my_rank+1) * (cube%nx / (np))
+!$MPI    if (my_rank == (np-1)) ix2 = cube%nx
+
+
+    do i = ix1, ix2
+       write(*,*) i
+       do j = 1, cube%ny
+
+          do iMonte = 1, nMonte
+             if (nMonte > 1) then
+                call random_number(r)
+                xVal = cube%xAxis(i) + (r-0.5d0)*(cube%xAxis(2)-cube%xAxis(1))
+                call random_number(r)
+                yVal = cube%yAxis(j) + (r-0.5d0)*(cube%yAxis(2)-cube%yAxis(1))
+             else
+                xVal = cube%xAxis(i)
+                yVal = cube%yAxis(j)
+             endif
+             rayPos =  (xval * xProj) + (yval * yProj)
+             raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*10.d0) * viewVec)
+             do k = 1, cube%nv
+                deltaV = cube%vAxis(k)*1.d5/cSpeed
+                cube%intensity(i,j,k) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
+                     iTrans, -deltaV, source, nSource)
+             enddo
+          enddo
+          cube%intensity(i,j,1:cube%nv) = cube%intensity(i,j,1:cube%nv) / dble(nMonte)
+       enddo
+    enddo
+
+!$MPI    n = (cube%nx*cube%ny*cube%nv)
+!$MPI    allocate(tempArray(1:n), tempArray2(1:n))
+!$MPI    tempArray = reshape(cube%intensity, (/  n /))
+
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+!$MPI       call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
+!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
+
+!$MPI    cube%intensity = reshape(tempArray2, (/ cube%nx, cube%ny, cube%nv /))
+!$MPI    deallocate(tempArray, tempArray2)
+
+  end subroutine createDataCube
+
+
 
 
 !$MPI      subroutine packAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
