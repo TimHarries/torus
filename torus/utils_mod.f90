@@ -3199,6 +3199,7 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
   real(double) A(NP,NP),B(NP,MP), big
   integer :: IPIV(NMAX),INDXR(NMAX),INDXC(NMAX)
   logical :: ok
+  logical, save :: firsttime = .true.
   ok = .true.
   DO J=1,N
      IPIV(J)=0
@@ -3238,7 +3239,10 @@ SUBROUTINE GAUSSJ(A,N,NP,B,M,MP, ok)
      INDXR(I)=IROW
      INDXC(I)=ICOL
      IF (A(ICOL,ICOL).EQ.0.d0) then
-        write(*,*) 'Singular matrix.',icol
+        if (firsttime) then
+           write(*,*) 'Singular matrix.',icol
+           firsttime = .false.
+        endif
         ok = .false.
         goto 666
      endif

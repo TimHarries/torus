@@ -59,7 +59,7 @@ contains
     integer, allocatable :: nCons(:)
     logical :: ok, debug, lymanAlpha
 
-    debug = .true.
+    debug = .false.
 
 
 
@@ -807,7 +807,7 @@ contains
 !$MPI    integer       ::   ierr           ! error flag
 !$MPI    logical       ::   rankComplete
 
-    debug = .true.
+    debug = .false.
 
 
 
@@ -1016,9 +1016,14 @@ contains
                               write(*,*) "Atom: ",thisAtom(iatom)%name
                               write(*,*) "Number density: ",thisOctal%rho(subcell)*thisOctal%atomAbundance(subcell, iatom)
                               do i = 1, thisAtom(iatom)%nLevels-1
-                                 nStar = boltzSahaGeneral(thisAtom(iAtom), 1, i, thisOctal%ne(subcell), &
+                                 nStar = boltzSahaGeneral(thisAtom(iAtom), 1, i, ne, &
                                       dble(thisOctal%temperature(subcell))) * &
                                       thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
+!                                 write(*,*) "nk",thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
+!                                 write(*,*) "ratio",boltzSahaGeneral(thisAtom(iAtom), 1, i, thisOctal%ne(subcell), &
+!                                      dble(thisOctal%temperature(subcell)))
+!                                 write(*,*) "temp",thisOctal%temperature(subcell)
+!                                 write(*,*) "ne",thisOctal%ne(subcell)
                                  write(*,*) i,thisOctal%newAtomLevel(subcell,iatom,i),oldpops(iatom,i), &
                                       abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(oldpops(iAtom,i),1.d-20)) &
                                       / max(oldpops(iAtom,i),1.d-20)), thisOctal%newAtomLevel(subcell,iatom,i)/nstar
