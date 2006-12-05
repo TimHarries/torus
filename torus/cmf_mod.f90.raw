@@ -21,7 +21,10 @@ module cmf_mod
 
 contains
 
-  subroutine solveLevels(nPops, jnuLine,  temperature, nAtom, thisAtom, ne, rho, jnuCont, freq, nfreq)
+  subroutine solveLevels(thisOctal, subcell, nPops, jnuLine,  &
+       temperature, nAtom, thisAtom, ne, rho, jnuCont, freq, nfreq)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
     integer :: nFreq
     integer :: num(100)
     real(double) :: freq(:), jnuCont(:)
@@ -106,7 +109,7 @@ contains
 
     do iAtom = 1, nAtom
        if (nCons(iAtom) /= 0) then
-          matrixB(nCons(iAtom)) = thisAtom(iAtom)%abundance * rho
+          matrixB(nCons(iAtom)) = thisOctal%atomAbundance(subcell,iAtom) * rho
           if (continuumGround(iAtom)) then
              matrixA(nCons(iAtom),1+nOffset(iAtom):nOffset(iAtom)+thisAtom(iAtom)%nLevels-1) = 1.d0
           else
@@ -345,6 +348,7 @@ contains
        hCol, HeIcol, HeIIcol, nAtom, thisAtom, source, nSource, &
        hitPhotosphere, sourceNumber, cosTheta, weight, nRBBTrans, indexRBBTrans, indexAtom, nHAtom, nHeIAtom, nHeIIAtom, &
        nFreq, freq, iCont)
+    use input_variables, only : opticallyThickContinuum
     type(SOURCETYPE) :: source(:)
     integer :: nfreq
     real(double) :: freq(:)
@@ -487,25 +491,29 @@ contains
           thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
 
           alphanuCont = 0.d0
-          do iFreq = 1, nFreq
+          jnuCont = 0.d0
 
-
-             alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:))
-
-             jnuCont(iFreq) = bfEmissivity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
-                  dble(thisOctal%temperature(subcell)))/fourPi
-
-             dTau = alphaNuCont(iFreq) *  (distArray(i)-distArray(i-1)) * 1.d10
-               
-             if (alphanuCont(ifreq) /= 0.d0) then
-                snu = jnuCont(iFreq)/alphanuCont(iFreq)
-             else
-                snu = tiny(snu)
-             endif
-             iCont(iFreq) = iCont(ifreq) +  exp(-tauCont(iFreq)) * (1.d0-exp(-dtau))*snu
-             tauCont(iFreq) = tauCont(iFreq) + dtau
-          enddo
-
+          if (opticallyThickContinuum) then
+             do iFreq = 1, nFreq
+                
+                
+                alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:))
+                
+                jnuCont(iFreq) = bfEmissivity(freq(ifreq), nAtom, thisAtom, &
+                     thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
+                     dble(thisOctal%temperature(subcell)))/fourPi
+                
+                dTau = alphaNuCont(iFreq) *  (distArray(i)-distArray(i-1)) * 1.d10
+                
+                if (alphanuCont(ifreq) /= 0.d0) then
+                   snu = jnuCont(iFreq)/alphanuCont(iFreq)
+                else
+                   snu = tiny(snu)
+                endif
+                iCont(iFreq) = iCont(ifreq) +  exp(-tauCont(iFreq)) * (1.d0-exp(-dtau))*snu
+                tauCont(iFreq) = tauCont(iFreq) + dtau
+             enddo
+          endif
 
           dv = deltaV - (thisVel .dot. direction)
 
@@ -686,6 +694,7 @@ contains
   subroutine calculateJbarCont(thisOctal, subcell, nAtom, thisAtom, nray, ds, source, nSource, &
        hitPhotosphere, sourceNumber, freq, nfreq, &
        iCont, jBarCont, cosTheta, weight)
+    use input_variables, only : opticallyThickContinuum
     real(double) :: iCont(:,:), jBarCont(:), ds(:)
     integer :: nAtom
     type(OCTAL), pointer :: thisOctal
@@ -715,20 +724,18 @@ contains
     do iRay = 1, nRay
        do iFreq = 1, nFreq
 
-          alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:))
-
-          jnu =  bfEmissivity(freq(ifreq), nAtom, thisAtom, &
-               thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
-               dble(thisOctal%temperature(subcell)))/fourPi
-          
-          tau = alphaNu * ds(iray)
-
-          if (alphanu /= 0.d0) then
-             snu = jnu/alphanu
-          else
-             snu = tiny(snu)
+          if (opticallyThickContinuum) then
+             alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:))
+             jnu =  bfEmissivity(freq(ifreq), nAtom, thisAtom, &
+                  thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
+                  dble(thisOctal%temperature(subcell)))/fourPi
+             tau = alphaNu * ds(iray)
+             if (alphanu /= 0.d0) then
+                snu = jnu/alphanu
+             else
+                snu = tiny(snu)
+             endif
           endif
-
           jBarContExternal(iFreq) = jBarContExternal(iFreq) + iCont(iray, iFreq) * exp(-tau) * weight(iRay)
 !          write(*,*) 1.d8*cspeed/freq(iFreq)," icont(iray,ifreq)",iCont(iRay,iFreq),tau
           jBarContInternal(iFreq) = jBarContInternal(iFreq) + snu * (1.d0 - exp(-tau)) * weight(iRay)
@@ -792,7 +799,7 @@ contains
     real(double) :: nuStart, nuEnd, ne
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom, ir, ifreq
-    real(double) :: xAbund, yAbund, nstar
+    real(double) :: nstar
     logical :: debug
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
@@ -802,25 +809,6 @@ contains
 
     debug = .true.
 
-    xAbund = 0.71d0
-    yAbund = 0.27d0
-
-!    xAbund = 1.d0
-!    yAbund = 0.d0
-
-    do iAtom = 1, nAtom
-       select case(thisAtom(iAtom)%name)
-          case("HI")
-             thisAtom(iAtom)%abundance = Xabund / mHydrogen
-          case("HeI")
-             thisAtom(iAtom)%abundance = Yabund / (4.d0*mHydrogen)
-          case("HeII")
-             thisAtom(iAtom)%abundance = Yabund / (4.d0*mHydrogen)
-           case DEFAULT
-              call writeFatal("Atom not recognised: "//trim(thisAtom(iAtom)%name))
-              stop
-        end select
-     enddo
 
 
      call createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)
@@ -981,7 +969,7 @@ contains
                                  freq, nFreq, weight(1:nRay))
                          enddo
                          newpops = thisOctal%newatomLevel(subcell, 1:nAtom, 1:)
-                         call solveLevels(newPops, &
+                         call solveLevels(thisOctal, subcell, newPops, &
                               thisOctal%jnu(subcell,1:nRBBTrans),  &
                               dble(thisOctal%temperature(subcell)), nAtom, thisAtom, ne, &
                               thisOctal%rho(subcell),&
@@ -1026,6 +1014,7 @@ contains
                         if (debug) then
                            do iatom = 1, size(thisAtom)
                               write(*,*) "Atom: ",thisAtom(iatom)%name
+                              write(*,*) "Number density: ",thisOctal%rho(subcell)*thisOctal%atomAbundance(subcell, iatom)
                               do i = 1, thisAtom(iatom)%nLevels-1
                                  nStar = boltzSahaGeneral(thisAtom(iAtom), 1, i, thisOctal%ne(subcell), &
                                       dble(thisOctal%temperature(subcell))) * &
@@ -1268,6 +1257,7 @@ contains
     real(double) :: omegaSubtendedBySource
     real(double) :: theta, dOmega, r, cosTheta
     logical :: hitCore
+    integer :: nBug
 
     omegaSubtendedBySource = 0.d0
     do i = 1 , nSource
@@ -1288,12 +1278,18 @@ contains
        i = int(r*real(nSource))+1
        toStar = source(i)%position - point
        call normalize(toStar)
-       theta = asin(source(i)%radius/modulus(point-source(i)%position))
+       theta = asin(min(1.d0, max(-1.d0,source(i)%radius/modulus(point-source(i)%position))))
        cosTheta = cos(theta)
        hitCore = .false.
+       nbug = 0
        do while(.not.hitCore)
           direction = randomUnitVector()
           if (acos(direction.dot.toStar) < theta) hitCore = .true.
+          nbug = nbug  + 1
+          if (nbug > 10000000) then
+             write(*,*) "bug in direction to star"
+             direction = toStar
+          endif
        enddo
     else
        weight = (1.d0-chanceSource)/(1.d0-probTowardsSource)
@@ -1310,6 +1306,7 @@ contains
 
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource) result (i0)
+    use input_variables, only : opticallyThickContinuum
     type(OCTALVECTOR) :: position, direction, startPosition, pvec
     type(GRIDTYPE) :: grid
     integer :: nSource
@@ -1460,10 +1457,11 @@ contains
           dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
 
 
-          dTauCont = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:)) &
-               *  (distArray(i)-distArray(i-1)) * 1.d10
-
+          if (opticallyThickContinuum) then
+             dTauCont = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:)) &
+                  *  (distArray(i)-distArray(i-1)) * 1.d10
           dTau = dTau + dTauCont
+       endif
 
           etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
           etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)

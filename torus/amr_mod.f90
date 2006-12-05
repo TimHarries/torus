@@ -217,7 +217,7 @@ CONTAINS
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
-    use input_variables, only : cylindrical, photoionization
+    use input_variables, only : cylindrical, photoionization, cmf
 
     IMPLICIT NONE
     
@@ -301,6 +301,9 @@ CONTAINS
     grid%octreeRoot%nTot = -9.9e9
     grid%octreeRoot%changed = .false.
     grid%octreeRoot%dustType = 1
+    if (cmf) then
+       allocate(grid%octreeroot%atomAbundance(8, 3))
+    endif
     ALLOCATE(grid%octreeRoot%dusttypefraction(8,  nDustType))
     grid%octreeroot%dustTypeFraction(1:8,1:nDustType) = 0.d0
     grid%octreeroot%dustTypeFraction(1:8,1) = 1.d0
@@ -387,7 +390,7 @@ CONTAINS
                          stellar_cluster, inherit, interp, splitAzimuthally, romData)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie
+    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, cmf
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
@@ -479,6 +482,11 @@ CONTAINS
        parent%child(newChildIndex)%kappaSca = 1.e-30
     ENDIF
     NULLIFY(parent%child(newChildIndex)%child)
+
+    if (cmf) then
+       allocate(parent%child(newChildIndex)%atomAbundance(8, 3))
+       parent%child(newChildIndex)%atomAbundance = 1.d-30
+    endif
 
     ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
     ! set up the new child's variables
@@ -6809,6 +6817,9 @@ IF ( .NOT. gridConverged ) RETURN
              thisOctal%rho(subcell) = mdot1 / (fourPi * (r*1.d10)**2 * v)
              thisOctal%temperature(subcell) = 0.9d0 * teff1
              thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
+             thisOctal%atomAbundance(subcell, 1) =  1.d-5 / mHydrogen
+             thisOctal%atomAbundance(subcell, 2) =  1.d0 / (4.d0*mHydrogen)
+             thisOctal%atomAbundance(subcell, 3) =  1.d0 / (4.d0*mHydrogen)
           endif
        else
           direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
@@ -6819,6 +6830,9 @@ IF ( .NOT. gridConverged ) RETURN
              thisOctal%rho(subcell) = mdot2 / (fourPi * (r*1.d10)**2 * v)
              thisOctal%temperature(subcell) = 0.9d0 * teff2
              thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
+             thisOctal%atomAbundance(subcell, 1) =  0.71d0 / mHydrogen
+             thisOctal%atomAbundance(subcell, 2) =  0.27d0 / (4.d0*mHydrogen)
+             thisOctal%atomAbundance(subcell, 3) =  0.27d0 / (4.d0*mHydrogen)
           endif
        endif
     else
@@ -6830,6 +6844,9 @@ IF ( .NOT. gridConverged ) RETURN
           thisOctal%rho(subcell) = mdot1 / (fourPi * (r*1.d10)**2 * v)
           thisOctal%temperature(subcell) = 0.9d0 * teff1
           thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
+          thisOctal%atomAbundance(subcell, 1) =  1.d-5 / mHydrogen
+          thisOctal%atomAbundance(subcell, 2) =  1.d0 / (4.d0*mHydrogen)
+          thisOctal%atomAbundance(subcell, 3) =  1.d0 / (4.d0*mHydrogen)
        endif
     endif
 
@@ -8287,6 +8304,11 @@ IF ( .NOT. gridConverged ) RETURN
     if (associated(source%molecularLevel)) then
        allocate(dest%molecularLevel(SIZE(source%molecularLevel,1),SIZE(source%molecularLevel,2)))
        dest%molecularLevel          = source%molecularLevel
+    endif
+
+    if (associated(source%atomAbundance)) then
+       allocate(dest%atomAbundance(SIZE(source%atomAbundance,1),SIZE(source%atomAbundance,2)))
+       dest%atomAbundance          = source%atomAbundance
     endif
 
     if (associated(source%atomLevel)) then

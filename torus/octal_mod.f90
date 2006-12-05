@@ -124,6 +124,7 @@ MODULE octal_mod
     real(double), pointer :: molecularLevel(:,:) => null() ! molecular level populations
     real(double), pointer :: newmolecularLevel(:,:) => null() ! molecular level populations
     real(double), pointer :: atomLevel(:,:,:) => null() ! atom level populations
+    real(double), pointer :: atomAbundance(:,:) ! abundances
     real(double), pointer :: newatomLevel(:,:,:) => null() ! atom level populations
     real(double), pointer :: jnu(:,:) => null() ! molecular level populations
     real(double), pointer :: jnugrid(:,:) => null() ! molecular level populations

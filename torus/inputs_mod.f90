@@ -1223,6 +1223,9 @@ endif
  call getLogical("cmf", cmf, cLine, nLines, &
    "Compute CMF statistical equailibrium: ","(a,1l,a)", .false., ok, .false.)
 
+ call getLogical("thickcont", opticallyThickContinuum, cLine, nLines, &
+   "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
+
  if (photoionization) then
        call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
        call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &

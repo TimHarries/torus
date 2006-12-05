@@ -18,7 +18,6 @@ module modelatom_mod
      integer :: charge
      integer :: nz
      real(double) :: mass ! amu
-     real(double) :: abundance
      integer :: nLevels
      character(len=10), pointer :: level(:)
      real(double), pointer :: energy(:)  ! erg
@@ -606,17 +605,17 @@ contains
     type(MODELATOM) :: thisAtom
     integer              :: nIon, level
     real(double) :: Ne, t, ratio, nk
-    real(double), parameter ::  Ucoeff(5,5) =  reshape(source=  &
-        (/0.30103d0, -0.00001d0, 0.d0, 0.d0, 0.d0, &
-          0.00000d0,  0.00000d0, 0.d0, 0.d0, 0.d0, &
-          0.30103d0,  0.00000d0, 0.d0, 0.d0, 0.d0, &
-          0.00000d0,  0.00000d0, 0.d0, 0.d0, 0.d0, &
-          0.00000d0,  0.00000d0, 0.d0, 0.d0, 0.d0  /), shape=(/5,5/))
+    real(double), parameter ::  Ucoeff(5,2) =  reshape(source=  &
+        (/0.30103d0, -0.00001d0, &
+          0.00000d0,  0.00000d0, &
+          0.30103d0,  0.00000d0, &
+          0.00000d0,  0.00000d0, &
+          0.00000d0,  0.00000d0 /), shape=(/5,2/))
     real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
     pe = ne * kerg * t
     select case(thisAtom%nz)
        case(1)
-          u0 = getUT(t, uCoeff(1,1:5))
+          u0 = getUT(t, uCoeff(1,:))
           u1 = 1.d0
           N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
           N1overN0 = (10.d0**N1overN0)/pe
@@ -632,12 +631,12 @@ contains
           select case(thisAtom%charge)
              case(0)
                 u0 = 1.d0
-                u1 = getUT(t, uCoeff(3,1:5))
+                u1 = getUT(t, uCoeff(3,:))
                 N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
                 N1overN0 = (10.d0**N1overN0)/pe
                 ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
              case(1)
-                u1 = getUT(t, uCoeff(3,1:5))
+                u1 = getUT(t, uCoeff(3,:))
                 u2 = 1.d0
                 N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
                 N2overN1 = (10.d0**N2overN1)/pe
@@ -659,8 +658,7 @@ contains
 
      logphi = 5040.d0/t
 
-     ut = coeff(1) + coeff(2)*logphi + coeff(3) * logphi**2 + &
-          coeff(4) * logphi**3 + coeff(5) * logphi**4
+     ut = coeff(1) + coeff(2)*logphi
      ut = 10.d0**ut
    end function getUT
 
