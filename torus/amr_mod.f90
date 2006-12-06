@@ -13135,7 +13135,7 @@ IF ( .NOT. gridConverged ) RETURN
             disttoZboundary = 1.e30
          endif
       
-!         write(*,*) "Dr",disttorboundary,"Dz",disttozboundary        
+!        write(*,*) "Dr",disttorboundary,"Dz",disttozboundary        
 
          tVal = min(distToZboundary, distToRboundary)
          if (tVal > 1.e29) then

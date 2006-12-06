@@ -9,12 +9,17 @@ module molecular_mod
   use messages_mod
   use grid_mod
   use math_mod
+  use datacube_mod
+
 !$MPI    use parallel_mod
 
   implicit none
 
 ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
 ! DATACUBE is used for data visualisation (intensity for x,y and v)
+
+! Much of this code is our interpretation of the 2000 paper by F. v.d. Tak and M. Hoerheijde - and the 
+! 2002 paper by G-J. v. Zadelhoff et al
 
   type MOLECULETYPE
      character(len=10) :: molecule
@@ -42,63 +47,9 @@ module molecular_mod
      real(double), pointer :: collRates(:,:,:)
   end type MOLECULETYPE
 
-
-  type DATACUBE
-     character(len=80) :: label
-     integer :: nx
-     integer :: ny
-     integer :: nv
-     real(double), pointer :: xAxis(:)
-     real(double), pointer :: yAxis(:)
-     real(double), pointer :: vAxis(:)
-     real(double), pointer :: intensity(:,:,:)
-  end type DATACUBE
-
 contains
-
-! Initialises cube - sets intensity for cube to 0 
-  subroutine initCube(thisCube, nx, ny, nv)
-    type(DATACUBE) :: thisCube
-    integer :: nx, ny, nv
-
-    thisCube%nx = nx
-    thisCube%ny = ny
-    thisCube%nv = nv
-    allocate(thisCube%xAxis(1:nx))
-    allocate(thisCube%yAxis(1:ny))
-    allocate(thisCube%vAxis(1:nv))
-    allocate(thisCube%intensity(1:nx,1:ny,1:nv))
-
-    thisCube%intensity = 0.d0
-
-  end subroutine initCube
-
-! Set spatial axes for datacube - Equally spaced (linearly) between min and max
-  subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
-    type(DATACUBE) :: cube
-    real(double) :: xMin, xMax, yMax, yMin
-    integer :: i
-
-    do i = 1, cube%nx
-       cube%xAxis(i) = xmin + (xmax-xmin)*dble(i-1)/dble(cube%nx)
-    enddo
-    Do i = 1, cube%ny
-       cube%yAxis(i) = ymin + (ymax-ymin)*dble(i-1)/dble(cube%ny)
-    enddo
-  end subroutine addSpatialAxes
-
-! Set velocity axis for datacube - Equally spaced (linearly) between min and max
-  subroutine addVelocityAxis(cube, vMin, vMax)
-    type(DATACUBE) :: cube
-    real(double) :: vMin, vMax
-    integer :: i
-
-    do i = 1, cube%nv
-       cube%vAxis(i) = vmin + (vmax-vmin)*dble(i-1)/dble(cube%nv)
-    enddo
-  end subroutine addVelocityAxis
-
-! Read in molecular parameters from file - note: abundance hard-coded here
+  ! Read in molecular parameters from file - note: abundance hard-coded here
+  
   subroutine readMolecule(thisMolecule, molFilename)
     type(MOLECULETYPE) :: thisMolecule
     character(len=*) :: molFilename
@@ -655,7 +606,6 @@ contains
     deallocate(tau)
   end subroutine getRay
 
-
 ! sample level populations at logarithmically spaced annuli
   subroutine dumpResults(grid, thisMolecule)
     type(GRIDTYPE) :: grid
@@ -839,7 +789,7 @@ contains
 
 ! iterate over all octals, all rays, solving the system self-consistently
           do iOctal = ioctal_beg, ioctal_end
-             write(*,*) iOctal,ioctal_beg,ioctal_end
+!             write(*,*) iOctal,ioctal_beg,ioctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
                 
@@ -1023,7 +973,7 @@ contains
     real(double) :: dvAcrossCell
     logical :: debug
 
-    debug = .true.
+    debug = .false.
 
     distToGrid = distanceToGridFromOutside(grid, position, direction)
 
@@ -1101,7 +1051,7 @@ contains
           endif
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
-          if (debug) write(*,*) "i0",i0,"tau",tau,"dtau",dtau,"snu",snu
+           if (debug) write(*,*) "i0",i0,"tau",tau,"dtau",dtau,"snu",snu
           tau = tau + dtau
        enddo
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
@@ -1111,51 +1061,58 @@ contains
 666 continue 
 
     ! convert to brightness T
-    write(*,*) "i0 pre"
+    
     i0 = i0 * (cSpeed**2 / (2.d0 * thisMolecule%transFreq(iTrans)**2 * kerg))
-    WRITE(*,*) "i0 post"
+
   end function intensityAlongRay
 
-  function makeImageGrid(posvec,npixels,imageside,distance,grid,thisMolecule,iTrans) result (imagegrid)
+  function makeImageGrid(unitvec,npixels,imageside,grid,thisMolecule,iTrans,deltaV,tester,cube) result (imagegrid)
 
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
-    real(double) :: distance
     integer :: itrans
-    type(OCTALVECTOR) :: viewVec
+    type(OCTALVECTOR) :: viewVec, posvec
     real(double) :: flux, i0
-    type(OCTALVECTOR) :: imagebasis1, imagebasis2, posvec, pixelcorner,newposvec
+    type(OCTALVECTOR) :: imagebasis1, imagebasis2, pixelcorner,newposvec
+    type(OCTALVECTOR), INTENT(IN) :: unitvec
     integer :: npixels
     integer :: nsubpixels
     real :: imagegrid(npixels,npixels)
     integer :: i,j
-    real(double) :: imageside,pixelside, r1,dtgfo
+    real(double) :: imageside,pixelside, r1,dtgfo,distance
     real(double) :: max
+    real(double) :: deltaV
+    integer :: tester
+    type(datacube) :: cube
 
-    imagebasis1 = posvec .cross. OCTALVECTOR(0.d0,0.d0,1.d0) ! gridvector
-    imagebasis2 = imagebasis1 .cross. posvec ! gridvector perp
+    imagebasis1 = unitVec .cross. OCTALVECTOR(0.d0,0.d0,1.d0) ! gridvector
+    imagebasis2 = imagebasis1 .cross. unitVec ! gridvector perp
     call normalize(imagebasis1)
     call normalize(imagebasis2)
     
-    ! imageside = 3.d8 ! imagegrid size currently ~3r
+!   call normalize(posvec)
+    
     pixelside = imageside / npixels
 
-    !write(*,*) perpvec1 .dot. perpvec2
-    !posvec = posvec * distance
     imagebasis1 = imagebasis1 * pixelside ! rescale basis vectors so that stepsize is simplified 
     imagebasis2 = imagebasis2 * pixelside
-    viewvec = (-1.d0) * posvec ! look *towards* origin from posvec   
-    posvec = posvec * distance ! now the grid will be far away!
+    viewvec = (-1.d0) * unitvec ! look *towards* origin from posvec   
+    posvec = unitvec * 5.d0 * grid%octreeroot%subcellsize ! now the grid will be far away!
 
 !    dtgfo = distancetogridfromoutside(grid,posvec,viewvec)
     
-    write(*,*) posvec, "posvec", viewvec, "viewvec"
-    write(*,*) imagebasis1, "imagebasis1"
-    write(*,*) imagebasis2, "imagebasis2"
+    !write(*,*) posvec, "posvec", viewvec, "viewvec"
+    !write(*,*) imagebasis1, "imagebasis1"
+    !write(*,*) imagebasis2, "imagebasis2"
     
     pixelcorner = posvec - (dble(npixels)/2.d0)*(imagebasis2 - imagebasis1) + imagebasis1 ! fudge at the end to 'fit in' with the do loop
-    nsubpixels = 3
-    write(*,*) acos(((-1.d0)*viewvec .dot. pixelcorner)/sqrt(pixelcorner%x**2 + pixelcorner%y**2 + pixelcorner%z**2))
+    
+    if (tester .gt. 0) then 
+       nsubpixels = tester
+    else
+       nsubpixels = 4
+    endif
+   
     do j = 1,npixels
        if (j == 1) then 
           pixelcorner = pixelcorner - imagebasis1
@@ -1163,94 +1120,110 @@ contains
           pixelcorner = pixelcorner - (imagebasis1 + dble(npixels)*imagebasis2)
        endif
        do i = 1,npixels
-          imagegrid(i,j) = PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,imagebasis1,imagebasis2,grid,thisMolecule,iTrans)
-          !imagegrid(i,j) = distancetogridfromoutside(grid,pixelcorner,viewvec) - dtgfo
+
+          imagegrid(i,j) = PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,imagebasis1,imagebasis2,grid,thisMolecule,&
+               iTrans,deltaV,tester,i,j,cube) / pixelside**2 ! should normalise to ~1...
+
           pixelcorner = pixelcorner + 1.d0 * imagebasis2
        enddo
     enddo
-    max = MAXVAL(imagegrid(:,:))
-    imagegrid = imagegrid / max
-    !do i = 1,npixels
-       !imagediff(i,j) =
-    write(*,*) imagegrid
-stop
+
 end function makeImageGrid
 
 function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
-                          imagebasis1,imagebasis2,grid,thisMolecule,iTrans)&
+                          imagebasis1,imagebasis2,grid,thisMolecule,iTrans,deltaV,tester,index1,index2,cube)&
                           result(totalpixelintensity)
 
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
     integer :: itrans
     type(OCTALVECTOR) :: viewVec
-    real(double) :: flux, i0, totalpixelintensity
+    real(double) :: flux, i0, totalpixelintensity,distance
     type(OCTALVECTOR) :: imagebasis1, imagebasis2, pixelbasis1, pixelbasis2, pixelcorner, newposvec
-    integer :: nsubpixels
+    integer :: nsubpixels,subpixels
     real(double),allocatable :: subpixelgrid(:,:),testgrid(:,:)
     integer :: i,j
     real(double) :: pixelside,subpixelsize,max
     integer :: failed
+    real(double) :: acc, imax
+    real(double) :: deltaV
+    type(DATACUBE) :: cube
+    integer :: tester
+    integer :: index1, index2
 
- !write(*,*) "Goto used!"
-700 allocate(subpixelgrid(1:nsubpixels,1:nsubpixels))
-    allocate(testgrid(0:nsubpixels,0:nsubpixels))
-    !write(*,*) "Allocated"
-    pixelbasis1 = imagebasis1 / dble(nsubpixels)
-    pixelbasis2 = imagebasis2 / dble(nsubpixels)
+    failed = 0
+    acc = 1d-1
+    subpixels = nsubpixels
+    cube%converged(index1,index2,cube%nv) = 1
+
+700 allocate(subpixelgrid(1:subpixels,1:subpixels))
+    allocate(testgrid(0:subpixels+1,0:subpixels+1))
+    
+    cube%nsubpixels(index1,index2,cube%nv) = subpixels
+    
+    pixelbasis1 = imagebasis1 / dble(subpixels)
+    pixelbasis2 = imagebasis2 / dble(subpixels)
     newposvec = pixelcorner + (pixelbasis1 + pixelbasis2) / 2.d0
-    subpixelsize = (pixelside/nsubpixels)**2
+    subpixelsize = (pixelside/subpixels)**2
+    subpixelgrid = 0.d0
     totalpixelintensity = 0.d0
     
-    do j = 1,nsubpixels
-       if (j /= 1) then 
-          newposvec = newposvec - (pixelbasis1 + dble(nsubpixels)*pixelbasis2)
-       else
+    do j = 1,subpixels
+       if (j==1) then 
           newposvec = newposvec - pixelbasis1 
+       else
+          newposvec = newposvec - (pixelbasis1 + dble(subpixels)*pixelbasis2)
        endif
-       
-       do i = 1,nsubpixels
-          i0 = intensityalongray(newposvec,viewvec,grid,thisMolecule,1,0.d0)
-!          write(*,*) i,j,i0
-          subpixelgrid(i,j) = i0 / subpixelsize
+           
+       do i = 1,subpixels
+          i0 = intensityalongray(newposvec,viewvec,grid,thisMolecule,itrans,deltaV)
+ 
+          subpixelgrid(i,j) = i0 * subpixelsize
           totalpixelintensity = totalpixelintensity + subpixelgrid(i,j) ! assumes constant instrument function
           newposvec = newposvec + pixelbasis2
        enddo
     enddo
 
-    max = maxval(subpixelgrid(:,:))
-    write(*,*) subpixelgrid
-    testgrid(1:nsubpixels,1:nsubpixels) = subpixelgrid / max
-    testgrid(0,1:nsubpixels) = testgrid(1,1:nsubpixels)
-    testgrid(1:nsubpixels,0) = testgrid(1:nsubpixels,1)
-!    write(*,*) "Break"
+ if(tester == 0) then
 
-    do i = 2,nsubpixels
-       do j = 2,nsubpixels
+    max = maxval(subpixelgrid(:,:))
+    
+    testgrid(1:subpixels,1:subpixels) = subpixelgrid / max
+    testgrid(0,1:subpixels) = testgrid(1,1:subpixels)
+    testgrid(1:subpixels,0) = testgrid(1:subpixels,1)
+    testgrid(subpixels+1,1:subpixels) = testgrid(subpixels,1:subpixels)
+    testgrid(1:subpixels,subpixels+1) = testgrid(1:subpixels,subpixels)
+  
+    do i = 1,subpixels
+       do j = 1,subpixels
           if(failed /= 1) then
              if(testgrid(i,j) > 1.d-2) then
-                if((abs(testgrid(i-1,j) - testgrid(i,j)) > 0.02 .or. abs(testgrid(i,j-1) - testgrid(i,j)) > 0.02)) then 
-
-                   if(nsubpixels < 7) then 
-                      nsubpixels = nsubpixels * 2
+                if((abs(testgrid(i-1,j) - testgrid(i,j)) > acc .or. & ! Look at nearest neighbours for change (is there a better way of doing this?)
+                     abs(testgrid(i,j-1) - testgrid(i,j)) > acc .or. &
+                     abs(testgrid(i+1,j) - testgrid(i,j)) > acc .or. &
+                     abs(testgrid(i,j+1) - testgrid(i,j)) > acc)) then 
+                   !write(*,*) "Test failed",i,j,testgrid(i-1,j),testgrid(i,j-1),testgrid(i+1,j),testgrid(i,j+1), testgrid(i,j) 
+                   
+                   if(subpixels < 15) then 
+                      subpixels = subpixels * 2
+                      !write(*,*) "Trying",subpixels,"subpixels"
                    else
                       failed = 1
-                      write(*,*) "Sad :( because",testgrid(i,j),testgrid(i-1,j),testgrid(i,j-1)
-                   endif
+                      write(*,*) "Sad :( because reached maximum resolution without achieving 'convergence'"
+                      cube%converged(index1,index2,cube%nv) = 0 ! Write convergence info to last line (to be moved later) to save passing even more parameters 
+                   endif             
                 
-                write(*,*) testgrid(:,:)
-                !if(nsubpixels > 31) stop
-                write(*,*) "OMG!","Trying",nsubpixels,"subpixels"
-                write(*,*) i,j
                 deallocate(subpixelgrid)
                 deallocate(testgrid)
-                goto 700
+                if (failed == 0) goto 700 ! I used a goto loop and loved it. Seems the most natural way of doing this to me
              endif
           endif
        endif
     enddo
  enddo
        
+endif
+
   end function PixelIntensity
   
   subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec, distance)
@@ -1270,16 +1243,13 @@ function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
     real(double) :: flux, i0
     real(double), allocatable :: vArray(:), spec(:), tempArray(:)
     integer :: iv1, iv2, i,j
-    integer :: npixels
-    type(OCTALVECTOR) :: posvec
-    real(double), allocatable :: image(:,:)
-    real(double) :: dtgfo,th,ph,j0
-    real(double) :: xview,yview,zview,imageside,pixelside
-    real(double) :: works(24,6,2)
-    real(double) :: distancetest, r1
-!    real(double) :: zval
-!    real(double) :: zrarray(1000000)
-    real(double) :: faraway
+    integer :: npixels,nv
+    real(double) :: imageside
+    type(OCTALVECTOR) :: unitvec, posvec
+!   type(DATACUBE) :: mycube,cube16,cube4,cube2,varcube,diffcube42,diffcubevar4,diffcubevar2,diffcube16var,diffcube164,thecube
+    type(DATACUBE) ::  cube
+    integer :: tester ! tests subpixels per pixel - change this variable name!
+
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   np             ! The number of processes
@@ -1293,88 +1263,26 @@ function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
 !$MPI  
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+       
+    unitvec = randomunitvector()
+    !unitvec = OCTALVECTOR(1.d0,0.d0,0.d0) ! Allows our choice of unit vector
+    imageside = 5.d7
+    Npixels = 20
+    nv = 10
+    itrans = 1
 
-!------------------------------------------------------------------------------
-! call random_number(th)
- !   call random_number(ph)
-    posVec = randomUnitVector() ! look in vector_mod for this
-!------------------------------------------------------------------------------
-!    posVec = OCTALVECTOR(1.d0,0.5d0,3.d0)
-    call normalize(posvec)
-!    do i=1,1000000
-!       posvec = randomUnitVector()
-!       !posvec = OCTALVECTOR(0.d0,-1.d0,-3.D-1)
-!       viewVec = (-1.d0)*posVec
+    tester = 0
+    call createimage(cube, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, tester)
+    call plotDataCube(cube, 'thecube.ps/vcps')
 
+    write(*,*) "End"
+    write(*,*) "CONVO",cube%converged(:,:,:)
+    write(*,*) "subs",cube%nsubpixels(:,:,:)
+    stop
 
-!       posvec = posvec * distance
-!       r1 = distanceToGridFromOutside(grid, posvec, viewvec)
-!       !posVec = posvec  + (r1 * viewvec)
-!       !write(*,*) sqrt(posVec%x**2 + posVec%y**2),posVec%z
-!       zrarray(i) = distanceToGridFromOutside(grid, posvec, viewvec)
-!    enddo
-!do i = 1,1000000
-!   zval = zval + zrarray(i)
-!enddo
-!write(*,*) zval
+    call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
-npixels = 3
-allocate(image(1:npixels,1:npixels))
-!do j=0,5
-!   do i=0,23
-!      
-!      posVec = OCTALVECTOR(cos((i/24.d0)*twopi),sin(((j+1)/6.d0)*pi),sin((i/24.d0)*twopi))
-
-!    th = i*15/180.d0
-!    ph = j*60/180.d0
-
-!    xview = cos(th*twopi)*cos(ph*twopi)
-!    yview = sin(ph*twopi)
-!    zview = sin(th*twopi)*cos(ph*twopi) 
-!    !write(*,*) th, ph
-!    !write(*,*) xview,yview,zview
-!    !write(*,*) xview**2+yview**2+zview**2
-!    posvec = OCTALVECTOR(xview,yview,zview)
-
-
-!      write(*,*) "THETA",i*15
-!      call normalize(posvec)
-      faraway = 5.d0*grid%octreeroot%subcellsize
-      write(*,*) faraway, "faraway"
-      image = makeImageGrid(posvec,npixels,1.d7,faraway,grid,thisMolecule,1)
-      !image = image/image(2,)
-!      works(i+1,j+1,1) = image(npixels/2,npixels/2) - image(npixels/2,npixels/2 - 1)
-!      works(i+1,j+1,2) = i*15
-!      !works(1) = image(4,4) - image(4,3)
-!      write(*,*) "end THETA",i*15
-!   enddo
-!enddo
-!   do i=0,23 
-!      write(*,*) works(i+1,1,1), works(i+1,2,1), works(i+1,1,2)
-!      write(*,*) works(i+1,3,1), works(i+1,4,1), works(i+1,1,2)
-!      write(*,*) works(i+1,5,1), works(i+1,6,1), works(i+1,1,2)
-!enddo
-
-!write(*,*) image
-open(41, file="mmm.csv",status="unknown",form="formatted")
-    do i = 1, npixels
-          write(41, *) image(i,:)
-       enddo
-    close(41)
-stop
-call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
-
-!    do while (.true.)
-!       viewVec = randomUnitVector()
-!       posVec = (-distance)*viewVec
-!       r = distanceToGridFromOutside(grid, posVec, viewVec)
-!       posVec = posVec + r * viewVec
-!       write(*,*) sqrt(posVec%x**2+posVec%y**2),posVec%z
-!    enddo
-
-!    call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
-
-    nLambda = 5 !Used to be 50
+    nLambda = 50
 
     iv1 = 1
     iv2 = nLambda
@@ -1382,7 +1290,6 @@ call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 !$MPI    iv1 = (my_rank) * (nLambda / (np)) + 1
 !$MPI    iv2 = (my_rank+1) * (nLambda / (np))
 !$MPI    if (my_rank == (np-1)) iv2 = nLambda
-
 
     allocate(spec(1:nLambda), vArray(1:nLambda))
     spec = 0.d0
@@ -1397,7 +1304,6 @@ call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
           spec(iv) = spec(iv) + i0  * domega(iRay) / sum(domega(1:nray))
        enddo
     enddo
-
 
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI     allocate(tempArray(1:nLambda))
@@ -1416,6 +1322,93 @@ call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
     deallocate(vArray, spec)
   end subroutine calculateMoleculeSpectrum
 
+  subroutine createimage(cube, grid, imageside, npixels, nv, unitvec, thisMolecule, iTrans, tester)
+!$MPI    include 'mpif.h'
+
+    type(MOLECULETYPE) :: thisMolecule
+    type(GRIDTYPE) :: grid
+    type(DATACUBE) :: cube
+    type(OCTALVECTOR) :: unitvec
+    real(double) :: distance = 250.d0*pctocm/1.d10
+    real(double) :: deltaV
+    integer :: iTrans
+    integer :: i, j, k
+    real(double) :: r, xval, yval
+    integer :: nMonte, imonte, n
+    real(double), allocatable :: tempArray(:), tempArray2(:)
+    integer :: ix1, ix2, iv
+    real(double) :: imageside
+    integer :: npixels,nv
+    integer :: tester
+    
+!$MPI    ! For MPI implementations
+!$MPI    integer       ::   my_rank        ! my processor rank
+!$MPI    integer       ::   np             ! The number of processes
+!$MPI    integer       ::   ierr           ! error flag
+!$MPI    logical       ::   rankComplete
+
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+    
+    call initCube(cube, npixels, npixels, nv)
+    call addSpatialAxes(cube, -imageside/2.d0,imageside/2.d0,-imageside/2.d0,imageside/2.d0)
+    call addvelocityAxis(cube, 1.d0, -1.d0) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
+ 
+!$MPI    ix1 = (my_rank) * (cube%nx / (np)) + 1
+!$MPI    ix2 = (my_rank+1) * (cube%nx / (np))
+!$MPI    if (my_rank == (np-1)) ix2 = cube%nx
+
+    do iv = 1,cube%nv
+       deltaV = (cube%vAxis(iv)*1.d5/cSpeed) ! velocities in fraction of c
+       WRITE(*,*) "DELTAV",deltaV
+       cube%intensity(:,:,iv) = makeImageGrid(unitvec,npixels,imageside,grid,thisMolecule,1,deltaV,tester,cube)
+       cube%converged(:,:,iv) = cube%converged(:,:,cube%nv)
+       cube%nsubpixels(:,:,iv) = cube%nsubpixels(:,:,cube%nv)
+    enddo
+
+!    do i = ix1, ix2
+!       write(*,*) i
+!	write(*,*) "You are here"
+!       do j = 1, cube%ny
+!
+!          do iMonte = 1, nMonte
+!             if (nMonte > 1) then
+!                call random_number(r)
+!                xVal = cube%xAxis(i) + (r-0.5d0)*(cube%xAxis(2)-cube%xAxis(1))
+!                call random_number(r)
+!!                yVal = cube%yAxis(j) + (r-0.5d0)*(cube%yAxis(2)-cube%yAxis(1))
+!             else
+!                xVal = cube%xAxis(i)
+!                yVal = cube%yAxis(j)
+!             endif
+!             rayPos =  (xval * xProj) + (yval * yProj)
+!             raypos = rayPos + ((-1.d0*distance) * viewVec)
+!             do k = 1, cube%nv
+!                deltaV = cube%vAxis(k)*1.d5/cSpeed
+!                cube%intensity(i,j,k) = intensityAlongRay(rayPos, viewVec, grid, thisMolecule, iTrans, deltaV)
+!             enddo
+!          enddo
+!          cube%intensity(i,j,1:cube%nv) = cube%intensity(i,j,1:cube%nv) / dble(nMonte)
+!       enddo
+!    enddo
+
+!$MPI    n = (cube%nx*cube%ny*cube%nv)
+!$MPI    allocate(tempArray(1:n), tempArray2(1:n))
+!$MPI    tempArray = reshape(cube%intensity, (/  n /))
+
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+!$MPI       call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
+!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
+
+!$MPI    cube%intensity = reshape(tempArray2, (/ cube%nx, cube%ny, cube%nv /))
+!$MPI    deallocate(tempArray, tempArray2)
+
+  end subroutine createimage
 
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
     type(GRIDTYPE) :: grid
@@ -1565,124 +1558,6 @@ call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 !$MPI    deallocate(tempArray, tempArray2)
 
   end subroutine createDataCube
-
-
-  subroutine plotDataCube(cube, device)
-    type(DATACUBE) :: cube
-    character(len=*) :: device
-    integer :: i, j
-    integer :: pgbegin
-    real, allocatable :: image(:,:)
-    integer :: nx, ny
-    real :: iMin, iMax
-    real :: tr(6)
-    real :: dx, dy
-    real(double), allocatable :: spec(:)
-    real :: vxs, vxe, vys, vye
-    real :: x1, x2, y1, y2
-    real(double) :: sMax, Smin
-    real :: range
-    integer :: nstep 
-
-    nx = cube%nx
-    ny = cube%ny
-
-    dx = (cube%Xaxis(nx) - cube%xAxis(1))/real(nx-1)
-    dy = (cube%yAxis(ny) - cube%yAxis(1))/real(ny-1)
-
-    tr(1) = cube%xAxis(1)-dx
-    tr(2) = dx
-    tr(3) = 0.
-    tr(4) = cube%yAxis(1)-dy
-    tr(5) = 0.
-    tr(6) = dy
-
-
-
-    allocate(image(1:nx, 1:ny))
-
-    do i = 1, nx
-       do j = 1, ny
-          image(i,j) = log10(sum(cube%intensity(i,j,1:cube%nv)))
-       enddo
-    enddo
-    iMin = MINVAL(image(1:nx,1:ny))
-    iMax = MAXVAL(image(1:nx,1:ny))
-
-    i =  pgbegin(0,device,1,1)
-    call pgvport(0.1, 0.9, 0.1, 0.9)
-    call pgwnad(real(cube%xAxis(1))-dx/2., real(cube%xAxis(nx))+dx/2., &
-         real(cube%yAxis(1))-dy/2., real(cube%yAxis(ny))+dy/2.)
-
-    call palette(3)
-
-    call pgimag(image, nx, ny, 1, nx, 1, ny, imin, imax, tr)
-       
-    call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
-
-    call pgqvp(0, x1, x2, y1, y2)
-
-    allocate(spec(1:cube%nv))
-
-    nStep = nx / 5
-
-    smin = 1.e30
-    smax = -1.e30
-    do i = 1, nx-1, nstep
-       do j = 1, ny-1, nstep
-          call getSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
-          sMax = MAX(sMax,MAXVAL(spec))
-          sMin = MIN(sMin,MINVAL(spec))
-       enddo
-    enddo
-
-    range = sMax - sMin
-    sMin = sMin - 0.2*range
-    sMax = sMax + 0.2*range
-
-    do i = 1, nx-1, nstep
-       do j = 1, ny-1, nstep
-          call getSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
-          vxs = x1 + (x2-x1)*real(i-1)/real(nx)
-          vxe = x1 + (x2-x1)*real(i+nstep-1)/real(nx)
-          vys = y1 + (y2-y1)*real(j-1)/real(ny)
-          vye = y1 + (y2-y1)*real(j+nstep-1)/real(ny)
-          call pgsci(3)
-          call pgvport(vxs, vxe, vys, vye)
-!          call pgbox('bc',0.0,0,'bc',0.0,0)
-          call pgwindow(real(cube%vAxis(1))-0.1, &
-               real(cube%vAxis(cube%nv))+0.1, &
-               smin, smax)
-          call pgline(cube%nv, real(cube%vAxis), &
-               real(spec))
-
-          call pgsci(1)
-       enddo
-    enddo
-          
-
-    call pgend
-
-
-
-
-  end subroutine plotDataCube
-  
-  subroutine getSpectrum(cube, ix1, ix2, iy1, iy2, spec)
-    type(DATACUBE) :: cube
-    integer :: ix1, ix2, iy1, iy2
-    real(double) ::  spec(:)
-    integer :: i,j, n
-    n = 0
-    spec = 0.d0
-    do i = ix1, ix2
-       do j = iy1, iy2
-          n = n + 1
-          spec(1:cube%nv) = spec(1:cube%nv) + cube%intensity(i,j,1:cube%nv)
-       enddo
-    enddo
-    spec = spec / dble(n)
-  end subroutine getSpectrum
     
 !$MPI      subroutine packMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
 !$MPI    include 'mpif.h'
@@ -1744,5 +1619,58 @@ call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 !$MPI       end do
 !$MPI     end subroutine unpackMoleLevel
 
-
 end module molecular_mod
+
+!!! USEFUL COMMENTED CODE HERE FOR A WHILE
+
+    !tester = 2    
+    !call createimage(cube2, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, tester)
+    
+    !tester = 4    
+    !call createimage(cube4, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, tester)
+
+    !call initCube(diffcube42, npixels, npixels, nv)
+    !call addSpatialAxes(diffcube42, -imageside/2.d0,imageside/2.d0,-imageside/2.d0,imageside/2.d0)
+    !call addvelocityAxis(diffcube42, -1.d0, 1.d0)
+
+    !diffcube42%intensity(:,:,:) = cube4%intensity(:,:,:) - cube2%intensity(:,:,:)
+
+!    call plotDataCube(cube4, 'cube4.ps/vcps')
+ !   call plotDataCube(cube2, 'cube2.ps/vcps')
+  !  call plotDataCube(diffcube42, 'diffcube42.ps/vcps')
+ 
+!    tester = 0
+!    call createimage(varcube, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, tester)
+    
+   ! call initCube(diffcubevar4, npixels, npixels, nv)
+    !call addSpatialAxes(diffcubevar4, -imageside/2.d0,imageside/2.d0,-imageside/2.d0,imageside/2.d0)
+    !call addvelocityAxis(diffcubevar4, -1.d0, 1.d0)
+
+!    call initCube(diffcubevar2, npixels, npixels, nv)
+ !   call addSpatialAxes(diffcubevar2, -imageside/2.d0,imageside/2.d0,-imageside/2.d0,imageside/2.d0)
+  !  call addvelocityAxis(diffcubevar2, -1.d0, 1.d0)
+ 
+   ! diffcubevar4%intensity(:,:,:) = varcube%intensity(:,:,:) - cube4%intensity(:,:,:)
+    !diffcubevar2%intensity(:,:,:) = varcube%intensity(:,:,:) - cube2%intensity(:,:,:)
+
+!    call plotDataCube(varcube, 'thecube.ps/vcps')
+!    call plotDataCube(diffcubevar4, 'diffcubevar4.ps/vcps')
+ !   call plotDataCube(diffcubevar2, 'diffcubevar2.ps/vcps')
+
+  !  tester = 16
+   ! call createimage(cube16, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, tester)
+
+!    call initCube(diffcube16var, npixels, npixels, nv)
+ !   call addSpatialAxes(diffcube16var, -imageside/2.d0,imageside/2.d0,-imageside/2.d0,imageside/2.d0)
+  !  call addvelocityAxis(diffcube16var, -1.d0, 1.d0)
+
+!    call initCube(diffcube164, npixels, npixels, nv)
+ !   call addSpatialAxes(diffcube164, -imageside/2.d0,imageside/2.d0,-imageside/2.d0,imageside/2.d0)
+  !  call addvelocityAxis(diffcube164, -1.d0, 1.d0)
+ 
+!    diffcube16var%intensity(:,:,:) = cube16%intensity(:,:,:) - varcube%intensity(:,:,:)
+ !   diffcube164%intensity(:,:,:) = cube16%intensity(:,:,:) - cube4%intensity(:,:,:)
+
+  !  call plotDataCube(cube16, 'cube16.ps/vcps')
+   ! call plotDataCube(diffcube16var, 'diffcube16var.ps/vcps')
+    !call plotDataCube(diffcube164, 'diffcube164.ps/vcps')

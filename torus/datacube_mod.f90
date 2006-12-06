@@ -7,13 +7,22 @@ module datacube_mod
 
   type DATACUBE
      character(len=80) :: label
-     integer :: nx
+     character(len=10) :: vUnit ! units for velocity
+     character(len=10) :: xUnit ! units for space
+     character(len=10) :: IntensityUnit ! units for intensity
+
+     integer, pointer :: nsubpixels(:,:,:) ! contains resolution information 
+     integer, pointer :: converged(:,:,:)  ! contains convergence information (should take 1 or 0)
+     integer :: nx 
      integer :: ny
      integer :: nv
+
+     real(double) :: obsdistance ! observation distance for use with instrument functions
      real(double), pointer :: xAxis(:)
      real(double), pointer :: yAxis(:)
      real(double), pointer :: vAxis(:)
      real(double), pointer :: intensity(:,:,:)
+
   end type DATACUBE
 
 contains
@@ -30,8 +39,12 @@ contains
     allocate(thisCube%yAxis(1:ny))
     allocate(thisCube%vAxis(1:nv))
     allocate(thisCube%intensity(1:nx,1:ny,1:nv))
+    allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
+    allocate(thisCube%converged(1:nx,1:ny,1:nv))
 
     thisCube%intensity = 0.d0
+    thisCube%nsubpixels = 0.d0
+    thisCube%converged = 0
 
   end subroutine initCube
 
@@ -59,10 +72,12 @@ contains
        cube%vAxis(i) = vmin + (vmax-vmin)*dble(i-1)/dble(cube%nv)
     enddo
   end subroutine addVelocityAxis
+
+
   subroutine plotDataCube(cube, device)
     type(DATACUBE) :: cube
     character(len=*) :: device
-    integer :: i, j
+    integer :: i, j, k
     integer :: pgbegin
     real, allocatable :: image(:,:)
     integer :: nx, ny
@@ -93,11 +108,31 @@ contains
 
     allocate(image(1:nx, 1:ny))
 
+! This code modified to look at differences between datacubes
+
     do i = 1, nx
        do j = 1, ny
-          image(i,j) = log10(sum(cube%intensity(i,j,1:cube%nv)))
+          if ( sum(cube%intensity(i,j,1:cube%nv)) .gt. 0) then
+             image(i,j) = log10(sum(cube%intensity(i,j,1:cube%nv)))
+          else
+             image(i,j) = -(1.d0)*log10(-(1.d0)*sum(cube%intensity(i,j,1:cube%nv)))
+          endif
+
+          if (abs(image(i,j)) > 100) image(i,j) = 0.d0 
+          if (isnan(image(i,j))) image(i,j) = 0.d0 
        enddo
     enddo
+
+! Useful for visualising this 'flattened' cube
+
+    open(42, file="image.dat",status="unknown",form="formatted")
+    do i = 1, nx
+       do j= 1, ny
+          write(42, *) image(i,j)
+       enddo
+    enddo
+    close(42)
+
     iMin = MINVAL(image(1:nx,1:ny))
     iMax = MAXVAL(image(1:nx,1:ny))
     write(*,*) "min/max",imin,imax
@@ -156,11 +191,16 @@ contains
        enddo
     enddo
           
-
     call pgend
-
-
-
+    call getSpectrum(cube, 1, cube%nx, 1, cube%ny, spec)
+    
+    write(*,*) "SPECTRUM"
+    open(43, file="imagespectrum.dat",status="unknown",form="formatted")
+    
+    do k = 1, cube%nv
+       write(*,*) cube%vAxis(k), spec(k)
+       write(43,*) cube%vAxis(k), spec(k)
+    enddo
 
   end subroutine plotDataCube
 
@@ -179,6 +219,5 @@ contains
     enddo
     spec = spec / dble(n)
   end subroutine getSpectrum
-
 
 end module datacube_mod
