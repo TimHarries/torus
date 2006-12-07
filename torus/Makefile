@@ -750,7 +750,7 @@ photoion_mod.o: photoion_mod.f90.raw source_mod.o timing.o grid_mod.o amr_mod.o 
 	$(F90) -c photoion_mod.f90
 
 molecular_mod.o: molecular_mod.f90.raw grid_mod.o amr_mod.o constants_mod.o messages_mod.o \
-	parallel_mod.o kind_mod.o utils_mod.o math_mod.o
+	parallel_mod.o kind_mod.o utils_mod.o math_mod.o datacube_mod.o
         ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' molecular_mod.f90.raw > molecular_mod.f90
         else
@@ -759,7 +759,7 @@ molecular_mod.o: molecular_mod.f90.raw grid_mod.o amr_mod.o constants_mod.o mess
 	$(F90) -c molecular_mod.f90
 
 cmf_mod.o: cmf_mod.f90.raw grid_mod.o amr_mod.o constants_mod.o messages_mod.o \
-	parallel_mod.o kind_mod.o utils_mod.o math_mod.o modelatom_mod.o
+	parallel_mod.o kind_mod.o utils_mod.o math_mod.o modelatom_mod.o datacube_mod.o
         ifeq ($(MK_MPI_SRC), yes)
 	   sed 's/\!$$MPI//g' cmf_mod.f90.raw > cmf_mod.f90
         else
