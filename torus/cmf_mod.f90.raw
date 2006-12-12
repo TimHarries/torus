@@ -749,10 +749,9 @@ contains
 
   subroutine atomLoop(grid, nAtom, thisAtom, nSource, source)
 
-    use input_variables, only : blockhandout
+    use input_variables, only : blockhandout, debug
 !$MPI    include 'mpif.h'
 
-    use input_variables, only : debug
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     integer :: nAtom
