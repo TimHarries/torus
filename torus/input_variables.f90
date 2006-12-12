@@ -13,6 +13,7 @@ module input_variables
 
   ! variables for the grid
 
+  logical :: debug
   character(len=10) :: geometry
   character(len=80) :: absolutePath
   integer :: nx,ny,nz
@@ -20,6 +21,8 @@ module input_variables
   logical :: photoionization
   logical :: molecular
   logical :: cmf
+  integer :: nAtom
+  character(len=20) :: atomFilename(10)
   integer :: nClumps
   character(len=80) :: distortionType
   integer :: nPhase

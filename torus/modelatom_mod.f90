@@ -883,7 +883,9 @@ contains
           do j = 1, thisAtom(iAtom)%nRBFtrans
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
              i = thisAtom(iAtom)%iLower(iTrans)
-             kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i,  freq) * pops(iAtom,i)
+             if (i < 7) then
+                kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i,  freq) * pops(iAtom,i)
+             endif
           enddo
        enddo
      end function bfOpacity
@@ -913,11 +915,13 @@ contains
        do  i = 1, thisAtom(iAtom)%nRBFtrans
           iTrans = thisAtom(iAtom)%indexRBFtrans(i)
           j = thisAtom(iAtom)%iLower(iTrans)
-          thresh=(thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(j))
-          photonEnergy = freq * hCgs * ergtoEv
-          if (photonEnergy.ge.thresh) then
-             nStar = BoltzSahaGeneral(thisAtom(iAtom), 1, j, Ne, temperature) * pops(iAtom,thisAtom(iatom)%nLevels)
-             eta = eta + nStar * photoCrossSection(thisAtom(iAtom), iTrans, j, freq) * exp(-(hcgs*freq)/(kerg*temperature))
+          if ( j < 7) then
+             thresh=(thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(j))
+             photonEnergy = freq * hCgs * ergtoEv
+             if (photonEnergy.ge.thresh) then
+                nStar = BoltzSahaGeneral(thisAtom(iAtom), 1, j, Ne, temperature) * pops(iAtom,thisAtom(iatom)%nLevels)
+                eta = eta + nStar * photoCrossSection(thisAtom(iAtom), iTrans, j, freq) * exp(-(hcgs*freq)/(kerg*temperature))
+             endif
           endif
        enddo
     enddo

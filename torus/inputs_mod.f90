@@ -1221,7 +1221,21 @@ endif
 endif
 
  call getLogical("cmf", cmf, cLine, nLines, &
-   "Compute CMF statistical equailibrium: ","(a,1l,a)", .false., ok, .false.)
+   "Compute CMF statistical equilibrium: ","(a,1l,a)", .false., ok, .false.)
+
+ if (cmf) then
+    call getInteger("natom", nAtom, cLine, nLines, &
+         "Number of model atoms to solve for: ","(a,i12,a)",1,ok,.true.)
+    do i = 1, nAtom
+       write(keyword, '(a,i1)') "atom",i
+       call getString(keyword, atomFileName(i), cLine, nLines, &
+            "Use atom filename: ","(a,a,1x,a)","none", ok, .true.)
+    enddo
+ endif
+
+ call getLogical("debug", debug, cLine, nLines, &
+   "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
+
 
  call getLogical("thickcont", opticallyThickContinuum, cLine, nLines, &
    "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)

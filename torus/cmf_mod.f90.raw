@@ -24,6 +24,7 @@ contains
 
   subroutine solveLevels(thisOctal, subcell, nPops, jnuLine,  &
        temperature, nAtom, thisAtom, ne, rho, jnuCont, freq, nfreq)
+    use input_variables, only : debug
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     integer :: nFreq
@@ -58,10 +59,7 @@ contains
     integer, allocatable :: nOffset(:)
     logical, allocatable :: continuumGround(:)
     integer, allocatable :: nCons(:)
-    logical :: ok, debug, lymanAlpha
-
-    debug = .false.
-
+    logical :: ok, lymanAlpha
 
 
     allocate(nOffset(1:nAtom))
@@ -754,6 +752,7 @@ contains
     use input_variables, only : blockhandout
 !$MPI    include 'mpif.h'
 
+    use input_variables, only : debug
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     integer :: nAtom
@@ -801,14 +800,11 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom, ir, ifreq
     real(double) :: nstar
-    logical :: debug
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   np             ! The number of processes
 !$MPI    integer       ::   ierr           ! error flag
 !$MPI    logical       ::   rankComplete
-
-    debug = .false.
 
 
 
@@ -860,7 +856,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 100
+    nRay = 1000
 
     do iStage = 1, 2
 
