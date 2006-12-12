@@ -23,6 +23,9 @@ module modelatom_mod
      real(double), pointer :: energy(:)  ! erg
      real(double), pointer :: g(:)
      real(double) :: iPot
+     integer :: nPhotoFreq
+     real(double), pointer :: photoFreq(:)
+     real(double), pointer :: photoSec(:,:)
      integer, pointer :: ionStage(:)
      integer, pointer :: nQuantum(:)
      integer :: nTrans
@@ -296,6 +299,43 @@ contains
           stop
      end select
    end function photoCrossSection
+
+
+  real(double) function quickPhotoCrossSection(thisAtom, iRBF, iFreq)
+    type(MODELATOM) :: thisAtom
+    integer :: iRBF, iFreq
+    quickPhotoCrossSection  = thisAtom%photoSec(iRBF, iFreq)
+  end function quickPhotoCrossSection
+
+    
+
+
+   subroutine addCrossSectionstoAtom(thisAtom, nFreq, freq)
+     type(MODELATOM) :: thisAtom
+     integer :: nFreq
+     real(double) :: freq(:)
+     integer :: iFreq, i, j, iTrans, iLevel, iLineTrans
+
+     if (associated(thisAtom%photoFreq)) deallocate(thisAtom%photoFreq)
+     if (associated(thisAtom%photoSec)) deallocate(thisAtom%photoSec)
+
+     thisAtom%nPhotoFreq = nFreq
+     allocate(thisAtom%photoFreq(1:nfreq))
+     allocate(thisAtom%photoSec(1:thisAtom%nRBFtrans, 1:nFreq))
+
+     do j = 1, thisAtom%nRBFTrans
+        iTrans = thisAtom%indexRBFtrans(j)
+        iLevel = thisAtom%iLower(iTrans)
+        do iFreq = 1, nFreq
+           thisAtom%photoSec(j, iFreq) = photoCrossSection(thisAtom, iTrans, iLevel, freq(ifreq))
+        enddo
+     enddo
+        
+
+
+   end subroutine addCrossSectionstoAtom
+
+
 
 
   function collisionRate(thisAtom, iTrans, temperature,label) result(rate)
@@ -868,8 +908,9 @@ contains
      end function giii_hyd
 
 
-     function bfOpacity(freq, nAtom, thisAtom, pops) result(kappa)
+     function bfOpacity(freq, nAtom, thisAtom, pops,ifreq) result(kappa)
        real(double) :: freq
+       integer, optional :: ifreq
        integer :: nAtom
        type(MODELATOM) :: thisAtom(:)
        real(double) :: pops(:,:)
@@ -884,19 +925,24 @@ contains
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
              i = thisAtom(iAtom)%iLower(iTrans)
              if (i < 7) then
-                kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i,  freq) * pops(iAtom,i)
+                if (present(iFreq)) then
+                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * pops(iAtom, i)
+                else
+                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * pops(iAtom, i)
+                endif
              endif
           enddo
        enddo
      end function bfOpacity
 
-  function bfEmissivity(freq, nAtom, thisAtom, pops, ne, temperature) result(eta)
+  function bfEmissivity(freq, nAtom, thisAtom, pops, ne, temperature, ifreq) result(eta)
 
 ! bound-free and free-free continuum emissivity
 
     type(MODELATOM) :: thisAtom(:)
     integer :: nAtom
     real(double) :: freq
+    integer, optional :: iFreq
     integer :: iTrans
     real(double) :: pops(:,:)
     integer :: nLevels
@@ -920,7 +966,11 @@ contains
              photonEnergy = freq * hCgs * ergtoEv
              if (photonEnergy.ge.thresh) then
                 nStar = BoltzSahaGeneral(thisAtom(iAtom), 1, j, Ne, temperature) * pops(iAtom,thisAtom(iatom)%nLevels)
-                eta = eta + nStar * photoCrossSection(thisAtom(iAtom), iTrans, j, freq) * exp(-(hcgs*freq)/(kerg*temperature))
+                if (present(ifreq)) then
+                   eta = eta + nStar * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * exp(-(hcgs*freq)/(kerg*temperature))
+                else
+                   eta = eta + nStar * photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * exp(-(hcgs*freq)/(kerg*temperature))
+                endif
              endif
           endif
        enddo
@@ -941,6 +991,7 @@ contains
     real(double) :: nuThresh, lamMin, lamMax
     real(double) :: nuStart, nuEnd
     integer :: nEven
+    integer :: iRBB, iTrans
 
     nuStart = cSpeed / (8.d5 * 1.d-8)
     nuEnd = cSpeed / (100.d0 * 1.d-8)
@@ -973,11 +1024,21 @@ contains
        if (source(i)%spectrum%lambda(source(i)%spectrum%nlambda) > lamMax) &
             lamMax = source(i)%spectrum%lambda(source(i)%spectrum%nlambda)
     enddo
+
+    do iAtom = 1, nAtom
+       do iRBB = 1, thisAtom(iAtom)%nRBBTrans
+          iTrans = thisAtom(iAtom)%indexRBBTrans(iRBB)
+          nfreq  = nFreq + 1
+          freq(nFreq) = thisAtom(iAtom)%transFreq(iTrans)
+       enddo
+    enddo
+
     nfreq = nfreq + 1
     freq(nfreq) = cspeed/ (lamMin * 1.d-8)
     nfreq = nfreq + 1
     freq(nfreq) = cspeed/ (lamMax * 1.d-8)
     call sort(nFreq, Freq)
+
 
     Write(*,*) "Number of frequency points in continuum: ",nfreq
   end subroutine createContFreqArray

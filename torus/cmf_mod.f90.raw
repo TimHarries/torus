@@ -390,11 +390,12 @@ contains
     logical :: firstSubcell
     integer :: nBug
     integer :: iFreq
-    real(double), allocatable :: tauCont(:), jnuCont(:), alphanuCont(:)
+    real(double), allocatable :: tauCont(:), jnuCont(:), alphanuCont(:), snuCont(:)
 
     allocate(tauCont(1:nFreq))
     allocate(jnuCont(1:nFreq))
     allocate(alphanuCont(1:nFreq))
+    allocate(snuCont(1:nFreq))
 
     allocate(tau(1:nRBBTrans))
     
@@ -492,24 +493,30 @@ contains
           alphanuCont = 0.d0
           jnuCont = 0.d0
 
-          if (opticallyThickContinuum) then
+! only need to calc continuum opacities once per cell
+
+          if (opticallyThickContinuum.and.(i==2)) then
              do iFreq = 1, nFreq
                 
                 
-                alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:))
+                alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), ifreq=ifreq)
                 
                 jnuCont(iFreq) = bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                      thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
-                     dble(thisOctal%temperature(subcell)))/fourPi
-                
-                dTau = alphaNuCont(iFreq) *  (distArray(i)-distArray(i-1)) * 1.d10
+                     dble(thisOctal%temperature(subcell)),ifreq=ifreq)/fourPi
                 
                 if (alphanuCont(ifreq) /= 0.d0) then
-                   snu = jnuCont(iFreq)/alphanuCont(iFreq)
+                   snuCont(iFreq) = jnuCont(iFreq)/alphanuCont(iFreq)
                 else
-                   snu = tiny(snu)
+                   snuCont(iFreq) = tiny(snuCont(iFreq))
                 endif
-                iCont(iFreq) = iCont(ifreq) +  exp(-tauCont(iFreq)) * (1.d0-exp(-dtau))*snu
+             enddo
+          endif
+
+          if (opticallyThickContinuum) then
+             do iFreq = 1, nFreq
+                dTau = alphaNuCont(iFreq) *  (distArray(i)-distArray(i-1)) * 1.d10
+                iCont(iFreq) = iCont(ifreq) +  exp(-tauCont(iFreq)) * (1.d0-exp(-dtau))*snuCont(iFreq)
                 tauCont(iFreq) = tauCont(iFreq) + dtau
              enddo
           endif
@@ -616,10 +623,11 @@ contains
   end function phiProf
 
   subroutine calculateJbar(thisOctal, subcell, thisAtom, nRay, ds, phi, i0, iTrans, jbar, nPops, &
-       freq, nfreq, weight)
+       freq, nfreq, weight, iRBB)
     real(double) :: freq(:), weight(:)
     logical :: doCont
     integer :: nfreq
+    integer :: iRBB
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     type(MODELATOM) :: thisAtom
@@ -724,10 +732,10 @@ contains
        do iFreq = 1, nFreq
 
           if (opticallyThickContinuum) then
-             alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:))
+             alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), ifreq=ifreq)
              jnu =  bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                   thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
-                  dble(thisOctal%temperature(subcell)))/fourPi
+                  dble(thisOctal%temperature(subcell)),ifreq=ifreq)/fourPi
              tau = alphaNu * ds(iray)
              if (alphanu /= 0.d0) then
                 snu = jnu/alphanu
@@ -789,7 +797,7 @@ contains
     real(double), allocatable :: weight(:)
     real(double), allocatable :: iCont(:,:)
     logical, allocatable :: hitPhotosphere(:)
-    integer, parameter :: maxFreq = 200
+    integer, parameter :: maxFreq = 2000
     real(double) :: freq(maxFreq)
     real(double), allocatable :: jnuCont(:)
     integer :: nFreq, nhit, iRBB
@@ -807,9 +815,6 @@ contains
 
 
 
-     call createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)
-
-     allocate(jnuCont(1:nFreq)) 
 
     blockHandout = .false. 
 
@@ -822,7 +827,16 @@ contains
 
     call createRRBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
 
+     call createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)
+
+     allocate(jnuCont(1:nFreq)) 
+
     call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans)
+
+    do i = 1, nAtom
+       call addCrossSectionstoAtom(thisAtom(i), nFreq, freq)
+    enddo
+
 
     !$MPI       if (my_rank == 0) &
     call writeAmrGrid("atom_tmp.grid",.false.,grid)
@@ -962,7 +976,7 @@ contains
                             call calculateJbar(thisOctal, subcell, thisAtom(iAtom), nRay, ds(1:nRay), &
                                  phi(1:nRay), i0(iRBB,1:nRay), iTrans, thisOctal%jnu(subcell,iRBB), &
                                  thisOctal%newAtomLevel(subcell,iAtom,1:), &
-                                 freq, nFreq, weight(1:nRay))
+                                 freq, nFreq, weight(1:nRay), iRBB)
                          enddo
                          newpops = thisOctal%newatomLevel(subcell, 1:nAtom, 1:)
                          call solveLevels(thisOctal, subcell, newPops, &
@@ -1256,7 +1270,7 @@ contains
     integer :: i
     real(double) :: chanceSource
     real(double) :: omegaSubtendedBySource
-    real(double) :: theta, dOmega, r, cosTheta
+    real(double) :: theta, dOmega, r, cosTheta, ang
     logical :: hitCore
     integer :: nBug
 
@@ -1285,7 +1299,8 @@ contains
        nbug = 0
        do while(.not.hitCore)
           direction = randomUnitVector()
-          if (acos(direction.dot.toStar) < theta) hitCore = .true.
+          ang = acos(min(1.d0, max(-1.d0, direction.dot.toStar)))
+          if (ang < theta) hitCore = .true.
           nbug = nbug  + 1
           if (nbug > 10000000) then
              write(*,*) "bug in direction to star"
