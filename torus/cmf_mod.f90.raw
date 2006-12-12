@@ -425,7 +425,11 @@ contains
 
     call random_number(r)
 
-    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0)
+!    deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0)
+
+! assume microturb is gaussian
+
+    deltaV = gasdev()*thisOctal%microturb(subcell)
 
     deltaV = deltaV +  (rayVel .dot. direction)
 
@@ -640,7 +644,7 @@ contains
     real(double) :: jBarInternal, jBarExternal
     real(double) :: alphanu, jnu, etaline
     integer :: iUpper, iLower
-    real(double) :: tau, snu, sumPhi
+    real(double) :: tau, snu, sumWeight
     real(double) :: a, bul, blu
     integer :: i
     logical,save :: first = .true.
@@ -653,7 +657,7 @@ contains
        iUpper = thisAtom%iUpper(iTrans)
        iLower = thisAtom%iLower(iTrans)
 
-       sumPhi = 0.d0
+       sumWeight = 0.d0
        do iRay = 1, nRay
           alphanu = (hCgs*thisAtom%transFreq(iTrans)/fourPi)
           nLower = nPops(iLower)
@@ -684,14 +688,23 @@ contains
           endif
 
 ! need to include continuum here!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!          jBarExternal = jBarExternal + i0(iray) * exp(-tau) * phi(iRay) * weight(iRay)
+!          jBarInternal = jBarInternal + snu * (1.d0 - exp(-tau)) * phi(iRay) * weight(iRay)
           
-          jBarExternal = jBarExternal + i0(iray) * exp(-tau) * phi(iRay) * weight(iRay)
-          jBarInternal = jBarInternal + snu * (1.d0 - exp(-tau)) * phi(iRay) * weight(iRay)
+! if we have choosen the photon velocity according to a gaussian we 
+! don't need to weight jbar by phi
+
+          jBarExternal = jBarExternal + i0(iray) * exp(-tau) * weight(iRay)
+          jBarInternal = jBarInternal + snu * (1.d0 - exp(-tau))  * weight(iRay)
+
  
-          sumPhi = sumPhi + phi(iRay) * weight(iRay)
+!          sumWeight = sumWeight + weight(iRay) * phi (iRay)
+          sumWeight = sumWeight + weight(iRay) 
+
        enddo
 
-       jbar = (jBarExternal + jBarInternal)/sumPhi
+       jbar = (jBarExternal + jBarInternal)/sumWeight
        call locate(freq, nfreq, thisAtom%transFreq(iTrans), i)
 
     endif
@@ -869,7 +882,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 1000
+    nRay = 100
 
     do iStage = 1, 2
 
