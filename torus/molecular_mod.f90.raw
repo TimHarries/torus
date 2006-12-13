@@ -18,7 +18,7 @@ module molecular_mod
 ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
 ! DATACUBE is used for data visualisation (intensity for x,y and v)
 
-! Much of this code is our interpretation of the 2000 paper by F. v.d. Tak and M. Hoerheijde - and the 
+! Much of this code is our interpretation of the 2000 paper by F. v.d. Tak and M. Hogerheijde - and the 
 ! 2002 paper by G-J. v. Zadelhoff et al
 
   type MOLECULETYPE
@@ -154,7 +154,7 @@ contains
     call writeInfo("Done.", IMPORTANT)
   end subroutine readMolecule
 
-! Same routine for benchmark molecule (slightly different file formeat)
+! Same routine for benchmark molecule (slightly different file format)
   subroutine readBenchmarkMolecule(thisMolecule, molFilename)
     type(MOLECULETYPE) :: thisMolecule
     character(len=*) :: molFilename
@@ -378,6 +378,7 @@ contains
        endif
     enddo
   end subroutine solveAllPops
+
 ! this subroutine calculates the maximum fractional change in the first 6 (consider changing?) energy levels
 ! NB 
   recursive subroutine  swapPops(thisOctal, maxFracChange)
@@ -412,6 +413,34 @@ contains
        endif
     enddo
   end subroutine swapPops
+
+!recursive subroutine  distancefromOctalCentretoImage(thisOctal, maxFracChange)
+!    type(GRIDTYPE) :: grid
+!    type(MOLECULETYPE) :: thisMolecule
+!    type(octal), pointer   :: thisOctal
+!    type(octal), pointer  :: child 
+!    integer :: subcell, i, iUpper, iLower
+!    real(double) :: maxFracChange, temp
+!  
+!    do subcell = 1, thisOctal%maxChildren
+!       if (thisOctal%hasChild(subcell)) then
+!          ! find the child
+!          do i = 1, thisOctal%nChildren, 1
+!             if (thisOctal%indexChild(i) == subcell) then
+!                child => thisOctal%child(i)
+!                call swapPops(child, maxFracChange)
+!                exit
+!             end if
+!          end do
+!       else
+
+!!! stuff to do in here
+
+!write(*,*) thisOctal%subcellcentre
+!
+!       endif
+!    enddo
+!  end subroutine distanceto...
 
 ! This subroutine allocates memory to the octal for storing molecular level data *if* none currently exists then
 ! stores the non-zero local emission coefficient   
@@ -1209,7 +1238,7 @@ function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
                       !write(*,*) "Trying",subpixels,"subpixels"
                    else
                       failed = 1
-                      write(*,*) "Sad :( because reached maximum resolution without achieving 'convergence'"
+                      !write(*,*) "Sad :( because reached maximum resolution without achieving 'convergence'"
                       cube%converged(index1,index2,cube%nv) = 0 ! Write convergence info to last line (to be moved later) to save passing even more parameters 
                    endif             
                 
@@ -1250,6 +1279,9 @@ endif
     type(DATACUBE) ::  cube
     integer :: tester ! tests subpixels per pixel - change this variable name!
 
+    real :: value
+    integer,allocatable :: somegrid(:,:)
+
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   np             ! The number of processes
@@ -1266,18 +1298,65 @@ endif
        
     unitvec = randomunitvector()
     !unitvec = OCTALVECTOR(1.d0,0.d0,0.d0) ! Allows our choice of unit vector
-    imageside = 5.d7
+    imageside = 5D7
     Npixels = 20
-    nv = 10
-    itrans = 1
+    nv = 20
+    itrans = 4
 
+    allocate(somegrid(1:npixels,1:npixels))
+    somegrid = 0
+    value = (4.6d7/(imageside/dble(npixels)))/2.d0
+    value = 50d0
+    write(*,*) "VALUE", value
+
+    do i = 1, npixels
+       do j = 1, npixels
+          if (sqrt((i-npixels/2.d0)**2 + (j-npixels/2.d0)**2) < value+5d-1) then
+             if (sqrt((i-npixels/2.d0)**2+(j-npixels/2.d0)**2) < (value-5d-1)) then
+                somegrid(i,j) = somegrid(i,j) + 2
+                somegrid(j,i) = somegrid(j,i) + 2
+                somegrid(npixels+1 - i,npixels+1 - j) = somegrid(npixels+1 - i,npixels+1 - j) + 2
+                somegrid(npixels+1 - j,npixels+1 - i) = somegrid(npixels+1 - j,npixels+1 - i) + 2
+             else
+                somegrid(i,j) = somegrid(i,j) + 1
+                somegrid(j,i) = somegrid(j,i) + 1
+                somegrid(npixels+1 - i,npixels+1 - j) = somegrid(npixels+1 - i,npixels+1 - j) + 1
+                somegrid(npixels+1 - j,npixels+1 - i) = somegrid(npixels+1 - j,npixels+1 - i) + 1
+             endif
+          else
+             somegrid(i,j) = somegrid(i,j) + 0
+             somegrid(j,i) = somegrid(j,i) + 0
+             somegrid(npixels+1 - i,npixels+1 - j) = somegrid(npixels+1 - i,npixels+1 - j) + 0
+             somegrid(npixels+1 - j,npixels+1 - i) = somegrid(npixels+1 - j,npixels+1 - i) + 0
+          endif
+       enddo
+    enddo
+    
+    do i=1,npixels
+       do j=1,npixels
+          if (somegrid(i,j) > 1) then
+             somegrid(i,j) = 1
+          else
+             somegrid(i,j) = 0
+             endif
+       enddo
+    enddo
+
+    write(*,*) somegrid
     tester = 0
     call createimage(cube, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, tester)
+    !write(*,*) cube%weight(1:npixels,1:npixels)
+  !  write(*,*) "AAAAAAAAAAAAAAAAAAAA"
+    cube%weight(1:npixels,1:npixels) = somegrid
+    !write(*,*) somegrid
+ !   write(*,*) "BBBBBBBBBBBBBBBBBBBB"
+   ! write(*,*) cube%weight(1:npixels,1:npixels)
+!    write(*,*) "CCCCCCCCCCCCCCCCCCCC"
     call plotDataCube(cube, 'thecube.ps/vcps')
 
     write(*,*) "End"
-    write(*,*) "CONVO",cube%converged(:,:,:)
-    write(*,*) "subs",cube%nsubpixels(:,:,:)
+    !write(*,*) "CONVO",cube%converged(:,:,:)
+    !write(*,*) "subs",cube%nsubpixels(:,:,:)
     stop
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
@@ -1365,7 +1444,7 @@ endif
     do iv = 1,cube%nv
        deltaV = (cube%vAxis(iv)*1.d5/cSpeed) ! velocities in fraction of c
        WRITE(*,*) "DELTAV",deltaV
-       cube%intensity(:,:,iv) = makeImageGrid(unitvec,npixels,imageside,grid,thisMolecule,1,deltaV,tester,cube)
+       cube%intensity(:,:,iv) = makeImageGrid(unitvec,npixels,imageside,grid,thisMolecule,itrans,deltaV,tester,cube)
        cube%converged(:,:,iv) = cube%converged(:,:,cube%nv)
        cube%nsubpixels(:,:,iv) = cube%nsubpixels(:,:,cube%nv)
     enddo

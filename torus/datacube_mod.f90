@@ -13,6 +13,7 @@ module datacube_mod
 
      integer, pointer :: nsubpixels(:,:,:) ! contains resolution information 
      integer, pointer :: converged(:,:,:)  ! contains convergence information (should take 1 or 0)
+     integer, pointer :: weight(:,:)     ! Weighting for integration (used to find spectra)
      integer :: nx 
      integer :: ny
      integer :: nv
@@ -22,7 +23,6 @@ module datacube_mod
      real(double), pointer :: yAxis(:)
      real(double), pointer :: vAxis(:)
      real(double), pointer :: intensity(:,:,:)
-
   end type DATACUBE
 
 contains
@@ -41,10 +41,12 @@ contains
     allocate(thisCube%intensity(1:nx,1:ny,1:nv))
     allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
     allocate(thisCube%converged(1:nx,1:ny,1:nv))
+    allocate(thisCube%weight(1:nx,1:ny))
 
     thisCube%intensity = 0.d0
     thisCube%nsubpixels = 0.d0
     thisCube%converged = 0
+    thisCube%weight = 1
 
   end subroutine initCube
 
@@ -72,7 +74,6 @@ contains
        cube%vAxis(i) = vmin + (vmax-vmin)*dble(i-1)/dble(cube%nv)
     enddo
   end subroutine addVelocityAxis
-
 
   subroutine plotDataCube(cube, device)
     type(DATACUBE) :: cube
@@ -104,8 +105,6 @@ contains
     tr(5) = 0.
     tr(6) = dy
 
-
-
     allocate(image(1:nx, 1:ny))
 
 ! This code modified to look at differences between datacubes
@@ -127,9 +126,7 @@ contains
 
     open(42, file="image.dat",status="unknown",form="formatted")
     do i = 1, nx
-       do j= 1, ny
-          write(42, *) image(i,j)
-       enddo
+          write(42, *) image(:,i)
     enddo
     close(42)
 
@@ -171,7 +168,7 @@ contains
 
     do i = 1, nx-1, nstep
        do j = 1, ny-1, nstep
-          call getSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
+          call getweightedSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
           vxs = x1 + (x2-x1)*real(i-1)/real(nx)
           vxe = x1 + (x2-x1)*real(i+nstep-1)/real(nx)
           vys = y1 + (y2-y1)*real(j-1)/real(ny)
@@ -183,7 +180,7 @@ contains
                real(cube%vAxis(cube%nv))+0.1, &
                real(smin), real(smax))
 
-          write(*,*) spec(1:cube%nv)
+!          write(*,*) spec(1:cube%nv)
           call pgline(cube%nv, real(cube%vAxis), &
                real(spec))
 
@@ -192,13 +189,13 @@ contains
     enddo
           
     call pgend
-    call getSpectrum(cube, 1, cube%nx, 1, cube%ny, spec)
+    call getweightedSpectrum(cube, 1, cube%nx, 1, cube%ny, spec)
     
     write(*,*) "SPECTRUM"
     open(43, file="imagespectrum.dat",status="unknown",form="formatted")
     
     do k = 1, cube%nv
-       write(*,*) cube%vAxis(k), spec(k)
+       !write(*,*) cube%vAxis(k), spec(k)
        write(43,*) cube%vAxis(k), spec(k)
     enddo
 
@@ -220,4 +217,21 @@ contains
     spec = spec / dble(n)
   end subroutine getSpectrum
 
+  subroutine getWeightedSpectrum(cube, ix1, ix2, iy1, iy2, spec)
+    type(DATACUBE) :: cube
+    integer :: ix1, ix2, iy1, iy2
+    real(double) ::  spec(:)
+    integer :: i,j, n
+    n = 0
+    spec = 0.d0
+    do i = ix1, ix2
+       do j = iy1, iy2
+          n = n + cube%weight(i,j)
+          spec(1:cube%nv) = spec(1:cube%nv) + cube%intensity(i,j,1:cube%nv) * cube%weight(i,j)
+       enddo
+    enddo
+    spec = spec / dble(n)
+  end subroutine getWeightedSpectrum
+
 end module datacube_mod
+
