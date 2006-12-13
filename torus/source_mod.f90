@@ -339,22 +339,22 @@ module source_mod
     do i = 1, nSource
        
        if (thisOctal%twoD) then
-          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0,0.d0,0.d0)
+          corner = rVec + thisOctal%subcellSize/rootTwo * OCTALVECTOR(oneOverrootTwo,0.d0,oneOverrootTwo)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec - thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0,0.d0,0.d0)
+          corner = rVec + thisOctal%subcellSize/rootTwo * OCTALVECTOR(oneOverrootTwo,0.d0,-oneOverrootTwo)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(0.d0,0.d0,1.d0)
+          corner = rVec + thisOctal%subcellSize/rootTwo * OCTALVECTOR(-oneOverrootTwo,0.d0,oneOverrootTwo)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
-          corner = rVec - thisOctal%subcellSize/2.d0 * OCTALVECTOR(0.d0,0.d0,1.d0)
+          corner = rVec + thisOctal%subcellSize/rootTwo * OCTALVECTOR(-oneOverrootTwo, 0.d0, -oneOverrootTwo)
           r = modulus(corner - source(i)%position)
           if (r < source(i)%radius) then
              insideSource = .true.

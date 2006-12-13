@@ -919,7 +919,7 @@ contains
           endif
 
           ! default loop indecies
-          ioctal_beg = 1
+          ioctal_beg = 1459
           ioctal_end = SIZE(octalArray)       
 
           
@@ -961,6 +961,10 @@ contains
 !             call findSubcellLocal(posVec, thisOctal, subcell)
 
                 if (.not.thisOctal%hasChild(subcell)) then
+
+                   thisOctal%inFlow(subcell) = .not.insideSource(thisOctal, subcell, nsource, Source)
+
+
                    if (thisOctal%inflow(subcell)) then
                       nHit = 0
                       do iRay = 1, nRay
@@ -1067,7 +1071,7 @@ contains
                                  - oldpops(iAtom,1:thisAtom(iAtom)%nLevels-1))/oldpops(iAtom,1:thisAtom(iAtom)%nLevels-1))))
                          enddo
                          if (debug) write(*,*) iter,fac
-                         if (fac < 1.d-4) popsConverged = .true.
+                         if ((fac < 1.d-4).and.(iter > 1)) popsConverged = .true.
                          if (iter == maxIter) then
                             popsConverged = .true.
                             call writeWarning("Maximum number of iterations reached in pop solver")

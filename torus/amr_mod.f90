@@ -6865,13 +6865,6 @@ IF ( .NOT. gridConverged ) RETURN
 
     thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/mhydrogen)/cspeed
 
-    r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, -dble(d1)))
-    if (r < rStar1) thisOctal%inflow(subcell) = .false.
-    r = modulus(rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
-    if (r < rStar2) thisOctal%inflow(subcell) = .false.
-
-    CALL fillVelocityCorners(thisOctal,grid,gammaVelVelocity,thisOctal%threed)
-
   end subroutine calcGammaVel
 
     
