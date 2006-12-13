@@ -681,7 +681,7 @@ contains
 ! Does a lot of work - do more rays whilst problem not converged -            
   subroutine molecularLoop(grid, thisMolecule)
 
-    use input_variables, only : blockhandout ! ??
+    use input_variables, only : blockhandout, debug ! ??
 !$MPI    include 'mpif.h'
 
     type(GRIDTYPE) :: grid
@@ -818,7 +818,7 @@ contains
 
 ! iterate over all octals, all rays, solving the system self-consistently
           do iOctal = ioctal_beg, ioctal_end
-!             write(*,*) iOctal,ioctal_beg,ioctal_end
+             if (debug) write(*,*) iOctal,ioctal_beg,ioctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
                 
@@ -843,7 +843,8 @@ contains
                       call solveLevels(thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels), &
                            thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
                            dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
-                      fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops)) ! convergence criterion
+!                      fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels) - oldpops)/oldpops)) ! convergence criterion
+                      fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:6) - oldpops(1:6))/oldpops(1:6))) ! convergence criterion
                       if (fac < 1.d-4) popsConverged = .true.
                       if (iter == maxIter) then
                          popsConverged = .true.
@@ -978,6 +979,7 @@ contains
 
 
   function intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV) result (i0)
+    use input_variables, only : debug
     type(OCTALVECTOR) :: position, direction, startPosition
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
@@ -1000,9 +1002,7 @@ contains
     real(double) :: dTau, etaline, didtau, tau
     real(double) :: intensityIntegral
     real(double) :: dvAcrossCell
-    logical :: debug
 
-    debug = .false.
 
     distToGrid = distanceToGridFromOutside(grid, position, direction)
 
@@ -1014,17 +1014,17 @@ contains
 
     iUpper = thisMolecule%iTransUpper(iTrans)
     iLower = thisMolecule%iTransLower(iTrans)
-    if (debug) write(*,*) "mod(direction)",modulus(direction)
-    if (debug) write(*,*) "position",position
-    if (debug) write(*,*) "direction",direction
-    if (debug) write(*,*) "disttogrid",disttogrid
-
+!    if (debug) write(*,*) "mod(direction)",modulus(direction)
+!    if (debug) write(*,*) "position",position
+!    if (debug) write(*,*) "direction",direction
+!    if (debug) write(*,*) "disttogrid",disttogrid
+!
     currentPosition = position + (distToGrid + grid%halfSmallestSubcell) * direction
-    if (debug) write(*,*) "currentposbef",currentPosition,sqrt(currentPosition%x**2 + currentPosition%y**2), currentposition%z
-    if (debug) write(*,*) "halfsmallest",grid%halfSmallestSubcell
+!    if (debug) write(*,*) "currentposbef",currentPosition,sqrt(currentPosition%x**2 + currentPosition%y**2), currentposition%z
+!    if (debug) write(*,*) "halfsmallest",grid%halfSmallestSubcell
     currentPosition = position + (distToGrid + 20.d0 * grid%halfSmallestSubcell) * direction
-    if (debug) write(*,*) "currentposaft",currentPosition,sqrt(currentPosition%x**2 + currentPosition%y**2), &
-         currentPosition%z
+!    if (debug) write(*,*) "currentposaft",currentPosition,sqrt(currentPosition%x**2 + currentPosition%y**2), &
+!         currentPosition%z
     i0 = 0.d0
     intensityIntegral = 0.0
     tau = 0.d0
@@ -1080,13 +1080,13 @@ contains
           endif
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
-           if (debug) write(*,*) "i0",i0,"tau",tau,"dtau",dtau,"snu",snu
+!           if (debug) write(*,*) "i0",i0,"tau",tau,"dtau",dtau,"snu",snu
           tau = tau + dtau
        enddo
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
     enddo
     i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau) ! from far side
-    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)
+!    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)
 666 continue 
 
     ! convert to brightness T
