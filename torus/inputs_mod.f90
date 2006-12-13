@@ -1218,6 +1218,11 @@ endif
         "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
    call getLogical("readlucy", readLucy, cLine, nLines, &
           "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getReal("distance", gridDistance, cLine, nLines, &
+         "Grid distance (pc): ","(a,f4.1,1x,a)", 1., ok, .true.)
+    gridDistance = gridDistance * pcTocm   ! cm
+    call getReal("beamsize", beamsize, cLine, nLines, &
+         "Beam size (arcsec): ","(a,f4.1,1x,a)", 1., ok, .true.)
 endif
 
  call getLogical("cmf", cmf, cLine, nLines, &

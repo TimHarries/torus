@@ -1256,6 +1256,8 @@ endif
   end function PixelIntensity
   
   subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec, distance)
+    use input_variables, only : beamSize
+
 !$MPI    include 'mpif.h'
 
     type(GRIDTYPE) :: grid
@@ -1298,15 +1300,15 @@ endif
        
     unitvec = randomunitvector()
     !unitvec = OCTALVECTOR(1.d0,0.d0,0.d0) ! Allows our choice of unit vector
-    imageside = 5D7
+    imageside = 5.d7
     Npixels = 20
-    nv = 20
-    itrans = 4
+    nv = 40
+    itrans = 1
 
     allocate(somegrid(1:npixels,1:npixels))
     somegrid = 0
-    value = (4.6d7/(imageside/dble(npixels)))/2.d0
-    value = 50d0
+    value = (4.6d6/(imageside/dble(npixels)))/2.d0
+    !value = 50d0
     write(*,*) "VALUE", value
 
     do i = 1, npixels
@@ -1344,7 +1346,13 @@ endif
 
     write(*,*) somegrid
     tester = 0
-    call createimage(cube, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, tester)
+    call createimage(cube, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, tester, &
+         distance)
+    call plotDataCube(cube, 'beforeconv.ps/vcps')
+
+    call convolveCube(cube, dble(beamSize))
+
+
     !write(*,*) cube%weight(1:npixels,1:npixels)
   !  write(*,*) "AAAAAAAAAAAAAAAAAAAA"
     cube%weight(1:npixels,1:npixels) = somegrid
@@ -1401,7 +1409,8 @@ endif
     deallocate(vArray, spec)
   end subroutine calculateMoleculeSpectrum
 
-  subroutine createimage(cube, grid, imageside, npixels, nv, unitvec, thisMolecule, iTrans, tester)
+  subroutine createimage(cube, grid, imageside, npixels, nv, unitvec, thisMolecule, iTrans, tester, &
+       observerDistance)
 !$MPI    include 'mpif.h'
 
     type(MOLECULETYPE) :: thisMolecule
@@ -1417,6 +1426,7 @@ endif
     real(double), allocatable :: tempArray(:), tempArray2(:)
     integer :: ix1, ix2, iv
     real(double) :: imageside
+    real(double) :: observerDistance
     integer :: npixels,nv
     integer :: tester
     
@@ -1434,6 +1444,7 @@ endif
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
     
     call initCube(cube, npixels, npixels, nv)
+    cube%obsDistance = observerDistance
     call addSpatialAxes(cube, -imageside/2.d0,imageside/2.d0,-imageside/2.d0,imageside/2.d0)
     call addvelocityAxis(cube, 1.d0, -1.d0) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
  

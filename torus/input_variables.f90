@@ -20,6 +20,7 @@ module input_variables
   integer :: nr, nmu, nphi
   logical :: photoionization
   logical :: molecular
+  real :: beamSize
   logical :: cmf
   integer :: nAtom
   character(len=20) :: atomFilename(10)

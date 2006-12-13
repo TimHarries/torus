@@ -2,6 +2,7 @@ module datacube_mod
 
   use kind_mod
   use vector_mod
+  use messages_mod
 
   implicit none
 
@@ -243,6 +244,7 @@ contains
 
     newCube = cube
 
+    call writeInfo("Convolving data cube with beam size", TRIVIAL)
     do iv = 1, cube%nv
        do ix = 1, cube%nx
           do iy = 1, cube%ny
@@ -252,17 +254,17 @@ contains
                 do j = 1, cube%ny
                    r  = (cube%xAxis(ix) - cube%xAxis(i))**2 + (cube%yAxis(iy) - cube%yAxis(j))**2
                    r = sqrt(r)
-                   rInArcSec = 3600.d0*(r / cube%obsDistance)*180.d0/pi
-                   fac = exp(-0.5d0*(rInArcSec**2/beamSize**2))
+                   rInArcSec = 3600.d0*(r / (cube%obsDistance/1.d10))*180.d0/pi
+                   fac = (1.d0/(twoPi*beamsize**2))*exp(-0.5d0*(rInArcSec**2/beamSize**2))
                    newCube%intensity(ix, iy, iv) = newCube%intensity(ix, iy, iv) + cube%intensity(i,j,iv)*fac
                    weight = weight + fac
                 enddo
              enddo
-             newCube%intensity(ix, iy, iv) = newCube%intensity(ix, iy, iv) / weight
           enddo
        enddo
     enddo
     cube = newCube
+    call writeInfo("Done.",TRIVIAL)
   end subroutine convolveCube
     
     
