@@ -233,5 +233,39 @@ contains
     spec = spec / dble(n)
   end subroutine getWeightedSpectrum
 
+
+  subroutine convolveCube(cube, beamSize)
+    type(DATACUBE) :: cube
+    real(double) :: beamSize ! beamsize in arcsec
+    type(DATACUBE) :: newCube
+    real(double) :: r, rinArcSec, weight,fac 
+    integer :: ix, iy, iv, i, j
+
+    newCube = cube
+
+    do iv = 1, cube%nv
+       do ix = 1, cube%nx
+          do iy = 1, cube%ny
+             weight = 0.d0
+             newCube%intensity(ix, iy, iv) = 0.d0
+             do i = 1, cube%nx
+                do j = 1, cube%ny
+                   r  = (cube%xAxis(ix) - cube%xAxis(i))**2 + (cube%yAxis(iy) - cube%yAxis(j))**2
+                   r = sqrt(r)
+                   rInArcSec = 3600.d0*(r / cube%obsDistance)*180.d0/pi
+                   fac = exp(-0.5d0*(rInArcSec**2/beamSize**2))
+                   newCube%intensity(ix, iy, iv) = newCube%intensity(ix, iy, iv) + cube%intensity(i,j,iv)*fac
+                   weight = weight + fac
+                enddo
+             enddo
+             newCube%intensity(ix, iy, iv) = newCube%intensity(ix, iy, iv) / weight
+          enddo
+       enddo
+    enddo
+    cube = newCube
+  end subroutine convolveCube
+    
+    
+
 end module datacube_mod
 
