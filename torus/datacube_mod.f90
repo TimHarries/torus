@@ -199,6 +199,7 @@ contains
        !write(*,*) cube%vAxis(k), spec(k)
        write(43,*) cube%vAxis(k), spec(k)
     enddo
+    close(43)
 
   end subroutine plotDataCube
 
@@ -238,32 +239,50 @@ contains
   subroutine convolveCube(cube, beamSize)
     type(DATACUBE) :: cube
     real(double) :: beamSize ! beamsize in arcsec
-    type(DATACUBE) :: newCube
+    real(double), allocatable :: newArray(:,:)
     real(double) :: r, rinArcSec, weight,fac 
     integer :: ix, iy, iv, i, j
+    integer :: i1, j1
+    real(double) :: sigma, dx, dy
 
-    newCube = cube
+    sigma = beamsize/2.35d0
 
+    dx = 3600.d0*((cube%xAxis(2) - cube%xAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
+    dy = 3600.d0*((cube%yAxis(2) - cube%yAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
+
+    allocate( newArray(1:cube%nx, 1:cube%ny))
     call writeInfo("Convolving data cube with beam size", TRIVIAL)
     do iv = 1, cube%nv
+       newArray = 0.d0
        do ix = 1, cube%nx
           do iy = 1, cube%ny
-             weight = 0.d0
-             newCube%intensity(ix, iy, iv) = 0.d0
+
+             weight  = 0.d0
              do i = 1, cube%nx
                 do j = 1, cube%ny
+
                    r  = (cube%xAxis(ix) - cube%xAxis(i))**2 + (cube%yAxis(iy) - cube%yAxis(j))**2
                    r = sqrt(r)
+
                    rInArcSec = 3600.d0*(r / (cube%obsDistance/1.d10))*180.d0/pi
-                   fac = (1.d0/(twoPi*beamsize**2))*exp(-0.5d0*(rInArcSec**2/beamSize**2))
-                   newCube%intensity(ix, iy, iv) = newCube%intensity(ix, iy, iv) + cube%intensity(i,j,iv)*fac
-                   weight = weight + fac
+
+                   fac = (1.d0/(twoPi*sigma**2))*exp(-0.5d0*(rInArcSec**2/sigma**2))
+                   newArray(ix,iy) = newArray(ix, iy) + cube%intensity(i,j,iv)*fac*dx*dy
+                   weight = weight + fac*dx*dy
+
                 enddo
              enddo
+             ! assume top right corner has background
+             write(*,*) "weight",weight
+             if (weight < 1.d0) then
+                newArray(ix,iy) = newArray(ix, iy) + (1.d0-weight) * cube%intensity(cube%nx, cube%ny, iv)
+             endif
+
           enddo
        enddo
+       cube%intensity(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)
     enddo
-    cube = newCube
+    deallocate(newArray)
     call writeInfo("Done.",TRIVIAL)
   end subroutine convolveCube
     

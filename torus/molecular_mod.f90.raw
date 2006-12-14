@@ -1301,13 +1301,13 @@ endif
     unitvec = randomunitvector()
     !unitvec = OCTALVECTOR(1.d0,0.d0,0.d0) ! Allows our choice of unit vector
     imageside = 5.d7
-    Npixels = 20
+    Npixels = 40
     nv = 40
     itrans = 1
 
     allocate(somegrid(1:npixels,1:npixels))
     somegrid = 0
-    value = (4.6d6/(imageside/dble(npixels)))/2.d0
+    value = (4.6d7/(imageside/dble(npixels)))/2.d0
     !value = 50d0
     write(*,*) "VALUE", value
 
@@ -1445,6 +1445,7 @@ endif
     
     call initCube(cube, npixels, npixels, nv)
     cube%obsDistance = observerDistance
+    write(*,*) "Observer Distance: ",observerDistance
     call addSpatialAxes(cube, -imageside/2.d0,imageside/2.d0,-imageside/2.d0,imageside/2.d0)
     call addvelocityAxis(cube, 1.d0, -1.d0) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
  
