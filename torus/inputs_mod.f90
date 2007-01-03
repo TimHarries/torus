@@ -2126,9 +2126,6 @@ endif
    call getReal("teff", teff, cLine, nLines, &
           "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
 
-   call getReal("rho", rho0, cLine, nLines, &
-          "Density (g/cm^3): ","(a,f7.0,a)", 1., ok, .true.)
-
    call getReal("mcore", mCore, cLine, nLines, &
        "Core mass (solar masses): ","(a,f5.1,a)", 0.5, ok, .true.)
 
