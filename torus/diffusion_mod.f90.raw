@@ -415,7 +415,8 @@ contains
 
                       ! positive r
                       
-                      octVec = subcellCentre(thisOctal, subcell) + OCTALVECTOR(r, 0.d0, 0.d0)
+                      octVec = subcellCentre(thisOctal, subcell) + &
+                               OCTALVECTOR(r, grid%halfSmallestSubcell, grid%halfSmallestSubcell)
                       if (inOctal(grid%octreeRoot, octVec)) then
                          startOctal => thisOctal
                          call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
@@ -429,7 +430,8 @@ contains
 
                       ! negative r
 
-                      octVec = subcellCentre(thisOctal, subcell) - OCTALVECTOR(r, 0.d0, 0.d0)
+                      octVec = subcellCentre(thisOctal, subcell) - &
+                               OCTALVECTOR(r, grid%halfSmallestSubcell, grid%halfSmallestSubcell)
                       if (inOctal(grid%octreeRoot, octVec)) then
                          startOctal => thisOctal
                          call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
@@ -457,7 +459,7 @@ contains
 
                       ! negative phi
 
-                      rVec = octVec
+                      rVec = octVec + OCTALVECTOR(grid%halfSmallestSubcell, 0.d0, grid%halfSmallestSubcell)
                       rVec = rotateZ(rVec,+DeltaPhi) ! remember that rotateZ rotates in the "wrong" sense
                       if (inOctal(grid%octreeRoot, rVec)) then
                          startOctal => thisOctal
@@ -472,7 +474,7 @@ contains
 
                       ! positive phi
 
-                      rVec = octVec
+                      rVec = octVec + OCTALVECTOR(grid%halfSmallestSubcell, 0.d0, grid%halfSmallestSubcell)
                       rVec =  rotateZ(rVec,-DeltaPhi)  ! remember that rotateZ rotates in the "wrong" sense
                       if (inOctal(grid%octreeRoot, rVec)) then
                          startOctal => thisOctal
@@ -488,7 +490,8 @@ contains
 
                       ! positive z
 
-                      octVec = subcellCentre(thisOctal, subcell) + OCTALVECTOR(0.d0, 0.d0, r)
+                      octVec = subcellCentre(thisOctal, subcell) + &
+                               OCTALVECTOR(grid%halfSmallestSubcell, grid%halfSmallestSubcell, r)
                       if (inOctal(grid%octreeRoot, octVec)) then
                          startOctal => thisOctal
                          call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
@@ -502,7 +505,8 @@ contains
 
                       ! negative z
 
-                      octVec = subcellCentre(thisOctal, subcell) - OCTALVECTOR(0.d0, 0.d0, r)
+                      octVec = subcellCentre(thisOctal, subcell) - &
+                               OCTALVECTOR(grid%halfSmallestSubcell, grid%halfSmallestSubcell, r)
                       if (inOctal(grid%octreeRoot, octVec)) then
                          startOctal => thisOctal
                          call amrGridValues(grid%octreeRoot, octVec, grid=grid, startOctal=startOctal, &
