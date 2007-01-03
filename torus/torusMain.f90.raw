@@ -4663,7 +4663,7 @@
 
             enddo
             
-            if (nscat >= maxScat) then
+            if ((nscat >= maxScat).and.(maxScat .ne. 0)) then
                write(*,*) "Photon aborted after ",maxScat, " scatterings"
             endif
            nTot = nTot + nScat
