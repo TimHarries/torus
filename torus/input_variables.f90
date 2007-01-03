@@ -305,7 +305,7 @@ module input_variables
   logical :: LyContThick
   logical :: curtains, enhance
   real :: dipoleOffset
-  logical :: twoD
+  logical :: amr1d, amr2d, amr3d
 
   ! T Tauri parameters ----------------------------------------------------
   character(len=80) :: MdotType ! variable accretion rate model in use
@@ -455,7 +455,6 @@ module input_variables
   logical :: statEq2d       ! whether statEq can be run in 2-D
   logical :: noPhaseUpdate  ! disable updating AMR grid at each phase
   logical :: amr2dOnly      ! only use cells in 2D plane through grid
-  logical :: amr2d      ! only use cells in 2D plane through grid
   logical :: cylindrical
   logical :: forceLineChange ! recalculate opacities for new transition 
   logical :: statEq1stOctant ! T if do stateqAMR routine for the octals in first octant

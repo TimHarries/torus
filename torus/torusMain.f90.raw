@@ -1183,10 +1183,10 @@
 !     call readAMRgrid("molecular_tmp.grid",.false.,grid)
 !     goto 667
 
-!     if (cmf) then
-!        call readAMRgrid("atom_tmp.grid",.false.,grid)
-!        goto 665
-!     endif
+     if (cmf.and.readLucy) then
+        call readAMRgrid("atom_tmp.grid",.false.,grid)
+        goto 665
+     endif
 
      if (readPops .or. readPhasePops .or. readLucy) then 
 
@@ -1327,7 +1327,7 @@
 
         select case (geometry)
         case("cluster")
-           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData, young_cluster)
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 !           call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
@@ -1336,7 +1336,7 @@
            call remove_too_close_cells(young_cluster,grid%octreeRoot,1.0d4)
 
         case("wr104")
-           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,sphData)
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
            call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
@@ -1349,7 +1349,7 @@
            call writeInfo("...grid smoothing complete", TRIVIAL)
 
         case("starburst")
-           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, sphData, young_cluster, nDustType)
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
            gridconverged = .false.
            do while(.not.gridconverged) 
               call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.1, grid, gridconverged)
@@ -1357,7 +1357,7 @@
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
         case DEFAULT
-           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr2d, &
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, &
            sphData, young_cluster, nDustType, romData=romData)
            call writeInfo("First octal initialized.", TRIVIAL)
            call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
@@ -2624,8 +2624,8 @@
      call random_seed
 
      if (cmf) then
-        call atomLoop(grid, nAtom, thisAtom, nsource, source)
-        call calculateAtomSpectrum(grid, thisAtom, 3, 1, 4, OCTALVECTOR(1.d0, 0.d0, 0.d0), 100.d0*pctocm/1.d10, &
+        if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
+        call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 4, OCTALVECTOR(1.d0, 0.d0, 0.d0), 100.d0*pctocm/1.d10, &
              source, nsource)
         stop
      endif
@@ -2662,10 +2662,10 @@
 
            if (solveVerticalHydro) then
               call verticalHydrostatic(grid, mCore, sigma0, rInner, miePhase, nDustType, nMuMie, nLambda, xArray, &
-                   source, nSource, nLucy, massEnvelope, tThresh, twod, mDisc)
+                   source, nSource, nLucy, massEnvelope, tThresh, .false., mDisc)
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, twod, 10)
+                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, .false., 10)
            endif
 
         endif

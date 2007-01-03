@@ -3155,6 +3155,7 @@ contains
 
 
        if (cmf) then
+          call writeDouble2D(thisOctal%atomAbundance, fileFormatted)
           call writeDouble3D(thisOctal%atomLevel,fileFormatted)
           if (fileformatted) then
              write(unit=20,iostat=error,fmt=*) thisOctal%microturb
@@ -3380,6 +3381,7 @@ contains
        call readDouble2D(thisOctal%dustTypeFraction, fileFormatted)
 
        if (cmf) then
+          call readDouble2D(thisOctal%atomAbundance, fileFormatted)
           call readDouble3D(thisOctal%atomLevel,fileFormatted)
           if (fileformatted) then
              read(unit=20,iostat=error,fmt=*) thisOctal%microturb
@@ -6339,6 +6341,64 @@ contains
 
   end subroutine draw_segment
 
+  subroutine draw_annulus(thisOctal, subcell, filled)
+    type(OCTAL) :: thisOctal
+    integer :: subcell
+    real :: phi1,phi2,r1,r2,ang
+    type(OCTALVECTOR) :: rVec
+    integer :: i
+    integer, parameter :: nAng = 100
+    integer ::npts
+    logical :: filled
+    real :: x(2*nAng+10), y(2*nAng+10)
+    real :: x1, y1
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r1 = rVec%x-thisOctal%subcellsize/2.d0
+    r2 = rVec%x+thisOctal%subcellsize/2.d0
+
+    phi1 = 0.d0
+    phi2 = twoPi
+
+    npts = 0
+    do i = 1, nang
+       ang = phi1+(phi2-phi1)*real(i-1)/real(nAng-1)
+       npts = npts + 1
+       x(npts) = r2 * cos(ang)
+       y(npts) = r2 * sin(ang)
+    enddo
+    do i = 1, nAng
+       ang = phi2+(phi1-phi2)*real(i-1)/real(nAng-1)
+       npts = npts + 1
+       x(npts) = r1 * cos(ang)
+       y(npts) = r1 * sin(ang)
+    enddo
+    npts = npts + 1
+    x(npts) = r2
+    y(npts) = 0.
+    if (filled) then
+       call pgpoly(npts,x, y)
+    else
+       npts = 0
+       do i = 1, nang
+          ang = phi1+(phi2-phi1)*real(i-1)/real(nAng-1)
+          npts = npts + 1
+          x(npts) = r2 * cos(ang)
+          y(npts) = r2 * sin(ang)
+       enddo
+       call pgline(npts, x, y)
+       npts = 0
+       do i = 1, nang
+          ang = phi1+(phi2-phi1)*real(i-1)/real(nAng-1)
+          npts = npts + 1
+          x(npts) = r1 * cos(ang)
+          y(npts) = r1 * sin(ang)
+       enddo
+       call pgline(npts, x, y)
+    endif
+
+  end subroutine draw_annulus
+
 
 
 
@@ -6437,6 +6497,8 @@ contains
        nPlanes = 3
     endif
 
+    if (grid%octreeRoot%oneD) nPlanes = 1
+
     if (nPlanes == 1) then
        IF (PGBEG(0,trim(device),1,1) .NE. 1) STOP
     else
@@ -6509,6 +6571,13 @@ contains
 
     ! Setting the plot boundaries.
 
+    if (grid%octreeRoot%oneD) then
+       call pgwnad(-d, d, -d, d)
+       v3 = 0.d0
+       goto 666
+    endif
+
+
     if (.not.grid%octreeRoot%cylindrical) then
        select case(thisplane)
        case("x-y")
@@ -6553,7 +6622,7 @@ contains
        end select
     endif
 
-
+666 continue
 
 
 
@@ -6879,6 +6948,19 @@ contains
              ! set color
              call pgsci(idx)
              
+             if (thisOctal%oneD) then
+                ! plane doesn't matter, it'll always look the same
+                call draw_annulus(thisOctal, subcell, .true.)
+                if (withgrid) then
+                   call pgqci(i)
+                   call PGSFS(2)  ! we don't want to fill in a box this time
+                   call PGSCI(1) ! changing the color index.
+                   call draw_annulus(thisOctal, subcell, .false.)
+                   call PGSFS(1)
+                   call pgsci(i)
+                endif
+                goto 666
+             endif
 
              select case (plane)
              case ("x-y")
@@ -6970,6 +7052,7 @@ contains
 
 
              end select
+666          continue
 
           end if
        end if

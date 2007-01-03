@@ -1179,6 +1179,7 @@ function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
     type(DATACUBE) :: cube
     integer :: tester
     integer :: index1, index2
+    integer, parameter :: maxSubPixels = 1024
 
     failed = 0
     acc = 1d-1
@@ -1233,12 +1234,12 @@ function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
                      abs(testgrid(i,j+1) - testgrid(i,j)) > acc)) then 
                    !write(*,*) "Test failed",i,j,testgrid(i-1,j),testgrid(i,j-1),testgrid(i+1,j),testgrid(i,j+1), testgrid(i,j) 
                    
-                   if(subpixels < 15) then 
+                   if(subpixels < maxSubPixels-1) then 
                       subpixels = subpixels * 2
-                      !write(*,*) "Trying",subpixels,"subpixels"
+                      write(*,*) "Trying",subpixels,"subpixels"
                    else
                       failed = 1
-                      !write(*,*) "Sad :( because reached maximum resolution without achieving 'convergence'"
+                      write(*,*) "Maximum resolution without achieving 'convergence'"
                       cube%converged(index1,index2,cube%nv) = 0 ! Write convergence info to last line (to be moved later) to save passing even more parameters 
                    endif             
                 
@@ -1266,7 +1267,7 @@ endif
     integer :: itrans
     integer :: nRay
     type(OCTALVECTOR) :: rayPosition(5000)
-    real(double) :: da(5000), dOmega(5000), r
+    real(double) :: da(5000), dOmega(5000), r, weight(5000)
     type(OCTALVECTOR) :: viewVec
     real(double) :: deltaV
     integer :: iv, iray
@@ -1301,9 +1302,10 @@ endif
     unitvec = randomunitvector()
     !unitvec = OCTALVECTOR(1.d0,0.d0,0.d0) ! Allows our choice of unit vector
     imageside = 5.d7
-    Npixels = 40
+    Npixels = 400
     nv = 40
     itrans = 1
+    goto 666
 
     allocate(somegrid(1:npixels,1:npixels))
     somegrid = 0
@@ -1345,7 +1347,7 @@ endif
     enddo
 
     write(*,*) somegrid
-    tester = 0
+    tester = 1
     call createimage(cube, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, tester, &
          distance)
     call plotDataCube(cube, 'beforeconv.ps/vcps')
@@ -1366,8 +1368,11 @@ endif
     !write(*,*) "CONVO",cube%converged(:,:,:)
     !write(*,*) "subs",cube%nsubpixels(:,:,:)
     stop
+666 continue
 
-    call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+    distance = 250.*pctocm/1.d10
+
+    call createRayGrid(nRay, rayPosition, da, dOmega, weight, viewVec, distance, grid)
 
     nLambda = 50
 
@@ -1382,13 +1387,13 @@ endif
     spec = 0.d0
     do iv = 1, nLambda
        vArray(iv) = 1.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda)-1.d0)
- enddo
+    enddo
     do iv = iv1, iv2
        deltaV  = vArray(iv)
        write(*,*) iv
        do iRay = 1, nRay
           i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisMolecule, iTrans, deltaV)
-          spec(iv) = spec(iv) + i0  * domega(iRay) / sum(domega(1:nray))
+          spec(iv) = spec(iv) + i0  * domega(iRay) / sum(domega(1:nray)) * weight(iray)
        enddo
     enddo
 
@@ -1407,6 +1412,7 @@ endif
     close(42)
 !$MPI endif
     deallocate(vArray, spec)
+    stop
   end subroutine calculateMoleculeSpectrum
 
   subroutine createimage(cube, grid, imageside, npixels, nv, unitvec, thisMolecule, iTrans, tester, &
@@ -1501,18 +1507,21 @@ endif
 
   end subroutine createimage
 
-  subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+  subroutine createRayGrid(nRay, rayPosition, da, dOmega, weight, viewVec, distance, grid)
     type(GRIDTYPE) :: grid
     integer :: nRay
     type(OCTALVECTOR) :: rayPosition(:), thisPos, viewVec, xProj,yProj
-    real(double) :: da(:), dOmega(:), distance
+    real(double) :: da(:), dOmega(:), distance, weight(:)
     real(double), allocatable :: rGrid(:), dr(:), phigrid(:), dphi(:)
-    real(double) :: rMax
+    real(double) :: rMax, rMin
     integer :: nr, nphi, ir, iphi
     real(double) :: r1 , r2, phi1, phi2, phiOffset
-    real(double) :: xPos, yPos, zPos, cosInc, azimuth
+    real(double) :: xPos, yPos, zPos, cosInc, azimuth, sigma, rinarcsec
 
-    rmax = 1.08d7
+    rmax = 4.63d7
+
+    rmax = 1.d7
+    rmin = 1.d4
     nr = 100
     nphi = 10
     nray = 0
@@ -1521,8 +1530,8 @@ endif
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
 
     do ir = 1, nr
-       r1 = log10(rmax) * dble(ir-1)/dble(nr)
-       r2 = log10(rmax) * dble(ir)/dble(nr)
+       r1 = log10(rmin) + (log10(rMax)-log10(rMin)) *dble(ir-1)/dble(nr)
+       r2 = log10(rmin) + (log10(rMax)-log10(rMin)) *dble(ir)/dble(nr)
        r1 = 10.d0**r1
        r2 = 10.d0**r2
        rgrid(ir) = 0.5d0 * (r1 + r2)
@@ -1557,7 +1566,14 @@ endif
          rayposition(nray) = rayPosition(nRay) + ((-1.d0*distance) * viewVec)
 
           da(nRay) = pi*( (r1 + dr(ir)/2.d0)**2 - (r1 - dr(ir)/2.d0)**2) * dphi(iPhi)/twoPi
-          dOmega(nRay) = da(nRay) / (fourPi * distance**2)
+          dOmega(nRay) = da(nRay) / (distance**2)
+          rInArcSec = 3600.d0*(r1 / (250.d0*pctocm/1.d10))*180.d0/pi
+          sigma = 29.d0/2.35d0
+
+          weight(nRay) = (1.d0/(twoPi*sigma**2))*exp(-0.5d0*(rInArcSec**2/sigma**2)) * dOmega(nRay) * &
+               (180.d0/pi*3600.d0)**2
+          write(*,*) weight(nray), rinArcSec,sigma
+
        enddo
     enddo
   end subroutine createRayGrid

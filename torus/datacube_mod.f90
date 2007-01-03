@@ -273,7 +273,6 @@ contains
                 enddo
              enddo
              ! assume top right corner has background
-             write(*,*) "weight",weight
              if (weight < 1.d0) then
                 newArray(ix,iy) = newArray(ix, iy) + (1.d0-weight) * cube%intensity(cube%nx, cube%ny, iv)
              endif

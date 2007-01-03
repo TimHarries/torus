@@ -213,11 +213,11 @@ CONTAINS
  
   END SUBROUTINE calcValuesAMR
 
-  SUBROUTINE initFirstOctal(grid, centre, size, twod, sphData, stellar_cluster, nDustType, romData)
+  SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, sphData, stellar_cluster, nDustType, romData)
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
-    use input_variables, only : cylindrical, photoionization, cmf
+    use input_variables, only : cylindrical, photoionization, cmf, nAtom, debug
 
     IMPLICIT NONE
     
@@ -230,7 +230,7 @@ CONTAINS
     TYPE(cluster), optional, INTENT(IN)    :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     !
-    LOGICAL :: twod  ! true if this is a twoD amr grid
+    LOGICAL :: oned, twod, threed  ! true if this is a twoD amr grid
     INTEGER :: subcell ! loop counter 
     INTEGER :: nDustType ! number of different dust types
 
@@ -247,11 +247,18 @@ CONTAINS
 
     ALLOCATE(grid%octreeRoot%N(8,grid%maxLevels))
 
+    if (oneD) then
+       grid%octreeRoot%oneD = .true.
+       grid%octreeRoot%twoD = .false.
+       grid%octreeRoot%threeD = .false.
+       grid%octreeRoot%maxChildren = 2
+    endif
+
     if (twoD) then
        grid%octreeRoot%twoD = .true.
        grid%octreeRoot%threeD = .false.
        grid%octreeRoot%maxChildren = 4
-    else
+    else if (threed) then
        grid%octreeRoot%cylindrical = .false.
        grid%octreeRoot%twoD = .false.
        grid%octreeRoot%threeD = .true.
@@ -302,7 +309,11 @@ CONTAINS
     grid%octreeRoot%changed = .false.
     grid%octreeRoot%dustType = 1
     if (cmf) then
-       allocate(grid%octreeroot%atomAbundance(8, 3))
+       allocate(grid%octreeroot%atomAbundance(8, nAtom))
+       grid%octreeRoot%atomAbundance(1:8, 1) =  0.71d0 / mHydrogen ! by default solar
+       if (nAtom > 1) then
+          grid%octreeRoot%atomAbundance(1:8, 2:nAtom) =  0.27d0 / (4.d0*mHydrogen) !assume higher atoms are helium
+       endif
     endif
     ALLOCATE(grid%octreeRoot%dusttypefraction(8,  nDustType))
     grid%octreeroot%dustTypeFraction(1:8,1:nDustType) = 0.d0
@@ -382,7 +393,10 @@ CONTAINS
     !   calculations.
     grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
                                 2.0_oc**REAL(grid%maxDepth,kind=oct)
-      
+
+    if (debug) then
+       write(*,*) "first Octal", grid%octreeRoot%subcellSize,grid%octreeRoot%centre
+    endif
   END SUBROUTINE initFirstOctal
 
 
@@ -390,7 +404,7 @@ CONTAINS
                          stellar_cluster, inherit, interp, splitAzimuthally, romData)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, cmf
+    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, cmf, nAtom, debug
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
@@ -484,14 +498,18 @@ CONTAINS
     NULLIFY(parent%child(newChildIndex)%child)
 
     if (cmf) then
-       allocate(parent%child(newChildIndex)%atomAbundance(8, 3))
-       parent%child(newChildIndex)%atomAbundance = 1.d-30
+       allocate(parent%child(newChildIndex)%atomAbundance(8, 1:nAtom))
+       parent%child(newChildIndex)%atomAbundance(:, 1) = 0.71d0 / mHydrogen
+       if (nAtom > 1) then
+          parent%child(newChildIndex)%atomAbundance(:, 2:nAtom) =  0.27d0 / (4.d0*mHydrogen) !assume higher atoms are helium
+       endif
     endif
 
     ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
     ! set up the new child's variables
     parent%child(newChildIndex)%threeD = parent%threeD
     parent%child(newChildIndex)%twoD = parent%twoD
+    parent%child(newChildIndex)%oneD = parent%oneD
     parent%child(newChildIndex)%maxChildren = parent%maxChildren
     parent%child(newChildIndex)%cylindrical = parent%cylindrical
 
@@ -640,6 +658,10 @@ CONTAINS
     END IF
 
     !CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
+
+    if (debug) then
+       write(*,*) "new child",parent%child(newchildindex)%subcellSize,parent%child(newchildindex)%centre
+    endif
 
   END SUBROUTINE addNewChild
   
@@ -1490,6 +1512,12 @@ CONTAINS
        else
           rotloc = locator
        endif
+       if (octree%oneD) then
+          rotloc  = OCTALVECTOR(modulus(locator),0.d0,0.d0)
+       endif
+
+
+
       subcell = whichSubcell(octree,rotloc)
 
       ! the IF statement below is for debugging
@@ -2280,6 +2308,9 @@ CONTAINS
     if (octaltree%twoD) then
        point2 = projectToXZ(point)
     endif
+    if (octaltree%oneD) then
+       point2  = OCTALVECTOR(modulus(point),0.d0,0.d0)
+    endif
 
 
     IF (PRESENT(interp)) THEN
@@ -2486,6 +2517,10 @@ CONTAINS
        ! assume it's threeD for now
        point_local = point
     end if
+    if (octalTree%oneD) then
+       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+    endif
+
 
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
@@ -2802,6 +2837,10 @@ CONTAINS
        point_local = point
     end if
 
+    if (octalTree%oneD) then
+       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+    endif
+
     
     IF (PRESENT(startOctal)) THEN
       IF (PRESENT(actualSubcell)) THEN
@@ -2870,6 +2909,9 @@ CONTAINS
        ! assume it's threeD for now
        point_local = point
     end if
+    if (octalTree%oneD) then
+       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+    endif
 
     
     IF (PRESENT(startOctal)) THEN
@@ -2936,6 +2978,9 @@ CONTAINS
        ! assume it's threeD for now
        point_local = point
     end if
+    if (octalTree%oneD) then
+       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+    endif
 
     
     IF (PRESENT(startOctal)) THEN
@@ -3002,6 +3047,9 @@ CONTAINS
        ! assume it's threeD for now
        point_local = point
     end if
+    if (octalTree%oneD) then
+       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+    endif
 
     
     IF (PRESENT(startOctal)) THEN
@@ -3286,6 +3334,15 @@ CONTAINS
        END IF
     endif
 
+    if (thisOctal%oneD) then
+       if (point%x <= thisOctal%centre%x) then
+          subcell = 1
+       else
+          subcell = 2
+       endif
+    endif
+
+
   END FUNCTION whichSubcell    
 
 
@@ -3299,6 +3356,19 @@ CONTAINS
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(octalVector)             :: octVec2D
     real(double)                  :: r, phi, r1, dphi, eps
+
+
+    if (thisOctal%oneD) then
+       r = modulus(point)
+       if ( r < thisOctal%centre%x  - thisOctal%subcellSize) then ; inoctal = .false.
+       else if (r > thisOctal%centre%x + thisOctal%subcellSize) then; inOctal = .false.
+       else
+          inOctal = .true.
+       endif
+       goto 666
+    endif
+
+
     
 
     if (thisOctal%threeD) then
@@ -3337,6 +3407,7 @@ CONTAINS
           inOctal = .TRUE.
        ENDIF
     endif
+666 continue
   END FUNCTION inOctal
 
   FUNCTION inSubcell(thisOctal,thisSubcell,point) 
@@ -3594,6 +3665,9 @@ IF ( .NOT. gridConverged ) RETURN
        point_local = projectToXZ(point)
     else
        point_local = point
+    endif
+    if (thisOctal%oneD) then
+       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
     endif
 
 
@@ -6989,7 +7063,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%inFlow(subcell) = .true.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
-       v = 10.d5+(vterm-10.d5)*(1.d0 - grid%rinner/r)
+       v = 1.d5+(vterm-1.d5)*(1.d0 - grid%rinner/r)
        thisOctal%microturb(subcell) = 10.d5/cspeed
        thisOctal%velocity(subcell) = rVec
        thisOctal%inFlow(subcell) = .true.
@@ -7002,6 +7076,11 @@ IF ( .NOT. gridConverged ) RETURN
 
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
+
+    thisOctal%atomAbundance(subcell, 1) =  1.d-5 / mHydrogen
+    thisOctal%atomAbundance(subcell, 2:nAtom) =  1.d0 / (4.d0*mHydrogen)
+    
+
   end subroutine calcWRShellDensity
 
   subroutine benchmarkDisk(thisOctal,subcell,grid)
@@ -7112,8 +7191,7 @@ IF ( .NOT. gridConverged ) RETURN
     wrShellVelocity = OCTALVECTOR(0.d0, 0.d0, 0.d0)
     r = modulus(rVec)
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
-
-       v = 10.d5+(vterm-10.d5)*(1.d0 - grid%rinner/r)
+       v = 1.d5+(vterm-1.d5)*(1.d0 - grid%rinner/r)
        call normalize(rvec)
        wrshellvelocity = rvec * (v/cSpeed)
     endif
@@ -7432,10 +7510,17 @@ IF ( .NOT. gridConverged ) RETURN
        parent%maxChildren = 4
     endif
 
+    if (parent%oneD) then
+       parent%nChildren = 2
+       parent%maxChildren = 2
+    endif
+
     if (parent%threed) then
        ALLOCATE(parent%child(1:8), STAT=error)
-    else
+    else if (parent%twod) then
        ALLOCATE(parent%child(1:4), STAT=error)
+    else if (parent%oned) then
+       ALLOCATE(parent%child(1:2), STAT=error)
     endif
     IF ( error /= 0 ) THEN
        PRINT *, 'Panic: allocation failed.'
@@ -7447,9 +7532,15 @@ IF ( .NOT. gridConverged ) RETURN
     parent%hasChild(1:parent%maxChildren) = .TRUE.
     parent%indexChild(1) = 1
     parent%indexChild(2) = 2
-    parent%indexChild(3) = 3
-    parent%indexChild(4) = 4
+
+    if (parent%twoD) then
+       parent%indexChild(3) = 3
+       parent%indexChild(4) = 4
+    endif
+
     if (parent%threeD) then
+       parent%indexChild(3) = 3
+       parent%indexChild(4) = 4
        parent%indexChild(5) = 5
        parent%indexChild(6) = 6
        parent%indexChild(7) = 7
@@ -7482,9 +7573,9 @@ IF ( .NOT. gridConverged ) RETURN
 
        ! set up the new child's variables
        parent%child(newChildIndex)%threed = parent%threed
-       parent%child(newChildIndex)%twoD = parent%twod
+       parent%child(newChildIndex)%twoD = parent%twoD
+       parent%child(newChildIndex)%oneD = parent%oneD
        parent%child(newChildIndex)%maxChildren = parent%maxChildren
-       parent%child(newChildIndex)%twoD = parent%twod
        parent%child(newChildIndex)%inFlow = parent%inFlow
        parent%child(newChildIndex)%parent => parent
        parent%child(newChildIndex)%parentSubcell = newChildIndex
@@ -8255,6 +8346,7 @@ IF ( .NOT. gridConverged ) RETURN
     dest%cylindrical      = source%cylindrical
     dest%splitAzimuthally= source%splitAzimuthally
     dest%twoD             = source%twoD   
+    dest%oneD             = source%oneD   
     dest%maxChildren      = source%maxChildren
     dest%hasChild         = source%hasChild
     dest%centre           = source%centre
@@ -9246,9 +9338,11 @@ IF ( .NOT. gridConverged ) RETURN
     parentOctal => childOctal%parent
     parentSubcell = childOctal%parentSubcell
     
-    if (childOctal%twoD) then
+    if (childOctal%oneD) then
+       nVals = 2
+    else if (childOctal%twoD) then
        nVals = 4
-    else
+    else if (childOctal%threeD) then
        nVals = 8
     endif
 
@@ -11092,6 +11186,11 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: r, t1, t2
     integer :: j
 
+    if (grid%octreeRoot%oneD) then
+       write(*,*) "interp from parent not implemented for one-d case"
+       stop
+    endif
+
     r = cellSize/2.d0 + 0.1d0 * grid%halfSmallestSubcell
     if (grid%octreeRoot%twod) then
        j = 4
@@ -11639,6 +11738,44 @@ IF ( .NOT. gridConverged ) RETURN
    endif
    subcen =  subcellCentre(thisOctal,subcell)
 
+
+
+
+   if (thisOctal%oneD) then
+
+      distToR1 = 1.d30
+      distToR2 = 1.d30
+
+      rVec = posVec
+      call normalize(rVec)
+      cosmu = direction.dot.rVec
+      d = modulus(posVec)
+
+      ! distance to outer radius
+
+      r2 = subcen%x + thisOctal%subcellSize/2.d0
+      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+      distToR2 = max(x1,x2)
+
+      !   inner radius
+
+      r1 = subcen%x - thisOctal%subcellSize/2.d0
+      theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+      cosmu =((-1.d0)*rVec).dot.direction
+      mu = acos(max(-1.d0,min(1.d0,cosmu)))
+      distTor1 = 1.e30
+      if (mu  < theta ) then
+         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+         distTor1 = min(x1,x2)
+      endif
+
+      tval = min(distTor1, distTor2)
+      write(*,*) tval
+      goto 666
+   endif
+
+         
+
    if (thisOctal%threed) then
 
       if (.not.thisOctal%cylindrical) then
@@ -11909,6 +12046,8 @@ IF ( .NOT. gridConverged ) RETURN
       endif
       
    endif
+
+666 continue
 
    tVal = max(tVal, 0.001d0*grid%halfSmallestSubcell) ! avoid sticking on a cell boundary
 
@@ -12211,7 +12350,7 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTAL) :: thisOctal
     integer :: subcell
     type(OCTALVECTOR) :: octalCentre
-    real(double) :: r1, r2, r3
+    real(double) :: r1, r2, r3, r
     real(double) :: xOctal, yOctal, zOctal
     real(double) :: ang, ang1, ang2, phi
 
@@ -12220,6 +12359,16 @@ IF ( .NOT. gridConverged ) RETURN
     
 !!! we will just choose a random point within the subcell.
 !!! this *should* be done in a better way.
+
+
+    if (thisOctal%oneD) then
+       call random_number(r1)
+       r1 = r1 - 0.5d0
+       r1 = r1 * 0.9999
+       r = r1 * thisOctal%subcellSize + octalCentre%x
+       randomPositionInCell = r * randomUnitVector()
+    endif
+
 
     if (thisOctal%threed) then
 

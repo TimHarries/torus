@@ -84,6 +84,7 @@ MODULE octal_mod
                                                         ! pointer to each subcell's child (if it exists) 
     LOGICAL                            :: threeD        ! this is a three-dimensional octal
     LOGICAL                            :: twoD          ! this is a two-dimensioanl octal (quartal?!)
+    LOGICAL                            :: oneD          ! this is a one-dimensioanl octal (bital?!)
     LOGICAL                            :: cylindrical   ! A three-d amr grid of x,z,phi
     LOGICAL                            :: splitAzimuthally   ! A three-d amr grid of x,z,phi
     INTEGER                            :: maxChildren   ! this is 8 for three-d and 4 for two-d
@@ -181,6 +182,18 @@ CONTAINS
 
     d = thisOctal%subcellSize * 0.5_oc
 
+    if (thisOctal%oneD) then
+       select case (nchild)
+          case(1)
+             subcellCentre = thisOctal%centre - d * xHatOctal
+          case(2)
+             subcellCentre = thisOctal%centre + d * xHatOctal
+          case DEFAULT
+             write(*,*) "bug - one-d cell has more than 3 children"
+       end select
+       goto 666
+    endif
+
     if (thisOctal%threeD) then  !do the three-d case as per diagram
        if (.not.thisOctal%cylindrical) then
           SELECT CASE (nChild)
@@ -277,6 +290,8 @@ CONTAINS
        do;enddo
        END SELECT
     endif
+
+666 continue
   END FUNCTION subcellCentre
 
   real(double) FUNCTION subcellRadius(thisOctal,nChild)
@@ -289,6 +304,18 @@ CONTAINS
     real(double) :: d
 
     d = thisOctal%subcellSize * 0.5_oc
+
+    if (thisOctal%oneD) then
+       select case(nchild)
+          case(1)
+             subcellRadius  = thisOctal%centre%x + d
+          case(2)
+             subcellRadius  = thisOctal%centre%x - d
+        end select
+        goto 666
+     endif
+
+
 
     if (thisOctal%cylindrical) then
        if (thisOctal%splitAzimuthally) then
@@ -335,6 +362,7 @@ CONTAINS
        else
           call writeFatal("subcellRadius called for non-cylindrical grid")
        endif
+666 continue
      END FUNCTION subcellRadius
 
 
@@ -358,6 +386,10 @@ CONTAINS
     dp = d+eps
     dm = d-eps
 
+    if (this%oneD) then
+       write(*,*) "one-d case not implemented in within_subcell"
+       stop
+    endif
     
     cellCenter = subcellCentre(this,subcell)
     x0=dble(cellCenter%x); y0=dble(cellCenter%y); z0=dble(cellCenter%z)
@@ -435,6 +467,14 @@ CONTAINS
     real(double) :: r1, r2, dphi
     type(OCTALVECTOR) :: rVec
   
+    if (thisOctal%oneD) then
+       rVec = subcellCentre(thisOctal, subcell)
+       r1 = rVec%x - thisOctal%subcellSize/2.d0
+       r2 = rVec%x + thisOctal%subcellSize/2.d0
+       v = (fourPi / 3.d0) * (r2-r1)**3
+       goto 666
+    endif
+
     if (thisOctal%threed) then
        if (.not.thisOctal%cylindrical) then
           v = thisOctal%subcellsize**3
@@ -456,6 +496,7 @@ CONTAINS
        r2 = rVec%x+thisOctal%subcellSize/2.d0
        v = dble(pi) * (r2**2 - r1**2) * thisOctal%subcellSize
     endif
+666 continue
   end function cellVolume
 
 

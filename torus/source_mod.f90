@@ -359,6 +359,12 @@ module source_mod
           if (r < source(i)%radius) then
              insideSource = .true.
           endif
+       else if (thisOctal%oneD) then
+          corner = rVec + OCTALVECTOR(thisOctal%subcellSize/2.d0,0.d0,0.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
        else
           write(*,*) "insideSource not setup for threed octals"
           stop

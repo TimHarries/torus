@@ -919,7 +919,7 @@ contains
           endif
 
           ! default loop indecies
-          ioctal_beg = 1459
+          ioctal_beg = 1
           ioctal_end = SIZE(octalArray)       
 
           
@@ -1515,7 +1515,8 @@ contains
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
           tau = tau + dtau
-!          write(*,*) "i0",i0,"tau",tau,"snu",snu
+!          write(*,*) icount,"i0",i0,"tau",tau,"snu",snu,jnu,alphanu,iatom,itrans
+!          write(*,*) "n",nlower,nupper
        enddo
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
        totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
@@ -1570,13 +1571,13 @@ contains
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
 
-    call createDataCube(cube, grid, viewVec, nAtom, thisAtom, 3, 1, nSource, source)
-    call plotDataCube(cube, 'cube.ps/vcps')
-    stop
+!    call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
+!    call plotDataCube(cube, 'cube.ps/vcps')
+!    stop
 
-    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
-    call plot_AMR_values(grid, "etaLine", "x-z", 0.,  &
-         "etaline.ps/vcps", .true., .false.)
+!    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+!    call plot_AMR_values(grid, "etaLine", "x-z", 0.,  &
+!         "etaline.ps/vcps", .true., .false.)
 
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
@@ -1721,8 +1722,8 @@ contains
     nMonte = 1
 
     call initCube(cube, 100, 100, 20)
-    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.9d0, +grid%octreeRoot%subcellSize*0.9d0, &
-         -grid%octreeRoot%subcellSize*0.9d0, grid%octreeRoot%subcellSize*0.9d0)
+    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
+         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
     call addvelocityAxis(cube, -2000.d0, 2000.d0)
 
     xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec

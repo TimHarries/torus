@@ -186,8 +186,15 @@ subroutine inputs()
   call getLogical("cylindrical", cylindrical, cLine, nLines, &
        "Grid uses 3D cylindical  coords: ","(a,1l,1x,a)", .false., ok, .false.)
 
+  call getLogical("amr1d", amr1d, cLine, nLines, &
+       "AMR grid is in one-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)
+
   call getLogical("amr2d", amr2d, cLine, nLines, &
        "AMR grid is in two-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)
+
+  call getLogical("amr3d", amr3d, cLine, nLines, &
+       "AMR grid is in three-dimensions: ","(a,1l,1x,a)", .false., ok, .false.)
+
   
   if (gridUsesAMR) then
      call getReal("amrgridsize", amrGridSize, cLine, nLines, &
@@ -1115,10 +1122,6 @@ endif
        stop
     end if
 
-   call getLogical("twod", twoD, cLine, nLines, &
-          "Do lucy algorithm under assumption of axisymmetry: ", &
-          "(a,1l,1x,a)", .false., ok, .false.)
-
    call getLogical("hydro", solveVerticalHydro, cLine, nLines, &
         "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
 
@@ -1229,6 +1232,14 @@ endif
    "Compute CMF statistical equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
  if (cmf) then
+   call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
+        "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+   call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
+        "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+   call getLogical("writelucy", writeLucy, cLine, nLines, &
+        "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("readlucy", readLucy, cLine, nLines, &
+          "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
     call getInteger("natom", nAtom, cLine, nLines, &
          "Number of model atoms to solve for: ","(a,i12,a)",1,ok,.true.)
     do i = 1, nAtom
@@ -1239,7 +1250,7 @@ endif
  endif
 
  call getLogical("debug", debug, cLine, nLines, &
-   "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
+   "Write debug output: ","(a,1l,a)", .false., ok, .false.)
 
 
  call getLogical("thickcont", opticallyThickContinuum, cLine, nLines, &
