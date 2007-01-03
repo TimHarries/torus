@@ -394,9 +394,6 @@ CONTAINS
     grid%halfSmallestSubcell = grid%octreeRoot%subcellSize / &
                                 2.0_oc**REAL(grid%maxDepth,kind=oct)
 
-    if (debug) then
-       write(*,*) "first Octal", grid%octreeRoot%subcellSize,grid%octreeRoot%centre
-    endif
   END SUBROUTINE initFirstOctal
 
 
@@ -659,9 +656,6 @@ CONTAINS
 
     !CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
 
-    if (debug) then
-       write(*,*) "new child",parent%child(newchildindex)%subcellSize,parent%child(newchildindex)%centre
-    endif
 
   END SUBROUTINE addNewChild
   
@@ -11740,7 +11734,6 @@ IF ( .NOT. gridConverged ) RETURN
 
 
 
-
    if (thisOctal%oneD) then
 
       distToR1 = 1.d30
@@ -11748,14 +11741,15 @@ IF ( .NOT. gridConverged ) RETURN
 
       rVec = posVec
       call normalize(rVec)
-      cosmu = direction.dot.rVec
+      cosmu = ((-1.d0)*direction).dot.rVec
       d = modulus(posVec)
 
       ! distance to outer radius
 
       r2 = subcen%x + thisOctal%subcellSize/2.d0
-      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+      call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
       distToR2 = max(x1,x2)
+!      write(*,*) "r2",x1,x2,disttor2
 
       !   inner radius
 
@@ -11768,9 +11762,9 @@ IF ( .NOT. gridConverged ) RETURN
          call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
          distTor1 = min(x1,x2)
       endif
+!      write(*,*) "r1",x1,x2,disttor1
 
       tval = min(distTor1, distTor2)
-      write(*,*) tval
       goto 666
    endif
 
@@ -12367,6 +12361,7 @@ IF ( .NOT. gridConverged ) RETURN
        r1 = r1 * 0.9999
        r = r1 * thisOctal%subcellSize + octalCentre%x
        randomPositionInCell = r * randomUnitVector()
+       goto 666
     endif
 
 
@@ -12447,6 +12442,7 @@ IF ( .NOT. gridConverged ) RETURN
           randomPositionInCell = rotateZ(randomPositionInCell, ang)
        endif
     endif
+666 continue
   end function randomPositionInCell
 
 
@@ -13121,7 +13117,7 @@ IF ( .NOT. gridConverged ) RETURN
    real(double) :: distTor1, distTor2, theta, mu
    real(double) :: distToRboundary, compz,currentZ
    real(double) :: phi, distToZboundary, ang1, ang2
-   type(OCTALVECTOR) ::  zHat, rVec
+   type(OCTALVECTOR) ::  zHat, rVec, rhat
    integer :: subcell
    real(double) :: distToSide1, distToSide2, distToSide
    real(double) ::  compx,disttoxBoundary, currentX, gridRadius
@@ -13138,7 +13134,31 @@ IF ( .NOT. gridConverged ) RETURN
 
    subcen = grid%OctreeRoot%centre
 
-    thisOctal => grid%octreeRoot
+   thisOctal => grid%octreeRoot
+
+   if (thisOctal%oneD) then
+   
+      r1 = thisOctal%subcellSize*2.d0
+      d = modulus(point)
+      rHat = posVec
+      call normalize(rhat)
+      theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+      cosmu = rHat.dot.direction
+      mu = acos(max(-1.d0,min(1.d0,cosmu)))
+      distTor1 = 1.e30
+      if (compx /= 0.d0) then
+         if (mu  < theta ) then
+            call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+            if (.not.ok) then
+               write(*,*) "Quad solver failed in intersectcubeamr2d"
+               x1 = thisoctal%subcellSize
+               x2 = 0.d0
+            endif
+            tval = min(x1,x2)
+         endif
+      endif
+      goto 666
+   endif
 
     if (thisOctal%threed.and.(.not.thisOctal%cylindrical)) then
 
@@ -13297,6 +13317,7 @@ IF ( .NOT. gridConverged ) RETURN
          endif
       endif
 
+666 continue
     end function distanceToGridFromOutside
 
 

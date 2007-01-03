@@ -959,11 +959,12 @@ contains
 !             posVec = OCTALVECTOR(r, 0.d0, 0.d0)
 !             thisOctal => grid%octreeRoot
 !             call findSubcellLocal(posVec, thisOctal, subcell)
+                write(*,*) "subcell",subcell,"haschild",thisOctal%hasChild(subcell)
 
                 if (.not.thisOctal%hasChild(subcell)) then
 
                    thisOctal%inFlow(subcell) = .not.insideSource(thisOctal, subcell, nsource, Source)
-
+                   write(*,*) "inflow",thisOctal%inflow(subcell)
 
                    if (thisOctal%inflow(subcell)) then
                       nHit = 0
@@ -1262,18 +1263,34 @@ contains
 
           if (.not.associated(thisOctal%atomLevel)) then
              allocate(thisOctal%atomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
-             thisOctal%atomLevel = 1.d-30
           endif
 
           if (.not.associated(thisOctal%newatomLevel)) then
              allocate(thisOctal%newatomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
-             thisOctal%newatomLevel = 1.d-30
+             thisOctal%newatomLevel = 1.d-10
           endif
 
           if (.not.associated(thisOctal%jnu)) then
              allocate(thisOctal%jnu(1:thisOctal%maxChildren, 1:nRBBTrans))
              thisOctal%jnu = 1.d-30
           endif
+
+          thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
+
+          do iAtom = 1, nAtom
+             thisOctal%atomLevel(subcell,iAtom,thisAtom(iAtom)%nLevels) = thisOctal%rho(subcell) &
+                  * thisOctal%atomAbundance(subcell, iAtom)
+
+             do i = 1, thisAtom(iatom)%nLevels-1
+                thisOctal%atomLevel(subcell, iAtom,i) = boltzSahaGeneral(thisAtom(iAtom), 1, i, &
+                     thisOctal%ne(subcell), &
+                     dble(thisOctal%temperature(subcell))) * &
+                     thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
+             enddo
+          enddo
+          thisOctal%newAtomLevel(subcell,:,:) = thisOctal%atomLevel(subcell,:,:)
+
+
        endif
     enddo
   end subroutine allocateLevels
