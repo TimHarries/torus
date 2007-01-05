@@ -297,12 +297,12 @@ contains
     enddo
 
     
-!    if (debug) then
-!       write(*,'(4x,100i8)') num(1:nMatrix)
-!       do i = 1, nMatrix
-!          write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
-!       enddo
-!    endif
+    if (debug) then
+       write(*,'(4x,100i8)') num(1:nMatrix)
+       do i = 1, nMatrix
+          write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
+       enddo
+    endif
 
 !    call luSlv(matrixA, matrixB, nMatrix)
     call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
@@ -391,6 +391,8 @@ contains
     integer :: nBug
     integer :: iFreq
     real(double), allocatable :: tauCont(:), jnuCont(:), alphanuCont(:), snuCont(:)
+    logical, save :: first = .true.
+
 
     allocate(tauCont(1:nFreq))
     allocate(jnuCont(1:nFreq))
@@ -405,8 +407,8 @@ contains
     thisOctal => grid%octreeRoot
     call findSubcellLocal(position, thisOctal, subcell)
 
-
     call randomRayDirection(0.9d0, position, source, nSource, direction, weight)
+
 
 
     call random_number(r)
@@ -503,7 +505,8 @@ contains
              do iFreq = 1, nFreq
                 
                 
-                alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), ifreq=ifreq)
+                alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
+                     thisOctal%ne(subcell),dble(thisOctal%temperature(subcell)), ifreq=ifreq)
                 
                 jnuCont(iFreq) = bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                      thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
@@ -544,7 +547,6 @@ contains
                 alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
                      phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
                 
-                alphanu = alphanu + alphaNuCont(iFreq)
 
                 if (firstSubcell) then
                    phiAv = phiAv + phiProf(dv, thisOctal%microturb(subcell)) * &
@@ -559,9 +561,22 @@ contains
                 nLower = thisOctal%atomLevel(subcell,iAtom, iLower)
                 nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
 
-                
                 alphanu = alphanu * (nLower * Blu - nUpper * Bul)
+
+
+                alphanu = alphanu + alphaNuCont(iFreq)
+
                 
+                if (alphanu < 0.d0) then
+                   alphanu = 0.d0
+                   if (first) then
+                      write(*,*) "negative opacity warning in getray",iUpper,iLower,nLower,nUpper,thisAtom%name
+                      first = .false.
+                   endif
+                endif
+
+
+
                 dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
                 
 
@@ -577,6 +592,7 @@ contains
                 else
                    snu = tiny(snu)
                 endif
+
 
                 i0(iRBB) = i0(iRBB) +  exp(-tau(irBB)) * (1.d0-exp(-dtau))*snu
                 tau(iRBB) = tau(iRBB) + dtau
@@ -670,7 +686,7 @@ contains
           if (alphanu < 0.d0) then
              alphanu = 0.d0
              if (first) then
-                write(*,*) "negative opacity warning",iUpper,iLower,nLower,nUpper,thisAtom%name
+                write(*,*) "negative opacity warning in calcjbar",iUpper,iLower,nLower,nUpper,thisAtom%name
                 first = .false.
              endif
           endif
@@ -747,7 +763,8 @@ contains
           tau = 0.d0
           snu = 0.d0
           if (opticallyThickContinuum) then
-             alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), ifreq=ifreq)
+             alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
+                  dble(thisOctal%temperature(subcell)), ifreq=ifreq)
              jnu =  bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                   thisOctal%atomLevel(subcell,:,:), thisOctal%ne(subcell), &
                   dble(thisOctal%temperature(subcell)),ifreq=ifreq)/fourPi
@@ -822,6 +839,7 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom, ir, ifreq
     real(double) :: nstar
+    real(double), parameter :: convergeTol = 1.d-5
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   np             ! The number of processes
@@ -831,7 +849,7 @@ contains
 
 
 
-    blockHandout = .false. 
+!    blockHandout = .false. 
 
 !$MPI    ! FOR MPI IMPLEMENTATION=======================================================
 !$MPI    !  Get my process rank # 
@@ -920,6 +938,7 @@ contains
              call random_seed
           endif
 
+
           ! default loop indecies
           ioctal_beg = 1
           ioctal_end = SIZE(octalArray)       
@@ -937,7 +956,7 @@ contains
 !$MPI       print *, 'atomLoop  computed by ', np-1, ' processors.'
 !$MPI       print *, ' '
 !$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            maxBlockSize=10,setDebug=.false.)
+!$MPI                            maxBlockSize=1,setDebug=.false.)
 !$MPI    
 !$MPI    endif
 !$MPI    ! ============================================================================
@@ -1072,7 +1091,7 @@ contains
                                  - oldpops(iAtom,1:thisAtom(iAtom)%nLevels-1))/oldpops(iAtom,1:thisAtom(iAtom)%nLevels-1))))
                          enddo
                          if (debug) write(*,*) iter,fac
-                         if ((fac < 1.d-4).and.(iter > 1)) popsConverged = .true.
+                         if ((fac < convergeTol).and.(iter > 1)) popsConverged = .true.
                          if (iter == maxIter) then
                             popsConverged = .true.
                             call writeWarning("Maximum number of iterations reached in pop solver")
@@ -1512,10 +1531,11 @@ contains
 
 
           if (opticallyThickContinuum) then
-             dTauCont = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:)) &
+             dTauCont = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
+                  thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))) &
                   *  (distArray(i)-distArray(i-1)) * 1.d10
-          dTau = dTau + dTauCont
-       endif
+             dTau = dTau + dTauCont
+          endif
 
           etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
           etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
@@ -1672,7 +1692,7 @@ contains
        i = i + 1
        rgrid(i) = 0.5d0 * (r1 + r2)
        dr(i) = r2 - r1
-       write(*,*) 1.d10*rGrid(i)/(20.d0*rSol)
+!       write(*,*) 1.d10*rGrid(i)/(20.d0*rSol)
     enddo
     
     rmin = 20.*rsol/1.d10
@@ -1684,7 +1704,7 @@ contains
        i = i + 1
        rgrid(i) = 0.5d0 * (r1 + r2)
        dr(i) = r2 - r1
-       write(*,*) 1.d10*rGrid(i)/(20.d0*rSol)
+!       write(*,*) 1.d10*rGrid(i)/(20.d0*rSol)
     enddo
     do iphi = 1, nPhi
        phi1 = twoPi * dble(iphi-1)/dble(nPhi)

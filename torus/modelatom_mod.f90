@@ -908,7 +908,7 @@ contains
      end function giii_hyd
 
 
-     function bfOpacity(freq, nAtom, thisAtom, pops,ifreq) result(kappa)
+     function bfOpacity(freq, nAtom, thisAtom, pops, ne, temperature, ifreq) result(kappa)
        real(double) :: freq
        integer, optional :: ifreq
        integer :: nAtom
@@ -916,7 +916,7 @@ contains
        real(double) :: pops(:,:)
        integer :: iAtom
        integer :: iTrans
-       real(double) :: kappa
+       real(double) :: kappa, nStar,fac, ne, temperature
        integer :: i, j
 
        kappa = 0.d0
@@ -925,10 +925,12 @@ contains
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
              i = thisAtom(iAtom)%iLower(iTrans)
              if (i < 7) then
+                nStar = BoltzSahaGeneral(thisAtom(iAtom), 1, i, Ne, temperature) * pops(iAtom,thisAtom(iatom)%nLevels)
+                fac = exp(-hCgs*thisAtom(iAtom)%transFreq(iTrans) / (kerg * temperature))
                 if (present(iFreq)) then
-                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * pops(iAtom, i)
+                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * (pops(iAtom, i) - nStar*fac) 
                 else
-                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * pops(iAtom, i)
+                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * (pops(iAtom, i) - nStar*fac)
                 endif
              endif
           enddo
