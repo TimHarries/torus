@@ -3356,6 +3356,8 @@ contains
                   thisOctal%dPhi, thisOctal%r
 
        end if
+       
+       thisOctal%oneD = .not.(thisOctal%twoD.or.thisOctal%threeD)
 
 
        if (.not.grid%oneKappa) then

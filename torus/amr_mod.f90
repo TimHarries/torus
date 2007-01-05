@@ -2500,7 +2500,7 @@ CONTAINS
     real(oct)           :: t1, t2, t3
     real :: phi
     type(vector) :: newvec
-    TYPE(octalVector) :: point_local
+    TYPE(octalVector) :: point_local, vvec, rHat
 
     if (octalTree%threeD) then
        point_local = point
@@ -2543,6 +2543,26 @@ CONTAINS
       t2 = MAX(0.0_oc, (point_local%y - (centre%y - inc)) / resultOctal%subcellSize)
       t3 = MAX(0.0_oc, (point_local%z - (centre%z - inc)) / resultOctal%subcellSize)
 
+
+      if (resultOctal%oneD) then
+
+         select case(subcell)
+         case(1)
+            vvec = (1.d0-t1) * resultOctal%cornerVelocity(1) + &
+                 (   t1) * resultOctal%cornerVelocity(2)
+         case(2)
+            vvec = (1.d0-t1) * resultOctal%cornerVelocity(2) + &
+                 (   t1) * resultOctal%cornerVelocity(3)
+         end select
+         rHat = point
+         call normalize(rHat)
+         if (vvec%x >= 0.d0) then
+            amrGridVelocity = modulus(vvec) * rHat
+         else
+            amrGridVelocity = modulus(vvec) * ((-1.d0)*rHat)
+         endif
+         goto 666
+      endif
 
       if (resultOctal%threed) then
          SELECT CASE(subcell)
@@ -2672,7 +2692,7 @@ CONTAINS
          newVec = rotateZ(amrGridVelocity, -phi)
          amrGridVelocity = newVec
       endif
-
+666   continue
 
 !    endif
   END FUNCTION amrGridVelocity
@@ -3221,6 +3241,16 @@ CONTAINS
     real(double) :: r, phi
     integer :: i
 
+    if (thisOctal%oneD) then
+       if (point%x <= thisOctal%centre%x) then
+          subcell = 1
+       else
+          subcell = 2
+       endif
+       goto 666
+    endif
+
+
     if (thisOctal%threed) then ! threed case 
 
        if (.not.thisOctal%cylindrical) then ! cartesian case
@@ -3328,14 +3358,7 @@ CONTAINS
        END IF
     endif
 
-    if (thisOctal%oneD) then
-       if (point%x <= thisOctal%centre%x) then
-          subcell = 1
-       else
-          subcell = 2
-       endif
-    endif
-
+666 continue
 
   END FUNCTION whichSubcell    
 
@@ -5088,6 +5111,19 @@ IF ( .NOT. gridConverged ) RETURN
       END FUNCTION velocityFunc
     END INTERFACE
 
+    if (thisOctal%oneD) then
+       x1 = thisOctal%centre%x - thisOctal%subcellSize
+       x2 = thisOctal%centre%x
+       x3 = thisOctal%centre%x + thisOctal%subcellSize
+       y1 = 0.d0
+       z1 = 0.d0
+       thisOctal%cornerVelocity(1) = velocityFunc(octalVector(x1,y1,z1),grid)
+       thisOctal%cornerVelocity(2) = velocityFunc(octalVector(x2,y1,z1),grid)
+       thisOctal%cornerVelocity(3) = velocityFunc(octalVector(x3,y1,z1),grid)
+       goto 666
+    endif
+
+
     if (threed) then
 
        ! we first store the values we use to assemble the position vectors
@@ -5166,7 +5202,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%cornerVelocity(8) = velocityFunc(octalVector(x2,0.d0,z3),grid)
        thisOctal%cornerVelocity(9) = velocityFunc(octalVector(x3,0.d0,z3),grid)
     endif
-
+666 continue
   END SUBROUTINE fillVelocityCorners
 
   
@@ -7057,7 +7093,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%inFlow(subcell) = .true.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
-       v = 1.d5+(vterm-1.d5)*(1.d0 - grid%rinner/r)
+       v = 10.d5+(vterm-10.d5)*(1.d0 - grid%rinner/r)
        thisOctal%microturb(subcell) = 10.d5/cspeed
        thisOctal%velocity(subcell) = rVec
        thisOctal%inFlow(subcell) = .true.
@@ -7071,8 +7107,10 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
 
-    thisOctal%atomAbundance(subcell, 1) =  1.d-5 / mHydrogen
-    thisOctal%atomAbundance(subcell, 2:nAtom) =  1.d0 / (4.d0*mHydrogen)
+    thisOctal%atomAbundance(subcell, 1) =  1.d0 / (mHydrogen)
+
+!    thisOctal%atomAbundance(subcell, 1) =  1.d0 / (4.d0*mHydrogen)
+!    thisOctal%atomAbundance(subcell, 2) =  1.d0 / (4.d0*mHydrogen)
     
 
   end subroutine calcWRShellDensity
@@ -7185,7 +7223,7 @@ IF ( .NOT. gridConverged ) RETURN
     wrShellVelocity = OCTALVECTOR(0.d0, 0.d0, 0.d0)
     r = modulus(rVec)
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
-       v = 1.d5+(vterm-1.d5)*(1.d0 - grid%rinner/r)
+       v = 10.d5+(vterm-10.d5)*(1.d0 - grid%rinner/r)
        call normalize(rvec)
        wrshellvelocity = rvec * (v/cSpeed)
     endif
@@ -13127,7 +13165,6 @@ IF ( .NOT. gridConverged ) RETURN
    logical :: debug
 
 
-
     tval = HUGE(tval)
 
    point = posVec
@@ -13140,22 +13177,20 @@ IF ( .NOT. gridConverged ) RETURN
    
       r1 = thisOctal%subcellSize*2.d0
       d = modulus(point)
-      rHat = posVec
+      rHat = (-1.d0)*posVec
       call normalize(rhat)
       theta = asin(max(-1.d0,min(1.d0,r1 / d)))
       cosmu = rHat.dot.direction
       mu = acos(max(-1.d0,min(1.d0,cosmu)))
       distTor1 = 1.e30
-      if (compx /= 0.d0) then
-         if (mu  < theta ) then
-            call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-            if (.not.ok) then
-               write(*,*) "Quad solver failed in intersectcubeamr2d"
-               x1 = thisoctal%subcellSize
-               x2 = 0.d0
-            endif
-            tval = min(x1,x2)
+      if (mu  < theta ) then
+         call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+         if (.not.ok) then
+            write(*,*) "Quad solver failed in intersectcubeamr2d"
+            x1 = thisoctal%subcellSize
+            x2 = 0.d0
          endif
+         tval = min(x1,x2)
       endif
       goto 666
    endif
