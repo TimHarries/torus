@@ -1008,7 +1008,8 @@ contains
 
     if (distToGrid > 1.e29) then
        write(*,*) "ray does not intersect grid",position,direction
-       i0 = 0.d0
+       i0 = 1.d-60
+       tau = 1.d-60
        goto 666
     endif
 
@@ -1085,9 +1086,12 @@ contains
        enddo
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
     enddo
-    i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau) ! from far side
-!    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)
+
 666 continue 
+
+    i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau) ! from far side
+    i0 = i0 - bnu(thisMolecule%transFreq(iTrans), Tcbr)
+!    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)
 
     ! convert to brightness T
     
@@ -1121,7 +1125,7 @@ contains
     
 !   call normalize(posvec)
     
-    pixelside = imageside / npixels
+    pixelside = imageside / dble(npixels)
 
     imagebasis1 = imagebasis1 * pixelside ! rescale basis vectors so that stepsize is simplified 
     imagebasis2 = imagebasis2 * pixelside
@@ -1151,7 +1155,7 @@ contains
        do i = 1,npixels
 
           imagegrid(i,j) = PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,imagebasis1,imagebasis2,grid,thisMolecule,&
-               iTrans,deltaV,tester,i,j,cube) / pixelside**2 ! should normalise to ~1...
+               iTrans,deltaV,tester,i,j,cube) !/ pixelside**2 ! should normalise to ~1...
 
           pixelcorner = pixelcorner + 1.d0 * imagebasis2
        enddo
@@ -1194,7 +1198,7 @@ function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
     pixelbasis1 = imagebasis1 / dble(subpixels)
     pixelbasis2 = imagebasis2 / dble(subpixels)
     newposvec = pixelcorner + (pixelbasis1 + pixelbasis2) / 2.d0
-    subpixelsize = (pixelside/subpixels)**2
+    subpixelsize = (pixelside/dble(subpixels))**2
     subpixelgrid = 0.d0
     totalpixelintensity = 0.d0
     
@@ -1208,7 +1212,7 @@ function PixelIntensity(nsubpixels,pixelside,viewvec,pixelcorner,&
        do i = 1,subpixels
           i0 = intensityalongray(newposvec,viewvec,grid,thisMolecule,itrans,deltaV)
  
-          subpixelgrid(i,j) = i0 * subpixelsize
+          subpixelgrid(i,j) = i0 / dble(subpixels)**2
           totalpixelintensity = totalpixelintensity + subpixelgrid(i,j) ! assumes constant instrument function
           newposvec = newposvec + pixelbasis2
        enddo
@@ -1298,14 +1302,15 @@ endif
 !$MPI  
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+
        
     unitvec = randomunitvector()
     !unitvec = OCTALVECTOR(1.d0,0.d0,0.d0) ! Allows our choice of unit vector
-    imageside = 5.d7
-    Npixels = 400
-    nv = 40
+    imageside = 4.59e7*2.d0
+    Npixels = 50
+    nv = 50
     itrans = 1
-    goto 666
+!    goto 666
 
     allocate(somegrid(1:npixels,1:npixels))
     somegrid = 0
@@ -1313,61 +1318,31 @@ endif
     !value = 50d0
     write(*,*) "VALUE", value
 
-    do i = 1, npixels
-       do j = 1, npixels
-          if (sqrt((i-npixels/2.d0)**2 + (j-npixels/2.d0)**2) < value+5d-1) then
-             if (sqrt((i-npixels/2.d0)**2+(j-npixels/2.d0)**2) < (value-5d-1)) then
-                somegrid(i,j) = somegrid(i,j) + 2
-                somegrid(j,i) = somegrid(j,i) + 2
-                somegrid(npixels+1 - i,npixels+1 - j) = somegrid(npixels+1 - i,npixels+1 - j) + 2
-                somegrid(npixels+1 - j,npixels+1 - i) = somegrid(npixels+1 - j,npixels+1 - i) + 2
-             else
-                somegrid(i,j) = somegrid(i,j) + 1
-                somegrid(j,i) = somegrid(j,i) + 1
-                somegrid(npixels+1 - i,npixels+1 - j) = somegrid(npixels+1 - i,npixels+1 - j) + 1
-                somegrid(npixels+1 - j,npixels+1 - i) = somegrid(npixels+1 - j,npixels+1 - i) + 1
-             endif
-          else
-             somegrid(i,j) = somegrid(i,j) + 0
-             somegrid(j,i) = somegrid(j,i) + 0
-             somegrid(npixels+1 - i,npixels+1 - j) = somegrid(npixels+1 - i,npixels+1 - j) + 0
-             somegrid(npixels+1 - j,npixels+1 - i) = somegrid(npixels+1 - j,npixels+1 - i) + 0
-          endif
-       enddo
-    enddo
-    
-    do i=1,npixels
-       do j=1,npixels
-          if (somegrid(i,j) > 1) then
-             somegrid(i,j) = 1
-          else
-             somegrid(i,j) = 0
-             endif
-       enddo
-    enddo
-
-    write(*,*) somegrid
     tester = 1
     call createimage(cube, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, tester, &
          distance)
-    call plotDataCube(cube, 'beforeconv.ps/vcps')
+!    call plotDataCube(cube, 'beforeconv.ps/vcps')
+
 
     call convolveCube(cube, dble(beamSize))
 
+    do i = 1, cube%nx
+       do j = 1, cube%ny
+          if (sqrt(cube%xAxis(i)**2 + cube%yAxis(j)**2) < 4.6e7) then
+             cube%weight(i,j) = 1.d0
+          else
+             cube%weight(i,j) = 0.d0
+          endif
+       enddo
+    enddo
 
-    !write(*,*) cube%weight(1:npixels,1:npixels)
-  !  write(*,*) "AAAAAAAAAAAAAAAAAAAA"
-    cube%weight(1:npixels,1:npixels) = somegrid
-    !write(*,*) somegrid
- !   write(*,*) "BBBBBBBBBBBBBBBBBBBB"
-   ! write(*,*) cube%weight(1:npixels,1:npixels)
-!    write(*,*) "CCCCCCCCCCCCCCCCCCCC"
+
     call plotDataCube(cube, 'thecube.ps/vcps')
 
     write(*,*) "End"
     !write(*,*) "CONVO",cube%converged(:,:,:)
     !write(*,*) "subs",cube%nsubpixels(:,:,:)
-    stop
+
 666 continue
 
     distance = 250.*pctocm/1.d10
@@ -1388,12 +1363,15 @@ endif
     do iv = 1, nLambda
        vArray(iv) = 1.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda)-1.d0)
     enddo
+
+    write(*,*) "nray",nray,"weight",sum(weight(1:nRay))
     do iv = iv1, iv2
        deltaV  = vArray(iv)
        write(*,*) iv
        do iRay = 1, nRay
           i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisMolecule, iTrans, deltaV)
-          spec(iv) = spec(iv) + i0  * domega(iRay) / sum(domega(1:nray)) * weight(iray)
+!          spec(iv) = spec(iv) + i0  * (domega(iRay) / sum(domega(1:nray))) !* weight(iray) 
+          spec(iv) = spec(iv) + i0  * weight(iray) 
        enddo
     enddo
 
@@ -1517,23 +1495,25 @@ endif
     integer :: nr, nphi, ir, iphi
     real(double) :: r1 , r2, phi1, phi2, phiOffset
     real(double) :: xPos, yPos, zPos, cosInc, azimuth, sigma, rinarcsec
+    real(double) :: arcsec2persteradian, tot
 
+
+    rmin = 0.
     rmax = 4.63d7
-
-    rmax = 1.d7
-    rmin = 1.d4
-    nr = 100
-    nphi = 10
+    nr = 200
+    nphi = 20
     nray = 0
 
 
     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
 
     do ir = 1, nr
-       r1 = log10(rmin) + (log10(rMax)-log10(rMin)) *dble(ir-1)/dble(nr)
-       r2 = log10(rmin) + (log10(rMax)-log10(rMin)) *dble(ir)/dble(nr)
-       r1 = 10.d0**r1
-       r2 = 10.d0**r2
+       r1 = rmin + (rmax-rmin)*dble(ir-1)/dble(nr)
+       r2 = rmin + (rmax-rmin)*dble(ir)/dble(nr)
+!       r1 = log10(rmin) + (log10(rMax)-log10(rMin)) *dble(ir-1)/dble(nr)
+!       r2 = log10(rmin) + (log10(rMax)-log10(rMin)) *dble(ir)/dble(nr)
+!       r1 = 10.d0**r1
+!       r2 = 10.d0**r2
        rgrid(ir) = 0.5d0 * (r1 + r2)
        dr(ir) = r2 - r1
     enddo
@@ -1544,6 +1524,7 @@ endif
        dphi(iPhi) = phi2 - phi1
     enddo
 
+    tot = 0.d0
     do ir = 1, nr
        r1 = rGrid(ir)
        call random_number(phiOffset)
@@ -1559,23 +1540,32 @@ endif
           xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
           call normalize(xProj)
           yProj = viewVec .cross. xProj
-         call normalize(yProj)
+          call normalize(yProj)
 
           nRay = nRay + 1
-         rayPosition(nray) =  (xPos * xProj) + (zPos * yProj)
-         rayposition(nray) = rayPosition(nRay) + ((-1.d0*distance) * viewVec)
+          rayPosition(nray) =  (xPos * xProj) + (zPos * yProj)
+          rayposition(nray) = rayPosition(nRay) + ((-1.d0*distance) * viewVec)
 
           da(nRay) = pi*( (r1 + dr(ir)/2.d0)**2 - (r1 - dr(ir)/2.d0)**2) * dphi(iPhi)/twoPi
           dOmega(nRay) = da(nRay) / (distance**2)
           rInArcSec = 3600.d0*(r1 / (250.d0*pctocm/1.d10))*180.d0/pi
           sigma = 29.d0/2.35d0
 
-          weight(nRay) = (1.d0/(twoPi*sigma**2))*exp(-0.5d0*(rInArcSec**2/sigma**2)) * dOmega(nRay) * &
-               (180.d0/pi*3600.d0)**2
-          write(*,*) weight(nray), rinArcSec,sigma
+          arcsec2persteradian =  (180.d0/pi)**2 * (3600.d0)**2
+
+          weight(nRay) = (1.d0/(twoPi*sigma**2))*exp(-0.5d0*(rInArcSec**2/sigma**2)) * &
+                dOmega(nray) * arcsec2persteradian
+
+!          weight(nRay) = domega(nray)
 
        enddo
+          write(*,*) rinArcSec,weight(nray)
     enddo
+    write(*,*) "weight",sum(weight(1:nray)),1.d10*distance/pctocm
+   weight = weight / SUM(weight(1:nray))
+
+
+    write(*,*) "area",sum(da(1:nRay)),pi*rMax**2
   end subroutine createRayGrid
 
   subroutine createDataCube(cube, grid, viewVec, thisMolecule, iTrans)

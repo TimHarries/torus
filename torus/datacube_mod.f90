@@ -14,7 +14,7 @@ module datacube_mod
 
      integer, pointer :: nsubpixels(:,:,:) ! contains resolution information 
      integer, pointer :: converged(:,:,:)  ! contains convergence information (should take 1 or 0)
-     integer, pointer :: weight(:,:)     ! Weighting for integration (used to find spectra)
+     real(double), pointer :: weight(:,:)     ! Weighting for integration (used to find spectra)
      integer :: nx 
      integer :: ny
      integer :: nv
@@ -222,17 +222,17 @@ contains
   subroutine getWeightedSpectrum(cube, ix1, ix2, iy1, iy2, spec)
     type(DATACUBE) :: cube
     integer :: ix1, ix2, iy1, iy2
-    real(double) ::  spec(:)
-    integer :: i,j, n
-    n = 0
+    real(double) ::  spec(:) , tot
+    integer :: i,j
+    tot = 0.d0
     spec = 0.d0
     do i = ix1, ix2
        do j = iy1, iy2
-          n = n + cube%weight(i,j)
+          tot =  tot + cube%weight(i,j)
           spec(1:cube%nv) = spec(1:cube%nv) + cube%intensity(i,j,1:cube%nv) * cube%weight(i,j)
        enddo
     enddo
-    spec = spec / dble(n)
+!    spec = spec / dble(tot)
   end subroutine getWeightedSpectrum
 
 
@@ -243,47 +243,55 @@ contains
     real(double) :: r, rinArcSec, weight,fac 
     integer :: ix, iy, iv, i, j
     integer :: i1, j1
-    real(double) :: sigma, dx, dy
+    real(double) :: sigma, dx, dy, tot, flux, background
+    real(double) :: deltaX, deltaY
 
-    sigma = beamsize/2.35d0
+    sigma = beamsize /2.35d0
+
 
     dx = 3600.d0*((cube%xAxis(2) - cube%xAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
     dy = 3600.d0*((cube%yAxis(2) - cube%yAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
 
     allocate( newArray(1:cube%nx, 1:cube%ny))
     call writeInfo("Convolving data cube with beam size", TRIVIAL)
+    write(*,*) "cube%obsdist",cube%obsDistance/pctocm
+
     do iv = 1, cube%nv
+
+       background = cube%intensity(cube%nx,cube%ny,iv)
        newArray = 0.d0
+
        do ix = 1, cube%nx
           do iy = 1, cube%ny
+             tot = 0.d0
+             do i = ix - cube%nx, ix + cube%nx
+                do j = iy - cube%ny, iy + cube%ny
+                   if ((i > 0).and.(i<=cube%nx).and.(j > 0).and.(j <= cube%ny)) then
+                      flux = cube%intensity(i,j,iv)
+                   else
+                      flux = background
+                   endif
 
-             weight  = 0.d0
-             do i = 1, cube%nx
-                do j = 1, cube%ny
+                   deltaX = dble(ix-i)*dx
+                   deltaY = dble(iy-j)*dy
+                   rInArcSec = sqrt(deltaX**2 + deltaY**2)
+             
+                   fac = (1.d0/(twoPi*sigma**2))*exp(-0.5d0*(rInArcSec**2/sigma**2))*dx*dy
 
-                   r  = (cube%xAxis(ix) - cube%xAxis(i))**2 + (cube%yAxis(iy) - cube%yAxis(j))**2
-                   r = sqrt(r)
-
-                   rInArcSec = 3600.d0*(r / (cube%obsDistance/1.d10))*180.d0/pi
-
-                   fac = (1.d0/(twoPi*sigma**2))*exp(-0.5d0*(rInArcSec**2/sigma**2))
-                   newArray(ix,iy) = newArray(ix, iy) + cube%intensity(i,j,iv)*fac*dx*dy
-                   weight = weight + fac*dx*dy
-
+                   newArray(ix,iy) = newArray(ix, iy) + flux*fac
+                   tot = tot + fac
                 enddo
              enddo
-             ! assume top right corner has background
-             if (weight < 1.d0) then
-                newArray(ix,iy) = newArray(ix, iy) + (1.d0-weight) * cube%intensity(cube%nx, cube%ny, iv)
-             endif
-
+!             write(*,*) "Weight",tot
           enddo
        enddo
-       cube%intensity(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)
+
+       cube%intensity(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)/dble(cube%nx*cube%ny)
     enddo
     deallocate(newArray)
     call writeInfo("Done.",TRIVIAL)
   end subroutine convolveCube
+    
     
     
 
