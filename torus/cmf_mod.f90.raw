@@ -60,7 +60,18 @@ contains
     logical, allocatable :: continuumGround(:)
     integer, allocatable :: nCons(:)
     logical :: ok, lymanAlpha
+    integer :: nDifferentElements
 
+    nDifferentElements = 0
+    do iAtom = 1, nAtom
+       if (iAtom /= nAtom) then
+          if (thisAtom(iAtom)%nz /= thisAtom(iAtom+1)%nz) then ! if next atom is different element
+             nDifferentElements = nDifferentElements + 1
+          else
+             nDifferentElements = nDifferentElements + 1
+          endif
+       endif
+    enddo
 
     allocate(nOffset(1:nAtom))
     allocate(nCons(1:nAtom))
@@ -69,6 +80,7 @@ contains
 
     nMatrix = 0
     nOffset(1) = 0
+    nCons = 0
     do iAtom = 1, nAtom
 
        if (iAtom /= nAtom) then
@@ -81,7 +93,7 @@ contains
              nMatrix = nMatrix + thisAtom(iAtom)%nLevels-1  ! continuum state of this atom is ground state of next
              continuumGround(iAtom) = .true.
              nOffset(iAtom+1) = nMatrix
-             nCons(iAtom) = 0
+             nCons(iAtom) = -1
           endif
        else
           nMatrix = nMatrix + thisAtom(iAtom)%nLevels  ! last atom
@@ -108,11 +120,14 @@ contains
 
     do iAtom = 1, nAtom
        if (nCons(iAtom) /= 0) then
-          matrixB(nCons(iAtom)) = thisOctal%atomAbundance(subcell,iAtom) * rho
-          if (continuumGround(iAtom)) then
-             matrixA(nCons(iAtom),1+nOffset(iAtom):nOffset(iAtom)+thisAtom(iAtom)%nLevels-1) = 1.d0
+          if (.not.continuumGround(iAtom)) then
+             matrixA(nCons(iAtom),1+nOffset(iAtom):nOffset(iAtom)+thisAtom(iAtom)%nLevels) = 1.d0
+             matrixB(nCons(iAtom)) = thisOctal%atomAbundance(subcell,iAtom) * rho
           else
-             matrixA(nCons(iAtom),1+nOffset(iAtom): nOffset(iAtom)+thisAtom(iAtom)%nLevels) = 1.d0
+             do i = iAtom, nAtom
+                if (nCons(i) /= -1) exit
+             enddo
+             matrixA(nCons(i),1+nOffset(iAtom): nOffset(iAtom)+thisAtom(iAtom)%nLevels-1) = 1.d0
           endif
        endif
     enddo
@@ -174,8 +189,7 @@ contains
 
           if (thisAtom(iAtom)%transType(iTrans) == "CBF") then ! collisional recomb
 
-             collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
-
+             collEx = collisionRate(thisAtom(iAtom), iTrans, temperature) 
 
              matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + NstarRatio*collEx*ne
              tot2 = tot2 + NstarRatio*collEx*ne
@@ -267,6 +281,7 @@ contains
              photoRatelk = photoRatelk * fourPi
 
 
+
              matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - photoRatelk
              matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + photoRatelk
              totphotoion=totphotoion + photoRatelk*npops(iatom,l)
@@ -284,6 +299,8 @@ contains
 
              collEx = collisionRate(thisAtom(iAtom), iTrans, temperature)
 
+
+
              matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - collex * ne
              matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + collex * ne
              totcion = totcion + collex*ne*npops(iatom,l)
@@ -297,12 +314,12 @@ contains
     enddo
 
     
-    if (debug) then
-       write(*,'(4x,100i8)') num(1:nMatrix)
-       do i = 1, nMatrix
-          write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
-       enddo
-    endif
+   if (debug) then
+      write(*,'(4x,100i8)') num(1:nMatrix)
+      do i = 1, nMatrix
+         write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
+      enddo
+   endif
 
 !    call luSlv(matrixA, matrixB, nMatrix)
     call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
@@ -864,7 +881,7 @@ contains
 
      allocate(jnuCont(1:nFreq)) 
 
-    call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans)
+    call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, .true.)
 
     do i = 1, nAtom
        call addCrossSectionstoAtom(thisAtom(i), nFreq, freq)
@@ -1056,6 +1073,16 @@ contains
                         dNe = newne - Ne
 
                         ne = ne + undercorrect * dne
+
+                        if (debug) then
+                           write(*,*) "particle conservation: ", &
+                                (SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nLevels-1))  + &
+                                SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels))) / &
+                                (thisOctal%rho(subcell)*thisOctal%atomAbundance(subcell, 2))
+                           write(*,*) "particle conservation: ", &
+                                SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels)) / &
+                                (thisOctal%rho(subcell)*thisOctal%atomAbundance(subcell, 2))
+                        endif
 
                         
                         if (debug) then
@@ -1258,7 +1285,7 @@ contains
     enddo
   end subroutine calcEtaLine
 
-  recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans)
+  recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans, ionized)
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
     type(octal), pointer   :: thisOctal
@@ -1268,13 +1295,15 @@ contains
     integer :: nAtom
     integer :: nRBBTrans
     integer :: iatom
+    logical :: ionized
+
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call allocateLevels(grid, child, nAtom, thisAtom, nRBBTrans)
+                call allocateLevels(grid, child, nAtom, thisAtom, nRBBTrans, ionized)
                 exit
              end if
           end do
@@ -1287,6 +1316,12 @@ contains
           if (.not.associated(thisOctal%newatomLevel)) then
              allocate(thisOctal%newatomLevel(1:thisOctal%maxChildren, 1:nAtom, 1:maxval(thisAtom(1:nAtom)%nLevels)))
              thisOctal%newatomLevel = 1.d-10
+             if (.not.ionized) then
+                do iAtom = 1, nAtom
+                   thisOctal%newAtomLevel(1:thisOctal%maxChildren, 1:nAtom, 1) = thisOctal%rho(subcell) &
+                        * thisOctal%atomAbundance(subcell, iAtom)
+                enddo
+             endif
           endif
 
           if (.not.associated(thisOctal%jnu)) then
@@ -1294,19 +1329,23 @@ contains
              thisOctal%jnu = 1.d-30
           endif
 
-          thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
+          if (ionized) then
+             thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
+          else
+             thisOctal%ne(subcell) = 1.d-5 * thisOctal%rho(subcell)/mHydrogen
+          endif
 
-          do iAtom = 1, nAtom
-             thisOctal%atomLevel(subcell,iAtom,thisAtom(iAtom)%nLevels) = thisOctal%rho(subcell) &
-                  * thisOctal%atomAbundance(subcell, iAtom)
-
-             do i = 1, thisAtom(iatom)%nLevels-1
-                thisOctal%atomLevel(subcell, iAtom,i) = boltzSahaGeneral(thisAtom(iAtom), 1, i, &
-                     thisOctal%ne(subcell), &
-                     dble(thisOctal%temperature(subcell))) * &
-                     thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
-             enddo
-          enddo
+!          do iAtom = 1, nAtom
+!             thisOctal%atomLevel(subcell,iAtom,thisAtom(iAtom)%nLevels) = thisOctal%rho(subcell) &
+!                  * thisOctal%atomAbundance(subcell, iAtom)
+!
+!             do i = 1, thisAtom(iatom)%nLevels-1
+!                thisOctal%atomLevel(subcell, iAtom,i) = boltzSahaGeneral(thisAtom(iAtom), 1, i, &
+!                     thisOctal%ne(subcell), &
+!                     dble(thisOctal%temperature(subcell))) * &
+!                     thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
+!             enddo
+!          enddo
           thisOctal%newAtomLevel(subcell,:,:) = thisOctal%atomLevel(subcell,:,:)
 
 

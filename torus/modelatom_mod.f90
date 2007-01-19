@@ -262,12 +262,12 @@ contains
                 call phfit2(2,2,1,real(nu*hCgs*ergtoev), x)
                 photoCrossSection  = x * 1.d-10
                 
-                photoCrossSection = 0.d0
-                photonEnergy = nu * hCgs * ergtoEv
-                lamMicrons = (cspeed/nu)/microntocm
-                if (photonEnergy > (thisAtom%iPot - thisAtom%energy(iLevel))) then
-                   photoCrossSection = (1.0499d-14 * lamMicrons**3) / dble(iLevel**5)
-                endif
+!                photoCrossSection = 0.d0
+!                photonEnergy = nu * hCgs * ergtoEv
+!                lamMicrons = (cspeed/nu)/microntocm
+!                if (photonEnergy > (thisAtom%iPot - thisAtom%energy(iLevel))) then
+!                   photoCrossSection = (1.0499d-14 * lamMicrons**3) / dble(iLevel**5) 
+!                endif
              case(1)
                 select case(thisAtom%equation(iTrans))
                    case(1)
@@ -431,6 +431,7 @@ contains
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*g*sigma0*exp(-u0)/u0 /sqrt(temperature)
           endif
+          rate = rate /1.d10
        case("HeII")
           if (thisAtom%iLower(iTrans) <= 10) then
              if (thisAtom%iLower(iTrans) <= 3) then
@@ -450,6 +451,8 @@ contains
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
           endif
+          rate = rate /1.d10
+
        case DEFAULT
           call writeFatal("collisionRate: bound-free collision type not implemented")
           stop
