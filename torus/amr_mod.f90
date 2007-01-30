@@ -7109,11 +7109,9 @@ IF ( .NOT. gridConverged ) RETURN
 
 !    thisOctal%atomAbundance(subcell, 1) =  1.d0 / (mHydrogen)
 
-    thisOctal%atomAbundance(subcell, 1) =  0.1d0 * 1.d0 / (mHydrogen)
-    if (nAtom > 1) &
+    thisOctal%atomAbundance(subcell, 1) =  0.9d0 * 1.d0 / (4.d0*mHydrogen)
+    if (natom>1) &
     thisOctal%atomAbundance(subcell, 2) =  0.9d0 * 1.d0 / (4.d0*mHydrogen)
-    if (nAtom > 2) &
-    thisOctal%atomAbundance(subcell, 3) =  0.9d0 * 1.d0 / (4.d0*mHydrogen)
     
 
   end subroutine calcWRShellDensity

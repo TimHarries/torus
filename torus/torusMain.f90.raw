@@ -592,6 +592,7 @@
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
         call readAtom(thisAtom(i),atomFilename(i))
+        call stripAtomLevels(thisAtom(i), 5)
      enddo
   endif
 
@@ -2625,7 +2626,7 @@
 
      if (cmf) then
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
-        call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 26, OCTALVECTOR(1.d0, 0.d0, 0.d0), 100.d0*pctocm/1.d10, &
+        call calculateAtomSpectrum(grid, thisAtom, nAtom, 2, 26, OCTALVECTOR(1.d0, 0.d0, 0.d0), 100.d0*pctocm/1.d10, &
              source, nsource)
         stop
      endif

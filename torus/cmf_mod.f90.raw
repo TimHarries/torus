@@ -82,7 +82,6 @@ contains
     nOffset(1) = 0
     nCons = 0
     do iAtom = 1, nAtom
-
        if (iAtom /= nAtom) then
           if (thisAtom(iAtom)%nz /= thisAtom(iAtom+1)%nz) then ! if next atom is different element
              nMatrix = nMatrix + thisAtom(iAtom)%nLevels 
@@ -103,7 +102,6 @@ contains
     enddo
 
 
-
     allocate(matrixA(1:nMatrix,1:nMatrix))
     allocate(matrixB(1:nMatrix))
 
@@ -116,7 +114,7 @@ contains
     do i = 1, nMatrix
        num(i) = i
     enddo
-       
+
 
     do iAtom = 1, nAtom
        if (nCons(iAtom) /= 0) then
@@ -152,6 +150,9 @@ contains
 
           NstarRatio = boltzSahaGeneral(thisAtom(iAtom), 1, l, ne, temperature)
 
+
+
+
           if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! radiative recomb
              recombratekl = 0.d0
              nuStart = (thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(l))*evtoerg/hcgs
@@ -159,6 +160,7 @@ contains
 
              call locate(freq, nfreq, nuStart, istart)
 
+             !             istart = 1
              do i = istart+1, nFreq
                 xSection = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i))
                 recombRatekl = recombRatekl + &
@@ -167,11 +169,11 @@ contains
              enddo
 
 
-!             thisFreq = (thisAtom(iatom)%iPot-thisAtom(iAtom)%energy(l))*evtoerg/hcgs
-!             write(*,*) "thisFreq",thisFreq,thisFreq*hcgs*ergtoev
-!             xSection = photoCrossSection(thisAtom(iAtom), l, thisFreq*1.01d0)
-!             test = (8.d0*pi/cspeed**2) * xSection *thisFreq**3*expint(1,hcgs*thisFreq/(kerg*temperature))
-!             write(*,*) "test",l,test,recombratekl
+             !             thisFreq = (thisAtom(iatom)%iPot-thisAtom(iAtom)%energy(l))*evtoerg/hcgs
+             !             write(*,*) "thisFreq",thisFreq,thisFreq*hcgs*ergtoev
+             !             xSection = photoCrossSection(thisAtom(iAtom), l, thisFreq*1.01d0)
+             !             test = (8.d0*pi/cspeed**2) * xSection *thisFreq**3*expint(1,hcgs*thisFreq/(kerg*temperature))
+             !             write(*,*) "test",l,test,recombratekl
 
 
 
@@ -179,10 +181,6 @@ contains
              tot1 = tot1  + NstarRatio * recombratekl
 
 
-!          if ((l == 1).and.iatom==3) then
-!             write(*,*) "radiative recomb to ground state ",NstarRatio * recombratekl * &
-!                  npops(iatom,k)
-!          endif
 
           endif
 
@@ -194,10 +192,6 @@ contains
              matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + NstarRatio*collEx*ne
              tot2 = tot2 + NstarRatio*collEx*ne
 
-!             if ((l == 1).and.iatom==3) then
-!                write(*,*) "coll recomb to ground state ",NstarRatio * ne * colleX * &
-!                     npops(iatom,k) 
-!             endif
 
 
           endif
@@ -206,12 +200,12 @@ contains
           colltot = colltot + tot2
 
           totRecomb =  tot1 + tot2
-          matrixA(k+nOffset(iAtom), k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom), k+nOffset(iAtom))-totRecomb
+          if (thisAtom(iAtom)%transType(iTrans)(2:3) == "BF") then
+             matrixA(k+nOffset(iAtom), k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom), k+nOffset(iAtom))-totRecomb
+          endif
 
 
        enddo
-
-!       if (iatom == 3)        write(*,*) "total recomb: ",(radtot + colltot)*nPops(iatom,k)
 
        lymanAlpha  = .false.
 
@@ -277,16 +271,19 @@ contains
              do i = istart+1, nFreq
                 xSection = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i))
                 photoRatelk = photoRatelk + (jnuCont(i)/(hCgs*freq(i)))*xSection*(freq(i)-freq(i-1))
+!                if (iAtom == 2) write(*,*) l,freq(i),photoratelk,xsection,jnucont(i)
              enddo
              photoRatelk = photoRatelk * fourPi
-
 
 
              matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - photoRatelk
              matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + photoRatelk
              totphotoion=totphotoion + photoRatelk*npops(iatom,l)
-!             if ((l == 1).and.iatom==3) then
+!             if ((l == 1).and.iatom==2) then
 !                write(*,*) "total photoionization from ground state ",photoRatelk*npops(iatom,l)
+!             endif
+!             if ((l == 2).and.iatom==2) then
+!                write(*,*) "total photoionization from l=2 ",photoRatelk*npops(iatom,l)
 !             endif
           endif
 
@@ -309,38 +306,38 @@ contains
 
        enddo
 
-!          if (iatom == 3) write(*,*) "total photoionization: " , totphotoion, totcion
+!       if (iatom == 2) write(*,*) "total photoionization: " , totphotoion, totcion
 
     enddo
 
-    
-   if (debug) then
-      write(*,'(4x,100i8)') num(1:nMatrix)
-      do i = 1, nMatrix
-         write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
-      enddo
-   endif
 
-!    call luSlv(matrixA, matrixB, nMatrix)
+    if (debug) then
+       write(*,'(4x,100i8)') num(1:nMatrix)
+       do i = 1, nMatrix
+          write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
+       enddo
+    endif
+
+    !    call luSlv(matrixA, matrixB, nMatrix)
     call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
 
-!    allocate(indx(1:nMatrix))
-!    call ludcmp(matrixA, nMatrix, nMatrix, indx, d)
-!    call lubksb(matrixA, nMatrix, nMatrix, indx, matrixB)
-!    deallocate(indx)
+    !    allocate(indx(1:nMatrix))
+    !    call ludcmp(matrixA, nMatrix, nMatrix, indx, d)
+    !    call lubksb(matrixA, nMatrix, nMatrix, indx, matrixB)
+    !    deallocate(indx)
 
-!    allocate(wMatrix(1:nMatrix,1:nMatrix))
-!    allocate(vMatrix(1:nMatrix,1:nMatrix))
-!    allocate(xMatrix(1:nMatrix))
-!    call svdcmp(matrixA, nMatrix, nMatrix, nMatrix, nMatrix, wMatrix, vMatrix)
-!    wMax = maxval(wMatrix)
-!    wMin = 1.d-13 * wMax
-!    where (wMatrix < wMin)
-!       wMatrix = 0.d0
-!    end where
-!    call svbksb(matrixA, Wmatrix, vMatrix, nMatrix, nMatrix, nMatrix, nMatrix, matrixB, xmatrix)
-!    matrixB = xmatrix
-!    deallocate(wmatrix,vmatrix, xmatrix)
+    !    allocate(wMatrix(1:nMatrix,1:nMatrix))
+    !    allocate(vMatrix(1:nMatrix,1:nMatrix))
+    !    allocate(xMatrix(1:nMatrix))
+    !    call svdcmp(matrixA, nMatrix, nMatrix, nMatrix, nMatrix, wMatrix, vMatrix)
+    !    wMax = maxval(wMatrix)
+    !    wMin = 1.d-13 * wMax
+    !    where (wMatrix < wMin)
+    !       wMatrix = 0.d0
+    !    end where
+    !    call svbksb(matrixA, Wmatrix, vMatrix, nMatrix, nMatrix, nMatrix, nMatrix, matrixB, xmatrix)
+    !    matrixB = xmatrix
+    !    deallocate(wmatrix,vmatrix, xmatrix)
 
 
     do iAtom = 1, nAtom
@@ -875,7 +872,7 @@ contains
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
-    call createRRBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
+    call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
 
      call createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)
 
@@ -902,7 +899,7 @@ contains
     enddo
        
 
-    allocate(oldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
+    Allocate(oldPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
     allocate(newPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
     allocate(dPops(1:nAtom,1:maxval(thisAtom(1:nAtom)%nLevels)))
 
@@ -1074,15 +1071,6 @@ contains
 
                         ne = ne + undercorrect * dne
 
-                        if (debug) then
-                           write(*,*) "particle conservation: ", &
-                                (SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nLevels-1))  + &
-                                SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels))) / &
-                                (thisOctal%rho(subcell)*thisOctal%atomAbundance(subcell, 2))
-                           write(*,*) "particle conservation: ", &
-                                SUM(thisOctal%newAtomLevel(subcell,3,1:thisAtom(3)%nlevels)) / &
-                                (thisOctal%rho(subcell)*thisOctal%atomAbundance(subcell, 2))
-                        endif
 
                         
                         if (debug) then

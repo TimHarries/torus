@@ -242,8 +242,9 @@ contains
     real(double) :: nu
     character(len=2) :: shell
     integer :: is
+    real(double) :: photocrosssection2
     real :: x
-    real(double) :: photonEnergy, lamMicrons
+    real(double) :: photonEnergy, lamMicrons, logKappa
     real(double) :: sigma0, nuThresh, alpha, s, gIIx, gIIy, gIIz
     photoCrossSection = tiny(photoCrossSection)
 
@@ -259,15 +260,37 @@ contains
        case(2)
           select case(thisAtom%charge)
              case(0)
-                call phfit2(2,2,1,real(nu*hCgs*ergtoev), x)
-                photoCrossSection  = x * 1.d-10
-                
-!                photoCrossSection = 0.d0
-!                photonEnergy = nu * hCgs * ergtoEv
-!                lamMicrons = (cspeed/nu)/microntocm
-!                if (photonEnergy > (thisAtom%iPot - thisAtom%energy(iLevel))) then
-!                   photoCrossSection = (1.0499d-14 * lamMicrons**3) / dble(iLevel**5) 
-!                endif
+                photoCrossSection = 1.d-30
+                photonEnergy = nu * hCgs * ergtoEv
+                if (photonEnergy > (thisAtom%iPot - thisAtom%energy(iLevel))) then
+                   select case(iLevel)  ! from Gingerich 1964
+                     case(1)
+                        logKappa = 14.47d0 - 2.d0 * log10(nu)
+                        photoCrossSection = (10.d0**logKappa)
+                     case(2)
+                        logKappa = -17.387d0 + 0.679*log10(nu*1.d-14) - 0.727d0*log10(nu*1.d-14)
+                        photoCrossSection = (10.d0**logKappa)
+                     case(3)
+                        logKappa = 11.65d0 - 1.91d0*log10(nu)
+                        photoCrossSection = (10.d0**logKappa)
+                     case(4)
+                        logKappa = 26.57d0 - 2.9d0*log10(nu)
+                        photoCrossSection = (10.d0**logKappa)
+                     case(5)
+                        logKappa = 35.31d0 - 3.5d0*log10(nu)
+                        photoCrossSection = (10.d0**logKappa)
+                     case(6)
+                        logKappa = 31.06d0 - 3.3d0*log10(nu)
+                        photoCrossSection = (10.d0**logKappa)
+                     case(7)
+                        logKappa = 35.48d0 - 3.6d0*log10(nu)
+                        photoCrossSection = (10.d0**logKappa)
+                     case DEFAULT
+                        lamMicrons = (cspeed/nu)/microntocm
+                        photoCrossSection = (1.0499d-14 * lamMicrons**3) / dble(iLevel**5) 
+                   end select
+                endif
+
              case(1)
                 select case(thisAtom%equation(iTrans))
                    case(1)
@@ -290,8 +313,6 @@ contains
                          photoCrossSection = sigma0 * (nuThresh/nu)**s * (alpha + (1.d0-alpha)*(nuThresh/nu))!*gauntII(gIIx, GIIy, gIIz)
                       endif
                   end select
-!                call phfit2(2,1,1,real(nu*hCgs*ergtoev), x)
-!                photoCrossSection  = x * 1.d-10
           end select
 
       case DEFAULT
@@ -431,7 +452,6 @@ contains
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*g*sigma0*exp(-u0)/u0 /sqrt(temperature)
           endif
-          rate = rate /1.d10
        case("HeII")
           if (thisAtom%iLower(iTrans) <= 10) then
              if (thisAtom%iLower(iTrans) <= 3) then
@@ -451,8 +471,6 @@ contains
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
           endif
-          rate = rate /1.d10
-
        case DEFAULT
           call writeFatal("collisionRate: bound-free collision type not implemented")
           stop
@@ -705,7 +723,7 @@ contains
      ut = 10.d0**ut
    end function getUT
 
-   subroutine createRRBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
+   subroutine createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
      integer :: nAtom
      type(MODELATOM) :: thisAtom(:)
      integer :: nRBBTrans
@@ -724,15 +742,19 @@ contains
               indexAtom(nRBBTrans) = iAtom
               indexRBBTrans(nRBBTrans) = iTrans
               thisAtom(iAtom)%nRBBTrans = thisAtom(iAtom)%nRBBTrans + 1
-              thisAtom(iAtom)%indexRBBtrans(iTrans) = thisAtom(iAtom)%nRBBTrans
+              thisAtom(iAtom)%indexRBBtrans(itrans) = thisAtom(iAtom)%nRBBTrans
            endif
            if (thisAtom(iAtom)%transType(iTrans) == "RBF") then
               thisAtom(iAtom)%nRBFTrans = thisAtom(iAtom)%nRBFTrans + 1
               thisAtom(iAtom)%indexRBFtrans(thisAtom(iAtom)%nRBFTrans) = iTrans
            endif
         enddo
+        write(*,*) "nRBBtrans",thisAtom(iAtom)%nRBBTrans, &
+             thisAtom(iatom)%indexRBBTrans(1:thisAtom(iatom)%nrbbtrans)
+        write(*,*) "nRBFtrans",thisAtom(iAtom)%nRBFTrans, &
+             thisAtom(iatom)%indexRBFTrans(1:thisAtom(iatom)%nrbftrans)
      enddo
-   end subroutine createRRBarrays
+   end subroutine createRBBarrays
 
 
   real(double) function oldcikt_ma(i,t, thisAtom) 
@@ -931,13 +953,16 @@ contains
                 nStar = BoltzSahaGeneral(thisAtom(iAtom), 1, i, Ne, temperature) * pops(iAtom,thisAtom(iatom)%nLevels)
                 fac = exp(-hCgs*thisAtom(iAtom)%transFreq(iTrans) / (kerg * temperature))
                 if (present(iFreq)) then
-                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * (pops(iAtom, i) - nStar*fac) 
+                   kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * &
+                        pops(iAtom, i) !- nStar*fac) 
                 else
-                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * (pops(iAtom, i) - nStar*fac)
+                   kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * &
+                        pops(iAtom, i) !- nStar*fac) 
                 endif
              endif
           enddo
        enddo
+       if (kappa /= 0.d0) write(*,*) "kappa",kappa
      end function bfOpacity
 
   function bfEmissivity(freq, nAtom, thisAtom, pops, ne, temperature, ifreq) result(eta)
@@ -999,7 +1024,7 @@ contains
     integer :: iRBB, iTrans
 
     nuStart = cSpeed / (8.d5 * 1.d-8)
-    nuEnd = cSpeed / (100.d0 * 1.d-8)
+    nuEnd = cSpeed / (10.d0 * 1.d-8)
 
     nEven = 50
 
@@ -1030,11 +1055,13 @@ contains
             lamMax = source(i)%spectrum%lambda(source(i)%spectrum%nlambda)
     enddo
 
+
     do iAtom = 1, nAtom
-       do iRBB = 1, thisAtom(iAtom)%nRBBTrans
-          iTrans = thisAtom(iAtom)%indexRBBTrans(iRBB)
-          nfreq  = nFreq + 1
-          freq(nFreq) = thisAtom(iAtom)%transFreq(iTrans)
+       do iTrans = 1, thisAtom(iAtom)%nTrans
+          if (thisAtom(iAtom)%transType(itrans) == "RBB") then
+             nfreq  = nFreq + 1
+             freq(nFreq) = thisAtom(iAtom)%transFreq(iTrans)
+          endif
        enddo
     enddo
 
@@ -1047,4 +1074,44 @@ contains
 
     Write(*,*) "Number of frequency points in continuum: ",nfreq
   end subroutine createContFreqArray
+
+  subroutine stripAtomLevels(thisAtom, maxBoundLevels)
+    type(MODELATOM) :: thisAtom
+    integer :: maxBoundLevels
+    integer :: i, iOldContinuum, iNewContinuum, iTrans
+  
+    if (maxBoundLevels > thisAtom%nLevels-1) then
+       call writeFatal("maxBoundLevels exceeds bound levels in atom")
+    endif
+
+    iOldContinuum = thisAtom%nLevels
+    iNewContinuum = maxBoundLevels + 1
+    thisAtom%nLevels = maxBoundLevels+1
+
+    thisAtom%level(maxBoundLevels+1) = thisAtom%level(iOldContinuum)
+    thisAtom%g(maxBoundLevels+1) = thisAtom%g(iOldContinuum)
+    thisAtom%energy(maxBoundLevels+1) = thisAtom%energy(iOldContinuum)
+
+    do iTrans = 1, thisAtom%nTrans
+
+
+       if (thisAtom%transType(iTrans)(2:3) == "BB") then
+          if ((thisAtom%iLower(iTrans) > maxBoundLevels).or. &
+               (thisAtom%iUpper(iTrans) > maxBoundLevels)) then
+             thisAtom%transType(iTrans) = "OFF"
+          endif
+       endif
+
+
+       if (thisAtom%transType(iTrans)(2:3) == "BF") then
+          if (thisAtom%ilower(iTrans) <= maxBoundLevels) then
+             thisAtom%iUpper(iTrans) = iNewContinuum
+          else
+             thisAtom%transType(iTrans) = "OFF"
+          endif
+       endif
+!       write(*,*) itrans,thisAtom%transType(iTrans),thisAtom%iLower(iTrans), thisAtom%iupper(iTrans)
+    enddo
+  end subroutine stripAtomLevels
+
 end module modelatom_mod
