@@ -4867,10 +4867,10 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
-!      if (r < 2.*grid%rInner) then
-!         if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
-!      endif
+
+!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+
+      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -8998,7 +8998,7 @@ IF ( .NOT. gridConverged ) RETURN
        r = grid%rInner + (grid%rOuter-grid%rInner)*(real(i-1)/real(nr-1))**3
        rVec = OCTALVECTOR(dble(r), 0.d0, 0.d0)
        call amrGridValues(grid%octreeRoot, rVec,temperature=t, rho=dens, foundoctal=thisOctal, foundsubcell=subcell)
-       write(30,*) r, t, dens
+       write(30,*) r/1496., t, dens
     enddo
     close(30)
 
@@ -9028,7 +9028,7 @@ IF ( .NOT. gridConverged ) RETURN
           rVec = subcellCentre(thisOctal, subcell)
           if ( (xPos >= rVec%x-thisOctal%subcellsize/2.).and. &
                (xPos <= rVec%x+thisOctal%subcellsize/2.)) then
-             write(30,*) rVec%z, thisOctal%temperature(subcell),thisOctal%rho(subcell)
+             write(30,*) rVec%z/1496., thisOctal%temperature(subcell),thisOctal%rho(subcell)
           endif
        endif
           

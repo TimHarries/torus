@@ -571,10 +571,10 @@ contains
             "dusttype_full.ps/vcps", .false., .false., &
            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
 
-       if (grid%geometry == "shakara") then
-          call dullemondplot(grid, rinner, router, 0.4, nSource, source)
-          call nattaplot(grid, nSource, source)
-       endif
+!       if (grid%geometry == "shakara") then
+!          call dullemondplot(grid, rinner, router, 0.4, nSource, source)
+!          call nattaplot(grid, nSource, source)
+!       endif
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_zoom.ps/vcps", .true., .false., &

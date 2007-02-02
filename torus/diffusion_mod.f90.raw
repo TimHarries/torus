@@ -176,6 +176,7 @@ contains
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
     real(double) :: phi, DeltaPhi, DeltaZ, deltaR
+    real(double), parameter :: underCorrect = 0.8d0
 !$MPI     logical :: dcAllocated
 !$MPI     integer, dimension(:), allocatable :: octalsBelongRank
 !$MPI     logical :: rankComplete
@@ -594,7 +595,7 @@ contains
                    if (firstTime) write(*,*) "Warning: negative energy density."
 		   firstTime = .false.
                    deltaE = (enPlus1-thisOctal%oldeDens(subcell))
-                   enPlus1 = enPlus1 + 0.1d0 * deltaE ! undercorrect here
+                   enPlus1 = enPlus1 + undercorrect * deltaE ! undercorrect here
                    if (enPlus1 < 0.d0) then
                       enPlus1 = arad*(10.d0**4)
                    endif
@@ -687,7 +688,7 @@ end subroutine gaussSeidelSweep
     call seteDens(grid, grid%octreeRoot)
     call setDiffusionCoeff(grid, grid%octreeRoot)
 
-!    call resetDiffusionTemp(grid%octreeRoot, 10.)
+    call resetDiffusionTemp(grid%octreeRoot, 10.)
 
 
     gridconverged = .false.
