@@ -3677,20 +3677,21 @@
         ! Initializing the images ...
         do i = 1, nImage           
            if (grid%cartesian) then
-              obsImageSet(i) = initImage(npix, imageSize, vmin, vmax)
+              obsImageSet(i) = initImage(npix, npix, imageSize, imageSize, vmin, vmax)
               if (doRaman) then
-                 o6image(1) = initImage(npix, imageSize, vmin, vmax)
+                 o6image(1) = initImage(npix, npix, imageSize, imageSize, vmin, vmax)
               endif
            else if (grid%adaptive) then
-              obsImageSet(i) = initImage(npix, imageSize, vmin, vmax)
+              obsImageSet(i) = initImage(npix, npix, imageSize, imageSize, vmin, vmax)
            else   
               select case (geometry)
               case("disk")
-                 obsImageSet(i) = initImage(npix, grid%rAxis(grid%nr), vMin, vMax)
+                 obsImageSet(i) = initImage(npix, npix, 2.*grid%rAxis(grid%nr), 2.*grid%rAxis(grid%nr),vMin, vMax)
               case("flared")
-                 obsImageSet(i) = initImage(npix, 4.*grid%rAxis(1), vMin, vMax)
+                 obsImageSet(i) = initImage(npix, npix, 8.*grid%rAxis(1),8.*grid%rAxis(1), vMin, vMax)
               case DEFAULT
-                 obsImageSet(i) = initImage(npix, min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), vMin, vMax)
+                 obsImageSet(i) = initImage(npix,npix,  min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), &
+                      min(5.*grid%rAxis(1),grid%rAxis(grid%nr)), vMin, vMax)
               end select
            endif
         end do
@@ -4918,6 +4919,7 @@
            lambda_eff = lambda_eff_filters(filters, i) ! Effective wavelength of filter in [A]   
            write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
            call writeImage(obsImageSet(i), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
+           call writeFitsImage(obsImageSet(i), trim(specfile)//".fits")
         end do
         if (doRaman) then
            write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase

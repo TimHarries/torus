@@ -1,7 +1,7 @@
       subroutine writeImagef77(thisImageI, thisImageQ, thisImageU,
-     &     thisImageV, thisImageVel, scale, nSize, nPix, filename)
+     &     thisImageV, thisImageVel, scale, nPix, filename)
       implicit none
-      integer npix, nsize, i , j
+      integer npix,  i , j
       real thisImageI(nPix, nPix)
       real thisImageQ(nPix, nPix)
       real thisImageU(nPix, nPix)
@@ -23,16 +23,16 @@
 
       open(20, file=datfilename, status="unknown", form="formatted")
 
-      write(20,'(2I4)') nSize
+      write(20,'(2I4)') npix
       write(20, '(1p,e13.5)') scale
 
-      do i = -nSize, nSize
-         do j = -nSize, nSize
-            write(20, '(1p,5e13.5)') thisImageI(i+nSize+1,j+nSize+1),
-     &           thisImageQ(i+nSize+1,j+nSize+1),
-     &           thisImageU(i+nSize+1,j+nSize+1),
-     &           thisImageV(i+nSize+1,j+nSize+1),
-     &           thisImageVel(i+nSize+1,j+nSize+1)
+      do i = 1, npix
+         do j = 1, npix
+            write(20, '(1p,5e13.5)') thisImageI(i,j),
+     &           thisImageQ(i,j),
+     &           thisImageU(i,j),
+     &           thisImageV(i,j),
+     &           thisImageVel(i,j)
          enddo
       enddo
       close(20)

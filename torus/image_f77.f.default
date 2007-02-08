@@ -1,9 +1,9 @@
       subroutine writeImagef77(thisImageI, thisImageQ, thisImageU,
-     &thisImageV, thisImageVel, scale, nSize, nPix, filename)
+     &thisImageV, thisImageVel, scale, nPix, filename)
       implicit none
       include '/star/include/dat_par'
       include '/star/include/sae_par'
-      integer npix, nsize
+      integer npix
       real thisImageI(nPix, nPix)
       real thisImageQ(nPix, nPix)
       real thisImageU(nPix, nPix)
@@ -58,7 +58,7 @@
 
 
       call fillNdfImage(scale,%val(iptr),%val(oaxisp1), %val(oaxisp2), 
-     &npix, nSize, thisImageI)
+     &npix, thisImageI)
 
       CALL NDF_XNEW(NDFO,'POLARIMETRY','EXT',0,0,PLOC,STATUS)
       CALL NDF_PLACE(PLOC,'STOKES_Q',PLACE,STATUS)
@@ -75,10 +75,10 @@
       CALL NDF_MAP(NDFV,'DATA','_REAL','WRITE',VPTR,UBND,STATUS)
       CALL NDF_MAP(NDFVEL,'DATA','_REAL','WRITE',VELPTR,UBND,STATUS)
 
-      call fillNdfImageQUV(%val(qptr), npix, nSize, thisImageQ)
-      call fillNdfImageQUV(%val(uptr), npix, nSize, thisImageU)
-      call fillNdfImageQUV(%val(vptr), npix, nSize, thisImageV)
-      call fillNdfImageQUV(%val(velptr), npix, nSize, thisImageVel)
+      call fillNdfImageQUV(%val(qptr), npix,  thisImageQ)
+      call fillNdfImageQUV(%val(uptr), npix,  thisImageU)
+      call fillNdfImageQUV(%val(vptr), npix,  thisImageV)
+      call fillNdfImageQUV(%val(velptr), npix,  thisImageVel)
 
       if (status .ne. sai__ok) then
          write(*,'(a)') "! Error filling output ndf image"
@@ -93,9 +93,9 @@
        
 
       subroutine fillNdfImage(scale, ndfimage, axis1, axis2, nPix, 
-     &nSize, thisImage)
+     & thisImage)
       implicit none
-      integer  nPix, nsize
+      integer  nPix
       real thisImage(nPix,nPix), scale
       real  axis1(nPix)
       real  axis2(nPix)
@@ -103,18 +103,18 @@
       integer  i, j
 
       do i = -nSize, nSize
-         axis1(i+nSize+1) = real(i) * scale
+         axis1(i) = real(i) * scale
          do j = -nSize, nSize
-            axis2(j+nSize+1) = real(j) * scale
-            ndfImage(i+nSize+1,j+nSize+1) = 
-     &           thisImage(i+nSize+1,j+nSize+1)
+            axis2(j) = real(j) * scale
+            ndfImage(i,j) = 
+     &           thisImage(i,j)
          enddo
       enddo
       end 
  
-      subroutine fillNdfImageQUV(ndfimage,  nPix, nSize, thisImage)
+      subroutine fillNdfImageQUV(ndfimage,  nPix, thisImage)
       implicit none
-      integer  nPix, nsize
+      integer  nPix
       real thisImage(nPix,nPix), scale
       real  axis1(nPix)
       real  axis2(nPix)
@@ -123,8 +123,8 @@
 
       do i = -nSize, nSize
          do j = -nSize, nSize
-            ndfImage(i+nSize+1,j+nSize+1) = 
-     &           thisImage(i+nSize+1,j+nSize+1)
+            ndfImage(i,j) = 
+     &           thisImage(i,j)
          enddo
       enddo
       end 

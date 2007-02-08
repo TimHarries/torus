@@ -2643,9 +2643,9 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 !  position = (octVec*R)
   R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1
-  position%x = max(position%x, grid%halfSmallestSubcell)
-  position%y = max(position%y, grid%halfSmallestSubcell)
-  position%z = max(position%z, grid%halfSmallestSubcell)
+  position%x = max(position%x, grid%halfSmallestSubcell*0.9d0)
+  position%y = max(position%y, grid%halfSmallestSubcell*0.8d0)
+  position%z = max(position%z, grid%halfSmallestSubcell*0.7d0)
   call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
@@ -2672,9 +2672,9 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 !  position = (octVec*R) 
   R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1
-  position%x = max(position%x, grid%halfSmallestSubcell)
-  position%y = max(position%y, grid%halfSmallestSubcell)
-  position%z = max(position%z, grid%halfSmallestSubcell)
+  position%x = max(position%x, grid%halfSmallestSubcell*0.9d0)
+  position%y = max(position%y, grid%halfSmallestSubcell*0.8d0)
+  position%z = max(position%z, grid%halfSmallestSubcell*0.7d0)
   call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
@@ -2701,9 +2701,9 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 !  position = (octVec*R)
   R = max(R, 1.e-3*rSol/1.e10)
   position = (octVec*R) + grid%starPos1
-  position%x = max(position%x, grid%halfSmallestSubcell)
-  position%y = max(position%y, grid%halfSmallestSubcell)
-  position%z = max(position%z, grid%halfSmallestSubcell)
+  position%x = max(position%x, grid%halfSmallestSubcell*0.9d0)
+  position%y = max(position%y, grid%halfSmallestSubcell*0.8d0)
+  position%z = max(position%z, grid%halfSmallestSubcell*0.7d0)
   call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5),  position, &
        octVec, grid, lambda, tauExt, tauAbs, &
@@ -2729,10 +2729,10 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   octVec = s2o(dir_obs)
 !  position = (octVec*R) + amrGridCentre
   R = max(R, 1.e-3*rSol/1.e10)
-  position = (octVec*R) + grid%starPos1
-  position%x = max(position%x, grid%halfSmallestSubcell)
-  position%y = max(position%y, grid%halfSmallestSubcell)
-  position%z = max(position%z, grid%halfSmallestSubcell)
+  position = (octVec*R) + grid%starPos1 + 1.d-5*randomUnitVector()
+  position%x = max(position%x, grid%halfSmallestSubcell*0.9d0)
+  position%y = max(position%y, grid%halfSmallestSubcell*0.8d0)
+  position%z = max(position%z, grid%halfSmallestSubcell*0.7d0)
   call integratePath(gridUsesAMR, VoigtProf, &
        wavelength,  lambda0, OCTALVECTOR(1.0e-5,1.0e-5,1.0e-5), &
        position, s2o(dir_obs), grid, lambda, &
@@ -2779,7 +2779,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   !
   ! Compute the optical depth on x-y and z-x planes
   !  
-!  goto 999
+  goto 999
      ! 
      ! X-Y plane 
      !

@@ -460,6 +460,14 @@ contains
     endif
 
 
+    if (grid%geometry.eq."wr104") then
+       totalMass = 0.
+       call findTotalMass(grid%octreeRoot, totalMass)
+       scaleFac = massEnvelope / totalMass
+       if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+       call scaleDensityAMR(grid%octreeRoot, scaleFac)
+    endif
+
 
       outputFlag = .true.
 !$MPI if (my_rank/=0) outputFlag = .false.
@@ -498,7 +506,7 @@ contains
 
     if (grid%geometry == "wr104") then
        call fillDustUniform(grid, grid%octreeRoot)
-       call stripDustAway(grid%octreeRoot, 1.d-10)
+       call stripDustAway(grid%octreeRoot, 1.d-2)
     endif
 
 
@@ -1087,12 +1095,11 @@ contains
 
 
        if (grid%geometry.eq."wr104") then
-              totalMass = 0.
-               call findTotalMass(grid%octreeRoot, totalMass)
-	        scaleFac = massEnvelope / totalMass
-                if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-                call scaleDensityAMR(grid%octreeRoot, scaleFac)
-
+          totalMass = 0.
+          call findTotalMass(grid%octreeRoot, totalMass)
+          scaleFac = massEnvelope / totalMass
+          if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+          call scaleDensityAMR(grid%octreeRoot, scaleFac)
           call sublimateDustWR104(grid%octreeRoot)
        endif
 

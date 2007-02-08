@@ -535,7 +535,7 @@ contains
     if (oneKappa) then
        allocate(grid%oneKappaAbs(nDustType,1:nLambda))
        allocate(grid%oneKappaSca(nDustType,1:nLambda))
-       grid%nTempRossArray = 100
+       grid%nTempRossArray = 1000
        allocate(grid%kappaRossArray(nDustType,1:grid%nTempRossArray))
        allocate(grid%tempRossArray(1:grid%nTempRossArray))
     endif

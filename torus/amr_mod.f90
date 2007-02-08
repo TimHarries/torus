@@ -3294,29 +3294,29 @@ CONTAINS
 
           if (thisOctal%splitAzimuthally) then ! azimuthal split case
 
-             if (phi < thisOctal%phi) then
-                IF ( r < thisOctal%r) THEN
+             if (phi <= thisOctal%phi) then
+                IF ( r <= thisOctal%r) THEN
                    IF ( point%z <= thisOctal%centre%z ) THEN
                       subcell = 1
                    ELSE 
                       subcell = 3
                    ENDIF
                 ELSE
-                   IF (point%z < thisOctal%centre%z) THEN
+                   IF (point%z <= thisOctal%centre%z) THEN
                       subcell = 2
                    ELSE 
                       subcell = 4
                    ENDIF
                 END IF
              else
-                IF ( r < thisOctal%r ) THEN
-                   IF ( point%z < thisOctal%centre%z ) THEN
+                IF ( r <= thisOctal%r ) THEN
+                   IF ( point%z <= thisOctal%centre%z ) THEN
                       subcell = 5
                    ELSE 
                       subcell = 7
                    ENDIF
                 ELSE
-                   IF (point%z < thisOctal%centre%z) THEN
+                   IF (point%z <= thisOctal%centre%z) THEN
                       subcell = 6
                    ELSE 
                       subcell = 8
@@ -3325,14 +3325,14 @@ CONTAINS
              endif
           else
 
-             IF ( r < thisOctal%r ) THEN
-                IF ( point%z < thisOctal%centre%z ) THEN
+             IF ( r <= thisOctal%r ) THEN
+                IF ( point%z <= thisOctal%centre%z ) THEN
                    subcell = 1
                 ELSE 
                    subcell = 3
                 ENDIF
                 ELSE
-                   IF (point%z < thisOctal%centre%z) THEN
+                   IF (point%z <= thisOctal%centre%z) THEN
                       subcell = 2
                    ELSE 
                       subcell = 4
@@ -4800,7 +4800,7 @@ IF ( .NOT. gridConverged ) RETURN
          splitInAzimuth = .true.
       endif
 
-      if ((r < 2.e5).and.(thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15.)) then
+      if ((r < 2.e5).and.(thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 15)) then
          splitInAzimuth = .true.
          limit = nint(amrLimitScalar)*1
 
@@ -11693,7 +11693,7 @@ IF ( .NOT. gridConverged ) RETURN
 
           r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell) + &
-               (0.01d0*grid%halfSmallestsubcell)*OCTALVECTOR(+1.d0,+1.d0,+1.d0)
+               (0.01d0*grid%halfSmallestsubcell)*OCTALVECTOR(+0.9d0,+0.8d0,+0.7d0)
           if (.not.thisOctal%cylindrical) then
              nDir = 6
              dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
@@ -11704,7 +11704,7 @@ IF ( .NOT. gridConverged ) RETURN
              dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
           else
              nDir = 4
-             aHat = OCTALVECTOR(centre%x, centre%y, 0.d0)
+             aHat = OCTALVECTOR(centre%x*0.99d0, centre%y, 0.d0)
              call normalize(aHat)
 
              dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)

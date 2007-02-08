@@ -15,8 +15,13 @@ module image_mod
     type(STOKESVECTOR), pointer :: pixel(:,:) => null()
     real, pointer :: vel(:,:) => null()
     real, pointer :: totWeight(:,:) => null()
-    integer :: nsize
-    real :: scale
+    real, pointer :: xAxisCentre(:) => null()
+    real, pointer :: yAxisCentre(:) => null()
+    real, pointer :: xAxisLH(:) => null()
+    real, pointer :: yAxisBottom(:) => null()
+    integer :: nx
+    integer :: ny
+    real :: dx, dy
     real :: vMin
     real :: vMax
   end type IMAGETYPE
@@ -37,27 +42,46 @@ module image_mod
   contains
 
 
-   function initImage(nsize, rSize, vMin, vMax)
+   function initImage(nx, ny, imageSizeX, imageSizeY, vMin, vMax)
 
      type(IMAGETYPE) :: initImage
-     integer :: nsize
-     real :: scale, rSize
+     integer :: nx, ny
+     real :: imagesizeX, imageSizeY
      real :: vmax, vmin
+     real :: dx, dy
+     integer :: i,j
 
-     scale  = rSize / real(nSize)
+     allocate(initImage%pixel(1:nx,1:ny))
+     allocate(initImage%vel(1:nx,1:ny))
+     allocate(initImage%totWeight(1:nx,1:ny))
 
-     allocate(initImage%pixel(-nsize:nsize,-nsize:nsize))
-     allocate(initImage%vel(-nsize:nsize,-nsize:nsize))
-     allocate(initImage%totWeight(-nsize:nsize,-nsize:nsize))
+     allocate(initImage%xAxisCentre(1:nx))
+     allocate(initImage%yAxisCentre(1:ny))
+     allocate(initImage%xAxisLH(1:nx))
+     allocate(initImage%yAxisBottom(1:ny))
 
-     initImage%pixel(-nsize:nsize,-nsize:nsize) = STOKESVECTOR(1.e-30,0.,0.,0.)
-     initImage%nsize = nsize
-     initImage%scale = scale
+     initimage%dx = imageSizeX / real(nx)
+     initimage%dy = imageSizeY / real(ny)
+     
+     do i = 1, nx
+        initImage%xAxisCentre(i) = -imageSizeX/2. + initimage%dx/2. + initimage%dx*real(i-1)
+        initImage%xAxisLH(i) = -imageSizeX/2. + initimage%dx*real(i-1)
+     enddo
+     do i = 1, ny
+        initImage%yAxisCentre(i) = -imageSizeY/2. + initimage%dy/2. + initimage%dy*real(i-1)
+        initImage%yAxisBottom(i) = -imageSizeY/2. + initimage%dy*real(i-1)
+     enddo
+
+     initImage%pixel = STOKESVECTOR(0.,0.,0.,0.)
+     initImage%nx = nx
+     initImage%ny = ny
 
      initImage%vMin = vMin
      initImage%vMax = vMax
-     initImage%vel(-nsize:nsize,-nsize:nsize) = 0.
-     initImage%totWeight(-nsize:nsize,-nsize:nsize) = 0.
+     initImage%vel = 0.
+     initImage%totWeight = 0.
+
+
 
    end function initImage
 
@@ -187,15 +211,13 @@ module image_mod
            xDist = (thisPhoton%position) .dot. xProj
            yDist = (thisPhoton%position) .dot. yProj
            
-           xPix = nint(xDist / thisImageSet(i)%scale)
-           yPix = nint(yDist / thisImageSet(i)%scale)
 
+           call pixelLocate(thisImageSet(i), xDist, yDist, xPix, yPix)
 
-
-           if ((xPix >= -thisImageSet(i)%nSize) .and. &
-                (yPix >= -thisImageSet(i)%nSize) .and. &
-                (xPix <= thisImageSet(i)%nSize) .and. &
-                (yPix <= thisImageSet(i)%nSize)) then
+           if ((xPix >= 1) .and. &
+                (yPix >= 1) .and. &
+                (xPix <= thisImageSet(i)%nx) .and. &
+                (yPix <= thisImageSet(i)%ny)) then
               ! using a filter response function in filter_set_class here
               filter_response = real( pass_a_filter(filters, i, lambda_obs ))
               
@@ -257,11 +279,11 @@ module image_mod
 
        integer :: nSize, nPix, i, j
 
-       nSize = thisImage%nSize
-       nPix = 2*thisImage%nSize + 1
+!       nSize = thisImage%nSize
+!       nPix = 2*thisImage%nSize + 1
 
-
-       physicalPixelSize = 1.e10 * (thisImage%scale * 2.) / real(nPix)
+       npix = thisImage%nx ! assumes square image!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+       physicalPixelSize = 1.e10 * (thisImage%dx * thisImage%dy)
        angularPixelSize = physicalPixelSize / objectDistance
        pixelArea = (angularPixelSize * radtoDeg * 3600.)**2 ! square arcsec
 
@@ -278,14 +300,14 @@ module image_mod
        ! Note: stokes parameters are in erg/s/pix^2/sr, and we now converting 
        ! them to Stokes Flux using a right conversion factor.
 
-       physicalPixelSize = 1.e10 * (thisImage%scale * 2.) / real(nPix)
+       physicalPixelSize = thisImage%dx * 1.e10
        angularPixelSize = physicalPixelSize / objectDistance
        pixelArea = (angularPixelSize * radtoDeg * 3600.)**2 ! square arcsec
        
        ! 
-       area =(2.0*thisImage%scale)**2 * 1.0d20  ! cm^2
+       area =(thisImage%dx)**2 * 1.0d20  ! cm^2
 
-       scale = ( (thisImage%scale*1.e10)/objectDistance )**2  
+       scale = ( (thisImage%dx*1.e10)/objectDistance )**2  
        ! Conversion factor (1 Jy = 9.57e-13 erg/s/cm^2/A at 5600 A)
        ! and the fact that 
        !             F_lambda[erg/s/cm^2/A] = (c/lambda^2) * F_nu [erg/s/cm^2/Hz] 
@@ -309,28 +331,27 @@ module image_mod
 
        do i = 1 , nPix
           do j = 1 , nPix
-             pixImageI(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%i * scale ![Jy]
-             pixImageQ(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%q * scale ![Jy]
-             pixImageU(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%u * scale ![Jy]
-             pixImageV(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%v * scale ![Jy]
+             pixImageI(i,j) = thisImage%pixel(i,j)%i * scale ![Jy]
+             pixImageQ(i,j) = thisImage%pixel(i,j)%q * scale ![Jy]
+             pixImageU(i,j) = thisImage%pixel(i,j)%u * scale ![Jy]
+             pixImageV(i,j) = thisImage%pixel(i,j)%v * scale ![Jy]
              ! Now the images are in Janskies!
 
-             if (thisImage%totWeight(i-1-nSize,j-1-nSize) /= 0.) then
-                pixImageVel(i,j) = thisImage%vel(i-1-nSize,j-1-nSize)/ &
-                     thisImage%totWeight(i-1-nSize,j-1-nSize)
+             if (thisImage%totWeight(i,j) /= 0.) then
+                pixImageVel(i,j) = thisImage%vel(i,j)/ &
+                     thisImage%totWeight(i,j)
              endif
           enddo
        enddo
 
        if (.not.inArcsec) then
-          imscale = thisIMage%scale
+          imscale = thisImage%dx
        else
-          imscale = ((thisImage%scale * 1.e10) / objectDistance) * radtodeg * 3600.
+          imscale = ((thisImage%dx * 1.e10) / objectDistance) * radtodeg * 3600.
        endif
 
        call writeImagef77(pixImageI, pixImageQ, pixImageU, &
-            pixImageV, pixImageVel, imscale, &
-            thisImage%nSize, nPix, filename)
+            pixImageV, pixImageVel, imscale, nPix, filename)
 
        deallocate(pixImageI)
        deallocate(pixImageQ)
@@ -375,8 +396,7 @@ module image_mod
        real :: thisDistance
        type(VECTOR) :: zAxis, slitNorm, rect(4)
 
-       nSize = thisImage%nSize
-       nPix = 2*thisImage%nSize + 1
+       nPix = thisImage%nx
        allocate(pixImage(1:nPix,1:nPix))
        allocate(Axis1(1:nPix))
        allocate(Axis2(1:nPix))
@@ -399,8 +419,8 @@ module image_mod
        ny = nPix
 
       do i = -nSize, nSize
-         axis1(i+nSize+1) = real(i) * thisImage%scale
-         axis2(i+nSize+1) = real(i) * thisImage%scale
+         axis1(i) = real(i) * thisImage%dx
+         axis2(i) = real(i) * thisImage%dx
       enddo
       axis1(1:nPix) = axis1(1:nPix) / thisDistance * radiansToArcsec
       axis2(1:nPix) = axis2(1:nPix) / thisDistance * radiansToArcsec
@@ -566,8 +586,7 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
 
        integer :: nSize, nPix, i, j
 
-       nSize = thisImage%nSize
-       nPix = 2*thisImage%nSize + 1
+       nPix = thisImage%nx
 
 
        allocate(pixImageI(1:nPix,1:nPix))
@@ -582,18 +601,17 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
 
        do i = 1 , nPix
           do j = 1 , nPix
-             pixImageI(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%i
-             pixImageQ(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%q
-             pixImageU(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%u
-             pixImageV(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%v
+             pixImageI(i,j) = thisImage%pixel(i,j)%i
+             pixImageQ(i,j) = thisImage%pixel(i,j)%q
+             pixImageU(i,j) = thisImage%pixel(i,j)%u
+             pixImageV(i,j) = thisImage%pixel(i,j)%v
           enddo
        enddo
 
-       imscale = thisIMage%scale
+       imscale = thisImage%dx
        
        call writeImagef77(pixImageI, pixImageQ, pixImageU, &
-            pixImageV, pixImageVel, imscale, &
-            thisImage%nSize, nPix, filename)
+            pixImageV, pixImageVel, imscale,  nPix, filename)
 
        deallocate(pixImageI)
        deallocate(pixImageQ)
@@ -629,9 +647,8 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        real :: t
        integer :: i,j, k, nsize
 
-       nSize = image(1)%nsize
-       nx = nSize*2+1
-       ny = nSize*2+1
+       nx = image(1)%nx
+       ny = image(1)%ny
        allocate(rImage(nx, ny))
        allocate(gImage(nx, ny))
        allocate(bImage(nx, ny))
@@ -684,12 +701,12 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        integer :: i, j, k, n
        
 
-       nValues = (2*image%nSize+1)**2
+       nValues = (image%nx*image%ny)
 
        n = 0
        allocate(values(nValues))
-       do i = -image%nsize,image%nsize
-          do j = -image%nSize,image%nSize
+       do i = 1, image%nx
+          do j = 1, image%ny
              if (image%pixel(i,j)%i > 1.e-29) then
                 n = n + 1
                 values(n) = image%pixel(i,j)%i
@@ -701,6 +718,178 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        out = values(k)
        deallocate(values)
      end function imagePercentile
+
+!
+!*******************************************************************************
+!
+!! WRITE_IMAGE creates a FITS primary array containing a 2-D image.
+!
+
+     subroutine writeFitsImage(image, filename)
+       type(IMAGETYPE) :: image
+
+       integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
+       integer :: i,j,group,fpixel,nelements
+       real, allocatable :: array(:,:)
+       character (len=*) :: filename
+       logical :: simple,extend
+
+
+       allocate(array(1:image%nx, 1:image%ny))
+       call writeInfo("Writing fits image",TRIVIAL)
+       status=0
+       !
+       !  Delete the file if it already exists, so we can then recreate it.
+       !
+       call deleteFitsFile ( filename, status )
+       !
+       !  Get an unused Logical Unit Number to use to open the FITS file.
+       !
+       call ftgiou ( unit, status )
+       !
+       !  Create the new empty FITS file.
+       !
+       blocksize=1
+       call ftinit(unit,filename,blocksize,status)
+       !
+       !  Initialize parameters about the FITS image (300 x 200 16-bit integers).
+       !
+       simple=.true.
+       bitpix=-32
+       naxis=2
+       naxes(1)=image%nx
+       naxes(2)=image%ny
+       extend=.true.
+       !
+       !  Write the required header keywords.
+       !
+       call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+       !
+       !  Write the array to the FITS file.
+       !
+       group=1
+       fpixel=1
+       nelements=naxes(1)*naxes(2)
+       array = image%pixel%i
+       call ftpprj(unit,group,fpixel,nelements,array,status)
+       !
+       !  Write another optional keyword to the header.
+       !
+!       call ftpkyj(unit,'EXPOSURE',1500,'Total Exposure Time',status)
+       call ftpkye(unit,'CDELT1',4.848137e-10,6,' ',status)
+       call ftpkye(unit,'CDELT2',4.848137e-10,6,' ',status)
+       call ftpkye(unit,'CRVAL1',4.721411605,10,' ',status)
+       call ftpkye(unit,'CRVAL2',-0.412388335,10,' ',status)
+       call ftpkyj(unit,'CRPIX1',image%nx/2,' ',status)
+       call ftpkyj(unit,'CRPIX2',image%ny/2,' ',status)
+       !
+       !  Close the file and free the unit number.
+       !
+       call ftclos(unit, status)
+       call ftfiou(unit, status)
+       !
+       !  Check for any error, and if so print out error messages
+       !
+       if (status > 0) then
+          call printFitserror(status)
+       end if
+       
+     end subroutine writeFitsImage
+
+     subroutine deleteFitsFile(filename,status)
+       !
+       integer status,unit,blocksize
+       character ( len = * ) filename
+       !
+       !  Simply return if status is greater than zero.
+       !
+       if (status > 0) then
+          return
+       end if
+       !
+       !  Get an unused Logical Unit Number to use to open the FITS file
+       !
+       call ftgiou ( unit, status )
+       !
+       !  Try to open the file, to see if it exists
+       !
+       call ftopen ( unit, filename, 1, blocksize, status )
+
+       if ( status == 0 ) then
+          !
+          !  File was opened;  so now delete it 
+          !
+          call ftdelt(unit,status)
+
+       else if (status == 103)then
+          !
+          !  File doesn't exist, so just reset status to zero and clear errors
+          !
+          status=0
+          call ftcmsg
+
+       else
+          !
+          !  There was some other error opening the file; delete the file anyway
+          !
+          status=0
+          call ftcmsg
+          call ftdelt(unit,status)
+       end if
+       !
+       !  Free the unit number for later reuse.
+       !
+       call ftfiou(unit, status)
+
+     end subroutine deleteFitsFile
+
+     subroutine printFitsError(status)
+       !
+       !*******************************************************************************
+       !
+       !! PRINT_ERROR prints out the FITSIO error messages to the user.
+       !
+       integer status
+       character ( len = 30 ) errtext
+       character ( len = 80 ) errmessage
+       !
+       !  Check if status is OK (no error); if so, simply return.
+       !
+       if (status <= 0) then
+          return
+       end if
+       !
+       !  Get the text string which describes the error
+       !
+       call ftgerr(status,errtext)
+       print *,'FITSIO Error Status =',status,': ',errtext
+       !
+       !  Read and print out all the error messages on the FITSIO stack
+       !
+       call ftgmsg(errmessage)
+       do while (errmessage .ne. ' ')
+          print *,errmessage
+          call ftgmsg(errmessage)
+       end do
+
+     end subroutine printFitsError
+
+     subroutine pixelLocate(image, xDist, yDist, ix, iy)
+       type(IMAGETYPE) :: image
+       real :: xDist, yDist
+       integer :: ix, iy
+
+       ix = 0
+       iy = 0
+       if ( (xDist >= (image%xAxisCentre(1)-image%dx/2.)).and. &
+            (xDist <= (image%xAxisCentre(image%nx)+image%dx/2.)).and. &
+            (yDist >= (image%yAxisCentre(1)-image%dy/2.)).and. &
+            (yDist <= (image%yAxisCentre(image%ny)+image%dy/2.)) ) then
+          call locate(image%xAxisLH, image%nx, xDist, ix)
+          call locate(image%yAxisBottom, image%ny, yDist, iy)
+       endif
+     end subroutine pixelLocate
+            
 
       
 end module image_mod

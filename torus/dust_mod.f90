@@ -1126,13 +1126,18 @@ contains
     integer :: i, j, k
     real :: bNuTot, rosselandKappa, temperature
     real(double) :: dFreq, Freq
+    real :: maxTemp
+
+    maxTemp = 2000.
+
+    if (grid%geometry == "wr104") maxTemp = 30000.
 
     if (grid%nTempRossArray == 0) then
        call writeFatal("nTempRossArray is zero on call to createRossArray")
     endif
 
     do k = 1, grid%nTempRossArray
-       temperature = 3. + (2000.-3.)*real(k-1)/real(grid%nTempRossArray-1)
+       temperature = 3. + (maxTemp-3.)*real(k-1)/real(grid%nTempRossArray-1)
        do j = 1, nDustType
           rosselandKappa = 0.
           Bnutot = 0.

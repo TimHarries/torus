@@ -3,14 +3,16 @@
 #    1. make             : Make torus with optimization flag(s)
 #    2. make clean       : Clean up directory
 #    3. make pgplot=no   : Use pgplot stubs rather than library
-#    4. make debug=yes   : Make torus with debug option,
-#    5. make profile=yes : Make torus with profiler option
-#    6. make static=yes  : Make torus with static linking
+#    4. make cfitsio=no  : Use cfitsio stubs rather than library
+#    5. make debug=yes   : Make torus with debug option,
+#    6. make profile=yes : Make torus with profiler option
+#    7. make static=yes  : Make torus with static linking
 #-----------------------------------------------------------------
 
 KNOWN_SYSTEM=no
 debug = no
 pgplot = yes
+cfitsio = yes
 static = no
 profile= no
 PATH2G2C=/usr/lib/gcc-lib/i386-redhat-linux/3.4.4
@@ -34,6 +36,7 @@ ifeq ($(SYSTEM), intelmac)
 #    STARLIBS=-L/star/lib `ndf_link`
     PGLIBS=-L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa \
  /System/Library/Frameworks/Cocoa.framework/Cocoa 
+    CFITSIOLIBS=-lcfitsio
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
 endif
@@ -549,6 +552,13 @@ else
    PGSTUBS= 
 endif
 
+ifeq ($(cfitsio), no)
+   CFITSIOSTUBS= cfitsio_stubs.o
+   CFITSIOLIBS= 
+else 
+   CFITSIOSTUBS=
+endif
+
 ifeq ($(profile), yes)
    ETCFLAG = -pg
 endif
@@ -623,7 +633,7 @@ all: preprocess depends $(ALLOBJ)
 	@echo ""
 	@echo " Linking object files and libraries..........."
 	$(F90) -o $(EXE) \
-	$(MODOBJ) $(F77OBJ) $(F90OBJ) $(PGSTUBS) $(PGLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
+	$(MODOBJ) $(F77OBJ) $(F90OBJ) $(PGSTUBS) $(PGLIBS) $(CFITSIOSTUBS) $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
 	@echo " ... done"
    else
 	@echo ""
