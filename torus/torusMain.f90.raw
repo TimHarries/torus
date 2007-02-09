@@ -3225,6 +3225,12 @@
      endif
 !$MPI end if
 
+     if (geometry == "wr104") then
+        write(*,*) "stripping dust!!!!!!!!!!!"
+        call stripDustAway(grid%octreeRoot, 1.d-20, 2.d4)
+     endif
+
+
      if (writeoutput) write(*,*) " "
      if (writeoutput) write(*,'(a)') "Some basic model parameters"
      if (writeoutput) write(*,'(a)') "---------------------------"

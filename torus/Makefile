@@ -250,6 +250,7 @@ ifeq ($(SYSTEM), lamosx)
     STARLIBS=-L${RKHOME}/pgplot -lpgplot -L/usr/X11R6/lib -lX11  -L/usr/lib -lSystemStubs
     MK_MPI_SRC = yes
     KNOWN_SYSTEM=yes
+    CFITSIOLIBS=-L/private/Network/Servers/cytosine.ex.ac.uk/physics309/Guanine/tjharrie/cfitsio -lcfitsio
 endif
 
 
