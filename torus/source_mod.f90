@@ -5,6 +5,7 @@ module source_mod
   use vector_mod
   use utils_mod
   use octal_mod
+  use surface_mod
 
   implicit none
 
@@ -20,6 +21,7 @@ module source_mod
      real(double) :: mass       ! [solar]
      real(double) :: age        ! [years]
      type(SPECTRUMTYPE)    :: spectrum   ! [???]
+     type(SURFACETYPE) :: surface
   end type SOURCETYPE
 
 
@@ -306,22 +308,48 @@ module source_mod
 
   end function random_direction_from_sphere
 
-  real(double) function I_nu(source, nu) 
+  real(double) function I_nu(source, nu, iElement) 
     type(SOURCETYPE) :: source
+    type(OCTALVECTOR) :: direction
     real(double) :: nu, fnu, flambda, lam
-    integer :: i
+    integer :: i, iElement
+    real(double) :: tAccretion, ic_hot
 
-    lam = 1.d8 * cSpeed/ nu ! angs
-    if (lam < source%spectrum%lambda(1)) then
-       I_nu = tiny(i_nu)
+!    lam = 1.d8 * cSpeed/ nu ! angs
+!    if (lam < source%spectrum%lambda(1)) then
+!       I_nu = tiny(i_nu)
+!    endif
+!    if (lam > source%spectrum%lambda(source%spectrum%nlambda)) then
+!       I_nu = tiny(i_nu)
+!    endif
+
+
+!    call locate(source%spectrum%lambda, source%spectrum%nLambda, lam, i)
+!    fLambda = source%spectrum%flux(i)
+!    fnu = flambda * (cSpeed*1.d8) /nu**2 ! 1.d8 to go from cm/s to angs/c
+!    i_nu = 1.5d0 * fnu / pi
+
+    if (nu < source%surface%nuArray(1)) then
+       i_nu = tiny(i_nu)
+!       write(*,*) nu,source%surface%nuArray(1)
+    else if (nu > source%surface%nuArray(source%surface%nNuHotFlux)) then
+       i_nu = tiny(i_nu)
+!       write(*,*) nu,source%surface%nuArray(source%surface%nNuHotFlux)
+    else
+       call locate(source%surface%nuArray, source%surface%nNuHotFlux, real(nu), i)
+       fnu = source%surface%hnuArray(i) 
+       i_nu = 1.5d0 * fnu / pi
     endif
-    if (lam > source%spectrum%lambda(source%spectrum%nlambda)) then
-       I_nu = tiny(i_nu)
+
+    if (isHot(source%surface,ielement)) then
+       tAccretion = source%surface%element(ielement)%temperature
+       !================CHECK UNITS HERE!! ===========================
+       IC_hot = blackbody(REAL(tAccretion), 1.e8*REAL(cSpeed/nu)) ! [B_nu]
+       i_nu  = I_nu + ic_hot
     endif
-    call locate(source%spectrum%lambda, source%spectrum%nLambda, lam, i)
-    fLambda = source%spectrum%flux(i)
-    fnu = flambda * (cSpeed*1.d8) /nu**2 ! 1.d8 to go from cm/s to angs/c
-    i_nu = 1.5d0 * fnu / pi
+
+
+
   end function I_nu
 
   logical function insideSource(thisOctal, subcell, nsource, source)
@@ -366,8 +394,47 @@ module source_mod
              insideSource = .true.
           endif
        else
-          write(*,*) "insideSource not setup for threed octals"
-          stop
+          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0, 1.d0, 1.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0, -1.d0, 1.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0, 1.d0, -1.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(1.d0, -1.d0, -1.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(-1.d0, -1.d0, -1.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(-1.d0, 1.d0, -1.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+          corner = rVec + thisOctal%subcellSize/2.d0 * OCTALVECTOR(-1.d0, -1.d0, 1.d0)
+          r = modulus(corner - source(i)%position)
+          if (r < source(i)%radius) then
+             insideSource = .true.
+          endif
+
        endif
     enddo
   end function insideSource

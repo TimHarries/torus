@@ -102,9 +102,9 @@
       real  ndfImage(nPix,nPix)
       integer  i, j
 
-      do i = -nSize, nSize
+      do i = 1, npix
          axis1(i) = real(i) * scale
-         do j = -nSize, nSize
+         do j = 1, npix
             axis2(j) = real(j) * scale
             ndfImage(i,j) = 
      &           thisImage(i,j)
@@ -121,8 +121,8 @@
       real  ndfImage(nPix,nPix)
       integer  i, j
 
-      do i = -nSize, nSize
-         do j = -nSize, nSize
+      do i = 1, npix
+         do j = 1, npix
             ndfImage(i,j) = 
      &           thisImage(i,j)
          enddo

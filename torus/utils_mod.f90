@@ -39,6 +39,11 @@ module utils_mod
      module procedure logint_dble
   end interface
 
+  interface indexx
+     module procedure indexx_single
+     module procedure indexx_double
+  end interface
+
 
 contains
 
@@ -189,7 +194,7 @@ contains
     REAL(double) ::  LX,LX1,LX2,LY1,LY2,GR
     if ( (x.le.0.0).or.(x1.le.0.0).or.(x2.le.0.0)) then
        write(*,*) 'f.up in logint',x,x1,x2,y1,y2
-       stop
+       do;enddo
     endif
     LX=LOG(X)
     LX1=LOG(X1)
@@ -213,7 +218,8 @@ contains
     REAL(double) ::  LX,LX1,LX2,LY1,LY2,GR
     if ( (x.le.0.0d0).or.(x1.le.0.0d0).or.(x2.le.0.0d0)) then
        write(*,*) 'f.up in logint_dble',x,x1,x2,y1,y2
-       stop
+              do;enddo
+
     endif
     LX=LOG(X)
     LX1=LOG(X1)
@@ -354,53 +360,6 @@ contains
     GO TO 10
   END subroutine sortdouble2
 
-
-  ! sort an array by indexing
-
-  PURE SUBROUTINE INDEXX(N,ARRIN,INDX)
-    INTEGER, INTENT(IN)  :: N
-    REAL, INTENT(IN)     :: ARRIN(:)
-    INTEGER, INTENT(OUT) :: INDX(:)
-    INTEGER              :: J, L, IR, I, INDXT
-    REAL                 :: Q
-    DO  J=1,N
-       INDX(J)=J
-    ENDDO
-    L=N/2+1
-    IR=N
-10  CONTINUE
-    IF(L.GT.1)THEN
-       L=L-1
-       INDXT=INDX(L)
-       Q=ARRIN(INDXT)
-    ELSE
-       INDXT=INDX(IR)
-       Q=ARRIN(INDXT)
-       INDX(IR)=INDX(1)
-       IR=IR-1
-       IF(IR.EQ.1)THEN
-          INDX(1)=INDXT
-          RETURN
-       ENDIF
-    ENDIF
-    I=L
-    J=L+L
-20  IF(J.LE.IR)THEN
-       IF(J.LT.IR)THEN
-          IF(ARRIN(INDX(J)).LT.ARRIN(INDX(J+1)))J=J+1
-       ENDIF
-       IF(Q.LT.ARRIN(INDX(J)))THEN
-          INDX(I)=INDX(J)
-          I=J
-          J=J+J
-       ELSE
-          J=IR+1
-       ENDIF
-       GO TO 20
-    ENDIF
-    INDX(I)=INDXT
-    GO TO 10
-  END subroutine indexx
 
 
   !
@@ -3839,6 +3798,95 @@ END SUBROUTINE GAUSSJ
 14    continue
       return
       end subroutine svbksb
+  PURE SUBROUTINE INDEXX_single(N,ARRIN,INDX)
+    INTEGER, INTENT(IN)  :: N
+    REAL, INTENT(IN)     :: ARRIN(:)
+    INTEGER, INTENT(OUT) :: INDX(:)
+    INTEGER              :: J, L, IR, I, INDXT
+    REAL                 :: Q
+    DO  J=1,N
+       INDX(J)=J
+    ENDDO
+    L=N/2+1
+    IR=N
+10  CONTINUE
+    IF(L.GT.1)THEN
+       L=L-1
+       INDXT=INDX(L)
+       Q=ARRIN(INDXT)
+    ELSE
+       INDXT=INDX(IR)
+       Q=ARRIN(INDXT)
+       INDX(IR)=INDX(1)
+       IR=IR-1
+       IF(IR.EQ.1)THEN
+          INDX(1)=INDXT
+          RETURN
+       ENDIF
+    ENDIF
+    I=L
+    J=L+L
+20  IF(J.LE.IR)THEN
+       IF(J.LT.IR)THEN
+          IF(ARRIN(INDX(J)).LT.ARRIN(INDX(J+1)))J=J+1
+       ENDIF
+       IF(Q.LT.ARRIN(INDX(J)))THEN
+          INDX(I)=INDX(J)
+          I=J
+          J=J+J
+       ELSE
+          J=IR+1
+       ENDIF
+       GO TO 20
+    ENDIF
+    INDX(I)=INDXT
+    GO TO 10
+  END subroutine indexx_single
+
+  PURE SUBROUTINE INDEXX_double(N,ARRIN,INDX)
+    INTEGER, INTENT(IN)  :: N
+    REAL(double), INTENT(IN)     :: ARRIN(:)
+    INTEGER, INTENT(OUT) :: INDX(:)
+    INTEGER              :: J, L, IR, I, INDXT
+    REAL(double)                 :: Q
+    DO  J=1,N
+       INDX(J)=J
+    ENDDO
+    L=N/2+1
+    IR=N
+10  CONTINUE
+    IF(L.GT.1)THEN
+       L=L-1
+       INDXT=INDX(L)
+       Q=ARRIN(INDXT)
+    ELSE
+       INDXT=INDX(IR)
+       Q=ARRIN(INDXT)
+       INDX(IR)=INDX(1)
+       IR=IR-1
+       IF(IR.EQ.1)THEN
+          INDX(1)=INDXT
+          RETURN
+       ENDIF
+    ENDIF
+    I=L
+    J=L+L
+20  IF(J.LE.IR)THEN
+       IF(J.LT.IR)THEN
+          IF(ARRIN(INDX(J)).LT.ARRIN(INDX(J+1)))J=J+1
+       ENDIF
+       IF(Q.LT.ARRIN(INDX(J)))THEN
+          INDX(I)=INDX(J)
+          I=J
+          J=J+J
+       ELSE
+          J=IR+1
+       ENDIF
+       GO TO 20
+    ENDIF
+    INDX(I)=INDXT
+    GO TO 10
+  END subroutine indexx_double
 
 
 end module utils_mod

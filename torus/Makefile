@@ -606,7 +606,7 @@ F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
  discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
  jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
  romanova_class.f90 messages_mod.f90 starburst_mod.f90 molecular_mod.f90 \
- modelatom_mod.f90 cmf_mod.f90 datacube_mod.f90
+ modelatom_mod.f90 cmf_mod.f90 datacube_mod.f90 magField.f90
 
 
 PGSOURCE= pgplot_stubs.f90

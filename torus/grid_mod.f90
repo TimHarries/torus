@@ -617,7 +617,7 @@ contains
        grid%oneKappa = .true.
        oneKappa = .true.
 
-    case ("ttauri") 
+    case ("ttauri","magstream") 
        call initTTauriAMR(grid,theta1,theta2)
     case ("windtest") 
        call initWindTestAMR(grid)

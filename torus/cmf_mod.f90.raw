@@ -285,6 +285,12 @@ contains
 !             if ((l == 2).and.iatom==2) then
 !                write(*,*) "total photoionization from l=2 ",photoRatelk*npops(iatom,l)
 !             endif
+!             if ((l == 3).and.iatom==2) then
+!                write(*,*) "total photoionization from l=3 ",photoRatelk*npops(iatom,l)
+!             endif
+!             if ((l == 4).and.iatom==2) then
+!                write(*,*) "total photoionization from l=4 ",photoRatelk*npops(iatom,l)
+!             endif
           endif
 
 
@@ -404,6 +410,7 @@ contains
     logical :: firstSubcell
     integer :: nBug
     integer :: iFreq
+    integer :: iElement
     real(double), allocatable :: tauCont(:), jnuCont(:), alphanuCont(:), snuCont(:)
     logical, save :: first = .true.
 
@@ -628,8 +635,9 @@ contains
 
     enddo
     if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
+       iElement = getElement(source(sourcenumber)%surface, direction)
        do iFreq = 1, nFreq
-          iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq))*cosTheta*exp(-tauCont(iFreq))
+          iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq))
        enddo
     endif
 
@@ -638,10 +646,11 @@ contains
 
     
     if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
+       iElement = getElement(source(sourcenumber)%surface, direction)
        do iRBB = 1, nRBBTrans
           iAtom = indexAtom(iRBB)
           iTrans = indexRBBTrans(iRBB)
-          i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans))*cosTheta*exp(-tau(iRBB))
+          i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*cosTheta*exp(-tau(iRBB))
 !       if (thisAtom(iAtom)%iLower(iTrans)==2.and.thisAtom(iAtom)%iUpper(iTrans)==3) write(*,*) "inu line ",i0(irbb)
        enddo
     endif
@@ -853,7 +862,8 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom, ir, ifreq
     real(double) :: nstar
-    real(double), parameter :: convergeTol = 1.d-5
+    real(double), parameter :: convergeTol = 1.d-4
+    character(len=80) :: message
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   np             ! The number of processes
@@ -983,6 +993,8 @@ contains
 
 
           do iOctal = ioctal_beg, ioctal_end
+
+             
              write(*,*) iOctal,iOctal_beg,iOctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
@@ -997,7 +1009,8 @@ contains
 
                 if (.not.thisOctal%hasChild(subcell)) then
 
-                   thisOctal%inFlow(subcell) = .not.insideSource(thisOctal, subcell, nsource, Source)
+                   thisOctal%inFlow(subcell) = &
+                        thisOctal%inFlow(subcell).and.(.not.insideSource(thisOctal, subcell, nsource, Source))
 
                    if (thisOctal%inflow(subcell)) then
                       nHit = 0
@@ -1109,7 +1122,8 @@ contains
                          if ((fac < convergeTol).and.(iter > 1)) popsConverged = .true.
                          if (iter == maxIter) then
                             popsConverged = .true.
-                            call writeWarning("Maximum number of iterations reached in pop solver")
+                            write(message,'(a,e12.5)') "Maximum number of iterations reached in pop solver. fac = ",fac
+                            call writeWarning(message)
                          endif
                       enddo
                       thisOctal%ne(subcell) = ne
@@ -1199,7 +1213,6 @@ contains
        enddo
     enddo
     write(*,*) "ATOM loop done."
-    stop
   end subroutine atomLoop
 
   recursive  subroutine  swapPops(thisOctal, maxFracChange)
@@ -1436,6 +1449,7 @@ contains
     real(double) ::  dTauCont, HCol, HeICol, HeIICol
     real(double) :: distToSource
     integer :: sourcenumber
+    integer :: iElement
     real :: xH, XheI, xHeII
     logical :: firstSubcell
     logical :: endLoopAtPhotosphere
@@ -1478,7 +1492,7 @@ contains
 
 !    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
 !         inOctal(grid%octreeRoot, currentPosition),distTogrid
-    i0 = 0.d0
+    i0 = 1.d-10!0.d0
     intensityIntegral = 0.0
     tau = 0.d0
     rayVel = OCTALVECTOR(0.d0, 0.d0, 0.d0)
@@ -1582,6 +1596,8 @@ contains
           endif
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+!          write(*,*) i0,tau,snu,jnu,alphanu, Thisoctal%atomlevel(subcell,iatom,2), &
+!               thisOctal%atomLevel(subcell, iatom, 3)
           tau = tau + dtau
 !          write(*,*) icount,"i0",i0,"tau",tau,"snu",snu,jnu,alphanu,iatom,itrans
 !          write(*,*) "n",nlower,nupper
@@ -1591,9 +1607,13 @@ contains
     enddo
 
     if (endLoopAtPhotosphere) then
-!       write(*,*) "i0",i0,i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans))*cosTheta*exp(-tau),tau
+
+       iElement = getElement(source(sourcenumber)%surface, direction)
+       i0 = i0 + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*cosTheta*exp(-tau)
+
+
+!       write(*,*) "i0",i0,i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*cosTheta*exp(-tau),tau
 !       write(*,*) "pos",modulus(currentPosition)/source(1)%radius
-       i0 = i0 + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans))*cosTheta*exp(-tau)
     endif
 
 !    write(*,*) "tau",tau,"deltav",deltaV*cspeed/1.d5
@@ -1603,12 +1623,13 @@ contains
   end function intensityAlongRay
 
   
-  subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource)
+  subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile)
 !$MPI    include 'mpif.h'
 
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
     integer :: nSource
+    integer :: nFile
     type(SOURCETYPE) :: source(:)
     integer :: nAtom, iAtom
     real(double) :: distance
@@ -1623,6 +1644,7 @@ contains
     real(double) :: flux, i0
     real(double), allocatable :: vArray(:), spec(:), tempArray(:)
     integer :: iv1, iv2, i
+    character(len=30) :: plotfile
     type(DATACUBE) :: cube
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
@@ -1639,13 +1661,14 @@ contains
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
 
-!    call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
-!    call plotDataCube(cube, 'cube.ps/vcps')
-!    stop
+    call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
+    write(plotfile,'(a,i3.3,a)') "cube",nfile,".ps/vcps"
+    call plotDataCube(cube, plotfile,withspec=.false.)
+    return
 
-    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
-    call plot_AMR_values(grid, "etaLine", "x-z", 0.,  &
-         "etaline.ps/vcps", .true., .false.)
+!    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+!    call plot_AMR_values(grid, "etaLine", "x-z", 0.,  &
+!         "etaline.ps/vcps", .true., .false.)
     write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
     
 
@@ -1804,9 +1827,12 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 100, 100, 20)
-    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
-         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
+    call initCube(cube, 400, 400, 20)
+!    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
+!         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
+
+    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize, +grid%octreeRoot%subcellSize, &
+         -grid%octreeRoot%subcellSize, grid%octreeRoot%subcellSize)
     call addvelocityAxis(cube, -2000.d0, 2000.d0)
 
     xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec

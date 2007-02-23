@@ -5,7 +5,8 @@ module surface_mod
   use vector_mod
   use utils_mod
   use gridtype_mod
-  use amr_mod
+!  use amr_mod
+  use density_mod
   use romanova_class
 
   implicit none
@@ -39,7 +40,10 @@ module surface_mod
 
   type SURFACETYPE
      integer :: nElements
+     integer :: ntheta
+     real(double) :: surfaceMdot, trueMdot
      real :: radius ! 1.e10 cm
+     integer, pointer :: angleArray(:,:)
      type(ELEMENTTYPE),pointer :: element(:) => null()
      type(VECTOR) :: centre ! 1.e10 cm
      integer :: nNuHotFlux
@@ -66,11 +70,14 @@ contains
     integer :: returnVal
     real :: dummyReal
     real :: nu, hnu
+    integer :: iphi
 
     surface%centre = centre
     surface%radius = radius
     surface%nElements = 0
+    surface%nTheta = ntheta
 
+    allocate(surface%angleArray(1:nTheta,1:nTheta))
     ! open the continuum flux file to get the number of points
     open(20,file=contfile,status="old",form="formatted")
     nNuHotFlux = 0
@@ -98,7 +105,8 @@ contains
     n = 0
     do i = 1, nTheta
        theta = pi*real(i-1)/real(nTheta-1)
-       nphi = max(1,nint(real(nTheta)*sin(theta)))
+!       nphi = max(1,nint(real(nTheta)*sin(theta)))
+       nPhi = ntheta
        do j = 1, nPhi
           n = n + 1
        enddo
@@ -112,28 +120,53 @@ contains
       allocate(surface%element(1:n))
     end if
 
+    n = 0
     do i = 1, nTheta
        theta = pi*real(i-1)/real(nTheta-1)
-       nphi = max(1,nint(real(nTheta)*sin(theta)))
+!       nphi = max(1,nint(real(nTheta)*sin(theta)))
+       nPhi = nTheta ! makes it easier to find element
        call random_number(dPhase)
-       dPhase = dPhase * twoPi
+       dPhase = dphase * twoPi
        do j = 1, nPhi
           n = n + 1
           if (nPhi > 1) then
-             phi = twoPi * real(j-1)/real(nPhi-1) + dPhase
+             phi = twoPi * real(j-1)/real(nPhi) !+ dPhase
           else
              phi = 0.
           endif
+          if (phi > twoPi) phi = phi - twoPi
           rVec = VECTOR(cos(phi)*sin(theta), sin(phi)*sin(theta), cos(theta))
-
           dTheta = pi / real(nTheta)
           dPhi = twoPi / real(nPhi)
           area = radius * dTheta * radius * sin(theta) * dPhi
           call addElement(surface, radius, rVec, area)
+          surface%angleArray(i,j) = n
        enddo
     enddo
+
     write(*,*) "done."
   end subroutine buildSphere
+
+
+  integer function getElement(surface, direction)
+    type(OCTALVECTOR) :: direction , td
+    type(SURFACETYPE) :: surface
+    real :: theta, phi, dphi
+    integer :: itheta, iphi,  nphi
+    td = (-1.d0) * direction
+
+!    td = direction
+    theta = acos(td%z/modulus(td))
+    phi = atan2(td%y,td%x)
+    if (phi < 0.d0) phi = phi + twoPi
+
+    itheta = real(surface%ntheta)*theta/pi + 1
+    iphi =  real(surface%ntheta)*phi/twopi + 1
+
+    getElement = surface%angleArray(iTheta, iPhi)
+
+
+  end function getElement
 
   subroutine emptySurface(surface)
     type(SURFACETYPE),intent(inout) :: surface
@@ -681,6 +714,7 @@ contains
     logical, save :: first_time = .true.
     integer :: i 
     real :: ip_max, ip
+    real :: mp
     real :: imax
     
     
@@ -689,12 +723,13 @@ contains
     ! What you really need is a better data structure.
     ip_max = -1.0e20
     imax =1 
+    mp = modulus(position)
     do i = 1, thisSurface%nElements
        ! finding the inner product of the surface position vector 
        ! and the input position vector.
        ip = position .dot. thisSurface%element(i)%position
        ! normalize it just in case..
-       ip = ip / MODULUS(position)/ MODULUS(thisSurface%element(i)%position)
+       ip = ip / mp / MODULUS(thisSurface%element(i)%position)
 
        if (ip > ip_max) then
           ip_max = ip
@@ -717,6 +752,95 @@ contains
     isHot = thisSurface%element(i)%hot
   end function isHot
     
+
+
+  SUBROUTINE createMagStreamSurface(surface, grid, lineFreq, &
+                                 coreContFlux,fAccretion)
+
+    USE magField                             
+    USE input_variables, ONLY: limitSpotTemp, maxSpotTemp
+   
+    TYPE(surfacetype),INTENT(INOUT) :: surface
+    TYPE(gridType), INTENT(IN) :: grid
+    REAL(double), INTENT(IN) :: coreContFlux
+    REAL, INTENT(IN) :: lineFreq
+    REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
+    INTEGER :: iElement, iSpot
+    TYPE(octalVector) :: surfacePoint
+    TYPE(spVectorOctal) :: surfacePointSP
+    
+    PRINT *, 'Creating stellar surface for magStream system'
+    
+    DO iElement = 1, SIZE(surface%element)
+
+      surface%element(iElement)%hot = .FALSE.
+      
+      ! find the distance between each element's centre and
+      !   the "subsurface" position 
+      
+      surfacePoint = surface%element(iElement)%position - surface%centre
+
+      DO iSpot = 1, SIZE(magFieldHotspots)
+        IF ( modulus(magFieldHotspots(iSpot)%subSurfacePosn - surfacePoint)   &
+             < magFieldHotspots(iSpot)%radius_1e10 ) THEN
+          IF ( surface%element(iElement)%hot ) THEN
+            ! if this element has already been set as "hot" because of another 
+            !   hotspot, we use the hotest of the spots to compute the properties
+            IF ( surface%element(iElement)%temperature < magFieldHotspots(iSpot)%temperature ) THEN
+              surface%element(iElement)%temperature = magFieldHotspots(iSpot)%temperature
+
+            !  ! add mass accretion rate from this surface element
+            !  surface%surfaceMdot =  surface%surfaceMdot + &
+            !     surface%element(iElement)*area * &
+            !     magFieldHotspots(iSpot)%rho * &
+            !     magFieldHotspots(iSpot)%speed / mSol / secsToYears
+              
+              surface%element(iElement)%hotFlux(:) = &
+                pi*blackbody(surface%element(iElement)%temperature, 1.e8*real(cSpeed)/surface%nuArray(:))
+            ELSE
+              ! new spot is cooler than last one. do nothing.
+            END IF
+
+          ELSE
+
+            surface%element(iElement)%hot = .TRUE.
+            ALLOCATE(surface%element(iElement)%hotFlux(surface%nNuHotFlux))
+            surface%element(iElement)%temperature = magFieldHotspots(iSpot)%temperature
+            
+            ! add mass accretion rate from this surface element
+             surface%surfaceMdot =  surface%surfaceMdot + &
+                 surface%element(iElement)%area * &
+                 magFieldHotspots(iSpot)%rho * &
+                 magFieldHotspots(iSpot)%speed / mSol / secsToYears
+
+            surface%element(iElement)%hotFlux(:) = &
+              pi*blackbody(magFieldHotspots(iSpot)%temperature, 1.e8*real(cSpeed)/surface%nuArray(:))
+          END IF
+        ELSE
+          ! not near hot spot
+        END IF
+      END DO
+          
+    END DO
+    PRINT *, '         stellar surface created, finishing...'
+    
+    ! calculate Mdot directly from hotspot variables
+    surface%trueMdot = 0.0_db
+    DO iSpot = 1, SIZE(magFieldHotspots), 1
+      surface%trueMdot = surface%trueMdot + &
+         (magFieldHotspots(iSpot)%radius_1e10 * 1.e10)**2 * pi * &
+          magFieldHotspots(iSpot)%rho * &
+          magFieldHotspots(iSpot)%speed
+    END DO
+    ! convert from g per second to Msol per year
+    surface%trueMdot = surface%trueMdot / mSol 
+    surface%trueMdot = surface%trueMdot / secsToYears
+
+    CALL createProbs(surface,lineFreq,coreContFlux,fAccretion)
+    CALL sumSurface(surface)
+    PRINT *, '         stellar surface finished'
+    
+  END SUBROUTINE createMagStreamSurface
 
 
 end module surface_mod

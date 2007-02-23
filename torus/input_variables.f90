@@ -224,7 +224,7 @@ module input_variables
                              !   from Hartmann paper
   real :: maxHartTemp        ! maximum temperature of hartmann distribution                             
   logical :: isoTherm        ! use isothermal T Tauri accretion stream 
-  real    :: isoThermTemp    ! If isoTherm is true, use this temperature in [K]
+  real    :: isoThermTempLogical    ! If isoTherm is true, use this temperature in [K]
 
   ! pp disk stuff
   real :: rSmooth, rHeight, sigmaPower
@@ -563,6 +563,18 @@ module input_variables
 
 
   real :: warpradius, warpsigma, warpFracHeight
+
+  ! "magstream" parameters ---------------------------------------------
+  logical :: limitSpotTemp ! whether to limit hot spot temperatures
+  real :: maxSpotTemp ! maximum hot spot temperature
+  logical :: scaleFlowRho ! whether to rescale accretion flow densities
+  real :: flowRhoScale ! rescaling factor for accretion flow densities
+  character(len=80) :: magStreamFile ! filename for accretion stream data
+  logical :: isothermStream ! is accretion stream isotherma;
+  real :: isothermTemp ! temperature for accretion stream
+  logical :: magStreamFileDegrees ! does input file use degrees? (otherwise radians)
+  !--------------------------------------------------------------------
+
   
 end module input_variables
 

@@ -27,25 +27,28 @@ module vector_mod
        getPolar, &
        fromPhotosphereVector, &
        s2o, &
-       o2s, &
-       o2d
+       o2s, &        
+       distancePointLineSegment, &
+       greatCircleDistance       
        
-  private :: &
-       rmultSingle, rmultDouble, rmultOctal, rmultSingleReversed, rmultDoubleReversed, &
-       rmultOctalReversed, dmult, divideVecSingle, divideVecDouble, divideVecOctal, &
-       addSingle, addDouble, addOctal, addOctalDouble,  addDoubleOctal, addOctalSingle, &
-       addSingleOctal, subtractSingle, subtractDouble, subtractOctal, &
-       singleToDoubleVector, doubleToSingleVector, singleToOctalVector, octalToSingleVector, &
-       doubleToOctalVector, octalToDoubleVector, dotProdSingle, dotProdDouble, dotProdOctal, &
-       dotProdOctalSingle, dotProdSingleOctal, crossProdSingle, crossProdDouble, crossProdOctal, &
-       crossProdOctalSingle, crossProdSingleOctal, modulusSingle, modulusDouble, modulusOctal, &
-       normalizeSingle, normalizeDouble, normalizeOctal, rotateXSingle, rotateXDouble, rotateXOctal, &
-       rotateYSingle, rotateYDouble, rotateYOctal, rotateZSingle, rotateZDouble, rotateZOctal, &
-       intersectionLinePlaneSingle, intersectionLinePlaneDouble, intersectionLinePlaneOctal, &
-       intersectionLineSphereSingle, intersectionLineSphereDouble, intersectionLineSphereOctal, &
-       arbitraryRotateSingle, arbitraryRotateDouble, arbitraryRotateOctal, &
-       getPolarSingle, getPolarDouble, getPolarOctal, fromPhotosphereSingleVector, &
-       fromPhotosphereDoubleVector, fromPhotosphereOctalVector
+!  private :: &
+!       rmultSingle, rmultDouble, rmultOctal, rmultSingleReversed, rmultDoubleReversed, &
+!       rmultOctalReversed, dmult, divideVecSingle, divideVecDouble, divideVecOctal, &
+!       addSingle, addDouble, addOctal, addOctalDouble,  addDoubleOctal, addOctalSingle, &
+!       addSingleOctal, subtractSingle, subtractDouble, subtractOctal, &
+!       singleToDoubleVector, doubleToSingleVector, singleToOctalVector, octalToSingleVector, &
+!       doubleToOctalVector, octalToDoubleVector, dotProdSingle, dotProdDouble, dotProdOctal, &
+!       dotProdOctalSingle, dotProdSingleOctal, crossProdSingle, crossProdDouble, crossProdOctal, &
+!       crossProdOctalSingle, crossProdSingleOctal, modulusSingle, modulusDouble, modulusOctal, &
+!       normalizeSingle, normalizeDouble, normalizeOctal, rotateXSingle, rotateXDouble, rotateXOctal, &
+!       rotateYSingle, rotateYDouble, rotateYOctal, rotateZSingle, rotateZDouble, rotateZOctal, &
+!       intersectionLinePlaneSingle, intersectionLinePlaneDouble, intersectionLinePlaneOctal, &
+!       intersectionLineSphereSingle, intersectionLineSphereDouble, intersectionLineSphereOctal, &
+!       arbitraryRotateSingle, arbitraryRotateDouble, arbitraryRotateOctal, &
+!       getPolarSingle, getPolarDouble, getPolarOctal, fromPhotosphereSingleVector, &
+!       fromPhotosphereDoubleVector, fromPhotosphereOctalVector, distancePointLineSegmentSingle, &
+!       distancePointLineSegmentOctal, distancePointLineSegmentDouble, greatCircleDistanceSingle, &
+!       greatCircleDistanceDouble, greatCircleDistanceOctal
   
   
 
@@ -69,6 +72,27 @@ module vector_mod
     real(oct) :: z
   end type octalVector
 
+  type spVectorSingle
+    ! spherical polar vector
+    real(single) :: r
+    real(single) :: theta ! polar angle (0 to pi)
+    real(single) :: phi ! azimuth (0 to 2pi)
+  end type spVectorSingle
+
+  type spVectorDouble
+    ! spherical polar vector
+    real(double) :: r
+    real(double) :: theta
+    real(double) :: phi
+  end type spVectorDouble
+
+  type spVectorOctal
+    ! spherical polar vector
+    real(oct) :: r
+    real(oct) :: theta
+    real(oct) :: phi
+  end type spVectorOctal
+  
   ! Define multiply
 
   interface operator(*)
@@ -118,6 +142,12 @@ module vector_mod
      module procedure octalToSingleVector
      module procedure doubleToOctalVector
      module procedure octalToDoubleVector
+     module procedure SPtoXYZvectorSingle
+     module procedure SPtoXYZvectorDouble
+     module procedure SPtoXYZvectorOctal
+     module procedure XYZtoSPvectorSingle
+     module procedure XYZtoSPvectorDouble
+     module procedure XYZtoSPvectorOctal
   end interface
 
   ! dot product
@@ -200,7 +230,18 @@ module vector_mod
      module procedure fromPhotosphereOctalVector
   end interface
 
+  interface distancePointLineSegment
+    module procedure distancePointLineSegmentSingle
+    module procedure distancePointLineSegmentDouble
+    module procedure distancePointLineSegmentOctal
+  end interface
   
+  interface greatCircleDistance
+    module procedure greatCircleDistanceSingle
+    module procedure greatCircleDistanceDouble
+    module procedure greatCircleDistanceOctal
+  end interface
+
   type(VECTOR), parameter :: xHat = VECTOR(1., 0., 0.)
   type(VECTOR), parameter :: yHat = VECTOR(0., 1., 0.)
   type(VECTOR), parameter :: zHat = VECTOR(0., 0., 1.)
@@ -212,6 +253,10 @@ module vector_mod
   type(octalVector),parameter :: xHatOctal=octalVector(1.0_oc,0.0_oc,0.0_oc)
   type(octalVector),parameter :: yHatOctal=octalVector(0.0_oc,1.0_oc,0.0_oc)
   type(octalVector),parameter :: zHatOctal=octalVector(0.0_oc,0.0_oc,1.0_oc)
+  
+  type(VECTOR), parameter :: zeroVector = VECTOR(0., 0., 0.)
+  type(doubleVector),parameter :: zeroVectorDouble=doubleVector(0.0_db,0.0_db,0.0_db)
+  type(octalVector),parameter :: zeroVectorOctal=octalVector(0.0_oc,0.0_oc,0.0_oc)
 
 contains
 
@@ -787,7 +832,6 @@ contains
     rotateZOctal%z = a%z
 
   end function rotateZOctal
-
 
 
   type(VECTOR) pure function rotateXSingle(a,b)
@@ -1424,7 +1468,7 @@ contains
 
 
 
-  ! Convertiong octalvector to single vector
+  ! Convertiong single vector to octalvector
   function o2s(vec_oct) RESULT(out)
     implicit none
     type(vector) :: out 
@@ -1434,18 +1478,6 @@ contains
     out%y = vec_oct%y
     out%z = vec_oct%z   
   end function o2s
-
-
-  ! Convertiong octalvector to doublevector
-  function o2d(vec_oct) RESULT(out)
-    implicit none
-    type(doublevector) :: out 
-    type(octalvector), intent(in) :: vec_oct
-    
-    out%x = vec_oct%x
-    out%y = vec_oct%y
-    out%z = vec_oct%z   
-  end function o2d
    
 
   function projectToXZ(rVec) result (out)
@@ -1457,6 +1489,272 @@ contains
     out%z = rVec%z
   end function projectToXZ
 
+  elemental subroutine SPtoXYZvectorSingle(out,in)
+
+    TYPE(vector), INTENT(OUT) :: out
+    TYPE(spVectorSingle), INTENT(IN)  :: in
+
+    out%x = in%r * SIN(in%theta) * COS(in%phi)
+    out%y = in%r * SIN(in%theta) * SIN(in%phi)
+    out%z = in%r * COS(in%theta)
+    
+  end subroutine SPtoXYZvectorSingle
+  
+  elemental subroutine SPtoXYZvectorDouble(out,in)
+
+    TYPE(doubleVector), INTENT(OUT) :: out
+    TYPE(spVectorDouble), INTENT(IN)  :: in
+
+    out%x = in%r * SIN(in%theta) * COS(in%phi)
+    out%y = in%r * SIN(in%theta) * SIN(in%phi)
+    out%z = in%r * COS(in%theta)
+    
+  end subroutine SPtoXYZvectorDouble
+  
+  elemental subroutine SPtoXYZvectorOctal(out,in)
+
+    TYPE(octalVector), INTENT(OUT) :: out
+    TYPE(spVectorOctal), INTENT(IN)  :: in
+
+    out%x = in%r * SIN(in%theta) * COS(in%phi)
+    out%y = in%r * SIN(in%theta) * SIN(in%phi)
+    out%z = in%r * COS(in%theta)
+    
+  end subroutine SPtoXYZvectorOctal
+
+  ELEMENTAL SUBROUTINE XYZtoSPvectorSingle(out,in)
+
+    TYPE(SPvectorSingle), INTENT(OUT) :: out
+    TYPE(vector),  INTENT(IN) :: in
+
+    out%r = modulus(in)
+    
+    IF ( ABS(out%r) > TINY(1.0) ) THEN
+      out%theta = ACOS( in%z / out%r )
+    ELSE   
+      out%theta = pi / 2.0
+    END IF
+      
+    IF ( ( ABS(in%x) > TINY(1.0) ) .AND. ( ABS(in%y) > TINY(1.0) )) THEN
+      out%phi = ATAN2(in%y, in%x) 
+    ELSE
+      out%phi = 0.0
+    ENDIF
+    ! transform range from (-pi to pi) to (0 to 2pi)
+    IF (out%phi < 0.0) out%phi = out%phi + twoPi
+    
+  END SUBROUTINE XYZtoSPvectorSingle
+  
+  ELEMENTAL SUBROUTINE XYZtoSPvectorDouble(out,in)
+
+    TYPE(SPvectorDouble), INTENT(OUT) :: out
+    TYPE(octalVector),  INTENT(IN) :: in
+
+    out%r = modulus(in)
+    
+    IF ( ABS(out%r) > TINY(1.0_db) ) THEN
+      out%theta = ACOS( in%z / out%r )
+    ELSE   
+      out%theta = pi / 2.0_db
+    END IF
+      
+    IF ( ( ABS(in%x) > TINY(1.0_db) ) .AND. ( ABS(in%y) > TINY(1.0_db) )) THEN
+      out%phi = ATAN2(in%y, in%x) 
+    ELSE
+      out%phi = 0.0_db
+    ENDIF
+    ! transform range from (-pi to pi) to (0 to 2pi)
+    IF (out%phi < 0.0_db) out%phi = out%phi + twoPi
+    
+  END SUBROUTINE XYZtoSPvectorDouble
+   
+  ELEMENTAL SUBROUTINE XYZtoSPvectorOctal(out,in)
+
+    TYPE(SPvectorOctal), INTENT(OUT) :: out
+    TYPE(octalVector),  INTENT(IN) :: in
+
+    out%r = modulus(in)
+    
+    IF ( ABS(out%r) > TINY(1.0_oct) ) THEN
+      out%theta = ACOS( in%z / out%r )
+    ELSE   
+      out%theta = pi / 2.0_oct
+    END IF
+      
+    IF ( ( ABS(in%x) > TINY(1.0_oct) ) .AND. ( ABS(in%y) > TINY(1.0_oct) )) THEN
+      out%phi = ATAN2(in%y, in%x) 
+    ELSE
+      out%phi = 0.0_oct
+    ENDIF
+    ! transform range from (-pi to pi) to (0 to 2pi)
+    IF (out%phi < 0.0_oct) out%phi = out%phi + twoPi
+    
+  END SUBROUTINE XYZtoSPvectorOctal
+  
+  FUNCTION greatCircleDistanceSingle(pointA, pointB) RESULT(distance)
+    ! returns the great circle distance between two points
+    !   on a spherical surface
+ 
+    REAL :: distance ! (radians)
+    TYPE(spVectorSingle), INTENT(IN) :: pointA, pointB
+      ! the "r" components of the vectors are ignored
+    
+    REAL :: dLon, dLat, a
+    
+    dLon = pointB%phi - pointA%phi
+    dLat = pointB%theta - pointA%theta
+    a = (SIN(dLat/2.))**2 + COS(pointA%theta) * COS(pointB%theta) * SIN(dLon/2.)**2
+    distance = 2. * ASIN(MIN(1.,SQRT(a)))
+  
+  END FUNCTION greatCircleDistanceSingle
+  
+  FUNCTION greatCircleDistanceDouble(pointA, pointB) RESULT(distance)
+    ! returns the great circle distance between two points
+    !   on a spherical surface
+ 
+    REAL :: distance ! (radians)
+    TYPE(spVectorDouble), INTENT(IN) :: pointA, pointB
+      ! the "r" components of the vectors are ignored
+    
+    REAL(double) :: dLon, dLat, a
+    
+    dLon = pointB%phi - pointA%phi
+    dLat = pointB%theta - pointA%theta
+    a = (SIN(dLat/2.0_db))**2 + COS(pointA%theta) * COS(pointB%theta) * SIN(dLon/2.0_db)**2
+    distance = 2.0_db * ASIN(MIN(1.,SQRT(a)))
+  
+  END FUNCTION greatCircleDistanceDouble
+  
+  FUNCTION greatCircleDistanceOctal(pointA, pointB) RESULT(distance)
+    ! returns the great circle distance between two points
+    !   on a spherical surface
+ 
+    REAL :: distance ! (radians)
+    TYPE(spVectorOctal), INTENT(IN) :: pointA, pointB
+      ! the "r" components of the vectors are ignored
+    
+    REAL(oct) :: dLon, dLat, a
+    
+    dLon = pointB%phi - pointA%phi
+    dLat = pointB%theta - pointA%theta
+    a = (SIN(dLat/2.0_oct))**2 + COS(pointA%theta) * COS(pointB%theta) * SIN(dLon/2.0_oct)**2
+    distance = 2.0_oct * ASIN(MIN(1._oct,SQRT(a)))
+  
+  END FUNCTION greatCircleDistanceOctal
+  
+  FUNCTION distancePointLineSegmentSingle(linePoint1, linePoint2, testPoint) &
+                                          RESULT(distance)
+    ! given a line segment, defined by the two points at either end, 
+    !   this returns the distance to the line segment from another point
+   
+    REAL :: distance
+    TYPE(vector), INTENT(IN) :: linePoint1, linePoint2 ! points defining line segment
+    TYPE(vector), INTENT(IN) :: testPoint
+
+    TYPE(vector) :: line ! line segment
+    TYPE(vector) :: externalLine ! line to external point
+    REAL :: a, b, c
+    REAL :: distanceA, distanceB
+    TYPE(vector) :: extendedPoint
+
+    line = linePoint2 - linePoint1
+    externalLine = testPoint - linePoint1
+
+    a = line .dot. externalLine
+    distanceA = modulus( testPoint - linePoint1 )
+    IF ( a <= 0.0 ) THEN
+      distance = distanceA
+      RETURN
+    END IF
+    
+    b = line .dot. line
+    distanceB = modulus( testPoint - linePoint2 )
+    IF ( b <= a ) THEN
+      distance = distanceB
+      RETURN
+    END IF
+
+    c = a / b
+    extendedPoint = linePoint1 + (c * line)
+    distance = modulus( testPoint - extendedPoint )
+    
+  END FUNCTION distancePointLineSegmentSingle
+  
+  FUNCTION distancePointLineSegmentDouble(linePoint1, linePoint2, testPoint) &
+                                          RESULT(distance)
+    ! given a line segment, defined by the two points at either end, 
+    !   this returns the distance to the line segment from another point
+   
+    REAL(db) :: distance
+    TYPE(doubleVector), INTENT(IN) :: linePoint1, linePoint2 ! points defining line segment
+    TYPE(doubleVector), INTENT(IN) :: testPoint
+
+    TYPE(doubleVector) :: line ! line segment
+    TYPE(doubleVector) :: externalLine ! line to external point
+    REAL(db) :: a, b, c
+    REAL(db) :: distanceA, distanceB
+    TYPE(doubleVector) :: extendedPoint
+
+    line = linePoint2 - linePoint1
+    externalLine = testPoint - linePoint1
+
+    a = line .dot. externalLine
+    distanceA = modulus( testPoint - linePoint1 )
+    IF ( a <= 0.0 ) THEN
+      distance = distanceA
+      RETURN
+    END IF
+    
+    b = line .dot. line
+    distanceB = modulus( testPoint - linePoint2 )
+    IF ( b <= a ) THEN
+      distance = distanceB
+      RETURN
+    END IF
+
+    c = a / b
+    extendedPoint = linePoint1 + (c * line)
+    distance = modulus( testPoint - extendedPoint )
+    
+  END FUNCTION distancePointLineSegmentDouble
+
+  FUNCTION distancePointLineSegmentOctal(linePoint1, linePoint2, testPoint) &
+                                          RESULT(distance)
+    ! given a line segment, defined by the two points at either end, 
+    !   this returns the distance to the line segment from another point
+   
+    REAL(oc) :: distance
+    TYPE(octalVector), INTENT(IN) :: linePoint1, linePoint2 ! points defining line segment
+    TYPE(octalVector), INTENT(IN) :: testPoint
+
+    TYPE(octalVector) :: line ! line segment
+    TYPE(octalVector) :: externalLine ! line to external point
+    REAL(oc) :: a, b, c
+    REAL(oc) :: distanceA, distanceB
+    TYPE(octalVector) :: extendedPoint
+
+    line = linePoint2 - linePoint1
+    externalLine = testPoint - linePoint1
+
+    a = line .dot. externalLine
+    distanceA = modulus( testPoint - linePoint1 )
+    IF ( a <= 0.0_oc ) THEN
+      distance = distanceA
+      RETURN
+    END IF
+    
+    b = line .dot. line
+    distanceB = modulus( testPoint - linePoint2 )
+    IF ( b <= a ) THEN
+      distance = distanceB
+      RETURN
+    END IF
+
+    c = a / b
+    extendedPoint = linePoint1 + (c * line)
+    distance = modulus( testPoint - extendedPoint )
+    
+  END FUNCTION distancePointLineSegmentOctal  
 
 end module vector_mod
 

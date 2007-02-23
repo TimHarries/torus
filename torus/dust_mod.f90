@@ -1118,7 +1118,7 @@ contains
           r = modulus(subcellCentre(thisOctal, subcell))
           if (r < radius) then
              thisOctal%dustTypeFraction(subcell,:) = thisOctal%dustTypeFraction(subcell,:) * fac
-             thisOctal%etaCont(subcell) = thisOctal%etaCont(subcell) * fac
+             thisOctal%etaCont(subcell) = tiny(thisOctal%etaCont(subcell))
              thisOctal%oldFrac(subcell) = fac
           endif
        end if

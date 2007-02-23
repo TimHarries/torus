@@ -76,9 +76,10 @@ contains
     enddo
   end subroutine addVelocityAxis
 
-  subroutine plotDataCube(cube, device)
+  subroutine plotDataCube(cube, device, withspec)
     type(DATACUBE) :: cube
     character(len=*) :: device
+    logical, optional :: withSpec
     integer :: i, j, k
     integer :: pgbegin
     real, allocatable :: image(:,:)
@@ -92,6 +93,13 @@ contains
     real(double) :: sMax, Smin
     real :: range
     integer :: nstep 
+    logical :: doSpec
+
+    if (present(withSpec)) then
+       doSpec = withSpec
+    else
+       doSpec = .true.
+    endif
 
     nx = cube%nx
     ny = cube%ny
@@ -115,11 +123,8 @@ contains
           if ( sum(cube%intensity(i,j,1:cube%nv)) .gt. 0) then
              image(i,j) = log10(sum(cube%intensity(i,j,1:cube%nv)))
           else
-             image(i,j) = -(1.d0)*log10(-(1.d0)*sum(cube%intensity(i,j,1:cube%nv)))
+             image(i,j) = -30.
           endif
-
-          if (abs(image(i,j)) > 100) image(i,j) = 0.d0 
-          if (isnan(image(i,j))) image(i,j) = 0.d0 
        enddo
     enddo
 
@@ -150,45 +155,47 @@ contains
 
     allocate(spec(1:cube%nv))
 
-    nStep = nx / 5
+    if (doSpec) then
 
-    smin = 1.e30
-    smax = -1.e30
-    do i = 1, nx-1, nstep
-       do j = 1, ny-1, nstep
-          call getSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
-          sMax = MAX(sMax,MAXVAL(spec))
-          sMin = MIN(sMin,MINVAL(spec))
+       nStep = nx / 5
+       
+       smin = 1.e30
+       smax = -1.e30
+       do i = 1, nx-1, nstep
+          do j = 1, ny-1, nstep
+             call getSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
+             sMax = MAX(sMax,MAXVAL(spec))
+             sMin = MIN(sMin,MINVAL(spec))
+          enddo
        enddo
-    enddo
-
-    range = sMax - sMin
-    sMin = sMin - 0.2*range
-    sMax = sMax + 0.2*range
-    write(*,*) "min/max",smin,smax
-
-    do i = 1, nx-1, nstep
-       do j = 1, ny-1, nstep
-          call getweightedSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
-          vxs = x1 + (x2-x1)*real(i-1)/real(nx)
-          vxe = x1 + (x2-x1)*real(i+nstep-1)/real(nx)
-          vys = y1 + (y2-y1)*real(j-1)/real(ny)
-          vye = y1 + (y2-y1)*real(j+nstep-1)/real(ny)
-          call pgsci(3)
-          call pgvport(vxs, vxe, vys, vye)
-!          call pgbox('bc',0.0,0,'bc',0.0,0)
-          call pgwindow(real(cube%vAxis(1))-0.1, &
-               real(cube%vAxis(cube%nv))+0.1, &
-               real(smin), real(smax))
-
-!          write(*,*) spec(1:cube%nv)
-          call pgline(cube%nv, real(cube%vAxis), &
-               real(spec))
-
-          call pgsci(1)
+       
+       range = sMax - sMin
+       sMin = sMin - 0.2*range
+       sMax = sMax + 0.2*range
+       write(*,*) "min/max",smin,smax
+       
+       do i = 1, nx-1, nstep
+          do j = 1, ny-1, nstep
+             call getweightedSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
+             vxs = x1 + (x2-x1)*real(i-1)/real(nx)
+             vxe = x1 + (x2-x1)*real(i+nstep-1)/real(nx)
+             vys = y1 + (y2-y1)*real(j-1)/real(ny)
+             vye = y1 + (y2-y1)*real(j+nstep-1)/real(ny)
+             call pgsci(3)
+             call pgvport(vxs, vxe, vys, vye)
+             !          call pgbox('bc',0.0,0,'bc',0.0,0)
+             call pgwindow(real(cube%vAxis(1))-0.1, &
+                  real(cube%vAxis(cube%nv))+0.1, &
+                  real(smin), real(smax))
+             
+             !          write(*,*) spec(1:cube%nv)
+             call pgline(cube%nv, real(cube%vAxis), &
+                  real(spec))
+             
+             call pgsci(1)
+          enddo
        enddo
-    enddo
-          
+    end if
     call pgend
     call getweightedSpectrum(cube, 1, cube%nx, 1, cube%ny, spec)
     

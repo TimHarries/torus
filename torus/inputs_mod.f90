@@ -11,1252 +11,1252 @@ public
 
 contains
 
-subroutine inputs()
+  subroutine inputs()
 
-  use constants_mod
-  use vector_mod
-  use unix_mod
-  use input_variables         ! variables that would be passed as arguments
-  
-  implicit none
+    use constants_mod
+    use vector_mod
+    use unix_mod
+    use input_variables         ! variables that would be passed as arguments
 
-  integer :: nLines
-  integer :: errNo, i
-  logical :: ok
-  character(len=80) :: cLine(200) 
-  character(len=10) :: default
+    implicit none
 
-  character(len=20) :: grainTypeLabel, aminLabel, aMaxLabel, a0label
-  character(len=20) :: qdistlabel, pdistlabel, grainFracLabel
-  real :: grainFracTotal
-  logical :: done
+    integer :: nLines
+    integer :: errNo, i
+    logical :: ok
+    character(len=80) :: cLine(200) 
+    character(len=10) :: default
 
-  ! character vars for unix environ
+    character(len=20) :: grainTypeLabel, aminLabel, aMaxLabel, a0label
+    character(len=20) :: qdistlabel, pdistlabel, grainFracLabel
+    real :: grainFracTotal
+    logical :: done
 
-  character(len=80) :: dataDirectory
+    ! character vars for unix environ
 
-  character(len=20) :: keyword
-  character(len=80) :: message
-  character(len=80) :: paramFile
+    character(len=80) :: dataDirectory
 
-  integer :: error
+    character(len=20) :: keyword
+    character(len=80) :: message
+    character(len=80) :: paramFile
 
-  oneKappa = .false.
+    integer :: error
 
-  contrast = 1.
-  grainSize = 1.
-  nDustType = 1
+    oneKappa = .false.
 
-  nBlobs = 0
-  nLines = 0
+    contrast = 1.
+    grainSize = 1.
+    nDustType = 1
 
-  inputOK = .true.
+    nBlobs = 0
+    nLines = 0
 
-  call unixGetEnv("TORUS_JOB_DIR",absolutePath)
-  write(*,*) absolutePath
-  paramFile = trim(absolutePath)//"parameters.dat"
+    inputOK = .true.
 
-  open(unit=32, file=paramfile, status='old', iostat=error)
-  if (error /=0) then
-     print *, 'Panic: parameter file open error, file:',trim(paramFile) ; stop
-  end if
+    call unixGetEnv("TORUS_JOB_DIR",absolutePath)
+    write(*,*) absolutePath
+    paramFile = trim(absolutePath)//"parameters.dat"
 
-  do
-     nLines = nLines + 1
-     read(32,'(a80)',end=10) cLine(nLines)
-     if (trim(cLine(nLines)(1:1)) == "%") nLines = nLines - 1   ! % is a comment
-  end do
-10 continue
-  nLines = nLines - 1
+    open(unit=32, file=paramfile, status='old', iostat=error)
+    if (error /=0) then
+       print *, 'Panic: parameter file open error, file:',trim(paramFile) ; stop
+    end if
 
-  errno = 0
-  call unixGetenv("TORUS_DATA",dataDirectory,i,errno)
-  if (errNo /= 0) then
-     write(*,'(A)') "! warning TORUS_DATA environment variable should be defined"
-     stop
-  endif
+    do
+       nLines = nLines + 1
+       read(32,'(a80)',end=10) cLine(nLines)
+       if (trim(cLine(nLines)(1:1)) == "%") nLines = nLines - 1   ! % is a comment
+    end do
+10  continue
+    nLines = nLines - 1
 
-
-  call getInteger("verbosity", verbosityLevel, cLine, nLines, &
-       "Verbosity level: ", "(a,i8,1x,a)", 1, ok, .false.)
+    errno = 0
+    call unixGetenv("TORUS_DATA",dataDirectory,i,errno)
+    if (errNo /= 0) then
+       write(*,'(A)') "! warning TORUS_DATA environment variable should be defined"
+       stop
+    endif
 
 
-  call getInteger("nphotons", nPhotons, cLine, nLines, &
-       "Number of photons: ", "(a,i8,1x,a)", 100000, ok, .true.)
-
-  call getLogical("blockhandout", blockHandout, cLine, nLines, &
-        "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .true., ok, .false.)
+    call getInteger("verbosity", verbosityLevel, cLine, nLines, &
+         "Verbosity level: ", "(a,i8,1x,a)", 1, ok, .false.)
 
 
-  call getReal("distance", gridDistance, cLine, nLines, &
-       "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
+    call getInteger("nphotons", nPhotons, cLine, nLines, &
+         "Number of photons: ", "(a,i8,1x,a)", 100000, ok, .true.)
+
+    call getLogical("blockhandout", blockHandout, cLine, nLines, &
+         "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .true., ok, .false.)
 
 
- call getReal("lamstart", lamstart, cLine, nLines, &
-     "X-array start (angs or kms): ", "(a,f7.1,1x,a)", 2000., ok, .true.)
-
- call getReal("lamend", lamend, cLine, nLines, &
-     "X-array end (angs or kms): ", "(a,f12.1,1x,a)", 10000., ok, .true.)
+    call getReal("distance", gridDistance, cLine, nLines, &
+         "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
 
 
- call getLogical("wavlin", lamLinear, cLine, nLines, &
+    call getReal("lamstart", lamstart, cLine, nLines, &
+         "X-array start (angs or kms): ", "(a,f7.1,1x,a)", 2000., ok, .true.)
+
+    call getReal("lamend", lamend, cLine, nLines, &
+         "X-array end (angs or kms): ", "(a,f12.1,1x,a)", 10000., ok, .true.)
+
+
+    call getLogical("wavlin", lamLinear, cLine, nLines, &
          "Linear wavelength array: ","(a,1l,1x,a)", .true., ok, .true.)
 
- call getLogical("lambdafile", lamfile, cLine, nLines, &
+    call getLogical("lambdafile", lamfile, cLine, nLines, &
          "Wavelength grid from file: ","(a,1l,1x,a)", .false., ok, .false.)
- 
- if (lamFile) then
-    call getString("lamfilename", lamFilename, cLine, nLines, &
-     "Wavelength grid filename: ","(a,a,1x,a)","none", ok, .true.)
- endif
 
- call getInteger("nlambda", nlambda, cLine, nLines, &
-     "Number of wavelength/velocity bins: ", "(a,i4,1x,a)", 20, ok, .true.)
+    if (lamFile) then
+       call getString("lamfilename", lamFilename, cLine, nLines, &
+            "Wavelength grid filename: ","(a,a,1x,a)","none", ok, .true.)
+    endif
 
- 
- call getReal("lambdatau", lambdatau, cLine, nLines, &
-      "Lambda for tau test: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
- 
- call getLogical("sed", sed, cLine, nLines, &
+    call getInteger("nlambda", nlambda, cLine, nLines, &
+         "Number of wavelength/velocity bins: ", "(a,i4,1x,a)", 20, ok, .true.)
+
+
+    call getReal("lambdatau", lambdatau, cLine, nLines, &
+         "Lambda for tau test: ","(a,1PE10.3,1x,a)", 5500.0, ok, .false.)
+
+    call getLogical("sed", sed, cLine, nLines, &
          "Write spectrum as lambda vs lambda Flambda: ","(a,1l,1x,a)", .false., ok, .false.)
 
- call getLogical("dustysed", dustysed, cLine, nLines, &
+    call getLogical("dustysed", dustysed, cLine, nLines, &
          "Write spectrum as normalized lambda Flambda: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
- call getLogical("sised", sised, cLine, nLines, &
+    call getLogical("sised", sised, cLine, nLines, &
          "Write spectrum as lambda (microns) vs lambda F_lambda (microns * W/m^2):","(a,1l,1x,a)", .false., ok, .false.)
 
- call getLogical("jansky", jansky, cLine, nLines, &
+    call getLogical("jansky", jansky, cLine, nLines, &
          "Write spectrum in janskies: ","(a,1l,1x,a)", .false., ok, .false.)
 
- call getLogical("inarcsec", imageinArcsec, cLine, nLines, &
+    call getLogical("inarcsec", imageinArcsec, cLine, nLines, &
          "Write image distances in arcseconds: ","(a,1l,1x,a)", .false., ok, .false.)
 
- if (imageInArcSec) then
-    call getReal("imagearcsec", imageSizeinArcsec, cLine, nLines, &
-         "Image size in arcseconds: ","(a,f10.3,1x,a)", 0.130, ok, .true.)
- endif
+    if (imageInArcSec) then
+       call getReal("imagearcsec", imageSizeinArcsec, cLine, nLines, &
+            "Image size in arcseconds: ","(a,f10.3,1x,a)", 0.130, ok, .true.)
+    endif
 
 
- call getLogical("sed", sed, cLine, nLines, &
+    call getLogical("sed", sed, cLine, nLines, &
          "Write spectrum as normalized lambda Flambda: ","(a,1l,1x,a)", .false., ok, .false.)
 
- call getLogical("jansky", jansky, cLine, nLines, &
+    call getLogical("jansky", jansky, cLine, nLines, &
          "Write spectrum in janskies: ","(a,1l,1x,a)", .false., ok, .false.)
 
 
- call getInteger("npix", npix, cLine, nLines, &
-      "Number of pixels for polimages: ", "(a,i3,1x,a)", 50, ok, .false.)
+    call getInteger("npix", npix, cLine, nLines, &
+         "Number of pixels for polimages: ", "(a,i3,1x,a)", 50, ok, .false.)
 
 
-  call getString("distortion", distortionType, cLine, nLines, &
-       "Distortion type: ","(a,a,1x,a)","none", ok, .false.)
+    call getString("distortion", distortionType, cLine, nLines, &
+         "Distortion type: ","(a,a,1x,a)","none", ok, .false.)
 
-  call getInteger("ninc", nInclination, cLine, nLines, &
-      "Number of inclination angles: ", "(a,i3,1x,a)", 1, ok, .false.)
-  
-  allocate(inclinations(nInclination))
-  call findRealArray("inclinations", inclinations, cLine, nLines, ok)
-  if (ok) then
-     call getRealArray("inclinations", inclinations, cLine, nLines, &
-          "Inclinations (deg): ",'(a,4i4,1x,a)',90., ok, .false.)
-     inclinations(:) = inclinations(:) * degToRad
-  else
-     deallocate(inclinations)
-     call getReal("firstinc", firstInclination, cLine, nLines, &
-          "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
-          firstInclination = firstInclination * degToRad
-     if (nInclination > 1) &
-        call getReal("lastinc", lastInclination, cLine, nLines, &
-             "Last inclination angle (deg): ","(a,f4.1,1x,a)", 80., ok, .true.)
-             lastInclination = lastInclination * degToRad
-  end if
+    call getInteger("ninc", nInclination, cLine, nLines, &
+         "Number of inclination angles: ", "(a,i3,1x,a)", 1, ok, .false.)
 
-  call getReal("scale", scale, cLine, nLines, &
-       "Scale (rsolar): ","(a,f6.1,1x,a)", 1000., ok, .false.) 
+    allocate(inclinations(nInclination))
+    call findRealArray("inclinations", inclinations, cLine, nLines, ok)
+    if (ok) then
+       call getRealArray("inclinations", inclinations, cLine, nLines, &
+            "Inclinations (deg): ",'(a,4i4,1x,a)',90., ok, .false.)
+       inclinations(:) = inclinations(:) * degToRad
+    else
+       deallocate(inclinations)
+       call getReal("firstinc", firstInclination, cLine, nLines, &
+            "First inclination angle (deg): ","(a,f4.1,1x,a)", 10., ok, .true.)
+       firstInclination = firstInclination * degToRad
+       if (nInclination > 1) &
+            call getReal("lastinc", lastInclination, cLine, nLines, &
+            "Last inclination angle (deg): ","(a,f4.1,1x,a)", 80., ok, .true.)
+       lastInclination = lastInclination * degToRad
+    end if
+
+!    call getReal("scale", scale, cLine, nLines, &
+!         "Scale (rsolar): ","(a,f6.1,1x,a)", 1000., ok, .false.) 
 
 
-  call getString("gridtype", gridcoords, cLine, nLines, &
-       "Grid type: ","(a,a,a)","cartesian",ok, .true.)
+    call getString("gridtype", gridcoords, cLine, nLines, &
+         "Grid type: ","(a,a,a)","cartesian",ok, .true.)
 
-  call getLogical("gridusesamr", gridUsesAMR, cLine, nLines, &
-       "Grid uses adaptive mesh refinement: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("gridusesamr", gridUsesAMR, cLine, nLines, &
+         "Grid uses adaptive mesh refinement: ","(a,1l,1x,a)", .false., ok, .false.)
 
-  call getLogical("cylindrical", cylindrical, cLine, nLines, &
-       "Grid uses 3D cylindical  coords: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("cylindrical", cylindrical, cLine, nLines, &
+         "Grid uses 3D cylindical  coords: ","(a,1l,1x,a)", .false., ok, .false.)
 
-  call getLogical("amr1d", amr1d, cLine, nLines, &
-       "AMR grid is in one-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("amr1d", amr1d, cLine, nLines, &
+         "AMR grid is in one-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)
 
-  call getLogical("amr2d", amr2d, cLine, nLines, &
-       "AMR grid is in two-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("amr2d", amr2d, cLine, nLines, &
+         "AMR grid is in two-dimensions only: ","(a,1l,1x,a)", .false., ok, .false.)
 
-  call getLogical("amr3d", amr3d, cLine, nLines, &
-       "AMR grid is in three-dimensions: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("amr3d", amr3d, cLine, nLines, &
+         "AMR grid is in three-dimensions: ","(a,1l,1x,a)", .false., ok, .false.)
 
-  
-  if (gridUsesAMR) then
-     call getReal("amrgridsize", amrGridSize, cLine, nLines, &
-          "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
-     call getDouble("amrgridcentrex", amrGridCentreX, cLine, nLines, &
-          "Grid centre X-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
-!        if (amrGridCentreX == 0.0) then 
-!           print *, 'WARNING: amrGridCentreX == 0. This may cause numerical problems!'
-!        end if
-     call getDouble("amrgridcentrey", amrGridCentreY, cLine, nLines, &
-          "Grid centre Y-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
-!        if (amrGridCentreY == 0.0) then 
-!           print *, 'WARNING: amrGridCentreY == 0. This may cause numerical problems!'
-!        end if
-     call getDouble("amrgridcentrez", amrGridCentreZ, cLine, nLines, &
-          "Grid centre Z-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
-!        if (amrGridCentreZ == 0.0) then 
-!           print *, 'WARNING: amrGridCentreZ == 0. This may cause numerical problems!'
-!        end if
-     call getDouble("limitscalar", limitScalar, cLine, nLines, &
-          "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000._db, ok, .false.) 
-     call getDouble("limittwo", limitScalar2, cLine, nLines, &
-          "Second scalar limit for subcell division: ","(a,es9.3,1x,a)", 0._db, ok, .false.) 
-     call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
-          "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
-     call getLogical("smoothgridtau", doSmoothGridtau, cLine, nLines, &
-          "Smooth AMR grid using tau: ","(a,1l,1x,a)", .false., ok, .false.)
-     if (dosmoothgridtau) then
-        call getReal("lambdasmooth", lambdasmooth, cLine, nLines, &
-             "Lambda for tau smoothing: ","(a,1PE10.3,1x,a)", 5500.0, ok, .true.)
-        call getReal("taumax", tauSmoothMax, cLine, nLines, &
-             "Maximum tau for smoothing: ","(a,f10.1,1x,a)", 1.0, ok, .true.)
-        call getReal("taumin", tauSmoothMin, cLine, nLines, &
-             "Minimum tau for smoothing: ","(a,f10.1,1x,a)", 1.0, ok, .true.)
-     endif
 
-     if (doSmoothGrid) then
-       call getReal("smoothfactor", smoothFactor, cLine, nLines, &
-            "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 5., ok, .true.)
-     else
-       smoothFactor = 0.0      
-     end if
-     call getReal("samplefreq", sampleFreq, cLine, nLines, &
-          "Max samples per AMR subcell: ","(a,f6.1,1x,a)", 2., ok, .true.) 
-     call getString("popfile", popFilename, cLine, nLines, &
-          "Grid populations filename: ","(a,a,1x,a)","none", ok, .false.)
-     call getLogical("writepops", writePops, cLine, nLines, &
-          "Write populations file: ","(a,1l,1x,a)", .false., ok, .false.)
-     call getLogical("readpops", readPops, cLine, nLines, &
-          "Read populations file: ","(a,1l,1x,a)", .false., ok, .false.)
-     call getLogical("writephasepops", writePhasePops, cLine, nLines, &
-              "Write populations file at each phase: ","(a,1l,1x,a)", .false., ok, .false.)
-     call getLogical("readphasepops", readPhasePops, cLine, nLines, &
-              "Read populations file (specific phase): ","(a,1l,1x,a)", .false., ok, .false.)
-     call getLogical("stateq2d", statEq2d, cLine, nLines, &
-          "Statistical equilibrium can be 2-D: ","(a,1l,1x,a)", .false., ok, .false.)
-     call getLogical("stateq1stoctant", statEq1stOctant, cLine, nLines, &
-          "amrStateq is performed only in 1st octant: ","(a,1l,1x,a)", .false., ok, .false.)
-     call getLogical("nophaseupdate", noPhaseUpdate, cLine, nLines, &
-          "Disable updating AMR grid at each phase: ","(a,1l,1x,a)", .true., ok, .false.)
-     call getLogical("2donly", amr2dOnly, cLine, nLines, &
-          "Only use 2D plane in AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
-     if (amr2dOnly .and. .not. statEq2d) then
-        if (writeoutput) write(*,'(a)') "WARNING: turning on statEq2d for amr2dOnly"
-        statEq2d = .true.
-     end if
-     if (statEq2d .and. ( (amrGridCentreX < 0.0) .or. (amrGridCentreY < 0.0) ))  & 
-        print *, 'WARNING: grid centre should probably set (x>0) and (y>0) if ',&
-                 'doing statEq2d'     
-     if (statEq2d .and. statEq1stOctant)  then
-        print *, 'Error:: statEq2d and statEq1stOctant cannot be both T. '
-        print *, '        Change one or both in your parameter file!'
-        stop
-     end if
+    if (gridUsesAMR) then
+       call getReal("amrgridsize", amrGridSize, cLine, nLines, &
+            "Size of adaptive mesh grid: ","(a,1pe8.1,1x,a)", 1000., ok, .true.) 
+       call getDouble("amrgridcentrex", amrGridCentreX, cLine, nLines, &
+            "Grid centre X-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
+       !        if (amrGridCentreX == 0.0) then 
+       !           print *, 'WARNING: amrGridCentreX == 0. This may cause numerical problems!'
+       !        end if
+       call getDouble("amrgridcentrey", amrGridCentreY, cLine, nLines, &
+            "Grid centre Y-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
+       !        if (amrGridCentreY == 0.0) then 
+       !           print *, 'WARNING: amrGridCentreY == 0. This may cause numerical problems!'
+       !        end if
+       call getDouble("amrgridcentrez", amrGridCentreZ, cLine, nLines, &
+            "Grid centre Z-coordinate: ","(a,es9.3,1x,a)", 0.0d0, ok, .false.) 
+       !        if (amrGridCentreZ == 0.0) then 
+       !           print *, 'WARNING: amrGridCentreZ == 0. This may cause numerical problems!'
+       !        end if
+       call getDouble("limitscalar", limitScalar, cLine, nLines, &
+            "Scalar limit for subcell division: ","(a,es9.3,1x,a)", 1000._db, ok, .false.) 
+       call getDouble("limittwo", limitScalar2, cLine, nLines, &
+            "Second scalar limit for subcell division: ","(a,es9.3,1x,a)", 0._db, ok, .false.) 
+       call getLogical("dosmoothgrid", doSmoothGrid, cLine, nLines, &
+            "Smooth AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("smoothgridtau", doSmoothGridtau, cLine, nLines, &
+            "Smooth AMR grid using tau: ","(a,1l,1x,a)", .false., ok, .false.)
+       if (dosmoothgridtau) then
+          call getReal("lambdasmooth", lambdasmooth, cLine, nLines, &
+               "Lambda for tau smoothing: ","(a,1PE10.3,1x,a)", 5500.0, ok, .true.)
+          call getReal("taumax", tauSmoothMax, cLine, nLines, &
+               "Maximum tau for smoothing: ","(a,f10.1,1x,a)", 1.0, ok, .true.)
+          call getReal("taumin", tauSmoothMin, cLine, nLines, &
+               "Minimum tau for smoothing: ","(a,f10.1,1x,a)", 1.0, ok, .true.)
+       endif
 
-     if (amr2d) then
-        if (writeoutput) write(*,*) "WARNING: amr grid is in two-d - switching off stateq2d"
-        stateq2d = .false.
-        amr2donly = .false.
-     endif
+       if (doSmoothGrid) then
+          call getReal("smoothfactor", smoothFactor, cLine, nLines, &
+               "Inter-cell maximum ratio before smooth: ","(a,f6.1,1x,a)", 5., ok, .true.)
+       else
+          smoothFactor = 0.0      
+       end if
+       call getReal("samplefreq", sampleFreq, cLine, nLines, &
+            "Max samples per AMR subcell: ","(a,f6.1,1x,a)", 2., ok, .true.) 
+       call getString("popfile", popFilename, cLine, nLines, &
+            "Grid populations filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getLogical("writepops", writePops, cLine, nLines, &
+            "Write populations file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("readpops", readPops, cLine, nLines, &
+            "Read populations file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("writephasepops", writePhasePops, cLine, nLines, &
+            "Write populations file at each phase: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("readphasepops", readPhasePops, cLine, nLines, &
+            "Read populations file (specific phase): ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("stateq2d", statEq2d, cLine, nLines, &
+            "Statistical equilibrium can be 2-D: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("stateq1stoctant", statEq1stOctant, cLine, nLines, &
+            "amrStateq is performed only in 1st octant: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("nophaseupdate", noPhaseUpdate, cLine, nLines, &
+            "Disable updating AMR grid at each phase: ","(a,1l,1x,a)", .true., ok, .false.)
+       call getLogical("2donly", amr2dOnly, cLine, nLines, &
+            "Only use 2D plane in AMR grid: ","(a,1l,1x,a)", .false., ok, .false.)
+       if (amr2dOnly .and. .not. statEq2d) then
+          if (writeoutput) write(*,'(a)') "WARNING: turning on statEq2d for amr2dOnly"
+          statEq2d = .true.
+       end if
+       if (statEq2d .and. ( (amrGridCentreX < 0.0) .or. (amrGridCentreY < 0.0) ))  & 
+            print *, 'WARNING: grid centre should probably set (x>0) and (y>0) if ',&
+            'doing statEq2d'     
+       if (statEq2d .and. statEq1stOctant)  then
+          print *, 'Error:: statEq2d and statEq1stOctant cannot be both T. '
+          print *, '        Change one or both in your parameter file!'
+          stop
+       end if
 
-     if (readPops .and. writePops) then
-        if (writeoutput) write(*,'(a)') "WARNING: both readPops and writePops set."
-     endif
-     call getLogical("readfileformatted", readFileFormatted, cLine, nLines, &
-          "Populations input file is formatted: ","(a,1l,1x,a)", .false., ok, .false.)
-     call getLogical("writefileformatted", writeFileFormatted, cLine, nLines, &
-          "Populations output file will be formatted: ","(a,1l,1x,a)", .false., ok, .false.)
-     call getLogical("forcelinechange", forceLineChange, cLine, nLines, &
-          "Recalculate opacities for different line transition: ","(a,1l,1x,a)", .false., ok, .false.)
-      
-     
-  else    
+       if (amr2d) then
+          if (writeoutput) write(*,*) "WARNING: amr grid is in two-d - switching off stateq2d"
+          stateq2d = .false.
+          amr2donly = .false.
+       endif
 
-    if (gridcoords.eq."cartesian") then
-       call getInteger("nx", nx, cLine, nLines, &
-            "Grid size in x-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
-       call getInteger("ny", ny, cLine, nLines, &
-            "Grid size in y-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
-       call getInteger("nz", nz, cLine, nLines, &
-            "Grid size in z-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+       if (readPops .and. writePops) then
+          if (writeoutput) write(*,'(a)') "WARNING: both readPops and writePops set."
+       endif
+       call getLogical("readfileformatted", readFileFormatted, cLine, nLines, &
+            "Populations input file is formatted: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("writefileformatted", writeFileFormatted, cLine, nLines, &
+            "Populations output file will be formatted: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("forcelinechange", forceLineChange, cLine, nLines, &
+            "Recalculate opacities for different line transition: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+    else    
+
+       if (gridcoords.eq."cartesian") then
+          call getInteger("nx", nx, cLine, nLines, &
+               "Grid size in x-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+          call getInteger("ny", ny, cLine, nLines, &
+               "Grid size in y-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+          call getInteger("nz", nz, cLine, nLines, &
+               "Grid size in z-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+       endif
+
+       if (gridcoords.eq."polar") then
+          call getInteger("nr", nr, cLine, nLines, &
+               "Grid size in r-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+          call getInteger("nmu", nmu, cLine, nLines, &
+               "Grid size in mu-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+          call getInteger("nphi", nphi, cLine, nLines, &
+               "Grid size in phi-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+       endif
+
+    end if
+
+    call getString("geometry", geometry, cLine, nLines, &
+         "Geometry: ","(a,a,a)","sphere",ok, .true.)
+
+    !  call getLogical("raman", doRaman, cLine, nLines, &
+    !            "Raman-scattering model: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+    !  if (geometry(1:5) .eq. "torus") then
+    !     call getReal("rtorus", rTorus, cLine, nLines, &
+    !          "Radius of torus (AU): ","(a,f5.1,a)", 0.7, ok, .true.)
+    !     call getReal("router", rOuter, cLine, nLines, &
+    !          "Radius of torus x-section (AU): ","(a,f5.1,a)", 0.1, ok, .true.)
+    !     call getReal("teff", teff, cLine, nLines, &
+    !          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+    !     rTorus = rTorus * auTocm
+    !     rOuter = rOuter * auTocm
+    !  endif
+
+    if (geometry == "rolf") then
+       call getReal("mdot", mdot, cLine, nLines, &
+            "Hot-star mass-loss rate (msol/yr): ","(a,1p,e12.5,a)", 0.7, ok, .true.)
+       call getReal("vterm", vterm, cLine, nLines, &
+            "Hot-star terminal velocity (km/s): ","(a,f5.1,a)", 0., ok, .true.)
+       call getReal("o6width", o6width, cLine, nLines, &
+            "FWHM of O6 line (km/s): ","(a,f5.1,a)", 0., ok, .true.)
+       o6width = o6width * 1.e5
+       vterm = vterm * 1.e5
+       mdot = mdot * msol / (365.25 * 24. * 60. * 60.)
+       doRaman = .true.
     endif
 
-    if (gridcoords.eq."polar") then
-       call getInteger("nr", nr, cLine, nLines, &
-            "Grid size in r-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
-       call getInteger("nmu", nmu, cLine, nLines, &
-            "Grid size in mu-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
-       call getInteger("nphi", nphi, cLine, nLines, &
-            "Grid size in phi-direction: ", "(a,i3,1x,a)", 100, ok, .true.)
+
+    if (trim(geometry) .eq. "dustblob") then
+       call getReal("blobdistance", dustBlobDistance, cLine, nLines, &
+            "Dust blob distance: ","(a,f5.1,a)", 0.5, ok, .true.)
+       call getReal("phi", phiDustBlob, cLine, nLines, &
+            "Dust blob azimuthal angle: ","(a,f5.1,a)", 0., ok, .true.)
+       phiDustBlob = phiDustBlob * degToRad
+       call getReal("xsize", xDustBlobSize, cLine, nLines, &
+            "Dust blob x-size: ","(a,f5.1,a)", 0.1, ok, .true.)
+       call getReal("ysize", yDustBlobSize, cLine, nLines, &
+            "Dust blob y-size: ","(a,f5.1,a)", 0.1, ok, .true.)
+       call getReal("zsize", zDustBlobSize, cLine, nLines, &
+            "Dust blob z-size: ","(a,f5.1,a)", 0.1, ok, .true.)
     endif
 
-  end if
+    if (trim(geometry) .eq. "collide") then
+       call getReal("rho", dustBlobDistance, cLine, nLines, &
+            "Electron density: ","(a,1pe7.1,a)", 1.e10, ok, .true.)
+       call getReal("binarysep", binarySep, cLine, nLines, &
+            "Binary separation (cm): ","(a,1pe7.1,a)", 1.e13, ok, .true.)
+       call getReal("momratio", momRatio, cLine, nLines, &
+            "Wind momentum ratio (p/s): ","(a,f3.1,a)", 0.1, ok, .true.)
+       call getReal("mdot", logMassLossRate, cLine, nLines, &
+            "Log mDot: ","(a,f3.1,a)", -5., ok, .true.)
+    endif
 
-  call getString("geometry", geometry, cLine, nLines, &
-       "Geometry: ","(a,a,a)","sphere",ok, .true.)
-
-!  call getLogical("raman", doRaman, cLine, nLines, &
-!            "Raman-scattering model: ","(a,1l,1x,a)", .false., ok, .false.)
-
-
-!  if (geometry(1:5) .eq. "torus") then
-!     call getReal("rtorus", rTorus, cLine, nLines, &
-!          "Radius of torus (AU): ","(a,f5.1,a)", 0.7, ok, .true.)
-!     call getReal("router", rOuter, cLine, nLines, &
-!          "Radius of torus x-section (AU): ","(a,f5.1,a)", 0.1, ok, .true.)
-!     call getReal("teff", teff, cLine, nLines, &
-!          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-!     rTorus = rTorus * auTocm
-!     rOuter = rOuter * auTocm
-!  endif
-
-  if (geometry == "rolf") then
-     call getReal("mdot", mdot, cLine, nLines, &
-          "Hot-star mass-loss rate (msol/yr): ","(a,1p,e12.5,a)", 0.7, ok, .true.)
-     call getReal("vterm", vterm, cLine, nLines, &
-          "Hot-star terminal velocity (km/s): ","(a,f5.1,a)", 0., ok, .true.)
-     call getReal("o6width", o6width, cLine, nLines, &
-          "FWHM of O6 line (km/s): ","(a,f5.1,a)", 0., ok, .true.)
-     o6width = o6width * 1.e5
-     vterm = vterm * 1.e5
-     mdot = mdot * msol / (365.25 * 24. * 60. * 60.)
-     doRaman = .true.
-  endif
-
-
-  if (trim(geometry) .eq. "dustblob") then
-     call getReal("blobdistance", dustBlobDistance, cLine, nLines, &
-          "Dust blob distance: ","(a,f5.1,a)", 0.5, ok, .true.)
-     call getReal("phi", phiDustBlob, cLine, nLines, &
-          "Dust blob azimuthal angle: ","(a,f5.1,a)", 0., ok, .true.)
-     phiDustBlob = phiDustBlob * degToRad
-     call getReal("xsize", xDustBlobSize, cLine, nLines, &
-          "Dust blob x-size: ","(a,f5.1,a)", 0.1, ok, .true.)
-     call getReal("ysize", yDustBlobSize, cLine, nLines, &
-          "Dust blob y-size: ","(a,f5.1,a)", 0.1, ok, .true.)
-     call getReal("zsize", zDustBlobSize, cLine, nLines, &
-          "Dust blob z-size: ","(a,f5.1,a)", 0.1, ok, .true.)
-  endif
-
-  if (trim(geometry) .eq. "collide") then
-     call getReal("rho", dustBlobDistance, cLine, nLines, &
-          "Electron density: ","(a,1pe7.1,a)", 1.e10, ok, .true.)
-     call getReal("binarysep", binarySep, cLine, nLines, &
-          "Binary separation (cm): ","(a,1pe7.1,a)", 1.e13, ok, .true.)
-     call getReal("momratio", momRatio, cLine, nLines, &
-          "Wind momentum ratio (p/s): ","(a,f3.1,a)", 0.1, ok, .true.)
-     call getReal("mdot", logMassLossRate, cLine, nLines, &
-          "Log mDot: ","(a,f3.1,a)", -5., ok, .true.)
-  endif
-
-  if (distortionType.eq."binary") then
-     call getReal("momratio", momRatio, cLine, nLines, &
-          "Wind momentum ratio (p/s): ","(a,f3.1,a)", 0.1, ok, .true.)
-  endif
+    if (distortionType.eq."binary") then
+       call getReal("momratio", momRatio, cLine, nLines, &
+            "Wind momentum ratio (p/s): ","(a,f3.1,a)", 0.1, ok, .true.)
+    endif
 
 
 
-  if (geometry .eq. "wr137") then
-     call getReal("rcore", rCore, cLine, nLines, &
-          "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-     call getReal("temp", temp1, cLine, nLines, &
-          "Wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("vterm", vTerm, cLine, nLines, &
-          "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("beta", beta, cLine, nLines, &
-        "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("mdot", mdot, cLine, nLines, &
-          "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
+    if (geometry .eq. "wr137") then
+       call getReal("rcore", rCore, cLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+       call getReal("temp", temp1, cLine, nLines, &
+            "Wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vterm", vTerm, cLine, nLines, &
+            "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("beta", beta, cLine, nLines, &
+            "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("mdot", mdot, cLine, nLines, &
+            "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
 
-     rCore = rCore * rSol
-     vTerm = vTerm * 1.e5
-     mdot = mdot*msol/(365.25*24.*3600.)
+       rCore = rCore * rSol
+       vTerm = vTerm * 1.e5
+       mdot = mdot*msol/(365.25*24.*3600.)
 
-  endif
+    endif
 
-  if (geometry .eq. "wr104") then
-     call getReal("massenv", massEnvelope, cLine, nLines, &
-          "Envelope dust mass (Moon masses): ","(a,f5.2,a)", 10., ok, .true.)
-     massEnvelope = massEnvelope * mMoon
-  endif
-
-
-  call getLogical("resonance", resonanceLine, cLine, nLines, &
-       "Resonance line: ","(a,1l,1x,a)", .false., ok, .false.)
-
-  if (geometry .eq. "resonance") then
-!     call getReal("rcore", rCore, cLine, nLines, &
-!          "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-!     call getReal("temp", temp1, cLine, nLines, &
-!          "Wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-!     call getReal("vterm", vTerm, cLine, nLines, &
-!          "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-!     call getReal("beta", beta, cLine, nLines, &
-!        "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-!     call getReal("mdot", mdot, cLine, nLines, &
-!          "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
-!
-!     rCore = rCore * rSol
-!     vTerm = vTerm * 1.e5
-!     mdot = mdot*msol/(365.25*24.*3600.)
-
-  endif
-
-  if (geometry .eq. "spiralwind") then
-     call getReal("rcore", rCore, cLine, nLines, &
-          "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-     call getReal("teff", teff, cLine, nLines, &
-          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("v0", v0, cLine, nLines, &
-          "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("vterm", vTerm, cLine, nLines, &
-          "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("beta", beta, cLine, nLines, &
-        "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("mdot", mdot, cLine, nLines, &
-          "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
-     rCore = rCore * rSol
-     v0 = v0 * 1.e5
-     vTerm = vTerm * 1.e5
-     mdot = mdot*msol/(365.25*24.*3600.)
-     vRot = vRot * 1.e5
-     call getString("contflux", contFluxFile, cLine, nLines, &
-        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+    if (geometry .eq. "wr104") then
+       call getReal("massenv", massEnvelope, cLine, nLines, &
+            "Envelope dust mass (Moon masses): ","(a,f5.2,a)", 10., ok, .true.)
+       massEnvelope = massEnvelope * mMoon
+    endif
 
 
-  endif
+    call getLogical("resonance", resonanceLine, cLine, nLines, &
+         "Resonance line: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (geometry .eq. "resonance") then
+       !     call getReal("rcore", rCore, cLine, nLines, &
+       !          "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+       !     call getReal("temp", temp1, cLine, nLines, &
+       !          "Wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       !     call getReal("vterm", vTerm, cLine, nLines, &
+       !          "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       !     call getReal("beta", beta, cLine, nLines, &
+       !        "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+       !     call getReal("mdot", mdot, cLine, nLines, &
+       !          "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
+       !
+       !     rCore = rCore * rSol
+       !     vTerm = vTerm * 1.e5
+       !     mdot = mdot*msol/(365.25*24.*3600.)
+
+    endif
+
+    if (geometry .eq. "spiralwind") then
+       call getReal("rcore", rCore, cLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+       call getReal("teff", teff, cLine, nLines, &
+            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("v0", v0, cLine, nLines, &
+            "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vterm", vTerm, cLine, nLines, &
+            "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("beta", beta, cLine, nLines, &
+            "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("mdot", mdot, cLine, nLines, &
+            "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
+       rCore = rCore * rSol
+       v0 = v0 * 1.e5
+       vTerm = vTerm * 1.e5
+       mdot = mdot*msol/(365.25*24.*3600.)
+       vRot = vRot * 1.e5
+       call getString("contflux", contFluxFile, cLine, nLines, &
+            "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
 
 
-  if (geometry .eq. "spiralwind") then
-     call getReal("rcore", rCore, cLine, nLines, &
-          "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-     call getReal("teff", teff, cLine, nLines, &
-          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("v0", v0, cLine, nLines, &
-          "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("vterm", vTerm, cLine, nLines, &
-          "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("beta", beta, cLine, nLines, &
-        "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("mdot", mdot, cLine, nLines, &
-          "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
-     rCore = rCore * rSol
-     v0 = v0 * 1.e5
-     vTerm = vTerm * 1.e5
-     mdot = mdot*msol/(365.25*24.*3600.)
-     vRot = vRot * 1.e5
-     call getString("contflux", contFluxFile, cLine, nLines, &
-        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+    endif
 
 
-  endif
+    if (geometry .eq. "spiralwind") then
+       call getReal("rcore", rCore, cLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+       call getReal("teff", teff, cLine, nLines, &
+            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("v0", v0, cLine, nLines, &
+            "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vterm", vTerm, cLine, nLines, &
+            "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("beta", beta, cLine, nLines, &
+            "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("mdot", mdot, cLine, nLines, &
+            "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
+       rCore = rCore * rSol
+       v0 = v0 * 1.e5
+       vTerm = vTerm * 1.e5
+       mdot = mdot*msol/(365.25*24.*3600.)
+       vRot = vRot * 1.e5
+       call getString("contflux", contFluxFile, cLine, nLines, &
+            "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
 
 
-  if (geometry .eq. "spiralwind") then
-     call getReal("rcore", rCore, cLine, nLines, &
-          "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-     call getReal("teff", teff, cLine, nLines, &
-          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("v0", v0, cLine, nLines, &
-          "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("vterm", vTerm, cLine, nLines, &
-          "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("beta", beta, cLine, nLines, &
-        "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("mdot", mdot, cLine, nLines, &
-          "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
-     rCore = rCore * rSol
-     v0 = v0 * 1.e5
-     vTerm = vTerm * 1.e5
-     mdot = mdot*msol/(365.25*24.*3600.)
-     vRot = vRot * 1.e5
-     call getString("contflux", contFluxFile, cLine, nLines, &
-        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+    endif
 
 
-  endif
-
-  if ((geometry .eq. "puls").or.(geometry .eq. "wind")) then
-     call getReal("rcore", rCore, cLine, nLines, &
-          "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-     call getReal("teff", teff, cLine, nLines, &
-          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("v0", v0, cLine, nLines, &
-          "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("vterm", vTerm, cLine, nLines, &
-          "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("vcont", vContrast, cLine, nLines, &
-          "Polar/equator wind speed contrast: ","(a,f8.1,a)", 1., ok, .true.)
-     call getReal("beta", beta, cLine, nLines, &
-        "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-     call getReal("mdot", mdot, cLine, nLines, &
-          "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
-     call getString("coreprofile", intProFilename, cLine, nLines, &
-          "Core profile: ","(a,a,1x,a)","none", ok, .false.)
-     call getReal("vrot", vRot, cLine, nLines, &
-          "Rotational velocity (km/s): ","(a,f5.1,a)", 0., ok, .true.)
-     call getLogical("lte", lte, cLine, nLines, &
-          "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
-     call getLogical("lycontthick", LyContThick, cLine, nLines, &
-              "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
-     call getString("contflux", contFluxFile, cLine, nLines, &
-          "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
-     call getString("popfile", popFilename, cLine, nLines, &
-          "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
-     call getLogical("writepops", writePops, cLine, nLines, &
-          "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-     call getLogical("readpops", readPops, cLine, nLines, &
-          "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-     call getInteger("nlower", nLower, cLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
-     call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
-
-     
-     call getReal("xfac", xFac, cLine, nLines, &
-          "Latitudinal x-fac: ","(a,f6.3,a)", 0., ok, .true.)
-
-     
-     rCore = rCore * rSol
-     v0 = v0 * 1.e5
-     vTerm = vTerm * 1.e5
-     mdot = mdot*msol/(365.25*24.*3600.)
-     vRot = vRot * 1.e5
-
-  endif
-     
+    if (geometry .eq. "spiralwind") then
+       call getReal("rcore", rCore, cLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+       call getReal("teff", teff, cLine, nLines, &
+            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("v0", v0, cLine, nLines, &
+            "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vterm", vTerm, cLine, nLines, &
+            "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("beta", beta, cLine, nLines, &
+            "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("mdot", mdot, cLine, nLines, &
+            "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
+       rCore = rCore * rSol
+       v0 = v0 * 1.e5
+       vTerm = vTerm * 1.e5
+       mdot = mdot*msol/(365.25*24.*3600.)
+       vRot = vRot * 1.e5
+       call getString("contflux", contFluxFile, cLine, nLines, &
+            "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
 
 
-  if (geometry.eq."binary") then
-   call getLogical("lte", lte, cLine, nLines, &
+    endif
+
+    if ((geometry .eq. "puls").or.(geometry .eq. "wind")) then
+       call getReal("rcore", rCore, cLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+       call getReal("teff", teff, cLine, nLines, &
+            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("v0", v0, cLine, nLines, &
+            "Wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vterm", vTerm, cLine, nLines, &
+            "Wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vcont", vContrast, cLine, nLines, &
+            "Polar/equator wind speed contrast: ","(a,f8.1,a)", 1., ok, .true.)
+       call getReal("beta", beta, cLine, nLines, &
+            "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("mdot", mdot, cLine, nLines, &
+            "mDot (msol/yr): ","(a,e7.1,a)", 1., ok, .true.)
+       call getString("coreprofile", intProFilename, cLine, nLines, &
+            "Core profile: ","(a,a,1x,a)","none", ok, .false.)
+       call getReal("vrot", vRot, cLine, nLines, &
+            "Rotational velocity (km/s): ","(a,f5.1,a)", 0., ok, .true.)
+       call getLogical("lte", lte, cLine, nLines, &
             "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("lycontthick", LyContThick, cLine, nLines, &
+       call getLogical("lycontthick", LyContThick, cLine, nLines, &
             "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
-   call getReal("mass1", mass1, cLine, nLines, &
-        "Primary mass (msol): ","(a,f5.1,a)", 1., ok, .true.)
-   call getReal("radius1", radius1, cLine, nLines, &
-        "Primary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
-   call getReal("mdot1", mdot1, cLine, nLines, &
-        "Primary mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
-   call getReal("temp1", temp1, cLine, nLines, &
-        "Primary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("v01", vNought1, cLine, nLines, &
-        "Primary wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("vterm1", vTerm1, cLine, nLines, &
-        "Primary wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("beta1", beta1, cLine, nLines, &
-        "Primary wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-   call getString("coreprofile1", intProFilename, cLine, nLines, &
-        "Primary core profile: ","(a,a,1x,a)","none", ok, .false.)
-
-
-   call getReal("mass2", mass2, cLine, nLines, &
-        "Secondary mass (msol): ","(a,f5.1,a)", 1., ok, .true.)
-   call getReal("radius2", radius2, cLine, nLines, &
-        "Secondary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
-   call getReal("mdot2", mdot2, cLine, nLines, &
-        "Secondary mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
-   call getReal("temp2", temp2, cLine, nLines, &
-        "Secondary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("v02", vNought2, cLine, nLines, &
-        "Secondary wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("vterm2", vTerm2, cLine, nLines, &
-        "Secondary wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("beta2", beta2, cLine, nLines, &
-        "Secondary wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-   call getString("coreprofile2", intProFilename2, cLine, nLines, &
-        "Secondary core profile: ","(a,a,1x,a)","none", ok, .false.)
-
-
-
-   call getReal("period", period, cLine, nLines, &
-        "Period (days): ","(a,f7.1,a)", 4., ok, .true.)
-
-   call getReal("deflect", deflectionAngle, cLine, nLines, &
-        "Wind-wind deflection angle (degs): ","(a,f7.1,a)", 0., ok, .false.)
-
-   call getReal("shockwidth", shockWidth, cLine, nLines, &
-        "Shock width (binary separations): ","(a,f7.1,a)", 0.1, ok, .true.)
-
-   call getReal("shockfac", shockFac, cLine, nLines, &
-        "Shock density: ","(a,f7.1,a)", 10., ok, .true.)
-
-   call getString("contflux1", contFluxFile, cLine, nLines, &
-        "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
-   call getString("contflux2", contFluxFile2, cLine, nLines, &
-        "Continuum flux filename (secondary): ","(a,a,1x,a)","none", ok, .true.)
-   call getInteger("nlower", nLower, cLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
-   call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
-   call getString("popfile", popFilename, cLine, nLines, &
-        "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
-   call getLogical("writepops", writePops, cLine, nLines, &
+       call getString("contflux", contFluxFile, cLine, nLines, &
+            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+       call getString("popfile", popFilename, cLine, nLines, &
+            "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
+       call getLogical("writepops", writePops, cLine, nLines, &
             "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-   call getLogical("readpops", readPops, cLine, nLines, &
+       call getLogical("readpops", readPops, cLine, nLines, &
+            "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+       call getInteger("nlower", nLower, cLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
+       call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
+
+
+       call getReal("xfac", xFac, cLine, nLines, &
+            "Latitudinal x-fac: ","(a,f6.3,a)", 0., ok, .true.)
+
+
+       rCore = rCore * rSol
+       v0 = v0 * 1.e5
+       vTerm = vTerm * 1.e5
+       mdot = mdot*msol/(365.25*24.*3600.)
+       vRot = vRot * 1.e5
+
+    endif
+
+
+
+    if (geometry.eq."binary") then
+       call getLogical("lte", lte, cLine, nLines, &
+            "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("lycontthick", LyContThick, cLine, nLines, &
+            "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
+       call getReal("mass1", mass1, cLine, nLines, &
+            "Primary mass (msol): ","(a,f5.1,a)", 1., ok, .true.)
+       call getReal("radius1", radius1, cLine, nLines, &
+            "Primary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
+       call getReal("mdot1", mdot1, cLine, nLines, &
+            "Primary mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
+       call getReal("temp1", temp1, cLine, nLines, &
+            "Primary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("v01", vNought1, cLine, nLines, &
+            "Primary wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vterm1", vTerm1, cLine, nLines, &
+            "Primary wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("beta1", beta1, cLine, nLines, &
+            "Primary wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+       call getString("coreprofile1", intProFilename, cLine, nLines, &
+            "Primary core profile: ","(a,a,1x,a)","none", ok, .false.)
+
+
+       call getReal("mass2", mass2, cLine, nLines, &
+            "Secondary mass (msol): ","(a,f5.1,a)", 1., ok, .true.)
+       call getReal("radius2", radius2, cLine, nLines, &
+            "Secondary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
+       call getReal("mdot2", mdot2, cLine, nLines, &
+            "Secondary mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
+       call getReal("temp2", temp2, cLine, nLines, &
+            "Secondary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("v02", vNought2, cLine, nLines, &
+            "Secondary wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vterm2", vTerm2, cLine, nLines, &
+            "Secondary wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("beta2", beta2, cLine, nLines, &
+            "Secondary wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+       call getString("coreprofile2", intProFilename2, cLine, nLines, &
+            "Secondary core profile: ","(a,a,1x,a)","none", ok, .false.)
+
+
+
+       call getReal("period", period, cLine, nLines, &
+            "Period (days): ","(a,f7.1,a)", 4., ok, .true.)
+
+       call getReal("deflect", deflectionAngle, cLine, nLines, &
+            "Wind-wind deflection angle (degs): ","(a,f7.1,a)", 0., ok, .false.)
+
+       call getReal("shockwidth", shockWidth, cLine, nLines, &
+            "Shock width (binary separations): ","(a,f7.1,a)", 0.1, ok, .true.)
+
+       call getReal("shockfac", shockFac, cLine, nLines, &
+            "Shock density: ","(a,f7.1,a)", 10., ok, .true.)
+
+       call getString("contflux1", contFluxFile, cLine, nLines, &
+            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+       call getString("contflux2", contFluxFile2, cLine, nLines, &
+            "Continuum flux filename (secondary): ","(a,a,1x,a)","none", ok, .true.)
+       call getInteger("nlower", nLower, cLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
+       call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
+       call getString("popfile", popFilename, cLine, nLines, &
+            "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
+       call getLogical("writepops", writePops, cLine, nLines, &
+            "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
+       call getLogical("readpops", readPops, cLine, nLines, &
             "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
 
 
 
-   period = period * 24. * 3600.
-   mass1 = mass1 * mSol
-   mass2 = mass2 * mSol
-   radius1 = radius1 * rSol
-   radius2 = radius2 * rSol
-   vNought1 = vNought1 * 1.e5 
-   vNought2 = vNought2 * 1.e5 
-   vterm1 = vterm1 * 1.e5
-   vterm2 = vterm2 * 1.e5
-   mdot1 = 10.**mdot1*msol/(365.25*24.*3600.)
-   mdot2 = 10.**mdot2*msol/(365.25*24.*3600.)
-   deflectionAngle = deflectionAngle * degTorad
-
-
-   call getReal("rho", rho, cLine, nLines, &
-        "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 0., ok, .false.)
-endif
-
-  if (geometry.eq."gammavel") then
-
-   call getReal("mass1", mass1, cLine, nLines, &
-        "Primary mass (msol): ","(a,f5.1,a)", 1., ok, .true.)
-   call getReal("rstar1", rstar1, cLine, nLines, &
-        "Primary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
-   call getReal("mdot1", mdot1, cLine, nLines, &
-        "Primary log mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
-   call getReal("teff1", teff1, cLine, nLines, &
-        "Primary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("v01", vNought1, cLine, nLines, &
-        "Primary wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("vterm1", vTerm1, cLine, nLines, &
-        "Primary wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("beta1", beta1, cLine, nLines, &
-        "Primary wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-
-   call getReal("mass2", mass2, cLine, nLines, &
-        "Secondary mass (msol): ","(a,f5.1,a)", 1., ok, .true.)
-   call getReal("rstar2", rstar2, cLine, nLines, &
-        "Secondary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
-   call getReal("mdot2", mdot2, cLine, nLines, &
-        "Secondary log mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
-   call getReal("teff2", teff2, cLine, nLines, &
-        "Secondary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("v02", vNought2, cLine, nLines, &
-        "Secondary wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("vterm2", vTerm2, cLine, nLines, &
-        "Secondary wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
-   call getReal("beta2", beta2, cLine, nLines, &
-        "Secondary wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
-
-
-   call getReal("binarysep", binarySep, cLine, nLines, &
-        "Binary separation (AU): ","(a,f7.1,a)", 4., ok, .true.)
-
-   call getReal("deflect", deflectionAngle, cLine, nLines, &
-        "Wind-wind deflection angle (degs): ","(a,f7.1,a)", 0., ok, .false.)
-
-   call getReal("shockwidth", shockWidth, cLine, nLines, &
-        "Shock width (binary separations): ","(a,f7.1,a)", 0.1, ok, .false.)
-
-   call getReal("shockfac", shockFac, cLine, nLines, &
-        "Shock density: ","(a,f7.1,a)", 10., ok, .false.)
-
-   call getString("contflux1", contFluxFile1, cLine, nLines, &
-        "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
-   call getString("contflux2", contFluxFile2, cLine, nLines, &
-        "Continuum flux filename (secondary): ","(a,a,1x,a)","none", ok, .true.)
-
-
-
-   binarySep = binarySep * autocm / 1.e10
-   mass1 = mass1 * mSol
-   mass2 = mass2 * mSol
-   rstar1 = rstar1 * rSol / 1.d10
-   rstar2 = rstar2 * rSol / 1.d10
-   vNought1 = vNought1 * 1.e5 
-   vNought2 = vNought2 * 1.e5 
-   vterm1 = vterm1 * 1.e5
-   vterm2 = vterm2 * 1.e5
-   mdot1 = mdot1*msol/(365.25*24.*3600.)
-   mdot2 = mdot2*msol/(365.25*24.*3600.)
-   deflectionAngle = deflectionAngle * degTorad
-
-endif
-
- if (geometry .eq. "shell") then
-   call getReal("radius", radius, cLine, nLines, &
-      "Stellar radius: ","(a,f5.1,a)", 100., ok, .true.)
-   call getReal("shellfrac", shellfrac, cLine, nLines, &
-      "Shell fraction: ","(a,f5.1,a)", 0.01, ok, .true.)
-   call getReal("kfac", kfac, cLine, nLines, &
-       "kfac: ", "(a,f5.1,a)", 0.5, ok, .true.)
-    call getReal("rho", rho, cLine, nLines, &
-    "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 1.e-6, ok, .true.)
- endif
-
- if (geometry .eq. "stateq") then
-
-   call getReal("kfac", kfac, cLine, nLines, &
-       "kfac: ", "(a,f5.1,a)", 0., ok, .true.)
-   call getReal("densfac", scaledensity, cLine, nLines, &
-       "Density scaling factor: ", "(a,f5.1,a)", 1., ok, .false.)
-   call getString("opacityfile", opacityDataFile, cLine, nLines, &
-        "Opacity file: ","(a,a,1x,a)","opacity_data", ok, .true.)
-   call getString("coreprofile", intProFilename, cLine, nLines, &
-        "Core profile: ","(a,a,1x,a)","none", ok, .false.)
-   call getString("contflux", contFluxFile, cLine, nLines, &
-  "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
-
- endif
-
- call getInteger("nblobs", nBlobs, cLine, nLines, &
-      "Number of blobs: ", "(a,i3,1x,a)", 0, ok, .false.)
- if (nBlobs /= 0) then
-    call getLogical("freshblobs", freshBlobs, cLine, nLines, &
-         "Fresh Blobs: ","(a,1l,1x,a)", .true., ok, .true.)
-    call getReal("blobcontrast", blobContrast, cLine, nLines, &
-         "Blob contrast: ","(a,f7.1)", 1., ok, .true.)
- endif
-
-
- call getInteger("nphase", nPhase, cLine, nLines, &
-      "Number of phases: ", "(a,i3,1x,a)", 1, ok, .false.)
-
- call getInteger("nstart", nStartPhase, cLine, nLines, &
-      "Start at phase: ", "(a,i3,1x,a)", 1, ok, .false.)
-
- call getInteger("nend", nEndPhase, cLine, nLines, &
-      "End at phase: ", "(a,i3,1x,a)", nPhase, ok, .false.)
-
- call getReal("phasetime", phaseTime, cLine, nLines, &
-      "Time of each phase of simulation (s): ","(a,f7.1,a)", 30.*60., ok, .false.)
-   
- call getReal("phaseoffset", phaseOffset, cLine, nLines, &
-      "Phase offset: ","(a,f3.1,a)", 0., ok, .false.)
-
- call getLogical("forcerotate", forceRotate, cLine, nLines, &
-      "Force view rotation ON","(a,1l,1x,a)", .false., ok, .false.)
- if (.not. forceRotate) then 
-   call getLogical("forcenorotate", forceNoRotate, cLine, nLines, &
-        "Force view rotation OFF","(a,1l,1x,a)", .false., ok, .false.)
- end if
-      
- call getReal("probcont", probContPhoton, cLine, nLines, &
-       "ProbContPhoton: ", "(a,f4.2,a)", 0.2, ok, .true.)
-
-
- if (geometry(1:6) .eq. "sphere") then
-   call getReal("radius", radius, cLine, nLines, &
-       "radius: ","(a,f5.1,a)", 0.5, ok, .true.)
-   call getReal("kfac", kfac, cLine, nLines, &
-       "kfac: ", "(a,f5.1,a)", 0.5, ok, .true.)
- endif
-
- if (geometry(1:7) .eq. "ellipse") then
-   call getReal("rmaj", rmaj, cLine, nLines, &
-     "rMajor (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
-   call getReal("rmin", rmin, cLine, nLines, &
-     "rMinor (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
-   call getReal("rinner", rinner, cLine, nLines, &
-     "rInner (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
-    call getReal("rho", rho, cLine, nLines, &
-    "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 1.e-6, ok, .true.)
-    call getReal("teff", teff, cLine, nLines, &
-         "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-    rmaj = rmaj * rSol / 1.e10
-    rmin = rmin * rSol / 1.e10
-    rinner = rinner * rSol / 1.e10
- endif
-
- if (geometry(1:4) .eq. "disk") then
-
-   call getReal("rcore", rCore, cLine, nLines, &
-       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-
-   call getReal("rinner", rInner, cLine, nLines, &
-       "Inner Radius (solar radii): ","(a,f5.1,a)", 12., ok, .true.)
-
-   call getReal("router", rOuter, cLine, nLines, &
-       "Outer Radius (solar radii): ","(a,f5.1,a)", 20., ok, .true.)
-
-   call getReal("mcore", mCore, cLine, nLines, &
-       "Core mass (solar masses): ","(a,f5.1,a)", 10., ok, .true.)
-
-   call getReal("height", height, cLine, nLines, &
-       "Scale height (solar radii): ","(a,1pe8.2,a)",1.e0,ok,.true.)
-
-   call getReal("teff", teff, cLine, nLines, &
-          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-
-   call getReal("disktemp", diskTemp, cLine, nLines, &
-       "Disk temperature (K): ","(a,f9.1,a)",10000.,ok,.true.)
-
-    call getReal("rho", rho, cLine, nLines, &
-    "Electron Density (cm^-3): ","(a,1p,e10.2,1p,1x,a)", 1.e13, ok, .true.)
-
-   call getString("coreprofile", intProFilename, cLine, nLines, &
-        "Core profile: ","(a,a,1x,a)","none", ok, .false.)
-
-   call getString("contflux", contFluxFile, cLine, nLines, &
-  "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
-
-   call getInteger("nspot", nSpot, cLine, nLines, &
-        "Number of spots: ", "(a,i3,1x,a)", 0, ok, .false.)
-
-   if (nSpot > 0) then
-
-      call getReal("theta", thetaSpot, cLine, nLines, &
-           "Theta of spot (degs): ","(a,f6.2,a)", 0., ok, .true.)
-      
-      call getReal("phi", phiSpot, cLine, nLines, &
-           "Phi of spot (degs): ","(a,f6.2,a)", 0., ok, .true.)
-      
-      call getReal("tspot", tSpot, cLine, nLines, &
-           "Temp of spot (degs): ","(a,f7.0,a)", 0., ok, .true.)
-      
-      call getReal("fspot", fSpot, cLine, nLines, &
-           "Fractional coverage of spots: ","(a,f6.2,a)", 0., ok, .true.)
-
-      call getLogical("photline", photLine, cLine, nLines, &
-            "Line produced over whole star: ","(a,1l,1x,a)", .false., ok, .true.)
-
-
-      thetaSpot = thetaSpot * degToRad
-      phiSpot = phiSpot * degToRad
-
-
-   endif
-
-
-    rCore = rCore * rSol
-    rInner = rInner * rSol
-    rOuter = rOuter * rSol
-    height = height * rSol
-    mCore = mCore * mSol
-
- endif
-
- if (geometry .eq. "testamr") then
-
-   call getReal("rcore", rCore, cLine, nLines, &
-       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-
-   call getReal("rinner", rInner, cLine, nLines, &
-       "Inner Radius (solar radii): ","(a,f5.1,a)", 12., ok, .true.)
-
-   call getReal("router", rOuter, cLine, nLines, &
-       "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
-
-   call getReal("teff", teff, cLine, nLines, &
-        "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-   
-   call getReal("rho", rho, cLine, nLines, &
-        "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 0., ok, .true.)
-
-   rCore = rCore * rSol
-   rInner = rInner * rSol
-   rOuter = rOuter * rInner
-  endif
-
- if (geometry .eq. "proto") then
-
-   call getReal("rcore", rCore, cLine, nLines, &
-       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-
-   call getReal("rinner", rInner, cLine, nLines, &
-       "Inner Radius (solar radii): ","(a,f5.1,a)", 12., ok, .true.)
-
-   call getReal("router", rOuter, cLine, nLines, &
-       "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
-
-   call getReal("teff", teff, cLine, nLines, &
-        "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-   
-   call getReal("taurad", tauRad, cLine, nLines, &
-        "Radial optical depth at specified lambda: ","(a,1p,f10.2,1p,1x,a)", 1., ok, .true.)
-
-   call getReal("rpower", rpower, cLine, nLines, &
-        "Radial power-law index (r^-rpower): ","(a,1p,e10.2,1p,1x,a)", 1.5, ok, .true.)
-
-   rho = 1.e-10
-   rCore = rCore * rSol
-   rInner = rInner * rSol
-   rOuter = rOuter * rInner
-  endif
-
- if (geometry .eq. "wrshell") then
-
-   call getReal("rcore", rCore, cLine, nLines, &
-       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
-
-   call getreal("teff", teff, cLine, nLines, &
-        "Source temperature (K): ","(a,f7.0,1x,a)", 3000., ok, .true.)
-
-   call getReal("rinner", rInner, cLine, nLines, &
-       "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
-
-   call getReal("router", rOuter, cLine, nLines, &
-       "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
-
-   call getReal("vterm", vterm, cLine, nLines, &
-       "Terminal velocity (km/s): ","(a,f7.1,a)", 20., ok, .true.)
-
-   call getReal("mdot", mdot, cLine, nLines, &
-        "Mass-loss rate (solar masses/year): ","(a,f7.3,a)", 1., ok, .true.)
-   
-   call getString("contflux", contFluxFile, cLine, nLines, &
-        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
-
-   rCore = rCore * rSol / 1.e10
-   rInner = rInner * rCore
-   rOuter = rOuter * rInner
-   vTerm = vTerm * 1.e5
-   mdot = mdot*mSol/(365.25*24.*3600.)
-  endif
-
-
-
-! if (geometry(1:4) .eq. "star") then 
-!   call getReal("radius", radius, cLine, nLines, &
-!       "radius: ","(a,f5.1,a)", 100., ok, .true.)
-!
-!   call getReal("mdot", mdot, cLine, nLines, &
-!       "Mdot (Msol/yr): ","(a,1pe8.2,a)",1.e-6,ok,.true.)
-!
-!
-!   call getReal("velocity", vterm, cLine, nLines, &
-!       "Wind velocity (km/s): ","(a,1pe8.2,a)",1.e1,ok,.true.)
-!
-!   call getReal("kfac", kfac, cLine, nLines, &
-!       "kfac: ", "(a,f5.1,a)", 0.5, ok, .true.)
-!
-!
-! endif
-
-
- if (geometry == "raman") then
-    call getReal("mdot", mdot, cLine, nLines, &
-         "Mdot (Msol/yr): ","(a,1pe8.2,a)",1.e-6,ok,.true.)
-    call getReal("vinf", vterm, cLine, nLines, &
-         "Wind velocity (km/s): ","(a,1pe8.2,a)",1.e1,ok,.true.)
-    call getReal("beta", beta, cLine, nLines, &
-         "Wind velocity law index (beta): ","(a,f3.1,a)",0.,ok,.true.)
-    call getReal("vo6", vo6, cLine, nLines, &
-         "Vel width of O6 source (km/s): ","(a,1pe8.2,a)",20.,ok,.true.)
-    call getReal("ramvel", ramVel, cLine, nLines, &
-         "Absolute speed of O6 source (km/s): ","(a,1pe8.2,a)",0.,ok,.true.)
-    vo6 = vo6 * 1.e5
-    ramVel = ramVel * 1.e5
-    vterm = vterm  * 1.e5
-    doRaman = .true.
-    mdot = mdot*mSol/(365.25*24.*3600.)
- endif
-
- if (distortionType .eq. "raman") then
-    call getString("ramandist", ramanDist, cLine, nLines, &
-         "Raman-scattering distortion type: ","(a,a,1x,a)","none", ok, .true.)
- endif
-
- if (distortionType .eq. "spiral") then 
-   call getReal("vrot", vRot, cLine, nLines, &
-       "Rotational velocity (km/s): ","(a,f5.1,a)", 100., ok, .true.)
-   vRot = vRot * 1.e5
-   call getInteger("nspiral", nSpiral, cLine, nLines, &
-        "Number of spiral arms: ","(a,i3)",1,ok,.true.)
-   call getReal("dipoleoffset", dipoleOffset, cLine, nLines, &
-       "Dipole offset (degrees): ","(a,f7.1,1x,a)", 0.0e0, ok, .true.)
-   dipoleOffset = dipoleOffset * degToRad
- endif
-
- if (distortionType .eq. "rotation") then 
-   call getReal("vrot", vRot, cLine, nLines, &
-       "Rotational velocity (km/s): ","(a,f5.1,a)", 100., ok, .true.)
-   vRot = vRot * 1.e5
- endif
-
- ! 
- call getLogical("formalsol", formalsol, cLine, nLines, &
-        "Solve for formal solution (no photon loops)?: ", "(a,1l,1x,a)", .false., ok, .false.)
- 
-if (formalsol) then
-   call getInteger("form_nphi", form_nphi, cLine, nLines, &
-        "# of angular poins for formal integration : ","(a,i4,a)", 30, ok, .true.)
-   call getInteger("form_nr_core", form_nr_core, cLine, nLines, &
-        "# of radial poins for formal integration (core) : ","(a,i4,a)", 30, ok, .true.)
-   call getInteger("form_nr_acc", form_nr_acc, cLine, nLines, &
-        "# of radial poins for formal integration (accretion) : ","(a,i4,a)", 30, ok, .true.)
-   call getInteger("form_nr_wind", form_nr_wind, cLine, nLines, &
-        "# of radial poins for formal integration (wind) : ","(a,i4,a)", 30, ok, .true.)
-   call getLogical("do_pos_disp", do_pos_disp, cLine, nLines, &
-        "Position displacement calculation on?: ", "(a,1l,1x,a)", .false., ok, .false.)
-end if
-
-
- ! sub option for ttauri geometry
- call getLogical("ttau_acc_on", ttau_acc_on, cLine, nLines, &
-      "Include TTauri magnetosphere?: ", "(a,1l,1x,a)", .true., ok, .false.)
- call getLogical("ttau_disc_on", ttau_disc_on, cLine, nLines, &
-      "Include TTauri Disc?: ", "(a,1l,1x,a)", .false., ok, .false.)
- call getLogical("ttau_discwind_on", ttau_discwind_on, cLine, nLines, &
-      "Include TTauri disc wind?: ", "(a,1l,1x,a)", .false., ok, .false.)
- call getLogical("ttau_jet_on", ttau_jet_on, cLine, nLines, &
-        "Include TTauri jets?: ", "(a,1l,1x,a)", .false., ok, .false.)
- call getLogical("ttau_fuzzy_edge", ttau_fuzzy_edge, cLine, nLines, &
-        "Uses fuzzy edge for accretion flow: ", "(a,1l,1x,a)", .false., ok, .false.)
-
- ! Use this paremeter to turn off the alpha disc when the 
- ! grid read in has alpha disc
- call getLogical("ttau_turn_off_disc", ttau_turn_off_disc, cLine, nLines, &
-      "Alpha disc may be read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
- call getLogical("ttau_turn_off_jet", ttau_turn_off_jet, cLine, nLines, &
-      "Jet may be read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
- call getLogical("ttau_turn_off_acc", ttau_turn_off_acc, cLine, nLines, &
-      "Magnetosphere may be read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
-
-
- call findLogical("mie", mie, cLine, nLines, ok)
- call findLogical("iso_scatter", isotropicScattering, cLine, nLines, ok)
-
- if (.not. ok) then
-    mie = .true.
-    default = " (default)"
-    if (writeoutput) write(*,*) "Error:: mie and iso_scatter must be defined in your parameter file."
-    stop
- endif
-
-
- if (mie) then
-   call writeInfo("Scattering phase matrix: Mie",TRIVIAL)
- elseif (geometry == "ttauri".and. ttau_disc_on) then
-   call writeInfo("Scattering phase matrix: Mie (disc) and Rayleigh (elsewhere)")
-  else
-   call writeInfo("Scattering phase matrix: Rayleigh")
- endif
-
- call getLogical("iso_scatter", isotropicScattering, cLine, nLines, &
-"Isotropic scattering function: ","(a,1l,1x,a)",.false.,ok,.false.)
-
-if  (isotropicScattering) then
-   call writeWarning("ISOTROPIC SCATTERING PHASE MATRIX ENFORCED")
-endif
-
- call getLogical("readmiephase", readMiePhase, cLine, nLines, &
-      "Read miePhase from file: ","(a,1l,1x,a)", .false., ok, .false.)
- call getLogical("writemiephase", writeMiePhase, cLine, nLines, &
-      "Write miePhase to file: ","(a,1l,1x,a)", .false., ok, .false.)
-
- if (mie) then
-    call getLogical("forcedwavelength", forcedWavelength, cLine, nLines, &
-         "Forced photon wavelength: ","(a,1l,1x,a)", .false., ok, .false.)
-    if (forcedWavelength) then
-       call getReal("usephotonwavelength", usePhotonWavelength, cLine, nLines, &
-            "Force photons to be produced at wavelength: ","(a,f4.2,a)", 5500., ok, .true.)
+       period = period * 24. * 3600.
+       mass1 = mass1 * mSol
+       mass2 = mass2 * mSol
+       radius1 = radius1 * rSol
+       radius2 = radius2 * rSol
+       vNought1 = vNought1 * 1.e5 
+       vNought2 = vNought2 * 1.e5 
+       vterm1 = vterm1 * 1.e5
+       vterm2 = vterm2 * 1.e5
+       mdot1 = 10.**mdot1*msol/(365.25*24.*3600.)
+       mdot2 = 10.**mdot2*msol/(365.25*24.*3600.)
+       deflectionAngle = deflectionAngle * degTorad
+
+
+       call getReal("rho", rho, cLine, nLines, &
+            "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 0., ok, .false.)
     endif
- endif
- if (mie) then
-    call getLogical("lucyrad", lucyRadiativeEq, cLine, nLines, &
-         "Lucy radiative equ.: ","(a,1l,1x,a)", .false., ok, .true.)
-   call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
-        "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
-        "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getLogical("writelucy", writeLucy, cLine, nLines, &
-        "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("readlucy", readLucy, cLine, nLines, &
-          "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("redolucy", redolucy, cLine, nLines, &
-          "Redo lucy radiative equilibrium routine from a input file: ", &
-          "(a,1l,1x,a)", .false., ok, .false.)
-   if (writeLucy)  then
-      call getLogical("writefileformatted", writeFileFormatted, cLine, nLines, &
-           "Grid + lucy temperature data output file will be formatted: ","(a,1l,1x,a)", &
-           .false., ok, .false.)
-   end if
-   if (readLucy) then
-      call getLogical("readfileformatted", readFileFormatted, cLine, nLines, &
-           "Grid + lucy temperature input file is read as formatted: ","(a,1l,1x,a)",  &
-           .false., ok, .false.)
-   end if
+
+    if (geometry.eq."gammavel") then
+
+       call getReal("mass1", mass1, cLine, nLines, &
+            "Primary mass (msol): ","(a,f5.1,a)", 1., ok, .true.)
+       call getReal("rstar1", rstar1, cLine, nLines, &
+            "Primary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
+       call getReal("mdot1", mdot1, cLine, nLines, &
+            "Primary log mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
+       call getReal("teff1", teff1, cLine, nLines, &
+            "Primary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("v01", vNought1, cLine, nLines, &
+            "Primary wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vterm1", vTerm1, cLine, nLines, &
+            "Primary wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("beta1", beta1, cLine, nLines, &
+            "Primary wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+
+       call getReal("mass2", mass2, cLine, nLines, &
+            "Secondary mass (msol): ","(a,f5.1,a)", 1., ok, .true.)
+       call getReal("rstar2", rstar2, cLine, nLines, &
+            "Secondary radius (rsol): ","(a,f5.1,a)", 1., ok, .true.)
+       call getReal("mdot2", mdot2, cLine, nLines, &
+            "Secondary log mDot (msol/yr): ","(a,f6.3,a)", 1., ok, .true.)
+       call getReal("teff2", teff2, cLine, nLines, &
+            "Secondary wind temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("v02", vNought2, cLine, nLines, &
+            "Secondary wind base velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("vterm2", vTerm2, cLine, nLines, &
+            "Secondary wind terminal velocity (km/s): ","(a,f7.0,a)", 1., ok, .true.)
+       call getReal("beta2", beta2, cLine, nLines, &
+            "Secondary wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
 
 
-    if (lucyRadiativeEq) then
-       call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
-       call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
-            "Minimum percentage of undersampled cell in lucy iteration: ", &
-            "(a,f4.2,a)",0.0,ok,.false.)
+       call getReal("binarysep", binarySep, cLine, nLines, &
+            "Binary separation (AU): ","(a,f7.1,a)", 4., ok, .true.)
 
-       call getReal("diffdepth", diffDepth, cLine, nLines, &
-            "Depth of diffusion zone (in Rosseland optical depths): ", &
-            "(a,f5.1,a)",10.0,ok,.false.)
+       call getReal("deflect", deflectionAngle, cLine, nLines, &
+            "Wind-wind deflection angle (degs): ","(a,f7.1,a)", 0., ok, .false.)
 
-       call getInteger("mincrossings", minCrossings, cLine, nLines, &
-            "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.false.)
+       call getReal("shockwidth", shockWidth, cLine, nLines, &
+            "Shock width (binary separations): ","(a,f7.1,a)", 0.1, ok, .false.)
+
+       call getReal("shockfac", shockFac, cLine, nLines, &
+            "Shock density: ","(a,f7.1,a)", 10., ok, .false.)
+
+       call getString("contflux1", contFluxFile1, cLine, nLines, &
+            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+       call getString("contflux2", contFluxFile2, cLine, nLines, &
+            "Continuum flux filename (secondary): ","(a,a,1x,a)","none", ok, .true.)
+
+
+
+       binarySep = binarySep * autocm / 1.e10
+       mass1 = mass1 * mSol
+       mass2 = mass2 * mSol
+       rstar1 = rstar1 * rSol / 1.d10
+       rstar2 = rstar2 * rSol / 1.d10
+       vNought1 = vNought1 * 1.e5 
+       vNought2 = vNought2 * 1.e5 
+       vterm1 = vterm1 * 1.e5
+       vterm2 = vterm2 * 1.e5
+       mdot1 = mdot1*msol/(365.25*24.*3600.)
+       mdot2 = mdot2*msol/(365.25*24.*3600.)
+       deflectionAngle = deflectionAngle * degTorad
+
     endif
-   call getReal("probdust", probDust, cLine, nLines, &
-       "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
 
-   call getReal("tthresh", tthresh, cLine, nLines, &
-       "Temperature threshold for dust (K): ","(a,f8.2,a)", 1000., ok, .true.)
+    if (geometry .eq. "shell") then
+       call getReal("radius", radius, cLine, nLines, &
+            "Stellar radius: ","(a,f5.1,a)", 100., ok, .true.)
+       call getReal("shellfrac", shellfrac, cLine, nLines, &
+            "Shell fraction: ","(a,f5.1,a)", 0.01, ok, .true.)
+       call getReal("kfac", kfac, cLine, nLines, &
+            "kfac: ", "(a,f5.1,a)", 0.5, ok, .true.)
+       call getReal("rho", rho, cLine, nLines, &
+            "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 1.e-6, ok, .true.)
+    endif
 
-   oneKappa = .true.
+    if (geometry .eq. "stateq") then
 
-   call getReal("dusttogas", dusttoGas, cLine, nLines, &
-        "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
+       call getReal("kfac", kfac, cLine, nLines, &
+            "kfac: ", "(a,f5.1,a)", 0., ok, .true.)
+       call getReal("densfac", scaledensity, cLine, nLines, &
+            "Density scaling factor: ", "(a,f5.1,a)", 1., ok, .false.)
+       call getString("opacityfile", opacityDataFile, cLine, nLines, &
+            "Opacity file: ","(a,a,1x,a)","opacity_data", ok, .true.)
+       call getString("coreprofile", intProFilename, cLine, nLines, &
+            "Core profile: ","(a,a,1x,a)","none", ok, .false.)
+       call getString("contflux", contFluxFile, cLine, nLines, &
+            "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
 
-    call getInteger("ndusttype", nDustType, cLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
-    if (nDustType .gt. maxDustTypes) then
-       if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
-       stop
+    endif
+
+    call getInteger("nblobs", nBlobs, cLine, nLines, &
+         "Number of blobs: ", "(a,i3,1x,a)", 0, ok, .false.)
+    if (nBlobs /= 0) then
+       call getLogical("freshblobs", freshBlobs, cLine, nLines, &
+            "Fresh Blobs: ","(a,1l,1x,a)", .true., ok, .true.)
+       call getReal("blobcontrast", blobContrast, cLine, nLines, &
+            "Blob contrast: ","(a,f7.1)", 1., ok, .true.)
+    endif
+
+
+    call getInteger("nphase", nPhase, cLine, nLines, &
+         "Number of phases: ", "(a,i3,1x,a)", 1, ok, .false.)
+
+    call getInteger("nstart", nStartPhase, cLine, nLines, &
+         "Start at phase: ", "(a,i3,1x,a)", 1, ok, .false.)
+
+    call getInteger("nend", nEndPhase, cLine, nLines, &
+         "End at phase: ", "(a,i3,1x,a)", nPhase, ok, .false.)
+
+    call getReal("phasetime", phaseTime, cLine, nLines, &
+         "Time of each phase of simulation (s): ","(a,f7.1,a)", 30.*60., ok, .false.)
+
+    call getReal("phaseoffset", phaseOffset, cLine, nLines, &
+         "Phase offset: ","(a,f3.1,a)", 0., ok, .false.)
+
+    call getLogical("forcerotate", forceRotate, cLine, nLines, &
+         "Force view rotation ON","(a,1l,1x,a)", .false., ok, .false.)
+    if (.not. forceRotate) then 
+       call getLogical("forcenorotate", forceNoRotate, cLine, nLines, &
+            "Force view rotation OFF","(a,1l,1x,a)", .false., ok, .false.)
     end if
 
-   call getLogical("hydro", solveVerticalHydro, cLine, nLines, &
-        "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
-
-   if (solveVerticalHydro) then
-      call getInteger("nhydro", nhydro, cLine, nLines, &
-           "Max number of hydro iterations : ","(a,i4,a)", 5, ok, .true.)
-   endif
-
-   call getLogical("dustfile", dustfile, cLine, nLines, &
-        "Get dust properties from file: ","(a,1l,1x,a)", .false., ok, .false.)
-   if (dustfile) then
-    call getString("kappafile", dustFilename(1), cLine, nLines, &
-     "Dust properties filename: ","(a,a,1x,a)","none", ok, .true.)
- endif
-
-!   if (nDustType > 1) then
-!
-!      do i = 1, nDustType
-!         write(keyword,'(a,i1)') "kappafile",i
-!         write(message,'(a,i1,a)') "Dust Properties filename ",i,": "
-!         call getString(trim(keyword), dustFilename(i), cLine, nLines, &
-!              message,"(a,a,1x,a)","none", ok, .true.)
-!      enddo
-!      
-!   endif
-endif
-
-!
-! Now using new grain parameters e.g. grainTypeLabel which will be read in later....
-! The following should be removed later as they no longer needed.
-
-! ! if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
-!  if (mie .or. (geometry == "ttauri")) then
-!      call getString("graintype", grainType, cLine, nLines, &
-!           "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
-
-!      ! read the relative abundances (which will be normalized later.)
-!      call getReal("x_sil_ow", X_grain(1), cLine, nLines, &
-!           "Abundance(Si-Ow): ","(a,1pe8.2,a)",0.,ok,.false.)
-!      call getReal("x_sil_oc", X_grain(2), cLine, nLines, &
-!           "Abundance(Si-Oc): ","(a,1pe8.2,a)",0.,ok,.false.)
-!      call getReal("x_sil_dl", X_grain(3), cLine, nLines, &
-!           "Abundance(Si-DL): ","(a,1pe8.2,a)",0.,ok,.false.)
-!      call getReal("x_amc_hn", X_grain(4), cLine, nLines, &
-!           "Abundance(amC-Hn): ","(a,1pe8.2,a)",0.,ok,.false.)
-!      call getReal("x_sil_pg", X_grain(5), cLine, nLines, &
-!           "Abundance(Si-Pg): ","(a,1pe8.2,a)",0.,ok,.false.)
-!      call getReal("x_gr1_dl", X_grain(6), cLine, nLines, &
-!           "Abundance(grf1-DL): ","(a,1pe8.2,a)",0.,ok,.false.)
-!      call getReal("x_gr2_dl", X_grain(7), cLine, nLines, &
-!           "Abundance(grf2-DL): ","(a,1pe8.2,a)",0.,ok,.false.)        
+    call getReal("probcont", probContPhoton, cLine, nLines, &
+         "ProbContPhoton: ", "(a,f4.2,a)", 0.2, ok, .true.)
 
 
-!  endif
- 
+    if (geometry(1:6) .eq. "sphere") then
+       call getReal("radius", radius, cLine, nLines, &
+            "radius: ","(a,f5.1,a)", 0.5, ok, .true.)
+       call getReal("kfac", kfac, cLine, nLines, &
+            "kfac: ", "(a,f5.1,a)", 0.5, ok, .true.)
+    endif
+
+    if (geometry(1:7) .eq. "ellipse") then
+       call getReal("rmaj", rmaj, cLine, nLines, &
+            "rMajor (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
+       call getReal("rmin", rmin, cLine, nLines, &
+            "rMinor (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
+       call getReal("rinner", rinner, cLine, nLines, &
+            "rInner (solar): ", "(a,f5.1,a)", 0.5, ok, .true.)
+       call getReal("rho", rho, cLine, nLines, &
+            "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 1.e-6, ok, .true.)
+       call getReal("teff", teff, cLine, nLines, &
+            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+       rmaj = rmaj * rSol / 1.e10
+       rmin = rmin * rSol / 1.e10
+       rinner = rinner * rSol / 1.e10
+    endif
+
+    if (geometry(1:4) .eq. "disk") then
+
+       call getReal("rcore", rCore, cLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
+       call getReal("rinner", rInner, cLine, nLines, &
+            "Inner Radius (solar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+       call getReal("router", rOuter, cLine, nLines, &
+            "Outer Radius (solar radii): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("mcore", mCore, cLine, nLines, &
+            "Core mass (solar masses): ","(a,f5.1,a)", 10., ok, .true.)
+
+       call getReal("height", height, cLine, nLines, &
+            "Scale height (solar radii): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+       call getReal("teff", teff, cLine, nLines, &
+            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+
+       call getReal("disktemp", diskTemp, cLine, nLines, &
+            "Disk temperature (K): ","(a,f9.1,a)",10000.,ok,.true.)
+
+       call getReal("rho", rho, cLine, nLines, &
+            "Electron Density (cm^-3): ","(a,1p,e10.2,1p,1x,a)", 1.e13, ok, .true.)
+
+       call getString("coreprofile", intProFilename, cLine, nLines, &
+            "Core profile: ","(a,a,1x,a)","none", ok, .false.)
+
+       call getString("contflux", contFluxFile, cLine, nLines, &
+            "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+
+       call getInteger("nspot", nSpot, cLine, nLines, &
+            "Number of spots: ", "(a,i3,1x,a)", 0, ok, .false.)
+
+       if (nSpot > 0) then
+
+          call getReal("theta", thetaSpot, cLine, nLines, &
+               "Theta of spot (degs): ","(a,f6.2,a)", 0., ok, .true.)
+
+          call getReal("phi", phiSpot, cLine, nLines, &
+               "Phi of spot (degs): ","(a,f6.2,a)", 0., ok, .true.)
+
+          call getReal("tspot", tSpot, cLine, nLines, &
+               "Temp of spot (degs): ","(a,f7.0,a)", 0., ok, .true.)
+
+          call getReal("fspot", fSpot, cLine, nLines, &
+               "Fractional coverage of spots: ","(a,f6.2,a)", 0., ok, .true.)
+
+          call getLogical("photline", photLine, cLine, nLines, &
+               "Line produced over whole star: ","(a,1l,1x,a)", .false., ok, .true.)
 
 
- if (.not.mie) then
- default = " "
- call findReal("kappasca", inputKappaSca, cLine, nLines, ok)
- if (ok) then
-   if (writeoutput) write(*,'(a,1pe12.4)') "Scattering cross-section: ",inputKappaSca
- endif
- default = " "
- call findReal("kappaabs", inputKappaAbs, cLine, nLines, ok)
- if (ok) then
-   if (writeoutput) write(*,'(a,1pe12.4)') "Absorption cross-section: ",inputKappaAbs
- endif
-endif
+          thetaSpot = thetaSpot * degToRad
+          phiSpot = phiSpot * degToRad
 
 
- call getLogical("secondsource", secondSource, cLine, nLines, &
-   "Second source: ","(a,1l,a)", .false., ok, .false.)
-
- if (secondSource) then
-    secondSourcePosition = VECTOR(0.,0.,0.)
-    call getReal("secondpos", secondSourcePosition%x, cLine, nLines, &
-         "Second source distance: ","(a,e7.1,1x,a)", 1.e14, ok, .true.)
- endif
-
- call getLogical("coreline", coreEmissionLine, cLine, nLines, &
-   "Core Emission Line: ","(a,1l,a)", .false., ok, .false.)
+       endif
 
 
- call getLogical("photoionization", photoionization, cLine, nLines, &
-   "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
+       rCore = rCore * rSol
+       rInner = rInner * rSol
+       rOuter = rOuter * rSol
+       height = height * rSol
+       mCore = mCore * mSol
 
- call getLogical("molecular", molecular, cLine, nLines, &
-   "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
+    endif
 
- if (molecular) then
-   call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
-        "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
-        "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getLogical("writelucy", writeLucy, cLine, nLines, &
-        "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("readlucy", readLucy, cLine, nLines, &
-          "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-    call getReal("distance", gridDistance, cLine, nLines, &
-         "Grid distance (pc): ","(a,f4.1,1x,a)", 1., ok, .true.)
-    gridDistance = gridDistance * pcTocm   ! cm
-    call getReal("beamsize", beamsize, cLine, nLines, &
-         "Beam size (arcsec): ","(a,f4.1,1x,a)", 1., ok, .true.)
-endif
+    if (geometry .eq. "testamr") then
 
- call getLogical("cmf", cmf, cLine, nLines, &
-   "Compute CMF statistical equilibrium: ","(a,1l,a)", .false., ok, .false.)
+       call getReal("rcore", rCore, cLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
 
- if (cmf) then
-   call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
-        "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
-        "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getLogical("writelucy", writeLucy, cLine, nLines, &
-        "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("readlucy", readLucy, cLine, nLines, &
-          "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-    call getInteger("natom", nAtom, cLine, nLines, &
-         "Number of model atoms to solve for: ","(a,i12,a)",1,ok,.true.)
-    do i = 1, nAtom
-       write(keyword, '(a,i1)') "atom",i
-       call getString(keyword, atomFileName(i), cLine, nLines, &
-            "Use atom filename: ","(a,a,1x,a)","none", ok, .true.)
-    enddo
- endif
+       call getReal("rinner", rInner, cLine, nLines, &
+            "Inner Radius (solar radii): ","(a,f5.1,a)", 12., ok, .true.)
 
- call getLogical("debug", debug, cLine, nLines, &
-   "Write debug output: ","(a,1l,a)", .false., ok, .false.)
+       call getReal("router", rOuter, cLine, nLines, &
+            "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("teff", teff, cLine, nLines, &
+            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+
+       call getReal("rho", rho, cLine, nLines, &
+            "Density (xxx): ","(a,1p,e10.2,1p,1x,a)", 0., ok, .true.)
+
+       rCore = rCore * rSol
+       rInner = rInner * rSol
+       rOuter = rOuter * rInner
+    endif
+
+    if (geometry .eq. "proto") then
+
+       call getReal("rcore", rCore, cLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
+       call getReal("rinner", rInner, cLine, nLines, &
+            "Inner Radius (solar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+       call getReal("router", rOuter, cLine, nLines, &
+            "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("teff", teff, cLine, nLines, &
+            "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+
+       call getReal("taurad", tauRad, cLine, nLines, &
+            "Radial optical depth at specified lambda: ","(a,1p,f10.2,1p,1x,a)", 1., ok, .true.)
+
+       call getReal("rpower", rpower, cLine, nLines, &
+            "Radial power-law index (r^-rpower): ","(a,1p,e10.2,1p,1x,a)", 1.5, ok, .true.)
+
+       rho = 1.e-10
+       rCore = rCore * rSol
+       rInner = rInner * rSol
+       rOuter = rOuter * rInner
+    endif
+
+    if (geometry .eq. "wrshell") then
+
+       call getReal("rcore", rCore, cLine, nLines, &
+            "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+
+       call getreal("teff", teff, cLine, nLines, &
+            "Source temperature (K): ","(a,f7.0,1x,a)", 3000., ok, .true.)
+
+       call getReal("rinner", rInner, cLine, nLines, &
+            "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+
+       call getReal("router", rOuter, cLine, nLines, &
+            "Outer Radius (inner radius): ","(a,f5.1,a)", 20., ok, .true.)
+
+       call getReal("vterm", vterm, cLine, nLines, &
+            "Terminal velocity (km/s): ","(a,f7.1,a)", 20., ok, .true.)
+
+       call getReal("mdot", mdot, cLine, nLines, &
+            "Mass-loss rate (solar masses/year): ","(a,f7.3,a)", 1., ok, .true.)
+
+       call getString("contflux", contFluxFile, cLine, nLines, &
+            "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+
+       rCore = rCore * rSol / 1.e10
+       rInner = rInner * rCore
+       rOuter = rOuter * rInner
+       vTerm = vTerm * 1.e5
+       mdot = mdot*mSol/(365.25*24.*3600.)
+    endif
 
 
- call getLogical("thickcont", opticallyThickContinuum, cLine, nLines, &
-   "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
 
- if (photoionization) then
+    ! if (geometry(1:4) .eq. "star") then 
+    !   call getReal("radius", radius, cLine, nLines, &
+    !       "radius: ","(a,f5.1,a)", 100., ok, .true.)
+    !
+    !   call getReal("mdot", mdot, cLine, nLines, &
+    !       "Mdot (Msol/yr): ","(a,1pe8.2,a)",1.e-6,ok,.true.)
+    !
+    !
+    !   call getReal("velocity", vterm, cLine, nLines, &
+    !       "Wind velocity (km/s): ","(a,1pe8.2,a)",1.e1,ok,.true.)
+    !
+    !   call getReal("kfac", kfac, cLine, nLines, &
+    !       "kfac: ", "(a,f5.1,a)", 0.5, ok, .true.)
+    !
+    !
+    ! endif
+
+
+    if (geometry == "raman") then
+       call getReal("mdot", mdot, cLine, nLines, &
+            "Mdot (Msol/yr): ","(a,1pe8.2,a)",1.e-6,ok,.true.)
+       call getReal("vinf", vterm, cLine, nLines, &
+            "Wind velocity (km/s): ","(a,1pe8.2,a)",1.e1,ok,.true.)
+       call getReal("beta", beta, cLine, nLines, &
+            "Wind velocity law index (beta): ","(a,f3.1,a)",0.,ok,.true.)
+       call getReal("vo6", vo6, cLine, nLines, &
+            "Vel width of O6 source (km/s): ","(a,1pe8.2,a)",20.,ok,.true.)
+       call getReal("ramvel", ramVel, cLine, nLines, &
+            "Absolute speed of O6 source (km/s): ","(a,1pe8.2,a)",0.,ok,.true.)
+       vo6 = vo6 * 1.e5
+       ramVel = ramVel * 1.e5
+       vterm = vterm  * 1.e5
+       doRaman = .true.
+       mdot = mdot*mSol/(365.25*24.*3600.)
+    endif
+
+    if (distortionType .eq. "raman") then
+       call getString("ramandist", ramanDist, cLine, nLines, &
+            "Raman-scattering distortion type: ","(a,a,1x,a)","none", ok, .true.)
+    endif
+
+    if (distortionType .eq. "spiral") then 
+       call getReal("vrot", vRot, cLine, nLines, &
+            "Rotational velocity (km/s): ","(a,f5.1,a)", 100., ok, .true.)
+       vRot = vRot * 1.e5
+       call getInteger("nspiral", nSpiral, cLine, nLines, &
+            "Number of spiral arms: ","(a,i3)",1,ok,.true.)
+       call getReal("dipoleoffset", dipoleOffset, cLine, nLines, &
+            "Dipole offset (degrees): ","(a,f7.1,1x,a)", 0.0e0, ok, .true.)
+       dipoleOffset = dipoleOffset * degToRad
+    endif
+
+    if (distortionType .eq. "rotation") then 
+       call getReal("vrot", vRot, cLine, nLines, &
+            "Rotational velocity (km/s): ","(a,f5.1,a)", 100., ok, .true.)
+       vRot = vRot * 1.e5
+    endif
+
+    ! 
+    call getLogical("formalsol", formalsol, cLine, nLines, &
+         "Solve for formal solution (no photon loops)?: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+    if (formalsol) then
+       call getInteger("form_nphi", form_nphi, cLine, nLines, &
+            "# of angular poins for formal integration : ","(a,i4,a)", 30, ok, .true.)
+       call getInteger("form_nr_core", form_nr_core, cLine, nLines, &
+            "# of radial poins for formal integration (core) : ","(a,i4,a)", 30, ok, .true.)
+       call getInteger("form_nr_acc", form_nr_acc, cLine, nLines, &
+            "# of radial poins for formal integration (accretion) : ","(a,i4,a)", 30, ok, .true.)
+       call getInteger("form_nr_wind", form_nr_wind, cLine, nLines, &
+            "# of radial poins for formal integration (wind) : ","(a,i4,a)", 30, ok, .true.)
+       call getLogical("do_pos_disp", do_pos_disp, cLine, nLines, &
+            "Position displacement calculation on?: ", "(a,1l,1x,a)", .false., ok, .false.)
+    end if
+
+
+    ! sub option for ttauri geometry
+    call getLogical("ttau_acc_on", ttau_acc_on, cLine, nLines, &
+         "Include TTauri magnetosphere?: ", "(a,1l,1x,a)", .true., ok, .false.)
+    call getLogical("ttau_disc_on", ttau_disc_on, cLine, nLines, &
+         "Include TTauri Disc?: ", "(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("ttau_discwind_on", ttau_discwind_on, cLine, nLines, &
+         "Include TTauri disc wind?: ", "(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("ttau_jet_on", ttau_jet_on, cLine, nLines, &
+         "Include TTauri jets?: ", "(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("ttau_fuzzy_edge", ttau_fuzzy_edge, cLine, nLines, &
+         "Uses fuzzy edge for accretion flow: ", "(a,1l,1x,a)", .false., ok, .false.)
+
+    ! Use this paremeter to turn off the alpha disc when the 
+    ! grid read in has alpha disc
+    call getLogical("ttau_turn_off_disc", ttau_turn_off_disc, cLine, nLines, &
+         "Alpha disc may be read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("ttau_turn_off_jet", ttau_turn_off_jet, cLine, nLines, &
+         "Jet may be read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("ttau_turn_off_acc", ttau_turn_off_acc, cLine, nLines, &
+         "Magnetosphere may be read in but turned off: ","(a,1l,1x,a)", .false., ok, .false.)
+
+
+    call findLogical("mie", mie, cLine, nLines, ok)
+    call findLogical("iso_scatter", isotropicScattering, cLine, nLines, ok)
+
+    if (.not. ok) then
+       mie = .true.
+       default = " (default)"
+       if (writeoutput) write(*,*) "Error:: mie and iso_scatter must be defined in your parameter file."
+       stop
+    endif
+
+
+    if (mie) then
+       call writeInfo("Scattering phase matrix: Mie",TRIVIAL)
+    elseif (geometry == "ttauri".and. ttau_disc_on) then
+       call writeInfo("Scattering phase matrix: Mie (disc) and Rayleigh (elsewhere)")
+    else
+       call writeInfo("Scattering phase matrix: Rayleigh")
+    endif
+
+    call getLogical("iso_scatter", isotropicScattering, cLine, nLines, &
+         "Isotropic scattering function: ","(a,1l,1x,a)",.false.,ok,.false.)
+
+    if  (isotropicScattering) then
+       call writeWarning("ISOTROPIC SCATTERING PHASE MATRIX ENFORCED")
+    endif
+
+    call getLogical("readmiephase", readMiePhase, cLine, nLines, &
+         "Read miePhase from file: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("writemiephase", writeMiePhase, cLine, nLines, &
+         "Write miePhase to file: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    if (mie) then
+       call getLogical("forcedwavelength", forcedWavelength, cLine, nLines, &
+            "Forced photon wavelength: ","(a,1l,1x,a)", .false., ok, .false.)
+       if (forcedWavelength) then
+          call getReal("usephotonwavelength", usePhotonWavelength, cLine, nLines, &
+               "Force photons to be produced at wavelength: ","(a,f4.2,a)", 5500., ok, .true.)
+       endif
+    endif
+    if (mie) then
+       call getLogical("lucyrad", lucyRadiativeEq, cLine, nLines, &
+            "Lucy radiative equ.: ","(a,1l,1x,a)", .false., ok, .true.)
+       call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
+            "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
+            "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getLogical("writelucy", writeLucy, cLine, nLines, &
+            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("readlucy", readLucy, cLine, nLines, &
+            "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("redolucy", redolucy, cLine, nLines, &
+            "Redo lucy radiative equilibrium routine from a input file: ", &
+            "(a,1l,1x,a)", .false., ok, .false.)
+       if (writeLucy)  then
+          call getLogical("writefileformatted", writeFileFormatted, cLine, nLines, &
+               "Grid + lucy temperature data output file will be formatted: ","(a,1l,1x,a)", &
+               .false., ok, .false.)
+       end if
+       if (readLucy) then
+          call getLogical("readfileformatted", readFileFormatted, cLine, nLines, &
+               "Grid + lucy temperature input file is read as formatted: ","(a,1l,1x,a)",  &
+               .false., ok, .false.)
+       end if
+
+
+       if (lucyRadiativeEq) then
+          call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
+          call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
+               "Minimum percentage of undersampled cell in lucy iteration: ", &
+               "(a,f4.2,a)",0.0,ok,.false.)
+
+          call getReal("diffdepth", diffDepth, cLine, nLines, &
+               "Depth of diffusion zone (in Rosseland optical depths): ", &
+               "(a,f5.1,a)",10.0,ok,.false.)
+
+          call getInteger("mincrossings", minCrossings, cLine, nLines, &
+               "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.false.)
+       endif
+       call getReal("probdust", probDust, cLine, nLines, &
+            "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
+
+       call getReal("tthresh", tthresh, cLine, nLines, &
+            "Temperature threshold for dust (K): ","(a,f8.2,a)", 1000., ok, .true.)
+
+       oneKappa = .true.
+
+       call getReal("dusttogas", dusttoGas, cLine, nLines, &
+            "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
+
+       call getInteger("ndusttype", nDustType, cLine, nLines,"Number of different dust types: ","(a,i12,a)",1,ok,.false.)
+       if (nDustType .gt. maxDustTypes) then
+          if (writeoutput) write (*,*) "Max dust types exceeded: ", maxDustTypes
+          stop
+       end if
+
+       call getLogical("hydro", solveVerticalHydro, cLine, nLines, &
+            "Solve vertical hydrostatical equilibrium: ","(a,1l,1x,a)", .false., ok, .false.)
+
+       if (solveVerticalHydro) then
+          call getInteger("nhydro", nhydro, cLine, nLines, &
+               "Max number of hydro iterations : ","(a,i4,a)", 5, ok, .true.)
+       endif
+
+       call getLogical("dustfile", dustfile, cLine, nLines, &
+            "Get dust properties from file: ","(a,1l,1x,a)", .false., ok, .false.)
+       if (dustfile) then
+          call getString("kappafile", dustFilename(1), cLine, nLines, &
+               "Dust properties filename: ","(a,a,1x,a)","none", ok, .true.)
+       endif
+
+       !   if (nDustType > 1) then
+       !
+       !      do i = 1, nDustType
+       !         write(keyword,'(a,i1)') "kappafile",i
+       !         write(message,'(a,i1,a)') "Dust Properties filename ",i,": "
+       !         call getString(trim(keyword), dustFilename(i), cLine, nLines, &
+       !              message,"(a,a,1x,a)","none", ok, .true.)
+       !      enddo
+       !      
+       !   endif
+    endif
+
+    !
+    ! Now using new grain parameters e.g. grainTypeLabel which will be read in later....
+    ! The following should be removed later as they no longer needed.
+
+    ! ! if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
+    !  if (mie .or. (geometry == "ttauri")) then
+    !      call getString("graintype", grainType, cLine, nLines, &
+    !           "Grain type: ","(a,a,1x,a)","sil_dl", ok, .true.)
+
+    !      ! read the relative abundances (which will be normalized later.)
+    !      call getReal("x_sil_ow", X_grain(1), cLine, nLines, &
+    !           "Abundance(Si-Ow): ","(a,1pe8.2,a)",0.,ok,.false.)
+    !      call getReal("x_sil_oc", X_grain(2), cLine, nLines, &
+    !           "Abundance(Si-Oc): ","(a,1pe8.2,a)",0.,ok,.false.)
+    !      call getReal("x_sil_dl", X_grain(3), cLine, nLines, &
+    !           "Abundance(Si-DL): ","(a,1pe8.2,a)",0.,ok,.false.)
+    !      call getReal("x_amc_hn", X_grain(4), cLine, nLines, &
+    !           "Abundance(amC-Hn): ","(a,1pe8.2,a)",0.,ok,.false.)
+    !      call getReal("x_sil_pg", X_grain(5), cLine, nLines, &
+    !           "Abundance(Si-Pg): ","(a,1pe8.2,a)",0.,ok,.false.)
+    !      call getReal("x_gr1_dl", X_grain(6), cLine, nLines, &
+    !           "Abundance(grf1-DL): ","(a,1pe8.2,a)",0.,ok,.false.)
+    !      call getReal("x_gr2_dl", X_grain(7), cLine, nLines, &
+    !           "Abundance(grf2-DL): ","(a,1pe8.2,a)",0.,ok,.false.)        
+
+
+    !  endif
+
+
+
+    if (.not.mie) then
+       default = " "
+       call findReal("kappasca", inputKappaSca, cLine, nLines, ok)
+       if (ok) then
+          if (writeoutput) write(*,'(a,1pe12.4)') "Scattering cross-section: ",inputKappaSca
+       endif
+       default = " "
+       call findReal("kappaabs", inputKappaAbs, cLine, nLines, ok)
+       if (ok) then
+          if (writeoutput) write(*,'(a,1pe12.4)') "Absorption cross-section: ",inputKappaAbs
+       endif
+    endif
+
+
+    call getLogical("secondsource", secondSource, cLine, nLines, &
+         "Second source: ","(a,1l,a)", .false., ok, .false.)
+
+    if (secondSource) then
+       secondSourcePosition = VECTOR(0.,0.,0.)
+       call getReal("secondpos", secondSourcePosition%x, cLine, nLines, &
+            "Second source distance: ","(a,e7.1,1x,a)", 1.e14, ok, .true.)
+    endif
+
+    call getLogical("coreline", coreEmissionLine, cLine, nLines, &
+         "Core Emission Line: ","(a,1l,a)", .false., ok, .false.)
+
+
+    call getLogical("photoionization", photoionization, cLine, nLines, &
+         "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
+
+    call getLogical("molecular", molecular, cLine, nLines, &
+         "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
+
+    if (molecular) then
+       call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
+            "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
+            "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getLogical("writelucy", writeLucy, cLine, nLines, &
+            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("readlucy", readLucy, cLine, nLines, &
+            "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getReal("distance", gridDistance, cLine, nLines, &
+            "Grid distance (pc): ","(a,f4.1,1x,a)", 1., ok, .true.)
+       gridDistance = gridDistance * pcTocm   ! cm
+       call getReal("beamsize", beamsize, cLine, nLines, &
+            "Beam size (arcsec): ","(a,f4.1,1x,a)", 1., ok, .true.)
+    endif
+
+    call getLogical("cmf", cmf, cLine, nLines, &
+         "Compute CMF statistical equilibrium: ","(a,1l,a)", .false., ok, .false.)
+
+    if (cmf) then
+       call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
+            "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
+            "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       call getLogical("writelucy", writeLucy, cLine, nLines, &
+            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getLogical("readlucy", readLucy, cLine, nLines, &
+            "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getInteger("natom", nAtom, cLine, nLines, &
+            "Number of model atoms to solve for: ","(a,i12,a)",1,ok,.true.)
+       do i = 1, nAtom
+          write(keyword, '(a,i1)') "atom",i
+          call getString(keyword, atomFileName(i), cLine, nLines, &
+               "Use atom filename: ","(a,a,1x,a)","none", ok, .true.)
+       enddo
+    endif
+
+    call getLogical("debug", debug, cLine, nLines, &
+         "Write debug output: ","(a,1l,a)", .false., ok, .false.)
+
+
+    call getLogical("thickcont", opticallyThickContinuum, cLine, nLines, &
+         "Continuum is optically thick: ","(a,1l,a)", .false., ok, .false.)
+
+    if (photoionization) then
        call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
        call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
             "Minimum percentage of undersampled cell in lucy iteration: ", &
@@ -1268,197 +1268,219 @@ endif
 
        call getInteger("mincrossings", minCrossings, cLine, nLines, &
             "Minimum crossings required for cell to be sampled: ","(a,i12,a)",5,ok,.true.)
- endif
+    endif
 
-if (geometry == "starburst") then
-   photoionization = .true.
-   onekappa = .true.
-endif
-
-
-if (geometry == "lexington") then
-   photoionization = .true.
-   onekappa = .true.
-   call getReal("rinner", rInner, cLine, nLines, &
-       "Inner Radius (10^17cm): ","(a,f5.1,a)", 30., ok, .true.)
-   rinner = rinner * 1.e7
-endif
+    if (geometry == "starburst") then
+       photoionization = .true.
+       onekappa = .true.
+    endif
 
 
- if (geometry == "ttauri") then
-   call getReal("ttaurirstar", TTauriRstar, cLine, nLines, &
-        "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)
-     TTauriRstar = TTauriRstar * rSol ! [cm]
-     rcore = TTauriRstar/1.0e10       ! [10^10cm]
-   call getReal("ttaurimstar", TTauriMstar, cLine, nLines, &
-        "T Tauri stellar mass (in M_sol): ","(a,f7.1,1x,a)", 0.8, ok, .true.)
-     TTauriMstar = TTauriMstar * mSol
-   call getReal("ttaurirouter", TTauriRouter, cLine, nLines, &
-        "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
-     TTauriRouter = TTauriRouter * TTauriRstar
-   call getReal("ttauririnner", TTauriRinner, cLine, nLines, &
-        "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .true.)
-     TTauriRinner = TTauriRinner * TTauriRstar
-   call getReal("ttauridiskheight", TTauriDiskHeight, cLine, nLines, &
-        "T Tauri disk height (in R_star): ","(a,f7.1,1x,a)", 6.e-2, ok, .false.)
-     TTauriDiskHeight = TTauriDiskHeight * TTauriRstar
-   call getReal("ttauridiskrin", TTauriDiskRin, cLine, nLines, &
-        "T Tauri disk inner radius  (in R_star): ","(a,f7.1,1x,a)", TTauriRouter/TTauriRstar, ok, .false.)
-   call getReal("thindiskrin", ThinDiskRin, cLine, nLines, &
-        "Thin disk inner radius  (in R_star): ","(a,f7.1,1x,a)", TTauriRouter/TTauriRstar, ok, .false.)
-   call getReal("curtainsphi1s", curtainsPhi1s, cLine, nLines, &
-        "Curtains 1: Phi start: (degrees): ","(a,f7.1,1x,a)", 30.0, ok, .false.)
-   call getReal("curtainsphi1e", curtainsPhi1e, cLine, nLines, &
-        "Curtains 1: Phi end: (degrees): ","(a,f7.1,1x,a)", 150.0, ok, .false.)
-   call getReal("curtainsphi2s", curtainsPhi2s, cLine, nLines, &
-        "Curtains 2: Phi start: (degrees): ","(a,f7.1,1x,a)", 210.0, ok, .false.)
-   call getReal("curtainsphi2e", curtainsPhi2e, cLine, nLines, &
-        "Curtains 2: Phi end: (degrees): ","(a,f7.1,1x,a)", 330.0, ok, .false.)
-   !  converting the angles in radians  (RK) 
-   curtainsPhi1s =    curtainsPhi1s * (pi/180.0) 
-   curtainsPhi1e =    curtainsPhi1e * (pi/180.0) 
-   curtainsPhi2s =    curtainsPhi2s * (pi/180.0) 
-   curtainsPhi2e =    curtainsPhi2e * (pi/180.0) 
-
-   ! The following two are used for "constantcurtans" geometry  (RK)
-   call getInteger("curtain_number", curtain_number, cLine, nLines, &
-        "Number of curtains : ","(a,i8,a)", 2, ok, .false.)
-   call getReal("curtain_width", curtain_width, cLine, nLines, &
-        "Width of each curtain (degree) : ","(a,f7.1,1x,a)", 120.0, ok, .false.)
-   ! converting the curtain width from degrees to radians.
-   curtain_width =  curtain_width*Pi/180.0
+    if (geometry == "lexington") then
+       photoionization = .true.
+       onekappa = .true.
+       call getReal("rinner", rInner, cLine, nLines, &
+            "Inner Radius (10^17cm): ","(a,f5.1,a)", 30., ok, .true.)
+       rinner = rinner * 1.e7
+    endif
 
 
-   call getString("mdottype", mDotType, cLine, nLines, &
-        "T Tauri accretion rate model: ","(a,a,1x,a)","constant", ok, .true.)
-   call getReal("mdotpar1", MdotParameter1, cLine, nLines, &
-        "1st parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .true.)
-   call getReal("mdotpar2", MdotParameter2, cLine, nLines, &
-        "2nd parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
-   call getReal("mdotpar3", MdotParameter3, cLine, nLines, &
-        "3rd parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
-   call getReal("mdotpar4", MdotParameter4, cLine, nLines, &
-        "4th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
-   call getReal("mdotpar5", MdotParameter5, cLine, nLines, &
-        "5th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
-   call getReal("mdotpar6", MdotParameter6, cLine, nLines, &
-        "6th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
-        
-   call getLogical("lte", lte, cLine, nLines, &
+    if (geometry == "ttauri" .or. geometry == "magstream") then
+
+       if (geometry == "magstream") then
+
+          call getString("magstreamfile", MagStreamFile, cLine, nLines, &
+               "Magnetic stream data filename: ","(a,a,1x,a)","none", ok, .true.)
+          call getLogical("magfiledegrees", magStreamFileDegrees, cLine, nLines, &
+               "Magnetic stream data angle in degrees: ","(a,1l,a)", .true., ok, .true.)        
+          call getLogical("isothermstream", isothermStream, cLine, nLines, &
+               "Use isothermal temperature in accretion stream:","(a,1l,1x,a)", .false., ok, .true.)
+          call getReal("isothermtemp", isothermTemp, cLine, nLines,"Isothermal temperature (K): ","(a,e9.3,1x,a)",7500.,ok,.true.)
+
+          call getLogical("limitspottemp", limitSpotTemp, cLine, nLines, &
+               "Limit on accretion spot temperature: ","(a,1l,1x,a)", .false., ok, .false.)
+          if (limitSpotTemp) then
+             call getReal("maxspottemp", maxSpotTemp, cLine, nLines, &
+                  "Maximum hotspot temperature (K): ","(a,f7.1,1x,a)", 7000., ok, .true.)
+          end if
+          call getLogical("scaleflowrho", scaleFlowRho, cLine, nLines, &
+               "Rescale accretion flow densities: ","(a,1l,1x,a)", .false., ok, .false.)
+          if (scaleFlowRho) then
+             call getReal("flowrhoscale", flowRhoScale, cLine, nLines, &
+                  "Scaling factor for accretion flow densities: ","(a,e14.3,1x,a)", 1., ok, .true.)
+          end if
+
+       endif
+
+       call getReal("ttaurirstar", TTauriRstar, cLine, nLines, &
+            "T Tauri stellar radius (in R_sol): ","(a,f7.1,1x,a)", 2.0, ok, .true.)
+       TTauriRstar = TTauriRstar * rSol ! [cm]
+       rcore = TTauriRstar/1.0e10       ! [10^10cm]
+       call getReal("ttaurimstar", TTauriMstar, cLine, nLines, &
+            "T Tauri stellar mass (in M_sol): ","(a,f7.1,1x,a)", 0.8, ok, .true.)
+       TTauriMstar = TTauriMstar * mSol
+       call getReal("ttaurirouter", TTauriRouter, cLine, nLines, &
+            "T Tauri outer flow radius (in R_star): ","(a,f7.1,1x,a)", 3.0, ok, .true.)
+       TTauriRouter = TTauriRouter * TTauriRstar
+       call getReal("ttauririnner", TTauriRinner, cLine, nLines, &
+            "T Tauri inner flow radius (in R_star): ","(a,f7.1,1x,a)", 2.2, ok, .true.)
+       TTauriRinner = TTauriRinner * TTauriRstar
+       call getReal("ttauridiskheight", TTauriDiskHeight, cLine, nLines, &
+            "T Tauri disk height (in R_star): ","(a,f7.1,1x,a)", 6.e-2, ok, .false.)
+       TTauriDiskHeight = TTauriDiskHeight * TTauriRstar
+       call getReal("ttauridiskrin", TTauriDiskRin, cLine, nLines, &
+            "T Tauri disk inner radius  (in R_star): ","(a,f7.1,1x,a)", TTauriRouter/TTauriRstar, ok, .false.)
+       call getReal("thindiskrin", ThinDiskRin, cLine, nLines, &
+            "Thin disk inner radius  (in R_star): ","(a,f7.1,1x,a)", TTauriRouter/TTauriRstar, ok, .false.)
+       call getReal("curtainsphi1s", curtainsPhi1s, cLine, nLines, &
+            "Curtains 1: Phi start: (degrees): ","(a,f7.1,1x,a)", 30.0, ok, .false.)
+       call getReal("curtainsphi1e", curtainsPhi1e, cLine, nLines, &
+            "Curtains 1: Phi end: (degrees): ","(a,f7.1,1x,a)", 150.0, ok, .false.)
+       call getReal("curtainsphi2s", curtainsPhi2s, cLine, nLines, &
+            "Curtains 2: Phi start: (degrees): ","(a,f7.1,1x,a)", 210.0, ok, .false.)
+       call getReal("curtainsphi2e", curtainsPhi2e, cLine, nLines, &
+            "Curtains 2: Phi end: (degrees): ","(a,f7.1,1x,a)", 330.0, ok, .false.)
+       !  converting the angles in radians  (RK) 
+       curtainsPhi1s =    curtainsPhi1s * (pi/180.0) 
+       curtainsPhi1e =    curtainsPhi1e * (pi/180.0) 
+       curtainsPhi2s =    curtainsPhi2s * (pi/180.0) 
+       curtainsPhi2e =    curtainsPhi2e * (pi/180.0) 
+
+       ! The following two are used for "constantcurtans" geometry  (RK)
+       call getInteger("curtain_number", curtain_number, cLine, nLines, &
+            "Number of curtains : ","(a,i8,a)", 2, ok, .false.)
+       call getReal("curtain_width", curtain_width, cLine, nLines, &
+            "Width of each curtain (degree) : ","(a,f7.1,1x,a)", 120.0, ok, .false.)
+       ! converting the curtain width from degrees to radians.
+       curtain_width =  curtain_width*Pi/180.0
+
+
+       call getString("mdottype", mDotType, cLine, nLines, &
+            "T Tauri accretion rate model: ","(a,a,1x,a)","constant", ok, .true.)
+       call getReal("mdotpar1", MdotParameter1, cLine, nLines, &
+            "1st parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .true.)
+       call getReal("mdotpar2", MdotParameter2, cLine, nLines, &
+            "2nd parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+       call getReal("mdotpar3", MdotParameter3, cLine, nLines, &
+            "3rd parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+       call getReal("mdotpar4", MdotParameter4, cLine, nLines, &
+            "4th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+       call getReal("mdotpar5", MdotParameter5, cLine, nLines, &
+            "5th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+       call getReal("mdotpar6", MdotParameter6, cLine, nLines, &
+            "6th parameter for accretion rate: ", "(a,e9.3,1x,a)", 1.0, ok, .false.)
+
+       call getLogical("lte", lte, cLine, nLines, &
             "Statistical equ. in LTE: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("lycontthick", LyContThick, cLine, nLines, &
+       call getLogical("lycontthick", LyContThick, cLine, nLines, &
             "Optically thick Lyman continuum:","(a,1l,1x,a)", .false., ok, .false.)
-   call getString("contflux", contFluxFile, cLine, nLines, &
-        "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
-   call getString("popfile", popFilename, cLine, nLines, &
-        "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
-   call getLogical("writepops", writePops, cLine, nLines, &
+       call getString("contflux", contFluxFile, cLine, nLines, &
+            "Continuum flux filename (primary): ","(a,a,1x,a)","none", ok, .true.)
+       call getString("popfile", popFilename, cLine, nLines, &
+            "Grid populations filename: ","(a,a,1x,a)","none", ok, .true.)
+       call getLogical("writepops", writePops, cLine, nLines, &
             "Write populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-   call getLogical("readpops", readPops, cLine, nLines, &
+       call getLogical("readpops", readPops, cLine, nLines, &
             "Read populations file: ","(a,1l,1x,a)", .true., ok, .true.)
-   call getLogical("writephasepops", writePhasePops, cLine, nLines, &
+       call getLogical("writephasepops", writePhasePops, cLine, nLines, &
             "Write populations file at each phase: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("readphasepops", readPhasePops, cLine, nLines, &
+       call getLogical("readphasepops", readPhasePops, cLine, nLines, &
             "Read populations file (specific phase): ","(a,1l,1x,a)", .false., ok, .false.)
-   !call getLogical("curtains", curtains, cLine, nLines, &
-   !         "Curtains of accretion: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getReal("dipoleoffset", dipoleOffset, cLine, nLines, &
-         "Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
-    dipoleOffset = dipoleOffset * degToRad
-   call getLogical("enhance", enhance, cLine, nLines, &
+       !call getLogical("curtains", curtains, cLine, nLines, &
+            !         "Curtains of accretion: ","(a,1l,1x,a)", .false., ok, .false.)
+       call getReal("dipoleoffset", dipoleOffset, cLine, nLines, &
+            "Dipole offset (degrees): ","(a,f7.1,1x,a)", 1.e14, ok, .true.)
+       dipoleOffset = dipoleOffset * degToRad
+       call getLogical("enhance", enhance, cLine, nLines, &
             "Accretion enhancement: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getInteger("nlower", nLower, cLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
-   call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
-   call getLogical("usehartmanntemp", useHartmannTemp, cLine, nLines, &
+       call getInteger("nlower", nLower, cLine, nLines,"Lower level: ","(a,i2,a)",2,ok,.true.)
+       call getInteger("nupper", nUpper, cLine, nLines,"Upper level: ","(a,i2,a)",3,ok,.true.)
+       call getLogical("usehartmanntemp", useHartmannTemp, cLine, nLines, &
             "Use temperatures from Hartmann paper:","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("isotherm", isoTherm, cLine, nLines, &
+       call getLogical("isotherm", isoTherm, cLine, nLines, &
             "Use isothermal temperature :","(a,1l,1x,a)", .false., ok, .false.)
-   call getReal("isothermtemp", isoThermTemp, cLine, nLines, &
-         "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
-   if (useHartmannTemp .and. isoTherm) then 
-      if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm6500 both specified!"
-      stop
-   end if
-   if (useHartmannTemp) &
-     call getReal("maxharttemp", maxHartTemp, cLine, nLines, &
-           "Maximum of Hartmann temperature: ","(a,f7.1,1x,a)", 7436., ok, .false.)
-   ! sub options for ttauri geometry
-!   if (ttau_discwind_on) then   ! commnted out here to make ttaur_turn_off_discwind to work
-      ! --- parameters for ttauri wind
-      call getDouble("DW_d", DW_d, cLine, nLines, &
-           "Disc wind:: Wind soudce displacement [10^10cm]: ", &
-           "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
-      call getDouble("DW_Rmin", DW_Rmin, cLine, nLines, &
-           "Disc wind:: Inner radius of the disc [10^10cm]: ", &
-           "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
-      call getDouble("DW_Rmax", DW_Rmax, cLine, nLines, &
-           "Disc wind:: Outer radius of the disc [10^10cm]: ", &
-           "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
-      call getDouble("DW_Tmax", DW_Tmax, cLine, nLines, &
-           "Disc wind:: Temperature of disc at inner radius [K]: ", &
-           "(a,es9.3,1x,a)", 2000.0d0, ok, .true.) 
-      call getDouble("DW_gamma", DW_gamma, cLine, nLines, &
-           "Disc wind:: Exponent in the disc temperature power law [-]: ", &
-           "(a,es9.3,1x,a)", -0.5d0, ok, .true.) 
-      call getDouble("DW_Mdot", DW_Mdot, cLine, nLines, &
-           "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
-           "(a,es9.3,1x,a)", 1.0d-8, ok, .true.) 
-      call getDouble("DW_alpha", DW_alpha, cLine, nLines, &
-           "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
-           "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
-      call getDouble("DW_beta", DW_beta, cLine, nLines, &
-           "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
-           "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
-      call getDouble("DW_Rs", DW_Rs, cLine, nLines, &
-           "Disc wind:: Effective accerelation length [10^10cm]: ", &
-           "(a,es9.3,1x,a)", 50.0d0*DW_Rmin, ok, .true.) 
-      call getDouble("DW_f", DW_f, cLine, nLines, &
-           "Disc wind:: Scaling on the terminal velocity [-]: ", &
-           "(a,es9.3,1x,a)", 2.0d0, ok, .true.) 
-      call getDouble("DW_Twind", DW_Twind, cLine, nLines, &
-           "Disc wind:: Isotherma temperature of disc wind [K]: ", &
-           "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
-!   end if
+       call getReal("isothermtemp", isoThermTemp, cLine, nLines, &
+            "Isothermal temperature (K): ","(a,f7.1,1x,a)", 6500.0, ok, .false.)
+       if (useHartmannTemp .and. isoTherm) then 
+          if (writeoutput)  write(*,'(a)') "WARNING: useHartmannTemp and isoTherm6500 both specified!"
+          stop
+       end if
+       if (useHartmannTemp) &
+            call getReal("maxharttemp", maxHartTemp, cLine, nLines, &
+            "Maximum of Hartmann temperature: ","(a,f7.1,1x,a)", 7436., ok, .false.)
+       ! sub options for ttauri geometry
+          if (ttau_discwind_on) then   ! commnted out here to make ttaur_turn_off_discwind to work
+       ! --- parameters for ttauri wind
+       call getDouble("DW_d", DW_d, cLine, nLines, &
+            "Disc wind:: Wind soudce displacement [10^10cm]: ", &
+            "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
+       call getDouble("DW_Rmin", DW_Rmin, cLine, nLines, &
+            "Disc wind:: Inner radius of the disc [10^10cm]: ", &
+            "(a,es9.3,1x,a)", 70.0d0, ok, .true.) 
+       call getDouble("DW_Rmax", DW_Rmax, cLine, nLines, &
+            "Disc wind:: Outer radius of the disc [10^10cm]: ", &
+            "(a,es9.3,1x,a)", 700.0d0, ok, .true.) 
+       call getDouble("DW_Tmax", DW_Tmax, cLine, nLines, &
+            "Disc wind:: Temperature of disc at inner radius [K]: ", &
+            "(a,es9.3,1x,a)", 2000.0d0, ok, .true.) 
+       call getDouble("DW_gamma", DW_gamma, cLine, nLines, &
+            "Disc wind:: Exponent in the disc temperature power law [-]: ", &
+            "(a,es9.3,1x,a)", -0.5d0, ok, .true.) 
+       call getDouble("DW_Mdot", DW_Mdot, cLine, nLines, &
+            "Disc wind:: Total mass-loss rate from disc [Msun/yr]: ", &
+            "(a,es9.3,1x,a)", 1.0d-8, ok, .true.) 
+       call getDouble("DW_alpha", DW_alpha, cLine, nLines, &
+            "Disc wind:: Exponent in the mass-loss rate per unit area [-]: ", &
+            "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+       call getDouble("DW_beta", DW_beta, cLine, nLines, &
+            "Disc wind:: Exponent in the modefied beta-velocity law [-]: ", &
+            "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+       call getDouble("DW_Rs", DW_Rs, cLine, nLines, &
+            "Disc wind:: Effective accerelation length [10^10cm]: ", &
+            "(a,es9.3,1x,a)", 50.0d0*DW_Rmin, ok, .true.) 
+       call getDouble("DW_f", DW_f, cLine, nLines, &
+            "Disc wind:: Scaling on the terminal velocity [-]: ", &
+            "(a,es9.3,1x,a)", 2.0d0, ok, .true.) 
+       call getDouble("DW_Twind", DW_Twind, cLine, nLines, &
+            "Disc wind:: Isotherma temperature of disc wind [K]: ", &
+            "(a,es9.3,1x,a)", 5000.0d0, ok, .true.) 
+       endif
+          if (ttau_jet_on) then  ! commented out here to make ttaur_turn_off_jet to work
+       ! --- parameters for ttauri wind
+       call getDouble("JET_Rmin", JET_Rmin, cLine, nLines, &
+            "Minmium radius of Jet [10^10 cm]: ", &
+            "(a,es9.3,1x,a)", TTauriRouter/1.0d10, ok, .false.) 
+       call getDouble("JET_theta_j", JET_theta_j, cLine, nLines, &
+            "TTauri jets:: [deg]  jet opening angle: ", &
+            "(a,es9.3,1x,a)", 80.0d0, ok, .true.) 
+       JET_theta_j = JET_theta_j * (Pi/180.0)  ! converting [deg] to [radians]
 
-!   if (ttau_jet_on) then  ! commented out here to make ttaur_turn_off_jet to work
-      ! --- parameters for ttauri wind
-      call getDouble("JET_Rmin", JET_Rmin, cLine, nLines, &
-           "Minmium radius of Jet [10^10 cm]: ", &
-           "(a,es9.3,1x,a)", TTauriRouter/1.0d10, ok, .false.) 
-      call getDouble("JET_theta_j", JET_theta_j, cLine, nLines, &
-           "TTauri jets:: [deg]  jet opening angle: ", &
-           "(a,es9.3,1x,a)", 80.0d0, ok, .true.) 
-      JET_theta_j = JET_theta_j * (Pi/180.0)  ! converting [deg] to [radians]
-
-      call getDouble("JET_Mdot", JET_Mdot, cLine, nLines, &
-           "TTauri jets:: [Msun/yr] mass loss rate in the jets: ", &
-           "(a,es9.3,1x,a)", 1.0d-9, ok, .true.) 
-      call getDouble("JET_a_param", JET_a_param, cLine, nLines, &
-           "TTauri jets:: [-] a parameter in density function: ", &
-           "(a,es9.3,1x,a)", 0.8d0, ok, .true.) 
-      call getDouble("JET_b_param", JET_b_param, cLine, nLines, &
-           "TTauri jets:: [-] b parameter in density function: ", &
-           "(a,es9.3,1x,a)", 2.0d0, ok, .true.) 
-      call getDouble("JET_Vbase", JET_Vbase, cLine, nLines, &
-           "TTauri jets:: [km/s] Base velocity of jets: ", &
-           "(a,es9.3,1x,a)", 20.0d0, ok, .true.) 
-      call getDouble("JET_Vinf", JET_Vinf, cLine, nLines, &
-           "TTauri jets:: [km/s] Terminal velocity of jets: ", &
-           "(a,es9.3,1x,a)", 200.0d0, ok, .true.) 
-      call getDouble("JET_beta", JET_beta, cLine, nLines, &
-           "TTauri jets:: [-] a parameter in velocity function: ", &
-           "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
-      call getDouble("JET_gamma", JET_gamma, cLine, nLines, &
-           "TTauri jets:: [-] a parameter in velocity function: ", &
-           "(a,es9.3,1x,a)", 0.05d0, ok, .true.) 
-      call getDouble("JET_T", JET_T, cLine, nLines, &
-           "TTauri jets:: [K]  Isothermal temperature of jets: ", &
-           "(a,es9.3,1x,a)", 1.0d4, ok, .true.) 
-
-!   end if
-
-
-endif
+       call getDouble("JET_Mdot", JET_Mdot, cLine, nLines, &
+            "TTauri jets:: [Msun/yr] mass loss rate in the jets: ", &
+            "(a,es9.3,1x,a)", 1.0d-9, ok, .true.) 
+       call getDouble("JET_a_param", JET_a_param, cLine, nLines, &
+            "TTauri jets:: [-] a parameter in density function: ", &
+            "(a,es9.3,1x,a)", 0.8d0, ok, .true.) 
+       call getDouble("JET_b_param", JET_b_param, cLine, nLines, &
+            "TTauri jets:: [-] b parameter in density function: ", &
+            "(a,es9.3,1x,a)", 2.0d0, ok, .true.) 
+       call getDouble("JET_Vbase", JET_Vbase, cLine, nLines, &
+            "TTauri jets:: [km/s] Base velocity of jets: ", &
+            "(a,es9.3,1x,a)", 20.0d0, ok, .true.) 
+       call getDouble("JET_Vinf", JET_Vinf, cLine, nLines, &
+            "TTauri jets:: [km/s] Terminal velocity of jets: ", &
+            "(a,es9.3,1x,a)", 200.0d0, ok, .true.) 
+       call getDouble("JET_beta", JET_beta, cLine, nLines, &
+            "TTauri jets:: [-] a parameter in velocity function: ", &
+            "(a,es9.3,1x,a)", 0.5d0, ok, .true.) 
+       call getDouble("JET_gamma", JET_gamma, cLine, nLines, &
+            "TTauri jets:: [-] a parameter in velocity function: ", &
+            "(a,es9.3,1x,a)", 0.05d0, ok, .true.) 
+       call getDouble("JET_T", JET_T, cLine, nLines, &
+            "TTauri jets:: [K]  Isothermal temperature of jets: ", &
+            "(a,es9.3,1x,a)", 1.0d4, ok, .true.) 
+       endif
+    endif
 
  if (geometry == "ttwind" .or. geometry == "donati") then
    call getLogical("lte", lte, cLine, nLines, &
@@ -2444,12 +2466,13 @@ subroutine findReal(name, value, cLine, nLines, ok)
  character(len=80) :: cLine(*)
  integer :: nLines
  logical :: ok
- integer :: i, j
+ integer :: i, j, k
 
  ok = .false.
  do i = 1, nLines
+  k = index(cline(i)," ")-1
   j = len_trim(name)
-  if (trim(cLine(i)(1:j)) .eq. name) then
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
        ok = .true.
        read(cLine(i)(j+1:80),*) value
   endif
@@ -2463,12 +2486,13 @@ subroutine findReal(name, value, cLine, nLines, ok)
  character(len=80) :: cLine(*)
  integer :: nLines
  logical :: ok
- integer :: i, j
+ integer :: i, j, k
 
  ok = .false.
  do i = 1, nLines
   j = len_trim(name)
-  if (trim(cLine(i)(1:j)) .eq. name) then
+  k = index(cline(i)," ")-1
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
        ok = .true.
        read(cLine(i)(j+1:80),*) value
   endif
@@ -2482,12 +2506,13 @@ subroutine findInteger(name, value, cLine, nLines, ok)
  character(len=80) :: cLine(*)
  integer :: nLines
  logical :: ok
- integer :: i, j
+ integer :: i, j, k
 
  ok = .false.
  do i = 1, nLines
   j = len_trim(name)
-  if (trim(cLine(i)(1:j)) .eq. name) then
+  k = index(cline(i)," ")-1
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
        ok = .true.
        read(cLine(i)(j+1:),*) value
   endif
@@ -2501,12 +2526,13 @@ subroutine findLogical(name, value, cLine, nLines, ok)
  character(len=80) :: cLine(*)
  integer :: nLines
  logical :: ok
- integer :: i, j
+ integer :: i, j, k
 
  ok = .false.
  do i = 1, nLines
+  k = index(cline(i)," ")-1
   j = len_trim(name)
-  if (trim(cLine(i)(1:j)) .eq. name) then
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
        ok = .true.
        read(cLine(i)(j+1:),*) value
   endif
@@ -2520,12 +2546,13 @@ subroutine findString(name, value, cLine, nLines, ok)
  character(len=80) :: cLine(*)
  integer :: nLines
  logical :: ok
- integer :: i, j
+ integer :: i, j, k
 
  ok = .false.
  do i = 1, nLines
   j = len_trim(name)
-  if (trim(cLine(i)(1:j)) .eq. name) then
+  k = index(cline(i)," ")-1
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
        ok = .true.
        read(cLine(i)(j+1:),*) value
   endif
@@ -2540,12 +2567,13 @@ subroutine findRealArray(name, value, cLine, nLines, ok)
  character(len=80) :: cLine(*)
  integer :: nLines
  logical :: ok
- integer :: i, j
+ integer :: i, j, k
 
  ok = .false.
  do i = 1, nLines
   j = len_trim(name)
-  if (trim(cLine(i)(1:j)) .eq. name) then
+  k = index(cline(i)," ")-1
+  if (trim(cLine(i)(1:k)) .eq. name(1:j)) then
        ok = .true.
        read(cLine(i)(j+1:),*) value
   endif

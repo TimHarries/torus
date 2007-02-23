@@ -24,8 +24,22 @@ MODULE amr_mod
   USE atom_mod
   USE source_mod
   USE romanova_class
+  USE magField
 
   IMPLICIT NONE
+
+
+
+  type STREAMTYPE
+     integer :: nSamples
+     type(OCTALVECTOR) :: position(500)
+     type(OCTALVECTOR) :: direction(500)
+     real(double) :: rho(500)
+     real(double) :: streamRadius(500)
+  end type STREAMTYPE
+
+  type(STREAMTYPE) :: globalStream
+  integer :: iGlobalSample = 0
 
 
 CONTAINS
@@ -49,7 +63,9 @@ CONTAINS
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     !
     TYPE(octal), POINTER :: parentOctal
+    real(double) :: rhoDouble, r
     INTEGER :: parentSubcell
+    type(OCTALVECTOR) :: rVec
     LOGICAL :: inheritProps
     LOGICAL :: interpolate
 
@@ -200,6 +216,33 @@ CONTAINS
    CASE ("fractal")
       thisOctal%rho = 100.d0 * mHydrogen
       thisOctal%temperature = 8000.
+
+
+    CASE ("magstream")
+
+!      thisOctal%rho(subcell) = 1.d-30
+!      thisOctal%temperature(subcell) = 6000.
+!
+!       rVec = subcellCentre(thisOctal, subcell)
+!       if (iGlobalSample /= 0) then
+!          r = modulus(rVec - globalStream%position(iGlobalSample))
+!          if (r < globalStream%streamradius(iGlobalSample)) then
+!             thisOctal%rho(subcell) = globalStream%rho(iGlobalSample)
+!             write(*,*) thisOctal%rho(subcell),iglobalsample
+!             thisOctal%temperature(subcell) = 7500.
+!          endif
+!       endif
+
+
+      CALL getMagStreamValues(point=subcellCentre(thisOctal,subcell),&
+                              grid=grid,                            &
+                              rho=rhoDouble,                        &
+                              temperature=thisOctal%temperature(subcell),&
+                              velocity=thisOctal%velocity(subcell),  &
+                              inFlow=thisOctal%inFlow(subcell))
+      thisOctal%rho(subcell) = REAL(rhoDouble)
+      IF (subcell == thisOctal%maxChildren) CALL fillVelocityCorners(thisOctal,grid,magStreamVelocity, .true.)
+       thisOctal%microturb(subcell) = (10.d5/cSpeed) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!       
 
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
@@ -398,7 +441,8 @@ CONTAINS
 
 
   SUBROUTINE addNewChild(parent, iChild, grid, adjustGridInfo, sphData, &
-                         stellar_cluster, inherit, interp, splitAzimuthally, romData)
+                         stellar_cluster, inherit, interp, splitAzimuthally, romData, &
+                         stream, isample)
     ! adds one new child to an octal
 
     USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, cmf, nAtom, debug
@@ -409,6 +453,8 @@ CONTAINS
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
                                           !   calculate the variables stored in
                                           !   the tree.
+    type(STREAMTYPE), optional :: stream
+    integer, optional :: isample
     LOGICAL, INTENT(IN) :: adjustGridInfo
     LOGICAL, optional :: splitAzimuthally
       ! whether these variables should be updated: 
@@ -1073,6 +1119,8 @@ CONTAINS
       CASE ("ppdisk","wrshell","toruslogo","planetgap")
         gridConverged = .TRUE.
 
+      CASE ("magstream")
+        gridConverged = .TRUE.
 
       CASE DEFAULT
         WRITE(*,*) "! Unrecognised grid geometry in finishgrid: ",trim(grid%geometry)
@@ -4371,6 +4419,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER               :: nsample = 400
     LOGICAL               :: inUse
     INTEGER               :: nparticle, limit
+    real(double) :: timenow
     real(double) :: dummyDouble
     real(double) :: fac1,fac2
     real(double) :: rho_disc_ave, scale_length
@@ -4994,6 +5043,50 @@ IF ( .NOT. gridConverged ) RETURN
          splitInAzimuth = .false.
       endif
 
+   case("magstream")
+
+      
+      IF (thisOctal%nDepth < 5) THEN 
+        split = .TRUE.
+      ELSE
+
+        nsample = 1
+        ! the density is only sampled at the centre of the grid
+        ! we will search in each subcell to see if any point exceeds the 
+        ! threshold density
+
+        ! get the size and centre of the current cell
+        cellSize = thisOctal%subcellSize 
+        cellCentre = subcellCentre(thisOctal,subCell)
+    
+        ! check the density of random points in the current cell - 
+        !   if any of them exceed the critical density, set the flag
+        !   indicating the cell is to be split, and return from the function
+        split = .FALSE.
+        ave_density = 0.0_db
+        DO i = 1, nsample
+          searchPoint = cellCentre
+          CALL RANDOM_NUMBER(x)
+          CALL RANDOM_NUMBER(y)
+          CALL RANDOM_NUMBER(z)
+          searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct) 
+          searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=oct) 
+          searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct)
+
+          ! using a generic density function in density_mod.f90
+          ave_density  = density(searchPoint,grid,timeNow) + ave_density
+
+        END DO
+
+        ave_density = ave_density / REAL(nsample,KIND=double)
+        total_mass = ave_density * (cellSize*1.e10_db)**3.0_db
+        IF (total_mass > amrLimitScalar) then
+           split = .TRUE.
+        END IF
+
+      END IF
+
+
    case DEFAULT
       PRINT *, 'Invalid grid geometry option passed to amr_mod::decideSplit'
       PRINT *, 'grid%geometry ==', TRIM(grid%geometry)
@@ -5206,6 +5299,21 @@ IF ( .NOT. gridConverged ) RETURN
   END SUBROUTINE fillVelocityCorners
 
   
+
+  TYPE(vector) FUNCTION magStreamVelocity(point,grid)
+
+    use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
+                               TTauriMstar, TTauriDiskHeight
+                               
+    IMPLICIT NONE
+
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(gridtype), INTENT(IN)    :: grid
+
+    CALL getMagStreamValues(point, grid, velocity=magStreamVelocity)
+    
+  END FUNCTION magStreamVelocity
+
   TYPE(vector) FUNCTION TTauriVelocity(point,grid)
     ! calculates the velocity vector at a given point for a model
     !   of a T Tauri star with magnetospheric accretion
@@ -6520,8 +6628,10 @@ IF ( .NOT. gridConverged ) RETURN
 
     use constants_mod
     use vector_mod
+
     use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
-                               TTauriMstar, dipoleOffset, contFluxFile, ThinDiskRin
+                               TTauriMstar, dipoleOffset, contFluxFile, &
+                               magStreamFile, thinDiskRin
 
     implicit none
     
@@ -6534,6 +6644,8 @@ IF ( .NOT. gridConverged ) RETURN
     real :: tot
     integer :: i 
     real :: rStar, saccretion, taccretion
+
+
 
     rStar  = TTauriRstar / 1.e10
     
@@ -6588,6 +6700,11 @@ IF ( .NOT. gridConverged ) RETURN
     ! add the accretion luminosity spectrum to the stellar spectrum,
     ! write it out and pass it to the stateq routine.
     
+
+    IF ( grid%geometry == "magstream" ) THEN           
+      CALL loadMagField(fileName=magStreamFile,starPosn=grid%starPos1,Rstar=grid%rStar1)           
+    END IF
+
     !open(22,file="star_plus_acc.dat",form="formatted",status="unknown")
     !do i = 1, nNu
     !   fNu(i) = fNu(i) + pi*blackbody(tAccretion, 1.e8*cSpeed/ nuArray(i))* &
@@ -12625,7 +12742,7 @@ IF ( .NOT. gridConverged ) RETURN
     ! geometry-specific tests should go here
     IF (grid%geometry(1:6) == "ttauri" .OR. grid%geometry(1:4) == "jets" .or. &
          grid%geometry(1:9) == "luc_cir3d" .or. grid%geometry(1:6) == "cmfgen" .or. &
-         grid%geometry(1:8) == "romanova" ) THEN
+         grid%geometry(1:8) == "romanova") THEN
       
        ! need to test for both star and disc intersections 
       
@@ -12885,6 +13002,14 @@ IF ( .NOT. gridConverged ) RETURN
     real(oct), PARAMETER :: distanceFraction = 0.999_oc 
     real(double) :: fudgeFac = 0.1d0
     integer :: nSource_local
+    TYPE(octalVector)       :: vectorToIntersectionXYZ ! intersection with disk (cartesian)
+    TYPE(spVectorOctal)    :: vectorToIntersectionSP ! intersection with disk (sph. polar)
+    REAL(KIND=oct)    :: intersectionPhi ! disk azimuth angle where photon intersects
+    INTEGER                 :: lowerBound ! index returned from 'hunt' with lower bound of phi bin
+    INTEGER                 :: upperBound ! usually lowerBound+1
+    REAL(KIND=oct)    :: localDiskRadius ! disk inner radius at current azimuth (1.e10cm)
+    REAL(KIND=oct)    :: lowerDistance ! angular distance to lower phi bin
+    REAL(KIND=oct)    :: upperDistance ! angular distance to upper phi bin
 
 
 
@@ -12959,8 +13084,63 @@ IF ( .NOT. gridConverged ) RETURN
          ! we need to check whether the photon passes through the disk's
          !   central hole, or the outside of the outer radius of accretion disc.
          intersectionRadius =  modulus(diskIntersection - starPosition)
-         IF (intersectionRadius > grid%diskRadius .and.  &
-              intersectionRadius < 1.5d5) THEN  ! assuming 100 AU disc size
+
+         IF (.NOT. grid%geometry == "magstream") THEN
+           localDiskRadius = grid%diskRadius
+         ELSE ! grid%geometry == "magstream"
+           vectorToIntersectionXYZ = diskIntersection - starPosition
+           ! convert to spherical polars
+           vectorToIntersectionSP = vectorToIntersectionXYZ
+           intersectionPhi = vectorToIntersectionSP%phi
+           
+           ! need to find the appropriate disk truncation radius at this azimuth
+           
+           IF (.NOT. ALLOCATED(innerDiskData_Phi) .OR. &
+               .NOT. ALLOCATED(innerDiskData_Radii)) THEN
+             PRINT *, "Panic in startReturnSamples: innerDiskData not ALLOCATED"  
+             STOP
+           END IF
+
+           CALL locate(innerDiskData_Phi,SIZE(innerDiskData_Phi),intersectionPhi,lowerBound)
+           
+           ! need to check for special cases - close to 0 / 2pi
+           IF (lowerBound == 0) THEN
+             upperBound = 1
+             lowerBound = SIZE(innerDiskData_Phi)
+             ! find out whether phi is closer to the lower or upper value
+             lowerDistance = intersectionPhi - (innerDiskData_Phi(lowerBound) - twoPi)
+             upperDistance = innerDiskData_Phi(upperBound) - intersectionPhi
+           ELSE IF (lowerBound == SIZE(innerDiskData_Phi)) THEN
+             upperBound = 1
+             lowerBound = SIZE(innerDiskData_Phi)
+             lowerDistance = intersectionPhi - innerDiskData_Phi(lowerBound)
+             upperDistance = (innerDiskData_Phi(upperBound) + twoPi) - intersectionPhi
+           ELSE
+             ! not a special case
+             upperBound = lowerBound + 1
+             lowerDistance = intersectionPhi - innerDiskData_Phi(lowerBound)
+             upperDistance = innerDiskData_Phi(upperBound) - intersectionPhi
+           END IF
+
+           ! if there is an angular distance of more than 5 degrees to the 
+           !   nearest sample point, we will assume we are in a region
+           !   with no accretion streams, and adopt the maximum disk radius
+           IF ( MIN(lowerDistance,upperDistance) > (5.0_oct * degToRad) ) THEN
+             localDiskRadius = maxSizeMagFieldGrid
+           ! else, we have a close sample
+           ELSE IF (lowerDistance <= upperDistance) THEN
+             localDiskRadius = innerDiskData_Radii(lowerBound)
+           ELSE
+             localDiskRadius = innerDiskData_Radii(upperBound)
+           END IF
+           
+         END IF
+
+
+
+
+
+         IF (intersectionRadius > localDiskRadius) THEN  ! assuming 100 AU disc size
 !              intersectionRadius < grid%octreeRoot%subcellsize*2.0) THEN
            absorbPhoton = .TRUE.
 
@@ -13198,25 +13378,23 @@ IF ( .NOT. gridConverged ) RETURN
 
     if (thisOctal%threed.and.(.not.thisOctal%cylindrical)) then
 
-       write(*,*) " not done yet!"
-       stop
           ! cube
 
          ok = .true.
          
-         norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
-         norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
-         norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
-         norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
-         norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
-         norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
+         norm(1) = OCTALVECTOR(-1.0d0, 0.d0, 0.0d0)
+         norm(2) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
+         norm(3) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
+         norm(4) = OCTALVECTOR(1.0d0, 0.0d0, 0.0d0)
+         norm(5) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
+         norm(6) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
          
-         p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize/2.0d0, subcen%y, subcen%z)
-         p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize/2.0d0 ,subcen%z)
-         p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize/2.0d0)
-         p3(4) = OCTALVECTOR(subcen%x-thisOctal%subcellsize/2.0d0, subcen%y,  subcen%z)
-         p3(5) = OCTALVECTOR(subcen%x,subcen%y-thisOctal%subcellsize/2.0d0, subcen%z)
-         p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize/2.0d0)
+         p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize, subcen%y, subcen%z)
+         p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize ,subcen%z)
+         p3(3) = OCTALVECTOR(subcen%x,subcen%y,subcen%z+thisOctal%subcellsize)
+         p3(4) = OCTALVECTOR(subcen%x-thisOctal%subcellsize, subcen%y,  subcen%z)
+         p3(5) = OCTALVECTOR(subcen%x,subcen%y-thisOctal%subcellsize, subcen%z)
+         p3(6) = OCTALVECTOR(subcen%x,subcen%y,subcen%z-thisOctal%subcellsize)
 
          thisOk = .true.
          
@@ -13258,12 +13436,6 @@ IF ( .NOT. gridConverged ) RETURN
             stop
          endif
          
-         if (tval > sqrt(3.)*thisOctal%subcellsize) then
-            !     write(*,*) "tval too big",tval/(sqrt(3.)*thisOctal%subcellSize)
-            !     write(*,*) "direction",direction
-            !     write(*,*) t(1:6)
-            !     write(*,*) denom(1:6)
-         endif
 
       else
 
@@ -13358,4 +13530,160 @@ IF ( .NOT. gridConverged ) RETURN
 
 
 
+  recursive subroutine splitGridOnStream(thisOctal, thisStream, grid, converged)
+    use input_variables, only : limitScalar
+    integer :: nStreams
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child
+    type(OCTALVECTOR) :: rVec, corner
+    integer :: i, j, subcell, iStream
+    logical :: converged
+    logical :: split
+    type(STREAMTYPE) :: thisStream
+    real(double), parameter :: fac = 2.d0
+    converged = .true.
+
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call splitGridOnStream(child, thisStream, grid, converged)
+                exit
+             end if
+          end do
+       else
+
+
+          rVec = subcellCentre(thisOctal, subcell)
+
+          do j = 1, thisStream%nSamples
+             
+             
+             split = .false.
+             corner = closestCorner(thisOctal, subcell, thisStream%position(j))
+             
+             
+             if ((inSubcell(thisOctal, subcell, thisStream%position(j))).and. &
+                  (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) split = .true.
+             
+             if ((.not.split).and. (.not.inSubcell(thisOctal, subcell, thisStream%position(j))).and. &
+                  (modulus(corner - thisStream%position(j)) < thisStream%StreamRadius(j)).and. &
+                  (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) split = .true.
+             
+             if (split) then
+
+                globalStream = thisStream
+                iglobalSample = j
+                write(*,*) "adding child",thisStream%streamRadius(j),thisOctal%subcellSize
+                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                     inherit=.false., interp=.false.)
+                
+                converged = .false.
+                exit
+             endif
+          enddo
+          if (.not.converged) exit
+       end if
+    enddo
+  end subroutine splitGridOnStream
+
+  subroutine readStreams(thisStream, nStream, filename)
+    type(STREAMTYPE) :: thisStream(:)
+    character(len=*) :: filename
+    integer :: nstream
+    integer :: i, n
+    real(double) :: r, theta, phi, v, rho, area
+    type(OCTALVECTOR) :: rVec
+    open(20, file=filename, status="old", form="formatted")
+    nStream = 0
+10 continue
+       read(20,*,end=20) r, theta, phi, v, rho, area
+       if (r < 1.00001d0) then
+          nStream = nStream + 1
+          thisStream(nStream)%nSamples = 0
+       endif
+       theta = theta * degtorad
+       area = area * 1.d4
+       phi = phi * degtorad
+       rho = rho * 1.d-3
+       r = r * 2.d0 * rsol / 1.d10
+       rVec = r * OCTALVECTOR(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))
+
+       thisStream(nStream)%nSamples = thisStream(nStream)%nSamples + 1
+
+       thisStream(nStream)%position(thisStream(nStream)%nSamples) = rVec
+       thisStream(nStream)%rho(thisStream(nStream)%nSamples) = rho
+       thisStream(nStream)%streamRadius(thisStream(nStream)%nSamples) = sqrt(area/pi)/1.d10
+    goto 10
+20 continue
+    close(20)
+    write(*,*) "Read in ",nStream, " streams."
+    do i = 1, nStream
+       write(*,*) "Stream ",i," has ",thisStream(i)%nsamples, " samples"
+    enddo
+
+  end subroutine readStreams
+
+  function  closestCorner(thisOctal, subcell, posVec) result (closeCorner)
+    type(OCTALVECTOR) :: closeCorner, posVec, cen, thisCorner
+    type(OCTAL), pointer :: thisOctal
+    real(double) :: minDist, r, dist
+    integer :: subcell
+    
+    minDist =  1.d30
+    r = thisOctal%subcellSize/2.d0
+    cen = subcellCentre(thisOctal, subcell)
+
+    thisCorner = cen + r * OCTALVECTOR(1.d0, 1.d0, 1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+       closeCorner = thisCorner
+    endif
+    thisCorner = cen + r * OCTALVECTOR(1.d0, 1.d0, -1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+       closeCorner = thisCorner
+    endif
+    thisCorner = cen + r * OCTALVECTOR(1.d0, -1.d0, -1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+       closeCorner = thisCorner
+    endif
+    thisCorner = cen + r * OCTALVECTOR(1.d0, -1.d0, 1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+       closeCorner = thisCorner
+    endif
+    thisCorner = cen + r * OCTALVECTOR(-1.d0, -1.d0,  -1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+       closeCorner = thisCorner
+    endif
+    thisCorner = cen + r * OCTALVECTOR(-1.d0, 1.d0, -1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+       closeCorner = thisCorner
+    endif
+    thisCorner = cen + r * OCTALVECTOR(-1.d0, -1.d0, 1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+       closeCorner = thisCorner
+    endif
+    thisCorner = cen + r * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+       closeCorner = thisCorner
+    endif
+  end function closestCorner
 END MODULE amr_mod

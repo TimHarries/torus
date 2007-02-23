@@ -33,9 +33,10 @@ contains
   !
   !  For a given point (as a vector) with each component in
   !  10^10 cm and gridtype object, it will return the density in g/cm^3
-  function density(r_vec, grid) RESULT(out)
+  function density(r_vec, grid,timenow) RESULT(out)
     implicit none
     real(double) :: out
+    real(double), optional :: timenow
     type(octalVector), intent(in) :: r_vec
     type(gridtype), intent(in) :: grid
 
@@ -95,6 +96,8 @@ contains
     case("toruslogo")
        out = torusLogodensity(r_vec)  ! [g/cm^3]
 
+    case ("magstream")
+       CALL getMagStreamValues(point=r_vec, grid=grid, rho=out)
        
     case default
        print *, 'Error:: Geometry option passed to [density_mod::density] '
@@ -116,7 +119,7 @@ contains
   subroutine print_geometry_list()    
     implicit none
     ! # of option available currently.
-    integer, parameter :: n = 7
+    integer, parameter :: n = 8
     character(LEN=30) :: name(n)
     integer :: i
 
@@ -128,7 +131,8 @@ contains
     name(5) =  'spiralwind'
     name(6) =  'luc_cir3d'
     name(7) =  'cmfgen'
-    
+    name(8) =  'magstream'
+
     do i = 1, n
        write(*, *)  '   ', i, '. ', name(i)
     end do
@@ -1316,6 +1320,182 @@ end subroutine calcPlanetMass
     endif
   end function torusLogoDensity
 
+  SUBROUTINE getMagStreamValues(point, grid, sampleNum, rho, &
+                                temperature, velocity,inFlow)
+    ! returns the physical conditions at a point in an accretion 
+    !   stream, in the "magstream" geometry.
+   
+    USE magField
+    
+    TYPE(GRIDTYPE), INTENT(IN)    :: grid
+    TYPE(octalVector), INTENT(IN) :: point
+    INTEGER, INTENT(OUT), OPTIONAL :: sampleNum 
+      ! index number of the gridSample that was closest
+    REAL(double), INTENT(OUT), OPTIONAL :: rho
+    REAL, INTENT(OUT), OPTIONAL :: temperature
+    TYPE(vector), INTENT(OUT), OPTIONAL :: velocity
+    LOGICAL(KIND=logic), INTENT(OUT), OPTIONAL :: inFlow ! in accretion stream?
+
+    INTEGER :: iSample
+    REAL(oct) :: rStar
+    TYPE(octalVector) :: samplePos
+    INTEGER :: nFound
+    INTEGER :: latestSampleFound 
+    INTEGER :: nearestSampleNum
+    REAL :: distanceArray(SIZE(magFieldGrid))
+    REAL :: starDistance
+    TYPE(octalVector) :: starPosn
+    TYPE(octalVector) :: flowVector
+    TYPE(octalVector) :: lineEnd1, lineEnd2
+    REAL(oct) :: prevDistance, nextDistance, nearestDistance
+    REAL(oct) :: distance
+    TYPE(gridSample), POINTER :: thisSample
+    LOGICAL :: useNext, usePrevious
+    REAL :: thisSampleWeight
+    REAL :: velocityMag
+    TYPE(vector) :: velocityVector
+    
+    rStar = REAL(grid%rStar1,KIND=oct)
+    starPosn = grid%starPos1
+    nFound = 0
+
+    ! check if point is inside star, or well outside the accreting region
+    starDistance = modulus(point-starPosn)
+    IF ( (starDistance < rStar) .OR.           &
+         (starDistance > maxSizeMagFieldGrid) ) then
+
+      IF (PRESENT(rho)) rho = 1.e-25
+      IF (PRESENT(temperature)) temperature = 5999.9
+      IF (PRESENT(velocity)) velocity = vector(1.e-25,1.e-25,1.e-25)
+      IF (PRESENT(sampleNum)) sampleNum = -1
+      IF (PRESENT(inFlow)) inFlow = .FALSE.
+      return
+   endif
+         
+    ! search each sample to see if the point is close to it
+    DO iSample = 1, SIZE(magFieldGrid)
+      samplePos = magFieldGrid(iSample)%position
+
+      ! check if we can quickly reject point because it's definitely too      
+      !   far from the gridSample
+      !distance = modulus( point - samplePos )    
+      !MANUALLY INLINING ABOVE LINE FOR SPEED WHEN USING NON-IPO BUILD:
+      distance = SQRT( (point%x - samplePos%x)**2 + &
+                     (point%y - samplePos%y)**2 + &
+                     (point%z - samplePos%z)**2    )
+      
+      IF ( distance > magFieldGrid(iSample)%distanceUpperLimit ) CYCLE
+
+      thisSample => magFieldGrid(iSample)
+      flowVector = thisSample%flowVector
+      prevDistance = thisSample%prevDistance
+      nextDistance = thisSample%nextDistance
+
+      ! need to get sign correct below!!!
+      lineEnd1 = samplePos + ( flowVector * 0.5_oc * prevDistance )
+      lineEnd2 = samplePos + ( flowVector * 0.5_oc * nextDistance )
+      !print *, "lineEnds:", lineEnd1, lineEnd2, prevDistance, nextDistance
+      distance = distancePointLineSegment(linePoint1=lineEnd1, &
+                                          linePoint2=lineEnd2, &
+                                          testPoint=point)
+
+      IF ( distance > magFieldGrid(iSample)%radius ) THEN
+        ! outside flow
+!PRINT *, " outside flow",distance, magFieldGrid(iSample)%radius
+        CYCLE
+      ELSE
+        ! inside flow
+!PRINT *, " inside flow",distance, magFieldGrid(iSample)%radius
+        nFound = nFound + 1
+        latestSampleFound = iSample
+        sampleResults(nFound)%iSample = iSample
+        sampleResults(iSample)%sampleDistance = &
+          modulus( point - samplePos )
+      END IF
+
+    END DO
+    
+    IF ( nFound == 0 ) THEN
+        
+      IF (PRESENT(rho)) rho = 1.e-25
+      IF (PRESENT(temperature)) temperature = 5999.9
+      IF (PRESENT(velocity)) velocity = vector(1.e-25,1.e-25,1.e-25)
+      IF (PRESENT(sampleNum)) sampleNum = -1
+      IF (PRESENT(inFlow)) inFlow = .FALSE.
+
+    ELSE IF ( nFound == 1 ) THEN
+        
+      thisSample => magFieldGrid(latestSampleFound)
+      nearestDistance = sampleResults(1)%sampleDistance
+      
+      IF (PRESENT(rho)) rho = thisSample%rho
+      IF (PRESENT(temperature)) temperature = thisSample%temperature
+      IF (PRESENT(sampleNum)) sampleNum = latestSampleFound
+      IF (PRESENT(inFlow)) inFlow = .TRUE.
+      IF (PRESENT(velocity)) CALL velocityInterp
+      
+    ELSE ! multiple samples found
+      
+      nearestSampleNum = sampleResults(MINLOC(sampleResults(1:nFound)%sampleDistance,DIM=1))%iSample
+      thisSample => magFieldGrid(nearestSampleNum)
+      nearestDistance = distanceArray(nearestSampleNum)
+
+      IF (PRESENT(rho)) rho = thisSample%rho
+      IF (PRESENT(temperature)) temperature = thisSample%temperature
+      IF (PRESENT(sampleNum)) sampleNum = nearestSampleNum
+      IF (PRESENT(inFlow)) inFlow = .TRUE.
+      IF (PRESENT(velocity)) CALL velocityInterp
+      
+    END IF
+
+  CONTAINS
+
+    SUBROUTINE velocityInterp
+
+      ! set up interpolation weighting.
+      ! we only consider the flow that the nearest sample lies in
+       
+      ! find whether we are interested in the "next" or "previous" samples
+      !   in the stream 
+      IF ( ((point-thisSample%position) .dot. thisSample%flowVector) > 0.0_oc ) THEN
+        ! point is "downstream", and we want the "previous" sample point
+        thisSampleWeight = nearestDistance / thisSample%prevDistance
+        thisSampleWeight = MIN(thisSampleWeight, 1.0) 
+        thisSampleWeight = MAX(thisSampleWeight, 0.0) 
+        thisSampleWeight = 1.0 - thisSampleWeight
+        velocityMag = (thisSample%velocity * thisSampleWeight) + &
+                       (thisSample%prevVelocity * (1.0-thisSampleWeight)) 
+        velocityVector = thisSampleWeight * &
+           (vector(REAL(thisSample%flowVector%x),&
+                   REAL(thisSample%flowVector%y),&
+                   REAL(thisSample%flowVector%z) ) ) + &
+           (1.0-thisSampleWeight) * &        
+           vector(REAL(thisSample%prevFlowVector%x),&
+                  REAL(thisSample%prevFlowVector%y),&
+                  REAL(thisSample%prevFlowVector%z) ) 
+        velocity = velocityMag * velocityVector          
+      ELSE
+        ! point is "upstream", and we want the "next" sample point
+        thisSampleWeight = nearestDistance / thisSample%prevDistance
+        thisSampleWeight = MIN(thisSampleWeight, 1.0) 
+        thisSampleWeight = MAX(thisSampleWeight, 0.0) 
+        thisSampleWeight = 1.0 - thisSampleWeight
+        velocityMag = (thisSample%velocity * thisSampleWeight) + &
+                       (thisSample%nextVelocity * (1.0-thisSampleWeight)) 
+        velocityVector = thisSampleWeight * &
+           vector(REAL(thisSample%flowVector%x),&
+                   REAL(thisSample%flowVector%y),&
+                   REAL(thisSample%flowVector%z) ) + & 
+           (1.0-thisSampleWeight) * &        
+           vector(REAL(thisSample%nextFlowVector%x),&
+                  REAL(thisSample%nextFlowVector%y),&
+                  REAL(thisSample%nextFlowVector%z) ) 
+        velocity = velocityMag * velocityVector          
+      END IF
+
+    END SUBROUTINE velocityInterp
+
+  END SUBROUTINE getMagStreamValues
 
 
 end module density_mod 

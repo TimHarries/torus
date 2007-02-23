@@ -1028,6 +1028,7 @@ contains
 
     nEven = 50
 
+
     do i = 1, nEven
        freq(i) = log10(nuStart) + (dble(i-1)/dble(nEven-1))*(log10(nuEnd)-log10(nuStart))
     enddo
