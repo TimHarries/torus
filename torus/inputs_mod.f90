@@ -1209,24 +1209,29 @@ contains
     call getLogical("photoionization", photoionization, cLine, nLines, &
          "Compute photoionization equilibrium: ","(a,1l,a)", .false., ok, .false.)
 
-    call getLogical("molecular", molecular, cLine, nLines, &
-         "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
+ call getLogical("molecular", molecular, cLine, nLines, &
+   "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
 
-    if (molecular) then
-       call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
-            "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-       call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
-            "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-       call getLogical("writelucy", writeLucy, cLine, nLines, &
-            "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getLogical("readlucy", readLucy, cLine, nLines, &
-            "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-       call getReal("distance", gridDistance, cLine, nLines, &
-            "Grid distance (pc): ","(a,f4.1,1x,a)", 1., ok, .true.)
-       gridDistance = gridDistance * pcTocm   ! cm
-       call getReal("beamsize", beamsize, cLine, nLines, &
-            "Beam size (arcsec): ","(a,f4.1,1x,a)", 1., ok, .true.)
-    endif
+ if (molecular) then
+   call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
+        "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+   call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
+        "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+   call getLogical("writelucy", writeLucy, cLine, nLines, &
+        "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("readlucy", readLucy, cLine, nLines, &
+          "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getReal("distance", gridDistance, cLine, nLines, &
+         "Grid distance (pc): ","(a,f4.1,1x,a)", 1., ok, .true.)
+    gridDistance = gridDistance * pcTocm   ! cm
+    call getReal("beamsize", beamsize, cLine, nLines, &
+         "Beam size (arcsec): ","(a,f4.1,1x,a)", 1., ok, .true.)
+    call getReal("tolerance", tolerance, cLine, nLines, &
+         "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+    call getReal("hcoabundance", hcoabundance, cLine, nLines, &
+         "HCO+ Adbundance:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+
+endif
 
     call getLogical("cmf", cmf, cLine, nLines, &
          "Compute CMF statistical equilibrium: ","(a,1l,a)", .false., ok, .false.)

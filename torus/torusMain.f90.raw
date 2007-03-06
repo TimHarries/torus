@@ -2670,7 +2670,7 @@
 
      if (molecular) then
         if (.not.readlucy) call  molecularLoop(grid, co)
-        call calculateMoleculeSpectrum(grid, co, 1, OCTALVECTOR(0.d0, 1.d0, 0.d0), dble(gridDistance))
+        call calculateMoleculeSpectrum(grid, co, 1, OCTALVECTOR(0.d0, 1.d0, 0.d0))
         call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
 !$MPI if (my_rank == 0) &
         call plotDataCube(cube, 'cube.ps/vcps')

@@ -789,7 +789,7 @@ contains
   end subroutine getPolarOctal
 
 
-  ! rotate a vector "a" about the z-axis by angle b
+  ! rotate a vector "a" about the z-axis by angle b - CLOCKWISE!
 
   type(VECTOR) pure function rotateZSingle(a,b)
     type(VECTOR), intent(in) :: a
@@ -833,6 +833,7 @@ contains
 
   end function rotateZOctal
 
+  ! rotate a vector "a" about the x-axis by angle b - CLOCKWISE!
 
   type(VECTOR) pure function rotateXSingle(a,b)
     type(VECTOR), intent(in) :: a
@@ -876,6 +877,7 @@ contains
 
   end function rotateXOctal
 
+  ! rotate a vector "a" about the y-axis by angle b - ANTI-CLOCKWISE!
 
   type(VECTOR) pure function rotateYSingle(a,b)
     type(VECTOR), intent(in) :: a

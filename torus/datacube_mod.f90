@@ -116,8 +116,6 @@ contains
 
     allocate(image(1:nx, 1:ny))
 
-! This code modified to look at differences between datacubes
-
     do i = 1, nx
        do j = 1, ny
           if ( sum(cube%intensity(i,j,1:cube%nv)) .gt. 0) then
@@ -168,7 +166,7 @@ contains
              sMin = MIN(sMin,MINVAL(spec))
           enddo
        enddo
-       
+
        range = sMax - sMin
        sMin = sMin - 0.2*range
        sMax = sMax + 0.2*range
@@ -176,7 +174,7 @@ contains
        
        do i = 1, nx-1, nstep
           do j = 1, ny-1, nstep
-             call getweightedSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
+             call getSpectrum(cube, i, i+nstep-1, j, j+nstep-1, spec)
              vxs = x1 + (x2-x1)*real(i-1)/real(nx)
              vxe = x1 + (x2-x1)*real(i+nstep-1)/real(nx)
              vys = y1 + (y2-y1)*real(j-1)/real(ny)
@@ -188,7 +186,7 @@ contains
                   real(cube%vAxis(cube%nv))+0.1, &
                   real(smin), real(smax))
              
-             !          write(*,*) spec(1:cube%nv)
+             !write(*,*) spec(1:cube%nv)
              call pgline(cube%nv, real(cube%vAxis), &
                   real(spec))
              
@@ -197,19 +195,18 @@ contains
        enddo
     end if
     call pgend
-    call getweightedSpectrum(cube, 1, cube%nx, 1, cube%ny, spec)
+    call getSpectrum(cube, 1, cube%nx, 1, cube%ny, spec)
     
     write(*,*) "SPECTRUM"
     open(43, file="imagespectrum.dat",status="unknown",form="formatted")
     
     do k = 1, cube%nv
-       !write(*,*) cube%vAxis(k), spec(k)
+       write(*,*) cube%vAxis(k), spec(k)
        write(43,*) cube%vAxis(k), spec(k)
     enddo
     close(43)
 
   end subroutine plotDataCube
-
   subroutine getSpectrum(cube, ix1, ix2, iy1, iy2, spec)
     type(DATACUBE) :: cube
     integer :: ix1, ix2, iy1, iy2
@@ -242,7 +239,6 @@ contains
 !    spec = spec / dble(tot)
   end subroutine getWeightedSpectrum
 
-
   subroutine convolveCube(cube, beamSize)
     type(DATACUBE) :: cube
     real(double) :: beamSize ! beamsize in arcsec
@@ -255,11 +251,10 @@ contains
 
     sigma = beamsize /2.35d0
 
-
     dx = 3600.d0*((cube%xAxis(2) - cube%xAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
     dy = 3600.d0*((cube%yAxis(2) - cube%yAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
 
-    allocate( newArray(1:cube%nx, 1:cube%ny))
+    allocate(newArray(1:cube%nx, 1:cube%ny))
     call writeInfo("Convolving data cube with beam size", TRIVIAL)
     write(*,*) "cube%obsdist",cube%obsDistance/pctocm
 
@@ -289,18 +284,25 @@ contains
                    tot = tot + fac
                 enddo
              enddo
-!             write(*,*) "Weight",tot
+            ! write(*,*) "Weight",tot
           enddo
+!          write(*,*) newArray,tot
        enddo
 
-       cube%intensity(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)/dble(cube%nx*cube%ny)
+       cube%intensity(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)!/dble(cube%nx*cube%ny)
     enddo
     deallocate(newArray)
     call writeInfo("Done.",TRIVIAL)
   end subroutine convolveCube
     
+subroutine TranslateCubeIntensity(cube,constant)
+
+  type(DATACUBE) :: cube
+  real(double) :: constant
+  
+  cube%intensity = cube%intensity + constant
     
-    
+end subroutine TranslateCubeIntensity
 
 end module datacube_mod
 

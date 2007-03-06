@@ -83,8 +83,8 @@ MODULE octal_mod
     INTEGER                            :: indexChild(8)! index of child array containing
                                                         ! pointer to each subcell's child (if it exists) 
     LOGICAL                            :: threeD        ! this is a three-dimensional octal
-    LOGICAL                            :: twoD          ! this is a two-dimensioanl octal (quartal?!)
-    LOGICAL                            :: oneD          ! this is a one-dimensioanl octal (bital?!)
+    LOGICAL                            :: twoD          ! this is a two-dimensional octal (quartal?!)
+    LOGICAL                            :: oneD          ! this is a one-dimensional octal (bital?!)
     LOGICAL                            :: cylindrical   ! A three-d amr grid of x,z,phi
     LOGICAL                            :: splitAzimuthally   ! A three-d amr grid of x,z,phi
     INTEGER                            :: maxChildren   ! this is 8 for three-d and 4 for two-d
@@ -113,10 +113,10 @@ MODULE octal_mod
     REAL(double), DIMENSION(8)                 :: chiLine        ! line opacity
     REAL(double), DIMENSION(8)                 :: etaLine        ! line emissivity
     REAL(double), DIMENSION(8)                 :: etaCont        ! line emissivity
-    REAL(double), DIMENSION(8)                 :: biasLine3D     ! grid bias distrubtion
-    REAL(double), DIMENSION(8)                 :: biasCont3D     ! grid bias distrubtion
-    real(double), DIMENSION(8) :: probDistLine  ! emissivity probabilty distribution
-    real(double), DIMENSION(8) :: probDistCont  ! emissivity probabilty distribution
+    REAL(double), DIMENSION(8)                 :: biasLine3D     ! grid bias distribution
+    REAL(double), DIMENSION(8)                 :: biasCont3D     ! grid bias distribution
+    real(double), DIMENSION(8) :: probDistLine  ! emissivity probability distribution
+    real(double), DIMENSION(8) :: probDistCont  ! emissivity probability distribution
     real(double), DIMENSION(:,:), POINTER ::  N => null()! stateq level pops
     real(double), DIMENSION(8) :: Ne            ! electron density
     real(double)               :: phi, dphi

@@ -29,7 +29,7 @@ module input_variables
   integer :: nPhase
   integer :: nStartPhase, nEndPhase
   real    :: phaseTime ! time of each phase of simulation (seconds)
-
+  real :: tolerance ! maximum acceptable fractional change for J levels between iterations in molecular_mod
   logical :: lineEmission
   logical :: resonanceLine
   real :: probContPhoton
@@ -575,6 +575,7 @@ module input_variables
   logical :: magStreamFileDegrees ! does input file use degrees? (otherwise radians)
   !--------------------------------------------------------------------
 
+  real :: hcoabundance
   
 end module input_variables
 

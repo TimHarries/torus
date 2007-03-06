@@ -59,6 +59,7 @@ ifeq ($(SYSTEM), g95)
     STATICLIBS=
     STARLIBS=-L/star/lib `ndf_link`
     PGLIBS=-L/star/lib `pgplot_link`
+    CFITSIOLIBS=-lcfitsio
     MK_MPI_SRC = no
     KNOWN_SYSTEM=yes
 endif
