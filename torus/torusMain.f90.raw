@@ -2658,8 +2658,8 @@
      call random_seed
 
      if (cmf) then
-!        if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
-        call atomLoop(grid, nAtom, thisAtom, nsource, source)
+        if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
+!        call atomLoop(grid, nAtom, thisAtom, nsource, source)
         do i = 1, 20
            ang = twoPi * real(i-1)/20.
            call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 4, OCTALVECTOR(cos(ang), sin(ang), 0.d0), 100.d0*pctocm/1.d10, &
