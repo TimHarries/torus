@@ -220,7 +220,7 @@ contains
           spec(1:cube%nv) = spec(1:cube%nv) + cube%intensity(i,j,1:cube%nv)
        enddo
     enddo
-    spec = spec / dble(n)
+!    spec = spec / dble(n)
   end subroutine getSpectrum
 
   subroutine getWeightedSpectrum(cube, ix1, ix2, iy1, iy2, spec)
@@ -284,7 +284,7 @@ contains
                    tot = tot + fac
                 enddo
              enddo
-            ! write(*,*) "Weight",tot
+!             write(*,*) "Weight",tot
           enddo
 !          write(*,*) newArray,tot
        enddo
