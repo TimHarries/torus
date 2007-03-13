@@ -1332,9 +1332,10 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
 
   integer,allocatable :: PixelArray(:,:)
   real(double),allocatable :: PixelWeight(:,:)
+  real(double), allocatable :: outspec(:)
   real(oct) :: theta, phi
   real(double) :: D,distancetoGrid,BeamSizeInRadians,ArcSecsToRadians,Int, rr,rInArcSecSquared
-  real(double) :: Tcmb, dx
+  real(double) :: Tcmb, dx, fac, sigma2
 
   type(OCTALVECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
    
@@ -1365,7 +1366,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
   imageside = 4.6e7 ! Length of image in TORUS UNITS - 1e7 is size of beam at 250pc with beamsize 29"
   Npixels = 50 ! Number of spatial pixels per dimension
   nSubpixels = 0 ! each pixel is split into nsubpixels squared subpixels - I have plans to Romberg integrate using nsubpixels = 0
-  nv = 20   !Number of velocities 
+  nv = 50   !Number of velocities 
   itrans = 1 ! Level Transitions can be found in hco+.dat
 
 !    goto 666
@@ -1442,7 +1443,8 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
            rr = (PixelPositionArray(i,j)%y/(gridDistance/1d10))**2+ & 
                (PixelPositionArray(i,j)%z/(gridDistance/1d10))**2
 
-           PixelWeight(i,j) = exp(-0.5d0*(rr/(beamsizeInRadians/2.35d0)**2))
+           sigma2 = (beamSizeInRadians/2.35d0)**2 
+           PixelWeight(i,j) = exp(-rr/sigma2)
 
 
 !           write(*,*) sqrt(rr),sqrt(rr)*180*60*60/pi,beamsizeINRadians/2.35d0,PixelWeight(i,j)
@@ -1478,9 +1480,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
     call createimage(cube, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, nSubpixels) ! create an image using the supplied parameters (also calculate spectra)
     call plotDataCube(cube, 'image.ps/vcps') ! plot the image 
     
-    do iv = 1,nv
-       cube%intensity(:,:,iv)=cube%intensity(:,:,iv)*pixelWeight
-   enddo
+    Tcmb = cube%intensity(npixels,npixels,nv)
+    write(*,*) Tcmb
+    call TranslateCubeIntensity(cube,-1.d0*Tcmb)
 
 
 
@@ -1488,21 +1490,47 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
     dx = dx / (gridDistance/1.d10)
     cube%intensity = cube%intensity * (dx**2) !/ 1.d-23
 
+    allocate(outspec(1:cube%nv))
+    do i = 1, cube%nv
+       outspec(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
+    enddo
+    open(30,file="beforeconv.dat",status="unknown",form="formatted")
+    do i = 1, cube%nv
+       write(30,*) cube%vAxis(i), outspec(i)/1.d-23
+    enddo
+    close(30)
 
-   cube%intensity = cube%intensity / (2.d0*kerg)
+
+
+    do iv = 1,nv
+       cube%intensity(:,:,iv)=cube%intensity(:,:,iv)*pixelWeight
+   enddo
+
+
+
+
+   fac = 0.7d0 * pi*(15.d2/2.d0)**2 / (2.d0*kerg)
+
+   cube%intensity = cube%intensity * fac
 
 
 !!    Tcmb = intensityAlongRay(1d10*unitvec, viewvec, grid, thisMolecule, iTrans,5.d5/cSpeed) ! result (i0)
 !    write(*,*) Tcmb
-    Tcmb = cube%intensity(npixels,npixels,nv)
-    write(*,*) Tcmb
-    call TranslateCubeIntensity(cube,-1.d0*Tcmb)
 
 !    call convolveCube(cube, dble(beamSize))
 
 !    do iv = 1,nv
 !       cube%intensity(:,:,iv)=cube%intensity(:,:,iv)*pixelWeight
 !   enddo
+
+    do i = 1, cube%nv
+       outspec(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
+    enddo
+    open(30,file="afterconv.dat",status="unknown",form="formatted")
+    do i = 1, cube%nv
+       write(30,*) cube%vAxis(i), outspec(i)
+    enddo
+    close(30)
 
 
     call plotDataCube(cube, 'thecube.ps/vcps')
