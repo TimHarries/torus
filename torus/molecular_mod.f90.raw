@@ -927,7 +927,7 @@ contains
           call writeInfo(message,FORINFO)
 
 ! Write interesting things to a file
-          open(138,file="FracChanges.dat",access="append",status="unknown")
+          open(138,file="FracChanges.dat",position="append",status="unknown")
 19        format(i6,tr3,8(f7.5,1x),3x,l1,tr3,3(f5.3,tr3))
           write(138,19) nray, maxFracChangePerLevel, fixedrays, real(convergenceCounter(:,9))/real(nVoxels)
           
@@ -1364,7 +1364,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
   call normalize(unitvec)
 
   imageside = 4.6e7 ! Length of image in TORUS UNITS - 1e7 is size of beam at 250pc with beamsize 29"
-  Npixels = 50 ! Number of spatial pixels per dimension
+  Npixels = 100 ! Number of spatial pixels per dimension
   nSubpixels = 0 ! each pixel is split into nsubpixels squared subpixels - I have plans to Romberg integrate using nsubpixels = 0
   nv = 50   !Number of velocities 
   itrans = 1 ! Level Transitions can be found in hco+.dat
@@ -1435,6 +1435,9 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
      beamsizeInRadians = beamsize * ArcSecsToRadians !(gridDistance/1d10)*(beamsize/(6.48d5/pi)) 
      Int = 0.d0
 
+!     beamSizeInRadians = 1.22d0*(cspeed/thisMolecule%transFreq(itrans))/15.d2 / 2.d0
+     write(*,*) "Beam size: ",beamSizeinRadians * radtodeg * 3600.
+
      do i=1,npixels ! Where are all the pixels (top left corners) - what are all their weights
         do j=1,npixels
            PixelPositionArray(i,j) = OCTALVECTOR(0.d0, -1.d0*imageside/2.d0+(i-0.5d0)*imageside/real(nPixels),&
@@ -1443,8 +1446,8 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
            rr = (PixelPositionArray(i,j)%y/(gridDistance/1d10))**2+ & 
                (PixelPositionArray(i,j)%z/(gridDistance/1d10))**2
 
-           sigma2 = (beamSizeInRadians/2.35d0)**2 
-           PixelWeight(i,j) = exp(-rr/sigma2)
+           sigma2 = (beamSizeInRadians/2.35d0)**2
+           PixelWeight(i,j) = exp(-0.5d0*(rr/sigma2))
 
 
 !           write(*,*) sqrt(rr),sqrt(rr)*180*60*60/pi,beamsizeINRadians/2.35d0,PixelWeight(i,j)
@@ -1457,7 +1460,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
      enddo
 
      
-     PixelWeight = PixelWeight / Int ! Normalize to npixels**2 (because implicit uniform instrument function is 1 in each pixel not 1/npixels**2 
+!     PixelWeight = PixelWeight / Int ! Normalize to npixels**2 (because implicit uniform instrument function is 1 in each pixel not 1/npixels**2 
      write(*,*) "Max PixelWeight", int, maxval(PixelWeight), minval(PixelWeight),sum(pixelweight)
 
      do iVoxel = 1, nVoxels ! Put the projected subcell centre into a pixel
@@ -1509,7 +1512,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
 
 
 
-   fac = 0.7d0 * pi*(15.d2/2.d0)**2 / (2.d0*kerg)
+   fac =  pi*(15.d2/2.d0)**2 / (2.d0*kerg)
 
    cube%intensity = cube%intensity * fac
 
