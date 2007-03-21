@@ -13546,11 +13546,12 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTAL), pointer :: thisOctal, child
     type(OCTALVECTOR) :: rVec, corner
     integer :: i, j, subcell, iStream
-    logical :: converged
+    logical :: converged, converged_tmp
     logical :: split
     type(STREAMTYPE) :: thisStream
     real(double), parameter :: fac = 2.d0
     converged = .true.
+    converged_tmp=.true.
 
 
     do subcell = 1, thisOctal%maxChildren
@@ -13560,9 +13561,11 @@ IF ( .NOT. gridConverged ) RETURN
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call splitGridOnStream(child, thisStream, grid, converged)
+                if (.not.converged) converged_tmp = converged
                 exit
              end if
           end do
+          if (.not.converged_tmp) converged_tmp=converged
        else
 
 
@@ -13572,15 +13575,17 @@ IF ( .NOT. gridConverged ) RETURN
              
              
              split = .false.
-             corner = closestCorner(thisOctal, subcell, thisStream%position(j))
-             
+             !corner = closestCorner(thisOctal, subcell, thisStream%position(j))
              
              if ((inSubcell(thisOctal, subcell, thisStream%position(j))).and. &
-                  (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) split = .true.
-             
-             if ((.not.split).and. (.not.inSubcell(thisOctal, subcell, thisStream%position(j))).and. &
-                  (modulus(corner - thisStream%position(j)) < thisStream%StreamRadius(j)).and. &
-                  (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) split = .true.
+                  (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) then 
+                split = .true.
+             else
+                
+                if ((dist_from_closestCorner(thisOctal, subcell, thisStream%position(j)) < &
+                     thisStream%StreamRadius(j)).and. &
+                     (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) split = .true.
+             endif
              
              if (split) then
 
@@ -13695,6 +13700,59 @@ IF ( .NOT. gridConverged ) RETURN
        closeCorner = thisCorner
     endif
   end function closestCorner
+
+  function  dist_from_closestCorner(thisOctal, subcell, posVec) result (minDist)
+    type(OCTALVECTOR) :: posVec, cen, thisCorner
+    type(OCTAL), pointer :: thisOctal
+    real(double) :: minDist, r, dist
+    integer :: subcell
+    
+    minDist =  1.d30
+    r = thisOctal%subcellSize/2.d0
+    cen = subcellCentre(thisOctal, subcell)
+
+    thisCorner = cen + r * OCTALVECTOR(1.d0, 1.d0, 1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+    thisCorner = cen + r * OCTALVECTOR(1.d0, 1.d0, -1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+    thisCorner = cen + r * OCTALVECTOR(1.d0, -1.d0, -1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+    thisCorner = cen + r * OCTALVECTOR(1.d0, -1.d0, 1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+    thisCorner = cen + r * OCTALVECTOR(-1.d0, -1.d0,  -1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+    thisCorner = cen + r * OCTALVECTOR(-1.d0, 1.d0, -1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+    thisCorner = cen + r * OCTALVECTOR(-1.d0, -1.d0, 1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+    thisCorner = cen + r * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
+    dist  =  modulus(posVec - thisCorner)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+  end function dist_from_closestCorner
+
 
   subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax)
     type(GRIDTYPE) :: grid
