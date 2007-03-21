@@ -2900,5 +2900,187 @@ subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
 
 end subroutine addDustContinuumLucy
 
+subroutine setBiasOnTau(grid)
+  use input_variables, only : blockHandout
+!$MPI    include 'mpif.h'
+
+  type(gridtype) :: grid
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  real :: kap
+  real(double) :: tau, kappaAbs, kappaSca, thisTau
+  type(octalvector) :: rVec, direction
+  logical :: ross
+  integer :: subcell, i, ilam, ntau
+  real :: r
+    integer                     :: nOctal        ! number of octals in grid
+    type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+    integer :: iOctal
+    integer :: iOctal_beg, iOctal_end
+    real(double) :: phi, DeltaPhi, DeltaZ, deltaR
+    real(double), parameter :: underCorrect = 0.8d0
+    integer :: np
+    integer :: nBias
+    integer :: my_rank, ierr
+!$MPI     logical :: dcAllocated
+!$MPI     integer, dimension(:), allocatable :: octalsBelongRank
+!$MPI     logical :: rankComplete
+!$MPI     integer :: iRank
+!$MPI     integer :: tag = 0
+!$MPI     integer :: tempInt
+!$MPI     real(double), allocatable :: eArray(:), tArray(:)
+!$MPI     integer :: nEdens, nVoxels
+
+
+    np = 1
+    my_rank = 1
+
+
+    allocate(octalArray(grid%nOctals))
+    nOctal = 0
+    call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+    if (nOctal /= grid%nOctals) then
+       write(*,*) "Screw up in get octal array", nOctal,grid%nOctals
+       stop
+    endif
+
+!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
+!$MPI    !  Get my process rank # 
+!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI  
+!$MPI    ! Find the total # of precessor being used in this run
+!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+!$MPI    
+!$MPI    ! we will use an array to store the rank of the process
+!$MPI    !   which will calculate each octal's variables
+!$MPI    allocate(octalsBelongRank(size(octalArray)))
+!$MPI    
+!$MPI    if (my_rank == 0) then
+!$MPI       print *, ' '
+!$MPI       print *, 'Tau bias  computed by ', np-1, ' processors.'
+!$MPI       print *, ' '
+!$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
+!$MPI                            setDebug=.false.)
+!$MPI    
+!$MPI    endif
+!$MPI    ! ============================================================================
+
+    
+    ! default loop indices
+    ioctal_beg = 1
+    ioctal_end = nOctal
+
+
+!$MPI if (my_rank /= 0) then
+!$MPI  blockLoop: do     
+!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+!$MPI   if (rankComplete) exit blockLoop 
+    do iOctal =  iOctal_beg, iOctal_end
+       thisOctal => octalArray(iOctal)%content
+
+       do subcell = 1, thisOctal%maxChildren
+
+          if (.not.thisOctal%hasChild(subcell)) then
+
+             rVec = subcellCentre(thisOctal, subcell)
+             tau = 1.d30
+             ntau = 20
+             do i = 1, nTau
+                direction = randomUnitVector()
+                call tauAlongPath(grid, rVec, direction, thistau, 100.d0)
+                tau = min(tau, thisTau)
+             enddo
+             thisOctal%biasCont3D(subcell) = exp(-tau)
+          endif
+
+       enddo
+    enddo
+
+!$MPI if (.not.blockHandout) exit blockloop
+!$MPI end do blockLoop       
+!$MPI end if ! (my_rank /= 0)
+
+
+!$MPI     print *,'Process ',my_rank,' waiting to update values'
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI
+!$MPI     ! have to send out the 'octalsBelongRank' array
+!$MPI     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
+!$MPI                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI
+!$MPI     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+!$MPI     allocate(eArray(1:nVoxels))
+!$MPI     allocate(tArray(1:nVoxels))
+!$MPI     eArray = 0.d0
+!$MPI     call packBias(octalArray, nBias, eArray,octalsBelongRank)
+!$MPI     call MPI_ALLREDUCE(eArray,tArray,nBias,MPI_DOUBLE_PRECISION,&
+!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
+!$MPI     eArray = tArray
+!$MPI     call unpackBias(octalArray, nBias, eArray)
+!$MPI     deallocate(eArray, tArray)
+
+    deallocate(octalArray)
+
+  end subroutine setBiasOnTau
+
+
+!$MPI      subroutine packBias(octalArray, nBias, eArray, octalsBelongRank)
+!$MPI    include 'mpif.h'
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: octalsBelongRank(:)
+!$MPI        integer :: nBias
+!$MPI        real(double) :: eArray(:)
+!$MPI        integer :: iOctal, iSubcell, my_rank, ierr
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!$MPI       !
+!$MPI       ! Update the bias values of grid computed by all processors.
+!$MPI       !
+!$MPI       nBias = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI                
+!$MPI             if (.not.thisOctal%hasChild(iSubcell)) then
+!$MPI                 nBias = nBias + 1
+!$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
+!$MPI                   eArray(nBias) = octalArray(iOctal)%content%Biascont3d(iSubcell)
+!$MPI                 else 
+!$MPI                   eArray(nBias) = 0.d0
+!$MPI                 endif
+!$MPI              endif
+!$MPI          
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine packBias
+
+!$MPI      subroutine unpackBias(octalArray, nBias, eArray)
+!$MPI        type(OCTALWRAPPER) :: octalArray(:)
+!$MPI        integer :: nBias
+!$MPI        real(double) :: eArray(:)
+!$MPI        integer :: iOctal, iSubcell
+!$MPI        type(OCTAL), pointer :: thisOctal
+!$MPI
+!$MPI       !
+!$MPI       ! Update the bias values of grid computed by all processors.
+!$MPI       !
+!$MPI       nBias = 0
+!$MPI       do iOctal = 1, SIZE(octalArray)
+!$MPI
+!$MPI          thisOctal => octalArray(iOctal)%content
+!$MPI          
+!$MPI          do iSubcell = 1, thisOctal%maxChildren
+!$MPI                
+!$MPI             if (.not.thisOctal%hasChild(iSubcell)) then
+!$MPI                 nBias = nBias + 1
+!$MPI                 octalArray(iOctal)%content%biasCont3d(iSubcell) = eArray(nBias)
+!$MPI             endif
+!$MPI          end do
+!$MPI       end do
+!$MPI     end subroutine unpackBias
 
 end module lucy_mod

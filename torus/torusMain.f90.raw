@@ -2797,6 +2797,7 @@
            else
               call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
               call set_bias_shakara(grid%octreeRoot, grid, ilam=1, ross=.true.)
+!              call setBiasOnTau(grid)
            endif
 !        case("ppdisk")
 !           call locate(grid%lamArray, nLambda, usePhotonWavelength, itestlam)
@@ -3848,6 +3849,12 @@
 
      call randomSource(source, nSource, i, xArray, nLambda, initialize=.true.)  
 
+     if (mie) then
+        nOuterLoop = nLambda
+        nInnerLoop = nPhotons / nOuterLoop
+     endif
+
+
      outerPhotonLoop: do iOuterLoop = 1, nOuterLoop
 
 !$OMP PARALLEL DEFAULT(NONE) &
@@ -3885,13 +3892,20 @@
 !$OMP SHARED(forcedWavelength, usePhotonWavelength, thin_disc_on, forceFirstScat)
 
 
+        if (mie) then
+           xxxxxxxxx
+        endif
+
+
+
+
 
 !$MPI  if (my_rank==1) &
         call tune(6, "One Outer Photon Loop") ! Start a stop watch
 
         ! default inner loop indices
         iInner_beg = 1
-        iInner_end = nPhotons/nOuterLoop
+        iInner_end = nInnerLoop
 
 !$MPI  !====================================================================================
 !$MPI  ! Splitting the innerPhoton loop for multiple processors.

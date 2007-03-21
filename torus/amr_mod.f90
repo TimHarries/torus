@@ -9668,10 +9668,10 @@ IF ( .NOT. gridConverged ) RETURN
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: kap
-  real(double) :: tau, kappaAbs, kappaSca
-  type(octalvector) :: rVec
+  real(double) :: tau, kappaAbs, kappaSca, thisTau
+  type(octalvector) :: rVec, direction
   logical :: ross
-  integer :: subcell, i, ilam
+  integer :: subcell, i, ilam, ntau
   real :: r
   
   do subcell = 1, thisOctal%maxChildren
@@ -9690,10 +9690,19 @@ IF ( .NOT. gridConverged ) RETURN
              tau = thisOctal%subcellSize*(kappaAbs + kappaSca)
              thisOctal%biasCont3D(subcell) = exp(-tau)
           else
-             call returnKappa(grid, thisOctal, subcell, ilam, rosselandKappa = kappaAbs)
-             tau = thisOctal%subcellSize*kappaAbs*thisOctal%rho(subcell)*1.d10
-             thisOctal%biasCont3D(subcell) = exp(-tau)
+!             rVec = subcellCentre(thisOctal, subcell)
+!             tau = 1.d30
+!             ntau = 20
+!             do i = 1, nTau
+!                direction = randomUnitVector()
+!                call tauAlongPath(grid, rVec, direction, thistau, 100.d0)
+!                tau = min(tau, thisTau)
+!             enddo
+!             write(*,*) tau
+             thisOctal%biasCont3D(subcell) = 1.d0/(cellVolume(thisOCtal,subcell)*thisOctal%etaCont(subcell))
           endif
+!          r = rVec%x
+!          thisOCtal%biasCont3d(subcell) = thisOctal%biasCont3d(subcell) * r
        endif
 
     enddo
@@ -13686,4 +13695,35 @@ IF ( .NOT. gridConverged ) RETURN
        closeCorner = thisCorner
     endif
   end function closestCorner
+
+  subroutine tauAlongPath(grid, rVec, direction, tau, tauMax)
+    type(GRIDTYPE) :: grid
+    type(OCTALVECTOR) :: rVec, direction, currentPosition
+    real(double) :: tau, distToNextCell, rosselandKappa
+    real(double), optional :: tauMax
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    integer :: subcell
+
+    tau = 0.d0
+    currentPosition = rVec
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    do while (inOctal(grid%octreeRoot, currentPosition))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+       call returnKappa(grid, thisOctal, subcell, rosselandKappa=rosselandKappa)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+  
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       tau = tau + distToNextCell*rosselandKappa*thisOctal%rho(subcell)*1.d10
+       if (PRESENT(tauMax)) then
+          if (tau > tauMax) exit
+       endif
+    end do
+  end subroutine tauAlongPath
+
 END MODULE amr_mod
