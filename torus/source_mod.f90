@@ -115,10 +115,8 @@ module source_mod
             ALLOCATE(prob(1:nSource))
 	    ! Create the prob. dist. function.
             do i = 1, nSource
-               prob(i) = &
-                    integrateNormSpectrumOverBand(source(i)%spectrum, dble(lamArray(1)) , &
-                    dble(lamArray(nLambda))) * &
-                    source(i)%luminosity/lsol
+               prob(i) = integrateSpectrumOverBand(source(i)%spectrum, dble(lamArray(1)) , &
+                    dble(lamArray(nLambda))) /lsol
             enddo
 	    do i = 2, nSource
 	       prob(i) = prob(i) + prob(i-1)
@@ -146,10 +144,23 @@ module source_mod
 
       tot = 0
       do i = 1, nSource
-         tot = tot + integrateNormSpectrumOverBand(source(i)%spectrum, dble(lam1) , &
-                    dble(lam2)) * source(i)%luminosity
+         tot = tot + integrateSpectrumOverBand(source(i)%spectrum, dble(lam1) , &
+                    dble(lam2)) * (fourPi*(1.d10*source(i)%radius)**2)
       enddo
     end function sumSourceLuminosity
+
+    real(double) function sumSourceLuminosityMonochromatic(source, nsource, lam) result (tot)
+      integer :: nSource
+      type(SOURCETYPE) :: source(:)
+      real(double) :: lam
+      integer :: i, j
+
+      tot = 0
+      do i = 1, nSource
+         call locate(source(i)%spectrum%lambda, source(i)%spectrum%nLambda, lam, j)
+         tot = tot + source(i)%spectrum%flux(j) * fourPi * (source(i)%radius*1.d10)**2
+      enddo
+    end function sumSourceLuminosityMonochromatic
 
 
 

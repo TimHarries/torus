@@ -50,6 +50,10 @@ module spectrum_mod
       call locate(spectrum%lambda, spectrum%nLambda, tlam1, i1)
       call locate(spectrum%lambda, spectrum%nLambda, tlam2, i2)
       
+
+      write(*,*) "spectrum%nlambda",spectrum%nlambda
+      write(*,*) lam1,tlam1,lam2,tlam2
+      write(*,*) i1,i2
       if (i1 == i2) then 
          tot = spectrum%normFlux(i1)*(tlam2 - tlam1)
       else
@@ -62,6 +66,35 @@ module spectrum_mod
          enddo
       endif
     end function integrateNormSpectrumOverBand
+
+    function integrateSpectrumOverBand(spectrum, lam1 , lam2) result(tot)
+      real(double) :: tot
+      type(SPECTRUMTYPE) :: spectrum
+      real(double) :: lam1, lam2, tlam1, tlam2
+      integer :: i1, i2, i
+
+      tlam1 = lam1
+      tlam2 = lam2
+
+      tlam1 = max(lam1, spectrum%lambda(1))
+      tlam2 = min(lam2, spectrum%lambda(spectrum%nLambda))
+
+      call locate(spectrum%lambda, spectrum%nLambda, tlam1, i1)
+      call locate(spectrum%lambda, spectrum%nLambda, tlam2, i2)
+      
+
+      if (i1 == i2) then 
+         tot = spectrum%normFlux(i1)*(tlam2 - tlam1)
+      else
+         tot = 0.d0
+         tot = tot + spectrum%flux(i1)*(spectrum%lambda(i1+1)-tlam1)
+         tot = tot + spectrum%flux(i2)*(tlam2-spectrum%lambda(i2))
+         do i = i1, i2-1
+            tot = tot + 0.5d0*(spectrum%flux(i+1)+spectrum%flux(i)) * &
+                 (spectrum%lambda(i+1)-spectrum%lambda(i))
+         enddo
+      endif
+    end function integrateSpectrumOverBand
 
     subroutine getWavelengthOverBand(spectrum, lam1 , lam2, wavelength)
       real(double) :: wavelength
@@ -138,7 +171,7 @@ module spectrum_mod
       spectrum%dlambda(nLambda) = spectrum%lambda(nlambda)-spectrum%lambda(nLambda-1)
       
       do i = 1, nLambda
-         spectrum%flux(i) = bLambda(spectrum%lambda(i), dble(teff))
+         spectrum%flux(i) = pi*bLambda(spectrum%lambda(i), dble(teff)) * 1.d-8 ! (per cm to per angstrom)
       enddo
       spectrum%nLambda = nLambda
       where(spectrum%flux(1:spectrum%nLambda) == 0.d0) spectrum%flux = 1.d-100
@@ -254,7 +287,7 @@ module spectrum_mod
             enddo
             call locate(spectrum%lambda, spectrum%nLambda, lambda, i)
             t = (lambda - spectrum%lambda(i))/(spectrum%lambda(i+1)-spectrum%lambda(i))
-            t = spectrum%flux(i)+t*(spectrum%flux(i+1)-spectrum%flux(i))
+            t = (spectrum%flux(i)+t*(spectrum%flux(i+1)-spectrum%flux(i)))
             returnNormValue2 = t/tot
          endif
       endif

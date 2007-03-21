@@ -13696,13 +13696,15 @@ IF ( .NOT. gridConverged ) RETURN
     endif
   end function closestCorner
 
-  subroutine tauAlongPath(grid, rVec, direction, tau, tauMax)
+  subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax)
     type(GRIDTYPE) :: grid
     type(OCTALVECTOR) :: rVec, direction, currentPosition
+    integer :: iLambda
     real(double) :: tau, distToNextCell, rosselandKappa
     real(double), optional :: tauMax
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-3
+    real(double) :: kappaSca, kappaAbs, kappaExt
     integer :: subcell
 
     tau = 0.d0
@@ -13713,13 +13715,14 @@ IF ( .NOT. gridConverged ) RETURN
     do while (inOctal(grid%octreeRoot, currentPosition))
 
        call findSubcellLocal(currentPosition,thisOctal,subcell)
-       call returnKappa(grid, thisOctal, subcell, rosselandKappa=rosselandKappa)
+       call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+       kappaExt = kappaAbs + kappaSca
 
        sOctal => thisOctal
        call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
-       tau = tau + distToNextCell*rosselandKappa*thisOctal%rho(subcell)*1.d10
+       tau = tau + distToNextCell*kappaExt
        if (PRESENT(tauMax)) then
           if (tau > tauMax) exit
        endif

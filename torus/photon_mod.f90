@@ -341,7 +341,7 @@ contains
        theta1,theta2, chanceHotRing, &
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
-       filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, &
+       filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
        VoigtProf, dirObs, dopShift)
     use input_variables, only : nphotons, photoionization
 
@@ -355,6 +355,7 @@ contains
     integer :: nLambda, iLambda                ! wavelength indices
     logical :: useBias
     real :: weightContPhoton, weightLinePhoton ! the photon weights
+    integer :: iLambdaPhoton
     real, optional :: dopShift
     real :: vTherm
     logical :: contWindPhoton                  ! is this continuum photon produced in the wind
@@ -1025,9 +1026,14 @@ contains
              else
                 iLambda = int(r1 * real(nLambda)) + 1
              endif
+
+             iLambda = iLambdaPhoton
+
+             weight =  1. ! dlam(iLambda) tjh 21/3/07
+ 
+
              thisPhoton%lambda = lambda(ilambda)
-             weight = dlam(iLambda)
-             thisPhoton%stokes = thisPhoton%stokes * weight  * real(nLambda)
+             thisPhoton%stokes = thisPhoton%stokes * weight ! * real(nLambda) tjh 21/3/07
              call random_number(r)
              if (iLambda == 1) then
                 x1 = lambda(1)
@@ -1060,33 +1066,35 @@ contains
              if (grid%adaptive) then
 
                 if (.not.photoionization) then
-                   positionOctal = thisPhoton%position
-                   call amrGridvalues(grid%octreeRoot,positionOctal,&
-                        foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=ilambda)
-                   do i = 1, nLambda
-                      call amrGridvalues(grid%octreeRoot,positionOctal,&
-                           foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=i)
-                      tempSpectrum(i)= blambda(dble(lambda(i)), dble(tempr)) * dble(kabs) !/ dble(lambda(i))
-                      totDouble = totDouble + tempSpectrum(i) * dlam(i)
-                   enddo
-                   if (totDouble == 0.d0) then
-                      do i = 1, nLambda
-                         call amrGridvalues(grid%octreeRoot,positionOctal,&
-                              foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=i)
-                         tempSpectrum(i)= blambda(dble(lambda(i)), dble(tempr)) * dble(kabs) !/ dble(lambda(i))
-                         totDouble = totDouble + tempSpectrum(i) * dlam(i)
-                         write(*,*) i,lambda(i),dlam(i),tempr,kabs,blambda(dble(lambda(i)), dble(tempr)), &
-                              foundOctal%dustTypeFraction(subcell, 1),foundOctal%etaCont(subcell)
-                      enddo
-                      totDouble = 10.
-                   endif
+!                   positionOctal = thisPhoton%position
+!                   call amrGridvalues(grid%octreeRoot,positionOctal,&
+!                        foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=ilambda)
+!                   do i = 1, nLambda
+!                      call amrGridvalues(grid%octreeRoot,positionOctal,&
+!                           foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=i)
+!                      tempSpectrum(i)= blambda(dble(lambda(i)), dble(tempr)) * dble(kabs) !/ dble(lambda(i))
+!                      totDouble = totDouble + tempSpectrum(i) * dlam(i)
+!                   enddo
+!                   if (totDouble == 0.d0) then
+!                      do i = 1, nLambda
+!                         call amrGridvalues(grid%octreeRoot,positionOctal,&
+!                              foundOctal=foundOctal,foundSubcell=subcell, temperature=tempr, kappaAbs=kabs, grid=grid, iLambda=i)
+!                         tempSpectrum(i)= blambda(dble(lambda(i)), dble(tempr)) * dble(kabs) !/ dble(lambda(i))
+!                         totDouble = totDouble + tempSpectrum(i) * dlam(i)
+!                         write(*,*) i,lambda(i),dlam(i),tempr,kabs,blambda(dble(lambda(i)), dble(tempr)), &
+!                              foundOctal%dustTypeFraction(subcell, 1),foundOctal%etaCont(subcell)
+!                      enddo
+!                      totDouble = 10.
+!                   endif
+!
+!
+!                   tempSpectrum(1:nLambda) = tempSpectrum(1:nLambda) / totDouble
+!
+!                   if (totDouble<=0.0) totDouble = 1.0e-28   ! for safty
+!
+!TJH 21/3/07 - comment this out 
+!                   thisPhoton%stokes = thisPhoton%stokes * real(tempSpectrum(iLambda))
 
-
-                   tempSpectrum(1:nLambda) = tempSpectrum(1:nLambda) / totDouble
-
-                   if (totDouble<=0.0) totDouble = 1.0e-28   ! for safty
-
-                   thisPhoton%stokes = thisPhoton%stokes * real(tempSpectrum(iLambda))
                 else
 
                    octVec = thisPhoton%position
@@ -1124,9 +1132,10 @@ contains
                 thisPhoton%stokes = thisPhoton%stokes * &
                      (sourceSpectrum(iLambda) * weightContPhoton)
              else
-                thisPhoton%stokes = thisPhoton%stokes * &
-                     real(returnNormValue2(source(thissource)%spectrum, &
-                     dble(thisPhoton%lambda), dble(lambda(1)), dble(lambda(nlambda))))
+!TJH 21/3/07 - comment this out 
+!               thisPhoton%stokes = thisPhoton%stokes * &
+ !                    real(returnNormValue2(source(thissource)%spectrum, &
+ !                    dble(thisPhoton%lambda), dble(lambda(1)), dble(lambda(nlambda))))
              endif
           endif
           

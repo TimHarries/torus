@@ -84,7 +84,9 @@
   implicit none
 !$MPI   include 'mpif.h'  
 
-  integer, parameter :: nOuterLoop = 10
+  integer :: nOuterLoop = 10
+  integer :: nInnerLoop
+  integer :: iLambdaPhoton
   integer :: iOuterLoop
   integer :: nScat
   integer :: cpuTime, startTime
@@ -996,6 +998,10 @@
 
 
   ! allocate the output arrays
+
+  if (mie) then
+     nOuterLoop = nLambda
+  endif
 
   allocate(xArray(1:nLambda))
   allocate(dx(1:nLambda))
@@ -2333,8 +2339,10 @@
        source(1)%radius = grid%rCore
        source(1)%teff = teff
        source(1)%position = VECTOR(0.,0.,0.)
-!       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamstart), dble(lamEnd),nLambda)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
+       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamstart), dble(lamEnd),nLambda)
+!       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
+       call normalizedSpectrum(source(1)%spectrum)
+
 
     case("magstream")
        nSource = 1
@@ -3309,7 +3317,7 @@
 
      if (mie) then
 
-!        call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, xArray)
+        call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, xArray)
 
         call computeProbDist(grid, totLineEmission, &
              totDustContinuumEmission,lamline, .false.)
@@ -3850,7 +3858,6 @@
      call randomSource(source, nSource, i, xArray, nLambda, initialize=.true.)  
 
      if (mie) then
-        nOuterLoop = nLambda
         nInnerLoop = nPhotons / nOuterLoop
      endif
 
@@ -3893,7 +3900,40 @@
 
 
         if (mie) then
-           xxxxxxxxx
+
+           iLambdaPhoton = iOuterLoop
+
+           call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot , nlambda, xArray, iLambdaPhoton)
+
+           call setBiasOnTau(grid, iLambdaPhoton)
+
+           call computeProbDist(grid, totLineEmission, &
+                totDustContinuumEmission,lamline, .false.)
+           totDustContinuumEmission = totdustContinuumEmission 
+           lcore = grid%lCore
+           if (nSource > 0) then              
+              lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(xArray(iLambdaPhoton)))
+           endif
+           
+           totEnvelopeEmission = totDustContinuumEmission
+           chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
+!           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
+!           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
+!           if (writeoutput) write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
+           
+           weightDust = chanceDust / probDust
+           weightPhoto = (1. - chanceDust) / (1. - probDust)
+
+           probDust = chanceDust
+           weightDust = 1.
+           weightPhoto = 1.
+
+           energyPerPhoton =  (totDustContinuumEmission*1.d30 + lCore)/1.d20/dble(nInnerLoop)
+!           if (writeoutput) write(*,*) "WeightDust",weightDust
+!           if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
+!           if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
+!           if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
+
         endif
 
 
@@ -3993,7 +4033,8 @@
                       theta1, theta2, chanceHotRing,  &
                       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto,&
                       narrowBandImage, vMin, vMax, source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
-                      curtains, starSurface, forcedWavelength, usePhotonWavelength, VoigtProf, outVec, dopShift=dopShift)
+                      curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
+                      outVec, dopShift=dopShift)
                  if (thisPhoton%resonanceLine) then
                     r1 = real(i)/real(nPhotons/nOuterLoop)
                     thisPhoton%lambda = xArray(1) + r1*(xArray(nLambda)-xArray(1))
@@ -4788,6 +4829,7 @@
         write(*,'(i8,a,f7.3)') iOuterLoop*nPhotons/nOuterLoop," photons done"
 
         errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
+
 
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI  if (my_rank==1) &

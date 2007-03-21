@@ -375,10 +375,10 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
      enddo
      yMedian(i)%v = median(tArray, nOuterLoop)
 !
-!     yMedian(i)%i = SUM(errorArray(1:nOuterloop,i)%i)/dble(nOuterloop)
-!     yMedian(i)%q = SUM(errorArray(1:nOuterloop,i)%q)/dble(nOuterloop)
-!     yMedian(i)%u = SUM(errorArray(1:nOuterloop,i)%u)/dble(nOuterloop)
-!     yMedian(i)%v = SUM(errorArray(1:nOuterloop,i)%v)/dble(nOuterloop)
+     yMedian(i)%i = SUM(errorArray(1:nOuterloop,i)%i)/dble(nOuterloop)
+     yMedian(i)%q = SUM(errorArray(1:nOuterloop,i)%q)/dble(nOuterloop)
+     yMedian(i)%u = SUM(errorArray(1:nOuterloop,i)%u)/dble(nOuterloop)
+     yMedian(i)%v = SUM(errorArray(1:nOuterloop,i)%v)/dble(nOuterloop)
 
   enddo
   deallocate(tarray)
@@ -449,12 +449,12 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   enddo
 
   if (.not.normalizeSpectrum) then
-     ! convert from erg/s to erg/s/A
-     stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
-     stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
-     stokes_u(1:nLambda) = stokes_u(1:nLambda) / dlam(1:nLambda)
-     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
-     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
+!     ! convert from erg/s to erg/s/A
+!     stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
+!     stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
+!     stokes_u(1:nLambda) = stokes_u(1:nLambda) / dlam(1:nLambda)
+!     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
+!     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
      
      ! convert to erg/s/A to erg/s/cm^2/A
      

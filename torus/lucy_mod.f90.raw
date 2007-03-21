@@ -2869,6 +2869,37 @@ contains
     enddo
   end subroutine calcContinuumEmissivityLucy
 
+  recursive subroutine  calcContinuumEmissivityLucyMono(grid, thisOctal, nlambda, lamArray, iPhotonLambda)
+    type(GRIDTYPE) :: grid
+    integer :: nLambda
+    integer :: iPhotonLambda
+    real :: lamArray(:)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calcContinuumEmissivityLucyMono(grid, child, nlambda, lamArray, iPhotonLambda)
+                exit
+             end if
+          end do
+       else
+          thisOctal%etaCont(subcell) = 1.d-40
+          if (thisOctal%temperature(subcell) > 1.d-3) then
+
+             call addDustContinuumLucyMono(thisOctal, subcell, grid, nlambda, lamArray, iPhotonLambda)
+             
+          endif
+
+       endif
+    enddo
+  end subroutine calcContinuumEmissivityLucyMono
+
 
 subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
 
@@ -2900,7 +2931,30 @@ subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
 
 end subroutine addDustContinuumLucy
 
-subroutine setBiasOnTau(grid)
+subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, nlambda, lamArray, iPhotonLambda)
+
+  type(OCTAL), pointer :: thisOctal
+  integer :: subcell
+  type(GRIDTYPE) :: grid
+  integer :: nLambda
+  integer :: iPhotonLambda
+  real :: lamArray(:)
+  integer :: i, iLam
+  real :: dlam
+  type(OCTALVECTOR) :: octVec
+  real(double) :: kappaAbs
+
+  thisOctal%etaCont(subcell) = 1.d-30
+
+  call returnKappa(grid, thisOctal, subcell, iLambda=iPhotonLambda, kappaAbs=kappaAbs)
+
+  thisOctal%etaCont(subcell) =  bLambda(dble(lamArray(iPhotonLambda)), dble(thisOctal%temperature(subcell))) * &
+             kappaAbs * 1.d-10 * fourPi * 1.d-8 ! conversion from per cm to per A
+  if (.not.thisOctal%inFlow(subcell)) thisOctal%etaCont(subcell) = 0.d0
+
+end subroutine addDustContinuumLucyMono
+
+subroutine setBiasOnTau(grid, iLambda)
   use input_variables, only : blockHandout
 !$MPI    include 'mpif.h'
 
@@ -2913,6 +2967,7 @@ subroutine setBiasOnTau(grid)
   logical :: ross
   integer :: subcell, i, ilam, ntau
   real :: r
+  integer :: iLambda
     integer                     :: nOctal        ! number of octals in grid
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: iOctal
@@ -2985,12 +3040,14 @@ subroutine setBiasOnTau(grid)
              rVec = subcellCentre(thisOctal, subcell)
              tau = 1.d30
              ntau = 20
-             do i = 1, nTau
-                direction = randomUnitVector()
-                call tauAlongPath(grid, rVec, direction, thistau, 100.d0)
-                tau = min(tau, thisTau)
-             enddo
-             thisOctal%biasCont3D(subcell) = exp(-tau)
+!             do i = 1, nTau
+!                direction = randomUnitVector()
+!                call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0 )
+!                tau = min(tau, thisTau)
+!             enddo
+!             thisOctal%biasCont3D(subcell) = exp(-tau)
+
+             thisOctal%biasCont3D(subcell) = 1.d0
           endif
 
        enddo
