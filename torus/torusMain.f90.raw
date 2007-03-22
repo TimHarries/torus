@@ -3905,7 +3905,7 @@
 
            call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot , nlambda, xArray, iLambdaPhoton)
 
-           call setBiasOnTau(grid, iLambdaPhoton)
+!           call setBiasOnTau(grid, iLambdaPhoton)
 
            call computeProbDist(grid, totLineEmission, &
                 totDustContinuumEmission,lamline, .false.)
