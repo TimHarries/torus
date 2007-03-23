@@ -962,7 +962,7 @@ contains
              endif
           enddo
        enddo
-       if (kappa /= 0.d0) write(*,*) "kappa",kappa
+!       if (kappa /= 0.d0) write(*,*) "kappa",kappa
      end function bfOpacity
 
   function bfEmissivity(freq, nAtom, thisAtom, pops, ne, temperature, ifreq) result(eta)

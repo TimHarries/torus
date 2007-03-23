@@ -2962,7 +2962,7 @@ subroutine setBiasOnTau(grid, iLambda)
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   real :: kap
-  real(double) :: tau, kappaAbs, kappaSca, thisTau
+  real(double) :: tau
   type(octalvector) :: rVec, direction
   logical :: ross
   integer :: subcell, i, ilam, ntau
@@ -2974,6 +2974,7 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: iOctal_beg, iOctal_end
     real(double) :: phi, DeltaPhi, DeltaZ, deltaR
     real(double), parameter :: underCorrect = 0.8d0
+    real(double) :: kappaSca, kappaAbs, kappaExt
     integer :: np
     integer :: nBias
     integer :: my_rank, ierr
@@ -3047,7 +3048,15 @@ subroutine setBiasOnTau(grid, iLambda)
 !             enddo
 !             thisOctal%biasCont3D(subcell) = exp(-tau)
 
-             thisOctal%biasCont3D(subcell) = 1.d0
+
+             call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+             kappaExt = kappaAbs + kappaSca
+
+             
+             tau = thisOctal%subcellSize * kappaExt
+             thisOctal%biasCont3D(subcell) = exp(-tau)
+
+
           endif
 
        enddo

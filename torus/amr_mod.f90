@@ -242,7 +242,7 @@ CONTAINS
                               inFlow=thisOctal%inFlow(subcell))
       thisOctal%rho(subcell) = REAL(rhoDouble)
       IF (subcell == thisOctal%maxChildren) CALL fillVelocityCorners(thisOctal,grid,magStreamVelocity, .true.)
-       thisOctal%microturb(subcell) = (10.d5/cSpeed) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!       
+       thisOctal%microturb(subcell) = (20.d5/cSpeed) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!       
 
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
@@ -13391,12 +13391,12 @@ IF ( .NOT. gridConverged ) RETURN
 
          ok = .true.
          
-         norm(1) = OCTALVECTOR(-1.0d0, 0.d0, 0.0d0)
-         norm(2) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
-         norm(3) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
-         norm(4) = OCTALVECTOR(1.0d0, 0.0d0, 0.0d0)
-         norm(5) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
-         norm(6) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+         norm(1) = OCTALVECTOR(1.0d0, 0.d0, 0.0d0)
+         norm(2) = OCTALVECTOR(0.0d0, 1.0d0, 0.0d0)
+         norm(3) = OCTALVECTOR(0.0d0, 0.0d0, 1.0d0)
+         norm(4) = OCTALVECTOR(-1.0d0, 0.0d0, 0.0d0)
+         norm(5) = OCTALVECTOR(0.0d0, -1.0d0, 0.0d0)
+         norm(6) = OCTALVECTOR(0.0d0, 0.0d0, -1.0d0)
          
          p3(1) = OCTALVECTOR(subcen%x+thisOctal%subcellsize, subcen%y, subcen%z)
          p3(2) = OCTALVECTOR(subcen%x, subcen%y+thisOctal%subcellsize ,subcen%z)
@@ -13410,6 +13410,8 @@ IF ( .NOT. gridConverged ) RETURN
          do i = 1, 6
             
             denom(i) = norm(i) .dot. direction
+
+            if (denom(i) > 0.d0) thisOK(i) = .false.
             if (denom(i) /= 0.0d0) then
                t(i) = (norm(i) .dot. (p3(i)-posVec))/denom(i)
             else
@@ -13435,8 +13437,9 @@ IF ( .NOT. gridConverged ) RETURN
             stop
          endif
          
-         tval = minval(t, mask=thisOk)
+         tval = maxval(t, mask=thisOk)
          
+!         write(*,*) t(1:6),thisOK(1:6)
 
          if (tval == 0.) then
             write(*,*) posVec
@@ -13604,6 +13607,7 @@ IF ( .NOT. gridConverged ) RETURN
     return
     
   end subroutine splitGridOnStream
+
 
   subroutine readStreams(thisStream, nStream, filename)
     type(STREAMTYPE) :: thisStream(:)

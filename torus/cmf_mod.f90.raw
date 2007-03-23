@@ -59,7 +59,7 @@ contains
     integer, allocatable :: nOffset(:)
     logical, allocatable :: continuumGround(:)
     integer, allocatable :: nCons(:)
-    logical :: ok, lymanAlpha
+    logical :: ok, inDetailedBalance
     integer :: nDifferentElements
 
     nDifferentElements = 0
@@ -207,7 +207,6 @@ contains
 
        enddo
 
-       lymanAlpha  = .false.
 
        totPhotoIon = 0.d0
        totcion = 0.d0
@@ -216,6 +215,10 @@ contains
           k = thisAtom(iAtom)%iUpper(iTrans)
           l = thisAtom(iAtom)%iLower(iTrans)
 
+          inDetailedBalance  = .false.
+
+          if (l == 1) inDetailedBalance = .true.
+          if ((l==2).and.(k==3)) inDetailedBalance = .true.
 
 
           if (thisAtom(iAtom)%transType(iTrans) == "RBB") then ! radiative BB rates
@@ -229,13 +232,15 @@ contains
              jnu = jNuLine(iJnu)
 
 
+             if (.not.inDetailedBalance) then
 
+                
+                matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - Bul * jnu - a
+                matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - Blu * jnu
+                matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + Blu * jnu
+                matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + Bul * jnu + a
 
-
-             matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),k+nOffset(iAtom)) - Bul * jnu - a
-             matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - Blu * jnu
-             matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + Blu * jnu
-             matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),k+nOffset(iAtom)) + Bul * jnu + a
+             endif
 
           endif
 
@@ -260,25 +265,33 @@ contains
           if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
 
 
-             l = thisAtom(iAtom)%iLower(iTrans)
-             k = thisAtom(iAtom)%iUpper(iTrans)
+!             l = thisAtom(iAtom)%iLower(iTrans)
+!             k = thisAtom(iAtom)%iUpper(iTrans)
 
-             nuStart = (thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(l))*evtoerg/hcgs
-
-             call locate(freq, nfreq, nuStart, istart)
-
-             photoRatelk = 0.d0
-             do i = istart+1, nFreq
-                xSection = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i))
-                photoRatelk = photoRatelk + (jnuCont(i)/(hCgs*freq(i)))*xSection*(freq(i)-freq(i-1))
-!                if (iAtom == 2) write(*,*) l,freq(i),photoratelk,xsection,jnucont(i)
-             enddo
-             photoRatelk = photoRatelk * fourPi
+             if (inDetailedBalance) then
 
 
-             matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - photoRatelk
-             matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + photoRatelk
-             totphotoion=totphotoion + photoRatelk*npops(iatom,l)
+                nuStart = (thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(l))*evtoerg/hcgs
+
+                call locate(freq, nfreq, nuStart, istart)
+                
+                photoRatelk = 0.d0
+                do i = istart+1, nFreq
+                   xSection = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i))
+                   photoRatelk = photoRatelk + (jnuCont(i)/(hCgs*freq(i)))*xSection*(freq(i)-freq(i-1))
+                   !                if (iAtom == 2) write(*,*) l,freq(i),photoratelk,xsection,jnucont(i)
+                enddo
+                photoRatelk = photoRatelk * fourPi
+                
+
+                matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(l+nOffset(iAtom),l+nOffset(iAtom)) - photoRatelk
+                matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) = matrixA(k+nOffset(iAtom),l+nOffset(iAtom)) + photoRatelk
+                totphotoion=totphotoion + photoRatelk*npops(iatom,l)
+
+             endif
+
+
+
 !             if ((l == 1).and.iatom==2) then
 !                write(*,*) "total photoionization from ground state ",photoRatelk*npops(iatom,l)
 !             endif
@@ -384,7 +397,7 @@ contains
     real(double) :: Hcol, HeICol, HeIICol
     integer :: iTrans
     type(OCTALVECTOR) :: position, direction, currentPosition, thisPosition, thisVel
-    type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition, pvec
+    type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition, pvec, photoDirection
     real(double) :: alphanu, snu, jnu
     integer :: iLower , iUpper
     real(double) :: dv, deltaV
@@ -441,6 +454,8 @@ contains
       pVec = (position + (direction * distToSource) - source(sourceNumber)%position)
       call normalize(pVec)
       cosTheta = -1.d0*(pVec.dot.direction)
+      photoDirection = pVec
+      call normalize(PhotoDirection)
    endif
 
 
@@ -505,8 +520,9 @@ contains
        nTau = 2
        
        if (max(dv1,dv2) < 4.d0*thisOctal%microturb(subcell)) then
-          nTau = min(max(2, nint(dvAcrossCell * 5.d0)),200)
+          nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200)
        endif
+
 
        distArray(1) = 0.d0
        do i = 2, nTau
@@ -635,7 +651,7 @@ contains
 
     enddo
     if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
-       iElement = getElement(source(sourcenumber)%surface, direction)
+       iElement = getElement(source(sourcenumber)%surface, photoDirection)
        do iFreq = 1, nFreq
           iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq))
        enddo
@@ -646,12 +662,12 @@ contains
 
     
     if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
-       iElement = getElement(source(sourcenumber)%surface, direction)
+       iElement = getElement(source(sourcenumber)%surface, photoDirection)
        do iRBB = 1, nRBBTrans
           iAtom = indexAtom(iRBB)
           iTrans = indexRBBTrans(iRBB)
           i0(iRBB) = i0(iRBB) + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*cosTheta*exp(-tau(iRBB))
-!       if (thisAtom(iAtom)%iLower(iTrans)==2.and.thisAtom(iAtom)%iUpper(iTrans)==3) write(*,*) "inu line ",i0(irbb)
+!       if (thisAtom(iAtom)%iLower(iTrans)==2.and.thisAtom(iAtom)%iUpper(iTrans)==3) write(*,*) "tau line ",tau(irbb)
        enddo
     endif
     deallocate(tau)
@@ -715,6 +731,7 @@ contains
           endif
 
           tau = alphaNu * ds(iray)
+
 
           etaLine = hCgs * a * thisAtom%transFreq(iTrans)
           etaLine = etaLine *  nPops(iUpper)
@@ -826,13 +843,13 @@ contains
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay,m
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 200, maxRay = 100000
+    integer, parameter :: maxIter = 1000, maxRay = 100000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:)
     real(double) :: newNe, oldNe, dNe
-    real(double), parameter :: underCorrect = 0.99D0
+    real(double), parameter :: underCorrect = 1.d0
     real(double) :: fac
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     logical :: dcAllocated
@@ -888,7 +905,7 @@ contains
 
      allocate(jnuCont(1:nFreq)) 
 
-    call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, .true.)
+    call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, .false.)
 
     do i = 1, nAtom
        call addCrossSectionstoAtom(thisAtom(i), nFreq, freq)
@@ -1416,7 +1433,7 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource) result (i0)
     use input_variables, only : opticallyThickContinuum
-    type(OCTALVECTOR) :: position, direction, startPosition, pvec
+    type(OCTALVECTOR) :: position, direction, startPosition, pvec, photoDirection
     type(GRIDTYPE) :: grid
     integer :: nSource
     type(SOURCETYPE) :: source(:)
@@ -1477,7 +1494,14 @@ contains
 
     currentPosition = position + (distToGrid + 1.d-3*grid%halfSmallestSubcell) * direction
 
-
+    if (.not.inOctal(grid%octreeRoot, currentPosition)) then
+       write(*,*) "initial position not in grid"
+       write(*,*) "curre pos",currentPosition
+       write(*,*) "dir",direction
+       write(*,*) "pos",position
+       write(*,*) "modulsu",modulus(currentPosition - position)
+       stop
+    endif
 
     totDist = 0.d0
     call distanceToSource(source, nSource, currentposition, direction, hitSource, disttoSource, sourcenumber)
@@ -1486,6 +1510,8 @@ contains
       pVec = (currentposition + (direction * distToSource) - source(sourceNumber)%position)
       call normalize(pVec)
       cosTheta = -1.d0*(pVec.dot.direction)
+      photoDirection = pVec
+      call normalize(photoDirection)
    endif
 
 
@@ -1608,7 +1634,7 @@ contains
 
     if (endLoopAtPhotosphere) then
 
-       iElement = getElement(source(sourcenumber)%surface, direction)
+       iElement = getElement(source(sourcenumber)%surface, photoDirection)
        i0 = i0 + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*cosTheta*exp(-tau)
 
 
@@ -1662,7 +1688,7 @@ contains
 
 
     call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
-    write(plotfile,'(a,i3.3,a)') "cube",nfile,".ps/vcps"
+    write(plotfile,'(a,i3.3,a)') "cube",nfile,".png/png"
     call plotDataCube(cube, plotfile,withspec=.false.)
     return
 
@@ -1674,7 +1700,7 @@ contains
 
     call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
 
-    nLambda = 100
+    nLambda = 10
 
     iv1 = 1
     iv2 = nLambda
@@ -1831,9 +1857,12 @@ contains
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 
-    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize, +grid%octreeRoot%subcellSize, &
-         -grid%octreeRoot%subcellSize, grid%octreeRoot%subcellSize)
-    call addvelocityAxis(cube, -2000.d0, 2000.d0)
+    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.9d0, +grid%octreeRoot%subcellSize*0.9d0, &
+         -grid%octreeRoot%subcellSize*0.9d0, grid%octreeRoot%subcellSize*0.9d0)
+
+!    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
+!         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
+    call addvelocityAxis(cube, -100.d0, 100.d0)
 
     xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
     call normalize(xProj)
@@ -1863,7 +1892,7 @@ contains
                 yVal = cube%yAxis(j)
              endif
              rayPos =  (xval * xProj) + (yval * yProj)
-             raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*10.d0) * viewVec)
+             raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*2.d0) * Viewvec)
              do k = 1, cube%nv
                 deltaV = cube%vAxis(k)*1.d5/cSpeed
                 cube%intensity(i,j,k) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &

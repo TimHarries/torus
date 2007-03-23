@@ -1029,7 +1029,7 @@ contains
 
              iLambda = iLambdaPhoton
 
-             weight =  1. ! dlam(iLambda) tjh 21/3/07
+             weight =  dlam(iLambda) !tjh 21/3/07
  
 
              thisPhoton%lambda = lambda(ilambda)

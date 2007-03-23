@@ -153,9 +153,9 @@ contains
     type(SURFACETYPE) :: surface
     real :: theta, phi, dphi
     integer :: itheta, iphi,  nphi
-    td = (-1.d0) * direction
+!    td = (-1.d0) * direction
 
-!    td = direction
+    td = direction
     theta = acos(td%z/modulus(td))
     phi = atan2(td%y,td%x)
     if (phi < 0.d0) phi = phi + twoPi
@@ -770,6 +770,7 @@ contains
     TYPE(spVectorOctal) :: surfacePointSP
     
     PRINT *, 'Creating stellar surface for magStream system'
+    write(*,*) "number of hotspots",size(magfieldhotspots), magfieldhotspots(1)%temperature
     
     DO iElement = 1, SIZE(surface%element)
 
@@ -782,7 +783,7 @@ contains
 
       DO iSpot = 1, SIZE(magFieldHotspots)
         IF ( modulus(magFieldHotspots(iSpot)%subSurfacePosn - surfacePoint)   &
-             < magFieldHotspots(iSpot)%radius_1e10 ) THEN
+             < magFieldHotspots(iSpot)%radius_1e10 ) THEN !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           IF ( surface%element(iElement)%hot ) THEN
             ! if this element has already been set as "hot" because of another 
             !   hotspot, we use the hotest of the spots to compute the properties

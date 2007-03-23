@@ -54,25 +54,29 @@ contains
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
   subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
     type(DATACUBE) :: cube
-    real(double) :: xMin, xMax, yMax, yMin
+    real(double) :: xMin, xMax, yMax, yMin, dx, dy
     integer :: i
 
+    dx = (xMax - xMin)/dble(cube%nx)
+    dy = (yMax - yMin)/dble(cube%ny)
     do i = 1, cube%nx
-       cube%xAxis(i) = xmin + (xmax-xmin)*dble(i-1)/dble(cube%nx)
+       cube%xAxis(i) = xmin + dx/2.d0 + dble(i-1)*dx 
     enddo
-    Do i = 1, cube%ny
-       cube%yAxis(i) = ymin + (ymax-ymin)*dble(i-1)/dble(cube%ny)
+    do i = 1, cube%ny
+       cube%yAxis(i) = ymin + dy/2.d0 + dble(i-1)*dx 
     enddo
   end subroutine addSpatialAxes
 
 ! Set velocity axis for datacube - Equally spaced (linearly) between min and max
   subroutine addVelocityAxis(cube, vMin, vMax)
     type(DATACUBE) :: cube
-    real(double) :: vMin, vMax
+    real(double) :: vMin, vMax, dv
     integer :: i
+    
+    dv = (vMax - vMin) / dble(cube%nv)
 
     do i = 1, cube%nv
-       cube%vAxis(i) = vmin + (vmax-vmin)*dble(i-1)/dble(cube%nv)
+       cube%vAxis(i) = vmin + dv/2.d0 + dv * dble(i-1)
     enddo
   end subroutine addVelocityAxis
 
@@ -104,8 +108,8 @@ contains
     nx = cube%nx
     ny = cube%ny
 
-    dx = (cube%Xaxis(nx) - cube%xAxis(1))/real(nx-1)
-    dy = (cube%yAxis(ny) - cube%yAxis(1))/real(ny-1)
+    dx = cube%Xaxis(2) - cube%xAxis(1)
+    dy = cube%yAxis(2) - cube%yAxis(1)
 
     tr(1) = cube%xAxis(1)-dx
     tr(2) = dx

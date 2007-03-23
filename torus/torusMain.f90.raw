@@ -1374,8 +1374,12 @@
            do i = 1, nStreams
               write(*,*) "Refining stream: ",i
               gridconverged = .false.
+              j = 0
               do while(.not.gridconverged) 
-                 call splitGridOnStream(grid%octreeRoot, thisStream(i), grid, gridconverged)
+!                 do j = 1, 111
+                 j = j + 1
+                    call splitGridOnStream(grid%octreeRoot, thisStream(i), grid, gridconverged)
+                    write(*,*) j, gridConverged
               enddo
            enddo
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
@@ -1673,14 +1677,16 @@
            call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
            if (geometry == "ttauri") then
               call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
-!           elseif (geometry == "magstream") then
+           elseif (geometry == "magstream") then
 !              call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
+!              call testSurface(source(1)%surface)
+
            elseif (geometry == "romanova") then
               call createTTauriSurface2(starSurface, grid, romData, nu, coreContinuumFlux,fAccretion) 
            else
               call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
            end if
-           call testSurface(starSurface)
+!           call testSurface(starSurface)
         endif
 
         if (lineEmission.and.(.not.cmf)) then
@@ -2356,6 +2362,8 @@
        call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
        nu =1.d15
        call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
+       call testSurface(source(1)%surface)
+
     case("melvin")
        nSource = 1
        teff = 30000.
@@ -2668,9 +2676,17 @@
      if (cmf) then
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 !        call atomLoop(grid, nAtom, thisAtom, nsource, source)
-        do i = 1, 20
-           ang = twoPi * real(i-1)/20.
-           call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 4, OCTALVECTOR(cos(ang), sin(ang), 0.d0), 100.d0*pctocm/1.d10, &
+
+           call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
+                "etaline.ps/vcps", .true., .false., & 
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+
+        do i = 1, 40
+           ang = twoPi * real(i-1)/40.   + pi
+!           ang = 45.*degtorad
+           t = 70.d0*degtorad
+           call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 4, &
+                OCTALVECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
                 source, nsource,i)
         enddo
         stop
@@ -3905,7 +3921,7 @@
 
            call calcContinuumEmissivityLucyMono(grid, grid%octreeRoot , nlambda, xArray, iLambdaPhoton)
 
-!           call setBiasOnTau(grid, iLambdaPhoton)
+           call setBiasOnTau(grid, iLambdaPhoton)
 
            call computeProbDist(grid, totLineEmission, &
                 totDustContinuumEmission,lamline, .false.)

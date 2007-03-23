@@ -347,14 +347,14 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
 
   allocate(yMedian(1:nLambda))
 
-  do j = 1, nOuterloop
-     write(tfile,'(a,i2.2,a)') "errorarray",j,".dat"
-     open(55,file=tfile,status="unknown",form="formatted")
-     do i = 1, nLambda
-        write(55,*) xarray(i),errorArray(j,i)%i
-     enddo
-    close(55)
-  enddo
+!  do j = 1, nOuterloop
+!     write(tfile,'(a,i2.2,a)') "errorarray",j,".dat"
+!     open(55,file=tfile,status="unknown",form="formatted")
+!     do i = 1, nLambda
+!        write(55,*) xarray(i),errorArray(j,i)%i
+!     enddo
+!    close(55)
+!  enddo
 
   allocate(tArray(1:nOuterLoop))
   do i = 1,nLambda
@@ -450,11 +450,11 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
 
   if (.not.normalizeSpectrum) then
 !     ! convert from erg/s to erg/s/A
-!     stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
-!     stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
-!     stokes_u(1:nLambda) = stokes_u(1:nLambda) / dlam(1:nLambda)
-!     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
-!     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
+     stokes_i(1:nLambda) = stokes_i(1:nLambda) / dlam(1:nLambda)
+     stokes_q(1:nLambda) = stokes_q(1:nLambda) / dlam(1:nLambda)
+     stokes_u(1:nLambda) = stokes_u(1:nLambda) / dlam(1:nLambda)
+     stokes_qv(1:nLambda) = stokes_qv(1:nLambda) / dlam(1:nLambda)**2
+     stokes_uv(1:nLambda) = stokes_uv(1:nLambda) / dlam(1:nLambda)**2
      
      ! convert to erg/s/A to erg/s/cm^2/A
      

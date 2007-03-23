@@ -356,10 +356,9 @@ module source_mod
        tAccretion = source%surface%element(ielement)%temperature
        !================CHECK UNITS HERE!! ===========================
        IC_hot = blackbody(REAL(tAccretion), 1.e8*REAL(cSpeed/nu)) ! [B_nu]
+!       write(*,*) "hit hotspot",ic_hot,i_nu
        i_nu  = I_nu + ic_hot
     endif
-
-
 
   end function I_nu
 
