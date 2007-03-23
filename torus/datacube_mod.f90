@@ -28,10 +28,334 @@ module datacube_mod
 
 contains
 
+  subroutine writeDataCube(thisCube)
+
+    implicit none
+    
+    type(DATACUBE), intent(in) :: thisCube
+
+    character(len=512) :: filename
+    character(len=80) :: card
+
+    integer :: status,unit,blocksize,bitpix,naxis
+    integer, dimension(5) :: naxes
+    integer :: i,j,group,fpixel,nelements
+    logical :: simple, extend
+    
+    status=0
+    filename="datacube.fits.gz"
+    
+    !  Get an unused Logical Unit Number to use to open the FITS file.
+    call ftgiou ( unit, status )
+    
+    !  Create the new empty FITS file.
+    blocksize=1
+    call ftinit(unit,trim(filename),blocksize,status)
+
+    !  Initialize parameters about the FITS image
+    simple=.true.
+    extend=.true.
+    group=1
+    fpixel=1
+   
+    ! 1er HDU : nsubpixels
+    bitpix=32
+    naxis=3
+    naxes(1)=thisCube%nx
+    naxes(2)=thisCube%ny
+    naxes(3)=thisCube%nv
+    nelements=naxes(1)*naxes(2)*naxes(3)
+
+    !  Write the required header keywords.
+    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+
+    !  Write the array to the FITS file.
+    call ftpprj(unit,group,fpixel,nelements,thisCube%nsubpixels,status)
+
+    !  Write keywords to the header.
+    call ftpkyj(unit,'LABEL',1,thisCube%label,status) 
+    call ftpkyj(unit,'VUNIT',1,thisCube%vUnit,status)
+    call ftpkyj(unit,'XUNIT',1,thisCube%xUnit,status)
+    call ftpkyj(unit,'IUNIT',1,thisCube%IntensityUnit,status)
+    call ftpkyd(unit,'DISTANCE',thisCube%obsdistance,-3,'observation distance',status)
+
+    ! 2nd HDU : converged
+    call FTCRHD(unit, status)
+    bitpix=32
+    naxis=3
+    naxes(1)=thisCube%nx
+    naxes(2)=thisCube%ny
+    naxes(3)=thisCube%nv
+    nelements=naxes(1)*naxes(2)*naxes(3)
+
+    !  Write the required header keywords.
+    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+
+    !  Write the array to the FITS file.
+    call ftpprj(unit,group,fpixel,nelements,thisCube%converged,status)
+
+    ! 3rd HDU : weight
+    call FTCRHD(unit, status)
+    bitpix=-64
+    naxis=2
+    naxes(1)=thisCube%nx
+    naxes(2)=thisCube%ny
+    nelements=naxes(1)*naxes(2)
+
+    !  Write the required header keywords.
+    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+
+    !  Write the array to the FITS file.
+    call ftpprd(unit,group,fpixel,nelements,thisCube%weight,status)
+
+    ! 4th HDU : xAxis
+    call FTCRHD(unit, status)
+    bitpix=-64
+    naxis=1
+    naxes(1)=thisCube%nx     
+    nelements=naxes(1)
+
+    !  Write the required header keywords.
+    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+
+    !  Write the array to the FITS file.
+    call ftpprd(unit,group,fpixel,nelements,thisCube%xAxis,status)
+
+    ! 5th HDU : yAxis
+    call FTCRHD(unit, status)
+    bitpix=-64
+    naxis=1
+    naxes(1)=thisCube%ny    
+    nelements=naxes(1)
+
+    !  Write the required header keywords.
+    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+
+    !  Write the array to the FITS file.
+    call ftpprd(unit,group,fpixel,nelements,thisCube%yAxis,status)
+
+    ! 6th HDU : vAxis
+    call FTCRHD(unit, status)
+    bitpix=-64 
+    naxis=1
+    naxes(1)=thisCube%nv        
+    nelements=naxes(1)
+
+    !  Write the required header keywords.
+    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+
+    !  Write the array to the FITS file.
+    call ftpprd(unit,group,fpixel,nelements,thisCube%vAxis,status)
+
+    ! 7th HDU : intensity
+    call FTCRHD(unit, status)
+    bitpix=-64
+    naxis=3
+    naxes(1)=thisCube%nx
+    naxes(2)=thisCube%ny
+    naxes(3)=thisCube%nv
+    nelements=naxes(1)*naxes(2)*naxes(3)
+
+    !  Write the required header keywords.
+    call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
+    
+    !  Write the array to the FITS file.
+    call ftpprd(unit,group,fpixel,nelements,thisCube%intensity,status)
+
+     !  Close the file and free the unit number.
+     call ftclos(unit, status)
+     call ftfiou(unit, status)
+
+     !  Check for any error, and if so print out error messages
+     if (status > 0) then
+        call print_error(status)
+     end if  
+
+    return
+
+  end subroutine writeDataCube
+
+  !**********************************************************************
+
+  subroutine readDataCube(thisCube)
+
+    implicit none
+    
+    type(DATACUBE), intent(out) :: thisCube
+    
+    integer :: status, readwrite, unit, blocksize,nfound,group,firstpix,nbuffer,npixels,j, syst_status, hdunum, hdutype, hdu, junk
+    character(len=512) :: filename
+    character(len=80) :: card, comment
+    real :: nullval
+    integer, dimension(4) :: naxes
+    logical :: anynull
+
+    status=0
+    !  Get an unused Logical Unit Number to use to open the FITS file.
+    call ftgiou(unit,status)
+
+    filename="datacube.fits.gz"
+    readwrite=0
+    call ftopen(unit,filename,readwrite,blocksize,status)
+
+    group=1
+    firstpix=1
+    nullval=-999
+     
+
+    ! 1er HDU : nsubpixels
+    hdu=1
+    call ftgknj(unit,'NAXIS',1,3,naxes,nfound,status)
+    if (nfound /= 3) then
+       write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
+       write(*,*) 'of datacube.fits.gz file HDU', hdu,'. Exiting.'
+       stop
+    endif
+    npixels=naxes(1)*naxes(2)*naxes(3)
+    nbuffer=npixels
+    ! read_image
+    call ftgpvj(unit,group,firstpix,nbuffer,nullval,thisCube%nsubpixels,anynull,status)
+
+    !  Read keywords from the header.
+    call FTGKYJ(unit,"LABEL", junk,comment,status)
+    thisCube%label = comment
+    call FTGKYJ(unit,"VUNIT", junk,comment,status)
+    thisCube%vUnit = comment
+    call FTGKYJ(unit,"XUNIT", junk,comment,status)
+     thisCube%xUnit = comment
+    call FTGKYJ(unit,"IUNIT", junk,comment,status)
+    thisCube%IntensityUnit = comment
+    call FTGKYD(unit,"DISTANCE", thisCube%obsdistance,comment,status)
+
+    ! 2nd HDU : converged
+    hdu=2
+    call ftmahd(unit,hdu,hdutype,status)
+    call ftgknj(unit,'NAXIS',1,3,naxes,nfound,status)
+    if (nfound /= 3) then
+       write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
+       write(*,*) 'of datacube.fits.gz file HDU',hdu,'. Exiting.'
+       stop
+    endif
+    npixels=naxes(1)*naxes(2)*naxes(3)
+    nbuffer=npixels
+    ! read_image
+    call ftgpvj(unit,group,firstpix,nbuffer,nullval,thisCube%converged,anynull,status)
+
+    ! 3rd HDU : weight
+    hdu=3
+    call ftmahd(unit,hdu,hdutype,status)
+    call ftgknj(unit,'NAXIS',1,2,naxes,nfound,status)
+    if (nfound /= 2) then
+       write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
+       write(*,*) 'of datacube.fits.gz file HDU',hdu,'. Exiting.' 
+       stop
+    endif
+    npixels=naxes(1)*naxes(2)
+    nbuffer=npixels
+    ! read_image
+    call ftgpvd(unit,group,firstpix,nbuffer,nullval,thisCube%weight,anynull,status)
+
+    ! 4th HDU : xAxis
+    hdu=4
+    call ftmahd(unit,hdu,hdutype,status)
+    call ftgknj(unit,'NAXIS',1,1,naxes,nfound,status)
+    if (nfound /= 1) then
+       write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
+       write(*,*) 'of datacube.fits.gz file HDU',hdu,'. Exiting.'     
+       stop
+    endif
+    npixels=naxes(1)
+    nbuffer=npixels
+    ! read_image
+    call ftgpvd(unit,group,firstpix,nbuffer,nullval,thisCube%xAxis,anynull,status)
+    
+    ! 5th HDU : yAxis
+    hdu=5
+    call ftmahd(unit,hdu,hdutype,status)
+    call ftgknj(unit,'NAXIS',1,1,naxes,nfound,status)
+    if (nfound /= 1) then
+       write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
+       write(*,*) 'of datacube.fits.gz file HDU',hdu,'. Exiting.'   
+       stop
+    endif
+    npixels=naxes(1)
+    nbuffer=npixels
+    ! read_image
+    call ftgpvd(unit,group,firstpix,nbuffer,nullval,thisCube%yAxis,anynull,status)
+    
+    ! 6th HDU : vAxis
+    hdu=6
+    call ftmahd(unit,hdu,hdutype,status)
+    call ftgknj(unit,'NAXIS',1,1,naxes,nfound,status)
+    if (nfound /= 1) then
+       write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
+       write(*,*) 'of datacube.fits.gz file HDU',hdu,'. Exiting.' 
+       stop
+    endif
+    npixels=naxes(1)
+    nbuffer=npixels
+    ! read_image
+    call ftgpvd(unit,group,firstpix,nbuffer,nullval,thisCube%vAxis,anynull,status)
+    
+    ! 7th HDU : intensity
+    hdu=7
+    call ftmahd(unit,hdu,hdutype,status)
+    call ftgknj(unit,'NAXIS',1,3,naxes,nfound,status)
+    if (nfound /= 3) then
+       write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
+       write(*,*) 'of datacube.fits.gz file HDU',hdu,'. Exiting.'
+       stop
+    endif
+    npixels=naxes(1)*naxes(2)*naxes(3)
+    nbuffer=npixels
+    ! read_image
+    call ftgpvd(unit,group,firstpix,nbuffer,nullval,thisCube%intensity,anynull,status)
+
+    return
+
+  end subroutine readDataCube
+
+  !**********************************************************************
+
+
+  subroutine print_error(status)
+    ! PRINT_ERROR prints out the FITSIO error messages to the user.
+    
+    integer status
+    character ( len = 30 ) errtext
+    character ( len = 80 ) errmessage
+
+    !  Check if status is OK (no error); if so, simply return.
+    if (status <= 0) then
+       return
+    end if
+
+    !  Get the text string which describes the error
+    call ftgerr(status,errtext)
+    print *,'FITSIO Error Status =',status,': ',errtext
+
+    !  Read and print out all the error messages on the FITSIO stack
+    call ftgmsg(errmessage)
+    do while (errmessage .ne. ' ')
+       print *,errmessage
+       call ftgmsg(errmessage)
+    end do
+    
+    return
+  end subroutine print_error
+
+  !***********************************************************
+
 ! Initialises cube - sets intensity for cube to 0 
   subroutine initCube(thisCube, nx, ny, nv)
     type(DATACUBE) :: thisCube
     integer :: nx, ny, nv
+
+
+    thisCube%label=" "
+    thisCube%vUnit=" "
+    thisCube%xUnit=" "
+    thisCube%IntensityUnit=" "
 
     thisCube%nx = nx
     thisCube%ny = ny
