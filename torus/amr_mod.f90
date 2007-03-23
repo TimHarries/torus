@@ -13553,7 +13553,6 @@ IF ( .NOT. gridConverged ) RETURN
     converged = .true.
     converged_tmp=.true.
 
-
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -13613,6 +13612,8 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTALVECTOR) :: rVec
     open(20, file=filename, status="old", form="formatted")
     nStream = 0
+
+
 10 continue
        read(20,*,end=20) r, theta, phi, v, rho, area
        if (r < 1.00001d0) then
@@ -13632,7 +13633,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisStream(nStream)%rho(thisStream(nStream)%nSamples) = rho
        thisStream(nStream)%streamRadius(thisStream(nStream)%nSamples) = sqrt(area/pi)/1.d10
     goto 10
-20 continue
+20  continue
     close(20)
     write(*,*) "Read in ",nStream, " streams."
     do i = 1, nStream
