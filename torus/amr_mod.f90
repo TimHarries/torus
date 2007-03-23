@@ -13556,21 +13556,20 @@ IF ( .NOT. gridConverged ) RETURN
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
-          do i = 1, thisOctal%nChildren, 1
+          children : do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call splitGridOnStream(child, thisStream, grid, converged)
                 if (.not.converged) converged_tmp = converged
-                exit
+                exit children
              end if
-          end do
-          if (.not.converged_tmp) converged_tmp=converged
+          end do children
+          if (.not.converged_tmp) converged=converged_tmp
        else
-
 
           rVec = subcellCentre(thisOctal, subcell)
 
-          do j = 1, thisStream%nSamples
+          stream : do j = 1, thisStream%nSamples
              
              
              split = .false.
@@ -13595,12 +13594,15 @@ IF ( .NOT. gridConverged ) RETURN
                      inherit=.false., interp=.false.)
                 
                 converged = .false.
-                exit
+                exit stream
              endif
-          enddo
-          if (.not.converged) exit
+          enddo stream 
+          if (.not.converged) exit 
        end if
     enddo
+
+    return
+    
   end subroutine splitGridOnStream
 
   subroutine readStreams(thisStream, nStream, filename)
@@ -13621,7 +13623,7 @@ IF ( .NOT. gridConverged ) RETURN
           thisStream(nStream)%nSamples = 0
        endif
        theta = theta * degtorad
-       area = area * 1.d4
+       area = area * 1.d4 
        phi = phi * degtorad
        rho = rho * 1.d-3
        r = r * 2.d0 * rsol / 1.d10
