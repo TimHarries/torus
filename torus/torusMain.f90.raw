@@ -1376,10 +1376,8 @@
               gridconverged = .false.
               j = 0
               do while(.not.gridconverged) 
-!                 do j = 1, 111
                  j = j + 1
-                    call splitGridOnStream(grid%octreeRoot, thisStream(i), grid, gridconverged)
-                    write(*,*) j, gridConverged
+                 call splitGridOnStream(grid%octreeRoot, thisStream(i), grid, gridconverged)
               enddo
            enddo
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)

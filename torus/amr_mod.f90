@@ -13592,7 +13592,7 @@ IF ( .NOT. gridConverged ) RETURN
 
                 globalStream = thisStream
                 iglobalSample = j
-                write(*,*) "adding child",thisStream%streamRadius(j),thisOctal%subcellSize
+!                write(*,*) "adding child",thisStream%streamRadius(j),thisOctal%subcellSize
                 call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                      inherit=.false., interp=.false.)
                 
