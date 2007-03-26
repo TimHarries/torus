@@ -32,10 +32,13 @@ MODULE amr_mod
 
   type STREAMTYPE
      integer :: nSamples
-     type(OCTALVECTOR) :: position(500)
-     type(OCTALVECTOR) :: direction(500)
-     real(double) :: rho(500)
-     real(double) :: streamRadius(500)
+     type(OCTALVECTOR) :: position(200)
+     type(OCTALVECTOR) :: direction(200)
+     type(VECTOR) :: velocity(200)
+     real :: speed(200)
+     real(double) :: rho(200)
+     real :: temperature(200)
+     real(double) :: streamRadius(200)
   end type STREAMTYPE
 
   type(STREAMTYPE) :: globalStream
@@ -234,12 +237,15 @@ CONTAINS
 !       endif
 
 
-      CALL getMagStreamValues(point=subcellCentre(thisOctal,subcell),&
+      CALL getMagStreamValues2(point=subcellCentre(thisOctal,subcell),&
                               grid=grid,                            &
                               rho=rhoDouble,                        &
                               temperature=thisOctal%temperature(subcell),&
                               velocity=thisOctal%velocity(subcell),  &
                               inFlow=thisOctal%inFlow(subcell))
+
+
+
       thisOctal%rho(subcell) = REAL(rhoDouble)
       IF (subcell == thisOctal%maxChildren) CALL fillVelocityCorners(thisOctal,grid,magStreamVelocity, .true.)
        thisOctal%microturb(subcell) = (20.d5/cSpeed) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!       
@@ -4018,8 +4024,9 @@ IF ( .NOT. gridConverged ) RETURN
 
   END SUBROUTINE plotMiddlePointGridYZ
 
-  subroutine plotAMRthreeDMovie(device, thisType, grid)
-    character(len=*) :: device,thisType
+  subroutine plotAMRthreeDMovie(grid, source, nsource)
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource
     character(len=30) :: filename
     type(GRIDTYPE) :: grid
     integer :: nFrames, maxFrames
@@ -4060,19 +4067,19 @@ IF ( .NOT. gridConverged ) RETURN
           lineGrid(nGrid,4) = VECTOR(x - dr, y + dr, 0.)
        enddo
     enddo
-    nGrid = 100
-    allocate(lineGrid(1:ngrid,1:2))
-    r1 = 100.*grid%ocTreeRoot%subcellSize
-    do i = 1, nGrid/2
-       r2 = r1 * (2.*real(i-1)/real(nGrid/2-1)-1.)
-       lineGrid(i,1) = VECTOR(-r1,r2,0.)
-       lineGrid(i,2) = VECTOR(+r1,r2,0.)
-    enddo
-    do i = ngrid/2+1, nGrid
-       r2 = r1 * (2.*real(i-ngrid/2-1)/real(nGrid/2-1)-1.)
-       lineGrid(i,1) = VECTOR(r2,-r1,0.)
-       lineGrid(i,2) = VECTOR(r2,+r1,0.)
-    enddo
+!    nGrid = 100
+!    allocate(lineGrid(1:ngrid,1:2))
+!    r1 = 100.*grid%ocTreeRoot%subcellSize
+!    do i = 1, nGrid/2
+!       r2 = r1 * (2.*real(i-1)/real(nGrid/2-1)-1.)
+!       lineGrid(i,1) = VECTOR(-r1,r2,0.)
+!       lineGrid(i,2) = VECTOR(+r1,r2,0.)
+!    enddo
+!    do i = ngrid/2+1, nGrid
+!       r2 = r1 * (2.*real(i-ngrid/2-1)/real(nGrid/2-1)-1.)
+!       lineGrid(i,1) = VECTOR(r2,-r1,0.)
+!       lineGrid(i,2) = VECTOR(r2,+r1,0.)
+!    enddo
     maxFrames = 1000
 
     allocate(viewVec(1:maxFrames))
@@ -4118,6 +4125,8 @@ IF ( .NOT. gridConverged ) RETURN
     call findTotalMass(grid%octreeRoot, totalMass, minRho, maxRho)
 !    minrho = maxrho/10000.
     maxPoints = 1000000
+    minRho = max(minRho,1.d-30)
+    minRho = 0.01 * maxRho
     write(*,*) log10(minrho),"->",log10(maxrho)
     allocate(points(1:maxPoints))
     allocate(nColour(1:maxPoints))
@@ -4129,6 +4138,7 @@ IF ( .NOT. gridConverged ) RETURN
     write(*,*) "Writing frame to: ",trim(filename)
     call pgbegin(0,filename,1,1)
     call createPointList(grid%octreeRoot, nPoints, points, nColour, maxPoints, totalMass, minRho, maxRho)
+    call createStarPointList(source, nsource, npoints, points, nColour, maxpoints)
     write(*,*) "done",npoints
     call pgend
 
@@ -4156,6 +4166,31 @@ IF ( .NOT. gridConverged ) RETURN
     enddo
     deallocate(points)
   end subroutine plotAMRthreeDMovie
+
+  subroutine createStarPointList(source, nsource, npoints, points, nColour, maxpoints)
+    type(SOURCETYPE) :: source(:)
+    integer :: maxPoints
+    integer :: npoints
+    integer :: nSource
+    type(VECTOR) :: points(:), rVec
+    integer :: nColour(:)
+    integer :: iSource, iSphere, nSphere,i
+    
+    nSphere = 1000
+    do iSource = 1, nSource
+       do i = 1, nSphere
+          rVec = randomUnitVector()
+          if (nPoints < maxPoints) then
+             nPoints = nPoints + 1
+             points(nPoints) = source(iSource)%radius * rVec
+             nColour(nPoints) = 2
+          else
+             write(*,*) "maxpoints reached. can't write spheres"
+          endif
+       enddo
+    enddo
+  end subroutine createStarPointList
+
 
 
   RECURSIVE SUBROUTINE plotThreeD(thisOctal, posVec,viewVec, thisDepth, defDist, points, nPoints)
@@ -5310,7 +5345,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(gridtype), INTENT(IN)    :: grid
 
-    CALL getMagStreamValues(point, grid, velocity=magStreamVelocity)
+    CALL getMagStreamValues2(point, grid, velocity=magStreamVelocity)
     
   END FUNCTION magStreamVelocity
 
@@ -6676,6 +6711,7 @@ IF ( .NOT. gridConverged ) RETURN
     !                                  abs(cos(theta1)-cos(theta2))),kind=db)
 
     sAccretion = (fourPi * TTauriRstar**2)*abs(cos(theta1)-cos(theta2))!1.e20
+    tAccretionDouble = max(1.d0, tAccretionDouble)
     Taccretion = TaccretionDouble**0.25
 
 !    write(*,*) contfluxfile
@@ -7896,7 +7932,11 @@ IF ( .NOT. gridConverged ) RETURN
 
           dv = cellVolume(thisOctal, subcell)
           totalMass = totalMass + (1.d30)*thisOctal%rho(subcell) * dv
-          if (PRESENT(minRho)) minRho = min(dble(thisOctal%rho(subcell)), minRho)
+          if (PRESENT(minRho)) then
+             if (thisOctal%rho(subcell) > 1.d-20) then
+                minRho = min(dble(thisOctal%rho(subcell)), minRho)
+             endif
+          endif
           if (PRESENT(maxRho)) maxRho = max(dble(thisOctal%rho(subcell)), maxRho)
        endif
     enddo
@@ -13551,7 +13591,7 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: i, j, subcell, iStream
     logical :: converged, converged_tmp
     logical :: split
-    type(STREAMTYPE) :: thisStream
+    type(STREAMTYPE), pointer :: thisStream
     real(double), parameter :: fac = 2.d0
     converged = .true.
     converged_tmp=.true.
@@ -13608,12 +13648,72 @@ IF ( .NOT. gridConverged ) RETURN
     
   end subroutine splitGridOnStream
 
+  recursive subroutine splitGridOnStream2(thisOctal, thisStream, grid, childrenAdded)
+    use input_variables, only : limitScalar
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child
+    type(OCTALVECTOR) :: rVec, corner
+    integer :: i, j, subcell, iStream
+    logical :: childrenAdded
+    logical :: split
+    type(STREAMTYPE) :: thisStream
+    real(double), parameter :: fac = 1.d0
+
+    subcell = 1
+    do while (subcell <= thisOctal%maxChildren)
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          children : do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call splitGridOnStream2(child, thisStream, grid, childrenAdded)
+                exit children
+             end if
+          end do children
+       else
+
+
+          childrenAdded = .false.
+          rVec = subcellCentre(thisOctal, subcell)
+
+          stream : do j = 1, thisStream%nSamples
+             
+             
+             split = .false.
+             
+             if ((inSubcell(thisOctal, subcell, thisStream%position(j))).and. &
+                  (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) then 
+                split = .true.
+             else
+                
+                if ((dist_from_closestCorner(thisOctal, subcell, thisStream%position(j)) < &
+                     thisStream%StreamRadius(j)).and. &
+                     (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) split = .true.
+             endif
+             
+             if (split) then
+
+                globalStream = thisStream
+                iglobalSample = j
+                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                     inherit=.false., interp=.false.)
+                childrenAdded = .true.
+                subcell = subcell - 1
+                exit stream
+             endif
+          enddo stream
+       end if
+       subcell = subcell + 1
+    enddo
+
+  end subroutine splitGridOnStream2
+
 
   subroutine readStreams(thisStream, nStream, filename)
     type(STREAMTYPE) :: thisStream(:)
     character(len=*) :: filename
     integer :: nstream
-    integer :: i, n
+    integer :: i, n, j
     real(double) :: r, theta, phi, v, rho, area
     type(OCTALVECTOR) :: rVec
     open(20, file=filename, status="old", form="formatted")
@@ -13636,16 +13736,30 @@ IF ( .NOT. gridConverged ) RETURN
        thisStream(nStream)%nSamples = thisStream(nStream)%nSamples + 1
 
        thisStream(nStream)%position(thisStream(nStream)%nSamples) = rVec
+       thisStream(nStream)%speed(thisStream(nStream)%nSamples) = v * 1.e5/cspeed
        thisStream(nStream)%rho(thisStream(nStream)%nSamples) = rho
+       thisStream(nStream)%temperature(thisStream(nStream)%nSamples) = 7500.
        thisStream(nStream)%streamRadius(thisStream(nStream)%nSamples) = sqrt(area/pi)/1.d10
     goto 10
 20  continue
     close(20)
     write(*,*) "Read in ",nStream, " streams."
     do i = 1, nStream
-       write(*,*) "Stream ",i," has ",thisStream(i)%nsamples, " samples"
+
+       do j = 1, thisStream(i)%nSamples
+          if (j == thisStream(i)%nSamples) then
+             thisStream(i)%direction(j) = thisStream(i)%position(j) - thisStream(i)%position(j-1)
+             call normalize(thisStream(i)%direction(j))
+          
+          else
+             thisStream(i)%direction(j) = thisStream(i)%position(j+1) - thisStream(i)%position(j)
+             call normalize(thisStream(i)%direction(j))
+          endif
+          thisStream(i)%velocity(j) = thisStream(i)%speed(j) * o2s(thisStream(i)%direction(j))
+       enddo
     enddo
 
+    globalStream = thisStream(1)
   end subroutine readStreams
 
   function  closestCorner(thisOctal, subcell, posVec) result (closeCorner)
@@ -13793,5 +13907,138 @@ IF ( .NOT. gridConverged ) RETURN
        endif
     end do
   end subroutine tauAlongPath
+
+  subroutine columnAlongPath(grid, source, nsource, rVec, direction, sigma)
+    type(GRIDTYPE) :: grid
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource
+    type(OCTALVECTOR) :: rVec, direction, currentPosition
+    integer :: iLambda
+    real(double) :: sigma, distToNextCell
+    type(OCTAL), pointer :: thisOctal, sOctal
+    real(double) :: fudgeFac = 1.d-3
+    integer :: subcell
+    real(double) :: distToSource, totDist
+    logical :: hitSource
+
+    sigma = 0.d0
+    currentPosition = rVec
+    totDist = 0.d0
+
+    CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+
+    call distanceToSource(source, nSource, currentPosition, direction, hitSource, distToSource)
+
+    do while (inOctal(grid%octreeRoot, currentPosition).and.(totDist < disttoSource))
+
+       call findSubcellLocal(currentPosition,thisOctal,subcell)
+
+       sOctal => thisOctal
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+  
+       currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       totDist = totDist + distToNextCell
+       sigma = sigma + distToNextCell*thisOctal%rho(subcell)*1.d10
+    end do
+    if (hitsource) sigma = 0.01
+  end subroutine columnAlongPath
+
+
+  subroutine getMagStreamValues2(point, grid,  rho, temperature, &
+       velocity, inflow)
+    type(STREAMTYPE) :: thisStream
+    type(GRIDTYPE) :: grid
+    integer :: iSample
+    type(OCTALVECTOR) :: point
+    real(double) :: t, thisR
+    real(double),optional :: rho
+    real,optional :: temperature
+    type(VECTOR), optional :: velocity
+    logical(kind=logic), optional :: inFlow
+    logical :: outsideStream
+    thisStream = globalStream
+
+    call findNearestSample(thisStream, point, iSample, t)
+
+    thisR =  thisStream%streamradius(isample) + &
+         t * (thisStream%streamradius(iSample+1)-thisStream%streamradius(iSample))
+
+    outsideStream = .false.
+    if (modulus(thisStream%position(isample)-point) > thisR) then
+       outSideStream = .true.
+    endif
+
+    if (PRESENT(rho)) then
+       if (outSideStream) then
+          rho = tiny(rho)
+       else
+          rho = thisStream%rho(isample) + t * (thisStream%rho(iSample+1)-thisStream%rho(iSample))
+       endif
+    endif
+
+    if (PRESENT(temperature)) then
+       if (outSideStream) then
+          temperature = 10.
+       else
+          temperature = thisStream%temperature(isample) + &
+               t * (thisStream%temperature(iSample+1)-thisStream%temperature(iSample))
+       endif
+    endif
+
+    if (PRESENT(velocity)) then
+       if (outsideStream) then
+          velocity = VECTOR(1.e-30, 1.e-30, 1.e-30)
+       else
+          velocity = thisStream%velocity(isample) + &
+               t * (thisStream%velocity(iSample+1)-thisStream%velocity(iSample))
+       endif
+    endif
+
+    if (present(inflow)) then
+       inflow = .not.outsideStream
+    endif
+  end subroutine getMagStreamValues2
+    
+
+
+
+  subroutine findNearestSample(thisStream, position, iSample, t)
+    type(STREAMTYPE) :: thisStream
+    type(OCTALVECTOR) :: rVec, position
+    real(double) :: minDist, dist
+    integer :: iSample
+    real(double) :: t
+    integer :: i
+    logical :: outsideStream
+
+    outsideStream = .true.
+    minDist = 1.d30
+    iSample = 0
+    do i = 1, thisStream%nSamples-1
+       rVec = thisStream%position(i) - position
+       dist = modulus(rVec)
+       if (dist < thisStream%streamRadius(i)) outsideStream = .false.
+       if ( (rVec .dot. thisStream%direction(i)) >= 0.d0 ) then
+          if (dist < minDist) then
+             minDist = dist
+             iSample = i
+          endif
+       endif
+    enddo
+    if ((iSample == 0).and.(.not.outsideStream)) then
+       write(*,*) "error in find nearest sample"
+       write(*,*) "position",position
+       iSample = 1
+    endif
+    if (outSideStream) iSample = 1
+    rVec = thisStream%position(iSample) - position
+    if (modulus(thisStream%position(iSample+1)-thisStream%position(iSample)) /= 0.d0) then
+       t = (rVec.dot.thisStream%direction(iSample)) / &
+            modulus(thisStream%position(iSample+1)-thisStream%position(iSample))
+    else
+       t = 0.d0
+    endif
+  end  subroutine findNearestSample
+
 
 END MODULE amr_mod

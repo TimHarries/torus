@@ -458,7 +458,7 @@
   type(modelatom), allocatable :: thisAtom(:)
   type(TOPBASETYPE) :: thisBase
 
-  type(STREAMTYPE) :: thisStream(200)
+  type(STREAMTYPE) :: thisStream(150), currentStream
   integer :: nStreams
   
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
@@ -1366,21 +1366,53 @@
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
 
         case("magstream")
+           nSource = 1
+           allocate(source(1:1))
+           source(1)%luminosity = grid%lCore
+           source(1)%radius = ttaurirStar/1.d10
+           source(1)%teff = 4000.
+           source(1)%position = VECTOR(0.,0.,0.)
+           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
+           call normalizedSpectrum(source(1)%spectrum)
+           call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
+           nu =1.d15
+           call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
+           call testSurface(source(1)%surface)
+
            write(*,*) "splitting on stream"
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
 !           call readStreams(thisStream,nStreams,"neil_bptau_7500.dat")
            call readStreams(thisStream,nStreams,"stream.dat")
            write(*,*) "stream read . now refining"
+           call tune(6, "Magstream grid construction.") ! start a stopwatch
+
            do i = 1, nStreams
-              write(*,*) "Refining stream: ",i
+              write(message,*) "Refining stream: ",i, " Number of samples :",thisstream(i)%nSamples
+              call writeInfo(message, TRIVIAL)
+
               gridconverged = .false.
               j = 0
-              do while(.not.gridconverged) 
+!              do while(.not.gridconverged) 
                  j = j + 1
-                 call splitGridOnStream(grid%octreeRoot, thisStream(i), grid, gridconverged)
-              enddo
+                 call splitGridOnStream2(grid%octreeRoot, thisStream(i), grid, gridconverged)
+!              enddo
+                 nOctals = 0
+                 nVoxels = 0
+                 call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+                 write(message,*) "Adaptive grid currently contains: ",nOctals," octals"
+                 call writeInfo(message, TRIVIAL)
+                 write(message,*) "                                : ",nVoxels," unique voxels"
+                 call writeInfo(message, TRIVIAL)
+
+                 octVec = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+                 thisdevice = "cols.ps/vcps"
+                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
+
+
            enddo
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+           call tune(6, "Magstream grid construction.") ! stop a stopwatch
+!           call plotAMRthreeDMovie(grid, source, nsource)
 
         case DEFAULT
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, &
@@ -2347,20 +2379,21 @@
 !       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
        call normalizedSpectrum(source(1)%spectrum)
 
-
     case("magstream")
-       nSource = 1
-       allocate(source(1:1))
-       source(1)%luminosity = grid%lCore
-       source(1)%radius = ttaurirStar/1.d10
-       source(1)%teff = 4000.
-       source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
-       call normalizedSpectrum(source(1)%spectrum)
-       call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
-       nu =1.d15
-       call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
-       call testSurface(source(1)%surface)
+       if (.not.allocated(source)) then
+          nSource = 1
+          allocate(source(1:1))
+          source(1)%luminosity = grid%lCore
+          source(1)%radius = ttaurirStar/1.d10
+          source(1)%teff = 4000.
+          source(1)%position = VECTOR(0.,0.,0.)
+          call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
+          call normalizedSpectrum(source(1)%spectrum)
+          call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
+          nu =1.d15
+          call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
+          call testSurface(source(1)%surface)
+       endif
 
     case("melvin")
        nSource = 1
@@ -2678,6 +2711,7 @@
            call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
                 "etaline.ps/vcps", .true., .false., & 
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+           call plotAMRthreeDMovie(grid, source, nsource)
 
         do i = 1, 40
            ang = twoPi * real(i-1)/40.   + pi

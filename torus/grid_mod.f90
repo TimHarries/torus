@@ -7893,6 +7893,79 @@ contains
     deallocate(dummy)
   end subroutine nattaplot
 
+  subroutine columnDensityPlot(grid, source, nsource, viewVec, device)
+    type(GRIDTYPE) :: grid
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource
+    type(OCTALVECTOR) :: viewVec
+    type(OCTALVECTOR) :: xProj, yProj, startVec
+    character(len=*) :: device
+    real, allocatable :: image(:,:)
+    real(double) :: t
+    integer :: nx, ny
+    real(double) :: sigma
+    real :: tr(6)
+    integer :: i, j
+    real :: dx
+    real, allocatable :: xAxis(:), yAxis(:)
+    real :: imageSize, iMax, iMin
+    integer::pgbegin
+
+    nx = 400
+    ny = 400
+    allocate(image(1:nx,1:ny))
+    allocate(xAxis(1:nx))
+    allocate(yAxis(1:ny))
+
+    imageSize = 0.9d0*2.d0*grid%octreeRoot%subcellSize
+    dx = imageSize / real(nx)
+    do i = 1, nx
+       xAxis(i) = -imageSize/2. + dx/2. + real(i-1)*dx
+    enddo
+    do i = 1, ny
+       yAxis(i) = -imageSize/2. + dx/2. + real(i-1)*dx
+    enddo
+       
+    xProj = viewVec .cross. OCTALVECTOR(0.d0, 0.d0, 1.d0)  
+    call normalize(xProj)
+    yProj = viewVec .cross. xProj
+    call normalize(yProj)
+
+    do i = 1, nx
+       do j = 1, ny
+          startVec = dble(xAxis(i))*xProj + dble(yAxis(j))*yProj
+          startVec = startVec - grid%octreeRoot%subcellSize*3.d0 * viewVec
+          
+          t = distanceToGridFromOutside(grid, startVec, viewVec)
+          startVec = startVec + (t + 1.d-3*grid%halfSmallestSubcell) *viewVec
+          call columnAlongPath(grid, source, nsource, startVec, viewVec, sigma)
+          image(i,j) = real(sigma)
+       enddo
+    enddo
+    
+    tr(1) = xAxis(1)-dx
+    tr(2) = dx
+    tr(3) = 0.
+    tr(4) = yAxis(1)-dx
+    tr(5) = 0.
+    tr(6) = dx
+
+    i= pgbegin(0,device,1,1)
+
+    call pgvport(0.1, 0.9, 0.1, 0.9)
+    call pgwnad(xAxis(1)-dx/2., xAxis(nx)-dx/2.,yAxis(1)-dx/2.,yAxis(nx)-dx/2.)
+
+    call palette(3)
+ 
+    iMin = minval(image)
+    iMax = maxVal(image)
+    write(*,*) "Column image: ",imin,imax
+    call pgimag(image, nx, ny, 1, nx, 1, ny, imin, imax, tr)
+       
+    call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
+    call pgend
+  end subroutine columnDensityPlot
+    
     
 end module grid_mod
 
