@@ -13657,7 +13657,7 @@ IF ( .NOT. gridConverged ) RETURN
     logical :: childrenAdded
     logical :: split
     type(STREAMTYPE) :: thisStream
-    real(double), parameter :: fac = 1.d0
+    real(double), parameter :: fac = 2.d0
 
     subcell = 1
     do while (subcell <= thisOctal%maxChildren)
@@ -13970,7 +13970,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     if (PRESENT(rho)) then
        if (outSideStream) then
-          rho = tiny(rho)
+          rho = 1.d-25
        else
           rho = thisStream%rho(isample) + t * (thisStream%rho(iSample+1)-thisStream%rho(iSample))
        endif
@@ -13978,7 +13978,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     if (PRESENT(temperature)) then
        if (outSideStream) then
-          temperature = 10.
+          temperature = 6000.
        else
           temperature = thisStream%temperature(isample) + &
                t * (thisStream%temperature(iSample+1)-thisStream%temperature(iSample))

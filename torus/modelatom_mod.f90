@@ -673,16 +673,19 @@ contains
           0.00000d0,  0.00000d0, &
           0.00000d0,  0.00000d0 /), shape=(/5,2/))
     real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
-    pe = ne * kerg * t
-    select case(thisAtom%nz)
+    if (ne < 1.d-10) then
+       ratio = 0.d0
+    else
+       pe = ne * kerg * t
+       select case(thisAtom%nz)
        case(1)
           u0 = getUT(t, uCoeff(1,:))
           u1 = 1.d0
           N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
           N1overN0 = (10.d0**N1overN0)/pe
-
-!          n1overn0 = (2.d0*u1)/(ne*u0) * ((twoPi * melectron * kerg * t)/(hCgs**2))**1.5d0 * exp(-thisAtom%iPot/(kev*t))
-
+          
+          !          n1overn0 = (2.d0*u1)/(ne*u0) * ((twoPi * melectron * kerg * t)/(hCgs**2))**1.5d0 * exp(-thisAtom%iPot/(kev*t))
+          
           if (N1overN0 /= 0.d0) then
              ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
           else
@@ -690,26 +693,28 @@ contains
           endif
        case(2)
           select case(thisAtom%charge)
-             case(0)
-                u0 = 1.d0
-                u1 = getUT(t, uCoeff(3,:))
-                N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
-                N1overN0 = (10.d0**N1overN0)/pe
-                ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
-             case(1)
-                u1 = getUT(t, uCoeff(3,:))
-                u2 = 1.d0
-                N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
-                N2overN1 = (10.d0**N2overN1)/pe
-                ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1 / N2overn1
-              case DEFAULT
-                 write(*,*) "wrong charge for He"
-                 stop
-             end select
+          case(0)
+             u0 = 1.d0
+             u1 = getUT(t, uCoeff(3,:))
+             N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
+             N1overN0 = (10.d0**N1overN0)/pe
+             ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
+          case(1)
+             u1 = getUT(t, uCoeff(3,:))
+             u2 = 1.d0
+             N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
+             N2overN1 = (10.d0**N2overN1)/pe
+             ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1 / N2overn1
+          case DEFAULT
+             write(*,*) "wrong charge for He"
+             stop
+          end select
        case DEFAULT
           write(*,*) "atom not recognised in boltzsahageneral ",thisAtom%name
           stop
-     end select
+       end select
+!       write(*,*) ratio,ne,t
+    endif
    end function BoltzSahaGeneral
           
 

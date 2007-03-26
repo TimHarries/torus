@@ -218,7 +218,7 @@ contains
           inDetailedBalance  = .false.
 
           if (l == 1) inDetailedBalance = .true.
-          if ((l==2).and.(k==3)) inDetailedBalance = .true.
+!          if ((l==2).and.(k==3)) inDetailedBalance = .true.
 
 
           if (thisAtom(iAtom)%transType(iTrans) == "RBB") then ! radiative BB rates
@@ -1350,7 +1350,7 @@ contains
           if (ionized) then
              thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
           else
-             thisOctal%ne(subcell) = 1.d-5 * thisOctal%rho(subcell)/mHydrogen
+             thisOctal%ne(subcell) = 1.d-2 * thisOctal%rho(subcell)/mHydrogen
           endif
 
 !          do iAtom = 1, nAtom

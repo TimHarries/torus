@@ -2380,8 +2380,8 @@
        call normalizedSpectrum(source(1)%spectrum)
 
     case("magstream")
+       nSource = 1
        if (.not.allocated(source)) then
-          nSource = 1
           allocate(source(1:1))
           source(1)%luminosity = grid%lCore
           source(1)%radius = ttaurirStar/1.d10
