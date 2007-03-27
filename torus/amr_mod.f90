@@ -13681,12 +13681,13 @@ IF ( .NOT. gridConverged ) RETURN
              
              split = .false.
              
+
              if ((inSubcell(thisOctal, subcell, thisStream%position(j))).and. &
                   (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) then 
                 split = .true.
              else
                 
-                if ((dist_from_closestCorner(thisOctal, subcell, thisStream%position(j)) < &
+                if ((dist_from_closestEdge(thisOctal, subcell, thisStream%position(j)) < &
                      thisStream%StreamRadius(j)).and. &
                      (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) split = .true.
              endif
@@ -13874,6 +13875,104 @@ IF ( .NOT. gridConverged ) RETURN
     endif
   end function dist_from_closestCorner
 
+  function  dist_from_closestEdge(thisOctal, subcell, posVec) result (minDist)
+    type(OCTALVECTOR) :: posVec, cen, corner1, corner2
+    type(OCTAL), pointer :: thisOctal
+    real(double) :: minDist, r, dist
+    integer :: subcell
+    
+    minDist =  1.d30
+    r = thisOctal%subcellSize/2.d0
+    cen = subcellCentre(thisOctal, subcell)
+
+!1
+    corner1 = cen + r * OCTALVECTOR(-1.d0,-1.d0, 1.d0)
+    corner2 = cen + r * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!2
+    corner1 = cen + r * OCTALVECTOR(-1.d0,-1.d0, 1.d0)
+    corner2 = cen + r * OCTALVECTOR( 1.d0,-1.d0, 1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!3
+    corner1 = cen + r * OCTALVECTOR(-1.d0,-1.d0, 1.d0)
+    corner2 = cen + r * OCTALVECTOR(-1.d0,-1.d0,-1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!4
+    corner1 = cen + r * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
+    corner2 = cen + r * OCTALVECTOR( 1.d0, 1.d0, 1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!5
+    corner1 = cen + r * OCTALVECTOR(-1.d0, 1.d0, 1.d0)
+    corner2 = cen + r * OCTALVECTOR(-1.d0, 1.d0,-1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!6
+    corner1 = cen + r * OCTALVECTOR( 1.d0,-1.d0, 1.d0)
+    corner2 = cen + r * OCTALVECTOR( 1.d0, 1.d0, 1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!7
+    corner1 = cen + r * OCTALVECTOR( 1.d0,-1.d0, 1.d0)
+    corner2 = cen + r * OCTALVECTOR( 1.d0,-1.d0,-1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!8
+    corner1 = cen + r * OCTALVECTOR( 1.d0, 1.d0, 1.d0)
+    corner2 = cen + r * OCTALVECTOR( 1.d0, 1.d0,-1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!9
+    corner1 = cen + r * OCTALVECTOR(-1.d0, 1.d0,-1.d0)
+    corner2 = cen + r * OCTALVECTOR( 1.d0, 1.d0,-1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!10
+    corner1 = cen + r * OCTALVECTOR(-1.d0, 1.d0,-1.d0)
+    corner2 = cen + r * OCTALVECTOR(-1.d0,-1.d0,-1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!11
+    corner1 = cen + r * OCTALVECTOR(-1.d0,-1.d0,-1.d0)
+    corner2 = cen + r * OCTALVECTOR( 1.d0,-1.d0,-1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+!12
+    corner1 = cen + r * OCTALVECTOR( 1.d0,-1.d0,-1.d0)
+    corner2 = cen + r * OCTALVECTOR( 1.d0, 1.d0,-1.d0)
+    dist  =  distancePointLineSegment(corner1, corner2, posVec)
+    if (dist < minDist) then
+       minDist = dist
+    endif
+
+
+  end function dist_from_closestEdge
+
 
   subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax)
     type(GRIDTYPE) :: grid
@@ -13940,7 +14039,7 @@ IF ( .NOT. gridConverged ) RETURN
        totDist = totDist + distToNextCell
        sigma = sigma + distToNextCell*thisOctal%rho(subcell)*1.d10
     end do
-    if (hitsource) sigma = 0.01
+    if (hitsource) sigma = 0.1
   end subroutine columnAlongPath
 
 
@@ -13958,15 +14057,22 @@ IF ( .NOT. gridConverged ) RETURN
     logical :: outsideStream
     thisStream = globalStream
 
-    call findNearestSample(thisStream, point, iSample, t)
+    call findNearestSample(thisStream, point, iSample, t, outsideStream)
+
 
     thisR =  thisStream%streamradius(isample) + &
          t * (thisStream%streamradius(iSample+1)-thisStream%streamradius(iSample))
 
-    outsideStream = .false.
-    if (modulus(thisStream%position(isample)-point) > thisR) then
-       outSideStream = .true.
-    endif
+!    outsideStream = .false.
+!    if (modulus(thisStream%position(isample)-point) > thisR) then
+!       outSideStream = .true.
+!    endif
+!
+!    if (iSample == thisStream%nSamples) then
+!       if (((point-thisStream%position(iSample)).dot.thisStream%position(iSample)) < 0.d0) then
+!          outsideStream = .true.
+!       endif
+!    endif
 
     if (PRESENT(rho)) then
        if (outSideStream) then
@@ -14002,7 +14108,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
 
-  subroutine findNearestSample(thisStream, position, iSample, t)
+  subroutine findNearestSample(thisStream, position, iSample, t, outsideStream)
     type(STREAMTYPE) :: thisStream
     type(OCTALVECTOR) :: rVec, position
     real(double) :: minDist, dist
@@ -14014,7 +14120,29 @@ IF ( .NOT. gridConverged ) RETURN
     outsideStream = .true.
     minDist = 1.d30
     iSample = 0
-    do i = 1, thisStream%nSamples-1
+
+    rVec = thisStream%position(thisStream%nSamples) - position
+    if ((rVec .dot. thisStream%direction(thisStream%nSamples)) < 0.d0) then
+       outsideStream = .true.
+       iSample = thisStream%nSamples
+       t = 0.d0
+       goto 666
+    endif
+
+
+    if (modulus(position) > modulus(thisStream%position(thisStream%nSamples))) then
+       iSample = thisStream%nSamples
+       t = 0.d0
+       goto 666
+    endif
+    
+    if (modulus(position) < modulus(thisStream%position(1))) then
+       iSample = 1
+       t = 0.d0
+       goto 666
+    endif
+
+    do i = 1, thisStream%nSamples
        rVec = thisStream%position(i) - position
        dist = modulus(rVec)
        if (dist < thisStream%streamRadius(i)) outsideStream = .false.
@@ -14024,10 +14152,12 @@ IF ( .NOT. gridConverged ) RETURN
              iSample = i
           endif
        endif
+
     enddo
     if ((iSample == 0).and.(.not.outsideStream)) then
        write(*,*) "error in find nearest sample"
        write(*,*) "position",position
+       write(*,*) modulus(position)/modulus(thisStream%position(1))
        iSample = 1
     endif
     if (outSideStream) iSample = 1
@@ -14038,6 +14168,8 @@ IF ( .NOT. gridConverged ) RETURN
     else
        t = 0.d0
     endif
+666 continue
+
   end  subroutine findNearestSample
 
 

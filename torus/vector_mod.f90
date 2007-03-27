@@ -1758,5 +1758,17 @@ contains
     
   END FUNCTION distancePointLineSegmentOctal  
 
+  function minimumDistanceFromPointToLine(point, lineStart, lineEnd) result (distance)
+    real(double) :: distance
+    type(OCTALVECTOR) :: point, lineStart,lineEnd, a, b
+
+    a = lineEnd - lineStart
+    b = lineStart - point
+
+    distance = modulus(a .cross. b) / modulus(a)
+  end function minimumDistanceFromPointToLine
+    
+
+
 end module vector_mod
 

@@ -1379,11 +1379,10 @@
            call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
            call testSurface(source(1)%surface)
 
-           write(*,*) "splitting on stream"
-           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
-!           call readStreams(thisStream,nStreams,"neil_bptau_7500.dat")
            call readStreams(thisStream,nStreams,"stream.dat")
            write(*,*) "stream read . now refining"
+           write(*,*) "splitting on stream"
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
            call tune(6, "Magstream grid construction.") ! start a stopwatch
 
            do i = 1, nStreams
@@ -1404,7 +1403,8 @@
                  write(message,*) "                                : ",nVoxels," unique voxels"
                  call writeInfo(message, TRIVIAL)
 
-                 octVec = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+                 ang = 85.*degtorad
+                 octVec = OCTALVECTOR(sin(ang), 0.d0, cos(ang))
                  thisdevice = "cols.ps/vcps"
                  call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
 
@@ -2711,7 +2711,7 @@
            call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
                 "etaline.ps/vcps", .true., .false., & 
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-           call plotAMRthreeDMovie(grid, source, nsource)
+!           call plotAMRthreeDMovie(grid, source, nsource)
 
         do i = 1, 40
            ang = twoPi * real(i-1)/40.   + pi

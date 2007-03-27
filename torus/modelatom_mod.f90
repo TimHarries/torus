@@ -37,6 +37,7 @@ module modelatom_mod
      real(double), pointer :: transFreq(:)
      integer, pointer :: iLower(:)
      integer, pointer :: iUpper(:)
+     logical, pointer :: inDetailedBalance(:)
      integer, pointer :: equation(:)
      integer, pointer :: nParams(:)
      real(double), pointer :: params(:,:)
@@ -108,7 +109,9 @@ contains
     allocate(thisAtom%equation(1:thisAtom%nTrans))
     allocate(thisAtom%nparams(1:thisAtom%nTrans))
     allocate(thisAtom%params(1:thisAtom%nTrans,10))
+    allocate(thisAtom%inDetailedBalance(1:thisAtom%nTrans))
 
+    thisAtom%inDetailedBalance = .false.
 
     do i = 1, thisAtom%nTrans
        read(30,'(a120)') junk
@@ -666,20 +669,19 @@ contains
     type(MODELATOM) :: thisAtom
     integer              :: nIon, level
     real(double) :: Ne, t, ratio, nk
-    real(double), parameter ::  Ucoeff(5,2) =  reshape(source=  &
-        (/0.30103d0, -0.00001d0, &
-          0.00000d0,  0.00000d0, &
-          0.30103d0,  0.00000d0, &
-          0.00000d0,  0.00000d0, &
-          0.00000d0,  0.00000d0 /), shape=(/5,2/))
+    real :: tReal
+    real, parameter ::  Ucoeff(5,2) =  reshape(source=  &
+        (/0.30103e0, -0.00001e0, &
+          0.00000e0,  0.00000e0, &
+          0.30103e0,  0.00000e0, &
+          0.00000e0,  0.00000e0, &
+          0.00000e0,  0.00000e0 /), shape=(/5,2/))
     real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
-    if (ne < 1.d-10) then
-       ratio = 0.d0
-    else
        pe = ne * kerg * t
+       tReal = t
        select case(thisAtom%nz)
        case(1)
-          u0 = getUT(t, uCoeff(1,:))
+          u0 = getUT(treal, uCoeff(1,:))
           u1 = 1.d0
           N1overN0 = ((-5040.d0/t)*thisAtom%iPot + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
           N1overN0 = (10.d0**N1overN0)/pe
@@ -695,12 +697,12 @@ contains
           select case(thisAtom%charge)
           case(0)
              u0 = 1.d0
-             u1 = getUT(t, uCoeff(3,:))
+             u1 = getUT(treal, uCoeff(3,:))
              N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
              N1overN0 = (10.d0**N1overN0)/pe
              ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
           case(1)
-             u1 = getUT(t, uCoeff(3,:))
+             u1 = getUT(treal, uCoeff(3,:))
              u2 = 1.d0
              N2overN1 = ((-5040.d0/t)*54.42d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
              N2overN1 = (10.d0**N2overN1)/pe
@@ -714,18 +716,21 @@ contains
           stop
        end select
 !       write(*,*) ratio,ne,t
+    if (isnan(ratio)) then
+       write(*,*) "bug in boltz",ne,t
+       stop
     endif
    end function BoltzSahaGeneral
           
 
    function getUT(t, coeff) result (ut)
-     real(double) :: t, coeff(:),  ut
-     real(double) :: logphi
+     real :: t, coeff(:),  ut
+     real :: logphi
 
-     logphi = 5040.d0/t
+     logphi = 5040.0/t
 
      ut = coeff(1) + coeff(2)*logphi
-     ut = 10.d0**ut
+     ut = 10.**ut
    end function getUT
 
    subroutine createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
@@ -955,8 +960,8 @@ contains
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
              i = thisAtom(iAtom)%iLower(iTrans)
              if (i < 7) then
-                nStar = BoltzSahaGeneral(thisAtom(iAtom), 1, i, Ne, temperature) * pops(iAtom,thisAtom(iatom)%nLevels)
-                fac = exp(-hCgs*thisAtom(iAtom)%transFreq(iTrans) / (kerg * temperature))
+!                nStar = BoltzSahaGeneral(thisAtom(iAtom), 1, i, Ne, temperature) * pops(iAtom,thisAtom(iatom)%nLevels)
+!                fac = exp(-hCgs*thisAtom(iAtom)%transFreq(iTrans) / (kerg * temperature))
                 if (present(iFreq)) then
                    kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * &
                         pops(iAtom, i) !- nStar*fac) 
@@ -970,29 +975,31 @@ contains
 !       if (kappa /= 0.d0) write(*,*) "kappa",kappa
      end function bfOpacity
 
-  function bfEmissivity(freq, nAtom, thisAtom, pops, ne, temperature, ifreq) result(eta)
+  function bfEmissivity(freq, nAtom, thisAtom, nStar, temperature, ifreq) result(eta)
 
 ! bound-free and free-free continuum emissivity
 
     type(MODELATOM) :: thisAtom(:)
     integer :: nAtom
+    real(double) :: nStar(:,:)
     real(double) :: freq
     integer, optional :: iFreq
     integer :: iTrans
-    real(double) :: pops(:,:)
     integer :: nLevels
-    real(double) :: ne
     real(double) :: temperature
-    real(double) :: nStar
     real(double) :: eta
     integer :: i, j, iAtom
-    real(double) :: thresh, photonEnergy
+    real(double) :: thresh, photonEnergy, expFac
 
     eta=0.d0
 
 !    bound-free
 
+    expFac = exp(-(hcgs*freq)/(kerg*temperature))
+
     do iAtom = 1, nAtom
+
+
        do  i = 1, thisAtom(iAtom)%nRBFtrans
           iTrans = thisAtom(iAtom)%indexRBFtrans(i)
           j = thisAtom(iAtom)%iLower(iTrans)
@@ -1000,11 +1007,10 @@ contains
              thresh=(thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(j))
              photonEnergy = freq * hCgs * ergtoEv
              if (photonEnergy.ge.thresh) then
-                nStar = BoltzSahaGeneral(thisAtom(iAtom), 1, j, Ne, temperature) * pops(iAtom,thisAtom(iatom)%nLevels)
                 if (present(ifreq)) then
-                   eta = eta + nStar * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * exp(-(hcgs*freq)/(kerg*temperature))
+                   eta = eta + nStar(iAtom,j) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * expFac
                 else
-                   eta = eta + nStar * photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * exp(-(hcgs*freq)/(kerg*temperature))
+                   eta = eta + nStar(iAtom,j) * photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * expFac
                 endif
              endif
           endif
