@@ -57,7 +57,8 @@ contains
     extend=.true.
     group=1
     fpixel=1
-   
+
+    ! 1st HDU : intensity
     bitpix=-64
     naxis=3
     naxes(1)=thisCube%nx
@@ -149,8 +150,6 @@ contains
 
     ! 7th HDU : intensity
     call FTCRHD(unit, status)
-
-    ! 1er HDU : nsubpixels
     bitpix=32
     naxis=3
     naxes(1)=thisCube%nx
@@ -165,17 +164,17 @@ contains
     call ftpprj(unit,group,fpixel,nelements,thisCube%nsubpixels,status)
 
 
-     !  Close the file and free the unit number.
-     call ftclos(unit, status)
-     call ftfiou(unit, status)
+    !  Close the file and free the unit number.
+    call ftclos(unit, status)
+    call ftfiou(unit, status)
 
      !  Check for any error, and if so print out error messages
-     if (status > 0) then
-        call print_error(status)
-     end if  
-
+    if (status > 0) then
+       call print_error(status)
+    end if
+    
     return
-
+    
   end subroutine writeDataCube
 
   !**********************************************************************
@@ -206,18 +205,19 @@ contains
     nullval=-999
      
 
-    ! 1er HDU : nsubpixels
+    ! 1st HDU : intensity
     hdu=1
     call ftgknj(unit,'NAXIS',1,3,naxes,nfound,status)
     if (nfound /= 3) then
        write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
-       write(*,*) 'of datacube.fits.gz file HDU', hdu,'. Exiting.'
+       write(*,*) 'of datacube.fits.gz file HDU',hdu,'. Exiting.'
        stop
     endif
     npixels=naxes(1)*naxes(2)*naxes(3)
     nbuffer=npixels
     ! read_image
-    call ftgpvj(unit,group,firstpix,nbuffer,nullval,thisCube%nsubpixels,anynull,status)
+    call ftgpvd(unit,group,firstpix,nbuffer,nullval,thisCube%intensity,anynull,status)
+
 
     !  Read keywords from the header.
     call FTGKYJ(unit,"LABEL", junk,comment,status)
@@ -306,13 +306,13 @@ contains
     call ftgknj(unit,'NAXIS',1,3,naxes,nfound,status)
     if (nfound /= 3) then
        write(*,*) 'READ_IMAGE failed to read the NAXISn keywords'
-       write(*,*) 'of datacube.fits.gz file HDU',hdu,'. Exiting.'
+       write(*,*) 'of datacube.fits.gz file HDU', hdu,'. Exiting.'
        stop
     endif
     npixels=naxes(1)*naxes(2)*naxes(3)
     nbuffer=npixels
     ! read_image
-    call ftgpvd(unit,group,firstpix,nbuffer,nullval,thisCube%intensity,anynull,status)
+    call ftgpvj(unit,group,firstpix,nbuffer,nullval,thisCube%nsubpixels,anynull,status)   
 
     return
 
