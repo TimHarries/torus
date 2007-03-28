@@ -13657,7 +13657,7 @@ IF ( .NOT. gridConverged ) RETURN
     logical :: childrenAdded
     logical :: split
     type(STREAMTYPE) :: thisStream
-    real(double), parameter :: fac = 2.d0
+    real(double), parameter :: fac = 1.d0
 
     subcell = 1
     do while (subcell <= thisOctal%maxChildren)

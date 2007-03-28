@@ -58,8 +58,7 @@ contains
     group=1
     fpixel=1
    
-    ! 1er HDU : nsubpixels
-    bitpix=32
+    bitpix=-64
     naxis=3
     naxes(1)=thisCube%nx
     naxes(2)=thisCube%ny
@@ -68,9 +67,10 @@ contains
 
     !  Write the required header keywords.
     call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-
+    
     !  Write the array to the FITS file.
-    call ftpprj(unit,group,fpixel,nelements,thisCube%nsubpixels,status)
+    call ftpprd(unit,group,fpixel,nelements,thisCube%intensity,status)
+
 
     !  Write keywords to the header.
     call ftpkyj(unit,'LABEL',1,thisCube%label,status) 
@@ -149,7 +149,9 @@ contains
 
     ! 7th HDU : intensity
     call FTCRHD(unit, status)
-    bitpix=-64
+
+    ! 1er HDU : nsubpixels
+    bitpix=32
     naxis=3
     naxes(1)=thisCube%nx
     naxes(2)=thisCube%ny
@@ -158,9 +160,10 @@ contains
 
     !  Write the required header keywords.
     call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
-    
+
     !  Write the array to the FITS file.
-    call ftpprd(unit,group,fpixel,nelements,thisCube%intensity,status)
+    call ftpprj(unit,group,fpixel,nelements,thisCube%nsubpixels,status)
+
 
      !  Close the file and free the unit number.
      call ftclos(unit, status)
@@ -464,6 +467,8 @@ contains
 
     iMin = MINVAL(image(1:nx,1:ny))
     iMax = MAXVAL(image(1:nx,1:ny))
+
+    imin = imax-1.
     write(*,*) "min/max",imin,imax
     i =  pgbegin(0,device,1,1)
     write(*,*) "opening ",trim(device),i

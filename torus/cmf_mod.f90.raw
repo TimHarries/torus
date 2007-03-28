@@ -1107,7 +1107,7 @@ contains
                                     thisOctal%newAtomLevel(subcell,iAtom,1:), &
                                     freq, nFreq, weight(1:nRay), iRBB,tauAv)
                                if (firstCheckonTau) then
-                                  if (tauAv > 20.d0) then
+                                  if (tauAv > 10.d0) then
                                      thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
                                   else
                                      thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
@@ -1232,7 +1232,7 @@ contains
                          endif
 !                         write(*,*) "iter",iter,fac
                       enddo
-!                      write(*,*) "Main iteration route converged after ", iter, " iterations"
+                      write(*,*) "Main iteration route converged after ", iter, " iterations"
                       thisOctal%ne(subcell) = ne
                    endif
 
@@ -1561,7 +1561,7 @@ contains
     logical :: firstSubcell
     logical :: endLoopAtPhotosphere
     real(double) :: nstar(10,50)
-    integer :: j
+    integer :: j, k
 
 
     nHAtom = 0
@@ -1702,11 +1702,11 @@ contains
 
 ! add continuous bf and ff emissivity of hydrogen
    
-             do iAtom = 1, nAtom
-                do j = 1, thisAtom(iAtom)%nLevels - 1
-                   nStar(iAtom,j) = BoltzSahaGeneral(thisAtom(iAtom), 1, j, thisOctal%ne(subcell), &
+             do k = 1, nAtom
+                do j = 1, thisAtom(k)%nLevels - 1
+                   nStar(k,j) = BoltzSahaGeneral(thisAtom(k), 1, j, thisOctal%ne(subcell), &
                         dble(thisOctal%temperature(subcell))) * &
-                        Thisoctal%atomlevel(subcell, iAtom,thisAtom(iatom)%nLevels)
+                        Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
                 enddo
              enddo
        
@@ -1790,6 +1790,7 @@ contains
     call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
     write(plotfile,'(a,i3.3,a)') "cube",nfile,".png/png"
     call plotDataCube(cube, plotfile,withspec=.false.)
+    call writeDataCube(cube)
     return
 
 !    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
@@ -1953,7 +1954,7 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 400, 400, 20)
+    call initCube(cube, 100, 100, 100)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 
@@ -1962,7 +1963,7 @@ contains
 
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
 !         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
-    call addvelocityAxis(cube, -100.d0, 100.d0)
+    call addvelocityAxis(cube, -200.d0, 200.d0)
 
     xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
     call normalize(xProj)
@@ -1997,6 +1998,7 @@ contains
                 deltaV = cube%vAxis(k)*1.d5/cSpeed
                 cube%intensity(i,j,k) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
                      iTrans, -deltaV, source, nSource)
+!                write(*,*) i,j,k,cube%intensity(i,j,k)
              enddo
           enddo
           cube%intensity(i,j,1:cube%nv) = cube%intensity(i,j,1:cube%nv) / dble(nMonte)
