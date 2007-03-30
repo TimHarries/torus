@@ -34,6 +34,7 @@ MODULE amr_mod
      integer :: nSamples
      type(OCTALVECTOR) :: position(200)
      type(OCTALVECTOR) :: direction(200)
+     real(double) :: distanceAlongStream(200)
      type(VECTOR) :: velocity(200)
      real :: speed(200)
      real(double) :: rho(200)
@@ -13658,6 +13659,7 @@ IF ( .NOT. gridConverged ) RETURN
     logical :: split
     type(STREAMTYPE) :: thisStream
     real(double), parameter :: fac = 1.d0
+    logical :: splitAz
 
     subcell = 1
     do while (subcell <= thisOctal%maxChildren)
@@ -13685,19 +13687,26 @@ IF ( .NOT. gridConverged ) RETURN
              if ((inSubcell(thisOctal, subcell, thisStream%position(j))).and. &
                   (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) then 
                 split = .true.
-             else
-                
+             else                
                 if ((dist_from_closestEdge(thisOctal, subcell, thisStream%position(j)) < &
                      thisStream%StreamRadius(j)).and. &
                      (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) split = .true.
              endif
              
+
+             if (thisOctal%dPhi*radtodeg > 20.d0) then
+                splitAz = .true.
+             else
+                splitAz = .false.
+             endif
+
+!             if (thisOctal%nDepth < 5) split = .true.
              if (split) then
 
                 globalStream = thisStream
                 iglobalSample = j
                 call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                     inherit=.false., interp=.false.)
+                     inherit=.false., interp=.false., splitAzimuthally=splitAz)
                 childrenAdded = .true.
                 subcell = subcell - 1
                 exit stream
@@ -13715,7 +13724,7 @@ IF ( .NOT. gridConverged ) RETURN
     character(len=*) :: filename
     integer :: nstream
     integer :: i, n, j
-    real(double) :: r, theta, phi, v, rho, area
+    real(double) :: r, theta, phi, v, rho, area, tot
     type(OCTALVECTOR) :: rVec
     open(20, file=filename, status="old", form="formatted")
     nStream = 0
@@ -13727,9 +13736,9 @@ IF ( .NOT. gridConverged ) RETURN
           nStream = nStream + 1
           thisStream(nStream)%nSamples = 0
        endif
-       theta = theta * degtorad
+       theta = theta !* degtorad
        area = area * 1.d4 
-       phi = phi * degtorad
+       phi = phi !* degtorad
        rho = rho * 1.d-3
        r = r * 2.d0 * rsol / 1.d10
        rVec = r * OCTALVECTOR(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))
@@ -13756,7 +13765,24 @@ IF ( .NOT. gridConverged ) RETURN
              thisStream(i)%direction(j) = thisStream(i)%position(j+1) - thisStream(i)%position(j)
              call normalize(thisStream(i)%direction(j))
           endif
-          thisStream(i)%velocity(j) = thisStream(i)%speed(j) * o2s(thisStream(i)%direction(j))
+             if (j == 1) then
+                thisStream(i)%distanceAlongStream(j) = 0.d0
+             else
+                thisStream(i)%distanceAlongStream(j) = thisStream(i)%distanceAlongStream(j-1) + &
+                     modulus(thisStream(i)%position(j) - thisStream(i)%position(j-1))
+             endif
+          ! direction is outward so need to use -speed...
+          thisStream(i)%velocity(j) = (-1.d0*thisStream(i)%speed(j)) * o2s(thisStream(i)%direction(j))
+       enddo
+    enddo
+
+! scale temperature to be proportional to density with a mean of 6000K
+    do i = 1, nStream
+       tot = MAXVAL(thisStream(i)%rho(1:thisStream(i)%nSamples))
+       do j = 1, thisStream(i)%nSamples
+          tot = 1.d0-(thisStream(i)%distanceAlongStream(j) / &
+               thisStream(i)%distanceAlongStream(thisStream(i)%nSamples))
+          thisStream(i)%temperature(j) = 6000.d0 + 4000.d0 * tot
        enddo
     enddo
 
@@ -13878,9 +13904,55 @@ IF ( .NOT. gridConverged ) RETURN
   function  dist_from_closestEdge(thisOctal, subcell, posVec) result (minDist)
     type(OCTALVECTOR) :: posVec, cen, corner1, corner2
     type(OCTAL), pointer :: thisOctal
-    real(double) :: minDist, r, dist
+    real(double) :: minDist, r, dist, ang1, ang2
     integer :: subcell
+    real(double) :: dz, r1, r2, z, phi
     
+
+    if (thisOctal%cylindrical) then
+
+       minDist =  1.d30
+       dz = thisOctal%subcellSize/2.d0
+       cen = subcellCentre(thisOctal, subcell)
+       z = cen%z
+
+       ang1 = thisOctal%phi - returndPhi(thisOctal)
+       ang2 = thisOctal%phi + returndPhi(thisOctal)
+       r1 = thisOctal%r - thisOctal%subcellSize/2.d0
+       r2 = thisOctal%r + thisOctal%subcellSize/2.d0
+
+!1
+       corner1 = OCTALVECTOR(r1 * cos(phi), r1 * sin(phi) , z+dz)
+       corner1 = OCTALVECTOR(r1 * cos(phi), r1 * sin(phi) , z-dz)
+       dist  =  distancePointLineSegment(corner1, corner2, posVec)
+       if (dist < minDist) then
+          minDist = dist
+       endif
+!2
+       corner1 = OCTALVECTOR(r1 * cos(phi), r1 * sin(phi) , z+dz)
+       corner1 = OCTALVECTOR(r2 * cos(phi), r2 * sin(phi) , z+dz)
+       dist  =  distancePointLineSegment(corner1, corner2, posVec)
+       if (dist < minDist) then
+          minDist = dist
+       endif
+!3
+       corner1 = OCTALVECTOR(r2 * cos(phi), r2 * sin(phi) , z+dz)
+       corner1 = OCTALVECTOR(r2 * cos(phi), r2 * sin(phi) , z-dz)
+       dist  =  distancePointLineSegment(corner1, corner2, posVec)
+       if (dist < minDist) then
+          minDist = dist
+       endif
+!4
+       corner1 = OCTALVECTOR(r2 * cos(phi), r2 * sin(phi) , z+dz)
+       corner1 = OCTALVECTOR(r2 * cos(phi), r2 * sin(phi) , z-dz)
+       dist  =  distancePointLineSegment(corner1, corner2, posVec)
+       if (dist < minDist) then
+          minDist = dist
+       endif
+
+
+      else
+
     minDist =  1.d30
     r = thisOctal%subcellSize/2.d0
     cen = subcellCentre(thisOctal, subcell)
@@ -13969,8 +14041,7 @@ IF ( .NOT. gridConverged ) RETURN
     if (dist < minDist) then
        minDist = dist
     endif
-
-
+    endif
   end function dist_from_closestEdge
 
 

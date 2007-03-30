@@ -458,7 +458,7 @@
   type(modelatom), allocatable :: thisAtom(:)
   type(TOPBASETYPE) :: thisBase
 
-  type(STREAMTYPE) :: thisStream(150), currentStream
+  type(STREAMTYPE) :: thisStream(500), currentStream
   integer :: nStreams
   
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
