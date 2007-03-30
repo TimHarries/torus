@@ -680,7 +680,7 @@ contains
           posVec = OCTALVECTOR(x, 0.d0, z) ! get put in octal on grid
           thisOctal => grid%octreeroot
           call findSubcellLocal(posVec, thisOctal,subcell) 
-          pops = pops + thisOctal%moleculagrLevel(subcell,1:10) ! interested in first 10 levels
+          pops = pops + thisOctal%molecularLevel(subcell,1:10) ! interested in first 10 levels
           jnu = jnu + thisOctal%jnu(subcell,1) 
        enddo
        pops = pops / real(nr) ! normalised level population at the 20 random positions 
