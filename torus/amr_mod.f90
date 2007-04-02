@@ -13694,15 +13694,8 @@ IF ( .NOT. gridConverged ) RETURN
              endif
              
 
-             if (thisOctal%dPhi*radtodeg > 20.d0) then
-                splitAz = .true.
-             else
-                splitAz = .false.
-             endif
 
-!             if (thisOctal%nDepth < 5) split = .true.
              if (split) then
-
                 globalStream = thisStream
                 iglobalSample = j
                 call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
@@ -13723,8 +13716,8 @@ IF ( .NOT. gridConverged ) RETURN
     type(STREAMTYPE) :: thisStream(:)
     character(len=*) :: filename
     integer :: nstream
-    integer :: i, n, j
-    real(double) :: r, theta, phi, v, rho, area, tot
+    integer :: i, n, j, i1, j1
+    real(double) :: r, theta, phi, v, rho, area, tot, dist,mindist
     type(OCTALVECTOR) :: rVec
     open(20, file=filename, status="old", form="formatted")
     nStream = 0
@@ -13786,12 +13779,34 @@ IF ( .NOT. gridConverged ) RETURN
        enddo
     enddo
 
+    write(*,*) "setting up stream cross-sections"
+
+!    do i = 1, nStream
+!       write(*,*) i
+!       do j =1, thisStream(i)%nSamples
+!          minDist = 1.d30
+!          do i1 = 1, nStream
+!             if (i /= i1) then
+!                do j1 = 1, thisStream(i1)%nSamples
+!                   dist = modulus(thisStream(i)%position(j) - thisStream(i1)%position(j1))
+!                   if (dist < minDist) then
+!                      minDist = dist
+!                   endif
+!                enddo
+!             endif
+!          enddo
+!          thisStream(i)%streamRadius(j) = mindist/2.d0
+!       enddo
+!    enddo
+!
+
     globalStream = thisStream(1)
+
   end subroutine readStreams
 
   function  closestCorner(thisOctal, subcell, posVec) result (closeCorner)
     type(OCTALVECTOR) :: closeCorner, posVec, cen, thisCorner
-    type(OCTAL), pointer :: thisOctal
+    Type(OCTAL), pointer :: thisOctal
     real(double) :: minDist, r, dist
     integer :: subcell
     
@@ -13904,9 +13919,9 @@ IF ( .NOT. gridConverged ) RETURN
   function  dist_from_closestEdge(thisOctal, subcell, posVec) result (minDist)
     type(OCTALVECTOR) :: posVec, cen, corner1, corner2
     type(OCTAL), pointer :: thisOctal
-    real(double) :: minDist, r, dist, ang1, ang2
+    real(double) :: minDist, r, dist, ang1, ang2, phi
     integer :: subcell
-    real(double) :: dz, r1, r2, z, phi
+    real(double) :: dz, r1, r2, z
     
 
     if (thisOctal%cylindrical) then
@@ -14110,7 +14125,7 @@ IF ( .NOT. gridConverged ) RETURN
        totDist = totDist + distToNextCell
        sigma = sigma + distToNextCell*thisOctal%rho(subcell)*1.d10
     end do
-    if (hitsource) sigma = 0.1
+    if (hitsource) sigma = 1.d-4
   end subroutine columnAlongPath
 
 

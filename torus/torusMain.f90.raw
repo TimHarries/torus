@@ -1403,7 +1403,7 @@
                  write(message,*) "                                : ",nVoxels," unique voxels"
                  call writeInfo(message, TRIVIAL)
 
-                 ang = 85.*degtorad
+                 ang = 30.*degtorad
                  octVec = OCTALVECTOR(sin(ang), 0.d0, cos(ang))
                  thisdevice = "cols.ps/vcps"
                  call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
@@ -2705,13 +2705,14 @@
      call random_seed
 
      if (cmf) then
+        if (movie) call plotAMRthreeDMovie(grid, source, nsource)
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 !        call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
            call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
                 "etaline.ps/vcps", .true., .false., & 
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-!           call plotAMRthreeDMovie(grid, source, nsource)
+!
 
         do i = 1, 40
            ang = twoPi * real(i-1)/40.   + pi
