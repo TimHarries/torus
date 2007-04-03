@@ -1396,6 +1396,7 @@
            write(*,*) "splitting on stream"
            call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType, &
                 stream=bigStream)
+!$MPI  if (my_rank==1) &
            call tune(6, "Magstream grid construction.") ! start a stopwatch
 
 
@@ -1413,16 +1414,19 @@
            write(message,*) "                                : ",nVoxels," unique voxels"
            call writeInfo(message, TRIVIAL)
            
-           fac = 70.*degtorad
-           do i = 1, 1
-              ang = real(i-1)/40. * twoPi
-              octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
-              write(thisdevice,'(a,i3.3,a)') "col",i,".png/png"
-              call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
-           enddo
+           if (writeoutput) then
+              fac = 70.*degtorad
+              do i = 1, 1
+                 ang = real(i-1)/40. * twoPi
+                 octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
+                 write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
+                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
+              enddo
+           endif
 
 
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+!$MPI  if (my_rank==1) &
            call tune(6, "Magstream grid construction.") ! stop a stopwatch
 !           call plotAMRthreeDMovie(grid, source, nsource)
 
@@ -1593,7 +1597,7 @@
         call grid_info(grid, "info_grid.dat")
 !$MPI endif
 
-        call writeAMRgrid("after_creation.grid",.false.,grid)
+        if (writeoutput) call writeAMRgrid("after_creation.grid",.false.,grid)
 
 
         if (writePhasePops) then
@@ -2721,18 +2725,20 @@
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
 !        call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
-           call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
-                "etaline.ps/vcps", .true., .false., & 
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-!
-
-           fac = 70.*degtorad
-           do i = 1, 1
-              ang = real(i-1)/40. * twoPi
-              octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
-              write(thisdevice,'(a,i3.3,a)') "col",i,".png/png"
-              call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
-           enddo
+           if (writeoutput) then
+              call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
+                   "etaline.ps/vcps", .true., .false., & 
+                   nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+              !
+              
+              fac = 70.*degtorad
+              do i = 1, 1
+                 ang = real(i-1)/40. * twoPi
+                 octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
+                 write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
+                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
+              enddo
+           endif
 
         do i = 1, 40
            ang = twoPi * real(i-1)/40. 

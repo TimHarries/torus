@@ -619,10 +619,10 @@ contains
 
                 alphanu = alphanu * (nLower * Blu - nUpper * Bul)
 
-                if (isnan(alphanu)) then
-                   write(*,*) "alphanu isnan",nlower,nupper
-                   stop
-                endif
+!                if (isnan(alphanu)) then
+!                   write(*,*) "alphanu isnan",nlower,nupper
+!                   stop
+!                endif
 
                 alphanu = alphanu + alphaNuCont(iFreq)
 
@@ -995,8 +995,8 @@ contains
 
 
     nRay = 300
-
-    do iStage = 1, 2
+    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    do iStage = 1, 1
 
 
        if (iStage == 1) then
@@ -1324,6 +1324,11 @@ contains
              nRay = maxRay
              call writeWarning("Maximum number of rays exceeded - capping")
           endif
+
+          gridconverged = .true.
+          write(*,*) "!!!!!!!!!!!!! Forcing exit after only one iteration"
+
+
        enddo
     enddo
     write(*,*) "ATOM loop done."
@@ -1974,7 +1979,7 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 100, 100, 100)
+    call initCube(cube, 400, 400, 100)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 

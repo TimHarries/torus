@@ -220,7 +220,7 @@ CONTAINS
           areaValue = SQRT(areaValue / pi) ! area to radius
           magFieldGrid(iSample)%radius = areaValue / 1.e10_oct ! to 1.e10 cm
 
-          maxSizeMagFieldGrid = MAX(maxSizeMagFieldGrid, spPosition%r) 
+          maxSizeMagFieldGrid = MAX(maxSizeMagFieldGrid, real(spPosition%r) )
 
           ! store inner disk radius, for this stream.
           ! we don't care if this is not the last sample in this stream,

@@ -1623,7 +1623,7 @@ contains
     dLon = pointB%phi - pointA%phi
     dLat = pointB%theta - pointA%theta
     a = (SIN(dLat/2.0_db))**2 + COS(pointA%theta) * COS(pointB%theta) * SIN(dLon/2.0_db)**2
-    distance = 2.0_db * ASIN(MIN(1.,SQRT(a)))
+    distance = 2.0_db * ASIN(MIN(1.d0,SQRT(a)))
   
   END FUNCTION greatCircleDistanceDouble
   

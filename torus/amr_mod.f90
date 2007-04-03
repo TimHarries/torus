@@ -13900,7 +13900,7 @@ IF ( .NOT. gridConverged ) RETURN
        enddo
     enddo
 
-! scale temperature to be proportional to density with a mean of 6000K
+! scale temperature according to distance along the stream
     do i = 1, nStream
        tot = MAXVAL(thisStream(i)%rho(1:thisStream(i)%nSamples))
        do j = 1, thisStream(i)%nSamples

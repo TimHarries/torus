@@ -716,10 +716,10 @@ contains
           stop
        end select
 !       write(*,*) ratio,ne,t
-    if (isnan(ratio)) then
-       write(*,*) "bug in boltz",ne,t
-       stop
-    endif
+!    if (isnan(ratio)) then
+!       write(*,*) "bug in boltz",ne,t
+!       stop
+!    endif
    end function BoltzSahaGeneral
           
 

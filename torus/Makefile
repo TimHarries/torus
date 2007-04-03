@@ -419,6 +419,7 @@ ifeq ($(SYSTEM), ukaff1a)
    STATICLIBS=
    STARLIBS=
    PGLIBS=-L/home/th/pgplot -lpgplot
+    CFITSIOLIBS=-L/home/th/cfitsio -lcfitsio
    MK_MPI_SRC = yes
    KNOWN_SYSTEM=yes
 endif
