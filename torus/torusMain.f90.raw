@@ -1415,7 +1415,7 @@
            call writeInfo(message, TRIVIAL)
            
            if (writeoutput) then
-              fac = 70.*degtorad
+              fac = 110.*degtorad
               do i = 1, 1
                  ang = real(i-1)/40. * twoPi
                  octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
@@ -2743,7 +2743,7 @@
         do i = 1, 40
            ang = twoPi * real(i-1)/40. 
 !           ang = 45.*degtorad
-           t = 70.d0*degtorad
+           t = 110.d0*degtorad
            call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 4, &
                 OCTALVECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
                 source, nsource,i)

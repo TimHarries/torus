@@ -994,7 +994,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 300
+    nRay = 1000
     write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     do iStage = 1, 1
 
@@ -1812,10 +1812,12 @@ contains
 
 
     call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
-    write(plotfile,'(a,i3.3,a)') "cube",nfile,".png/png"
-    call plotDataCube(cube, plotfile,withspec=.false.,twopanels=.true.)
-    write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits"
-    call writeDataCube(cube,plotfile)
+    if (Writeoutput) then
+       write(plotfile,'(a,i3.3,a)') "cube",nfile,".png/png"
+       call plotDataCube(cube, plotfile,withspec=.false.,twopanels=.true.)
+       write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits"
+       call writeDataCube(cube,plotfile)
+    endif
     return
 
 !    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
