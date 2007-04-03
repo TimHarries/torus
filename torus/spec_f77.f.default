@@ -11,8 +11,8 @@ C and puts it into the 'current' arrays
 C
       IMPLICIT NONE
       INTEGER OUT_LU
-      INCLUDE '/star/include/sae_par'
-      INCLUDE '/star/include/dat_par'
+      INCLUDE '/star/include/DAT_PAR'
+      INCLUDE '/star/include/SAE_PAR'
 C
 C The current arrays
 C

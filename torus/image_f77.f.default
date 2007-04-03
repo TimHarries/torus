@@ -1,8 +1,8 @@
       subroutine writeImagef77(thisImageI, thisImageQ, thisImageU,
      &thisImageV, thisImageVel, scale, nPix, filename)
       implicit none
-      include '/star/include/dat_par'
-      include '/star/include/sae_par'
+      include '/star/include/DAT_PAR'
+      include '/star/include/SAE_PAR'
       integer npix
       real thisImageI(nPix, nPix)
       real thisImageQ(nPix, nPix)
@@ -132,8 +132,8 @@
       subroutine writePVimageF77(nx, ny, array, xaxis, yaxis,
      &                           filename)
       implicit none
-      include '/star/include/dat_par'
-      include '/star/include/sae_par'
+      include '/star/include/DAT_PAR'
+      include '/star/include/SAE_PAR'
       integer nx, ny
       real array(nx,ny)
       real xaxis(nx)
