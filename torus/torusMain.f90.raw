@@ -458,7 +458,7 @@
   type(modelatom), allocatable :: thisAtom(:)
   type(TOPBASETYPE) :: thisBase
 
-  type(STREAMTYPE) :: thisStream(500), currentStream
+  type(STREAMTYPE) :: thisStream(1000), currentStream, bigStream
   integer :: nStreams
   
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
@@ -1376,40 +1376,52 @@
            call normalizedSpectrum(source(1)%spectrum)
            call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
            nu =1.d15
-           call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
-           call testSurface(source(1)%surface)
+!           call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
+!           call testSurface(source(1)%surface)
 
            call readStreams(thisStream,nStreams,"stream.dat")
+
+           call allocateStream(bigStream, nStreams*200)
+           do i = 1, nStreams
+              do j = 1, thisStream(i)%nsamples
+                 bigStream%nSamples = bigStream%nSamples + 1
+                 bigStream%rho(bigStream%nSamples) = thisStream(i)%rho(j)
+                 bigStream%temperature(bigStream%nSamples) = thisStream(i)%temperature(j)
+                 bigStream%position(bigStream%nSamples) = thisStream(i)%position(j)
+                 bigStream%velocity(bigStream%nSamples) = thisStream(i)%velocity(j)
+              enddo
+           enddo
+
            write(*,*) "stream read . now refining"
            write(*,*) "splitting on stream"
-           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
+           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType, &
+                stream=bigStream)
            call tune(6, "Magstream grid construction.") ! start a stopwatch
 
-           do i = 1, nStreams
-              write(message,*) "Refining stream: ",i, " Number of samples :",thisstream(i)%nSamples
-              call writeInfo(message, TRIVIAL)
-
-              gridconverged = .false.
-              j = 0
-!              do while(.not.gridconverged) 
-                 j = j + 1
-                 call splitGridOnStream2(grid%octreeRoot, thisStream(i), grid, gridconverged)
-!              enddo
-                 nOctals = 0
-                 nVoxels = 0
-                 call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-                 write(message,*) "Adaptive grid currently contains: ",nOctals," octals"
-                 call writeInfo(message, TRIVIAL)
-                 write(message,*) "                                : ",nVoxels," unique voxels"
-                 call writeInfo(message, TRIVIAL)
-
-                 ang = 30.*degtorad
-                 octVec = OCTALVECTOR(sin(ang), 0.d0, cos(ang))
-                 thisdevice = "cols.ps/vcps"
-                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
 
 
+           write(*,*) "Bigstream has ",bigStream%nsamples, " samples" 
+           call splitGridOnStream3(grid%octreeRoot,  grid, bigstream)
+
+           call freeStream(bigStream)
+
+           nOctals = 0
+           nVoxels = 0
+           call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+           write(message,*) "Adaptive grid currently contains: ",nOctals," octals"
+           call writeInfo(message, TRIVIAL)
+           write(message,*) "                                : ",nVoxels," unique voxels"
+           call writeInfo(message, TRIVIAL)
+           
+           fac = 70.*degtorad
+           do i = 1, 1
+              ang = real(i-1)/40. * twoPi
+              octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
+              write(thisdevice,'(a,i3.3,a)') "col",i,".png/png"
+              call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
            enddo
+
+
            call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
            call tune(6, "Magstream grid construction.") ! stop a stopwatch
 !           call plotAMRthreeDMovie(grid, source, nsource)
@@ -2714,8 +2726,16 @@
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 !
 
+           fac = 70.*degtorad
+           do i = 1, 1
+              ang = real(i-1)/40. * twoPi
+              octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
+              write(thisdevice,'(a,i3.3,a)') "col",i,".png/png"
+              call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
+           enddo
+
         do i = 1, 40
-           ang = twoPi * real(i-1)/40.   + pi
+           ang = twoPi * real(i-1)/40. 
 !           ang = 45.*degtorad
            t = 70.d0*degtorad
            call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 4, &

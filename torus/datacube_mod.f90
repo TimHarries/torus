@@ -28,13 +28,13 @@ module datacube_mod
 
 contains
 
-  subroutine writeDataCube(thisCube)
+  subroutine writeDataCube(thisCube, filename)
 
     implicit none
     
     type(DATACUBE), intent(in) :: thisCube
 
-    character(len=512) :: filename
+    character(len=*) :: filename
     character(len=80) :: card
 
     integer :: status,unit,blocksize,bitpix,naxis
@@ -43,7 +43,6 @@ contains
     logical :: simple, extend
     
     status=0
-    filename="datacube.fits.gz"
     
     !  Get an unused Logical Unit Number to use to open the FITS file.
     call ftgiou ( unit, status )
@@ -407,10 +406,12 @@ contains
     enddo
   end subroutine addVelocityAxis
 
-  subroutine plotDataCube(cube, device, withspec)
+  subroutine plotDataCube(cube, device, withspec, twoPanels)
     type(DATACUBE) :: cube
     character(len=*) :: device
     logical, optional :: withSpec
+    logical, optional :: twoPanels
+    logical :: doTwoPanels
     integer :: i, j, k
     integer :: pgbegin
     real, allocatable :: image(:,:)
@@ -431,6 +432,13 @@ contains
     else
        doSpec = .true.
     endif
+
+    if (present(twopanels)) then
+       dotwopanels = twopanels
+    else
+       doTwoPanels = .false.
+    endif
+
 
     nx = cube%nx
     ny = cube%ny
@@ -457,6 +465,9 @@ contains
        enddo
     enddo
 
+    allocate(spec(1:cube%nv))
+
+
 ! Useful for visualising this 'flattened' cube
 
     open(42, file="image.dat",status="unknown",form="formatted")
@@ -468,11 +479,33 @@ contains
     iMin = MINVAL(image(1:nx,1:ny))
     iMax = MAXVAL(image(1:nx,1:ny))
 
-    imin = imax-1.
+    imin = imax-3.
     write(*,*) "min/max",imin,imax
     i =  pgbegin(0,device,1,1)
     write(*,*) "opening ",trim(device),i
-    call pgvport(0.1, 0.9, 0.1, 0.9)
+
+
+    if (doTwoPanels) then
+       call pgvport(0.1, 0.95, 0.1, 0.95)
+       call getSpectrum(cube, 1, cube%nx, 1, cube%ny, spec)
+       spec = spec / spec(1)
+       call pgwindow(real(cube%vAxis(1)), real(cube%vAxis(cube%nv)), &
+            0., 10.)
+       call pgsci(3)
+       call pgline(cube%nv, real(cube%vAxis), real(spec))
+       call pgsci(1)
+       call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
+
+    endif
+
+
+
+    if (doTwoPanels) then
+       call pgvport(0.65, 0.9, 0.65, 0.9)
+    else
+       call pgvport(0.1, 0.9, 0.1, 0.9)
+    endif
+
     call pgwnad(real(cube%xAxis(1))-dx/2., real(cube%xAxis(nx))+dx/2., &
          real(cube%yAxis(1))-dy/2., real(cube%yAxis(ny))+dy/2.)
 
@@ -484,7 +517,6 @@ contains
 
     call pgqvp(0, x1, x2, y1, y2)
 
-    allocate(spec(1:cube%nv))
 
     if (doSpec) then
 
@@ -527,6 +559,10 @@ contains
           enddo
        enddo
     end if
+
+
+
+
     call pgend
     call getSpectrum(cube, 1, cube%nx, 1, cube%ny, spec)
     
@@ -540,6 +576,7 @@ contains
     close(43)
 
   end subroutine plotDataCube
+
   subroutine getSpectrum(cube, ix1, ix2, iy1, iy2, spec)
     type(DATACUBE) :: cube
     integer :: ix1, ix2, iy1, iy2

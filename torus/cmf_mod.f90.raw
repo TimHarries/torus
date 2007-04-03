@@ -456,7 +456,9 @@ contains
    endif
 
 
-    rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
+!    rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
+   rayVel = getVel(grid, thisOctal, subcell, position, direction)
+
 
     call random_number(r)
 
@@ -510,9 +512,12 @@ contains
        endif
 
 
-       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+!       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
+
        endPosition = currentPosition + tval * direction
-       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+!       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
 
 
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
@@ -534,7 +539,9 @@ contains
 
           startOctal => thisOctal
           thisPosition = currentPosition + distArray(i)*direction
-          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+!          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+          thisVel = getVel(grid, thisOctal, subcell, thisposition, direction)
+
 
           alphanuCont = 0.d0
           jnuCont = 0.d0
@@ -1560,7 +1567,7 @@ contains
     real :: xH, XheI, xHeII
     logical :: firstSubcell
     logical :: endLoopAtPhotosphere
-    real(double) :: nstar(10,50)
+    real(double) :: nstar(10,50), rhoCol
     integer :: j, k
 
 
@@ -1617,6 +1624,7 @@ contains
 
     thisOctal => grid%octreeRoot
     icount = 0
+    rhoCol = 0.d0
     endLoopAtPhotosphere = .false.
     do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere))
        icount = icount + 1 
@@ -1634,9 +1642,12 @@ contains
        endif
 
 
-       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+!       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
        endPosition = currentPosition + tval * direction
-       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+!       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
+
 
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
 
@@ -1663,11 +1674,14 @@ contains
 
           startOctal => thisOctal
           thisPosition = currentPosition + distArray(i)*direction
-          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+!          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+          thisVel = getVel(grid, thisOctal, subcell, thisposition, direction)
+
           thisVel= thisVel - rayVel
 
 
           dv = (thisVel .dot. direction) + deltaV
+
 
           call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
@@ -1688,6 +1702,7 @@ contains
 
           dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
 
+          
 
           if (opticallyThickContinuum) then
              dTauCont = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
@@ -1722,12 +1737,16 @@ contains
           endif
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
-!          write(*,*) i0,tau,snu,jnu,alphanu, Thisoctal%atomlevel(subcell,iatom,2), &
-!               thisOctal%atomLevel(subcell, iatom, 3)
           tau = tau + dtau
-!          write(*,*) icount,"i0",i0,"tau",tau,"snu",snu,jnu,alphanu,iatom,itrans
-!          write(*,*) "n",nlower,nupper
+
+!          if (thisOctal%inFlow(subcell)) then
+!             write(*,*) thisOctal%atomLevel(subcell, iAtom,iLower), thisOctal%atomLevel(subcell, iAtom,iUpper), &
+!                  etaLine, jnu, alphanu,phiprof(dv, thisOctal%microturb(subcell)), dv*Cspeed/1.d5, &
+!                  thisOctal%microturb(subcell)*cspeed/1.d5
+!          endif
+
        enddo
+       rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
        totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
     enddo
@@ -1789,8 +1808,9 @@ contains
 
     call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
     write(plotfile,'(a,i3.3,a)') "cube",nfile,".png/png"
-    call plotDataCube(cube, plotfile,withspec=.false.)
-    call writeDataCube(cube)
+    call plotDataCube(cube, plotfile,withspec=.false.,twopanels=.true.)
+    write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits"
+    call writeDataCube(cube,plotfile)
     return
 
 !    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
@@ -1967,7 +1987,7 @@ contains
 
     xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
     call normalize(xProj)
-    yProj = viewVec .cross. xProj
+    yProj =  xProj .cross.viewVec
     call normalize(yProj)
     ix1 = 1
     ix2 = cube%nx
@@ -1993,7 +2013,7 @@ contains
                 yVal = cube%yAxis(j)
              endif
              rayPos =  (xval * xProj) + (yval * yProj)
-             raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*2.d0) * Viewvec)
+             raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*3.d0) * Viewvec)
              do k = 1, cube%nv
                 deltaV = cube%vAxis(k)*1.d5/cSpeed
                 cube%intensity(i,j,k) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &

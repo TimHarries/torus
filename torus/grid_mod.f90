@@ -7928,7 +7928,7 @@ contains
        
     xProj = viewVec .cross. OCTALVECTOR(0.d0, 0.d0, 1.d0)  
     call normalize(xProj)
-    yProj = viewVec .cross. xProj
+    yProj = xProj .cross. viewVec
     call normalize(yProj)
 
     do i = 1, nx
@@ -7937,9 +7937,13 @@ contains
           startVec = startVec - grid%octreeRoot%subcellSize*3.d0 * viewVec
           
           t = distanceToGridFromOutside(grid, startVec, viewVec)
-          startVec = startVec + (t + 1.d-3*grid%halfSmallestSubcell) *viewVec
+          startVec = startVec + (t + 1.d-1*grid%halfSmallestSubcell) *viewVec
+          if (.not.inOctal(grid%octreeRoot, startVec)) then
+             write(*,*) "startvec not in grid",startvec,grid%halfSmallestSubcell
+             stop
+          endif
           call columnAlongPath(grid, source, nsource, startVec, viewVec, sigma)
-          image(i,j) = real(sigma)
+          image(i,j) = log10(max(1.e-10,real(sigma)))
        enddo
     enddo
     
@@ -7959,6 +7963,9 @@ contains
  
     iMin = minval(image)
     iMax = maxVal(image)
+    iMin = iMax - 2.
+    imax = 0.5
+    imin = -2.5
     write(*,*) "Column image: ",imin,imax
     call pgimag(image, nx, ny, 1, nx, 1, ny, imin, imax, tr)
        

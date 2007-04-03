@@ -32,24 +32,22 @@ MODULE amr_mod
 
   type STREAMTYPE
      integer :: nSamples
-     type(OCTALVECTOR) :: position(200)
-     type(OCTALVECTOR) :: direction(200)
-     real(double) :: distanceAlongStream(200)
-     type(VECTOR) :: velocity(200)
-     real :: speed(200)
-     real(double) :: rho(200)
-     real :: temperature(200)
-     real(double) :: streamRadius(200)
+     type(OCTALVECTOR),pointer :: position(:) => null()
+     type(OCTALVECTOR), pointer :: direction(:) => null()
+     type(VECTOR), pointer :: velocity(:) => null()
+     real, pointer :: speed(:) => null()
+     real(double),pointer :: distanceAlongStream(:)   => null()
+     real(double), pointer :: rho(:)  => null()
+     real, pointer :: temperature(:)  => null()
+     real(double),pointer :: streamRadius(:)  => null()
   end type STREAMTYPE
 
-  type(STREAMTYPE) :: globalStream
-  integer :: iGlobalSample = 0
 
 
 CONTAINS
 
   SUBROUTINE calcValuesAMR(thisOctal,subcell,grid, sphData, stellar_cluster, inherit, interp, &
-       romData)
+       romData, stream)
     ! calculates the variables describing one subcell of an octal.
     ! each geometry that can be used with AMR should be described here, 
     !   otherwise the program will print a warning and exit.
@@ -60,6 +58,7 @@ CONTAINS
     INTEGER, INTENT(IN)           :: subcell   ! the subcell being changed
     TYPE(gridtype), INTENT(INOUT) :: grid      ! the grid
     !
+    type(STREAMTYPE), optional :: stream
     TYPE(sph_data), optional, INTENT(IN)  :: sphData   ! Matthew's SPH data.
     TYPE(cluster), optional, INTENT(IN)   :: stellar_cluster
     LOGICAL, OPTIONAL :: inherit               ! inherit densities, temp, etc of parent
@@ -238,18 +237,19 @@ CONTAINS
 !       endif
 
 
-      CALL getMagStreamValues2(point=subcellCentre(thisOctal,subcell),&
-                              grid=grid,                            &
-                              rho=rhoDouble,                        &
-                              temperature=thisOctal%temperature(subcell),&
-                              velocity=thisOctal%velocity(subcell),  &
-                              inFlow=thisOctal%inFlow(subcell))
+!      CALL getMagStreamValues2(point=subcellCentre(thisOctal,subcell),&
+!                              grid=grid,                            &
+!                              rho=rhoDouble,                        &
+!                              temperature=thisOctal%temperature(subcell),&
+!                              velocity=thisOctal%velocity(subcell),  &
+!                              inFlow=thisOctal%inFlow(subcell))
+
+      call getMagStreamValues3(thisOctal, subcell, stream)
 
 
-
-      thisOctal%rho(subcell) = REAL(rhoDouble)
-      IF (subcell == thisOctal%maxChildren) CALL fillVelocityCorners(thisOctal,grid,magStreamVelocity, .true.)
-       thisOctal%microturb(subcell) = (20.d5/cSpeed) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!       
+!      thisOctal%rho(subcell) = REAL(rhoDouble)
+!      IF (subcell == thisOctal%maxChildren) CALL fillVelocityCorners(thisOctal,grid,magStreamVelocity, .true.)
+!       thisOctal%microturb(subcell) = (20.d5/cSpeed) !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!       
 
     CASE DEFAULT
       WRITE(*,*) "! Unrecognised grid geometry: ",TRIM(grid%geometry)
@@ -263,7 +263,8 @@ CONTAINS
  
   END SUBROUTINE calcValuesAMR
 
-  SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, sphData, stellar_cluster, nDustType, romData)
+  SUBROUTINE initFirstOctal(grid, centre, size, oned, twod, threed, sphData, stellar_cluster, nDustType, romData ,&
+       stream)
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
@@ -279,6 +280,7 @@ CONTAINS
     TYPE(sph_data), optional, intent(in)   :: sphData   ! Matthew's SPH model data
     TYPE(cluster), optional, INTENT(IN)    :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
+    type(streamtype), optional :: stream
     !
     LOGICAL :: oned, twod, threed  ! true if this is a twoD amr grid
     INTEGER :: subcell ! loop counter 
@@ -424,6 +426,19 @@ CONTAINS
              ! label the subcells
              grid%octreeRoot%label(subcell) = subcell
           END DO
+
+       case("magstream")
+          ! just checking..
+          if (.not. PRESENT(stream)) then
+             print *, "Error:: stream is not present in initFirstOctal!"
+             stop
+          end if
+          DO subcell = 1, grid%octreeRoot%maxChildren
+             ! calculate the values at the centre of each of the subcells
+             CALL calcValuesAMR(grid%octreeRoot,subcell,grid, stream=stream)
+             ! label the subcells
+             grid%octreeRoot%label(subcell) = subcell
+          END DO
        case DEFAULT
           DO subcell = 1, grid%octreeRoot%maxChildren
              ! calculate the values at the centre of each of the subcells
@@ -449,7 +464,7 @@ CONTAINS
 
   SUBROUTINE addNewChild(parent, iChild, grid, adjustGridInfo, sphData, &
                          stellar_cluster, inherit, interp, splitAzimuthally, romData, &
-                         stream, isample)
+                         isample, stream)
     ! adds one new child to an octal
 
     USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, cmf, nAtom, debug
@@ -681,7 +696,7 @@ CONTAINS
     DO subcell = 1, parent%child(newChildIndex)%maxChildren
       CALL calcValuesAMR(parent%child(newChildIndex),subcell,grid, sphData=sphData, &
                          stellar_cluster=stellar_cluster, inherit=inheritProps, &
-                         interp=interpolate, romData=romData)
+                         interp=interpolate, romData=romData, stream=stream)
       parent%child(newChildIndex)%label(subcell) = counter
       counter = counter + 1
     END DO
@@ -5084,43 +5099,44 @@ IF ( .NOT. gridConverged ) RETURN
       
       IF (thisOctal%nDepth < 5) THEN 
         split = .TRUE.
-      ELSE
-
-        nsample = 1
-        ! the density is only sampled at the centre of the grid
-        ! we will search in each subcell to see if any point exceeds the 
-        ! threshold density
-
-        ! get the size and centre of the current cell
-        cellSize = thisOctal%subcellSize 
-        cellCentre = subcellCentre(thisOctal,subCell)
-    
-        ! check the density of random points in the current cell - 
-        !   if any of them exceed the critical density, set the flag
-        !   indicating the cell is to be split, and return from the function
-        split = .FALSE.
-        ave_density = 0.0_db
-        DO i = 1, nsample
-          searchPoint = cellCentre
-          CALL RANDOM_NUMBER(x)
-          CALL RANDOM_NUMBER(y)
-          CALL RANDOM_NUMBER(z)
-          searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct) 
-          searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=oct) 
-          searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct)
-
-          ! using a generic density function in density_mod.f90
-          ave_density  = density(searchPoint,grid,timeNow) + ave_density
-
-        END DO
-
-        ave_density = ave_density / REAL(nsample,KIND=double)
-        total_mass = ave_density * (cellSize*1.e10_db)**3.0_db
-        IF (total_mass > amrLimitScalar) then
-           split = .TRUE.
-        END IF
-
-      END IF
+     endif
+!      ELSE
+!
+!        nsample = 1
+!        ! the density is only sampled at the centre of the grid
+!        ! we will search in each subcell to see if any point exceeds the 
+!        ! threshold density
+!
+!        ! get the size and centre of the current cell
+!        cellSize = thisOctal%subcellSize 
+!        cellCentre = subcellCentre(thisOctal,subCell)
+!    
+!        ! check the density of random points in the current cell - 
+!        !   if any of them exceed the critical density, set the flag
+!        !   indicating the cell is to be split, and return from the function
+!        split = .FALSE.
+!        ave_density = 0.0_db
+!        DO i = 1, nsample
+!          searchPoint = cellCentre
+!          CALL RANDOM_NUMBER(x)
+!          CALL RANDOM_NUMBER(y)
+!          CALL RANDOM_NUMBER(z)
+!          searchPoint%x = searchPoint%x - (cellSize / 2.0_oc) + cellSize*REAL(x,KIND=oct) 
+!          searchPoint%y = searchPoint%y - (cellSize / 2.0_oc) + cellSize*REAL(y,KIND=oct) 
+!          searchPoint%z = searchPoint%z - (cellSize / 2.0_oc) + cellSize*REAL(z,KIND=oct)
+!
+!          ! using a generic density function in density_mod.f90
+!          ave_density  = density(searchPoint,grid,timeNow) + ave_density
+!
+!        END DO
+!
+!        ave_density = ave_density / REAL(nsample,KIND=double)
+!        total_mass = ave_density * (cellSize*1.e10_db)**3.0_db
+!        IF (total_mass > amrLimitScalar) then
+!           split = .TRUE.
+!        END IF
+!
+!      END IF
 
 
    case DEFAULT
@@ -11920,7 +11936,7 @@ IF ( .NOT. gridConverged ) RETURN
    real(double) :: distTor1, distTor2, theta, mu
    real(double) :: distToRboundary, compz,currentZ
    real(double) :: phi, distToZboundary, ang1, ang2
-   type(OCTALVECTOR) :: subcen, point, xHat, zHat, rVec
+   type(OCTALVECTOR) :: subcen, point, xHat, zHat, rVec, rplane, rnorm
    integer :: subcell
    real(double) :: distToSide1, distToSide2, distToSide
    real(double) ::  compx,disttoxBoundary, currentX
@@ -12046,132 +12062,113 @@ IF ( .NOT. gridConverged ) RETURN
 
 ! now look at the cylindrical case
 
-         ! first do the inside and outside curved surfaces
-         r = sqrt(subcen%x**2 + subcen%y**2)
+
+         rVec = subcellCentre(thisOctal,subcell)
+         r = sqrt(rVec%x**2 + rVec%y**2)
          r1 = r - thisOctal%subcellSize/2.d0
          r2 = r + thisOctal%subcellSize/2.d0
+         
+         distToR1 = 1.d30
+         distToR2 = 1.d30
          d = sqrt(point%x**2+point%y**2)
          xHat = VECTOR(point%x, point%y,0.d0)
          call normalize(xHat)
          rDirection = OCTALVECTOR(direction%x, direction%y,0.d0)
          compX = modulus(rDirection)
          call normalize(rDirection)
-      
-         distToR1 = 1.d30
-         distToR2 = 1.d30
+         
          if (compX /= 0.d0) then
-
-
             cosmu =((-1.d0)*xHat).dot.rdirection
-
             call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r2**2, x1, x2, ok)
             if (.not.ok) then
-               write(*,*) "Quad solver failed in intersectcubeamr2d"
-               x1 = thisoctal%subcellSize/2.d0
-               x2 = 0.d0
-            endif
-            distTor2 = max(x1,x2)/CompX
-            
-            theta = asin(max(-1.d0,min(1.d0,r1 / d)))
-            cosmu =((-1.d0)*xHat).dot.rdirection
-            mu = acos(max(-1.d0,min(1.d0,cosmu)))
-            distTor1 = 1.e30
-            if (mu  < theta ) then
-               call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
-               if (.not.ok) then
-                  write(*,*) "Quad solver failed in intersectcubeamr2d"
+               write(*,*) "Quad solver failed in intersectcubeamr2d I",d,cosmu,r2
+               write(*,*) "xhat",xhat
+               write(*,*) "dir",direction
+               write(*,*) "point",point
+               do;enddo
                   x1 = thisoctal%subcellSize/2.d0
                   x2 = 0.d0
                endif
-               distTor1 = min(x1,x2)/compX
+               distTor2 = max(x1,x2)/compX
+               
+               theta = asin(max(-1.d0,min(1.d0,r1 / d)))
+               cosmu = ((-1.d0)*xHat).dot.rdirection
+               mu = acos(max(-1.d0,min(1.d0,cosmu)))
+               distTor1 = 1.e30
+               if (mu  < theta ) then
+                  call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+                  if (.not.ok) then
+                     write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1
+                     x1 = thisoctal%subcellSize/2.d0
+                     x2 = 0.d0
+                  endif
+                  distTor1 = min(x1,x2)/compX
+               endif
             endif
-         endif
-      
-         distToRboundary = min(distTor1, distTor2)
-         if (distToRboundary < 0.d0) then
-            distToRboundary = 1.e30
-         endif
-
-         ! now do the upper and lower (z axis) surfaces
-      
-
-         zHat = VECTOR(0.d0, 0.d0, 1.d0)
-         compZ = zHat.dot.direction
-         currentZ = point%z
-      
-         if (compZ /= 0.d0 ) then
-            if (compZ > 0.d0) then
-               distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
+            distToRboundary = min(distTor1, distTor2)
+            
+            ! now do the upper and lower (z axis) surfaces
+            
+            zHat = VECTOR(0.d0, 0.d0, 1.d0)
+            compZ = zHat.dot.direction
+            currentZ = point%z
+            
+            if (compZ /= 0.d0 ) then
+               if (compZ > 0.d0) then
+                  distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
+               else
+                  distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
+               endif
             else
-               distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
+               disttoZboundary = 1.e30
             endif
-         else
-            disttoZboundary = 1.e30
+            
+            ! ok now we have to tackle the two angled sides...
+                        
+
+            rVec = subcellCentre(thisOctal, subcell)
+            phi = atan2(rVec%y, rVec%x)
+            if (phi < 0.d0) phi = phi + twoPi
+
+            ang1 = phi - returndPhi(thisOctal)
+            rPlane = OCTALVECTOR(cos(ang1),sin(ang1),0.d0)
+            rnorm = rplane .cross. OCTALVECTOR(0.d0, 0.d0, 1.d0)
+            call normalize(rnorm)
+            distToSide1 = 1.d30
+            if ((rnorm .dot. direction) /= 0.d0) then
+               distToSide1 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
+               if (distToSide1 < 0.d0) distToSide1 = 1.d30
+            endif
+
+            ang2 = phi + returndPhi(thisOctal)
+            rPlane = OCTALVECTOR(cos(ang2),sin(ang2),0.d0)
+            rnorm = rplane .cross.  OCTALVECTOR(0.d0, 0.d0, 1.d0)
+            call normalize(rnorm)
+            distToSide2 = 1.d30
+            if ((rnorm .dot. direction) /= 0.d0) then
+               distToSide2 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
+               if (distToSide2 < 0.d0) distToSide2 = 1.d30
+            endif
+
+            distToSide = min(distToSide1, distToSide2)
+
+            
+            tVal = min(distToZboundary, distToRboundary, distToSide)
+            if (tVal > 1.e29) then
+               write(*,*) "Cylindrical"
+               write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
+               write(*,*) "subcen",subcen
+               write(*,*) "x,z",currentX,currentZ
+            endif
+            if (tval < 0.) then
+               write(*,*) "Cylindrical"
+               write(*,*) tVal,distToZboundary,disttorboundary, disttoside
+               write(*,*) "subcen",subcen
+               write(*,*) "x,z",currentX,currentZ
+            endif
+
          endif
       
-        
-         ! ok now we have to tackle the two angled sides...
-
-         ! find posvec to surface centre
-
-         phi = atan2(posVec%y,posVec%x)
-         if (phi < 0.d0) phi = phi + twoPi
-
-         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
-
-         ang1 = thisOctal%phi - returndPhi(thisOctal)
-         ang2 = thisOctal%phi + returndPhi(thisOctal)
-!         if (thisOctal%splitAzimuthally) then
-!            if (phi < thisOctal%phi) then
-!               ang1 = thisOctal%phi - thisOctal%dPhi/2.d0
-!               ang2 = thisOctal%phi
-!            else
-!               ang1 =  thisOctal%phi
-!               ang2 = thisOctal%phi + thisOctal%dPhi/2.d0
-!            endif
-!         else
-!            ang1 = thisOctal%phi - thisOctal%dPhi/2.d0
-!            ang2 = thisOctal%phi + thisOctal%dPhi/2.d0
-!         endif
-
-         distToSide1 = 1.e30
-         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
-         rVec = rotateZ(rVec, -ang1)
-         thisnorm = rVec .cross. zHat
-         call normalize(thisnorm)
-         if ((thisnorm.dot.direction) /= 0.d0) then
-            distToSide1 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
-            if (distToSide1 < 0.d0) distToSide1 = 1.d30
-         endif
-
-         distToSide2 = 1.e30
-         rVec = OCTALVECTOR(r, 0.d0, 0.d0)
-         rVec = rotateZ(rVec, -ang2)
-         thisnorm = rVec .cross. zHat
-         call normalize(thisnorm)
-         if ((thisnorm.dot.direction) /= 0.d0) then
-            distToSide2 = (thisnorm.dot.(rVec-posVec))/(thisnorm.dot.direction)
-            if (distToSide2 < 0.d0) distToSide2 = 1.d30
-         endif
-
-         distToSide = min(distToSide1, distToside2)
-
-         tVal = min(distToZboundary, distToRboundary, distToSide)
-         if (tVal > 1.e29) then
-            write(*,*) "Cylindrical"
-            write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
-            write(*,*) "subcen",subcen
-            write(*,*) "x,z",currentX,currentZ
-         endif
-         if (tval < 0.) then
-            write(*,*) "Cylindrical"
-            write(*,*) tVal,distToZboundary,disttorboundary, disttoside
-            write(*,*) "subcen",subcen
-            write(*,*) "x,z",currentX,currentZ
-         endif
-
-      endif
-
    else ! two-d grid case below
 
       r1 = subcen%x - thisOctal%subcellSize/2.d0
@@ -13496,9 +13493,17 @@ IF ( .NOT. gridConverged ) RETURN
 ! now look at the cylindrical case
 
          ! first do the inside and outside curved surfaces
-         r = sqrt(subcen%x**2 + subcen%y**2)
-         r1 = r + thisOctal%subcellSize
-         gridRadius = r1
+
+         if (thisOctal%twoD) then
+            r = sqrt(subcen%x**2 + subcen%y**2)
+            r1 = r + thisOctal%subcellSize
+            gridRadius = r1
+         else
+            gridRadius = thisOctal%subcellSize
+            r1 = gridRadius
+         endif
+
+
          d = sqrt(point%x**2+point%y**2)
          xHat = (-1.)*VECTOR(point%x, point%y,0.d0)
          call normalize(xHat)
@@ -13561,6 +13566,7 @@ IF ( .NOT. gridConverged ) RETURN
 !        write(*,*) "Dr",disttorboundary,"Dz",disttozboundary        
 
          tVal = min(distToZboundary, distToRboundary)
+
          if (tVal > 1.e29) then
             write(*,*) "Cylindrical"
             write(*,*) "posVec",posvec
@@ -13631,8 +13637,6 @@ IF ( .NOT. gridConverged ) RETURN
              
              if (split) then
 
-                globalStream = thisStream
-                iglobalSample = j
 !                write(*,*) "adding child",thisStream%streamRadius(j),thisOctal%subcellSize
                 call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                      inherit=.false., interp=.false.)
@@ -13658,8 +13662,7 @@ IF ( .NOT. gridConverged ) RETURN
     logical :: childrenAdded
     logical :: split
     type(STREAMTYPE) :: thisStream
-    real(double), parameter :: fac = 1.d0
-    logical :: splitAz
+    real(double), parameter :: fac = 2.d0
 
     subcell = 1
     do while (subcell <= thisOctal%maxChildren)
@@ -13684,22 +13687,21 @@ IF ( .NOT. gridConverged ) RETURN
              split = .false.
              
 
+
              if ((inSubcell(thisOctal, subcell, thisStream%position(j))).and. &
                   (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) then 
                 split = .true.
-             else                
+             else
+                
                 if ((dist_from_closestEdge(thisOctal, subcell, thisStream%position(j)) < &
                      thisStream%StreamRadius(j)).and. &
                      (thisOctal%subcellSize > thisStream%streamRadius(j)/fac) ) split = .true.
              endif
              
-
-
              if (split) then
-                globalStream = thisStream
-                iglobalSample = j
+
                 call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                     inherit=.false., interp=.false., splitAzimuthally=splitAz)
+                     inherit=.false., interp=.false.)
                 childrenAdded = .true.
                 subcell = subcell - 1
                 exit stream
@@ -13711,38 +13713,167 @@ IF ( .NOT. gridConverged ) RETURN
 
   end subroutine splitGridOnStream2
 
+  recursive subroutine splitGridOnStream3(thisOctal, grid, thisStream)
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child
+    type(OCTALVECTOR) :: rVec, corner
+    integer :: i, j, subcell, iStream
+    logical :: split
+    type(STREAMTYPE) :: thisStream
+    type(STREAMTYPE) :: octalStream, subcellStream
+    integer :: n
+    real(double) :: r
+    logical :: splitAz
+
+    call createOctalStream(thisOctal, thisStream, octalStream)
+
+    subcell = 1
+    do while (subcell <= thisOctal%maxChildren)
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          children : do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call splitGridOnStream3(child, grid, octalStream)
+                exit children
+             end if
+          end do children
+       else
+
+          split = .false.
+          call createSubcellStream(thisOctal, subcell, octalStream, subcellStream)
+!          if (subcellStream%nSamples > 1) split = .true.
+ 
+
+          split = .true.
+          if (thisOctal%nDepth > 7) split = .false.
+          
+
+          if (thisOctal%dphi*radtodeg > 15.) then
+             splitAz = .true.
+          else
+             splitAz = .false.
+          endif
+
+
+          if (subcellstream%nsamples == 0) split = .false.
+
+          if (split) then
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                     inherit=.false., interp=.false., stream=subcellStream, splitAzimuthally=splitAz)
+             subcell = subcell - 1
+          endif
+       end if
+       subcell = subcell + 1
+    enddo
+ 
+
+!    call freeStream(subcellStream)
+!    call freeStream(thisStream)
+  end subroutine splitGridOnStream3
+
+
+  subroutine allocateStream(thisStream, nSamples)
+    type(STREAMTYPE) :: thisStream
+    integer :: nSamples
+!    call freeStream(thisStream)
+    allocate(thisStream%position(1:nSamples))
+    allocate(thisStream%direction(1:nSamples))
+    allocate(thisStream%velocity(1:nSamples))
+    allocate(thisStream%rho(1:nSamples))
+    allocate(thisStream%temperature(1:nSamples))
+    allocate(thisStream%speed(1:nSamples))
+    allocate(thisStream%distanceAlongStream(1:nSamples))
+    allocate(thisStream%streamRadius(1:nSamples))
+
+
+  end subroutine allocateStream
+
+  subroutine freeStream(thisStream)
+    type(STREAMTYPE) :: thisStream
+    if (associated(thisStream%position)) deallocate(thisStream%position)
+    if (associated(thisStream%velocity)) deallocate(thisStream%velocity)
+    if (associated(thisStream%rho)) deallocate(thisStream%rho)
+    if (associated(thisStream%temperature)) deallocate(thisStream%temperature)
+
+    if (associated(thisStream%direction)) deallocate(thisStream%direction)
+    if (associated(thisStream%speed)) deallocate(thisStream%speed)
+    if (associated(thisStream%streamRadius)) deallocate(thisStream%streamRadius)
+    if (associated(thisStream%distanceAlongStream)) deallocate(thisStream%distanceAlongStream)
+
+  end subroutine freeStream
+
+  subroutine createOctalStream(thisOctal,  thisStream, octalStream)
+    type(OCTAL),pointer :: thisOctal
+    type(STREAMTYPE) :: thisStream, octalStream
+    integer :: i
+
+    call allocateStream(octalStream, thisStream%nSamples)
+
+    octalStream%nSamples = 0
+    do i = 1, thisStream%nSamples
+       if (inOctal(thisOctal, thisStream%position(i))) then
+          octalStream%nSamples = octalStream%nSamples + 1
+          octalStream%rho(octalStream%nSamples) = thisStream%rho(i)
+          octalStream%position(octalStream%nSamples) = thisStream%position(i)
+          octalStream%velocity(octalStream%nSamples) = thisStream%velocity(i)
+          octalStream%temperature(octalStream%nSamples) = thisStream%temperature(i)
+       endif
+    end do
+  end subroutine createOctalStream
+
+  subroutine createSubcellStream(thisOctal,  subcell, thisStream, octalStream)
+    integer :: subcell
+    type(OCTAL),pointer :: thisOctal
+    type(STREAMTYPE) :: thisStream, octalStream
+    integer :: i
+    call allocateStream(octalStream, thisStream%nSamples)
+    octalStream%nSamples = 0 
+    do i = 1, thisStream%nSamples
+       if (inSubcell(thisOctal, subcell, thisStream%position(i))) then
+          octalStream%nSamples = octalStream%nSamples + 1
+          octalStream%rho(octalStream%nSamples) = thisStream%rho(i)
+          octalStream%position(octalStream%nSamples) = thisStream%position(i)
+          octalStream%velocity(octalStream%nSamples) = thisStream%velocity(i)
+          octalStream%temperature(octalStream%nSamples) = thisStream%temperature(i)
+       endif
+    end do
+  end subroutine createSubcellStream
+
 
   subroutine readStreams(thisStream, nStream, filename)
     type(STREAMTYPE) :: thisStream(:)
     character(len=*) :: filename
     integer :: nstream
-    integer :: i, n, j, i1, j1
-    real(double) :: r, theta, phi, v, rho, area, tot, dist,mindist
+    integer :: i, n, j
+    real(double) :: r, theta, phi, v, rho, area
+    real(double) :: tot
     type(OCTALVECTOR) :: rVec
     open(20, file=filename, status="old", form="formatted")
     nStream = 0
 
 
 10 continue
-       read(20,*,end=20) r, theta, phi, v, rho, area
+       read(20,*,end=20) r, theta, phi, v, rho
        if (r < 1.00001d0) then
           nStream = nStream + 1
           thisStream(nStream)%nSamples = 0
+          call allocateStream(thisStream(nStream), 200)
        endif
-       theta = theta !* degtorad
-       area = area * 1.d4 
-       phi = phi !* degtorad
-       rho = rho * 1.d-3
-       r = r * 2.d0 * rsol / 1.d10
-       rVec = r * OCTALVECTOR(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))
 
-       thisStream(nStream)%nSamples = thisStream(nStream)%nSamples + 1
-
-       thisStream(nStream)%position(thisStream(nStream)%nSamples) = rVec
-       thisStream(nStream)%speed(thisStream(nStream)%nSamples) = v * 1.e5/cspeed
-       thisStream(nStream)%rho(thisStream(nStream)%nSamples) = rho
-       thisStream(nStream)%temperature(thisStream(nStream)%nSamples) = 7500.
-       thisStream(nStream)%streamRadius(thisStream(nStream)%nSamples) = sqrt(area/pi)/1.d10
+          theta = theta !* degtorad
+          phi = phi ! * degtorad
+          rho = rho * 1.d-3
+          r = r * 2.d0 * rsol / 1.d10
+          rVec = r * OCTALVECTOR(sin(theta)*cos(phi), sin(theta)*sin(phi), cos(theta))
+          
+          thisStream(nStream)%nSamples = thisStream(nStream)%nSamples + 1
+          
+          thisStream(nStream)%position(thisStream(nStream)%nSamples) = rVec
+          thisStream(nStream)%speed(thisStream(nStream)%nSamples) = v * 1.e5/cspeed
+          thisStream(nStream)%rho(thisStream(nStream)%nSamples) = rho
+          thisStream(nStream)%temperature(thisStream(nStream)%nSamples) = 7500.
+          thisStream(nStream)%streamRadius(thisStream(nStream)%nSamples)  = 0.01d0
     goto 10
 20  continue
     close(20)
@@ -13779,34 +13910,12 @@ IF ( .NOT. gridConverged ) RETURN
        enddo
     enddo
 
-    write(*,*) "setting up stream cross-sections"
-
-!    do i = 1, nStream
-!       write(*,*) i
-!       do j =1, thisStream(i)%nSamples
-!          minDist = 1.d30
-!          do i1 = 1, nStream
-!             if (i /= i1) then
-!                do j1 = 1, thisStream(i1)%nSamples
-!                   dist = modulus(thisStream(i)%position(j) - thisStream(i1)%position(j1))
-!                   if (dist < minDist) then
-!                      minDist = dist
-!                   endif
-!                enddo
-!             endif
-!          enddo
-!          thisStream(i)%streamRadius(j) = mindist/2.d0
-!       enddo
-!    enddo
-!
-
-    globalStream = thisStream(1)
 
   end subroutine readStreams
 
   function  closestCorner(thisOctal, subcell, posVec) result (closeCorner)
     type(OCTALVECTOR) :: closeCorner, posVec, cen, thisCorner
-    Type(OCTAL), pointer :: thisOctal
+    type(OCTAL), pointer :: thisOctal
     real(double) :: minDist, r, dist
     integer :: subcell
     
@@ -13919,55 +14028,9 @@ IF ( .NOT. gridConverged ) RETURN
   function  dist_from_closestEdge(thisOctal, subcell, posVec) result (minDist)
     type(OCTALVECTOR) :: posVec, cen, corner1, corner2
     type(OCTAL), pointer :: thisOctal
-    real(double) :: minDist, r, dist, ang1, ang2, phi
+    real(double) :: minDist, r, dist
     integer :: subcell
-    real(double) :: dz, r1, r2, z
     
-
-    if (thisOctal%cylindrical) then
-
-       minDist =  1.d30
-       dz = thisOctal%subcellSize/2.d0
-       cen = subcellCentre(thisOctal, subcell)
-       z = cen%z
-
-       ang1 = thisOctal%phi - returndPhi(thisOctal)
-       ang2 = thisOctal%phi + returndPhi(thisOctal)
-       r1 = thisOctal%r - thisOctal%subcellSize/2.d0
-       r2 = thisOctal%r + thisOctal%subcellSize/2.d0
-
-!1
-       corner1 = OCTALVECTOR(r1 * cos(phi), r1 * sin(phi) , z+dz)
-       corner1 = OCTALVECTOR(r1 * cos(phi), r1 * sin(phi) , z-dz)
-       dist  =  distancePointLineSegment(corner1, corner2, posVec)
-       if (dist < minDist) then
-          minDist = dist
-       endif
-!2
-       corner1 = OCTALVECTOR(r1 * cos(phi), r1 * sin(phi) , z+dz)
-       corner1 = OCTALVECTOR(r2 * cos(phi), r2 * sin(phi) , z+dz)
-       dist  =  distancePointLineSegment(corner1, corner2, posVec)
-       if (dist < minDist) then
-          minDist = dist
-       endif
-!3
-       corner1 = OCTALVECTOR(r2 * cos(phi), r2 * sin(phi) , z+dz)
-       corner1 = OCTALVECTOR(r2 * cos(phi), r2 * sin(phi) , z-dz)
-       dist  =  distancePointLineSegment(corner1, corner2, posVec)
-       if (dist < minDist) then
-          minDist = dist
-       endif
-!4
-       corner1 = OCTALVECTOR(r2 * cos(phi), r2 * sin(phi) , z+dz)
-       corner1 = OCTALVECTOR(r2 * cos(phi), r2 * sin(phi) , z-dz)
-       dist  =  distancePointLineSegment(corner1, corner2, posVec)
-       if (dist < minDist) then
-          minDist = dist
-       endif
-
-
-      else
-
     minDist =  1.d30
     r = thisOctal%subcellSize/2.d0
     cen = subcellCentre(thisOctal, subcell)
@@ -14056,7 +14119,8 @@ IF ( .NOT. gridConverged ) RETURN
     if (dist < minDist) then
        minDist = dist
     endif
-    endif
+
+
   end function dist_from_closestEdge
 
 
@@ -14125,7 +14189,7 @@ IF ( .NOT. gridConverged ) RETURN
        totDist = totDist + distToNextCell
        sigma = sigma + distToNextCell*thisOctal%rho(subcell)*1.d10
     end do
-    if (hitsource) sigma = 1.d-4
+    if (hitsource) sigma = sigma + 1.d-1
   end subroutine columnAlongPath
 
 
@@ -14141,7 +14205,6 @@ IF ( .NOT. gridConverged ) RETURN
     type(VECTOR), optional :: velocity
     logical(kind=logic), optional :: inFlow
     logical :: outsideStream
-    thisStream = globalStream
 
     call findNearestSample(thisStream, point, iSample, t, outsideStream)
 
@@ -14190,6 +14253,49 @@ IF ( .NOT. gridConverged ) RETURN
        inflow = .not.outsideStream
     endif
   end subroutine getMagStreamValues2
+
+  subroutine getMagStreamValues3(thisOctal, subcell, stream)
+    type(OCTAL) :: thisOctal
+    integer :: subcell
+    type(STREAMTYPE) :: stream
+    type(GRIDTYPE) :: grid
+    integer :: iSample
+    type(OCTALVECTOR) :: point
+    real(double) :: t, thisR
+    real(double) :: rho
+    real  :: temperature
+    type(VECTOR) :: vel
+    logical :: outsideStream
+    integer :: n, i, istream
+
+    temperature = 0.
+    rho = 0.d0
+    vel = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+    
+    n = 0
+    do i = 1, stream%nSamples
+       if (inSubcell(thisOctal, subcell, stream%position(i))) then
+          n = n + 1
+          rho = rho + stream%rho(i)
+          temperature = temperature + stream%temperature(i)
+          vel = vel + stream%velocity(i)
+       endif
+    enddo
+    if (n ==0 ) then
+       thisOctal%inFlow(subcell) = .false.
+       thisOctal%rho(subcell) = 1.d-25
+       thisOctal%temperature(subcell) = 6000.
+       thisOctal%velocity = VECTOR(0.,0.,0.)
+    else
+       thisOctal%inFlow(subcell) = .true.
+       thisOctal%rho(subcell) = rho / dble(n)
+       thisOctal%temperature(subcell) = temperature/real(n)
+       thisOctal%velocity(subcell) = vel / real(n)
+       thisOctal%microturb(subcell) = 20.d5/cspeed!!!!!!!!!!!!!!!!!!!!
+    endif
+
+
+  end subroutine getMagStreamValues3
     
 
 
@@ -14257,6 +14363,58 @@ IF ( .NOT. gridConverged ) RETURN
 666 continue
 
   end  subroutine findNearestSample
+
+
+  function  getVel(grid, thisOctal, subcell, posVec, direction) result (outVec)
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, neighbourOctal
+    integer subcell
+    real(double) :: distToNextCell, r, x1
+    type(OCTALVECTOR) :: direction, rVec, sVec, posVec, thisDirection
+    type(VECTOR) :: v1,  outVec
+    integer :: neighbourSubcell, i
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r = ((posVec - rVec).dot.direction)
+    if (r  > 0.d0 ) then
+
+       thisDirection = direction
+       rVec = subcellCentre(thisOctal, subcell)
+       call distanceToCellBoundary(grid, rVec, thisdirection, DisttoNextCell)
+       v1 = thisOctal%velocity(subcell)
+       x1 = distToNextCell
+       distToNextCell = distToNextcell + 0.01d0*grid%halfSmallestSubcell
+       sVec = rVec + distToNextCell * thisdirection
+       if (inOctal(grid%octreeRoot, sVec)) then
+          neighbourOctal => thisOctal
+          CALL findSubcellLocal(sVec,neighbourOctal,neighboursubcell)
+          if (neighbourOctal%inFlow(neighbourSubcell)) then
+             v1 = neighbourOctal%velocity(neighbourSubcell)
+             x1 = disttoNextcell + neighbourOctal%subcellSize/2.d0
+          endif
+       endif
+       outVec = thisOctal%velocity(subcell) + (r/x1) * (v1 - thisOctal%velocity(subcell))
+    else
+       thisDirection = (-1.d0)*direction
+       rVec = subcellCentre(thisOctal, subcell)
+       call distanceToCellBoundary(grid, rVec, thisdirection, DisttoNextCell)
+       v1 = thisOctal%velocity(subcell)
+       x1 = distToNextCell
+       distToNextCell = distToNextcell + 0.01d0*grid%halfSmallestSubcell
+       sVec = rVec + distToNextCell * thisdirection
+       if (inOctal(grid%octreeRoot, sVec)) then
+          neighbourOctal => thisOctal
+          CALL findSubcellLocal(sVec,neighbourOctal,neighboursubcell)
+          if (neighbourOctal%inFlow(neighbourSubcell)) then
+             v1 = neighbourOctal%velocity(neighbourSubcell)
+             x1 = disttoNextcell + neighbourOctal%subcellSize/2.d0
+          endif
+       endif
+       outVec = thisOctal%velocity(subcell) + (abs(r)/x1) * (v1 - thisOctal%velocity(subcell))
+    endif
+  end function getVel
+    
+    
 
 
 END MODULE amr_mod
