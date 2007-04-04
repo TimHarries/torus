@@ -14424,8 +14424,64 @@ IF ( .NOT. gridConverged ) RETURN
        outVec = thisOctal%velocity(subcell) + (abs(r)/x1) * (v1 - thisOctal%velocity(subcell))
     endif
   end function getVel
-    
-    
 
+
+  subroutine genericAccretionSurface(surface, grid, lineFreq,coreContFlux,fAccretion)
+    type(SURFACETYPE) :: surface
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal
+    type(OCTALVECTOR) :: rVec
+    integer :: subcell
+    real(double) :: v, area, T, flux, power, totalArea, accretingArea, mdot, totalMdot
+    integer :: i
+    REAL(double), INTENT(IN) :: coreContFlux
+    REAL, INTENT(IN) :: lineFreq
+    REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
+
+    write(*,*) "calculating generic accretion surface"
+    accretingArea = 0.d0
+    totalArea = 0.d0
+    totalmdot = 0.d0
+
+    do i = 1, surface%nElements
+       rVec = s2o(surface%element(i)%position) + grid%halfSmallestSubcell * s2o(surface%element(i)%norm)
+       CALL findSubcellTD(rVec,grid%octreeRoot,thisOctal,subcell)
+
+
+       v = modulus(thisOctal%velocity(subcell))*cspeed
+       area = (surface%element(i)%area*1.d20)
+       mdot = thisOctal%rho(subcell) * v * area
+       totalMdot = totalMdot + mdot
+       power = 0.5d0 * mdot * v**2
+       flux = power / area
+
+
+       T = (flux/stefanBoltz)**0.25d0
+
+       totalArea = totalArea + area
+       
+       if (T > 4000.0d0) then 
+          ! in futire this should be somehow compared to the effective
+          ! temperature of photosphere. 
+          !       if (T > T_eff) then
+          surface%element(i)%hot = .true.
+          allocate(surface%element(i)%hotFlux(surface%nNuHotFlux))
+          
+          surface%element(i)%hotFlux(:) = &
+               pi*blackbody(REAL(T), 1.e8*REAL(cSpeed)/surface%nuArray(:))
+          surface%element(i)%temperature = T
+          accretingArea = accretingArea + area
+       else 
+          surface%element(i)%hot = .false.
+       end if
+    enddo
+
+
+    write(*,*) "Spot fraction is: ",100.d0*accretingArea/totalArea, "%"
+    write(*,*) "Mass accretion rate is: ",(totalMdot/mSol)*(365.25d0*24.d0*3600.d0), "solar masses/year"
+    CALL createProbs(surface,lineFreq,coreContFlux,fAccretion)
+    CALL sumSurface(surface)
+
+  end subroutine genericAccretionSurface
 
 END MODULE amr_mod

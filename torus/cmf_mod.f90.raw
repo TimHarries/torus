@@ -1574,6 +1574,7 @@ contains
     logical :: endLoopAtPhotosphere
     real(double) :: nstar(10,50), rhoCol
     integer :: j, k
+    logical :: lineoff
 
 
     nHAtom = 0
@@ -1619,7 +1620,6 @@ contains
    endif
 
 
-
 !    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
 !         inOctal(grid%octreeRoot, currentPosition),distTogrid
     i0 = 1.d-10!0.d0
@@ -1631,6 +1631,14 @@ contains
     icount = 0
     rhoCol = 0.d0
     endLoopAtPhotosphere = .false.
+    lineOff = .false.
+
+    if (lineOff.and.hitSource) endLoopAtphotosphere = .true.
+
+!    write(*,*) lineoff,hitsource,endloopatphotosphere
+   if (.not.lineOff) then
+
+
     do while(inOctal(grid%octreeRoot, currentPosition).and.(.not.endloopAtPhotosphere))
        icount = icount + 1 
 
@@ -1755,10 +1763,15 @@ contains
        currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
        totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
     enddo
+ endif
 
     if (endLoopAtPhotosphere) then
 
        iElement = getElement(source(sourcenumber)%surface, photoDirection)
+!       if (source(sourcenumber)%surface%element(iElement)%hot) then
+!          write(*,*) i0,i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement), &
+!               i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), 1)
+!       endif
        i0 = i0 + i_nu(source(sourceNumber), thisAtom(iATom)%transFreq(iTrans), iElement)*cosTheta*exp(-tau)
 
 
@@ -1813,7 +1826,7 @@ contains
 
     call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
     if (Writeoutput) then
-       write(plotfile,'(a,i3.3,a)') "cube",nfile,".png/png"
+       write(plotfile,'(a,i3.3,a)') "cube",nfile,".ps/ps"
        call plotDataCube(cube, plotfile,withspec=.false.,twopanels=.true.)
        write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits"
        call writeDataCube(cube,plotfile)
