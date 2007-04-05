@@ -2406,11 +2406,10 @@
           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
           call normalizedSpectrum(source(1)%spectrum)
           call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
-          nu =1.d15
-!          call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
-          call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
-          call testSurface(source(1)%surface)
        endif
+       nu =1.d15
+       call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
+       call testSurface(source(1)%surface)
 
     case("melvin")
        nSource = 1

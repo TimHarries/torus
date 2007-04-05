@@ -14453,7 +14453,11 @@ IF ( .NOT. gridConverged ) RETURN
        mdot = thisOctal%rho(subcell) * v * area
        totalMdot = totalMdot + mdot
        power = 0.5d0 * mdot * v**2
-       flux = power / area
+       if (area /= 0.d0) then
+          flux = power / area
+       else
+          flux = 0.d0
+       endif
 
 
        T = (flux/stefanBoltz)**0.25d0
