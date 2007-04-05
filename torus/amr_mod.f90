@@ -13722,7 +13722,7 @@ IF ( .NOT. gridConverged ) RETURN
     type(STREAMTYPE) :: thisStream
     type(STREAMTYPE) :: octalStream, subcellStream
     integer :: n
-    real(double) :: r
+    real(double) :: r, side, rStar
     logical :: splitAz
 
     call createOctalStream(thisOctal, thisStream, octalStream)
@@ -13746,8 +13746,9 @@ IF ( .NOT. gridConverged ) RETURN
  
 
           split = .true.
-          if (thisOctal%nDepth > 7) split = .false.
-          
+!          rStar = 2.d0*rSol/1.d10
+!          side = 0.1d0 * (thisOctal%r/rStar)**3
+!          if (thisOctal%subcellSize > side) split = .true.
 
           if (thisOctal%dphi*radtodeg > 15.) then
              splitAz = .true.
@@ -13755,6 +13756,7 @@ IF ( .NOT. gridConverged ) RETURN
              splitAz = .false.
           endif
 
+          if (thisOctal%nDepth > 7) split = .false.
 
           if (subcellstream%nsamples == 0) split = .false.
 
@@ -13901,25 +13903,25 @@ IF ( .NOT. gridConverged ) RETURN
     enddo
 
 ! scale temperature according to distance along the stream
- !   do i = 1, nStream
- !      tot = MAXVAL(thisStream(i)%rho(1:thisStream(i)%nSamples))
- !      do j = 1, thisStream(i)%nSamples
- !         tot = 1.d0-(thisStream(i)%distanceAlongStream(j) / &
- !              thisStream(i)%distanceAlongStream(thisStream(i)%nSamples))
- !         thisStream(i)%temperature(j) = 6000.d0 + 4000.d0 * tot
- !      enddo
- !   enddo
-
-    ! Analytical description of the T along the stream 
-    ! reproduces behaviour calculated by Martin 1996 fig 1b
     do i = 1, nStream
        tot = MAXVAL(thisStream(i)%rho(1:thisStream(i)%nSamples))
        do j = 1, thisStream(i)%nSamples
-          ! evolution is adiabatic up to 6000 K and then isothermal.
-          ! adiabatic exponent is gamma = 5/3 for monoatomic gas (T.V^(gamma-1) = cst)
-          thisStream(i)%temperature(j) = min(3000.d0 * (thisStream(i)%rho(j) / thisStream(i)%rho(1))**(2./3.), 6000.d0)
+          tot = 1.d0-(thisStream(i)%distanceAlongStream(j) / &
+               thisStream(i)%distanceAlongStream(thisStream(i)%nSamples))
+          thisStream(i)%temperature(j) = 4000.d0 + 6000.d0 * tot
        enddo
     enddo
+
+    ! Analytical description of the T along the stream 
+    ! reproduces behaviour calculated by Martin 1996 fig 1b
+!    do i = 1, nStream
+!       tot = MAXVAL(thisStream(i)%rho(1:thisStream(i)%nSamples))
+!       do j = 1, thisStream(i)%nSamples
+!          ! evolution is adiabatic up to 6000 K and then isothermal.
+!          ! adiabatic exponent is gamma = 5/3 for monoatomic gas (T.V^(gamma-1) = cst)
+!          thisStream(i)%temperature(j) = min(3000.d0 * (thisStream(i)%rho(j) / thisStream(i)%rho(1))**(2./3.), 6000.d0)
+!       enddo
+!    enddo
 
 
   end subroutine readStreams
@@ -14487,5 +14489,11 @@ IF ( .NOT. gridConverged ) RETURN
     CALL sumSurface(surface)
 
   end subroutine genericAccretionSurface
+
+
+
+
+    
+
 
 END MODULE amr_mod

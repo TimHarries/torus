@@ -324,13 +324,13 @@ contains
 
     enddo
 
-
-    if (debug) then
-       write(*,'(4x,100i8)') num(1:nMatrix)
-       do i = 1, nMatrix
-          write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
-       enddo
-    endif
+!
+!    if (debug) then
+!       write(*,'(4x,100i8)') num(1:nMatrix)
+!       do i = 1, nMatrix
+!          write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
+!       enddo
+!    endif
 
     !    call luSlv(matrixA, matrixB, nMatrix)
     call GAUSSJ(matrixA, nMatrix, nMatrix, matrixB, 1, nMatrix, ok)
@@ -360,13 +360,13 @@ contains
     deallocate(matrixA, matrixB)
 
 
-    if (debug) then
-       do iAtom = 1, nAtom
-          write(*,*) trim(thisAtom(iAtom)%name),SUM(nPops(iAtom,1:thisAtom(iAtom)%nLevels-1))
-          write(*,*) trim(thisAtom(iAtom)%name)//"I",nPops(iAtom,thisAtom(iAtom)%nLevels)
-       enddo
-       write(*,*) "Ne",ne,rho/mhydrogen
-    endif
+!    if (debug) then
+!       do iAtom = 1, nAtom
+!          write(*,*) trim(thisAtom(iAtom)%name),SUM(nPops(iAtom,1:thisAtom(iAtom)%nLevels-1))
+!          write(*,*) trim(thisAtom(iAtom)%name)//"I",nPops(iAtom,thisAtom(iAtom)%nLevels)
+!       enddo
+!       write(*,*) "Ne",ne,rho/mhydrogen
+!    endif
 
   end subroutine solveLevels
 
@@ -886,7 +886,7 @@ contains
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe, oldNe, dNe
-    real(double), parameter :: underCorrect = 0.8d0
+    real(double), parameter :: underCorrect = 0.9d0
     real(double) :: fac
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     logical :: dcAllocated
@@ -915,8 +915,8 @@ contains
     real(double) :: nuStart, nuEnd, ne
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom, ir, ifreq
-    real(double) :: nstar, tauAv
-    real(double), parameter :: convergeTol = 1.d-6, neTolerance = 1.d-6
+    real(double) :: nstar, tauAv, tauHalpha
+    real(double), parameter :: convergeTol = 1.d-5, neTolerance = 1.d-6
     integer :: neIter
     logical :: recalcJbar, neConverged, firstCheckonTau
     character(len=80) :: message
@@ -995,8 +995,8 @@ contains
 
 
     nRay = 1000
-    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    do iStage = 1, 1
+!    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    do iStage = 1, 2
 
 
        if (iStage == 1) then
@@ -1113,6 +1113,11 @@ contains
                                     phi(1:nRay), i0(iRBB,1:nRay), iTrans, thisOctal%jnu(subcell,iRBB), &
                                     thisOctal%newAtomLevel(subcell,iAtom,1:), &
                                     freq, nFreq, weight(1:nRay), iRBB,tauAv)
+
+                               thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
+
+
+                               if (iTrans == 4) tauHalpha = tauAv
                                if (firstCheckonTau) then
                                   if (tauAv > 10.d0) then
                                      thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
@@ -1122,6 +1127,7 @@ contains
                                else
                                   firstCheckonTau = .false.
                                endif
+
                             enddo
                          endif
 
@@ -1204,17 +1210,18 @@ contains
                                  nStar = boltzSahaGeneral(thisAtom(iAtom), 1, i, ne, &
                                       dble(thisOctal%temperature(subcell))) * &
                                       thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
-!                                 write(*,*) "nk",thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
-!                                 write(*,*) "ratio",boltzSahaGeneral(thisAtom(iAtom), 1, i, thisOctal%ne(subcell), &
-!                                      dble(thisOctal%temperature(subcell)))
-!                                 write(*,*) "temp",thisOctal%temperature(subcell)
-!                                 write(*,*) "ne",thisOctal%ne(subcell)
-                                 write(*,*) i,thisOctal%newAtomLevel(subcell,iatom,i),mainoldpops(iatom,i), &
+                                 write(*,'(i2,1x,1p,5e12.3)') i,thisOctal%newAtomLevel(subcell,iatom,i),mainoldpops(iatom,i), &
                                       abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(mainoldpops(iAtom,i),1.d-20)) &
-                                      / max(mainoldpops(iAtom,i),1.d-20)), thisOctal%newAtomLevel(subcell,iatom,i)/nstar
+                                      / max(mainoldpops(iAtom,i),1.d-20)), thisOctal%newAtomLevel(subcell,iatom,i)/nstar, &
+                                      thisOctal%newAtomLevel(subcell,iAtom,i)-mainoldpops(iAtom,i)
 
                               enddo
                            enddo
+                           if (thisatom(1)%indetailedbalance(4)) then
+                              write(*,*) "Halpha is in detailed balance",tauHalpha
+                           else
+                              write(*,*) "Halpha is NOT in detailed balance",tauHalpha
+                           endif
                            write(*,*) "Ne: ",ne,dne
                            write(*,*) "T: ",thisOctal%temperature(subcell)
                         endif
@@ -1325,8 +1332,8 @@ contains
              call writeWarning("Maximum number of rays exceeded - capping")
           endif
 
-          gridconverged = .true.
-          write(*,*) "!!!!!!!!!!!!! Forcing exit after only one iteration"
+!          gridconverged = .true.
+!          write(*,*) "!!!!!!!!!!!!! Forcing exit after only one iteration"
 
 
        enddo

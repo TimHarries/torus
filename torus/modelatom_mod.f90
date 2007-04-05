@@ -242,7 +242,7 @@ contains
     type(MODELATOM) :: thisAtom
     integer :: iTrans
     integer :: iLevel
-    real(double) :: nu
+    real(double) :: nu, e
     character(len=2) :: shell
     integer :: is
     real(double) :: photocrosssection2
@@ -293,7 +293,6 @@ contains
                         photoCrossSection = (1.0499d-14 * lamMicrons**3) / dble(iLevel**5) 
                    end select
                 endif
-
              case(1)
                 select case(thisAtom%equation(iTrans))
                    case(1)
@@ -316,8 +315,17 @@ contains
                          photoCrossSection = sigma0 * (nuThresh/nu)**s * (alpha + (1.d0-alpha)*(nuThresh/nu))!*gauntII(gIIx, GIIy, gIIz)
                       endif
                   end select
+               end select
+       case(20)
+          e = nu * hcgs * ergtoev
+          select case(thisAtom%charge)
+             case(0)
+                call phfit2(20,20,1,real(e), x)
+                photoCrossSection = x * 1.d-10
+             case(1)
+             call phfit2(20,19,1,real(e), x)
+                photoCrossSection = x * 1.d-10
           end select
-
       case DEFAULT
           call writeFatal("photocrosssection: atom not recognised")
           stop
@@ -670,12 +678,13 @@ contains
     integer              :: nIon, level
     real(double) :: Ne, t, ratio, nk
     real :: tReal
-    real, parameter ::  Ucoeff(5,2) =  reshape(source=  &
-        (/0.30103e0, -0.00001e0, &
-          0.00000e0,  0.00000e0, &
-          0.30103e0,  0.00000e0, &
-          0.00000e0,  0.00000e0, &
-          0.00000e0,  0.00000e0 /), shape=(/5,2/))
+    real, parameter ::  Ucoeff(5,5) =  reshape(source=  &
+        (/0.30103e0, -0.00001e0, 0.00000e0,  0.00000e0, 0.00000e0, &
+          0.00000e0,  0.00000e0, 0.00000e0,  0.00000e0, 0.00000e0, &
+          0.30103e0,  0.00000e0, 0.00000e0,  0.00000e0, 0.00000e0, &
+          0.07460e0, -0.75759e0, 2.58494e0, -3.53170e0, 1.65240e0, &
+          0.34383e0, -0.41472e0, 1.01550e0,  0.31930e0, 0.00000e0  &
+           /), shape=(/5,5/))
     real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
        pe = ne * kerg * t
        tReal = t
@@ -696,7 +705,7 @@ contains
        case(2)
           select case(thisAtom%charge)
           case(0)
-             u0 = 1.d0
+             u0 = getUT(treal, uCoeff(2,:))
              u1 = getUT(treal, uCoeff(3,:))
              N1overN0 = ((-5040.d0/t)*24.59d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
              N1overN0 = (10.d0**N1overN0)/pe
@@ -709,6 +718,24 @@ contains
              ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1 / N2overn1
           case DEFAULT
              write(*,*) "wrong charge for He"
+             stop
+          end select
+       case(20)
+          select case(thisAtom%charge)
+          case(0)
+             u0 = 1.d0
+             u1 = getUT(treal, uCoeff(4,:))
+             N1overN0 = ((-5040.d0/t)*6.11d0 + 2.5d0*log10(t) + log10(u1/u0)-0.1762d0)
+             N1overN0 = (10.d0**N1overN0)/pe
+             ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u0 / N1overn0
+          case(1)
+             u1 = getUT(treal, uCoeff(4,:))
+             u2 = getUT(treal, uCoeff(5,:))
+             N2overN1 = ((-5040.d0/t)*11.87d0 + 2.5d0*log10(t) + log10(u2/u1)-0.1762d0)
+             N2overN1 = (10.d0**N2overN1)/pe
+             ratio = (thisAtom%g(level)*exp(-thisAtom%energy(level)/(kev * t))) / u1 / N2overn1
+          case DEFAULT
+             write(*,*) "wrong charge for Ca"
              stop
           end select
        case DEFAULT
