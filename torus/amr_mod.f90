@@ -13911,9 +13911,8 @@ IF ( .NOT. gridConverged ) RETURN
           thisStream(i)%temperature(j) = 4000.d0 + 6000.d0 * tot
    
           ! Behaviour similar to Martin96 fig 1b
-          ! Hope it will ok this time    C.
-     !     thisStream(i)%temperature(j) = min(3000.d0  + (tot/0.8)**(2./3.)  * 3000.d0, 6000.d0)
-
+          ! Arbitrary !!!!
+          thisStream(i)%temperature(j) = min(2850.d0  + (tot/0.8)**3  * 3000.d0, 6000.d0)
        enddo
     enddo
 
