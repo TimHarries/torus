@@ -39,6 +39,16 @@ module utils_mod
      module procedure logint_dble
   end interface
 
+  interface spline
+     module procedure spline_single
+     module procedure spline_double
+  end interface
+
+  interface splint
+     module procedure splint_single
+     module procedure splint_double
+  end interface
+
   interface indexx
      module procedure indexx_single
      module procedure indexx_double
@@ -506,7 +516,7 @@ contains
 
   ! spline interpolation
 
-  SUBROUTINE SPLINE(X,Y,N,YP1,YPN,Y2)
+  SUBROUTINE SPLINE_SINGLE(X,Y,N,YP1,YPN,Y2)
     INTEGER NMAX,N, I, K
     REAL SIG, P, QN, UN
     PARAMETER (NMAX=1000)
@@ -536,10 +546,10 @@ contains
     DO  K=N-1,1,-1
        Y2(K)=Y2(K)*Y2(K+1)+U(K)
     ENDDO
-  END SUBROUTINE SPLINE
+  END SUBROUTINE SPLINE_SINGLE
 
 
-  SUBROUTINE SPLINT(XA,YA,Y2A,N,X,Y)
+  SUBROUTINE SPLINT_SINGLE(XA,YA,Y2A,N,X,Y)
     INTEGER N, KLO, KHI, K
     REAL H, A, B
     REAL XA(N),YA(N),Y2A(N),X,Y
@@ -556,14 +566,87 @@ contains
     ENDIF
     H=XA(KHI)-XA(KLO)
     IF (H.EQ.0.) then
-       write(*,*) 'Bad XA input.'
+       write(*,*) 'Bad XA input in splint_single.'
        stop
     endif
     A=(XA(KHI)-X)/H
     B=(X-XA(KLO))/H
     Y=A*YA(KLO)+B*YA(KHI)+ &
          ((A**3-A)*Y2A(KLO)+(B**3-B)*Y2A(KHI))*(H**2)/6.
-  END SUBROUTINE SPLINT
+  END SUBROUTINE SPLINT_SINGLE
+
+  ! From Numerical Recipes in F77
+  ! Modified by chris
+  subroutine spline_double(x,y,n,yp1,ypn,y2)
+    integer :: n
+    real(double) :: yp1, ypn, x(n), y(n), y2(n)
+    integer, parameter :: nmax=500
+    integer :: i, k
+    real(double) :: p, qn, sig, un, u(nmax)
+
+    if (yp1 .gt. .99d30) then
+        y2(1) = 0.d0
+        u(1) = 0.d0
+    else
+        y2(1) = -0.5d0
+        u(1) = (3.d0/(x(2)-x(1))) * ((y(2)-y(1))/(x(2)-x(1))-yp1)
+    endif
+
+    do i=2, n-1
+        sig = (x(i)-x(i-1))/(x(i+1)-x(i-1))
+        p = sig*y2(i-1)+2.d0
+        y2(i) = (sig-1.d0)/p
+        u(i) = (6.d0*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))/(x(i)-x(i-1))) &
+                / (x(i+1)-x(i-1)) - sig*u(i-1))/p
+    enddo
+
+    if (ypn .gt. .99d30) then
+        qn = 0.d0
+        un = 0.d0
+    else
+        qn = 0.5d0
+        un = (3.d0/(x(n)-x(n-1))) * (ypn-(y(n)-y(n-1))/(x(n)-x(n-1)))
+    endif
+
+    y2(n) = (un-qn*u(n-1)) / (qn*y2(n-1)+1.d0)
+
+    do k=n-1, 1, -1
+        y2(k) = y2(k)*y2(k+1)+u(k)
+    enddo
+
+    return
+  end subroutine spline_double
+
+  ! From Numerical Recipes in F77
+  ! Modified by chris
+  subroutine splint_double(xa,ya,y2a,n,x,y)
+    integer :: n
+    real(double) :: x, y, xa(n), y2a(n), ya(n)
+    integer :: k, khi, klo
+    real(double) :: a, b, h
+
+    klo = 1
+    khi = n
+
+1   if (khi-klo .gt. 1) then
+        k = (khi+klo)/2
+        if (xa(k) .gt. x) then
+            khi = k
+        else
+            klo = k
+        endif
+    goto 1
+    endif
+
+    h = xa(khi) - xa(klo)
+    if (h .eq. 0.d0) pause 'Bad xa input in splint_double.'
+    a = (xa(khi)-x)/h
+    b = (x-xa(klo))/h
+    y = a*ya(klo) + b*ya(khi) + ((a**3-a)*y2a(klo) + (b**3-b)*y2a(khi)) &
+        * (h**2) / 6.d0
+
+    return
+  end subroutine splint_double
 
 
   ! locate in a grid via bisection but starting at jlo
