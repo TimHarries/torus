@@ -16,6 +16,7 @@ cfitsio = yes
 static = no
 profile= no
 PATH2G2C=/usr/lib/gcc-lib/i386-redhat-linux/3.4.4
+GUANINE_HOME=/Network/Guanine
 
 ifeq ($(SYSTEM), intelmac)
     F95COMP=g95
@@ -233,11 +234,8 @@ endif
 
 
 ifeq ($(SYSTEM), lamosx)
-   RKHOME=/private/Network/Servers/cytosine.ex.ac.uk/physics309/Guanine/rk225
-   TOP=${RKHOME}/mpi_g95
-   TOP2=${RKHOME}/mpi_g95
-    F95COMP= ${TOP2}/bin/mpif77 
-    F77COMP= ${TOP2}/bin/mpif77 
+    F77COMP= ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
+    F95COMP= ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
     FASTFLAG= -O0
     DEBUGFLAG=-g  -ftrace=full
     MATHTRAP=
@@ -247,11 +245,29 @@ ifeq ($(SYSTEM), lamosx)
     F77FLAG= -w -fno-second-underscore
     IMAGEF77=image_f77.f.miracle
     SPECF77=spec_f77.f.miracle
-#    STARLIBS=-L${RKHOME}/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
-    STARLIBS=-L${RKHOME}/pgplot -lpgplot -L/usr/X11R6/lib -lX11  -L/usr/lib -lSystemStubs
+    STARLIBS=-L${GUANINE_HOME}/csr201/local-ppc/opt/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     MK_MPI_SRC = yes
     KNOWN_SYSTEM=yes
-    CFITSIOLIBS=-L/private/Network/Servers/cytosine.ex.ac.uk/physics309/Guanine/tjharrie/cfitsio -lcfitsio
+    CFITSIOLIBS=-L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
+endif
+
+
+ifeq ($(SYSTEM), lamosx-intel)
+    F95COMP= ${GUANINE_HOME}/csr201/local-i386/bin/mpif77 -fno-pic -read_only_relocs suppress
+    F77COMP= ${GUANINE_HOME}/csr201/local-i386/bin/mpif77 -fno-pic -read_only_relocs suppress
+    FASTFLAG= -O0
+    DEBUGFLAG=-g  -ftrace=full
+    MATHTRAP=
+    UNIXMOD=unix_mod.f90.linuxintel
+    KINDMOD=kind_mod.f90.linuxintel
+    EXE=torus.lamosx
+    F77FLAG= -w -fno-second-underscore
+    IMAGEF77=image_f77.f.miracle
+    SPECF77=spec_f77.f.miracle
+    STARLIBS=-L${GUANINE_HOME}/csr201/local-i386/opt/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM=yes
+    CFITSIOLIBS=-L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
 endif
 
 
