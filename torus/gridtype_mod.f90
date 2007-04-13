@@ -19,6 +19,15 @@ module gridtype_mod
 
   public
 
+  type hydroSpline
+    real(double) :: x
+    integer :: nz
+    real(double), pointer :: z(:) => null()
+    real(double), pointer :: rho(:) => null()
+    real(double), pointer :: rhodd(:) => null()
+  end type hydroSpline
+
+
   type GRIDTYPE
      integer :: nx                               ! size of cartesian grid in x
      integer :: ny                               ! size of cartesian grid in y
@@ -144,6 +153,9 @@ module gridtype_mod
      logical :: amr2dOnly                            ! only do statEq in 2-D
      !
      REAL    :: timeNow ! elapsed time since start of model   ! [seconds]
+
+     type(GRIDTYPE), pointer :: hydroGrid => null()           ! for the hydrowarp geometry
+     type(hydroSpline), pointer :: hydroSplines(:) => null()  ! for the hydrowarp geometry
      
 
   end type GRIDTYPE
