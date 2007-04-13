@@ -500,7 +500,7 @@ contains
         endif
     endif
 
-    if ((grid%geometry == "ppdisk").and.(nDustType > 1)) then
+    if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then
        call fillDustUniform(grid, grid%octreeRoot)
     endif
 
@@ -1127,7 +1127,7 @@ contains
 !          call fillDustShakara(grid, grid%octreeRoot)
 !       endif
 
-       if ((grid%geometry == "ppdisk").and.(nDustType > 1)) then
+       if (((grid%geometry == "ppdisk").or.(grid%geometry=="warpeddisc")).and.(nDustType > 1)) then
           call fillDustUniform(grid, grid%octreeRoot)
        endif
 
