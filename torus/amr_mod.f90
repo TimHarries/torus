@@ -4440,7 +4440,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
-    use input_variables, only: warpFracHeight, warpRadius, warpSigma, rsmooth
+    use input_variables, only: warpFracHeight, warpRadius, warpSigma, solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep
     IMPLICIT NONE
     TYPE(octal), intent(inout) :: thisOctal
@@ -5067,17 +5067,32 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       phi = atan2(cellcentre%y,cellcentre%x)
-!      warpheight = 0.3 * rOuter * (r / rOuter)**2 * cos(phi)
       warpheight  = cos(phi) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
 
 
-      if (r > rInner*0.8) then
+      if ((r+cellsize/2.d0) > rInner*0.8) then
          hr = height * (r / rOuter)**betaDisc
          fac = cellsize/hr
-         if (abs((cellCentre%z-warpHeight)/hr) < 5.) then
-            if (fac > 1.) split = .true.
-         endif
-         if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
+         if (solveVerticalHydro) then
+           ! split the grid in a way more similar to planetgap, to give hydro the best chance possible
+           if ((abs((cellCentre%z-warpHeight)/hr) < 10.).and.(fac .gt. 0.5)) split = .true.
+           if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 2.)) split = .true.
+         else
+           if (hydroWarp) then
+             ! o The first criterion of this if (cell is less than 5 scaleheights from midplane) is fine because
+             !   it overestimates the height above the midplane that needs to be split.
+             ! o The second criterion will not split some cells that should be split (the new scaleheight is smaller,
+             !   so fac will be smaller than it should be and may not be > 1). To compensate, we change 1. to 0.75.
+             ! If we were to do this properly, we would find out what the new scale height of the disc is...
+             if ((abs((cellCentre%z-warpHeight)/hr) < 5.).and.(fac .gt. 0.75)) split = .true.
+             if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
+             if ((abs(r - warpradius) < warpsigma).and.(abs((cellCentre%z-warpHeight)/hr) < 8.).and.(fac .gt. 0.4)) split = .true.
+           else
+             if ((abs((cellCentre%z-warpHeight)/hr) < 5.).and.(fac .gt. 1.)) split = .true.
+             if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
+             if ((abs(r - warpradius) < warpsigma).and.(abs((cellCentre%z-warpHeight)/hr) < 8.).and.(fac .gt. 0.5)) split = .true.
+           end if
+         end if
       endif
 
       if ((abs(r-rinner) < 0.9*rinner).and.(cellSize > 0.02*rInner).and.(abs(cellCentre%z) < 2.*hr)) then
@@ -7598,8 +7613,13 @@ IF ( .NOT. gridConverged ) RETURN
     rd = rOuter / 2.
     r = sqrt(rVec%x**2 + rVec%y**2)
     if ((r > rInner).and.(r < rOuter)) then
-       thisOctal%rho(subcell) = density(rVec, grid)
-       thisOctal%temperature(subcell) = 20.
+       if (hydroWarp) then
+         thisOctal%rho(subcell) = hydroWarpDensity(rVec, grid)
+         thisOctal%temperature(subcell) = hydroWarpTemperature(rVec, grid)
+       else
+         thisOctal%rho(subcell) = density(rVec, grid)
+         thisOctal%temperature(subcell) = 20.
+       end if
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
@@ -13587,7 +13607,191 @@ IF ( .NOT. gridConverged ) RETURN
 666 continue
     end function distanceToGridFromOutside
 
+  !
+  ! hydroWarp stuff
+  !
+  function hydroWarpTemperature(point, grid) result (tempOut)
+    use input_variables, only : warpFracHeight, warpRadius, warpSigma
+    TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(octalVector), INTENT(IN) :: point
+    real(double) :: tempOut
+    TYPE(octalVector) :: rVec
+    real(double) :: r, phi, warpHeight
+    real :: thisTemp
 
+    tempOut = 20.
+
+    rVec = point
+    r = sqrt(rVec%x**2 + rVec%y**2)
+    phi = atan2(rVec%y,rVec%x)+pi/2.d0
+    warpheight  = cos(phi) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
+    rVec%z = rVec%z - warpheight
+
+    if (inOctal(grid%hydroGrid%octreeRoot, rVec)) then
+      call amrGridValues(grid%hydroGrid%octreeRoot, rVec, temperature=thisTemp)
+      tempOut = thisTemp
+    end if
+  end function hydroWarpTemperature
+
+  function hydroWarpDensity(point, grid) result (rhoOut)
+    use input_variables, only : warpFracHeight, warpRadius, warpSigma
+    TYPE(gridtype), INTENT(IN) :: grid
+    TYPE(octalVector), INTENT(IN) :: point
+    real(double) :: rhoOut
+    TYPE(octalVector) :: rVec
+    real(double) :: r, phi, warpHeight
+
+    integer :: nx, thisX
+    type(hydroSpline) :: thisSpline
+    real(double) :: temp
+
+    rhoOut = 1.d-30
+
+    rVec = point
+    r = sqrt(rVec%x**2 + rVec%y**2)
+    phi = atan2(rVec%y,rVec%x)+pi/2.d0
+    warpheight  = cos(phi) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
+    rVec%z = rVec%z - warpheight
+
+    ! Determine which x-value most closely matches our r-value
+    nx = size(grid%hydroGrid%hydroSplines)
+    call locate_hydroSpline(grid%hydroGrid,nx,r,thisX)
+    if (thisX < 1) then
+      thisX = 1
+    else if (thisX < nx) then
+      if (abs(grid%hydroGrid%hydroSplines(thisX+1)%x-r) .lt. abs(r-grid%hydroGrid%hydroSplines(thisX)%x)) thisX = thisX + 1
+    end if
+
+    ! Interpolate over the appropriate spline to get the log(rho) at the point
+    thisSpline = grid%hydroGrid%hydroSplines(thisX)
+    call splint(thisSpline%z, thisSpline%rho, thisSpline%rhoDD, thisSpline%nz, rVec%z, rhoOut)
+
+    ! The spline function stores and interpolates on the log of the density, so we
+    ! must unlog the densities to give our result.
+    rhoOut = 10**rhoOut
+  end function hydroWarpDensity
+
+  subroutine hydroWarpFitSplines(grid)
+
+    type(GRIDTYPE) :: grid
+    real :: xAxis(1000000)
+    real(double) :: zAxis(10000), rho(10000), subcellsize(10000)
+    integer :: nx, nz
+    real :: xPos, yPos
+    integer :: i, j
+
+    real(double) :: newrho(10000), newzAxis(10000), newrhodd(10000)
+    integer :: newnz
+
+    nx = 0
+    call getxValuesAMR(grid%octreeRoot, nx, xAxis)
+    call stripSimilarValues(xAxis,nx,real(1.d-5*grid%halfSmallestSubcell))
+    xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
+
+    allocate(grid%hydroSplines(nx))
+
+    yPos = 0.
+    do i = 1, nx
+       xPos = xAxis(i)
+!       if ((xPos > grid%rInner).and.(xPos < grid%rOuter)) then
+          ! Read in a complete density run for this x position
+          call getDensityRun(grid, zAxis, subcellsize, rho, xPos, yPos, nz, -1.)
+          do j = 1, nz
+            newRho(j) = rho(nz+1-j)
+            newzAxis(j) = -1.*zAxis(nz+1-j)
+          end do
+          newnz = nz
+          call getDensityRun(grid, zAxis, subcellsize, rho, xPos, yPos, nz, +1.)
+          newRho(newnz+1:newnz+nz) = rho(1:nz)
+          newzAxis(newnz+1:newnz+nz) = zAxis(1:nz)
+          newnz = newnz + nz
+
+          ! We use the log of the densities to avoid numerical funnies in the
+          ! spline fitting.
+          newRho = log10(newRho)
+
+          ! Calculate the spline function
+          call spline(newzAxis, newRho, newnz, 1.d30, 1.d30, newRhoDD)
+
+          ! Store the spline in the appropriate array
+          allocate(grid%hydroSplines(i)%z(newnz))
+          allocate(grid%hydroSplines(i)%rho(newnz))
+          allocate(grid%hydroSplines(i)%rhoDD(newnz))
+          grid%hydroSplines(i)%x = xPos
+          grid%hydroSplines(i)%nz = newnz
+          grid%hydroSplines(i)%z(1:newnz) = newzAxis(1:newnz)
+          grid%hydroSplines(i)%rho(1:newnz) = newRho(1:newnz)
+          grid%hydroSplines(i)%rhoDD(1:newnz) = newRhoDD(1:newnz)
+!       endif
+    enddo
+  end subroutine hydroWarpFitSplines
+
+  subroutine getDensityRun(grid, zAxis, subcellsize, rho, xPos, yPos, nz, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    integer :: nz
+    real(double) :: rho(:)
+    real(double) :: zAxis(:), subcellsize(:)
+    real :: xPos, yPos
+    integer :: subcell
+    real(double) :: rhotemp 
+    real :: direction
+    type(OCTALVECTOR) :: currentPos, temp
+    real :: halfSmallestSubcell
+
+    nz = 0
+    halfSmallestSubcell = grid%halfSmallestSubcell
+
+    currentPos = OCTALVECTOR(xPos, yPos, direction*halfSmallestSubcell)
+
+    do while(abs(currentPos%z) < grid%ocTreeRoot%subcellsize)
+       call amrGridValues(grid%octreeRoot, currentPos, foundOctal=thisOctal, &
+            foundSubcell=subcell, rho=rhotemp)
+!       if (thisOctal%inFlow(subcell)) then
+          nz = nz + 1
+          rho(nz) = rhotemp
+          temp = subCellCentre(thisOctal, subcell)
+          zAxis(nz) = temp%z
+          subcellsize(nz) = thisOctal%subcellsize
+!       endif
+          currentPos = OCTALVECTOR(xPos, yPos, zAxis(nz)+0.5*direction*thisOctal%subcellsize+direction*halfSmallestSubcell)
+    end do
+    zAxis(1:nz) = abs(zAxis(1:nz)) !* 1.d10  ! convert to cm
+  end subroutine getDensityRun
+
+    SUBROUTINE LOCATE_hydroSpline(grid,N,X,J)
+    type(gridtype), intent(in) :: grid
+    integer, intent(in)              :: n
+    real(double), intent(in) :: x
+    integer,intent(out)              :: j
+    integer :: jl, ju,jm
+      JL=0
+      JU=N+1
+10    IF(JU-JL.GT.1)THEN
+        JM=(JU+JL)/2
+        IF((grid%hydroSplines(N)%x.GT.grid%hydroSplines(1)%x).EQV.(X.GE.grid%hydroSplines(JM)%x))THEN
+          JL=JM
+        ELSE
+          JU=JM
+        ENDIF
+      GO TO 10
+      ENDIF
+
+      ! Will force to be between 1 and the array size -1.
+      if(x <= grid%hydroSplines(1)%x)then
+        j=1
+      else if(x>=grid%hydroSplines(n)%x)then
+        j=n-1
+      else
+        j=jl
+      end if
+
+      return
+
+    END SUBROUTINE LOCATE_hydroSpline
+  !
+  ! end hydroWarp stuff
+  !
 
   recursive subroutine splitGridOnStream(thisOctal, thisStream, grid, converged)
     use input_variables, only : limitScalar
