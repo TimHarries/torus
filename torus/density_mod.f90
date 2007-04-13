@@ -916,7 +916,7 @@ contains
     integer :: i
     real(double) :: phi
 
-    rhoOut = tiny(rhoOut)
+    rhoOut = 1.d-30
     r = sqrt(point%x**2 + point%y**2)
     phi = atan2(point%y,point%x)
 !    warpheight =  0.3 * rOuter * (r / rOuter)**2 * cos(phi)
@@ -932,7 +932,7 @@ contains
        fac =  1.d0-min(dble(r - rInner)/(0.05d0*rinner),1.d0)
        fac = exp(-fac*10.d0)
        rhoOut = rhoOut * fac
-       rhoOut = max(rhoOut, tiny(rhoOut))
+       rhoOut = max(rhoOut, 1.d-30)
     endif
 
 
