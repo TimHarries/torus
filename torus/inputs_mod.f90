@@ -2136,8 +2136,8 @@ endif
 
  if (geometry .eq. "warpeddisc") then
 
-    call getLogical("noscat", noScattering, cLine, nLines, &
-         "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("noscat", noScattering, cLine, nLines, &
+        "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
 
    call getReal("rcore", rCore, cLine, nLines, &
        "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
@@ -2182,7 +2182,8 @@ endif
    call getLogical("vardustsub", variableDustSublimation, cLine, nLines, &
         "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
 
-
+   call getLogical("warphydro", hydroWarp, cLine, nLines, &
+        "Impose a warp on a completed hydro disc: ","(a,1l,1x,a)", .false., ok, .false.)
 
    rCore = rCore * rSol / 1.e10
    rInner = rInner * rCore

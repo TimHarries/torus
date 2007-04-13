@@ -563,6 +563,7 @@ module input_variables
 
 
   real :: warpradius, warpsigma, warpFracHeight
+  logical :: hydroWarp
 
   ! "magstream" parameters ---------------------------------------------
   logical :: limitSpotTemp ! whether to limit hot spot temperatures
