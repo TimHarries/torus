@@ -1173,6 +1173,19 @@
      call writeInfo(message, TRIVIAL)
   end if
 
+  ! chris
+  if (hydroWarp) then
+     print *, "Creating and reading hydroGrid..."
+     allocate(grid%hydroGrid)
+     call initAMRGrid(greyContinuum, &
+                        newContFluxFile,flatspec,grid%hydroGrid,ok,theta1,theta2)
+     call readAMRgrid("hydrogrid.dat",readFileFormatted,grid%hydroGrid)
+     print *, "hydroGrid read..."
+     call hydroWarpFitSplines(grid%hydroGrid)
+     print *, "splines fitted..."
+     print *, "hydroGrid setup done."
+  end if
+
 
   !===============================================================
   if (gridUsesAMR) then  !========================================
@@ -1617,7 +1630,7 @@
            call	fillDustWhitney(grid, grid%octreeRoot)	
         endif
 
-        if (((geometry == "ppdisk").or.(geometry == "planetgap")).and.(nDustType>1)) then
+        if (((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")).and.(nDustType>1)) then
            call fillDustUniform(grid, grid%octreeRoot)
         endif
         
@@ -1646,7 +1659,7 @@
                 "rho_zoom.ps/vcps",.true., .true.,&
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
 
-           if ((geometry == "ppdisk").or.(geometry == "planetgap")) then
+           if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
               call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
                    "rho_ultrazoom.ps/vcps",.true., .false.,&
                    nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=0.005)
@@ -2680,7 +2693,7 @@
         
 
      if (mie) then
-	if (geometry == "shakara") then
+        if (geometry == "shakara") then
 
 !        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*real(autocm)) ! defined at 1AU
 
@@ -2688,10 +2701,11 @@
 !                (twoPi*((rOuter*1.e10)**(betaDisc-alphaDisc+2) - (rInner*1.e10)**(betaDisc-alphaDisc+2))*1.*auToCm)
 
            sigma0 = rho0 * (rinner*1.e10/(1.*autocm))**alphaDisc * &
-	(height*1.e10) * (autocm / (100.d0*autocm))**betaDisc * sqrt(twopi)
+           (height*1.e10) * (autocm / (100.d0*autocm))**betaDisc * sqrt(twopi)
 
-        if (writeoutput) write(*,*) "Sigma0: ",sigma0
-	endif
+           if (writeoutput) write(*,*) "Sigma0: ",sigma0
+        endif
+
         if (geometry == "ppdisk") then
            sigma0 = totalMass / ((amrgridsize**2 - twoPi*0.4)*1.e10*1.*autocm) ! defined at 1AU
            if (writeoutput) write(*,*) "Sigma0: ",sigma0
@@ -2705,6 +2719,13 @@
            sigma0 = rho0 * sqrt(twoPi) * h
 
            if (writeoutput) write(*,*) "Sigma0: ",sigma0
+        endif
+
+        if (geometry == "warpeddisc") then
+           rho0  = mDisc *(betadisc-alphadisc+2.) / ( twoPi**1.5 * (height*1.e10)  &
+                   * (rOuter*1.d10)**(alphadisc-betadisc) * ( &
+                   ((router*1.d10)**(betadisc-alphadisc+2.)-(rInner*1.d10)**(betadisc-alphadisc+2.))) )
+           sigma0 = rho0 * sqrt(twoPi) * height * 1.e10
         endif
 
      endif

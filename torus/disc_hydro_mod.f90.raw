@@ -30,7 +30,7 @@ contains
   subroutine solveHydro(temperature, zAxis, subcellsize, rho, nz, &
        radius, mStar, sigma0, rDisk, converged, drho)
 
-    use input_variables, only: alphaDisc, betaDisc, rinner, geometry, planetgap
+    use input_variables, only: alphaDisc, betaDisc, rinner, router, geometry, planetgap
     integer, intent(in) :: nz ! number of vertical grid points
     real(double),intent(in) :: subcellSize(1:nz)  ! size of this subcell
     real(single),intent(in) :: temperature(1:nz)  ! temperature
@@ -121,6 +121,16 @@ contains
        scalefac = scalefac * 0.5 / sigma
 
     endif
+
+    if (geometry == "warpeddisc") then
+       fac =  1.d0-min(dble(radius - rInner)/(0.05d0*rinner),1.d0)
+       fac = exp(-fac*10.d0)
+       scalefac = sigma0 * (radius/rOuter)**(betaDisc-alphaDisc) * fac
+
+       write (137,*) radiusAU, scalefac
+
+       scalefac = scalefac * 0.5 / sigma
+    end if
 
 
 !    scalefac = fractgap(dble(radiusAU)) / (sqrt(radiusAU) * (1 + exp(-100.*(radiusAU-rSmooth))) * sigma)
@@ -419,7 +429,7 @@ contains
        call zeroChiline(grid%octreeRoot)       
 
 !$MPI    if(my_rank == 0) then
-       if ((geometry == "ppdisk").or.(geometry == "planetgap")) &
+       if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) &
           open(unit=137, file='surface_density.dat', status='replace', form='formatted')
 !$MPI    endif
 
@@ -429,7 +439,7 @@ contains
        call throughoutMidpane(grid, mStar, sigma0, rDisk, drho)
 
 !$MPI    if(my_rank == 0) then
-       if ((geometry == "ppdisk").or.(geometry == "planetgap")) close(137)
+       if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) close(137)
 !$MPI    endif
 
 !$MPI    if(my_rank == 0) &
@@ -456,27 +466,29 @@ contains
        call plot_AMR_values(grid, "temperature", "x-z", 0.0, plotfile, .true., .false.)
 
        ! chris
-       if ((geometry == "ppdisk").or.(geometry == "planetgap")) then
-          rGapCM = rGap * autocm / 1.d10
+       if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
+         if (geometry.ne."warpeddisc") then
+           rGapCM = rGap * autocm / 1.d10
+           write(plotfile,'(a,i3.3,a)') "rho_gapzoom",niter,".ps/vcps"
+           call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.,&
+                xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM)
+           write(plotfile,'(a,i3.3,a)') "temp_gapzoom",niter,".ps/vcps"
+           call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.false., .false.,&
+                xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM, fixValMin=40.d0, fixValMax=200.d0)
+         end if
 
-       write(plotfile,'(a,i3.3,a)') "rho",niter,".ps/vcps"
-       call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
-       write(plotfile,'(a,i3.3,a)') "rho_zoom",niter,".ps/vcps"
-       call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
-       write(plotfile,'(a,i3.3,a)') "rho_ultrazoom",niter,".ps/vcps"
-       call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.005)
-       write(plotfile,'(a,i3.3,a)') "rho_gapzoom",niter,".ps/vcps"
-       call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.,&
-            xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM)
-       write(plotfile,'(a,i3.3,a)') "temp",niter,".ps/vcps"
-       call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false.)
-       write(plotfile,'(a,i3.3,a)') "temp_zoom",niter,".ps/vcps"
-       call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
-       write(plotfile,'(a,i3.3,a)') "temp_ultrazoom",niter,".ps/vcps"
-       call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.005)
-       write(plotfile,'(a,i3.3,a)') "temp_gapzoom",niter,".ps/vcps"
-       call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.false., .false.,&
-            xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM, fixValMin=40.d0, fixValMax=200.d0)
+         write(plotfile,'(a,i3.3,a)') "rho",niter,".ps/vcps"
+         call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
+         write(plotfile,'(a,i3.3,a)') "rho_zoom",niter,".ps/vcps"
+         call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
+         write(plotfile,'(a,i3.3,a)') "rho_ultrazoom",niter,".ps/vcps"
+         call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.001)
+         write(plotfile,'(a,i3.3,a)') "temp",niter,".ps/vcps"
+         call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false.)
+         write(plotfile,'(a,i3.3,a)') "temp_zoom",niter,".ps/vcps"
+         call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
+         write(plotfile,'(a,i3.3,a)') "temp_ultrazoom",niter,".ps/vcps"
+         call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.001)
         end if
 !       write(plotfile,'(a,i3.3,a)') "tau",niter,".gif/gif"
 !       call plot_AMR_values(grid, "tau", "x-z", 0.0, plotfile, .true., .false.) !problem with passing ilam
@@ -559,25 +571,28 @@ contains
 
     ! chris
 !$MPI    if(my_rank == 0) then
-    if ((geometry == "ppdisk").or.(geometry == "planetgap")) then
-    write(plotfile,'(a,i3.3,a)') "rho_final.ps/vcps"
-    call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
-    write(plotfile,'(a,i3.3,a)') "rho_zoom_final.ps/vcps"
-    call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
-    write(plotfile,'(a,i3.3,a)') "rho_ultrazoom_final.ps/vcps"
-    call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.005)
-    write(plotfile,'(a,i3.3,a)') "rho_gapzoom_final.ps/vcps"
-    call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.,&
-         xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM)
-    write(plotfile,'(a,i3.3,a)') "temp_final.ps/vcps"
-    call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false.)
-    write(plotfile,'(a,i3.3,a)') "temp_zoom_final.ps/vcps"
-    call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
-    write(plotfile,'(a,i3.3,a)') "temp_ultrazoom_final.ps/vcps"
-    call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.005)
-    write(plotfile,'(a,i3.3,a)') "temp_gapzoom_final.ps/vcps"
-    call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.false., .false.,&
-         xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM, fixValMin=40.d0, fixValMax=200.d0)
+    if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
+      if (geometry.ne."warpeddisc") then
+        write(plotfile,'(a,i3.3,a)') "rho_gapzoom_final.ps/vcps"
+        call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.,&
+             xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM)
+        write(plotfile,'(a,i3.3,a)') "temp_gapzoom_final.ps/vcps"
+        call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.false., .false.,&
+             xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM, fixValMin=40.d0, fixValMax=200.d0)
+      end if
+
+      write(plotfile,'(a,i3.3,a)') "rho_final.ps/vcps"
+      call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
+      write(plotfile,'(a,i3.3,a)') "rho_zoom_final.ps/vcps"
+      call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
+      write(plotfile,'(a,i3.3,a)') "rho_ultrazoom_final.ps/vcps"
+      call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.001)
+      write(plotfile,'(a,i3.3,a)') "temp_final.ps/vcps"
+      call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false.)
+      write(plotfile,'(a,i3.3,a)') "temp_zoom_final.ps/vcps"
+      call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
+      write(plotfile,'(a,i3.3,a)') "temp_ultrazoom_final.ps/vcps"
+      call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.001)
     end if
 !$MPI    endif
 
