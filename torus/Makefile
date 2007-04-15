@@ -506,6 +506,7 @@ ifeq ($(SYSTEM), mpig95)
    STATICLIBS=
    STARLIBS=-L/star/lib `ndf_link` 
    PGLIBS=-L/star/lib `pgplot_link`
+   CFITSIOLIBS=-lcfitsio
    MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes
 endif
