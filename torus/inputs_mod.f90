@@ -2161,6 +2161,9 @@ endif
    call getReal("warpheight", warpfracheight, cLine, nLines, &
        "Fractional height of disc (warp radius): ","(a,f5.1,a)", 12., ok, .true.)
 
+   call getReal("warpangle", warpangle, cLine, nLines, &
+       "PA of peak of warp (degrees): ","(a,f5.1,a)", 0., ok, .true.)
+
    call getReal("teff", teff, cLine, nLines, &
           "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
 
@@ -2195,6 +2198,7 @@ endif
 
    warpradius = warpradius * rinner
    warpsigma = warpsigma * rinner
+   warpangle = warpangle * pi/180.
 
 endif
 

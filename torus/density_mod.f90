@@ -920,7 +920,7 @@ contains
     r = sqrt(point%x**2 + point%y**2)
     phi = atan2(point%y,point%x)
 !    warpheight =  0.3 * rOuter * (r / rOuter)**2 * cos(phi)
-    warpheight  = cos(phi) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
+    warpheight  = cos(phi+warpAngle) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
 
     rho0  = mDisc *(betadisc-alphadisc+2.) / ( twoPi**1.5 * (height*1.e10)  &
          * (rOuter*1.d10)**(alphadisc-betadisc) * ( &

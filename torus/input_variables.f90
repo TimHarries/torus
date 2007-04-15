@@ -562,7 +562,7 @@ module input_variables
   real :: C_stark  ! Damping constant (Stark)         in [A]
 
 
-  real :: warpradius, warpsigma, warpFracHeight
+  real :: warpRadius, warpSigma, warpFracHeight, warpAngle
   logical :: hydroWarp
 
   ! "magstream" parameters ---------------------------------------------

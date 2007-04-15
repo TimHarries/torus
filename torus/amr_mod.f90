@@ -4440,7 +4440,8 @@ IF ( .NOT. gridConverged ) RETURN
 
     use input_variables, only: height, betadisc, rheight, flaringpower, rinner, router
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
-    use input_variables, only: warpFracHeight, warpRadius, warpSigma, solveVerticalHydro, hydroWarp, rsmooth
+    use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
+    use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep
     IMPLICIT NONE
     TYPE(octal), intent(inout) :: thisOctal
@@ -5067,7 +5068,7 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       phi = atan2(cellcentre%y,cellcentre%x)
-      warpheight  = cos(phi) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
+      warpheight  = cos(phi+warpAngle) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
 
 
       if ((r+cellsize/2.d0) > rInner*0.8) then
@@ -13619,7 +13620,7 @@ IF ( .NOT. gridConverged ) RETURN
   ! hydroWarp stuff
   !
   function hydroWarpTemperature(point, grid) result (tempOut)
-    use input_variables, only : warpFracHeight, warpRadius, warpSigma
+    use input_variables, only : warpFracHeight, warpRadius, warpSigma, warpAngle
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(octalVector), INTENT(IN) :: point
     real(double) :: tempOut
@@ -13631,8 +13632,8 @@ IF ( .NOT. gridConverged ) RETURN
 
     rVec = point
     r = sqrt(rVec%x**2 + rVec%y**2)
-    phi = atan2(rVec%y,rVec%x)+pi/2.d0
-    warpheight  = cos(phi) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
+    phi = atan2(rVec%y,rVec%x)
+    warpheight  = cos(phi+warpAngle) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
     rVec%z = rVec%z - warpheight
 
     if (inOctal(grid%hydroGrid%octreeRoot, rVec)) then
@@ -13642,7 +13643,7 @@ IF ( .NOT. gridConverged ) RETURN
   end function hydroWarpTemperature
 
   function hydroWarpDensity(point, grid) result (rhoOut)
-    use input_variables, only : warpFracHeight, warpRadius, warpSigma
+    use input_variables, only : warpFracHeight, warpRadius, warpSigma, warpAngle
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(octalVector), INTENT(IN) :: point
     real(double) :: rhoOut
@@ -13657,8 +13658,8 @@ IF ( .NOT. gridConverged ) RETURN
 
     rVec = point
     r = sqrt(rVec%x**2 + rVec%y**2)
-    phi = atan2(rVec%y,rVec%x)+pi/2.d0
-    warpheight  = cos(phi) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
+    phi = atan2(rVec%y,rVec%x)
+    warpheight  = cos(phi+warpAngle) * warpFracHeight * warpradius * exp(-0.5d0*((r - warpRadius)/warpSigma)**2)
     rVec%z = rVec%z - warpheight
 
     ! Determine which x-value most closely matches our r-value
