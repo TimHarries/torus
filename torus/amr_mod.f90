@@ -5079,19 +5079,27 @@ IF ( .NOT. gridConverged ) RETURN
            if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 2.)) split = .true.
          else
            if (hydroWarp) then
+             fac=hr
+             hr = getHydroWarpScaleHeight(r, grid)
+!print *, fac, hr
+             if (.not. (hr > 0.)) then
+               hr = fac
+!               if (r < rOuter*1.1d0) then
+!                 print *, "Error: scaleheight returned by getHydroWarpScaleHeight = 0."
+!                 print *, r, hr
+!                 stop
+!               end if
+             end if
+             fac = cellsize/hr
              ! o The first criterion of this if (cell is less than 5 scaleheights from midplane) is fine because
              !   it overestimates the height above the midplane that needs to be split.
              ! o The second criterion will not split some cells that should be split (the new scaleheight is smaller,
              !   so fac will be smaller than it should be and may not be > 1). To compensate, we change 1. to 0.75.
              ! If we were to do this properly, we would find out what the new scale height of the disc is...
-             if ((abs((cellCentre%z-warpHeight)/hr) < 5.).and.(fac .gt. 0.75)) split = .true.
-             if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
-             if ((abs(r - warpradius) < warpsigma).and.(abs((cellCentre%z-warpHeight)/hr) < 8.).and.(fac .gt. 0.4)) split = .true.
-           else
-             if ((abs((cellCentre%z-warpHeight)/hr) < 5.).and.(fac .gt. 1.)) split = .true.
-             if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
-             if ((abs(r - warpradius) < warpsigma).and.(abs((cellCentre%z-warpHeight)/hr) < 8.).and.(fac .gt. 0.5)) split = .true.
            end if
+           if ((abs((cellCentre%z-warpHeight)/hr) < 5.).and.(fac .gt. 1.)) split = .true.
+           if ((abs(cellcentre%z-warpheight)/hr > 5.).and.(abs((cellcentre%z-warpheight)/cellsize) < 1.)) split = .true.
+           if ((abs(r - warpradius) < warpsigma).and.(abs((cellCentre%z-warpHeight)/hr) < 8.).and.(fac .gt. 0.5)) split = .true.
          end if
       endif
 
@@ -13671,6 +13679,25 @@ IF ( .NOT. gridConverged ) RETURN
     rhoOut = 10**rhoOut
   end function hydroWarpDensity
 
+  function getHydroWarpScaleHeight(r, grid) result (scaleheight)
+    type(gridtype), intent(in) :: grid
+    real(double), intent(in) :: r
+    real(double) :: scaleheight
+
+    integer :: nx, thisX
+
+    ! Determine which x-value most closely matches our r-value
+    nx = size(grid%hydroGrid%hydroSplines)
+    call locate_hydroSpline(grid%hydroGrid,nx,r,thisX)
+    if (thisX < 1) then
+      thisX = 1
+    else if (thisX < nx) then
+      if (abs(grid%hydroGrid%hydroSplines(thisX+1)%x-r) .lt. abs(r-grid%hydroGrid%hydroSplines(thisX)%x)) thisX = thisX + 1
+    end if
+
+    scaleheight = grid%hydroGrid%hydroSplines(thisX)%scaleheight
+  end function getHydroWarpScaleHeight
+
   subroutine hydroWarpFitSplines(grid)
 
     type(GRIDTYPE) :: grid
@@ -13722,6 +13749,8 @@ IF ( .NOT. gridConverged ) RETURN
           grid%hydroSplines(i)%z(1:newnz) = newzAxis(1:newnz)
           grid%hydroSplines(i)%rho(1:newnz) = newRho(1:newnz)
           grid%hydroSplines(i)%rhoDD(1:newnz) = newRhoDD(1:newnz)
+          ! Set the scaleheight
+          call hydroWarpScaleHeight(grid%hydroSplines(i))
 !       endif
     enddo
   end subroutine hydroWarpFitSplines
@@ -13789,6 +13818,175 @@ IF ( .NOT. gridConverged ) RETURN
       return
 
     END SUBROUTINE LOCATE_hydroSpline
+
+  subroutine hydroWarpScaleHeight(spline)
+    type(hydroSpline) :: spline
+    real(double) :: max_rho
+    real(double) :: target_rho
+
+    integer :: i
+
+    integer :: sv1_i, sv2_i
+    real(double) :: sv1, sv2, step1, step2
+    real(double) :: sh1, sh2
+
+    max_rho = hydroWarpSplinePeak(spline)
+    target_rho = max_rho - log10(2.718281828)
+
+! improve this conditional
+    if (max_rho .lt. log10(1.d-29)) then
+      ! We have a straight line
+      spline%scaleHeight = 0.
+      return
+    endif
+
+    ! assume the spline is fairly stable around one scaleheight from the peak
+
+    ! find the cell before which we pass through the target density
+    sv1_i = 0
+    sv2_i = 0
+    do i=1, spline%nz
+      if (spline%rho(i) .gt. target_rho) then
+        if (i == 1) then
+          print *, "Error finding scaleheight: sv1_i = 1!"
+          stop
+        end if
+        sv1_i = i-1
+        exit
+      end if
+    end do
+    do i=sv1_i+1, spline%nz
+      if (spline%rho(i) .lt. target_rho) then
+        if (i == sv1_i+1) then
+          print *, "Error finding scaleheight: sv2_i = sv1_i!"
+          stop
+        end if
+        sv2_i = i-1
+        exit
+      end if
+    end do
+    if ((sv1_i==0).or.(sv2_i==0)) then
+      print *, "Error finding scaleheight: sv1_i =", sv1_i, "; sv2_i =", sv2_i
+    end if
+
+    sv1 = spline%z(sv1_i)
+    sv2 = spline%z(sv2_i)
+    step1 = (spline%z(sv1_i+1)-sv1)/2.
+    step2 = (spline%z(sv2_i+1)-sv2)/2.
+
+    sh1 = hydroWarpSplinty(spline, target_rho, sv1, step1)
+    sh2 = hydroWarpSplinty(spline, target_rho, sv2, step2)
+    
+    spline%scaleHeight = (sh2-sh1)/2.
+
+    ! perform a quick sanity check
+    if ((sh1+sh2)/spline%scaleHeight .gt. 0.01) then
+      print *, "Warning: Scaleheights either side of midplane differ by"
+      print *, "         more than 1%:", sh1, sh2
+    end if
+  end subroutine hydroWarpScaleHeight
+
+  real(double) function hydroWarpSplinty(spline, target, startval, step)
+    implicit none
+
+    type(hydroSpline) :: spline
+    real(double) :: target    ! target density value
+    real(double) :: startval  ! initial value of z to try
+    real(double) :: step      ! initial stepping in value of z
+
+    ! initial values
+    real(double) :: tol = 0.0001   ! +/- tol * target
+    real(double) :: reduxFac = 0.5 ! step is reduced by this factor when homing in
+    integer :: maxIter = 100       ! maximum number of iterations before we give up
+    integer :: i                   ! iteration counter
+   
+    real(double) :: xNew, yNew, xOld, yOld
+
+    xNew = startval
+    call splint(spline%z, spline%rho, spline%rhoDD, spline%nz, xNew, yNew)
+    i = 0
+    do
+      i = i + 1
+      if (i > maxIter) then
+         write (*,*) "Numerical solver: exceeded maximum iterations allowed (", maxIter, ")"
+         stop
+      end if
+
+      xOld = xNew
+      yOld = yNew
+      xNew = xNew + step
+      call splint(spline%z, spline%rho, spline%rhoDD, spline%nz, xNew, yNew)
+      if (abs(yNew-target) < abs(tol * target)) then
+         exit
+      else if (yNew < target) then
+         if (yNew < yOld) then
+            if (yOld < target) then
+               step = -1. * step
+               xNew = xOld
+               yNew = yOld
+            else ! (yOld > target)
+               step = -1. * (reduxFac * step)
+            end if
+         end if
+      else ! (yNew > target)
+         if (yNew > yOld) then
+            if (yOld < target) then
+               step = -1. * (reduxFac * step)
+            else ! (yOld > target)
+               step = -1. * step
+               xNew = xOld
+               yNew = yOld
+            end if
+         end if
+      end if
+    end do
+
+    hydroWarpSplinty = xNew
+  end function hydroWarpSplinty
+
+  real(double) function hydroWarpSplinePeak(spline)
+    type(hydroSpline) :: spline
+    real(double) :: rho_max, rho_max_z
+    integer :: rho_max_i
+
+    integer :: i
+
+    real(double) :: step, z_test, rho_test
+    integer :: nsteps
+    nsteps = 100
+
+    ! desnity is log(10) density, so we need a very low value here
+    rho_max = -350.
+    rho_max_i = 0
+
+    ! find cell with the max density
+    do i=1, spline%nz
+      if (spline%rho(i) .gt. rho_max) then
+        rho_max = spline%rho(i)
+        rho_max_i = i
+      end if
+    end do
+    rho_max_z = spline%z(rho_max_i)
+    
+    ! *** what about if i is on a boundary ***
+
+    ! the peak in the spline should be somewhere between this max cell value
+    ! and the two neighbouring cells
+    step = (spline%z(i+1) - spline%z(i-1)) / (nsteps-1)
+    z_test = spline%z(i-1)
+    do i=1, nsteps
+        call splint(spline%z, spline%rho, spline%rhoDD, spline%nz, z_test, rho_test)
+        if (rho_test .gt. rho_max) then
+          rho_max = rho_test
+          rho_max_z = z_test
+        end if
+        z_test = z_test + step
+    end do
+
+    ! note that the density is actually log10(rho)
+    hydroWarpSplinePeak = rho_max
+
+  end function hydroWarpSplinePeak
   !
   ! end hydroWarp stuff
   !

@@ -21,6 +21,7 @@ module gridtype_mod
 
   type hydroSpline
     real(double) :: x
+    real(double) :: scaleHeight
     integer :: nz
     real(double), pointer :: z(:) => null()
     real(double), pointer :: rho(:) => null()
