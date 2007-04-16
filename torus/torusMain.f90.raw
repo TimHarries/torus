@@ -458,7 +458,7 @@
   type(modelatom), allocatable :: thisAtom(:)
   type(TOPBASETYPE) :: thisBase
 
-  type(STREAMTYPE) :: thisStream(1000), currentStream, bigStream
+  type(STREAMTYPE) :: thisStream(2000), currentStream, bigStream
   integer :: nStreams
   
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
@@ -596,7 +596,7 @@
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
         call readAtom(thisAtom(i),atomFilename(i))
-!        call stripAtomLevels(thisAtom(i), 10)
+        call stripAtomLevels(thisAtom(i), 6)
      enddo
   endif
 
@@ -2553,6 +2553,7 @@
        source(1)%position = VECTOR(0.,0.,0.)
        tmp = source(1)%radius * 1.e10  ! [cm]
        source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
+       call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile)
        if (contFluxfile .eq. "blackbody") then
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda)
@@ -2577,6 +2578,10 @@
        source(1)%position = VECTOR(0.,0.,-d1)
        tmp = source(1)%radius * 1.e10  ! [cm]
        source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
+
+       call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile1)
+
+
        if (contFluxfile1 .eq. "blackbody") then
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda)
@@ -2591,6 +2596,9 @@
        source(2)%position = VECTOR(0.,0.,d2)
        tmp = source(2)%radius * 1.e10  ! [cm]
        source(2)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(2)%teff)**4
+
+       call buildSphere(o2s(source(2)%position), real(source(2)%radius), source(2)%surface, 400, contFluxFile2)
+
        if (contFluxfile2 .eq. "blackbody") then
           call fillSpectrumBB(source(2)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda)

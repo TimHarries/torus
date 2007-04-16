@@ -7,6 +7,7 @@ module utils_mod
   use kind_mod
   use vector_mod          ! vector maths
   use constants_mod       ! physical constants
+  use messages_mod
   use unix_mod
   
   implicit none
@@ -3971,6 +3972,30 @@ END SUBROUTINE GAUSSJ
     GO TO 10
   END subroutine indexx_double
 
+
+  subroutine  convertToFnu(nuarray, fArray, n)
+    real :: nuArray(:), fArray(:), nu, lambda
+    real, allocatable :: nuTemp(:), fTemp(:)
+    integer :: i, n
+
+
+    allocate(nuTemp(1:n), fTemp(1:n))
+    if (nuArray(1) < 1.d5) then
+       call writeWarning("Surface flux file appears to be in wavelength space: converting")
+       do i = 1, n
+          lambda = nuArray(i)*1.d-8 ! angs to cm
+          nu = cSpeed / (1.d-8 * nuArray(i)) ! hz
+          nuTemp(i) = nu
+          fTemp(i) = (fArray(i)/1.d8) ! erg/s/cm^2/angs -> erg/s/cm^2/cm
+          fTemp(i) = fTemp(i) * cspeed / nu**2 ! erg/s/cm^2/Hz
+       end do
+       do i = 1, n
+          nuArray(i) = nuTemp(n-i+1)
+          fArray(i) = fTemp(n-i+1)
+       enddo
+       deallocate(fTemp, nuTemp)
+    endif
+  end subroutine convertToFnu
 
 end module utils_mod
 

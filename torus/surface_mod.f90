@@ -101,6 +101,8 @@ contains
        nNuHotFlux = nNuHotFlux + 1
     end do
     close(unit=20)
+
+    call convertToFnu(surface%nuarray, surface%hnuArray, surface%nNuHotFlux)
     
     n = 0
     do i = 1, nTheta

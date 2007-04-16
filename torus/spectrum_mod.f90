@@ -3,6 +3,7 @@ module spectrum_mod
   use constants_mod
   use atom_mod
   use utils_mod
+  use messages_mod
 
   implicit none
 
@@ -84,7 +85,7 @@ module spectrum_mod
       
 
       if (i1 == i2) then 
-         tot = spectrum%normFlux(i1)*(tlam2 - tlam1)
+         tot = spectrum%flux(i1)*(tlam2 - tlam1)
       else
          tot = 0.d0
          tot = tot + spectrum%flux(i1)*(spectrum%lambda(i1+1)-tlam1)
@@ -212,7 +213,9 @@ module spectrum_mod
 
       goto 999
 
-666   ok = .false.
+666   continue
+      ok = .false.
+      call writeFatal("Error in opening file: "//trim(filename))
 999   continue
 
     end subroutine readSpectrum

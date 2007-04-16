@@ -7127,9 +7127,9 @@ IF ( .NOT. gridConverged ) RETURN
              thisOctal%rho(subcell) = mdot1 / (fourPi * (r*1.d10)**2 * v)
              thisOctal%temperature(subcell) = 0.9d0 * teff1
              thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
-             thisOctal%atomAbundance(subcell, 1) =  1.d-5 / mHydrogen
-             thisOctal%atomAbundance(subcell, 2) =  1.d0 / (4.d0*mHydrogen)
-             thisOctal%atomAbundance(subcell, 3) =  1.d0 / (4.d0*mHydrogen)
+!             thisOctal%atomAbundance(subcell, 1) =  1.d-5 / mHydrogen
+             thisOctal%atomAbundance(subcell, :) =  1.d0 / (4.d0*mHydrogen)
+!             thisOctal%atomAbundance(subcell, 2) =  1.d0 / (4.d0*mHydrogen)
           endif
        else
           direction2 = (rVec - OCTALVECTOR(0.d0, 0.d0, dble(d2)))
@@ -7140,9 +7140,9 @@ IF ( .NOT. gridConverged ) RETURN
              thisOctal%rho(subcell) = mdot2 / (fourPi * (r*1.d10)**2 * v)
              thisOctal%temperature(subcell) = 0.9d0 * teff2
              thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
-             thisOctal%atomAbundance(subcell, 1) =  0.71d0 / mHydrogen
-             thisOctal%atomAbundance(subcell, 2) =  0.27d0 / (4.d0*mHydrogen)
-             thisOctal%atomAbundance(subcell, 3) =  0.27d0 / (4.d0*mHydrogen)
+!             thisOctal%atomAbundance(subcell, 1) =  0.71d0 / mHydrogen
+             thisOctal%atomAbundance(subcell, :) =  0.27d0 / (4.d0*mHydrogen)
+!             thisOctal%atomAbundance(subcell, 2) =  0.27d0 / (4.d0*mHydrogen)
           endif
        endif
     else
@@ -7154,9 +7154,9 @@ IF ( .NOT. gridConverged ) RETURN
           thisOctal%rho(subcell) = mdot1 / (fourPi * (r*1.d10)**2 * v)
           thisOctal%temperature(subcell) = 0.9d0 * teff1
           thisOctal%velocity(subcell) = dble(v/cspeed) * direction2
-          thisOctal%atomAbundance(subcell, 1) =  1.d-5 / mHydrogen
-          thisOctal%atomAbundance(subcell, 2) =  1.d0 / (4.d0*mHydrogen)
-          thisOctal%atomAbundance(subcell, 3) =  1.d0 / (4.d0*mHydrogen)
+!          thisOctal%atomAbundance(subcell, 1) =  1.d-5 / mHydrogen
+          thisOctal%atomAbundance(subcell, :) =  1.d0 / (4.d0*mHydrogen)
+!          thisOctal%atomAbundance(subcell, 2) =  1.d0 / (4.d0*mHydrogen)
        endif
     endif
 
@@ -14170,11 +14170,11 @@ IF ( .NOT. gridConverged ) RETURN
           endif
        end if
        subcell = subcell + 1
+       call freeStream(subcellStream)
     enddo
  
 
-!    call freeStream(subcellStream)
-!    call freeStream(thisStream)
+    call freeStream(octalStream)
   end subroutine splitGridOnStream3
 
 
@@ -14261,6 +14261,12 @@ IF ( .NOT. gridConverged ) RETURN
 10 continue
        read(20,*,end=20) r, theta, phi, v, rho
        if (r < 1.00001d0) then
+          if (nStream /= 0) then
+             if (thisStream(nStream)%nSamples == 1) then
+                write(*,*) "Stream ",nstream, " only has one sample!!!!"
+                nStream = nStream - 1
+             endif
+          endif
           nStream = nStream + 1
           thisStream(nStream)%nSamples = 0
           call allocateStream(thisStream(nStream), 200)
@@ -14284,7 +14290,6 @@ IF ( .NOT. gridConverged ) RETURN
     close(20)
     write(*,*) "Read in ",nStream, " streams."
     do i = 1, nStream
-
        do j = 1, thisStream(i)%nSamples
           if (j == thisStream(i)%nSamples) then
              thisStream(i)%direction(j) = thisStream(i)%position(j) - thisStream(i)%position(j-1)

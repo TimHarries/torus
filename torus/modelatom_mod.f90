@@ -270,6 +270,9 @@ contains
                      case(1)
                         logKappa = 14.47d0 - 2.d0 * log10(nu)
                         photoCrossSection = (10.d0**logKappa)
+                        call phfit2(2,2,1,real(nu*hCgs*ergtoev), x)
+!                        write(*,*) "xsec", x * 1.d-10,photocrosssection
+                        photocrosssection = x * 1.d-10
                      case(2)
                         logKappa = -17.387d0 + 0.679*log10(nu*1.d-14) - 0.727d0*log10(nu*1.d-14)
                         photoCrossSection = (10.d0**logKappa)
@@ -970,7 +973,7 @@ contains
      end function giii_hyd
 
 
-     function bfOpacity(freq, nAtom, thisAtom, pops, ne, temperature, ifreq) result(kappa)
+     function bfOpacity(freq, nAtom, thisAtom, pops, ne, nStar, temperature, ifreq) result(kappa)
        real(double) :: freq
        integer, optional :: ifreq
        integer :: nAtom
@@ -978,7 +981,8 @@ contains
        real(double) :: pops(:,:)
        integer :: iAtom
        integer :: iTrans
-       real(double) :: kappa, nStar,fac, ne, temperature
+       real(double) :: kappa, fac, ne, temperature
+       real(double) :: nStar(:,:)
        integer :: i, j
 
        kappa = 0.d0
@@ -987,19 +991,19 @@ contains
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
              i = thisAtom(iAtom)%iLower(iTrans)
              if (i < 7) then
-!                nStar = BoltzSahaGeneral(thisAtom(iAtom), 1, i, Ne, temperature) * pops(iAtom,thisAtom(iatom)%nLevels)
-!                fac = exp(-hCgs*thisAtom(iAtom)%transFreq(iTrans) / (kerg * temperature))
+                fac = exp(-hCgs*thisAtom(iAtom)%transFreq(iTrans) / (kerg * temperature))
                 if (present(iFreq)) then
                    kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * &
-                        pops(iAtom, i) !- nStar*fac) 
+                        (pops(iAtom, i) - nStar(iatom,i)*fac)
                 else
                    kappa = kappa + photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * &
-                        pops(iAtom, i) !- nStar*fac) 
+                        (pops(iAtom, i) - nStar(iatom,i) *fac) 
                 endif
              endif
           enddo
        enddo
-!       if (kappa /= 0.d0) write(*,*) "kappa",kappa
+       if (kappa < 0.d0) kappa = 0.d0 
+!write(*,*) "kappa",kappa
      end function bfOpacity
 
   function bfEmissivity(freq, nAtom, thisAtom, nStar, temperature, ifreq) result(eta)
@@ -1022,7 +1026,7 @@ contains
 
 !    bound-free
 
-    expFac = exp(-(hcgs*freq)/(kerg*temperature))
+    expFac = exp(-(hcgs*freq)/(kerg*temperature)) * (2.d0 * hCgs * freq**3)/(cSpeed**2)
 
     do iAtom = 1, nAtom
 
@@ -1037,13 +1041,13 @@ contains
                 if (present(ifreq)) then
                    eta = eta + nStar(iAtom,j) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * expFac
                 else
-                   eta = eta + nStar(iAtom,j) * photoCrossSection(thisAtom(iAtom), iTrans, i, freq) * expFac
+                   eta = eta + nStar(iAtom,j) * photoCrossSection(thisAtom(iAtom), iTrans, j, freq) * expFac
                 endif
              endif
           endif
        enddo
     enddo
-    
+
   end function bfEmissivity
 
 

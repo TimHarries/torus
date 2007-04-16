@@ -422,7 +422,7 @@ contains
     integer :: j
     real(double), allocatable :: tauCont(:), jnuCont(:), alphanuCont(:), snuCont(:)
     logical, save :: first = .true.
-    real(double) :: nStar(5,20)
+    real(double) :: nStar(5,40)
 
 
     allocate(tauCont(1:nFreq))
@@ -563,7 +563,7 @@ contains
                 
                 
                 alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-                     thisOctal%ne(subcell),dble(thisOctal%temperature(subcell)), ifreq=ifreq)
+                     thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)), ifreq=ifreq)
                 
                 jnuCont(iFreq) = bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                      nStar, dble(thisOctal%temperature(subcell)),ifreq=ifreq)/fourPi
@@ -678,6 +678,9 @@ contains
     if (hitPhotosphere) then ! don't include weight below - that's done when jbar is calculated
        iElement = getElement(source(sourcenumber)%surface, photoDirection)
        do iFreq = 1, nFreq
+!          write(*,*) freq(ifreq),iCont(ifreq),i_nu(source(sourceNumber), &
+!               freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq)),taucont(ifreq)
+!          write(*,*) freq(ifreq),i_nu(source(sourcenumber),freq(ifreq),ielement)
           iCont(iFreq) = iCont(iFreq) + i_nu(source(sourceNumber), freq(iFreq), iElement)*cosTheta*exp(-tauCont(iFreq))
        enddo
     endif
@@ -841,7 +844,7 @@ contains
           snu = 0.d0
           if (opticallyThickContinuum) then
              alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), ne, &
-                  dble(thisOctal%temperature(subcell)), ifreq=ifreq)
+                  nstar, dble(thisOctal%temperature(subcell)), ifreq=ifreq)
              jnu =  bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                   nstar, &
                   dble(thisOctal%temperature(subcell)),ifreq=ifreq)/fourPi
@@ -920,6 +923,7 @@ contains
     integer :: neIter
     logical :: recalcJbar, neConverged, firstCheckonTau
     character(len=80) :: message
+    logical :: ionized
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   np             ! The number of processes
@@ -943,8 +947,9 @@ contains
      call createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)
 
      allocate(jnuCont(1:nFreq)) 
-
-    call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, .false.)
+     ionized = .false.
+     if (grid%geometry == "gammavel") ionized = .true.
+    call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, ionized)
 
     do i = 1, nAtom
        call addCrossSectionstoAtom(thisAtom(i), nFreq, freq)
@@ -968,7 +973,27 @@ contains
 
     do iAtom = 1, nAtom
        do iTrans = 1, thisAtom(iAtom)%nTrans
-          if (thisAtom(iAtom)%name == "H I".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
+          if (thisAtom(iAtom)%name == "HI".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
+             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
+          endif
+       enddo
+    enddo
+
+! Lyman continuum in detailed balance
+
+    do iAtom = 1, nAtom
+       do iTrans = 1, thisAtom(iAtom)%nTrans
+          if (thisAtom(iAtom)%name == "HeI".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
+             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
+          endif
+       enddo
+    enddo
+
+! Lyman continuum in detailed balance
+
+    do iAtom = 1, nAtom
+       do iTrans = 1, thisAtom(iAtom)%nTrans
+          if (thisAtom(iAtom)%name == "HeII".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
              if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
           endif
        enddo
@@ -994,7 +1019,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 1000
+    nRay = 100
 !    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     do iStage = 1, 2
 
@@ -1203,6 +1228,7 @@ contains
 
                         
                         if (debug) then
+                           write(*,*) "Iteration: ",iter
                            do iatom = 1, size(thisAtom)
                               write(*,*) "Atom: ",thisAtom(iatom)%name
                               write(*,*) "Number density: ",thisOctal%rho(subcell)*thisOctal%atomAbundance(subcell, iatom)
@@ -1217,11 +1243,11 @@ contains
 
                               enddo
                            enddo
-                           if (thisatom(1)%indetailedbalance(4)) then
-                              write(*,*) "Halpha is in detailed balance",tauHalpha
-                           else
-                              write(*,*) "Halpha is NOT in detailed balance",tauHalpha
-                           endif
+!                           if (thisatom(1)%indetailedbalance(4)) then
+!                              write(*,*) "Halpha is in detailed balance",tauHalpha
+!                           else
+!                              write(*,*) "Halpha is NOT in detailed balance",tauHalpha
+!                           endif
                            write(*,*) "Ne: ",ne,dne
                            write(*,*) "T: ",thisOctal%temperature(subcell)
                         endif
@@ -1445,8 +1471,10 @@ contains
              thisOctal%newatomLevel = 1.d-10
              if (.not.ionized) then
                 do iAtom = 1, nAtom
-                   thisOctal%newAtomLevel(1:thisOctal%maxChildren, 1:nAtom, 1) = thisOctal%rho(subcell) &
-                        * thisOctal%atomAbundance(subcell, iAtom)
+                   if (thisAtom(iAtom)%charge == 0) then
+                      thisOctal%newAtomLevel(1:thisOctal%maxChildren, 1:nAtom, 1) = thisOctal%rho(subcell) &
+                           * thisOctal%atomAbundance(subcell, iAtom)
+                   endif
                 enddo
              endif
           endif
@@ -1459,7 +1487,7 @@ contains
           if (ionized) then
              thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
           else
-             thisOctal%ne(subcell) = 1.d-5 * thisOctal%rho(subcell)/mHydrogen
+             thisOctal%ne(subcell) = 1.d-10 * thisOctal%rho(subcell)/mHydrogen
           endif
 
           do iAtom = 1, nAtom
@@ -1722,11 +1750,19 @@ contains
 
           dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
 
+   
+             do k = 1, nAtom
+                do j = 1, thisAtom(k)%nLevels - 1
+                   nStar(k,j) = BoltzSahaGeneral(thisAtom(k), 1, j, thisOctal%ne(subcell), &
+                        dble(thisOctal%temperature(subcell))) * &
+                        Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
+                enddo
+             enddo
           
 
           if (opticallyThickContinuum) then
              dTauCont = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-                  thisOctal%ne(subcell), dble(thisOctal%temperature(subcell))) &
+                  thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell))) &
                   *  (distArray(i)-distArray(i-1)) * 1.d10
              dTau = dTau + dTauCont
           endif
@@ -1736,14 +1772,6 @@ contains
           jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
 
 ! add continuous bf and ff emissivity of hydrogen
-   
-             do k = 1, nAtom
-                do j = 1, thisAtom(k)%nLevels - 1
-                   nStar(k,j) = BoltzSahaGeneral(thisAtom(k), 1, j, thisOctal%ne(subcell), &
-                        dble(thisOctal%temperature(subcell))) * &
-                        Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
-                enddo
-             enddo
        
           jnu = jnu +  bfEmissivity(thisAtom(iatom)%transFreq(iTrans), nAtom, thisAtom, &
                nstar, &
