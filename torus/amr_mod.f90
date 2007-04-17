@@ -14837,6 +14837,7 @@ IF ( .NOT. gridConverged ) RETURN
        endif
        outVec = thisOctal%velocity(subcell) + (abs(r)/x1) * (v1 - thisOctal%velocity(subcell))
     endif
+
   end function getVel
 
 

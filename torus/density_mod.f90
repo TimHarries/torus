@@ -836,7 +836,7 @@ contains
     r = modulus(point)
     testDensity = tiny(testDensity)
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
-       v = 10.d5+(vterm-10.d5)*(1.d0 - grid%rinner/r)
+       v = 1.d5+(vterm-1.d5)*(1.d0 - grid%rinner/r)
        testDensity = mdot / (fourPi * r**2 * v *1.e20)
     endif
   end function wrshellDensity

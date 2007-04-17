@@ -422,7 +422,7 @@ contains
     integer :: j
     real(double), allocatable :: tauCont(:), jnuCont(:), alphanuCont(:), snuCont(:)
     logical, save :: first = .true.
-    real(double) :: nStar(5,40)
+    real(double) :: nStar(5,40), t1
 
 
     allocate(tauCont(1:nFreq))
@@ -456,8 +456,9 @@ contains
    endif
 
 
-!    rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
-   rayVel = getVel(grid, thisOctal, subcell, position, direction)
+    rayVel = amrGridVelocity(grid%octreeRoot, position, startOctal = thisOctal, actualSubcell = subcell)
+
+!   rayVel = getVel(grid, thisOctal, subcell, position, direction)
 
 
     call random_number(r)
@@ -512,12 +513,12 @@ contains
        endif
 
 
-!       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
-       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
+       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+!       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
 
        endPosition = currentPosition + tval * direction
-!       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
-       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
+       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+!       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
 
 
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
@@ -539,8 +540,9 @@ contains
 
           startOctal => thisOctal
           thisPosition = currentPosition + distArray(i)*direction
-!          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
-          thisVel = getVel(grid, thisOctal, subcell, thisposition, direction)
+
+          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+!          thisVel = getVel(grid, thisOctal, subcell, thisposition, direction)
 
 
           alphanuCont = 0.d0
@@ -583,6 +585,7 @@ contains
                 tauCont(iFreq) = tauCont(iFreq) + dtau
              enddo
           endif
+!          write(*,*) tauCont(48),iCont(48),snuCont(48)
 
           dv = deltaV - (thisVel .dot. direction)
 
@@ -637,6 +640,7 @@ contains
 
 
 
+                t1 = dtau
                 dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
                 
 
@@ -658,7 +662,6 @@ contains
 
 
                 tau(iRBB) = tau(iRBB) + dtau
-
              endif
           enddo
        enddo
@@ -918,7 +921,7 @@ contains
     real(double) :: nuStart, nuEnd, ne
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom, ir, ifreq
-    real(double) :: nstar, tauAv, tauHalpha
+    real(double) :: nstar, tauAv, tauHalpha, ratio
     real(double), parameter :: convergeTol = 1.d-5, neTolerance = 1.d-6
     integer :: neIter
     logical :: recalcJbar, neConverged, firstCheckonTau
@@ -949,6 +952,7 @@ contains
      allocate(jnuCont(1:nFreq)) 
      ionized = .false.
      if (grid%geometry == "gammavel") ionized = .true.
+     if (grid%geometry == "wrshell") ionized = .true.
     call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, ionized)
 
     do i = 1, nAtom
@@ -1019,7 +1023,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 100
+    nRay = 1000
 !    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     do iStage = 1, 2
 
@@ -1144,7 +1148,7 @@ contains
 
                                if (iTrans == 4) tauHalpha = tauAv
                                if (firstCheckonTau) then
-                                  if (tauAv > 10.d0) then
+                                  if (tauAv > 1.d2) then
                                      thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
                                   else
                                      thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
@@ -1174,8 +1178,15 @@ contains
                             
                             dPops = newPops - thisOctal%newAtomLevel(subcell,1:nAtom,:) 
                             
+
+                            if (iter > 1)  then
+                               where (abs(dpops/newpops) > 0.1d0) dpops = sign(0.1d0 * newpops,dpops)
+                            endif
+
                             thisOctal%newAtomLevel(subcell,1:nAtom,:)  = &
                                  thisOctal%newAtomLevel(subcell,1:nAtom,:)  + underCorrect * dPops
+
+
                             where (abs(thisOctal%newAtomLevel(subcell,1:nAtom,:)) < 1.d-30)
                                thisOctal%newAtomLevel(subcell,1:nAtom,:) = 1.d-30
                             end where
@@ -1236,10 +1247,12 @@ contains
                                  nStar = boltzSahaGeneral(thisAtom(iAtom), 1, i, ne, &
                                       dble(thisOctal%temperature(subcell))) * &
                                       thisOctal%newAtomLevel(subcell, iatom, thisAtom(iAtom)%nLevels)
-                                 write(*,'(i2,1x,1p,5e12.3)') i,thisOctal%newAtomLevel(subcell,iatom,i),mainoldpops(iatom,i), &
+                                 ratio = boltzSahaGeneral(thisAtom(iAtom), 1, i, ne, &
+                                      dble(thisOctal%temperature(subcell)))
+                                 write(*,'(i2,1x,1p,7e12.3)') i,thisOctal%newAtomLevel(subcell,iatom,i),mainoldpops(iatom,i), &
                                       abs((thisOctal%newAtomLevel(subcell,iAtom,i)-max(mainoldpops(iAtom,i),1.d-20)) &
                                       / max(mainoldpops(iAtom,i),1.d-20)), thisOctal%newAtomLevel(subcell,iatom,i)/nstar, &
-                                      thisOctal%newAtomLevel(subcell,iAtom,i)-mainoldpops(iAtom,i)
+                                      thisOctal%newAtomLevel(subcell,iAtom,i)-mainoldpops(iAtom,i),nstar,ratio
 
                               enddo
                            enddo
@@ -1690,11 +1703,12 @@ contains
        endif
 
 
-!       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
-       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
+       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+!       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
+
        endPosition = currentPosition + tval * direction
-!       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
-       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
+       endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+!       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
 
 
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
@@ -1722,8 +1736,9 @@ contains
 
           startOctal => thisOctal
           thisPosition = currentPosition + distArray(i)*direction
-!          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
-          thisVel = getVel(grid, thisOctal, subcell, thisposition, direction)
+
+          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+!          thisVel = getVel(grid, thisOctal, subcell, thisposition, direction)
 
           thisVel= thisVel - rayVel
 

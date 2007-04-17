@@ -251,6 +251,7 @@ contains
     real(double) :: sigma0, nuThresh, alpha, s, gIIx, gIIy, gIIz
     photoCrossSection = tiny(photoCrossSection)
 
+
     if (iLevel > thisAtom%nLevels) then
        call writeFatal("photocrosssection: Level greater than nlevels")
        stop
@@ -263,7 +264,6 @@ contains
        case(2)
           select case(thisAtom%charge)
              case(0)
-                photoCrossSection = 1.d-30
                 photonEnergy = nu * hCgs * ergtoEv
                 if (photonEnergy > (thisAtom%iPot - thisAtom%energy(iLevel))) then
                    select case(iLevel)  ! from Gingerich 1964
@@ -991,7 +991,8 @@ contains
              iTrans = thisAtom(iAtom)%indexRBFtrans(j)
              i = thisAtom(iAtom)%iLower(iTrans)
              if (i < 7) then
-                fac = exp(-hCgs*thisAtom(iAtom)%transFreq(iTrans) / (kerg * temperature))
+!                fac = exp(-hCgs*thisAtom(iAtom)%transFreq(iTrans) / (kerg * temperature))
+                fac = exp(-hCgs*freq / (kerg * temperature))
                 if (present(iFreq)) then
                    kappa = kappa + quickPhotoCrossSection(thisAtom(iAtom), j, iFreq) * &
                         (pops(iAtom, i) - nStar(iatom,i)*fac)
@@ -1002,8 +1003,14 @@ contains
              endif
           enddo
        enddo
+
+       kappa = kappa + ne * sigmae
+
        if (kappa < 0.d0) kappa = 0.d0 
+
+       
 !write(*,*) "kappa",kappa
+
      end function bfOpacity
 
   function bfEmissivity(freq, nAtom, thisAtom, nStar, temperature, ifreq) result(eta)
