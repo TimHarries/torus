@@ -13736,7 +13736,9 @@ IF ( .NOT. gridConverged ) RETURN
 
           ! We use the log of the densities to avoid numerical funnies in the
           ! spline fitting.
-          newRho = log10(newRho)
+          do j = 1, newnz
+            newRho(j) = log10(newRho(j))
+          enddo
 
           ! Calculate the spline function
           call spline(newzAxis, newRho, newnz, 1.d30, 1.d30, newRhoDD)
