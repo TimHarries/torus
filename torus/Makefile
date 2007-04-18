@@ -65,7 +65,6 @@ ifeq ($(SYSTEM), g95)
     KNOWN_SYSTEM=yes
 endif
 
-
 ifeq ($(SYSTEM), sun)
     F95COMP=sunf95
     F77COMP=sunf95
@@ -232,7 +231,6 @@ ifeq ($(SYSTEM), alpha)
    KNOWN_SYSTEM=yes
 endif
 
-
 ifeq ($(SYSTEM), lamosx)
     F77COMP= ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
     F95COMP= ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
@@ -251,7 +249,6 @@ ifeq ($(SYSTEM), lamosx)
     CFITSIOLIBS=-L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
 endif
 
-
 ifeq ($(SYSTEM), lamosx-intel)
     F95COMP= ${GUANINE_HOME}/csr201/local-i386/bin/mpif77 -fno-pic -read_only_relocs suppress
     F77COMP= ${GUANINE_HOME}/csr201/local-i386/bin/mpif77 -fno-pic -read_only_relocs suppress
@@ -269,8 +266,6 @@ ifeq ($(SYSTEM), lamosx-intel)
     KNOWN_SYSTEM=yes
     CFITSIOLIBS=-L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
 endif
-
-
 
 ifeq ($(SYSTEM), mpilam)
    TOP=/h/rk/mpi_nag
@@ -345,7 +340,6 @@ ifeq ($(SYSTEM), linuxintel)
     KNOWN_SYSTEM=yes
 endif
 
-
 ifeq ($(SYSTEM), mpiintel)
     TOP=$(HOME)/mpi_intel
     TOP2=$(HOME)/mpi_g77
@@ -371,7 +365,6 @@ ifeq ($(SYSTEM), mpiintel)
     KNOWN_SYSTEM=yes
 endif
 
-
 ifeq ($(SYSTEM), openmpi)
    F95COMP=/usr/local/bin/mpif90 -w
    F77COMP=/usr/local/bin/mpif77 -w
@@ -392,8 +385,6 @@ ifeq ($(SYSTEM), openmpi)
    MK_MPI_SRC=yes
    KNOWN_SYSTEM=yes
 endif
-
-
 
 ifeq ($(SYSTEM), miracle)
    F95COMP=f90
@@ -462,7 +453,6 @@ ifeq ($(SYSTEM), omp)
    KNOWN_SYSTEM=yes
 endif
 
-
 ifeq ($(SYSTEM), ceres)
     F95COMP=xlf95 -bloadmap:outp -qmoddir=/lscratch -I/lscratch -qsuffix=f=f90 -qnolm -O3 -qarch=pwr3 -qmaxmem=-1
     F77COMP=xlf -qmoddir=/lscratch -I/lscratch -qsuffix=f=f -qnolm -O3 -qarch=pwr3 -qmaxmem=-1
@@ -484,16 +474,12 @@ ifeq ($(SYSTEM), ceres)
     KNOWN_SYSTEM=yes
 endif
 
-
-
 ifeq ($(SYSTEM), mpig95)
-   TOP=/h/rk/mpi_g95
-   TOP2=
+   TOP=/h/chris/local
    F95COMP=${TOP}/bin/mpif77 -w
    F77COMP=${TOP}/bin/mpif77 -w
-#   FASTFLAG=-O3 -I${TOP}/include  
    FASTFLAG=-O3 -I${TOP}/include  
-   DEBUGFLAG=-g  -I${TOP}/include  
+   DEBUGFLAG=-g -ftrace=full -I${TOP}/include 
    LDFLAG= 
    MATHTRAP=
    UNIXMOD=unix_mod.f90.linuxintel
@@ -552,8 +538,6 @@ ifeq ($(SYSTEM), mpidarwin)
     MK_MPI_SRC = yes
     KNOWN_SYSTEM=yes
 endif
-
-
 
 
 
@@ -649,7 +633,7 @@ LIBS=
 
 
 
-all: preprocess depends $(ALLOBJ)
+all: depends $(ALLOBJ)
    ifeq ($(KNOWN_SYSTEM), yes)
 	@echo ""
 	@echo " Linking object files and libraries..........."
@@ -662,7 +646,7 @@ all: preprocess depends $(ALLOBJ)
 	@echo "             ...setting SOURCE_VARIANT to unknown"
    endif
 
-lib: preprocess depends $(ALLOBJ)
+lib: depends $(ALLOBJ)
    ifeq ($(KNOWN_SYSTEM), yes)
 	@echo ""
 	@echo " Linking object files making a library..........."
@@ -686,16 +670,6 @@ preprocess:
 	ln -sf $(IMAGEF77) image_f77.f
 	ln -sf $(SPECF77) spec_f77.f
 	@echo " ... done"
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' photoion_mod.f90.raw > photoion_mod.f90
-        else
-	   sed '/\!$$MPI/d'   photoion_mod.f90.raw > photoion_mod.f90 
-        endif
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' formal_solutions.f90.raw   > formal_solutions.f90
-        else
-	   sed '/\!$$MPI/d'   formal_solutions.f90.raw   > formal_solutions.f90
-        endif
 
 
 depends: preprocess
@@ -843,9 +817,12 @@ torusMain.o: torusMain.f90.raw TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o
 clean:
 	@/bin/rm -f *.o *~ *.mod *.il *.pc *.d *.rnreg *.life *.cfg *.cse *.combine
 
+distclean: clean
+	@/bin/rm -f make.depends unix_mod.f90 kind_mod.f90 image_f77.f spec_f77.f
+
 
 # including the dependency file
-include make.depends
+-include make.depends
 
 
 
