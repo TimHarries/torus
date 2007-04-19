@@ -461,6 +461,9 @@
   type(STREAMTYPE) :: thisStream(2000), currentStream, bigStream
   integer :: nStreams
   
+  integer :: nFromEnv
+  logical :: photonFromEnvelope
+
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 !  integer ::   iphase_beg, iphase_end  ! the beginning and the end of the phase index.
 
@@ -596,7 +599,7 @@
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
         call readAtom(thisAtom(i),atomFilename(i))
-!        call stripAtomLevels(thisAtom(i), 6)
+        call stripAtomLevels(thisAtom(i), 10)
      enddo
   endif
 
@@ -2477,14 +2480,14 @@
        allocate(source(1:nSource)) 
        source(1)%teff = 30000.  ! o star
        source(1)%radius = 10. * rSol / 1.e10
-       source(1)%position = (VECTOR(0.,0.,1.)*real(autocm))/1.e10
+       source(1)%position = (VECTOR(1.,0.,0.)*real(autocm))/1.e10
        source(1)%luminosity = fourPi * stefanBoltz * (10.*rSol)**2.0 * (source(1)%teff)**4
        call readSpectrum(source(1)%spectrum, "ostar.flx", ok)
        call normalizedSpectrum(source(1)%spectrum)
 
        source(2)%teff = 40000.             ! wr star 
        source(2)%radius = 20. * rSol / 1.e10
-       source(2)%position = (VECTOR(0.,0.,-1)*real(autocm))/1.e10
+       source(2)%position = (VECTOR(-1.,0.,0.)*real(autocm))/1.e10
        source(2)%luminosity = 0.5 * source(1)%luminosity
        call readSpectrum(source(2)%spectrum, "wr.flx", ok)
        call normalizedSpectrum(source(2)%spectrum)
@@ -2760,20 +2763,20 @@
                    nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
               !
               
-              fac = 70.*degtorad
-              do i = 1, 1
-                 ang = real(i-1)/40. * twoPi
-                 octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
-                 write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
-                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
-              enddo
+!              fac = 70.*degtorad
+!              do i = 1, 1
+!                 ang = real(i-1)/40. * twoPi
+!                 octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
+!                 write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
+!                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
+!              enddo
            endif
 
         do i = 1, 40
            ang = twoPi * real(i-1)/40. 
 !           ang = 45.*degtorad
            t = 110.d0*degtorad
-           call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 4, &
+           call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 38, &
                 OCTALVECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
                 source, nsource,i)
         enddo
@@ -4021,22 +4024,22 @@
            
            totEnvelopeEmission = totDustContinuumEmission
            chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
-!           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
-!           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
-!           if (writeoutput) write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
+           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
+           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
+           if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
            
-           weightDust = chanceDust / probDust
-           weightPhoto = (1. - chanceDust) / (1. - probDust)
+!           weightDust = chanceDust / probDust
+!           weightPhoto = (1. - chanceDust) / (1. - probDust)
 
            probDust = chanceDust
            weightDust = 1.
            weightPhoto = 1.
 
            energyPerPhoton =  (totDustContinuumEmission*1.d30 + lCore)/1.d20/dble(nInnerLoop)
-!           if (writeoutput) write(*,*) "WeightDust",weightDust
-!           if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
-!           if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
-!           if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
+           if (writeoutput) write(*,*) "WeightDust",weightDust
+           if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
+           if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
+           if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
 
         endif
 
@@ -4082,6 +4085,8 @@
 !$MPI    
 
 !$OMP DO SCHEDULE(DYNAMIC)
+
+        nFromEnv = 0
         innerPhotonLoop: do i = iInner_beg, iInner_end
 
 
@@ -4138,13 +4143,16 @@
                       nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton,  probDust, weightDust, weightPhoto,&
                       narrowBandImage, vMin, vMax, source, nSource, rHatinStar, energyPerPhoton, filters, mie,&
                       curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,VoigtProf, &
-                      outVec, dopShift=dopShift)
+                      outVec, photonfromEnvelope, dopShift=dopShift)
                  if (thisPhoton%resonanceLine) then
                     r1 = real(i)/real(nPhotons/nOuterLoop)
                     thisPhoton%lambda = xArray(1) + r1*(xArray(nLambda)-xArray(1))
                  endif
 
            end select
+           if (photonFromEnvelope) then
+              nFromEnv = nFromEnv + 1
+           endif
 
 
 !           write(*,*) "after init",thisPhoton%stokes%i,contwindphoton
@@ -4890,6 +4898,8 @@
 !           call plotspec(xArray, yArray, nLambda)
 
         enddo innerPhotonLoop
+
+        write(*,*) "Fraction of photons from envelope: ", real(nFromEnv)/real(nInnerLoop)
 
 !$OMP END DO
 !$OMP END PARALLEL

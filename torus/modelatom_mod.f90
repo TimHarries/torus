@@ -1013,7 +1013,7 @@ contains
 
      end function bfOpacity
 
-  function bfEmissivity(freq, nAtom, thisAtom, nStar, temperature, ifreq) result(eta)
+  function bfEmissivity(freq, nAtom, thisAtom, nStar, temperature, ne, Jnu, ifreq) result(eta)
 
 ! bound-free and free-free continuum emissivity
 
@@ -1027,6 +1027,8 @@ contains
     real(double) :: temperature
     real(double) :: eta
     integer :: i, j, iAtom
+    real(double) :: Jnu ! mean intensity
+    real(double) :: ne
     real(double) :: thresh, photonEnergy, expFac
 
     eta=0.d0
@@ -1054,6 +1056,7 @@ contains
           endif
        enddo
     enddo
+    eta = eta + ne * sigmaE * Jnu ! coherent electron scattering
 
   end function bfEmissivity
 

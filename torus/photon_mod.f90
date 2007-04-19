@@ -342,7 +342,7 @@ contains
        nSpot, chanceSpot, thetaSpot, phiSpot, fSpot, spotPhoton, probDust, weightDust, weightPhoto, &
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
-       VoigtProf, dirObs, dopShift)
+       VoigtProf, dirObs,  photonFromEnvelope, dopShift)
     use input_variables, only : nphotons, photoionization
 
     implicit none

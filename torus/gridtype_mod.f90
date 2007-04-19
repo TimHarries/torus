@@ -158,6 +158,8 @@ module gridtype_mod
      type(GRIDTYPE), pointer :: hydroGrid => null()           ! for the hydrowarp geometry
      type(hydroSpline), pointer :: hydroSplines(:) => null()  ! for the hydrowarp geometry
      
+!     real(double) :: freqArray(2000) ! frequency array for cmf calculations
+!     integer :: nFreqArray ! number of frequency points
 
   end type GRIDTYPE
 

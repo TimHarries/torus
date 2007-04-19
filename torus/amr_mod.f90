@@ -4690,7 +4690,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
 
-   case ("testamr","proto","wrshell")
+   case ("testamr","proto")
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       split = .FALSE.
@@ -4721,6 +4721,31 @@ IF ( .NOT. gridConverged ) RETURN
       endif
 
 !      if (thisOctal%nDepth > 3) split = .false.
+   case ("wrshell")
+      cellSize = thisOctal%subcellSize 
+      cellCentre = subcellCentre(thisOctal,subCell)
+      split = .FALSE.
+      nr1 = 8
+      nr2 = 100
+      rgrid(1) = 0.8
+      rgrid(2) = 0.9
+      rgrid(3) = 0.999
+      rGrid(4) = 1.
+      rGrid(5) = 1.001
+      rGrid(6) = 1.002
+      rGrid(7) = 1.004
+      rGrid(8) = 1.008
+      rGrid(1:nr1) = log10(rGrid(1:nr1)*grid%rInner)
+      nr = nr1 + nr2
+      do i = 1, nr2
+         rgrid(nr1+i) = log10(1.01*grid%rInner)+dble(i)*(log10(grid%rOuter)-log10(1.01*grid%rInner))/dble(nr2)
+      end do
+      rgrid(1:nr) = 10.d0**rgrid(1:nr)
+      r = modulus(cellcentre)-cellsize/2.
+      if (thisOctal%nDepth < 4) split = .true.
+      call locate(rGrid, nr, r, i)      
+      if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
+      if ( (r+cellsize) < rgrid(1)) split = .false.
 
    case("benchmark")
       split = .false.

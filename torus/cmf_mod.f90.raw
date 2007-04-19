@@ -563,12 +563,12 @@ contains
 
              do iFreq = 1, nFreq
                 
-                
                 alphanuCont(ifreq) = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
                      thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)), ifreq=ifreq)
                 
                 jnuCont(iFreq) = bfEmissivity(freq(ifreq), nAtom, thisAtom, &
-                     nStar, dble(thisOctal%temperature(subcell)),ifreq=ifreq)/fourPi
+                     nStar, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), &
+                     thisOctal%jnuCont(subcell,ifreq), ifreq=ifreq)/fourPi
                 
                 if (alphanuCont(ifreq) /= 0.d0) then
                    snuCont(iFreq) = jnuCont(iFreq)/alphanuCont(iFreq)
@@ -651,7 +651,7 @@ contains
                 jnu = jnu + jnuCont(iFreq) 
 
 
-                if (alphanu /= 0.d0) then
+                if (alphanu > 1.d-30) then
                    snu = jnu/alphanu
                 else
                    snu = tiny(snu)
@@ -659,7 +659,7 @@ contains
 
 
                 i0(iRBB) = i0(iRBB) +  exp(-tau(irBB)) * (1.d0-exp(-dtau))*snu
-
+                if (dtau > 1.d10) write(*,*) dtau
 
                 tau(iRBB) = tau(iRBB) + dtau
              endif
@@ -847,10 +847,11 @@ contains
           snu = 0.d0
           if (opticallyThickContinuum) then
              alphanu = bfOpacity(freq(ifreq), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), ne, &
-                  nstar, dble(thisOctal%temperature(subcell)), ifreq=ifreq)
+                  nstar, dble(thisOctal%temperature(subcell)),ifreq=ifreq)
              jnu =  bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                   nstar, &
-                  dble(thisOctal%temperature(subcell)),ifreq=ifreq)/fourPi
+                  dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisOctal%jnuCont(subcell,ifreq), &
+                  ifreq=ifreq)/fourPi
              tau = alphaNu * ds(iray)
              if (alphanu /= 0.d0) then
                 snu = jnu/alphanu
@@ -922,7 +923,7 @@ contains
     integer :: iAtom
     integer :: nHAtom, nHeIAtom, nHeIIatom, ir, ifreq
     real(double) :: nstar, tauAv, tauHalpha, ratio
-    real(double), parameter :: convergeTol = 1.d-5, neTolerance = 1.d-6
+    real(double), parameter :: convergeTol = 1.d-4, neTolerance = 1.d-5
     integer :: neIter
     logical :: recalcJbar, neConverged, firstCheckonTau
     character(len=80) :: message
@@ -953,7 +954,7 @@ contains
      ionized = .false.
      if (grid%geometry == "gammavel") ionized = .true.
      if (grid%geometry == "wrshell") ionized = .true.
-    call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, ionized)
+    call allocateLevels(grid, grid%octreeRoot, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
 
     do i = 1, nAtom
        call addCrossSectionstoAtom(thisAtom(i), nFreq, freq)
@@ -1023,7 +1024,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 1000
+    nRay = 100
 !    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     do iStage = 1, 2
 
@@ -1135,11 +1136,14 @@ contains
                             call calculateJbarCont(thisOctal, subcell, nAtom, thisAtom, ne, nray, ds, source, nSource, &
                                  hitPhotosphere, sourceNumber, freq, nfreq, &
                                  iCont, jnuCont, cosTheta, weight)
+
+                            thisOctal%JnuCont(subcell, :) = jnuCont(:)
+
                             do iRBB = 1, nRBBTrans
                                iTrans = indexRBBTrans(iRBB)
                                iAtom =  indexAtom(iRBB)
                                call calculateJbar(thisOctal, subcell, thisAtom(iAtom), nRay, ds(1:nRay), &
-                                    phi(1:nRay), i0(iRBB,1:nRay), iTrans, thisOctal%jnu(subcell,iRBB), &
+                                    phi(1:nRay), i0(iRBB,1:nRay), iTrans, thisOctal%jnuLine(subcell,iRBB), &
                                     thisOctal%newAtomLevel(subcell,iAtom,1:), &
                                     freq, nFreq, weight(1:nRay), iRBB,tauAv)
 
@@ -1171,7 +1175,7 @@ contains
 
                             newpops = thisOctal%newatomLevel(subcell, 1:nAtom, 1:)
                             call solveLevels(thisOctal, subcell, newPops, &
-                                 thisOctal%jnu(subcell,1:nRBBTrans),  &
+                                 thisOctal%jnuLine(subcell,1:nRBBTrans),  &
                                  dble(thisOctal%temperature(subcell)), nAtom, thisAtom, ne, &
                                  thisOctal%rho(subcell),&
                                  jnuCont, freq, nfreq)
@@ -1451,7 +1455,7 @@ contains
     enddo
   end subroutine calcEtaLine
 
-  recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans, ionized)
+  recursive subroutine  allocateLevels(grid, thisOctal, nAtom, thisAtom, nRBBTrans, nFreq, ionized)
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
     type(octal), pointer   :: thisOctal
@@ -1462,6 +1466,7 @@ contains
     integer :: nRBBTrans
     integer :: iatom
     logical :: ionized
+    integer :: nFreq
 
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1469,7 +1474,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call allocateLevels(grid, child, nAtom, thisAtom, nRBBTrans, ionized)
+                call allocateLevels(grid, child, nAtom, thisAtom, nRBBTrans, nfreq, ionized)
                 exit
              end if
           end do
@@ -1492,9 +1497,14 @@ contains
              endif
           endif
 
-          if (.not.associated(thisOctal%jnu)) then
-             allocate(thisOctal%jnu(1:thisOctal%maxChildren, 1:nRBBTrans))
-             thisOctal%jnu = 1.d-30
+          if (.not.associated(thisOctal%jnuLine)) then
+             allocate(thisOctal%jnuLine(1:thisOctal%maxChildren, 1:nRBBTrans))
+             thisOctal%jnuLine = 1.d-30
+          endif
+
+          if (.not.associated(thisOctal%jnuCont)) then
+             allocate(thisOctal%jnuCont(1:thisOctal%maxChildren, 1:nFreq))
+             thisOctal%jnuCont = 1.d-30
           endif
 
           if (ionized) then
@@ -1581,16 +1591,19 @@ contains
 
 
 
-  function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource) result (i0)
+  function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
+       nFreq, freqArray) result (i0)
     use input_variables, only : opticallyThickContinuum
     type(OCTALVECTOR) :: position, direction, startPosition, pvec, photoDirection
     type(GRIDTYPE) :: grid
     integer :: nSource
+    real(double) :: freqArray(:)
+    integer :: nFreq
     type(SOURCETYPE) :: source(:)
     integer :: iAtom, nAtom
     type(MODELATOM) :: thisAtom(:)
     real(double) :: disttoGrid
-    integer :: itrans
+    integer :: itrans, iFreq
     real(double) :: totDist
     logical :: hitSource
     real(double) :: i0
@@ -1634,11 +1647,14 @@ contains
        if (thisAtom(i)%name == "HeII") nHeIIatom = i
     enddo
 
+
+    call locate(freqArray, nFreq, thisAtom(iAtom)%transFreq(iTrans), iFreq)
+
     distToGrid = distanceToGridFromOutside(grid, position, direction)
 
     if (distToGrid > 1.e29) then
-       write(*,*) "ray does not intersect grid",position,direction
-       i0 = 0.d0
+!       write(*,*) "ray does not intersect grid",position,direction
+       i0 = tiny(i0)
        goto 666
     endif
 
@@ -1670,7 +1686,7 @@ contains
 
 !    write(*,*) "currentposition",sqrt(currentPosition%x**2+currentPosition%y**2),currentPosition%z, &
 !         inOctal(grid%octreeRoot, currentPosition),distTogrid
-    i0 = 1.d-10!0.d0
+    i0 = tiny(i0)!0.d0
     intensityIntegral = 0.0
     tau = 0.d0
     rayVel = OCTALVECTOR(0.d0, 0.d0, 0.d0)
@@ -1716,8 +1732,8 @@ contains
 
        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
 
-       dv1 = abs(deltaV - (startVel .dot. direction))
-       dv2 = abs(deltaV - (endVel .dot. direction))
+       dv1 = abs(deltaV + (startVel .dot. direction))
+       dv2 = abs(deltaV + (endVel .dot. direction))
 
        nTau = 2
 !       if (dvacrosscell > 10.d0) then
@@ -1725,11 +1741,12 @@ contains
 !          write(*,*) modulus(startVel)*cspeed/1.d5,modulus(endVel)*cspeed/1.d5, modulus(thisOctal%velocity(subcell))*cspeed/1.d5
 !       endif
 
-       if (max(dv1,dv2) < 4.d0*thisOctal%microturb(subcell)) then
+       if (max(dv1,dv2) < 3.d0*thisOctal%microturb(subcell)) then
           nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200)
        endif
 
        distArray(1) = 0.d0
+
        do i = 2, nTau
 
           distArray(i) = tval * dble(i-1)/dble(nTau-1)
@@ -1746,12 +1763,14 @@ contains
           dv = (thisVel .dot. direction) + deltaV
 
 
+
           call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
 
           alphanu = (hCgs*thisAtom(iAtom)%transFreq(iTrans)/fourPi) * &
                phiProf(dv, thisOctal%microturb(subcell))/thisAtom(iAtom)%transFreq(iTrans)
 
+          
 
           iUpper = thisAtom(iAtom)%iUpper(iTrans)
           iLower = thisAtom(iAtom)%iLower(iTrans)
@@ -1761,11 +1780,8 @@ contains
           nUpper = thisOctal%atomLevel(subcell,iAtom, iUpper)
           alphanu = alphanu * (nLower * Blu - nUpper * Bul)
 
-!          write(*,*) modulus(currentPosition),nUpper
 
-          dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
-
-   
+          if (i == 2) then
              do k = 1, nAtom
                 do j = 1, thisAtom(k)%nLevels - 1
                    nStar(k,j) = BoltzSahaGeneral(thisAtom(k), 1, j, thisOctal%ne(subcell), &
@@ -1773,14 +1789,22 @@ contains
                         Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
                 enddo
              enddo
+          endif
+
+
+          alphanu = alphanu + bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
+                  thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)))
+
+          dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
+
           
 
-          if (opticallyThickContinuum) then
-             dTauCont = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-                  thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell))) &
-                  *  (distArray(i)-distArray(i-1)) * 1.d10
-             dTau = dTau + dTauCont
-          endif
+!          if (opticallyThickContinuum) then
+!             dTauCont = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
+!                  thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell))) &
+!                  *  (distArray(i)-distArray(i-1)) * 1.d10
+!             dTau = dTau + dTauCont
+!          endif
 
           etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
           etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
@@ -1790,7 +1814,7 @@ contains
        
           jnu = jnu +  bfEmissivity(thisAtom(iatom)%transFreq(iTrans), nAtom, thisAtom, &
                nstar, &
-                  dble(thisOctal%temperature(subcell)))/fourPi
+               dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisOctal%jnuCont(subcell, iFreq))/fourPi
 
 
           if (alphanu /= 0.d0) then
@@ -1801,6 +1825,12 @@ contains
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
           tau = tau + dtau
+
+!          write(*,*) totDist,tau, bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
+!                  thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell))) *  (distArray(i)-distArray(i-1)) * 1.d10, &
+!                  dv*cspeed/1.d5,ntau, dvacrosscell,dv1*cspeed/1.d5,dv2*cspeed/1.d5,&
+!                  thisOCtal%microturb(subcell)*cspeed/1.d5
+
 
 !          if (thisOctal%inFlow(subcell)) then
 !             write(*,*) thisOctal%atomLevel(subcell, iAtom,iLower), thisOctal%atomLevel(subcell, iAtom,iUpper), &
@@ -1859,6 +1889,11 @@ contains
     integer :: iv1, iv2, i
     character(len=30) :: plotfile
     type(DATACUBE) :: cube
+    integer :: nFreqArray
+    integer, parameter :: maxFreq = 2000
+    real(double) :: freqArray(maxFreq)
+
+
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
 !$MPI    integer       ::   np             ! The number of processes
@@ -1873,8 +1908,13 @@ contains
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 
+    call createContFreqArray(nFreqArray, freqArray, nAtom, thisAtom, nsource, source, maxFreq)
 
-    call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
+
+
+    write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
+
+    call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray)
     if (Writeoutput) then
        write(plotfile,'(a,i3.3,a)') "cube",nfile,".ps/ps"
        call plotDataCube(cube, plotfile,withspec=.false.,twopanels=.true.)
@@ -1883,52 +1923,52 @@ contains
     endif
     return
 
-!    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
-!    call plot_AMR_values(grid, "etaLine", "x-z", 0.,  &
-!         "etaline.ps/vcps", .true., .false.)
-    write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
-    
-
-    call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
-
-    nLambda = 10
-
-    iv1 = 1
-    iv2 = nLambda
- 
-!$MPI    iv1 = (my_rank) * (nLambda / (np)) + 1
-!$MPI    iv2 = (my_rank+1) * (nLambda / (np))
-!$MPI    if (my_rank == (np-1)) iv2 = nLambda
-
-
-    allocate(spec(1:nLambda), vArray(1:nLambda))
-    spec = 0.d0
-    do iv = 1, nLambda
-       vArray(iv) = 2200.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
-    enddo
-    do iv = iv1, iv2
-       write(*,*) iv
-       deltaV  = vArray(iv)
-       do iRay = 1, nRay
-          i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource) !minus v 
-          spec(iv) = spec(iv) + i0 * domega(iRay) 
-       enddo
-    enddo
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI     allocate(tempArray(1:nLambda))
-!$MPI       call MPI_ALLREDUCE(spec,tempArray,nLambda,MPI_DOUBLE_PRECISION,&
-!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI    spec(1:nLambda) = tempArray(1:nLambda)
-!$MPI     deallocate(tempArray)
-
-!$MPI    if (my_rank == 0) then
-    open(42, file="spectrum.dat",status="unknown",form="formatted")
-    do i = 1, nLambda
-       write(42, *) vArray(i)*cspeed/1.d5, spec(i)
-    enddo
-    close(42)
-!$MPI endif
-    deallocate(vArray, spec)
+!!    call calcEtaLine(grid%octreeRoot, thisAtom, nAtom, iAtom, iTrans)
+!!    call plot_AMR_values(grid, "etaLine", "x-z", 0.,  &
+!!         "etaline.ps/vcps", .true., .false.)
+!    
+!
+!    call createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
+!
+!    nLambda = 10
+!
+!    iv1 = 1
+!    iv2 = nLambda
+! 
+!!$MPI    iv1 = (my_rank) * (nLambda / (np)) + 1
+!!$MPI    iv2 = (my_rank+1) * (nLambda / (np))
+!!$MPI    if (my_rank == (np-1)) iv2 = nLambda
+!
+!
+!    allocate(spec(1:nLambda), vArray(1:nLambda))
+!    spec = 0.d0
+!    do iv = 1, nLambda
+!       vArray(iv) = 2200.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda-1)-1.d0)
+!    enddo
+!    do iv = iv1, iv2
+!       write(*,*) iv
+!       deltaV  = vArray(iv)
+!       do iRay = 1, nRay
+!          i0 = intensityAlongRay(rayposition(iRay), viewvec, grid, thisAtom, nAtom, iAtom, iTrans, -deltaV, source, nSource, &
+!               grid%nFreqArray, grid%freqArray) !minus v 
+!          spec(iv) = spec(iv) + i0 * domega(iRay) 
+!       enddo
+!    enddo
+!!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!!$MPI     allocate(tempArray(1:nLambda))
+!!$MPI       call MPI_ALLREDUCE(spec,tempArray,nLambda,MPI_DOUBLE_PRECISION,&
+!!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
+!!$MPI    spec(1:nLambda) = tempArray(1:nLambda)
+!!$MPI     deallocate(tempArray)
+!
+!!$MPI    if (my_rank == 0) then
+!    open(42, file="spectrum.dat",status="unknown",form="formatted")
+!    do i = 1, nLambda
+!       write(42, *) vArray(i)*cspeed/1.d5, spec(i)
+!    enddo
+!    close(42)
+!!$MPI endif
+!    deallocate(vArray, spec)
   end subroutine calculateAtomSpectrum
 
 
@@ -2008,12 +2048,15 @@ contains
   end subroutine createRayGrid
 
 
-  subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source)
+  subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
+       nFreqArray, freqArray)
 !$MPI    include 'mpif.h'
 
     integer :: nSource
     type(SOURCETYPE) :: source(:)
     type(MODELATOM) :: thisAtom(:)
+    real(double) :: freqArray(:)
+    integer :: nFreqArray
     integer :: iAtom
     integer :: nAtom
     type(GRIDTYPE) :: grid
@@ -2044,16 +2087,17 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 400, 400, 100)
+    call initCube(cube, 100, 100, 100)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 
-    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.9d0, +grid%octreeRoot%subcellSize*0.9d0, &
-         -grid%octreeRoot%subcellSize*0.9d0, grid%octreeRoot%subcellSize*0.9d0)
+    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
+         -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
 
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
 !         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
-    call addvelocityAxis(cube, -200.d0, 200.d0)
+
+    call addvelocityAxis(cube, -2200.d0, 2200.d0)
 
     xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
     call normalize(xProj)
@@ -2087,7 +2131,7 @@ contains
              do k = 1, cube%nv
                 deltaV = cube%vAxis(k)*1.d5/cSpeed
                 cube%intensity(i,j,k) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
-                     iTrans, -deltaV, source, nSource)
+                     iTrans, -deltaV, source, nSource, nFreqArray, freqArray)
 !                write(*,*) i,j,k,cube%intensity(i,j,k)
              enddo
           enddo

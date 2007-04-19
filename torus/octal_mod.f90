@@ -128,6 +128,8 @@ MODULE octal_mod
     real(double), pointer :: atomAbundance(:,:) ! abundances
     real(double), pointer :: newatomLevel(:,:,:) => null() ! atom level populations
     real(double), pointer :: jnu(:,:) => null() ! molecular level populations
+    real(double), pointer :: jnuCont(:,:) => null()
+    real(double), pointer :: jnuLine(:,:) => null()
     real(double), pointer :: jnugrid(:,:) => null() ! molecular level populations
     real(double), DIMENSION(8) :: NHI            ! neutral H
     real(double), DIMENSION(8) :: NHII            ! HII

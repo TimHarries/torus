@@ -3044,6 +3044,10 @@ contains
        if (error /=0) then
          print *, 'Panic: write error in writeAMRgrid (formatted variables)' ; stop
        end if
+
+!       if (cmf) then
+!          write(unit=20,fmt=*) grid%nFreqArray, grid%freqArray(1:2000)
+!       endif
                
     else
             
@@ -3067,8 +3071,14 @@ contains
        if (error /=0) then
          print *, 'Panic: write error in writeAMRgrid (unformatted variables)' ; stop
        end if
+
+!       if (cmf) then
+!          write(unit=20) grid%nFreqArray, grid%freqArray(1:2000)
+!       endif
+
                
     end if 
+
     
     call writeReal1D(grid%lamarray,fileFormatted)
     call writeReal2D(grid%oneKappaAbs,fileFormatted)
@@ -3157,6 +3167,8 @@ contains
        if (cmf) then
           call writeDouble2D(thisOctal%atomAbundance, fileFormatted)
           call writeDouble3D(thisOctal%atomLevel,fileFormatted)
+          call writeDouble2D(thisOctal%jnuCont,fileFormatted)
+          call writeDouble2D(thisOctal%jnuLine,fileFormatted)
           if (fileformatted) then
              write(unit=20,iostat=error,fmt=*) thisOctal%microturb
           else
@@ -3385,6 +3397,9 @@ contains
        if (cmf) then
           call readDouble2D(thisOctal%atomAbundance, fileFormatted)
           call readDouble3D(thisOctal%atomLevel,fileFormatted)
+          call readDouble2D(thisOctal%jnuCont,fileFormatted)
+          call readDouble2D(thisOctal%jnuLine,fileFormatted)
+
           if (fileformatted) then
              read(unit=20,iostat=error,fmt=*) thisOctal%microturb
           else
