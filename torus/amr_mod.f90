@@ -7312,8 +7312,8 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%inFlow(subcell) = .true.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
-       v = 1.d5+(vterm-1.d5)*(1.d0 - grid%rinner/r)**2
-       thisOctal%microturb(subcell) = 10.d5/cspeed
+       v = 0.1d5+(vterm-0.1d5)*(1.d0 - grid%rinner/r)**2
+       thisOctal%microturb(subcell) = 20.d5/cspeed
        thisOctal%velocity(subcell) = rVec
        thisOctal%inFlow(subcell) = .true.
        call normalize(thisOctal%velocity(subcell))
@@ -7443,7 +7443,7 @@ IF ( .NOT. gridConverged ) RETURN
     wrShellVelocity = OCTALVECTOR(0.d0, 0.d0, 0.d0)
     r = modulus(rVec)
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
-       v = 1.d5+(vterm-1.d5)*(1.d0 - grid%rinner/r)**2
+       v = 0.1d5+(vterm-0.1d5)*(1.d0 - grid%rinner/r)**2
        call normalize(rvec)
        wrshellvelocity = rvec * (v/cSpeed)
     endif

@@ -1056,7 +1056,7 @@ contains
           endif
        enddo
     enddo
-    eta = eta + ne * sigmaE * Jnu ! coherent electron scattering
+    eta = eta +  ne * sigmaE * Jnu ! coherent electron scattering
 
   end function bfEmissivity
 
