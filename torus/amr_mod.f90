@@ -7304,7 +7304,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%temperature(subcell) = 0.9*teff
     thisOctal%etaCont(subcell) = 1.e-30
     thisOctal%inFlow(subcell) = .false.
-    thisOctal%velocity = VECTOR(0.,0.,0.)
+    thisOctal%velocity(subcell) = VECTOR(0.,0.,0.)
 
     if (((r-thisOctal%subcellSize/2.d0) > grid%rInner).and.(r < grid%rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)

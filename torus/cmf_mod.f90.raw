@@ -1831,7 +1831,8 @@ contains
           endif
 
 
-!          write(*,*) totdist,thisOctal%jnucont(subcell, ifreq),tau,snu,i0
+!          write(*,*) totdist,thisOctal%jnucont(subcell, ifreq),tau,snu,i0,modulus(thisOctal%velocity(subcell))*cspeed/1.d5, &
+!               thisOctal%rho(subcell)
 
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
@@ -2101,15 +2102,15 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 400, 400, 100)
+    call initCube(cube, 100, 100, 100)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 
-    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
-         -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
+!    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
+!         -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
 
-!    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
-!         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
+    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
+         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
 
     call addvelocityAxis(cube, -2200.d0, 2200.d0)
 
@@ -2152,19 +2153,19 @@ contains
        enddo
        cube%intensity(:,:,iv) = cube%intensity(:,:,iv) / dble(nMonte)
     enddo
-!$MPI    write(*,*) "Process ",my_rank, " done. awaiting reduce"
-!$MPI    n = (cube%nx*cube%ny*cube%nv)
-!$MPI    allocate(tempArray(1:n), tempArray2(1:n))
-!$MPI    tempArray = reshape(cube%intensity, (/  n /))
+!$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!$MPI    write(*,*) "calling all reduce"
+!$MPI      do iv = 1, cube%nv
+!$MPI        write(*,*) "Process ",my_rank, " done. awaiting reduce"
+!$MPI        n = (cube%nx*cube%ny)
+!$MPI        allocate(tempArray(1:n), tempArray2(1:n))
+!$MPI        tempArray = reshape(cube%intensity(:,:,iv), (/  n /))
+!$MPI         call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
+!$MPI             MPI_SUM,MPI_COMM_WORLD,ierr)
 
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI  write(*,*) "calling all reduce"
-!$MPI       call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
-!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI  write(*,*) "done all reduce"
-
-!$MPI    cube%intensity = reshape(tempArray2, (/ cube%nx, cube%ny, cube%nv /))
-!$MPI    deallocate(tempArray, tempArray2)
+!$MPI        cube%intensity(:,:,iv) = reshape(tempArray2, (/ cube%nx, cube%ny/))
+!$MPI         deallocate(tempArray, tempArray2)
+!$MPI      enddo
 !$MPI    write(*,*) "Process ",my_rank, " reduce done."
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
