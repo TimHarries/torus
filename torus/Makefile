@@ -9,568 +9,556 @@
 #    7. make static=yes  : Make torus with static linking
 #-----------------------------------------------------------------
 
-KNOWN_SYSTEM=no
-debug = no
-pgplot = yes
+pgplot  = yes
 cfitsio = yes
-static = no
-profile= no
-PATH2G2C=/usr/lib/gcc-lib/i386-redhat-linux/3.4.4
-GUANINE_HOME=/Network/Guanine
+debug   = no
+profile = no
+static  = no
 
+PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
+GUANINE_HOME = /Network/Guanine
+
+KNOWN_SYSTEM = no
+
+#
+# Set system-dependent variables
+#
 ifeq ($(SYSTEM), intelmac)
-    F95COMP=g95
-    F77COMP=g95
-    FASTFLAG= -O3
-#    FASTFLAG= -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG=-g -fbounds-check  -ftrace=full
-    STATICFLAG=
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.intelmac
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.miracle
-    SPECF77=spec_f77.f.miracle
-#    F2CLIB=-L$(PATH2G2C) -lg2c
-    STATICLIBS=
-#    STARLIBS=-L/star/lib `ndf_link`
-    PGLIBS=-L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa \
- /System/Library/Frameworks/Cocoa.framework/Cocoa 
-    CFITSIOLIBS=-lcfitsio
+    F95COMP  = g95
+    F77COMP  = g95
+    DEBUGFLAG  = -g -fbounds-check -ftrace=full
+    STATICFLAG =
+    FASTFLAG = -O3
+#    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   = -L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+    CFITSIOLIBS = -lcfitsio
+#    STARLIBS = -L/star/lib `ndf_link`
+#    F2CLIB   = -L$(PATH2G2C) -lg2c
+    EXE = torus.intelmac
     MK_MPI_SRC = no
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), g95)
-    F95COMP=g95
-    F77COMP=g95
-    FASTFLAG= -O3
-#    FASTFLAG= -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG=-g -fbounds-check  -ftrace=full
-    STATICFLAG=
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.g95
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.default
-    SPECF77=spec_f77.f.default
-#    F2CLIB=-L$(PATH2G2C) -lg2c
-    STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link`
-    PGLIBS=-L/star/lib `pgplot_link`
-    CFITSIOLIBS=-lcfitsio
+    F95COMP  = g95
+    F77COMP  = g95
+    DEBUGFLAG  = -g -fbounds-check -ftrace=full
+    STATICFLAG =
+    FASTFLAG = -O3
+#    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    PGLIBS   = -L/star/lib `pgplot_link`
+    CFITSIOLIBS = -lcfitsio
+    STARLIBS = -L/star/lib `ndf_link`
+#    F2CLIB   = -L$(PATH2G2C) -lg2c
+    STATICLIBS =
+    EXE = torus.g95
     MK_MPI_SRC = no
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), sun)
-    F95COMP=sunf95
-    F77COMP=sunf95
-    FASTFLAG= -O3
-#    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG=-g
-    STATICFLAG=
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.sun
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.default
-    SPECF77=spec_f77.f.default
-    F2CLIB=-L$(PATH2G2C) -lg2c
-    STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link`
-    PGLIBS=-L/star/lib `pgplot_link`
+    F95COMP  = sunf95
+    F77COMP  = sunf95
+    DEBUGFLAG  = -g
+    STATICFLAG =
+    FASTFLAG = -O3
+#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    PGLIBS   = -L/star/lib `pgplot_link`
+    STARLIBS = -L/star/lib `ndf_link`
+    F2CLIB   = -L$(PATH2G2C) -lg2c
+    STATICLIBS =
+    EXE = torus.sun
     MK_MPI_SRC = no
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), osx)
-    F95COMP=g95
-    F77COMP=g95
-    FASTFLAG= 
-#    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG=-g
-    STATICFLAG=
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.osx
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.miracle
-    SPECF77=spec_f77.f.miracle
-#    F2CLIB=-L$(PATH2G2C) -lg2c
-    F2CLIB= -L/usr/local/lib -lg2c
-    STATICLIBS=
-#    STARLIBS=-L/star/lib `ndf_link` 
-#    PGLIBS=-L/star/lib `pgplot_link`
-    STARLIBS=-L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11
+    F95COMP  = g95
+    F77COMP  = g95
+    DEBUGFLAG  = -g
+    STATICFLAG =
+    FASTFLAG =
+#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+#    PGLIBS   = -L/star/lib `pgplot_link`
+    PGLIBS   = -L/sw/lib/pgplot -lpgplot
+#    STARLIBS = -L/star/lib `ndf_link` 
+    STARLIBS = -L/usr/X11R6/lib -lX11
+    F2CLIB   = -L/usr/local/lib -lg2c
+    STATICLIBS =
+    EXE = torus.osx
     MK_MPI_SRC = no
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), gfortran)
-    F95COMP=gfortran
-    F77COMP=gfortran
-    FASTFLAG= -O3
-#    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG=-g
-    STATICFLAG=
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.gfortran
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.default
-    SPECF77=spec_f77.f.default
-#    F2CLIB=-L$(PATH2G2C) -lg2c
-    F2CLIB= -L/usr/local/lib -lg2c
-    STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link`
-    PGLIBS=-L/star/lib `pgplot_link`
-#    STARLIBS=-L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
+    F95COMP  = gfortran
+    F77COMP  = gfortran
+    DEBUGFLAG  = -g
+    STATICFLAG =
+    FASTFLAG = -O3
+#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    PGLIBS   = -L/star/lib `pgplot_link`
+    STARLIBS = -L/star/lib `ndf_link`
+#    STARLIBS = -L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
+    F2CLIB   = -L/usr/local/lib -lg2c
+    STATICLIBS =
+    EXE = torus.gfortran
     MK_MPI_SRC = no
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), macmpi)
-    F95COMP=g95 -I/Users/th/macmpi -fno-second-underscore
-    F77COMP=g95 -fno-second-underscore
-    FASTFLAG=
-#    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
-    DEBUGFLAG=-g
-    STATICFLAG= -static
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.macmpi
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.default
-    SPECF77=spec_f77.f.default
-#    F2CLIB=-L$(PATH2G2C) -lg2c
-#    F2CLIB= -L/usr/local/lib -lg2c
-    STATICLIBS=
-    STARLIBS= /local-star/lib/libpgplot.a  -L/Users/th/macmpi -lmacmpi /System/Library/Frameworks/Carbon.framework/Carbon \
--L/usr/lib -lSystemStubs /usr/X11R6/lib/libX11.a /usr/local/lib/libg2c.a \
-/star/lib/libndf.a /star/lib/libary.a \
-/star/lib/libhds.a /star/lib/liberr_standalone.a /star/lib/libpsx.a /star/lib/libchr.a /star/lib/libprm.a \
-/star/lib/libprm_a.a /star/lib/libast.a /star/lib/libast_wcslib.a /star/lib/libast_slalib.a /star/lib/libsla.a \
-/star/lib/libast_grf_2.0.a /star/lib/libast_grf_3.2.a /star/lib/libast_pass2.a /star/lib/libast_ems.a /star/lib/libemsf.a \
-/star/lib/libems.a /star/lib/libcnf.a 
-
-#    STARLIBS=-L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
+    F95COMP  = g95 -I/Users/th/macmpi -fno-second-underscore
+    F77COMP  = g95
+    DEBUGFLAG  = -g
+    STATICFLAG = -static
+    FASTFLAG =
+#    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    STARLIBS = /local-star/lib/libpgplot.a  -L/Users/th/macmpi -lmacmpi /System/Library/Frameworks/Carbon.framework/Carbon -L/usr/lib -lSystemStubs /usr/X11R6/lib/libX11.a /usr/local/lib/libg2c.a /star/lib/libndf.a /star/lib/libary.a /star/lib/libhds.a /star/lib/liberr_standalone.a /star/lib/libpsx.a /star/lib/libchr.a /star/lib/libprm.a /star/lib/libprm_a.a /star/lib/libast.a /star/lib/libast_wcslib.a /star/lib/libast_slalib.a /star/lib/libsla.a /star/lib/libast_grf_2.0.a /star/lib/libast_grf_3.2.a /star/lib/libast_pass2.a /star/lib/libast_ems.a /star/lib/libemsf.a /star/lib/libems.a /star/lib/libcnf.a 
+#    STARLIBS = -L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
+#    F2CLIB   = -L/usr/local/lib -lg2c
+    STATICLIBS =
+    EXE = torus.macmpi
     MK_MPI_SRC = yes
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), gfort)
-    F95COMP=gfc
-    F77COMP=gfc
-#    FASTFLAG= -O3
-    FASTFLAG= -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -static
-    DEBUGFLAG=-g 
-    STATICFLAG=
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.g95
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.default
-    SPECF77=spec_f77.f.default
-    F2CLIB=-L$(PATH2G2C) -lg2c
-    STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` 
-    PGLIBS=-L/star/lib `pgplot_link`
+    F95COMP  = gfc
+    F77COMP  = gfc
+    DEBUGFLAG  = -g 
+    STATICFLAG =
+#    FASTFLAG = -O3
+    FASTFLAG = -O3 -mtune=athlon-mp -march=athlon-mp -msse -mmmx -static
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    PGLIBS   = -L/star/lib `pgplot_link`
+    STARLIBS = -L/star/lib `ndf_link` 
+    F2CLIB   = -L$(PATH2G2C) -lg2c
+    STATICLIBS =
+    EXE = torus.g95
     MK_MPI_SRC = no
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq  ($(SYSTEM), linux)
-#   F95COMP=f95 -maxcontin=2500
-   F95COMP=f95
-   F77COMP=f77
-   FASTFLAG= -w 
-   DEBUGFLAG=-g -C=all
-   DEBUGFLAG=-g
-   STATICFLAG=-Bstatic
-   MATHTRAP=-ieee=stop
-   UNIXMOD=unix_mod.f90.linux
-   KINDMOD=kind_mod.f90.linux
-   EXE=torus.linux
-   F77FLAG=-fno-second-underscore  -w
-   IMAGEF77=image_f77.f.default
-   SPECF77=spec_f77.f.default
-   F2CLIB=-lg2c
-   STATICLIBS=-lpthread
-   STARLIBS=-L/star/lib `ndf_link`
-   PGLIBS=-L/star/lib `pgplot_link`
-   MK_MPI_SRC = no
-   KNOWN_SYSTEM=yes
+#    F95COMP  = f95 -maxcontin=2500
+    F95COMP  = f95
+    F77COMP  = f77
+    DEBUGFLAG  = -g -C=all
+    #DEBUGFLAG  = -g
+    STATICFLAG = -Bstatic
+    FASTFLAG = -w 
+    MATHTRAP = -ieee=stop
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linux
+    KINDMOD  = kind_mod.f90.linux
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    STARLIBS = -L/star/lib `ndf_link`
+    PGLIBS   = -L/star/lib `pgplot_link`
+    F2CLIB   = -lg2c
+    STATICLIBS = -lpthread
+    EXE = torus.linux
+    MK_MPI_SRC = no
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), alpha)
-   F95COMP=f90
-   F77COMP=f77
-   FASTFLAG=-fast
-   DEBUGFLAG=-g
-   STATICFLAG=
-   MATHTRAP=-fpe3
-   UNIXMOD=unix_mod.f90.osf
-   EXE=torus
-   F77FLAG= 
-   IMAGEF77=image_f77.f.default
-   SPECF77=spec_f77.f.default
-   KINDMOD=kind_mod.f90.osf
-   F2CLIB= 
-   STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link`
-   PGLIBS=-L/star/lib `pgplot_link`
-   MK_MPI_SRC = no
-   KNOWN_SYSTEM=yes
+    F95COMP  = f90
+    F77COMP  = f77
+    DEBUGFLAG  = -g
+    STATICFLAG =
+    FASTFLAG = -fast
+    MATHTRAP = -fpe3
+    F77FLAG  =
+    UNIXMOD  = unix_mod.f90.osf
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    KINDMOD  = kind_mod.f90.osf
+    PGLIBS   = -L/star/lib `pgplot_link`
+    STARLIBS = -L/star/lib `ndf_link`
+    F2CLIB   = 
+    STATICLIBS =
+    EXE = torus
+    MK_MPI_SRC = no
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), lamosx)
-    F77COMP= ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
-    F95COMP= ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
-    FASTFLAG= -O0
-    DEBUGFLAG=-g  -ftrace=full
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.lamosx
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.miracle
-    SPECF77=spec_f77.f.miracle
-    STARLIBS=-L${GUANINE_HOME}/csr201/local-ppc/opt/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    F77COMP  = ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
+    F95COMP  = ${GUANINE_HOME}/csr201/local-ppc/bin/mpif77 
+    DEBUGFLAG= -g -ftrace=full
+    FASTFLAG = -O0
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   = -L${GUANINE_HOME}/csr201/local-ppc/opt/pgplot -lpgplot
+    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
+    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    EXE = torus.lamosx
     MK_MPI_SRC = yes
-    KNOWN_SYSTEM=yes
-    CFITSIOLIBS=-L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), lamosx-intel)
-    F95COMP= ${GUANINE_HOME}/csr201/local-i386/bin/mpif77 -fno-pic -read_only_relocs suppress
-    F77COMP= ${GUANINE_HOME}/csr201/local-i386/bin/mpif77 -fno-pic -read_only_relocs suppress
-    FASTFLAG= -O0
-    DEBUGFLAG=-g  -ftrace=full
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.lamosx
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.miracle
-    SPECF77=spec_f77.f.miracle
-    STARLIBS=-L${GUANINE_HOME}/csr201/local-i386/opt/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    F95COMP  = ${GUANINE_HOME}/csr201/local-i386/bin/mpif77 -fno-pic -read_only_relocs suppress
+    F77COMP  = ${GUANINE_HOME}/csr201/local-i386/bin/mpif77 -fno-pic -read_only_relocs suppress
+    DEBUGFLAG= -g -ftrace=full
+    FASTFLAG = -O0
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   = -L${GUANINE_HOME}/csr201/local-i386/opt/pgplot -lpgplot
+    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
+    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    EXE = torus.lamosx
     MK_MPI_SRC = yes
-    KNOWN_SYSTEM=yes
-    CFITSIOLIBS=-L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), mpilam)
-   TOP=/h/rk/mpi_nag
-   TOP2=/h/rk/mpi_g77
-   F95COMP=${TOP}/bin/mpif95 -mismatch
-   F77COMP=${TOP2}/bin/mpif77
-   FASTFLAG= -I${TOP}/include  -dcfuns  -w 
-   DEBUGFLAG=-g -C=all  -I${TOP}/include  -dcfuns 
-   STATICFLAG=-Bstatic
-#   MATHTRAP=-ieee=stop
-   MATHTRAP=
-   UNIXMOD=unix_mod.f90.linux
-   KINDMOD=kind_mod.f90.linux
-   EXE=torus.mpilam
-   F77FLAG=-fno-second-underscore -w
-   IMAGEF77=image_f77.f.default
-   SPECF77=spec_f77.f.default
-   F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
-   STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link` 
-   PGLIBS=-L/star/lib `pgplot_link`
-   MK_MPI_SRC=yes
-   KNOWN_SYSTEM=yes
+    TOP  = /h/rk/mpi_nag
+    TOP2 = /h/rk/mpi_g77
+    F95COMP  = ${TOP}/bin/mpif95 -mismatch
+    F77COMP  = ${TOP2}/bin/mpif77
+    DEBUGFLAG  = -g -C=all -I${TOP}/include -dcfuns 
+    STATICFLAG = -Bstatic
+    FASTFLAG = -I${TOP}/include -dcfuns -w 
+#    MATHTRAP = -ieee=stop
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linux
+    KINDMOD  = kind_mod.f90.linux
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    PGLIBS   = -L/star/lib `pgplot_link`
+    STARLIBS = -L/star/lib `ndf_link` 
+    F2CLIB   = -I${TOP}/include -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
+    STATICLIBS =
+    EXE = torus.mpilam
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), mpich)
-   TOP=/h/th/mpich
-   TOP2=/h/th/mpich_g77
-   F95COMP=${TOP}/bin/mpif90 -mismatch
-   F77COMP=${TOP2}/bin/mpif77
-   FASTFLAG=-O3 -I${TOP}/include -dcfuns -w
-   DEBUGFLAG=-g -I${TOP}/include -dcfuns
-   STATICFLAG=
-#   MATHTRAP=-ieee=stop
-   MATHTRAP=
-   UNIXMOD=unix_mod.f90.linux
-   KINDMOD=kind_mod.f90.linux
-   EXE=torus.mpich
-   F77FLAG=-fno-second-underscore -w
-   IMAGEF77=image_f77.f.default
-   SPECF77=spec_f77.f.default
-   F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
-   STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link`
-   PGLIBS=-L/star/lib `pgplot_link`
-   MK_MPI_SRC=yes
-   KNOWN_SYSTEM=yes
+    TOP  = /h/th/mpich
+    TOP2 = /h/th/mpich_g77
+    F95COMP  = ${TOP}/bin/mpif90 -mismatch
+    F77COMP  = ${TOP2}/bin/mpif77
+    DEBUGFLAG  = -g -I${TOP}/include -dcfuns
+    STATICFLAG =
+    FASTFLAG = -O3 -I${TOP}/include -dcfuns -w
+#    MATHTRAP = -ieee=stop
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linux
+    KINDMOD  = kind_mod.f90.linux
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    PGLIBS   = -L/star/lib `pgplot_link`
+    STARLIBS = -L/star/lib `ndf_link`
+    F2CLIB   = -I${TOP}/include -L${TOP}/lib -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
+    STATICLIBS =
+    EXE = torus.mpich
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), linuxintel)
-    F95COMP=ifort 
-    F77COMP=ifort
-#    FASTFLAG= -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
-    FASTFLAG= -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
-#    FASTFLAG= -I/usr/include/nptl -L/usr/lib/nptl -zero 
-    DEBUGFLAG=-g
-    STATICFLAG=
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.linuxintel
-    F77FLAG=-w
-    IMAGEF77=image_f77.f.default
-    SPECF77=spec_f77.f.default
-    PATH2G2C=/usr/lib
-    F2CLIB=-L$(PATH2G2C) -lg2c
-    STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` 
-    PGLIBS=-L/star/lib `pgplot_link`
-    CFITSIOLIBS=-lcfitsio
+    F95COMP  = ifort 
+    F77COMP  = ifort
+    DEBUGFLAG  = -g
+    STATICFLAG =
+    FASTFLAG = -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
+#    FASTFLAG = -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
+#    FASTFLAG = -I/usr/include/nptl -L/usr/lib/nptl -zero 
+    MATHTRAP =
+    F77FLAG  = -w
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    PGLIBS   = -L/star/lib `pgplot_link`
+    CFITSIOLIBS = -lcfitsio
+    STARLIBS = -L/star/lib `ndf_link` 
+    F2CLIB   = -L/usr/lib -lg2c
+    STATICLIBS =
+    EXE = torus.linuxintel
     MK_MPI_SRC = no
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), mpiintel)
-    TOP=$(HOME)/mpi_intel
-    TOP2=$(HOME)/mpi_g77
-    F95COMP=${TOP}/bin/mpif77 -I${TOP}/include -mp 
-    F77COMP=${TOP2}/bin/mpif77 -I${TOP2}/include 
-#    FASTFLAG= -O2 -I/usr/include/nptl -L/usr/lib/nptl -mp
-    FASTFLAG= -O -mp
-    LDFLAG= 
-    DEBUGFLAG=-g -O0 -CA -CV -CS -CB  -mp
-    MATHTRAP= 
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.mpiintel
-    F77FLAG=-fno-second-underscore -w
-    IMAGEF77=image_f77.f.default
-    SPECF77=spec_f77.f.default
-    F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi \
-           -L$(PATH2G2C) -lg2c -lm
-    STATICLIBS=
-    STARLIBS=-L/star/lib `ndf_link` 
-    PGLIBS=-L/star/lib `pgplot_link`
-    MK_MPI_SRC =yes
-    KNOWN_SYSTEM=yes
+    TOP  = $(HOME)/mpi_intel
+    TOP2 = $(HOME)/mpi_g77
+    F95COMP  = ${TOP}/bin/mpif77 -I${TOP}/include -mp 
+    F77COMP  = ${TOP2}/bin/mpif77 -I${TOP2}/include 
+    DEBUGFLAG= -g -O0 -CA -CV -CS -CB -mp
+#    FASTFLAG = -O2 -I/usr/include/nptl -L/usr/lib/nptl -mp
+    FASTFLAG = -O -mp
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    PGLIBS   = -L/star/lib `pgplot_link`
+    STARLIBS = -L/star/lib `ndf_link` 
+    F2CLIB   = -I${TOP}/include -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
+    STATICLIBS =
+    EXE = torus.mpiintel
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), openmpi)
-   F95COMP=/usr/local/bin/mpif90 -w
-   F77COMP=/usr/local/bin/mpif77 -w
-   FASTFLAG=-O3 -I/usr/local/include  
-   DEBUGFLAG=-g -I/usr/local/include  
-   STATICFLAG=
-   MATHTRAP=-ieee=stop
-   UNIXMOD=unix_mod.f90.linuxintel
-   KINDMOD=kind_mod.f90.linuxintel
-   EXE=torus.openmpi
-   F77FLAG=-fno-second-underscore -w
-   IMAGEF77=image_f77.f.default
-   SPECF77=spec_f77.f.default
-   F2CLIB=-I${TOP}/include  -L$(PATH2G2C) -lg2c -lm
-   STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link` 
-   PGLIBS=-L/star/lib `pgplot_link`
-   MK_MPI_SRC=yes
-   KNOWN_SYSTEM=yes
+    F95COMP  = /usr/local/bin/mpif90 -w
+    F77COMP  = /usr/local/bin/mpif77 -w
+    DEBUGFLAG  = -g -I/usr/local/include  
+    STATICFLAG =
+    FASTFLAG = -O3 -I/usr/local/include  
+    MATHTRAP = -ieee=stop
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    PGLIBS   = -L/star/lib `pgplot_link`
+    STARLIBS = -L/star/lib `ndf_link` 
+    F2CLIB   = -I${TOP}/include  -L$(PATH2G2C) -lg2c -lm
+    STATICLIBS =
+    EXE = torus.openmpi
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), miracle)
-   F95COMP=f90
-   F77COMP=f77
-   FASTFLAG=-O -OPT:Olimit=0 -mp -64
-#      FASTFLAG=-OPT:Olimit=0 -O -mp
-   DEBUGFLAG=-g
-   STATICFLAG=
-   MATHTRAP= 
-   UNIXMOD=unix_mod.f90.miracle
-   KINDMOD=kind_mod.f90.miracle
-   EXE=torus.miracle
-   F77FLAG= 
-   IMAGEF77=image_f77.f.miracle
-   SPECF77=spec_f77.f.miracle
-   F2CLIB= 
-   STATICLIBS=
-   STARLIBS=
-   PGLIBS=-L/home/rk/pgplot -lpgplot -lX11
-   MK_MPI_SRC = no
-   KNOWN_SYSTEM=yes
+    F95COMP  = f90
+    F77COMP  = f77
+    DEBUGFLAG  = -g
+    STATICFLAG =
+    FASTFLAG = -O -OPT:Olimit=0 -mp -64
+#    FASTFLAG = -OPT:Olimit=0 -O -mp
+    MATHTRAP =
+    F77FLAG  =
+    UNIXMOD  = unix_mod.f90.miracle
+    KINDMOD  = kind_mod.f90.miracle
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   = -L/home/rk/pgplot -lpgplot -lX11
+    STARLIBS =
+    F2CLIB   = 
+    STATICLIBS =
+    EXE = torus.miracle
+    MK_MPI_SRC = no
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), ukaff1a)
-   F95COMP=mpif90 -qsuffix=f=f90
-   F77COMP=mpif77
-#   FASTFLAG=-O -OPT:Olimit=0 -mp -64
-#      FASTFLAG=-OPT:Olimit=0 -O -mp
-   DEBUGFLAG=-g
-   STATICFLAG=
-   MATHTRAP= 
-   UNIXMOD=unix_mod.f90.miracle
-   KINDMOD=kind_mod.f90.miracle
-   EXE=torus.ukaff1a
-   F77FLAG= 
-   IMAGEF77=image_f77.f.miracle
-   SPECF77=spec_f77.f.miracle
-   F2CLIB= 
-   STATICLIBS=
-   STARLIBS=
-   PGLIBS=-L/home/th/pgplot -lpgplot
-    CFITSIOLIBS=-L/home/th/cfitsio -lcfitsio
-   MK_MPI_SRC = yes
-   KNOWN_SYSTEM=yes
+    F95COMP  = mpif90 -qsuffix=f=f90
+    F77COMP  = mpif77
+    DEBUGFLAG  = -g
+    STATICFLAG =
+#    FASTFLAG = -O -OPT:Olimit=0 -mp -64
+#    FASTFLAG = -OPT:Olimit=0 -O -mp
+    MATHTRAP =
+    F77FLAG  =
+    UNIXMOD  = unix_mod.f90.miracle
+    KINDMOD  = kind_mod.f90.miracle
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   = -L/home/th/pgplot -lpgplot
+    CFITSIOLIBS = -L/home/th/cfitsio -lcfitsio
+    STARLIBS =
+    F2CLIB   = 
+    STATICLIBS =
+    EXE = torus.ukaff1a
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), omp)
-   F95COMP=xlf90_r -qsuffix=f=f90 -q64 -qsmp=omp -qnoipa
-   F77COMP=xlf_r -q64 -qsmp=noauto
-#   FASTFLAG=-O -OPT:Olimit=0 -mp -64
-#      FASTFLAG=-OPT:Olimit=0 -O -mp
-   DEBUGFLAG=-g
-   STATICFLAG=
-   MATHTRAP= 
-   UNIXMOD=unix_mod.f90.miracle
-   KINDMOD=kind_mod.f90.miracle
-   EXE=torus.omp
-   F77FLAG= 
-   IMAGEF77=image_f77.f.miracle
-   SPECF77=spec_f77.f.miracle
-   F2CLIB= 
-   STATICLIBS=
-   STARLIBS=
-   PGLIBS=-L/home/th/pgplot -lpgplot
-   MK_MPI_SRC = no
-   KNOWN_SYSTEM=yes
+    F95COMP  = xlf90_r -qsuffix=f=f90 -q64 -qsmp=omp -qnoipa
+    F77COMP  = xlf_r -q64 -qsmp=noauto
+    DEBUGFLAG  = -g
+    STATICFLAG =
+#    FASTFLAG = -O -OPT:Olimit=0 -mp -64
+#    FASTFLAG = -OPT:Olimit=0 -O -mp
+    MATHTRAP =
+    F77FLAG  =
+    UNIXMOD  = unix_mod.f90.miracle
+    KINDMOD  = kind_mod.f90.miracle
+    SPECF77  = spec_f77.f.miracle
+    IMAGEF77 = image_f77.f.miracle
+    PGLIBS   = -L/home/th/pgplot -lpgplot
+    STARLIBS =
+    F2CLIB   = 
+    STATICLIBS =
+    EXE = torus.omp
+    MK_MPI_SRC = no
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), ceres)
-    F95COMP=xlf95 -bloadmap:outp -qmoddir=/lscratch -I/lscratch -qsuffix=f=f90 -qnolm -O3 -qarch=pwr3 -qmaxmem=-1
-    F77COMP=xlf -qmoddir=/lscratch -I/lscratch -qsuffix=f=f -qnolm -O3 -qarch=pwr3 -qmaxmem=-1
-    FASTFLAG=
-    DEBUGFLAG=-g
-    STATICFLAG=
-    MATHTRAP= 
-    UNIXMOD=unix_mod.f90.aix
-    KINDMOD=kind_mod.f90.aix
-    EXE=torus.aix
-    F77FLAG= 
-    IMAGEF77=image_f77.f.miracle
-    SPECF77=spec_f77.f.miracle
-    F2CLIB= 
-    STATICLIBS=
-    STARLIBS=
-    PGLIBS=-L/usr/lib -lxlf90 -lm -lc -lX11 -L${HOME}/software/pgplot -lpgplot
+    F95COMP  = xlf95 -bloadmap:outp -qmoddir=/lscratch -I/lscratch -qsuffix=f=f90 -qnolm -O3 -qarch=pwr3 -qmaxmem=-1
+    F77COMP  = xlf -qmoddir=/lscratch -I/lscratch -qsuffix=f=f -qnolm -O3 -qarch=pwr3 -qmaxmem=-1
+    DEBUGFLAG  = -g
+    STATICFLAG =
+    FASTFLAG =
+    MATHTRAP =
+    F77FLAG  =
+    UNIXMOD  = unix_mod.f90.aix
+    KINDMOD  = kind_mod.f90.aix
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   = -L/usr/lib -lxlf90 -lm -lc -lX11 -L${HOME}/software/pgplot -lpgplot
+    STARLIBS =
+    F2CLIB   = 
+    STATICLIBS =
+    EXE = torus.aix
     MK_MPI_SRC = no
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), mpig95)
-   TOP=/h/chris/local
-   F95COMP=${TOP}/bin/mpif77 -w
-   F77COMP=${TOP}/bin/mpif77 -w
-   FASTFLAG=-O3 -I${TOP}/include  
-   DEBUGFLAG=-g -ftrace=full -I${TOP}/include 
-   LDFLAG= 
-   MATHTRAP=
-   UNIXMOD=unix_mod.f90.linuxintel
-   KINDMOD=kind_mod.f90.linuxintel
-   EXE=torus.mpig95
-   F77FLAG=-fno-second-underscore -w
-   IMAGEF77=image_f77.f.default
-   SPECF77=spec_f77.f.default
-   F2CLIB=-I${TOP}/include -L${TOP}/lib  -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
-   STATICLIBS=
-   STARLIBS=-L/star/lib `ndf_link` 
-   PGLIBS=-L/star/lib `pgplot_link`
-   CFITSIOLIBS=-lcfitsio
-   MK_MPI_SRC=yes
-   KNOWN_SYSTEM=yes
+    TOP = /h/chris/local
+    F95COMP  = ${TOP}/bin/mpif77 -w
+    F77COMP  = ${TOP}/bin/mpif77 -w
+    DEBUGFLAG= -g -ftrace=full -I${TOP}/include 
+    FASTFLAG = -O3 -I${TOP}/include  
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+    PGLIBS   = -L/star/lib `pgplot_link`
+    CFITSIOLIBS = -lcfitsio
+    STARLIBS = -L/star/lib `ndf_link` 
+    F2CLIB   = -I${TOP}/include -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
+    STATICLIBS =
+    EXE = torus.mpig95
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), darwin)
-    F95COMP=g95
-    F77COMP=g95
-    FASTFLAG= -O3
-    DEBUGFLAG=-g -fbounds-check -Wall
-    LDFLAG=
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=torus.darwin
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.miracle
-    SPECF77=spec_f77.f.miracle
-    STATICLIBS=
-    STARLIBS=-L$(HOME)/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs
-    PGLIBS=-L$(HOME)/pgplot
+    F95COMP  = g95
+    F77COMP  = g95
+    DEBUGFLAG= -g -fbounds-check -Wall
+    FASTFLAG = -O3
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   = -L$(HOME)/pgplot -lpgplot
+    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs
+    STATICLIBS =
+    EXE = torus.darwin
     MK_MPI_SRC = no
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
 ifeq ($(SYSTEM), mpidarwin)
-   TOP=${HOME}/mpi_g95
-   TOP2=${HOME}/mpi_g95
-    F95COMP= ${TOP2}/bin/mpif77 
-    F77COMP= ${TOP2}/bin/mpif77 
-    FASTFLAG= -O3
-    DEBUGFLAG=-g  
-    LDFLAG= 
-    MATHTRAP=
-    UNIXMOD=unix_mod.f90.linuxintel
-    KINDMOD=kind_mod.f90.linuxintel
-    EXE=latticeQED
-    F77FLAG= -w -fno-second-underscore
-    IMAGEF77=image_f77.f.miracle
-    SPECF77=spec_f77.f.miracle
-    STATICLIBS= 
-    STARLIBS=-L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
-    PGLIBS=-L${HOME}/pgplot -lpgplot
+    TOP = ${HOME}/mpi_g95
+    F95COMP  = ${TOP}/bin/mpif77 
+    F77COMP  = ${TOP}/bin/mpif77 
+    DEBUGFLAG= -g  
+    FASTFLAG = -O3
+    MATHTRAP =
+    F77FLAG  = -w -fno-second-underscore
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   = -L${HOME}/pgplot -lpgplot
+    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    STATICLIBS =
+    EXE = latticeQED
     MK_MPI_SRC = yes
-    KNOWN_SYSTEM=yes
+    KNOWN_SYSTEM = yes
 endif
 
-
-
-# Setting additional other options for special cases
-ifeq ($(debug), yes)
-   ETCFLAG =$(DEBUGFLAG)
-   FASTFLAG =
-else 
-   DEBUGFLAG=
-   ETCFLAG =$(DEBUGFLAG)
-endif
-
+#
+# Deal with make options
+#
 ifeq ($(pgplot), no)
-   PGSTUBS= pgplot_stubs.o
-   PGLIBS= 
+   PGSTUBS = pgplot_stubs.o
+   PGLIBS  = 
 else 
-   PGSTUBS= 
+   PGSTUBS = 
 endif
 
 ifeq ($(cfitsio), no)
-   CFITSIOSTUBS= cfitsio_stubs.o
-   CFITSIOLIBS= 
+   CFITSIOSTUBS = cfitsio_stubs.o
+   CFITSIOLIBS  =
 else 
-   CFITSIOSTUBS=
+   CFITSIOSTUBS =
+endif
+
+ifeq ($(debug), yes)
+   ETCFLAG  = $(DEBUGFLAG)
+   FASTFLAG =
+else 
+   ETCFLAG  =
 endif
 
 ifeq ($(profile), yes)
-   ETCFLAG = -pg
+   ETCFLAG += -pg
 endif
 
 ifneq ($(static), yes)
-   STATICFLAG=
-   STATICLIBS=
+   STATICFLAG =
+   STATICLIBS =
 endif
 
 ifeq ($(sph), yes)
@@ -580,250 +568,176 @@ else
    MK_SPH_SRC = no
    MK_PRG_SRC = yes
 endif
+
 #
+# Source files
 #
+F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
+            unix_mod.f90 inputs_mod.f90 stateq_mod.f90 utils_mod.f90 \
+            gaussian_mod.f90 grid_mod.f90 math_mod.f90  photoion_mod.f90 \
+            phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
+            distortion_mod.f90 image_mod.f90 TTauri_mod.f90 puls_mod.f90 \
+            disc_hydro_mod.f90 gas_opacity_mod.f90 torusMain.f90 \
+            integratePath.f90 readIntPro.f90 mieDistPhaseMatrix.f90 \
+            gridtype_mod.f90 getRefractiveIndex.f90 draineCrossSection.f90 \
+            readTioCrossSection.f90 rayleighCrossSection.f90 \
+            fillGridTio.f90 fillGridRayleigh.f90 fillGridMie.f90 \
+            intersectCube.f90 fillGridThomson.f90 cont_read.f90 \
+            getMeanMass.f90 input_variables.f90 amr_mod.f90 octal_mod.f90 \
+            parameters_mod.f90 diffusion_mod.f90 lucy_mod.f90 jets_mod.f90 \
+            dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 \
+            wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 \
+            pixplot_module.f90 sph_data_class.f90 cluster_class.f90 \
+            linked_list_class.f90 timing.f90  isochrone_class.f90 \
+            filter_set_class.f90 ostar_mod.f90 formal_solutions.f90 \
+            cluster_utils.f90 surface_mod.f90  math_mod2.f90 disc_class.f90 \
+            hyd_col_coeff.f90 rotation_variables.f90 function_variables.f90 \
+            flow_speed_variables.f90 clump_mod.f90 parallel_mod.f90 \
+            discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
+            jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
+            modelatom_mod.f90 cmf_mod.f90 datacube_mod.f90 magField.f90 \
+            romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
+            molecular_mod.f90
+
+F77SOURCE = bhmie.f phfit2.f mieDistCrossSection.f palette.f \
+            spec_f77.f image_f77.f 
+
+PGSOURCE  = pgplot_stubs.f90
+
 #
+# Object files
+#
+F90OBJ = $(F90SOURCE:.f90=.o)
+F77OBJ = $(F77SOURCE:.f=.o)
+PGOBJ  = $(PGSOURCE:.f90=.o)
+ALLOBJ = $(F90OBJ) $(F77OBJ) $(PGOBJ)
 
-.SUFFIXES:
-.SUFFIXES: .f .o .f90
+#
+# Compilers and compiler flags
+#
+F90 = $(F95COMP) $(ETCFLAG) $(STATICFLAG) $(FASTFLAG) $(MATHTRAP)
+F77 = $(F77COMP) $(ETCFLAG) $(STATICFLAG) $(FASTFLAG) $(MATHTRAP) $(F77FLAG)
 
-
-F90SOURCE= kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
- unix_mod.f90  inputs_mod.f90 stateq_mod.f90 utils_mod.f90   gaussian_mod.f90  \
- grid_mod.f90 math_mod.f90  photoion_mod.f90  \
- phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 distortion_mod.f90 \
- image_mod.f90 TTauri_mod.f90 puls_mod.f90 disc_hydro_mod.f90 gas_opacity_mod.f90 \
- torusMain.f90 integratePath.f90 readIntPro.f90 \
- mieDistPhaseMatrix.f90 gridtype_mod.f90 \
- getRefractiveIndex.f90 draineCrossSection.f90 \
- readTioCrossSection.f90 rayleighCrossSection.f90 \
- fillGridTio.f90 fillGridRayleigh.f90 fillGridMie.f90 \
- intersectCube.f90 fillGridThomson.f90 cont_read.f90 getMeanMass.f90 \
- input_variables.f90 amr_mod.f90 octal_mod.f90 parameters_mod.f90 diffusion_mod.f90 \
- lucy_mod.f90 jets_mod.f90 dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 \
- wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 pixplot_module.f90 \
- sph_data_class.f90 cluster_class.f90 linked_list_class.f90 timing.f90 \
- isochrone_class.f90 filter_set_class.f90 ostar_mod.f90 formal_solutions.f90 \
- cluster_utils.f90 surface_mod.f90  math_mod2.f90 disc_class.f90 \
- hyd_col_coeff.f90 rotation_variables.f90 function_variables.f90 \
- flow_speed_variables.f90 clump_mod.f90 parallel_mod.f90 \
- discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
- jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
- romanova_class.f90 messages_mod.f90 starburst_mod.f90 molecular_mod.f90 \
- modelatom_mod.f90 cmf_mod.f90 datacube_mod.f90 magField.f90
-
-
-PGSOURCE= pgplot_stubs.f90
-PGOBJ= $(PGSOURCE:.f90=.o)
-
-F77SOURCE= image_f77.f mieDistCrossSection.f palette.f\
-           spec_f77.f bhmie.f phfit2.f
-
-F90OBJ= $(F90SOURCE:.f90=.o)
-
-F77OBJ= $(F77SOURCE:.f=.o)
-
-ALLOBJ= $(F90OBJ) $(F77OBJ) $(PGOBJ)
-
-F90=    $(F95COMP)   $(ETCFLAG) $(STATICFLAG) $(FASTFLAG) $(MATHTRAP)
-F77=    $(F77COMP)   $(ETCFLAG) $(STATICFLAG) $(FASTFLAG) $(MATHTRAP) $(F77FLAG)
-
-LIBDIR=
-LIBS=   
-
-
-
+#
+# Special targets
+#   - New .f90.raw files need to be added to both preprocess *and* distclean.
+#
 all: depends $(ALLOBJ)
-   ifeq ($(KNOWN_SYSTEM), yes)
-	@echo ""
-	@echo " Linking object files and libraries..........."
-	$(F90) -o $(EXE) \
-	$(MODOBJ) $(F77OBJ) $(F90OBJ) $(PGSTUBS) $(PGLIBS) $(CFITSIOSTUBS) $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
-	@echo " ... done"
-   else
-	@echo ""
-	@echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."
-	@echo "             ...setting SOURCE_VARIANT to unknown"
-   endif
+    ifeq ($(KNOWN_SYSTEM), yes)
+	    @echo ""
+	    @echo "Linking object files and libraries..."
+	    $(F90) -o $(EXE) \
+	    $(F77OBJ) $(F90OBJ) \
+	    $(PGSTUBS) $(PGLIBS) $(CFITSIOSTUBS) $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
+	    @echo "...done"
+    else
+	    @echo ""
+	    @echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."
+	    @echo "               ...setting SOURCE_VARIANT to unknown"
+    endif
 
 lib: depends $(ALLOBJ)
-   ifeq ($(KNOWN_SYSTEM), yes)
-	@echo ""
-	@echo " Linking object files making a library..........."
-	$(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(F77OBJ)
-	@echo " ... done"
-   else
-	@echo ""
-	@echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."
-	@echo "             ...setting SOURCE_VARIANT to unknown"
-   endif
-
-
+    ifeq ($(KNOWN_SYSTEM), yes)
+	    @echo ""
+	    @echo "Linking object files making a library..."
+	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(F77OBJ)
+	    @echo "...done"
+    else
+	    @echo ""
+	    @echo "make: WARNING: value of SYSTEM = $(SYSTEM) not recognised..."
+	    @echo "               ...setting SOURCE_VARIANT to unknown"
+    endif
 
 preprocess:
 	@echo ""
-	@echo "Creating TORUS for $(SYSTEM) system..........."
+	@echo "====== Creating TORUS for $(SYSTEM) system ======"
 	@echo ""
-	@echo "Creating links for system dependent files........"
+	@echo "Creating links for system dependent files..."
 	ln -sf $(UNIXMOD) unix_mod.f90
 	ln -sf $(KINDMOD) kind_mod.f90
 	ln -sf $(IMAGEF77) image_f77.f
 	ln -sf $(SPECF77) spec_f77.f
-	@echo " ... done"
-
+	@echo "...done"
+	@echo ""
+	@echo "Processing source files for optional code..."
+    ifeq ($(MK_MPI_SRC), yes)
+	    sed 's/\!$$MPI//g' photoion_mod.f90.raw     > photoion_mod.f90
+	    sed 's/\!$$MPI//g' formal_solutions.f90.raw > formal_solutions.f90
+	    sed 's/\!$$MPI//g' lucy_mod.f90.raw         > lucy_mod.f90
+	    sed 's/\!$$MPI//g' disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
+	    sed 's/\!$$MPI//g' diffusion_mod.f90.raw    > diffusion_mod.f90
+	    sed 's/\!$$MPI//g' stateq_mod.f90.raw       > stateq_mod.f90
+	    sed 's/\!$$MPI//g' molecular_mod.f90.raw    > molecular_mod.f90
+	    sed 's/\!$$MPI//g' cmf_mod.f90.raw          > cmf_mod.f90
+	    sed 's/\!$$MPI//g' parallel_mod.f90.raw     > parallel_mod.f90
+	    sed 's/\!$$MPI//g' torusMain.f90.raw        > torusMain.f90
+    else
+	    sed '/\!$$MPI/d'   photoion_mod.f90.raw     > photoion_mod.f90
+	    sed '/\!$$MPI/d'   formal_solutions.f90.raw > formal_solutions.f90
+	    sed '/\!$$MPI/d'   lucy_mod.f90.raw         > lucy_mod.f90
+	    sed '/\!$$MPI/d'   disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
+	    sed '/\!$$MPI/d'   diffusion_mod.f90.raw    > diffusion_mod.f90
+	    sed '/\!$$MPI/d'   stateq_mod.f90.raw       > stateq_mod.f90
+	    sed '/\!$$MPI/d'   molecular_mod.f90.raw    > molecular_mod.f90
+	    sed '/\!$$MPI/d'   cmf_mod.f90.raw          > cmf_mod.f90
+	    sed '/\!$$MPI/d'   parallel_mod.f90.raw     > parallel_mod.f90
+	    sed '/\!$$MPI/d'   torusMain.f90.raw        > torusMain.f90
+    endif
+    ifeq ($(MK_SPH_SRC), yes)
+	    sed 's/\!$$SPH//g' torusMain.f90            > tmp.f90
+    else
+	    sed '/\!$$SPH/d'   torusMain.f90            > tmp.f90
+    endif
+	mv tmp.f90 torusMain.f90
+    ifeq ($(MK_PRG_SRC), yes)
+	    sed 's/\!$$PRG//g' torusMain.f90            > tmp.f90
+    else
+	    sed '/\!$$PRG/d'   torusMain.f90            > tmp.f90
+    endif
+	mv tmp.f90 torusMain.f90
+	@echo "...done"
 
 depends: preprocess
 	@echo ""
-	@echo "Making dependency file .................."
+	@echo "Making dependency file..."
 	@touch -c make.depends
 	@./makedepend
-	@echo " ... done"
+	@echo "...done"
 	@echo ""
-
 
 mpif.h :
 	@echo " " 
-	@echo "Including mpif.h in the following file............."
+	@echo "Including mpif.h in the following file..."
 	@echo " " 
-
-
-
-
-# General rules to make object files
-%.o: %.f90
-	$(F90) -c $<
-
-%.o: %.f
-	$(F77) -c $<
-
-
-# Specific rules to make object files
-formal_solutions.o : formal_solutions.f90.raw vector_mod.o  constants_mod.o grid_mod.o \
-                     integratePath.o octal_mod.o kind_mod.o surface_mod.o utils_mod.o \
-                     density_mod.o  parallel_mod.o image_mod.o timing.o
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' formal_solutions.f90.raw   > formal_solutions.f90
-        else
-	   sed '/\!$$MPI/d'   formal_solutions.f90.raw   > formal_solutions.f90
-        endif
-	$(F90) -c formal_solutions.f90
-
-lucy_mod.o : lucy_mod.f90.raw amr_mod.o constants_mod.o grid_mod.o phasematrix_mod.o diffusion_mod.o \
-             source_mod.o spectrum_mod.o timing.o vector_mod.o parallel_mod.o dust_mod.o messages_mod.o
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' lucy_mod.f90.raw   > lucy_mod.f90
-        else
-	   sed '/\!$$MPI/d'   lucy_mod.f90.raw   > lucy_mod.f90
-        endif
-	$(F90) -c lucy_mod.f90
-
-disc_hydro_mod.o : disc_hydro_mod.f90.raw lucy_mod.o amr_mod.o constants_mod.o grid_mod.o phasematrix_mod.o \
-             source_mod.o spectrum_mod.o timing.o vector_mod.o messages_mod.o
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
-        else
-	   sed '/\!$$MPI/d'   disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
-        endif
-	$(F90) -c disc_hydro_mod.f90
-
-diffusion_mod.o : diffusion_mod.f90.raw constants_mod.o gridtype_mod.o amr_mod.o vector_mod.o messages_mod.o \
-	grid_mod.o parallel_mod.o
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' diffusion_mod.f90.raw   > diffusion_mod.f90
-        else
-	   sed '/\!$$MPI/d'   diffusion_mod.f90.raw   > diffusion_mod.f90
-        endif
-	$(F90) -c diffusion_mod.f90
-
-stateq_mod.o: stateq_mod.f90.raw cmfgen_class.o constants_mod.o grid_mod.o gridtype_mod.o \
-	hyd_col_coeff.o input_variables.o integratePath.o jets_mod.o \
-	math_mod.o opacity_lte_mod.o parallel_mod.o utils_mod.o vector_mod.o  messages_mod.o
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' stateq_mod.f90.raw > stateq_mod.f90
-        else
-	   sed '/\!$$MPI/d'   stateq_mod.f90.raw > stateq_mod.f90 
-        endif
-	$(F90) -c stateq_mod.f90
-
-photoion_mod.o: photoion_mod.f90.raw source_mod.o timing.o grid_mod.o amr_mod.o constants_mod.o messages_mod.o \
-	parallel_mod.o diffusion_mod.o
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' photoion_mod.f90.raw > photoion_mod.f90
-        else
-	   sed '/\!$$MPI/d'   photoion_mod.f90.raw > photoion_mod.f90 
-        endif
-	$(F90) -c photoion_mod.f90
-
-molecular_mod.o: molecular_mod.f90.raw grid_mod.o amr_mod.o constants_mod.o messages_mod.o \
-	parallel_mod.o kind_mod.o utils_mod.o math_mod.o datacube_mod.o
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' molecular_mod.f90.raw > molecular_mod.f90
-        else
-	   sed '/\!$$MPI/d'   molecular_mod.f90.raw > molecular_mod.f90 
-        endif
-	$(F90) -c molecular_mod.f90
-
-cmf_mod.o: cmf_mod.f90.raw grid_mod.o amr_mod.o constants_mod.o messages_mod.o \
-	parallel_mod.o kind_mod.o utils_mod.o math_mod.o modelatom_mod.o datacube_mod.o
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' cmf_mod.f90.raw > cmf_mod.f90
-        else
-	   sed '/\!$$MPI/d'   cmf_mod.f90.raw > cmf_mod.f90 
-        endif
-	$(F90) -c cmf_mod.f90
-
-
-parallel_mod.o: parallel_mod.f90.raw  
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' parallel_mod.f90.raw > parallel_mod.f90
-        else
-	   sed '/\!$$MPI/d'   parallel_mod.f90.raw > parallel_mod.f90
-        endif
-	$(F90) -c parallel_mod.f90
-
-
-torusMain.o: torusMain.f90.raw TTauri_mod.o amr_mod.o blob_mod.o cluster_class.o \
-	cluster_utils.o cmfgen_class.o constants_mod.o disc_class.o \
-	disc_hydro_mod.o discwind_class.o distortion_mod.o dust_mod.o \
-	filter_set_class.o gas_opacity_mod.o grid_mod.o gridtype_mod.o \
-	image_mod.o input_variables.o inputs_mod.o integratePath.o \
-	isochrone_class.o jet_class.o jets_mod.o kind_mod.o luc_cir3d_class.o \
-	lucy_mod.o math_mod.o phasematrix_mod.o photon_mod.o puls_mod.o \
-	source_mod.o spectrum_mod.o sph_data_class.o stateq_mod.o \
-	surface_mod.o timing.o unix_mod.o utils_mod.o vector_mod.o \
-	wr104_mod.o  messages_mod.o photoion_mod.o  romanova_class.o \
-	starburst_mod.o molecular_mod.o cmf_mod.o
-
-        ifeq ($(MK_MPI_SRC), yes)
-	   sed 's/\!$$MPI//g' torusMain.f90.raw  > torusMain.f90
-        else
-	   sed '/\!$$MPI/d' torusMain.f90.raw  > torusMain.f90
-        endif
-        ifeq ($(MK_SPH_SRC), yes)
-	   sed 's/\!$$SPH//g' torusMain.f90  > tmp.f90
-        else
-	   sed '/\!$$SPH/d' torusMain.f90  > tmp.f90
-        endif
-	mv tmp.f90 torusMain.f90
-        ifeq ($(MK_PRG_SRC), yes)
-	   sed 's/\!$$PRG//g' torusMain.f90  > tmp.f90
-        else
-	   sed '/\!$$PRG/d' torusMain.f90 > tmp.f90
-        endif
-	mv tmp.f90 torusMain.f90
-	$(F90) -c torusMain.f90
-
 
 clean:
 	@/bin/rm -f *.o *~ *.mod *.il *.pc *.d *.rnreg *.life *.cfg *.cse *.combine
 
 distclean: clean
 	@/bin/rm -f make.depends unix_mod.f90 kind_mod.f90 image_f77.f spec_f77.f
+	@/bin/rm -f photoion_mod.f90 formal_solutions.f90 lucy_mod.f90 \
+                disc_hydro_mod.f90 diffusion_mod.f90 stateq_mod.f90 \
+                molecular_mod.f90 cmf_mod.f90 parallel_mod.f90 torusMain.f90
 
+#
+# General rules to make object files
+#
+.SUFFIXES:
 
-# including the dependency file
+%.o: %.f90.raw
+	$(F90) -c $*.f90
+
+%.o: %.f90
+	$(F90) -c $<
+
+%.o: %.f
+	$(F77) -c $<
+
+#
+# Auto-generated dependency file
+#   - 'make depends' must be run before 'make' as the dependencies included
+#     with the directive below are always one step behind the current version
+#
 -include make.depends
-
-
 
 # DO NOT DELETE
