@@ -12,6 +12,11 @@
 # Written by Michael Wester <wester@math.unm.edu> December 27, 1995
 # Cotopaxi (Consulting), Albuquerque, New Mexico
 #
+
+# We don't want to include includes in the dependencies. See CVS log.
+print " ***** Warning: F90 includes *not* listed as dependencies.\n";
+print " *****          See CVS log for details.\n";
+
 open(MAKEFILE, "> make.depends");
 #
 #
@@ -171,7 +176,8 @@ sub MakeDependsf90 {
    foreach $file (<@f90>) {
       open(FILE, $file);
       while (<FILE>) {
-         /^\s*include\s+["\']([^"\']+)["\']/i && push(@incs, $1);
+# We don't want to include includes in the dependencies. See CVS log.
+#         /^\s*include\s+["\']([^"\']+)["\']/i && push(@incs, $1);
          /^\s*use\s+([^\s,!]+)/i && push(@modules, &toLower($1));
          }
       if (defined @incs || defined @modules) {
