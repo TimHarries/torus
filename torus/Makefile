@@ -240,6 +240,24 @@ ifeq ($(SYSTEM), lamosx-intel)
     KNOWN_SYSTEM = yes
 endif
 
+ifeq ($(SYSTEM), ompiosx)
+    F77COMP  = ${GUANINE_HOME}/csr201/local-ppc/opt/openmpi/bin/mpif77 
+    F95COMP  = ${GUANINE_HOME}/csr201/local-ppc/opt/openmpi/bin/mpif77 
+    F77FLAG  = -w -fno-second-underscore
+    DEBUGFLAG= -g -ftrace=full
+    FASTFLAG = -O0
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   = -L${GUANINE_HOME}/csr201/local-ppc/opt/pgplot -lpgplot
+    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
+    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    EXE = torus.ompiosx
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM = yes
+endif
+
 ifeq ($(SYSTEM), mpilam)
     TOP  = /h/rk/mpi_nag
     TOP2 = /h/rk/mpi_g77
