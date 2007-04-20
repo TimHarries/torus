@@ -256,9 +256,9 @@ ifeq ($(SYSTEM), lamosx-intel)
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
     PGLIBS   = -L${GUANINE_HOME}/csr201/local-i386/opt/pgplot -lpgplot
-    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
+    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
-    EXE = torus.lamosx
+    EXE = torus.lamosx-intel
     MK_MPI_SRC = yes
     KNOWN_SYSTEM = yes
 endif
