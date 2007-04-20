@@ -573,7 +573,7 @@ endif
 # Source files
 #
 F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
-            unix_mod.f90 inputs_mod.f90 stateq_mod.f90 utils_mod.f90 \
+            unix_mod.f90  messages_mod.f90 inputs_mod.f90 stateq_mod.f90 utils_mod.f90 \
             gaussian_mod.f90 grid_mod.f90 math_mod.f90  photoion_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
             distortion_mod.f90 image_mod.f90 TTauri_mod.f90 puls_mod.f90 \
@@ -596,7 +596,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
             modelatom_mod.f90 cmf_mod.f90 datacube_mod.f90 magField.f90 \
-            romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
+            romanova_class.f90 starburst_mod.f90 \
             molecular_mod.f90
 
 F77SOURCE = bhmie.f phfit2.f mieDistCrossSection.f palette.f \
@@ -697,6 +697,7 @@ preprocess:
 	mv tmp.f90 torusMain.f90
 	@echo "...done"
 
+
 depends: preprocess
 	@echo ""
 	@echo "Making dependency file..."
@@ -724,14 +725,15 @@ distclean: clean
 #
 .SUFFIXES:
 
-%.o: %.f90.raw
-	$(F90) -c $*.f90
+#%.o: %.f90.raw
+#	$(F90) -c $*.f90
 
 %.o: %.f90
 	$(F90) -c $<
 
 %.o: %.f
 	$(F77) -c $<
+
 
 #
 # Auto-generated dependency file
