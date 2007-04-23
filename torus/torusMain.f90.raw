@@ -2556,11 +2556,11 @@
        source(1)%position = VECTOR(0.,0.,0.)
        tmp = source(1)%radius * 1.e10  ! [cm]
        source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
-       call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile)
        if (contFluxfile .eq. "blackbody") then
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda)
        else
+          call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile)
           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
        endif
        call normalizedSpectrum(source(1)%spectrum)
