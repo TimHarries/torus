@@ -920,6 +920,9 @@ contains
        call getString("contflux", contFluxFile, cLine, nLines, &
             "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
 
+       call getReal("beta", beta, cLine, nLines, &
+            "Wind beta law index: ","(a,f7.0,a)", 1., ok, .true.)
+
        rCore = rCore * rSol / 1.e10
        rInner = rInner * rCore
        rOuter = rOuter * rInner

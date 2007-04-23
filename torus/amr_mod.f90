@@ -7312,7 +7312,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%inFlow(subcell) = .true.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
-       v = 0.1d5+(vterm-0.1d5)*(1.d0 - grid%rinner/r)**2
+       v = 0.1d5+(vterm-0.1d5)*(1.d0 - grid%rinner/r)**beta
        thisOctal%microturb(subcell) = 20.d5/cspeed
        thisOctal%velocity(subcell) = rVec
        thisOctal%inFlow(subcell) = .true.
@@ -7433,7 +7433,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   TYPE(vector)  function wrshellVelocity(point, grid)
-    use input_variables, only : vterm
+    use input_variables, only : vterm, beta
     type(octalvector), intent(in) :: point
     type(octalvector) :: rvec
     type(GRIDTYPE), intent(in) :: grid
@@ -7443,7 +7443,7 @@ IF ( .NOT. gridConverged ) RETURN
     wrShellVelocity = OCTALVECTOR(0.d0, 0.d0, 0.d0)
     r = modulus(rVec)
     if ((r > grid%rInner).and.(r < grid%rOuter)) then
-       v = 0.1d5+(vterm-0.1d5)*(1.d0 - grid%rinner/r)**2
+       v = 0.1d5+(vterm-0.1d5)*(1.d0 - grid%rinner/r)**beta
        call normalize(rvec)
        wrshellvelocity = rvec * (v/cSpeed)
     endif
