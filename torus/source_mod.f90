@@ -157,8 +157,12 @@ module source_mod
 
       tot = 0
       do i = 1, nSource
-         call locate(source(i)%spectrum%lambda, source(i)%spectrum%nLambda, lam, j)
-         tot = tot + source(i)%spectrum%flux(j) * fourPi * (source(i)%radius*1.d10)**2
+         if (lam > source(i)%spectrum%lambda(source(i)%spectrum%nLambda)) then
+           tot = tot + 1.d-200
+         else
+           call locate(source(i)%spectrum%lambda, source(i)%spectrum%nLambda, lam, j)
+           tot = tot + source(i)%spectrum%flux(j) * fourPi * (source(i)%radius*1.d10)**2
+         endif
       enddo
     end function sumSourceLuminosityMonochromatic
 
