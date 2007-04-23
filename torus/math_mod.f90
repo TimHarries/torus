@@ -1282,6 +1282,7 @@ stop
 
     integer :: subcell
     type(octal), pointer  :: child 
+    integer :: nSubcell
 
     if (thisOctal%nChildren > 0) then
             
@@ -1294,21 +1295,22 @@ stop
        
     end if
 
+    nSubcell = thisOctal%maxChildren
 
     if (totalLineProb /= 0.0d0) then
-       thisOctal%probDistLine = thisOctal%probDistLine / totalLineProb
+       thisOctal%probDistLine(1:nSubcell) = thisOctal%probDistLine(1:nSubcell) / totalLineProb
     else
-       thisOctal%probDistLine = 1.0d0
+       thisOctal%probDistLine(1:nSubcell) = 1.0d0
     end if
     
     if (totalContProb /= 0.0d0) then
-       thisOctal%probDistCont = thisOctal%probDistCont / totalContProb
+       thisOctal%probDistCont(1:nSubcell) = thisOctal%probDistCont(1:nSubcell) / totalContProb
     else
-       thisOctal%probDistCont = 1.0d0
+       thisOctal%probDistCont(1:nSubcell) = 1.0d0
     end if
 
-    thisOctal%biasLine3D = thisOctal%biasLine3D * biasCorrectionLine
-    thisOctal%biasCont3D = thisOctal%biasCont3D * biasCorrectionCont
+    thisOctal%biasLine3D(1:nSubcell) = thisOctal%biasLine3D(1:nSubcell) * biasCorrectionLine
+    thisOctal%biasCont3D(1:nSubcell) = thisOctal%biasCont3D(1:nSubcell) * biasCorrectionCont
     
       
   end subroutine computeProbDist3AMR
