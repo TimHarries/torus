@@ -1642,6 +1642,7 @@ contains
     logical :: firstSubcell
     logical :: endLoopAtPhotosphere
     real(double) :: nstar(10,50), rhoCol
+    real(double) :: bfOpac, bfEmiss, x1, x2, fac
     integer :: j, k
     logical :: lineoff, passThroughResonance
 
@@ -1736,32 +1737,46 @@ contains
 !       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
 
 
-       dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
-
-
-       dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
-
        dv1 = deltaV + (startVel .dot. direction)
        dv2 = deltaV + (endVel .dot. direction)
-       passThroughResonance =.false.
-!       write(*,*) dv1*cspeed/1.e5,dv2*cspeed/1.e5
-       if (dv1*dv2 < 0.d0) passThroughResonance = .true.
-       nTau = 2
-!       if (dvacrosscell > 10.d0) then
-!          write(*,*) "dvacrosscell",dvacrosscell,dv1*cspeed/1.d5,dv2*cspeed/1.d5
-!          write(*,*) modulus(startVel)*cspeed/1.d5,modulus(endVel)*cspeed/1.d5, modulus(thisOctal%velocity(subcell))*cspeed/1.d5
-!       endif
 
-       if (passThroughResonance) nTau = 1000
-       if (max(abs(dv1),abs(dv2)) < 3.d0*thisOctal%microturb(subcell)) then
-          nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200)
-       endif
+       dvAcrossCell = abs((dv2-dv1) / thisOctal%microturb(subcell))
 
        distArray(1) = 0.d0
+       distArray(2) = tVal
+       nTau = 2
+
+       passThroughResonance =.false.
+
+       if (dv1*dv2 < 0.d0) then
+          passThroughResonance = .true.
+          x1 = (-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+          x2 = (+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+          if (x1 > x2) then
+             fac = x1
+             x1 = x2
+             x2 = fac
+          endif
+          x1 = max(0.d0, x1)
+          x2 = min(x2, tVal)
+          nTau = 80
+          distArray(1) = 0.d0
+          do i = 1, nTau-1
+             distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
+          enddo
+          distArray(nTau) = tVal
+       endif
+
+
+       if (min(abs(dv1),abs(dv2)) < 3.d0*thisOctal%microturb(subcell)) then
+          nTau = min(max(2, nint(dvAcrossCell * 10.d0)),1000)
+          do i = 1, nTau
+             distArray(i) = tval * dble(i-1)/dble(nTau-1)
+          enddo
+       endif
+
 
        do i = 2, nTau
-
-          distArray(i) = tval * dble(i-1)/dble(nTau-1)
 
           startOctal => thisOctal
           thisPosition = currentPosition + distArray(i)*direction
@@ -1801,22 +1816,16 @@ contains
                         Thisoctal%atomlevel(subcell, k,thisAtom(k)%nLevels)
                 enddo
              enddo
+             bfOpac = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
+                  thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)))
+             bfEmiss = bfEmissivity(thisAtom(iatom)%transFreq(iTrans), nAtom, thisAtom, nstar, &
+               dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisOctal%jnuCont(subcell, iFreq))/fourPi
           endif
 
 
-          alphanu = alphanu + bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-                  thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell)))
+          alphanu = alphanu + bfOpac
 
           dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
-
-          
-
-!          if (opticallyThickContinuum) then
-!             dTauCont = bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-!                  thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell))) &
-!                  *  (distArray(i)-distArray(i-1)) * 1.d10
-!             dTau = dTau + dTauCont
-!          endif
 
           etaLine = hCgs * a * thisAtom(iAtom)%transFreq(iTrans)
           etaLine = etaLine * thisOctal%atomLevel(subcell, iAtom, iUpper)
@@ -1824,9 +1833,7 @@ contains
 
 ! add continuous bf and ff emissivity of hydrogen
        
-          jnu = jnu +  bfEmissivity(thisAtom(iatom)%transFreq(iTrans), nAtom, thisAtom, &
-               nstar, &
-               dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), thisOctal%jnuCont(subcell, iFreq))/fourPi
+          jnu = jnu + bfEmiss
 
           if (alphanu /= 0.d0) then
              snu = jnu/alphanu
@@ -1843,17 +1850,6 @@ contains
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
           tau = tau + dtau
 
-!          write(*,*) totDist,tau, bfOpacity(thisAtom(iAtom)%transFreq(iTrans), nAtom, thisAtom, thisOctal%atomLevel(subcell,:,:), &
-!                  thisOctal%ne(subcell), nstar, dble(thisOctal%temperature(subcell))) *  (distArray(i)-distArray(i-1)) * 1.d10, &
-!                  dv*cspeed/1.d5,ntau, dvacrosscell,dv1*cspeed/1.d5,dv2*cspeed/1.d5,&
-!                  thisOCtal%microturb(subcell)*cspeed/1.d5
-
-
-!          if (thisOctal%inFlow(subcell)) then
-!             write(*,*) thisOctal%atomLevel(subcell, iAtom,iLower), thisOctal%atomLevel(subcell, iAtom,iUpper), &
-!                  etaLine, jnu, alphanu,phiprof(dv, thisOctal%microturb(subcell)), dv*Cspeed/1.d5, &
-!                  thisOctal%microturb(subcell)*cspeed/1.d5
-!          endif
 
        enddo
        rhoCol = rhoCol + distArray(ntau)*thisOctal%rho(subcell)*1.d10
