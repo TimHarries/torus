@@ -1751,8 +1751,14 @@ contains
        if (dv1*dv2 < 0.d0) passThroughResonance = .true.
 
        if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 3.d0*thisOctal%microturb(subcell))) then
-          x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-          x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+          if ( (dv2 - dv1) /= 0.d0) then
+             x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+             x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+          else
+             x1 = 0.d0
+             x2 = tVal
+          endif
+
           if (x1 > x2) then
              fac = x1
              x1 = x2
