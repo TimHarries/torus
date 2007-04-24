@@ -1625,7 +1625,7 @@ contains
     integer :: iLower , iUpper
     real(double) :: dv, deltaV
     integer :: i, icount
-    real(double) :: distArray(200), tval
+    real(double) :: distArray(1000), tval
     integer :: nTau
     real(double) :: nLower, nUpper
     real(double) :: dTau, etaline, didtau, tau
@@ -1752,7 +1752,7 @@ contains
 !          write(*,*) modulus(startVel)*cspeed/1.d5,modulus(endVel)*cspeed/1.d5, modulus(thisOctal%velocity(subcell))*cspeed/1.d5
 !       endif
 
-       if (passThroughResonance) nTau = 200
+       if (passThroughResonance) nTau = 1000
        if (max(abs(dv1),abs(dv2)) < 3.d0*thisOctal%microturb(subcell)) then
           nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200)
        endif
