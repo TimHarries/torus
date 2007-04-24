@@ -1747,11 +1747,12 @@ contains
        nTau = 2
 
        passThroughResonance =.false.
+       
+       if (dv1*dv2 < 0.d0) passThroughResonance = .true.
 
-       if (dv1*dv2 < 0.d0) then
-          passThroughResonance = .true.
-          x1 = (-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-          x2 = (+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+       if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 3.d0*thisOctal%microturb(subcell))) then
+          x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+          x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
           if (x1 > x2) then
              fac = x1
              x1 = x2
@@ -1761,20 +1762,17 @@ contains
           x2 = min(x2, tVal)
           nTau = 80
           distArray(1) = 0.d0
-          do i = 1, nTau-1
+          do i = 2, nTau-1
              distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
           enddo
           distArray(nTau) = tVal
        endif
 
-
-       if (min(abs(dv1),abs(dv2)) < 3.d0*thisOctal%microturb(subcell)) then
-          nTau = min(max(2, nint(dvAcrossCell * 10.d0)),1000)
-          do i = 1, nTau
-             distArray(i) = tval * dble(i-1)/dble(nTau-1)
-          enddo
+       if (.not.thisOctal%inflow(subcell)) then
+          distArray(1) = 0.d0
+          distArray(2) = tVal
+          nTau = 2
        endif
-
 
        do i = 2, nTau
 
@@ -1789,7 +1787,9 @@ contains
 
           dv = (thisVel .dot. direction) + deltaV
 
-
+!          if (abs(dv)*cspeed/1.d5 < 100.d0) then
+!             write(*,*) i,distArray(i), dv1*cspeed/1.e5,dv2*cspeed/1.e5,x1,x2,tval,dv*cspeed/1.e5
+!          endif
 
           call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
@@ -2148,7 +2148,9 @@ contains
              rayPos =  (xval * xProj) + (yval * yProj)
              raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*3.d0) * Viewvec)
              deltaV = cube%vAxis(iv)*1.d5/cSpeed
-             
+
+
+             deltaV = 0.d0
 
                 cube%intensity(ix,iy,iv) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
                      iTrans, -deltaV, source, nSource, nFreqArray, freqArray)
