@@ -1768,7 +1768,7 @@ contains
           x2 = min(x2, tVal)
           nTau = 80
           distArray(1) = 0.d0
-          do i = 2, nTau-1
+          do i = 1, nTau-1
              distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
           enddo
           distArray(nTau) = tVal
@@ -2109,7 +2109,7 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 400, 400, 100)
+    call initCube(cube, 100, 100, 100)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 
@@ -2155,8 +2155,6 @@ contains
              raypos = rayPos + ((-1.d0*grid%octreeRoot%subcellsize*3.d0) * Viewvec)
              deltaV = cube%vAxis(iv)*1.d5/cSpeed
 
-
-             deltaV = 0.d0
 
                 cube%intensity(ix,iy,iv) = intensityAlongRay(rayPos, viewVec, grid, thisAtom, nAtom, iAtom, &
                      iTrans, -deltaV, source, nSource, nFreqArray, freqArray)
