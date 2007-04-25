@@ -369,21 +369,22 @@ ifeq ($(SYSTEM), mpiintel)
 endif
 
 ifeq ($(SYSTEM), openmpi)
-    F95COMP  = /usr/local/bin/mpif90
-    F77COMP  = /usr/local/bin/mpif77
+    TOP = /h/chris/local/opt/openmpi
+    F95COMP  = ${TOP}/bin/mpif77
+    F77COMP  = ${TOP}/bin/mpif77
     F95FLAG  = -w
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g
-    FASTFLAG = -O3
-    MATHTRAP = -ieee=stop
-    MPI_INC  = -I/usr/local/include
+    DEBUGFLAG= -g -ftrace=full
+#    FASTFLAG = -O3
+    MPI_INC  = -I${TOP}/include
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
     PGLIBS   = -L/star/lib `pgplot_link`
+    CFITSIOLIBS = -lcfitsio
     STARLIBS = -L/star/lib `ndf_link` 
-    F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c -lm
+    F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
     EXE = torus.openmpi
     MK_MPI_SRC = yes
     KNOWN_SYSTEM = yes
@@ -464,7 +465,7 @@ ifeq ($(SYSTEM), mpig95)
     F95FLAG  = -w
     F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -ftrace=full
-    FASTFLAG = -O3
+#    FASTFLAG = -O3
     MPI_INC  = -I${TOP}/include
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
