@@ -1233,6 +1233,9 @@ contains
          "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
     call getReal("hcoabundance", hcoabundance, cLine, nLines, &
          "HCO+ Adbundance:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+    call getLogical("useDust", useDust, cLine, nLines, &
+         "Calculate dontinuum emission from dust ", "(a,1l,1x,a)", .true., ok, .false.)
+
 
 endif
 

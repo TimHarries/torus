@@ -16,10 +16,18 @@ module molecular_mod
   implicit none
 
 ! Define data structures used within code - MOLECULETYPE holds parameters unique to a particular molecule
-! DATACUBE is used for data visualisation (intensity for x,y and v)
+! Telescope holds data about particular telescopes
 
 ! Much of this code is our interpretation of the 2000 paper by F. v.d. Tak and M. Hogerheijde - and the 
 ! 2002 paper by G-J. v. Zadelhoff et al
+
+  type TELESCOPE
+     
+     character(len=10) :: label
+     real :: diameter
+     real :: beamsize ! in arcsecs
+     
+  end type TELESCOPE
 
   type MOLECULETYPE
 
@@ -503,6 +511,9 @@ contains
 
 ! Make a 'ray' with a random position - then use it to update intensity and opacity
   subroutine getRay(grid, fromOctal, fromSubcell, position, direction, ds, phi, i0, thisMolecule)
+
+    use input_variables, only : useDust
+
     type(MOLECULETYPE) :: thisMolecule
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
@@ -512,14 +523,14 @@ contains
     integer :: iTrans
     type(OCTALVECTOR) :: position, direction, currentPosition, thisPosition, thisVel
     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
-    real(double) :: alphanu, snu, jnu
+    real(double) :: alphanu(2), alpha, snu, jnu
     integer :: iLower , iUpper
     real(double) :: dv, deltaV
     integer :: i
     real(double) :: distArray(200), tval
     integer :: nTau
     real(double) :: nLower, nUpper
-    real(double) :: dTau, etaline, didtau
+    real(double) :: dTau, etaline, kappaAbs 
     real(double), allocatable :: tau(:)
     real(double) :: intensityIntegral
     real(double) :: dvAcrossCell, projVel
@@ -555,7 +566,7 @@ contains
 
     currentPosition = position + ds * direction
 
-    phi2 = phi1 ! assume constant turbulence
+    phi2 = phi1
     if (inOctal(grid%octreeRoot, currentPosition)) then ! check that we're still on the grid
        thisVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal) 
        projVel = deltaV - (thisVel.dot.direction)
@@ -586,8 +597,9 @@ contains
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction) ! start - end
        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
 
-       nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200) ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
+!       nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200) ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
 !       write(*,*) ntau
+        nTau = 10
 
        distArray(1) = 0.d0
        do i = 2, nTau
@@ -603,8 +615,9 @@ contains
           icount = icount + 1
 
           do iTrans = 1, thisMolecule%nTrans
-             alphanu = (hCgs*thisMolecule%transFreq(iTrans)/fourPi) * &
-                  phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans) ! Multiply by transfreq then divide by transFreq??
+             
+             alphanu(1) = (hCgs*thisMolecule%transFreq(iTrans)/fourPi) * &
+                          phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans)
 
              iUpper = thisMolecule%iTransUpper(iTrans)
              iLower = thisMolecule%iTransLower(iTrans)
@@ -612,18 +625,26 @@ contains
              nLower = thisOctal%molecularLevel(subcell,iLower) * thisMolecule%abundance * thisOctal%nh2(subcell)
              nUpper = thisOctal%molecularLevel(subcell,iUpper) * thisMolecule%abundance * thisOctal%nh2(subcell)
 
-             alphanu = alphanu * (nLower * thisMolecule%einsteinBlu(iTrans) - &
+             alphanu(1) = alphanu(1) * (nLower * thisMolecule%einsteinBlu(iTrans) - &
                   nUpper * thisMolecule%einsteinBul(iTrans)) ! Equation 8
 
-             dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10 ! optical depth, dTau = alphanu*ds - between eqs (3) and (4)
+             if(useDust) then
+                call returnKappa(grid, thisOctal, subcell, kappaAbs=kappaAbs)
+                alphanu(2) = kappaAbs!*rho(dust)
+             else
+                alphanu(2) = 0.d0
+             endif
+
+             alpha = alphanu(1) + alphanu(2)
+             dTau = alpha *  (distArray(i)-distArray(i-1)) * 1.d10 ! optical depth, dTau = alphanu*ds - between eqs (3) and (4)
 
              etaLine = hCgs * thisMolecule%einsteinA(iTrans) * thisMolecule%transFreq(iTrans)
              etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * thisOctal%molecularLevel(subcell, iUpper) 
-             jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans) ! jnu, emission coefficient - equation 7
+             jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell)) / thisMolecule%transFreq(iTrans) + &
+                   alphanu(2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell))) ! jnu, emission coefficient - equation 7
 
-
-             if (alphanu /= 0.d0) then
-                snu = jnu/alphanu ! Source function 
+             if (alpha /= 0.d0) then
+                snu = jnu/alpha ! Source function 
              else
                 snu = tiny(snu)
              endif
@@ -632,7 +653,7 @@ contains
              tau(iTrans) = tau(iTrans) + dtau ! contribution to optical depth from this line integral
           enddo
        enddo
-       currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction ! FUDGE - make sure that new position is in new cell
+       currentPosition = currentPosition + (distArray(ntau)+1.d-7*grid%halfSmallestSubcell) * direction ! FUDGE - make sure that new position is in new cell
     enddo
     do iTrans = 1, thisMolecule%nTrans
        i0(iTrans) = i0(iTrans) + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau(iTrans)) ! check this?
@@ -854,7 +875,7 @@ contains
                       iter = iter + 1
                       oldpops = thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels) ! retain old pops before calculating new one
                       do iTrans = 1, thisMolecule%nTrans
-                         call calculateJbar(thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
+                         call calculateJbar(grid, thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
                               phi(1:nRay), i0(iTrans,1:nRay), iTrans, thisOctal%jnu(subcell,iTrans), &
                               thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels)) ! calculate updated Jbar
                       enddo
@@ -862,7 +883,7 @@ contains
                            thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
                            dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
                       fac = maxval(abs((thisOctal%newMolecularLevel(subcell,1:6) - oldpops(1:6))/oldpops(1:6))) ! convergence criterion
-                      if (fac < 1.d-4) popsConverged = .true.
+                      if (fac < 1.d-6) popsConverged = .true.
                       
                       if (iter == maxIter) then
                          popsConverged = .true.
@@ -974,7 +995,11 @@ contains
     stop
   end subroutine molecularLoop
 
-  subroutine calculateJbar(thisOctal, subcell, thisMolecule, nRay, ds, phi, i0, iTrans, jbar, nPops)
+  subroutine calculateJbar(grid, thisOctal, subcell, thisMolecule, nRay, ds, phi, i0, iTrans, jbar, nPops)
+
+    use input_variables, only : useDust
+
+    type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     type(MOLECULETYPE) :: thisMolecule
@@ -985,31 +1010,46 @@ contains
     integer :: iRay
     real(double) :: nLower, nUpper
     real(double) :: jBarInternal, jBarExternal
-    real(double) :: alphanu, jnu, etaline
+    real(double) :: alphanu(2), jnu, etaline, kappaAbs, alpha
     integer :: iUpper, iLower
     real(double) :: tau, snu, sumPhi
 
     jBarExternal = 0.d0
     jBarInternal = 0.d0
 
+    jnu = 0.d0
+
     iUpper = thisMolecule%iTransUpper(iTrans)
     iLower = thisMolecule%iTransLower(iTrans)
-! commented elsewhere in the code... is it possible to stick this in a module and reuse?
+    ! commented elsewhere in the code
     sumPhi = 0.d0
+
     do iRay = 1, nRay
-       alphanu = (hCgs*thisMolecule%transFreq(iTrans)/fourPi)
+       
+       alphanu(1) = hCgs*thisMolecule%transFreq(iTrans)/fourPi 
        nLower = nPops(iLower) * thisMolecule%abundance * thisOctal%nh2(subcell)
        nUpper = nPops(iUpper) * thisMolecule%abundance * thisOctal%nh2(subcell)
        
-       alphanu = alphanu * (nLower * thisMolecule%einsteinBlu(iTrans) - &
+       alphanu(1) = alphanu(1) * (nLower * thisMolecule%einsteinBlu(iTrans) - &
             nUpper * thisMolecule%einsteinBul(iTrans)) * phi(iray)/thisMolecule%transFreq(iTrans)
-       tau = alphaNu * ds(iray)
+       
+       if(useDust) then
+          call returnKappa(grid, thisOctal, subcell, kappaAbs=kappaAbs)
+          alphanu(2) = kappaAbs!*rho(dust)
+          jnu = alphanu(2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
+       else
+          alphanu(2) = 0.d0
+       endif
+
+       alpha = alphanu(1) + alphanu(2)
+       tau = alpha * ds(iray)
 
        etaLine = hCgs * thisMolecule%einsteinA(iTrans) * thisMolecule%transFreq(iTrans)
        etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * nPops(iUpper)
-       jnu = (etaLine/fourPi) * phi(iRay)/thisMolecule%transFreq(iTrans)
-       if (alphanu /= 0.d0) then
-          snu = jnu/alphanu
+       jnu = jnu + (etaLine/fourPi) * phi(iRay)/thisMolecule%transFreq(iTrans)
+
+       if (alpha /= 0.d0) then
+          snu = jnu/alpha
        else
           snu = tiny(snu)
        endif
@@ -1026,7 +1066,8 @@ contains
   end subroutine calculateJbar
 
   function intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV) result (i0)
-    use input_variables, only : amr2d
+
+    use input_variables, only : amr2d, useDust
     type(OCTALVECTOR) :: position, direction, startPosition
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
@@ -1039,14 +1080,15 @@ contains
     real(double) :: ds, phi, r
     type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
-    real(double) :: alphanu, snu, jnu
+    real(double) :: alphanu(2), jnu, snu
+    real(double) :: alpha
     integer :: iLower , iUpper
     real(double) :: dv, deltaV
     integer :: i, icount
     real(double) :: distArray(200), tval
     integer :: nTau
     real(double) :: nLower, nUpper
-    real(double) :: dTau, etaline, didtau, tau
+    real(double) :: dTau, etaline, tau, kappaAbs
     real(double) :: intensityIntegral
     real(double) :: dvAcrossCell
     logical :: debug
@@ -1064,17 +1106,10 @@ contains
 
     iUpper = thisMolecule%iTransUpper(iTrans)
     iLower = thisMolecule%iTransLower(iTrans)
-!    if (debug) write(*,*) "mod(direction)",modulus(direction)
-!    if (debug) write(*,*) "position",position
-!    if (debug) write(*,*) "direction",direction
-!    if (debug) write(*,*) "disttogrid",disttogrid
-!
+
     currentPosition = position + (distToGrid + grid%halfSmallestSubcell) * direction
-!    if (debug) write(*,*) "currentposbef",currentPosition,sqrt(currentPosition%x**2 + currentPosition%y**2), currentposition%z
-!    if (debug) write(*,*) "halfsmallest",grid%halfSmallestSubcell
-    currentPosition = position + (distToGrid + 20.d0 * grid%halfSmallestSubcell) * direction !!! CHECK
-!    if (debug) write(*,*) "currentposaft",currentPosition,sqrt(currentPosition%x**2 + currentPosition%y**2), &
-!         currentPosition%z
+!   currentPosition = position + (distToGrid + 20.d0 * grid%halfSmallestSubcell) * direction !!! CHECK
+
     i0 = 0.d0
     intensityIntegral = 0.0
     tau = 0.d0
@@ -1096,8 +1131,8 @@ contains
        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
 
        !nTau = min(5, nint(dvAcrossCell*10.d0)) !!! CHECK
-       nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200) ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
-!       ntau = 5
+       !nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200) ! selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
+       ntau = 10
        
        distArray(1) = 0.d0
        do i = 2, nTau
@@ -1109,26 +1144,36 @@ contains
           thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
           thisVel= thisVel - rayVel
 
-          dv = (thisVel .dot. direction) - deltaV
+          dv = (thisVel .dot. direction) - deltaV! - DAR 07/03/2007
 
-
-          alphanu = (hCgs*thisMolecule%transFreq(iTrans)/fourPi) * &
+          alphanu(1) = (hCgs*thisMolecule%transFreq(iTrans)/fourPi) * &
                phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans)
           
           nLower = thisOctal%molecularLevel(subcell,iLower) * thisMolecule%abundance * thisOctal%nh2(subcell)
           nUpper = thisOctal%molecularLevel(subcell,iUpper) * thisMolecule%abundance * thisOctal%nh2(subcell)
 
-          alphanu = alphanu * (nLower * thisMolecule%einsteinBlu(iTrans) - &
+          alphanu(1) = alphanu(1) * (nLower * thisMolecule%einsteinBlu(iTrans) - &
                nUpper * thisMolecule%einsteinBul(iTrans))
 
-          dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
+          if(useDust) then
+             call returnKappa(grid, thisOctal, subcell, kappaAbs=kappaAbs)
+             alphanu(2) = kappaAbs!*rho(dust)
+          else
+             alphanu(2) = 0.d0
+          endif
+
+          alpha = alphanu(1) + alphanu(2)
+          dTau = alpha * (distArray(i)-distArray(i-1)) * 1.d10
 
           etaLine = hCgs * thisMolecule%einsteinA(iTrans) * thisMolecule%transFreq(iTrans)
           etaLine = etaLine * thisOctal%nh2(subcell) * thisMolecule%abundance * thisOctal%molecularLevel(subcell, iUpper)
 
           jnu = (etaLine/fourPi) * phiProf(dv, thisOctal%microturb(subcell))/thisMolecule%transFreq(iTrans)
-          if (alphanu /= 0.d0) then
-             snu = jnu/alphanu
+
+          if(useDust) jnu = jnu + alphanu(2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
+
+          if (alpha /= 0.d0) then
+             snu = jnu/alpha
           else
              snu = tiny(snu)
           endif
@@ -1137,7 +1182,7 @@ contains
 !           if (debug) write(*,*) "i0",i0,"tau",tau,"dtau",dtau,"snu",snu
           tau = tau + dtau
        enddo
-       currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
+       currentPosition = currentPosition + (distArray(ntau)+1.d-6*grid%halfSmallestSubcell) * direction
     enddo
 
 666 continue 
@@ -1238,17 +1283,18 @@ function PixelIntensity(cube,pixelside,viewvec,pixelcorner,&
     character(len=100) :: message
     
     converged = .false. ! failed flag
-    acc = 1d-2       ! convergence criterion
+    acc = 1d-3       ! convergence criterion
     nsubpixels = subpixels ! dummy variable
     cube%converged(index(1),index(2),cube%nv) = 1
     oldtotalPixelIntensity = 1.d-30
     
     if(subpixels .eq. 0) then 
        romberg= .true.
-       subpixels = 1
+       subpixels = 2
     endif
 
- !   write(*,*) index
+    !if(abs(index(1)-cube%nx/2) .lt. 2 .and. abs(index(2)-cube%ny/2) .lt. 2) subpixels = 64
+    !if(subpixels .eq. 64) write(*,*) subpixels,index
     do while((.not. converged))
 
     allocate(subpixelgrid(subpixels,subpixels)) ! square array of pixels that make up the larger pixel 
@@ -1286,11 +1332,16 @@ function PixelIntensity(cube,pixelside,viewvec,pixelcorner,&
 
     if(romberg) then
        if(abs((totalPixelIntensity - oldtotalPixelIntensity)/oldTotalPixelIntensity) > acc) then
+         ! TotalPixelIntensity = (dble(2**(log(dble(subpixels))/log(2.d0)))*TotalPixelIntensity - OldTotalPixelIntensity) &
+         !      /(dble(2**(log(dble(subpixels))/log(2.d0)))-1.d0) ! Richardson Extrapolation
           oldTotalPixelIntensity = TotalPixelIntensity
           subpixels = subpixels * 2
-          !if(subpixels .gt. 15) write(*,*)"large",index
+!          if(subpixels .gt. 4) write(*,*)"large",index
+
+          cube%nsubpixels(index(1),index(2),cube%nv) = subpixels
+
        else
-          cube%nsubpixels = subpixels
+
           converged = .true.
           subpixels = 0
           TotalPixelIntensity = (dble(2**(log(dble(subpixels))/log(2.d0)))*TotalPixelIntensity - OldTotalPixelIntensity) &
@@ -1325,10 +1376,11 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
   real(double), allocatable :: vArray(:), spec(:), tempArray(:)
   integer :: iv1, iv2, i,j
   integer :: npixels,nv
-  real(double) :: imageside
+  real(double) :: imageside, imagesize
   type(OCTALVECTOR) :: unitvec, posvec, gridCentre, tempvec
   type(DATACUBE) ::  cube
   integer :: nSubpixels ! tests subpixels per pixel
+  logical :: gotPixels
 
   integer,allocatable :: PixelArray(:,:)
   real(double),allocatable :: PixelWeight(:,:)
@@ -1339,9 +1391,12 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
 
   type(OCTALVECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
    
-  integer :: nOctal, iOctal, subcell, nVoxels, iVoxel, iArray(1), jArray(1)
-  type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+  integer :: nOctal, iOctal, subcell, nVoxels, iVoxel
+
   type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
+  type(telescope) :: mytelescope
+  
+  logical :: plotflux
 
 !$MPI    ! For MPI implementations
 !$MPI    integer       ::   my_rank        ! my processor rank
@@ -1364,181 +1419,36 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule, iTrans, viewVec)
   call normalize(unitvec)
 
   imageside = 4.6e7 ! Length of image in TORUS UNITS - 1e7 is size of beam at 250pc with beamsize 29"
-  Npixels = 100 ! Number of spatial pixels per dimension
-  nSubpixels = 0 ! each pixel is split into nsubpixels squared subpixels - I have plans to Romberg integrate using nsubpixels = 0
-  nv = 50   !Number of velocities 
+  Npixels = 51 ! Number of spatial pixels per dimension
+  nSubpixels = 0 ! each pixel is split into nsubpixels squared subpixels
+  nv = 40   !Number of velocities 
   itrans = 1 ! Level Transitions can be found in hco+.dat
 
-!    goto 666
+  mytelescope%label = 'JCMT'
+  mytelescope%diameter = 30.d2 ! diameter in cm
+  write(*,*), "OK"
+! create an image with specified parameters  
+  call createimage(cube, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, nSubpixels) ! create an image using the supplied parameters (also calculate spectra)
 
-!!! New grid code...!!!
-!!! First find all voxel centres to make sure a ray passes through every voxel at least once
+!  allocate(PixelPositionArray(npixels,npixels))
 
-    allocate(octalArray(grid%nOctals))
+  call plotDataCube(cube, 'image.ps/vcps') ! plot the image 
+
+  Tcmb = intensityAlongRay(1d10*unitvec, viewvec, grid, thisMolecule, iTrans,10.d5/cSpeed)
+  write(*,*) "Tcmb",Tcmb
     
-    nOctal = 0
-    call getOctalArray(grid%octreeRoot,octalArray, nOctal) 
-    call countVoxels(grid%octreeRoot,nOctal,nVoxels) ! Enumerate voxels
+!  call TranslateCubeIntensity(cube,-1.d0*Tcmb)
     
-    if(AMR2D) nVoxels = 2*nVoxels+1 ! The 2d (cylindrical) grid uses y=0 for its subcell centre (arbitrary point on annulus of valid points)
-                                    ! and only positive x points. This (and subsequent code) includes -ve x points to "completely cover" the grid
+!!! Intensity -> Flux
+  call IntensityToFlux(cube)
+  call plotDataCube(cube, 'subpixels.ps/vcps',withSpec=.False.,GotPixels=.true.) ! plot the image 
 
-    allocate(SubcellCentreArray(nVoxels)) ! Create array to hold subcell (voxel) centres
-    allocate(GridArray(nVoxels)) ! Create array to hold projected voxel centres
+  call GaussianWeighting(cube,npixels,beamsize)  
+  call createFluxSpectra(cube, mytelescope, thismolecule, itrans)
 
-    i = 0
-    do iOctal = 1, SIZE(octalArray)
-       
-       thisOctal => octalArray(iOctal)%content
-       do subcell = 1, thisOctal%maxChildren
-          if (.not.thisOctal%hasChild(subcell)) then
-             write(63,*) SubcellCentre(thisOctal,subcell)
-             i = i + 1
-             SubcellCentreArray(i) = SubcellCentre(thisOctal,subcell) ! Populate array of subcells
-             if (AMR2D) then 
-                SubcellCentreArray(i+1) = OCTALVECTOR(-1.d0*SubcellCentreArray(i)%x,SubcellCentreArray(i)%y,SubcellCentreArray(i)%z)
-                i = i + 1
-             endif
-          endif
-       enddo
-    enddo
-
-!!! Project subcell centres onto 2d surface (YZ!) 
+  call plotDataCube(cube, 'fluxcube.ps/vcps',plotflux=.true.)
     
-    gridCentre = OCTALVECTOR(0.d0,0.d0,0.d0) !unitvec * dble(gridDistance)   
-    viewvec = (-1.d0) * unitvec
-
-     if(unitvec%x > 0.d0) then ! Rotation angles and arctan corrections
-        theta = atan(unitvec%z/sqrt(unitvec%x**2+unitvec%y**2))
-        phi = 1.d0 * atan(unitvec%y/unitvec%x)
-     else
-        theta = -1.d0 * atan(unitvec%z/sqrt(unitvec%x**2+unitvec%y**2))
-        phi = 1.d0 * atan(unitvec%y/unitvec%x)
-     endif
-      
-     do i= 1, nVoxels ! Make the imagegrid positions by projecting and rotating subcell points
-        
-        DistancetoGrid = dble(viewvec .dot. SubcellCentreArray(i)) ! +D
-        GridArray(i) = SubcellCentreArray(i) - DistancetoGrid * viewvec ! the actual projection to arbitrary plane normal to viewvec
-        GridArray(i) = RotateZ(Gridarray(i),phi) ! Rotate about Z-axis 
-        GridArray(i) = RotateY(Gridarray(i),theta) ! Rotate about Y-axis
-        GridArray(i)%x = 0.d0 ! Kill rounding errors 
-
-     enddo
-
-     allocate(PixelArray(npixels,npixels)) ! Find out where to put contributions from rays going through subcells
-     PixelArray = 0 ! Apparantly necessary due to previous bug
-     allocate(PixelPositionArray(npixels,npixels))
-     allocate(PixelWeight(npixels,npixels))
-
-     ArcSecsToRadians = pi/6.48d5 ! 6.48d5 = 180*60*60
-     beamsizeInRadians = beamsize * ArcSecsToRadians !(gridDistance/1d10)*(beamsize/(6.48d5/pi)) 
-     Int = 0.d0
-
-!     beamSizeInRadians = 1.22d0*(cspeed/thisMolecule%transFreq(itrans))/15.d2 / 2.d0
-     write(*,*) "Beam size: ",beamSizeinRadians * radtodeg * 3600.
-
-     do i=1,npixels ! Where are all the pixels (top left corners) - what are all their weights
-        do j=1,npixels
-           PixelPositionArray(i,j) = OCTALVECTOR(0.d0, -1.d0*imageside/2.d0+(i-0.5d0)*imageside/real(nPixels),&
-                                                       -1.d0*imageside/2.d0+(j-0.5d0)*imageside/real(nPixels))
-
-           rr = (PixelPositionArray(i,j)%y/(gridDistance/1d10))**2+ & 
-               (PixelPositionArray(i,j)%z/(gridDistance/1d10))**2
-
-           sigma2 = (beamSizeInRadians/2.35d0)**2
-           PixelWeight(i,j) = exp(-0.5d0*(rr/sigma2))
-
-
-!           write(*,*) sqrt(rr),sqrt(rr)*180*60*60/pi,beamsizeINRadians/2.35d0,PixelWeight(i,j)
-           PixelPositionArray(i,j) = OCTALVECTOR(0.d0, -1.d0*imageside/2.d0+(i-1.d0)*imageside/real(nPixels),&
-                                                       -1.d0*imageside/2.d0+(j-1.d0)*imageside/real(nPixels))
-
-           Int = Int + PixelWeight(i,j)/dble(npixels)**2
-
-        enddo
-     enddo
-
-     
-!     PixelWeight = PixelWeight / Int ! Normalize to npixels**2 (because implicit uniform instrument function is 1 in each pixel not 1/npixels**2 
-     write(*,*) "Max PixelWeight", int, maxval(PixelWeight), minval(PixelWeight),sum(pixelweight)
-
-     do iVoxel = 1, nVoxels ! Put the projected subcell centre into a pixel
-        
-        jArray = MINLOC(abs(GridArray(iVoxel)%z - PixelPositionArray(1,:)%z)) ! Nearest column
-        j = jArray(1)
-        
-        iArray = MINLOC(abs(GridArray(iVoxel)%y - PixelPositionArray(:,1)%y)) ! Nearest row
-        i = iArray(1)
-        
-        pixelArray(i,j) = pixelArray(i,j) + 1 ! Counter of how many in each
-     enddo
-
-     if(debug) then ! debug - Number of rays in each pixel 
-        do i=1,npixels
-           write(*,'(50(i4,1x))') pixelArray(i,:)
-        enddo
-     endif
-     
-    call createimage(cube, grid, imageside, npixels, nv, unitvec, thismolecule, itrans, nSubpixels) ! create an image using the supplied parameters (also calculate spectra)
-    call plotDataCube(cube, 'image.ps/vcps') ! plot the image 
-    
-    Tcmb = cube%intensity(npixels,npixels,nv)
-    write(*,*) Tcmb
-    call TranslateCubeIntensity(cube,-1.d0*Tcmb)
-
-
-
-    dx = cube%xAxis(2) - cube%xAxis(1)
-    dx = dx / (gridDistance/1.d10)
-    cube%intensity = cube%intensity * (dx**2) !/ 1.d-23
-
-    allocate(outspec(1:cube%nv))
-    do i = 1, cube%nv
-       outspec(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
-    enddo
-    open(30,file="beforeconv.dat",status="unknown",form="formatted")
-    do i = 1, cube%nv
-       write(30,*) cube%vAxis(i), outspec(i)/1.d-23
-    enddo
-    close(30)
-
-
-
-    do iv = 1,nv
-       cube%intensity(:,:,iv)=cube%intensity(:,:,iv)*pixelWeight
-   enddo
-
-
-
-
-   fac =  pi*(15.d2/2.d0)**2 / (2.d0*kerg)
-
-   cube%intensity = cube%intensity * fac
-
-
-!!    Tcmb = intensityAlongRay(1d10*unitvec, viewvec, grid, thisMolecule, iTrans,5.d5/cSpeed) ! result (i0)
-!    write(*,*) Tcmb
-
-!    call convolveCube(cube, dble(beamSize))
-
-!    do iv = 1,nv
-!       cube%intensity(:,:,iv)=cube%intensity(:,:,iv)*pixelWeight
-!   enddo
-
-    do i = 1, cube%nv
-       outspec(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
-    enddo
-    open(30,file="afterconv.dat",status="unknown",form="formatted")
-    do i = 1, cube%nv
-       write(30,*) cube%vAxis(i), outspec(i)
-    enddo
-    close(30)
-
-
-    call plotDataCube(cube, 'thecube.ps/vcps')
-
-    write(*,*) "End"
+  write(*,*) "End"
 stop
 666 continue
 
@@ -1593,9 +1503,8 @@ stop
 !!! This subroutine takes the parameters supplied to it and makes an image by calling more subroutines 
 
   subroutine createimage(cube, grid, imageside, npixels, nv, unitvec, thisMolecule, iTrans, nSubpixels)
+  !$MPI    include 'mpif.h'
     use input_variables, only : gridDistance
-!$MPI    include 'mpif.h'
-
     type(MOLECULETYPE) :: thisMolecule
     type(GRIDTYPE) :: grid
     type(DATACUBE) :: cube
@@ -1624,13 +1533,14 @@ stop
 !$MPI  
 !$MPI    ! Find the total # of precessor being used in this run
 !$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-    
+
     call initCube(cube, npixels, npixels, nv) ! Make cube
-    cube%obsDistance = gridDistance ! Additional information that will be useful
+
+    cube%obsDistance = gridDistance * 1d10!(in cm) Additional information that will be useful
     write(message,*) "Observer Distance: ",gridDistance
     call writeinfo(message, FORINFO) 
     call addSpatialAxes(cube, -imageside/2.d0, imageside/2.d0, -imageside/2.d0, imageside/2.d0)
-    call addvelocityAxis(cube, 1.d0, -1.d0) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
+    call addvelocityAxis(cube, -1.d0, 1.d0) ! velocities in km/s from +ve (redder, away) to -ve (bluer,towards)
  
 !$MPI    ix1 = (my_rank) * (cube%nx / (np)) + 1
 !$MPI    ix2 = (my_rank+1) * (cube%nx / (np))
@@ -1645,7 +1555,7 @@ stop
        cube%nsubpixels(:,:,iv) = cube%nsubpixels(:,:,cube%nv)! as above - used to record number of subpixels used to sample grid
     enddo
 
-    cube%intensity(:,:,1:cube%nv) = cube%intensity(:,:,1:cube%nv) - cube%intensity(1,1,1) ! TJH background subtract
+!    cube%intensity(:,:,1:cube%nv) = cube%intensity(:,:,1:cube%nv) - cube%intensity(1,1,1) ! TJH background subtract
 
 !    do i = ix1, ix2
 !       write(*,*) i
@@ -1686,6 +1596,134 @@ stop
 !$MPI    deallocate(tempArray, tempArray2)
 
   end subroutine createimage
+
+subroutine createFluxSpectra(cube,mytelescope,thismolecule,itrans)
+
+  use input_variables, only : gridDistance
+  type(datacube) :: cube
+  type(telescope) :: mytelescope
+  type(moleculetype) :: thisMolecule
+  real(double),allocatable :: outspec(:), inspec(:)
+  real(double) :: fac, dA
+  integer :: i, iv
+  integer :: itrans
+
+  allocate(outspec(1:cube%nv))
+  allocate(inspec(1:cube%nv))
+
+  do i = 1, cube%nv
+     outspec(i) = SUM(cube%flux(1:cube%nx,1:cube%ny,i))
+  enddo
+
+  do i = 1, cube%nv
+     inspec(i) = SUM(cube%intensity(1:cube%nx,1:cube%ny,i))
+  enddo
+
+ call writedatacube(cube, 'IamACube.fits')
+
+  open(30,file="beforeconv.dat",status="unknown",form="formatted")
+  open(31,file="matchjezza.dat",status="unknown",form="formatted")
+  do i = 1, cube%nv
+     write(30,*) cube%vAxis(i), outspec(i)
+     write(31,*) cube%vAxis(i), inspec(i)*1e3/(cube%nx**2)
+  enddo
+  close(30)
+  close(31)
+
+  do iv = 1, cube%nv
+     cube%flux(:,:,iv)=cube%flux(:,:,iv)*cube%Weight(:,:)
+  enddo
+
+  !fac =  pi*(mytelescope%Diameter/2.d0)**2 / (2.d0*kerg) ! Effective Telescope Area / 2k - Flux -> Antenna Temp
+  
+!  write(*,*) "cube", cube%intensity(10,10,10)
+!  write(*,*)  "fac", fac
+  
+  !cube%flux = cube%flux * fac ! Antenna Temps at telescope
+  
+  do i = 1, cube%nv
+     outspec(i) = SUM(cube%flux(1:cube%nx,1:cube%ny,i))
+  enddo
+  
+  open(30,file="afterconv.dat",status="unknown",form="formatted")
+  do i = 1, cube%nv
+     write(30,*) cube%vAxis(i), outspec(i)
+  enddo
+  close(30)
+
+  dA = ((cube%xaxis(2) - cube%xaxis(1)) / (gridDistance/1.d10)) ** 2
+
+  fac = (1.d0 * (cspeed**2 / thisMolecule%transFreq(iTrans)**2) &
+                   / (pi * (mytelescope%diameter / 2.d0)**2 )) / dA
+    
+  do i = 1, cube%nv
+     outspec(i) = outspec(i) / fac
+  enddo
+  
+  open(30,file="btemp.dat",status="unknown",form="formatted")
+  do i = 1, cube%nv
+     write(30,*) cube%vAxis(i), outspec(i)
+  enddo
+  close(30)
+
+end subroutine createFluxSpectra
+
+subroutine IntensityToFlux(cube)
+  
+  use input_variables, only : gridDistance
+  type(datacube) :: cube
+  real(double) :: dx
+
+  dx = cube%xAxis(2) - cube%xAxis(1) ! pixelwidth in torus units
+  dx = dx / (gridDistance/1.d10) !  angluar width in radians
+  cube%flux = cube%intensity * (dx**2) ! Flux through solid angle covered by one pixel in ergs/s
+!  write(*,*) "DX", dx, dx**2, "griddsit", griddistance
+!  cube%flux = cube%flux * 1d23
+end subroutine IntensityToFlux
+
+subroutine GaussianWeighting(cube,npixels,FWHM,NormalizeArea)
+
+  use input_variables, only : gridDistance
+  type(datacube) :: cube
+  integer :: npixels, i, j
+! real(double),pointer :: PixelWeight(:,:)
+! type(OCTALVECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
+  real(double) :: ArcSecsToRadians = pi/6.48d5 ! 6.48d5 = 180*60*60
+  real :: FWHM
+  real(double) :: beamsize,beamsizeInRadians,sigma2,Int,rr
+  character(len=80) :: message
+  logical,optional :: NormalizeArea
+
+
+! allocate(PixelPositionArray(npixels,npixels))
+
+  !! Calculate Gaussian Weighting 
+
+  beamsize = FWHM
+  beamsizeInRadians = beamsize * ArcSecsToRadians !(gridDistance/1d10)*(beamsize/(6.48d5/pi)) 
+! beamSizeInRadians = 1.22d0*(cspeed/thisMolecule%transFreq(itrans))/15.d2 / 2.d0
+  sigma2 = (beamSizeInRadians/2.35d0)**2
+
+  write(message,*) "Beam size (in radians): ",beamSizeinRadians
+  call writeinfo(message,TRIVIAL) 
+
+  Int = 0.d0
+
+  do i=1,npixels ! Where are all the pixels (top left corners) - what are all their weights
+     do j=1,npixels
+        rr = (cube%xAxis(i)/(gridDistance/1d10))**2+ & 
+             (cube%yAxis(j)/(gridDistance/1d10))**2
+
+        cube%Weight(i,j) = exp(-0.5d0*(rr/sigma2))
+
+        Int = Int + cube%Weight(i,j)/dble(npixels)**2
+
+     enddo
+  enddo
+
+  if(present(NormalizeArea)) cube%Weight = cube%Weight / Int ! Normalize to npixels**2 (because implicit uniform instrument function is 1 in each pixel not 1/npixels**2 
+
+end subroutine GaussianWeighting
 
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, weight, viewVec, grid)
     use input_variables, only : gridDistance
@@ -1766,7 +1804,6 @@ stop
     enddo
     write(*,*) "weight",sum(weight(1:nray)),gridDistance/pctocm
    weight = weight / SUM(weight(1:nray))
-
 
     write(*,*) "area",sum(da(1:nRay)),pi*rMax**2
   end subroutine createRayGrid
@@ -1859,6 +1896,101 @@ stop
 !$MPI    deallocate(tempArray, tempArray2)
 
   end subroutine createDataCube
+
+  subroutine optimum(grid, unitvec, PixelPositionArray, gridArray, npixels)
+
+    use input_variables,only : AMR2D,debug
+    type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+    type(gridtype) :: grid
+    type(OCTALVECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
+    type(OCTALVECTOR) :: GridCentre, unitvec, viewvec
+    type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
+    integer :: nOctal, nVoxels, iOctal, iVoxel, subcell, npixels
+    integer :: i, j, iarray(1), jarray(1)
+    real(double) ::theta, phi
+    real(double) :: distanceToGrid
+    integer,allocatable :: PixelArray(:,:)
+
+
+!  PixelPositionArray(i,j) = OCTALVECTOR(0.d0, -1.d0*imageside/2.d0+(i-1.d0)*imageside/real(nPixels),&
+!             -1.d0*imageside/2.d0+(j-1.d0)*imageside/real(nPixels))
+
+    allocate(octalArray(grid%nOctals))
+    
+    nOctal = 0
+    call getOctalArray(grid%octreeRoot,octalArray, nOctal) 
+    call countVoxels(grid%octreeRoot,nOctal,nVoxels) ! Enumerate voxels
+    
+    if (debug) then
+    if(AMR2D) nVoxels = 2*nVoxels+1 ! The 2d (cylindrical) grid uses y=0 for its subcell centre (arbitrary point on annulus of valid points)
+                                    ! and only positive x points. This (and subsequent code) includes -ve x points to "completely cover" the grid
+
+    allocate(SubcellCentreArray(nVoxels)) ! Create array to hold subcell (voxel) centres
+    allocate(GridArray(nVoxels)) ! Create array to hold projected voxel centres
+    
+    i = 0
+    do iOctal = 1, SIZE(octalArray)
+       
+       thisOctal => octalArray(iOctal)%content
+       do subcell = 1, thisOctal%maxChildren
+          if (.not.thisOctal%hasChild(subcell)) then
+             write(63,*) SubcellCentre(thisOctal,subcell)
+             i = i + 1
+             SubcellCentreArray(i) = SubcellCentre(thisOctal,subcell) ! Populate array of subcells
+             if (AMR2D) then 
+                SubcellCentreArray(i+1) = OCTALVECTOR(-1.d0*SubcellCentreArray(i)%x,SubcellCentreArray(i)%y,SubcellCentreArray(i)%z)
+                i = i + 1
+             endif
+          endif
+       enddo
+    enddo
+    endif
+
+!!! Project subcell centres onto 2d surface (YZ!) 
+    
+    gridCentre = OCTALVECTOR(0.d0,0.d0,0.d0) !unitvec * dble(gridDistance)   
+    viewvec = (-1.d0) * unitvec
+
+     if(unitvec%x > 0.d0) then ! Rotation angles and arctan corrections
+        theta = atan(unitvec%z/sqrt(unitvec%x**2+unitvec%y**2))
+        phi = 1.d0 * atan(unitvec%y/unitvec%x)
+     else
+        theta = -1.d0 * atan(unitvec%z/sqrt(unitvec%x**2+unitvec%y**2))
+        phi = 1.d0 * atan(unitvec%y/unitvec%x)
+     endif
+     
+     do i= 1, nVoxels ! Make the imagegrid positions by projecting and rotating subcell points
+        
+        DistancetoGrid = dble(viewvec .dot. SubcellCentreArray(i)) ! +D
+        GridArray(i) = SubcellCentreArray(i) - DistancetoGrid * viewvec ! the actual projection to arbitrary plane normal to viewvec
+        GridArray(i) = RotateZ(Gridarray(i),phi) ! Rotate about Z-axis 
+        GridArray(i) = RotateY(Gridarray(i),theta) ! Rotate about Y-axis
+        GridArray(i)%x = 0.d0 ! Kill rounding errors 
+        
+     enddo
+
+     allocate(PixelArray(npixels,npixels)) ! Find out where to put contributions from rays going through subcells
+     PixelArray = 0 ! Apparantly necessary due to previous bug
+!     allocate(PixelPositionArray(npixels,npixels))
+
+     do iVoxel = 1, nVoxels ! Put the projected subcell centre into a pixel
+        
+        jArray = MINLOC(abs(GridArray(iVoxel)%z - PixelPositionArray(1,:)%z)) ! Nearest column
+        j = jArray(1)
+        
+        iArray = MINLOC(abs(GridArray(iVoxel)%y - PixelPositionArray(:,1)%y)) ! Nearest row
+        i = iArray(1)
+        
+        pixelArray(i,j) = pixelArray(i,j) + 1 ! Counter of how many in each
+     enddo
+
+     if(debug) then ! debug - Number of rays in each pixel 
+        do i=1,npixels
+           write(*,'(50(i4,1x))') pixelArray(i,:)
+        enddo
+     endif
+
+   end subroutine optimum
     
 !$MPI      subroutine packMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
 !$MPI    include 'mpif.h'

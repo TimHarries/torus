@@ -11,10 +11,11 @@ module datacube_mod
      character(len=10) :: vUnit ! units for velocity
      character(len=10) :: xUnit ! units for space
      character(len=10) :: IntensityUnit ! units for intensity
+     character(len=10) :: FluxUnit ! units for flux
 
      integer, pointer :: nsubpixels(:,:,:) ! contains resolution information 
      integer, pointer :: converged(:,:,:)  ! contains convergence information (should take 1 or 0)
-     real(double), pointer :: weight(:,:)     ! Weighting for integration (used to find spectra)
+     real(double),pointer :: weight(:,:)     ! Weighting for integration (used to find spectra)
      integer :: nx 
      integer :: ny
      integer :: nv
@@ -24,6 +25,7 @@ module datacube_mod
      real(double), pointer :: yAxis(:)
      real(double), pointer :: vAxis(:)
      real(double), pointer :: intensity(:,:,:)
+     real(double), pointer :: flux(:,:,:)
   end type DATACUBE
 
 contains
@@ -147,7 +149,7 @@ contains
     !  Write the array to the FITS file.
     call ftpprd(unit,group,fpixel,nelements,thisCube%vAxis,status)
 
-    ! 7th HDU : intensity
+    ! 7th HDU : nsubpixels
     call FTCRHD(unit, status)
     bitpix=32
     naxis=3
@@ -366,14 +368,16 @@ contains
     allocate(thisCube%yAxis(1:ny))
     allocate(thisCube%vAxis(1:nv))
     allocate(thisCube%intensity(1:nx,1:ny,1:nv))
+    allocate(thisCube%flux(1:nx,1:ny,1:nv))
     allocate(thisCube%nsubpixels(1:nx,1:ny,1:nv))
     allocate(thisCube%converged(1:nx,1:ny,1:nv))
     allocate(thisCube%weight(1:nx,1:ny))
 
     thisCube%intensity = 0.d0
+    thisCube%flux = 0.d0
     thisCube%nsubpixels = 0.d0
     thisCube%converged = 0
-    thisCube%weight = 1
+    thisCube%weight = 1.d0
 
   end subroutine initCube
 
@@ -387,10 +391,13 @@ contains
     dy = (yMax - yMin)/dble(cube%ny)
     do i = 1, cube%nx
        cube%xAxis(i) = xmin + dx/2.d0 + dble(i-1)*dx 
+
     enddo
+
     do i = 1, cube%ny
        cube%yAxis(i) = ymin + dy/2.d0 + dble(i-1)*dx 
     enddo
+
   end subroutine addSpatialAxes
 
 ! Set velocity axis for datacube - Equally spaced (linearly) between min and max
@@ -406,15 +413,14 @@ contains
     enddo
   end subroutine addVelocityAxis
 
-  subroutine plotDataCube(cube, device, withspec, twoPanels)
+  subroutine plotDataCube(cube, device, withspec, gotPixels, plotflux, twoPanels)
     type(DATACUBE) :: cube
     character(len=*) :: device
-    logical, optional :: withSpec
-    logical, optional :: twoPanels
+    logical, optional :: withSpec, twoPanels, gotPixels, plotFlux
     logical :: doTwoPanels
     integer :: i, j, k
     integer :: pgbegin
-    real, allocatable :: image(:,:)
+    real, allocatable :: subpixelimage(:,:), image(:,:)
     integer :: nx, ny
     real :: iMin, iMax
     real :: tr(6)
@@ -425,7 +431,7 @@ contains
     real(double) :: sMax, Smin
     real :: range
     integer :: nstep 
-    logical :: doSpec
+    logical :: doSpec,PixelCount
 
     if (present(withSpec)) then
        doSpec = withSpec
@@ -438,7 +444,6 @@ contains
     else
        doTwoPanels = .false.
     endif
-
 
     nx = cube%nx
     ny = cube%ny
@@ -454,16 +459,28 @@ contains
     tr(6) = dy
 
     allocate(image(1:nx, 1:ny))
+    if(present(plotFlux)) then
 
-    do i = 1, nx
-       do j = 1, ny
-          if ( sum(cube%intensity(i,j,1:cube%nv)) .gt. 0) then
-             image(i,j) = log10(sum(cube%intensity(i,j,1:cube%nv)))
-          else
-             image(i,j) = -30.
-          endif
+       do i = 1, nx
+          do j = 1, ny
+             if ( sum(cube%flux(i,j,1:cube%nv)) .gt. 0) then
+                image(i,j) = log10(sum(cube%flux(i,j,1:cube%nv)))
+             else
+                image(i,j) = -30.
+             endif
+          enddo
        enddo
-    enddo
+    else
+       do i = 1, nx
+          do j = 1, ny
+             if (sum(cube%intensity(i,j,1:cube%nv)) .gt. 0) then
+                image(i,j) = log10(sum(cube%intensity(i,j,1:cube%nv)))
+             else
+                image(i,j) = -30.
+             endif
+          enddo
+       enddo
+    endif
 
     allocate(spec(1:cube%nv))
 
@@ -472,9 +489,29 @@ contains
 
     open(42, file="image.dat",status="unknown",form="formatted")
     do i = 1, nx
-          write(42, *) image(:,i)
+       write(42, *) image(:,i)
     enddo
     close(42)
+
+    if (present(gotPixels)) then
+       PixelCount = .true.
+    endif
+
+    if(PixelCount) then
+       doSpec = .false.
+       do i = 1, nx
+          do j = 1, ny
+             image(i,j) = sum(cube%nsubpixels(i,j,1:cube%nv))
+          enddo
+       enddo
+    endif
+    
+    open(41, file="pixeldensity.dat",status="unknown",form="formatted")
+    do i = 1, nx
+       write(41, *) image(:,i)
+    enddo
+    close(41)
+
 
     iMin = MINVAL(image(1:nx,1:ny))
     iMax = MAXVAL(image(1:nx,1:ny))
@@ -574,7 +611,6 @@ contains
        write(43,*) cube%vAxis(k), spec(k)
     enddo
     close(43)
-
   end subroutine plotDataCube
 
   subroutine getSpectrum(cube, ix1, ix2, iy1, iy2, spec)
@@ -613,20 +649,20 @@ contains
     type(DATACUBE) :: cube
     real(double) :: beamSize ! beamsize in arcsec
     real(double), allocatable :: newArray(:,:)
-    real(double) :: r, rinArcSec, weight,fac 
+    real(double) :: r, rrinArcSec, weight,fac 
     integer :: ix, iy, iv, i, j
     integer :: i1, j1
-    real(double) :: sigma, dx, dy, tot, flux, background
+    real(double) :: sigma, sigma2, dx, dy, tot, flux, background
     real(double) :: deltaX, deltaY
 
-    sigma = beamsize /2.35d0
-
+    sigma = beamsize/2.35d0 ! changed from 2.35 (FWHM) as a result of reading IRAM-30m paper
+    sigma2 = sigma**2
     dx = 3600.d0*((cube%xAxis(2) - cube%xAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
     dy = 3600.d0*((cube%yAxis(2) - cube%yAxis(1))/(cube%obsDistance/1.d10))*180.d0/pi
 
     allocate(newArray(1:cube%nx, 1:cube%ny))
     call writeInfo("Convolving data cube with beam size", TRIVIAL)
-    write(*,*) "cube%obsdist",cube%obsDistance/pctocm
+    write(*,*) "cube%obsdist",cube%obsDistance/pctocm, "dx",dx,"dy",dy
 
     do iv = 1, cube%nv
 
@@ -646,17 +682,16 @@ contains
 
                    deltaX = dble(ix-i)*dx
                    deltaY = dble(iy-j)*dy
-                   rInArcSec = sqrt(deltaX**2 + deltaY**2)
+                   rrInArcSec = deltaX**2 + deltaY**2
              
-                   fac = (1.d0/(twoPi*sigma**2))*exp(-0.5d0*(rInArcSec**2/sigma**2))*dx*dy
+                   fac = (1.d0/(twoPi*sigma2))*exp(-0.5d0*(rrInArcSec/sigma2))*dx*dy
 
                    newArray(ix,iy) = newArray(ix, iy) + flux*fac
                    tot = tot + fac
                 enddo
              enddo
-!             write(*,*) "Weight",tot
           enddo
-!          write(*,*) newArray,tot
+          !write(*,*) "Weight",tot
        enddo
 
        cube%intensity(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)!/dble(cube%nx*cube%ny)
@@ -664,7 +699,7 @@ contains
     deallocate(newArray)
     call writeInfo("Done.",TRIVIAL)
   end subroutine convolveCube
-    
+
 subroutine TranslateCubeIntensity(cube,constant)
 
   type(DATACUBE) :: cube
@@ -673,6 +708,61 @@ subroutine TranslateCubeIntensity(cube,constant)
   cube%intensity = cube%intensity + constant
     
 end subroutine TranslateCubeIntensity
+
+subroutine ConvertUnits(cube)
+  type(DATACUBE) :: cube
+  character(len=10) :: intensityUnit ! System 1 - cgs | System 2 - SI | System 3 - Janskys
+
+  ! - convert to brightness temperature - c**2/2*nu**2*k
+
+  select case(cube%intensityUnit)
+
+  case('erg/cm2/Hz')
+       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 1d-3
+       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 1d-23
+!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity *
+!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity *
+       
+       cube%intensityUnit = 'erg/cm2/Hz'
+
+    case('W/m2')
+       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 1d3
+       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 1d-26
+!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity * 
+!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity *
+       
+       cube%intensityUnit = 'W/cm2'
+
+    case('Janskys')
+       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 1d23
+       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 1d26
+!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity * 
+!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity * 
+       
+       cube%intensityUnit = 'Janskys'
+
+!    case('Tbright')
+!       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 
+!       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 
+!       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 
+!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity * 
+       
+!       cube%intensityUnit = 'Tbright'
+
+!    case('Tantenna')
+!       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 
+!       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 
+!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity * 
+!       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 
+       
+!       cube%intensityUnit = 'Tantenna'
+
+       case default
+          cube = cube
+        
+end select
+
+end subroutine ConvertUnits  
 
 end module datacube_mod
 

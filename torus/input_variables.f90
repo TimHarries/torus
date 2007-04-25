@@ -63,7 +63,7 @@ module input_variables
   integer :: nDustType
   logical :: forcedWavelength
   real :: usePhotonWavelength
-
+  logical :: useDust ! molecular_mod includes continuum emission
 
   logical :: blockHandout
 

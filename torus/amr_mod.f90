@@ -4776,6 +4776,7 @@ IF ( .NOT. gridConverged ) RETURN
       endif
       rd = modulus(cellCentre)
       call locate(rgrid, nr, rd, i)
+!      if (thisOctal%subcellSize > 1.5d0 * (rgrid(i+1)-rgrid(i))) split = .true.
       if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
       if (rd+thisOctal%subcellSize/2.d0 < rgrid(1)) split = .false.
       if (rd-thisOctal%subcellSize/2.d0 > rgrid(nr)) split = .false.
