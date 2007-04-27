@@ -13726,6 +13726,7 @@ IF ( .NOT. gridConverged ) RETURN
   end function getHydroWarpScaleHeight
 
   subroutine hydroWarpFitSplines(grid)
+    use input_variables, only: rOuter
 
     type(GRIDTYPE) :: grid
     real :: xAxis(1000000)
@@ -13740,6 +13741,9 @@ IF ( .NOT. gridConverged ) RETURN
     nx = 0
     call getxValuesAMR(grid%octreeRoot, nx, xAxis)
     call stripSimilarValues(xAxis,nx,real(1.d-5*grid%halfSmallestSubcell))
+    do while (xAxis(nx) > rOuter)
+      nx = nx - 1
+    end do
     xAxis(1:nx) = xAxis(1:nx) + 1.d-5*grid%halfSmallestSubcell
 
     allocate(grid%hydroSplines(nx))
@@ -13850,7 +13854,8 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine hydroWarpScaleHeight(spline)
     type(hydroSpline) :: spline
-    real(double) :: max_rho
+    real(double) :: max_rho, max_rho_z
+    integer :: max_rho_i
     real(double) :: target_rho
 
     integer :: i
@@ -13859,7 +13864,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: sv1, sv2, step1, step2
     real(double) :: sh1, sh2
 
-    max_rho = hydroWarpSplinePeak(spline)
+    call hydroWarpSplinePeak(spline, max_rho, max_rho_z, max_rho_i)
     target_rho = max_rho - log10(2.718281828)
 
 ! improve this conditional
@@ -13870,48 +13875,54 @@ IF ( .NOT. gridConverged ) RETURN
     endif
 
     ! assume the spline is fairly stable around one scaleheight from the peak
-
     ! find the cell before which we pass through the target density
     sv1_i = 0
     sv2_i = 0
-    do i=1, spline%nz
+    do i=1, max_rho_i
       if (spline%rho(i) .gt. target_rho) then
         if (i == 1) then
           print *, "Error finding scaleheight: sv1_i = 1!"
           stop
         end if
         sv1_i = i-1
+        sv1 = spline%z(sv1_i)
+        step1 = abs(spline%z(sv1_i+1)-sv1)/2.
         exit
       end if
     end do
-    do i=sv1_i+1, spline%nz
-      if (spline%rho(i) .lt. target_rho) then
-        if (i == sv1_i+1) then
-          print *, "Error finding scaleheight: sv2_i = sv1_i!"
-          stop
-        end if
-        sv2_i = i-1
-        exit
-      end if
-    end do
-    if ((sv1_i==0).or.(sv2_i==0)) then
-      print *, "Error finding scaleheight: sv1_i =", sv1_i, "; sv2_i =", sv2_i
+    if (sv1_i == 0) then
+      sv1_i = max_rho_i
+      sv1 = spline%z(sv1_i)
+      step1 = abs(max_rho_z-sv1)/2.
     end if
 
-    sv1 = spline%z(sv1_i)
-    sv2 = spline%z(sv2_i)
-    step1 = (spline%z(sv1_i+1)-sv1)/2.
-    step2 = (spline%z(sv2_i+1)-sv2)/2.
+    do i=spline%nz, max_rho_i+1, -1
+      if (spline%rho(i) .gt. target_rho) then
+        if (i == spline%nz) then
+          print *, "Error finding scaleheight: sv2_i = nz!"
+          stop
+        end if
+        sv2_i = i+1
+        sv2 = spline%z(sv2_i)
+        step2 = -1.*abs(sv2-spline%z(sv2_i-1))/2.
+        exit
+      end if
+    end do
+    if (sv2_i == 0) then
+      sv2_i = max_rho_i+1
+      sv2 = spline%z(sv2_i)
+      step2 = -1.*abs(sv2-max_rho_z)/2.
+    end if
 
     sh1 = hydroWarpSplinty(spline, target_rho, sv1, step1)
     sh2 = hydroWarpSplinty(spline, target_rho, sv2, step2)
     
-    spline%scaleHeight = (sh2-sh1)/2.
+    spline%scaleHeight = abs(sh2-sh1)/2.
 
     ! perform a quick sanity check
-    if ((sh1+sh2)/spline%scaleHeight .gt. 0.01) then
+    if (abs(sh1+sh2-2.*max_rho_z)/spline%scaleHeight .gt. 0.05) then
       print *, "Warning: Scaleheights either side of midplane differ by"
-      print *, "         more than 1%:", sh1, sh2
+      print *, "         more than 5%:", sh1, sh2
     end if
   end subroutine hydroWarpScaleHeight
 
@@ -13973,10 +13984,12 @@ IF ( .NOT. gridConverged ) RETURN
     hydroWarpSplinty = xNew
   end function hydroWarpSplinty
 
-  real(double) function hydroWarpSplinePeak(spline)
-    type(hydroSpline) :: spline
-    real(double) :: rho_max, rho_max_z
-    integer :: rho_max_i
+  ! returns, the max density, z value of max density, and index of element
+  ! immediately preceeding the max density location
+  subroutine hydroWarpSplinePeak(spline, rho_max, rho_max_z, rho_max_i)
+    type(hydroSpline), intent(in) :: spline
+    real(double), intent(out) :: rho_max, rho_max_z
+    integer, intent(out) :: rho_max_i
 
     integer :: i
 
@@ -14012,10 +14025,10 @@ IF ( .NOT. gridConverged ) RETURN
         z_test = z_test + step
     end do
 
-    ! note that the density is actually log10(rho)
-    hydroWarpSplinePeak = rho_max
-
-  end function hydroWarpSplinePeak
+    ! set the index for the density peak to the index of the element
+    ! immediately preceeding the peak value
+    if (rho_max_z < spline%z(rho_max_i)) rho_max_i = rho_max_i - 1
+  end subroutine hydroWarpSplinePeak
   !
   ! end hydroWarp stuff
   !
