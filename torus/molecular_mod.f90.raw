@@ -1507,8 +1507,8 @@ stop
 !!! This subroutine takes the parameters supplied to it and makes an image by calling more subroutines 
 
   subroutine createimage(cube, grid, imageside, npixels, nv, unitvec, thisMolecule, iTrans, nSubpixels)
-  !$MPI    include 'mpif.h'
     use input_variables, only : gridDistance
+!$MPI    include 'mpif.h'
     type(MOLECULETYPE) :: thisMolecule
     type(GRIDTYPE) :: grid
     type(DATACUBE) :: cube
