@@ -42,6 +42,13 @@ MODULE amr_mod
      real(double),pointer :: streamRadius(:)  => null()
   end type STREAMTYPE
 
+  type curtaintype
+     integer :: nr, ntheta
+     type(OCTALVECTOR), pointer :: position(:,:) => null()
+     type(OCTALVECTOR), pointer :: velocity(:,:) => null()
+     real(double), pointer :: density(:,:) => null()
+     real(double), pointer :: temperature(:,:) => null()
+  end type curtaintype
 
 
 CONTAINS
@@ -14378,6 +14385,46 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   end subroutine readStreams
+
+  subroutine readCurtain(thisCurtain,filename)
+
+    implicit none
+
+    type(curtaintype) :: thisCurtain
+    character(len=*) :: filename
+
+    integer :: i,j
+
+    real(double), parameter :: r0 = 4.e9, rho0 = 6.9e-12, v0 = 1.63e5
+
+    open(unit=1,file=filename,status="old")
+    read(1,*) thisCurtain%nr
+    read(1,*) thisCurtain%ntheta
+    read(1,*)
+    do i=1, thisCurtain%nr
+       do j=1, thisCurtain%ntheta
+          read(1,*) thisCurtain%position(i,j)%x, thisCurtain%position(i,j)%z, &
+               thisCurtain%density(i,j), thisCurtain%velocity(i,j)%x, &
+               thisCurtain%velocity(i,j)%z, thisCurtain%velocity(i,j)%y, &
+               thisCurtain%temperature(i,j)
+       enddo !j
+    enddo !i
+
+    ! SI system
+    thisCurtain%position(:,:)%x = thisCurtain%position(:,:)%x * r0
+    thisCurtain%position(:,:)%z = thisCurtain%position(:,:)%z * r0
+    thisCurtain%velocity(:,:)%x = thisCurtain%velocity(:,:)%x * v0
+    thisCurtain%velocity(:,:)%y = thisCurtain%velocity(:,:)%y * v0
+    thisCurtain%velocity(:,:)%z = thisCurtain%velocity(:,:)%z * v0
+    thisCurtain%temperature(:,:) = thisCurtain%temperature(:,:) / thisCurtain%density(:,:) 
+    thisCurtain%density(:,:) = thisCurtain%density(:,:) * rho0
+
+    close(unit=1)
+
+    return
+
+  end subroutine readCurtain
+
 
   function  closestCorner(thisOctal, subcell, posVec) result (closeCorner)
     type(OCTALVECTOR) :: closeCorner, posVec, cen, thisCorner
