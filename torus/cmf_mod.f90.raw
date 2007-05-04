@@ -569,7 +569,8 @@ contains
                 jnuCont(iFreq) = bfEmissivity(freq(ifreq), nAtom, thisAtom, &
                      nStar, dble(thisOctal%temperature(subcell)), thisOctal%ne(subcell), &
                      thisOctal%jnuCont(subcell,ifreq), ifreq=ifreq)/fourpi
-                
+
+
                 if (alphanuCont(ifreq) /= 0.d0) then
                    snuCont(iFreq) = jnuCont(iFreq)/alphanuCont(iFreq)
                 else
@@ -1235,8 +1236,8 @@ contains
 !                            write(*,*) neiter, fac, dne/ne
                             if (neIter == maxIter) then
                                neConverged = .true.
-                               write(message,'(a,e12.5)') "Maximum number of iterations reached in ne solver. fac = ",fac
-                               call writeWarning(message)
+!                               write(message,'(a,e12.5)') "Maximum number of iterations reached in ne solver. fac = ",fac
+!                               call writeWarning(message)
                             endif
                          enddo
 
@@ -2109,21 +2110,24 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 100, 100, 100)
+    call initCube(cube, 400, 400, 100)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 
-    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
-         -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
+!    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*1.9d0, +grid%octreeRoot%subcellSize*1.9d0, &
+!         -grid%octreeRoot%subcellSize*1.9d0, grid%octreeRoot%subcellSize*1.9d0)
+
+    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.9d0, +grid%octreeRoot%subcellSize*0.9d0, &
+         -grid%octreeRoot%subcellSize*0.9d0, grid%octreeRoot%subcellSize*0.9d0)
 
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize/1.d6, +grid%octreeRoot%subcellSize/1.d6, &
 !         -grid%octreeRoot%subcellSize/1.d6, grid%octreeRoot%subcellSize/1.d6)
 !    call addSpatialAxes(cube, -dble(3.1*grid%rInner), +dble(3.1*grid%rInner), -dble(3.1*grid%rInner), +dble(3.1*grid%rInner))
 !    write(*,*) "rinner",grid%rinner/(rsol/1.e10)
 
-    call addvelocityAxis(cube, -2200.d0, 2200.d0)
+    call addvelocityAxis(cube, -220.d0, 220.d0)
 
-    xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
+    xProj =   viewVec .cross. OCTALVECTOR(0.d0, 0.d0, 1.d0)
     call normalize(xProj)
     yProj =  xProj .cross.viewVec
     call normalize(yProj)

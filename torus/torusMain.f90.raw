@@ -1418,8 +1418,7 @@
 
 
            write(*,*) "Bigstream has ",bigStream%nsamples, " samples" 
-           call splitGridOnStream3(grid%octreeRoot,  grid, bigstream)
-
+           call splitGridOnStream3(grid%octreeRoot,  grid, bigstream) 
            call freeStream(bigStream)
 
            nOctals = 0
@@ -2763,20 +2762,20 @@
                    nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
               !
               
-!              fac = 70.*degtorad
-!              do i = 1, 1
-!                 ang = real(i-1)/40. * twoPi
-!                 octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
-!                 write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
-!                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
-!              enddo
+              fac = 70.*degtorad
+              do i = 1, 1
+                 ang = real(i-1)/40. * twoPi
+                 octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
+                 write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
+                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
+              enddo
            endif
 
         do i = 1, 40
            ang = twoPi * real(i-1)/40. 
 !           ang = 45.*degtorad
-           t = 110.d0*degtorad
-           call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 38, &
+           t = 70.d0*degtorad
+           call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 7, &
                 OCTALVECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
                 source, nsource,i)
         enddo
