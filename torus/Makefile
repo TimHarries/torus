@@ -15,7 +15,8 @@ debug   = no
 profile = no
 static  = no
 
-PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
+#PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
+PATH2G2C=/h/chris/local/lib/gcc-lib/i686-pc-linux-gnu/4.0.3/
 GUANINE_HOME = /Network/Guanine
 
 KNOWN_SYSTEM = no
@@ -697,10 +698,25 @@ clean:
 	@/bin/rm -f *.o *~ *.mod *.il *.pc *.d *.rnreg *.life *.cfg *.cse *.combine
 
 distclean: clean
-	@/bin/rm -f make.depends unix_mod.f90 kind_mod.f90 image_f77.f spec_f77.f
+	@/bin/rm -f make.depends tags
+	@/bin/rm -f unix_mod.f90 kind_mod.f90 image_f77.f spec_f77.f
 	@/bin/rm -f photoion_mod.f90 formal_solutions.f90 lucy_mod.f90 \
                 disc_hydro_mod.f90 diffusion_mod.f90 stateq_mod.f90 \
                 molecular_mod.f90 cmf_mod.f90 parallel_mod.f90 torusMain.f90
+
+ctags:
+	@ctags --langmap='fortran:+(*.f90.raw)' \
+	       --exclude=photoion_mod.f90 \
+	       --exclude=formal_solutions.f90 \
+	       --exclude=lucy_mod.f90 \
+	       --exclude=disc_hydro_mod.f90 \
+	       --exclude=diffusion_mod.f90 \
+	       --exclude=stateq_mod.f90 \
+	       --exclude=molecular_mod.f90 \
+	       --exclude=cmf_mod.f90 \
+	       --exclude=parallel_mod.f90 \
+	       --exclude=torusMain.f90 \
+	       *.f90 *.f *.f90.raw
 
 #
 # General rules to make object files
