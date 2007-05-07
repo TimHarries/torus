@@ -14556,6 +14556,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   subroutine readStreams(thisStream, nStream, filename)
+    use input_variables, only : scaleFlowRho, flowrhoScale
     type(STREAMTYPE) :: thisStream(:)
     character(len=*) :: filename
     integer :: nstream
@@ -14591,7 +14592,11 @@ IF ( .NOT. gridConverged ) RETURN
           
           thisStream(nStream)%position(thisStream(nStream)%nSamples) = rVec
           thisStream(nStream)%speed(thisStream(nStream)%nSamples) = v * 1.e5/cspeed
-          thisStream(nStream)%rho(thisStream(nStream)%nSamples) = rho
+          if (scaleFlowRho) then
+             thisStream(nStream)%rho(thisStream(nStream)%nSamples) = rho * flowRhoScale
+          else
+             thisStream(nStream)%rho(thisStream(nStream)%nSamples) = rho
+          endif
           thisStream(nStream)%temperature(thisStream(nStream)%nSamples) = 7500.
           thisStream(nStream)%streamRadius(thisStream(nStream)%nSamples)  = 0.01d0
     goto 10
@@ -14625,11 +14630,11 @@ IF ( .NOT. gridConverged ) RETURN
        do j = 1, thisStream(i)%nSamples
           tot = 1.d0-(thisStream(i)%distanceAlongStream(j) / &
                thisStream(i)%distanceAlongStream(thisStream(i)%nSamples))
-          thisStream(i)%temperature(j) = 4000.d0 + 6000.d0 * tot
+!          thisStream(i)%temperature(j) = 4000.d0 + 6000.d0 * tot
    
           ! Behaviour similar to Martin96 fig 1b
           ! Arbitrary !!!!
-!          thisStream(i)%temperature(j) = min(2850.d0  + (tot/0.8)**3  * 3000.d0, 6000.d0)
+          thisStream(i)%temperature(j) = min(2850.d0  + (tot/0.8)**3  * 3000.d0, 6000.d0)
        enddo
     enddo
 

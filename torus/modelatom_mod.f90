@@ -1057,7 +1057,7 @@ contains
        enddo
     enddo
     eta = eta +  ne * sigmaE * Jnu ! coherent electron scattering
-
+    eta = tiny(eta)!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   end function bfEmissivity
 
 

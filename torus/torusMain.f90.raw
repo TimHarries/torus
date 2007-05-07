@@ -2754,7 +2754,7 @@
      if (cmf) then
         if (movie) call plotAMRthreeDMovie(grid, source, nsource)
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
-!        call atomLoop(grid, nAtom, thisAtom, nsource, source)
+        call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
            if (writeoutput) then
               call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
