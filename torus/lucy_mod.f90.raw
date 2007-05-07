@@ -1317,7 +1317,7 @@ contains
     endif
 
     call random_number(r)
-    tau = -log(r)
+    tau = -log(1.0-r)
     call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
     call intersectCube(grid, rVec, i1, i2, i3, uHat, tVal)
 
@@ -1354,7 +1354,7 @@ contains
 
        if (stillinGrid) then
           call random_number(r)
-          tau = -log(r)
+          tau = -log(1.0-r)
           call getIndices(grid, rVec, i1, i2, i3, t1, t2, t3)
           call intersectCube(grid, rVec, i1, i2, i3, uHat, tVal)
           if (.not.grid%oneKappa) then
@@ -2005,7 +2005,7 @@ contains
 ! select an initial random tau and find distance to next cell
 
     call random_number(r)
-    tau = -log(r)
+    tau = -log(1.0-r)
 
 
     octVec = rVec

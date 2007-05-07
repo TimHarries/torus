@@ -737,7 +737,7 @@ end subroutine photoIonizationloop
 ! select an initial random tau and find distance to next cell
 
     call random_number(r)
-    tau = -log(r)
+    tau = -log(1.0-r)
 
     call distanceToCellBoundary(grid, rVec, uHat, tval)
     tval = tval + 1.d-3*grid%halfSmallestSubcell
@@ -814,7 +814,7 @@ end subroutine photoIonizationloop
 
        if (stillingrid) then
           call random_number(r)
-          tau = -log(r)
+          tau = -log(1.0-r)
           call locate(lamArray, nLambda, real(thisLam), iLam)
           call amrGridValues(grid%octreeRoot, octVec, iLambda=iLam,lambda=real(thisLam), foundOctal=thisOctal, &
                foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
