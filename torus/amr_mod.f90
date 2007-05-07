@@ -2373,6 +2373,7 @@ CONTAINS
     TYPE(octal), POINTER              :: resultOctal
     INTEGER                           :: subcell
     LOGICAL                           :: interpolate
+    LOGICAL                           :: boundaryProblem = .false.
 
 ! this for possibility of twoD AMR grid
 
@@ -2400,9 +2401,15 @@ CONTAINS
         subcell = actualSubcell
       ELSE 
     ! called with rotated position if 2d octal
-        CALL findSubcellLocal(point2,startOctal,subcell)
+        CALL findSubcellLocal(point2,startOctal,subcell, boundaryProblem)
         IF (PRESENT(foundOctal))   foundOctal   => startOctal
         IF (PRESENT(foundSubcell)) foundSubcell =  subcell
+        if (boundaryProblem) then
+          boundaryProblem = .false.
+          CALL findSubcellTD(point2,octalTree,resultOctal,subcell)
+          IF (PRESENT(foundOctal))   foundOctal   => resultOctal
+          IF (PRESENT(foundSubcell)) foundSubcell =  subcell
+        end if
       END IF
       resultOctal => startOctal
       
@@ -3951,7 +3958,11 @@ IF ( .NOT. gridConverged ) RETURN
 
     CALL findSubcellLocalPrivate(point_local,thisOctal,subcell,&
                                  haveDescended,boundaryProblem)
-    if (present(prob)) prob = boundaryProblem
+    if (present(prob)) then
+      prob = boundaryProblem
+    else
+      stop 1
+    endif
                                  
   CONTAINS
 
@@ -4040,7 +4051,8 @@ IF ( .NOT. gridConverged ) RETURN
 !           write(*,*) rVec%z+thisOctal%subcellSize/2.
 !           write(*,*) rVec%z-thisOctal%subcellSize/2.
 !           do ; enddo
-           STOP
+!           STOP
+           return
         endif
         
         IF ( thisOctal%nDepth /= 1 ) THEN
@@ -13378,6 +13390,7 @@ IF ( .NOT. gridConverged ) RETURN
     REAL(KIND=oct)    :: localDiskRadius ! disk inner radius at current azimuth (1.e10cm)
     REAL(KIND=oct)    :: lowerDistance ! angular distance to lower phi bin
     REAL(KIND=oct)    :: upperDistance ! angular distance to upper phi bin
+    LOGICAL           :: boundaryProblem = .false.
 
 
 
@@ -13528,7 +13541,11 @@ IF ( .NOT. gridConverged ) RETURN
 
     do while (inOctal(grid%octreeRoot, currentPosition).and.(length < endLength))
 
-       call findSubcellLocal(currentPosition,thisOctal,subcell)
+       call findSubcellLocal(currentPosition,thisOctal,subcell,boundaryProblem)
+       if (boundaryProblem) then
+         boundaryProblem = .false.
+         call findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+       end if
 
        sOctal => thisOctal
        call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
