@@ -888,7 +888,7 @@ contains
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay,m
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 50, maxRay = 100000
+    integer, parameter :: maxIter = 100, maxRay = 100000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
@@ -1025,7 +1025,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 100
+    nRay = 1000
 !    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     do iStage = 1, 2
 
@@ -1153,7 +1153,7 @@ contains
 
                                if (iTrans == 4) tauHalpha = tauAv
                                if (firstCheckonTau) then
-                                  if (tauAv > 1.d2) then
+                                  if (tauAv > 1.d1) then
                                      thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
                                   else
                                      thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
@@ -1261,11 +1261,11 @@ contains
 
                               enddo
                            enddo
-!                           if (thisatom(1)%indetailedbalance(4)) then
-!                              write(*,*) "Halpha is in detailed balance",tauHalpha
-!                           else
-!                              write(*,*) "Halpha is NOT in detailed balance",tauHalpha
-!                           endif
+                           if (thisatom(1)%indetailedbalance(4)) then
+                              write(*,*) "Halpha is in detailed balance",tauHalpha
+                           else
+                              write(*,*) "Halpha is NOT in detailed balance",tauHalpha
+                           endif
                            write(*,*) "Ne: ",ne,dne
                            write(*,*) "T: ",thisOctal%temperature(subcell)
                         endif
@@ -1519,7 +1519,7 @@ contains
           if (ionized) then
              thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
           else
-             thisOctal%ne(subcell) = 1.d-10 * thisOctal%rho(subcell)/mHydrogen
+             thisOctal%ne(subcell) = 1.d-2 * thisOctal%rho(subcell)/mHydrogen
           endif
 
           do iAtom = 1, nAtom

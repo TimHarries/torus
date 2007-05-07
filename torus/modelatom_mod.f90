@@ -1026,7 +1026,7 @@ contains
     integer :: nLevels
     real(double) :: temperature
     real(double) :: eta
-    integer :: i, j, iAtom
+    integer :: iAtom, i, iLower, iUpper
     real(double) :: Jnu ! mean intensity
     real(double) :: ne
     real(double) :: thresh, photonEnergy, expFac
@@ -1042,22 +1042,23 @@ contains
 
        do  i = 1, thisAtom(iAtom)%nRBFtrans
           iTrans = thisAtom(iAtom)%indexRBFtrans(i)
-          j = thisAtom(iAtom)%iLower(iTrans)
-          if ( j < 7) then
-             thresh=(thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(j))
+          iLower = thisAtom(iAtom)%iLower(iTrans)
+          iUpper = thisAtom(iAtom)%iUpper(iTrans)
+          if (iLower < 7) then
+             thresh=(thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(iLower))
              photonEnergy = freq * hCgs * ergtoEv
              if (photonEnergy.ge.thresh) then
                 if (present(ifreq)) then
-                   eta = eta + nStar(iAtom,j) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * expFac
+                   eta = eta + nStar(iAtom,iLower) * quickPhotoCrossSection(thisAtom(iAtom), i, iFreq) * expFac
                 else
-                   eta = eta + nStar(iAtom,j) * photoCrossSection(thisAtom(iAtom), iTrans, j, freq) * expFac
+                   eta = eta + nStar(iAtom,iLower) * photoCrossSection(thisAtom(iAtom), iTrans, iLower, freq) * expFac
                 endif
              endif
           endif
        enddo
     enddo
     eta = eta +  ne * sigmaE * Jnu ! coherent electron scattering
-    eta = tiny(eta)!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    eta = tiny(eta)
   end function bfEmissivity
 
 
