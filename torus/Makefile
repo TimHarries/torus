@@ -15,8 +15,7 @@ debug   = no
 profile = no
 static  = no
 
-#PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
-PATH2G2C=/h/chris/local/lib/gcc-lib/i686-pc-linux-gnu/4.0.3/
+PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
 
 KNOWN_SYSTEM = no
