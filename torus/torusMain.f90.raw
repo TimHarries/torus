@@ -2754,7 +2754,7 @@
      if (cmf) then
         if (movie) call plotAMRthreeDMovie(grid, source, nsource)
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
-        call atomLoop(grid, nAtom, thisAtom, nsource, source)
+!        call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
            if (writeoutput) then
               call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
@@ -2762,7 +2762,7 @@
                    nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
               !
               
-              fac = 70.*degtorad
+              fac = 110.*degtorad
               do i = 1, 1
                  ang = real(i-1)/40. * twoPi
                  octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
@@ -2774,7 +2774,7 @@
         do i = 1, 40
            ang = twoPi * real(i-1)/40. 
 !           ang = 45.*degtorad
-           t = 70.d0*degtorad
+           t = 110.d0*degtorad
            call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, 7, &
                 OCTALVECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
                 source, nsource,i)
