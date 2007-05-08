@@ -243,6 +243,7 @@ endif
 ifeq ($(SYSTEM), ompiosx)
     F77COMP  = ${GUANINE_HOME}/csr201/local-ppc/opt/openmpi/bin/mpif77 
     F95COMP  = ${GUANINE_HOME}/csr201/local-ppc/opt/openmpi/bin/mpif77 
+    F95FLAG  = -w
     F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -ftrace=full
     FASTFLAG = -O0
@@ -261,7 +262,7 @@ endif
 ifeq ($(SYSTEM), ompiosx-intel)
     F95COMP  = ${GUANINE_HOME}/csr201/local-i386/opt/openmpi/bin/mpif77
     F77COMP  = ${GUANINE_HOME}/csr201/local-i386/opt/openmpi/bin/mpif77
-    F95FLAG  = -fno-pic -read_only_relocs suppress
+    F95FLAG  = -fno-pic -read_only_relocs suppress -w
     F77FLAG  = -fno-pic -read_only_relocs suppress -w -fno-second-underscore
     DEBUGFLAG= -g -ftrace=full
     FASTFLAG = -O0
