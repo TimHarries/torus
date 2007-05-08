@@ -3961,7 +3961,9 @@ IF ( .NOT. gridConverged ) RETURN
     if (present(prob)) then
       prob = boundaryProblem
     else
-      stop 1
+      if (boundaryProblem) then
+        stop 1
+      endif
     endif
                                  
   CONTAINS
