@@ -14201,7 +14201,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     sh1 = hydroWarpSplinty(spline, target_rho, sv1, step1)
     sh2 = hydroWarpSplinty(spline, target_rho, sv2, step2)
-    
+
     spline%scaleHeight = abs(sh2-sh1)/2.
 
     ! perform a quick sanity check
@@ -14295,12 +14295,19 @@ IF ( .NOT. gridConverged ) RETURN
     end do
     rho_max_z = spline%z(rho_max_i)
     
-    ! *** what about if i is on a boundary ***
-
     ! the peak in the spline should be somewhere between this max cell value
     ! and the two neighbouring cells
-    step = (spline%z(i+1) - spline%z(i-1)) / (nsteps-1)
-    z_test = spline%z(i-1)
+    if (rho_max_i == 1) then
+      step = (spline%z(2) - spline%z(1)) / (nsteps-1)
+      z_test = spline%z(1)
+    else if (rho_max_i == spline%nz) then
+      step = (spline%z(rho_max_i) - spline%z(rho_max_i-1)) / (nsteps-1)
+      z_test = spline%z(rho_max_i-1)
+    else
+      step = (spline%z(rho_max_i+1) - spline%z(rho_max_i-1)) / (nsteps-1)
+      z_test = spline%z(rho_max_i-1)
+    end if
+
     do i=1, nsteps
         call splint(spline%z, spline%rho, spline%rhoDD, spline%nz, z_test, rho_test)
         if (rho_test .gt. rho_max) then
