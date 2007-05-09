@@ -1027,7 +1027,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 100
+    nRay = 1000
 !    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     do iStage = 1, 2
 
@@ -2147,7 +2147,6 @@ contains
        write(*,*) iv,iv1,iv2
        do ix = 1, cube%nx
           do iy = 1, cube%ny
-
              do iMonte = 1, nMonte
                 if (nMonte > 1) then
                    call random_number(r)
