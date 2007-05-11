@@ -1258,6 +1258,9 @@ endif
           call getString(keyword, atomFileName(i), cLine, nLines, &
                "Use atom filename: ","(a,a,1x,a)","none", ok, .true.)
        enddo
+       call getInteger("itrans", itransLine, cLine, nLines, &
+            "Index of line transition: ","(a,i12,a)",4,ok,.true.)
+
     endif
 
     call getLogical("debug", debug, cLine, nLines, &

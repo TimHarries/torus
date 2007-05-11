@@ -22,6 +22,7 @@ module input_variables
   logical :: molecular
   real :: beamSize
   logical :: cmf
+  integer :: iTransLine
   integer :: nAtom
   character(len=20) :: atomFilename(10)
   integer :: nClumps

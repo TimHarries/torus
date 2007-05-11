@@ -709,6 +709,22 @@ subroutine TranslateCubeIntensity(cube,constant)
     
 end subroutine TranslateCubeIntensity
 
+subroutine freeDataCube(thiscube)
+  type(DATACUBE) :: thiscube
+
+
+    if (associated(thisCube%xAxis)) deallocate(thiscube%xAxis)
+    if (associated(thisCube%yAxis)) deallocate(thiscube%yAxis)
+    if (associated(thisCube%vAxis)) deallocate(thiscube%vAxis)
+
+    if (associated(thisCube%intensity)) deallocate(thiscube%intensity)
+    if (associated(thisCube%flux)) deallocate(thiscube%flux)
+    if (associated(thisCube%nsubpixels)) deallocate(thiscube%nSubpixels)
+    if (associated(thisCube%converged)) deallocate(thiscube%converged)
+    if (associated(thisCube%weight)) deallocate(thiscube%weight)
+
+  end subroutine freeDataCube
+
 subroutine ConvertUnits(cube)
   type(DATACUBE) :: cube
   character(len=10) :: intensityUnit ! System 1 - cgs | System 2 - SI | System 3 - Janskys
