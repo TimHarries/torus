@@ -12421,11 +12421,10 @@ IF ( .NOT. gridConverged ) RETURN
                write(*,*) "dir",direction
                write(*,*) "point",point
                do;enddo
-                  x1 = thisoctal%subcellSize/2.d0
-                  x2 = 0.d0
-               endif
-               distTor2 = max(x1,x2)/compX
+            endif
+            distTor2 = max(x1,x2)/compX
                
+            if (d .ne. 0.) then
                theta = asin(max(-1.d0,min(1.d0,r1 / d)))
                cosmu = ((-1.d0)*xHat).dot.rdirection
                mu = acos(max(-1.d0,min(1.d0,cosmu)))
@@ -12439,70 +12438,73 @@ IF ( .NOT. gridConverged ) RETURN
                   endif
                   distTor1 = min(x1,x2)/compX
                endif
-            endif
-            distToRboundary = min(distTor1, distTor2)
-            
-            ! now do the upper and lower (z axis) surfaces
-            
-            zHat = VECTOR(0.d0, 0.d0, 1.d0)
-            compZ = zHat.dot.direction
-            currentZ = point%z
-            
-            if (compZ /= 0.d0 ) then
-               if (compZ > 0.d0) then
-                  distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
-               else
-                  distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
-               endif
             else
-               disttoZboundary = 1.e30
-            endif
-            
-            ! ok now we have to tackle the two angled sides...
-                        
-
-            rVec = subcellCentre(thisOctal, subcell)
-            phi = atan2(rVec%y, rVec%x)
-            if (phi < 0.d0) phi = phi + twoPi
-
-            ang1 = phi - returndPhi(thisOctal)
-            rPlane = OCTALVECTOR(cos(ang1),sin(ang1),0.d0)
-            rnorm = rplane .cross. OCTALVECTOR(0.d0, 0.d0, 1.d0)
-            call normalize(rnorm)
-            distToSide1 = 1.d30
-            if ((rnorm .dot. direction) /= 0.d0) then
-               distToSide1 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
-               if (distToSide1 < 0.d0) distToSide1 = 1.d30
-            endif
-
-            ang2 = phi + returndPhi(thisOctal)
-            rPlane = OCTALVECTOR(cos(ang2),sin(ang2),0.d0)
-            rnorm = rplane .cross.  OCTALVECTOR(0.d0, 0.d0, 1.d0)
-            call normalize(rnorm)
-            distToSide2 = 1.d30
-            if ((rnorm .dot. direction) /= 0.d0) then
-               distToSide2 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
-               if (distToSide2 < 0.d0) distToSide2 = 1.d30
-            endif
-
-            distToSide = min(distToSide1, distToSide2)
-
-            
-            tVal = min(distToZboundary, distToRboundary, distToSide)
-            if (tVal > 1.e29) then
-               write(*,*) "Cylindrical"
-               write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
-               write(*,*) "subcen",subcen
-               write(*,*) "x,z",currentX,currentZ
-            endif
-            if (tval < 0.) then
-               write(*,*) "Cylindrical"
-               write(*,*) tVal,distToZboundary,disttorboundary, disttoside
-               write(*,*) "subcen",subcen
-               write(*,*) "x,z",currentX,currentZ
-            endif
-
+               distTor1 = 0.
+            end if
          endif
+         distToRboundary = min(distTor1, distTor2)
+         
+         ! now do the upper and lower (z axis) surfaces
+         
+         zHat = VECTOR(0.d0, 0.d0, 1.d0)
+         compZ = zHat.dot.direction
+         currentZ = point%z
+         
+         if (compZ /= 0.d0 ) then
+            if (compZ > 0.d0) then
+               distToZboundary = (subcen%z + thisOctal%subcellsize/2.d0 - currentZ ) / compZ
+            else
+               distToZboundary = abs((subcen%z - thisOctal%subcellsize/2.d0 - currentZ ) / compZ)
+            endif
+         else
+            disttoZboundary = 1.e30
+         endif
+         
+         ! ok now we have to tackle the two angled sides...
+                     
+
+         rVec = subcellCentre(thisOctal, subcell)
+         phi = atan2(rVec%y, rVec%x)
+         if (phi < 0.d0) phi = phi + twoPi
+
+         ang1 = phi - returndPhi(thisOctal)
+         rPlane = OCTALVECTOR(cos(ang1),sin(ang1),0.d0)
+         rnorm = rplane .cross. OCTALVECTOR(0.d0, 0.d0, 1.d0)
+         call normalize(rnorm)
+         distToSide1 = 1.d30
+         if ((rnorm .dot. direction) /= 0.d0) then
+            distToSide1 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
+            if (distToSide1 < 0.d0) distToSide1 = 1.d30
+         endif
+
+         ang2 = phi + returndPhi(thisOctal)
+         rPlane = OCTALVECTOR(cos(ang2),sin(ang2),0.d0)
+         rnorm = rplane .cross.  OCTALVECTOR(0.d0, 0.d0, 1.d0)
+         call normalize(rnorm)
+         distToSide2 = 1.d30
+         if ((rnorm .dot. direction) /= 0.d0) then
+            distToSide2 = (rnorm.dot.(rPlane-posVec))/(rnorm.dot.direction)
+            if (distToSide2 < 0.d0) distToSide2 = 1.d30
+         endif
+
+         distToSide = min(distToSide1, distToSide2)
+
+         
+         tVal = min(distToZboundary, distToRboundary, distToSide)
+         if (tVal > 1.e29) then
+            write(*,*) "Cylindrical"
+            write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
+            write(*,*) "subcen",subcen
+            write(*,*) "x,z",currentX,currentZ
+         endif
+         if (tval < 0.) then
+            write(*,*) "Cylindrical"
+            write(*,*) tVal,distToZboundary,disttorboundary, disttoside
+            write(*,*) "subcen",subcen
+            write(*,*) "x,z",currentX,currentZ
+         endif
+
+      endif
       
    else ! two-d grid case below
 
