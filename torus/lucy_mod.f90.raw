@@ -335,9 +335,10 @@ contains
     real(oct) :: freq(2000), dnu(2000), probDistJnu(2000)
 !    real(oct) :: probDistPlanck(nFreq)
     real(double) :: kappaScadb, kappaAbsdb
-    integer :: nDiffusion
-    integer :: nDiffusion_sub
-    integer :: nMonte, iMonte, nScat, nAbs
+    integer(double) :: nDiffusion
+    integer(double) :: nDiffusion_sub
+    integer(double) :: nMonte, nScat, nAbs
+    integer :: iMonte
     integer :: thisPhotonAbs
     real(oct) :: thisFreq
     real(oct) :: albedo
@@ -348,7 +349,7 @@ contains
     integer :: nRemoved
     real :: Tthresh
     integer :: iLam
-    integer :: nInf
+    integer(double) :: nInf
     integer :: iIter, nIter
     real(oct) ::   epsOverDeltaT
     real(oct) :: meanDeltaT
@@ -376,7 +377,7 @@ contains
     real(oct)::  dT_mean_new, dT_mean_old ! [Kelvins]
     logical :: converged
     real:: percent_undersampled
-    integer :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
+    integer(double) :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
     integer :: nKilled
     integer :: maxIter
     integer       :: imonte_beg, imonte_end  ! the index boundary for the photon loops.
@@ -918,15 +919,15 @@ contains
 !$MPI       ! collect some statical info from each node.
 !$MPI       call MPI_ALLGATHER(REAL(nInf), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
 !$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI       nInf = INT(SUM(buffer_real))
+!$MPI       nInf = INT(SUM(buffer_real), double)
 !$MPI
 !$MPI       call MPI_ALLGATHER(REAL(nScat), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
 !$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI       nScat = INT(SUM(buffer_real))
+!$MPI       nScat = INT(SUM(buffer_real), double)
 !$MPI
 !$MPI       call MPI_ALLGATHER(REAL(nAbs), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
 !$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI       nAbs = INT(SUM(buffer_real))
+!$MPI       nAbs = INT(SUM(buffer_real), double)
 !$MPI
 !$MPI       call MPI_ALLGATHER(REAL(nKilled), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
 !$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -934,7 +935,7 @@ contains
 !$MPI
 !$MPI       call MPI_ALLGATHER(REAL(nDiffusion), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
 !$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI       nDiffusion = INT(SUM(buffer_real))
+!$MPI       nDiffusion = INT(SUM(buffer_real), double)
 !$MPI
 !$MPI       
 !$MPI       if(my_rank == 0) then
