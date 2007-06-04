@@ -1285,14 +1285,12 @@ stop
     integer :: nSubcell
 
     if (thisOctal%nChildren > 0) then
-            
        ! call this subroutine recursively on each of its children
        do subcell = 1, thisOctal%nChildren, 1 
           child => thisOctal%child(subcell)
           call computeProbDist3AMR(child,biasCorrectionLine,&
                    biasCorrectionCont,totalLineProb,totalContProb)
        end do 
-       
     end if
 
     nSubcell = thisOctal%maxChildren
@@ -1309,10 +1307,15 @@ stop
        thisOctal%probDistCont(1:nSubcell) = 1.0d0
     end if
 
-    thisOctal%biasLine3D(1:nSubcell) = thisOctal%biasLine3D(1:nSubcell) * biasCorrectionLine
-    thisOctal%biasCont3D(1:nSubcell) = thisOctal%biasCont3D(1:nSubcell) * biasCorrectionCont
-    
-      
+    ! probDist[Line|Cont] are set for all subcells, regardless of whether they
+    ! have children or not. bias[Line|Cont]3D, on the other hand, are only set
+    ! for childless subcells, so we must only 'correct' valid values.
+    do subcell = 1, thisOctal%maxChildren, 1
+       if (.not. thisOctal%hasChild(subcell)) then
+          thisOctal%biasLine3D(subcell) = thisOctal%biasLine3D(subcell) * biasCorrectionLine
+          thisOctal%biasCont3D(subcell) = thisOctal%biasCont3D(subcell) * biasCorrectionCont
+       end if
+    end do 
   end subroutine computeProbDist3AMR
 
 
