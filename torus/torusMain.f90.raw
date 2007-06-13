@@ -2771,15 +2771,15 @@
                  ang = real(i-1)/40. * twoPi
                  octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
                  write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
-                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
+!                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
               enddo
            endif
 
-        do i = 10, 40
-           ang = twoPi * real(i-1)/40. 
+        do i = 1, 50
+           ang = twoPi * real(i-1)/51. 
 !           ang = 45.*degtorad
            t = 120.d0*degtorad
-           call calculateAtomSpectrum(grid, thisAtom, nAtom, 1, iTransLine, &
+           call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
                 OCTALVECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
                 source, nsource,i)
         enddo

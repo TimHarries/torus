@@ -1261,6 +1261,9 @@ endif
        call getInteger("itrans", itransLine, cLine, nLines, &
             "Index of line transition: ","(a,i12,a)",4,ok,.true.)
 
+       call getInteger("iatom", itransAtom, cLine, nLines, &
+            "Index of line transition: ","(a,i12,a)",4,ok,.true.)
+
     endif
 
     call getLogical("debug", debug, cLine, nLines, &

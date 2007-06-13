@@ -14658,11 +14658,13 @@ IF ( .NOT. gridConverged ) RETURN
        do j = 1, thisStream(i)%nSamples
           tot = 1.d0-(thisStream(i)%distanceAlongStream(j) / &
                thisStream(i)%distanceAlongStream(thisStream(i)%nSamples))
-!          thisStream(i)%temperature(j) = 4000.d0 + 6000.d0 * tot
+          thisStream(i)%temperature(j) = 4000.d0 + 4000.d0 * tot
+
+!          thisStream(i)%temperature(j) = 6000.d0
    
           ! Behaviour similar to Martin96 fig 1b
           ! Arbitrary !!!!
-          thisStream(i)%temperature(j) = min(2850.d0  + (tot/0.8)**3  * 3000.d0, 6000.d0)
+!          thisStream(i)%temperature(j) = min(2850.d0  + (tot/0.8)**3  * 3000.d0, 6000.d0)
        enddo
     enddo
 
@@ -15104,7 +15106,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%rho(subcell) = rho / dble(n)
        thisOctal%temperature(subcell) = temperature/real(n)
        thisOctal%velocity(subcell) = vel / real(n)
-       thisOctal%microturb(subcell) = 20.d5/cspeed!!!!!!!!!!!!!!!!!!!!
+       thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
        if (subcell == thisOctal%maxchildren) then
           call fillVelocityCorners(thisOctal,grid,magstreamvelocity, .true.)
 !          write(*,*) " "

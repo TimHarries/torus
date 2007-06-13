@@ -1027,7 +1027,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 1000
+    nRay = 100
 !    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     do iStage = 1, 2
 
@@ -1618,8 +1618,8 @@ contains
     real(double) :: totDist
     logical :: hitSource
     real(double) :: i0
-    type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
-    integer :: fromSubcell
+    type(OCTAL), pointer :: thisOctal, startOctal, fromOctal, endOctal
+    integer :: fromSubcell, endSubcell
     integer :: subcell
     real(double) :: ds, phi, r, costheta
     type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
@@ -1647,7 +1647,7 @@ contains
     real(double) :: nstar(10,50), rhoCol
     real(double) :: bfOpac, bfEmiss, x1, x2, fac
     integer :: j, k
-    logical :: lineoff, passThroughResonance
+    logical :: lineoff, passThroughResonance, velocityIncreasing
 
 
     nHAtom = 0
@@ -1709,7 +1709,7 @@ contains
     endLoopAtPhotosphere = .false.
     lineOff = .false.
 
-    if (lineOff.and.hitSource) endLoopAtphotosphere = .true.
+    if (hitSource) endLoopAtphotosphere = .true.
 
 !    write(*,*) lineoff,hitsource,endloopatphotosphere
    if (.not.lineOff) then
@@ -1732,6 +1732,7 @@ contains
        endif
 
 
+
        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
 !       startVel = getVel(grid, thisOctal, subcell, currentposition, direction)
 
@@ -1739,6 +1740,8 @@ contains
        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
 !       endVel = getVel(grid, thisOctal, subcell, endposition, direction)
 
+!       endOctal => grid%octreeRoot
+!       call findSubcellLocal(endPosition, endOctal, endSubcell)
 
        dv1 = deltaV + (startVel .dot. direction)
        dv2 = deltaV + (endVel .dot. direction)
@@ -1751,12 +1754,27 @@ contains
 
        passThroughResonance =.false.
        
+       
        if (dv1*dv2 < 0.d0) passThroughResonance = .true.
+       
+       if (modulus(endVel)==0.d0) passThroughResonance = .false.
+       
+       if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))) then
 
-       if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 3.d0*thisOctal%microturb(subcell))) then
+          if (dv1 <= dv2) then
+             velocityIncreasing = .true.
+          else
+             velocityIncreasing = .false.
+          endif
+
           if ( (dv2 - dv1) /= 0.d0) then
-             x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
-             x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+             if (velocityIncreasing) then
+                x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+             else
+                x1 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                x2 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+             endif
           else
              x1 = 0.d0
              x2 = tVal
@@ -1851,10 +1869,14 @@ contains
           endif
 
 
+
 !          write(*,*) iCount,ntau,totdist, &
 !               modulus(currentPosition)/(grid%rCore),tau,modulus(thisOctal%velocity(subcell))*cspeed/1.d5,i0,&
-!               passthroughresonance, dv*cspeed/1.e5
+!               passthroughresonance, dv*cspeed/1.e5, phiProf(dv, thisOctal%microturb(subcell)), &
+!               snu,dtau,tau
 
+          write(*,*) iCount, ntau, passThroughResonance, dv1*cspeed/1.e5,dv2*cspeed/1.e5,dv*cspeed/1.e5, &
+               modulus(thisOctal%velocity(subcell))*cspeed/1.e5, deltaV*cspeed/1.e5
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
           tau = tau + dtau
@@ -1866,6 +1888,7 @@ contains
        totdist = totdist + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell)
     enddo
  endif
+
 
     if (endLoopAtPhotosphere) then
 
@@ -2114,7 +2137,7 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 400, 400, 100)
+    call initCube(cube, 100, 100, 50)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 
@@ -2129,7 +2152,7 @@ contains
 !    call addSpatialAxes(cube, -dble(3.1*grid%rInner), +dble(3.1*grid%rInner), -dble(3.1*grid%rInner), +dble(3.1*grid%rInner))
 !    write(*,*) "rinner",grid%rinner/(rsol/1.e10)
 
-    call addvelocityAxis(cube, -400.d0, 400.d0)
+    call addvelocityAxis(cube, -2500.d0, 2500.d0)
 
     xProj =   viewVec .cross. OCTALVECTOR(0.d0, 0.d0, 1.d0)
     call normalize(xProj)
@@ -2143,6 +2166,7 @@ contains
 !$MPI    iv2 = int(real(my_rank+1) * (real(cube%nv) / real(np)))
 !$MPI    if (my_rank == (np-1)) iv2 = cube%nv
 
+    iv1 = 28
 
     do iv = iv1, iv2
        write(*,*) iv,iv1,iv2
