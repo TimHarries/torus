@@ -835,7 +835,7 @@ contains
     real :: r,v
     r = modulus(point)
     testDensity = tiny(testDensity)
-    if ((r > grid%rInner).and.(r < grid%rOuter)) then
+    if ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
        v = 0.1d5+(vterm-0.1d5)*(1.d0 - grid%rinner/r)**beta
        testDensity = mdot / (fourPi * r**2 * v *1.e20)
     endif

@@ -423,7 +423,8 @@ contains
     real(double), allocatable :: tauCont(:), jnuCont(:), alphanuCont(:), snuCont(:)
     logical, save :: first = .true.
     real(double) :: nStar(5,40), t1
-
+    logical :: passThroughResonance, velocityIncreasing
+    real(double) :: x1, x2, fac
 
     allocate(tauCont(1:nFreq))
     allocate(jnuCont(1:nFreq))
@@ -526,14 +527,60 @@ contains
        dv1 = abs(deltaV - (startVel .dot. direction))
        dv2 = abs(deltaV - (endVel .dot. direction))
 
+       distArray(1) = 0.d0
+       distArray(2) = tVal
        nTau = 2
+
+       passThroughResonance =.false.
        
-       if (max(dv1,dv2) < 4.d0*thisOctal%microturb(subcell)) then
-          nTau = min(max(2, nint(dvAcrossCell * 20.d0)),200)
+       
+       if (dv1*dv2 < 0.d0) passThroughResonance = .true.
+       
+       if (modulus(endVel)==0.d0) passThroughResonance = .false.
+       
+       if (passthroughresonance.or.(min(abs(dv1),abs(dv2)) < 4.d0*thisOctal%microturb(subcell))) then
+
+          if (dv1 <= dv2) then
+             velocityIncreasing = .true.
+          else
+             velocityIncreasing = .false.
+          endif
+
+          if ( (dv2 - dv1) /= 0.d0) then
+             if (velocityIncreasing) then
+                x1 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                x2 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+             else
+                x1 = tval*(+4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+                x2 = tval*(-4.d0*thisOctal%microturb(subcell) - dv1)/(dv2 - dv1)
+             endif
+          else
+             x1 = 0.d0
+             x2 = tVal
+          endif
+
+          if (x1 > x2) then
+             fac = x1
+             x1 = x2
+             x2 = fac
+          endif
+          x1 = max(0.d0, x1)
+          x2 = min(x2, tVal)
+          nTau = 80
+          distArray(1) = 0.d0
+          do i = 1, nTau-1
+             distArray(i+1) = x1 + (x2 - x1)*dble(i-1)/dble(ntau-2)
+          enddo
+          distArray(nTau) = tVal
+       endif
+
+       if (.not.thisOctal%inflow(subcell)) then
+          distArray(1) = 0.d0
+          distArray(2) = tVal
+          nTau = 2
        endif
 
 
-       distArray(1) = 0.d0
        do i = 2, nTau
           
           distArray(i) = tval * dble(i-1)/dble(nTau-1)
@@ -1817,7 +1864,7 @@ contains
 !          if (abs(dv)*cspeed/1.d5 < 100.d0) then
 !             write(*,*) i,distArray(i), dv1*cspeed/1.e5,dv2*cspeed/1.e5,x1,x2,tval,dv*cspeed/1.e5
 !          endif
-
+  
           call returnEinsteinCoeffs(thisAtom(iAtom), iTrans, a, Bul, Blu)
 
 
@@ -1875,8 +1922,8 @@ contains
 !               passthroughresonance, dv*cspeed/1.e5, phiProf(dv, thisOctal%microturb(subcell)), &
 !               snu,dtau,tau
 
-          write(*,*) iCount, ntau, passThroughResonance, dv1*cspeed/1.e5,dv2*cspeed/1.e5,dv*cspeed/1.e5, &
-               modulus(thisOctal%velocity(subcell))*cspeed/1.e5, deltaV*cspeed/1.e5
+!          write(*,'(i4,i4,l3,10(1pe12.3))') iCount, ntau, passThroughResonance, dv1*cspeed/1.e5,dv2*cspeed/1.e5,dv*cspeed/1.e5, &
+!             i0,tau, jnu,alphanu,snu, nlower,nupper
 
           i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
           tau = tau + dtau
@@ -2166,7 +2213,7 @@ contains
 !$MPI    iv2 = int(real(my_rank+1) * (real(cube%nv) / real(np)))
 !$MPI    if (my_rank == (np-1)) iv2 = cube%nv
 
-    iv1 = 28
+!    iv1 = 25
 
     do iv = iv1, iv2
        write(*,*) iv,iv1,iv2

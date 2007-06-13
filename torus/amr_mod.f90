@@ -7587,7 +7587,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%inFlow(subcell) = .false.
     thisOctal%velocity(subcell) = VECTOR(0.,0.,0.)
 
-    if (((r-thisOctal%subcellSize/2.d0) > grid%rInner).and.(r < grid%rOuter)) then
+    if (((r-thisOctal%subcellSize/2.d0) > grid%rInner)) then !.and.(r < grid%rOuter)) then
        thisOctal%rho(subcell) = density(rVec, grid)
        thisOctal%temperature(subcell) = 0.9*teff
        thisOctal%inFlow(subcell) = .true.
@@ -7723,7 +7723,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     wrShellVelocity = OCTALVECTOR(0.d0, 0.d0, 0.d0)
     r = modulus(rVec)
-    if ((r > grid%rInner).and.(r < grid%rOuter)) then
+    if ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
        v = 0.1d5+(vterm-0.1d5)*(1.d0 - grid%rinner/r)**beta
        call normalize(rvec)
        wrshellvelocity = rvec * (v/cSpeed)
