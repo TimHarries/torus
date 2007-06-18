@@ -689,6 +689,9 @@ contains
        grid%rOuter = rOuter
        grid%rCore = rCore
 
+    case("hydro1d")
+       grid%geometry = "hydro1d"
+
     case("gammavel")
        grid%geometry = "gammavel"
 

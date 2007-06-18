@@ -76,6 +76,7 @@
   use molecular_mod
   use modelatom_mod
   use cmf_mod
+  use hydrodynamics_mod
 
 !$mpi   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
@@ -2802,6 +2803,11 @@
         call photoIonizationLoop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
              lucyfilenameout, lucyfilenamein)
      endif
+
+     if (hydrodynamics) then
+        call doHydrodynamics(grid)
+     endif
+
 
 
 

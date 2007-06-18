@@ -1239,6 +1239,18 @@ contains
 
 endif
 
+    call getLogical("hydrodynamics", hydrodynamics, cLine, nLines, &
+         "Do hydrodynamics: ","(a,1l,a)", .false., ok, .false.)
+
+    if (hydrodynamics) then
+       call getReal("x1", x1, cLine, nLines, &
+         "Start of x-array:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+       call getReal("x2", x2, cLine, nLines, &
+         "Start of x-array:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+    endif
+
+
+
     call getLogical("cmf", cmf, cLine, nLines, &
          "Compute CMF statistical equilibrium: ","(a,1l,a)", .false., ok, .false.)
 

@@ -178,6 +178,10 @@ CONTAINS
     CASE("wrshell")
        CALL calcWRShellDensity(thisOctal,subcell,grid)
 
+    CASE("hydro1d")
+       call calcHydro1DDensity(thisOctal, subcell, grid)
+
+
     CASE("gammavel")
        CALL calcGammaVel(thisOctal,subcell,grid)
 
@@ -1152,6 +1156,9 @@ CONTAINS
         gridConverged = .TRUE.
 
       CASE ("magstream")
+        gridConverged = .TRUE.
+
+      CASE ("hydro1d")
         gridConverged = .TRUE.
 
       CASE DEFAULT
@@ -4952,6 +4959,10 @@ IF ( .NOT. gridConverged ) RETURN
       if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       if ( (r+cellsize) < rgrid(1)) split = .false.
 
+   case("hydro1d")
+      split = .false.
+      if (thisOctal%nDepth < 7) split = .true.
+
    case("benchmark")
       split = .false.
       cellSize = thisOctal%subcellSize 
@@ -7615,6 +7626,24 @@ IF ( .NOT. gridConverged ) RETURN
     
 
   end subroutine calcWRShellDensity
+
+  subroutine calcHydro1DDensity(thisOctal,subcell,grid)
+
+    use input_variables
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    type(OCTALVECTOR) :: rVec
+    real(double) :: gd, xmid
+    rVec = subcellCentre(thisOctal, subcell)
+    xmid = (x1 + x2)/2.d0
+    gd = 0.1d0 * (x2 - x1)
+    thisOctal%rho(subcell) = 1.d0 + 0.3d0 * exp(-(rVec%x-xmid)**2/gd**2)
+    thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
+
+  end subroutine calcHydro1DDensity
+    
+
 
   subroutine benchmarkDisk(thisOctal,subcell,grid)
 

@@ -578,6 +578,10 @@ module input_variables
   !--------------------------------------------------------------------
 
   real :: hcoabundance
+
+!hydro stuff
+  logical :: hydrodynamics
+  real :: x1, x2
   
 end module input_variables
 
