@@ -602,7 +602,7 @@
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
         call readAtom(thisAtom(i),atomFilename(i))
-        call stripAtomLevels(thisAtom(i), 10)
+!        call stripAtomLevels(thisAtom(i), 10)
      enddo
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
   endif

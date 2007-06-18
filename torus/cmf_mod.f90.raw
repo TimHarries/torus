@@ -439,7 +439,7 @@ contains
     thisOctal => grid%octreeRoot
     call findSubcellLocal(position, thisOctal, subcell)
 
-    call randomRayDirection(0.9d0, position, source, nSource, direction, weight)
+    call randomRayDirection(0.5d0, position, source, nSource, direction, weight)
 
 
 
@@ -923,7 +923,7 @@ contains
 
   subroutine atomLoop(grid, nAtom, thisAtom, nSource, source)
 
-    use input_variables, only : blockhandout, debug
+    use input_variables, only : blockhandout, debug, rcore
 !$MPI    include 'mpif.h'
 
     type(SOURCETYPE) :: source(:)
@@ -1317,6 +1317,9 @@ contains
                            endif
                            write(*,*) "Ne: ",ne,dne
                            write(*,*) "T: ",thisOctal%temperature(subcell)
+                           write(*,*) "R: ",modulus(subcellCentre(thisOctal,subcell))/rCore
+                           write(*,*) "log(HeII/HeIII): ",log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / &
+                                thisOctal%newAtomLevel(subcell, 2, thisAtom(2)%nlevels))
                         endif
                          fac = -1.d30
                          where (mainoldPops == 0.d0)
