@@ -7634,12 +7634,26 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     type(OCTALVECTOR) :: rVec
-    real(double) :: gd, xmid
+    real(double) :: gd, xmid, x
     rVec = subcellCentre(thisOctal, subcell)
     xmid = (x1 + x2)/2.d0
+    x = rVec%x
     gd = 0.1d0 * (x2 - x1)
     thisOctal%rho(subcell) = 1.d0 + 0.3d0 * exp(-(rVec%x-xmid)**2/gd**2)
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
+    thisOctal%pressure_i(subcell) = 0.1d0
+    thisOctal%rho(subcell) = 1.d0
+
+    if (x < xmid) then
+       thisOctal%rho(subcell) = 1.d0
+       thisOctal%energy(subcell) = 2.5d0
+       thisOctal%pressure_i(subcell) = 1.d0
+    else
+       thisOctal%rho(subcell) = 0.125d0
+       thisOctal%energy(subcell) = 0.25d0
+       thisOctal%pressure_i(subcell) = 0.1d0
+    endif
+
 
   end subroutine calcHydro1DDensity
     
@@ -8962,6 +8976,30 @@ IF ( .NOT. gridConverged ) RETURN
     dest%cornerVelocity   = source%cornerVelocity
     dest%nh2              = source%nh2
     dest%microturb        = source%microturb
+
+
+    dest%x_i_minus_1      = source%x_i_minus_1
+    dest%x_i              = source%x_i
+    dest%x_i_plus_1       = source%x_i_plus_1
+
+    dest%q_i_minus_1      = source%q_i_minus_1
+    dest%q_i              = source%q_i
+    dest%q_i_plus_1       = source%q_i_plus_1
+
+    dest%flux_i_minus_1   = source%flux_i_minus_1
+    dest%flux_i           = source%flux_i
+    dest%flux_i_plus_1    = source%flux_i_plus_1
+
+    dest%pressure_i_minus_1   = source%pressure_i_minus_1
+    dest%pressure_i           = source%pressure_i
+    dest%pressure_i_plus_1    = source%pressure_i_plus_1
+
+    dest%u_interface          = source%u_interface
+    dest%rLimit               = source%rLimit
+    dest%phiLimit             = source%phiLimit
+    dest%ghostCell            = source%ghostCell
+    dest%energy               = source%energy
+    dest%rhou                 = source%rhou
 
 
     if (associated(source%photoIonCoeff)) then

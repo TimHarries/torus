@@ -171,12 +171,14 @@ MODULE octal_mod
     ! hydrodynamics
     real(double) :: q_i(8), q_i_plus_1(8), q_i_minus_1(8), q_i_minus_2(8)
     real(double) :: x_i(8), x_i_plus_1(8), x_i_minus_1(8)
-    real(double) :: u_interface(8)
+    real(double) :: u_interface(8), u_i_plus_1(8), u_i_minus_1(8)
     real(double) :: flux_i(8), flux_i_plus_1(8), flux_i_minus_1(8)
     real(double) :: phiLimit(8), rLimit(8)
     logical :: ghostCell(8)
-    real(double) :: rhou(8),  energy(8)
+    real(double) :: rhou(8),  rhov(8), rhoE(8), energy(8)
     real(double) :: pressure_i(8), pressure_i_plus_1(8), pressure_i_minus_1(8)
+    type(OCTALVECTOR) :: boundaryPartner(8)
+    character(len=10) :: boundaryCondition(8)
     
   END TYPE octal
  
