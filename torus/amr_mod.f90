@@ -7634,25 +7634,30 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     type(OCTALVECTOR) :: rVec
-    real(double) :: gd, xmid, x
+    real(double) :: gd, xmid, x, z, r 
     rVec = subcellCentre(thisOctal, subcell)
     xmid = (x1 + x2)/2.d0
     x = rVec%x
+    z = rVec%z
     gd = 0.1d0 * (x2 - x1)
-    thisOctal%rho(subcell) = 1.d0 + 0.3d0 * exp(-(rVec%x-xmid)**2/gd**2)
+    r = modulus(rVec - OCTALVECTOR(0.5d0, 0.d0, 0.5d0))
+    thisOctal%rho(subcell) = 1.d0 + 0.3d0 * exp(-r**2/gd**2)
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
-    thisOctal%pressure_i(subcell) = 0.1d0
-    thisOctal%rho(subcell) = 1.d0
 
-    if (x < xmid) then
-       thisOctal%rho(subcell) = 1.d0
-       thisOctal%energy(subcell) = 2.5d0
-       thisOctal%pressure_i(subcell) = 1.d0
-    else
-       thisOctal%rho(subcell) = 0.125d0
-       thisOctal%energy(subcell) = 0.25d0
-       thisOctal%pressure_i(subcell) = 0.1d0
-    endif
+    thisOctal%pressure_i(subcell) = 1.d0
+    thisOctal%energy(subcell) = 1.d0
+!    thisOctal%rho(subcell) = 1.d0
+!
+!    xMid = x2 - z
+!    if (x < xmid) then
+!       thisOctal%rho(subcell) = 1.d0
+!       thisOctal%energy(subcell) = 2.5d0
+!       thisOctal%pressure_i(subcell) = 1.d0
+!    else
+!       thisOctal%rho(subcell) = 0.125d0
+!       thisOctal%energy(subcell) = 0.25d0
+!       thisOctal%pressure_i(subcell) = 0.1d0
+!    endif
 
 
   end subroutine calcHydro1DDensity

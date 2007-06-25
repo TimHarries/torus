@@ -6,6 +6,7 @@ module hydrodynamics_mod
   use kind_mod
   use constants_mod
   use amr_mod
+  use grid_mod
 
   implicit none
 
@@ -389,6 +390,7 @@ contains
                   thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / &
                   (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
 
+             
 
              if (isnan(thisOctal%rhou(subcell))) then
                 write(*,*) "bug"
@@ -700,9 +702,10 @@ contains
     call computePressure(grid%octreeRoot, gamma, direction)
     call setupPressure(grid%octreeRoot, grid, direction)
     call pressureForce(grid%octreeRoot, subdt)
+
     call imposeBoundary(grid%octreeRoot, boundarycondition)
 
-    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
     call setupUi(grid%octreeRoot, grid, direction)
     call advectRho(grid, direction, subdt)
     call advectRhoU(grid, direction, subdt)
@@ -712,6 +715,7 @@ contains
     call computePressure(grid%octreeRoot, gamma, direction)
     call setupPressure(grid%octreeRoot, grid, direction)
     call pressureForce(grid%octreeRoot, subdt)
+
     call imposeBoundary(grid%octreeRoot, boundarycondition)
 
 
@@ -767,7 +771,8 @@ contains
 !    call pgenv(0., 100., -1., 1., 0, 0)
     call pgenv(0., 1., 0., 1., 0, 0)
 
-    call setGhostCells(grid, direction)
+
+    call setupGhostCells(grid%octreeRoot, grid, "mirror")
     call calculateRhoU(grid%octreeRoot, direction)
     call calculateEnergy(grid%octreeRoot, gamma, mu)
     call calculateRhoE(grid%octreeRoot, direction)
@@ -797,19 +802,12 @@ contains
     gamma = 7.d0 / 5.d0
     cfl = 0.5d0
     mu = 2.d0
-    i = pgbegin(0,"/xs",1,1)
-!    call pgenv(0., 100., -1., 1., 0, 0)
-    call pgenv(0., 1., 0., 1., 0, 0)
 
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-    call setGhostCells(grid, direction)
-    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-    call setGhostCells(grid, direction)
-
+    call setupGhostCells(grid%octreeRoot, grid, "mirror")
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
     call calculateRhoV(grid%octreeRoot, direction)
 
     call calculateEnergy(grid%octreeRoot, gamma, mu)
@@ -817,16 +815,18 @@ contains
     call setupX(grid%octreeRoot, grid, direction)
     call setupQX(grid%octreeRoot, grid, direction)
     currentTime = 0.d0
-    do while(currentTime < 0.2d0)
+!    do while(currentTime < 0.2d0)
+    do while(.true.)
        tc = 1.d30
        call computeCourantTime(grid%octreeRoot, tc, gamma)
        dt = tc * cfl
        call hydroStep2d(grid, gamma, dt, "mirror")
        currentTime = currentTime + dt
        write(*,*) "current time ",currentTime
-       call plotHydroResults(grid)
+       call plot_AMR_values(grid, "rho", "x-z", 0., &
+            "/xs",.false., .false.)
+
     enddo
-    call pgend
   end subroutine doHydrodynamics2d
 
   recursive subroutine calculateEnergy(thisOctal, gamma, mu)
@@ -1040,12 +1040,11 @@ contains
 
 
   recursive subroutine imposeBoundary(thisOctal, boundaryCondition)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal, bOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, bSubcell
     character(len=*) :: boundaryCondition
-    type(OCTALVECTOR) :: locator
+    type(OCTALVECTOR) :: locator, dir
     real(double) :: gamma, machNumber, Pr, rhor
 
     machNumber = 2.d0
@@ -1068,10 +1067,23 @@ contains
                    locator = thisOctal%boundaryPartner(subcell)
                    bOctal => thisOctal
                    call findSubcellLocal(locator, bOctal, bSubcell)
+                   if (bOctal%ghostCell(bSubcell)) then
+                      write(*,*)subcellCentre(bOctal, bSubcell)
+                   endif
+
+                   dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
+                   call normalize(dir)
                    thisOctal%rho(subcell) = bOctal%rho(bSubcell)
                    thisOctal%rhoE(subcell) = bOctal%rhoE(bSubcell)
-                   thisOctal%rhou(subcell) = -bOctal%rhou(bSubcell)
-
+! NB confusion regarding 2d being x,z rather than x,y
+                   if (abs(dir%x) > 0.9d0) then
+                      thisOctal%rhou(subcell) = -bOctal%rhou(bSubcell)
+                      thisOctal%rhov(subcell) = bOctal%rhov(bSubcell)
+                   endif
+                   if (abs(dir%z) > 0.9d0) then
+                      thisOctal%rhou(subcell) = bOctal%rhou(bSubcell)
+                      thisOctal%rhov(subcell) = -bOctal%rhov(bSubcell)
+                   endif
                 case("shock")
                    rhor = 1.d0
                    Pr = 0.1d0
@@ -1092,7 +1104,88 @@ contains
       endif
     enddo
   end subroutine imposeBoundary
-          
-          
+
+  recursive subroutine setupGhostCells(thisOctal, grid, boundaryCondition)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal, neighbourOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, neighbourSubcell
+    character(len=*) :: boundaryCondition
+    type(OCTALVECTOR) :: locator, rVec
+    integer :: nProbes, iProbe
+    type(OCTALVECTOR) :: probe(6)
+    real(double) :: dx
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setupGhostCells(child,  grid, boundaryCondition)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%oned) then
+             nProbes = 2
+             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+          endif
+          if (thisOctal%twod) then
+             nProbes = 4
+             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             probe(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+             probe(4) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+          endif
+          if (thisOctal%threeD) then
+             nProbes = 6
+             probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+             probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             probe(3) = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+             probe(4) = OCTALVECTOR(0.d0, -1.d0, 0.d0)
+             probe(5) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+             probe(6) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+          endif
+          rVec = subcellCentre(thisOctal, subcell)
+          do iProbe = 1, nProbes
+             locator = rVec + &
+                  (thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*probe(iProbe)
+
+             ! this is fudged here because AMR mod assumes that the grid is one-d spherical....
+             if (.not.inOctal(grid%octreeRoot, locator).or. &
+                  (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) then  ! this is a boundary
+                ! setup the the two ghosts near the boundary
+
+                thisOctal%ghostCell(subcell) = .true.
+                locator = rVec - &
+                     (thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*probe(iProbe)
+                neighbourOctal => thisOctal
+                call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                neighbourOctal%ghostCell(neighbourSubcell) = .true.
+
+                ! now a case to determine the boundary cell relations
+                select case (boundaryCondition)
+                   case("mirror")
+                      dx = thisOctal%subcellSize
+                      thisOctal%ghostCell(subcell) = .true.
+                      thisOctal%boundaryPartner(subcell) = subcellCentre(thisOctal, subcell) - (3.d0*dx)*probe(iProbe)
+                      thisOctal%boundaryCondition(subcell) = "mirror"
+
+                      neighbourOctal%boundaryPartner(neighboursubcell) = &
+                           subcellCentre(neighbourOctal, neighbourSubcell) - (1.d0*dx)*probe(iProbe)
+                      neighbourOctal%boundaryCondition(neighboursubcell) = "mirror"
+
+                   case DEFAULT
+                      write(*,*) "unknown boundary condition: ",trim(boundaryCondition)
+                 end select
+             endif
+          enddo
+      endif
+    enddo
+  end subroutine setupGhostCells
+  
+  
 
 end module hydrodynamics_mod

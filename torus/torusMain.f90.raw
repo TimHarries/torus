@@ -2805,7 +2805,7 @@
      endif
 
      if (hydrodynamics) then
-        call doHydrodynamics1d(grid)
+        call doHydrodynamics2d(grid)
      endif
 
 
