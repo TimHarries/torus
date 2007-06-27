@@ -65,6 +65,10 @@ module input_variables
   logical :: forcedWavelength
   real :: usePhotonWavelength
   logical :: useDust ! molecular_mod includes continuum emission
+  real :: r0, rhoC ! Filamentry parameters
+
+  real :: imageside ! molecular_mod image parameters
+  integer :: itrans, npixels, nsubpixels !nv already exists
 
   logical :: blockHandout
 

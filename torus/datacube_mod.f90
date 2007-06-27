@@ -6,7 +6,17 @@ module datacube_mod
 
   implicit none
 
+  type TELESCOPE
+     
+     character(len=10) :: label
+     real :: diameter
+     real :: beamsize ! in arcsecs
+     
+  end type TELESCOPE
+
   type DATACUBE
+     TYPE(TELESCOPE) :: telescope
+
      character(len=80) :: label
      character(len=10) :: vUnit ! units for velocity
      character(len=10) :: xUnit ! units for space
@@ -71,7 +81,7 @@ contains
     call ftphpr(unit,simple,bitpix,naxis,naxes,0,1,extend,status)
     
     !  Write the array to the FITS file.
-    call ftpprd(unit,group,fpixel,nelements,thisCube%intensity,status)
+    call ftpprd(unit,group,fpixel,nelements,thisCube%flux,status)
 
 
     !  Write keywords to the header.
@@ -351,15 +361,28 @@ contains
   !***********************************************************
 
 ! Initialises cube - sets intensity for cube to 0 
-  subroutine initCube(thisCube, nx, ny, nv)
+  subroutine initCube(thisCube, nx, ny, nv, mytelescope)
     type(DATACUBE) :: thisCube
+    type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
 
+    if(present(mytelescope)) then
+       
+       thisCube%telescope = mytelescope
+
+    else
+
+       thisCube%telescope%label=" "
+       thisCube%telescope%diameter = 1.
+       thisCube%telescope%beamsize = 1d10 !arcsecs - set large to give unconvolved image
+
+    endif
 
     thisCube%label=" "
     thisCube%vUnit=" "
     thisCube%xUnit=" "
     thisCube%IntensityUnit=" "
+    thisCube%FluxUnit=" "
 
     thisCube%nx = nx
     thisCube%ny = ny
@@ -416,6 +439,7 @@ contains
   subroutine plotDataCube(cube, device, withspec, gotPixels, plotflux, twoPanels)
     type(DATACUBE) :: cube
     character(len=*) :: device
+    character(len=40) :: message
     logical, optional :: withSpec, twoPanels, gotPixels, plotFlux
     logical :: doTwoPanels
     integer :: i, j, k
@@ -439,6 +463,12 @@ contains
        doSpec = .true.
     endif
 
+   if (present(plotflux)) then
+       plotflux = .true.
+    else
+       plotflux = .false.
+    endif
+
     if (present(twopanels)) then
        dotwopanels = twopanels
     else
@@ -459,11 +489,12 @@ contains
     tr(6) = dy
 
     allocate(image(1:nx, 1:ny))
-    if(present(plotFlux)) then
 
+    if(plotflux) then
+       write(*,*) "Plotting Flux?", plotflux
        do i = 1, nx
           do j = 1, ny
-             if ( sum(cube%flux(i,j,1:cube%nv)) .gt. 0) then
+             if (sum(cube%flux(i,j,1:cube%nv)) .gt. 0.) then
                 image(i,j) = log10(sum(cube%flux(i,j,1:cube%nv)))
              else
                 image(i,j) = -30.
@@ -471,6 +502,7 @@ contains
           enddo
        enddo
     else
+       write(*,*) "Plotting Intensity!"
        do i = 1, nx
           do j = 1, ny
              if (sum(cube%intensity(i,j,1:cube%nv)) .gt. 0) then
@@ -484,7 +516,6 @@ contains
 
     allocate(spec(1:cube%nv))
 
-
 ! Useful for visualising this 'flattened' cube
 
     open(42, file="image.dat",status="unknown",form="formatted")
@@ -493,34 +524,50 @@ contains
     enddo
     close(42)
 
-    if (present(gotPixels)) then
-       PixelCount = .true.
-    endif
+!    if (present(gotPixels)) then
+!       PixelCount = .true.
+!    endif
 
-    if(PixelCount) then
-       doSpec = .false.
-       do i = 1, nx
-          do j = 1, ny
-             image(i,j) = sum(cube%nsubpixels(i,j,1:cube%nv))
-          enddo
-       enddo
-    endif
+!    if(PixelCount) then
+!       doSpec = .false.
+!       do i = 1, nx
+!          do j = 1, ny
+!             image(i,j) = sum(cube%nsubpixels(i,j,1:cube%nv))
+!          enddo
+!       enddo
+!    endif
     
-    open(41, file="pixeldensity.dat",status="unknown",form="formatted")
-    do i = 1, nx
-       write(41, *) image(:,i)
-    enddo
-    close(41)
+!    open(41, file="pixeldensity.dat",status="unknown",form="formatted")
+!    do i = 1, nx
+!       write(41, *) image(:,i)
+!    enddo
+!    close(41)
 
 
     iMin = MINVAL(image(1:nx,1:ny))
     iMax = MAXVAL(image(1:nx,1:ny))
 
-    imin = imax-3.
+    imin = imax-5.
     write(*,*) "min/max",imin,imax
     i =  pgbegin(0,device,1,1)
     write(*,*) "opening ",trim(device),i
 
+    write(message,*) 'Telescope: ',cube%telescope%label
+    call pgmtxt('T',2.0,0.5,0.5,message)
+
+    write(message,*) 'Diameter: ',cube%telescope%diameter/100.,' metres'
+    call pgmtxt('T',1.0,0.5,0.5,message)
+
+    write(message,*) 'Beamsize: ',cube%telescope%beamsize,' arcseconds'
+    call pgmtxt('T',0.0,0.5,0.5,message)
+
+    write(message,*) 'Max: 10**',iMax
+    call pgmtxt('B',0.0,0.0,0.0,message)
+
+    write(message,*) 'Min: 10**',iMin
+    call pgmtxt('B',1.0,0.0,0.0,message)
+
+    call pgvport(0.1, 0.9, 0.1, 0.9)
 
     if (doTwoPanels) then
        call pgvport(0.1, 0.95, 0.1, 0.95)
@@ -532,16 +579,13 @@ contains
        call pgline(cube%nv, real(cube%vAxis), real(spec))
        call pgsci(1)
        call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
-
-    endif
-
-
-
-    if (doTwoPanels) then
        call pgvport(0.65, 0.9, 0.65, 0.9)
-    else
-       call pgvport(0.1, 0.9, 0.1, 0.9)
+
     endif
+
+    call pgqvp(0, x1, x2, y1, y2)
+
+!    call pgvport(0.1, 0.9, 0.1, 0.9)
 
     call pgwnad(real(cube%xAxis(1))-dx/2., real(cube%xAxis(nx))+dx/2., &
          real(cube%yAxis(1))-dy/2., real(cube%yAxis(ny))+dy/2.)
@@ -550,10 +594,9 @@ contains
  
     call pgimag(image, nx, ny, 1, nx, 1, ny, imin, imax, tr)
        
-    call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
+!    call pgbox('bcnst',10.0,10,'bcnst',10.0,10)
 
     call pgqvp(0, x1, x2, y1, y2)
-
 
     if (doSpec) then
 
@@ -596,10 +639,8 @@ contains
           enddo
        enddo
     end if
-
-
-
-
+    write(message,*) "Telescope Name:", cube%telescope%label
+    call writeinfo(message,FORINFO)
     call pgend
     call getSpectrum(cube, 1, cube%nx, 1, cube%ny, spec)
     
@@ -607,7 +648,7 @@ contains
     open(43, file="imagespectrum.dat",status="unknown",form="formatted")
     
     do k = 1, cube%nv
-       write(*,*) cube%vAxis(k), spec(k)
+!       write(*,*) cube%vAxis(k), spec(k)
        write(43,*) cube%vAxis(k), spec(k)
     enddo
     close(43)
@@ -623,7 +664,7 @@ contains
     do i = ix1, ix2
        do j = iy1, iy2
           n = n + 1
-          spec(1:cube%nv) = spec(1:cube%nv) + cube%intensity(i,j,1:cube%nv)
+          spec(1:cube%nv) = spec(1:cube%nv) + cube%flux(i,j,1:cube%nv)
        enddo
     enddo
 !    spec = spec / dble(n)

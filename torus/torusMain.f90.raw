@@ -595,10 +595,15 @@
      call calcPlanetMass
      write (*,*) "mPlanet set to ", mPlanet
   end if
-  if (molecular) then
-     call readbenchmarkMolecule(co, "hco_benchmark.dat")
-!     call readMolecule(co, "hco_plus.dat")
+  if (geometry == "molebench") then
+!     call readbenchmarkMolecule(co, "hco_benchmark.dat")
+     call readMolecule(co, "hco_plus.mol")
   endif
+  if (geometry == "molefil") then
+
+     call readMolecule(co, "c18o.dat")
+  endif
+
   if (cmf) then
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
@@ -1147,8 +1152,6 @@
 !  endif
 
   call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
-
-
 
   if (includeGasOpacity) then
 
@@ -2789,7 +2792,7 @@
 
      if (molecular) then
         if (.not.readlucy) call  molecularLoop(grid, co)
-        call calculateMoleculeSpectrum(grid, co, 1, OCTALVECTOR(0.d0, 1.d0, 0.d0))
+        call calculateMoleculeSpectrum(grid, co)
         call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
 !$MPI if (my_rank == 0) &
         call plotDataCube(cube, 'cube.ps/vcps')
@@ -3292,9 +3295,6 @@
 
    end if
 
-
-
-
      if (.not. gridUsesAMR) then
 
 
@@ -3353,8 +3353,6 @@
              grid%zAxis(grid%nz/2))
         end if
      endif
-
-
 
      call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
@@ -3431,7 +3429,7 @@
      weightContPhoton = 1.
      weightPhoto = 1.
 
-     if (mie) then
+     if (mie .and. (.not. useDust)) then
 
         call calcContinuumEmissivityLucy(grid, grid%octreeRoot , nlambda, xArray)
 

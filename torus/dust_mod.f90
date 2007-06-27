@@ -257,8 +257,6 @@ contains
     character(len=200) :: filename, dataDirectory
     real :: mReal(*), mImg(*)
 
-
-
     select case(graintype)
     case("sil_ow")
        allocate(tempIm(1:npLnk))
@@ -337,7 +335,6 @@ contains
        enddo
        close(20)
 
-
     case("draine_sil")
        call unixGetenv("TORUS_DATA", dataDirectory, i)
        filename = trim(dataDirectory)//"/"//"Draine_Si_sUV.dat"
@@ -352,8 +349,6 @@ contains
        enddo
        close(20)
 
-
-
     case DEFAULT
        if (writeoutput) write(*,'(a,a,a)') "! Grain type ", trim(graintype)," not recognised"
        stop
@@ -366,10 +361,7 @@ contains
        mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
     enddo
 
-
   end subroutine getRefractiveIndex
-
-
 
   subroutine fillGridMie(grid, scale, aMin, aMax, a0, qDist, pDist, &
        ngrain, abundance, grainname, thisDust)
@@ -469,6 +461,7 @@ contains
     if (.not.grid%oneKappa) then
        if (grid%adaptive) then
           if (writeoutput) write(*,'(a,i3)') "Filling AMR grid with mie cross sections...",grid%nLambda
+              write(*,*) "yes",sigmasca(1),sigmaabs(1),grid%nlambda
           call fillAMRgridMie(grid%OctreeRoot, sigmaSca, sigmaAbs, grid%nLambda)
        endif
 
@@ -733,22 +726,23 @@ contains
 
   end subroutine MieCrossSection
 
-
-
   recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: nLambda
     real :: sigmaSca(*), sigmaAbs(*)
     integer :: subcell, i
+    write(*,*) subcell,sigmasca(1),sigmaabs(1),nlambda
 
     do subcell = 1, 8
+    write(*,*) "here",subcell,sigmasca(1),sigmaabs(1),nlambda
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call fillAMRgridMie(child, sigmaSca, sigmaAbs, nLambda)
+                write(*,*) "Yep"
                 exit
              end if
           end do
@@ -1343,12 +1337,11 @@ contains
 999 continue
   end subroutine parseGrainType
 
-
   subroutine createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
-    use input_variables, only : mie, dustFile, nDustType, graintype, ngrain, &
+    use input_variables, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, dustToGas, scale, &
-         dustfilename,  mie, isotropicScattering, readmiephase, writemiephase, ttau_disc_on
+         dustfilename, isotropicScattering, readmiephase, writemiephase, ttau_disc_on
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
     type(PHASEMATRIX), pointer :: miePhase(:,:,:)
@@ -1375,13 +1368,13 @@ contains
     allocate(miePhase(1:nDustType,1:nLambda,1:nMumie)) 
 
 
-    if (mie) then
+    if (mie .or. useDust) then
+
        if (.not.dustfile) then
           do i = 1, nDustType
 
              call parseGrainType(graintype(i), ngrain, grainname, x_grain)
-
-             write(*,*) "graintype",trim(graintype(i)), x_grain(i),amin(i),amax(i),a0(i),qdist(i),pdist(i)
+             write(*,*) "graintype ",trim(graintype(i)), x_grain(i),amin(i),amax(i),a0(i),qdist(i),pdist(i)
 
              call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
                   ngrain, X_grain, grainname, i)
@@ -1404,7 +1397,7 @@ contains
     endif
 
 
-    if (mie .or.  (grid%geometry == "ttauri" .and. ttau_disc_on)) then
+    if (mie .or. (grid%geometry == "ttauri" .and. ttau_disc_on)) then
        ! construct the mie phase matrix
        call writeInfo("Computing Mie phase grid...",TRIVIAL)
 
@@ -1430,7 +1423,7 @@ contains
              write(*,*) "  ==> You probably forgot to assign dust abundance in your "// &
                   & "parameter file!"
              !$MPI     if (my_rank==0) &
-             write(*,*) "  ==> Exiting the prograim ... "
+             write(*,*) "  ==> Exiting the program ... "
              stop 
           end if
 
@@ -1457,7 +1450,6 @@ contains
              mReal(k,i) = mReal(k,i) / total_dust_abundance
              mImg(k,i)  = mImg(k,i)  / total_dust_abundance
           end do
-
 
           deallocate(mReal2D)
           deallocate(mImg2D)
@@ -1497,7 +1489,5 @@ contains
 
     endif
   end subroutine createDustCrossSectionPhaseMatrix
-
-
 
 end module dust_mod

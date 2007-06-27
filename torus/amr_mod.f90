@@ -203,6 +203,9 @@ CONTAINS
     CASE ("molebench")
        CALL molecularBenchmark(thisOctal, subcell ,grid)
 
+    CASE ("molefil")
+       CALL molecularFilamentFill(thisOctal, subcell ,grid)
+
     CASE ("shakara","aksco")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
@@ -481,7 +484,7 @@ CONTAINS
                          isample, stream)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, cmf, nAtom, debug
+    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, cmf, nAtom, debug, useDust
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
@@ -669,7 +672,7 @@ CONTAINS
     parent%child(newChildIndex)%rho = 1.e-30
     parent%child(newChildIndex)%N = 1.e-30
     parent%child(newChildIndex)%dusttype = 1
-    if (mie) then
+    if (mie .or. useDust) then
        ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
        parent%child(newChildIndex)%dustTypeFraction(1:8,1:nDustType) = 0.d0
        parent%child(newChildIndex)%dustTypeFraction(1:8,1) = 1.d0
@@ -1145,7 +1148,7 @@ CONTAINS
 
       CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
            "lexington", "warpeddisc", "whitney","fractal","symbiotic", "starburst", &
-           "molebench","gammavel")
+           "molebench","gammavel","molefil")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104")
@@ -4691,6 +4694,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double),allocatable, save  :: R_cmfgen(:)  ! [10^10cm]
     real(double),save  :: Rmin_cmfgen  ! [10^10cm]
     real(double) :: rho
+    real(double) :: OstrikerRho(2), r0
     logical, save :: first_time=.true.
     logical :: close_to_star
     real(double)      :: thisScale
@@ -4999,8 +5003,22 @@ IF ( .NOT. gridConverged ) RETURN
 
 !      if (thisOctal%nDepth > 5) split = .false.
 
+   case("molefil")
 
+      r0 = (1d3/sqrt(4.d0*pi*6.67d-11*5d-18)) / 1d8 ! 1d3 sigma in m/s, 6.67d-11 is G, 5d-18 is RHOc, 1d8 metres to TORUS
 
+      cellCentre = subcellCentre(thisOctal, subcell)
+      rd = modulus(OCTALVECTOR(cellCentre%x, cellCentre%y, 0.d0))
+      
+      split = .false.
+      if(thisOctal%nDepth < 3) split = .true.
+         
+          rd = rd+thisOctal%subcellSize/2.d0
+          OstrikerRho(1) = 5d-18/(1 + rd**2/(8.d0*r0**2))**2
+          rd = rd-thisOctal%subcellSize
+          OstrikerRho(2) = 5d-18/(1 + rd**2/(8.d0*r0**2))**2
+          if(abs((OstrikerRho(1) - OstrikerRho(2))/5d-18) .ge. 0.02) split = .true.
+                                                            
    case("luc_cir3d") 
       if (first_time) then
          open(unit=77, file ="zeus_rgrid.dat", status="old")
@@ -7707,6 +7725,8 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine molecularBenchmark(thisOctal,subcell,grid)
 
+    use input_variables, only : amr2d
+
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
@@ -7717,11 +7737,13 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: v1, vDopp
     integer :: i
 
+    real :: costheta ! used for angular dependence of density - HPC proposal
+    real :: btherm
     type(OCTALVECTOR) :: vel
 
     if (firsttime) then
-       open(31, file="model_1.dat", status="old", form="formatted")
-       do i = nr,1,-1
+       open(31, file="model_1.dat", status="old", form="formatted") ! Model 2 in the Hogerheijde 2000 paper. 
+       do i = nr,1,-1                                             
           read(31,*) r(i), nh2(i), junk,t(i), v(i) , mu(i)
        enddo
        r = r / 1.e10
@@ -7731,6 +7753,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
     r1 = modulus(subcellCentre(thisOctal,subcell))
+    if(amr2d) costheta = (subcellCentre(thisOctal,subcell) .dot. OCTALVECTOR(1.d0, 0.d0, 0.d0)) / r1
 
     thisOctal%temperature(subcell) = tcbr
     thisOctal%rho(subcell) = 1.e-30
@@ -7741,8 +7764,16 @@ IF ( .NOT. gridConverged ) RETURN
        call locate(r, nr, r1, i)
        t1 = (r1 - r(i))/(r(i+1)-r(i))
        thisOctal%temperature(subcell) = t(i) + t1 * (t(i+1)-t(i))
-       thisOctal%rho(subcell) = (nh2(i) + t1 * (nh2(i+1)-nh2(i)))*2.*mhydrogen
        thisOctal%nh2(subcell) = nh2(i) + t1 * (nh2(i+1)-nh2(i))
+       thisOctal%rho(subcell) = (nh2(i) + t1 * (nh2(i+1)-nh2(i)))*2.*mhydrogen
+
+       if(amr2d) then
+
+          thisOctal%nh2(subcell) = thisOctal%nh2(subcell) * costheta**2
+          thisOctal%rho(subcell) = thisOctal%rho(subcell) * costheta**2
+
+       endif
+
        v1 = (v(i) + t1 * (v(i+1)-v(i)))*1.d5
        vel = subcellCentre(thisOctal, subcell)
        call normalize(vel)
@@ -7752,13 +7783,43 @@ IF ( .NOT. gridConverged ) RETURN
 !       vDopp  = sqrt((kErg * thisOctal%temperature(subcell)) / (29.d0 * amu))/cSpeed
 !       thisOctal%microturb(subcell) = vdopp / 5.d0
 
+      thisOctal%microturb(subcell) = max(1.d-10,(mu1)*(1.d5/cspeed))
 
-      thisOctal%microturb(subcell) = max(1.d-10,mu1*(1.d5/cspeed))
-
+!      btherm = sqrt(2.d0*1.38d-23*thisOctal%temperature(subcell)/(29.d0*1.66d-27))/1d3
+!      write(*,*) btherm
+!      thisOctal%microturb(subcell) = max(1.d-10,(mu1+btherm)*(1.d5/cspeed))
 
     endif
    CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
   end subroutine molecularBenchmark
+
+  subroutine molecularFilamentFill(thisOctal,subcell,grid)
+
+    use input_variables, only : amr2d!,rhoC,r0
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    real(double) :: r0, r1
+    TYPE(OCTALVECTOR) :: cellCentre
+
+    type(OCTALVECTOR) :: vel
+
+    r0 = (1d3/sqrt(4.d0*pi*6.67d-11*5d-18)) / 1d8 ! 1d3 sigma in m/s, 6.67d-11 is G, 5d-18 is RHOc, 1d8 metres to TORUS
+
+    cellCentre = subcellCentre(thisOctal, subcell)
+    r1 = modulus(OCTALVECTOR(cellCentre%x, cellCentre%y, 0.d0))
+
+    thisOctal%microTurb(subcell) = 1.e5/cspeed
+    thisOctal%temperature(subcell) = 10.d0
+
+    thisOctal%rho(subcell) = 5d-18/(1 + r1**2/(8.d0*r0**2))**2
+    thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
+
+    thisOctal%velocity(subcell) = VECTOR(0.d0,0.d0,0.d0)
+
+!   CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
+  end subroutine molecularFilamentFill
 
 
   TYPE(vector)  function wrshellVelocity(point, grid)
@@ -8047,7 +8108,7 @@ IF ( .NOT. gridConverged ) RETURN
   SUBROUTINE addNewChildren(parent, grid, sphData, stellar_cluster, &
        inherit, interp, romData)
     ! adds all eight new children to an octal
-    use input_variables, only : nDustType, mie, photoionization
+    use input_variables, only : nDustType, mie, photoionization, useDust
     IMPLICIT NONE
     
     TYPE(octal), POINTER :: parent     ! pointer to the parent octal 
@@ -8183,7 +8244,7 @@ IF ( .NOT. gridConverged ) RETURN
        parent%child(newChildIndex)%rho = 1.e-30
        parent%child(newChildIndex)%N = 1.e-30
        parent%child(newChildIndex)%dusttype = 1
-       if (mie) then
+       if (mie .or. useDust) then
           ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
           parent%child(newChildIndex)%dustTypeFraction(1:8,1:nDustType) = 0.d0
           parent%child(newChildIndex)%dustTypeFraction(1:8,1) = 1.d0
@@ -11169,6 +11230,7 @@ IF ( .NOT. gridConverged ) RETURN
        else
           tlambda = lambda
        endif
+       
        IF (.NOT.PRESENT(lambda)) THEN
           if (grid%oneKappa) then
              kappaAbs = 0
@@ -11184,14 +11246,25 @@ IF ( .NOT. gridConverged ) RETURN
        else
           kappaAbs = 0
           do i = 1, nDustType
+             !write(*,*) grid%oneKappaAbs(i,iLambda),grid%oneKappaAbs(i,iLambda+1),thisOctal%rho(subcell), &
+             !     dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), ilambda, dble(lambda)
+             !write(*,*) logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
+             !     grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell), &
+             !     grid%oneKappaAbs(i,iLambda+1)*thisOctal%rho(subcell))
+             !write(*,*) i, subcell
+             !write(*,*) nDusttype,kappaAbs 
+             !write(*,*) thisOctal%dustTypeFraction(subcell, i)
              kappaAbs = kappaAbs + thisOctal%dustTypeFraction(subcell, i) * &
                   logint(dble(lambda), dble(grid%lamArray(ilambda)), dble(grid%lamArray(ilambda+1)), &
                   grid%oneKappaAbs(i,iLambda)*thisOctal%rho(subcell), &
                   grid%oneKappaAbs(i,iLambda+1)*thisOctal%rho(subcell))
+
           enddo
        endif
 !       write(*,*) nDustType,thisOctal%dusttypeFraction(subcell,1), grid%oneKappaAbs(1,1:grid%nLambda)
+
       kappaAbs = kappaAbs * frac
+
    endif
    if (PRESENT(kappaAbsDust)) kappaAbsDust = kappaAbs
 

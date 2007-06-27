@@ -232,6 +232,7 @@ contains
               do;enddo
 
     endif
+
     LX=LOG(X)
     LX1=LOG(X1)
     LX2=LOG(X2)

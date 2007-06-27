@@ -577,6 +577,9 @@ contains
     case("molebench")
        grid%geometry = "molebench"
 
+    case("molefil")
+       grid%geometry = "molefil"
+
     case("shakara")
        grid%geometry = "shakara"
        grid%rCore = rCore
@@ -694,7 +697,6 @@ contains
 
     case("gammavel")
        grid%geometry = "gammavel"
-
 
     case DEFAULT
        print *, '!!!WARNING: The ''',geometry,''' geometry may not yet have been implemented'

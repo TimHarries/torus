@@ -1182,7 +1182,7 @@ contains
 
 
 
-    if (.not.mie) then
+    if (.not.(mie)) then
        default = " "
        call findReal("kappasca", inputKappaSca, cLine, nLines, ok)
        if (ok) then
@@ -1216,6 +1216,7 @@ contains
    "Compute molecular line transport: ","(a,1l,a)", .false., ok, .false.)
 
  if (molecular) then
+    onekappa = .true.
    call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
         "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
    call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
@@ -1232,11 +1233,32 @@ contains
     call getReal("tolerance", tolerance, cLine, nLines, &
          "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
     call getReal("hcoabundance", hcoabundance, cLine, nLines, &
-         "HCO+ Adbundance:","(a,f4.1,1x,a)", 0.01, ok, .true.)
+         "HCO+ Adbundance:","(a,f4.1,1x,a)", 1e-9, ok, .true.)
     call getLogical("useDust", useDust, cLine, nLines, &
-         "Calculate dontinuum emission from dust ", "(a,1l,1x,a)", .true., ok, .false.)
+         "Calculate continuum emission from dust ", "(a,1l,1x,a)", .true., ok, .false.)
 
+! Image parameters
+    if(readlucy) then
 
+       call getReal("imageside", imageside, cLine, nLines, &
+            "Image size (x10^10cm):","(a,es6.2e1,1x,a)", 5e7, ok, .true.)
+       call getInteger("npixels", npixels, cLine, nLines, &
+            "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
+       call getInteger("nv", nv, cLine, nLines, &
+            "Number of velocity bins ","(a,i4,a)", 50, ok, .true.)
+       call getInteger("nSubpixels", nSubpixels, cLine, nLines, &
+            "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 0, ok, .true.)
+       call getInteger("itrans", itrans, cLine, nLines, &
+            "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
+    endif
+
+    if(geometry .eq. 'molecularFilament') then
+
+       call getReal("r0", r0, cLine, nLines, &
+            "Core Radius of Filament:","(a,f4.1,1x,a)", 1., ok, .true.)
+       call getReal("rhoC", rhoC, cLine, nLines, &
+            "Central density along filament axis:","(a,f4.1,1x,a)", 1., ok, .true.)
+    endif
 endif
 
     call getLogical("hydrodynamics", hydrodynamics, cLine, nLines, &
@@ -1713,7 +1735,7 @@ endif
  call getLogical("gasopacity", includeGasOpacity, cLine, nLines, &
    "Include gas opacity: ","(a,1l,a)", .false., ok, .false.)
 
- if (fillTio.or.mie  &
+ if (fillTio .or. mie .or. useDust &
       .or. (geometry == "ttauri".and.mie) ) then
 !      .or. (geometry == "ttauri" .and. ttau_disc_on) ) then
 
