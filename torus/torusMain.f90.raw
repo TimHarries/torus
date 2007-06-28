@@ -2808,7 +2808,11 @@
      endif
 
      if (hydrodynamics) then
-        call doHydrodynamics2d(grid)
+        if (grid%octreeRoot%twoD) then
+           call doHydrodynamics2d(grid)
+        else
+           call doHydrodynamics1d(grid)
+        endif
      endif
 
 

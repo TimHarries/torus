@@ -105,9 +105,13 @@ contains
           end do
        else
           if (.not.thisOctal%ghostCell(subcell)) then
+!             thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
+!                  (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
+!                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
              thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
                   (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
-                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
+                  (thisOctal%subcellSize)
+
           endif
        endif
     enddo
@@ -142,6 +146,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
+    real(double) :: rhou, rhov, rho, q
     integer :: subcell, i, neighbourSubcell
     type(OCTALVECTOR) :: direction, locator
   
@@ -163,20 +168,41 @@ contains
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              thisOctal%x_i_plus_1(subcell) = subcellCentre(neighbourOctal, neighbourSubcell) .dot. direction
-             thisOctal%q_i_plus_1(subcell) = neighbourOctal%q_i(neighbourSubcell)
 
+             if (thisOctal%nDepth >= neighbourOctal%nDepth) then ! same level
+                thisOctal%q_i_plus_1(subcell) = neighbourOctal%q_i(neighbourSubcell)
+             else
+                call averageValue(thisOctal, subcell, neighbourOctal, q, rhou, rhov, rho)
+                thisOctal%q_i_plus_1(subcell) = q
+             endif
              
              locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              thisOctal%x_i_minus_1(subcell) = subcellCentre(neighbourOctal, neighbourSubcell) .dot. direction
-             thisOctal%q_i_minus_1(subcell) = neighbourOctal%q_i(neighbourSubcell)
+
+
+             if (thisOctal%nDepth >= neighbourOctal%nDepth) then ! same level
+                thisOctal%q_i_minus_1(subcell) = neighbourOctal%q_i(neighbourSubcell)
+             else
+                call averageValue(thisOctal, subcell, neighbourOctal, q, rhou, rhov, rho)
+                thisOctal%q_i_minus_1(subcell) = q
+             endif
+
              
              locator = subcellCentre(neighbourOctal, neighboursubcell) - &
                   direction * (neighbourOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-             thisOctal%q_i_minus_2(subcell) = neighbourOctal%q_i(neighbourSubcell)
+
+             if (thisOctal%nDepth >= neighbourOctal%nDepth) then ! same level
+                thisOctal%q_i_minus_2(subcell) = neighbourOctal%q_i(neighbourSubcell)
+             else
+                call averageValue(thisOctal, subcell, neighbourOctal, q, rhou, rhov, rho)
+                thisOctal%q_i_minus_2(subcell) = q
+             endif
+
+
           endif
        endif
     enddo
@@ -187,6 +213,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
+    real(double) :: rho, rhou, rhov, q
     integer :: subcell, i, neighbourSubcell
     type(OCTALVECTOR) :: direction, locator
     real(double) :: rhou_i_minus_1, rho_i_minus_1
@@ -206,14 +233,68 @@ contains
              locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-             rho_i_minus_1 = neighbourOctal%rho(neighbourSubcell)
-             rhou_i_minus_1 = neighbourOctal%rhou(neighbourSubcell)
-             thisOctal%u_interface(subcell) = 0.5d0 * &
-                  (thisOctal%rhou(subcell)/thisOctal%rho(subcell) + rhou_i_minus_1/rho_i_minus_1)
+
+             if (thisOctal%nDepth >= neighbourOctal%nDepth) then ! same level
+                rho_i_minus_1 = neighbourOctal%rho(neighbourSubcell)
+                rhou_i_minus_1 = neighbourOctal%rhou(neighbourSubcell)
+                thisOctal%u_interface(subcell) = 0.5d0 * &
+                     (thisOctal%rhou(subcell)/thisOctal%rho(subcell) + rhou_i_minus_1/rho_i_minus_1)
+             else
+                call averageValue(thisOctal, subcell, neighbourOctal, q, rhou, rhov, rho)
+                thisOctal%q_i_minus_2(subcell) = q
+                rho_i_minus_1 = rho
+                rhou_i_minus_1 = rhou
+                thisOctal%u_interface(subcell) = 0.5d0 * &
+                     (thisOctal%rhou(subcell)/thisOctal%rho(subcell) + rhou_i_minus_1/rho_i_minus_1)
+             endif
+
           endif
        endif
     enddo
   end subroutine setupUI
+
+  recursive subroutine setupVi(thisOctal, grid, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer   :: neighbourOctal
+    type(octal), pointer  :: child 
+    real(double) :: rho, rhou, rhov, q
+    integer :: subcell, i, neighbourSubcell
+    type(OCTALVECTOR) :: direction, locator
+    real(double) :: rhou_i_minus_1, rho_i_minus_1
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setupVi(child, grid, direction)
+                exit
+             end if
+          end do
+       else
+          if (.not.thisOctal%ghostCell(subcell)) then
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             neighbourOctal => thisOctal
+             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+             if (thisOctal%nDepth >= neighbourOctal%nDepth) then ! same level
+                rho_i_minus_1 = neighbourOctal%rho(neighbourSubcell)
+                rhou_i_minus_1 = neighbourOctal%rhov(neighbourSubcell)
+                thisOctal%u_interface(subcell) = 0.5d0 * &
+                     (thisOctal%rhov(subcell)/thisOctal%rho(subcell) + rhou_i_minus_1/rho_i_minus_1)
+             else
+                call averageValue(thisOctal, subcell, neighbourOctal, q, rhou, rhov, rho)
+                thisOctal%q_i_minus_2(subcell) = q
+                rho_i_minus_1 = rho
+                rhou_i_minus_1 = rhov
+                thisOctal%u_interface(subcell) = 0.5d0 * &
+                     (thisOctal%rhov(subcell)/thisOctal%rho(subcell) + rhou_i_minus_1/rho_i_minus_1)
+             endif
+          endif
+       endif
+    enddo
+  end subroutine setupVI
 
 
   recursive subroutine setupFlux(thisOctal, grid, direction)
@@ -323,7 +404,42 @@ contains
     enddo
   end subroutine setupUpm
 
-   recursive subroutine computePressure(thisOctal, gamma, direction)
+  recursive subroutine setupVpm(thisOctal, grid, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer   :: neighbourOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, neighbourSubcell
+    type(OCTALVECTOR) :: direction, locator
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setupVpm(child, grid, direction)
+                exit
+             end if
+          end do
+       else
+          if (.not.thisOctal%ghostCell(subcell)) then
+             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             neighbourOctal => thisOctal
+             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+             thisOctal%u_i_plus_1(subcell) = neighbourOctal%rhov(neighbourSubcell)/neighbourOctal%rho(neighbourSubcell)
+             
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             neighbourOctal => thisOctal
+             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+             thisOctal%u_i_minus_1(subcell) = neighbourOctal%rhov(neighbourSubcell)/neighbourOctal%rho(neighbourSubcell)
+
+          endif
+       endif
+    enddo
+  end subroutine setupVpm
+
+   recursive subroutine computePressureU(thisOctal, gamma, direction)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal, neighbourOctal
     type(octal), pointer  :: child 
@@ -339,7 +455,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call computePressure(child, gamma, direction)
+                call computePressureU(child, gamma, direction)
                 exit
              end if
           end do
@@ -350,6 +466,9 @@ contains
           eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
           eThermal = eTot - eKinetic
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
+!          thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * thisOctal%energy(subcell)
+
+!          write(*,*) thisOctal%pressure_i(subcell), thisOctal%rho(subcell),ethermal, thisOCtal%energy(subcell)
           bigGamma = 0.d0
           if (.not.thisOctal%ghostCell(subcell)) then
              if (thisOctal%u_i_plus_1(subcell) .le. thisOctal%u_i_minus_1(subcell)) then
@@ -360,9 +479,50 @@ contains
           thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell) + bigGamma
        endif
     enddo
-  end subroutine computePressure
+  end subroutine computePressureU
 
-  recursive subroutine pressureForce(thisOctal, dt)
+   recursive subroutine computePressureV(thisOctal, gamma, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal, neighbourOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, neighbourSubcell
+    real(double) :: gamma, eThermal, eKinetic, eTot, u, bigGamma,eta
+    type(OCTALVECTOR) :: direction, locator
+
+    eta = 3.d0
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call computePressureV(child, gamma, direction)
+                exit
+             end if
+          end do
+       else
+          
+          u = thisOctal%rhov(subcell) / thisOctal%rho(subcell)
+          eKinetic = u**2 / 2.d0
+          eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+          eThermal = eTot - eKinetic
+          thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
+!          thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * thisOctal%energy(subcell)
+!          write(*,*) thisOctal%pressure_i(subcell), thisOctal%rho(subcell),ethermal, thisOCtal%energy(subcell)
+          bigGamma = 0.d0
+          if (.not.thisOctal%ghostCell(subcell)) then
+             if (thisOctal%u_i_plus_1(subcell) .le. thisOctal%u_i_minus_1(subcell)) then
+                bigGamma = 0.25d0 * eta**2 * (thisOctal%u_i_plus_1(subcell) - thisOctal%u_i_minus_1(subcell))**2 &
+                     * thisOctal%rho(subcell)
+             endif
+          endif
+          thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell) + bigGamma
+       endif
+    enddo
+  end subroutine computePressureV
+
+  recursive subroutine pressureForceU(thisOctal, dt)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -375,7 +535,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call pressureForce(child, dt)
+                call pressureForceU(child, dt)
                 exit
              end if
           end do
@@ -399,7 +559,46 @@ contains
              endif
        endif
     enddo
-  end subroutine pressureForce
+  end subroutine pressureForceU
+
+  recursive subroutine pressureForceV(thisOctal, dt)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: dt
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call pressureForceV(child, dt)
+                exit
+             end if
+          end do
+       else
+          if (.not.thisOctal%ghostCell(subcell)) then
+             thisOctal%rhov(subcell) = thisOctal%rhov(subcell) - dt * &
+                  (thisOctal%pressure_i_plus_1(subcell) - thisOctal%pressure_i_minus_1(subcell)) / &
+                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
+
+             thisOctal%rhoE(subcell) = thisOctal%rhoE(subcell) - dt * &
+                  (thisOctal%pressure_i_plus_1(subcell) * thisOctal%u_i_plus_1(subcell) - &
+                  thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / &
+                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
+
+             
+
+             if (isnan(thisOctal%rhov(subcell))) then
+                write(*,*) "bug"
+                do;enddo
+                endif
+             endif
+       endif
+    enddo
+  end subroutine pressureForceV
 
 
 
@@ -677,9 +876,9 @@ contains
     call advectRhoU(grid, direction, dt)
     call advectRhoE(grid, direction, dt)
     call setupUpm(grid%octreeRoot, grid, direction)
-    call computePressure(grid%octreeRoot, gamma, direction)
+    call computePressureU(grid%octreeRoot, gamma, direction)
     call setupPressure(grid%octreeRoot, grid, direction)
-    call pressureForce(grid%octreeRoot, dt)
+    call pressureForceU(grid%octreeRoot, dt)
     call imposeBoundary(grid%octreeRoot, boundarycondition)
   end subroutine hydroStep
 
@@ -688,37 +887,50 @@ contains
     real(double) :: gamma, dt, subdt
     type(OCTALVECTOR) :: direction
     character(len=*) :: boundaryCondition
+    integer :: i
 
-    subdt = dt / 2.d0
+
+    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+
     call imposeBoundary(grid%octreeRoot, boundarycondition)
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call setupUi(grid%octreeRoot, grid, direction)
-    call advectRho(grid, direction, subdt)
-    call advectRhoU(grid, direction, subdt)
-    call advectRhoV(grid, direction, subdt)
-    call advectRhoE(grid, direction, subdt)
+    call advectRho(grid, direction, dt/2.d0)
+    call advectRhoU(grid, direction, dt/2.d0)
+    call advectRhoV(grid, direction, dt/2.d0)
+    call advectRhoE(grid, direction, dt/2.d0)
     call setupUpm(grid%octreeRoot, grid, direction)
-    call computePressure(grid%octreeRoot, gamma, direction)
+    call computePressureU(grid%octreeRoot, gamma, direction)
     call setupPressure(grid%octreeRoot, grid, direction)
-    call pressureForce(grid%octreeRoot, subdt)
-
-    call imposeBoundary(grid%octreeRoot, boundarycondition)
+    call pressureForceU(grid%octreeRoot, dt/2.d0)
 
     direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-    call setupUi(grid%octreeRoot, grid, direction)
-    call advectRho(grid, direction, subdt)
-    call advectRhoU(grid, direction, subdt)
-    call advectRhoV(grid, direction, subdt)
-    call advectRhoE(grid, direction, subdt)
-    call setupUpm(grid%octreeRoot, grid, direction)
-    call computePressure(grid%octreeRoot, gamma, direction)
+    call setupVi(grid%octreeRoot, grid, direction)
+    call advectRho(grid, direction, dt)
+    call advectRhoV(grid, direction, dt)
+    call advectRhoU(grid, direction, dt)
+    call advectRhoE(grid, direction, dt)
+    call setupVi(grid%octreeRoot, grid, direction)
+    call setupVpm(grid%octreeRoot, grid, direction)
+    call computePressureV(grid%octreeRoot, gamma, direction)
     call setupPressure(grid%octreeRoot, grid, direction)
-    call pressureForce(grid%octreeRoot, subdt)
+    call pressureForceV(grid%octreeRoot, dt)
+
+    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    call setupUi(grid%octreeRoot, grid, direction)
+    call advectRho(grid, direction, dt/2.d0)
+    call advectRhoU(grid, direction, dt/2.d0)
+    call advectRhoV(grid, direction, dt/2.d0)
+    call advectRhoE(grid, direction, dt/2.d0)
+    call setupUpm(grid%octreeRoot, grid, direction)
+    call computePressureU(grid%octreeRoot, gamma, direction)
+    call setupPressure(grid%octreeRoot, grid, direction)
+    call pressureForceU(grid%octreeRoot, dt/2.d0)
 
     call imposeBoundary(grid%octreeRoot, boundarycondition)
 
-
+ 
   end subroutine hydroStep2d
 
 
@@ -743,12 +955,13 @@ contains
   
           if (.not.thisOctal%ghostCell(subcell)) then
 
-             u = abs(thisOctal%rhou(subcell) / thisOctal%rho(subcell))
+             u = max(abs(thisOctal%rhou(subcell) / thisOctal%rho(subcell)), &
+                  abs(thisOctal%rhov(subcell) / thisOctal%rho(subcell)))
              eKinetic = u**2 / 2.d0
              eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
              eThermal = eTot - eKinetic
              cs = sqrt(gamma*(gamma-1.d0)*eThermal)
-             dx = abs(thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell))
+             dx = thisOctal%subcellSize
              tc = min(tc, dx / (cs + abs(thisOctal%rhou(subcell)/thisOctal%rho(subcell)) ) )
           endif
         
@@ -779,7 +992,8 @@ contains
     call setupX(grid%octreeRoot, grid, direction)
     call setupQX(grid%octreeRoot, grid, direction)
     currentTime = 0.d0
-    do while(currentTime < 0.2d0)
+!    do while(currentTime < 0.2d0)
+    do while(.true.)
        tc = 1.d30
        call computeCourantTime(grid%octreeRoot, tc, gamma)
        dt = tc * cfl
@@ -795,15 +1009,33 @@ contains
     type(gridtype) :: grid
     real(double) :: dt, tc, cfl, gamma, mu
     real(double) :: currentTime
-    integer :: i, pgbegin
+    integer :: i, pgbegin, it
+    character(len=20) :: plotfile
+    real(double) :: tDump, nextDumpTime
     type(OCTALVECTOR) :: direction
+    logical :: gridConverged
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
-    cfl = 0.5d0
+    cfl = 0.3d0
     mu = 2.d0
+    i = pgbegin(0,"/xs",1,1)
+    call pgenv(0., 1., 0., 1., 0, 0)
+
+
 
     call setupGhostCells(grid%octreeRoot, grid, "mirror")
+    call refineGridGeneric(grid%octreeRoot, grid, "test")
+    call writeInfo("Refine done", TRIVIAL)
+    do
+       gridConverged = .true.
+       call  evenUpGrid(grid%octreeRoot, grid,  gridconverged)
+       if (gridConverged) exit
+    end do
+    call writeInfo("...grid smoothing complete", TRIVIAL)
+
+       call plot_AMR_values(grid, "rho", "x-z", 0., &
+            "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0)
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
@@ -815,17 +1047,44 @@ contains
     call setupX(grid%octreeRoot, grid, direction)
     call setupQX(grid%octreeRoot, grid, direction)
     currentTime = 0.d0
+    it = 0
+    nextDumpTime = 0.d0
+    tDump = 0.005d0
+
+
 !    do while(currentTime < 0.2d0)
     do while(.true.)
+       call plot_AMR_values(grid, "rho", "x-z", 0., &
+            "/xs",.false., .false., fixvalmin=0.d0, fixvalmax=1.d0)
+
+
        tc = 1.d30
        call computeCourantTime(grid%octreeRoot, tc, gamma)
        dt = tc * cfl
        call hydroStep2d(grid, gamma, dt, "mirror")
-       currentTime = currentTime + dt
-       write(*,*) "current time ",currentTime
-       call plot_AMR_values(grid, "rho", "x-z", 0., &
-            "/xs",.false., .false.)
 
+       call refineGridGeneric(grid%octreeRoot, grid, "test")
+       call writeInfo("Refine done", TRIVIAL)
+       do
+          gridConverged = .true.
+          call  evenUpGrid(grid%octreeRoot, grid,  gridconverged)
+          if (gridConverged) exit
+       end do
+       call writeInfo("...grid smoothing complete", TRIVIAL)
+       call setupGhostCells(grid%octreeRoot, grid, "mirror")
+       call plot_AMR_values(grid, "rho", "x-z", 0., &
+            "/xs",.false., .false., fixvalmin=0.d0, fixvalmax=1.d0)
+
+       currentTime = currentTime + dt
+       write(*,*) "current time ",currentTime,dt
+!       call plotHydroResults(grid)
+       if (currentTime .gt. nextDumpTime) then
+          nextDumpTime = nextDumpTime + tDump
+          it = it + 1
+          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
+          call plot_AMR_values(grid, "rho", "x-z", 0., &
+               plotfile,.false., .false., fixvalmin=0.d0, fixvalmax=1.d0)
+       endif
     enddo
   end subroutine doHydrodynamics2d
 
@@ -931,9 +1190,9 @@ contains
   subroutine plotHydroResults(grid)
 
     type(GRIDTYPE) :: grid
-    real(double) :: x(1000), rho(1000), v(1000), rhou(1000)
-    real,save :: xr(1000), yr(1000)
-    real,save :: xd(1000), yd(1000)
+    real(double) :: x(100000), rho(100000), v(100000), rhou(100000)
+    real,save :: xr(100000), yr(100000)
+    real,save :: xd(100000), yd(100000)
     logical, save :: firstTime = .true.
     integer,save :: n
     integer :: i
@@ -949,7 +1208,7 @@ contains
 
     if (.not.firstTime) then
        call pgsci(0)
-       call pgline(n, xr, yr)
+       call pgpoint(n, xr, yr, 30)
     endif
     firstTime = .false.
 
@@ -967,7 +1226,7 @@ contains
     call pgline(19,xd,yd)
 
     call pgsci(1)
-    call pgline(n, xr, yr)
+    call pgpoint(n, xr, yr, 30)
   end subroutine plotHydroResults
 
   recursive subroutine getArray(thisOctal, x, rho, rhou, v, n)
@@ -977,6 +1236,7 @@ contains
     integer :: subcell, i
     real(double) :: x(:), rho(:), v(:), rhou(:)
     integer :: n
+    type(OCTALVECTOR) :: rVec
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -993,7 +1253,8 @@ contains
           rho(n) = thisOctal%rho(subcell)
           rhou(n) = thisOctal%rhou(subcell)
           v(n) = thisOctal%rhou(subcell)/thisOctal%rho(subcell)
-          x(n) = thisOctal%x_i(subcell)
+          rVec = subcellCentre(thisOctal, subcell)
+          x(n) = rVec%x
       endif
     enddo
   end subroutine getArray
@@ -1067,9 +1328,9 @@ contains
                    locator = thisOctal%boundaryPartner(subcell)
                    bOctal => thisOctal
                    call findSubcellLocal(locator, bOctal, bSubcell)
-                   if (bOctal%ghostCell(bSubcell)) then
-                      write(*,*)subcellCentre(bOctal, bSubcell)
-                   endif
+!                   if (bOctal%ghostCell(bSubcell)) then
+!                      write(*,*)subcellCentre(bOctal, bSubcell)
+!                   endif
 
                    dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
                    call normalize(dir)
@@ -1084,6 +1345,11 @@ contains
                       thisOctal%rhou(subcell) = bOctal%rhou(bSubcell)
                       thisOctal%rhov(subcell) = -bOctal%rhov(bSubcell)
                    endif
+                   if ((abs(dir%x) > 0.2d0).and.abs(dir%z) > 0.2d0) then
+                      thisOctal%rhou(subcell) = -bOctal%rhou(bSubcell)
+                      thisOctal%rhov(subcell) = -bOctal%rhov(bSubcell)
+                   endif
+                     
                 case("shock")
                    rhor = 1.d0
                    Pr = 0.1d0
@@ -1113,8 +1379,10 @@ contains
     character(len=*) :: boundaryCondition
     type(OCTALVECTOR) :: locator, rVec
     integer :: nProbes, iProbe
-    type(OCTALVECTOR) :: probe(6)
+    type(OCTALVECTOR) :: probe(6), direction
     real(double) :: dx
+    integer :: nProbeOutside
+    logical :: corner
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1149,43 +1417,298 @@ contains
              probe(6) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
           endif
           rVec = subcellCentre(thisOctal, subcell)
+          nProbeOutside = 0
           do iProbe = 1, nProbes
              locator = rVec + &
                   (thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*probe(iProbe)
-
-             ! this is fudged here because AMR mod assumes that the grid is one-d spherical....
              if (.not.inOctal(grid%octreeRoot, locator).or. &
-                  (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) then  ! this is a boundary
-                ! setup the the two ghosts near the boundary
-
-                thisOctal%ghostCell(subcell) = .true.
-                locator = rVec - &
+                  (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) &
+                  nProbeOutside = nProbeOutside + 1
+          enddo
+          corner = .false.
+          if (thisOctal%twoD.and.(nProbeOutside > 1)) corner = .true.
+          if (thisOctal%threeD.and.(nProbeOutside > 2)) corner = .true.
+          if (corner) write(*,*) "corner found"
+          if (.not.corner) then
+             do iProbe = 1, nProbes
+                locator = rVec + &
                      (thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*probe(iProbe)
-                neighbourOctal => thisOctal
-                call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                neighbourOctal%ghostCell(neighbourSubcell) = .true.
-
-                ! now a case to determine the boundary cell relations
-                select case (boundaryCondition)
+                ! this is fudged here because AMR mod assumes that the grid is one-d spherical....
+                if (.not.inOctal(grid%octreeRoot, locator).or. &
+                     (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) then  ! this is a boundary
+                   ! setup the the two ghosts near the boundary
+                   
+                   thisOctal%ghostCell(subcell) = .true.
+                   locator = rVec - &
+                        (thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*probe(iProbe)
+                   neighbourOctal => thisOctal
+                   call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                   neighbourOctal%ghostCell(neighbourSubcell) = .true.
+                   
+                   
+                   ! now a case to determine the boundary cell relations
+                   select case (boundaryCondition)
                    case("mirror")
                       dx = thisOctal%subcellSize
                       thisOctal%ghostCell(subcell) = .true.
                       thisOctal%boundaryPartner(subcell) = subcellCentre(thisOctal, subcell) - (3.d0*dx)*probe(iProbe)
                       thisOctal%boundaryCondition(subcell) = "mirror"
-
+                      
                       neighbourOctal%boundaryPartner(neighboursubcell) = &
                            subcellCentre(neighbourOctal, neighbourSubcell) - (1.d0*dx)*probe(iProbe)
                       neighbourOctal%boundaryCondition(neighboursubcell) = "mirror"
-
+                      
                    case DEFAULT
                       write(*,*) "unknown boundary condition: ",trim(boundaryCondition)
-                 end select
-             endif
-          enddo
+                   end select
+                endif
+             enddo
+          else ! this is a corner
+             direction = subcellCentre(thisOctal, subcell) - grid%octreeRoot%centre
+             call normalize(direction)
+
+                   
+             thisOctal%ghostCell(subcell) = .true.
+             locator = rVec - &
+                  (sqrt(2.d0)*thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*direction
+             neighbourOctal => thisOctal
+             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+             neighbourOctal%ghostCell(neighbourSubcell) = .true.
+                   
+                   
+             ! now a case to determine the boundary cell relations
+             select case (boundaryCondition)
+             case("mirror")
+                dx = sqrt(2.d0)*thisOctal%subcellSize
+                thisOctal%ghostCell(subcell) = .true.
+                thisOctal%boundaryPartner(subcell) = subcellCentre(thisOctal, subcell) - (3.d0*dx)*direction
+                thisOctal%boundaryCondition(subcell) = "mirror"
+                
+                neighbourOctal%boundaryPartner(neighboursubcell) = &
+                     subcellCentre(neighbourOctal, neighbourSubcell) - (1.d0*dx)*direction
+                neighbourOctal%boundaryCondition(neighboursubcell) = "mirror"
+                      
+             case DEFAULT
+                write(*,*) "unknown boundary condition: ",trim(boundaryCondition)
+             end select
+
+
+          endif
       endif
     enddo
   end subroutine setupGhostCells
-  
-  
 
+
+  subroutine averageValue(thisOctal, subcell, neighbourOctal, q, rhou, rhov, rho)
+    type(OCTAL), pointer :: thisOctal, neighbourOctal
+    integer :: subcell
+    integer :: nSubcell(4)
+    real(double) :: q, rho, rhov, rhou
+    type(OCTALVECTOR) :: direction
+
+    direction = neighbourOctal%centre - subcellCentre(thisOctal, subcell)
+    call normalize(direction)
+    write(*,*) direction
+
+    if (thisOctal%oneD) then
+       if (direction%x > 0.9d0) then
+          nSubcell(1) = 1
+       else
+          nSubcell(2) = 1
+       endif
+       q = neighbourOctal%q_i(nSubcell(1))
+       rho = neighbourOctal%rho(nSubcell(1))
+       rhou = neighbourOctal%rhou(nSubcell(1))
+       rhov = neighbourOctal%rhov(nSubcell(1))
+     else if (thisOctal%twoD) then
+       if (direction%x > 0.9d0) then
+          nSubcell(1) = 1
+          nSubcell(2) = 3
+       else if (direction%x < -0.9d0) then
+          nSubcell(1) = 2
+          nSubcell(2) = 4
+       else if (direction%y > 0.9d0) then
+          nSubcell(1) = 1
+          nSubcell(2) = 2
+       else
+          nSubcell(1) = 3
+          nSubcell(2) = 4
+       endif
+       q = 0.5d0*(neighbourOctal%q_i(nSubcell(1)) + neighbourOctal%q_i(nSubcell(2)))
+       rho = 0.5d0*(neighbourOctal%rho(nSubcell(1)) + neighbourOctal%rho(nSubcell(2)))
+       rhou = 0.5d0*(neighbourOctal%rhou(nSubcell(1)) + neighbourOctal%rhou(nSubcell(2)))
+       rhov = 0.5d0*(neighbourOctal%rhov(nSubcell(1)) + neighbourOctal%rhov(nSubcell(2)))
+    endif
+  end subroutine averageValue
+
+
+  recursive subroutine refineGridGeneric(thisOctal, grid, criterion)
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, child
+    type(OCTALVECTOR) :: rVec, corner
+    integer :: i, j, subcell, iStream
+    logical :: split
+    integer :: n
+    character(len=*) :: criterion
+
+    subcell = 1
+    do while (subcell <= thisOctal%maxChildren)
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          children : do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call refineGridGeneric(child, grid, criterion)
+                exit children
+             end if
+          end do children
+       else
+          if (.not.thisOctal%ghostCell(subcell)) then
+             call  splitCondition(thisOctal, grid, subcell, criterion, split)
+             
+             if (split.and.(thisOctal%nDepth < 8)) then
+                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                     inherit=.false., interp=.false.)
+                subcell = subcell - 1
+             endif
+          end if
+       endif
+       subcell = subcell + 1
+    enddo
+
+  end subroutine refineGridGeneric
+
+  
+  subroutine splitCondition(thisOctal, grid, subcell, criterion, split)
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, neighbourOctal
+    integer :: subcell, neighbourSubcell
+    logical :: split
+    character(len=*) :: criterion
+    integer :: nProbes
+    type(OCTALVECTOR) :: locator, probe(6)
+    integer :: i
+    real(double) :: grad, maxGradient
+    
+    Split = .false.
+    if (thisOctal%oned) then
+       nProbes = 2
+       probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+    endif
+    if (thisOctal%twod) then
+       nProbes = 4
+       probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+       probe(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       probe(4) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+    endif
+    if (thisOctal%threeD) then
+       nProbes = 6
+       probe(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       probe(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+       probe(3) = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+       probe(4) = OCTALVECTOR(0.d0, -1.d0, 0.d0)
+       probe(5) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       probe(6) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+    endif
+
+    maxGradient = 1.d-30
+    do i = 1, nProbes
+       locator = subcellCentre(thisOctal, subcell) + &
+            (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell) * probe(i)
+       if (inOctal(grid%octreeRoot, locator)) then
+          neighbourOctal => thisOctal
+          call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+          grad = abs((thisOctal%rho(subcell) - neighbourOctal%rho(neighbourSubcell)) / thisOctal%rho(subcell))
+          maxGradient = max(grad, maxGradient)
+       endif
+    end do
+    if (maxGradient > 0.5d0) split = .true.
+  end subroutine splitCondition
+
+
+
+  recursive subroutine evenUpGrid(thisOctal, grid,  converged)
+
+    type(gridtype) :: grid
+    real :: factor
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child, neighbourOctal, startOctal
+    !
+    integer :: subcell, i, ilambda
+    logical :: converged, converged_tmp
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat
+    integer :: neighbourSubcell, j, nDir
+    real(double) :: r
+    converged = .true.
+    converged_tmp=.true.
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call evenUpGrid(child, grid,  converged)
+                if (.not.converged) converged_tmp = converged
+                exit
+             end if
+          end do
+          if (.not.converged_tmp) converged=converged_tmp
+       else
+
+          r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
+          centre = subcellCentre(thisOctal, subcell)
+          if (thisOctal%threed) then
+             nDir = 6
+             dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(2) = OCTALVECTOR( 0.d0,+1.d0,  0.d0)
+             dirVec(3) = OCTALVECTOR(+1.d0, 0.d0,  0.d0)
+             dirVec(4) = OCTALVECTOR(-1.d0, 0.d0,  0.d0)
+             dirVec(5) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
+             dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+          else if (thisOctal%twod) then
+             nDir = 4
+             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(2) = OCTALVECTOR(-1.d0,0.d0, 0.d0)
+             dirVec(3) = OCTALVECTOR( 0.d0, 0.d0,  1.d0)
+             dirVec(4) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+          else
+             nDir = 2
+             dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)
+             dirVec(2) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+          endif
+
+          if (.not.thisOctal%ghostcell(subcell)) then
+             do j = 1, nDir
+                octVec = centre + r * dirvec(j)
+                if (inOctal(grid%octreeRoot, octVec)) then
+                   neighbourOctal => thisOctal
+                   call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
+                   if ((neighbourOctal%nDepth-thisOctal%nDepth) > 1) then
+                      call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                           inherit=.false., interp=.false.)
+                      converged = .false.
+                      exit
+                   endif
+                   if ((thisOctal%nDepth-neighbourOctal%nDepth) > 1) then
+                      if (.not.neighbourOctal%ghostCell(neighbourSubcell)) then
+                         call addNewChild(neighbourOctal,neighboursubcell,grid,adjustGridInfo=.TRUE., &
+                              inherit=.false., interp=.false.)
+                         converged = .false.
+                         exit
+                      endif
+                   endif
+                endif
+             enddo
+          endif
+          if (.not.converged) exit
+       endif
+    end do
+
+  end subroutine evenUpGrid
+
+
+ 
 end module hydrodynamics_mod

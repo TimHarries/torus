@@ -105,13 +105,20 @@ CONTAINS
        thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
        thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
-       thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
+       if (associated(thisOctal%dustTypeFraction)) then
+          thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
+       endif
        thisOctal%oldFrac(subcell) = parentOctal%oldFrac(parentSubcell)
        if (associated(thisOctal%ionFrac)) then
           thisOctal%ionFrac(subcell,:) = parentOctal%ionFrac(parentsubcell,:)
        endif
        thisOctal%nh(subcell) = parentOctal%nh(parentsubcell)
        thisOctal%ne(subcell) = parentOctal%ne(parentsubcell)
+
+       thisOctal%rhou(subcell) = parentOctal%rhou(parentSubcell)
+       thisOctal%rhov(subcell) = parentOctal%rhov(parentSubcell)
+       thisOctal%rhoe(subcell) = parentOctal%rhoe(parentSubcell)
+
     else if (interpolate) then
        thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
        thisOctal%inFlow(subcell) = parentOctal%inFlow(parentSubcell)
@@ -4965,7 +4972,9 @@ IF ( .NOT. gridConverged ) RETURN
 
    case("hydro1d")
       split = .false.
-      if (thisOctal%nDepth < 7) split = .true.
+      if (thisOctal%nDepth < 4) split = .true.
+!      rVec = subcellCentre(thisOctal, subcell)
+!      if (rVec%x > 0.5d0 .and. thisOctal%nDepth < 7) split=.true.
 
    case("benchmark")
       split = .false.
@@ -7658,25 +7667,31 @@ IF ( .NOT. gridConverged ) RETURN
     x = rVec%x
     z = rVec%z
     gd = 0.1d0 * (x2 - x1)
-    r = modulus(rVec - OCTALVECTOR(0.5d0, 0.d0, 0.5d0))
+    if (thisOctal%twod) then
+       r = modulus(rVec - OCTALVECTOR(0.5d0, 0.d0, 0.5d0))
+    else
+       r = modulus(rVec - OCTALVECTOR(0.5d0, 0.d0, 0.0d0))
+    endif
     thisOctal%rho(subcell) = 1.d0 + 0.3d0 * exp(-r**2/gd**2)
+    thisOctal%energy(subcell) = 2.5d0
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
-
     thisOctal%pressure_i(subcell) = 1.d0
-    thisOctal%energy(subcell) = 1.d0
-!    thisOctal%rho(subcell) = 1.d0
-!
-!    xMid = x2 - z
-!    if (x < xmid) then
-!       thisOctal%rho(subcell) = 1.d0
-!       thisOctal%energy(subcell) = 2.5d0
-!       thisOctal%pressure_i(subcell) = 1.d0
-!    else
-!       thisOctal%rho(subcell) = 0.125d0
-!       thisOctal%energy(subcell) = 0.25d0
-!       thisOctal%pressure_i(subcell) = 0.1d0
-!    endif
 
+    thisOctal%rho(subcell) = 1.d0
+
+    if (thisOctal%twod) then
+       xMid = 0.d0 - z
+    endif
+
+    if (x < xmid) then
+       thisOctal%rho(subcell) = 1.d0
+       thisOctal%energy(subcell) = 2.5d0
+       thisOctal%pressure_i(subcell) = 1.d0
+    else
+       thisOctal%rho(subcell) = 0.125d0
+       thisOctal%energy(subcell) = 0.25d0
+       thisOctal%pressure_i(subcell) = 0.1d0
+    endif
 
   end subroutine calcHydro1DDensity
     
@@ -9066,6 +9081,8 @@ IF ( .NOT. gridConverged ) RETURN
     dest%ghostCell            = source%ghostCell
     dest%energy               = source%energy
     dest%rhou                 = source%rhou
+    dest%rhov                 = source%rhov
+    dest%rhoe                 = source%rhoe
 
 
     if (associated(source%photoIonCoeff)) then
