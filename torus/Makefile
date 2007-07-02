@@ -330,7 +330,9 @@ ifeq ($(SYSTEM), linuxintel)
     F77COMP  = ifort
     F77FLAG  = -w
     DEBUGFLAG= -g
-    FASTFLAG = -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
+
+
+
 #    FASTFLAG = -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
 #    FASTFLAG = -I/usr/include/nptl -L/usr/lib/nptl -zero 
     UNIXMOD  = unix_mod.f90.linuxintel
@@ -344,6 +346,33 @@ ifeq ($(SYSTEM), linuxintel)
     EXE = torus.linuxintel
     MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
+endif
+
+ifeq ($(SYSTEM), zen)
+
+    F95COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
+    F77COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
+    FASTFLAGS= -O3 -xT -mcmodel=medium -i-dynamic
+
+    DEBUGFLAG=-g -O0
+    STATICFLAG=
+    MATHTRAP=
+    UNIXMOD=unix_mod.f90.linuxintel
+    KINDMOD=kind_mod.f90.linuxintel
+    EXE=torus.zen
+    F77FLAG=-w
+    IMAGEF77=image_f77.f.miracle
+    SPECF77=spec_f77.f.miracle
+    F2CLIB=
+#    -L$(PATH2G2C) -lg2c
+    STATICLIBS=
+    STARLIBS= -DMPI -L/sw/sdev/intel-mpi/v3.0.021/x86_64/lib64 -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
+#    -L/star/lib `ndf_link` 
+    PGLIBS=
+#    -L/star/lib `pgplot_link`
+    CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM=yes
 endif
 
 ifeq ($(SYSTEM), mpiintel)

@@ -1374,7 +1374,7 @@ contains
           do i = 1, nDustType
 
              call parseGrainType(graintype(i), ngrain, grainname, x_grain)
-             write(*,*) "graintype ",trim(graintype(i)), x_grain(i),amin(i),amax(i),a0(i),qdist(i),pdist(i)
+!             write(*,*) "graintype ",trim(graintype(i)), x_grain(i),amin(i),amax(i),a0(i),qdist(i),pdist(i)
 
              call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
                   ngrain, X_grain, grainname, i)

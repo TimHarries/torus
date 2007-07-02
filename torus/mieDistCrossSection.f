@@ -50,7 +50,7 @@ c     For safty (R. Kurosawa fixed this.)
         enddo
         call PowerInt(nDist,1,nDist,aDist,nsd,normFac)
         
-        open(unit=54, file='g_scat.dat', status='unknown')
+!        open(unit=54, file='g_scat.dat', status='unknown')
         do i = 1, nDist
           a = aDist(i) 
           x = 2.*pi*(a * micronsTocm)/(lambda*1.e-8)
@@ -60,9 +60,9 @@ c     For safty (R. Kurosawa fixed this.)
           
           qExt(i) = qExt(i) * nsd(i) * pi * (a * micronsToCm)**2
           qSca(i) = qSca(i) * nsd(i) * pi * (a * micronsToCm)**2
-          write(54, *) x, gsca(i)
+!          write(54, *) x, gsca(i)
         enddo
-        close(54)
+!        close(54)
         
          call powerInt(nDist, 1, nDist, aDist, qExt, kappaExt)
          kappaExt = kappaExt / normFac
