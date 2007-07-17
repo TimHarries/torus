@@ -25,6 +25,7 @@ MODULE amr_mod
   USE source_mod
   USE romanova_class
   USE magField
+  USE mpi_global_mod
 
   IMPLICIT NONE
 
@@ -82,7 +83,6 @@ CONTAINS
     LOGICAL :: inheritProps
     LOGICAL :: interpolate
 
-
     inheritProps = .false.
     if (present(inherit)) then
        inheritProps = inherit
@@ -117,6 +117,7 @@ CONTAINS
 
        thisOctal%rhou(subcell) = parentOctal%rhou(parentSubcell)
        thisOctal%rhov(subcell) = parentOctal%rhov(parentSubcell)
+       thisOctal%rhow(subcell) = parentOctal%rhow(parentSubcell)
        thisOctal%rhoe(subcell) = parentOctal%rhoe(parentSubcell)
 
     else if (interpolate) then
@@ -309,9 +310,13 @@ CONTAINS
     LOGICAL :: oned, twod, threed  ! true if this is a twoD amr grid
     INTEGER :: subcell ! loop counter 
     INTEGER :: nDustType ! number of different dust types
-
+    integer :: i
 
     ALLOCATE(grid%octreeRoot)
+
+    do i = 1, 8
+       grid%octreeRoot%mpiThread(i) = i 
+    enddo
     
     ! allocate any variables that need to be 
     if (.not.grid%oneKappa) then
@@ -384,6 +389,8 @@ CONTAINS
     grid%octreeRoot%nTot = -9.9e9
     grid%octreeRoot%changed = .false.
     grid%octreeRoot%dustType = 1
+
+
     if (cmf) then
        allocate(grid%octreeroot%atomAbundance(8, nAtom))
        grid%octreeRoot%atomAbundance(1:8, 1) =  0.71d0 / mHydrogen ! by default solar
@@ -516,6 +523,7 @@ CONTAINS
                                        ! - this isn't very clever. might change it. 
     INTEGER       :: nChildren         ! number of children the parent octal has
     INTEGER       :: newChildIndex     ! the storage location for the new child
+    integer :: np
     logical :: inheritProps, interpolate
     type(OCTALVECTOR) :: rVec
     ! array of octals that may be needed for temporarily storing child octals
@@ -523,6 +531,9 @@ CONTAINS
     ! For "romanova" geometry
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     
+
+
+
 
     inheritProps = .false.
     if (present(inherit)) then
@@ -585,6 +596,14 @@ CONTAINS
        parent%child(newChildIndex)%kappaSca = 1.e-30
     ENDIF
     NULLIFY(parent%child(newChildIndex)%child)
+
+! setup mpiThread values
+
+    parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       
+
+       
+
 
     if (cmf) then
        allocate(parent%child(newChildIndex)%atomAbundance(8, 1:nAtom))
@@ -747,7 +766,7 @@ CONTAINS
     END IF
 
     !CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
-
+666 continue
 
   END SUBROUTINE addNewChild
   
@@ -3651,8 +3670,8 @@ CONTAINS
   FUNCTION inOctal(thisOctal,point) 
     ! true if the point lies within the boundaries of the current octal
   
+    use input_variables, only : hydrodynamics
     IMPLICIT NONE
- 
     LOGICAL                       :: inOctal
     TYPE(octal), INTENT(IN)       :: thisOctal
     TYPE(octalVector), INTENT(IN) :: point
@@ -3700,7 +3719,11 @@ CONTAINS
           ENDIF
        endif
     else ! twoD case
-       octVec2D = projectToXZ(point)
+       if (.not.hydrodynamics) then
+          octVec2D = projectToXZ(point)
+       else
+          octVec2D = point
+       endif
            IF (octVec2D%x <  thisOctal%centre%x - thisOctal%subcellSize ) THEN ; inOctal = .FALSE. 
        ELSEIF (octVec2D%x > thisOctal%centre%x + thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
        ELSEIF (octVec2D%z < thisOctal%centre%z - thisOctal%subcellSize ) THEN ; inOctal = .FALSE.
@@ -3944,7 +3967,7 @@ IF ( .NOT. gridConverged ) RETURN
     ! finds the octal (and that octal's subcell) containing a point.
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
-
+    use input_variables, only : hydrodynamics
     IMPLICIT NONE
 
     TYPE(octalVector), INTENT(IN) :: point
@@ -3964,7 +3987,11 @@ IF ( .NOT. gridConverged ) RETURN
                               !   the search using these flags.
                              
     if (thisOctal%twoD) then
-       point_local = projectToXZ(point)
+       if (.not.hydrodynamics) then
+          point_local = projectToXZ(point)
+       else
+          point_local = point
+       endif
     else
        point_local = point
     endif
@@ -4666,6 +4693,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep
     IMPLICIT NONE
+    include 'mpif.h'
     TYPE(octal), intent(inout) :: thisOctal
 !    TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
@@ -4693,6 +4721,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER               :: nsample = 400
     LOGICAL               :: inUse
     INTEGER               :: nparticle, limit
+    integer :: np
     real(double) :: timenow
     real(double) :: dummyDouble
     real(double) :: fac1,fac2
@@ -4854,7 +4883,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
    case("lexington")
-      if (thisOctal%nDepth < 5) then
+      if (thisOctal%nDepth < 4) then
          split = .true.
       else
          split = .false.
@@ -4862,9 +4891,9 @@ IF ( .NOT. gridConverged ) RETURN
 !      if (modulus(subcellCentre(thisoctal,subcell)) < 60.*grid%rinner) then
 !         if (thisOctal%nDepth < 7) split = .true.
 !      endif
-      if (modulus(subcellCentre(thisoctal,subcell)) < 6.*grid%rinner) then
-         if (thisOctal%nDepth < 7) split = .true.
-      endif
+!      if (modulus(subcellCentre(thisoctal,subcell)) < 6.*grid%rinner) then
+!         if (thisOctal%nDepth < 7) split = .true.
+!      endif
 
    case("starburst")
       if (thisOctal%nDepth < 5) then
@@ -4972,10 +5001,12 @@ IF ( .NOT. gridConverged ) RETURN
 
    case("hydro1d")
       split = .false.
-      if (thisOctal%nDepth < 4) split = .true.
-!      rVec = subcellCentre(thisOctal, subcell)
-!      if (rVec%x > 0.5d0 .and. thisOctal%nDepth < 7) split=.true.
-
+      if (thisOctal%nDepth < 3) split = .true.
+      rVec = subcellCentre(thisOctal, subcell)
+!      if ((thisOctal%mpiThread(subcell) == 2).and.(thisOctal%nDepth < 6)) split = .true.
+!      if ((rVec%x > 0.5d0) .and. thisOctal%nDepth < 6) split=.true.
+!      if (((rVec%x > 0.55d0).and.(rVec%x < 0.8d0)) .and. thisOctal%nDepth < 8) split=.true.
+!      if (((rVec%x > 0.7d0).and.(rVec%x < 0.75d0)) .and. thisOctal%nDepth < 9) split=.true.
    case("benchmark")
       split = .false.
       cellSize = thisOctal%subcellSize 
@@ -5445,6 +5476,17 @@ IF ( .NOT. gridConverged ) RETURN
       if (firstTime) then
          call writeWarning("AMR cell depth capped at 27")
          firstTime = .false.
+      endif
+   endif
+
+   np = 8 
+
+   if (grid%splitOverMPI) then
+      if ((thisOctal%nDepth == 1).and.(subcell /= myRankGlobal)) then
+         split = .false.
+      endif
+      if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+         split = .false.
       endif
    endif
 
@@ -7661,7 +7703,9 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     type(OCTALVECTOR) :: rVec
-    real(double) :: gd, xmid, x, z, r 
+    real(double) :: gd, xmid, x, z, r , zprime
+
+
     rVec = subcellCentre(thisOctal, subcell)
     xmid = (x1 + x2)/2.d0
     x = rVec%x
@@ -7683,7 +7727,14 @@ IF ( .NOT. gridConverged ) RETURN
        xMid = 0.d0 - z
     endif
 
-    if (x < xmid) then
+    if (thisOctal%threed) then
+       xMid = -0.5d0 - z
+    endif
+
+    zprime = -1.d0 - (rVec%x+rVec%y)
+
+
+    if (rvec%z < zprime) then
        thisOctal%rho(subcell) = 1.d0
        thisOctal%energy(subcell) = 2.5d0
        thisOctal%pressure_i(subcell) = 1.d0
@@ -8176,6 +8227,9 @@ IF ( .NOT. gridConverged ) RETURN
        parent%nChildren = 2
        parent%maxChildren = 2
     endif
+
+    
+
 
     if (parent%threed) then
        ALLOCATE(parent%child(1:8), STAT=error)
@@ -9006,6 +9060,7 @@ IF ( .NOT. gridConverged ) RETURN
     CALL deleteOctal(dest, deleteChildren=.FALSE., adjustParent=.FALSE. )
 
     dest%nDepth           = source%nDepth
+    dest%mpiThread        = source%mpiThread
     dest%nChildren        = source%nChildren
     dest%indexChild       = source%indexChild
     dest%threeD           = source%threeD 
@@ -9079,11 +9134,21 @@ IF ( .NOT. gridConverged ) RETURN
     dest%rLimit               = source%rLimit
     dest%phiLimit             = source%phiLimit
     dest%ghostCell            = source%ghostCell
+    dest%edgeCell             = source%edgeCell
+    dest%feederCell           = source%feederCell
     dest%energy               = source%energy
     dest%rhou                 = source%rhou
     dest%rhov                 = source%rhov
+    dest%rhow                 = source%rhow
     dest%rhoe                 = source%rhoe
 
+    dest%refinedLastTime      = source%refinedLastTime
+
+    if (associated(source%mpiBoundaryStorage)) then
+       allocate(dest%mpiBoundaryStorage(SIZE(source%mpiBoundaryStorage, 1),&
+            SIZE(source%mpiBoundaryStorage,2),SIZE(source%mpiBoundaryStorage,3)))
+       dest%mpiBoundaryStorage   = source%mpiBoundaryStorage
+    endif
 
     if (associated(source%photoIonCoeff)) then
        allocate(dest%photoIonCoeff(SIZE(source%photoIonCoeff,1),SIZE(source%photoIonCoeff,2)))
@@ -10042,13 +10107,27 @@ IF ( .NOT. gridConverged ) RETURN
     
     parentOctal%rho(parentSubcell) =                    &
     SUM(childOctal%rho(1:nVals)) / nValsREAL
-    
+
+    parentOctal%rhoe(parentSubcell) =                    &
+    SUM(childOctal%rhoe(1:nVals)) / nValsREAL
+
+    parentOctal%rhou(parentSubcell) =                    &
+    SUM(childOctal%rhou(1:nVals)) / nValsREAL
+ 
+    parentOctal%rhov(parentSubcell) =                    &
+    SUM(childOctal%rhov(1:nVals)) / nValsREAL
+
+    parentOctal%rhow(parentSubcell) =                    &
+    SUM(childOctal%rhow(1:nVals)) / nValsREAL
+   
     parentOctal%temperature(parentSubcell) =            &
     SUM(childOctal%temperature(1:nVals)) / nValsREAL
     
-    parentOctal%dustTypeFraction(parentSubcell,:) =     &
-    SUM(childOctal%dustTypeFraction(1:nVals,:)) / nValsREAL
-    
+!    if (associated(parentOctal%dustTypeFraction)) then
+!       parentOctal%dustTypeFraction(parentSubcell,:) =     &
+!            SUM(childOctal%dustTypeFraction(1:nVals,:)) / nValsREAL
+!    endif
+
   END SUBROUTINE updateParentFromChild
   
   SUBROUTINE updateMaxDepth(grid,searchLimit,changeMade)

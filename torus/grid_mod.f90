@@ -6430,13 +6430,17 @@ contains
   !
   subroutine plot_AMR_values(grid, name, plane, value_3rd_dim,  device, logscale, withgrid, &
        nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac, ilam, xStart, &
-       xEnd, yStart, yEnd, fixValMin,fixValMax)
+       xEnd, yStart, yEnd, fixValMin,fixValMax, quiet, openDevice)
     implicit none
     type(gridtype), intent(in) :: grid
     character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
     !                                       ! "etaCont", "Vx", "Vy" or "Vz"
     character(len=*), intent(in)  :: plane  ! must be 'x-y', 'y-z', 'z-x' or' x-z'
     character(len=10) :: thisPlane
+    logical, optional :: quiet
+    logical :: quietFlag
+    logical, optional :: openDevice
+    logical :: newDevice
     real(double) , optional :: fixValMin, fixValMax
     ! The value of the third dimension.
     ! For example, if plane = "x-y", the third dimension is the value of z.
@@ -6480,8 +6484,13 @@ contains
     character(LEN=50) :: filename_prof
     real   :: v3
 
+    newDevice = .true.
+    if (present(openDevice)) newDevice=openDevice
+
+    quietFlag = .false.
+    if (PRESENT(quiet)) quietFlag = quiet
     
-    call writeInfo("plot_AMR_values plotting to: "//trim(device), TRIVIAL)
+    if (.not.quietFlag) call writeInfo("plot_AMR_values plotting to: "//trim(device), TRIVIAL)
 
     ! retriving the address to the root of the tree.
     root => grid%octreeRoot
@@ -6521,12 +6530,13 @@ contains
 
     if (grid%octreeRoot%oneD) nPlanes = 1
 
-    if (nPlanes == 1) then
-       IF (PGBEG(0,trim(device),1,1) .NE. 1) STOP
-    else
-       IF (PGBEG(0,trim(device),3,1) .NE. 1) STOP
+    if (newDevice) then
+       if (nPlanes == 1) then
+          IF (PGBEG(0,trim(device),1,1) .NE. 1) STOP
+       else
+          IF (PGBEG(0,trim(device),3,1) .NE. 1) STOP
+       endif
     endif
-
     do iPlane = 1, nPlanes
 
        if (nPlanes == 1) then
@@ -6557,10 +6567,10 @@ contains
        if ((log10(valueMax)-log10(valueMin)) > 20.d0) valueMin = 1.d-20 * valueMax
 !       if (name.eq."rho") valuemin = valuemax * 1.e-10
        write(message,*) "Value Range: ",log10(valueMin), " -- ", log10(valueMax)
-       call writeInfo(message,TRIVIAL)
+       if (.not.quietFlag) call writeInfo(message,TRIVIAL)
     else
        write(message,*) "Value Range: ",valueMin, " -- ", valueMax
-       call writeInfo(message,TRIVIAL)
+       if (.not.quietFlag) call writeInfo(message,TRIVIAL)
     end if
 
     !
@@ -6758,7 +6768,7 @@ contains
     CALL PGASK(.FALSE.)  
 
  enddo
-    call PGEND
+ if (newDevice)  call PGEND
 
     
     ! deallocate(a_root)
@@ -6895,6 +6905,8 @@ contains
                 if (thisOctal%diffusionApprox(subcell)) value = 1.
              case("ionization")
                 value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
+             case("mpithread")
+                value = dble(thisOctal%mpiThread(subcell))
              case("photocoeff")
                 value = thisOctal%photoIonCoeff(subcell,1)
              case("temperature")
@@ -6917,6 +6929,12 @@ contains
                 value = thisOctal%dustTypeFraction(subcell,3)
              case("dusttype4")
                 value = thisOctal%dustTypeFraction(subcell,4)
+             case("rhoe")
+                value = thisOctal%rhoe(subcell)
+             case("rhou")
+                value = thisOctal%rhou(subcell)
+             case("rhov")
+                value = thisOctal%rhov(subcell)
              case("crossings")
                 value = thisOctal%nCrossings(subcell)
                 if (thisOctal%diffusionApprox(subcell)) value = 1.e6
@@ -7178,8 +7196,16 @@ contains
              case("rho")
                 value = thisOctal%rho(subcell)
                 if (value < 1.e-25) update = .false.
+             case("rhoe")
+                value = thisOctal%rhoe(subcell)
+             case("rhou")
+                value = thisOctal%rhou(subcell)
+             case("rhov")
+                value = thisOctal%rhov(subcell)
              case("ionization")
                 value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
+             case("mpithread")
+                value = dble(thisOctal%mpiThread(subcell))
              case("photocoeff")
                 value = thisOctal%photoIonCoeff(subcell,1)
              case("temperature")
@@ -7913,7 +7939,7 @@ contains
     deallocate(dummy)
   end subroutine nattaplot
 
-  subroutine columnDensityPlot(grid, source, nsource, viewVec, device)
+  subroutine columnDensityPlot(grid, source, nsource, viewVec, device, resetRangeFlag)
     type(GRIDTYPE) :: grid
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -7928,8 +7954,15 @@ contains
     integer :: i, j
     real :: dx
     real, allocatable :: xAxis(:), yAxis(:)
-    real :: imageSize, iMax, iMin
+    logical, optional :: resetRangeFlag
+    logical :: resetRange
+    real :: imageSize
+    real, save :: iMax, iMin
     integer::pgbegin
+    resetRange = .true.
+    if (PRESENT(resetRangeFlag)) then
+       resetRange = resetRangeFlag
+    endif
 
     nx = 400
     ny = 400
@@ -7937,7 +7970,7 @@ contains
     allocate(xAxis(1:nx))
     allocate(yAxis(1:ny))
 
-    imageSize = 0.9d0*2.d0*grid%octreeRoot%subcellSize
+    imageSize = sqrt(3.d0)*2.d0*grid%octreeRoot%subcellSize
     dx = imageSize / real(nx)
     do i = 1, nx
        xAxis(i) = -imageSize/2. + dx/2. + real(i-1)*dx
@@ -7954,16 +7987,17 @@ contains
     do i = 1, nx
        do j = 1, ny
           startVec = dble(xAxis(i))*xProj + dble(yAxis(j))*yProj
-          startVec = startVec - grid%octreeRoot%subcellSize*3.d0 * viewVec
+          startVec = startVec - grid%octreeRoot%subcellSize*4.d0 * viewVec
           
           t = distanceToGridFromOutside(grid, startVec, viewVec)
           startVec = startVec + (t + 1.d-1*grid%halfSmallestSubcell) *viewVec
           if (.not.inOctal(grid%octreeRoot, startVec)) then
-             write(*,*) "startvec not in grid",startvec,grid%halfSmallestSubcell
-             stop
+             sigma = 1.e-10
+          else
+             call columnAlongPath(grid, source, nsource, startVec, viewVec, sigma)
           endif
-          call columnAlongPath(grid, source, nsource, startVec, viewVec, sigma)
-          image(i,j) = log10(max(1.e-10,real(sigma)))
+!          image(i,j) = log10(max(1.e-10,real(sigma)))
+          image(i,j) = max(1.e-10,real(sigma))
        enddo
     enddo
     
@@ -7981,15 +8015,17 @@ contains
 
     call palette(3)
  
-    iMin = minval(image)
-    iMax = maxVal(image)
-    iMin = iMax - 2.
-    imax = 0.5
-    imin = -2.5
+    if (resetRange) then
+       iMin = minval(image)
+       iMax = maxVal(image)
+    endif
+!    iMin = iMax - 2.
+!    imax = 0.5
+!    imin = -2.5
     write(*,*) "Column image: ",imin,imax
     call pgimag(image, nx, ny, 1, nx, 1, ny, imin, imax, tr)
        
-    call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
+!    call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
     call pgend
   end subroutine columnDensityPlot
     

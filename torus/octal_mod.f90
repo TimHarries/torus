@@ -79,6 +79,7 @@ MODULE octal_mod
   TYPE octal
 
     INTEGER                            :: nDepth       ! depth of octal. root is 1, it's childen are 2...
+    integer                            :: mpiThread(8)  ! the thread number associated with this subcell (from 0 to n)
     INTEGER                            :: nChildren    ! how many pointers to children there are (max 8)
     INTEGER                            :: indexChild(8)! index of child array containing
                                                         ! pointer to each subcell's child (if it exists) 
@@ -159,7 +160,7 @@ MODULE octal_mod
     ! Should be allocated with # of gas particles in this octal
     INTEGER, POINTER                   :: gas_particle_list(:) => null() ! SPH index of the particles in this octal
     LOGICAL(KIND=logic), DIMENSION(8) :: changed     ! octal has changed in some way since previous calculation
-    
+    real(double), pointer, dimension(:,:,:) :: mpiBoundaryStorage => null()
     INTEGER, DIMENSION(8)                :: dusttype
     real(double), dimension(:,:), pointer        :: dustTypeFraction => null() ! dust type fraction (sum=1)
     INTEGER :: parentSubcell
@@ -174,9 +175,11 @@ MODULE octal_mod
     real(double) :: u_interface(8), u_i_plus_1(8), u_i_minus_1(8)
     real(double) :: flux_i(8), flux_i_plus_1(8), flux_i_minus_1(8)
     real(double) :: phiLimit(8), rLimit(8)
-    logical :: ghostCell(8)
-    real(double) :: rhou(8),  rhov(8), rhoE(8), energy(8)
+    logical :: ghostCell(8), feederCell(8)
+    logical :: edgeCell(8), refinedLastTime(8)
+    real(double) :: rhou(8),  rhov(8), rhow(8), rhoE(8), energy(8)
     real(double) :: pressure_i(8), pressure_i_plus_1(8), pressure_i_minus_1(8)
+    real(double), pointer :: tempStorage(:,:) => null()
     type(OCTALVECTOR) :: boundaryPartner(8)
     character(len=10) :: boundaryCondition(8)
     

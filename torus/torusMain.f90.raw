@@ -71,6 +71,7 @@
   use diffusion_mod
   use messages_mod
   use photoion_mod
+  use photoionAMR_mod
   use formal_solutions
   use starburst_mod
   use molecular_mod
@@ -501,6 +502,10 @@
 !$MPI  
 !$MPI  !===============================================================================
 
+!$MPI    call setupAMRCOMMUNICATOR
+
+
+  grid%splitOverMpi = .false.
 
   !
   ! For time statistics
@@ -579,7 +584,7 @@
   outputwarnings = .true.
   outputinfo = .true.
 
-!$MPI  if (my_rank/=0) writeoutput = .false.
+!$MPI  if (my_rank/=1) writeoutput = .false.
 
   
 
@@ -2509,7 +2514,6 @@
        if (writeoutput) &
             write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
        fac = 1.e8*cspeed/5.d16
-       write(*,*) "Starting wavelength",fac
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
        call normalizedSpectrum(source(1)%spectrum)
 
@@ -2802,20 +2806,26 @@
 
 
      if (photoIonization) then
+        grid%splitOverMPI = .true.
         grid%photoionization = .true.
-        call photoIonizationLoop(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
+        call photoIonizationLoopAMR(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
              lucyfilenameout, lucyfilenamein)
      endif
 
      if (hydrodynamics) then
-        if (grid%octreeRoot%twoD) then
-           call doHydrodynamics2d(grid)
-        else
-           call doHydrodynamics1d(grid)
+        grid%splitOverMPI = .true.
+        if (my_rank /= 0) then
+           if (grid%octreeRoot%twoD) then
+              call doHydrodynamics2d(grid)
+           else if (grid%octreeRoot%oneD) then
+              call doHydrodynamics1d(grid)
+           else if (grid%octreeRoot%threeD) then
+              call doHydrodynamics3d(grid)
+           endif
         endif
      endif
 
-
+     stop
 
 
   if (lucyRadiativeEq) then

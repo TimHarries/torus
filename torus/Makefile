@@ -259,6 +259,25 @@ ifeq ($(SYSTEM), ompiosx)
     KNOWN_SYSTEM = yes
 endif
 
+ifeq ($(SYSTEM), ompi)
+    F77COMP  = mpif90
+    F95COMP  = mpif90
+    F95FLAG  = 
+    F77FLAG  = -w
+    DEBUGFLAG= -g -w  -ftrace=full -fbounds-check
+    FASTFLAG = -O0
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   =  -L/home/th/pgplot -lpgplot
+    CFITSIOLIBS =  -lcfitsio
+    STARLIBS = -L/usr/X11R6/lib -lX11 -lg2c
+    EXE = torus.ompi
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM = yes
+endif
+
 ifeq ($(SYSTEM), ompiosx-intel)
     F95COMP  = ${GUANINE_HOME}/csr201/local-i386/opt/openmpi/bin/mpif77
     F77COMP  = ${GUANINE_HOME}/csr201/local-i386/opt/openmpi/bin/mpif77
@@ -615,7 +634,8 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
             modelatom_mod.f90 cmf_mod.f90 datacube_mod.f90 magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            molecular_mod.f90  hydrodynamics_mod.f90
+            molecular_mod.f90  hydrodynamics_mod.f90 mpi_amr_mod.f90 \
+	    mpi_global_mod.f90 photoionAMR_mod.f90
 
 F77SOURCE = bhmie.f phfit2.f mieDistCrossSection.f palette.f \
             spec_f77.f image_f77.f 
