@@ -127,8 +127,9 @@ contains
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
 
-
-
+    
+!    write(*,*) "abundances ",grid%ion(1:5)%abundance
+    
     nuStart = cSpeed / (1000.e4 * 1.d-8)
     nuEnd =  2.d0*maxval(grid%ion(1:grid%nIon)%nuThresh)
 
@@ -163,7 +164,7 @@ contains
 
     write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    nMonte = 1000
+    nMonte = 100000
 
     nIter = 0
     
@@ -186,11 +187,12 @@ contains
 
        if (myrank == 0) write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter
 
-       call tune(6, "One photoionization itr")  ! start a stopwatch
+       if (myrank == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
 
        iMonte_beg = 1
        iMonte_end = nMonte
 
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
           if (myRank == 0) then
@@ -216,9 +218,7 @@ contains
                 thisFreq = cSpeed/(wavelength / 1.e8)
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
 
-
                 iThread = thisOctal%mpiThread(subcell)
-                write(*,*) "Photon at freq ",thisFreq, " initialized and sent to ",ithread
                 call sendMPIPhoton(rVec, uHat, thisFreq, iThread)
                 nInf = nInf + 1
              end do mainloop
@@ -232,7 +232,7 @@ contains
              endLoop = .false.
              do while(.not.endLoop)
                 call getNewMPIPhoton(rVec, uHat, thisFreq, endloop)
-                write(*,*) "Photon at freq ",thisFreq, " received by ",myrank
+!                write(*,*) "Photon at freq ",thisFreq, " received by ",myrank
                 if (.not.endLoop) then
                    nScat = 0
                    escaped = .false.
@@ -241,13 +241,15 @@ contains
                       
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, crossedMPIboundary)
-                      write(*,*) myrank," After photon of freq ", thisFreq, " exited to nexteventphoto", escaped, crossedMPIboundary
+!                      write(*,*) myrank," After photon of freq ", thisFreq, " exited to nexteventphoto", escaped, crossedMPIboundary
                       if (crossedMPIBoundary) then
-                         write(*,*) "inoctal",inOctal(grid%octreeroot,rvec)
+!                         write(*,*) "crossedboundary with rvec ",rvec
+!                         write(*,*) "inoctal",inOctal(grid%octreeroot,rvec)
                          call findSubcellTD(rVec, grid%octreeRoot, thisOctal, subcell)
                          iThread = thisOctal%mpiThread(subcell)
+!                         write(*,*) myrank, "->", ithread," label ",thisOctal%label(subcell),modulus(rVec)
                          call sendMPIPhoton(rVec, uHat, thisFreq, iThread)
-                         write(*,*) "after tonexteventPhoto photon passed to ", ithread
+!                         write(*,*) "after tonexteventPhoto photon passed to ", ithread
                          goto 777
                       endif
 
@@ -311,7 +313,7 @@ contains
                          call locate(lamArray, nLambda, real(thisLam), iLam)
                          
                          call returnKappa(grid, thisOctal, subcell, ilambda=ilam, &
-                              kappaAbsDust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
+                              Kappaabsdust=kappaAbsDust, kappaAbsGas=kappaAbsGas, &
                               kappaSca=kappaScadb, kappaAbs=kappaAbsdb, kappaScaGas=escat)
                          write(*,*) "thislam",thislam,ilam, lamArray(ilam)
                          write(*,*) lamArray(1:nLambda)
@@ -330,9 +332,11 @@ contains
 777          continue
              enddo
           endif
-       call tune(6, "One photoionization itr")  ! stop a stopwatch
+       if (myrank == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        epsOverDeltaT = (lCore) / dble(nMonte)
+
+
 
        call  identifyUndersampled(grid%octreeRoot)
 
@@ -353,21 +357,33 @@ contains
     ioctal_beg = 1
     ioctal_end = nOctal
 
-       call tune(6, "Temperature/ion corrections")
+
+    if (myRank == 0) write(*,*) "Ninf ",ninf
+    if (myrank == 1) call tune(6, "Temperature/ion corrections")
 
     if (writeoutput) &
          write(*,*) "Calculating ionization and thermal equilibria"
 
-    do iOctal =  iOctal_beg, iOctal_end
+    if (myrank == 1) then
+       i = 0
+       j = 0 
+       call testforZero(grid%octreeRoot, i, j)
+       write(*,*) "photoion(subcell,1) is zero for ", 100.d0*real(i)/real(j), "% of subcells"
+    endif
 
-       thisOctal => octalArray(iOctal)%content
 
-       do i = 1 , 3
-          call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
-          call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+    if (myRank /= 0) then
+       do iOctal =  iOctal_beg, iOctal_end
+          
+          thisOctal => octalArray(iOctal)%content
+          
+          do i = 1 , 3
+             call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
+!             call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+          enddo
+          
        enddo
-
-    enddo
+    endif
 
 
 
@@ -378,6 +394,8 @@ contains
 
     if (writeoutput) &
          write(*,*) "Finished calculating ionization and thermal equilibria"
+
+    if (myrank == 1) call tune(6, "Temperature/ion corrections")
 
 !       call defineDiffusionOnRosseland(grid,grid%octreeRoot)
 !       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
@@ -401,7 +419,7 @@ contains
 !       call tune(6, "Gauss-Seidel sweeps")
 
 
-
+    if (myRank == 1) call dumpLexington(grid, epsoverdeltat)
 if (.false.) then
        call dumpLexington(grid, epsoverdeltat)
        fac = 2.06e37
@@ -475,33 +493,15 @@ if (.false.) then
     endif
 
 
-!       if ((niter > 2).and.(nIter < 8)) then
-!          call locate(grid%lamArray, grid%nLambda,900.,ilam)
-!          if (writeoutput) write(*,*) "Smoothing adaptive grid structure for ionization..."
-!          call smoothAMRgridIonization(grid%octreeRoot,grid,gridConverged,ilam,inheritprops = .false., interpProps = .false.)
-!          if (writeoutput) write(*,*) "...grid smoothing complete"
-!          call locate(grid%lamArray, grid%nLambda,400.,ilam)
-!          if (writeoutput) write(*,*) "Smoothing adaptive grid structure for ionization..."
-!          call smoothAMRgridIonization(grid%octreeRoot,grid,gridConverged,ilam,inheritprops = .false., interpProps = .false.)
-!          if (writeoutput) write(*,*) "...grid smoothing complete"
-!          if (writeoutput) write(*,*) "Smoothing adaptive grid structure..."
-!          gridConverged = .false.
-!          do
-!             call smoothAMRgrid(grid%octreeRoot,grid,smoothFactor,gridConverged,inheritprops=.false., interpProps=.false.)
-!             if (gridConverged) exit
-!          end do
-!          if (writeoutput) write(*,*) "...grid smoothing complete"
-!       endif
-
-!       nMonte = nMonte * 2
-
-
-!    call writeAmrGrid("photo_tmp.grid",.false.,grid)
-
-    if (niter == 6) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (niter == 3) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!    converged = .true.
+! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 !    if (myrank /=0) call plotgridMPI(grid, "/xs", "x-z", "ionization", 1.e-10 , 1., logFlag=.true.)
-    if (myrank /=0) call plotgridMPI(grid, "/xs", "x-z", "crossings", 1.e-10 , 10., logFlag=.false.)
+    if (myrank /=0) call plotgridMPI(grid, "crossings.png/png", "x-z", "crossings", 1.e-2 , 1.e4, logFlag=.true.)
+    if (myrank /=0) call plotgridMPI(grid, "temperature.png/png", "x-z", "temperature", 1.e-2 , 1.e4, logFlag=.true.)
+    if (myrank /=0) call plotgridMPI(grid, "ionization.png/png", "x-z", "ionization", 1.e-10 , 1., logFlag=.true.)
+    if (myrank /=0) call plotgridMPI(grid, "coeff.png/png", "x-z", "coeff", 1.e-10 , 1., logFlag=.true.)
 
  enddo
 
@@ -512,6 +512,9 @@ if (.false.) then
 
   call  calcContinuumEmissivity(grid, thisOctal, nlambda, lamArray)
  call writeInfo("Done.",TRIVIAL)
+
+ call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+
 
  if (writelucy) then
     call writeAmrGrid(lucyfileout,.false.,grid)
@@ -558,6 +561,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
     stillinGrid = .true.
     escaped = .false.
+    crossedMPIboundary = .false.
        
 
 
@@ -599,6 +603,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     else
        thisTau = 1.0e-28
     end if
+!    write(*,*) "thisTau ",thisTau
 
 ! if tau > thisTau then the photon has traversed a cell with no interactions
 
@@ -619,17 +624,17 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        endif
 
 ! check whether the photon has  moved across an MPI boundary
-       
-       crossedMPIboundary = .false.
-       if (stillInGrid) then
+        
+      if (stillInGrid) then
           nextOctal => thisOctal
-          nextSubcell = nextSubcell
+          nextSubcell = Subcell
           call findSubcellLocal(octVec, nextOctal, nextSubcell)
           if (nextOctal%mpiThread(nextSubcell) /= myRank) then
              stillInGrid = .false.
              escaped = .true.
              crossedMPIboundary = .true.
-             write(*,*) "Crossed mpi boundary to thread ", nextOctal%mpiThread(nextsubcell)
+!             write(*,*) myrank," crossed to thread ", nextOctal%mpiThread(nextsubcell), &
+!                  nextOctal%label(nextSubcell), modulus(rVec)
           endif
        endif
 
@@ -784,6 +789,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     endif
 
 666 continue
+
+!    if (crossedMpiBoundary) write(*,*) "leaving tonexteventphoto with rvec ",rvec
 
  end subroutine toNextEventPhoto
 
@@ -1081,6 +1088,32 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        endif
     enddo
   end subroutine zeroDistanceGrid
+
+  recursive subroutine testforZero(thisOctal, n, m)
+  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: child 
+  integer :: subcell, i, n, m
+  
+  do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call testforzero(child, n, m)
+                exit
+             end if
+          end do
+       else
+          m = m + 1
+          if (thisOctal%photoIonCoeff(subcell,1) == 0.d0) then
+             n = n + 1
+          endif
+
+        
+       endif
+    enddo
+  end subroutine testforZero
 
   recursive subroutine getHbetaluminosity(thisOctal, grid, luminosity)
   type(octal), pointer   :: thisOctal
@@ -1419,6 +1452,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     real(double) :: photonPacketWeight
     integer :: i 
     real :: e, xsec
+    type(OCTALVECTOR) :: rVec
 
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
@@ -1431,6 +1465,11 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        if (xSec > 0.) then
           thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
                + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
+!          rVec = subcellCentre(thisOctal, subcell)
+!          if ((myrankglobal==1).and.(i == 1).and.((modulus(rVec)/3.1d8)>2.d0).and.&
+!               (thisOctal%label(subcell)==4557)) then
+!             write(*,*)  "xsec",xsec, thisOctal%photoIonCoeff(subcell,i), thisOctal%label(subcell)
+!          endif
        endif
 
        ! neutral H heating
@@ -1490,8 +1529,7 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
      enddo
      iEnd = iEnd - 1
      nIonizationStages = iEnd - iStart + 1
-     
-     
+          
      allocate(xplus1overx(1:nIonizationStages-1))
      do i = 1, nIonizationStages-1
         iIon = iStart+i-1
@@ -1508,13 +1546,13 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
         
         xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
              max(1.d-50,(recombRate(grid%ion(iIon),temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination))
-        !           if (grid%ion(iion)%species(1:1) =="C") write(*,*) i,xplus1overx(i)
+!        if (grid%ion(iion)%species(1:2) =="H ") write(*,*) i,xplus1overx(i), thisOctal%photoioncoeff(subcell,iion)
      enddo
      thisOctal%ionFrac(subcell, iStart:iEnd) = 1.
      do i = 1, nIonizationStages - 1
         iIon = iStart+i-1
         thisOctal%ionFrac(subcell,iIon+1) = thisOctal%ionFrac(subcell,iIon) * xplus1overx(i)
-        !           if (grid%ion(iion)%species(1:1) =="C") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
+!        if (grid%ion(iion)%species(1:1) =="H") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
      enddo
      if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
         thisOctal%ionFrac(subcell,iStart:iEnd) = &
@@ -1966,7 +2004,7 @@ subroutine dumpLexington(grid, epsoverdt)
   type(OCTAL), pointer :: thisOctal
   integer :: subcell
   integer :: i, j
-  real(double) :: r, theta
+  real(double) :: r, theta, phi
   real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
   real(double) :: oirate, oiirate, oiiirate, oivrate
   real(double) :: v, epsoverdt,r1,r2
@@ -1987,13 +2025,18 @@ subroutine dumpLexington(grid, epsoverdt)
 
      oirate = 0; oiirate = 0; oiiirate = 0; oivrate = 0
      heating = 0.d0; cooling = 0.d0
-     do j = 1, 100
+     do j = 1, 1000
+661     continue
         call random_number(theta)
         theta = theta * Pi
+        call random_number(phi)
+        phi = phi * twoPi
         
-        octVec = OCTALVECTOR(r*sin(theta),0.d0,r*cos(theta))
+        octVec = OCTALVECTOR(r*sin(theta)*cos(phi),r*sin(theta)*sin(phi),r*cos(theta))
+        
         
         call amrgridvalues(grid%octreeRoot, octVec,  foundOctal=thisOctal, foundsubcell=subcell)
+        if (thisOctal%mpiThread(subcell) /= myRankGlobal) goto 661
 
         nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
         nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
@@ -2036,17 +2079,17 @@ subroutine dumpLexington(grid, epsoverdt)
      enddo
 
 
-     hi = hi / 100.; hei = hei/100.; oii = oii/100; oiii = oiii/100.; cii=cii/100.
-     ciii = ciii/100; civ=civ/100.; nii =nii/100.; niii=niii/100.; niv=niv/100.
-     nei=nei/100.;neii=neii/100.; neiii=neiii/100.; neiv=neiv/100.;t=t/100.
-     netot = netot / 100
+     hi = hi / 1000.; hei = hei/1000.; oii = oii/1000.; oiii = oiii/1000.; cii=cii/1000.
+     ciii = ciii/1000; civ=civ/1000.; nii =nii/1000.; niii=niii/1000.; niv=niv/1000.
+     nei=nei/1000.;neii=neii/1000.; neiii=neiii/1000.; neiv=neiv/1000.;t=t/1000.
+     netot = netot / 1000.
 
-     oirate = oirate / 100.
-     oiirate = oiirate / 100.
-     oiiirate = oiiirate / 100.
-     oivrate = oivrate / 100.
-     heating = heating / 100.
-     cooling = cooling / 100.
+     oirate = oirate / 1000.
+     oiirate = oiirate / 1000.
+     oiiirate = oiiirate / 1000.
+     oivrate = oivrate / 1000.
+     heating = heating / 1000.
+     cooling = cooling / 1000.
 
      hi = log10(max(hi, 1e-10))
      hei = log10(max(hei, 1e-10))
@@ -3473,6 +3516,7 @@ end subroutine readHeIIrecombination
     call MPI_RECV(tempStorage, 15, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
 
     if (tempStorage(1) > 1.d30) then
+       write(*,*) myRankGlobal, " finished receiving"
        endLoop = .true.
        goto 666
     else
@@ -3505,6 +3549,10 @@ end subroutine readHeIIrecombination
     tempStorage(6) =        direction%z  
     tempStorage(7) =        frequency    
 
+    if (iThread == myRankGlobal) then
+       write(*,*) "sending to self bug ", ithread
+       stop
+    endif
     call MPI_SEND(tempStorage, 15, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
   end subroutine sendMPIPhoton
        

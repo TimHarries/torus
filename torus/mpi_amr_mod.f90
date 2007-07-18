@@ -27,7 +27,7 @@ contains
 
   
 
-  subroutine plotGridMPI(grid, device, plane, valueName, valueMin, valueMax, logFlag)
+  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=*) :: device, plane, valueName
@@ -38,6 +38,7 @@ contains
     integer :: pgbegin, i, j, idx
     integer :: iLo, iHi
     real :: valueMin, valueMax
+    real :: valueMinFlag, valueMaxFlag
     real :: xStart, xEnd, yStart, yEnd, t
     integer, parameter :: maxSquares = 100000
     integer :: myRank, ierr
@@ -78,7 +79,8 @@ contains
           yStart = grid%octreeRoot%centre%y-grid%octreeRoot%subcellSize
           xEnd = grid%octreeRoot%centre%x+grid%octreeRoot%subcellSize
           yEnd = grid%octreeRoot%centre%y+grid%octreeRoot%subcellSize
-          
+          valueMin = MINVAL(value(1:nSquares))
+          valueMax = MAXVAL(value(1:nSquares))
           call pgpage
           call pgvport(0.1, 0.9, 0.1, 0.9)
           call pgwnad(xStart, xEnd, yStart, yEnd, 0, 0)
@@ -89,11 +91,10 @@ contains
           
           
           do i = 1, nSquares
-             write(*,*) "value",value(i)
              if (.not.logscale) then
                 t = (value(i)-valueMin)/(valueMax-valueMin)
              else
-                t = (log10(value(i)-log10(valuemin))/(log10(valuemax)-log10(valuemin)))
+                t = (log10(value(i))-log10(valuemin))/(log10(valuemax)-log10(valuemin))
              endif
              if (t < 0.) t = 0.
              if (t > 1.) t = 1.
@@ -202,9 +203,13 @@ contains
              case("rhoe")
                 tmp = thisOctal%rhoe(subcell)
              case("ionization")
-                tmp = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
+                tmp = max(1.d-20,thisOctal%ionFrac(subcell,1))
+             case("coeff")
+                tmp = max(1.d-20,thisOctal%photoionCoeff(subcell,1))
              case("crossings")
                 tmp = thisOctal%nCrossings(subcell)
+             case("temperature")
+                tmp = thisOctal%temperature(subcell)
              case DEFAULT
            end select
           select case(plane)

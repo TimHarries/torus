@@ -4883,7 +4883,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
    case("lexington")
-      if (thisOctal%nDepth < 4) then
+      if (thisOctal%nDepth < 5) then
          split = .true.
       else
          split = .false.
@@ -7261,7 +7261,7 @@ IF ( .NOT. gridConverged ) RETURN
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
 
-    thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
+    thisOctal%rho(subcell) = 1.d-30
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen

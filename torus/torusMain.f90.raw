@@ -78,6 +78,7 @@
   use modelatom_mod
   use cmf_mod
   use hydrodynamics_mod
+  use mpi_global_mod
 
 !$mpi   use parallel_mod
 !$MPI   !use MPI__INCLUDE   
@@ -505,7 +506,6 @@
 !$MPI    call setupAMRCOMMUNICATOR
 
 
-  grid%splitOverMpi = .false.
 
   !
   ! For time statistics
@@ -959,6 +959,8 @@
   !==========================================================================
 
 
+
+
   ! allocate the grid - this might crash out through memory problems
 
   if (gridUsesAMR) then
@@ -989,6 +991,9 @@
   ! a few dynamic arrays
 
 !  if (mie) sed = .true.
+
+  grid%splitOverMpi = .true.
+
 
   grid%resonanceLine = resonanceLine
   grid%lambda2 = lamline
