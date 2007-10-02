@@ -2912,7 +2912,7 @@ contains
     real, dimension(maxLevels)  :: departCoeff
     real, dimension(maxLevels)  :: previousXall
     real                        :: previousNeRatio      
-    logical, parameter          :: debugInfo = .true.
+    logical, parameter          :: debugInfo = .false.
     Type(octalVector)           :: starCentre 
     real(double), parameter :: CI = 2.07d-16   ! in cgs units
     real(double)            :: T,ne, x    

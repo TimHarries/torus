@@ -83,8 +83,8 @@ module constants_mod
   real(double), parameter :: aRad = 4.d0 * stefanBoltz / cSpeed
 
   real(double), parameter :: Tcbr = 2.728d0 !K
-
-
+  real(double), parameter :: Navogadro = 6.0221415d23   ! per mol
+  real(double), parameter :: Rgas = Navogadro * kerg    
 end module constants_mod
 
 

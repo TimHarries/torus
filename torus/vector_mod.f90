@@ -399,7 +399,6 @@ contains
     if (m == 0.0_oc) then
        WRITE(*,'(a)') "! Attempt to normalize the zero vector octal"
        a = octalVector(1.0_oc,0.0_oc,0.0_oc)
-          do;enddo
     else
       a%x = a%x / m
       a%y = a%y / m

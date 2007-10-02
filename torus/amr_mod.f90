@@ -7271,7 +7271,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%inFlow(subcell) = .true.
 
 
-    if (r > grid%rinner) then
+!    if (r > grid%rinner) then
        thisOctal%inFlow(subcell) = .true.
        thisOctal%rho(subcell) = 100.*mHydrogen
        thisOctal%nh(subcell) = thisOctal%rho(subcell) / mHydrogen
@@ -7289,7 +7289,7 @@ IF ( .NOT. gridConverged ) RETURN
           call locate(radius, it, r, i)
           fac = (r-radius(i))/(radius(i+1)-radius(i))
           thisOctal%temperature(subcell) = temp(i) + fac * (temp(i+1)-temp(i))
-       endif
+!       endif
 
     endif
     thisOctal%velocity = VECTOR(0.,0.,0.)

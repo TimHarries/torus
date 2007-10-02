@@ -142,7 +142,7 @@ contains
 !                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
              thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
                   (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
-                  (thisOctal%subcellSize)
+                  (thisOctal%subcellSize *1.d10)
 
           endif
        endif
@@ -168,7 +168,7 @@ contains
              end if
           end do
        else
-          thisOctal%x_i(subcell) = subcellCentre(thisOctal, subcell) .dot. direction
+          thisOctal%x_i(subcell) = 1.d10*(subcellCentre(thisOctal, subcell) .dot. direction)
        endif
     enddo
   end subroutine setupX
@@ -277,13 +277,13 @@ contains
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, (-1.d0)*direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux)
 
-             if (rho < 1.d-5) then
-                write(*,*) "rho",rho, thisOctal%nDepth,neighbourOctal%nDepth
-                if (associated(thisOctal%mpiBoundaryStorage)) then
-                   write(*,*) "depth",thisOctal%mpiBoundaryStorage(subcell,1:6,9)
-                   write(*,*) "rho",thisOctal%mpiBoundaryStorage(subcell,1:6,2)
-                endif
-             endif
+!             if (rho < 1.d-5) then
+!                write(*,*) "rho",rho, thisOctal%nDepth,neighbourOctal%nDepth
+!                if (associated(thisOctal%mpiBoundaryStorage)) then
+!                   write(*,*) "depth",thisOctal%mpiBoundaryStorage(subcell,1:6,9)
+!                   write(*,*) "rho",thisOctal%mpiBoundaryStorage(subcell,1:6,2)
+!                endif
+!             endif
              rho_i_minus_1 = rho
              rhou_i_minus_1 = rhou
              thisOctal%u_interface(subcell) = 0.5d0 * &
@@ -416,7 +416,7 @@ contains
           if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             thisOctal%x_i(subcell) = subcellCentre(thisOctal, subcell) .dot. direction
+             thisOctal%x_i(subcell) = 1.d10*(subcellCentre(thisOctal, subcell) .dot. direction)
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -1500,7 +1500,8 @@ contains
           if (.not.thisOctal%ghostCell(subcell)) then
 
              cs = soundSpeed(thisOctal, subcell, gamma)
-             dx = thisOctal%subcellSize
+!             if (myrank==1) write(*,*) "cs ", cs/1.d5, "km/s"
+             dx = thisOctal%subcellSize*1.d10
              speed = sqrt((thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
                   + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2)
                 tc = min(tc, dx / (cs + speed) )
@@ -1526,6 +1527,7 @@ contains
        write(*,*) thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
             thisOctal%rhow(subcell)/thisOctal%rho(subcell)
        write(*,*) "cen ",subcellCentre(thisOctal, subcell), thisOctal%ghostCell(subcell)
+       write(*,*) "temp ",thisOctal%temperature(subcell)
     endif
     cs = sqrt(gamma*(gamma-1.d0)*eThermal)
 

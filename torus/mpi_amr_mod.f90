@@ -38,7 +38,7 @@ contains
     integer :: pgbegin, i, j, idx
     integer :: iLo, iHi
     real :: valueMin, valueMax
-    real :: valueMinFlag, valueMaxFlag
+    real,optional :: valueMinFlag, valueMaxFlag
     real :: xStart, xEnd, yStart, yEnd, t
     integer, parameter :: maxSquares = 100000
     integer :: myRank, ierr
@@ -79,8 +79,10 @@ contains
           yStart = grid%octreeRoot%centre%y-grid%octreeRoot%subcellSize
           xEnd = grid%octreeRoot%centre%x+grid%octreeRoot%subcellSize
           yEnd = grid%octreeRoot%centre%y+grid%octreeRoot%subcellSize
-          valueMin = MINVAL(value(1:nSquares))
-          valueMax = MAXVAL(value(1:nSquares))
+          if (iPlane == 1) then
+             valueMin = MINVAL(value(1:nSquares))
+             valueMax = MAXVAL(value(1:nSquares))
+          endif
           call pgpage
           call pgvport(0.1, 0.9, 0.1, 0.9)
           call pgwnad(xStart, xEnd, yStart, yEnd, 0, 0)

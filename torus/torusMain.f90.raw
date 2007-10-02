@@ -992,7 +992,7 @@
 
 !  if (mie) sed = .true.
 
-  grid%splitOverMpi = .true.
+  grid%splitOverMpi = .false.
 
 
   grid%resonanceLine = resonanceLine
@@ -2768,6 +2768,7 @@
 667 continue
      call random_seed
 
+     write(*,*) "got here " ,my_rank
      if (cmf) then
         if (movie) call plotAMRthreeDMovie(grid, source, nsource)
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
@@ -2813,7 +2814,7 @@
      if (photoIonization) then
         grid%splitOverMPI = .true.
         grid%photoionization = .true.
-        call photoIonizationLoopAMR(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
+        call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
              lucyfilenameout, lucyfilenamein)
      endif
 
@@ -2830,7 +2831,6 @@
         endif
      endif
 
-     stop
 
 
   if (lucyRadiativeEq) then
@@ -2848,6 +2848,7 @@
               call verticalHydrostatic(grid, mCore, sigma0, rInner, miePhase, nDustType, nMuMie, nLambda, xArray, &
                    source, nSource, nLucy, massEnvelope, tThresh, .false., mDisc)
            else
+              write(*,*) "calling lucy alg ", my_rank
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
                    nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, .false., 10)
            endif
@@ -3438,11 +3439,13 @@
              outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &
              thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
       end if
+      write(*,*) "got past test_optical_depth",my_rank
 !$MPI end if
 !$MPI     ! Synchronizing everybody here.
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
+      write(*,*) "got past barrier",my_rank
 
      weightLinePhoton = 0.
      weightContPhoton = 1.
@@ -4925,7 +4928,7 @@
 
         enddo innerPhotonLoop
 
-        write(*,*) "Fraction of photons from envelope: ", real(nFromEnv)/real(nInnerLoop)
+!        write(*,*) "Fraction of photons from envelope: ", real(nFromEnv)/real(nInnerLoop)
 
 !$OMP END DO
 !$OMP END PARALLEL

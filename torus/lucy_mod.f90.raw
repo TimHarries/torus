@@ -981,6 +981,7 @@ contains
             "crossings.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomfactor) 
 
+!$MPI       if (my_rank==0) &
        call plot_AMR_values(grid, "direct", "x-z", real(grid%octreeRoot%centre%y), &
             "direct.ps/vcps", .false., .true., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor)

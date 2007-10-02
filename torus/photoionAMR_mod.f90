@@ -12,11 +12,12 @@ use messages_mod
 use diffusion_mod
 use mpi_amr_mod
 use mpi_global_mod
+use hydrodynamics_mod
 
 implicit none
 
 private
-public :: photoIonizationloopAMR
+public :: photoIonizationloopAMR, radiationHydro
 
 type SAHAMILNETABLE
    integer :: nFreq 
@@ -54,6 +55,227 @@ end type GAMMATABLE
   type(GAMMATABLE) :: gammaTableArray(3) ! H, HeI, HeII
 
 contains
+
+
+  subroutine radiationHydro(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
+       lucyfileout, lucyfilein)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    type(SOURCETYPE) :: source(:)
+    integer :: nSource
+    integer :: nLambda
+    real :: lamArray(:)
+    logical :: readLucy, writeLucy
+    character(len=*) :: lucyfilein, lucyfileout
+
+    real(double) :: dt, tc(8), temptc(8),cfl, gamma, mu
+    real(double) :: currentTime
+    integer :: i, pgbegin, it, iUnrefine
+    integer :: myRank, ierr
+    character(len=20) :: plotfile
+    real(double) :: tDump, nextDumpTime, ang
+    type(OCTALVECTOR) :: direction, viewVec
+    logical :: gridConverged
+    integer :: nDependent, dependentThread(100)
+    integer :: thread1(100), thread2(100), nBound(100), nPairs
+    logical :: globalConverged(8), tConverged(8)
+
+
+    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    gamma = 7.d0 / 5.d0
+    cfl = 0.3d0
+    mu = 2.d0
+
+    viewVec = OCTALVECTOR(-1.d0,0.d0,0.d0)
+    viewVec = rotateZ(viewVec, 40.d0*degtorad)
+    viewVec = rotateY(viewVec, 30.d0*degtorad)
+    
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+
+
+    if (myRank == 1) write(*,*) "CFL set to ", cfl
+
+
+    if (myrank /= 0) then
+       call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound)
+       
+       call writeInfo("Calling exchange across boundary", TRIVIAL)
+       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       call writeInfo("Done", TRIVIAL)
+       
+       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       call calculateRhoU(grid%octreeRoot, direction)
+       direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+       call calculateRhoV(grid%octreeRoot, direction)
+       direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       call calculateRhoW(grid%octreeRoot, direction)
+       
+       call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
+       call calculateRhoE(grid%octreeRoot, direction)
+       
+
+
+       call writeInfo("Refining individual subgrids", TRIVIAL)
+       if (.not.grid%splitOverMpi) then
+          do
+             gridConverged = .true.
+             call setupEdges(grid%octreeRoot, grid)
+             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
+             call unsetGhosts(grid%octreeRoot)
+             call setupGhostCells(grid%octreeRoot, grid, "mirror")
+             if (gridConverged) exit
+          end do
+       else
+          call evenUpGridMPI(grid, inheritFlag=.false.)
+       endif
+       
+       call writeInfo("Refining grid", TRIVIAL)
+       do
+          gridConverged = .true.
+          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.false.)
+          if (gridConverged) exit
+       end do
+       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+       
+       call writeInfo("Refining grid part 2", TRIVIAL)    
+       do
+          globalConverged(myRank) = .true.
+          call writeInfo("Refining grid", TRIVIAL)    
+          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.false.)
+          call writeInfo("Exchanging boundaries", TRIVIAL)    
+          call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+          call MPI_ALLREDUCE(globalConverged, tConverged, 8, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+          if (ALL(tConverged(1:8))) exit
+       end do
+       
+       
+       call writeInfo("Evening up grid", TRIVIAL)    
+       call evenUpGridMPI(grid, inheritFlag=.false.)
+       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       
+       
+       call writeInfo("Calling photoionization loop",TRIVIAL)
+       call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
+            lucyfileout, lucyfilein)
+       call writeInfo("Done",TRIVIAL)
+       
+       
+       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       call setupX(grid%octreeRoot, grid, direction)
+       call setupQX(grid%octreeRoot, grid, direction)
+       
+       call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
+       call calculateRhoE(grid%octreeRoot, direction)
+       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       call calculateRhoU(grid%octreeRoot, direction)
+       direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+       call calculateRhoV(grid%octreeRoot, direction)
+       direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       call calculateRhoW(grid%octreeRoot, direction)
+       
+       currentTime = 0.d0
+       it = 0
+       nextDumpTime = 0.d0
+       tDump = 0.005d0
+       
+       iUnrefine = 0
+       call writeInfo("Plotting grid", TRIVIAL)    
+       
+       call writeInfo("Plotting col density", TRIVIAL)    
+       write(plotfile,'(a,i4.4,a)') "col",0,".png/png"
+       call columnDensityPlotAMR(grid, viewVec, plotfile)
+       write(plotfile,'(a,i4.4,a)') "image",0,".png/png"
+       call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.)
+       write(plotfile,'(a,i4.4,a)') "temp",0,".png/png"
+       call plotGridMPI(grid, plotfile, "x-z", "temperature")
+
+    endif
+    do while(.true.)
+       if (myRank /= 0) then
+          tc = 0.d0
+          tc(myrank) = 1.d30
+          call computeCourantTime(grid%octreeRoot, tc(myRank), gamma)
+          call MPI_ALLREDUCE(tc, tempTc, 8, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+          tc = tempTc
+          dt = MINVAL(tc(1:8)) * cfl
+          
+          if (myrank == 1) write(*,*) "courantTime", dt
+          if (myRank == 1) call tune(6,"Hydrodynamics step")
+          call writeInfo("calling hydro step",TRIVIAL)
+          
+          call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+          
+          call hydroStep3d(grid, gamma, dt, "mirror", nPairs, thread1, thread2, nBound)
+          if (myRank == 1) call tune(6,"Hydrodynamics step")
+          call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+          
+          
+          
+          call writeInfo("Refining grid", TRIVIAL)
+          do
+             gridConverged = .true.
+             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.true.)
+             if (gridConverged) exit
+          end do
+          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+          
+          call writeInfo("Refining grid part 2", TRIVIAL)    
+          do
+             globalConverged(myRank) = .true.
+             call writeInfo("Refining grid", TRIVIAL)    
+             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.true.)
+             call writeInfo("Exchanging boundaries", TRIVIAL)    
+             call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+             call MPI_ALLREDUCE(globalConverged, tConverged, 8, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+             if (ALL(tConverged(1:8))) exit
+          end do
+          
+          iUnrefine = iUnrefine + 1
+          if (iUnrefine == 5) then
+             call tune(6, "Unrefine grid")
+             call unrefineCells(grid%octreeRoot, grid, gamma)
+             call tune(6, "Unrefine grid")
+             iUnrefine = 0
+          endif
+          
+          call evenUpGridMPI(grid, inheritFlag=.true.)
+          call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       endif
+       
+       call writeInfo("Calling photoionization loop",TRIVIAL)
+       call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
+            lucyfileout, lucyfilein)
+       call writeInfo("Done",TRIVIAL)
+
+
+
+       if (myrank /= 0) then
+          call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
+          call calculateRhoE(grid%octreeRoot, direction)
+          it = it + 1
+          write(plotfile,'(a,i4.4,a)') "col",it,".png/png"
+          call columnDensityPlotAMR(grid, viewVec, plotfile)
+          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
+          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.)
+          write(plotfile,'(a,i4.4,a)') "temp",it,".png/png"
+          call plotGridMPI(grid, plotfile, "x-z", "temperature")
+
+          !       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
+          
+          currentTime = currentTime + dt
+!          if (myRank == 1) write(*,*) "current time ",currentTime,dt
+!          if (currentTime .gt. nextDumpTime) then
+!             nextDumpTime = nextDumpTime + tDump
+!             it = it + 1
+!             write(plotfile,'(a,i4.4,a)') "image",it,".gif/gif"
+!             call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
+!          endif
+       endif
+    enddo
+  end subroutine radiationHydro
 
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
@@ -191,6 +413,7 @@ contains
 
        iMonte_beg = 1
        iMonte_end = nMonte
+       photonPacketWeight = 1.d0
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -214,7 +437,6 @@ contains
                 
                 call getWavelength(thisSource%spectrum, wavelength)
                 
-                photonPacketWeight = 1.d0
                 thisFreq = cSpeed/(wavelength / 1.e8)
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
 
@@ -379,7 +601,7 @@ contains
           
           do i = 1 , 3
              call calculateIonizationBalance(grid,thisOctal, epsOverDeltaT)
-!             call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
+             call calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
           enddo
           
        enddo
@@ -1200,7 +1422,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                    nIter = 0
                    converged = .false.
                    
-                   t1 = 1.
+                   t1 = 10.
                    t2 = 100000.
                    found = .true.
                    
@@ -1249,7 +1471,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                    endif
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = &
-                        max(thisOctal%temperature(subcell) + underCorrection * deltaT,1.e-3)
+                        max(thisOctal%temperature(subcell) + underCorrection * deltaT,10.)
                    !             write(*,*) thisOctal%temperature(subcell), niter
                 endif
              else
@@ -1464,7 +1686,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        call phfit2(grid%ion(i)%z, grid%ion(i)%n, grid%ion(i)%outerShell , e , xsec)
        if (xSec > 0.) then
           thisOctal%photoIonCoeff(subcell,i) = thisOctal%photoIonCoeff(subcell,i) &
-               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight
+               + distance * dble(xsec) / (dble(hCgs) * thisFreq) * photonPacketWeight !* 1.d15!!!!!!!!!!!
 !          rVec = subcellCentre(thisOctal, subcell)
 !          if ((myrankglobal==1).and.(i == 1).and.((modulus(rVec)/3.1d8)>2.d0).and.&
 !               (thisOctal%label(subcell)==4557)) then
@@ -1546,13 +1768,15 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
         
         xplus1overx(i) = ((epsOverDeltaT / (v * 1.d30))*thisOctal%photoIonCoeff(subcell, iIon) + chargeExchangeIonization) / &
              max(1.d-50,(recombRate(grid%ion(iIon),temperature) * thisOctal%ne(subcell) + chargeExchangeRecombination))
-!        if (grid%ion(iion)%species(1:2) =="H ") write(*,*) i,xplus1overx(i), thisOctal%photoioncoeff(subcell,iion)
+!        if ((myRankGlobal==1).and.(grid%ion(iion)%species(1:2) =="H ")) &
+!             write(*,*) i,xplus1overx(i), thisOctal%photoioncoeff(subcell,iion), &
+!             thisOctal%ne(subcell), epsoverdeltat,v,chargeExchangeIonization, chargeExchangeRecombination
      enddo
-     thisOctal%ionFrac(subcell, iStart:iEnd) = 1.
+     thisOctal%ionFrac(subcell, iStart:iEnd) = 1.d0
      do i = 1, nIonizationStages - 1
         iIon = iStart+i-1
         thisOctal%ionFrac(subcell,iIon+1) = thisOctal%ionFrac(subcell,iIon) * xplus1overx(i)
-!        if (grid%ion(iion)%species(1:1) =="H") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
+!        if ((myRankGlobal==1).and.grid%ion(iion)%species(1:2) =="H ") write(*,*) i,thisOctal%ionFrac(subcell,iIon)
      enddo
      if (SUM(thisOctal%ionFrac(subcell,iStart:iEnd)) /= 0.d0) then
         thisOctal%ionFrac(subcell,iStart:iEnd) = &
@@ -1560,7 +1784,8 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
      else
         thisOctal%ionFrac(subcell,iStart:iEnd) = 1.d-50
      endif
-     
+!     if (myRankGlobal==1) &
+!     write(*,*) "ionfrac ",thisOctal%ionFrac(subcell,1)
 
         deallocate(xplus1overx)
 
@@ -3557,6 +3782,36 @@ end subroutine readHeIIrecombination
   end subroutine sendMPIPhoton
        
 
+
+  recursive subroutine calculateEnergyFromTemperature(thisOctal, gamma, mu)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: gamma, mu, ke, eThermal
+    mu = 2.d0
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateEnergyFromTemperature(child, gamma, mu)
+                exit
+             end if
+          end do
+       else
+
+          ke = 0.5d0 * (thisOctal%rhou(subcell)**2 + &
+               thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2) &
+               / thisOctal%rho(subcell)**2
+          eThermal = thisOctal%temperature(subcell) * Rgas / (gamma-1.d0)
+          thisOctal%energy(subcell) = ke + eThermal
+
+       endif
+    enddo
+  end subroutine calculateEnergyFromTemperature
     
 end module photoionAMR_mod
 
