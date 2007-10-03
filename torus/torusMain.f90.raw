@@ -2768,7 +2768,6 @@
 667 continue
      call random_seed
 
-     write(*,*) "got here " ,my_rank
      if (cmf) then
         if (movie) call plotAMRthreeDMovie(grid, source, nsource)
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
@@ -2811,25 +2810,25 @@
 
 
 
-     if (photoIonization) then
-        grid%splitOverMPI = .true.
-        grid%photoionization = .true.
-        call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
-             lucyfilenameout, lucyfilenamein)
-     endif
+!$MPI     if (photoIonization) then
+!$MPI        grid%splitOverMPI = .true.
+!$MPI        grid%photoionization = .true.
+!$MPI        call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
+!$MPI             lucyfilenameout, lucyfilenamein)
+!$MPI     endif
 
-     if (hydrodynamics) then
-        grid%splitOverMPI = .true.
-        if (my_rank /= 0) then
-           if (grid%octreeRoot%twoD) then
-              call doHydrodynamics2d(grid)
-           else if (grid%octreeRoot%oneD) then
-              call doHydrodynamics1d(grid)
-           else if (grid%octreeRoot%threeD) then
-              call doHydrodynamics3d(grid)
-           endif
-        endif
-     endif
+!$MPI     if (hydrodynamics) then
+!$MPI        grid%splitOverMPI = .true.
+!$MPI        if (my_rank /= 0) then
+!$MPI           if (grid%octreeRoot%twoD) then
+!$MPI              call doHydrodynamics2d(grid)
+!$MPI           else if (grid%octreeRoot%oneD) then
+!$MPI              call doHydrodynamics1d(grid)
+!$MPI           else if (grid%octreeRoot%threeD) then
+!$MPI              call doHydrodynamics3d(grid)
+!$MPI           endif
+!$MPI        endif
+!$MPI     endif
 
 
 
@@ -2848,7 +2847,6 @@
               call verticalHydrostatic(grid, mCore, sigma0, rInner, miePhase, nDustType, nMuMie, nLambda, xArray, &
                    source, nSource, nLucy, massEnvelope, tThresh, .false., mDisc)
            else
-              write(*,*) "calling lucy alg ", my_rank
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
                    nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, .false., 10)
            endif
@@ -3439,13 +3437,11 @@
              outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &
              thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
       end if
-      write(*,*) "got past test_optical_depth",my_rank
 !$MPI end if
 !$MPI     ! Synchronizing everybody here.
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
-      write(*,*) "got past barrier",my_rank
 
      weightLinePhoton = 0.
      weightContPhoton = 1.

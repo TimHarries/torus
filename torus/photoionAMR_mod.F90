@@ -2,6 +2,7 @@
 
 module photoionAMR_mod
 
+#ifdef MPI
 use parallel_mod
 use source_mod
 use timing
@@ -3812,6 +3813,6 @@ end subroutine readHeIIrecombination
        endif
     enddo
   end subroutine calculateEnergyFromTemperature
-    
+#endif    
 end module photoionAMR_mod
 

@@ -2,6 +2,7 @@
 ! hydrodynamics module added by TJH on 18th June 2007
 
 module hydrodynamics_mod
+#ifdef MPI
 
   use kind_mod
   use constants_mod
@@ -15,6 +16,7 @@ module hydrodynamics_mod
 
 
 contains
+
 
   recursive subroutine fluxLimiter(thisOctal, limiterType)
     include 'mpif.h'
@@ -3549,5 +3551,6 @@ contains
 
   end subroutine determineDependentThreads
 
+#endif
     
 end module hydrodynamics_mod

@@ -19,7 +19,7 @@ PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
 
 KNOWN_SYSTEM = no
-
+MPIFLAG = 
 #
 # Set system-dependent variables
 #
@@ -35,7 +35,7 @@ ifeq ($(SYSTEM), intelmac)
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
     PGLIBS   = -L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-    CFITSIOLIBS = -lcfitsio
+    CFITSIOLIBS = -L/Users/acreman/cfitsio/lib -lcfitsio
 #    STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.intelmac
@@ -141,6 +141,7 @@ ifeq ($(SYSTEM), macmpi)
 #    F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.macmpi
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -218,6 +219,7 @@ ifeq ($(SYSTEM), lamosx)
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = torus.lamosx
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -237,6 +239,7 @@ ifeq ($(SYSTEM), lamosx-intel)
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = torus.lamosx-intel
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -256,6 +259,7 @@ ifeq ($(SYSTEM), ompiosx)
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = torus.ompiosx
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -270,11 +274,12 @@ ifeq ($(SYSTEM), ompi)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   =  -L/home/th/pgplot -lpgplot
-    CFITSIOLIBS =  -lcfitsio
-    STARLIBS = -L/usr/X11R6/lib -lX11 -lg2c
+    PGLIBS   =   -L/sw/lib -lpgplot -lpng -laquaterm  /System/Library/Frameworks/Cocoa.framework/Cocoa
+    CFITSIOLIBS =  -L/Users/acreman/cfitsio/lib -lcfitsio
+    STARLIBS = -L/usr/X11R6/lib -lX11
     EXE = torus.ompi
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -294,6 +299,7 @@ ifeq ($(SYSTEM), ompiosx-intel)
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = torus.ompiosx-intel
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -318,6 +324,7 @@ ifeq ($(SYSTEM), mpilam)
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpilam
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -341,6 +348,7 @@ ifeq ($(SYSTEM), mpich)
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpich
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -391,6 +399,7 @@ ifeq ($(SYSTEM), zen)
 #    -L/star/lib `pgplot_link`
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM=yes
 endif
 
@@ -414,6 +423,7 @@ ifeq ($(SYSTEM), mpiintel)
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpiintel
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -436,6 +446,7 @@ ifeq ($(SYSTEM), openmpi)
     F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
     EXE = torus.openmpi
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -470,6 +481,7 @@ ifeq ($(SYSTEM), ukaff1a)
     CFITSIOLIBS = -L/home/th/cfitsio -lcfitsio
     EXE = torus.ukaff1a
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -526,6 +538,7 @@ ifeq ($(SYSTEM), mpig95)
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpig95
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -561,6 +574,7 @@ ifeq ($(SYSTEM), mpidarwin)
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = latticeQED
     MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -634,26 +648,28 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
             modelatom_mod.f90 cmf_mod.f90 datacube_mod.f90 magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            molecular_mod.f90  hydrodynamics_mod.f90 mpi_amr_mod.f90 \
-            mpi_global_mod.f90 photoionAMR_mod.f90
+            molecular_mod.f90  \
+            mpi_global_mod.f90
 
 F77SOURCE = bhmie.f phfit2.f mieDistCrossSection.f palette.f \
             spec_f77.f image_f77.f 
 
 PGSOURCE  = pgplot_stubs.f90
 
-#
+CAPF90SOURCE =	 photoionAMR_mod.F90  mpi_amr_mod.F90 hydrodynamics_mod.F90
+
 # Object files
 #
 F90OBJ = $(F90SOURCE:.f90=.o)
+CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
 F77OBJ = $(F77SOURCE:.f=.o)
 PGOBJ  = $(PGSOURCE:.f90=.o)
-ALLOBJ = $(F90OBJ) $(F77OBJ) $(PGOBJ)
+ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ) $(PGOBJ)
 
 #
 # Compilers and compiler flags
 #
-F90 = $(F95COMP) $(F95FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC)
+F90 = $(F95COMP) $(F95FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG)
 F77 = $(F77COMP) $(F77FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC)
 
 #
@@ -665,7 +681,7 @@ all: depends $(ALLOBJ)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
 	    $(F90) -o $(EXE) \
-	    $(F77OBJ) $(F90OBJ) \
+	    $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
 	    $(PGSTUBS) $(PGLIBS) $(CFITSIOSTUBS) $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
 	    @echo "...done"
     else
@@ -776,6 +792,9 @@ ctags:
 	$(F90) -c $*.f90
 
 %.o: %.f90
+	$(F90) -c $<
+
+%.o: %.F90
 	$(F90) -c $<
 
 %.o: %.f

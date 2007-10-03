@@ -4693,7 +4693,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep
     IMPLICIT NONE
-    include 'mpif.h'
+!    include 'mpif.h'
     TYPE(octal), intent(inout) :: thisOctal
 !    TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell

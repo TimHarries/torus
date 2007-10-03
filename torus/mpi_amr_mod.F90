@@ -1,4 +1,5 @@
 module mpi_amr_mod
+#ifdef MPI
 
   use kind_mod
   use amr_mod
@@ -8,7 +9,6 @@ module mpi_amr_mod
   implicit none
 
 contains
-
 
   subroutine setupAMRCOMMUNICATOR
     include 'mpif.h'
@@ -85,7 +85,7 @@ contains
           endif
           call pgpage
           call pgvport(0.1, 0.9, 0.1, 0.9)
-          call pgwnad(xStart, xEnd, yStart, yEnd, 0, 0)
+          call pgwnad(xStart, xEnd, yStart, yEnd)
           
           call pgqcir(ilo, ihi)
           call pgscir(ilo, ihi)
@@ -957,5 +957,5 @@ contains
 
     end do
   end subroutine columnAlongPathAMR
-
+#endif
 end module mpi_amr_mod

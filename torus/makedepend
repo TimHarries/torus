@@ -22,8 +22,9 @@ open(MAKEFILE, "> make.depends");
 #
 # Allow Fortran 90 module source files to have extensions other than .f90
 #
-$mod_ext = f90;
-@f90 = uniq(f90, $mod_ext);
+$mod_ext = "f90";
+$mod_ext2 = "F90";
+@f90 = uniq( $mod_ext, $mod_ext2 );
 foreach (@f90) { s/^/*./ };
 if ($mod_ext ne "f90") { print MAKEFILE " .$mod_ext"; };
 #
@@ -31,10 +32,15 @@ if ($mod_ext ne "f90") { print MAKEFILE " .$mod_ext"; };
 #
 # .$mod_ext -> .o
 #
-if ($mod_ext ne "f90") {
-   print MAKEFILE ".$mod_ext.o:\n";
+#if ($mod_ext ne "f90") {
+#   print MAKEFILE ".$mod_ext.o:\n";
+#   print MAKEFILE "\t\$(F90) \$(F90FLAGS) -c \$<\n\n";
+#   }
+foreach my $i ( 0 ... $#f90 ) {
+   print MAKEFILE ".$f90[$i].o:\n";
    print MAKEFILE "\t\$(F90) \$(F90FLAGS) -c \$<\n\n";
-   }
+}
+
 #
 # Dependency listings
 #
@@ -169,6 +175,15 @@ sub MakeDependsf90 {
             ($filename{&toLower($1)} = $file) =~ s/\.$mod_ext$/.o/;
          }
       }
+
+   foreach $file2 (<*.$mod_ext2>) {
+      open(FILE, $file2) || warn "Cannot open $file2: $!\n";
+      while (<FILE>) {
+         /^\s*module\s+([^\s!]+)/i &&
+            ($filename{&toLower($1)} = $file2) =~ s/\.$mod_ext2$/.o/;
+         }
+      }
+
    #
    # Print the dependencies of each file that has one or more include's or
    # references one or more modules
