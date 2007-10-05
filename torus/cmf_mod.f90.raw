@@ -12,6 +12,7 @@ module cmf_mod
   use modelatom_mod
   use source_mod
   use datacube_mod
+  use timing
 
   !$MPI    use parallel_mod
 
@@ -1091,6 +1092,9 @@ contains
 
        do while (.not.gridConverged)
 
+!$MPI if (my_rank == 1) &
+          call tune(6, "One cmf iteration")  ! start a stopwatch
+
           allocate(ds(1:nRay))
           allocate(phi(1:nRay))
           allocate(i0(1:nRBBTrans, 1:nRay))
@@ -1128,7 +1132,7 @@ contains
 !$MPI       print *, 'atomLoop  computed by ', np-1, ' processors.'
 !$MPI       print *, ' '
 !$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            maxBlockSize=1,setDebug=.false.)
+!$MPI                            maxBlockSize=10,setDebug=.false.)
 !$MPI    
 !$MPI    endif
 !$MPI    ! ============================================================================
@@ -1441,6 +1445,9 @@ contains
 
 
        enddo
+!$MPI if (my_rank == 1) &
+       call tune(6, "One cmf iteration")  ! stop a stopwatch
+
     enddo
     write(*,*) "ATOM loop done."
   end subroutine atomLoop
@@ -2008,18 +2015,19 @@ contains
     call createContFreqArray(nFreqArray, freqArray, nAtom, thisAtom, nsource, source, maxFreq)
 
 
-
+!$MPI if (my_rank == 0) &
     write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
 
     call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray)
 
-!$MPI     write(*,*) "Process ",my_rank, " create data cube done",writeoutput
+!$MPI     write(*,*) "Process ",my_rank, " create data cube done"
     if (Writeoutput) then
        write(plotfile,'(a,i3.3,a)') "cube",nfile,".ps/ps"
        call plotDataCube(cube, plotfile,withspec=.false.,twopanels=.true.)
        write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits.gz"
        call writeDataCube(cube,plotfile)
     endif
+!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr)
     call freeDataCube(cube)
     return
 
@@ -2219,7 +2227,7 @@ contains
 !    iv1 = 25
 
     do iv = iv1, iv2
-       write(*,*) iv,iv1,iv2
+!       write(*,*) iv,iv1,iv2
        do ix = 1, cube%nx
           do iy = 1, cube%ny
              do iMonte = 1, nMonte
@@ -2248,7 +2256,6 @@ contains
 !$MPI     write(*,*) "Process ",my_rank, " done. awaiting reduce"
 !$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI    do iv = 1, cube%nv
-!$MPI    if (my_rank==0) write(*,*) "iv",iv
 !$MPI      do ix = 1, cube%nx
 !$MPI        n = (cube%ny)
 !$MPI        allocate(tempArray(1:n), tempArray2(1:n))
@@ -2260,6 +2267,8 @@ contains
 !$MPI       enddo
 !$MPI    enddo
 !$MPI    write(*,*) "Process ",my_rank, " reduce done."
+
+   cube%flux = cube%intensity
 
   end subroutine createDataCube
 

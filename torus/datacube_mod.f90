@@ -441,7 +441,7 @@ contains
     character(len=*) :: device
     character(len=40) :: message
     logical, optional :: withSpec, twoPanels, gotPixels, plotFlux
-    logical :: doTwoPanels
+    logical :: doTwoPanels, doPlotFlux
     integer :: i, j, k
     integer :: pgbegin
     real, allocatable :: subpixelimage(:,:), image(:,:)
@@ -457,6 +457,8 @@ contains
     integer :: nstep 
     logical :: doSpec,PixelCount
 
+
+    write(*,*) "Starting plotdatacube ",trim(device)
     if (present(withSpec)) then
        doSpec = withSpec
     else
@@ -464,9 +466,9 @@ contains
     endif
 
    if (present(plotflux)) then
-       plotflux = .true.
+       doplotflux = .true.
     else
-       plotflux = .false.
+       doplotflux = .false.
     endif
 
     if (present(twopanels)) then
@@ -490,8 +492,8 @@ contains
 
     allocate(image(1:nx, 1:ny))
 
-    if(plotflux) then
-       write(*,*) "Plotting Flux?", plotflux
+    if(doplotflux) then
+       write(*,*) "Plotting Flux?", doplotflux
        do i = 1, nx
           do j = 1, ny
              if (sum(cube%flux(i,j,1:cube%nv)) .gt. 0.) then

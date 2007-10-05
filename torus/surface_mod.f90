@@ -8,6 +8,7 @@ module surface_mod
 !  use amr_mod
   use density_mod
   use romanova_class
+  use messages_mod
 
   implicit none
 
@@ -113,7 +114,7 @@ contains
           n = n + 1
        enddo
     enddo
-    write(*,*) "Creating a sphere of ",n," elements..."
+    if (Writeoutput) write(*,*) "Creating a sphere of ",n," elements..."
     if (associated(surface%element)) then
       print *, 'Trying to ALLOCATE surface%element in buildSphere, but it''s'
       print *, '  already ASSOCIATED! (size is ',SIZE(surface%element),')'         
@@ -146,7 +147,7 @@ contains
        enddo
     enddo
 
-    write(*,*) "done."
+    if (writeoutput) write(*,*) "done."
   end subroutine buildSphere
 
 

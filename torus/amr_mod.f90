@@ -4883,7 +4883,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
    case("lexington")
-      if (thisOctal%nDepth < 5) then
+      if (thisOctal%nDepth < 6) then
          split = .true.
       else
          split = .false.

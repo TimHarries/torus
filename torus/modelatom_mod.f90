@@ -789,10 +789,10 @@ contains
               thisAtom(iAtom)%indexRBFtrans(thisAtom(iAtom)%nRBFTrans) = iTrans
            endif
         enddo
-        write(*,*) "nRBBtrans",thisAtom(iAtom)%nRBBTrans, &
-             thisAtom(iatom)%indexRBBTrans(1:thisAtom(iatom)%nrbbtrans)
-        write(*,*) "nRBFtrans",thisAtom(iAtom)%nRBFTrans, &
-             thisAtom(iatom)%indexRBFTrans(1:thisAtom(iatom)%nrbftrans)
+!        write(*,*) "nRBBtrans",thisAtom(iAtom)%nRBBTrans, &
+!             thisAtom(iatom)%indexRBBTrans(1:thisAtom(iatom)%nrbbtrans)
+!        write(*,*) "nRBFtrans",thisAtom(iAtom)%nRBFTrans, &
+!             thisAtom(iatom)%indexRBFTrans(1:thisAtom(iatom)%nrbftrans)
      enddo
    end subroutine createRBBarrays
 
@@ -1126,7 +1126,7 @@ contains
     call sort(nFreq, Freq)
 
 
-    Write(*,*) "Number of frequency points in continuum: ",nfreq
+    if (writeoutput) Write(*,*) "Number of frequency points in continuum: ",nfreq
   end subroutine createContFreqArray
 
   subroutine stripAtomLevels(thisAtom, maxBoundLevels)
