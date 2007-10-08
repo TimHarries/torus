@@ -35,7 +35,7 @@ ifeq ($(SYSTEM), intelmac)
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
     PGLIBS   = -L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-    CFITSIOLIBS = -L/Users/acreman/cfitsio/lib -lcfitsio
+    CFITSIOLIBS = -L/Users/th/cfitsio/lib -lcfitsio
 #    STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.intelmac

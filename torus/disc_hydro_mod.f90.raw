@@ -76,7 +76,6 @@ contains
 
     doublerho(1:nz) = exp(lnrho(1:nz))
 
-
     sigma = 0.
     do i = 1,nz
        sigma = sigma + doublerho(i) * dble(subcellSize(i)) * 1.d10
@@ -86,12 +85,18 @@ contains
 
     scalefac = 0.5 * (sigma0*(autocm/(radius*1.e10))) / sigma ! factor of 0.5 cos only integrating over half disc vertically
     
-    if (radius < rInner) then
-       fac = ((rInner - radius)/(0.01*rInner))**2
-       fac = exp(-fac)
+    fac = 1.
+
+    if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry == "warpeddisc")) then
+       if (radius < rInner) then
+          fac = ((rInner - radius)/(0.01*rInner))**2
+          fac = exp(-fac)
+       endif
     endif
 
-    scalefac = 0.5 * (sigma0 * fac * (radius*1.e10/autoCm)**(betaDisc-alphaDisc)) / sigma
+
+    scalefac = 0.5 * (sigma0 * fac * (radius/rinner)**(betaDisc-alphaDisc)) / sigma
+
 
     if (geometry == "ppdisk") then
        smoothScaleLength = height * rHeight * (rSmooth/rHeight)**flaringPower
@@ -394,7 +399,7 @@ contains
 
 
 !$MPI    if(my_rank == 0) then
-    write(plotfile,'(a,i3.3,a)') "rho",0,".gif/gif"
+    write(plotfile,'(a,i3.3,a)') "rho",0,".png/png"
     call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false.,boxfac=0.01)
 !$MPI    endif
 
@@ -459,11 +464,11 @@ contains
 
 
 !$MPI    if(my_rank == 0) then
-       write(plotfile,'(a,i3.3,a)') "rho",niter,".gif/gif"
+       write(plotfile,'(a,i3.3,a)') "rho",niter,".png/png"
        call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false., boxfac=0.01)
 
-       write(plotfile,'(a,i3.3,a)') "temp",niter,".gif/gif"
-       call plot_AMR_values(grid, "temperature", "x-z", 0.0, plotfile, .true., .false.)
+!       write(plotfile,'(a,i3.3,a)') "temp",niter,".gif/gif"
+!       call plot_AMR_values(grid, "temperature", "x-z", 0.0, plotfile, .true., .false.)
 
        ! chris
        if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then

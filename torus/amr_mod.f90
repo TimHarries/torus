@@ -5288,17 +5288,17 @@ IF ( .NOT. gridConverged ) RETURN
 
       if ((r+cellsize/2.d0) < grid%rinner*0.9) split = .false.
 
-      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
-         if ((abs(cellcentre%z)/hr < 2.)) then
-            if (cellsize > 1.d-3*grid%rinner) split = .true.
-         endif
-      endif
+!      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
+!         if ((abs(cellcentre%z)/hr < 2.)) then
+!            if (cellsize > 1.d-3*grid%rinner) split = .true.
+!         endif
+!      endif
 
-      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
-         if ((abs(cellcentre%z)/hr < 2.)) then
-            split = .true.
-         endif
-      endif
+!      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
+!         if ((abs(cellcentre%z)/hr < 2.)) then
+!            split = .true.
+!         endif
+!      endif
 
 
    case("ppdisk")
