@@ -261,6 +261,7 @@
 
   ! model parameters
 
+  integer,parameter :: IterLucy=5   ! Minimum number of iterations of LUCYRADIATIVEEQUILIBRIUMAMR
   real :: vel
   real :: nuStart, nuEnd
 
@@ -444,6 +445,8 @@
 ! starburst stuff
   real(double) :: burstMass
 
+! Variables used when linking to sph code
+  logical, parameter :: ll_sphFromFile = .false.   ! Read in sph data from a file?
 !$SPH  integer :: b_idim,b_npart,b_nactive,b_nptmass
 !$SPH  integer :: npart, nptmass, nacc
 !$SPH  integer :: iii, iiipart, iiigas
@@ -884,7 +887,7 @@
 
 !  sphData%inUse = .false. !Now initialized in the object/derive type definition.
 
-  if (geometry == "cluster") then !!!!!!!!!
+  if (geometry == "cluster" .and. ll_sphFromFile) then !!!!!!!!!
      ! read in the sph data from a file
      call read_sph_data(sphData, "sph.dat")
      call read_stellar_disc_data(sphData, "stellar_disc.dat")
@@ -2205,6 +2208,12 @@
      ! Do some preparation for the arrays used in plot_AMR_* which will be used later
      if (grid%geometry(1:7) == "cluster") then
         nmarker = get_nstar(young_cluster)
+	if (allocated(xmarker)) deallocate(xMarker)
+	if (allocated(ymarker)) deallocate(yMarker)
+	if (allocated(zmarker)) deallocate(zMarker)
+	allocate(xMarker(1:nMarker))
+	allocate(yMarker(1:nMarker))
+	allocate(zMarker(1:nMarker))
         do i = 1, nmarker
            a_star = get_a_star(young_cluster, i)
            xmarker(i)= a_star%position%x
@@ -2850,7 +2859,7 @@
                    source, nSource, nLucy, massEnvelope, tThresh, .false., mDisc)
            else
               call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, .false., 10)
+                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, lucy_undersampled, .false., IterLucy)
            endif
 
         endif

@@ -380,8 +380,10 @@ contains
     integer(double) :: nAbs_sub, nScat_sub, nInf_sub  ! For OpenMP
     integer :: nKilled
     integer :: maxIter
-    integer       :: imonte_beg, imonte_end  ! the index boundary for the photon loops.
+    integer       :: imonte_beg, imonte_end   ! the index boundary for the photon loops.
     real(double), allocatable :: kAbsArray(:)
+    logical :: ok                             ! Did call to randomWalk complete OK?
+    logical :: ll_photonloop_counter = .false. ! Display the percentage of photonloop completed?
     logical :: photonInDiffusionZone
     logical :: doingDustSublimation
     real :: diffusionZoneTemp, temp
@@ -725,6 +727,7 @@ contains
 !$OMP DO SCHEDULE(runtime)
        photonloop: do iMonte = imonte_beg, imonte_end
 
+       if (ll_photonloop_counter) write(*,'(f10.4,a)', advance='no') 100*real(iMonte)/real(imonte_end-imonte_beg+1), char(13)
 
 !$MPI !  if (MOD(i,n_proc) /= my_rank) cycle photonLoop
 
@@ -742,7 +745,8 @@ contains
             foundSubcell=tempsubcell)
 
           if (tempOctal%diffusionApprox(tempsubcell)) then
-             call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp)
+             call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp, ok)
+             if (.not.ok) cycle photonLoop ! abort photon if random walk has failed
              directPhoton = .false.
              rVec = subcellCentre(thisOctal, subcell)
           endif
@@ -1975,7 +1979,7 @@ contains
    real(oct) :: tval, tau, r, tval2
    real :: lamArray(*)
    integer :: nLambda
-   logical :: stillinGrid
+   logical :: stillinGrid, ok
    logical :: escaped
    logical :: twoD
    real(double) :: kappaScaDb, kappaAbsDb
@@ -2064,7 +2068,8 @@ contains
        sOctal => tempOctal
        if (tempOctal%diffusionApprox(tempsubcell)) then
 
-          call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp)
+          call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
+          if (.not.ok) goto 666
           photonInDiffusionZone = .true.
           directPhoton = .false.
           rVec = subcellCentre(endOctal,endSubcell)
@@ -2302,7 +2307,8 @@ contains
             foundSubcell=tempsubcell)
        if (tempOctal%diffusionApprox(tempsubcell)) then
           photonInDiffusionZone = .true.
-          call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp)
+          call randomWalk(grid, tempOctal, tempSubcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
+          if (.not.ok) goto 666
           photonInDiffusionZone = .true.
           rVec = subcellCentre(endOctal,endSubcell)
           octVec = rVec

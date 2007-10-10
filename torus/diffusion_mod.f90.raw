@@ -831,14 +831,19 @@ end subroutine gaussSeidelSweep
   end subroutine copyEdens
 
 
-  subroutine randomWalk(grid, startOctal, startSubcell,  endOctal, endSubcell, temp)
+  subroutine randomWalk(grid, startOctal, startSubcell,  endOctal, endSubcell, temp, ok)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: startOctal, endOctal, walkOctal, sOctal
     type(OCTALVECTOR) :: rVec
     type(OCTALVECTOR) :: xAxis, yAxis, zAxis, rHat
+    logical :: ok
+
     real :: temp
     integer :: startSubcell, endSubcell, walkSubcell, nWalk
     real :: r
+    integer, parameter :: maxWalk = 10000
+
+    ok = .true.
 
     xAxis = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     yAxis = OCTALVECTOR(0.d0, 1.d0, 0.d0)
@@ -924,6 +929,11 @@ end subroutine gaussSeidelSweep
              endif
              call amrgridvalues(grid%octreeRoot, rVec, startOctal=sOctal, foundOctal=walkOctal, foundSubcell=walkSubcell)
           endif
+       endif
+       if (nWalk > maxWalk) then
+          call writeWarning("Photon exceeded random walk limit")
+          ok = .false.
+          exit
        endif
     enddo
     endOctal => walkOctal

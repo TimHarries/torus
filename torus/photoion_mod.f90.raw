@@ -101,6 +101,8 @@ contains
     logical :: gridConverged
     real(double) :: probEsc, albedo
 
+    logical :: ok
+
     type(SAHAMILNETABLE) :: hTable, heTable
     type(RECOMBTABLE) :: Hrecombtable
 
@@ -311,7 +313,8 @@ contains
             foundSubcell=tempsubcell)
 
           if (tempOctal%diffusionApprox(tempsubcell)) then
-             call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp)
+             call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp, ok)
+             if (.not.ok) cycle mainLoop
              directPhoton = .false.
              rVec = subcellCentre(thisOctal, subcell)
           endif
@@ -713,7 +716,7 @@ end subroutine photoIonizationloop
    real(oct) :: thisFreq
    real(oct) :: thisLam
    integer :: iLam
-   logical ::inFlow
+   logical ::inFlow , ok
    integer :: imonte
    real :: diffusionZoneTemp
    logical :: photonInDiffusionZone
@@ -797,7 +800,8 @@ end subroutine photoIonizationloop
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell)
           if (thisOctal%diffusionApprox(subcell)) then
-             call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp)
+             call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp,  ok)
+             if (.not.ok) goto 666
              rVec = subcellCentre(endOctal,endSubcell)
              octVec = rVec
              call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -924,7 +928,8 @@ end subroutine photoIonizationloop
        call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal, iLambda=iLam,lambda=real(thisLam),&
             foundOctal=thisOctal, foundSubcell=subcell)
        if (thisOctal%diffusionApprox(subcell)) then
-          call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp)
+          call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
+          if (.not.ok) goto 666
           rVec = subcellCentre(endOctal,endSubcell)
           octVec = rVec
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
