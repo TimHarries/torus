@@ -46,7 +46,7 @@ contains
     integer :: itrans, l, k, iPart
     real(double) :: collEx, colldeEx
     real(double) :: a, Bul, Blu
-    real(double) :: photoRatelk, recombRatekl, xSection
+    real(double) :: photoRatelk, recombRatekl, xSection, xSection2
     real(double) :: partitionFunc
     real(double) :: fac, rho
     real(double) :: prate, rrate, NstarRatio, totRecomb, totPHotoIon, totcion
@@ -153,8 +153,8 @@ contains
 
 
 
+          if ((thisAtom(iAtom)%transType(iTrans) == "RBF").and.(.not.thisAtom(iAtom)%inDetailedBalance(iTrans)))  then ! radiative recomb
 
-          if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! radiative recomb
              recombratekl = 0.d0
              nuStart = (thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(l))*evtoerg/hcgs
 
@@ -182,6 +182,7 @@ contains
              tot1 = tot1  + NstarRatio * recombratekl
 
 
+             radtot = radtot + tot1 * ne 
 
           endif
 
@@ -194,11 +195,10 @@ contains
              tot2 = tot2 + NstarRatio*collEx*ne
 
 
-
+             colltot = colltot + tot2 * ne
+          
           endif
 
-          radtot = radtot + tot1
-          colltot = colltot + tot2
 
           totRecomb =  tot1 + tot2
           if (thisAtom(iAtom)%transType(iTrans)(2:3) == "BF") then
@@ -207,6 +207,8 @@ contains
 
 
        enddo
+
+!      if (iatom == 1) write(*,*) "total recomb: ", totrecomb, radtot,colltot
 
 
        totPhotoIon = 0.d0
@@ -261,10 +263,7 @@ contains
 
           if (thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
 
-
-             if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
-
-             if (thisAtom(iAtom)%inDetailedBalance(iTrans)) then
+             if (.not.thisAtom(iAtom)%inDetailedBalance(iTrans)) then
 
 
                 nuStart = (thisAtom(iAtom)%iPot - thisAtom(iAtom)%energy(l))*evtoerg/hcgs
@@ -273,9 +272,11 @@ contains
                 
                 photoRatelk = 0.d0
                 do i = istart+1, nFreq
-                   xSection = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i))
-                   photoRatelk = photoRatelk + (jnuCont(i)/(hCgs*freq(i)))*xSection*(freq(i)-freq(i-1))
-                   !                if (iAtom == 2) write(*,*) l,freq(i),photoratelk,xsection,jnucont(i)
+                   xSection = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i-1))
+                   xSection2 = photoCrossSection(thisAtom(iAtom), iTrans, l, freq(i))
+                   photoRatelk = photoRatelk + 0.5d0 * ((jnuCont(i-1)/(hCgs*freq(i-1)))*xSection &
+                        + (jnuCont(i)/(hCgs*freq(i)))*xSection2) * (freq(i)-freq(i-1))
+!                   if (iAtom == 1) write(*,*) i,l,freq(i),photoratelk,xsection,jnucont(i)
                 enddo
                 photoRatelk = photoRatelk * fourPi
                 
@@ -288,18 +289,19 @@ contains
 
 
 
-!             if ((l == 1).and.iatom==2) then
+!             if ((l == 1).and.iatom==1) then
 !                write(*,*) "total photoionization from ground state ",photoRatelk*npops(iatom,l)
 !             endif
-!             if ((l == 2).and.iatom==2) then
+!             if ((l == 2).and.iatom==1) then
 !                write(*,*) "total photoionization from l=2 ",photoRatelk*npops(iatom,l)
 !             endif
-!             if ((l == 3).and.iatom==2) then
+!             if ((l == 3).and.iatom==1) then
 !                write(*,*) "total photoionization from l=3 ",photoRatelk*npops(iatom,l)
 !             endif
-!             if ((l == 4).and.iatom==2) then
+!             if ((l == 4).and.iatom==1) then
 !                write(*,*) "total photoionization from l=4 ",photoRatelk*npops(iatom,l)
 !             endif
+
           endif
 
 
@@ -321,7 +323,7 @@ contains
 
        enddo
 
-!       if (iatom == 2) write(*,*) "total photoionization: " , totphotoion, totcion
+!       if (iatom == 1) write(*,*) "total photoionization: " , totphotoion, totcion
 
     enddo
 
@@ -329,7 +331,7 @@ contains
 !    if (debug) then
 !       write(*,'(4x,100i8)') num(1:nMatrix)
 !       do i = 1, nMatrix
-!          write(*,'(i4,1p,100e8.1)') i,matrixA(i,1:nMatrix),matrixB(i)
+!          write(*,'(i4,1p,100e9.1)') i,matrixA(i,1:nMatrix),matrixB(i)
 !       enddo
 !    endif
 
@@ -845,8 +847,8 @@ contains
        enddo
 
        jbar = (jBarExternal + jBarInternal)/sumWeight
-!       call locate(freq, nfreq, thisAtom%transFreq(iTrans), i)
        tauAv = tauAv / sumWeight
+
     endif
           
   end subroutine calculateJbar
@@ -938,13 +940,13 @@ contains
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
     integer :: nRay,m
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 100, maxRay = 100000
+    integer, parameter :: maxIter = 10000, maxRay = 100000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe, oldNe, dNe
-    real(double), parameter :: underCorrect = 1.d0
+    real(double), parameter :: underCorrect = 0.9d0
     real(double) :: fac
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     logical :: dcAllocated
@@ -1051,6 +1053,7 @@ contains
        do iTrans = 1, thisAtom(iAtom)%nTrans
           if (thisAtom(iAtom)%name == "HeII".and.thisAtom(iAtom)%transType(iTrans) == "RBF") then ! photoionization
              if (thisAtom(iAtom)%iLower(iTrans) == 1) thisAtom(iAtom)%inDetailedBalance(iTrans) = .true.
+             write(*,*) "lyman cont detailed balance ",itrans
           endif
        enddo
     enddo
@@ -1075,7 +1078,7 @@ contains
 !$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 
-    nRay = 1000
+    nRay = 100
 !    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     do iStage = 1, 2
 
@@ -1145,6 +1148,7 @@ contains
 
 
           do iOctal = ioctal_beg, ioctal_end
+!          do iOctal =  ioctal_end, ioctal_beg, -1
 
              
              write(*,*) iOctal,iOctal_beg,iOctal_end
@@ -1201,23 +1205,22 @@ contains
                                     thisOctal%newAtomLevel(subcell,iAtom,1:), &
                                     freq, nFreq, weight(1:nRay), iRBB,tauAv)
 
-                               if (firstCheckonTau) then
-                                  thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
-                               endif
+!                               if (firstCheckonTau) then
+!                                  thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
+!                               endif
 
 
+!                               write(*,*) thisAtom(iAtom)%iLower(iTrans), " -> ", thisAtom(iAtom)%iUpper(iTrans), ": ",tauAv
                                if (iTrans == 4) tauHalpha = tauAv
 
-!                               if (firstCheckonTau) then
-                               if (iter < 10) then
-                                  if (tauAv > 1.d1) then
-                                     thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
-                                  else
-                                     thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
-                                  endif
-                                  firstCheckonTau = .false.
-                               endif
-
+!                               if (iter < 10) then
+!                                  if (tauAv > 1.d1) then
+!                                     thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
+!                                  else
+!                                     thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
+!                                  endif
+!                                  firstCheckonTau = .false.
+!                               endif
 
 
                             enddo
@@ -1319,16 +1322,16 @@ contains
 
                               enddo
                            enddo
-                           if (thisatom(1)%indetailedbalance(4)) then
-                              write(*,*) "Halpha is in detailed balance",tauHalpha
-                           else
-                              write(*,*) "Halpha is NOT in detailed balance",tauHalpha
-                           endif
+!                           if (thisatom(1)%indetailedbalance(4)) then
+!                              write(*,*) "Halpha is in detailed balance",tauHalpha
+!                           else
+!                              write(*,*) "Halpha is NOT in detailed balance",tauHalpha
+!                           endif
                            write(*,*) "Ne: ",ne,dne
                            write(*,*) "T: ",thisOctal%temperature(subcell)
                            write(*,*) "R: ",modulus(subcellCentre(thisOctal,subcell))/rCore
-!                           write(*,*) "log(HeII/HeIII): ",log10(SUM(thisOctal%newAtomLevel(subcell,2,1:thisAtom(2)%nlevels-1)) / &
-!                                thisOctal%newAtomLevel(subcell, 2, thisAtom(2)%nlevels))
+                           write(*,*) "log(HeII/HeIII): ",log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) / &
+                                thisOctal%newAtomLevel(subcell, 1, thisAtom(1)%nlevels))
                         endif
                          fac = -1.d30
                          where (mainoldPops == 0.d0)

@@ -485,6 +485,8 @@ contains
              u0 = (thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)))/(kEv*temperature)
              rate = 1.55d13*thisAtom%params(itrans,2)*sigma0*exp(-u0)/u0 /sqrt(temperature)
           endif
+!          write(*,*) rate, HeIICollisionalIonRates(thisAtom%ilower(itrans), &
+!               thisAtom%iPot - thisAtom%energy(thisAtom%iLower(itrans)) , temperature)
        case DEFAULT
           call writeFatal("collisionRate: bound-free collision type not implemented")
           stop
@@ -1167,5 +1169,17 @@ contains
 !       write(*,*) itrans,thisAtom%transType(iTrans),thisAtom%iLower(iTrans), thisAtom%iupper(iTrans)
     enddo
   end subroutine stripAtomLevels
+
+  function HeIICollisionalIonRates(i, iPot, temp) result (xSec)
+! page 922 of Klein and Castor (1978) ApJ 220 902
+    integer :: i
+    real(double) :: iPot, temp
+    real(double) :: xSec
+    real(double) :: ai(12) = (/-4.59d-6, 2.20d-4, 1.18d-4, 1.76d-4, 2.70d-4, 3.95d-4, 5.51d-4, &
+         7.38d-4, 9.55d-4, 1.20d-3, 1.48d-3, 1.79d-3/)
+    real(double) :: bi(12) = (/ -1002190.d0, 2611480.d0, 262714.d0, 118656.d0, 72355.8d0, 50622.2d0, 38299.9d0, &
+         30461.2d0, 25074.7d0, 21164.8d0, 18209.2d0, 15904.0d0/)
+    xSec = (ai(i) / (temp + bi(i))) *sqrt(temp)*exp(-iPot/(kev*temp))
+  end function HeIICollisionalIonRates
 
 end module modelatom_mod
