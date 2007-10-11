@@ -1764,8 +1764,8 @@ contains
     mu = 2.d0
 
     viewVec = OCTALVECTOR(-1.d0,0.d0,0.d0)
-    viewVec = rotateZ(viewVec, 40.d0*degtorad)
-    viewVec = rotateY(viewVec, 30.d0*degtorad)
+!    viewVec = rotateZ(viewVec, 20.d0*degtorad)
+    viewVec = rotateY(viewVec, 25.d0*degtorad)
     
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -1863,7 +1863,7 @@ contains
     iUnrefine = 0
 
     call writeInfo("Plotting col density", TRIVIAL)    
-    call columnDensityPlotAMR(grid, viewVec, "test.png/png", iminfix = 0., imaxfix = 1.)
+    call columnDensityPlotAMR(grid, viewVec, "test.png/png", iminfix = 0., imaxfix = 0.2)
 
 !      call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
 
@@ -1908,7 +1908,7 @@ contains
        do
           globalConverged(myRank) = .true.
           call writeInfo("Refining grid", TRIVIAL)    
-!          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.true.)
+          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.true.)
           call writeInfo("Exchanging boundaries", TRIVIAL)    
           call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -1916,13 +1916,13 @@ contains
           if (ALL(tConverged(1:8))) exit
        end do
        
-!       iUnrefine = iUnrefine + 1
-!       if (iUnrefine == 5) then
-!          call tune(6, "Unrefine grid")
-!          call unrefineCells(grid%octreeRoot, grid, gamma)
-!          call tune(6, "Unrefine grid")
-!          iUnrefine = 0
-!       endif
+       iUnrefine = iUnrefine + 1
+       if (iUnrefine == 5) then
+          call tune(6, "Unrefine grid")
+          call unrefineCells(grid%octreeRoot, grid, gamma)
+          call tune(6, "Unrefine grid")
+          iUnrefine = 0
+       endif
 
        call evenUpGridMPI(grid, inheritFlag=.true.)
        call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
@@ -1944,6 +1944,9 @@ contains
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
           call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.)
        endif
+       viewVec = rotateZ(viewVec, 1.d0*degtorad)
+
+
     enddo
   end subroutine doHydrodynamics3d
 
@@ -3030,7 +3033,7 @@ contains
     real(double) :: rhov(8), rhou(8), rho(8), rhoe(8), fac, limit
     real(double) :: cs(8)
     real(double) :: rhocs, rhomean, rhoemean
-    integer, parameter :: minDepth = 5
+    integer, parameter :: minDepth = 7
     logical :: refinedLastTime, ghostCell
     limit  = 0.01d0
 
@@ -3247,7 +3250,7 @@ contains
     integer :: depth
     integer :: subcell
     integer :: myRank, ierr
-    integer, parameter :: maxDepth = 5
+    integer, parameter :: maxDepth = 8
     logical :: localChanged 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)

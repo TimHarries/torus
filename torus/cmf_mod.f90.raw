@@ -1150,6 +1150,10 @@ contains
           do iOctal = ioctal_beg, ioctal_end
 !          do iOctal =  ioctal_end, ioctal_beg, -1
 
+
+
+!$MPI if (my_rank == 1) &
+          call tune(6, "One octal iteration")  ! start a stopwatch
              
              write(*,*) iOctal,iOctal_beg,iOctal_end
              thisOctal => octalArray(iOctal)%content
@@ -1374,6 +1378,9 @@ contains
 
              enddo
           end do
+
+!$MPI if (my_rank == 1) &
+          call tune(6, "One octal iteration")  ! start a stopwatch
 
 !$MPI if (.not.blockHandout) exit blockloop
 !$MPI end do blockLoop        
@@ -2203,7 +2210,7 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 50, 50, 50)
+    call initCube(cube, 200, 200, 50)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 

@@ -5001,7 +5001,7 @@ IF ( .NOT. gridConverged ) RETURN
 
    case("hydro1d")
       split = .false.
-      if (thisOctal%nDepth < 4) split = .true.
+      if (thisOctal%nDepth < 6) split = .true.
       rVec = subcellCentre(thisOctal, subcell)
 !      if ((thisOctal%mpiThread(subcell) == 2).and.(thisOctal%nDepth < 6)) split = .true.
 !      if ((rVec%x > 0.5d0) .and. thisOctal%nDepth < 6) split=.true.

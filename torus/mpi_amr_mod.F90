@@ -854,8 +854,8 @@ contains
        resetRange = resetRangeFlag
     endif
 
-    nx = 200
-    ny = 200
+    nx = 400
+    ny = 400
     allocate(image(1:nx,1:ny))
     allocate(xAxis(1:nx))
     allocate(yAxis(1:ny))
@@ -908,7 +908,7 @@ contains
        call pgvport(0.1, 0.9, 0.1, 0.9)
        call pgwnad(xAxis(1)-dx/2., xAxis(nx)-dx/2.,yAxis(1)-dx/2.,yAxis(nx)-dx/2.)
        
-       call palette(3)
+       call palette(2)
  
        if (resetRange) then
           iMin = minval(image)
