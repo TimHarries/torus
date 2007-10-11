@@ -2511,8 +2511,10 @@ endif
 
  
  if (writeoutput) write(*,*) " "
+ 
+! Close input file
+close(32)
 
-666 continue
 end subroutine inputs
 
 subroutine findReal(name, value, cLine, nLines, ok)

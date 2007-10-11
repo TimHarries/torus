@@ -220,6 +220,8 @@ contains
 
     end if
 
+    close(FIN)
+
   end subroutine read_isochrone_data
 
 
