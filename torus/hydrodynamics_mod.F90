@@ -1932,7 +1932,7 @@ contains
  !           "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0, quiet=.true.)
 
 
-       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
+!       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
 
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt
