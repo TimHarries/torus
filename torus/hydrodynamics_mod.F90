@@ -1774,6 +1774,11 @@ contains
     if (myRank == 1) write(*,*) "CFL set to ", cfl
 
 
+    call writeInfo("Plotting grid", TRIVIAL)    
+    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "mpi", 0., 1.)
+
+
+
     call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound)
 
     call writeInfo("Calling exchange across boundary", TRIVIAL)
@@ -1797,7 +1802,7 @@ contains
        do
           gridConverged = .true.
           call setupEdges(grid%octreeRoot, grid)
-          call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
+!          call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
           call unsetGhosts(grid%octreeRoot)
           call setupGhostCells(grid%octreeRoot, grid, "mirror")
           if (gridConverged) exit
@@ -1809,7 +1814,7 @@ contains
     call writeInfo("Refining grid", TRIVIAL)
     do
        gridConverged = .true.
-       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.false.)
+!       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.false.)
        if (gridConverged) exit
     end do
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -1818,7 +1823,7 @@ contains
     do
        globalConverged(myRank) = .true.
        call writeInfo("Refining grid", TRIVIAL)    
-       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.false.)
+!       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.false.)
        call writeInfo("Exchanging boundaries", TRIVIAL)    
        call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -1852,12 +1857,15 @@ contains
     tDump = 0.005d0
 
     iUnrefine = 0
-    call writeInfo("Plotting grid", TRIVIAL)    
-    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "rhoe", 0., 1.)
+!    call writeInfo("Plotting grid", TRIVIAL)    
+!    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "rhoe", 0., 1.)
 
+    iUnrefine = 0
 
     call writeInfo("Plotting col density", TRIVIAL)    
-    call columnDensityPlotAMR(grid, viewVec, "/xs", iminfix = 0., imaxfix = 1.)
+    call columnDensityPlotAMR(grid, viewVec, "test.png/png", iminfix = 0., imaxfix = 1.)
+
+!      call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
 
 !    do i = 1, 20
 !       ang = twoPi * dble(i-1)/20.d0
@@ -1900,7 +1908,7 @@ contains
        do
           globalConverged(myRank) = .true.
           call writeInfo("Refining grid", TRIVIAL)    
-          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.true.)
+!          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.true.)
           call writeInfo("Exchanging boundaries", TRIVIAL)    
           call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -1908,19 +1916,19 @@ contains
           if (ALL(tConverged(1:8))) exit
        end do
        
-       iUnrefine = iUnrefine + 1
-       if (iUnrefine == 5) then
-          call tune(6, "Unrefine grid")
-          call unrefineCells(grid%octreeRoot, grid, gamma)
-          call tune(6, "Unrefine grid")
-          iUnrefine = 0
-       endif
+!       iUnrefine = iUnrefine + 1
+!       if (iUnrefine == 5) then
+!          call tune(6, "Unrefine grid")
+!          call unrefineCells(grid%octreeRoot, grid, gamma)
+!          call tune(6, "Unrefine grid")
+!          iUnrefine = 0
+!       endif
 
        call evenUpGridMPI(grid, inheritFlag=.true.)
        call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
 
 
- !      call plot_AMR_values(grid, "rho", "x-y", 0., &
+!     call plot_AMR_values(grid, "rho", "x-y", 0., &
  !           "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0, quiet=.true.)
 
 
@@ -1931,8 +1939,10 @@ contains
        if (currentTime .gt. nextDumpTime) then
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
-          write(plotfile,'(a,i4.4,a)') "image",it,".gif/gif"
+          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
           call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
+          write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
+          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.)
        endif
     enddo
   end subroutine doHydrodynamics3d

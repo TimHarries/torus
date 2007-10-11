@@ -779,6 +779,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    logical :: crossedMPIboundary
    type(OCTAL), pointer :: nextOctal
    integer :: nextSubcell
+   logical :: ok
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -874,7 +875,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           call amrGridValues(grid%octreeRoot, octVec, foundOctal=thisOctal, &
                foundSubcell=subcell)
           if (thisOctal%diffusionApprox(subcell)) then
-             call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp)
+             call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
              rVec = subcellCentre(endOctal,endSubcell)
              octVec = rVec
              call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
@@ -1001,7 +1002,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
        call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal, iLambda=iLam,lambda=real(thisLam),&
             foundOctal=thisOctal, foundSubcell=subcell)
        if (thisOctal%diffusionApprox(subcell)) then
-          call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp)
+          call randomWalk(grid, thisOctal, subcell,  endOctal, endSubcell, diffusionZoneTemp, ok)
           rVec = subcellCentre(endOctal,endSubcell)
           octVec = rVec
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &

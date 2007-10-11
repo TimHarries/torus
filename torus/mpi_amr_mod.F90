@@ -84,6 +84,8 @@ contains
              valueMax = MAXVAL(value(1:nSquares))
           endif
           call pgpage
+          if (present(valueMinFlag)) valueMin = valueMinFlag
+          if (present(valueMaxFlag)) valueMax = valueMaxFlag
           call pgvport(0.1, 0.9, 0.1, 0.9)
           call pgwnad(xStart, xEnd, yStart, yEnd)
           
@@ -212,6 +214,8 @@ contains
                 tmp = thisOctal%nCrossings(subcell)
              case("temperature")
                 tmp = thisOctal%temperature(subcell)
+             case("mpi")
+                tmp = real(thisOctal%mpiThread(subcell))
              case DEFAULT
            end select
           select case(plane)
@@ -455,7 +459,7 @@ contains
     integer :: iPair, nPairs, thread1(:), thread2(:), nBound(:)
     integer :: rBound
     integer :: myRank, ierr
-    character(len=10) :: boundaryType(6) = (/"top","bottom","left","right", "front", "back"/)
+    character(len=10) :: boundaryType(6) = (/"top   ","bottom","left  ","right ", "front ", "back  "/)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)

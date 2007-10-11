@@ -997,6 +997,7 @@
 
   grid%splitOverMpi = .false.
 
+!$MPI if (hydrodynamics) grid%splitOverMpi = .true.
 
   grid%resonanceLine = resonanceLine
   grid%lambda2 = lamline
