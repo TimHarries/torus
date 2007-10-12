@@ -27,7 +27,7 @@ contains
 
   
 
-  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag)
+  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag, plotgrid)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=*) :: device, plane, valueName
@@ -44,11 +44,14 @@ contains
     integer :: myRank, ierr
 
     logical, optional :: logFlag
-    logical :: logScale
+    logical, optional :: plotgrid
+    logical :: logScale, doplotGrid
 
     logScale = .false.
     if (present(logflag)) logscale = logFlag
 
+    doplotgrid = .false.
+    if (present(plotgrid)) doplotgrid = plotgrid
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     allocate(corners(maxSquares, 4))
@@ -108,13 +111,15 @@ contains
              
              call pgrect(corners(i, 1), corners(i, 2), corners(i, 3), corners(i, 4))
              
-             call pgqci(j)
-             call PGSFS(2)  ! we don't want to fill in a box this time
-             call PGSCI(1) ! changing the color index.
-             call pgrect(corners(i, 1), corners(i, 2), corners(i, 3), corners(i, 4))
-             call PGSCI(1) ! change color index to default.
-             call PGSFS(1)
-             call pgsci(j)
+             if (doplotgrid) then
+                call pgqci(j)
+                call PGSFS(2)  ! we don't want to fill in a box this time
+                call PGSCI(1) ! changing the color index.
+                call pgrect(corners(i, 1), corners(i, 2), corners(i, 3), corners(i, 4))
+                call PGSCI(1) ! change color index to default.
+                call PGSFS(1)
+                call pgsci(j)
+             endif
              
           enddo
           call pgsci(1)
@@ -204,6 +209,8 @@ contains
           select case(valuename)
              case("rho")
                 tmp = thisOctal%rho(subcell)
+             case("rhou")
+                tmp = thisOctal%rhou(subcell)
              case("rhoe")
                 tmp = thisOctal%rhoe(subcell)
              case("ionization")
@@ -221,7 +228,7 @@ contains
           select case(plane)
              case("x-z")
                 x = min(abs(rVec%y + thisOctal%subcellSize/2.d0), abs(rVec%y - thisOctal%subcellSize/2.d0))
-                if (x < eps) then
+                if ((x < eps).or.(thisOctal%twoD)) then
                    nSquares = nSquares + 1
                    corners(nSquares, 1) = rVec%x - thisOctal%subcellSize/2.d0
                    corners(nSquares, 2) = rVec%x + thisOctal%subcellSize/2.d0
@@ -344,7 +351,7 @@ contains
                 if (neighbourOctal%mpiThread(neighboursubcell) == receiveThread) cycle 
                 
                 if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
-                   write(*,*) "Neighbour on ",boundaryType, " is not on thread ", sendThread, " but ", &
+                   write(*,*) "Neighbour on ",boundaryType, " of ", myrankglobal,"  is not on thread ", sendThread, " but ", &
                    neighbourOctal%mpiThread(neighboursubcell)
                    stop
                 endif
@@ -365,6 +372,7 @@ contains
                 
                 if (.not.associated(thisOctal%mpiBoundaryStorage)) then
                    allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, 15))
+                   thisOctal%mpiBoundaryStorage = 0.d0
                 endif
                 thisOctal%mpiBoundaryStorage(subcell, nBound, 1:15) = tempStorage(1:15)
 !                write(*,*) myrank, " successfully stored"
@@ -544,10 +552,10 @@ contains
              dirVec(6) = OCTALVECTOR( 0.d0,-1.d0,  0.d0)
           else if (thisOctal%twod) then
              nDir = 4
-             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
-             dirVec(2) = OCTALVECTOR(-1.d0,0.d0, 0.d0)
-             dirVec(3) = OCTALVECTOR( 0.d0, 0.d0,  1.d0)
-             dirVec(4) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
+             dirVec(1) = OCTALVECTOR(0.d0, 0.d0, +1.d0)
+             dirVec(2) = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+             dirVec(3) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             dirVec(4) = OCTALVECTOR(+1.d0, 0.d0, 0.d0)
           else
              nDir = 2
              dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
@@ -735,7 +743,7 @@ contains
        else if (direction%x < -0.9d0) then
           nSubcell(1) = 2
           nSubcell(2) = 4
-       else if (direction%y > 0.9d0) then
+       else if (direction%z > 0.9d0) then
           nSubcell(1) = 1
           nSubcell(2) = 2
        else

@@ -3442,13 +3442,16 @@
      ! Performs various optical depth tests here...
      !
 
+     if (.not.hydrodynamics) then
 !$MPI if (my_rank==0) then
-      if (.not. formalsol) then
+     if (.not. formalsol) then
         call test_optical_depth(gridUsesAMR, VoigtProf, &
              amrGridCentre, sphericityTest,  &
              outVec, lambdatau,  lambdatau, grid, thin_disc_on, opaqueCore, lamStart, lamEnd,  &
              thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
       end if
+      endif
+
 !$MPI end if
 !$MPI     ! Synchronizing everybody here.
 !$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr)

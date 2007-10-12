@@ -1,4 +1,3 @@
-
 ! hydrodynamics module added by TJH on 18th June 2007
 
 module hydrodynamics_mod
@@ -835,8 +834,7 @@ contains
              thisOctal%rhou(subcell) = thisOctal%rhou(subcell) - dt * &
                   (thisOctal%pressure_i_plus_1(subcell) - thisOctal%pressure_i_minus_1(subcell)) / &
                   (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
-
-!             write(*,*) thisOctal%rhou(subcell), thisOctal%pressure_i_plus_1(subcell), &
+!             Write(*,*) thisOctal%rhou(subcell), thisOctal%pressure_i_plus_1(subcell), &
 !                  thisOctal%pressure_i_minus_1(subcell), thisOctal%x_i_plus_1(subcell), &
 !                  thisOctal%x_i_minus_1(subcell)
              thisOctal%rhoE(subcell) = thisOctal%rhoE(subcell) - dt * &
@@ -845,9 +843,9 @@ contains
                   (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
 
 
-
              if (isnan(thisOctal%rhou(subcell))) then
-                write(*,*) "bug",thisOctal%pressure_i_plus_1(subcell),thisOctal%pressure_i_minus_1(subcell)
+                write(*,*) "bug",thisOctal%rhou(subcell), &
+                     thisOctal%pressure_i_plus_1(subcell),thisOctal%pressure_i_minus_1(subcell)
                 do;enddo
                 endif
              endif
@@ -1335,58 +1333,6 @@ contains
 
   end subroutine hydroStep
 
-  subroutine hydroStep2d(grid, gamma, dt, boundaryCondition)
-    type(GRIDTYPE) :: grid
-    real(double) :: gamma, dt, subdt
-    type(OCTALVECTOR) :: direction
-    character(len=*) :: boundaryCondition
-    integer :: i
-
-
-!    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-!
-!    call imposeBoundary(grid%octreeRoot, boundarycondition)
-!    call transferTempStorage(grid%octreeRoot)
-!
-!    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-!    call setupUi(grid%octreeRoot, grid, direction)
-!    call advectRho(grid, direction, dt/2.d0)
-!    call advectRhoU(grid, direction, dt/2.d0)
-!    call advectRhoV(grid, direction, dt/2.d0)
-!    call advectRhoE(grid, direction, dt/2.d0)
-!    call setupUpm(grid%octreeRoot, grid, direction)
-!    call computePressureU(grid%octreeRoot, gamma, direction)
-!    call setupPressure(grid%octreeRoot, grid, direction)
-!    call pressureForceU(grid%octreeRoot, dt/2.d0)
-!
-!    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-!    call setupVi(grid%octreeRoot, grid, direction)
-!    call advectRho(grid, direction, dt)
-!    call advectRhoV(grid, direction, dt)
-!    call advectRhoU(grid, direction, dt)
-!    call advectRhoE(grid, direction, dt)
-!    call setupVi(grid%octreeRoot, grid, direction)
-!    call setupVpm(grid%octreeRoot, grid, direction)
-!    call computePressureV(grid%octreeRoot, gamma, direction)
-!    call setupPressure(grid%octreeRoot, grid, direction)
-!    call pressureForceV(grid%octreeRoot, dt)
-!
-!    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-!    call setupUi(grid%octreeRoot, grid, direction)
-!    call advectRho(grid, direction, dt/2.d0)
-!    call advectRhoU(grid, direction, dt/2.d0)
-!    call advectRhoV(grid, direction, dt/2.d0)
-!    call advectRhoE(grid, direction, dt/2.d0)
-!    call setupUpm(grid%octreeRoot, grid, direction)
-!    call computePressureU(grid%octreeRoot, gamma, direction)
-!    call setupPressure(grid%octreeRoot, grid, direction)
-!    call pressureForceU(grid%octreeRoot, dt/2.d0)
-!
-!    call imposeBoundary(grid%octreeRoot, boundarycondition)
-!    call transferTempStorage(grid%octreeRoot)
-!
- 
-  end subroutine hydroStep2d
 
   subroutine hydroStep3d(grid, gamma, dt, boundaryCondition, nPairs, thread1, thread2, nBound)
     type(GRIDTYPE) :: grid
@@ -1473,6 +1419,74 @@ contains
 
  
   end subroutine hydroStep3d
+
+  subroutine hydroStep2d(grid, gamma, dt, boundaryCondition, nPairs, thread1, thread2, nBound)
+    type(GRIDTYPE) :: grid
+    integer :: nPairs, thread1(:), thread2(:), nBound(:)
+    real(double) :: gamma, dt, subdt
+    type(OCTALVECTOR) :: direction
+    character(len=*) :: boundaryCondition
+    integer :: i
+
+
+    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+
+    call imposeBoundary(grid%octreeRoot, boundarycondition)
+    call transferTempStorage(grid%octreeRoot)
+
+
+    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call setupUi(grid%octreeRoot, grid, direction)
+    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
+    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
+    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
+    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call setupUpm(grid%octreeRoot, grid, direction)
+    call computePressureU(grid%octreeRoot, gamma, direction)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call setupPressure(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call pressureForceU(grid%octreeRoot, dt/2.d0)
+
+
+    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call setupWi(grid%octreeRoot, grid, direction)
+    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound)
+    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound)
+    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound)
+    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call setupWpm(grid%octreeRoot, grid, direction)
+    call computePressureW(grid%octreeRoot, gamma, direction)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call setupPressure(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call pressureForceW(grid%octreeRoot, dt)
+
+
+    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call setupUi(grid%octreeRoot, grid, direction)
+    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
+    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
+    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
+    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call setupUpm(grid%octreeRoot, grid, direction)
+    call computePressureU(grid%octreeRoot, gamma, direction)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call setupPressure(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call pressureForceU(grid%octreeRoot, dt/2.d0)
+
+    call imposeBoundary(grid%octreeRoot, boundarycondition)
+    call transferTempStorage(grid%octreeRoot)
+
+ 
+  end subroutine hydroStep2d
 
 
   recursive subroutine computeCourantTime(thisOctal, tc, gamma)
@@ -1609,136 +1623,6 @@ contains
     call pgend
   end subroutine doHydrodynamics1d
 
-  subroutine doHydrodynamics2d(grid)
-    type(gridtype) :: grid
-    real(double) :: dt, tc, cfl, gamma, mu
-    real(double) :: currentTime
-    integer :: i, pgbegin, it, iUnrefine
-    character(len=20) :: plotfile
-    real(double) :: tDump, nextDumpTime
-    type(OCTALVECTOR) :: direction
-    logical :: gridConverged
-
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-    gamma = 7.d0 / 5.d0
-    cfl = 0.3d0
-    mu = 2.d0
-    i = pgbegin(0,"/xs",1,1)
-    call pgenv(0., 1., 0., 1., 0, 0)
-
-
-    do
-       gridConverged = .true.
-       call setupEdges(grid%octreeRoot, grid)
-       call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
-       call unsetGhosts(grid%octreeRoot)
-       call setupGhostCells(grid%octreeRoot, grid, "mirror")
-       if (gridConverged) exit
-    end do
-
-
-       do
-          gridConverged = .true.
-          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.false.)
-          if (gridConverged) exit
-       end do
-
-!    call refineGridGeneric(grid%octreeRoot, grid, "test", .false.)
-
-    do
-       gridConverged = .true.
-       call evenUpGrid(grid%octreeRoot, grid,  gridconverged)
-       call unsetGhosts(grid%octreeRoot)
-       call setupGhostCells(grid%octreeRoot, grid, "mirror")
-       if (gridConverged) exit
-    end do
-    call writeInfo("...grid smoothing complete", TRIVIAL)
-
-
-    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-    call calculateRhoU(grid%octreeRoot, direction)
-    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-    call calculateRhoV(grid%octreeRoot, direction)
-
-    call calculateEnergy(grid%octreeRoot, gamma, mu)
-    call calculateRhoE(grid%octreeRoot, direction)
-    call setupX(grid%octreeRoot, grid, direction)
-    call setupQX(grid%octreeRoot, grid, direction)
-    currentTime = 0.d0
-    it = 0
-    nextDumpTime = 0.d0
-    tDump = 0.005d0
-
-    iUnrefine = 0
-
-!    do while(currentTime < 0.2d0)
-    do while(.true.)
-
-       tc = 1.d30
-       call computeCourantTime(grid%octreeRoot, tc, gamma)
-       dt = tc * cfl
-       call tune(6,"Hydrodynamics step")
-       call hydroStep2d(grid, gamma, dt, "mirror")
-       call tune(6,"Hydrodynamics step")
-
-!       call refineGridGeneric(grid%octreeRoot, grid, "test", .true.)
-
-
-       call tune(6, "Refine grid")
-       do
-          gridConverged = .true.
-          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.true.)
-          if (gridConverged) exit
-       end do
-       call tune(6, "Refine grid")
-
-       iUnrefine = iUnrefine + 1
-       if (iUnrefine == 5) then
-          call tune(6, "Unrefine grid")
-          call unrefineCells(grid%octreeRoot, grid, gamma)
-          call tune(6, "Unrefine grid")
-          iUnrefine = 0
-       endif
-
-       call tune(6, "Even up grid")
-       do
-          gridConverged = .true.
-          call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=.true.)
-          call unsetGhosts(grid%octreeRoot)
-          call setupGhostCells(grid%octreeRoot, grid, "mirror")
-          if (gridConverged) exit
-       end do
-       call tune(6, "Even up grid")
-
-       i = pgbegin(0,"/xs",2,2)
-       call plot_AMR_values(grid, "rho", "x-z", 0., &
-            "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0, quiet=.true., openDevice=.false.)
-       call plot_AMR_values(grid, "rhoe", "x-z", 0., &
-            "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0, quiet=.true., openDevice=.false.)
-       call plot_AMR_values(grid, "rhou", "x-z", 0., &
-            "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=0.1d0, quiet=.true., openDevice=.false.)
-       call plot_AMR_values(grid, "rhov", "x-z", 0., &
-            "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=0.1d0, quiet=.true., openDevice=.false.)
-       call pgend
-
-
-
-       currentTime = currentTime + dt
-       write(*,*) "current time ",currentTime,dt
-!       call plotHydroResults(grid)
-       if (currentTime .gt. nextDumpTime) then
-          nextDumpTime = nextDumpTime + tDump
-          it = it + 1
-          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
-          call plot_AMR_values(grid, "rho", "x-z", 0., &
-               plotfile,.false., .false., fixvalmin=0.d0, fixvalmax=1.d0,quiet=.true.)
-          write(plotfile,'(a,i4.4,a)') "grid",it,".png/png"
-          call plot_AMR_values(grid, "rho", "x-z", 0., &
-               plotfile,.false., .true., fixvalmin=0.d0, fixvalmax=1.d0,quiet=.true.)
-
-       endif
-    enddo
-  end subroutine doHydrodynamics2d
 
   subroutine doHydrodynamics3d(grid)
     include 'mpif.h'
@@ -1761,6 +1645,9 @@ contains
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
     cfl = 0.3d0
+
+    cfl = 0.01d0
+
     mu = 2.d0
 
     viewVec = OCTALVECTOR(-1.d0,0.d0,0.d0)
@@ -1949,6 +1836,228 @@ contains
 
     enddo
   end subroutine doHydrodynamics3d
+
+  subroutine doHydrodynamics2d(grid)
+    include 'mpif.h'
+    type(gridtype) :: grid
+    real(double) :: dt, tc(8), temptc(8),cfl, gamma, mu
+    real(double) :: currentTime
+    integer :: i, pgbegin, it, iUnrefine
+    integer :: myRank, ierr
+    character(len=20) :: plotfile
+    real(double) :: tDump, nextDumpTime, ang
+    type(OCTALVECTOR) :: direction, viewVec
+    logical :: gridConverged
+    integer :: nSource = 0
+    type(SOURCETYPE) :: source(1)
+    integer :: nDependent, dependentThread(100)
+    integer :: thread1(100), thread2(100), nBound(100), nPairs
+    logical :: globalConverged(8), tConverged(8)
+
+
+    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    gamma = 7.d0 / 5.d0
+    cfl = 0.3d0
+
+    mu = 2.d0
+
+    viewVec = OCTALVECTOR(-1.d0,0.d0,0.d0)
+!    viewVec = rotateZ(viewVec, 20.d0*degtorad)
+    viewVec = rotateY(viewVec, 25.d0*degtorad)
+    
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+
+
+    if (myRank == 1) write(*,*) "CFL set to ", cfl
+
+
+!    call writeInfo("Plotting grid", TRIVIAL)    
+!    write(plotfile,'(a,i2.2,a)') "test",myRank,".png/png"
+!    call plot_AMR_values(grid, "rho", "x-z", 0., &
+!           plotfile,.false., .true.)
+
+    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "mpi")
+
+
+
+    call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound)
+
+!    do i = 1, nPairs
+!       if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
+!    enddo
+
+
+    call writeInfo("Calling exchange across boundary", TRIVIAL)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call writeInfo("Done", TRIVIAL)
+
+    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    call calculateRhoU(grid%octreeRoot, direction)
+    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    call calculateRhoV(grid%octreeRoot, direction)
+    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    call calculateRhoW(grid%octreeRoot, direction)
+
+    call calculateEnergy(grid%octreeRoot, gamma, mu)
+    call calculateRhoE(grid%octreeRoot, direction)
+
+
+
+    call writeInfo("Refining individual subgrids", TRIVIAL)
+    if (.not.grid%splitOverMpi) then
+       do
+          gridConverged = .true.
+          call setupEdges(grid%octreeRoot, grid)
+!          call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
+          call unsetGhosts(grid%octreeRoot)
+          call setupGhostCells(grid%octreeRoot, grid, "mirror")
+          if (gridConverged) exit
+       end do
+    else
+       call evenUpGridMPI(grid, inheritFlag=.false.)
+    endif
+
+    call writeInfo("Refining grid", TRIVIAL)
+    do
+       gridConverged = .true.
+       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.false.)
+       if (gridConverged) exit
+    end do
+    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+
+    call writeInfo("Refining grid part 2", TRIVIAL)    
+    do
+       globalConverged(myRank) = .true.
+       call writeInfo("Refining grid", TRIVIAL)    
+       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.false.)
+       call writeInfo("Exchanging boundaries", TRIVIAL)    
+       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+       call MPI_ALLREDUCE(globalConverged, tConverged, 4, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+       if (myrankglobal==1)write(*,*) tconverged(1:4)
+       if (ALL(tConverged(1:4))) exit
+    end do
+
+
+    call writeInfo("Evening up grid", TRIVIAL)    
+    call evenUpGridMPI(grid, inheritFlag=.false.)
+    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+
+
+
+
+    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    call setupX(grid%octreeRoot, grid, direction)
+    call setupQX(grid%octreeRoot, grid, direction)
+    call calculateEnergy(grid%octreeRoot, gamma, mu)
+    call calculateRhoE(grid%octreeRoot, direction)
+    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+    call calculateRhoU(grid%octreeRoot, direction)
+    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    call calculateRhoV(grid%octreeRoot, direction)
+    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    call calculateRhoW(grid%octreeRoot, direction)
+
+    currentTime = 0.d0
+    it = 0
+    nextDumpTime = 0.d0
+    tDump = 0.005d0
+
+    iUnrefine = 0
+!    call writeInfo("Plotting grid", TRIVIAL)    
+!    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "rhoe", 0., 1.)
+
+    iUnrefine = 0
+
+!    call writeInfo("Plotting col density", TRIVIAL)    
+!    call columnDensityPlotAMR(grid, viewVec, "test.png/png", iminfix = 0., imaxfix = 0.2)
+
+!      call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
+
+!    do i = 1, 20
+!       ang = twoPi * dble(i-1)/20.d0
+!       viewVec = OCTALVECTOR(cos(ang), sin(ang), 0.d0)
+!       write(plotfile,'(a,i4.4,a)') "image",i,".gif/gif"
+!       call columnDensityPlotAMR(grid, viewVec, plotfile, iminfix = 0., imaxfix = 1.)
+!    enddo
+!    stop
+
+!    do while(currentTime < 0.2d0)
+    do while(.true.)
+       tc = 0.d0
+       tc(myrank) = 1.d30
+       call computeCourantTime(grid%octreeRoot, tc(myRank), gamma)
+       call MPI_ALLREDUCE(tc, tempTc, 4, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+!       write(*,*) "tc", tc(1:8)
+!       write(*,*) "temp tc",temptc(1:8)
+       tc = tempTc
+       dt = MINVAL(tc(1:4)) * cfl
+
+       if (myrank == 1) write(*,*) "courantTime", dt
+       call tune(6,"Hydrodynamics step")
+       call writeInfo("calling hydro step",TRIVIAL)
+
+       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+
+       call hydroStep2d(grid, gamma, dt, "mirror", nPairs, thread1, thread2, nBound)
+       call tune(6,"Hydrodynamics step")
+       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+
+       call writeInfo("Refining grid", TRIVIAL)
+       do
+          gridConverged = .true.
+          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.true.)
+          if (gridConverged) exit
+       end do
+       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+       
+       call writeInfo("Refining grid part 2", TRIVIAL)    
+       do
+          globalConverged(myRank) = .true.
+          call writeInfo("Refining grid", TRIVIAL)    
+          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.true.)
+          call writeInfo("Exchanging boundaries", TRIVIAL)    
+          call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+          call MPI_ALLREDUCE(globalConverged, tConverged, 4, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+          if (ALL(tConverged(1:4))) exit
+       end do
+       
+       iUnrefine = iUnrefine + 1
+       if (iUnrefine == 5) then
+          call tune(6, "Unrefine grid")
+          call unrefineCells(grid%octreeRoot, grid, gamma)
+          call tune(6, "Unrefine grid")
+          iUnrefine = 0
+       endif
+
+       call evenUpGridMPI(grid, inheritFlag=.true.)
+       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+
+
+!     call plot_AMR_values(grid, "rho", "x-y", 0., &
+ !           "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0, quiet=.true.)
+
+
+!       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
+
+       currentTime = currentTime + dt
+       if (myRank == 1) write(*,*) "current time ",currentTime,dt
+       if (currentTime .gt. nextDumpTime) then
+          nextDumpTime = nextDumpTime + tDump
+          it = it + 1
+!          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
+!          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
+          write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
+          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.,plotgrid=.false.)
+          call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1., plotgrid=.true.)
+       endif
+       viewVec = rotateZ(viewVec, 1.d0*degtorad)
+
+
+    enddo
+  end subroutine doHydrodynamics2d
 
   recursive subroutine calculateEnergy(thisOctal, gamma, mu)
     type(GRIDTYPE) :: grid
@@ -2297,14 +2406,17 @@ contains
                       if (abs(dir%x) > 0.9d0) then
                          thisOctal%tempStorage(subcell,3) = -bOctal%rhou(bSubcell)
                          thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
                       endif
                       if (abs(dir%z) > 0.9d0) then
                          thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
-                         thisOctal%tempStorage(subcell,4) = -bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = -bOctal%rhow(bSubcell)
                       endif
                       if ((abs(dir%x) > 0.2d0).and.abs(dir%z) > 0.2d0) then
                          thisOctal%tempStorage(subcell,3) = -bOctal%rhou(bSubcell)
-                         thisOctal%tempStorage(subcell,4) = -bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = -bOctal%rhow(bSubcell)
                       endif
                    else if (thisOctal%threed) then
                       if (abs(dir%x) > 0.9d0) then
@@ -2609,6 +2721,7 @@ contains
 
 
   recursive subroutine refineGridGeneric(thisOctal, grid, criterion, inherit)
+    use input_variables, only : maxDepthAMR
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     type(OCTALVECTOR) :: rVec, corner
@@ -2616,7 +2729,6 @@ contains
     logical :: inherit
     logical :: split
     integer :: n
-    integer, parameter :: maxDepth = 5
     character(len=*) :: criterion
 
     subcell = 1
@@ -2633,7 +2745,7 @@ contains
        else
           if (.not.thisOctal%ghostCell(subcell)) then
              call  splitCondition(thisOctal, grid, subcell, criterion, split)
-             if (split.and.(thisOctal%nDepth < maxDepth)) then
+             if (split.and.(thisOctal%nDepth < maxDepthAMR)) then
                 call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                      inherit=inherit, interp=.false.)
 !                subcell = subcell - 1
@@ -2814,6 +2926,7 @@ contains
   end subroutine evenUpGrid
 
   recursive subroutine refineGridGeneric2(thisOctal, grid,  gamma, converged, inherit)
+    use input_variables, only : maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
     real :: factor
@@ -2827,7 +2940,6 @@ contains
     integer :: neighbourSubcell, j, nDir
     real(double) :: r, grad, maxGradient
     logical, optional :: inherit
-    integer, parameter :: maxDepth = 5
     real(double), parameter :: limit = 0.1d0
     real(double) :: gamma
     real(double) :: cs, rhocs
@@ -2925,7 +3037,7 @@ contains
 
 
                    if (split) then
-                      if ((neighbourOctal%nDepth >= thisOctal%nDepth).and.(thisOctal%nDepth < maxDepth)) then
+                      if ((neighbourOctal%nDepth >= thisOctal%nDepth).and.(thisOctal%nDepth < maxDepthAMR)) then
                          call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                               inherit=inherit, interp=.false.)
                          converged = .false.
@@ -2951,6 +3063,7 @@ contains
 
   recursive subroutine refineEdges(thisOctal, grid,  converged, inherit)
 
+    use input_variables, only : maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
     real :: factor
@@ -2963,7 +3076,6 @@ contains
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
-    integer, parameter :: maxDepth =  5
     integer :: myRank, ierr
     converged = .true.
     converged_tmp=.true.
@@ -2992,7 +3104,7 @@ contains
 
 
           if ((thisOctal%edgeCell(subcell)) &
-          .and.thisOctal%nDepth<maxDepth) then
+          .and.thisOctal%nDepth<maxDepthAMR) then
              call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                   inherit=inherit, interp=.false.)
              converged = .false.
@@ -3021,6 +3133,7 @@ contains
   end subroutine locatorToNeighbour
        
   recursive subroutine unrefineCells(thisOctal, grid, gamma)
+    use input_variables, only : minDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
@@ -3033,7 +3146,6 @@ contains
     real(double) :: rhov(8), rhou(8), rho(8), rhoe(8), fac, limit
     real(double) :: cs(8)
     real(double) :: rhocs, rhomean, rhoemean
-    integer, parameter :: minDepth = 7
     logical :: refinedLastTime, ghostCell
     limit  = 0.01d0
 
@@ -3098,7 +3210,7 @@ contains
        endif
        
        
-       if (thisOctal%nDepth <= minDepth) unrefine = .false.
+       if (thisOctal%nDepth <= minDepthAMR) unrefine = .false.
     endif
 
     if ((thisOctal%nChildren == 0).and.unrefine) then
@@ -3242,6 +3354,7 @@ contains
   end subroutine evenUpGridMPI
 
   subroutine splitAtLocator(grid, locator, depth,  localchanged, inherit)
+    use input_variables, only :  maxDepthAMR
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -3250,7 +3363,6 @@ contains
     integer :: depth
     integer :: subcell
     integer :: myRank, ierr
-    integer, parameter :: maxDepth = 8
     logical :: localChanged 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -3262,7 +3374,7 @@ contains
        stop
     endif
 !    WRITE(*,*) "ATTEMPTNG TO SPLIT",depth,thisOctal%nDepth, maxdepth
-    if (((depth-thisOctal%nDepth) > 1).and.(thisOctal%nDepth < maxDepth)) then
+    if (((depth-thisOctal%nDepth) > 1).and.(thisOctal%nDepth < maxDepthAMR)) then
        call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
             inherit=inherit, interp=.false.)
        localChanged = .true.
@@ -3410,7 +3522,7 @@ contains
        else if (direction%x < -0.9d0) then
           nSubcell(1) = 2
           nSubcell(2) = 4
-       else if (direction%y > 0.9d0) then
+       else if (direction%z > 0.9d0) then
           nSubcell(1) = 1
           nSubcell(2) = 2
        else

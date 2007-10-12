@@ -695,6 +695,9 @@ contains
     case("hydro1d")
        grid%geometry = "hydro1d"
 
+    case("sedov")
+       grid%geometry = "sedov"
+
     case("gammavel")
        grid%geometry = "gammavel"
 

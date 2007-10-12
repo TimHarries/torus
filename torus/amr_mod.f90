@@ -189,6 +189,9 @@ CONTAINS
     CASE("hydro1d")
        call calcHydro1DDensity(thisOctal, subcell, grid)
 
+    CASE("sedov")
+       call calcSedovDensity(thisOctal, subcell, grid)
+
 
     CASE("gammavel")
        CALL calcGammaVel(thisOctal,subcell,grid)
@@ -600,9 +603,6 @@ CONTAINS
 ! setup mpiThread values
 
     parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
-       
-
-       
 
 
     if (cmf) then
@@ -1188,6 +1188,9 @@ CONTAINS
         gridConverged = .TRUE.
 
       CASE ("hydro1d")
+        gridConverged = .TRUE.
+
+      CASE ("sedov")
         gridConverged = .TRUE.
 
       CASE DEFAULT
@@ -5002,11 +5005,14 @@ IF ( .NOT. gridConverged ) RETURN
    case("hydro1d")
       split = .false.
       if (thisOctal%nDepth < 6) split = .true.
+
+   case("sedov")
+      split = .false.
       rVec = subcellCentre(thisOctal, subcell)
-!      if ((thisOctal%mpiThread(subcell) == 2).and.(thisOctal%nDepth < 6)) split = .true.
-!      if ((rVec%x > 0.5d0) .and. thisOctal%nDepth < 6) split=.true.
-!      if (((rVec%x > 0.55d0).and.(rVec%x < 0.8d0)) .and. thisOctal%nDepth < 8) split=.true.
-!      if (((rVec%x > 0.7d0).and.(rVec%x < 0.75d0)) .and. thisOctal%nDepth < 9) split=.true.
+      if (thisOctal%nDepth < 5) split = .true.
+!      if ((modulus(rvec)/grid%octreeRoot%subcellsize < 0.15d0).and.(thisOctal%nDepth < 7)) split = .true.
+
+
    case("benchmark")
       split = .false.
       cellSize = thisOctal%subcellSize 
@@ -7723,16 +7729,19 @@ IF ( .NOT. gridConverged ) RETURN
 
     thisOctal%rho(subcell) = 1.d0
 
-    if (thisOctal%twod) then
-       xMid = 0.d0 - z
+!    if (thisOctal%twod) then
+!       xMid = 0.d0 - z
+!    endif
+
+!    if (thisOctal%threed) then
+    xMid = -0.5d0 - z
+!    endif
+
+    if  (thisOctal%threed) then
+       zprime = -1.d0 - (rVec%x+rVec%y)
+    else
+       zprime = -0.5d0 - rVec%x
     endif
-
-    if (thisOctal%threed) then
-       xMid = -0.5d0 - z
-    endif
-
-    zprime = -1.d0 - (rVec%x+rVec%y)
-
 
     if (rvec%z < zprime) then
        thisOctal%rho(subcell) = 1.d0
@@ -7745,6 +7754,35 @@ IF ( .NOT. gridConverged ) RETURN
     endif
 
   end subroutine calcHydro1DDensity
+
+  subroutine calcSedovDensity(thisOctal,subcell,grid)
+
+    use input_variables
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    type(OCTALVECTOR) :: rVec, cVec
+    real(double) :: gd, xmid, x, z, r , zprime, gamma
+    logical :: blast
+
+    gamma = 7.d0/5.d0
+    rVec = subcellCentre(thisOctal, subcell)
+    cVec = OCTALVECTOR(-0.25d0, -0.25d0, -0.25d0)
+    blast = .false.
+
+    if (modulus(rvec-cVec)/grid%octreeRoot%subcellsize < 0.1d0) blast = .true.
+
+    if (blast) then
+       thisOctal%rho(subcell) = 0.125d0
+       thisOctal%energy(subcell) = 1.d5
+       thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*thisOctal%energy(subcell)
+    else
+       thisOctal%rho(subcell) = 0.125d0
+       thisOctal%energy(subcell) = 0.25d0
+       thisOctal%pressure_i(subcell) = 0.1d0
+    endif
+
+  end subroutine calcSedovDensity
     
 
 

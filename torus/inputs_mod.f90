@@ -195,6 +195,12 @@ contains
     call getLogical("amr3d", amr3d, cLine, nLines, &
          "AMR grid is in three-dimensions: ","(a,1l,1x,a)", .false., ok, .false.)
 
+    call getInteger("mindepthamr", minDepthAMR, cLine, nLines, "Minimum cell depth of AMR grid: ", &
+         & "(a,i3,a)",5,ok,.false.)
+
+    call getInteger("maxdepthamr", maxDepthAMR, cLine, nLines, "Minimum cell depth of AMR grid: ", &
+         & "(a,i3,a)",8,ok,.false.)
+
 
     if (gridUsesAMR) then
        call getReal("amrgridsize", amrGridSize, cLine, nLines, &
