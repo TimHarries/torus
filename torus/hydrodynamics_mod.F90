@@ -143,7 +143,7 @@ contains
 !                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
              thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
                   (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
-                  (thisOctal%subcellSize *1.d10)
+                  (thisOctal%subcellSize)
 
           endif
        endif
@@ -169,7 +169,7 @@ contains
              end if
           end do
        else
-          thisOctal%x_i(subcell) = 1.d10*(subcellCentre(thisOctal, subcell) .dot. direction)
+          thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction)
        endif
     enddo
   end subroutine setupX
@@ -212,7 +212,7 @@ contains
           thisOctal%x_i_minus_1(subcell) = 0.d0
           thisOctal%x_i_plus_1(subcell) = 0.d0
           if (.not.thisOctal%ghostCell(subcell)) then
-             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
@@ -223,7 +223,7 @@ contains
 
              reverseDirection = (-1.d0) * direction
              
-             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, reversedirection, q, rho, rhoe, &
@@ -271,7 +271,7 @@ contains
           if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 
@@ -324,7 +324,7 @@ contains
           if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 
@@ -370,7 +370,7 @@ contains
           if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
 
@@ -417,15 +417,15 @@ contains
           if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             thisOctal%x_i(subcell) = 1.d10*(subcellCentre(thisOctal, subcell) .dot. direction)
-             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction)
+             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux)
              thisOctal%flux_i_plus_1(subcell) = flux
 
-             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, (-1.d0)*direction, q, rho, rhoe, &
@@ -466,7 +466,7 @@ contains
 
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
@@ -474,7 +474,7 @@ contains
              thisOctal%pressure_i_plus_1(subcell) = pressure
 
              
-             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, (-1.d0)*direction, q, rho, rhoe, &
@@ -514,14 +514,14 @@ contains
              if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux)
              thisOctal%u_i_plus_1(subcell) = rhou/rho
              
-             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, (-1.d0)*direction, q, rho, rhoe, &
@@ -561,14 +561,14 @@ contains
              if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal =>thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux)
              thisOctal%u_i_plus_1(subcell) = rhov/rho
              
-             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, (-1.d0)*direction, q, rho, rhoe, &
@@ -608,14 +608,14 @@ contains
              if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
                   rhou, rhov, rhow, x, qnext, pressure, flux)
              thisOctal%u_i_plus_1(subcell) = rhow/rho
              
-             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell)
+             locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, (-1.d0)*direction, q, rho, rhoe, &
@@ -664,6 +664,7 @@ contains
           eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
           eThermal = eTot - eKinetic
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
+          bigGamma = 0.d0
           if (.not.thisOctal%ghostCell(subcell)) then
              if (thisOctal%u_i_plus_1(subcell) .le. thisOctal%u_i_minus_1(subcell)) then
                 bigGamma = 0.25d0 * eta**2 * (thisOctal%u_i_plus_1(subcell) - thisOctal%u_i_minus_1(subcell))**2 &
@@ -720,6 +721,7 @@ contains
           eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
           eThermal = eTot - eKinetic
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
+          bigGamma = 0.d0
           if (.not.thisOctal%ghostCell(subcell)) then
              if (thisOctal%u_i_plus_1(subcell) .le. thisOctal%u_i_minus_1(subcell)) then
                 bigGamma = 0.25d0 * eta**2 * (thisOctal%u_i_plus_1(subcell) - thisOctal%u_i_minus_1(subcell))**2 &
@@ -775,6 +777,7 @@ contains
           eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
           eThermal = eTot - eKinetic
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
+          bigGamma = 0.d0
           if (.not.thisOctal%ghostCell(subcell)) then
              if (thisOctal%u_i_plus_1(subcell) .le. thisOctal%u_i_minus_1(subcell)) then
                 bigGamma = 0.25d0 * eta**2 * (thisOctal%u_i_plus_1(subcell) - thisOctal%u_i_minus_1(subcell))**2 &
@@ -1451,6 +1454,7 @@ contains
     call pressureForceU(grid%octreeRoot, dt/2.d0)
 
 
+
     direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
     call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
     call setupWi(grid%octreeRoot, grid, direction)
@@ -1517,7 +1521,7 @@ contains
 
              cs = soundSpeed(thisOctal, subcell, gamma)
 !             if (myrank==1) write(*,*) "cs ", cs/1.d5, "km/s"
-             dx = thisOctal%subcellSize*1.d10
+             dx = thisOctal%subcellSize
              speed = sqrt((thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
                   + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2)
                 tc = min(tc, dx / (cs + speed) )
@@ -1533,7 +1537,11 @@ contains
     real(double) :: cs, gamma
     real(double) :: u2, eKinetic, eTot, eThermal
 
-    u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+    if (thisOctal%threed) then
+       u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+    else
+       u2 = (thisOctal%rhou(subcell)**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+    endif
     eKinetic = u2 / 2.d0
     eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
     eThermal = eTot - eKinetic
@@ -1909,12 +1917,13 @@ contains
        do
           gridConverged = .true.
           call setupEdges(grid%octreeRoot, grid)
-!          call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
+          call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
           call unsetGhosts(grid%octreeRoot)
-          call setupGhostCells(grid%octreeRoot, grid, "mirror")
+          call setupGhostCells(grid%octreeRoot, grid, "mirror", flag=.true.)
           if (gridConverged) exit
        end do
     else
+       write(*,*) "calling even up grid mpi"
        call evenUpGridMPI(grid, inheritFlag=.false.)
     endif
 
@@ -1935,7 +1944,6 @@ contains
        call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        call MPI_ALLREDUCE(globalConverged, tConverged, 4, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-       if (myrankglobal==1)write(*,*) tconverged(1:4)
        if (ALL(tConverged(1:4))) exit
     end do
 
@@ -1984,6 +1992,7 @@ contains
 !    stop
 
 !    do while(currentTime < 0.2d0)
+
     do while(.true.)
        tc = 0.d0
        tc(myrank) = 1.d30
@@ -2000,7 +2009,11 @@ contains
 
        call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
 
+
        call hydroStep2d(grid, gamma, dt, "mirror", nPairs, thread1, thread2, nBound)
+
+
+
        call tune(6,"Hydrodynamics step")
        call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
 
@@ -2051,7 +2064,8 @@ contains
 !          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
           call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.,plotgrid=.false.)
-          call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1., plotgrid=.true.)
+!          call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1., plotgrid=.true.)
+!          call plotGridMPI(grid, "/xs", "x-z", "rhoe", plotgrid=.true.)
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
@@ -2395,9 +2409,13 @@ contains
                    bOctal => thisOctal
                    call findSubcellLocal(locator, bOctal, bSubcell)
 
+!                   if (bOctal%ghostCell(bSubcell)) then
+!                      write(*,*) "Error selecting boundary partner!!!"
+!                   endif
+
                    dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
                    call normalize(dir)
-                   thisOctal%tempStorage(subcell,1) = bOctal%rho(bSubcell)
+                   Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
                    thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
 
 ! NB confusion regarding 2d being x,z rather than x,y
@@ -2413,7 +2431,7 @@ contains
                          thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
                          thisOctal%tempStorage(subcell,5) = -bOctal%rhow(bSubcell)
                       endif
-                      if ((abs(dir%x) > 0.2d0).and.abs(dir%z) > 0.2d0) then
+                      if ((abs(dir%x) > 0.5d0).and.abs(dir%z) > 0.5d0) then
                          thisOctal%tempStorage(subcell,3) = -bOctal%rhou(bSubcell)
                          thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
                          thisOctal%tempStorage(subcell,5) = -bOctal%rhow(bSubcell)
@@ -2497,7 +2515,6 @@ contains
              end if
           end do
        else
-
           if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
 
@@ -2526,7 +2543,7 @@ contains
           nProbeOutside = 0
           do iProbe = 1, nProbes
              locator = rVec + &
-                  (thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*probe(iProbe)
+                  (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
              if (.not.inOctal(grid%octreeRoot, locator).or. &
                   (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) &
                   nProbeOutside = nProbeOutside + 1
@@ -2537,20 +2554,22 @@ contains
           if (.not.corner) then
              do iProbe = 1, nProbes
                 locator = rVec + &
-                     (thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*probe(iProbe)
+                     (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
                 ! this is fudged here because AMR mod assumes that the grid is one-d spherical....
                 if (.not.inOctal(grid%octreeRoot, locator).or. &
                      (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) then  ! this is a boundary
                    ! setup the the two ghosts near the boundary
                    
                    thisOctal%ghostCell(subcell) = .true.
-                   if (present(flag)) thisOCtal%rho(subcell) = 0.5d0
+                   if (present(flag)) then
+                      thisOCtal%rho(subcell) = 2.5d0
+                   endif
                    locator = rVec - &
-                        (thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*probe(iProbe)
+                        (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
                    neighbourOctal => thisOctal
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                    neighbourOctal%ghostCell(neighbourSubcell) = .true.
-                   if (present(flag)) neighbourOctal%rho(neighbourSubcell) = 0.5d0
+                   if (present(flag)) neighbourOctal%rho(neighbourSubcell) = 2.5d0
                    
                    ! now a case to determine the boundary cell relations
                    select case (boundaryCondition)
@@ -2568,7 +2587,7 @@ contains
                       tempOctal%feederCell(tempsubcell) = .true.
                       
                       if (present(flag)) then
-                         tempOctal%rho(tempSubcell) = 0.8d0
+                         tempOctal%rho(tempSubcell) = 3.d0
                       endif
 
 
@@ -2581,7 +2600,7 @@ contains
                       tempOctal%feederCell(tempsubcell) = .true.
                       
                       if (present(flag)) then
-                         tempOctal%rho(tempSubcell) = 0.8d0
+                         tempOctal%rho(tempSubcell) = 3.d0
                       endif
 
                    case DEFAULT
@@ -2599,19 +2618,19 @@ contains
              endif
                    
              thisOctal%ghostCell(subcell) = .true.
-             if (present(flag))  thisOCtal%rho(subcell) = 0.5d0
+             if (present(flag))  thisOCtal%rho(subcell) = 1.5d0
              locator = rVec - &
-                  (thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*direction
+                  (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*direction
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
              neighbourOctal%ghostCell(neighbourSubcell) = .true.
-             if (present(flag)) neighbourOctal%rho(neighbourSubcell) = 0.5d0
+             if (present(flag)) neighbourOctal%rho(neighbourSubcell) = 2.2d0
                    
                    
              ! now a case to determine the boundary cell relations
              select case (boundaryCondition)
              case("mirror")
-                dx = sqrt(2.d0)*thisOctal%subcellSize
+                 dx = sqrt(2.d0)*thisOctal%subcellSize
                 thisOctal%ghostCell(subcell) = .true.
                 
                 call locatorToNeighbour(grid, thisOctal, subcell, (-1.d0)*direction, 3, locator)
@@ -2705,7 +2724,7 @@ contains
           nProbeOutside = 0
           do iProbe = 1, nProbes
              locator = rVec + &
-                  (thisOctal%subcellsize/2.d0 + 0.1d0*grid%halfSmallestSubcell)*probe(iProbe)
+                  (thisOctal%subcellsize/2.d0 + 0.01d0*grid%halfSmallestSubcell)*probe(iProbe)
              if (.not.inOctal(grid%octreeRoot, locator).or. &
                   (locator%x < (grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize))) &
                   nProbeOutside = nProbeOutside + 1
@@ -2796,7 +2815,7 @@ contains
     maxGradient = 1.d-30
     do i = 1, nProbes
        locator = subcellCentre(thisOctal, subcell) + &
-            (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell) * probe(i)
+            (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * probe(i)
        if (inOctal(grid%octreeRoot, locator)) then
           neighbourOctal => thisOctal
           call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -2865,7 +2884,7 @@ contains
 
           if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
-          r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
+          r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              nDir = 6
@@ -2877,7 +2896,7 @@ contains
              dirVec(6) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
           else if (thisOctal%twod) then
              nDir = 4
-             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
+             dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)  
              dirVec(2) = OCTALVECTOR(-1.d0,0.d0, 0.d0)
              dirVec(3) = OCTALVECTOR( 0.d0, 0.d0,  1.d0)
              dirVec(4) = OCTALVECTOR( 0.d0, 0.d0, -1.d0)
@@ -2968,7 +2987,7 @@ contains
 
           if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
-          r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
+          r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              nDir = 6
@@ -2994,7 +3013,7 @@ contains
           do i = 1, nDir
              maxGradient = 1.d-30
              locator = subcellCentre(thisOctal, subcell) + &
-                  (thisOctal%subcellSize/2.d0+0.1d0*grid%halfSmallestSubcell) * dirVec(i)
+                  (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(i)
              if (inOctal(grid%octreeRoot, locator)) then
                 neighbourOctal => thisOctal
                 call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -3115,6 +3134,60 @@ contains
 
   end subroutine refineEdges
 
+  recursive subroutine refineFeeders(thisOctal, grid,  converged, inherit)
+
+    use input_variables, only : maxDepthAMR
+    include 'mpif.h'
+    type(gridtype) :: grid
+    real :: factor
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child, neighbourOctal, startOctal
+    !
+    integer :: subcell, i, ilambda
+    logical :: converged, converged_tmp
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat, rvec
+    integer :: neighbourSubcell, j, nDir
+    real(double) :: r
+    logical, optional :: inherit
+    integer :: myRank, ierr
+    converged = .true.
+    converged_tmp=.true.
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+
+    do subcell = 1, thisOctal%maxChildren
+
+
+
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call refineFeeders(child, grid,  converged, inherit)
+                if (.not.converged) return
+                if (.not.converged) converged_tmp = converged
+                exit
+             end if
+          end do
+          if (.not.converged_tmp) converged=converged_tmp
+       else
+          
+          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+
+
+          if ((thisOctal%feederCell(subcell)) &
+          .and.thisOctal%nDepth<maxDepthAMR) then
+             call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                  inherit=inherit, interp=.false.)
+             converged = .false.
+          endif
+          if (.not.converged) exit
+       endif
+    end do
+
+  end subroutine refineFeeders
+
 
 
   subroutine locatorToNeighbour(grid, thisOctal, subcell, direction, ncells, locator)
@@ -3126,7 +3199,7 @@ contains
     tempSubcell = subcell
     do i = 1, nCells
        rVec = subcellCentre(tempOctal, tempSubcell) + &
-            (tempOctal%subcellSize/2 + 0.1d0*grid%halfSmallestSubcell) * direction 
+            (tempOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell) * direction 
        call findSubcellLocal(rVec, tempOctal, tempSubcell)
     enddo
     locator = rVec
@@ -3272,6 +3345,7 @@ contains
           if (gridConverged) exit
        end do
 
+
        do
           gridConverged = .true.
           call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
@@ -3329,7 +3403,7 @@ contains
              do i = 1, nExternalLocs
                 call splitAtLocator(grid, elocs(i), edepth(i), localChanged(myRank), inherit=inheritflag)
              enddo
-             if (localChanged(myrank)) then
+!             if (localChanged(myrank)) then
                 do
                    gridConverged = .true.
                    call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
@@ -3338,7 +3412,7 @@ contains
                    call setupGhostCells(grid%octreeRoot, grid, "mirror")
                    if (gridConverged) exit
                 end do
-             endif
+!             endif
           endif
        enddo
        call MPI_ALLREDUCE(localChanged, globalChanged, 8, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
@@ -3420,7 +3494,7 @@ contains
 
           if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
-          r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
+          r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              nDir = 6
@@ -3628,7 +3702,7 @@ contains
 
           if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
-          r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
+          r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              nDir = 6

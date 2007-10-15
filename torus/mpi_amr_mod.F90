@@ -86,6 +86,7 @@ contains
              valueMin = MINVAL(value(1:nSquares))
              valueMax = MAXVAL(value(1:nSquares))
           endif
+          write(*,*) "val min max ", valuemin, valuemax
           call pgpage
           if (present(valueMinFlag)) valueMin = valueMinFlag
           if (present(valueMaxFlag)) valueMax = valueMaxFlag
@@ -99,7 +100,11 @@ contains
           
           do i = 1, nSquares
              if (.not.logscale) then
-                t = (value(i)-valueMin)/(valueMax-valueMin)
+                if (valueMax /= valueMin) then
+                   t = (value(i)-valueMin)/(valueMax-valueMin)
+                else
+                   t = 0.
+                endif
              else
                 t = (log10(value(i))-log10(valuemin))/(log10(valuemax)-log10(valuemin))
              endif
@@ -211,6 +216,10 @@ contains
                 tmp = thisOctal%rho(subcell)
              case("rhou")
                 tmp = thisOctal%rhou(subcell)
+             case("rhov")
+                tmp = thisOctal%rhov(subcell)
+             case("rhow")
+                tmp = thisOctal%rhow(subcell)
              case("rhoe")
                 tmp = thisOctal%rhoe(subcell)
              case("ionization")
@@ -540,7 +549,7 @@ contains
              cycle
           endif
 
-          r = thisOctal%subcellSize/2.d0 + 0.1d0*grid%halfSmallestSubcell
+          r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
           if (thisOctal%threed) then
              nDir = 6
@@ -650,6 +659,9 @@ contains
 
     nbound = getNboundFromDirection(direction)
 
+    if ((thisOctal%twoD).and.((nBound == 5).or. (nBound == 6))) then
+       write(*,*) "Bonndary error for twod: ",nbound
+    endif
     if (neighbourOctal%mpiThread(neighbourSubcell) == myRank) then
 
        x = neighbourOctal%x_i(neighbourSubcell)
@@ -733,9 +745,12 @@ contains
        endif
        q = neighbourOctal%q_i(neighbourSubcell)
        rho = neighbourOctal%rho(neighbourSubcell)
+       rhoe = neighbourOctal%rhoe(neighbourSubcell)
        rhou = neighbourOctal%rhou(neighbourSubcell)
        rhov = neighbourOctal%rhov(neighbourSubcell)
        rhow = neighbourOctal%rhow(neighbourSubcell)
+       pressure = neighbourOctal%pressure_i(neighbourSubcell)
+       flux = neighbourOctal%flux_i(neighbourSubcell)
      else if (neighbourOctal%twoD) then
        if (direction%x > 0.9d0) then
           nSubcell(1) = 1
@@ -752,9 +767,12 @@ contains
        endif
        q = 0.5d0*(neighbourOctal%q_i(nSubcell(1)) + neighbourOctal%q_i(nSubcell(2)))
        rho = 0.5d0*(neighbourOctal%rho(nSubcell(1)) + neighbourOctal%rho(nSubcell(2)))
+       rhoe = 0.5d0*(neighbourOctal%rhoe(nSubcell(1)) + neighbourOctal%rhoe(nSubcell(2)))
        rhou = 0.5d0*(neighbourOctal%rhou(nSubcell(1)) + neighbourOctal%rhou(nSubcell(2)))
        rhov = 0.5d0*(neighbourOctal%rhov(nSubcell(1)) + neighbourOctal%rhov(nSubcell(2)))
        rhow = 0.5d0*(neighbourOctal%rhow(nSubcell(1)) + neighbourOctal%rhow(nSubcell(2)))
+       pressure = 0.5d0*(neighbourOctal%pressure_i(nSubcell(1)) + neighbourOctal%pressure_i(nSubcell(2)))
+       flux = 0.5d0*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)))
     else if (neighbourOctal%threed) then
        if (direction%x > 0.9d0) then
           nSubcell(1) = 1

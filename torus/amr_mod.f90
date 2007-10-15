@@ -4694,7 +4694,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
-    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep
+    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr
     IMPLICIT NONE
 !    include 'mpif.h'
     TYPE(octal), intent(inout) :: thisOctal
@@ -5004,7 +5004,9 @@ IF ( .NOT. gridConverged ) RETURN
 
    case("hydro1d")
       split = .false.
-      if (thisOctal%nDepth < 6) split = .true.
+      if (thisOctal%nDepth < minDepthAMR) split = .true.
+!      rVec = subcellCentre(thisOctal, subcell)
+!      if ( (modulus(rVec)< 0.1d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
 
    case("sedov")
       split = .false.
@@ -7734,7 +7736,7 @@ IF ( .NOT. gridConverged ) RETURN
 !    endif
 
 !    if (thisOctal%threed) then
-    xMid = -0.5d0 - z
+    xMid = -0.75d0 - z
 !    endif
 
     if  (thisOctal%threed) then
