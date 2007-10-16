@@ -41,7 +41,8 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           dq = thisOctal%q_i(subcell) - thisOctal%q_i_minus_1(subcell)
           if (abs(dq) > 0.d0) then
@@ -90,7 +91,8 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (thisOctal%u_interface(subcell).ge.0.d0) then
              thisOctal%flux_i(subcell) = thisOctal%u_interface(subcell) * thisOctal%q_i_minus_1(subcell)
@@ -134,8 +136,8 @@ contains
           end do
        else
 
-
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
 !             thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
@@ -199,7 +201,8 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
 !          if (associated(thisOctal%mpiBoundaryStorage)) then
 !             if (myrank == 1) then
@@ -268,7 +271,8 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
@@ -321,7 +325,8 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
@@ -367,7 +372,8 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
@@ -414,7 +420,8 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
              thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction)
@@ -462,7 +469,8 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
 
           if (.not.thisOctal%ghostCell(subcell)) then
@@ -511,7 +519,8 @@ contains
              end if
           end do
        else
-             if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
@@ -558,7 +567,8 @@ contains
              end if
           end do
        else
-             if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
@@ -605,7 +615,8 @@ contains
              end if
           end do
        else
-             if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
@@ -654,7 +665,9 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+
           
 !          u = thisOctal%rhou(subcell) / thisOctal%rho(subcell)
 !          eKinetic = u**2 / 2.d0
@@ -711,7 +724,9 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+
           
 !          u = thisOctal%rhov(subcell) / thisOctal%rho(subcell)
 !          eKinetic = u**2 / 2.d0
@@ -767,7 +782,9 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+
           
 !          u = thisOctal%rhow(subcell) / thisOctal%rho(subcell)
 !          eKinetic = u**2 / 2.d0
@@ -821,7 +838,8 @@ contains
              end if
           end do
        else
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
 
@@ -878,7 +896,8 @@ contains
              end if
           end do
        else
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
 
@@ -936,7 +955,10 @@ contains
              end if
           end do
        else
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+
 
           if (.not.thisOctal%ghostCell(subcell)) then
 
@@ -1515,7 +1537,8 @@ contains
              end if
           end do
        else
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
 
@@ -1891,9 +1914,9 @@ contains
 
     call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound)
 
-!    do i = 1, nPairs
-!       if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
-!    enddo
+    do i = 1, nPairs
+       if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
+    enddo
 
 
     call writeInfo("Calling exchange across boundary", TRIVIAL)
@@ -2064,7 +2087,6 @@ contains
 !          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
           call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.,plotgrid=.false.)
-!          call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1., plotgrid=.true.)
 !          call plotGridMPI(grid, "/xs", "x-z", "rhoe", plotgrid=.true.)
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
@@ -2515,7 +2537,8 @@ contains
              end if
           end do
        else
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
 
           if (thisOctal%oned) then
@@ -2696,7 +2719,8 @@ contains
              end if
           end do
        else
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           thisOctal%edgeCell(subcell) = .false.
           if (thisOctal%oned) then
@@ -2882,7 +2906,8 @@ contains
           if (.not.converged_tmp) converged=converged_tmp
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -2959,7 +2984,7 @@ contains
     integer :: neighbourSubcell, j, nDir
     real(double) :: r, grad, maxGradient
     logical, optional :: inherit
-    real(double), parameter :: limit = 0.1d0
+    real(double), parameter :: limit = 0.01d0
     real(double) :: gamma
     real(double) :: cs, rhocs
     integer :: myRank, ierr
@@ -2985,7 +3010,8 @@ contains
        else
 
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -3119,7 +3145,8 @@ contains
           if (.not.converged_tmp) converged=converged_tmp
        else
           
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
 
           if ((thisOctal%edgeCell(subcell)) &
@@ -3173,7 +3200,8 @@ contains
           if (.not.converged_tmp) converged=converged_tmp
        else
           
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
 
           if ((thisOctal%feederCell(subcell)) &
@@ -3492,7 +3520,8 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -3700,7 +3729,8 @@ contains
           end do
        else
 
-          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)

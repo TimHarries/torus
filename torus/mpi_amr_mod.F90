@@ -206,9 +206,10 @@ contains
           end do
        else
 
-          if ((grid%splitOverMpi).and.(thisOctal%mpiThread(subcell) /= myRank)) then
-             cycle
-          endif
+!          if ((grid%splitOverMpi).and.(thisOctal%mpiThread(subcell) /= myRank)) then
+!             cycle
+!          endif
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           rVec = subcellCentre(thisOctal, subcell)
           select case(valuename)
@@ -341,7 +342,8 @@ contains
              
              if (.not.thisOctal%hasChild(subcell)) then
                 
-                if (thisOctal%mpiThread(subcell) /= myRank) cycle
+!                if (thisOctal%mpiThread(subcell) /= myRank) cycle
+                if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
                 
                 octVec = subcellCentre(thisOctal, subcell) + &
                      (thisOctal%subcellSize/2.d0+0.01d0 * grid%halfSmallestSubcell) * direction
@@ -357,9 +359,11 @@ contains
                 neighbourOctal => thisOctal
                 call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
 
-                if (neighbourOctal%mpiThread(neighboursubcell) == receiveThread) cycle 
-                
-                if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
+!                if (neighbourOctal%mpiThread(neighboursubcell) == receiveThread) cycle 
+                if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
+
+!                if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
+                if (.not.octalOnThread(neighbourOctal, neighbourSubcell, sendThread)) then
                    write(*,*) "Neighbour on ",boundaryType, " of ", myrankglobal,"  is not on thread ", sendThread, " but ", &
                    neighbourOctal%mpiThread(neighboursubcell)
                    stop
@@ -545,9 +549,10 @@ contains
           end do
        else
 
-          if ((grid%splitOverMpi).and.(thisOctal%mpiThread(subcell) /= ithread)) then
-             cycle
-          endif
+!          if ((grid%splitOverMpi).and.(thisOctal%mpiThread(subcell) /= ithread)) then
+!             cycle
+!          endif
+          if (.not.octalOnThread(thisOctal, subcell, iThread)) cycle
 
           r = thisOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell
           centre = subcellCentre(thisOctal, subcell)
@@ -577,7 +582,9 @@ contains
                 neighbourOctal => thisOctal
                 call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
                 
-                if (neighbourOctal%mpiThread(neighboursubcell) /= iThread) then
+
+!                if (neighbourOctal%mpiThread(neighboursubcell) /= iThread) then
+                   if (.not.octalOnThread(neighbourOctal, neighbourSubcell, iThread)) then
                    i1 = ithread
                    i2 = neighbourOctal%mpiThread(neighboursubcell)
                    alreadyInList = .false.
@@ -987,5 +994,56 @@ contains
 
     end do
   end subroutine columnAlongPathAMR
+
+
+  function octalOnThread(thisOctal, subcell, myRank) result(check)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    integer :: myRank
+    logical :: check
+    integer :: nHydroThreads
+    integer :: nFirstLevel
+    nHydroThreads = nThreadsGlobal - 1
+
+    if (thisOctal%twoD) then
+       if (nHydroThreads == 4) then
+          if (thisOctal%mpiThread(subcell) == myRank) then
+             check = .true.
+          else
+             check = .false.
+          endif
+       endif
+       if (nHydroThreads == 16) then
+          nFirstLevel = (myRank-1) / 4 + 1
+          if (thisOctal%nDepth == 1) then
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else
+             if (thisOctal%mpiThread(subcell) == myRank) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          endif
+       endif
+    endif
+
+    if (thisOctal%threeD) then
+       if (nHydroThreads == 8) then
+          if (thisOctal%mpiThread(subcell) == myRank) then
+             check = .true.
+          else
+             check = .false.
+          endif
+       endif
+    endif
+  end function octalOnThread
+
+
+
+
 #endif
 end module mpi_amr_mod

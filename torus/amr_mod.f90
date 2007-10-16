@@ -526,7 +526,7 @@ CONTAINS
                                        ! - this isn't very clever. might change it. 
     INTEGER       :: nChildren         ! number of children the parent octal has
     INTEGER       :: newChildIndex     ! the storage location for the new child
-    integer :: np
+    integer :: np, i
     logical :: inheritProps, interpolate
     type(OCTALVECTOR) :: rVec
     ! array of octals that may be needed for temporarily storing child octals
@@ -600,10 +600,30 @@ CONTAINS
     ENDIF
     NULLIFY(parent%child(newChildIndex)%child)
 
+
+    parent%child(newChildIndex)%nDepth = parent%nDepth + 1
+
 ! setup mpiThread values
 
-    parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+    if ( ((parent%twoD).and.((nThreadsGlobal - 1) == 4)) .or. &
+         ((parent%threed).and.((nThreadsGlobal -1) == 8)) ) then
+       parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+    else
 
+       if (parent%child(newChildIndex)%nDepth > 2) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          if (parent%twoD) then
+             do i = 1, 4
+                parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
+             enddo
+          else if (parent%Threed) then
+             do i = 1, 8
+                parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
+             enddo
+          endif
+       endif
+    endif
 
     if (cmf) then
        allocate(parent%child(newChildIndex)%atomAbundance(8, 1:nAtom))
@@ -681,7 +701,6 @@ CONTAINS
     parent%child(newChildIndex)%nChildren = 0
     parent%child(newChildIndex)%nDirectPhotons = -1
     parent%child(newChildIndex)%indexChild = -999 ! values are undefined
-    parent%child(newChildIndex)%nDepth = parent%nDepth + 1
     parent%child(newChildIndex)%centre = subcellCentre(parent,iChild)
     if (parent%cylindrical) then
        parent%child(newChildIndex)%r = subcellRadius(parent,iChild)
@@ -5489,12 +5508,26 @@ IF ( .NOT. gridConverged ) RETURN
 
    np = 8 
 
+
    if (grid%splitOverMPI) then
-      if ((thisOctal%nDepth == 1).and.(subcell /= myRankGlobal)) then
-         split = .false.
-      endif
-      if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
-         split = .false.
+      if ((thisOctal%twoD.and.(nThreadsGlobal-1)==4).or. &
+           (thisOctal%threed.and.(nThreadsGlobal-1)==8)) then
+         if ((thisOctal%nDepth == 1).and.(subcell /= myRankGlobal)) then
+            split = .false.
+         endif
+         if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+            split = .false.
+         endif
+      else
+         if (thisOctal%twoD) then
+            if (thisOctal%nDepth == 1) then
+               split = .true.
+            else if (thisOctal%nDepth > 1) then
+               if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+                  split = .false.
+               endif
+            endif
+         endif
       endif
    endif
 
