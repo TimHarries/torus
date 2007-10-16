@@ -1670,7 +1670,7 @@ contains
     type(SOURCETYPE) :: source(1)
     integer :: nDependent, dependentThread(100)
     integer :: thread1(100), thread2(100), nBound(100), nPairs
-    logical :: globalConverged(8), tConverged(8)
+    logical :: globalConverged(64), tConverged(64)
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
@@ -1871,7 +1871,7 @@ contains
   subroutine doHydrodynamics2d(grid)
     include 'mpif.h'
     type(gridtype) :: grid
-    real(double) :: dt, tc(8), temptc(8),cfl, gamma, mu
+    real(double) :: dt, tc(64), temptc(64),cfl, gamma, mu
     real(double) :: currentTime
     integer :: i, pgbegin, it, iUnrefine
     integer :: myRank, ierr
@@ -1883,7 +1883,10 @@ contains
     type(SOURCETYPE) :: source(1)
     integer :: nDependent, dependentThread(100)
     integer :: thread1(100), thread2(100), nBound(100), nPairs
-    logical :: globalConverged(8), tConverged(8)
+    logical :: globalConverged(64), tConverged(64)
+    integer :: nHydroThreads 
+
+    nHydroThreads = nThreadsGlobal - 1
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
@@ -1946,7 +1949,6 @@ contains
           if (gridConverged) exit
        end do
     else
-       write(*,*) "calling even up grid mpi"
        call evenUpGridMPI(grid, inheritFlag=.false.)
     endif
 
@@ -2020,11 +2022,11 @@ contains
        tc = 0.d0
        tc(myrank) = 1.d30
        call computeCourantTime(grid%octreeRoot, tc(myRank), gamma)
-       call MPI_ALLREDUCE(tc, tempTc, 4, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+       call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
 !       write(*,*) "tc", tc(1:8)
 !       write(*,*) "temp tc",temptc(1:8)
        tc = tempTc
-       dt = MINVAL(tc(1:4)) * cfl
+       dt = MINVAL(tc(1:nHydroThreads)) * cfl
 
        if (myrank == 1) write(*,*) "courantTime", dt
        call tune(6,"Hydrodynamics step")
@@ -2056,8 +2058,8 @@ contains
           call writeInfo("Exchanging boundaries", TRIVIAL)    
           call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          call MPI_ALLREDUCE(globalConverged, tConverged, 4, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-          if (ALL(tConverged(1:4))) exit
+          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+          if (ALL(tConverged(1:nHydroThreads))) exit
        end do
        
        iUnrefine = iUnrefine + 1
@@ -3341,16 +3343,16 @@ contains
     integer :: myRank, nThreads
     include 'mpif.h'  
     integer :: ierr
-    logical :: globalConverged, localChanged(8)
+    logical :: globalConverged, localChanged(64)
     type(OCTALVECTOR) :: locs(10000), eLocs(10000)
-    integer :: nLocs(8), tempNlocs(8)
+    integer :: nLocs(64), tempNlocs(10000)
     integer :: thread(10000), nLocsGlobal,i, depth(10000)
     real(double) :: temp(10000,4),tempsent(4)
     integer :: nTemp(1), nSent(1), eDepth(10000)
     integer :: iThread, nExternalLocs
     integer :: iter
     integer, parameter :: tag = 1
-    logical :: globalChanged(8)
+    logical :: globalChanged(64)
     integer :: status(MPI_STATUS_SIZE)
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -3386,7 +3388,7 @@ contains
        nLocs = 0
        call locatorsToExternalCells(grid%octreeRoot, grid, nLocs(myRank), locs, thread, depth)
 
-       call MPI_ALLREDUCE(nLocs, tempnLocs, 8, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
+       call MPI_ALLREDUCE(nLocs, tempnLocs, nThreadsglobal-1, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
        nLocsGlobal = SUM(tempnLocs)
 
        do iThread = 1, nThreads-1
@@ -3443,8 +3445,8 @@ contains
 !             endif
           endif
        enddo
-       call MPI_ALLREDUCE(localChanged, globalChanged, 8, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
-       if (ANY(globalChanged)) then
+       call MPI_ALLREDUCE(localChanged, globalChanged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+       if (ANY(globalChanged(1:nThreadsGlobal-1))) then
           globalConverged = .false.
        else
           globalConverged = .true.
