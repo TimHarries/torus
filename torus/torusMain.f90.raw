@@ -19,12 +19,13 @@
 ! RK : 12/02/03 Parallelized major loops in lucyStateEquilibriumAMR, stateqAMR, torusMain.
 ! RK : 07/07/05 Added the observed flux solver in oberver's frame. 
 
-
-!$PRG program torus
-
-!$SPH subroutine torus(b_idim,b_npart,b_nactive,b_xyzmh,b_rho,b_iphase, &
-!$SPH                  b_nptmass,b_listpm,b_udist,b_umass, &
-!$SPH                  b_utime,b_time,b_gaspartmass,b_temp)
+#ifdef SPH
+ subroutine torus(b_idim,b_npart,b_nactive,b_xyzmh,b_rho,b_iphase, &
+                  b_nptmass,b_listpm,b_udist,b_umass, &
+                  b_utime,b_time,b_gaspartmass,b_temp)
+#else
+program torus
+#endif
 
 
   use constants_mod          ! physical constants
@@ -447,17 +448,19 @@
 
 ! Variables used when linking to sph code
   logical, parameter :: ll_sphFromFile = .false.   ! Read in sph data from a file?
-!$SPH  integer :: b_idim,b_npart,b_nactive,b_nptmass
-!$SPH  integer :: npart, nptmass, nacc, ngaspart
-!$SPH  integer :: iii, iiipart, iiigas
-!$SPH  integer*1 :: b_iphase(b_idim)
-!$SPH  integer :: b_listpm(b_nptmass)
-!$SPH  real*8 :: b_xyzmh(5,b_idim)
-!$SPH  real*4 :: b_rho(b_idim), sphDistFac
-!$SPH  real*8 :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
-!$SPH  real*8 :: b_temp(b_idim)
-!$SPH  real*8 :: xgas,ygas,zgas
-!$SPH  real :: tgas
+#ifdef SPH
+  integer   :: b_idim,b_npart,b_nactive,b_nptmass
+  integer   :: npart, nptmass, nacc, ngaspart
+  integer   :: iii, iiipart, iiigas
+  integer*1 :: b_iphase(b_idim)
+  integer   :: b_listpm(b_nptmass)
+  real*8 :: b_xyzmh(5,b_idim)
+  real*4 :: b_rho(b_idim), sphDistFac
+  real*8 :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
+  real*8 :: b_temp(b_idim)
+  real*8 :: xgas,ygas,zgas
+  real   :: tgas
+#endif
 
   real(double) ::  d1, d2, massRatio
 
@@ -811,90 +814,87 @@
   !
   ! Special case
   !
-!$SPH  if (geometry == "cluster") then
-!$SPH
-!$SPH     ! HSC
-!$SPH
-!$SPH     ! The total number of gas particles is the total number of active particles
-!$SPH     ! less the number of point masses.
-!$SPH     ngaspart = b_nactive-b_nptmass
-!$SPH     call init_sph_data(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
-!$SPH                        b_gaspartmass)
-!$SPH
-!$SPH     sphDistfac  = get_udist(sphData)  ! [cm]
-!$SPH     sphDistfac = sphDistfac / 1.e10 ! to torus units
-!$SPH     ! read in the sph data from a file
-!$SPH     !call read_sph_data(sphData, "sph.dat")
-!$SPH
-!$SPH     iiipart=0
-!$SPH     iiigas=0
-!$SPH
-!$SPH     sphData%nptmass=b_nptmass
-!$SPH
-!$SPH     do iii=1,b_npart
-!$SPH       if (b_iphase(iii).eq.0) then
-!$SPH         iiigas=iiigas+1
-!$SPH         if (iiigas > ngaspart) then
-!$SPH           write (*,*) 'iiigas>ngaspart',iiigas, ngaspart
-!$SPH           STOP
-!$SPH         endif
-!$SPH         sphData%rhon(iiigas) = b_rho(iii)
-!$SPH         sphData%xn(iiigas) = b_xyzmh(1,iii)
-!$SPH         sphData%yn(iiigas) = b_xyzmh(2,iii)
-!$SPH         sphData%zn(iiigas) = b_xyzmh(3,iii)
-!$SPH       elseif (b_iphase(iii).gt.0) then
-!$SPH         iiipart=iiipart+1
-!$SPH         if (iiipart.GT.b_nptmass) then
-!$SPH           write (*,*) 'iiipart>b_nptmass',iiipart,b_nptmass
-!$SPH           STOP
-!$SPH         endif
-!$SPH         sphData%x(iiipart) = b_xyzmh(1,iii)
-!$SPH         sphData%y(iiipart) = b_xyzmh(2,iii)
-!$SPH         sphData%z(iiipart) = b_xyzmh(3,iii)
-!$SPH         sphData%ptmass(iiipart) = b_xyzmh(4,iii)
-!$SPH       endif
-!$SPH     end do
-!$SPH
-!$SPH     ! Check the number of gas particles and point masses are as expected
-!$SPH     IF ( iiigas /= ngaspart ) THEN
-!$SPH       print *,'Error: expecting to find', ngaspart, 'gas particles'
-!$SPH       print *, 'but found', iiigas
-!$SPH       STOP
-!$SPH     ENDIF
-!$SPH     IF ( iiipart /= b_nptmass ) THEN
-!$SPH       print *,'Error: expecting to find', b_nptmass, 'point masses'
-!$SPH       print *, 'but found', iiipart
-!$SPH       STOP
-!$SPH     ENDIF
-!$SPH
-!$SPH     ! read in the sph data from a file
-!$SPH     ! call read_sph_data(sphData, "sph.dat")
-!$SPH     ! call read_stellar_disc_data(sphData, "stellar_disc.dat")
-!$SPH
-!$SPH     ! Writing basic info of this data
-!$SPH!$MPI     if(my_rank == 0)  then
-!$SPH
-!$SPH
-!$SPH     !call info(sphData, "*")
-!$SPH     call info(sphData, "info_sph.dat")
-!$SPH!$MPI     end if
-!$SPH
-!$SPH
-!$SPH     ! reading in the isochrone data needed to build an cluster object.
-!$SPH     
-!$SPH     call new(isochrone_data, "dam98_0225")   
-!$SPH     call read_isochrone_data(isochrone_data)
-!$SPH     
-!$SPH     ! making a cluster object
-!$SPH     call new(young_cluster, sphData, dble(amrGridSize), disc_on)
-!$SPH     call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
-!$SPH
-!$SPH     
-!$SPH     ! Wrting the stellar catalog readble for a human
-!$SPH!$MPI     if(my_rank == 0)  &
-!$SPH     call write_catalog(young_cluster, sphData)
-!$SPH  end if
+#ifdef SPH
+  if (geometry == "cluster") then
 
+     ! HSC
+
+     ! The total number of gas particles is the total number of active particles
+     ! less the number of point masses.
+     ngaspart = b_nactive-b_nptmass
+     call init_sph_data(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
+                        b_gaspartmass)
+
+     sphDistfac  = get_udist(sphData)  ! [cm]
+     sphDistfac = sphDistfac / 1.e10 ! to torus units
+     ! read in the sph data from a file
+     !call read_sph_data(sphData, "sph.dat")
+
+     iiipart=0
+     iiigas=0
+
+     sphData%nptmass=b_nptmass
+
+     do iii=1,b_npart
+       if (b_iphase(iii).eq.0) then
+         iiigas=iiigas+1
+         if (iiigas > ngaspart) then
+           write (*,*) 'iiigas>ngaspart',iiigas, ngaspart
+           STOP
+         endif
+         sphData%rhon(iiigas) = b_rho(iii)
+         sphData%xn(iiigas) = b_xyzmh(1,iii)
+         sphData%yn(iiigas) = b_xyzmh(2,iii)
+         sphData%zn(iiigas) = b_xyzmh(3,iii)
+       elseif (b_iphase(iii).gt.0) then
+         iiipart=iiipart+1
+         if (iiipart.GT.b_nptmass) then
+           write (*,*) 'iiipart>b_nptmass',iiipart,b_nptmass
+           STOP
+         endif
+         sphData%x(iiipart) = b_xyzmh(1,iii)
+         sphData%y(iiipart) = b_xyzmh(2,iii)
+         sphData%z(iiipart) = b_xyzmh(3,iii)
+         sphData%ptmass(iiipart) = b_xyzmh(4,iii)
+       endif
+     end do
+
+     ! Check the number of gas particles and point masses are as expected
+     IF ( iiigas /= ngaspart ) THEN
+       print *,'Error: expecting to find', ngaspart, 'gas particles'
+       print *, 'but found', iiigas
+       STOP
+     ENDIF
+     IF ( iiipart /= b_nptmass ) THEN
+       print *,'Error: expecting to find', b_nptmass, 'point masses'
+       print *, 'but found', iiipart
+       STOP
+     ENDIF
+
+     ! read in the sph data from a file
+     ! call read_sph_data(sphData, "sph.dat")
+     ! call read_stellar_disc_data(sphData, "stellar_disc.dat")
+
+     ! Writing basic info of this data
+!$MPI     if(my_rank == 0)  then
+     call info(sphData, "info_sph.dat")
+!$MPI     end if
+
+     ! reading in the isochrone data needed to build an cluster object.
+     
+     call new(isochrone_data, "dam98_0225")   
+     call read_isochrone_data(isochrone_data)
+     
+     ! making a cluster object
+     call new(young_cluster, sphData, dble(amrGridSize), disc_on)
+     call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
+
+    
+     ! Wrting the stellar catalog readble for a human
+!$MPI     if(my_rank == 0)  &
+     call write_catalog(young_cluster, sphData)
+  end if
+#endif
 
 
 
@@ -2888,8 +2888,9 @@
 !$MPI     if (my_rank==1) &
      call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
-
-!$SPH goto 666 ! just jump to end for sph case
+#ifdef SPH
+ goto 666 ! just jump to end for sph case
+#endif
 
      if (grid%geometry(1:7) == "cluster") then
 !$MPI        if (my_rank==0) then
@@ -5259,33 +5260,38 @@
 !$MPI  if (my_rank==1) &
 call tune(6, "Torus Main") ! stop a stopwatch  
 
-!$SPH!  New HSC Stuff
-!$SPH!  Loop through sph gas particles and assign temperatures
-!$SPH
-!$SPH
-!$SPH     iiigas=0
-!$SPH     do i=1,b_npart
-!$SPH 
-!$SPH       if (b_iphase(i).eq.0) then
-!$SPH          iiigas = iiigas + 1 
-!$SPH          xgas = b_xyzmh(1,i) * sphDistFac
-!$SPH          ygas = b_xyzmh(2,i) * sphDistFac
-!$SPH          zgas = b_xyzmh(3,i) * sphDistFac
-!$SPH          octVec = OCTALVECTOR(xgas,ygas,zgas)
-!$SPH          call amrGridValues(grid%octreeRoot, octVec, temperature=tgas, grid=grid)
-!$SPH  !        write(*,*) i,xgas,ygas,zgas,tgas
-!$SPH          b_temp(iiigas)=tgas
-!$SPH       endif
-!$SPH  
-!$SPH     enddo
+#ifdef SPH
+!  New HSC Stuff
+!  Loop through sph gas particles and assign temperatures
+
+
+     iiigas=0
+     do i=1,b_npart
+ 
+       if (b_iphase(i).eq.0) then
+          iiigas = iiigas + 1 
+          xgas = b_xyzmh(1,i) * sphDistFac
+          ygas = b_xyzmh(2,i) * sphDistFac
+          zgas = b_xyzmh(3,i) * sphDistFac
+          octVec = OCTALVECTOR(xgas,ygas,zgas)
+          call amrGridValues(grid%octreeRoot, octVec, temperature=tgas, grid=grid)
+  !        write(*,*) i,xgas,ygas,zgas,tgas
+          b_temp(iiigas)=tgas
+       endif
+  
+     enddo
+#endif
   
 call writeInfo("TORUS exiting", FORINFO)
 
 !$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI  call MPI_FINALIZE(ierr)
 
-!$SPH   end subroutine torus
-!$PRG   end program torus
+#ifdef SPH
+   end subroutine torus
+#else
+   end program torus
+#endif
 
 !!! vim:set filetype=fortran :                                !!!  
 !!! otherwise vim won't recognize a file with the suffix .raw !!!

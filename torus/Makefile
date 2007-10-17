@@ -724,7 +724,7 @@ preprocess:
 	    sed 's/\!$$MPI//g' molecular_mod.f90.raw    > molecular_mod.f90
 	    sed 's/\!$$MPI//g' cmf_mod.f90.raw          > cmf_mod.f90
 	    sed 's/\!$$MPI//g' parallel_mod.f90.raw     > parallel_mod.f90
-	    sed 's/\!$$MPI//g' torusMain.f90.raw        > torusMain.f90
+	    sed 's/\!$$MPI//g' torusMain.f90.raw        > torusMain.f90.tmp
     else
 	    sed '/\!$$MPI/d'   photoion_mod.f90.raw     > photoion_mod.f90
 	    sed '/\!$$MPI/d'   formal_solutions.f90.raw > formal_solutions.f90
@@ -735,20 +735,13 @@ preprocess:
 	    sed '/\!$$MPI/d'   molecular_mod.f90.raw    > molecular_mod.f90
 	    sed '/\!$$MPI/d'   cmf_mod.f90.raw          > cmf_mod.f90
 	    sed '/\!$$MPI/d'   parallel_mod.f90.raw     > parallel_mod.f90
-	    sed '/\!$$MPI/d'   torusMain.f90.raw        > torusMain.f90
+	    sed '/\!$$MPI/d'   torusMain.f90.raw        > torusMain.f90.tmp
     endif
     ifeq ($(MK_SPH_SRC), yes)
-	    sed 's/\!$$SPH//g' torusMain.f90            > tmp.f90
+	    cpp -P -DSPH torusMain.f90.tmp torusMain.f90
     else
-	    sed '/\!$$SPH/d'   torusMain.f90            > tmp.f90
+	    cpp -P torusMain.f90 torusMain.f90
     endif
-	mv tmp.f90 torusMain.f90
-    ifeq ($(MK_PRG_SRC), yes)
-	    sed 's/\!$$PRG//g' torusMain.f90            > tmp.f90
-    else
-	    sed '/\!$$PRG/d'   torusMain.f90            > tmp.f90
-    endif
-	mv tmp.f90 torusMain.f90
 	@echo "...done"
 
 depends: preprocess
