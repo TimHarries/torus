@@ -740,7 +740,7 @@ preprocess:
     ifeq ($(MK_SPH_SRC), yes)
 	    cpp -P -DSPH torusMain.f90.tmp torusMain.f90
     else
-	    cpp -P torusMain.f90 torusMain.f90
+	    cpp -P torusMain.f90.tmp torusMain.f90
     endif
 	@echo "...done"
 
