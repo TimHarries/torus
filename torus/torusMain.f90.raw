@@ -448,7 +448,7 @@
 ! Variables used when linking to sph code
   logical, parameter :: ll_sphFromFile = .false.   ! Read in sph data from a file?
 !$SPH  integer :: b_idim,b_npart,b_nactive,b_nptmass
-!$SPH  integer :: npart, nptmass, nacc
+!$SPH  integer :: npart, nptmass, nacc, ngaspart
 !$SPH  integer :: iii, iiipart, iiigas
 !$SPH  integer*1 :: b_iphase(b_idim)
 !$SPH  integer :: b_listpm(b_nptmass)
@@ -815,8 +815,10 @@
 !$SPH
 !$SPH     ! HSC
 !$SPH
-!$SPH
-!$SPH     call init_sph_data(sphData, b_udist, b_umass, b_utime, b_nactive, b_time, b_nptmass, &
+!$SPH     ! The total number of gas particles is the total number of active particles
+!$SPH     ! less the number of point masses.
+!$SPH     ngaspart = b_nactive-b_nptmass
+!$SPH     call init_sph_data(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
 !$SPH                        b_gaspartmass)
 !$SPH
 !$SPH     sphDistfac  = get_udist(sphData)  ! [cm]
@@ -832,8 +834,8 @@
 !$SPH     do iii=1,b_npart
 !$SPH       if (b_iphase(iii).eq.0) then
 !$SPH         iiigas=iiigas+1
-!$SPH         if (iiigas.GT.b_nactive) then
-!$SPH           write (*,*) 'iiigas>b_nactive',iiigas,b_nactive
+!$SPH         if (iiigas > ngaspart) then
+!$SPH           write (*,*) 'iiigas>ngaspart',iiigas, ngaspart
 !$SPH           STOP
 !$SPH         endif
 !$SPH         sphData%rhon(iiigas) = b_rho(iii)
@@ -853,6 +855,17 @@
 !$SPH       endif
 !$SPH     end do
 !$SPH
+!$SPH     ! Check the number of gas particles and point masses are as expected
+!$SPH     IF ( iiigas /= ngaspart ) THEN
+!$SPH       print *,'Error: expecting to find', ngaspart, 'gas particles'
+!$SPH       print *, 'but found', iiigas
+!$SPH       STOP
+!$SPH     ENDIF
+!$SPH     IF ( iiipart /= b_nptmass ) THEN
+!$SPH       print *,'Error: expecting to find', b_nptmass, 'point masses'
+!$SPH       print *, 'but found', iiipart
+!$SPH       STOP
+!$SPH     ENDIF
 !$SPH
 !$SPH     ! read in the sph data from a file
 !$SPH     ! call read_sph_data(sphData, "sph.dat")
