@@ -11,9 +11,10 @@ echo ""
 echo "This script builds a coupled version of sphNG and torus as a single executable."
 echo ""
 echo "Command line switches are:"
-echo "-d Compile with debug flags switched on"
-echo "-h Display help"
-echo "-o overwrite any existing build"
+echo "-d   Compile with debug flags switched on"
+echo "-h   Display help"
+echo "-o   Overwrite any existing build"
+echo "-mpi Compile for multi-processor running using MPI"
 }
 # Set up the build information here -----------------------------------------------------------------
 
@@ -36,6 +37,8 @@ do
             overwrite=1;;
 	-h) print_help
 	    exit;;
+	-mpi) echo "INFO: compiling sphtorus using MPI"
+	      export SYSTEM="ompi";;
     esac
 shift
 done
@@ -111,8 +114,14 @@ ln -s ${sph_cvs}/COMMONS .
 echo "INFO: Building sphtorus, SYSTEM=${SYSTEM}"
 make updatedepends
 make ${debug_flag} sphtorus
-echo "INFO: moving executable sphtorus to ${sphtorus_dir}/bin"
-mv sphtorus ${sphtorus_dir}/bin
+if [[ -e sphtorus ]]; then
+    echo "INFO: moving executable sphtorus to ${sphtorus_dir}/bin"
+    mv sphtorus ${sphtorus_dir}/bin
+else
+    echo "ERROR: executable was not created"
+    exit 1
+fi
 
 echo "INFO: Exiting normally"
 exit
+
