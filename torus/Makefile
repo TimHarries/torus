@@ -613,11 +613,9 @@ else
 endif
 
 ifeq ($(sph), yes)
-   MK_SPH_SRC = yes
-   MK_PRG_SRC = no
+   SPHFLAG = -DSPH
 else
-   MK_SPH_SRC = no
-   MK_PRG_SRC = yes
+   SPHFLAG = 
 endif
 
 #
@@ -694,7 +692,7 @@ lib: depends $(ALLOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files making a library..."
-	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(F77OBJ)
+	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJ) $(F77OBJ)
 	    @echo "...done"
     else
 	    @echo ""
@@ -717,31 +715,23 @@ preprocess:
     ifeq ($(MK_MPI_SRC), yes)
 	    sed 's/\!$$MPI//g' photoion_mod.f90.raw     > photoion_mod.f90
 	    sed 's/\!$$MPI//g' formal_solutions.f90.raw > formal_solutions.f90
-	    sed 's/\!$$MPI//g' lucy_mod.f90.raw         > lucy_mod.f90
 	    sed 's/\!$$MPI//g' disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
 	    sed 's/\!$$MPI//g' diffusion_mod.f90.raw    > diffusion_mod.f90
 	    sed 's/\!$$MPI//g' stateq_mod.f90.raw       > stateq_mod.f90
 	    sed 's/\!$$MPI//g' molecular_mod.f90.raw    > molecular_mod.f90
 	    sed 's/\!$$MPI//g' cmf_mod.f90.raw          > cmf_mod.f90
-	    sed 's/\!$$MPI//g' parallel_mod.f90.raw     > parallel_mod.f90
-	    sed 's/\!$$MPI//g' torusMain.f90.raw        > torusMain.f90.tmp
     else
 	    sed '/\!$$MPI/d'   photoion_mod.f90.raw     > photoion_mod.f90
 	    sed '/\!$$MPI/d'   formal_solutions.f90.raw > formal_solutions.f90
-	    sed '/\!$$MPI/d'   lucy_mod.f90.raw         > lucy_mod.f90
 	    sed '/\!$$MPI/d'   disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
 	    sed '/\!$$MPI/d'   diffusion_mod.f90.raw    > diffusion_mod.f90
 	    sed '/\!$$MPI/d'   stateq_mod.f90.raw       > stateq_mod.f90
 	    sed '/\!$$MPI/d'   molecular_mod.f90.raw    > molecular_mod.f90
 	    sed '/\!$$MPI/d'   cmf_mod.f90.raw          > cmf_mod.f90
-	    sed '/\!$$MPI/d'   parallel_mod.f90.raw     > parallel_mod.f90
-	    sed '/\!$$MPI/d'   torusMain.f90.raw        > torusMain.f90.tmp
     endif
-    ifeq ($(MK_SPH_SRC), yes)
-	    cpp -P -DSPH torusMain.f90.tmp torusMain.f90
-    else
-	    cpp -P torusMain.f90.tmp torusMain.f90
-    endif
+	    cpp -P            $(MPIFLAG) parallel_mod.f90.raw parallel_mod.f90
+	    cpp -P            $(MPIFLAG) lucy_mod.f90.raw     lucy_mod.f90
+	    cpp -P $(SPHFLAG) $(MPIFLAG) torusMain.f90.raw    torusMain.f90
 	@echo "...done"
 
 depends: preprocess

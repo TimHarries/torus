@@ -307,7 +307,9 @@ contains
     use input_variables, only : rinner, router, variableDustSublimation, zoomFactor, blockhandout
     use input_variables, only : smoothFactor, doSmoothGrid, lambdasmooth, plot_maps
     implicit none
-!$MPI include 'mpif.h'
+#ifdef MPI
+ include 'mpif.h'
+#endif
     type(GRIDTYPE) :: grid
     integer :: nSource
     integer :: iSmoothLam
@@ -324,7 +326,6 @@ contains
     integer :: tempSubcell
     integer, intent(in)  :: nLambda, nMuMie
     type(PHASEMATRIX):: miePhase(1:nDustType,1:nLambda, 1:nMuMie)
-!    real  :: lamArray(:)
     real  :: lamArray(nLambda)
     real(oct) :: r
     real :: massEnvelope, scaleFac
@@ -391,46 +392,47 @@ contains
     integer :: noctals, nvoxels, nCellsInDiffusion
     integer :: omp_get_num_threads, omp_get_thread_num
 
-!$MPI    ! For MPI implementations
-!$MPI  ! For MPI implementations =====================================================
-!$MPI  integer ::   my_rank        ! my processor rank
-!$MPI  integer ::   n_proc         ! The number of processes
-!$MPI  integer ::   ierr           ! error flag
-!$MPI  integer ::   n_rmdr, m      !
-!$MPI  integer ::   mphotons       ! number of photons (actual) 
-!$MPI  integer ::   tempInt        !
-!$MPI  real, dimension(:), allocatable :: tempRealArray
-!$MPI  real, dimension(:), allocatable :: tempRealArray2
-!$MPI  integer, dimension(:), allocatable :: photonBelongsRank
-!$MPI  integer, parameter :: tag = 0
-!$MPI  logical :: rankComplete
-!$MPI    ! data space to store values from all processors
-!$MPI    real, save, allocatable  :: buffer_real(:)     
-!$MPI    logical, save  :: first_time = .true.
-!$MPI
-!!$MPI    ! find the number of the processors for the first time.    
-!!$MPI    if (first_time) then
-!$MPI       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-!!$MPI       allocate(buffer_real(n_proc))
-!!$MPI       first_time = .false.
-!!$MPI    end if
-!$MPI
-!$MPI       allocate(buffer_real(n_proc))
-!$MPI
-!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
-!$MPI    !  Get my process rank # 
-!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI  
-!$MPI    ! Find the total # of precessor being used in this run
-!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-!$MPI    
-!$MPI    if (my_rank .eq. 0) then
-!$MPI       print *, ' '
-!$MPI       print *, 'Lucy radiative equilibrium routine computed by ', n_proc, ' processors.'
-!$MPI       print *, ' '
-!$MPI    endif
-!$MPI    
-!$MPI    ! ============================================================================
+#ifdef MPI
+  ! For MPI implementations =====================================================
+  integer ::   my_rank        ! my processor rank
+  integer ::   n_proc         ! The number of processes
+  integer ::   ierr           ! error flag
+  integer ::   n_rmdr, m      !
+  integer ::   mphotons       ! number of photons (actual) 
+  integer ::   tempInt        !
+  real, dimension(:), allocatable :: tempRealArray
+  real, dimension(:), allocatable :: tempRealArray2
+  integer, dimension(:), allocatable :: photonBelongsRank
+  integer, parameter :: tag = 0
+  logical :: rankComplete
+    ! data space to store values from all processors
+    real, save, allocatable  :: buffer_real(:)     
+    logical, save  :: first_time = .true.
+
+!    ! find the number of the processors for the first time.    
+!    if (first_time) then
+       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
+!       allocate(buffer_real(n_proc))
+!       first_time = .false.
+!    end if
+
+       allocate(buffer_real(n_proc))
+
+    ! FOR MPI IMPLEMENTATION=======================================================
+    !  Get my process rank # 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+    ! Find the total # of precessor being used in this run
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
+    
+    if (my_rank .eq. 0) then
+       print *, ' '
+       print *, 'Lucy radiative equilibrium routine computed by ', n_proc, ' processors.'
+       print *, ' '
+    endif
+    
+    ! ============================================================================
+#endif
 
     allocate(kabsArray(1:nLambda))
 
@@ -473,16 +475,20 @@ contains
 
 
       outputFlag = .true.
-!$MPI if (my_rank/=0) outputFlag = .false.
+#ifdef MPI
+ if (my_rank/=0) outputFlag = .false.
 
-!$MPI if (my_rank==0) &
+ if (my_rank==0) &
+#endif
       call writeAMRgrid("lucy_first_grid.dat", .false., grid)
 
 
 
 !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
 
-!$MPI    if(my_rank == 0) &
+#ifdef MPI
+    if(my_rank == 0) &
+#endif
     call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
 
 
@@ -490,7 +496,9 @@ contains
     do i = 1, nSource
        lCore = lCore + source(i)%luminosity
     enddo
-!$MPI    if(my_rank == 0) &
+#ifdef MPI
+    if(my_rank == 0) &
+#endif
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
@@ -564,7 +572,9 @@ contains
 
        if (plot_maps) then
 
-!$MPI    if(my_rank == 0)  then
+#ifdef MPI
+    if(my_rank == 0)  then
+#endif
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
@@ -621,20 +631,26 @@ contains
             "lucy_temp_yz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
        call polardump(grid)
-!$MPI    end if
+#ifdef MPI
+    end if
+#endif
 
     endif
 
-
-!$MPI       if (my_rank == 1) &
+#ifdef MPI
+       if (my_rank == 1) &
+#endif
        call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
        
        call zeroDistanceGrid(grid%octreeRoot)
-!$MPI       if (my_rank == 0) then
+#ifdef MPI
+       if (my_rank == 0) then
+#endif
        write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
        call writeInfo(message, TRIVIAL)
-!$MPI       end if
-
+#ifdef MPI
+       end if
+#endif
 
 
 
@@ -667,59 +683,60 @@ contains
 
        imonte_beg=1; imonte_end=nMonte  ! default value
 
-!!$MPI       ! Set the range of index for a photon loop used later.     
-!!$MPI       n_rmdr = MOD(nMonte,np)
-!!$MPI       m = nMonte/np
-!!$MPI
-!!$MPI       if (my_rank .lt. n_rmdr ) then
-!!$MPI          imonte_beg = (m+1)*my_rank + 1
-!!$MPI          imonte_end = imonte_beg + m
-!!$MPI       else
-!!$MPI          imonte_beg = m*my_rank + 1 + n_rmdr
-!!$MPI          imonte_end = imonte_beg + m -1
-!!$MPI       end if
-!!$MPI   !    print *, ' '
-!!$MPI   !    print *, 'imonte_beg = ', imonte_beg
-!!$MPI   !    print *, 'imonte_end = ', imonte_end
-!!$MPI  
-!!$MPI      
-!!$MPI       !  Just for safety.
-!!$MPI       if (imonte_end .gt. nMonte .or. imonte_beg < 1) then
-!!$MPI          print *, 'Index out of range: i_beg and i_end must be ' 
-!!$MPI          print *, ' 0< index < ', nMonte , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
-!!$MPI          print *, 'imonte_beg = ', imonte_beg
-!!$MPI          print *, 'imonte_end = ', imonte_end
-!!$MPI          stop
-!!$MPI       end if
+#ifdef MPI
+!       ! Set the range of index for a photon loop used later.     
+!       n_rmdr = MOD(nMonte,np)
+!       m = nMonte/np
+!
+!       if (my_rank .lt. n_rmdr ) then
+!          imonte_beg = (m+1)*my_rank + 1
+!          imonte_end = imonte_beg + m
+!       else
+!          imonte_beg = m*my_rank + 1 + n_rmdr
+!          imonte_end = imonte_beg + m -1
+!       end if
+!   !    print *, ' '
+!   !    print *, 'imonte_beg = ', imonte_beg
+!   !    print *, 'imonte_end = ', imonte_end
+!  
+!      
+!       !  Just for safety.
+!       if (imonte_end .gt. nMonte .or. imonte_beg < 1) then
+!          print *, 'Index out of range: i_beg and i_end must be ' 
+!          print *, ' 0< index < ', nMonte , '    ... [lucy_mod::lucyRadiativeEquilibriumAMR]'
+!          print *, 'imonte_beg = ', imonte_beg
+!          print *, 'imonte_end = ', imonte_end
+!          stop
+!       end if
 
 
 
 
-!$MPI  !====================================================================================
-!$MPI  ! Splitting the innerPhoton loop for multiple processors.
-!$MPI  if (my_rank == 0) then
-!$MPI     print *, ' '
-!$MPI     print *, 'photonLoop computed by ', n_proc-1, ' processors.'
-!$MPI     print *, ' '
-!$MPI  endif
-!$MPI  if (my_rank == 0) then
-!$MPI     ! we will use an array to store the rank of the process
-!$MPI     !   which will calculate each photon
-!$MPI     allocate(photonBelongsRank(nMonte))
-!$MPI    
-!$MPI     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=100,tag=tag,&
-!$MPI                          setDebug=.false.)
-!$MPI     deallocate(photonBelongsRank) ! we don't really need this here. 
-!$MPI  end if
-!$MPI  !====================================================================================
+  !====================================================================================
+  ! Splitting the innerPhoton loop for multiple processors.
+  if (my_rank == 0) then
+     print *, ' '
+     print *, 'photonLoop computed by ', n_proc-1, ' processors.'
+     print *, ' '
+  endif
+  if (my_rank == 0) then
+     ! we will use an array to store the rank of the process
+     !   which will calculate each photon
+     allocate(photonBelongsRank(nMonte))
+    
+     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=100,tag=tag,&
+                          setDebug=.false.)
+     deallocate(photonBelongsRank) ! we don't really need this here. 
+  end if
+  !====================================================================================
 
-!$MPI    
-!$MPI    
-!$MPI  if (my_rank /= 0) then
-!$MPI    mpiBlockLoop: do  
-!$MPI      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
-!$MPI      if (rankComplete) exit mpiBlockLoop  
-!$MPI    
+    
+    
+  if (my_rank /= 0) then
+    mpiBlockLoop: do  
+      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
+      if (rankComplete) exit mpiBlockLoop  
+#endif    
 
        avedirection = OCTALVECTOR(0.d0, 0.d0, 0.d0)
 
@@ -729,10 +746,11 @@ contains
 
        if (ll_photonloop_counter) write(*,'(f10.4,a)', advance='no') 100*real(iMonte)/real(imonte_end-imonte_beg+1), char(13)
 
-!$MPI !  if (MOD(i,n_proc) /= my_rank) cycle photonLoop
+#ifdef MPI
+ !  if (MOD(i,n_proc) /= my_rank) cycle photonLoop
 
-!$MPI !  if (MOD(i,n_proc) /= my_rank) goto 999
-
+ !  if (MOD(i,n_proc) /= my_rank) goto 999
+#endif
           thisPhotonAbs = 0
 
           call randomSource(source, nSource, iSource)
@@ -884,10 +902,11 @@ contains
 
        enddo photonLoop
 
-!$MPI if (.not.blockHandout) exit mpiblockloop        
-!$MPI    end do mpiBlockLoop  
-!$MPI  end if ! (my_rank /= 0)
-
+#ifdef MPI
+ if (.not.blockHandout) exit mpiblockloop        
+    end do mpiBlockLoop  
+  end if ! (my_rank /= 0)
+#endif
 
 !$OMP END DO
 !$OMP CRITICAL (update)
@@ -902,47 +921,48 @@ contains
 
 
 
+#ifdef MPI
+       ! Summing the value in octal computed by each processors.
+       ! This is a recursive function which involves the many 
+       ! comunications between processors. It may take a while....
+       ! (Maybe faster to pack the values in 1D arrays and distribute.)
 
-!$MPI       ! Summing the value in octal computed by each processors.
-!$MPI       ! This is a recursive function which involves the many 
-!$MPI       ! comunications between processors. It may take a while....
-!$MPI       ! (Maybe faster to pack the values in 1D arrays and distribute.)
-!$MPI
-!$MPI       if(my_rank == 1) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
-!$MPI       if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
-!$MPI    !   call update_octal_MPI(grid%octreeRoot, grid)
+       if(my_rank == 1) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
+       if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
+    !   call update_octal_MPI(grid%octreeRoot, grid)
 
-!$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
-!$MPI       call updateGridMPI(grid)
-!$MPI       if(my_rank == 0) write(*,*) "Done update."
+       call updateGridMPI(grid)
+       if(my_rank == 0) write(*,*) "Done update."
 
-!$MPI       if(my_rank == 1) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
-!$MPI
-!$MPI       ! collect some statical info from each node.
-!$MPI       call MPI_ALLGATHER(REAL(nInf), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
-!$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI       nInf = INT(SUM(buffer_real), double)
-!$MPI
-!$MPI       call MPI_ALLGATHER(REAL(nScat), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
-!$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI       nScat = INT(SUM(buffer_real), double)
-!$MPI
-!$MPI       call MPI_ALLGATHER(REAL(nAbs), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
-!$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI       nAbs = INT(SUM(buffer_real), double)
-!$MPI
-!$MPI       call MPI_ALLGATHER(REAL(nKilled), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
-!$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI       nKilled = INT(SUM(buffer_real))
-!$MPI
-!$MPI       call MPI_ALLGATHER(REAL(nDiffusion), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
-!$MPI       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI       nDiffusion = INT(SUM(buffer_real), double)
-!$MPI
-!$MPI       
-!$MPI       if(my_rank == 0) then
+       if(my_rank == 1) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
+
+       ! collect some statical info from each node.
+       call MPI_ALLGATHER(REAL(nInf), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       nInf = INT(SUM(buffer_real), double)
+
+       call MPI_ALLGATHER(REAL(nScat), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       nScat = INT(SUM(buffer_real), double)
+
+       call MPI_ALLGATHER(REAL(nAbs), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       nAbs = INT(SUM(buffer_real), double)
+
+       call MPI_ALLGATHER(REAL(nKilled), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       nKilled = INT(SUM(buffer_real))
+
+       call MPI_ALLGATHER(REAL(nDiffusion), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       nDiffusion = INT(SUM(buffer_real), double)
+
+       
+       if(my_rank == 0) then
+#endif
           write(message,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
           call writeInfo(message,TRIVIAL)
           write(message,'(a,f13.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
@@ -951,9 +971,9 @@ contains
           call writeInfo(message,IMPORTANT)
           write(message,'(a,f13.3)') "Fraction of photons killed: ",real(nKilled)/real(nMonte)
           call writeInfo(message,IMPORTANT)
-!$MPI       end if
-
-
+#ifdef MPI
+       end if
+#endif
 
 
        epsOverDeltaT = (lCore) / dble(nInf)
@@ -980,12 +1000,16 @@ contains
        nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
-!$MPI       if (my_rank==0) &
+#ifdef MPI
+       if (my_rank==0) &
+#endif
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomfactor) 
 
-!$MPI       if (my_rank==0) &
+#ifdef MPI
+       if (my_rank==0) &
+#endif
        call plot_AMR_values(grid, "direct", "x-z", real(grid%octreeRoot%centre%y), &
             "direct.ps/vcps", .false., .true., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor)
@@ -1003,8 +1027,9 @@ contains
        dT_mean_old = dT_mean_new  ! save this for the next iteration
        dT_mean_new = dT_sum/real(nDt)
 
-
-!$MPI       if (my_rank==0) then
+#ifdef MPI
+       if (my_rank==0) then
+#endif
        write(message,*) "Number of photons entering diffusion zone", ndiffusion
        call writeInfo(message, TRIVIAL)
        write(message,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
@@ -1045,31 +1070,38 @@ contains
             totalEmission, dT_over_T_max, nMonte
        
        close(LU_OUT)
-!$MPI    end if   
+#ifdef MPI
+    end if   
+#endif
 
 
 
-
-
-!$MPI if (my_rank==1) &       
+#ifdef MPI
+ if (my_rank==1) &       
+#endif
        call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
 
        debugoutput = .true.
-!$MPI if (my_rank==0)  then
-!$MPI    debugOutput = .true.       
-!$MPI  else
-!$MPI    debugOutput = .false.
-!$MPI endif
+#ifdef MPI
+ if (my_rank==0)  then
+    debugOutput = .true.       
+  else
+    debugOutput = .false.
+ endif
+#endif
 
 !       do i = 1, 1
 !          call estimateTempofUndersampled(grid, grid%octreeRoot)
 !          call updateTemps(grid, grid%octreeRoot)
 !       enddo
-
-!$MPI  if (my_rank == 1) &
+#ifdef MPI
+  if (my_rank == 1) &
+#endif
        call tune(6, "Gauss-Seidel sweeps")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
-!$MPI       if (my_rank==0) &
+#ifdef MPI
+       if (my_rank==0) &
+#endif
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomfactor)
@@ -1085,7 +1117,9 @@ contains
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 
-!$MPI  if (my_rank == 1) &
+#ifdef MPI
+  if (my_rank == 1) &
+#endif
        call tune(6, "Gauss-Seidel sweeps")
 
 
@@ -1110,10 +1144,11 @@ contains
        endif
 
 
-
-!$MPI if (my_rank==0) &
+#ifdef MPI
+ if (my_rank==0) &
       call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
       call writeInfo("Grid written",TRIVIAL)
+#endif
 
    enddo
 
@@ -1204,12 +1239,16 @@ contains
 
 !    nRemoved = 0
 !    if (iIter_Grand > 3) then
-!!$MPI if (my_rank==0) & 
+#ifdef MPI
+! if (my_rank==0) & 
+#endif
 !       write(*,*) "Removing dust with T > Tthresh: ",Tthresh
 !       call removeDust(grid%octreeRoot, Tthresh, nRemoved)
 !    endif
 !
-!!$MPI if (my_rank==0) & 
+#ifdef MPI
+! if (my_rank==0) & 
+#endif
 !    write(message,*) "Number of cells removed: ",nRemoved
 !    call writeInfo(message, TRIVIAL)
 
@@ -1219,7 +1258,9 @@ contains
        totalMass = 0.
        call findTotalMass(grid%octreeRoot, totalMass)
        scaleFac = massEnvelope / totalMass
-!$MPI if (my_rank==0) & 
+#ifdef MPI
+    if (my_rank==0) & 
+#endif
        write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
        call scaleDensityAMR(grid%octreeRoot, scaleFac)
     endif
@@ -1254,14 +1295,19 @@ contains
 !    !
 !    ! Write grid structure to a tmp file.
 !    !
-!$MPI if (my_rank==0) then
+#ifdef MPI
+ if (my_rank==0) then
+#endif
       call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
-!$MPI end if
+#ifdef MPI
+ end if
+#endif
        
    enddo
 
-
-!$MPI deallocate(buffer_real)
+#ifdef MPI
+ deallocate(buffer_real)
+#endif
 
   deallocate(kAbsArray)
 
@@ -1969,14 +2015,14 @@ contains
 
 
    type(GRIDTYPE) :: grid
-   type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec, tHat
+   type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
    type(OCTAL), pointer :: thisOctal, tempOctal, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal
    type(OCTAL),pointer :: foundOctal, endOctal
    integer :: endSubcell
-   integer :: subcell, isubcell, tempSubcell, sourceSubcell
+   integer :: subcell, isubcell, tempSubcell!, sourceSubcell
    logical :: directPhoton
-   real(oct) :: tval, tau, r, tval2
+   real(oct) :: tval, tau, r
    real :: lamArray(*)
    integer :: nLambda
    logical :: stillinGrid, ok
@@ -1992,7 +2038,7 @@ contains
    real :: diffusionZoneTemp
    logical :: photonInDiffusionZone
    logical :: leftHandBoundary
-   real(double) :: prob
+!   real(double) :: prob
    integer :: i
    real(double), parameter :: fudgeFac = 1.d-2
 
@@ -2358,125 +2404,125 @@ contains
   end subroutine removeDust
 
 
+#ifdef MPI
+  !
+  ! For MPI implementation.
+  ! Updates distanceGrid and nCrossings from each octal
+  !
+  recursive subroutine update_octal_MPI(thisOctal, grid)
+    implicit none
+    include 'mpif.h'
 
-!$MPI  !
-!$MPI  ! For MPI implementation.
-!$MPI  ! Updates distanceGrid and nCrossings from each octal
-!$MPI  !
-!$MPI  recursive subroutine update_octal_MPI(thisOctal, grid)
-!$MPI    implicit none
-!$MPI    include 'mpif.h'
-!$MPI
-!$MPI    type(gridtype) :: grid
-!$MPI    type(octal), pointer   :: thisOctal
-!$MPI    type(octal), pointer  :: child 
-!$MPI    integer :: subcell, i
-!$MPI    real :: r
-!$MPI    ! data space to store values from all processors
-!$MPI    real, save, allocatable  :: buffer_ncrossings(:)     
-!$MPI    real(double), save, allocatable     :: buffer_distanceGrid(:) 
-!$MPI    integer  :: ierr
-!$MPI    integer, save  :: np  ! number of processors
-!$MPI    logical, save  :: first_time = .true.
-!$MPI
-!$MPI    ! find the number of the processors for the first time.    
-!$MPI    if (first_time) then
-!$MPI       call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-!$MPI       allocate(buffer_ncrossings(np))
-!$MPI       allocate(buffer_distanceGrid(np))
-!$MPI       first_time = .false.
-!$MPI    end if
-!$MPI
-!$MPI
-!$MPI    do subcell = 1, thisOctal%maxChildren
-!$MPI       if (thisOctal%hasChild(subcell)) then
-!$MPI          ! find the child
-!$MPI          do i = 1, thisOctal%nChildren, 1
-!$MPI             if (thisOctal%indexChild(i) == subcell) then
-!$MPI                child => thisOctal%child(i)
-!$MPI                call update_octal_MPI(child, grid)
-!$MPI                exit
-!$MPI             end if
-!$MPI          end do
-!$MPI       else
-!$MPI          ! 
-!$MPI          ! collecting the data from all the processors including itself.
-!$MPI          call MPI_ALLGATHER(thisOctal%distanceGrid(subcell), 1, MPI_REAL, &
-!$MPI               buffer_distanceGrid, 1, MPI_REAL, MPI_COMM_WORLD, ierr)  
-!$MPI          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI          
-!$MPI          
-!$MPI          call MPI_ALLGATHER(REAL(thisOctal%ncrossings(subcell)), 1, MPI_REAL, &
-!$MPI               buffer_ncrossings, 1, MPI_REAL, MPI_COMM_WORLD, ierr)  
-!$MPI          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-!$MPI          
-!$MPI          thisOctal%distanceGrid(subcell) = SUM(buffer_distanceGrid)
-!$MPI          thisOctal%nCrossings(subcell) = INT(SUM(buffer_ncrossings))
-!$MPI          
-!$MPI       endif
-!$MPI    enddo
-!$MPI  end subroutine update_octal_MPI
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real :: r
+    ! data space to store values from all processors
+    real, save, allocatable  :: buffer_ncrossings(:)     
+    real(double), save, allocatable     :: buffer_distanceGrid(:) 
+    integer  :: ierr
+    integer, save  :: np  ! number of processors
+    logical, save  :: first_time = .true.
+
+    ! find the number of the processors for the first time.    
+    if (first_time) then
+       call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+       allocate(buffer_ncrossings(np))
+       allocate(buffer_distanceGrid(np))
+       first_time = .false.
+    end if
 
 
-!$MPI  subroutine updateGridMPI(grid)
-!$MPI    implicit none
-!$MPI    include 'mpif.h'
-!$MPI    type(gridtype) :: grid
-!$MPI    integer :: nOctals, nVoxels
-!$MPI    real, allocatable :: nCrossings(:)
-!$MPI    real, allocatable :: tempRealArray(:)
-!$MPI    real(double), allocatable :: distanceGrid(:),tempDoubleArray(:)
-!$MPI    real, allocatable :: nDiffusion(:)
-!$MPI    integer :: np, ierr,my_rank, nIndex
-!$MPI
-!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
-!$MPI    !  Get my process rank # 
-!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI  
-!$MPI    ! Find the total # of precessor being used in this run
-!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-!$MPI
-!$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI    nOctals = 0
-!$MPI    nVoxels = 0
-!$MPI    call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-!$MPI    allocate(nCrossings(1:nVoxels))
-!$MPI    allocate(nDiffusion(1:nVoxels))
-!$MPI    allocate(distanceGrid(1:nVoxels))
-!$MPI
-!$MPI    nIndex = 0
-!$MPI    call packValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings,ndiffusion)
-!$MPI
-!$MPI
-!$MPI    allocate(tempDoubleArray(nVoxels))
-!$MPI    allocate(tempRealArray(nVoxels))
-!$MPI
-!$MPI    tempDoubleArray = 0.d0
-!$MPI    call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
-!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI    distanceGrid = tempDoubleArray 
-!$MPI
-!$MPI    tempRealArray = 0.0
-!$MPI    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
-!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI    nCrossings = tempRealArray 
-!$MPI
-!$MPI    tempRealArray = 0.0
-!$MPI    call MPI_ALLREDUCE(nDiffusion,tempRealArray,nVoxels,MPI_REAL,&
-!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI    nDiffusion = tempRealArray 
-!$MPI    
-!$MPI    deallocate(tempRealArray, tempDoubleArray)
-!$MPI     
-!$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI    
-!$MPI    nIndex = 0
-!$MPI    call unpackValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings,nDiffusion)
-!$MPI
-!$MPI    deallocate(nCrossings, nDiffusion, distanceGrid)
-!$MPI
-!$MPI  end subroutine updateGridMPI
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call update_octal_MPI(child, grid)
+                exit
+             end if
+          end do
+       else
+          ! 
+          ! collecting the data from all the processors including itself.
+          call MPI_ALLGATHER(thisOctal%distanceGrid(subcell), 1, MPI_REAL, &
+               buffer_distanceGrid, 1, MPI_REAL, MPI_COMM_WORLD, ierr)  
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          
+          
+          call MPI_ALLGATHER(REAL(thisOctal%ncrossings(subcell)), 1, MPI_REAL, &
+               buffer_ncrossings, 1, MPI_REAL, MPI_COMM_WORLD, ierr)  
+          call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+          
+          thisOctal%distanceGrid(subcell) = SUM(buffer_distanceGrid)
+          thisOctal%nCrossings(subcell) = INT(SUM(buffer_ncrossings))
+          
+       endif
+    enddo
+  end subroutine update_octal_MPI
 
+
+  subroutine updateGridMPI(grid)
+    implicit none
+    include 'mpif.h'
+    type(gridtype) :: grid
+    integer :: nOctals, nVoxels
+    real, allocatable :: nCrossings(:)
+    real, allocatable :: tempRealArray(:)
+    real(double), allocatable :: distanceGrid(:),tempDoubleArray(:)
+    real, allocatable :: nDiffusion(:)
+    integer :: np, ierr,my_rank, nIndex
+
+    ! FOR MPI IMPLEMENTATION=======================================================
+    !  Get my process rank # 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+    ! Find the total # of precessor being used in this run
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    nOctals = 0
+    nVoxels = 0
+    call countVoxels(grid%octreeRoot,nOctals,nVoxels)
+    allocate(nCrossings(1:nVoxels))
+    allocate(nDiffusion(1:nVoxels))
+    allocate(distanceGrid(1:nVoxels))
+
+    nIndex = 0
+    call packValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings,ndiffusion)
+
+
+    allocate(tempDoubleArray(nVoxels))
+    allocate(tempRealArray(nVoxels))
+
+    tempDoubleArray = 0.d0
+    call MPI_ALLREDUCE(distanceGrid,tempDoubleArray,nVoxels,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    distanceGrid = tempDoubleArray 
+
+    tempRealArray = 0.0
+    call MPI_ALLREDUCE(nCrossings,tempRealArray,nVoxels,MPI_REAL,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    nCrossings = tempRealArray 
+
+    tempRealArray = 0.0
+    call MPI_ALLREDUCE(nDiffusion,tempRealArray,nVoxels,MPI_REAL,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+    nDiffusion = tempRealArray 
+    
+    deallocate(tempRealArray, tempDoubleArray)
+     
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    
+    nIndex = 0
+    call unpackValues(grid%octreeRoot,nIndex,distanceGrid,nCrossings,nDiffusion)
+
+    deallocate(nCrossings, nDiffusion, distanceGrid)
+
+  end subroutine updateGridMPI
+#endif
 
 
   subroutine find2Doctal(rVec, grid, foundOctal, subcell)
@@ -2783,7 +2829,7 @@ contains
     logical, optional :: inheritProps, interpProps
     integer :: subcell, i
     logical :: converged
-    real(double) :: kabs, ksca, r
+    real(double) :: ksca, r
     type(OCTALVECTOR) :: dirVec(6), centre, octVec
     real :: thisFac, neighbourFac
     integer :: neighbourSubcell, j
@@ -2939,6 +2985,8 @@ subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
 
 end subroutine addDustContinuumLucy
 
+!-------------------------------------------------------------------------------
+
 subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, nlambda, lamArray, iPhotonLambda)
 
   type(OCTAL), pointer :: thisOctal
@@ -2947,9 +2995,6 @@ subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, nlambda, lamArray,
   integer :: nLambda
   integer :: iPhotonLambda
   real :: lamArray(:)
-  integer :: i, iLam
-  real :: dlam
-  type(OCTALVECTOR) :: octVec
   real(double) :: kappaAbs
 
   thisOctal%etaCont(subcell) = 1.d-30
@@ -2962,43 +3007,43 @@ subroutine addDustContinuumLucyMono(thisOctal, subcell, grid, nlambda, lamArray,
 
 end subroutine addDustContinuumLucyMono
 
-subroutine setBiasOnTau(grid, iLambda)
-  use input_variables, only : blockHandout
-!$MPI    include 'mpif.h'
+!-------------------------------------------------------------------------------
 
-  type(gridtype) :: grid
-  type(octal), pointer   :: thisOctal
-  type(octal), pointer  :: child 
-  real :: kap
-  real(double) :: tau
-  type(octalvector) :: rVec, direction
-  logical :: ross
-  integer :: subcell, i, ilam, ntau
-  real :: r
-  integer :: iLambda
+subroutine setBiasOnTau(grid, iLambda)
+#ifdef MPI
+    use input_variables, only : blockHandout
+    include 'mpif.h'
+#endif
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    real(double) :: tau
+  type(octalvector) :: rVec!, direction
+!  integer :: i
+    integer :: subcell, ntau
+    integer :: iLambda
     integer                     :: nOctal        ! number of octals in grid
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
-    real(double) :: phi, DeltaPhi, DeltaZ, deltaR
     real(double), parameter :: underCorrect = 0.8d0
     real(double) :: kappaSca, kappaAbs, kappaExt
-    integer :: np
-    integer :: nBias
-    integer :: my_rank, ierr
-!$MPI     logical :: dcAllocated
-!$MPI     integer, dimension(:), allocatable :: octalsBelongRank
-!$MPI     logical :: rankComplete
-!$MPI     integer :: iRank
-!$MPI     integer :: tag = 0
-!$MPI     integer :: tempInt
-!$MPI     real(double), allocatable :: eArray(:), tArray(:)
-!$MPI     integer :: nEdens, nVoxels
-
+#ifdef MPI
+! Only declared in MPI case
+     logical :: dcAllocated
+     integer, dimension(:), allocatable :: octalsBelongRank
+     logical :: rankComplete
+     integer :: iRank
+     integer :: tag = 0
+     integer :: tempInt
+     real(double), allocatable :: eArray(:), tArray(:)
+     integer :: nEdens, nVoxels, ierr
+     integer :: nBias
+     integer :: np
+     integer :: my_rank
 
     np = 1
     my_rank = 1
-
+#endif
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -3008,37 +3053,39 @@ subroutine setBiasOnTau(grid, iLambda)
        stop
     endif
 
-!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
-!$MPI    !  Get my process rank # 
-!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI  
-!$MPI    ! Find the total # of precessor being used in this run
-!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-!$MPI    
-!$MPI    ! we will use an array to store the rank of the process
-!$MPI    !   which will calculate each octal's variables
-!$MPI    allocate(octalsBelongRank(size(octalArray)))
-!$MPI    
-!$MPI    if (my_rank == 0) then
-!$MPI       print *, ' '
-!$MPI       print *, 'Tau bias  computed by ', np-1, ' processors.'
-!$MPI       print *, ' '
-!$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            setDebug=.false.)
-!$MPI    
-!$MPI    endif
-!$MPI    ! ============================================================================
-
+#ifdef MPI
+    ! FOR MPI IMPLEMENTATION=======================================================
+    !  Get my process rank # 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+    ! Find the total # of precessor being used in this run
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+    
+    ! we will use an array to store the rank of the process
+    !   which will calculate each octal's variables
+    allocate(octalsBelongRank(size(octalArray)))
+    
+    if (my_rank == 0) then
+       print *, ' '
+       print *, 'Tau bias  computed by ', np-1, ' processors.'
+       print *, ' '
+       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
+                            setDebug=.false.)
+    
+    endif
+    ! ============================================================================
+#endif
     
     ! default loop indices
     ioctal_beg = 1
     ioctal_end = nOctal
 
-
-!$MPI if (my_rank /= 0) then
-!$MPI  blockLoop: do     
-!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
-!$MPI   if (rankComplete) exit blockLoop 
+#ifdef MPI
+ if (my_rank /= 0) then
+  blockLoop: do     
+ call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+   if (rankComplete) exit blockLoop 
+#endif
     do iOctal =  iOctal_beg, iOctal_end
        thisOctal => octalArray(iOctal)%content
 
@@ -3070,91 +3117,94 @@ subroutine setBiasOnTau(grid, iLambda)
        enddo
     enddo
 
-!$MPI if (.not.blockHandout) exit blockloop
-!$MPI end do blockLoop       
-!$MPI end if ! (my_rank /= 0)
+#ifdef MPI
+ if (.not.blockHandout) exit blockloop
+ end do blockLoop       
+ end if ! (my_rank /= 0)
 
 
-!$MPI     print *,'Process ',my_rank,' waiting to update values'
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI
-!$MPI     ! have to send out the 'octalsBelongRank' array
-!$MPI     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
-!$MPI                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI
-!$MPI     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-!$MPI     allocate(eArray(1:nVoxels))
-!$MPI     allocate(tArray(1:nVoxels))
-!$MPI     eArray = 0.d0
-!$MPI     call packBias(octalArray, nBias, eArray,octalsBelongRank)
-!$MPI     call MPI_ALLREDUCE(eArray,tArray,nBias,MPI_DOUBLE_PRECISION,&
-!$MPI         MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI     eArray = tArray
-!$MPI     call unpackBias(octalArray, nBias, eArray)
-!$MPI     deallocate(eArray, tArray)
+     print *,'Process ',my_rank,' waiting to update values'
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+     ! have to send out the 'octalsBelongRank' array
+     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
+                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+     allocate(eArray(1:nVoxels))
+     allocate(tArray(1:nVoxels))
+     eArray = 0.d0
+     call packBias(octalArray, nBias, eArray,octalsBelongRank)
+     call MPI_ALLREDUCE(eArray,tArray,nBias,MPI_DOUBLE_PRECISION,&
+         MPI_SUM,MPI_COMM_WORLD,ierr)
+     eArray = tArray
+     call unpackBias(octalArray, nBias, eArray)
+     deallocate(eArray, tArray)
+#endif
 
     deallocate(octalArray)
 
   end subroutine setBiasOnTau
 
+#ifdef MPI
+      subroutine packBias(octalArray, nBias, eArray, octalsBelongRank)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: octalsBelongRank(:)
+        integer :: nBias
+        real(double) :: eArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr
+        type(OCTAL), pointer :: thisOctal
 
-!$MPI      subroutine packBias(octalArray, nBias, eArray, octalsBelongRank)
-!$MPI    include 'mpif.h'
-!$MPI        type(OCTALWRAPPER) :: octalArray(:)
-!$MPI        integer :: octalsBelongRank(:)
-!$MPI        integer :: nBias
-!$MPI        real(double) :: eArray(:)
-!$MPI        integer :: iOctal, iSubcell, my_rank, ierr
-!$MPI        type(OCTAL), pointer :: thisOctal
-!$MPI
-!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI       !
-!$MPI       ! Update the bias values of grid computed by all processors.
-!$MPI       !
-!$MPI       nBias = 0
-!$MPI       do iOctal = 1, SIZE(octalArray)
-!$MPI
-!$MPI          thisOctal => octalArray(iOctal)%content
-!$MPI          
-!$MPI          do iSubcell = 1, thisOctal%maxChildren
-!$MPI                
-!$MPI             if (.not.thisOctal%hasChild(iSubcell)) then
-!$MPI                 nBias = nBias + 1
-!$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
-!$MPI                   eArray(nBias) = octalArray(iOctal)%content%Biascont3d(iSubcell)
-!$MPI                 else 
-!$MPI                   eArray(nBias) = 0.d0
-!$MPI                 endif
-!$MPI              endif
-!$MPI          
-!$MPI          end do
-!$MPI       end do
-!$MPI     end subroutine packBias
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the bias values of grid computed by all processors.
+       !
+       nBias = 0
+       do iOctal = 1, SIZE(octalArray)
 
-!$MPI      subroutine unpackBias(octalArray, nBias, eArray)
-!$MPI        type(OCTALWRAPPER) :: octalArray(:)
-!$MPI        integer :: nBias
-!$MPI        real(double) :: eArray(:)
-!$MPI        integer :: iOctal, iSubcell
-!$MPI        type(OCTAL), pointer :: thisOctal
-!$MPI
-!$MPI       !
-!$MPI       ! Update the bias values of grid computed by all processors.
-!$MPI       !
-!$MPI       nBias = 0
-!$MPI       do iOctal = 1, SIZE(octalArray)
-!$MPI
-!$MPI          thisOctal => octalArray(iOctal)%content
-!$MPI          
-!$MPI          do iSubcell = 1, thisOctal%maxChildren
-!$MPI                
-!$MPI             if (.not.thisOctal%hasChild(iSubcell)) then
-!$MPI                 nBias = nBias + 1
-!$MPI                 octalArray(iOctal)%content%biasCont3d(iSubcell) = eArray(nBias)
-!$MPI             endif
-!$MPI          end do
-!$MPI       end do
-!$MPI     end subroutine unpackBias
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+                
+             if (.not.thisOctal%hasChild(iSubcell)) then
+                 nBias = nBias + 1
+                 if (octalsBelongRank(iOctal) == my_rank) then
+                   eArray(nBias) = octalArray(iOctal)%content%Biascont3d(iSubcell)
+                 else 
+                   eArray(nBias) = 0.d0
+                 endif
+              endif
+          
+          end do
+       end do
+     end subroutine packBias
+
+      subroutine unpackBias(octalArray, nBias, eArray)
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: nBias
+        real(double) :: eArray(:)
+        integer :: iOctal, iSubcell
+        type(OCTAL), pointer :: thisOctal
+
+       !
+       ! Update the bias values of grid computed by all processors.
+       !
+       nBias = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+                
+             if (.not.thisOctal%hasChild(iSubcell)) then
+                 nBias = nBias + 1
+                 octalArray(iOctal)%content%biasCont3d(iSubcell) = eArray(nBias)
+             endif
+          end do
+       end do
+     end subroutine unpackBias
+#endif
 
 end module lucy_mod
