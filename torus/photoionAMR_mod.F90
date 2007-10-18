@@ -157,14 +157,14 @@ contains
        call writeInfo("Evening up grid", TRIVIAL)    
        call evenUpGridMPI(grid, inheritFlag=.false.)
        call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
-       
+    endif
        
        call writeInfo("Calling photoionization loop",TRIVIAL)
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
             lucyfileout, lucyfilein, 3)
        call writeInfo("Done",TRIVIAL)
        
-       
+    if (myrank /= 0) then
        direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
        call setupX(grid%octreeRoot, grid, direction)
        call setupQX(grid%octreeRoot, grid, direction)
@@ -413,7 +413,7 @@ contains
        
        call zeroDistanceGrid(grid%octreeRoot)
 
-       if (myrank == 0) write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter
+       if (myrank == 0) write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter, maxIter
 
        if (myrank == 1) call tune(6, "One photoionization itr")  ! start a stopwatch
 
@@ -421,14 +421,11 @@ contains
        iMonte_end = nMonte
        photonPacketWeight = 1.d0
 
-       write(*,*) "got here ", myrank
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-       write(*,*) "passed through ", myrank
 
 
           if (myRank == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
-                write(*,*) imonte
                 call randomSource(source, nSource, iSource)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
