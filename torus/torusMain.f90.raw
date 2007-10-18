@@ -1730,9 +1730,10 @@ program torus
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
            if (mie) then
               do i = 1, nDustType
-                 write(message,'(a,i1,a)') "dusttype",i,".ps/vcps"
-                 call plot_AMR_values(grid, message, "x-z", 0., &
-                      trim(message), .false., .false., &
+                 write(message,'(a,i1)') "dusttype",i
+                 write(filename,'(a,i1,a)') "dusttype",i,".ps/vcps"
+                 call plot_AMR_values(grid, trim(message), "x-z", 0., &
+                      trim(filename), .false., .false., &
                       nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
               enddo
            endif
@@ -2298,9 +2299,10 @@ program torus
 
            if (mie) then
               do i = 1, nDustType
-                 write(message,'(a,i1)') "dusttype",i,".ps/vcps"
+                 write(message,'(a,i1)') "dusttype",i
+                 write(filename,'(a,i1,a)') "dusttype",i, ".ps/vcps"
                  call plot_AMR_values(grid, message, "x-z", 0., &
-                      trim(message), .false., .false., &
+                      trim(filename),.false., .false., &
                       nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
               enddo
            endif
