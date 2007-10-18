@@ -1730,9 +1730,9 @@ program torus
                 nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
            if (mie) then
               do i = 1, nDustType
-                 write(message,'(a,i1)') "dusttype",i
+                 write(message,'(a,i1,a)') "dusttype",i,".ps/vcps"
                  call plot_AMR_values(grid, message, "x-z", 0., &
-                      trim(message)//".ps/vcps", .false., .false., &
+                      trim(message), .false., .false., &
                       nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
               enddo
            endif
@@ -2298,9 +2298,9 @@ program torus
 
            if (mie) then
               do i = 1, nDustType
-                 write(message,'(a,i1)') "dusttype",i
+                 write(message,'(a,i1)') "dusttype",i,".ps/vcps"
                  call plot_AMR_values(grid, message, "x-z", 0., &
-                      trim(message)//".ps/vcps", .false., .false., &
+                      trim(message), .false., .false., &
                       nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
               enddo
            endif
@@ -5192,7 +5192,8 @@ program torus
            lambda_eff = lambda_eff_filters(filters, i) ! Effective wavelength of filter in [A]   
            write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
            call writeImage(obsImageSet(i), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
-           call writeFitsImage(obsImageSet(i), trim(specfile)//".fits")
+           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
+           call writeFitsImage(obsImageSet(i), trim(specfile))
         end do
         if (doRaman) then
            write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase
@@ -5203,8 +5204,8 @@ program torus
            call writeImage(o6Image(1), specfile, objectDistance, imageInArcsec, 5000d0, 1.0d0)
         endif
         if (get_filter_set_name(filters) == "pn") then
-           write(specFile,'(a,a,i3.3)') trim(outfile),"_image",iPhase
-           call writeFalseColourPPM(trim(specfile)//".ppm", obsImageSet, 3)
+           write(specFile,'(a,a,i3.3,a)') trim(outfile),"_image",iPhase,".ppm"
+           call writeFalseColourPPM(trim(specfile), obsImageSet, 3)
         endif
 
      endif
