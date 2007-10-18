@@ -868,7 +868,7 @@ contains
     real(double) :: t
     integer :: nx, ny
     real, optional :: iMinFix, iMaxFix
-    real(double) :: sigma(8), tempSigma(8)
+    real(double) :: sigma(64), tempSigma(64)
     real :: tr(6)
     integer :: i, j
     real :: dx
@@ -878,6 +878,9 @@ contains
     real :: imageSize
     real, save :: iMax, iMin
     integer::pgbegin
+    integer :: nHydroThreads
+
+    nHydroThreads = nThreadsGlobal - 1
 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -887,8 +890,8 @@ contains
        resetRange = resetRangeFlag
     endif
 
-    nx = 400
-    ny = 400
+    nx = 100
+    ny = 100
     allocate(image(1:nx,1:ny))
     allocate(xAxis(1:nx))
     allocate(yAxis(1:ny))
@@ -923,8 +926,8 @@ contains
              call columnAlongPathAMR(grid, startVec, viewVec, sigma(myRank))
           endif
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-       call MPI_ALLREDUCE(sigma, tempSigma, 8, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
-       image(i,j) = max(1.e-10,real(SUM(tempsigma(1:8))))
+       call MPI_ALLREDUCE(sigma, tempSigma, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
+       image(i,j) = max(1.e-10,real(SUM(tempsigma(1:nHydroThreads))))
        enddo
     enddo
     
@@ -1037,6 +1040,22 @@ contains
              check = .true.
           else
              check = .false.
+          endif
+       endif
+       if (nHydroThreads == 64) then
+          nFirstLevel = (myRank-1) / 8 + 1
+          if (thisOctal%nDepth == 1) then
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else
+             if (thisOctal%mpiThread(subcell) == myRank) then
+                check = .true.
+             else
+                check = .false.
+             endif
           endif
        endif
     endif

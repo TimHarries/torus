@@ -2838,8 +2838,9 @@ program torus
 !$MPI     if (photoIonization) then
 !$MPI        grid%splitOverMPI = .true.
 !$MPI        grid%photoionization = .true.
-!$MPI        call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
-!$MPI             lucyfilenameout, lucyfilenamein)
+!$MPI           call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
+!$MPI              lucyfilenameout, lucyfilenamein)
+!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 !$MPI     endif
 
 !$MPI     if (hydrodynamics) then

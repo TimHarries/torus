@@ -69,7 +69,7 @@ contains
     logical :: readLucy, writeLucy
     character(len=*) :: lucyfilein, lucyfileout
 
-    real(double) :: dt, tc(8), temptc(8),cfl, gamma, mu
+    real(double) :: dt, tc(64), temptc(64),cfl, gamma, mu
     real(double) :: currentTime
     integer :: i, pgbegin, it, iUnrefine
     integer :: myRank, ierr
@@ -77,10 +77,12 @@ contains
     real(double) :: tDump, nextDumpTime, ang
     type(OCTALVECTOR) :: direction, viewVec
     logical :: gridConverged
-    integer :: nDependent, dependentThread(100)
-    integer :: thread1(100), thread2(100), nBound(100), nPairs
-    logical :: globalConverged(8), tConverged(8)
+    integer :: nDependent, dependentThread(200)
+    integer :: thread1(200), thread2(200), nBound(200), nPairs
+    logical :: globalConverged(64), tConverged(64)
+    integer :: nHydroThreads
 
+    nHydroThreads = nThreadsGlobal-1
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
@@ -147,8 +149,8 @@ contains
           call writeInfo("Exchanging boundaries", TRIVIAL)    
           call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-          call MPI_ALLREDUCE(globalConverged, tConverged, 8, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-          if (ALL(tConverged(1:8))) exit
+          call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+          if (ALL(tConverged(1:nHydroThreads))) exit
        end do
        
        
@@ -159,7 +161,7 @@ contains
        
        call writeInfo("Calling photoionization loop",TRIVIAL)
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-            lucyfileout, lucyfilein)
+            lucyfileout, lucyfilein, 3)
        call writeInfo("Done",TRIVIAL)
        
        
@@ -188,7 +190,7 @@ contains
        write(plotfile,'(a,i4.4,a)') "col",0,".png/png"
        call columnDensityPlotAMR(grid, viewVec, plotfile)
        write(plotfile,'(a,i4.4,a)') "image",0,".png/png"
-       call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.)
+       call plotGridMPI(grid, plotfile, "x-z", "rho")
        write(plotfile,'(a,i4.4,a)') "temp",0,".png/png"
        call plotGridMPI(grid, plotfile, "x-z", "temperature")
 
@@ -198,9 +200,9 @@ contains
           tc = 0.d0
           tc(myrank) = 1.d30
           call computeCourantTime(grid%octreeRoot, tc(myRank), gamma)
-          call MPI_ALLREDUCE(tc, tempTc, 8, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+          call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
           tc = tempTc
-          dt = MINVAL(tc(1:8)) * cfl
+          dt = MINVAL(tc(1:nHydroThreads)) * cfl
           
           if (myrank == 1) write(*,*) "courantTime", dt
           if (myRank == 1) call tune(6,"Hydrodynamics step")
@@ -230,8 +232,8 @@ contains
              call writeInfo("Exchanging boundaries", TRIVIAL)    
              call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
              call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-             call MPI_ALLREDUCE(globalConverged, tConverged, 8, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-             if (ALL(tConverged(1:8))) exit
+             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+             if (ALL(tConverged(1:nHydroThreads))) exit
           end do
           
           iUnrefine = iUnrefine + 1
@@ -248,7 +250,7 @@ contains
        
        call writeInfo("Calling photoionization loop",TRIVIAL)
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-            lucyfileout, lucyfilein)
+            lucyfileout, lucyfilein, 1)
        call writeInfo("Done",TRIVIAL)
 
 
@@ -257,10 +259,12 @@ contains
           call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
           call calculateRhoE(grid%octreeRoot, direction)
           it = it + 1
-          write(plotfile,'(a,i4.4,a)') "col",it,".png/png"
-          call columnDensityPlotAMR(grid, viewVec, plotfile)
+!          write(plotfile,'(a,i4.4,a)') "col",it,".png/png"
+!          call columnDensityPlotAMR(grid, viewVec, plotfile)
           write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.)
+          call plotGridMPI(grid, plotfile, "x-z", "rho")
+          write(plotfile,'(a,i4.4,a)') "grid",it,".png/png"
+          call plotGridMPI(grid, plotfile, "x-z", "rho", plotgrid=.true.)
           write(plotfile,'(a,i4.4,a)') "temp",it,".png/png"
           call plotGridMPI(grid, plotfile, "x-z", "temperature")
 
@@ -280,7 +284,7 @@ contains
 
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-       lucyfileout, lucyfilein)
+       lucyfileout, lucyfilein, maxIter)
     use input_variables, only : smoothFactor, blockHandout, zoomFactor, &
          nlucy, photoionization
     implicit none
@@ -326,6 +330,7 @@ contains
     real(double) :: fac
     logical :: gridConverged
     real(double) :: probEsc, albedo
+    integer :: maxIter
 
     type(SAHAMILNETABLE) :: hTable, heTable
     type(RECOMBTABLE) :: Hrecombtable
@@ -385,9 +390,9 @@ contains
        lCore = lCore + source(i)%luminosity
     enddo
 
-    write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
+    if (myrankglobal == 1) write(*,'(a,1pe12.5)') "Total source luminosity (lsol): ",lCore/lSol
 
-    nMonte = 100000
+    nMonte = 1000000
 
     nIter = 0
     
@@ -416,12 +421,14 @@ contains
        iMonte_end = nMonte
        photonPacketWeight = 1.d0
 
+       write(*,*) "got here ", myrank
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+       write(*,*) "passed through ", myrank
 
 
           if (myRank == 0) then
              mainloop: do iMonte = iMonte_beg, iMonte_end
-
+                write(*,*) imonte
                 call randomSource(source, nSource, iSource)
                 thisSource = source(iSource)
                 call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
@@ -642,7 +649,7 @@ contains
 !       call tune(6, "Gauss-Seidel sweeps")
 
 
-    if (myRank == 1) call dumpLexington(grid, epsoverdeltat)
+!    if (myRank == 1) call dumpLexington(grid, epsoverdeltat)
 if (.false.) then
        call dumpLexington(grid, epsoverdeltat)
        fac = 2.06e37
@@ -716,7 +723,7 @@ if (.false.) then
     endif
 
 
-    if (niter == 3) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    if (niter >= maxIter) converged = .true. !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 !    converged = .true.
 ! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -853,7 +860,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
           nextOctal => thisOctal
           nextSubcell = Subcell
           call findSubcellLocal(octVec, nextOctal, nextSubcell)
-          if (nextOctal%mpiThread(nextSubcell) /= myRank) then
+!          if (nextOctal%mpiThread(nextSubcell) /= myRank) then
+          if (.not.octalOnThread(nextOctal, nextsubcell, myRank)) then
              stillInGrid = .false.
              escaped = .true.
              crossedMPIboundary = .true.
@@ -1424,7 +1432,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                    nIter = 0
                    converged = .false.
                    
-                   t1 = 10.
+                   t1 = 100.
                    t2 = 100000.
                    found = .true.
                    
@@ -1473,7 +1481,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
                    endif
                    deltaT = tm - thisOctal%temperature(subcell)
                    thisOctal%temperature(subcell) = &
-                        max(thisOctal%temperature(subcell) + underCorrection * deltaT,10.)
+                        max(thisOctal%temperature(subcell) + underCorrection * deltaT,100.)
                    !             write(*,*) thisOctal%temperature(subcell), niter
                 endif
              else
@@ -2263,7 +2271,8 @@ subroutine dumpLexington(grid, epsoverdt)
         
         
         call amrgridvalues(grid%octreeRoot, octVec,  foundOctal=thisOctal, foundsubcell=subcell)
-        if (thisOctal%mpiThread(subcell) /= myRankGlobal) goto 661
+!        if (thisOctal%mpiThread(subcell) /= myRankGlobal) goto 661
+        if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) goto 661
 
         nHii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,2) * grid%ion(2)%abundance
         nHeii = thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,4) * grid%ion(4)%abundance
@@ -3743,7 +3752,7 @@ end subroutine readHeIIrecombination
     call MPI_RECV(tempStorage, 15, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
 
     if (tempStorage(1) > 1.d30) then
-       write(*,*) myRankGlobal, " finished receiving"
+!       write(*,*) myRankGlobal, " finished receiving"
        endLoop = .true.
        goto 666
     else

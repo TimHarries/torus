@@ -145,7 +145,7 @@ contains
 !                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
              thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
                   (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
-                  (thisOctal%subcellSize)
+                  (thisOctal%subcellSize*1.d10)
 
           endif
        endif
@@ -171,7 +171,7 @@ contains
              end if
           end do
        else
-          thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction)
+          thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction) * 1.d10
        endif
     enddo
   end subroutine setupX
@@ -1544,7 +1544,7 @@ contains
 
              cs = soundSpeed(thisOctal, subcell, gamma)
 !             if (myrank==1) write(*,*) "cs ", cs/1.d5, "km/s"
-             dx = thisOctal%subcellSize
+             dx = thisOctal%subcellSize * 1.d10
              speed = sqrt((thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
                   + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2)
                 tc = min(tc, dx / (cs + speed) )
@@ -1559,6 +1559,7 @@ contains
     integer :: subcell
     real(double) :: cs, gamma
     real(double) :: u2, eKinetic, eTot, eThermal
+    logical, save :: firstTime = .true.
 
     if (thisOctal%threed) then
        u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
@@ -1569,12 +1570,16 @@ contains
     eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
     eThermal = eTot - eKinetic
     if (eThermal < 0.d0) then
-       write(*,*) "eThermal problem: ",ethermal
-       write(*,*) eTot, ekinetic, u2
-       write(*,*) thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
-            thisOctal%rhow(subcell)/thisOctal%rho(subcell)
-       write(*,*) "cen ",subcellCentre(thisOctal, subcell), thisOctal%ghostCell(subcell)
-       write(*,*) "temp ",thisOctal%temperature(subcell)
+       if (firstTime) then
+          write(*,*) "eThermal problem: ",ethermal
+          write(*,*) eTot, ekinetic, u2
+          write(*,*) thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
+               thisOctal%rhow(subcell)/thisOctal%rho(subcell)
+          write(*,*) "cen ",subcellCentre(thisOctal, subcell), thisOctal%ghostCell(subcell)
+          write(*,*) "temp ",thisOctal%temperature(subcell)
+          firstTime = .false.
+       endif
+       eThermal = tiny(eThermal)
     endif
     cs = sqrt(gamma*(gamma-1.d0)*eThermal)
 
@@ -1658,7 +1663,7 @@ contains
   subroutine doHydrodynamics3d(grid)
     include 'mpif.h'
     type(gridtype) :: grid
-    real(double) :: dt, tc(8), temptc(8),cfl, gamma, mu
+    real(double) :: dt, tc(64), temptc(64),cfl, gamma, mu
     real(double) :: currentTime
     integer :: i, pgbegin, it, iUnrefine
     integer :: myRank, ierr
@@ -1669,9 +1674,12 @@ contains
     integer :: nSource = 0
     type(SOURCETYPE) :: source(1)
     integer :: nDependent, dependentThread(100)
-    integer :: thread1(100), thread2(100), nBound(100), nPairs
+    integer :: thread1(200), thread2(200), nBound(200), nPairs
     logical :: globalConverged(64), tConverged(64)
+    integer :: nHydroThreads
 
+
+    nHydroThreads = nThreadsGlobal - 1
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
@@ -1693,11 +1701,16 @@ contains
 
 
     call writeInfo("Plotting grid", TRIVIAL)    
-    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "mpi", 0., 1.)
+    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "mpi", plotgrid=.true.)
 
 
 
     call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound)
+
+    do i = 1, nPairs
+       if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
+    enddo
+
 
     call writeInfo("Calling exchange across boundary", TRIVIAL)
     call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
@@ -1720,7 +1733,7 @@ contains
        do
           gridConverged = .true.
           call setupEdges(grid%octreeRoot, grid)
-!          call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
+          call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
           call unsetGhosts(grid%octreeRoot)
           call setupGhostCells(grid%octreeRoot, grid, "mirror")
           if (gridConverged) exit
@@ -1732,7 +1745,7 @@ contains
     call writeInfo("Refining grid", TRIVIAL)
     do
        gridConverged = .true.
-!       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.false.)
+       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.false.)
        if (gridConverged) exit
     end do
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -1741,12 +1754,12 @@ contains
     do
        globalConverged(myRank) = .true.
        call writeInfo("Refining grid", TRIVIAL)    
-!       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.false.)
+       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.false.)
        call writeInfo("Exchanging boundaries", TRIVIAL)    
        call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-       call MPI_ALLREDUCE(globalConverged, tConverged, 8, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-       if (ALL(tConverged(1:8))) exit
+       call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+       if (ALL(tConverged(1:nHydroThreads))) exit
     end do
 
 
@@ -1857,8 +1870,8 @@ contains
        if (currentTime .gt. nextDumpTime) then
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
-          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
-          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
+!          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
+!          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
           call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.)
        endif
@@ -1911,7 +1924,7 @@ contains
 !    call plot_AMR_values(grid, "rho", "x-z", 0., &
 !           plotfile,.false., .true.)
 
-    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "mpi")
+    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "mpi", plotgrid=.true.)
 
 
 

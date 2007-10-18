@@ -619,11 +619,12 @@ CONTAINS
              enddo
           else if (parent%Threed) then
              do i = 1, 8
-                parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
+                parent%child(newChildIndex)%mpiThread(i) = 8 * (parent%mpiThread(iChild) - 1) + i
              enddo
           endif
        endif
     endif
+!    if (myrankglobal==2) write(*,'(10i4)') parent%child(newChildindex)%ndepth, parent%child(newChildIndex)%mpiThread(1:8)
 
     if (cmf) then
        allocate(parent%child(newChildIndex)%atomAbundance(8, 1:nAtom))
@@ -4905,7 +4906,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
    case("lexington")
-      if (thisOctal%nDepth < 6) then
+      if (thisOctal%nDepth < minDepthAMR) then
          split = .true.
       else
          split = .false.
@@ -5520,6 +5521,15 @@ IF ( .NOT. gridConverged ) RETURN
          endif
       else
          if (thisOctal%twoD) then
+            if (thisOctal%nDepth == 1) then
+               split = .true.
+            else if (thisOctal%nDepth > 1) then
+               if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+                  split = .false.
+               endif
+            endif
+         endif
+         if (thisOctal%threeD) then
             if (thisOctal%nDepth == 1) then
                split = .true.
             else if (thisOctal%nDepth > 1) then
