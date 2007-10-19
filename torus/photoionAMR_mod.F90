@@ -340,7 +340,8 @@ contains
     real(double) :: probNonIonizing, probHydrogen
     real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
-    real(double) :: tempstorage(15)
+    integer, parameter :: nTemp = 7
+    real(double) :: tempstorage(nTemp)
     integer, parameter :: nFreq = 1000
     logical, save :: firsttime = .true.
     integer :: iMonte_beg, iMonte_end, nSCat
@@ -350,6 +351,7 @@ contains
     logical :: endLoop
     logical :: crossedMPIboundary
     integer :: tag = 41
+    integer :: nTotScat, nPhot
 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -420,6 +422,8 @@ contains
        iMonte_beg = 1
        iMonte_end = nMonte
        photonPacketWeight = 1.d0
+       nTotScat = 0
+       nPhot = 0
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
@@ -446,13 +450,16 @@ contains
                 call findSubcellTD(rVec, grid%octreeRoot,thisOctal, subcell)
 
                 iThread = thisOctal%mpiThread(subcell)
+
                 call sendMPIPhoton(rVec, uHat, thisFreq, iThread)
+
                 nInf = nInf + 1
+
              end do mainloop
 
              do iThread = 1, nThreads - 1
                 tempStorage(1) = HUGE(tempStorage(1))
-                call MPI_SEND(tempStorage, 15, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
+                call MPI_SEND(tempStorage, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
              enddo
 
           else
@@ -464,7 +471,6 @@ contains
                    nScat = 0
                    escaped = .false.
                    do while(.not.escaped)
-                      nScat = nScat + 1
                       
                       call toNextEventPhoto(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, &
                            photonPacketWeight, crossedMPIboundary)
@@ -527,6 +533,7 @@ contains
                             
                             thisFreq =  getPhotonFreq(nfreq, freq, spectrum)
                             uHat = randomUnitVector() ! isotropic emission
+                            nScat = nScat + 1
                          endif
                 
 
@@ -555,14 +562,18 @@ contains
                          escaped = .true.
                       Endif
                    enddo
+                   nTotScat = nTotScat + nScat
+                   nPhot = nPhot + 1
                 endif
-777          continue
+777             continue
              enddo
           endif
        if (myrank == 1) call tune(6, "One photoionization itr")  ! stop a stopwatch
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        epsOverDeltaT = (lCore) / dble(nMonte)
-
+       if (myrank == 1) then
+          write(*,*) "Thread 1 had ",real(nTotScat)/real(nPhot), " scatters per photon"
+       endif
 
 
        call  identifyUndersampled(grid%octreeRoot)
@@ -3741,12 +3752,14 @@ end subroutine readHeIIrecombination
     integer :: myRank, ierr
     type(OCTALVECTOR) :: position, direction
     real(double) :: frequency
-    real(double) :: tempstorage(15)
+    integer, parameter :: nTemp = 7
+    real(double) :: tempstorage(nTemp)
     logical :: endLoop
     integer :: status(MPI_STATUS_SIZE)
     integer :: tag = 41
+    
 
-    call MPI_RECV(tempStorage, 15, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
+    call MPI_RECV(tempStorage, nTemp, MPI_DOUBLE_PRECISION, MPI_ANY_SOURCE, tag, MPI_COMM_WORLD, status, ierr)
 
     if (tempStorage(1) > 1.d30) then
 !       write(*,*) myRankGlobal, " finished receiving"
@@ -3770,7 +3783,8 @@ end subroutine readHeIIrecombination
     integer :: myRank, ierr
     type(OCTALVECTOR) :: position, direction
     real(double) :: frequency
-    real(double) :: tempstorage(15)
+    integer, parameter :: nTemp = 7
+    real(double) :: tempstorage(nTemp)
     integer :: iThread
     integer :: tag = 41
 
@@ -3786,7 +3800,7 @@ end subroutine readHeIIrecombination
        write(*,*) "sending to self bug ", ithread
        stop
     endif
-    call MPI_SEND(tempStorage, 15, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
+    call MPI_SEND(tempStorage, nTemp, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD,  ierr)
   end subroutine sendMPIPhoton
        
 
