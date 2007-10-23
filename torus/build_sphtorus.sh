@@ -38,7 +38,8 @@ do
 	-h) print_help
 	    exit;;
 	-mpi) echo "INFO: compiling sphtorus using MPI"
-	      export SYSTEM="ompi";;
+	      export SYSTEM="ompi"
+	      export mpi="yes";;   # for sphNG 
     esac
 shift
 done
@@ -95,7 +96,12 @@ ln -s ${torus_cvs}/makedepend .
 echo "INFO: Building torus, SYSTEM=${SYSTEM}"
 make depends
 make ${debug_flag} sph=yes lib
-echo "INFO: Moving libtorus.a to ${sphtorus_dir}/lib"
+if [[ -e libtorus.a ]]; then
+  echo "INFO: Moving libtorus.a to ${sphtorus_dir}/lib"
+else
+  echo "ERROR: libtorus.a not created"
+  exit 1
+fi
 mv libtorus.a ${sphtorus_dir}/lib
 
 # 3.0 Build sphNG coupled to torus
@@ -108,11 +114,18 @@ ln -s ${sph_cvs}/Makefile .
 ln -s ${sph_cvs}/idim .
 ln -s ${sph_cvs}/igrape .
 ln -s ${sph_cvs}/inspho .
-ln -s ${sph_cvs}/*.h .
+# mpif.h is in the .depends file for sphNG so needs to be in the build directory.
+# The following ensures that the correct include file is used under openmpi, but
+# there is probably a better way of doing this.
+if [[ ${SYSTEM} -eq ompi ]]; then
+    cp ~/openmpi-1.2.4/ompi/include/mpif.h .
+else
+    ln -s ${sph_cvs}/mpi.h .
+fi
 ln -s ${sph_cvs}/COMMONS .
 
+
 echo "INFO: Building sphtorus, SYSTEM=${SYSTEM}"
-make updatedepends
 make ${debug_flag} sphtorus
 if [[ -e sphtorus ]]; then
     echo "INFO: moving executable sphtorus to ${sphtorus_dir}/bin"
