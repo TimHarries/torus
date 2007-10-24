@@ -474,33 +474,27 @@ contains
     endif
 
 
-      outputFlag = .true.
+    outputFlag = .true.
 #ifdef MPI
- if (my_rank/=0) outputFlag = .false.
-
- if (my_rank==0) &
+    if (my_rank/=0) outputFlag = .false.
 #endif
-      call writeAMRgrid("lucy_first_grid.dat", .false., grid)
 
-
+ if (outputFlag) call writeAMRgrid("lucy_first_grid.dat", .false., grid)
 
 !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
 
-#ifdef MPI
-    if(my_rank == 0) &
-#endif
-    call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
+ if (outputFlag) call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
 
 
     lCore = 0.d0
     do i = 1, nSource
        lCore = lCore + source(i)%luminosity
     enddo
-#ifdef MPI
-    if(my_rank == 0) &
-#endif
-    write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
-    call writeInfo(message, TRIVIAL)
+
+    if (outputFlag) then
+       write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
+       call writeInfo(message, TRIVIAL)
+    endif
 
     if (grid%geometry == "shakara") then
 	if (nDustType > 1) then
