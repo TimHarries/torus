@@ -953,9 +953,6 @@ contains
   DEALLOCATE ( nptmass_arr )
   DEALLOCATE ( npart_arr   )
 
-  call MPI_FINALIZE(ierr)
-  STOP
-
   end subroutine gather_sph_data
 #endif
 !-------------------------------------------------------------------------------
