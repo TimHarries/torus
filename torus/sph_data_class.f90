@@ -126,9 +126,106 @@ contains
 
     !
     this%have_stellar_disc = .false. 
-    
+
     
   end subroutine init_sph_data
+
+  ! 
+  ! Initializes an object with parameters when torus is called as a subroutine from sphNG.
+  ! 
+  subroutine init_sph_data2(this, udist, umass, utime, npart,  time, nptmass, &
+       gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho)
+    implicit none
+
+! Arguments --------------------------------------------------------------------
+    type(sph_data), intent(inout) :: this
+    real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
+    !                                                   ! (umass is M_sol, udist=0.1 pc)
+    integer, intent(in)           :: npart              ! Number of gas particles (field+disc)
+    real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
+    integer, intent(in)           :: nptmass            ! Number of stars/brown dwarfs
+    real(double), intent(in)  :: gaspartmass            ! Mass of each gas particle
+
+    integer, intent(in)   :: b_npart, b_idim
+    integer*1, intent(in) :: b_iphase(b_idim)
+    real*8, intent(in)    :: b_xyzmh(5,b_idim)
+    real*4, intent(in)    :: b_rho(b_idim)
+! Local variables --------------------------------------------------------------
+    integer :: iii, iiipart, iiigas
+
+! Begin executable statements --------------------------------------------------
+
+    ! Indicate that this object is in use
+    this%inUse = .true.
+
+    ! save these values in this object
+    this%udist = udist
+    this%umass = umass
+    this%utime = utime
+    this%npart = npart
+    this%time = time
+    this%nptmass = nptmass
+    this%gaspartmass = gaspartmass
+    this%nptmass     = nptmass
+
+    ! allocate arrays
+    ! -- for gas particles
+    ALLOCATE(this%xn(npart))
+    ALLOCATE(this%yn(npart))
+    ALLOCATE(this%zn(npart))
+    ALLOCATE(this%rhon(npart))
+
+
+    ! -- for star positions
+    ALLOCATE(this%x(nptmass))
+    ALLOCATE(this%y(nptmass))
+    ALLOCATE(this%z(nptmass))
+    
+    ! -- for mass of stars
+    ALLOCATE(this%ptmass(nptmass))
+
+    !
+    this%have_stellar_disc = .false. 
+    
+    iiipart=0
+    iiigas=0
+
+    ! Set up density and position of gas and point mass particles
+    do iii=1,b_npart
+       if (b_iphase(iii) == 0) then
+          iiigas=iiigas+1
+          if (iiigas > npart) then
+             write (*,*) 'iiigas>npart',iiigas, npart
+             STOP
+          endif
+          this%rhon(iiigas) = b_rho(iii)
+          this%xn(iiigas)   = b_xyzmh(1,iii)
+          this%yn(iiigas)   = b_xyzmh(2,iii)
+          this%zn(iiigas)   = b_xyzmh(3,iii)
+       elseif (b_iphase(iii) > 0) then
+          iiipart=iiipart+1
+          if (iiipart > nptmass) then
+             write (*,*) 'iiipart>nptmass',iiipart,nptmass
+             STOP
+          endif
+          this%x(iiipart)      = b_xyzmh(1,iii)
+          this%y(iiipart)      = b_xyzmh(2,iii)
+          this%z(iiipart)      = b_xyzmh(3,iii)
+          this%ptmass(iiipart) = b_xyzmh(4,iii)
+       endif
+    end do
+
+    ! Check the number of gas particles and point masses are as expected
+    IF ( iiigas /= npart ) THEN
+       print *,'Error: expecting to find', npart, 'gas particles but found', iiigas
+       STOP
+    ENDIF
+    IF ( iiipart /= nptmass ) THEN
+       print *,'Error: expecting to find', nptmass, 'point masses but found', iiipart
+       STOP
+    ENDIF
+
+  end subroutine init_sph_data2
 
   
   !
@@ -650,7 +747,7 @@ contains
     close(43)
 
   end subroutine find_inclinations
-
+ 
 
   !
   ! Interface function to get the status of SPH data object
@@ -664,7 +761,205 @@ contains
 
 
 
-    
+#ifdef MPI
+!-------------------------------------------------------------------------------
+! Name:    gather_sph_data
+! Purpose: Perform the MPI communication required to ensure all processes have
+!          access to the full list of sph particle data
+! Author:  D. Acreman October 2007
+
+  subroutine gather_sph_data(this)
+    implicit none
+    include 'mpif.h'
+
+    type(sph_data), intent(inout) :: this
+    integer :: my_rank, n_proc, ierr, i 
+    integer :: npart_all, nptmass_all
+    integer, allocatable :: npart_arr(:),   nptmass_arr(:)
+    integer, allocatable :: npart_displ(:), nptmass_displ(:)
+    real(double), allocatable :: xn_tmp(:), yn_tmp(:), zn_tmp(:), rhon_tmp(:)
+    real(double), allocatable :: x_tmp(:),  y_tmp(:),  z_tmp(:),  ptmass_tmp(:)
+    character(len=3) :: char_my_rank
+    logical, parameter :: ll_testwrite = .true.
+
+! Begin executable statements -------
+
+! 0. Preliminaries
+  !  Get my process rank  
+  call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+  ! Find the total number of processes being used in this run
+  call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
+
+! 1.1 Get total number of gas particles
+  call MPI_ALLREDUCE(this%npart, npart_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+
+! 1.2 Get number of gas particles for each process
+  ALLOCATE( npart_arr(n_proc) )
+  CALL MPI_GATHER(this%npart, 1, MPI_INTEGER, npart_arr, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+
+! 2.1 Get total number of point masses
+  call MPI_ALLREDUCE(this%nptmass, nptmass_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+
+! 2.2 Get total number of point masses for each proccess
+  ALLOCATE( nptmass_arr(n_proc) )
+  CALL MPI_GATHER(this%nptmass, 1, MPI_INTEGER, nptmass_arr, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+
+! 3. Communicate arrays xn, yn, zn, rhon, x, y, z, ptmass and keep in tmp storage
+
+! 3.1 Gas particles
+  ALLOCATE ( npart_displ(n_proc) )
+  npart_displ(1)=0
+  DO i=2, n_proc
+     npart_displ(i) = npart_displ(i-1) + npart_arr(i-1)
+  END DO
+
+  ALLOCATE ( xn_tmp(npart_all)   )
+  ALLOCATE ( yn_tmp(npart_all)   )
+  ALLOCATE ( zn_tmp(npart_all)   )
+  ALLOCATE ( rhon_tmp(npart_all) )
+
+! Gather the particle data on process 0 then broadcast to all. For some reason MPI_ALLGATHERV 
+! doesn't work  for doing this. 
+  CALL MPI_GATHERV(this%xn, this%npart, MPI_DOUBLE_PRECISION, xn_tmp(:), npart_arr(:), npart_displ(:), &
+                      MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+  CALL MPI_BCAST(xn_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+  CALL MPI_GATHERV(this%yn, this%npart, MPI_DOUBLE_PRECISION, yn_tmp(:), npart_arr(:), npart_displ(:), &
+                      MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+  CALL MPI_BCAST(yn_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+  CALL MPI_GATHERV(this%zn, this%npart, MPI_DOUBLE_PRECISION, zn_tmp(:), npart_arr(:), npart_displ(:), &
+                      MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+  CALL MPI_BCAST(zn_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+  CALL MPI_GATHERV(this%rhon, this%npart, MPI_DOUBLE_PRECISION, rhon_tmp(:), npart_arr(:), npart_displ(:), &
+                      MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+  CALL MPI_BCAST(rhon_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+! Write out particle list for tests
+  IF ( ll_testwrite ) THEN
+     write(char_my_rank, '(i3)') my_rank
+     open (unit=60, status='replace', file='mpi_test_tmp_'//TRIM(ADJUSTL(char_my_rank))//'.txt')
+     do i=1, npart_all
+        write(60,*) xn_tmp(i), yn_tmp(i), zn_tmp(i), rhon_tmp(i)
+     end do
+     IF ( nptmass_all > 0 ) THEN
+        DO i=1, nptmass_all
+           write(60, *) x_tmp(i), y_tmp(i), z_tmp(i), ptmass_tmp(i)
+        END DO 
+     END IF
+     close(60)
+  END IF
+
+! 3.2 Point masses
+  IF ( nptmass_all > 0 ) THEN
+
+     ALLOCATE ( nptmass_displ(n_proc) )
+     nptmass_displ(1)=0
+     DO i=2, n_proc
+        nptmass_displ(i) = nptmass_displ(i-1) + nptmass_arr(i-1)
+     END DO
+
+     ALLOCATE ( x_tmp(npart_all)      )
+     ALLOCATE ( y_tmp(npart_all)      )
+     ALLOCATE ( z_tmp(npart_all)      )
+     ALLOCATE ( ptmass_tmp(npart_all) )
+
+     CALL MPI_GATHERV(this%x, this%nptmass, MPI_DOUBLE_PRECISION, x_tmp(:), nptmass_arr(:), nptmass_displ(:), &
+          MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+     CALL MPI_BCAST(x_tmp(:), nptmass_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+     
+     CALL MPI_GATHERV(this%y, this%nptmass, MPI_DOUBLE_PRECISION, y_tmp(:), nptmass_arr(:), nptmass_displ(:), &
+          MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+     CALL MPI_BCAST(y_tmp(:), nptmass_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+     CALL MPI_GATHERV(this%z, this%nptmass, MPI_DOUBLE_PRECISION, z_tmp(:), nptmass_arr(:), nptmass_displ(:), &
+          MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+     CALL MPI_BCAST(z_tmp(:), nptmass_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+     CALL MPI_GATHERV(this%ptmass, this%nptmass, MPI_DOUBLE_PRECISION, ptmass_tmp(:), nptmass_arr(:), nptmass_displ(:), &
+          MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+     CALL MPI_BCAST(ptmass_tmp(:), nptmass_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+  END IF
+
+! 4. Deallocate and reAllocate arrays xn, yn, zn, rhon, x, y, z, ptmass
+
+! 4.1 Gas particles
+  DEALLOCATE ( this%xn   )
+  DEALLOCATE ( this%yn   )
+  DEALLOCATE ( this%zn   )
+  DEALLOCATE ( this%rhon )
+  ALLOCATE   ( this%xn(npart_all)   )
+  ALLOCATE   ( this%yn(npart_all)   )
+  ALLOCATE   ( this%zn(npart_all)   )
+  ALLOCATE   ( this%rhon(npart_all) )
+
+! 4.2 Point masses
+  IF  ( nptmass_all > 0 ) THEN
+     DEALLOCATE ( this%x   )
+     DEALLOCATE ( this%y   )
+     DEALLOCATE ( this%z   )
+     DEALLOCATE ( this%ptmass )
+     ALLOCATE   ( this%x(nptmass_all)      )
+     ALLOCATE   ( this%y(nptmass_all)      )
+     ALLOCATE   ( this%z(nptmass_all)      )
+     ALLOCATE   ( this%ptmass(nptmass_all) )
+  END IF
+
+! 5. Populate new arrays with values from the tmp storage
+
+! 5.1 Gas particles
+  this%xn(:)   = xn_tmp(:)
+  this%yn(:)   = yn_tmp(:)
+  this%zn(:)   = zn_tmp(:)
+  this%rhon(:) = rhon_tmp(:)
+
+! 5.2 Point masses
+  IF  ( nptmass_all > 0 ) THEN
+     this%x(:)      = x_tmp(:)
+     this%y(:)      = y_tmp(:)
+     this%z(:)      = z_tmp(:)
+     this%ptmass(:) = ptmass_tmp(:)
+  END IF
+
+! Write out particle list for tests
+  If ( ll_testwrite ) THEN
+     open (unit=60, status='replace', file='mpi_test_'//TRIM(ADJUSTL(char_my_rank))//'.txt')
+     do i=1, npart_all
+        write(60,*) this%xn(i), this%yn(i), this%zn(i), this%rhon(i)
+     end do
+     IF ( nptmass_all > 0 ) THEN
+        DO i=1, nptmass_all
+           write(60, *) this%x(i), this%y(i), this%z(i), this%ptmass(i)
+        END DO 
+     END IF
+     close(60)
+  END IF
+
+! 6. Deallocate temporary storage
+  DEALLOCATE ( rhon_tmp    )
+  DEALLOCATE ( zn_tmp      )
+  DEALLOCATE ( yn_tmp      )
+  DEALLOCATE ( xn_tmp      )
+  IF  ( nptmass_all > 0 ) THEN
+     DEALLOCATE ( x_tmp      )
+     DEALLOCATE ( y_tmp      )
+     DEALLOCATE ( z_tmp      )
+     DEALLOCATE ( ptmass_tmp )
+  END IF
+  DEALLOCATE ( npart_displ )
+  DEALLOCATE ( nptmass_arr )
+  DEALLOCATE ( npart_arr   )
+
+  call MPI_FINALIZE(ierr)
+  STOP
+
+  end subroutine gather_sph_data
+#endif
+!-------------------------------------------------------------------------------
+   
 end module sph_data_class
 
 

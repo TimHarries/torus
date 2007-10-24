@@ -453,17 +453,18 @@ program torus
 ! Variables used when linking to sph code
   logical, parameter :: ll_sphFromFile = .false.   ! Read in sph data from a file?
 #ifdef SPH
-  integer   :: b_idim,b_npart,b_nactive,b_nptmass
-  integer   :: npart, nptmass, nacc, ngaspart
-  integer   :: iii, iiipart, iiigas
-  integer*1 :: b_iphase(b_idim)
-  integer   :: b_listpm(b_nptmass)
-  real*8 :: b_xyzmh(5,b_idim)
-  real*4 :: b_rho(b_idim), sphDistFac
-  real*8 :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
-  real*8 :: b_temp(b_idim)
-  real*8 :: xgas,ygas,zgas
-  real   :: tgas
+  integer, intent(in)   :: b_idim,b_npart,b_nactive,b_nptmass
+  integer*1, intent(in) :: b_iphase(b_idim)
+  integer, intent(in)   :: b_listpm(b_nptmass)
+  real*8, intent(in)    :: b_xyzmh(5,b_idim)
+  real*4, intent(in)    :: b_rho(b_idim)
+  real*8, intent(in)    :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
+  real*8, intent(out)   :: b_temp(b_idim)
+  integer :: npart, nptmass, nacc, ngaspart
+  integer :: iiigas
+  real*4  :: sphDistFac
+  real*8  :: xgas,ygas,zgas
+  real    :: tgas
 #endif
 
   real(double) ::  d1, d2, massRatio
@@ -499,9 +500,15 @@ program torus
   integer, parameter :: tag = 0
   logical :: rankComplete
 
+! Begin executable statements --------------------------------------------------
+
   ! FOR MPI IMPLEMENTATION=======================================================
+#ifdef SPH
+!  The call to MPI_INIT is omitted when calling torus from sph code.
+#else
   !  initialize the system for running MPI
   call MPI_INIT(ierr) 
+#endif  
 
   !  Get my process rank # 
   call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
@@ -511,7 +518,7 @@ program torus
   
   call unixGetHostname(tempChar, tempInt) 
   print *, 'Process ', my_rank,' running on host ',TRIM(ADJUSTL(tempChar))
-  
+
   !===============================================================================
 
     call setupAMRCOMMUNICATOR
@@ -817,7 +824,7 @@ program torus
   viewVec = originalViewVec
 
   !=====================================================================
-  ! INIIALIZATIONS BEFORE CALLING INITAMR ROUTINE SHOUDL BE HERE
+  ! INIIALIZATIONS BEFORE CALLING INITAMR ROUTINE SHOULD BE HERE
   !=====================================================================
 
   !
@@ -831,68 +838,23 @@ program torus
      ! The total number of gas particles is the total number of active particles
      ! less the number of point masses.
      ngaspart = b_nactive-b_nptmass
-     call init_sph_data(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
-                        b_gaspartmass)
+     call init_sph_data2(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
+                        b_gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho)
+#ifdef MPI
+     call gather_sph_data(sphData)
+#endif
 
      sphDistfac  = get_udist(sphData)  ! [cm]
      sphDistfac = sphDistfac / 1.e10 ! to torus units
-     ! read in the sph data from a file
-     !call read_sph_data(sphData, "sph.dat")
 
-     iiipart=0
-     iiigas=0
-
-     sphData%nptmass=b_nptmass
-
-     do iii=1,b_npart
-       if (b_iphase(iii).eq.0) then
-         iiigas=iiigas+1
-         if (iiigas > ngaspart) then
-           write (*,*) 'iiigas>ngaspart',iiigas, ngaspart
-           STOP
-         endif
-         sphData%rhon(iiigas) = b_rho(iii)
-         sphData%xn(iiigas) = b_xyzmh(1,iii)
-         sphData%yn(iiigas) = b_xyzmh(2,iii)
-         sphData%zn(iiigas) = b_xyzmh(3,iii)
-       elseif (b_iphase(iii).gt.0) then
-         iiipart=iiipart+1
-         if (iiipart.GT.b_nptmass) then
-           write (*,*) 'iiipart>b_nptmass',iiipart,b_nptmass
-           STOP
-         endif
-         sphData%x(iiipart) = b_xyzmh(1,iii)
-         sphData%y(iiipart) = b_xyzmh(2,iii)
-         sphData%z(iiipart) = b_xyzmh(3,iii)
-         sphData%ptmass(iiipart) = b_xyzmh(4,iii)
-       endif
-     end do
-
-     ! Check the number of gas particles and point masses are as expected
-     IF ( iiigas /= ngaspart ) THEN
-       print *,'Error: expecting to find', ngaspart, 'gas particles'
-       print *, 'but found', iiigas
-       STOP
-     ENDIF
-     IF ( iiipart /= b_nptmass ) THEN
-       print *,'Error: expecting to find', b_nptmass, 'point masses'
-       print *, 'but found', iiipart
-       STOP
-     ENDIF
-
-     ! read in the sph data from a file
-     ! call read_sph_data(sphData, "sph.dat")
-     ! call read_stellar_disc_data(sphData, "stellar_disc.dat")
 
      ! Writing basic info of this data
 #ifdef MPI
-     if(my_rank == 0)  then
-       call info(sphData, "info_sph.dat")
-     end if
+     if(my_rank == 0) &
 #endif
+     call info(sphData, "info_sph.dat")
 
      ! reading in the isochrone data needed to build an cluster object.
-     
      call new(isochrone_data, "dam98_0225")   
      call read_isochrone_data(isochrone_data)
      
@@ -908,8 +870,6 @@ program torus
      call write_catalog(young_cluster, sphData)
   end if
 #endif
-
-
 
 !  sphData%inUse = .false. !Now initialized in the object/derive type definition.
 
@@ -5413,12 +5373,16 @@ call tune(6, "Torus Main") ! stop a stopwatch
   
      enddo
 #endif
-  
-call writeInfo("TORUS exiting", FORINFO)
 
+call writeInfo("TORUS exiting", FORINFO)
+ 
 #ifdef MPI
   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+#ifdef SPH
+! Omitting call to MPI_FINALIZE when torus is called from sph NG
+#else
   call MPI_FINALIZE(ierr)
+#endif
 #endif
 
 #ifdef SPH
