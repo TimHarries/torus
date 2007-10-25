@@ -915,6 +915,7 @@ contains
   this%yn(:)   = yn_tmp(:)
   this%zn(:)   = zn_tmp(:)
   this%rhon(:) = rhon_tmp(:)
+  this%npart   = npart_all
 
 ! 5.2 Point masses
   IF  ( nptmass_all > 0 ) THEN
@@ -922,6 +923,7 @@ contains
      this%y(:)      = y_tmp(:)
      this%z(:)      = z_tmp(:)
      this%ptmass(:) = ptmass_tmp(:)
+     this%npart     = npart_all
   END IF
 
 ! Write out particle list for tests
