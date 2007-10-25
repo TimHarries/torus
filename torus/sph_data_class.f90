@@ -837,21 +837,6 @@ contains
                       MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   CALL MPI_BCAST(rhon_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
-! Write out particle list for tests
-  IF ( ll_testwrite ) THEN
-     write(char_my_rank, '(i3)') my_rank
-     open (unit=60, status='replace', file='mpi_test_tmp_'//TRIM(ADJUSTL(char_my_rank))//'.txt')
-     do i=1, npart_all
-        write(60,*) xn_tmp(i), yn_tmp(i), zn_tmp(i), rhon_tmp(i)
-     end do
-     IF ( nptmass_all > 0 ) THEN
-        DO i=1, nptmass_all
-           write(60, *) x_tmp(i), y_tmp(i), z_tmp(i), ptmass_tmp(i)
-        END DO 
-     END IF
-     close(60)
-  END IF
-
 ! 3.2 Point masses
   IF ( nptmass_all > 0 ) THEN
 
@@ -882,6 +867,21 @@ contains
           MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
      CALL MPI_BCAST(ptmass_tmp(:), nptmass_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
+  END IF
+
+! Write out particle list for tests
+  IF ( ll_testwrite ) THEN
+     write(char_my_rank, '(i3)') my_rank
+     open (unit=60, status='replace', file='mpi_test_tmp_'//TRIM(ADJUSTL(char_my_rank))//'.txt')
+     do i=1, npart_all
+        write(60,*) xn_tmp(i), yn_tmp(i), zn_tmp(i), rhon_tmp(i)
+     end do
+     IF ( nptmass_all > 0 ) THEN
+        DO i=1, nptmass_all
+           write(60, *) x_tmp(i), y_tmp(i), z_tmp(i), ptmass_tmp(i)
+        END DO 
+     END IF
+     close(60)
   END IF
 
 ! 4. Deallocate and reAllocate arrays xn, yn, zn, rhon, x, y, z, ptmass
