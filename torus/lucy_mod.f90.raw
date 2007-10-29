@@ -564,11 +564,8 @@ contains
 
        ! Plotting the intermidiate temperature steps
 
-       if (plot_maps) then
+       if (plot_maps .and. myRankIsZero) then
 
-#ifdef MPI
-    if(my_rank == 0)  then
-#endif
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_xz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
@@ -625,26 +622,16 @@ contains
             "lucy_temp_yz.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
        call polardump(grid)
-#ifdef MPI
     end if
-#endif
 
-    endif
-
-#ifdef MPI
-       if (my_rank == 1) &
-#endif
-       call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
+       if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
        
        call zeroDistanceGrid(grid%octreeRoot)
-#ifdef MPI
-       if (my_rank == 0) then
-#endif
-       write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
-       call writeInfo(message, TRIVIAL)
-#ifdef MPI
+
+       if (myRankIsZero) then
+          write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
+          call writeInfo(message, TRIVIAL)
        end if
-#endif
 
 
 
@@ -921,7 +908,7 @@ contains
        ! comunications between processors. It may take a while....
        ! (Maybe faster to pack the values in 1D arrays and distribute.)
 
-       if(my_rank == 1) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
+       if(doTuning) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
        if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
     !   call update_octal_MPI(grid%octreeRoot, grid)
 
@@ -931,7 +918,7 @@ contains
        call updateGridMPI(grid)
        if(my_rank == 0) write(*,*) "Done update."
 
-       if(my_rank == 1) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
+       if(doTuning) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
 
        ! collect some statical info from each node.
        call MPI_ALLGATHER(REAL(nInf), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
@@ -953,10 +940,9 @@ contains
        call MPI_ALLGATHER(REAL(nDiffusion), 1, MPI_REAL, buffer_real, 1, MPI_REAL, MPI_COMM_WORLD, ierr)
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
        nDiffusion = INT(SUM(buffer_real), double)
-
-       
-       if(my_rank == 0) then
 #endif
+       
+       if(myRankIsZero) then
           write(message,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
           call writeInfo(message,TRIVIAL)
           write(message,'(a,f13.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
@@ -965,9 +951,7 @@ contains
           call writeInfo(message,IMPORTANT)
           write(message,'(a,f13.3)') "Fraction of photons killed: ",real(nKilled)/real(nMonte)
           call writeInfo(message,IMPORTANT)
-#ifdef MPI
        end if
-#endif
 
 
        epsOverDeltaT = (lCore) / dble(nInf)
@@ -994,16 +978,12 @@ contains
        nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
-#ifdef MPI
-       if (my_rank==0) &
-#endif
+       if (myRankIsZero) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomfactor) 
 
-#ifdef MPI
-       if (my_rank==0) &
-#endif
+       if (myRankIsZero) &
        call plot_AMR_values(grid, "direct", "x-z", real(grid%octreeRoot%centre%y), &
             "direct.ps/vcps", .false., .true., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor)
@@ -1021,9 +1001,8 @@ contains
        dT_mean_old = dT_mean_new  ! save this for the next iteration
        dT_mean_new = dT_sum/real(nDt)
 
-#ifdef MPI
-       if (my_rank==0) then
-#endif
+       if (myRankIsZero) then
+
        write(message,*) "Number of photons entering diffusion zone", ndiffusion
        call writeInfo(message, TRIVIAL)
        write(message,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
@@ -1064,38 +1043,26 @@ contains
             totalEmission, dT_over_T_max, nMonte
        
        close(LU_OUT)
-#ifdef MPI
+
     end if   
-#endif
 
 
+       if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
 
-#ifdef MPI
- if (my_rank==1) &       
-#endif
-       call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
-
-       debugoutput = .true.
-#ifdef MPI
- if (my_rank==0)  then
+ if (myRankIsZero)  then
     debugOutput = .true.       
   else
     debugOutput = .false.
  endif
-#endif
 
 !       do i = 1, 1
 !          call estimateTempofUndersampled(grid, grid%octreeRoot)
 !          call updateTemps(grid, grid%octreeRoot)
 !       enddo
-#ifdef MPI
-  if (my_rank == 1) &
-#endif
-       call tune(6, "Gauss-Seidel sweeps")
+       if (doTuning) call tune(6, "Gauss-Seidel sweeps")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
-#ifdef MPI
-       if (my_rank==0) &
-#endif
+#
+       if (myRankIsZero) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomfactor)
@@ -1111,10 +1078,7 @@ contains
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 
-#ifdef MPI
-  if (my_rank == 1) &
-#endif
-       call tune(6, "Gauss-Seidel sweeps")
+       if (doTuning) call tune(6, "Gauss-Seidel sweeps")
 
 
 !       call writeInfo("Starting adaptive smooth...",TRIVIAL)
@@ -1138,11 +1102,10 @@ contains
        endif
 
 
-#ifdef MPI
- if (my_rank==0) &
+ if (myRankIsZero) &
       call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
       call writeInfo("Grid written",TRIVIAL)
-#endif
+
 
    enddo
 
@@ -1233,16 +1196,12 @@ contains
 
 !    nRemoved = 0
 !    if (iIter_Grand > 3) then
-#ifdef MPI
-! if (my_rank==0) & 
-#endif
+! if (myRankIsZero) & 
 !       write(*,*) "Removing dust with T > Tthresh: ",Tthresh
 !       call removeDust(grid%octreeRoot, Tthresh, nRemoved)
 !    endif
 !
-#ifdef MPI
-! if (my_rank==0) & 
-#endif
+! if (myRankIsZero) & 
 !    write(message,*) "Number of cells removed: ",nRemoved
 !    call writeInfo(message, TRIVIAL)
 
@@ -1252,9 +1211,7 @@ contains
        totalMass = 0.
        call findTotalMass(grid%octreeRoot, totalMass)
        scaleFac = massEnvelope / totalMass
-#ifdef MPI
-    if (my_rank==0) & 
-#endif
+    if (myRankIsZero) & 
        write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
        call scaleDensityAMR(grid%octreeRoot, scaleFac)
     endif
@@ -1289,13 +1246,7 @@ contains
 !    !
 !    ! Write grid structure to a tmp file.
 !    !
-#ifdef MPI
- if (my_rank==0) then
-#endif
-      call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
-#ifdef MPI
- end if
-#endif
+    if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
        
    enddo
 

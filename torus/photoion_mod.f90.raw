@@ -269,8 +269,7 @@ contains
           write(*,*) "Running loop with ",nmonte," photons. Iteration: ",niter
        endif
 
-!$MPI       if (my_rank == 1) &
-       call tune(6, "One photoionization itr")  ! start a stopwatch
+       if (doTuning) call tune(6, "One photoionization itr")  ! start a stopwatch
 
        iMonte_beg = 1
        iMonte_end = nMonte
@@ -425,10 +424,7 @@ contains
 !$MPI       if(my_rank == 0) write(*,*) "Done update_octal_MPI"
 
 
-
-
-!$MPI       if (my_rank == 1) &
-       call tune(6, "One photoionization itr")  ! stop a stopwatch
+       if (doTuning) call tune(6, "One photoionization itr")  ! stop a stopwatch
 
        epsOverDeltaT = (lCore) / dble(nMonte)
 
@@ -471,8 +467,7 @@ contains
     ioctal_beg = 1
     ioctal_end = nOctal
 
-!$MPI  if (my_rank == 1) &
-       call tune(6, "Temperature/ion corrections")
+    if (doTuning) call tune(6, "Temperature/ion corrections")
 
     if (writeoutput) &
          write(*,*) "Calculating ionization and thermal equilibria"
@@ -550,16 +545,14 @@ contains
     if (writeoutput) &
          write(*,*) "Finished calculating ionization and thermal equilibria"
 
-!$MPI  if (my_rank == 1) &
-       call tune(6, "Temperature/ion corrections")
+       if (doTuning) call tune(6, "Temperature/ion corrections")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
 !$MPI       if (my_rank==0) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
 
-!$MPI  if (my_rank == 1) &
-       call tune(6, "Gauss-Seidel sweeps")
+       if (doTuning) call tune(6, "Gauss-Seidel sweeps")
 
 
        nCellsInDiffusion = 0
@@ -575,8 +568,7 @@ contains
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 
-!$MPI  if (my_rank == 1) &
-       call tune(6, "Gauss-Seidel sweeps")
+       if (doTuning) call tune(6, "Gauss-Seidel sweeps")
 
 
 

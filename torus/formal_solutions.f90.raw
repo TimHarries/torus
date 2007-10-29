@@ -446,8 +446,7 @@ contains
 
     ! Note: The first wavelength bin is used for contiuum calculation!!
     do j = j_beg, j_end
-!$MPI  if (my_rank==1) &
-       call tune(6, "One wavelength  Loop") ! start a stopwatch  
+       if (doTuning) call tune(6, "One wavelength  Loop") ! start a stopwatch  
        if (j==1) then
           continuum = .true.
           lambda_j = lambda0  ! use the line center wavelength for contiuum calculation...
@@ -666,8 +665,7 @@ contains
 
 !$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
-!$MPI  if (my_rank==1) &
-       call tune(6, "One wavelength  Loop") ! stop a stopwatch  
+       if (doTuning) call tune(6, "One wavelength  Loop") ! stop a stopwatch  
     end do  ! wavelength loop
 
 

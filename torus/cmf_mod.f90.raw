@@ -1095,8 +1095,7 @@ contains
 
        do while (.not.gridConverged)
 
-!$MPI if (my_rank == 1) &
-          call tune(6, "One cmf iteration")  ! start a stopwatch
+          if (doTuning) call tune(6, "One cmf iteration")  ! start a stopwatch
 
           allocate(ds(1:nRay))
           allocate(phi(1:nRay))
@@ -1152,8 +1151,7 @@ contains
 
 
 
-!$MPI if (my_rank == 1) &
-          call tune(6, "One octal iteration")  ! start a stopwatch
+          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
              
              write(*,*) iOctal,iOctal_beg,iOctal_end
              thisOctal => octalArray(iOctal)%content
@@ -1379,8 +1377,7 @@ contains
              enddo
           end do
 
-!$MPI if (my_rank == 1) &
-          call tune(6, "One octal iteration")  ! start a stopwatch
+          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
 
 !$MPI if (.not.blockHandout) exit blockloop
 !$MPI end do blockLoop        
@@ -1460,8 +1457,7 @@ contains
 
 
        enddo
-!$MPI if (my_rank == 1) &
-       call tune(6, "One cmf iteration")  ! stop a stopwatch
+       if (doTuning)  call tune(6, "One cmf iteration")  ! stop a stopwatch
 
     enddo
     write(*,*) "ATOM loop done."

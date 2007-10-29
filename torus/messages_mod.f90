@@ -14,6 +14,8 @@ module messages_mod
   logical :: writeoutput
   logical :: outputWarnings
   logical :: outputInfo
+  logical :: doTuning
+  logical :: myRankIsZero
   integer :: verbosityLevel
   integer, parameter :: TRIVIAL = 1
   integer, parameter :: FORINFO = 2
