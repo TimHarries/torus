@@ -923,17 +923,17 @@ contains
      this%y(:)      = y_tmp(:)
      this%z(:)      = z_tmp(:)
      this%ptmass(:) = ptmass_tmp(:)
-     this%npart     = npart_all
+     this%nptmass   = nptmass_all
   END IF
 
 ! Write out particle list for tests
   If ( ll_testwrite ) THEN
      open (unit=60, status='replace', file='mpi_test_'//TRIM(ADJUSTL(char_my_rank))//'.txt')
-     do i=1, npart_all
+     do i=1, this%npart
         write(60,*) this%xn(i), this%yn(i), this%zn(i), this%rhon(i)
      end do
      IF ( nptmass_all > 0 ) THEN
-        DO i=1, nptmass_all
+        DO i=1, this%nptmass
            write(60, *) this%x(i), this%y(i), this%z(i), this%ptmass(i)
         END DO 
      END IF
