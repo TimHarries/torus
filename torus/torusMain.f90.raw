@@ -837,21 +837,25 @@ program torus
   if (geometry == "cluster") then
 
      ! HSC
+     if  (ll_sphFromFile) then
 
-     ! The total number of gas particles is the total number of active particles
-     ! less the number of point masses.
-     ngaspart = b_nactive-b_nptmass
-     call init_sph_data2(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
-                        b_gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho)
+        ! read in the sph data from a file
+        call read_sph_data(sphData, "sph.dat")
+        call read_stellar_disc_data(sphData, "stellar_disc.dat")
+
+     else
+
+     ! The total number of gas particles is the total number of active particles less the number of point masses.
+        ngaspart = b_nactive-b_nptmass
+        call init_sph_data2(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
+             b_gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho)
 #ifdef MPI
-     call gather_sph_data(sphData)
+        call gather_sph_data(sphData)
 #endif
 
-     sphDistfac  = get_udist(sphData)  ! [cm]
-     sphDistfac = sphDistfac / 1.e10 ! to torus units
+     end if
 
-
-     ! Writing basic info of this data
+        ! Writing basic info of this data
      if (myRankIsZero) call info(sphData, "info_sph.dat")
 
      ! reading in the isochrone data needed to build an cluster object.
@@ -861,41 +865,17 @@ program torus
      ! making a cluster object
      call new(young_cluster, sphData, dble(amrGridSize), disc_on)
      call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
-
     
      ! Wrting the stellar catalog readble for a human
      if (myRankIsZero) call write_catalog(young_cluster, sphData)
+
+      ! Finding the inclinations of discs seen from +z directions...
+     if (myRankIsZero .and. ll_sphFromFile) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
+
   end if
 #endif
 
-!  sphData%inUse = .false. !Now initialized in the object/derive type definition.
-
-  if (geometry == "cluster" .and. ll_sphFromFile) then !!!!!!!!!
-     ! read in the sph data from a file
-     call read_sph_data(sphData, "sph.dat")
-     call read_stellar_disc_data(sphData, "stellar_disc.dat")
-
-     ! Writing basic info of this data
-     if (myRankIsZero) then
-        call info(sphData, "*")
-        call info(sphData, "info_sph.dat")
-     end if
-
-     ! reading in the isochrone data needed to build an cluster object.
-     call new(isochrone_data, "dam98_0225")   
-     call read_isochrone_data(isochrone_data)
-
-     ! making a cluster object
-     call new(young_cluster, sphData, dble(amrGridSize), disc_on)
-     call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
-
-     ! Wrting the stellar catalog readble for a human
-     if (myRankIsZero) call write_catalog(young_cluster, sphData)
-
-     ! Finding the inclinations of discs seen from +z directions...
-     if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
-
-  elseif (geometry == "wr104") then
+  if (geometry == "wr104") then
      if (.not.(readPops.or.readlucy)) then
         call readWR104Particles("harries_wr104.txt", sphData, objectDistance)
         call info(sphData,"*")
@@ -5206,6 +5186,8 @@ if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch
 !  New HSC Stuff
 !  Loop through sph gas particles and assign temperatures
 
+     sphDistfac  = get_udist(sphData)  ! [cm]
+     sphDistfac = sphDistfac / 1.e10 ! to torus units
 
      iiigas=0
      do i=1,b_npart
@@ -5217,7 +5199,6 @@ if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch
           zgas = b_xyzmh(3,i) * sphDistFac
           octVec = OCTALVECTOR(xgas,ygas,zgas)
           call amrGridValues(grid%octreeRoot, octVec, temperature=tgas, grid=grid)
-  !        write(*,*) i,xgas,ygas,zgas,tgas
           b_temp(iiigas)=tgas
        endif
   
