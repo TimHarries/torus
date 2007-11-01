@@ -264,7 +264,7 @@ CONTAINS
                 subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+thisOctal%dphi/4.d0))
              CASE DEFAULT
-                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case"
+                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 1"
                 PRINT *, "        nChild = ", nChild 
                 do
                 enddo
@@ -284,7 +284,7 @@ CONTAINS
                 subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
                 subcellCentre = rotateZ(subcellCentre,-thisOctal%phi)
              CASE DEFAULT
-                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case"
+                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 2"
                 PRINT *, "        nChild = ", nChild 
                 do
                 enddo
@@ -302,7 +302,7 @@ CONTAINS
     CASE (4)    
        subcellCentre = thisOctal%centre + (d * xHatOctal) + (d * zHatOctal)
     CASE DEFAULT
-       PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case"
+       PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 3"
        PRINT *, "        nChild = ", nChild 
        do;enddo
        END SELECT
@@ -354,7 +354,7 @@ CONTAINS
              CASE (8)    
                 subcellRadius = thisOctal%r + d
              CASE DEFAULT
-                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case"
+                PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 4"
                 PRINT *, "        nChild = ", nChild 
                 do
                 enddo

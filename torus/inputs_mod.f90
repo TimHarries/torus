@@ -84,6 +84,9 @@ contains
     call getInteger("nphotons", nPhotons, cLine, nLines, &
          "Number of photons: ", "(a,i8,1x,a)", 100000, ok, .true.)
 
+    call getInteger("idump", idump, cLine, nLines, &
+         "Hydrodynamic dump number: ", "(a,i4,1x,a)", 1, ok, .false.)
+
     call getLogical("blockhandout", blockHandout, cLine, nLines, &
          "Use blockhandout for parallel computations ", "(a,1l,1x,a)", .true., ok, .false.)
 

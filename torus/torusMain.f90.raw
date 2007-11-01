@@ -962,6 +962,7 @@ program torus
 
 #ifdef MPI
  if (hydrodynamics) grid%splitOverMpi = .true.
+ if (photoionization) grid%splitOverMpi = .true.
 #endif
 
   grid%resonanceLine = resonanceLine
@@ -1197,6 +1198,8 @@ program torus
         call readAMRgrid("atom_tmp.grid",.false.,grid)
         goto 665
      endif
+
+     if (photoionization.and.readlucy) goto 665
 
      if (readPops .or. readPhasePops .or. readLucy) then 
 
@@ -2681,10 +2684,12 @@ program torus
      end if
 
 
+     if (associated(grid%octreeRoot)) then
         totalMass =0.d0
         call findTotalMass(grid%octreeRoot, totalMass)
         write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
         call writeInfo(message, IMPORTANT)
+     endif
         
 
      if (mie) then
@@ -2787,6 +2792,10 @@ program torus
         grid%splitOverMPI = .true.
         if (my_rank /= 0) then
            if (grid%octreeRoot%twoD) then
+              call boundaryCondCheck(grid%octreeRoot)
+              call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+              stop
+	
               call doHydrodynamics2d(grid)
            else if (grid%octreeRoot%oneD) then
               call doHydrodynamics1d(grid)

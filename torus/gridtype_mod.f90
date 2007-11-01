@@ -31,6 +31,8 @@ module gridtype_mod
 
   type GRIDTYPE
      logical :: splitOverMPI                     ! if the grid distributed in memory over MPI
+     integer :: iDump                            ! hydrodynamics step number
+     real(double) :: currentTime                 ! time of dump
      integer :: nx                               ! size of cartesian grid in x
      integer :: ny                               ! size of cartesian grid in y
      integer :: nz                               ! size of cartesian grid in z

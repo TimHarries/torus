@@ -105,6 +105,8 @@ CONTAINS
        thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
        thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
+       thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
+       write(*,*) "inherited ", thisOctal%boundaryCondition(subcell)
        if (associated(thisOctal%dustTypeFraction)) then
           thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        endif
@@ -119,6 +121,7 @@ CONTAINS
        thisOctal%rhov(subcell) = parentOctal%rhov(parentSubcell)
        thisOctal%rhow(subcell) = parentOctal%rhow(parentSubcell)
        thisOctal%rhoe(subcell) = parentOctal%rhoe(parentSubcell)
+       thisOctal%energy(subcell) = parentOctal%energy(parentSubcell)
 
     else if (interpolate) then
        thisOctal%etaCont(subcell) = parentOctal%etaCont(parentSubcell)
@@ -188,6 +191,9 @@ CONTAINS
 
     CASE("hydro1d")
        call calcHydro1DDensity(thisOctal, subcell, grid)
+
+    CASE("kelvin")
+       call calcKelvinDensity(thisOctal, subcell, grid)
 
     CASE("sedov")
        call calcSedovDensity(thisOctal, subcell, grid)
@@ -339,15 +345,18 @@ CONTAINS
     endif
 
     if (twoD) then
+       grid%octreeRoot%oneD = .false.
        grid%octreeRoot%twoD = .true.
        grid%octreeRoot%threeD = .false.
        grid%octreeRoot%maxChildren = 4
     else if (threed) then
        grid%octreeRoot%cylindrical = .false.
+       grid%octreeRoot%oneD = .false.
        grid%octreeRoot%twoD = .false.
        grid%octreeRoot%threeD = .true.
        grid%octreeRoot%maxChildren = 8
        if (cylindrical) then
+          grid%octreeRoot%oneD = .false.
           grid%octreeRoot%twoD = .false.
           grid%octreeRoot%threeD = .true.
           grid%octreeRoot%cylindrical = .true.
@@ -734,6 +743,8 @@ CONTAINS
     parent%child(newChildindex)%nDiffusion  = 0.
     parent%child(newChildindex)%oldFrac = 1.
     parent%child(newChildindex)%ncrossings = 10000
+
+
     if (photoionization) then
        allocate(parent%child(newChildIndex)%ionFrac(1:parent%maxChildren, 1:grid%nIon))
        allocate(parent%child(newChildIndex)%photoionCoeff(1:parent%maxChildren, 1:grid%nIon))
@@ -1208,6 +1219,9 @@ CONTAINS
         gridConverged = .TRUE.
 
       CASE ("hydro1d")
+        gridConverged = .TRUE.
+
+      CASE ("kelvin")
         gridConverged = .TRUE.
 
       CASE ("sedov")
@@ -5022,7 +5036,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (cellsize > (rGrid(i+1)-rGrid(i))) split = .true.
       if ( (r+cellsize) < rgrid(1)) split = .false.
 
-   case("hydro1d")
+   case("hydro1d", "kelvin")
       split = .false.
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 !      rVec = subcellCentre(thisOctal, subcell)
@@ -7330,6 +7344,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%nhi(subcell) = 1.e-5
        thisOctal%nhii(subcell) = thisOctal%ne(subcell)
        thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+
        thisOctal%ionFrac(subcell,1) = 1.e-10
        thisOctal%ionFrac(subcell,2) = 1.
        thisOctal%ionFrac(subcell,3) = 1.e-10
@@ -7356,6 +7371,10 @@ IF ( .NOT. gridConverged ) RETURN
 !       thisOctal%nh(subcell) = thisOctal%rho(subcell)/mHydrogen
 !       thisOctal%ne(subcell) = thisOctal%rho(subcell)/mHydrogen
 !    endif
+
+
+    thisOctal%energy(subcell) = thisOctal%temperature(subcell) * Rgas / (7.d0/5.d0-1.d0)
+    thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
 
   end subroutine calcLexington
 
@@ -7757,6 +7776,8 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: gd, xmid, x, z, r , zprime
 
 
+    thisOctal%boundaryCondition(subcell) = "mirror"
+
     rVec = subcellCentre(thisOctal, subcell)
     xmid = (x1 + x2)/2.d0
     x = rVec%x
@@ -7799,6 +7820,32 @@ IF ( .NOT. gridConverged ) RETURN
     endif
 
   end subroutine calcHydro1DDensity
+
+  subroutine calcKelvinDensity(thisOctal,subcell,grid)
+
+    use input_variables
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    type(OCTALVECTOR) :: rVec
+    real(double) :: gd, xmid, x, z, r , zprime
+
+
+    rVec = subcellCentre(thisOctal, subcell)
+
+    if (abs(rVec%z) > 0.25d0) then
+       thisOctal%velocity(subcell) = VECTOR(-0.50/cSpeed, 0.d0, 0.d0)
+       thisOctal%rho(subcell) = 1.d0
+    else
+       thisOctal%velocity(subcell) = VECTOR(0.50/cSpeed, 0.d0, 0.d0)
+       thisOctal%rho(subcell) = 2.d0
+    endif
+    thisOctal%energy(subcell) = 1.d0
+    thisOctal%pressure_i(subcell) = (7.d0/5.d0-1.d0) * thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    thisOctal%boundaryCondition = "periodic"
+  end subroutine calcKelvinDensity
+
+
 
   subroutine calcSedovDensity(thisOctal,subcell,grid)
 
@@ -9033,6 +9080,10 @@ IF ( .NOT. gridConverged ) RETURN
       IF (ASSOCIATED(thisOctal%ionFrac)) DEALLOCATE(thisOctal%ionFrac,STAT=error)
       IF ( error /= 0 ) CALL deallocationError(error,location=2) 
       NULLIFY(thisOctal%ionFrac)
+
+      IF (ASSOCIATED(thisOctal%photoIonCoeff)) DEALLOCATE(thisOctal%photoIonCoeff,STAT=error)
+      IF ( error /= 0 ) CALL deallocationError(error,location=2) 
+      NULLIFY(thisOctal%photoIonCoeff)
 
 
       IF (ASSOCIATED(thisOctal%kappaAbs)) DEALLOCATE(thisOctal%kappaAbs,STAT=error)

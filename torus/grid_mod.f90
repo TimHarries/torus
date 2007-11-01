@@ -31,6 +31,8 @@ module grid_mod
   use cmfgen_class
   use messages_mod
   use ion_mod
+  use mpi_global_mod
+  use mpi_amr_mod
 
   implicit none
 
@@ -694,6 +696,9 @@ contains
 
     case("hydro1d")
        grid%geometry = "hydro1d"
+
+    case("kelvin")
+       grid%geometry = "kelvin"
 
     case("sedov")
        grid%geometry = "sedov"
@@ -3048,7 +3053,7 @@ contains
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
                grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
-               grid%rOuter, grid%amr2dOnly, grid%photoionization
+               grid%rOuter, grid%amr2dOnly, grid%photoionization, grid%iDump, grid%currentTime
        if (error /=0) then
          print *, 'Panic: write error in writeAMRgrid (formatted variables)' ; stop
        end if
@@ -3075,7 +3080,7 @@ contains
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
                grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
-               grid%rOuter, grid%amr2dOnly, grid%photoionization
+               grid%rOuter, grid%amr2dOnly, grid%photoionization, grid%iDump, grid%currentTime
        if (error /=0) then
          print *, 'Panic: write error in writeAMRgrid (unformatted variables)' ; stop
        end if
@@ -3135,7 +3140,7 @@ contains
                   thisOctal%subcellSize,thisOctal%threed, thisOctal%twoD,    &
                   thisOctal%maxChildren, thisOctal%dustType,  &
                   thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
-                  thisOctal%dPhi, thisOctal%r
+                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
        else
           write(iostat=error,unit=20) thisOctal%nDepth, thisOctal%nChildren, &
                   thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
@@ -3148,7 +3153,7 @@ contains
                   thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
                   thisOctal%maxChildren, thisOctal%dustType, &
                   thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
-                  thisOctal%dPhi, thisOctal%r
+                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
        end if 
        if (.not.grid%oneKappa) then
 !          call writeReal2D(thisOctal%kappaAbs,fileFormatted)
@@ -3158,6 +3163,7 @@ contains
        endif
        if (grid%photoionization) then
           call writeDouble2D(thisOctal%ionFrac,fileFormatted)
+          call writeDouble2D(thisOctal%photoIonCoeff,fileFormatted)
        endif
        if (molecular) then
           call writeDouble2D(thisOctal%molecularLevel,fileFormatted)
@@ -3172,6 +3178,7 @@ contains
        call writeDouble2D(thisOctal%dustTypeFraction, fileFormatted)
 
 
+
        if (cmf) then
           call writeDouble2D(thisOctal%atomAbundance, fileFormatted)
           call writeDouble3D(thisOctal%atomLevel,fileFormatted)
@@ -3181,6 +3188,14 @@ contains
              write(unit=20,iostat=error,fmt=*) thisOctal%microturb
           else
              write(unit=20,iostat=error) thisOctal%microturb
+          endif
+       endif
+
+       if (grid%splitOverMpi) then
+          if (fileformatted) then
+             write(unit=20,iostat=error,fmt=*) thisOctal%mpiThread
+          else
+             write(unit=20,iostat=error) thisOctal%mpiThread
           endif
        endif
        
@@ -3195,6 +3210,270 @@ contains
     
     
   end subroutine writeAMRgrid
+
+
+  subroutine writeAMRgridMPI(filename,fileFormatted,grid,mpiFlag)
+    use input_variables, only : molecular, cmf
+    ! writes out the 'grid' for an adaptive mesh geometry  
+
+    implicit none
+  
+    character(len=*)           :: filename
+    logical, intent(in)        :: fileFormatted
+    type(GRIDTYPE), intent(in) :: grid
+    
+    integer, dimension(8) :: timeValues ! system date and time
+    integer               :: error      ! error code
+    logical, optional :: mpiFlag
+    logical :: doMpiFlag
+    logical :: append
+    character(len=20) :: fileStatus, positionStatus
+
+    doMpiFlag = .false.
+    if (PRESENT(mpiFlag)) doMpiFlag = mpiFlag
+
+    append = .false.
+    fileStatus = "replace"
+    positionStatus="rewind"
+    if (dompiFlag .and. (myRankGlobal /= 0)) then
+       append = .true.
+       fileStatus = "old"
+       positionStatus = "append"
+    endif
+
+
+    if (fileFormatted) then 
+       open(unit=20,iostat=error, file=filename, form="formatted", status=fileStatus, position=positionStatus)
+    else 
+       open(unit=20,iostat=error, file=filename, form="unformatted", status=fileStatus, position=positionStatus)
+    end if        
+    call writeInfo("Writing AMR grid file to: "//trim(filename),TRIVIAL)
+    
+    call date_and_time(values=timeValues)
+    
+
+    if (.not.append) then
+
+       if (fileFormatted) then 
+            
+          ! write a time stamp to the file
+          write(unit=20,fmt=*,iostat=error) timeValues(:)
+          if (error /=0) then
+             print *, 'Panic: write error in writeAMRgrid (formatted timeValues)' ; stop
+          end if
+          
+          ! write the variables that are stored in the top-level 'grid' structure
+          write(unit=20,fmt=*,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
+               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
+               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore, &
+               grid%lCore, grid%chanceWindOverTotalContinuum,                 &
+               grid%lineEmission, grid%contEmission, grid%doRaman,            &
+               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
+               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
+               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
+               grid%rOuter, grid%amr2dOnly, grid%photoionization, grid%iDump, grid%currentTime
+          if (error /=0) then
+             print *, 'Panic: write error in writeAMRgrid (formatted variables)' ; stop
+          end if
+          
+          !       if (cmf) then
+          !          write(unit=20,fmt=*) grid%nFreqArray, grid%freqArray(1:2000)
+          !       endif
+          
+       else
+          
+          ! write a time stamp to the file
+          write(unit=20,iostat=error) timeValues(:)
+          if (error /=0) then
+             print *, 'Panic: write error in writeAMRgrid (unformatted timeValues)' ; stop
+          end if
+          
+          ! write the variables that are stored in the top-level 'grid' structure
+          write(unit=20,iostat=error) grid%nLambda, grid%flatSpec, grid%adaptive,& 
+               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
+               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore, &
+               grid%lCore, grid%chanceWindOverTotalContinuum,                 &
+               grid%lineEmission, grid%contEmission, grid%doRaman,            &
+               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
+               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
+               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
+               grid%rOuter, grid%amr2dOnly, grid%photoionization, grid%iDump, grid%currentTime
+          if (error /=0) then
+             print *, 'Panic: write error in writeAMRgrid (unformatted variables)' ; stop
+          end if
+          
+          !       if (cmf) then
+          !          write(unit=20) grid%nFreqArray, grid%freqArray(1:2000)
+          !       endif
+          
+          
+       end if
+       
+       
+       call writeReal1D(grid%lamarray,fileFormatted)
+       call writeReal2D(grid%oneKappaAbs,fileFormatted)
+       call writeReal2D(grid%oneKappaSca,fileFormatted)
+       call writeClumps(fileFormatted)
+
+    endif
+
+    if (dompiFlag.and.(myRankGlobal==0)) then
+       goto 666
+    endif
+       
+    ! now we call the recursive subroutine to store the tree structure 
+    if (associated(grid%octreeRoot)) then
+       if (dompiFlag.and.(myRankGlobal ==1)) then
+          if (fileFormatted) then 
+             write(unit=20,fmt=*) .true.
+          else
+             write(unit=20) .true.
+          end if
+       endif
+       call writeOctreePrivate(grid%octreeRoot,fileFormatted, grid, doMpiFlag)
+    else 
+       if (fileFormatted) then 
+          write(unit=20,fmt=*) .false.
+       else
+          write(unit=20) .false.
+       end if
+    end if
+    
+666 continue
+    endfile 20
+    close(unit=20)
+    
+  contains
+  
+    recursive subroutine writeOctreePrivate(thisOctal,fileFormatted, grid, doMpiFlag)
+       ! writes out an octal from the grid octree
+
+       type(octal), intent(in), pointer :: thisOctal
+       logical, intent(in)             :: fileFormatted
+       type(gridtype) :: grid
+       type(octal), pointer :: thisChild
+       integer              :: iChild
+       logical :: doMpiFlag
+       logical :: writeOctal
+       integer :: tempNChildren
+       integer :: tempIndexChild(8), i
+       logical :: tempHasChild(8)
+
+       writeOctal = .true.
+
+
+
+!       if (doMpiFlag.and.(thisOctal%nDepth >=2 ).and.octalOnThread(thisOctal, 1, myRankGlobal)) then
+!          writeOctal=.true.
+!       else
+!          writeOctal=.false.
+!       endif
+       
+
+       tempNChildren = thisOctal%nChildren
+       tempIndexChild = thisOctal%indexChild
+       tempHasChild = thisOctal%hasChild
+       if (doMpiFlag.and.(thisOctal%nDepth < 2) .and. (myRankGlobal==1)) then
+          writeOctal = .true.
+          tempNChildren = 8
+          do i = 1, 8
+             tempIndexChild(i) = i
+          enddo
+          tempHasChild = .true.
+       endif
+
+       if (doMpiFlag.and.(thisOctal%nDepth==1).and.(myRankGlobal /=1)) writeOctal = .false.
+       
+!       write(*,*) myRankGlobal, " writing depth ", thisOctal%nDepth, " writeoctal ", writeoctal, &
+!            octalOnThread(thisOctal, 1, myRankGlobal)
+
+       if (writeOctal) then
+
+          if (fileFormatted) then 
+             write(iostat=error,fmt=*,unit=20) thisOctal%nDepth, tempnChildren,&
+                  tempindexChild, temphasChild, thisOctal%centre,& 
+                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
+                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+                  thisOctal%subcellSize,thisOctal%threed, thisOctal%twoD,    &
+                  thisOctal%maxChildren, thisOctal%dustType,  &
+                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
+          else
+             write(iostat=error,unit=20) thisOctal%nDepth, tempnChildren, &
+                  tempindexChild, temphasChild, thisOctal%centre,& 
+                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nh, thisOctal%nTot,      &
+                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+                  thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
+                  thisOctal%maxChildren, thisOctal%dustType, &
+                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
+          end if
+          if (.not.grid%oneKappa) then
+             !          call writeReal2D(thisOctal%kappaAbs,fileFormatted)
+             !          call writeReal2D(thisOctal%kappaSca,fileFormatted)
+             call writeDouble2D(thisOctal%kappaAbs,fileFormatted)
+             call writeDouble2D(thisOctal%kappaSca,fileFormatted)
+          endif
+          if (grid%photoionization) then
+             call writeDouble2D(thisOctal%ionFrac,fileFormatted)
+             call writeDouble2D(thisOctal%photoIonCoeff,fileFormatted)
+          endif
+          if (molecular) then
+             call writeDouble2D(thisOctal%molecularLevel,fileFormatted)
+             if (fileformatted) then
+                write(unit=20,iostat=error,fmt=*) thisOctal%microturb, thisOctal%nh2
+             else
+                write(unit=20,iostat=error) thisOctal%microturb, thisOctal%nh2
+             endif
+          endif
+          call writeDouble2D(thisOctal%N,fileFormatted)
+          call writeReal2D(thisOctal%departCoeff,fileFormatted)
+          call writeDouble2D(thisOctal%dustTypeFraction, fileFormatted)
+          
+          
+          
+          if (cmf) then
+             call writeDouble2D(thisOctal%atomAbundance, fileFormatted)
+             call writeDouble3D(thisOctal%atomLevel,fileFormatted)
+             call writeDouble2D(thisOctal%jnuCont,fileFormatted)
+             call writeDouble2D(thisOctal%jnuLine,fileFormatted)
+             if (fileformatted) then
+                write(unit=20,iostat=error,fmt=*) thisOctal%microturb
+             else
+                write(unit=20,iostat=error) thisOctal%microturb
+             endif
+          endif
+          
+          if (grid%splitOverMpi) then
+             if (fileformatted) then
+                write(unit=20,iostat=error,fmt=*) thisOctal%mpiThread
+             else
+                write(unit=20,iostat=error) thisOctal%mpiThread
+             endif
+          endif
+          
+       endif
+
+       if (thisOctal%nChildren > 0) then 
+          do iChild = 1, thisOctal%nChildren, 1
+             thisChild => thisOctal%child(iChild)
+             call writeOctreePrivate(thisChild,fileFormatted,grid,dompiflag)
+          end do
+       end if
+     end subroutine writeOctreePrivate
+    
+    
+  end subroutine writeAMRgridMPI
 
 
   
@@ -3261,7 +3540,7 @@ contains
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
                grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
-               grid%rOuter, grid%amr2dOnly, grid%photoionization
+               grid%rOuter, grid%amr2dOnly, grid%photoionization, grid%iDump, grid%currentTime
     else
        read(unit=20,iostat=error) ijunk, grid%flatSpec, grid%adaptive, & 
                grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
@@ -3272,7 +3551,7 @@ contains
                grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
                grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
                grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
-               grid%rOuter, grid%amr2dOnly, grid%photoionization
+               grid%rOuter, grid%amr2dOnly, grid%photoionization, grid%iDump, grid%currentTime
     end if    
 
     if (error /=0) then
@@ -3360,7 +3639,7 @@ contains
                   thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
                   thisOctal%maxChildren, thisOctal%dustType, &
                   thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
-                  thisOctal%dPhi, thisOctal%r
+                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
        else
           read(unit=20,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
                   thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
@@ -3373,7 +3652,7 @@ contains
                   thisOctal%subcellSize, thisOctal%threeD,  thisOctal%twoD,  &
                   thisOctal%maxChildren, thisOctal%dustType, &
                   thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
-                  thisOctal%dPhi, thisOctal%r
+                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
 
        end if
        
@@ -3388,6 +3667,7 @@ contains
        endif
        if (grid%photoionization) then
           call readDouble2D(thisOctal%ionFrac,fileFormatted)
+          call readDouble2D(thisOctal%photoIonCoeff,fileFormatted)
        endif
        if (molecular) then
           call readDouble2D(thisOctal%molecularLevel,fileFormatted)
@@ -3417,6 +3697,15 @@ contains
        endif
 
 
+       if (grid%splitOverMpi) then
+          if (fileformatted) then
+             read(unit=20,iostat=error,fmt=*) thisOctal%mpiThread
+          else
+             read(unit=20,iostat=error) thisOctal%mpiThread
+
+          endif
+       endif
+
        if (thisOctal%nChildren > 0) then 
           allocate(thisOctal%child(1:thisOctal%nChildren)) 
           do iChild = 1, thisOctal%nChildren, 1
@@ -3428,6 +3717,381 @@ contains
     end subroutine readOctreePrivate
  
   end subroutine readAMRgrid
+
+  subroutine readAMRgridMPI(filename,fileFormatted,grid, mpiflag)
+    ! reads in a previously saved 'grid' for an adaptive mesh geometry  
+
+    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf
+    implicit none
+
+    character(len=*)            :: filename
+    logical, intent(in)         :: fileFormatted
+    type(GRIDTYPE), intent(inout) :: grid
+    
+    integer, dimension(8) :: timeValues    ! system date and time
+    integer               :: dummy         
+    integer               :: error         ! status code
+    logical               :: octreePresent ! true if grid has an octree
+    integer :: nOctal
+    character(len=80) :: absolutePath, inFile
+    integer :: iJunk
+    logical, optional :: mpiFlag
+    logical :: doMpiFlag
+    real, pointer :: junk(:), junk2(:,:), junk3(:,:)
+
+    error = 0
+
+    dompiFlag = .false.
+    if (present(mpiFlag)) doMpiFlag = mpiFlag
+
+
+    call unixGetEnv("TORUS_JOB_DIR",absolutePath)
+    inFile = trim(absolutePath)//trim(filename)
+
+    if (fileFormatted) then
+       open(unit=20, iostat=error, file=inFile, form="formatted", status="old")
+       if (error /=0) then
+         print *, 'Panic: file open error in readAMRgrid, file:',trim(inFile) ; stop
+       end if
+       ! read the file's time stamp
+       read(unit=20,fmt=*,iostat=error) timeValues 
+       if (error /=0) then
+         print *, 'Panic: read error in readAMRgrid (formatted timeValues)' ; stop
+       end if
+    else
+       open(unit=20, iostat=error, file=inFile, form="unformatted", status="old")
+       if (error /=0) then
+         print *, 'Panic: file open error in readAMRgrid, file:',trim(inFile) ; stop
+       end if
+       ! read the file's time stamp
+       read(unit=20,iostat=error) timeValues
+       if (error /=0) then
+         print *, 'Panic: read error in readAMRgrid (unformatted timeValues)' ; stop
+       end if
+    end if
+
+    if (writeoutput) write(*,'(a,a)') "Reading populations file from: ",trim(filename)
+    if (writeoutput) write(*,'(a,i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') ' - data file written at: ', &
+                          timeValues(1),'/',timeValues(2),'/',&
+                          timeValues(3),'  ',timeValues(5),':',timeValues(6)
+                          
+    ! read the variables to be stored in the top-level 'grid' structure
+    if (fileFormatted) then
+       read(unit=20,fmt=*,iostat=error) ijunk, grid%flatSpec, grid%adaptive,& 
+               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
+               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore, &
+               grid%lCore, grid%chanceWindOverTotalContinuum,                 &
+               grid%lineEmission, grid%contEmission, grid%doRaman,            &
+               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
+               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
+               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,&
+               grid%rOuter, grid%amr2dOnly, grid%photoionization, grid%iDump, grid%currentTime
+    else
+       read(unit=20,iostat=error) ijunk, grid%flatSpec, grid%adaptive, & 
+               grid%cartesian, grid%isotropic, grid%hitCore, grid%diskRadius, &
+               grid%diskNormal, grid%DipoleOffset, grid%geometry, grid%rCore, &
+               grid%lCore, grid%chanceWindOverTotalContinuum,                 &
+               grid%lineEmission, grid%contEmission, grid%doRaman,            &
+               grid%resonanceLine, grid%rStar1, grid%rStar2, grid%lumRatio,   &
+               grid%tempSource, grid%starPos1, grid%starPos2, grid%lambda2,   &
+               grid%maxLevels, grid%maxDepth, grid%halfSmallestSubcell,       &
+               grid%nOctals, grid%smoothingFactor, grid%oneKappa, grid%rInner,& 
+               grid%rOuter, grid%amr2dOnly, grid%photoionization, grid%iDump, grid%currentTime
+    end if    
+
+    if (error /=0) then
+       print *, 'Panic: read error in readAMRgrid 1'
+       stop
+    end if
+!    call readReal1D(grid%lamarray,fileFormatted)
+!    call readReal2D(grid%oneKappaAbs,fileFormatted)
+!    call readReal2D(grid%oneKappaSca,fileFormatted)
+
+
+    call readReal1D(junk,fileFormatted)
+    call readReal2D(junk2,fileFormatted)
+    call readReal2D(junk3,fileFormatted)
+    deallocate(junk, junk2, junk3)
+
+    call readClumps(fileFormatted)
+    
+
+ 
+    ! now we call the recursive subroutine to read the tree structure 
+    if (fileFormatted) then
+       read(unit=20,fmt=*) octreePresent
+    else
+       read(unit=20) octreePresent
+    end if
+     
+    if (octreePresent) then
+       allocate(grid%octreeRoot)
+       nOctal = 0
+       call readOctreePrivate(grid%octreeRoot,null(),fileFormatted, nOctal, grid, dompiFlag)
+    end if
+
+
+
+    close(unit=20)
+
+    if (writeoutput) then
+       print *, 'setting ''geometry'':',trim(geometry),' previously:',trim(grid%geometry)
+       print *, 'setting ''dipoleOffset'':',dipoleOffset,' previously:',grid%dipoleOffset
+       print *, 'setting ''amr2donly'':',amr2donly,' previously:',grid%amr2donly
+       print *, 'setting ''statEq2d'':',' previously:', grid%statEq2d
+    endif
+    grid%geometry = trim(geometry)
+    grid%dipoleOffset = dipoleOffset
+    grid%amr2donly = amr2donly
+    grid%statEq2d = statEq2d
+
+  contains
+   
+    recursive subroutine readOctreePrivate(thisOctal,parent,fileFormatted, noctal, grid, doMpiFlag)
+       ! read in an octal to the grid octree
+
+       implicit none
+       type(octal), pointer :: thisOctal
+       type(octal), pointer :: parent
+       type(gridtype) :: grid
+
+       logical, intent(in)  :: fileFormatted
+       integer :: nOctal
+       logical :: doMpiFlag
+       type(octal), pointer :: thisChild, thisChild2, tempOctal
+       integer              :: iChild, iChild2
+       integer :: iCount
+       logical :: readOctal
+       logical :: onThread, loopAround, doneThisChild
+
+       readOctal = .true.
+
+
+       nOctal = nOctal+1
+       thisOctal%parent => parent
+       
+       if (fileFormatted) then
+          read(unit=20,fmt=*,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
+                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
+                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+                  thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
+                  thisOctal%maxChildren, thisOctal%dustType, &
+                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
+       else
+          read(unit=20,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
+                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
+                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+                  thisOctal%subcellSize, thisOctal%threeD,  thisOctal%twoD,  &
+                  thisOctal%maxChildren, thisOctal%dustType, &
+                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
+
+       end if
+
+
+
+       thisOctal%oneD = .not.(thisOctal%twoD.or.thisOctal%threeD)
+
+
+       if (.not.grid%oneKappa) then
+!          call readReal2D(thisOctal%kappaAbs,fileFormatted)
+!          call readReal2D(thisOctal%kappaSca,fileFormatted)
+          call readDouble2D(thisOctal%kappaAbs,fileFormatted)
+          call readDouble2D(thisOctal%kappaSca,fileFormatted)
+       endif
+       if (grid%photoionization) then
+          call readDouble2D(thisOctal%ionFrac,fileFormatted)
+          call readDouble2D(thisOctal%photoIonCoeff,fileFormatted)
+       endif
+       if (molecular) then
+          call readDouble2D(thisOctal%molecularLevel,fileFormatted)
+          if (fileformatted) then
+             read(unit=20,iostat=error,fmt=*) thisOctal%microturb, thisOctal%nh2
+          else
+             read(unit=20,iostat=error) thisOctal%microturb, thisOctal%nh2
+          endif
+
+       endif
+       call readDouble2D(thisOctal%N,fileFormatted)
+       call readReal2D(thisOctal%departCoeff,fileFormatted)
+       call readDouble2D(thisOctal%dustTypeFraction, fileFormatted)
+
+       if (cmf) then
+          call readDouble2D(thisOctal%atomAbundance, fileFormatted)
+          call readDouble3D(thisOctal%atomLevel,fileFormatted)
+          call readDouble2D(thisOctal%jnuCont,fileFormatted)
+          call readDouble2D(thisOctal%jnuLine,fileFormatted)
+
+          if (fileformatted) then
+             read(unit=20,iostat=error,fmt=*) thisOctal%microturb
+          else
+             read(unit=20,iostat=error) thisOctal%microturb
+          endif
+
+       endif
+
+
+       if (grid%splitOverMpi) then
+          if (fileformatted) then
+             read(unit=20,iostat=error,fmt=*) thisOctal%mpiThread
+          else
+             read(unit=20,iostat=error) thisOctal%mpiThread
+
+          endif
+       endif
+
+       if (myRankGlobal == 0) then
+          thisOctal%nChildren = 0
+          thisOctal%hasChild = .false.
+          thisOctal%indexChild = -999
+          goto 666
+       endif
+
+       loopAround = .true.
+
+       do while (loopAround)
+          if (thisOctal%nDepth == 1) then
+             thisOctal%nChildren = 1
+             thisOctal%hasChild = .false.
+             thisOctal%hasChild(myRankGlobal) = .true.
+             thisOctal%indexChild(1) = myRankGlobal
+!             thisOctal%indexChild(myRankGlobal) = 1
+          endif
+          loopAround = .false.
+          
+          if (thisOctal%nChildren > 0) then 
+             allocate(thisOctal%child(1:thisOctal%nChildren)) 
+             do iChild = 1, thisOctal%nChildren, 1
+                thisChild => thisOctal%child(iChild)
+                call readOctreePrivate(thisChild,thisOctal,fileFormatted, nOctal, grid, dompiflag)             
+             
+                if ((thisOctal%nDepth == 1).and.(thisChild%mpiThread(1) /= myRankGlobal)) then
+                   tempOctal => thisChild
+!                   write(*,*) myrankglobal, " split over mpi ", grid%splitOverMpi
+!                   write(*,*) myRankGlobal, " attempting to delete branch. mpithread ",thisChild%mpithread
+!                   write(*,*) myrankGlobal, " child depth is ", thisChild%nDepth
+!                   write(*,*) myrankglobal, " this octal has nchildren set to ", thisOctal%nChildren 
+                   call deleteOctreeBranch(tempOctal,onlyChildren = .false., &
+                        adjustParent = .false. , grid = grid, adjustGridInfo = .false.)
+                   
+                   CALL deleteOctal(tempOctal, deleteChildren=.false.,     &
+                        adjustParent=.false., grid=grid, & 
+                        adjustGridInfo=.false.)
+                   deallocate(thisOctal%child)
+                   loopAround = .true.
+!                   write(*,*) myRankGlobal, " deleted branch ", thisOctal%nChildren
+!                   write(*,*) myRankGlobal, " thisoctal ndepth ", thisOctal%nDepth
+                endif
+                
+             end do
+
+          endif
+       enddo
+666    continue
+    end subroutine readOctreePrivate
+
+
+    subroutine getOctalPrivate(thisOctal, grid, fileformatted)
+      type(GRIDTYPE) :: grid
+      type(OCTAL), pointer :: thisOctal
+      logical :: fileFormatted
+
+       if (fileFormatted) then
+          read(unit=20,fmt=*,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
+                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
+                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+                  thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
+                  thisOctal%maxChildren, thisOctal%dustType, &
+                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
+       else
+          read(unit=20,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
+                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
+                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+                  thisOctal%subcellSize, thisOctal%threeD,  thisOctal%twoD,  &
+                  thisOctal%maxChildren, thisOctal%dustType, &
+                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
+
+       end if
+       
+       thisOctal%oneD = .not.(thisOctal%twoD.or.thisOctal%threeD)
+
+
+       if (.not.grid%oneKappa) then
+!          call readReal2D(thisOctal%kappaAbs,fileFormatted)
+!          call readReal2D(thisOctal%kappaSca,fileFormatted)
+          call readDouble2D(thisOctal%kappaAbs,fileFormatted)
+          call readDouble2D(thisOctal%kappaSca,fileFormatted)
+       endif
+       if (grid%photoionization) then
+          call readDouble2D(thisOctal%ionFrac,fileFormatted)
+          call readDouble2D(thisOctal%photoIonCoeff,fileFormatted)
+       endif
+       if (molecular) then
+          call readDouble2D(thisOctal%molecularLevel,fileFormatted)
+          if (fileformatted) then
+             read(unit=20,iostat=error,fmt=*) thisOctal%microturb, thisOctal%nh2
+          else
+             read(unit=20,iostat=error) thisOctal%microturb, thisOctal%nh2
+          endif
+
+       endif
+       call readDouble2D(thisOctal%N,fileFormatted)
+       call readReal2D(thisOctal%departCoeff,fileFormatted)
+       call readDouble2D(thisOctal%dustTypeFraction, fileFormatted)
+
+       if (cmf) then
+          call readDouble2D(thisOctal%atomAbundance, fileFormatted)
+          call readDouble3D(thisOctal%atomLevel,fileFormatted)
+          call readDouble2D(thisOctal%jnuCont,fileFormatted)
+          call readDouble2D(thisOctal%jnuLine,fileFormatted)
+
+          if (fileformatted) then
+             read(unit=20,iostat=error,fmt=*) thisOctal%microturb
+          else
+             read(unit=20,iostat=error) thisOctal%microturb
+          endif
+
+       endif
+
+
+       if (grid%splitOverMpi) then
+          if (fileformatted) then
+             read(unit=20,iostat=error,fmt=*) thisOctal%mpiThread
+          else
+             read(unit=20,iostat=error) thisOctal%mpiThread
+
+          endif
+       endif
+
+       write(*,*) myRankGlobal, " skipping octal with mpithread ",thisOctal%mpithread
+
+     end subroutine getOctalPrivate
+ 
+  end subroutine readAMRgridMPI
 
   
   subroutine readGridPopulations(filename, grid, nLevels)
@@ -7051,7 +7715,7 @@ contains
              case ("z-x")
                 call pgrect(zm, zp, xm, xp)
                 if (withgrid) then
-                      call pgqci(i)
+                   call pgqci(i)
                    call PGSFS(2)  ! we don't want to fill in a box this time
                    call PGSCI(1) ! changing the color index.
                    call pgrect(zm, zp, xm, xp)

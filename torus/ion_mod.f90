@@ -76,6 +76,7 @@ contains
   subroutine addIons(ionArray, nIon)
     integer :: nIon
     type(IONTYPE) :: ionArray(:)
+    character(len=30) :: message
 
 
     nIon = 1
@@ -92,6 +93,10 @@ contains
 
     nIon = nIon + 1
     call createIon(ionArray(nIon), 2, 0, 1.e-10) ! He III (alpha particle!)
+
+
+!    write(message,*) "Metals switched OFF"
+!    call writeWarning(message)
 
     nIon = nIon + 1
     call createIon(ionArray(nIon), 6, 6, 1.126e1) ! C I

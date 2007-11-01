@@ -86,7 +86,6 @@ contains
              valueMin = MINVAL(value(1:nSquares))
              valueMax = MAXVAL(value(1:nSquares))
           endif
-          write(*,*) "val min max ", valuemin, valuemax
           call pgpage
           if (present(valueMinFlag)) valueMin = valueMinFlag
           if (present(valueMaxFlag)) valueMax = valueMaxFlag
@@ -129,7 +128,13 @@ contains
           enddo
           call pgsci(1)
           call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
+          if(logscale) then
+             CALL PGWEDG('BI', 4.0, 5.0, real(log10(valueMin)), real(log10(valueMax)), TRIM(ADJUSTL(valueName)) )
+          else
+             CALL PGWEDG('BI', 4.0, 5.0, real(valueMin), real(valueMax), TRIM(ADJUSTL(valueName)))
+          end if
        endif
+
     enddo
     call pgend
     deallocate(corners, value)
@@ -393,6 +398,7 @@ contains
              end if
           enddo
        enddo
+       deallocate(octalArray)
        loc(1) = HUGE(loc(1))
        loc(2) = 0.d0
        loc(3) = 0.d0
@@ -474,10 +480,11 @@ contains
     endif
   end subroutine receiveAcrossMpiBoundary
   
-  subroutine exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+  subroutine exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: iPair, nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup, iGroup
     integer :: rBound
     integer :: myRank, ierr
     character(len=10) :: boundaryType(6) = (/"top   ","bottom","left  ","right ", "front ", "back  "/)
@@ -485,36 +492,41 @@ contains
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
+    do iGroup = 1, nGroup
 
-    do iPair = 1, nPairs
-!       write(*,*) "myrank ", iPair, thread1(iPair), thread2(iPair)
-       if ((myRank == thread1(iPair)).or.(myRank == thread2(iPair))) then
-!          write(*,*) myrank, " calling receive across boundary",iPair,nbound(ipair),boundaryType(nBound(iPair))
-          call receiveAcrossMpiBoundary(grid, boundaryType(nBound(iPair)), thread1(iPair), thread2(iPair))
-!          write(*,*) myrank, " finished receive across boundary"
-          if      (nBound(iPair) == 1) then
-             rBound = 2
-          else if (nBound(iPair) == 2) then
-             rBound = 1
-          else if (nBound(iPair) == 3) then
-             rBound = 4
-          else if (nBound(iPair) == 4) then
-             rBound = 3
-          else if (nBound(iPair) == 5) then
-             rBound = 6
-          else if (nBound(iPair) == 6) then
-             rBound = 5
+       do iPair = 1, nPairs
+
+          if (group(iPair) == iGroup) then
+             !       write(*,*) "myrank ", iPair, thread1(iPair), thread2(iPair)
+             if ((myRank == thread1(iPair)).or.(myRank == thread2(iPair))) then
+                !          write(*,*) myrank, " calling receive across boundary",iPair,nbound(ipair),boundaryType(nBound(iPair))
+                call receiveAcrossMpiBoundary(grid, boundaryType(nBound(iPair)), thread1(iPair), thread2(iPair))
+                !          write(*,*) myrank, " finished receive across boundary"
+                if      (nBound(iPair) == 1) then
+                   rBound = 2
+                else if (nBound(iPair) == 2) then
+                   rBound = 1
+                else if (nBound(iPair) == 3) then
+                   rBound = 4
+                else if (nBound(iPair) == 4) then
+                   rBound = 3
+                else if (nBound(iPair) == 5) then
+                   rBound = 6
+                else if (nBound(iPair) == 6) then
+                   rBound = 5
+                endif
+                call receiveAcrossMpiBoundary(grid, boundaryType(rBound), thread2(iPair), thread1(iPair))
+                !          if (myRank == 1) then
+                !             write(*,*) "Exchange done for direction ",nbound(ipair), " and ",rBound
+                !             write(*,*) "Between threads ", thread1(ipair), " and ", thread2(ipair)
+                !          endif
+             endif
           endif
-          call receiveAcrossMpiBoundary(grid, boundaryType(rBound), thread2(iPair), thread1(iPair))
-!          if (myRank == 1) then
-!             write(*,*) "Exchange done for direction ",nbound(ipair), " and ",rBound
-!             write(*,*) "Between threads ", thread1(ipair), " and ", thread2(ipair)
-!          endif
-       endif
+       enddo
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
     enddo
 
-  end subroutine exchangeAcrossMPIboudary
+  end subroutine exchangeAcrossMPIboundary
 
   recursive subroutine determineBoundaryPairs(thisOctal, grid, nPairs,  thread1, thread2, nBound, iThread)
 
@@ -606,9 +618,10 @@ contains
           enddo
        endif
     end do
+
   end subroutine determineBoundaryPairs
 
-  subroutine returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound)
+  subroutine returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
@@ -616,7 +629,8 @@ contains
     integer :: myRank, ierr, i
     integer, allocatable :: indx(:), itmp(:)
     real, allocatable :: sort(:)
-
+    integer :: list(1000), nList, nGroup, group(:), iPair, iStart
+    logical :: groupFound
 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -646,9 +660,56 @@ contains
     enddo
     nBound(1:nPairs) = itmp(1:nPairs)
     deallocate(indx, sort, itmp)
-       
+    
+
+    nGroup = 1
+    group = 0
+    group(1) = nGroup
+    iStart = 1
+    do while(any(group(1:nPairs)==0))
+       nList = 2
+       list(1) = thread1(iStart)
+       list(2) = thread2(iStart)
+       groupFound = .false.
+       do i = iStart+1, nPairs
+          if (group(i) == 0) then
+             if (.not.inList(thread1(i), list, nList).and.(.not.inList(thread2(i), list, nList))) then
+                group(i) = nGroup
+                list(nList+1) = thread1(i)
+                list(nList+2) = thread2(i)
+                nList = nList + 2
+                groupFound = .true.
+             endif
+          endif
+       enddo
+       if (.not.groupFound) then
+          group(iStart) = nGroup
+       endif
+       nGroup = nGroup + 1
+       do i = 1, nPairs
+          if (group(i) == 0) then
+             iStart = i
+             exit
+          endif
+       enddo
+    enddo
+!    if (myRankGlobal == 1) then
+!       do iPair = 1, nPairs
+!          write(*,*) "Pair: ",iPair, thread1(iPair), " -> ", thread2(iPair), group(iPair)
+!       enddo
+!    endif
   end subroutine returnBoundaryPairs
 
+  logical function inList(num, list, nList)
+    integer :: num
+    integer :: list(:)
+    integer :: nList
+    integer :: i 
+    inList = .false.
+    do i = 1, nList
+       if (num == list(i)) inList = .true.
+    enddo
+  end function inList
 
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
        rhou, rhov, rhow, x, qnext, pressure, flux)
@@ -673,7 +734,7 @@ contains
 
        x = neighbourOctal%x_i(neighbourSubcell)
 
-       if (thisOctal%nDepth >= neighbourOctal%nDepth) then ! same level
+       if (thisOctal%nDepth == neighbourOctal%nDepth) then ! same level
 
           q   = neighbourOctal%q_i(neighbourSubcell)
           rho = neighbourOctal%rho(neighbourSubcell)
@@ -684,8 +745,23 @@ contains
           pressure = neighbourOctal%pressure_i(neighbourSubcell)
           flux = neighbourOctal%flux_i(neighbourSubcell)
 
+       else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
+          q   = neighbourOctal%q_i(neighbourSubcell)
+          rho = neighbourOctal%rho(neighbourSubcell)
+          rhoe = neighbourOctal%rhoe(neighbourSubcell)
+          rhou = neighbourOctal%rhou(neighbourSubcell)
+          rhov = neighbourOctal%rhov(neighbourSubcell)
+          rhow = neighbourOctal%rhow(neighbourSubcell)
+          pressure = neighbourOctal%pressure_i(neighbourSubcell)
+          if (thisOctal%oneD) then
+             flux = neighbourOctal%flux_i(neighbourSubcell)
+          else if (thisOctal%twoD) then
+             flux = neighbourOctal%flux_i(neighbourSubcell)/2.d0
+          else
+             flux = neighbourOctal%flux_i(neighbourSubcell)/4.d0
+          endif
        else
-          call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux)
+          call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux) ! fine to coarse
        endif
 
        
@@ -758,6 +834,7 @@ contains
        rhow = neighbourOctal%rhow(neighbourSubcell)
        pressure = neighbourOctal%pressure_i(neighbourSubcell)
        flux = neighbourOctal%flux_i(neighbourSubcell)
+
      else if (neighbourOctal%twoD) then
        if (direction%x > 0.9d0) then
           nSubcell(1) = 1

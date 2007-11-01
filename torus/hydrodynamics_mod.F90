@@ -140,12 +140,12 @@ contains
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-!             thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
-!                  (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
-!                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
              thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
                   (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
-                  (thisOctal%subcellSize*1.d10)
+                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
+!             thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
+!                  (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
+!                  (thisOctal%subcellSize*1.d10)
 
           endif
        endif
@@ -424,7 +424,7 @@ contains
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction)
+             thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction) * 1.d10
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -639,7 +639,7 @@ contains
   end subroutine setupWpm
 
 
-   recursive subroutine computePressureU(thisOctal, gamma, direction)
+   recursive subroutine computePressureU(thisOctal, gamma, direction, iEquationOfState)
      include 'mpif.h'
      integer :: myRank, ierr
     type(GRIDTYPE) :: grid
@@ -648,6 +648,7 @@ contains
     integer :: subcell, i, neighbourSubcell
     real(double) :: gamma, eThermal, eKinetic, eTot, u, bigGamma,eta, u2
     type(OCTALVECTOR) :: direction, locator
+    integer :: iEquationOfState
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -659,7 +660,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call computePressureU(child, gamma, direction)
+                call computePressureU(child, gamma, direction, iEquationOfState)
                 exit
              end if
           end do
@@ -669,13 +670,19 @@ contains
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           
-!          u = thisOctal%rhou(subcell) / thisOctal%rho(subcell)
-!          eKinetic = u**2 / 2.d0
+          select case(iEquationOfState)
+             case(0)
+                u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+                eKinetic = u2 / 2.d0
+                eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+                eThermal = eTot - eKinetic
+             case(1)
+                eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
+             case DEFAULT
+                write(*,*) "Equation of state not recognised: ", iEquationOfState
+          end select
+                
 
-          u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-          eKinetic = u2 / 2.d0
-          eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
-          eThermal = eTot - eKinetic
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
           bigGamma = 0.d0
           if (.not.thisOctal%ghostCell(subcell)) then
@@ -698,7 +705,7 @@ contains
     enddo
   end subroutine computePressureU
 
-   recursive subroutine computePressureV(thisOctal, gamma, direction)
+   recursive subroutine computePressureV(thisOctal, gamma, direction,  iEquationOfState)
      include 'mpif.h'
      integer :: myRank, ierr
     type(GRIDTYPE) :: grid
@@ -707,6 +714,7 @@ contains
     integer :: subcell, i, neighbourSubcell
     real(double) :: gamma, eThermal, eKinetic, eTot, u, bigGamma,eta,u2
     type(OCTALVECTOR) :: direction, locator
+    integer ::  iEquationOfState
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -718,7 +726,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call computePressureV(child, gamma, direction)
+                call computePressureV(child, gamma, direction, iEquationofState)
                 exit
              end if
           end do
@@ -727,14 +735,21 @@ contains
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
+          select case(iEquationOfState)
+             case(0)
+                u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+                eKinetic = u2 / 2.d0
+                eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+                eThermal = eTot - eKinetic
+             case(1)
+                eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
+             case DEFAULT
+                write(*,*) "Equation of state not recognised: ", iEquationOfState
+          end select
           
 !          u = thisOctal%rhov(subcell) / thisOctal%rho(subcell)
 !          eKinetic = u**2 / 2.d0
 
-          u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-          eKinetic = u2 / 2.d0
-          eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
-          eThermal = eTot - eKinetic
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
           bigGamma = 0.d0
           if (.not.thisOctal%ghostCell(subcell)) then
@@ -746,6 +761,14 @@ contains
              endif
           endif
           thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell) + bigGamma
+
+          if (thisOctal%pressure_i(subcell) < 0.d0) then
+             write(*,*) "pressure ", thisOctal%pressure_i(subcell)
+             write(*,*) "rho ", thisOctal%rho(subcell)
+             write(*,*) "biggamma ", biggamma
+             write(*,*) "ethermal ", ethermal
+             write(*,*) "EOS ", iEquationofState
+          endif
           if (isnan(thisOctal%pressure_i(subcell))) then
              write(*,*) "pressureV has nan"
              write(*,*) thisOctal%rhou(subcell),thisOctal%rhov(subcell), thisOctal%rhow(subcell)
@@ -756,7 +779,7 @@ contains
     enddo
   end subroutine computePressureV
 
-   recursive subroutine computePressureW(thisOctal, gamma, direction)
+   recursive subroutine computePressureW(thisOctal, gamma, direction,  iEquationOfState)
      include 'mpif.h'
      integer :: myRank, ierr
     type(GRIDTYPE) :: grid
@@ -765,6 +788,8 @@ contains
     integer :: subcell, i, neighbourSubcell
     real(double) :: gamma, eThermal, eKinetic, eTot, u, bigGamma,eta,u2
     type(OCTALVECTOR) :: direction, locator
+    integer :: iEquationOfState
+
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -776,7 +801,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call computePressureW(child, gamma, direction)
+                call computePressureW(child, gamma, direction, iEquationOfState)
                 exit
              end if
           end do
@@ -785,14 +810,21 @@ contains
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
+          select case(iEquationOfState)
+             case(0)
+                u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+                eKinetic = u2 / 2.d0
+                eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+                eThermal = eTot - eKinetic
+             case(1)
+                eThermal = thisOctal%rhoe(subcell) / thisOctal%rho(subcell)
+             case DEFAULT
+                write(*,*) "Equation of state not recognised: ", iEquationOfState
+          end select
           
 !          u = thisOctal%rhow(subcell) / thisOctal%rho(subcell)
 !          eKinetic = u**2 / 2.d0
 
-          u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-          eKinetic = u2 / 2.d0
-          eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
-          eThermal = eTot - eKinetic
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
           bigGamma = 0.d0
           if (.not.thisOctal%ghostCell(subcell)) then
@@ -815,7 +847,7 @@ contains
   end subroutine computePressureW
 
 
-  recursive subroutine pressureForceU(thisOctal, dt)
+  recursive subroutine pressureForceU(thisOctal, dt, iEquationOfState)
     include 'mpif.h'
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
@@ -823,6 +855,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, tmp
+    integer :: iEquationOfState
 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -833,7 +866,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call pressureForceU(child, dt)
+                call pressureForceU(child, dt, iEquationOfState)
                 exit
              end if
           end do
@@ -855,13 +888,28 @@ contains
              thisOctal%rhou(subcell) = thisOctal%rhou(subcell) - dt * &
                   (thisOctal%pressure_i_plus_1(subcell) - thisOctal%pressure_i_minus_1(subcell)) / &
                   (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
+
+
+             if (thisOctal%rhou(subcell)/thisOctal%rho(subcell) > 1.d10) then
+                write(*,*) "u ",thisOctal%rhou(subcell)/thisOctal%rho(subcell)/1.d5
+                write(*,*) "rho ", thisOctal%rho(subcell)
+                write(*,*) "pressure i + 1 " ,thisOctal%pressure_i_plus_1(subcell)
+                write(*,*) "pressure i - 1 " ,thisOctal%pressure_i_minus_1(subcell)
+                write(*,*) "x i + 1 ", thisOctal%x_i_plus_1(subcell)
+                write(*,*) "x i - 1 ", thisOctal%x_i_minus_1(subcell)
+             endif
+
+                
 !             Write(*,*) thisOctal%rhou(subcell), thisOctal%pressure_i_plus_1(subcell), &
 !                  thisOctal%pressure_i_minus_1(subcell), thisOctal%x_i_plus_1(subcell), &
 !                  thisOctal%x_i_minus_1(subcell)
-             thisOctal%rhoE(subcell) = thisOctal%rhoE(subcell) - dt * &
-                  (thisOctal%pressure_i_plus_1(subcell) * thisOctal%u_i_plus_1(subcell) - &
-                  thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / &
-                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
+
+             if (iEquationOfState == 0) then
+                thisOctal%rhoE(subcell) = thisOctal%rhoE(subcell) - dt * &
+                     (thisOctal%pressure_i_plus_1(subcell) * thisOctal%u_i_plus_1(subcell) - &
+                     thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / &
+                     (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
+             endif
 
 
              if (isnan(thisOctal%rhou(subcell))) then
@@ -874,7 +922,7 @@ contains
     enddo
   end subroutine pressureForceU
 
-  recursive subroutine pressureForceV(thisOctal, dt)
+  recursive subroutine pressureForceV(thisOctal, dt, iEquationOfState)
     include 'mpif.h'
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
@@ -882,6 +930,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt
+    integer :: iEquationOfState
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -891,7 +940,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call pressureForceV(child, dt)
+                call pressureForceV(child, dt, iEquationOfState)
                 exit
              end if
           end do
@@ -918,11 +967,12 @@ contains
 !                  thisOctal%pressure_i_minus_1(subcell), thisOctal%x_i_plus_1(subcell), &
 !                  thisOctal%x_i_minus_1(subcell)
 
-             thisOctal%rhoE(subcell) = thisOctal%rhoE(subcell) - dt * &
-                  (thisOctal%pressure_i_plus_1(subcell) * thisOctal%u_i_plus_1(subcell) - &
-                  thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / &
-                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
-
+             if (iEquationOfState == 0) then
+                thisOctal%rhoE(subcell) = thisOctal%rhoE(subcell) - dt * &
+                     (thisOctal%pressure_i_plus_1(subcell) * thisOctal%u_i_plus_1(subcell) - &
+                     thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / &
+                     (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
+             endif
 
              if (isnan(thisOctal%rhov(subcell))) then
                 write(*,*) "bug",thisOctal%pressure_i_plus_1(subcell),thisOctal%pressure_i_minus_1(subcell)
@@ -933,7 +983,7 @@ contains
     enddo
   end subroutine pressureForceV
 
-  recursive subroutine pressureForceW(thisOctal, dt)
+  recursive subroutine pressureForceW(thisOctal, dt, iEquationOfState)
     include 'mpif.h'
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
@@ -941,6 +991,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt
+    integer :: iEquationOfState
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -950,7 +1001,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call pressureForceW(child, dt)
+                call pressureForceW(child, dt, iEquationOfState)
                 exit
              end if
           end do
@@ -979,10 +1030,12 @@ contains
 !                  thisOctal%pressure_i_minus_1(subcell), thisOctal%x_i_plus_1(subcell), &
 !                  thisOctal%x_i_minus_1(subcell)
 
-             thisOctal%rhoE(subcell) = thisOctal%rhoE(subcell) - dt * &
-                  (thisOctal%pressure_i_plus_1(subcell) * thisOctal%u_i_plus_1(subcell) - &
-                  thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / &
-                  (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
+             if (iEquationOfState == 0) then
+                thisOctal%rhoE(subcell) = thisOctal%rhoE(subcell) - dt * &
+                     (thisOctal%pressure_i_plus_1(subcell) * thisOctal%u_i_plus_1(subcell) - &
+                     thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / &
+                     (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
+             endif
 
 
              if (isnan(thisOctal%rhoW(subcell))) then
@@ -1184,7 +1237,9 @@ contains
        else
   
           thisOctal%rho(subcell) = thisOctal%q_i(subcell)
-        
+          if (thisOCtal%rho(subcell) < 0.d0) then
+             write(*,*) "rho warning ", thisOctal%rho(subcell), subcellCentre(thisOctal, subcell)
+          endif
        endif
     enddo
   end subroutine copyQtoRho
@@ -1238,100 +1293,109 @@ contains
   end subroutine copyQtoRhoU
 
 
-  subroutine advectRho(grid, direction, dt, nPairs, thread1, thread2, nbound)
+  subroutine advectRho(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(OCTALVECTOR) :: direction
 
     call copyRhoToQ(grid%octreeRoot)
     call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupQX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call fluxLimiter(grid%octreeRoot, "superbee")
     call constructFlux(grid%octreeRoot, dt)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupFlux(grid%octreeRoot, grid, direction)
     call updateCellQ(grid%octreeRoot, dt)
     call copyQtoRho(grid%octreeRoot)
 
   end subroutine advectRho
 
-  subroutine advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nbound)
+  subroutine advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup
+
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(OCTALVECTOR) :: direction
 
     call copyRhoEToQ(grid%octreeRoot)
     call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupQX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call fluxLimiter(grid%octreeRoot, "superbee")
     call constructFlux(grid%octreeRoot, dt)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupFlux(grid%octreeRoot, grid, direction)
     call updateCellQ(grid%octreeRoot, dt)
     call copyQtoRhoE(grid%octreeRoot)
 
   end subroutine advectRhoE
 
-  subroutine advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nbound)
+  subroutine advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup
+
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(OCTALVECTOR) :: direction
 
     call copyRhoUToQ(grid%octreeRoot)
     call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupQX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call fluxLimiter(grid%octreeRoot, "superbee")
     call constructFlux(grid%octreeRoot, dt)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupFlux(grid%octreeRoot, grid, direction)
     call updateCellQ(grid%octreeRoot, dt)
     call copyQtoRhoU(grid%octreeRoot)
 
   end subroutine advectRhoU
 
-  subroutine advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nbound)
+  subroutine advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup
+
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(OCTALVECTOR) :: direction
 
     call copyRhoVToQ(grid%octreeRoot)
     call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupQX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call fluxLimiter(grid%octreeRoot, "superbee")
     call constructFlux(grid%octreeRoot, dt)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupFlux(grid%octreeRoot, grid, direction)
     call updateCellQ(grid%octreeRoot, dt)
     call copyQtoRhoV(grid%octreeRoot)
 
   end subroutine advectRhoV
 
-  subroutine advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nbound)
+  subroutine advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup
+
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(OCTALVECTOR) :: direction
 
     call copyRhoWToQ(grid%octreeRoot)
     call setupX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupQX(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call fluxLimiter(grid%octreeRoot, "superbee")
     call constructFlux(grid%octreeRoot, dt)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupFlux(grid%octreeRoot, grid, direction)
     call updateCellQ(grid%octreeRoot, dt)
     call copyQtoRhoW(grid%octreeRoot)
@@ -1339,11 +1403,10 @@ contains
   end subroutine advectRhoW
 
 
-  subroutine hydroStep(grid, gamma, dt, direction, boundaryCondition)
+  subroutine hydroStep(grid, gamma, dt, direction)
     type(GRIDTYPE) :: grid
     real(double) :: gamma, dt
     type(OCTALVECTOR) :: direction
-    character(len=*) :: boundaryCondition
 
 !    call imposeBoundary(grid%octreeRoot, boundarycondition)
 !    call setupUi(grid%octreeRoot, grid, direction)
@@ -1359,163 +1422,166 @@ contains
   end subroutine hydroStep
 
 
-  subroutine hydroStep3d(grid, gamma, dt, boundaryCondition, nPairs, thread1, thread2, nBound)
+  subroutine hydroStep3d(iEquationOfState, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup
+    integer :: iEquationOfState
+
     real(double) :: gamma, dt, subdt
     type(OCTALVECTOR) :: direction
-    character(len=*) :: boundaryCondition
     integer :: i
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
 
-    call imposeBoundary(grid%octreeRoot, boundarycondition)
+    call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
-    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUpm(grid%octreeRoot, grid, direction)
-    call computePressureU(grid%octreeRoot, gamma, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call computePressureU(grid%octreeRoot, gamma, direction, iEquationOfState)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
-    call pressureForceU(grid%octreeRoot, dt/2.d0)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call pressureForceU(grid%octreeRoot, dt/2.d0, iEquationOfState)
 
 
     direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupVi(grid%octreeRoot, grid, direction)
-    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupVpm(grid%octreeRoot, grid, direction)
-    call computePressureV(grid%octreeRoot, gamma, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call computePressureV(grid%octreeRoot, gamma, direction, iEquationOfState)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
-    call pressureForceV(grid%octreeRoot, dt)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call pressureForceV(grid%octreeRoot, dt, iEquationOfState)
 
     direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupWi(grid%octreeRoot, grid, direction)
-    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupWpm(grid%octreeRoot, grid, direction)
-    call computePressureW(grid%octreeRoot, gamma, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call computePressureW(grid%octreeRoot, gamma, direction, iEquationOfState)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
-    call pressureForceW(grid%octreeRoot, dt)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call pressureForceW(grid%octreeRoot, dt, iEquationOfState)
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
-    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoV(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUpm(grid%octreeRoot, grid, direction)
-    call computePressureU(grid%octreeRoot, gamma, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call computePressureU(grid%octreeRoot, gamma, direction, iEquationOfState)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
-    call pressureForceU(grid%octreeRoot, dt/2.d0)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call pressureForceU(grid%octreeRoot, dt/2.d0, iEquationOfState)
 
-    call imposeBoundary(grid%octreeRoot, boundarycondition)
+    call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
 
  
   end subroutine hydroStep3d
 
-  subroutine hydroStep2d(grid, gamma, dt, boundaryCondition, nPairs, thread1, thread2, nBound)
+  subroutine hydroStep2d(grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     type(GRIDTYPE) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup
+
     real(double) :: gamma, dt, subdt
     type(OCTALVECTOR) :: direction
-    character(len=*) :: boundaryCondition
     integer :: i
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
 
-    call imposeBoundary(grid%octreeRoot, boundarycondition)
+    call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
-    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUpm(grid%octreeRoot, grid, direction)
-    call computePressureU(grid%octreeRoot, gamma, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call computePressureU(grid%octreeRoot, gamma, direction, 0)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
-    call pressureForceU(grid%octreeRoot, dt/2.d0)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call pressureForceU(grid%octreeRoot, dt/2.d0, 0)
 
 
 
     direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupWi(grid%octreeRoot, grid, direction)
-    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupWpm(grid%octreeRoot, grid, direction)
-    call computePressureW(grid%octreeRoot, gamma, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call computePressureW(grid%octreeRoot, gamma, direction, 0)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
-    call pressureForceW(grid%octreeRoot, dt)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call pressureForceW(grid%octreeRoot, dt,0 )
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
-    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call advectRho(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUpm(grid%octreeRoot, grid, direction)
-    call computePressureU(grid%octreeRoot, gamma, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call computePressureU(grid%octreeRoot, gamma, direction, 0)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
-    call pressureForceU(grid%octreeRoot, dt/2.d0)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call pressureForceU(grid%octreeRoot, dt/2.d0, 0)
 
-    call imposeBoundary(grid%octreeRoot, boundarycondition)
+    call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
 
  
   end subroutine hydroStep2d
 
 
-  recursive subroutine computeCourantTime(thisOctal, tc, gamma)
+  recursive subroutine computeCourantTime(thisOctal, tc, gamma, iEquationOfState)
     include 'mpif.h'
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
@@ -1523,6 +1589,7 @@ contains
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: tc, dx, cs, gamma, eThermal, eTot, eKinetic, u, speed
+    integer :: iEquationOfState
   
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -1532,7 +1599,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call computeCourantTime(child, tc, gamma)
+                call computeCourantTime(child, tc, gamma, iEquationOfState)
                 exit
              end if
           end do
@@ -1542,37 +1609,53 @@ contains
 
           if (.not.thisOctal%ghostCell(subcell)) then
 
-             cs = soundSpeed(thisOctal, subcell, gamma)
+             cs = soundSpeed(thisOctal, subcell, gamma, iEquationOfState)
 !             if (myrank==1) write(*,*) "cs ", cs/1.d5, "km/s"
              dx = thisOctal%subcellSize * 1.d10
              speed = sqrt((thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
                   + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2)
                 tc = min(tc, dx / (cs + speed) )
+
+                if ((dx/(cs+speed)) < 1.d6) then
+                   write(*,*) "dx ",dx, "speed ", speed/1.d5, "cs ",cs/1.d5
+                   write(*,*) "x y z ",thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
+                        thisOctal%rhov(subcell)/thisOctal%rho(subcell), thisOctal%rhow(subcell)/thisOctal%rho(subcell) 
+                endif
+
           endif
  
        endif
     enddo
   end subroutine computeCourantTime
 
-  function soundSpeed(thisOctal, subcell, gamma) result (cs)
+  function soundSpeed(thisOctal, subcell, gamma, iEquationOfState) result (cs)
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: cs, gamma
     real(double) :: u2, eKinetic, eTot, eThermal
+    integer :: iEquationOfSate
     logical, save :: firstTime = .true.
+    integer :: iEquationOfState
 
-    if (thisOctal%threed) then
-       u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-    else
-       u2 = (thisOctal%rhou(subcell)**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
-    endif
-    eKinetic = u2 / 2.d0
-    eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
-    eThermal = eTot - eKinetic
+    select case(iEquationOfState)
+       case(0) 
+          if (thisOctal%threed) then
+             u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+          else
+             u2 = (thisOctal%rhou(subcell)**2 +  thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+          endif
+          eKinetic = u2 / 2.d0
+          eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+          eThermal = eTot - eKinetic
+       case(1)
+          eThermal = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
+    end select
+
     if (eThermal < 0.d0) then
        if (firstTime) then
           write(*,*) "eThermal problem: ",ethermal
           write(*,*) eTot, ekinetic, u2
+          write(*,*) "rhoe, rho", thisOctal%rhoe(subcell), thisOctal%rho(subcell)
           write(*,*) thisOctal%rhou(subcell)/thisOctal%rho(subcell), thisOctal%rhov(subcell)/thisOctal%rho(subcell), &
                thisOctal%rhow(subcell)/thisOctal%rho(subcell)
           write(*,*) "cen ",subcellCentre(thisOctal, subcell), thisOctal%ghostCell(subcell)
@@ -1592,6 +1675,7 @@ contains
     integer :: i, pgbegin
     type(OCTALVECTOR) :: direction
     logical :: gridConverged
+    integer :: iEquationOfState = 0
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
@@ -1603,7 +1687,7 @@ contains
 
     call setupEdges(grid%octreeRoot, grid)
     call unsetGhosts(grid%octreeRoot)
-    call setupGhostCells(grid%octreeRoot, grid, "mirror")
+    call setupGhostCells(grid%octreeRoot, grid)
 
 
     call zeroRefinedLastTime(grid%octreeRoot)
@@ -1614,7 +1698,7 @@ contains
        call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
        call setupEdges(grid%octreeRoot, grid)
        call unsetGhosts(grid%octreeRoot)
-       call setupGhostCells(grid%octreeRoot, grid, "mirror")
+       call setupGhostCells(grid%octreeRoot, grid)
        if (gridConverged) exit
     end do
     call writeInfo("...grid smoothing complete", TRIVIAL)
@@ -1628,9 +1712,9 @@ contains
     do while(currentTime < 0.2d0)
 !    do while(.true.)
        tc = 1.d30
-       call computeCourantTime(grid%octreeRoot, tc, gamma)
+       call computeCourantTime(grid%octreeRoot, tc, gamma, iEquationOfState)
        dt = tc * cfl
-       call hydroStep(grid, gamma, dt, direction, "mirror")
+       call hydroStep(grid, gamma, dt, direction)
 
 !       write(*,*) "unrefining"
 !       do
@@ -1648,7 +1732,7 @@ contains
           call  evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=.true.)
           call setupEdges(grid%octreeRoot, grid)
           call unsetGhosts(grid%octreeRoot)
-          call setupGhostCells(grid%octreeRoot, grid, "mirror")
+          call setupGhostCells(grid%octreeRoot, grid)
           if (gridConverged) exit
        end do
        call writeInfo("...grid smoothing complete", TRIVIAL)
@@ -1677,7 +1761,8 @@ contains
     integer :: thread1(200), thread2(200), nBound(200), nPairs
     logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads
-
+    integer :: nGroup, group(200)
+    integer :: iEquationOfState = 0
 
     nHydroThreads = nThreadsGlobal - 1
 
@@ -1705,7 +1790,7 @@ contains
 
 
 
-    call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound)
+    call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
     do i = 1, nPairs
        if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
@@ -1713,7 +1798,7 @@ contains
 
 
     call writeInfo("Calling exchange across boundary", TRIVIAL)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call writeInfo("Done", TRIVIAL)
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
@@ -1735,17 +1820,17 @@ contains
           call setupEdges(grid%octreeRoot, grid)
           call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
           call unsetGhosts(grid%octreeRoot)
-          call setupGhostCells(grid%octreeRoot, grid, "mirror")
+          call setupGhostCells(grid%octreeRoot, grid)
           if (gridConverged) exit
        end do
     else
-       call evenUpGridMPI(grid, inheritFlag=.false.)
+       call evenUpGridMPI(grid, .false.)
     endif
 
     call writeInfo("Refining grid", TRIVIAL)
     do
        gridConverged = .true.
-       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.false.)
+       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.false.)
        if (gridConverged) exit
     end do
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -1754,9 +1839,9 @@ contains
     do
        globalConverged(myRank) = .true.
        call writeInfo("Refining grid", TRIVIAL)    
-       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.false.)
+       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), iEquationOfState, inherit=.false.)
        call writeInfo("Exchanging boundaries", TRIVIAL)    
-       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
        if (ALL(tConverged(1:nHydroThreads))) exit
@@ -1764,8 +1849,8 @@ contains
 
 
     call writeInfo("Evening up grid", TRIVIAL)    
-    call evenUpGridMPI(grid, inheritFlag=.false.)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call evenUpGridMPI(grid,.false.)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
 
@@ -1810,7 +1895,7 @@ contains
     do while(.true.)
        tc = 0.d0
        tc(myrank) = 1.d30
-       call computeCourantTime(grid%octreeRoot, tc(myRank), gamma)
+       call computeCourantTime(grid%octreeRoot, tc(myRank), gamma, iEquationOfState)
        call MPI_ALLREDUCE(tc, tempTc, 8, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
 !       write(*,*) "tc", tc(1:8)
 !       write(*,*) "temp tc",temptc(1:8)
@@ -1818,19 +1903,19 @@ contains
        dt = MINVAL(tc(1:8)) * cfl
 
        if (myrank == 1) write(*,*) "courantTime", dt
-       call tune(6,"Hydrodynamics step")
+       if (myrank == 1) call tune(6,"Hydrodynamics step")
        call writeInfo("calling hydro step",TRIVIAL)
 
-       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-       call hydroStep3d(grid, gamma, dt, "mirror", nPairs, thread1, thread2, nBound)
-       call tune(6,"Hydrodynamics step")
-       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       call hydroStep3d(0, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+       if (myrank == 1) call tune(6,"Hydrodynamics step")
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        call writeInfo("Refining grid", TRIVIAL)
        do
           gridConverged = .true.
-          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.true.)
+          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.true.)
           if (gridConverged) exit
        end do
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -1839,9 +1924,9 @@ contains
        do
           globalConverged(myRank) = .true.
           call writeInfo("Refining grid", TRIVIAL)    
-          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.true.)
+          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), iEquationOfState, inherit=.true.)
           call writeInfo("Exchanging boundaries", TRIVIAL)    
-          call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           call MPI_ALLREDUCE(globalConverged, tConverged, 8, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
           if (ALL(tConverged(1:8))) exit
@@ -1849,14 +1934,14 @@ contains
        
        iUnrefine = iUnrefine + 1
        if (iUnrefine == 5) then
-          call tune(6, "Unrefine grid")
-          call unrefineCells(grid%octreeRoot, grid, gamma)
-          call tune(6, "Unrefine grid")
+          if (myrank == 1)call tune(6, "Unrefine grid")
+          call unrefineCells(grid%octreeRoot, grid, gamma, iEquationOfState)
+          if (myrank == 1)call tune(6, "Unrefine grid")
           iUnrefine = 0
        endif
 
-       call evenUpGridMPI(grid, inheritFlag=.true.)
-       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       call evenUpGridMPI(grid, .true.)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
 !     call plot_AMR_values(grid, "rho", "x-y", 0., &
@@ -1896,8 +1981,12 @@ contains
     type(SOURCETYPE) :: source(1)
     integer :: nDependent, dependentThread(100)
     integer :: thread1(100), thread2(100), nBound(100), nPairs
+    integer :: nGroup, group(100)
+
     logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads 
+    integer :: iEquationOfState = 0
+    
 
     nHydroThreads = nThreadsGlobal - 1
 
@@ -1928,7 +2017,7 @@ contains
 
 
 
-    call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound)
+    call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
     do i = 1, nPairs
        if (myrankglobal==1)write(*,*) "pair ", i, thread1(i), " -> ", thread2(i), " bound ", nbound(i)
@@ -1936,7 +2025,7 @@ contains
 
 
     call writeInfo("Calling exchange across boundary", TRIVIAL)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call writeInfo("Done", TRIVIAL)
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
@@ -1958,17 +2047,19 @@ contains
           call setupEdges(grid%octreeRoot, grid)
           call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
           call unsetGhosts(grid%octreeRoot)
-          call setupGhostCells(grid%octreeRoot, grid, "mirror", flag=.true.)
+          call setupGhostCells(grid%octreeRoot, grid, flag=.true.)
           if (gridConverged) exit
        end do
     else
-       call evenUpGridMPI(grid, inheritFlag=.false.)
+       call evenUpGridMPI(grid,.false.)
     endif
+
+    
 
     call writeInfo("Refining grid", TRIVIAL)
     do
        gridConverged = .true.
-       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.false.)
+       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.false.)
        if (gridConverged) exit
     end do
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -1977,9 +2068,9 @@ contains
     do
        globalConverged(myRank) = .true.
        call writeInfo("Refining grid", TRIVIAL)    
-       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.false.)
+       call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), iEquationOfState, inherit=.false.)
        call writeInfo("Exchanging boundaries", TRIVIAL)    
-       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        call MPI_ALLREDUCE(globalConverged, tConverged, 4, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
        if (ALL(tConverged(1:4))) exit
@@ -1987,10 +2078,11 @@ contains
 
 
     call writeInfo("Evening up grid", TRIVIAL)    
-    call evenUpGridMPI(grid, inheritFlag=.false.)
-    call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+    call evenUpGridMPI(grid, .false.)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
+    call plotGridMPI(grid, "rhostart.png/png", "x-z", "rho", plotgrid=.true.)
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
@@ -2034,7 +2126,7 @@ contains
     do while(.true.)
        tc = 0.d0
        tc(myrank) = 1.d30
-       call computeCourantTime(grid%octreeRoot, tc(myRank), gamma)
+       call computeCourantTime(grid%octreeRoot, tc(myRank), gamma, iEquationOfState)
        call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
 !       write(*,*) "tc", tc(1:8)
 !       write(*,*) "temp tc",temptc(1:8)
@@ -2042,23 +2134,23 @@ contains
        dt = MINVAL(tc(1:nHydroThreads)) * cfl
 
        if (myrank == 1) write(*,*) "courantTime", dt
-       call tune(6,"Hydrodynamics step")
+       if (myrank == 1) call tune(6,"Hydrodynamics step")
        call writeInfo("calling hydro step",TRIVIAL)
 
-       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
-       call hydroStep2d(grid, gamma, dt, "mirror", nPairs, thread1, thread2, nBound)
+       call hydroStep2d(grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
 
-       call tune(6,"Hydrodynamics step")
-       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       if (myrank == 1) call tune(6,"Hydrodynamics step")
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        call writeInfo("Refining grid", TRIVIAL)
        do
           gridConverged = .true.
-          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, inherit=.true.)
+          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.true.)
           if (gridConverged) exit
        end do
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -2067,9 +2159,9 @@ contains
        do
           globalConverged(myRank) = .true.
           call writeInfo("Refining grid", TRIVIAL)    
-          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), inherit=.true.)
+          call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), iEquationOfState, inherit=.true.)
           call writeInfo("Exchanging boundaries", TRIVIAL)    
-          call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
           if (ALL(tConverged(1:nHydroThreads))) exit
@@ -2078,13 +2170,13 @@ contains
        iUnrefine = iUnrefine + 1
        if (iUnrefine == 5) then
           call tune(6, "Unrefine grid")
-          call unrefineCells(grid%octreeRoot, grid, gamma)
+          call unrefineCells(grid%octreeRoot, grid, gamma, iEquationOfState)
           call tune(6, "Unrefine grid")
           iUnrefine = 0
        endif
 
-       call evenUpGridMPI(grid, inheritFlag=.true.)
-       call exchangeAcrossMPIboudary(grid, nPairs, thread1, thread2, nBound)
+       call evenUpGridMPI(grid, .true.)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
 !     call plot_AMR_values(grid, "rho", "x-y", 0., &
@@ -2413,14 +2505,39 @@ contains
     enddo
   end subroutine feederCellCheck
 
+  recursive subroutine boundaryCondCheck(thisOctal)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call boundaryCondCheck(child)
+                exit
+             end if
+          end do
+       else
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+          if (thisOctal%boundaryCondition(subcell) /= "mirror") then
+             write(*,*) "boundary cond check failure"
+          endif
+      endif
+    enddo
+  end subroutine boundaryCondCheck
 
 
-  recursive subroutine imposeBoundary(thisOctal, boundaryCondition)
+
+  recursive subroutine imposeBoundary(thisOctal)
     type(octal), pointer   :: thisOctal, bOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, bSubcell
     logical :: firsttime
-    character(len=*) :: boundaryCondition
     type(OCTALVECTOR) :: locator, dir
     real(double) :: gamma, machNumber, Pr, rhor
 
@@ -2433,11 +2550,14 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call imposeBoundary(child,  boundaryCondition)
+                call imposeBoundary(child)
                 exit
              end if
           end do
        else
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
           if (thisOctal%ghostCell(subcell)) then
              select case(thisOctal%boundaryCondition(subcell))
                 case("mirror")
@@ -2496,6 +2616,18 @@ contains
                       endif
                    endif
 
+                case("periodic")
+                   if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
+                   locator = thisOctal%boundaryPartner(subcell)
+                   bOctal => thisOctal
+                   call findSubcellLocal(locator, bOctal, bSubcell)
+
+                   thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
+                   thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
+                   thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                   thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                   thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+
 
 
                 case("shock")
@@ -2512,7 +2644,7 @@ contains
                    thisOctal%rhoe(subcell) =  thisOctal%rho(subcell)*thisOctal%energy(subcell)
 
                 case DEFAULT
-                   write(*,*) "Unrecognised boundary condition: ", trim(boundaryCondition)
+                   write(*,*) "Unrecognised boundary condition in impose boundary: ", trim(thisOctal%boundaryCondition(subcell))
              end select
           endif
       endif
@@ -2521,13 +2653,12 @@ contains
 
 
 
-  recursive subroutine setupGhostCells(thisOctal, grid, boundaryCondition, flag)
+  recursive subroutine setupGhostCells(thisOctal, grid, flag)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal, neighbourOctal, tempOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, neighbourSubcell, tempSubcell
-    character(len=*) :: boundaryCondition
     type(OCTALVECTOR) :: locator, rVec
     integer :: nProbes, iProbe
     type(OCTALVECTOR) :: probe(6), direction
@@ -2547,7 +2678,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call setupGhostCells(child,  grid, boundaryCondition, flag)
+                call setupGhostCells(child,  grid, flag)
                 exit
              end if
           end do
@@ -2610,14 +2741,13 @@ contains
                    if (present(flag)) neighbourOctal%rho(neighbourSubcell) = 2.5d0
                    
                    ! now a case to determine the boundary cell relations
-                   select case (boundaryCondition)
+                   select case (thisOctal%boundaryCondition(subcell))
                    case("mirror")
                       dx = thisOctal%subcellSize
                       thisOctal%ghostCell(subcell) = .true.
 
                       call locatorToNeighbour(grid, thisOctal, subcell, (-1.d0)*probe(iProbe), 3, locator)
                       thisOctal%boundaryPartner(subcell) = locator
-                      thisOctal%boundaryCondition(subcell) = "mirror"
 
                       tempOctal => thisOctal
                       tempSubcell = 1
@@ -2631,7 +2761,6 @@ contains
 
                       call locatorToNeighbour(grid, neighbourOctal, neighboursubcell, (-1.d0)*probe(iProbe), 1, locator)
                       neighbourOctal%boundaryPartner(neighboursubcell) = locator
-                      neighbourOctal%boundaryCondition(neighboursubcell) = "mirror"
                       tempOctal => thisOctal
                       tempSubcell = 1
                       call findSubcellLocal(locator, tempOctal, tempSubcell)
@@ -2641,8 +2770,41 @@ contains
                          tempOctal%rho(tempSubcell) = 3.d0
                       endif
 
+                   case("periodic")
+                      dx = thisOctal%subcellSize
+                      thisOctal%ghostCell(subcell) = .true.
+
+                      locator = subcellCentre(thisOctal, subcell) - (grid%octreeRoot%subcellSize*2.d0)*probe(iProbe)
+                      locator%x = max(locator%x, grid%octreeRoot%centre%x - 1.d0 * grid%octreeRoot%subcellSize)
+                      locator%y = max(locator%y, grid%octreeRoot%centre%y - 1.d0 * grid%octreeRoot%subcellSize)
+                      locator%z = max(locator%z, grid%octreeRoot%centre%z - 1.d0 * grid%octreeRoot%subcellSize)
+                      locator%x = min(locator%x, grid%octreeRoot%centre%x + 1.d0 * grid%octreeRoot%subcellSize)
+                      locator%y = min(locator%y, grid%octreeRoot%centre%y + 1.d0 * grid%octreeRoot%subcellSize)
+                      locator%z = min(locator%z, grid%octreeRoot%centre%z + 1.d0 * grid%octreeRoot%subcellSize)
+                      tempOctal => thisOctal
+                      tempSubcell = 1
+                      call findSubcellLocal(locator, tempOctal, tempSubcell)
+                      call locatorToNeighbour(grid, tempOctal, tempsubcell, probe(iProbe), 1, locator)
+
+
+                      call findSubcellLocal(locator, tempOctal, tempSubcell)
+                      tempOctal%feederCell(tempsubcell) = .true.
+                      
+
+                      thisOctal%boundaryPartner(subcell) = locator
+
+
+                      
+                      if (present(flag)) then
+                         tempOctal%rho(tempSubcell) = 3.d0
+                      endif
+
+
                    case DEFAULT
-                      write(*,*) "unknown boundary condition: ",trim(boundaryCondition)
+                      write(*,*) "unknown boundary condition in setupghostcells1: ",trim(thisOCtal%boundaryCondition(subcell))
+                      write(*,*) "rank ",myRankGlobal, " mpi thread ", thisOctal%mpithread(subcell)
+                      write(*,*) "subcell ",subcell
+                      write(*,*) "all ", thisOctal%boundaryCondition
                    end select
                 endif
              enddo
@@ -2666,14 +2828,13 @@ contains
                    
                    
              ! now a case to determine the boundary cell relations
-             select case (boundaryCondition)
+             select case (thisOctal%boundaryCondition(subcell))
              case("mirror")
                  dx = sqrt(2.d0)*thisOctal%subcellSize
                 thisOctal%ghostCell(subcell) = .true.
                 
                 call locatorToNeighbour(grid, thisOctal, subcell, (-1.d0)*direction, 3, locator)
                 thisOctal%boundaryPartner(subcell) = locator
-                thisOctal%boundaryCondition(subcell) = "mirror"
                       tempOctal => thisOctal
                       tempSubcell = 1
                       call findSubcellLocal(locator, tempOctal, tempSubcell)
@@ -2685,7 +2846,6 @@ contains
                 
                 call locatorToNeighbour(grid, neighbourOctal, neighboursubcell, (-1.d0)*direction, 1, locator)
                 neighbourOctal%boundaryPartner(neighboursubcell) = locator
-                neighbourOctal%boundaryCondition(neighboursubcell) = "mirror"
                       tempOctal => thisOctal
                       tempSubcell = 1
                       call findSubcellLocal(locator, tempOctal, tempSubcell)
@@ -2696,7 +2856,7 @@ contains
                       endif
                       
              case DEFAULT
-                write(*,*) "unknown boundary condition: ",trim(boundaryCondition)
+                write(*,*) "Unknown boundary condition in setupghostcells2: ",trim(thisOctal%boundaryCondition(subcell))
              end select
 
 
@@ -2984,7 +3144,7 @@ contains
 
   end subroutine evenUpGrid
 
-  recursive subroutine refineGridGeneric2(thisOctal, grid,  gamma, converged, inherit)
+  recursive subroutine refineGridGeneric2(thisOctal, grid,  gamma, converged, iEquationOfState, inherit)
     use input_variables, only : maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
@@ -3003,6 +3163,7 @@ contains
     real(double) :: gamma
     real(double) :: cs, rhocs
     integer :: myRank, ierr
+    integer :: iEquationOfState
     converged = .true.
     converged_tmp=.true.
 
@@ -3015,7 +3176,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call refineGridGeneric2(child, grid,  gamma, converged, inherit)
+                call refineGridGeneric2(child, grid,  gamma, converged, iEquationOfState, inherit)
                 if (.not.converged) return
                 if (.not.converged) converged_tmp = converged
                 exit
@@ -3063,31 +3224,34 @@ contains
                      thisOctal%rho(subcell))
                 maxGradient = max(grad, maxGradient)
 
+!                if (grad > limit) write(*,*) "rho",grad
+
                 if (thisOctal%rhoe(subcell) /= 0.d0) then
                    grad = abs((thisOctal%rhoe(subcell)-neighbourOctal%rhoe(neighbourSubcell)) / &
                         thisOctal%rhoe(subcell))
                    maxGradient = max(grad, maxGradient)
                 endif
-
+!                if (grad > limit) write(*,*) "rhoe",grad, thisOctal%rhoe(subcell), neighbourOctal%rhoe(neighboursubcell),&
+!                     thisOctal%mpiThread(subcell), neighbourOctal%mpithread(neighboursubcell)
                 if (.not.thisOctal%ghostCell(subcell)) then
-                   cs = soundSpeed(thisOctal, subcell, gamma)
+                   cs = soundSpeed(thisOctal, subcell, gamma, iEquationOfState)
                    rhocs = thisOctal%rho(subcell) * cs
 
                    if (rhocs /= 0.d0) then
                       grad = abs((thisOctal%rhou(subcell)-neighbourOctal%rhou(neighbourSubcell)) / &
                            rhocs)
                       maxGradient = max(grad, maxGradient)
-                      !                   if (grad > limit) write(*,*) "rhou",grad
+!                      if (grad > limit) write(*,*) "rhou",grad
                       
                       grad = abs((thisOctal%rhov(subcell)-neighbourOctal%rhov(neighbourSubcell)) / &
                         rhocs)
                       maxGradient = max(grad, maxGradient)
-                      !                if (grad > limit) write(*,*) "rhov",grad
+!                      if (grad > limit) write(*,*) "rhov",grad
                       
                       grad = abs((thisOctal%rhow(subcell)-neighbourOctal%rhow(neighbourSubcell)) / &
                            rhocs)
                       maxGradient = max(grad, maxGradient)
-                      !                if (grad > limit) write(*,*) "rhov",grad
+!                      if (grad > limit) write(*,*) "rhow",grad
                    endif
                    if (maxGradient > limit) then
                       split = .true.
@@ -3129,7 +3293,6 @@ contains
     real :: factor
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
-    !
     integer :: subcell, i, ilambda
     logical :: converged, converged_tmp
     type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat, rvec
@@ -3143,8 +3306,6 @@ contains
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
     do subcell = 1, thisOctal%maxChildren
-
-
 
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -3207,7 +3368,6 @@ contains
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call refineFeeders(child, grid,  converged, inherit)
-                if (.not.converged) return
                 if (.not.converged) converged_tmp = converged
                 exit
              end if
@@ -3248,7 +3408,7 @@ contains
     locator = rVec
   end subroutine locatorToNeighbour
        
-  recursive subroutine unrefineCells(thisOctal, grid, gamma)
+  recursive subroutine unrefineCells(thisOctal, grid, gamma, iEquationOfState)
     use input_variables, only : minDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -3259,10 +3419,11 @@ contains
     logical :: unrefine, ok, converged
     integer :: nTau
     integer :: nVals, nc
-    real(double) :: rhov(8), rhou(8), rho(8), rhoe(8), fac, limit
+    real(double) :: rhow(8), rhov(8), rhou(8), rho(8), rhoe(8), fac, limit
     real(double) :: cs(8)
     real(double) :: rhocs, rhomean, rhoemean
     logical :: refinedLastTime, ghostCell
+    integer :: iEquationOfState
     limit  = 0.01d0
 
     unrefine = .true.
@@ -3275,7 +3436,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unrefineCells(child, grid,  gamma)
+                call unrefineCells(child, grid,  gamma, iEquationOfState)
                 exit
              end if
           end do
@@ -3285,8 +3446,9 @@ contains
           rhoe(nc) = thisOctal%rhoe(subcell)
           rhou(nc) = thisOctal%rhou(subcell)
           rhov(nc) = thisOctal%rhov(subcell)
+          rhow(nc) = thisOctal%rhow(subcell)
 
-          cs(nc) = soundSpeed(thisOctal, subcell, gamma)
+          cs(nc) = soundSpeed(thisOctal, subcell, gamma, iEquationOfState)
           if (thisOctal%ghostCell(subcell)) ghostCell=.true.
 !          if (thisOctal%refinedLastTime(subcell)) refinedLastTime = .true.
        endif
@@ -3360,6 +3522,8 @@ contains
     type(OCTALVECTOR) :: locs(10000), eLocs(10000)
     integer :: nLocs(64), tempNlocs(10000)
     integer :: thread(10000), nLocsGlobal,i, depth(10000)
+    integer :: nGroup, group(1000)
+
     real(double) :: temp(10000,4),tempsent(4)
     integer :: nTemp(1), nSent(1), eDepth(10000)
     integer :: iThread, nExternalLocs
@@ -3367,7 +3531,7 @@ contains
     integer, parameter :: tag = 1
     logical :: globalChanged(64)
     integer :: status(MPI_STATUS_SIZE)
-
+    character(len=20) :: plotfile
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
     ! first even up the local part of the grid
@@ -3378,31 +3542,34 @@ contains
     do while(.not.globalConverged)
        localChanged = .false.
 
-
+       i = 1
        do
           gridConverged = .true.
           call setupEdges(grid%octreeRoot, grid)
           call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
-          call unsetGhosts(grid%octreeRoot)
-          call setupGhostCells(grid%octreeRoot, grid, "mirror")
+
+!          write(plotfile,'(a,i4.4,a)') "grid",i,".png/png"
+!          call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
+!          i = i  + 1
           if (gridConverged) exit
        end do
 
+       call unsetGhosts(grid%octreeRoot)
+       call setupGhostCells(grid%octreeRoot, grid)
 
        do
           gridConverged = .true.
           call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
           call setupEdges(grid%octreeRoot, grid)
           call unsetGhosts(grid%octreeRoot)
-          call setupGhostCells(grid%octreeRoot, grid, "mirror")
+          call setupGhostCells(grid%octreeRoot, grid)
           if (gridConverged) exit
        end do
-       
        nLocs = 0
        call locatorsToExternalCells(grid%octreeRoot, grid, nLocs(myRank), locs, thread, depth)
-
        call MPI_ALLREDUCE(nLocs, tempnLocs, nThreadsglobal-1, MPI_INTEGER, MPI_SUM,amrCOMMUNICATOR, ierr)
        nLocsGlobal = SUM(tempnLocs)
+
 
        do iThread = 1, nThreads-1
           nTemp(1) = 0
@@ -3452,13 +3619,14 @@ contains
                    call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
                    call setupEdges(grid%octreeRoot, grid)
                    call unsetGhosts(grid%octreeRoot)
-                   call setupGhostCells(grid%octreeRoot, grid, "mirror")
+                   call setupGhostCells(grid%octreeRoot, grid, flag=.true.)
                    if (gridConverged) exit
                 end do
 !             endif
           endif
        enddo
        call MPI_ALLREDUCE(localChanged, globalChanged, nThreadsGlobal-1, MPI_LOGICAL, MPI_LOR, amrCOMMUNICATOR, ierr)
+
        if (ANY(globalChanged(1:nThreadsGlobal-1))) then
           globalConverged = .false.
        else
@@ -3467,7 +3635,6 @@ contains
        iter = iter + 1
        
     end do
-
   end subroutine evenUpGridMPI
 
   subroutine splitAtLocator(grid, locator, depth,  localchanged, inherit)
@@ -3581,131 +3748,6 @@ contains
   end subroutine locatorsToExternalCells
 
 
-  subroutine returnLocatorValues(locator, direction, grid, depth, rho, rhoe, rhou, rhov, rhow, q, locatorDepth)
-    include 'mpif.h'
-    integer :: myRank, ierr
-    type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal
-    integer :: subcell
-    type(OCTALVECTOR) :: locator, dirVec(6),direction
-    real(double) :: x, rho, rhoe, rhou, rhov, rhow, q
-    integer :: depth, locatorDepth
-    integer :: nSubcell(4)
-
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-
-    if (.not.inOctal(grid%octreeroot, locator)) then
-       write(*,*) "error locator not in grid ", locator
-       stop
-    endif
-
-    call findSubcellTD(locator, grid%octreeRoot, thisOctal,subcell)
-
-    if (thisOctal%mpiThread(subcell) /= myRank) then
-       write(*,*) "Error in returnlocator value: rank ",myRank, " but mipthread ",thisOctal%mpiThread(subcell)
-       stop
-    endif
-    
-    locatorDepth = thisOctal%nDepth
-
-
-    if (abs(depth - locatorDepth) > 2) then
-       write(*,*) "problem, greater than 1 cell depth between adjacent cells in return locator values"
-       stop
-    endif
- 
-    if (locatorDepth <= depth) then ! octal at locator is bigger or same size, no need to average
-       q = thisOctal%q_i(subcell)
-       rho = thisOctal%rho(subcell)
-       rhoe = thisOctal%rhoe(subcell)
-       rhou = thisOctal%rhou(subcell)
-       rhov = thisOctal%rhov(subcell)
-       rhow = thisOctal%rhow(subcell)
-    else ! octal at locator is subdivided - nead to average
-       if (thisOctal%oneD) then
-          if (direction%x > 0.9d0) then
-             nSubcell(1) = 1
-          else
-             nSubcell(1) = 2
-          endif
-          q = thisOctal%q_i(subcell)
-          rho = thisOctal%rho(subcell)
-          rhou = thisOctal%rhou(subcell)
-          rhov = thisOctal%rhov(subcell)
-          rhow = thisOctal%rhow(subcell)
-     else if (thisOctal%twoD) then
-       if (direction%x > 0.9d0) then
-          nSubcell(1) = 1
-          nSubcell(2) = 3
-       else if (direction%x < -0.9d0) then
-          nSubcell(1) = 2
-          nSubcell(2) = 4
-       else if (direction%z > 0.9d0) then
-          nSubcell(1) = 1
-          nSubcell(2) = 2
-       else
-          nSubcell(1) = 3
-          nSubcell(2) = 4
-       endif
-       q = 0.5d0*(thisOctal%q_i(nSubcell(1)) + thisOctal%q_i(nSubcell(2)))
-       rho = 0.5d0*(thisOctal%rho(nSubcell(1)) + thisOctal%rho(nSubcell(2)))
-       rhoe = 0.5d0*(thisOctal%rhoe(nSubcell(1)) + thisOctal%rhoe(nSubcell(2)))
-       rhou = 0.5d0*(thisOctal%rhou(nSubcell(1)) + thisOctal%rhou(nSubcell(2)))
-       rhov = 0.5d0*(thisOctal%rhov(nSubcell(1)) + thisOctal%rhov(nSubcell(2)))
-       rhow = 0.5d0*(thisOctal%rhow(nSubcell(1)) + thisOctal%rhow(nSubcell(2)))
-    else if (thisOctal%threed) then
-       if (direction%x > 0.9d0) then
-          nSubcell(1) = 1
-          nSubcell(2) = 3
-          nSubcell(3) = 5
-          nSubcell(4) = 7
-       else if (direction%x < -0.9d0) then
-          nSubcell(1) = 2
-          nSubcell(2) = 4
-          nSubcell(3) = 6
-          nSubcell(4) = 8
-       else if (direction%y > 0.9d0) then
-          nSubcell(1) = 1
-          nSubcell(2) = 2
-          nSubcell(3) = 5
-          nSubcell(4) = 6
-       else if (direction%y < -0.9d0) then
-          nSubcell(1) = 3
-          nSubcell(2) = 4
-          nSubcell(3) = 7
-          nSubcell(4) = 8
-       else if (direction%z > 0.9d0) then
-          nSubcell(1) = 1
-          nSubcell(2) = 2
-          nSubcell(3) = 3
-          nSubcell(4) = 4
-       elseif (direction%z < -0.9d0) then
-          nSubcell(1) = 1
-          nSubcell(2) = 2
-          nSubcell(3) = 5
-          nSubcell(4) = 6
-       endif
-       q = 0.25d0*(thisOctal%q_i(nSubcell(1)) + thisOctal%q_i(nSubcell(2)) + & 
-            thisOctal%q_i(nSubcell(3)) + thisOctal%q_i(nSubcell(4)))
-
-       rho = 0.25d0*(thisOctal%rho(nSubcell(1)) + thisOctal%rho(nSubcell(2)) + & 
-            thisOctal%rho(nSubcell(3)) + thisOctal%rho(nSubcell(4)))
-
-       rhoe = 0.25d0*(thisOctal%rhoe(nSubcell(1)) + thisOctal%rhoe(nSubcell(2)) + & 
-            thisOctal%rhoe(nSubcell(3)) + thisOctal%rhoe(nSubcell(4)))
-
-       rhou = 0.25d0*(thisOctal%rhou(nSubcell(1)) + thisOctal%rhou(nSubcell(2)) + & 
-            thisOctal%rhou(nSubcell(3)) + thisOctal%rhou(nSubcell(4)))
-
-       rhov = 0.25d0*(thisOctal%rhov(nSubcell(1)) + thisOctal%rhov(nSubcell(2)) + & 
-            thisOctal%rhov(nSubcell(3)) + thisOctal%rhov(nSubcell(4)))
-
-       rhow = 0.25d0*(thisOctal%rhow(nSubcell(1)) + thisOctal%rhow(nSubcell(2)) + & 
-            thisOctal%rhow(nSubcell(3)) + thisOctal%rhow(nSubcell(4)))
-
-    endif
- endif
-  end subroutine returnLocatorValues
 
   recursive subroutine determineDependentThreads(thisOctal, grid, nDependent,  dependentthread)
 
