@@ -729,8 +729,6 @@ preprocess:
 	    sed '/\!$$MPI/d'   molecular_mod.f90.raw    > molecular_mod.f90
 	    sed '/\!$$MPI/d'   cmf_mod.f90.raw          > cmf_mod.f90
     endif
-	    cpp -P $(SPHFLAG) $(MPIFLAG) sph_data_class.f90 tmp.f90
-	    mv tmp.f90 sph_data_class.f90
 	    cpp -P            $(MPIFLAG) parallel_mod.f90.raw parallel_mod.f90
 	    cpp -P            $(MPIFLAG) lucy_mod.f90.raw     lucy_mod.f90
 	    cpp -P $(SPHFLAG) $(MPIFLAG) torusMain.f90.raw    torusMain.f90
