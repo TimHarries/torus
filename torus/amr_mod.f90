@@ -105,8 +105,8 @@ CONTAINS
        thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
        thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
-       thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
-       write(*,*) "inherited ", thisOctal%boundaryCondition(subcell)
+       thisOCtal%boundaryCondition = parentOctal%boundaryCondition
+       write(*,*) "inherited ", thisOctal%boundaryCondition
        if (associated(thisOctal%dustTypeFraction)) then
           thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        endif
@@ -7776,8 +7776,6 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: gd, xmid, x, z, r , zprime
 
 
-    thisOctal%boundaryCondition(subcell) = "mirror"
-
     rVec = subcellCentre(thisOctal, subcell)
     xmid = (x1 + x2)/2.d0
     x = rVec%x
@@ -7819,6 +7817,10 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%pressure_i(subcell) = 0.1d0
     endif
 
+    thisOctal%boundaryCondition = 1
+    thisOctal%chiline(subcell) = -111111.d0
+
+
   end subroutine calcHydro1DDensity
 
   subroutine calcKelvinDensity(thisOctal,subcell,grid)
@@ -7842,7 +7844,7 @@ IF ( .NOT. gridConverged ) RETURN
     endif
     thisOctal%energy(subcell) = 1.d0
     thisOctal%pressure_i(subcell) = (7.d0/5.d0-1.d0) * thisOctal%rho(subcell) * thisOctal%energy(subcell)
-    thisOctal%boundaryCondition = "periodic"
+    thisOctal%boundaryCondition = 2
   end subroutine calcKelvinDensity
 
 

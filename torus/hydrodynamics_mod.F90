@@ -672,7 +672,8 @@ contains
           
           select case(iEquationOfState)
              case(0)
-                u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+                u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+                     thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
                 eKinetic = u2 / 2.d0
                 eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
                 eThermal = eTot - eKinetic
@@ -737,7 +738,8 @@ contains
 
           select case(iEquationOfState)
              case(0)
-                u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+                u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+                     thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
                 eKinetic = u2 / 2.d0
                 eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
                 eThermal = eTot - eKinetic
@@ -812,7 +814,8 @@ contains
 
           select case(iEquationOfState)
              case(0)
-                u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
+                u2 = (thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 + &
+                     thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2
                 eKinetic = u2 / 2.d0
                 eTot = thisOctal%rhoe(subcell)/thisOctal%rho(subcell)
                 eThermal = eTot - eKinetic
@@ -2524,8 +2527,10 @@ contains
        else
 
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
-          if (thisOctal%boundaryCondition(subcell) /= "mirror") then
-             write(*,*) "boundary cond check failure"
+          write(*,*) "looking at ", thisOctal%boundaryCondition, " subcell ", subcell
+          if (thisOctal%boundaryCondition /= 1) then
+             write(*,*) "boundary cond check failure: ",thisOctal%boundaryCondition, &
+                  thisOctal%chiline(subcell), " subcell " , subcell
           endif
       endif
     enddo
@@ -2559,8 +2564,8 @@ contains
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
           if (thisOctal%ghostCell(subcell)) then
-             select case(thisOctal%boundaryCondition(subcell))
-                case("mirror")
+             select case(thisOctal%boundaryCondition)
+                case(1)
                    if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
                    locator = thisOctal%boundaryPartner(subcell)
                    bOctal => thisOctal
@@ -2616,7 +2621,7 @@ contains
                       endif
                    endif
 
-                case("periodic")
+                case(2)
                    if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
                    locator = thisOctal%boundaryPartner(subcell)
                    bOctal => thisOctal
@@ -2630,7 +2635,7 @@ contains
 
 
 
-                case("shock")
+                case(3)
                    rhor = 1.d0
                    Pr = 0.1d0
                    thisOctal%rho(subcell) = rhor * (gamma+1.d0)*MachNumber**2 / ((gamma-1.d0)*machNumber**2 + 2.d0)
@@ -2644,7 +2649,7 @@ contains
                    thisOctal%rhoe(subcell) =  thisOctal%rho(subcell)*thisOctal%energy(subcell)
 
                 case DEFAULT
-                   write(*,*) "Unrecognised boundary condition in impose boundary: ", trim(thisOctal%boundaryCondition(subcell))
+                   write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition
              end select
           endif
       endif
@@ -2741,8 +2746,8 @@ contains
                    if (present(flag)) neighbourOctal%rho(neighbourSubcell) = 2.5d0
                    
                    ! now a case to determine the boundary cell relations
-                   select case (thisOctal%boundaryCondition(subcell))
-                   case("mirror")
+                   select case (thisOctal%boundaryCondition)
+                   case(1)
                       dx = thisOctal%subcellSize
                       thisOctal%ghostCell(subcell) = .true.
 
@@ -2770,7 +2775,7 @@ contains
                          tempOctal%rho(tempSubcell) = 3.d0
                       endif
 
-                   case("periodic")
+                   case(2)
                       dx = thisOctal%subcellSize
                       thisOctal%ghostCell(subcell) = .true.
 
@@ -2801,7 +2806,7 @@ contains
 
 
                    case DEFAULT
-                      write(*,*) "unknown boundary condition in setupghostcells1: ",trim(thisOCtal%boundaryCondition(subcell))
+                      write(*,*) "unknown boundary condition in setupghostcells1: ",thisOCtal%boundaryCondition
                       write(*,*) "rank ",myRankGlobal, " mpi thread ", thisOctal%mpithread(subcell)
                       write(*,*) "subcell ",subcell
                       write(*,*) "all ", thisOctal%boundaryCondition
@@ -2828,8 +2833,8 @@ contains
                    
                    
              ! now a case to determine the boundary cell relations
-             select case (thisOctal%boundaryCondition(subcell))
-             case("mirror")
+             select case (thisOctal%boundaryCondition)
+             case(1)
                  dx = sqrt(2.d0)*thisOctal%subcellSize
                 thisOctal%ghostCell(subcell) = .true.
                 
@@ -2856,7 +2861,7 @@ contains
                       endif
                       
              case DEFAULT
-                write(*,*) "Unknown boundary condition in setupghostcells2: ",trim(thisOctal%boundaryCondition(subcell))
+                write(*,*) "Unknown boundary condition in setupghostcells2: ",thisOctal%boundaryCondition
              end select
 
 

@@ -3350,7 +3350,7 @@ contains
     recursive subroutine writeOctreePrivate(thisOctal,fileFormatted, grid, doMpiFlag)
        ! writes out an octal from the grid octree
 
-       type(octal), intent(in), pointer :: thisOctal
+       type(octal),  pointer :: thisOctal
        logical, intent(in)             :: fileFormatted
        type(gridtype) :: grid
        type(octal), pointer :: thisChild

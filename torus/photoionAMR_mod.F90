@@ -246,7 +246,8 @@ contains
        endif
 
        if (myRank /= 0) then
-          if (myrank == 1) write(*,*) "dump ",dumpThisTime, " current ", grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
+          if (myrank == 1) write(*,*) "dump ",dumpThisTime, " current ", &
+               grid%currentTime, " deltaTfordump ",deltaTforDump, " dt ", dt
 
           if (myrank == 1) write(*,*) "Time step", dt
 

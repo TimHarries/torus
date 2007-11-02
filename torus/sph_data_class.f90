@@ -1,3 +1,45 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 module sph_data_class
 
   use kind_mod
@@ -761,10 +803,10 @@ contains
 
 
 
-#ifdef MPI
+
 !-------------------------------------------------------------------------------
 ! Name:    gather_sph_data
-! Purpose: Perform the MPI communication required to ensure all processes have
+! Purpose: Perform the 1 communication required to ensure all processes have
 !          access to the full list of sph particle data
 ! Author:  D. Acreman October 2007
 
@@ -963,7 +1005,7 @@ contains
   CALL MPI_BCAST(this%gaspartmass,  1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
 
   end subroutine gather_sph_data
-#endif
+
 !-------------------------------------------------------------------------------
    
 end module sph_data_class
