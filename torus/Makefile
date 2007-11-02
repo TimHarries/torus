@@ -715,7 +715,6 @@ preprocess:
     ifeq ($(MK_MPI_SRC), yes)
 	    sed 's/\!$$MPI//g' photoion_mod.f90.raw     > photoion_mod.f90
 	    sed 's/\!$$MPI//g' formal_solutions.f90.raw > formal_solutions.f90
-	    sed 's/\!$$MPI//g' disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
 	    sed 's/\!$$MPI//g' diffusion_mod.f90.raw    > diffusion_mod.f90
 	    sed 's/\!$$MPI//g' stateq_mod.f90.raw       > stateq_mod.f90
 	    sed 's/\!$$MPI//g' molecular_mod.f90.raw    > molecular_mod.f90
@@ -723,7 +722,6 @@ preprocess:
     else
 	    sed '/\!$$MPI/d'   photoion_mod.f90.raw     > photoion_mod.f90
 	    sed '/\!$$MPI/d'   formal_solutions.f90.raw > formal_solutions.f90
-	    sed '/\!$$MPI/d'   disc_hydro_mod.f90.raw   > disc_hydro_mod.f90
 	    sed '/\!$$MPI/d'   diffusion_mod.f90.raw    > diffusion_mod.f90
 	    sed '/\!$$MPI/d'   stateq_mod.f90.raw       > stateq_mod.f90
 	    sed '/\!$$MPI/d'   molecular_mod.f90.raw    > molecular_mod.f90
@@ -749,7 +747,7 @@ distclean: clean
 	@/bin/rm -f make.depends tags
 	@/bin/rm -f unix_mod.f90 kind_mod.f90 image_f77.f spec_f77.f
 	@/bin/rm -f photoion_mod.f90 formal_solutions.f90 lucy_mod.f90 \
-                disc_hydro_mod.f90 diffusion_mod.f90 stateq_mod.f90 \
+                diffusion_mod.f90 stateq_mod.f90 \
                 molecular_mod.f90 cmf_mod.f90 parallel_mod.f90 torusMain.f90
 
 ctags:
@@ -757,7 +755,6 @@ ctags:
 	       --exclude=photoion_mod.f90 \
 	       --exclude=formal_solutions.f90 \
 	       --exclude=lucy_mod.f90 \
-	       --exclude=disc_hydro_mod.f90 \
 	       --exclude=diffusion_mod.f90 \
 	       --exclude=stateq_mod.f90 \
 	       --exclude=molecular_mod.f90 \

@@ -456,9 +456,31 @@ contains
 
   end subroutine gather_sph_data
 
+!-------------------------------------------------------------------------------
+
+  subroutine torus_mpi_barrier(message)
+
+    USE mpi_global_mod, ONLY: myRankGlobal
+
+    implicit none
+    include 'mpif.h'
+
+    character(len=*), optional, intent(in) :: message 
+    integer :: ierr
+
+    if ( present(message) ) then
+       print *, "Process ", myRankGlobal, ": ", message
+    end if
+
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+  end subroutine torus_mpi_barrier
+
+! End of MPI routines ----------------------------------------------------------
+
 #else
 
-! Dummy version for use in non-mpi case
+! Dummy routines  for use in non-mpi case
   subroutine gather_sph_data(this)
 
     USE sph_data_class
@@ -470,6 +492,18 @@ contains
   
   end subroutine gather_sph_data
 
+!-------------------------------------------------------------------------------
+
+  subroutine torus_mpi_barrier(message)
+
+    implicit none
+
+    character(len=*), optional, intent(in) :: message 
+
+    return
+
+  end subroutine torus_mpi_barrier
+
 #endif
 
 end module parallel_mod
@@ -477,3 +511,5 @@ end module parallel_mod
 
 !!! vim:set filetype=fortran :                                !!!
 !!! otherwise vim won't recognize a file with the suffix .raw !!!
+
+!End of file -------------------------------------------------------------------
