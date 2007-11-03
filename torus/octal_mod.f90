@@ -168,7 +168,7 @@ MODULE octal_mod
     logical, dimension(8)                 :: diffusionApprox
     logical, dimension(8) :: undersampled
     real, dimension(8) :: nDiffusion
-    integer :: boundaryCondition
+    integer :: boundaryCondition(8)
 
     ! hydrodynamics
     real(double) :: q_i(8), q_i_plus_1(8), q_i_minus_1(8), q_i_minus_2(8)

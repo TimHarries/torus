@@ -238,6 +238,8 @@ contains
                 tmp = thisOctal%temperature(subcell)
              case("mpi")
                 tmp = real(thisOctal%mpiThread(subcell))
+             case("chi")
+                tmp = real(thisOctal%chiline(subcell))
              case DEFAULT
            end select
           select case(plane)

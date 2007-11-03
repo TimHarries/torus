@@ -105,7 +105,7 @@ CONTAINS
        thisOctal%biasCont3D(subcell) = parentOctal%biasCont3D(parentSubcell)
        thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
-       thisOCtal%boundaryCondition = parentOctal%boundaryCondition
+       thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
        write(*,*) "inherited ", thisOctal%boundaryCondition
        if (associated(thisOctal%dustTypeFraction)) then
           thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
@@ -7769,7 +7769,7 @@ IF ( .NOT. gridConverged ) RETURN
   subroutine calcHydro1DDensity(thisOctal,subcell,grid)
 
     use input_variables
-    TYPE(octal), INTENT(INOUT) :: thisOctal
+    TYPE(octal) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     type(OCTALVECTOR) :: rVec
@@ -7817,7 +7817,7 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%pressure_i(subcell) = 0.1d0
     endif
 
-    thisOctal%boundaryCondition = 1
+    thisOctal%boundaryCondition(subcell) = 1
     thisOctal%chiline(subcell) = -111111.d0
 
 
@@ -7842,9 +7842,11 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%velocity(subcell) = VECTOR(0.50/cSpeed, 0.d0, 0.d0)
        thisOctal%rho(subcell) = 2.d0
     endif
+    thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
+
     thisOctal%energy(subcell) = 1.d0
     thisOctal%pressure_i(subcell) = (7.d0/5.d0-1.d0) * thisOctal%rho(subcell) * thisOctal%energy(subcell)
-    thisOctal%boundaryCondition = 2
+    thisOctal%boundaryCondition(subcell) = 2
   end subroutine calcKelvinDensity
 
 
@@ -9227,6 +9229,8 @@ IF ( .NOT. gridConverged ) RETURN
     dest%Ne               = source%Ne
     dest%NH               = source%NH
     dest%NHI              = source%NHI
+    dest%boundaryCondition= source%boundaryCondition
+    dest%boundaryPartner  = source%boundaryPartner
     dest%NHII             = source%NHII
     dest%NHeI             = source%NHeI
     dest%NHeII            = source%NHeII
@@ -9277,7 +9281,6 @@ IF ( .NOT. gridConverged ) RETURN
     dest%rhov                 = source%rhov
     dest%rhow                 = source%rhow
     dest%rhoe                 = source%rhoe
-
     dest%refinedLastTime      = source%refinedLastTime
 
     if (associated(source%mpiBoundaryStorage)) then

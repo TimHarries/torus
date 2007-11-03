@@ -2016,7 +2016,8 @@ contains
 !    call plot_AMR_values(grid, "rho", "x-z", 0., &
 !           plotfile,.false., .true.)
 
-    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "mpi", plotgrid=.true.)
+    call plotGridMPI(grid, "mpi.png/png", "x-z", "mpi", plotgrid=.true.)
+    call plotGridMPI(grid, "chi.png/png", "x-z", "chi", plotgrid=.true.)
 
 
 
@@ -2527,10 +2528,13 @@ contains
        else
 
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
-          write(*,*) "looking at ", thisOctal%boundaryCondition, " subcell ", subcell
-          if (thisOctal%boundaryCondition /= 1) then
-             write(*,*) "boundary cond check failure: ",thisOctal%boundaryCondition, &
+          write(*,*) "looking at ", thisOctal%boundaryCondition(subcell), " subcell ", subcell
+          if (thisOctal%boundaryCondition(subcell) /= 1) then
+             write(*,*) "boundary cond check failure: ",thisOctal%boundaryCondition(subcell), &
                   thisOctal%chiline(subcell), " subcell " , subcell
+             write(*,*) " depth ",thisOctal%nDepth
+             write(*,*) "rank ",myrankglobal, " mpithread ", thisOctal%mpiThread(subcell)
+             write(*,*) "rho ", thisOctal%rho(subcell)
           endif
       endif
     enddo
@@ -2564,7 +2568,7 @@ contains
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
           if (thisOctal%ghostCell(subcell)) then
-             select case(thisOctal%boundaryCondition)
+             select case(thisOctal%boundaryCondition(subcell))
                 case(1)
                    if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
                    locator = thisOctal%boundaryPartner(subcell)
@@ -2649,7 +2653,7 @@ contains
                    thisOctal%rhoe(subcell) =  thisOctal%rho(subcell)*thisOctal%energy(subcell)
 
                 case DEFAULT
-                   write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition
+                   write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition(subcell)
              end select
           endif
       endif
@@ -2746,7 +2750,7 @@ contains
                    if (present(flag)) neighbourOctal%rho(neighbourSubcell) = 2.5d0
                    
                    ! now a case to determine the boundary cell relations
-                   select case (thisOctal%boundaryCondition)
+                   select case (thisOctal%boundaryCondition(subcell))
                    case(1)
                       dx = thisOctal%subcellSize
                       thisOctal%ghostCell(subcell) = .true.
@@ -2806,10 +2810,10 @@ contains
 
 
                    case DEFAULT
-                      write(*,*) "unknown boundary condition in setupghostcells1: ",thisOCtal%boundaryCondition
+                      write(*,*) "unknown boundary condition in setupghostcells1: ",thisOCtal%boundaryCondition(subcell)
                       write(*,*) "rank ",myRankGlobal, " mpi thread ", thisOctal%mpithread(subcell)
                       write(*,*) "subcell ",subcell
-                      write(*,*) "all ", thisOctal%boundaryCondition
+                      write(*,*) "all ", thisOctal%boundaryCondition(subcell)
                    end select
                 endif
              enddo
@@ -2833,7 +2837,7 @@ contains
                    
                    
              ! now a case to determine the boundary cell relations
-             select case (thisOctal%boundaryCondition)
+             select case (thisOctal%boundaryCondition(subcell))
              case(1)
                  dx = sqrt(2.d0)*thisOctal%subcellSize
                 thisOctal%ghostCell(subcell) = .true.
@@ -2859,9 +2863,11 @@ contains
                       if (present(flag)) then
                          tempOctal%rho(tempSubcell) = 0.8d0
                       endif
+
+             case(2)
                       
              case DEFAULT
-                write(*,*) "Unknown boundary condition in setupghostcells2: ",thisOctal%boundaryCondition
+                write(*,*) "Unknown boundary condition in setupghostcells2: ",thisOctal%boundaryCondition(subcell)
              end select
 
 
@@ -3624,7 +3630,7 @@ contains
                    call evenUpGrid(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
                    call setupEdges(grid%octreeRoot, grid)
                    call unsetGhosts(grid%octreeRoot)
-                   call setupGhostCells(grid%octreeRoot, grid, flag=.true.)
+                   call setupGhostCells(grid%octreeRoot, grid)!, flag=.true.)
                    if (gridConverged) exit
                 end do
 !             endif

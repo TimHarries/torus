@@ -2788,13 +2788,12 @@ program torus
      endif
 
      if (hydrodynamics) then
+
         grid%splitOverMPI = .true.
+	
+
         if (my_rank /= 0) then
            if (grid%octreeRoot%twoD) then
-              call boundaryCondCheck(grid%octreeRoot)
-              call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-              stop
-	
               call doHydrodynamics2d(grid)
            else if (grid%octreeRoot%oneD) then
               call doHydrodynamics1d(grid)
