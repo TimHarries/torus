@@ -366,10 +366,8 @@ contains
                 neighbourOctal => thisOctal
                 call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
 
-!                if (neighbourOctal%mpiThread(neighboursubcell) == receiveThread) cycle 
                 if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
 
-!                if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
                 if (.not.octalOnThread(neighbourOctal, neighbourSubcell, sendThread)) then
                    write(*,*) "Neighbour on ",boundaryType, " of ", myrankglobal,"  is not on thread ", sendThread, " but ", &
                    neighbourOctal%mpiThread(neighboursubcell)
@@ -758,9 +756,9 @@ contains
           if (thisOctal%oneD) then
              flux = neighbourOctal%flux_i(neighbourSubcell)
           else if (thisOctal%twoD) then
-             flux = neighbourOctal%flux_i(neighbourSubcell)/2.d0
+             flux = neighbourOctal%flux_i(neighbourSubcell)!/2.d0
           else
-             flux = neighbourOctal%flux_i(neighbourSubcell)/4.d0
+             flux = neighbourOctal%flux_i(neighbourSubcell)!/4.d0
           endif
        else
           call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux) ! fine to coarse
@@ -1140,7 +1138,129 @@ contains
     endif
   end function octalOnThread
 
+  subroutine periodBoundary(grid)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    integer :: iThread
+    integer :: ierr, i
+    real(double) :: loc(3)
+    integer :: tag = 78
 
+    do iThread = 1, nThreadsGlobal - 1
+       if (iThread /= myRankGlobal) then
+          call periodBoundaryReceiveRequests(grid, iThread)
+       else
+          call recursivePeriodSend(grid%octreeRoot)
+          loc(1) = 1.d30
+          do i = 1, nThreadsGlobal-1
+             if (i /= iThread) then
+!                write(*,*) myRankGlobal, " sending terminate to ", i
+                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, ierr)
+             endif
+          enddo
+       endif
+       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+    enddo
+  end subroutine periodBoundary
+
+  recursive subroutine recursivePeriodSend(thisOctal)
+
+    include 'mpif.h'
+    type(gridtype) :: grid
+    real :: factor
+    type(octal), pointer   :: thisOctal, tOctal, child
+    integer :: tSubcell
+    type(octal), pointer  :: neighbourOctal, startOctal
+    real(double) :: loc(3), tempStorage(5)
+    !
+    integer :: subcell, i
+    integer :: myrank
+    integer :: tag = 78
+    integer :: ierr
+    integer :: status
+
+
+    do subcell = 1, thisOctal%maxChildren
+
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call recursivePeriodSend(child)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if (thisOctal%ghostCell(subcell)) then
+             loc(1) = thisOctal%boundaryPartner(subcell)%x
+             loc(2) = thisOctal%boundaryPartner(subcell)%y
+             loc(3) = thisOctal%boundaryPartner(subcell)%z
+
+
+             tSubcell = 1
+             tOctal => thisOctal
+             call findSubcellLocal(thisOctal%boundaryPartner(subcell), tOctal, tSubcell)
+             if (tOctal%mpiThread(tSubcell) == myRankGlobal) then
+!                write(*,*) "locator problem2 ",myRankGlobal
+                stop
+             endif
+
+             tOctal => thisOctal
+             tSubcell = 1
+             call findSubcellLocal(thisOctal%boundaryPartner(subcell), tOctal,tsubcell)
+!             write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)
+!             write(*,*) myrankGlobal, " sending locator ", loc, subcellCentre(thisOctal, subcell)
+!             write(*,*) "Sending it to ", toctal%mpiThread(tsubcell)
+             call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag, MPI_COMM_WORLD, ierr)
+!             write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
+             call MPI_RECV(tempStorage, 5, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag, MPI_COMM_WORLD, status, ierr)
+             if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
+             thisOctal%tempStorage(subcell,1:5) = tempStorage(1:5)
+          endif
+       endif
+    enddo
+  end subroutine recursivePeriodSend
+
+  subroutine periodBoundaryReceiveRequests(grid, receiveThread)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    type(OCTAL), pointer :: thisOctal, tOCtal
+    logical :: sendLoop
+    real(double) :: loc(3), tempStorage(5)
+    integer :: status, ierr, receiveThread
+    integer :: subcell
+    integer :: tag = 78 
+    type(OCTALVECTOR) :: octVec
+    sendLoop = .true.
+    do while (sendLoop)
+       ! receive a locator
+       
+!       write(*,*) myrankGlobal, " waiting for a locator"
+       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+!       write(*,*) myrankglobal, " received a locator ", loc(1:3)
+       if (loc(1) > 1.d20) then
+          sendLoop = .false.
+!          write(*,*) myRankGlobal, " found the signal to end the send loop"
+       else
+          octVec = OCTALVECTOR(loc(1), loc(2), loc(3))
+          thisOctal => grid%octreeRoot
+          subcell = 1
+          call findSubcellLocal(octVec, thisOctal, subcell)
+          
+          
+          tempstorage(1) = thisOctal%rho(Subcell)
+          tempStorage(2) = thisOctal%rhoE(Subcell)
+          tempStorage(3) = thisOctal%rhou(Subcell)
+          tempStorage(4) = thisOctal%rhov(Subcell)
+          tempStorage(5) = thisOctal%rhow(Subcell)
+          
+          call MPI_SEND(tempStorage, 5, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
+       endif
+    enddo
+  end subroutine periodBoundaryReceiveRequests
 
 
 #endif

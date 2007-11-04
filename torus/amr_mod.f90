@@ -7838,13 +7838,13 @@ IF ( .NOT. gridConverged ) RETURN
     if (abs(rVec%z) > 0.25d0) then
        thisOctal%velocity(subcell) = VECTOR(-0.50/cSpeed, 0.d0, 0.d0)
        thisOctal%rho(subcell) = 1.d0
+       thisOctal%energy(subcell) = 2.d0
     else
        thisOctal%velocity(subcell) = VECTOR(0.50/cSpeed, 0.d0, 0.d0)
        thisOctal%rho(subcell) = 2.d0
+       thisOctal%energy(subcell) = 1.d0
     endif
-    thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
 
-    thisOctal%energy(subcell) = 1.d0
     thisOctal%pressure_i(subcell) = (7.d0/5.d0-1.d0) * thisOctal%rho(subcell) * thisOctal%energy(subcell)
     thisOctal%boundaryCondition(subcell) = 2
   end subroutine calcKelvinDensity
@@ -9258,6 +9258,7 @@ IF ( .NOT. gridConverged ) RETURN
     dest%x_i              = source%x_i
     dest%x_i_plus_1       = source%x_i_plus_1
 
+    dest%q_i_minus_2      = source%q_i_minus_2
     dest%q_i_minus_1      = source%q_i_minus_1
     dest%q_i              = source%q_i
     dest%q_i_plus_1       = source%q_i_plus_1

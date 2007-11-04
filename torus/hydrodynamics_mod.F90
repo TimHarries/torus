@@ -143,6 +143,8 @@ contains
              thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
                   (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
                   (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
+             write(*,*) "fluxes ", thisOctal%flux_i_plus_1(subcell),thisOctal%flux_i(subcell)
+             write(*,*) "rho ",thisOctal%rho(subcell) 
 !             thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
 !                  (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
 !                  (thisOctal%subcellSize*1.d10)
@@ -235,6 +237,9 @@ contains
              thisOctal%q_i_minus_1(subcell) = q
              thisOctal%q_i_minus_2(subcell) = qnext
 
+
+!             write(*,*) "q: ", thisOctal%q_i_minus_2(subcell), thisOctal%q_i_minus_1(subcell), thisOctal%q_i(subcell), &
+!                  thisOctal%q_i_plus_1(subcell)
              if (thisOctal%x_i_plus_1(subcell) == thisOctal%x_i_minus_1(subcell)) then
                 write(*,*) myrank," error in setting up x_i values"
                 write(*,*) thisOctal%x_i_plus_1(subcell),thisOctal%x_i_minus_1(subcell)
@@ -1525,7 +1530,8 @@ contains
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
 
-    call imposeBoundary(grid%octreeRoot)
+!    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
 
@@ -1577,7 +1583,8 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceU(grid%octreeRoot, dt/2.d0, 0)
 
-    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
+!    call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
 
  
@@ -2197,7 +2204,7 @@ contains
 !          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
 !          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.,plotgrid=.false.)
+          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 2.,plotgrid=.false.)
 !          call plotGridMPI(grid, "/xs", "x-z", "rhoe", plotgrid=.true.)
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
@@ -2627,15 +2634,21 @@ contains
 
                 case(2)
                    if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
-                   locator = thisOctal%boundaryPartner(subcell)
-                   bOctal => thisOctal
-                   call findSubcellLocal(locator, bOctal, bSubcell)
+!                   locator = thisOctal%boundaryPartner(subcell)
+!                   bOctal => thisOctal
+!                   call findSubcellLocal(locator, bOctal, bSubcell)
+!
+!                   thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
+!                   thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
+!                   thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+!                   thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+!                   thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
 
-                   thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
-                   thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
-                   thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
-                   thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
-                   thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                   thisoctal%tempstorage(subcell,1) = thisOctal%rho(subcell)
+                   thisOctal%tempStorage(subcell,2) = thisOctal%rhoE(subcell)
+                   thisOctal%tempStorage(subcell,3) = thisOctal%rhou(subcell)
+                   thisOctal%tempStorage(subcell,4) = thisOctal%rhov(subcell)
+                   thisOctal%tempStorage(subcell,5) = thisOctal%rhow(subcell)
 
 
 
@@ -2747,6 +2760,7 @@ contains
                    neighbourOctal => thisOctal
                    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
                    neighbourOctal%ghostCell(neighbourSubcell) = .true.
+
                    if (present(flag)) neighbourOctal%rho(neighbourSubcell) = 2.5d0
                    
                    ! now a case to determine the boundary cell relations
@@ -2783,30 +2797,28 @@ contains
                       dx = thisOctal%subcellSize
                       thisOctal%ghostCell(subcell) = .true.
 
-                      locator = subcellCentre(thisOctal, subcell) - (grid%octreeRoot%subcellSize*2.d0)*probe(iProbe)
-                      locator%x = max(locator%x, grid%octreeRoot%centre%x - 1.d0 * grid%octreeRoot%subcellSize)
-                      locator%y = max(locator%y, grid%octreeRoot%centre%y - 1.d0 * grid%octreeRoot%subcellSize)
-                      locator%z = max(locator%z, grid%octreeRoot%centre%z - 1.d0 * grid%octreeRoot%subcellSize)
-                      locator%x = min(locator%x, grid%octreeRoot%centre%x + 1.d0 * grid%octreeRoot%subcellSize)
-                      locator%y = min(locator%y, grid%octreeRoot%centre%y + 1.d0 * grid%octreeRoot%subcellSize)
-                      locator%z = min(locator%z, grid%octreeRoot%centre%z + 1.d0 * grid%octreeRoot%subcellSize)
-                      tempOctal => thisOctal
-                      tempSubcell = 1
-                      call findSubcellLocal(locator, tempOctal, tempSubcell)
-                      call locatorToNeighbour(grid, tempOctal, tempsubcell, probe(iProbe), 1, locator)
-
-
-                      call findSubcellLocal(locator, tempOctal, tempSubcell)
-                      tempOctal%feederCell(tempsubcell) = .true.
-                      
-
+                      locator = subcellCentre(thisOctal, subcell) - &
+                           (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize)*probe(iProbe)
                       thisOctal%boundaryPartner(subcell) = locator
 
-
-                      
-                      if (present(flag)) then
-                         tempOctal%rho(tempSubcell) = 3.d0
+                      tempSubcell = 1
+                      tempOctal => thisOctal
+                      call findSubcellLocal(locator, tempOctal, tempSubcell)
+                      if (tempOctal%mpiThread(tempSubcell) == myRankGlobal) then
+                         write(*,*) "locator problem ",myRankGlobal
+                         stop
                       endif
+                      locator = subcellCentre(neighbourOctal, neighboursubcell) - &
+                           (grid%octreeRoot%subcellSize*2.d0-4.d0*neighbourOctal%subcellSize)*probe(iProbe)
+                      neighbourOctal%boundaryPartner(neighboursubcell) = locator
+                      tempSubcell = 1
+                      tempOctal => thisOctal
+                      call findSubcellLocal(locator, tempOctal, tempSubcell)
+                      if (tempOctal%mpiThread(tempSubcell) == myRankGlobal) then
+                         write(*,*) "locator problem ",myRankGlobal
+                         stop
+                      endif
+
 
 
                    case DEFAULT
@@ -2864,10 +2876,36 @@ contains
                          tempOctal%rho(tempSubcell) = 0.8d0
                       endif
 
-             case(2)
-                      
-             case DEFAULT
-                write(*,*) "Unknown boundary condition in setupghostcells2: ",thisOctal%boundaryCondition(subcell)
+                case(2)
+                   dx = thisOctal%subcellSize
+                   thisOctal%ghostCell(subcell) = .true.
+                   
+                   locator = subcellCentre(thisOctal, subcell) - &
+                        (grid%octreeRoot%subcellSize*2.d0-4.d0*thisOctal%subcellSize)*direction
+                   thisOctal%boundaryPartner(subcell) = locator
+                      tempSubcell = 1
+                      tempOctal => thisOctal
+                      call findSubcellLocal(locator, tempOctal, tempSubcell)
+                      if (tempOctal%mpiThread(tempSubcell) == myRankGlobal) then
+                         write(*,*) "locator problem ",myRankGlobal
+                         stop
+                      endif
+
+                   
+                   locator = subcellCentre(neighbourOctal, neighboursubcell) - &
+                        (grid%octreeRoot%subcellSize*2.d0-4.d0*neighbourOctal%subcellSize)*direction
+                   neighbourOctal%boundaryPartner(neighboursubcell) = locator
+
+                      tempSubcell = 1
+                      tempOctal => thisOctal
+                      call findSubcellLocal(locator, tempOctal, tempSubcell)
+                      if (tempOctal%mpiThread(tempSubcell) == myRankGlobal) then
+                         write(*,*) "locator problem ",myRankGlobal
+                         stop
+                      endif
+                   
+                case DEFAULT
+                   write(*,*) "Unknown boundary condition in setupghostcells2: ",thisOctal%boundaryCondition(subcell)
              end select
 
 
@@ -3847,6 +3885,10 @@ contains
     end do
 
   end subroutine determineDependentThreads
+
+
+
+
 
 #endif
     
