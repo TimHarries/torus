@@ -2870,10 +2870,12 @@ contains
     !   adaptive octal grid.
 
     USE input_variables, ONLY: LyContThick, statEq1stOctant, blockHandout
-  
-!$MPI    use parallel_mod
+    use parallel_mod
+
     implicit none
-!$MPI    include 'mpif.h'
+#ifdef MPI
+    include 'mpif.h'
+#endif
     type(GRIDTYPE),intent(inout):: grid      
     character(len=*),intent(in) :: contfile      ! filename for continuum flux
     logical,intent(in)          :: lte           ! true if lte conditions
@@ -2928,10 +2930,12 @@ contains
     real(double) :: dummy
     integer       ::   ioctal_beg, ioctal_end  
     logical :: mapped_already
-!$MPI    ! For MPI implementations
-!$MPI    integer       ::   my_rank        ! my processor rank
-!$MPI    integer       ::   np             ! The number of processes
-!$MPI    integer       ::   ierr           ! error flag
+#ifdef MPI
+    ! For MPI implementations
+    integer       ::   my_rank        ! my processor rank
+    integer       ::   np             ! The number of processes
+    integer       ::   ierr           ! error flag
+#endif
 
     numLTEsubcells = 0
 
@@ -2970,11 +2974,13 @@ contains
 
 
     ! 2-D case for rotationally symmetric geometries
-    !$MPI    print *, "grid%statEq2d=", grid%statEq2d
-    !$MPI    print *, "grid%amr2dOnly=", grid%amr2dOnly
-    !$MPI    print *, "statEq1stOctant=", statEq1stOctant
-    !$MPI    print *, "lte=", lte
-    !$MPI    print *, "recalcPrevious=", recalcPrevious
+#ifdef MPI
+        print *, "grid%statEq2d=", grid%statEq2d
+        print *, "grid%amr2dOnly=", grid%amr2dOnly
+        print *, "statEq1stOctant=", statEq1stOctant
+        print *, "lte=", lte
+        print *, "recalcPrevious=", recalcPrevious
+#endif
     mapped_already =.false.
     if (grid%statEq2d .and. (.not. lte) ) then
        ! we first get a list of the octals that lie in a plane across the
@@ -3102,8 +3108,11 @@ contains
   subroutine calcAMRstatEq(octalArray,setupCoeffs,propogateCoeffs,firstTime,NeFactor)
     ! takes an array of pointers to octals, and calculates the statistical 
     !   equilibrium. 
-
-!$MPI    include 'mpif.h'
+    use messages_mod, only : myRankIsZero
+    
+#ifdef MPI
+    include 'mpif.h'
+#endif
     type(octalWrapper), intent(inout), dimension(:) :: octalArray
     logical, intent(in) :: setupCoeffs  ! whether to store the departure 
                                         !   coefficients in the octal structure.
@@ -3124,12 +3133,14 @@ contains
 !    integer, parameter :: ntrial_max = 20
     integer, parameter :: ntrial_max = 50
     logical :: be_gentle
-!$MPI     logical :: dcAllocated
-!$MPI     integer, dimension(:), allocatable :: octalsBelongRank
-!$MPI     logical :: rankComplete
-!$MPI     integer :: iRank
-!$MPI     integer :: tag = 0
-!$MPI     integer :: tempInt
+#ifdef MPI
+     logical :: dcAllocated
+     integer, dimension(:), allocatable :: octalsBelongRank
+     logical :: rankComplete
+     integer :: iRank
+     integer :: tag = 0
+     integer :: tempInt
+#endif
 
     if ( firstTime .and.  (  &
          grid%geometry(1:8) == 'windtest'  .or.   &
@@ -3204,27 +3215,28 @@ contains
 !$OMP SHARED(numLTEsubcells,  NeFactor) 
 
 
-      
-!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
-!$MPI    !  Get my process rank # 
-!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI  
-!$MPI    ! Find the total # of precessor being used in this run
-!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-!$MPI    
-!$MPI    ! we will use an array to store the rank of the process
-!$MPI    !   which will calculate each octal's variables
-!$MPI    allocate(octalsBelongRank(size(octalArray)))
-!$MPI    
-!$MPI    if (my_rank == 0) then
-!$MPI       print *, ' '
-!$MPI       print *, 'calcAMRstatEq routine  computed by ', np-1, ' processors.'
-!$MPI       print *, ' '
-!$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            maxBlockSize=10,setDebug=.false.)
-!$MPI    
-!$MPI    endif
-!$MPI    ! ============================================================================
+#ifdef MPI 
+    ! FOR MPI IMPLEMENTATION=======================================================
+    !  Get my process rank # 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+    ! Find the total # of precessor being used in this run
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+    
+    ! we will use an array to store the rank of the process
+    !   which will calculate each octal's variables
+    allocate(octalsBelongRank(size(octalArray)))
+    
+    if (my_rank == 0) then
+       print *, ' '
+       print *, 'calcAMRstatEq routine  computed by ', np-1, ' processors.'
+       print *, ' '
+       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
+                            maxBlockSize=10,setDebug=.false.)
+    
+    endif
+    ! ============================================================================
+#endif
 
        
        ! initialize some variables
@@ -3232,10 +3244,12 @@ contains
        previousXall = -9.9
        previousNeRatio = 1.0
 
-!$MPI if (my_rank /= 0) then
-!$MPI  blockLoop: do     
-!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
-!$MPI   if (rankComplete) exit blockLoop 
+#ifdef MPI
+ if (my_rank /= 0) then
+  blockLoop: do     
+ call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+   if (rankComplete) exit blockLoop 
+#endif
 
 !$OMP DO SCHEDULE(DYNAMIC)
        do iOctal =  iOctal_beg, iOctal_end, 1
@@ -3435,71 +3449,73 @@ contains
 !$OMP BARRIER
 !$OMP END PARALLEL
 
-!$MPI if (.not.blockHandout) exit blockloop
-!$MPI end do blockLoop        
-!$MPI end if ! (my_rank /= 0)
+#ifdef MPI
+ if (.not.blockHandout) exit blockloop
+ end do blockLoop        
+ end if ! (my_rank /= 0)
 
-!$MPI     print *,'Process ',my_rank,' waiting to update values in calcAMRstatEq...' 
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI
-!$MPI     ! have to send out the 'octalsBelongRank' array
-!$MPI     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
-!$MPI                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI
-!$MPI       !
-!$MPI       ! Update the values (N and Ne) of grid computed by all processors.
-!$MPI       !
-!$MPI       do iOctal = 1, SIZE(octalArray)
-!$MPI          !print *,'Process ',my_rank,' starting octal ',iOctal 
-!$MPI
-!$MPI          !if (my_rank==0)   print *,'Root reports rank ',octalsBelongRank(ioctal), 'for octal',ioctal
-!$MPI          thisOctal => octalArray(iOctal)%content
-!$MPI          
-!$MPI          ! we may need to allocate departure coefficients
-!$MPI          if (my_rank == octalsBelongRank(iOctal)) then
-!$MPI            dcAllocated = associated(thisOctal%departCoeff)
-!$MPI            !print *, 'rank ',my_rank,'broadcasting dcAllocated:',dcAllocated
-!$MPI          end if
-!$MPI          
-!$MPI          call MPI_BCAST(dcAllocated, 1, &
-!$MPI               MPI_LOGICAL, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-!$MPI          
-!$MPI          if (dcAllocated .and. .not. associated(thisOctal%departCoeff)) then 
-!$MPI            allocate(thisOctal%departCoeff(8,maxLevels+1))
-!$MPI            !print *, 'process ',my_rank,'allocating dc'
-!$MPI          end if
-!$MPI          
-!$MPI          do iSubcell = 1, thisOctal%maxChildren
-!$MPI             if (octalArray(iOctal)%inUse(iSubcell)) then
-!$MPI                
-!$MPI                call MPI_BCAST(thisOctal%nTot(iSubcell), 1, MPI_DOUBLE_PRECISION,&
-!$MPI                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-!$MPI                call MPI_BCAST(thisOctal%Ne(iSubcell), 1, MPI_DOUBLE_PRECISION, &
-!$MPI                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-!$MPI                call MPI_BCAST(thisOctal%N(iSubcell, 1:maxlevels), maxlevels, &
-!$MPI                     MPI_DOUBLE_PRECISION, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-!$MPI             end if
-!$MPI          
-!$MPI             if (dcAllocated) then
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI                call MPI_BCAST(thisOctal%departCoeff(iSubcell, 1:maxlevels+1), maxlevels+1, &
-!$MPI                     MPI_REAL, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
-!$MPI             end if   
-!$MPI          end do
-!$MPI       end do
-!$MPI          
-!$MPI     tempInt = 0
-!$MPI     call MPI_REDUCE(numLTEsubcells,tempInt,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,ierr)
-!$MPI     numLTEsubcells = tempInt
-!$MPI          
-!$MPI     print *,'Process ',my_rank,' finished updating values in calcAMRstatEq...' 
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+     print *,'Process ',my_rank,' waiting to update values in calcAMRstatEq...' 
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+     ! have to send out the 'octalsBelongRank' array
+     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
+                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+       !
+       ! Update the values (N and Ne) of grid computed by all processors.
+       !
+       do iOctal = 1, SIZE(octalArray)
+          !print *,'Process ',my_rank,' starting octal ',iOctal 
+
+          !if (my_rank==0)   print *,'Root reports rank ',octalsBelongRank(ioctal), 'for octal',ioctal
+          thisOctal => octalArray(iOctal)%content
+          
+          ! we may need to allocate departure coefficients
+          if (my_rank == octalsBelongRank(iOctal)) then
+            dcAllocated = associated(thisOctal%departCoeff)
+            !print *, 'rank ',my_rank,'broadcasting dcAllocated:',dcAllocated
+          end if
+          
+          call MPI_BCAST(dcAllocated, 1, &
+               MPI_LOGICAL, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+          
+          if (dcAllocated .and. .not. associated(thisOctal%departCoeff)) then 
+            allocate(thisOctal%departCoeff(8,maxLevels+1))
+            !print *, 'process ',my_rank,'allocating dc'
+          end if
+          
+          do iSubcell = 1, thisOctal%maxChildren
+             if (octalArray(iOctal)%inUse(iSubcell)) then
+                
+                call MPI_BCAST(thisOctal%nTot(iSubcell), 1, MPI_DOUBLE_PRECISION,&
+                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+                call MPI_BCAST(thisOctal%Ne(iSubcell), 1, MPI_DOUBLE_PRECISION, &
+                     octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+                call MPI_BCAST(thisOctal%N(iSubcell, 1:maxlevels), maxlevels, &
+                     MPI_DOUBLE_PRECISION, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+             end if
+          
+             if (dcAllocated) then
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+                call MPI_BCAST(thisOctal%departCoeff(iSubcell, 1:maxlevels+1), maxlevels+1, &
+                     MPI_REAL, octalsBelongRank(iOctal), MPI_COMM_WORLD, ierr)
+             end if   
+          end do
+       end do
+          
+     tempInt = 0
+     call MPI_REDUCE(numLTEsubcells,tempInt,1,MPI_INTEGER,MPI_SUM,0,MPI_COMM_WORLD,ierr)
+     numLTEsubcells = tempInt
+          
+     print *,'Process ',my_rank,' finished updating values in calcAMRstatEq...' 
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+#endif
       
-!$MPI      if (my_rank==0) then
-      print *, "   non-LTE calculations complete..." 
-      print *, numLTEsubcells,' subcells were fixed at LTE values'
-!$MPI      end if
+      if (myRankIsZero) then
+         print *, "   non-LTE calculations complete..." 
+         print *, numLTEsubcells,' subcells were fixed at LTE values'
+      end if
        
     endif
 
@@ -4042,7 +4058,7 @@ type(octal), pointer :: testOctal
     !==========================================================================
     !                                     
     !                                    3/2
-    ! Note:           1  /       h^2     \ 
+    ! Note:           1  /       h^2     \
     !         CI =   --- |----------------|  = 2.07x10^-16 (in cgs)
     !                 2  \   2 Pi m k    /
     !

@@ -25,21 +25,16 @@ CPP = cpp -P
 # Set system-dependent variables
 #
 ifeq ($(SYSTEM), intelmac)
-    F95COMP  = ifort
-    F77COMP  = ifort
+    F95COMP  = g95
+    F77COMP  = g95
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG = -g -no-ipo -debug full# -fbounds-check -ftrace=full
-    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto -ipo-jobs2
-#    FASTFLAG = -parallel -xT -O3 -ip -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic
+    DEBUGFLAG= -g -fbounds-check -ftrace=full
+    FASTFLAG = -O3
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-#    PGLIBS   = -lgfortran -L/usr/local -lpgplot -L/usr/X11R6/lib -lX11 -L/scisoft/i386/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-#   PGLIBS   = -L/usr/local/lib -lpgplot -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-#   PGLIBS   = -L/usr/local/lib /usr/local/lib/libpgplot.a -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-#    CFITSIOLIBS = -L/star/lib/ -lcfitsio
     PGLIBS   = -L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 #    STARLIBS = -L/star/lib `ndf_link`
@@ -53,8 +48,8 @@ ifeq ($(SYSTEM), g95)
     F95COMP  = g95
     F77COMP  = g95
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g -ftrace=full -fendian=little
-    FASTFLAG = -mcpu=G5 -O3 -ftrace=full -fendian=little -falign-loops
+    DEBUGFLAG= -g -ftrace=full
+    FASTFLAG = -O3 -mcpu=G5
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
@@ -64,7 +59,7 @@ ifeq ($(SYSTEM), g95)
     CFITSIOLIBS = -lcfitsio
     STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
-    EXE = torus.little
+    EXE = torus.g95
     MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
@@ -628,39 +623,40 @@ endif
 # Source files
 #
 F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
-            unix_mod.f90 inputs_mod.f90 stateq_mod.f90 utils_mod.f90 \
-            gaussian_mod.f90 grid_mod.f90 math_mod.f90  photoion_mod.f90 \
+            unix_mod.f90 inputs_mod.f90 utils_mod.f90 \
+            gaussian_mod.f90 grid_mod.f90 math_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
             distortion_mod.f90 image_mod.f90 TTauri_mod.f90 puls_mod.f90 \
-            disc_hydro_mod.f90 gas_opacity_mod.f90 torusMain.f90 \
+            disc_hydro_mod.f90 gas_opacity_mod.f90 \
             integratePath.f90 readIntPro.f90 mieDistPhaseMatrix.f90 \
             gridtype_mod.f90 getRefractiveIndex.f90 draineCrossSection.f90 \
             readTioCrossSection.f90 rayleighCrossSection.f90 \
             fillGridTio.f90 fillGridRayleigh.f90 fillGridMie.f90 \
             intersectCube.f90 fillGridThomson.f90 cont_read.f90 \
             getMeanMass.f90 input_variables.f90 amr_mod.f90 octal_mod.f90 \
-            parameters_mod.f90 diffusion_mod.f90 lucy_mod.f90 jets_mod.f90 \
+            parameters_mod.f90 jets_mod.f90 \
             dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 \
             wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 \
             pixplot_module.f90 sph_data_class.f90 cluster_class.f90 \
             linked_list_class.f90 timing.f90  isochrone_class.f90 \
-            filter_set_class.f90 ostar_mod.f90 formal_solutions.f90 \
+            filter_set_class.f90 ostar_mod.f90  \
             cluster_utils.f90 surface_mod.f90  math_mod2.f90 disc_class.f90 \
             hyd_col_coeff.f90 rotation_variables.f90 function_variables.f90 \
-            flow_speed_variables.f90 clump_mod.f90 parallel_mod.f90 \
+            flow_speed_variables.f90 clump_mod.f90 \
             discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
-            modelatom_mod.f90 cmf_mod.f90 datacube_mod.f90 magField.f90 \
+            modelatom_mod.f90  datacube_mod.f90 magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            molecular_mod.f90  hydrodynamics_mod.f90 nrutil.f90 \
-            nrtype.f90 mpi_global_mod.f90
+            mpi_global_mod.f90 nrtype.f90 nrutil.f90
 
 F77SOURCE = bhmie.f phfit2.f mieDistCrossSection.f palette.f \
             spec_f77.f image_f77.f 
 
 PGSOURCE  = pgplot_stubs.f90
 
-CAPF90SOURCE =	 photoionAMR_mod.F90  mpi_amr_mod.F90 hydrodynamics_mod.F90
+CAPF90SOURCE =	 photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90 \
+	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
+	         parallel_mod.F90 stateq_mod.F90 torusMain.F90
 
 # Object files
 #
@@ -716,27 +712,6 @@ preprocess:
 	ln -sf $(IMAGEF77) image_f77.f
 	ln -sf $(SPECF77) spec_f77.f
 	@echo "...done"
-	@echo ""
-	@echo "Processing source files for optional code..."
-    ifeq ($(MK_MPI_SRC), yes)
-	    sed 's/\!$$MPI//g' photoion_mod.f90.raw     > photoion_mod.f90
-	    sed 's/\!$$MPI//g' formal_solutions.f90.raw > formal_solutions.f90
-	    sed 's/\!$$MPI//g' diffusion_mod.f90.raw    > diffusion_mod.f90
-	    sed 's/\!$$MPI//g' stateq_mod.f90.raw       > stateq_mod.f90
-	    sed 's/\!$$MPI//g' molecular_mod.f90.raw    > molecular_mod.f90
-	    sed 's/\!$$MPI//g' cmf_mod.f90.raw          > cmf_mod.f90
-    else
-	    sed '/\!$$MPI/d'   photoion_mod.f90.raw     > photoion_mod.f90
-	    sed '/\!$$MPI/d'   formal_solutions.f90.raw > formal_solutions.f90
-	    sed '/\!$$MPI/d'   diffusion_mod.f90.raw    > diffusion_mod.f90
-	    sed '/\!$$MPI/d'   stateq_mod.f90.raw       > stateq_mod.f90
-	    sed '/\!$$MPI/d'   molecular_mod.f90.raw    > molecular_mod.f90
-	    sed '/\!$$MPI/d'   cmf_mod.f90.raw          > cmf_mod.f90
-    endif
-	    $(CPP)             $(MPIFLAG) parallel_mod.f90.raw parallel_mod.f90
-	    $(CPP)             $(MPIFLAG) lucy_mod.f90.raw     lucy_mod.f90
-	    $(CPP)  $(SPHFLAG) $(MPIFLAG) torusMain.f90.raw    torusMain.f90
-	@echo "...done"
 
 depends: preprocess
 	@echo ""
@@ -752,21 +727,9 @@ clean:
 distclean: clean
 	@/bin/rm -f make.depends tags
 	@/bin/rm -f unix_mod.f90 kind_mod.f90 image_f77.f spec_f77.f
-	@/bin/rm -f photoion_mod.f90 formal_solutions.f90 lucy_mod.f90 \
-                diffusion_mod.f90 stateq_mod.f90 \
-                molecular_mod.f90 cmf_mod.f90 parallel_mod.f90 torusMain.f90
 
 ctags:
 	@ctags --langmap='fortran:+(*.f90.raw)' \
-	       --exclude=photoion_mod.f90 \
-	       --exclude=formal_solutions.f90 \
-	       --exclude=lucy_mod.f90 \
-	       --exclude=diffusion_mod.f90 \
-	       --exclude=stateq_mod.f90 \
-	       --exclude=molecular_mod.f90 \
-	       --exclude=cmf_mod.f90 \
-	       --exclude=parallel_mod.f90 \
-	       --exclude=torusMain.f90 \
 	       *.f90 *.f *.f90.raw
 
 #

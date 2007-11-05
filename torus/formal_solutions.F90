@@ -239,9 +239,14 @@ contains
        nr_wind, nr_acc, nr_core, nphi, dir_obs, dist_obs, grid, sampleFreq, opaqueCore,  &
        flux, lambda, nlam, filename, thin_disc_on, ttau_disc_on, ttau_jet_on, ttau_discwind_on, npix, &
        do_alphadisc_check, alphadisc_par, thinLine, emissOff, pos_disp) 
-!$MPI    use parallel_mod
+    use messages_mod, only : myRankIsZero
+#ifdef MPI
+    use parallel_mod
+#endif
     implicit none
-!$MPI    include 'mpif.h'        
+#ifdef MPI
+    include 'mpif.h'        
+#endif
     real,         intent(in)  :: lambda0       ! [A] Wavelength of the line center
     real,         intent(in)  :: mass_ion      ! mass of atom in [g]
     real(double), intent(in)  :: R_star        ! [10^10 cm] radius of a star
@@ -322,16 +327,18 @@ contains
     real(double), parameter :: a2= -0.23d0      ! coefficiets in the linear limb dakening law 
     real(double), parameter :: a0= 1.0d0-a1-a2  ! coefficiets in the linear limb dakening law 
 
-!$MPI    ! For MPI implementations
-!$MPI    integer             ::   my_rank            ! my processor rank
-!$MPI    integer             ::   ncpu               ! The number of processes
-!$MPI    integer             ::   ierr               ! error flag
-!$MPI    double precision    ::  flux_sum, flux_tmp
-!$MPI    integer,allocatable ::   BelongRank(:)  
-!$MPI    integer             ::   tag = 0
-!$MPI    logical             ::   rankComplete
-!$MPI    real(double), allocatable :: buffer1(:), buffer2(:)
-!$MPI    real(double)        :: buffer3(3), buffer4(3)
+#ifdef MPI
+    ! For MPI implementations
+    integer             ::   my_rank            ! my processor rank
+    integer             ::   ncpu               ! The number of processes
+    integer             ::   ierr               ! error flag
+    double precision    ::  flux_sum, flux_tmp
+    integer,allocatable ::   BelongRank(:)  
+    integer             ::   tag = 0
+    logical             ::   rankComplete
+    real(double), allocatable :: buffer1(:), buffer2(:)
+    real(double)        :: buffer3(3), buffer4(3)
+#endif
 
     halfboxsize = grid%octreeRoot%subcellSize 
 
@@ -427,22 +434,23 @@ contains
     flux_map(:,:) = 0.0d0
     F_core=0.0d0; F_acc=0.0d0; F_wind=0.0d0  ! ONLY rank =z has correct flux!
 
-!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
-!$MPI    !  Get my process rank # 
-!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI  
-!$MPI    ! Find the total # of precessor being used in this run
-!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, ncpu, ierr)
-!$MPI    
-!$MPI 
-!$MPI    print *, ' '
-!$MPI    print *, 'Compute_obs_line_flux routine computed by ', ncpu-1, ' processors.'
-!$MPI    print *, ' '
-!$MPI    print *, '         ===> RAY LOOP parallelized <=== '
-!$MPI    print *, ' '
-!$MPI
-!$MPI    ! ============================================================================
+#ifdef MPI
+    ! FOR MPI IMPLEMENTATION=======================================================
+    !  Get my process rank # 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+    ! Find the total # of precessor being used in this run
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, ncpu, ierr)
+    
+ 
+    print *, ' '
+    print *, 'Compute_obs_line_flux routine computed by ', ncpu-1, ' processors.'
+    print *, ' '
+    print *, '         ===> RAY LOOP parallelized <=== '
+    print *, ' '
 
+    ! ============================================================================
+#endif
 
     ! Note: The first wavelength bin is used for contiuum calculation!!
     do j = j_beg, j_end
@@ -459,23 +467,27 @@ contains
        !
        F_core = 0.0d0
 
-!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
-!$MPI    if (my_rank == 0) then
-!$MPI       ! we will use an array to store the rank of the process
-!$MPI       !   which will calculate each octal's variables
-!$MPI       allocate(BelongRank(nc))
-!$MPI       call mpiBlockHandout(ncpu,BelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            maxBlockSize=1,setDebug=.false.)
-!$MPI       deallocate(BelongRank)
-!$MPI    endif
-!$MPI    ! ============================================================================
+#ifdef MPI
+    ! FOR MPI IMPLEMENTATION=======================================================
+    if (my_rank == 0) then
+       ! we will use an array to store the rank of the process
+       !   which will calculate each octal's variables
+       allocate(BelongRank(nc))
+       call mpiBlockHandout(ncpu,BelongRank,blockDivFactor=1,tag=tag,&
+                            maxBlockSize=1,setDebug=.false.)
+       deallocate(BelongRank)
+    endif
+    ! ============================================================================
+#endif
        i_beg=1; i_end=nc
 
-!$MPI if (my_rank /= 0) then
-!$MPI  block01: do     
-!$MPI  call mpiGetBlock(my_rank,i_beg,i_end,rankComplete,tag,setDebug=.false.)
-!$MPI   if (rankComplete) exit block01 
-  
+#ifdef MPI
+ if (my_rank /= 0) then
+  block01: do     
+  call mpiGetBlock(my_rank,i_beg,i_end,rankComplete,tag,setDebug=.false.)
+   if (rankComplete) exit block01 
+#endif  
+
        do i = i_beg, i_end
           ! first check if the beginning of the ray is at hot surface.
           ! -- using the routines in surface_mod.f90
@@ -518,11 +530,13 @@ contains
           flux_map(j,i) = Fi
        end do
 
-!$MPI end do block01        
-!$MPI end if ! (my_rank /= 0)
-!$MPI
-!$MPI call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI
+#ifdef MPI
+ end do block01        
+ end if ! (my_rank /= 0)
+
+ call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+#endif
 
 
        !-------------------------------------------------------------
@@ -530,23 +544,26 @@ contains
        !-------------------------------------------------------------
 
        F_acc = 0.0d0  
-!$MPI    ! ============================================================================
-!$MPI    if (my_rank == 0) then
-!$MPI       ! we will use an array to store the rank of the process
-!$MPI       !   which will calculate each octal's variables
-!$MPI       allocate(BelongRank(na))
-!$MPI       call mpiBlockHandout(ncpu,BelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            maxBlockSize=1,setDebug=.false.)
-!$MPI       deallocate(BelongRank)
-!$MPI    endif
-!$MPI    ! ============================================================================
-       
+#ifdef MPI
+    ! ============================================================================
+    if (my_rank == 0) then
+       ! we will use an array to store the rank of the process
+       !   which will calculate each octal's variables
+       allocate(BelongRank(na))
+       call mpiBlockHandout(ncpu,BelongRank,blockDivFactor=1,tag=tag,&
+                            maxBlockSize=1,setDebug=.false.)
+       deallocate(BelongRank)
+    endif
+    ! ============================================================================
+#endif       
        i_beg=1; i_end=na
 
-!$MPI if (my_rank /= 0) then
-!$MPI  block02: do     
-!$MPI call mpiGetBlock(my_rank,i_beg,i_end,rankComplete,tag,setDebug=.false.)
-!$MPI   if (rankComplete) exit block02 
+#ifdef MPI
+ if (my_rank /= 0) then
+  block02: do     
+ call mpiGetBlock(my_rank,i_beg,i_end,rankComplete,tag,setDebug=.false.)
+   if (rankComplete) exit block02 
+#endif
        do i = i_beg, i_end
           !need to get intensity from the surface element of the star.
           I0  = 1.0d-100  ! [erg cm^-2 s^-2 cm^-1 sr^-1] should be zero at the outer boundary
@@ -563,11 +580,12 @@ contains
           F_acc  = Fi + F_acc
           flux_map(j,nc+i) =  Fi
        end do
-!$MPI end do block02        
-!$MPI end if ! (my_rank /= 0)
-!$MPI
-!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI
+#ifdef MPI
+ end do block02        
+ end if ! (my_rank /= 0)
+
+   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+#endif
 
 
        !---------------------------------------------------
@@ -579,23 +597,27 @@ contains
 
        if (ttau_disc_on .or. ttau_jet_on .or. ttau_discwind_on) then
 
-!$MPI    ! ============================================================================
-!$MPI    if (my_rank == 0) then
-!$MPI       ! we will use an array to store the rank of the process
-!$MPI       !   which will calculate each octal's variables
-!$MPI       allocate(BelongRank(nw))
-!$MPI       call mpiBlockHandout(ncpu,BelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            maxBlockSize=1,setDebug=.false.)
-!$MPI       deallocate(BelongRank)
-!$MPI    endif
-!$MPI    ! ============================================================================
+#ifdef MPI
+    ! ============================================================================
+    if (my_rank == 0) then
+       ! we will use an array to store the rank of the process
+       !   which will calculate each octal's variables
+       allocate(BelongRank(nw))
+       call mpiBlockHandout(ncpu,BelongRank,blockDivFactor=1,tag=tag,&
+                            maxBlockSize=1,setDebug=.false.)
+       deallocate(BelongRank)
+    endif
+    ! ============================================================================
+#endif
 
           i_beg=1; i_end=nw
 
-!$MPI if (my_rank /= 0) then
-!$MPI  block03: do     
-!$MPI call mpiGetBlock(my_rank,i_beg,i_end,rankComplete,tag,setDebug=.false.)
-!$MPI   if (rankComplete) exit block03 
+#ifdef MPI
+ if (my_rank /= 0) then
+  block03: do     
+ call mpiGetBlock(my_rank,i_beg,i_end,rankComplete,tag,setDebug=.false.)
+   if (rankComplete) exit block03 
+#endif
           do i = i_beg, i_end
              !need to get intensity from the surface element of the star.
              I0  = 1.0d-100  ! [erg cm^-2 s^-2 cm^-1 sr^-1] should be zero at the outer boundary
@@ -612,58 +634,59 @@ contains
              F_wind  = Fi + F_wind
              flux_map(j,nc+na+i) =  Fi
           end do
-!$MPI  end do block03        
-!$MPI  end if ! (my_rank /= 0)
-!$MPI 
-!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI 
+#ifdef MPI
+  end do block03        
+  end if ! (my_rank /= 0)
+ 
+   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+#endif 
 
        end if
 
 
 
-!$MPI  
-!$MPI  ! UPDATING flux for j-th wavelength bin 
-!$MPI  if (j==1) allocate(buffer1(nray), buffer2(nray))
-!$MPI  buffer1(1:nray) = 0.0d0; buffer2(1:nray) = 0.0d0
-!$MPI  buffer1(1:nray) = flux_map(j, 1:nray)
-!$MPI   
-!$MPI  call MPI_REDUCE(buffer1, buffer2, nray ,MPI_DOUBLE_PRECISION, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-!$MPI  if (my_rank == 0) then
-!$MPI      flux_map(j, 1:nray) = buffer2(1:nray)  ! Only rank=0 has correct flux!!!
-!$MPI  endif ! 
-!$MPI  if (j==nlam) deallocate(buffer1, buffer2)
-!$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI   
-!$MPI   
-!$MPI   
-!$MPI  buffer3(:) = 0.0d0; buffer4(:) = 0.0d0
-!$MPI  buffer3(1) = F_core; buffer3(2) = F_acc; buffer3(3) = F_wind
-!$MPI   
-!$MPI  call MPI_REDUCE(buffer3, buffer4, 3 ,MPI_DOUBLE_PRECISION, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
-!$MPI  if (my_rank == 0) then
-!$MPI      F_core = buffer4(1)  
-!$MPI      F_acc  = buffer4(2)  
-!$MPI      F_wind = buffer4(3)  
-!$MPI  endif ! 
-!$MPI  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI  
+#ifdef MPI  
+  ! UPDATING flux for j-th wavelength bin 
+  if (j==1) allocate(buffer1(nray), buffer2(nray))
+  buffer1(1:nray) = 0.0d0; buffer2(1:nray) = 0.0d0
+  buffer1(1:nray) = flux_map(j, 1:nray)
+   
+  call MPI_REDUCE(buffer1, buffer2, nray ,MPI_DOUBLE_PRECISION, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+  if (my_rank == 0) then
+      flux_map(j, 1:nray) = buffer2(1:nray)  ! Only rank=0 has correct flux!!!
+  endif ! 
+  if (j==nlam) deallocate(buffer1, buffer2)
+  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+   
+   
+
+  buffer3(:) = 0.0d0; buffer4(:) = 0.0d0
+  buffer3(1) = F_core; buffer3(2) = F_acc; buffer3(3) = F_wind
+   
+  call MPI_REDUCE(buffer3, buffer4, 3 ,MPI_DOUBLE_PRECISION, MPI_SUM, 0, MPI_COMM_WORLD, ierr)
+  if (my_rank == 0) then
+      F_core = buffer4(1)  
+      F_acc  = buffer4(2)  
+      F_wind = buffer4(3)  
+  endif ! 
+  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+#endif  
 
 
-!$MPI   if (my_rank == 0) then
+   if (myRankIsZero) then
        ! Total Flux 
        ! scaling the flux at the observer's distance.
        flux(j) = (F_core + F_acc + F_wind )*(R_star*1.0d10/dist_obs)**2  ! [erg/s cm^-2 Hz^-1]
        flux_map(j,1:nray) = flux_map(j,1:nray)*(R_star*1.0d10/dist_obs)**2         ! [erg/s cm^-2 Hz^-1]
        ! Convet it some other units if you want below
 
-!$MPI   end if
-!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI
+   end if
+   call torus_mpi_barrier
+
 
        write(*,*) j, "/", nlam, " of flux integration done,"
 
-!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+       call torus_mpi_barrier
 
        if (doTuning) call tune(6, "One wavelength  Loop") ! stop a stopwatch  
     end do  ! wavelength loop
@@ -673,7 +696,7 @@ contains
     ! Writing the results to files
     !
 
-!$MPI if (my_rank == 0) then
+ if (myRankIsZero) then
     open(unit=89, file=TRIM(ADJUSTL(filename))//".dat", status="replace")
     open(unit=90, file=TRIM(ADJUSTL(filename))//"_v.dat", status="replace")
     write(89,"(a)") "#  Written by [formal_solutions::compute_obs_line_flux]."
@@ -784,16 +807,16 @@ contains
     DEALLOCATE(dr)
     DEALLOCATE(integrated_flux)
 
-!$MPI endif ! (my_rank == 0)
+ endif ! (my_rank == 0)
 
-!$MPI if (my_rank/=0) then
-!$MPI   write(*,*) " "
-!$MPI   write(*,*) "Wating for a root node to finish creating flux_map and "
-!$MPI   write(*,*) "    spectro-astrometry data..."
-!$MPI endif 
+ if (myRankIsZero) then
+    write(*,*) " "
+    write(*,*) "Wating for a root node to finish creating flux_map and "
+    write(*,*) "    spectro-astrometry data..."
+ endif
 
-!$MPI call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI   write(*,*) "... done."
+ call torus_mpi_barrier
+ write(*,*) "... done."
 
     !
     ! clean up

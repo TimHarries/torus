@@ -14,7 +14,9 @@ module cmf_mod
   use datacube_mod
   use timing
 
-  !$MPI    use parallel_mod
+#ifdef MPI
+  use parallel_mod
+#endif
 
   implicit none
 
@@ -927,7 +929,10 @@ contains
   subroutine atomLoop(grid, nAtom, thisAtom, nSource, source)
 
     use input_variables, only : blockhandout, debug, rcore
-!$MPI    include 'mpif.h'
+    use messages_mod, only : myRankIsZero
+#ifdef MPI
+    include 'mpif.h'
+#endif
 
     type(SOURCETYPE) :: source(:)
     integer :: nSource
@@ -981,23 +986,27 @@ contains
     logical :: recalcJbar, neConverged, firstCheckonTau
     character(len=80) :: message
     logical :: ionized
-!$MPI    ! For MPI implementations
-!$MPI    integer       ::   my_rank        ! my processor rank
-!$MPI    integer       ::   np             ! The number of processes
-!$MPI    integer       ::   ierr           ! error flag
-!$MPI    logical       ::   rankComplete
 
+#ifdef MPI
+    ! For MPI implementations
+    integer       ::   my_rank        ! my processor rank
+    integer       ::   np             ! The number of processes
+    integer       ::   ierr           ! error flag
+    logical       ::   rankComplete
+#endif
 
 
 
 !    blockHandout = .false. 
 
-!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
-!$MPI    !  Get my process rank # 
-!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI  
-!$MPI    ! Find the total # of precessor being used in this run
-!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+#ifdef MPI
+    ! FOR MPI IMPLEMENTATION=======================================================
+    !  Get my process rank # 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+    ! Find the total # of precessor being used in this run
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+#endif
 
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
 
@@ -1014,8 +1023,8 @@ contains
     enddo
 
 
-    !$MPI       if (my_rank == 0) &
-    call writeAmrGrid("atom_tmp.grid",.false.,grid)
+    if (myRankIsZero) &
+         call writeAmrGrid("atom_tmp.grid",.false.,grid)
 
 
     nHAtom = 0
@@ -1074,8 +1083,10 @@ contains
     call random_seed(size=iSize)
     allocate(iSeed(1:iSize))
     call random_seed(get=iSeed)
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+#ifdef MPI
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+#endif
 
 
     nRay = 100
@@ -1123,28 +1134,28 @@ contains
 
           
 
+#ifdef MPI
+    
+    ! we will use an array to store the rank of the process
+    !   which will calculate each octal's variables
+    allocate(octalsBelongRank(size(octalArray)))
+    
+    if (my_rank == 0) then
+       print *, ' '
+       print *, 'atomLoop  computed by ', np-1, ' processors.'
+       print *, ' '
+       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
+                            maxBlockSize=10,setDebug=.false.)
+    
+    endif
+    ! ============================================================================
 
-!$MPI    
-!$MPI    ! we will use an array to store the rank of the process
-!$MPI    !   which will calculate each octal's variables
-!$MPI    allocate(octalsBelongRank(size(octalArray)))
-!$MPI    
-!$MPI    if (my_rank == 0) then
-!$MPI       print *, ' '
-!$MPI       print *, 'atomLoop  computed by ', np-1, ' processors.'
-!$MPI       print *, ' '
-!$MPI       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
-!$MPI                            maxBlockSize=10,setDebug=.false.)
-!$MPI    
-!$MPI    endif
-!$MPI    ! ============================================================================
 
-
-!$MPI if (my_rank /= 0) then
-!$MPI  blockLoop: do     
-!$MPI call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
-!$MPI   if (rankComplete) exit blockLoop 
-
+ if (my_rank /= 0) then
+  blockLoop: do     
+ call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+   if (rankComplete) exit blockLoop 
+#endif
 
           do iOctal = ioctal_beg, ioctal_end
 !          do iOctal =  ioctal_end, ioctal_beg, -1
@@ -1379,49 +1390,50 @@ contains
 
           if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
 
-!$MPI if (.not.blockHandout) exit blockloop
-!$MPI end do blockLoop        
-!$MPI end if ! (my_rank /= 0)
+#ifdef MPI
+ if (.not.blockHandout) exit blockloop
+ end do blockLoop        
+ end if ! (my_rank /= 0)
 
 
 
 
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI       if(my_rank == 0) write(*,*) "Updating MPI grids"
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+       if(my_rank == 0) write(*,*) "Updating MPI grids"
 
-!$MPI
-!$MPI     ! have to send out the 'octalsBelongRank' array
-!$MPI     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
-!$MPI                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI
-!$MPI     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-!$MPI     allocate(tArrayd(1:nVoxels))
-!$MPI     allocate(tempArrayd(1:nVoxels))
-!$MPI     tArrayd = 0.d0
-!$MPI     tempArrayd = 0.d0
-!$MPI     do iAtom = 1, nAtom
-!$MPI       do i = 1, thisAtom(iAtom)%nLevels
-!$MPI         tArrayd = 0.d0
-!$MPI          call packAtomLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, iAtom, i)
-!$MPI          call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
-!$MPI            MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI            tArrayd = tempArrayd
-!$MPI          call unpackAtomLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, iAtom, i)
-!$MPI       enddo
-!$MPI     enddo
-!$MPI     do i = 1, nFreq
-!$MPI       tArrayd = 0.d0
-!$MPI       call packJnu(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
-!$MPI       call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
-!$MPI            MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI       tArrayd = tempArrayd
-!$MPI       call unpackJnu(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
-!$MPI     enddo
-!$MPI     deallocate(tArrayd, tempArrayd)
 
-!$MPI       if(my_rank == 0) write(*,*) "Done updating"
+     ! have to send out the 'octalsBelongRank' array
+     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
+                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
+     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+     allocate(tArrayd(1:nVoxels))
+     allocate(tempArrayd(1:nVoxels))
+     tArrayd = 0.d0
+     tempArrayd = 0.d0
+     do iAtom = 1, nAtom
+       do i = 1, thisAtom(iAtom)%nLevels
+         tArrayd = 0.d0
+          call packAtomLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, iAtom, i)
+          call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
+            MPI_SUM,MPI_COMM_WORLD,ierr)
+            tArrayd = tempArrayd
+          call unpackAtomLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, iAtom, i)
+       enddo
+     enddo
+     do i = 1, nFreq
+       tArrayd = 0.d0
+       call packJnu(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+       call MPI_ALLREDUCE(tArrayd,tempArrayd,nVoxels,MPI_DOUBLE_PRECISION,&
+            MPI_SUM,MPI_COMM_WORLD,ierr)
+       tArrayd = tempArrayd
+       call unpackJnu(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
+     enddo
+     deallocate(tArrayd, tempArrayd)
+
+       if(my_rank == 0) write(*,*) "Done updating"
+#endif
 
           maxFracChange = -1.d30
           call swapPops(grid%octreeRoot, maxFracChange)
@@ -1429,8 +1441,8 @@ contains
           write(*,*) "Fractional change",maxFracChange,"tolerance",tolerance , &
                "fixed rays",fixedrays,"nray",nray
 
-          !$MPI       if (my_rank == 0) &
-          call writeAmrGrid("atom_tmp.grid",.false.,grid)
+          if (myRankIsZero) &
+               call writeAmrGrid("atom_tmp.grid",.false.,grid)
 
 
           if (maxFracChange < tolerance) then
@@ -1438,8 +1450,9 @@ contains
           endif
 
 
-
-!$MPI       deallocate(octalsBelongRank)
+#ifdef MPI
+       deallocate(octalsBelongRank)
+#endif
 
           deallocate(ds, phi, i0, tau, sourceNumber, cosTheta, hitPhotosphere, &
                weight, hcol, heicol, heiicol, iCont)
@@ -1982,7 +1995,10 @@ contains
 
   
   subroutine calculateAtomSpectrum(grid, thisAtom, nAtom, iAtom, iTrans, viewVec, distance, source, nsource, nfile)
-!$MPI    include 'mpif.h'
+    use messages_mod, only : myRankIsZero
+#ifdef MPI
+    include 'mpif.h'
+#endif
 
     type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
@@ -2008,37 +2024,40 @@ contains
     integer, parameter :: maxFreq = 2000
     real(double) :: freqArray(maxFreq)
 
+#ifdef MPI
+    ! For MPI implementations
+    integer       ::   my_rank        ! my processor rank
+    integer       ::   np             ! The number of processes
+    integer       ::   ierr           ! error flag
+    logical       ::   rankComplete
 
-!$MPI    ! For MPI implementations
-!$MPI    integer       ::   my_rank        ! my processor rank
-!$MPI    integer       ::   np             ! The number of processes
-!$MPI    integer       ::   ierr           ! error flag
-!$MPI    logical       ::   rankComplete
 
-
-!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
-!$MPI    !  Get my process rank # 
-!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI  
-!$MPI    ! Find the total # of precessor being used in this run
-!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+    ! FOR MPI IMPLEMENTATION=======================================================
+    !  Get my process rank # 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+    ! Find the total # of precessor being used in this run
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+#endif
 
     call createContFreqArray(nFreqArray, freqArray, nAtom, thisAtom, nsource, source, maxFreq)
 
 
-!$MPI if (my_rank == 0) &
-    write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
+    if (myRankIsZero) &
+         write(*,*) "Calculating spectrum for: ",thisAtom(iatom)%name,(cspeed/thisAtom(iatom)%transFreq(iTrans))*1.d8
 
     call createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, nFreqArray, freqArray)
 
-!$MPI     write(*,*) "Process ",my_rank, " create data cube done"
+#ifdef MPI
+     write(*,*) "Process ",my_rank, " create data cube done"
+#endif
     if (Writeoutput) then
        write(plotfile,'(a,i3.3,a)') "cube",nfile,".ps/ps"
        call plotDataCube(cube, plotfile,withspec=.false.,twopanels=.true.)
        write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits.gz"
        call writeDataCube(cube,plotfile)
     endif
-!$MPI   call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+    call torus_mpi_barrier
     call freeDataCube(cube)
     return
 
@@ -2054,10 +2073,11 @@ contains
     iv1 = 1
     iv2 = nlambda
  
-!$MPI    iv1 = (my_rank) * (nLambda / (np)) + 1
-!$MPI    iv2 = (my_rank+1) * (nLambda / (np))
-!$MPI    if (my_rank == (np-1)) iv2 = nLambda
-
+#ifdef MPI
+    iv1 = (my_rank) * (nLambda / (np)) + 1
+    iv2 = (my_rank+1) * (nLambda / (np))
+    if (my_rank == (np-1)) iv2 = nLambda
+#endif
 
     allocate(spec(1:nLambda), vArray(1:nLambda))
     spec = 0.d0
@@ -2073,20 +2093,22 @@ contains
           spec(iv) = spec(iv) + i0 * domega(iRay) 
        enddo
     enddo
-!$MPI     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI     allocate(tempArray(1:nLambda))
-!$MPI       call MPI_ALLREDUCE(spec,tempArray,nLambda,MPI_DOUBLE_PRECISION,&
-!$MPI           MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI    spec(1:nLambda) = tempArray(1:nLambda)
-!$MPI     deallocate(tempArray)
+#ifdef MPI
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+     allocate(tempArray(1:nLambda))
+     call MPI_ALLREDUCE(spec,tempArray,nLambda,MPI_DOUBLE_PRECISION,&
+          MPI_SUM,MPI_COMM_WORLD,ierr)
+     spec(1:nLambda) = tempArray(1:nLambda)
+     deallocate(tempArray)
+#endif
 
-!$MPI    if (my_rank == 0) then
-    open(42, file="spectrum.dat",status="unknown",form="formatted")
-    do i = 1, nLambda
-       write(42, *) vArray(i)*cspeed/1.d5, spec(i)
-    enddo
-    close(42)
-!$MPI endif
+    if (myRankIsZero) then
+       open(42, file="spectrum.dat",status="unknown",form="formatted")
+       do i = 1, nLambda
+          write(42, *) vArray(i)*cspeed/1.d5, spec(i)
+       enddo
+       close(42)
+    endif
     deallocate(vArray, spec)
   end subroutine calculateAtomSpectrum
 
@@ -2169,7 +2191,9 @@ contains
 
   subroutine createDataCube(cube, grid, viewVec, nAtom, thisAtom, iAtom, iTrans, nSource, source, &
        nFreqArray, freqArray)
-!$MPI    include 'mpif.h'
+#ifdef MPI
+    include 'mpif.h'
+#endif
 
     integer :: nSource
     type(SOURCETYPE) :: source(:)
@@ -2190,19 +2214,21 @@ contains
     real(double), allocatable :: tempArray(:), tempArray2(:)
     integer :: iv1, iv2
 
-!$MPI    ! For MPI implementations
-!$MPI    integer       ::   my_rank        ! my processor rank
-!$MPI    integer       ::   np             ! The number of processes
-!$MPI    integer       ::   ierr           ! error flag
-!$MPI    logical       ::   rankComplete
+#ifdef MPI
+    ! For MPI implementations
+    integer       ::   my_rank        ! my processor rank
+    integer       ::   np             ! The number of processes
+    integer       ::   ierr           ! error flag
+    logical       ::   rankComplete
 
 
-!$MPI    ! FOR MPI IMPLEMENTATION=======================================================
-!$MPI    !  Get my process rank # 
-!$MPI    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI  
-!$MPI    ! Find the total # of precessor being used in this run
-!$MPI    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+    ! FOR MPI IMPLEMENTATION=======================================================
+    !  Get my process rank # 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+    ! Find the total # of precessor being used in this run
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+#endif
 
     nMonte = 1
 
@@ -2231,9 +2257,11 @@ contains
     iv2 = cube%nv
  
 
-!$MPI    iv1 = int(real(my_rank) * (real(cube%nv) / real(np))) + 1
-!$MPI    iv2 = int(real(my_rank+1) * (real(cube%nv) / real(np)))
-!$MPI    if (my_rank == (np-1)) iv2 = cube%nv
+#ifdef MPI
+    iv1 = int(real(my_rank) * (real(cube%nv) / real(np))) + 1
+    iv2 = int(real(my_rank+1) * (real(cube%nv) / real(np)))
+    if (my_rank == (np-1)) iv2 = cube%nv
+#endif
 
 !    iv1 = 25
 
@@ -2264,20 +2292,22 @@ contains
        enddo
        cube%intensity(:,:,iv) = cube%intensity(:,:,iv) / dble(nMonte)
     enddo
-!$MPI     write(*,*) "Process ",my_rank, " done. awaiting reduce"
-!$MPI    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-!$MPI    do iv = 1, cube%nv
-!$MPI      do ix = 1, cube%nx
-!$MPI        n = (cube%ny)
-!$MPI        allocate(tempArray(1:n), tempArray2(1:n))
-!$MPI        tempArray = reshape(cube%intensity(ix,:,iv), (/  n /))
-!$MPI         call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
-!$MPI             MPI_SUM,MPI_COMM_WORLD,ierr)
-!$MPI         cube%intensity(ix,:,iv) = reshape(tempArray2, (/ cube%ny/))
-!$MPI         deallocate(tempArray, tempArray2)
-!$MPI       enddo
-!$MPI    enddo
-!$MPI    write(*,*) "Process ",my_rank, " reduce done."
+#ifdef MPI
+     write(*,*) "Process ",my_rank, " done. awaiting reduce"
+    call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+    do iv = 1, cube%nv
+      do ix = 1, cube%nx
+        n = (cube%ny)
+        allocate(tempArray(1:n), tempArray2(1:n))
+        tempArray = reshape(cube%intensity(ix,:,iv), (/  n /))
+         call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
+             MPI_SUM,MPI_COMM_WORLD,ierr)
+         cube%intensity(ix,:,iv) = reshape(tempArray2, (/ cube%ny/))
+         deallocate(tempArray, tempArray2)
+       enddo
+    enddo
+    write(*,*) "Process ",my_rank, " reduce done."
+#endif
 
  cube%flux = cube%intensity
 
@@ -2285,123 +2315,124 @@ contains
 
 
 
+#ifdef MPI
+      subroutine packAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: octalsBelongRank(:)
+        integer :: nTemps
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr, iAtom
+        integer :: iLevel
+        type(OCTAL), pointer :: thisOctal
 
-!$MPI      subroutine packAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
-!$MPI    include 'mpif.h'
-!$MPI        type(OCTALWRAPPER) :: octalArray(:)
-!$MPI        integer :: octalsBelongRank(:)
-!$MPI        integer :: nTemps
-!$MPI        real(double) :: tArray(:)
-!$MPI        integer :: iOctal, iSubcell, my_rank, ierr, iAtom
-!$MPI        integer :: iLevel
-!$MPI        type(OCTAL), pointer :: thisOctal
-!$MPI
-!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI       !
-!$MPI       ! Update the edens values of grid computed by all processors.
-!$MPI       !
-!$MPI       nTemps = 0
-!$MPI       do iOctal = 1, SIZE(octalArray)
-!$MPI
-!$MPI          thisOctal => octalArray(iOctal)%content
-!$MPI          
-!$MPI          do iSubcell = 1, thisOctal%maxChildren
-!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
-!$MPI                 nTemps = nTemps + 1
-!$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
-!$MPI                   tArray(nTemps) = thisOctal%newAtomLevel(isubcell, iAtom, iLevel)
-!$MPI                 else 
-!$MPI                   tArray(nTemps) = 0.d0
-!$MPI                 endif
-!$MPI              endif
-!$MPI          end do
-!$MPI       end do
-!$MPI     end subroutine packAtomLevel
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the edens values of grid computed by all processors.
+       !
+       nTemps = 0
+       do iOctal = 1, SIZE(octalArray)
 
-!$MPI      subroutine unpackAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
-!$MPI    include 'mpif.h'
-!$MPI        type(OCTALWRAPPER) :: octalArray(:)
-!$MPI        integer :: octalsBelongRank(:)
-!$MPI        integer :: nTemps
-!$MPI        real(double) :: tArray(:)
-!$MPI        integer :: iOctal, iSubcell, my_rank, ierr, iAtom
-!$MPI        integer :: iLevel
-!$MPI        type(OCTAL), pointer :: thisOctal
-!$MPI
-!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI       !
-!$MPI       ! Update the edens values of grid computed by all processors.
-!$MPI       !
-!$MPI       nTemps = 0
-!$MPI       do iOctal = 1, SIZE(octalArray)
-!$MPI
-!$MPI          thisOctal => octalArray(iOctal)%content
-!$MPI          
-!$MPI          do iSubcell = 1, thisOctal%maxChildren
-!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
-!$MPI                 nTemps = nTemps + 1
-!$MPI                 thisOctal%newAtomLevel(isubcell, iAtom, iLevel) = tArray(nTemps) 
-!$MPI              endif
-!$MPI          end do
-!$MPI       end do
-!$MPI     end subroutine unpackAtomLevel
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 if (octalsBelongRank(iOctal) == my_rank) then
+                   tArray(nTemps) = thisOctal%newAtomLevel(isubcell, iAtom, iLevel)
+                 else 
+                   tArray(nTemps) = 0.d0
+                 endif
+              endif
+          end do
+       end do
+     end subroutine packAtomLevel
 
-!$MPI      subroutine packjnu(octalArray, nTemps, tArray, octalsBelongRank, iFreq)
-!$MPI    include 'mpif.h'
-!$MPI        type(OCTALWRAPPER) :: octalArray(:)
-!$MPI        integer :: octalsBelongRank(:)
-!$MPI        integer :: nTemps
-!$MPI        real(double) :: tArray(:)
-!$MPI        integer :: iOctal, iSubcell, my_rank, ierr, iFreq
-!$MPI        type(OCTAL), pointer :: thisOctal
-!$MPI
-!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI       !
-!$MPI       ! Update the edens values of grid computed by all processors.
-!$MPI       !
-!$MPI       nTemps = 0
-!$MPI       do iOctal = 1, SIZE(octalArray)
-!$MPI
-!$MPI          thisOctal => octalArray(iOctal)%content
-!$MPI          
-!$MPI          do iSubcell = 1, thisOctal%maxChildren
-!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
-!$MPI                 nTemps = nTemps + 1
-!$MPI                 if (octalsBelongRank(iOctal) == my_rank) then
-!$MPI                   tArray(nTemps) = thisOctal%jnuCont(isubcell, ifreq)
-!$MPI                 else 
-!$MPI                   tArray(nTemps) = 0.d0
-!$MPI                 endif
-!$MPI              endif
-!$MPI          end do
-!$MPI       end do
-!$MPI     end subroutine packJnu
+      subroutine unpackAtomLevel(octalArray, nTemps, tArray, octalsBelongRank, iAtom, iLevel)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: octalsBelongRank(:)
+        integer :: nTemps
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr, iAtom
+        integer :: iLevel
+        type(OCTAL), pointer :: thisOctal
 
-!$MPI      subroutine unpackJnu(octalArray, nTemps, tArray, octalsBelongRank, iFreq)
-!$MPI    include 'mpif.h'
-!$MPI        type(OCTALWRAPPER) :: octalArray(:)
-!$MPI        integer :: octalsBelongRank(:)
-!$MPI        integer :: nTemps
-!$MPI        real(double) :: tArray(:)
-!$MPI        integer :: iOctal, iSubcell, my_rank, ierr, iFreq
-!$MPI        type(OCTAL), pointer :: thisOctal
-!$MPI
-!$MPI       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-!$MPI       !
-!$MPI       ! Update the edens values of grid computed by all processors.
-!$MPI       !
-!$MPI       nTemps = 0
-!$MPI       do iOctal = 1, SIZE(octalArray)
-!$MPI
-!$MPI          thisOctal => octalArray(iOctal)%content
-!$MPI          
-!$MPI          do iSubcell = 1, thisOctal%maxChildren
-!$MPI              if (.not.thisOctal%hasChild(iSubcell)) then
-!$MPI                 nTemps = nTemps + 1
-!$MPI                 thisOctal%jnuCont(isubcell, iFreq) = tArray(nTemps) 
-!$MPI              endif
-!$MPI          end do
-!$MPI       end do
-!$MPI     end subroutine unpackJnu
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the edens values of grid computed by all processors.
+       !
+       nTemps = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 thisOctal%newAtomLevel(isubcell, iAtom, iLevel) = tArray(nTemps) 
+              endif
+          end do
+       end do
+     end subroutine unpackAtomLevel
+
+      subroutine packjnu(octalArray, nTemps, tArray, octalsBelongRank, iFreq)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: octalsBelongRank(:)
+        integer :: nTemps
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr, iFreq
+        type(OCTAL), pointer :: thisOctal
+
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the edens values of grid computed by all processors.
+       !
+       nTemps = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 if (octalsBelongRank(iOctal) == my_rank) then
+                   tArray(nTemps) = thisOctal%jnuCont(isubcell, ifreq)
+                 else 
+                   tArray(nTemps) = 0.d0
+                 endif
+              endif
+          end do
+       end do
+     end subroutine packJnu
+
+      subroutine unpackJnu(octalArray, nTemps, tArray, octalsBelongRank, iFreq)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: octalsBelongRank(:)
+        integer :: nTemps
+        real(double) :: tArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr, iFreq
+        type(OCTAL), pointer :: thisOctal
+
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the edens values of grid computed by all processors.
+       !
+       nTemps = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+              if (.not.thisOctal%hasChild(iSubcell)) then
+                 nTemps = nTemps + 1
+                 thisOctal%jnuCont(isubcell, iFreq) = tArray(nTemps) 
+              endif
+          end do
+       end do
+     end subroutine unpackJnu
+#endif
 
 end module cmf_mod

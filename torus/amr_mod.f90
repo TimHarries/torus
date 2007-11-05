@@ -1036,24 +1036,24 @@ CONTAINS
       CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
                      sphData, stellar_cluster, setChanged, romData=romData)
       
-      if(writeoutput) then
-         if(split_iter .lt. 10) then
-            write(filename,'(a,i1,a)') "./splitting/split00",split_iter,".ps/vcps"
-         elseif(split_iter .lt. 100) then
-            write(filename,'(a,i2,a)') "./splitting/split0",split_iter,".ps/vcps"
-         else
-            write(filename,'(a,i3,a)') "./splitting/split",split_iter,".ps/vcps"
-         endif
-         
-         if(iIndex .eq. thisOctal%nChildren) then
-            call fudge_plot_AMR_values(grid, "Area", "x-z", real(grid%octreeRoot%centre%y), &
-                 filename, .true., .false., &
-                 0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., fixValMin=1d4, fixValMax=1d8) 
-            
-            split_iter = split_iter + 1
-            write(*,*) split_iter
-         endif
-      endif
+!!      if(writeoutput) then
+!!         if(split_iter .lt. 10) then
+!!            write(filename,'(a,i1,a)') "./splitting/split00",split_iter,".ps/vcps"
+!!         elseif(split_iter .lt. 100) then
+!!            write(filename,'(a,i2,a)') "./splitting/split0",split_iter,".ps/vcps"
+!!         else
+!!            write(filename,'(a,i3,a)') "./splitting/split",split_iter,".ps/vcps"
+!!         endif
+!!         
+!!         if(iIndex .eq. thisOctal%nChildren) then
+!!            call fudge_plot_AMR_values(grid, "Area", "x-z", real(grid%octreeRoot%centre%y), &
+!!                 filename, .true., .false., &
+!!                 0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., fixValMin=1d4, fixValMax=1d8) 
+!!            
+!!            split_iter = split_iter + 1
+!!            write(*,*) split_iter
+!!         endif
+!!      endif
    END DO
 
 !    if (associated(thisOctal%gas_particle_list)) then
@@ -8201,7 +8201,8 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%velocity(subcell) = ggtauvelocity(subcellcentre(thisOctal,subcell),grid)! v * (VECTOR(0.d0,0.d0,1.d0) .cross. CellCentre)
 
     thisOctal%microturb(subcell) = sqrt((2. * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + (v**2)) / cspeed
-    write(*,*) "R",r,"TEMP",thisOctal%temperature(subcell),"falloff",exp(-((cellcentre%z/H)**2)),"micro", thisOctal%microturb(subcell)
+    write(*,*) "R",r,"TEMP",thisOctal%temperature(subcell),"falloff",exp(-((cellcentre%z/H)**2)),"micro", &
+         thisOctal%microturb(subcell)
    CALL fillVelocityCorners(thisOctal,grid,ggtauVelocity,thisOctal%threed)
   end subroutine ggtauFill
 
