@@ -934,6 +934,18 @@ contains
     randomUnitVector = VECTOR(u,v,w)
   end function randomUnitVector
 
+  type(VECTOR) function specificUnitVector(r1,r2)
+    real :: r1, r2, u, v, w, t, ang
+!    type(VECTOR) :: specificunitvector
+    w = 2.*r1 - 1.
+    t = sqrt(1.0-w*w)
+    ang = pi*(2.*r2-1.)
+    u = t*cos(ang)
+    v = t*sin(ang)
+
+    specificUnitVector = VECTOR(u,v,w)
+  end function specificUnitVector
+
 
   type(DOUBLEVECTOR) function randomUnitDoubleVector()
     real(double) :: r1, r2, u, v, w, t, ang

@@ -1089,6 +1089,7 @@ contains
             "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("readlucy", readLucy, cLine, nLines, &
             "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+
        call getLogical("redolucy", redolucy, cLine, nLines, &
             "Redo lucy radiative equilibrium routine from a input file: ", &
             "(a,1l,1x,a)", .false., ok, .false.)
@@ -1226,31 +1227,35 @@ contains
 
  if (molecular) then
     onekappa = .true.
-   call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
+   call getString("molfilein", molFilenameIn, cLine, nLines, &
         "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
+   call getString("molfileout", molFilenameOut, cLine, nLines, &
         "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
-   call getLogical("writelucy", writeLucy, cLine, nLines, &
+   call getLogical("writemol", writeMol, cLine, nLines, &
         "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
-   call getLogical("readlucy", readLucy, cLine, nLines, &
-          "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("readmol", readMol, cLine, nLines, &
+          "Read molecular grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("writeLucy", writeLucy, cLine, nLines, &
+        "Write lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("readLucy", readLucy, cLine, nLines, &
+          "Read molecular grid file: ","(a,1l,1x,a)", .false., ok, .false.)
+   call getLogical("openlucy", openLucy, cLine, nLines, &
+        "Open Existing lucy file: ","(a,1l,1x,a)", .false., ok, .false.)
     call getReal("distance", gridDistance, cLine, nLines, &
-         "Grid distance (pc): ","(a,f4.1,1x,a)", 1., ok, .true.)
+         "Grid distance (pc): ","(a,f6.1,1x,a)", 1., ok, .true.)
     gridDistance = gridDistance * pcTocm   ! cm
-    call getReal("beamsize", beamsize, cLine, nLines, &
-         "Beam size (arcsec): ","(a,f4.1,1x,a)", 1., ok, .true.)
     call getReal("tolerance", tolerance, cLine, nLines, &
          "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
-    call getReal("hcoabundance", hcoabundance, cLine, nLines, &
-         "HCO+ Adbundance:","(a,f4.1,1x,a)", 1e-9, ok, .true.)
+    call getReal("molAbundance", molAbundance, cLine, nLines, &
+         "Molecular Abundance:","(a,es4.1,1x,a)", 1e-9, ok, .true.)
     call getLogical("useDust", useDust, cLine, nLines, &
-         "Calculate continuum emission from dust ", "(a,1l,1x,a)", .true., ok, .false.)
+         "Calculate continuum emission from dust ", "(a,1l,1x,a)", .false., ok, .false.)
 
 ! Image parameters
-    if(readlucy) then
+    if(readmol) then
 
        call getReal("imageside", imageside, cLine, nLines, &
-            "Image size (x10^10cm):","(a,es6.2e1,1x,a)", 5e7, ok, .true.)
+            "Image size (x10^10cm):","(a,es7.2e1,1x,a)", 5e7, ok, .true.)
        call getInteger("npixels", npixels, cLine, nLines, &
             "Number of pixels per row: ","(a,i4,a)", 50, ok, .true.)
        call getInteger("nv", nv, cLine, nLines, &
@@ -1259,6 +1264,20 @@ contains
             "Subpixel splitting (0 denotes adaptive)","(a,i4,a)", 0, ok, .true.)
        call getInteger("itrans", itrans, cLine, nLines, &
             "Molecular Line Transition","(a,i4,a)", 1, ok, .true.)
+       call getReal("beamsize", beamsize, cLine, nLines, &
+            "Beam size (arcsec): ","(a,f4.1,1x,a)", 1000., ok, .true.)
+       call getReal("inclination", inc, cLine, nLines, &
+            "Inclination angle (deg): ","(a,f4.1,1x,a)", -1., ok, .true.)
+       call getDouble("maxVel", maxVel, cLine, nLines, &
+            "Maximum Velocity Channel (km/s): ","(a,f4.1,1x,a)", 1.0d0, ok, .true.)
+
+       if(writelucy .or. readlucy) then
+          call getString("lucyfilein", lucyFilenameIn, cLine, nLines, &
+               "Input Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+          call getString("lucyfileout", lucyFilenameOut, cLine, nLines, &
+               "Output Lucy grid filename: ","(a,a,1x,a)","none", ok, .false.)
+       endif
+
     endif
 
     if(geometry .eq. 'molecularFilament') then
@@ -1279,7 +1298,6 @@ endif
        call getReal("x2", x2, cLine, nLines, &
          "Start of x-array:","(a,f4.1,1x,a)", 0.01, ok, .true.)
     endif
-
 
 
     call getLogical("cmf", cmf, cLine, nLines, &
@@ -1993,7 +2011,7 @@ endif
   "Reset diffusion zones to false if thin: ","(a,1l,a)",.true., ok, .false.)
 
  call getReal("edenstol", eDensTol, cLine, nLines, &
-  "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.01, ok, .false.)
+  "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.01, ok, .false.) ! used for gauss-seidel sweep also
 
 
  if (geometry(1:9) .eq. "benchmark") then

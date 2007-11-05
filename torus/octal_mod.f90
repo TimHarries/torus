@@ -128,10 +128,12 @@ MODULE octal_mod
     real(double), pointer :: atomLevel(:,:,:) => null() ! atom level populations
     real(double), pointer :: atomAbundance(:,:) ! abundances
     real(double), pointer :: newatomLevel(:,:,:) => null() ! atom level populations
-    real(double), pointer :: jnu(:,:) => null() ! molecular level populations
+    real(double), pointer :: jnu(:,:) => null() ! Molecular radiation field
     real(double), pointer :: jnuCont(:,:) => null()
     real(double), pointer :: jnuLine(:,:) => null()
     real(double), pointer :: jnugrid(:,:) => null() ! molecular level populations
+    real(double), pointer :: bnu(:,:) => null() ! 
+    real, pointer :: molAbundance(:) => null() ! molecular abundances ! only 1D because only deal with one molecule at a time
     real(double), DIMENSION(8) :: NHI            ! neutral H
     real(double), DIMENSION(8) :: NHII            ! HII
     real(double), DIMENSION(8) :: NHeI            ! HeI
@@ -241,28 +243,28 @@ CONTAINS
              SELECT CASE (nChild)
              CASE (1)    
                 subcellCentre = rVec - (d * xHatOctal) - (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-thisOctal%dphi/4.d0))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (2)    
                 subcellCentre = rVec + (d * xHatOctal) - (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-thisOctal%dphi/4.d0))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (3)    
                 subcellCentre = rVec - (d * xHatOctal) + (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-thisOctal%dphi/4.d0))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (4)    
                 subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-thisOctal%dphi/4.d0))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (5)    
                 subcellCentre = rVec - (d * xHatOctal) - (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+thisOctal%dphi/4.d0))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (6)    
                 subcellCentre = rVec + (d * xHatOctal) - (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+thisOctal%dphi/4.d0))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (7)    
                 subcellCentre = rVec - (d * xHatOctal) + (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+thisOctal%dphi/4.d0))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (8)    
                 subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+thisOctal%dphi/4.d0))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE DEFAULT
                 PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 1"
                 PRINT *, "        nChild = ", nChild 

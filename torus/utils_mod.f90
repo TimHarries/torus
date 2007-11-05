@@ -1,4 +1,3 @@
-!
 ! written by tjh
 
 
@@ -593,14 +592,20 @@ contains
         y2(1) = -0.5d0
         u(1) = (3.d0/(x(2)-x(1))) * ((y(2)-y(1))/(x(2)-x(1))-yp1)
     endif
-
+!    write(*,*) "y2(1)",y2(1)
+!    write(*,*) "u(1)",u(1)
+    
     do i=2, n-1
         sig = (x(i)-x(i-1))/(x(i+1)-x(i-1))
         p = sig*y2(i-1)+2.d0
         y2(i) = (sig-1.d0)/p
         u(i) = (6.d0*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))/(x(i)-x(i-1))) &
                 / (x(i+1)-x(i-1)) - sig*u(i-1))/p
-    enddo
+
+!        write(*,*) "LOOP", "so...", sig,p,y2(i),u(i)
+!        write(*,*) "LOOP", "so...", 6.d0*((y(i+1)-y(i))/(x(i+1)-x(i))-(y(i)-y(i-1))/(x(i)-x(i-1)),(x(i+1)-x(i-1)) - sig*u(i-1))/p
+        
+    Enddo
 
     if (ypn .gt. .99d30) then
         qn = 0.d0
@@ -611,9 +616,12 @@ contains
     endif
 
     y2(n) = (un-qn*u(n-1)) / (qn*y2(n-1)+1.d0)
+!    write(*,*) "y2(n)",y2(n),un
 
     do k=n-1, 1, -1
         y2(k) = y2(k)*y2(k+1)+u(k)
+!        write(*,*) u(k), "u(K)"
+!        write(*,*) y2(k)
     enddo
 
     return
@@ -2483,7 +2491,7 @@ contains
 !     SET UP ARRAYS
 !
       real(double) ::  X(*), Y(*), SIGMAY(*), A(*)
-      real(double) ::  ARRAY(20,20), SUMX(10000), SUMY(10000)
+      real(double) ::  ARRAY(100,100), SUMX(10000), SUMY(10000)
 !
 !     ACCUMULATE WEIGHTED SUMS
 !
@@ -2579,7 +2587,7 @@ contains
 !     DECLARE EVERYTHING TO BE REAL*8
 !
       IMPLICIT none
-      real(double) :: ARRAY(20,20), save
+      real(double) :: ARRAY(100,100), save
       INTEGER :: I, J, K, K1, NORDER
       DETERM  =  1.0D0
 
@@ -2612,9 +2620,11 @@ contains
               ARRAY(I,J)  =  ARRAY(I,J) - &
                             ARRAY(I,K)*ARRAY(K,J)/ARRAY(K,K)
             ENDDO
+
           ENDDO
         ENDIF
       ENDDO
+
   200 CONTINUE
     END FUNCTION DETERM
 

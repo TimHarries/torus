@@ -23,6 +23,7 @@ module input_variables
   logical :: photoionization
   logical :: molecular
   real :: beamSize
+  real :: inc
   logical :: cmf
   integer :: iTransLine, iTransAtom
   integer :: nAtom
@@ -69,6 +70,7 @@ module input_variables
   logical :: useDust ! molecular_mod includes continuum emission
   real :: r0, rhoC ! Filamentry parameters
 
+  real(double) :: maxVel
   real :: imageside ! molecular_mod image parameters
   integer :: itrans, npixels, nsubpixels !nv already exists
 
@@ -298,12 +300,14 @@ module input_variables
   real :: radius1, radius2
   logical :: readPops, writePops
   logical :: readPhasePops, writePhasePops
-  logical :: readLucy, writeLucy
+  logical :: readLucy, writeLucy, openLucy
+  logical :: readMol, writeMol ! molecular_mod equivalents of read/writelucy
   real :: tThresh
   character(len=80) :: lucyFilename
   logical :: redolucy
   character(len=80) :: lucyFilenameIn
   character(len=80) :: lucyFilenameOut
+  character(len=80) :: molFilename, molFilenameIn, molFilenameOut
   real :: mass1, mass2
   real :: temp1, temp2
   character(len=80) :: popFilename
@@ -583,7 +587,7 @@ module input_variables
   logical :: magStreamFileDegrees ! does input file use degrees? (otherwise radians)
   !--------------------------------------------------------------------
 
-  real :: hcoabundance
+  real :: molAbundance
 
 !hydro stuff
   logical :: hydrodynamics

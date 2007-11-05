@@ -25,16 +25,21 @@ CPP = cpp -P
 # Set system-dependent variables
 #
 ifeq ($(SYSTEM), intelmac)
-    F95COMP  = g95
-    F77COMP  = g95
+    F95COMP  = ifort
+    F77COMP  = ifort
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g -fbounds-check -ftrace=full
-    FASTFLAG = -O3
+    DEBUGFLAG = -g -no-ipo -debug full# -fbounds-check -ftrace=full
+    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto -ipo-jobs2
+#    FASTFLAG = -parallel -xT -O3 -ip -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
+#    PGLIBS   = -lgfortran -L/usr/local -lpgplot -L/usr/X11R6/lib -lX11 -L/scisoft/i386/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+#   PGLIBS   = -L/usr/local/lib -lpgplot -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+#   PGLIBS   = -L/usr/local/lib /usr/local/lib/libpgplot.a -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+#    CFITSIOLIBS = -L/star/lib/ -lcfitsio
     PGLIBS   = -L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 #    STARLIBS = -L/star/lib `ndf_link`
@@ -48,8 +53,8 @@ ifeq ($(SYSTEM), g95)
     F95COMP  = g95
     F77COMP  = g95
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g -ftrace=full
-    FASTFLAG = -O3 -mcpu=G5
+    DEBUGFLAG= -g -ftrace=full -fendian=little
+    FASTFLAG = -mcpu=G5 -O3 -ftrace=full -fendian=little -falign-loops
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
@@ -59,7 +64,7 @@ ifeq ($(SYSTEM), g95)
     CFITSIOLIBS = -lcfitsio
     STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
-    EXE = torus.g95
+    EXE = torus.little
     MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
@@ -647,8 +652,8 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
             modelatom_mod.f90 cmf_mod.f90 datacube_mod.f90 magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
-            molecular_mod.f90  \
-            mpi_global_mod.f90
+            molecular_mod.f90  hydrodynamics_mod.f90 nrutil.f90 \
+            nrtype.f90 mpi_global_mod.f90
 
 F77SOURCE = bhmie.f phfit2.f mieDistCrossSection.f palette.f \
             spec_f77.f image_f77.f 

@@ -620,7 +620,7 @@ contains
             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
        call plot_AMR_values(grid, "temperature", "y-z", real(grid%octreeRoot%centre%x), &
             "lucy_temp_yz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
        call polardump(grid)
     end if
 
@@ -1225,7 +1225,7 @@ contains
        nMonte = nMonte*2  ! increases the number of iterations!
     elseif (nRemoved > 3   &
          .or. iIter_grand < maxIter &
-         .or. (dT_mean_new-dT_mean_old)/((dT_mean_new+dT_mean_old)/2.0) > 0.05) then
+         .or. (dT_mean_new-dT_mean_old)/((dT_mean_new+dT_mean_old)/2.0) > 0.05) then 
        converged = .false.
     else 
        converged = .true.
@@ -1239,8 +1239,8 @@ contains
        
 
 
-!    converged = .true.
-!    write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
+   converged = .true.
+   write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
 
 
 !    !

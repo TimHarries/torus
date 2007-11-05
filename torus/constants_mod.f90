@@ -26,7 +26,7 @@ module constants_mod
   real(double), parameter :: arcsec = 1.d0/3600.d0 * degtorad
   real(double), parameter :: rootTwo = 1.4142136d0
   real(double), parameter :: oneOverrootTwo = 1.d0/1.4142136d0
-
+  real(double), parameter :: sqrtPi = 1.77245385090551602730
   ! times
 
   real(double), parameter :: secsToYears = 1.d0/(365.25d0*24.d0*3600.d0)
@@ -48,6 +48,7 @@ module constants_mod
 
   real(double), parameter :: hConst = 6.626176d-34   ! Js
   real(double), parameter :: hCgs = 6.626205d-27
+  real(double), parameter :: hCgsOverfourPi = hCgs / fourPi
   real(double), parameter :: kConst = 1.380662d-23   ! J/k
   real(double), parameter :: kErg = 1.380626d-16     ! erg/k
   real(double), parameter :: kev = 8.6171d-5         ! erg/k

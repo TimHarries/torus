@@ -3,7 +3,7 @@ MODULE amr_mod
   ! routines for adaptive mesh refinement. nhs
   ! twod stuff added by tjh started 25/08/04
 
-
+  USE pixplot_module
   USE messages_mod
   USE vector_mod          ! vector maths routines
   USE kind_mod            ! variable kind parameters    
@@ -28,8 +28,6 @@ MODULE amr_mod
   USE mpi_global_mod
 
   IMPLICIT NONE
-
-
 
   type STREAMTYPE
      integer :: nSamples
@@ -223,6 +221,9 @@ CONTAINS
     CASE ("molefil")
        CALL molecularFilamentFill(thisOctal, subcell ,grid)
 
+    CASE ("ggtau")
+       CALL ggtauFill(thisOctal, subcell ,grid)
+
     CASE ("shakara","aksco")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
@@ -302,7 +303,7 @@ CONTAINS
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
-    use input_variables, only : cylindrical, photoionization, cmf, nAtom, debug
+    use input_variables, only : cylindrical, photoionization, molecular, cmf, nAtom, debug
 
     IMPLICIT NONE
     
@@ -410,6 +411,12 @@ CONTAINS
           grid%octreeRoot%atomAbundance(1:8, 2:nAtom) =  0.27d0 / (4.d0*mHydrogen) !assume higher atoms are helium
        endif
     endif
+
+    if (molecular) then
+       allocate(grid%octreeroot%molAbundance(8))
+       grid%Octreeroot%molAbundance = 1.e-30
+    endif
+
     ALLOCATE(grid%octreeRoot%dusttypefraction(8,  nDustType))
     grid%octreeroot%dustTypeFraction(1:8,1:nDustType) = 0.d0
     grid%octreeroot%dustTypeFraction(1:8,1) = 1.d0
@@ -510,7 +517,7 @@ CONTAINS
                          isample, stream)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, cmf, nAtom, debug, useDust
+    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, molecular, cmf, nAtom, debug, useDust
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
@@ -641,6 +648,11 @@ CONTAINS
        if (nAtom > 1) then
           parent%child(newChildIndex)%atomAbundance(:, 2:nAtom) =  0.27d0 / (4.d0*mHydrogen) !assume higher atoms are helium
        endif
+    endif
+
+    if (molecular) then
+       allocate(parent%child(newChildIndex)%molAbundance(8))
+       parent%child(newChildIndex)%molAbundance(:) = 1.e-30
     endif
 
     ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
@@ -948,13 +960,18 @@ CONTAINS
     TYPE(OCTAL), POINTER :: childPointer  
     INTEGER              :: subcell    ! loop counters
     logical :: splitThis
+
+    integer, save :: split_iter = 0
+    real :: dummy(1)
+    character(len=40) :: filename
+
     !
     ! For "romanova" geometry
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
 
 
 
-    DO iSubcell = 1, thisOctal%maxChildren, 1
+    DO iSubcell = 1, thisOctal%maxChildren
       
       IF (decideSplit(thisOctal,iSubcell,amrLimitScalar,amrLimitScalar2,grid,&
             splitInAzimuth, &
@@ -966,30 +983,31 @@ CONTAINS
        
         if (.not.thisOctal%hasChild(isubcell)) then
           write(*,*) "add child failed in splitGrid"
-          do; enddo
-        endif
+          do
+          enddo
+       endif
         
-        IF (PRESENT(setChanged)) THEN
+       IF (PRESENT(setChanged)) THEN
           IF (setChanged) THEN
-          
-            DO iIndex = 1, thisOctal%nChildren, 1
-              IF (thisOctal%indexChild(iIndex) == iSubcell) &
-                thisOctal%child(iIndex)%changed = .TRUE.
-            END DO
-            
+             
+             DO iIndex = 1, thisOctal%nChildren, 1
+                IF (thisOctal%indexChild(iIndex) == iSubcell) &
+                     thisOctal%child(iIndex)%changed = .TRUE.
+             END DO
+             
           END IF
-        END IF
+       END IF
         
-      END IF
+    END IF
+    
+ END DO
 
-    END DO
-
-    do i = 1, thisOctal%nChildren
-      if (.not.thisOctal%hasChild(thisOctal%indexchild(i))) then
+  do i = 1, thisOctal%nChildren
+     if (.not.thisOctal%hasChild(thisOctal%indexchild(i))) then
         write(*,*) "octal children messed up"
         do ; enddo
-      endif
-    enddo
+        endif
+     enddo
 
     do i = 1, thisOctal%maxChildren
       k = -99
@@ -999,27 +1017,45 @@ CONTAINS
             k = j
             exit
           endif
-        enddo
-        if (k==-99) then
+       enddo
+       if (k==-99) then
           write(*,*) "subcell screwup"
-          do;enddo
-        endif
-      endif
-    enddo   
+          do
+          enddo
+       endif
+    endif
+ enddo
 
-    if (any(thisOctal%haschild(1:thisOctal%maxChildren)).and.(thisOctal%nChildren==0)) then
+   if (any(thisOctal%haschild(1:thisOctal%maxChildren)).and.(thisOctal%nChildren==0)) then
       write(*,*) "nchildren screw up"
       do;enddo
-    endif
-
+      endif
     
-    DO iIndex = 1, thisOctal%nChildren, 1
+    DO iIndex = 1, thisOctal%nChildren
       
       CALL splitGrid(thisOctal%child(iIndex),amrLimitScalar,amrLimitScalar2,grid,&
                      sphData, stellar_cluster, setChanged, romData=romData)
       
-    END DO 
-    
+      if(writeoutput) then
+         if(split_iter .lt. 10) then
+            write(filename,'(a,i1,a)') "./splitting/split00",split_iter,".ps/vcps"
+         elseif(split_iter .lt. 100) then
+            write(filename,'(a,i2,a)') "./splitting/split0",split_iter,".ps/vcps"
+         else
+            write(filename,'(a,i3,a)') "./splitting/split",split_iter,".ps/vcps"
+         endif
+         
+         if(iIndex .eq. thisOctal%nChildren) then
+            call fudge_plot_AMR_values(grid, "Area", "x-z", real(grid%octreeRoot%centre%y), &
+                 filename, .true., .false., &
+                 0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., fixValMin=1d4, fixValMax=1d8) 
+            
+            split_iter = split_iter + 1
+            write(*,*) split_iter
+         endif
+      endif
+   END DO
+
 !    if (associated(thisOctal%gas_particle_list)) then
 !       DEALLOCATE(thisOctal%gas_particle_list)
 !    endif
@@ -1169,7 +1205,7 @@ CONTAINS
     INTEGER :: subcell, iChild
      
     ! all of the work that must be done recursively goes here: 
-    DO subcell = 1, thisOctal%maxChildren, 1
+    DO subcell = 1, thisOctal%maxChildren
    
       SELECT CASE (grid%geometry)
 
@@ -1205,8 +1241,8 @@ CONTAINS
 
       CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
            "lexington", "warpeddisc", "whitney","fractal","symbiotic", "starburst", &
-           "molebench","gammavel","molefil")
-         gridConverged = .TRUE.
+           "molebench","gammavel","molefil","ggtau")
+         gridConverged = .TRUE.                       
 
       CASE ("cluster","wr104")
         call assign_grid_values(thisOctal,subcell, grid)
@@ -2502,7 +2538,7 @@ CONTAINS
 !      IF (PRESENT(velocity))         velocity = resultOctal%velocity(subcell)
 
        ! unrotated poistion should be passed here!
-      IF (PRESENT(velocity))  velocity =amrGridVelocity(octalTree,point,foundOctal=resultOctal,&
+      IF (PRESENT(velocity))  velocity = amrGridVelocity(octalTree,point,foundOctal=resultOctal,&
                                         actualSubcell=subcell) 
 
 
@@ -2656,7 +2692,7 @@ CONTAINS
     INTEGER                        :: subcell
 
     TYPE(octalVector)              :: centre
-    real(oct)           :: inc
+    real(oct)           :: fac, inc
     real(oct)           :: t1, t2, t3
     real(oct)           :: r1, r2, phi1, phi2
     real :: phi
@@ -2697,12 +2733,13 @@ CONTAINS
     END IF
 
 
-      inc = resultOctal%subcellSize / 2.0
+      inc = 0.5 * resultOctal%subcellSize
       centre = subcellCentre(resultOctal,subcell)
+      fac = 1. / resultOctal%subcellsize
       
-      t1 = MAX(0.0_oc, (point_local%x - (centre%x - inc)) / resultOctal%subcellSize)
-      t2 = MAX(0.0_oc, (point_local%y - (centre%y - inc)) / resultOctal%subcellSize)
-      t3 = MAX(0.0_oc, (point_local%z - (centre%z - inc)) / resultOctal%subcellSize)
+      t1 = MAX(0.0_oc, fac * (point_local%x - (centre%x - inc)))
+      t2 = MAX(0.0_oc, fac * (point_local%y - (centre%y - inc)))
+      t3 = MAX(0.0_oc, fac * (point_local%z - (centre%z - inc)))
 
 
       if (resultOctal%oneD) then
@@ -4732,6 +4769,7 @@ IF ( .NOT. gridConverged ) RETURN
     IMPLICIT NONE
 !    include 'mpif.h'
     TYPE(octal), intent(inout) :: thisOctal
+
 !    TYPE(octal), POINTER       :: thisOctal
     INTEGER, INTENT(IN)        :: subcell
     LOGICAL, INTENT(INOUT) :: splitInAzimuth
@@ -4771,7 +4809,10 @@ IF ( .NOT. gridConverged ) RETURN
     logical, save :: first_time=.true.
     logical :: close_to_star
     real(double)      :: thisScale
+    real(double) :: h0
+
     logical,save  :: firstTime = .true.
+    
 
     splitInAzimuth = .false.
     
@@ -5066,22 +5107,22 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal, subcell)
       split = .false.
       if (thisOctal%nDepth < 3) split = .true.
-         nr = 50
+      nr = 50
       if (firsttime) then
          open(31, file="model_1.dat", status="old", form="formatted")
          do i = nr,1,-1
             read(31,*) rgrid(i)
          enddo
-         rgrid = rgrid / 1.e10
+         rgrid = rgrid * 1.e-10
          close(31)
          firsttime = .false.
       endif
       rd = modulus(cellCentre)
       call locate(rgrid, nr, rd, i)
-!      if (thisOctal%subcellSize > 1.5d0 * (rgrid(i+1)-rgrid(i))) split = .true.
+!     if (thisOctal%subcellSize > 4.*(rgrid(i+1)-rgrid(i))) split = .true.
       if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
-      if (rd+thisOctal%subcellSize/2.d0 < rgrid(1)) split = .false.
-      if (rd-thisOctal%subcellSize/2.d0 > rgrid(nr)) split = .false.
+      if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
+      if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
 
 !      if (thisOctal%nDepth > 5) split = .false.
 
@@ -5100,7 +5141,7 @@ IF ( .NOT. gridConverged ) RETURN
           rd = rd-thisOctal%subcellSize
           OstrikerRho(2) = 5d-18/(1 + rd**2/(8.d0*r0**2))**2
           if(abs((OstrikerRho(1) - OstrikerRho(2))/5d-18) .ge. 0.02) split = .true.
-                                                            
+                                                           
    case("luc_cir3d") 
       if (first_time) then
          open(unit=77, file ="zeus_rgrid.dat", status="old")
@@ -5302,8 +5343,74 @@ IF ( .NOT. gridConverged ) RETURN
       endif
       if (thisOctal%nDepth < 4) split = .true.
 
+   case("ggtau")
+
+      split =.false.
+
+      if (thisOctal%ndepth < 2) split = .true.
+
+      cellCentre = subcellCentre(thisOctal,subCell)
+      r = modulus(cellCentre)
+      r = r * 6.68458134e-06! (torus units to 100's of AUs)
+
+      cellcentre%z = cellcentre%z * 6.68458134e-04
+      cellSize = thisOctal%subcellSize * 6.68458134e-4
+
+      H0 = 14.55      
+      hr = H0 * r ** (1.25)
+
+      r = sqrt(cellcentre%x**2+cellcentre%y**2) * 6.68458134e-6
+
+      write(*,*) "C1", abs(cellcentre%z)/hr, cellsize/hr
+      write(*,*) "C2", abs(cellcentre%z)/hr, abs(cellcentre%z/6.68458134e-04)/cellsize
+
+      if ((abs(cellcentre%z)/hr < 20.) .and. (cellsize/hr > 0.5)) split = .true.
+      if ((abs(cellcentre%z)/hr > 2.) .and. (abs(cellcentre%z/cellsize) < 2.)) split = .true.
+
+      if ((r .gt. 1.8).and.(r .lt. 1.01*1.8)) then
+         if ((abs(cellcentre%z)/hr < 1.)) then
+            if (cellsize > 5.d-1*1.8) split = .true.
+         endif
+      endif
+
+      if ((r+(cellsize/(2.d0*100.))) < 1.8) split = .false.
+      if ((r-(cellsize/(2.d0*100.))) > 8.) split = .false.
 
    case("shakara","aksco")
+      split = .false.
+!      if (thisOctal%ndepth  < 6) split = .true.
+      cellSize = thisOctal%subcellSize 
+      cellCentre = subcellCentre(thisOctal,subCell)
+      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+      hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+
+      if ((abs(cellcentre%z)/hr < 2.) .and. (cellsize/hr > 2.)) split = .true.
+
+!      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
+
+      if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+
+!      if ((r > grid%rInner).and.(r < grid%rInner * 1.01)) then
+!         if ((abs(cellcentre%z)/hr < 5.)) then
+!            if (cellsize > 1.e-3 * grid%rInner) split = .true.
+!         endif
+!      endif
+
+      if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
+
+      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
+         if ((abs(cellcentre%z)/hr < 1.)) then
+            if (cellsize > 5.d-1*grid%rinner) split = .true.
+         endif
+      endif
+
+!      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
+!         if ((abs(cellcentre%z)/hr < 2.)) then
+!            split = .true.
+!         endif
+!      endif
+
+   case("oldshakara")
       split = .false.
 !      if (thisOctal%ndepth  < 6) split = .true.
       cellSize = thisOctal%subcellSize 
@@ -5316,9 +5423,6 @@ IF ( .NOT. gridConverged ) RETURN
 !      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
-
-
-
 
 !      if ((r > grid%rInner).and.(r < grid%rInner * 1.01)) then
 !         if ((abs(cellcentre%z)/hr < 5.)) then
@@ -5511,7 +5615,6 @@ IF ( .NOT. gridConverged ) RETURN
       PRINT *, 'Exiting the program .... '
       STOP
    end select
-   
 
    if (thisOctal%nDepth == 27) then
       split = .false.
@@ -5647,6 +5750,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(oct)      :: x1, x2, x3
     real(oct)      :: y1, y2, y3
     real(oct)      :: z1, z2, z3
+    integer :: i
     
     INTERFACE 
       TYPE(vector) FUNCTION velocityFunc(point,grid)
@@ -5837,6 +5941,16 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%cornerVelocity(9) = velocityFunc(octalVector(x3,0.d0,z3),grid)
     endif
 666 continue
+
+!    if(isnan(thisOctal%cornerVelocity(1)%x)) then
+!          write(*,*) "cornervel",thisOctal%cornerVelocity(1)
+!          write(*,*) velocityFunc(octalVector(x1,0.d0,z1),grid)
+!          write(*,*) x1,z1
+!          write(*,*) x2,z2
+!          write(*,*) x3,z3
+!       enddo
+!    endif
+    
   END SUBROUTINE fillVelocityCorners
 
   
@@ -7925,7 +8039,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine molecularBenchmark(thisOctal,subcell,grid)
 
-    use input_variables, only : amr2d
+    use input_variables, only : amr2d, molAbundance
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -7946,33 +8060,53 @@ IF ( .NOT. gridConverged ) RETURN
        do i = nr,1,-1                                             
           read(31,*) r(i), nh2(i), junk,t(i), v(i) , mu(i)
        enddo
-       r = r / 1.e10
+       r = r * 1.e-10
        close(31)
        firsttime = .false.
     endif
 
 
     r1 = modulus(subcellCentre(thisOctal,subcell))
-    if(amr2d) costheta = (subcellCentre(thisOctal,subcell) .dot. OCTALVECTOR(1.d0, 0.d0, 0.d0)) / r1
+!    if(amr2d) costheta = (subcellCentre(thisOctal,subcell) .dot. OCTALVECTOR(1.d0, 0.d0, 0.d0)) / r1
 
     thisOctal%temperature(subcell) = tcbr
-    thisOctal%rho(subcell) = 1.e-30
-    thisOctal%nh2(subcell) = 1.e-30
-    thisOctal%microTurb(subcell) = 0.159e5/cspeed
+!    thisOctal%rho(subcell) = 1.e-30
+!    thisOctal%nh2(subcell) = 1.e-30
+    if(r1 > r(nr) .or. r1 < r(1)) then 
+       thisOctal%nh2(subcell) = 1.e-20
+       thisOctal%rho(subcell) = 1.e-20 * 2. * mhydrogen
+    else
+       thisOctal%nh2(subcell) = nh2(1)
+       thisOctal%rho(subcell) = nh2(1) * 2. * mhydrogen
+    endif
+
+    thisOctal%microTurb(subcell) = 1d-10 !0.159e5/cspeed
+    thisOctal%molAbundance(subcell) = molAbundance
 
     if ((r1 > r(1)).and.(r1 < r(nr))) then
        call locate(r, nr, r1, i)
-       t1 = (r1 - r(i))/(r(i+1)-r(i))
+!       t1 = (r1 - r(i))/(r(i+1)-r(i)) ! linear but know its a power law so use better interpolation
+
+       t1 = log(r1/r(i))/log(r(i+1)/r(i))
+
+       thisOctal%nh2(subcell) = exp((1. - t1) * log(nh2(i))  +  t1 * log(nh2(i+1)))
+       thisOctal%rho(subcell) = thisOctal%nh2(subcell)*2.*mhydrogen
+
+!       thisOctal%temperature(subcell) = t(i) + t1 * (t(i+1)-t(i))
+!       thisOctal%nh2(subcell) = nh2(i) + t1 * (nh2(i+1)-nh2(i))
+!       thisOctal%rho(subcell) = (nh2(i) + t1 * (nh2(i+1)-nh2(i)))*2.*mhydrogen
+
        thisOctal%temperature(subcell) = t(i) + t1 * (t(i+1)-t(i))
-       thisOctal%nh2(subcell) = nh2(i) + t1 * (nh2(i+1)-nh2(i))
-       thisOctal%rho(subcell) = (nh2(i) + t1 * (nh2(i+1)-nh2(i)))*2.*mhydrogen
+!       thisOctal%nh2(subcell) = nh2(i) + t1 * (nh2(i+1)-nh2(i))
+!       thisOctal%rho(subcell) = (nh2(i) + t1 * (nh2(i+1)-nh2(i)))*2.*mhydrogen
 
-       if(amr2d) then
 
-          thisOctal%nh2(subcell) = thisOctal%nh2(subcell) * costheta**2
-          thisOctal%rho(subcell) = thisOctal%rho(subcell) * costheta**2
+!       if(amr2d) then
 
-       endif
+!          thisOctal%nh2(subcell) = thisOctal%nh2(subcell) * costheta**2
+!          thisOctal%rho(subcell) = thisOctal%rho(subcell) * costheta**2
+
+!       endif
 
        v1 = (v(i) + t1 * (v(i+1)-v(i)))*1.d5
        vel = subcellCentre(thisOctal, subcell)
@@ -7980,10 +8114,10 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%velocity(subcell) = (v1 * vel)/cspeed
        mu1 = mu(i) + t1 * (mu(i+1)-mu(i))
 
+      thisOctal%microturb(subcell) = max(1d-8,(mu1)*(1.d5/cspeed))
+
 !       vDopp  = sqrt((kErg * thisOctal%temperature(subcell)) / (29.d0 * amu))/cSpeed
 !       thisOctal%microturb(subcell) = vdopp / 5.d0
-
-      thisOctal%microturb(subcell) = max(1.d-10,(mu1)*(1.d5/cspeed))
 
 !      btherm = sqrt(2.d0*1.38d-23*thisOctal%temperature(subcell)/(29.d0*1.66d-27))/1d3
 !      write(*,*) btherm
@@ -7995,7 +8129,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine molecularFilamentFill(thisOctal,subcell,grid)
 
-    use input_variables, only : amr2d!,rhoC,r0
+    use input_variables, only : amr2d, molAbundance!,rhoC,r0
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -8010,6 +8144,7 @@ IF ( .NOT. gridConverged ) RETURN
     cellCentre = subcellCentre(thisOctal, subcell)
     r1 = modulus(OCTALVECTOR(cellCentre%x, cellCentre%y, 0.d0))
 
+    thisOctal%molAbundance(subcell) = molAbundance
     thisOctal%microTurb(subcell) = 1.e5/cspeed
     thisOctal%temperature(subcell) = 10.d0
 
@@ -8020,6 +8155,55 @@ IF ( .NOT. gridConverged ) RETURN
 
 !   CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
   end subroutine molecularFilamentFill
+
+  subroutine ggtauFill(thisOctal,subcell,grid)
+
+    use input_variables, only : amr2d, molAbundance
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    real(double) :: r,t0,nh20,v0,H0,H,v
+    TYPE(OCTALVECTOR) :: cellCentre
+
+    type(OCTALVECTOR) :: vel
+
+    CellCentre = subcellCentre(thisOctal, subcell)
+    r = modulus(cellCentre)
+
+    r = r * 6.68458134e-06! (torus units to 100's of AUs)
+
+    CellCentre%z = 6.68458134e-04 * Cellcentre%z !in AU
+
+    t0 = 30.
+    nh20 = 6.3e9
+    v0 = 3.3e5
+    H0 = 14.55
+
+    H = H0 * r ** (1.25) !r in 100s of AU and H in AU
+
+    thisOctal%molabundance = 1.76e-8
+
+    if(r .gt. 1.8 .and. r .lt. 8.) then
+       thisOctal%nh2(subcell) = nh20 * r **(-2.75) * exp(-(cellcentre%z/H)**2)!(in cm-3) 
+       thisOctal%rho(subcell) = thisOctal%nh2(subcell) * 2. * mHydrogen
+    elseif(r .lt. 1.8) then
+       thisOctal%nh2(subcell) = 1.e-20
+       thisOctal%rho(subcell) = 1.e-20 * 2. * mhydrogen
+    else
+       thisOctal%nh2(subcell) = 1.e-20
+       thisOctal%rho(subcell) = 1.e-20 * 2. * mhydrogen
+    endif
+
+    thisOctal%temperature(subcell) = t0 / sqrt(r) 
+!    v = ((v0 / sqrt(r)) / cspeed)
+
+    thisOctal%velocity(subcell) = ggtauvelocity(subcellcentre(thisOctal,subcell),grid)! v * (VECTOR(0.d0,0.d0,1.d0) .cross. CellCentre)
+
+    thisOctal%microturb(subcell) = sqrt((2. * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + (v**2)) / cspeed
+    write(*,*) "R",r,"TEMP",thisOctal%temperature(subcell),"falloff",exp(-((cellcentre%z/H)**2)),"micro", thisOctal%microturb(subcell)
+   CALL fillVelocityCorners(thisOctal,grid,ggtauVelocity,thisOctal%threed)
+  end subroutine ggtauFill
 
 
   TYPE(vector)  function wrshellVelocity(point, grid)
@@ -8032,7 +8216,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     wrShellVelocity = OCTALVECTOR(0.d0, 0.d0, 0.d0)
     r = modulus(rVec)
-    if ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
+    If ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
        v = 0.001d5+(vterm-0.001d5)*(1.d0 - grid%rinner/r)**beta
        call normalize(rvec)
        wrshellvelocity = rvec * (v/cSpeed)
@@ -8072,6 +8256,52 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   end FUNCTION moleBenchVelocity
+
+  TYPE(vector)  function keplerianVelocity(point, grid)
+    use input_variables, only : vterm, beta, mcore
+    type(octalvector), intent(in) :: point
+    type(octalvector) :: rvec
+    type(GRIDTYPE), intent(in) :: grid
+    real(double) :: v, r
+    rVec = point
+
+    keplerianVelocity = VECTOR(0.d0, 0.d0, 0.d0)
+
+    r = sqrt(rVec%x**2+rVec%y**2)
+
+    if ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
+       v = sqrt(2.d0*6.67259d-8*mcore/(r*1d10)) ! G in cgs and M in g (from Msun)
+!       write(*,*) r, v / 1e5
+       call normalize(rvec)
+       keplerianvelocity = VECTOR(0.d0,0.d0,1.d0) .cross. rvec
+       keplerianvelocity = (v/cSpeed) * keplerianvelocity        
+      ! write(*,*) keplerianvelocity  
+    endif
+  end function keplerianVelocity
+
+  TYPE(vector)  function ggtauVelocity(point, grid)
+
+    type(octalvector), intent(in) :: point
+    type(octalvector) :: rvec
+    type(GRIDTYPE), intent(in) :: grid
+    real  :: v, r,v0
+    rvec = point
+    r = modulus(point)
+    r = r * 6.68458134e-06! (torus units to 100's of AUs)
+
+    ggtauVelocity = VECTOR(0.d0, 0.d0, 0.d0)
+    v0 = 3.3e5
+
+    if(r .gt. 1.8d0) then
+       v = v0 / sqrt(r)
+       call normalize(rvec)
+       ggtauvelocity = VECTOR(0.d0,0.d0,1.d0) .cross. rvec
+       ggtauvelocity = (v/cSpeed) * ggtauvelocity        
+    else
+       ggtauvelocity = VECTOR(0.d0,0.d0,0.d0)
+    endif    
+
+  end function ggtauVelocity
 
 
   subroutine assign_melvin(thisOctal,subcell,grid)
@@ -8152,9 +8382,6 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine assign_toruslogo
 
 
-
-
-
   subroutine shakaraDisk(thisOctal,subcell,grid)
 
     use input_variables
@@ -8164,10 +8391,19 @@ IF ( .NOT. gridConverged ) RETURN
     real :: r, h, rd, r1
     TYPE(octalVector) :: rVec
     
+    type(VECTOR),save :: velocitysum
+    logical,save :: firsttime = .true.
+
+    if(firsttime) then
+       velocitysum = VECTOR(0.,0.,0.)
+       firsttime = .false.
+       write(*,*) firsttime
+    endif
+
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
     thisOctal%inflow(subcell) = .true.
-    thisOctal%temperature(subcell) = 10.
+    thisOctal%temperature(subcell) = 10. 
     thisOctal%etaCont(subcell) = 0.
     rd = rOuter / 2.
 
@@ -8177,6 +8413,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%nhi(subcell) = 1.e-5
     thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+
     if (associated(thisOctal%ionFrac)) then
        thisOctal%ionFrac(subcell,1) = 1.
        thisOctal%ionFrac(subcell,2) = 1.e-5
@@ -8192,12 +8429,10 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%nhii(subcell) = thisOctal%ne(subcell)
     endif
 
-
-
     r = sqrt(rVec%x**2 + rVec%y**2)
     if (r < rOuter) then
        thisOctal%rho(subcell) = density(rVec, grid)
-       thisOctal%temperature(subcell) = 10.
+       thisOctal%temperature(subcell) = 75. ! tinkered from 10K - I figured the cooler bits will gently drop but a large no. of cells are close to this temp.
        thisOctal%etaCont(subcell) = 0.
        thisOctal%inflow(subcell) = .true.
 
@@ -8212,11 +8447,24 @@ IF ( .NOT. gridConverged ) RETURN
     
     endif
 
-
-
-    thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
+
+    if(molecular) then
+ !      if(modulus(rvec) .lt. 1000.) then
+          thisOctal%velocity(subcell) = keplerianVelocity(rvec,grid)
+          CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
+ !      else
+ !         thisOctal%velocity(subcell) = vector(0.,0.,0.)
+ !      endif
+    else
+       thisOctal%velocity = VECTOR(0.,0.,0.)
+    endif
+
+    thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
+    thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
+!    write(*,*) velocitysum
+
   end subroutine shakaraDisk
 
   subroutine warpedDisk(thisOctal,subcell,grid)
@@ -9298,6 +9546,11 @@ IF ( .NOT. gridConverged ) RETURN
     if (associated(source%molecularLevel)) then
        allocate(dest%molecularLevel(SIZE(source%molecularLevel,1),SIZE(source%molecularLevel,2)))
        dest%molecularLevel          = source%molecularLevel
+    endif
+
+    if (associated(source%molAbundance)) then
+       allocate(dest%molAbundance(SIZE(source%molAbundance,1)))
+       dest%molAbundance          = source%molAbundance
     endif
 
     if (associated(source%atomAbundance)) then
@@ -15710,10 +15963,995 @@ IF ( .NOT. gridConverged ) RETURN
 
   end subroutine genericAccretionSurface
 
+  subroutine fudge_plot_AMR_values(grid, name, plane, value_3rd_dim,  device, logscale, withgrid, &
+       nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac, ilam, xStart, &
+       xEnd, yStart, yEnd, fixValMin,fixValMax)
+    implicit none
+    type(gridtype), intent(in) :: grid
+    character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
+    !                                       ! "etaCont", "Vx", "Vy" or "Vz"
+    character(len=*), intent(in)  :: plane  ! must be 'x-y', 'y-z', 'z-x' or' x-z'
+    character(len=10) :: thisPlane
+    real(double) , optional :: fixValMin, fixValMax
+    ! The value of the third dimension.
+    ! For example, if plane = "x-y", the third dimension is the value of z.
+    ! Then, when  valuel_3rd_dim = 0.0, this will plot the density (and the grid)
+    ! on the z=0 plane, and so on...
+    real, intent(in)              :: value_3rd_dim 
+    character(len=*), intent(in)  :: device ! PGPLOT plotting device
+    logical, intent(in)           :: logscale ! logscale if T, linear if not
+    logical, intent(in)           :: withgrid ! plot
+    real, intent(in),optional     :: boxfac
+    real, intent(in), optional :: xStart, xEnd, yStart, yEnd
+    integer, intent(in),optional     :: ilam
+    ! To put the markers to indicate the important points in the plots.
+    integer, intent(in),optional :: nmarker           ! number of markers
+    real, intent(in),optional    :: xmarker(:)  ! position of x
+    real, intent(in),optional    :: ymarker(:)  ! position of y
+    real, intent(in),optional    :: zmarker(:)  ! position of z
+    real, intent(in),optional    :: width_3rd_dim     ! Use this to restrict the markers to be plotted..  
+    logical, intent(in),optional :: show_value_3rd_dim! If T, the value of the third dimension will be shown.
 
+    !
+    type(octal), pointer :: root
+
+    !integer :: thisSubcell, oldSubcell
+    real :: d
+    real :: xc, yc , zc
+    real(double) :: valuemax, valuemin
+    
+    ! For plotting density
+    integer :: pgbeg
+    integer :: n, ncol, nlev
+    parameter (n=1500, ncol=32, nlev=10)
+    integer :: ci1,ci2, ilo, ihi 
+        
+    real :: box_size, fac
+    character(LEN=30) :: char_val
+    character(LEN=30) :: label_wd
+    integer, parameter :: luout = 26
+    integer :: iPlane, nPlanes
+    character(len=80) :: message
+    character(LEN=50) :: filename_prof
+    real   :: v3
+
+    
+!    call writeInfo("plot_AMR_values plotting to: "//trim(device), TRIVIAL)
+
+    ! retriving the address to the root of the tree.
+    root => grid%octreeRoot
+    
+    !
+    box_size = REAL(grid%octreeRoot%subcellsize)*2.0
+    if (grid%octreeRoot%cylindrical) box_size = box_size * 2.0
+    d = box_size
+    if (PRESENT(boxfac)) d = d * boxfac
+
+    ! position of the root node
+    xc = real(root%centre%x)
+    yc = real(root%centre%y)
+    zc = real(root%centre%z)
+
+
+!    if (name.eq."temperature") then
+!       valueMax = 1500.
+!       valueMin = 100.
+!    endif
+    
+!    !=================================================
+!    ! Just for hardwaring manupulations.
+!    ! Comment the lines below after a use.
+!    valueMax = 10.0**1.6
+!    valueMin = 10.0**0.9
+    
+    ! Open plot device and set up coordinate system. We will plot the
+    !image within a unit square.
+    !
+
+    if (grid%octreeRoot%twod) then
+       nPlanes = 1
+    else
+       nPlanes = 3
+    endif
+
+    if (grid%octreeRoot%oneD) nPlanes = 1
+
+    if (nPlanes == 1) then
+       IF (PGBEG(0,trim(device),1,1) .NE. 1) STOP
+    else
+       IF (PGBEG(0,trim(device),3,1) .NE. 1) STOP
+    endif
+
+    do iPlane = 1, nPlanes
+
+       if (nPlanes == 1) then
+           thisPlane = plane
+       else
+          select case(iPlane)
+             case(1)
+                thisPlane = "x-y"
+             case(2)
+                thisPlane = "x-z"
+             case(3)
+                thisPlane = "y-z"
+          end select
+       endif
+
+    ! Finding the plotting range
+    valueMin = 1.d30
+    valueMax = -1.d30
+    call fudge_minMaxValue(grid%octreeRoot, name, plane, ValueMin, ValueMax, grid, ilam)
+        
+    if (PRESENT(fixValMax)) valueMax = fixValMax
+    if (PRESENT(fixValMin)) valueMin = fixValMin
+
+
+    if (logscale) then
+       if (valueMax<=0) valueMax=tiny(valueMax)
+       if (valueMin<=0) valueMin=tiny(valueMin)
+       if ((log10(valueMax)-log10(valueMin)) > 20.d0) valueMin = 1.d-20 * valueMax
+!       if (name.eq."rho") valuemin = valuemax * 1.e-10
+!       write(message,*) "Value Range: ",log10(valueMin), " -- ", log10(valueMax)
+!       call writeInfo(message,TRIVIAL)
+!    else
+!       write(message,*) "Value Range: ",valueMin, " -- ", valueMax
+!       call writeInfo(message,TRIVIAL)
+    end if
+
+    !
+    ! For safty
+    if (valueMin == valueMax) then
+       if (valueMax /= 0.0) then
+          valueMax = valueMax + valueMax/10.0
+       else
+          valueMax = valueMax + 1.0e6
+       end if
+    end if
+
+ 
+       if (iplane == 1) then
+          CALL PGQCOL(CI1, CI2)
+          IF (CI2.LT. 15+NCOL) THEN
+             WRITE (*,*) 'This program requires a device with at least',&
+                  15+NCOL,' colors'
+             STOP
+          END IF
+       endif
+
+
+    CALL PGPAGE
+
+    !    CALL PGSCR(0, 0.0, 0.3, 0.2)
+    !    CALL PGSVP(0.05,0.95,0.05,0.95)
+
+    call setvp
+
+    ! Setting the plot boundaries.
+
+    if (grid%octreeRoot%oneD) then
+       call pgwnad(-d, d, -d, d)
+       v3 = 0.d0
+       goto 666
+    endif
+
+
+    if (.not.grid%octreeRoot%cylindrical) then
+       select case(thisplane)
+       case("x-y")
+          CALL PGWNAD(-d/2.0+xc, d/2.0+xc, -d/2.0+yc, d/2.0+yc)
+          v3 = root%centre%z
+       case("y-z")
+          CALL PGWNAD(-d/2.0+yc, d/2.0+yc, -d/2.0+zc, d/2.0+zc)
+          v3 = root%centre%x
+       case("z-x")
+          CALL PGWNAD(-d/2.0+zc, d/2.0+zc, -d/2.0+xc, d/2.0+xc)
+          v3 = root%centre%y
+       case("x-z")
+          CALL PGWNAD(-d/2.0+xc, d/2.0+xc, -d/2.0+zc, d/2.0+zc)
+          if (present(boxfac).and.grid%octreeRoot%twod) then
+             CALL PGWNAD(0., d, -d/2.0, d/2.0)
+          endif
+          v3 = root%centre%y
+          if (present(xStart).and.present(xEnd).and.present(yStart).and.present(yEnd)) then
+             call pgwnad(xStart, xEnd, yStart, yEnd)
+          endif
+       end select
+    else
+       select case(thisplane)
+       case("x-y")
+          CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+          v3 = root%centre%z
+       case("y-z")
+          CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+          v3 = root%centre%x
+       case("z-x")
+          CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+          v3 = root%centre%y
+       case("x-z")
+          CALL PGWNAD(-d/2.0, d/2.0, -d/2.0, d/2.0)
+          if (present(boxfac).and.grid%octreeRoot%twod) then
+             CALL PGWNAD(0., d, -d/2.0, d/2.0)
+          endif
+          v3 = root%centre%y
+          if (present(xStart).and.present(xEnd).and.present(yStart).and.present(yEnd)) then
+             call pgwnad(xStart, xEnd, yStart, yEnd)
+          endif
+       end select
+    endif
+
+666 continue
+
+
+
+!    if (iPlane == 1) then
+       call palett(2, 1.0, 0.5)
+       call pgqcir(ilo, ihi)
+!    endif
+
+
+    !
+    ! Calling a recursive function in this module
+    call fudge_plot_values(root, name, thisplane, value_3rd_dim, logscale, valueMax, valueMin, &
+         ilo, ihi, grid, ilam, withgrid)
+
+
+! Comment out the following if you want the pix value as a function of distance from 
+! the center of the gird. Useful for some cases.
+
+!    ! writing the radial profile of the values on the specified plane.
+!    filename_prof = 'profile_'//TRIM(ADJUSTL(name))//'_'//TRIM(ADJUSTL(plane))//'.dat' 
+!    open(unit=luout, file = TRIM(ADJUSTL(filename_prof)), status='replace')
+!!    write(luout, '(a, 2x, 1PE18.4)') '#  The 3rd dimension value = ', value_3rd_dim
+!!    write(luout, '(a)') '#  format :  distance [10^10cm]  --  values [?]'  
+!
+!    call radial_profile(root, name, plane, v3, luout, root%centre, grid)
+!    close(luout)
+    !
+    ! Annotation.
+    !
+    CALL PGSCI(1)
+!    CALL PGMTXT('t',1.0,0.5,0.0, TRIM(name))
+    !CALL PGBOX('bcnts',0.0,0,'bcnts',0.0,0)
+    CALL PGBOX('bcntsi',0.0,0,'bcntsiv',0.0,0)
+
+!    write(char_val, '(1PE9.1)') value_3rd_dim
+    
+    if (thisplane(1:3) == 'x-y') then
+       CALL PGMTXT('B',3.0,1.0,1.0,'X [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'Y [10\u10\dcm]')
+!       CALL PGMTXT('T',1.0,0.0,0.0, 'Z='//TRIM(char_val))
+    elseif (thisplane(1:3) == 'y-z') then
+       CALL PGMTXT('B',3.0,1.0,1.0,'Y [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'Z [10\u10\dcm]')
+!       CALL PGMTXT('T',1.0,0.0,0.0, 'X='//TRIM(char_val))
+    elseif (thisplane(1:3) == 'z-x') then 
+       CALL PGMTXT('B',3.0,1.0,1.0,'Z [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'X [10\u10\dcm]')
+!       CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
+    elseif (thisplane(1:3) == 'x-z') then 
+       CALL PGMTXT('B',3.0,1.0,1.0,'X [10\u10\dcm]')
+       CALL PGMTXT('L',3.0,1.0,1.0,'Z [10\u10\dcm]')
+!       CALL PGMTXT('T',1.0,0.0,0.0, 'Y='//TRIM(char_val))
+    end if
+
+    
+    !
+    ! Draw grids..
+    !
+!    if (withgrid) then
+!       ! draw boxies
+!       call PGSFS(2)  ! we don't want to fill in a box this time
+!       call PGSCI(1) ! changing the color index.
+!       ! this is a recursive routine in this module
+!       call draw_rectangle(root, thisplane, value_3rd_dim)
+!       call PGSCI(1) ! change color index to default.
+!       call PGSFS(1)
+!    end if
 
 
     
+    !
+    ! Draw the markers on the plot with the value of the third dimension.
+    ! -- using a routine in this module.    
+    if (present(nmarker)) then
+       call fudge_draw_markers(nmarker, xmarker, ymarker, zmarker, &
+            thisplane, value_3rd_dim, width_3rd_dim, show_value_3rd_dim)
+    endif
 
 
+    !
+    ! draw wedge
+    !
+
+    select case (name)
+    case ("rho")
+       if (logscale) then
+         label_wd = "LOG10( [g/cm\u3\d] )"
+       else
+         label_wd = "[g/cm\u3\d]"
+       end if
+    case ("temperature")
+       if (logscale) then
+         label_wd = "LOG10( [Kelvin] )"
+       else
+         label_wd = "[Kelvin]"
+       end if
+    case default
+       label_wd = "Pixel Value"
+    end select
+       
+
+    if(logscale) then
+       CALL PGWEDG('BI', 4.0, 5.0, real(log10(valueMin)), real(log10(valueMax)), TRIM(ADJUSTL(label_wd)) )
+    else
+       CALL PGWEDG('BI', 4.0, 5.0, real(valueMin), real(valueMax), TRIM(ADJUSTL(label_wd)))
+    end if
+    
+!    CALL PGSCH(0.6)
+
+!    CALL FIDDLE
+    CALL PGASK(.FALSE.)  
+
+ enddo
+    call PGEND
+
+    
+    ! deallocate(a_root)
+  end subroutine fudge_plot_AMR_values
+
+  recursive subroutine fudge_minMaxValue(thisOctal, name, plane, valueMin, valueMax, grid, ilam)
+    implicit none
+    type(octal), pointer   :: thisOctal
+    type(gridtype) :: grid
+    character(LEN=*), intent(in) :: name ! See the options in plot_AMR_values
+    character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z' or 'z-x' 
+    real(double), intent(inout) :: valueMin, valueMax
+    !
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    integer, intent(in), optional :: ilam
+    real(double) :: value
+    !
+    real :: xp, yp, xm, ym, zp, zm
+    real(double) :: ksca, kabs
+    real(double) :: d
+    logical :: use_this_subcell, update
+    type(octalvector) :: rvec, rhat, velocity
+    
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fudge_minMaxValue(child, name, plane, valueMin, valueMax, grid, ilam)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          d = thisOctal%subcellSize/2.d0
+          xp = REAL(rVec%x + d)
+          xm = REAL(rVec%x - d)
+          yp = REAL(rVec%y + d)
+          ym = REAL(rVec%y - d)
+          zp = REAL(rVec%z + d)
+          zm = REAL(rVec%z - d)          
+
+          use_this_subcell = .false.
+          if ( plane(1:3) == "x-y" .and. ABS(rVec%z) < d*2.0d0) then
+             use_this_subcell = .true.
+          elseif ( plane(1:3) == "y-z" .and. ABS(rVec%x) < d*2.0d0) then
+             use_this_subcell = .true.
+          elseif ( plane(1:3) == "z-x" .and. ABS(rVec%y) < d*2.0d0) then
+             use_this_subcell = .true.
+          else
+             use_this_subcell = .false.
+          end if
+
+          use_this_subcell = .true.
+
+          if (use_this_subcell) then
+             update =.true.
+             select case (name)
+             case("rho")
+                value = thisOctal%rho(subcell)
+                if (value < 1.e-25) update = .false.
+             case("ionization")
+                value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
+             case("photocoeff")
+                value = thisOctal%photoIonCoeff(subcell,1)
+             case("temperature")
+                value = thisOctal%temperature(subcell)
+                if (value < 3.)  update = .false.
+             case("dusttype")
+                value = thisOctal%dustTypeFraction(subcell,1)
+             case("dusttype1")
+                value = thisOctal%dustTypeFraction(subcell,1)
+             case("dusttype2")
+                value = thisOctal%dustTypeFraction(subcell,2)
+             case("dusttype3")
+                value = thisOctal%dustTypeFraction(subcell,3)
+             case("dusttype4")
+                value = thisOctal%dustTypeFraction(subcell,4)
+             case("chiLine")
+                value = thisOctal%chiLine(subcell)
+             case("etaLine")
+                value = thisOctal%etaLine(subcell)
+             case("n=3")
+                value = thisOctal%atomLevel(subcell, 1, 3)
+             case("etaCont")
+                value = thisOctal%etaCont(subcell)
+             case("crossings")
+                value = thisOctal%ncrossings(subcell)
+                if (thisOctal%diffusionApprox(subcell)) value = 1.e6
+             case("direct")
+                if (thisOctal%ncrossings(subcell) > 0) then
+                   value = real(thisOctal%nDirectPhotons(subcell)) / real(thisOctal%nCrossings(subcell))
+                else
+                   value = 0.
+                endif
+             case("Vx")
+                value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
+             case("Vy")
+                value = thisOctal%velocity(subcell)%y * cSpeed/1.0d5 ![km/s]
+             case("Vz")
+                value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
+             case("dV_dR")
+                ! The directional derivative the velocity field in radial direction.
+                rhat = rvec
+                call normalize(rhat)
+                value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
+             case("tau")
+                call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
+                value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
+                if (thisOctal%diffusionApprox(subcell)) update = .false.
+             case("J")
+                value = thisOctal%molecularlevel(subcell,ilam)
+             case("Area")
+                value = thisOctal%subcellsize
+
+             case default
+                write(*,*) "Error:: unknow name passed to MinMaxValue.",trim(name)
+                stop
+             end select
+             if (update) then
+                valueMax = MAX(valueMax, value)
+                valueMin = Min(valueMin, value)
+             endif
+          end if
+       end if
+    enddo
+
+  end subroutine fudge_minMaxValue
+
+  subroutine fudge_draw_markers(nmarker, xmarker, ymarker, zmarker, &
+       plane, value_3rd_dim, width_3rd_dim, show_value_3rd_dim) 
+    implicit none
+    integer, intent(in) :: nmarker  ! number of markers
+    real, intent(in) :: xmarker(nmarker)
+    real, intent(in) :: ymarker(nmarker)
+    real, intent(in) :: zmarker(nmarker)
+    character(LEN=*), intent(in) :: plane
+    real, intent(in) :: value_3rd_dim
+    real, intent(in) :: width_3rd_dim
+    ! If T, write the values of the thrid dimension in text (next to the point).
+    logical, intent(in) :: show_value_3rd_dim  
+    !
+    character(LEN=30) :: text
+    integer :: i
+    
+
+    !
+    ! Draw the markers on the plot with the value of the third dimension.
+    !   
+
+    ! Draw points first..
+    if (nmarker /=0) then  ! plots markers
+       if (plane(1:3) == 'x-y') then           
+          do i = 1, nmarker
+             if ( ABS(zmarker(i)-value_3rd_dim) < width_3rd_dim/2.0 ) then
+                call PGPT1(xmarker(i), ymarker(i), 21) 
+                if (show_value_3rd_dim) then
+                   write(text, '(1PE13.5)') zmarker(i)
+                   call PGTEXT(xmarker(i), ymarker(i), TRIM(text))
+                end if
+             end if
+          end do
+       elseif (plane(1:3) == 'y-z') then
+          do i = 1, nmarker
+             if ( ABS(xmarker(i)-value_3rd_dim) < width_3rd_dim/2.0 ) then
+                call PGPT1(ymarker(i), zmarker(i), 21) 
+                if (show_value_3rd_dim) then
+                   write(text, '(1PE13.5)') xmarker(i)
+                   call PGTEXT(ymarker(i), zmarker(i), TRIM(text))
+                end if
+             end if
+          end do
+       elseif (plane(1:3) == 'z-x') then 
+          do i = 1, nmarker
+             if ( ABS(ymarker(i)-value_3rd_dim) < width_3rd_dim/2.0 ) then                
+                call PGPT1(zmarker(i), xmarker(i), 21) 
+                if (show_value_3rd_dim) then
+                   write(text, '(1PE13.5)') ymarker(i)
+                   call PGTEXT(zmarker(i), xmarker(i), TRIM(text))
+                end if
+             end if
+          end do
+       elseif (plane(1:3) == 'x-z') then 
+          do i = 1, nmarker
+             if ( ABS(ymarker(i)-value_3rd_dim) < width_3rd_dim/2.0 ) then
+                call PGPT1(xmarker(i), zmarker(i), 21)
+                if (show_value_3rd_dim) then
+                   write(text, '(1PE13.5)') ymarker(i)
+                   call PGTEXT(xmarker(i), zmarker(i), TRIM(text))
+                end if
+             end if
+          end do
+       end if
+    else
+       ! do nothing
+       continue
+    end if
+
+  end subroutine fudge_draw_markers
+
+  recursive subroutine fudge_plot_values(thisOctal, name, plane, val_3rd_dim, &
+       logscale, valueMax, valueMin, ilo, ihi, grid, ilam, withgrid)
+    implicit none
+    !
+    type(octal), pointer   :: thisOctal
+    character(len=*), intent(in)  :: name     ! "rho", "temperature", chiLine", "etaLine",  
+    !                                         ! "etaCont", "Vx", "Vy" or "Vz", "dV_dR"
+    character(len=*), intent(in)  :: plane    ! must be 'x-y', 'y-z', 'z-x', 'x-z'
+    ! The value of the third dimension.
+    ! For example, if plane = "x-y", the third dimension is the value of z.
+    ! Then, when  val_3rd_dim = 0.0, this will plot the density (and the grid)
+    ! on the z=0 plane, and so on...
+    real, intent(in)              :: val_3rd_dim 
+    logical, intent(in)           :: logscale ! logscale if T, linear if not
+    real(double), intent(in) :: valueMin, valueMax
+    integer, intent(in) :: ilo, ihi
+    logical :: withgrid
+    integer, intent(in),optional :: ilam
+    !
+    !
+    type(octal), pointer  :: child 
+    type(octalvector) :: rvec, rhat
+    type(gridtype) :: grid
+    real(double) :: value
+    real(double) :: kabs,ksca
+    TYPE(vector)   :: Velocity
+
+    integer :: subcell, i, idx
+    real :: t
+    real :: xp, yp, xm, ym, zp, zm
+    real(double) :: d, L, eps, phi, phiFromplane, dphi
+    logical :: plot_this_subcell
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call fudge_plot_values(child, name, plane, val_3rd_dim, &
+                     logscale, valueMax, valueMin, ilo, ihi, grid, ilam, withgrid)
+                exit
+             end if
+          end do
+       else
+          rVec = subcellCentre(thisOctal,subcell)
+          L = thisOctal%subcellSize
+          d = L/2.0d0
+!          eps = d/100.0d0
+          eps = l/2.d0
+!          eps = d/5.0d0
+!          eps = 0.0d0
+          if (.not.thisOctal%cylindrical) then
+             xp = REAL(rVec%x + d)
+             xm = REAL(rVec%x - d)
+             yp = REAL(rVec%y + d)
+             ym = REAL(rVec%y - d)
+          else
+             xp = sign(sqrt(rVec%x**2+rVec%y**2) + d,rVec%x)
+             xm = sign(sqrt(rVec%x**2+rVec%y**2) - d,rVec%x)
+             yp = sign(sqrt(rVec%x**2+rVec%y**2) + d,rVec%y)
+             ym = sign(sqrt(rVec%x**2+rVec%y**2) - d,rVec%y)
+          endif
+          zp = REAL(rVec%z + d)
+          zm = REAL(rVec%z - d)     
+          
+          plot_this_subcell = .false.
+          
+          if ( plane(1:3) == "x-y" .and. ((ABS(rVec%z-val_3rd_dim)-d) < eps).and.(rVec%z>0.d0)) then
+!             write(*,*) rVec%z,val_3rd_dim,abs(rVec%z-val_3rd_dim)-d,eps
+             plot_this_subcell = .true.      
+          elseif ( plane(1:3) == "y-z" .and. (ABS(rVec%x-val_3rd_dim)-d) < eps) then 
+             plot_this_subcell = .true.
+          elseif ( plane(1:3) == "z-x" .and. (ABS(rVec%y-val_3rd_dim)-d) < eps) then 
+             plot_this_subcell = .true.
+          elseif ( plane(1:3) == "x-z" .and. (ABS(rVec%y-val_3rd_dim)-d) < eps) then 
+             plot_this_subcell = .true.
+          else
+             plot_this_subcell = .false.
+          end if
+
+!          if (plane(1:3)=="x-y") plot_this_subcell = .true.
+
+          if (thisOctal%cylindrical.and.(plane.ne."x-y")) then
+             plot_this_subcell = .false.
+             phi = atan2(rVec%y,rVec%x)
+             if (phi < 0.) phi = phi + twoPi
+             dphi = returndPhi(thisOctal)
+!             if (thisOctal%splitAzimuthally) then
+!                dphi = thisOctal%dPhi / 4.d0
+!             else
+!                dphi = thisOctal%dPhi / 2.d0
+!             endif
+             select case (plane)
+                case("y-z")
+                   phiFromPlane = min(abs(pi/2.d0-phi),abs(3.d0*pi/2.d0-phi))
+                case("z-x","x-z")
+                   phiFromPlane = min(phi,abs(phi-pi))
+             end select
+             if (phiFromPlane <= 2.*dphi) then
+                plot_this_subcell = .true.
+             endif
+          endif
+!          if ( plane(1:3) == "x-y" .and.  &
+!               rVec%z > (val_3rd_dim-L) .and.  rVec%z < (val_3rd_dim+L)) then
+!             plot_this_subcell = .true.      
+!          elseif ( plane(1:3) == "y-z" .and. &
+!               rVec%x > (val_3rd_dim-L) .and.  rVec%x < (val_3rd_dim+L)) then
+!             plot_this_subcell = .true.
+!          elseif ( plane(1:3) == "z-x" .and.  &
+!               rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
+!             plot_this_subcell = .true.
+!          elseif ( plane(1:3) == "x-z" .and.  &
+!             rVec%y > (val_3rd_dim-L) .and.  rVec%y < (val_3rd_dim+L)) then
+!             plot_this_subcell = .true.
+!          else
+!             plot_this_subcell = .false.
+!          end if
+
+          
+          if (plot_this_subcell) then
+             select case (name)
+             case("rho")
+                value = thisOctal%rho(subcell)
+                if (thisOctal%diffusionApprox(subcell)) value = 1.
+             case("ionization")
+                value = thisOctal%ionfrac(subcell,returnIonNumber("H I", grid%ion, grid%nIon))
+             case("photocoeff")
+                value = thisOctal%photoIonCoeff(subcell,1)
+             case("temperature")
+                value = thisOctal%temperature(subcell)
+             case("chiLine")
+                value = thisOctal%chiLine(subcell)
+             case("etaLine")
+                value = thisOctal%etaLine(subcell)
+             case("n=3")
+                value = thisOctal%atomLevel(subcell, 1, 3)
+             case("etaCont")
+                value = thisOctal%etaCont(subcell)
+             case("dusttype")
+                value = thisOctal%dustTypeFraction(subcell,1)
+             case("dusttype1")
+                value = thisOctal%dustTypeFraction(subcell,1)
+             case("dusttype2")
+                value = thisOctal%dustTypeFraction(subcell,2)
+             case("dusttype3")
+                value = thisOctal%dustTypeFraction(subcell,3)
+             case("dusttype4")
+                value = thisOctal%dustTypeFraction(subcell,4)
+             case("crossings")
+                value = thisOctal%nCrossings(subcell)
+                if (thisOctal%diffusionApprox(subcell)) value = 1.e6
+             case("direct")
+                if (thisOctal%ncrossings(subcell) > 0) then
+                   value = real(thisOctal%nDirectPhotons(subcell)) / real(thisOctal%nCrossings(subcell))
+                else
+                   value = 0.
+                endif
+
+             case("Vx")
+!                value = thisOctal%velocity(subcell)%x * cSpeed/1.0d5 ![km/s]
+                velocity = amrGridVelocity(thisOctal, rvec)
+                value = velocity%x * cSpeed/1.0d5 ![km/s]
+             case("Vy")
+!                value = thisOctal%velocity(subcell)%y * cSpeed/1.0d5 ![km/s]
+                velocity = amrGridVelocity(thisOctal, rvec)
+                value = velocity%y * cSpeed/1.0d5 ![km/s]
+             case("Vz")
+!                value = thisOctal%velocity(subcell)%z * cSpeed/1.0d5 ![km/s]
+                velocity = amrGridVelocity(thisOctal, rvec)
+                value = velocity%z * cSpeed/1.0d5 ![km/s]
+             case("dV_dR")
+                ! The directional derivative the velocity field in radial direction.
+                rhat = rvec
+                call normalize(rhat)
+                value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
+             case("tau")
+                call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
+                value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
+                if (thisOctal%diffusionApprox(subcell)) value = 1.e10
+             case("J")
+                value = thisOctal%molecularlevel(subcell,ilam)
+             case("Area")
+                value = thisOctal%subcellsize
+
+             case default
+                write(*,*) "Error:: unknown name passed to grid_mod::plot_values."
+                stop
+             end select
+
+             ! for safety
+             if (logscale .and. value <=0 ) value = 1.0e-30
+
+             if (logscale) then            
+                t = (log10(value)-log10(valueMin))/(log10(valueMax)-log10(valueMin))
+             else ! linear
+                t = (value-valueMin)/(valueMax-valueMin)
+             end if
+             
+             if (t < 0.) t = 0.
+             if (t > 1.) t = 1.
+             idx = int(t * real(ihi - ilo) + real(ilo))
+
+             if (.not.thisOctal%inFlow(subcell)) idx = ilo
+
+             ! set color
+             call pgsci(idx)
+             
+             if (thisOctal%oneD) then
+                ! plane doesn't matter, it'll always look the same
+                call fudge_draw_annulus(thisOctal, subcell, .true.)
+                if (withgrid) then
+                   call pgqci(i)
+                   call PGSFS(2)  ! we don't want to fill in a box this time
+                   call PGSCI(1) ! changing the color index.
+                   call fudge_draw_annulus(thisOctal, subcell, .false.)
+                   call PGSFS(1)
+                   call pgsci(i)
+                endif
+                goto 666
+             endif
+
+             select case (plane)
+             case ("x-y")
+                if (.not.thisOctal%cylindrical) then
+                   call pgrect(xm, xp, ym, yp)
+                else
+                   call fudge_draw_segment(thisOctal, subcell, .true.)
+                   if (withgrid) then
+                      call pgqci(i)
+                      call PGSFS(2)  ! we don't want to fill in a box this time
+                      call PGSCI(1) ! changing the color index.
+                      call fudge_draw_segment(thisOctal, subcell, .false.)
+                      call PGSFS(1)
+                      call pgsci(i)
+                   endif
+                endif
+             case ("y-z")
+                call pgrect(ym, yp, zm, zp)
+                if (withgrid) then
+                   call pgqci(i)
+                   call PGSFS(2)  ! we don't want to fill in a box this time
+                   call PGSCI(1) ! changing the color index.
+                   call pgrect(ym, yp, zm, zp)
+                   call PGSCI(1) ! change color index to default.
+                   call PGSFS(1)
+                   call pgsci(i)
+                endif
+                if ((thisOctal%cylindrical).and.(thisOctal%dphi > 1.001d0*pi)) then
+                   ym = -ym
+                   yp = -yp
+                   call pgrect(ym, yp, zm, zp)
+                   if (withgrid) then
+                      call pgqci(i)
+                      call PGSFS(2)  ! we don't want to fill in a box this time
+                      call PGSCI(1) ! changing the color index.
+                      call pgrect(ym, yp, zm, zp)
+                      call PGSCI(1) ! change color index to default.
+                      call PGSFS(1)
+                      call pgsci(i)
+                   endif
+                endif
+
+             case ("z-x")
+                call pgrect(zm, zp, xm, xp)
+                if (withgrid) then
+                      call pgqci(i)
+                   call PGSFS(2)  ! we don't want to fill in a box this time
+                   call PGSCI(1) ! changing the color index.
+                   call pgrect(zm, zp, xm, xp)
+                   call PGSFS(1)
+                   call pgsci(i)
+                endif
+                if ((thisOctal%cylindrical).and.(thisOctal%dphi > 1.001d0*pi)) then
+                   xm = -xm
+                   xp = -xp
+                   call pgrect(zm, zp, xm, xp)
+                   if (withgrid) then
+                      call pgqci(i)
+                      call PGSFS(2)  ! we don't want to fill in a box this time
+                      call PGSCI(1) ! changing the color index.
+                      call pgrect(zm, zp, xm, xp)
+                      call PGSCI(i) ! change color index to default.
+                      call PGSFS(1)
+                   endif
+                endif
+             case ("x-z")
+                call pgrect(xm, xp, zm, zp)
+                if (withgrid) then
+                   call pgqci(i)
+                   call PGSFS(2)  ! we don't want to fill in a box this time
+                   call PGSCI(1) ! changing the color index.
+                   call pgrect(xm, xp, zm, zp)
+                   call PGSCI(i) ! change color index to default.
+                   call PGSFS(1)
+                endif
+                if ((thisOctal%cylindrical).and.(thisOctal%dphi > 1.001d0*pi)) then
+                   xm = -xm
+                   xp = -xp
+                   call pgrect(xm, xp, zm, zp)
+                   if (withgrid) then
+                      call pgqci(i)
+                      call PGSFS(2)  ! we don't want to fill in a box this time
+                      call PGSCI(1) ! changing the color index.
+                      call pgrect(xm, xp, zm, zp)
+                      call PGSCI(i) ! change color index to default.
+                      call PGSFS(1)
+                   endif
+                endif
+
+
+             end select
+666          continue
+
+          end if
+       end if
+
+    end do
+
+  end subroutine fudge_plot_values
+
+  subroutine fudge_draw_segment(thisOctal, subcell, filled)
+    type(OCTAL) :: thisOctal
+    integer :: subcell
+    real :: phi1,phi2,r1,r2,ang
+    type(OCTALVECTOR) :: rVec
+    integer :: i
+    integer, parameter :: nAng = 100
+    integer ::npts
+    logical :: filled
+    real :: x(2*nAng+10), y(2*nAng+10)
+    real :: x1, y1
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r1 = sqrt(rVec%x**2+rVec%y**2)-thisOctal%subcellsize/2.d0
+    r2 = sqrt(rVec%x**2+rVec%y**2)+thisOctal%subcellsize/2.d0
+
+
+    phi1 = atan2(rvec%y,rvec%x)
+    phi1 = phi1 - returndPhi(thisOctal)
+    phi2 = atan2(rvec%y,rvec%x)
+    phi2 = phi2 + returndPhi(thisOctal)
+
+!    if (thisOctal%splitAzimuthally) then
+!       phi1 = atan2(rvec%y,rvec%x)
+!       if (phi1  < 0.d0) phi1 = phi1 + twoPi
+!       phi1 = phi1 - thisOctal%dPhi/4.d0
+!       phi2 = atan2(rvec%y,rvec%x)
+!       if (phi2  < 0.d0) phi2 = phi2 + twoPi
+!       phi2 = phi2 + thisOctal%dPhi/4.d0
+!    else
+!       phi1 = atan2(rvec%y,rvec%x) - thisOctal%dPhi/2.d0
+!       phi2 = atan2(rvec%y,rvec%x) + thisOctal%dPhi/2.d0
+!    endif
+    npts = 0
+
+    npts = npts + 1
+    x(npts) = r1 * cos(phi1)
+    y(npts) = r1 * sin(phi1)
+    npts = npts + 1
+    x(npts) = r2 * cos(phi1)
+    y(npts) = r2 * sin(phi1)
+    do i = 1, nang
+       ang = phi1+(phi2-phi1)*real(i-1)/real(nAng-1)
+       npts = npts + 1
+       x(npts) = r2 * cos(ang)
+       y(npts) = r2 * sin(ang)
+    enddo
+    npts = npts + 1
+    x(npts) = r1 * cos(phi2)
+    y(npts) = r1 * sin(phi2)
+    do i = 1, nAng
+       ang = phi2+(phi1-phi2)*real(i-1)/real(nAng-1)
+       npts = npts + 1
+       x(npts) = r1 * cos(ang)
+       y(npts) = r1 * sin(ang)
+    enddo
+    if (filled) then
+       call pgpoly(npts,x, y)
+    else
+       call pgline(npts, x, y)
+    endif
+
+
+!    x1  = r1 * cos(thisOctal%phi)
+!    y1  = r1 * sin(thisOctal%phi)
+!    call pgqci(i)
+!    call pgmove(x1,y1)
+!    call pgsci(2)
+!    x1  = r2 * cos(thisOctal%phi)
+!    y1  = r2 * sin(thisOctal%phi)
+!    call pgdraw(x1,y1)
+!    call pgsci(i)
+
+
+
+  end subroutine fudge_draw_segment
+
+  subroutine fudge_draw_annulus(thisOctal, subcell, filled)
+    type(OCTAL) :: thisOctal
+    integer :: subcell
+    real :: phi1,phi2,r1,r2,ang
+    type(OCTALVECTOR) :: rVec
+    integer :: i
+    integer, parameter :: nAng = 100
+    integer ::npts
+    logical :: filled
+    real :: x(2*nAng+10), y(2*nAng+10)
+    real :: x1, y1
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r1 = rVec%x-thisOctal%subcellsize/2.d0
+    r2 = rVec%x+thisOctal%subcellsize/2.d0
+
+    phi1 = 0.d0
+    phi2 = twoPi
+
+    npts = 0
+    do i = 1, nang
+       ang = phi1+(phi2-phi1)*real(i-1)/real(nAng-1)
+       npts = npts + 1
+       x(npts) = r2 * cos(ang)
+       y(npts) = r2 * sin(ang)
+    enddo
+    do i = 1, nAng
+       ang = phi2+(phi1-phi2)*real(i-1)/real(nAng-1)
+       npts = npts + 1
+       x(npts) = r1 * cos(ang)
+       y(npts) = r1 * sin(ang)
+    enddo
+    npts = npts + 1
+    x(npts) = r2
+    y(npts) = 0.
+    if (filled) then
+       call pgpoly(npts,x, y)
+    else
+       npts = 0
+       do i = 1, nang
+          ang = phi1+(phi2-phi1)*real(i-1)/real(nAng-1)
+          npts = npts + 1
+          x(npts) = r2 * cos(ang)
+          y(npts) = r2 * sin(ang)
+       enddo
+       call pgline(npts, x, y)
+       npts = 0
+       do i = 1, nang
+          ang = phi1+(phi2-phi1)*real(i-1)/real(nAng-1)
+          npts = npts + 1
+          x(npts) = r1 * cos(ang)
+          y(npts) = r1 * sin(ang)
+       enddo
+       call pgline(npts, x, y)
+    endif
+
+  end subroutine fudge_draw_annulus
+
+   
 END MODULE amr_mod

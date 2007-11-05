@@ -582,6 +582,9 @@ contains
     case("molefil")
        grid%geometry = "molefil"
 
+    case("ggtau")
+       grid%geometry = "ggtau"
+
     case("shakara")
        grid%geometry = "shakara"
        grid%rCore = rCore
@@ -745,11 +748,9 @@ contains
     nullify(grid%muAxis)
     nullify(grid%phiAxis)
 
-
     allocate(grid%lamArray(1:nlambda))
 
     grid%nLambda = nLambda
-
 
     grid%adaptive = .true.
     grid%cartesian = .false.
@@ -3167,10 +3168,15 @@ contains
        endif
        if (molecular) then
           call writeDouble2D(thisOctal%molecularLevel,fileFormatted)
+          call writeDouble2D(thisOctal%jnu,fileFormatted)
+          call writeReal1D(thisOctal%molAbundance,fileFormatted)
+
           if (fileformatted) then
-             write(unit=20,iostat=error,fmt=*) thisOctal%microturb, thisOctal%nh2
+             write(unit=20,iostat=error,fmt=*) thisOctal%nh2
+             write(unit=20,iostat=error,fmt=*) thisOctal%microturb
           else
-             write(unit=20,iostat=error) thisOctal%microturb, thisOctal%nh2
+             write(unit=20,iostat=error) thisOctal%nh2
+             write(unit=20,iostat=error) thisOctal%microturb
           endif
        endif
        call writeDouble2D(thisOctal%N,fileFormatted)
@@ -3498,7 +3504,6 @@ contains
 
     error = 0
 
-
   call unixGetEnv("TORUS_JOB_DIR",absolutePath)
   inFile = trim(absolutePath)//trim(filename)
 
@@ -3566,11 +3571,11 @@ contains
     call readReal1D(junk,fileFormatted)
     call readReal2D(junk2,fileFormatted)
     call readReal2D(junk3,fileFormatted)
+
     deallocate(junk, junk2, junk3)
-
-    call readClumps(fileFormatted)
+   
+    Call readClumps(fileFormatted)
     
-
     ! now we call the recursive subroutine to read the tree structure 
     if (fileFormatted) then
        read(unit=20,fmt=*) octreePresent
@@ -3671,10 +3676,15 @@ contains
        endif
        if (molecular) then
           call readDouble2D(thisOctal%molecularLevel,fileFormatted)
+          call readDouble2D(thisOctal%jnu,fileFormatted)
+          call readReal1D(thisOctal%molAbundance,fileFormatted)
+
           if (fileformatted) then
-             read(unit=20,iostat=error,fmt=*) thisOctal%microturb, thisOctal%nh2
+             read(unit=20,iostat=error,fmt=*) thisOctal%nh2
+             read(unit=20,iostat=error,fmt=*) thisOctal%microturb
           else
-             read(unit=20,iostat=error) thisOctal%microturb, thisOctal%nh2
+             read(unit=20,iostat=error) thisOctal%nh2
+             read(unit=20,iostat=error) thisOctal%microturb
           endif
 
        endif
@@ -5814,6 +5824,56 @@ contains
      end if
              
   end subroutine writeReal1D
+
+  subroutine writeDouble1D(variable,fileFormatted)
+
+     real(double),dimension(:),pointer :: variable
+     logical, intent(in)       :: fileFormatted
+     integer :: error
+
+     if (fileFormatted) then
+        if (associated(variable)) then
+           write(unit=20,fmt=*,iostat=error) .true.
+           if (error /=0) then
+             print *, 'Panic: write error in writeDouble1D' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) SIZE(variable)
+           if (error /=0) then
+             print *, 'Panic: write error in writeDouble1D' ; stop
+           end if
+           write(unit=20,fmt=*,iostat=error) variable
+           if (error /=0) then
+             print *, 'Panic: write error in writeDouble1D' ; stop
+           end if
+        else
+           write(unit=20,fmt=*,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble1D' ; stop
+           end if
+        end if
+     else
+        if (associated(variable)) then
+           write(unit=20,iostat=error) .true.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble1D' ; stop
+           end if
+           write(unit=20,iostat=error) SIZE(variable)
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble1D' ; stop
+           end if
+           write(unit=20,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble1D' ; stop
+           end if
+        else
+           write(unit=20,iostat=error) .false.
+           if (error /=0) then 
+             print *, 'Panic: write error in writeDouble1D' ; stop
+          end if
+        end if
+     end if
+             
+  end subroutine writeDouble1D
     
   subroutine writeReal2D(variable,fileFormatted)
 
@@ -6111,6 +6171,47 @@ contains
      end if
     
   end subroutine readReal1D
+
+  subroutine readDouble1D(variable,fileFormatted)
+
+     real(double),dimension(:),pointer :: variable
+     logical, intent(in)       :: fileFormatted
+     logical                   :: present 
+     integer                   :: length
+     integer                   :: error
+
+     if (fileFormatted) then
+        read(unit=20,fmt=*,iostat=error) present
+        if (error /=0) then 
+          print *, 'Panic: read error in readDouble1D' ; stop
+        end if
+        if (present) then
+           read(unit=20,fmt=*,iostat=error) length
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble1D' ; stop
+           end if
+           allocate(variable(length))
+           read(unit=20,fmt=*,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble1D' ; stop
+           end if
+        end if
+     else
+        read(unit=20,iostat=error) present
+        if (present) then
+           read(unit=20,iostat=error) length
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble1D' ; stop
+           end if
+           allocate(variable(length))
+           read(unit=20,iostat=error) variable
+           if (error /=0) then 
+             print *, 'Panic: read error in readDouble1D' ; stop
+           end if
+        end if
+     end if
+    
+  end subroutine readDouble1D
     
   subroutine readReal2D(variable,fileFormatted)
 
@@ -7633,6 +7734,10 @@ contains
                 call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
                 value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
                 if (thisOctal%diffusionApprox(subcell)) value = 1.e10
+             case("J")
+                value = thisOctal%molecularlevel(subcell,ilam)
+             case("Area")
+                value = thisOctal%subcellsize
 
              case default
                 write(*,*) "Error:: unknown name passed to grid_mod::plot_values."
@@ -7920,6 +8025,10 @@ contains
                 call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
                 value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
                 if (thisOctal%diffusionApprox(subcell)) update = .false.
+             case("J")
+                value = thisOctal%molecularlevel(subcell,ilam)
+             case("Area")
+                value = thisOctal%subcellsize
 
              case default
                 write(*,*) "Error:: unknow name passed to MinMaxValue.",trim(name)

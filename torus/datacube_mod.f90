@@ -441,7 +441,7 @@ contains
     character(len=*) :: device
     character(len=40) :: message
     logical, optional :: withSpec, twoPanels, gotPixels, plotFlux
-    logical :: doTwoPanels, doPlotFlux
+    logical :: doTwoPanels, doplotFlux
     integer :: i, j, k
     integer :: pgbegin
     real, allocatable :: subpixelimage(:,:), image(:,:)
@@ -466,7 +466,7 @@ contains
     endif
 
    if (present(plotflux)) then
-       doplotflux = .true.
+       doplotflux = plotflux
     else
        doplotflux = .false.
     endif
