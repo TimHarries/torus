@@ -1146,6 +1146,7 @@ contains
     real(double) :: loc(3)
     integer :: tag = 78
 
+    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
     do iThread = 1, nThreadsGlobal - 1
        if (iThread /= myRankGlobal) then
           call periodBoundaryReceiveRequests(grid, iThread)
@@ -1179,7 +1180,7 @@ contains
     !
     integer :: subcell, i
     integer :: myrank
-    integer :: tag = 78
+    integer :: tag1 = 78, tag2 = 79
     integer :: ierr
     integer :: status
 
@@ -1217,9 +1218,9 @@ contains
              call findSubcellLocal(thisOctal%boundaryPartner(subcell), tOctal,tsubcell)
 !             write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)
              write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
-             call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag, MPI_COMM_WORLD, ierr)
+             call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
              write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
-             call MPI_RECV(tempStorage, 5, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(tempStorage, 5, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
              write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
              thisOctal%tempStorage(subcell,1:5) = tempStorage(1:5)
@@ -1236,14 +1237,14 @@ contains
     real(double) :: loc(3), tempStorage(5)
     integer :: status, ierr, receiveThread
     integer :: subcell
-    integer :: tag = 78 
+    integer :: tag1 = 78, tag2 = 79
     type(OCTALVECTOR) :: octVec
     sendLoop = .true.
     do while (sendLoop)
        ! receive a locator
        
        write(*,*) myrankGlobal, " waiting for a locator"
-       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+       call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag1, MPI_COMM_WORLD, status, ierr)
        write(*,*) myrankglobal, " received a locator from ", receiveThread 
        if (loc(1) > 1.d20) then
           sendLoop = .false.
@@ -1262,7 +1263,7 @@ contains
           tempStorage(4) = thisOctal%rhov(Subcell)
           tempStorage(5) = thisOctal%rhow(Subcell)
           write(*,*) myRankGlobal, " sending tempstorage to ", receiveThread
-          call MPI_SEND(tempStorage, 5, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(tempStorage, 5, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
        endif
     enddo
   end subroutine periodBoundaryReceiveRequests
