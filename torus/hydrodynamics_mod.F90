@@ -1534,6 +1534,7 @@ contains
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
+    call plotGridMPI(grid, "rhoafter.png/png", "x-z", "rho", plotgrid=.true.)
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1550,6 +1551,7 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceU(grid%octreeRoot, dt/2.d0, 0)
 
+    call plotGridMPI(grid, "rhoafterx.png/png", "x-z", "rho", plotgrid=.true.)
 
 
     direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
@@ -1567,6 +1569,7 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceW(grid%octreeRoot, dt,0 )
 
+    call plotGridMPI(grid, "rhoaftery.png/png", "x-z", "rho", plotgrid=.true.)
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1583,10 +1586,14 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceU(grid%octreeRoot, dt/2.d0, 0)
 
+    call plotGridMPI(grid, "rhoafterx2.png/png", "x-z", "rho", plotgrid=.true.)
+
     call periodBoundary(grid)
 !    call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
 
+    call plotGridMPI(grid, "rhofinal.png/png", "x-z", "rho", plotgrid=.true.)
+    stop
  
   end subroutine hydroStep2d
 
