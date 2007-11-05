@@ -1061,7 +1061,7 @@ contains
 !       enddo
        if (doTuning) call tune(6, "Gauss-Seidel sweeps")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot)
-#
+
        if (myRankIsZero) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &

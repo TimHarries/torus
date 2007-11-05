@@ -1593,7 +1593,6 @@ contains
     call transferTempStorage(grid%octreeRoot)
 
     call plotGridMPI(grid, "rhofinal.png/png", "x-z", "rho", plotgrid=.true.)
-    stop
  
   end subroutine hydroStep2d
 

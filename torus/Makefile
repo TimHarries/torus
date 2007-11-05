@@ -20,6 +20,7 @@ GUANINE_HOME = /Network/Guanine
 
 KNOWN_SYSTEM = no
 MPIFLAG = 
+CPP = cpp -P
 #
 # Set system-dependent variables
 #
@@ -380,7 +381,7 @@ ifeq ($(SYSTEM), zen)
     F95COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
     F77COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
     FASTFLAGS= -O3 -xT -mcmodel=medium -i-dynamic
-
+    CPP= fpp
     DEBUGFLAG=-g -O0 -mcmodel=medium
     STATICFLAG=
     MATHTRAP=
@@ -727,9 +728,9 @@ preprocess:
 	    sed '/\!$$MPI/d'   molecular_mod.f90.raw    > molecular_mod.f90
 	    sed '/\!$$MPI/d'   cmf_mod.f90.raw          > cmf_mod.f90
     endif
-	    cpp -P            $(MPIFLAG) parallel_mod.f90.raw parallel_mod.f90
-	    cpp -P            $(MPIFLAG) lucy_mod.f90.raw     lucy_mod.f90
-	    cpp -P $(SPHFLAG) $(MPIFLAG) torusMain.f90.raw    torusMain.f90
+	    $(CPP)             $(MPIFLAG) parallel_mod.f90.raw parallel_mod.f90
+	    $(CPP)             $(MPIFLAG) lucy_mod.f90.raw     lucy_mod.f90
+	    $(CPP)  $(SPHFLAG) $(MPIFLAG) torusMain.f90.raw    torusMain.f90
 	@echo "...done"
 
 depends: preprocess

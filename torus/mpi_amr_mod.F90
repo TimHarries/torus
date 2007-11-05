@@ -1150,17 +1150,21 @@ contains
        if (iThread /= myRankGlobal) then
           call periodBoundaryReceiveRequests(grid, iThread)
        else
+          write(*,*) "now doing ", myRankGlobal
           call recursivePeriodSend(grid%octreeRoot)
           loc(1) = 1.d30
           do i = 1, nThreadsGlobal-1
              if (i /= iThread) then
-!                write(*,*) myRankGlobal, " sending terminate to ", i
+                write(*,*) myRankGlobal, " sending terminate to ", i
                 call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, ierr)
              endif
           enddo
+          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        endif
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
     enddo
+    write(*,*) myRankGlobal, " HAS REACHED THE BARRIER"
+    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
   end subroutine periodBoundary
 
   recursive subroutine recursivePeriodSend(thisOctal)
@@ -1204,7 +1208,7 @@ contains
              tOctal => thisOctal
              call findSubcellLocal(thisOctal%boundaryPartner(subcell), tOctal, tSubcell)
              if (tOctal%mpiThread(tSubcell) == myRankGlobal) then
-!                write(*,*) "locator problem2 ",myRankGlobal
+                write(*,*) "locator problem2 ",myRankGlobal
                 stop
              endif
 
@@ -1212,11 +1216,11 @@ contains
              tSubcell = 1
              call findSubcellLocal(thisOctal%boundaryPartner(subcell), tOctal,tsubcell)
 !             write(*,*) "boundary partner ", thisOctal%boundaryPartner(subcell)
-!             write(*,*) myrankGlobal, " sending locator ", loc, subcellCentre(thisOctal, subcell)
-!             write(*,*) "Sending it to ", toctal%mpiThread(tsubcell)
+             write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
              call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag, MPI_COMM_WORLD, ierr)
-!             write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
+             write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
              call MPI_RECV(tempStorage, 5, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag, MPI_COMM_WORLD, status, ierr)
+             write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
              if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
              thisOctal%tempStorage(subcell,1:5) = tempStorage(1:5)
           endif
@@ -1238,25 +1242,26 @@ contains
     do while (sendLoop)
        ! receive a locator
        
-!       write(*,*) myrankGlobal, " waiting for a locator"
+       write(*,*) myrankGlobal, " waiting for a locator"
        call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
-!       write(*,*) myrankglobal, " received a locator ", loc(1:3)
+       write(*,*) myrankglobal, " received a locator from ", receiveThread 
        if (loc(1) > 1.d20) then
           sendLoop = .false.
-!          write(*,*) myRankGlobal, " found the signal to end the send loop"
+          write(*,*) myRankGlobal, " found the signal to end the send loop from ", receivethread
        else
           octVec = OCTALVECTOR(loc(1), loc(2), loc(3))
           thisOctal => grid%octreeRoot
           subcell = 1
+          write(*,*) myrankglobal," calling subscell local"
           call findSubcellLocal(octVec, thisOctal, subcell)
-          
+          write(*,*) myrankglobal," subscell local done succesfully"
           
           tempstorage(1) = thisOctal%rho(Subcell)
           tempStorage(2) = thisOctal%rhoE(Subcell)
           tempStorage(3) = thisOctal%rhou(Subcell)
           tempStorage(4) = thisOctal%rhov(Subcell)
           tempStorage(5) = thisOctal%rhow(Subcell)
-          
+          write(*,*) myRankGlobal, " sending tempstorage to ", receiveThread
           call MPI_SEND(tempStorage, 5, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
        endif
     enddo
