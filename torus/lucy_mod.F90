@@ -1239,8 +1239,8 @@ contains
        
 
 
-   converged = .true.
-   write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
+!   converged = .true.
+!   write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
 
 
 !    !
