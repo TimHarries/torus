@@ -89,7 +89,7 @@ contains
           call pgpage
           if (present(valueMinFlag)) valueMin = valueMinFlag
           if (present(valueMaxFlag)) valueMax = valueMaxFlag
-          call pgvport(0.1, 0.9, 0.1, 0.9)
+          call pgvport(0.2, 0.9, 0.2, 0.9)
           call pgwnad(xStart, xEnd, yStart, yEnd)
           
           call pgqcir(ilo, ihi)
@@ -240,6 +240,16 @@ contains
                 tmp = real(thisOctal%mpiThread(subcell))
              case("chi")
                 tmp = real(thisOctal%chiline(subcell))
+             case("u_i")
+                tmp = real(thisOctal%u_interface(subcell))
+             case("q_i")
+                tmp = real(thisOctal%q_i(subcell))
+             case("q_i_minus_1")
+                tmp = real(thisOctal%q_i_minus_1(subcell))
+             case("flux_i")
+                tmp = real(thisOctal%flux_i(subcell))
+             case("philim")
+                tmp = real(thisOctal%phiLimit(subcell))
              case DEFAULT
            end select
           select case(plane)
@@ -767,14 +777,18 @@ contains
        
        rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
             direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
-       tOctal => neighbourOctal
-       tSubcell = neighbourSubcell
-       call findSubcellLocal(rVec, tOctal, tSubcell)
-       
-       if (tOctal%mpiThread(tSubcell) == myRank) then
-          qnext = tOctal%q_i(tSubcell)
+       if (inOctal(grid%octreeRoot, rVec)) then
+          tOctal => neighbourOctal
+          tSubcell = neighbourSubcell
+          call findSubcellLocal(rVec, tOctal, tSubcell)
+          
+          if (tOctal%mpiThread(tSubcell) == myRank) then
+             qnext = tOctal%q_i(tSubcell)
+          else
+             qNext = neighbourOctal%mpiBoundaryStorage(neighbourSubcell, nBound, 1)
+          endif
        else
-          qNext = neighbourOctal%mpiBoundaryStorage(neighbourSubcell, nBound, 1)
+          qNext = 0.d0
        endif
 
 

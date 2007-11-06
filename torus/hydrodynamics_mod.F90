@@ -12,7 +12,7 @@ module hydrodynamics_mod
   use mpi_amr_mod
 
   implicit none
-
+  real(double) :: gridDistanceScale = 1.d0
 
 contains
 
@@ -65,6 +65,7 @@ contains
                 call writeFatal(message)
                 stop
            end select
+!           if (thisOctal%ghostCell(subcell)) thisOctal%phiLimit(subcell) = 1.d0
       endif
     enddo
   end subroutine fluxLimiter
@@ -105,11 +106,13 @@ contains
              stop
           endif
 
-          thisOctal%flux_i(subcell) = thisOctal%flux_i(subcell) + &
-               0.5d0 * abs(thisOctal%u_interface(subcell)) * &
-               (1.d0 - abs(thisOctal%u_interface(subcell) * dt / &
-               (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell)))) * &
-               thisOctal%phiLimit(subcell) * (thisOctal%q_i(subcell) - thisOctal%q_i_minus_1(subcell))
+          if (.not.thisOctal%edgeCell(subcell)) then
+             thisOctal%flux_i(subcell) = thisOctal%flux_i(subcell) + &
+                  0.5d0 * abs(thisOctal%u_interface(subcell)) * &
+                  (1.d0 - abs(thisOctal%u_interface(subcell) * dt / &
+                  (thisOctal%x_i(subcell) - thisOctal%x_i_minus_1(subcell)))) * &
+                  thisOctal%phiLimit(subcell) * (thisOctal%q_i(subcell) - thisOctal%q_i_minus_1(subcell))
+          endif
        endif
     enddo
   end subroutine constructFlux
@@ -143,8 +146,8 @@ contains
              thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
                   (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
                   (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i(subcell))
-             write(*,*) "fluxes ", thisOctal%flux_i_plus_1(subcell),thisOctal%flux_i(subcell)
-             write(*,*) "rho ",thisOctal%rho(subcell) 
+!             write(*,*) "fluxes ", thisOctal%flux_i_plus_1(subcell),thisOctal%flux_i(subcell)
+!             write(*,*) "rho ",thisOctal%rho(subcell) 
 !             thisOctal%q_i(subcell) = thisOctal%q_i(subcell) - dt * &
 !                  (thisOctal%flux_i_plus_1(subcell) - thisOctal%flux_i(subcell)) / &
 !                  (thisOctal%subcellSize*1.d10)
@@ -173,7 +176,7 @@ contains
              end if
           end do
        else
-          thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction) * 1.d10
+          thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction) * gridDistanceScale
        endif
     enddo
   end subroutine setupX
@@ -216,7 +219,7 @@ contains
 
           thisOctal%x_i_minus_1(subcell) = 0.d0
           thisOctal%x_i_plus_1(subcell) = 0.d0
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -279,7 +282,7 @@ contains
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then !xxx changed from ghostcell
              locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -333,7 +336,7 @@ contains
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -380,7 +383,7 @@ contains
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) - direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -429,7 +432,7 @@ contains
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
-             thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction) * 1.d10
+             thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction) * gridDistanceScale
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -1534,7 +1537,7 @@ contains
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
-    call plotGridMPI(grid, "rhoafter.png/png", "x-z", "rho", plotgrid=.true.)
+
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1550,9 +1553,6 @@ contains
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceU(grid%octreeRoot, dt/2.d0, 0)
-
-    call plotGridMPI(grid, "rhoafterx.png/png", "x-z", "rho", plotgrid=.true.)
-
 
     direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1569,7 +1569,6 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceW(grid%octreeRoot, dt,0 )
 
-    call plotGridMPI(grid, "rhoaftery.png/png", "x-z", "rho", plotgrid=.true.)
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1586,13 +1585,11 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceU(grid%octreeRoot, dt/2.d0, 0)
 
-    call plotGridMPI(grid, "rhoafterx2.png/png", "x-z", "rho", plotgrid=.true.)
 
     call periodBoundary(grid)
 !    call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
 
-    call plotGridMPI(grid, "rhofinal.png/png", "x-z", "rho", plotgrid=.true.)
  
   end subroutine hydroStep2d
 
@@ -1627,16 +1624,11 @@ contains
 
              cs = soundSpeed(thisOctal, subcell, gamma, iEquationOfState)
 !             if (myrank==1) write(*,*) "cs ", cs/1.d5, "km/s"
-             dx = thisOctal%subcellSize * 1.d10
+             dx = thisOctal%subcellSize * gridDistanceScale
              speed = sqrt((thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
                   + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2)
                 tc = min(tc, dx / (cs + speed) )
 
-                if ((dx/(cs+speed)) < 1.d6) then
-                   write(*,*) "dx ",dx, "speed ", speed/1.d5, "cs ",cs/1.d5
-                   write(*,*) "x y z ",thisOctal%rhou(subcell)/thisOctal%rho(subcell), &
-                        thisOctal%rhov(subcell)/thisOctal%rho(subcell), thisOctal%rhow(subcell)/thisOctal%rho(subcell) 
-                endif
 
           endif
  
@@ -2210,7 +2202,7 @@ contains
 !          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
 !          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 2.,plotgrid=.false.)
+          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
 !          call plotGridMPI(grid, "/xs", "x-z", "rhoe", plotgrid=.true.)
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)

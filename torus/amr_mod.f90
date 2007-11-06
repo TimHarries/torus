@@ -7945,21 +7945,28 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(gridtype), INTENT(IN) :: grid
     type(OCTALVECTOR) :: rVec
     real(double) :: gd, xmid, x, z, r , zprime
+    real :: u1 , u2
 
 
     rVec = subcellCentre(thisOctal, subcell)
-
+    
     if (abs(rVec%z) > 0.25d0) then
-       thisOctal%velocity(subcell) = VECTOR(-0.50/cSpeed, 0.d0, 0.d0)
+       thisOctal%velocity(subcell) = VECTOR(-0.50, 0.d0, 0.d0)
        thisOctal%rho(subcell) = 1.d0
-       thisOctal%energy(subcell) = 2.d0
     else
-       thisOctal%velocity(subcell) = VECTOR(0.50/cSpeed, 0.d0, 0.d0)
+       thisOctal%velocity(subcell) = VECTOR(0.50, 0.d0, 0.d0)
        thisOctal%rho(subcell) = 2.d0
-       thisOctal%energy(subcell) = 1.d0
     endif
 
-    thisOctal%pressure_i(subcell) = (7.d0/5.d0-1.d0) * thisOctal%rho(subcell) * thisOctal%energy(subcell)
+    call random_number(u1)
+    call random_number(u2)
+    u1 = (2.*u1-1.) * 0.005
+    u2 = (2.*u2-1.) * 0.005
+
+    thisOctal%pressure_i(subcell) = 2.5d0
+    thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(u1, 0., u2))/real(cSpeed)
+
+     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (7.d0/5.d0-1.d0) * thisOctal%rho(subcell))
     thisOctal%boundaryCondition(subcell) = 2
   end subroutine calcKelvinDensity
 
