@@ -1149,6 +1149,7 @@ contains
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
     do iThread = 1, nThreadsGlobal - 1
        if (iThread /= myRankGlobal) then
+          write(*,*) myRankGlobal, " calling boundaryreceiverequests"
           call periodBoundaryReceiveRequests(grid, iThread)
        else
           write(*,*) "now doing ", myRankGlobal
@@ -1160,9 +1161,10 @@ contains
                 call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, i, tag, MPI_COMM_WORLD, ierr)
              endif
           enddo
-          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        endif
+       write(*,*) myrankGlobal, " waiting at barrier"
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+       write(*,*) myrankGlobal, " dropped through barrier"
     enddo
     write(*,*) myRankGlobal, " HAS REACHED THE BARRIER"
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
@@ -1240,10 +1242,10 @@ contains
     integer :: tag1 = 78, tag2 = 79
     type(OCTALVECTOR) :: octVec
     sendLoop = .true.
+    write(*,*) myrankGlobal, " waiting for a locator"
     do while (sendLoop)
        ! receive a locator
        
-       write(*,*) myrankGlobal, " waiting for a locator"
        call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag1, MPI_COMM_WORLD, status, ierr)
        write(*,*) myrankglobal, " received a locator from ", receiveThread 
        if (loc(1) > 1.d20) then
@@ -1253,9 +1255,9 @@ contains
           octVec = OCTALVECTOR(loc(1), loc(2), loc(3))
           thisOctal => grid%octreeRoot
           subcell = 1
-          write(*,*) myrankglobal," calling subscell local"
+!          write(*,*) myrankglobal," calling subscell local"
           call findSubcellLocal(octVec, thisOctal, subcell)
-          write(*,*) myrankglobal," subscell local done succesfully"
+!          write(*,*) myrankglobal," subscell local done succesfully"
           
           tempstorage(1) = thisOctal%rho(Subcell)
           tempStorage(2) = thisOctal%rhoE(Subcell)
@@ -1266,6 +1268,7 @@ contains
           call MPI_SEND(tempStorage, 5, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
        endif
     enddo
+    write(*,*) myrankGlobal, " leaving receive requests ", sendLoop
   end subroutine periodBoundaryReceiveRequests
 
 
