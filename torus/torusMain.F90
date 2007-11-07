@@ -80,12 +80,7 @@ program torus
   use cmf_mod
   use hydrodynamics_mod
   use mpi_global_mod
-
-#ifdef MPI
-!$mpi   use parallel_mod
-   !use MPI__INCLUDE   
-   !use MPI
-#endif
+  use parallel_mod
 
   implicit none
 #ifdef MPI
@@ -470,7 +465,6 @@ program torus
   logical, parameter :: ll_sph = .false.
 #endif
 
-
   real(double) ::  d1, d2, massRatio
 
   type(modelatom), allocatable :: thisAtom(:)
@@ -522,14 +516,21 @@ program torus
   !===============================================================================
 
     call setupAMRCOMMUNICATOR
-
-
-
-  !
-  ! For time statistics
-  if (my_rank==1) &
 #endif
-  call tune(6, "Torus Main") ! start a stopwatch  
+
+    writeoutput    = .true.
+    outputwarnings = .true.
+    outputinfo     = .true.
+    doTuning       = .true.
+    myRankIsZero   = .true.
+#ifdef MPI
+    if (my_rank/=1) writeoutput  = .false.
+    if (my_rank/=1) doTuning     = .false.
+    if (my_rank/=0) myRankIsZero = .false.
+#endif
+  
+  ! For time statistics
+  if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
 
   ! set up a random seed
@@ -540,9 +541,9 @@ program torus
   allocate(iSeed(1:iSize))
   call random_seed(get=iSeed)
 
+  call torus_mpi_barrier
 #ifdef MPI
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-     call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+  call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call random_seed(put=iseed)
 ! write(*,*) my_rank,"random seed",iseed(1:isize)
 #endif
@@ -601,17 +602,6 @@ program torus
      o6yarray(i) = 1.d-10
   enddo
 
-  writeoutput    = .true.
-  outputwarnings = .true.
-  outputinfo     = .true.
-  doTuning       = .true.
-  myRankIsZero   = .true.
-#ifdef MPI
-  if (my_rank/=1) writeoutput  = .false.
-  if (my_rank/=1) doTuning     = .false.
-  if (my_rank/=0) myRankIsZero = .false.
-#endif
-  
 
   ! get the model parameters
 
@@ -1320,9 +1310,7 @@ program torus
         end if
      end if  ! (myRankIsZero) --------------------------------------------------------
 
-#ifdef MPI
-  call MPI_BARRIER(MPI_COMM_WORLD, ierr)  ! 
-#endif
+     call torus_mpi_barrier
 
      else  ! not reading a population file
 
@@ -1747,10 +1735,8 @@ program torus
               call amrStateq(grid, newContFluxFile,lte, nLower, nUpper, &
                              starSurface, recalcPrevious=.false.)
 
-#ifdef MPI
-   print *,'Process ',my_rank,' waiting for other amrStatEq calls to return...' 
-   call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all the processes
-#endif
+              call torus_mpi_barrier('waiting for other amrStatEq calls to return...')
+
               ! the 'lte' setting is intended so that a model with infall
               ! enhancement is first set up with LTE values. Only after we have 
               ! done the first time-dependent change so we calculate non-LTE 
@@ -1817,10 +1803,7 @@ program torus
 !                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, sigmaAbs0, sigmaSca0)
 !              end if
 
-#ifdef MPI
-   print *,'Process ',my_rank,' waiting for other amrStatEq calls to return...' 
-   call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all the processes
-#endif
+              call torus_mpi_barrier('waiting for other amrStatEq calls to return...')
 
            end if ! (grid%geometry=="ttaur" .or. ...)
 
@@ -1868,9 +1851,7 @@ program torus
      end if
 
   end if
-#ifdef MPI
-   call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! sync here
-#endif
+  call torus_mpi_barrier ! sync here
 
    if (doTuning) call tune(6, "AMR grid construction.") ! stop a stopwatch
 
@@ -2731,9 +2712,7 @@ program torus
 
      endif
 
-#ifdef MPI
-   call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-#endif
+     call torus_mpi_barrier
 
 667 continue
      call random_seed
@@ -2784,7 +2763,7 @@ program torus
         grid%photoionization = .true.
            call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
               lucyfilenameout, lucyfilenamein)
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+           call torus_mpi_barrier
      endif
 
      if (hydrodynamics) then
@@ -2842,10 +2821,7 @@ program torus
            call analyze_cluster(young_cluster,s2o(outVec),dble(gridDistance),grid)
         end if
 
-#ifdef MPI
-     ! Synchronizing everybody here.
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-#endif
+        call torus_mpi_barrier
 
         ! restricting the sed and images calculations to the star 
         ! with ID number = idx_restrict_star. 
@@ -2873,10 +2849,7 @@ program torus
             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
      end if
 
-#ifdef MPI
-     ! Synchronizing everybody here.
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-#endif
+     call torus_mpi_barrier
 
   endif
 
@@ -3249,10 +3222,8 @@ program torus
              if (writeoutput) write(*,*) "Recalculating statistical equilibrium after changing grid" 
              call amrStateq(grid, newContFluxFile, lte, nLower, nUpper,  &
                    starSurface, recalcPrevious=.true.)
-#ifdef MPI
-         print *,'Process ',my_rank,' returned from amrStatEq. Waiting to sync...' 
-         call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all processes
-#endif
+             call torus_mpi_barrier('returned from amrStatEq. Waiting to sync...')
+
              if (ttau_disc_on) then
                 ! amrStateq will have messed up the disc, so we reset those cells
                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, &
@@ -3265,9 +3236,7 @@ program torus
                 call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
              end if
 
-#ifdef MPI
-         call MPI_BARRIER(MPI_COMM_WORLD, ierr) ! wait for all processes
-#endif
+             call torus_mpi_barrier
              
           end if ! (.not. noPhaseUpdate .and. iPhase /= nStartPhase) 
 
@@ -3398,10 +3367,7 @@ program torus
              thinLine, lineResAbs, nUpper, nLower, sampleFreq, useinterp, grid%Rstar1, coolStarPosition, maxTau, nSource, source)
       end if
 
-#ifdef MPI
-     ! Synchronizing everybody here.
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-#endif
+      call torus_mpi_barrier
 
      weightLinePhoton = 0.
      weightContPhoton = 1.
@@ -4914,20 +4880,14 @@ program torus
                      MPI_SUM,0,MPI_COMM_WORLD,ierr)
      yArray%v = tempDoubleArray 
      deallocate(tempDoubleArray)
-
-     print *,'Process ',my_rank,' finished syncing output. Waiting to continue...' 
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-
-
-     if (my_rank == 0) &
 #endif
-        write(*,'(i8,a,f7.3)') iOuterLoop*nPhotons/nOuterLoop," photons done"
+     call torus_mpi_barrier('finished syncing output. Waiting to continue...') 
+     if(myRankIsZero) write(*,'(i8,a,f7.3)') iOuterLoop*nPhotons/nOuterLoop," photons done"
 
         errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
-#ifdef MPI
-     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-#endif
+        call torus_mpi_barrier
+
         if (doTuning) call tune(6, "One Outer Photon Loop") ! Stop a stop watch        
 
         yArray(1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
@@ -5003,7 +4963,7 @@ program torus
         print *, 'MPI o6Image not implemented!'
         stop
      endif
- endif ! (stokesimage)
+  endif ! (stokesimage)
 
  if (doPvimage) then
    do iSlit = 1, nSlit
@@ -5034,7 +4994,7 @@ program torus
      deallocate(tempRealArray)
 
    end do ! iSlit 
- endif ! (doPvimage)
+endif ! (doPvimage)
 #endif
 
  if (myRankIsZero) then 
@@ -5072,8 +5032,6 @@ program torus
 
  if (myRankIsZero) then 
      if (nPhase == 1) then
-
-
 
         call writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
      .false., useNdf, sed, objectDistance, jansky, SIsed, .false., lamLine)
@@ -5153,7 +5111,7 @@ program torus
            call plotSlitOnImage(obsImageSet(1), PVimage(iSlit), plotfile, gridDistance)
         enddo
      endif
- end if ! (myRankIsZero)
+  end if ! (myRankIsZero)
 
      if (stokesImage) then
         do i = 1, nImage
@@ -5176,12 +5134,11 @@ program torus
 
 #ifdef MPI
  if (my_rank /= 0 .and. .not.noPhaseUpdate) call freeGrid(grid)
-   print *,'Process ',my_rank,' waiting inside end of phase loop...' 
-  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 #endif
+  call torus_mpi_barrier('waiting inside end of phase loop...')
   enddo phaseLoop
 
-     end if  ! if (.not. ll_sph)
+end if  ! if (.not. ll_sph)
 
 666 continue
 
@@ -5214,8 +5171,8 @@ if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch
 
 call writeInfo("TORUS exiting", FORINFO)
  
+call torus_mpi_barrier
 #ifdef MPI
-  call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
   if (.not. ll_sph) call MPI_FINALIZE(ierr)
 #endif
 
