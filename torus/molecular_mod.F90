@@ -1625,9 +1625,12 @@ end subroutine LTEpops
              write(message,'(a,x,f9.5,x,a,x,f5.3,x,a,2x,l,x,a,x,i6,x)') "Maximum fractional change this iteration ", &
                                                                          maxFracChange,"tolerance",tolerance , &
                   "fixed rays",fixedrays,"nray",nray
-             write(*,'(a,f9.5,a,i1)') "  Average fractional change this iteration  ", maxavgFracChange/real(nVoxels)," in level ",maxavgTrans
-             write(*,'(a,f9.5,a,i1)') "  RMS fractional change this iteration      ", sqrt(maxRMSFracChange/real(nVoxels))," in level ",maxRMSTrans
-             write(*,'(a,f9.5)') "  Std Dev                                   ", sqrt(maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2)
+             write(*,'(a,f9.5,a,i1)') "  Average fractional change this iteration  ", &
+	maxavgFracChange/real(nVoxels)," in level ",maxavgTrans
+             write(*,'(a,f9.5,a,i1)') "  RMS fractional change this iteration      ", &
+	sqrt(maxRMSFracChange/real(nVoxels))," in level ",maxRMSTrans
+             write(*,'(a,f9.5)') "  Std Dev                                   ", &
+	sqrt(maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2)
              call writeInfo(message,FORINFO)
 
           do i=3,1,-1

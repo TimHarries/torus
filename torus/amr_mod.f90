@@ -5635,7 +5635,8 @@ IF ( .NOT. gridConverged ) RETURN
 
    if (grid%splitOverMPI) then
       if ((thisOctal%twoD.and.(nThreadsGlobal-1)==4).or. &
-           (thisOctal%threed.and.(nThreadsGlobal-1)==8)) then
+           (thisOctal%threed.and.(nThreadsGlobal-1)==8).or. &
+           (thisOctal%oned  .and.(nThreadsGlobal-1)==2) ) then
          if ((thisOctal%nDepth == 1).and.(subcell /= myRankGlobal)) then
             split = .false.
          endif
@@ -5643,6 +5644,15 @@ IF ( .NOT. gridConverged ) RETURN
             split = .false.
          endif
       else
+         if (thisOctal%oneD) then
+            if (thisOctal%nDepth == 1) then
+               split = .true.
+            else if (thisOctal%nDepth > 1) then
+               if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+                  split = .false.
+               endif
+            endif
+         endif
          if (thisOctal%twoD) then
             if (thisOctal%nDepth == 1) then
                split = .true.

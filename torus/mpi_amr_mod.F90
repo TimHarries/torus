@@ -65,6 +65,8 @@ contains
        planes(1) = "x-z"
        planes(2) = "x-y"
        planes(3) = "y-z"
+    else 
+       nPlanes = 1
     endif
 
     if (myRank == 1) then
@@ -90,51 +92,55 @@ contains
           if (present(valueMinFlag)) valueMin = valueMinFlag
           if (present(valueMaxFlag)) valueMax = valueMaxFlag
           call pgvport(0.2, 0.9, 0.2, 0.9)
-          call pgwnad(xStart, xEnd, yStart, yEnd)
-          
-          call pgqcir(ilo, ihi)
-          call pgscir(ilo, ihi)
-          call palette(2)
-          
-          
-          do i = 1, nSquares
-             if (.not.logscale) then
-                if (valueMax /= valueMin) then
-                   t = (value(i)-valueMin)/(valueMax-valueMin)
-                else
-                   t = 0.
-                endif
-             else
-                t = (log10(value(i))-log10(valuemin))/(log10(valuemax)-log10(valuemin))
-             endif
-             if (t < 0.) t = 0.
-             if (t > 1.) t = 1.
-             idx = int(t * real(ihi - ilo) + real(ilo))
-             
-             call pgsci(idx)
-             
-             call pgrect(corners(i, 1), corners(i, 2), corners(i, 3), corners(i, 4))
-             
-             if (doplotgrid) then
-                call pgqci(j)
-                call PGSFS(2)  ! we don't want to fill in a box this time
-                call PGSCI(1) ! changing the color index.
-                call pgrect(corners(i, 1), corners(i, 2), corners(i, 3), corners(i, 4))
-                call PGSCI(1) ! change color index to default.
-                call PGSFS(1)
-                call pgsci(j)
-             endif
-             
-          enddo
-          call pgsci(1)
-          call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
-          if(logscale) then
-             CALL PGWEDG('BI', 4.0, 5.0, real(log10(valueMin)), real(log10(valueMax)), TRIM(ADJUSTL(valueName)) )
+          if (grid%octreeRoot%oned) then
+             call pgenv(xStart, xEnd, valueMin, valueMax, 0., 0.)
+             call pgpt(nSquares, real(corners(1:nSquares,1)), real(value(1:nSquares)), 21)
           else
-             CALL PGWEDG('BI', 4.0, 5.0, real(valueMin), real(valueMax), TRIM(ADJUSTL(valueName)))
-          end if
+             call pgwnad(xStart, xEnd, yStart, yEnd)
+          
+             call pgqcir(ilo, ihi)
+             call pgscir(ilo, ihi)
+             call palette(2)
+             
+             
+             do i = 1, nSquares
+                if (.not.logscale) then
+                   if (valueMax /= valueMin) then
+                      t = (value(i)-valueMin)/(valueMax-valueMin)
+                   else
+                      t = 0.
+                   endif
+                else
+                   t = (log10(value(i))-log10(valuemin))/(log10(valuemax)-log10(valuemin))
+                endif
+                if (t < 0.) t = 0.
+                if (t > 1.) t = 1.
+                idx = int(t * real(ihi - ilo) + real(ilo))
+                
+                call pgsci(idx)
+                
+                call pgrect(corners(i, 1), corners(i, 2), corners(i, 3), corners(i, 4))
+                
+                if (doplotgrid) then
+                   call pgqci(j)
+                   call PGSFS(2)  ! we don't want to fill in a box this time
+                   call PGSCI(1) ! changing the color index.
+                   call pgrect(corners(i, 1), corners(i, 2), corners(i, 3), corners(i, 4))
+                   call PGSCI(1) ! change color index to default.
+                   call PGSFS(1)
+                   call pgsci(j)
+                endif
+                
+             enddo
+             call pgsci(1)
+             call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
+             if(logscale) then
+                CALL PGWEDG('BI', 4.0, 5.0, real(log10(valueMin)), real(log10(valueMax)), TRIM(ADJUSTL(valueName)) )
+             else
+                CALL PGWEDG('BI', 4.0, 5.0, real(valueMin), real(valueMax), TRIM(ADJUSTL(valueName)))
+             end if
+          endif
        endif
-
     enddo
     call pgend
     deallocate(corners, value)
@@ -252,39 +258,44 @@ contains
                 tmp = real(thisOctal%phiLimit(subcell))
              case DEFAULT
            end select
-          select case(plane)
-             case("x-z")
-                x = min(abs(rVec%y + thisOctal%subcellSize/2.d0), abs(rVec%y - thisOctal%subcellSize/2.d0))
-                if ((x < eps).or.(thisOctal%twoD)) then
-                   nSquares = nSquares + 1
-                   corners(nSquares, 1) = rVec%x - thisOctal%subcellSize/2.d0
-                   corners(nSquares, 2) = rVec%x + thisOctal%subcellSize/2.d0
-                   corners(nSquares, 3) = rVec%z - thisOctal%subcellSize/2.d0
-                   corners(nSquares, 4) = rVec%z + thisOctal%subcellSize/2.d0
-                   value(nSquares) = tmp
-                endif
-             case("y-z")
-                x = min(abs(rVec%x + thisOctal%subcellSize/2.d0), abs(rVec%x - thisOctal%subcellSize/2.d0))
-                if (x < eps) then
-                   nSquares = nSquares + 1
-                   corners(nSquares, 1) = rVec%y - thisOctal%subcellSize/2.d0
-                   corners(nSquares, 2) = rVec%y + thisOctal%subcellSize/2.d0
-                   corners(nSquares, 3) = rVec%z - thisOctal%subcellSize/2.d0
-                   corners(nSquares, 4) = rVec%z + thisOctal%subcellSize/2.d0
-                   value(nSquares) = tmp
-                endif
-             case("x-y")
-                x = min(abs(rVec%z + thisOctal%subcellSize/2.d0), abs(rVec%z - thisOctal%subcellSize/2.d0))
-                if (x < eps) then
-                   nSquares = nSquares + 1
-                   corners(nSquares, 1) = rVec%x - thisOctal%subcellSize/2.d0
-                   corners(nSquares, 2) = rVec%x + thisOctal%subcellSize/2.d0
-                   corners(nSquares, 3) = rVec%y - thisOctal%subcellSize/2.d0
-                   corners(nSquares, 4) = rVec%y + thisOctal%subcellSize/2.d0
-                   value(nSquares) = tmp
-                endif
+           if (thisOctal%oneD) then
+              corners(nsquares, 1) = rVec%x
+           else
+
+              select case(plane)
+              case("x-z")
+                 x = min(abs(rVec%y + thisOctal%subcellSize/2.d0), abs(rVec%y - thisOctal%subcellSize/2.d0))
+                 if ((x < eps).or.(thisOctal%twoD)) then
+                    nSquares = nSquares + 1
+                    corners(nSquares, 1) = rVec%x - thisOctal%subcellSize/2.d0
+                    corners(nSquares, 2) = rVec%x + thisOctal%subcellSize/2.d0
+                    corners(nSquares, 3) = rVec%z - thisOctal%subcellSize/2.d0
+                    corners(nSquares, 4) = rVec%z + thisOctal%subcellSize/2.d0
+                    value(nSquares) = tmp
+                 endif
+              case("y-z")
+                 x = min(abs(rVec%x + thisOctal%subcellSize/2.d0), abs(rVec%x - thisOctal%subcellSize/2.d0))
+                 if (x < eps) then
+                    nSquares = nSquares + 1
+                    corners(nSquares, 1) = rVec%y - thisOctal%subcellSize/2.d0
+                    corners(nSquares, 2) = rVec%y + thisOctal%subcellSize/2.d0
+                    corners(nSquares, 3) = rVec%z - thisOctal%subcellSize/2.d0
+                    corners(nSquares, 4) = rVec%z + thisOctal%subcellSize/2.d0
+                    value(nSquares) = tmp
+                 endif
+              case("x-y")
+                 x = min(abs(rVec%z + thisOctal%subcellSize/2.d0), abs(rVec%z - thisOctal%subcellSize/2.d0))
+                 if (x < eps) then
+                    nSquares = nSquares + 1
+                    corners(nSquares, 1) = rVec%x - thisOctal%subcellSize/2.d0
+                    corners(nSquares, 2) = rVec%x + thisOctal%subcellSize/2.d0
+                    corners(nSquares, 3) = rVec%y - thisOctal%subcellSize/2.d0
+                    corners(nSquares, 4) = rVec%y + thisOctal%subcellSize/2.d0
+                    value(nSquares) = tmp
+                 endif
               case DEFAULT
               end select
+           endif
 
        endif
     enddo
@@ -604,7 +615,7 @@ contains
                 neighbourOctal => thisOctal
                 call findSubcellLocal(octVec, neighbourOctal, neighbourSubcell)
                 
-
+                write(*,*) myrankglobal, " found ",neighbourOctal%mpithread(neighbourSubcell), neighbourSubcell
 !                if (neighbourOctal%mpiThread(neighboursubcell) /= iThread) then
                    if (.not.octalOnThread(neighbourOctal, neighbourSubcell, iThread)) then
                    i1 = ithread
@@ -650,26 +661,29 @@ contains
     do iThread = 1, nThreads-1
        call determineBoundaryPairs(grid%octreeRoot, grid, nPairs,  thread1, thread2, nBound, iThread)
     enddo
-    allocate(indx(1:nPairs), sort(1:nPairs), itmp(1:nPairs))
-    do i = 1, nPairs
-       sort(i) = real(thread1(i))*100. + real(thread2(i))
-    enddo
-    call indexx(nPairs, sort, indx)
 
-    
-    do i = 1, nPairs
-       itmp(i) = thread1(indx(i))
-    enddo
-    thread1(1:nPairs) = itmp(1:nPairs)
-    do i = 1, nPairs
-       itmp(i) = thread2(indx(i))
-    enddo
-    thread2(1:nPairs) = itmp(1:nPairs)
-    do i = 1, nPairs
-       itmp(i) = nBound(indx(i))
-    enddo
-    nBound(1:nPairs) = itmp(1:nPairs)
-    deallocate(indx, sort, itmp)
+    if (nPairs > 1) then
+       allocate(indx(1:nPairs), sort(1:nPairs), itmp(1:nPairs))
+       do i = 1, nPairs
+          sort(i) = real(thread1(i))*100. + real(thread2(i))
+       enddo
+       call indexx(nPairs, sort, indx)
+       
+       
+       do i = 1, nPairs
+          itmp(i) = thread1(indx(i))
+       enddo
+       thread1(1:nPairs) = itmp(1:nPairs)
+       do i = 1, nPairs
+          itmp(i) = thread2(indx(i))
+       enddo
+       thread2(1:nPairs) = itmp(1:nPairs)
+       do i = 1, nPairs
+          itmp(i) = nBound(indx(i))
+       enddo
+       nBound(1:nPairs) = itmp(1:nPairs)
+       deallocate(indx, sort, itmp)
+    endif
     
 
     nGroup = 1
@@ -1150,6 +1164,32 @@ contains
           endif
        endif
     endif
+
+    if (thisOctal%oned) then
+       if (nHydroThreads == 2) then
+          if (thisOctal%mpiThread(subcell) == myRank) then
+             check = .true.
+          else
+             check = .false.
+          endif
+       endif
+       if (nHydroThreads == 4) then
+          nFirstLevel = (myRank-1) / 2 + 1
+          if (thisOctal%nDepth == 1) then
+             if (thisOctal%mpiThread(subcell) == nFirstLevel) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          else
+             if (thisOctal%mpiThread(subcell) == myRank) then
+                check = .true.
+             else
+                check = .false.
+             endif
+          endif
+       endif
+    endif
   end function octalOnThread
 
   subroutine periodBoundary(grid)
@@ -1193,7 +1233,6 @@ contains
     integer :: tSubcell
     type(octal), pointer  :: neighbourOctal, startOctal
     real(double) :: loc(3), tempStorage(5)
-    !
     integer :: subcell, i
     integer :: myrank
     integer :: tag1 = 78, tag2 = 79
