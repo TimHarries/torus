@@ -703,6 +703,7 @@ contains
              endif
           endif
           thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell) + bigGamma
+
           if (isnan(thisOctal%pressure_i(subcell))) then
              write(*,*) "pressureU has nan"
              write(*,*) thisOctal%rhou(subcell),thisOctal%rhov(subcell), thisOctal%rhow(subcell)
@@ -846,6 +847,8 @@ contains
                 bigGamma = 0.d0
              endif
           endif
+!          if (myrankGlobal == 1) write(*,*) biggamma/thisOctal%pressure_i(subcell), thisOctal%u_i_plus_1(subcell), &
+!               thisOctal%u_i_minus_1(subcell), thisOctal%rho(subcell)
           thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell) + bigGamma
           if (isnan(thisOctal%pressure_i(subcell))) then
              write(*,*) "pressureW has nan"
@@ -2000,7 +2003,7 @@ contains
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-    gamma = 7.d0 / 5.d0
+    gamma = 5.d0 / 3.d0
     cfl = 0.3d0
 
     mu = 2.d0
@@ -2021,10 +2024,9 @@ contains
 !    call plot_AMR_values(grid, "rho", "x-z", 0., &
 !           plotfile,.false., .true.)
 
+
     call plotGridMPI(grid, "mpi.png/png", "x-z", "mpi", plotgrid=.true.)
     call plotGridMPI(grid, "chi.png/png", "x-z", "chi", plotgrid=.true.)
-
-
 
     call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -2204,6 +2206,11 @@ contains
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
           call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
 !          call plotGridMPI(grid, "/xs", "x-z", "rhoe", plotgrid=.true.)
+          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
+          grid%iDump = it
+          grid%currentTime = currentTime
+          call writeAmrGridMpiAll(plotfile,.false.,grid)
+
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
@@ -3885,6 +3892,42 @@ contains
   end subroutine determineDependentThreads
 
 
+  subroutine writeAMRgridMpiALL(filename,fileFormatted,grid)
+    include 'mpif.h'
+    character(len=*) :: filename
+    type(GRIDTYPE) :: grid
+    logical :: fileformatted
+    integer :: iThread
+    integer :: ierr
+
+    do iThread = 1, nThreadsGlobal-1
+       if (myRankGlobal == iThread) then
+          call writeAMRgridMpi(filename,fileFormatted,grid,mpiFlag=.true.)
+       endif
+       call MPI_BARRIER(amrCommunicator, ierr)
+    enddo
+  end subroutine writeAMRgridMpiALL
+
+  subroutine readAMRgridMpiALL(filename,fileFormatted,grid)
+    include 'mpif.h'
+    character(len=*) :: filename
+    type(GRIDTYPE) :: grid
+    logical :: fileformatted
+    integer :: iThread
+    integer :: ierr
+    integer :: nOctals, nVoxels
+
+    do iThread = 0, nThreadsGlobal-1
+       if (myRankGlobal == iThread) then
+          call readAMRgridMpi(filename,fileFormatted,grid,mpiFlag=.true.)
+          call updateMaxDepth(grid, searchLimit = 100000)
+          call setSmallestSubcell(grid)
+          call countVoxels(grid%octreeRoot,nOctals,nVoxels)  
+          grid%nOctals = nOctals
+       endif
+       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
+    enddo
+  end subroutine readAMRgridMpiALL
 
 
 

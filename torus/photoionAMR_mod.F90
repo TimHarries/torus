@@ -3974,42 +3974,6 @@ end subroutine readHeIIrecombination
     enddo
   end subroutine calculateEnergyFromTemperature
 
-  subroutine writeAMRgridMpiALL(filename,fileFormatted,grid)
-    include 'mpif.h'
-    character(len=*) :: filename
-    type(GRIDTYPE) :: grid
-    logical :: fileformatted
-    integer :: iThread
-    integer :: ierr
-
-    do iThread = 0, nThreadsGlobal-1
-       if (myRankGlobal == iThread) then
-          call writeAMRgridMpi(filename,fileFormatted,grid,mpiFlag=.true.)
-       endif
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-    enddo
-  end subroutine writeAMRgridMpiALL
-
-  subroutine readAMRgridMpiALL(filename,fileFormatted,grid)
-    include 'mpif.h'
-    character(len=*) :: filename
-    type(GRIDTYPE) :: grid
-    logical :: fileformatted
-    integer :: iThread
-    integer :: ierr
-    integer :: nOctals, nVoxels
-
-    do iThread = 0, nThreadsGlobal-1
-       if (myRankGlobal == iThread) then
-          call readAMRgridMpi(filename,fileFormatted,grid,mpiFlag=.true.)
-          call updateMaxDepth(grid, searchLimit = 100000)
-          call setSmallestSubcell(grid)
-          call countVoxels(grid%octreeRoot,nOctals,nVoxels)  
-          grid%nOctals = nOctals
-       endif
-       call MPI_BARRIER(MPI_COMM_WORLD, ierr)
-    enddo
-  end subroutine readAMRgridMpiALL
 
 
 #endif    

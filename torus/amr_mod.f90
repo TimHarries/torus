@@ -7946,6 +7946,7 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTALVECTOR) :: rVec
     real(double) :: gd, xmid, x, z, r , zprime
     real :: u1 , u2
+    real(double), parameter :: gamma = 5.d0/3.d0
 
 
     rVec = subcellCentre(thisOctal, subcell)
@@ -7958,15 +7959,21 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%rho(subcell) = 2.d0
     endif
 
-    call random_number(u1)
-    call random_number(u2)
-    u1 = (2.*u1-1.) * 0.005
-    u2 = (2.*u2-1.) * 0.005
+!    call random_number(u1)
+!    call random_number(u2)
+!    u1 = (2.*u1-1.) * 0.005
+!    u2 = (2.*u2-1.) * 0.005
 
+    u1 = 0.d0
+    if (abs(rVec%z-0.25d0) < 0.025d0) then
+       u1 = 0.025d0 * sin ( -twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
+    else if (abs(rVec%z+0.25d0) < 0.025d0) then
+       u1 = 0.025d0 * sin (  twoPi*(rvec%x+0.5d0)/(1.d0/6.d0) )
+    endif
     thisOctal%pressure_i(subcell) = 2.5d0
-    thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(u1, 0., u2))/real(cSpeed)
+    thisOctal%velocity(subcell) = (thisOctal%velocity(subcell) + VECTOR(0., 0., u1))/real(cSpeed)
 
-     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (7.d0/5.d0-1.d0) * thisOctal%rho(subcell))
+     thisOctal%energy(subcell) = thisOctal%pressure_i(subcell) /( (gamma-1.d0) * thisOctal%rho(subcell))
     thisOctal%boundaryCondition(subcell) = 2
   end subroutine calcKelvinDensity
 

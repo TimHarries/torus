@@ -3241,7 +3241,8 @@ contains
     append = .false.
     fileStatus = "replace"
     positionStatus="rewind"
-    if (dompiFlag .and. (myRankGlobal /= 0)) then
+
+    if (dompiFlag .and. (myRankGlobal /= 1)) then
        append = .true.
        fileStatus = "old"
        positionStatus = "append"
@@ -3325,9 +3326,9 @@ contains
 
     endif
 
-    if (dompiFlag.and.(myRankGlobal==0)) then
-       goto 666
-    endif
+!    if (dompiFlag.and.(myRankGlobal==0)) then
+!       goto 666
+!    endif
        
     ! now we call the recursive subroutine to store the tree structure 
     if (associated(grid%octreeRoot)) then

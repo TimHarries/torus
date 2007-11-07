@@ -40,7 +40,7 @@ contains
     real :: valueMin, valueMax
     real,optional :: valueMinFlag, valueMaxFlag
     real :: xStart, xEnd, yStart, yEnd, t
-    integer, parameter :: maxSquares = 100000
+    integer, parameter :: maxSquares = 1000000
     integer :: myRank, ierr
 
     logical, optional :: logFlag
