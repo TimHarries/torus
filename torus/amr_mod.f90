@@ -621,15 +621,20 @@ CONTAINS
 
 ! setup mpiThread values
 
-    if ( ((parent%twoD).and.((nThreadsGlobal - 1) == 4)) .or. &
-         ((parent%threed).and.((nThreadsGlobal -1) == 8)) ) then
+    if ( ((parent%twoD)  .and.((nThreadsGlobal - 1) == 4)) .or. &
+         ((parent%threed).and.((nThreadsGlobal - 1) == 8)).or. &
+         ((parent%oneD)  .and.((nThreadsGlobal - 1) == 2)) ) then
        parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
     else
 
        if (parent%child(newChildIndex)%nDepth > 2) then
           parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
        else
-          if (parent%twoD) then
+          if (parent%oneD) then
+             do i = 1, 2
+                parent%child(newChildIndex)%mpiThread(i) = 2 * (parent%mpiThread(iChild) - 1) + i
+             enddo
+          else if (parent%twoD) then
              do i = 1, 4
                 parent%child(newChildIndex)%mpiThread(i) = 4 * (parent%mpiThread(iChild) - 1) + i
              enddo
@@ -640,6 +645,7 @@ CONTAINS
           endif
        endif
     endif
+
 !    if (myrankglobal==2) write(*,'(10i4)') parent%child(newChildindex)%ndepth, parent%child(newChildIndex)%mpiThread(1:8)
 
     if (cmf) then

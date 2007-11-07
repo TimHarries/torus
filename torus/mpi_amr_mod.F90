@@ -1215,7 +1215,7 @@ contains
        else
           if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
 
-          if (thisOctal%ghostCell(subcell)) then
+          if (thisOctal%ghostCell(subcell).and.thisOctal%boundaryCondition(subcell)==2) then
              loc(1) = thisOctal%boundaryPartner(subcell)%x
              loc(2) = thisOctal%boundaryPartner(subcell)%y
              loc(3) = thisOctal%boundaryPartner(subcell)%z

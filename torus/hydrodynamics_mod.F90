@@ -694,7 +694,7 @@ contains
 
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
           bigGamma = 0.d0
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              if (thisOctal%u_i_plus_1(subcell) .le. thisOctal%u_i_minus_1(subcell)) then
                 bigGamma = 0.25d0 * eta**2 * (thisOctal%u_i_plus_1(subcell) - thisOctal%u_i_minus_1(subcell))**2 &
                      * thisOctal%rho(subcell)
@@ -702,7 +702,13 @@ contains
                 bigGamma = 0.d0
              endif
           endif
+
+          if ((myrankglobal==1).and.(biggamma/thisOctal%pressure_i(subcell) > 0.1d0)) then
+             write(*,*) "gamma/p ",biggamma/thisOctal%pressure_i(subcell)
+          endif
+
           thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell) + bigGamma
+          
 
           if (isnan(thisOctal%pressure_i(subcell))) then
              write(*,*) "pressureU has nan"
@@ -763,7 +769,7 @@ contains
 
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
           bigGamma = 0.d0
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              if (thisOctal%u_i_plus_1(subcell) .le. thisOctal%u_i_minus_1(subcell)) then
                 bigGamma = 0.25d0 * eta**2 * (thisOctal%u_i_plus_1(subcell) - thisOctal%u_i_minus_1(subcell))**2 &
                      * thisOctal%rho(subcell)
@@ -839,7 +845,7 @@ contains
 
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
           bigGamma = 0.d0
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              if (thisOctal%u_i_plus_1(subcell) .le. thisOctal%u_i_minus_1(subcell)) then
                 bigGamma = 0.25d0 * eta**2 * (thisOctal%u_i_plus_1(subcell) - thisOctal%u_i_minus_1(subcell))**2 &
                      * thisOctal%rho(subcell)
@@ -1536,7 +1542,7 @@ contains
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
 
-!    call imposeBoundary(grid%octreeRoot)
+    call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
@@ -1590,7 +1596,7 @@ contains
 
 
     call periodBoundary(grid)
-!    call imposeBoundary(grid%octreeRoot)
+    call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
 
  
@@ -2204,7 +2210,8 @@ contains
 !          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
 !          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
+!          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
+          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.,plotgrid=.false.)
 !          call plotGridMPI(grid, "/xs", "x-z", "rhoe", plotgrid=.true.)
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           grid%iDump = it
@@ -2638,22 +2645,6 @@ contains
                    endif
 
                 case(2)
-                   if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
-!                   locator = thisOctal%boundaryPartner(subcell)
-!                   bOctal => thisOctal
-!                   call findSubcellLocal(locator, bOctal, bSubcell)
-!
-!                   thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
-!                   thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
-!                   thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
-!                   thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
-!                   thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
-
-                   thisoctal%tempstorage(subcell,1) = thisOctal%rho(subcell)
-                   thisOctal%tempStorage(subcell,2) = thisOctal%rhoE(subcell)
-                   thisOctal%tempStorage(subcell,3) = thisOctal%rhou(subcell)
-                   thisOctal%tempStorage(subcell,4) = thisOctal%rhov(subcell)
-                   thisOctal%tempStorage(subcell,5) = thisOctal%rhow(subcell)
 
 
 
