@@ -516,7 +516,7 @@ end subroutine LTEpops
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, iUpper, iLower
-    real(double) :: maxFracChangePerLevel(:), printmaxFracChange, globalmaxFracChange, temp(6), avgFracChange(:)
+    real(double) :: maxFracChangePerLevel(:), printmaxFracChange, globalmaxFracChange, temp(6), avgFracChange(:,:)
     real(double), allocatable :: diff(:), newFracChangePerLevel(:)
     integer :: counter(:,:),j,level
     real(double) :: convergenceArray(:,:,:)
@@ -575,7 +575,10 @@ end subroutine LTEpops
                 endif
              endif
 
-             avgFracChange = avgFracChange + temp
+             avgFracChange(:,1) = avgFracChange(:,1) + temp
+             avgFracChange(:,2) = avgFracChange(:,2) + temp**2
+
+
              
           If (maxval(temp, mask = .not. itransdone(1:6)) > printmaxFracChange) then
              maxFracChangePerLevel = newFracChangePerLevel ! update maxFracChange if fractional change is great => not converged yet
@@ -1226,7 +1229,8 @@ end subroutine LTEpops
      real(double), allocatable :: maxFracChangePerLevel(:)
      integer, allocatable :: convergenceCounter(:,:)
      real :: r1(2), dummy(1) !random numbers and graphing
-     real(double) :: avgFracChange(6), maxavgfracChange
+     real(double) :: avgFracChange(6,2), maxavgfracChange, maxRMSfracChange
+     integer :: maxavgtrans(1),maxRMStrans(1)
 
      type(VECTOR) :: velocitysum
      character(len=40) :: filename
@@ -1304,22 +1308,24 @@ end subroutine LTEpops
         if(writeoutput) then
            write(message,*) "Allocating and initialising molecular levels"
            call writeinfo(message,TRIVIAL)
-           call AllocateMolecularLevels(grid, grid%octreeRoot, thisMolecule, .false.)
         endif
+        call AllocateMolecularLevels(grid, grid%octreeRoot, thisMolecule, .false.)
      endif
 
      if(Writeoutput) write(*,*) "COUNTING VOXELS"
 
+     if(writeoutput) then
+        
         do i=1,4
 
            write(filename,'(a,i1,a)') "./J/J=",i-1,"lte.ps/vcps"
-           
            call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
                 filename, .true., .false., &
                 0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize) , .false., &
                 ilam = i, fixValMin=fixValMin, fixValMax=fixValMax)
         enddo
 
+     endif
 
      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
 
@@ -1404,44 +1410,48 @@ end subroutine LTEpops
         grand_iter = grand_iter + 1
         if(writeoutput)  write(*,*) "Iteration ",grand_iter
 
-        do i=1,4
-           if(grand_iter .lt. 10) then
-              write(filename,'(a,i1,a,i1,a)') "./J/J=",i-1,"-Iter0",grand_iter,".ps/vcps"
-           else
-              write(filename,'(a,i1,a,i2,a)') "./J/J=",i-1,"-Iter",grand_iter,".ps/vcps"
-           endif
-         
-           call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
-                filename, .true., .false., &
-                0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize) , .false., &
-                ilam = i, boxfac = 0.7, fixValMin=fixValMin, fixValMax=fixValMax)
-        enddo
+        if(Writeoutput) then
 
-        do i=1,4
-           if(grand_iter .lt. 10) then
-              write(filename,'(a,i1,a,i1,a)') "./J/J=",i-1,"-Iter0",grand_iter,"zoom.ps/vcps"
-           else
-              write(filename,'(a,i1,a,i2,a)') "./J/J=",i-1,"-Iter",grand_iter,"zoom.ps/vcps"
-           endif
+           do i=1,4
+              if(grand_iter .lt. 10) then
+                 write(filename,'(a,i1,a,i1,a)') "./J/J=",i-1,"-Iter0",grand_iter,".ps/vcps"
+              else
+                 write(filename,'(a,i1,a,i2,a)') "./J/J=",i-1,"-Iter",grand_iter,".ps/vcps"
+              endif
+              
+              call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
+                   filename, .true., .false., &
+                   0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize) , .false., &
+                   ilam = i, boxfac = 0.7, fixValMin=fixValMin, fixValMax=fixValMax)
+           enddo
            
-           call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
-                filename, .true., .false., &
-                0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize), .false., &
-                ilam = i, boxfac = 0.001, fixValMin=fixValMin, fixValMax=fixValMax)
-        enddo	
-
-        do i=1,4
-           if(grand_iter .lt. 10) then
-              write(filename,'(a,i1,a,i1,a)') "./J/J=",i-1,"-Iter0",grand_iter,"zoomlittle.ps/vcps"
-           else
-              write(filename,'(a,i1,a,i2,a)') "./J/J=",i-1,"-Iter",grand_iter,"zoomlittle.ps/vcps"
-           endif
+           do i=1,4
+              if(grand_iter .lt. 10) then
+                 write(filename,'(a,i1,a,i1,a)') "./J/J=",i-1,"-Iter0",grand_iter,"zoom.ps/vcps"
+              else
+                 write(filename,'(a,i1,a,i2,a)') "./J/J=",i-1,"-Iter",grand_iter,"zoom.ps/vcps"
+              endif
+              
+              call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
+                   filename, .true., .false., &
+                   0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize), .false., &
+                   ilam = i, boxfac = 0.001, fixValMin=fixValMin, fixValMax=fixValMax)
+           enddo
            
-           call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
-                filename, .true., .false., &
-                0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize) , .false., &
-                ilam = i, boxfac = 0.009, fixValMin=fixValMin, fixValMax=fixValMax)
-        enddo
+           do i=1,4
+              if(grand_iter .lt. 10) then
+                 write(filename,'(a,i1,a,i1,a)') "./J/J=",i-1,"-Iter0",grand_iter,"zoomlittle.ps/vcps"
+              else
+                 write(filename,'(a,i1,a,i2,a)') "./J/J=",i-1,"-Iter",grand_iter,"zoomlittle.ps/vcps"
+              endif
+              
+              call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
+                   filename, .true., .false., &
+                   0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize) , .false., &
+                   ilam = i, boxfac = 0.009, fixValMin=fixValMin, fixValMax=fixValMax)
+           enddo
+           
+        endif
 
   allocate(ds(1:nRay))
   allocate(phi(1:nRay))
@@ -1603,14 +1613,21 @@ end subroutine LTEpops
              stop
           endif
           
-          maxavgFracChange = maxval(avgFracChange)
+          maxavgFracChange = maxval(avgFracChange(:,1))
+          maxRMSFracChange = maxval(avgFracChange(:,2))
+          maxavgtrans = maxloc(avgFracChange(:,1))
+          maxRMStrans = maxloc(avgFracChange(:,2))
+
+
           maxFracChange = MAXVAL(maxFracChangePerLevel(1:6)) ! Largest change of any level < 6 in any voxel
 
           if(writeoutput) then
              write(message,'(a,x,f9.5,x,a,x,f5.3,x,a,2x,l,x,a,x,i6,x)') "Maximum fractional change this iteration ", &
                                                                          maxFracChange,"tolerance",tolerance , &
                   "fixed rays",fixedrays,"nray",nray
-             write(*,'(a,f9.5)') "  Average fractional change this iteration  ", maxavgFracChange/real(nVoxels)
+             write(*,'(a,f9.5,a,i1)') "  Average fractional change this iteration  ", maxavgFracChange/real(nVoxels)," in level ",maxavgTrans
+             write(*,'(a,f9.5,a,i1)') "  RMS fractional change this iteration      ", sqrt(maxRMSFracChange/real(nVoxels))," in level ",maxRMSTrans
+             write(*,'(a,f9.5)') "  Std Dev                                   ", sqrt(maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2)
              call writeInfo(message,FORINFO)
 
           do i=3,1,-1
@@ -1664,7 +1681,7 @@ end subroutine LTEpops
              tol = tolerance
           endif
 
-          if(maxavgFracChange/real(nVoxels) < tol) then
+          if(sqrt(maxRMSFracChange/real(nVoxels)) < tol) then
              if (gridConvergedTest) gridConverged = .true.
              gridConvergedTest = .true.
           else

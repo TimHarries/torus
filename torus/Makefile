@@ -35,6 +35,12 @@ ifeq ($(SYSTEM), intelmac)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
+#   PGLIBS   = -lgfortran -L/usr/local -lpgplot -L/usr/X11R6/lib -lX11 -L/scisoft/i386/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+#   PGLIBS   = -L/usr/local/lib -lpgplot -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+#   PGLIBS   = -L/usr/local/lib /usr/local/lib/libpgplot.a -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+#    CFITSIOLIBS = -L/star/lib/ -lcfitsio
+#    PGLIBS   = -L/sw/lib/pgplot -lgfortran -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+#    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
     PGLIBS   = -L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 #    STARLIBS = -L/star/lib `ndf_link`
@@ -43,6 +49,34 @@ ifeq ($(SYSTEM), intelmac)
     MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
+
+ifeq ($(SYSTEM), davesmac)
+    F95COMP  = ifort
+    F77COMP  = ifort
+    F77FLAG  = -w -fno-second-underscore
+    DEBUGFLAG = -g -no-ipo -debug full# -fbounds-check -ftrace=full                                      
+    FASTFLAG = -fast -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic -ftz -auto -ipo-jobs2
+#    FASTFLAG = -parallel -xT -O3 -ip -fp-model fast=2 -no-prec-div -no-prec-sqrt -mdynamic-no-pic       
+#    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math                             
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.miracle
+    SPECF77  = spec_f77.f.miracle
+    PGLIBS   = -lgfortran -L/usr/local -lpgplot -L/usr/X11R6/lib -lX11 -L/scisoft/i386/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+#   PGLIBS   = -L/usr/local/lib -lpgplot -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+#   PGLIBS   = -L/usr/local/lib /usr/local/lib/libpgplot.a -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+    CFITSIOLIBS = -L/star/lib/ -lcfitsio
+#    PGLIBS   = -L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+#    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
+
+#    STARLIBS = -L/star/lib `ndf_link`                                                                   
+#    F2CLIB   = -L$(PATH2G2C) -lg2c                                                                      
+    EXE = torus.intelmac
+    MK_MPI_SRC = no
+    KNOWN_SYSTEM = yes
+endif
+
+
 
 ifeq ($(SYSTEM), g95)
     F95COMP  = g95
@@ -380,7 +414,7 @@ ifeq ($(SYSTEM), zen)
 
     F95COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
     F77COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
-    FASTFLAGS= -O3 -xT -mcmodel=medium -i-dynamic
+    FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
     CPP= fpp
     DEBUGFLAG=-g -O0 -mcmodel=medium
     STATICFLAG=
