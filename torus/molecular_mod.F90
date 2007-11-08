@@ -1203,7 +1203,7 @@ end subroutine LTEpops
     integer :: nRay
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 100, maxRay = 410000
+    integer, parameter :: maxIter = 100, maxRay = 4100000
     logical :: popsConverged, gridConverged, gridConvergedTest
     character(len=200) :: message
     integer :: iRay, iTrans, iter,i, grand_iter 
@@ -1615,9 +1615,8 @@ end subroutine LTEpops
           
           maxavgFracChange = maxval(avgFracChange(:,1))
           maxRMSFracChange = maxval(avgFracChange(:,2))
-          maxavgtrans = maxloc(avgFracChange(:,1))
-          maxRMStrans = maxloc(avgFracChange(:,2))
-
+          maxavgtrans = maxloc(avgFracChange(:,1)) - 1
+          maxRMStrans = maxloc(avgFracChange(:,2)) - 1
 
           maxFracChange = MAXVAL(maxFracChangePerLevel(1:6)) ! Largest change of any level < 6 in any voxel
 
@@ -1626,11 +1625,12 @@ end subroutine LTEpops
                                                                          maxFracChange,"tolerance",tolerance , &
                   "fixed rays",fixedrays,"nray",nray
              write(*,'(a,f9.5,a,i1)') "  Average fractional change this iteration  ", &
-	maxavgFracChange/real(nVoxels)," in level ",maxavgTrans
+                  maxavgFracChange/real(nVoxels)," in level ",maxavgTrans
              write(*,'(a,f9.5,a,i1)') "  RMS fractional change this iteration      ", &
-	sqrt(maxRMSFracChange/real(nVoxels))," in level ",maxRMSTrans
+                  sqrt(maxRMSFracChange/real(nVoxels))," in level ",maxRMSTrans
              write(*,'(a,f9.5)') "  Std Dev                                   ", &
-	sqrt(maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2)
+                  sqrt(maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2)
+
              call writeInfo(message,FORINFO)
 
           do i=3,1,-1
@@ -1650,8 +1650,7 @@ end subroutine LTEpops
           open(138,file="fracChanges.dat",position="append",status="unknown")
 19        format(i6,tr3,8(f7.5,1x),3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
           write(138,19) nray, maxFracChangePerLevel(1:8), fixedrays, real(convergenceCounter(1:3,ntrans+1))/real(nVoxels),  &
-                        maxFracChange, &
-                        maxavgFracChange/real(nVoxels)
+                        maxFracChange, maxavgFracChange/real(nVoxels)
           
           close(138)
 
@@ -1666,8 +1665,8 @@ end subroutine LTEpops
 !             endif
 !          enddo
 
-          do i = 8, ntrans
-             if(real(convergenceCounter(4, i))/real(nVoxels) .gt. 0.85) then 
+          do i = 10, ntrans
+             if(real(convergenceCounter(4, i))/real(nVoxels) .gt. 0.9) then 
 		itransdone(i) = .true.
                 if(writeoutput ) write(*,*) "Skipping level",i
              endif
@@ -1696,7 +1695,7 @@ end subroutine LTEpops
                call writeAmrGrid("molecular_tmp.grid",.false.,grid)
           if (myRankIsZero) then
              write(*,*) "Dumping results"
-             if(amr1d) call dumpresults(grid, thisMolecule, nRay) ! find radial pops on final grid
+             if(grid%geometry .eq. 'molebench') call dumpresults(grid, thisMolecule, nRay) ! find radial pops on final grid
           endif
 
 #ifdef MPI

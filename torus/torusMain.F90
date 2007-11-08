@@ -616,8 +616,8 @@ program torus
      write (*,*) "mPlanet set to ", mPlanet
   end if
   if (geometry == "molebench") then
-!     call readbenchmarkMolecule(co, "hco_benchmark.dat")
-     call readMolecule(co, "hco_plus.mol")
+     call readbenchmarkMolecule(co, "hco_benchmark.dat")
+!     call readMolecule(co, "hco_plus.mol")
   endif
   if (geometry == "molefil") then
 
