@@ -15,10 +15,7 @@ module molecular_mod
   use datacube_mod
   use nrutil
   use nrtype
-
-#ifdef MPI 
-    use parallel_mod
-#endif
+  use parallel_mod
 
   implicit none
 

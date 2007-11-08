@@ -239,10 +239,10 @@ contains
        nr_wind, nr_acc, nr_core, nphi, dir_obs, dist_obs, grid, sampleFreq, opaqueCore,  &
        flux, lambda, nlam, filename, thin_disc_on, ttau_disc_on, ttau_jet_on, ttau_discwind_on, npix, &
        do_alphadisc_check, alphadisc_par, thinLine, emissOff, pos_disp) 
+
     use messages_mod, only : myRankIsZero
-#ifdef MPI
     use parallel_mod
-#endif
+
     implicit none
 #ifdef MPI
     include 'mpif.h'        

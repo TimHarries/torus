@@ -13,10 +13,7 @@ module cmf_mod
   use source_mod
   use datacube_mod
   use timing
-
-#ifdef MPI
   use parallel_mod
-#endif
 
   implicit none
 
