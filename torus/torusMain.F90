@@ -273,8 +273,6 @@ program torus
   real :: foreground = 0., background = 0.  ! plotting intensities
   real :: mu
   real(oct) :: t1, t2, t3
-  real :: junk1
-
 
   logical :: velocitySpace
 
@@ -446,20 +444,16 @@ program torus
   real(double) :: burstMass
 
 ! Variables used when linking to sph code
-  logical, parameter :: ll_sphFromFile = .false.   ! Read in sph data from a file?
 #ifdef SPH
+  logical, parameter    :: ll_sphFromFile = .false.   ! Read in sph data from a file?
   integer, intent(in)   :: b_idim,b_npart,b_nactive,b_nptmass
   integer*1, intent(in) :: b_iphase(b_idim)
   integer, intent(in)   :: b_listpm(b_nptmass)
   real*8, intent(in)    :: b_xyzmh(5,b_idim)
   real*4, intent(in)    :: b_rho(b_idim)
   real*8, intent(in)    :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
-  real*8, intent(out)   :: b_temp(b_idim)
-  integer :: npart, nptmass, nacc, ngaspart
-  integer :: iiigas
-  real*4  :: sphDistFac
-  real*8  :: xgas,ygas,zgas
-  real    :: tgas
+  real*8, intent(inout) :: b_temp(b_idim)
+  integer :: ngaspart
   logical, parameter :: ll_sph = .true.
 #else
   logical, parameter :: ll_sph = .false.
@@ -587,7 +581,7 @@ program torus
   lucyRadiativeEq = .false. ! this has to be initialized here
 
   ! for plot_AMR_value and plot_AMR_plane (initialization)
-  nmarker = 0;
+  nmarker = 0
   ALLOCATE(xmarker(nmarker), ymarker(nmarker), zmarker(nmarker))
   width_3rd_dim = amrGridSize
 
@@ -2805,11 +2799,16 @@ program torus
         endif
 
         if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
-     endif     
+     endif
 
      if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
-     if ( .not. ll_sph )  then ! just jump to end for sph case
+
+#ifdef SPH
+! If this is an SPH run then finish here ---------------------------------------
+     call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
+     goto 666
+#endif
 
      if (grid%geometry(1:7) == "cluster") then
 
@@ -2837,8 +2836,8 @@ program torus
 
         ! delete the cluster object since it won't be used any more.
         call kill_all(young_cluster)
-     end if 
-
+     end if
+     
 
 
      ! Plotting the slices of planes
@@ -2847,7 +2846,7 @@ program torus
             .true., .false., nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
        call plot_AMR_planes(grid, "etaCont", plane_for_plot, 3, "etaCont", .true., .false., &
             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-     end if
+    end if
 
      call torus_mpi_barrier
 
@@ -4131,12 +4130,18 @@ program torus
                          .false., nUpper, nLower, 0., 0., 0., junk,&
                          sampleFreq,intPathError, &
                          useInterp, grid%Rstar1, coolStarPosition, nSource, source)
-              if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
-                 goto 999 ; endif
-              if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
-                 goto 999 ; endif
-              if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1 
-                 goto 999 ; endif
+              if (intPathError == -10) then 
+                 tooFewSamples = tooFewSamples + 1  
+                 goto 999
+              endif
+              if (intPathError == -20) then 
+                 boundaryProbs = boundaryProbs + 1
+                 goto 999 
+              endif
+              if (intPathError == -70) then 
+                 negativeOpacity = negativeOpacity + 1 
+                 goto 999 
+              endif
 
               thisLam = thisPhoton%lambda + (thisPhoton%velocity .dot. viewVec) * 1031.928
               j = findIlambda(thisLam, o6xArray, no6pts, ok)
@@ -4174,8 +4179,10 @@ program torus
                     boundaryProbs = boundaryProbs + 1
                     goto 999
                endif
-               if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
-                  goto 999; endif
+               if (intPathError == -70) then 
+                  negativeOpacity = negativeOpacity + 1
+                  goto 999
+               endif
 
 
               if (.not. gridUsesAMR) call getIndices(grid,thisPhoton%position,i1,i2,i3,t1,t2,t3)
@@ -4377,12 +4384,18 @@ program torus
               useInterp, grid%Rstar1, coolStarPosition, nSource, source)
 
 
-              if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
-                 goto 999 ; endif
-              if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
-                 goto 999 ; endif
-              if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
-                 goto 999 ; endif
+              if (intPathError == -10) then 
+                 tooFewSamples = tooFewSamples + 1  
+                 goto 999 
+              endif
+              if (intPathError == -20) then 
+                 boundaryProbs = boundaryProbs + 1
+                 goto 999 
+              endif
+              if (intPathError == -70) then 
+                 negativeOpacity = negativeOpacity + 1
+                 goto 999 
+              endif
 
             if (forceFirstScat) then ! this option is off by default.
                ! Useful for optically thin case (to get correct scatterng flux).
@@ -4556,12 +4569,18 @@ program torus
                             useinterp, grid%Rstar1, coolStarPosition, nSource, source)
 
 
-                   if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
-                      goto 999 ; endif
-                   if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
-                      goto 999 ; endif
-                   if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
-                      goto 999 ; endif
+                   if (intPathError == -10) then 
+                      tooFewSamples = tooFewSamples + 1  
+                      goto 999 
+                   endif
+                   if (intPathError == -20) then 
+                      boundaryProbs = boundaryProbs + 1
+                      goto 999 
+                   endif
+                   if (intPathError == -70) then 
+                      negativeOpacity = negativeOpacity + 1
+                      goto 999 
+                   endif
 
                     vray = -(obsPhoton%velocity .dot. outVec)
                     vovercsqr = modulus(thisPhoton%velocity)**2
@@ -4595,12 +4614,18 @@ program torus
                       .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
                       useInterp, grid%Rstar1, coolStarPosition, nSource, source)                 
 
-                 if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
-                    goto 999 ; endif
-                 if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
-                    goto 999 ; endif
-                 if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
-                    goto 999 ; endif
+                 if (intPathError == -10) then 
+                    tooFewSamples = tooFewSamples + 1  
+                    goto 999 
+                 endif
+                 if (intPathError == -20) then 
+                    boundaryProbs = boundaryProbs + 1
+                    goto 999 
+                 endif
+                 if (intPathError == -70) then 
+                    negativeOpacity = negativeOpacity + 1
+                    goto 999 
+                 endif
 
 
 
@@ -4776,12 +4801,18 @@ program torus
                             useInterp, grid%Rstar1, coolStarPosition, nSource, source)
 
 
-                 if (intPathError == -10) then ; tooFewSamples = tooFewSamples + 1  
-                    goto 999 ; endif
-                 if (intPathError == -20) then ; boundaryProbs = boundaryProbs + 1
-                    goto 999 ; endif
-                 if (intPathError == -70) then ; negativeOpacity = negativeOpacity + 1
-                    goto 999 ; endif
+                 if (intPathError == -10) then 
+                    tooFewSamples = tooFewSamples + 1  
+                    goto 999 
+                 endif
+                 if (intPathError == -20) then 
+                    boundaryProbs = boundaryProbs + 1
+                    goto 999 
+                 endif
+                 if (intPathError == -70) then 
+                    negativeOpacity = negativeOpacity + 1
+                    goto 999 
+                 endif
 
 
                   call random_number(r1)
@@ -5138,49 +5169,120 @@ endif ! (doPvimage)
   call torus_mpi_barrier('waiting inside end of phase loop...')
   enddo phaseLoop
 
-end if  ! if (.not. ll_sph)
+! Tidy up and finish the run 
 
 666 continue
 
-!  call freeGrid(grid)
-
 if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
-
-#ifdef SPH
-!  New HSC Stuff
-!  Loop through sph gas particles and assign temperatures
-
-     sphDistfac  = get_udist(sphData)  ! [cm]
-     sphDistfac = sphDistfac / 1.e10 ! to torus units
-
-     iiigas=0
-     do i=1,b_npart
- 
-       if (b_iphase(i).eq.0) then
-          iiigas = iiigas + 1 
-          xgas = b_xyzmh(1,i) * sphDistFac
-          ygas = b_xyzmh(2,i) * sphDistFac
-          zgas = b_xyzmh(3,i) * sphDistFac
-          octVec = OCTALVECTOR(xgas,ygas,zgas)
-          call amrGridValues(grid%octreeRoot, octVec, temperature=tgas, grid=grid)
-          b_temp(iiigas)=tgas
-       endif
-  
-     enddo
-#endif
 
 call writeInfo("TORUS exiting", FORINFO)
  
 call torus_mpi_barrier
 #ifdef MPI
-  if (.not. ll_sph) call MPI_FINALIZE(ierr)
+if (.not. ll_sph) call MPI_FINALIZE(ierr)
 #endif
 
 #ifdef SPH
-   end subroutine torus
+end subroutine torus
 #else
-   end program torus
+end program torus
 #endif
+
+!-------------------------------------------------------------------------------
+! Name:    update_sph_temperature
+! Purpose: Update the temperatures of the SPH particles using the torus temperature field
+!          Each process works on its own subset of the total number of particles.
+! Author:  D. Acreman, November 2007
+
+  subroutine update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
+
+    USE vector_mod, only:     octalVector
+    USE amr_mod, only:        amrGridValues
+    USE gridtype_mod, only:   gridType
+    USE sph_data_class, only: sph_data, get_udist
+    USE mpi_global_mod, only: myRankGlobal
+    USE messages_mod
+
+    implicit none
+
+#ifdef MPI
+! MPI specific variables
+    include 'mpif.h'
+    real    :: mpi_max_deltaT, mpi_sum_deltaT
+    integer :: ierr, mpi_iiigas
+#endif
+
+! Arguments 
+    integer, intent(in)   :: b_idim, b_npart
+    integer*1, intent(in) :: b_iphase(b_idim)
+    real*8, intent(in)    :: b_xyzmh(5,b_idim)
+    real*8, intent(inout) :: b_temp(b_idim)
+    type(sph_data), intent(in) :: sphData
+    type(GRIDTYPE), intent(in) :: grid
+
+! Local variables
+    character(len=80) :: message
+    integer :: iiigas, i
+    real*8  :: xgas, ygas, zgas
+    real*4  :: sphDistFac
+    real    :: tgas
+    real    :: deltaT, sum_deltaT, mean_deltaT, max_deltaT
+    type(OCTALVECTOR) :: octVec
+
+! Begin executable statements
+
+! 1. Calculate conversion from sph distance units to torus distance units
+       sphDistfac  = get_udist(sphData) ! [cm]
+       sphDistfac = sphDistfac / 1.e10  ! to torus units
+
+! 2. Update particle temperatures and calculate some statistics 
+       iiigas = 0
+       sum_deltaT = 0.0
+       max_deltaT = 0.0
+       do i=1, b_npart
+          if (b_iphase(i) == 0) then
+             iiigas = iiigas + 1 
+! 2.1 Determine position of gas particle on the amr grid and extract the temperature value
+             xgas = b_xyzmh(1,i) * sphDistFac
+             ygas = b_xyzmh(2,i) * sphDistFac
+             zgas = b_xyzmh(3,i) * sphDistFac
+             octVec = OCTALVECTOR(xgas,ygas,zgas)
+             call amrGridValues(grid%octreeRoot, octVec, temperature=tgas, grid=grid)
+! 2.2 Calculate statistics of temperature change
+             deltaT     = tgas - b_temp(iiigas)
+             sum_deltaT = sum_deltaT + deltaT
+             max_deltaT = MAX(max_deltaT, deltaT)
+! 2.3 Update the gas particle temperature to pass back to sph code
+             b_temp(iiigas) = tgas
+          endif
+       enddo
+
+! 3. Calculate mean temperature change and perform MPI communication if required
+!    MPI processes which did not do the SPH step will not have any particles to update
+#ifdef MPI
+! Calculate global values
+       call MPI_ALLREDUCE( iiigas,     mpi_iiigas,     1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr )
+       call MPI_ALLREDUCE( max_deltaT, mpi_max_deltaT, 1, MPI_REAL,    MPI_MAX, MPI_COMM_WORLD, ierr )
+       call MPI_ALLREDUCE( sum_deltaT, mpi_sum_deltaT, 1, MPI_REAL,    MPI_SUM, MPI_COMM_WORLD, ierr )
+! Update values to be output
+       iiigas      = mpi_iiigas
+       max_deltaT  = mpi_max_deltaT
+       mean_deltaT = mpi_sum_deltaT / real(mpi_iiigas)
+#else
+       mean_deltaT = sum_deltaT / real(iiigas)
+#endif
+
+! 4. Write out the temperature change statistics
+       write(message, *) "Number of particles= ", iiigas
+       call writeInfo(message, FORINFO)
+       write(message, *) "Maximum temperature change= ", max_deltaT
+       call writeInfo(message, FORINFO)
+       write(message, *) "Mean temperature change=  ", mean_deltaT
+       call writeInfo(message, FORINFO)
+
+  end subroutine update_sph_temperature
+
+!-------------------------------------------------------------------------------  
 
 !!! vim:set filetype=fortran :                                !!!  
 !!! otherwise vim won't recognize a file with the suffix .raw !!!
