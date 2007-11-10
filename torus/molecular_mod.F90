@@ -10,6 +10,7 @@ module molecular_mod
   use constants_mod
   use utils_mod
   use messages_mod
+  use timing
   use grid_mod
   use math_mod
   use datacube_mod
@@ -1237,6 +1238,8 @@ end subroutine LTEpops
      real(double) :: fixValMin = 1e-4
 	
 	logical :: restart = .false.
+	logical :: plotlevels = .false.
+
         integer :: ntrans
 
         real :: tol
@@ -1278,7 +1281,7 @@ end subroutine LTEpops
         call readAmrGrid("lucy_grid_tmp.dat",.false.,grid)
  
        if(writeoutput) write(*,*) "OK"
-        if(writeoutput) then
+        if(writeoutput .and. plotlevels) then
            write(message,*) "Done! Plotting"
            call writeinfo(message,TRIVIAL)
            call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
@@ -1311,7 +1314,7 @@ end subroutine LTEpops
 
      if(Writeoutput) write(*,*) "COUNTING VOXELS"
 
-     if(writeoutput) then
+     if(writeoutput .and. plotlevels) then
         
         do i=1,4
 
@@ -1333,7 +1336,7 @@ end subroutine LTEpops
      endif
 
 
-     if(writeoutput) then
+     if(writeoutput .and. plotlevels) then
 
         write(*,*) "Dumping subcell parameters"
         i = 0
@@ -1360,7 +1363,7 @@ end subroutine LTEpops
      endif
 
     
-     allocate(convergenceArray(60,nVoxels,thisMolecule%nTrans))
+     allocate(convergenceArray(100,nVoxels,thisMolecule%nTrans))
 
      if (myRankIsZero ) then
         write(*,*) "Dumping results" ! can use cbr constant?
@@ -1405,9 +1408,16 @@ end subroutine LTEpops
        do while (.not.gridConverged)
 
         grand_iter = grand_iter + 1
-        if(writeoutput)  write(*,*) "Iteration ",grand_iter
 
-        if(Writeoutput) then
+        if(writeoutput) then 
+           write(*,*) "Iteration ",grand_iter
+           write(message,*) "Done ",nray," rays"
+        endif
+
+        call tune(6, message)  ! start a stopwatch
+
+
+        if(Writeoutput .and. plotlevels) then
 
            do i=1,4
               if(grand_iter .lt. 10) then
@@ -1548,7 +1558,7 @@ end subroutine LTEpops
 !                      if(isnan(thisOctal%newmolecularLevel(subcell,i))) write(*,*) "NOY",i
 !                   enddo
                    
-                      fac = abs(maxval((thisOctal%newMolecularLevel(subcell,1:6) - oldpops(1:6))/oldpops(1:6))) ! convergence criterion ! 6 or 8?
+                      fac = abs(maxval((thisOctal%newMolecularLevel(subcell,1:8) - oldpops(1:8))/oldpops(1:8))) ! convergence criterion ! 6 or 8?
                       if (fac < 1.d-4) popsConverged = .true.
 
                       if (iter == maxIter) then
@@ -1700,6 +1710,9 @@ end subroutine LTEpops
 #endif
           deallocate(ds, phi, i0, tau)
 
+          write(message,*) "Done ",nray," rays"
+          call tune(6, message)  ! start a stopwatch
+
           if (.not.gridConvergedTest) then
              if (.not.gridConverged) then               
                 if (.not.fixedRays) nRay = nRay * 2 !double number of rays if convergence criterion not met and not using fixed rays - revise!!! Can get away with estimation?
@@ -1716,6 +1729,7 @@ end subroutine LTEpops
              nRay = maxRay  ! stop when it's not practical to do more rays
              call writeWarning("Maximum number of rays exceeded - capping")
           endif
+
        enddo
     enddo
 
