@@ -1783,7 +1783,7 @@ contains
    type(OCTALVECTOR) :: subcen, point
    real :: dx, dz ! directions in cylindrical coords
    integer :: subcell
-   real(double) :: compX, compZ,currentX,currentZ
+   real(double) :: compZ,currentZ
    real(double) :: distToZBoundary, distToXboundary
    real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
    integer :: i,j
@@ -1847,14 +1847,14 @@ contains
 
    tVal = min(distToZboundary, distToXboundary) +0.0001d0*grid%halfsmallestsubcell
    if (tVal > 1.e29) then
-      write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+      write(*,*) tVal,compZ, distToZboundary,disttoxboundary
       write(*,*) "subcen",subcen
-      write(*,*) "x,z",currentX,currentZ
+      write(*,*) "z",currentZ
    endif
    if (tval < 0.) then
-      write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+      write(*,*) tVal,compZ, distToZboundary,disttoxboundary
       write(*,*) "subcen",subcen
-      write(*,*) "x,z",currentX,currentZ
+      write(*,*) "z",currentZ
    endif
 
   end subroutine intersectCubeAMR2D
@@ -1877,7 +1877,7 @@ contains
    type(OCTALVECTOR) :: subcen, point
    real :: dx, dz ! directions in cylindrical coords
    integer :: subcell
-   real(double) :: compX, compZ,currentX,currentZ
+   real(double) ::  compZ,currentZ
    real(double) :: distToZBoundary, distToXboundary
    real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
    integer :: i,j
@@ -1941,14 +1941,14 @@ contains
 
    tVal = min(distToZboundary, distToXboundary) +0.0001d0*grid%halfsmallestsubcell
    if (tVal > 1.e29) then
-      write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+      write(*,*) tVal,compZ, distToZboundary,disttoxboundary
       write(*,*) "subcen",subcen
-      write(*,*) "x,z",currentX,currentZ
+      write(*,*) "z",currentZ
    endif
    if (tval < 0.) then
-      write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+      write(*,*) tVal,compZ, distToZboundary,disttoxboundary
       write(*,*) "subcen",subcen
-      write(*,*) "x,z",currentX,currentZ
+      write(*,*) "z",currentZ
    endif
 
  end subroutine intersectCubeCylindrical

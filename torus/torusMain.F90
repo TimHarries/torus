@@ -252,7 +252,7 @@ program torus
 
   logical :: escaped, absorbed
   logical :: rotateView
-  logical :: tiltView = .false.
+  logical :: tiltView
   logical :: flatSpec
   logical :: ok
   logical :: greyContinuum
@@ -553,14 +553,12 @@ program torus
   velocitySpace = .false.
   movie = .false.
   thinLine = .false.
-  rotateView = .false.
   flatspec = .false.
   greyContinuum = .false.
   secondSource = .false.
   firstplot = .true.
   doRaman = .false.
   enhance = .false.
-  rotateDirection = -1.
   lineResAbs = .false.  
 
   contFluxFile = "none"
@@ -706,78 +704,10 @@ program torus
 
   rStar = 100.*rSol
 
-  ! if we are computing spiral models then we rotate the view
+  ! Choose whether to rotate the view
+  call choose_view( geometry,   nPhase,          distortionType, doRaman, & ! Intent in
+                    rotateview, rotateDirection, tiltView)                  ! Intent out
 
-  if ((nPhase /= 1).and.(distortionType .eq. "spiral")) rotateview = .true.
-
-  ! we also rotate for the test model
-
-  if (distortionType .eq. "test") rotateView = .true.
-
-  ! we rotate wind-wind collision models
-
-
-  if (distortionType .eq. "windwind") rotateView = .true.
-
-
-  ! rotate for colliding winds too
-
-  if (trim(geometry) .eq. "collide") rotateView = .true.
-
-  if (geometry == "binary") rotateView = .true.
-
-  ! rotate for raman
-
-  if (geometry == "raman") rotateView = .true.
-
-
-  if (geometry == "planet") rotateView = .true.
-
-  if (geometry == "betacep") rotateView = .true.
-
-  if (geometry == "donati") rotateView = .true.
-
-
-  if (geometry == "warpeddisc") rotateView = .true.
-
-  if ((geometry == "ttauri").or.(geometry == "magstream")) rotateView = .true.
-
-  if ((geometry == "toruslogo")) then
-     rotateView = .true.
-     rotateDirection = 1.
-  endif
-  if ((geometry == "luc_cir3d")) rotateView = .true.
-
-  if ((geometry == "cmfgen")) rotateView = .true.
-
-  if ((geometry == "romanova")) rotateView = .true.
-
-  if ((geometry(1:4) == "jets")) then
-     rotateView = .true.
-     tiltView = .true.
-  end if
-
-  if (doRaman) then
-        rotateView = .true.
-        rotateDirection = 1.
-  endif
-
-  if (geometry == "rolf") rotateView = .true.
-
-  if (geometry == "disk") rotateView = .true.
-
-  if (geometry == "starburst") rotateView = .true.
-
-  if (geometry == "wr104") then
-     rotateView = .true.
-     rotateDirection = 1.
-  endif
-
-  if (geometry(1:7) == "cluster") then
-     rotateView = .true.
-!     tiltView = .true.
-  end if
-  
   ! switches for line emission
 
   if (lineEmission) then
@@ -2262,98 +2192,6 @@ program torus
 
   xMin =  2.*pi*grainSize/(lamEnd*angstromToCm)
   xMax =  2.*pi*grainSize/(lamStart*angstromToCm)
-
-  ! section replaced by earlier subroutine call - tjh 27/8/06
-
-!  if (mie .or.  (grid%geometry == "ttauri" .and. ttau_disc_on)) then
-!     ! construct the mie phase matrix
-!     call writeInfo("Computing Mie phase grid...",TRIVIAL)
-!
-!     allocate(mReal(1:nDusttype,1:nLambda))
-!     allocate(mImg(1:nDustType,1:nLambda))
-!
-!     allocate(tmReal(1:nLambda))
-!     allocate(tmImg(1:nLambda))
-!
-!     
-!     do k = 1, nDusttype
-!
-!        call parseGrainType(graintype(k), ngrain, grainname, x_grain)
-!
-!        ! Synthetic grains
-!     
-!        ! quick test for zero total dust abundance.
-!        total_dust_abundance = SUM(X_grain)
-!        if ( total_dust_abundance <= 0.0 ) then
-!        if (myRankIsZero)  write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
-!        if (myRankIsZero)  write(*,*) "  ==> You probably forgot to assign dust abundance in your "// &
-!                & "parameter file!"
-!        if (myRankIsZero) write(*,*) "  ==> Exiting the prograim ... "
-!           stop 
-!        end if
-!
-!        ! allocate mem for temp arrays
-!        allocate(mReal2D(1:ngrain, 1:nLambda))
-!        allocate(mImg2D(1:ngrain, 1:nLambda))
-!        ! initializing the values
-!        mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
-!         
-!        ! Find the index of refractions for all types of grains available
-!        do j = 1, ngrain
-!           call getRefractiveIndex(xArray, nLambda, grainname(j), tmReal, tmImg)
-!           mReal2D(j,:) = tmReal(:)  ! copying the values to a 2D maxtrix
-!           mImg2D(j,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
-!        end do
-!
-!        ! Finding the weighted average of the refractive index.
-!        mReal(k,:) = 0.0; mImg(k,:) = 0.0
-!        do i = 1, nLambda
-!           do j = 1, ngrain
-!              mReal(k,i) = mReal2D(j,i)*X_grain(j) + mReal(k,i)
-!              mImg(k,i)  = mImg2D(j,i) *X_grain(j) + mImg(k,i)
-!           end do
-!           mReal(k,i) = mReal(k,i) / total_dust_abundance
-!           mImg(k,i)  = mImg(k,i)  / total_dust_abundance
-!        end do
-!
-!
-!        deallocate(mReal2D)
-!        deallocate(mImg2D)
-!
-!     enddo
-!         
-!      do k = 1, nDustType
-!         do i = 1, nLambda
-!            do j = 1, nMumie
-!               mu = 2.*real(j-1)/real(nMumie-1)-1.
-!               if (.not.isotropicScattering) then
-!                  if (readMiePhase) then
-!                     open(144, file='miephasefile', status="old", form="unformatted")
-!                     read(unit=144) miePhase
-!                     close(144)
-!                  else
-!                     call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
-!                          mu, miePhase(k,i,j), mReal(k,i), mImg(k,i))               
-!                     if (writeMiePhase) then
-!                        open(144, file='miephasefile', status="replace", form="unformatted")
-!                        write(unit=144) miePhase
-!                        close(144)
-!                     end if
-!                  end if
-!               else
-!                  miePhase(k,i,j) = fillIsotropic(mu)
-!               endif
-!            !           miePhase(i,j) = fillRayleigh(mu)
-!            end do
-!         end do
-!      enddo
-!
-!     deallocate(mReal)
-!     deallocate(mImg)
-!     call writeInfo("Completed.",TRIVIAL)
-!
-!
-!  endif
 
 665 continue
   ! set up the sources
@@ -5187,6 +5025,102 @@ end subroutine torus
 #else
 end program torus
 #endif
+
+!-------------------------------------------------------------------------------
+subroutine choose_view ( geometry, nPhase, distortionType, doRaman, &
+       rotateview, rotateDirection, tiltView)
+
+  implicit none
+
+! Intent in arguments
+  character(len=*), intent(in) :: geometry
+  integer, intent(in)          :: nPhase
+  character(len=*), intent(in) :: distortionType
+  logical, intent(in)          :: doRaman
+
+! Intent out arguments
+  logical, intent(out) :: rotateView
+  real, intent(out)    :: rotateDirection
+  logical, intent(out) :: tiltView
+
+! Set default values of intent out arguments
+  rotateView      = .false.
+  rotateDirection = -1.0
+  tiltView        = .false. 
+
+  ! if we are computing spiral models then we rotate the view
+
+  if ((nPhase /= 1).and.(distortionType .eq. "spiral")) rotateview = .true.
+
+  ! we also rotate for the test model
+
+  if (distortionType .eq. "test") rotateView = .true.
+
+  ! we rotate wind-wind collision models
+
+
+  if (distortionType .eq. "windwind") rotateView = .true.
+
+
+  ! rotate for colliding winds too
+
+  if (trim(geometry) .eq. "collide") rotateView = .true.
+
+  if (geometry == "binary") rotateView = .true.
+
+  ! rotate for raman
+
+  if (geometry == "raman") rotateView = .true.
+
+
+  if (geometry == "planet") rotateView = .true.
+
+  if (geometry == "betacep") rotateView = .true.
+
+  if (geometry == "donati") rotateView = .true.
+
+
+  if (geometry == "warpeddisc") rotateView = .true.
+
+  if ((geometry == "ttauri").or.(geometry == "magstream")) rotateView = .true.
+
+  if ((geometry == "toruslogo")) then
+     rotateView = .true.
+     rotateDirection = 1.
+  endif
+  if ((geometry == "luc_cir3d")) rotateView = .true.
+
+  if ((geometry == "cmfgen")) rotateView = .true.
+
+  if ((geometry == "romanova")) rotateView = .true.
+
+  if ((geometry(1:4) == "jets")) then
+     rotateView = .true.
+     tiltView = .true.
+  end if
+
+  if (doRaman) then
+        rotateView = .true.
+        rotateDirection = 1.
+  endif
+
+  if (geometry == "rolf") rotateView = .true.
+
+  if (geometry == "disk") rotateView = .true.
+
+  if (geometry == "starburst") rotateView = .true.
+
+  if (geometry == "wr104") then
+     rotateView = .true.
+     rotateDirection = 1.
+  endif
+
+  if (geometry(1:7) == "cluster") then
+     rotateView = .true.
+!     tiltView = .true.
+  end if
+
+end subroutine choose_view
 
 !-------------------------------------------------------------------------------
 ! Name:    update_sph_temperature

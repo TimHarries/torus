@@ -1930,7 +1930,7 @@ CONTAINS
 
     LOGICAL :: threed
     REAL(oct) :: r2, d, cosMu, disttor2, disttoxboundary,disttozboundary
-    REAL(oct) :: compZ, currentZ, tval, x1, x2, currentx, compx
+    REAL(oct) :: compZ, currentZ, tval, x1, x2
     REAL(oct) :: r1, theta, mu, disttor1
 
     TYPE(octalvector) :: xDir, zDir
@@ -2281,15 +2281,15 @@ CONTAINS
        if (tval <= 0.) tval = 1.0e-5
        if (tVal > 1.e29) then
           write(*,*) "Error :: tVal > 1.e29 [amr_mod:getExitPoint]."
-          write(*,*) "tVal,compX,compZ, distToZboundary,disttoxboundary = "
-          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
-          write(*,*) "x,z = ",currentX,currentZ
+          write(*,*) "tVal,compZ, distToZboundary,disttoxboundary = "
+          write(*,*) tVal,compZ, distToZboundary,disttoxboundary
+          write(*,*) "z = ", currentZ
           stop 
        elseif (tval <= 0.) then
           write(*,*) "Error :: tVal <= 0  [amr_mod:getExitPoint]."
-          write(*,*) "tVal,compX, compZ, distToZboundary,disttoxboundary = "
-          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
-          write(*,*) "x,z = ",currentX,currentZ
+          write(*,*) "tVal, compZ, distToZboundary,disttoxboundary = "
+          write(*,*) tVal,compZ, distToZboundary,disttoxboundary
+          write(*,*) "z = ", currentZ
           stop
        endif
    
@@ -12939,7 +12939,7 @@ IF ( .NOT. gridConverged ) RETURN
    type(OCTALVECTOR) :: subcen, point, xHat, zHat, rVec, rplane, rnorm
    integer :: subcell
    real(double) :: distToSide1, distToSide2, distToSide
-   real(double) ::  compx,disttoxBoundary, currentX
+   real(double) ::  compx,disttoxBoundary
    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
    integer :: i,j
    logical :: ok, thisOk(6)
@@ -13160,13 +13160,13 @@ IF ( .NOT. gridConverged ) RETURN
             write(*,*) "Cylindrical"
             write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
             write(*,*) "subcen",subcen
-            write(*,*) "x,z",currentX,currentZ
+            write(*,*) "z", currentZ
          endif
          if (tval < 0.) then
             write(*,*) "Cylindrical"
             write(*,*) tVal,distToZboundary,disttorboundary, disttoside
             write(*,*) "subcen",subcen
-            write(*,*) "x,z",currentX,currentZ
+            write(*,*) "z", currentZ
          endif
 
       endif
@@ -13234,12 +13234,12 @@ IF ( .NOT. gridConverged ) RETURN
       if (tVal > 1.e29) then
          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
          write(*,*) "subcen",subcen
-         write(*,*) "x,z",currentX,currentZ
+         write(*,*) "z", currentZ
       endif
       if (tval < 0.) then
          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
          write(*,*) "subcen",subcen
-         write(*,*) "x,z",currentX,currentZ
+         write(*,*) "z", currentZ
             do;enddo
 
       endif
@@ -13268,7 +13268,7 @@ IF ( .NOT. gridConverged ) RETURN
    type(OCTALVECTOR) :: subcen, point, xHat, zHat, rVec
    integer :: subcell
    real(double) :: distToSide1, distToSide2, distToSide
-   real(double) ::  compx,disttoxBoundary, currentX, subcellsize
+   real(double) :: disttoxBoundary, subcellsize
    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
    integer :: i,j
    logical :: ok, thisOk(6)
@@ -13446,15 +13446,15 @@ IF ( .NOT. gridConverged ) RETURN
          write(*,*) disttoside,disttoZboundary,disttoRboundary
          if (tVal > 1.e29) then
             write(*,*) "Cylindrical"
-            write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
+            write(*,*) tVal,compZ, distToZboundary,disttorboundary, disttoside
             write(*,*) "subcen",subcen
-            write(*,*) "x,z",currentX,currentZ
+            write(*,*) "z", currentZ
          endif
          if (tval < 0.) then
             write(*,*) "Cylindrical"
             write(*,*) tVal,distToZboundary,disttorboundary, disttoside
             write(*,*) "subcen",subcen
-            write(*,*) "x,z",currentX,currentZ
+            write(*,*) "z", currentZ
          endif
 
       endif
@@ -13509,14 +13509,14 @@ IF ( .NOT. gridConverged ) RETURN
       
       tVal = min(distToZboundary, distToXboundary)
       if (tVal > 1.e29) then
-         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+         write(*,*) tVal,compZ, distToZboundary,disttoxboundary
          write(*,*) "subcen",subcen
-         write(*,*) "x,z",currentX,currentZ
+         write(*,*) "z",currentZ
       endif
       if (tval < 0.) then
-         write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+         write(*,*) tVal,compZ, distToZboundary,disttoxboundary
          write(*,*) "subcen",subcen
-         write(*,*) "x,z",currentX,currentZ
+         write(*,*) "z", currentZ
       endif
       
    endif
@@ -14392,8 +14392,8 @@ IF ( .NOT. gridConverged ) RETURN
    real(double) :: phi, distToZboundary, ang1, ang2
    type(OCTALVECTOR) ::  zHat, rVec, rhat
    integer :: subcell
-   real(double) :: distToSide1, distToSide2, distToSide
-   real(double) ::  compx,disttoxBoundary, currentX, gridRadius
+   real(double) :: distToSide1, distToSide2
+   real(double) ::  compx,disttoxBoundary, gridRadius
    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
    integer :: i,j
    logical :: ok, thisOk(6)
@@ -14578,16 +14578,16 @@ IF ( .NOT. gridConverged ) RETURN
             write(*,*) "Cylindrical"
             write(*,*) "posVec",posvec
             write(*,*) "direction",direction
-            write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
+            write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary
             write(*,*) "subcen",subcen
-            write(*,*) "x,z",currentX,currentZ
+            write(*,*) "z",currentZ
             write(*,*) "x1,x2",x1,x2
          endif
          if (tval < 0.) then
             write(*,*) "Cylindrical"
-            write(*,*) tVal,distToZboundary,disttorboundary, disttoside
+            write(*,*) tVal,distToZboundary,disttorboundary
             write(*,*) "subcen",subcen
-            write(*,*) "x,z",currentX,currentZ
+            write(*,*) "z",currentZ
          endif
       endif
 
