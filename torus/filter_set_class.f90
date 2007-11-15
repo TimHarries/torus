@@ -31,10 +31,12 @@ module filter_set_class
   ! 13. "natural"        : A single natural filter.
   use utils_mod
 
+  implicit none
+
   public::  &
        make_filter_set, &
        pass_a_filter, &
-       get_set_name, &
+       get_filter_set_name, &
        get_filter_name, &
        get_nfilter, &
        FWHM_filters, &
@@ -1312,9 +1314,10 @@ contains
   ! creates a bias and weight array based on the given filterset
   !
   subroutine createWeightArrays(thisSet, lamArray, dlam, nLambda, bias, weight, lams, lame)
+    implicit none
     integer :: nLambda
     real(double) :: lamArray(:), bias(:), weight(:), resp, dlam(:)
-    integer :: i 
+    integer :: i, j
     real(double) :: lams, lame, biasCorrection
     type(filter_set) :: thisSet
 

@@ -1,4 +1,5 @@
       subroutine phfit2(nz,ne,is,e,s)
+      implicit none
 *** Version 2. March 25, 1996.
 *** Written by D. A. Verner, verner@pa.uky.edu
 *** Inner-shell ionization energies of some low-ionized species are slightly
@@ -22,8 +23,8 @@
 *** If a species in the ground state has no electrons on the given shell,
 *** the subroutine returns s=0.
 ******************************************************************************
-      integer nz,ne,is
-      real e,s
+      integer nz,ne,is, nout, nint, ntot, ninn, l
+      real e,s, b, a, z, y, einn, p1, ph1, ph2, q, x
       common/l/l(7)
       common/ninn/ninn(30)
       common/ntot/ntot(30)
@@ -71,6 +72,8 @@
       return
       end
       BLOCK DATA BDATA
+      integer :: l, ninn, ntot, i
+      real    :: ph1, ph2
       COMMON/L/L(7)
       COMMON/NINN/NINN(30)
       COMMON/NTOT/NTOT(30)

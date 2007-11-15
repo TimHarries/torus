@@ -6,6 +6,8 @@ module jet_class
   use grid_mod
   use vector_mod
 
+  implicit none
+
   !  
   ! Class definition for a simple model of jets from TTauri star
   !
@@ -25,7 +27,6 @@ module jet_class
 
   private::  &
        &   int_jet, &
-       &   scale_size, &
        &   need_to_split, &
        &   need_to_split2, &
        &   add_new_children, &

@@ -8,6 +8,7 @@ module sph_data_class
   ! Created on Jan-10-2003 (R. Kurosawa)
   ! 
 
+  implicit none
 
   public:: &
        kill, &
@@ -19,8 +20,8 @@ module sph_data_class
        get_nptmass, &
        get_time, &
        get_gaspartmass, &
-       get_position_gas_partilce, &
-       put_position_gas_partilce, &
+       get_position_gas_particle, &
+       put_position_gas_particle, &
        get_rhon, &
        put_rhon, &
        get_position_pt_mass, &

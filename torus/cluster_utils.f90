@@ -16,8 +16,10 @@ module cluster_utils
   use kind_mod  
   use path_integral
 
+  implicit none
+
   public ::  &
-       &    analyze_cluste, &
+       &    analyze_cluster, &
        &    observed_flux
   
 

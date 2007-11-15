@@ -23,6 +23,8 @@ module formal_solutions
   use utils_mod
   use timing
   
+  implicit none
+
   public :: &
        formal_sol_dust_AMR, &
        compute_obs_line_flux
@@ -1893,6 +1895,9 @@ contains
     ! Add extra points where velocity is changing slowly
     subroutine refine_ray_constant_vel(L, nTau, projVel,  maxtau, newL, newNTau,&
          inFlow, newInFlow, do_alphadisc_check, alphadisc_par, pos_start, dir_ray)
+
+      implicit none
+
       integer, intent(in) :: nTau, maxtau
       real, intent(in) :: L(nTau)
       real(double), intent(in) :: projVel(nTau)
@@ -1906,6 +1911,7 @@ contains
       type(octalvector), intent(in) :: dir_ray       ! direction of ray
       !
       real(double) :: dProjVel  ! automatic array
+      real(double) :: dlam
       integer :: nAdd =5
       integer :: i, j
 !      real, parameter :: dvel  = 10.e5/cSpeed

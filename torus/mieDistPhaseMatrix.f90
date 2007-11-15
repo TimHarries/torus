@@ -250,7 +250,10 @@
       enddo
  666  continue
       end subroutine mieDistPhaseMatrix
+
+
       subroutine sphere(x,cm,nc)
+        implicit none
 !     ..............................................................
 !     .  calculate the scattered field f(n) and g(n) coefficients  .
 !     .    the f(n) and g(n) for theta incident polarization are,  .
@@ -264,7 +267,10 @@
       complex b,z,cm,ci,hkl(1000001),an,amat(1000000),f(1000000),g(1000000) !tjh
       common /cfcom/ f,g,cnrm
 !      dimension cnrm(1000)
-      dimension cnrm(1000000) ! tjh
+      real :: cnrm(1000000) ! tjh, real declaration dma
+      real :: x, xc, bj, bjm, rf, rn
+      integer :: nc, nci, n, nmx
+
       ci = (0.0,1.0)
 !     ......................................................
 !     .  set the number of terms required for convergence  .
@@ -321,6 +327,7 @@
       return
       end
       subroutine besh(x,hankel,nc)
+        implicit none
 !     ...................................................
 !     .  calculate Hankel functions                     .
 !     .  bj = Bessel function of the first kind         .
@@ -332,6 +339,8 @@
 !     .                                                 .
 !     .  arrays are set for nc = 226 maximum            .
 !     ...................................................
+      real :: x, a, alpha, by, bj, rn, ri, t   
+      integer :: nc, i, k, nst, n
       complex hankel(nc)
       integer, parameter :: nmax = 1000001
       dimension bj(nmax),by(nmax),t(3)
@@ -389,7 +398,9 @@
 40      continue
       return
       end
+
       subroutine genlgp(theta,pnmllg,nc)
+        implicit none
 !     ........................................................
 !     .  calculate associated Legendre functions (argument   .
 !     .    cos(theta)) divided by sin(theta) for m = 1       .
@@ -401,7 +412,10 @@
 !     .  the order of the associated Legendre functions is   .
 !     .    incremented by one in the pnmllg(*) array         .
 !     ........................................................
-      dimension pnmllg(nc)
+        real    :: theta, pnmllg, costh, rn
+        integer :: nc, n
+        dimension pnmllg(nc)
+
       costh = cos(theta)
 !     ..............................
 !     .  calculate orders 0 and 1  .
@@ -433,6 +447,8 @@
 !     .  the order of the associated Legendre functions is   .
 !     .    incremented by one in the pnmllg(*) array         .
 !     ........................................................
+        real    :: theta, costh, rn
+        integer :: nc, n
       real pnmllg(nc)
       costh = cos(theta)
 !     ..............................

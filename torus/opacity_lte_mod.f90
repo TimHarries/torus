@@ -6,8 +6,10 @@ module opacity_lte_mod
   
   use atom_mod
   
+  implicit none
+
   public:: compute_LTE_opacities
-  private:: solveFobidden
+  private:: solveForbidden
 
 
 contains
@@ -78,6 +80,7 @@ contains
   !  Computes the line emissiovities of forbidden lines for certains species
   !
   subroutine solveForbidden(temperature, electronDensity, massDensity, ion, ionFrac, nLower, nUpper, etaLine)
+    implicit none
 
     !        write(ttyout,*)'LICK 5-LEVEL ATOM-POPULATIONS CATEGORY'
     !        write(ttyout,*)'       *** AVAILABLE IONS ***'
@@ -98,7 +101,7 @@ contains
     real :: pop(5), b1(5), b2(5), dtl(5), pop1(5), ncrit(5), kt, hc
     integer :: weight(5)
     integer :: filout
-    real :: etaLine
+    real :: etaLine, nIon
     character(len=*) :: ion
     real :: electronDensity, den
     real :: temperature, tem

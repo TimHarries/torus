@@ -138,7 +138,7 @@ subroutine pgpt1(x, y, i)
 end subroutine pgpt1
 
 subroutine pgvect(x, y, i, j, k, l, m, n, f, n1, tr, f2)
-  real :: x(*), y(*)
+  real :: x(*), y(*), tr(*)
   integer :: i, j, k, l, m, n, n1
   real :: f, f2
 end subroutine pgvect

@@ -15,11 +15,12 @@ module linked_list_class
   !  LOGS:    Created on Jan-20-2003  (R. Kurosawa)
   !
   !
+  implicit none
 
   public :: new,        &  ! Initialize a list
        &    put,        &  ! Put a value in a list
        &    get,        &  ! Get a value from a list
-       &    delte,      &  ! Delte a value from a list
+       &    delete,     &  ! Delete a value from a list
        &    delete_all, &  ! Delete all the values from a list
        &    get_n_node     ! Get the number of elements in the list
 

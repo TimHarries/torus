@@ -28,7 +28,7 @@ ifeq ($(SYSTEM), intelmac)
     F95COMP  = g95
     F77COMP  = g95
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g -fbounds-check -ftrace=full
+    DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none
     FASTFLAG = -O3
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
@@ -303,7 +303,7 @@ ifeq ($(SYSTEM), ompi)
     F95COMP  = mpif90
     F95FLAG  = 
     F77FLAG  = -w
-    DEBUGFLAG= -g -w  -ftrace=full -fbounds-check
+    DEBUGFLAG= -g -w  -ftrace=full -fbounds-check -fimplicit-none
     FASTFLAG = -O0
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel

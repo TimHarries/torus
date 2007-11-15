@@ -306,113 +306,115 @@ C prepare single precision complex scattering amplitude for output
       END
 
 
-
-
-c ***********************************************************************       
-c This subroutine obtained from prof. P. Menguc, Dept. of Mechanical            
-c Eng., University of Kentucky.                        [Z.I., Aug. 1996]        
-c -----------------------------------------------------------------------       
-c     __________________________________________________________________        
-c                                                                               
-c     SUBROUTINE BHMIE CALCULATES AMPLITUDE SCATTERING MATRIX ELEMENTS          
-C     & EFFICIENCIES FOR EXTINCTION, TOTAL SCATTERING AND BACSCATTERING,        
-C     FOR A GIVEN SIZE PARAMETER AND RELATIVE REFRACTIVE INDEX                  
-C     __________________________________________________________________        
-C                                                                               
-      subroutine bhmie_old (x,refrel,nang,s1,s2,qext,qsca,qback)                    
-      dimension amu(100),theta(100),pi(100),tau(100),pi0(100),pi1(100)          
-      complex d(3000),y,refrel,xi,xi0,xi1,an,bn,s1(200),s2(200)                 
-      double precision psi0,psi1,psi,dn,dx                                      
-      dx=x                                                                      
-      y=x*refrel                                                                
-c     ___________________________________________________________________       
-c     series terminated after nstop terms                                       
-c     ___________________________________________________________________       
-      xstop=x+4.*x**.3333 +2.0                                                  
-      nstop=xstop                                                               
-      ymod=cabs(y)                                                              
-      nmx=max(xstop,ymod) + 15                                                
-      dang=1.570796327/float(nang-1)                                            
-      do 555 j = 1,nang                                                         
-      theta(j)= (float(j)-1.)*dang                                              
-555   amu(j)=cos(theta(j))                                                      
-c     __________________________________________________________________        
-c     logarithmic derivative d(j) calculated by downward recurrence             
-c     beginning with initial value 0.0 + i*0.0 at j = nmx                       
-c     __________________________________________________________________        
-c                                                                               
-      d(nmx)=cmplx(0.0,0.0)                                                     
-      nn=nmx-1                                                                  
-      do 120 n=1,nn                                                             
-      rn=nmx-n+1                                                                
-      d(nmx-n)=(rn/y)-(1./(d(nmx-n+1)+rn/y))                                    
-120   continue                                                                  
-      do 666 j=1,nang                                                           
-      pi0(j)=0.0                                                                
-      pi1(j)=1.0                                                                
-666   continue                                                                  
-      nn=2*nang-1                                                               
-      do 777 j=1,nn                                                             
-      s1(j)=cmplx(0.0,0.0)                                                      
-      s2(j)=cmplx(0.0,0.0)                                                      
-777   continue                                                                  
-c     __________________________________________________________________        
-c     riccati bessel functions with real argument x calculated by upward        
-c     recurrence                                                                
-c     __________________________________________________________________        
-c                                                                               
-      psi0=cos(dx)                                                              
-      psi1=sin(dx)                                                              
-      chi0=-sin(x)                                                              
-      chi1=cos(x)                                                               
-      apsi0=psi0                                                                
-      apsi1=psi1                                                                
-      xi0=cmplx(apsi0,-chi0)                                                    
-      xi1=cmplx(apsi1,-chi1)                                                    
-      qsca=0.0                                                                  
-      n=1                                                                       
-200   dn=n                                                                      
-      rn=n                                                                      
-      fn=(2.*rn+1.)/(rn*(rn+1.))                                                
-      psi=(2.*dn-1.)*psi1/dx-psi0                                               
-      apsi=psi                                                                  
-      chi=(2.*rn-1.)*chi1/x -  chi0                                             
-      xi = cmplx(apsi,-chi)                                                     
-      an=(d(n)/refrel+rn/x)*apsi - apsi1                                        
-      an=an/((d(n)/refrel+rn/x)*xi - xi1)                                       
-      bn=(refrel *d(n)+rn/x)*apsi - apsi1                                       
-      bn=bn/((refrel*d(n)+rn/x)*xi - xi1)                                       
-      qsca=qsca+(2.*rn+1.)*(cabs(an)*cabs(an)+cabs(bn)*cabs(bn))                
-      do 789 j=1,nang                                                           
-      jj=2*nang-j                                                               
-      pi(j)=pi1(j)                                                              
-      tau(j)=rn*amu(j)*pi(j) - (rn+1.)*pi0(j)                                   
-      p=(-1.)**(n-1)                                                            
-      s1(j)=s1(j)+fn*(an*pi(j)+bn*tau(j))                                       
-      t=(-1.)**n                                                                
-      s2(j)=s2(j) + fn*(an*tau(j)+bn*pi(j))                                     
-      if (j .eq. jj) go to 789                                                  
-      s1(jj)=s1(jj) + fn*(an*pi(j)*p + bn*tau(j)*t)                             
-      s2(jj)=s2(jj) + fn*(an*tau(j)*t + bn*pi(j)*p)                             
-789   continue                                                                  
-      psi0=psi1                                                                 
-      psi1=psi                                                                  
-      apsi1=psi1                                                                
-      chi0=chi1                                                                 
-      chi1=chi                                                                  
-      xi1=cmplx(apsi1,-chi1)                                                    
-      n=n+1                                                                     
-      rn=n                                                                      
-      do 999 j=1,nang                                                           
-      pi1(j)=((2.*rn-1.)/(rn-1.))*amu(j)*pi(j)                                  
-      pi1(j)=pi1(j) - rn*pi0(j)/(rn-1.)                                         
-      pi0(j) = pi(j)                                                            
-999   continue                                                                  
-      if (n-1-nstop) 200, 300, 300                                              
-300   qsca=(2./(x*x))*qsca                                                      
-      qext=(4./(x*x))*real(s1(1))                                               
-      qback=(4./(x*x))*cabs(s1(2*nang -1))*cabs(s1(2*nang -1))                  
-      return                                                                    
-      end                                                                       
-c ***********************************************************************
-
+c Commented out by DMA on 15/11/07. I'm compiling torus with a compiler flag to enforce
+c explicit typing. This subroutine is implicitly typed and never called so I've
+c commented it out.
+c
+c$$$c ***********************************************************************       
+c$$$c This subroutine obtained from prof. P. Menguc, Dept. of Mechanical            
+c$$$c Eng., University of Kentucky.                        [Z.I., Aug. 1996]        
+c$$$c -----------------------------------------------------------------------       
+c$$$c     __________________________________________________________________        
+c$$$c                                                                               
+c$$$c     SUBROUTINE BHMIE CALCULATES AMPLITUDE SCATTERING MATRIX ELEMENTS          
+c$$$C     & EFFICIENCIES FOR EXTINCTION, TOTAL SCATTERING AND BACSCATTERING,        
+c$$$C     FOR A GIVEN SIZE PARAMETER AND RELATIVE REFRACTIVE INDEX                  
+c$$$C     __________________________________________________________________        
+c$$$C                                                                               
+c$$$      subroutine bhmie_old (x,refrel,nang,s1,s2,qext,qsca,qback)                    
+c$$$      dimension amu(100),theta(100),pi(100),tau(100),pi0(100),pi1(100)          
+c$$$      complex d(3000),y,refrel,xi,xi0,xi1,an,bn,s1(200),s2(200)                 
+c$$$      double precision psi0,psi1,psi,dn,dx                                      
+c$$$      dx=x                                                                      
+c$$$      y=x*refrel                                                                
+c$$$c     ___________________________________________________________________       
+c$$$c     series terminated after nstop terms                                       
+c$$$c     ___________________________________________________________________       
+c$$$      xstop=x+4.*x**.3333 +2.0                                                  
+c$$$      nstop=xstop                                                               
+c$$$      ymod=cabs(y)                                                              
+c$$$      nmx=max(xstop,ymod) + 15                                                
+c$$$      dang=1.570796327/float(nang-1)                                            
+c$$$      do 555 j = 1,nang                                                         
+c$$$      theta(j)= (float(j)-1.)*dang                                              
+c$$$555   amu(j)=cos(theta(j))                                                      
+c$$$c     __________________________________________________________________        
+c$$$c     logarithmic derivative d(j) calculated by downward recurrence             
+c$$$c     beginning with initial value 0.0 + i*0.0 at j = nmx                       
+c$$$c     __________________________________________________________________        
+c$$$c                                                                               
+c$$$      d(nmx)=cmplx(0.0,0.0)                                                     
+c$$$      nn=nmx-1                                                                  
+c$$$      do 120 n=1,nn                                                             
+c$$$      rn=nmx-n+1                                                                
+c$$$      d(nmx-n)=(rn/y)-(1./(d(nmx-n+1)+rn/y))                                    
+c$$$120   continue                                                                  
+c$$$      do 666 j=1,nang                                                           
+c$$$      pi0(j)=0.0                                                                
+c$$$      pi1(j)=1.0                                                                
+c$$$666   continue                                                                  
+c$$$      nn=2*nang-1                                                               
+c$$$      do 777 j=1,nn                                                             
+c$$$      s1(j)=cmplx(0.0,0.0)                                                      
+c$$$      s2(j)=cmplx(0.0,0.0)                                                      
+c$$$777   continue                                                                  
+c$$$c     __________________________________________________________________        
+c$$$c     riccati bessel functions with real argument x calculated by upward        
+c$$$c     recurrence                                                                
+c$$$c     __________________________________________________________________        
+c$$$c                                                                               
+c$$$      psi0=cos(dx)                                                              
+c$$$      psi1=sin(dx)                                                              
+c$$$      chi0=-sin(x)                                                              
+c$$$      chi1=cos(x)                                                               
+c$$$      apsi0=psi0                                                                
+c$$$      apsi1=psi1                                                                
+c$$$      xi0=cmplx(apsi0,-chi0)                                                    
+c$$$      xi1=cmplx(apsi1,-chi1)                                                    
+c$$$      qsca=0.0                                                                  
+c$$$      n=1                                                                       
+c$$$200   dn=n                                                                      
+c$$$      rn=n                                                                      
+c$$$      fn=(2.*rn+1.)/(rn*(rn+1.))                                                
+c$$$      psi=(2.*dn-1.)*psi1/dx-psi0                                               
+c$$$      apsi=psi                                                                  
+c$$$      chi=(2.*rn-1.)*chi1/x -  chi0                                             
+c$$$      xi = cmplx(apsi,-chi)                                                     
+c$$$      an=(d(n)/refrel+rn/x)*apsi - apsi1                                        
+c$$$      an=an/((d(n)/refrel+rn/x)*xi - xi1)                                       
+c$$$      bn=(refrel *d(n)+rn/x)*apsi - apsi1                                       
+c$$$      bn=bn/((refrel*d(n)+rn/x)*xi - xi1)                                       
+c$$$      qsca=qsca+(2.*rn+1.)*(cabs(an)*cabs(an)+cabs(bn)*cabs(bn))                
+c$$$      do 789 j=1,nang                                                           
+c$$$      jj=2*nang-j                                                               
+c$$$      pi(j)=pi1(j)                                                              
+c$$$      tau(j)=rn*amu(j)*pi(j) - (rn+1.)*pi0(j)                                   
+c$$$      p=(-1.)**(n-1)                                                            
+c$$$      s1(j)=s1(j)+fn*(an*pi(j)+bn*tau(j))                                       
+c$$$      t=(-1.)**n                                                                
+c$$$      s2(j)=s2(j) + fn*(an*tau(j)+bn*pi(j))                                     
+c$$$      if (j .eq. jj) go to 789                                                  
+c$$$      s1(jj)=s1(jj) + fn*(an*pi(j)*p + bn*tau(j)*t)                             
+c$$$      s2(jj)=s2(jj) + fn*(an*tau(j)*t + bn*pi(j)*p)                             
+c$$$789   continue                                                                  
+c$$$      psi0=psi1                                                                 
+c$$$      psi1=psi                                                                  
+c$$$      apsi1=psi1                                                                
+c$$$      chi0=chi1                                                                 
+c$$$      chi1=chi                                                                  
+c$$$      xi1=cmplx(apsi1,-chi1)                                                    
+c$$$      n=n+1                                                                     
+c$$$      rn=n                                                                      
+c$$$      do 999 j=1,nang                                                           
+c$$$      pi1(j)=((2.*rn-1.)/(rn-1.))*amu(j)*pi(j)                                  
+c$$$      pi1(j)=pi1(j) - rn*pi0(j)/(rn-1.)                                         
+c$$$      pi0(j) = pi(j)                                                            
+c$$$999   continue                                                                  
+c$$$      if (n-1-nstop) 200, 300, 300                                              
+c$$$300   qsca=(2./(x*x))*qsca                                                      
+c$$$      qext=(4./(x*x))*real(s1(1))                                               
+c$$$      qback=(4./(x*x))*cabs(s1(2*nang -1))*cabs(s1(2*nang -1))                  
+c$$$      return                                                                    
+c$$$      end                                                                       
+c$$$c ***********************************************************************
+c$$$

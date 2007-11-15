@@ -13,6 +13,8 @@ module cluster_class
   use isochrone_class
   use messages_mod
   
+  implicit none
+
   public :: new,  &
        &    kill_all, &
        &    kill_only_stars, &
@@ -27,7 +29,7 @@ module cluster_class
        &    find_n_particle_in_subcell, &
        &    n_stars_in_octal, &
        &    fill_in_empty_octals, &
-       &    remove_too_close_cell, &
+       &    remove_too_close_cells, &
        &    disc_density, &
        &    disc_intersects_subcell, &
        &    cell_too_close_to_star, &
