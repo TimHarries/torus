@@ -3,6 +3,7 @@
 module hydrodynamics_mod
 #ifdef MPI
 
+  use input_variables
   use kind_mod
   use constants_mod
   use amr_mod
@@ -741,9 +742,9 @@ contains
              endif
           endif
 
-          if ((myrankglobal==1).and.(biggamma/thisOctal%pressure_i(subcell) > 0.1d0)) then
-             write(*,*) "gamma/p ",biggamma/thisOctal%pressure_i(subcell)
-          endif
+!          if ((myrankglobal==1).and.(biggamma/thisOctal%pressure_i(subcell) > 0.1d0)) then
+!             write(*,*) "gamma/p ",biggamma/thisOctal%pressure_i(subcell)
+!          endif
 
           thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell) + bigGamma
           
@@ -1759,7 +1760,7 @@ contains
   subroutine doHydrodynamics1d(grid)
     include 'mpif.h'
     type(gridtype) :: grid
-    real(double) :: dt,  cfl, gamma, mu
+    real(double) :: dt,  gamma, mu
     real(double) :: currentTime
     integer :: i, pgbegin
     type(OCTALVECTOR) :: direction
@@ -1778,14 +1779,12 @@ contains
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
-    cfl = 0.3d0
     mu = 2.d0
     nHydroThreads = nThreadsGlobal - 1
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     gamma = 5.d0 / 3.d0
-    cfl = 0.03d0
 
     mu = 2.d0
 
@@ -1793,7 +1792,7 @@ contains
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
-    if (myRank == 1) write(*,*) "CFL set to ", cfl
+    if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
     call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -1890,7 +1889,7 @@ contains
 !       write(*,*) "tc", tc(1:8)
 !       write(*,*) "temp tc",temptc(1:8)
        tc = tempTc
-       dt = MINVAL(tc(1:nHydroThreads)) * cfl
+       dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
        if (myrank == 1) write(*,*) "courantTime", dt
        if (myrank == 1) call tune(6,"Hydrodynamics step")
@@ -1974,7 +1973,7 @@ contains
   subroutine doHydrodynamics3d(grid)
     include 'mpif.h'
     type(gridtype) :: grid
-    real(double) :: dt, tc(64), temptc(64),cfl, gamma, mu
+    real(double) :: dt, tc(64), temptc(64), gamma, mu
     real(double) :: currentTime
     integer :: i, pgbegin, it, iUnrefine
     integer :: myRank, ierr
@@ -1995,9 +1994,6 @@ contains
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     gamma = 7.d0 / 5.d0
-    cfl = 0.3d0
-
-    cfl = 0.01d0
 
     mu = 2.d0
 
@@ -2009,7 +2005,7 @@ contains
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
-    if (myRank == 1) write(*,*) "CFL set to ", cfl
+    if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
 
     call writeInfo("Plotting grid", TRIVIAL)    
@@ -2128,7 +2124,7 @@ contains
 !       write(*,*) "tc", tc(1:8)
 !       write(*,*) "temp tc",temptc(1:8)
        tc = tempTc
-       dt = MINVAL(tc(1:8)) * cfl
+       dt = MINVAL(tc(1:8)) * dble(cflNumber)
 
        if (myrank == 1) write(*,*) "courantTime", dt
        if (myrank == 1) call tune(6,"Hydrodynamics step")
@@ -2197,7 +2193,7 @@ contains
   subroutine doHydrodynamics2d(grid)
     include 'mpif.h'
     type(gridtype) :: grid
-    real(double) :: dt, tc(64), temptc(64),cfl, gamma, mu
+    real(double) :: dt, tc(64), temptc(64), gamma, mu
     real(double) :: currentTime
     integer :: i, pgbegin, it, iUnrefine
     integer :: myRank, ierr
@@ -2221,7 +2217,6 @@ contains
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     gamma = 5.d0 / 3.d0
-    cfl = 0.3d0
 
     mu = 2.d0
 
@@ -2233,7 +2228,7 @@ contains
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
 
-    if (myRank == 1) write(*,*) "CFL set to ", cfl
+    if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
 
 !    call writeInfo("Plotting grid", TRIVIAL)    
@@ -2359,7 +2354,7 @@ contains
 !       write(*,*) "tc", tc(1:8)
 !       write(*,*) "temp tc",temptc(1:8)
        tc = tempTc
-       dt = MINVAL(tc(1:nHydroThreads)) * cfl
+       dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
        if (myrank == 1) write(*,*) "courantTime", dt
        if (myrank == 1) call tune(6,"Hydrodynamics step")

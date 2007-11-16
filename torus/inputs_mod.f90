@@ -1292,6 +1292,10 @@ endif
     call getLogical("hydrodynamics", hydrodynamics, cLine, nLines, &
          "Do hydrodynamics: ","(a,1l,a)", .false., ok, .false.)
 
+    call getReal("cfl", cflNumber, cLine, nLines, &
+         "Courant number:","(a,f4.1,1x,a)", 0.3, ok, .false.)
+
+
     if (hydrodynamics) then
        call getReal("x1", x1, cLine, nLines, &
          "Start of x-array:","(a,f4.1,1x,a)", 0.01, ok, .true.)

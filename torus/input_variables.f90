@@ -15,6 +15,7 @@ module input_variables
 
   logical :: debug
   integer :: idump ! hydrodynamics time step dump number
+  real :: cflNumber
   integer :: minDepthAMR, maxDepthAMR
   character(len=10) :: geometry
   character(len=80) :: absolutePath
