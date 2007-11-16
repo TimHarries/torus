@@ -6,7 +6,7 @@ use constants_mod
 implicit none
 type(GRIDTYPE) :: grid
 real :: scale
-real :: abundance, mu, r
+real :: abundance
 real :: sigmaRayleigh
 integer :: i, j, k, m
 
@@ -18,8 +18,6 @@ do i = 1, grid%nx
   do j = 1, grid%ny
     do k = 1, grid%nz
      do m = 1, grid%nLambda
-       r = grid%xAxis(i)**2 + grid%yAxis(j)**2 + grid%zAxis(k)**2
-       mu = grid%zAxis(k)/r
        grid%kappaSca(i,j,k,m) = grid%kappaSca(i,j,k,m) + sigmaRayleigh(grid%lamArray(m))*abundance*grid%rho(i,j,k)/mHydrogen*scale
      enddo
     enddo

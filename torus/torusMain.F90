@@ -121,7 +121,7 @@ program torus
   real :: probLinePhoton 
   real :: weightContPhoton, weightLinePhoton
   real :: chanceLine, chanceContinuum
-  real :: sTot
+!  real :: sTot
 
   integer :: isize
   integer, allocatable :: iseed(:)
@@ -145,21 +145,11 @@ program torus
 
   real :: scaleFac
   real :: dopShift  ! velocity shift in terms of thermal line width
-!  real :: tauExt(maxTau)
-!  real :: tauAbs(maxTau)
-!  real :: tauSca(maxTau)
-!  real :: lambda(maxTau)
   real, allocatable :: tauExt(:)
   real, allocatable :: tauAbs(:)
   real, allocatable :: tauSca(:)
   real, allocatable :: linePhotonAlbedo(:)
   real, allocatable :: lambda(:)
-
-  real, allocatable :: mReal(:,:), mImg(:,:)          ! size = nlambda
-  real, allocatable :: tmReal(:), tmImg(:)          ! size = nlambda
-  real, allocatable :: mReal2D(:,:), mImg2D(:,:)  ! size = ngrain x nlambda
-  real :: total_dust_abundance
-
 
   real, allocatable :: kappaAbs(:), kappaSca(:), kappaExt(:)
   real  :: sigmaExt0, sigmaAbs0, sigmaSca0  ! cross section at the line centre
@@ -168,10 +158,8 @@ program torus
   ! variables to do with dust
 
   integer :: itestlam, ismoothlam
-  real :: xMin, xMax
   integer, parameter :: nXmie = 20, nMuMie = 20
   type(PHASEMATRIX), pointer :: miePhase(:,:, :)
-  real :: particleMass, abundance
 
   ! torus images
 
@@ -199,7 +187,6 @@ program torus
   real, allocatable :: statArray(:)
   real, allocatable :: sourceSpectrum(:)
   real, allocatable :: sourceSpectrum2(:)
-  real :: dummy(1)
 !  logical :: resonanceLine
 
 
@@ -243,10 +230,8 @@ program torus
   integer :: iLambda
   type(STOKESVECTOR), allocatable :: yArray(:)
   type(STOKESVECTOR), allocatable :: errorArray(:,:)
-  real, allocatable :: xArray(:), dx(:)
+  real, allocatable :: xArray(:)
   real, allocatable :: contWeightArray(:)
-!  real :: contWeightArray(maxTau)
-  type(STOKESVECTOR) :: tot
 
   ! model flags
 
@@ -267,11 +252,11 @@ program torus
 
   ! single dust blob parameters (WR137 type model)
 
-  real :: meanDustParticleMass, getMeanMass2
+  real :: meanDustParticleMass
+!  real :: getMeanMass2  ! the call to this function is currently commented out
 
 
   real :: foreground = 0., background = 0.  ! plotting intensities
-  real :: mu
   real(oct) :: t1, t2, t3
 
   logical :: velocitySpace
@@ -301,7 +286,6 @@ program torus
   character(len=80) :: plotFile
 
   real(double) :: thisChi, thisSca, albedo
-  logical :: normalizeSpectrum
   integer :: currentScat
   logical :: redRegion
   real :: r
@@ -314,7 +298,7 @@ program torus
   real :: obs_weight, tau_tmp, exp_minus_tau
   real :: r1, r2
   real(oct) :: t
-  integer :: i, j, k, n
+  integer :: i, j
   integer :: i1,i2,i3
   integer :: nTot  
   real :: observedLambda
@@ -338,7 +322,7 @@ program torus
   real(double) :: totalMass
   real(double) :: T_ave   ! average temperature of cluster
   real(double) :: T_mass  ! mass weighted temperature
-  real(double) :: tau_max, tau_min, tau_ave
+!  real(double) :: tau_max, tau_min, tau_ave
 
   real(double) :: Laccretion
   real :: Taccretion, fAccretion, sAccretion
@@ -350,8 +334,6 @@ program torus
   real :: chanceSpot                     ! chance of spot
   logical :: spotPhoton                  ! photon from spot?
 
-  logical :: doneone
-
   real :: loglamStart, logLamEnd
 
   real :: chanceDust = 0.
@@ -359,7 +341,6 @@ program torus
 
   ! binary parameters
 
-  type(VECTOR) :: starPos1, starPos2
   integer :: nVec
   type(VECTOR), allocatable :: distortionVec(:)
 
@@ -370,7 +351,7 @@ program torus
   real :: meant, treal, ang, meaneta
   real(double) :: kabs, eta
   integer, parameter :: nrGrid = 1000
-  real :: rGrid(nrGrid), drGrid(nrgrid),prGrid(nrGrid)
+  real :: rGrid(nrGrid), drGrid(nrgrid)
   integer :: nt
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
@@ -384,7 +365,6 @@ program torus
   integer           :: tooFewSamples ! number of errors from integratePathAMR
   integer           :: boundaryProbs ! number of errors from integratePathAMR
   integer           :: negativeOpacity ! number of errors from integratePathAMR
-  type(octal),pointer :: thisoctal, safeOctal
   real(double)           :: Ne         ! for testing
   real,dimension(statEqMAxLevels) :: meanDepart ! for testing
   real(double),dimension(statEqMAxLevels) :: levelPops  ! for testing
@@ -409,7 +389,6 @@ program torus
   ! Used for multiple sources (when geometry=cluster)
   integer :: nstar
   type(cluster)   :: young_cluster
-  type(isochrone) :: isochrone_data
 
   ! Used in "plot_AMR_planes" and "plot_AMR_values"
   integer :: nmarker           ! number of markers
@@ -420,31 +399,25 @@ program torus
   real val_3rd_dim
 
   real    :: tmp
-  real(double) :: rtmp
-  type(octalvector) :: vec_offset
   real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
 
   ! Name of the file to output various message from torus
   character(LEN=7), parameter :: messageFile = "MESSAGE"
   character(len=80) :: message
-  real :: totFrac, h
-  integer :: nFrac
+   real :: h !, totFrac
+!  integer :: nFrac   ! In commented out call to sublimateDust
 
 ! molecular line stuff
   type(MOLECULETYPE) :: co
   type(DATACUBE) :: cube
 
-  real(double) :: temp(50)
+!  real(double) :: temp(50)
 
   real(double), allocatable :: flux(:)
-  ! FOR DEBUG
-  integer :: i_dum
-
-! starburst stuff
-  real(double) :: burstMass
 
 ! Variables used when linking to sph code
 #ifdef SPH
+  type(isochrone)       :: isochrone_data
   logical, parameter    :: ll_sphFromFile = .false.   ! Read in sph data from a file?
   integer, intent(in)   :: b_idim,b_npart,b_nactive,b_nptmass
   integer*1, intent(in) :: b_iphase(b_idim)
@@ -462,9 +435,8 @@ program torus
   real(double) ::  d1, d2, massRatio
 
   type(modelatom), allocatable :: thisAtom(:)
-  type(TOPBASETYPE) :: thisBase
 
-  type(STREAMTYPE) :: thisStream(2000), currentStream, bigStream
+  type(STREAMTYPE) :: thisStream(2000), bigStream
   integer :: nStreams
   
   integer :: nFromEnv
@@ -474,7 +446,6 @@ program torus
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
-!  integer ::   iphase_beg, iphase_end  ! the beginning and the end of the phase index.
 
 #ifdef MPI
   ! For MPI implementations =====================================================
@@ -568,10 +539,6 @@ program torus
   inputKappaAbs = 0.
 
   zeroVec = VECTOR(0.,0.,0.)
-  vec_offset = OCTALVECTOR(1.0_oc, 1.0_oc , 1.0_oc) ! used in a optical depth test.
-
-  starPos1 = VECTOR(-400.,0.,0.)
-  starPos2 = VECTOR(+400.,0.,0.)
 
   tooFewSamples = 0 
   boundaryProbs = 0 
@@ -585,10 +552,6 @@ program torus
 
 
   ! hardwired stuff
-
-  abundance = 1.e-8
-  particleMass = 15.9994*mHydrogen + 47.867*mHydrogen
-
   do i = 1, no6pts
      o6xArray(i) = o6start + (o6end-o6start)*real(i-1)/real(no6pts-1)
      o6yarray(i) = 1.d-10
@@ -910,7 +873,6 @@ program torus
   endif
 
   allocate(xArray(1:nLambda))
-  allocate(dx(1:nLambda))
   allocate(yArray(1:nLambda))
   allocate(errorArray(1:nOuterLoop,1:nLambda))
 
@@ -936,7 +898,6 @@ program torus
         yArray(i)%u = 0.
         yArray(i)%v = 0.
      enddo
-     dx = deltaLambda
   else
 
 
@@ -983,11 +944,6 @@ program torus
         endif
      endif
 
-     dx(1) = xarray(2)-xarray(1)
-     dx(nLambda) = xarray(nlambda)-xarray(nLambda-1)
-     do i = 2, nLambda-1
-        dx(i) = 0.5*((xarray(i+1)+xarray(i))-(xarray(i)+xarray(i-1)))
-     enddo
   endif
 
   !
@@ -1966,7 +1922,6 @@ program torus
     open(21,file="r.dat",status="unknown",form="formatted")
     call locate(xarray, nLambda, 10.e4, ilambda)
 
-    prGrid = 0.
     do i = 1, 1000
        meant = 0.
        meaneta =0.
@@ -2014,7 +1969,6 @@ program torus
     
     open(21,file="rDepart.dat",status="unknown",form="formatted")
 
-    prGrid = 0.
     do i = 1, 1000
        meanDepart = 0.
        nt = 0
@@ -2190,13 +2144,9 @@ program torus
 
   ! compute the mie scattering phase matrices if necessary
 
-  xMin =  2.*pi*grainSize/(lamEnd*angstromToCm)
-  xMax =  2.*pi*grainSize/(lamStart*angstromToCm)
-
 665 continue
+
   ! set up the sources
-
-
   nSource = 0
 
   select case(geometry)
@@ -2873,10 +2823,6 @@ program torus
        geometry == "cmfgen" .or. geometry == "romanova") then
     call emptySurface(starSurface)
   end if
-
-!  ! default phase indecies
-!  iphase_beg = nStartPhase
-!  iphase_end = nEndPhase
 
   if (forceRotate)   rotateView = .true.
   if (forceNoRotate) rotateView = .false.
@@ -3678,15 +3624,6 @@ program torus
         write(*,*) " "
      endif
      
-
-     tot%i = 0.
-     tot%q = 0.
-     tot%u = 0.
-     tot%v = 0.
-
-
-     k = nPhotons/10
-
      ntot = 0
 
      ! now we loop 10 times over a tenth of the photons - this will be used
@@ -4892,12 +4829,6 @@ endif ! (doPvimage)
 !        if (wtot_cont /= 0.) write(*,*) "Mean radius of cont formation",meanr_cont/wtot_cont/grid%rCore
 !        if (wtot0_cont /=0.) write(*,*) "Mean radius of cont zero",meanr0_cont/wtot0_cont/grid%rCore
 !     endif
-     normalizeSpectrum = .false.
-     if (.not.doRaman) then
-        normalizeSpectrum = .true.
-     endif
-
-     if (mie) normalizeSpectrum = .false.
 
  if (myRankIsZero) then 
      if (nPhase == 1) then
@@ -5134,7 +5065,9 @@ end subroutine choose_view
     USE amr_mod, only:        amrGridValues
     USE gridtype_mod, only:   gridType
     USE sph_data_class, only: sph_data, get_udist
+#ifdef MPI
     USE mpi_global_mod, only: myRankGlobal
+#endif
     USE messages_mod
 
     implicit none
@@ -5156,11 +5089,11 @@ end subroutine choose_view
 
 ! Local variables
     character(len=80) :: message
-    integer :: iiigas, i
-    real*8  :: xgas, ygas, zgas
-    real*4  :: sphDistFac
-    real    :: tgas
-    real    :: deltaT, sum_deltaT, mean_deltaT, max_deltaT
+    integer      :: iiigas, i
+    real*8       :: xgas, ygas, zgas
+    real(double) :: sphDistFac
+    real         :: tgas
+    real         :: deltaT, sum_deltaT, mean_deltaT, max_deltaT
     type(OCTALVECTOR) :: octVec
 
 ! Begin executable statements

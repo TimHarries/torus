@@ -125,7 +125,7 @@ real function getMeanRadius(aMin, aMax, a0, qDist, pDist)
   implicit none
   real :: aMin, aMax, a0, qDist, pDist
   real :: tot, a1, a2, a, fac
-  real :: ah, al, da, radius
+  real :: ah, al, da
   integer :: i
   integer, parameter :: n = 1000
      a1 = log10(aMin)
@@ -137,7 +137,6 @@ real function getMeanRadius(aMin, aMax, a0, qDist, pDist)
         ah = 10.**(a1 + (a2 - a1) * real(i)/real(n-1))
         a = (ah+al)/2.
         da = ah-al
-        radius = a * microntocm
         fac = da*0.5*(al**(-qDist)*exp(-(al/a0)**pDist)  &
              + ah**(-qDist)*exp(-(ah/a0)**pDist))
         getMeanRadius = getMeanRadius + a*fac
@@ -158,7 +157,7 @@ real function getMeanRadius2(aMin, aMax, a0, qDist, pDist)
 
   implicit none
   real, intent(in) :: aMin, aMax, a0, qDist, pDist
-  real :: a1, a2,  vol, fac
+  real :: a1, a2, fac
   integer :: i
   integer, parameter :: n = 1000
   real :: a(n)     ! grain sizes (log spaced)

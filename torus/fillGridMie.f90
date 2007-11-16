@@ -8,7 +8,6 @@ subroutine fillGridMie2(grid, scale, aMin, aMax, a0, qDist, pDist, grainType)
   type(GRIDTYPE) :: grid
   real :: aMin, aMax, a0, qDist, pDist
   real, allocatable :: sigmaAbs(:), sigmaSca(:)
-  real :: abundance
   real :: scale
   character(len=*) :: grainType
   integer :: i, j, k
@@ -17,8 +16,6 @@ subroutine fillGridMie2(grid, scale, aMin, aMax, a0, qDist, pDist, grainType)
 
   allocate(sigmaAbs(1:grid%nLambda))
   allocate(sigmaSca(1:grid%nLambda))
-
-  abundance = 1.
 
   write(*,'(a)') "Filling grid with mie cross-sections..."
   call draineCrossSection(grid%lamArray, grid%nLambda, &

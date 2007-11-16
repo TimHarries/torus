@@ -4,7 +4,7 @@ subroutine rdintpro(int_pro_file,int_pro,x_int_pro,n_int_pro)
   !
   implicit none
   character(80) int_pro_file
-  real int_pro(*),x_int_pro(*),tot
+  real int_pro(*),x_int_pro(*)
   real xstart,xend
   integer n_int_pro,i
 

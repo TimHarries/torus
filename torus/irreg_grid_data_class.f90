@@ -375,7 +375,6 @@ contains
     type(irreg_grid_data), intent(in) :: this
     character(LEN=*), intent(in) :: filename
     integer :: UN
-    real(double) :: tmp
     
     if (filename(1:1) == '*') then
        UN = 6   ! prints on screen

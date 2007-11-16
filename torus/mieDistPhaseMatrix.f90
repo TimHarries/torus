@@ -248,7 +248,7 @@
          mieMatrix%element(i,j) = MieMatrix%element(i,j)/normFac
        enddo
       enddo
- 666  continue
+
       end subroutine mieDistPhaseMatrix
 
 
@@ -431,7 +431,6 @@
             -rn*pnmllg(n-2))/(rn-1.0)                      !     eq 4.71
 10    continue 
       return 
-666   continue
       end 
 
 
