@@ -44,6 +44,7 @@ contains
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
+          
           dq = thisOctal%q_i(subcell) - thisOctal%q_i_minus_1(subcell)
           if (abs(dq) > 0.d0) then
              if (thisOctal%u_interface(subcell) .ge. 0.d0) then
@@ -65,7 +66,8 @@ contains
                 call writeFatal(message)
                 stop
            end select
-!           if (thisOctal%ghostCell(subcell)) thisOctal%phiLimit(subcell) = 1.d0
+           if (thisOctal%ghostCell(subcell)) thisOctal%phiLimit(subcell) = 1.d0
+!           thisOctal%PhiLimit(subcell) = 1.d0
       endif
     enddo
   end subroutine fluxLimiter
@@ -180,6 +182,36 @@ contains
        endif
     enddo
   end subroutine setupX
+
+
+  recursive subroutine dumpx(thisOctal, n)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer   :: neighbourOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, neighbourSubcell, n
+    type(OCTALVECTOR) :: direction, locator
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call dumpX(child, n)
+                exit
+             end if
+          end do
+       else
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+          if (myRankGlobal==1) then
+             locator = subcellCentre(thisOctal,subcell)
+             n = n + 1
+             write(*,*) n , locator%x
+          endif
+       endif
+    enddo
+  end subroutine dumpx
 
   recursive subroutine setupQX(thisOctal, grid, direction)
     include 'mpif.h'
@@ -301,7 +333,6 @@ contains
              rhou_i_minus_1 = rhou
              thisOctal%u_interface(subcell) = 0.5d0 * &
                   (thisOctal%rhou(subcell)/thisOctal%rho(subcell) + rhou_i_minus_1/rho_i_minus_1)
-
           endif
        endif
     enddo
@@ -431,7 +462,7 @@ contains
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              thisOctal%x_i(subcell) = (subcellCentre(thisOctal, subcell) .dot. direction) * gridDistanceScale
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
@@ -481,7 +512,7 @@ contains
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -530,7 +561,7 @@ contains
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -578,7 +609,7 @@ contains
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal =>thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -626,7 +657,7 @@ contains
 !          if (thisOctal%mpiThread(subcell) /= myRank) cycle
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
-          if (.not.thisOctal%ghostCell(subcell)) then
+          if (.not.thisOctal%edgeCell(subcell)) then
              locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
              neighbourOctal => thisOctal
              call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
@@ -657,6 +688,7 @@ contains
     real(double) :: gamma, eThermal, eKinetic, eTot, u, bigGamma,eta, u2
     type(OCTALVECTOR) :: direction, locator
     integer :: iEquationOfState
+    logical :: useViscosity
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -695,7 +727,13 @@ contains
           thisOctal%pressure_i(subcell) = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
           bigGamma = 0.d0
           if (.not.thisOctal%edgeCell(subcell)) then
-             if (thisOctal%u_i_plus_1(subcell) .le. thisOctal%u_i_minus_1(subcell)) then
+             useViscosity = .false.
+             if (thisOctal%u_i_plus_1(subcell) .le. thisOctal%u_i_minus_1(subcell)) useViscosity = .true.
+!             if ((thisOctal%u_i_plus_1(subcell) < 0.d0).and.(thisOctal%u_i_plus_1(subcell) .ge. thisOctal%u_i_minus_1(subcell))) &
+!                  useViscosity = .true.
+
+
+             if (useViscosity) then
                 bigGamma = 0.25d0 * eta**2 * (thisOctal%u_i_plus_1(subcell) - thisOctal%u_i_minus_1(subcell))**2 &
                      * thisOctal%rho(subcell)
              else
@@ -1208,7 +1246,9 @@ contains
           end do
        else
   
-          thisOctal%rhoV(subcell) = thisOctal%q_i(subcell)
+          if (.not.thisOctal%ghostCell(subcell)) then
+             thisOctal%rhoV(subcell) = thisOctal%q_i(subcell)
+          endif
         
        endif
     enddo
@@ -1232,7 +1272,9 @@ contains
           end do
        else
   
-          thisOctal%rhoW(subcell) = thisOctal%q_i(subcell)
+          if (.not.thisOctal%ghostCell(subcell)) then
+             thisOctal%rhoW(subcell) = thisOctal%q_i(subcell)
+          endif
         
        endif
     enddo
@@ -1256,7 +1298,9 @@ contains
           end do
        else
   
-          thisOctal%rho(subcell) = thisOctal%q_i(subcell)
+          if (.not.thisOctal%ghostCell(subcell)) then
+             thisOctal%rho(subcell) = thisOctal%q_i(subcell)
+          endif
           if (thisOCtal%rho(subcell) < 0.d0) then
              write(*,*) "rho warning ", thisOctal%rho(subcell), subcellCentre(thisOctal, subcell)
           endif
@@ -1282,7 +1326,9 @@ contains
           end do
        else
   
-          thisOctal%rhoE(subcell) = thisOctal%q_i(subcell)
+          if (.not.thisOctal%ghostCell(subcell)) then
+             thisOctal%rhoE(subcell) = thisOctal%q_i(subcell)
+          endif
         
        endif
     enddo
@@ -1306,7 +1352,9 @@ contains
           end do
        else
   
-          thisOctal%rhou(subcell) = thisOctal%q_i(subcell)
+          if (.not.thisOctal%ghostCell(subcell)) then
+             thisOctal%rhou(subcell) = thisOctal%q_i(subcell)
+          endif
         
        endif
     enddo
@@ -1442,8 +1490,13 @@ contains
     call setupUi(grid%octreeRoot, grid, direction)
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
-    call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+    call imposeBoundary(grid%octreeRoot)
+    call periodBoundary(grid)
+    call transferTempStorage(grid%octreeRoot)
+
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUpm(grid%octreeRoot, grid, direction)
     call computePressureU(grid%octreeRoot, gamma, direction, 0)
@@ -1451,10 +1504,10 @@ contains
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceU(grid%octreeRoot, dt, 0)
-
     call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
+
 
 
   end subroutine hydroStep
@@ -1732,7 +1785,7 @@ contains
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     gamma = 5.d0 / 3.d0
-    cfl = 0.3d0
+    cfl = 0.03d0
 
     mu = 2.d0
 
@@ -1755,11 +1808,18 @@ contains
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
+    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    call calculateRhoV(grid%octreeRoot, direction)
+    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    call calculateRhoW(grid%octreeRoot, direction)
 
     call calculateEnergy(grid%octreeRoot, gamma, mu)
     call calculateRhoE(grid%octreeRoot, direction)
 
 
+
+
+    call plotGridMPI(grid, "rhostart.png/png", "x-z", "rho", plotgrid=.false.)
 
     call writeInfo("Refining individual subgrids", TRIVIAL)
     if (.not.grid%splitOverMpi) then
@@ -1794,7 +1854,7 @@ contains
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        call MPI_ALLREDUCE(globalConverged, tConverged, 4, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-       if (ALL(tConverged(1:4))) exit
+       if (ALL(tConverged(1:nHydrothreads))) exit
     end do
 
 
@@ -1811,6 +1871,10 @@ contains
     call calculateRhoE(grid%octreeRoot, direction)
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
+    direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+    call calculateRhoV(grid%octreeRoot, direction)
+    direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+    call calculateRhoW(grid%octreeRoot, direction)
 
     currentTime = 0.d0
     it = 0
@@ -1837,7 +1901,8 @@ contains
 
        call hydroStep(grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
 
-
+!       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+!       call roeSolver(grid, direction, gamma, dt, nPairs, thread1, thread2, nBound, group, ngroup)
 
        if (myrank == 1) call tune(6,"Hydrodynamics step")
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1888,7 +1953,9 @@ contains
 !          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
 !          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", plotgrid=.false.)
+!          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.1, plotgrid=.false.)
+          call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.1, plotgrid=.false.)
+!          call plotGridMPI(grid, "/xs", "x-z", "rhou", -1.1, 1.1, plotgrid=.false.)
 !          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.,plotgrid=.false.)
 !          call plotGridMPI(grid, "/xs", "x-z", "rhoe", plotgrid=.true.)
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
@@ -2004,6 +2071,7 @@ contains
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
        call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+       write(*,*) tConverged(1:nHydrothreads)
        if (ALL(tConverged(1:nHydroThreads))) exit
     end do
 
@@ -2089,7 +2157,7 @@ contains
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
           call MPI_ALLREDUCE(globalConverged, tConverged, 8, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-          if (ALL(tConverged(1:8))) exit
+          if (ALL(tConverged(1:nHydroThreads))) exit
        end do
        
        iUnrefine = iUnrefine + 1
@@ -2448,6 +2516,8 @@ contains
              thisOctal%rhou(subcell) = thisOctal%tempStorage(subcell,3)
              thisOctal%rhov(subcell) = thisOctal%tempStorage(subcell,4)
              thisOctal%rhow(subcell) = thisOctal%tempStorage(subcell,5)
+             thisOctal%energy(subcell) = thisOctal%tempStorage(subcell,6)
+             thisOctal%pressure_i(subcell) = thisOctal%tempStorage(subcell,7)
           endif
        endif
     enddo
@@ -2732,7 +2802,7 @@ contains
           if (thisOctal%ghostCell(subcell)) then
              select case(thisOctal%boundaryCondition(subcell))
                 case(1)
-                   if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
+                   if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:7))
                    locator = thisOctal%boundaryPartner(subcell)
                    bOctal => thisOctal
                    call findSubcellLocal(locator, bOctal, bSubcell)
@@ -2745,6 +2815,9 @@ contains
                    call normalize(dir)
                    Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
                    thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
+
+                   thisOctal%tempStorage(subcell,6) = bOctal%energy(bSubcell)
+                   thisOctal%tempStorage(subcell,7) = bOctal%pressure_i(bSubcell)
 
 ! NB confusion regarding 2d being x,z rather than x,y
 
@@ -4063,6 +4136,607 @@ contains
     enddo
   end subroutine readAMRgridMpiALL
 
+
+  recursive subroutine calculateFluxCentres(grid, thisOctal, gamma)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    type(OCTALVECTOR) :: direction
+    real(double) :: gamma
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateFluxCentres(grid, child, gamma)
+                exit
+             end if
+          end do
+       else 
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          thisOctal%W(subcell, 1) = sqrt(thisOctal%rho(subcell))
+          thisOctal%W(subcell, 2) = thisOctal%W(subcell, 1) * thisOctal%rhou(subcell) / thisOctal%rho(subcell)
+          thisOctal%W(subcell, 4) = (gamma - 1.d0) * &
+               (thisOctal%energy(subcell) - 0.5d0 * thisOctal%rhou(subcell)**2)/thisOctal%rho(subcell)
+          thisOctal%W(subcell, 3) = thisOctal%w(subcell,1) * (thisOctal%energy(subcell) + thisOctal%w(subcell,4)) / &
+               thisOctal%rho(subcell)
+
+          thisOctal%fluxc(subcell,1) = thisOctal%w(subcell, 1) * thisOctal%w(subcell, 2)
+          thisOctal%fluxc(subcell,2) = thisOctal%w(subcell,2)**2 + thisOctal%w(subcell, 4)
+          thisOctal%fluxc(subcell,3) = thisOctal%w(subcell,2) * thisOctal%w(subcell,3)
+
+       endif
+    enddo
+  end subroutine calculateFluxCentres
+
+  recursive subroutine calculateFluxDifferences(grid, thisOctal, dt, gamma, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal, neighbourOctal
+    integer :: neighbourSubcell
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    type(OCTALVECTOR) :: direction, locator
+    real(double) :: fluxl(3), fluxr(3), fludif(3), rSumr, hTilde, uTilde, vsc, ssc
+    real(double) :: eiglam(3), sgn(3)
+    real(double) :: absVt, dtdx, dt, gamma
+    integer :: ierr, n
+    real(double), parameter :: sbpar1 = 1.d0, sbpar2 = 2.d0
+    real(double) :: fluxc_i_minus_1(3), w_i_minus_1(4)
+    real(double) :: q, qnext, rho, rhoe, rhou, rhov, rhow,pressure, x, flux
+    real(double) :: uvdif
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateFluxDifferences(grid, child, dt, gamma, direction)
+                exit
+             end if
+          end do
+       else 
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+          
+          if (.not.thisOctal%edgeCell(subcell)) then
+             call getNeighbourValues2(grid, thisOctal, subcell, direction, fluxc_i_minus_1=fluxc_i_minus_1, w_i_minus_1=w_i_minus_1)
+             
+             
+             fluxl(1:3) = fluxc_i_minus_1(1:3)
+             fluxr(1:3) = thisOctal%fluxc(subcell,1:3)
+             fluDif(1:3) = fluxr(1:3) - fluxl(1:3)
+
+             rSumr = 1.d0 / (w_i_minus_1(1) + thisOctal%w(subcell,1))
+             uTilde = (w_i_minus_1(2)+thisOctal%w(subcell,2)) * rSumr
+             hTilde = (w_i_minus_1(3)+thisOctal%w(subcell,3)) * rSumr
+             absVt = 0.5d0 * uTilde**2
+             uvdif = uTilde * fludif(2)
+             ssc = (gamma - 1.d0) * (hTilde - absVt)
+             if (ssc .gt. 0.d0) then
+                vsc= sqrt(ssc)
+             else
+                vsc = sqrt(abs(ssc))
+                ierr = ierr + 1
+             endif
+             !          if (myrankGlobal == 1) write(*,*) "rsumr, utilde, htilde, absvt, uvdif, ssc ",rsumr, utilde, htilde, absvt, uvdif, ssc 
+             eiglam(1) = uTilde - vsc
+             eiglam(2) = uTilde
+             eiglam(3) = uTilde + vsc
+             sgn(1:3) = sign(1.d0, eiglam(1:3))
+
+
+             thisOctal%a(subcell,1) = 0.5d0 * ((gamma - 1.d0)*(absVT * fludif(1) + &
+                  fludif(3) - uvdif) - vsc * ( &
+                  fluDif(2) - uTilde * fludif(1)) )/ssc
+             thisOctal%a(subcell,2) = (gamma - 1.d0) * ((hTilde - 2.d0*absVt * &
+                  fludif(1) + uvdif - fludif(3)))/ssc 
+             thisOctal%a(subcell,3) = 0.5d0 * ((gamma - 1.d0) * (absVt * fluDif(1) + &
+                  fludif(3) - uvdif) + &
+                  vsc * (fludif(2) - uTilde * fludif(1))) / ssc
+             thisOctal%a(subcell,1:3) = thisOctal%a(subcell,1:3) / (eiglam(1:3) + TINY(eiglam(1:3)))
+             thisOctal%ac1(subcell,1:3) = -sgn(1:3) * thisOctal%a(subcell,1:3) * eiglam(1:3)
+             
+             !          if (myrankglobal == 1) write(*,*) " sgn ", sgn(1:3)
+             
+             !          if (myrankglobal == 1) write(*,*) " a ", thisOctal%a(subcell,1:3)
+          endif
+       endif
+    enddo
+  end subroutine calculateFluxDifferences
+
+  recursive subroutine applySuperBee(grid, thisOctal, dt, gamma, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal, neighbourOctal
+    integer :: neighbourSubcell
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    type(OCTALVECTOR) :: direction, locator
+    real(double) :: fluxl(3), fluxr(3), fludif(3), rSumr, hTilde, uTilde, vsc, ssc
+    real(double) :: fluxc_i_minus_1(3)
+    real(double) :: eiglam(3), sgn(3)
+    real(double) :: a_minus_1(3), a_plus_1(3)
+    real(double) :: absVt, dtdx, dt, gamma
+    integer :: ierr, n
+    real(double), parameter :: sbpar1 = 2.d0, sbpar2 = 2.d0
+    real(double) :: uvdif
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux
+    real(double) :: w_i_minus_1(4)
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call applySuperBee(grid, child, dt, gamma, direction)
+                exit
+             end if
+          end do
+       else 
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if (.not.thisOctal%edgeCell(subcell)) then
+             
+             call getNeighbourValues2(grid, thisOctal, subcell, direction, a_i_minus_1=a_minus_1, a_i_plus_1=a_plus_1,&
+                  fluxc_i_minus_1=fluxc_i_minus_1, w_i_minus_1 = w_i_minus_1)
+!             write(*,'(i3,a7,3e12.5)') myrankglobal," a i-1 ",a_minus_1(1:3)
+!             write(*,'(i3,a7,3e12.5)') myrankGlobal, " a i  ",thisOctal%a(subcell, 1:3)
+!             write(*,'(i3,a7,3e12.5)') myrankglobal," a i+1 ",a_plus_1(1:3)
+             fluxl(1:3) = fluxc_i_minus_1(1:3)
+             fluxr(1:3) = thisOctal%fluxc(subcell,1:3)
+             fluDif(1:3) = fluxr(1:3) - fluxl(1:3)
+             rSumr = 1.d0 / (w_i_minus_1(1) + thisOctal%w(subcell,1))
+             uTilde = (w_i_minus_1(2) + thisOctal%w(subcell,2)) * rSumr
+             hTilde= (w_i_minus_1(3) + thisOctal%w(subcell,3)) * rSumr
+             absVt = 0.5d0 * uTilde**2
+             uvdif = uTilde * fludif(2)
+             ssc = (gamma - 1.d0) * (hTilde - absVt)
+             if (ssc .gt. 0.d0) then
+                vsc= sqrt(ssc)
+             else
+                vsc = sqrt(abs(ssc))
+                ierr = ierr + 1
+             endif
+             
+             eiglam(1) = uTilde - vsc
+             eiglam(2) = uTilde
+             eiglam(3) = uTilde + vsc
+             sgn(1:3) = sign(1.d0, eiglam(1:3))
+             
+             dtdx = dt / (thisOctal%subcellSize * gridDistanceScale)
+             do n = 1, 3 
+                if (sgn(n) < 0.d0) then
+                   thisOctal%ac2(subcell,n) = thisOctal%ac1(subcell,n) + eiglam(n) * &
+                        ((max(0.d0, min(sbpar1 * a_plus_1(n), max(thisOctal%a(subcell,n), &
+                        min(a_plus_1(n), sbpar2 * thisOctal%a(subcell,n))))) + &
+                        min(0.d0, max(sbpar1 * a_plus_1(n), min(thisOctal%a(subcell,n), &
+                        max(a_plus_1(n), sbpar2 * thisOctal%a(subcell,n)))))) * (sgn(n) - &
+                        dtdx*eiglam(n)))
+                else
+                   thisOctal%ac2(subcell,n) = thisOctal%ac1(subcell,n) + eiglam(n) * &
+                        ((max(0.d0, min(sbpar1 * a_minus_1(n), max(thisOctal%a(subcell,n), &
+                        min(a_minus_1(n), sbpar2 * thisOctal%a(subcell,n))))) + &
+                        min(0.d0, max(sbpar1 * a_plus_1(n), min(thisOctal%a(subcell,n), &
+                        max(a_minus_1(n), sbpar2 * thisOctal%a(subcell,n)))))) * (sgn(n) - &
+                        dtdx*eiglam(n)))
+                endif
+             enddo
+
+             thisOctal%ac2(subcell,1:3) = thisOctal%ac1(subcell,1:3)
+
+
+             thisOctal%flux(subcell,1) = 0.5d0 * (fluxl(1) + fluxr(1) + SUM(thisOctal%ac2(subcell,1:3)))
+             thisOctal%flux(subcell,2) = 0.5d0 * (fluxl(2) + fluxr(2) + SUM(eiglam(1:3)*thisOctal%ac2(subcell,1:3)))
+             thisOctal%flux(subcell,3) = 0.5d0 * (fluxl(3) + fluxr(3) + (hTilde - uTilde * vsc) * thisOctal%ac2(subcell,1) + &
+                  absVt * thisOctal%ac2(subcell,2) + (hTilde + uTilde * vsc) * thisOctal%ac2(subcell,3))
+             
+          endif
+       endif
+    enddo
+  end subroutine applySuperBee
+
+
+  recursive subroutine updateStateVariables(grid, thisOctal, dt, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    type(OCTALVECTOR) :: direction
+    real(double) :: dt, flux_i_plus_1(3)
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call updateStateVariables(grid, child, dt, direction)
+                exit
+             end if
+          end do
+       else 
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if (.not.thisOctal%ghostCell(subcell)) then
+             
+             call getNeighbourValues2(grid, thisOctal, subcell, direction, flux_i_plus_1=flux_i_plus_1)
+
+
+             thisOctal%rho(subcell) = thisOctal%rho(subcell) + &
+                  (thisOctal%flux(subcell,1)-flux_i_plus_1(1)) * dt/thisOctal%subcellSize
+             thisOctal%rhou(subcell) = thisOctal%rhou(subcell) + &
+                  (thisOctal%flux(subcell,2)-flux_i_plus_1(2)) * dt/thisOctal%subcellSize
+             thisOctal%energy(subcell) = thisOctal%energy(subcell) &
+                  + (thisOctal%flux(subcell,3)-flux_i_plus_1(3)) * dt/thisOctal%subcellSize
+             thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+          endif
+
+       endif
+    enddo
+  end subroutine updateStateVariables
+
+  recursive subroutine createStateVectors(thisOctal, gamma)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: hTot, pressure, ethermal, gamma
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call createStateVectors(child, gamma)
+                exit
+             end if
+          end do
+       else 
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          thisOctal%qState(subcell,1) = thisOctal%rhoe(subcell)
+          thisOctal%qState(subcell,2) = thisOctal%rhou(subcell)
+          thisOctal%qState(subcell,3) = thisOctal%rhov(subcell)
+          thisOctal%qState(subcell,4) = thisOctal%rhow(subcell)
+          thisOctal%qState(subcell,5) = thisOctal%rho(subcell)
+
+          eThermal = thisOctal%qState(subcell, 1)/thisOctal%qState(subcell, 5) &
+               - 0.5d0 * (thisOctal%qState(subcell,2)**2 + thisOctal%qState(subcell,3)**2 + thisOctal%qState(subcell,4)**2)  &
+               / thisOctal%qState(subcell, 5)**2
+
+          pressure = (gamma - 1.d0) * thisOctal%rho(subcell) * eThermal
+
+          hTot = thisOctal%qState(subcell, 1)/thisOctal%qState(subcell,5) + pressure / thisOctal%qState(subcell,5)
+
+          thisOctal%fluxVector(subcell, 1) = thisOctal%rhou(subcell) * hTot
+          thisOctal%fluxVector(subcell, 2) = thisOctal%rhou(subcell)**2 / thisOctal%rho(subcell) + pressure
+          thisOctal%fluxVector(subcell, 3) = thisOctal%rhou(subcell) * thisOctal%rhov(subcell) / thisOctal%rho(subcell)
+          thisOctal%fluxVector(subcell, 4) = thisOctal%rhow(subcell) * thisOctal%rhou(subcell) / thisOctal%rho(subcell)
+          thisOctal%fluxVector(subcell, 5) = thisOctal%rhou(subcell)
+        
+
+       endif
+    enddo
+  end subroutine createStateVectors
+
+  recursive subroutine unpackStateVectors(thisOctal)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    type(OCTALVECTOR) :: direction
+    
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call unpackStateVectors(child)
+                exit
+             end if
+          end do
+       else 
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          thisOctal%rhoe(subcell) = thisOctal%qState(subcell,1) 
+          thisOctal%rhou(subcell) = thisOctal%qState(subcell,2)
+          thisOctal%rhov(subcell) = thisOctal%qState(subcell,3)
+          thisOctal%rhow(subcell) = thisOctal%qState(subcell,4) 
+          thisOctal%rho(subcell) = thisOctal%qState(subcell,5)
+
+
+       endif
+    enddo
+  end subroutine unpackStateVectors
+
+  recursive subroutine updateStateVectors(grid, thisOctal, dt, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: dt
+    real(double) :: fluxvector_i_minus_1(5), x_i_minus_1
+    real(double) :: fluxvector_i_plus_1(5)
+    type(OCTALVECTOR) :: direction
+    
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call updateStateVectors(grid, child, dt, direction)
+                exit
+             end if
+          end do
+       else 
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if (.not.thisOctal%ghostCell(subcell)) then
+             call getNeighbourValues2(grid, thisOctal, subcell, direction, &
+                  fluxvector_i_minus_1 = fluxvector_i_minus_1, x_i_minus_1 = x_i_minus_1, &
+                  fluxvector_i_plus_1 = fluxvector_i_plus_1)
+             
+             thisOctal%qState(subcell, 1:5) = thisOctal%qState(subcell,1:5)  + &
+                  dt * (thisOctal%fluxVector(subcell, 1:5) - fluxVector_i_minus_1(1:5)) !/ &
+!                  (thisOctal%x_i(subcell) - x_i_minus_1)
+!             thisOctal%qState(subcell, 1:5) = thisOctal%qState(subcell,1:5)  + &
+!                  dt * (fluxvector_i_plus_1(1:5) - fluxVector_i_minus_1(1:5)) !/ &
+!                  (thisOctal%x_i(subcell) - x_i_minus_1)
+
+          endif
+
+       endif
+    enddo
+  end subroutine updateStateVectors
+
+  subroutine averageInterfaceStateVariables(qStateL, qStateR, gamma, uHat, vHat, wHat, &
+       hTotHat, rhoHat, pHat, CsHat, eTotHat, EkinHat)
+    real(double) :: qStateL(:), qStateR(:)
+    real(double) :: uHat, vHat, wHat, hTotHat, rhoHat, pHat, eTotHat
+    real(double) :: fac, gamma, CsHat, EkinHat
+
+    real(double) :: rootRhoL, rootRhoR, eThermalL, eThermalR, PL, PR
+    real(double) :: hL, Hr
+    
+    rootRhoL = sqrt(qStateL(5))
+    rootRhoR = sqrt(qStateR(5))
+    fac = 1.d0 / (rootRhoL + rootRhoR)
+    uHat = fac * (rootRhoL * qStateL(2)/qStateL(5) + rootRhoR * qStateR(2)/qStateR(5))
+    vHat = fac * (rootRhoL * qStateL(3)/qStateL(5) + rootRhoR * qStateR(3)/qStateR(5))
+    wHat = fac * (rootRhoL * qStateL(4)/qStateL(5) + rootRhoR * qStateR(4)/qStateR(5))
+
+    eKinHat = (uHat**2 + vHat**2 + wHat**2) / 2.d0
+
+    eThermalR = qStateR(1)/qStateR(5) - 0.5d0 * (qStateR(2)**2 + qStateR(3)**2 + qStateR(4)**2)  / qStateR(5)**2
+    eThermalL = qStateL(1)/qStateL(5) - 0.5d0 * (qStateL(2)**2 + qStateL(3)**2 + qStateL(4)**2)  / qStateL(5)**2
+
+    PR = (gamma - 1.d0) * qStateR(5) * eThermalR
+    PL = (gamma - 1.d0) * qStateL(5) * eThermalL
+
+    hL = qStateL(1)/qStateL(5) + PL / qStateL(5)
+    hR = qStateR(1)/qStateR(5) + PR / qStateR(5)
+
+    hTotHat = fac * (rootRhoL * hL + rootRhoR * hR)
+
+    cSHat = sqrt((gamma - 1.d0) * (hTotHat - eKinHat))
+
+  end subroutine averageInterfaceStateVariables
+
+
+  recursive subroutine calculateNewFluxes(grid, thisOctal, direction, dt, gamma)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal, neighbourOctal
+    integer :: neighbourSubcell
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: dt
+    real(double) :: u, v, w
+    real(double) :: fluxvector_i_minus_1(5), x_i_minus_1
+    real(double) :: qState_i_minus_1(5), tildeDeltaQ(5), deltaQ(5)
+    real(double) :: gamma, qstate_i_plus_1(5)
+    real(double) :: cSHat, zeta, uHat, vHat, wHat, hTotHat, rhoHat, PHat, eTotHat, eKinHat
+    real(double) :: lambda(5), tildePhi(5), theta(5), eps(1:5), dx, qstate_i_minus_2(5), r(5)
+    type(OCTALVECTOR) :: direction, locator
+    integer :: n, nbound
+    
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call calculateNewFluxes(grid, child, direction, dt, gamma)
+                exit
+             end if
+          end do
+       else 
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if (.not.thisOctal%ghostcell(subcell)) then
+             
+             call getNeighbourValues2(grid, thisOctal, subcell, direction, &
+               fluxvector_i_minus_1 = fluxvector_i_minus_1, x_i_minus_1 = x_i_minus_1, qState_i_minus_1 = qState_i_minus_1, &
+               qstate_i_plus_1 = qstate_i_plus_1, qState_i_minus_2 = qstate_i_minus_2)
+
+             
+             call averageInterfaceStateVariables(qState_i_minus_1,  thisOctal%qstate(subcell, 1:5), gamma, uHat, vHat, wHat, &
+                  hTotHat, rhoHat, pHat, CsHat, eTotHat, EkinHat)
+             
+             lambda(1) = uHat - csHat
+             lambda(2) = uHat + csHat
+             lambda(3) = uHat
+             lambda(4) = uHat
+             lambda(5) = uHat
+
+
+             do n = 1 , 5
+                if  ((thisOctal%qState(subcell,n) - qState_i_minus_1(n)) /= 0.d0) then
+                   if (lambda(n) >= 0.d0) then
+                      r(n) = (qState_i_minus_1(n) - qState_i_minus_2(n)) &
+                           / (thisOctal%qState(subcell,n) - qState_i_minus_1(n))
+                   else
+                      r(n) = (qState_i_plus_1(n) - thisOctal%qState(subcell,n)) &
+                           / (thisOctal%qState(subcell,n) - qState_i_minus_1(n))
+                   endif
+                else
+                   r = 0.d0
+                endif
+             enddo
+!             write(*,*) "r ",r(1:5)
+!             write(*,*) " q_i - q_i-1 ", thisOctal%qState(subcell,1:5) - qState_i_minus_1(1:5)
+!             write(*,*) " q_i-1 - q_i-2 ", qState_i_minus_1(1:5) - qState_i_minus_2(1:5)
+!             write(*,*) " q_i+1 - q_i   ", qState_i_plus_1(1:5) - thisOctal%qState(subcell,1:5)
+
+             
+             theta(1:5) = sign(1.d0, lambda(1:5))
+
+             tildePhi = max(0.d0, min(1.d0, 2.d0*r), min(2.d0,r))
+
+             dx = thisOctal%x_i(subcell) - x_i_minus_1
+
+             eps(1:5) = lambda(1:5) * dt / dx
+             
+             deltaQ = thisOctal%qState(subcell, 1:5) - qState_i_minus_1(1:5)
+             u  = thisOctal%qState(subcell,2) / thisOctal%qState(subcell,5)
+             v  = thisOctal%qState(subcell,3) / thisOctal%qState(subcell,5)
+             w  = thisOctal%qState(subcell,4) / thisOctal%qState(subcell,5)
+             
+             zeta = u*deltaQ(2) + v*deltaQ(3) + w*deltaQ(4) - deltaQ(1)
+             
+             tildeDeltaQ(1) = (gamma - 1.d0) / (2.d0 * cSHat**2) * &
+                  (eKinHat * deltaQ(5) - zeta) - ((deltaQ(2) - uHat*deltaQ(5))/(2.d0*cSHat))
+             
+             tildeDeltaQ(2) = (gamma - 1.d0) / (2.d0 * cSHat**2) * &
+                  (eKinHat * deltaQ(5) - zeta) + ((deltaQ(2) - uHat*deltaQ(5))/(2.d0*cSHat))
+             
+             tildeDeltaQ(3) = (gamma - 1.d0) / (2.d0 * cSHat**2) * ((hTotHat - 2.d0*eKinHat) * deltaQ(5) + zeta)
+             
+             tildeDeltaQ(4) = deltaQ(3) - v * deltaQ(5)
+             tildeDeltaQ(5) = deltaQ(4) - w * deltaQ(5)
+             
+             do n = 1, 5
+                thisOctal%newfluxVector(subcell, n) = 0.5d0 * (thisOctal%fluxVector(subcell,n) + fluxvector_i_minus_1(n)) &
+                     - 0.5d0 * SUM(lambda(1:5)*tildeDeltaQ(n)*theta(1:5))!+tildePhi(1:5)*(eps(1:5) - theta(1:5))))
+             enddo
+          endif
+       endif
+    enddo
+  end subroutine calculateNewFluxes
+
+  recursive subroutine swapFluxes(thisOctal)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call swapFluxes(child)
+                exit
+             end if
+          end do
+       else 
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          thisOctal%fluxVector(subcell,1:5) = thisOctal%newFluxVector(subcell, 1:5)
+       endif
+    enddo
+  end subroutine swapFluxes
+
+
+  subroutine roeSolver(grid, direction, gamma, dt, nPairs, thread1, thread2, nBound, group, ngroup)
+    integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
+    type(GRIDTYPE) :: grid
+    type(OCTALVECTOR) :: direction
+    real(double) :: gamma
+    real(double) :: dt
+    integer :: i
+
+    write(*,*) myRankGlobal, " setting up x"
+    call setupX(grid%octreeRoot, grid, direction)
+
+    write(*,*) myRankGlobal, " creating state vectors"
+    call createStateVectors(grid%octreeRoot, gamma)
+
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+    call setupQvectors(grid, grid%octreeRoot, direction)
+
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+    write(*,*) myRankGlobal, " calculating new fluxes"
+    call calculateNewFluxes(grid, grid%octreeRoot, direction, dt, gamma)
+
+    write(*,*) myRankGlobal, " swapping fluxes"
+    call swapFluxes(grid%octreeRoot)
+
+    write(*,*) myrankglobal ," calling exchange across boundary"
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+    write(*,*) myRankGlobal, " updating state vectors"
+    call updateStateVectors(grid, grid%octreeRoot, dt, direction)
+
+    write(*,*) myRankGlobal, " unpacking state vectors"
+    call unpackStateVectors(grid%octreeRoot)
+
+  end subroutine roeSolver
+
+  recursive subroutine setupQvectors(grid, thisOctal, direction)
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    real(double) :: dt
+    real(double) :: qstate_i_minus_1(5)
+    type(OCTALVECTOR) :: direction
+    
+  
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call setupQVectors(grid, child, direction)
+                exit
+             end if
+          end do
+       else 
+
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+          if (.not.thisOctal%ghostCell(subcell)) then
+             call getNeighbourValues2(grid, thisOctal, subcell, direction, qstate_i_minus_1 = qstate_i_minus_1)
+             thisOctal%qstate_i_minus_1(subcell,1:5) = qstate_i_minus_1
+          endif
+
+       endif
+    enddo
+  end subroutine setupQvectors
 
 
 #endif

@@ -184,7 +184,10 @@ MODULE octal_mod
     real(double) :: pressure_i(8), pressure_i_plus_1(8), pressure_i_minus_1(8)
     real(double), pointer :: tempStorage(:,:) => null()
     type(OCTALVECTOR) :: boundaryPartner(8)
-    
+
+    real(double) :: w(8,4), fluxc(8,3),  a(8,3)
+    real(double) :: ac2(8,3), flux(8,3), ac1(8,3)
+    real(double) :: qState(8,5), fluxvector(8,5), newFluxVector(8,5), qstate_i_minus_1(8,5)
   END TYPE octal
  
 CONTAINS 

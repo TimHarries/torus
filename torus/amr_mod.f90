@@ -4076,7 +4076,11 @@ IF ( .NOT. gridConverged ) RETURN
        point_local = point
     endif
     if (thisOctal%oneD) then
-       point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+       if (.not.hydrodynamics) then
+          point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+       else
+          point_local = point
+       endif
     endif
 
 
@@ -7946,6 +7950,30 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%energy(subcell) = 0.25d0
        thisOctal%pressure_i(subcell) = 0.1d0
     endif
+
+    if (thisOctal%oneD) then
+       if (rvec%x < 0.25d0) then
+          thisOctal%rho(subcell) = 1.d0
+          thisOctal%energy(subcell) = 2.5d0
+          thisOctal%pressure_i(subcell) = 1.d0
+          thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+       else
+          thisOctal%rho(subcell) = 0.125d0
+          thisOctal%energy(subcell) = 0.25d0
+          thisOctal%pressure_i(subcell) = 0.1d0
+          thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
+       endif
+    endif
+
+
+
+!    r = rVec%x
+!    gd = 0.1d0
+!    thisOctal%rho(subcell) = 0.5d0 + 0.3d0 * exp(-(r-0.5d0)**2/gd**2)
+!    thisOctal%energy(subcell) = 2.5d0
+!    thisOCtal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+!    thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
+!    thisOctal%pressure_i(subcell) = (5.d0/3.d0-1.d0)*thisOctal%rho(subcell) * thisOctal%energy(subcell)
 
     thisOctal%boundaryCondition(subcell) = 1
     thisOctal%chiline(subcell) = -111111.d0
