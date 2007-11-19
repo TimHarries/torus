@@ -742,9 +742,6 @@ contains
              endif
           endif
 
-!          if ((myrankglobal==1).and.(biggamma/thisOctal%pressure_i(subcell) > 0.1d0)) then
-!             write(*,*) "gamma/p ",biggamma/thisOctal%pressure_i(subcell)
-!          endif
 
           thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell) + bigGamma
           
@@ -969,8 +966,6 @@ contains
                      thisOctal%pressure_i_minus_1(subcell) * thisOctal%u_i_minus_1(subcell)) / &
                      (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
              endif
-
-
              if (isnan(thisOctal%rhou(subcell))) then
                 write(*,*) "bug",thisOctal%rhou(subcell), &
                      thisOctal%pressure_i_plus_1(subcell),thisOctal%pressure_i_minus_1(subcell)
@@ -1484,11 +1479,11 @@ contains
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
 
-
-
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
+    call setupUpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRho(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1499,12 +1494,16 @@ contains
     call transferTempStorage(grid%octreeRoot)
 
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call computePressureU(grid%octreeRoot, gamma, direction, 0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceU(grid%octreeRoot, dt, 0)
+
+
     call imposeBoundary(grid%octreeRoot)
     call periodBoundary(grid)
     call transferTempStorage(grid%octreeRoot)
@@ -1557,7 +1556,9 @@ contains
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call setupVi(grid%octreeRoot, grid, direction)
     call setupVpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call computePressureV(grid%octreeRoot, gamma, direction, iEquationOfState)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
@@ -1573,7 +1574,9 @@ contains
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call computePressureW(grid%octreeRoot, gamma, direction, iEquationOfState)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
@@ -1589,7 +1592,9 @@ contains
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call computePressureU(grid%octreeRoot, gamma, direction, iEquationOfState)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
@@ -1628,7 +1633,9 @@ contains
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call computePressureU(grid%octreeRoot, gamma, direction, 0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
@@ -1643,7 +1650,9 @@ contains
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call computePressureW(grid%octreeRoot, gamma, direction, 0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
@@ -1659,7 +1668,9 @@ contains
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
+    call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call computePressureU(grid%octreeRoot, gamma, direction, 0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupPressure(grid%octreeRoot, grid, direction)
@@ -1953,11 +1964,17 @@ contains
 !          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
 !          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.1, plotgrid=.false.)
-          call plotGridMPI(grid, "/xs", "x-z", "rho", 0.9, 2.1, plotgrid=.false.)
+
+          call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.1, plotgrid=.false.)
+!          call plotGridMPI(grid, "/xs", "x-z", "pressure", 0., 2.1, plotgrid=.false.)
+!          call plotGridMPI(grid, "/xs", "x-z", "rhou", -0.5, 0.5, plotgrid=.false.)
+
+!          call plotGridMPI(grid, "/xs", "x-z", "rhoe", 0., 2.1, plotgrid=.false.)
+
 !          call plotGridMPI(grid, "/xs", "x-z", "rhou", -1.1, 1.1, plotgrid=.false.)
 !          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
 !          call plotGridMPI(grid, "/xs", "x-z", "rhoe", plotgrid=.true.)
-          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
+!          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           grid%iDump = it
           grid%currentTime = currentTime
 !          call writeAmrGridMpiAll(plotfile,.false.,grid)

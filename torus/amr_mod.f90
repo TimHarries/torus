@@ -7914,7 +7914,7 @@ IF ( .NOT. gridConverged ) RETURN
     xmid = (x1 + x2)/2.d0
     x = rVec%x
     z = rVec%z
-    gd = 0.1d0 * (x2 - x1)
+    gd = 0.05d0 * (x2 - x1)
     if (thisOctal%twod) then
        r = modulus(rVec - OCTALVECTOR(0.5d0, 0.d0, 0.5d0))
     else
@@ -7968,7 +7968,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
 !    r = rVec%x
-!    gd = 0.1d0
+!    gd = 0.025d0
 !    thisOctal%rho(subcell) = 0.5d0 + 0.3d0 * exp(-(r-0.5d0)**2/gd**2)
 !    thisOctal%energy(subcell) = 2.5d0
 !    thisOCtal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
