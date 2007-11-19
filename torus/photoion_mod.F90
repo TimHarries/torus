@@ -93,7 +93,6 @@ contains
     integer :: nInf
     real(double) :: kappaScadb, kappaAbsdb
     real(double) :: epsOverDeltaT, kappaH, kappaHe
-    real :: dummy(3)
     real :: pops(10)
     integer :: nIter
     logical :: converged
@@ -237,33 +236,33 @@ contains
        if (writeoutput) then
           call plot_AMR_values(grid, "ionization", "x-z", 0., &
                "ionization.ps/vcps", .true., .true., &
-               0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+               width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.)
 
           
           call locate(lamArray, nLambda, 5500., ilam)
           call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
                "tau.ps/vcps", .true., .false., &
-               0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,ilam=ilam) 
+                width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,ilam=ilam) 
 
           call plot_AMR_values(grid, "photocoeff", "x-z", 0., &
                "photocoeff.ps/vcps", .true., .true., &
-               0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+               width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.)
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_zoom.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
+             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
 
        call plot_AMR_values(grid, "rho", "x-y", real(grid%octreeRoot%centre%y), &
             "rho_temp_xy.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             "lucy_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
+            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomFactor) 
           
           call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             "lucy_temp_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
 
        endif
 
@@ -567,7 +566,7 @@ end if ! (my_rank /= 0)
        if (myRankIsZero) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.)
 
        if (doTuning) call tune(6, "Gauss-Seidel sweeps")
 
@@ -577,7 +576,7 @@ end if ! (my_rank /= 0)
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_zoom.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
+            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
 
        call solveArbitraryDiffusionZones(grid)
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)
@@ -3084,10 +3083,10 @@ subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subc
   type(GRIDTYPE) :: grid
   integer :: i, j, k
   real :: fac, t, aj ,bj, cj
-  real(double) :: lineFreq, lambda
+  real(double) :: lineFreq !, lambda
   real :: emissivity
-  real :: heII4686
-  integer :: ilow, iup
+!  real :: heII4686
+!  integer :: ilow , iup
   integer,parameter :: nHeIILyman = 4
   real(double) :: heIILyman(4)
   real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
@@ -3165,7 +3164,7 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
   integer :: nLambda
   real :: lamArray(:)
   integer :: i, iLam
-  real :: lambda, thisLam
+  real :: thisLam
   type(OCTALVECTOR) :: octVec
   real(double), allocatable :: kabsArray(:)
 
@@ -3468,7 +3467,7 @@ end subroutine readHeIIrecombination
     real :: thisLambda
     integer :: nFreq
     real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:), dfreq(:)
-    real(double) :: nuStart, nuEnd, thisFreq, r, fac
+    real(double) :: nuStart, nuEnd, r, fac
     integer :: nLambda
     real :: lamArray(:)
     integer :: i
@@ -3533,14 +3532,13 @@ end subroutine readHeIIrecombination
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    real :: thisLambda
     integer :: nFreq
     real(double), allocatable :: freq(:), dfreq(:), spectrum(:), tspec(:),lamspec(:)
     real :: dlam(:), dlam2
     real(double), allocatable :: prob(:)
     real(double) :: t
     real :: thisLam
-    real(double) :: nuStart, nuEnd, thisFreq, r, fac
+    real(double) :: thisFreq, r, fac
     integer :: nLambda
     real :: lamArray(:)
     real :: bias
@@ -3635,7 +3633,6 @@ end subroutine readHeIIrecombination
     real :: lamArray(:)
     integer :: nLambda
     integer :: i, j
-    real hLines(15)
     integer :: iup, ilow
 
   real(double) :: lambdaTrans(20,20) = reshape( source=&

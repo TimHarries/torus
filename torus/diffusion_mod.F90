@@ -75,8 +75,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     type(GRIDTYPE) :: grid
-    real(double) :: kRos, kabs
-    real :: kappap
+    real(double) :: kros
     integer :: subcell, i
     
     do subcell = 1, thisOctal%maxChildren
@@ -104,8 +103,6 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     type(GRIDTYPE) :: grid
-    real(double) :: kRos, kabs
-    real :: kappap
     integer :: subcell, i
     
     do subcell = 1, thisOctal%maxChildren
@@ -152,20 +149,18 @@ contains
   end subroutine checkConvergence
 
   subroutine gaussSeidelSweep(grid,  tol, demax, converged)
-    use input_variables, only : blockhandout
 #ifdef MPI
+    use input_variables, only : blockhandout
     use mpi_global_mod, only : myRankGlobal, nThreadsGlobal
     include 'mpif.h'
 #endif
     type(octal), pointer   :: thisOctal, neighbourOctal, startOctal
-    type(octal), pointer  :: child 
     type(GRIDTYPE) :: grid
-    integer :: my_rank, np, isubcell, ierr
-    real(double) :: kRos
-    real(double) ::  deMax, globalDeMax
+    integer :: my_rank, np !, isubcell
+    real(double) ::  deMax
     real :: tol
     logical :: converged
-    integer :: subcell, i, neighbourSubcell
+    integer :: subcell, neighbourSubcell
     real(double) :: eDens(-1:1,-1:1,-1:1)
     real(double) :: dCoeff(-1:1,-1:1,-1:1)
     real(double) :: dCoeffhalf(-1:1,-1:1,-1:1)
@@ -181,14 +176,16 @@ contains
     real(double) :: phi, DeltaPhi, DeltaZ, deltaR
     real(double), parameter :: underCorrect = 0.8d0
 #ifdef MPI
-     logical :: dcAllocated
-     integer, dimension(:), allocatable :: octalsBelongRank
-     logical :: rankComplete
-     integer :: iRank
-     integer :: tag = 0
-     integer :: tempInt
-     real(double), allocatable :: eArray(:), tArray(:)
-     integer :: nEdens, nVoxels
+    real(double) :: globalDeMax
+    logical :: dcAllocated
+    integer, dimension(:), allocatable :: octalsBelongRank
+    logical :: rankComplete
+    integer :: iRank
+    integer :: ierr
+    integer :: tag = 0
+    integer :: tempInt
+    real(double), allocatable :: eArray(:), tArray(:)
+    integer :: nEdens, nVoxels
 #endif
 
     np = 1
@@ -675,16 +672,14 @@ contains
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use input_variables, only : eDensTol, zoomfactor
+    use input_variables, only : eDensTol !, zoomfactor
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid
     logical :: gridConverged
-    real :: dummy(1)
     real(double) :: deMax
     integer :: niter
     integer, parameter :: maxIter = 200
-    integer :: my_rank, ierr
 
     call seteDens(grid, grid%octreeRoot)
     call setDiffusionCoeff(grid, grid%octreeRoot)
@@ -705,12 +700,11 @@ end subroutine gaussSeidelSweep
         write(*,*) nIter," Maximum relative change in eDens:",deMax
 !        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
 !             "/xs", .true., .false., &
-!             0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomfactor) 
+!             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomfactor) 
   endif
         if (nIter < 3) gridConverged = .false.
         if (nIter > maxIter) then
- if (myRankIsZero) &
-           write(*,*) "No solution found after ",maxIter," iterations"
+           if (myRankIsZero) write(*,*) "No solution found after ",maxIter," iterations"
            gridConverged = .true.
         endif
      enddo
@@ -811,7 +805,7 @@ end subroutine gaussSeidelSweep
     type(octal), pointer  :: child
     integer :: subcell
     integer :: i
-    real :: temp
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -947,7 +941,7 @@ end subroutine gaussSeidelSweep
     type(octal), pointer  :: child
     integer :: subcell
     integer :: i
-    real :: temp
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child

@@ -1050,7 +1050,7 @@ contains
       real(double), intent(in) :: nu0   !  line center freq.  [Hz]
       real(double), intent(in) :: Gamma !  Damping Constant  [Hz]
       !
-      real(double) :: x, y, t, u, vel, a, a2
+      real(double) :: x, y, t, a, a2
       logical :: ok
       a = Gamma/4.0d0/Pi
       a2 = a*a
@@ -1074,7 +1074,6 @@ contains
          
          if (y < t) then
             ok = .true.
-            u = x
          endif
 
       end do
@@ -1674,7 +1673,7 @@ contains
       integer,parameter :: nAdd = 50
       integer,parameter :: nclose =10
 !      integer, parameter :: nAdd = 10
-      integer :: i, j, n
+      integer :: i, j
       real :: dlam
       logical :: in_res_zone
       
@@ -2244,7 +2243,7 @@ contains
        
 
   subroutine convertByte4(iByte, ival)
-    integer(kind=single) :: ibyte(4), iswap
+    integer(kind=single) :: ibyte(4)
     integer(kind=single) :: ubyte(4)
     integer  :: ival
 
@@ -2257,7 +2256,7 @@ contains
   end subroutine convertByte4
 
   subroutine convertByte2(iByte, ival)
-    integer(kind=single) :: ibyte(2), iswap
+    integer(kind=single) :: ibyte(2)
     integer(kind=single) :: ubyte(2)
     integer(kind=double)  :: ival
 
@@ -3411,7 +3410,7 @@ END SUBROUTINE GAUSSJ
   subroutine insertBin(xArray, nx, x, dx)
     real :: x, xarray(:)
     integer :: nx
-    real :: dx, xplus1, xplus2
+    real :: dx !, xplus1, xplus2
     integer :: i, j
 
     if ((x > xArray(1)).and.(x < xArray(nx))) then

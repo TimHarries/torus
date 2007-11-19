@@ -461,7 +461,6 @@ CONTAINS
 
     TYPE(hotSpotVariable), INTENT(INOUT) :: hotspot
     REAL, INTENT(IN) :: maxSpotTemp ! (K)
-    INTEGER :: iSpot
     REAL :: TscaleFactor
     REAL :: RscaleFactor
     REAL :: RhoScaleFactor

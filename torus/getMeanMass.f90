@@ -1,51 +1,54 @@
-real function getMeanMass(aMin, aMax, a0, qDist, pDist)
-
-  use constants_mod
-
-  implicit none
-  real :: aMin, aMax, a0, qDist, pDist
-  real :: tot, a1, a2, a,vol, fac, mass
-  real :: ah, al, da, meanA
-  integer :: i
-  integer, parameter :: n = 1000
-  real :: density
-  character(len=80) :: grainType
-
-     select case(grainType)
-       case("sil_dl")
-          density = 3.6
-       case("draine_sil")
-          density = 3.5
-       case("amc_hn","amc_zb","gr1_dl","gr2_dl")
-          density = 2.
-       case DEFAULT
-          write(*,*) "!!! Unknown grain type in getMeanMass"
-          density = 3.6
-     end select
-     a1 = log10(aMin)
-     a2 = log10(aMax)
-     getMeanMass = 0.
-     meanA = 0.
-     tot = 0.
-     write(*,*) "qdist",qdist
-     do i = 1, n-1
-        al = 10.**(a1 + (a2 - a1) * real(i-1)/real(n-1))
-        ah = 10.**(a1 + (a2 - a1) * real(i)/real(n-1))
-        a = (ah+al)/2.
-        da = ah-al
-        vol = (4./3.)* pi * (a*microntocm)**3
-        fac = da*0.5*(al**(-qDist)*exp(-(al/a0)**pDist) &
-             + ah**(-qDist)* exp(-(ah/a0)**pDist))
-        mass = vol * density
-        getMeanMass = getMeanMass + mass*fac
-        meanA = meanA + a * fac
-        tot = tot + fac
-     enddo
-     getMeanMass = getMeanMass / tot
-     meanA = meanA / tot
-     write(*,*) "mean mass by number: ",getMeanMass
-     write(*,*) "mean mass by radius",(4./3.)* pi * (meana*microntocm)**3 * density
-end function getMeanMass
+! This function was raising a warning about graintype being used but not set. As this function 
+! is never called I have commented it out (Dave Acreman, 16/11/07).
+!
+!!$real function getMeanMass(aMin, aMax, a0, qDist, pDist)
+!!$
+!!$  use constants_mod
+!!$
+!!$  implicit none
+!!$  real :: aMin, aMax, a0, qDist, pDist
+!!$  real :: tot, a1, a2, a,vol, fac, mass
+!!$  real :: ah, al, da, meanA
+!!$  integer :: i
+!!$  integer, parameter :: n = 1000
+!!$  real :: density
+!!$  character(len=80) :: grainType
+!!$
+!!$     select case(grainType)
+!!$       case("sil_dl")
+!!$          density = 3.6
+!!$       case("draine_sil")
+!!$          density = 3.5
+!!$       case("amc_hn","amc_zb","gr1_dl","gr2_dl")
+!!$          density = 2.
+!!$       case DEFAULT
+!!$          write(*,*) "!!! Unknown grain type in getMeanMass"
+!!$          density = 3.6
+!!$     end select
+!!$     a1 = log10(aMin)
+!!$     a2 = log10(aMax)
+!!$     getMeanMass = 0.
+!!$     meanA = 0.
+!!$     tot = 0.
+!!$     write(*,*) "qdist",qdist
+!!$     do i = 1, n-1
+!!$        al = 10.**(a1 + (a2 - a1) * real(i-1)/real(n-1))
+!!$        ah = 10.**(a1 + (a2 - a1) * real(i)/real(n-1))
+!!$        a = (ah+al)/2.
+!!$        da = ah-al
+!!$        vol = (4./3.)* pi * (a*microntocm)**3
+!!$        fac = da*0.5*(al**(-qDist)*exp(-(al/a0)**pDist) &
+!!$             + ah**(-qDist)* exp(-(ah/a0)**pDist))
+!!$        mass = vol * density
+!!$        getMeanMass = getMeanMass + mass*fac
+!!$        meanA = meanA + a * fac
+!!$        tot = tot + fac
+!!$     enddo
+!!$     getMeanMass = getMeanMass / tot
+!!$     meanA = meanA / tot
+!!$     write(*,*) "mean mass by number: ",getMeanMass
+!!$     write(*,*) "mean mass by radius",(4./3.)* pi * (meana*microntocm)**3 * density
+!!$end function getMeanMass
 
 !
 ! This is similar to getMeanMass, but it uses more accurate integration method.

@@ -16372,10 +16372,10 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: value
     !
     real :: xp, yp, xm, ym, zp, zm
-    real(double) :: ksca, kabs
+    real(double) :: kabs
     real(double) :: d
     logical :: use_this_subcell, update
-    type(octalvector) :: rvec, rhat, velocity
+    type(octalvector) :: rvec, rhat
     
   
     do subcell = 1, thisOctal%maxChildren
@@ -16580,7 +16580,7 @@ IF ( .NOT. gridConverged ) RETURN
     type(octalvector) :: rvec, rhat
     type(gridtype) :: grid
     real(double) :: value
-    real(double) :: kabs,ksca
+    real(double) :: kabs
     TYPE(vector)   :: Velocity
 
     integer :: subcell, i, idx
@@ -16887,7 +16887,7 @@ IF ( .NOT. gridConverged ) RETURN
     integer ::npts
     logical :: filled
     real :: x(2*nAng+10), y(2*nAng+10)
-    real :: x1, y1
+!    real :: x1, y1
 
     rVec = subcellCentre(thisOctal, subcell)
     r1 = sqrt(rVec%x**2+rVec%y**2)-thisOctal%subcellsize/2.d0
@@ -16964,7 +16964,6 @@ IF ( .NOT. gridConverged ) RETURN
     integer ::npts
     logical :: filled
     real :: x(2*nAng+10), y(2*nAng+10)
-    real :: x1, y1
 
     rVec = subcellCentre(thisOctal, subcell)
     r1 = rVec%x-thisOctal%subcellsize/2.d0

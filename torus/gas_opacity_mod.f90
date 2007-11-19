@@ -578,7 +578,7 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitation,g,mu)
   real :: lambda(:),kappa(:),excitation(:),g(:)
   integer :: i
   real, allocatable :: jLow(:)
-  real, allocatable :: wavenumber(:),gf(:),alpha(:)
+  real, allocatable :: gf(:),alpha(:)
   real, parameter :: mHydrogen = 1.6733e-24      ! g
   real, parameter :: mElectron = 9.109565D-28    ! g
   real, parameter :: eCharge = 4.803242384E-10 !
@@ -591,7 +591,6 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitation,g,mu)
 
   read(20,*) nLines
   allocate(gf(1:nLines))
-  allocate(wavenumber(1:nLines))
   allocate(alpha(1:nLines))
   allocate(jlow(1:nLines))
 
@@ -602,8 +601,6 @@ subroutine readKurucz(filename,nLines,lambda,kappa,excitation,g,mu)
   do i = 1, nLines
 
      if (mod(i,nLines/10) == 0) write(*,*) i 
-
-    2 FORMAT(F10.4,F7.3,F5.1,F10.3,F5.1,F11.3,I4,A8,A8,I2,I4)
 
      read(20,'(f10.4,f7.3,f5.1,f10.3)') &
           lambda(i), gf(i),  jLow(i), excitation(i)
@@ -716,11 +713,9 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
 
   implicit none
   integer :: nLines
-  integer :: vUp, vLow, i, j, k
+  integer :: i, j, k
   real :: lambda(:), kappa(:), excitation(:), g(:)
-  integer, allocatable :: jLow(:)
-  character(len=4) :: branch
-  real, allocatable :: wavenumber(:),gf(:),alpha(:)
+  real, allocatable :: wavenumber(:),gf(:)
   real, parameter :: mHydrogen = 1.6733e-24      ! g
   real, parameter :: mElectron = 9.109565D-28    ! g
   real, parameter :: eCharge = 4.803242384E-10 !
@@ -751,7 +746,6 @@ subroutine readH2O(nLines,lambda,kappa,excitation,g)
   enddo
 
   allocate(gf(1:nLines))
-  allocate(jlow(1:nLines))
   allocate(wavenumber(1:nLines))
 
 

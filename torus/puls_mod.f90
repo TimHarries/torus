@@ -25,8 +25,8 @@ contains
     real :: v, b2, b3, xfac, pfac, kfac, beta1, v1
     integer :: maxBlobs
     logical :: doBlobs
-    real :: mdotcone, mdotDisk, vTermCone, vTermDisk, betaCone, betaDisk
-    real :: coneAng, diskAng
+    real :: mdotcone, mdotDisk, vTermCone, vTermDisk !, betaCone, betaDisk
+!    real :: coneAng, diskAng
     real :: vContrast
     integer :: muCone1, muCone2, muDisk1, muDisk2
     type(GRIDTYPE) :: grid

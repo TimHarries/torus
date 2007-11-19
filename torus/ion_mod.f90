@@ -51,7 +51,6 @@ contains
     type(IONTYPE) :: thisIon
     integer :: z, n, i
     real :: iPot
-    integer :: outerShell
     character(len=2) :: element
     character(len=4) :: roman
 
@@ -76,7 +75,7 @@ contains
   subroutine addIons(ionArray, nIon)
     integer :: nIon
     type(IONTYPE) :: ionArray(:)
-    character(len=30) :: message
+!    character(len=30) :: message
 
 
     nIon = 1
@@ -177,7 +176,7 @@ contains
   end subroutine addIons
     
 function returnOuterShell(n) result (ishell)
-  integer :: z, n, ishell
+  integer :: n, ishell
 ! Shell numbers:
 ! 1 - 1s, 2 - 2s, 3 - 2p, 4 - 3s, 5 - 3p, 6 - 3d, 7 - 4s. 
 
@@ -310,7 +309,6 @@ subroutine addLevel(thisIon, term, energy, J)
   real(double) :: energy
   real :: j
   integer :: i
-  real :: t(50), gamma(50)
 
   i = thisIon%nLevels + 1
   thisIon%nLevels = i
@@ -651,7 +649,6 @@ subroutine addTransition2(thisIon,term1, term2, lambda, a, t, gamma, nt)
   character(len=*) :: term1, term2
   real :: lambda
   real :: a
-  real :: gamma1, gamma2, gamma3, gamma4
   real :: gamma(:)
   real :: thisLam
   integer :: i, j, k, m

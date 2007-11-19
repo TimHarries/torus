@@ -71,7 +71,6 @@ contains
     integer :: returnVal
     real :: dummyReal
     real :: nu, hnu
-    integer :: iphi
 
     surface%centre = centre
     surface%radius = radius
@@ -154,8 +153,8 @@ contains
   integer function getElement(surface, direction)
     type(OCTALVECTOR) :: direction , td
     type(SURFACETYPE) :: surface
-    real :: theta, phi, dphi
-    integer :: itheta, iphi,  nphi
+    real :: theta, phi
+    integer :: itheta, iphi
 !    td = (-1.d0) * direction
 
     td = direction
@@ -388,7 +387,6 @@ contains
     real, intent(in) :: lineFreq
     real, intent(out) :: fAccretion ! erg s^-1 Hz^-1
     integer :: iElement
-    type(octalVector) :: aboveSurface
     
     print *, 'Creating a unirform stellar surface'
     
@@ -433,11 +431,10 @@ contains
     !
     integer :: iElement
     type(octalVector) :: aboveSurface
-    real(double) :: Laccretion, Taccretion
     real(double) :: rho, Vn
     type(vector) :: V  ! velocity 
     type(vector) :: n  ! normal vector
-    real(double) :: F_k, Vabs, T, T_eff, Tmax, Tmin, Tmean, Tsum, T_gas
+    real(double) :: F_k, Vabs, T, Tmax, Tmin, Tsum, T_gas !, T_eff
     real(double) :: T_ref, V_ref
     real(double) :: units  ! unit conversion factor
     integer :: nhot
@@ -740,7 +737,7 @@ contains
        end if
     end do
 
-    out = imax
+     out = imax
 
   end function whichElement
   
@@ -770,7 +767,6 @@ contains
     REAL, INTENT(OUT) :: fAccretion ! erg s^-1 Hz^-1
     INTEGER :: iElement, iSpot
     TYPE(octalVector) :: surfacePoint
-    TYPE(spVectorOctal) :: surfacePointSP
     
     PRINT *, 'Creating stellar surface for magStream system'
     write(*,*) "number of hotspots",size(magfieldhotspots), magfieldhotspots(1)%temperature

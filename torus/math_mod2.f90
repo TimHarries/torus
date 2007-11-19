@@ -252,7 +252,7 @@ contains
       integer, intent(out) :: indx(n)
       integer :: i
       real(double) :: aamax
-      real(double) :: sum, dum, r
+      real(double) :: sum, dum
       integer :: j, k
       integer :: imax
       d=1.
@@ -328,11 +328,10 @@ contains
       integer, intent(out) :: indx(n)
       integer :: i
       real(double) :: aamax
-      real(double) :: sum, dum, r
+      real(double) :: sum, dum
       integer :: j, k
       integer :: imax
-      logical :: error
-      error = .false.
+
       d=1.
       do 12 i=1,n
         aamax=0.

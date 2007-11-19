@@ -500,10 +500,7 @@ contains
     !
     !logical :: restart
     !    
-    real(double) :: rho_disc_ave ! For eveluation of disc density ...
     integer, parameter :: nsample =400
-    real(double) :: xc, yc, zc, d, sizescale, r
-    TYPE(octalVector)     :: cellCenter
 
     ! Carry out the initial calculations
     if (first_time) then       
@@ -602,7 +599,7 @@ contains
     type(sph_data), intent(in) :: sphData
 !    type(cluster), optional, intent(in)  :: stellar_cluster
     type(octal), pointer       :: pChild  
-    integer                    :: i,j           ! loop counters
+    integer                    :: i           ! loop counter
     integer :: np, nc, subcell, parent_subcell
     real :: rho_ave
     real(double) :: rho_tmp    
@@ -749,8 +746,8 @@ contains
     real(double), intent(in) :: R_max   ! [10^10 cm]
     !
     type(octal), pointer       :: pChild
-    integer                    :: i,j           ! loop counters
-    integer :: np, nc, subcell, parent_subcell
+    integer                    :: i           ! loop counter
+    integer :: nc, subcell
     
     nc = thisOctal%nChildren    
     do subcell = 1, 8
@@ -868,7 +865,7 @@ contains
 !    real(double), parameter :: rho_max = 1.0d-12   ! g/cm^3
     real(double), parameter :: rho_max = 2.5d50   ! g/cm^3 (equivalent to no threshold)
     !
-    real(double) :: s1, s2  
+    real(double) :: s2 !, s1  
     logical :: logscale
     real(double) :: Rgap1 = 1000.0 ! 10^10 cm
     real(double) :: Rgap2 = 2000.0 ! 10^10 cm

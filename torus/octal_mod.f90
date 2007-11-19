@@ -199,8 +199,8 @@ CONTAINS
 
     TYPE(octal), INTENT(IN) :: thisOctal 
     INTEGER, INTENT(IN)     :: nChild    ! index (1-8) of the subcell
-    type(OCTALVECTOR) :: rVec, tVec
-    real(oct)    :: d, ang
+    type(OCTALVECTOR) :: rVec
+    real(oct)    :: d
 
     d = thisOctal%subcellSize * 0.5_oc
 

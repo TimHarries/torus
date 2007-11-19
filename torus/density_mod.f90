@@ -156,7 +156,6 @@ contains
     
     TYPE(octalVector) :: starPosn
     TYPE(octalVector) :: pointVec
-    REAL              :: phi
     REAL              :: r, rM, theta, y
     
 
@@ -749,7 +748,7 @@ contains
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r, mu, mu_0, muCavity, rhoEnv, r_c, rhoCavity
     real :: h, rhoDisc, alpha
-    real(double) :: fac, dtheta, theta0, theta
+    real(double) :: fac, theta
 
     muCavity = cos(cavAngle/2.)
 
@@ -868,7 +867,6 @@ contains
     TYPE(octalVector), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight, fac
     real(double) :: kspiral
-    real(double) :: xpoint,ypoint,rscale,r1
     integer :: nspiral1
     real(double) :: phase(10)
     integer :: i
@@ -909,11 +907,7 @@ contains
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(octalVector), INTENT(IN) :: point
     real(double) :: r, h, rhoOut, warpHeight
-    real(double) :: kspiral
-    real(double) :: xpoint,ypoint,rscale,r1,fac
-    integer :: nspiral1
-    real(double) :: phase(10)
-    integer :: i
+    real(double) :: fac
     real(double) :: phi
 
     rhoOut = 1.d-30
@@ -1350,7 +1344,6 @@ end subroutine calcPlanetMass
     REAL(oct) :: prevDistance, nextDistance, nearestDistance
     REAL(oct) :: distance
     TYPE(gridSample), POINTER :: thisSample
-    LOGICAL :: useNext, usePrevious
     REAL :: thisSampleWeight
     REAL :: velocityMag
     TYPE(vector) :: velocityVector

@@ -119,7 +119,6 @@ contains
        minutes = INT(cputime/60.)
        seconds = MOD(cputime,60.)
        
-39     continue
 40     format(a12,1x,a30,1x,i6,1x, a5,1x,f9.4,1x,a5)
 
        open(unit=1,file='tune.dat',status='old', position = 'append')

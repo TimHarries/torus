@@ -100,7 +100,6 @@ module source_mod
       real, optional :: lamArray(:)
       integer,optional :: nlambda
       real :: r, t
-      real :: lRatio
       integer :: i
       logical, optional :: initialize
 
@@ -325,8 +324,7 @@ module source_mod
 
   real(double) function I_nu(source, nu, iElement) 
     type(SOURCETYPE) :: source
-    type(OCTALVECTOR) :: direction
-    real(double) :: nu, fnu, flambda, lam
+    real(double) :: nu, fnu !, flambda, lam
     integer :: i, iElement
     real(double) :: tAccretion, ic_hot
 

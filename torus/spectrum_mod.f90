@@ -252,7 +252,6 @@ module spectrum_mod
     real(double) function returnNormValue(spectrum, lambda, lam1, lam2)
       type(SPECTRUMTYPE) :: spectrum
       real(double) :: lambda, t, lam1, lam2
-      logical :: ok
       integer :: i
 
       if ((lambda < spectrum%lambda(1)).or.(lambda > spectrum%lambda(spectrum%nlambda))) then
@@ -268,7 +267,6 @@ module spectrum_mod
     real(double) function returnNormValue2(spectrum, lambda, lam1, lam2)
       type(SPECTRUMTYPE) :: spectrum
       real(double) :: lambda, t, lam1, lam2, tot
-      logical :: ok
       integer :: i, i1, i2
 
       if ((lambda < lam1).or.(lambda > lam2)) then

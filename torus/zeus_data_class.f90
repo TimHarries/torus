@@ -556,7 +556,7 @@ contains
     integer, parameter :: LU_R    = 55
     integer, parameter :: LU_RHOV = 56
     integer :: i, j , k
-    real(double) :: dum_d, v_r, v_theta, v_phi
+    real(double) :: v_r, v_theta, v_phi !, dum_d
     real(double) :: pi_over_2, dtheta, dphi
     !
     !
@@ -628,7 +628,7 @@ contains
     character(LEN=*), intent(in)  :: filename
     !   
     integer, parameter  :: LUIN = 20 ! logical unit # of the data file
-    integer :: nr, nphi, ntheta, ndata
+    integer :: nr, nphi, ntheta
     real(single), allocatable :: dummy_x(:,:,:)   ! size = (nr,nphi,ntheta)
     real(single), allocatable :: dummy_y(:,:,:)   ! size = (nr,nphi,ntheta)
     real(single), allocatable :: dummy_z(:,:,:)   ! size = (nr,nphi,ntheta)

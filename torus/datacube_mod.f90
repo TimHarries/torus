@@ -47,11 +47,10 @@ contains
     type(DATACUBE), intent(in) :: thisCube
 
     character(len=*) :: filename
-    character(len=80) :: card
 
     integer :: status,unit,blocksize,bitpix,naxis
     integer, dimension(5) :: naxes
-    integer :: i,j,group,fpixel,nelements
+    integer :: group,fpixel,nelements
     logical :: simple, extend
     
     status=0
@@ -196,9 +195,9 @@ contains
     
     type(DATACUBE), intent(out) :: thisCube
     
-    integer :: status, readwrite, unit, blocksize,nfound,group,firstpix,nbuffer,npixels,j, syst_status, hdunum, hdutype, hdu, junk
+    integer :: status, readwrite, unit, blocksize,nfound,group,firstpix,nbuffer,npixels, hdutype, hdu, junk
     character(len=512) :: filename
-    character(len=80) :: card, comment
+    character(len=80) :: comment
     real :: nullval
     integer, dimension(4) :: naxes
     logical :: anynull
@@ -444,7 +443,7 @@ contains
     logical :: doTwoPanels, doplotFlux
     integer :: i, j, k
     integer :: pgbegin
-    real, allocatable :: subpixelimage(:,:), image(:,:)
+    real, allocatable :: image(:,:)
     integer :: nx, ny
     real :: iMin, iMax
     real :: tr(6)
@@ -455,7 +454,7 @@ contains
     real(double) :: sMax, Smin
     real :: range
     integer :: nstep 
-    logical :: doSpec,PixelCount
+    logical :: doSpec !,PixelCount
 
 
     write(*,*) "Starting plotdatacube ",trim(device)
@@ -692,9 +691,8 @@ contains
     type(DATACUBE) :: cube
     real(double) :: beamSize ! beamsize in arcsec
     real(double), allocatable :: newArray(:,:)
-    real(double) :: r, rrinArcSec, weight,fac 
+    real(double) :: rrinArcSec, fac 
     integer :: ix, iy, iv, i, j
-    integer :: i1, j1
     real(double) :: sigma, sigma2, dx, dy, tot, flux, background
     real(double) :: deltaX, deltaY
 
@@ -768,60 +766,63 @@ subroutine freeDataCube(thiscube)
 
   end subroutine freeDataCube
 
-subroutine ConvertUnits(cube)
-  type(DATACUBE) :: cube
-  character(len=10) :: intensityUnit ! System 1 - cgs | System 2 - SI | System 3 - Janskys
-
-  ! - convert to brightness temperature - c**2/2*nu**2*k
-
-  select case(cube%intensityUnit)
-
-  case('erg/cm2/Hz')
-       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 1d-3
-       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 1d-23
-!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity *
-!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity *
-       
-       cube%intensityUnit = 'erg/cm2/Hz'
-
-    case('W/m2')
-       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 1d3
-       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 1d-26
-!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity * 
-!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity *
-       
-       cube%intensityUnit = 'W/cm2'
-
-    case('Janskys')
-       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 1d23
-       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 1d26
-!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity * 
-!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity * 
-       
-       cube%intensityUnit = 'Janskys'
-
-!    case('Tbright')
-!       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 
-!       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 
-!       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 
-!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity * 
-       
-!       cube%intensityUnit = 'Tbright'
-
-!    case('Tantenna')
-!       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 
-!       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 
-!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity * 
-!       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 
-       
-!       cube%intensityUnit = 'Tantenna'
-
-       case default
-          cube = cube
-        
-end select
-
-end subroutine ConvertUnits  
+! This subroutine was raising a warning about intensityUnit being used but not set. As this 
+! subroutine is never called I have commented it out (Dave Acreman, 16/11/07).
+!
+!!$subroutine ConvertUnits(cube)
+!!$  type(DATACUBE) :: cube
+!!$  character(len=10) :: intensityUnit ! System 1 - cgs | System 2 - SI | System 3 - Janskys
+!!$
+!!$  ! - convert to brightness temperature - c**2/2*nu**2*k
+!!$
+!!$  select case(cube%intensityUnit)
+!!$
+!!$  case('erg/cm2/Hz')
+!!$       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 1d-3
+!!$       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 1d-23
+!!$!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity *
+!!$!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity *
+!!$       
+!!$       cube%intensityUnit = 'erg/cm2/Hz'
+!!$
+!!$    case('W/m2')
+!!$       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 1d3
+!!$       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 1d-26
+!!$!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity * 
+!!$!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity *
+!!$       
+!!$       cube%intensityUnit = 'W/cm2'
+!!$
+!!$    case('Janskys')
+!!$       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 1d23
+!!$       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 1d26
+!!$!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity * 
+!!$!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity * 
+!!$       
+!!$       cube%intensityUnit = 'Janskys'
+!!$
+!!$!    case('Tbright')
+!!$!       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 
+!!$!       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 
+!!$!       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 
+!!$!       if(intensityUnit .eq. 'Tantenna') cube%intensity = cube%intensity * 
+!!$       
+!!$!       cube%intensityUnit = 'Tbright'
+!!$
+!!$!    case('Tantenna')
+!!$!       if(intensityUnit .eq. 'erg/cm2/Hz') cube%intensity = cube%intensity * 
+!!$!       if(intensityUnit .eq. 'Janskys') cube%intensity = cube%intensity * 
+!!$!       if(intensityUnit .eq. 'Tbright') cube%intensity = cube%intensity * 
+!!$!       if(intensityUnit .eq. 'W/m2') cube%intensity = cube%intensity * 
+!!$       
+!!$!       cube%intensityUnit = 'Tantenna'
+!!$
+!!$       case default
+!!$          cube = cube
+!!$        
+!!$end select
+!!$
+!!$end subroutine ConvertUnits  
 
 end module datacube_mod
 

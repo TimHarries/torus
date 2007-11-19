@@ -584,7 +584,7 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        real, allocatable :: piximageVel(:,:)
        real :: imScale
 
-       integer :: nSize, nPix, i, j
+       integer :: nPix, i, j
 
        nPix = thisImage%nx
 

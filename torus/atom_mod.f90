@@ -274,7 +274,7 @@ contains
     !
     real(double) :: coeff(28), a(7)
     real(double) :: u, wl, t, ulog, gam2, z, frac,b,c,sum1,sum2,d
-    integer i,j,k,m
+    integer i,k,m
     !
     data coeff &
      /1.102D0       ,-0.1085D0     ,0.09775D0     ,-0.01125D0     , &
@@ -292,14 +292,12 @@ contains
     gam2 = 1.58D+5 * z*z/t
     if (gam2.gt.a(7)) go to 10
     i = 7
-    j = 7
     k = 7
     frac = 0.5
     go to 60
 10  continue
     if (gam2.lt.a(1)) go to 20
     i = 1
-    j = 1
     k = 1
     frac = 0.5
     go to 60
@@ -309,7 +307,7 @@ contains
     end do
 40  continue
     k = i - 1
-50  continue
+
     b = log10(a(k))
     c = log10(a(i))
     gam2 = log10(gam2)

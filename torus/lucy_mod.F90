@@ -363,7 +363,6 @@ contains
     real(oct) :: lCore
     real      :: kabs
     type(vector) :: vec_tmp
-    real :: dummy(1)
     real(oct)::  dT_sum ! [Kelvins]  the sum of the temperature change
     real(oct)::  dT_min ! [kelvins]  the minimum change of temperature
     real(oct)::  dT_max ! [kelvins]  the maximum change of temperature
@@ -568,20 +567,20 @@ contains
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
 
 !       write(dustfile,'(a,i3.3,a)') "dusttype",iIter_grand,".gif/gif"
 !       call plot_AMR_values(grid, "dusttype", "x-z", 0., &
 !            dustfile, .false., .false., &
-!           0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor, &
+!           width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor, &
 !           xStart=1600., xEnd=2200., yStart=-300., yEnd=300.)
 
        call plot_AMR_values(grid, "dusttype", "x-z", 0., &
             "dusttype.ps/vcps", .false., .false., &
-           0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor)
+           width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
        call plot_AMR_values(grid, "dusttype", "x-z", 0., &
             "dusttype_full.ps/vcps", .false., .false., &
-           0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.)
 
 !       if (grid%geometry == "shakara") then
 !          call dullemondplot(grid, rinner, router, 0.4, nSource, source)
@@ -590,37 +589,37 @@ contains
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
             "rho_temp_zoom.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
        call plot_AMR_values(grid, "rho", "x-y", real(grid%octreeRoot%centre%y), &
             "rho_temp_xy.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             "lucy_temp_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
             "lucy_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor) 
        call plot_AMR_values(grid, "etaCont", "x-z", real(grid%octreeRoot%centre%y), &
             "etacont_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor) 
        call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
             "tau.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,ilam=ilam) 
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,ilam=ilam) 
        call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
             "tau_zoom_xz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor,ilam=ilam) 
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor, ilam=ilam)
 !       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
 !            tfilename1, .true., .false., &
-!            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor) 
+!            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomFactor) 
 !       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
 !            tfilename2, .true., .false., &
-!            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.,boxfac=zoomFactor)
+!            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomFactor)
        call plot_AMR_values(grid, "temperature", "x-y", real(grid%octreeRoot%centre%z), &
             "lucy_temp_xy.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
        call plot_AMR_values(grid, "temperature", "y-z", real(grid%octreeRoot%centre%x), &
             "lucy_temp_yz.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.)
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.)
        call polardump(grid)
     end if
 
@@ -981,12 +980,12 @@ contains
        if (myRankIsZero) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomfactor) 
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomfactor) 
 
        if (myRankIsZero) &
        call plot_AMR_values(grid, "direct", "x-z", real(grid%octreeRoot%centre%y), &
             "direct.ps/vcps", .false., .true., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomFactor)
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
 
 
        if (twoD) then
@@ -1065,7 +1064,7 @@ contains
        if (myRankIsZero) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
-            0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false., boxfac=zoomfactor)
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomfactor)
 
        nCellsInDiffusion = 0
        call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
@@ -1153,7 +1152,7 @@ contains
 !                   write(*,*) "done."
 !                   call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
 !                        "unrefine.ps/vcps", .true., .false., &
-!                        0, dummy, dummy, dummy, real(grid%octreeRoot%subcellsize), .false.) 
+!                        width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
 !                endif
 
                 call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)

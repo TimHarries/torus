@@ -18,14 +18,14 @@ contains
     type(sph_data), intent(inout) :: sphData
     real(double), intent(in) :: objectDistance
     !
-    integer :: i
+!    integer :: i
     real(double) :: udist, umass, utime    ! Units of distance, mass, time
     integer          :: npart                  ! Number of gas particles
     real(double) :: time                   ! Time of sph data dump (in units of utime)
     integer          :: nptmass                ! Number of stars/brown dwarfs
     real(double) :: gaspartmass            ! Mass of each gas particles
 
-    real(double) :: dummy  ! position of gas particles
+!    real(double) :: dummy  ! position of gas particles
 
 
 
