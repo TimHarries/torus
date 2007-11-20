@@ -69,7 +69,6 @@ contains
     character(len=120) :: junk
     character(len=20) :: chunk(20)
     character(len=80) :: message
-    real(double) :: a, blu, bul
     call unixGetenv("TORUS_DATA", dataDirectory, i)
     thisfilename = trim(dataDirectory)//"/"//atomfilename
 
@@ -243,9 +242,6 @@ contains
     integer :: iTrans
     integer :: iLevel
     real(double) :: nu, e
-    character(len=2) :: shell
-    integer :: is
-    real(double) :: photocrosssection2
     real :: x
     real(double) :: photonEnergy, lamMicrons, logKappa
     real(double) :: sigma0, nuThresh, alpha, s, gIIx, gIIy, gIIz
@@ -349,7 +345,7 @@ contains
      type(MODELATOM) :: thisAtom
      integer :: nFreq
      real(double) :: freq(:)
-     integer :: iFreq, i, j, iTrans, iLevel, iLineTrans
+     integer :: iFreq, j, iTrans, iLevel
 
      if (associated(thisAtom%photoFreq)) deallocate(thisAtom%photoFreq)
      if (associated(thisAtom%photoSec)) deallocate(thisAtom%photoSec)
@@ -376,7 +372,7 @@ contains
   function collisionRate(thisAtom, iTrans, temperature,label) result(rate)
     type(MODELATOM) :: thisAtom
     integer :: iTrans
-    real(double) :: temperature, ne, rate, u0, u1, u2
+    real(double) :: temperature, rate, u0, u1, u2
     character(len=*), optional :: label
     real(double) :: logGamma
     real(double) :: sigma0
@@ -511,7 +507,6 @@ contains
     real(double) :: cijt
     real(double) :: t1              ! temperature
     real(double) :: chi             ! excitation energy
-    real(double) :: bsum(9)         ! summation
     integer               :: i1,j1           ! lower/upper level
     integer :: lower, upper
     real(double) :: factor
@@ -521,8 +516,6 @@ contains
     integer :: level
     real(double), parameter :: eTrans(23) =                      &
          (/ (hydE0eVdb*(1.0d0 - 1.0d0/level**2),level=1,SIZE(eTrans)) /) 
-    integer :: r                             ! counter
-
 
     t1 = min(t,1.e5_db)
     i1 = min(i,j)
@@ -557,8 +550,7 @@ contains
     real(double),intent(in) :: t        ! the temperature
     real(double) cikt
     real(double) :: t1                  
-    real(double) :: gammait             ! see k&c
-    real(double) :: lgt
+!    real(double) :: gammait             ! see k&c
     real(double) :: chi                 ! potential from i to k
     integer :: lower, upper
     real(double) :: factor
@@ -583,7 +575,6 @@ contains
          shape=(/5,10/))
 
     t1 = min(t,1.5e5_db)
-    lgt=log10(t1)
     chi=hydE0eV-eTrans(i)
     !    if (i .ne. 2) then 
     call locate(tempTable,size(tempTable),t,lower)
@@ -681,7 +672,7 @@ contains
   
     type(MODELATOM) :: thisAtom
     integer              :: nIon, level
-    real(double) :: Ne, t, ratio, nk
+    real(double) :: Ne, t, ratio
     real :: tReal
     real, parameter ::  Ucoeff(5,5) =  reshape(source=  &
         (/0.30103e0, -0.00001e0, 0.00000e0,  0.00000e0, 0.00000e0, &
@@ -690,7 +681,7 @@ contains
           0.07460e0, -0.75759e0, 2.58494e0, -3.53170e0, 1.65240e0, &
           0.34383e0, -0.41472e0, 1.01550e0,  0.31930e0, 0.00000e0  &
            /), shape=(/5,5/))
-    real(double) :: N2, N1, N0, u0, u1, u2, N1overN0, N2overN1, pe, tot
+    real(double) :: u0, u1, u2, N1overN0, N2overN1, pe
        pe = ne * kerg * t
        tReal = t
        select case(thisAtom%nz)
@@ -807,7 +798,6 @@ contains
     integer, intent(in)              :: i        ! the level
     real(double),intent(in) :: t        ! the temperature
     type(MODELATOM) :: thisAtom
-    real(double) :: crap
     real(double) :: t1                  
     real(double) :: gammait             ! see k&c
     real(double) :: lgt
@@ -1025,7 +1015,6 @@ contains
     real(double) :: freq
     integer, optional :: iFreq
     integer :: iTrans
-    integer :: nLevels
     real(double) :: temperature
     real(double) :: eta
     integer :: iAtom, i, iLower, iUpper
@@ -1076,7 +1065,7 @@ contains
     real(double) :: nuThresh, lamMin, lamMax
     real(double) :: nuStart, nuEnd
     integer :: nEven
-    integer :: iRBB, iTrans
+    integer :: iTrans
 
     nuStart = cSpeed / (8.d5 * 1.d-8)
     nuEnd = cSpeed / (10.d0 * 1.d-8)
@@ -1134,7 +1123,7 @@ contains
   subroutine stripAtomLevels(thisAtom, maxBoundLevels)
     type(MODELATOM) :: thisAtom
     integer :: maxBoundLevels
-    integer :: i, iOldContinuum, iNewContinuum, iTrans
+    integer :: iOldContinuum, iNewContinuum, iTrans
   
     if (maxBoundLevels > thisAtom%nLevels-1) then
        call writeFatal("maxBoundLevels exceeds bound levels in atom")

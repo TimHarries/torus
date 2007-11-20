@@ -278,7 +278,7 @@ contains
     real(double), parameter :: rho_max = 1.0d-5
     !
     real(double) :: r, w , x, y, z, r_cm, cos_theta, cos_theta_j
-    real(double) :: theta, rho_theta, rho_r, Vr, f, c, Mdot
+    real(double) :: rho_theta, rho_r, Vr, f, c, Mdot
     
     x = rvec%x; y = rvec%y; z=rvec%z
 
@@ -288,7 +288,6 @@ contains
 
     cos_theta = z/r
     cos_theta_j = COS(this%theta_j)
-    theta = ACOS(cos_theta)
 
     if (.not. in_jet_flow(this, rvec) ) then
        density_out = rho_min ! [g/cm^3]
@@ -524,7 +523,6 @@ contains
     type(jet), intent(in) :: this
     
     real(oct)  :: cellSize, d
-    real(double) :: rho_disc, mass_cell
     TYPE(octalVector)     :: cellCentre
 !    integer, parameter :: nr = 100  ! low resolution
     integer, parameter :: nr = 200   ! midium resolution
@@ -589,7 +587,6 @@ contains
     INTEGER       :: newChildIndex     ! the storage location for the new child
     INTEGER       :: error
 
-    real(double) :: rho
     TYPE(OCTAL), POINTER :: childPointer      
 
     if (any(parent%hasChild(1:8))) &
@@ -788,7 +785,7 @@ contains
     
     real(oct)  :: cellSize, x, y, z
     TYPE(octalVector)     :: cellCentre, rvec
-    real(double) :: c0, c1, c2, c3, c4, c5, c6, c7, c8, d, s
+    real(double) :: c0, c1, c2, c3, c4, c5, c6, c7, c8, d
 
     ! get the size and the position of the centre of the current cell
     cellSize = thisOctal%subcellSize

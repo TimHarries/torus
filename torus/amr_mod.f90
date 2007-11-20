@@ -815,7 +815,6 @@ CONTAINS
     END IF
 
     !CALL checkAMRgrid(grid,checkNoctals=.FALSE.)
-666 continue
 
   END SUBROUTINE addNewChild
   

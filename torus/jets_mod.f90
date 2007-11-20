@@ -437,7 +437,7 @@ contains
     LOGICAL, SAVE  :: first_time = .true. 
     real(double) ::  r  ! distance from the center of central star
     real(double) :: Vr
-    real(double) :: Rp, Vinf, beta, cos_theta_o
+    real(double) :: Rp, Vinf, beta
     real(double) :: cos_theta 
     real(double) :: theta_o_jets, theta_o_disk
     !
@@ -486,23 +486,19 @@ contains
          .and. abs(cos_theta) > cos_theta_o_jets) then
        Vinf = jets%Vinf_jets
        beta = jets%beta_jets
-       cos_theta_o = cos_theta_o_jets
     elseif (r >= jets%Rmin .and. r < jets%Rmax  &
          .and. abs(cos_theta) > cos_theta_o_disk .and. &
          abs(cos_theta) < cos_theta_o_jets ) then
        Vinf = jets%Vinf_disk
        beta = jets%beta_disk
-       cos_theta_o = cos_theta_o_disk
     else if (r >= jets%Rmin .and.  r < jets%Rdisk_min .and. &
          &  abs(cos_theta) < cos_theta_o_disk) then
        ! Spherical wind up to the disk radius
        Vinf = jets%Vinf_disk
        beta = jets%beta_disk
-       cos_theta_o = cos_theta_o_disk
     else
        Vinf = jets%Vinf_disk
        beta = jets%beta_disk
-       cos_theta_o = cos_theta_o_disk
        r = jets%Rmin + jets%Rmin/100.d0
     end if
 
@@ -963,6 +959,4 @@ contains
   
   
 end module jets_mod
-
-
 

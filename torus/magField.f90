@@ -97,8 +97,6 @@ CONTAINS
     REAL :: velValue   ! velocity, from file  
     REAL :: rhoValue   ! rho, from file  
     REAL(oct) :: areaValue  ! cross-sectional area, from file  
-    REAL :: previousR   
-    REAL :: previousPhi   
     INTEGER :: fileRead ! loop counter
     TYPE(spVectorOctal) :: spPosition ! position, spherical polar coords.
     TYPE(octalVector) :: prevVector
@@ -153,7 +151,6 @@ CONTAINS
       IF (fileRead == 1) nSamples = 0
       iSample  = 0
       iSampleInStream = 1
-      previousR = HUGE(1.)
     
       readLineLoop: &
       DO
@@ -192,8 +189,6 @@ CONTAINS
           iSampleInStream = iSampleInStream + 1
         END IF  
 
-        previousR = rValue
-        previousPhi = phiValue
         
         IF (fileRead == 2) nSamplesInStream(iStream) = nSamplesInStream(iStream) + 1
         IF (fileRead == 1) nSamples = MAX(nSamples, iSample)

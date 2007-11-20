@@ -345,16 +345,13 @@ contains
     real            :: t1, t2, t3             ! multipliers
     type(VECTOR)    :: position1, position2, position_tmp
     type(VECTOR)    :: rHat
-    real(double)            :: r, theta, mu, phi      ! spherical polar coords
+    real(double)            :: r, theta, phi      ! spherical polar coords
     integer         :: j1, j2, j3             ! indices
     real, parameter :: h = 1.                 ! factor
-    logical         :: hit
     real            :: dr
     real            :: phi1, phi2, dphi, dx
     real            :: dy, dz, dtheta
     type(octalvector)   :: octalvec_tmp
-
-    hit = .false.
 
     ! dr is a small increment of distance
 
@@ -405,15 +402,12 @@ contains
     if (.not.grid%cartesian) then
        if ((r < grid%rAxis(1)).or.(r > grid%rAxis(grid%nr))) then
           position1 = position
-          hit = .true.
        endif
        octalvec_tmp = position1
        call getPolar(octalvec_tmp, r, theta, phi)
-       mu = position1%z/r
     else 
        if (outsideGrid(position1, grid)) then
           position1 = position
-          hit = .true.
        endif
     endif
 
@@ -435,15 +429,12 @@ contains
     if (.not.grid%cartesian) then
        if ((r < grid%rAxis(1)).or.(r > grid%rAxis(grid%nr))) then
           position2 = position
-          hit = .true.
        endif
        octalvec_tmp = position2
        call getPolar(octalvec_tmp,r, theta, phi)
-       mu = position2%z/r
     else
        if (outsideGrid( position2, grid)) then
           position2 = position
-          hit = .true.
        endif
     endif
 
@@ -495,10 +486,9 @@ contains
 
   subroutine computeProbDist1D(grid)
     type(GRIDTYPE) :: grid
-    real(double) :: tot, V, dr, dtheta, dphi
+    real(double) :: V, dr, dtheta, dphi
     integer :: i,j,k,n
     
-    tot = 0.
     n = 0
     do i = 1, grid%na1
        do j = 1, grid%na2
@@ -1211,8 +1201,8 @@ stop
     real(double), intent(inout) :: totalContEmission
     
     type(octal), pointer  :: child 
-    real(double) :: dV,r1,r2
-    type(octalvector)     :: rvec
+    real(double) :: dV !,r1,r2
+!    type(octalvector)     :: rvec
     integer               :: subcell
     integer               :: i
 

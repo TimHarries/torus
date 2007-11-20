@@ -807,31 +807,29 @@ contains
 
     !
     !
-    type(VECTOR)  :: coolStarPosition
     
     integer, parameter :: maxTau  = 1000
     integer, parameter :: nLambda = 1000
     ! local variables
-    real :: lambda(maxTau)    ! path distance array
-    real :: tauExt(maxTau)    ! optical depth
-    real :: tauAbs(maxTau)    ! optical depth
-    real :: tauSca(maxTau)    ! optical depth
-    real :: tauCont(maxTau,nLambda)
+!    real :: lambda(maxTau)    ! path distance array
+!    real :: tauExt(maxTau)    ! optical depth
+!    real :: tauAbs(maxTau)    ! optical depth
+!    real :: tauSca(maxTau)    ! optical depth
+!    real :: tauCont(maxTau,nLambda)
     !
     
-    integer  :: nTau        ! size of optical depth arrays
-    real     :: escProb     ! the escape probability
-    logical  :: hitcore     ! has the photon hit the core
-    integer  :: error       ! error code returned
-    logical  :: useinterp =.false.
+!    integer  :: nTau        ! size of optical depth arrays
+!    real     :: escProb     ! the escape probability
+!    logical  :: hitcore     ! has the photon hit the core
+!    integer  :: error       ! error code returned
     logical      :: opaqueCore  =.true.       ! is the core opaque
-    real         :: lamStart, lamEnd
+!    real         :: lamStart, lamEnd
     !
-    logical      :: thinLine=.false.           ! ignore line absorption of continuum
-    integer      :: nUpper = 3
-    integer      :: nLower =2
+!    logical      :: thinLine=.false.           ! ignore line absorption of continuum
+!    integer      :: nUpper = 3
+!    integer      :: nLower =2
     real         :: sampleFreq=2.0        ! max. samples per grid cell
-    real :: junk        
+!    real :: junk        
 
 
     ! finding the number of stars in this cluster 

@@ -1122,9 +1122,6 @@ modulus(rVecArray(i)-grid%starpos2)/grid%rStar2
 
 
 
-
-666 continue
-
 end subroutine integratePathCaresian
 
 
@@ -1855,7 +1852,7 @@ end subroutine integratePathAMR
     type(octalVector)         :: uHatOctal              ! octalVector version of 'uHat'
     type(VECTOR)              :: rVec                   ! position vector
     logical                   :: contPhoton             ! is this a continuum photon?    
-    real(double) :: nu, nu2, nu_p, nu0, nu0_p           ! frequencies   
+    real(double) :: nu, nu_p, nu0, nu0_p           ! frequencies   
     real :: thisVel
     integer :: ilambda                                ! wavelength index    
     real :: kappa_total
@@ -1869,7 +1866,7 @@ end subroutine integratePathAMR
     real(double) :: Hay, dv, Vn1, Vn2, Vrel
     real(double) :: T_mid, Ne_mid, N_HI_mid, chiline_mid, projVel_mid
     integer :: newNtau
-    real :: T, lam, tmp
+    real :: lam !, T
     real :: sqrt_pi
     real(double) :: dtau, taul, tau_tot
     real :: dtau_max
@@ -2594,7 +2591,6 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   integer  :: nTau        ! size of optical depth arrays
   real     :: escProb     ! the escape probability
   logical  :: hitcore     ! has the photon hit the core
-  real     :: localTau
   integer  :: error       ! error code returned
   integer  :: i 
   type(vector) :: tempVec

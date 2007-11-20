@@ -1037,7 +1037,7 @@ contains
     real(double) :: etaCont_mid, etaline_mid, etal
     real(double) :: chiAbs_mid, chiSca_mid, source, source_l, source_c
     integer :: newNtau
-    real :: T, lam, tmp
+!    real :: T, lam, tmp
     real :: sqrt_pi
     real(double) :: dtau, taul, tau_tot, dtau_c, dtau_l
     real(double) :: int_source
@@ -1497,7 +1497,7 @@ contains
     !
     type(imagetype) ::  F_map  ! flux map   []
     integer :: i, j, ix, iy , k, nsize
-    real :: x, y, flux, del, flux_min, offset, flux_tmp
+    real :: x, y, flux, del, flux_min, offset
 
     offset = 1.0e-4*R_star
     ! initializes the map
@@ -1580,8 +1580,7 @@ contains
     real(single), intent(in)   :: lam0       ! line wavelength [A]
     !
     !
-    type(imagetype) ::  F_map  ! flux map   []
-    integer :: i, j, ix, iy , k, nsize, m
+    integer :: i, j, ix, k, nsize, m
     real :: x, y, offset
     real(double), allocatable ::  FL(:)  ! allocate it with nlam line flux (F-Fc)/Fc
     real(double)  :: lam_pos                ! flux weighted mean wavelenth [A]
@@ -1592,8 +1591,8 @@ contains
     real(double) :: convert_to_mas    ! conversion factor from 10^10cm to miliarcsec
     real(double) :: convert_to_AU     ! conversion factor from 10^10cm to AU
     real(double), parameter :: c=2.99792458d10 ! speed of light [cm/s]
-    character(len=80) :: tempChar, pos_disp_file
-    real(double) :: vel, Fn
+!    character(len=80) :: tempChar, pos_disp_file
+!    real(double) :: vel, Fn
     !
     ! now add flux values to this map
     nsize = 2*npix+1
@@ -1620,7 +1619,6 @@ contains
     ! This section should be improved later.    
     do j =1, nsize
        y = -R_max + REAL(j-1)*pixsize + pixsize/2.0 + offset ! mid point
-       iy = -npix + (j-1)
        pos(j) = y
        FL(:) = 0.0d0
        do i =1, nsize
@@ -1728,10 +1726,9 @@ contains
     real(double),      intent(in)   ::  dphi     ! [rad]       anglular increment
     type(OCTALVECTOR) ::  dir_obs                ! unit vector on the project plane coordinates
     !
-    type(OCTALVECTOR) ::  px, py        ! unit vector on the project plane coordinates
-    real(double) :: p_phi, p_r, d, p_len, pxx, pyy, r_min, r_max, phi_min, phi_max
-    real(double) :: test_r, test_phi, pi, tmp
-    integer :: i, j
+!    type(OCTALVECTOR) ::  px, py        ! unit vector on the project plane coordinates
+    real(double) :: p_phi, p_r, pxx, pyy, r_min, r_max, phi_min, phi_max
+    real(double) :: test_r, test_phi, pi
     
     ! initialize the value
     in_this_area = .false.
@@ -1915,7 +1912,7 @@ contains
       integer :: nAdd =5
       integer :: i, j
 !      real, parameter :: dvel  = 10.e5/cSpeed
-      real :: dvel, dL
+      real :: dvel
       logical :: unsafe_position
       type(octalvector) :: pos     
 

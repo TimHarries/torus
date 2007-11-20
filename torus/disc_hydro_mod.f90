@@ -51,7 +51,6 @@ contains
     real :: dtdz ! temperature gradient
     real(double) :: sigma
     real :: drho
-    real :: av
 
     mu = 2.3 ! mean mole mass assuming pure H_2/He
     radiusAU = (radius * 1.e10) / autocm
@@ -230,7 +229,7 @@ contains
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    real(double) :: deltaRho
+!    real(double) :: deltaRho
     integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
@@ -355,7 +354,7 @@ contains
 
 
     type(GRIDTYPE) :: grid
-    real :: mStar, sigma0, rDisk, expectedMass, scaleFac
+    real :: mStar, sigma0, rDisk, expectedMass
     integer :: nDustType
     logical :: converged
     type(SOURCETYPE) :: source(:)
@@ -372,8 +371,6 @@ contains
     real(double) totalMass
     logical :: twoD, gridConverged
     real :: temp
-    integer :: nOctals, nVoxels
-    character(len=80) :: ofile
     real :: rGapCM
 
 

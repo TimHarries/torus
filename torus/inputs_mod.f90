@@ -36,7 +36,7 @@ contains
     character(len=80) :: dataDirectory
 
     character(len=20) :: keyword
-    character(len=80) :: message
+!    character(len=80) :: message
     character(len=80) :: paramFile
 
     integer :: error

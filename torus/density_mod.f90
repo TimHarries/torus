@@ -146,7 +146,7 @@ contains
     ! tests if a point lies within the T Tauri accretion flow  
     
     use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
-                               TTauriDiskHeight, TTauriMstar
+                               TTauriDiskHeight
 
     IMPLICIT NONE
 
@@ -344,12 +344,11 @@ contains
     use clump_mod
     use input_variables, only: MdotParameter1, MdotParameter2, &
                                MdotParameter3, MdotParameter4, &
-                               MdotParameter5, MdotParameter6, &
+                               MdotParameter5,                 &
                                MdotType, curtainsPhi1s, curtainsPhi1e, &
-                               curtainsPhi2s, curtainsPhi2e, TTauriRinner,&
-                               curtain_number, curtain_width, &
-                               TTauriRouter, TTauriDiskHeight, TTauriRstar, &
-                               phaseTime, nStartPhase, nPhase
+                               curtainsPhi2s, curtainsPhi2e,   &
+                               phaseTime, nStartPhase, nPhase !, &
+                               !TTauriRinner, TTauriRouter
 
     type(GRIDTYPE), intent(in)    :: grid
     type(octalVector), intent(in) :: point

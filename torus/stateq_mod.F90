@@ -276,28 +276,28 @@ contains
     integer,intent(in),optional :: thisSubcell 
     
     real :: r, thetatostar, phiTostar
-    real :: h, totomega, disttooccult
+    real :: totomega, disttooccult
     integer :: i, j
     type(vector) :: tostar, occultposition, starposition
     type(vector) :: tooccult, direction
     real :: starradius, occultradius
     real :: disttostar
-    real :: cosang, sinang, ang
+    real :: sinang, ang
     logical :: occulted, full
     real :: tau_cmn
     real :: dtheta, dphi
     real :: theta, phi, domega
     real :: escprob, dotprod
-    integer, parameter :: maxTau = 4000
-    integer :: nTau
-    real, allocatable :: contTau(:,:)
-    real :: tauExt(maxTau)
-    real :: tauAbs(maxTau)
-    real :: tauSca(maxTau)
+!    integer, parameter :: maxTau = 4000
+!    integer :: nTau
+!    real, allocatable :: contTau(:,:)
+!    real :: tauExt(maxTau)
+!    real :: tauAbs(maxTau)
+!    real :: tauSca(maxTau)
     real :: theta0, phi0
-    real :: lambdaArray(maxTau)
+!    real :: lambdaArray(maxTau)
     !logical :: hitCore
-    real :: tauLocal
+!    real :: tauLocal
     type(octalVector) :: rVecOctal
     type(OCTAL),pointer :: octalCopy
 
@@ -443,15 +443,15 @@ contains
     real :: dtheta, dphi
     real :: theta, phi, domega
     real :: escprob, dotprod
-    integer, parameter :: maxTau = 4000
-    integer :: nTau
-    real, allocatable :: contTau(:,:)
-    real :: tauExt(maxTau)
-    real :: tauAbs(maxTau)
-    real :: tauSca(maxTau)
-    real :: lambdaArray(maxTau)
-    logical :: hitCore
-    real :: tauLocal
+!    integer, parameter :: maxTau = 4000
+!    integer :: nTau
+!    real, allocatable :: contTau(:,:)
+!    real :: tauExt(maxTau)
+!    real :: tauAbs(maxTau)
+!    real :: tauSca(maxTau)
+!    real :: lambdaArray(maxTau)
+!    logical :: hitCore
+!    real :: tauLocal
 
     full = .false.
 
@@ -585,7 +585,7 @@ contains
     real :: t1, t2, t3
     integer :: i1, i2, i3
     type(vector) :: rvec, rHat, thisVec
-    real :: departCoeff(maxLevels), ang, r
+    real :: departCoeff(maxLevels), ang
     real, allocatable :: departCoeffall(:)
     logical :: oneD, twoD, threeD
 
@@ -593,11 +593,9 @@ contains
     real :: oldLevels(maxLevels+1)
     real(double), allocatable :: xall(:)
     real (kind=double):: ne1, ne2
-    real :: temp, crate
     real(double) :: phiT
     logical :: ok
     logical :: aboutX, aboutZ
-    integer :: ierr
 
 
     debugInfo = .true.
@@ -1299,8 +1297,7 @@ contains
     real(double),intent(in) :: t        ! the temperature
     
     real(double) :: t1                  
-    real(double) :: gammait             ! see k&c
-    real(double) :: lgt
+!    real(double) :: gammait             ! see k&c
     real(double) :: chi                 ! potential from i to k
     integer :: lower, upper
     real(double) :: factor
@@ -1322,7 +1319,6 @@ contains
                                                                              shape=(/5,10/))
 
     t1 = min(t,1.5e5_db)
-    lgt=log10(t1)
     chi=hydE0eV-eTrans(i)
 !    if (i .ne. 2) then 
        call locate(tempTable,size(tempTable),t,lower)
@@ -1401,14 +1397,12 @@ contains
     
     real(double) :: t1              ! temperature
     real(double) :: chi             ! excitation energy
-    real(double) :: bsum(9)         ! summation
     integer               :: i1,j1           ! lower/upper level
     integer :: lower, upper
     real(double) :: factor
     real(double),parameter :: avals(7) =                                    &    
             (/ 2.579997e-10_db, -1.629166e-10_db, 7.713069e-11_db, -2.668768e-11_db, &
                6.642513e-12_db, -9.422885e-13_db, 0.e0_db                            /)
-    integer :: r                             ! counter
 
 
     t1 = min(t,1.e5_db)
@@ -1541,7 +1535,7 @@ contains
     real(double), intent(in) :: nDouble
     real(double), intent(in) :: z, wl
 
-    real(double)             :: ag, u, gii, term
+    real(double)             :: u, gii, term
     real(double), parameter  :: twoThirds = 2.e0_db/3.e0_db
     real(double), parameter  :: fourThirds = 2.0_db * twoThirds 
 
@@ -2100,7 +2094,6 @@ contains
     real    :: w, x1, freq, tot, jnu
     real :: hotOmega, photoOmega
     real :: jnuPhoto, jnuHot
-    type(SURFACETYPE) :: starSurface
 
 
     if (nStar == 1) then
@@ -2217,7 +2210,7 @@ contains
     type(VECTOR) :: rVec
     type(GRIDTYPE) :: grid
     real :: r
-    integer :: i, iMin, imin2
+    integer :: i, iMin
     real :: fac1, fac2
     real :: w, x1, freq, tot, jnu
     real :: jnuPhoto, jnuHot
@@ -2688,7 +2681,6 @@ contains
       real :: distToStar, distToOccult, h
       real :: starRadius, occultRadius
       real :: thetaToStar, phiToStar
-      logical :: occulted
       real :: dotProd, sinAng
       real :: r, occultedFrac
       integer :: nTheta = 10, nPhi = 10
@@ -2729,7 +2721,6 @@ contains
           if (phi > twoPi) phi = phi + twoPi
           dphi = 2.*ang/real(nPhi-1)
 
-          occulted = .false.
           direction = vector(sin(theta)*cos(phi),sin(theta)*sin(phi),cos(theta))
           domega = sin(theta)*dtheta*dphi
           dotprod = direction .dot. tostar
@@ -2885,7 +2876,7 @@ contains
     character(LEN=*),intent(in), optional :: ion_name
     real, intent(in), optional            :: ion_frac      ! n_ion/n_specie
     type(SURFACETYPE), intent(in) :: starSurface
-    integer                     :: i, m       ! loop counters
+    integer                     :: i          ! loop counters
     integer, parameter          :: maxLevels = statEqMaxLevels ! number of levels to compute
     integer, dimension(maxLevels), parameter :: allLevels = (/ (i,i=1,maxLevels) /)
     integer                     :: iOctal        ! loop counter
@@ -2899,7 +2890,6 @@ contains
     integer                     :: returnVal     ! status value
     real(double),dimension(1:maxLevels+1) :: xall
     real(double)       :: nTot
-    real(double)       :: phiT
     real                        :: visFrac1      ! visible fraction of star 1
     real                        :: visFrac2      ! visible fraction of star 2
     logical                     :: isBinary      ! true for binary system
@@ -2917,9 +2907,8 @@ contains
     logical, parameter          :: debugInfo = .false.
     Type(octalVector)           :: starCentre 
     real(double), parameter :: CI = 2.07d-16   ! in cgs units
-    real(double)            :: T,ne, x    
     real(double), parameter :: NeFactor = 20.0_db ! NeFactor
-    real :: lam
+!    real :: lam
     integer                     :: numLTEsubcells 
 
     ! 2-d case variables
@@ -2927,9 +2916,7 @@ contains
     type(octalWrapper), allocatable :: planeOctals(:) ! array of pointers to octals in 2d plane
     type(octalWrapper), allocatable :: subsetOctals(:) ! array of pointers to octals
 
-    real(double) :: dummy
     integer       ::   ioctal_beg, ioctal_end  
-    logical :: mapped_already
 #ifdef MPI
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
@@ -2981,7 +2968,6 @@ contains
         print *, "lte=", lte
         print *, "recalcPrevious=", recalcPrevious
 #endif
-    mapped_already =.false.
     if (grid%statEq2d .and. (.not. lte) ) then
        ! we first get a list of the octals that lie in a plane across the
        !   space.
@@ -3123,16 +3109,14 @@ contains
     logical, intent(in) :: firstTime ! if this is the first run, we have to 
                                      !   calculate LTE values first.
     real(double), intent(in) :: NeFactor ! fudge factor for Ne
-    real :: photoOmega, hotOmega
+!    real :: photoOmega, hotOmega
     logical :: needRestart ! non-physical solution flag
-    logical, dimension(8) :: canUse ! flag for valid alternative subcells
     integer :: previousSubcell
     real(double),dimension(maxLevels) :: tempLevels
     real(double) :: tempNe
     real,dimension(SIZE(starSurface%nuArray)) :: photoFlux1
 !    integer, parameter :: ntrial_max = 20
     integer, parameter :: ntrial_max = 50
-    logical :: be_gentle
 #ifdef MPI
      logical :: dcAllocated
      integer, dimension(:), allocatable :: octalsBelongRank
@@ -3582,7 +3566,6 @@ contains
     logical, parameter          :: debugInfo = .true.
     real(double), parameter :: CI = 2.07d-16   ! in cgs units
     type(octalWrapper), dimension(:), allocatable :: octalArray ! array containing pointers to octals
-type(octal), pointer :: testOctal
     call map_transition_arrays(maxLevels)
     freq = cspeed/lambdaTrans(nLower,nUpper)
 
@@ -3596,7 +3579,6 @@ type(octal), pointer :: testOctal
     do iOctal = 1, SIZE(octalArray), 1
        do iSubcell = 1, octalArray(iOctal)%content%maxChildren
           if (octalArray(iOctal)%inUse(iSubcell).and.octalArray(iOctal)%content%inFlow(isubcell)) then
-             testOctal => octalArray(iOctal)%content
              octalArray(iOctal)%content%kappaSca(iSubcell,1) = &
                 octalArray(iOctal)%content%Ne(iSubcell) * sigmae * 1.e10
              
@@ -3779,8 +3761,6 @@ type(octal), pointer :: testOctal
     type(GRIDTYPE),intent(inout):: grid      
     logical(kind=logic), dimension(:), intent(in), optional :: subcellMask
 
-    real(double) :: nTot
-    real(double) :: phiT
     integer               :: iSubcell
     type(octalVector)     :: inPlanePoint
     !real(double) :: Ne1, Ne2
@@ -3798,7 +3778,7 @@ type(octal), pointer :: testOctal
     integer, parameter    :: maxLevels = statEqMaxLevels 
     integer, dimension(maxLevels), parameter :: allLevels = (/ (i,i=1,maxLevels) /)
     type(octal), pointer  :: child
-    integer               :: m, iChild
+    integer               :: iChild
     
     starCentre = grid%starPos1
     rHat = octalVector(1.0_oc/SQRT(2.0_oc),1.0_oc/SQRT(2.0_oc),0.0_oc)
@@ -3872,12 +3852,9 @@ type(octal), pointer :: testOctal
     type(GRIDTYPE),intent(inout):: grid      
     logical(kind=logic), dimension(:), intent(in), optional :: subcellMask
 
-    real(double) :: nTot
-    real(double) :: phiT
     integer               :: iSubcell
     !real(double) :: Ne1, Ne2
     !logical               :: ok
-    real(oct)  :: distance
     type(octalVector)     :: starCentre
     type(octalVector)     :: cellCentre, r, r2
     type(octal),pointer   :: foundOctal
@@ -3890,7 +3867,7 @@ type(octal), pointer :: testOctal
     integer, parameter    :: maxLevels = statEqMaxLevels 
     integer, dimension(maxLevels), parameter :: allLevels = (/ (i,i=1,maxLevels) /)
     type(octal), pointer  :: child
-    integer               :: m, iChild
+    integer               :: iChild
     logical   :: skip_rotation
     
     starCentre = grid%starPos1

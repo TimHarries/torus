@@ -59,7 +59,7 @@ contains
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein)
     use input_variables, only : smoothFactor, blockHandout, zoomFactor, &
-         nlucy, photoionization
+         nlucy
     use messages_mod, only : myRankIsZero
     implicit none
 #ifdef MPI
@@ -69,51 +69,44 @@ contains
     type(GRIDTYPE) :: grid
     character(len=*) :: lucyfileout, lucyfilein
     logical :: readlucy, writelucy
-    type(OCTAL), pointer :: thisOctal, tempOctal, endOctal
+    type(OCTAL), pointer :: thisOctal, tempOctal
     integer :: nCellsInDiffusion
     logical :: directPhoton
     character(len=80) :: message
-    integer :: tempSubcell, endSubcell
+    integer :: tempSubcell
     integer :: nlambda
     real :: lamArray(:)
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     integer :: iSource
     type(OCTALVECTOR) :: rVec, uHat, rHat
-    real(double) :: alphaA, alpha1, v, lCore
+    real(double) :: lCore
     integer :: nMonte, iMonte
     integer :: subcell
-    integer :: i, j
+    integer :: i
     logical :: escaped
     real(double) :: wavelength, thisFreq
     real :: thisLam
-    type(OCTALVECTOR) :: outVec, octVec
+    type(OCTALVECTOR) :: octVec
     real(double) :: r
     integer :: ilam
     integer :: nInf
     real(double) :: kappaScadb, kappaAbsdb
-    real(double) :: epsOverDeltaT, kappaH, kappaHe
-    real :: pops(10)
+    real(double) :: epsOverDeltaT
     integer :: nIter
     logical :: converged
-    real(double) :: crate
-    real :: xsec, temp, e, h0, he0
+    real :: temp
     real(double) :: luminosity1, luminosity2, luminosity3
-    type(IONTYPE) :: thisIon
-    real(double) :: alpha21s, alpha21p, alpha23s, photonPacketWeight
-    real :: excitation, deexcitation, excitation2
+    real(double) :: photonPacketWeight
     real(double) :: fac
-    logical :: gridConverged
-    real(double) :: probEsc, albedo
+!    logical :: gridConverged
+    real(double) :: albedo
 
     logical :: ok
 
     type(SAHAMILNETABLE) :: hTable, heTable
     type(RECOMBTABLE) :: Hrecombtable
 
-    real(double) :: hRecombemissivity, hlymanContemissivity, helymanContEmissivity
-    real(double) :: hiContEmissivity, forbiddenEmissivity
-    real(double) :: probNonIonizing, probHydrogen
     real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
 
@@ -706,33 +699,27 @@ end subroutine photoIonizationloop
  SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, photonPacketWeight)
 
    type(GRIDTYPE) :: grid
-   type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
-   type(OCTAL), pointer :: thisOctal, tempOctal, sourceOctal
+   type(OCTALVECTOR) :: rVec,uHat, octVec, tvec
+   type(OCTAL), pointer :: thisOctal, tempOctal
    type(OCTAL),pointer :: oldOctal
-   type(OCTAL),pointer :: foundOctal, endOctal
+   type(OCTAL),pointer :: endOctal
    integer :: endSubcell
    real(double) :: photonPacketWeight
-   integer :: subcell, isubcell, tempSubcell, sourceSubcell
+   integer :: subcell, tempSubcell
    real(oct) :: tval, tau, r
    real :: lamArray(:)
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
-   logical :: twoD
    real(double) :: kappaScaDb, kappaAbsDb
    real(oct) :: thisTau
    real(oct) :: thisFreq
    real(oct) :: thisLam
    integer :: iLam
    logical ::inFlow , ok
-   integer :: imonte
    real :: diffusionZoneTemp
-   logical :: photonInDiffusionZone
-   logical :: leftHandBoundary
-   real(double) :: prob
-   real :: e, h0
-   real :: lambda
-   integer :: ilambda, i
+!   real :: lambda
+!   integer :: ilambda
 
     stillinGrid = .true.
     escaped = .false.
@@ -762,7 +749,6 @@ end subroutine photoIonizationloop
 
 
     octVec = rVec
-    thisOctVec = rVec
 
     call locate(lamArray, nLambda, real(thisLam), iLam)
 
@@ -832,7 +818,6 @@ end subroutine photoIonizationloop
                foundSubcell=subcell, kappaSca=kappaScadb, kappaAbs=kappaAbsdb, &
                grid=grid, inFlow=inFlow)
           oldOctal => thisOctal
-          thisOctVec = octVec
 
 ! calculate the distance to the next cell
 
@@ -895,7 +880,6 @@ end subroutine photoIonizationloop
        call amrGridValues(grid%octreeRoot, octVec, startOctal=oldOctal, iLambda=iLam,lambda=real(thisLam),&
             foundOctal=thisOctal, foundSubcell=subcell, & 
             kappaAbs=kappaAbsdb,kappaSca=kappaScadb, grid=grid, inFlow=inFlow)
-       thisOctVec = octVec
 
 
        if (thisOctal%diffusionApprox(subcell)) then
@@ -1137,16 +1121,13 @@ end subroutine photoIonizationloop
    type(OCTALVECTOR), intent(inout) :: direction
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6)
    type(OCTAL),pointer :: thisOctal
    type(OCTALVECTOR) :: subcen, point
-   real :: dx, dz ! directions in cylindrical coords
    integer :: subcell
    real(double) :: compZ, currentZ
    real(double) :: distToZBoundary, distToXboundary
    real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
-   integer :: i,j
-   logical :: ok, thisOk(6)
+   logical :: ok
    type(OCTALVECTOR) :: xHat, zHAt
 
    point = posVec
@@ -1250,8 +1231,7 @@ end subroutine photoIonizationloop
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   type(GRIDTYPE) :: grid
-  real(double) :: luminosity, v, r1, r2, hbeta
-  type(OCTALVECTOR) :: rVec
+  real(double) :: luminosity, v, hbeta
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -1277,10 +1257,8 @@ end subroutine photoIonizationloop
   subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
-    real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
-    integer :: subcell, i
-    type(OCTALVECTOR) :: rVec
+    real(double) :: epsOverDeltaT
+    integer :: subcell
     
     do subcell = 1, thisOctal%maxChildren
 
@@ -1301,7 +1279,7 @@ end subroutine photoIonizationloop
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: epsOverDeltaT
-    real(double) :: totalHeating, nh
+    real(double) :: totalHeating
     integer :: subcell
     logical :: converged, found
     real :: t1, t2, tm
@@ -1631,7 +1609,6 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
   integer :: nIonizationStages
   integer :: iStart, iEnd, iIon
   real(double) :: chargeExchangeIonization, chargeExchangeRecombination
-  logical :: ok
   real(double), allocatable :: xplus1overx(:)
 
   v = cellVolume(thisOctal, subcell)

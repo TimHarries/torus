@@ -942,7 +942,7 @@ contains
     real(double), parameter :: lambda0=6564.614d0     ! [A]  Line center wavelength
     real(double), parameter :: lambda_min=6555.855d0  ! [A]  minimum wavelength (~-400km/s)
     real(double), parameter :: R=10000.0d0            ! [-]  Resolution (lambda/dlambda)
-    real(double) :: dlam, lam
+    real(double) :: dlam
     integer :: i 
     character(len=20) :: name_of_filter, dum_a
     
@@ -1003,7 +1003,7 @@ contains
     real(double), parameter :: lambda0=12818.1d0       ! [A]  Line center wavelength
     real(double), parameter :: lambda_min=12800.898d0  ! [A]  minimum wavelength (~-400km/s)
     real(double), parameter :: R=10000.0d0             ! [-]  Resolution (lambda/dlambda)
-    real(double) :: dlam, lam
+    real(double) :: dlam
     integer :: i 
     character(len=20) :: name_of_filter, dum_a
     
@@ -1065,7 +1065,7 @@ contains
     real(double), parameter :: lambda0=21655.0d0       ! [A]  Line center wavelength
     real(double), parameter :: lambda_min=21626.107d0  ! [A]  minimum wavelength (~-400km/s)
     real(double), parameter :: R=10000.0d0             ! [-]  Resolution (lambda/dlambda)
-    real(double) :: dlam, lam
+    real(double) :: dlam
     integer :: i 
     character(len=20) :: name_of_filter, dum_a
     
@@ -1494,7 +1494,6 @@ contains
     integer,  parameter :: nlam=5  ! number of wavelegth samples
     !
     real(double) :: lam0, dlambda
-    integer :: i 
     character(len=*) :: name_of_filter
 
     type(filter_set) :: temp_set   ! temporary filter set

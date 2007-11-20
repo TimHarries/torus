@@ -343,7 +343,7 @@ contains
        narrowBandImage, narrowBandMin, narrowBandMax, source, nSource, rHatInStar, energyPerPhoton, &
        filterSet, mie, curtains, starSurface, forcedWavelength, usePhotonWavelength, iLambdaPhoton,&
        VoigtProf, dirObs,  photonFromEnvelope, dopShift)
-    use input_variables, only : nphotons, photoionization
+    use input_variables, only : photoionization
 
     implicit none
 
@@ -379,10 +379,9 @@ contains
     real :: r, mu, phi                         ! spherical polar coords
     real :: sinTheta      
     real(oct) :: t1, t2, t3                         ! multipliers
-    real :: temp
     integer, parameter :: nv = 100
-    real :: dv(nv)
-    real :: vArray(nv), pv(nv), vbias(nv)
+!    real :: dv(nv)
+!    real :: vArray(nv), pv(nv), vbias(nv)
     real :: vPhi                               ! azimuthal velocities
     real(double) :: kabs
     real :: ang                                ! angle
@@ -401,10 +400,9 @@ contains
     type(VECTOR) :: secondSourcePosition       ! the position of it
     type(VECTOR) :: ramanSourceVelocity        ! what it says
     type(VECTOR) :: rVel
-    real :: rMag
     type(octalVector) :: octalPoint            ! 
     type(octal), pointer :: sourceOctal        ! randomly selected octal
-    type(octal), pointer :: foundOctal       
+!    type(octal), pointer :: foundOctal       
     integer :: subcell
     real :: probDust, weightDust, weightPhoto
 
@@ -436,12 +434,12 @@ contains
     logical, intent(in) ::  VoigtProf
     type(vector), intent(in) :: dirObs  ! direction to an observer
 
-    real :: tempr
+!    real :: tempr
 
     real :: theta1, theta2                     ! defines hot ring of accretion for TTaus
     real :: chanceHotRing                      ! chance of core photon in ttauri accretion ring
     logical, intent(in) :: curtains  ! T Tauri accretion curtains
-    real :: curtain1size             ! angular size of first accretion curtain
+!    real :: curtain1size             ! angular size of first accretion curtain
     real :: thisTheta, thisPhi
     real :: x1, x2
     real :: tempXProbDist(2000)
@@ -456,9 +454,7 @@ contains
     real(double) :: rd, bias(5000),totDouble, lambias(5000), dlambias(5000)
     integer :: i, nbias
 
-    type(octalVector) :: positionOctal     ! octalVector type version of thisPhoton%position
-
-    real :: z_rand, phi_rand, theta_rand
+!    type(octalVector) :: positionOctal     ! octalVector type version of thisPhoton%position
 
     type(octalVector) :: octalvec_tmp
     type(Vector) :: vec_tmp
@@ -467,10 +463,7 @@ contains
     real(double) :: rho
     real(double) :: nu_shuffled, lambda_shuffled, nu, Gamma, Ne
     type(Vector) ::  velocity
-    real(double) :: tauSob,  escProb
-    real :: chiline, dV_dn
 !    type(octal), pointer :: thisOctal
-    integer :: thisSubcell
 
     ! set up the weights and the stokes intensities (zero at emission)
 
