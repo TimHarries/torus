@@ -1300,18 +1300,14 @@ end subroutine photoIonizationloop
   subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
-    real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
-    real(double) :: totalHeating, nHii, nHeII, nh
-    integer :: subcell, i, j
-    type(OCTALVECTOR) :: rVec
+    real(double) :: epsOverDeltaT
+    real(double) :: totalHeating, nh
+    integer :: subcell
     logical :: converged, found
     real :: t1, t2, tm
-    real(double) :: y1, y2, ym, ymin, Hheating, Heheating, tot, dustHeating
+    real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
     real :: deltaT
-    real(double) :: junk
     real :: underCorrection = 1.
-    real :: pops(10)
     integer :: nIter
     
 
@@ -1578,7 +1574,6 @@ end subroutine photoIonizationloop
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: thisFreq, distance, kappaAbs,kappaAbsDust
-    real :: lambda
     integer :: ilambda
     real(double) :: photonPacketWeight
     integer :: i 
@@ -1632,15 +1627,11 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
   real(double) :: epsOverDeltaT, V
   real :: temperature
   integer :: subcell
-  integer :: i, j, k
-  real(double), allocatable :: matrixA(:,:), MatrixB(:,:), tempA(:,:)
+  integer :: i, k
   integer :: nIonizationStages
-  type(OCTALVECTOR) :: rVec
-  real(double) :: r1, r2
   integer :: iStart, iEnd, iIon
   real(double) :: chargeExchangeIonization, chargeExchangeRecombination
-  logical :: ok, easyWay
-  real(double) :: ionRateInto, recombRateOutof
+  logical :: ok
   real(double), allocatable :: xplus1overx(:)
 
   v = cellVolume(thisOctal, subcell)
@@ -2133,8 +2124,7 @@ subroutine dumpLexington(grid, epsoverdt)
   real(double) :: r, theta
   real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
   real(double) :: oirate, oiirate, oiiirate, oivrate
-  real(double) :: v, epsoverdt,r1,r2
-  type(OCTALVECTOR) :: rvec
+  real(double) :: v, epsoverdt
   type(OCTALVECTOR) :: octVec
   real :: fac
   real(double) :: hHeating, heHeating, totalHeating, heating, nh, nhii, nheii, ne
@@ -2398,9 +2388,8 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   integer :: subcell, i, iIon, iTrans
-  real(double) :: luminosity, v, r1, r2, rate
+  real(double) :: luminosity, v, rate
   real :: pops(10)
-  type(OCTALVECTOR) :: rvec
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -2413,7 +2402,6 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
              end if
           end do
        else
-          rVec = subcellCentre(thisOctal,subcell)
           v = cellVolume(thisOctal, subcell)
 
           call solvePops(grid%ion(iIon), pops, thisOctal%ne(subcell), thisOctal%temperature(subcell), &
@@ -2473,7 +2461,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
   real :: temperature
   real(double), allocatable :: matrixA(:,:), MatrixB(:), tempMatrix(:,:), qeff(:,:),  rates(:)
   integer :: n, iTrans, i, j
-  real :: excitation, deexcitation, rateij, rateji, arateji
+  real :: excitation, deexcitation, arateji
   real(double) :: nh, ionFrac
   logical :: ok
   logical, optional :: debug
@@ -2716,8 +2704,7 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   type(GRIDTYPE) :: grid
   type(OCTAL) :: thisOctal
   integer :: subcell
-  real(double) :: hHeating, heHeating, totalHeating, v, r1, r2, epsOverDeltaT, dustHeating
-  type(OCTALVECTOR) :: rVec
+  real(double) :: hHeating, heHeating, totalHeating, v, epsOverDeltaT, dustHeating
 
   v = cellVolume(thisOctal, subcell)
   Hheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance &
@@ -2773,7 +2760,7 @@ subroutine createGammaTable(table, thisfilename)
   type(GAMMATABLE) :: table
   character(len=*) :: thisfilename
   character(len=200) :: dataDirectory, filename
-  integer :: i, j
+  integer :: i
 
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//thisfilename
@@ -2834,10 +2821,10 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
   TYPE(OCTAL) :: thisOctal
   integer :: subcell
   integer :: nFreq
-  integer :: i, j, k, iIon, n1, n2
+  integer :: i, k, iIon, n1, n2
   real(double) :: freq(:), spectrum(:), dfreq(:)
-  real(double) :: nu0_h, nu0_he, jnu
-  real :: e, hxsec, hexsec
+  real(double) :: jnu
+  real :: e, hxsec
   real(double), parameter :: statisticalWeight(3) = (/ 2.d0, 0.5d0, 2.d0 /)
 
 
@@ -3088,7 +3075,7 @@ subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subc
 !  real :: heII4686
 !  integer :: ilow , iup
   integer,parameter :: nHeIILyman = 4
-  real(double) :: heIILyman(4)
+!  real(double) :: heIILyman(4)
   real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
 
 
@@ -3165,7 +3152,6 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
   real :: lamArray(:)
   integer :: i, iLam
   real :: thisLam
-  type(OCTALVECTOR) :: octVec
   real(double), allocatable :: kabsArray(:)
 
 

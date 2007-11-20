@@ -75,9 +75,9 @@ CONTAINS
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
     !
     TYPE(octal), POINTER :: parentOctal
-    real(double) :: rhoDouble, r
+!    real(double) :: rhoDouble, r
     INTEGER :: parentSubcell
-    type(OCTALVECTOR) :: rVec
+!    type(OCTALVECTOR) :: rVec
     LOGICAL :: inheritProps
     LOGICAL :: interpolate
 
@@ -303,7 +303,7 @@ CONTAINS
     ! creates the first octal of a new grid (the root of the tree).
     ! this should only be used once; use addNewChild for subsequent
     !  additions.
-    use input_variables, only : cylindrical, photoionization, molecular, cmf, nAtom, debug
+    use input_variables, only : cylindrical, photoionization, molecular, cmf, nAtom
 
     IMPLICIT NONE
     
@@ -517,7 +517,7 @@ CONTAINS
                          isample, stream)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, molecular, cmf, nAtom, debug, useDust
+    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, molecular, cmf, nAtom, useDust
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
@@ -542,7 +542,7 @@ CONTAINS
                                        ! - this isn't very clever. might change it. 
     INTEGER       :: nChildren         ! number of children the parent octal has
     INTEGER       :: newChildIndex     ! the storage location for the new child
-    integer :: np, i
+    integer :: i
     logical :: inheritProps, interpolate
     type(OCTALVECTOR) :: rVec
     ! array of octals that may be needed for temporarily storing child octals
@@ -963,13 +963,10 @@ CONTAINS
     INTEGER              :: i, j, k
     logical :: splitInAzimuth
     !
-    TYPE(OCTAL), POINTER :: childPointer  
-    INTEGER              :: subcell    ! loop counters
-    logical :: splitThis
+    integer, save        :: split_iter = 0
 
-    integer, save :: split_iter = 0
-    real :: dummy(1)
-    character(len=40) :: filename
+!    real :: dummy(1)
+!    character(len=40) :: filename
 
     !
     ! For "romanova" geometry
@@ -1147,7 +1144,6 @@ CONTAINS
     
       INTEGER, INTENT(IN) :: l, r
       INTEGER :: j, jold 
-      REAL    :: a
       real(oct) :: valueX
       real(oct) :: valueY
       real(oct) :: valueA
@@ -1872,8 +1868,6 @@ CONTAINS
     type(OCTAL), pointer :: sOctal
     logical, optional :: edgeOfGrid
     
-    integer :: subcell
-
     error = 0
     abortRay = .false.
 
@@ -3114,7 +3108,7 @@ CONTAINS
     TYPE(vector), INTENT(IN)       :: direction
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
-    TYPE(octal),  POINTER         :: thisOctal, currentOctal
+    TYPE(octal),  POINTER         :: thisOctal !, currentOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
 
     TYPE(octalVector)              :: octalDirection
@@ -3620,10 +3614,8 @@ CONTAINS
 
     TYPE(octal), INTENT(IN)       :: thisOctal
     TYPE(octalVector), INTENT(IN) :: point
-    TYPE(octalVector)             :: rotpoint
     INTEGER                       :: subcell
     real(double) :: r, phi
-    integer :: i
 
     if (thisOctal%oneD) then
        if (point%x <= thisOctal%centre%x) then
@@ -3756,7 +3748,7 @@ CONTAINS
     TYPE(octal), INTENT(IN)       :: thisOctal
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(octalVector)             :: octVec2D
-    real(double)                  :: r, phi, r1, dphi, eps
+    real(double)                  :: r, phi, dphi, eps
 
 
     if (thisOctal%oneD) then
@@ -4103,7 +4095,7 @@ IF ( .NOT. gridConverged ) RETURN
       INTEGER, INTENT(OUT)   :: subcell
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
-      type(octalvector) :: rVec
+!      type(octalvector) :: rVec
       INTEGER :: i
       
       IF ( inOctal(thisOctal,point) ) THEN
@@ -4381,9 +4373,8 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: nFrames, maxFrames
     type(VECTOR),allocatable :: viewVec(:), posVec(:)
     type(VECTOR) :: rHat
-    real :: defDist, fac
+    real :: defDist
     type(OCTALVECTOR) :: octViewVec,octPosVec
-    real :: ang
     real(double) :: totalMass, minRho, maxRho
     integer maxPoints
     integer :: nPoints
@@ -4391,10 +4382,10 @@ IF ( .NOT. gridConverged ) RETURN
     real :: x, y, dr
     integer :: nGrid
     integer, allocatable :: nColour(:)
-    real, allocatable :: depth(:)
+!    real, allocatable :: depth(:)
     integer :: i
-    real :: dist, r1, r2
-    type(VECTOR) :: newPoint, oldPoint, thisPoint, direction,campoint(4),startpoint
+    real :: dist, r1 !, r2
+    type(VECTOR) :: newPoint, oldPoint, direction,campoint(4)
     integer :: nScene = 100,  j
    
     defDist = 4.*grid%octreeRoot%subcellSize
@@ -4433,7 +4424,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     allocate(viewVec(1:maxFrames))
     allocate(posVec(1:maxFrames))
-    allocate(depth(1:maxFrames))
+!    allocate(depth(1:maxFrames))
     nFrames = 0
 
     oldPoint = randomUnitVector()
@@ -4523,7 +4514,7 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: nSource
     type(VECTOR) :: points(:), rVec
     integer :: nColour(:)
-    integer :: iSource, iSphere, nSphere,i
+    integer :: iSource, nSphere,i
     
     nSphere = 1000
     do iSource = 1, nSource
@@ -4550,7 +4541,6 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTAL), INTENT(IN) :: thisOctal
     type(octalVector) :: viewVec, posVec
     real :: defDist
-    real(double) :: totalMass
     integer :: thisDepth
     integer :: nPoints
     type(VECTOR) :: points(:)
@@ -4675,14 +4665,14 @@ IF ( .NOT. gridConverged ) RETURN
     IMPLICIT NONE
     
     type(VECTOR) :: viewVec, posVec, up
-    real :: s, defDist
+    real :: defDist
     type(VECTOR) :: xAxis, yAxis, zAxis, xProj, yProj
     type(VECTOR) :: points(:)
     real, allocatable :: zDepth(:)
     integer, allocatable :: indx(:)
     integer :: nColour(:)
     integer :: i, nPoints, j
-    real :: distFac,r1,r2,r3,xs,ys
+    real :: distFac,xs,ys
     integer :: nGrid
     type(VECTOR) :: lineGrid(:,:)
 
@@ -4775,7 +4765,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
-    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr
+    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr !, maxdepthamr
     IMPLICIT NONE
 !    include 'mpif.h'
     TYPE(octal), intent(inout) :: thisOctal
@@ -4797,19 +4787,15 @@ IF ( .NOT. gridConverged ) RETURN
     REAL                  :: x, y, z
     REAL(double) :: hr, rd, fac, warpHeight, phi
     INTEGER               :: i
-    real(double) :: thisTau, kappaSca, kappaAbs
     real(double)      :: total_mass
     real(double), save :: rgrid(1000)
     real(double)      :: ave_density,  r, dr
     INTEGER               :: nr, nr1, nr2
-    real(double)      :: total_opacity, minDensity, maxDensity, thisDensity
+    real(double)          :: minDensity, maxDensity
     INTEGER               :: nsample = 400
-    LOGICAL               :: inUse
     INTEGER               :: nparticle, limit
-    integer :: np
-    real(double) :: timenow
+!    real(double) :: timenow
     real(double) :: dummyDouble
-    real(double) :: fac1,fac2
     real(double) :: rho_disc_ave, scale_length
     real(double),save  :: R_tmp(204)  ! [10^10cm]
     real(double),allocatable, save  :: R_cmfgen(:)  ! [10^10cm]
@@ -5634,8 +5620,6 @@ IF ( .NOT. gridConverged ) RETURN
       endif
    endif
 
-   np = 8 
-
 
    if (grid%splitOverMPI) then
       if ((thisOctal%twoD.and.(nThreadsGlobal-1)==4).or. &
@@ -5770,7 +5754,6 @@ IF ( .NOT. gridConverged ) RETURN
     real(oct)      :: x1, x2, x3
     real(oct)      :: y1, y2, y3
     real(oct)      :: z1, z2, z3
-    integer :: i
     
     INTERFACE 
       TYPE(vector) FUNCTION velocityFunc(point,grid)
@@ -6097,15 +6080,11 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(gridtype), INTENT(INOUT) :: grid
 
     TYPE(octalVector) :: point
-    REAL :: rho
 
     TYPE(octalVector) :: starPosn
     TYPE(octalVector) :: pointVec
-    TYPE(vector) :: vP
 
-    REAL :: modVp
-    REAL :: phi
-    REAL :: r, rM, theta, y, ang, bigR, thetaStar
+    REAL :: r, rM, theta, bigR, thetaStar
     REAL :: bigRstar, thetaStarHartmann, bigRstarHartmann, rMnorm
     REAL :: tmp
 
@@ -6334,8 +6313,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     IMPLICIT NONE    
     real(double) :: w  ! width in  [10^10cm]
-    real(double) :: r, theta, rM, rM_center, h
-    real(double) :: rM_fuzzy_in, rM_fuzzy_out  ! beginning of the fuzzy edges
+    real(double) :: rM_center, h
     !
     ! bias more toward the edges of the accreation stream
     h = 0.5d0*(TTauriRouter - TTauriRinner)*1.0d-10  ! [10^10cm] distance from the centere to edge
@@ -6357,7 +6335,6 @@ IF ( .NOT. gridConverged ) RETURN
   ! Before the initial call the total mass must be set to zero
   ! The output should be in grams.
   RECURSIVE SUBROUTINE TTauri_accretion_mass(thisOctal, grid, total_mass)
-    use input_variables, only: TTauriRinner, TTauriRouter
 
     IMPLICIT NONE
     TYPE(OCTAL), POINTER :: thisOctal    
@@ -6412,7 +6389,6 @@ IF ( .NOT. gridConverged ) RETURN
   ! Scale the density in the accretion flow by the scale factor passed on this routine.
   ! Before the initial call the total mass must be set to zero
   RECURSIVE SUBROUTINE TTauri_accretion_scale_density(thisOctal, grid, scale)
-    use input_variables, only: TTauriRinner, TTauriRouter
 
     IMPLICIT NONE
     TYPE(OCTAL), POINTER :: thisOctal    
@@ -6702,7 +6678,7 @@ IF ( .NOT. gridConverged ) RETURN
     CHARACTER(LEN=80) :: dataDirectory 
     INTEGER :: errNo, i
     
-    INTEGER :: nLines, subPos
+    INTEGER :: subPos
     INTEGER :: fieldline
     INTEGER :: lowerLine, upperLine
     INTEGER :: iSample
@@ -6856,12 +6832,11 @@ IF ( .NOT. gridConverged ) RETURN
     CHARACTER(LEN=80) :: dataDirectory 
     INTEGER :: errNo, i
     
-    INTEGER :: nLines, subPos
+    INTEGER :: subPos
     INTEGER :: fieldline
     INTEGER :: lowerLine, upperLine
     INTEGER :: iSample
     INTEGER :: maxSamples
-    REAL :: lowerTemp, upperTemp
     INTEGER :: iStat
     logical, save :: warned_already_01 = .false.
     logical, save :: warned_already_02 = .false.
@@ -7082,7 +7057,6 @@ IF ( .NOT. gridConverged ) RETURN
     real(double), DIMENSION(nFieldLines,nBins) :: outputArray
     real(double), DIMENSION(nFieldLines,nBins,grid%maxLevels) :: output2dArray
     REAL, DIMENSION(nBins)             :: radii
-    REAL, DIMENSION(samplesPerBin)     :: samples
     TYPE(vector)                       :: azVec  ! azimuth vector
     TYPE(vector)                       :: polVec ! poloidal vector
     
@@ -7097,7 +7071,6 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(vector)      :: velocityValue
     REAL(double)      :: etaLine
     REAL              :: chiLine
-    REAL,DIMENSION(grid%maxLevels) :: valueArraySingle
     REAL,DIMENSION(grid%maxLevels+1) :: departCoeff
     real(double),DIMENSION(grid%maxLevels) :: valueArrayDouble
     LOGICAL           :: scalar, logarithmic
@@ -7517,14 +7490,9 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real :: r
     TYPE(octalVector) :: rVec
-    integer,save :: it
-    real :: fac
-    integer :: i
 
     rVec = subcellCentre(thisOctal,subcell)
-    r = modulus(rVec)
 
     thisOctal%rho(subcell) = tiny(thisOctal%rho(subcell))
     thisOctal%temperature(subcell) = 5000.
@@ -7558,7 +7526,6 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     TYPE(octalVector) :: rVec
-    integer :: i
     real(double) :: r, v, mdot
 
 
@@ -7988,8 +7955,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     type(OCTALVECTOR) :: rVec
-    real(double) :: gd, xmid, x, z, r , zprime
-    real :: u1 , u2
+    real :: u1 !, u2
     real(double), parameter :: gamma = 5.d0/3.d0
 
 
@@ -8030,7 +7996,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     type(OCTALVECTOR) :: rVec, cVec
-    real(double) :: gd, xmid, x, z, r , zprime, gamma
+    real(double) :: gamma
     logical :: blast
 
     gamma = 7.d0/5.d0
@@ -8060,7 +8026,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real :: r, hr, rd, r1
+    real :: r, hr, rd
     TYPE(octalVector) :: rVec
 
     real :: rInnerGap, rOuterGap
@@ -8097,7 +8063,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine molecularBenchmark(thisOctal,subcell,grid)
 
-    use input_variables, only : amr2d, molAbundance
+    use input_variables, only : molAbundance !, amr2d
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
@@ -8106,11 +8072,11 @@ IF ( .NOT. gridConverged ) RETURN
     integer, parameter :: nr = 50
     real,save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr)
     real :: mu1, r1, t1
-    real(double) :: v1, vDopp
+    real(double) :: v1 !, vDopp
     integer :: i
 
-    real :: costheta ! used for angular dependence of density - HPC proposal
-    real :: btherm
+!    real :: costheta ! used for angular dependence of density - HPC proposal
+!    real :: btherm
     type(OCTALVECTOR) :: vel
 
     if (firsttime) then
@@ -8187,15 +8153,13 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine molecularFilamentFill(thisOctal,subcell,grid)
 
-    use input_variables, only : amr2d, molAbundance!,rhoC,r0
+    use input_variables, only : molAbundance!,rhoC,r0
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real(double) :: r0, r1
     TYPE(OCTALVECTOR) :: cellCentre
-
-    type(OCTALVECTOR) :: vel
 
     r0 = (1d3/sqrt(4.d0*pi*6.67d-11*5d-18)) / 1d8 ! 1d3 sigma in m/s, 6.67d-11 is G, 5d-18 is RHOc, 1d8 metres to TORUS
 
@@ -8216,15 +8180,11 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine ggtauFill(thisOctal,subcell,grid)
 
-    use input_variables, only : amr2d, molAbundance
-
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real(double) :: r,t0,nh20,v0,H0,H,v
     TYPE(OCTALVECTOR) :: cellCentre
-
-    type(OCTALVECTOR) :: vel
 
     CellCentre = subcellCentre(thisOctal, subcell)
     r = modulus(cellCentre)
@@ -8285,7 +8245,6 @@ IF ( .NOT. gridConverged ) RETURN
 
   TYPE(vector) FUNCTION moleBenchVelocity(point,grid)
     type(OCTALVECTOR), intent(in) :: point
-    type(OCTALVECTOR) rHat
     type(GRIDTYPE), intent(in) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 50
@@ -8317,7 +8276,7 @@ IF ( .NOT. gridConverged ) RETURN
   end FUNCTION moleBenchVelocity
 
   TYPE(vector)  function keplerianVelocity(point, grid)
-    use input_variables, only : vterm, beta, mcore
+    use input_variables, only : mcore
     type(octalvector), intent(in) :: point
     type(octalvector) :: rvec
     type(GRIDTYPE), intent(in) :: grid
@@ -8369,7 +8328,6 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real :: r, hr, rd, r1
     TYPE(octalVector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
@@ -8391,7 +8349,6 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real :: r, hr, rd, r1
     TYPE(octalVector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
@@ -8427,7 +8384,6 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real :: r, hr, rd, r1
     TYPE(octalVector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
@@ -8447,7 +8403,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real :: r, h, rd, r1
+    real :: r, h, rd
     TYPE(octalVector) :: rVec
     
     type(VECTOR),save :: velocitysum
@@ -8532,7 +8488,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real :: r, h, rd, r1
+    real :: r, h, rd
     TYPE(octalVector) :: rVec
     
     rVec = subcellCentre(thisOctal,subcell)
@@ -8885,8 +8841,7 @@ IF ( .NOT. gridConverged ) RETURN
   type(octal), pointer  :: child 
   real(double) :: totalMass
   real(double),optional :: minRho, maxRho
-  real(double) :: r1,r2,dv
-  type(OCTALVECTOR) :: rVec
+  real(double) :: dv
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -9178,7 +9133,7 @@ IF ( .NOT. gridConverged ) RETURN
   TYPE(vector) FUNCTION ostarVelocity(point,grid)
     real(double) :: r1
     type(OCTALVECTOR), intent(in) :: point
-    type(OCTALVECTOR) rHat
+!    type(OCTALVECTOR) rHat
     type(GRIDTYPE), intent(in) :: grid
     real :: v, v0, vterm, beta
     v0 = 100.e5
@@ -9709,7 +9664,6 @@ IF ( .NOT. gridConverged ) RETURN
       INTEGER, INTENT(IN) :: thisParentSubcell
       INTEGER, INTENT(INOUT) :: nOctals
 
-      INTEGER :: error 
       INTEGER :: iSubcell, iIndex
       TYPE(OCTAL), POINTER :: thisOctalPointer
       REAL(oct) :: sizeRatio
@@ -9911,7 +9865,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octalVector), ALLOCATABLE, DIMENSION(:) :: locator
     INTEGER              :: subcell
     INTEGER              :: thisSubcell
-    REAL                 :: thisTau, thatTau, tauDiff
+    REAL                 :: thisTau, thatTau !, tauDiff
     INTEGER              :: nLocator
     LOGICAL              :: prob
     
@@ -10219,10 +10173,9 @@ IF ( .NOT. gridConverged ) RETURN
     type(octal), pointer  :: child
     integer :: ilambda
     real(double) :: kappaAbs, kappaSca, tau
-    integer :: subcell, i, j
-    logical :: unrefine, ok, converged
-    integer :: nTau
-    integer :: nVals, nc
+    integer :: subcell, i
+    logical :: unrefine, converged
+    integer :: nc
 
     unrefine = .true.
     nc = 0
@@ -10265,10 +10218,8 @@ IF ( .NOT. gridConverged ) RETURN
     type(octal), pointer  :: child
     integer :: ilambda
     real(double) :: kappaAbs, kappaSca, tau
-    integer :: subcell, i, j
-    logical :: unrefine, ok, converged
-    integer :: nTau
-    integer :: nVals
+    integer :: subcell, i
+    logical :: unrefine, converged
 
     unrefine = .true.
 
@@ -10736,16 +10687,14 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine setBiasAMR
 
   recursive subroutine set_bias_shakara(thisOctal, grid, ilam, ross)
-  use input_variables, only : rinner
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real :: kap
-  real(double) :: tau, kappaAbs, kappaSca, thisTau
-  type(octalvector) :: rVec, direction
+  real(double) :: tau, kappaAbs, kappaSca !, thisTau
+!  type(octalvector) :: rVec, direction
   logical :: ross
-  integer :: subcell, i, ilam, ntau
-  real :: r
+  integer :: subcell, i, ilam !, ntau
+!  real :: r
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -10785,12 +10734,8 @@ IF ( .NOT. gridConverged ) RETURN
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real :: kap
-  real(double) :: tau, kappaAbs, kappaSca
-  type(octalvector) :: rVec
-  logical :: ross
+  real(double) :: tau, kappaAbs
   integer :: subcell, i, ilam
-  real :: r
   
   do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -10811,15 +10756,9 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine set_bias_rosseland
 
   recursive subroutine set_bias_radius(thisOctal, p)
-  type(gridtype) :: grid
-  type(octal), pointer   :: thisOctal
+  type(octal), pointer  :: thisOctal
   type(octal), pointer  :: child 
-  real :: kap
-  real(double) :: tau, kappaAbs, kappaSca
-  type(octalvector) :: rVec
-  logical :: ross
-  integer :: subcell, i, ilam
-  real :: r
+  integer :: subcell, i
   integer :: p
   
   do subcell = 1, thisOctal%maxChildren
@@ -10844,10 +10783,7 @@ IF ( .NOT. gridConverged ) RETURN
   type(gridtype) :: grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real :: kap
-  real(double) :: tau, kappaAbs, kappaSca
-  type(octalvector) :: rVec
-  logical :: ross
+  real(double) :: tau, kappaAbs
   integer :: subcell, i, ilam
   real(double) :: r
   
@@ -10876,11 +10812,11 @@ IF ( .NOT. gridConverged ) RETURN
   type(octal), pointer   :: thisOctal
   real, intent(in)       :: lambda0                ! rest wavelength of line
   type(octal), pointer  :: child 
-  integer :: subcell, i, j
+  integer :: subcell, i
   real(double) :: d, dV, r, nu0, tauSob, escProb
-  real(double) :: tauSob_tmp, tauSob_sum, theta, phi, sin_theta
-  type(octalvector)  :: rvec, rhat, rvec_sample
-  integer :: nsample
+!  real(double) :: tauSob_tmp, tauSob_sum, theta, phi, sin_theta
+  type(octalvector)  :: rvec, rhat !, rvec_sample
+!  integer :: nsample
   type(VECTOR) :: outVec
   real(double):: dtau_cont, dtau_line, rho
   
@@ -11121,12 +11057,12 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   recursive subroutine setBiasPpdisk(thisOctal, grid)
-  use input_variables, only: rInner
+!  use input_variables, only: rInner
   type(gridtype) :: grid
   type(OCTALVECTOR) :: rVec
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
-  real(double) :: r
+!  real(double) :: r
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -11301,7 +11237,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(Vector)      :: pointVecNormSingle
 
     REAL :: r, rStar
-    REAL :: velocity, rho
+    REAL :: velocity
     REAL, PARAMETER :: v0         = 100.e5
     REAL, PARAMETER :: vTerminal  = 2000.e5
     REAL, PARAMETER :: vBeta      = 1.0
@@ -11345,7 +11281,6 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER,INTENT(INOUT)           :: nOctals   ! number of octals
     LOGICAL, INTENT(IN), OPTIONAL   :: onlyChanged
     
-    LOGICAL               :: intersectionFound
     LOGICAL               :: octalAdded
     TYPE(octalVector)     :: centrePoint
     TYPE(octalVector)     :: lineOrigin
@@ -11442,7 +11377,6 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER,INTENT(INOUT)           :: nOctals   ! number of octals
     LOGICAL, INTENT(IN), OPTIONAL   :: onlyChanged
     
-    LOGICAL               :: intersectionFound
     LOGICAL               :: octalAdded
     TYPE(octalVector)     :: centrePoint
     TYPE(octalVector)     :: starPos
@@ -11689,8 +11623,8 @@ IF ( .NOT. gridConverged ) RETURN
     real :: frac
     real :: tlambda
     real, parameter :: sublimationTemp = 1500., subRange = 100.
-    real :: tArray(1000)
-    real(double) :: freq, dfreq, bnutot, norm
+!    real :: tArray(1000)
+    real(double) :: freq, dfreq, norm !,  bnutot
     integer :: i,j,m
     real :: fac
     real :: e, h0, he0
@@ -11928,19 +11862,14 @@ IF ( .NOT. gridConverged ) RETURN
      type(OCTAL),pointer :: nearbyOctal
      real(double) :: rho, meanRho
      integer :: thisSubcell
-     integer :: found
      integer :: subcell
-     real(double) :: r
-     type(OCTALVECTOR) :: rVec, aVec
-     integer :: i, nMonte
+     integer :: i
      real :: temp, meanTemp
      integer :: nTemp
-     logical :: differentOctal
      type(OCTALVECTOR), allocatable :: locator(:)
      real(double) :: dSubcellcentre
      type(OCTALVECTOR) :: thisSubcellCentre
      integer :: nlocator, j
-     nMonte = 10000
      meanTemp = 0.
      meanRho = 0.d0
      nTemp = 0
@@ -12158,7 +12087,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(vector), INTENT(IN)       :: direction
     TYPE(octal), OPTIONAL, POINTER :: startOctal
     TYPE(octal), OPTIONAL, POINTER :: foundOctal
-    TYPE(octal),  POINTER         :: thisOctal, currentOctal
+    TYPE(octal),  POINTER         :: thisOctal !, currentOctal
     INTEGER, INTENT(OUT), OPTIONAL :: foundSubcell
 
     TYPE(octalVector)              :: octalDirection
@@ -12427,7 +12356,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double), allocatable :: rho(:)
     real, allocatable :: temp(:)
     type(OCTALVECTOR) :: centre, octVec
-    real(double) :: r, t1, t2
+    real(double) :: r
     integer :: j
 
     if (grid%octreeRoot%oneD) then
@@ -12494,7 +12423,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   RECURSIVE SUBROUTINE smoothAMRgridIonization(thisOctal,grid,gridConverged, ilam, &
                                         sphData, stellar_cluster, inheritProps, interpProps)
-    USE input_variables, ONLY : tauSmoothMax,tauSmoothMin
+!    USE input_variables, ONLY : tauSmoothMax,tauSmoothMin
     IMPLICIT NONE
 
     TYPE(octal), POINTER             :: thisOctal
@@ -12508,13 +12437,12 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER              :: i, ilam
     TYPE(octalVector)    :: thisSubcellCentre
     REAL(oct) :: dSubcellCentre
-    real(double) :: kappaAbs, kappaSca
     TYPE(octal), POINTER :: child
     TYPE(octal), POINTER :: neighbour
     TYPE(octalVector), ALLOCATABLE, DIMENSION(:) :: locator
     INTEGER              :: subcell
     INTEGER              :: thisSubcell
-    REAL                 :: thisTau, thatTau, tauDiff
+    REAL                 :: thisTau, thatTau !, tauDiff
     INTEGER              :: nLocator
     
     ! For each subcell, we find the coordinates of at least one point in every
@@ -12765,7 +12693,7 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine dumpdiffusion
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps)
-    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, drouter, router, rinner
+    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router !, rinner
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
@@ -12880,11 +12808,10 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(cluster), optional, intent(in)  :: stellar_cluster
     TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry    
     !
-    integer :: subcell, i, ilambda
+    integer :: subcell, i
     logical :: converged
-    real(double) :: kabs, ksca, r
+    real(double) :: r
     type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat
-    real :: thisTau, neighbourTau
     integer :: neighbourSubcell, j, nDir
 
 
@@ -12959,7 +12886,7 @@ IF ( .NOT. gridConverged ) RETURN
    type(OCTAL), pointer, optional :: sOctal
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6), thisNorm, rDirection
+   type(OCTALVECTOR) :: norm(6), p3(6), rDirection
    type(OCTAL),pointer :: thisOctal
    real(double) :: distTor1, distTor2, theta, mu
    real(double) :: distToRboundary, compz,currentZ
@@ -13289,13 +13216,12 @@ IF ( .NOT. gridConverged ) RETURN
    type(OCTALVECTOR), intent(in) :: direction
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6), thisNorm
+   type(OCTALVECTOR) :: norm(6), p3(6) !, thisNorm
    real(double) :: distTor1, distTor2, theta, mu
    real(double) :: distToRboundary, compz,currentZ
-   real(double) :: phi, distToZboundary, ang1, ang2
-   type(OCTALVECTOR) :: subcen, point, xHat, zHat, rVec
-   integer :: subcell
-   real(double) :: distToSide1, distToSide2, distToSide
+   real(double) :: distToZboundary !, ang1, ang2 , phi
+   type(OCTALVECTOR) :: subcen, point, xHat, zHat !, rVec
+   real(double) :: distToSide  !, distToSide1, distToSide2
    real(double) :: disttoxBoundary, subcellsize
    real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
    integer :: i,j
@@ -13558,7 +13484,7 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTAL) :: thisOctal
     integer :: subcell
     type(OCTALVECTOR) :: octVec
-    real(double) :: r, z, phi
+    real(double) :: r, phi
 
     octVec = subcellCentre(thisoctal,subcell)
 
@@ -14041,21 +13967,14 @@ IF ( .NOT. gridConverged ) RETURN
                        !   *next* cell of the octree that the ray will interesect.
                        !   initially this will be the same as the startPoint
       
-    TYPE(octalVector)       :: currentPoint ! current position of ray 
     LOGICAL                 :: abortRay     ! flag to signal completion of ray trace
-    TYPE(octal)             :: octree       ! the octree structure within 'grid'
     TYPE(octalVector)       :: directionNormalized
-    real(oct)    :: distanceLimit ! max length of ray before aborting
-    ! margin is the size of the region around the edge of a subcell
-    !   where numerical inaccuracies may cause problems.
-    real(oct)    :: margin
  
     ! variables for testing special cases (stellar intersections etc.)
     TYPE(octalVector)       :: starPosition       ! position vector of stellar centre
     TYPE(octalVector)       :: diskNormal         ! disk normal vector
     real(oct)    :: rStar              ! stellar radius
     real(oct)    :: endLength          ! max path length of photon
-    TYPE(octalVector)       :: endPoint           ! where photon leaves grid
     LOGICAL                 :: absorbPhoton       ! photon will be absorbed
     real(oct)    :: distanceFromOrigin ! closest distance of plane from origin
     TYPE(octalVector)       :: diskIntersection   ! point of photon intersection with disk
@@ -14066,8 +13985,6 @@ IF ( .NOT. gridConverged ) RETURN
     LOGICAL                 :: intersectionFound  ! true when intersection takes place      
     real(oct)    :: intersectionRadius ! disk radius when photon intersects
     real(oct)    :: diskDistance       ! distance to disk intersection
-    real(oct)    :: distanceThroughStar! distance of chord through star
-    TYPE(octalVector)       :: dummyStartPoint    ! modified start point 
     real(oct), PARAMETER :: fudgefactor = 1.00001 ! overestimates stellar size
     
     type(octalvector) :: currentPosition
@@ -14297,13 +14214,13 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   recursive subroutine splitGridFractal(thisOctal, rho, aFac, grid, converged)
-    use input_variables, only : limitScalar
+!    use input_variables, only : limitScalar
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     real :: rho, aFac
     integer :: subcell, i, j
-    real, allocatable :: r(:), s(:)
-    real :: rmin, rmax, tot, fac, mean
+!    real, allocatable :: r(:), s(:)
+!    real :: rmin, rmax, tot, fac, mean
     logical :: converged
 
     converged = .true.
@@ -14414,15 +14331,13 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTALVECTOR) :: subcen, direction, posVec, point, hitVec, rdirection, xhat
     type(OCTAL), pointer :: thisOctal
     real(double) :: tval
-   type(OCTALVECTOR) :: norm(6), p3(6), thisNorm
-   real(double) :: distTor1, distTor2, theta, mu
+   type(OCTALVECTOR) :: norm(6), p3(6)
+   real(double) :: distTor1, theta, mu
    real(double) :: distToRboundary, compz,currentZ
-   real(double) :: phi, distToZboundary, ang1, ang2
-   type(OCTALVECTOR) ::  zHat, rVec, rhat
-   integer :: subcell
-   real(double) :: distToSide1, distToSide2
-   real(double) ::  compx,disttoxBoundary, gridRadius
-   real(oct) :: t(6),denom(6), r, r1, r2, d, cosmu,x1,x2
+   real(double) :: distToZboundary
+   type(OCTALVECTOR) ::  zHat, rhat
+   real(double) ::  compx, gridRadius
+   real(oct) :: t(6),denom(6), r, r1, d, cosmu,x1,x2
    integer :: i,j
    logical :: ok, thisOk(6)
    logical :: debug
@@ -14658,7 +14573,6 @@ IF ( .NOT. gridConverged ) RETURN
 
     integer :: nx, thisX
     type(hydroSpline) :: thisSpline
-    real(double) :: temp
 
     rhoOut = 1.d-30
 
@@ -15021,12 +14935,11 @@ IF ( .NOT. gridConverged ) RETURN
   !
 
   recursive subroutine splitGridOnStream(thisOctal, thisStream, grid, converged)
-    use input_variables, only : limitScalar
-    integer :: nStreams
+
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
-    type(OCTALVECTOR) :: rVec, corner
-    integer :: i, j, subcell, iStream
+    type(OCTALVECTOR) :: rVec !, corner
+    integer :: i, j, subcell
     logical :: converged, converged_tmp
     logical :: split
     type(STREAMTYPE), pointer :: thisStream
@@ -15088,8 +15001,8 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only : limitScalar
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
-    type(OCTALVECTOR) :: rVec, corner
-    integer :: i, j, subcell, iStream
+    type(OCTALVECTOR) :: rVec
+    integer :: i, j, subcell
     logical :: childrenAdded
     logical :: split
     type(STREAMTYPE) :: thisStream
@@ -15147,13 +15060,11 @@ IF ( .NOT. gridConverged ) RETURN
   recursive subroutine splitGridOnStream3(thisOctal, grid, thisStream)
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
-    type(OCTALVECTOR) :: rVec, corner
-    integer :: i, j, subcell, iStream
+    integer :: i, subcell
     logical :: split
     type(STREAMTYPE) :: thisStream
     type(STREAMTYPE) :: octalStream, subcellStream
-    integer :: n
-    real(double) :: r, side, rStar
+!    real(double) :: side, rStar
     logical :: splitAz
 
     call createOctalStream(thisOctal, thisStream, octalStream)
@@ -15281,8 +15192,8 @@ IF ( .NOT. gridConverged ) RETURN
     type(STREAMTYPE) :: thisStream(:)
     character(len=*) :: filename
     integer :: nstream
-    integer :: i, n, j
-    real(double) :: r, theta, phi, v, rho, area
+    integer :: i, j
+    real(double) :: r, theta, phi, v, rho
     real(double) :: tot
     type(OCTALVECTOR) :: rVec
     open(20, file=filename, status="old", form="formatted")
@@ -15636,7 +15547,7 @@ IF ( .NOT. gridConverged ) RETURN
     type(GRIDTYPE) :: grid
     type(OCTALVECTOR) :: rVec, direction, currentPosition
     integer :: iLambda
-    real(double) :: tau, distToNextCell, rosselandKappa
+    real(double) :: tau, distToNextCell
     real(double), optional :: tauMax
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-3
@@ -15670,7 +15581,6 @@ IF ( .NOT. gridConverged ) RETURN
     type(SOURCETYPE) :: source(:)
     integer :: nSource
     type(OCTALVECTOR) :: rVec, direction, currentPosition
-    integer :: iLambda
     real(double) :: sigma, distToNextCell
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-3
@@ -15767,14 +15677,10 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTAL) :: thisOctal
     integer :: subcell
     type(STREAMTYPE) :: stream
-    integer :: iSample
-    type(OCTALVECTOR) :: point
-    real(double) :: t, thisR
     real(double) :: rho
     real  :: temperature
     type(VECTOR) :: vel
-    logical :: outsideStream
-    integer :: n, i, istream
+    integer :: n, i
 
     temperature = 0.
     rho = 0.d0
@@ -15916,7 +15822,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: distToNextCell, r, x1
     type(OCTALVECTOR) :: direction, rVec, sVec, posVec, thisDirection
     type(VECTOR) :: v1,  outVec
-    integer :: neighbourSubcell, i
+    integer :: neighbourSubcell
 
     rVec = subcellCentre(thisOctal, subcell)
     r = ((posVec - rVec).dot.direction)
@@ -16065,13 +15971,13 @@ IF ( .NOT. gridConverged ) RETURN
     parameter (n=1500, ncol=32, nlev=10)
     integer :: ci1,ci2, ilo, ihi 
         
-    real :: box_size, fac
-    character(LEN=30) :: char_val
+    real :: box_size
+!    character(LEN=30) :: char_val
     character(LEN=30) :: label_wd
     integer, parameter :: luout = 26
     integer :: iPlane, nPlanes
-    character(len=80) :: message
-    character(LEN=50) :: filename_prof
+!    character(len=80) :: message
+!    character(LEN=50) :: filename_prof
     real   :: v3
 
     

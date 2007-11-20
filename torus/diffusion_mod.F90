@@ -156,7 +156,6 @@ contains
 #endif
     type(octal), pointer   :: thisOctal, neighbourOctal, startOctal
     type(GRIDTYPE) :: grid
-    integer :: my_rank, np !, isubcell
     real(double) ::  deMax
     real :: tol
     logical :: converged
@@ -176,6 +175,7 @@ contains
     real(double) :: phi, DeltaPhi, DeltaZ, deltaR
     real(double), parameter :: underCorrect = 0.8d0
 #ifdef MPI
+    integer :: my_rank, np !, isubcell
     real(double) :: globalDeMax
     logical :: dcAllocated
     integer, dimension(:), allocatable :: octalsBelongRank
@@ -188,8 +188,6 @@ contains
     integer :: nEdens, nVoxels
 #endif
 
-    np = 1
-    my_rank = 1
     firstTime = .true.
 
     deMax = -1.d30

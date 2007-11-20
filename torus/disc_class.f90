@@ -213,8 +213,7 @@ contains
 !    real(double), parameter :: rmax = 150.0d00  ! 10^10 cm
     real(double) :: rmax  ! 10^10 cm
     !
-    logical :: logscale
-    real(double) :: p, q, alpha, beta, w
+    real(double) :: q, alpha, beta, w !, p
 
 
     rmax = this%Rd
@@ -433,7 +432,7 @@ contains
     real(oct)  :: cellSize, x, y, z, w, h
     real(double) :: rho_disc, scale_length
     TYPE(octalVector)     :: cellCentre 
-    logical:: close_to_disc
+!    logical:: close_to_disc
 
     ! get the size and the position of the centre of the current cell
     cellSize = thisOctal%subcellSize*2.0d0
@@ -444,8 +443,8 @@ contains
     w = SQRT(x*x+y*y)
     h = ABS(z)
 
-    close_to_disc = .false.
-    if (h < 10000.d0) close_to_disc =.true.
+!    close_to_disc = .false.
+!    if (h < 10000.d0) close_to_disc =.true.
 
 !    if (.not. close_to_disc .and. w > this%Rh .and. ABS(x-ThisOctal%subcellSize/2.0d0)>1.0d-3) then
        ! Splits the two cells closer to the disc
@@ -489,7 +488,7 @@ contains
     INTEGER       :: newChildIndex     ! the storage location for the new child
     INTEGER       :: error
 
-    real(double) :: rho
+!    real(double) :: rho
     TYPE(OCTAL), POINTER :: childPointer      
     
     if (any(parent%hasChild(1:8))) write(*,*) "parent already has a child"
@@ -658,12 +657,10 @@ contains
     TYPE(octalVector)     :: cellCentre 
     real :: r
     real, parameter :: rho_bg = rho_min  ! background density
-    TYPE(Vector)    ::  rvec, vvec
-    real :: vel 
     ! the following should be really taken from a parameter files... 
     ! Need to fix this later. 
     real  :: M
-    real(double) :: dum_d, x, y, z, w, fac
+    real(double) :: x, y, z, w, fac
     
 
     M = 1.989d33*this%Mcore ! [g] mass of the central object
@@ -1017,7 +1014,7 @@ contains
     type(alpha_disc), intent(in) :: this
     type(octalvector), intent(in) :: rvec
     !
-    real(double) ::  x, y, z, rho, sizescale
+    real(double) ::  x, y, z !, rho, sizescale
 !    real(double), parameter :: rho_min = 0.9d-19
     real(double) :: theta_max 
     real(double) :: cos_theta, r, w

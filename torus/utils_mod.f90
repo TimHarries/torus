@@ -3448,7 +3448,7 @@ END SUBROUTINE GAUSSJ
     integer :: i, j  
     integer :: nsample = 10000000
     real(double) :: nu0, nu_rand, lam0, lam_min, lam_max, Gamma
-    real(double) :: nu_max, nu_min, lam_rand
+    real(double) :: lam_rand
     real(double) :: c=2.99792458e10  ! cm/s
     real(double) :: tmp, dlam, a, doppler, dnu, dv, T, N_HI, Ne
     
@@ -3456,9 +3456,7 @@ END SUBROUTINE GAUSSJ
     lam0    = 6562.8d-8  ! cm
     lam_max = 6580.0d-8  ! cm
     
-    nu_min = c/lam_max
     nu0 = c/lam0
-    nu_max = c/lam_min
     
     ! sets up wavelength array
     tmp = (lam_max-lam_min)/dble(nbin-1)
@@ -3984,7 +3982,7 @@ END SUBROUTINE GAUSSJ
 
 
   subroutine  convertToFnu(nuarray, fArray, n)
-    real :: nuArray(:), fArray(:), nu, lambda
+    real :: nuArray(:), fArray(:), nu
     real, allocatable :: nuTemp(:), fTemp(:)
     integer :: i, n
 
@@ -3993,7 +3991,6 @@ END SUBROUTINE GAUSSJ
     if (nuArray(1) < 1.d5) then
        call writeWarning("Surface flux file appears to be in wavelength space: converting")
        do i = 1, n
-          lambda = nuArray(i)*1.d-8 ! angs to cm
           nu = cSpeed / (1.d-8 * nuArray(i)) ! hz
           nuTemp(i) = nu
           fTemp(i) = (fArray(i)/1.d8) ! erg/s/cm^2/angs -> erg/s/cm^2/cm

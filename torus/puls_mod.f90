@@ -20,15 +20,15 @@ contains
     integer, parameter :: maxLevels = 9
     real :: x, dx
     real(double) :: phiT, ne1, ne2, ntot
-    real :: w, qfrac,beta2,vext
+    real :: w, qfrac !,vext, beta2
     integer ::m
     real :: v, b2, b3, xfac, pfac, kfac, beta1, v1
     integer :: maxBlobs
     logical :: doBlobs
-    real :: mdotcone, mdotDisk, vTermCone, vTermDisk !, betaCone, betaDisk
+!    real :: vTermCone, vTermDisk, betaCone, betaDisk, mdotcone, mdotDisk
 !    real :: coneAng, diskAng
     real :: vContrast
-    integer :: muCone1, muCone2, muDisk1, muDisk2
+!    integer :: muCone1, muCone2, muDisk1, muDisk2
     type(GRIDTYPE) :: grid
     type(BLOBTYPE)  :: blobs(:)
 

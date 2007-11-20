@@ -666,8 +666,8 @@ contains
     !
     real :: sig_ext, sig_scat, sig_abs
     real :: total_abundance, gsca
-    real :: meanParticleMass
-    real :: getMeanMass2
+!    real :: meanParticleMass
+!    real :: getMeanMass2
     integer, parameter :: nlambda = 1
     integer :: j 
     ! dummy array for interface with subroutines
@@ -837,12 +837,9 @@ contains
     type(octalvector) :: rVec
     real :: x, z
     real :: height
-    real(double) :: fac, frac
-    real ::  temperature, sublimationTemp, subrange
+    real(double) :: fac
 
-    integer :: nx, subcell, i
-
-    subrange = 10.
+    integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -935,23 +932,19 @@ contains
 
   recursive subroutine sublimateDust(grid, thisOctal, totFrac, nFrac, tauMax)
 
-    use input_variables, only : rInner, rOuter
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    type(octalvector) :: rVec
     real :: totFrac
     real :: tauMax
     integer :: nFrac
-    real :: x, z
-    real :: height
-    real(double) :: fac, frac, newFrac, oldFrac, deltaFrac, normFac, thistau
+    real(double) :: frac, newFrac, deltaFrac, normFac, thistau
     real ::  temperature, sublimationTemp, subrange
     real :: underCorrect = 1.
     integer :: ilambda
     real(double) :: kappaSca, kappaAbs
 
-    integer :: nx, subcell, i
+    integer :: subcell, i
 
     subrange = 1.
 
@@ -1165,7 +1158,7 @@ contains
     TYPE(gridtype), INTENT(IN)    :: grid
     real :: r, mu, mu_0, muCavity, rhoEnv, r_c
     real :: h, rhoDisc, alpha
-    real(double) :: fac, dtheta
+    real(double) :: fac
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
     integer :: subcell, i
@@ -1216,7 +1209,6 @@ contains
           endif
 
           if (mu_0 > muCavity) then
-             !       dtheta = (acos(mu_0)-acos(muCavity))
              !       fac =  1.d0-min(dble(r - drInner)/(0.02d0*erinner),1.d0)
              !       fac = exp(-fac*10.d0)
              rhoEnv = cavdens * 2.*mHydrogen

@@ -48,8 +48,7 @@ module image_mod
      integer :: nx, ny
      real :: imagesizeX, imageSizeY
      real :: vmax, vmin
-     real :: dx, dy
-     integer :: i,j
+     integer :: i
 
      allocate(initImage%pixel(1:nx,1:ny))
      allocate(initImage%vel(1:nx,1:ny))
@@ -274,10 +273,10 @@ module image_mod
        real :: imScale
        real :: physicalPixelSize
        real :: angularPixelSize
-       real :: pixelArea
+!       real :: pixelArea
        real(double) :: scale, convert, c_in_m_per_sec
 
-       integer :: nSize, nPix, i, j
+       integer :: nPix, i, j !, nSize
 
 !       nSize = thisImage%nSize
 !       nPix = 2*thisImage%nSize + 1
@@ -285,7 +284,7 @@ module image_mod
        npix = thisImage%nx ! assumes square image!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        physicalPixelSize = 1.e10 * (thisImage%dx * thisImage%dy)
        angularPixelSize = physicalPixelSize / objectDistance
-       pixelArea = (angularPixelSize * radtoDeg * 3600.)**2 ! square arcsec
+!       pixelArea = (angularPixelSize * radtoDeg * 3600.)**2 ! square arcsec
 
        area = objectDistance**2
 
@@ -302,7 +301,7 @@ module image_mod
 
        physicalPixelSize = thisImage%dx * 1.e10
        angularPixelSize = physicalPixelSize / objectDistance
-       pixelArea = (angularPixelSize * radtoDeg * 3600.)**2 ! square arcsec
+!       pixelArea = (angularPixelSize * radtoDeg * 3600.)**2 ! square arcsec
        
        ! 
        area =(thisImage%dx)**2 * 1.0d20  ! cm^2
@@ -645,7 +644,7 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        integer :: nx, ny
        real(double) :: f5, f95
        real :: t
-       integer :: i,j, k, nsize
+       integer :: i,j, nsize
 
        nx = image(1)%nx
        ny = image(1)%ny
@@ -729,7 +728,7 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        type(IMAGETYPE) :: image
 
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
-       integer :: i,j,group,fpixel,nelements
+       integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
        character (len=*) :: filename
        logical :: simple,extend

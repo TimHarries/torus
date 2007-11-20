@@ -309,7 +309,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   implicit none
   integer, intent(in) :: nLambda
   character(len=*), intent(in) :: outFile
-  character(len=80) :: tfile
+!  character(len=80) :: tfile
   real, intent(in) :: xArray(nLambda)
   logical, intent(in) :: useNdf
   logical, intent(in) :: jansky
@@ -324,7 +324,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   real(double), allocatable :: stokes_i(:), stokes_q(:), stokes_qv(:)
   real(double), allocatable :: stokes_u(:), stokes_uv(:), dlam(:), tArray(:)
   real, allocatable, dimension(:) :: tmpXarray
-  real :: tot
+!  real :: tot
   real :: x
   integer :: i,j
   logical :: SI

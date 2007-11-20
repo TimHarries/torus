@@ -523,7 +523,7 @@ contains
     type(GRIDTYPE), intent(out) :: grid                 ! the grid
     real, intent(out)   :: theta1, theta2
     
-    integer :: i,ilambda                   ! counters
+    integer :: ilambda                   ! counters
     real :: rStar
     
     ! ok for now
@@ -1724,12 +1724,10 @@ contains
     real :: tr(6)
     real :: fg, bg, dx, dz
     integer :: resolution
-    real :: sampleFreq
     integer :: i1, i2, i3
     real :: r, mu, phi
     character(len=*) :: device
     real(oct) :: x, y, z
-    real :: smallOffset
     type(octalVector) :: startPoint
    integer :: pgbegin
 
@@ -3740,7 +3738,6 @@ contains
     type(GRIDTYPE), intent(inout) :: grid
     
     integer, dimension(8) :: timeValues    ! system date and time
-    integer               :: dummy         
     integer               :: error         ! status code
     logical               :: octreePresent ! true if grid has an octree
     integer :: nOctal
@@ -3870,13 +3867,9 @@ contains
        logical, intent(in)  :: fileFormatted
        integer :: nOctal
        logical :: doMpiFlag
-       type(octal), pointer :: thisChild, thisChild2, tempOctal
-       integer              :: iChild, iChild2
-       integer :: iCount
-       logical :: readOctal
-       logical :: onThread, loopAround, doneThisChild
-
-       readOctal = .true.
+       type(octal), pointer :: thisChild, tempOctal
+       integer              :: iChild
+       logical :: loopAround !, onThread
 
 
        nOctal = nOctal+1
@@ -5521,7 +5514,7 @@ contains
     integer :: nLower, nUpper
     real :: sinTheta
     type(VECTOR) :: rHat, rVec, vvec, spinAxis
-    real :: vel, beta1, beta2, vext, v1, r
+    real :: vel, v1, r ! , beta1, beta2, vext
     real :: x, dx, dv, mcore
     type(GRIDTYPE) :: grid
 
@@ -6515,7 +6508,6 @@ contains
     real :: f(n,n),fmin,fmax,tr(6)
     real(double)  :: xmap(n), ymap(n), zmap(n), x1, y1, z1
     real :: box_size
-    real :: offset
     real(double)  :: tmp
     type(octalVector) :: pos,dir
     
@@ -6693,7 +6685,6 @@ contains
     ! routines in pixplot_module    
     
     ! draw wedge
-    offset = 0
     CALL PGWEDG('BI', 4.0, 5.0, FMIN, FMAX, 'pixel value')
     CALL PGSCH(0.6)
 
@@ -6728,7 +6719,7 @@ contains
     !
     type(OCTAL), pointer :: root
     real :: d, dd, off
-    real :: xc, yc , zc, v3
+    real :: xc, yc , zc
 
     ! For plotting density
     integer :: pgbeg
@@ -7065,7 +7056,7 @@ contains
     integer ::npts
     logical :: filled
     real :: x(2*nAng+10), y(2*nAng+10)
-    real :: x1, y1
+!    real :: x1, y1
 
     rVec = subcellCentre(thisOctal, subcell)
     r1 = sqrt(rVec%x**2+rVec%y**2)-thisOctal%subcellsize/2.d0
@@ -7142,7 +7133,6 @@ contains
     integer ::npts
     logical :: filled
     real :: x(2*nAng+10), y(2*nAng+10)
-    real :: x1, y1
 
     rVec = subcellCentre(thisOctal, subcell)
     r1 = rVec%x-thisOctal%subcellsize/2.d0
@@ -7244,13 +7234,13 @@ contains
     parameter (n=1500, ncol=32, nlev=10)
     integer :: ci1,ci2, ilo, ihi 
         
-    real :: box_size, fac
+    real :: box_size
     character(LEN=30) :: char_val
     character(LEN=30) :: label_wd
     integer, parameter :: luout = 26
     integer :: iPlane, nPlanes
     character(len=80) :: message
-    character(LEN=50) :: filename_prof
+!    character(LEN=50) :: filename_prof
     real   :: v3
 
     newDevice = .true.
@@ -7571,7 +7561,7 @@ contains
     type(octalvector) :: rvec, rhat
     type(gridtype) :: grid
     real(double) :: value
-    real(double) :: kabs,ksca
+    real(double) :: kabs !,ksca
     TYPE(vector)   :: Velocity
 
     integer :: subcell, i, idx
@@ -7924,10 +7914,10 @@ contains
     real(double) :: value
     !
     real :: xp, yp, xm, ym, zp, zm
-    real(double) :: ksca, kabs
+    real(double) :: kabs !, ksca
     real(double) :: d
     logical :: use_this_subcell, update
-    type(octalvector) :: rvec, rhat, velocity
+    type(octalvector) :: rvec, rhat
     
   
     do subcell = 1, thisOctal%maxChildren
@@ -8056,7 +8046,7 @@ contains
     type(gridtype), intent(in) :: thisGrid
     character(LEN=*), intent(in) :: filename
     integer :: UN
-    real(double) :: tmp,fac
+    real(double) :: fac
     integer :: nOctals,nVoxels
     
     if (filename(1:1) == '*') then
@@ -8345,11 +8335,10 @@ contains
     type(octalvector) :: rvec
     real :: value
 
-    integer :: subcell, i, idx
-    real :: t
+    integer :: subcell, i
     real :: xp, yp, xm, ym, zp, zm
-    real(double) :: kabs, ksca
-    integer :: ilam
+!    real(double) :: kabs, ksca
+!    integer :: ilam
     real(double) :: d, L, eps, distance
     logical :: use_this_subcell
 
@@ -8450,7 +8439,7 @@ contains
     integer :: ilo, ihi
     real(double) :: rtemp
     real :: ttemp
-    real(double), allocatable  :: kabs(:), ksca(:), kros(:)   ! (size=maxTau)
+    real(double), allocatable  :: kabs(:), ksca(:) ! (size=maxTau)
     real, allocatable :: lambda(:), dlambda(:)
     real, allocatable :: tauSca(:), tauAbs(:), tauExt(:)
     integer :: ilambda
@@ -8472,7 +8461,7 @@ contains
     integer :: pgbegin
 
     allocate(lambda(1:maxTau),dlambda(1:maxTau),ksca(1:maxtau), &
-         kabs(1:maxtau), kros(1:maxtau))
+         kabs(1:maxtau) )
     allocate(tauAbs(1:maxTau), tauSca(1:maxTau), tauExt(1:maxTau))
     allocate(vel(1:maxTau), dv(1:maxTau),temp(1:maxtau), rho(1:maxtau))
     allocate(chiline(1:maxTau),ne(1:maxTau),levelPop(1:maxtau,grid%maxLevels))
@@ -8592,20 +8581,16 @@ contains
     type(SOURCETYPE) :: source(:)
     type(GRIDTYPE) :: grid
     real :: angMax
-    real(double) :: r, ang
+    real(double) :: ang
     real :: tr(6)
     integer :: nc
     real :: tc(100), rc(100)
     integer :: nx, ny
-    real, allocatable :: rhoimage(:,:),tempimage(:,:)
-    real :: dx, dy, fg, bg
+    real :: dx, dy
     integer :: i, j, k
-    integer :: ilo, ihi
-    real(double) :: rtemp
-    real :: ttemp
-    real(double), allocatable  :: kros(:),ksca(:),kabs(:)   ! (size=maxTau)
+    real(double), allocatable  :: ksca(:),kabs(:)   ! (size=maxTau)
     real, allocatable :: lambda(:), dlambda(:)
-    real, allocatable :: tauSca(:), tauAbs(:), tauExt(:)
+    real, allocatable :: tauExt(:)
     integer :: ilambda
     integer :: maxTau = 10000
     integer :: nr = 1000
@@ -8620,13 +8605,13 @@ contains
     type(VECTOR),allocatable :: vel(:)
     logical :: first
     real :: x, z
-    type(OCTALVECTOR) :: octVec, Uhatoctal, avecoctal
+    type(OCTALVECTOR) :: Uhatoctal, avecoctal
     integer :: pgbegin
     real(double), allocatable :: dummy(:)
 
-    allocate(lambda(1:maxTau),dlambda(1:maxTau),kros(1:maxtau))
+    allocate(lambda(1:maxTau),dlambda(1:maxTau))
     allocate(kabs(1:maxTau),ksca(1:maxTau))
-    allocate(tauAbs(1:maxTau), tauSca(1:maxTau), tauExt(1:maxTau))
+    allocate(tauExt(1:maxTau))
     allocate(vel(1:maxTau), dv(1:maxTau),temp(1:maxtau), rho(1:maxtau))
     allocate(chiline(1:maxTau),ne(1:maxTau),levelPop(1:maxtau,grid%maxLevels))
     allocate(inflow(1:maxTau))
@@ -8712,7 +8697,7 @@ contains
     call pgend
     close(21)
     
-    deallocate(kros, kabs, ksca, lambda, dlambda)
+    deallocate(kabs, ksca, lambda, dlambda)
     deallocate(dummy)
   end subroutine nattaplot
 
