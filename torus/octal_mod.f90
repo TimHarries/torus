@@ -188,6 +188,8 @@ MODULE octal_mod
     real(double) :: w(8,4), fluxc(8,3),  a(8,3)
     real(double) :: ac2(8,3), flux(8,3), ac1(8,3)
     real(double) :: qState(8,5), fluxvector(8,5), newFluxVector(8,5), qstate_i_minus_1(8,5)
+    real(double) :: rho_i_minus_1(8), rho_i_plus_1(8)
+    real(double) :: phi_i(8), phi_i_plus_1(8), phi_i_minus_1(8)
   END TYPE octal
  
 CONTAINS 

@@ -33,14 +33,14 @@ contains
     character(len=*) :: device, plane, valueName
     character(len=3) planes(3)
     integer :: nPlanes, iPlane
-    real, allocatable :: corners(:,:), value(:)
+    real, pointer :: corners(:,:), value(:)
     integer :: nSquares
     integer :: pgbegin, i, j, idx
     integer :: iLo, iHi
     real :: valueMin, valueMax
     real,optional :: valueMinFlag, valueMaxFlag
     real :: xStart, xEnd, yStart, yEnd, t
-    integer, parameter :: maxSquares = 1000000
+    integer, parameter :: maxSquares = 10000000
     integer :: myRank, ierr
 
     logical, optional :: logFlag
@@ -94,7 +94,7 @@ contains
           call pgvport(0.2, 0.9, 0.2, 0.9)
           if (grid%octreeRoot%oned) then
              call pgenv(xStart, xEnd, valueMin, valueMax, 0, 0)
-             call pgpt(nSquares, real(corners(1:nSquares,1)), real(value(1:nSquares)), 21)
+             call pgpt(nSquares, corners(1:nSquares,1), value(1:nSquares), 21)
           else
              call pgwnad(xStart, xEnd, yStart, yEnd)
           
@@ -150,10 +150,11 @@ contains
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=*) :: plane, valueName
-    real :: corners(:,:), value(:)
+    real, pointer :: corners(:,:), value(:)
     integer :: myRank, ierr, nThreads, iThread
     integer :: nSquares, n, tag=97,i
     integer :: status(MPI_STATUS_SIZE)
+    integer :: j
 
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -164,20 +165,20 @@ contains
        call recursGetSquares(grid%octreeRoot, grid, plane, valueName, nSquares, corners, value)
        do iThread = 2, nThreads - 1
           call MPI_RECV(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
-          do i = 1, n
-             nSquares = nSquares + 1
-             call MPI_RECV(corners(nSquares, 1:4), 4, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-             call MPI_RECV(value(nSquares), 1, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
-          end do
+          do i = 1, 4
+             call MPI_RECV(corners(nSquares+1:nSquares+n, i), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+          enddo
+          call MPI_RECV(value(nSquares+1:nSquares+n), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+          nSquares = nSquares+n
        end do
     else
        nSquares = 0
        call recursGetSquares(grid%octreeRoot, grid, plane, valueName, nSquares, corners, value)
        call MPI_SEND(nSquares, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, ierr)
-       do i = 1, nSquares      
-          call MPI_SEND(corners(i,1:4), 4, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
-          call MPI_SEND(value(i), 1, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+       do j = 1, 4
+          call MPI_SEND(corners(1:nSquares,j), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
        enddo
+       call MPI_SEND(value(1:nSquares), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
     endif
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
   end subroutine getSquares
@@ -194,8 +195,9 @@ contains
     integer :: subcell, i
     character(len=*) :: valueName, plane
     integer :: nSquares
-    real :: corners(:,:)
-    real :: value(:), tmp
+    real, pointer :: corners(:,:)
+    real, pointer :: value(:)
+    real ::tmp
     real(double) :: eps, x
     integer :: myRank, ierr
     type(OCTALVECTOR) :: rVec
@@ -319,7 +321,7 @@ contains
     integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 39
+    integer, parameter :: nStorage = 40
     real(double) :: loc(3), tempStorage(nStorage)
     type(OCTALVECTOR) :: octVec, direction, centre, rVec
     integer :: nBound
@@ -329,7 +331,7 @@ contains
     integer :: status(MPI_STATUS_SIZE)
     logical :: sendLoop
     integer :: nDepth
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, flux, pressure
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, flux, pressure, phi
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     select case(boundaryType)
@@ -476,6 +478,7 @@ contains
                 tempStorage(9) = dble(neighbourOctal%nDepth)
                 tempStorage(10) = neighbourOctal%pressure_i(neighbourSubcell)
                 tempStorage(11) = neighbourOctal%flux_i(neighbourSubcell)
+
                 tempStorage(12) = neighbourOctal%a(neighbourSubcell, 1)
                 tempStorage(13) = neighbourOctal%a(neighbourSubcell, 2)
                 tempStorage(14) = neighbourOctal%a(neighbourSubcell, 3)
@@ -510,8 +513,11 @@ contains
                 tempStorage(38) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 4)
                 tempStorage(39) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 5)
 
+
+                tempStorage(40) = neighbourOctal%phi_i(neighbourSubcell)
+
              else ! need to average
-                call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux)
+                call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi)
                 tempStorage(1) = q
                 tempStorage(2) = rho
                 tempStorage(3) = rhoe
@@ -529,6 +535,7 @@ contains
                 tempStorage(9) = dble(neighbourOctal%nDepth)
                 tempStorage(10) = pressure
                 tempStorage(11) = flux
+                tempStorage(40) = phi
              endif
 !                          write(*,*) myRank, " sending temp storage"
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
@@ -776,7 +783,7 @@ contains
   end function inList
 
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
-       rhou, rhov, rhow, x, qnext, pressure, flux)
+       rhou, rhov, rhow, x, qnext, pressure, flux, phi)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
@@ -784,7 +791,7 @@ contains
     integer :: subcell, neighbourSubcell, tSubcell
     integer :: nSubcell(6)
     integer :: nBound, nDepth
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi
     integer :: myRank, ierr
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -808,6 +815,7 @@ contains
           rhow = neighbourOctal%rhow(neighbourSubcell)
           pressure = neighbourOctal%pressure_i(neighbourSubcell)
           flux = neighbourOctal%flux_i(neighbourSubcell)
+          phi = neighbourOctal%phi_i(neighbourSubcell)
 
        else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
           q   = neighbourOctal%q_i(neighbourSubcell)
@@ -817,6 +825,7 @@ contains
           rhov = neighbourOctal%rhov(neighbourSubcell)
           rhow = neighbourOctal%rhow(neighbourSubcell)
           pressure = neighbourOctal%pressure_i(neighbourSubcell)
+          phi = neighbourOctal%phi_i(neighbourSubcell)
           if (thisOctal%oneD) then
              flux = neighbourOctal%flux_i(neighbourSubcell)
           else if (thisOctal%twoD) then
@@ -825,8 +834,7 @@ contains
              flux = neighbourOctal%flux_i(neighbourSubcell)!/4.d0
           endif
        else
-          call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux) ! fine to coarse
-          write(*,*) "from average value ",rho
+          call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi) ! fine to coarse
        endif
 
        
@@ -873,16 +881,17 @@ contains
        qnext = thisOctal%mpiBoundaryStorage(subcell, nBound, 8)
        pressure = thisOctal%mpiBoundaryStorage(subcell, nBound, 10)
        flux =  thisOctal%mpiBoundaryStorage(subcell, nBound, 11)
+       phi = thisOctal%mpiBoundaryStorage(subcell, nBound, 40)
 
     endif
   end subroutine getNeighbourValues
 
 
 
-  subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux)
+  subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi)
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
-    real(double) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe
+    real(double) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi
     type(OCTALVECTOR) :: direction
 
 !    direction = neighbourOctal%centre - subcellCentre(thisOctal, subcell)
@@ -902,6 +911,7 @@ contains
        rhow = neighbourOctal%rhow(neighbourSubcell)
        pressure = neighbourOctal%pressure_i(neighbourSubcell)
        flux = neighbourOctal%flux_i(neighbourSubcell)
+       phi = neighbourOctal%phi_i(neighbourSubcell)
 
      else if (neighbourOctal%twoD) then
        if (direction%x > 0.9d0) then
@@ -925,6 +935,7 @@ contains
        rhow = 0.5d0*(neighbourOctal%rhow(nSubcell(1)) + neighbourOctal%rhow(nSubcell(2)))
        pressure = 0.5d0*(neighbourOctal%pressure_i(nSubcell(1)) + neighbourOctal%pressure_i(nSubcell(2)))
        flux = 0.5d0*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)))
+       phi = 0.5d0*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)))
     else if (neighbourOctal%threed) then
        if (direction%x > 0.9d0) then
           nSubcell(1) = 1
@@ -980,6 +991,9 @@ contains
 
        flux = 0.25d0*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)) + & 
             neighbourOctal%flux_i(nSubcell(3)) + neighbourOctal%flux_i(nSubcell(4)))
+
+       phi = 0.25d0*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)) + & 
+            neighbourOctal%phi_i(nSubcell(3)) + neighbourOctal%phi_i(nSubcell(4)))
     endif
 
   end subroutine averageValue
@@ -1481,7 +1495,7 @@ contains
     type(octal), pointer   :: thisOctal, tOctal, child
     integer :: tSubcell
     type(octal), pointer  :: neighbourOctal, startOctal
-    real(double) :: loc(3), tempStorage(5)
+    real(double) :: loc(3), tempStorage(7)
     integer :: subcell, i
     integer :: myrank
     integer :: tag1 = 78, tag2 = 79
@@ -1524,10 +1538,10 @@ contains
 !             write(*,*) myrankGlobal, " sending locator to ", tOctal%mpiThread(tsubcell)
              call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag1, MPI_COMM_WORLD, ierr)
 !             write(*,*) myRankGlobal, " awaiting recv from ", tOctal%mpiThread(tsubcell)
-             call MPI_RECV(tempStorage, 5, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
+             call MPI_RECV(tempStorage, 7, MPI_DOUBLE_PRECISION, tOctal%mpiThread(tSubcell), tag2, MPI_COMM_WORLD, status, ierr)
 !             write(*,*) myrankglobal, " received from ",tOctal%mpiThread(tSubcell)
-             if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:5))
-             thisOctal%tempStorage(subcell,1:5) = tempStorage(1:5)
+             if (.not.associated(thisOctal%tempStorage)) allocate(thisOctal%tempStorage(1:thisOctal%maxChildren,1:7))
+             thisOctal%tempStorage(subcell,1:7) = tempStorage(1:7)
           endif
        endif
     enddo
@@ -1538,7 +1552,7 @@ contains
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, tOCtal
     logical :: sendLoop
-    real(double) :: loc(3), tempStorage(5)
+    real(double) :: loc(3), tempStorage(7)
     integer :: ierr, receiveThread
     integer :: status(MPI_STATUS_SIZE)
     integer :: subcell
@@ -1567,8 +1581,10 @@ contains
           tempStorage(3) = thisOctal%rhou(Subcell)
           tempStorage(4) = thisOctal%rhov(Subcell)
           tempStorage(5) = thisOctal%rhow(Subcell)
+          tempStorage(6) = thisOctal%energy(Subcell)
+          tempStorage(7) = thisOctal%pressure_i(Subcell)
 !          write(*,*) myRankGlobal, " sending tempstorage to ", receiveThread
-          call MPI_SEND(tempStorage, 5, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
+          call MPI_SEND(tempStorage, 7, MPI_DOUBLE_PRECISION, receiveThread, tag2, MPI_COMM_WORLD, ierr)
        endif
     enddo
 !    write(*,*) myrankGlobal, " leaving receive requests ", sendLoop

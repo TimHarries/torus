@@ -104,7 +104,6 @@ CONTAINS
        thisOctal%etaLine(subcell) = parentOctal%etaLine(parentSubcell)
        thisOctal%chiLine(subcell) = parentOctal%chiLine(parentSubcell)
        thisOCtal%boundaryCondition(subcell) = parentOctal%boundaryCondition(parentSubcell)
-       write(*,*) "inherited ", thisOctal%boundaryCondition
        if (associated(thisOctal%dustTypeFraction)) then
           thisOctal%dustTypeFraction(subcell,:) = parentOctal%dustTypeFraction(parentSubcell,:)
        endif
@@ -5074,14 +5073,15 @@ IF ( .NOT. gridConverged ) RETURN
 
    case("hydro1d", "kelvin")
       split = .false.
+      rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 !      rVec = subcellCentre(thisOctal, subcell)
 !      if ( (modulus(rVec)< 0.1d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
-
+      if ((rVec%x > 0.d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
    case("sedov")
       split = .false.
       rVec = subcellCentre(thisOctal, subcell)
-      if (thisOctal%nDepth < 5) split = .true.
+      if (thisOctal%nDepth < minDepthAmr) split = .true.
 !      if ((modulus(rvec)/grid%octreeRoot%subcellsize < 0.15d0).and.(thisOctal%nDepth < 7)) split = .true.
 
 
@@ -7997,24 +7997,32 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTALVECTOR) :: rVec, cVec
     real(double) :: gamma
     logical :: blast
+    type(VECTOR) :: lVec
 
-    gamma = 7.d0/5.d0
+    lVec = VECTOR(0., 0., 0.1)
+
+
+    gamma = 5.d0/3.d0
     rVec = subcellCentre(thisOctal, subcell)
-    cVec = OCTALVECTOR(-0.25d0, -0.25d0, -0.25d0)
+    cVec = OCTALVECTOR(0.d0, 0.0d0, -0.d0)
     blast = .false.
+    thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
 
-    if (modulus(rvec-cVec)/grid%octreeRoot%subcellsize < 0.1d0) blast = .true.
+    if (modulus(rvec-cVec)/grid%octreeRoot%subcellsize > 0.2d0) blast = .true.
 
+    blast  = .false.
     if (blast) then
-       thisOctal%rho(subcell) = 0.125d0
-       thisOctal%energy(subcell) = 1.d5
+       thisOctal%rho(subcell) = 1.25d0
+       thisOctal%energy(subcell) = 1.1d0
        thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*thisOctal%energy(subcell)
     else
        thisOctal%rho(subcell) = 0.125d0
-       thisOctal%energy(subcell) = 0.25d0
-       thisOctal%pressure_i(subcell) = 0.1d0
+       thisOctal%energy(subcell) = 1.00d0
+       thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*thisOctal%energy(subcell)
+       thisOctal%velocity(subcell) = (1./cspeed) * (rVec .cross. lVec)
     endif
-
+    thisOctal%boundaryCondition(subcell) = 1
+    thisOctal%phi_i(subcell) = -1.d-2 / modulus(rVec-cVec)
   end subroutine calcSedovDensity
     
 
@@ -9530,6 +9538,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     dest%pressure_i_minus_1   = source%pressure_i_minus_1
     dest%pressure_i           = source%pressure_i
+    dest%phi_i                = source%phi_i
     dest%pressure_i_plus_1    = source%pressure_i_plus_1
 
     dest%u_interface          = source%u_interface
