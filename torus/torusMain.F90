@@ -554,13 +554,14 @@ program torus
   ! hardwired stuff
   do i = 1, no6pts
      o6xArray(i) = o6start + (o6end-o6start)*real(i-1)/real(no6pts-1)
-     o6yarray(i) = 1.d-10
+     o6yarray(i) = 1.e-10
   enddo
 
 
   ! get the model parameters
 
   call inputs() ! variables are passed using the input_variables module
+  if (.not.inputOK) goto 666
 
 !  call test_profiles()  ! Testing Lorentz profile with Voigt profile
 
@@ -634,8 +635,6 @@ program torus
   endif
 
   if (doRaman) screened = .true.
-
-  if (.not.inputOK) goto 666
 
   if (dopvimage) then
      allocate(pvimage(1:nSlit))
@@ -970,35 +969,6 @@ program torus
      errorArray(1:nOuterLoop,1:nLambda)%i = 1.e-20
   endif
 
-! section replaced with call to subroutine - tjh 27/8/06
-  
-!  if (mie) then
-!     if (.not.dustfile) then
-!        do i = 1, nDustType
-!
-!           call parseGrainType(graintype(i), ngrain, grainname, x_grain)
-!
-!           write(*,*) "graintype",trim(graintype(i)), x_grain(i),amin(i),amax(i),a0(i),qdist(i),pdist(i)
-!
-!           call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
-!                ngrain, X_grain, grainname, i)
-!        enddo
-!        write(message,'(a,f5.2)') "Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
-!        call writeInfo(message, FORINFO)
-!        do i = 1, nDustType
-!           grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
-!           grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
-!        enddo
-!     else
-!        do i = 1, nDustType
-!           call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
-!                grid%onekappaSca(i,1:grid%nLambda))
-!        enddo
-!     endif
-!     call writeInfo("Creating Rosseland opacity lu table",TRIVIAL)
-!     call createRossArray(grid)
-!     call writeInfo("Done.",TRIVIAL)
-!  endif
 
   call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
@@ -1058,8 +1028,6 @@ program torus
         goto 667
      endif
 
-     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
-
 !     call readAMRgrid("molecular_tmp.grid",.false.,grid)
 !     goto 667
 
@@ -1069,6 +1037,8 @@ program torus
      endif
 
      if (photoionization.and.readlucy) goto 665
+
+     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
 
      if (readPops .or. readPhasePops .or. readLucy) then 
 
@@ -1498,11 +1468,11 @@ program torus
            grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
         endif
         
- if (myRankIsZero) then
-        if(plot_maps) then
+        if (myRankIsZero .and. plot_maps) then
+
            ! Plotting the slices of planes
-        thisdevice = "rho_grid.ps/vcps"
-        valname = "rho"
+           thisdevice = "rho_grid.ps/vcps"
+           valname = "rho"
 
            call plot_AMR_values(grid, valname, plane_for_plot, val_3rd_dim, &
                 thisdevice,.true., .true.,&
@@ -1553,8 +1523,8 @@ program torus
                       nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
               enddo
            endif
-        end if
- endif ! (myRankIsZero)
+
+        endif ! (myRankIsZero .and. plot_maps)
 
 !     ! plotting column density (new routine in grid_mod.f90)
 !     if (grid%geometry == "luc_cir3d") then 
@@ -2015,11 +1985,8 @@ program torus
   ! Plotting the various values stored in the AMR grid.
   !
 
-   if (myRankIsZero) then
+  if(gridUsesAMR .and. plot_maps .and. myRankIsZero) then
 
-  if(gridUsesAMR .and. plot_maps) then
-
-     !
 !     if (grid%geometry == "jets"  .or. &
 !          grid%geometry == "ttauri"  .or.  grid%geometry == "testamr" ) then
 !        call draw_cells_on_density(grid, plane_for_plot, "cells_on_density.ps/vcps")
@@ -2053,23 +2020,22 @@ program torus
      !
      ! See grid_mod.f90 for details.
      !
-     if(plot_maps) then
-        ! Plotting some grid values
-        thisdevice = "rho_grid.ps/vcps"
-        valname = "rho"
-        call plot_AMR_values(grid, valname, plane_for_plot, val_3rd_dim, &
-             thisdevice,.true., .true.,&
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+     ! Plotting some grid values
+     thisdevice = "rho_grid.ps/vcps"
+     valname = "rho"
+     call plot_AMR_values(grid, valname, plane_for_plot, val_3rd_dim, &
+          thisdevice,.true., .true.,&
+          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+          "rho_zoom.ps/vcps",.true., .true.,&
+          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
+     if ((geometry == "ppdisk").or.(geometry == "planetgap")) then
         call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_zoom.ps/vcps",.true., .true.,&
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor)
-        if ((geometry == "ppdisk").or.(geometry == "planetgap")) then
-           call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-                "rho_ultrazoom.ps/vcps",.true., .true.,&
-                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=0.005)
-        end if
-        call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-             nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+             "rho_ultrazoom.ps/vcps",.true., .true.,&
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=0.005)
+     end if
+     call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
+          nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
 !        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
 !             "Vx.ps/vcps", .false., .false.,  &
 !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
@@ -2086,9 +2052,9 @@ program torus
 !             "etacont_zoom.ps/vcps", .true., .false.,  &
 !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
 !             show_value_3rd_dim, boxfac=0.0004)
-        call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
-             "temperature.ps/vcps", .true., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+     call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
+          "temperature.ps/vcps", .true., .false., &
+          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 !        call plot_AMR_values(grid, "temperature", "x-y", 0., &
 !             "temperature2.ps/vcps", .true., .false., &
 !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
@@ -2104,18 +2070,16 @@ program torus
 !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
 !        end if
 
-           if (mie) then
-              do i = 1, nDustType
-                 write(message,'(a,i1)') "dusttype",i
-                 write(filename,'(a,i1,a)') "dusttype",i, ".ps/vcps"
-                 call plot_AMR_values(grid, message, "x-z", 0., &
-                      trim(filename),.false., .false., &
-                      nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
-              enddo
-           endif
+     if (mie) then
+        do i = 1, nDustType
+           write(message,'(a,i1)') "dusttype",i
+           write(filename,'(a,i1,a)') "dusttype",i, ".ps/vcps"
+           call plot_AMR_values(grid, message, "x-z", 0., &
+                trim(filename),.false., .false., &
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
+        enddo
+     endif
 
-
-     end if  ! plot_maps
 !     ! plotting column density (new routine in grid_mod.f90)
 !     if (grid%geometry(1:7) == "cluster") then 
 !       call plot_column_density(grid, plane_for_plot,  "column_density.ps/vcps", &
@@ -2123,8 +2087,6 @@ program torus
 !     end if
      
   end if
-
-  end if  ! if (myRankIsZero)
 
   ! The source spectrum is normally a black body
 

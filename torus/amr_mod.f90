@@ -4763,7 +4763,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
-    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr !, maxdepthamr
+    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr
     IMPLICIT NONE
 !    include 'mpif.h'
     TYPE(octal), intent(inout) :: thisOctal

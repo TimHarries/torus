@@ -938,32 +938,28 @@ contains
     type(MODELATOM) :: thisAtom(:)
     type(OCTALVECTOR) :: position, direction
     integer :: nOctal, iOctal, subcell
-    real(double), allocatable :: ds(:), phi(:), i0(:,:), tau(:)
+    real(double), allocatable :: ds(:), phi(:), i0(:,:)
     real(double), allocatable :: Hcol(:), HeICol(:), HeIICol(:)
-    integer :: nRay,m
+    integer :: nRay
     type(OCTAL), pointer :: thisOctal
     integer, parameter :: maxIter = 10000, maxRay = 100000
     logical :: popsConverged, gridConverged 
     integer :: iRay, iTrans, iter,i 
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
-    real(double) :: newNe, oldNe, dNe
+    real(double) :: newNe, dNe
     real(double), parameter :: underCorrect = 0.9d0
     real(double) :: fac
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
-    logical :: dcAllocated
-    integer, dimension(:), allocatable :: octalsBelongRank
-    real(double), allocatable :: tArrayd(:),tempArrayd(:)
-    integer :: nVoxels
-    integer :: ioctal_beg, ioctal_end, tag = 0
+    integer :: ioctal_beg, ioctal_end
     real(double) :: maxFracChange
     logical :: fixedRays
     integer :: isize
     integer, allocatable :: iseed(:)
     real(double) :: tolerance
     integer, allocatable :: sourceNumber(:)
-    type(OCTALVECTOR) :: posVec
-    real(double) :: r
+!    type(OCTALVECTOR) :: posVec
+!    real(double) :: r
     real(double), allocatable :: cosTheta(:)
     real(double), allocatable :: weight(:)
     real(double), allocatable :: iCont(:,:)
@@ -974,9 +970,9 @@ contains
     integer :: nFreq, nhit, iRBB
     integer :: nRBBTrans
     integer :: indexRBBTrans(1000), indexAtom(1000)
-    real(double) :: nuStart, nuEnd, ne
+    real(double) :: ne
     integer :: iAtom
-    integer :: nHAtom, nHeIAtom, nHeIIatom, ir, ifreq
+    integer :: nHAtom, nHeIAtom, nHeIIatom, ir !, ifreq
     real(double) :: nstar, tauAv, tauHalpha, ratio
     real(double), parameter :: convergeTol = 1.d-4, neTolerance = 1.d-5
     integer :: neIter
@@ -989,7 +985,11 @@ contains
     integer       ::   my_rank        ! my processor rank
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
+    integer       ::   nVoxels
+    integer       ::   tag=0
+    integer, dimension(:), allocatable :: octalsBelongRank
     logical       ::   rankComplete
+    real(double), allocatable :: tArrayd(:),tempArrayd(:)
 #endif
 
 
@@ -1108,7 +1108,6 @@ contains
           allocate(ds(1:nRay))
           allocate(phi(1:nRay))
           allocate(i0(1:nRBBTrans, 1:nRay))
-          allocate(tau(1:nRay))
           allocate(Hcol(1:nRay))
           allocate(HeIcol(1:nRay))
           allocate(HeIIcol(1:nRay))
@@ -1451,7 +1450,7 @@ contains
        deallocate(octalsBelongRank)
 #endif
 
-          deallocate(ds, phi, i0, tau, sourceNumber, cosTheta, hitPhotosphere, &
+          deallocate(ds, phi, i0, sourceNumber, cosTheta, hitPhotosphere, &
                weight, hcol, heicol, heiicol, iCont)
 
           if (.not.gridConverged) then
@@ -1474,11 +1473,9 @@ contains
   end subroutine atomLoop
 
   recursive  subroutine  swapPops(thisOctal, maxFracChange)
-    type(GRIDTYPE) :: grid
-    type(MODELATOM) :: thisAtom
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iUpper, iLower, j, iAtom
+    integer :: subcell, i, j, iAtom
     real(double) :: maxFracChange, temp
   
     do subcell = 1, thisOctal%maxChildren
@@ -1511,13 +1508,12 @@ contains
   end subroutine swapPops
 
   recursive  subroutine  calcEtaLine(thisOctal, thisAtom, nAtom, iAtom, iTrans)
-    type(GRIDTYPE) :: grid
     type(MODELATOM) :: thisAtom(:)
     integer :: nAtom
     integer :: iTrans
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iUpper,  j, iAtom
+    integer :: subcell, i, iUpper, iAtom
     real(double) :: a, bul, blu
     real(double) :: etaLine
   
@@ -1549,8 +1545,7 @@ contains
     type(MODELATOM) :: thisAtom(:)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iUpper, iLower
-    real(double) :: etaLine
+    integer :: subcell, i
     integer :: nAtom
     integer :: nRBBTrans
     integer :: iatom
@@ -1682,8 +1677,8 @@ contains
 
   function intensityAlongRay(position, direction, grid, thisAtom, nAtom, iAtom, iTrans, deltaV, source, nSource, &
        nFreq, freqArray) result (i0)
-    use input_variables, only : opticallyThickContinuum
-    type(OCTALVECTOR) :: position, direction, startPosition, pvec, photoDirection
+
+    type(OCTALVECTOR) :: position, direction, pvec, photoDirection
     type(GRIDTYPE) :: grid
     integer :: nSource
     real(double) :: freqArray(:)
@@ -1696,12 +1691,12 @@ contains
     real(double) :: totDist
     logical :: hitSource
     real(double) :: i0
-    type(OCTAL), pointer :: thisOctal, startOctal, fromOctal, endOctal
-    integer :: fromSubcell, endSubcell
+    type(OCTAL), pointer :: thisOctal, startOctal !, endOctal
+!    integer :: endSubcell
     integer :: subcell
-    real(double) :: ds, phi, r, costheta
+    real(double) :: costheta
     type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
-    type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition, rvec
+    type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition !, rvec
     real(double) :: alphanu, snu, jnu
     integer :: iLower , iUpper
     real(double) :: dv, deltaV
@@ -1709,18 +1704,15 @@ contains
     real(double) :: distArray(1000), tval
     integer :: nTau
     real(double) :: nLower, nUpper
-    real(double) :: dTau, etaline, didtau, tau
+    real(double) :: dTau, etaline, tau
     real(double) :: intensityIntegral
     real(double) :: dvAcrossCell
     real(double) :: dv1, dv2
     real(double) :: a, bul, blu
     integer :: nHatom,nHeIAtom, nHeIIAtom
-    real(double) ::  dTauCont, HCol, HeICol, HeIICol
     real(double) :: distToSource
     integer :: sourcenumber
     integer :: iElement
-    real :: xH, XheI, xHeII
-    logical :: firstSubcell
     logical :: endLoopAtPhotosphere
     real(double) :: nstar(10,50), rhoCol
     real(double) :: bfOpac, bfEmiss, x1, x2, fac
@@ -2012,8 +2004,8 @@ contains
     real(double) :: deltaV
     integer :: iv, iray
     integer :: nLambda
-    real(double) :: flux, i0
-    real(double), allocatable :: vArray(:), spec(:), tempArray(:)
+    real(double) :: i0
+    real(double), allocatable :: vArray(:), spec(:)
     integer :: iv1, iv2, i
     character(len=30) :: plotfile
     type(DATACUBE) :: cube
@@ -2027,7 +2019,7 @@ contains
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
     logical       ::   rankComplete
-
+    real(double), allocatable :: tempArray(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
@@ -2113,13 +2105,13 @@ contains
   subroutine createRayGrid(nRay, rayPosition, da, dOmega, viewVec, distance, grid)
     type(GRIDTYPE) :: grid
     integer :: nRay
-    type(OCTALVECTOR) :: rayPosition(:), thisPos, viewVec, xProj,yProj
+    type(OCTALVECTOR) :: rayPosition(:), viewVec, xProj,yProj
     real(double) :: da(:), dOmega(:), distance
     real(double), allocatable :: rGrid(:), dr(:), phigrid(:), dphi(:)
     real(double) :: rMax, rMin
     integer :: nr, nphi, ir, iphi
     real(double) :: r1 , r2, phi1, phi2, phiOffset
-    real(double) :: xPos, yPos, zPos, cosInc, azimuth
+    real(double) :: xPos, yPos, zPos
     integer :: nr1, nr2, i
 
     nr1 = 5
@@ -2207,8 +2199,7 @@ contains
     integer :: iTrans
     integer :: ix, iy, iv
     real(double) :: r, xval, yval
-    integer :: nMonte, imonte, n
-    real(double), allocatable :: tempArray(:), tempArray2(:)
+    integer :: nMonte, imonte
     integer :: iv1, iv2
 
 #ifdef MPI
@@ -2216,8 +2207,9 @@ contains
     integer       ::   my_rank        ! my processor rank
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
+    integer       ::   n
     logical       ::   rankComplete
-
+    real(double), allocatable :: tempArray(:), tempArray2(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
