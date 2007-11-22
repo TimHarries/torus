@@ -5082,7 +5082,7 @@ IF ( .NOT. gridConverged ) RETURN
       split = .false.
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAmr) split = .true.
-!      if ((modulus(rvec)/grid%octreeRoot%subcellsize < 0.15d0).and.(thisOctal%nDepth < 7)) split = .true.
+!      if ( (modulus(rVec)< 0.1d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
 
 
    case("benchmark")
@@ -7997,10 +7997,15 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTALVECTOR) :: rVec, cVec
     real(double) :: gamma, ethermal
     logical :: blast
-    type(VECTOR) :: lVec
+    type(VECTOR) :: lVec, offset
 
-    lVec = VECTOR(0., 0., 0.1)
+    if (thisOctal%threed) then
+       lVec = VECTOR(0., 0., 0.1)
+    else
+       lVec = VECTOR(0., 2., 0.)
+    endif
 
+    offset = vector(0., 0., 0.)
 
     gamma = 5.d0/3.d0
     rVec = subcellCentre(thisOctal, subcell)
@@ -8008,22 +8013,25 @@ IF ( .NOT. gridConverged ) RETURN
     blast = .false.
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
 
-    if (modulus(rvec-cVec)/grid%octreeRoot%subcellsize > 0.2d0) blast = .true.
+    if (modulus(rvec-cVec) < 0.45d0) blast = .true.
 
-    blast  = .false.
     if (blast) then
-       thisOctal%rho(subcell) = 1.25d0
-       thisOctal%energy(subcell) = 1.1d0
-       thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*thisOctal%energy(subcell)
-    else
-       thisOctal%rho(subcell) = 0.125d0
-       ethermal = 0.1d0
-       thisOctal%energy(subcell) = ethermal + 0.5 * (modulus(rVec.cross.lvec))**2
+       thisOctal%rho(subcell) = 0.1
+       ethermal = 1.d-4
+       thisOctal%velocity(subcell) = (1./cspeed) * ((rVec .cross. lVec)+offset)
+       thisOctal%energy(subcell) = ethermal + 0.5 * (cspeed*modulus(thisOctal%velocity(subcell)))**2
        thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
-       thisOctal%velocity(subcell) = (1./cspeed) * (rVec .cross. lVec)
+    else
+       thisOctal%rho(subcell) = 1.d-4
+       ethermal = 0.1d0
+       thisOctal%velocity(subcell) = (1./cspeed) * ((rVec .cross. lVec)+offset)
+       thisOctal%energy(subcell) = ethermal + 0.5 * (cspeed*modulus(thisOctal%velocity(subcell)))**2
+       thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
     endif
+    thisOctal%energy(subcell) = 0.1d0
+
     thisOctal%boundaryCondition(subcell) = 4
-    Thisoctal%phi_i(subcell) = -1.d-2 / modulus(rVec-cVec)
+    Thisoctal%phi_i(subcell) = -1.d-1 / modulus(rVec-cVec)
   end subroutine calcSedovDensity
     
 
