@@ -27,14 +27,14 @@ contains
 
   
 
-  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag, plotgrid, title)
+  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag, plotgrid, title, withvel)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=*) :: device, plane, valueName
     character(len=*), optional :: title
     character(len=3) planes(3)
     integer :: nPlanes, iPlane
-    real, pointer :: corners(:,:), value(:)
+    real, pointer :: corners(:,:), value(:), speed(:), ang(:)
     integer :: nSquares
     integer :: pgbegin, i, j, idx
     integer :: iLo, iHi
@@ -43,9 +43,10 @@ contains
     real :: xStart, xEnd, yStart, yEnd, t
     integer, parameter :: maxSquares = 10000000
     integer :: myRank, ierr
-
+    real :: x1, y1, x2, y2
     logical, optional :: logFlag
     logical, optional :: plotgrid
+    logical, optional :: withvel
     logical :: logScale, doplotGrid
 
     logScale = .false.
@@ -57,6 +58,8 @@ contains
 
     allocate(corners(maxSquares, 4))
     allocate(value(maxSquares))
+    allocate(speed(maxSquares))
+    allocate(ang(maxSquares))
 
     if (grid%octreeRoot%twoD) then
        nplanes = 1
@@ -78,7 +81,7 @@ contains
        endif
     endif
     do iplane = 1, nPlanes
-       call getSquares(grid, planes(iplane), valueName, nSquares, corners, value)
+       call getSquares(grid, planes(iplane), valueName, nSquares, corners, value, speed, ang)
        
        if (myRank == 1) then
           xStart = grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize
@@ -134,6 +137,23 @@ contains
                 
              enddo
              call pgsci(1)
+
+             if (PRESENT(withvel)) then
+                speed(1:nSquares) = speed(1:nSquares) / MAXVAL(speed(1:nSquares))
+                speed = speed * 2. * grid%halfSmallestSubcell
+                do i = 1, nSquares
+                   x1 = (corners(i, 1) + corners(i,2))/2. - speed(i)*cos(ang(i))
+                   y1 = (corners(i, 3) + corners(i,4))/2. - speed(i)*sin(ang(i))
+                   x2 = (corners(i, 1) + corners(i,2))/2. + speed(i)*cos(ang(i))
+                   y2 = (corners(i, 3) + corners(i,4))/2. + speed(i)*sin(ang(i))
+                   if (speed(i) /= 0.) then
+                      call pgsch(0.3)
+                      call pgarro(x1, y1, x2, y2)
+                      call pgsch(1.)
+                   endif
+                enddo
+             endif
+
              call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
              if (present(title)) call pglab(" ", " ", title)
              if(logscale) then
@@ -145,14 +165,14 @@ contains
        endif
     enddo
     call pgend
-    deallocate(corners, value)
+    deallocate(corners, value, speed, ang)
   end subroutine plotGridMPI
 
-  subroutine getSquares(grid, plane, valueName, nSquares, corners, value)
+  subroutine getSquares(grid, plane, valueName, nSquares, corners, value, speed, ang)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=*) :: plane, valueName
-    real, pointer :: corners(:,:), value(:)
+    real, pointer :: corners(:,:), value(:), speed(:), ang(:)
     integer :: myRank, ierr, nThreads, iThread
     integer :: nSquares, n, tag=97,i
     integer :: status(MPI_STATUS_SIZE)
@@ -164,29 +184,33 @@ contains
 
     if (myRank == 1) then
        nSquares = 0
-       call recursGetSquares(grid%octreeRoot, grid, plane, valueName, nSquares, corners, value)
+       call recursGetSquares(grid%octreeRoot, grid, plane, valueName, nSquares, corners, value, speed, ang)
        do iThread = 2, nThreads - 1
           call MPI_RECV(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
           do i = 1, 4
              call MPI_RECV(corners(nSquares+1:nSquares+n, i), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
           enddo
           call MPI_RECV(value(nSquares+1:nSquares+n), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_RECV(speed(nSquares+1:nSquares+n), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
+          call MPI_RECV(ang(nSquares+1:nSquares+n), n, MPI_REAL, iThread, tag, MPI_COMM_WORLD, status, ierr)
           nSquares = nSquares+n
        end do
     else
        nSquares = 0
-       call recursGetSquares(grid%octreeRoot, grid, plane, valueName, nSquares, corners, value)
+       call recursGetSquares(grid%octreeRoot, grid, plane, valueName, nSquares, corners, value, speed, ang)
        call MPI_SEND(nSquares, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, ierr)
        do j = 1, 4
           call MPI_SEND(corners(1:nSquares,j), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
        enddo
        call MPI_SEND(value(1:nSquares), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(speed(1:nSquares), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
+       call MPI_SEND(ang(1:nSquares), nSquares, MPI_REAL, 1, tag, MPI_COMM_WORLD, ierr)
     endif
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
   end subroutine getSquares
 
 
-  recursive subroutine recursGetSquares(thisOctal, grid, plane, valueName, nSquares, corners, value)
+  recursive subroutine recursGetSquares(thisOctal, grid, plane, valueName, nSquares, corners, value, speed, ang)
 
     include 'mpif.h'
     type(gridtype) :: grid
@@ -199,6 +223,8 @@ contains
     integer :: nSquares
     real, pointer :: corners(:,:)
     real, pointer :: value(:)
+    real, pointer :: speed(:)
+    real, pointer :: ang(:)
     real ::tmp
     real(double) :: eps, x
     integer :: myRank, ierr
@@ -215,7 +241,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call recursGetSquares(child, grid, plane, valueName, nSquares, corners, value)
+                call recursGetSquares(child, grid, plane, valueName, nSquares, corners, value, speed, ang)
                 exit
              end if
           end do
@@ -280,6 +306,8 @@ contains
                     corners(nSquares, 3) = rVec%z - thisOctal%subcellSize/2.d0
                     corners(nSquares, 4) = rVec%z + thisOctal%subcellSize/2.d0
                     value(nSquares) = tmp
+                    speed(nSquares) = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhow(subcell)**2) / thisOctal%rho(subcell)
+                    ang(nSquares) = atan2(thisOctal%rhow(subcell), thisOctal%rhou(subcell))
                  endif
               case("y-z")
                  x = min(abs(rVec%x + thisOctal%subcellSize/2.d0), abs(rVec%x - thisOctal%subcellSize/2.d0))
@@ -290,6 +318,8 @@ contains
                     corners(nSquares, 3) = rVec%z - thisOctal%subcellSize/2.d0
                     corners(nSquares, 4) = rVec%z + thisOctal%subcellSize/2.d0
                     value(nSquares) = tmp
+                    speed(nSquares) = sqrt(thisOctal%rhov(subcell)**2 + thisOctal%rhow(subcell)**2) / thisOctal%rho(subcell)
+                    ang(nSquares) = atan2(thisOctal%rhow(subcell), thisOctal%rhov(subcell))
                  endif
               case("x-y")
                  x = min(abs(rVec%z + thisOctal%subcellSize/2.d0), abs(rVec%z - thisOctal%subcellSize/2.d0))
@@ -300,9 +330,12 @@ contains
                     corners(nSquares, 3) = rVec%y - thisOctal%subcellSize/2.d0
                     corners(nSquares, 4) = rVec%y + thisOctal%subcellSize/2.d0
                     value(nSquares) = tmp
+                    speed(nSquares) = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2) / thisOctal%rho(subcell)
+                    ang(nSquares) = atan2(thisOctal%rhov(subcell), thisOctal%rhou(subcell))
                  endif
               case DEFAULT
               end select
+              if (thisOctal%ghostCell(subcell)) speed(nSquares) = 0.
            endif
 
        endif

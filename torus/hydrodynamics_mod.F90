@@ -2454,7 +2454,7 @@ contains
     currentTime = 0.d0
     it = 0
     nextDumpTime = 0.d0
-    tDump = 0.01d0
+    tDump = 0.0005d0
 
     iUnrefine = 0
 !    call writeInfo("Plotting grid", TRIVIAL)    
@@ -2555,7 +2555,7 @@ contains
           write(titleString,'(f10.3)') currentTime
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
 !          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.,plotgrid=.false.)
+          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 0.2 ,plotgrid=.false., withvel=.true.)
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           grid%iDump = it
           grid%currentTime = currentTime
