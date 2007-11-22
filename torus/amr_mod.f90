@@ -4763,7 +4763,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: drInner, drOuter, rStellar, cavangle, erInner, erOuter, rCore
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
-    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr, maxdepthamr
+    use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr , maxdepthamr
     IMPLICIT NONE
 !    include 'mpif.h'
     TYPE(octal), intent(inout) :: thisOctal
@@ -7995,7 +7995,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     type(OCTALVECTOR) :: rVec, cVec
-    real(double) :: gamma
+    real(double) :: gamma, ethermal
     logical :: blast
     type(VECTOR) :: lVec
 
@@ -8017,12 +8017,13 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*thisOctal%energy(subcell)
     else
        thisOctal%rho(subcell) = 0.125d0
-       thisOctal%energy(subcell) = 1.00d0
-       thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*thisOctal%energy(subcell)
+       ethermal = 0.1d0
+       thisOctal%energy(subcell) = ethermal + 0.5 * (modulus(rVec.cross.lvec))**2
+       thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
        thisOctal%velocity(subcell) = (1./cspeed) * (rVec .cross. lVec)
     endif
-    thisOctal%boundaryCondition(subcell) = 1
-    thisOctal%phi_i(subcell) = -1.d-2 / modulus(rVec-cVec)
+    thisOctal%boundaryCondition(subcell) = 4
+    Thisoctal%phi_i(subcell) = -1.d-2 / modulus(rVec-cVec)
   end subroutine calcSedovDensity
     
 

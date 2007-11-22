@@ -1824,8 +1824,8 @@ contains
              cs = soundSpeed(thisOctal, subcell, gamma, iEquationOfState)
 !             if (myrank==1) write(*,*) "cs ", cs/1.d5, "km/s"
              dx = thisOctal%subcellSize * gridDistanceScale
-             speed = sqrt((thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2 &
-                  + thisOctal%rhow(subcell)**2)/thisOctal%rho(subcell)**2)
+             speed = max(thisOctal%rhou(subcell)**2, thisOctal%rhov(subcell)**2, thisOctal%rhow(subcell)**2)
+             speed = sqrt(speed)/thisOctal%rho(subcell)
                 tc = min(tc, dx / (cs + speed) )
 
 
@@ -2217,7 +2217,7 @@ contains
     currentTime = 0.d0
     it = 0
     nextDumpTime = 0.d0
-    tDump = 0.005d0
+    tDump = 0.01d0
 
     iUnrefine = 0
 !    call writeInfo("Plotting grid", TRIVIAL)    
@@ -2240,7 +2240,7 @@ contains
 
 !    do while(currentTime < 0.2d0)
 
-       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 0.5)
+!       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 0.5)
 
     do while(.true.)
        tc = 0.d0
@@ -2251,6 +2251,10 @@ contains
 !       write(*,*) "temp tc",temptc(1:8)
        tc = tempTc
        dt = MINVAL(tc(1:8)) * dble(cflNumber)
+
+       if ((currentTime + dt) .gt. nextDumpTime) then
+          dt = nextDumpTime - currentTime
+       endif
 
        if (myrank == 1) write(*,*) "courantTime", dt
        if (myrank == 1) call tune(6,"Hydrodynamics step")
@@ -2298,18 +2302,17 @@ contains
  !           "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0, quiet=.true.)
 
 
-       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 0.5)
-
+!       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 0.5)
 
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt
-       if (currentTime .gt. nextDumpTime) then
+       if (currentTime .ge. nextDumpTime) then
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
 !          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
 !          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
-          write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.)
+       write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
+       call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.)
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
@@ -2324,7 +2327,7 @@ contains
     real(double) :: currentTime
     integer :: i, pgbegin, it, iUnrefine
     integer :: myRank, ierr
-    character(len=20) :: plotfile
+    character(len=20) :: plotfile, titleString
     real(double) :: tDump, nextDumpTime, ang
     type(OCTALVECTOR) :: direction, viewVec
     logical :: gridConverged
@@ -2450,7 +2453,7 @@ contains
     currentTime = 0.d0
     it = 0
     nextDumpTime = 0.d0
-    tDump = 0.005d0
+    tDump = 0.001d0
 
     iUnrefine = 0
 !    call writeInfo("Plotting grid", TRIVIAL)    
@@ -2482,6 +2485,10 @@ contains
 !       write(*,*) "temp tc",temptc(1:8)
        tc = tempTc
        dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
+
+       if ((currentTime + dt) .gt. nextDumpTime) then
+          dt = nextDumpTime - currentTime
+       endif
 
        if (myrank == 1) write(*,*) "courantTime", dt
        if (myrank == 1) call tune(6,"Hydrodynamics step")
@@ -2539,11 +2546,12 @@ contains
 
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt
-       if (currentTime .gt. nextDumpTime) then
+       if (currentTime .ge. nextDumpTime) then
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
 !          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
 !          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
+          write(titleString,'(f10.3)') currentTime
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
 !          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
           call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.,plotgrid=.false.)
@@ -2932,10 +2940,6 @@ contains
                    bOctal => thisOctal
                    call findSubcellLocal(locator, bOctal, bSubcell)
 
-!                   if (bOctal%ghostCell(bSubcell)) then
-!                      write(*,*) "Error selecting boundary partner!!!"
-!                   endif
-
                    dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
                    call normalize(dir)
                    Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
@@ -2989,7 +2993,7 @@ contains
 
 
 
-                case(3)
+                case(3) ! shock
                    rhor = 1.d0
                    Pr = 0.1d0
                    thisOctal%rho(subcell) = rhor * (gamma+1.d0)*MachNumber**2 / ((gamma-1.d0)*machNumber**2 + 2.d0)
@@ -3001,6 +3005,79 @@ contains
                    thisOctal%energy(subcell) = thisOctal%energy(subcell) + &
                         thisOctal%pressure_i(subcell)/((gamma-1.d0)*thisOctal%rho(subcell))
                    thisOctal%rhoe(subcell) =  thisOctal%rho(subcell)*thisOctal%energy(subcell)
+
+                case(4) ! free outflow, no inflow
+
+                   locator = thisOctal%boundaryPartner(subcell)
+                   bOctal => thisOctal
+                   call findSubcellLocal(locator, bOctal, bSubcell)
+
+                   dir = subcellCentre(bOctal, bSubcell) - subcellCentre(thisOctal, subcell)
+                   call normalize(dir)
+                   Thisoctal%tempstorage(subcell,1) = bOctal%rho(bSubcell)
+                   thisOctal%tempStorage(subcell,2) = bOctal%rhoE(bSubcell)
+
+                   thisOctal%tempStorage(subcell,6) = bOctal%energy(bSubcell)
+                   thisOctal%tempStorage(subcell,7) = bOctal%pressure_i(bSubcell)
+
+! NB confusion regarding 2d being x,z rather than x,y
+
+                   if (thisOctal%twod.or.thisOctal%oneD) then
+                      if (dir%x > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) =abs(bOctal%rhou(bSubcell))
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                      endif
+                      if (dir%x < -0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = -abs(bOctal%rhou(bSubcell))
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                      endif
+                      if (dir%z > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = abs(bOctal%rhow(bSubcell))
+                      endif
+                      if (dir%z < -0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = -abs(bOctal%rhow(bSubcell))
+                      endif
+                   else if (thisOctal%threed) then
+                      if (dir%x > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) =abs(bOctal%rhou(bSubcell))
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                      endif
+                      if (dir%x < -0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = -abs(bOctal%rhou(bSubcell))
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                      endif
+                      if (dir%y > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = abs(bOctal%rhov(bSubcell))
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                      endif
+                      if (dir%y < -0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = -abs(bOctal%rhov(bSubcell))
+                         thisOctal%tempStorage(subcell,5) = bOctal%rhow(bSubcell)
+                      endif
+                      if (dir%z > 0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = abs(bOctal%rhow(bSubcell))
+                      endif
+                      if (dir%z < -0.9d0) then
+                         thisOctal%tempStorage(subcell,3) = bOctal%rhou(bSubcell)
+                         thisOctal%tempStorage(subcell,4) = bOctal%rhov(bSubcell)
+                         thisOctal%tempStorage(subcell,5) = -abs(bOctal%rhow(bSubcell))
+                      endif
+
+
+
+                   endif
 
                 case DEFAULT
                    write(*,*) "Unrecognised boundary condition in impose boundary: ", thisOctal%boundaryCondition(subcell)

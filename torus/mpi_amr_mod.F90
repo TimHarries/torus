@@ -27,10 +27,11 @@ contains
 
   
 
-  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag, plotgrid)
+  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag, plotgrid, title)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=*) :: device, plane, valueName
+    character(len=*), optional :: title
     character(len=3) planes(3)
     integer :: nPlanes, iPlane
     real, pointer :: corners(:,:), value(:)
@@ -134,6 +135,7 @@ contains
              enddo
              call pgsci(1)
              call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
+             if (present(title)) call pglab(" ", " ", title)
              if(logscale) then
                 CALL PGWEDG('BI', 4.0, 5.0, real(log10(valueMin)), real(log10(valueMax)), TRIM(ADJUSTL(valueName)) )
              else
