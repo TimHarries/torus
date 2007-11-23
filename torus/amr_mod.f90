@@ -8000,14 +8000,14 @@ IF ( .NOT. gridConverged ) RETURN
     type(VECTOR) :: lVec, offset
 
     if (thisOctal%threed) then
-       lVec = VECTOR(0., 0., 0.1)
+       lVec = VECTOR(0., 0., 2.)
     else
        lVec = VECTOR(0., 2., 0.)
     endif
 
     offset = vector(0., 0., 0.)
 
-    gamma = 5.d0/3.d0
+    gamma = 7.d0/3.d0
     rVec = subcellCentre(thisOctal, subcell)
     cVec = OCTALVECTOR(0.d0, 0.0d0, -0.d0)
     blast = .false.

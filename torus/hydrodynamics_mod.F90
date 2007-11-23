@@ -2113,7 +2113,7 @@ contains
     logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads
     integer :: nGroup, group(200)
-    integer :: iEquationOfState = 0
+    integer :: iEquationOfState = 1
 
     nHydroThreads = nThreadsGlobal - 1
 
@@ -2263,7 +2263,7 @@ contains
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-       call hydroStep3d(0, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+       call hydroStep3d(iEquationOfState, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
        if (myrank == 1) call tune(6,"Hydrodynamics step")
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -2313,7 +2313,7 @@ contains
 !          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
 !          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
        write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
-       call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.)
+       call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 0.2) !, withvel=.true.)
        endif
        viewVec = rotateZ(viewVec, 1.d0*degtorad)
 
@@ -2543,7 +2543,7 @@ contains
 
 !       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
 
-       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 0.5, plotgrid=.false.)
+!       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 0.5, plotgrid=.false.)
 
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt
@@ -2555,7 +2555,7 @@ contains
           write(titleString,'(f10.3)') currentTime
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
 !          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 0.2 ,plotgrid=.false., withvel=.true.)
+          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 0.2 ,plotgrid=.false.)!, withvel=.true.)
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           grid%iDump = it
           grid%currentTime = currentTime
@@ -4967,6 +4967,120 @@ contains
        endif
     enddo
   end subroutine setupQvectors
+
+
+  recursive subroutine gSweep(thisOctal, grid, deltaT, fracChange)
+    include 'mpif.h'
+    integer :: myRank, ierr
+    type(GRIDTYPE) :: grid
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer   :: neighbourOctal
+    type(octal), pointer  :: child 
+    real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
+    integer :: subcell, i, neighbourSubcell
+    type(OCTALVECTOR) :: direction, locator, dir(6)
+    real(double) :: rhou_i_minus_1, rho_i_minus_1
+    integer :: n, ndir
+    real(double) :: x1, x2, g(6)
+    real(double) :: deltaT, fracChange, gGrav, newPhi, frac, d2phidx2(3), sumd2phidx2
+
+    gGrav = 1.d0
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call gsweep(child, grid, deltaT, fracChange)
+                exit
+             end if
+          end do
+       else
+
+          if (thisOctal%twoD) then
+             nDir = 4
+             dir(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+             dir(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             dir(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+             dir(4) = OCTALVECTOR(0.d0, 0.d0,-1.d0)
+          else if (thisOctal%threed) then
+             nDir = 6
+             dir(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+             dir(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+             dir(3) = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+             dir(4) = OCTALVECTOR(0.d0, 0.d0,-1.d0)
+             dir(5) = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+             dir(6) = OCTALVECTOR(0.d0,-1.d0, 0.d0)
+          endif
+
+
+          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+
+          if (.not.thisOctal%edgeCell(subcell)) then !xxx changed from ghostcell
+
+
+             do n = 1, nDir
+                
+                locator = subcellCentre(thisOctal, subcell) + dir(n) * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
+                neighbourOctal => thisOctal
+                call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+                
+                call getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, dir(n), q, rho, rhoe, &
+                  rhou, rhov, rhow, x, qnext, pressure, flux, phi)
+                
+                x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
+                x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)
+                g(n) =   (phi - thisOctal%phi_i(subcell))/(x2 - x1)
+
+             enddo
+
+             if (thisOctal%twoD) then
+                d2phidx2(1) = (g(1) - g(2)) / thisOctal%subcellSize
+                d2phidx2(2) = (g(3) - g(4)) / thisOctal%subcellSize
+                sumd2phidx2 = SUM(d2phidx2(1:2))
+             else
+                d2phidx2(1) = (g(1) - g(2)) / thisOctal%subcellSize
+                d2phidx2(2) = (g(3) - g(4)) / thisOctal%subcellSize
+                d2phidx2(2) = (g(5) - g(6)) / thisOctal%subcellSize
+                sumd2phidx2 = SUM(d2phidx2(1:3))
+             endif
+             newPhi = deltaT * sumd2phidx2 - fourPi * gGrav * deltaT
+             if (thisOctal%phi_i(subcell) /= 0.d0) then
+                frac = (newPhi - thisOctal%phi_i(subcell))/thisOctal%phi_i(subcell)
+             endif
+             thisOctal%phi_i(subcell) = newPhi
+             
+          endif
+       endif
+    enddo
+  end subroutine gSweep
+  
+  subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    type(gridtype) :: grid
+    integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
+    real(double) :: fracChange(20), deltaT
+    integer :: nHydrothreads
+    real(double), parameter :: tol = 1.d-3
+    nHydroThreads = nThreadsGlobal - 1
+
+    fracChange = 1.d30
+
+    deltaT = (2.d0*grid%halfSmallestSubcell)**2 / 4.d0
+    do while (ANY(fracChange(1:nHydrothreads) > tol))
+       fracChange = 1.d30
+       call gSweep(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
+
+!       call MPI_ALLREDUCE(fracChange, tempnLocs, nHydroThreads, MPI_INTEGER, MPI_MIN, amrCOMMUNICATOR, ierr)
+
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       call plotGridMPI(grid, "/xs", "x-z", "phi", plotgrid=.false.)
+       write(*,*) myRankGlobal, fracChange(myRankGlobal)
+    enddo
+  end subroutine selfGrav
 
 
 #endif
