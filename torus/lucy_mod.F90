@@ -367,8 +367,8 @@ contains
     real(oct)::  dT_min ! [kelvins]  the minimum change of temperature
     real(oct)::  dT_max ! [kelvins]  the maximum change of temperature
     real(oct)::  dT_over_T_max ! [kelvins]  the maximum fractional change of temperature
-    character(len=30) :: tfilename1, tfilename2, dustfile
-    character(len=80) :: ofile, message
+!    character(len=30) :: tfilename1, tfilename2, dustfile
+    character(len=80) :: message
     logical, save :: first_time_to_open_file = .true.
     real :: totFrac
     integer :: nFrac
@@ -388,7 +388,7 @@ contains
     logical :: doingDustSublimation
     real :: diffusionZoneTemp, temp
     logical :: outputFlag, directPhoton, smoothconverged
-    integer :: noctals, nvoxels, nCellsInDiffusion
+    integer :: nCellsInDiffusion
     integer :: omp_get_num_threads, omp_get_thread_num
 
 #ifdef MPI
@@ -1542,8 +1542,6 @@ contains
     integer :: nUndersampled
     integer, save  :: nwarning = 0
     integer, parameter :: nmaxwarning = 20
-    real(double) :: r1, r2
-    type(OCTALVECTOR) :: rVec
 
     if(this_is_root) then !initialize some values
        dT_sum = 0.0
@@ -1777,16 +1775,13 @@ contains
    type(OCTALVECTOR), intent(inout) :: direction
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6)
    type(OCTAL),pointer :: thisOctal
    type(OCTALVECTOR) :: subcen, point
-   real :: dx, dz ! directions in cylindrical coords
    integer :: subcell
    real(double) :: compZ,currentZ
    real(double) :: distToZBoundary, distToXboundary
    real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
-   integer :: i,j
-   logical :: ok, thisOk(6)
+   logical :: ok
    type(OCTALVECTOR) :: xHat, zHAt
 
    point = posVec
@@ -1871,16 +1866,14 @@ contains
    type(OCTALVECTOR), intent(inout) :: direction
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6)
    type(OCTAL),pointer :: thisOctal
    type(OCTALVECTOR) :: subcen, point
-   real :: dx, dz ! directions in cylindrical coords
    integer :: subcell
    real(double) ::  compZ,currentZ
    real(double) :: distToZBoundary, distToXboundary
    real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
    integer :: i,j
-   logical :: ok, thisOk(6)
+   logical :: ok
    type(OCTALVECTOR) :: xHat, zHAt
 
    point = posVec
@@ -1960,7 +1953,7 @@ contains
 
    type(GRIDTYPE) :: grid
    type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
-   type(OCTAL), pointer :: thisOctal, tempOctal, sourceOctal
+   type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal
    type(OCTAL),pointer :: foundOctal, endOctal
    integer :: endSubcell
@@ -2773,7 +2766,7 @@ contains
     logical, optional :: inheritProps, interpProps
     integer :: subcell, i
     logical :: converged
-    real(double) :: ksca, r
+    real(double) :: r
     type(OCTALVECTOR) :: dirVec(6), centre, octVec
     real :: thisFac, neighbourFac
     integer :: neighbourSubcell, j
@@ -2906,9 +2899,8 @@ subroutine addDustContinuumLucy(thisOctal, subcell, grid, nlambda, lamArray)
   type(GRIDTYPE) :: grid
   integer :: nLambda
   real :: lamArray(:)
-  integer :: i, iLam
+  integer :: i
   real :: dlam
-  type(OCTALVECTOR) :: octVec
   real(double), allocatable :: kabsArray(:)
 
 
