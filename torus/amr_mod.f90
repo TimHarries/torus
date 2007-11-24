@@ -195,6 +195,9 @@ CONTAINS
     CASE("sedov")
        call calcSedovDensity(thisOctal, subcell, grid)
 
+    CASE("protobin")
+       call calcProtoBinDensity(thisOctal, subcell, grid)
+
 
     CASE("gammavel")
        CALL calcGammaVel(thisOctal,subcell,grid)
@@ -1261,6 +1264,9 @@ CONTAINS
         gridConverged = .TRUE.
 
       CASE ("sedov")
+        gridConverged = .TRUE.
+
+      CASE ("protobin")
         gridConverged = .TRUE.
 
       CASE DEFAULT
@@ -5078,11 +5084,18 @@ IF ( .NOT. gridConverged ) RETURN
 !      rVec = subcellCentre(thisOctal, subcell)
 !      if ( (modulus(rVec)< 0.1d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
       if ((rVec%x > 0.d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
+
    case("sedov")
       split = .false.
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAmr) split = .true.
 !      if ( (modulus(rVec)< 0.1d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
+
+
+   case("protobin")
+      split = .false.
+      rVec = subcellCentre(thisOctal, subcell)
+      if (thisOctal%nDepth < minDepthAmr) split = .true.
 
 
    case("benchmark")
@@ -8031,8 +8044,55 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%energy(subcell) = 0.1d0
 
     thisOctal%boundaryCondition(subcell) = 4
-    Thisoctal%phi_i(subcell) = -1.d-1 / modulus(rVec-cVec)
+    Thisoctal%phi_i(subcell) = 0.d0!-1.d-1 / modulus(rVec-cVec)
   end subroutine calcSedovDensity
+
+  subroutine calcProtoBinDensity(thisOctal,subcell,grid)
+
+    TYPE(octal), INTENT(INOUT) :: thisOctal
+    INTEGER, INTENT(IN) :: subcell
+    TYPE(gridtype), INTENT(IN) :: grid
+    type(OCTALVECTOR) :: rVec, cVec
+    real(double) :: gamma, ethermal
+    logical :: blast
+    type(VECTOR) :: lVec, offset
+    real(double) :: rho0, r0, n, soundSpeed, omega, a, r, v, phi
+    gamma = 5.d0/3.d0
+    rho0 = 1.0d0
+    r0 = 0.1d0
+    soundSpeed = 0.01d0
+    omega = 0.2d0
+    a = 0.1d0
+    n = 2.d0
+
+    rVec = subcellCentre(thisOctal, subcell)
+    r = modulus(rVec)
+    thisOctal%rho(subcell) = rho0 / (1.d0 + (r/r0)**n)**(4.d0/n)
+    if (thisOctal%twoD) then
+       phi = atan2(rVec%z, rVec%x)
+    else
+       phi = atan2(rVec%y, rVec%x)
+    endif
+
+    ethermal = 0.01d0
+    soundSpeed = sqrt(gamma*(gamma-1.d0)*eThermal)
+
+    thisOctal%rho(subcell) = thisOctal%rho(subcell) * (1.d0 + a*cos(2.d0*phi))
+    if (thisOctal%twoD) then
+       r = modulus(rVec)
+       v = (4.d0*omega*r / (r0 + sqrt(r0**2 + r**2))) * soundSpeed
+       thisOctal%velocity(subcell) = (1./cspeed)*VECTOR(v*cos(phi+pi/2.d0), 0., v*sin(phi+pi/2.d0))
+    else
+       r = sqrt(rVec%x**2 + rVec%y**2)
+       v = (4.d0*omega*r / (r0 + sqrt(r0**2 + r**2))) * soundSpeed
+       thisOctal%velocity(subcell) = (1./cspeed)*VECTOR(v*cos(phi),  v*sin(phi), 0.)
+    endif
+
+    thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal !+ 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%boundaryCondition(subcell) = 4
+    Thisoctal%phi_i(subcell) = 0.d0
+  end subroutine calcProtoBinDensity
     
 
 

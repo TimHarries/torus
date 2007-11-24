@@ -276,6 +276,8 @@ contains
                 tmp = thisOctal%temperature(subcell)
              case("mpi")
                 tmp = real(thisOctal%mpiThread(subcell))
+             case("phi")
+                tmp = real(thisOctal%phi_i(subcell))
              case("chi")
                 tmp = real(thisOctal%chiline(subcell))
              case("u_i")

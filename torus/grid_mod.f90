@@ -706,6 +706,9 @@ contains
     case("sedov")
        grid%geometry = "sedov"
 
+    case("protobin")
+       grid%geometry = "protobin"
+
     case("gammavel")
        grid%geometry = "gammavel"
 

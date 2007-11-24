@@ -2378,6 +2378,8 @@ contains
     enddo
 
 
+
+
     call writeInfo("Calling exchange across boundary", TRIVIAL)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call writeInfo("Done", TRIVIAL)
@@ -2454,7 +2456,7 @@ contains
     currentTime = 0.d0
     it = 0
     nextDumpTime = 0.d0
-    tDump = 0.0005d0
+    tDump = 0.05d0
 
     iUnrefine = 0
 !    call writeInfo("Plotting grid", TRIVIAL)    
@@ -2477,6 +2479,9 @@ contains
 
 !    do while(currentTime < 0.2d0)
 
+
+
+
     do while(.true.)
        tc = 0.d0
        tc(myrank) = 1.d30
@@ -2497,7 +2502,9 @@ contains
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-
+       if (myrank == 1) call tune(6, "Self-Gravity")
+       call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+       if (myrank == 1) call tune(6, "Self-Gravity")
        call hydroStep2d(grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup, iEquationOfState)
 
 
@@ -2555,7 +2562,7 @@ contains
           write(titleString,'(f10.3)') currentTime
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
 !          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 0.2 ,plotgrid=.false.)!, withvel=.true.)
+          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 0.5 ,plotgrid=.false.)!, withvel=.true.)
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           grid%iDump = it
           grid%currentTime = currentTime
@@ -5000,6 +5007,8 @@ contains
           end do
        else
 
+          if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
           if (thisOctal%twoD) then
              nDir = 4
              dir(1) = OCTALVECTOR(1.d0, 0.d0, 0.d0)
@@ -5017,8 +5026,6 @@ contains
           endif
 
 
-          if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
-!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
 
           if (.not.thisOctal%edgeCell(subcell)) then !xxx changed from ghostcell
 
@@ -5034,23 +5041,34 @@ contains
                 
                 x1 = subcellCentre(thisOctal, subcell) .dot. dir(n)
                 x2 = subcellCentre(neighbourOctal, neighboursubcell) .dot. dir(n)
-                g(n) =   (phi - thisOctal%phi_i(subcell))/(x2 - x1)
+
+!                g(n) =   (phi - thisOctal%phi_i(subcell))/(x2 - x1)
+!                g(n) =   (phi - thisOctal%phi_i(subcell))/thisOctal%subcellSize !!!!!!!!!!!!!!!!!!!!!!!!!!
+
+!                if (slow) then
+                   g(n) = phi
+!                endif
 
              enddo
 
-             if (thisOctal%twoD) then
-                d2phidx2(1) = (g(1) - g(2)) / thisOctal%subcellSize
-                d2phidx2(2) = (g(3) - g(4)) / thisOctal%subcellSize
-                sumd2phidx2 = SUM(d2phidx2(1:2))
-             else
-                d2phidx2(1) = (g(1) - g(2)) / thisOctal%subcellSize
-                d2phidx2(2) = (g(3) - g(4)) / thisOctal%subcellSize
-                d2phidx2(2) = (g(5) - g(6)) / thisOctal%subcellSize
-                sumd2phidx2 = SUM(d2phidx2(1:3))
-             endif
-             newPhi = deltaT * sumd2phidx2 - fourPi * gGrav * deltaT
+             newphi = 0.25d0*(SUM(g(1:4))) - fourpi*gGrav*thisOctal%rho(subcell)*deltaT
+!
+!             if (thisOctal%twoD) then
+!                d2phidx2(1) = (g(1) - g(2)) / thisOctal%subcellSize
+!                d2phidx2(2) = (g(3) - g(4)) / thisOctal%subcellSize
+!                sumd2phidx2 = SUM(d2phidx2(1:2))
+!             else
+!                d2phidx2(1) = (g(1) - g(2)) / thisOctal%subcellSize
+!                d2phidx2(2) = (g(3) - g(4)) / thisOctal%subcellSize
+!                d2phidx2(3) = (g(5) - g(6)) / thisOctal%subcellSize
+!                sumd2phidx2 = SUM(d2phidx2(1:3))
+!             endif
+!             newPhi = thisOctal%phi_i(subcell) + (deltaT * sumd2phidx2 - fourPi * gGrav * thisOctal%rho(subcell) * deltaT)
              if (thisOctal%phi_i(subcell) /= 0.d0) then
-                frac = (newPhi - thisOctal%phi_i(subcell))/thisOctal%phi_i(subcell)
+                frac = abs((newPhi - thisOctal%phi_i(subcell))/thisOctal%phi_i(subcell))
+                fracChange = max(frac, fracChange)
+             else
+                fracChange = 1.d30
              endif
              thisOctal%phi_i(subcell) = newPhi
              
@@ -5060,26 +5078,36 @@ contains
   end subroutine gSweep
   
   subroutine selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+    include 'mpif.h'
     type(gridtype) :: grid
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
-    real(double) :: fracChange(20), deltaT
+    real(double) :: fracChange(20), tempFracChange(20), deltaT
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-3
+    real(double), parameter :: tol = 1.d-2
+    integer :: it, ierr
+    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
 
     fracChange = 1.d30
 
-    deltaT = (2.d0*grid%halfSmallestSubcell)**2 / 4.d0
+    deltaT =  (2.d0*grid%halfSmallestSubcell)**2 / 4.d0
+    it = 0
     do while (ANY(fracChange(1:nHydrothreads) > tol))
-       fracChange = 1.d30
+       fracChange = 0.d0
+       it = it + 1
        call gSweep(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
 
-!       call MPI_ALLREDUCE(fracChange, tempnLocs, nHydroThreads, MPI_INTEGER, MPI_MIN, amrCOMMUNICATOR, ierr)
+       call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
 
+       fracChange = tempFracChange
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       call plotGridMPI(grid, "/xs", "x-z", "phi", plotgrid=.false.)
-       write(*,*) myRankGlobal, fracChange(myRankGlobal)
+!       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
+!       call plotGridMPI(grid, plotfile, "x-z", "phi", plotgrid=.false.)
+!       write(*,*) myRankGlobal, fracChange(myRankGlobal)
     enddo
+!       call plotGridMPI(grid, "grav.png/png", "x-z", "phi", plotgrid=.false.)
+
+
   end subroutine selfGrav
 
 
