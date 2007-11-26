@@ -62,7 +62,7 @@ contains
     use input_variables, only : molAbundance
     type(MOLECULETYPE) :: thisMolecule
     character(len=*) :: molFilename
-    character(len=80) :: junk, message
+    character(len=80) :: junk
     character(len=200):: dataDirectory, filename
     integer :: i, j, iLow, iUp, iPart
     real(double) :: a, freq, eu, c(20)
@@ -169,10 +169,8 @@ contains
     use input_variables, only : molAbundance
     type(MOLECULETYPE) :: thisMolecule
     character(len=*) :: molFilename
-    character(len=80) :: junk, message
-    character(len=200):: dataDirectory, filename
-    integer :: i, j, iLow, iUp, iPart
-    real(double) :: a, freq, eu, c(20)
+    character(len=80) :: junk
+    integer :: i, iPart
 
 !    thisMolecule%abundance = tiny(thisMolecule%abundance)
     thisMolecule%abundance = molAbundance!hcoabundance ! fixed at benchmark value here
@@ -264,7 +262,7 @@ contains
     real(double), allocatable :: matrixA(:,:), matrixB(:), collMatrix(:,:), cTot(:)
     real(double) :: boltzFac
     integer :: nLevels
-    integer :: iLower, iUpper, iLevel, i, j
+    integer :: i, j
     integer :: itrans, l, k, iPart
     real(double) :: collEx, colldeEx
 
@@ -437,7 +435,7 @@ end subroutine LTEpops
   real(double) function collRate(thisMolecule, temperature, iPart, iTrans)
     type(MOLECULETYPE) :: thisMolecule
     real(double) :: temperature, r
-    integer :: i, iTrans, k, iPart
+    integer :: iTrans, k, iPart
 
     collRate = 0.d0
        
@@ -458,8 +456,7 @@ end subroutine LTEpops
     type(MOLECULETYPE) :: thisMolecule
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iUpper, iLower
-    real(double) :: etaLine
+    integer :: subcell, i
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -484,8 +481,7 @@ end subroutine LTEpops
     type(MOLECULETYPE) :: thisMolecule
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iUpper, iLower
-    real(double) :: etaLine
+    integer :: subcell, i
     
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -511,19 +507,17 @@ end subroutine LTEpops
 
     use input_variables, only : tolerance
 
-    type(GRIDTYPE) :: grid
-    type(MOLECULETYPE) :: thisMolecule
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iUpper, iLower
+    integer :: subcell, i
     real(double) :: maxFracChangePerLevel(:), printmaxFracChange, globalmaxFracChange, temp(6), avgFracChange(:,:)
     real(double), allocatable :: diff(:), newFracChangePerLevel(:)
-    integer :: counter(:,:),j,level
+    integer :: counter(:,:),j
     real(double) :: convergenceArray(:,:,:)
 
     integer :: iter
     integer,save :: l
-    integer :: nOctal, nVoxels
+    integer :: nVoxels
     
     logical :: itransDone(:),fixedrays
     integer :: ntrans
@@ -638,8 +632,6 @@ end subroutine LTEpops
 
 
     integer :: grand_iter
-    type(GRIDTYPE) :: grid
-    type(MOLECULETYPE) :: thisMolecule
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, it
@@ -710,8 +702,7 @@ end subroutine LTEpops
     type(MOLECULETYPE) :: thisMolecule
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iUpper, iLower
-    real(double) :: etaLine
+    integer :: subcell, i
     logical, optional :: restart
     logical :: dorestart
     integer :: iTrans
@@ -817,12 +808,9 @@ end subroutine LTEpops
     type(MOLECULETYPE) :: thisMolecule
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iUpper, iLower
-    real(double) :: etaLine
+    integer :: subcell, i
     logical, optional :: restart
     logical :: dorestart
-    integer :: iTrans
-    real(double) :: molsum
 
     if(.not. present(restart)) then
        dorestart = .false.
@@ -919,7 +907,7 @@ pure function phiProf(dv, b) result (phi)
     logical, optional :: fixedrays
     integer :: fromSubcell
     integer :: subcell
-    real(double) :: ds, phi, i0(:), r, phi1, phi2
+    real(double) :: ds, phi, i0(:), r
     integer :: iTrans,nTrans
     type(OCTALVECTOR) :: position, direction, currentPosition, thisPosition, thisVel
     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
@@ -948,7 +936,7 @@ pure function phiProf(dv, b) result (phi)
     integer,save :: transArray(50,2)
     real(double) :: balance(50), spontaneous(50) 
     real(double) :: nMol
-    real(double) :: z,t
+!    real(double) :: z,t
 
     nTrans = thisMolecule%nTrans
 
@@ -1282,7 +1270,7 @@ pure function phiProf(dv, b) result (phi)
     type(MOLECULETYPE) :: thisMolecule
     type(OCTALVECTOR) :: position, direction
     integer :: nOctal, iOctal, subcell
-    real(double), allocatable :: ds(:), phi(:), i0(:,:), tau(:)
+    real(double), allocatable :: ds(:), phi(:), i0(:,:)
     integer :: nRay
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     type(OCTAL), pointer :: thisOctal
@@ -1299,10 +1287,9 @@ pure function phiProf(dv, b) result (phi)
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
     logical       ::   rankComplete
+    integer, dimension(:), allocatable :: octalsBelongRank
+    real(double), allocatable :: tArrayd(:),tempArrayd(:)
 #endif
-     logical :: dcAllocated
-     integer, dimension(:), allocatable :: octalsBelongRank
-     real(double), allocatable :: tArrayd(:),tempArrayd(:)
      integer :: nVoxels
      integer :: ioctal_beg, ioctal_end, tag = 0
      logical :: fixedRays
@@ -1311,11 +1298,10 @@ pure function phiProf(dv, b) result (phi)
      real(double) :: maxFracChange 
      real(double), allocatable :: maxFracChangePerLevel(:)
      integer, allocatable :: convergenceCounter(:,:)
-     real :: r1(2), dummy(1) !random numbers and graphing
+!     real :: r1(2) !random numbers
      real(double) :: avgFracChange(6,2), maxavgfracChange, maxRMSfracChange
      integer :: maxavgtrans(1),maxRMStrans(1)
 
-     type(VECTOR) :: velocitysum
      character(len=40) :: filename
      real(double), allocatable :: convergencearray(:,:,:)
      logical, save :: itransdone(50)
@@ -1329,10 +1315,10 @@ pure function phiProf(dv, b) result (phi)
 
         real :: tol
 
-        real(double) :: r,rarray(4100000),sarray(4100000),tarray(4100000),phiprofval,deltav,dv
-        real :: uarray(4100000)
+!        real(double) :: r,rarray(4100000),sarray(4100000),tarray(4100000),phiprofval,deltav,dv
+!        real :: uarray(4100000)
 !        type(VSL_STREAM_STATE) :: stream
-        integer :: status
+!        integer :: status
 
 ! blockhandout must be off for fixed ray case, otherwise setting the
 ! seed is not enough to ensure the same directions are done for
@@ -1377,7 +1363,7 @@ pure function phiProf(dv, b) result (phi)
            call writeinfo(message,TRIVIAL)
            call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
                 "lucytemps.ps/vcps", .true., .false., &
-                0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize) , .false.) 
+                width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.) 
         endif
 
      endif
@@ -1412,7 +1398,7 @@ pure function phiProf(dv, b) result (phi)
            write(filename,'(a,i1,a)') "./J/J=",i-1,"lte.ps/vcps"
            call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
                 filename, .true., .false., &
-                0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize) , .false., &
+                width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false., &
                 ilam = i, fixValMin=fixValMin, fixValMax=fixValMax)
         enddo
 
@@ -1572,7 +1558,7 @@ pure function phiProf(dv, b) result (phi)
               
               call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
                    filename, .true., .false., &
-                   0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize) , .false., &
+                   width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false., &
                    ilam = i, boxfac = 0.7, fixValMin=fixValMin, fixValMax=fixValMax)
            enddo
            
@@ -1585,7 +1571,7 @@ pure function phiProf(dv, b) result (phi)
               
               call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
                    filename, .true., .false., &
-                   0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize), .false., &
+                   width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., &
                    ilam = i, boxfac = 0.001, fixValMin=fixValMin, fixValMax=fixValMax)
            enddo
            
@@ -1598,7 +1584,7 @@ pure function phiProf(dv, b) result (phi)
               
               call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
                    filename, .true., .false., &
-                   0, dummy, dummy, dummy,real(grid%octreeRoot%subcellsize) , .false., &
+                   width_3rd_dim=real(grid%octreeRoot%subcellsize) ,  show_value_3rd_dim=.false., &
                    ilam = i, boxfac = 0.009, fixValMin=fixValMin, fixValMax=fixValMax)
            enddo
            
@@ -1607,7 +1593,6 @@ pure function phiProf(dv, b) result (phi)
   allocate(ds(1:nRay))
   allocate(phi(1:nRay))
   allocate(i0(1:thisMolecule%nTrans, 1:nRay))
-  allocate(tau(1:nRay))
 
   if (fixedRays) then
      call random_seed(put=iseed)   ! same seed for fixed rays
@@ -1852,7 +1837,7 @@ pure function phiProf(dv, b) result (phi)
 #ifdef MPI
           deallocate(octalsBelongRank)
 #endif
-          deallocate(ds, phi, i0, tau)
+          deallocate(ds, phi, i0)
 
           if(writeoutput) then
              write(message,*) "Done ",nray," rays"
@@ -2053,16 +2038,14 @@ pure function phiProf(dv, b) result (phi)
   function intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV) result (i0)
 
     use input_variables, only : amr2d, useDust, debug
-    type(OCTALVECTOR) :: position, direction, startPosition
+    type(OCTALVECTOR) :: position, direction
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
     real(double) :: disttoGrid
     integer :: itrans
     real(double) :: i0
-    type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
-    integer :: fromSubcell
+    type(OCTAL), pointer :: thisOctal, startOctal
     integer :: subcell
-    real(double) :: ds, phi, r
     type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
     real(double) :: alphanu(2), jnu, snu
@@ -2210,16 +2193,14 @@ pure function phiProf(dv, b) result (phi)
   function intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV) result (i0)
 
     use input_variables, only : amr2d, useDust, debug
-    type(OCTALVECTOR) :: position, direction, startPosition
+    type(OCTALVECTOR) :: position, direction
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
     real(double) :: disttoGrid
     integer :: itrans
     real(double) :: i0
-    type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
-    integer :: fromSubcell
+    type(OCTAL), pointer :: thisOctal, startOctal
     integer :: subcell
-    real(double) :: ds, phi, r
     type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
     real(double) :: alphanu(2), jnu, snu
@@ -2374,13 +2355,11 @@ pure function phiProf(dv, b) result (phi)
     type(MOLECULETYPE) :: thisMolecule
     integer :: itrans
     type(OCTALVECTOR) :: unitvec, viewVec, posvec
-    real(double) :: flux, i0
-    type(OCTALVECTOR) :: imagebasis(2), pixelcorner, newposvec
+    type(OCTALVECTOR) :: imagebasis(2), pixelcorner
     integer :: nsubpixels, subpixels
     real :: imagegrid(npixels,npixels)
     integer :: i,j
-    real(double) :: pixelside, r1,dtgfo,distance
-    real(double) :: max
+    real(double) :: pixelside
     real(double) :: deltaV
     type(datacube) :: cube
     integer :: index(2)
@@ -2435,23 +2414,20 @@ function PixelIntensity   (cube,pixelside,viewvec,pixelcorner,&
     type(MOLECULETYPE) :: thisMolecule
     integer :: itrans
     type(OCTALVECTOR) :: viewVec
-    real(double) :: flux, i0, distance
+    real(double) :: i0
     real(double) :: totalPixelIntensity, oldTotalPixelIntensity
     type(OCTALVECTOR) :: imagebasis(2), pixelbasis(2), pixelcorner, newposvec
 
     integer :: nsubpixels, subpixels
     integer :: i,j
-    integer, save :: k
     integer :: index(2)
     integer, parameter :: maxSubPixels = 32
     real(double),allocatable :: subpixelgrid(:,:)
-    real(double) :: pixelside,subpixelsize,max,subPixelSolidAngle
+    real(double) :: pixelside,subpixelsize !,subPixelSolidAngle
 
     logical :: converged, romberg
-    real(double) :: imax
     real(double) :: deltaV
     type(DATACUBE) :: cube
-    character(len=100) :: message
 
     converged = .false. ! failed flag
 
@@ -2525,7 +2501,7 @@ end function PixelIntensity
   
 subroutine calculateMoleculeSpectrum(grid, thisMolecule)
   use input_variables, only : beamSize,gridDistance,amr2d,debug,&
-                              itrans, npixels, nv, imageside, nSubpixels, inc
+                              itrans, npixels, nv, nSubpixels, inc
   
 #ifdef MPI
       include 'mpif.h'
@@ -2536,31 +2512,18 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule)
   integer :: nRay
   real(double) :: distance
   type(OCTALVECTOR) :: rayPosition(5000)
-  real(double) :: da(5000), dOmega(5000), r, weight(5000)
+  real(double) :: da(5000), dOmega(5000), weight(5000)
   real(double) :: deltaV
   integer :: iv, iray
   integer :: nLambda
-  real(double) :: flux, i0
-  real(double), allocatable :: vArray(:), spec(:), tempArray(:)
-  integer :: iv1, iv2, i,j
-  type(OCTALVECTOR) :: unitvec, posvec, gridCentre, centrevec, viewvec
+  real(double) :: i0
+  real(double), allocatable :: vArray(:), spec(:)
+  integer :: iv1, iv2, i
+  type(OCTALVECTOR) :: unitvec, posvec, centrevec, viewvec
   type(DATACUBE) ::  cube
-  logical :: gotPixels
 
-  integer,allocatable :: PixelArray(:,:)
-  real(double),allocatable :: PixelWeight(:,:)
-  real(double), allocatable :: outspec(:)
-  real(oct) :: theta, phi
-  real(double) :: D,distancetoGrid,BeamSizeInRadians,ArcSecsToRadians,Int, rr,rInArcSecSquared
-  real(double) :: Tcmb, dx, fac, sigma2
-
-  type(OCTALVECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
-   
-  integer :: nOctal, iOctal, subcell, nVoxels, iVoxel
-
-  type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
+  real(double) :: Tcmb
   
-  logical :: plotflux
   character (len=80) :: filename
  
 #ifdef MPI
@@ -2569,6 +2532,7 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule)
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
     logical       ::   rankComplete
+    real(double), allocatable :: tempArray(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
@@ -2685,14 +2649,13 @@ stop
     real(double) :: minVel
     real(double) :: deltaV
     integer :: iTrans
-    integer :: i, j, k
-    real(double) :: r, xval, yval
-    integer :: nMonte, imonte, n
-    real(double), allocatable :: tempArray(:), tempArray2(:)
-    integer :: ix1, ix2, iv
+    integer :: i !, j, k
+!    real(double) :: xval, yval, r
+!    integer :: nMonte, imonte
+    integer :: iv
     integer :: nsubpixels
     character(len=200) :: message
-    real(double) :: intensitysum, fluxsum, x, y, ddv
+    real(double) :: intensitysum, fluxsum, ddv
     real(double) :: weightedfluxmap(npixels,npixels)
     real(double) :: weightedfluxsum, weightedflux
     real(double) :: fineweightedfluxmap(npixels,npixels)
@@ -2703,7 +2666,9 @@ stop
     integer       ::   my_rank        ! my processor rank
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
+    integer :: ix1, ix2, n
     logical       ::   rankComplete
+    real(double), allocatable :: tempArray(:), tempArray2(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
@@ -2768,8 +2733,8 @@ stop
           open(78, file="fineweight.dat",status="unknown",form="formatted")
 
           do i = 1,npixels
-          write(77,'(50(f9.5,x))') cube%Weight(:,i)
-          write(78,'(50(f9.5,x))') Weight(:,i)
+          write(77,'(50(f9.5,1x))') cube%Weight(:,i)
+          write(78,'(50(f9.5,1x))') Weight(:,i)
           enddo
 
           close(77)
@@ -2878,11 +2843,11 @@ stop
     type(DATACUBE) :: cube
     integer :: iv,i,j,ivplusone
     real(double), allocatable :: x(:), y(:), y2(:), intensitysum(:)
-    real(double) :: xquad(3),yquad(3),xa(3),ya(3)
+    real(double) :: xquad(3),yquad(3),xa(3)
     real(double) :: sumx(4),sumxy(4)
     real(double) :: a(3,3),b(3)
     real(double) :: fac
-    real(double), save :: ydash, alty2,oldy2
+    real(double), save :: alty2 !, ydash
     real(double), save :: oldstep = 4.d0
 
     iv = ivplusone - 1
@@ -3028,7 +2993,7 @@ subroutine GaussianWeighting(cube,npixels,FWHM,NormalizeArea)
   real(double) :: ArcSecsToRadians = pi/6.48d5 ! 6.48d5 = 180*60*60
   real :: FWHM
   real(double) :: beamsize,beamsizeInRadians,sigma2,Int,rr
-  character(len=80) :: message
+!  character(len=80) :: message
   logical,optional :: NormalizeArea
 
 ! allocate(PixelPositionArray(npixels,npixels))
@@ -3125,13 +3090,13 @@ end subroutine fineGaussianWeighting
     use input_variables, only : gridDistance
     type(GRIDTYPE) :: grid
     integer :: nRay
-    type(OCTALVECTOR) :: rayPosition(:), thisPos, viewVec, xProj,yProj
+    type(OCTALVECTOR) :: rayPosition(:), viewVec, xProj,yProj
     real(double) :: da(:), dOmega(:), weight(:)
     real(double), allocatable :: rGrid(:), dr(:), phigrid(:), dphi(:)
     real(double) :: rMax, rMin
     integer :: nr, nphi, ir, iphi
     real(double) :: r1 , r2, phi1, phi2, phiOffset
-    real(double) :: xPos, yPos, zPos, cosInc, azimuth, sigma, rinarcsec
+    real(double) :: xPos, yPos, zPos, sigma, rinarcsec
     real(double) :: arcsec2persteradian, tot
 
 
@@ -3219,16 +3184,16 @@ end subroutine fineGaussianWeighting
     integer :: iTrans
     integer :: i, j, k
     real(double) :: r, xval, yval
-    integer :: nMonte, imonte, n
-    real(double), allocatable :: tempArray(:), tempArray2(:)
+    integer :: nMonte, imonte
     integer :: ix1, ix2
 #ifdef MPI
     ! For MPI implementations
     integer       ::   my_rank        ! my processor rank
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
+    integer       ::   n
     logical       ::   rankComplete
-
+    real(double), allocatable :: tempArray(:), tempArray2(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
@@ -3307,7 +3272,7 @@ end subroutine fineGaussianWeighting
     type(gridtype) :: grid
     type(OCTALVECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
     type(OCTALVECTOR) :: GridCentre, unitvec, viewvec
-    type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
+    type(OCTAL), pointer :: thisOctal
     integer :: nOctal, nVoxels, iOctal, iVoxel, subcell, npixels
     integer :: i, j, iarray(1), jarray(1)
     real(double) ::theta, phi
@@ -3521,7 +3486,7 @@ end subroutine fineGaussianWeighting
     logical, optional :: fixedrays
     integer :: fromSubcell
     integer :: subcell
-    real(double) :: ds, phi, i0(:), r, phi1, phi2
+    real(double) :: ds, phi, i0(:), r
     integer :: iTrans,nTrans
     type(OCTALVECTOR) :: position, direction, currentPosition, thisPosition, thisVel
     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
