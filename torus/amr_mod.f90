@@ -8059,9 +8059,9 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: rho0, r0, n, soundSpeed, omega, a, r, v, phi
     gamma = 5.d0/3.d0
     rho0 = 1.0d0
-    r0 = 0.2d0
+    r0 = 0.4d0
     soundSpeed = 0.01d0
-    omega = 0.4d0
+    omega = 0.8d0
     a = 0.1d0
     n = 2.d0
     ethermal = 0.1d0
@@ -8092,6 +8092,20 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%boundaryCondition(subcell) = 4
     Thisoctal%phi_i(subcell) = 0.d0
+
+!    thisOctal%velocity(subcell) = vector(0., 0., 0.)
+!    if (modulus(rVec) < 5.9d2) then
+       thisOctal%rho(subcell) = 0.1d0 * mSol / (4.d0/3.d0*pi*5.9d12**3)
+!    else
+!       thisOctal%rho(subcell) = 1.d-2 * 0.1d0*mSol / (4.d0/3.d0*pi*5.9d12**3)
+!    endif
+
+    ethermal = (1.d0/(2.d0*mHydrogen)) * kerg * 30.d0
+    thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%boundaryCondition(subcell) = 4
+    Thisoctal%phi_i(subcell) = 0.d0
+
   end subroutine calcProtoBinDensity
     
 

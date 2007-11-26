@@ -13,7 +13,7 @@ module hydrodynamics_mod
   use mpi_amr_mod
 
   implicit none
-  real(double) :: gridDistanceScale = 1.d0
+  real(double) :: gridDistanceScale = 1.d10
 
 contains
 
@@ -804,12 +804,13 @@ contains
 
 
           thisOctal%pressure_i(subcell) = thisOctal%pressure_i(subcell) + bigGamma
-          
+
 
           if (isnan(thisOctal%pressure_i(subcell))) then
              write(*,*) "pressureU has nan"
              write(*,*) thisOctal%rhou(subcell),thisOctal%rhov(subcell), thisOctal%rhow(subcell)
              write(*,*) thisOctal%rho(subcell)
+             write(*,*) "cen ",subcellCentre(thisOctal, subcell)
              stop
           endif
 
@@ -1456,6 +1457,7 @@ contains
   
           if (.not.thisOctal%ghostCell(subcell)) then
              thisOctal%rhou(subcell) = thisOctal%q_i(subcell)
+             if (isnan(thisOctal%rhou(subcell))) write(*,*) "nan in q to rhou"
           endif
         
        endif
@@ -2464,7 +2466,17 @@ contains
     currentTime = 0.d0
     it = 0
     nextDumpTime = 0.d0
-    tDump = 0.05d0
+
+
+    tc = 0.d0
+    tc(myrank) = 1.d30
+    call computeCourantTime(grid%octreeRoot, tc(myRank), gamma, iEquationOfState)
+    call MPI_ALLREDUCE(tc, tempTc, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM,amrCOMMUNICATOR, ierr)
+    tc = tempTc
+    dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
+
+    tDump = 3.d0*dt
+    write(*,*) "Setting tdump to: ", tdump
 
     iUnrefine = 0
 !    call writeInfo("Plotting grid", TRIVIAL)    
@@ -3172,6 +3184,9 @@ contains
           corner=.false.
           if (thisOctal%twoD.and.(nProbeOutside > 1)) corner = .true.
           if (thisOctal%threeD.and.(nProbeOutside > 2)) corner = .true.
+
+          corner = .false.
+
           if (.not.corner) then
              do iProbe = 1, nProbes
                 locator = rVec + &
@@ -4999,7 +5014,7 @@ contains
     real(double) :: x1, x2, g(6)
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, d2phidx2(3), sumd2phidx2
 
-    gGrav = 1.d0
+    gGrav = bigG
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -5098,7 +5113,7 @@ contains
 
     fracChange = 1.d30
 
-    deltaT =  (2.d0*grid%halfSmallestSubcell)**2 / 4.d0
+    deltaT =  (2.d0*grid%halfSmallestSubcell*gridDistanceScale)**2 / 4.d0
     it = 0
     do while (ANY(fracChange(1:nHydrothreads) > tol))
        fracChange = 0.d0
