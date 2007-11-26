@@ -24,7 +24,7 @@ contains
 
   subroutine solveLevels(thisOctal, subcell, nPops, jnuLine,  &
        temperature, nAtom, thisAtom, ne, rho, jnuCont, freq, nfreq)
-    use input_variables, only : debug
+!    use input_variables, only : debug
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     integer :: nFreq
@@ -34,23 +34,22 @@ contains
     real(double) :: temperature, ne
     real(double) :: jnuLine(:)
     type(MODELATOM) :: thisAtom(:)
-    real(double), allocatable :: matrixA(:,:), matrixB(:), collMatrix(:,:), cTot(:)
-    integer, allocatable :: indx(:)
-    real(double), allocatable :: vMatrix(:,:), wMatrix(:,:), xMatrix(:)
-    real(double) :: wMax, wMin
-    real(double) :: d 
-    real(double) :: arateji, boltzFac
+    real(double), allocatable :: matrixA(:,:), matrixB(:)
+!    integer, allocatable :: indx(:)
+!    real(double), allocatable :: vMatrix(:,:), wMatrix(:,:), xMatrix(:)
+!    real(double) :: wMax, wMin
+!    real(double) :: d 
+    real(double) :: boltzFac
     integer :: nLevels
-    integer :: iLower, iUpper, iLevel, i, j
-    integer :: itrans, l, k, iPart
+    integer :: i
+    integer :: itrans, l, k
     real(double) :: collEx, colldeEx
     real(double) :: a, Bul, Blu
     real(double) :: photoRatelk, recombRatekl, xSection, xSection2
-    real(double) :: partitionFunc
-    real(double) :: fac, rho
-    real(double) :: prate, rrate, NstarRatio, totRecomb, totPHotoIon, totcion
+    real(double) :: rho
+    real(double) :: NstarRatio, totRecomb, totPHotoIon, totcion
     real(double) :: tot1, tot2
-    real(double) :: nuStart,thisFreq,test
+    real(double) :: nuStart !,thisFreq,test
     integer :: iStart
     integer :: iJnu
     real(double) :: jnu
@@ -390,7 +389,7 @@ contains
     type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
     integer :: fromSubcell
     integer :: subcell
-    real(double) :: ds, phi, i0(:), r, phi1, phi2, cosTheta
+    real(double) :: ds, phi, i0(:), r, cosTheta
     real(double) :: Hcol, HeICol, HeIICol
     integer :: iTrans
     type(OCTALVECTOR) :: position, direction, currentPosition, thisPosition, thisVel
@@ -403,7 +402,7 @@ contains
     integer :: nTau
     integer :: nHatom, nHeIAtom, nHeIIAtom
     real(double) :: nLower, nUpper
-    real(double) :: dTau, etaline, didtau
+    real(double) :: dTau, etaline
     real(double), allocatable :: tau(:)
     real(double) :: intensityIntegral
     real(double) :: dvAcrossCell, projVel
@@ -415,8 +414,7 @@ contains
     real(double) :: dv1, dv2
     real(double) :: weight
     integer :: iAtom, iRBB
-    real :: xH, xHeI, xHeII
-    real(double) :: dTauCont, phiAv, phiNorm, kappaBB
+    real(double) :: phiAv, phiNorm
     logical :: firstSubcell
     integer :: nBug
     integer :: iFreq
@@ -767,7 +765,6 @@ contains
   subroutine calculateJbar(thisOctal, subcell, thisAtom, nRay, ds, phi, i0, iTrans, jbar, nPops, &
        freq, nfreq, weight, iRBB, tauAv)
     real(double) :: freq(:), weight(:)
-    logical :: doCont
     integer :: nfreq
     integer :: iRBB
     type(OCTAL), pointer :: thisOctal
@@ -784,7 +781,6 @@ contains
     integer :: iUpper, iLower
     real(double) :: tau, snu, sumWeight
     real(double) :: a, bul, blu
-    integer :: i
     logical,save :: first = .true.
     real(double) :: tauAv
     jBarExternal = 0.d0
@@ -867,10 +863,9 @@ contains
     integer :: sourceNumber(:)
     integer :: nfreq
     real(double) :: freq(:),  cosTheta(:), weight(:)
-    integer :: iray, nRay, i
-    real :: tau, xh, xhei, xheii
+    integer :: iray, nRay
+    real :: tau
     real(double), allocatable :: jBarContExternal(:), jBarContInternal(:)
-    integer :: nHatom, nHeIatom, nHeIIAtom
     real(double) :: alphanu
     integer :: iFreq
     real(double) :: jnu, snu
@@ -972,7 +967,7 @@ contains
     integer :: indexRBBTrans(1000), indexAtom(1000)
     real(double) :: ne
     integer :: iAtom
-    integer :: nHAtom, nHeIAtom, nHeIIatom, ir !, ifreq
+    integer :: nHAtom, nHeIAtom, nHeIIatom !, ir, ifreq
     real(double) :: nstar, tauAv, tauHalpha, ratio
     real(double), parameter :: convergeTol = 1.d-4, neTolerance = 1.d-5
     integer :: neIter

@@ -369,11 +369,8 @@ contains
     real(double), intent(in) :: x, y, z      ! [10^10 cm] coordinates of a point
     !
     real(double) :: r  ! [10^10cm]  distance from the souce point
-    real(double) :: s  ! [10^10cm]  distance from the disc
     real(double) :: d, rho  ! [10^10cm]  
     real(double) :: rho_sq  ! [10^20 cm]
-    real(double) :: Cs       ! speed of sound in [cm/s]
-    real(double) :: fac, tmp
     real(double) :: rho_i, z_dist, Vk
     real(double), parameter :: G = 6.67259d-8 ! in cgs
     real(double) :: Mstar
@@ -718,16 +715,13 @@ contains
     real(double), intent(in) :: limitscalar 
     
     
-    real(oct)  :: cellSize, x, y, z
+    real(oct)  :: cellSize
     real(double) :: rho_discwind,  mass
     TYPE(octalVector)     :: cellCentre 
 
     ! get the size and the position of the centre of the current cell
     cellSize = thisOctal%subcellSize*2.0d0
     cellCentre = subcellCentre(thisOctal, subcell)
-    x = cellcentre%x
-    y = cellcentre%y
-    z = cellcentre%z
     
     rho_discwind = ave_discwind_density(thisOctal, subcell, this)  ! [g/cm^3]
     ! the mass of the cell
@@ -738,7 +732,6 @@ contains
     else
        need_to_split = .false.
     end if
-    
                
 
   end function need_to_split
@@ -755,7 +748,6 @@ contains
     type(discwind), intent(in) :: this
     
     real(oct)  :: cellSize, d
-    real(double) :: rho_disc, mass_cell
     TYPE(octalVector)     :: cellCentre
 !    integer, parameter :: nr = 150  ! normal resolution
     integer, parameter :: nr = 180  ! normal resolution
@@ -768,7 +760,7 @@ contains
     real(double) , save:: rGrid(nr)
     real(double) :: Rmax = 1.5d5  ! [10^10cm] = 100 AU
     TYPE(octalVector)     :: VecInnerEdge
-    real(double) :: wi, w
+    real(double) :: wi
 
     need_to_split2 = .false.
 

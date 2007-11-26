@@ -129,19 +129,16 @@ program torus
   ! optical depth variables
   !
   ! for monte calro with high optical depth models
-  !  integer, parameter :: maxTau = 2000000, maxLambda = 101
+  !  integer, parameter :: maxTau = 2000000
   ! for monte calro with optically thin model.  
-  integer, parameter :: maxTau = 20000, maxLambda = 1001  
+  integer, parameter :: maxTau = 20000
   ! for direct integration
-  !  integer, parameter :: maxTau = 8000, maxLambda = 101    
+  !  integer, parameter :: maxTau = 8000
   !
   ! for Chris
-  !  integer, parameter :: maxTau = 600000, maxLambda = 150
+  !  integer, parameter :: maxTau = 600000
   integer :: nTau
   real, allocatable :: contTau(:,:)
-!  real::  contTau(maxTau,maxLambda)
-!  real::  contTau_ntau(maxLambda)
-
 
   real :: scaleFac
   real :: dopShift  ! velocity shift in terms of thermal line width
@@ -192,7 +189,6 @@ program torus
 
   ! variables for clumped wind models
   
-
   integer, parameter :: maxBlobs = 10000
   integer :: nCurrent
     type(BLOBTYPE), allocatable :: blobs(:)
@@ -311,7 +307,6 @@ program torus
   logical :: contPhoton
   integer :: nContPhotons
   real :: phi
-  real :: deltaLambda
   real :: rStar
   character(len=80) :: tempChar
   logical :: lineResAbs    ! T if you want to include absorption
@@ -334,8 +329,6 @@ program torus
   real :: chanceSpot                     ! chance of spot
   logical :: spotPhoton                  ! photon from spot?
 
-  real :: loglamStart, logLamEnd
-
   real :: chanceDust = 0.
   real(double) :: totDustContinuumEmission, totEnvelopeEmission
 
@@ -348,10 +341,8 @@ program torus
 
   type(OCTALVECTOR) :: amrGridCentre ! central coordinates of grid
   type(OCTALVECTOR) :: octVec
-  real :: meant, treal, ang, meaneta
+  real :: ang
   real(double) :: kabs, eta
-  integer, parameter :: nrGrid = 1000
-  real :: rGrid(nrGrid), drGrid(nrgrid)
   integer :: nt
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
@@ -366,7 +357,6 @@ program torus
   integer           :: boundaryProbs ! number of errors from integratePathAMR
   integer           :: negativeOpacity ! number of errors from integratePathAMR
   real(double)           :: Ne         ! for testing
-  real,dimension(statEqMAxLevels) :: meanDepart ! for testing
   real(double),dimension(statEqMAxLevels) :: levelPops  ! for testing
   integer                         :: level      ! for testing
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
@@ -387,7 +377,6 @@ program torus
   type(sph_data) :: sphData
 
   ! Used for multiple sources (when geometry=cluster)
-  integer :: nstar
   type(cluster)   :: young_cluster
 
   ! Used in "plot_AMR_planes" and "plot_AMR_values"
@@ -397,9 +386,6 @@ program torus
   real, allocatable    :: zmarker(:)  ! position of z
   real    :: width_3rd_dim         ! Use this to restrict the markers to be plotted..  
   real val_3rd_dim
-
-  real    :: tmp
-  real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
 
   ! Name of the file to output various message from torus
   character(LEN=7), parameter :: messageFile = "MESSAGE"
@@ -432,8 +418,6 @@ program torus
   logical, parameter :: ll_sph = .false.
 #endif
 
-  real(double) ::  d1, d2, massRatio
-
   type(modelatom), allocatable :: thisAtom(:)
 
   type(STREAMTYPE) :: thisStream(2000), bigStream
@@ -449,8 +433,6 @@ program torus
 
 #ifdef MPI
   ! For MPI implementations =====================================================
-  integer ::   my_rank        ! my processor rank
-  integer ::   n_proc         ! The number of processes
   integer ::   ierr           ! error flag
   integer ::   n_rmdr, m      !
   integer ::   mphotons       ! number of photons (actual) 
@@ -469,29 +451,25 @@ program torus
   !  initialize the system for running MPI
   if (.not. ll_sph) call MPI_INIT(ierr) 
 
-  !  Get my process rank # 
-  call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
-  ! Find the total # of precessor being used in this run
-  call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-  
+  ! Set up amrCOMMUNICATOR and global mpi groups
+  call setupAMRCOMMUNICATOR
+
   call unixGetHostname(tempChar, tempInt) 
-  print *, 'Process ', my_rank,' running on host ',TRIM(ADJUSTL(tempChar))
+  print *, 'Process ', myRankGlobal,' running on host ',TRIM(ADJUSTL(tempChar))
 
   !===============================================================================
 
-    call setupAMRCOMMUNICATOR
 #endif
 
-    writeoutput    = .true.
-    outputwarnings = .true.
-    outputinfo     = .true.
-    doTuning       = .true.
-    myRankIsZero   = .true.
+  writeoutput    = .true.
+  outputwarnings = .true.
+  outputinfo     = .true.
+  doTuning       = .true.
+  myRankIsZero   = .true.
 #ifdef MPI
-    if (my_rank/=1) writeoutput  = .false.
-    if (my_rank/=1) doTuning     = .false.
-    if (my_rank/=0) myRankIsZero = .false.
+  if (myRankGlobal/=1) writeoutput  = .false.
+  if (myRankGlobal/=1) doTuning     = .false.
+  if (myRankGlobal/=0) myRankIsZero = .false.
 #endif
   
   ! For time statistics
@@ -510,7 +488,7 @@ program torus
 #ifdef MPI
   call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call random_seed(put=iseed)
-! write(*,*) my_rank,"random seed",iseed(1:isize)
+! write(*,*) myRankGlobal,"random seed",iseed(1:isize)
 #endif
   deallocate(iSeed)
 
@@ -617,14 +595,6 @@ program torus
   else
      val_3rd_dim = 0.0d0        
   end if
-
-  !
-  if (nLambda > maxLambda) then
-     write(message,'(a,i3.3,a)') "nlambda is greater than the maximum value (",&
-          maxLambda,")"
-     call writeFatal(message)
-     stop
-  endif
 
   !
 
@@ -880,77 +850,8 @@ program torus
      call addIons(grid%ion, grid%nion)
   endif
 
-
-
-  if (lamLinear) then
-     deltaLambda = (lamEnd - lamStart) / real(nLambda)
-     
-     xArray(1) = lamStart + deltaLambda/2.
-     yArray(1)%i = 0.
-     yArray(1)%q = 0.
-     yArray(1)%u = 0.
-     yArray(1)%v = 0.
-     do i = 2, nLambda
-        xArray(i) = xArray(i-1) + deltaLambda
-        yArray(i)%i = 0.
-        yArray(i)%q = 0.
-        yArray(i)%u = 0.
-        yArray(i)%v = 0.
-     enddo
-  else
-
-
-     logLamStart = log10(lamStart)
-     logLamEnd = log10(lamEnd)
-
-     do i = 1, nLambda
-        xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-        xArray(i) = 10.**xArray(i)
-        yArray(i) = STOKESVECTOR(0.,0.,0.,0.)
-     enddo
-
-!     if (photoionization) then
-!        xArray(1) = lamStart
-!        xArray(2) = lamEnd
-!        nCurrent = 2
-!        call refineLambdaArray(xArray, nCurrent, grid)
-!        nt = nLambda - nCurrent
-!        do i = 1, nt
-!           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
-!           fac = 10.**fac
-!           nCurrent=nCurrent + 1
-!           xArray(nCurrent) = fac
-!           call sort(nCurrent, xArray)
-!        enddo
-!!        do i = 1, nlambda
-!!           write(*,*) xArray(i)
-!!        enddo
-!     endif
-
-     if (mie) then
-        if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then
-           call locate(xArray, nLambda, lambdaTau, i)
-           t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
-           if (t1 > 0.5) then
-              write(message,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
-              call writeInfo(message, TRIVIAL)
-              xArray(i+1) = lambdaTau
-           else
-              write(message,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
-              call writeInfo(message, TRIVIAL)
-              xArray(i) = lambdaTau
-           endif
-        endif
-     endif
-
-  endif
-
-  !
-  ! Copying the wavelength array to the grid
-  do i = 1, nLambda
-     grid%lamArray(i) = xArray(i)
-  enddo
-  grid%nLambda = nLambda
+! Set up the wavelength arrays with either linear or log spaced values.
+  call set_up_lambda_array
 
   !
   ! Setting the number of opacity (kappa) arrays in grid.
@@ -985,7 +886,6 @@ program torus
 
   ! if the grid uses an adaptive mesh, create it
      
-
 
 !  if (gridUsesAMR) then
 !     if ((mie) .or. (geometry == "ttauri" .and. ttau_disc_on)) then 
@@ -1242,7 +1142,7 @@ program torus
         grid%splitOverMPI = .true.
 	
 
-        if (my_rank /= 0) then
+        if (myRankGlobal /= 0) then
            if (grid%octreeRoot%twoD) then
               call doHydrodynamics2d(grid)
            else if (grid%octreeRoot%oneD) then
@@ -1661,7 +1561,7 @@ program torus
          !                    infallParticleMass, alreadyDoneInfall)
           if (.not. noPhaseUpdate .and. iPhase /= nStartPhase) then
 #ifdef MPI
- if (my_rank == 0) then
+ if (myRankGlobal == 0) then
 #endif
              if (writeoutput) write(*,*) "Modifying grid for new phase"
              call amrUpdateGrid(limitScalar,limitScalar2,grid) 
@@ -1675,12 +1575,12 @@ program torus
         write(tempChar,'(i3.3)') iPhase
         phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
         call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
-        print *,'Process ',my_rank,' finished writing phase pop grid...' 
-        print *,'Process ',my_rank,' signalling grid has become available...' 
+        print *,'Process ',myRankGlobal,' finished writing phase pop grid...' 
+        print *,'Process ',myRankGlobal,' signalling grid has become available...' 
     end if
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)  ! XXX --> sync with XXX below
- else ! my_rank /=0
-    print *,'Process ',my_rank,' waiting for grid to become available...' 
+ else ! myRankGlobal /=0
+    print *,'Process ',myRankGlobal,' waiting for grid to become available...' 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr)  ! XXX --> synch with XXX above
     if (writePhasePops) then  ! then file should should be avialable
        write(tempChar,'(i3.3)') iPhase
@@ -1810,10 +1710,10 @@ program torus
         call stripDustAway(grid%octreeRoot, 1.d-20, 4.d4)
      endif
 
-        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-             "etacont_zoom.ps/vcps", .true., .false.,  &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
-             show_value_3rd_dim, boxfac=zoomfactor)
+     call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
+          "etacont_zoom.ps/vcps", .true., .false.,  &
+          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
+          show_value_3rd_dim, boxfac=zoomfactor)
 
 
      if (writeoutput) write(*,*) " "
@@ -2463,21 +2363,21 @@ program torus
 #ifdef MPI
   !====================================================================================
   ! Splitting the innerPhoton loop for multiple processors.
-  if (my_rank == 0) then
+  if (myRankGlobal == 0) then
      print *, ' '
-     print *, 'innerPhotonLoop computed by ', n_proc-1, ' processors.'
+     print *, 'innerPhotonLoop computed by ', nThreadsGlobal-1, ' processors.'
      print *, ' '
   endif
   ! No need to use some processors if there are more processors
   ! than the number of photons....
-  if (my_rank > nPhotons/nOuterLoop - 1)  goto 666
+  if (myRankGlobal > nPhotons/nOuterLoop - 1)  goto 666
     
-  if (my_rank == 0) then
+  if (myRankGlobal == 0) then
      ! we will use an array to store the rank of the process
      !   which will calculate each photon
      allocate(photonBelongsRank(nPhotons/nOuterLoop))
     
-     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=40,tag=tag,&
+     call mpiBlockHandout(nThreadsGlobal,photonBelongsRank,blockDivFactor=40,tag=tag,&
                           setDebug=.false.)
      deallocate(photonBelongsRank) ! we don't really need this here. 
   end if
@@ -2485,9 +2385,9 @@ program torus
 
     
     
-  if (my_rank /= 0) then
+  if (myRankGlobal /= 0) then
     mpiBlockLoop: do  
-      call mpiGetBlock(my_rank,iInner_beg, iInner_end,rankComplete,tag,setDebug=.false.)  
+      call mpiGetBlock(myRankGlobal,iInner_beg, iInner_end,rankComplete,tag,setDebug=.false.)  
       if (rankComplete) exit mpiBlockLoop  
     
 #endif
@@ -2498,7 +2398,7 @@ program torus
         innerPhotonLoop: do i = iInner_beg, iInner_end
 
 #ifdef MPI
- !  if (MOD(i,n_proc) /= my_rank) cycle innerPhotonLoop
+ !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle innerPhotonLoop
 #endif
            ! The following six arrays must be allocated and deallocated for each 
            ! innerPhotonLoop to make the program work with OpenMP! (RK)
@@ -2510,7 +2410,7 @@ program torus
            allocate(contTau(1:maxTau,1:nLambda)) 
            allocate(contWeightArray(1:nLambda))
 #ifdef MPI
- !  if (MOD(i,n_proc) /= my_rank) goto 999
+ !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) goto 999
 #endif
 
            ! continuum or line photon?
@@ -3350,8 +3250,8 @@ program torus
 #ifdef MPI
  if (.not.blockHandout) exit mpiblockloop        
     end do mpiBlockLoop  
-  end if ! (my_rank /= 0)
-     write (*,'(A,I3,A,I3,A,I3,A)') 'Process ',my_rank, &
+  end if ! (myRankGlobal /= 0)
+     write (*,'(A,I3,A,I3,A,I3,A)') 'Process ',myRankGlobal, &
                       ' waiting to sync spectra... (',iOuterLoop,'/',nOuterLoop,')' 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
@@ -3622,7 +3522,7 @@ endif ! (doPvimage)
      end if
 
 #ifdef MPI
- if (my_rank /= 0 .and. .not.noPhaseUpdate) call freeGrid(grid)
+ if (myRankGlobal /= 0 .and. .not.noPhaseUpdate) call freeGrid(grid)
 #endif
   call torus_mpi_barrier('waiting inside end of phase loop...')
   enddo phaseLoop
@@ -3641,10 +3541,93 @@ if (.not. ll_sph) call MPI_FINALIZE(ierr)
 #endif
 
 CONTAINS
+!-----------------------------------------------------------------------------------------------------------------------
+
+  subroutine set_up_lambda_array
+
+    real :: deltaLambda
+    real :: loglamStart, logLamEnd
+
+    if (lamLinear) then
+       deltaLambda = (lamEnd - lamStart) / real(nLambda)
+     
+       xArray(1) = lamStart + deltaLambda/2.
+       yArray(1)%i = 0.
+       yArray(1)%q = 0.
+       yArray(1)%u = 0.
+       yArray(1)%v = 0.
+       do i = 2, nLambda
+          xArray(i) = xArray(i-1) + deltaLambda
+          yArray(i)%i = 0.
+          yArray(i)%q = 0.
+          yArray(i)%u = 0.
+          yArray(i)%v = 0.
+       enddo
+
+    else
+
+       logLamStart = log10(lamStart)
+       logLamEnd   = log10(lamEnd)
+       
+       do i = 1, nLambda
+          xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+          xArray(i) = 10.**xArray(i)
+          yArray(i) = STOKESVECTOR(0.,0.,0.,0.)
+       enddo
+
+!     if (photoionization) then
+!        xArray(1) = lamStart
+!        xArray(2) = lamEnd
+!        nCurrent = 2
+!        call refineLambdaArray(xArray, nCurrent, grid)
+!        nt = nLambda - nCurrent
+!        do i = 1, nt
+!           fac = logLamStart + real(i)/real(nt+1)*(logLamEnd - logLamStart)
+!           fac = 10.**fac
+!           nCurrent=nCurrent + 1
+!           xArray(nCurrent) = fac
+!           call sort(nCurrent, xArray)
+!        enddo
+!!        do i = 1, nlambda
+!!           write(*,*) xArray(i)
+!!        enddo
+!     endif
+
+       if (mie) then
+          if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then
+             call locate(xArray, nLambda, lambdaTau, i)
+             t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
+             if (t1 > 0.5) then
+                write(message,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
+                call writeInfo(message, TRIVIAL)
+                xArray(i+1) = lambdaTau
+             else
+                write(message,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
+                call writeInfo(message, TRIVIAL)
+                xArray(i) = lambdaTau
+             endif
+          endif
+       endif
+
+    endif
+
+    !
+    ! Copying the wavelength array to the grid
+    do i = 1, nLambda
+       grid%lamArray(i) = xArray(i)
+    enddo
+    grid%nLambda = nLambda
+
+  end subroutine set_up_lambda_array
 
 !-----------------------------------------------------------------------------------------------------------------------
 
   subroutine windtest
+
+    integer, parameter :: nrGrid = 1000
+    real :: rGrid(nrGrid), drGrid(nrgrid)
+    real,dimension(statEqMAxLevels) :: meanDepart ! for testing
+    real :: treal
 
     do i = 1, 1000
        r = log10(grid%rInner) + (log10(grid%rOuter)-log10(grid%rInner))* real(i-1)/999.
@@ -3692,6 +3675,11 @@ CONTAINS
 !-----------------------------------------------------------------------------------------------------------------------
 
   subroutine testamr
+
+    real :: meant, meaneta
+    integer, parameter :: nrGrid = 1000
+    real :: rGrid(nrGrid), drGrid(nrgrid)
+    real :: treal
 
     do i = 1, 1000
        meant = 0.
@@ -3886,6 +3874,8 @@ CONTAINS
 !-----------------------------------------------------------------------------------------------------------------------
 
   subroutine amr_grid_setup
+
+    real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
 
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
 
@@ -4655,6 +4645,10 @@ end subroutine do_amr_plots
 !-----------------------------------------------------------------------------------------------------------------------
 subroutine set_up_sources
 
+  integer      :: nstar
+  real(double) :: d1, d2, massRatio
+  real         :: tmp
+
   ! set up the sources
   nSource = 0
 
@@ -4666,8 +4660,7 @@ subroutine set_up_sources
        source(1)%radius = grid%rCore
        source(1)%teff = teff
        source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamstart), dble(lamEnd),nLambda)
-!       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
+       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamstart), dble(lamEnd), nLambda)
        call normalizedSpectrum(source(1)%spectrum)
 
     case("magstream")
@@ -4758,8 +4751,7 @@ subroutine set_up_sources
        source(1)%radius = 18.67 * rSol / 1.e10
        source(1)%position = VECTOR(0.,0.,0.)
        source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
-       if (writeoutput) &
-            write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
+       if (writeoutput) write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
        fac = 1.e8*cspeed/5.d16
        call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
        call normalizedSpectrum(source(1)%spectrum)

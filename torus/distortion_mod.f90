@@ -68,7 +68,7 @@ contains
     integer :: iSpiral                            
     real, allocatable :: facGrid(:,:,:)           ! density contrast grid
     real :: x, w
-    integer :: i1,i2, m
+    integer :: i1,i2
     real :: muStart,muEnd                    ! latitudinal extent of spiral
     real :: thickness                        ! thickness of arm
     real :: r1

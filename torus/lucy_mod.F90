@@ -305,7 +305,7 @@ contains
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
     use input_variables, only : rinner, router, variableDustSublimation, zoomFactor, blockhandout
-    use input_variables, only : smoothFactor, doSmoothGrid, lambdasmooth, plot_maps
+    use input_variables, only : smoothFactor, lambdasmooth, plot_maps
     implicit none
 #ifdef MPI
  include 'mpif.h'
@@ -387,7 +387,7 @@ contains
     logical :: photonInDiffusionZone
     logical :: doingDustSublimation
     real :: diffusionZoneTemp, temp
-    logical :: outputFlag, directPhoton, smoothconverged
+    logical :: outputFlag, directPhoton !, smoothconverged
     integer :: nCellsInDiffusion
     integer :: omp_get_num_threads, omp_get_thread_num
 
@@ -1533,7 +1533,7 @@ contains
     ! [kelvins]  the maximum fractional change of temperature
     real(oct), intent(inout) :: dT_over_T_max 
 
-    real :: kabs
+!    real :: kabs
     real(double) :: kabsArray(1000)
     real :: lamArray(*)
     integer :: nFreq
@@ -1872,7 +1872,6 @@ contains
    real(double) ::  compZ,currentZ
    real(double) :: distToZBoundary, distToXboundary
    real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
-   integer :: i,j
    logical :: ok
    type(OCTALVECTOR) :: xHat, zHAt
 

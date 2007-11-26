@@ -311,7 +311,7 @@ contains
     integer :: i, j, k, nc, na, nw, nray, j_beg, j_end
     logical :: hitcore                ! has the photon hit the core    
     integer :: error                  ! error code returned
-    real(double) :: IC_hot, IC_normal, fillfactor, taccretion, TTauriMdotSurface
+    real(double) :: IC_hot, IC_normal, taccretion !, fillfactor, TTauriMdotSurface
     real :: lambda_j
     logical :: continuum
     real(double), allocatable :: flux_map(:,:)      ! Flux map  array dimension= nlam x #of integration points
@@ -872,7 +872,7 @@ contains
     
     integer :: i , j , k
     type(OCTALVECTOR)                  :: q             ! 
-    real(double)              :: r, phi, drad, rp, rm
+    real(double)              :: r, phi, drad, rp
     real(double)              :: log_r, log_R_max, log_R_min
     real(oct)              :: x, y, z
     real(double) :: mu, psi
@@ -1044,7 +1044,7 @@ contains
     real ::  dtau_max
     logical :: fromDisc
     real(double) :: V_th ! thermal velocity
-    real(double) :: r    ! random number
+!    real(double) :: r    ! random number
     !-------------------------------------------------------------------------
     ! WORK ARRAYS
     logical, save :: first_time = .true.
