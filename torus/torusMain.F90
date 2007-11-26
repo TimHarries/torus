@@ -549,10 +549,12 @@ program torus
      call calcPlanetMass
      write (*,*) "mPlanet set to ", mPlanet
   end if
-  if (geometry == "molebench") then
+
+  if (molecular .and. geometry == "molebench") then
      call readbenchmarkMolecule(co, "hco_benchmark.dat")
 !     call readMolecule(co, "hco_plus.mol")
   endif
+
   if (geometry == "molefil") then
 
      call readMolecule(co, "c18o.dat")
@@ -921,8 +923,11 @@ program torus
   if (gridUsesAMR) then  !========================================
   !===============================================================
 
-     if (molecular.and.readlucy) then
-        call readAMRgrid(lucyfilenamein,.false.,grid)
+
+! below is really yucky code - please change me
+
+     if (molecular.and.readmol) then
+        call readAMRgrid(molfilenamein,.false.,grid)
         goto 667
      endif
 
@@ -1119,13 +1124,13 @@ program torus
         stop
      endif
 
-     if (molecular) then
-        if (.not.readlucy) call  molecularLoop(grid, co)
-        call calculateMoleculeSpectrum(grid, co)
-        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
-        if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
-        stop
-     endif
+!     if (molecular) then
+!        if (.not.readlucy) call  molecularLoop(grid, co)
+!        call calculateMoleculeSpectrum(grid, co)
+!        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+!        if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
+!        stop
+!     endif
 
 
 #ifdef MPI
@@ -2156,9 +2161,19 @@ program torus
            imagesize = objectdistance * (imageSizeInArcsec / 3600.) * degtorad / 1.e10
         endif
 
-        !
+
+     if (molecular) then
+        if (writemol) call  molecularLoop(grid, co)
+        call calculateMoleculeSpectrum(grid, co)
+        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+        if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
+        stop
+     endif
+
+
         ! Change the image size accoring to the scale 
         imageSize = imageSize * imagescale
+
 
 
         ! Initializing the images ...

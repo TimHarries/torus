@@ -51,7 +51,7 @@ ifeq ($(SYSTEM), intelmac)
 endif
 
 ifeq ($(SYSTEM), davesmac)
-    F95COMP  = ifort
+    F95COMP  = ifort -L/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Libraries -I/Library/Frameworks/Intel_MKL.framework/Versions/10.0.012/Headers
     F77COMP  = ifort
     F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG = -g -no-ipo -debug full# -fbounds-check -ftrace=full                                      
@@ -65,7 +65,7 @@ ifeq ($(SYSTEM), davesmac)
     PGLIBS   = -lgfortran -L/usr/local -lpgplot -L/usr/X11R6/lib -lX11 -L/scisoft/i386/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
 #   PGLIBS   = -L/usr/local/lib -lpgplot -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
 #   PGLIBS   = -L/usr/local/lib /usr/local/lib/libpgplot.a -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-    CFITSIOLIBS = -L/star/lib/ -lcfitsio
+    CFITSIOLIBS = -L/star/lib/ -lcfitsio -lmkl_core -lmkl_intel
 #    PGLIBS   = -L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
 #    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 

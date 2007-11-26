@@ -2981,10 +2981,10 @@ CONTAINS
                phi2 = atan2(centre%y, centre%x)
                if (phi2 < 0.d0) phi2 = phi2 + twoPi
 
-               inc = resultOctal%subcellSize / 2.0               
+               inc = resultOctal%subcellSize * 0.5_oc               
 
                t1 = MAX(0.0_oc, (r1 - (r2 - inc)) / resultOctal%subcellSize)
-               t2 = (phi1 - (phi2 - resultOctal%dPhi/2.d0))/(resultOctal%dPhi)
+               t2 = (phi1 - (phi2 - resultOctal%dPhi*0.5d0))/(resultOctal%dPhi)
                t3 = MAX(0.0_oc, (point_local%z - (centre%z - inc)) / resultOctal%subcellSize)
 
                select case(subcell)
@@ -5127,8 +5127,8 @@ IF ( .NOT. gridConverged ) RETURN
       endif
       rd = modulus(cellCentre)
       call locate(rgrid, nr, rd, i)
-!     if (thisOctal%subcellSize > 4.*(rgrid(i+1)-rgrid(i))) split = .true.
-      if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
+     if (thisOctal%subcellSize > (rgrid(i+1)-rgrid(i))) split = .true.
+!      if (thisOctal%subcellSize > 0.25 * (rgrid(i+1)-rgrid(i))) split = .true.
       if (rd+0.5d0*thisOctal%subcellSize < rgrid(1)) split = .false.
       if (rd-0.5d0*thisOctal%subcellSize > rgrid(nr)) split = .false.
 

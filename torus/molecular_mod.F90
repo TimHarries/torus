@@ -17,6 +17,8 @@ module molecular_mod
   use nrutil
   use nrtype
   use parallel_mod
+!  use mkl_vsl_type
+!  use mkl_vsl
 
   implicit none
 
@@ -629,6 +631,76 @@ end subroutine LTEpops
     deallocate(newFracChangePerLevel)
   end subroutine swapPops
 
+! this subroutine calculates the maximum fractional change in the first 6 energy levels
+  recursive subroutine improvelevels(thisOctal, convergencearray, grand_iter)
+
+    use input_variables, only : tolerance
+
+
+    integer :: grand_iter
+    type(GRIDTYPE) :: grid
+    type(MOLECULETYPE) :: thisMolecule
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i, it
+    real(double) :: convergenceArray(:,:,:)
+    real(double), allocatable :: Narray(:,:,:)
+
+    integer :: a
+    integer,save :: l,m,iter = 0
+    integer :: nlevels, nVoxels
+    
+    nVoxels = size(convergencearray,2)
+    nlevels = size(convergencearray,3)
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call improvelevels(thisOctal, convergencearray, grand_iter)
+                exit
+             end if
+          end do
+       else          
+
+          l = 1 + mod(l,nVoxels)
+
+!          if(nrays .gt. 10000) then 
+          if(l .eq. 1) iter = iter + 1
+
+             allocate(Narray(iter,iter,nlevels))
+
+             do i = iter,1,-1
+                Narray(1,i,:) = convergenceArray(grand_iter-iter+i,l,:)
+             enddo
+
+             m = iter
+
+             do while(m .ge. 2)
+                a = a + 1
+                
+                do it=1,m-1
+                   Narray(a+1,it,:) = (dble(4**(a))*Narray(a,it+1,:) - Narray(a,it,:)) / (dble(4**(a)-1))
+                enddo
+                
+                m = m-1
+             enddo
+
+!          endif
+          
+          if(writeoutput) write(*,*) thisOctal%molecularlevel(subcell,1), Narray(iter-1,1,1)
+          thisOctal%molecularlevel(subcell,:) = Narray(iter-1,1,:)
+
+          deallocate(Narray)
+
+       endif
+    enddo
+       
+  end subroutine improvelevels
+
+
 ! This subroutine allocates memory to the octal for storing molecular level data *if* none currently exists then
 ! stores the non-zero local emission coefficient   
   recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule, restart)
@@ -825,17 +897,12 @@ end subroutine LTEpops
 
 ! Equation 9 - calculating the doppler broadening due to a turbulent velocity field (b - constant locally)
 ! NB b here = b*nu0/c in the paper
-  function phiProf(dv, b) result (phi)
+pure function phiProf(dv, b) result (phi)
     real(double) , intent(in):: dv, b
     real(double) :: fac, phi
 
     fac = (dv / b)**2
     phi = exp(-fac) / (b * sqrtPi)
-
-
-!    write(*,*) dv, b, fac, exp(-fac)
-!    if(phi .eq. 0.d0) stop
-!    if (phi .eq. 0.d0) phi = tiny(phi)  
 
   end function phiProf
 
@@ -881,6 +948,7 @@ end subroutine LTEpops
     integer,save :: transArray(50,2)
     real(double) :: balance(50), spontaneous(50) 
     real(double) :: nMol
+    real(double) :: z,t
 
     nTrans = thisMolecule%nTrans
 
@@ -915,8 +983,24 @@ end subroutine LTEpops
        deltaV = 4.3 * thisOctal%microturb(subcell) * (r1(3) - 0.5d0) ! random frequency near line spectru$
     else
        call random_number(r)
+!       r = gasdev() + 0.5
        direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
        deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
+
+!99     call random_number(r)
+!       r = 4.3d0 * (r - 0.5d0)
+!       t = 1.050 - exp(-(r**2))
+       
+!       call random_number(z)
+
+!       write(*,*) z,t,r
+
+!       if(z .gt. t) then
+!          goto 99
+!       else
+!          deltaV = thisOctal%microturb(subcell) * r  ! random frequency near line spectrum peak. 
+!       endif
+
     endif
 
     deltaV = deltaV + (rayVel .dot. direction) ! transform to take account of grid velocity
@@ -1152,7 +1236,7 @@ end subroutine LTEpops
     character(len=14) :: resultfile
 
     rinner = 1.e6
-    router  = 4.6e7
+    router  = 4.5999e7
 
 !    rinner = 1.
 !    router = 1.1e6
@@ -1167,7 +1251,8 @@ end subroutine LTEpops
        pops = 0.d0
        jnu = 0.d0
        do j = 1 , nr
-          call random_number(ang)
+!          call random_number(ang)
+          ang = (j - 1.) / nr
           ang = ang * pi
           z = r*cos(ang)
           x = r*sin(ang)
@@ -1175,11 +1260,11 @@ end subroutine LTEpops
           thisOctal => grid%octreeroot
           call findSubcellLocal(posVec, thisOctal,subcell) 
           pops = pops + thisOctal%molecularLevel(subcell,1:10) ! interested in first 10 levels
-          jnu = jnu + thisOctal%jnu(subcell,1) 
+!          jnu = jnu + thisOctal%jnu(subcell,1) 
        enddo
        pops = pops / real(nr) ! normalised level population at the 20 random positions 
-       jnu = jnu / real(nr) ! normalised emission coefficient
-       write(31,*) real(r*1.d10), real(pops(1:6)),jnu ! real-time check that everything is fine
+!       jnu = jnu / real(nr) ! normalised emission coefficient
+       write(31,'(es11.5e2,4x,7(es12.6e2,tr2))') real(r*1.d10), real(pops(1:7)) ! real-time check that everything is fine
     enddo
     close(31)
   end subroutine dumpResults
@@ -1201,7 +1286,7 @@ end subroutine LTEpops
     integer :: nRay
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     type(OCTAL), pointer :: thisOctal
-    integer, parameter :: maxIter = 100, maxRay = 4100000
+    integer, parameter :: maxIter = 100, maxRay = 41000000
     logical :: popsConverged, gridConverged, gridConvergedTest
     character(len=200) :: message
     integer :: iRay, iTrans, iter,i, grand_iter 
@@ -1243,6 +1328,12 @@ end subroutine LTEpops
         integer :: ntrans
 
         real :: tol
+
+        real(double) :: r,rarray(4100000),sarray(4100000),tarray(4100000),phiprofval,deltav,dv
+        real :: uarray(4100000)
+!        type(VSL_STREAM_STATE) :: stream
+        integer :: status
+
 ! blockhandout must be off for fixed ray case, otherwise setting the
 ! seed is not enough to ensure the same directions are done for
 ! each cell every iteration
@@ -1260,7 +1351,7 @@ end subroutine LTEpops
 
 ! Write Column headings for file containing level populations and convergence data
 
-18   format(a,tr3,8(a,tr5),a,5(tr1,a))
+18   format(a,tr3,8(a,tr5),a,6(tr1,a))
      open(138,file="fracChanges.dat",status="unknown",form="formatted")
      write(138,18) "nRays","J=0","J=1","J=2","J=3","J=4","J=5","J=6","J=7","Fixed","1% Conv","2.5% Conv","5% Conv","Max","Avg"
      close(138)
@@ -1392,6 +1483,59 @@ end subroutine LTEpops
 
     grand_iter = 0
 
+
+!---------------------
+!TESTING!
+!    write(*,*) "PHIPROF TEST"
+!    status = vslnewstream(stream, VSL_BRNG_MCG31, 1 )
+
+!    call tune(6, 'gaussRANDs')  ! start a stopwatchtune
+!    status = vsrnggaussian(VSL_METHOD_SGAUSSIAN_ICDF, stream, 4100000, uarray, 0., 1.)
+!    call tune(6, 'gaussRANDs')  ! stop a stopwatchtune
+
+!    call tune(6, 'uniformRAND')  ! start a stopwatchtune
+!    status = vsrnguniform(VSL_METHOD_SUNIFORM_STD, stream, 4100000, uarray, 0., 1.)
+!    call tune(6, 'uniformRAND')  ! stop a stopwatchtune
+
+!    call tune(6, 'gaussRAND')  ! start a stopwatchtune
+!    status = vdrnggaussian(VSL_METHOD_DGAUSSIAN_ICDF, stream, 4100000, rarray, 0.d0, 1.d0)
+!    call tune(6, 'gaussRAND')  ! stop a stopwatchtune
+
+!    call tune(6, 'gaussRAND')  ! start a stopwatchtune
+!    status = vdrnggaussian(VSL_METHOD_DGAUSSIAN_BOXMULLER, stream, 4100000, rarray, 0.d0, 1.d0)
+!    call tune(6, 'gaussRAND')  ! stop a stopwatchtune
+
+
+!    call tune(6, 'RAND')  ! start a stopwatchtune
+!    do i = 1, 4100000
+!       call random_number(r)
+!       sarray(i) = r
+!    enddo
+!    call tune(6, 'RAND')  ! stop a stopwatchtune
+
+!    call tune(6, 'numrecRAND')  ! stop a stopwatchtune
+!    do i = 1, 4100000
+!       tarray(i) = gasdev()
+!    enddo
+!    call tune(6, 'numrecRAND')  ! stop a stopwatchtune
+
+!    open(7,file="phiprofs.dat",status="unknown",form="formatted")
+!    do i = 1, 10000
+
+
+!       deltaV = tarray(i)
+!       deltaV = 5e-7 * deltaV
+!       dv = -1.d0 * deltaV
+!       phiProfval = phiProf(dv, 5d-7)
+ 
+!       write(7,*) dv,phiprofval
+      
+!    enddo
+
+!close(7)
+!stop
+!---------------------
+
     do iStage = 1, 2 ! fixed rays to reduce variance between cells or 2) random rays to ensure sufficient spatial sampling
 
        if (iStage == 1) then
@@ -1408,14 +1552,14 @@ end subroutine LTEpops
        do while (.not.gridConverged)
 
         grand_iter = grand_iter + 1
+        
+	if(iStage .eq. 2 .and. nRay .gt. 10000) call improvelevels(grid%octreeroot,convergencearray,grand_iter)
 
         if(writeoutput) then 
            write(*,*) "Iteration ",grand_iter
            write(message,*) "Done ",nray," rays"
+           call tune(6, message)  ! start a stopwatch
         endif
-
-        call tune(6, message)  ! start a stopwatch
-
 
         if(Writeoutput .and. plotlevels) then
 
@@ -1510,9 +1654,9 @@ end subroutine LTEpops
              do subcell = 1, thisOctal%maxChildren
 
                 if (.not.thisOctal%hasChild(subcell)) then
-                   if(fixedrays) call sobseq(r1,-1)                      
+!                   if(fixedrays) call sobseq(r1,-1)                      
                    do iRay = 1, nRay
-!                      itransdone = .false.
+                      itransdone = .false.
                       call getRay(grid, thisOctal, subcell, position, direction, &
                            ds(iRay), phi(iRay), i0(1:thisMolecule%nTrans,iRay), &
                            thisMolecule,fixedrays,itransdone) ! does the hard work - populates i0 etc.
@@ -1540,7 +1684,7 @@ end subroutine LTEpops
 
                       oldpops = thisOctal%newmolecularLevel(subcell,1:thisMolecule%nLevels) ! retain old pops before calculating new one
 
-                      do iTrans = 1, thisMolecule%nTrans/2
+                      do iTrans = 1, thisMolecule%nTrans!/2
                          
                          if(.not. itransdone(itrans)) then
                             call calculateJbar(grid, thisOctal, subcell, thisMolecule, nRay, ds(1:nRay), &
@@ -1597,71 +1741,70 @@ end subroutine LTEpops
            MPI_SUM,MPI_COMM_WORLD,ierr)
        tArrayd = tempArrayd
        call unpackMoleLevel(octalArray, nVoxels, tArrayd, octalsBelongRank, i)
-     enddo
+    enddo
      deallocate(tArrayd, tempArrayd)
 
-       if(my_rank == 0) write(*,*) "Done updating"
+     if(my_rank == 0) write(*,*) "Done updating"
 #endif
 
 ! Calculate convergence towards solution (per level)
-          nTrans = thisMolecule%nTrans / 2 
-          allocate(maxFracChangePerLevel(nTrans))
-          allocate(ConvergenceCounter(4,nTrans+1))
-          maxFracChangePerLevel = -1.d30 ! negative to ensure comparison first time round
+     nTrans = thisMolecule%nTrans !/ 2 
+     allocate(maxFracChangePerLevel(nTrans))
+     allocate(ConvergenceCounter(4,nTrans+1))
+     maxFracChangePerLevel = -1.d30 ! negative to ensure comparison first time round
           
-          convergenceCounter = 0
-          avgFracChange = 0.d0
+     convergenceCounter = 0
+     avgFracChange = 0.d0
 
-          call swapPops(grid%octreeRoot, maxFracChangePerLevel, avgFracChange, &
-		        convergenceCounter, convergencearray, grand_iter, nVoxels, iTransdone, fixedrays) ! compares level populations between this and previous levels 
+     call swapPops(grid%octreeRoot, maxFracChangePerLevel, avgFracChange, &
+          convergenceCounter, convergencearray, grand_iter, nVoxels, iTransdone, fixedrays) ! compares level populations between this and previous levels 
 
-          if(grand_iter .eq. 100) then
-             if(writeoutput) write(*,*) "convergence",convergencearray(1:3,45,1:6)
-             stop
-          endif
-          
-          maxavgFracChange = maxval(avgFracChange(:,1))
-          maxRMSFracChange = maxval(avgFracChange(:,2))
-          maxavgtrans = maxloc(avgFracChange(:,1)) - 1
-          maxRMStrans = maxloc(avgFracChange(:,2)) - 1
+     if(grand_iter .eq. 100) then
+        if(writeoutput) write(*,*) "convergence",convergencearray(1:3,45,1:6)
+        stop
+     endif
+     
+     maxavgFracChange = maxval(avgFracChange(:,1))
+     maxRMSFracChange = maxval(avgFracChange(:,2))
+     maxavgtrans = maxloc(avgFracChange(:,1)) - 1
+     maxRMStrans = maxloc(avgFracChange(:,2)) - 1
 
-          maxFracChange = MAXVAL(maxFracChangePerLevel(1:6)) ! Largest change of any level < 6 in any voxel
-
-          if(writeoutput) then
-             write(message,'(a,x,f9.5,x,a,x,f5.3,x,a,2x,l,x,a,x,i6,x)') "Maximum fractional change this iteration ", &
+     maxFracChange = MAXVAL(maxFracChangePerLevel(1:6)) ! Largest change of any level < 6 in any voxel
+     
+     if(writeoutput) then
+        write(message,'(a,x,f9.5,x,a,x,f5.3,x,a,2x,l,x,a,x,i6,x)') "Maximum fractional change this iteration ", &
                                                                          maxFracChange,"tolerance",tolerance , &
-                  "fixed rays",fixedrays,"nray",nray
-             write(*,'(a,f9.5,a,i1)') "  Average fractional change this iteration  ", &
-                  maxavgFracChange/real(nVoxels)," in level ",maxavgTrans
-             write(*,'(a,f9.5,a,i1)') "  RMS fractional change this iteration      ", &
-                  sqrt(maxRMSFracChange/real(nVoxels))," in level ",maxRMSTrans
-             write(*,'(a,f9.5)') "  Std Dev                                   ", &
-                  sqrt(maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2)
+                                                                         "fixed rays",fixedrays,"nray",nray
+        write(*,'(a,f9.5,a,i1)') "  Average fractional change this iteration  ", &
+             maxavgFracChange/real(nVoxels)," in level ",maxavgTrans
+        write(*,'(a,f9.5,a,i1)') "  RMS fractional change this iteration      ", &
+             sqrt(maxRMSFracChange/real(nVoxels))," in level ",maxRMSTrans
+        write(*,'(a,f9.5)') "  Std Dev                                   ", &
+             sqrt(maxRMSFracChange/real(nVoxels)-(maxavgFracChange/real(nVoxels))**2)
+        
+        call writeInfo(message,FORINFO)
+        
+        do i=3,1,-1
+           if(i .lt. 3) write(message,'(a,f5.3,a, 13(f5.3,2x))') "Individual levels converged @ ",tolerance * i," | ",&
+                real(convergenceCounter(i,1:12))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
+           if(i .eq. 3) write(message,'(a,f5.3,a, 13(f5.3,2x))') "Individual levels converged @ ",tolerance * (i+2)," | ", &
+                real(convergenceCounter(i,1:12))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
+           call writeInfo(message,FORINFO)         
+        enddo
 
-             call writeInfo(message,FORINFO)
-
-          do i=3,1,-1
-             if(i .lt. 3) write(message,'(a,f5.3,a, 13(f5.3,2x))') "Individual levels converged @ ",tolerance * i," | ",&
-                   real(convergenceCounter(i,1:12))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
-             if(i .eq. 3) write(message,'(a,f5.3,a, 13(f5.3,2x))') "Individual levels converged @ ",tolerance * (i+2)," | ", &
-                   real(convergenceCounter(i,1:12))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
-             call writeInfo(message,FORINFO)         
-          enddo
-
-          if(writeoutput) write(*,*) ""
-          write(message,'(a,f5.3,a, 13(f5.3,2x))') "Individual levels converged @ ",tolerance * 0.5," | ", &
-                   real(convergenceCounter(4,1:12))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
-          call writeInfo(message,FORINFO)
-
-         
-          open(138,file="fracChanges.dat",position="append",status="unknown")
-19        format(i6,tr3,8(f7.5,1x),3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
-          write(138,19) nray, maxFracChangePerLevel(1:8), fixedrays, real(convergenceCounter(1:3,ntrans+1))/real(nVoxels),  &
-                        maxFracChange, maxavgFracChange/real(nVoxels)
+        write(*,*) ""
+        write(message,'(a,f5.3,a, 13(f5.3,2x))') "Individual levels converged @ ",tolerance * 0.5," | ", &
+             real(convergenceCounter(4,1:12))/real(nVoxels) ! Fraction of first 8 levels converged at 1,2,5 * tolerance respectively
+        call writeInfo(message,FORINFO)
+        
+        open(138,file="fracChanges.dat",position="append",status="unknown")
+19      format(i6,tr3,8(f7.5,1x),3x,l1,tr3,3(f5.3,tr3),f7.5,tr3,f7.5)
+        write(138,19) nray, maxFracChangePerLevel(1:8), fixedrays, real(convergenceCounter(1:3,ntrans+1))/real(nVoxels),  &
+             maxFracChange, maxavgFracChange/real(nVoxels)
           
-          close(138)
+        close(138)
 
-          endif
+     endif
 
 ! Write interesting things to a file ^
 
@@ -1672,23 +1815,25 @@ end subroutine LTEpops
 !             endif
 !          enddo
 
-          do i = 10, ntrans
-             if(real(convergenceCounter(4, i))/real(nVoxels) .gt. 0.9) then 
-		itransdone(i) = .true.
-                if(writeoutput ) write(*,*) "Skipping level",i
-             endif
-          enddo
+! LEVEL SKIPPING
 
-          deallocate(maxFracChangePerLevel)
-          deallocate(ConvergenceCounter)
+!       do i = 10, ntrans
+!          if(real(convergenceCounter(4, i))/real(nVoxels) .gt. 0.9) then 
+!             itransdone(i) = .true.
+!             if(writeoutput ) write(*,*) "Skipping level",i
+!          endif
+!       enddo
+
+       deallocate(maxFracChangePerLevel)
+       deallocate(ConvergenceCounter)
 
 ! If you think it's converged then test with the same number of rays to make sure
 
-          if(fixedrays) then 
-             tol = tolerance * 0.5
-          else
-             tol = tolerance
-          endif
+       if(fixedrays) then 
+          tol = tolerance * 0.5
+       else
+          tol = tolerance
+       endif
 
           if(sqrt(maxRMSFracChange/real(nVoxels)) < tol) then
              if (gridConvergedTest) gridConverged = .true.
@@ -1698,9 +1843,8 @@ end subroutine LTEpops
              gridConverged = .false.
           endif
          
-          if (myRankIsZero) &
-               call writeAmrGrid("molecular_tmp.grid",.false.,grid)
           if (myRankIsZero) then
+             call writeAmrGrid("molecular_tmp.grid",.false.,grid)
              write(*,*) "Dumping results"
              if(grid%geometry .eq. 'molebench') call dumpresults(grid, thisMolecule, nRay) ! find radial pops on final grid
           endif
@@ -1710,8 +1854,10 @@ end subroutine LTEpops
 #endif
           deallocate(ds, phi, i0, tau)
 
-          write(message,*) "Done ",nray," rays"
-          call tune(6, message)  ! start a stopwatch
+          if(writeoutput) then
+             write(message,*) "Done ",nray," rays"
+             call tune(6, message)  ! start a stopwatch
+          endif
 
           if (.not.gridConvergedTest) then
              if (.not.gridConverged) then               
@@ -1921,23 +2067,33 @@ end subroutine LTEpops
     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
     real(double) :: alphanu(2), jnu, snu
     real(double) :: alpha
-    integer :: iLower , iUpper
+    integer, save :: iLower , iUpper
     real(double) :: dv, deltaV
     integer :: i, icount
     real(double) :: distArray(200), tval
     integer :: nTau
     real(double) ::  OneOvernTauMinusOne
-    real(double) :: nLower, nUpper
+    real(double) :: nLower, nUpper, balance
     real(double) :: dTau, etaline, tau, kappaAbs
+    real(double),save :: BnuBckGrnd
 
     real(double) :: dvAcrossCell, phiProfVal
     real:: lambda
     integer :: ilambda
 
+    logical,save :: firsttime = .true.
+
+    if(firsttime) then
+       BnuBckGrnd = Bnu(thisMolecule%transfreq(itrans), Tcbr)
+       iUpper = thisMolecule%iTransUpper(iTrans)
+       iLower = thisMolecule%iTransLower(iTrans)
+       firsttime = .false.
+    endif
+
     usedust = .false.
 
     if(useDust) then
-       lambda = cspeed / thisMolecule%transfreq(iTrans) * 1d8! cm to Angstroms
+       lambda = cspeed / thisMolecule%transfreq(iTrans) * 1d8! cm to Angstroms                                                                                                                                                                                                      
        lambda = lambda * (1.d0 + deltaV)
        call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
     endif
@@ -1951,10 +2107,7 @@ end subroutine LTEpops
        goto 666
     endif
 
-    iUpper = thisMolecule%iTransUpper(iTrans)
-    iLower = thisMolecule%iTransLower(iTrans)
-
-    currentPosition = position + (distToGrid + 5.d-2*grid%halfSmallestSubcell) * direction
+   currentPosition = position + (distToGrid + 5.d-2*grid%halfSmallestSubcell) * direction
 
     i0 = 0.d0
     tau = 0.d0
@@ -1962,105 +2115,95 @@ end subroutine LTEpops
 
     thisOctal => grid%octreeRoot
     icount = 0
+
     do while(inOctal(grid%octreeRoot, currentPosition))
-       icount = icount + 1 
+       icount = icount + 1
 
        call findSubcelllocal(currentPosition, thisOctal, subcell)
        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
 
-       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+       nLower = thisOctal%molecularLevel(subcell,iLower) * thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+       nUpper = thisOctal%molecularLevel(subcell,iUpper) * thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+       balance = (nLower * thisMolecule%einsteinBlu(iTrans) - nUpper * thisMolecule%einsteinBul(iTrans))
+
+       startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell)
        endPosition = currentPosition + tval * direction
        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
 
        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
 
-       !nTau = min(5, nint(dvAcrossCell*10.d0)) !!! CHECK
-       nTau = min(max(2, nint(dvAcrossCell * 20.d0)),20) ! ensure good resolution / selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
-       !ntau = 10
-       
+       !nTau = min(5, nint(dvAcrossCell*10.d0)) !!! CHECK                                                                                                                                                                                                                           
+       nTau = min(max(5, nint(dvAcrossCell * 20.d0)), 200) ! ensure good resolution / selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)                                                                                                             
+       !ntau = 10                                                                                                                                                                                                                                                                   
+
        distArray(1) = 0.d0
        OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
-!       write(*,*) dvAcrossCell, OneOvernTauMinusOne, startvel, endvel, thisOctal%microturb(subcell)
+!       write(*,*) dvAcrossCell, OneOvernTauMinusOne, startvel, endvel, thisOctal%microturb(subcell)                                                                                                                                                                                
        do i = 2, nTau
 
           distArray(i) = tval * dble(i-1) * OneOvernTauMinusOne
 
           startOctal => thisOctal
           thisPosition = currentPosition + distArray(i)*direction
-          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
-!          thisVel = startVel - (dble((i-1)/(nTau-1))) * (endvel - startvel) ! SPEEDUP 30/8/2007 
+          thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell)
+!          thisVel = startVel - (dble((i-1)/(nTau-1))) * (endvel - startvel) ! SPEEDUP 30/8/2007                                                                                                                                                                                    
           thisVel= thisVel - rayVel
 
-          dv = (thisVel .dot. direction) - deltaV! - DAR 07/03/2007
+          dv = (thisVel .dot. direction) - deltaV! - DAR 07/03/2007                                                                                                                                                                                                                 
 
           phiProfval = phiProf(dv, thisOctal%microturb(subcell))
+          alphanu(1) = (hCgs/fourPi) * phiprofval !& ! thisMolecule%transFreq(iTrans)&                                                                                                                                                                                              
+          !/thisMolecule%transFreq(iTrans)                                                                                                                                                                                                                                          
 
-          alphanu(1) = (hCgs/fourPi) * & ! thisMolecule%transFreq(iTrans)&
-               phiProfval!/thisMolecule%transFreq(iTrans)
-          
-          nLower = thisOctal%molecularLevel(subcell,iLower) * thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-          nUpper = thisOctal%molecularLevel(subcell,iUpper) * thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+          alphanu(1) = alphanu(1) * balance
 
-          alphanu(1) = alphanu(1) * (nLower * thisMolecule%einsteinBlu(iTrans) - &
-               nUpper * thisMolecule%einsteinBul(iTrans))
-
-          if(useDust) then
+          if(usedust) then
              call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
-             alphanu(2) = kappaAbs * 1.d-10 ! * thisOctal%rho(subcell) 
-          else
-             alphanu(2) = 0.d0
+             alphanu(2) = kappaAbs * 1.d-10 ! * thisOctal%rho(subcell)                                                                                                                                                                                                              
           endif
-          
-!          if(abs(deltaV) < 1.d-7 .and. i .gt. 10) write(*,*) "tau gas", alphanu(1) * (distArray(i)-distArray(i-1)) * 1.d10, &
-!               "alphanu gas", alphanu(1)
 
           alpha = alphanu(1) + alphanu(2)
-          dTau = alpha * (distArray(i)-distArray(i-1)) * 1.d10
+          dTau = alpha * distArray(2) * 1.d10
 
-!          if(abs(deltaV) < 1.d-7 .and. i .gt. 10) write(*,*) "tau dust",dtau, "alphanu dust", alphanu(2),"itau",i
-          etaLine = hCgs * thisMolecule%einsteinA(iTrans)! * thisMolecule%transFreq(iTrans)
-          etaLine = etaLine * thisOctal%nh2(subcell) * thisOctal%molAbundance(subcell) * thisOctal%molecularLevel(subcell, iUpper)
+          etaLine = hCgs * thisMolecule%einsteinA(iTrans)! * thisMolecule%transFreq(iTrans)                                                                                                                                                                                         
+          etaLine = etaLine * nUpper !* thisOctal%nh2(subcell) * thisOctal%molAbundance(subcell) * thisOctal%molecularLevel(subcell, iUpper)                                                                                                                                        
 
-          jnu = (etaLine/fourPi) * phiProfVal!/thisMolecule%transFreq(iTrans)
+          if(useDust) then
+            jnu = jnu + alphanu(2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
+          else
+             jnu = (etaLine/fourPi) * phiProfVal!/thisMolecule%transFreq(iTrans)                                                                                                                                                                                                    
+          endif
 
-          if(useDust) jnu = jnu + alphanu(2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
-          
-!          if(.not.amr2d) then 
-!             write(*,*) bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
-!             amr2d = .true. ! spare variable - not real
-!          endif
+!          if(.not.amr2d) then                                                                                                                                                                                                                                                      
+!             write(*,*) bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))                                                                                                                                                                                  
+!             amr2d = .true. ! spare variable - not real                                                                                                                                                                                                                            
+!          endif                                                                                                                                                                                                                                                                    
 
           if (alpha /= 0.d0) then
              snu = jnu/alpha
              i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
           else
              snu = tiny(snu)
-!             i0 = i0
+!             i0 = i0                                                                                                                                                                                                                                                               
           endif
-
           tau = tau + dtau
        enddo
 
-!       if(ntau .gt. 5) then
-!          write(*,*) "killing"
-!          goto 666
-!       endif
-
-       currentPosition = currentPosition + (distArray(ntau)+1.d-6*grid%halfSmallestSubcell) * direction
+       currentPosition = currentPosition + (distArray(ntau)+1.d-3*grid%halfSmallestSubcell) * direction
     enddo
 
-666 continue 
+666 continue
 
-    i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau) ! from far side
+    i0 = i0 + bnuBckGrnd * exp(-tau) ! from far side                                                                                                                                                                                                                                
 
-!    i0 = i0 - bnu(thisMolecule%transFreq(iTrans), Tcbr)
+!    i0 = i0 - bnu(thisMolecule%transFreq(iTrans), Tcbr)                                                                                                                                                                                                                            
 
-!    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)
+!    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)                                                                                                                                                                               
 
-    ! convert to brightness T
+    ! convert to brightness T                                                                                                                                                                                                                                                       
 
-!    i0 = i0 * (cSpeed**2 / (2.d0 * thisMolecule%transFreq(iTrans)**2 * kerg))
+!    i0 = i0 * (cSpeed**2 / (2.d0 * thisMolecule%transFreq(iTrans)**2 * kerg))                                                                                                                                                                                                      
 
   end function intensityAlongRay
 
@@ -3399,7 +3542,7 @@ end subroutine fineGaussianWeighting
 
     real,save :: r1(3) !! quasi random number generators
     logical,save :: firsttime = .true.
-    logical :: quasi = .true.
+    logical :: quasi = .false.
     real(double),save :: BnuBckGrnd(50)
     logical :: itransdone(50)
 
@@ -3429,9 +3572,11 @@ end subroutine fineGaussianWeighting
        direction = specificUnitVector(r1(1),r1(2))
        deltaV = 4.3 * thisOctal%microturb(subcell) * (r1(3) - 0.5d0) ! random frequency near line spectru$
     else
-       call random_number(r)
+!       call random_number(r)
+       r = gasdev() + 0.5
        direction = randomUnitVector() ! Put this line back if you want to go back to pseudorandom
-       deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
+!       deltaV = 4.3 * thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
+       deltaV = thisOctal%microturb(subcell) * (r - 0.5d0) ! random frequency near line spectrum peak. 
     endif
 
     deltaV = deltaV + (rayVel .dot. direction) ! transform to take account of grid velocity
