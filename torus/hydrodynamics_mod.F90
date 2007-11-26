@@ -1012,6 +1012,12 @@ contains
                   thisOctal%phi_i_minus_1(subcell)) / &
                   (thisOctal%x_i_plus_1(subcell) - thisOctal%x_i_minus_1(subcell))
 
+             if (isnan(thisOctal%rhou(subcell))) then
+                write(*,*) "rhou ",thisOctal%rhou(subcell)
+                write(*,*) "dt ",dt
+                write(*,*) "phi ",thisOctal%phi_i_plus_1(subcell), thisOctal%phi_i_minus_1(subcell)
+                write(*,*) "x ",thisOctal%x_i_plus_1(subcell), thisOctal%x_i_minus_1(subcell)
+             endif
 
              if (thisOctal%rhou(subcell)/thisOctal%rho(subcell) > 1.d10) then
                 write(*,*) "u ",thisOctal%rhou(subcell)/thisOctal%rho(subcell)/1.d5
@@ -2340,7 +2346,7 @@ contains
 
     logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads 
-    integer :: iEquationOfState = 1
+    integer :: iEquationOfState = 0
     
 
     nHydroThreads = nThreadsGlobal - 1
@@ -2391,7 +2397,7 @@ contains
     direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
     call calculateRhoW(grid%octreeRoot, direction)
 
-    call calculateEnergy(grid%octreeRoot, gamma, mu)
+!    call calculateEnergy(grid%octreeRoot, gamma, mu)
     call calculateRhoE(grid%octreeRoot, direction)
 
 
@@ -2444,7 +2450,9 @@ contains
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call setupX(grid%octreeRoot, grid, direction)
     call setupQX(grid%octreeRoot, grid, direction)
-    call calculateEnergy(grid%octreeRoot, gamma, mu)
+!    call calculateEnergy(grid%octreeRoot, gamma, mu)
+
+
     call calculateRhoE(grid%octreeRoot, direction)
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call calculateRhoU(grid%octreeRoot, direction)
@@ -2562,7 +2570,7 @@ contains
           write(titleString,'(f10.3)') currentTime
           write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
 !          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 0.5 ,plotgrid=.false.)!, withvel=.true.)
+          call plotGridMPI(grid, plotfile, "x-z", "rho", plotgrid=.false.)!, withvel=.true.)
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           grid%iDump = it
           grid%currentTime = currentTime
@@ -5083,7 +5091,7 @@ contains
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(20), tempFracChange(20), deltaT
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-2
+    real(double), parameter :: tol = 1.d-3 
     integer :: it, ierr
     character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
