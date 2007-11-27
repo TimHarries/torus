@@ -8140,11 +8140,12 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine benchmarkDisk(thisOctal,subcell,grid)
 
-    use input_variables
+    use input_variables, ONLY : rInner, rOuter, height, rho
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r, hr, rd
+    real(double), parameter :: min_rho = 1.0d-33 ! minimum density
     TYPE(octalVector) :: rVec
 
     real :: rInnerGap, rOuterGap
@@ -8158,7 +8159,7 @@ IF ( .NOT. gridConverged ) RETURN
     rVec = subcellCentre(thisOctal,subcell)
     r = modulus(rVec)
 
-    thisOctal%rho(subcell) = 1.e-33
+    thisOctal%rho(subcell) = min_rho
     thisOctal%temperature(subcell) = 10.
     thisOctal%etaCont(subcell) = 0.
     thisOctal%inFlow(subcell) = .false.
@@ -8167,8 +8168,11 @@ IF ( .NOT. gridConverged ) RETURN
 !    if (gap.and.((r < rInnerGap).or.(r > rOuterGap))) then
        if ((r > rInner).and.(r < rOuter)) then
           hr = height * (r/rd)**1.125
-          thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
-          thisOctal%rho(subcell) = max(thisOctal%rho(subcell), 1.d-33)
+! Calculate density and check the exponential won't underflow
+          if ( rVec%z/hr < 20.0 ) THEN
+             thisOctal%rho(subcell) = rho * ((r / rd)**(-1.))*exp(-pi/4.*(rVec%z/hr)**2)
+          endif
+          thisOctal%rho(subcell) = max(thisOctal%rho(subcell), min_rho)
           thisOctal%temperature(subcell) = 100.
           thisOctal%inFlow(subcell) = .true.
           thisOctal%etaCont(subcell) = 0.
