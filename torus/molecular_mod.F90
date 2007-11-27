@@ -1757,7 +1757,7 @@ pure function phiProf(dv, b) result (phi)
      maxFracChange = MAXVAL(maxFracChangePerLevel(1:6)) ! Largest change of any level < 6 in any voxel
      
      if(writeoutput) then
-        write(message,'(a,x,f9.5,x,a,x,f5.3,x,a,2x,l,x,a,x,i6,x)') "Maximum fractional change this iteration ", &
+        write(message,'(a,1x,f9.5,1x,a,1x,f5.3,1x,a,2x,l1,1x,a,1x,i6,1x)') "Maximum fractional change this iteration ", &
                                                                          maxFracChange,"tolerance",tolerance , &
                                                                          "fixed rays",fixedrays,"nray",nray
         write(*,'(a,f9.5,a,i1)') "  Average fractional change this iteration  ", &
@@ -3265,101 +3265,105 @@ end subroutine fineGaussianWeighting
 
   end subroutine createDataCube
 
-  subroutine optimum(grid, unitvec, PixelPositionArray, gridArray, npixels)
-
-    use input_variables,only : AMR2D,debug
-    type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
-    type(gridtype) :: grid
-    type(OCTALVECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
-    type(OCTALVECTOR) :: GridCentre, unitvec, viewvec
-    type(OCTAL), pointer :: thisOctal
-    integer :: nOctal, nVoxels, iOctal, iVoxel, subcell, npixels
-    integer :: i, j, iarray(1), jarray(1)
-    real(double) ::theta, phi
-    real(double) :: distanceToGrid
-    integer,allocatable :: PixelArray(:,:)
-
-
-!  PixelPositionArray(i,j) = OCTALVECTOR(0.d0, -1.d0*imageside/2.d0+(i-1.d0)*imageside/real(nPixels),&
-!             -1.d0*imageside/2.d0+(j-1.d0)*imageside/real(nPixels))
-
-    allocate(octalArray(grid%nOctals))
-    
-    nOctal = 0
-    call getOctalArray(grid%octreeRoot,octalArray, nOctal) 
-    call countVoxels(grid%octreeRoot,nOctal,nVoxels) ! Enumerate voxels
-    
-    if (debug) then
-    if(AMR2D) nVoxels = 2*nVoxels+1 ! The 2d (cylindrical) grid uses y=0 for its subcell centre (arbitrary point on annulus of valid points)
-                                    ! and only positive x points. This (and subsequent code) includes -ve x points to "completely cover" the grid
-
-    allocate(SubcellCentreArray(nVoxels)) ! Create array to hold subcell (voxel) centres
-    allocate(GridArray(nVoxels)) ! Create array to hold projected voxel centres
-    i = 0
-    do iOctal = 1, SIZE(octalArray)
-       
-       thisOctal => octalArray(iOctal)%content
-       do subcell = 1, thisOctal%maxChildren
-          if (.not.thisOctal%hasChild(subcell)) then
-             write(63,*) SubcellCentre(thisOctal,subcell)
-             i = i + 1
-             SubcellCentreArray(i) = SubcellCentre(thisOctal,subcell) ! Populate array of subcells
-             if (AMR2D) then 
-                SubcellCentreArray(i+1) = OCTALVECTOR(-1.d0*SubcellCentreArray(i)%x,SubcellCentreArray(i)%y,SubcellCentreArray(i)%z)
-                i = i + 1
-             endif
-          endif
-       enddo
-    enddo
-    
-    endif
-
-!!! Project subcell centres onto 2d surface (YZ!) 
-    
-    gridCentre = OCTALVECTOR(0.d0,0.d0,0.d0) !unitvec * dble(gridDistance)   
-    viewvec = (-1.d0) * unitvec
-
-     if(unitvec%x > 0.d0) then ! Rotation angles and arctan corrections
-        theta = atan(unitvec%z/sqrt(unitvec%x**2+unitvec%y**2))
-        phi = 1.d0 * atan(unitvec%y/unitvec%x)
-     else
-        theta = -1.d0 * atan(unitvec%z/sqrt(unitvec%x**2+unitvec%y**2))
-        phi = 1.d0 * atan(unitvec%y/unitvec%x)
-     endif
-     
-     do i= 1, nVoxels ! Make the imagegrid positions by projecting and rotating subcell points
-        
-        DistancetoGrid = dble(viewvec .dot. SubcellCentreArray(i)) ! +D
-        GridArray(i) = SubcellCentreArray(i) - DistancetoGrid * viewvec ! the actual projection to arbitrary plane normal to viewvec
-        GridArray(i) = RotateZ(Gridarray(i),phi) ! Rotate about Z-axis 
-        GridArray(i) = RotateY(Gridarray(i),theta) ! Rotate about Y-axis
-        GridArray(i)%x = 0.d0 ! Kill rounding errors 
-        
-     enddo
-
-     allocate(PixelArray(npixels,npixels)) ! Find out where to put contributions from rays going through subcells
-     PixelArray = 0 ! Apparantly necessary due to previous bug
-!     allocate(PixelPositionArray(npixels,npixels))
-
-     do iVoxel = 1, nVoxels ! Put the projected subcell centre into a pixel
-        
-        jArray = MINLOC(abs(GridArray(iVoxel)%z - PixelPositionArray(1,:)%z)) ! Nearest column
-        j = jArray(1)
-        
-        iArray = MINLOC(abs(GridArray(iVoxel)%y - PixelPositionArray(:,1)%y)) ! Nearest row
-        i = iArray(1)
-        
-        pixelArray(i,j) = pixelArray(i,j) + 1 ! Counter of how many in each
-     enddo
-
-     if(debug) then ! debug - Number of rays in each pixel 
-        do i=1,npixels
-           write(*,'(50(i4,1x))') pixelArray(i,:)
-        enddo
-     endif
-
-   end subroutine optimum
-   
+! Commented out by D. Acreman, 27/11/07
+! PixelPositionArray is set but not allocated. As this subroutine is never called I have 
+! commented it out.
+!
+!!$  subroutine optimum(grid, unitvec, PixelPositionArray, gridArray, npixels)
+!!$
+!!$    use input_variables,only : AMR2D,debug
+!!$    type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+!!$    type(gridtype) :: grid
+!!$    type(OCTALVECTOR), allocatable :: SubcellCentreArray(:), GridArray(:), PixelPositionArray(:,:)
+!!$    type(OCTALVECTOR) :: GridCentre, unitvec, viewvec
+!!$    type(OCTAL), pointer :: thisOctal
+!!$    integer :: nOctal, nVoxels, iOctal, iVoxel, subcell, npixels
+!!$    integer :: i, j, iarray(1), jarray(1)
+!!$    real(double) ::theta, phi
+!!$    real(double) :: distanceToGrid
+!!$    integer,allocatable :: PixelArray(:,:)
+!!$
+!!$
+!!$!  PixelPositionArray(i,j) = OCTALVECTOR(0.d0, -1.d0*imageside/2.d0+(i-1.d0)*imageside/real(nPixels),&
+!!$!             -1.d0*imageside/2.d0+(j-1.d0)*imageside/real(nPixels))
+!!$
+!!$    allocate(octalArray(grid%nOctals))
+!!$    
+!!$    nOctal = 0
+!!$    call getOctalArray(grid%octreeRoot,octalArray, nOctal) 
+!!$    call countVoxels(grid%octreeRoot,nOctal,nVoxels) ! Enumerate voxels
+!!$    
+!!$    if (debug) then
+!!$    if(AMR2D) nVoxels = 2*nVoxels+1 ! The 2d (cylindrical) grid uses y=0 for its subcell centre (arbitrary point on annulus of valid points)
+!!$                                    ! and only positive x points. This (and subsequent code) includes -ve x points to "completely cover" the grid
+!!$
+!!$    allocate(SubcellCentreArray(nVoxels)) ! Create array to hold subcell (voxel) centres
+!!$    allocate(GridArray(nVoxels)) ! Create array to hold projected voxel centres
+!!$    i = 0
+!!$    do iOctal = 1, SIZE(octalArray)
+!!$       
+!!$       thisOctal => octalArray(iOctal)%content
+!!$       do subcell = 1, thisOctal%maxChildren
+!!$          if (.not.thisOctal%hasChild(subcell)) then
+!!$             write(63,*) SubcellCentre(thisOctal,subcell)
+!!$             i = i + 1
+!!$             SubcellCentreArray(i) = SubcellCentre(thisOctal,subcell) ! Populate array of subcells
+!!$             if (AMR2D) then 
+!!$                SubcellCentreArray(i+1) = OCTALVECTOR(-1.d0*SubcellCentreArray(i)%x,SubcellCentreArray(i)%y,SubcellCentreArray(i)%z)
+!!$                i = i + 1
+!!$             endif
+!!$          endif
+!!$       enddo
+!!$    enddo
+!!$    
+!!$    endif
+!!$
+!!$!!! Project subcell centres onto 2d surface (YZ!) 
+!!$    
+!!$    gridCentre = OCTALVECTOR(0.d0,0.d0,0.d0) !unitvec * dble(gridDistance)   
+!!$    viewvec = (-1.d0) * unitvec
+!!$
+!!$     if(unitvec%x > 0.d0) then ! Rotation angles and arctan corrections
+!!$        theta = atan(unitvec%z/sqrt(unitvec%x**2+unitvec%y**2))
+!!$        phi = 1.d0 * atan(unitvec%y/unitvec%x)
+!!$     else
+!!$        theta = -1.d0 * atan(unitvec%z/sqrt(unitvec%x**2+unitvec%y**2))
+!!$        phi = 1.d0 * atan(unitvec%y/unitvec%x)
+!!$     endif
+!!$     
+!!$     do i= 1, nVoxels ! Make the imagegrid positions by projecting and rotating subcell points
+!!$        
+!!$        DistancetoGrid = dble(viewvec .dot. SubcellCentreArray(i)) ! +D
+!!$        GridArray(i) = SubcellCentreArray(i) - DistancetoGrid * viewvec ! the actual projection to arbitrary plane normal to viewvec
+!!$        GridArray(i) = RotateZ(Gridarray(i),phi) ! Rotate about Z-axis 
+!!$        GridArray(i) = RotateY(Gridarray(i),theta) ! Rotate about Y-axis
+!!$        GridArray(i)%x = 0.d0 ! Kill rounding errors 
+!!$        
+!!$     enddo
+!!$
+!!$     allocate(PixelArray(npixels,npixels)) ! Find out where to put contributions from rays going through subcells
+!!$     PixelArray = 0 ! Apparantly necessary due to previous bug
+!!$!     allocate(PixelPositionArray(npixels,npixels))
+!!$
+!!$     do iVoxel = 1, nVoxels ! Put the projected subcell centre into a pixel
+!!$        
+!!$        jArray = MINLOC(abs(GridArray(iVoxel)%z - PixelPositionArray(1,:)%z)) ! Nearest column
+!!$        j = jArray(1)
+!!$        
+!!$        iArray = MINLOC(abs(GridArray(iVoxel)%y - PixelPositionArray(:,1)%y)) ! Nearest row
+!!$        i = iArray(1)
+!!$        
+!!$        pixelArray(i,j) = pixelArray(i,j) + 1 ! Counter of how many in each
+!!$     enddo
+!!$
+!!$     if(debug) then ! debug - Number of rays in each pixel 
+!!$        do i=1,npixels
+!!$           write(*,'(50(i4,1x))') pixelArray(i,:)
+!!$        enddo
+!!$     endif
+!!$
+!!$   end subroutine optimum
+!!$   
 #ifdef MPI 
       subroutine packMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
     include 'mpif.h'
