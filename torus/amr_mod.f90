@@ -8057,6 +8057,8 @@ IF ( .NOT. gridConverged ) RETURN
     logical :: blast
     type(VECTOR) :: lVec, offset
     real(double) :: rho0, r0, n, soundSpeed, omega, a, r, v, phi
+    real(double) :: inertia, beta, rCloud, mCloud, eGrav
+
     gamma = 5.d0/3.d0
     rho0 = 1.0d0
     r0 = 0.4d0
@@ -8093,14 +8095,39 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%boundaryCondition(subcell) = 4
     Thisoctal%phi_i(subcell) = 0.d0
 
-!    thisOctal%velocity(subcell) = vector(0., 0., 0.)
-!    if (modulus(rVec) < 5.9d2) then
-       thisOctal%rho(subcell) = 0.1d0 * mSol / (4.d0/3.d0*pi*5.9d12**3)
-!    else
-!       thisOctal%rho(subcell) = 1.d-2 * 0.1d0*mSol / (4.d0/3.d0*pi*5.9d12**3)
-!    endif
+    thisOctal%velocity(subcell) = vector(0., 0., 0.)
 
-    ethermal = (1.d0/(2.d0*mHydrogen)) * kerg * 30.d0
+    mCloud = 0.1d0 * msol
+    rCloud = 5.9d12
+    inertia = (2.d0/5.d0)*mCloud*rCloud**2
+    eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
+    beta = 0.2d0
+
+    omega = sqrt(2.d0 * beta * eGrav / inertia)
+
+    if (thisOctal%twoD) then
+       phi = atan2(rVec%z, rVec%x)
+    else
+       phi = atan2(rVec%y, rVec%x)
+    endif
+
+    if (thisOctal%twoD) then
+       r = modulus(rVec)*1.d10
+       v = r * omega
+       thisOctal%velocity(subcell) = (1./cspeed)*VECTOR(v*cos(phi+pi/2.d0), 0., v*sin(phi+pi/2.d0))
+    else
+       r = sqrt(rVec%x**2 + rVec%y**2)*1.d10
+       v = r * omega
+       thisOctal%velocity(subcell) = (1./cspeed)*VECTOR(v*cos(phi),  v*sin(phi), 0.)
+    endif
+
+    if (modulus(rVec) < 5.9d2) then
+       thisOctal%rho(subcell) = mCloud / (4.d0/3.d0*pi*rCloud**3)
+    else
+       thisOctal%rho(subcell) = 1.d-2 * mCloud / (4.d0/3.d0*pi*rCloud**3)
+    endif
+
+    ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 30.d0
     thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%boundaryCondition(subcell) = 4

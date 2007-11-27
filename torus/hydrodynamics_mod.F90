@@ -1745,6 +1745,7 @@ contains
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
@@ -1763,6 +1764,7 @@ contains
     call advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+    call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupWi(grid%octreeRoot, grid, direction)
     call setupWpm(grid%octreeRoot, grid, direction)
@@ -1782,6 +1784,7 @@ contains
     call advectRhoU(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoW(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
     call advectRhoE(grid, direction, dt/2.d0, nPairs, thread1, thread2, nBound, group, nGroup)
+    call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
@@ -2337,7 +2340,7 @@ contains
     integer :: i, pgbegin, it, iUnrefine
     integer :: myRank, ierr
     character(len=20) :: plotfile, titleString
-    real(double) :: tDump, nextDumpTime, ang
+    real(double) :: tDump, nextDumpTime, ang, tff
     type(OCTALVECTOR) :: direction, viewVec
     logical :: gridConverged
     integer :: nSource = 0
@@ -2475,7 +2478,8 @@ contains
     tc = tempTc
     dt = MINVAL(tc(1:nHydroThreads)) * dble(cflNumber)
 
-    tDump = 3.d0*dt
+    tff = 1.d0 / sqrt(bigG * (0.1d0*mSol/((4.d0/3.d0)*pi*5.9d12**3)))
+    tDump = 1.d-2 * tff
     write(*,*) "Setting tdump to: ", tdump
 
     iUnrefine = 0
@@ -5106,7 +5110,7 @@ contains
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
     real(double) :: fracChange(20), tempFracChange(20), deltaT
     integer :: nHydrothreads
-    real(double), parameter :: tol = 1.d-3 
+    real(double), parameter :: tol = 1.d-5
     integer :: it, ierr
     character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
@@ -5118,16 +5122,19 @@ contains
     do while (ANY(fracChange(1:nHydrothreads) > tol))
        fracChange = 0.d0
        it = it + 1
+
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
        call gSweep(grid%octreeRoot, grid, deltaT, fracChange(myRankGlobal))
 
        call MPI_ALLREDUCE(fracChange, tempFracChange, nHydroThreads, MPI_DOUBLE_PRECISION, MPI_SUM, amrCOMMUNICATOR, ierr)
 
        fracChange = tempFracChange
-       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
 !       call plotGridMPI(grid, plotfile, "x-z", "phi", plotgrid=.false.)
 !       write(*,*) myRankGlobal, fracChange(myRankGlobal)
     enddo
+    if (myRankGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 !       call plotGridMPI(grid, "grav.png/png", "x-z", "phi", plotgrid=.false.)
 
 
