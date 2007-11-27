@@ -304,8 +304,12 @@ contains
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
-    use input_variables, only : rinner, router, variableDustSublimation, zoomFactor, blockhandout
+    use input_variables, only : variableDustSublimation, zoomFactor
     use input_variables, only : smoothFactor, lambdasmooth, plot_maps
+!    use input_variables, only : rinner, router
+#ifdef MPI
+    use input_variables, only : blockhandout
+#endif
     implicit none
 #ifdef MPI
  include 'mpif.h'
@@ -361,7 +365,7 @@ contains
     logical :: debugOutput
     real :: treal
     real(oct) :: lCore
-    real      :: kabs
+!    real      :: kabs
     type(vector) :: vec_tmp
     real(oct)::  dT_sum ! [Kelvins]  the sum of the temperature change
     real(oct)::  dT_min ! [kelvins]  the minimum change of temperature
@@ -389,7 +393,7 @@ contains
     real :: diffusionZoneTemp, temp
     logical :: outputFlag, directPhoton !, smoothconverged
     integer :: nCellsInDiffusion
-    integer :: omp_get_num_threads, omp_get_thread_num
+!    integer :: omp_get_num_threads, omp_get_thread_num
 
 #ifdef MPI
   ! For MPI implementations =====================================================

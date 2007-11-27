@@ -628,9 +628,6 @@ end subroutine LTEpops
 ! this subroutine calculates the maximum fractional change in the first 6 energy levels
   recursive subroutine improvelevels(thisOctal, convergencearray, grand_iter)
 
-    use input_variables, only : tolerance
-
-
     integer :: grand_iter
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -697,7 +694,6 @@ end subroutine LTEpops
 ! stores the non-zero local emission coefficient   
   recursive subroutine  allocateMolecularLevels(grid, thisOctal, thisMolecule, restart)
 
-    use input_variables, only : molAbundance
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
     type(octal), pointer   :: thisOctal
@@ -803,7 +799,6 @@ end subroutine LTEpops
 
   recursive subroutine  SafeAllocateMolecularLevels(grid, thisOctal, thisMolecule, restart)
 
-    use input_variables, only : molAbundance
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
     type(octal), pointer   :: thisOctal
@@ -2037,7 +2032,7 @@ pure function phiProf(dv, b) result (phi)
 
   function intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV) result (i0)
 
-    use input_variables, only : amr2d, useDust, debug
+    use input_variables, only : useDust ! ,amr2d, debug
     type(OCTALVECTOR) :: position, direction
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
@@ -2192,7 +2187,7 @@ pure function phiProf(dv, b) result (phi)
 
   function intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV) result (i0)
 
-    use input_variables, only : amr2d, useDust, debug
+    use input_variables, only : useDust, debug !, amr2d
     type(OCTALVECTOR) :: position, direction
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
@@ -2500,8 +2495,7 @@ function PixelIntensity   (cube,pixelside,viewvec,pixelcorner,&
 end function PixelIntensity
   
 subroutine calculateMoleculeSpectrum(grid, thisMolecule)
-  use input_variables, only : beamSize,gridDistance,amr2d,debug,&
-                              itrans, npixels, nv, nSubpixels, inc
+  use input_variables, only : itrans, nSubpixels, inc
   
 #ifdef MPI
       include 'mpif.h'
@@ -2577,7 +2571,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule)
 !  call plotDataCube(cube, 'subpixels.ps/vcps',withSpec=.False.,GotPixels=.true.) ! plot the image 
   write(*,*) "End"
 stop
-666 continue
 
     distance = 250.*pctocm/1.d10
 

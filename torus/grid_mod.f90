@@ -3349,7 +3349,7 @@ contains
        end if
     end if
     
-666 continue
+!666 continue
     endfile 20
     close(unit=20)
     

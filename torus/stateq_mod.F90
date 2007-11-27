@@ -729,7 +729,7 @@ contains
        goto 10
 20     continue
        nnu1 = nnu1  - 1
-9      close(20)
+       close(20)
        hnu1(1:nnu1) = hnu1(1:nnu1) / fourPi   ! Converts from flux to flux momemnt
 
        if (grid%geometry == "binary") then
@@ -2644,7 +2644,7 @@ contains
    30  continue
    40  continue
        k = i - 1
-   50  continue
+
        b2 = log10(a2(k))
        c = log10(a2(i))
        gam2 = log10(gam2)
@@ -2860,7 +2860,10 @@ contains
     ! calculate the statistical equilibrium for the subcells in an
     !   adaptive octal grid.
 
-    USE input_variables, ONLY: LyContThick, statEq1stOctant, blockHandout
+    USE input_variables, ONLY: LyContThick, statEq1stOctant
+#ifdef MPI
+    USE input_variables, ONLY: blockHandout
+#endif
     use parallel_mod
 
     implicit none
@@ -3378,7 +3381,7 @@ contains
 
                   end if
                 end if
-666             continue
+
                 ! store the results
                 thisOctal%N(iSubcell,1:maxLevels) = xall(1:maxLevels)
                 thisOctal%Ne(iSubcell) = xall(maxLevels+1)

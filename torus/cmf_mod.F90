@@ -920,9 +920,10 @@ contains
 
   subroutine atomLoop(grid, nAtom, thisAtom, nSource, source)
 
-    use input_variables, only : blockhandout, debug, rcore
+    use input_variables, only : debug, rcore
     use messages_mod, only : myRankIsZero
 #ifdef MPI
+    use input_variables, only : blockhandout
     include 'mpif.h'
 #endif
 

@@ -3891,7 +3891,8 @@ CONTAINS
     RECURSIVE SUBROUTINE smoothAMRgridPrivate(thisOctal,grid,gridConverged, &
          romData)
 
-      TYPE(octal), INTENT(INOUT), TARGET :: thisOctal
+!      TYPE(octal), INTENT(INOUT), TARGET :: thisOctal
+      TYPE(octal), INTENT(INOUT) :: thisOctal
       TYPE(gridtype), INTENT(INOUT   ) :: grid 
       LOGICAL, INTENT(INOUT)               :: gridConverged
       TYPE(romanova), optional, INTENT(IN)   :: romDATA  ! used for "romanova" geometry
@@ -7276,8 +7277,8 @@ IF ( .NOT. gridConverged ) RETURN
     use vector_mod
 
     use input_variables, only: TTauriRinner, TTauriRouter, TTauriRstar, &
-                               TTauriMstar, dipoleOffset, contFluxFile, &
-                               magStreamFile, thinDiskRin
+                               dipoleOffset, contFluxFile, &
+                               magStreamFile, thinDiskRin !, TTauriMstar
 
     implicit none
     
@@ -10546,7 +10547,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     IMPLICIT NONE
     
-    TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    TYPE(octal), INTENT(INOUT) :: parent ! the parent octal 
     INTEGER :: childToDelete ! number of the child to delete
       ! NB childToDelete does not map to the index number in the 
       !   %child array, it is the "real" number of the child (the 
@@ -10688,7 +10689,7 @@ IF ( .NOT. gridConverged ) RETURN
       RECURSIVE SUBROUTINE updateMaxDepthPrivate(thisOctal,maxDepthFound,&
                                           searchLimitReached,searchLimit)
       
-        TYPE(OCTAL), TARGET, INTENT(IN) :: thisOctal 
+        TYPE(OCTAL), INTENT(IN) :: thisOctal 
         INTEGER, INTENT(INOUT) :: maxDepthFound
         LOGICAL, INTENT(INOUT) :: searchLimitReached
         INTEGER, INTENT(IN), OPTIONAL :: searchLimit 
@@ -11725,7 +11726,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine returnKappa(grid, thisOctal, subcell, ilambda, lambda, kappaSca, kappaAbs, kappaAbsArray, kappaScaArray, &
        rosselandKappa, kappap, atthistemperature, kappaAbsDust, kappaAbsGas, kappaScaDust, kappaScaGas)
-    use input_variables, only: includeGasOpacity, nDustType, photoionization, mie
+    use input_variables, only: nDustType, photoionization !, mie, includeGasOpacity
     implicit none
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
@@ -15116,7 +15117,7 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine splitGridOnStream
 
   recursive subroutine splitGridOnStream2(thisOctal, thisStream, grid, childrenAdded)
-    use input_variables, only : limitScalar
+
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
     type(OCTALVECTOR) :: rVec

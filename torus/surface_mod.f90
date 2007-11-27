@@ -758,7 +758,6 @@ contains
                                  coreContFlux,fAccretion)
 
     USE magField                             
-    USE input_variables, ONLY: limitSpotTemp, maxSpotTemp
    
     TYPE(surfacetype),INTENT(INOUT) :: surface
     TYPE(gridType), INTENT(IN) :: grid

@@ -1160,7 +1160,7 @@ contains
 ! TJH version of fractgap
   function fractgap2(R)
       use constants_mod
-      use input_variables, only : rGap, height, mPlanet, gapViscAlpha, alphaDisc,betaDisc, &
+      use input_variables, only : rGap, height, mPlanet, gapViscAlpha, betaDisc, &
            rCore
       
       implicit none

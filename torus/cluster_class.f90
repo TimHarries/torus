@@ -420,7 +420,7 @@ contains
   !
   subroutine update_particle_list(thisOctal, subcell, newChildIndex, sphData)
     implicit none
-    TYPE(octal), TARGET, INTENT(INOUT) :: thisOctal ! the parent octal 
+    TYPE(octal), INTENT(INOUT) :: thisOctal ! the parent octal 
 !    type(octal), pointer :: thisOctal
     integer, intent(in) :: subcell       ! do loop index of thisOctal
     integer, intent(in) :: newChildIndex ! new child index

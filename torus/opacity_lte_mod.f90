@@ -922,12 +922,12 @@ contains
 
        if (i == nUpper) etaLine = xi(nLower)
     enddo
-   10 format(10x,'Level Populations - Critical Densities (cm**-3):',/, &
-     10x,'Level 1: ',1pe8.2,/, &
-     10x,'Level 2: ',1pe8.2,13x,1pe8.2,/, &
-     10x,'Level 3: ',1pe8.2,13x,1pe8.2,/, &
-     10x,'Level 4: ',1pe8.2,13x,1pe8.2,/, &
-     10x,'Level 5: ',1pe8.2,13x,1pe8.2)
+!!$   10 format(10x,'Level Populations - Critical Densities (cm**-3):',/, &
+!!$     10x,'Level 1: ',1pe8.2,/, &
+!!$     10x,'Level 2: ',1pe8.2,13x,1pe8.2,/, &
+!!$     10x,'Level 3: ',1pe8.2,13x,1pe8.2,/, &
+!!$     10x,'Level 4: ',1pe8.2,13x,1pe8.2,/, &
+!!$     10x,'Level 5: ',1pe8.2,13x,1pe8.2)
    11 format(5x,'Wavelength',5x,f11.2,/, &
             1x,'Upper--Lower Levels',5x,'(',i1,'--',i1,') ',/, &
             2x,'Volume Emissivity ',1pe11.3,/)
@@ -937,8 +937,8 @@ contains
             20x,3(1pe11.3),/)
    14 format(20x,4f11.2,/,20x,4(5x,'(',i1,'--',i1,')'),/, &
             20x,4(1pe11.3),/)
-   15 format(1x,'H-beta volume emissivity: ',1pe9.2,' N(H+)Ne', &
-            ' erg/s',/)
+!!$   15 format(1x,'H-beta volume emissivity: ',1pe9.2,' N(H+)Ne', &
+!!$            ' erg/s',/)
 
 
     ! etaLine is per ion density per electron density * 4 pi

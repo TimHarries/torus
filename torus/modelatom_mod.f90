@@ -938,7 +938,7 @@ contains
    30  continue
    40  continue
        k = i - 1
-   50  continue
+
        b2 = log10(a2(k))
        c = log10(a2(i))
        gam2 = log10(gam2)

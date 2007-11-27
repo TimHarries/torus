@@ -58,8 +58,10 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein)
-    use input_variables, only : smoothFactor, blockHandout, zoomFactor, &
-         nlucy
+    use input_variables, only : zoomFactor, nlucy !, smoothFactor
+#ifdef MPI
+    use input_variables, only : blockHandout
+#endif
     use messages_mod, only : myRankIsZero
     implicit none
 #ifdef MPI
