@@ -1124,13 +1124,13 @@ program torus
         stop
      endif
 
-!     if (molecular) then
-!        if (.not.readlucy) call  molecularLoop(grid, co)
-!        call calculateMoleculeSpectrum(grid, co)
-!        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
-!        if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
-!        stop
-!     endif
+     if (molecular) then
+        if (.not.readlucy) call  molecularLoop(grid, co)
+        call calculateMoleculeSpectrum(grid, co)
+        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+        if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
+        stop
+     endif
 
 
 #ifdef MPI
@@ -2162,13 +2162,13 @@ program torus
         endif
 
 
-     if (molecular) then
-        if (writemol) call  molecularLoop(grid, co)
-        call calculateMoleculeSpectrum(grid, co)
-        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
-        if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
-        stop
-     endif
+!     if (molecular) then
+!        if (writemol) call  molecularLoop(grid, co)
+!        call calculateMoleculeSpectrum(grid, co)
+!        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+!        if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
+!        stop
+!     endif
 
 
         ! Change the image size accoring to the scale 

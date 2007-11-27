@@ -635,12 +635,14 @@ end subroutine LTEpops
     real(double) :: convergenceArray(:,:,:)
     real(double), allocatable :: Narray(:,:,:)
 
-    integer :: a
-    integer,save :: l,m,iter = 0
+    integer :: a = 0, m=0
+    integer,save :: l,iter = 0
     integer :: nlevels, nVoxels
     
-    nVoxels = size(convergencearray,2)
-    nlevels = size(convergencearray,3)
+    nVoxels = size(convergencearray,dim=2)
+    nlevels = size(convergencearray,dim=3)
+
+!    write(*,*) i, subcell
 
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -648,7 +650,7 @@ end subroutine LTEpops
           do i = 1, thisOctal%nChildren
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call improvelevels(thisOctal, convergencearray, grand_iter)
+                call improvelevels(child, convergencearray, grand_iter)
                 exit
              end if
           end do
@@ -659,28 +661,38 @@ end subroutine LTEpops
 !          if(nrays .gt. 10000) then 
           if(l .eq. 1) iter = iter + 1
 
-             allocate(Narray(iter,iter,nlevels))
+          write(*,*) "octal", l, "iter", iter
 
-             do i = iter,1,-1
-                Narray(1,i,:) = convergenceArray(grand_iter-iter+i,l,:)
-             enddo
+          allocate(Narray(iter,iter,nlevels))
 
-             m = iter
+          do it = iter,1,-1
+             Narray(1,it,:) = convergenceArray(grand_iter-iter+it,l,:)
+          enddo
 
-             do while(m .ge. 2)
-                a = a + 1
+          write(*,*) Narray(1,1,1), Narray(1,2,1), "m", m
+
+          m = iter
+          a = 0
+
+          do while(m .ge. 2)
+             a = a + 1
                 
-                do it=1,m-1
-                   Narray(a+1,it,:) = (dble(4**(a))*Narray(a,it+1,:) - Narray(a,it,:)) / (dble(4**(a)-1))
-                enddo
-                
-                m = m-1
+             do it=1,m-1
+                Narray(a+1,it,:) = (dble(4**(a))*Narray(a,it+1,:) - Narray(a,it,:)) / (dble(4**(a)-1))
              enddo
+                
+             m = m-1
+          enddo
 
 !          endif
-          
-          if(writeoutput) write(*,*) thisOctal%molecularlevel(subcell,1), Narray(iter-1,1,1)
-          thisOctal%molecularlevel(subcell,:) = Narray(iter-1,1,:)
+          write(*,*) "a",a
+
+          if(writeoutput .and. l .eq. 17) write(*,*) Narray(1:iter,1:iter,1:3)
+
+          if(iter .gt. 2) then 
+             thisOctal%molecularlevel(subcell,:) = Narray(iter-1,1,:)
+             if(writeoutput) write(*,*) thisOctal%molecularlevel(subcell,1), Narray(iter-1,1,1)
+          endif
 
           deallocate(Narray)
 
@@ -1534,7 +1546,11 @@ pure function phiProf(dv, b) result (phi)
 
         grand_iter = grand_iter + 1
         
-	if(iStage .eq. 2 .and. nRay .gt. 10000) call improvelevels(grid%octreeroot,convergencearray,grand_iter)
+	if(iStage .eq. 2 .and. nRay .gt. 20000) then
+           call improvelevels(grid%octreeroot,convergencearray,grand_iter)
+           call dumpresults(grid, thismolecule, nray)
+           stop
+        endif
 
         if(writeoutput) then 
            write(*,*) "Iteration ",grand_iter
