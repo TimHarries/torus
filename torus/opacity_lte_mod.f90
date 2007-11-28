@@ -100,7 +100,7 @@ contains
     real :: e(5,5), q(5,5), a1(5,5), a2(5,5), jl(5,5)
     real :: pop(5), b1(5), b2(5), dtl(5), pop1(5), ncrit(5), kt, hc
     integer :: weight(5)
-    integer :: filout
+    integer :: filout=6
     real :: etaLine, nIon
     character(len=*) :: ion
     real :: electronDensity, den

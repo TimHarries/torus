@@ -1317,7 +1317,10 @@ end subroutine calcPlanetMass
                                 temperature, velocity,inFlow)
     ! returns the physical conditions at a point in an accretion 
     !   stream, in the "magstream" geometry.
-   
+
+    ! The velocity optional argument is not working at present so the code
+    ! has been commented out (D. Acreman, 28/11/07)
+
     USE magField
     
     TYPE(GRIDTYPE), INTENT(IN)    :: grid
@@ -1335,7 +1338,7 @@ end subroutine calcPlanetMass
     INTEGER :: nFound
     INTEGER :: latestSampleFound 
     INTEGER :: nearestSampleNum
-    REAL :: distanceArray(SIZE(magFieldGrid))
+!!$    REAL :: distanceArray(SIZE(magFieldGrid))
     REAL :: starDistance
     TYPE(octalVector) :: starPosn
     TYPE(octalVector) :: flowVector
@@ -1343,10 +1346,17 @@ end subroutine calcPlanetMass
     REAL(oct) :: prevDistance, nextDistance, nearestDistance
     REAL(oct) :: distance
     TYPE(gridSample), POINTER :: thisSample
-    REAL :: thisSampleWeight
-    REAL :: velocityMag
-    TYPE(vector) :: velocityVector
+!!$    REAL :: thisSampleWeight
+!!$    REAL :: velocityMag
+!!$    TYPE(vector) :: velocityVector
     
+    IF ( PRESENT(velocity) ) THEN
+       print *, "getMagStreamValues was called with the velocity optional argument."
+       print *, "This option does not work at present because distanceArray is used"
+       print *, "without being set. Aborting ..."
+       STOP
+    END IF
+
     rStar = REAL(grid%rStar1,KIND=oct)
     starPosn = grid%starPos1
     nFound = 0
@@ -1424,68 +1434,68 @@ end subroutine calcPlanetMass
       IF (PRESENT(temperature)) temperature = thisSample%temperature
       IF (PRESENT(sampleNum)) sampleNum = latestSampleFound
       IF (PRESENT(inFlow)) inFlow = .TRUE.
-      IF (PRESENT(velocity)) CALL velocityInterp
+!!$      IF (PRESENT(velocity)) CALL velocityInterp
       
     ELSE ! multiple samples found
       
       nearestSampleNum = sampleResults(MINLOC(sampleResults(1:nFound)%sampleDistance,DIM=1))%iSample
       thisSample => magFieldGrid(nearestSampleNum)
-      nearestDistance = distanceArray(nearestSampleNum)
+!!$      nearestDistance = distanceArray(nearestSampleNum)
 
       IF (PRESENT(rho)) rho = thisSample%rho
       IF (PRESENT(temperature)) temperature = thisSample%temperature
       IF (PRESENT(sampleNum)) sampleNum = nearestSampleNum
       IF (PRESENT(inFlow)) inFlow = .TRUE.
-      IF (PRESENT(velocity)) CALL velocityInterp
-      
+!!$      IF (PRESENT(velocity)) CALL velocityInterp
+   
     END IF
 
-  CONTAINS
-
-    SUBROUTINE velocityInterp
-
-      ! set up interpolation weighting.
-      ! we only consider the flow that the nearest sample lies in
-       
-      ! find whether we are interested in the "next" or "previous" samples
-      !   in the stream 
-      IF ( ((point-thisSample%position) .dot. thisSample%flowVector) > 0.0_oc ) THEN
-        ! point is "downstream", and we want the "previous" sample point
-        thisSampleWeight = nearestDistance / thisSample%prevDistance
-        thisSampleWeight = MIN(thisSampleWeight, 1.0) 
-        thisSampleWeight = MAX(thisSampleWeight, 0.0) 
-        thisSampleWeight = 1.0 - thisSampleWeight
-        velocityMag = (thisSample%velocity * thisSampleWeight) + &
-                       (thisSample%prevVelocity * (1.0-thisSampleWeight)) 
-        velocityVector = thisSampleWeight * &
-           (vector(REAL(thisSample%flowVector%x),&
-                   REAL(thisSample%flowVector%y),&
-                   REAL(thisSample%flowVector%z) ) ) + &
-           (1.0-thisSampleWeight) * &        
-           vector(REAL(thisSample%prevFlowVector%x),&
-                  REAL(thisSample%prevFlowVector%y),&
-                  REAL(thisSample%prevFlowVector%z) ) 
-        velocity = velocityMag * velocityVector          
-      ELSE
-        ! point is "upstream", and we want the "next" sample point
-        thisSampleWeight = nearestDistance / thisSample%prevDistance
-        thisSampleWeight = MIN(thisSampleWeight, 1.0) 
-        thisSampleWeight = MAX(thisSampleWeight, 0.0) 
-        thisSampleWeight = 1.0 - thisSampleWeight
-        velocityMag = (thisSample%velocity * thisSampleWeight) + &
-                       (thisSample%nextVelocity * (1.0-thisSampleWeight)) 
-        velocityVector = thisSampleWeight * &
-           vector(REAL(thisSample%flowVector%x),&
-                   REAL(thisSample%flowVector%y),&
-                   REAL(thisSample%flowVector%z) ) + & 
-           (1.0-thisSampleWeight) * &        
-           vector(REAL(thisSample%nextFlowVector%x),&
-                  REAL(thisSample%nextFlowVector%y),&
-                  REAL(thisSample%nextFlowVector%z) ) 
-        velocity = velocityMag * velocityVector          
-      END IF
-
-    END SUBROUTINE velocityInterp
+!!$  CONTAINS
+!!$
+!!$    SUBROUTINE velocityInterp
+!!$
+!!$      ! set up interpolation weighting.
+!!$      ! we only consider the flow that the nearest sample lies in
+!!$       
+!!$      ! find whether we are interested in the "next" or "previous" samples
+!!$      !   in the stream 
+!!$      IF ( ((point-thisSample%position) .dot. thisSample%flowVector) > 0.0_oc ) THEN
+!!$        ! point is "downstream", and we want the "previous" sample point
+!!$        thisSampleWeight = nearestDistance / thisSample%prevDistance
+!!$        thisSampleWeight = MIN(thisSampleWeight, 1.0) 
+!!$        thisSampleWeight = MAX(thisSampleWeight, 0.0) 
+!!$        thisSampleWeight = 1.0 - thisSampleWeight
+!!$        velocityMag = (thisSample%velocity * thisSampleWeight) + &
+!!$                       (thisSample%prevVelocity * (1.0-thisSampleWeight)) 
+!!$        velocityVector = thisSampleWeight * &
+!!$           (vector(REAL(thisSample%flowVector%x),&
+!!$                   REAL(thisSample%flowVector%y),&
+!!$                   REAL(thisSample%flowVector%z) ) ) + &
+!!$           (1.0-thisSampleWeight) * &        
+!!$           vector(REAL(thisSample%prevFlowVector%x),&
+!!$                  REAL(thisSample%prevFlowVector%y),&
+!!$                  REAL(thisSample%prevFlowVector%z) ) 
+!!$        velocity = velocityMag * velocityVector          
+!!$      ELSE
+!!$        ! point is "upstream", and we want the "next" sample point
+!!$        thisSampleWeight = nearestDistance / thisSample%prevDistance
+!!$        thisSampleWeight = MIN(thisSampleWeight, 1.0) 
+!!$        thisSampleWeight = MAX(thisSampleWeight, 0.0) 
+!!$        thisSampleWeight = 1.0 - thisSampleWeight
+!!$        velocityMag = (thisSample%velocity * thisSampleWeight) + &
+!!$                       (thisSample%nextVelocity * (1.0-thisSampleWeight)) 
+!!$        velocityVector = thisSampleWeight * &
+!!$           vector(REAL(thisSample%flowVector%x),&
+!!$                   REAL(thisSample%flowVector%y),&
+!!$                   REAL(thisSample%flowVector%z) ) + & 
+!!$           (1.0-thisSampleWeight) * &        
+!!$           vector(REAL(thisSample%nextFlowVector%x),&
+!!$                  REAL(thisSample%nextFlowVector%y),&
+!!$                  REAL(thisSample%nextFlowVector%z) ) 
+!!$        velocity = velocityMag * velocityVector          
+!!$      END IF
+!!$
+!!$    END SUBROUTINE velocityInterp
 
   END SUBROUTINE getMagStreamValues
 

@@ -2927,6 +2927,9 @@ contains
     integer       ::   ierr           ! error flag
 #endif
 
+    isBinary = .false.
+    if ( trim(grid%geometry) == "binary" ) isBinary = .true.
+
     numLTEsubcells = 0
 
     if (LyContThick) then

@@ -8053,10 +8053,8 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    type(OCTALVECTOR) :: rVec, cVec
+    type(OCTALVECTOR) :: rVec
     real(double) :: gamma, ethermal
-    logical :: blast
-    type(VECTOR) :: lVec, offset
     real(double) :: rho0, r0, n, soundSpeed, omega, a, r, v, phi
     real(double) :: inertia, beta, rCloud, mCloud, eGrav
 
@@ -8336,7 +8334,7 @@ IF ( .NOT. gridConverged ) RETURN
     endif
 
     thisOctal%temperature(subcell) = t0 / sqrt(r) 
-!    v = ((v0 / sqrt(r)) / cspeed)
+    v = ((v0 / sqrt(r)) / cspeed)
 
     thisOctal%velocity(subcell) = ggtauvelocity(subcellcentre(thisOctal,subcell),grid)! v * (VECTOR(0.d0,0.d0,1.d0) .cross. CellCentre)
 
