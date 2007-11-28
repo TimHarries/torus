@@ -390,7 +390,7 @@ module image_mod
        type(IMAGETYPE) :: thisImage
        type(PVIMAGETYPE) :: thisPVimage
        real, allocatable :: pixImage(:,:), axis1(:), axis2(:)
-       integer :: nPix, i, j, nx, ny, nSize
+       integer :: nPix, i, j, nx, ny
        real :: fg, bg, tr(6), dt
        real :: thisDistance
        type(VECTOR) :: zAxis, slitNorm, rect(4)
@@ -409,7 +409,7 @@ module image_mod
        bg = 1.e30
        do i = 1 , nPix
           do j = 1 , nPix
-             pixImage(i,j) = thisImage%pixel(i-1-nSize,j-1-nSize)%i
+             pixImage(i,j) = thisImage%pixel(i,j)%i
              bg = min(bg, pixImage(i,j))
              fg = max(fg, pixImage(i,j))
           enddo
@@ -417,7 +417,7 @@ module image_mod
        nx = nPix
        ny = nPix
 
-      do i = -nSize, nSize
+      do i = 1, nPix
          axis1(i) = real(i) * thisImage%dx
          axis2(i) = real(i) * thisImage%dx
       enddo
@@ -644,7 +644,7 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        integer :: nx, ny
        real(double) :: f5, f95
        real :: t
-       integer :: i,j, nsize
+       integer :: i,j
 
        nx = image(1)%nx
        ny = image(1)%ny
@@ -656,30 +656,30 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        f5 = imagePercentile(image(1), 5.)
        f95 = imagePercentile(image(1), 95.)
        write(*,*) f5, f95
-       do i = -nsize, nsize
-          do j = -nsize, nsize
+       do i = 1, nx
+          do j = 1, ny
              t = (min(f95, max(f5, image(1)%pixel(i,j)%i))-f5)/(f95-f5)
-             rImage(i+nSize+1, j+nSize+1) = int(255.*t)
+             rImage(i, j) = int(255.*t)
           enddo
        enddo
 
        f5 = imagePercentile(image(2), 5.)
        f95 = imagePercentile(image(2), 95.)
        write(*,*) f5, f95
-       do i = -nsize, nsize
-          do j = -nsize, nsize
+       do i = 1, nx
+          do j = 1, ny
              t = (min(f95, max(f5, image(2)%pixel(i,j)%i))-f5)/(f95-f5)
-             gImage(i+nSize+1, j+nSize+1) = int(255.*t)
+             gImage(i, j) = int(255.*t)
           enddo
        enddo
 
        f5 = imagePercentile(image(3), 5.)
        f95 = imagePercentile(image(3), 95.)
        write(*,*) f5, f95
-       do i = -nsize, nsize
-          do j = -nsize, nsize
+       do i = 1, nx
+          do j = 1, ny
              t = (min(f95, max(f5, image(3)%pixel(i,j)%i))-f5)/(f95-f5)
-             bImage(i+nSize+1, j+nSize+1) = int(255.*t)
+             bImage(i, j) = int(255.*t)
           enddo
        enddo
 

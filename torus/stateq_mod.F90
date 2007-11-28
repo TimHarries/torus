@@ -2900,7 +2900,10 @@ contains
     real                        :: hNu1(2000)
     real                        :: hNu2(2000)
     real                        :: nuarray1(2000)
-    real                        :: nuarray2(2000)
+! nuarray2 is not used in practice. It is used in the equation8 function if  geometry == binary
+! however this subroutine will stop if geometry == binary
+! The array is initialised to zero here to prevent compiler warnings. D. Acreman 28/11/07
+    real                        :: nuarray2(2000)=0.0
     type(vector)                :: rVec
     real(double)       :: NeLTE
     type(octal), pointer        :: thisOctal => null()
