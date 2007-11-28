@@ -450,32 +450,6 @@ end subroutine LTEpops
 
   end function collRate
 
-! This subroutine solves eq.10 for all octals recursively from the bottom up (i.e. from smallest octal -> largest)
-  recursive subroutine  olveAllPops(grid, thisOctal, thisMolecule)
-    type(GRIDTYPE) :: grid
-    type(MOLECULETYPE) :: thisMolecule
-    type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
-    integer :: subcell, i
-
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren ! What's this?
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call olveAllpops(grid, child, thisMolecule)
-                exit
-             end if
-          end do
-       else ! once octal has no more children, solve for current parameter set
-          call solveLevels(thisOctal%molecularLevel(subcell,1:thisMolecule%nLevels), &
-               thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
-               dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
-       endif
-    enddo
-  end subroutine olveAllPops
-
   recursive subroutine  solveAllPops(grid, thisOctal, thisMolecule)
     type(GRIDTYPE) :: grid
     type(MOLECULETYPE) :: thisMolecule
@@ -626,7 +600,7 @@ end subroutine LTEpops
   end subroutine swapPops
 
 ! this subroutine calculates the maximum fractional change in the first 6 energy levels
-  recursive subroutine improvelevels(thisOctal, convergencearray, grand_iter)
+  recursive subroutine improvelevels(thisOctal, convergencearray, grand_iter, extrapolate)
 
     integer :: grand_iter
     type(octal), pointer   :: thisOctal
@@ -638,6 +612,13 @@ end subroutine LTEpops
     integer :: a = 0, m=0
     integer,save :: l,iter = 0
     integer :: nlevels, nVoxels
+    logical,optional :: extrapolate
+
+    if(.not. present(extrapolate) .or. .not. extrapolate) then
+       iter = iter + 1
+       write(*,*) "Iter", iter
+       return
+    endif
     
     nVoxels = size(convergencearray,dim=2)
     nlevels = size(convergencearray,dim=3)
@@ -650,7 +631,7 @@ end subroutine LTEpops
           do i = 1, thisOctal%nChildren
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call improvelevels(child, convergencearray, grand_iter)
+                call improvelevels(child, convergencearray, grand_iter,extrapolate)
                 exit
              end if
           end do
@@ -658,8 +639,8 @@ end subroutine LTEpops
 
           l = 1 + mod(l,nVoxels)
 
-!          if(nrays .gt. 10000) then 
           if(l .eq. 1) iter = iter + 1
+!          if(nrays .gt. 10000) then 
 
           write(*,*) "octal", l, "iter", iter
 
@@ -669,7 +650,7 @@ end subroutine LTEpops
              Narray(1,it,:) = convergenceArray(grand_iter-iter+it,l,:)
           enddo
 
-          write(*,*) Narray(1,1,1), Narray(1,2,1), "m", m
+          write(*,*) Narray(1,1,1), Narray(1,2,1), Narray(1,3,1), "m", m
 
           m = iter
           a = 0
@@ -1236,7 +1217,7 @@ pure function phiProf(dv, b) result (phi)
 !    rinner = 1.
 !    router = 1.1e6
     
-    write(resultfile,'(a,I6.6)') "results.", nRay
+    write(resultfile,'(a,I7.7)') "results.", nRay
 
     nr = 100 ! number of rays used to sample distribution
     open(31,file=resultfile,status="unknown",form="formatted")
@@ -1321,6 +1302,7 @@ pure function phiProf(dv, b) result (phi)
         integer :: ntrans
 
         real :: tol
+        logical :: extrapolate
 
 !        real(double) :: r,rarray(4100000),sarray(4100000),tarray(4100000),phiprofval,deltav,dv
 !        real :: uarray(4100000)
@@ -1546,11 +1528,16 @@ pure function phiProf(dv, b) result (phi)
 
         grand_iter = grand_iter + 1
         
-	if(iStage .eq. 2 .and. nRay .gt. 20000) then
+	if(iStage .eq. 2 .and. nRay .gt. 50000) then
            call improvelevels(grid%octreeroot,convergencearray,grand_iter)
-           call dumpresults(grid, thismolecule, nray)
+        endif
+
+        if(iStage .eq. 2 .and. nRay .gt. 1000000) then
+           call improvelevels(grid%octreeroot,convergencearray,grand_iter,extrapolate = .true.)
+           call dumpresults(grid, thismolecule, nray/2 + 1)
            stop
         endif
+
 
         if(writeoutput) then 
            write(*,*) "Iteration ",grand_iter
