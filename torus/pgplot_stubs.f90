@@ -1,6 +1,10 @@
 ! pgplot stubs for compilation of torus without
 ! pgplot - th 12/12/05
 
+subroutine pgarro(x1, y1, x2, y2)
+  real :: x1, x2, y1, y2
+end subroutine pgarro
+
 subroutine pgctab(x1, x2, x3, x4,i, x5, x6)
   integer :: i
   real :: x1, x2, x3, x4, x5, x6
@@ -136,6 +140,11 @@ subroutine pgpt1(x, y, i)
   integer :: i
   real :: x, y
 end subroutine pgpt1
+
+subroutine pgpt (n, xpts, ypts, symbol)
+  integer :: n, symbol
+  real    :: xpts(:), ypts(:)
+end subroutine pgpt
 
 subroutine pgvect(x, y, i, j, k, l, m, n, f, n1, tr, f2)
   real :: x(*), y(*), tr(*)
