@@ -434,8 +434,6 @@ program torus
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
-  integer ::   n_rmdr, m      !
-  integer ::   mphotons       ! number of photons (actual) 
   integer ::   tempInt        !
   real, dimension(:), allocatable :: tempRealArray
   real, dimension(:), allocatable :: tempRealArray2
@@ -5035,9 +5033,6 @@ end subroutine choose_view
     USE amr_mod, only:        amrGridValues
     USE gridtype_mod, only:   gridType
     USE sph_data_class, only: sph_data, get_udist
-#ifdef MPI
-    USE mpi_global_mod, only: myRankGlobal
-#endif
     USE messages_mod
 
     implicit none

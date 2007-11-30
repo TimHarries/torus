@@ -33,9 +33,10 @@ contains
     logical, dimension(:), allocatable :: rankComplete
     logical :: debugInfo
     integer, dimension(MPI_STATUS_SIZE) :: mpiStatus    
-    character*(MPI_MAX_ERROR_STRING) :: errorString
+    !character*(MPI_MAX_ERROR_STRING) :: errorString
         !    ^ outdated, but required to work with MPI wrapper 
-    integer :: errorLength, count
+    !integer :: errorLength
+    integer :: count
 
 
     if (present(setDebug)) then
@@ -97,7 +98,7 @@ contains
         print *, 'tag = ', mpiStatus(MPI_TAG)
         print *, 'error = ', mpiStatus(MPI_ERROR)
         !call MPI_ERROR_STRING(mpiStatus(MPI_ERROR),errorString,errorLength,iErr)
-        print *, 'errorString = ', errorString(1:errorLength), iErr
+        !print *, 'errorString = ', errorString(1:errorLength), iErr
         call MPI_GET_COUNT(mpiStatus,MPI_INTEGER,count,iErr)
         print *, 'count = ',count, iErr
       end if
@@ -191,8 +192,9 @@ contains
     logical :: debugInfo
     integer, dimension(MPI_STATUS_SIZE) :: mpiStatus    
     !character, dimension(MPI_MAX_ERROR_STRING) :: errorString
-    character*(MPI_MAX_ERROR_STRING) :: errorString
-    integer :: errorLength, count
+    !character*(MPI_MAX_ERROR_STRING) :: errorString
+    !integer :: errorLength
+    integer :: count
 
 
     if (present(setDebug)) then
@@ -222,7 +224,7 @@ contains
         print *, 'tag = ', mpiStatus(MPI_TAG)
         print *, 'error = ', mpiStatus(MPI_ERROR)
         !call MPI_ERROR_STRING(mpiStatus(MPI_ERROR),errorString,errorLength,iErr)
-        print *, 'errorString = ', errorString(1:errorLength), iErr
+        !print *, 'errorString = ', errorString(1:errorLength), iErr
         call MPI_GET_COUNT(mpiStatus,MPI_INTEGER,count,iErr)
         print *, 'count = ',count, iErr
       end if
@@ -235,7 +237,7 @@ contains
         print *, 'tag = ', mpiStatus(MPI_TAG)
         print *, 'error = ', mpiStatus(MPI_ERROR)
         !call MPI_ERROR_STRING(mpiStatus(MPI_ERROR),errorString,errorLength,iErr)
-        print *, 'errorString = ', errorString(1:errorLength), iErr
+        !print *, 'errorString = ', errorString(1:errorLength), iErr
         call MPI_GET_COUNT(mpiStatus,MPI_INTEGER,count,iErr)
         print *, 'count = ',count, iErr
       end if

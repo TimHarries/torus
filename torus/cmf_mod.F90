@@ -2014,7 +2014,6 @@ contains
     integer       ::   my_rank        ! my processor rank
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
-    logical       ::   rankComplete
     real(double), allocatable :: tempArray(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
@@ -2204,7 +2203,6 @@ contains
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
     integer       ::   n
-    logical       ::   rankComplete
     real(double), allocatable :: tempArray(:), tempArray2(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================

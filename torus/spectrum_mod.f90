@@ -249,20 +249,21 @@ module spectrum_mod
            / SUM(spectrum%flux(1:spectrum%nLambda)*spectrum%dlambda(1:spectrum%nLambda))
     end subroutine normalizedSpectrum
 
-    real(double) function returnNormValue(spectrum, lambda, lam1, lam2)
-      type(SPECTRUMTYPE) :: spectrum
-      real(double) :: lambda, t, lam1, lam2
-      integer :: i
-
-      if ((lambda < spectrum%lambda(1)).or.(lambda > spectrum%lambda(spectrum%nlambda))) then
-         returnNormValue = 0. 
-      else
-         call locate(spectrum%lambda,spectrum%nLambda, lambda, i)
-         t = (lambda - spectrum%lambda(i))/(spectrum%lambda(i+1) - spectrum%lambda(i))
-         returnNormValue = spectrum%normFlux(i) + t * (spectrum%normFlux(i+1) - spectrum%normFlux(i))
-      endif
-
-    end function returnNormValue
+! Unused function commented out (D. Acreman 28/11/07)
+!!$    real(double) function returnNormValue(spectrum, lambda, lam1, lam2)
+!!$      type(SPECTRUMTYPE) :: spectrum
+!!$      real(double) :: lambda, t, lam1, lam2
+!!$      integer :: i
+!!$
+!!$      if ((lambda < spectrum%lambda(1)).or.(lambda > spectrum%lambda(spectrum%nlambda))) then
+!!$         returnNormValue = 0. 
+!!$      else
+!!$         call locate(spectrum%lambda,spectrum%nLambda, lambda, i)
+!!$         t = (lambda - spectrum%lambda(i))/(spectrum%lambda(i+1) - spectrum%lambda(i))
+!!$         returnNormValue = spectrum%normFlux(i) + t * (spectrum%normFlux(i+1) - spectrum%normFlux(i))
+!!$      endif
+!!$
+!!$    end function returnNormValue
 
     real(double) function returnNormValue2(spectrum, lambda, lam1, lam2)
       type(SPECTRUMTYPE) :: spectrum

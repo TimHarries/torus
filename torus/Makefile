@@ -20,7 +20,6 @@ GUANINE_HOME = /Network/Guanine
 
 KNOWN_SYSTEM = no
 MPIFLAG = 
-CPP = cpp -P
 #
 # Set system-dependent variables
 #
@@ -303,7 +302,7 @@ ifeq ($(SYSTEM), ompi)
     F95COMP  = mpif90
     F95FLAG  = 
     F77FLAG  = -w
-    DEBUGFLAG= -g -w  -ftrace=full -fbounds-check -fimplicit-none
+    DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -Wall -Wno=140,141,112,155
     FASTFLAG = -O0
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
@@ -415,7 +414,6 @@ ifeq ($(SYSTEM), zen)
     F95COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
     F77COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
     FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
-    CPP= fpp
     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused
     STATICFLAG=
     MATHTRAP=

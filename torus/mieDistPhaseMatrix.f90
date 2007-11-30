@@ -49,7 +49,6 @@
       common /cfcom/ f,g,cnrm
 !      real :: pnmllg(1001),cnrm(1000)
       real :: pnmllg(1000001),cnrm(1000000)
-      real, parameter :: rtd = 180.0/pi
       real :: a, da, gfac, dist
       real :: a1,a2,loga1,loga2
       real :: tot

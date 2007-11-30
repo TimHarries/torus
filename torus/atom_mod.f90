@@ -188,8 +188,6 @@ contains
     !
     implicit none
     integer n                   ! the level
-    integer maxsaha
-    parameter(maxsaha=15)
     real(double) ::  nu         ! the photon frequency
     real(double) ::  lam        ! the photon wavelength
     lam=cSpeed/nu

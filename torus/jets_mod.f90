@@ -443,7 +443,6 @@ contains
     !
     real(double), SAVE :: cos_theta_o_jets
     real(double), SAVE :: cos_theta_o_disk    
-    real(double), parameter :: M_sun=1.9891d30 ! in [kg]
 
     IF (first_time) THEN
        ! Converting the half open angle to radians

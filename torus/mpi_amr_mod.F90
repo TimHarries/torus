@@ -214,9 +214,8 @@ contains
 
     include 'mpif.h'
     type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: child
     !
     integer :: subcell, i
     character(len=*) :: valueName, plane
@@ -350,9 +349,8 @@ contains
 
     include 'mpif.h'
     type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal, tOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: neighbourOctal
     character(len=*) :: boundaryType
     integer :: receiveThread, sendThread, tsubcell
     integer :: myRank, ierr
@@ -360,7 +358,7 @@ contains
     integer :: nOctals
     integer, parameter :: nStorage = 40
     real(double) :: loc(3), tempStorage(nStorage)
-    type(OCTALVECTOR) :: octVec, direction, centre, rVec
+    type(OCTALVECTOR) :: octVec, direction, rVec
     integer :: nBound
     integer :: iOctal
     integer :: subcell, neighbourSubcell
@@ -638,13 +636,11 @@ contains
 
     include 'mpif.h'
     type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: child, neighbourOctal
     !
     integer :: subcell, i, iThread
-    logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     integer :: myRank, ierr
@@ -734,7 +730,7 @@ contains
     integer :: myRank, ierr, i
     integer, allocatable :: indx(:), itmp(:)
     real, allocatable :: sort(:)
-    integer :: list(1000), nList, nGroup, group(:), iPair, iStart
+    integer :: list(1000), nList, nGroup, group(:), iStart ! , iPair
     logical :: groupFound
 
 
@@ -826,7 +822,6 @@ contains
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
     type(OCTALVECTOR) :: direction, rVec
     integer :: subcell, neighbourSubcell, tSubcell
-    integer :: nSubcell(6)
     integer :: nBound, nDepth
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi
     integer :: myRank, ierr
@@ -1047,11 +1042,10 @@ contains
     real(double), optional :: qState_i_minus_1(5), qstate_i_minus_2(5)
     real(double), optional :: qState_i_plus_1(5)
     real(double), optional :: fluxVector_i_minus_1(5), fluxvector_i_plus_1(5), x_i_minus_1
-    type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
-    type(OCTALVECTOR) :: direction, rVec, locator
-    integer :: subcell, neighbourSubcell, tSubcell
-    integer :: nSubcell(6)
-    integer :: nBound, nDepth
+    type(OCTAL), pointer :: thisOctal, neighbourOctal
+    type(OCTALVECTOR) :: direction, locator
+    integer :: subcell, neighbourSubcell
+    integer :: nBound
     integer :: myRank, ierr
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -1371,13 +1365,11 @@ contains
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
     type(OCTALVECTOR) :: rVec, direction, currentPosition
-    integer :: iLambda
     real(double) :: sigma, distToNextCell
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-3
     integer :: subcell
     real(double) ::  totDist
-    logical :: hitSource
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     sigma = 0.d0
@@ -1527,14 +1519,10 @@ contains
   recursive subroutine recursivePeriodSend(thisOctal)
 
     include 'mpif.h'
-    type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal, tOctal, child
     integer :: tSubcell
-    type(octal), pointer  :: neighbourOctal, startOctal
     real(double) :: loc(3), tempStorage(7)
     integer :: subcell, i
-    integer :: myrank
     integer :: tag1 = 78, tag2 = 79
     integer :: ierr
     integer :: status(MPI_STATUS_SIZE)
@@ -1587,7 +1575,7 @@ contains
   subroutine periodBoundaryReceiveRequests(grid, receiveThread)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
-    type(OCTAL), pointer :: thisOctal, tOCtal
+    type(OCTAL), pointer :: thisOctal
     logical :: sendLoop
     real(double) :: loc(3), tempStorage(7)
     integer :: ierr, receiveThread

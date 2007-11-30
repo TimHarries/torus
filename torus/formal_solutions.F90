@@ -334,7 +334,6 @@ contains
     integer             ::   my_rank            ! my processor rank
     integer             ::   ncpu               ! The number of processes
     integer             ::   ierr               ! error flag
-    double precision    ::  flux_sum, flux_tmp
     integer,allocatable ::   BelongRank(:)  
     integer             ::   tag = 0
     logical             ::   rankComplete

@@ -400,11 +400,7 @@ contains
   integer ::   my_rank        ! my processor rank
   integer ::   n_proc         ! The number of processes
   integer ::   ierr           ! error flag
-  integer ::   n_rmdr, m      !
-  integer ::   mphotons       ! number of photons (actual) 
-  integer ::   tempInt        !
-  real, dimension(:), allocatable :: tempRealArray
-  real, dimension(:), allocatable :: tempRealArray2
+!  integer ::   n_rmdr, m      !
   integer, dimension(:), allocatable :: photonBelongsRank
   integer, parameter :: tag = 0
   logical :: rankComplete
@@ -2357,7 +2353,6 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real :: r
     ! data space to store values from all processors
     real, save, allocatable  :: buffer_ncrossings(:)     
     real(double), save, allocatable     :: buffer_distanceGrid(:) 
@@ -2968,14 +2963,11 @@ subroutine setBiasOnTau(grid, iLambda)
     real(double) :: kappaSca, kappaAbs, kappaExt
 #ifdef MPI
 ! Only declared in MPI case
-     logical :: dcAllocated
      integer, dimension(:), allocatable :: octalsBelongRank
      logical :: rankComplete
-     integer :: iRank
      integer :: tag = 0
-     integer :: tempInt
      real(double), allocatable :: eArray(:), tArray(:)
-     integer :: nEdens, nVoxels, ierr
+     integer :: nVoxels, ierr
      integer :: nBias
      integer :: np
      integer :: my_rank

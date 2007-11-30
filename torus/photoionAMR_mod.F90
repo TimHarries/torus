@@ -343,7 +343,7 @@ contains
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein, maxIter)
-    use input_variables, only : smoothFactor, blockHandout, zoomFactor, &
+    use input_variables, only : smoothFactor, zoomFactor, &
          nlucy, photoionization
     implicit none
     include 'mpif.h'
@@ -351,18 +351,17 @@ contains
     type(GRIDTYPE) :: grid
     character(len=*) :: lucyfileout, lucyfilein
     logical :: readlucy, writelucy
-    type(OCTAL), pointer :: thisOctal, tempOctal, endOctal
+    type(OCTAL), pointer :: thisOctal, tempOctal
     integer :: nCellsInDiffusion
-    logical :: directPhoton
     character(len=80) :: message
-    integer :: tempSubcell, endSubcell
+    integer :: tempSubcell
     integer :: nlambda
     real :: lamArray(:)
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     integer :: iSource
     type(OCTALVECTOR) :: rVec, uHat, rHat
-    real(double) :: alphaA, alpha1, v, lCore
+    real(double) :: v, lCore
     integer :: nMonte, iMonte
     integer :: subcell
     integer :: i, j
@@ -375,16 +374,13 @@ contains
     integer :: nInf
     real(double) :: kappaScadb, kappaAbsdb
     real(double) :: epsOverDeltaT, kappaH, kappaHe
-    real :: dummy(3)
     real :: pops(10)
     integer :: nIter
     logical :: converged
-    real(double) :: crate
-    real :: xsec, temp, e, h0, he0
+    real :: xsec, temp, he0
     real(double) :: luminosity1, luminosity2, luminosity3
     type(IONTYPE) :: thisIon
-    real(double) :: alpha21s, alpha21p, alpha23s, photonPacketWeight
-    real :: excitation, deexcitation, excitation2
+    real(double) :: photonPacketWeight
     real(double) :: fac
     logical :: gridConverged
     real(double) :: probEsc, albedo
@@ -503,7 +499,6 @@ contains
  !               
  !               if (tempOctal%diffusionApprox(tempsubcell)) then
  !                  call randomWalk(grid, tempOctal, tempSubcell, thisOctal, Subcell, temp)
- !                  directPhoton = .false.
  !                  rVec = subcellCentre(thisOctal, subcell)
  !               endif
                 
@@ -826,32 +821,28 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
   integer :: myRank, ierr
    type(GRIDTYPE) :: grid
    type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
-   type(OCTAL), pointer :: thisOctal, tempOctal, sourceOctal
+   type(OCTAL), pointer :: thisOctal, tempOctal
    type(OCTAL),pointer :: oldOctal
    type(OCTAL),pointer :: foundOctal, endOctal
    integer :: endSubcell
    real(double) :: photonPacketWeight
-   integer :: subcell, isubcell, tempSubcell, sourceSubcell
+   integer :: subcell, tempSubcell
    real(oct) :: tval, tau, r
    real :: lamArray(:)
    integer :: nLambda
    logical :: stillinGrid
    logical :: escaped
-   logical :: twoD
    real(double) :: kappaScaDb, kappaAbsDb
    real(oct) :: thisTau
    real(oct) :: thisFreq
    real(oct) :: thisLam
    integer :: iLam
    logical ::inFlow
-   integer :: imonte
    real :: diffusionZoneTemp
-   logical :: photonInDiffusionZone
-   logical :: leftHandBoundary
-   real(double) :: prob
-   real :: e, h0
-   real :: lambda
-   integer :: ilambda, i
+   real :: e
+!   real :: lambda
+!   integer :: ilambda
+   integer :: i
    logical :: crossedMPIboundary
    type(OCTAL), pointer :: nextOctal
    integer :: nextSubcell
@@ -1281,16 +1272,13 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    type(OCTALVECTOR), intent(inout) :: direction
    real(oct), intent(out) :: tval
    !
-   type(OCTALVECTOR) :: norm(6), p3(6)
    type(OCTAL),pointer :: thisOctal
    type(OCTALVECTOR) :: subcen, point
-   real :: dx, dz ! directions in cylindrical coords
    integer :: subcell
-   real(double) :: compX, compZ,currentX,currentZ
+   real(double) :: compZ, currentZ
    real(double) :: distToZBoundary, distToXboundary
    real(oct) :: r1,r2,d,cosmu,x1,x2,distTor1,distTor2, theta, mu
-   integer :: i,j
-   logical :: ok, thisOk(6)
+   logical :: ok
    type(OCTALVECTOR) :: xHat, zHAt
 
    point = posVec
@@ -1350,14 +1338,14 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
 
    tVal = min(distToZboundary, distToXboundary) +0.0001d0*grid%halfsmallestsubcell
    if (tVal > 1.e29) then
-      write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+      write(*,*) tVal,compZ, distToZboundary,disttoxboundary
       write(*,*) "subcen",subcen
-      write(*,*) "x,z",currentX,currentZ
+      write(*,*) "z",currentZ
    endif
    if (tval < 0.) then
-      write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
+      write(*,*) tVal,compZ, distToZboundary,disttoxboundary
       write(*,*) "subcen",subcen
-      write(*,*) "x,z",currentX,currentZ
+      write(*,*) "z",currentZ
    endif
 
   end subroutine intersectCubeAMR2D
@@ -1486,8 +1474,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   type(GRIDTYPE) :: grid
-  real(double) :: luminosity, v, r1, r2, hbeta
-  type(OCTALVECTOR) :: rVec
+  real(double) :: luminosity, v, hbeta
   integer :: subcell, i
   
   do subcell = 1, thisOctal%maxChildren
@@ -1513,10 +1500,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
   subroutine calculateIonizationBalance(grid, thisOctal, epsOverDeltaT)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
-    real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
-    integer :: subcell, i
-    type(OCTALVECTOR) :: rVec
+    real(double) :: epsOverDeltaT
+    integer :: subcell
     
     do subcell = 1, thisOctal%maxChildren
 
@@ -1536,20 +1521,16 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
   subroutine calculateThermalBalance(grid, thisOctal, epsOverDeltaT, simple)
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child 
-    real(double) :: epsOverDeltaT, v, r1, r2, ionizationCoeff, recombCoeff
+    real(double) :: epsOverDeltaT
     logical, optional :: simple 
-    real(double) :: totalHeating, nHii, nHeII, nh
-    integer :: subcell, i, j
-    type(OCTALVECTOR) :: rVec
+    real(double) :: totalHeating
+    integer :: subcell
     logical :: converged, found
     real :: t1, t2, tm
     real, parameter :: Tlow = 100.
-    real(double) :: y1, y2, ym, ymin, Hheating, Heheating, tot, dustHeating
+    real(double) :: y1, y2, ym, Hheating, Heheating, dustHeating
     real :: deltaT
-    real(double) :: junk
     real :: underCorrection = 1.
-    real :: pops(10)
     integer :: nIter
     
 
@@ -1825,12 +1806,11 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
     real(double) :: thisFreq, distance, kappaAbs,kappaAbsDust
-    real :: lambda
     integer :: ilambda
     real(double) :: photonPacketWeight
     integer :: i 
     real :: e, xsec
-    type(OCTALVECTOR) :: rVec
+!    type(OCTALVECTOR) :: rVec
 
     thisOctal%nCrossings(subcell) = thisOctal%nCrossings(subcell) + 1
 
@@ -1885,15 +1865,10 @@ subroutine solveIonizationBalance(grid, thisOctal, subcell, temperature, epsOver
   real(double) :: epsOverDeltaT, V
   real :: temperature
   integer :: subcell
-  integer :: i, j, k
-  real(double), allocatable :: matrixA(:,:), MatrixB(:,:), tempA(:,:)
+  integer :: i, k
   integer :: nIonizationStages
-  type(OCTALVECTOR) :: rVec
-  real(double) :: r1, r2
   integer :: iStart, iEnd, iIon
   real(double) :: chargeExchangeIonization, chargeExchangeRecombination
-  logical :: ok, easyWay
-  real(double) :: ionRateInto, recombRateOutof
   real(double), allocatable :: xplus1overx(:)
 
   v = cellVolume(thisOctal, subcell)
@@ -2388,8 +2363,7 @@ subroutine dumpLexington(grid, epsoverdt)
   real(double) :: r, theta, phi
   real :: t,hi,hei,oii,oiii,cii,ciii,civ,nii,niii,niv,nei,neii,neiii,neiv
   real(double) :: oirate, oiirate, oiiirate, oivrate
-  real(double) :: v, epsoverdt,r1,r2
-  type(OCTALVECTOR) :: rvec
+  real(double) :: v, epsoverdt
   type(OCTALVECTOR) :: octVec
   real :: fac
   real(double) :: hHeating, heHeating, totalHeating, heating, nh, nhii, nheii, ne
@@ -2659,7 +2633,7 @@ recursive subroutine sumLineLuminosity(thisOctal, luminosity, iIon, iTrans, grid
   type(octal), pointer   :: thisOctal
   type(octal), pointer  :: child 
   integer :: subcell, i, iIon, iTrans
-  real(double) :: luminosity, v, r1, r2, rate
+  real(double) :: luminosity, v, rate
   real :: pops(10)
   type(OCTALVECTOR) :: rvec
   
@@ -2734,7 +2708,7 @@ subroutine solvePops(thisIon, pops, ne, temperature, ionFrac, nh, debug)
   real :: temperature
   real(double), allocatable :: matrixA(:,:), MatrixB(:), tempMatrix(:,:), qeff(:,:),  rates(:)
   integer :: n, iTrans, i, j
-  real :: excitation, deexcitation, rateij, rateji, arateji
+  real :: excitation, deexcitation, arateji
   real(double) :: nh, ionFrac
   logical :: ok
   logical, optional :: debug
@@ -2977,8 +2951,7 @@ subroutine getHeating(grid, thisOctal, subcell, hHeating, heHeating, dustHeating
   type(GRIDTYPE) :: grid
   type(OCTAL) :: thisOctal
   integer :: subcell
-  real(double) :: hHeating, heHeating, totalHeating, v, r1, r2, epsOverDeltaT, dustHeating
-  type(OCTALVECTOR) :: rVec
+  real(double) :: hHeating, heHeating, totalHeating, v, epsOverDeltaT, dustHeating
 
   v = cellVolume(thisOctal, subcell)
   Hheating= thisOctal%nh(subcell) * thisOctal%ionFrac(subcell,1) * grid%ion(1)%abundance &
@@ -3034,7 +3007,7 @@ subroutine createGammaTable(table, thisfilename)
   type(GAMMATABLE) :: table
   character(len=*) :: thisfilename
   character(len=200) :: dataDirectory, filename
-  integer :: i, j
+  integer :: i
 
   call unixGetenv("TORUS_DATA", dataDirectory, i)
   filename = trim(dataDirectory)//"/"//thisfilename
@@ -3095,10 +3068,10 @@ subroutine addLymanContinua(nFreq, freq, dfreq, spectrum, thisOctal, subcell, gr
   TYPE(OCTAL) :: thisOctal
   integer :: subcell
   integer :: nFreq
-  integer :: i, j, k, iIon, n1, n2
+  integer :: i, k, iIon, n1, n2
   real(double) :: freq(:), spectrum(:), dfreq(:)
-  real(double) :: nu0_h, nu0_he, jnu
-  real :: e, hxsec, hexsec
+  real(double) :: jnu
+  real :: e, hxsec
   real(double), parameter :: statisticalWeight(3) = (/ 2.d0, 0.5d0, 2.d0 /)
 
 
@@ -3345,12 +3318,12 @@ subroutine addHeRecombinationLines(nfreq, freq, dfreq, spectrum, thisOctal, subc
   type(GRIDTYPE) :: grid
   integer :: i, j, k
   real :: fac, t, aj ,bj, cj
-  real(double) :: lineFreq, lambda
+  real(double) :: lineFreq !, lambda
   real :: emissivity
-  real :: heII4686
-  integer :: ilow, iup
+!  real :: heII4686
+!  integer :: ilow, iup
   integer,parameter :: nHeIILyman = 4
-  real(double) :: heIILyman(4)
+!  real(double) :: heIILyman(4)
   real(double) :: freqheIILyman(4) = (/ 3.839530, 3.749542, 3.555121, 2.99963 /)
 
 
@@ -3426,8 +3399,7 @@ subroutine addDustContinuum(nfreq, freq, dfreq, spectrum, thisOctal, subcell, gr
   integer :: nLambda
   real :: lamArray(:)
   integer :: i, iLam
-  real :: lambda, thisLam
-  type(OCTALVECTOR) :: octVec
+  real :: thisLam
   real(double), allocatable :: kabsArray(:)
 
 
@@ -3656,7 +3628,7 @@ end subroutine readHeIIrecombination
     real :: thisLambda
     integer :: nFreq
     real(double), allocatable :: freq(:), spectrum(:), tspec(:),lamspec(:), dfreq(:)
-    real(double) :: nuStart, nuEnd, thisFreq, r, fac
+    real(double) :: nuStart, nuEnd, r, fac
     integer :: nLambda
     real :: lamArray(:)
     integer :: i
@@ -3721,14 +3693,13 @@ end subroutine readHeIIrecombination
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal
     integer :: subcell
-    real :: thisLambda
     integer :: nFreq
     real(double), allocatable :: freq(:), dfreq(:), spectrum(:), tspec(:),lamspec(:)
     real :: dlam(:), dlam2
     real(double), allocatable :: prob(:)
     real(double) :: t
     real :: thisLam
-    real(double) :: nuStart, nuEnd, thisFreq, r, fac
+    real(double) :: thisFreq, r, fac
     integer :: nLambda
     real :: lamArray(:)
     real :: bias
@@ -3823,7 +3794,6 @@ end subroutine readHeIIrecombination
     real :: lamArray(:)
     integer :: nLambda
     integer :: i, j
-    real hLines(15)
     integer :: iup, ilow
 
   real(double) :: lambdaTrans(20,20) = reshape( source=&
@@ -3891,7 +3861,7 @@ end subroutine readHeIIrecombination
 
   subroutine getNewMPIPhoton(position, direction, frequency, endloop)
     include 'mpif.h'
-    integer :: myRank, ierr
+    integer :: ierr
     type(OCTALVECTOR) :: position, direction
     real(double) :: frequency
     integer, parameter :: nTemp = 7
@@ -3922,7 +3892,7 @@ end subroutine readHeIIrecombination
 
   subroutine sendMPIPhoton(position, direction, frequency, iThread)
     include 'mpif.h'
-    integer :: myRank, ierr
+    integer :: ierr
     type(OCTALVECTOR) :: position, direction
     real(double) :: frequency
     integer, parameter :: nTemp = 7
@@ -3948,11 +3918,10 @@ end subroutine readHeIIrecombination
 
 
   recursive subroutine calculateEnergyFromTemperature(thisOctal, gamma, mu)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: gamma, mu, ke, eThermal
+    real(double) :: gamma, mu, eThermal
     mu = 2.d0
   
     do subcell = 1, thisOctal%maxChildren

@@ -121,39 +121,17 @@ contains
 #ifdef MPI
     ! For MPI implementations
   ! For MPI implementations =====================================================
-  integer ::   my_rank        ! my processor rank
-  integer ::   n_proc         ! The number of processes
-  integer ::   ierr           ! error flag
-  integer ::   n_rmdr, m      !
-  integer ::   mphotons       ! number of photons (actual) 
-  integer ::   tempInt        !
-  real, dimension(:), allocatable :: tempRealArray
-  real, dimension(:), allocatable :: tempRealArray2
-  integer, dimension(:), allocatable :: photonBelongsRank
-  integer, parameter :: tag = 0
-  logical :: rankComplete
-    ! data space to store values from all processors
-    real, save, allocatable  :: buffer_real(:)     
-    logical, save  :: first_time = .true.
+    integer ::   my_rank        ! my processor rank
+    integer ::   n_proc         ! The number of processes
+    integer ::   ierr           ! error flag
+    integer, dimension(:), allocatable :: photonBelongsRank
+    integer, parameter :: tag = 0
+    logical :: rankComplete
 
-     logical :: dcAllocated
-     integer, dimension(:), allocatable :: octalsBelongRank
-     integer :: iRank
-     real, allocatable :: tempArray(:), tArray(:)
-     real(double), allocatable :: tempArrayd(:), tArrayd(:)
-     integer ::  nVoxels
-
-
-
-
-!    ! find the number of the processors for the first time.    
-!    if (first_time) then
-       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-!       allocate(buffer_real(n_proc))
-!       first_time = .false.
-!    end if
-
-       allocate(buffer_real(n_proc))
+    integer, dimension(:), allocatable :: octalsBelongRank
+    real, allocatable :: tempArray(:), tArray(:)
+    real(double), allocatable :: tempArrayd(:), tArrayd(:)
+    integer ::  nVoxels
 
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 

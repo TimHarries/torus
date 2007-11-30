@@ -2528,7 +2528,6 @@ subroutine calculateMoleculeSpectrum(grid, thisMolecule)
     integer       ::   my_rank        ! my processor rank
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
-    logical       ::   rankComplete
     real(double), allocatable :: tempArray(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
@@ -2663,7 +2662,6 @@ stop
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
     integer :: ix1, ix2, n
-    logical       ::   rankComplete
     real(double), allocatable :: tempArray(:), tempArray2(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================
@@ -3188,7 +3186,6 @@ end subroutine fineGaussianWeighting
     integer       ::   np             ! The number of processes
     integer       ::   ierr           ! error flag
     integer       ::   n
-    logical       ::   rankComplete
     real(double), allocatable :: tempArray(:), tempArray2(:)
 
     ! FOR MPI IMPLEMENTATION=======================================================

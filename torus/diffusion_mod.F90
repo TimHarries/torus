@@ -177,13 +177,10 @@ contains
 #ifdef MPI
     integer :: my_rank, np !, isubcell
     real(double) :: globalDeMax
-    logical :: dcAllocated
     integer, dimension(:), allocatable :: octalsBelongRank
     logical :: rankComplete
-    integer :: iRank
     integer :: ierr
     integer :: tag = 0
-    integer :: tempInt
     real(double), allocatable :: eArray(:), tArray(:)
     integer :: nEdens, nVoxels
 #endif

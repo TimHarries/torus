@@ -3130,7 +3130,6 @@ contains
      logical :: dcAllocated
      integer, dimension(:), allocatable :: octalsBelongRank
      logical :: rankComplete
-     integer :: iRank
      integer :: tag = 0
      integer :: tempInt
 #endif
