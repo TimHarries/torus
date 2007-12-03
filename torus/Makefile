@@ -695,7 +695,12 @@ CAPF90SOURCE =	 photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 hydrodynami
 F90OBJ = $(F90SOURCE:.f90=.o)
 CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
 F77OBJ = $(F77SOURCE:.f=.o)
-PGOBJ  = $(PGSOURCE:.f90=.o)
+# Only compile the pgplot stubs if required.
+ifeq ($(pgplot), no)
+  PGOBJ  = $(PGSOURCE:.f90=.o)
+else
+  PGOBJ = 
+endif
 ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ) $(PGOBJ)
 
 #
