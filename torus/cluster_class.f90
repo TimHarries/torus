@@ -867,8 +867,8 @@ contains
     !
     real(double) :: s2 !, s1  
     logical :: logscale
-    real(double) :: Rgap1 = 1000.0 ! 10^10 cm
-    real(double) :: Rgap2 = 2000.0 ! 10^10 cm
+!    real(double) :: Rgap1 = 1000.0 ! 10^10 cm
+!    real(double) :: Rgap2 = 2000.0 ! 10^10 cm
     
 
     ! quick check

@@ -10,7 +10,6 @@ C This routine reads in a polarization spectrum from a TSP format file
 C and puts it into the 'current' arrays
 C
       IMPLICIT NONE
-      INTEGER OUT_LU
 c      INCLUDE '/star/include/sae_par'
 c      INCLUDE '/star/include/dat_par'
 C
@@ -29,7 +28,7 @@ C
 c      INTEGER SP
 c      INTEGER NDF
 c      CHARACTER*(*) CPARAM
-      CHARACTER*80 PATH,FILENAME
+      CHARACTER*80 FILENAME
 c      CHARACTER*64 NAME
 c      CHARACTER*80 ERROR
 c      INTEGER UBND(1),LBND(1),NDFO,OAXISP,NDFQ,NDFU,QPTR
@@ -106,8 +105,7 @@ C
       REAL STOKES_U(*)
       REAL STOKES_UV(*)
       REAL LAMBDA(*)
-      INTEGER STATUS,N,I
-      CHARACTER*80 INFILE
+      INTEGER N,I
       REAL Q(N),U(N),QV(N),UV(N),WA(N),IAR(N)
 
       DO I = 1,N

@@ -5,26 +5,21 @@
       real  cmr, cmi, x, kappaExt, kappaAbs, kappaSca
       real aMin, aMax, a0, qDist, pDist, lambda
       real logAmin, logAmax
-      real tot
       integer nDist
-      real pi, rtd
+      real pi
       real qsca(100), qext(100), qback(100), gsca(100)
-      integer ic, ip, id, npnts,i,n,n1, nc,nci,nang
-      real x1,xn, dk, x1i,xni,dwl,rn,rf,ri,xi,theta,costh
-      real snorm, p1,p2,tp,dlt
+      integer ic, ip, i
       real micronsToCm
-      complex cm,ci,cim,f(1000),g(1000),t
+      complex cm,ci,f(1000),g(1000)
       common /cfcom2/ f,g,cnrm
-      real pnmllg(1001),cnrm(1000)
-      real normFac, a, da
-      real gfac, gscadist
-      real loga1, loga2, a1, a2
+      real cnrm(1000)
+      real normFac, a
+      real gscadist
       real nsd(100), aDist(100)
       complex refrel
       complex s1(1000),s2(1000)
       
       pi = 3.14159265358979
-      rtd = 180.0/pi
       ci = (0.0,1.0)
       ic = 1
       ip = 1
@@ -75,9 +70,9 @@ c     ..........................................
         
         
         kappaabs = kappaext-kappasca                     
-      END                                                                       
+      END
 
-      SUBROUTINE PowerInt(N,N1,N2,x,y,integral)                                 
+      SUBROUTINE PowerInt(N,N1,N2,x,y,integral)
 c =======================================================================       
 c This subroutine calculates integral I(y(x)*dx). Both y and x are              
 c 1D arrays, y(i), x(i) with i=1,N (declared with NN). Lower and upper          
@@ -92,17 +87,17 @@ c                                    --- (R. Kurosawa)
 c                          
 c
 c =======================================================================       
-      IMPLICIT none                                                             
-      INTEGER i, N, N1, N2                                                      
+      IMPLICIT none
+      INTEGER i, N, N1, N2
       REAL x(N), y(N), integral
 !      REAL x(N), y(N), integral, pow, C, delint                     
       DOUBLE PRECISION x1, x2, y1, y2, pow, delint, C, sum
 c -----------------------------------------------------------------------       
 c     set integral to 0 and accumulate result in the loop                       
-      sum = 0.0d0                                                           
+      sum = 0.0d0 
       integral=0.0
 c     calculate weight, wgth, and integrate in the same loop                    
-      IF (N2.GT.N1) THEN                                                        
+      IF (N2.GT.N1) THEN 
         DO i = N1, N2-1 
            x1 = dble(x(i))
            x2 = dble(x(i+1))
@@ -110,20 +105,20 @@ c     calculate weight, wgth, and integrate in the same loop
            y2 = dble(y(i+1))
 c
           pow = log(y2/y1) / log(x2/x1)                           
-          C = y1 / x1**pow                                                  
-          delint = (x2**(pow+1.0d0)-x1**(pow+1.0d0))*C/(pow+1.d0)                  
+          C = y1 / x1**pow                      
+          delint = (x2**(pow+1.0d0)-x1**(pow+1.0d0))*C/(pow+1.d0)
 c         add contribution to the integral                                      
           sum = sum + delint                                          
-        END DO                                                                  
-        ELSE                                                                    
+        END DO                
+        ELSE              
 c        integral = 0.0                                                         
-        sum = y(1)                                                         
-      END IF                                                                    
+        sum = y(1)          
+      END IF                   
 c -----------------------------------------------------------------------       
 c Hope this is ok....
       integral = real(sum)
 
-      RETURN                                                                    
-      END                                                                       
+      RETURN                                
+      END                           
 c ***********************************************************************       
         
