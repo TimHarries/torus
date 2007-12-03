@@ -71,14 +71,12 @@ contains
     character(len=*) :: lucyfilein, lucyfileout
     character(len=80) :: mpiFilename
     real(double) :: dt, tc(65), temptc(65),cfl, gamma, mu
-    real(double) :: currentTime
-    integer :: i, pgbegin, it, iUnrefine
+    integer :: iUnrefine
     integer :: myRank, ierr
     character(len=20) :: plotfile
-    real(double) :: tDump, nextDumpTime, ang
+    real(double) :: tDump, nextDumpTime
     type(OCTALVECTOR) :: direction, viewVec
     logical :: gridConverged
-    integer :: nDependent, dependentThread(200)
     integer :: thread1(200), thread2(200), nBound(200), nPairs
     integer :: group(100), nGroup
     logical :: globalConverged(64), tConverged(64)
@@ -343,55 +341,48 @@ contains
 
   subroutine photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein, maxIter)
-    use input_variables, only : smoothFactor, zoomFactor, &
-         nlucy, photoionization
+!    use input_variables, only : zoomFactor
     implicit none
     include 'mpif.h'
     integer :: myRank, ierr
     type(GRIDTYPE) :: grid
     character(len=*) :: lucyfileout, lucyfilein
     logical :: readlucy, writelucy
-    type(OCTAL), pointer :: thisOctal, tempOctal
-    integer :: nCellsInDiffusion
-    character(len=80) :: message
-    integer :: tempSubcell
+    type(OCTAL), pointer :: thisOctal !, tempOctal
+!    integer :: nCellsInDiffusion
+!    character(len=80) :: message
+!    integer :: tempSubcell
     integer :: nlambda
     real :: lamArray(:)
     integer :: nSource
     type(SOURCETYPE) :: source(:), thisSource
     integer :: iSource
     type(OCTALVECTOR) :: rVec, uHat, rHat
-    real(double) :: v, lCore
+    real(double) :: lCore
     integer :: nMonte, iMonte
     integer :: subcell
     integer :: i, j
     logical :: escaped
     real(double) :: wavelength, thisFreq
     real :: thisLam
-    type(OCTALVECTOR) :: outVec, octVec
+    type(OCTALVECTOR) :: octVec
     real(double) :: r
     integer :: ilam
     integer :: nInf
     real(double) :: kappaScadb, kappaAbsdb
-    real(double) :: epsOverDeltaT, kappaH, kappaHe
-    real :: pops(10)
+    real(double) :: epsOverDeltaT
     integer :: nIter
     logical :: converged
-    real :: xsec, temp, he0
+!    real :: temp
     real(double) :: luminosity1, luminosity2, luminosity3
-    type(IONTYPE) :: thisIon
     real(double) :: photonPacketWeight
     real(double) :: fac
-    logical :: gridConverged
-    real(double) :: probEsc, albedo
+    real(double) :: albedo
     integer :: maxIter
     logical, save :: firstCall = .true.
     type(SAHAMILNETABLE),save :: hTable, heTable
     type(RECOMBTABLE),save :: Hrecombtable
 
-    real(double) :: hRecombemissivity, hlymanContemissivity, helymanContEmissivity
-    real(double) :: hiContEmissivity, forbiddenEmissivity
-    real(double) :: probNonIonizing, probHydrogen
     real(double) :: freq(1000), dfreq(1000), spectrum(1000), nuStart, nuEnd
     real(double) :: r1, kappaAbsGas, kappaAbsDust, escat
     integer, parameter :: nTemp = 7
@@ -823,7 +814,7 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
    type(OCTAL), pointer :: thisOctal, tempOctal
    type(OCTAL),pointer :: oldOctal
-   type(OCTAL),pointer :: foundOctal, endOctal
+   type(OCTAL),pointer :: endOctal
    integer :: endSubcell
    real(double) :: photonPacketWeight
    integer :: subcell, tempSubcell
@@ -839,10 +830,8 @@ SUBROUTINE toNextEventPhoto(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamA
    integer :: iLam
    logical ::inFlow
    real :: diffusionZoneTemp
-   real :: e
 !   real :: lambda
 !   integer :: ilambda
-   integer :: i
    logical :: crossedMPIboundary
    type(OCTAL), pointer :: nextOctal
    integer :: nextSubcell
