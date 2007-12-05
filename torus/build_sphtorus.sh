@@ -63,34 +63,36 @@ else
 fi
 
 # 1.3 Set up the build directories
+export TORUS_LIB=${sphtorus_dir}/lib # Used by Makefile
 if [[ -e ${sphtorus_dir} ]]; then
     if [ ${overwrite} -eq 1 ]; then
 	echo "INFO: Removing old build"
 	rm -r ${sphtorus_dir}
+	mkdir -p ${sphtorus_dir}/build/torus
+	mkdir -p ${sphtorus_dir}/build/sphNG
+	mkdir -p ${sphtorus_dir}/bin
+	mkdir -p ${TORUS_LIB}
+	make_links=1
     else
-	echo "ERROR: ${sphtorus_dir} already exists. Will not overwrite existing build."
-	echo "ERROR: Call this script with the -o option if you wish to overwrite the existing build."
-	exit 1
+	echo "INFO: ${sphtorus_dir} already exists. Performing incremental build."
+	make_links=0
     fi
 else
     echo "INFO:  ${sphtorus_dir} does not exist. Creating directories required for build"
+    mkdir -p ${sphtorus_dir}/build/torus
+    mkdir -p ${sphtorus_dir}/build/sphNG
+    mkdir -p ${sphtorus_dir}/bin
+    mkdir -p ${TORUS_LIB}
+    make_links=1
 fi
-
-mkdir -p ${sphtorus_dir}/build/torus
-mkdir -p ${sphtorus_dir}/build/sphNG
-mkdir -p ${sphtorus_dir}/bin
-export TORUS_LIB=${sphtorus_dir}/lib # Used by Makefile
-mkdir -p ${TORUS_LIB}
 
 # 2. Build torus as a library
 
 # 2.1 Make symbolic links to torus source code in build directories
-#     Using *.f* will include the .raw files
 cd ${sphtorus_dir}/build/torus
-ln -s ${torus_cvs}/*.f* .
-ln -s ${torus_cvs}/*.F* .
-ln -s ${torus_cvs}/Makefile .
-ln -s ${torus_cvs}/makedepend .
+if [[ ${make_links} -eq 1 ]]; then
+    ln -s ${torus_cvs}/* .
+fi
 
 # 2.2 Build torus
 echo "INFO: Building torus, SYSTEM=${SYSTEM}"
@@ -108,22 +110,17 @@ mv libtorus.a ${sphtorus_dir}/lib
 
 # 3.1 Make symbolic links to source code in build directory
 cd  ${sphtorus_dir}/build/sphNG
-ln -s ${sph_cvs}/*.f .
-ln -s ${sph_cvs}/*.F .
-ln -s ${sph_cvs}/Makefile .
-ln -s ${sph_cvs}/idim .
-ln -s ${sph_cvs}/igrape .
-ln -s ${sph_cvs}/inspho .
+if [[ ${make_links} -eq 1 ]]; then
+    ln -s ${sph_cvs}/* .
+fi
+
 # mpif.h is in the .depends file for sphNG so needs to be in the build directory.
 # The following ensures that the correct include file is used under openmpi, but
 # there is probably a better way of doing this.
 if [[ ${SYSTEM} -eq ompi ]]; then
+    rm mpif.h 
     cp ~/openmpi-1.2.4/ompi/include/mpif.h .
-else
-    ln -s ${sph_cvs}/mpi.h .
 fi
-ln -s ${sph_cvs}/COMMONS .
-
 
 echo "INFO: Building sphtorus, SYSTEM=${SYSTEM}"
 make ${debug_flag} sphtorus
