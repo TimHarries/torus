@@ -2027,7 +2027,7 @@ endif
        "Inner Radius (AU): ","(a,f5.1,a)", 12., ok, .true.)
 
    call getReal("router", rOuter, cLine, nLines, &
-       "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+       "Outer Radius (AU): ","(a,f8.2,a)", 20., ok, .true.)
 
    call getReal("height", height, cLine, nLines, &
        "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
@@ -2036,7 +2036,7 @@ endif
           "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
 
    call getReal("rho", rho, cLine, nLines, &
-          "Density: ","(a,f7.0,a)", 1., ok, .true.)
+          "Density: ","(a,e12.5,a)", 1., ok, .true.)
 
    rInner = rInner * auToCm / 1.e10
    rOuter = rOuter * auToCm / 1.e10
