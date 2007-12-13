@@ -150,7 +150,7 @@ contains
              if (gridConverged) exit
           end do
        else
-         call evenUpGridMPI(grid, .false.)
+         call evenUpGridMPI(grid, .false., .true.)
        endif
        
        write(plotfile,'(a,i4.4,a)') "firstpass.png/png"
@@ -183,7 +183,7 @@ contains
        call checkfor2d(grid%octreeRoot)
        
        call writeInfo("Evening up grid", TRIVIAL)    
-       call evenUpGridMPI(grid, .false.)
+       call evenUpGridMPI(grid, .false., .true.)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
        write(plotfile,'(a,i4.4,a)') "finalgrid.png/png"

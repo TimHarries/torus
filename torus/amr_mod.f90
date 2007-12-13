@@ -118,6 +118,7 @@ CONTAINS
        thisOctal%rhov(subcell) = parentOctal%rhov(parentSubcell)
        thisOctal%rhow(subcell) = parentOctal%rhow(parentSubcell)
        thisOctal%rhoe(subcell) = parentOctal%rhoe(parentSubcell)
+       thisOctal%phi_i(subcell) = parentOctal%phi_i(parentSubcell)
        thisOctal%energy(subcell) = parentOctal%energy(parentSubcell)
 
     else if (interpolate) then
@@ -1107,6 +1108,49 @@ CONTAINS
     END IF
 
   END SUBROUTINE getOctalArray
+
+  RECURSIVE SUBROUTINE getOctalArrayLevel(thisOctal,array,counter,ndepth,maxOctals) 
+    ! returns an array of pointers to all of the subcells in the grid.
+    ! NB because fortran cannot create arrays of pointers, the output
+    !   array is actually of a derived type which *contains* the 
+    !   pointer to an octal.
+    ! counter should be set to 0 before this routine is called
+
+    IMPLICIT NONE
+
+    TYPE(octal), POINTER                            :: thisOctal
+    TYPE(octalWrapper), DIMENSION(:), INTENT(INOUT) :: array 
+    INTEGER, INTENT(INOUT)                          :: counter 
+    INTEGER, INTENT(IN), OPTIONAL                   :: maxOctals
+    integer :: nDepth
+  
+    INTEGER              :: i
+    TYPE(octal), POINTER :: child
+
+    ! if this is the root of the tree, we initialize the counter
+    IF (.NOT. ASSOCIATED(thisOctal%parent)) counter = 0
+    
+    if (thisOctal%nDepth == nDepth) then
+       counter = counter + 1 
+       array(counter)%content => thisOctal
+       array(counter)%inUse = .true.
+    endif
+
+    IF (PRESENT(maxOctals)) THEN
+      IF (counter >= maxOctals) RETURN
+    END IF
+    
+    IF ( thisOctal%nChildren > 0 .and.(thisOctal%nDepth < nDepth)) THEN
+      DO i = 1, thisOctal%nChildren, 1
+        
+        ! call this subroutine recursively on each of its children
+        child => thisOctal%child(i)
+        CALL getOctalArrayLevel(child,array,counter,nDepth)
+        
+      END DO
+    END IF
+
+  END SUBROUTINE getOctalArrayLevel
 
   
   SUBROUTINE sortOctalArray(array,grid)
@@ -4039,14 +4083,46 @@ IF ( .NOT. gridConverged ) RETURN
 
   END SUBROUTINE findSubcellTD
 
+  RECURSIVE SUBROUTINE findSubcellTDLevel(point,currentOctal,resultOctal,subcell,nDepth)
+  ! finds the octal (and that octal's subcell) containing a point.
+  !   only searches in downwards direction (TD = top-down) , so
+  !   probably best to start from root of tree
 
-  SUBROUTINE findSubcellLocal(point,thisOctal,subcell, prob)
+    IMPLICIT NONE
+
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(octal), POINTER :: currentOctal
+    TYPE(octal), POINTER :: resultOctal
+    INTEGER, INTENT(OUT) :: subcell
+    integer :: nDepth
+    TYPE(octal), POINTER :: child
+
+    INTEGER :: i
+
+    resultOctal => currentOctal
+    subcell = whichSubcell(currentOctal,point)
+
+    IF ( currentOctal%hasChild(subcell).and.(currentOctal%nDepth < nDepth) ) THEN
+      ! search the index to see where it is stored
+      DO i = 1, currentOctal%maxChildren, 1
+        IF ( currentOctal%indexChild(i) == subcell ) THEN
+          child => currentOctal%child(i)
+          CALL findSubcellTDLevel(point,child,resultOctal,subcell,ndepth)
+          EXIT
+        END IF
+      END DO
+    END IF
+
+  END SUBROUTINE findSubcellTDLevel
+
+
+  SUBROUTINE findSubcellLocal(point,thisOctal,subcell,  prob)
     ! finds the octal (and that octal's subcell) containing a point.
     !   starts searching from the current octal, and goes up and down the
     !   tree as needed to find the correct octal.
     use input_variables, only : hydrodynamics
     IMPLICIT NONE
-
+    integer :: nDepth
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(octalVector) :: point_local
     TYPE(octal),POINTER    :: thisOctal
@@ -4098,6 +4174,7 @@ IF ( .NOT. gridConverged ) RETURN
       TYPE(octalVector), INTENT(IN) :: point
       TYPE(octal),POINTER    :: thisOctal
       INTEGER, INTENT(OUT)   :: subcell
+      integer :: nDepth
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
 !      type(octalvector) :: rVec
@@ -4125,6 +4202,161 @@ IF ( .NOT. gridConverged ) RETURN
 
 
               CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
+              RETURN
+              
+            END IF
+          END DO
+          
+        ELSE 
+          RETURN
+        END IF
+
+      ELSE
+        ! if the point is outside the current octal, we look in its
+        !   parent octal
+
+        ! first check that we are not outside the grid
+        IF ( thisOctal%nDepth == 1 ) THEN
+          PRINT *, 'Panic: In findSubcellLocalLevel, point is outside the grid'
+          write(*,*) point
+          write(*,*) sqrt(point%x**2+point%y**2)
+          write(*,*) atan2(point%y,point%x)*radtodeg
+          write(*,*) " "
+          write(*,*) thisOctal%centre
+          write(*,*) thisOctal%subcellSize
+          write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
+          write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
+           DO ; END DO
+          STOP
+          boundaryProblem = .TRUE.
+          RETURN
+        END IF
+     
+        ! if we have previously gone down the tree, and are now going back up, there
+        !   must be a problem.
+        IF (haveDescended) then
+           boundaryProblem = .TRUE.
+           PRINT *, 'Panic: In findSubcellLocal, have descended and are now going back up'
+           write(*,*) point
+           write(*,*) atan2(point%y,point%x)*radtodeg
+           write(*,*) sqrt(point%x**2 + point%y**2)
+           write(*,*) " "
+           write(*,*) thisOctal%nDepth
+           write(*,*) thisOctal%centre
+           write(*,*) thisOctal%subcellSize
+           write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
+           write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
+           
+!           rVec = subcellCentre(thisOctal,subcell)
+!           write(*,*) rVec%x+thisOctal%subcellSize/2.
+!           write(*,*) rVec%x-thisOctal%subcellSize/2.
+!           write(*,*) rVec%y+thisOctal%subcellSize/2.
+!           write(*,*) rVec%y-thisOctal%subcellSize/2.
+!           write(*,*) rVec%z+thisOctal%subcellSize/2.
+!           write(*,*) rVec%z-thisOctal%subcellSize/2.
+!           do ; enddo
+!           STOP
+           return
+        endif
+        
+        IF ( thisOctal%nDepth /= 1 ) THEN
+           thisOctal => thisOctal%parent
+        ENDIF
+
+        CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
+       
+      END IF    
+    
+    END SUBROUTINE findSubcellLocalPrivate
+
+  END SUBROUTINE findSubcellLocal
+
+  SUBROUTINE findSubcellLocalLevel(point,thisOctal,subcell, nDepth, prob)
+    ! finds the octal (and that octal's subcell) containing a point.
+    !   starts searching from the current octal, and goes up and down the
+    !   tree as needed to find the correct octal.
+    use input_variables, only : hydrodynamics
+    IMPLICIT NONE
+    integer :: nDepth
+    TYPE(octalVector), INTENT(IN) :: point
+    TYPE(octalVector) :: point_local
+    TYPE(octal),POINTER    :: thisOctal
+    INTEGER, INTENT(OUT)   :: subcell
+    LOGICAL, INTENT(OUT),optional   :: prob
+    
+    LOGICAL                :: haveDescended    ! see comments below
+    LOGICAL                :: boundaryProblem  ! see comments below
+    
+                             
+    haveDescended = .FALSE.   ! if the 'point' lies very close to an 
+    boundaryProblem = .FALSE. !   boundary, the program may go into 
+                              !   a loop going up and down the tree.
+                              ! we will keep track of the progress of
+                              !   the search using these flags.
+                             
+    if (thisOctal%twoD) then
+       if (.not.hydrodynamics) then
+          point_local = projectToXZ(point)
+       else
+          point_local = point
+       endif
+    else
+       point_local = point
+    endif
+    if (thisOctal%oneD) then
+       if (.not.hydrodynamics) then
+          point_local = OCTALVECTOR(modulus(point), 0.d0, 0.d0)
+       else
+          point_local = point
+       endif
+    endif
+
+
+    CALL findSubcellLocalPrivateLevel(point_local,thisOctal,subcell,&
+                                 haveDescended,boundaryProblem, nDepth)
+    if (present(prob)) then
+      prob = boundaryProblem
+    else
+      if (boundaryProblem) then
+        stop 1
+      endif
+    endif
+                                 
+  CONTAINS
+
+    RECURSIVE SUBROUTINE findSubcellLocalPrivateLevel(point,thisOctal,subcell,&
+                                                 haveDescended,boundaryProblem, nDepth)
+      TYPE(octalVector), INTENT(IN) :: point
+      TYPE(octal),POINTER    :: thisOctal
+      INTEGER, INTENT(OUT)   :: subcell
+      integer :: nDepth
+      LOGICAL, INTENT(INOUT) :: haveDescended
+      LOGICAL, INTENT(INOUT) :: boundaryProblem
+!      type(octalvector) :: rVec
+      INTEGER :: i
+      
+      IF ( inOctal(thisOctal,point) ) THEN
+
+        haveDescended = .TRUE. ! record that we have gone down the tree.
+      
+        ! if the point lies within the current octal, we identify the
+        !   subcell
+        subcell = whichSubcell(thisOctal,point)
+
+        ! if a problem has been detected, this is where we complete the search
+        IF (boundaryProblem) RETURN 
+      
+        ! if the subcell has a child, we look in the child for the point
+        IF ( thisOctal%hasChild(subcell).and.(thisOctal%ndepth < nDepth) ) THEN
+                
+          ! search the index to see where it is stored
+          DO i = 1, thisOctal%nChildren, 1
+            IF ( thisOctal%indexChild(i) == subcell ) THEN
+                    
+              thisOctal => thisOctal%child(i)
+
+
+              CALL findSubcellLocalPrivateLevel(point,thisOctal,subcell,haveDescended,boundaryProblem,nDepth)
               RETURN
               
             END IF
@@ -4186,13 +4418,13 @@ IF ( .NOT. gridConverged ) RETURN
            thisOctal => thisOctal%parent
         ENDIF
 
-        CALL findSubcellLocalPrivate(point,thisOctal,subcell,haveDescended,boundaryProblem)
+        CALL findSubcellLocalPrivateLevel(point,thisOctal,subcell,haveDescended,boundaryProblem,nDepth)
        
       END IF    
     
-    END SUBROUTINE findSubcellLocalPrivate
+    END SUBROUTINE findSubcellLocalPrivateLevel
 
-  END SUBROUTINE findSubcellLocal
+  END SUBROUTINE findSubcellLocalLevel
    
 
   recursive subroutine amrPlotGrid(thisOctal)
@@ -5097,7 +5329,7 @@ IF ( .NOT. gridConverged ) RETURN
       split = .false.
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAmr) split = .true.
-
+!      if ((abs(rVec%z) > 5.e5).and.(thisOctal%nDepth < maxDepthAMR))  split = .true.
 
    case("benchmark")
       split = .false.
@@ -8092,17 +8324,18 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%boundaryCondition(subcell) = 4
-    Thisoctal%phi_i(subcell) = 0.d0
 
-    thisOctal%velocity(subcell) = vector(0., 0., 0.)
 
-    mCloud = 0.1d0 * msol
-    rCloud = 5.9d12
+    mCloud = 0.2d0 * msol
+    rCloud = 7.d15
     inertia = (2.d0/5.d0)*mCloud*rCloud**2
     eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
-    beta = 0.2d0
+    beta = 0.0d0
+
 
     omega = sqrt(2.d0 * beta * eGrav / inertia)
+    thisOctal%phi_i(subcell) = -bigG * mCloud / (modulus(rVec)*1.d10)
+    thisOctal%velocity(subcell) = vector(0., 0., 0.)
 
     if (thisOctal%twoD) then
        phi = atan2(rVec%z, rVec%x)
@@ -8120,17 +8353,16 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%velocity(subcell) = (1./cspeed)*VECTOR(v*cos(phi),  v*sin(phi), 0.)
     endif
 
-    if (modulus(rVec) < 5.9d2) then
+    if (modulus(rVec) < (rCloud/1.d10)) then
        thisOctal%rho(subcell) = mCloud / (4.d0/3.d0*pi*rCloud**3)
     else
        thisOctal%rho(subcell) = 1.d-2 * mCloud / (4.d0/3.d0*pi*rCloud**3)
     endif
 
-    ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 30.d0
+    ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%boundaryCondition(subcell) = 4
-    Thisoctal%phi_i(subcell) = 0.d0
 
   end subroutine calcProtoBinDensity
     

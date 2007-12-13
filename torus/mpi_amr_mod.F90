@@ -632,6 +632,273 @@ contains
 
   end subroutine exchangeAcrossMPIboundary
 
+  subroutine receiveAcrossMpiBoundaryLevel(grid, boundaryType, receiveThread, sendThread, nDepth)
+
+    include 'mpif.h'
+    type(gridtype) :: grid
+    real :: factor
+    type(octal), pointer   :: thisOctal, tOctal
+    type(octal), pointer  :: child, neighbourOctal, startOctal
+    character(len=*) :: boundaryType
+    integer :: receiveThread, sendThread, tsubcell
+    integer :: myRank, ierr
+    type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+    integer :: nOctals
+    integer, parameter :: nStorage = 40
+    real(double) :: loc(3), tempStorage(nStorage)
+    type(OCTALVECTOR) :: octVec, direction, centre, rVec
+    integer :: nBound
+    integer :: iOctal
+    integer :: nDepth, thisnDepth
+    integer :: subcell, neighbourSubcell
+    integer :: tag = 77
+    integer :: status(MPI_STATUS_SIZE)
+    logical :: sendLoop
+    real(double) :: q, rho, rhoe, rhou, rhov, rhow, flux, pressure, phi
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+    select case(boundaryType)
+    case("left")
+       direction = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
+       nBound = 1
+    case("right")
+       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       nBound = 2
+    case("top")
+       direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       nBound = 3
+    case("bottom")
+       direction = OCTALVECTOR(0.d0, 0.d0, -1.d0)
+       nBound = 4
+    case("front")
+       direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+       nBound = 5
+    case("back")
+       direction = OCTALVECTOR(0.d0, -1.d0, 0.d0)
+       nBound = 6
+    case DEFAULT
+       write(*,*) "boundary type not recognised ",boundaryType
+       stop
+    end select
+!    write(*,*) myrank, "boundary number is ",nbound
+    
+
+    if (myRank == receiveThread) then
+       allocate(octalArray(grid%nOctals))
+       nOctals = 0
+       call getOctalArrayLevel(grid%octreeRoot,octalArray, nOctals, nDepth)
+!       write(*,*) myrank," generated ",nOctals, " array of octals"
+       do iOctal =  1, nOctals
+          
+          thisOctal => octalArray(iOctal)%content
+!          write(*,*) myrank, " doing octal of ", thisOctal%ndepth, " depth "
+          
+          do subcell = 1, thisOctal%maxChildren
+             
+                
+!                if (thisOctal%mpiThread(subcell) /= myRank) cycle
+                if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
+                
+                octVec = subcellCentre(thisOctal, subcell) + &
+                     (thisOctal%subcellSize/2.d0+0.01d0 * grid%halfSmallestSubcell) * direction
+                
+                if (.not.inOctal(grid%octreeRoot, octVec)) then
+                   write(*,*) "Grid doesn't have a ", boundaryType, " surface in this volume"
+                   write(*,*) "centre",subcellCentre(thisOctal, subcell)
+                   write(*,*) "depth",thisOctal%nDepth, thisOctal%haschild(1:8)
+                   write(*,*) octVec
+                   stop
+                endif
+                
+                neighbourOctal => thisOctal
+                call findSubcellLocalLevel(octVec, neighbourOctal, neighbourSubcell, nDepth)
+
+                if (octalOnThread(neighbourOctal, neighbourSubcell, receiveThread)) cycle
+
+                if (.not.octalOnThread(neighbourOctal, neighbourSubcell, sendThread)) then
+                   write(*,*) "Neighbour on ",boundaryType, " of ", myrankglobal,"  is not on thread ", sendThread, " but ", &
+                   neighbourOctal%mpiThread(neighboursubcell)
+                   stop
+                endif
+
+                loc(1) = octVec%x
+                loc(2) = octVec%y
+                loc(3) = octVec%z
+!                write(*,*) myRank, " has identified a boundary cell ", loc(1:3)
+
+                call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+!                write(*,*) myrank, " sent the locator to ", sendThread
+
+                call MPI_SEND(thisOctal%nDepth, 1, MPI_INTEGER, sendThread, tag, MPI_COMM_WORLD, ierr)
+!                write(*,*) myrank, " sent the locator to ", sendThread
+
+                call MPI_RECV(tempStorage, nStorage, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, status, ierr)
+!                write(*,*) myrank, " received temp storage"
+                if (.not.associated(thisOctal%mpiBoundaryStorage)) then
+                   allocate(thisOctal%mpiBoundaryStorage(1:thisOctal%maxChildren, 6, nStorage))
+                   thisOctal%mpiBoundaryStorage = 0.d0
+                endif
+                thisOctal%mpiBoundaryStorage(subcell, nBound, 1:nStorage) = tempStorage(1:nStorage)
+!                write(*,*) myrank, " successfully stored"
+
+             enddo
+       enddo
+       deallocate(octalArray)
+       loc(1) = HUGE(loc(1))
+       loc(2) = 0.d0
+       loc(3) = 0.d0
+!       write(*,*) myrank, " sending a huge value to ", sendThread
+       call MPI_SEND(loc, 3, MPI_DOUBLE_PRECISION, sendThread, tag, MPI_COMM_WORLD, ierr)
+
+       ! now send a finish signal to the sendThread
+    else
+       if (myRank /= sendThread) then
+          write(*,*) "subroutine called within thread ", myRank, " but expecing to be ", sendthread
+          stop
+       endif
+       sendLoop = .true.
+       do while (sendLoop)
+          ! receive a locator
+!          write(*,*) myrank, " waiting for a locator"
+          call MPI_RECV(loc, 3, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+!          write(*,*) myrank, " received a locator ", loc(1:3)
+          if (loc(1) > 1.d20) then
+             sendLoop = .false.
+!             write(*,*) myRank, " found the signal to end the send loop"
+          else
+
+             octVec = OCTALVECTOR(loc(1), loc(2), loc(3))
+
+             call MPI_RECV(thisnDepth, 1, MPI_INTEGER, receiveThread, tag, MPI_COMM_WORLD, status, ierr)
+
+             call findSubcellTDLevel(octVec, grid%octreeRoot, neighbourOctal, neighbourSubcell, nDepth)
+
+             if (neighbourOctal%mpiThread(neighboursubcell) /= sendthread) then
+                write(*,*) "trying to send on ",boundaryType, " but is not on thread ", sendThread
+                stop
+             endif
+
+             if (neighbourOctal%nDepth <= thisnDepth) then
+                tempStorage(1) = neighbourOctal%q_i(neighbourSubcell)
+                tempStorage(2) = neighbourOctal%rho(neighbourSubcell)
+                tempStorage(3) = neighbourOctal%rhoe(neighbourSubcell)
+                tempStorage(4) = neighbourOctal%rhou(neighbourSubcell)
+                tempStorage(5) = neighbourOctal%rhov(neighbourSubcell)
+                tempStorage(6) = neighbourOctal%rhow(neighbourSubcell)
+                tempStorage(7) = neighbourOctal%x_i(neighbourSubcell)
+                rVec = subcellCentre(neighbourOctal, neighbourSubcell) + &
+                     direction * (neighbourOctal%subcellSize/2.d0 + 0.01d0*grid%halfSmallestSubcell)
+                tOctal => neighbourOctal
+                tSubcell = neighbourSubcell
+                call findSubcellLocalLevel(rVec, tOctal, tSubcell, nDepth)
+                tempStorage(8) = tOctal%q_i(tsubcell)
+                
+                tempStorage(9) = dble(neighbourOctal%nDepth)
+                tempStorage(10) = neighbourOctal%pressure_i(neighbourSubcell)
+                tempStorage(11) = neighbourOctal%flux_i(neighbourSubcell)
+ 
+                tempStorage(12) = neighbourOctal%a(neighbourSubcell, 1)
+                tempStorage(13) = neighbourOctal%a(neighbourSubcell, 2)
+                tempStorage(14) = neighbourOctal%a(neighbourSubcell, 3)
+                tempStorage(15) = neighbourOctal%w(neighbourSubcell, 1)
+                tempStorage(16) = neighbourOctal%w(neighbourSubcell, 2)
+                tempStorage(17) = neighbourOctal%w(neighbourSubcell, 3)
+                tempStorage(18) = neighbourOctal%w(neighbourSubcell, 4)
+                tempStorage(19) = neighbourOctal%fluxc(neighbourSubcell, 1)
+                tempStorage(20) = neighbourOctal%fluxc(neighbourSubcell, 2)
+                tempStorage(21) = neighbourOctal%fluxc(neighbourSubcell, 3)
+                tempStorage(22) = neighbourOctal%flux(neighbourSubcell, 1)
+                tempStorage(23) = neighbourOctal%flux(neighbourSubcell, 2)
+                tempStorage(24) = neighbourOctal%flux(neighbourSubcell, 3)
+
+
+
+                tempStorage(25) = neighbourOctal%fluxvector(neighbourSubcell, 1)
+                tempStorage(26) = neighbourOctal%fluxvector(neighbourSubcell, 2)
+                tempStorage(27) = neighbourOctal%fluxvector(neighbourSubcell, 3)
+                tempStorage(28) = neighbourOctal%fluxvector(neighbourSubcell, 4)
+                tempStorage(29) = neighbourOctal%fluxvector(neighbourSubcell, 5)
+
+                tempStorage(30) = neighbourOctal%qstate(neighbourSubcell, 1)
+                tempStorage(31) = neighbourOctal%qstate(neighbourSubcell, 2)
+                tempStorage(32) = neighbourOctal%qstate(neighbourSubcell, 3)
+                tempStorage(33) = neighbourOctal%qstate(neighbourSubcell, 4)
+                tempStorage(34) = neighbourOctal%qstate(neighbourSubcell, 5)
+
+                tempStorage(35) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 1)
+                tempStorage(36) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 2)
+                tempStorage(37) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 3)
+                tempStorage(38) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 4)
+                tempStorage(39) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 5)
+
+
+                tempStorage(40) = neighbourOctal%phi_i(neighbourSubcell)
+
+!                          write(*,*) myRank, " sending temp storage"
+             call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
+!                          write(*,*) myRank, " temp storage sent"
+
+             else ! need to average
+
+                write(*,*) "Error on receiveAcrossMpiBoundaryLevel"
+                stop
+             
+
+
+             endif
+          endif
+       enddo
+    endif
+  end subroutine receiveAcrossMpiBoundaryLevel
+  
+  subroutine exchangeAcrossMPIboundaryLevel(grid, nPairs, thread1, thread2, nBound, group, nGroup, nDepth)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    integer :: iPair, nPairs, thread1(:), thread2(:), nBound(:)
+    integer :: group(:), nGroup, iGroup
+    integer :: rBound
+    integer :: myRank, ierr, nDepth
+    character(len=10) :: boundaryType(6) = (/"left  ","right ", "top   ", "bottom", "front ", "back  "/)
+
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+    CALL MPI_BARRIER(amrCOMMUNICATOR, ierr)
+
+    do iGroup = 1, nGroup
+
+       do iPair = 1, nPairs
+
+          if (group(iPair) == iGroup) then
+             !       write(*,*) "myrank ", iPair, thread1(iPair), thread2(iPair)
+             if ((myRank == thread1(iPair)).or.(myRank == thread2(iPair))) then
+                !          write(*,*) myrank, " calling receive across boundary",iPair,nbound(ipair),boundaryType(nBound(iPair))
+                call receiveAcrossMpiBoundaryLevel(grid, boundaryType(nBound(iPair)), thread1(iPair), thread2(iPair), nDepth)
+                !          write(*,*) myrank, " finished receive across boundary"
+                if      (nBound(iPair) == 1) then
+                   rBound = 2
+                else if (nBound(iPair) == 2) then
+                   rBound = 1
+                else if (nBound(iPair) == 3) then
+                   rBound = 4
+                else if (nBound(iPair) == 4) then
+                   rBound = 3
+                else if (nBound(iPair) == 5) then
+                   rBound = 6
+                else if (nBound(iPair) == 6) then
+                   rBound = 5
+                endif
+                call receiveAcrossMpiBoundaryLevel(grid, boundaryType(rBound), thread2(iPair), thread1(iPair), nDepth)
+                !          if (myRank == 1) then
+                !             write(*,*) "Exchange done for direction ",nbound(ipair), " and ",rBound
+                !             write(*,*) "Between threads ", thread1(ipair), " and ", thread2(ipair)
+                !          endif
+             endif
+          endif
+       enddo
+       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+    enddo
+
+  end subroutine exchangeAcrossMPIboundaryLevel
+
   recursive subroutine determineBoundaryPairs(thisOctal, grid, nPairs,  thread1, thread2, nBound, iThread)
 
     include 'mpif.h'
@@ -816,13 +1083,15 @@ contains
   end function inList
 
   subroutine getNeighbourValues(grid, thisOctal, subcell, neighbourOctal, neighbourSubcell, direction, q, rho, rhoe, &
-       rhou, rhov, rhow, x, qnext, pressure, flux, phi)
+       rhou, rhov, rhow, x, qnext, pressure, flux, phi, nd)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
     type(OCTALVECTOR) :: direction, rVec
     integer :: subcell, neighbourSubcell, tSubcell
-    integer :: nBound, nDepth
+    integer :: nSubcell(6)
+    integer :: nBound, nDepth, nd
+
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi
     integer :: myRank, ierr
 
@@ -833,7 +1102,9 @@ contains
     if ((thisOctal%twoD).and.((nBound == 5).or. (nBound == 6))) then
        write(*,*) "Bonndary error for twod: ",nbound
     endif
-    if (neighbourOctal%mpiThread(neighbourSubcell) == myRank) then
+    if (octalOnThread(neighbourOctal, neighbourSubcell, myRank)) then
+
+       nd = neighbourOctal%nDepth
 
        x = neighbourOctal%x_i(neighbourSubcell)
 
@@ -901,6 +1172,8 @@ contains
        endif
 
        x = thisOctal%mpiBoundaryStorage(subcell, nBound, 7)
+
+       nd =  nint(thisOctal%mpiBoundaryStorage(subcell, nBound,9))
 
        nDepth = nint(thisOctal%mpiBoundaryStorage(subcell, nBound,9))
 
@@ -995,10 +1268,10 @@ contains
           nSubcell(3) = 3
           nSubcell(4) = 4
        elseif (direction%z < -0.9d0) then
-          nSubcell(1) = 1
-          nSubcell(2) = 2
-          nSubcell(3) = 5
-          nSubcell(4) = 6
+          nSubcell(1) = 5
+          nSubcell(2) = 6
+          nSubcell(3) = 7
+          nSubcell(4) = 8
        endif
        q = 0.25d0*(neighbourOctal%q_i(nSubcell(1)) + neighbourOctal%q_i(nSubcell(2)) + & 
             neighbourOctal%q_i(nSubcell(3)) + neighbourOctal%q_i(nSubcell(4)))
@@ -1024,8 +1297,10 @@ contains
        flux = 0.25d0*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)) + & 
             neighbourOctal%flux_i(nSubcell(3)) + neighbourOctal%flux_i(nSubcell(4)))
 
+
        phi = 0.25d0*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)) + & 
             neighbourOctal%phi_i(nSubcell(3)) + neighbourOctal%phi_i(nSubcell(4)))
+
     endif
 
   end subroutine averageValue
