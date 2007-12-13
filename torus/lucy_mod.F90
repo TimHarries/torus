@@ -303,7 +303,7 @@ contains
   end subroutine lucyRadiativeEquilibrium
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
+       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter, plot_i, ll_sph)
     use input_variables, only : variableDustSublimation, zoomFactor
     use input_variables, only : smoothFactor, lambdasmooth, plot_maps
 !    use input_variables, only : rinner, router
@@ -393,6 +393,10 @@ contains
     real :: diffusionZoneTemp, temp
     logical :: outputFlag, directPhoton !, smoothconverged
     integer :: nCellsInDiffusion
+    integer, intent(in), optional :: plot_i ! index number of plot
+    integer :: this_plot_i
+    logical, intent(in), optional :: ll_sph
+    logical :: useFixedRange
 !    integer :: omp_get_num_threads, omp_get_thread_num
 
 #ifdef MPI
@@ -417,6 +421,7 @@ contains
 
        allocate(buffer_real(n_proc))
 
+
     ! FOR MPI IMPLEMENTATION=======================================================
     !  Get my process rank # 
     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
@@ -434,7 +439,6 @@ contains
 #endif
 
     allocate(kabsArray(1:nLambda))
-
 
 
     nMonte = nLucy
@@ -483,7 +487,6 @@ contains
 !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
 
  if (outputFlag) call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
-
 
     lCore = 0.d0
     do i = 1, nSource
@@ -565,8 +568,22 @@ contains
 
        if (plot_maps .and. myRankIsZero) then
 
+! Set the index used for plot file names. Zero values omits index from file name. 
+          if (present(plot_i) ) then
+             this_plot_i = plot_i
+          else
+             this_plot_i = 0
+          endif
+
+! If this is an sphtorus run then use the same colour scale for all plots.
+          if (present(ll_sph) ) then
+             useFixedRange = ll_sph
+          else
+             useFixedRange = .false.
+          endif
+
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-            "rho_temp_xz.ps/vcps", .true., .false., &
+            "rho_temp_xz", .true., .false., index=plot_i, suffix="default", &
             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
 
 !       write(dustfile,'(a,i3.3,a)') "dusttype",iIter_grand,".gif/gif"
@@ -576,10 +593,10 @@ contains
 !           xStart=1600., xEnd=2200., yStart=-300., yEnd=300.)
 
        call plot_AMR_values(grid, "dusttype", "x-z", 0., &
-            "dusttype.ps/vcps", .false., .false., &
+            "dusttype", .false., .false., index=plot_i, suffix="default",&
            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
        call plot_AMR_values(grid, "dusttype", "x-z", 0., &
-            "dusttype_full.ps/vcps", .false., .false., &
+            "dusttype_full", .false., .false., index=plot_i, suffix="default",&
             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.)
 
 !       if (grid%geometry == "shakara") then
@@ -588,25 +605,25 @@ contains
 !       endif
 
        call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-            "rho_temp_zoom.ps/vcps", .true., .false., &
+            "rho_temp_zoom", .true., .false., index=plot_i, suffix="default",&
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
        call plot_AMR_values(grid, "rho", "x-y", real(grid%octreeRoot%centre%y), &
-            "rho_temp_xy.ps/vcps", .true., .false., &
+            "rho_temp_xy", .true., .false., index=plot_i, suffix="default",&
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-            "lucy_temp_xz.ps/vcps", .true., .false., &
+            "lucy_temp_xz", .true., .false., index=plot_i, suffix="default", &
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-            "lucy_zoom_xz.ps/vcps", .true., .false., &
+            "lucy_zoom_xz", .true., .false., index=plot_i, suffix="default", &
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor) 
        call plot_AMR_values(grid, "etaCont", "x-z", real(grid%octreeRoot%centre%y), &
-            "etacont_zoom_xz.ps/vcps", .true., .false., &
+            "etacont_zoom_xz", .true., .false., index=plot_i, suffix="default", &
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor) 
        call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
-            "tau.ps/vcps", .true., .false., &
+            "tau", .true., .false., index=plot_i, suffix="default", &
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,ilam=ilam) 
        call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
-            "tau_zoom_xz.ps/vcps", .true., .false., &
+            "tau_zoom_xz", .true., .false., index=plot_i, suffix="default", &
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor, ilam=ilam)
 !       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
 !            tfilename1, .true., .false., &
@@ -615,11 +632,13 @@ contains
 !            tfilename2, .true., .false., &
 !            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomFactor)
        call plot_AMR_values(grid, "temperature", "x-y", real(grid%octreeRoot%centre%z), &
-            "lucy_temp_xy.ps/vcps", .true., .false., &
-            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
+            "lucy_temp_xy", .true., .false.,  index=plot_i, suffix="default", &
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., &
+            fixValMin=sph_tem_min, fixValMax=sph_tem_max, useFixedRange=useFixedRange ) 
        call plot_AMR_values(grid, "temperature", "y-z", real(grid%octreeRoot%centre%x), &
-            "lucy_temp_yz.ps/vcps", .true., .false., &
-            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.)
+            "lucy_temp_yz", .true., .false.,  index=plot_i, suffix="default", &
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., &
+            fixValMin=sph_tem_min, fixValMax=sph_tem_max, useFixedRange=useFixedRange)
        call polardump(grid)
     end if
 
@@ -979,12 +998,12 @@ contains
 
        if (myRankIsZero) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
-            "crossings.ps/vcps", .true., .false., &
+            "crossings", .true., .false.,  index=plot_i, suffix="default", &
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomfactor) 
 
        if (myRankIsZero) &
        call plot_AMR_values(grid, "direct", "x-z", real(grid%octreeRoot%centre%y), &
-            "direct.ps/vcps", .false., .true., &
+            "direct", .false., .true.,  index=plot_i, suffix="default", &
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
 
 
@@ -1063,7 +1082,7 @@ contains
 
        if (myRankIsZero) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
-            "crossings.ps/vcps", .true., .false., &
+            "crossings", .true., .false., index=plot_i, suffix="default", &
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomfactor)
 
        nCellsInDiffusion = 0

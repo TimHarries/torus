@@ -294,7 +294,9 @@ contains
             "Populations output file will be formatted: ","(a,1l,1x,a)", .false., ok, .false.)
        call getLogical("forcelinechange", forceLineChange, cLine, nLines, &
             "Recalculate opacities for different line transition: ","(a,1l,1x,a)", .false., ok, .false.)
-
+! Set the default PGPLOT device to be used by plot_AMR_values
+       call getString( "pgplotdevice", pgplotDevice, cline, nlines, &
+            "Default PGPLOT device for plot_AMR_values: ", "(a,a,1x,a)", "ps/vcps", ok, .false. )
 
     else    
 

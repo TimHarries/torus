@@ -7192,7 +7192,8 @@ contains
   !
   subroutine plot_AMR_values(grid, name, plane, value_3rd_dim,  device, logscale, withgrid, &
        nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac, ilam, xStart, &
-       xEnd, yStart, yEnd, fixValMin,fixValMax, quiet, openDevice)
+       xEnd, yStart, yEnd, fixValMin,fixValMax, quiet, openDevice, index, suffix, useFixedRange)
+    use input_variables, only : pgplotDevice
     implicit none
     type(gridtype), intent(in) :: grid
     character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
@@ -7222,6 +7223,9 @@ contains
     real, intent(in),optional    :: zmarker(:)  ! position of z
     real, intent(in),optional    :: width_3rd_dim     ! Use this to restrict the markers to be plotted..  
     logical, intent(in),optional :: show_value_3rd_dim! If T, the value of the third dimension will be shown.
+    integer, intent(in),optional :: index     ! Tag the file with this integer index
+    character(len=*),optional    :: suffix    ! Add this suffix to specify the pgplot device
+    logical, intent(in), optional :: useFixedRange ! Does this plot used a fixed range of values?
 
     !
     type(octal), pointer :: root
@@ -7244,6 +7248,8 @@ contains
     integer :: iPlane, nPlanes
     character(len=80) :: message
 !    character(LEN=50) :: filename_prof
+    character(len=50) :: this_device
+    character(len=5)  :: index_string
     real   :: v3
 
     newDevice = .true.
@@ -7252,7 +7258,29 @@ contains
     quietFlag = .false.
     if (PRESENT(quiet)) quietFlag = quiet
     
-    if (.not.quietFlag) call writeInfo("plot_AMR_values plotting to: "//trim(device), TRIVIAL)
+! Add index and suffix to device string if required. If index is present then 
+! either the supplied suffix is added or the default suffix is added. 
+! If index<1 then it is ignored, this provides a method for switching the index off 
+! without changing the subroutine call.
+    if ( present(index) .and. index > 0) then
+       write(index_string,'(i5)') index
+       if ( present(suffix) .and. suffix /= "default" ) then
+          this_device = trim(adjustl(device))//"_"//trim(adjustl(index_string))//"."//trim(adjustl(suffix))
+       else
+          this_device = trim(adjustl(device))//"_"//trim(adjustl(index_string))//"."//trim(adjustl(pgplotDevice))
+       end if
+! If suffix argument is supplied and set to default then use the default suffix
+    else if (present (suffix) .and. suffix == "default") then
+       this_device = trim(adjustl(device))//"."//trim(adjustl(pgplotDevice))
+! Otherwise use the supplied suffix
+    else if ( present(suffix) ) then 
+       this_device = trim(adjustl(device))//"."//trim(adjustl(suffix))
+! If neither optional argument is supplied do not change the device
+    else
+       this_device = device
+    end if
+
+    if (.not.quietFlag) call writeInfo("plot_AMR_values plotting to: "//trim(this_device), TRIVIAL)
 
     ! retriving the address to the root of the tree.
     root => grid%octreeRoot
@@ -7294,9 +7322,9 @@ contains
 
     if (newDevice) then
        if (nPlanes == 1) then
-          IF (PGBEG(0,trim(device),1,1) .NE. 1) STOP
+          IF (PGBEG(0,trim(this_device),1,1) .NE. 1) STOP
        else
-          IF (PGBEG(0,trim(device),3,1) .NE. 1) STOP
+          IF (PGBEG(0,trim(this_device),3,1) .NE. 1) STOP
        endif
     endif
     do iPlane = 1, nPlanes
@@ -7319,9 +7347,24 @@ contains
     valueMax = -1.d30
     call minMaxValue(grid%octreeRoot, name, plane, ValueMin, ValueMax, grid, ilam)
         
-    if (PRESENT(fixValMax)) valueMax = fixValMax
-    if (PRESENT(fixValMin)) valueMin = fixValMin
-
+! Set the upper and lower limits on the false colour scale if required.
+! The optional, logcal argument useFixedRange allows a specified range to 
+! be supplied but ignored, to allow for more flexible calls to plot_AMR_values.
+    if ( PRESENT(useFixedRange) .and. useFixedRange ) then
+       if (PRESENT(fixValMax)) then 
+          valueMax = fixValMax
+       else
+          print *, "WARNING: fixed range specified but valueMax not supplied"
+       end if
+       if (PRESENT(fixValMin)) then 
+          valueMin = fixValMin
+       else
+          print *, "WARNING: fixed range specified but valueMin not supplied"
+       end if
+    else
+       if (PRESENT(fixValMax)) valueMax = fixValMax
+       if (PRESENT(fixValMin)) valueMin = fixValMin
+    end if
 
     if (logscale) then
        if (valueMax<=0) valueMax=tiny(valueMax)
