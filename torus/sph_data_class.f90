@@ -60,6 +60,8 @@ module sph_data_class
      real(double), pointer, dimension(:) :: xn,yn,zn
      ! Density of the gas particles
      real(double), pointer, dimension(:) :: rhon
+     ! Temperature of the gas particles
+     real(double), pointer, dimension(:) :: temperature
      ! Positions of stars
      real(double), pointer, dimension(:) :: x,y,z
      !
@@ -139,7 +141,7 @@ contains
   ! Initializes an object with parameters when torus is called as a subroutine from sphNG.
   ! 
   subroutine init_sph_data2(this, udist, umass, utime, npart,  time, nptmass, &
-       gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho)
+       gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp)
     implicit none
 
 ! Arguments --------------------------------------------------------------------
@@ -155,6 +157,7 @@ contains
     integer*1, intent(in) :: b_iphase(b_idim)
     real*8, intent(in)    :: b_xyzmh(5,b_idim)
     real*4, intent(in)    :: b_rho(b_idim)
+    real*8, intent(in)    :: b_temp(b_idim)
 ! Local variables --------------------------------------------------------------
     integer :: iii, iiipart, iiigas
 
@@ -179,6 +182,7 @@ contains
     ALLOCATE(this%yn(npart))
     ALLOCATE(this%zn(npart))
     ALLOCATE(this%rhon(npart))
+    ALLOCATE(this%temperature(npart))
 
 
     ! -- for star positions
@@ -203,10 +207,11 @@ contains
              write (*,*) 'iiigas>npart',iiigas, npart
              STOP
           endif
-          this%rhon(iiigas) = b_rho(iii)
-          this%xn(iiigas)   = b_xyzmh(1,iii)
-          this%yn(iiigas)   = b_xyzmh(2,iii)
-          this%zn(iiigas)   = b_xyzmh(3,iii)
+          this%rhon(iiigas)        = b_rho(iii)
+          this%xn(iiigas)          = b_xyzmh(1,iii)
+          this%yn(iiigas)          = b_xyzmh(2,iii)
+          this%zn(iiigas)          = b_xyzmh(3,iii)
+          this%temperature(iiigas) = b_temp(iii)
        elseif (b_iphase(iii) > 0) then
           iiipart=iiipart+1
           if (iiipart > nptmass) then
@@ -475,6 +480,19 @@ contains
     
   end function get_rhon
 
+  ! Returns the temperature of gas particle at the postion of
+  ! i-th particle.
+  
+  function get_temp(this, i) RESULT(out)
+    implicit none
+    real(double) :: out 
+    type(sph_data), intent(in) :: this
+    integer, intent(in) :: i
+
+    out  = this%temperature(i)
+    
+  end function get_temp
+
   ! Assigns the density of gas particle at the postion of
   ! i-th particle.
   
@@ -534,11 +552,12 @@ contains
     type(sph_data), intent(inout) :: this
     
     DEALLOCATE(this%xn, this%yn, this%zn)
-    DEALLOCATE(this%rhon)
+    DEALLOCATE(this%rhon, this%temperature)
     DEALLOCATE(this%x, this%y, this%z)
     DEALLOCATE(this%ptmass)
 
     NULLIFY(this%xn, this%yn, this%zn)
+    NULLIFY(this%rhon, this%temperature)
     NULLIFY(this%x, this%y, this%z)
     NULLIFY(this%ptmass)
     

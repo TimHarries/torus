@@ -474,7 +474,6 @@ program torus
   ! For time statistics
   if (doTuning) call tune(6, "Torus Main") ! start a stopwatch  
 
-
   ! set up a random seed
   
   call random_seed
@@ -690,7 +689,7 @@ program torus
      ! The total number of gas particles is the total number of active particles less the number of point masses.
         ngaspart = b_nactive-b_nptmass
         call init_sph_data2(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
-             b_gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho)
+             b_gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp)
 ! Communicate particle data. Non-mpi case has a stubbed routine. 
         call gather_sph_data(sphData)
 

@@ -271,7 +271,7 @@ contains
     integer :: npart_all, nptmass_all
     integer, allocatable :: npart_arr(:),   nptmass_arr(:)
     integer, allocatable :: npart_displ(:), nptmass_displ(:)
-    real(double), allocatable :: xn_tmp(:), yn_tmp(:), zn_tmp(:), rhon_tmp(:)
+    real(double), allocatable :: xn_tmp(:), yn_tmp(:), zn_tmp(:), rhon_tmp(:), temperature_tmp(:)
     real(double), allocatable :: x_tmp(:),  y_tmp(:),  z_tmp(:),  ptmass_tmp(:)
     character(len=3) :: char_my_rank
     logical, parameter :: ll_testwrite = .false.
@@ -308,10 +308,11 @@ contains
      npart_displ(i) = npart_displ(i-1) + npart_arr(i-1)
   END DO
 
-  ALLOCATE ( xn_tmp(npart_all)   )
-  ALLOCATE ( yn_tmp(npart_all)   )
-  ALLOCATE ( zn_tmp(npart_all)   )
-  ALLOCATE ( rhon_tmp(npart_all) )
+  ALLOCATE ( xn_tmp(npart_all)     )
+  ALLOCATE ( yn_tmp(npart_all)     )
+  ALLOCATE ( zn_tmp(npart_all)     )
+  ALLOCATE ( rhon_tmp(npart_all)   )
+  ALLOCATE ( temperature_tmp(npart_all) )
 
 ! Gather the particle data on process 0 then broadcast to all. For some reason MPI_ALLGATHERV 
 ! doesn't work  for doing this. 
@@ -330,6 +331,10 @@ contains
   CALL MPI_GATHERV(this%rhon, this%npart, MPI_DOUBLE_PRECISION, rhon_tmp(:), npart_arr(:), npart_displ(:), &
                       MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   CALL MPI_BCAST(rhon_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+  CALL MPI_GATHERV(this%temperature, this%npart, MPI_DOUBLE_PRECISION, temperature_tmp(:), npart_arr(:), &
+       npart_displ(:), MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+  CALL MPI_BCAST(temperature_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
 ! 3.2 Point masses
   IF ( nptmass_all > 0 ) THEN
@@ -368,7 +373,7 @@ contains
      write(char_my_rank, '(i3)') my_rank
      open (unit=60, status='replace', file='mpi_test_tmp_'//TRIM(ADJUSTL(char_my_rank))//'.txt')
      do i=1, npart_all
-        write(60,*) xn_tmp(i), yn_tmp(i), zn_tmp(i), rhon_tmp(i)
+        write(60,*) xn_tmp(i), yn_tmp(i), zn_tmp(i), rhon_tmp(i), temperature_tmp(i)
      end do
      IF ( nptmass_all > 0 ) THEN
         DO i=1, nptmass_all
@@ -381,14 +386,17 @@ contains
 ! 4. Deallocate and reAllocate arrays xn, yn, zn, rhon, x, y, z, ptmass
 
 ! 4.1 Gas particles
-  DEALLOCATE ( this%xn   )
-  DEALLOCATE ( this%yn   )
-  DEALLOCATE ( this%zn   )
-  DEALLOCATE ( this%rhon )
-  ALLOCATE   ( this%xn(npart_all)   )
-  ALLOCATE   ( this%yn(npart_all)   )
-  ALLOCATE   ( this%zn(npart_all)   )
-  ALLOCATE   ( this%rhon(npart_all) )
+  DEALLOCATE ( this%xn          )
+  DEALLOCATE ( this%yn          )
+  DEALLOCATE ( this%zn          )
+  DEALLOCATE ( this%rhon        )
+  DEALLOCATE ( this%temperature )
+
+  ALLOCATE   ( this%xn(npart_all)          )
+  ALLOCATE   ( this%yn(npart_all)          )
+  ALLOCATE   ( this%zn(npart_all)          )
+  ALLOCATE   ( this%rhon(npart_all)        )
+  ALLOCATE   ( this%temperature(npart_all) )
 
 ! 4.2 Point masses
   IF  ( nptmass_all > 0 ) THEN
@@ -405,11 +413,12 @@ contains
 ! 5. Populate new arrays with values from the tmp storage
 
 ! 5.1 Gas particles
-  this%xn(:)   = xn_tmp(:)
-  this%yn(:)   = yn_tmp(:)
-  this%zn(:)   = zn_tmp(:)
-  this%rhon(:) = rhon_tmp(:)
-  this%npart   = npart_all
+  this%xn(:)          = xn_tmp(:)
+  this%yn(:)          = yn_tmp(:)
+  this%zn(:)          = zn_tmp(:)
+  this%rhon(:)        = rhon_tmp(:)
+  this%temperature(:) = temperature_tmp(:)
+  this%npart          = npart_all
 
 ! 5.2 Point masses
   IF  ( nptmass_all > 0 ) THEN
@@ -424,7 +433,7 @@ contains
   If ( ll_testwrite ) THEN
      open (unit=60, status='replace', file='mpi_test_'//TRIM(ADJUSTL(char_my_rank))//'.txt')
      do i=1, this%npart
-        write(60,*) this%xn(i), this%yn(i), this%zn(i), this%rhon(i)
+        write(60,*) this%xn(i), this%yn(i), this%zn(i), this%rhon(i), this%temperature(i)
      end do
      IF ( nptmass_all > 0 ) THEN
         DO i=1, this%nptmass
@@ -435,10 +444,11 @@ contains
   END IF
 
 ! 6. Deallocate temporary storage
-  DEALLOCATE ( rhon_tmp    )
-  DEALLOCATE ( zn_tmp      )
-  DEALLOCATE ( yn_tmp      )
-  DEALLOCATE ( xn_tmp      )
+  DEALLOCATE ( rhon_tmp        )
+  DEALLOCATE ( temperature_tmp )
+  DEALLOCATE ( zn_tmp          )
+  DEALLOCATE ( yn_tmp          )
+  DEALLOCATE ( xn_tmp          )
   IF  ( nptmass_all > 0 ) THEN
      DEALLOCATE ( x_tmp      )
      DEALLOCATE ( y_tmp      )

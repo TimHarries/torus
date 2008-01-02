@@ -12375,6 +12375,7 @@ IF ( .NOT. gridConverged ) RETURN
           if (np < 1) then
              call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
              thisOctal%rho(subcell) = rho
+             thisOctal%temperature(subcell) = temp
           endif
        endif
     enddo

@@ -316,7 +316,7 @@ contains
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
     
-    thisOctal%temperature(subcell) = 3.0e0
+!    thisOctal%temperature(subcell) = 3.0e0
 !    thisOctal%temperature(subcell) = 10.0
     thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%etaLine(subcell) = 1.e-30
@@ -343,14 +343,21 @@ contains
     type(cluster), intent(in), optional :: a_cluster
     !
     real(double) :: density_ave, rho_disc_ave, dummy_d
+    real :: tem_ave
     integer :: nparticle     
     !
     !
     ! assign density to the subcell
     select case (geometry)
        case ("cluster")
+
+          call find_temp_in_subcell(nparticle, tem_ave, sphData, &
+               thisOctal, subcell)
+          thisOctal%temperature(subcell)  = tem_ave
+
           call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
                thisOctal, subcell)
+
           ! if this subcell intersect with any of the stellar disk
           ! in the cluster, then add the contribution from the stellar disc.
           rho_disc_ave = 1.d-30
@@ -392,7 +399,6 @@ contains
              endif
 
           end if
-
 
 
           !!
@@ -559,10 +565,78 @@ contains
     end if
     
 
-
   end subroutine find_n_particle_in_subcell
 
 
+  subroutine find_temp_in_subcell(n, tem_ave, sphData, node, subcell)
+    implicit none
+    integer, intent(out) :: n                ! number of particels in the subcell
+    real, intent(out) :: tem_ave ! average temperature of the subcell
+    type(sph_data), intent(in)    :: sphData
+    type(octal), intent(inout)    :: node
+    integer, intent(in)           :: subcell ! index of the subcell
+    !
+    integer :: npart
+    integer :: i, j, counter
+    real(double) :: x, y, z
+    !
+    real(double), save :: udist  ! for units conversion  
+    logical, save  :: first_time = .true.
+
+    ! Carry out the initial calculations
+    if (first_time) then       
+       ! units of sphData
+       udist = get_udist(sphData)  ! [cm]
+
+       ! convert units
+       udist = udist/1.0d10  ! [10^10cm]
+
+       first_time = .false.
+    end if
+
+    if (associated(node%gas_particle_list)) then
+       
+       ! retriveing the number of the total gas particles
+       ! in "node".
+       ! -- using the function in linked_list_class.f90
+       npart = SIZE(node%gas_particle_list)
+       
+       counter = 0
+       tem_ave = 0.0d0
+       do i=1, npart
+          ! Retriving the sph data index for this paritcle
+          j = node%gas_particle_list(i)
+          
+          ! retriving this posisiton of the gas particle.
+          call get_position_gas_particle(sphData, j, x, y, z)
+          
+          ! convert units
+          x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
+          ! quick check to see if this gas particle is
+          ! belongs to this cell.
+          if ( within_subcell(node, subcell, x, y, z) ) then
+             counter = counter + 1
+             tem_ave = tem_ave + get_temp(sphData, j) 
+          end if
+          
+       end do
+       
+       n = counter
+       
+    else
+
+       n = 0
+
+    endif
+    
+    if (n>0) then
+       tem_ave = tem_ave/real(n)
+    else
+       tem_ave = 0.01
+    end if
+    
+
+  end subroutine find_temp_in_subcell
 
   !
   ! For a given octal object, this function finds and returns the number of stars within in 
