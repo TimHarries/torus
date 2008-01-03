@@ -7280,7 +7280,7 @@ contains
        this_device = device
     end if
 
-    if (.not.quietFlag) call writeInfo("plot_AMR_values plotting to: "//trim(this_device), TRIVIAL)
+    call writeInfo("plot_AMR_values plotting to: "//trim(this_device), TRIVIAL)
 
     ! retriving the address to the root of the tree.
     root => grid%octreeRoot

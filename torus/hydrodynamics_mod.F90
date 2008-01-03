@@ -1749,7 +1749,7 @@ contains
     real(double) :: gamma, dt, subdt, courantDt
     type(OCTALVECTOR) :: direction
     integer :: i
-    integer :: minDepth, maxDepth
+    integer :: minDepth, maxDepth, jDepth
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)

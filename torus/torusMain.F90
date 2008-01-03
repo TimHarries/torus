@@ -516,6 +516,7 @@ program torus
 
   zeroVec = VECTOR(0.,0.,0.)
 
+  nMarker = 0
   tooFewSamples = 0 
   boundaryProbs = 0 
   negativeOpacity = 0 
