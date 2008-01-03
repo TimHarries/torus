@@ -8331,7 +8331,7 @@ IF ( .NOT. gridConverged ) RETURN
     inertia = (2.d0/5.d0)*mCloud*rCloud**2
     eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
     beta = 0.0d0
-
+    thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
 
     omega = sqrt(2.d0 * beta * eGrav / inertia)
     thisOctal%phi_i(subcell) = -bigG * mCloud / (modulus(rVec)*1.d10)
@@ -8363,6 +8363,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%boundaryCondition(subcell) = 4
+    thisOctal%phi_i(subcell) = 0.d0
 
   end subroutine calcProtoBinDensity
     

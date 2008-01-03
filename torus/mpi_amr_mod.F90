@@ -333,10 +333,10 @@ contains
                     value(nSquares) = tmp
                     speed(nSquares) = sqrt(thisOctal%rhou(subcell)**2 + thisOctal%rhov(subcell)**2) / thisOctal%rho(subcell)
                     ang(nSquares) = atan2(thisOctal%rhov(subcell), thisOctal%rhou(subcell))
+	              if (thisOctal%ghostCell(subcell)) speed(nSquares) = 0.
                  endif
               case DEFAULT
               end select
-              if (thisOctal%ghostCell(subcell)) speed(nSquares) = 0.
            endif
 
        endif
