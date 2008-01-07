@@ -5619,15 +5619,15 @@ IF ( .NOT. gridConverged ) RETURN
 
    case("shakara","aksco")
       split = .false.
-!      if (thisOctal%ndepth  < 6) split = .true.
+      if (thisOctal%ndepth  < 6) split = .true.
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
 
-      if ((abs(cellcentre%z)/hr < 2.) .and. (cellsize/hr > 2.)) split = .true.
+!      if ((abs(cellcentre%z)/hr < 2.) .and. (cellsize/hr > 2.)) split = .true.
 
-!      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
+      if ((abs(cellcentre%z)/hr < 5.) .and. (cellsize/hr > 0.2)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -12141,22 +12141,6 @@ IF ( .NOT. gridConverged ) RETURN
               max(1.d-30,thisOctal%dustTypeFraction(subcell, i))
       enddo
 
-!      rosselandKappa = 0.
-!      Bnutot = 0.
-!      if (thisOctal%inFlow(subcell)) then
-!         do i =  grid%nLambda,2,-1
-!            freq = cSpeed / (grid%lamArray(i)*1.e-8)
-!            dfreq = cSpeed / (grid%lamArray(i)*1.e-8) - cSpeed / (grid%lamArray(i-1)*1.e-8)
-!            do j = 1, nDustType
-!               rosselandKappa = rosselandKappa + bnu(freq, dble(temperature)) * dFreq / &
-!                 ((grid%oneKappaabs(j,i)+grid%oneKappaSca(j,i))*max(1.d-30,thisOctal%dustTypeFraction(subcell, j)))
-!            enddo
-!            bnutot = bnutot + bnu(freq, dble(temperature)) * dfreq
-!         enddo
-!         if (rosselandkappa /= 0.) then
-!            rosselandKappa = (bnutot / rosselandKappa)/1.d10
-!         endif
-!      endif
    endif
    
 

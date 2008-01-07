@@ -1,4 +1,5 @@
 module atom_mod
+  use mpi_global_mod
   use constants_mod
   use kind_mod
   implicit none
@@ -348,10 +349,15 @@ contains
     
     real(double) :: fac1, fac2, fac3, nu, T
 
-    fac1 = (2.d0*(dble(hCgs)**2)*(nu**4))/((dble(cSpeed)**2)*dble(kErg) * T**2)
-    fac3 =  (dble(hCgs)*nu)/ (dble(kErg) * T) 
-    fac2 = exp(fac3)/(exp(fac3) - 1.d0)**2
+    fac1 = (2.d0*(hcgs*nu**2)**2)/(cSpeed**2 * kErg  * T**2)
+    fac3 =  (hCgs*nu)/ (kErg * T) 
+    if (fac3 > 100.d0) then
+       fac2 = 0.d0
+    else
+       fac2 = exp(fac3)/(exp(fac3) - 1.d0)**2
+    endif
     dbNubydT = fac1 * fac2
+    if (myRankGlobal == 1) write(*,*) nu,T,fac1,fac2,fac3,dbnubydt
   end function dbNubyDt
 
 
