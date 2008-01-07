@@ -18,6 +18,7 @@
       real nsd(100), aDist(100)
       complex refrel
       complex s1(1000),s2(1000)
+      integer :: nang=2
       
       pi = 3.14159265358979
       ci = (0.0,1.0)
@@ -44,21 +45,21 @@ c     For safty (R. Kurosawa fixed this.)
           if (nsd(i) .lt. 1.0e-30) nsd(i) = 1.0e-30
         enddo
         call PowerInt(nDist,1,nDist,aDist,nsd,normFac)
-        
+
 !        open(unit=54, file='g_scat.dat', status='unknown')
         do i = 1, nDist
           a = aDist(i) 
           x = 2.*pi*(a * micronsTocm)/(lambda*1.e-8)
           x = max(x, 1.e-5)
           refrel = cmplx(cmr, cmi)
-          call BHMIE(X,REFREL,2 ,S1,S2,QEXT(i),QSCA(i),QBACK(i),GSCA(i))
-          
+          call BHMIE(X,REFREL,NANG ,S1,S2,QEXT(i),QSCA(i),QBACK(i),
+     &       GSCA(i))
           qExt(i) = qExt(i) * nsd(i) * pi * (a * micronsToCm)**2
           qSca(i) = qSca(i) * nsd(i) * pi * (a * micronsToCm)**2
 !          write(54, *) x, gsca(i)
         enddo
 !        close(54)
-        
+
          call powerInt(nDist, 1, nDist, aDist, qExt, kappaExt)
          kappaExt = kappaExt / normFac
          call powerInt(nDist, 1, nDist, aDist, qSca, kappaSca)
@@ -68,7 +69,7 @@ c     ..........................................
 c     .   calculate the absorption efficiency  .
 c     ..........................................
         
-        
+
         kappaabs = kappaext-kappasca                     
       END
 
