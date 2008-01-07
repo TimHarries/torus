@@ -44,6 +44,10 @@ do
 shift
 done
 
+case ${SYSTEM} in 
+    zen) export mpi="yes"
+esac
+
 # 1. Check source code directories can be found and set up directories for build
 
 # 1.1 Check that the directory containing the sphNG code is present
