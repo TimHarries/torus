@@ -286,14 +286,14 @@ contains
   call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
 
 ! 1.1 Get total number of gas particles
-  call MPI_ALLREDUCE(this%npart, npart_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+  call MPI_ALLREDUCE(this%npart, npart_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 
 ! 1.2 Get number of gas particles for each process
   ALLOCATE( npart_arr(n_proc) )
   CALL MPI_GATHER(this%npart, 1, MPI_INTEGER, npart_arr, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 
 ! 2.1 Get total number of point masses
-  call MPI_ALLREDUCE(this%nptmass, nptmass_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD)
+  call MPI_ALLREDUCE(this%nptmass, nptmass_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)
 
 ! 2.2 Get total number of point masses for each proccess
   ALLOCATE( nptmass_arr(n_proc) )
