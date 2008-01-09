@@ -540,8 +540,10 @@ program torus
 
   if(geometry == "planetgap") then
      ! takes the gapWidth and calculates what mPlanet should be
-     call calcPlanetMass
-     write (*,*) "mPlanet set to ", mPlanet
+     if (planetgap) then
+        call calcPlanetMass
+        write (*,*) "mPlanet set to ", mPlanet
+     end if
   end if
 
   if (molecular .and. geometry == "molebench") then
