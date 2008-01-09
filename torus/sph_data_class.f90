@@ -211,7 +211,8 @@ contains
           this%xn(iiigas)          = b_xyzmh(1,iii)
           this%yn(iiigas)          = b_xyzmh(2,iii)
           this%zn(iiigas)          = b_xyzmh(3,iii)
-          this%temperature(iiigas) = b_temp(iii)
+! b_temp contains gas particle data only
+          this%temperature(iiigas) = b_temp(iiigas)
        elseif (b_iphase(iii) > 0) then
           iiipart=iiipart+1
           if (iiipart > nptmass) then
