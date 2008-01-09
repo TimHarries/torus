@@ -22,7 +22,7 @@
 #ifdef SPH
  subroutine torus(b_idim,b_npart,b_nactive,b_xyzmh,b_rho,b_iphase, &
                   b_nptmass,b_listpm,b_udist,b_umass, &
-                  b_utime,b_time,b_gaspartmass,b_temp)
+                  b_utime,b_time,b_gaspartmass, b_num_gas, b_temp)
 #else
 program torus
 #endif
@@ -411,7 +411,8 @@ program torus
   real*8, intent(in)    :: b_xyzmh(5,b_idim)
   real*4, intent(in)    :: b_rho(b_idim)
   real*8, intent(in)    :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
-  real*8, intent(inout) :: b_temp(b_idim)
+  integer, intent(in)   :: b_num_gas           ! Number of gas particles
+  real*8, intent(inout) :: b_temp(b_num_gas)   ! Temperature of gas particles
   integer :: ngaspart
   logical, parameter :: ll_sph = .true.
 #else
@@ -689,6 +690,7 @@ program torus
 
      else
 
+        
      ! The total number of gas particles is the total number of active particles less the number of point masses.
         ngaspart = b_nactive-b_nptmass
         call init_sph_data2(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
