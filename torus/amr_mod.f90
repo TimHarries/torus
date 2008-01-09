@@ -5003,6 +5003,7 @@ IF ( .NOT. gridConverged ) RETURN
     use input_variables, only: warpFracHeight, warpRadius, warpSigma, warpAngle
     use input_variables, only: solveVerticalHydro, hydroWarp, rsmooth
     use input_variables, only: rGap, gapWidth, rStar1, rStar2, mass1, mass2, binarysep, mindepthamr , maxdepthamr
+    use input_variables, only: planetgap
     IMPLICIT NONE
 !    include 'mpif.h'
     TYPE(octal), intent(inout) :: thisOctal
@@ -5706,13 +5707,28 @@ IF ( .NOT. gridConverged ) RETURN
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * rCore * (r/rCore)**betaDisc
-      if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.5)) split = .true.
       if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+      if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.5)) split = .true.
+      ! The next few lines are used in the Varniere models instead of the line
+      ! above. The final line tries to prevent splitting in the denser
+      ! midplane of the disc.
+!      if (r > 6000.) then
+!        if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.5)) split = .true.
+!      else
+!        if ((abs(cellcentre%z)/hr < 12.) .and. (cellsize/hr > 0.5)) split = .true.
+!      end if
+!      if (abs(cellcentre%z)/hr < 0.9) split = .false.
       ! Added in to get an extra level of refinement at the outer edge of the
       ! gap. Cells at radii between that of the gap and (gap+gapWidth) must
       ! have a resolution of a quarter of a scale height instead of a half...
-      if ((r > rGap*autocm/1e10) .and. (r < (rGap+1.5*gapWidth)*autocm/1e10) .and.  &
-          (abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.25)) split = .true.
+      if (planetgap) then
+         if ((r > rGap*autocm/1e10) .and. (r < (rGap+1.5*gapWidth)*autocm/1e10) .and.  &
+             (abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.25)) split = .true.
+        ! The alternative version below was used for the models where we want a
+        ! high resolution gap (hi-res-gap models).
+!        if ((r > (rGap-gapWidth)*autocm/1e10) .and. (r < (rGap+1.5*gapWidth)*autocm/1e10) .and.  &
+!            (abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.1)) split = .true.
+      end if
       if ((r+cellsize/2.d0) < 0.9*grid%rinner) split = .false.
 
 
@@ -13535,7 +13551,6 @@ IF ( .NOT. gridConverged ) RETURN
          write(*,*) "subcen",subcen
          write(*,*) "z", currentZ
             do;enddo
-
       endif
       
    endif

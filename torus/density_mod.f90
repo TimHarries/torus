@@ -1230,6 +1230,8 @@ subroutine calcPlanetMass
 
    ! initial values
    real(double) :: target = 1d-15       ! target density reduction
+   ! For Varniere
+!   real(double) :: target = 0.5         ! target density reduction
    real(double) :: tol = 0.01           ! +/- tol * target
    real(double) :: step = 0.0001        ! initial stepping in value of mPlanet
    real(double) :: reduxFac = 0.5       ! step is reduced by this factor when homing in

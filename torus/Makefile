@@ -26,7 +26,7 @@ MPIFLAG =
 ifeq ($(SYSTEM), intelmac)
     F95COMP  = g95
     F77COMP  = g95
-    F77FLAG  = -fno-second-underscore
+    F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wno=140,141,112
     FASTFLAG = -O3
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
@@ -81,8 +81,9 @@ ifeq ($(SYSTEM), g95)
     F95COMP  = g95
     F77COMP  = g95
     F77FLAG  = -w -fno-second-underscore
-    DEBUGFLAG= -g -ftrace=full
-    FASTFLAG = -O3 -mcpu=G5
+    DEBUGFLAG= -g -fbounds-check -ftrace=full
+#    FASTFLAG = -O3 -mcpu=G5
+    FASTFLAG = -O3
 #    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math	
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
@@ -391,9 +392,7 @@ ifeq ($(SYSTEM), linuxintel)
     F77COMP  = ifort
     F77FLAG  = -w
     DEBUGFLAG= -g
-
-
-
+#    FASTFLAG = -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
 #    FASTFLAG = -g -openmp -fpp -auto -I/usr/include/nptl -L/usr/lib/nptl
 #    FASTFLAG = -I/usr/include/nptl -L/usr/lib/nptl -zero 
     UNIXMOD  = unix_mod.f90.linuxintel
@@ -410,7 +409,6 @@ ifeq ($(SYSTEM), linuxintel)
 endif
 
 ifeq ($(SYSTEM), zen)
-
     F95COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
     F77COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
     FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
@@ -586,6 +584,8 @@ ifeq ($(SYSTEM), darwin)
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
     PGLIBS   = -L$(HOME)/pgplot -lpgplot
+#    PGLIBS   = -L$(HOME)/local-ppc/opt/pgplot -lpgplot
+    CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs
     EXE = torus.darwin
     MK_MPI_SRC = no
