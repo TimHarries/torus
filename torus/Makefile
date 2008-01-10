@@ -481,6 +481,33 @@ ifeq ($(SYSTEM), openmpi)
     KNOWN_SYSTEM = yes
 endif
 
+ifeq ($(SYSTEM), openmpi-nocona)
+    TOP = /home/chris/local
+    F95COMP  = ${TOP}/bin/mpif77
+    F77COMP  = ${TOP}/bin/mpif77
+    F95FLAG  = -w
+    F77FLAG  = -w -fno-second-underscore
+    DEBUGFLAG= -g -ftrace=full
+#    FASTFLAG = -O0
+#    FASTFLAG = -O3
+    FASTFLAG = -march=pentium4 -O0
+#    FASTFLAG = -march=pentium4 -O3
+#    FASTFLAG = -march=nocona -O1
+    MPI_INC  = -I${TOP}/include
+    UNIXMOD  = unix_mod.f90.linuxintel
+    KINDMOD  = kind_mod.f90.linuxintel
+    IMAGEF77 = image_f77.f.default
+    SPECF77  = spec_f77.f.default
+#    PGLIBS   = -L/star/lib `pgplot_link`
+    PGLIBS   = -L/star/lib -lpgplot -lpng -L/usr/X11R6/lib -lICE -lX11
+    CFITSIOLIBS = -lcfitsio
+    STARLIBS = -L/star/lib `ndf_link` 
+    F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
+    EXE = torus.openmpi-nocona
+    MK_MPI_SRC = yes
+    KNOWN_SYSTEM = yes
+endif
+
 ifeq ($(SYSTEM), miracle)
     F95COMP  = f90
     F77COMP  = f77
