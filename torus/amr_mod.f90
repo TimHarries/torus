@@ -520,7 +520,8 @@ CONTAINS
                          isample, stream)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, molecular, cmf, nAtom, useDust
+    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, molecular, cmf, nAtom, useDust, &
+                                TMinGlobal
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
@@ -755,7 +756,7 @@ CONTAINS
     end if
     parent%child(newChildIndex)%gasOpacity = .false.
     parent%child(newChildIndex)%Ne = 1.e-30
-    parent%child(newChildIndex)%temperature = 3.0
+    parent%child(newChildIndex)%temperature = TMinGlobal
     parent%child(newChildIndex)%nTot = 1.e-30
     parent%child(newChildIndex)%eDens = 1.d-10
     parent%child(newChildIndex)%microturb = 1.d-10

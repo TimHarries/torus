@@ -94,6 +94,8 @@ contains
     call getReal("distance", gridDistance, cLine, nLines, &
          "Grid distance (pc): ","(a,f4.1,1x,a)", 100., ok, .false.)
 
+    call getReal("tminglobal", TMinGlobal, cLine, nLines, &
+         "Minimum Temperature (K): ","(a,f4.1,1x,a)", 2.8, ok, .false.)
 
     call getReal("lamstart", lamstart, cLine, nLines, &
          "X-array start (angs or kms): ", "(a,f7.1,1x,a)", 2000., ok, .true.)

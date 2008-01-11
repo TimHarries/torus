@@ -1532,7 +1532,7 @@ contains
        epsOverDeltaT, nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
-    use input_variables, only : minCrossings
+    use input_variables, only : minCrossings, TMinGlobal
     logical, intent(in) :: this_is_root    ! T if thisOctal is a root node.
     real(oct) :: totalEmission
     type(octal), pointer   :: thisOctal
@@ -1648,7 +1648,7 @@ contains
              endif
              thisOctal%oldTemperature(subcell) = thisOctal%temperature(subcell)
              if (thisOctal%nCrossings(subcell) .ge. minCrossings) then
-                thisOctal%temperature(subcell) = max(2.8,thisOctal%temperature(subcell) + real(0.8 * deltaT))
+                thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + real(0.8 * deltaT))
              else
                 deltaT = 0.
                 nUnderSampled = nUndersampled + 1

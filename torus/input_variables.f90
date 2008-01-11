@@ -11,6 +11,9 @@ module input_variables
 
   public
 
+ ! globally applied minimum temperature
+  real    :: TMinGlobal     
+
   ! variables for the grid
 
   logical :: debug

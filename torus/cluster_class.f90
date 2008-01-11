@@ -569,6 +569,7 @@ contains
 
 
   subroutine find_temp_in_subcell(n, tem_ave, sphData, node, subcell)
+    use input_variables, only : TMinGlobal
     implicit none
     integer, intent(out) :: n    ! number of particles in the subcell
     real, intent(out) :: tem_ave ! average temperature of the subcell
@@ -632,7 +633,7 @@ contains
     if (n>0) then
        tem_ave = tem_ave/real(n)
     else
-       tem_ave = 10.0
+       tem_ave = TMinGlobal
     end if
     
 
