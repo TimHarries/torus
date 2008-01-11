@@ -310,7 +310,7 @@ ifeq ($(SYSTEM), ompi)
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
     PGLIBS   =   -L/Users/${USER}/lib/pgplot -lpgplot #-lpng -laquaterm  /System/Library/Frameworks/Cocoa.framework/Cocoa
-    CFITSIOLIBS =  -L/Users/acreman/cfitsio/lib -lcfitsio
+    CFITSIOLIBS =  -L/Users/${USER}/cfitsio/lib -lcfitsio
     STARLIBS = -L/usr/X11R6/lib -lX11
     EXE = torus.ompi
     MK_MPI_SRC = yes

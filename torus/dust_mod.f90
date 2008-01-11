@@ -1121,7 +1121,7 @@ contains
     real(double) :: dFreq, Freq
     real :: maxTemp
 
-    maxTemp = 2000.
+    maxTemp = 3000.
 
     if (grid%geometry == "wr104") maxTemp = 30000.
 
