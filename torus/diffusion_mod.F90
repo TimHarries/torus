@@ -538,6 +538,8 @@ contains
                 bigR = gradE / (eDens(0,0,0) * (thisOctal%kappaRoss(subcell) * thisOctal%rho(subcell)))
                 lambda = (2.d0 + bigR) / (6.d0 + 3.d0*bigR + bigR**2)
 
+                lambda = 0.33333d0
+!                write(*,*) "lambda ",lambda
                 dCoeffHalf = 0.d0
 
                 dCoeffHalf(1, 0, 0) = 0.5d0 * (dCoeff(1, 0, 0) + dCoeff(0, 0, 0))
@@ -667,7 +669,7 @@ contains
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use input_variables, only : eDensTol !, zoomfactor
+    use input_variables, only : eDensTol , zoomfactor
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid
@@ -693,9 +695,9 @@ end subroutine gaussSeidelSweep
         call setDiffusionCoeff(grid, grid%octreeRoot)
  if (myRankIsZero) then
         write(*,*) nIter," Maximum relative change in eDens:",deMax
-!        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-!             "/xs", .true., .false., &
-!             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomfactor) 
+        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+             "/xs", .true., .false., &
+             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomfactor) 
   endif
         if (nIter < 3) gridConverged = .false.
         if (nIter > maxIter) then
