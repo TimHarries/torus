@@ -357,7 +357,7 @@ contains
        fac2 = exp(fac3)/(exp(fac3) - 1.d0)**2
     endif
     dbNubydT = fac1 * fac2
-    if (myRankGlobal == 1) write(*,*) nu,T,fac1,fac2,fac3,dbnubydt
+!    if (myRankGlobal == 1) write(*,*) nu,T,fac1,fac2,fac3,dbnubydt
   end function dbNubyDt
 
 
