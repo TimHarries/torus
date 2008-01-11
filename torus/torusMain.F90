@@ -4565,7 +4565,8 @@ subroutine do_amr_plots
   !             show_value_3rd_dim, boxfac=0.0004)
   call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
        "temperature", .true., .false., nmarker, xmarker, ymarker, zmarker, &
-       width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls)
+       width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls, &
+       fixValMin=sph_tem_min, fixValMax=sph_tem_max, useFixedRange=ll_sph )
   !        call plot_AMR_values(grid, "temperature", "x-y", 0., &
   !             "temperature2.ps/vcps", .true., .false., &
   !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
