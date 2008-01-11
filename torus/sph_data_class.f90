@@ -39,7 +39,7 @@ module sph_data_class
     real(double), parameter :: sph_rho_min=1.0e-25_db ! Lower limit for rho plots from sphtorus
     real(double), parameter :: sph_rho_max=1.0e-12_db ! Upper limit for rho plots from sphtorus
     real(double), parameter :: sph_tem_min=10.0_db ! Lower limit for temperature plots from sphtorus
-    real(double), parameter :: sph_tem_max=1.0e3_db ! Upper limit for temperature plots from sphtorus
+    real(double), parameter :: sph_tem_max=3.0e2_db ! Upper limit for temperature plots from sphtorus
 
   private:: &
        kill_sph_data
