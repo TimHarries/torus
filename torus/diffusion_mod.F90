@@ -669,7 +669,7 @@ contains
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use input_variables, only : eDensTol , zoomfactor
+    use input_variables, only : eDensTol !, zoomfactor
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid
@@ -695,9 +695,9 @@ end subroutine gaussSeidelSweep
         call setDiffusionCoeff(grid, grid%octreeRoot)
  if (myRankIsZero) then
         write(*,*) nIter," Maximum relative change in eDens:",deMax
-        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-             "/xs", .true., .false., &
-             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomfactor) 
+!        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
+!             "/xs", .true., .false., &
+!             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomfactor) 
   endif
         if (nIter < 3) gridConverged = .false.
         if (nIter > maxIter) then
