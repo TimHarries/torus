@@ -4218,7 +4218,7 @@ IF ( .NOT. gridConverged ) RETURN
 
         ! first check that we are not outside the grid
         IF ( thisOctal%nDepth == 1 ) THEN
-          PRINT *, 'Panic: In findSubcellLocalLevel, point is outside the grid'
+          PRINT *, 'Panic: In findSubcellLocalPrivate, point is outside the grid'
           write(*,*) point
           write(*,*) sqrt(point%x**2+point%y**2)
           write(*,*) atan2(point%y,point%x)*radtodeg
@@ -4237,7 +4237,7 @@ IF ( .NOT. gridConverged ) RETURN
         !   must be a problem.
         IF (haveDescended) then
            boundaryProblem = .TRUE.
-           PRINT *, 'Panic: In findSubcellLocal, have descended and are now going back up'
+           PRINT *, 'Panic: In findSubcellLocalPrivate, have descended and are now going back up'
            write(*,*) point
            write(*,*) atan2(point%y,point%x)*radtodeg
            write(*,*) sqrt(point%x**2 + point%y**2)
