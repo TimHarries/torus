@@ -305,7 +305,7 @@ contains
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter, plot_i, ll_sph)
     use input_variables, only : variableDustSublimation, zoomFactor
-    use input_variables, only : smoothFactor, lambdasmooth, plot_maps
+    use input_variables, only : smoothFactor, lambdasmooth, plot_maps, taudiff
 !    use input_variables, only : rinner, router
 #ifdef MPI
     use input_variables, only : blockhandout
@@ -419,6 +419,7 @@ contains
 !       first_time = .false.
 !    end if
 
+       if (myrankGlobal == 0) writeoutput = .true.
        allocate(buffer_real(n_proc))
 
 
@@ -519,7 +520,7 @@ contains
 
 
     nCellsInDiffusion = 0
-    call defineDiffusionOnRosseland(grid,grid%octreeRoot, ndiff=nCellsInDiffusion)
+    call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
     write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
     call writeInfo(message,IMPORTANT)
 
@@ -1062,7 +1063,7 @@ contains
        
        close(LU_OUT)
 
-    end if   
+    end if
 
 
        if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
@@ -1078,7 +1079,7 @@ contains
 !          call updateTemps(grid, grid%octreeRoot)
 !       enddo
        if (doTuning) call tune(6, "Gauss-Seidel sweeps")
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot)
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff)
 
        if (myRankIsZero) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
@@ -1091,7 +1092,7 @@ contains
        call solveArbitraryDiffusionZones(grid)
 
 
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot,tauDiff,  nDiff=nCellsInDiffusion)
 !       call unsetOnDirect(grid%octreeRoot)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
@@ -1198,7 +1199,7 @@ contains
           endif
 
           nCellsInDiffusion = 0
-          call defineDiffusionOnRosseland(grid,grid%octreeRoot, ndiff=nCellsInDiffusion)
+          call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
           write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
           call writeInfo(message,IMPORTANT)
 
@@ -1245,6 +1246,7 @@ contains
          .or. iIter_grand < maxIter &
          .or. (dT_mean_new-dT_mean_old)/((dT_mean_new+dT_mean_old)/2.0) > 0.05) then 
        converged = .false.
+       nMonte = nMonte*2  ! increases the number of iterations!
     else 
        converged = .true.
     end if
@@ -1647,13 +1649,18 @@ contains
                 !                write(*,*) adot,kappap,thisOctal%rho(subcell)
              endif
              thisOctal%oldTemperature(subcell) = thisOctal%temperature(subcell)
-             if (thisOctal%nCrossings(subcell) .ge. minCrossings) then
+
+
+             if (thisOctal%nCrossings(subcell) .ge. 10) then
                 thisOctal%temperature(subcell) = max(TMinGlobal,thisOctal%temperature(subcell) + real(0.8 * deltaT))
-             else
+             endif
+ 
+             if (thisOctal%nCrossings(subcell) .lt. minCrossings) then
                 deltaT = 0.
                 nUnderSampled = nUndersampled + 1
                 thisOctal%undersampled(subcell) = .true.
              endif
+
              kappaP = 0.d0
              norm = 0.d0
              if (.not.grid%oneKappa) then

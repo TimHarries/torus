@@ -665,24 +665,35 @@ contains
 #endif
     
     if (deMax > tol) converged = .false.
-    deallocate(octalArray)
+    deallocate(octalArray, octalsBelongRank)
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use input_variables, only : eDensTol !, zoomfactor
+    use input_variables, only : eDensTol, taudiff !, zoomfactor
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid
     logical :: gridConverged
     real(double) :: deMax
     integer :: niter
-    integer, parameter :: maxIter = 200
+    integer, parameter :: maxIter = 2000
+    logical, save :: firstTime = .true.
 
     call seteDens(grid, grid%octreeRoot)
     call setDiffusionCoeff(grid, grid%octreeRoot)
 
-    call resetDiffusionTemp(grid%octreeRoot, 10.)
 
+
+!    if (firstTime) then
+!       call defineDiffusionOnRosseland(grid, grid%octreeRoot, 0.5)
+!       firstTime = .false.
+!    else
+       call defineDiffusionOnRosseland(grid, grid%octreeRoot, 10.)
+!    endif
+
+!    call defineDiffusiononRho(grid%octreeRoot, 1.d-10)
+       call defineDiffusionOnUndersampled(grid%octreeRoot)
+!    call resetDiffusionTemp(grid%octreeRoot, 10.)
 
     gridconverged = .false.
     nIter = 0
@@ -705,7 +716,7 @@ end subroutine gaussSeidelSweep
            gridConverged = .true.
         endif
      enddo
-     write(*,*) "Gauss-seidel took ",niter, " iterations"
+     if (myRankisZero) write(*,*) "Gauss-seidel took ",niter, " iterations"
    end subroutine solveArbitraryDiffusionZones
 
 
@@ -738,8 +749,35 @@ end subroutine gaussSeidelSweep
 
   end subroutine defineDiffusionOnUndersampled
 
-  recursive subroutine defineDiffusionOnRosseland(grid, thisOctal, nDiff)
-    use input_variables, only : tauDiff, resetDiffusion
+  recursive subroutine defineDiffusionOnRho(thisOctal, rhoLim)
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child
+    real(double) :: rhoLim
+    integer :: subcell
+    integer :: i
+
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call defineDiffusionOnRho(child, rhoLim)
+                exit
+             end if
+          end do
+       else
+          if (thisOctal%rho(subcell) > rhoLim) then
+             thisOctal%diffusionApprox(subcell) = .true.
+          endif
+       end if
+    end do
+
+  end subroutine defineDiffusionOnRho
+
+  recursive subroutine defineDiffusionOnRosseland(grid, thisOctal, taudiff, nDiff)
+    use input_variables, only :  resetDiffusion
+    real :: tauDiff
     type(GRIDTYPE) :: grid
     integer, optional :: nDiff
     type(octal), pointer   :: thisOctal
@@ -753,7 +791,7 @@ end subroutine gaussSeidelSweep
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call defineDiffusionOnRosseland(grid, child, nDiff)
+                call defineDiffusionOnRosseland(grid, child, taudiff, nDiff)
                 exit
              end if
           end do
@@ -876,7 +914,7 @@ end subroutine gaussSeidelSweep
        else
 
           if (.not.walkOctal%cylindrical) then
-!             call random_number(r)
+             call random_number(r)
              rVec = subcellCentre(walkOctal, walkSubcell)
              
              if (r < 0.166666) then

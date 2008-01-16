@@ -242,7 +242,7 @@ program torus
 
   ! model parameters
 
-  integer,parameter :: IterLucy=5   ! Minimum number of iterations of LUCYRADIATIVEEQUILIBRIUMAMR
+  integer,parameter :: IterLucy=10   ! Minimum number of iterations of LUCYRADIATIVEEQUILIBRIUMAMR
   real :: vel
   real :: nuStart, nuEnd
 
@@ -1714,10 +1714,10 @@ program torus
         call stripDustAway(grid%octreeRoot, 1.d-20, 4.d4)
      endif
 
-     call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-          "etacont_zoom.ps/vcps", .true., .false.,  &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
-          show_value_3rd_dim, boxfac=zoomfactor)
+!     call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
+!          "etacont_zoom.ps/vcps", .true., .false.,  &
+!          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
+!          show_value_3rd_dim, boxfac=zoomfactor)
 
 
      if (writeoutput) write(*,*) " "

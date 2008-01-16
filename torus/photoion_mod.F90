@@ -58,7 +58,7 @@ contains
 
   subroutine photoIonizationloop(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
        lucyfileout, lucyfilein)
-    use input_variables, only : zoomFactor, nlucy !, smoothFactor
+    use input_variables, only : zoomFactor, nlucy, taudiff !, smoothFactor
 #ifdef MPI
     use input_variables, only : blockHandout
 #endif
@@ -201,7 +201,7 @@ contains
 
 
        nCellsInDiffusion = 0
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot, ndiff=nCellsInDiffusion)
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, ndiff=nCellsInDiffusion)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 
@@ -535,7 +535,7 @@ end if ! (my_rank /= 0)
          write(*,*) "Finished calculating ionization and thermal equilibria"
 
        if (doTuning) call tune(6, "Temperature/ion corrections")
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot)
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot,taudiff)
        if (myRankIsZero) &
        call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
             "crossings.ps/vcps", .true., .false., &
@@ -552,7 +552,7 @@ end if ! (my_rank /= 0)
             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
 
        call solveArbitraryDiffusionZones(grid)
-       call defineDiffusionOnRosseland(grid,grid%octreeRoot, nDiff=nCellsInDiffusion)
+       call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, nDiff=nCellsInDiffusion)
 !       call unsetOnDirect(grid%octreeRoot)
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)

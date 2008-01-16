@@ -151,7 +151,7 @@ module source_mod
     real(double) function sumSourceLuminosityMonochromatic(source, nsource, lam) result (tot)
       integer :: nSource
       type(SOURCETYPE) :: source(:)
-      real(double) :: lam
+      real(double) :: lam, flux
       integer :: i, j
 
       tot = 0
@@ -159,8 +159,11 @@ module source_mod
          if (lam > source(i)%spectrum%lambda(source(i)%spectrum%nLambda)) then
            tot = tot + 1.d-200
          else
-           call locate(source(i)%spectrum%lambda, source(i)%spectrum%nLambda, lam, j)
-           tot = tot + source(i)%spectrum%flux(j) * fourPi * (source(i)%radius*1.d10)**2
+!           call locate(source(i)%spectrum%lambda, source(i)%spectrum%nLambda, lam, j)
+
+           flux =  loginterp_dble(source(i)%spectrum%flux(1:source(i)%spectrum%nLambda), &
+                source(i)%spectrum%nLambda, source(i)%spectrum%lambda(1:source(i)%spectrum%nLambda), lam)
+           tot = tot + flux * fourPi * (source(i)%radius*1.d10)**2
          endif
       enddo
     end function sumSourceLuminosityMonochromatic
