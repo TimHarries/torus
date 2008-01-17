@@ -504,10 +504,12 @@ module input_variables
   logical :: solveVerticalHydro
   integer :: nHydro
   integer :: nLucy
+  integer :: iterLucy
   logical :: narrowBandImage
   logical :: useInterp
   real    :: lucy_undersampled  
   integer :: minCrossings
+  logical :: forceLucyConv
 
 
   !  Input parameters for bipolar jets geometry.

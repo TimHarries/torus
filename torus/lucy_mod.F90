@@ -305,7 +305,7 @@ contains
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
        source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter, plot_i, ll_sph)
     use input_variables, only : variableDustSublimation, zoomFactor
-    use input_variables, only : smoothFactor, lambdasmooth, plot_maps, taudiff
+    use input_variables, only : smoothFactor, lambdasmooth, plot_maps, taudiff, forceLucyConv
 !    use input_variables, only : rinner, router
 #ifdef MPI
     use input_variables, only : blockhandout
@@ -1257,11 +1257,11 @@ contains
        endif
     endif
        
-
-
-!   converged = .true.
-!   write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
-
+! forceLucyConv is set in the parameters.dat file if required
+    if ( forceLucyConv ) then
+       converged = .true.
+       write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
+    end if
 
 !    !
 !    ! Write grid structure to a tmp file.

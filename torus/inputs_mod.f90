@@ -1111,6 +1111,11 @@ contains
 
        if (lucyRadiativeEq) then
           call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
+          call getInteger("iterLucy", iterLucy, cline, nlines, "Minimum number of Lucy iterations: ", "(a,i3,a)",10,ok,.false.)
+
+          call getLogical("forceLucyConv", forceLucyConv, cLine, nLines, &
+               "Force convergence of Lucy algorithm: ","(a,1l,1x,a)", .false., ok, .false.)
+
           call getReal("lucy_undersampled", lucy_undersampled, cLine, nLines, &
                "Minimum percentage of undersampled cell in lucy iteration: ", &
                "(a,f4.2,a)",0.0,ok,.false.)

@@ -242,7 +242,6 @@ program torus
 
   ! model parameters
 
-  integer,parameter :: IterLucy=10   ! Minimum number of iterations of LUCYRADIATIVEEQUILIBRIUMAMR
   real :: vel
   real :: nuStart, nuEnd
 
