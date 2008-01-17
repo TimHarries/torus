@@ -896,7 +896,7 @@ contains
 
        rhoOut = rhoOut * fac
     endif
-    rhoOut = max(rhoOut, 100.d0*mHydrogen)
+    rhoOut = max(rhoOut, 1.d-25)
        
 
   end function shakaraSunyaevDisc

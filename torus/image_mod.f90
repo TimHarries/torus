@@ -725,13 +725,13 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
 !! WRITE_IMAGE creates a FITS primary array containing a 2-D image.
 !
 
-     subroutine writeFitsImage(image, filename)
+     subroutine writeFitsImage(image, filename, type)
        type(IMAGETYPE) :: image
 
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
-       character (len=*) :: filename
+       character (len=*) :: filename, type
        logical :: simple,extend
 
 
@@ -770,9 +770,19 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        group=1
        fpixel=1
        nelements=naxes(1)*naxes(2)
-       array = image%pixel%i
 
-       write(*,*) "array ",image%nx/2,image%ny/2,array(image%nx/2,image%ny/2)
+       select case(type)
+          case("intensity")
+             array = image%pixel%i
+          case("stokesq")
+             array = image%pixel%q
+          case("stokesu")
+             array = image%pixel%q
+          case("pol")
+             array = 100.*sqrt(image%pixel%q**2 + image%pixel%u**2)/image%pixel%i
+          case DEFAULT
+             write(*,*) "Unknown type in writefitsimage ",type
+       end select
 
        call ftppre(unit,group,fpixel,nelements,array,status)
        !

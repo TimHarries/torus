@@ -2805,7 +2805,7 @@ program torus
            ! escProb -- allowing for local emission
            thisPhoton%stokes = thisPhoton%stokes * real(fac) * escProb
 
-           write(*,*) "after first scat ", thisPhoton%stokes%i
+!           write(*,*) "after first scat ", thisPhoton%stokes%i
            currentScat = 0
 
 
@@ -3482,7 +3482,9 @@ endif ! (doPvimage)
            write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
            call writeImage(obsImageSet(i), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
-           call writeFitsImage(obsImageSet(i), trim(specfile))
+           call writeFitsImage(obsImageSet(i), trim(specfile), "intensity")
+           write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_pol",iPhase,".fits"
+           call writeFitsImage(obsImageSet(i), trim(specfile), "pol")
         end do
         if (doRaman) then
            write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase
