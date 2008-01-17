@@ -1885,7 +1885,7 @@ endif
    "Use opacity interpolation: ","(a,1l,a)", .true., ok, .false.)
 
  call getInteger("maxscat", maxScat, cLine, nLines, &
-      "Max no of scatters: ","(a,i4,1x,a)", 1, ok, .false.)
+      "Max no of scatters: ","(a,i8,1x,a)", 1, ok, .false.)
 
  if (maxscat == 1) then
     if (writeoutput) write(*,*) "maxscat: USEAGE CHANGED, now limits maximum no of scatterings"
