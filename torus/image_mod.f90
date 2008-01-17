@@ -223,6 +223,7 @@ module image_mod
               
               thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
                    + thisPhoton%stokes * weight * filter_response
+              write(*,*) "adding photon to image ",thisPhoton%stokes%i
               thisImageSet(i)%vel(xPix,yPix) = thisImageSet(i)%vel(xPix, yPix)  &
                    + velincgs * (thisPhoton%stokes%i*weight*filter_response)
               thisImageSet(i)%totWeight(xPix,yPix) = thisImageSet(i)%totWeight(xPix,yPix) &
@@ -770,7 +771,10 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        fpixel=1
        nelements=naxes(1)*naxes(2)
        array = image%pixel%i
-       call ftpprj(unit,group,fpixel,nelements,array,status)
+
+       write(*,*) "array ",image%nx/2,image%ny/2,array(image%nx/2,image%ny/2)
+
+       call ftppre(unit,group,fpixel,nelements,array,status)
        !
        !  Write another optional keyword to the header.
        !

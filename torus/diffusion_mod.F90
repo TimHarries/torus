@@ -665,7 +665,10 @@ contains
 #endif
     
     if (deMax > tol) converged = .false.
-    deallocate(octalArray, octalsBelongRank)
+    deallocate(octalArray)
+#ifdef MPI
+    deallocate(octalsBelongRank)
+#endif
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)

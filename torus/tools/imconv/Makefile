@@ -4,7 +4,7 @@ EXE=	./imconv
 #	F90=	f90 -w=all -O3 -ieee=full
 
 F90=	g95 -g 
-F77=	f77 -g -w -fno-second-underscore
+F77=	g95 -g -w -fno-second-underscore
 
 
 

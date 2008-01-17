@@ -2805,6 +2805,7 @@ program torus
            ! escProb -- allowing for local emission
            thisPhoton%stokes = thisPhoton%stokes * real(fac) * escProb
 
+           write(*,*) "after first scat ", thisPhoton%stokes%i
            currentScat = 0
 
 

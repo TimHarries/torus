@@ -3066,7 +3066,8 @@ subroutine setBiasOnTau(grid, iLambda)
 
              
              tau = thisOctal%subcellSize * kappaExt
-             thisOctal%biasCont3D(subcell) = exp(-tau)
+!             write(*,*) "tau ", tau
+             thisOctal%biasCont3D(subcell) = max(exp(-tau),1.e-5)
 
 
           endif

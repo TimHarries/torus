@@ -40,7 +40,7 @@ ifeq ($(SYSTEM), intelmac)
 #    CFITSIOLIBS = -L/star/lib/ -lcfitsio
 #    PGLIBS   = -L/sw/lib/pgplot -lgfortran -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
 #    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
-    PGLIBS   = -L/Users/acreman/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
+    PGLIBS   = -L/Users/${USER}/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 #    STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
