@@ -2976,9 +2976,9 @@ subroutine setBiasOnTau(grid, iLambda)
 #endif
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
-    real(double) :: tau
-  type(octalvector) :: rVec!, direction
-!  integer :: i
+    real(double) :: tau, thisTau
+  type(octalvector) :: rVec, direction
+  integer :: i
     integer :: subcell, ntau
     integer :: iLambda
     integer                     :: nOctal        ! number of octals in grid
@@ -2987,6 +2987,7 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: iOctal_beg, iOctal_end
     real(double), parameter :: underCorrect = 0.8d0
     real(double) :: kappaSca, kappaAbs, kappaExt
+    type(OCTALVECTOR) :: arrayVec(4)
 #ifdef MPI
 ! Only declared in MPI case
      integer, dimension(:), allocatable :: octalsBelongRank
@@ -2998,9 +2999,16 @@ subroutine setBiasOnTau(grid, iLambda)
      integer :: np
      integer :: my_rank
 
+
     np = 1
     my_rank = 1
 #endif
+
+
+     arrayVec(1) = OCTALVECTOR(1.d0, 1.d-10, 1.d-10)
+     arrayVec(2) = OCTALVECTOR(-1.d0, 1.d-10, 1.d-10)
+     arrayVec(3) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
+     arrayVec(4) = OCTALVECTOR(1.d-10, 1.d-10,-1.d0)
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -3053,20 +3061,21 @@ subroutine setBiasOnTau(grid, iLambda)
              rVec = subcellCentre(thisOctal, subcell)
              tau = 1.d30
              ntau = 20
-!             do i = 1, nTau
-!                direction = randomUnitVector()
-!                call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0 )
-!                tau = min(tau, thisTau)
-!             enddo
-!             thisOctal%biasCont3D(subcell) = exp(-tau)
+             do i = 1, 4
+                direction = arrayVec(i)
+                call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0 )
+                tau = min(tau, thisTau)
+!             write(*,*) "direction, tau ", direction, tau
+             enddo
+             thisOctal%biasCont3D(subcell) = exp(-tau)
 
 
-             call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
-             kappaExt = kappaAbs + kappaSca
+!             call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+!             kappaExt = kappaAbs + kappaSca
 
              
-             tau = thisOctal%subcellSize * kappaExt
-             thisOctal%biasCont3D(subcell) = max(1.d-4,exp(-tau))
+!             tau = thisOctal%subcellSize * kappaExt
+!             thisOctal%biasCont3D(subcell) = max(1.d-4,exp(-tau))
 
 
           endif

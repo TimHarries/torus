@@ -219,7 +219,8 @@ program torus
   type(VECTOR) :: rotationAxis, normToRotation
   type(VECTOR) :: zeroVec, tempVec
   type(OCTALVECTOR) :: rHat, rVec, rHatinStar
-
+  type(octal), pointer :: thisOctal
+  integer :: subcell
 
   ! output arrays
 
@@ -2558,6 +2559,9 @@ program torus
                          sampleFreq,intPathError, &
                          useInterp, grid%Rstar1, coolStarPosition, nSource, source)
 
+!              octVec = thisPhoton%position
+!              CALL findSubcellTD(octVec,grid%octreeRoot,thisOctal,subcell)
+!              write(*,*) "Optical depth to observer: ",tauExt(ntau),thisOctal%biascont3d(subcell)
 
                if (intPathError == -10) then
                     tooFewSamples = tooFewSamples + 1  
