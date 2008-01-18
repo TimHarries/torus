@@ -155,7 +155,7 @@ program torus
   ! variables to do with dust
 
   integer :: itestlam, ismoothlam
-  integer, parameter :: nXmie = 20, nMuMie = 20
+  integer, parameter :: nXmie = 20, nMuMie = 200
   type(PHASEMATRIX), pointer :: miePhase(:,:, :)
 
   ! torus images
@@ -871,6 +871,17 @@ program torus
 
 
   call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+
+  if (writeoutput) then
+     open(76, file="phasematrix.dat",status="unknown",form="formatted")
+     ilambda = findIlambda(10000.0, xArray, nLambda, ok)
+     do i = 1, nMuMie
+	ang =  -1. + 2.*real(i-1)/real(nMuMie-1)
+	ang = acos(ang)*180./pi
+        write(76,*) ang, miephase(1, ilambda, i)%element(1,1)
+     enddo
+     close(76)
+  endif
 
   if (includeGasOpacity) then
 

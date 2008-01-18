@@ -5629,7 +5629,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 !      if ((abs(cellcentre%z)/hr < 2.) .and. (cellsize/hr > 2.)) split = .true.
 
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.3)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -8792,7 +8792,7 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%etaCont(subcell) = 0.
     rd = rOuter / 2.
 
-    thisOctal%rho(subcell) = 1.d-25
+    thisOctal%rho(subcell) = 1.d-30
     thisOctal%nh(subcell) =  thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = 1.d-5 !thisOctal%nh(subcell)
     thisOctal%nhi(subcell) = 1.e-5

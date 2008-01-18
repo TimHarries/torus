@@ -896,7 +896,7 @@ contains
 
        rhoOut = rhoOut * fac
     endif
-    rhoOut = max(rhoOut, 1.d-25)
+    rhoOut = max(rhoOut, 1.d-30)
        
 
   end function shakaraSunyaevDisc
