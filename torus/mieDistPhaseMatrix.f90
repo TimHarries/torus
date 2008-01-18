@@ -11,7 +11,7 @@
       type(PHASEMATRIX) :: mieMatrix
       real :: normFac, dMu
       real :: cosTheta
-      integer :: nMu = 20
+      integer :: nMu = 200
       real :: aMin, aMax, a0, qDist, pDist, lambda, aFac
       integer :: nDist
       real ::  x, cmr, cmi,  t, theta, costh, rn, p1, p2
@@ -160,95 +160,95 @@
 
 
 
-     dMu = 2./real(nMu)
-     normFac = 0.
-     do j = 1, nMu
-
-      costh = (2.*real(j-1)/real(nMu-1))-1.
-      theta = acos(costh)
-
-      p11tot = 0.
-      pltot = 0.
-      p33p11tot = 0.
-      p34p11tot = 0.
-      do i = 1 , nDist-1
-        loga1 = logAmin+(logAmax-logAmin)*real(i-1)/real(nDist-1)
-        loga2 = logAmin+(logAmax-logAmin)*real(i)/real(nDist-1)
-        a1 = exp(loga1)
-        a2 = exp(loga2)
-        da = a2 - a1
-        a = 0.5*(a1+a2)
-        x = 2.*pi*(a * micronsToCm)/(lambda*1.e-8)
-        x = max(1.e-5,x)
-        gfac = pi*(a * micronsTocm)**2
-      
-
-!     .........................................
-!     .  set the complex index of refraction  .
-!     .    for an exp(-iwt) time variation    .
-!     .........................................
-      cm = cmplx(cmr,cmi)
-      call sphere(x,cm,nc)
-      nci = nc+1
-      t = 0.0
-!     .............................................................
-!     .  calculate t = Qsca*x**2                                  .
-!     .              = (scattering cross section)*x**2/(pi*a**2)  .
-!     .............................................................
-      do  n = 1,nc
-        t = t+(abs(f(n))**2+abs(g(n))**2)*cnrm(n)
-      enddo
-      t = gfac*t/x**2
-      call genlgp2(theta,pnmllg,nci)
-      s1 = 0.0
-      s2 = 0.0
-      do n = 1,nc
-          n1 = n+1
-          cim = ci**(-n1)
-          rn = real(n)
-          p1 = rn*costh*pnmllg(n1)-(rn+1.0)*pnmllg(n)
-          p2 = pnmllg(n1)
-!     ........................................
-!     .  calculate parallel field amplitude  .
-!     .    for parallel incident             .     !                  eq 3.50b
-!     ........................................                          and
-          s2 = s2+cim*(-ci*p2*f(n)+p1*g(n))*cnrm(n) !                  eq 4.10a
-!     .............................................
-!     .  calculate perpendicular field amplitude  .
-!     .    for perpendicular incident             .
-!     .  use coefficients for parallel incident   .
-!     .    f(e1n) = -f(o1n),  g(o1n) = g(ein)     .  !                 eq 3.50a
-!     .............................................                     and
-          s1 = s1+cim*(ci*p1*(-f(n))+p2*g(n))*cnrm(n) !                eq 4.11b
-        enddo
-!     ....................................................
-!     .  calculate P11, PL = -P12/P11, P33/P11, P34/P11  .              eq 4.25
-!     ....................................................              and
-       p11 = 2.0*(abs(s1)**2+abs(s2)**2)
-       pl = -2.0*(abs(s2)**2-abs(s1)**2)/(p11)
-       p33p11 = 4.0*real(s1*conjg(s2))/(p11)
-       p34p11 = 4.0*aimag(s2*conjg(s1))/(p11)
-       dist = a**(-qDist)*exp(-(a/a0)**pDist)
-       p11tot = p11tot + aFac*dist*da*p11
-       pltot = pltot-aFac*dist*da*pl
-       p33p11tot = p33p11tot + aFac*dist*da*p33p11
-       p34p11tot = p34p11tot + aFac*dist*da*p34p11
-
-       enddo
-
-          normFac = normFac + p11tot*dmu
-      enddo
-
-
-      normFac = normFac * 0.5
-
-      do i = 1, 4
-       do j = 1 , 4
-         mieMatrix%element(i,j) = MieMatrix%element(i,j)/normFac
-       enddo
-      enddo
-
-      end subroutine mieDistPhaseMatrix
+!     dMu = 2./real(nMu)
+!     normFac = 0.
+!     do j = 1, nMu
+!
+!      costh = (2.*real(j-1)/real(nMu-1))-1.
+!      theta = acos(costh)
+!
+!      p11tot = 0.
+!      pltot = 0.
+!      p33p11tot = 0.
+!      p34p11tot = 0.
+!      do i = 1 , nDist-1
+!        loga1 = logAmin+(logAmax-logAmin)*real(i-1)/real(nDist-1)
+!        loga2 = logAmin+(logAmax-logAmin)*real(i)/real(nDist-1)
+!        a1 = exp(loga1)
+!        a2 = exp(loga2)
+!        da = a2 - a1
+!        a = 0.5*(a1+a2)
+!        x = 2.*pi*(a * micronsToCm)/(lambda*1.e-8)
+!        x = max(1.e-5,x)
+!        gfac = pi*(a * micronsTocm)**2
+!      
+!
+!!     .........................................
+!!     .  set the complex index of refraction  .
+!!     .    for an exp(-iwt) time variation    .
+!!     .........................................
+!      cm = cmplx(cmr,cmi)
+!      call sphere(x,cm,nc)
+!      nci = nc+1
+!      t = 0.0
+!!     .............................................................
+!!     .  calculate t = Qsca*x**2                                  .
+!!     .              = (scattering cross section)*x**2/(pi*a**2)  .
+!!     .............................................................
+!      do  n = 1,nc
+!        t = t+(abs(f(n))**2+abs(g(n))**2)*cnrm(n)
+!      enddo
+!      t = gfac*t/x**2
+!      call genlgp2(theta,pnmllg,nci)
+!      s1 = 0.0
+!      s2 = 0.0
+!      do n = 1,nc
+!          n1 = n+1
+!          cim = ci**(-n1)
+!          rn = real(n)
+!          p1 = rn*costh*pnmllg(n1)-(rn+1.0)*pnmllg(n)
+!          p2 = pnmllg(n1)
+!!     ........................................
+!!     .  calculate parallel field amplitude  .
+!!     .    for parallel incident             .     !                  eq 3.50b
+!!     ........................................                          and
+!          s2 = s2+cim*(-ci*p2*f(n)+p1*g(n))*cnrm(n) !                  eq 4.10a
+!!     .............................................
+!!     .  calculate perpendicular field amplitude  .
+!!     .    for perpendicular incident             .
+!!     .  use coefficients for parallel incident   .
+!!     .    f(e1n) = -f(o1n),  g(o1n) = g(ein)     .  !                 eq 3.50a
+!!     .............................................                     and
+!          s1 = s1+cim*(ci*p1*(-f(n))+p2*g(n))*cnrm(n) !                eq 4.11b
+!        enddo
+!!     ....................................................
+!!     .  calculate P11, PL = -P12/P11, P33/P11, P34/P11  .              eq 4.25
+!!     ....................................................              and
+!       p11 = 2.0*(abs(s1)**2+abs(s2)**2)
+!       pl = -2.0*(abs(s2)**2-abs(s1)**2)/(p11)
+!       p33p11 = 4.0*real(s1*conjg(s2))/(p11)
+!       p34p11 = 4.0*aimag(s2*conjg(s1))/(p11)
+!       dist = a**(-qDist)*exp(-(a/a0)**pDist)
+!       p11tot = p11tot + aFac*dist*da*p11
+!       pltot = pltot-aFac*dist*da*pl
+!       p33p11tot = p33p11tot + aFac*dist*da*p33p11
+!       p34p11tot = p34p11tot + aFac*dist*da*p34p11
+!
+!       enddo
+!
+!       normFac = normFac + p11tot*dmu
+!    enddo
+!      
+!
+!      normFac = normFac * 0.5
+!
+!      do i = 1, 4
+!       do j = 1 , 4
+!         mieMatrix%element(i,j) = MieMatrix%element(i,j)/normFac
+!       enddo
+!      enddo
+!
+     end subroutine mieDistPhaseMatrix
 
 
       subroutine sphere(x,cm,nc)

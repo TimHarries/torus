@@ -1343,7 +1343,7 @@ contains
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
     type(PHASEMATRIX), pointer :: miePhase(:,:,:)
     integer :: nMuMie
-    real :: mu, total_dust_abundance
+    real :: mu, total_dust_abundance, theta
     integer :: i, j, k
     character(len=80) :: message
 
@@ -1457,6 +1457,7 @@ contains
           do i = 1, nLambda
              do j = 1, nMumie
                 mu = 2.*real(j-1)/real(nMumie-1)-1.
+                theta = pi*real(j-1)/real(nMumie-1)
                 if (.not.isotropicScattering) then
                    if (readMiePhase) then
                       open(144, file='miephasefile', status="old", form="unformatted")
@@ -1464,7 +1465,7 @@ contains
                       close(144)
                    else
                       call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
-                           mu, miePhase(k,i,j), mReal(k,i), mImg(k,i))               
+                           cos(theta), miePhase(k,i,j), mReal(k,i), mImg(k,i))               
                       if (writeMiePhase) then
                          open(144, file='miephasefile', status="replace", form="unformatted")
                          write(unit=144) miePhase

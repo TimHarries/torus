@@ -7740,6 +7740,10 @@ contains
                 value = thisOctal%rhou(subcell)
              case("rhov")
                 value = thisOctal%rhov(subcell)
+             case("bias")
+                value = thisOctal%biasCont3d(subcell)
+             case("prob")
+                value = thisOctal%biasCont3d(subcell) * thisOctal%etaCont(subcell)
              case("crossings")
                 value = thisOctal%nCrossings(subcell)
                 if (thisOctal%diffusionApprox(subcell)) value = 1.e6
@@ -8058,6 +8062,10 @@ contains
                 rhat = rvec
                 call normalize(rhat)
                 value = amrGridDirectionalDeriv(grid,rvec, o2s(rhat), thisOctal) * (cSpeed_dbl/1.0d5)  ![km/s]
+             case("bias")
+                value = thisOctal%biasCont3d(subcell)
+             case("prob")
+                value = thisOctal%biasCont3d(subcell) * thisOctal%etaCont(subcell)
              case("tau")
                 call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
                 value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10

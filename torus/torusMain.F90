@@ -155,7 +155,7 @@ program torus
   ! variables to do with dust
 
   integer :: itestlam, ismoothlam
-  integer, parameter :: nXmie = 20, nMuMie = 200
+  integer, parameter :: nXmie = 20, nMuMie = 400
   type(PHASEMATRIX), pointer :: miePhase(:,:, :)
 
   ! torus images
@@ -433,6 +433,7 @@ program torus
 
   integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 
+  real(double) :: tempArray(10)
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
@@ -444,7 +445,7 @@ program torus
   integer, dimension(:), allocatable :: photonBelongsRank
   integer, parameter :: tag = 0
   logical :: rankComplete
-
+  
 ! Begin executable statements --------------------------------------------------
 
   ! FOR MPI IMPLEMENTATION=======================================================
@@ -873,16 +874,26 @@ program torus
 
   call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
+
+!  tempArray(1) = 1.d0
+!  call testMiePhase(xarray(1), xArray, nLambda, miePhase, nDustType, nMuMie, temparray)
   if (writeoutput) then
      open(76, file="phasematrix.dat",status="unknown",form="formatted")
      ilambda = findIlambda(10000.0, xArray, nLambda, ok)
      do i = 1, nMuMie
-	ang =  -1. + 2.*real(i-1)/real(nMuMie-1)
-	ang = acos(ang)*180./pi
-        write(76,*) ang, miephase(1, ilambda, i)%element(1,1)
+	ang =  pi*real(i-1)/real(nMuMie-1)
+        write(76,*) 180.*ang/pi, miephase(1, ilambda, i)%element(1,1)
      enddo
      close(76)
+     tempArray(1) = 0.
+     do i = 1, nMumie
+        tempArray(1) = tempArray(1) + miePhase(1, ilambda, i)%element(1,1)/real(nMuMie)
+     enddo
+     write(*,*) "phase normalization ",tempArray(1)
+
+
   endif
+!  stop
 
   if (includeGasOpacity) then
 
@@ -2352,6 +2363,11 @@ program torus
 
            call computeProbDist(grid, totLineEmission, &
                 totDustContinuumEmission,lamline, .false.)
+
+!           call plot_AMR_values(grid, "prob", plane_for_plot, val_3rd_dim,  &
+!                "prob.ps/vcps", .true., .false., & 
+!                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
+
            totDustContinuumEmission = totdustContinuumEmission 
            lcore = grid%lCore
            if (nSource > 0) then              
@@ -3055,7 +3071,7 @@ program torus
                     if (ok) then
                        yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*obs_weight
 
-!                       write(*,*) obsphoton%lambda,obsPhoton%stokes%i, obs_weight, nscat
+                       write(*,*) obsphoton%lambda,obsPhoton%stokes%i, obs_weight, nscat
                        statArray(iLambda) = statArray(iLambda) + 1.
                     endif
                     if (doRaman) then

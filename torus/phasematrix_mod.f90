@@ -240,6 +240,31 @@ contains
 
   end function multStokes_dble
 
+  subroutine testMiePhase(wavelength, lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
+    real :: wavelength
+    real :: lamArray(:)
+    integer :: nLambda, nDustType, nMuMie
+    real(double) :: dustTypeFraction(:), meanscat
+    type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
+    type(VECTOR) :: oldDirection, newDirection, tot
+    integer :: i, ntest
+
+!    miePhase(:,:,:)%element(1,1) = 1.
+    ntest = 100000
+    tot=vector(0. ,0., 0)
+    meanscat = 0
+    do i = 1, nTest
+       oldDirection = VECTOR(1., 0., 0.)
+       newDirection =  newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
+!       write(*,*) "Scattering angle: ",acos(oldDirection.dot.newDirection)*180./pi
+       meanscat=meanscat+acos(oldDirection.dot.newDirection)*180./pi
+       tot=tot+newDirection
+    enddo
+    tot = tot / real(nTest)
+    meanscat = meanscat / real(ntest)
+    write(*,*) "Final vector: ",tot
+    write(*,*) "mean scattering angle ",meanscat
+  end subroutine testMiePhase
 
 
   type(VECTOR) function newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
@@ -252,21 +277,24 @@ contains
     real :: costheta, theta, r, phi
     real, intent(in) :: lamArray(:)
     real, allocatable :: prob(:)
-    real, allocatable :: cosArray(:)
+    real, allocatable :: cosArray(:), thetaArray(:)
     type(VECTOR) :: tVec, perpVec, newVec
-    
+    logical,save ::firsttime = .true.
     type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
     
 
     allocate(prob(1:nMuMie))
-    allocate(cosArray(1:nMuMie))
+    allocate(cosArray(1:nMuMie), thetaArray(1:nMuMie))
     call locate(lamArray, nLambda, wavelength, j)
     if (j < 1) j = 1
     if (j > nLambda) j = nLambda
 
-    prob = 0.
     do i = 1, nMuMie
        cosArray(i) = -1. + 2.*real(i-1)/real(nMuMie-1)
+       thetaArray(i) = pi*real(i-1)/real(nMuMie-1)
+    enddo
+    prob = 0.
+    do i = 2, nMuMie
        do k = 1, nDustType
           prob(i) = prob(i) + max(1.d-20,dustTypeFraction(k))*miePhase(k,j,i)%element(1,1)
        enddo
@@ -275,10 +303,21 @@ contains
        prob(i) = prob(i) + prob(i-1)
     enddo
     prob(1:nMuMie) = prob(1:nMuMie)/prob(nMuMie)
+
+    if (firstTime) then
+       call locate(prob, nMuMie, 0.5, j)
+!       write(*,*) "Expect mean angle to be ",thetaArray(j)*180./pi
+!       write(*,*) " j nmumie", j, nmumie
+!       do i = 1, nMumie
+!          write(*,*) i,thetaArray(i)*180./pi,prob(i)
+!       enddo
+       firstTime=.false.
+    endif
+
     call random_number(r)
     call locate(prob, nMuMie, r, j)
-    cosTheta = cosArray(j) + &
-         (cosArray(j+1)-cosArray(j))*(r - prob(j))/(prob(j+1)-prob(j))
+    theta = thetaArray(j) + &
+         (thetaArray(j+1)-thetaArray(j))*(r - prob(j))/(prob(j+1)-prob(j))
     call random_number(r)
     phi = twoPi * r
 
@@ -289,11 +328,15 @@ contains
     perpVec%z = 0.
     call normalize(perpVec)
 
-    theta = acos(min(1.,max(-1.,costheta)))
     newVec = arbitraryRotate(oldDirection, theta, perpVec)
+!    write(*,*) "scat1 ",acos(newVec.dot.olddirection)*180./pi,newVec
     newVec = arbitraryRotate(newVec, phi, oldDirection)
+!    write(*,*) "scat2 ",acos(newVec.dot.olddirection)*180./pi,newVec
+!    write(*,*) "theta: ",theta*180./pi
+!    write(*,*) " "
 
     Deallocate(cosArray)
+    deallocate(thetaArray)
     deallocate(prob)
 
     call normalize(newvec)
