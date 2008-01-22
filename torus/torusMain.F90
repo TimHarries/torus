@@ -2879,7 +2879,7 @@ program torus
               ! New photon position 
               thisPhoton%position = thisPhoton%position + real(dlambda,kind=oct)*thisPhoton%direction
               ! adjusting the photon weights 
-              if (.not. thisPhoton%linePhoton) then
+              if ((.not. mie) .and. (.not. thisPhoton%linePhoton)) then
                  if (j < nTau) then
                     contWeightArray(1:nLambda) = contWeightArray(1:nLambda) *  &
                          EXP(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))) )
