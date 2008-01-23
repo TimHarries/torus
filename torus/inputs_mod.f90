@@ -82,7 +82,7 @@ contains
 
 
     call getInteger("nphotons", nPhotons, cLine, nLines, &
-         "Number of photons: ", "(a,i8,1x,a)", 100000, ok, .true.)
+         "Number of photons: ", "(a,i10,1x,a)", 100000, ok, .true.)
 
     call getInteger("idump", idump, cLine, nLines, &
          "Hydrodynamic dump number: ", "(a,i4,1x,a)", 1, ok, .false.)
@@ -1131,7 +1131,7 @@ contains
             "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
 
        call getReal("tthresh", tthresh, cLine, nLines, &
-            "Temperature threshold for dust (K): ","(a,f8.2,a)", 1000., ok, .true.)
+            "Temperature threshold for dust (K): ","(a,f10.2,a)", 1000., ok, .true.)
 
        oneKappa = .true.
 
@@ -2209,10 +2209,10 @@ if (geometry .eq. "planetgap") then
 !   call getReal("mplanet", mPlanet, cLine, nLines, &
 !       "Planet mass (Msol): ","(a,1pe8.5,a)",1.e-3,ok,.true.)
    call getReal("gapwidth", gapWidth, cLine, nLines, &
-       "Gap width (AU): ","(a,1pe8.4,a)",0.1,ok,.true.)
+       "Gap width (AU): ","(a,1pe10.4,a)",0.1,ok,.true.)
 
    call getReal("gapalpha", gapViscAlpha, cLine, nLines, &
-       "Alpha-parameter for gap viscosity: ","(a,1pe8.5,a)",1.e-4,ok,.true.)
+       "Alpha-parameter for gap viscosity: ","(a,1pe10.5,a)",1.e-4,ok,.true.)
 
 
    rCore = rCore * rSol / 1.e10

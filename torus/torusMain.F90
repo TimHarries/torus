@@ -3339,7 +3339,7 @@ program torus
      deallocate(tempDoubleArray)
 #endif
      call torus_mpi_barrier('finished syncing output. Waiting to continue...') 
-     if(myRankIsZero) write(*,'(i8,a,f7.3)') iOuterLoop*nPhotons/nOuterLoop," photons done"
+     if(myRankIsZero) write(*,'(i10,a,f7.3)') iOuterLoop*nPhotons/nOuterLoop," photons done"
 
         errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
