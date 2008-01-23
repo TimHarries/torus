@@ -267,57 +267,62 @@ contains
   end subroutine testMiePhase
 
 
-  type(VECTOR) function newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
+  type(VECTOR) function newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction, weight)
     type(VECTOR), intent(in) :: oldDirection
     real, intent(in) :: wavelength
     real(double) :: dustTypeFraction(:)
     integer :: nDustType
+    real, optional :: weight
     integer, intent(in) :: nMuMie, nLambda
-    integer :: i, j, k
+    integer :: i, j, k, m, ilam
     real :: costheta, theta, r, phi
     real, intent(in) :: lamArray(:)
-    real, allocatable :: prob(:)
-    real, allocatable :: cosArray(:), thetaArray(:)
+    real, allocatable, save :: prob(:,:)
+    real, allocatable, save :: cosArray(:)
     type(VECTOR) :: tVec, perpVec, newVec
     logical,save ::firsttime = .true.
     type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
     
 
-    allocate(prob(1:nMuMie))
-    allocate(cosArray(1:nMuMie), thetaArray(1:nMuMie))
-    call locate(lamArray, nLambda, wavelength, j)
-    if (j < 1) j = 1
-    if (j > nLambda) j = nLambda
-
-    do i = 1, nMuMie
-       cosArray(i) = -1. + 2.*real(i-1)/real(nMuMie-1)
-       thetaArray(i) = pi*real(i-1)/real(nMuMie-1)
-    enddo
-    prob = 0.
-    do i = 2, nMuMie
-       do k = 1, nDustType
-          prob(i) = prob(i) + max(1.d-20,dustTypeFraction(k))*miePhase(k,j,i)%element(1,1)
-       enddo
-    enddo
-    do i = 2, nMuMie
-       prob(i) = prob(i) + prob(i-1)
-    enddo
-    prob(1:nMuMie) = prob(1:nMuMie)/prob(nMuMie)
+    call locate(lamArray, nLambda, wavelength, ilam)
+    if (ilam < 1) ilam = 1
+    if (ilam > nLambda) ilam = nLambda
 
     if (firstTime) then
-       call locate(prob, nMuMie, 0.5, j)
-!       write(*,*) "Expect mean angle to be ",thetaArray(j)*180./pi
-!       write(*,*) " j nmumie", j, nmumie
-!       do i = 1, nMumie
-!          write(*,*) i,thetaArray(i)*180./pi,prob(i)
-!       enddo
-       firstTime=.false.
+       allocate(cosArray(1:nMuMie))
+       allocate(prob(1:nLambda,1:nMuMie))
+       do i = 1, nMuMie
+          cosArray(i) = -1. + 2.*real(i-1)/real(nMuMie-1)
+       enddo
+       prob = 0.
+       do m = 1, nLambda
+          do i = 2, nMuMie
+             do k = 1, nDustType
+                prob(m,i) = prob(m,i) + max(1.d-20,dustTypeFraction(k))*miePhase(k,m,i)%element(1,1)
+             enddo
+          enddo
+          do i = 2, nMuMie
+             prob(m,i) = prob(m,i) + prob(m,i-1)
+          enddo
+          prob(m,1:nMuMie) = prob(m,1:nMuMie)/prob(m,nMuMie)
+       enddo
+       firstTime = .false.
     endif
 
     call random_number(r)
-    call locate(prob, nMuMie, r, j)
-    theta = thetaArray(j) + &
-         (thetaArray(j+1)-thetaArray(j))*(r - prob(j))/(prob(j+1)-prob(j))
+    call locate(prob(ilam,1:nMuMie), nMuMie, r, j)
+    theta = cosArray(j) + &
+         (cosArray(j+1)-cosArray(j))*(r - prob(ilam,j))/(prob(ilam,j+1)-prob(ilam,j))
+
+    if (present(weight)) then
+       weight = SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType))/dble(nDustType) + & 
+            (SUM(miePhase(1:nDustType, iLam, j+1)%element(1,1)*dustTypeFraction(1:nDustType)) - &
+            SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)))/dble(nDustType) * &
+            (r - prob(ilam,j))/(prob(ilam,j+1)-prob(ilam,j))
+    endif
+
+
+    theta = acos(max(-1.,min(1.,theta)))
     call random_number(r)
     phi = twoPi * r
 
@@ -329,15 +334,8 @@ contains
     call normalize(perpVec)
 
     newVec = arbitraryRotate(oldDirection, theta, perpVec)
-!    write(*,*) "scat1 ",acos(newVec.dot.olddirection)*180./pi,newVec
     newVec = arbitraryRotate(newVec, phi, oldDirection)
-!    write(*,*) "scat2 ",acos(newVec.dot.olddirection)*180./pi,newVec
-!    write(*,*) "theta: ",theta*180./pi
-!    write(*,*) " "
 
-    Deallocate(cosArray)
-    deallocate(thetaArray)
-    deallocate(prob)
 
     call normalize(newvec)
     newDirectionMie = newVec

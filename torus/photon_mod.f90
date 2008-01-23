@@ -87,7 +87,7 @@ contains
   ! this subroutine performs a scattering
 
   subroutine scatterPhoton(grid, thisPhoton, givenVec, outPhoton, mie, &
-        miePhase, nDustType, nLambda, nMuMie, ttau_disc_on, alpha_disc_param)
+        miePhase, nDustType, nLambda, lamArray, nMuMie, ttau_disc_on, alpha_disc_param)
 
     
     type(GRIDTYPE) :: grid                       ! the opacity grid
@@ -101,6 +101,7 @@ contains
     logical, intent(in) :: mie                   ! is this a mie scattering?
     integer :: i, j                              ! counters
     integer :: nLambda                           ! size of wavelength array
+    real :: lamArray(:)
     integer :: nMumie                            ! number of mu angles for mie
     type(PHASEMATRIX), intent(in) :: miePhase(nDustType, nLambda, nMumie) ! mie phase matrices   
     ! if the system has accretion disc around the obeject
@@ -124,6 +125,7 @@ contains
     type(octal), pointer :: octalLocation
     integer :: subcellLocation
     logical :: mie_scattering
+    real :: weight
 
     
 !    real :: dx
@@ -164,17 +166,30 @@ contains
     ! we are going to scattering into a random direction
 
     if (modulus(outgoing) == 0.) then
-       randomDirection = .true.
-       call random_number(r1)
-       w = 2.d0*r1 - 1.d0
-       t = sqrt(1.d0-w*w)
-       call random_number(r2)
-       ang = Pi * (2.*r2-1.d0)
-       u = t*cos(ang)
-       v = t*sin(ang)
-       outgoing%x = u
-       outgoing%y = v
-       outgoing%z = w
+
+       if (.not.mie) then
+          randomDirection = .true.
+          call random_number(r1)
+          
+          ! determine cos phi
+          
+          w = 2.d0*r1 - 1.d0
+          t = sqrt(1.d0-w*w)
+          call random_number(r2)
+          ang = Pi * (2.*r2-1.d0)
+          u = t*cos(ang)
+          v = t*sin(ang)
+          outgoing%x = u
+          outgoing%y = v
+          outgoing%z = w
+       else
+
+          outgoing = newDirectionMie(incoming, thisPhoton%lambda, lamArray, nLambda, &
+               miePhase, nDustType, nMuMie, thisOctal%dustTypeFraction(subcell,:), weight)
+          outPhoton%stokes = outPhoton%stokes * (1./weight)
+
+!          outgoing = randomUnitVector()
+       endif
     endif
 
 

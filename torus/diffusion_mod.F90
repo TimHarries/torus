@@ -672,7 +672,7 @@ contains
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use input_variables, only : eDensTol, taudiff !, zoomfactor
+    use input_variables, only : eDensTol, taudiff, tauforce !, zoomfactor
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid
@@ -691,7 +691,7 @@ end subroutine gaussSeidelSweep
 !       call defineDiffusionOnRosseland(grid, grid%octreeRoot, 0.5)
 !       firstTime = .false.
 !    else
-       call defineDiffusionOnRosseland(grid, grid%octreeRoot, 10.)
+       call defineDiffusionOnRosseland(grid, grid%octreeRoot, tauforce)
 !    endif
 
 !    call defineDiffusiononRho(grid%octreeRoot, 1.d-10)

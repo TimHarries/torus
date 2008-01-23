@@ -1343,7 +1343,7 @@ contains
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
     type(PHASEMATRIX), pointer :: miePhase(:,:,:)
     integer :: nMuMie
-    real :: mu, total_dust_abundance, theta
+    real :: mu, total_dust_abundance
     integer :: i, j, k
     character(len=80) :: message
 
@@ -1455,30 +1455,30 @@ contains
 
        do k = 1, nDustType
           do i = 1, nLambda
-             do j = 1, nMumie
-                mu = 2.*real(j-1)/real(nMumie-1)-1.
-                theta = pi*real(j-1)/real(nMumie-1)
-                if (.not.isotropicScattering) then
                    if (readMiePhase) then
                       open(144, file='miephasefile', status="old", form="unformatted")
                       read(unit=144) miePhase
                       close(144)
                    else
-                      call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
-                           cos(theta), miePhase(k,i,j), mReal(k,i), mImg(k,i))               
+                      do j = 1, nMumie
+                         mu = 2.*real(j-1)/real(nMumie-1)-1.
+                         if (.not.isotropicScattering) then
+                            call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
+                                 mu, miePhase(k,i,j), mReal(k,i), mImg(k,i))               
+                         else
+                            miePhase(k,i,j) = fillIsotropic(mu)
+                         endif
+                      enddo
+                      call normalizeMiePhase(miePhase(k,i,1:nMuMie), nMuMie)
+                      
                       if (writeMiePhase) then
                          open(144, file='miephasefile', status="replace", form="unformatted")
                          write(unit=144) miePhase
                          close(144)
                       end if
                    end if
-                else
-                   miePhase(k,i,j) = fillIsotropic(mu)
-                endif
-                !           miePhase(i,j) = fillRayleigh(mu)
              end do
           end do
-       enddo
 
        deallocate(mReal)
        deallocate(mImg)
@@ -1487,5 +1487,29 @@ contains
 
     endif
   end subroutine createDustCrossSectionPhaseMatrix
+
+  subroutine normalizeMiePhase(miePhase, nMuMie)
+    type(PHASEMATRIX) :: miePhase(:)
+    integer :: nMuMie, i, j, k, m ,n
+    real(double) :: normfac
+    real(double) :: cosTheta(1000)
+    do i = 1, nMuMie
+       cosTheta(i) = -1.d0 + 2.d0 * dble(i-1)/dble(nMuMie-1)
+    enddo
+
+    normFac = 0.d0
+    do k = 2, nMuMie
+       normFac = normFac + miePhase(k)%element(1,1) * (cosTheta(k) - cosTheta(k-1))
+    enddo
+
+    normfac = normFac * 0.5
+    do k = 1, nMuMie
+       do m = 1, 4
+          do n = 1, 4
+             miePhase(k)%element(m,n) = miePhase(k)%element(m,n) / normFac
+          enddo
+       enddo
+    enddo
+  end subroutine normalizeMiePhase
 
 end module dust_mod

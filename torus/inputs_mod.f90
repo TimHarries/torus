@@ -1111,7 +1111,7 @@ contains
 
        if (lucyRadiativeEq) then
           call getInteger("nlucy", nLucy, cLine, nLines,"Number of photons per lucy iteration: ","(a,i12,a)",20000,ok,.false.)
-          call getInteger("iterLucy", iterLucy, cline, nlines, "Minimum number of Lucy iterations: ", "(a,i3,a)",10,ok,.false.)
+          call getInteger("iterLucy", iterLucy, cline, nlines, "Minimum number of Lucy iterations: ", "(a,i3,a)",5,ok,.false.)
 
           call getLogical("forceLucyConv", forceLucyConv, cLine, nLines, &
                "Force convergence of Lucy algorithm: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -2019,6 +2019,9 @@ endif
 
  call getReal("taudiff", tauDiff, cLine, nLines, &
   "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
+
+ call getReal("tauforce", tauForce, cLine, nLines, &
+  "Forced optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",10., ok, .false.)
 
  call getLogical("resetdiffusion", resetDiffusion, cLine, nLines, &
   "Reset diffusion zones to false if thin: ","(a,1l,a)",.true., ok, .false.)

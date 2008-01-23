@@ -11,7 +11,7 @@
       type(PHASEMATRIX) :: mieMatrix
       real :: normFac, dMu
       real :: cosTheta
-      integer :: nMu = 200
+      integer :: nMu = 20
       real :: aMin, aMax, a0, qDist, pDist, lambda, aFac
       integer :: nDist
       real ::  x, cmr, cmi,  t, theta, costh, rn, p1, p2
@@ -158,8 +158,8 @@
        mieMatrix%element(4,3) = -p34p11tot*p11tot
        mieMatrix%element(4,4) = p33p11tot*p11tot
 
-
-
+!
+!
 !     dMu = 2./real(nMu)
 !     normFac = 0.
 !     do j = 1, nMu
@@ -234,11 +234,11 @@
 !       p33p11tot = p33p11tot + aFac*dist*da*p33p11
 !       p34p11tot = p34p11tot + aFac*dist*da*p34p11
 !
+!    enddo
+!
+!          normFac = normFac + p11tot*dmu
 !       enddo
 !
-!       normFac = normFac + p11tot*dmu
-!    enddo
-!      
 !
 !      normFac = normFac * 0.5
 !
@@ -247,8 +247,8 @@
 !         mieMatrix%element(i,j) = MieMatrix%element(i,j)/normFac
 !       enddo
 !      enddo
-!
-     end subroutine mieDistPhaseMatrix
+
+      end subroutine mieDistPhaseMatrix
 
 
       subroutine sphere(x,cm,nc)

@@ -874,6 +874,12 @@ program torus
 
   call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
+  if (noScattering) then
+     if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
+     grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
+  endif
+
+
 
 !  tempArray(1) = 1.d0
 !  call testMiePhase(xarray(1), xArray, nLambda, miePhase, nDustType, nMuMie, temparray)
@@ -1706,6 +1712,12 @@ program torus
 
      call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
+     if (noScattering) then
+        if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
+        grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
+     endif
+
+
      ! if we are producing a movie then plot this phase
 
 
@@ -1746,7 +1758,7 @@ program torus
      if (writeoutput) write(*,'(a)') "Some basic model parameters"
      if (writeoutput) write(*,'(a)') "---------------------------"
      if (writeoutput) write(*,*) " "
-
+     if (writeoutput) write(*,*) "Inclination: ",radtodeg*acos(outVec%z)
      ! THE FOLLOWING STATEMENT IS DANGEROUS. ACCORDING TO INPUT_MOD.F90 
      ! NOT ALL THE GEOMETRY HAS RCORE VALUES, AND SAME UNITS!
      ! THIS SHOULD BE DONE IN INITAMRGRID ROUTINE AS SOME GEOMETRY HAS
@@ -2948,6 +2960,11 @@ program torus
               endif
                  
 
+              call random_number(r)
+              if (r > albedo) then
+                 absorbed = .true.
+              endif
+
               thisPhoton%stokes = thisPhoton%stokes * albedo  ! weight adjusted here!!!
 
               if (thisPhoton%stokes%i < reallySmall) then
@@ -2963,7 +2980,7 @@ program torus
                  tempPhoton = thisPhoton
                  
                  call scatterPhoton(grid, tempPhoton, outVec, obsPhoton, mie, &
-                       miePhase, nDustType, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
+                       miePhase, nDustType, nLambda, xArray, nMuMie, ttau_disc_on, ttauri_disc)
 
                  ! the o6 photon might get scattered towards the observer by a rayleigh scattering
 
@@ -3071,7 +3088,7 @@ program torus
                     if (ok) then
                        yArray(iLambda) = yArray(iLambda) + obsPhoton%stokes*obs_weight
 
-                       write(*,*) obsphoton%lambda,obsPhoton%stokes%i, obs_weight, nscat
+!                       write(*,*) obsphoton%lambda,obsPhoton%stokes%i, obs_weight, nscat
                        statArray(iLambda) = statArray(iLambda) + 1.
                     endif
                     if (doRaman) then
@@ -3195,7 +3212,7 @@ program torus
                  endif
 
                  call scatterPhoton(grid,thisPhoton, zeroVec, outPhoton, mie, &
-                       miePhase, nDustType, nLambda, nMuMie, ttau_disc_on, ttauri_disc)
+                       miePhase, nDustType, nLambda, xArray, nMuMie, ttau_disc_on, ttauri_disc)
                  thisPhoton = outPhoton
 
                  call integratePath(gridUsesAMR, VoigtProf, &
@@ -4340,10 +4357,6 @@ CONTAINS
 !        endif
 
 
-        if (noScattering) then
-           if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
-           grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
-        endif
         
 !     ! plotting column density (new routine in grid_mod.f90)
 !     if (grid%geometry == "luc_cir3d") then 
