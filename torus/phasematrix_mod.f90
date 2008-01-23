@@ -255,7 +255,8 @@ contains
     meanscat = 0
     do i = 1, nTest
        oldDirection = VECTOR(1., 0., 0.)
-       newDirection =  newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
+       newDirection =  newDirectionMie(oldDirection, wavelength, lamArray, &
+            nLambda, miePhase, nDustType, nMuMie, dustTypeFraction)
 !       write(*,*) "Scattering angle: ",acos(oldDirection.dot.newDirection)*180./pi
        meanscat=meanscat+acos(oldDirection.dot.newDirection)*180./pi
        tot=tot+newDirection
@@ -267,7 +268,8 @@ contains
   end subroutine testMiePhase
 
 
-  type(VECTOR) function newDirectionMie(oldDirection, wavelength, lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction, weight)
+  type(VECTOR) function newDirectionMie(oldDirection, wavelength, &
+       lamArray, nLambda, miePhase, nDustType, nMuMie, dustTypeFraction, weight)
     type(VECTOR), intent(in) :: oldDirection
     real, intent(in) :: wavelength
     real(double) :: dustTypeFraction(:)
