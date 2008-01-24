@@ -276,7 +276,7 @@ module input_variables
 
   character(len=80) :: contFluxFile, contFluxFile1, contFluxFile2
   real :: phaseOffset
-  logical :: lineOff
+  logical :: lineOff, starOff
   real :: logMassLossRate
   real :: lamLine
   character(LEN=20) :: ion_name  ! Name of the ion (see opacity_lte_mod.f90 for the list of a valid name.)

@@ -103,6 +103,7 @@ contains
     do i = 1 , n
        mean%element = mean%element + f(i) * a(i)%element
     enddo
+!    write(*,*) "mean element(1,1): ",mean%element(1,1)
 
     ! perform the matrix multiplication
     

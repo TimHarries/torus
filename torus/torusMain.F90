@@ -1271,7 +1271,6 @@ program torus
   ! Setting the emission bias.
   !
   if (useBias .and. .not. formalsol) then
-     write(*,*) "Setting emission bias..."
      select case(grid%geometry)
         case("testamr")
            call setBiasAMR(grid%octreeRoot, grid)
@@ -1303,7 +1302,6 @@ program torus
         case DEFAULT
            continue
      end select
-     write(*,*) "Done."
   end if
 
   if (myRankIsZero .and. geometry == "shakara") call polardump(grid)
@@ -1792,7 +1790,6 @@ program torus
         totDustContinuumEmission = totdustContinuumEmission 
         lcore = grid%lCore
         if (nSource > 0) then
-           write(*,*) "!!!!! summing source over",xarray(1),xarray(nlambda)
            lCore = sumSourceLuminosity(source, nsource, xArray(1), xArray(nLambda))
         endif
 
@@ -2132,7 +2129,7 @@ program torus
 
      end if
 
-     write(*,*) "Viewing vector: ",viewVec
+     if (writeoutput) write(*,*) "Viewing vector: ",viewVec
 
      ! zero the output arrays
 
@@ -2278,7 +2275,6 @@ program torus
      if ((geometry == "ttauri" .or. geometry == "romanova") &
           .and. formalsol) then
         if (doTuning) call tune(6, "One Formal Sol") ! start a stopwatch  
-        write(*,*) " "
         write(*,*) "Started formal integration of flux...."
         if (.not. ALLOCATED(flux)) ALLOCATE(flux(grid%nlambda))
         if (nInclination > 1) then
@@ -2373,17 +2369,27 @@ program torus
 
            call setBiasOnTau(grid, iLambdaPhoton)
 
+
+           if (writeoutput) &
+           call plot_AMR_values(grid, "bias", plane_for_plot, val_3rd_dim,  &
+                "bias.ps/vcps", .true., .false., & 
+                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
            call computeProbDist(grid, totLineEmission, &
                 totDustContinuumEmission,lamline, .false.)
 
-!           call plot_AMR_values(grid, "prob", plane_for_plot, val_3rd_dim,  &
-!                "prob.ps/vcps", .true., .false., & 
-!                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
-
+           if (writeoutput) then
+              call plot_AMR_values(grid, "prob", plane_for_plot, val_3rd_dim,  &
+                   "prob.ps/vcps", .true., .false., & 
+                   nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor)
+           endif
            totDustContinuumEmission = totdustContinuumEmission 
            lcore = grid%lCore
            if (nSource > 0) then              
-              lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(xArray(iLambdaPhoton)))
+              if (.not.starOff) then
+                 lCore = sumSourceLuminosityMonochromatic(source, nsource, dble(xArray(iLambdaPhoton)))
+              else
+                 lcore = tiny(lcore)
+              endif
            endif
            
            totEnvelopeEmission = totDustContinuumEmission
@@ -2965,7 +2971,7 @@ program torus
                  absorbed = .true.
               endif
 
-              thisPhoton%stokes = thisPhoton%stokes * albedo  ! weight adjusted here!!!
+!              thisPhoton%stokes = thisPhoton%stokes * albedo  ! weight adjusted here!!!
 
               if (thisPhoton%stokes%i < reallySmall) then
                  absorbed = .true.
@@ -3313,8 +3319,8 @@ program torus
  if (.not.blockHandout) exit mpiblockloop        
     end do mpiBlockLoop  
   end if ! (myRankGlobal /= 0)
-     write (*,'(A,I3,A,I3,A,I3,A)') 'Process ',myRankGlobal, &
-                      ' waiting to sync spectra... (',iOuterLoop,'/',nOuterLoop,')' 
+!     write (*,'(A,I3,A,I3,A,I3,A)') 'Process ',myRankGlobal, &
+!                      ' waiting to sync spectra... (',iOuterLoop,'/',nOuterLoop,')' 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
    ! we have to syncronize the 'yArray' after each inner photon loop to

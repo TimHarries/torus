@@ -3059,13 +3059,13 @@ subroutine setBiasOnTau(grid, iLambda)
           if (.not.thisOctal%hasChild(subcell)) then
 
              rVec = subcellCentre(thisOctal, subcell)
+	
              tau = 1.d30
              ntau = 20
              do i = 1, 4
                 direction = arrayVec(i)
                 call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0 )
                 tau = min(tau, thisTau)
-!             write(*,*) "direction, tau ", direction, tau
              enddo
              thisOctal%biasCont3D(subcell) = exp(-tau)
 
@@ -3089,7 +3089,6 @@ subroutine setBiasOnTau(grid, iLambda)
  end if ! (my_rank /= 0)
 
 
-     print *,'Process ',my_rank,' waiting to update values'
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
 
      ! have to send out the 'octalsBelongRank' array

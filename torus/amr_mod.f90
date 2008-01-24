@@ -5629,7 +5629,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 !      if ((abs(cellcentre%z)/hr < 2.) .and. (cellsize/hr > 2.)) split = .true.
 
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.3)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -15911,6 +15911,7 @@ IF ( .NOT. gridConverged ) RETURN
 
     tau = 0.d0
     currentPosition = rVec
+    
 
     CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
 
@@ -15924,6 +15925,7 @@ IF ( .NOT. gridConverged ) RETURN
        call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       if (thisOctal%twod.and.(direction%x < 0.d0).and.(currentPosition%x < 0.d0)) exit
        tau = tau + distToNextCell*kappaExt
        if (PRESENT(tauMax)) then
           if (tau > tauMax) exit

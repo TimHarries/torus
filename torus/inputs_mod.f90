@@ -1859,6 +1859,9 @@ endif
  call getLogical("emissoff", lineOff, cLine, nLines, &
   "Line emission switched off: ","(a,1l,a)",.false., ok, .false.)
 
+ call getLogical("staroff", starOff, cLine, nLines, &
+  "Star emission switched off: ","(a,1l,a)",.false., ok, .false.)
+
 
  call getLogical("voigtprof", VoigtProf, cLine, nLines, &
          "Use Voigt profile: ","(a,1l,1x,a)", .false., ok, .false.)
