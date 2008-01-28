@@ -409,8 +409,8 @@ ifeq ($(SYSTEM), linuxintel)
 endif
 
 ifeq ($(SYSTEM), zen)
-    F95COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
-    F77COMP= ifort -I/sw/sdev/intel-mpi/v3.0.021/x86_64/include64
+    F95COMP= mpif90
+    F77COMP= mpif90
     FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused
     STATICFLAG=
@@ -424,7 +424,7 @@ ifeq ($(SYSTEM), zen)
     F2CLIB=
 #    -L$(PATH2G2C) -lg2c
     STATICLIBS= -Bstatic
-    STARLIBS= -DMPI -L/sw/sdev/intel-mpi/v3.0.021/x86_64/lib64 -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
+    STARLIBS= -DMPI -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
 #    -L/star/lib `ndf_link` 
     PGLIBS= -L/home/tjharrie/libpgplot -lpgplot -lpng
 #    -L/star/lib `pgplot_link`
