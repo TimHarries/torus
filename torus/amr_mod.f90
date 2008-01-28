@@ -13551,7 +13551,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (tval < 0.) then
          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
          write(*,*) "subcen",subcen
-         write(*,*) "x,z",currentX,currentZ
+         write(*,*) "x,z",currentZ
       endif
       
    endif
