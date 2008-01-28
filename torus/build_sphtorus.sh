@@ -118,14 +118,6 @@ if [[ ${make_links} -eq 1 ]]; then
     ln -s ${sph_cvs}/* .
 fi
 
-# mpif.h is in the .depends file for sphNG so needs to be in the build directory.
-# The following ensures that the correct include file is used under openmpi, but
-# there is probably a better way of doing this.
-case "${SYSTEM}" in
-ompi) rm mpif.h 
-      cp ~/openmpi-1.2.4/ompi/include/mpif.h .;;
-esac 
-
 echo "INFO: Building sphtorus, SYSTEM=${SYSTEM}"
 make ${debug_flag} sphtorus
 if [[ -e sphtorus ]]; then
