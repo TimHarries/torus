@@ -219,8 +219,10 @@ program torus
   type(VECTOR) :: rotationAxis, normToRotation
   type(VECTOR) :: zeroVec, tempVec
   type(OCTALVECTOR) :: rHat, rVec, rHatinStar
-  type(octal), pointer :: thisOctal
-  integer :: subcell
+
+! Used in commented out call to findSubcellTD
+!  type(octal), pointer :: thisOctal
+!  integer :: subcell
 
   ! output arrays
 
@@ -1437,19 +1439,13 @@ program torus
   end if
 
 
-  
   if (geometry(1:6) == "ttauri" .or. geometry(1:9) == "luc_cir3d" .or. &
        geometry == "cmfgen" .or. geometry == "romanova") then
     call emptySurface(starSurface)
   end if
 
-  if (forceRotate)   rotateView = .true.
-  if (forceNoRotate) rotateView = .false.
-  
 
 ! From here we do multiple runs if required !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-
-  tiltView = .false.
 
   phaseLoop: do iPhase = nStartPhase, nEndPhase
           
@@ -2089,10 +2085,11 @@ program torus
 !                          (lastInclination-firstInclination)/REAL(nInclination-1)
         end if
 
-
-       write(*,*) " "
-       write(*,*) "Inclination = ",inclination*radToDeg,' degrees'
-       write(*,*) " "
+        if (writeoutput) then
+           write(*,*) " "
+           write(*,*) "Inclination = ",inclination*radToDeg,' degrees'
+           write(*,*) " "
+        end if
 
        if (iPhase == nStartPhase .and. iInclination == 1) originalOutFile = outFile
          
@@ -4926,6 +4923,8 @@ end program torus
 subroutine choose_view ( geometry, nPhase, distortionType, doRaman, &
        rotateview, rotateDirection, tiltView)
 
+  use input_variables, only: forceRotate, forceNoRotate
+
   implicit none
 
 ! Intent in arguments
@@ -5015,6 +5014,9 @@ subroutine choose_view ( geometry, nPhase, distortionType, doRaman, &
      rotateView = .true.
 !     tiltView = .true.
   end if
+
+  if (forceRotate)   rotateView = .true.
+  if (forceNoRotate) rotateView = .false.
 
 end subroutine choose_view
 
