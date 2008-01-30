@@ -672,7 +672,7 @@ contains
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use input_variables, only : eDensTol, taudiff, tauforce !, zoomfactor
+    use input_variables, only : eDensTol, taudiff, tauforce, zoomfactor
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid
@@ -691,12 +691,19 @@ end subroutine gaussSeidelSweep
 !       call defineDiffusionOnRosseland(grid, grid%octreeRoot, 0.5)
 !       firstTime = .false.
 !    else
-       call defineDiffusionOnRosseland(grid, grid%octreeRoot, tauforce)
-!    endif
+!       call defineDiffusionOnRosseland(grid, grid%octreeRoot, tauforce)
 
+
+    call setDiffOnTau(grid)
+    if (writeoutput) then
+       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
+            "setdiff", .true., .false.,  suffix="default", &
+            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomfactor) 
+    endif
+!    endif
 !    call defineDiffusiononRho(grid%octreeRoot, 1.d-10)
-       call defineDiffusionOnUndersampled(grid%octreeRoot)
-!    call resetDiffusionTemp(grid%octreeRoot, 10.)
+!       call defineDiffusionOnUndersampled(grid%octreeRoot)
+    call resetDiffusionTemp(grid%octreeRoot, 100.)
 
     gridconverged = .false.
     nIter = 0
@@ -1061,6 +1068,211 @@ end subroutine gaussSeidelSweep
      end subroutine unpackEdens
 #endif
 
+subroutine setDiffOnTau(grid)
+#ifdef MPI
+    use input_variables, only : blockHandout, tauForce
+    include 'mpif.h'
+#endif
+    type(gridtype) :: grid
+    type(octal), pointer   :: thisOctal
+    real(double) :: tau, thisTau
+  type(octalvector) :: rVec, direction
+  integer :: i
+    integer :: subcell, ntau
+    integer :: iLambda
+    integer                     :: nOctal        ! number of octals in grid
+    type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
+    integer :: iOctal
+    integer :: iOctal_beg, iOctal_end
+    real(double) :: kappaSca, kappaAbs, kappaExt
+    type(OCTALVECTOR) :: arrayVec(4)
+#ifdef MPI
+! Only declared in MPI case
+     integer, dimension(:), allocatable :: octalsBelongRank
+     logical :: rankComplete
+     integer :: tag = 0
+     logical, allocatable:: diffArray(:), tArray(:)
+     integer :: nVoxels, ierr
+     integer :: nDiff
+     integer :: np
+     integer :: my_rank
+
+
+    np = 1
+    my_rank = 1
+#endif
+
+
+     arrayVec(1) = OCTALVECTOR(1.d0, 1.d-10, 1.d-10)
+     arrayVec(2) = OCTALVECTOR(-1.d0, 1.d-10, 1.d-10)
+     arrayVec(3) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
+     arrayVec(4) = OCTALVECTOR(1.d-10, 1.d-10,-1.d0)
+
+    allocate(octalArray(grid%nOctals))
+    nOctal = 0
+    call getOctalArray(grid%octreeRoot,octalArray, nOctal)
+    if (nOctal /= grid%nOctals) then
+       write(*,*) "Screw up in get octal array", nOctal,grid%nOctals
+       stop
+    endif
+
+#ifdef MPI
+    ! FOR MPI IMPLEMENTATION=======================================================
+    !  Get my process rank # 
+    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+  
+    ! Find the total # of precessor being used in this run
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+    
+    ! we will use an array to store the rank of the process
+    !   which will calculate each octal's variables
+    allocate(octalsBelongRank(size(octalArray)))
+    
+    if (my_rank == 0) then
+       print *, ' '
+       print *, 'Tau bias  computed by ', np-1, ' processors.'
+       print *, ' '
+       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
+                            setDebug=.false.)
+    
+    endif
+    ! ============================================================================
+#endif
+    
+    ! default loop indices
+    ioctal_beg = 1
+    ioctal_end = nOctal
+
+#ifdef MPI
+ if (my_rank /= 0) then
+  blockLoop: do     
+ call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+   if (rankComplete) exit blockLoop 
+#endif
+    do iOctal =  iOctal_beg, iOctal_end
+       thisOctal => octalArray(iOctal)%content
+
+       do subcell = 1, thisOctal%maxChildren
+
+          if (.not.thisOctal%hasChild(subcell)) then
+
+             rVec = subcellCentre(thisOctal, subcell)
+	
+             tau = 1.d30
+             ntau = 20
+             do i = 1, 4
+                direction = arrayVec(i)
+                call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0, ross=.true.)
+                tau = min(tau, thisTau)
+             enddo
+             if (tau > tauForce) then
+                thisOctal%diffusionApprox(subcell) = .true.
+             else
+                thisOctal%diffusionApprox(subcell) = .false.
+             endif
+
+
+!             call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+!             kappaExt = kappaAbs + kappaSca
+
+             
+!             tau = thisOctal%subcellSize * kappaExt
+!             thisOctal%biasCont3D(subcell) = max(1.d-4,exp(-tau))
+
+
+          endif
+
+       enddo
+    enddo
+
+#ifdef MPI
+ if (.not.blockHandout) exit blockloop
+ end do blockLoop       
+ end if ! (my_rank /= 0)
+
+
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+     ! have to send out the 'octalsBelongRank' array
+     call MPI_BCAST(octalsBelongRank,SIZE(octalsBelongRank),  &
+                    MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+
+     call countVoxels(grid%octreeRoot,nOctal,nVoxels)
+     allocate(diffArray(1:nVoxels))
+     allocate(tArray(1:nVoxels))
+     diffArray = .false.
+     call packDiff(octalArray, nDiff, diffArray,octalsBelongRank)
+     call MPI_ALLREDUCE(diffArray,tArray,nDiff,MPI_LOGICAL,&
+         MPI_LOR,MPI_COMM_WORLD,ierr)
+     diffArray = tArray
+     call unpackDiff(octalArray, nDiff, diffArray)
+     deallocate(diffArray, tArray)
+#endif
+
+    deallocate(octalArray)
+
+  end subroutine setDiffOnTau
+
+#ifdef MPI
+      subroutine packDiff(octalArray, nDiff, diffArray, octalsBelongRank)
+    include 'mpif.h'
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: octalsBelongRank(:)
+        integer :: nDiff
+        logical :: diffArray(:)
+        integer :: iOctal, iSubcell, my_rank, ierr
+        type(OCTAL), pointer :: thisOctal
+
+       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+       !
+       ! Update the bias values of grid computed by all processors.
+       !
+       nDiff = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+                
+             if (.not.thisOctal%hasChild(iSubcell)) then
+                 nDiff = nDiff + 1
+                 if (octalsBelongRank(iOctal) == my_rank) then
+                   diffArray(nDiff) = octalArray(iOctal)%content%diffusionApprox(iSubcell)
+                 else 
+                   diffArray(nDiff) = .false.
+                 endif
+              endif
+          
+          end do
+       end do
+     end subroutine packDiff
+
+      subroutine unpackDiff(octalArray, nDiff, diffArray)
+        type(OCTALWRAPPER) :: octalArray(:)
+        integer :: nDiff
+        logical :: diffArray(:)
+        integer :: iOctal, iSubcell
+        type(OCTAL), pointer :: thisOctal
+
+       !
+       ! Update the bias values of grid computed by all processors.
+       !
+       nDiff = 0
+       do iOctal = 1, SIZE(octalArray)
+
+          thisOctal => octalArray(iOctal)%content
+          
+          do iSubcell = 1, thisOctal%maxChildren
+                
+             if (.not.thisOctal%hasChild(iSubcell)) then
+                 nDiff = nDiff + 1
+                 octalArray(iOctal)%content%diffusionApprox(iSubcell) = diffArray(nDiff)
+             endif
+          end do
+       end do
+     end subroutine unpackDiff
+#endif
 
 end module diffusion_mod
 

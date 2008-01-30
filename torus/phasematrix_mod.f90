@@ -51,10 +51,26 @@ module phasematrix_mod
      module procedure multStokes_dble
   end interface
 
+  interface operator(+)
+     module procedure addPhase
+  end interface
+
+  interface operator(-)
+     module procedure subPhase
+  end interface
+
+
+  interface operator(*)
+     module procedure multPhase
+  end interface
+
+
 contains
 
   ! this function applies a phase matrix to a stokes vector
   
+  
+
 
   pure function apply(a, b) result(c)
 
@@ -190,6 +206,29 @@ contains
     write(*,'(a)') "----------------------------"
   end subroutine writePhaseMatrix
 
+
+  type(PHASEMATRIX) pure function multPhase(a , b)
+    real, intent(in) :: a
+    type(PHASEMATRIX), intent(in) :: b
+
+    multPhase%element(1:4,1:4) = a * b%element(1:4,1:4)
+  end function multPhase
+
+  type(PHASEMATRIX) pure function addPhase(a , b)
+    type(PHASEMATRIX), intent(in) :: a
+    type(PHASEMATRIX), intent(in) :: b
+
+    addPhase%element(1:4,1:4) = a%element(1:4,1:4) + b%element(1:4,1:4)
+  end function addPhase
+
+  type(PHASEMATRIX) pure function subPhase(a , b)
+    type(PHASEMATRIX), intent(in) :: a
+    type(PHASEMATRIX), intent(in) :: b
+
+    subPhase%element(1:4,1:4) = a%element(1:4,1:4) - b%element(1:4,1:4)
+  end function subPhase
+
+
   ! function to add to stokes vectors
 
   type(STOKESVECTOR) pure function addStokes(a , b)
@@ -318,9 +357,9 @@ contains
          (cosArray(j+1)-cosArray(j))*(r - prob(ilam,j))/(prob(ilam,j+1)-prob(ilam,j))
 
     if (present(weight)) then
-       weight = SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType))/dble(nDustType) + & 
+       weight = SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) + & 
             (SUM(miePhase(1:nDustType, iLam, j+1)%element(1,1)*dustTypeFraction(1:nDustType)) - &
-            SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)))/dble(nDustType) * &
+            SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType))) * &
             (r - prob(ilam,j))/(prob(ilam,j+1)-prob(ilam,j))
     endif
 
@@ -353,7 +392,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   implicit none
   integer, intent(in) :: nLambda
   character(len=*), intent(in) :: outFile
-!  character(len=80) :: tfile
+  character(len=80) :: tfile
   real, intent(in) :: xArray(nLambda)
   logical, intent(in) :: useNdf
   logical, intent(in) :: jansky
@@ -392,7 +431,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   allocate(yMedian(1:nLambda))
 
 !  do j = 1, nOuterloop
-!     write(tfile,'(a,i2.2,a)') "errorarray",j,".dat"
+!     write(tfile,'(a,i3.3,a)') "errorarray",j,".dat"
 !     open(55,file=tfile,status="unknown",form="formatted")
 !     do i = 1, nLambda
 !        write(55,*) xarray(i),errorArray(j,i)%i

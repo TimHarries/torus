@@ -251,6 +251,7 @@ contains
     real :: lambda(*)
     integer :: nLambda, nRef
     real, allocatable :: tempIm(:), tempReal(:), lamRef(:)
+    real(double) :: dydx
     integer :: i,j 
     real :: t
     character(len=*), intent(in) :: graintype
@@ -354,11 +355,26 @@ contains
        stop
     end select
 
-    do i = 1, nLambda            
-       call locate(lamRef, nRef, lambda(i)*real(angsToMicrons), j)
-       t = (lambda(i)*angsToMicrons - lamRef(j))/(lamRef(j+1) - lamRef(j))
-       mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
-       mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
+    do i = 1, nLambda 
+       if (lambda(i)*real(angsToMicrons) <= lamRef(nRef)) then
+          call locate(lamRef, nRef, lambda(i)*real(angsToMicrons), j)
+          t = (lambda(i)*angsToMicrons - lamRef(j))/(lamRef(j+1) - lamRef(j))
+          mReal(i) = tempReal(j) + t * (tempReal(j+1) - tempReal(j))
+          mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
+       else
+          call writeWarning("Extrapolating grain properties")
+          dydx = (log10(mReal(nref)) - log10(mReal(nRef-1))) / &
+               (log10(lamRef(nref))-log10(lamRef(nRef-1)))
+          mReal(i) = log10(mReal(nref)) + dydx * &
+               (log10(lambda(i)*angsToMicrons) - log10(lamRef(nRef)))
+          mReal(i) = 10.d0**mreal(i)
+          dydx = (log10(mImg(nref)) - log10(mImg(nRef-1))) / &
+               (log10(lamRef(nref))-log10(lamRef(nRef-1)))
+          mImg(i) = log10(mImg(nref)) + dydx * &
+               (log10(lambda(i)*angsToMicrons) - log10(lamRef(nRef)))
+          mImg(i) = 10.d0**mImg(i)
+       endif
+
     enddo
 
   end subroutine getRefractiveIndex

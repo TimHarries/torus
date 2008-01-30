@@ -13551,7 +13551,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (tval < 0.) then
          write(*,*) tVal,compX,compZ, distToZboundary,disttoxboundary
          write(*,*) "subcen",subcen
-         write(*,*) "z",currentZ
+!         write(*,*) "x,z",currentX,currentZ
       endif
       
    endif
@@ -15898,7 +15898,7 @@ IF ( .NOT. gridConverged ) RETURN
   end function dist_from_closestEdge
 
 
-  subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax)
+  subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross)
     type(GRIDTYPE) :: grid
     type(OCTALVECTOR) :: rVec, direction, currentPosition
     integer :: iLambda
@@ -15908,6 +15908,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: fudgeFac = 1.d-3
     real(double) :: kappaSca, kappaAbs, kappaExt
     integer :: subcell
+    logical, optional :: ross
 
     tau = 0.d0
     currentPosition = rVec
@@ -15918,9 +15919,13 @@ IF ( .NOT. gridConverged ) RETURN
     do while (inOctal(grid%octreeRoot, currentPosition))
 
        call findSubcellLocal(currentPosition,thisOctal,subcell)
-       call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
-       kappaExt = kappaAbs + kappaSca
-
+       if (.not.PRESENT(ross)) then
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+          kappaExt = kappaAbs + kappaSca
+       else
+          call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, rosselandKappa=kappaExt)
+          kappaExt = kappaExt * thisOctal%rho(subcell) * 1.d10
+       endif
        sOctal => thisOctal
        call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
   

@@ -223,7 +223,6 @@ module image_mod
               
               thisImageSet(i)%pixel(xPix, yPix) = thisImageSet(i)%pixel(xPix, yPix)  &
                    + thisPhoton%stokes * weight * filter_response
-              write(*,*) "adding photon to image ",thisPhoton%stokes%i
               thisImageSet(i)%vel(xPix,yPix) = thisImageSet(i)%vel(xPix, yPix)  &
                    + velincgs * (thisPhoton%stokes%i*weight*filter_response)
               thisImageSet(i)%totWeight(xPix,yPix) = thisImageSet(i)%totWeight(xPix,yPix) &

@@ -99,11 +99,12 @@ contains
     type(VECTOR) :: zAxis                        ! the z-axis
     type(PHASEMATRIX) :: rayleighPhase           ! rayleigh phase matrix
     logical, intent(in) :: mie                   ! is this a mie scattering?
-    integer :: i, j                              ! counters
+    integer :: i, j, k                              ! counters
     integer :: nLambda                           ! size of wavelength array
     real :: lamArray(:)
     integer :: nMumie                            ! number of mu angles for mie
     type(PHASEMATRIX), intent(in) :: miePhase(nDustType, nLambda, nMumie) ! mie phase matrices   
+    type(PHASEMATRIX),save,allocatable :: miePhaseTemp(:)
     ! if the system has accretion disc around the obeject
     logical, intent(in) :: ttau_disc_on          
     ! to find if scattering occurs in the accretion disc
@@ -126,8 +127,17 @@ contains
     integer :: subcellLocation
     logical :: mie_scattering
     real :: weight
+    logical, save :: firstTime = .true.
+    real, allocatable, save :: cosArray(:)
 
-    
+    if (firstTime)  then
+       allocate(cosArray(1:nMuMie))
+       do i = 1, nMumie
+          cosArray(i) = -1.d0 + 2.d0*dble(i-1)/dble(nMuMie)
+       enddo
+       allocate(miePhaseTemp(1:nDustType))
+       firstTime = .false.
+    endif
 !    real :: dx
 
 !    dx = abs(grid%xAxis(2) - grid%xAxis(1))
@@ -227,8 +237,21 @@ contains
           ! do the same for a mie scattering
           
           call locate(grid%lamArray, nLambda, outPhoton%lambda, i)
-          j = min(int(0.5*(costheta+1.d0)*real(nmumie))+1, nMuMie)
-          outPhoton%stokes = applyMean(miePhase(1:nDustType,i,j), &
+          call locate(cosArray, nMuMie, costheta, j)
+          if (j < nMuMie) then
+             fac = (cosTheta - cosArray(j))/(cosArray(j+1)-cosArray(j))
+          else
+             j = nMumie
+             fac =1.
+          endif
+          
+
+          do k = 1, nDustType
+             miePhaseTemp(k) = miePhase(k, i, j) + fac * &
+                  (miePhase(k, i, j+1) - miePhase(k, i, j))
+          enddo
+
+          outPhoton%stokes = applyMean(miePhaseTemp(1:nDustType), &
                thisOctal%dustTypeFraction(subcell,1:nDustType), nDustType, outPhoton%stokes)
 
           

@@ -155,7 +155,7 @@ program torus
   ! variables to do with dust
 
   integer :: itestlam, ismoothlam
-  integer, parameter :: nXmie = 20, nMuMie = 400
+  integer, parameter :: nXmie = 20, nMuMie = 1000
   type(PHASEMATRIX), pointer :: miePhase(:,:, :)
 
   ! torus images
