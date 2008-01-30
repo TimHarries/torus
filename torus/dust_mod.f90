@@ -363,14 +363,14 @@ contains
           mImg(i) = tempIm(j) + t * (tempIm(j+1) - tempIm(j))         
        else
           call writeWarning("Extrapolating grain properties")
-          dydx = (log10(mReal(nref)) - log10(mReal(nRef-1))) / &
+          dydx = (log10(tempReal(nref)) - log10(tempReal(nRef-1))) / &
                (log10(lamRef(nref))-log10(lamRef(nRef-1)))
-          mReal(i) = log10(mReal(nref)) + dydx * &
+          mReal(i) = log10(tempReal(nref)) + dydx * &
                (log10(lambda(i)*angsToMicrons) - log10(lamRef(nRef)))
           mReal(i) = 10.d0**mreal(i)
-          dydx = (log10(mImg(nref)) - log10(mImg(nRef-1))) / &
+          dydx = (log10(tempIm(nref)) - log10(tempIm(nRef-1))) / &
                (log10(lamRef(nref))-log10(lamRef(nRef-1)))
-          mImg(i) = log10(mImg(nref)) + dydx * &
+          mImg(i) = log10(tempIm(nref)) + dydx * &
                (log10(lambda(i)*angsToMicrons) - log10(lamRef(nRef)))
           mImg(i) = 10.d0**mImg(i)
        endif

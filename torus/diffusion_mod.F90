@@ -1069,8 +1069,8 @@ end subroutine gaussSeidelSweep
 #endif
 
 subroutine setDiffOnTau(grid)
-#ifdef MPI
     use input_variables, only : blockHandout, tauForce
+#ifdef MPI
     include 'mpif.h'
 #endif
     type(gridtype) :: grid
