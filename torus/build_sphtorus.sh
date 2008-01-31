@@ -14,6 +14,7 @@ echo "Command line switches are:"
 echo "-d   Compile with debug flags switched on"
 echo "-h   Display help"
 echo "-o   Overwrite any existing build"
+echo "-p   Compile with profiling options enabled"
 echo "-mpi Compile for multi-processor running using MPI"
 }
 # Set up the build information here -----------------------------------------------------------------
@@ -26,6 +27,7 @@ sphtorus_dir=${HOME}/sphtorus    # Build will be carried out in this directory
 echo "INFO: This is build_sphtorus"
 # 0. Handle command line arguments
 debug_flag=""
+profile_flag=""
 overwrite=0
 while [ $# -gt 0 ]
 do
@@ -37,6 +39,8 @@ do
             overwrite=1;;
 	-h) print_help
 	    exit;;
+	-p) profile_flag="profile=yes"
+	    export PROFILE=yes;;
 	-mpi) echo "INFO: compiling sphtorus using MPI"
 	      export SYSTEM="ompi"
 	      export mpi="yes";;   # for sphNG 
@@ -101,7 +105,7 @@ fi
 # 2.2 Build torus
 echo "INFO: Building torus, SYSTEM=${SYSTEM}"
 make depends
-make ${debug_flag} sph=yes lib
+make ${debug_flag} ${profile_flag} sph=yes lib
 if [[ -e libtorus.a ]]; then
   echo "INFO: Moving libtorus.a to ${sphtorus_dir}/lib"
 else
