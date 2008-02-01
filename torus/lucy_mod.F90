@@ -309,6 +309,7 @@ contains
 !    use input_variables, only : rinner, router
 #ifdef MPI
     use input_variables, only : blockhandout
+    use mpi_global_mod, only: myRankGlobal, nThreadsGlobal
 #endif
     implicit none
 #ifdef MPI
@@ -401,8 +402,6 @@ contains
 
 #ifdef MPI
   ! For MPI implementations =====================================================
-  integer ::   my_rank        ! my processor rank
-  integer ::   n_proc         ! The number of processes
   integer ::   ierr           ! error flag
 !  integer ::   n_rmdr, m      !
   integer, dimension(:), allocatable :: photonBelongsRank
@@ -412,27 +411,14 @@ contains
     real, save, allocatable  :: buffer_real(:)     
     logical, save  :: first_time = .true.
 
-!    ! find the number of the processors for the first time.    
-!    if (first_time) then
-       call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
-!       allocate(buffer_real(n_proc))
-!       first_time = .false.
-!    end if
-
        if (myrankGlobal == 0) writeoutput = .true.
-       allocate(buffer_real(n_proc))
-
+       allocate(buffer_real(nThreadsGlobal))
 
     ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
-    ! Find the total # of precessor being used in this run
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, n_proc, ierr)
     
-    if (my_rank .eq. 0) then
+    if (myRankIsZero) then
        print *, ' '
-       print *, 'Lucy radiative equilibrium routine computed by ', n_proc, ' processors.'
+       print *, 'Lucy radiative equilibrium routine computed by ', nThreadsGlobal, ' processors.'
        print *, ' '
     endif
     
@@ -480,7 +466,7 @@ contains
 
     outputFlag = .true.
 #ifdef MPI
-    if (my_rank/=0) outputFlag = .false.
+    if (myRankGlobal/=0) outputFlag = .false.
 #endif
 
  if (outputFlag) call writeAMRgrid("lucy_first_grid.dat", .false., grid)
@@ -688,11 +674,11 @@ contains
 !       n_rmdr = MOD(nMonte,np)
 !       m = nMonte/np
 !
-!       if (my_rank .lt. n_rmdr ) then
-!          imonte_beg = (m+1)*my_rank + 1
+!       if (myRankGlobal .lt. n_rmdr ) then
+!          imonte_beg = (m+1)*myRankGlobal + 1
 !          imonte_end = imonte_beg + m
 !       else
-!          imonte_beg = m*my_rank + 1 + n_rmdr
+!          imonte_beg = m*myRankGlobal + 1 + n_rmdr
 !          imonte_end = imonte_beg + m -1
 !       end if
 !   !    print *, ' '
@@ -714,17 +700,17 @@ contains
 
   !====================================================================================
   ! Splitting the innerPhoton loop for multiple processors.
-  if (my_rank == 0) then
+  if (myRankGlobal == 0) then
      print *, ' '
-     print *, 'photonLoop computed by ', n_proc-1, ' processors.'
+     print *, 'photonLoop computed by ', nThreadsGlobal-1, ' processors.'
      print *, ' '
   endif
-  if (my_rank == 0) then
+  if (myRankGlobal == 0) then
      ! we will use an array to store the rank of the process
      !   which will calculate each photon
      allocate(photonBelongsRank(nMonte))
     
-     call mpiBlockHandout(n_proc,photonBelongsRank,blockDivFactor=100,tag=tag,&
+     call mpiBlockHandout(nThreadsGlobal,photonBelongsRank,blockDivFactor=100,tag=tag,&
                           setDebug=.false.)
      deallocate(photonBelongsRank) ! we don't really need this here. 
   end if
@@ -732,9 +718,9 @@ contains
 
     
     
-  if (my_rank /= 0) then
+  if (myRankGlobal /= 0) then
     mpiBlockLoop: do  
-      call mpiGetBlock(my_rank,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
+      call mpiGetBlock(myRankGlobal,imonte_beg, imonte_end,rankComplete,tag,setDebug=.false.)  
       if (rankComplete) exit mpiBlockLoop  
 #endif    
 
@@ -747,9 +733,9 @@ contains
        if (ll_photonloop_counter) write(*,'(f10.4,a)', advance='no') 100*real(iMonte)/real(imonte_end-imonte_beg+1), char(13)
 
 #ifdef MPI
- !  if (MOD(i,n_proc) /= my_rank) cycle photonLoop
+ !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
 
- !  if (MOD(i,n_proc) /= my_rank) goto 999
+ !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) goto 999
 #endif
           thisPhotonAbs = 0
 
@@ -905,7 +891,7 @@ contains
 #ifdef MPI
  if (.not.blockHandout) exit mpiblockloop        
     end do mpiBlockLoop  
-  end if ! (my_rank /= 0)
+  end if ! (myRankGlobal /= 0)
 #endif
 
 !$OMP END DO
@@ -928,14 +914,14 @@ contains
        ! (Maybe faster to pack the values in 1D arrays and distribute.)
 
        if(doTuning) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
-       if(my_rank == 0) write(*,*) "Calling update_octal_MPI"
+       if(myRankGlobal == 0) write(*,*) "Calling update_octal_MPI"
     !   call update_octal_MPI(grid%octreeRoot, grid)
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
 
        call updateGridMPI(grid)
-       if(my_rank == 0) write(*,*) "Done update."
+       if(myRankGlobal == 0) write(*,*) "Done update."
 
        if(doTuning) call tune(6, "  Lucy Loop Update ")  ! stop a stopwatch
 
@@ -2986,7 +2972,7 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
     real(double), parameter :: underCorrect = 0.8d0
-    real(double) :: kappaSca, kappaAbs, kappaExt
+!    real(double) :: kappaSca, kappaAbs, kappaExt
     type(OCTALVECTOR) :: arrayVec(4)
 #ifdef MPI
 ! Only declared in MPI case
