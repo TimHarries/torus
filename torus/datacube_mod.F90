@@ -48,6 +48,7 @@ contains
 
     character(len=*) :: filename
 
+#ifdef USECFITSIO
     integer :: status,unit,blocksize,bitpix,naxis
     integer, dimension(5) :: naxes
     integer :: group,fpixel,nelements
@@ -183,6 +184,7 @@ contains
        call print_error(status)
     end if
     
+#endif
     return
     
   end subroutine writeDataCube
@@ -193,8 +195,8 @@ contains
 
     implicit none
     
+#ifdef USECFITSIO
     type(DATACUBE), intent(out) :: thisCube
-    
     integer :: status, readwrite, unit, blocksize,nfound,group,firstpix,nbuffer,npixels, hdutype, hdu, junk
     character(len=512) :: filename
     character(len=80) :: comment
@@ -324,6 +326,10 @@ contains
     ! read_image
     call ftgpvj(unit,group,firstpix,nbuffer,nullval,thisCube%nsubpixels,anynull,status)   
 
+#else
+    type(DATACUBE) :: thisCube
+
+#endif
     return
 
   end subroutine readDataCube
@@ -335,6 +341,7 @@ contains
     ! PRINT_ERROR prints out the FITSIO error messages to the user.
     
     integer status
+#ifdef USECFITSIO
     character ( len = 30 ) errtext
     character ( len = 80 ) errmessage
 
@@ -353,7 +360,8 @@ contains
        print *,errmessage
        call ftgmsg(errmessage)
     end do
-    
+#endif    
+
     return
   end subroutine print_error
 

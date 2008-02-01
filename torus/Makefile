@@ -28,22 +28,14 @@ ifeq ($(SYSTEM), intelmac)
     F77COMP  = g95
     F77FLAG  = -w -fno-second-underscore
     DEBUGFLAG= -g -fbounds-check -ftrace=full -fimplicit-none -Wall -Wno=140,141,112
+    STATICFLAG = -static
     FASTFLAG = -O3
-#    FASTFLAG = -O -mtune=athlon-mp -march=athlon-mp -msse -mmmx -ffast-math
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-#   PGLIBS   = -lgfortran -L/usr/local -lpgplot -L/usr/X11R6/lib -lX11 -L/scisoft/i386/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-#   PGLIBS   = -L/usr/local/lib -lpgplot -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-#   PGLIBS   = -L/usr/local/lib /usr/local/lib/libpgplot.a -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-#    CFITSIOLIBS = -L/star/lib/ -lcfitsio
-#    PGLIBS   = -L/sw/lib/pgplot -lgfortran -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-#    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
     PGLIBS   = -L/Users/${USER}/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
-#    STARLIBS = -L/star/lib `ndf_link`
-#    F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.intelmac
     MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
@@ -651,10 +643,9 @@ else
 endif
 
 ifeq ($(cfitsio), no)
-   CFITSIOSTUBS = cfitsio_stubs.o
    CFITSIOLIBS  =
-else 
-   CFITSIOSTUBS =
+else
+   ETCFLAG += -DUSECFITSIO
 endif
 
 ifeq ($(debug), yes)
@@ -685,7 +676,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             unix_mod.f90 inputs_mod.f90 utils_mod.f90 \
             gaussian_mod.f90 grid_mod.f90 math_mod.f90 \
             phasematrix_mod.f90 photon_mod.f90 blob_mod.f90 \
-            distortion_mod.f90 image_mod.f90 TTauri_mod.f90 puls_mod.f90 \
+            distortion_mod.f90  TTauri_mod.f90 puls_mod.f90 \
             disc_hydro_mod.f90 gas_opacity_mod.f90 \
             integratePath.f90 readIntPro.f90 mieDistPhaseMatrix.f90 \
             gridtype_mod.f90 getRefractiveIndex.f90 draineCrossSection.f90 \
@@ -704,7 +695,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             flow_speed_variables.f90 clump_mod.f90 \
             discwind_class.f90 zeus_data_class.f90 luc_cir3d_class.f90 \
             jet_class.f90 cmfgen_class.f90  irreg_grid_data_class.f90 \
-            modelatom_mod.f90  datacube_mod.f90 magField.f90 \
+            modelatom_mod.f90  magField.f90 \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             mpi_global_mod.f90 nrtype.f90 nrutil.f90
 
@@ -715,7 +706,7 @@ PGSOURCE  = pgplot_stubs.f90
 
 CAPF90SOURCE =	 photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90 \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
-	         parallel_mod.F90 stateq_mod.F90 torusMain.F90
+	         parallel_mod.F90 stateq_mod.F90 torusMain.F90 image_mod.F90 datacube_mod.F90
 
 # Object files
 #
@@ -746,7 +737,7 @@ all: depends $(ALLOBJ)
 	    @echo "Linking object files and libraries..."
 	    $(F90) -o $(EXE) \
 	    $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
-	    $(PGSTUBS) $(PGLIBS) $(CFITSIOSTUBS) $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
+	    $(PGSTUBS) $(PGLIBS) $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
 	    @echo "...done"
     else
 	    @echo ""

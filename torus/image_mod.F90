@@ -725,14 +725,18 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
 !
 
      subroutine writeFitsImage(image, filename, type)
-       type(IMAGETYPE) :: image
 
+! Arguments
+       type(IMAGETYPE), intent(in)   :: image
+       character (len=*), intent(in) :: filename, type
+
+#ifdef USECFITSIO
+! Local variables
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
-       character (len=*) :: filename, type
-       logical :: simple,extend
 
+       logical :: simple,extend
 
        allocate(array(1:image%nx, 1:image%ny))
        call writeInfo("Writing fits image",TRIVIAL)
@@ -805,13 +809,20 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        if (status > 0) then
           call printFitserror(status)
        end if
-       
+#endif
+
      end subroutine writeFitsImage
 
      subroutine deleteFitsFile(filename,status)
-       !
-       integer status,unit,blocksize
+       
+! Arguments
        character ( len = * ) filename
+       integer :: status
+
+#ifdef USECFITSIO
+! Local variables
+       integer unit,blocksize
+
        !
        !  Simply return if status is greater than zero.
        !
@@ -852,16 +863,22 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        !  Free the unit number for later reuse.
        !
        call ftfiou(unit, status)
+#endif
 
      end subroutine deleteFitsFile
 
      subroutine printFitsError(status)
+
        !
        !*******************************************************************************
        !
        !! PRINT_ERROR prints out the FITSIO error messages to the user.
        !
-       integer status
+       ! Arguments
+       integer :: status
+#ifdef USECFITSIO
+
+       ! Local variables
        character ( len = 30 ) errtext
        character ( len = 80 ) errmessage
        !
@@ -883,7 +900,7 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
           print *,errmessage
           call ftgmsg(errmessage)
        end do
-
+#endif
      end subroutine printFitsError
 
      subroutine pixelLocate(image, xDist, yDist, ix, iy)
