@@ -363,7 +363,6 @@ contains
     real(oct) :: totalEmission
     integer :: subcell
     logical :: leftHandBoundary
-    logical :: debugOutput
     real :: treal
     real(oct) :: lCore
 !    real      :: kabs
@@ -388,7 +387,6 @@ contains
     integer       :: imonte_beg, imonte_end   ! the index boundary for the photon loops.
     real(double), allocatable :: kAbsArray(:)
     logical :: ok                             ! Did call to randomWalk complete OK?
-    logical :: ll_photonloop_counter = .false. ! Display the percentage of photonloop completed?
     logical :: photonInDiffusionZone
     logical :: doingDustSublimation
     real :: diffusionZoneTemp, temp
@@ -704,8 +702,7 @@ contains
      print *, ' '
      print *, 'photonLoop computed by ', nThreadsGlobal-1, ' processors.'
      print *, ' '
-  endif
-  if (myRankGlobal == 0) then
+
      ! we will use an array to store the rank of the process
      !   which will calculate each photon
      allocate(photonBelongsRank(nMonte))
@@ -730,12 +727,9 @@ contains
 !$OMP DO SCHEDULE(runtime)
        photonloop: do iMonte = imonte_beg, imonte_end
 
-       if (ll_photonloop_counter) write(*,'(f10.4,a)', advance='no') 100*real(iMonte)/real(imonte_end-imonte_beg+1), char(13)
 
 #ifdef MPI
  !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) cycle photonLoop
-
- !  if (MOD(i,nThreadsGlobal) /= myRankGlobal) goto 999
 #endif
           thisPhotonAbs = 0
 
@@ -914,7 +908,7 @@ contains
        ! (Maybe faster to pack the values in 1D arrays and distribute.)
 
        if(doTuning) call tune(6, "  Lucy Loop Update ")  ! start a stopwatch
-       if(myRankGlobal == 0) write(*,*) "Calling update_octal_MPI"
+       if(myRankIsZero) write(*,*) "Calling update_octal_MPI"
     !   call update_octal_MPI(grid%octreeRoot, grid)
 
        call MPI_BARRIER(MPI_COMM_WORLD, ierr)
@@ -983,15 +977,15 @@ contains
        nFreq, freq, dnu, lamarray, nLambda, grid, nDt, nUndersampled,  &
        dT_sum, dT_min, dT_max, dT_over_T_max)
 
-       if (myRankIsZero) &
-       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
-            "crossings", .true., .false.,  index=plot_i, suffix="default", &
-            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomfactor) 
+       if (myRankIsZero) then
+          call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
+               "crossings", .true., .false.,  index=plot_i, suffix="default", &
+               width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomfactor) 
 
-       if (myRankIsZero) &
-       call plot_AMR_values(grid, "direct", "x-z", real(grid%octreeRoot%centre%y), &
-            "direct", .false., .true.,  index=plot_i, suffix="default", &
-            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
+          call plot_AMR_values(grid, "direct", "x-z", real(grid%octreeRoot%centre%y), &
+               "direct", .false., .true.,  index=plot_i, suffix="default", &
+               width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
+       endif
 
 
        if (twoD) then
@@ -1008,57 +1002,49 @@ contains
 
        if (myRankIsZero) then
 
-       write(message,*) "Number of photons entering diffusion zone", ndiffusion
-       call writeInfo(message, TRIVIAL)
-       write(message,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
-       call writeInfo(message, TRIVIAL)
-       write(message,*) "Minimum change in temperature : ", dT_min, " Kelvins"
-       call writeInfo(message, TRIVIAL)
-       write(message,*) "Maximum change in temperature : ", dT_max, " Kelvins"
-       call writeInfo(message, TRIVIAL)
-       write(message,*) "Maximum fractional change in temperature : ", dT_over_T_max
-       call writeInfo(message, TRIVIAL)
-       write(message,'(a,i8)') "Number of undersampled cells: ",nUndersampled-nCellsinDiffusion
-       call writeInfo(message, TRIVIAL)
-       write(message,'(a,f8.2)') "Percentage of undersampled cells: ",percent_undersampled
-       call writeInfo(message, TRIVIAL)
-       write(message,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
-       call writeInfo(message, TRIVIAL)
-       write(message,*) "Total emission",totalEmission
-       call writeInfo(message, TRIVIAL)
+          write(message,*) "Number of photons entering diffusion zone", ndiffusion
+          call writeInfo(message, TRIVIAL)
+          write(message,*) "Mean change in temperature    : ", dT_mean_new , " Kelvins"
+          call writeInfo(message, TRIVIAL)
+          write(message,*) "Minimum change in temperature : ", dT_min, " Kelvins"
+          call writeInfo(message, TRIVIAL)
+          write(message,*) "Maximum change in temperature : ", dT_max, " Kelvins"
+          call writeInfo(message, TRIVIAL)
+          write(message,*) "Maximum fractional change in temperature : ", dT_over_T_max
+          call writeInfo(message, TRIVIAL)
+          write(message,'(a,i8)') "Number of undersampled cells: ",nUndersampled-nCellsinDiffusion
+          call writeInfo(message, TRIVIAL)
+          write(message,'(a,f8.2)') "Percentage of undersampled cells: ",percent_undersampled
+          call writeInfo(message, TRIVIAL)
+          write(message,*) "Emissivity of dust / core", totalEmission /lCore * 1.e30
+          call writeInfo(message, TRIVIAL)
+          write(message,*) "Total emission",totalEmission
+          call writeInfo(message, TRIVIAL)
 
 
-
-       
        !
        ! writing the info above to a file.
-10     format(a3, a12, 3(2x, a12),     4(2x, a12),     (2x, a12))
-11     format(3x, i12, 3(2x, 1PE12.4), 4(2x, 1PE12.4), (2x, i12))
-       if (first_time_to_open_file) then
-          open(unit=LU_OUT, file='convergence_lucy.dat', status='replace')
-          first_time_to_open_file=.false.
-          write(LU_OUT, 10) "#", "iteration", "Mean dT [K]", "Min dT [K]", "Max dT [K]", &
-               "% bad cells", "Eta dust/*", "Eta Total", "Max dT/T", "nMonte"
-       else
-          open(unit=LU_OUT, file='convergence_lucy.dat', status='old', position='append')
-       end if
+10        format(a3, a12, 3(2x, a12),     4(2x, a12),     (2x, a12))
+11        format(3x, i12, 3(2x, 1PE12.4), 4(2x, 1PE12.4), (2x, i12))
+          if (first_time_to_open_file) then
+             open(unit=LU_OUT, file='convergence_lucy.dat', status='replace')
+             first_time_to_open_file=.false.
+             write(LU_OUT, 10) "#", "iteration", "Mean dT [K]", "Min dT [K]", "Max dT [K]", &
+                  "% bad cells", "Eta dust/*", "Eta Total", "Max dT/T", "nMonte"
+          else
+             open(unit=LU_OUT, file='convergence_lucy.dat', status='old', position='append')
+          end if
 
-       write(LU_OUT, 11) iIter_grand, dT_sum/real(nDt), dT_min, dT_max, & 
-            100.*real(nUndersampled-nCellsInDiffusion)/real(nDt), totalEmission /lCore *1.e30, &
-            totalEmission, dT_over_T_max, nMonte
+          write(LU_OUT, 11) iIter_grand, dT_sum/real(nDt), dT_min, dT_max, & 
+               100.*real(nUndersampled-nCellsInDiffusion)/real(nDt), totalEmission /lCore *1.e30, &
+               totalEmission, dT_over_T_max, nMonte
        
-       close(LU_OUT)
+          close(LU_OUT)
 
-    end if
+       end if
 
 
        if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! stop a stopwatch
-
- if (myRankIsZero)  then
-    debugOutput = .true.       
-  else
-    debugOutput = .false.
- endif
 
 !       do i = 1, 1
 !          call estimateTempofUndersampled(grid, grid%octreeRoot)
@@ -1107,12 +1093,11 @@ contains
        endif
 
 
- if (myRankIsZero) &
-      call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
-      call writeInfo("Grid written",TRIVIAL)
+       if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
+       call writeInfo("Grid written",TRIVIAL)
 
 
-   enddo
+    enddo
 
 !       if (.not.(variableDustSublimation.and.doingDustSublimation)) then
 !          if (grid%octreeRoot%twoD) then
@@ -1122,7 +1107,7 @@ contains
 
 
 !       call writeInfo("Getting temperatures in diffusion zone", TRIVIAL)
-!       call throughoutMidplanediff(grid, epsOverDeltat, debugoutput)
+!       call throughoutMidplanediff(grid, epsOverDeltat, myRankIsZero)
 !       call writeInfo("Done.", TRIVIAL)
 
 
@@ -1216,9 +1201,9 @@ contains
        totalMass = 0.
        call findTotalMass(grid%octreeRoot, totalMass)
        scaleFac = massEnvelope / totalMass
-    if (myRankIsZero) & 
-       write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
+       if (myRankIsZero) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
        call scaleDensityAMR(grid%octreeRoot, scaleFac)
+
     endif
 
 
@@ -1246,7 +1231,7 @@ contains
 ! forceLucyConv is set in the parameters.dat file if required
     if ( forceLucyConv ) then
        converged = .true.
-       write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
+       if (myRankIsZero) write(*,*) "FORCING CONVERGENCE FOR TESTS!!!!"
     end if
 
 !    !
