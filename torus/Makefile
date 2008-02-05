@@ -296,7 +296,7 @@ ifeq ($(SYSTEM), ompi)
     F95FLAG  = 
     F77FLAG  = 
     DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -Wall -Wno=140,141,112,155
-    FASTFLAG = -O0
+    FASTFLAG = -O3
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
