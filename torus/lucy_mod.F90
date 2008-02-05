@@ -339,6 +339,7 @@ contains
     integer :: nFreq
     integer :: i, j
     real(oct) :: freq(2000), dnu(2000), probDistJnu(2000)
+    real(oct) :: jnu_norm   ! Normalisation of probDistJnu
 !    real(oct) :: probDistPlanck(nFreq)
     real(double) :: kappaScadb, kappaAbsdb
     integer(double) :: nDiffusion
@@ -349,7 +350,7 @@ contains
     real(oct) :: thisFreq
     real(oct) :: albedo
     logical :: escaped
-    real(oct) :: t1
+    real(oct) :: t1, recip_kt
     real(oct) :: thisLam,wavelength
     integer :: iSource
     integer :: nRemoved
@@ -397,6 +398,8 @@ contains
     logical, intent(in), optional :: ll_sph
     logical :: useFixedRange
 !    integer :: omp_get_num_threads, omp_get_thread_num
+    real(double) :: this_bnu, fac2, fac3
+    real(double), allocatable :: fac1(:)
 
 #ifdef MPI
   ! For MPI implementations =====================================================
@@ -432,6 +435,9 @@ contains
        freq(nFreq-i+1) = cSpeed / (lamArray(i)*1.e-8)
     enddo
 
+! Set up factor which is used in bnu calculation
+    allocate( fac1(nFreq) ) 
+    fac1(:) = (2.d0*dble(hCgs)*freq(:)**3)/dble(cSpeed)**2
 
     do i = 2, nFreq-1
        dnu(i) = 0.5*((freq(i+1)+freq(i))-(freq(i)+freq(i-1)))
@@ -821,6 +827,7 @@ contains
                   if (photonInDiffusionZone) then
                       t1 = dble(diffusionZoneTemp)
                   endif
+                  recip_kt = 1.0 / ( dble(kErg) * t1 )
 
                    nAbs_sub = nAbs_sub + 1
                    thisPhotonAbs = thisPhotonAbs + 1
@@ -831,9 +838,8 @@ contains
 
                    probDistJnu(1) = 0.d0
                    do i = 2, nFreq
-                      thisLam = (cSpeed / freq(i)) * 1.e8
-                      call hunt(lamArray, nLambda, real(thisLam), iLam)
-                      if ((ilam >=1).and.(ilam <= nlambda)) then
+                      ! Map from frequency index to wavelength index
+                      iLam = nFreq - i + 1
 
                          ! tjh added on 7/4/05 - stop direct addressing of octal kappa arrays
                          ! to allow implemntation of gas opacities...
@@ -846,14 +852,24 @@ contains
 !                         else
 !                            kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
 !                         endif
-                         probDistJnu(i) = probDistJnu(i-1) + &
-                              bnu(freq(i),t1) * dble(kabsArray(ilam)) * dnu(i)
-                         probDistJnu(i) = max(probDistJnu(i),1.d-50)
+
+                      fac3 =  (dble(hCgs)*freq(i)) * recip_kt
+                      if (fac3 > 100.d0) then
+                         fac2 = 0.d0
+                      else
+                         fac2 = 1.d0/(exp(fac3) - 1.d0)
                       endif
+                      this_bnu = fac1(i) * fac2
+
+                      probDistJnu(i) = probDistJnu(i-1) + &
+                           this_bnu * dble(kabsArray(ilam)) * dnu(i)
+                      probDistJnu(i) = max(probDistJnu(i),1.d-50)
                    enddo
+
                    if (probDistJnu(nFreq) /= 0.d0) then
+                      jnu_norm = 1.0 / probDistJnu(nFreq)
                       do i = 1, nFreq
-                         probDistJnu(i) = probDistJnu(i) / probDistJnu(nFreq)
+                         probDistJnu(i) = probDistJnu(i) * jnu_norm
                       enddo
                       call random_number(r)
                       call locate(probDistJnu, nFreq, r, j)
@@ -1246,6 +1262,7 @@ contains
 #endif
 
   deallocate(kAbsArray)
+  deallocate( fac1 )
 
   end subroutine lucyRadiativeEquilibriumAMR
 
