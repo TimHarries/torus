@@ -836,7 +836,7 @@ contains
                       cycle photonLoop
                    endif
 
-                   probDistJnu(1) = 0.d0
+                   probDistJnu(1) = 1.d-50
                    do i = 2, nFreq
                       ! Map from frequency index to wavelength index
                       iLam = nFreq - i + 1
@@ -862,8 +862,7 @@ contains
                       this_bnu = fac1(i) * fac2
 
                       probDistJnu(i) = probDistJnu(i-1) + &
-                           this_bnu * dble(kabsArray(ilam)) * dnu(i)
-                      probDistJnu(i) = max(probDistJnu(i),1.d-50)
+                           this_bnu * kabsArray(ilam) * dnu(i)
                    enddo
 
                    if (probDistJnu(nFreq) /= 0.d0) then
