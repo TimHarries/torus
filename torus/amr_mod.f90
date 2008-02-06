@@ -2474,6 +2474,8 @@ CONTAINS
                            interp, departCoeff,kappaAbsArray,kappaScaArray, dusttypeFraction, rosselandKappa, kappap, &
                            atthistemperature)
 
+    USE input_variables, only: nLambda
+
     ! POINT, direction --> should be in unrotated coordinates for 2D case (not projected onto x-z plane!)
     !
 
@@ -2510,8 +2512,8 @@ CONTAINS
     REAL,INTENT(OUT),OPTIONAL         :: temperature
     REAL(double),INTENT(OUT),OPTIONAL         :: kappaAbs
     REAL(double),INTENT(OUT),OPTIONAL         :: kappaSca
-    REAL(double),INTENT(OUT),OPTIONAL         :: kappaAbsArray(:)
-    REAL(double),INTENT(OUT),OPTIONAL         :: kappaScaArray(:)
+    REAL(double),INTENT(OUT),OPTIONAL         :: kappaAbsArray(nLambda)
+    REAL(double),INTENT(OUT),OPTIONAL         :: kappaScaArray(nLambda)
     REAL(double),INTENT(OUT), OPTIONAL        :: rosselandKappa
     REAL,INTENT(OUT), OPTIONAL        :: kappap
     REAL,INTENT(IN), OPTIONAL         :: atThisTemperature
@@ -11986,7 +11988,7 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: subcell
     integer, optional :: ilambda
     real, optional :: lambda
-    real(double), optional :: kappaSca, kappaAbs, kappaAbsArray(:), kappaScaArray(:)
+    real(double), optional :: kappaSca, kappaAbs, kappaAbsArray(grid%nLambda), kappaScaArray(grid%nLambda)
     real(double), optional :: rosselandKappa
     real(double), optional :: kappaAbsDust, kappaScaDust, kappaAbsGas, kappaScaGas
     real, optional :: kappap
