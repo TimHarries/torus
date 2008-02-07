@@ -386,12 +386,11 @@ contains
     integer :: nKilled
     integer :: maxIter
     integer       :: imonte_beg, imonte_end   ! the index boundary for the photon loops.
-    real(double), allocatable :: kAbsArray(:)
+    real(double)  :: kAbsArray(nlambda)
     logical :: ok                             ! Did call to randomWalk complete OK?
     logical :: photonInDiffusionZone
-    logical :: doingDustSublimation
     real :: diffusionZoneTemp, temp
-    logical :: outputFlag, directPhoton !, smoothconverged
+    logical :: directPhoton !, smoothconverged
     integer :: nCellsInDiffusion
     integer, intent(in), optional :: plot_i ! index number of plot
     integer :: this_plot_i
@@ -399,7 +398,7 @@ contains
     logical :: useFixedRange
 !    integer :: omp_get_num_threads, omp_get_thread_num
     real(double) :: this_bnu, fac2, fac3
-    real(double), allocatable :: fac1(:)
+    real(double) :: fac1(nLambda)
 
 #ifdef MPI
   ! For MPI implementations =====================================================
@@ -408,26 +407,21 @@ contains
   integer, dimension(:), allocatable :: photonBelongsRank
   integer, parameter :: tag = 0
   logical :: rankComplete
-    ! data space to store values from all processors
-    real, save, allocatable  :: buffer_real(:)     
-    logical, save  :: first_time = .true.
+  ! data space to store values from all processors
+  real :: buffer_real(nThreadsGlobal)     
 
-       if (myrankGlobal == 0) writeoutput = .true.
-       allocate(buffer_real(nThreadsGlobal))
+  ! FOR MPI IMPLEMENTATION=======================================================
+    
+  if (myRankIsZero) then
+     writeoutput = .true.
 
-    ! FOR MPI IMPLEMENTATION=======================================================
+     print *, ' '
+     print *, 'Lucy radiative equilibrium routine computed by ', nThreadsGlobal, ' processors.'
+     print *, ' '
+  endif
     
-    if (myRankIsZero) then
-       print *, ' '
-       print *, 'Lucy radiative equilibrium routine computed by ', nThreadsGlobal, ' processors.'
-       print *, ' '
-    endif
-    
-    ! ============================================================================
+  ! ============================================================================
 #endif
-
-    allocate(kabsArray(1:nLambda))
-
 
     nMonte = nLucy
     nFreq = nLambda
@@ -436,7 +430,6 @@ contains
     enddo
 
 ! Set up factor which is used in bnu calculation
-    allocate( fac1(nFreq) ) 
     fac1(:) = (2.d0*dble(hCgs)*freq(:)**3)/dble(cSpeed)**2
 
     do i = 2, nFreq-1
@@ -467,27 +460,19 @@ contains
        call scaleDensityAMR(grid%octreeRoot, scaleFac)
     endif
 
-
-    outputFlag = .true.
-#ifdef MPI
-    if (myRankGlobal/=0) outputFlag = .false.
-#endif
-
- if (outputFlag) call writeAMRgrid("lucy_first_grid.dat", .false., grid)
+    if (myRankIsZero) call writeAMRgrid("lucy_first_grid.dat", .false., grid)
 
 !    call setupFreqProb(temperature, freq, dnu, nFreq, ProbDistPlanck)
 
- if (outputFlag) call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
+    call writeInfo("Computing lucy radiative equilibrium in AMR...",TRIVIAL)
 
     lCore = 0.d0
     do i = 1, nSource
        lCore = lCore + source(i)%luminosity
     enddo
 
-    if (outputFlag) then
-       write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
-       call writeInfo(message, TRIVIAL)
-    endif
+    write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
+    call writeInfo(message, TRIVIAL)
 
     if (grid%geometry == "shakara") then
 	if (nDustType > 1) then
@@ -521,19 +506,11 @@ contains
     dT_mean_new = 10.0d0
     dT_mean_old = 10.0d0
 
-    doingDustSublimation = .false.
-    if (variableDustSublimation) doingDustSublimation = .true.
-
     do while (.not.converged)
        ! ensure we do at least three iterations
        ! before removing the high temperature cells.
-       if (iIter_grand>1) then
-          nIter = 1
-       else
-          nIter = 1
-       end if
 
-!       if (doingDustSublimation) then
+!       if (variableDustSublimation) then
 !          nMonte = 10000000
 !          if (iIter_grand == 0) then
 !             nIter = 3
@@ -542,7 +519,7 @@ contains
 !          endif
 !       endif
 
-
+       nIter = 1
 
     do iIter = 1, nIter
 
@@ -637,10 +614,8 @@ contains
        
        call zeroDistanceGrid(grid%octreeRoot)
 
-       if (myRankIsZero) then
-          write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
-          call writeInfo(message, TRIVIAL)
-       end if
+       write(message,*) "Iteration",iIter_grand,",",nmonte," photons"
+       call writeInfo(message, TRIVIAL)
 
 
 
@@ -956,16 +931,14 @@ contains
        nDiffusion = INT(SUM(buffer_real), double)
 #endif
        
-       if(myRankIsZero) then
-          write(message,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
-          call writeInfo(message,TRIVIAL)
-          write(message,'(a,f13.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
-          call writeInfo(message,IMPORTANT)
-          write(message,'(a,f13.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
-          call writeInfo(message,IMPORTANT)
-          write(message,'(a,f13.3)') "Fraction of photons killed: ",real(nKilled)/real(nMonte)
-          call writeInfo(message,IMPORTANT)
-       end if
+       write(message,'(a,f7.2)') "Photons done.",real(ninf)/real(nmonte)
+       call writeInfo(message,TRIVIAL)
+       write(message,'(a,f13.3)') "Mean number of scatters per photon: ",real(nScat)/real(nMonte)
+       call writeInfo(message,IMPORTANT)
+       write(message,'(a,f13.3)') "Mean number of absorbs  per photon: ",real(nAbs)/real(nMonte)
+       call writeInfo(message,IMPORTANT)
+       write(message,'(a,f13.3)') "Fraction of photons killed: ",real(nKilled)/real(nMonte)
+       call writeInfo(message,IMPORTANT)
 
 
        epsOverDeltaT = (lCore) / dble(nInf)
@@ -1114,9 +1087,9 @@ contains
 
     enddo
 
-!       if (.not.(variableDustSublimation.and.doingDustSublimation)) then
+!       if (.not.(variableDustSublimation)) then
 !          if (grid%octreeRoot%twoD) then
-!             call defineDiffusionZone(grid, outputFlag, .false.)
+!             call defineDiffusionZone(grid, myRankIsZero, .false.)
 !          endif
 !       endif
 
@@ -1193,7 +1166,7 @@ contains
 
 
 !          if (grid%octreeRoot%twoD) then
-!             call defineDiffusionZone(grid, outputFlag, .false.)
+!             call defineDiffusionZone(grid, myRankIsZero, .false.)
 !          endif
 
 
@@ -1237,7 +1210,7 @@ contains
        converged = .true.
     end if
 
-    if (doingDustSublimation) then
+    if (variableDustSublimation) then
        if (iIter_grand < 4) then
           converged = .false.
        endif
@@ -1255,13 +1228,6 @@ contains
     if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
        
    enddo
-
-#ifdef MPI
- deallocate(buffer_real)
-#endif
-
-  deallocate(kAbsArray)
-  deallocate( fac1 )
 
   end subroutine lucyRadiativeEquilibriumAMR
 
