@@ -253,7 +253,7 @@ contains
           call writeInfo("calling hydro step",TRIVIAL)
           
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-          call hydroStep3d(1, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+!          call hydroStep3d(1, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
           if (myRank == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call resetNh(grid%octreeRoot)

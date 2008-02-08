@@ -625,6 +625,8 @@ CONTAINS
 
 ! setup mpiThread values
 
+
+
     if ( ((parent%twoD)  .and.((nThreadsGlobal - 1) == 4)) .or. &
          ((parent%threed).and.((nThreadsGlobal - 1) == 8)).or. &
          ((parent%oneD)  .and.((nThreadsGlobal - 1) == 2)) ) then
@@ -650,7 +652,19 @@ CONTAINS
        endif
     endif
 
-!    if (myrankglobal==2) write(*,'(10i4)') parent%child(newChildindex)%ndepth, parent%child(newChildIndex)%mpiThread(1:8)
+    if ((parent%threed).and.(nThreadsGlobal - 1) == 64) then
+       if (parent%child(newChildIndex)%nDepth > 2) then
+          parent%child(newChildIndex)%mpiThread = parent%mpiThread(iChild)
+       else
+          do i = 1, 8
+             parent%child(newChildIndex)%mpiThread(i) = 8 * (parent%mpiThread(iChild) - 1) + i
+          enddo
+       endif
+    endif
+
+
+
+    if (myrankglobal==2) write(*,'(10i4)') parent%child(newChildindex)%ndepth, parent%child(newChildIndex)%mpiThread(1:8)
 
     if (cmf) then
        allocate(parent%child(newChildIndex)%atomAbundance(8, 1:nAtom))
@@ -5886,6 +5900,7 @@ IF ( .NOT. gridConverged ) RETURN
    endif
 
 
+
    if (grid%splitOverMPI) then
       if ((thisOctal%twoD.and.(nThreadsGlobal-1)==4).or. &
            (thisOctal%threed.and.(nThreadsGlobal-1)==8).or. &
@@ -5922,6 +5937,15 @@ IF ( .NOT. gridConverged ) RETURN
                if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
                   split = .false.
                endif
+            endif
+         endif
+      endif
+      if (thisOctal%threed.and.((nThreadsGlobal-1)==64)) then
+         if (thisOctal%nDepth <= 2) then
+            split = .true.
+         else
+            if (thisOctal%mpiThread(subcell) /= myRankGlobal) then
+               split = .false.
             endif
          endif
       endif
@@ -8310,7 +8334,7 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: rho0, r0, n, soundSpeed, omega, a, r, v, phi
     real(double) :: inertia, beta, rCloud, mCloud, eGrav
 
-    gamma = 5.d0/3.d0
+    gamma = 7.d0/4.d0
     rho0 = 1.0d0
     r0 = 0.4d0
     soundSpeed = 0.01d0
@@ -8347,10 +8371,10 @@ IF ( .NOT. gridConverged ) RETURN
 
 
     mCloud = 0.2d0 * msol
-    rCloud = 7.d15
+    rCloud = 7.d13
     inertia = (2.d0/5.d0)*mCloud*rCloud**2
     eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
-    beta = 0.0d0
+    beta = 0.3d0
     thisOctal%velocity(subcell) = VECTOR(0., 0., 0.)
 
     omega = sqrt(2.d0 * beta * eGrav / inertia)
@@ -8375,11 +8399,12 @@ IF ( .NOT. gridConverged ) RETURN
 
     if (modulus(rVec) < (rCloud/1.d10)) then
        thisOctal%rho(subcell) = mCloud / (4.d0/3.d0*pi*rCloud**3)
+       ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     else
-       thisOctal%rho(subcell) = 1.d-2 * mCloud / (4.d0/3.d0*pi*rCloud**3)
+       thisOctal%rho(subcell) = 1.d-5 * mCloud / (4.d0/3.d0*pi*rCloud**3)
+       ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     endif
 
-    ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%boundaryCondition(subcell) = 4

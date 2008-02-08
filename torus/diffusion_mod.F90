@@ -556,11 +556,11 @@ contains
                 if (.not.thisOctal%cylindrical) then
                    DeltaX = r * 1.d10
                    DeltaT = DeltaX**2 / (2.d0 * maxval(dcoeffHalf(-1:1,-1:1,-1:1)))
-                   DeltaT = deltaT * 0.5
+                   DeltaT = deltaT * 0.1
                 else
                    deltaX = min(DeltaR, deltaZ, r * DeltaPhi)
                    DeltaT = DeltaX**2 / (2.d0 * maxval(dcoeffHalf(-1:1,-1:1,-1:1)))
-                   DeltaT = deltaT * 0.5
+                   DeltaT = deltaT * 0.1
                 endif
 
                 if (thisOctal%twoD) then
@@ -679,7 +679,7 @@ end subroutine gaussSeidelSweep
     logical :: gridConverged
     real(double) :: deMax
     integer :: niter
-    integer, parameter :: maxIter = 2000
+    integer, parameter :: maxIter = 10000
     logical, save :: firstTime = .true.
 
     call seteDens(grid, grid%octreeRoot)

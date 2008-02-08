@@ -144,12 +144,13 @@ module spectrum_mod
     end subroutine getWavelengthOverBand
 
 
-    subroutine fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda, biasToLyman)
+    subroutine fillSpectrumBB(spectrum, teff, lamStart, lamEnd, nLambda, lamArray, biasToLyman)
 
       type(SPECTRUMTYPE) :: spectrum
       integer :: nLambda
       real(double) :: lamStart, lamEnd, teff
       logical, optional :: biasToLyman
+      real, optional :: lamArray(:)
       real(double) :: logLamStart, logLamEnd
       integer :: i
 
@@ -161,10 +162,14 @@ module spectrum_mod
       logLamStart = log10(lamStart)
       logLamEnd = log10(lamEnd)
       
-      do i = 1, nLambda
-         spectrum%lambda(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
-         spectrum%lambda(i) = 10.**spectrum%lambda(i)
-      enddo
+      if (.not.PRESENT(lamArray)) then
+         do i = 1, nLambda
+            spectrum%lambda(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
+            spectrum%lambda(i) = 10.**spectrum%lambda(i)
+         enddo
+      else
+         spectrum%lambda(1:nLambda) = dble(lamArray(1:nLambda))
+      endif
       do i = 2, nLambda-1
          spectrum%dlambda(i) = 0.5*((spectrum%lambda(i+1)+spectrum%lambda(i))-(spectrum%lambda(i)+spectrum%lambda(i-1)))
       enddo

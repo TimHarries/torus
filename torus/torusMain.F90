@@ -3660,23 +3660,38 @@ CONTAINS
 !!        enddo
 !     endif
 
-       if (mie) then
-          if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then
-             call locate(xArray, nLambda, lambdaTau, i)
-             t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
-             if (t1 > 0.5) then
-                write(message,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
-                call writeInfo(message, TRIVIAL)
-                xArray(i+1) = lambdaTau
-             else
-                write(message,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
-                call writeInfo(message, TRIVIAL)
-                xArray(i) = lambdaTau
-             endif
-          endif
-       endif
+!       if (mie) then
+!          if ((lambdaTau > Xarray(1)).and.(lambdaTau < xArray(nLambda))) then
+!             call locate(xArray, nLambda, lambdaTau, i)
+!             t1 = (lambdaTau - xArray(i))/(xArray(i+1)-xArray(i))
+!             if (t1 > 0.5) then
+!                write(message,*) "Replacing ",xArray(i+1), " wavelength step with ",lambdaTau
+!                call writeInfo(message, TRIVIAL)
+!                xArray(i+1) = lambdaTau
+!             else
+!                write(message,*) "Replacing ",xArray(i), " wavelength step with ",lambdaTau
+!                call writeInfo(message, TRIVIAL)
+!                xArray(i) = lambdaTau
+!             endif
+!          endif
+!       endif
 
     endif
+
+
+       if (lamFile) then
+          call writeInfo("Reading wavelength points from file.", TRIVIAL)
+          open(77, file=lamfilename, status="old", form="formatted")
+          nLambda = 0
+333       continue
+          nLambda = nLambda + 1
+          read(77,*,end=334) xArray(nLambda)
+          if (writeoutput) write(*,*) nlambda,xArray(nlambda)
+          goto 333
+334       continue
+          nLambda = nLambda - 1
+          close(77)
+       endif
 
     !
     ! Copying the wavelength array to the grid
@@ -4815,7 +4830,7 @@ subroutine set_up_sources
        source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
        if (contFluxfile .eq. "blackbody") then
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
-               dble(lamStart), dble(lamEnd),nLambda)
+               dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
        else
           call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile)
           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
@@ -4844,7 +4859,7 @@ subroutine set_up_sources
 
        if (contFluxfile1 .eq. "blackbody") then
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
-               dble(lamStart), dble(lamEnd),nLambda)
+               dble(lamStart), dble(lamEnd), nLambda, lamArray=xArray)
        else
           call readSpectrum(source(1)%spectrum, contfluxfile1, ok)
        endif
@@ -4861,7 +4876,7 @@ subroutine set_up_sources
 
        if (contFluxfile2 .eq. "blackbody") then
           call fillSpectrumBB(source(2)%spectrum, dble(teff), &
-               dble(lamStart), dble(lamEnd),nLambda)
+               dble(lamStart), dble(lamEnd), nLambda)
        else
           call readSpectrum(source(2)%spectrum, contfluxfile2, ok)
        endif

@@ -1196,7 +1196,7 @@ contains
   subroutine averageValue(direction, neighbourOctal, neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi)
     type(OCTAL), pointer ::  neighbourOctal
     integer :: nSubcell(4), neighbourSubcell
-    real(double) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi
+    real(double) :: q, rho, rhov, rhou, rhow, pressure, flux, rhoe, phi,fac
     type(OCTALVECTOR) :: direction
 
 !    direction = neighbourOctal%centre - subcellCentre(thisOctal, subcell)
@@ -1273,32 +1273,33 @@ contains
           nSubcell(3) = 7
           nSubcell(4) = 8
        endif
-       q = 0.25d0*(neighbourOctal%q_i(nSubcell(1)) + neighbourOctal%q_i(nSubcell(2)) + & 
+       fac = 0.25d0
+       q = fac*(neighbourOctal%q_i(nSubcell(1)) + neighbourOctal%q_i(nSubcell(2)) + & 
             neighbourOctal%q_i(nSubcell(3)) + neighbourOctal%q_i(nSubcell(4)))
 
-       rho = 0.25d0*(neighbourOctal%rho(nSubcell(1)) + neighbourOctal%rho(nSubcell(2)) + & 
+       rho = fac*(neighbourOctal%rho(nSubcell(1)) + neighbourOctal%rho(nSubcell(2)) + & 
             neighbourOctal%rho(nSubcell(3)) + neighbourOctal%rho(nSubcell(4)))
 
-       rhoe = 0.25d0*(neighbourOctal%rhoe(nSubcell(1)) + neighbourOctal%rhoe(nSubcell(2)) + & 
+       rhoe = fac*(neighbourOctal%rhoe(nSubcell(1)) + neighbourOctal%rhoe(nSubcell(2)) + & 
             neighbourOctal%rhoe(nSubcell(3)) + neighbourOctal%rhoe(nSubcell(4)))
 
-       rhou = 0.25d0*(neighbourOctal%rhou(nSubcell(1)) + neighbourOctal%rhou(nSubcell(2)) + & 
+       rhou = fac*(neighbourOctal%rhou(nSubcell(1)) + neighbourOctal%rhou(nSubcell(2)) + & 
             neighbourOctal%rhou(nSubcell(3)) + neighbourOctal%rhou(nSubcell(4)))
 
-       rhov = 0.25d0*(neighbourOctal%rhov(nSubcell(1)) + neighbourOctal%rhov(nSubcell(2)) + & 
+       rhov = fac*(neighbourOctal%rhov(nSubcell(1)) + neighbourOctal%rhov(nSubcell(2)) + & 
             neighbourOctal%rhov(nSubcell(3)) + neighbourOctal%rhov(nSubcell(4)))
 
-       rhow = 0.25d0*(neighbourOctal%rhow(nSubcell(1)) + neighbourOctal%rhow(nSubcell(2)) + & 
+       rhow = fac*(neighbourOctal%rhow(nSubcell(1)) + neighbourOctal%rhow(nSubcell(2)) + & 
             neighbourOctal%rhow(nSubcell(3)) + neighbourOctal%rhow(nSubcell(4)))
 
-       pressure = 0.25d0*(neighbourOctal%pressure_i(nSubcell(1)) + neighbourOctal%pressure_i(nSubcell(2)) + & 
+       pressure = fac*(neighbourOctal%pressure_i(nSubcell(1)) + neighbourOctal%pressure_i(nSubcell(2)) + & 
             neighbourOctal%pressure_i(nSubcell(3)) + neighbourOctal%pressure_i(nSubcell(4)))
 
-       flux = 0.25d0*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)) + & 
+       flux = fac*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)) + & 
             neighbourOctal%flux_i(nSubcell(3)) + neighbourOctal%flux_i(nSubcell(4)))
 
 
-       phi = 0.25d0*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)) + & 
+       phi = fac*(neighbourOctal%phi_i(nSubcell(1)) + neighbourOctal%phi_i(nSubcell(2)) + & 
             neighbourOctal%phi_i(nSubcell(3)) + neighbourOctal%phi_i(nSubcell(4)))
 
     endif
@@ -1729,6 +1730,7 @@ contains
                 check = .false.
              endif
           endif
+!          write(*,*) "thread ", myrankGlobal, " depth ",thisOctal%ndepth, " mpithread ", thisOctal%mpiThread(subcell), check
        endif
     endif
 
