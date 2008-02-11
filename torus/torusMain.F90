@@ -975,7 +975,7 @@ program torus
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 
         ! Plotting the various values stored in the AMR grid.
-        if ( plot_maps .and. myRankIsZero ) call do_amr_plots
+        call do_amr_plots
      end if
 
   !=================================================================
@@ -4588,38 +4588,40 @@ subroutine do_amr_plots
   end if
   width_3rd_dim = amrGridSize
 
+  if ( plot_maps .and. myRankIsZero ) then
+
   ! Plot desired AMR grid value here... This is more generalized
   ! version of fancyAmrPlot.
   !
   ! See grid_mod.f90 for details.
   !
   ! Plotting some grid values
-  call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-       "rho_grid",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-       width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls, &
-       fixValMin=sph_rho_min, fixValMax=sph_rho_max, useFixedRange=ll_sph )
-  call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-       "rho_zoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-       width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default", index=num_calls, &
-       fixValMin=sph_rho_min, fixValMax=sph_rho_max, useFixedRange=ll_sph )
-  if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
      call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-          "rho_ultrazoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-          width_3rd_dim, show_value_3rd_dim, boxfac=0.005, suffix="default", index=num_calls)
-  end if
-  call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-       nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-  if (grid%lineEmission) then
-     call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
-          "Vx", .false., .false.,  &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-     call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
-          "Vy", .false., .false., &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-     call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
-          "Vz", .false., .false., &
-          nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-  end if
+          "rho_grid",.true., .true., nmarker, xmarker, ymarker, zmarker, &
+          width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls, &
+          fixValMin=sph_rho_min, fixValMax=sph_rho_max, useFixedRange=ll_sph )
+     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+          "rho_zoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
+          width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default", index=num_calls, &
+          fixValMin=sph_rho_min, fixValMax=sph_rho_max, useFixedRange=ll_sph )
+     if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
+        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+             "rho_ultrazoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
+             width_3rd_dim, show_value_3rd_dim, boxfac=0.005, suffix="default", index=num_calls)
+     end if
+     call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
+          nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+     if (grid%lineEmission) then
+        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
+             "Vx", .false., .false.,  &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
+        call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
+             "Vy", .false., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
+        call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
+             "Vz", .false., .false., &
+             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
+     end if
   !        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
   !             "etacont.ps/vcps", .true., .false.,  &
   !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
@@ -4627,10 +4629,10 @@ subroutine do_amr_plots
   !             "etacont_zoom.ps/vcps", .true., .false.,  &
   !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
   !             show_value_3rd_dim, boxfac=0.0004)
-  call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
-       "temperature", .true., .false., nmarker, xmarker, ymarker, zmarker, &
-       width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls, &
-       fixValMin=sph_tem_min, fixValMax=sph_tem_max, useFixedRange=ll_sph )
+     call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
+          "temperature", .true., .false., nmarker, xmarker, ymarker, zmarker, &
+          width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls, &
+          fixValMin=sph_tem_min, fixValMax=sph_tem_max, useFixedRange=ll_sph )
   !        call plot_AMR_values(grid, "temperature", "x-y", 0., &
   !             "temperature2.ps/vcps", .true., .false., &
   !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
@@ -4646,21 +4648,23 @@ subroutine do_amr_plots
   !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
   !        end if
   
-  if (mie) then
-     do i = 1, nDustType
-        write(message,'(a,i1)') "dusttype",i
-        write(filename,'(a,i1)') "dusttype",i
-        call plot_AMR_values(grid, message, "x-z", 0., &
-             trim(filename),.false., .false., nmarker, xmarker, ymarker, zmarker, &
-             width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor, suffix="default", index=num_calls)
-     enddo
-  endif
+     if (mie) then
+        do i = 1, nDustType
+           write(message,'(a,i1)') "dusttype",i
+           write(filename,'(a,i1)') "dusttype",i
+           call plot_AMR_values(grid, message, "x-z", 0., &
+                trim(filename),.false., .false., nmarker, xmarker, ymarker, zmarker, &
+                width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor, suffix="default", index=num_calls)
+        enddo
+     endif
 
   !     ! plotting column density (new routine in grid_mod.f90)
   !     if (grid%geometry(1:7) == "cluster") then 
   !       call plot_column_density(grid, plane_for_plot,  "column_density.ps/vcps", &
   !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim,val_3rd_dim)
   !     end if
+
+  endif
 
 end subroutine do_amr_plots
 
