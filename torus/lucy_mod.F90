@@ -607,7 +607,7 @@ contains
             "lucy_temp_yz", .true., .false.,  index=plot_i, suffix="default", &
             width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., &
             fixValMin=sph_tem_min, fixValMax=sph_tem_max, useFixedRange=useFixedRange)
-       call polardump(grid)
+       if (grid%geometry /= "cluster") call polardump(grid)
     end if
 
        if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
