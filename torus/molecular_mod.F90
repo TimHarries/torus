@@ -1302,7 +1302,6 @@ pure function phiProf(dv, b) result (phi)
         integer :: ntrans
 
         real :: tol
-        logical :: extrapolate
 
 !        real(double) :: r,rarray(4100000),sarray(4100000),tarray(4100000),phiprofval,deltav,dv
 !        real :: uarray(4100000)

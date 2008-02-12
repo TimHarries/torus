@@ -9,14 +9,14 @@
 
 
       type(PHASEMATRIX) :: mieMatrix
-      real :: normFac, dMu
+!      real :: normFac, dMu
       real :: cosTheta
       integer :: nMu = 20
       real :: aMin, aMax, a0, qDist, pDist, lambda, aFac
       integer :: nDist
       real ::  x, cmr, cmi,  t, theta, costh, rn, p1, p2
       real :: logamax, logamin
-      integer :: nc,nci,n, i, n1,j
+      integer :: nc,nci,n, i, n1 !,j
 
       real :: p11, pl, p33p11, p34p11
       

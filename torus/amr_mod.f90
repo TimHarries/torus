@@ -4139,7 +4139,6 @@ IF ( .NOT. gridConverged ) RETURN
     !   tree as needed to find the correct octal.
     use input_variables, only : hydrodynamics
     IMPLICIT NONE
-    integer :: nDepth
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(octalVector) :: point_local
     TYPE(octal),POINTER    :: thisOctal
@@ -4191,7 +4190,6 @@ IF ( .NOT. gridConverged ) RETURN
       TYPE(octalVector), INTENT(IN) :: point
       TYPE(octal),POINTER    :: thisOctal
       INTEGER, INTENT(OUT)   :: subcell
-      integer :: nDepth
       LOGICAL, INTENT(INOUT) :: haveDescended
       LOGICAL, INTENT(INOUT) :: boundaryProblem
 !      type(octalvector) :: rVec

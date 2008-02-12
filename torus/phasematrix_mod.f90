@@ -317,7 +317,7 @@ contains
     real, optional :: weight
     integer, intent(in) :: nMuMie, nLambda
     integer :: i, j, k, m, ilam
-    real :: costheta, theta, r, phi
+    real :: theta, r, phi
     real, intent(in) :: lamArray(:)
     real, allocatable, save :: prob(:,:)
     real, allocatable, save :: cosArray(:)
@@ -392,7 +392,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   implicit none
   integer, intent(in) :: nLambda
   character(len=*), intent(in) :: outFile
-  character(len=80) :: tfile
+!  character(len=80) :: tfile
   real, intent(in) :: xArray(nLambda)
   logical, intent(in) :: useNdf
   logical, intent(in) :: jansky

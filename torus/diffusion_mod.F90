@@ -672,7 +672,7 @@ contains
 end subroutine gaussSeidelSweep
 
   subroutine solveArbitraryDiffusionZones(grid)
-    use input_variables, only : eDensTol, taudiff, tauforce, zoomfactor
+    use input_variables, only : eDensTol, zoomfactor !, tauforce
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid
@@ -1069,8 +1069,9 @@ end subroutine gaussSeidelSweep
 #endif
 
 subroutine setDiffOnTau(grid)
-    use input_variables, only : blockHandout, tauForce
+    use input_variables, only : tauForce
 #ifdef MPI
+    use input_variables, only : blockHandout
     include 'mpif.h'
 #endif
     type(gridtype) :: grid
@@ -1084,7 +1085,7 @@ subroutine setDiffOnTau(grid)
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
-    real(double) :: kappaSca, kappaAbs, kappaExt
+!    real(double) :: kappaSca, kappaAbs, kappaExt
     type(OCTALVECTOR) :: arrayVec(4)
 #ifdef MPI
 ! Only declared in MPI case

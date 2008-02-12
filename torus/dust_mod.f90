@@ -1506,7 +1506,7 @@ contains
 
   subroutine normalizeMiePhase(miePhase, nMuMie)
     type(PHASEMATRIX) :: miePhase(:)
-    integer :: nMuMie, i, j, k, m ,n
+    integer :: nMuMie, i, k, m ,n
     real(double) :: normfac
     real(double) :: cosTheta(1000)
     do i = 1, nMuMie

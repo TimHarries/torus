@@ -152,7 +152,7 @@ module source_mod
       integer :: nSource
       type(SOURCETYPE) :: source(:)
       real(double) :: lam, flux
-      integer :: i, j
+      integer :: i !, j
 
       tot = 0
       do i = 1, nSource
