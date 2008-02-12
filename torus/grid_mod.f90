@@ -7350,13 +7350,13 @@ contains
 ! Set the upper and lower limits on the false colour scale if required.
 ! The optional, logcal argument useFixedRange allows a specified range to 
 ! be supplied but ignored, to allow for more flexible calls to plot_AMR_values.
-    if ( PRESENT(useFixedRange) .and. useFixedRange ) then
-       if (PRESENT(fixValMax)) then 
+    if ( PRESENT(useFixedRange) ) then
+       if (PRESENT(fixValMax) .and. useFixedRange) then 
           valueMax = fixValMax
        else
           print *, "WARNING: fixed range specified but valueMax not supplied"
        end if
-       if (PRESENT(fixValMin)) then 
+       if (PRESENT(fixValMin) .and. useFixedRange) then 
           valueMin = fixValMin
        else
           print *, "WARNING: fixed range specified but valueMin not supplied"
