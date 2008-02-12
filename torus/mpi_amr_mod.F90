@@ -636,9 +636,8 @@ contains
 
     include 'mpif.h'
     type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal, tOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: neighbourOctal
     character(len=*) :: boundaryType
     integer :: receiveThread, sendThread, tsubcell
     integer :: myRank, ierr
@@ -646,7 +645,7 @@ contains
     integer :: nOctals
     integer, parameter :: nStorage = 40
     real(double) :: loc(3), tempStorage(nStorage)
-    type(OCTALVECTOR) :: octVec, direction, centre, rVec
+    type(OCTALVECTOR) :: octVec, direction, rVec
     integer :: nBound
     integer :: iOctal
     integer :: nDepth, thisnDepth
@@ -654,7 +653,6 @@ contains
     integer :: tag = 77
     integer :: status(MPI_STATUS_SIZE)
     logical :: sendLoop
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, flux, pressure, phi
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     select case(boundaryType)
@@ -1089,7 +1087,6 @@ contains
     type(OCTAL), pointer :: thisOctal, neighbourOctal, tOctal
     type(OCTALVECTOR) :: direction, rVec
     integer :: subcell, neighbourSubcell, tSubcell
-    integer :: nSubcell(6)
     integer :: nBound, nDepth, nd
 
     real(double) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux, phi
