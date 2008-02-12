@@ -293,9 +293,9 @@ endif
 ifeq ($(SYSTEM), ompi)
     F77COMP  = mpif90
     F95COMP  = mpif90
-    F95FLAG  = 
+    F95FLAG  = -Wno=155
     F77FLAG  = 
-    DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -Wall -Wno=140,141,112,155
+    DEBUGFLAG= -g -ftrace=full -fbounds-check -fimplicit-none -Wall -Wno=140,141,112
     FASTFLAG = -O3 -march=pentium4 -mtune=pentium4 -malign-double
     UNIXMOD  = unix_mod.f90.linuxintel
     KINDMOD  = kind_mod.f90.linuxintel
