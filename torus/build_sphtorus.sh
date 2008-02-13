@@ -71,7 +71,12 @@ else
 fi
 
 # 1.3 Set up the build directories
-export TORUS_LIB=${sphtorus_dir}/lib # Used by Makefile
+# Specify libraries for linking (used by sphNG Makefile)
+case ${SYSTEM} in 
+    zen) export TORUS_LIB="${sphtorus_dir}/lib -ltorus -L${HOME}/lib/pgplot -lpgplot -L${HOME}/cfitsio/lib -lcfitsio -lpng" ;;
+    *)   export TORUS_LIB="${sphtorus_dir}/lib -ltorus -L${HOME}/lib/pgplot -lpgplot -L${HOME}/cfitsio/lib -lcfitsio" ;;
+esac
+
 if [[ -e ${sphtorus_dir} ]]; then
     if [ ${overwrite} -eq 1 ]; then
 	echo "INFO: Removing old build"
@@ -79,7 +84,7 @@ if [[ -e ${sphtorus_dir} ]]; then
 	mkdir -p ${sphtorus_dir}/build/torus
 	mkdir -p ${sphtorus_dir}/build/sphNG
 	mkdir -p ${sphtorus_dir}/bin
-	mkdir -p ${TORUS_LIB}
+	mkdir -p ${sphtorus_dir}/lib
 	make_links=1
     else
 	echo "INFO: ${sphtorus_dir} already exists. Performing incremental build."
@@ -90,7 +95,7 @@ else
     mkdir -p ${sphtorus_dir}/build/torus
     mkdir -p ${sphtorus_dir}/build/sphNG
     mkdir -p ${sphtorus_dir}/bin
-    mkdir -p ${TORUS_LIB}
+    mkdir -p ${sphtorus_dir}/lib
     make_links=1
 fi
 
