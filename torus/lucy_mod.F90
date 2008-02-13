@@ -411,7 +411,7 @@ contains
   real :: buffer_real(nThreadsGlobal)     
 
   ! FOR MPI IMPLEMENTATION=======================================================
-    
+  writeoutput = .false.
   if (myRankIsZero) then
      writeoutput = .true.
 
