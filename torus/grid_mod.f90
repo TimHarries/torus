@@ -7351,16 +7351,8 @@ contains
 ! The optional, logcal argument useFixedRange allows a specified range to 
 ! be supplied but ignored, to allow for more flexible calls to plot_AMR_values.
     if ( PRESENT(useFixedRange) ) then
-       if (PRESENT(fixValMax) .and. useFixedRange) then 
-          valueMax = fixValMax
-       else
-          print *, "WARNING: fixed range specified but valueMax not supplied"
-       end if
-       if (PRESENT(fixValMin) .and. useFixedRange) then 
-          valueMin = fixValMin
-       else
-          print *, "WARNING: fixed range specified but valueMin not supplied"
-       end if
+       if (PRESENT(fixValMax) .and. useFixedRange) valueMax = fixValMax
+       if (PRESENT(fixValMin) .and. useFixedRange) valueMin = fixValMin
     else
        if (PRESENT(fixValMax)) valueMax = fixValMax
        if (PRESENT(fixValMin)) valueMin = fixValMin
