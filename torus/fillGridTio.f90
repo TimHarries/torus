@@ -3,6 +3,8 @@ subroutine fillGridTio(grid,  scale)
 use gridtype_mod
 use grid_mod
 use constants_mod
+use TioCrossSection_mod
+
 implicit none
 real :: scale
 type(GRIDTYPE) :: grid

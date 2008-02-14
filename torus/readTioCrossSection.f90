@@ -1,3 +1,9 @@
+MODULE TioCrossSection_mod
+
+PUBLIC readTioCrossSection
+
+CONTAINS
+
 subroutine readTioCrossSection(lamArray, nLambda, sigmaArray)
   use utils_mod
   use unix_mod
@@ -46,4 +52,6 @@ subroutine readTioCrossSection(lamArray, nLambda, sigmaArray)
    endwhere
 
 end subroutine readTioCrossSection
+
+END MODULE TioCrossSection_mod
 

@@ -148,7 +148,6 @@ program torus
   real, allocatable :: linePhotonAlbedo(:)
   real, allocatable :: lambda(:)
 
-  real, allocatable :: kappaAbs(:), kappaSca(:), kappaExt(:)
   real  :: sigmaExt0, sigmaAbs0, sigmaSca0  ! cross section at the line centre
   real :: dlambda, thisTau
 
@@ -819,9 +818,6 @@ program torus
   ! Note: the first index should be either lambda or mu
   !       in order to speedup the array operations!!!  (RK) 
   allocate(miePhase(1:nDustType,1:nLambda,1:nMumie)) 
-  allocate(kappaExt(1:nLambda))
-  allocate(kappaAbs(1:nLambda))
-  allocate(kappaSca(1:nLambda))
   allocate(statArray(1:nLambda))
   allocate(sourceSpectrum(1:nLambda))
   allocate(sourceSpectrum2(1:nLambda))
@@ -831,11 +827,6 @@ program torus
   statArray = 0.
   sourceSpectrum = 1.
   sourceSpectrum2 = 1.
-
-
-  if (plezModelOn) then
-     call readTioCrossSection(xArray, nLambda, kappaExt, kappaAbs, kappaSca)
-  endif
 
 
   ! allocate the output arrays
@@ -3601,7 +3592,15 @@ endif ! (doPvimage)
 if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
 
 call writeInfo("TORUS exiting", FORINFO)
- 
+
+deallocate(miePhase) 
+deallocate(statArray)
+deallocate(sourceSpectrum)
+deallocate(sourceSpectrum2)
+deallocate(xArray)
+deallocate(yArray)
+deallocate(errorArray)
+
 call torus_mpi_barrier
 #ifdef MPI
 if (.not. ll_sph) call MPI_FINALIZE(ierr)
@@ -4632,7 +4631,7 @@ subroutine do_amr_plots
      call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
           "temperature", .true., .false., nmarker, xmarker, ymarker, zmarker, &
           width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls, &
-          fixValMin=sph_tem_min, fixValMax=sph_tem_max, useFixedRange=ll_sph )
+          fixValMin=sph_tem_min, fixValMax=sph_tem_max, useFixedRange=.false. )
   !        call plot_AMR_values(grid, "temperature", "x-y", 0., &
   !             "temperature2.ps/vcps", .true., .false., &
   !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
