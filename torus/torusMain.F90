@@ -155,7 +155,7 @@ program torus
 
   integer :: itestlam, ismoothlam
   integer, parameter :: nXmie = 20, nMuMie = 1000
-  type(PHASEMATRIX), pointer :: miePhase(:,:, :)
+  type(PHASEMATRIX), allocatable :: miePhase(:,:, :)
 
   ! torus images
 
@@ -1209,6 +1209,7 @@ program torus
 #ifdef SPH
 ! If this is an SPH run then finish here ---------------------------------------
      call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
+     call freeGrid(grid)
      goto 666
 #endif
 

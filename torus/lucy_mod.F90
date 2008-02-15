@@ -2325,27 +2325,18 @@ contains
   ! Updates distanceGrid and nCrossings from each octal
   !
   recursive subroutine update_octal_MPI(thisOctal, grid)
+    use mpi_global_mod, only: nThreadsGlobal
     implicit none
     include 'mpif.h'
 
     type(gridtype) :: grid
-    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     ! data space to store values from all processors
-    real, save, allocatable  :: buffer_ncrossings(:)     
-    real(double), save, allocatable     :: buffer_distanceGrid(:) 
+    real  :: buffer_ncrossings(nThreadsGlobal)     
+    real(double) :: buffer_distanceGrid(nThreadsGlobal) 
     integer  :: ierr
-    integer, save  :: np  ! number of processors
-    logical, save  :: first_time = .true.
-
-    ! find the number of the processors for the first time.    
-    if (first_time) then
-       call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-       allocate(buffer_ncrossings(np))
-       allocate(buffer_distanceGrid(np))
-       first_time = .false.
-    end if
 
 
     do subcell = 1, thisOctal%maxChildren
@@ -2387,14 +2378,7 @@ contains
     real, allocatable :: tempRealArray(:)
     real(double), allocatable :: distanceGrid(:),tempDoubleArray(:)
     real, allocatable :: nDiffusion(:)
-    integer :: np, ierr,my_rank, nIndex
-
-    ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
-    ! Find the total # of precessor being used in this run
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+    integer :: ierr, nIndex
 
     call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
     nOctals = 0

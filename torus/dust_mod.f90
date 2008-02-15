@@ -1357,7 +1357,7 @@ contains
          dustfilename, isotropicScattering, readmiephase, writemiephase, ttau_disc_on
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
-    type(PHASEMATRIX), pointer :: miePhase(:,:,:)
+    type(PHASEMATRIX) :: miePhase(1:nDustType,1:nLambda,1:nMumie)
     integer :: nMuMie
     real :: mu, total_dust_abundance
     integer :: i, j, k
@@ -1371,14 +1371,8 @@ contains
 
     if (associated(grid%onekappaAbs)) deallocate(grid%onekappaAbs)
     if (associated(grid%onekappaSca)) deallocate(grid%onekappaSca)
-    if (associated(miePhase)) deallocate(miePhase)
 
     allocate(grid%oneKappaAbs(1:nDustType, 1:nLambda), grid%oneKappaSca(1:nDustType, 1:nLambda))
-
-
-    ! Note: the first index should be either lambda or mu
-    !       in order to speedup the array operations!!!  (RK) 
-    allocate(miePhase(1:nDustType,1:nLambda,1:nMumie)) 
 
 
     if (mie .or. useDust) then
