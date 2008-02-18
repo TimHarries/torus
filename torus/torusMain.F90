@@ -692,7 +692,7 @@ program torus
 
      else
 
-        
+
      ! The total number of gas particles is the total number of active particles less the number of point masses.
         ngaspart = b_nactive-b_nptmass
         call init_sph_data2(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
@@ -1209,6 +1209,7 @@ program torus
 #ifdef SPH
 ! If this is an SPH run then finish here ---------------------------------------
      call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
+     call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
      call freeGrid(grid)
      goto 666
 #endif
