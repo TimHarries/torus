@@ -8677,7 +8677,8 @@ IF ( .NOT. gridConverged ) RETURN
 !       thisOctal%velocity(subcell) = vector(0.d0,0.d0,0.d0) ! debug 17/1/08
        mu1 = mu(i) + t2 * (mu(i+1)-mu(i))
 
-      thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + mu1**2) / (cspeed * 1e-5)) ! mu is subsonic turbulence
+      thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + mu1**2) &
+                                     / (cspeed * 1e-5)) ! mu is subsonic turbulence
     endif
    CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
   end subroutine molecularBenchmark
@@ -8733,7 +8734,8 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%temperature(subcell) = 40.
 
        thisOctal%velocity(subcell) = vector(0d-20,0d-20,0d-20)
-       thisOctal%microturb(subcell) = max(1d-9,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (18.0 * amu)) + 10.d0**2) / (cspeed * 1e-5)) ! mu is subsonic turbulence
+       thisOctal%microturb(subcell) = max(1d-9,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
+                                      / (18.0 * amu)) + 10.d0**2) / (cspeed * 1e-5)) ! mu is subsonic turbulence
     endif
 !   CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
   end subroutine WaterBenchmark1
@@ -8787,7 +8789,8 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%rho(subcell) = thisOctal%nh2(subcell)*2.*mhydrogen
        thisOctal%temperature(subcell) = 40.
        thisOctal%velocity(subcell) = WaterBenchmarkvelocity(subcellCentre(thisOctal,subcell), grid)
-       thisOctal%microturb(subcell) = max(1d-9,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (18.0 * amu)) + 10.d0**2) / (cspeed * 1e-5)) ! mu is subsonic turbulence
+       thisOctal%microturb(subcell) = max(1d-9,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
+                                      / (18.0 * amu)) + 10.d0**2) / (cspeed * 1e-5)) ! mu is subsonic turbulence
     endif
 
    CALL fillVelocityCorners(thisOctal,grid,WaterBenchmarkVelocity,thisOctal%threed)
@@ -8833,7 +8836,8 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%rho(subcell) = thisOctal%nh2(subcell) * 2. * mhydrogen
        thisOctal%temperaturegas(subcell) = 3000.
        thisOctal%temperaturedust(subcell) = 3000.
-       thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperaturegas(subcell) / (18.0 * amu)) + mu(1)**2) / (cspeed * 1e-5)
+       thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperaturegas(subcell) / (18.0 * amu)) + mu(1)**2) &
+                                     / (cspeed * 1e-5)
     endif
 
     thisOctal%molAbundance(subcell) = molabundance
@@ -8849,10 +8853,12 @@ IF ( .NOT. gridConverged ) RETURN
 
        if(r1 .gt. (6e0 * 1.49598e3) ) then ! if r gt than 6 AU out this is outward velocity
           v1 = 8.0673550611e-3 * r1**(0.65) * 1d5 ! km -> cm
-          thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperaturegas(subcell) / (18.0 * amu)) + 1.d0**2) / (cspeed * 1e-5) ! mu is subsonic turbulence
+          thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperaturegas(subcell) / (18.0 * amu)) + 1.d0**2) &
+                                         / (cspeed * 1e-5) ! mu is subsonic turbulence
        else
           v1 = 1d-20
-          thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperaturegas(subcell) / (18.0 * amu)) + 3.d0**2) / (cspeed * 1e-5) ! mu is subsonic turbulence
+          thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperaturegas(subcell) / (18.0 * amu)) + 3.d0**2) &
+                                         / (cspeed * 1e-5) ! mu is subsonic turbulence
        endif
 
        vel = subcellCentre(thisOctal, subcell)
@@ -8927,7 +8933,8 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%temperaturegas(subcell) = thisOctal%temperaturedust(subcell)
        thisOctal%temperature(subcell) = thisOctal%temperaturedust(subcell)
        
-       thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (28.0 * amu)) + 0.3**2) / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
+       thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (28.0 * amu)) + 0.3**2) &
+                                      / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
        thisOctal%velocity(subcell) = keplerianVelocity(rvec, grid)
     else
        thisOctal%velocity = VECTOR(1d-20,1d-20,1d-20)
@@ -9153,7 +9160,8 @@ IF ( .NOT. gridConverged ) RETURN
       
        thisOctal%velocity(subcell) = ggtauvelocity(CellCentre,grid)
 
-       thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + 0.2**2) / (cspeed * 1e-5) ! 0.2 is subsonic turbulence
+       thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + 0.2**2) &
+                                      / (cspeed * 1e-5) ! 0.2 is subsonic turbulence
 
        !thisMolecule%Weight = 29.0 for 13CO and HCO+
        ! 1d-10 is conversion from kerg -> k km^2.g.s^-2.K^-1 (10^-7 (erg->J) * 10^-6 (m^2-km^2) * 10^3 (kg->g))
@@ -9163,7 +9171,8 @@ IF ( .NOT. gridConverged ) RETURN
 
        thisOctal%temperature(subcell) = tcbr 
        thisOctal%velocity(subcell) = VECTOR(1.d-20,1.d-20,1.d-20)
-       thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + 0.2**2) / (cspeed * 1e-5) ! 0.2 is subsonic turbulence
+       thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + 0.2**2) &
+                                      / (cspeed * 1e-5) ! 0.2 is subsonic turbulence
     else
        thisOctal%nh2(subcell) = 1.e-20
        thisOctal%rho(subcell) = 1.e-20 * 2. * mhydrogen
@@ -9171,7 +9180,8 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%temperature(subcell) = tcbr
 
        thisOctal%velocity(subcell) = VECTOR(1.d-20,1.d-20,1.d-20)
-       thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + 0.2**2) / (cspeed * 1e-5) ! 0.2 is subsonic turbulence
+       thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + 0.2**2) &
+                                      / (cspeed * 1e-5) ! 0.2 is subsonic turbulence
     endif
 
 

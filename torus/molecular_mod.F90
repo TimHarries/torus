@@ -606,7 +606,8 @@ module molecular_mod
               endif
 !write(*,*) "OKhere"
               if(lte) then           
-                 call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), thisOctal%molecularLevel(subcell,1:thisMolecule%nlevels))
+                 call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
+                              thisOctal%molecularLevel(subcell,1:thisMolecule%nlevels))
               else      
 !write(*,*) "OKhere?",tcbr,subcell,thisOctal%molecularLevel(subcell,1)
                  call LTEpops(thisMolecule, tcbr, thisOctal%molecularLevel(subcell,1:thisMolecule%nlevels))
@@ -1040,7 +1041,8 @@ module molecular_mod
            thisOctal => grid%octreeroot
            call findSubcellLocal(posVec, thisOctal,subcell) 
            pops = pops + thisOctal%molecularLevel(subcell,1:mintrans) ! interested in first 8 levels
-           fracChange = fracChange + abs((thisOctal%molecularLevel(subcell,1:mintrans) - thisOctal%oldmolecularLevel(subcell,1:mintrans)) / thisOctal%molecularlevel(subcell,1:mintrans))
+           fracChange = fracChange + abs((thisOctal%molecularLevel(subcell,1:mintrans) - &
+                        thisOctal%oldmolecularLevel(subcell,1:mintrans)) / thisOctal%molecularlevel(subcell,1:mintrans))
         enddo
         pops = pops / real(nr) ! normalised level population at the 20 random positions 
         fracChange = fracChange / real(nr)
@@ -1056,7 +1058,8 @@ module molecular_mod
  ! Does a lot of work - do more rays whilst problem not converged -            
    subroutine molecularLoop(grid, thisMolecule)
 
-     use input_variables, only : blockhandout, tolerance,debug,lucyradiativeeq,geometry,lucyfilenamein,openlucy, amr1d, isinlte, dusttogas!, restart ! ??
+     use input_variables, only : blockhandout, tolerance,debug,lucyradiativeeq,geometry,lucyfilenamein,openlucy, amr1d, isinlte, &
+                                 dusttogas!, restart ! ??
      use messages_mod, only : myRankIsZero
 #ifdef MPI
      include 'mpif.h'
@@ -1209,7 +1212,8 @@ module molecular_mod
          if(myrankiszero) call writeAMRgrid("molecular_lte.grid",.false.,grid)
 
          if(geometry .eq. 'molebench') call dumpresults(grid, thisMolecule, 0, grand_iter, convtestarray) ! find radial pops on final grid     
-         call intensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, thisMolecule, 1, 0.d0, dummy, tau, .true.)
+         call intensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, thisMolecule, 1, 0.d0, dummy, &
+                                tau, .true.)
          write(*,*) "TAU", tau
          
       endif
@@ -1505,7 +1509,8 @@ module molecular_mod
  !                      if(isnan(thisOctal%newmolecularLevel(subcell,i))) write(*,*) "NOY",i
  !                   enddo
 
-                       fac = abs(maxval((thisOctal%newMolecularLevel(subcell,1:mintrans) - oldpops(1:mintrans))/oldpops(1:mintrans))) ! convergence criterion ! 6 or 8?
+                       fac = abs(maxval((thisOctal%newMolecularLevel(subcell,1:mintrans) - oldpops(1:mintrans)) &
+                             / oldpops(1:mintrans))) ! convergence criterion ! 6 or 8?
                        if (fac < 1.d-6) popsConverged = .true.
 
                        if (iter == maxIter) then
@@ -1581,7 +1586,8 @@ module molecular_mod
 
       if(writeoutput) then
          write(message,'(a,1x,f9.5,1x,a,1x,f5.3,1x,a,2x,l1,1x,a,1x,i6,1x)') &
-              "Maximum fractional change this iteration ", maxFracChange, "tolerance", tolerance, "fixed rays", fixedrays, "nray", nray
+              "Maximum fractional change this iteration ", maxFracChange, "tolerance", tolerance, "fixed rays", fixedrays, &
+              "nray", nray
          write(*,'(a,f9.5,a,i1)') "  Average fractional change this iteration  ", &
               maxavgFracChange/real(nVoxels)," in level ",maxavgTrans
          write(*,'(a,f9.5,a,i1)') "  RMS fractional change this iteration      ", &
@@ -1671,14 +1677,16 @@ module molecular_mod
               open(143,file="tauhalf.dat",status="unknown",position="append")
 
               do itrans = 1, lst
-                 call intensityAlongRay(octalvector(1d-20,1d-20,1d10),octalvector(-1d-20,-1d-20,-1.d0), grid, thisMolecule, iTrans, 0.d0, dummy, tau, .true.)
+                 call intensityAlongRay(octalvector(1d-20,1d-20,1d10),octalvector(-1d-20,-1d-20,-1.d0), grid, thisMolecule, &
+                                        iTrans, 0.d0, dummy, tau, .true.)
                  tauarray(itrans) = tau
               enddo
 
            write(142,'(i2,tr3,8(f9.4,tr3))') grand_iter, tauarray
 
            do itrans = 1, lst
-              call intensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, thisMolecule, iTrans, 0.d0, dummy, tau, .true.)
+              call intensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, thisMolecule, iTrans, &
+                                     0.d0, dummy, tau, .true.)
               tauarray(itrans) = tau
            enddo
 
@@ -2841,7 +2849,8 @@ module molecular_mod
    character(len=80) :: filename
    type(datacube) :: cube, convolvedcube
    type(moleculetype) :: thisMolecule
-   real(double),allocatable :: convolvedfluxspec(:), fluxspec(:), inspec(:), antspec(:), weightedspec(:), brightnessspec(:), weight(:,:)
+   real(double),allocatable :: convolvedfluxspec(:), fluxspec(:), inspec(:), antspec(:), weightedspec(:), &
+                               brightnessspec(:), weight(:,:)
    real(double) :: fac, dA, fac2
    integer :: i
    integer :: itrans
