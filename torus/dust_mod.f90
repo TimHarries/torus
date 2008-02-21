@@ -350,6 +350,20 @@ contains
        enddo
        close(20)
 
+    case("somedust")
+       call unixGetenv("TORUS_DATA", dataDirectory, i)
+       filename = trim(dataDirectory)//"/"//"somedust.dat"
+       if (writeoutput) write(*,'(a,a)') "Reading grain properties from: ",trim(filename)
+       open(20,file=filename,status="old",form="formatted")
+       nRef = 38
+       allocate(lamRef(1:nRef))
+       allocate(tempIm(1:nRef))
+       allocate(tempReal(1:nRef))
+       do i = nRef, 1, -1
+          read(20,*) lamRef(i), tempReal(i), tempIm(i)
+       enddo
+       close(20)
+
     case DEFAULT
        if (writeoutput) write(*,'(a,a,a)') "! Grain type ", trim(graintype)," not recognised"
        stop
