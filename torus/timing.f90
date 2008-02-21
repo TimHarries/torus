@@ -36,7 +36,7 @@ contains
     implicit none
     
     integer :: max_id                     ! max # of IDs
-    parameter (max_id=40)
+    parameter (max_id=200)
     integer :: lu_error                   ! file unit # for error messages
     character*(*) :: id                   ! ID name 
     character*30  :: id_stored(max_id)    ! names of id stored
@@ -86,7 +86,7 @@ contains
        i = i + 1
        if (i.gt.max_id) then
           write(lu_error,*) 'Error: The # of tuning point &
-               &exceeds the max value set (40) -- [tune.f]'
+               &exceeds the max value set (200) -- [tune.f]'
           return
        elseif (id.eq.id_stored(i)) then
           id_num=i
