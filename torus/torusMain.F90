@@ -1201,8 +1201,6 @@ program torus
 #ifdef SPH
 ! If this is an SPH run then finish here ---------------------------------------
      call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
-     call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
-     call freeGrid(grid)
      goto 666
 #endif
 
@@ -3595,6 +3593,9 @@ endif ! (doPvimage)
 if (doTuning) call tune(6, "Torus Main") ! stop a stopwatch  
 
 call writeInfo("TORUS exiting", FORINFO)
+
+call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+call freeGrid(grid)
 
 deallocate(miePhase) 
 deallocate(statArray)
