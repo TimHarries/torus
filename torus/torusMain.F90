@@ -948,7 +948,7 @@ program torus
 
 ! below is really yucky code - please change me
 
-     if (molecular.and.readmol) then
+     if (molecular.and.readmol.and. .not. lucyRadiativeEq) then
         call readAMRgrid(molfilenamein,.false.,grid)
         goto 667
      endif
