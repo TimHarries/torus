@@ -403,7 +403,8 @@ endif
 ifeq ($(SYSTEM), zen)
     F95COMP= mpif90
     F77COMP= mpif90
-    FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
+    F77FLAG = -w -fno-second-underscore -O0 -mcmodel=medium
+    FASTFLAG= -O3 -xS -mcmodel=medium -fp-model fast=2 -no-prec-div -no-prec-sqrt -ftz -auto -i-dynamic -ipo
     DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused
     STATICFLAG=
     MATHTRAP=
@@ -416,7 +417,7 @@ ifeq ($(SYSTEM), zen)
     F2CLIB=
 #    -L$(PATH2G2C) -lg2c
     STATICLIBS= -Bstatic
-    STARLIBS= -DMPI -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
+    STARLIBS= -DMPI -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.1 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
 #    -L/star/lib `ndf_link` 
     PGLIBS= -L/home/tjharrie/libpgplot -lpgplot -lpng
 #    -L/star/lib `pgplot_link`
@@ -725,7 +726,7 @@ ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ) $(PGOBJ)
 # Compilers and compiler flags
 #
 F90 = $(F95COMP) $(F95FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(SPHFLAG)
-F77 = $(F77COMP) $(F77FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC)
+F77 = $(F77COMP) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(F77FLAG) $(MPI_INC)
 
 #
 # Special targets

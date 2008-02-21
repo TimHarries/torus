@@ -2448,7 +2448,7 @@ module molecular_mod
 
    call createimage(cube, grid, unitvec, posvec, thismolecule, itrans, nSubpixels) ! create an image using the supplied parameters (also calculate spectra)
 
-   call TranslateCubeIntensity(cube,-1.d0*Tcmb)
+   call TranslateCubeIntensity(cube,-1.d0*Tcbr)
    write(*,*) "subtracting background" 
 
    call cubeIntensityToFlux(cube) ! convert intensity to flux (so that per pixel flux is correct)
@@ -2457,7 +2457,7 @@ module molecular_mod
                                      thisMolecule%itransUpper(itrans)-1,'-',thisMolecule%itransLower(itrans)-1,'.ps/vcps'
  !  call plotDataCube(cube, filename, plotflux=.true.)
 
-   call TranslateCubeIntensity(cube,1.d0*Tcmb)
+   call TranslateCubeIntensity(cube,1.d0*Tcbr)
 
    call cubeIntensityToFlux(cube) ! convert intensity to flux (so that per pixel flux is correct)
 
