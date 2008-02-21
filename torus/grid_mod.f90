@@ -7219,7 +7219,7 @@ contains
     implicit none
     type(gridtype), intent(in) :: grid
     character(len=*), intent(in)  :: name   ! "rho", "temperature", chiLine", "etaLine", 
-    !                                       ! "etaCont", "Vx", "Vy" or "Vz"
+    !                                       ! "etaCont", "Vx", "Vy", "Vz", or "molAbundance"
     character(len=*), intent(in)  :: plane  ! must be 'x-y', 'y-z', 'z-x' or' x-z'
     character(len=10) :: thisPlane
     logical, optional :: quiet
@@ -7793,6 +7793,8 @@ contains
                 value = thisOctal%molecularlevel(subcell,ilam)
              case("Area")
                 value = thisOctal%subcellsize
+             case("molAbundance")
+                value = thisOctal%molAbundance(subcell)
 
              case default
                 write(*,*) "Error:: unknown name passed to grid_mod::plot_values."
@@ -8088,9 +8090,11 @@ contains
                 value = thisOctal%molecularlevel(subcell,ilam)
              case("Area")
                 value = thisOctal%subcellsize
+             case("molAbundance")
+                value = thisOctal%molAbundance(subcell)
 
              case default
-                write(*,*) "Error:: unknow name passed to MinMaxValue.",trim(name)
+                write(*,*) "Error:: unknown name passed to MinMaxValue.",trim(name)
                 stop
              end select
              if (update) then
