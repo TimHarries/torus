@@ -550,13 +550,16 @@ program torus
   end if
 
   if (molecular .and. geometry == "molebench") then
+!     call readMolecule(co, "co.mol")
      call readbenchmarkMolecule(co, "hco_benchmark.dat")
-!     call readMolecule(co, "hco_plus.mol")
-  endif
-
-  if (geometry == "molefil") then
-
+  elseif((geometry .eq. "h2obench1") .or. (geometry .eq. "h2obench2")) then
+     call readMolecule(co, "molec.dat")
+  elseif(geometry .eq. "agbstar") then	
+     call readMolecule(co, "p-h2o.dat")
+  elseif(geometry .eq. "molefil") then
      call readMolecule(co, "c18o.dat")
+  else	
+     call readMolecule(co, "co.mol")
   endif
 
   if (cmf) then
@@ -1068,7 +1071,7 @@ program torus
         
 
      if (mie) then
-        if (geometry == "shakara") then
+        if (geometry == "shakara" .and. geometry .eq. 'iras04158') then
 
 !        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*real(autocm)) ! defined at 1AU
 
@@ -1143,15 +1146,6 @@ program torus
         stop
      endif
 
-     if (molecular) then
-        if (.not.readlucy) call  molecularLoop(grid, co)
-        call calculateMoleculeSpectrum(grid, co)
-        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
-        if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
-        stop
-     endif
-
-
 #ifdef MPI
      if (photoIonization) then
         grid%splitOverMPI = .true.
@@ -1205,7 +1199,6 @@ program torus
 
      if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
-
 #ifdef SPH
 ! If this is an SPH run then finish here ---------------------------------------
      call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
@@ -1255,6 +1248,15 @@ program torus
      call torus_mpi_barrier
 
   endif
+
+  if (molecular) then
+     if (writemol) call  molecularLoop(grid, co)
+     call calculateMoleculeSpectrum(grid, co)
+     call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+     if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
+     stop
+  endif
+
 
 
 !  if (grid%geometry == "shakara") then
@@ -4825,7 +4827,7 @@ subroutine set_up_sources
           end if
        end do
 
-    case("shakara","clumpydisc","wrshell","warpeddisc")
+    case("shakara","clumpydisc","wrshell","warpeddisc","iras04158")
        nSource = 1
        allocate(source(1:1))
        source(1)%radius = grid%rCore
