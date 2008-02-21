@@ -579,6 +579,15 @@ contains
     case("molebench")
        grid%geometry = "molebench"
 
+    case("h2obench1")
+       grid%geometry = "h2obench1"
+
+    case("h2obench2")
+       grid%geometry = "h2obench2"
+
+    case("agbstar")
+       grid%geometry = "agbstar"
+
     case("molefil")
        grid%geometry = "molefil"
 
@@ -587,6 +596,13 @@ contains
 
     case("shakara")
        grid%geometry = "shakara"
+       grid%rCore = rCore
+       grid%lCore = fourPi * rCore**2 * stefanBoltz * teff**4 * 1.e20
+       grid%rInner = rInner
+       grid%rOuter = rOuter
+
+   case("iras04158")
+       grid%geometry = "iras04158"
        grid%rCore = rCore
        grid%lCore = fourPi * rCore**2 * stefanBoltz * teff**4 * 1.e20
        grid%rInner = rInner
@@ -3174,6 +3190,7 @@ contains
        if (molecular) then
           call writeDouble2D(thisOctal%molecularLevel,fileFormatted)
           call writeDouble2D(thisOctal%jnu,fileFormatted)
+          call writeDouble2D(thisOctal%bnu,fileFormatted)
           call writeReal1D(thisOctal%molAbundance,fileFormatted)
 
           if (fileformatted) then
@@ -3683,6 +3700,7 @@ contains
        if (molecular) then
           call readDouble2D(thisOctal%molecularLevel,fileFormatted)
           call readDouble2D(thisOctal%jnu,fileFormatted)
+          call readDouble2D(thisOctal%bnu,fileFormatted)
           call readReal1D(thisOctal%molAbundance,fileFormatted)
 
           if (fileformatted) then
