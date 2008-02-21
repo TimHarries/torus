@@ -1103,7 +1103,7 @@ module molecular_mod
 
       character(len=40) :: filename
 
-      real(double), allocatable :: convtestarray(:,:,:)
+      real(double) :: convtestarray(200,200,8)
       real(double) :: r(100), rinner, router
       logical, save :: itransdone(200)
       real(double) :: fixValMax = 1.
@@ -1265,7 +1265,6 @@ module molecular_mod
 
       endif
 
-      allocate(convtestArray(200,200,8))
 
       if (myRankIsZero) then
          write(*,*) "Dumping results" ! can use cbr constant?
