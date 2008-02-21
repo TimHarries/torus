@@ -98,7 +98,10 @@ MODULE octal_mod
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
     real(double), dimension(8)         :: microturb
     TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
-    REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures
+    REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures (gas or dust)
+    REAL, DIMENSION(8)                 :: temperaturedust! grid subcell dust temperatures
+    REAL, DIMENSION(8)                 :: temperaturegas ! grid subcell gas temperatures
+    
     real(double), dimension(8) :: eDens
     REAL, DIMENSION(8)                 :: oldTemperature    ! grid subcell temperatures
     REAL(double), DIMENSION(8)                 :: oldeDens
@@ -125,6 +128,7 @@ MODULE octal_mod
     real(double), DIMENSION(8) :: NH2            ! total H2 no density
     real(double), pointer :: molecularLevel(:,:) => null() ! molecular level populations
     real(double), pointer :: newmolecularLevel(:,:) => null() ! molecular level populations
+    real(double), pointer :: oldmolecularLevel(:,:) => null() ! molecular level populations
     real(double), pointer :: atomLevel(:,:,:) => null() ! atom level populations
     real(double), pointer :: atomAbundance(:,:) ! abundances
     real(double), pointer :: newatomLevel(:,:,:) => null() ! atom level populations
