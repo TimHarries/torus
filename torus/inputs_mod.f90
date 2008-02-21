@@ -1256,9 +1256,14 @@ contains
     call getReal("tolerance", tolerance, cLine, nLines, &
          "Maximum Fractional Change in level populations:","(a,f4.1,1x,a)", 0.01, ok, .true.)
     call getReal("molAbundance", molAbundance, cLine, nLines, &
-         "Molecular Abundance:","(a,es4.1,1x,a)", 1e-9, ok, .true.)
+         "Molecular Abundance:","(a,es6.2,1x,a)", 1e-9, ok, .true.)
     call getLogical("useDust", useDust, cLine, nLines, &
-         "Calculate continuum emission from dust ", "(a,1l,1x,a)", .false., ok, .false.)
+         "Calculate continuum emission from dust:", "(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("isinLTE", isinlte, cLine, nLines, &
+         "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
+    call getReal("dusttogas", dusttoGas, cLine, nLines, &
+         "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
+
 
 ! Image parameters
     if(readmol) then
@@ -2118,31 +2123,31 @@ if (geometry == "whitney") then
 
 endif
 
- if (geometry .eq. "shakara") then
+ if (geometry .eq. "shakara" .or. (geometry .eq. "iras04158")) then
 
     call getLogical("noscat", noScattering, cLine, nLines, &
          "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
 
-   call getReal("rcore", rCore, cLine, nLines, &
-       "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
+    call getReal("rcore", rCore, cLine, nLines, &
+         "Core radius (solar radii): ","(a,f5.1,a)", 10., ok, .true.)
 
-   call getReal("rinner", rInner, cLine, nLines, &
-       "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
+    call getReal("rinner", rInner, cLine, nLines, &
+         "Inner Radius (stellar radii): ","(a,f5.1,a)", 12., ok, .true.)
 
-   call getReal("rsub", rSublimation, cLine, nLines, &
-       "Dust sublimation radius (stellar radii): ","(a,f5.1,a)", 12., ok, .false.)
+    call getReal("rsub", rSublimation, cLine, nLines, &
+         "Dust sublimation radius (stellar radii): ","(a,f5.1,a)", 12., ok, .false.)
 
-   call getReal("router", rOuter, cLine, nLines, &
-       "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+    call getReal("router", rOuter, cLine, nLines, &
+         "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
 
-   call getReal("height", height, cLine, nLines, &
-       "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+    call getReal("height", height, cLine, nLines, &
+         "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
 
-   call getReal("teff", teff, cLine, nLines, &
-          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
+    call getReal("teff", teff, cLine, nLines, &
+         "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
 
-   call getReal("rho", rho0, cLine, nLines, &
-          "Density (g/cm^3): ","(a,f7.0,a)", 1., ok, .true.)
+    call getReal("rho", rho0, cLine, nLines, &
+         "Density (g/cm^3): ","(a,f7.0,a)", 1., ok, .true.)
 
    call getReal("mcore", mCore, cLine, nLines, &
        "Core mass (solar masses): ","(a,f5.1,a)", 0.5, ok, .true.)

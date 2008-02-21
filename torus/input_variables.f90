@@ -72,6 +72,7 @@ module input_variables
   logical :: forcedWavelength
   real :: usePhotonWavelength
   logical :: useDust ! molecular_mod includes continuum emission
+  logical :: isinlte ! assume grid is in LTE
   real :: r0, rhoC ! Filamentry parameters
 
   real(double) :: maxVel
