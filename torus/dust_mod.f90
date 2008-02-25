@@ -1477,32 +1477,32 @@ contains
 
        enddo
 
-       do k = 1, nDustType
-          do i = 1, nLambda
-                   if (readMiePhase) then
-                      open(144, file='miephasefile', status="old", form="unformatted")
-                      read(unit=144) miePhase
-                      close(144)
+       if (readMiePhase) then
+          open(144, file='miephasefile', status="old", form="unformatted")
+          read(unit=144) miePhase
+          close(144)
+       else
+          do k = 1, nDustType
+             do i = 1, nLambda
+                do j = 1, nMumie
+                   mu = 2.*real(j-1)/real(nMumie-1)-1.
+                   if (.not.isotropicScattering) then
+                      call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
+                           mu, miePhase(k,i,j), mReal(k,i), mImg(k,i))               
                    else
-                      do j = 1, nMumie
-                         mu = 2.*real(j-1)/real(nMumie-1)-1.
-                         if (.not.isotropicScattering) then
-                            call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
-                                 mu, miePhase(k,i,j), mReal(k,i), mImg(k,i))               
-                         else
-                            miePhase(k,i,j) = fillIsotropic(mu)
-                         endif
-                      enddo
-                      call normalizeMiePhase(miePhase(k,i,1:nMuMie), nMuMie)
-                      
-                      if (writeMiePhase) then
-                         open(144, file='miephasefile', status="replace", form="unformatted")
-                         write(unit=144) miePhase
-                         close(144)
-                      end if
-                   end if
+                      miePhase(k,i,j) = fillIsotropic(mu)
+                   endif
+                enddo
+                call normalizeMiePhase(miePhase(k,i,1:nMuMie), nMuMie)
              end do
           end do
+
+          if (writeMiePhase) then
+             open(144, file='miephasefile', status="replace", form="unformatted")
+             write(unit=144) miePhase
+             close(144)
+          end if
+       end if
 
        deallocate(mReal)
        deallocate(mImg)
