@@ -949,8 +949,12 @@ program torus
 
 ! below is really yucky code - please change me
 
-     if (molecular.and.readmol.and. .not. lucyRadiativeEq) then
-        call readAMRgrid(molfilenamein,.false.,grid)
+     if (molecular .and. readmol .and. (.not. lucyRadiativeEq)) then
+        if(.not. openlucy) then
+           call readAMRgrid(molfilenamein,.false.,grid)
+        else
+           call readAMRgrid(lucyFileNamein,.false.,grid)
+        endif
         goto 667
      endif
 
@@ -1249,9 +1253,10 @@ program torus
   endif
 
   if (molecular) then
-     if (writemol) call  molecularLoop(grid, co)
-     call calculateMoleculeSpectrum(grid, co)
-     call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+     if (writemol) call molecularLoop(grid, co)
+     if (readmol) call calculateMoleculeSpectrum(grid, co)
+!        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
+
      if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
      stop
   endif
