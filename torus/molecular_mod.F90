@@ -1212,8 +1212,8 @@ module molecular_mod
          if(myrankiszero) call writeAMRgrid("molecular_lte.grid",.false.,grid)
 
          if(geometry .eq. 'molebench') call dumpresults(grid, thisMolecule, 0, grand_iter, convtestarray) ! find radial pops on final grid     
-         call continuumIntensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, thisMolecule, 1e-4, 0.d0, dummy, &
-                                tau, .true.)
+         call continuumIntensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, thisMolecule, 1e-4, &
+                                0.d0, dummy, tau, .true.)
          write(*,*) "TAU", tau
 
       endif
