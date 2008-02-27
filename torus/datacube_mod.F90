@@ -69,7 +69,7 @@ contains
     group=1
     fpixel=1
 
-    ! 1st HDU : intensity
+    ! 1st HDU : flux
     bitpix=-64
     naxis=3
     naxes(1)=thisCube%nx
@@ -715,7 +715,7 @@ contains
 
     do iv = 1, cube%nv
 
-       background = cube%intensity(cube%nx,cube%ny,iv)
+       background = cube%flux(cube%nx,cube%ny,iv)
        newArray = 0.d0
 
        do ix = 1, cube%nx
@@ -724,7 +724,7 @@ contains
              do i = ix - cube%nx, ix + cube%nx
                 do j = iy - cube%ny, iy + cube%ny
                    if ((i > 0).and.(i<=cube%nx).and.(j > 0).and.(j <= cube%ny)) then
-                      flux = cube%intensity(i,j,iv)
+                      flux = cube%flux(i,j,iv)
                    else
                       flux = background
                    endif
@@ -743,7 +743,7 @@ contains
           !write(*,*) "Weight",tot
        enddo
 
-       cube%intensity(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)!/dble(cube%nx*cube%ny)
+       cube%flux(1:cube%nx, 1:cube%ny, iv) = newArray(1:cube%nx, 1:cube%ny)!/dble(cube%nx*cube%ny)
     enddo
     deallocate(newArray)
     call writeInfo("Done.",TRIVIAL)
