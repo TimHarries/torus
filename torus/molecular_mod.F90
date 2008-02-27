@@ -1075,12 +1075,13 @@ module molecular_mod
      integer       ::   my_rank        ! my processor rank
      integer       ::   np             ! The number of processes
      integer       ::   ierr           ! error flag
+     integer       ::   tag = 0 
      logical       ::   rankComplete
      integer, dimension(:), allocatable :: octalsBelongRank
      real(double), allocatable :: tArrayd(:),tempArrayd(:) 
 #endif
       integer :: nVoxels
-      integer :: ioctal_beg, ioctal_end!, tag = 0
+      integer :: ioctal_beg, ioctal_end
       logical :: fixedRays
       integer :: isize
       integer, allocatable :: iseed(:)
