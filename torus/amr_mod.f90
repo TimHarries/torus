@@ -222,10 +222,10 @@ CONTAINS
        CALL molecularBenchmark(thisOctal, subcell ,grid)
 
     CASE ("h2obench1")
-       CALL WaterBenchmark1(thisOctal, subcell ,grid)
+       CALL WaterBenchmark1(thisOctal, subcell)
 
     CASE ("h2obench2")
-       CALL WaterBenchmark2(thisOctal, subcell ,grid)
+       CALL WaterBenchmark2(thisOctal, subcell, grid)
 
     CASE ("agbstar")
        CALL AGBStarBenchmark(thisOctal, subcell ,grid)
@@ -240,7 +240,7 @@ CONTAINS
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
     CASE ("iras04158")
-       CALL iras04158(thisOctal, subcell ,grid)
+       CALL iras04158(thisOctal, subcell, grid)
 
     CASE ("warpeddisc")
        CALL warpedDisk(thisOctal, subcell ,grid)
@@ -5073,7 +5073,6 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: h0
     integer,save :: acount,bcount,ccount = 0
     logical,save  :: firstTime = .true.
-    integer,save :: a,b,c = 0
 
     splitInAzimuth = .false.
     
@@ -5760,7 +5759,7 @@ IF ( .NOT. gridConverged ) RETURN
    case("iras04158")
  
       split = .false.
-      if (thisOctal%ndepth  < 8) split = .true.
+      if (thisOctal%ndepth  < 7) split = .true.
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
@@ -5768,33 +5767,23 @@ IF ( .NOT. gridConverged ) RETURN
 
       if ((abs(cellcentre%z)/hr < 0.5) .and. (cellsize/hr > 0.5)) then
          split = .true.
-         a = a+1
          goto 555
       endif
       if ((abs(cellcentre%z)/hr < 1) .and. (cellsize/hr > 2.)) then
          split = .true.
-         b=b+1
          goto 555
       endif
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) then
          split = .true.
-         c=c+1
          goto 555
       endif
-
-555   if(mod(a,100) .eq. 99) write(*,*) "a trigger",a
-      if(mod(b,100) .eq. 99) write(*,*) "b trigger",b
-      if(mod(c,100) .eq. 99) write(*,*) "c trigger",c
 
       if ((r > grid%rInner).and.(r < grid%rInner * 1.02)) then
          if ((abs(cellcentre%z)/hr < 5.)) then
             if (cellsize > 1.e-2 * grid%rInner) split = .true.
          endif
       endif
-
-      if ((r-cellsize/2.d0) > grid%router*1.01) split = .false.
-      if ((r+cellsize/2.d0) < grid%rinner*0.99) split = .false.
 
       if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
          if ((abs(cellcentre%z)/hr < 1.)) then
@@ -5807,6 +5796,9 @@ IF ( .NOT. gridConverged ) RETURN
             split = .true.
          endif
       endif
+
+555   if ((r-cellsize/2.d0) > grid%router*1.01) split = .false.
+      if ((r+cellsize/2.d0) < grid%rinner*0.99) split = .false.
 
    case("oldshakara")
       split = .false.
@@ -8683,32 +8675,27 @@ IF ( .NOT. gridConverged ) RETURN
    CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
   end subroutine molecularBenchmark
 
-  subroutine WaterBenchmark1(thisOctal,subcell,grid)
+  subroutine WaterBenchmark1(thisOctal, subcell)
 
     use input_variables, only : molAbundance !, amr2d
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 200
-    real,save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr), abund(nr)
-    real :: mu1, r1, t1, t2
-    real(double) :: v1 !, vDopp
+    real,save :: r(nr)
+    real :: r1
     integer :: i
-
-    type(OCTALVECTOR) :: vel
 
     if (firsttime) then
        open(31, file="grid.dat", status="old", form="formatted") ! Model 2 in the Hogerheijde 2000 paper. 
        do i = 1,nr                                             
-          read(31,*) r(i), nh2(i), junk, t(i), abund(i), junk
+          read(31,*) r(i)
        enddo
        r = r * 3.08568025e8 ! (pc -> 10^10cm)
        close(31)
        firsttime = .false.
     endif
-
 
     r1 = modulus(subcellCentre(thisOctal,subcell))
     thisOctal%temperature(subcell) = 1d-20
@@ -8721,51 +8708,38 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%molAbundance(subcell) = molabundance
 
     if ((r1 > r(1)).and.(r1 < r(nr))) then
-!       call locate(r, nr, r1, i)
-!       t2 = (r1 - r(i))/(r(i+1)-r(i)) ! linear but know its a power law so use better interpolation
 
-!       t1 = log(r1/r(i))/log(r(i+1)/r(i))
-
-!       thisOctal%nh2(subcell) = 
        thisOctal%nh2(subcell) = 1e4
-
        thisOctal%rho(subcell) = thisOctal%nh2(subcell)*2.*mhydrogen
-
        thisOctal%temperature(subcell) = 40.
-
        thisOctal%velocity(subcell) = vector(0d-20,0d-20,0d-20)
        thisOctal%microturb(subcell) = max(1d-9,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
                                       / (18.0 * amu)) + 10.d0**2) / (cspeed * 1e-5)) ! mu is subsonic turbulence
     endif
-!   CALL fillVelocityCorners(thisOctal,grid,molebenchVelocity,thisOctal%threed)
   end subroutine WaterBenchmark1
 
-  subroutine WaterBenchmark2(thisOctal,subcell,grid)
+  subroutine WaterBenchmark2(thisOctal,subcell, grid)
 
     use input_variables, only : molAbundance !, amr2d
 
     TYPE(octal), INTENT(INOUT) :: thisOctal
-    INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
+    INTEGER, INTENT(IN) :: subcell
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 200
-    real,save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr), abund(nr)
-    real :: mu1, r1, t1, t2
-    real(double) :: v1 !, vDopp
+    real,save :: r(nr)
+    real :: r1
     integer :: i
-
-    type(OCTALVECTOR) :: vel
 
     if (firsttime) then
        open(31, file="grid.dat", status="old", form="formatted") ! Model 2 in the Hogerheijde 2000 paper. 
        do i = 1,nr                                             
-          read(31,*) r(i), nh2(i), junk, t(i), abund(i), junk
+          read(31,*) r(i)
        enddo
        r = r * 3.08568025e8 ! (pc -> 10^10cm)
        close(31)
        firsttime = .false.
     endif
-
 
     r1 = modulus(subcellCentre(thisOctal,subcell))
 
@@ -8780,15 +8754,10 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%velocity(subcell) = vector(1d-20,1d-20,1d-20)
 
     if ((r1 > r(1)).and.(r1 < r(nr))) then
-!       call locate(r, nr, r1, i)
-!       t2 = (r1 - r(i))/(r(i+1)-r(i)) ! linear but know its a power law so use better interpolation
-
-!       t1 = log(r1/r(i))/log(r(i+1)/r(i))
-
+       thisOctal%molAbundance(subcell) = molabundance
        thisOctal%nh2(subcell) = 1e4
        thisOctal%rho(subcell) = thisOctal%nh2(subcell)*2.*mhydrogen
-       thisOctal%temperature(subcell) = 40.
-       thisOctal%velocity(subcell) = WaterBenchmarkvelocity(subcellCentre(thisOctal,subcell), grid)
+       thisOctal%velocity(subcell) = WaterBenchmarkvelocity(subcellCentre(thisOctal,subcell),grid)
        thisOctal%microturb(subcell) = max(1d-9,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) &
                                       / (18.0 * amu)) + 10.d0**2) / (cspeed * 1e-5)) ! mu is subsonic turbulence
     endif
@@ -8805,8 +8774,8 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(gridtype), INTENT(IN) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 100
-    real,save :: r(nr), nh2(nr), junk, td(nr), tg(nr), v(nr), mu(nr)
-    real :: mu1, r1, t1, t2
+    real,save :: r(nr), nh2(nr), td(nr), tg(nr), v(nr), mu(nr)
+    real :: r1!, mu1 , t1, t2
     real(double) :: v1 !, vDopp
     integer :: i
 
@@ -8871,34 +8840,19 @@ IF ( .NOT. gridConverged ) RETURN
    CALL fillVelocityCorners(thisOctal,grid,AGBStarVelocity,thisOctal%threed)
   end subroutine AGBStarBenchmark
 
-  subroutine iras04158(thisOctal,subcell,grid)
+  subroutine iras04158(thisOctal, subcell ,grid)
 
     use input_variables, only : height, betadisc, router, rinner
     
     TYPE(octal), INTENT(INOUT) :: thisOctal
+    type(GRIDTYPE), intent(in) :: grid
     INTEGER, INTENT(IN) :: subcell
-    TYPE(gridtype), INTENT(IN) :: grid
     real :: r
     TYPE(octalVector) :: rVec
-    logical,save :: firsttime = .true.
     character(len=10) :: out
 
     rvec = subcellCentre(thisOctal,subcell)
     r = sqrt(rVec%x**2 + rVec%y**2)
-
-!    thisOctal%inflow(subcell) = .true.
-!    thisOctal%temperature(subcell) = 10. 
-!    thisOctal%etaCont(subcell) = 0.
-
-!    thisOctal%rho(subcell) = 1.d-30
-!    thisOctal%nh(subcell) =  thisOctal%rho(subcell) / mHydrogen
-!   thisOctal%ne(subcell) = 1.d-5 !thisOctal%nh(subcell)
-!   thisOctal%nhi(subcell) = 1.e-5
-!   thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-!   thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
-     
-!    thisOctal%biasCont3D = 1.
-!    thisOctal%etaLine = 1.e-30
 
     thisOctal%temperature(subcell) = tcbr 
     thisOctal%nh2(subcell) = 1d-20
@@ -8910,26 +8864,17 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%Velocity(subcell) = VECTOR(1d-20,1d-20,1d-20)
 
     if ((r .lt. rOuter) .and. (r .gt. rinner)) then
-
-!       thisOctal%etaCont(subcell) = 0.
-!       thisOctal%inflow(subcell) = .true.
-       
+      
        out ='nh2'
-       thisOctal%rho(subcell) = iras04158Disc(rvec,grid) !thisOctal%nh2(subcell)*2.*mhydrogen
+       thisOctal%rho(subcell) = iras04158Disc(rvec)
        thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2.*mhydrogen)
-
-!       thisOctal%nh2(subcell) = dummyreadparameterfrom2dmap(rvec,out,.true.)
-!       thisOctal%rho(subcell) = thisOctal%nh2(subcell)*2.*mhydrogen
- 
-!       write(*,*) iras04158Disc(rvec,grid) / (2.*mhydrogen), parameterfrom2dmap(rvec,out,.true.), &
-!            (iras04158Disc(rvec,grid) / (2.*mhydrogen)) / (parameterfrom2dmap(rvec,out,.true.))
        
        out ='abundance'
-       thisOctal%molabundance(subcell) = parameterfrom2dmap(rvec,out,.true.)
+       thisOctal%molabundance(subcell) = readparameterfrom2dmap(rvec,out,.true.)
 
        out='td'
-       thisOctal%temperaturedust(subcell) = parameterfrom2dmap(rvec,out,.true.)
-
+       thisOctal%temperaturedust(subcell) = readparameterfrom2dmap(rvec,out,.true.)
+!       thisOctal%temperaturedust(subcell) = 75.
        thisOctal%temperaturegas(subcell) = thisOctal%temperaturedust(subcell)
        thisOctal%temperature(subcell) = thisOctal%temperaturedust(subcell)
        
@@ -8939,6 +8884,7 @@ IF ( .NOT. gridConverged ) RETURN
     else
        thisOctal%velocity = VECTOR(1d-20,1d-20,1d-20)
     endif
+!    write(*,*) thisOctal%temperature(subcell), thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
    CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
  end subroutine iras04158
  
@@ -9133,7 +9079,7 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(octal), INTENT(INOUT) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
-    real(double) :: r,t0,nh20,v0,H0,H,v,z
+    real(double) :: r,t0,nh20,v0,H0,H,z
     TYPE(OCTALVECTOR) :: cellCentre
 
     CellCentre = subcellCentre(thisOctal, subcell)
@@ -9158,7 +9104,7 @@ IF ( .NOT. gridConverged ) RETURN
 
        thisOctal%temperature(subcell) = t0 / sqrt(r) 
       
-       thisOctal%velocity(subcell) = ggtauvelocity(CellCentre,grid)
+       thisOctal%velocity(subcell) = ggtauvelocity(CellCentre, grid)
 
        thisOctal%microturb(subcell) = sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / (29.0 * amu)) + 0.2**2) &
                                       / (cspeed * 1e-5) ! 0.2 is subsonic turbulence
@@ -9209,7 +9155,8 @@ IF ( .NOT. gridConverged ) RETURN
 
   end function wrshellVelocity
 
-  TYPE(vector) FUNCTION moleBenchVelocity(point,grid)
+  TYPE(vector) FUNCTION moleBenchVelocity(point, grid)
+
     type(OCTALVECTOR), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
     logical, save :: firsttime = .true.
@@ -9242,20 +9189,17 @@ IF ( .NOT. gridConverged ) RETURN
 
   end FUNCTION moleBenchVelocity
 
-  TYPE(vector) FUNCTION WaterBenchmarkVelocity(point,grid)
+  TYPE(vector) FUNCTION WaterBenchmarkVelocity(point, grid)
+
     type(OCTALVECTOR), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
-    logical, save :: firsttime = .true.
-    integer, parameter :: nr = 50
-    integer :: i
-    real,save :: r(nr), nh2(nr), junk,t(nr), v(nr) , mu(nr)
-    real :: v1, t1, r1
+    real :: v1, r1
     type(VECTOR) :: vel
 
     r1 = modulus(point) * 3.24077649e-9 ! 10^10cm -> pc
     WaterBenchmarkVelocity = VECTOR(1d-20,1d-20,1d-20)
 
-    if ((r1 > 0.001).and.(r1 < 0.1)) then
+    if ((r1 > 0.001) .and. (r1 < 0.1)) then
        v1 = 100. * r1
        vel = point
        call normalize(vel)
@@ -9265,19 +9209,20 @@ IF ( .NOT. gridConverged ) RETURN
   end FUNCTION WaterBenchmarkVelocity
 
   TYPE(vector) FUNCTION AGBStarVelocity(point,grid)
+
     type(OCTALVECTOR), intent(in) :: point
     type(GRIDTYPE), intent(in) :: grid
     logical, save :: firsttime = .true.
     integer, parameter :: nr = 100
     integer :: i
-    real,save :: r(nr), nh2(nr), junk, v(nr) , mu(nr), tg(nr), td(nr)
+    real,save :: r(nr)
     real :: v1, r1
     type(VECTOR) :: vel
 
     if (firsttime) then
        open(31, file="mc_100.dat", status="old", form="formatted")
        do i = nr,1,-1                                             
-          read(31,*) r(i), nh2(i), tg(i), td(i), v(i), mu(i)
+          read(31,*) r(i)
        enddo
        r = r * 1e-10
        close(31)
@@ -9299,8 +9244,8 @@ IF ( .NOT. gridConverged ) RETURN
   TYPE(vector)  function keplerianVelocity(point, grid)
     use input_variables, only : mcore
     type(octalvector), intent(in) :: point
-    type(octalvector) :: rvec
     type(GRIDTYPE), intent(in) :: grid
+    type(octalvector) :: rvec
     real(double) :: v, r
     rVec = point
 
@@ -9321,8 +9266,8 @@ IF ( .NOT. gridConverged ) RETURN
   TYPE(vector)  function ggtauVelocity(point, grid)
 
     type(octalvector), intent(in) :: point
+    TYPE(gridtype), INTENT(IN) :: grid
     type(octalvector) :: rvec
-    type(GRIDTYPE), intent(in) :: grid
     real  :: v, r,v0
 
     rvec = point
