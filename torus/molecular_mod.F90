@@ -70,7 +70,7 @@ module molecular_mod
      !thisMolecule%abundance = tiny(thisMolecule%abundance)
      thisMolecule%abundance = molAbundance ! fixed at benchmark value here
 
-     call unixGetenv("TORUS_DATA", dataDirectory, i)
+     call unixGetenv("TORUS_DATA", dataDirectory)
      filename = trim(dataDirectory)//"/"//molfilename
 
      open(30, file=filename, status="old", form="formatted")
@@ -169,15 +169,18 @@ module molecular_mod
      use input_variables, only : molAbundance
      type(MOLECULETYPE) :: thisMolecule
      character(len=*) :: molFilename
+     character(len=200):: dataDirectory, filename
      character(len=80) :: junk
      integer :: i, iPart
 
  !    thisMolecule%abundance = tiny(thisMolecule%abundance)
      thisMolecule%abundance = molAbundance!hcoabundance ! fixed at benchmark value here
 
-
-     call writeInfo("Opening file: "//trim(molfilename),TRIVIAL)
-     open(30, file=molfilename, status="old", form="formatted")
+     call unixGetenv("TORUS_DATA", dataDirectory)
+     filename = trim(dataDirectory)//"/"//molfilename
+     
+     call writeInfo("Opening file: "//trim(filename),TRIVIAL)
+     open(30, file=filename, status="old", form="formatted")
 
      read(30,'(a)') thisMolecule%molecule
      call writeInfo("Reading data for molecule: "//trim(thisMolecule%molecule),IMPORTANT)
@@ -431,7 +434,6 @@ module molecular_mod
 
      logical :: itransDone(:),fixedrays
      integer :: ntrans
-     integer :: lst ! least significant transition
 
      ntrans = size(maxFracChangePerLevel)
 
@@ -544,8 +546,6 @@ module molecular_mod
      integer :: subcell, i
      logical, optional :: restart, isinlte
      logical :: dorestart, lte
-     integer :: iLevels
-     real(double) :: molsum
 
      if(.not. present(restart)) then
         dorestart = .false.
@@ -570,7 +570,7 @@ module molecular_mod
               end if
            end do
         else
-!write(*,*) "OK5"
+
            if(dorestart) then
 
               allocate(thisOctal%newmolecularLevel(1:thisOctal%maxChildren, 1:thisMolecule%nLevels))
@@ -578,40 +578,32 @@ module molecular_mod
               allocate(thisOctal%oldmolecularLevel(1:thisOctal%maxChildren, 1:thisMolecule%nLevels))
               thisOctal%oldmolecularLevel = 1.d-20
 
- !             if(grid%geometry .eq. 'shakara') then
- !             deallocate(thisOctal%newmolecularLevel)
- !                thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/mhydrogen)/cspeed
- !             endif
-
               if (.not.associated(thisOctal%bnu)) then
                  allocate(thisOctal%bnu(1:thisOctal%maxChildren, 1:thisMolecule%nLevels))
               endif
               thisOctal%bnu(subcell,i) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(subcell)))
 
            else
-!write(*,*) "OKa",thisOCtal%maxchildren,associated(thisOctal%newmolecularlevel)
-!write(*,*) thisoctal%temperature(subcell),thisoctal%temperaturedust(subcell),thisoctal%temperaturegas(subcell)
               if (.not. associated(thisOctal%newmolecularLevel)) then
                  allocate(thisOctal%newmolecularLevel(1:thisOctal%maxChildren, 1:thisMolecule%nLevels))
               endif
               thisOctal%newmolecularLevel = 1.d-20
-!write(*,*) "OKb"
+
               if (.not.associated(thisOctal%oldmolecularLevel)) then
                  allocate(thisOctal%oldmolecularLevel(1:thisOctal%maxChildren, 1:thisMolecule%nLevels))
               endif
               thisOctal%oldmolecularLevel = 1.d-20
-!write(*,*) "OKc"
+
               if (.not.associated(thisOctal%molecularLevel)) then
                  allocate(thisOctal%molecularLevel(1:thisOctal%maxChildren, 1:thisMolecule%nLevels))
               endif
-!write(*,*) "OKhere"
+
               if(lte) then           
                  call LTEpops(thisMolecule, dble(thisOctal%temperature(subcell)), &
                               thisOctal%molecularLevel(subcell,1:thisMolecule%nlevels))
               else      
-!write(*,*) "OKhere?",tcbr,subcell,thisOctal%molecularLevel(subcell,1)
                  call LTEpops(thisMolecule, tcbr, thisOctal%molecularLevel(subcell,1:thisMolecule%nlevels))
-!write(*,*) "OK"
+
                  if((grid%geometry .eq. "h2obench1") .or. (grid%geometry .eq. "h2obench2")) then
                     thisOctal%molecularLevel(subcell,1) = 1.0
                     thisOctal%molecularLevel(subcell,2) = 0.0000
@@ -625,7 +617,7 @@ module molecular_mod
               do i = 1, thisMolecule%nTrans
                  thisOctal%bnu(subcell,i) = bnu(thisMolecule%transFreq(i), dble(thisOctal%temperature(subcell)))
               enddo
-!write(*,*) "OK2"
+
               if (.not.associated(thisOctal%jnu)) then
                  allocate(thisOctal%jnu(1:thisOctal%maxChildren, 1:thisMolecule%ntrans))
               endif
@@ -654,13 +646,11 @@ module molecular_mod
            endif
            thisOctal%molAbundance(subcell) = thisMolecule%abundance
 
-!          write(*,*) "OK3"
+
           if(thisOctal%temperaturedust(subcell) .eq. thisOctal%temperaturegas(subcell)) then
              thisOctal%temperaturegas(subcell) = thisOctal%temperature(subcell)
              thisOctal%temperaturedust(subcell) = thisOctal%temperature(subcell)
           endif
-!          write(*,*) "OK4"
-!          write(*,*) "subcell",subcell
        endif
     enddo
    end subroutine allocateMolecularLevels
@@ -686,6 +676,7 @@ module molecular_mod
      type(OCTAL), pointer :: thisOctal, startOctal, fromOctal
 
      logical, optional :: fixedrays
+     logical :: stage1
      integer :: fromSubcell
      integer :: subcell
      real(double) :: ds, phi, i0(:), r
@@ -720,6 +711,13 @@ module molecular_mod
  !    real(double) :: z,t
 
      realdust = .false.
+
+     if(present(fixedrays)) then
+        stage1 = fixedrays
+     else
+        stage1 = .false.
+     endif
+
      nTrans = thisMolecule%nTrans
 
      allocate(tau(1:nTrans))
@@ -989,6 +987,7 @@ module molecular_mod
  ! sample level populations at logarithmically spaced annuli
 
    subroutine dumpResults(grid, thisMolecule, nRay, iter, convtestarray)
+     use input_variables, only : rinner, router
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
      integer :: nr
@@ -1000,24 +999,15 @@ module molecular_mod
      integer :: j
      real(double) :: x, z
      type(OCTALVECTOR) :: posvec
-     real(double) :: router, rinner, jnu
      integer :: nRay, iter
      character(len=30) :: resultfile, resultfile2
-     integer :: mintrans
+     integer :: minlevels
 
-!     rinner = 1.e6
-!     router  = 4.599999e7
-
-!     rinner = 0.001 * 3.08568025e8
-!     router = 0.1 * 3.08568025e8
 
  !    rinner = 1.
  !    router = 1.1e6
 
-     rinner = 3e3
-     router = 3.77e4
-
-     mintrans = min(thismolecule%ntrans, 8)
+     minlevels = min(thismolecule%nlevels, 8)
 
      write(resultfile,'(a,I7.7)') "results.", nRay
      write(resultfile2,'(a,I2)') "fracChangeGraph.", iter
@@ -1040,16 +1030,16 @@ module molecular_mod
            posVec = OCTALVECTOR(x, 0.d0, z) ! get put in octal on grid
            thisOctal => grid%octreeroot
            call findSubcellLocal(posVec, thisOctal,subcell) 
-           pops = pops + thisOctal%molecularLevel(subcell,1:mintrans) ! interested in first 8 levels
-           fracChange = fracChange + abs((thisOctal%molecularLevel(subcell,1:mintrans) - &
-                        thisOctal%oldmolecularLevel(subcell,1:mintrans)) / thisOctal%molecularlevel(subcell,1:mintrans))
+           pops = pops + thisOctal%molecularLevel(subcell,1:minlevels) ! interested in first 8 levels
+           fracChange = fracChange + abs((thisOctal%molecularLevel(subcell,1:minlevels) - &
+                        thisOctal%oldmolecularLevel(subcell,1:minlevels)) / thisOctal%molecularlevel(subcell,1:minlevels))
         enddo
         pops = pops / real(nr) ! normalised level population at the 20 random positions 
         fracChange = fracChange / real(nr)
 
         convtestarray(iter,i,:) = fracChange
-        write(31,'(es11.5e2,4x,8(es12.6e2,tr2))') real(r*1.d10), real(pops(1:mintrans+1)) 
-        write(32,'(es11.5e2,4x,8(f7.5,tr2))') real(r*1.d10), real(fracChange(1:mintrans+1))
+        write(31,'(es11.5e2,4x,8(es12.6e2,tr2))') real(r*1.d10), real(pops(1:minlevels)) 
+        write(32,'(es11.5e2,4x,8(f7.5,tr2))') real(r*1.d10), real(fracChange(1:minlevels))
      enddo
      close(31)
      close(32)
@@ -1059,7 +1049,7 @@ module molecular_mod
    subroutine molecularLoop(grid, thisMolecule)
 
      use input_variables, only : blockhandout, tolerance,debug,lucyradiativeeq,geometry,lucyfilenamein,openlucy, amr1d, isinlte, &
-                                 dusttogas!, restart ! ??
+                                 dusttogas, usedust, rinner, router
      use messages_mod, only : myRankIsZero
 #ifdef MPI
      include 'mpif.h'
@@ -1090,7 +1080,7 @@ module molecular_mod
      real(double), allocatable :: tArrayd(:),tempArrayd(:) 
 #endif
       integer :: nVoxels
-      integer :: ioctal_beg, ioctal_end, tag = 0
+      integer :: ioctal_beg, ioctal_end!, tag = 0
       logical :: fixedRays
       integer :: isize
       integer, allocatable :: iseed(:)
@@ -1104,7 +1094,7 @@ module molecular_mod
       character(len=40) :: filename
 
       real(double) :: convtestarray(200,200,8)
-      real(double) :: r(100), rinner, router
+      real(double) :: r(100)
       logical, save :: itransdone(200)
       real(double) :: fixValMax = 1.
       real(double) :: fixValMin = 1e-4
@@ -1115,9 +1105,7 @@ module molecular_mod
       integer :: ntrans , lst !least significant transition
       
       real :: tol
-      real(double) :: dummy, tau, tauarray(7)
-      logical :: extrapolate
-      
+      real(double) :: dummy, tau, tauarray(7)    
       integer :: mintrans ! for dumpresults
 
  !        real(double) :: r,rarray(4100000),sarray(4100000),tarray(4100000),phiprofval,deltav,dv
@@ -1173,7 +1161,7 @@ module molecular_mod
          endif
 
          if(writeoutput) write(*,*) "READ"
-         call readAmrGrid("lucy_grid_tmp.dat",.false.,grid)
+         call readAmrGrid(lucyfilenamein,.false.,grid)
 
         if(writeoutput) write(*,*) "OK"
          if(writeoutput) then
@@ -1210,15 +1198,16 @@ module molecular_mod
          endif
 
          if(myrankiszero) call writeAMRgrid("molecular_lte.grid",.false.,grid)
-
-         if(geometry .eq. 'molebench') call dumpresults(grid, thisMolecule, 0, grand_iter, convtestarray) ! find radial pops on final grid     
-         call continuumIntensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, thisMolecule, 1e-4, &
-                                0.d0, dummy, tau, .true.)
-         write(*,*) "TAU", tau
-
       endif
 
-      if(Writeoutput) write(*,*) "COUNTING VOXELS"
+      if(geometry .eq. 'molebench') call dumpresults(grid, thisMolecule, 0, grand_iter, convtestarray) ! find radial pops on final grid     
+      if(usedust) then 
+         call continuumIntensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, 1e-4, 0.d0, dummy, &
+              tau, .true.)
+         write(*,*) "TAU", tau
+      endif
+
+!      if(Writeoutput) write(*,*) "COUNTING VOXELS"
       call countVoxels(grid%octreeRoot,nOctal,nVoxels)
 
       if(writeoutput) then
@@ -1234,9 +1223,7 @@ module molecular_mod
          
          call plot_AMR_values(grid, "molAbundance", "x-z", real(grid%octreeRoot%centre%y), &
               "molAbundance.ps/vcps", .true., .false., &
-              width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.) 
-
-         
+              width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.)          
       endif
 
       if(writeoutput) then
@@ -1719,11 +1706,8 @@ module molecular_mod
 
         enddo
 
-        if(writeoutput) then
+        if(writeoutput .and. (geometry .eq. 'molebench')) then
            open(141,file="convergenceprofile.dat",status="unknown",form="formatted")
-
-           rinner = 1e6
-           router = 4.6e7
 
            do i=1,100
               r(i) = log10(rinner) + dble(i-1)/dble(100-1)*((log10(router) - log10(rinner))) ! log(radius) -> radius
@@ -1760,7 +1744,7 @@ module molecular_mod
      integer :: iUpper, iLower
      real(double) :: tau, opticaldepth, snu, sumPhi
      real :: lambda
-     integer :: ilambda,i
+     integer :: ilambda
      logical :: realdust = .false.
      
      jBarExternal = 0.d0
@@ -1878,7 +1862,7 @@ module molecular_mod
      logical,save :: firsttime = .true.
      logical, optional :: tautest
      logical :: dotautest
-     logical :: lowvelgrad = .false.
+     logical :: lowvelgrad = .true.
      logical :: realdust = .true.
 
      if(present(tautest)) then
@@ -2034,12 +2018,11 @@ module molecular_mod
 
    end subroutine intensityAlongRay
 
-   subroutine continuumIntensityAlongRay(position, direction, grid, thisMolecule, lambda, deltaV,i0,tau,tautest)
+   subroutine continuumIntensityAlongRay(position, direction, grid, lambda, deltaV, i0, tau, tautest)
 
      use input_variables, only : useDust, isinlte,debug ! ,amr2d, debug
      type(OCTALVECTOR) :: position, direction
      type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
      real(double) :: disttoGrid
      real(double), intent(out) :: i0
      type(OCTAL), pointer :: thisOctal, startOctal
@@ -2048,26 +2031,21 @@ module molecular_mod
      type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
      real(double) :: alphanu(2), jnu, snu
      real(double) :: alpha
-     integer, save :: iLower , iUpper
      real(double) :: dv, deltaV
      integer :: i, icount
      real(double) :: distArray(200), tval
      integer :: nTau
      real(double) ::  OneOvernTauMinusOne
-     real(double) :: nLower, nUpper, balance
-     real(double) :: dTau, etaline, kappaAbs
+     real(double) :: dTau, kappaAbs
      real(double), intent(out), optional :: tau
-     real(double),save :: BnuBckGrnd
 
      real(double) :: dvAcrossCell, phiProfVal
      real :: lambda
      integer :: ilambda
 
-     logical,save :: firsttime = .true.
      logical, optional :: tautest
      logical :: dotautest
      logical :: lowvelgrad = .false.
-     logical :: realdust = .true.
 
      if(present(tautest)) then
         dotautest = tautest
@@ -2507,7 +2485,7 @@ module molecular_mod
    type(OCTALVECTOR) :: unitvec, posvec, centrevec, viewvec
    type(DATACUBE) ::  cube
 
-   real(double) :: tcmb, tau, dummy
+   real(double) :: tau, dummy
 
    character (len=80) :: filename
 
@@ -2677,10 +2655,9 @@ module molecular_mod
      integer :: i !, j, k
  !    real(double) :: xval, yval, r
  !    integer :: nMonte, imonte
-     integer :: iv, spare
+     integer :: iv
      integer :: nsubpixels
      character(len=200) :: message
-     character(len=20) :: shortmessage
      real(double) :: intensitysum, fluxsum, ddv
      real(double), save :: background
      real(double) :: weightedfluxmap(npixels,npixels)
@@ -3176,183 +3153,6 @@ module molecular_mod
 
  end subroutine fineGaussianWeighting
 
-   subroutine createRayGrid(nRay, rayPosition, da, dOmega, weight, viewVec, grid)
-     use input_variables, only : gridDistance
-     type(GRIDTYPE) :: grid
-     integer :: nRay
-     type(OCTALVECTOR) :: rayPosition(:), viewVec, xProj,yProj
-     real(double) :: da(:), dOmega(:), weight(:)
-     real(double), allocatable :: rGrid(:), dr(:), phigrid(:), dphi(:)
-     real(double) :: rMax, rMin
-     integer :: nr, nphi, ir, iphi
-     real(double) :: r1 , r2, phi1, phi2, phiOffset
-     real(double) :: xPos, yPos, zPos, sigma, rinarcsec
-     real(double) :: arcsec2persteradian, tot
-
-
-     rmin = 1.d3
-     rmax = 4.63d7
-     nr = 200
-     nphi = 20
-     nray = 0
-
-
-     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
-
-     do ir = 1, nr
- !       r1 = rmin + (rmax-rmin)*dble(ir-1)/dble(nr)
- !       r2 = rmin + (rmax-rmin)*dble(ir)/dble(nr)
-        r1 = log10(rmin) + (log10(rMax)-log10(rMin)) *dble(ir-1)/dble(nr)
-        r2 = log10(rmin) + (log10(rMax)-log10(rMin)) *dble(ir)/dble(nr)
-        r1 = 10.d0**r1
-        r2 = 10.d0**r2
-        rgrid(ir) = 0.5d0 * (r1 + r2)
-        dr(ir) = r2 - r1
-     enddo
-     do iphi = 1, nPhi
-        phi1 = twoPi * dble(iphi-1)/dble(nPhi)
-        phi2 = twoPi * dble(iphi)/dble(nPhi)
-        phiGrid(iPhi) = 0.5d0 * (phi1 + phi2)
-        dphi(iPhi) = phi2 - phi1
-     enddo
-
-     tot = 0.d0
-     do ir = 1, nr
-        r1 = rGrid(ir)
-        call random_number(phiOffset)
-        phiOffset = phiOffset * dphi(1)
-        do iPhi = 1, nPhi
-           phi1 = phiGrid(iPhi) + phiOffset
-           if (phi1 > twoPi) phi1 = phi1 - twoPi
-
-           xPos = r1 * sin(phi1)
-           yPos = 0.d0
-           zPos = r1 * cos(phi1)
-
-           xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
-           call normalize(xProj)
-           yProj = viewVec .cross. xProj
-           call normalize(yProj)
-
-           nRay = nRay + 1
-           rayPosition(nray) =  (xPos * xProj) + (zPos * yProj)
-           rayposition(nray) = rayPosition(nRay) + ((-1.d0*gridDistance/1.d10) * viewVec)
-
-           da(nRay) = pi*( (r1 + dr(ir)/2.d0)**2 - (r1 - dr(ir)/2.d0)**2) * dphi(iPhi)/twoPi
-           dOmega(nRay) = da(nRay) / ((gridDistance/1.d10)**2)
-           rInArcSec = 3600.d0*(r1 / (250.d0*pctocm/1.d10))*180.d0/pi
-           sigma = 29.d0/2.35d0
-
-           arcsec2persteradian =  (180.d0/pi)**2 * (3600.d0)**2
-
-           weight(nRay) = (1.d0/(twoPi*sigma**2))*exp(-0.5d0*(rInArcSec**2/sigma**2)) * &
-                 dOmega(nray) * arcsec2persteradian
-
- !          weight(nRay) = domega(nray)
-
-        enddo
-           write(*,*) rinArcSec,weight(nray)
-     enddo
-     write(*,*) "weight",sum(weight(1:nray)),gridDistance/pctocm
-    weight = weight / SUM(weight(1:nray))
-
-     write(*,*) "area",sum(da(1:nRay)),pi*rMax**2
-   end subroutine createRayGrid
-
-   subroutine createDataCube(cube, grid, viewVec, thisMolecule, iTrans)
-     use input_variables,only : gridDistance
-#ifdef MPI
-     include 'mpif.h'
-#endif
-
-     type(MOLECULETYPE) :: thisMolecule
-     type(GRIDTYPE) :: grid
-     type(DATACUBE) :: cube
-     type(OCTALVECTOR) :: viewvec, rayPos, xProj, yProj
-     real(double) :: distance = 250.d0*pctocm/1.d10
-     real(double) :: deltaV
-     integer :: iTrans
-     integer :: i, j, k
-     real(double) :: r, xval, yval
-     integer :: nMonte, imonte
-     integer :: ix1, ix2
-#ifdef MPI
-     ! For MPI implementations
-     integer       ::   my_rank        ! my processor rank
-     integer       ::   np             ! The number of processes
-     integer       ::   ierr           ! error flag
-     integer       ::   n
-     real(double), allocatable :: tempArray(:), tempArray2(:)
-
-     ! FOR MPI IMPLEMENTATION=======================================================
-     !  Get my process rank # 
-     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-
-     ! Find the total # of precessor being used in this run
-     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
-#endif
-
-     nMonte = 1
-
-     call initCube(cube, 100, 100, 50)
-     call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
-          -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
-     call addvelocityAxis(cube, -1.d0, 1.d0)
-
-     xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
-     call normalize(xProj)
-     yProj = viewVec .cross. xProj
-     call normalize(yProj)
-     ix1 = 1
-     ix2 = cube%nx
-
-#ifdef MPI 
-     ix1 = (my_rank) * (cube%nx / (np)) + 1
-     ix2 = (my_rank+1) * (cube%nx / (np))
-     if (my_rank == (np-1)) ix2 = cube%nx
-#endif
-
-     do i = ix1, ix2
-        write(*,*) i
-         write(*,*) "You are here"
-        do j = 1, cube%ny
-
-           do iMonte = 1, nMonte
-              if (nMonte > 1) then
-                 call random_number(r)
-                 xVal = cube%xAxis(i) + (r-0.5d0)*(cube%xAxis(2)-cube%xAxis(1))
-                 call random_number(r)
-                 yVal = cube%yAxis(j) + (r-0.5d0)*(cube%yAxis(2)-cube%yAxis(1))
-              else
-                 xVal = cube%xAxis(i)
-                 yVal = cube%yAxis(j)
-              endif
-              rayPos =  (xval * xProj) + (yval * yProj)
-              raypos = rayPos + ((-1.d0*gridDistance) * viewVec)
-              do k = 1, cube%nv
-                 deltaV = cube%vAxis(k)*1.d5/cSpeed
- !                cube%intensity(i,j,k) = intensityAlongRay(rayPos, viewVec, grid, thisMolecule, iTrans, deltaV)
-              enddo
-           enddo
-           cube%intensity(i,j,1:cube%nv) = cube%intensity(i,j,1:cube%nv) / dble(nMonte)
-        enddo
-     enddo
-
-#ifdef MPI
-     n = (cube%nx*cube%ny*cube%nv)
-     allocate(tempArray(1:n), tempArray2(1:n))
-     tempArray = reshape(cube%intensity, (/  n /))
-
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-
-        call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
-            MPI_SUM,MPI_COMM_WORLD,ierr)
-
-     cube%intensity = reshape(tempArray2, (/ cube%nx, cube%ny, cube%nv /))
-     deallocate(tempArray, tempArray2)
-#endif
-
-   end subroutine createDataCube
 #ifdef MPI 
        subroutine packMoleLevel(octalArray, nTemps, tArray, octalsBelongRank, iLevel)
      include 'mpif.h'
@@ -3455,8 +3255,8 @@ module molecular_mod
                  deallocate(iu)
          else
                  im=in
-                 do j=1,MAXBIT
-                         if (.not. btest(im,0)) exit
+                 do j=1,MAXBIT 
+                        if (.not. btest(im,0)) exit
                          im=im/2
                  end do
                  if (j > MAXBIT) call nrerror('MAXBIT too small in sobseq')
@@ -3469,3 +3269,182 @@ module molecular_mod
          END SUBROUTINE sobseq
 
  end module molecular_mod
+
+
+!   subroutine createDataCube(cube, grid, viewVec, thisMolecule, iTrans)
+!     use input_variables,only : gridDistance
+!#ifdef MPI
+!     include 'mpif.h'
+!#endif
+
+!     type(MOLECULETYPE) :: thisMolecule
+!     type(GRIDTYPE) :: grid
+!     type(DATACUBE) :: cube
+!     type(OCTALVECTOR) :: viewvec, rayPos, xProj, yProj
+!     real(double) :: distance = 250.d0*pctocm/1.d10
+!     real(double) :: deltaV
+!     integer :: iTrans
+!     integer :: i, j, k
+!     real(double) :: r, xval, yval
+!     integer :: nMonte, imonte
+!     integer :: ix1, ix2
+!#ifdef MPI
+!     ! For MPI implementations
+!     integer       ::   my_rank        ! my processor rank
+!     integer       ::   np             ! The number of processes
+!     integer       ::   ierr           ! error flag
+!     integer       ::   n
+!     real(double), allocatable :: tempArray(:), tempArray2(:)
+!
+!     ! FOR MPI IMPLEMENTATION=======================================================
+!     !  Get my process rank # 
+!     call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
+!
+!     ! Find the total # of precessor being used in this run
+!     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
+!#endif
+!
+!     nMonte = 1
+
+!     call initCube(cube, 100, 100, 50)
+!     call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
+!          -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
+!     call addvelocityAxis(cube, -1.d0, 1.d0)
+
+!     xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
+!     call normalize(xProj)
+!     yProj = viewVec .cross. xProj
+!     call normalize(yProj)
+!     ix1 = 1
+!     ix2 = cube%nx
+
+!#ifdef MPI 
+!     ix1 = (my_rank) * (cube%nx / (np)) + 1
+!     ix2 = (my_rank+1) * (cube%nx / (np))
+!     if (my_rank == (np-1)) ix2 = cube%nx
+!#endif
+!
+!     do i = ix1, ix2
+!        write(*,*) i
+!         write(*,*) "You are here"
+!        do j = 1, cube%ny
+!
+!           do iMonte = 1, nMonte
+!              if (nMonte > 1) then
+!                 call random_number(r)
+!                 xVal = cube%xAxis(i) + (r-0.5d0)*(cube%xAxis(2)-cube%xAxis(1))
+!                 call random_number(r)
+!                 yVal = cube%yAxis(j) + (r-0.5d0)*(cube%yAxis(2)-cube%yAxis(1))
+!              else
+!                 xVal = cube%xAxis(i)
+!                 yVal = cube%yAxis(j)
+!              endif
+!              rayPos =  (xval * xProj) + (yval * yProj)
+!              raypos = rayPos + ((-1.d0*gridDistance) * viewVec)
+!              do k = 1, cube%nv
+!                 deltaV = cube%vAxis(k)*1.d5/cSpeed
+! !                cube%intensity(i,j,k) = intensityAlongRay(rayPos, viewVec, grid, thisMolecule, iTrans, deltaV)
+!              enddo
+!           enddo
+!           cube%intensity(i,j,1:cube%nv) = cube%intensity(i,j,1:cube%nv) / dble(nMonte)
+!        enddo
+!     enddo
+!
+!#ifdef MPI
+!     n = (cube%nx*cube%ny*cube%nv)
+!     allocate(tempArray(1:n), tempArray2(1:n))
+!     tempArray = reshape(cube%intensity, (/  n /))
+!
+!      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!
+!        call MPI_ALLREDUCE(tempArray,tempArray2,n,MPI_DOUBLE_PRECISION,&
+!            MPI_SUM,MPI_COMM_WORLD,ierr)
+!
+!     cube%intensity = reshape(tempArray2, (/ cube%nx, cube%ny, cube%nv /))
+!     deallocate(tempArray, tempArray2)
+!#endif
+!
+!   end subroutine createDataCube
+
+!   subroutine createRayGrid(nRay, rayPosition, da, dOmega, weight, viewVec, grid)
+!     use input_variables, only : gridDistance
+!     type(GRIDTYPE) :: grid
+!     integer :: nRay
+!     type(OCTALVECTOR) :: rayPosition(:), viewVec, xProj,yProj
+!     real(double) :: da(:), dOmega(:), weight(:)
+!     real(double), allocatable :: rGrid(:), dr(:), phigrid(:), dphi(:)
+!     real(double) :: rMax, rMin
+!     integer :: nr, nphi, ir, iphi
+!     real(double) :: r1 , r2, phi1, phi2, phiOffset
+!     real(double) :: xPos, yPos, zPos, sigma, rinarcsec
+!     real(double) :: arcsec2persteradian, tot
+!
+!
+!     rmin = 1.d3
+!     rmax = 4.63d7
+!     nr = 200
+!     nphi = 20
+!     nray = 0
+!
+!
+!     allocate(rGrid(1:nr), dr(1:nr), phiGrid(1:nPhi), dphi(1:nPhi))
+!
+!     do ir = 1, nr
+! !       r1 = rmin + (rmax-rmin)*dble(ir-1)/dble(nr)
+! !       r2 = rmin + (rmax-rmin)*dble(ir)/dble(nr)
+!        r1 = log10(rmin) + (log10(rMax)-log10(rMin)) *dble(ir-1)/dble(nr)
+!        r2 = log10(rmin) + (log10(rMax)-log10(rMin)) *dble(ir)/dble(nr)
+!        r1 = 10.d0**r1
+!        r2 = 10.d0**r2
+!        rgrid(ir) = 0.5d0 * (r1 + r2)
+!        dr(ir) = r2 - r1
+!     enddo
+!     do iphi = 1, nPhi
+!        phi1 = twoPi * dble(iphi-1)/dble(nPhi)
+!        phi2 = twoPi * dble(iphi)/dble(nPhi)
+!        phiGrid(iPhi) = 0.5d0 * (phi1 + phi2)
+!        dphi(iPhi) = phi2 - phi1
+!     enddo
+!
+!     tot = 0.d0
+!     do ir = 1, nr
+!        r1 = rGrid(ir)
+!        call random_number(phiOffset)
+!        phiOffset = phiOffset * dphi(1)
+!        do iPhi = 1, nPhi
+!           phi1 = phiGrid(iPhi) + phiOffset
+!           if (phi1 > twoPi) phi1 = phi1 - twoPi
+!
+!           xPos = r1 * sin(phi1)
+!           yPos = 0.d0
+!           zPos = r1 * cos(phi1)
+!
+!           xProj =  OCTALVECTOR(0.d0, 0.d0, 1.d0)  .cross. viewVec
+!           call normalize(xProj)
+!           yProj = viewVec .cross. xProj
+!           call normalize(yProj)
+!
+!           nRay = nRay + 1
+!           rayPosition(nray) =  (xPos * xProj) + (zPos * yProj)
+!           rayposition(nray) = rayPosition(nRay) + ((-1.d0*gridDistance/1.d10) * viewVec)
+!
+!           da(nRay) = pi*( (r1 + dr(ir)/2.d0)**2 - (r1 - dr(ir)/2.d0)**2) * dphi(iPhi)/twoPi
+!           dOmega(nRay) = da(nRay) / ((gridDistance/1.d10)**2)
+!           rInArcSec = 3600.d0*(r1 / (250.d0*pctocm/1.d10))*180.d0/pi
+!           sigma = 29.d0/2.35d0
+!
+!           arcsec2persteradian =  (180.d0/pi)**2 * (3600.d0)**2
+!
+!           weight(nRay) = (1.d0/(twoPi*sigma**2))*exp(-0.5d0*(rInArcSec**2/sigma**2)) * &
+!                 dOmega(nray) * arcsec2persteradian
+!
+! !          weight(nRay) = domega(nray)
+!
+!        enddo
+!           write(*,*) rinArcSec,weight(nray)
+!     enddo
+!     write(*,*) "weight",sum(weight(1:nray)),gridDistance/pctocm
+!    weight = weight / SUM(weight(1:nray))
+!
+!     write(*,*) "area",sum(da(1:nRay)),pi*rMax**2
+!   end subroutine createRayGrid
