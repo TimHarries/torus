@@ -33,6 +33,7 @@ cp -r ../torus/benchmarks/disc/* .
 
 # Prepare molebench run directory
 cd ../run_${this_system}_molebench
+mkdir J
 ln -s ../build_${this_system}/torus.${this_system}
 cp -r ../torus/benchmarks/molebench/* .
 cp ../torus/data/hco_benchmark.mol .
@@ -65,7 +66,10 @@ sys_to_test="ompi"
 export CVSROOT=${USER}@pinky.astro.ex.ac.uk:/h/th/CVS
 export CVS_RSH=ssh
 export PATH=/sw/bin:/usr/local/bin:${PATH}
-export TORUS_DATA=${test_dir}/torus/data
+
+# If all the required files are copied in to the working directory
+# then this line is not required. 
+#export TORUS_DATA=${test_dir}/torus/data
 
 export G95_FPU_INVALID=true
 export G95_FPU_ZERODIV=true
