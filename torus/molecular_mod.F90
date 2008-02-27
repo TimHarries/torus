@@ -2582,58 +2582,58 @@ module molecular_mod
    write(*,*) "End"
  stop
 
-     distance = 250.*pctocm/1.d10
+!     distance = 250.*pctocm/1.d10
 
-     call createRayGrid(nRay, rayPosition, da, dOmega, weight, viewVec, grid)
+!     call createRayGrid(nRay, rayPosition, da, dOmega, weight, viewVec, grid)
 
-     nLambda = 50
+!     nLambda = 50
 
-     iv1 = 1
-     iv2 = nLambda
+!     iv1 = 1
+!     iv2 = nLambda
 
-#ifdef MPI
-     iv1 = (my_rank) * (nLambda / (np)) + 1
-     iv2 = (my_rank+1) * (nLambda / (np))
-     if (my_rank == (np-1)) iv2 = nLambda
-#endif
+!#ifdef MPI
+!     iv1 = (my_rank) * (nLambda / (np)) + 1
+!     iv2 = (my_rank+1) * (nLambda / (np))
+!     if (my_rank == (np-1)) iv2 = nLambda
+!#endif
 
-     allocate(spec(1:nLambda), vArray(1:nLambda))
-     spec = 0.d0
-     do iv = 1, nLambda
-        vArray(iv) = 1.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda)-1.d0)
-     enddo
+!     allocate(spec(1:nLambda), vArray(1:nLambda))
+!     spec = 0.d0
+!     do iv = 1, nLambda
+!        vArray(iv) = 1.e5/cspeed * (2.d0*dble(iv-1)/dble(nLambda)-1.d0)
+!     enddo
 
-     write(*,*) "nray",nray,"weight",sum(weight(1:nRay))
-     do iv = iv1, iv2
-        deltaV  = vArray(iv)
-        write(*,*) iv
-        do iRay = 1, nRay
-           call intensityAlongRay(rayposition(iRay), viewvec, grid, thisMolecule, iTrans, deltaV,i0)
+!     write(*,*) "nray",nray,"weight",sum(weight(1:nRay))
+!     do iv = iv1, iv2
+!        deltaV  = vArray(iv)
+!        write(*,*) iv
+!        do iRay = 1, nRay
+!           call intensityAlongRay(rayposition(iRay), viewvec, grid, thisMolecule, iTrans, deltaV,i0)
  !          spec(iv) = spec(iv) + i0  * (domega(iRay) / sum(domega(1:nray))) !* weight(iray) 
-           spec(iv) = spec(iv) + i0  * weight(iray) 
-        enddo
-     enddo
-
-#ifdef MPI
-      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
-      allocate(tempArray(1:nLambda))
-        call MPI_ALLREDUCE(spec,tempArray,nLambda,MPI_DOUBLE_PRECISION,&
-            MPI_SUM,MPI_COMM_WORLD,ierr)
-     spec(1:nLambda) = tempArray(1:nLambda)
-      deallocate(tempArray)
-
-     if (my_rank == 0) then
-#endif
-     open(42, file="spectrum.dat",status="unknown",form="formatted")
-     do i = 1, nLambda
-        write(42, *) vArray(i)*cspeed/1.d5, spec(i)
-     enddo
-     close(42)
-#ifdef MPI
-  endif
-#endif
-     deallocate(vArray, spec)
-     stop
+!           spec(iv) = spec(iv) + i0  * weight(iray) 
+!        enddo
+!     enddo
+!
+!#ifdef MPI
+!      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
+!      allocate(tempArray(1:nLambda))
+!        call MPI_ALLREDUCE(spec,tempArray,nLambda,MPI_DOUBLE_PRECISION,&
+!            MPI_SUM,MPI_COMM_WORLD,ierr)
+!     spec(1:nLambda) = tempArray(1:nLambda)
+!      deallocate(tempArray)
+!
+!     if (my_rank == 0) then
+!#endif
+!     open(42, file="spectrum.dat",status="unknown",form="formatted")
+!     do i = 1, nLambda
+!        write(42, *) vArray(i)*cspeed/1.d5, spec(i)
+!     enddo
+!     close(42)
+!#ifdef MPI
+!  endif
+!#endif
+!     deallocate(vArray, spec)
+!     stop
    end subroutine calculateMoleculeSpectrum
 
  !!! This subroutine takes the parameters supplied to it and makes an image by calling more subroutines 
