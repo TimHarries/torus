@@ -1263,7 +1263,7 @@ contains
          "Assume LTE: ", "(a,1l,1x,a)", .false., ok, .false.)
     call getReal("dusttogas", dusttoGas, cLine, nLines, &
          "Dust to gas ratio: ","(a,f5.3,a)",0.01,ok,.false.)
-
+    
 
 ! Image parameters
     if(readmol) then
@@ -1301,6 +1301,17 @@ contains
        call getReal("rhoC", rhoC, cLine, nLines, &
             "Central density along filament axis:","(a,f4.1,1x,a)", 1., ok, .true.)
     endif
+
+    if((geometry .eq. 'molebench') .or. (geometry .eq. 'h2obench1') .or. &
+       (geometry .eq. 'h2obench2') .or. (geometry .eq. 'AGBStar')) then
+
+       call getReal("rinner", rInner, cLine, nLines, &
+            "Inner Radius for dumpresults (10^10cm): ","(a,f5.1,a)", 1e4, ok, .true.)
+       
+       call getReal("router", rOuter, cLine, nLines, &
+            "Outer Radius (10^10cm): ","(a,f5.1,a)", 1e6, ok, .true.)
+    endif
+
 endif
 
     call getLogical("hydrodynamics", hydrodynamics, cLine, nLines, &
