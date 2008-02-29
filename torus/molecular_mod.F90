@@ -643,9 +643,8 @@ module molecular_mod
 
            if (.not.associated(thisOctal%molAbundance)) then
               allocate(thisOctal%molAbundance(1:thisOctal%maxChildren))
+              thisOctal%molAbundance(subcell) = thisMolecule%abundance
            endif
-           thisOctal%molAbundance(subcell) = thisMolecule%abundance
-
 
           if(thisOctal%temperaturedust(subcell) .eq. thisOctal%temperaturegas(subcell)) then
              thisOctal%temperaturegas(subcell) = thisOctal%temperature(subcell)
@@ -1048,8 +1047,8 @@ module molecular_mod
  ! Does a lot of work - do more rays whilst problem not converged -            
    subroutine molecularLoop(grid, thisMolecule)
 
-     use input_variables, only : blockhandout, tolerance,debug,lucyradiativeeq,geometry,lucyfilenamein,openlucy, amr1d, isinlte, &
-                                 dusttogas, usedust, rinner, router
+     use input_variables, only : blockhandout, tolerance, debug, geometry, lucyfilenamein, openlucy,&
+          usedust, rinner, router
      use messages_mod, only : myRankIsZero
 #ifdef MPI
      include 'mpif.h'
@@ -1106,7 +1105,7 @@ module molecular_mod
       integer :: ntrans , lst !least significant transition
       
       real :: tol
-      real(double) :: dummy, tau, tauarray(7)    
+      real(double) :: dummy, tau, tauarray(8)    
       integer :: mintrans ! for dumpresults
 
  !        real(double) :: r,rarray(4100000),sarray(4100000),tarray(4100000),phiprofval,deltav,dv
@@ -1118,7 +1117,7 @@ module molecular_mod
  ! seed is not enough to ensure the same directions are done for
  ! each cell every iteration
 
-      mintrans = min(thismolecule%ntrans, 15) ! converge the first 8 levels
+      mintrans = min(thismolecule%ntrans, 8) ! converge the first 8 levels
       allocate(avgfracChange(mintrans,2))
 
       blockHandout = .false. 
@@ -1201,16 +1200,6 @@ module molecular_mod
          if(myrankiszero) call writeAMRgrid("molecular_lte.grid",.false.,grid)
       endif
 
-      if(geometry .eq. 'molebench') call dumpresults(grid, thisMolecule, 0, grand_iter, convtestarray) ! find radial pops on final grid     
-      if(usedust) then 
-         call continuumIntensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, 1e-4, 0.d0, dummy, &
-              tau, .true.)
-         write(*,*) "TAU", tau
-      endif
-
-!      if(Writeoutput) write(*,*) "COUNTING VOXELS"
-      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
-
       if(writeoutput) then
 
          do i=1,4
@@ -1224,7 +1213,8 @@ module molecular_mod
          
          call plot_AMR_values(grid, "molAbundance", "x-z", real(grid%octreeRoot%centre%y), &
               "molAbundance.ps/vcps", .true., .false., &
-              width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.)          
+              width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.,&
+              fixValMin=1d-10, fixValMax=1d-3)          
       endif
 
       if(writeoutput) then
@@ -1252,6 +1242,17 @@ module molecular_mod
          close(11)        
 
       endif
+
+!      if(geometry .eq. 'molebench') call dumpresults(grid, thisMolecule, 0, grand_iter, convtestarray) ! find radial pops on final grid     
+     
+      if(usedust) then 
+         call continuumIntensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, 1e-4, 0.d0, dummy, &
+              tau, .true.)
+         write(*,*) "TAU", tau
+      endif
+
+!      if(Writeoutput) write(*,*) "COUNTING VOXELS"
+      call countVoxels(grid%octreeRoot,nOctal,nVoxels)
 
       nRay = 100 ! number of rays used to establish estimate of jnu and pops
 
@@ -1832,7 +1833,7 @@ module molecular_mod
 
    subroutine intensityAlongRay(position, direction, grid, thisMolecule, iTrans, deltaV,i0,tau,tautest)
 
-     use input_variables, only : useDust, isinlte,debug ! ,amr2d, debug
+     use input_variables, only : useDust, debug
      type(OCTALVECTOR) :: position, direction
      type(GRIDTYPE) :: grid
      type(MOLECULETYPE) :: thisMolecule
@@ -2019,9 +2020,8 @@ module molecular_mod
 
    end subroutine intensityAlongRay
 
-   subroutine continuumIntensityAlongRay(position, direction, grid, lambda, deltaV, i0, tau, tautest)
+   subroutine continuumIntensityAlongRay(position, direction, grid, wavelength, deltaV, i0, tau, tautest)
 
-     use input_variables, only : useDust, isinlte,debug ! ,amr2d, debug
      type(OCTALVECTOR) :: position, direction
      type(GRIDTYPE) :: grid
      real(double) :: disttoGrid
@@ -2034,15 +2034,15 @@ module molecular_mod
      real(double) :: alpha
      real(double) :: dv, deltaV
      integer :: i, icount
-     real(double) :: distArray(200), tval
+     real(double) :: distArray(1000), tval
      integer :: nTau
      real(double) ::  OneOvernTauMinusOne
      real(double) :: dTau, kappaAbs
      real(double), intent(out), optional :: tau
 
      real(double) :: dvAcrossCell, phiProfVal
-     real :: lambda
-     integer :: ilambda
+     real :: lambda, wavelength
+     integer :: ilambda = 0
 
      logical, optional :: tautest
      logical :: dotautest
@@ -2054,10 +2054,10 @@ module molecular_mod
         dotautest = .false.
      endif
 
-     lambda = lambda * (1.d0 - deltaV) ! when dv +ve wavelength gets shorter!
+     lambda = wavelength * (1.d0 - deltaV) ! when dv +ve wavelength gets shorter!
+
      call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
-!    write(*,*) lambda,ilambda
-     
+
      if(inOctal(grid%octreeRoot, Position)) then
         disttogrid = 0.
      else
@@ -2096,7 +2096,7 @@ module molecular_mod
 
         !nTau = min(5, nint(dvAcrossCell*10.d0)) !!! CHECK                                                                                                                                                                                                                           
 !        nTau = min(max(2, nint(dvAcrossCell * 20.d0)), 200) ! ensure good resolution / selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)                                                                                                             
-        ntau = 1000                                                                                                                                                                                                                                                                   
+        ntau = 1000
 
         distArray(1) = 0.d0
         OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
@@ -2107,6 +2107,7 @@ module molecular_mod
 
            startOctal => thisOctal
            thisPosition = currentPosition + distArray(i)*direction
+
 
            if(lowvelgrad) then 
               thisvel = startvel + dble(i-1) * OneOvernTauMinusOne * (endVel - startVel)
@@ -2152,163 +2153,6 @@ module molecular_mod
      i0 = i0 + bnu(cspeed/lambda, dble(tcbr))  * exp(-tau) ! from far side                                                                                                                                                                                                                                
 
    end subroutine continuumIntensityAlongRay
-
-   function intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV) result (i0)
-
-     use input_variables, only : useDust, debug !, amr2d
-     type(OCTALVECTOR) :: position, direction
-     type(GRIDTYPE) :: grid
-     type(MOLECULETYPE) :: thisMolecule
-     real(double) :: disttoGrid
-     integer :: itrans
-     real(double) :: i0
-     type(OCTAL), pointer :: thisOctal, startOctal
-     integer :: subcell
-     type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
-     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
-     real(double) :: alphanu(2), jnu, snu
-     real(double) :: alpha
-     integer :: iLower , iUpper
-     real(double) :: dv, deltaV
-     integer :: i, icount
-     real(double) :: distArray(200), tval
-     integer :: nTau
-     real(double) ::  OneOvernTauMinusOne
-     real(double) :: nLower, nUpper
-     real(double) :: dTau, etaline, tau, kappaAbs
-
-     real(double) :: dvAcrossCell, phiProfVal
-     real:: lambda
-     integer :: ilambda
-
-     usedust = .false.
-
-     if(useDust) then
-        lambda = cspeed / thisMolecule%transfreq(iTrans) * 1d8! cm to Angstroms
-        lambda = lambda * (1.d0 + deltaV)
-        call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
-     endif
-
-     distToGrid = distanceToGridFromOutside(grid, position, direction)
-
-     if (distToGrid > 1.e29) then
-        write(*,*) "ray does not intersect grid",position,direction
-        i0 = 1.d-60
-        tau = 1.d-60
-        goto 666
-     endif
-
-     iUpper = thisMolecule%iTransUpper(iTrans)
-     iLower = thisMolecule%iTransLower(iTrans)
-
-     currentPosition = position + (distToGrid + 5.d-3*grid%halfSmallestSubcell) * direction
-
-     i0 = 0.d0
-     tau = 0.d0
-     rayVel = OCTALVECTOR(0.d0, 0.d0, 0.d0)
-
-     thisOctal => grid%octreeRoot
-     icount = 0
-     do while(inOctal(grid%octreeRoot, currentPosition))
-        icount = icount + 1 
-
-        call findSubcelllocal(currentPosition, thisOctal, subcell)
-        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
-
-        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
-        endPosition = currentPosition + tval * direction
-        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
-
-        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
-        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
-
-        !nTau = min(5, nint(dvAcrossCell*10.d0)) !!! CHECK
-        nTau = min(max(2, nint(dvAcrossCell * 20.d0)),20) ! ensure good resolution / selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
-        !ntau = 10
-
-        distArray(1) = 0.d0
-        OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
- !       write(*,*) dvAcrossCell, OneOvernTauMinusOne, startvel, endvel, thisOctal%microturb(subcell)
-        do i = 2, nTau
-
-           distArray(i) = tval * dble(i-1) * OneOvernTauMinusOne
-
-           startOctal => thisOctal
-           thisPosition = currentPosition + distArray(i)*direction
-           thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
- !          thisVel = startVel - (dble((i-1)/(nTau-1))) * (endvel - startvel) ! SPEEDUP 30/8/2007 
-           thisVel= thisVel - rayVel
-
-           dv = (thisVel .dot. direction) - deltaV! - DAR 07/03/2007
-
-           phiProfval = phiProf(dv, thisOctal%microturb(subcell))
-
-           alphanu(1) = (hCgs/fourPi) * & ! thisMolecule%transFreq(iTrans)&
-                phiProfval!/thisMolecule%transFreq(iTrans)
-
-           nLower = thisOctal%molecularLevel(subcell,iLower) * thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-           nUpper = thisOctal%molecularLevel(subcell,iUpper) * thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
-
-           alphanu(1) = alphanu(1) * (nLower * thisMolecule%einsteinBlu(iTrans) - &
-                nUpper * thisMolecule%einsteinBul(iTrans))
-
-           if(useDust) then
-              call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
-              alphanu(2) = kappaAbs * 1.d-10 ! * thisOctal%rho(subcell) 
-           else
-              alphanu(2) = 0.d0
-           endif
-
- !          if(abs(deltaV) < 1.d-7 .and. i .gt. 10) write(*,*) "tau gas", alphanu(1) * (distArray(i)-distArray(i-1)) * 1.d10, &
- !               "alphanu gas", alphanu(1)
-
-           alpha = alphanu(1) + alphanu(2)
-           dTau = alpha * (distArray(i)-distArray(i-1)) * 1.d10
-
- !          if(abs(deltaV) < 1.d-7 .and. i .gt. 10) write(*,*) "tau dust",dtau, "alphanu dust", alphanu(2),"itau",i
-           etaLine = hCgs * thisMolecule%einsteinA(iTrans)! * thisMolecule%transFreq(iTrans)
-           etaLine = etaLine * thisOctal%nh2(subcell) * thisOctal%molAbundance(subcell) * thisOctal%molecularLevel(subcell, iUpper)
-
-           jnu = (etaLine/fourPi) * phiProfVal!/thisMolecule%transFreq(iTrans)
-
-           if(useDust) jnu = jnu + alphanu(2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperaturedust(subcell)))
-
- !          if(.not.amr2d) then 
- !             write(*,*) bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
- !             amr2d = .true. ! spare variable - not real
- !          endif
-
-           if (alpha /= 0.d0) then
-              snu = jnu/alpha
-              i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
-           else
-              snu = tiny(snu)
- !             i0 = i0
-           endif
-
-           tau = tau + dtau
-        enddo
-
-        if(ntau .gt. 10) then
-           if (debug) write(*,*) "i0",i0,"tau",tau,"dtau",dtau,"snu",snu,"ntau",ntau
-        endif
-
-        currentPosition = currentPosition + (distArray(ntau)+1.d-6*grid%halfSmallestSubcell) * direction
-     enddo
-
- 666 continue 
-
-     i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau) ! from far side
-
- !    i0 = i0 - bnu(thisMolecule%transFreq(iTrans), Tcbr)
-
- !    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)
-
-     ! convert to brightness T
-
- !    i0 = i0 * (cSpeed**2 / (2.d0 * thisMolecule%transFreq(iTrans)**2 * kerg))
-
-   end function intensityAlongRay2
 
    function makeImageGrid(cube, unitvec, posvec, grid, thisMolecule, iTrans, deltaV, nsubpixels) result (imagegrid)
 
@@ -2465,7 +2309,7 @@ module molecular_mod
  end function PixelIntensity
 
  subroutine calculateMoleculeSpectrum(grid, thisMolecule)
-   use input_variables, only : itrans, nSubpixels, inc, debug, dusttogas
+   use input_variables, only : itrans, nSubpixels, inc
 
 #ifdef MPI
        include 'mpif.h'
@@ -2473,16 +2317,8 @@ module molecular_mod
 
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
-   integer :: nRay
-   real(double) :: distance
-   type(OCTALVECTOR) :: rayPosition(5000)
-   real(double) :: da(5000), dOmega(5000), weight(5000)
-   real(double) :: deltaV
-   integer :: iv, iray
-   integer :: nLambda
    real(double) :: i0
-   real(double), allocatable :: vArray(:), spec(:)
-   integer :: iv1, iv2, i
+   integer :: i
    type(OCTALVECTOR) :: unitvec, posvec, centrevec, viewvec
    type(DATACUBE) ::  cube
 
@@ -2506,7 +2342,8 @@ module molecular_mod
 #endif
 
 !     if (debug) then 
-        do i = 1, 90
+     if(writeoutput) write(*,*) "Angular dependence"
+     do i = 1, 90
            unitvec = OCTALVECTOR(sin(i*degtorad),0.d0,cos(i*degtorad))
            posvec = 5.d0 * grid%octreeroot%subcellsize * unitvec
            centrevec = OCTALVECTOR(0d7,0d7,0d7)
@@ -2518,7 +2355,7 @@ module molecular_mod
            
            write(*,*) i, tau
         enddo
-
+        if(writeoutput) write(*,*) "Tau from above"
         do i = 1, 100
            unitvec = OCTALVECTOR(1.d-20,1.d-20,1.d0)
            posvec = OCTALVECTOR(real(i) * grid%octreeroot%subcellsize * 0.01,0d7,2.d0 * grid%octreeroot%subcellsize)
@@ -2528,7 +2365,7 @@ module molecular_mod
            
            write(*,*) i, tau
         enddo
-        
+        if(writeoutput) write(*,*) "Tau from the side"
         do i = 1, 100
            unitvec = OCTALVECTOR(1.d0,0.d0,0.d0)
            posvec = OCTALVECTOR(2.d0 * grid%octreeroot%subcellsize,0.d0, real(i) * grid%octreeroot%subcellsize * 0.01)
@@ -2540,10 +2377,10 @@ module molecular_mod
         enddo
         
 !     endif
-
+        if(writeoutput) write(*,*) "Midplane tau"
   call intensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, thisMolecule, 1, 0.d0, dummy, tau, .true.)
   
-  if(writeoutput) write(*,*) "TAU/2", tau
+  if(writeoutput) write(*,*) tau
 
  !  unitvec = randomunitvector()
    unitvec = OCTALVECTOR(sin(inc*degtorad),0.d0,cos(inc*degtorad))
@@ -2740,7 +2577,8 @@ module molecular_mod
 
            if(iv .eq. 1) then
               background = fluxsum
- !             call GaussianWeighting(cube, cube%nx, beamsize)!, NormalizeArea = .true.) 
+ !             call GaussianWeighting(cube, cube%nx, beamsize)!, NormalizeArea = .true.)
+              
               call fineGaussianWeighting(cube, cube%nx, beamsize, weight)!, NormalizeArea = .true.) 
 
  !          open(77, file="weight.dat",status="unknown",form="formatted")
@@ -2969,7 +2807,8 @@ module molecular_mod
 
    allocate(weight(1:cube%nx,cube%ny))
 
-   call fineGaussianWeighting(cube, cube%nx, beamsize, weight)!, NormalizeArea = .true.) 
+   call fineGaussianWeighting(cube, cube%nx, beamsize, weight)!, NormalizeArea = .true.)
+   
 
    allocate(fluxspec(1:cube%nv))
    allocate(convolvedfluxspec(1:cube%nv))
@@ -3449,3 +3288,160 @@ module molecular_mod
 !
 !     write(*,*) "area",sum(da(1:nRay)),pi*rMax**2
 !   end subroutine createRayGrid
+
+!   function intensityAlongRay2(position, direction, grid, thisMolecule, iTrans, deltaV) result (i0)
+!
+!     use input_variables, only : useDust, debug !, amr2d
+!     type(OCTALVECTOR) :: position, direction
+!     type(GRIDTYPE) :: grid
+!     type(MOLECULETYPE) :: thisMolecule
+!     real(double) :: disttoGrid
+!     integer :: itrans
+!     real(double) :: i0
+!     type(OCTAL), pointer :: thisOctal, startOctal
+!     integer :: subcell
+!     type(OCTALVECTOR) :: currentPosition, thisPosition, thisVel
+!     type(OCTALVECTOR) :: rayVel, startVel, endVel, endPosition
+!     real(double) :: alphanu(2), jnu, snu
+!     real(double) :: alpha
+!     integer :: iLower , iUpper
+!     real(double) :: dv, deltaV
+!     integer :: i, icount
+!     real(double) :: distArray(200), tval
+!     integer :: nTau
+!     real(double) ::  OneOvernTauMinusOne
+!     real(double) :: nLower, nUpper
+!     real(double) :: dTau, etaline, tau, kappaAbs
+!
+!     real(double) :: dvAcrossCell, phiProfVal
+!     real:: lambda
+!     integer :: ilambda
+!
+!     usedust = .false.
+!
+!     if(useDust) then
+!        lambda = cspeed / thisMolecule%transfreq(iTrans) * 1d8! cm to Angstroms
+!        lambda = lambda * (1.d0 + deltaV)
+!        call locate(grid%lamArray, size(grid%lamArray), lambda, ilambda)
+!     endif
+!
+!     distToGrid = distanceToGridFromOutside(grid, position, direction)
+!
+!     if (distToGrid > 1.e29) then
+!        write(*,*) "ray does not intersect grid",position,direction
+!        i0 = 1.d-60
+!        tau = 1.d-60
+!        goto 666
+!     endif
+!
+!     iUpper = thisMolecule%iTransUpper(iTrans)
+!     iLower = thisMolecule%iTransLower(iTrans)
+!
+!     currentPosition = position + (distToGrid + 5.d-3*grid%halfSmallestSubcell) * direction
+!
+!     i0 = 0.d0
+!     tau = 0.d0
+!     rayVel = OCTALVECTOR(0.d0, 0.d0, 0.d0)
+!
+!     thisOctal => grid%octreeRoot
+!     icount = 0
+!     do while(inOctal(grid%octreeRoot, currentPosition))
+!        icount = icount + 1 
+!
+!        call findSubcelllocal(currentPosition, thisOctal, subcell)
+!        call distanceToCellBoundary(grid, currentPosition, direction, tVal, sOctal=thisOctal)
+!
+!        startVel = amrGridVelocity(grid%octreeRoot, currentPosition, startOctal = thisOctal, actualSubcell = subcell) 
+!        endPosition = currentPosition + tval * direction
+!        endVel = amrGridVelocity(grid%octreeRoot, endPosition)
+!
+!        dvAcrossCell = ((startVel - rayVel).dot.direction) - ((endVel - rayVel).dot.direction)
+!        dvAcrossCell = abs(dvAcrossCell / thisOctal%microturb(subcell))
+!
+!        !nTau = min(5, nint(dvAcrossCell*10.d0)) !!! CHECK
+!        nTau = min(max(2, nint(dvAcrossCell * 20.d0)),20) ! ensure good resolution / selects dVacrossCell as being between 0.1 and 10 (else nTau bounded by 2 and 200)
+!        !ntau = 10
+!
+!        distArray(1) = 0.d0
+!        OneOvernTauMinusOne = 1.d0/(nTau - 1.d0)
+! !       write(*,*) dvAcrossCell, OneOvernTauMinusOne, startvel, endvel, thisOctal%microturb(subcell)
+!        do i = 2, nTau
+!
+!           distArray(i) = tval * dble(i-1) * OneOvernTauMinusOne
+!
+!           startOctal => thisOctal
+!           thisPosition = currentPosition + distArray(i)*direction
+!           thisVel = amrGridVelocity(grid%octreeRoot, thisPosition, startOctal = startOctal, actualSubcell = subcell) 
+! !          thisVel = startVel - (dble((i-1)/(nTau-1))) * (endvel - startvel) ! SPEEDUP 30/8/2007 
+!           thisVel= thisVel - rayVel
+!
+!           dv = (thisVel .dot. direction) - deltaV! - DAR 07/03/2007
+!
+!           phiProfval = phiProf(dv, thisOctal%microturb(subcell))
+!
+!           alphanu(1) = (hCgs/fourPi) * & ! thisMolecule%transFreq(iTrans)&
+!                phiProfval!/thisMolecule%transFreq(iTrans)
+!
+!           nLower = thisOctal%molecularLevel(subcell,iLower) * thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+!           nUpper = thisOctal%molecularLevel(subcell,iUpper) * thisOctal%molAbundance(subcell) * thisOctal%nh2(subcell)
+!
+!           alphanu(1) = alphanu(1) * (nLower * thisMolecule%einsteinBlu(iTrans) - &
+!                nUpper * thisMolecule%einsteinBul(iTrans))
+!
+!           if(useDust) then
+!              call returnKappa(grid, thisOctal, subcell, ilambda = ilambda, lambda = lambda, kappaAbs = kappaAbs)
+!              alphanu(2) = kappaAbs * 1.d-10 ! * thisOctal%rho(subcell) 
+!           else
+!              alphanu(2) = 0.d0
+!           endif
+!
+! !          if(abs(deltaV) < 1.d-7 .and. i .gt. 10) write(*,*) "tau gas", alphanu(1) * (distArray(i)-distArray(i-1)) * 1.d10, &
+! !               "alphanu gas", alphanu(1)
+!
+!           alpha = alphanu(1) + alphanu(2)
+!           dTau = alpha * (distArray(i)-distArray(i-1)) * 1.d10
+!
+! !          if(abs(deltaV) < 1.d-7 .and. i .gt. 10) write(*,*) "tau dust",dtau, "alphanu dust", alphanu(2),"itau",i
+!           etaLine = hCgs * thisMolecule%einsteinA(iTrans)! * thisMolecule%transFreq(iTrans)
+!           etaLine = etaLine * thisOctal%nh2(subcell) * thisOctal%molAbundance(subcell) * thisOctal%molecularLevel(subcell, iUpper)
+!
+!           jnu = (etaLine/fourPi) * phiProfVal!/thisMolecule%transFreq(iTrans)
+!
+!           if(useDust) jnu = jnu + alphanu(2) * bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperaturedust(subcell)))
+!
+! !          if(.not.amr2d) then 
+! !             write(*,*) bnu(thisMolecule%transfreq(iTrans), dble(thisOctal%temperature(subcell)))
+! !             amr2d = .true. ! spare variable - not real
+! !          endif
+!
+!           if (alpha /= 0.d0) then
+!              snu = jnu/alpha
+!              i0 = i0 +  exp(-tau) * (1.d0-exp(-dtau))*snu
+!           else
+!              snu = tiny(snu)
+! !             i0 = i0
+!           endif
+!
+!           tau = tau + dtau
+!        enddo
+!
+!        if(ntau .gt. 10) then
+!           if (debug) write(*,*) "i0",i0,"tau",tau,"dtau",dtau,"snu",snu,"ntau",ntau
+!        endif
+!
+!        currentPosition = currentPosition + (distArray(ntau)+1.d-6*grid%halfSmallestSubcell) * direction
+!     enddo
+!
+! 666 continue 
+!
+!     i0 = i0 + bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau) ! from far side
+!
+! !    i0 = i0 - bnu(thisMolecule%transFreq(iTrans), Tcbr)
+!
+! !    if (debug) write(*,*) "bound condition",i0,bnu(thisMolecule%transFreq(iTrans), Tcbr) * exp(-tau)
+!
+!     ! convert to brightness T
+!
+! !    i0 = i0 * (cSpeed**2 / (2.d0 * thisMolecule%transFreq(iTrans)**2 * kerg))
+!
+!   end function intensityAlongRay2
