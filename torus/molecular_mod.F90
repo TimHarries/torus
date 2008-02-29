@@ -1036,7 +1036,7 @@ module molecular_mod
         pops = pops / real(nr) ! normalised level population at the 20 random positions 
         fracChange = fracChange / real(nr)
 
-        convtestarray(iter,i,:) = fracChange
+        if(iter .gt. 0) convtestarray(iter,i,:) = fracChange
         write(31,'(es11.5e2,4x,8(es12.6e2,tr2))') real(r*1.d10), real(pops(1:minlevels)) 
         write(32,'(es11.5e2,4x,8(f7.5,tr2))') real(r*1.d10), real(fracChange(1:minlevels))
      enddo
