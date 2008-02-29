@@ -14,6 +14,7 @@ cfitsio = yes
 debug   = no
 profile = no
 static  = no
+trace   = no
 
 PATH2G2C     = /usr/lib/gcc-lib/i386-redhat-linux/3.4.4
 GUANINE_HOME = /Network/Guanine
@@ -416,7 +417,7 @@ ifeq ($(SYSTEM), zen)
     F2CLIB=
 #    -L$(PATH2G2C) -lg2c
     STATICLIBS= -Bstatic
-    STARLIBS= -DMPI -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
+    STARLIBS= #-DMPI -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
 #    -L/star/lib `ndf_link` 
     PGLIBS= -L/home/tjharrie/libpgplot -lpgplot -lpng
 #    -L/star/lib `pgplot_link`
@@ -657,6 +658,12 @@ ifeq ($(profile), yes)
    ETCFLAG += -pg
 endif
 
+ifeq ($(trace), yes)
+   TRACEFLAG = -trace
+else
+   TRACEFLAG = 
+endif
+
 ifeq ($(static), yes)
    ETCFLAG += $(STATICFLAG)
 else
@@ -735,7 +742,7 @@ all: depends $(ALLOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files and libraries..."
-	    $(F90) -o $(EXE) \
+	    $(F90) $(TRACEFLAG) -o $(EXE) \
 	    $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
 	    $(PGSTUBS) $(PGLIBS) $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
 	    @echo "...done"
