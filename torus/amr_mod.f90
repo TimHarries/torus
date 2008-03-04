@@ -676,7 +676,7 @@ CONTAINS
 
 
 
-    if (myrankglobal==2) write(*,'(10i4)') parent%child(newChildindex)%ndepth, parent%child(newChildIndex)%mpiThread(1:8)
+!    if (myrankglobal==2) write(*,'(10i4)') parent%child(newChildindex)%ndepth, parent%child(newChildIndex)%mpiThread(1:8)
 
     if (cmf) then
        allocate(parent%child(newChildIndex)%atomAbundance(8, 1:nAtom))
