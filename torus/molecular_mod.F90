@@ -66,101 +66,130 @@ module molecular_mod
      character(len=200):: dataDirectory, filename
      integer :: i, j, iLow, iUp, iPart
      real(double) :: a, freq, eu, c(20)
+     logical :: preprocess1 = .true.
+     logical :: preprocess2 = .true.
+     integer :: maxnCollTrans, maxnCollTemps
+
+     call writeInfo("Reading data for molecule: "//trim(thisMolecule%molecule),IMPORTANT)
 
      !thisMolecule%abundance = tiny(thisMolecule%abundance)
      thisMolecule%abundance = molAbundance ! fixed at benchmark value here
 
-     call unixGetenv("TORUS_DATA", dataDirectory)
-     filename = trim(dataDirectory)//"/"//molfilename
+     do while(preprocess2)
+        if(.not. preprocess1) preprocess2 = .false.
 
-     open(30, file=filename, status="old", form="formatted")
-
-     read(30,*) junk
-     read(30,'(a)') thisMolecule%molecule
-
-     call writeInfo("Reading data for molecule: "//trim(thisMolecule%molecule),IMPORTANT)
-     read(30,*) junk
-     read(30,*) thisMolecule%molecularWeight
-
-     read(30,*) junk
-     read(30,*) thisMolecule%nLevels
-
-     allocate(thisMolecule%energy(1:thisMolecule%nLevels))
-     allocate(thisMolecule%g(1:thisMolecule%nLevels))
-     allocate(thisMolecule%j(1:thisMolecule%nLevels))
-
-     read(30,*) junk
-     do i = 1, thisMolecule%nLevels
-        read(30,*) j, thisMolecule%energy(i), thisMolecule%g(i), thisMolecule%j(i)
-
-        thisMolecule%energy(i) = thisMolecule%energy(i) / 8065.541  ! convert from per cm to ev - e/hc (CGS)
-
-     enddo
-
-     read(30,*) junk
-     read(30,*) thisMolecule%nTrans
-
-     allocate(thisMolecule%einsteinA(1:thisMolecule%nTrans))
-     allocate(thisMolecule%einsteinBul(1:thisMolecule%nTrans))
-     allocate(thisMolecule%einsteinBlu(1:thisMolecule%nTrans))
-     allocate(thisMolecule%transfreq(1:thisMolecule%nTrans))
-     allocate(thisMolecule%itransUpper(1:thisMolecule%nTrans))
-     allocate(thisMolecule%itransLower(1:thisMolecule%nTrans))
-     allocate(thisMolecule%eu(1:thisMolecule%nTrans))
-     read(30,*) junk
-     do i = 1, thisMolecule%nTrans
-        read(30,*) j, iUp, iLow, a, freq, eu
-
-        thisMolecule%einsteinA(i) = a
-        thisMolecule%transfreq(i) = freq*1.d9
-        thisMolecule%eu(i) = eu
-        thisMolecule%itransUpper(i) = iUp
-        thisMolecule%itransLower(i) = iLow
-
-        thisMolecule%einsteinBul(i) = a * (cspeed**2)/(2.d0*hcgs*(freq*1.d9)**3) ! transform Aul -> Bul
-
-        thisMolecule%einsteinBlu(i) = thisMolecule%einsteinBul(i) &
-             * thisMolecule%g(iUp)/thisMolecule%g(iLow)
-
-     enddo
-
-     read(30,*) junk
-     read(30,*) thisMolecule%nCollPart
-
-     allocate(thisMolecule%nCollTrans(1:thisMolecule%nCollPart))
-     allocate(thisMolecule%nCollTemps(1:thisMolecule%nCollPart))
-     allocate(thisMolecule%collTemps(1:thisMolecule%nCollPart, 1:20))
-     allocate(thisMolecule%collBetween(1:thisMolecule%nCollPart))
-
-
-     do iPart = 1, thisMolecule%nCollPart
-
+        call unixGetenv("TORUS_DATA", dataDirectory)
+        filename = trim(dataDirectory)//"/"//molfilename
+        
+        open(30, file=filename, status="old", form="formatted")
+        
         read(30,*) junk
-        read(30,*) thisMolecule%collBetween(iPart)
-
+        read(30,'(a)') thisMolecule%molecule
+        
         read(30,*) junk
-        read(30,*) thisMolecule%nCollTrans(iPart)
-
+        read(30,*) thisMolecule%molecularWeight
+        
         read(30,*) junk
-        read(30,*) thisMolecule%nCollTemps(iPart)
-
-
+        read(30,*) thisMolecule%nLevels
+        
+        allocate(thisMolecule%energy(1:thisMolecule%nLevels))
+        allocate(thisMolecule%g(1:thisMolecule%nLevels))
+        allocate(thisMolecule%j(1:thisMolecule%nLevels))
+           
         read(30,*) junk
-        read(30,*) thisMolecule%collTemps(iPart,1:thisMolecule%nCollTemps(ipart))
-
-        allocate(thisMolecule%collRates(1:thisMolecule%nCollPart, &
-             1:thisMolecule%nCollTrans(iPart), 1:thisMolecule%nCollTemps(ipart)))
-        allocate(thisMolecule%iCollUpper(1:thisMolecule%nCollPart, 1:thisMolecule%nCollTrans(iPart)))
-        allocate(thisMolecule%iCollLower(1:thisMolecule%nCollPart, 1:thisMolecule%nCollTrans(iPart)))
-        thisMolecule%collRates = 0.d0
-        read(30,*) junk
-        do j = 1, thisMolecule%nCollTrans(iPart)
-           read(30,*) i, thisMolecule%iCollUpper(ipart,j), &
-                thisMolecule%iCollLower(ipart,j), c(1:thisMolecule%nCollTemps(iPart))
-           thisMolecule%collRates(iPart, j, 1:thisMolecule%nCollTemps(iPart)) = c(1:thisMolecule%nCollTemps(iPart))
+        do i = 1, thisMolecule%nLevels
+           read(30,*) j, thisMolecule%energy(i), thisMolecule%g(i), thisMolecule%j(i)
+           
+           thisMolecule%energy(i) = thisMolecule%energy(i) / 8065.541  ! convert from per cm to ev - e/hc (CGS)
+           
         enddo
+        
+        read(30,*) junk
+        read(30,*) thisMolecule%nTrans
+        
+        
+        allocate(thisMolecule%einsteinA(1:thisMolecule%nTrans))
+        allocate(thisMolecule%einsteinBul(1:thisMolecule%nTrans))
+        allocate(thisMolecule%einsteinBlu(1:thisMolecule%nTrans))
+        allocate(thisMolecule%transfreq(1:thisMolecule%nTrans))
+        allocate(thisMolecule%itransUpper(1:thisMolecule%nTrans))
+        allocate(thisMolecule%itransLower(1:thisMolecule%nTrans))
+        allocate(thisMolecule%eu(1:thisMolecule%nTrans))
+        
+        read(30,*) junk
+        do i = 1, thisMolecule%nTrans
+           read(30,*) j, iUp, iLow, a, freq, eu
+           
+           thisMolecule%einsteinA(i) = a
+           thisMolecule%transfreq(i) = freq*1.d9
+           thisMolecule%eu(i) = eu
+           thisMolecule%itransUpper(i) = iUp
+           thisMolecule%itransLower(i) = iLow
+           
+           thisMolecule%einsteinBul(i) = a * (cspeed**2)/(2.d0*hcgs*(freq*1.d9)**3) ! transform Aul -> Bul
+           
+           thisMolecule%einsteinBlu(i) = thisMolecule%einsteinBul(i) &
+                * thisMolecule%g(iUp)/thisMolecule%g(iLow)
+           
+        enddo
+        
+        read(30,*) junk
+        read(30,*) thisMolecule%nCollPart
+        
+        if(.not. preprocess2) then
+           maxnCollTrans = maxval(thisMolecule%nCollTrans(:))
+           maxnCollTemps = maxval(thisMolecule%nCollTemps(:))
+           deallocate(thisMolecule%nCollTrans, thisMolecule%nCollTemps)
+        else
+           maxnCollTrans = 5000
+           maxnCollTemps = 20
+        endif
+
+        allocate(thisMolecule%nCollTrans(1:thisMolecule%nCollPart))
+        allocate(thisMolecule%nCollTemps(1:thisMolecule%nCollPart))
+        allocate(thisMolecule%collTemps(1:thisMolecule%nCollPart, 1:20))
+        allocate(thisMolecule%collBetween(1:thisMolecule%nCollPart))
+
+        allocate(thisMolecule%collRates(1:thisMolecule%nCollPart, maxnCollTrans, &
+             maxnCollTemps))
+        allocate(thisMolecule%iCollUpper(thisMolecule%nCollPart, maxnCollTrans))
+        allocate(thisMolecule%iCollLower(thisMolecule%nCollPart, maxnCollTrans))
+        
+        do iPart = 1, thisMolecule%nCollPart
+
+           read(30,*) junk
+           read(30,*) thisMolecule%collBetween(iPart)
+           
+           read(30,*) junk
+           read(30,*) thisMolecule%nCollTrans(iPart)
+           
+           read(30,*) junk
+           read(30,*) thisMolecule%nCollTemps(iPart)
+           
+           read(30,*) junk
+           read(30,*) thisMolecule%collTemps(iPart,1:thisMolecule%nCollTemps(ipart))
+           
+           thisMolecule%collRates = 0.d0
+           read(30,*) junk
+
+           do j = 1, thisMolecule%nCollTrans(iPart)
+
+              read(30,*) i, thisMolecule%iCollUpper(ipart,j), &
+                   thisMolecule%iCollLower(ipart,j), c(1:thisMolecule%nCollTemps(iPart))
+              thisMolecule%collRates(iPart, j, 1:thisMolecule%nCollTemps(iPart)) = c(1:thisMolecule%nCollTemps(iPart))
+           enddo
+        enddo
+        close(30)
+
+        if(preprocess1) then
+           deallocate(thisMolecule%energy, thisMolecule%g, thisMolecule%j, thisMolecule%einsteinA, thisMolecule%einsteinBlu, &
+                      thisMolecule%einsteinBul, thisMolecule%transfreq, thisMolecule%itransUpper, thisMolecule%itransLower, &
+                      thisMolecule%Eu, thisMolecule%iCollUpper, thisMolecule%iCollLower, thisMolecule%collBetween, &
+                      thisMolecule%collTemps, thisMolecule%collRates)
+        endif
+        preprocess1 = .false.
      enddo
-     close(30)
+
      call writeInfo("Done.", IMPORTANT)
    end subroutine readMolecule
 
@@ -296,6 +325,7 @@ module molecular_mod
      collMatrix = 1.d-10
 
  ! Calculate contribution from collisions - loop over all collision partners and all molecular levels
+
      do iPart = 1, thisMolecule%nCollPart
         do iTrans = 1, thisMolecule%nCollTrans(iPart)
 
@@ -1002,10 +1032,6 @@ module molecular_mod
      character(len=30) :: resultfile, resultfile2
      integer :: minlevels
 
-
- !    rinner = 1.
- !    router = 1.1e6
-
      minlevels = min(thismolecule%nlevels, 8)
 
      write(resultfile,'(a,I7.7)') "results.", nRay
@@ -1243,7 +1269,8 @@ module molecular_mod
 
       endif
 
-!      if(geometry .eq. 'molebench') call dumpresults(grid, thisMolecule, 0, grand_iter, convtestarray) ! find radial pops on final grid     
+      !if(geometry .eq. 'molebench') 
+      call dumpresults(grid, thisMolecule, 0, grand_iter, convtestarray) ! find radial pops on final grid     
      
       if(usedust) then 
          call continuumIntensityAlongRay(octalvector(0.d0,0.d0,0.d0),octalvector(1d-20,1d-20,1.d0), grid, 1e-4, 0.d0, dummy, &
@@ -1487,10 +1514,6 @@ module molecular_mod
                        call solveLevels(thisOctal%newMolecularLevel(subcell,1:thisMolecule%nLevels), &
                             thisOctal%jnu(subcell,1:thisMolecule%nTrans),  &
                             dble(thisOctal%temperature(subcell)), thisMolecule, thisOctal%nh2(subcell))
-
- !                   do i=1,thisMolecule%nlevels
- !                      if(isnan(thisOctal%newmolecularLevel(subcell,i))) write(*,*) "NOY",i
- !                   enddo
 
                        fac = abs(maxval((thisOctal%newMolecularLevel(subcell,1:mintrans) - oldpops(1:mintrans)) &
                              / oldpops(1:mintrans))) ! convergence criterion ! 6 or 8?
