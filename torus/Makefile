@@ -660,6 +660,7 @@ endif
 
 ifeq ($(trace), yes)
    TRACEFLAG = -trace
+   ETCFLAG  += -tcollect
 else
    TRACEFLAG = 
 endif
