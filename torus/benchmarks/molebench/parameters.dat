@@ -3,7 +3,7 @@ geometry molebench
 ! molecular stuff
 molecular T
 beamsize 29.            % Convolution beamsize for model 2a in vdZadelhoff
-molAbundance 1e-8      % Abundance of HCO+ : H2 - use
+molAbundance 1e-9      % Abundance of HCO+ : H2 - use
 tolerance 0.01 
 distance 250.0
 maxVel 1.01
