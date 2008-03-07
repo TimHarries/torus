@@ -4358,16 +4358,6 @@ CONTAINS
 
         if (writeoutput) call writeAMRgrid("after_creation.grid",.false.,grid)
 
-
-        if (writePhasePops) then
-          write(tempChar,'(i3.3)') nStartPhase
-          phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
-          call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
-        else if (writePops) then
-          call writeAMRgrid(popFilename,writeFileFormatted,grid)
-        end if
-
-
         if ((geometry == "shakara").and.(nDustType>1)) then
            call fillDustShakara(grid, grid%octreeRoot)
         endif
