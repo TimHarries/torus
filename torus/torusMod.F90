@@ -73,7 +73,6 @@
   use molecular_mod
   use modelatom_mod
   use cmf_mod
-  use hydrodynamics_mod
   use mpi_global_mod
   use parallel_mod
 
@@ -83,68 +82,33 @@
 #endif
 
   integer :: nOuterLoop = 10
-  integer :: nInnerLoop
-  integer :: iLambdaPhoton
-  integer :: iOuterLoop
-  integer :: nScat
-  integer :: cpuTime, startTime
   integer :: nSource
   type(SOURCETYPE), allocatable :: source(:)
   type(SOURCETYPE) a_star
-  real(double) :: lCore
   real ::  weightDust=1.0, weightPhoto=1.0
-  real :: inclination, cos_inc, cos_inc_first, cos_inc_last, d_cos_inc
-  integer :: iInclination  
-  
+  real :: inclination
+  real :: meanDustParticleMass
+
   character(len=80) :: thisdevice
 
-  real(double) :: energyPerPhoton
   real(double) :: objectDistance
 
   ! variables for the grid
 
   type(GRIDTYPE) :: grid
 
-  integer :: iPhase
-  real(double) :: totLineEmission
-  real(double) :: totContinuumEmission
-  real(double) :: totCoreContinuumEmission
   real(double) :: cOrecontinuumflux
-  real(double) :: totCoreContinuumEmission1
-  real(double) :: totCoreContinuumEmission2
-  real(double) :: totWindContinuumEmission
   real :: probLinePhoton 
-  real :: weightContPhoton, weightLinePhoton
-  real :: chanceLine, chanceContinuum
-!  real :: sTot
 
   integer :: isize
   integer, allocatable :: iseed(:)
 
   ! optical depth variables
-  !
-  ! for monte calro with high optical depth models
-  !  integer, parameter :: maxTau = 2000000
-  ! for monte calro with optically thin model.  
   integer, parameter :: maxTau = 20000
-  ! for direct integration
-  !  integer, parameter :: maxTau = 8000
-  !
-  ! for Chris
-  !  integer, parameter :: maxTau = 600000
-  integer :: nTau
-  real, allocatable :: contTau(:,:)
 
   real :: scaleFac
-  real :: dopShift  ! velocity shift in terms of thermal line width
-  real, allocatable :: tauExt(:)
-  real, allocatable :: tauAbs(:)
-  real, allocatable :: tauSca(:)
-  real, allocatable :: linePhotonAlbedo(:)
-  real, allocatable :: lambda(:)
 
-  real  :: sigmaExt0, sigmaAbs0, sigmaSca0  ! cross section at the line centre
-  real :: dlambda, thisTau
+  real :: sigmaExt0, sigmaAbs0, sigmaSca0  ! cross section at the line centre
 
   ! variables to do with dust
 
@@ -154,26 +118,11 @@
 
   ! torus images
 
-  type(IMAGETYPE) :: o6image(1)
-
-  type(IMAGETYPE), allocatable :: obsImageSet(:)
-  integer           :: nImage  ! number of images in obsImageSet
-  type(filter_set)  :: filters ! a set of filters used for imaging
-  character(LEN=30) :: name_filter
-  real(double) :: bandwidth   ! Band width of a filter[A]
-  real(double) :: lambda_eff  ! Effective wavelength of a filter[A]
-
   type(PVIMAGETYPE), allocatable :: pvimage(:)
-  real :: imageSize
-  integer :: iSlit
-  type(VECTOR) :: slitPosition
 
   ! intrinsic profile variables
 
   integer, parameter :: maxIntPro = 1000
-  integer :: nIntPro, iSpline
-  real :: lamIntPro(maxIntPro), intPro(maxIntPro)
-  real, allocatable :: splineArray(:)
 
   real, allocatable :: statArray(:)
   real, allocatable :: sourceSpectrum(:)
@@ -184,35 +133,23 @@
   ! variables for clumped wind models
   
   integer, parameter :: maxBlobs = 10000
-  integer :: nCurrent
-    type(BLOBTYPE), allocatable :: blobs(:)
   real, parameter :: blobTime = 1000.
   real :: timeEnd = 24.*60.*60.
   real :: timeStart = 0.
-  real :: dTime
 
   ! filenames
 
-  character(len=80) :: filename, specFile, obsfluxfile
-  character(len=80) :: originalOutFile
+  character(len=80) :: filename
   character(len=80) :: phasePopFilename
-
-  ! photons
-
-  type(PHOTON) :: thisPhoton
-  type(PHOTON) :: outPhoton
-  type(PHOTON) :: obsPhoton
-  type(PHOTON) :: tempPhoton
 
   ! vectors
 
   type(VECTOR), parameter :: zAxis = VECTOR(0.,0.,1.)
   type(VECTOR), parameter :: yAxis = VECTOR(0.,1.,0.)
   type(VECTOR), parameter :: xAxis = VECTOR(1.,0.,0.)
-  type(VECTOR) :: viewVec, outVec, thisVec, originalViewVec
+  type(VECTOR) :: viewVec, outVec, originalViewVec
   type(VECTOR) :: rotationAxis, normToRotation
-  type(VECTOR) :: zeroVec, tempVec
-  type(OCTALVECTOR) :: rHat, rVec, rHatinStar
+  type(VECTOR) :: zeroVec
 
 ! Used in commented out call to findSubcellTD
 !  type(octal), pointer :: thisOctal
@@ -224,48 +161,25 @@
   type(STOKESVECTOR), allocatable :: yArray(:)
   type(STOKESVECTOR), allocatable :: errorArray(:,:)
   real, allocatable :: xArray(:)
-  real, allocatable :: contWeightArray(:)
 
   ! model flags
 
-  logical :: escaped, absorbed
   logical :: rotateView
   logical :: tiltView
   logical :: flatSpec
   logical :: ok
   logical :: greyContinuum
-  logical :: hitCore
   logical :: firstPlot
 
   ! model parameters
 
-  real :: vel
-  real :: nuStart, nuEnd
-
-  ! single dust blob parameters (WR137 type model)
-
-  real :: meanDustParticleMass
-!  real :: getMeanMass2  ! the call to this function is currently commented out
-
-
   real :: foreground = 0., background = 0.  ! plotting intensities
-  real(oct) :: t1, t2, t3
 
   logical :: velocitySpace
 
   ! raman scattering model parameters
 
-  logical :: thruStar
   type(VECTOR) :: hotSourcePosition, coolStarPosition
-  type(VECTOR) :: ramanSourceVelocity
-
-  ! O VI spectrum stuff
-
-  character(len=80) :: o6filename
-  integer, parameter :: no6pts = 100
-  real, parameter :: o6start = 1031.5, o6end=1032.8
-  real :: o6xarray(no6pts), o6yarray(no6pts)
-
 
   ! misc
 
@@ -274,35 +188,11 @@
   real :: wtot_line =0., wtot_cont = 0.
   real :: meanr0_line = 0., meanr0_cont = 0.
   real :: wtot0_line =0., wtot0_cont = 0.
-  real :: junk
-  character(len=80) :: plotFile
 
-  real(double) :: thisChi, thisSca, albedo
-  integer :: currentScat
-  logical :: redRegion
-  real :: r
-  logical :: contWindPhoton
-  real :: ramanWeight
-  real :: thisVel
-  real :: fac1, fac2, fac3
-  real(double) :: vRay, vOverCsqr
-  real :: directionalWeight
-  real :: obs_weight, tau_tmp, exp_minus_tau
-  real :: r1, r2
   real(oct) :: t
   integer :: i, j
-  integer :: i1,i2,i3
-  integer :: nTot  
-  real :: observedLambda
-  real :: thisLam
   real :: nu
-!  real :: fac
   real(double) :: fac
-  real(double) :: tau_bnd
-  real :: escProb
-  logical :: contPhoton
-  integer :: nContPhotons
-  real :: phi
   real :: rStar
   character(len=80) :: tempChar
   logical :: lineResAbs    ! T if you want to include absorption
@@ -313,50 +203,29 @@
   real(double) :: totalMass
   real(double) :: T_ave   ! average temperature of cluster
   real(double) :: T_mass  ! mass weighted temperature
-!  real(double) :: tau_max, tau_min, tau_ave
 
-  real(double) :: Laccretion
-  real :: Taccretion, fAccretion, sAccretion
-  real :: theta1, theta2, chanceHotRing
+  real :: fAccretion
+  real :: theta1, theta2
   type(SURFACETYPE) :: starSurface
 
   ! Spot stuff
-  
-  real :: chanceSpot                     ! chance of spot
-  logical :: spotPhoton                  ! photon from spot?
 
   real :: chanceDust = 0.
-  real(double) :: totDustContinuumEmission, totEnvelopeEmission
-
-  ! binary parameters
-
-  integer :: nVec
-  type(VECTOR), allocatable :: distortionVec(:)
 
   ! adaptive grid stuff
 
   type(OCTALVECTOR) :: amrGridCentre ! central coordinates of grid
   type(OCTALVECTOR) :: octVec
   real :: ang
-  real(double) :: kabs, eta
-  integer :: nt
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
                                      !   (i.e. the number of childless subcells)
   logical :: gridConverged           ! true when adaptive grid structure has 
                                      !   been finalised
-  integer :: intPathError            ! error code from integratePathAMR
-  type(OCTALVECTOR) :: positionOc    ! photon position position
-!  type(octal),pointer :: octalLocation! octal located by search routine 
-!  integer           :: subcellLocation! subcell located by search routine
   integer           :: tooFewSamples ! number of errors from integratePathAMR
   integer           :: boundaryProbs ! number of errors from integratePathAMR
   integer           :: negativeOpacity ! number of errors from integratePathAMR
-  real(double)           :: Ne         ! for testing
-  real(double),dimension(statEqMAxLevels) :: levelPops  ! for testing
-  integer                         :: level      ! for testing
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
-  real :: infallParticleMass         ! for T Tauri infall models
   logical :: alreadyDoneInfall = .false. ! whether we have already done an infall calculation
   type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
   type(discwind)    :: ttauri_discwind   ! parameters for ttauri disc wind
@@ -386,16 +255,7 @@
   ! Name of the file to output various message from torus
   character(LEN=7), parameter :: messageFile = "MESSAGE"
   character(len=80) :: message
-   real :: h !, totFrac
-!  integer :: nFrac   ! In commented out call to sublimateDust
-
-! molecular line stuff
-  type(MOLECULETYPE) :: co
-  type(DATACUBE) :: cube
-
-!  real(double) :: temp(50)
-
-  real(double), allocatable :: flux(:)
+  real :: h
 
 ! Variables used when linking to sph code
   type(isochrone)       :: isochrone_data
@@ -415,26 +275,15 @@
   type(STREAMTYPE) :: thisStream(2000), bigStream
   integer :: nStreams
   
-  integer :: nFromEnv
-  logical :: photonFromEnvelope
-
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
-
-  integer :: iInner_beg, iInner_end ! beginning and end of the innerPhotonLoop index.
 
   real(double) :: tempArray(10)
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
   integer ::   tempInt        !
-  real, dimension(:), allocatable :: tempRealArray
-  real, dimension(:), allocatable :: tempRealArray2
-  real(double), dimension(:), allocatable :: tempDoubleArray
-  real(double), dimension(:), allocatable :: tempDoubleArray2
-  integer, dimension(:), allocatable :: photonBelongsRank
   integer, parameter :: tag = 0
-  logical :: rankComplete
   
 ! Begin executable statements --------------------------------------------------
 
@@ -513,13 +362,6 @@
   lucyRadiativeEq = .false. ! this has to be initialized here
   num_calls = num_calls + 1
 
-  ! hardwired stuff
-  do i = 1, no6pts
-     o6xArray(i) = o6start + (o6end-o6start)*real(i-1)/real(no6pts-1)
-     o6yarray(i) = 1.e-10
-  enddo
-
-
   ! get the model parameters
 
   call inputs() ! variables are passed using the input_variables module
@@ -527,27 +369,9 @@
 
 !  call test_profiles()  ! Testing Lorentz profile with Voigt profile
 
-
-  if(geometry == "planetgap") then
-     ! takes the gapWidth and calculates what mPlanet should be
-     if (planetgap) then
-        call calcPlanetMass
-        write (*,*) "mPlanet set to ", mPlanet
-     end if
-  end if
-
-  if (molecular) then
-     if (geometry .eq. "molebench") then
-        call readbenchmarkMolecule(co, "hco_benchmark.mol")
-     elseif((geometry .eq. "h2obench1") .or. (geometry .eq. "h2obench2")) then
-        call readMolecule(co, "fakewater.mol")
-     elseif(geometry .eq. "agbstar") then
-        call readMolecule(co, "p-h2o.dat")
-     elseif(geometry .eq. "molefil") then
-        call readMolecule(co, "c18o.mol")
-     else
-        call readMolecule(co, "co.mol")
-     endif
+  if (geometry /= "cluster" ) then
+     print *, "Error: cluster geometry required"
+     goto 666
   endif
 
   if (cmf) then
@@ -1091,33 +915,6 @@
         enddo
         stop
      endif
-
-#ifdef MPI
-     if (photoIonization) then
-        grid%splitOverMPI = .true.
-        grid%photoionization = .true.
-           call radiationHydro(grid, source, nSource, nLambda, xArray, readlucy, writelucy, &
-              lucyfilenameout, lucyfilenamein)
-           call torus_mpi_barrier
-     endif
-
-     if (hydrodynamics) then
-
-        grid%splitOverMPI = .true.
-	
-
-        if (myRankGlobal /= 0) then
-           if (grid%octreeRoot%twoD) then
-              call doHydrodynamics2d(grid)
-           else if (grid%octreeRoot%oneD) then
-              call doHydrodynamics1d(grid)
-           else if (grid%octreeRoot%threeD) then
-              call doHydrodynamics3d(grid)
-           endif
-        endif
-     endif
-#endif
-
 
   if (lucyRadiativeEq) then
      if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
@@ -2224,81 +2021,9 @@ subroutine choose_view ( geometry, nPhase, distortionType, doRaman, &
   logical, intent(out) :: tiltView
 
 ! Set default values of intent out arguments
-  rotateView      = .false.
+  rotateView      = .true.
   rotateDirection = -1.0
   tiltView        = .false. 
-
-  ! if we are computing spiral models then we rotate the view
-
-  if ((nPhase /= 1).and.(distortionType .eq. "spiral")) rotateview = .true.
-
-  ! we also rotate for the test model
-
-  if (distortionType .eq. "test") rotateView = .true.
-
-  ! we rotate wind-wind collision models
-
-
-  if (distortionType .eq. "windwind") rotateView = .true.
-
-
-  ! rotate for colliding winds too
-
-  if (trim(geometry) .eq. "collide") rotateView = .true.
-
-  if (geometry == "binary") rotateView = .true.
-
-  ! rotate for raman
-
-  if (geometry == "raman") rotateView = .true.
-
-
-  if (geometry == "planet") rotateView = .true.
-
-  if (geometry == "betacep") rotateView = .true.
-
-  if (geometry == "donati") rotateView = .true.
-
-
-  if (geometry == "warpeddisc") rotateView = .true.
-
-  if ((geometry == "ttauri").or.(geometry == "magstream")) rotateView = .true.
-
-  if ((geometry == "toruslogo")) then
-     rotateView = .true.
-     rotateDirection = 1.
-  endif
-  if ((geometry == "luc_cir3d")) rotateView = .true.
-
-  if ((geometry == "cmfgen")) rotateView = .true.
-
-  if ((geometry == "romanova")) rotateView = .true.
-
-  if ((geometry(1:4) == "jets")) then
-     rotateView = .true.
-     tiltView = .true.
-  end if
-
-  if (doRaman) then
-        rotateView = .true.
-        rotateDirection = 1.
-  endif
-
-  if (geometry == "rolf") rotateView = .true.
-
-  if (geometry == "disk") rotateView = .true.
-
-  if (geometry == "starburst") rotateView = .true.
-
-  if (geometry == "wr104") then
-     rotateView = .true.
-     rotateDirection = 1.
-  endif
-
-  if (geometry(1:7) == "cluster") then
-     rotateView = .true.
-!     tiltView = .true.
-  end if
 
   if (forceRotate)   rotateView = .true.
   if (forceNoRotate) rotateView = .false.
