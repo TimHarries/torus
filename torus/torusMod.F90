@@ -8,17 +8,17 @@
 ! written by tjh
 ! Extracted from torusMain by D. Acreman (March 2008)
 
-  module torus_mod
+module torus_mod
 
-    implicit none 
+  implicit none 
 
-    public :: torus
+  public :: torus
 
-    private
+  private
 
-    contains
+contains
 
- subroutine torus(b_idim,b_npart,b_nactive,b_xyzmh,b_rho,b_iphase, &
+  subroutine torus(b_idim,b_npart,b_nactive,b_xyzmh,b_rho,b_iphase, &
                   b_nptmass,b_listpm,b_udist,b_umass, &
                   b_utime,b_time,b_gaspartmass, b_num_gas, b_temp)
 
@@ -106,8 +106,6 @@
   ! optical depth variables
   integer, parameter :: maxTau = 20000
 
-  real :: scaleFac
-
   real :: sigmaExt0, sigmaAbs0, sigmaSca0  ! cross section at the line centre
 
   ! variables to do with dust
@@ -151,10 +149,6 @@
   type(VECTOR) :: rotationAxis, normToRotation
   type(VECTOR) :: zeroVec
 
-! Used in commented out call to findSubcellTD
-!  type(octal), pointer :: thisOctal
-!  integer :: subcell
-
   ! output arrays
 
   integer :: iLambda
@@ -164,8 +158,6 @@
 
   ! model flags
 
-  logical :: rotateView
-  logical :: tiltView
   logical :: flatSpec
   logical :: ok
   logical :: greyContinuum
@@ -177,13 +169,7 @@
 
   logical :: velocitySpace
 
-  ! raman scattering model parameters
-
-  type(VECTOR) :: hotSourcePosition, coolStarPosition
-
   ! misc
-
-  real :: rotateDirection
   real :: meanr_line = 0., meanr_cont = 0.
   real :: wtot_line =0., wtot_cont = 0.
   real :: meanr0_line = 0., meanr0_cont = 0.
@@ -198,13 +184,9 @@
   logical :: lineResAbs    ! T if you want to include absorption
   !                        !   of line by line resonance zones.
 
-
   !
   real(double) :: totalMass
-  real(double) :: T_ave   ! average temperature of cluster
-  real(double) :: T_mass  ! mass weighted temperature
 
-  real :: fAccretion
   real :: theta1, theta2
   type(SURFACETYPE) :: starSurface
 
@@ -228,11 +210,6 @@
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
   logical :: alreadyDoneInfall = .false. ! whether we have already done an infall calculation
   type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
-  type(discwind)    :: ttauri_discwind   ! parameters for ttauri disc wind
-  type(jet)         :: ttauri_jet        ! parameters for ttauri jets
-
-!  ! For luc_cir3d geometry case
-!  type(luc_cir3d) :: cir3d ! parameters and data for luc_cir3d geometry
 
   ! For romanova geometry case
   type(romanova) :: romData ! parameters and data for romanova geometry
@@ -255,7 +232,6 @@
   ! Name of the file to output various message from torus
   character(LEN=7), parameter :: messageFile = "MESSAGE"
   character(len=80) :: message
-  real :: h
 
 ! Variables used when linking to sph code
   type(isochrone)       :: isochrone_data
@@ -271,9 +247,6 @@
   integer, save :: num_calls = 0
 
   type(modelatom), allocatable :: thisAtom(:)
-
-  type(STREAMTYPE) :: thisStream(2000), bigStream
-  integer :: nStreams
   
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
@@ -367,8 +340,6 @@
   call inputs() ! variables are passed using the input_variables module
   if (.not.inputOK) goto 666
 
-!  call test_profiles()  ! Testing Lorentz profile with Voigt profile
-
   if (geometry /= "cluster" ) then
      print *, "Error: cluster geometry required"
      goto 666
@@ -383,10 +354,7 @@
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
   endif
 
-
-
   objectDistance = griddistance * pctocm
-
 
   grid%photoionization = photoionization
   ! time elipsed since the beginning of the model
@@ -412,28 +380,12 @@
      val_3rd_dim = 0.0d0        
   end if
 
-  !
-
-  if (geometry.eq."raman") then
-     hotSourcePosition = 0.75*secondSourcePosition
-     coolStarPosition = (-0.25)*secondSourcePosition
-     secondSourcePosition = hotSourcePosition
-  endif
 
   if (doRaman) screened = .true.
 
   if (dopvimage) then
      allocate(pvimage(1:nSlit))
   endif
-
-!  if (mie .or. (geometry == "ttauri" .and. ttau_disc_on)) then
-!     meanDustParticleMass = getMeanMass2(amin(1), amax(1), a0(1), qDist(1), pdist(1), graintype(1))
-!     if (meanDustParticleMass <=0.0) then 
-!        write(message,*) "Error: meanDustParticleMass <=0 in torusMain."
-!        call writeFatal(message)
-!        stop
-!     end if
-!  endif
 
   probLinePhoton = 1. - probContPhoton
 
@@ -452,10 +404,6 @@
 
   rStar = 100.*rSol
 
-  ! Choose whether to rotate the view
-  call choose_view( geometry,   nPhase,          distortionType, doRaman, & ! Intent in
-                    rotateview, rotateDirection, tiltView)                  ! Intent out
-
   ! switches for line emission
 
   if (lineEmission) then
@@ -463,18 +411,6 @@
      greyContinuum = .true.
      velocitySpace = .true.
   endif
-
-  if (geometry == "planet") then
-     flatspec = .true.
-     greyContinuum = .true.
-  endif
-
-  if (geometry == "rolf") then
-!     flatspec = .true.
-     greyContinuum = .true.
-  endif
-     
-  
 
   ! the observer's viewing direction
 
@@ -496,85 +432,32 @@
   ! Special case
   !
 
-  if (geometry == "cluster") then
-
      ! The total number of gas particles is the total number of active particles less the number of point masses.
-     ngaspart = b_nactive-b_nptmass
-     call init_sph_data2(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
-          b_gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp)
-! Communicate particle data. Non-mpi case has a stubbed routine. 
-     call gather_sph_data(sphData)
+  ngaspart = b_nactive-b_nptmass
+  call init_sph_data2(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
+       b_gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp)
+  ! Communicate particle data. Non-mpi case has a stubbed routine. 
+  call gather_sph_data(sphData)
 
-        ! Writing basic info of this data
-     if (myRankIsZero) call info(sphData, "info_sph.dat")
+  ! Writing basic info of this data
+  if (myRankIsZero) call info(sphData, "info_sph.dat")
 
-     ! reading in the isochrone data needed to build an cluster object.
-     call new(isochrone_data, "dam98_0225")   
-     call read_isochrone_data(isochrone_data)
+  ! reading in the isochrone data needed to build an cluster object.
+  call new(isochrone_data, "dam98_0225")   
+  call read_isochrone_data(isochrone_data)
      
-     ! making a cluster object
-     call new(young_cluster, sphData, dble(amrGridSize), disc_on)
-     call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
+  ! making a cluster object
+  call new(young_cluster, sphData, dble(amrGridSize), disc_on)
+  call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
     
-     ! Wrting the stellar catalog readble for a human
-     if (myRankIsZero) call write_catalog(young_cluster, sphData)
+  ! Wrting the stellar catalog readble for a human
+  if (myRankIsZero) call write_catalog(young_cluster, sphData)
 
-      ! Finding the inclinations of discs seen from +z directions...
-!     if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
+  ! Finding the inclinations of discs seen from +z directions...
+  !     if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
 
-  end if
-
-  if (geometry == "wr104") then
-     if (.not.(readPops.or.readlucy)) then
-        call readWR104Particles("harries_wr104.txt", sphData, objectDistance)
-        call info(sphData,"*")
-     endif
-
-  elseif (geometry == "ttauri".or.(geometry == "magstream")) then
-     onekappa=.false.
-     if (ttau_disc_on)  &
-          call new(ttauri_disc, dble(TTauriDiskRin*TTauriRstar/1.0e10), 1.5d3*100.d0, &
-          dble(TTauriMstar/100.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0, dble(TTauriMstar/mSol))
-     if (ttau_discwind_on) &
-          call new(ttauri_discwind, DW_d, DW_Rmin, DW_Rmax, DW_Tmax, DW_gamma, &
-          DW_Mdot, DW_alpha, DW_beta, DW_Rs, DW_f, DW_Twind, &
-          dble(TTauriMstar/mSol),  dble(TTauriDiskHeight/1.0e10) )
-     if (ttau_jet_on) &
-!          call new(ttauri_jet,  dble(TTauriRouter/1.0e10), dble(amrgridsize), &
-          call new(ttauri_jet,  JET_Rmin, dble(amrgridsize), &
-          JET_theta_j, dble(TTauriMstar/mSol), JET_Mdot, JET_a_param, JET_b_param,  &
-          JET_Vbase, JET_Vinf, JET_beta, JET_gamma, limitscalar2, JET_T)
-
-  elseif (geometry == "luc_cir3d") then
-     onekappa=.false.
-     !                    Rmin [10^10cm]         
-     call new(CIR_Rstar*Rsol*1.0e-10, CIR_Twind, CIR_Mdot_scale,  &
-     "zeus_rgrid.dat", "zeus_rho_vel.dat")     
-
-  elseif (geometry == "cmfgen") then
-     onekappa=.false.
-     call read_cmfgen_data("OPACITY_DATA")
-     call put_cmfgen_Rmin(CMFGEN_Rmin)  ! in [10^10cm]
-     call put_cmfgen_Rmax(dble(amrGridSize)/2.0d0)  ! in [10^10cm]
-
-  elseif (geometry == "romanova") then
-     onekappa=.false.
-     ! create the romanova data object and readin the data at the same time.
-     ! After this call, the obejct will be ready to use. 
-     call new(romData, ROM_Rs*DBLE(Rsol)*1.0d-10, 70.0d0, &
-          ROM_Mass*DBLE(Msol), ROM_isoT, ROM_T_flow, ROM_r_ref, &
-          ROM_rho_ref, ROM_T_ref, ROM_v_ref, ROM_tilt, ROM_period, ROM_datafile)
-
-     ! this is a temporary solution... It should be called something 
-     ! else .
-     TTauriRouter = REAL(get_dble_parameter(romData, "Rmax")*1.0d10)           
-
-  end if
   !==========================================================================
   !==========================================================================
-
-
-
 
   ! allocate the grid - this might crash out through memory problems
 
@@ -585,34 +468,12 @@
         if (.not.ok) goto 666
 
   else
-     if (gridcoords /= "polar") then
-        if ((.not.doRaman).and.(geometry /= "binary"))  then
-           grid = initCartesianGrid(nx, ny, nz, nLambda, lamStart, lamEnd, &
-                greyContinuum, ok)
-           else
-           grid = initCartesianGrid(nx, ny, nz, 1, lamStart, lamEnd, &
-                greyContinuum, ok)
-        endif
-         if (.not.ok) goto 666
-     else   if (plezModelOn) then
-        grid = plezModel("model.plez", lamStart, lamEnd, nLambda, kfac)
-     else
-        grid = initPolarGrid(nr, nmu, nphi, nlambda, lamStart, &
-                             lamEnd, greyContinuum, ok)
-        if (.not.ok) goto 666
-     endif
+     print *, "Error: AMR grid required"
+     STOP
   end if
-
-  ! a few dynamic arrays
-
-!  if (mie) sed = .true.
 
   grid%splitOverMpi = .false.
 
-#ifdef MPI
- if (hydrodynamics) grid%splitOverMpi = .true.
- if (photoionization) grid%splitOverMpi = .true.
-#endif
 
   grid%resonanceLine = resonanceLine
   grid%lambda2 = lamline
@@ -674,10 +535,6 @@
      grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
   endif
 
-
-
-!  tempArray(1) = 1.d0
-!  call testMiePhase(xarray(1), xArray, nLambda, miePhase, nDustType, nMuMie, temparray)
   if (writeoutput) then
      open(76, file="phasematrix.dat",status="unknown",form="formatted")
      ilambda = findIlambda(10000.0, xArray, nLambda, ok)
@@ -694,7 +551,6 @@
 
 
   endif
-!  stop
 
   if (includeGasOpacity) then
 
@@ -706,17 +562,6 @@
      call createAllMolecularTables(20, 1.e-6, 20000., grid%nLambda, xArray)
 
   end if
-
-  ! if the grid uses an adaptive mesh, create it
-     
-
-!  if (gridUsesAMR) then
-!     if ((mie) .or. (geometry == "ttauri" .and. ttau_disc_on)) then 
-!        call setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &
-!             ngrain, X_grain, grainname, lambdaTau)
-!     end if
-!  end if
-
 
   if (mie) then
      call locate(grid%lamArray, nLambda,lambdaTau,itestlam)
@@ -789,95 +634,11 @@
   ! set up the sources
   call set_up_sources
 
-     if (geometry == "wr104") then
-!        call IntegratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
-!             VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
-!             tauSca, maxTau, nTau, opaqueCore, escProb, .false. , &
-!             lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, .false., &
-!             .false., nUpper, nLower, 0., 0., 0., junk,&
-!             sampleFreq,intPathError)
-!        if (intPathError < 0) then
-!           write(*,*) '   Error encountered in cross-sections!!! (error = ',intPathError,')'
-!        end if
-        totalMass = 0.d0
-        call findTotalMass(grid%octreeRoot, totalMass)
-        scaleFac = massEnvelope / totalMass
-        if (writeoutput) write(*,'(a,1pe12.5)') "Density scale factor: ",scaleFac
-        call scaleDensityAMR(grid%octreeRoot, scaleFac)
-
-     else if (geometry == "cluster") then
-!        call find_average_temperature(grid, T_ave, T_mass, totalMass)
-!        if (writeoutput) write(*,*) " "
-!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total dust mass in cluster  : ", TotalMass, " [g]"
-!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature of cluster : ", T_ave,    " [K]"
-!        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature of cluster : ",T_mass,  " [K]"
-!        if (writeoutput) write(*,*) " "
-!        ! computing the max, min and average tau at 2 micron (of all
-!        ! active cells)
-!        ilambda = findIlambda(20000.0, xArray, nLambda, ok)
-!        call find_max_min_ave_tau(grid, ilambda, tau_max, tau_min,  tau_ave)
-!        if (writeoutput) write(*,*) " "
-!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Max tau(1 micron) = ", tau_max, " [contiuum]"
-!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Min tau(1 micron) = ", tau_min, " [contiuum]"
-!        if (writeoutput) write(*,'(a,1pe12.4, a11)') "Ave tau(1 micron) = ", tau_ave, " [contiuum]"
-!        if (writeoutput) write(*,*) " "
-
-     else if (geometry == "ttauri") then
-        call find_average_temperature(grid, T_ave, T_mass, totalMass)
-        if (writeoutput) write(*,*) " "
-        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Total mass in computational domain : ", TotalMass, " [g]"
-        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Ave. temperature in computational domain : ", T_ave,    " [K]"
-        if (writeoutput) write(*,'(a,1pe12.4, a5)') "Mass weighted ave. temperature in computational domain : ",T_mass,  " [K]"
-        if (writeoutput) write(*,*) " "
-     end if
-
-
      if (associated(grid%octreeRoot)) then
         totalMass =0.d0
         call findTotalMass(grid%octreeRoot, totalMass)
         write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
         call writeInfo(message, IMPORTANT)
-     endif
-        
-
-     if (mie) then
-        if (geometry == "shakara" .and. geometry .eq. 'iras04158') then
-
-!        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*real(autocm)) ! defined at 1AU
-
-!           sigma0 = totalMass * real(betaDisc-alphaDisc+2) / & 
-!                (twoPi*((rOuter*1.e10)**(betaDisc-alphaDisc+2) - (rInner*1.e10)**(betaDisc-alphaDisc+2))*1.*auToCm)
-
-!           sigma0 = rho0 * (rinner*1.e10/(1.*autocm))**alphaDisc * &
-!           (height*1.e10) * (autocm / (100.d0*autocm))**betaDisc * sqrt(twopi)
-
-           sigma0 = rho0 * (height*1.e10) * ((rinner*1.e10) / (100.d0*autocm))**betaDisc * sqrt(twopi)
-
-           if (writeoutput) write(*,*) "Sigma0: ",sigma0
-        endif
-
-        if (geometry == "ppdisk") then
-           sigma0 = totalMass / ((amrgridsize**2 - twoPi*0.4)*1.e10*1.*autocm) ! defined at 1AU
-           if (writeoutput) write(*,*) "Sigma0: ",sigma0
-        endif
-
-        if (geometry == "planetgap") then
-           rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * height * (rCore*1.e10) &
-                * (rCore*1.e10)**(alphaDisc-betaDisc) * &
-                (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
-           h = height * rCore * 1.e10
-           sigma0 = rho0 * sqrt(twoPi) * h
-
-           if (writeoutput) write(*,*) "Sigma0: ",sigma0
-        endif
-
-        if (geometry == "warpeddisc") then
-           rho0  = mDisc *(betadisc-alphadisc+2.) / ( twoPi**1.5 * (height*1.e10)  &
-                   * (rOuter*1.d10)**(alphadisc-betadisc) * ( &
-                   ((router*1.d10)**(betadisc-alphadisc+2.)-(rInner*1.d10)**(betadisc-alphadisc+2.))) )
-           sigma0 = rho0 * sqrt(twoPi) * height * 1.e10
-        endif
-
      endif
 
      call torus_mpi_barrier
@@ -1032,373 +793,26 @@ CONTAINS
 
   subroutine amr_grid_setup
 
-    real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
-
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
 
     if (readPops .or. readPhasePops .or. readLucy) then 
 
-       if (readLucy) call readAMRgrid(lucyFilenameIn,readFileFormatted,grid)
-
-       if (readPhasePops) then ! need to get the right file for the phase
-          write(tempChar,'(i3.3)') nStartPhase
-          phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
-          call readAMRgrid(phasePopFilename,readFileFormatted,grid)
-       else ! just read the normal pops file
-          if (readpops) call readAMRgrid(popFilename,readFileFormatted,grid)
-       end if
-
-       if (forceLineChange) then
-          write (message,'(A,I1,A,I1,A)') 'Recalculating for n =',nUpper,' /',nLower,'levels...'
-          call writeInfo(message, IMPORTANT)
-          call generateOpacitiesAMR(grid, nLower, nUpper)
-          do i = 1, nLambda
-             grid%lamArray(i) = xArray(i)
-          enddo
-          print *, '...level change done.'
-       end if
-
-       ! for some geometries, it is valid to alter the 'dipoleOffset parameter
-       !   for a grid we've already created. 
-       if (geometry == "ttauri".or.(geometry == "magstream")) then 
-          ! if (ABS(grid%dipoleOffset/dipoleoffset-1.0) > 0.01) then 
-          write(message,'(a,f5.2,a)') 'Using new dipole offset value (',&
-               dipoleOffset*radToDeg,'deg)'
-          call writeInfo(message, IMPORTANT)
-          grid%dipoleOffset = dipoleOffset                         
-          grid%diskNormal = VECTOR(0.,0.,1.)
-          grid%diskNormal = rotateX(grid%diskNormal,grid%dipoleOffSet)
-!          end if
-       elseif (geometry == "romanova") then
-!           write(*,'(a,f5.2,a)') 'Using new dipole offset value (',&
-!                dipoleOffset*radToDeg,'deg)'
-!           grid%dipoleOffset = dipoleOffset                         
-          grid%diskNormal = VECTOR(0.,0.,1.)
-!           grid%diskNormal = rotateY(grid%diskNormal,-grid%dipoleOffSet)
-!           grid%diskNormal = VECTOR(0.,0.,1.)
-       end if
-
-        ! In case, a user is using a new nlambda (number of wavelength bins)
-        ! we have to update the wavelength array in the grid.
-        ! This may not work for dust calculation...
-        ! Copying the wavelength array to the grid
-!        if (grid%nlambda /= nlambda) then
-!           if (mie .or. (grid%geometry == "ttauri" .and. ttau_disc_on)) then              
-!              write(*,*) "Error:: The number of the wavelength bins in the data file "
-!              write(*,*) "        does not macth with that specifed in your parameter file."
-!              write(*,*) "nlambda(old) = ", grid%nlambda
-!              write(*,*) "nlambda(new) = ", nlambda
-!              write(*,*) " "
-!              write(*,*) "Make the new nlambda same as the old one, otherwise you cannot use"
-!              write(*,*) "this data file. This should be changed in future...."
-!!              stop
-!           else 
-!              write(*,*) "Warning:: The number of the wavelength bins in the data file "
-!              write(*,*) "      does not macth with that specifed in your parameter file."
-!              write(*,*) "nlambda(old) = ", grid%nlambda
-!              write(*,*) "nlambda(new) = ", nlambda
-!              write(*,*) "==> We recompute the wavelength array with new nlambda value, and continue."
-              ! update the wavelength array.
-              ! It over writes whatever the wavelength you had in your file!
-       deallocate(grid%lamArray)
-       allocate(grid%lamArray(nlambda))
-       do i = 1, nLambda
-          grid%lamArray(i) = xArray(i)
-       enddo
-       grid%nLambda = nLambda
-!           end if
-!        end if
-
-        !
-        ! If the grid read from file contains ttauri disc or jet, you can turn it
-        ! off by setting ttau_trun_off_disc = .true. and/or ttaur_turn_off_jet
-        ! in your parameter file.
-       if (grid%geometry=="ttauri" .and. ttau_turn_off_disc) then
-          write(*,*) " "
-          write(*,*) "Turning off the alpha disc read in from file, but keeping"
-          write(*,*) "the magnetorsphere alive."
-          if (.not.ttau_disc_on)   then
-              ! we need to create the disc parameter object 
-             call new(ttauri_disc, dble(TTauriDiskRin*TTauriRstar/1.0e10), 1.5d3*100.d0, &
-                  dble(TTauriMstar/100.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0, dble(TTauriMstar/mSol))
-          end if
-          call turn_off_disc(grid%octreeroot, grid, ttauri_disc)
-       end if
-
-       if (grid%geometry=="ttauri" .and. ttau_turn_off_jet) then
-          write(*,*) " "
-          write(*,*) "Turning off the jet read in from file, but keeping"
-          write(*,*) "the magnetorsphere alive."
-          if (.not.ttau_jet_on) then
-              ! the parameter file has to created here.
-             call new(ttauri_jet,  dble(TTauriRouter/1.0e10), dble(amrgridsize), &
-                  JET_theta_j, dble(TTauriMstar/mSol), JET_Mdot, JET_a_param, JET_b_param,  &
-                  JET_Vbase, JET_Vinf, JET_beta, JET_gamma, limitscalar, JET_T)
-          end if
-          call turn_off_jet(grid%octreeroot, grid, ttauri_jet)
-       end if
-
-       if (grid%geometry=="ttauri" .and. ttau_turn_off_acc) then
-          write(*,*) " "
-          write(*,*) "Turning off the magnetosphere read in from file."
-          write(*,*) " "
-           ! using the routine in amr_mod.f90
-          call turn_off_magnetosphere(grid%octreeroot, grid, dble(TTauriRouter/1.0e10))
-       end if
-
-       if (myRankIsZero) then   !-----------------------------------------------
-          if (writePhasePops) then
-             write(tempChar,'(i3.3)') nStartPhase
-             phasePopFilename = trim(popFilename)//'_phase'//TRIM(tempChar)
-             call writeAMRgrid(phasePopFilename,writeFileFormatted,grid)
-          else if (writePops) then
-             call writeAMRgrid(popFilename,writeFileFormatted,grid)
-          end if
-       end if  ! (myRankIsZero) --------------------------------------------------------
-
-       call torus_mpi_barrier
+       print *, "Error: TorusMod not configures with readPops, readPhasePops, readLucy" 
+       STOP
 
     else  ! not reading a population file
 
        amrGridCentre = octalVector(amrGridCentreX,amrGridCentreY,amrGridCentreZ)
        call writeInfo("Starting initial set up of adaptive grid...", TRIVIAL)
        
-       select case (geometry)
-       case("cluster")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData, young_cluster)
-          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-!           call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
-          call estimateRhoOfEmpty(grid, grid%octreeRoot, sphData)	
-           !Removing the cells within 10^14 cm from the stars.
-          call remove_too_close_cells(young_cluster,grid%octreeRoot,1.0d4)
+       call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
+       call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData, young_cluster)
+       call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+       call estimateRhoOfEmpty(grid, grid%octreeRoot, sphData)	
+       !Removing the cells within 10^14 cm from the stars.
+       call remove_too_close_cells(young_cluster,grid%octreeRoot,1.0d4)
 
-       case("wr104")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,sphData)
-          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
-          do
-             gridConverged = .true.
-             call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
-                  gridConverged,  inheritProps = .false., interpProps = .false.)
-             if (gridConverged) exit
-          end do
-          call writeInfo("...grid smoothing complete", TRIVIAL)
-          
-       case("starburst")
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
-          gridconverged = .false.
-          do while(.not.gridconverged) 
-             call splitGridFractal(grid%octreeRoot, real(100.*mHydrogen), 0.1, grid, gridconverged)
-          enddo
-          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-
-       case("magstream")
-          nSource = 1
-          allocate(source(1:1))
-          source(1)%luminosity = grid%lCore
-          source(1)%radius = ttaurirStar/1.d10
-          source(1)%teff = 4000.
-          source(1)%position = VECTOR(0.,0.,0.)
-          call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
-          call normalizedSpectrum(source(1)%spectrum)
-          call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
-          nu =1.d15
-!           call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
-!           call testSurface(source(1)%surface)
-
-          call readStreams(thisStream,nStreams,"stream.dat")
-
-          call allocateStream(bigStream, nStreams*200)
-          do i = 1, nStreams
-             do j = 1, thisStream(i)%nsamples
-                bigStream%nSamples = bigStream%nSamples + 1
-                bigStream%rho(bigStream%nSamples) = thisStream(i)%rho(j)
-                bigStream%temperature(bigStream%nSamples) = thisStream(i)%temperature(j)
-                bigStream%position(bigStream%nSamples) = thisStream(i)%position(j)
-                bigStream%velocity(bigStream%nSamples) = thisStream(i)%velocity(j)
-             enddo
-          enddo
-
-          write(*,*) "stream read . now refining"
-          write(*,*) "splitting on stream"
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType, &
-               stream=bigStream)
-
-          if (doTuning) call tune(6, "Magstream grid construction.") ! start a stopwatch
-
-
-          write(*,*) "Bigstream has ",bigStream%nsamples, " samples" 
-          call splitGridOnStream3(grid%octreeRoot,  grid, bigstream) 
-          call freeStream(bigStream)
-
-          nOctals = 0
-          nVoxels = 0
-          call countVoxels(grid%octreeRoot,nOctals,nVoxels)
-          write(message,*) "Adaptive grid currently contains: ",nOctals," octals"
-          call writeInfo(message, TRIVIAL)
-          write(message,*) "                                : ",nVoxels," unique voxels"
-          call writeInfo(message, TRIVIAL)
-           
-          if (writeoutput) then
-             fac = 110.*degtorad
-             do i = 1, 1
-                ang = real(i-1)/40. * twoPi
-                octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
-                write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
-                call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
-             enddo
-          endif
-
-
-          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-          if (doTuning) call tune(6, "Magstream grid construction.") ! stop a stopwatch
-!           call plotAMRthreeDMovie(grid, source, nsource)
-
-       case DEFAULT
-          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, &
-               sphData, young_cluster, nDustType, romData=romData)
-          call writeInfo("First octal initialized.", TRIVIAL)
-          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,romData=romData)
-          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
-
-           ! This section is getting rather long. Maybe this should be done in 
-           ! wrapper subroutine in amr_mod.f90.
-          if (geometry=="ttauri") then 
-              ! Finding the total mass in the accretion flow
-             mass_accretion_old = 0.0d0
-             call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_old)
-             write(message,*) "Total mass in accretion flow is ",  mass_accretion_old, "[g]"
-             call writeInfo(message,FORINFO)
-
-             if (ttau_fuzzy_edge) then
-                call writeInfo("Fuzzy edge for TTauri accreation stream will be used.",FORINFO)
-                call ttauri_fuzzy_edge(grid%octreeRoot)
-                
-                 ! We now have to correct the density of the accretion flow 
-                 ! due to the fuzziness introduced above.
-                mass_accretion_new = 0.0d0
-                call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_new)
-                write(message,*) "Total mass in accretion flow (after fuzzy edge) is ",  mass_accretion_new, "[g]"
-                call writeInfo(message, FORINFO)
-                mass_scale = mass_accretion_old/mass_accretion_new
-                write(message,*) "Scaling the density by ", mass_scale , "[g]"
-                call writeInfo(message, FORINFO)
-
-                call TTauri_accretion_scale_density(grid%octreeRoot, grid, mass_scale) 
-                 ! Check to see if it has scaled correctly.
-                mass_accretion_new = 0.0d0
-                call TTauri_accretion_mass(grid%octreeRoot, grid, mass_accretion_new)                 
-                if (writeoutput) write(*,*) "Total mass in accretion flow after rescaling: ", mass_accretion_new, "[g]"
-                if (writeoutput) write(*,*) " "  
-             end if
-
-             if (ttau_discwind_on) then
-                if (writeoutput) write(*,*) " "
-                if (writeoutput) write(*,*) "Adding TTauri disc wind to magnetosphere model... "
-                call add_discwind(grid%octreeRoot, grid, ttauri_discwind, limitscalar2)
-                if (writeoutput) write(*,*) " "
-             elseif (ttau_jet_on) then
-                if (writeoutput) write(*,*) " "
-                if (writeoutput) write(*,*) "Adding TTauri jets to magnetosphere model... "
-                call add_jet(grid%octreeRoot, grid, ttauri_jet)
-                call finish_grid_jet(grid%octreeroot, ttauri_jet)
-                if (writeoutput) write(*,*) " "
-             end if
-
-
-             if (grid%geometry=="ttauri" .and. ttau_turn_off_disc) then
-                write(*,*) " "
-                write(*,*) "Turning off the alpha disc read in from file, but keeping"
-                write(*,*) "the magnetorsphere alive."
-                if (.not.ttau_disc_on)   then
-                   ! we need to create the disc parameter object 
-                    call new(ttauri_disc, dble(TTauriDiskRin*TTauriRstar/1.0e10), 1.5d3*100.d0, &
-                         dble(TTauriMstar/100.0), 0.0d0, 0.0d0, 0.0d0, 0.0d0, 0.0d0, 1.0d0, dble(TTauriMstar/mSol))
-                 end if
-                 call turn_off_disc(grid%octreeroot, grid, ttauri_disc)
-              end if
-              
-              if (grid%geometry=="ttauri" .and. ttau_turn_off_jet) then
-                 write(*,*) " "
-                 write(*,*) "Turning off the jet read in from file, but keeping"
-                 write(*,*) "the magnetorsphere alive."
-                 if (.not.ttau_jet_on) then
-                    ! the parameter file has to created here.
-                    call new(ttauri_jet,  dble(TTauriRouter/1.0e10), dble(amrgridsize), &
-                         JET_theta_j, dble(TTauriMstar/mSol), JET_Mdot, JET_a_param, JET_b_param,  &
-                         JET_Vbase, JET_Vinf, JET_beta, JET_gamma, limitscalar, JET_T)
-                 end if
-                 call turn_off_jet(grid%octreeroot, grid, ttauri_jet)
-              end if
-
-
-           end if  ! gemoetry == "ttaruri"
-
-           ! 
-           if (doSmoothGrid) then
-	      call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
-              do
-                 gridConverged = .true.
-                 ! The following is Tim's replacement for soomthAMRgrid.
-                 call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
-                      gridConverged,  inheritProps = .false., &
-		      interpProps = .false.,  &
-                      sphData=sphData, stellar_cluster=young_cluster, romData=romData)
-                 if (gridConverged) exit
-              end do
-              call writeInfo("...grid smoothing complete", TRIVIAL)
-           endif
-
-           ! Smooth the grid with respect to optical depth, if requested
-
-           if (doSmoothGridTau.and.mie) then
-              call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-              do j = iSmoothLam, iSmoothlam !nLambda, 5
-                 do
-                    gridConverged = .true.
-                    call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, inheritProps = .false., interpProps = .false.)
-                    if (gridConverged) exit
-                 end do
-              enddo
-              call writeInfo("...grid smoothing complete", TRIVIAL)
-
-              ! The tau smoothing may result in large differences in the size
-              ! of neighbouring octals, so we smooth the grid again.
-              
-              if (doSmoothgrid) then
-                 call writeInfo("Smoothing adaptive grid structure (again)...", TRIVIAL)
-                 do
-                    gridConverged = .true.
-                 ! The following is Tim's replacement for soomthAMRgrid.
-                    call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
-                         gridConverged,  inheritProps = .false., interpProps = .false., &
-                         sphData=sphData, stellar_cluster=young_cluster, romData=romData)
-                    if (gridConverged) exit
-                 end do
-                 call writeInfo("...grid smoothing complete", TRIVIAL)
-              endif
-           end if
-        end select
    
-!        call writeInfo("Unrefining optically thin cells...", TRIVIAL)
-!        gridconverged = .false.
-!        do while(.not.gridconverged)
-!           gridconverged = .true.
-!           call unrefineThinCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
-!        end do
-!        call writeInfo("Done.", TRIVIAL)
-
-!        call writeInfo("Unrefining optically thick cells...", TRIVIAL)
-!        gridconverged = .false.
-!        do while(.not.gridconverged)
-!           gridconverged = .true.
-!           call unrefineThickCells(grid%octreeRoot, grid, ismoothlam, gridconverged)
-!        end do
-!        call writeInfo("Done.", TRIVIAL)
-
-
         nOctals = 0
         nVoxels = 0
         call countVoxels(grid%octreeRoot,nOctals,nVoxels)
@@ -1418,55 +832,10 @@ CONTAINS
 
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
-!        call grid_info(grid, "*")
         if (myRankIsZero) call grid_info(grid, "info_grid.dat")
 
         if (writeoutput) call writeAMRgrid("after_creation.grid",.false.,grid)
 
-        if ((geometry == "shakara").and.(nDustType>1)) then
-           call fillDustShakara(grid, grid%octreeRoot)
-        endif
-
-        if ((geometry == "whitney").and.(nDustType ==4)) then
-           call	fillDustWhitney(grid, grid%octreeRoot)	
-        endif
-
-        if (((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")).and.(nDustType>1)) then
-           call fillDustUniform(grid, grid%octreeRoot)
-        endif
-        
-!        if (variableDustSublimation) then
-!           call sublimateDust(grid, grid%octreeRoot, totFrac, nFrac)
-!        endif
-
-
-        
-!     ! plotting column density (new routine in grid_mod.f90)
-!     if (grid%geometry == "luc_cir3d") then 
-!        call plot_column_density(grid, plane_for_plot,  "column_density.ps/vcps", &
-!            nmarker, xmarker, ymarker, zmarker, &
-!            width_3rd_dim, show_value_3rd_dim,val_3rd_dim)
-!     end if
-
-
-        if (geometry == "ttauri" .or. geometry == "luc_cir3d" .or. &
-             geometry == "cmfgen" .or. geometry == "romanova".or.geometry == "magstream") then
-           nu = cSpeed / (lamLine * angstromtocm)
-           call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
-           if (geometry == "ttauri") then
-              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
-           elseif (geometry == "magstream") then
-!              call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
-!              call testSurface(source(1)%surface)
-
-           elseif (geometry == "romanova") then
-              call createTTauriSurface2(starSurface, grid, romData, nu, coreContinuumFlux,fAccretion) 
-           else
-              call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
-           end if
-!           call testSurface(starSurface)
-        endif
 
         if (lineEmission.and.(.not.cmf)) then
            !  calculate the statistical equilibrium (and hence the emissivities 
@@ -1475,111 +844,22 @@ CONTAINS
            !  Using a routine in stateq_mod module.
            if (writeoutput) write(*,*) "Calling statistical equilibrium routines..."
            if (doTuning) call tune(6, "amrStateq") ! start a stopwatch  
-           if (grid%geometry=="ttauri" .or. grid%geometry(1:8)=="windtest" .or. &
-                grid%geometry(1:9)=="luc_cir3d" .or. geometry == "romanova") then
-              call amrStateq(grid, newContFluxFile,lte, nLower, nUpper, &
-                             starSurface, recalcPrevious=.false.)
 
-              call torus_mpi_barrier('waiting for other amrStatEq calls to return...')
-
-              ! the 'lte' setting is intended so that a model with infall
-              ! enhancement is first set up with LTE values. Only after we have 
-              ! done the first time-dependent change so we calculate non-LTE 
-              ! values.
-
-              
-              ! RK added the followings ------------------------------------------
-              !  adding alpha disc to the grid
-              if (ttau_disc_on) then
-                 if (writeoutput) write(*,*) "Adding an accretion disc ... "
-                 call add_alpha_disc(grid%octreeroot, grid, ttauri_disc)
-                 ! finding the photon-dust interaction x-secions
-                 call mieCrossSection(sigmaExt0, sigmaAbs0, sigmaSca0,  &
-                      aMin(1), aMax(1), a0(1), qDist(1), pDist(1), grainType(1), &
-                      ngrain, X_grain, grainname, lamLine)
-                 if (writeoutput) write(*,*) " "
-                 if (writeoutput) write(*,*) "Photon-dust cross section at lambda = ", lamLine, " [A]"
-                 if (writeoutput) write(*,*) "    sigma(tot) = ", sigmaExt0, " [cm^2]"
-                 if (writeoutput) write(*,*) "    sigma(abs) = ", sigmaAbs0, " [cm^2]"
-                 if (writeoutput) write(*,*) "    sigma(sca) = ", sigmaSca0, " [cm^2]"
-                 if (writeoutput) write(*,*) " "
-                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, &
-                      sigmaAbs0, sigmaSca0, meanDustParticleMass)
-                 !
-                 !
-!                 allocate(lambda(1:maxTau),tauExt(1:maxTau),tauAbs(1:maxTau),tauSca(1:maxTau),&
-!                          contTau(1:maxTau,1:nLambda), linePhotonalbedo(1:maxtau))
-!                 call integratePath(gridUsesAMR, VoigtProf, &
-!                      lambdatau,  lamLine, OCTALVECTOR(1.0d-20,1.0d-20,1.0d-20), OCTALVECTOR(150.0,0,-200.), &
-!                      OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
-!                      tauSca, linePhotonAlbedo, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
-!                      lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
-!                      .false., nUpper, nLower, 0., 0., 0., junk,&
-!                      sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
-!                 write(*,*) " ----  Vertical optical depth at r = 0.1 AU is ", tauExt(ntau)
-!                 write(*,*) " ----                           at lambda =  ", lambdatau
-!                 write(*,*) "Rescaling scattering and absorption coefficients ... "
-!                 call finish_grid(grid%octreeroot, grid, ttauri_disc, tauExt(ntau)/100.0)
-!                 call integratePath(gridUsesAMR, VoigtProf, &
-!                      lambdatau,  lamLine, OCTALVECTOR(1.,1.,1.), OCTALVECTOR(75.0,0,-50.), &
-!                      OCTALVECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
-!                      tauSca, maxTau, nTau, thin_disc_on, opaqueCore, escProb, .false. , &
-!                      lamStart, lamEnd, nLambda, contTau, hitCore, thinLine, lineResAbs, .false., &
-!                      .false., nUpper, nLower, 0., 0., 0., junk,&
-!                      sampleFreq,intPathError, useInterp, grid%Rstar1, coolStarPosition)              
-!                 write(*,*) " ---- New Optical depth  at r = 0.05 AU    is ", tauExt(ntau)
-!                 write(*,*) " ----                           at lambda =  ", lambdatau
-!                 deallocate(lambda,tauExt,tauAbs,tauSca,contTau,linePhotonalbedo)
-!                 write(*,*) ".. Finished rescaling scattering and absorption coefficients ... "
-                 if (writeoutput) write(*,*) ".. Finished adding an acreation disc ... "
-              end if
-              !-------------------------------------------------------------------
-
-           elseif (geometry == "cmfgen") then
-              ! simply map CMFGEN opacity data to the AMR grid
-              call map_cmfgen_opacities(grid)
-
-           else
-
-              call amrStateq(grid, newContFluxFile, lte, nLower, nUpper, &
+           call amrStateq(grid, newContFluxFile, lte, nLower, nUpper, &
                       starSurface, recalcPrevious=.false., ion_name=ion_name, ion_frac=ion_frac)
-!              if (ttau_disc_on) then
-!                 ! amrStateq will have messed up the disc, so we reset those cells
-!                 call finish_grid(grid%octreeroot, grid, ttauri_disc, 1.0, sigmaAbs0, sigmaSca0)
-!              end if
 
-              call torus_mpi_barrier('waiting for other amrStatEq calls to return...')
-
-           end if ! (grid%geometry=="ttaur" .or. ...)
+           call torus_mpi_barrier('waiting for other amrStatEq calls to return...')
 
            if (doTuning) call tune(6, "amrStateq") ! stop a stopwatch  
            if (writeoutput) write(*,*) "... statistical equilibrium routines complete"
 
-
-
         end if ! (lineEmission)
 
         !
-        ! cleaning up unused memory here ....
-        if ((geometry(1:7) == "cluster").or.(geometry(1:5)=="wr104")) then
-           ! using the routine in sph_data_class
-           call kill(sphData)
-           ! using the routine in amr_mod.f90
+        ! cleaning up unused memoryusing the routine in sph_data_class
+        call kill(sphData)
 
-          if (myRankIsZero) call delete_particle_lists(grid%octreeRoot)
-
-        elseif (geometry == "luc_cir3d") then
-           call deallocate_zeus_data()
-
-! *** This part is commented out for now since romData is needed 
-! *** for creating the surface elements later..... 
-! *** This can be changed later (RK)
-!
-!        elseif (geometry == "romanova") then
-!           call kill(romData)
-!
-        end if
-
+        if (myRankIsZero) call delete_particle_lists(grid%octreeRoot)
 
      end if ! (readPops .or. readPhasePops)
 
@@ -1600,26 +880,6 @@ CONTAINS
   
   if (doTuning) call tune(6, "AMR grid construction.") ! stop a stopwatch
 
-!     if (geometry == "ttauri".and.VoigtProf) then
-!        write(*,*) "Setting biases for stark broadening..."
-!        call setBiasChil(grid%octreeroot)
-!        write(*,*) "done..."
-!     endif
-
-  if (geometry(1:6) == "ttauri" .and. myRankIsZero) then
-     call writeHartmannValues(grid,'hartmann_logNH')
-     call writeHartmannValues(grid,'hartmann_logNe')
-     call writeHartmannValues(grid,'hartmann_temperature')
-     call writeHartmannValues(grid,'hartmann_velPol')
-     call writeHartmannValues(grid,'hartmann_velAz')
-     call writeHartmannValues(grid,'hartmann_line')
-     !call writeHartmannValues(grid,'hartmann_Nelectron')
-     call writeHartmannValues(grid,'hartmann_Nlevel2')
-     call writeHartmannValues(grid,'hartmann_NH')
-     !call writeHartmannValues(grid,'hartmann_departCoeff')
-     call writeHartmannValues(grid,'hartmann_N')
-  end if
-
 end subroutine amr_grid_setup
 
 !-----------------------------------------------------------------------------------------------------------------------
@@ -1627,13 +887,6 @@ end subroutine amr_grid_setup
 ! Plot values of variables on AMR grid. Extracted from torusMain by D. Acreman 
 
 subroutine do_amr_plots
-
-  !     if (grid%geometry == "jets"  .or. &
-!          grid%geometry == "ttauri"  .or.  grid%geometry == "testamr" ) then
-!        call draw_cells_on_density(grid, plane_for_plot, "cells_on_density.ps/vcps")
-!        !     call draw_cells_on_density(grid, plane_for_plot, device)
-!     end if
-     
 
   ! Do some preparation for the arrays used in plot_AMR_* which will be used later
   if (grid%geometry(1:7) == "cluster") then
@@ -1655,12 +908,6 @@ subroutine do_amr_plots
 
   if ( plot_maps .and. myRankIsZero ) then
 
-  ! Plot desired AMR grid value here... This is more generalized
-  ! version of fancyAmrPlot.
-  !
-  ! See grid_mod.f90 for details.
-  !
-  ! Plotting some grid values
      call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
           "rho_grid",.true., .true., nmarker, xmarker, ymarker, zmarker, &
           width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls, &
@@ -1687,31 +934,11 @@ subroutine do_amr_plots
              "Vz", .false., .false., &
              nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
      end if
-  !        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-  !             "etacont.ps/vcps", .true., .false.,  &
-  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-  !        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-  !             "etacont_zoom.ps/vcps", .true., .false.,  &
-  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
-  !             show_value_3rd_dim, boxfac=0.0004)
+
      call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
           "temperature", .true., .false., nmarker, xmarker, ymarker, zmarker, &
           width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls, &
           fixValMin=sph_tem_min, fixValMax=sph_tem_max, useFixedRange=.false. )
-  !        call plot_AMR_values(grid, "temperature", "x-y", 0., &
-  !             "temperature2.ps/vcps", .true., .false., &
-  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-  !        if (lineEmission) then
-  !           call plot_AMR_values(grid, "etaLine", plane_for_plot, val_3rd_dim,  &
-  !                "etaline.ps/vcps", .true., .false., & 
-  !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-  !           call plot_AMR_values(grid, "chiLine", plane_for_plot, val_3rd_dim,  &
-  !                "chiline.ps/vcps", .true., .false., &
-  !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-  !           call plot_AMR_values(grid, "dV_dR", plane_for_plot, val_3rd_dim,  &
-  !                "dv_dr.ps/vcps", .true., .false., &
-  !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-  !        end if
   
      if (mie) then
         do i = 1, nDustType
@@ -1723,12 +950,6 @@ subroutine do_amr_plots
         enddo
      endif
 
-  !     ! plotting column density (new routine in grid_mod.f90)
-  !     if (grid%geometry(1:7) == "cluster") then 
-  !       call plot_column_density(grid, plane_for_plot,  "column_density.ps/vcps", &
-  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim,val_3rd_dim)
-  !     end if
-
   endif
 
 end subroutine do_amr_plots
@@ -1737,255 +958,30 @@ end subroutine do_amr_plots
 subroutine set_up_sources
 
   integer      :: nstar
-  real(double) :: d1, d2, massRatio
-  real         :: tmp
 
   ! set up the sources
   nSource = 0
-
-  select case(geometry)
-    case("testamr","benchmark")
-       nSource = 1
-       allocate(source(1:1))
-       source(1)%luminosity = grid%lCore
-       source(1)%radius = grid%rCore
-       source(1)%teff = teff
-       source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamstart), dble(lamEnd), nLambda)
-       call normalizedSpectrum(source(1)%spectrum)
-
-    case("magstream")
-       nSource = 1
-       if (.not.allocated(source)) then
-          allocate(source(1:1))
-          source(1)%luminosity = grid%lCore
-          source(1)%radius = ttaurirStar/1.d10
-          source(1)%teff = 4000.
-          source(1)%position = VECTOR(0.,0.,0.)
-          call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
-          call normalizedSpectrum(source(1)%spectrum)
-          call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
-       endif
-       nu =1.d15
-       call genericAccretionSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
-       call testSurface(source(1)%surface)
-
-    case("melvin")
-       nSource = 1
-       teff = 30000.
-       allocate(source(1:1))
-       source(1)%luminosity = fourPi * (10.*rsol)*(10.*rsol) * stefanBoltz * teff**4
-       source(1)%radius = 10.*rSol / 1.e10
-       source(1)%teff = teff
-       source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
-       call normalizedSpectrum(source(1)%spectrum)
-       rstar = source(1)%radius
-
-    case("whitney")
-       nSource = 1
-       allocate(source(1:1))
-       source(1)%luminosity = fourPi * rStellar**2 * stefanBoltz * teff**4
-       source(1)%radius = rStellar / 1.e10
-       source(1)%teff = teff
-       source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(lamStart), dble(lamEnd),nLambda)
-       call normalizedSpectrum(source(1)%spectrum)
-       rstar = source(1)%radius
-
-    case("toruslogo")
-       nSource = 1
-       allocate(source(1:1))
-       source(1)%luminosity = lsol
-       source(1)%radius = rSol / 1.e10
-       source(1)%teff = 6000.
-       source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(6000),  dble(lamStart), dble(lamEnd),nLambda)
-       call normalizedSpectrum(source(1)%spectrum)
-       rstar = source(1)%radius
-
-
-    case("starburst")
-       call random_seed(size=iSize)
-       allocate(iSeed(1:iSize))
-       iseed = 2343245
-       call random_seed(put=iSeed)
-       deallocate(iSeed)
-
-       allocate(source(1:10000))
-       call createSources(nSource, source, "instantaneous", 1.d6, 1.d3, 1.d0)
-       call random_seed
-
-
-    case("wr104")
-       nSource = 2
-
-       allocate(source(1:nSource)) 
-       source(1)%teff = 30000.  ! o star
-       source(1)%radius = 10. * rSol / 1.e10
-       source(1)%position = (VECTOR(1.,0.,0.)*real(autocm))/1.e10
-       source(1)%luminosity = fourPi * stefanBoltz * (10.*rSol)**2.0 * (source(1)%teff)**4
-       call readSpectrum(source(1)%spectrum, "ostar.flx", ok)
-       call normalizedSpectrum(source(1)%spectrum)
-
-       source(2)%teff = 40000.             ! wr star 
-       source(2)%radius = 20. * rSol / 1.e10
-       source(2)%position = (VECTOR(-1.,0.,0.)*real(autocm))/1.e10
-       source(2)%luminosity = 0.5 * source(1)%luminosity
-       call readSpectrum(source(2)%spectrum, "wr.flx", ok)
-       call normalizedSpectrum(source(2)%spectrum)
-
-    case("lexington","fractal")
-       nSource = 1
-       allocate(source(1:nSource)) 
-       source(1)%teff = 40000.  ! o star
-       source(1)%radius = 18.67 * rSol / 1.e10
-       source(1)%position = VECTOR(0.,0.,0.)
-       source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
-       if (writeoutput) write(*,*) "Lexington source: ",source(1)%luminosity/1.e37
-       fac = 1.e8*cspeed/5.d16
-       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), fac, 1000.d4,1000)
-       call normalizedSpectrum(source(1)%spectrum)
-
-    case("symbiotic")
-       nSource = 2
-       allocate(source(1:nSource)) 
-       source(1)%teff = 2500.  
-       source(1)%radius = 100. * rSol / 1.e10
-       source(1)%position = VECTOR(-250.*rSol/1.e10,0.,0.)
-       source(1)%luminosity = fourPi * stefanBoltz * (source(1)%radius*1.e10)**2.0 * (source(1)%teff)**4
-       call fillSpectrumBB(source(1)%spectrum, dble(source(1)%teff), 10.d0, 1000.d4,1000)
-       call normalizedSpectrum(source(1)%spectrum)
-
-       source(2)%teff = 150000.  
-       source(2)%radius = 5000.e5 / 1.e10 ! 5000 km
-       source(2)%position = VECTOR(250.*rSol/1.e10,0.,0.)
-       source(2)%luminosity = fourPi * stefanBoltz * (source(2)%radius*1.e10)**2.0 * (source(2)%teff)**4
-       call fillSpectrumBB(source(2)%spectrum, dble(source(2)%teff), 10.d0, 1000.d4,1000)
-       call normalizedSpectrum(source(2)%spectrum)
-       write(*,*) "!!!!!!! light ratio",source(1)%luminosity/source(2)%luminosity
-
-
-
-    case ("cluster")
-       ! Extract some info from cluster object.
-       nstar = get_nstar(young_cluster)  ! number of stars in the cluster
-       nSource =  n_stars_in_octal(young_cluster, grid%octreeRoot)
+ 
+  ! Extract some info from cluster object.
+  nstar = get_nstar(young_cluster)  ! number of stars in the cluster
+  nSource =  n_stars_in_octal(young_cluster, grid%octreeRoot)
        
-       ! copy the star over in the array.
-       ! This is ugly. Maybe lucyRadiativeEquilibriumAMR should be changed to take
-       ! an cluster_class object as an input variable in future.
-       ALLOCATE(source(nSource))
-       
-       ! Restricting the source to be within the root cell (in case the root cell is 
-       ! is smaller than the sph model space!
-       j = 0 
-       do i = 1, nstar
-          a_star = get_a_star(young_cluster, i)
-          ! using a function in source_mod
-          if ( source_within_octal(a_star, grid%octreeRoot) ) then
-             j = j+1
-             source(j) = a_star
-          end if
-       end do
-
-    case("shakara","clumpydisc","wrshell","warpeddisc","iras04158")
-       nSource = 1
-       allocate(source(1:1))
-       source(1)%radius = grid%rCore
-       source(1)%teff = teff   
-       source(1)%position = VECTOR(0.,0.,0.)
-       tmp = source(1)%radius * 1.e10  ! [cm]
-       source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
-       if (contFluxfile .eq. "blackbody") then
-          call fillSpectrumBB(source(1)%spectrum, dble(teff), &
-               dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
-       else
-          call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile)
-          call readSpectrum(source(1)%spectrum, contfluxfile, ok)
-       endif
-       call normalizedSpectrum(source(1)%spectrum)
-
-    case("gammavel")
-       nSource = 2
-       allocate(source(1:2))
-
-
-       massRatio = mass1/mass2
-
-       d1 = binarySep * (1./(massRatio+1.))
-       d2 = binarySep - d1
-
-! source 1 is the WR star
-       source(1)%radius = rstar1
-       source(1)%teff = teff1
-       source(1)%position = VECTOR(0.,0.,-d1)
-       tmp = source(1)%radius * 1.e10  ! [cm]
-       source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
-
-       call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile1)
-
-
-       if (contFluxfile1 .eq. "blackbody") then
-          call fillSpectrumBB(source(1)%spectrum, dble(teff), &
-               dble(lamStart), dble(lamEnd), nLambda, lamArray=xArray)
-       else
-          call readSpectrum(source(1)%spectrum, contfluxfile1, ok)
-       endif
-       call normalizedSpectrum(source(1)%spectrum)
-
-! source 2 is the WR star
-       source(2)%radius = rstar2
-       source(2)%teff = teff2
-       source(2)%position = VECTOR(0.,0.,d2)
-       tmp = source(2)%radius * 1.e10  ! [cm]
-       source(2)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(2)%teff)**4
-
-       call buildSphere(o2s(source(2)%position), real(source(2)%radius), source(2)%surface, 400, contFluxFile2)
-
-       if (contFluxfile2 .eq. "blackbody") then
-          call fillSpectrumBB(source(2)%spectrum, dble(teff), &
-               dble(lamStart), dble(lamEnd), nLambda)
-       else
-          call readSpectrum(source(2)%spectrum, contfluxfile2, ok)
-       endif
-       call normalizedSpectrum(source(2)%spectrum)
-
-    ! chris (26/05/04)
-    case ("ppdisk")
-       nSource = 1
-       allocate(source(1:nSource))
-!       source(1)%teff = 5780.
-       source(1)%teff = Teff
-!       source(1)%luminosity = 3.83d+32 
-!       source(1)%luminosity = 10.**((4.75-Mbol)/2.5) * lSol
-! Baraffe, et al. use 4.64 for solar bolometric magnitude
-       source(1)%luminosity = 10.**((4.64-Mbol)/2.5) * lSol
-!       source(1)%radius = 6.96d+0
-       source(1)%radius = sqrt(source(1)%luminosity/(4.*pi*stefanBoltz*Teff**4))/1.d10
-       source(1)%position = VECTOR(0.,0.,0.)
-
-       call fillSpectrumBB(source(1)%spectrum, dble(teff), dble(lamStart), dble(lamEnd), nLambda)
-       call normalizedSpectrum(source(1)%spectrum)
-
-    case ("planetgap")
-       nSource = 1
-       allocate(source(1:nSource))
-       source(1)%teff = Teff
-       source(1)%luminosity = fourPi*(rcore*1.e10)**2 * stefanBoltz*teff**4
-       source(1)%radius = rCore
-       source(1)%position = VECTOR(0.,0.,0.)
-       call fillSpectrumBB(source(1)%spectrum, dble(teff), dble(lamStart), dble(lamEnd), nLambda)
-       call normalizedSpectrum(source(1)%spectrum)
-
-
-    case default
-       ! Allocating the source array with size =0 to avoid, non-allocated array passed problem
-       ! in subroutine initPhoton...
-       if (.not. allocated(source)) ALLOCATE(source(0))
-       nSource = 0  ! This must be zero!
-       
-    end select
+  ! copy the star over in the array.
+  ! This is ugly. Maybe lucyRadiativeEquilibriumAMR should be changed to take
+  ! an cluster_class object as an input variable in future.
+  ALLOCATE(source(nSource))
+  
+  ! Restricting the source to be within the root cell (in case the root cell is 
+  ! is smaller than the sph model space!
+  j = 0 
+  do i = 1, nstar
+     a_star = get_a_star(young_cluster, i)
+     ! using a function in source_mod
+     if ( source_within_octal(a_star, grid%octreeRoot) ) then
+        j = j+1
+        source(j) = a_star
+     end if
+  end do
 
   if (nSource > 0) then
      call randomSource(source, nSource, i, xArray, nLambda, initialize=.true.)  
@@ -2002,35 +998,7 @@ end subroutine torus
 end module torus_mod
 
 !-----------------------------------------------------------------------------------------------------------------------
-subroutine choose_view ( geometry, nPhase, distortionType, doRaman, &
-       rotateview, rotateDirection, tiltView)
 
-  use input_variables, only: forceRotate, forceNoRotate
-
-  implicit none
-
-! Intent in arguments
-  character(len=*), intent(in) :: geometry
-  integer, intent(in)          :: nPhase
-  character(len=*), intent(in) :: distortionType
-  logical, intent(in)          :: doRaman
-
-! Intent out arguments
-  logical, intent(out) :: rotateView
-  real, intent(out)    :: rotateDirection
-  logical, intent(out) :: tiltView
-
-! Set default values of intent out arguments
-  rotateView      = .true.
-  rotateDirection = -1.0
-  tiltView        = .false. 
-
-  if (forceRotate)   rotateView = .true.
-  if (forceNoRotate) rotateView = .false.
-
-end subroutine choose_view
-
-!-------------------------------------------------------------------------------
 ! Name:    update_sph_temperature
 ! Purpose: Update the temperatures of the SPH particles using the torus temperature field
 !          Each process works on its own subset of the total number of particles.
@@ -2125,5 +1093,3 @@ end subroutine choose_view
 
 !-------------------------------------------------------------------------------  
 
-!!! vim:set filetype=fortran :                                !!!  
-!!! otherwise vim won't recognize a file with the suffix .raw !!!
