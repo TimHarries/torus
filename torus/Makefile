@@ -671,12 +671,6 @@ else
    STATICLIBS =
 endif
 
-ifeq ($(sph), yes)
-   SPHFLAG = -DSPH
-else
-   SPHFLAG = 
-endif
-
 #
 # Source files
 #
@@ -738,7 +732,7 @@ LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(F77OBJ) $(PGOBJ)
 #
 # Compilers and compiler flags
 #
-F90 = $(F95COMP) $(F95FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG) $(SPHFLAG)
+F90 = $(F95COMP) $(F95FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC) $(MPIFLAG)
 F77 = $(F77COMP) $(F77FLAG) $(ETCFLAG) $(FASTFLAG) $(MATHTRAP) $(MPI_INC)
 
 #
