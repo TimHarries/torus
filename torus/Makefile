@@ -716,10 +716,15 @@ CAPF90SOURCE =	 photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 hydrodynami
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
 	         parallel_mod.F90 stateq_mod.F90 torusMain.F90 image_mod.F90 datacube_mod.F90
 
+CAPF90SOURCELIB = photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 cmf_mod.F90 \
+	          diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
+	          parallel_mod.F90 stateq_mod.F90 torusMod.F90 image_mod.F90 datacube_mod.F90
+
 # Object files
 #
 F90OBJ = $(F90SOURCE:.f90=.o)
 CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
+CAPF90OBJLIB =  $(CAPF90SOURCELIB:.F90=.o)
 F77OBJ = $(F77SOURCE:.f=.o)
 # Only compile the pgplot stubs if required.
 ifeq ($(pgplot), no)
@@ -728,6 +733,7 @@ else
   PGOBJ = 
 endif
 ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ) $(PGOBJ)
+LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(F77OBJ) $(PGOBJ)
 
 #
 # Compilers and compiler flags
@@ -753,11 +759,11 @@ all: depends $(ALLOBJ)
 	    @echo "               ...setting SOURCE_VARIANT to unknown"
     endif
 
-lib: depends $(ALLOBJ)
+lib: depends $(LIBOBJ)
     ifeq ($(KNOWN_SYSTEM), yes)
 	    @echo ""
 	    @echo "Linking object files making a library..."
-	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJ) $(F77OBJ)
+	    $(AR) $(ARFLAGS) libtorus.a $(F90OBJ) $(CAPF90OBJLIB) $(F77OBJ)
 	    @echo "...done"
     else
 	    @echo ""
