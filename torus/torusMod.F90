@@ -7,7 +7,7 @@
 
 ! written by tjh
 ! Extracted from torusMain by D. Acreman (March 2008)
-
+ 
 module torus_mod
 
   implicit none 
@@ -22,8 +22,6 @@ contains
                   b_nptmass,b_listpm,b_udist,b_umass, &
                   b_utime,b_time,b_gaspartmass, b_num_gas, b_temp)
 
-
-  use constants_mod          ! physical constants
   use kind_mod               ! variable type KIND parameters
   use vector_mod             ! vector math
   use photon_mod             ! photon manipulation
@@ -31,46 +29,30 @@ contains
   use grid_mod               ! opacity grid routines
   use phasematrix_mod        ! phase matrices and stokes vectors
   use math_mod               ! misc maths subroutines
-  use blob_mod               ! clumps initialization and movement
-  use distortion_mod         ! for distorting opacity grid
-  use image_mod              ! stokes image
   use utils_mod
   use stateq_mod
   use inputs_mod
-  use TTauri_mod
-  use luc_cir3d_class
   use cmfgen_class
-  use romanova_class
   use unix_mod
   use path_integral
   use puls_mod
   use input_variables         ! variables filled by inputs subroutine
   use lucy_mod
   use amr_mod
-  use jets_mod
   use dust_mod
-  use source_mod
+  use source_mod, only: SOURCETYPE
   use spectrum_mod
-  use wr104_mod
   use sph_data_class
   use cluster_class
   use timing
   use isochrone_class
-  use filter_set_class
   use cluster_utils
-  use surface_mod
-  use disc_hydro_mod
+  use surface_mod, only: SURFACETYPE
   use disc_class
-  use discwind_class
-  use jet_class
   use gas_opacity_mod
   use diffusion_mod
   use messages_mod
-  use photoion_mod
-  use photoionAMR_mod
   use formal_solutions
-  use starburst_mod
-  use molecular_mod
   use modelatom_mod
   use cmf_mod
   use mpi_global_mod
@@ -81,59 +63,21 @@ contains
    include 'mpif.h'  
 #endif
 
-  integer :: nOuterLoop = 10
   integer :: nSource
   type(SOURCETYPE), allocatable :: source(:)
   type(SOURCETYPE) a_star
-  real ::  weightDust=1.0, weightPhoto=1.0
-  real :: inclination
-  real :: meanDustParticleMass
-
-  character(len=80) :: thisdevice
-
-  real(double) :: objectDistance
 
   ! variables for the grid
 
   type(GRIDTYPE) :: grid
 
-  real(double) :: cOrecontinuumflux
-  real :: probLinePhoton 
-
   integer :: isize
   integer, allocatable :: iseed(:)
 
-  ! optical depth variables
-  integer, parameter :: maxTau = 20000
-
-  real :: sigmaExt0, sigmaAbs0, sigmaSca0  ! cross section at the line centre
-
   ! variables to do with dust
-
   integer :: itestlam, ismoothlam
-  integer, parameter :: nXmie = 20, nMuMie = 1000
-  type(PHASEMATRIX), allocatable :: miePhase(:,:, :)
-
-  ! torus images
-
-  type(PVIMAGETYPE), allocatable :: pvimage(:)
-
-  ! intrinsic profile variables
-
-  integer, parameter :: maxIntPro = 1000
-
-  real, allocatable :: statArray(:)
-  real, allocatable :: sourceSpectrum(:)
-  real, allocatable :: sourceSpectrum2(:)
-!  logical :: resonanceLine
-
-
-  ! variables for clumped wind models
-  
-  integer, parameter :: maxBlobs = 10000
-  real, parameter :: blobTime = 1000.
-  real :: timeEnd = 24.*60.*60.
-  real :: timeStart = 0.
+  integer, parameter :: nMuMie = 1000
+  type(PHASEMATRIX), allocatable :: miePhase(:,:,:)
 
   ! filenames
 
@@ -145,15 +89,11 @@ contains
   type(VECTOR), parameter :: zAxis = VECTOR(0.,0.,1.)
   type(VECTOR), parameter :: yAxis = VECTOR(0.,1.,0.)
   type(VECTOR), parameter :: xAxis = VECTOR(1.,0.,0.)
-  type(VECTOR) :: viewVec, outVec, originalViewVec
   type(VECTOR) :: rotationAxis, normToRotation
-  type(VECTOR) :: zeroVec
 
   ! output arrays
 
   integer :: iLambda
-  type(STOKESVECTOR), allocatable :: yArray(:)
-  type(STOKESVECTOR), allocatable :: errorArray(:,:)
   real, allocatable :: xArray(:)
 
   ! model flags
@@ -161,55 +101,26 @@ contains
   logical :: flatSpec
   logical :: ok
   logical :: greyContinuum
-  logical :: firstPlot
 
   ! model parameters
-
-  real :: foreground = 0., background = 0.  ! plotting intensities
-
-  logical :: velocitySpace
-
-  ! misc
-  real :: meanr_line = 0., meanr_cont = 0.
-  real :: wtot_line =0., wtot_cont = 0.
-  real :: meanr0_line = 0., meanr0_cont = 0.
-  real :: wtot0_line =0., wtot0_cont = 0.
-
-  real(oct) :: t
   integer :: i, j
-  real :: nu
-  real(double) :: fac
-  real :: rStar
   character(len=80) :: tempChar
-  logical :: lineResAbs    ! T if you want to include absorption
-  !                        !   of line by line resonance zones.
-
-  !
+  
   real(double) :: totalMass
 
   real :: theta1, theta2
   type(SURFACETYPE) :: starSurface
 
-  ! Spot stuff
-
-  real :: chanceDust = 0.
-
   ! adaptive grid stuff
 
   type(OCTALVECTOR) :: amrGridCentre ! central coordinates of grid
-  type(OCTALVECTOR) :: octVec
   real :: ang
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
                                      !   (i.e. the number of childless subcells)
   logical :: gridConverged           ! true when adaptive grid structure has 
                                      !   been finalised
-  integer           :: tooFewSamples ! number of errors from integratePathAMR
-  integer           :: boundaryProbs ! number of errors from integratePathAMR
-  integer           :: negativeOpacity ! number of errors from integratePathAMR
   character(len=80) :: newContFluxFile ! modified flux file (i.e. with accretion)
-  logical :: alreadyDoneInfall = .false. ! whether we have already done an infall calculation
-  type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
 
   ! For romanova geometry case
   type(romanova) :: romData ! parameters and data for romanova geometry
@@ -230,7 +141,6 @@ contains
   real val_3rd_dim
 
   ! Name of the file to output various message from torus
-  character(LEN=7), parameter :: messageFile = "MESSAGE"
   character(len=80) :: message
 
 ! Variables used when linking to sph code
@@ -246,17 +156,11 @@ contains
   integer :: ngaspart
   integer, save :: num_calls = 0
 
-  type(modelatom), allocatable :: thisAtom(:)
-  
-  integer :: nRBBTrans
-  integer :: indexRBBTrans(1000), indexAtom(1000)
-
   real(double) :: tempArray(10)
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
   integer ::   tempInt        !
-  integer, parameter :: tag = 0
   
 ! Begin executable statements --------------------------------------------------
 
@@ -298,7 +202,6 @@ contains
 #ifdef MPI
   call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call random_seed(put=iseed)
-! write(*,*) myRankGlobal,"random seed",iseed(1:isize)
 #endif
   deallocate(iSeed)
 
@@ -309,16 +212,13 @@ contains
   sed = .false.
   jansky = .false.
   SIsed = .false.
-  velocitySpace = .false.
   movie = .false.
   thinLine = .false.
   flatspec = .false.
   greyContinuum = .false.
   secondSource = .false.
-  firstplot = .true.
   doRaman = .false.
   enhance = .false.
-  lineResAbs = .false.  
 
   contFluxFile = "none"
   intProFilename = "none"
@@ -326,12 +226,7 @@ contains
   inputKappaSca = 0.
   inputKappaAbs = 0.
 
-  zeroVec = VECTOR(0.,0.,0.)
-
   nMarker = 0
-  tooFewSamples = 0 
-  boundaryProbs = 0 
-  negativeOpacity = 0 
   lucyRadiativeEq = .false. ! this has to be initialized here
   num_calls = num_calls + 1
 
@@ -346,15 +241,14 @@ contains
   endif
 
   if (cmf) then
-     allocate(thisAtom(1:nAtom))
-     do i = 1, nAtom
-        call readAtom(thisAtom(i),atomFilename(i))
-        call stripAtomLevels(thisAtom(i), 5)
-     enddo
-    call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
+     print *, "Error: not compatible with cmf"
+     goto 666
   endif
 
-  objectDistance = griddistance * pctocm
+  if (.not. gridUsesAMR) then
+     print *, "Error: AMR grid required"
+     STOP
+  end if
 
   grid%photoionization = photoionization
   ! time elipsed since the beginning of the model
@@ -380,36 +274,15 @@ contains
      val_3rd_dim = 0.0d0        
   end if
 
-
   if (doRaman) screened = .true.
 
-  if (dopvimage) then
-     allocate(pvimage(1:nSlit))
-  endif
-
-  probLinePhoton = 1. - probContPhoton
-
-  if (allocated(inclinations)) then
-     inclination = inclinations(1)
-  else
-     inclination = firstInclination
-  end if
-  if (inclination .lt. 1.e-6) then
-     call writeWarning("inclination less than 1.e-6, now set to 1.e-6.")
-     call writeWarning("Did you specify an inclination of 0?")
-  end if
-  inclination = max(inclination, 1.e-4)
-
   scale = scale * rSol
-
-  rStar = 100.*rSol
 
   ! switches for line emission
 
   if (lineEmission) then
      flatspec = .true.
      greyContinuum = .true.
-     velocitySpace = .true.
   endif
 
   ! the observer's viewing direction
@@ -419,20 +292,11 @@ contains
   normToRotation = rotationAxis .cross. yAxis
   call normalize(normToRotation)
 
-  originalViewVec%x = 0.
-  originalViewVec%y = -sin(inclination)
-  originalViewVec%z = -cos(inclination)
-  viewVec = originalViewVec
-
   !=====================================================================
   ! INIIALIZATIONS BEFORE CALLING INITAMR ROUTINE SHOULD BE HERE
   !=====================================================================
 
-  !
-  ! Special case
-  !
-
-     ! The total number of gas particles is the total number of active particles less the number of point masses.
+  ! The total number of gas particles is the total number of active particles less the number of point masses.
   ngaspart = b_nactive-b_nptmass
   call init_sph_data2(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
        b_gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp)
@@ -461,16 +325,10 @@ contains
 
   ! allocate the grid - this might crash out through memory problems
 
-  if (gridUsesAMR) then
      ! any AMR allocation stuff goes here
-     call initAMRGrid(greyContinuum, &
-                        newContFluxFile,flatspec,grid,ok,theta1,theta2)
-        if (.not.ok) goto 666
-
-  else
-     print *, "Error: AMR grid required"
-     STOP
-  end if
+  call initAMRGrid(greyContinuum, &
+       newContFluxFile,flatspec,grid,ok,theta1,theta2)
+  if (.not.ok) goto 666
 
   grid%splitOverMpi = .false.
 
@@ -481,31 +339,15 @@ contains
   ! Note: the first index should be either lambda or mu
   !       in order to speedup the array operations!!!  (RK) 
   allocate(miePhase(1:nDustType,1:nLambda,1:nMumie)) 
-  allocate(statArray(1:nLambda))
-  allocate(sourceSpectrum(1:nLambda))
-  allocate(sourceSpectrum2(1:nLambda))
 
   grid%doRaman = doRaman
 
-  statArray = 0.
-  sourceSpectrum = 1.
-  sourceSpectrum2 = 1.
-
-
   ! allocate the output arrays
 
-  if (mie) then
-     nOuterLoop = nLambda
-  endif
-
   allocate(xArray(1:nLambda))
-  allocate(yArray(1:nLambda))
-  allocate(errorArray(1:nOuterLoop,1:nLambda))
 
-
-  if (photoionization) then
-     call addIons(grid%ion, grid%nion)
-  endif
+  if (photoionization) call addIons(grid%ion, grid%nion)
+  
 
 ! Set up the wavelength arrays with either linear or log spaced values.
   call set_up_lambda_array
@@ -518,15 +360,6 @@ contains
   else
      grid%nopacity = nLambda
   end if
-
-
-  errorArray(1:nOuterLoop,1:nLambda) = STOKESVECTOR(0.,0.,0.,0.)
-
-  if (doRaman) then
-     yarray(1:nLambda)%i = 1.e-20
-     errorArray(1:nOuterLoop,1:nLambda)%i = 1.e-20
-  endif
-
 
   call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
@@ -548,8 +381,6 @@ contains
         tempArray(1) = tempArray(1) + miePhase(1, ilambda, i)%element(1,1)/real(nMuMie)
      enddo
      write(*,*) "phase normalization ",tempArray(1)
-
-
   endif
 
   if (includeGasOpacity) then
@@ -571,141 +402,40 @@ contains
      call writeInfo(message, TRIVIAL)
   end if
 
-  ! chris
-  if (hydroWarp) then
-     print *, "Creating and reading hydroGrid..."
-     allocate(grid%hydroGrid)
-     call initAMRGrid(greyContinuum, &
-                        newContFluxFile,flatspec,grid%hydroGrid,ok,theta1,theta2)
-     call readAMRgrid("hydrogrid.dat",readFileFormatted,grid%hydroGrid)
-     print *, "hydroGrid read..."
-     call hydroWarpFitSplines(grid%hydroGrid)
-     print *, "splines fitted..."
-     print *, "hydroGrid setup done."
-  end if
+  ! Set up the AMR grid
+  call amr_grid_setup
 
+  ! Write the information on the grid to file using a routine in grid_mod.f90
+  if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 
-  !===============================================================
-  if (gridUsesAMR) then  !========================================
-  !===============================================================
-
-
-! below is really yucky code - please change me
-
-     if (molecular .and. readmol .and. (.not. lucyRadiativeEq)) then
-        if(.not. openlucy) then
-           call readAMRgrid(molfilenamein,.false.,grid)
-        else
-           call readAMRgrid(lucyFileNamein,.false.,grid)
-        endif
-        goto 667
-     endif
-
-     if (cmf.and.readLucy) then
-        call readAMRgrid("atom_tmp.grid",.false.,grid)
-     else if (photoionization.and.readlucy) then
-        continue
-     else
-        ! Set up the AMR grid
-        call amr_grid_setup
-
-        ! Write the information on the grid to file using a routine in grid_mod.f90
-        if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
-
-        ! Plotting the various values stored in the AMR grid.
-        call do_amr_plots
-     end if
-
-  !=================================================================
-  else ! grid is not adaptive ======================================     
-  !=================================================================
-
-
-     print *, "ERROR: adaptive grid required when using torusMod"
-     goto 666
-
-  !=================================================================
-  endif ! (gridusesAMR)
-  !=================================================================
-
-
-  outVec = (-1.)* originalViewVec
+  ! Plotting the various values stored in the AMR grid.
+  call do_amr_plots
 
   ! set up the sources
   call set_up_sources
 
-     if (associated(grid%octreeRoot)) then
-        totalMass =0.d0
-        call findTotalMass(grid%octreeRoot, totalMass)
-        write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
-        call writeInfo(message, IMPORTANT)
-     endif
-
-     call torus_mpi_barrier
-
-667 continue
-     call random_seed
-
-     if (cmf) then
-        if (movie) call plotAMRthreeDMovie(grid, source, nsource)
-        if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
-!        call atomLoop(grid, nAtom, thisAtom, nsource, source)
-
-           if (writeoutput) then
-              call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
-                   "etaline.ps/vcps", .true., .false., & 
-                   nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-              !
-              
-              fac = 120.*degtorad
-              do i = 1, 1
-                 ang = real(i-1)/40. * twoPi
-                 octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
-                 write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
-!                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
-              enddo
-           endif
-
-        do i = 1, 50
-           ang = twoPi * real(i-1)/51. 
-!           ang = 45.*degtorad
-           t = 120.d0*degtorad
-           call calculateAtomSpectrum(grid, thisAtom, nAtom, iTransAtom, iTransLine, &
-                OCTALVECTOR(sin(t)*cos(ang), sin(t)*sin(ang), cos(t)), 100.d0*pctocm/1.d10, &
-                source, nsource,i)
-        enddo
-        stop
-     endif
-
-  if (lucyRadiativeEq) then
-     if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
- 
-     if (.not.grid%adaptive) then
-        call lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, xArray, dble(teff), nLucy)
-     else
-        if (readLucy .and. .not. redoLucy) then
-           continue
-        else
-
-           if (solveVerticalHydro) then
-              call verticalHydrostatic(grid, mCore, sigma0, rInner, miePhase, nDustType, nMuMie, nLambda, xArray, &
-                   source, nSource, nLucy, massEnvelope, tThresh, .false., mDisc)
-           else
-              call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-                   nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, &
-                   lucy_undersampled, .false., IterLucy, plot_i=num_calls)
-           endif
-
-        endif
-
-        if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
-     endif
-
-     if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
-
-     call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
-
+  if (associated(grid%octreeRoot)) then
+     totalMass =0.d0
+     call findTotalMass(grid%octreeRoot, totalMass)
+     write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
+     call writeInfo(message, IMPORTANT)
   endif
+
+  call torus_mpi_barrier
+
+  call random_seed
+
+  if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
+  
+  call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
+       nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, &
+       lucy_undersampled, .false., IterLucy, plot_i=num_calls)
+
+  if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
+
+  if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
+
+  call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
 
 ! Tidy up and finish the run 
 
@@ -719,12 +449,7 @@ call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.fals
 call freeGrid(grid)
 
 deallocate(miePhase) 
-deallocate(statArray)
-deallocate(sourceSpectrum)
-deallocate(sourceSpectrum2)
 deallocate(xArray)
-deallocate(yArray)
-deallocate(errorArray)
 
 call torus_mpi_barrier
 
@@ -740,16 +465,8 @@ CONTAINS
        deltaLambda = (lamEnd - lamStart) / real(nLambda)
      
        xArray(1) = lamStart + deltaLambda/2.
-       yArray(1)%i = 0.
-       yArray(1)%q = 0.
-       yArray(1)%u = 0.
-       yArray(1)%v = 0.
        do i = 2, nLambda
           xArray(i) = xArray(i-1) + deltaLambda
-          yArray(i)%i = 0.
-          yArray(i)%q = 0.
-          yArray(i)%u = 0.
-          yArray(i)%v = 0.
        enddo
 
     else
@@ -760,7 +477,6 @@ CONTAINS
        do i = 1, nLambda
           xArray(i) = logLamStart + real(i-1)/real(nLambda-1)*(logLamEnd - logLamStart)
           xArray(i) = 10.**xArray(i)
-          yArray(i) = STOKESVECTOR(0.,0.,0.,0.)
        enddo
 
     endif
@@ -797,7 +513,7 @@ CONTAINS
 
     if (readPops .or. readPhasePops .or. readLucy) then 
 
-       print *, "Error: TorusMod not configures with readPops, readPhasePops, readLucy" 
+       print *, "Error: TorusMod not configured with readPops, readPhasePops, readLucy" 
        STOP
 
     else  ! not reading a population file
@@ -889,21 +605,16 @@ end subroutine amr_grid_setup
 subroutine do_amr_plots
 
   ! Do some preparation for the arrays used in plot_AMR_* which will be used later
-  if (grid%geometry(1:7) == "cluster") then
-     nmarker = get_nstar(young_cluster)
-     allocate(xMarker(1:nMarker))
-     allocate(yMarker(1:nMarker))
-     allocate(zMarker(1:nMarker))
-     do i = 1, nmarker
-        a_star = get_a_star(young_cluster, i)
-        xmarker(i)= a_star%position%x
-        ymarker(i)= a_star%position%y
-        zmarker(i)= a_star%position%z
-     end do
-  else
-     nmarker = 0
-     ALLOCATE(xmarker(nmarker), ymarker(nmarker), zmarker(nmarker))
-  end if
+  nmarker = get_nstar(young_cluster)
+  allocate(xMarker(1:nMarker))
+  allocate(yMarker(1:nMarker))
+  allocate(zMarker(1:nMarker))
+  do i = 1, nmarker
+     a_star = get_a_star(young_cluster, i)
+     xmarker(i)= a_star%position%x
+     ymarker(i)= a_star%position%y
+     zmarker(i)= a_star%position%z
+  end do
   width_3rd_dim = amrGridSize
 
   if ( plot_maps .and. myRankIsZero ) then
@@ -916,11 +627,6 @@ subroutine do_amr_plots
           "rho_zoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
           width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default", index=num_calls, &
           fixValMin=sph_rho_min, fixValMax=sph_rho_max, useFixedRange=.true. )
-     if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
-        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_ultrazoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-             width_3rd_dim, show_value_3rd_dim, boxfac=0.005, suffix="default", index=num_calls)
-     end if
      call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
           nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
      if (grid%lineEmission) then
