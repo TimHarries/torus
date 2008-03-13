@@ -128,6 +128,7 @@ mv libtorus.a ${sphtorus_dir}/lib
 cd  ${sphtorus_dir}/build/sphNG
 if [[ ${make_links} -eq 1 ]]; then
     ln -s ${sph_cvs}/* .
+    ln -s ../torus/*.mod .
 fi
 
 echo "INFO: Building sphtorus, SYSTEM=${SYSTEM}"
