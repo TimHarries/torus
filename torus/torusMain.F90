@@ -148,7 +148,7 @@ program torus
   ! variables to do with dust
 
   integer :: itestlam, ismoothlam
-  integer, parameter :: nXmie = 20, nMuMie = 1000
+  integer, parameter :: nMuMie = 1000
   type(PHASEMATRIX), allocatable :: miePhase(:,:, :)
 
   ! torus images
@@ -383,7 +383,6 @@ program torus
   real val_3rd_dim
 
   ! Name of the file to output various message from torus
-  character(LEN=7), parameter :: messageFile = "MESSAGE"
   character(len=80) :: message
    real :: h !, totFrac
 !  integer :: nFrac   ! In commented out call to sublimateDust
@@ -3669,7 +3668,7 @@ CONTAINS
   subroutine windtest
 
     integer, parameter :: nrGrid = 1000
-    real :: rGrid(nrGrid), drGrid(nrgrid)
+    real :: rGrid(nrGrid)
     real,dimension(statEqMAxLevels) :: meanDepart ! for testing
     real :: treal
 
@@ -3679,7 +3678,6 @@ CONTAINS
        r1 = log10(grid%rInner) + (log10(grid%rOuter)-log10(grid%rInner))* real(i)/999.
        r1 = 10.**r1
        rGrid(i) = r
-       drGrid(i) = r1 - r
     enddo
     
     open(21,file="rDepart.dat",status="unknown",form="formatted")
