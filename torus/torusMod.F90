@@ -1145,68 +1145,10 @@
 
      if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
 
-! If this is an SPH run then finish here ---------------------------------------
      call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
-     goto 666
-
-     if (grid%geometry(1:7) == "cluster") then
-
-        if (myRankIsZero) then
-           ! Finding apperant magnitudes and colors of the stars in cluster
-           write (*,*) " "
-           write (*,*) "Computing the magnitudes and colors of stars ..."
-           ! -- note grid distance here is in [pc]
-           call analyze_cluster(young_cluster,s2o(outVec),dble(gridDistance),grid)
-        end if
-
-        call torus_mpi_barrier
-
-        ! restricting the sed and images calculations to the star 
-        ! with ID number = idx_restrict_star. 
-        ! By default idx_restrict_star =0 which means all stars the cluster
-        ! are included in the calculations.  Specifty a value in your
-        ! parameter file to restrict to one star.  (10 AU cylinder
-        ! zone is used to restrict the effective computational domain.
-        call restrict(grid%octreeroot, idx_restrict_star, nsource, &
-                      source,  s2o(outVec), 7.5d4) ! the last value is 50 AU (in 10^10cm)
-	!                      source,  s2o(outVec), 1.5d4) ! the last value is 10 AU (in 10^10cm)
-
-        call reassign_10K_temperature(grid%octreeroot)
-
-        ! delete the cluster object since it won't be used any more.
-        call kill_all(young_cluster)
-     end if
-     
-
-
-     ! Plotting the slices of planes
-     if (myRankIsZero .and. plot_maps) then
-       call plot_AMR_planes(grid, "temperature", plane_for_plot, 3, "temperature", &
-            .true., .false., nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-       call plot_AMR_planes(grid, "etaCont", plane_for_plot, 3, "etaCont", .true., .false., &
-            nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-    end if
-
-     call torus_mpi_barrier
 
   endif
 
-  if (molecular) then
-     if (writemol) call molecularLoop(grid, co)
-     if (readmol) call calculateMoleculeSpectrum(grid, co)
-!        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
-
-     if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
-     stop
-  endif
-
-
-
-!  if (grid%geometry == "shakara") then
-!     call defineDiffusionZone(grid, .false., .false.)
-!  endif
-
- 
 ! Tidy up and finish the run 
 
 666 continue
