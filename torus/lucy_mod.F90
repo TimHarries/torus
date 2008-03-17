@@ -359,7 +359,6 @@ contains
     integer(double) :: nInf
     integer :: iIter, nIter
     real(oct) ::   epsOverDeltaT
-    real(oct) :: meanDeltaT
     integer :: nDT, nUndersampled
     real(oct) :: totalEmission
     integer :: subcell
@@ -943,7 +942,6 @@ contains
 
        epsOverDeltaT = (lCore) / dble(nInf)
 
-       meanDeltaT = 0.
        nDT = 0
        nUndersampled = 0
 
@@ -1930,7 +1928,7 @@ contains
 
 
    type(GRIDTYPE) :: grid
-   type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec, tvec
+   type(OCTALVECTOR) :: rVec,uHat, octVec,thisOctVec
    type(OCTAL), pointer :: thisOctal, tempOctal !, sourceOctal
    type(OCTAL),pointer :: oldOctal, sOctal
    type(OCTAL),pointer :: foundOctal, endOctal
@@ -2257,7 +2255,6 @@ contains
 
 ! move the requisite distance within the cell and return
 
-       tVec = rVec
        rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
 
 
@@ -2916,7 +2913,7 @@ subroutine setBiasOnTau(grid, iLambda)
     real(double) :: tau, thisTau
   type(octalvector) :: rVec, direction
   integer :: i
-    integer :: subcell, ntau
+    integer :: subcell
     integer :: iLambda
     integer                     :: nOctal        ! number of octals in grid
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
@@ -2998,7 +2995,6 @@ subroutine setBiasOnTau(grid, iLambda)
              rVec = subcellCentre(thisOctal, subcell)
 	
              tau = 1.d30
-             ntau = 20
              do i = 1, 4
                 direction = arrayVec(i)
                 call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0 )
