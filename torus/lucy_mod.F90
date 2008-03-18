@@ -2905,6 +2905,7 @@ end subroutine addDustContinuumLucyMono
 
 subroutine setBiasOnTau(grid, iLambda)
 #ifdef MPI
+    use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
     use input_variables, only : blockHandout
     include 'mpif.h'
 #endif
@@ -2930,12 +2931,6 @@ subroutine setBiasOnTau(grid, iLambda)
      real(double), allocatable :: eArray(:), tArray(:)
      integer :: nVoxels, ierr
      integer :: nBias
-     integer :: np
-     integer :: my_rank
-
-
-    np = 1
-    my_rank = 1
 #endif
 
 
@@ -2954,21 +2949,16 @@ subroutine setBiasOnTau(grid, iLambda)
 
 #ifdef MPI
     ! FOR MPI IMPLEMENTATION=======================================================
-    !  Get my process rank # 
-    call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-  
-    ! Find the total # of precessor being used in this run
-    call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
     
     ! we will use an array to store the rank of the process
     !   which will calculate each octal's variables
     allocate(octalsBelongRank(size(octalArray)))
     
-    if (my_rank == 0) then
+    if (myRankGlobal == 0) then
        print *, ' '
-       print *, 'Tau bias  computed by ', np-1, ' processors.'
+       print *, 'Tau bias  computed by ', nThreadsGlobal-1, ' processors.'
        print *, ' '
-       call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
+       call mpiBlockHandout(nThreadsGlobal,octalsBelongRank,blockDivFactor=1,tag=tag,&
                             setDebug=.false.)
     
     endif
@@ -2980,9 +2970,9 @@ subroutine setBiasOnTau(grid, iLambda)
     ioctal_end = nOctal
 
 #ifdef MPI
- if (my_rank /= 0) then
+ if (myRankGlobal /= 0) then
   blockLoop: do     
- call mpiGetBlock(my_rank,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
+ call mpiGetBlock(myRankGlobal,iOctal_beg,iOctal_end,rankComplete,tag,setDebug=.false.)
    if (rankComplete) exit blockLoop 
 #endif
     do iOctal =  iOctal_beg, iOctal_end
@@ -3019,7 +3009,7 @@ subroutine setBiasOnTau(grid, iLambda)
 #ifdef MPI
  if (.not.blockHandout) exit blockloop
  end do blockLoop       
- end if ! (my_rank /= 0)
+ end if ! (myRankGlobal /= 0)
 
 
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
@@ -3038,71 +3028,69 @@ subroutine setBiasOnTau(grid, iLambda)
          MPI_SUM,MPI_COMM_WORLD,ierr)
      eArray = tArray
      call unpackBias(octalArray, nBias, eArray)
-     deallocate(eArray, tArray)
+     deallocate(eArray, tArray, octalsBelongRank)
 #endif
 
     deallocate(octalArray)
 
   end subroutine setBiasOnTau
 
-#ifdef MPI
-      subroutine packBias(octalArray, nBias, eArray, octalsBelongRank)
-    include 'mpif.h'
-        type(OCTALWRAPPER) :: octalArray(:)
-        integer :: octalsBelongRank(:)
-        integer :: nBias
-        real(double) :: eArray(:)
-        integer :: iOctal, iSubcell, my_rank, ierr
-        type(OCTAL), pointer :: thisOctal
-
-       call MPI_COMM_RANK(MPI_COMM_WORLD, my_rank, ierr)
-       !
-       ! Update the bias values of grid computed by all processors.
-       !
-       nBias = 0
-       do iOctal = 1, SIZE(octalArray)
-
-          thisOctal => octalArray(iOctal)%content
-          
-          do iSubcell = 1, thisOctal%maxChildren
-                
-             if (.not.thisOctal%hasChild(iSubcell)) then
-                 nBias = nBias + 1
-                 if (octalsBelongRank(iOctal) == my_rank) then
-                   eArray(nBias) = octalArray(iOctal)%content%Biascont3d(iSubcell)
-                 else 
-                   eArray(nBias) = 0.d0
-                 endif
-              endif
-          
-          end do
-       end do
-     end subroutine packBias
-
-      subroutine unpackBias(octalArray, nBias, eArray)
-        type(OCTALWRAPPER) :: octalArray(:)
-        integer :: nBias
-        real(double) :: eArray(:)
-        integer :: iOctal, iSubcell
-        type(OCTAL), pointer :: thisOctal
+  subroutine packBias(octalArray, nBias, eArray, octalsBelongRank)
+    USE mpi_global_mod, ONLY: myRankGlobal
+    type(OCTALWRAPPER) :: octalArray(:)
+    integer :: octalsBelongRank(:)
+    integer :: nBias
+    real(double) :: eArray(:)
+    integer :: iOctal, iSubcell
+    type(OCTAL), pointer :: thisOctal
 
        !
        ! Update the bias values of grid computed by all processors.
        !
-       nBias = 0
-       do iOctal = 1, SIZE(octalArray)
-
-          thisOctal => octalArray(iOctal)%content
+    nBias = 0
+    do iOctal = 1, SIZE(octalArray)
+       
+       thisOctal => octalArray(iOctal)%content
           
-          do iSubcell = 1, thisOctal%maxChildren
+       do iSubcell = 1, thisOctal%maxChildren
                 
-             if (.not.thisOctal%hasChild(iSubcell)) then
-                 nBias = nBias + 1
-                 octalArray(iOctal)%content%biasCont3d(iSubcell) = eArray(nBias)
+          if (.not.thisOctal%hasChild(iSubcell)) then
+             nBias = nBias + 1
+             if (octalsBelongRank(iOctal) == myRankGlobal) then
+                eArray(nBias) = octalArray(iOctal)%content%Biascont3d(iSubcell)
+             else 
+                eArray(nBias) = 0.d0
              endif
-          end do
+          endif
+          
        end do
-     end subroutine unpackBias
-#endif
+    end do
+  end subroutine packBias
+
+  subroutine unpackBias(octalArray, nBias, eArray)
+    type(OCTALWRAPPER) :: octalArray(:)
+    integer :: nBias
+    real(double) :: eArray(:)
+    integer :: iOctal, iSubcell
+    type(OCTAL), pointer :: thisOctal
+
+    !
+    ! Update the bias values of grid computed by all processors.
+    !
+    nBias = 0
+    do iOctal = 1, SIZE(octalArray)
+
+       thisOctal => octalArray(iOctal)%content
+          
+       do iSubcell = 1, thisOctal%maxChildren
+          
+          if (.not.thisOctal%hasChild(iSubcell)) then
+             nBias = nBias + 1
+             octalArray(iOctal)%content%biasCont3d(iSubcell) = eArray(nBias)
+          endif
+       end do
+    end do
+  end subroutine unpackBias
 
 end module lucy_mod
+
