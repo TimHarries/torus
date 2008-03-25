@@ -3650,14 +3650,15 @@ CONTAINS
        if (lamFile) then
           call writeInfo("Reading wavelength points from file.", TRIVIAL)
           open(77, file=lamfilename, status="old", form="formatted")
-          nLambda = 0
+          nLambda = 1
 333       continue
-          nLambda = nLambda + 1
-          read(77,*,end=334) xArray(nLambda)
+          read(77,*,end=334) junk
+          xArray(nLambda) = junk
           if (writeoutput) write(*,*) nlambda,xArray(nlambda)
+          nLambda = nLambda + 1
           goto 333
 334       continue
-          nLambda = nLambda - 1
+          nlambda = nlambda - 1
           close(77)
        endif
 
@@ -4250,7 +4251,9 @@ CONTAINS
 
            if (doSmoothGridTau.and.mie) then
               call writeInfo("Smoothing adaptive grid structure for optical depth...", TRIVIAL)
-              do j = iSmoothLam, iSmoothlam !nLambda, 5
+              do j = iSmoothLam, iSmoothLam !nLambda
+                 write(message,*) "Smoothing at lam = ",xarray(j), " angs"
+                 call writeInfo(message, TRIVIAL)
                  do
                     gridConverged = .true.
                     call myTauSmooth(grid%octreeRoot, grid, j, gridConverged, inheritProps = .false., interpProps = .false.)
