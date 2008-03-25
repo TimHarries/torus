@@ -2253,8 +2253,9 @@ contains
           stop
        endif
 
-! move the requisite distance within the cell and return
-
+! move the requisite distance within the cell and return. Reduce tval slightly to ensure
+! event is within the grid if we are in the root octal.
+       tVal = tVal - 2.0 * fudgeFac * grid%halfSmallestSubcell
        rVec = rVec + (dble(tVal)*dble(tau)/thisTau) * uHat
 
 
