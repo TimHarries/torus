@@ -1561,7 +1561,8 @@ contains
              write(*,*) "x ", thisOctal%x_i_plus_1(subcell), thisOctal%x_i(subcell), thisOctal%x_i_minus_1(subcell)
              write(*,*) "dx ", thisOctal%x_i_plus_1(subcell) - thisOCtal%x_i(subcell), thisOctal%x_i(subcell) - &
                   thisOctal%x_i_minus_1(subcell)
-             if (abs(thisOctal%x_i_plus_1(subcell) - thisOCtal%x_i(subcell)) > abs(thisOctal%x_i_minus_1(subcell) - thisOCtal%x_i(subcell))) then
+             if (abs(thisOctal%x_i_plus_1(subcell) - thisOCtal%x_i(subcell)) > &
+                 abs(thisOctal%x_i_minus_1(subcell) - thisOCtal%x_i(subcell))) then
                 write(*,*) "fine to coarse"
              endif
              write(*,*) "rho ", thisOctal%rho_i_plus_1(subcell), thisOctal%rho(subcell), thisOctal%rho_i_minus_1(subcell)

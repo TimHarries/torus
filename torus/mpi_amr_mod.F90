@@ -27,7 +27,8 @@ contains
 
   
 
-  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag, plotgrid, title, withvel, debug, zoomfactor)
+  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag, plotgrid, title, withvel, &
+       debug, zoomfactor)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=*) :: device, plane, valueName
