@@ -204,8 +204,8 @@ contains
        if (b_iphase(iii) == 0) then
           iiigas=iiigas+1
           if (iiigas > npart) then
-             write (*,*) 'iiigas>npart',iiigas, npart
-             STOP
+             write (*,*) 'Error: iiigas>npart',iiigas, npart
+             cycle
           endif
           this%rhon(iiigas)        = b_rho(iii)
           this%xn(iiigas)          = b_xyzmh(1,iii)
@@ -216,8 +216,8 @@ contains
        elseif (b_iphase(iii) > 0) then
           iiipart=iiipart+1
           if (iiipart > nptmass) then
-             write (*,*) 'iiipart>nptmass',iiipart,nptmass
-             STOP
+             write (*,*) 'Error: iiipart>nptmass',iiipart,nptmass
+             cycle
           endif
           this%x(iiipart)      = b_xyzmh(1,iii)
           this%y(iiipart)      = b_xyzmh(2,iii)
@@ -229,11 +229,11 @@ contains
     ! Check the number of gas particles and point masses are as expected
     IF ( iiigas /= npart ) THEN
        print *,'Error: expecting to find', npart, 'gas particles but found', iiigas
-       STOP
+       do; end do
     ENDIF
     IF ( iiipart /= nptmass ) THEN
        print *,'Error: expecting to find', nptmass, 'point masses but found', iiipart
-       STOP
+       do; end do 
     ENDIF
 
   end subroutine init_sph_data2
