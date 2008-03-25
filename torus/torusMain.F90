@@ -849,8 +849,6 @@ program torus
      do i = 1, nMumie
         tempArray(1) = tempArray(1) + miePhase(1, ilambda, i)%element(1,1)/real(nMuMie)
      enddo
-     write(*,*) "phase normalization ",tempArray(1)
-
 
   endif
 !  stop
@@ -1121,6 +1119,15 @@ program torus
 
         grid%splitOverMPI = .true.
 	
+
+        if (idump /= 1) then
+           call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.false.)
+           write(plotfile,'(a,i4.4,a)') "dump",idump,".grid"
+           write(*,*) myrankglobal, " calling read ",trim(plotfile)
+           call readAMRgridMpiALL(plotfile,.false.,grid)
+           write(*,*) myrankglobal, " done reading ",trim(plotfile)
+        endif
+
 
         if (myRankGlobal /= 0) then
            if (grid%octreeRoot%twoD) then
@@ -3921,7 +3928,10 @@ CONTAINS
 
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
 
+    
+
     if (readPops .or. readPhasePops .or. readLucy) then 
+
 
        if (readLucy) call readAMRgrid(lucyFilenameIn,readFileFormatted,grid)
 
@@ -4504,7 +4514,7 @@ CONTAINS
      !call writeHartmannValues(grid,'hartmann_departCoeff')
      call writeHartmannValues(grid,'hartmann_N')
   end if
-
+666 continue
 end subroutine amr_grid_setup
 
 !-----------------------------------------------------------------------------------------------------------------------

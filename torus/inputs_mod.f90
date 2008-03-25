@@ -203,8 +203,8 @@ contains
     call getInteger("mindepthamr", minDepthAMR, cLine, nLines, "Minimum cell depth of AMR grid: ", &
          & "(a,i3,a)",5,ok,.false.)
 
-    call getInteger("maxdepthamr", maxDepthAMR, cLine, nLines, "Minimum cell depth of AMR grid: ", &
-         & "(a,i3,a)",8,ok,.false.)
+    call getInteger("maxdepthamr", maxDepthAMR, cLine, nLines, "Maximum cell depth of AMR grid: ", &
+         & "(a,i3,a)",30,ok,.false.)
 
 
     if (gridUsesAMR) then
@@ -2040,7 +2040,7 @@ endif
   "Mininum optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
 
  call getReal("tauforce", tauForce, cLine, nLines, &
-  "Forced optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",10., ok, .false.)
+  "Forced optical depth of cell to be in diffusion approx : ","(a,f7.1,a)",100., ok, .false.)
 
  call getLogical("resetdiffusion", resetDiffusion, cLine, nLines, &
   "Reset diffusion zones to false if thin: ","(a,1l,a)",.true., ok, .false.)

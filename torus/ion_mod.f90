@@ -75,7 +75,7 @@ contains
   subroutine addIons(ionArray, nIon)
     integer :: nIon
     type(IONTYPE) :: ionArray(:)
-!    character(len=30) :: message
+    character(len=30) :: message
 
 
     nIon = 1
@@ -94,82 +94,82 @@ contains
     call createIon(ionArray(nIon), 2, 0, 1.e-10) ! He III (alpha particle!)
 
 
-!    write(message,*) "Metals switched OFF"
-!    call writeWarning(message)
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 6, 6, 1.126e1) ! C I
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 6, 5, 2.438e1) ! C II
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 6, 4, 4.789e1) ! C III
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 6, 3, 6.449e1) ! C IV
+    write(message,*) "Metals switched OFF"
+    call writeWarning(message)
 
 !    nIon = nIon + 1
-!    call createIon(ionArray(nIon), 6, 2, 3.921e2) ! C V
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 7, 7, 1.453e1) ! N I
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 7, 6, 2.960e1) ! N II
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 7, 5, 4.745e1) ! N III
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 7, 4, 7.747e1) ! N IV
-
+!    call createIon(ionArray(nIon), 6, 6, 1.126e1) ! C I
+!
 !    nIon = nIon + 1
-!    call createIon(ionArray(nIon), 7, 3, 9.789e1) ! N V
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 8, 8, 1.362e1) ! O I
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 8, 7, 3.512e1) ! O II
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 8, 6, 5.494e1) ! O III
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 8, 5, 7.741e1) ! O IV
-
+!    call createIon(ionArray(nIon), 6, 5, 2.438e1) ! C II
+!
 !    nIon = nIon + 1
-!    call createIon(ionArray(nIon), 8, 4, 1.139e2) ! O V
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 10, 10, 2.156e1) ! Ne I
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 10, 9, 4.096e1) ! Ne II
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 10, 8, 6.346e1) ! Ne III
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 10, 7, 9.712e1) ! Ne IV
-
+!    call createIon(ionArray(nIon), 6, 4, 4.789e1) ! C III
+!
 !    nIon = nIon + 1
-!    call createIon(ionArray(nIon), 10, 6, 1.262e2) ! Ne V
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 16, 16, 1.036e1) ! S I
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 16, 15, 2.333e1) ! S II
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 16, 14, 3.483e1) ! S III
-
-    nIon = nIon + 1
-    call createIon(ionArray(nIon), 16, 13, 4.731e1) ! S IV
-
-
+!    call createIon(ionArray(nIon), 6, 3, 6.449e1) ! C IV
+!
+!!    nIon = nIon + 1
+!!    call createIon(ionArray(nIon), 6, 2, 3.921e2) ! C V
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 7, 7, 1.453e1) ! N I
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 7, 6, 2.960e1) ! N II
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 7, 5, 4.745e1) ! N III
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 7, 4, 7.747e1) ! N IV
+!
+!!    nIon = nIon + 1
+!!    call createIon(ionArray(nIon), 7, 3, 9.789e1) ! N V
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 8, 8, 1.362e1) ! O I
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 8, 7, 3.512e1) ! O II
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 8, 6, 5.494e1) ! O III
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 8, 5, 7.741e1) ! O IV
+!
+!!    nIon = nIon + 1
+!!    call createIon(ionArray(nIon), 8, 4, 1.139e2) ! O V
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 10, 10, 2.156e1) ! Ne I
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 10, 9, 4.096e1) ! Ne II
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 10, 8, 6.346e1) ! Ne III
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 10, 7, 9.712e1) ! Ne IV
+!
+!!    nIon = nIon + 1
+!!    call createIon(ionArray(nIon), 10, 6, 1.262e2) ! Ne V
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 16, 16, 1.036e1) ! S I
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 16, 15, 2.333e1) ! S II
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 16, 14, 3.483e1) ! S III
+!
+!    nIon = nIon + 1
+!    call createIon(ionArray(nIon), 16, 13, 4.731e1) ! S IV
+!
+!
     if (writeoutput) &
     write(*,*) "Added ",nion," species to photoionization calculation"
 

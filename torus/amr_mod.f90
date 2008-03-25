@@ -5356,7 +5356,7 @@ IF ( .NOT. gridConverged ) RETURN
       split = .false.
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAmr) split = .true.
-!      if ((abs(rVec%z) > 5.e5).and.(thisOctal%nDepth < maxDepthAMR))  split = .true.
+!      if ((rVec%z > 0).and.(thisOctal%nDepth < maxDepthAMR))  split = .true.
 
    case("benchmark")
       split = .false.
@@ -5731,7 +5731,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 !      if ((abs(cellcentre%z)/hr < 2.) .and. (cellsize/hr > 2.)) split = .true.
 
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.3)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.1)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -6021,10 +6021,10 @@ IF ( .NOT. gridConverged ) RETURN
       STOP
    end select
 
-   if (thisOctal%nDepth == 27) then
+   if (thisOctal%nDepth == maxDepthAmr) then
       split = .false.
       if (firstTime) then
-         call writeWarning("AMR cell depth capped at 27")
+         call writeWarning("AMR cell depth capped")
          firstTime = .false.
       endif
    endif
@@ -7827,11 +7827,14 @@ IF ( .NOT. gridConverged ) RETURN
     TYPE(gridtype), INTENT(IN) :: grid
     real :: r
     TYPE(octalVector) :: rVec
+    real(double) :: ethermal, gamma
     integer,save :: it
     real :: fac
     real,save :: radius(400),temp(400)
     integer :: i
     logical,save :: firsttime = .true.
+
+    gamma = 5.d0/3.d0
 
     if (firsttime) then
        open(20,file="overview.txt", form="formatted",status="old")
@@ -7899,8 +7902,12 @@ IF ( .NOT. gridConverged ) RETURN
 !    endif
 
 
-    thisOctal%energy(subcell) = thisOctal%temperature(subcell) * Rgas / (7.d0/5.d0-1.d0)
+    ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     thisOctal%rhoe(subcell) = thisOctal%energy(subcell) * thisOctal%rho(subcell)
+    thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
+    thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
+    thisOctal%boundaryCondition(subcell) = 4
+!
 
   end subroutine calcLexington
 
@@ -8500,8 +8507,8 @@ IF ( .NOT. gridConverged ) RETURN
     thisOctal%boundaryCondition(subcell) = 4
 
 
-    mCloud = 0.2d0 * msol
-    rCloud = 7.d13
+    mCloud = 1.d0 * msol
+    rCloud = 7.d15
     inertia = (2.d0/5.d0)*mCloud*rCloud**2
     eGrav = 3.d0/5.d0 * bigG * mCloud**2 / rCloud
     beta = 0.3d0
@@ -8524,21 +8531,23 @@ IF ( .NOT. gridConverged ) RETURN
     else
        r = sqrt(rVec%x**2 + rVec%y**2)*1.d10
        v = r * omega
-       thisOctal%velocity(subcell) = (1./cspeed)*VECTOR(v*cos(phi),  v*sin(phi), 0.)
+       thisOctal%velocity(subcell) = (1./cspeed)*VECTOR(v*cos(phi+pi/2.d0),  v*sin(phi+pi/2.d0), 0.0)
     endif
 
     if (modulus(rVec) < (rCloud/1.d10)) then
        thisOctal%rho(subcell) = mCloud / (4.d0/3.d0*pi*rCloud**3)
+       thisOctal%rho(subcell) = thisOctal%rho(subcell) * (1.d0 + 0.5d0 * cos(2.d0 * phi)) !m=2 dens perturbation
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     else
-       thisOctal%rho(subcell) = 1.d-5 * mCloud / (4.d0/3.d0*pi*rCloud**3)
+       thisOctal%rho(subcell) = 1.d-2 * mCloud / (4.d0/3.d0*pi*rCloud**3)
        ethermal = 1.5d0 * (1.d0/(2.d0*mHydrogen)) * kerg * 10.d0
     endif
 
-    thisOctal%pressure_i(subcell) = (gamma-1.d0)*thisOctal%rho(subcell)*ethermal
+
+    thisOctal%pressure_i(subcell) = (gamma-1.d0)* thisOctal%rho(subcell)*ethermal
     thisOctal%energy(subcell) = ethermal + 0.5d0*(cspeed*modulus(thisOctal%velocity(subcell)))**2
     thisOctal%boundaryCondition(subcell) = 4
-    thisOctal%phi_i(subcell) = 0.d0
+!    thisOctal%phi_i(subcell) = 0.d0
 
   end subroutine calcProtoBinDensity
     
@@ -13646,7 +13655,7 @@ IF ( .NOT. gridConverged ) RETURN
   end subroutine dumpdiffusion
 
   recursive subroutine myTauSmooth(thisOctal, grid, ilambda, converged, inheritProps, interpProps)
-    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router !, rinner
+    use input_variables, only : tauSmoothMin, tauSmoothMax, erOuter, router, maxDepthAmr!, rinner
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
@@ -13659,7 +13668,6 @@ IF ( .NOT. gridConverged ) RETURN
     integer :: neighbourSubcell, j, nDir
     logical :: split
     logical, save :: firsttime = .true.
-    integer, parameter :: maxDepth = 27
     character(len=30) :: message
 
     do subcell = 1, thisOctal%maxChildren
@@ -13719,10 +13727,10 @@ IF ( .NOT. gridConverged ) RETURN
                      (sqrt(rVec%x**2+rVec%y**2)) > 0.9*router) split = .false.
 
 
-                if (thisOctal%nDepth == maxDepth) then
+                if (thisOctal%nDepth == maxDepthamr) then
                    split = .false.
                    if (firstTime) then
-                      write(message,'(a,i3)') "AMR cell depth capped at: ",maxDepth
+                      write(message,'(a,i3)') "AMR cell depth capped at: ",maxDepthamr
                       call writeWarning(message)
                       firstTime = .false.
                    endif

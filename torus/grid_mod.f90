@@ -554,6 +554,10 @@ contains
     grid%amr2dOnly = amr2dOnly
     grid%geometry = geometry
 
+    grid%idump = 1
+    grid%currentTime = 0.d0
+
+
     select case (geometry)
     
     case("toruslogo")

@@ -27,7 +27,7 @@ contains
 
   
 
-  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag, plotgrid, title, withvel)
+  subroutine plotGridMPI(grid, device, plane, valueName, valueMinFlag, valueMaxFlag, logFlag, plotgrid, title, withvel, debug, zoomfactor)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
     character(len=*) :: device, plane, valueName
@@ -35,8 +35,10 @@ contains
     character(len=3) planes(3)
     integer :: nPlanes, iPlane
     real, pointer :: corners(:,:), value(:), speed(:), ang(:)
+    real, optional :: zoomFactor
     integer :: nSquares
     integer :: pgbegin, i, j, idx
+    logical, optional :: debug
     integer :: iLo, iHi
     real :: valueMin, valueMax
     real,optional :: valueMinFlag, valueMaxFlag
@@ -79,15 +81,30 @@ contains
        else if (grid%octreeRoot%threeD) then
           i = pgbegin(0, device, 3, 1)
        endif
+       if (PRESENT(debug)) write(*,*) "Device opened"
     endif
     do iplane = 1, nPlanes
+       if ((PRESENT(debug)).and.(myrank==1)) write(*,*) "Doing plane ", iplane
+
+       if (PRESENT(debug)) write(*,*) myrank, " calling get squares"
        call getSquares(grid, planes(iplane), valueName, nSquares, corners, value, speed, ang)
+
+       if ((PRESENT(debug)).and.(myrank==1)) write(*,*) "Get squares done"
        
        if (myRank == 1) then
-          xStart = grid%octreeRoot%centre%x-grid%octreeRoot%subcellSize
-          yStart = grid%octreeRoot%centre%y-grid%octreeRoot%subcellSize
-          xEnd = grid%octreeRoot%centre%x+grid%octreeRoot%subcellSize
-          yEnd = grid%octreeRoot%centre%y+grid%octreeRoot%subcellSize
+          if ((PRESENT(debug)).and.(myrank==1)) write(*,*) "Doing plot"
+
+          if (PRESENT(zoomfactor)) then
+             xStart = grid%octreeRoot%centre%x-(grid%octreeRoot%subcellSize*zoomfactor)
+             yStart = grid%octreeRoot%centre%y-(grid%octreeRoot%subcellSize*zoomfactor)
+             xEnd = grid%octreeRoot%centre%x+(grid%octreeRoot%subcellSize*zoomfactor)
+             yEnd = grid%octreeRoot%centre%y+(grid%octreeRoot%subcellSize*zoomfactor)
+          else
+             xStart = grid%octreeRoot%centre%x - grid%octreeRoot%subcellSize
+             yStart = grid%octreeRoot%centre%y - grid%octreeRoot%subcellSize
+             xEnd = grid%octreeRoot%centre%x + grid%octreeRoot%subcellSize
+             yEnd = grid%octreeRoot%centre%y + grid%octreeRoot%subcellSize
+          endif
           if (iPlane == 1) then
              valueMin = MINVAL(value(1:nSquares))
              valueMax = MAXVAL(value(1:nSquares))
@@ -255,8 +272,18 @@ contains
           select case(valuename)
              case("rho")
                 tmp = thisOctal%rho(subcell)
+             case("cs")
+                tmp = sqrt(thisOctal%pressure_i(subcell)/thisOctal%rho(subcell))
+             case("mass")
+                tmp = thisOctal%rho(subcell) * cellVolume(thisOctal, subcell) * 1.d30 / msol
              case("pressure")
                 tmp = thisOctal%pressure_i(subcell)
+             case("u")
+                tmp = thisOctal%rhou(subcell)/thisOctal%rho(subcell)/1.d5
+             case("v")
+                tmp = thisOctal%rhov(subcell)/thisOctal%rho(subcell)/1.d5
+             case("w")
+                tmp = thisOctal%rhow(subcell)/thisOctal%rho(subcell)/1.d5
              case("rhou")
                 tmp = thisOctal%rhou(subcell)
              case("rhov")
@@ -408,8 +435,7 @@ contains
           
           thisOctal => octalArray(iOctal)%content
           
-          do subcell = 1, thisOctal%maxChildren
-             
+          do subcell = 1, thisOctal%maxChildren             
              if (.not.thisOctal%hasChild(subcell)) then
                 
 !                if (thisOctal%mpiThread(subcell) /= myRank) cycle
@@ -496,6 +522,13 @@ contains
              endif
 
              if (neighbourOctal%nDepth <= nDepth) then
+!                if ((nDepth - neighbourOctal%nDepth) > 1) then
+!                   write(*,*) "Octal depth differs by more than 1 across boundary!!!"
+!                   write(*,*) "ndepth ",nDepth, " neighbour%nDepth ",neighbourOctal%nDepth
+!                   write(*,*) "myrank ",myrank
+!                   write(*,*) "sendThread ",sendThread, " receivethread ",receivethread
+!                   stop
+!                endif
                 tempStorage(1) = neighbourOctal%q_i(neighbourSubcell)
                 tempStorage(2) = neighbourOctal%rho(neighbourSubcell)
                 tempStorage(3) = neighbourOctal%rhoe(neighbourSubcell)
@@ -1292,7 +1325,7 @@ contains
        pressure = fac*(neighbourOctal%pressure_i(nSubcell(1)) + neighbourOctal%pressure_i(nSubcell(2)) + & 
             neighbourOctal%pressure_i(nSubcell(3)) + neighbourOctal%pressure_i(nSubcell(4)))
 
-       flux = fac*(neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)) + & 
+       flux = fac * (neighbourOctal%flux_i(nSubcell(1)) + neighbourOctal%flux_i(nSubcell(2)) + & 
             neighbourOctal%flux_i(nSubcell(3)) + neighbourOctal%flux_i(nSubcell(4)))
 
 
@@ -1343,6 +1376,11 @@ contains
           if (PRESENT(fluxvector_i_plus_1)) fluxvector_i_plus_1 = neighbourOctal%fluxvector(neighbourSubcell, 1:5)
 
        else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
+
+          if ((thisOctal%ndepth-neighbourOctal%nDepth)/=1) then
+             write(*,*) "Octal depths differ by more than 1!!!!!"
+             stop
+          endif
 
           if (PRESENT(a_i_plus_1)) a_i_plus_1(1:3)   = neighbourOctal%a(neighbourSubcell,1:3)
 

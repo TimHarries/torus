@@ -84,6 +84,7 @@ contains
     logical :: dumpThisTime
     real(double) :: deltaTforDump, timeOfNextDump
     integer :: iEquationOFState = 1
+    integer :: iRefine
 
     nHydroThreads = nThreadsGlobal-1
 
@@ -95,7 +96,7 @@ contains
     viewVec = OCTALVECTOR(-1.d0,0.d0,0.d0)
     viewVec = rotateZ(viewVec, 40.d0*degtorad)
     viewVec = rotateY(viewVec, 30.d0*degtorad)
-    
+
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -114,29 +115,29 @@ contains
 
     timeofNextDump = grid%currentTime + deltaTforDump
 
- 
+
     if (myRank == 1) write(*,*) "CFL set to ", cfl
 
 
     if (myrank /= 0) then
        call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-       
+
        call writeInfo("Calling exchange across boundary", TRIVIAL)
        if (myRank == 1) call tune(6,"Exchange across boundary")
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
        if (myRank == 1) call tune(6,"Exchange across boundary")
        call writeInfo("Done", TRIVIAL)
-       
+
        direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
        call calculateRhoU(grid%octreeRoot, direction)
        direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
        call calculateRhoV(grid%octreeRoot, direction)
        direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
        call calculateRhoW(grid%octreeRoot, direction)
-       
+
        call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
        call calculateRhoE(grid%octreeRoot, direction)
-       
+
 
 
        call writeInfo("Refining individual subgrids", TRIVIAL)
@@ -144,15 +145,15 @@ contains
           do
              gridConverged = .true.
              call setupEdges(grid%octreeRoot, grid)
-             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
+             !             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
              call unsetGhosts(grid%octreeRoot)
              call setupGhostCells(grid%octreeRoot, grid)
              if (gridConverged) exit
           end do
        else
-         call evenUpGridMPI(grid, .false., .true.)
+          call evenUpGridMPI(grid, .false., .true.)
        endif
-       
+
        write(plotfile,'(a,i4.4,a)') "firstpass.png/png"
        call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
 
@@ -179,9 +180,8 @@ contains
           call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
           if (ALL(tConverged(1:nHydroThreads))) exit
        end do
-       
-       call checkfor2d(grid%octreeRoot)
-       
+
+
        call writeInfo("Evening up grid", TRIVIAL)    
        call evenUpGridMPI(grid, .false., .true.)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -192,37 +192,110 @@ contains
 
 
     endif
-       
+
     call ionizeGrid(grid%octreeRoot)
 
 
-    call writeInfo("Calling photoionization loop",TRIVIAL)
-    call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-         lucyfileout, lucyfilein, 3)
-    call writeInfo("Done",TRIVIAL)
+    do irefine = 1, 3
+
+       if (irefine == 1) then
+          call writeInfo("Calling photoionization loop",TRIVIAL)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
+               lucyfileout, lucyfilein, 3)
+          call writeInfo("Done",TRIVIAL)
+       else
+          call writeInfo("Calling photoionization loop",TRIVIAL)
+          call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
+               lucyfileout, lucyfilein, 1)
+          call writeInfo("Done",TRIVIAL)
+       endif
+
+       if (myrank/=0) then
+
+          call writeInfo("Refining individual subgrids", TRIVIAL)
+          if (.not.grid%splitOverMpi) then
+             do
+                gridConverged = .true.
+                call setupEdges(grid%octreeRoot, grid)
+                !             call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=.false.)
+                call unsetGhosts(grid%octreeRoot)
+                call setupGhostCells(grid%octreeRoot, grid)
+                if (gridConverged) exit
+             end do
+          else
+             call evenUpGridMPI(grid, .false., .true.)
+          endif
+
+          write(plotfile,'(a,i4.4,a)') "firstpass.png/png"
+          call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
+
+          call writeInfo("Refining grid", TRIVIAL)
+          do
+             gridConverged = .true.
+             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.false.)
+             if (gridConverged) exit
+          end do
+          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+
+          write(plotfile,'(a,i4.4,a)') "secpass.png/png"
+          call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
+
+
+          call writeInfo("Refining grid part 2", TRIVIAL)    
+          do
+             globalConverged(myRank) = .true.
+             call writeInfo("Refining grid", TRIVIAL)    
+             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), iEquationOfState, inherit=.false.)
+             call writeInfo("Exchanging boundaries", TRIVIAL)    
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+             if (ALL(tConverged(1:nHydroThreads))) exit
+          end do
+
+
+          call writeInfo("Evening up grid", TRIVIAL)    
+          call evenUpGridMPI(grid, .false., .true.)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+          write(plotfile,'(a,i4.4,a)') "postrefine.png/png"
+          call plotGridMPI(grid, plotfile, "x-z", "ionization",  plotgrid=.true.)
+
+       endif
+    enddo
+    if (myrank /=0) then
+       call unrefineCellsPhotoion(grid%octreeRoot, grid, gamma, iEquationOfState)
+       write(plotfile,'(a,i4.4,a)') "postrefine.png/png"
+       call plotGridMPI(grid, plotfile, "x-z", "ionization",  plotgrid=.true.)
+
+       call evenUpGridMPI(grid, .false., .true.)
+       call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+    endif
+
 
     if (myrank /=0) call plotgridMPI(grid, "temperature.png/png", "x-z", "temperature")
-       
+
     if (myrank /= 0) then
-       
+
        call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
        call calculateRhoE(grid%octreeRoot, direction)
 
-!       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
-!       call calculateRhoU(grid%octreeRoot, direction)
-!       direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
-!       call calculateRhoV(grid%octreeRoot, direction)
-!       direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
-!       call calculateRhoW(grid%octreeRoot, direction)
-       
-       
-!       call writeInfo("Plotting col density", TRIVIAL)    
-!       write(plotfile,'(a,i4.4,a)') "col",0,".png/png"
-!       call columnDensityPlotAMR(grid, viewVec, plotfile)
-!       write(plotfile,'(a,i4.4,a)') "image",0,".png/png"
-!       call plotGridMPI(grid, plotfile, "x-z", "rho")
-!       write(plotfile,'(a,i4.4,a)') "temp",0,".png/png"
-!       call plotGridMPI(grid, plotfile, "x-z", "temperature")
+       !       direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
+       !       call calculateRhoU(grid%octreeRoot, direction)
+       !       direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
+       !       call calculateRhoV(grid%octreeRoot, direction)
+       !       direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
+       !       call calculateRhoW(grid%octreeRoot, direction)
+
+
+       !       call writeInfo("Plotting col density", TRIVIAL)    
+       !       write(plotfile,'(a,i4.4,a)') "col",0,".png/png"
+       !       call columnDensityPlotAMR(grid, viewVec, plotfile)
+       !       write(plotfile,'(a,i4.4,a)') "image",0,".png/png"
+       !       call plotGridMPI(grid, plotfile, "x-z", "rho")
+       !       write(plotfile,'(a,i4.4,a)') "temp",0,".png/png"
+       !       call plotGridMPI(grid, plotfile, "x-z", "temperature")
 
     endif
     do while(.true.)
@@ -251,16 +324,16 @@ contains
 
           if (myRank == 1) call tune(6,"Hydrodynamics step")
           call writeInfo("calling hydro step",TRIVIAL)
-          
+
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!          call hydroStep3d(1, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
+          call hydroStep3d(1, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup,doSelfGrav=.false.)
           if (myRank == 1) call tune(6,"Hydrodynamics step")
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
           call resetNh(grid%octreeRoot)
-          
-                   
+
+
        endif
-       
+
 
 
 
@@ -268,52 +341,53 @@ contains
 
        if (myrank /=0) call plotgridMPI(grid, "temperature.png/png", "x-z", "temperature")
 
-
-!       if (myRank /= 0) then
-!          call writeInfo("Refining grid", TRIVIAL)
-!          do
-!             gridConverged = .true.
-!             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.true.)
-!             if (gridConverged) exit
-!          end do
-!          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-!
-!          call writeInfo("Refining grid part 2", TRIVIAL)    
-!          do
-!             globalConverged(myRank) = .true.
-!             call writeInfo("Refining grid", TRIVIAL)    
-!             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), iEquationOfState, inherit=.true.)
-!             call writeInfo("Exchanging boundaries", TRIVIAL)    
-!             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-!             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
-!             if (ALL(tConverged(1:nHydroThreads))) exit
-!          end do
-!          
-!!          iUnrefine = iUnrefine + 1
-!!          if (iUnrefine == 5) then
-!!             call tune(6, "Unrefine grid")
-!!             call unrefineCells(grid%octreeRoot, grid, gamma, iEquationOfState)
-!!             call tune(6, "Unrefine grid")
-!!             iUnrefine = 0
-!!          endif
-!          
-!          call evenUpGridMPI(grid, inheritFlag=.true.)
-!          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
-!
-!       endif
-
        call writeInfo("Calling photoionization loop",TRIVIAL)
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
-            lucyfileout, lucyfilein, 3)
+            lucyfileout, lucyfilein, 1)
        call writeInfo("Done",TRIVIAL)
        if (myrank /= 0) then
           call calculateEnergyFromTemperature(grid%octreeRoot, gamma, mu)
           call calculateRhoE(grid%octreeRoot, direction)
        endif
+       !
 
 
-       
+
+       if (myRank /= 0) then
+          call writeInfo("Refining grid", TRIVIAL)
+          do
+             gridConverged = .true.
+             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, gridconverged, iEquationOfState, inherit=.true.)
+             if (gridConverged) exit
+          end do
+          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+
+          call writeInfo("Refining grid part 2", TRIVIAL)    
+          do
+             globalConverged(myRank) = .true.
+             call writeInfo("Refining grid", TRIVIAL)    
+             call refineGridGeneric2(grid%octreeRoot, grid,  gamma, globalConverged(myRank), iEquationOfState, inherit=.true.)
+             call writeInfo("Exchanging boundaries", TRIVIAL)    
+             call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+             call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+             call MPI_ALLREDUCE(globalConverged, tConverged, nHydroThreads, MPI_LOGICAL, MPI_LOR,amrCOMMUNICATOR, ierr)
+             if (ALL(tConverged(1:nHydroThreads))) exit
+          end do
+
+          iUnrefine = iUnrefine + 1
+          if (iUnrefine == 5) then
+             call tune(6, "Unrefine grid")
+             call unrefineCellsPhotoion(grid%octreeRoot, grid, gamma, iEquationOfState)
+             call tune(6, "Unrefine grid")
+             iUnrefine = 0
+          endif
+
+          call evenUpGridMPI(grid, .true., .true.)
+          call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+       endif
+
+
        grid%currentTime = grid%currentTime + dt
        if (myRank == 1) write(*,*) "Current time: ",grid%currentTime
 
@@ -321,8 +395,8 @@ contains
           timeOfNextDump = timeOfNextDump + deltaTForDump
           grid%iDump = grid%iDump + 1
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
-          call writeAmrGridMpiAll(mpiFilename,.false.,grid)
-          
+          !          call writeAmrGridMpiAll(mpiFilename,.false.,grid)
+
           if (myrank /= 0) then
              write(plotfile,'(a,i4.4,a)') "image",grid%idump,".png/png"
              call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22)
@@ -3927,6 +4001,7 @@ end subroutine readHeIIrecombination
 
           eThermal = thisOctal%temperature(subcell) * Rgas / (gamma-1.d0)
           thisOctal%energy(subcell) =  eThermal
+          thisOctal%rhoe(subcell) = thisOctal%rho(subcell) * thisOctal%energy(subcell)
 
        endif
     enddo
