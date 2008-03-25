@@ -18,9 +18,10 @@ module torus_mod
 
 contains
 
-  subroutine torus(b_idim,b_npart,b_nactive,b_xyzmh,b_rho,b_iphase, &
-                  b_nptmass,b_listpm,b_udist,b_umass, &
-                  b_utime,b_time,b_gaspartmass, b_num_gas, b_temp)
+  subroutine torus(b_idim,  b_npart,       b_nactive, b_nptmass, b_num_gas, &
+                   b_xyzmh, b_rho,         b_iphase,                        &
+                   b_udist, b_umass,       b_utime,                         &
+                   b_time,  b_gaspartmass, b_temp)
 
   use kind_mod               ! variable type KIND parameters
   use vector_mod             ! vector math
@@ -147,13 +148,11 @@ contains
   type(isochrone)       :: isochrone_data
   integer, intent(in)   :: b_idim,b_npart,b_nactive,b_nptmass
   integer*1, intent(in) :: b_iphase(b_idim)
-  integer, intent(in)   :: b_listpm(b_nptmass)
   real*8, intent(in)    :: b_xyzmh(5,b_idim)
   real*4, intent(in)    :: b_rho(b_idim)
   real*8, intent(in)    :: b_udist, b_umass, b_utime, b_time, b_gaspartmass
   integer, intent(in)   :: b_num_gas           ! Number of gas particles
   real*8, intent(inout) :: b_temp(b_num_gas)   ! Temperature of gas particles
-  integer :: ngaspart
   integer, save :: num_calls = 0
 
   real(double) :: tempArray(10)
@@ -171,6 +170,8 @@ contains
 
   call unixGetHostname(tempChar, tempInt) 
   print *, 'Process ', myRankGlobal,' running on host ',TRIM(ADJUSTL(tempChar))
+  print *, 'Process ', myRankGlobal, 'b_npart=', b_npart, 'b_nactive=', b_nactive, &
+           'b_nptmass=', b_nptmass, 'b_num_gas=', b_num_gas 
 
   !===============================================================================
 
@@ -297,8 +298,7 @@ contains
   !=====================================================================
 
   ! The total number of gas particles is the total number of active particles less the number of point masses.
-  ngaspart = b_nactive-b_nptmass
-  call init_sph_data2(sphData, b_udist, b_umass, b_utime, ngaspart, b_time, b_nptmass, &
+  call init_sph_data2(sphData, b_udist, b_umass, b_utime, b_num_gas, b_time, b_nptmass, &
        b_gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp)
   ! Communicate particle data. Non-mpi case has a stubbed routine. 
   call gather_sph_data(sphData)
