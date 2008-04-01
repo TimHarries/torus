@@ -396,7 +396,7 @@ contains
     logical, intent(in), optional :: ll_sph
     logical :: useFixedRange
 !    integer :: omp_get_num_threads, omp_get_thread_num
-    real(double) :: this_bnu, fac2, fac3
+    real(double) :: this_bnu, fac2, hNuOverkT
     real(double) :: fac1(nLambda)
 
 #ifdef MPI
@@ -827,11 +827,11 @@ contains
 !                            kabs = grid%oneKappaAbs(thisOctal%dustType(subcell),iLam) * thisOctal%rho(subcell)
 !                         endif
 
-                      fac3 =  (dble(hCgs)*freq(i)) * recip_kt
-                      if (fac3 > 100.d0) then
+                      hNuOverkT =  (dble(hCgs)*freq(i)) * recip_kt
+                      if (hNuOverkT > 100.d0) then
                          fac2 = 0.d0
                       else
-                         fac2 = 1.d0/(exp(fac3) - 1.d0)
+                         fac2 = 1.d0/(exp(hNuOverkT) - 1.d0)
                       endif
                       this_bnu = fac1(i) * fac2
 
