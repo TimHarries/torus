@@ -169,24 +169,12 @@ contains
 
   end function fillRayleigh
 
-  type(PHASEMATRIX) function fillIsotropic(costheta)
-
+  pure function fillIsotropic() result(b)
 
     type(PHASEMATRIX) :: b
-    real :: costheta
-    real :: cos2t
-
-    cos2t = costheta*costheta
 
     b%element = 0.
     b%element(1,1) = 1.
-    b%element(1,2) = 0.
-    b%element(2,1) = 0.
-    b%element(2,2) = 0.
-    b%element(3,3) = 0.
-    b%element(4,4) = 0.
-
-    fillIsotropic = b
 
   end function fillIsotropic
 
