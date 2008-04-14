@@ -1366,9 +1366,11 @@ contains
 
   subroutine createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
+    use mieDistPhaseMatrix_mod
     use input_variables, only : mie, useDust, dustFile, nDustType, graintype, ngrain, &
          grainname, x_grain, amin, amax, a0, qdist, pdist, dustToGas, scale, &
-         dustfilename, isotropicScattering, readmiephase, writemiephase, ttau_disc_on
+         dustfilename, isotropicScattering, readmiephase, writemiephase, useOldMiePhaseCalc, &
+         ttau_disc_on
     real, allocatable :: mReal(:,:), mImg(:,:), tmReal(:), tmImg(:)
     real, allocatable :: mReal2D(:,:), mImg2D(:,:)
     type(PHASEMATRIX) :: miePhase(1:nDustType,1:nLambda,1:nMumie)
@@ -1383,33 +1385,25 @@ contains
     integer :: nLambda
 
 
-    if (associated(grid%onekappaAbs)) deallocate(grid%onekappaAbs)
-    if (associated(grid%onekappaSca)) deallocate(grid%onekappaSca)
-
-    allocate(grid%oneKappaAbs(1:nDustType, 1:nLambda), grid%oneKappaSca(1:nDustType, 1:nLambda))
-
-
     if (mie .or. useDust) then
+       if (associated(grid%onekappaAbs)) deallocate(grid%onekappaAbs)
+       if (associated(grid%onekappaSca)) deallocate(grid%onekappaSca)
+       allocate(grid%oneKappaAbs(1:nDustType, 1:nLambda), grid%oneKappaSca(1:nDustType, 1:nLambda))
 
        if (.not.dustfile) then
-          do i = 1, nDustType
-
-             call parseGrainType(graintype(i), ngrain, grainname, x_grain)
-!             write(*,*) "graintype ",trim(graintype(i)), x_grain(i),amin(i),amax(i),a0(i),qdist(i),pdist(i)
-
-             call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
-                  ngrain, X_grain, grainname, i)
-          enddo
           write(message,'(a,f5.2)') "Multiplying the opacities by the dust-to-gas ratio of: ",dusttogas
           call writeInfo(message, FORINFO)
           do i = 1, nDustType
+             call parseGrainType(graintype(i), ngrain, grainname, x_grain)
+             call fillGridMie(grid, scale, aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
+                  ngrain, X_grain, grainname, i)
              grid%oneKappaAbs(i,1:grid%nLambda) =  grid%oneKappaAbs(i,1:grid%nLambda) * dustToGas
              grid%oneKappaSca(i,1:grid%nLambda) =  grid%oneKappaSca(i,1:grid%nLambda) * dustToGas
           enddo
        else
           do i = 1, nDustType
-             call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, grid%onekappaAbs(i,1:grid%nlambda), &
-                  grid%onekappaSca(i,1:grid%nLambda))
+             call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, &
+                     grid%onekappaAbs(i,1:grid%nlambda), grid%onekappaSca(i,1:grid%nLambda))
           enddo
        endif
        call writeInfo("Creating Rosseland opacity lu table",TRIVIAL)
@@ -1422,28 +1416,34 @@ contains
        ! construct the mie phase matrix
        call writeInfo("Computing Mie phase grid...",TRIVIAL)
 
+       if (isotropicScattering) then
+          miePhase = fillIsotropic()
+          call writeInfo("Completed.",TRIVIAL)
+          return
+       endif
+
+       if (readMiePhase) then
+          open(144, file='miephasefile', status="old", form="unformatted")
+          read(unit=144) miePhase
+          close(144)
+          call writeInfo("Completed.",TRIVIAL)
+          return
+       end if
+
+
        allocate(mReal(1:nDusttype,1:nLambda))
        allocate(mImg(1:nDustType,1:nLambda))
-
        allocate(tmReal(1:nLambda))
        allocate(tmImg(1:nLambda))
 
-
-       do k = 1, nDusttype
-
-          call parseGrainType(graintype(k), ngrain, grainname, x_grain)
-
-          ! Synthetic grains
-
+       ! Set up refractive indices
+       do i = 1, nDustType
+          call parseGrainType(graintype(i), ngrain, grainname, x_grain)
           ! quick test for zero total dust abundance.
-          total_dust_abundance = SUM(X_grain)
-          if ( total_dust_abundance <= 0.0 ) then
-             !$MPI     if (my_rank==0) &
+          total_dust_abundance = SUM(x_grain)
+          if (total_dust_abundance <= 0.0) then
              write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
-             !$MPI     if (my_rank==0) &
-             write(*,*) "  ==> You probably forgot to assign dust abundance in your "// &
-                  & "parameter file!"
-             !$MPI     if (my_rank==0) &
+             write(*,*) "  ==> You probably forgot to assign dust abundance in your parameter file!"
              write(*,*) "  ==> Exiting the program ... "
              stop 
           end if
@@ -1455,85 +1455,62 @@ contains
           mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
 
           ! Find the index of refractions for all types of grains available
-          do j = 1, ngrain
-             call getRefractiveIndex(xArray, nLambda, grainname(j), tmReal, tmImg)
-             mReal2D(j,:) = tmReal(:)  ! copying the values to a 2D maxtrix
-             mImg2D(j,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
+          do k = 1, ngrain
+             call getRefractiveIndex(xArray, nLambda, grainname(k), tmReal, tmImg)
+             mReal2D(k,:) = tmReal(:)  ! copying the values to a 2D maxtrix
+             mImg2D(k,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
           end do
 
           ! Finding the weighted average of the refractive index.
-          mReal(k,:) = 0.0; mImg(k,:) = 0.0
-          do i = 1, nLambda
-             do j = 1, ngrain
-                mReal(k,i) = mReal2D(j,i)*X_grain(j) + mReal(k,i)
-                mImg(k,i)  = mImg2D(j,i) *X_grain(j) + mImg(k,i)
+          mReal(i,:) = 0.0; mImg(i,:) = 0.0
+          do j = 1, nLambda
+             do k = 1, ngrain
+                mReal(i,j) = mReal(i,j) + mReal2D(k,j)*X_grain(k)
+                mImg(i,j)  = mImg(i,j) + mImg2D(k,j) *X_grain(k)
              end do
-             mReal(k,i) = mReal(k,i) / total_dust_abundance
-             mImg(k,i)  = mImg(k,i)  / total_dust_abundance
+             mReal(i,j) = mReal(i,j) / total_dust_abundance
+             mImg(i,j)  = mImg(i,j)  / total_dust_abundance
           end do
 
           deallocate(mReal2D)
           deallocate(mImg2D)
+       end do
 
-       enddo
+       deallocate(tmReal)
+       deallocate(tmImg)
 
-       if (readMiePhase) then
-          open(144, file='miephasefile', status="old", form="unformatted")
-          read(unit=144) miePhase
-          close(144)
-       else
-          do k = 1, nDustType
-             do i = 1, nLambda
-                do j = 1, nMumie
-                   mu = 2.*real(j-1)/real(nMumie-1)-1.
-                   if (.not.isotropicScattering) then
-                      call mieDistPhaseMatrix(aMin(k), aMax(k), a0(k), qDist(k), pDist(K), xArray(i), &
-                           mu, miePhase(k,i,j), mReal(k,i), mImg(k,i))               
-                   else
-                      miePhase(k,i,j) = fillIsotropic(mu)
-                   endif
+
+       ! You should use the new wrapper as it is much faster.
+       ! The old and new methods give exactly the same result when optimisations
+       ! are turned off.
+       ! When optimisations are turned on, the methods give different result,
+       ! and *neither* matches the result obtained when optimisations are off.
+       if (useOldMiePhaseCalc) then
+          do i = 1, nDustType
+             do j = 1, nLambda
+                do k = 1, nMumie
+                   mu = 2.*real(k-1)/real(nMumie-1)-1.
+                   call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
+                           xArray(j), mu, miePhase(i,j,k), mReal(i,j), mImg(i,j))
                 enddo
-                call normalizeMiePhase(miePhase(k,i,1:nMuMie), nMuMie)
+                call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
              end do
           end do
-
-          if (writeMiePhase) then
-             open(144, file='miephasefile', status="replace", form="unformatted")
-             write(unit=144) miePhase
-             close(144)
-          end if
+       else
+          call mieDistPhaseMatrixWrapper(nDustType, nLambda, nMuMie, xArray, mReal, mImg, miePhase)
        end if
 
        deallocate(mReal)
        deallocate(mImg)
+
+       if (writeMiePhase) then
+          open(144, file='miephasefile', status="replace", form="unformatted")
+          write(unit=144) miePhase
+          close(144)
+       end if
+
        call writeInfo("Completed.",TRIVIAL)
-
-
     endif
   end subroutine createDustCrossSectionPhaseMatrix
-
-  subroutine normalizeMiePhase(miePhase, nMuMie)
-    type(PHASEMATRIX) :: miePhase(:)
-    integer :: nMuMie, i, k, m ,n
-    real(double) :: normfac
-    real(double) :: cosTheta(1000)
-    do i = 1, nMuMie
-       cosTheta(i) = -1.d0 + 2.d0 * dble(i-1)/dble(nMuMie-1)
-    enddo
-
-    normFac = 0.d0
-    do k = 2, nMuMie
-       normFac = normFac + miePhase(k)%element(1,1) * (cosTheta(k) - cosTheta(k-1))
-    enddo
-
-    normfac = normFac * 0.5
-    do k = 1, nMuMie
-       do m = 1, 4
-          do n = 1, 4
-             miePhase(k)%element(m,n) = miePhase(k)%element(m,n) / normFac
-          enddo
-       enddo
-    enddo
-  end subroutine normalizeMiePhase
 
 end module dust_mod
