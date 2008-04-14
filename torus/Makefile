@@ -38,7 +38,6 @@ ifeq ($(SYSTEM), intelmac)
     PGLIBS   = -L/Users/${USER}/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
     EXE = torus.intelmac
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -64,7 +63,6 @@ ifeq ($(SYSTEM), davesmac)
 #    STARLIBS = -L/star/lib `ndf_link`                                                                   
 #    F2CLIB   = -L$(PATH2G2C) -lg2c                                                                      
     EXE = torus.intelmac
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -87,7 +85,6 @@ ifeq ($(SYSTEM), g95)
     STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -106,7 +103,6 @@ ifeq ($(SYSTEM), sun)
     STARLIBS = -L/star/lib `ndf_link`
     F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.sun
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -127,7 +123,6 @@ ifeq ($(SYSTEM), osx)
     STARLIBS = -L/usr/X11R6/lib -lX11
     F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.osx
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -147,7 +142,6 @@ ifeq ($(SYSTEM), gfortran)
 #    STARLIBS = -L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
     F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.gfortran
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -168,7 +162,6 @@ ifeq ($(SYSTEM), macmpi)
 #    STARLIBS = -L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
 #    F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.macmpi
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -188,7 +181,6 @@ ifeq ($(SYSTEM), gfort)
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -211,7 +203,6 @@ ifeq  ($(SYSTEM), linux)
     F2CLIB   = -lg2c
     STATICLIBS = -lpthread
     EXE = torus.linux
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -228,7 +219,6 @@ ifeq ($(SYSTEM), alpha)
     PGLIBS   = -L/star/lib `pgplot_link`
     STARLIBS = -L/star/lib `ndf_link`
     EXE = torus
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -246,7 +236,6 @@ ifeq ($(SYSTEM), lamosx)
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = torus.lamosx
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -266,7 +255,6 @@ ifeq ($(SYSTEM), lamosx-intel)
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = torus.lamosx-intel
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -286,7 +274,6 @@ ifeq ($(SYSTEM), ompiosx)
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = torus.ompiosx
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -306,7 +293,6 @@ ifeq ($(SYSTEM), ompi)
     CFITSIOLIBS =  -L/Users/${USER}/cfitsio/lib -lcfitsio
     STARLIBS = -L/usr/X11R6/lib -lX11
     EXE = torus.ompi
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -326,7 +312,6 @@ ifeq ($(SYSTEM), ompiosx-intel)
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = torus.ompiosx-intel
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -351,7 +336,6 @@ ifeq ($(SYSTEM), mpilam)
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpilam
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -375,7 +359,6 @@ ifeq ($(SYSTEM), mpich)
     STARLIBS = -L/star/lib `ndf_link`
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpich
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -397,7 +380,6 @@ ifeq ($(SYSTEM), linuxintel)
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = -L/usr/lib -lg2c
     EXE = torus.linuxintel
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -422,7 +404,6 @@ ifeq ($(SYSTEM), zen)
     PGLIBS= -L/home/tjharrie/libpgplot -lpgplot -lpng
 #    -L/star/lib `pgplot_link`
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM=yes
 endif
@@ -446,7 +427,6 @@ ifeq ($(SYSTEM), mpiintel)
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpiintel
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -469,7 +449,6 @@ ifeq ($(SYSTEM), openmpi)
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
     EXE = torus.openmpi
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -497,7 +476,7 @@ ifeq ($(SYSTEM), openmpi-nocona)
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
     EXE = torus.openmpi-nocona
-    MK_MPI_SRC = yes
+    MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
 
@@ -513,7 +492,6 @@ ifeq ($(SYSTEM), miracle)
     SPECF77  = spec_f77.f.miracle
     PGLIBS   = -L/home/rk/pgplot -lpgplot -lX11
     EXE = torus.miracle
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -531,7 +509,6 @@ ifeq ($(SYSTEM), ukaff1a)
     PGLIBS   = -L/home/th/pgplot -lpgplot
     CFITSIOLIBS = -L/home/th/cfitsio -lcfitsio
     EXE = torus.ukaff1a
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -550,7 +527,6 @@ ifeq ($(SYSTEM), omp)
     IMAGEF77 = image_f77.f.miracle
     PGLIBS   = -L/home/th/pgplot -lpgplot
     EXE = torus.omp
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -566,7 +542,6 @@ ifeq ($(SYSTEM), ceres)
     SPECF77  = spec_f77.f.miracle
     PGLIBS   = -L/usr/lib -lxlf90 -lm -lc -lX11 -L${HOME}/software/pgplot -lpgplot
     EXE = torus.aix
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -588,7 +563,6 @@ ifeq ($(SYSTEM), mpig95)
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpig95
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
@@ -608,7 +582,6 @@ ifeq ($(SYSTEM), darwin)
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs
     EXE = torus.darwin
-    MK_MPI_SRC = no
     KNOWN_SYSTEM = yes
 endif
 
@@ -626,7 +599,6 @@ ifeq ($(SYSTEM), mpidarwin)
     PGLIBS   = -L${HOME}/pgplot -lpgplot
     STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = latticeQED
-    MK_MPI_SRC = yes
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
 endif
