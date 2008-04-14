@@ -1073,6 +1073,8 @@ contains
          "Read miePhase from file: ","(a,1l,1x,a)", .false., ok, .false.)
     call getLogical("writemiephase", writeMiePhase, cLine, nLines, &
          "Write miePhase to file: ","(a,1l,1x,a)", .false., ok, .false.)
+    call getLogical("oldmiephasecalc", useOldMiePhaseCalc, cLine, nLines, &
+         "Use old subroutine for miePhase calculation: ","(a,1l,1x,a)", .false., ok, .false.)
 
     if (mie) then
        call getLogical("forcedwavelength", forcedWavelength, cLine, nLines, &

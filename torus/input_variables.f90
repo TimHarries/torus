@@ -62,6 +62,7 @@ module input_variables
   logical :: mie
   logical :: readMiePhase
   logical :: writeMiePhase
+  logical :: useOldMiePhaseCalc
   logical :: includeGasOpacity
   logical :: isotropicScattering
   real :: dusttogas
