@@ -841,7 +841,7 @@ program torus
      open(76, file="phasematrix.dat",status="unknown",form="formatted")
      ilambda = findIlambda(10000.0, xArray, nLambda, ok)
      do i = 1, nMuMie
-	ang =  pi*real(i-1)/real(nMuMie-1)
+        ang =  pi*real(i-1)/real(nMuMie-1)
         write(76,*) 180.*ang/pi, miephase(1, ilambda, i)%element(1,1)
      enddo
      close(76)
@@ -3299,7 +3299,7 @@ program torus
      deallocate(tempDoubleArray)
 #endif
      call torus_mpi_barrier('finished syncing output. Waiting to continue...') 
-     if(myRankIsZero) write(*,'(i10,a,f7.3)') iOuterLoop*nPhotons/nOuterLoop," photons done"
+     if(myRankIsZero) write(*,'(i10,a)') int(real(iOuterLoop)/real(nOuterLoop)*real(nPhotons)+0.5)," photons done"
 
         errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
