@@ -27,7 +27,7 @@
        ubnd(2) = nPix
        nelm = npix*npix
 
-       write(*,'(a,i3,a,i3)') "Writing image: ",npix," by ",npix
+       write(*,'(a,i4,a,i4)') "Writing image: ",npix," by ",npix
 
 !
 ! Begin the ndf and hds systems
