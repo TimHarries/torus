@@ -1246,14 +1246,13 @@ subroutine calcPlanetMass
 
    real(double) :: frac, mPlanetOld, fracOld, rGapEdge
 
-   ! initial values
-   real(double) :: target = 1d-15       ! target density reduction
-   ! For Varniere
-!   real(double) :: target = 0.5         ! target density reduction
+   ! For old planetgap models
+!   real(double) :: target = 1d-15       ! target density reduction
+   real(double) :: target = 0.5         ! target density reduction
    real(double) :: tol = 0.01           ! +/- tol * target
    real(double) :: step = 0.0001        ! initial stepping in value of mPlanet
    real(double) :: reduxFac = 0.5       ! step is reduced by this factor when homing in
-   integer :: maxIter = 100     ! maximum number of iterations before we give up
+   integer :: maxIter = 500     ! maximum number of iterations before we give up
    integer :: i = 0             ! iteration count
    
    rGapEdge = rGap - (0.5 * gapWidth)
