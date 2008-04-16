@@ -1203,7 +1203,7 @@ contains
          .or. iIter_grand < maxIter &
          .or. (dT_mean_new-dT_mean_old)/((dT_mean_new+dT_mean_old)/2.0) > 0.05) then 
        converged = .false.
-       nMonte = nMonte*2  ! increases the number of iterations!
+!       nMonte = nMonte*2  ! increases the number of iterations!
     else 
        converged = .true.
     end if
@@ -2988,7 +2988,7 @@ subroutine setBiasOnTau(grid, iLambda)
              tau = 1.d30
              do i = 1, 4
                 direction = arrayVec(i)
-                call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0 )
+                call tauAlongPath(ilambda, grid, rVec, direction, thistau, 20.d0 )
                 tau = min(tau, thisTau)
              enddo
              thisOctal%biasCont3D(subcell) = exp(-tau)

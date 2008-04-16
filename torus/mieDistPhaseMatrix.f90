@@ -466,8 +466,8 @@ contains
    subroutine normalizeMiePhase(miePhase, nMuMie)
       use phasematrix_mod
 
-      type(PHASEMATRIX), intent(inout) :: miePhase(nMuMie)
       integer, intent(in) :: nMuMie
+      type(PHASEMATRIX), intent(inout) :: miePhase(nMuMie)
       integer :: i, m ,n
       real(double) :: normfac
   

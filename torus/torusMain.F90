@@ -1031,7 +1031,7 @@ program torus
         
 
      if (mie) then
-        if (geometry == "shakara" .and. geometry .eq. 'iras04158') then
+        if (geometry == "shakara" .or. geometry .eq. 'iras04158') then
 
 !        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*real(autocm)) ! defined at 1AU
 
@@ -2355,6 +2355,7 @@ program torus
 !           weightDust = chanceDust / probDust
 !           weightPhoto = (1. - chanceDust) / (1. - probDust)
 
+
            probDust = chanceDust
            weightDust = 1.
            weightPhoto = 1.
@@ -3489,9 +3490,9 @@ endif ! (doPvimage)
            write(specFile,'(a,a,a,i3.3)') trim(outfile),"_"//trim(name_filter),"_image",iPhase
            call writeImage(obsImageSet(i), specfile, objectDistance, imageInArcsec, lambda_eff, bandwidth)
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_image",iPhase,".fits"
-           call writeFitsImage(obsImageSet(i), trim(specfile), "intensity")
+           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "intensity")
            write(specFile,'(a,a,a,i3.3,a)') trim(outfile),"_"//trim(name_filter),"_pol",iPhase,".fits"
-           call writeFitsImage(obsImageSet(i), trim(specfile), "pol")
+           call writeFitsImage(obsImageSet(i), trim(specfile), objectDistance, "pol")
         end do
         if (doRaman) then
            write(specFile,'(a,a,i3.3)') trim(outfile),"_o6image",iPhase

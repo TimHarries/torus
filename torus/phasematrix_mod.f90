@@ -347,7 +347,7 @@ contains
     if (present(weight)) then
        weight = SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) + & 
             (SUM(miePhase(1:nDustType, iLam, j+1)%element(1,1)*dustTypeFraction(1:nDustType)) - &
-            SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType))) * &
+             SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) ) * &
             (r - prob(ilam,j))/(prob(ilam,j+1)-prob(ilam,j))
     endif
 
@@ -373,6 +373,22 @@ contains
 
   end function newDirectionMie
 
+
+  subroutine fixMiePhase(miePhase, nDustType, nLambda, nMuMie)
+    implicit none
+    integer :: nDustType, nLambda, nMuMie
+    type(PHASEMATRIX) :: miePhase(nDustType, nLambda, nMuMie)
+    integer :: i, j
+
+    do i = 1, nDustType
+       do j = 1, nLambda
+          if ((miePhase(i,j,nMuMie)%element(1,1)/miePhase(i,j,nMuMie-1)%element(1,1)) > 10.d0) then
+             miePhase(i,j,nMuMie)%element(1,1)  = 2.d0 * miePhase(i,j,nMuMie-1)%element(1,1)
+             if (writeoutput) write(*,*) "! Undersampeld miephase fixed"
+          endif
+       enddo
+    enddo
+  end subroutine fixMiePhase
 
 subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterLoop, &
      normalizeSpectrum, useNdf, sed, objectDistance, jansky, SI, velocitySpace, lamLine)

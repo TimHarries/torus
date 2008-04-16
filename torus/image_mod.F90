@@ -320,6 +320,16 @@ module image_mod
 
        scale = scale * convert
 
+       scale = 1.d0 ! energyperphoton scaling factor
+
+       write(*,*) "OBJECT DISTANCE ",objectDistance
+       scale = scale * (1.d0 / objectDistance**2) ! erg/s/pix/cm^2
+
+       scale = scale * 1.d-4 ! erg/s/pix/m^2
+
+       scale = scale * 1.d-7 ! W/m^2/pix
+
+       write(*,*) "Scaling factor ", scale
 !       !
 !       write(*,*) " "
 !       write(*,*) "================================================================="
@@ -724,17 +734,21 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
 !! WRITE_IMAGE creates a FITS primary array containing a 2-D image.
 !
 
-     subroutine writeFitsImage(image, filename, type)
+     subroutine writeFitsImage(image, filename, objectDistance, type)
 
 ! Arguments
+
+       use input_variables, only: lamStart, lamEnd
        type(IMAGETYPE), intent(in)   :: image
        character (len=*), intent(in) :: filename, type
+       real(double) :: objectDistance
 
 #ifdef USECFITSIO
 ! Local variables
        integer :: status,unit,blocksize,bitpix,naxis,naxes(2)
        integer :: group,fpixel,nelements
        real, allocatable :: array(:,:)
+       real(double) :: scale, dlam, lamCen
 
        logical :: simple,extend
 
@@ -774,13 +788,25 @@ thisPVimage%slitDirection - (thisPVimage%slitWidth/2.)*slitnorm
        fpixel=1
        nelements=naxes(1)*naxes(2)
 
+       scale = 1.d20
+       scale = scale / (objectDistance**2) 
+       scale = scale * 1.d4
+       scale = scale * 1.d-7
+       dlam = (lamEnd - lamStart) * 2.d0 * angstoMicrons
+       lamCen = (lamStart + lamEnd) / 2.d0 * angstoMicrons
+
+       scale = scale / dlam * lamCen
+
+       
+
+       write(*,*) "objectdist, scale ",objectDistance,scale
        select case(type)
           case("intensity")
-             array = image%pixel%i
+             array = image%pixel%i * scale
           case("stokesq")
-             array = image%pixel%q
+             array = image%pixel%q * scale
           case("stokesu")
-             array = image%pixel%q
+             array = image%pixel%u * scale
           case("pol")
              array = 100.*sqrt(image%pixel%q**2 + image%pixel%u**2)/image%pixel%i
           case DEFAULT

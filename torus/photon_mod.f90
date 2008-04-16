@@ -51,6 +51,9 @@ module photon_mod
      logical :: fromStar1
      logical :: fromStar2
      logical :: resonanceLine             ! resonance line photon?
+     logical :: thermal ! thermal emission?
+     logical :: scattered ! has photon been scattered?
+     logical :: stellar ! stellar emission
   end type PHOTON
 
 
@@ -524,6 +527,10 @@ contains
     thisPhoton%weight = 1.d0
     thisPhoton%stokes%i = 1.d0 * energyPerPhoton
 
+    thisPhoton%scattered = .false.
+    thisPhoton%thermal = .false.
+    thisPhoton%stellar = .false.
+
     thisPhoton%stokes%q = 0.
     thisPhoton%stokes%u = 0.
     thisPhoton%stokes%v = 0.
@@ -601,11 +608,13 @@ contains
           
           if (nSource > 0) then
              call getPhotonPositionDirection(source(thisSource), thisPhoton%position, thisPhoton%direction, rHatInStar)
+             thisPhoton%stellar = .true.
           endif
 
                   
           if (photonFromEnvelope) then
              thisPhoton%direction = randomUnitVector()
+             thisPhoton%thermal = .true.
              if (grid%adaptive) then 
 
                 do  ! dummy loop, in case we pick a position inside a star

@@ -1403,7 +1403,7 @@ contains
        else
           do i = 1, nDustType
              call dustPropertiesfromFile(dustfilename(i), grid%nlambda, xArray, &
-                     grid%onekappaAbs(i,1:grid%nlambda), grid%onekappaSca(i,1:grid%nLambda))
+                  grid%onekappaAbs(i,1:grid%nlambda), grid%onekappaSca(i,1:grid%nLambda))
           enddo
        endif
        call writeInfo("Creating Rosseland opacity lu table",TRIVIAL)
@@ -1426,88 +1426,89 @@ contains
           open(144, file='miephasefile', status="old", form="unformatted")
           read(unit=144) miePhase
           close(144)
-          call writeInfo("Completed.",TRIVIAL)
-          return
-       end if
 
+       else
 
-       allocate(mReal(1:nDusttype,1:nLambda))
-       allocate(mImg(1:nDustType,1:nLambda))
-       allocate(tmReal(1:nLambda))
-       allocate(tmImg(1:nLambda))
+          allocate(mReal(1:nDusttype,1:nLambda))
+          allocate(mImg(1:nDustType,1:nLambda))
+          allocate(tmReal(1:nLambda))
+          allocate(tmImg(1:nLambda))
 
-       ! Set up refractive indices
-       do i = 1, nDustType
-          call parseGrainType(graintype(i), ngrain, grainname, x_grain)
-          ! quick test for zero total dust abundance.
-          total_dust_abundance = SUM(x_grain)
-          if (total_dust_abundance <= 0.0) then
-             write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
-             write(*,*) "  ==> You probably forgot to assign dust abundance in your parameter file!"
-             write(*,*) "  ==> Exiting the program ... "
-             stop 
+          ! Set up refractive indices
+          do i = 1, nDustType
+             call parseGrainType(graintype(i), ngrain, grainname, x_grain)
+             ! quick test for zero total dust abundance.
+             total_dust_abundance = SUM(x_grain)
+             if (total_dust_abundance <= 0.0) then
+                write(*,*) "Error:: total_dust_abundance <= 0.0 in torusMain."
+                write(*,*) "  ==> You probably forgot to assign dust abundance in your parameter file!"
+                write(*,*) "  ==> Exiting the program ... "
+                stop 
+             end if
+
+             ! allocate mem for temp arrays
+             allocate(mReal2D(1:ngrain, 1:nLambda))
+             allocate(mImg2D(1:ngrain, 1:nLambda))
+             ! initializing the values
+             mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
+
+             ! Find the index of refractions for all types of grains available
+             do k = 1, ngrain
+                call getRefractiveIndex(xArray, nLambda, grainname(k), tmReal, tmImg)
+                mReal2D(k,:) = tmReal(:)  ! copying the values to a 2D maxtrix
+                mImg2D(k,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
+             end do
+
+             ! Finding the weighted average of the refractive index.
+             mReal(i,:) = 0.0; mImg(i,:) = 0.0
+             do j = 1, nLambda
+                do k = 1, ngrain
+                   mReal(i,j) = mReal(i,j) + mReal2D(k,j)*X_grain(k)
+                   mImg(i,j)  = mImg(i,j) + mImg2D(k,j) *X_grain(k)
+                end do
+                mReal(i,j) = mReal(i,j) / total_dust_abundance
+                mImg(i,j)  = mImg(i,j)  / total_dust_abundance
+             end do
+
+             deallocate(mReal2D)
+             deallocate(mImg2D)
+          end do
+
+          deallocate(tmReal)
+          deallocate(tmImg)
+
+          ! You should use the new wrapper as it is much faster.
+          ! The old and new methods give exactly the same result when optimisations
+          ! are turned off.
+          ! When optimisations are turned on, the methods give different result,
+          ! and *neither* matches the result obtained when optimisations are off.
+          if (useOldMiePhaseCalc) then
+             do i = 1, nDustType
+                do j = 1, nLambda
+                   do k = 1, nMumie
+                      mu = 2.*real(k-1)/real(nMumie-1)-1.
+                      call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
+                           xArray(j), mu, miePhase(i,j,k), mReal(i,j), mImg(i,j))
+                   enddo
+                   call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
+                end do
+             end do
+          else
+             call mieDistPhaseMatrixWrapper(nDustType, nLambda, nMuMie, xArray, mReal, mImg, miePhase)
           end if
 
-          ! allocate mem for temp arrays
-          allocate(mReal2D(1:ngrain, 1:nLambda))
-          allocate(mImg2D(1:ngrain, 1:nLambda))
-          ! initializing the values
-          mReal2D(:,:) = 0.0; mImg2D(:,:) = 0.0
-
-          ! Find the index of refractions for all types of grains available
-          do k = 1, ngrain
-             call getRefractiveIndex(xArray, nLambda, grainname(k), tmReal, tmImg)
-             mReal2D(k,:) = tmReal(:)  ! copying the values to a 2D maxtrix
-             mImg2D(k,:)  = tmImg(:)   ! copying the values to a 2D maxtrix            
-          end do
-
-          ! Finding the weighted average of the refractive index.
-          mReal(i,:) = 0.0; mImg(i,:) = 0.0
-          do j = 1, nLambda
-             do k = 1, ngrain
-                mReal(i,j) = mReal(i,j) + mReal2D(k,j)*X_grain(k)
-                mImg(i,j)  = mImg(i,j) + mImg2D(k,j) *X_grain(k)
-             end do
-             mReal(i,j) = mReal(i,j) / total_dust_abundance
-             mImg(i,j)  = mImg(i,j)  / total_dust_abundance
-          end do
-
-          deallocate(mReal2D)
-          deallocate(mImg2D)
-       end do
-
-       deallocate(tmReal)
-       deallocate(tmImg)
-
-
-       ! You should use the new wrapper as it is much faster.
-       ! The old and new methods give exactly the same result when optimisations
-       ! are turned off.
-       ! When optimisations are turned on, the methods give different result,
-       ! and *neither* matches the result obtained when optimisations are off.
-       if (useOldMiePhaseCalc) then
-          do i = 1, nDustType
-             do j = 1, nLambda
-                do k = 1, nMumie
-                   mu = 2.*real(k-1)/real(nMumie-1)-1.
-                   call mieDistPhaseMatrixOld(aMin(i), aMax(i), a0(i), qDist(i), pDist(i), &
-                           xArray(j), mu, miePhase(i,j,k), mReal(i,j), mImg(i,j))
-                enddo
-                call normalizeMiePhase(miePhase(i,j,1:nMuMie), nMuMie)
-             end do
-          end do
-       else
-          call mieDistPhaseMatrixWrapper(nDustType, nLambda, nMuMie, xArray, mReal, mImg, miePhase)
-       end if
-
-       deallocate(mReal)
-       deallocate(mImg)
+          deallocate(mReal)
+          deallocate(mImg)
+       endif
 
        if (writeMiePhase) then
           open(144, file='miephasefile', status="replace", form="unformatted")
           write(unit=144) miePhase
           close(144)
        end if
+
+
+       call fixMiePhase(miePhase, nDustType, nLambda, nMuMie)
 
        call writeInfo("Completed.",TRIVIAL)
     endif

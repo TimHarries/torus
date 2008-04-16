@@ -16506,20 +16506,24 @@ IF ( .NOT. gridConverged ) RETURN
 
 
   subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross)
+    use input_variables, only : rGap
     type(GRIDTYPE) :: grid
     type(OCTALVECTOR) :: rVec, direction, currentPosition
     integer :: iLambda
     real(double) :: tau, distToNextCell
     real(double), optional :: tauMax
     type(OCTAL), pointer :: thisOctal, sOctal
-    real(double) :: fudgeFac = 1.d-3
+    real(double) :: fudgeFac = 1.d-1
     real(double) :: kappaSca, kappaAbs, kappaExt
     integer :: subcell
     logical, optional :: ross
+    logical :: planetGap
 
     tau = 0.d0
     currentPosition = rVec
     
+    planetGap  = .false.
+    if (grid%geometry == "planetgap") planetgap = .true.
 
     CALL findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
 
@@ -16538,6 +16542,14 @@ IF ( .NOT. gridConverged ) RETURN
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
        if (thisOctal%twod.and.(direction%x < 0.d0).and.(currentPosition%x < 0.d0)) exit
+
+       if (planetGap) then
+          if ((direction%x < 0.d0).and.(rVec%x > rGap*autocm/1.d10) &
+               .and.(currentPosition%x < rGap*autocm/1.d10)) exit
+          if ((direction%x > 0.d0).and.(rVec%x < rGap*autocm/1.d10) &
+               .and.(currentPosition%x > rGap*autocm/1.d10)) exit
+       endif
+
        tau = tau + distToNextCell*kappaExt
        if (PRESENT(tauMax)) then
           if (tau > tauMax) exit
