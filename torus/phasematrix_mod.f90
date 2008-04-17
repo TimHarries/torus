@@ -349,6 +349,9 @@ contains
             (SUM(miePhase(1:nDustType, iLam, j+1)%element(1,1)*dustTypeFraction(1:nDustType)) - &
              SUM(miePhase(1:nDustType, iLam, j)%element(1,1)*dustTypeFraction(1:nDustType)) ) * &
             (r - prob(ilam,j))/(prob(ilam,j+1)-prob(ilam,j))
+       if (weight < 0.d0) then
+          write(*,*) "weight ", weight, " ilam ", ilam, " j ",j
+       endif
     endif
 
 
@@ -383,8 +386,13 @@ contains
     do i = 1, nDustType
        do j = 1, nLambda
           if ((miePhase(i,j,nMuMie)%element(1,1)/miePhase(i,j,nMuMie-1)%element(1,1)) > 10.d0) then
-             miePhase(i,j,nMuMie)%element(1,1)  = 2.d0 * miePhase(i,j,nMuMie-1)%element(1,1)
-             if (writeoutput) write(*,*) "! Undersampeld miephase fixed"
+             miePhase(i,j,nMuMie)%element  = 10.d0 * miePhase(i,j,nMuMie-1)%element
+             if (writeoutput) write(*,*) "! Undersampeld miephase fixed (near 180)"
+          endif
+
+          if ((miePhase(i,j,1)%element(1,1)/miePhase(i,j,2)%element(1,1)) > 10.d0) then
+             miePhase(i,j,1)%element  = 10.d0 * miePhase(i,j,2)%element
+             if (writeoutput) write(*,*) "! Undersampeld miephase fixed (near 0)"
           endif
        enddo
     enddo

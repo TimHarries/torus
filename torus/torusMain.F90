@@ -3299,7 +3299,7 @@ program torus
      yArray%v = tempDoubleArray 
      deallocate(tempDoubleArray)
 #endif
-     call torus_mpi_barrier('finished syncing output. Waiting to continue...') 
+     call torus_mpi_barrier !('finished syncing output. Waiting to continue...') 
      if(myRankIsZero) write(*,'(i10,a)') int(real(iOuterLoop)/real(nOuterLoop)*real(nPhotons)+0.5)," photons done"
 
         errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
