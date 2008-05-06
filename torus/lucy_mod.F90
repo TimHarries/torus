@@ -395,6 +395,7 @@ contains
     integer :: this_plot_i
     logical, intent(in), optional :: ll_sph
     logical :: useFixedRange
+    logical :: scatteredPhoton
 !    integer :: omp_get_num_threads, omp_get_thread_num
     real(double) :: this_bnu, fac2, hNuOverkT
     real(double) :: fac1(nLambda)
@@ -415,7 +416,7 @@ contains
      writeoutput = .true.
 
      print *, ' '
-     print *, 'Lucy radiative equilibrium routine computed by ', nThreadsGlobal, ' processors.'
+     print *, 'Lucy radiative equilibrium rotuine computed by ', nThreadsGlobal, ' processors.'
      print *, ' '
   endif
     
@@ -717,7 +718,7 @@ contains
           thisSource = source(iSource)
           call getPhotonPositionDirection(thisSource, rVec, uHat,rHat)
           directPhoton = .true.
-
+          scatteredPhoton = .false.
 
           call amrGridValues(grid%octreeRoot, rVec, foundOctal=tempOctal, &
             foundSubcell=tempsubcell)
@@ -738,7 +739,7 @@ contains
           do while(.not.escaped)
 
              call toNextEventAMR(grid, rVec, uHat, escaped, thisFreq, nLambda, lamArray, twoD,imonte, &
-                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton)
+                  photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton)
 
 
              If (escaped) nInf_sub = nInf_sub + 1
@@ -788,6 +789,7 @@ contains
                         thisOctal%dustTypeFraction(subcell, 1:nDusttype))
                    nScat_sub = nScat_sub + 1
                    uHat = uNew
+                   scatteredPhoton = .true.
 
                 else
 
@@ -855,6 +857,7 @@ contains
 
                    oldUhat = uHat
                    uHat = randomUnitVector()
+                   scatteredPhoton = .false.
 
                    ! make sure diffused photon is moving out of diffusion zone
 
@@ -1924,7 +1927,7 @@ contains
 
 
  subroutine toNextEventAMR(grid, rVec, uHat,  escaped,  thisFreq, nLambda, lamArray, twoD, imonte, &
-      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton)
+      photonInDiffusionZone, diffusionZoneTemp, leftHandBoundary, directPhoton, scatteredPhoton)
 
 
    type(GRIDTYPE) :: grid
@@ -1954,6 +1957,7 @@ contains
 !   real(double) :: prob
    integer :: i
    real(double), parameter :: fudgeFac = 1.d-2
+   logical :: scatteredPhoton
 
     stillinGrid = .true.
     escaped = .false.
@@ -2922,7 +2926,7 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
     real(double), parameter :: underCorrect = 0.8d0
-!    real(double) :: kappaSca, kappaAbs, kappaExt
+    real(double) :: kappaSca, kappaAbs, kappaExt
     type(OCTALVECTOR) :: arrayVec(4)
 #ifdef MPI
 ! Only declared in MPI case
@@ -2985,23 +2989,23 @@ subroutine setBiasOnTau(grid, iLambda)
 
              rVec = subcellCentre(thisOctal, subcell)
 	
-             tau = 1.d30
-             do i = 1, 4
-                direction = arrayVec(i)
-                call tauAlongPath(ilambda, grid, rVec, direction, thistau, 20.d0 )
-                tau = min(tau, thisTau)
-             enddo
-             thisOctal%biasCont3D(subcell) = exp(-tau)
+             call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
+             kappaExt = kappaAbs + kappaSca
+             if (thisOctal%subcellSize*kappaExt < 0.1d0) then
+                thisOctal%biasCont3D(subcell) = 1.d0
+             else
 
+                tau = 1.d30
+                do i = 1, 4
+                   direction = arrayVec(i)
+                   call tauAlongPath(ilambda, grid, rVec, direction, thistau, 20.d0 )
+                   tau = min(tau, thisTau)
+                enddo
+                thisOctal%biasCont3D(subcell) = exp(-tau)
 
-!             call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
-!             kappaExt = kappaAbs + kappaSca
+             endif
 
-             
-!             tau = thisOctal%subcellSize * kappaExt
-!             thisOctal%biasCont3D(subcell) = max(1.d-4,exp(-tau))
-
-
+            
           endif
 
        enddo

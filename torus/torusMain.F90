@@ -121,14 +121,19 @@ program torus
   ! for Chris
   !  integer, parameter :: maxTau = 600000
   integer :: nTau
+  integer :: nTauObs
   real, allocatable :: contTau(:,:)
 
   real :: scaleFac
   real, allocatable :: tauExt(:)
   real, allocatable :: tauAbs(:)
   real, allocatable :: tauSca(:)
+  real, allocatable :: tauExtObs(:)
+  real, allocatable :: tauAbsObs(:)
+  real, allocatable :: tauScaObs(:)
   real, allocatable :: linePhotonAlbedo(:)
   real, allocatable :: lambda(:)
+  real, allocatable :: lambdaObs(:)
 
   real  :: sigmaExt0, sigmaAbs0, sigmaSca0  ! cross section at the line centre
   real :: dlambda, thisTau
@@ -371,6 +376,12 @@ program torus
   type(STREAMTYPE) :: thisStream(2000), bigStream
   integer :: nStreams
   
+  integer :: nFromEnv
+  logical :: photonFromEnvelope
+
+  integer :: istep
+  type(PHOTON) :: testPhoton
+
   integer :: nRBBTrans
   integer :: indexRBBTrans(1000), indexAtom(1000)
 
@@ -2105,11 +2116,6 @@ CONTAINS
   
   if (doTuning) call tune(6, "AMR grid construction.") ! stop a stopwatch
 
-!     if (geometry == "ttauri".and.VoigtProf) then
-!        write(*,*) "Setting biases for stark broadening..."
-!        call setBiasChil(grid%octreeroot)
-!        write(*,*) "done..."
-!     endif
 
   if (geometry(1:6) == "ttauri" .and. myRankIsZero) then
      call writeHartmannValues(grid,'hartmann_logNH')
@@ -2561,10 +2567,10 @@ subroutine do_lucyRadiativeEq
 	!                      source,  s2o(outVec), 1.5d4) ! the last value is 10 AU (in 10^10cm)
 
         call reassign_10K_temperature(grid%octreeroot)
-
         ! delete the cluster object since it won't be used any more.
         call kill_all(young_cluster)
-     end if
+     endif
+
      
 
      ! Plotting the slices of planes
@@ -3200,6 +3206,117 @@ subroutine do_phaseloop
 
         if (grid%resonanceLine) totWindContinuumEmission = 0.
 
+              if (j < nTau) then
+                 t = 0.
+                 if ((tauExt(j+1) - tauExt(j)) /= 0.) then
+                    t = (thisTau - tauExt(j)) / (tauExt(j+1) - tauExt(j))
+                 endif
+                 dlambda = lambda(j) + (lambda(j+1)-lambda(j))*t
+              else
+                 dlambda = lambda(nTau)
+              endif
+
+
+! Here I have added a new algorithm to increase the S/N of scattered light images. We take the tausca and tauabs
+! arrays and perform "peel offs" towards the observer at every index along the ray. This vastly increases
+! the computational effort, but should hugely increase the S/N of the scattered light image
+
+              if (doIntensivePeelOff) then
+                 testPhoton = thisPhoton
+
+
+                 do iStep = 1, j
+
+                    testPhoton%position = thisPhoton%position + real(lambda(iStep),kind=oct)*thisPhoton%direction
+
+                    call scatterPhoton(grid, testPhoton, outVec, obsPhoton, mie, &
+                         miePhase, nDustType, nLambda, xArray, nMuMie, ttau_disc_on, ttauri_disc)
+                    
+                    call integratePath(gridUsesAMR, VoigtProf, &
+                         obsPhoton%lambda, lamLine, &
+                         s2o(obsPhoton%velocity), &
+                         obsPhoton%position, obsPhoton%direction, grid, &
+                         lambdaObs, tauExtObs, tauAbsObs, tauScaObs, linePhotonAlbedo, maxTau, nTauObs,  thin_disc_on, opaqueCore, &
+                         escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
+                         nLambda, contTau, hitCore, &
+                         thinLine, lineResAbs, redRegion, &
+                         .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
+                         useInterp, grid%Rstar1, coolStarPosition, nSource, source)                 
+
+                    fac = exp(-tauExt(j))
+
+                    fac= fac * (1.0d0-exp(-tauSca(j)))
+
+                    obs_weight = fac*oneOnFourPi*exp(-tauExtObs(nTauObs))
+
+
+
+                    if (stokesImage) then
+                       thisVel = 0. ! no velocity for dust continuum emission
+                       call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage,  &
+                            obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
+                    endif
+                    if (dopvImage) then
+                       do iSlit = 1, nSlit
+                          call addPhotontoPVimage(pvImage(iSlit), obsPhoton, viewVec,  rotationAxis,thisVel, &
+                               obs_weight, gridDistance)
+                       enddo
+                    endif
+                 enddo
+              endif
+
+                    
+              ! New photon position 
+              thisPhoton%position = thisPhoton%position + real(dlambda,kind=oct)*thisPhoton%direction
+              ! adjusting the photon weights 
+              if ((.not. mie) .and. (.not. thisPhoton%linePhoton)) then
+                 if (j < nTau) then
+                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda) *  &
+                         EXP(-(contTau(j,1:nLambda) + t*(contTau(j+1,1:nLambda)-contTau(j,1:nLambda))) )
+                 else
+                    contWeightArray(1:nLambda) = contWeightArray(1:nLambda)*EXP(-(contTau(nTau,1:nLambda)))
+                 end if
+              end if
+
+
+              if (flatspec) then
+                 iLambda = 1
+              else
+                 iLambda = findIlambda(thisPhoton%lambda, xArray, nLambda, ok)
+              endif
+
+              if (grid%adaptive) then
+                 positionOc = thisPhoton%position
+                 call amrGridValues(grid%octreeRoot, positionOc, grid=grid, iLambda=iLambda, &
+                      kappaAbs = thisChi, kappaSca = thisSca)
+              else
+                 call getIndices(grid, thisPhoton%position, i1, i2, i3, t1, t2, t3)
+                 if (.not.grid%oneKappa) then
+                    if (.not.flatspec) then
+                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, iLambda, real(t1), real(t2), real(t3))
+                       thisSca = interpGridKappaSca(grid, i1, i2, i3, iLambda, real(t1), real(t2), real(t3))
+                    else
+                       thisChi = interpGridKappaAbs(grid, i1, i2, i3, 1,  real(t1), real(t2), real(t3))
+                       thisSca = interpGridKappaSca(grid, i1, i2, i3, 1,  real(t1), real(t2), real(t3))
+                    endif
+                 else
+                    r = interpGridScalar2(grid%rho,grid%na1,grid%na2,grid%na3,i1,i2,i3,real(t1),real(t2),real(t3))
+                    thisChi = grid%oneKappaAbs(1,iLambda) * r
+                    thisSca = grid%oneKappaSca(1,iLambda) * r
+                 endif
+              end if
+              
+              if (contPhoton) then
+                 if ((thisChi+thisSca) >= 0.) then
+                    albedo = thisSca / (thisChi + thisSca)
+                 else
+                    albedo = 0.
+                    write(*,*) "Error:: thisChi+thisSca < 0 in torusMain."
+                    !                 stop
+                 endif
+              else
+                 albedo = linePhotonAlbedo(j)
+              endif
         !if (geometry == "ttauri" .or. geometry == "windtest") then
         if (geometry == "windtest") then
            totWindContinuumEmission = 0.

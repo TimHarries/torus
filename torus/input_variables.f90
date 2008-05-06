@@ -43,6 +43,7 @@ module input_variables
   real :: probContPhoton
   ! If T, the first scattering is forced in torusMain. (Useful for optically thin case.)
   logical :: forceFirstScat  
+  logical :: doIntensivePeelOff
   logical :: opticallyThickContinuum
   logical :: sed, jansky, SIsed, inArcsec, dustySED
 

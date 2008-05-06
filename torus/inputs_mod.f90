@@ -1859,6 +1859,9 @@ endif
  call getLogical("forceFirstScat", forceFirstScat, cLine, nLines, &
    "Forces the first scattering? : ","(a,1l,a)", .false., ok, .false.)
 
+ call getLogical("peeloff", dointensivePeelOff, cLine, nLines, &
+   "Perform intensive peel off algorithm: ","(a,1l,a)", .false., ok, .false.)
+
  if (lineEmission.or.doRaman.or.geometry.eq."planet") then
 
     call getReal("lamline", lamLine, cLine, nLines, &
