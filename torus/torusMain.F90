@@ -3057,6 +3057,10 @@ subroutine do_phaseloop
      allocate(tauExt(1:maxTau))
      allocate(tauAbs(1:maxTau))
      allocate(tauSca(1:maxTau))
+     allocate(lambdaObs(1:maxTau))
+     allocate(tauExtObs(1:maxTau))
+     allocate(tauAbsObs(1:maxTau))
+     allocate(tauScaObs(1:maxTau))
      allocate(linePhotonalbedo(1:maxTau))
      allocate(contTau(1:maxTau,1:nLambda))
      allocate(contWeightArray(1:nLambda))
@@ -3217,53 +3221,6 @@ subroutine do_phaseloop
               endif
 
 
-! Here I have added a new algorithm to increase the S/N of scattered light images. We take the tausca and tauabs
-! arrays and perform "peel offs" towards the observer at every index along the ray. This vastly increases
-! the computational effort, but should hugely increase the S/N of the scattered light image
-
-              if (doIntensivePeelOff) then
-                 testPhoton = thisPhoton
-
-
-                 do iStep = 1, j
-
-                    testPhoton%position = thisPhoton%position + real(lambda(iStep),kind=oct)*thisPhoton%direction
-
-                    call scatterPhoton(grid, testPhoton, outVec, obsPhoton, mie, &
-                         miePhase, nDustType, nLambda, xArray, nMuMie, ttau_disc_on, ttauri_disc)
-                    
-                    call integratePath(gridUsesAMR, VoigtProf, &
-                         obsPhoton%lambda, lamLine, &
-                         s2o(obsPhoton%velocity), &
-                         obsPhoton%position, obsPhoton%direction, grid, &
-                         lambdaObs, tauExtObs, tauAbsObs, tauScaObs, linePhotonAlbedo, maxTau, nTauObs,  thin_disc_on, opaqueCore, &
-                         escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
-                         nLambda, contTau, hitCore, &
-                         thinLine, lineResAbs, redRegion, &
-                         .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
-                         useInterp, grid%Rstar1, coolStarPosition, nSource, source)                 
-
-                    fac = exp(-tauExt(j))
-
-                    fac= fac * (1.0d0-exp(-tauSca(j)))
-
-                    obs_weight = fac*oneOnFourPi*exp(-tauExtObs(nTauObs))
-
-
-
-                    if (stokesImage) then
-                       thisVel = 0. ! no velocity for dust continuum emission
-                       call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage,  &
-                            obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
-                    endif
-                    if (dopvImage) then
-                       do iSlit = 1, nSlit
-                          call addPhotontoPVimage(pvImage(iSlit), obsPhoton, viewVec,  rotationAxis,thisVel, &
-                               obs_weight, gridDistance)
-                       enddo
-                    endif
-                 enddo
-              endif
 
                     
               ! New photon position 
@@ -3503,6 +3460,10 @@ subroutine do_phaseloop
         deallocate(tauSca)
         deallocate(tauExt)
         deallocate(tauAbs)
+        deallocate(lambdaObs)
+        deallocate(tauScaObs)
+        deallocate(tauExtObs)
+        deallocate(tauAbsObs)
         deallocate(contTau)
         deallocate(linePhotonAlbedo)
         deallocate(contWeightArray)
@@ -3912,6 +3873,10 @@ subroutine do_phaseloop
            allocate(tauExt(1:maxTau))
            allocate(tauAbs(1:maxTau))
            allocate(tauSca(1:maxTau))
+           allocate(lambdaObs(1:maxTau))
+           allocate(tauExtObs(1:maxTau))
+           allocate(tauAbsObs(1:maxTau))
+           allocate(tauScaObs(1:maxTau))
            allocate(linePhotonalbedo(1:maxTau))
            allocate(contTau(1:maxTau,1:nLambda)) 
            allocate(contWeightArray(1:nLambda))
@@ -4340,6 +4305,60 @@ subroutine do_phaseloop
               else
                  dlambda = lambda(nTau)
               endif
+
+
+
+
+! Here I have added a new algorithm to increase the S/N of scattered light images. We take the tausca and tauabs
+! arrays and perform "peel offs" towards the observer at every index along the ray. This vastly increases
+! the computational effort, but should hugely increase the S/N of the scattered light image
+
+              if (doIntensivePeelOff) then
+                 testPhoton = thisPhoton
+
+
+                 do iStep = 1, ntau
+
+                    testPhoton%position = thisPhoton%position + real(lambda(iStep),kind=oct)*thisPhoton%direction
+
+                    call scatterPhoton(grid, testPhoton, outVec, obsPhoton, mie, &
+                         miePhase, nDustType, nLambda, xArray, nMuMie, ttau_disc_on, ttauri_disc)
+                    
+                    call integratePath(gridUsesAMR, VoigtProf, &
+                         obsPhoton%lambda, lamLine, &
+                         s2o(obsPhoton%velocity), &
+                         obsPhoton%position, obsPhoton%direction, grid, &
+                         lambdaObs, tauExtObs, tauAbsObs, tauScaObs, linePhotonAlbedo, maxTau, nTauObs,  thin_disc_on, opaqueCore, &
+                         escProb, obsPhoton%contPhoton, lamStart, lamEnd, &
+                         nLambda, contTau, hitCore, &
+                         thinLine, lineResAbs, redRegion, &
+                         .false., nUpper, nLower, 0., 0.,0.,junk,sampleFreq,intPathError, &
+                         useInterp, grid%Rstar1, coolStarPosition, nSource, source)                 
+
+                    fac = exp(-tauExt(iStep))
+
+                    fac= fac * (1.0d0-exp(-tauSca(iStep)))
+
+                    obs_weight = fac*oneOnFourPi*exp(-tauExtObs(nTauObs))
+
+
+!                    write(*,*) iStep, lambda(istep),obs_weight,tauExt(istep),tauExtObs(nTauObs)
+                    if (stokesImage) then
+                       thisVel = 0. ! no velocity for dust continuum emission
+                       call addPhotonToImage(viewVec,  rotationAxis, obsImageSet, nImage,  &
+                            obsPhoton, thisVel, obs_weight, filters, grid%octreeRoot%centre)
+                    endif
+                    if (dopvImage) then
+                       do iSlit = 1, nSlit
+                          call addPhotontoPVimage(pvImage(iSlit), obsPhoton, viewVec,  rotationAxis,thisVel, &
+                               obs_weight, gridDistance)
+                       enddo
+                    endif
+                 enddo
+              endif
+
+
+
                     
               ! New photon position 
               thisPhoton%position = thisPhoton%position + real(dlambda,kind=oct)*thisPhoton%direction
@@ -4424,6 +4443,8 @@ subroutine do_phaseloop
                  absorbed = .true.
 !                 write(*,*) "! Small photon weight",thisPhoton%stokes%i,thisPhoton%lambda,albedo,hitcore
               endif
+
+
 
 
               ! towards observer
@@ -4748,6 +4769,10 @@ subroutine do_phaseloop
            deallocate(tauSca)
            deallocate(tauExt)
            deallocate(tauAbs)
+           deallocate(lambdaObs)
+           deallocate(tauScaObs)
+           deallocate(tauExtObs)
+           deallocate(tauAbsObs)
            deallocate(linePhotonalbedo)
            deallocate(contTau)
            deallocate(contWeightArray)
