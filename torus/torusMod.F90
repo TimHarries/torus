@@ -550,8 +550,6 @@ CONTAINS
 
         call writeInfo("...final adaptive grid configuration complete",TRIVIAL)
 
-        if (myRankIsZero) call grid_info(grid, "info_grid.dat")
-
         if (writeoutput) call writeAMRgrid("after_creation.grid",.false.,grid)
 
 
