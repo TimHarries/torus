@@ -861,10 +861,11 @@ contains
   ! This routine write the catalog of the stars in a cluster in 
   ! "catalog.dat".
   !
-  subroutine write_catalog(this, sphData)
+  subroutine write_catalog(this, sphData, filename)
     implicit none
     type(cluster),  intent(in) :: this
     type(sph_data), intent(in) :: sphData
+    character(len=*), optional :: filename
     
     integer, parameter :: LUOF=23
     integer :: i
@@ -875,10 +876,15 @@ contains
     real(double), parameter :: R_sun = 6.96d0           ! 10^10cm
 
     ! 
-    call writeInfo("Stellar Cluster Catalog written in catalog.dat...",TRIVIAL)
 
 
-    open(unit=LUOF, file="catalog.dat", status="replace")
+    if ( present(filename) ) then
+       call writeInfo("Stellar Cluster Catalog written in "//filename//"...",TRIVIAL)
+       open(unit=LUOF, file=filename, status="replace")
+    else
+       call writeInfo("Stellar Cluster Catalog written in catalog.dat...",TRIVIAL)
+       open(unit=LUOF, file="catalog.dat", status="replace")
+    end if
 
     ! writing the header
     write(LUOF,'(a)')       "#  This file was written by cluster::write_catalog."
