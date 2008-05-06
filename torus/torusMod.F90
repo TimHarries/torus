@@ -154,6 +154,7 @@ contains
   integer, intent(in)   :: b_num_gas           ! Number of gas particles
   real*8, intent(inout) :: b_temp(b_num_gas)   ! Temperature of gas particles
   integer, save :: num_calls = 0
+  character(len=4) :: char_num_calls
 
   real(double) :: tempArray(10)
 #ifdef MPI
@@ -230,6 +231,7 @@ contains
   nMarker = 0
   lucyRadiativeEq = .false. ! this has to be initialized here
   num_calls = num_calls + 1
+  write(char_num_calls,'(i4)') num_calls
 
   ! get the model parameters
 
@@ -304,7 +306,7 @@ contains
   call gather_sph_data(sphData)
 
   ! Writing basic info of this data
-  if (myRankIsZero) call info(sphData, "info_sph.dat")
+  if (myRankIsZero) call info(sphData, "info_sph_"//TRIM(ADJUSTL(char_num_calls))//".dat")
 
   ! reading in the isochrone data needed to build an cluster object.
   call new(isochrone_data, "dam98_0225")   
@@ -315,7 +317,7 @@ contains
   call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
     
   ! Wrting the stellar catalog readble for a human
-  if (myRankIsZero) call write_catalog(young_cluster, sphData)
+  if (myRankIsZero) call write_catalog(young_cluster, sphData, "catalogue_"//TRIM(ADJUSTL(char_num_calls))//".dat")
 
   ! Finding the inclinations of discs seen from +z directions...
   !     if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
@@ -406,7 +408,7 @@ contains
   call amr_grid_setup
 
   ! Write the information on the grid to file using a routine in grid_mod.f90
-  if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
+  if ( myRankIsZero ) call grid_info(grid, "info_grid_"//TRIM(ADJUSTL(char_num_calls))//".dat")
 
   ! Plotting the various values stored in the AMR grid.
   call do_amr_plots
