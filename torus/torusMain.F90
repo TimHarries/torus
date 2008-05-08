@@ -376,9 +376,6 @@ program torus
   type(STREAMTYPE) :: thisStream(2000), bigStream
   integer :: nStreams
   
-  integer :: nFromEnv
-  logical :: photonFromEnvelope
-
   integer :: istep
   type(PHOTON) :: testPhoton
 
