@@ -125,6 +125,7 @@ program torus
   real, allocatable :: contTau(:,:)
 
   real :: scaleFac
+  real :: dtau
   real, allocatable :: tauExt(:)
   real, allocatable :: tauAbs(:)
   real, allocatable :: tauSca(:)
@@ -4244,7 +4245,7 @@ subroutine do_phaseloop
             else
                call random_number(r1)
                fac = 1.
-               thistau = -log(max(1.e-10,(1. - r1)))
+               thistau = -log(max(1.e-20,(1. - r1)))
                if (thistau .gt. tauExt(nTau)) then
                   escaped = .true.  
                else
@@ -4334,7 +4335,13 @@ subroutine do_phaseloop
 
                     fac = exp(-tauExt(iStep))
 
-                    fac= fac * (1.0d0-exp(-tauSca(iStep)))
+                    if (tauExt(iStep) > 20.) exit
+
+                    call amrGridValues(grid%octreeRoot, testPhoton%position, grid=grid, iLambda=iLambda, &
+                         kappaAbs = thisChi, kappaSca = thisSca)
+                    albedo = thisSca / (thisSca + thisChi)
+                    dtau = tauExt(iStep) - tauExt(iStep-1)
+                    fac= fac * (1.0d0-exp(-dtau)) * albedo
 
                     obs_weight = fac*oneOnFourPi*exp(-tauExtObs(nTauObs))
 
@@ -4713,7 +4720,7 @@ subroutine do_phaseloop
 
 
                   call random_number(r1)
-                  thistau = -log(max(1.e-10,(1. - r1)))
+                  thistau = -log(max(1.e-20,(1. - r1)))
                   if (thistau .gt. tauExt(nTau)) then
                      escaped = .true.  
                   else
