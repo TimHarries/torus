@@ -3816,7 +3816,7 @@ CONTAINS
   END FUNCTION whichSubcell    
 
 
-  FUNCTION inOctal(thisOctal,point) 
+  FUNCTION inOctal(thisOctal,point,alreadyRotated) 
     ! true if the point lies within the boundaries of the current octal
   
     use input_variables, only : hydrodynamics
@@ -3826,7 +3826,11 @@ CONTAINS
     TYPE(octalVector), INTENT(IN) :: point
     TYPE(octalVector)             :: octVec2D
     real(double)                  :: r, phi, dphi, eps
+    logical, optional :: alreadyRotated
+    logical :: doRotate
 
+    doRotate = .false.
+    if (PRESENT(alreadyRotated)) doRotate = alreadyRotated
 
     if (thisOctal%oneD) then
        r = modulus(point)
@@ -3868,7 +3872,7 @@ CONTAINS
           ENDIF
        endif
     else ! twoD case
-       if (.not.hydrodynamics) then
+       if ((.not.hydrodynamics).or.(doRotate)) then
           octVec2D = projectToXZ(point)
        else
           octVec2D = point
@@ -4207,7 +4211,7 @@ IF ( .NOT. gridConverged ) RETURN
 !      type(octalvector) :: rVec
       INTEGER :: i
       
-      IF ( inOctal(thisOctal,point) ) THEN
+      IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
 
         haveDescended = .TRUE. ! record that we have gone down the tree.
       
@@ -4362,7 +4366,7 @@ IF ( .NOT. gridConverged ) RETURN
 !      type(octalvector) :: rVec
       INTEGER :: i
       
-      IF ( inOctal(thisOctal,point) ) THEN
+      IF ( inOctal(thisOctal,point,alreadyRotated=.true.) ) THEN
 
         haveDescended = .TRUE. ! record that we have gone down the tree.
       
