@@ -387,7 +387,15 @@ ifeq ($(SYSTEM), zen)
     F95COMP= mpif90
     F77COMP= mpif90
     FASTFLAG= -O3 -xT -mcmodel=medium -i-dynamic
-    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused
+    DEBUGFLAG=-g -O0 -mcmodel=medium -warn -warn nounused -traceback -fpe0 -fp-stack-check
+# Include run-time error checking using ifort. Use environment variable to avoid clash with 
+# ITC -check option in version 3.1 of mpiifort/mpif90 scripts. 
+    ifeq ($(debug), yes)
+      export F90FLAGS=-check all
+    endif
+# Uncomment this line to include MPI correctness checking using ITC libraries
+# when using version 3.1 of the Intel MPI libraries
+#    DEBUGFLAG += -check 
     STATICFLAG=
     MATHTRAP=
     UNIXMOD=unix_mod.f90.linuxintel
