@@ -24,8 +24,8 @@ module modelatom_mod
      real(double), pointer :: g(:)
      real(double) :: iPot
      integer :: nPhotoFreq
-     real(double), pointer :: photoFreq(:)
-     real(double), pointer :: photoSec(:,:)
+     real(double), pointer :: photoFreq(:) => null()
+     real(double), pointer :: photoSec(:,:) => null()
      integer, pointer :: ionStage(:)
      integer, pointer :: nQuantum(:)
      integer :: nTrans
