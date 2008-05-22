@@ -645,6 +645,33 @@ program torus
       ! Finding the inclinations of discs seen from +z directions...
      if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
 
+  elseif (geometry .eq. "molcluster") then
+
+     ! read in the sph data from a file
+
+     call new_read_sph_data(sphData, "newsph.dat.ascii")
+
+!     call read_stellar_disc_data(sphData, "stellar_disc.dat")
+
+     ! Writing basic info of this data
+     if (myRankIsZero) call info(sphData, "info_sph.dat")
+
+!     ! reading in the isochrone data needed to build an cluster object.
+     call new(isochrone_data, "dam98_0225")   
+     call read_isochrone_data(isochrone_data)
+     
+     ! making a cluster object
+
+     call new(young_cluster, sphData, dble(amrGridSize), disc_on)
+
+     call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
+
+     ! Wrting the stellar catalog readble for a human
+     if (myRankIsZero) call write_catalog(young_cluster, sphData)
+
+      ! Finding the inclinations of discs seen from +z directions...
+!     if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
+
   elseif (geometry == "wr104") then
      if (.not.(readPops.or.readlucy)) then
         call readWR104Particles("harries_wr104.txt", sphData, objectDistance)
@@ -1685,6 +1712,24 @@ CONTAINS
            !Removing the cells within 10^14 cm from the stars.
           call remove_too_close_cells(young_cluster,grid%octreeRoot,1.0d4)
 
+       case("molcluster")
+          call writeInfo("Initialising adaptive grid...", TRIVIAL)
+          call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
+          call writeInfo("Done. Splitting grid...", TRIVIAL)
+          call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid, sphData, young_cluster)
+          call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
+          call estimateRhoOfEmpty(grid, grid%octreeRoot, sphData)	
+          call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
+          call writeInfo("Smoothing adaptive grid structure...", TRIVIAL)
+          do
+             gridConverged = .true.
+             call myScaleSmooth(smoothFactor, grid%octreeRoot, grid, &
+                  gridConverged,  inheritProps = .false., interpProps = .false., &
+                  sphData=sphData, stellar_cluster=young_cluster, romData=romData)
+             if (gridConverged) exit
+          end do
+          call writeInfo("...grid smoothing complete", TRIVIAL)
+
        case("wr104")
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, sphData, young_cluster, nDustType)
           call splitGrid(grid%octreeRoot,limitScalar,limitScalar2,grid,sphData)
@@ -2075,7 +2120,7 @@ CONTAINS
 
         !
         ! cleaning up unused memory here ....
-        if ((geometry(1:7) == "cluster").or.(geometry(1:5)=="wr104")) then
+        if ((geometry(1:7) == "cluster").or.(geometry(1:5)=="wr104") .or. geometry == "molcluster") then
            ! using the routine in sph_data_class
            call kill(sphData)
            ! using the routine in amr_mod.f90
@@ -2145,7 +2190,8 @@ subroutine do_amr_plots
      
 
   ! Do some preparation for the arrays used in plot_AMR_* which will be used later
-  if (grid%geometry(1:7) == "cluster") then
+
+  if (grid%geometry(1:7) == "cluster" .or. grid%geometry == "molcluster") then
      nmarker = get_nstar(young_cluster)
      allocate(xMarker(1:nMarker))
      allocate(yMarker(1:nMarker))
@@ -2385,7 +2431,7 @@ subroutine set_up_sources
 
 
 
-    case ("cluster")
+    case ("cluster", "molcluster")
        ! Extract some info from cluster object.
        nstar = get_nstar(young_cluster)  ! number of stars in the cluster
        nSource =  n_stars_in_octal(young_cluster, grid%octreeRoot)
