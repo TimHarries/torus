@@ -491,7 +491,6 @@ contains
     if (.not.grid%oneKappa) then
        if (grid%adaptive) then
           if (writeoutput) write(*,'(a,i3)') "Filling AMR grid with mie cross sections...",grid%nLambda
-              write(*,*) "yes",sigmasca(1),sigmaabs(1),grid%nlambda
           call fillAMRgridMie(grid%OctreeRoot, sigmaSca, sigmaAbs, grid%nLambda)
        endif
 
@@ -752,8 +751,6 @@ contains
     end if
 
     !      meanParticleMass = getMeanMass2(aMin, aMax, a0, qDist, pDist, graintype)
-
-
   end subroutine MieCrossSection
 
   recursive subroutine fillAMRgridMie(thisOctal, sigmaSca, sigmaAbs, nLambda)
@@ -762,17 +759,15 @@ contains
     integer :: nLambda
     real :: sigmaSca(*), sigmaAbs(*)
     integer :: subcell, i
-    write(*,*) subcell,sigmasca(1),sigmaabs(1),nlambda
+!    write(*,*) subcell,sigmasca(1),sigmaabs(1),nlambda
 
     do subcell = 1, 8
-    write(*,*) "here",subcell,sigmasca(1),sigmaabs(1),nlambda
        if (thisOctal%hasChild(subcell)) then
           ! find the child
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
                 call fillAMRgridMie(child, sigmaSca, sigmaAbs, nLambda)
-                write(*,*) "Yep"
                 exit
              end if
           end do
@@ -792,7 +787,6 @@ contains
        endif
     enddo
   end subroutine fillAMRgridMie
-
 
   subroutine dustPropertiesfromFile(filename, nlambda, lambda, kappaAbs, kappaSca)
     implicit none
