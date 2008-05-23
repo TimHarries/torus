@@ -207,7 +207,7 @@ CONTAINS
        CALL spiralWindSubcell(thisOctal, subcell ,grid)
        
 
-    CASE("cluster")
+    CASE("cluster","molcluster")
        ! using a routine in cluster_class.f90
        call assign_density(thisOctal,subcell, sphData, grid%geometry, stellar_cluster)
        
@@ -452,7 +452,7 @@ CONTAINS
     endif
 
     select case (grid%geometry)
-       case("cluster")
+       case("cluster","molcluster")
           ! Initially we copy the idecies of particles (in SPH data)
           ! to the root node. The indecies will copy over to
           ! to the subcells if the particles are in the subcells.
@@ -461,7 +461,9 @@ CONTAINS
           ! splitting/constructing the octree data structure. 
           !
           ! Using the routine in grid_mod.f90
+          write(*,*) "Copying SPH index to root"
           call copy_sph_index_to_root(grid, sphData)
+          write(*,*) "Initializing OctreeRoot"
           !
           DO subcell = 1, grid%octreeRoot%maxChildren
              ! calculate the values at the centre of each of the subcells
@@ -469,6 +471,7 @@ CONTAINS
              ! label the subcells
              grid%octreeRoot%label(subcell) = subcell
           END DO
+          write(*,*) "Done."
        case("wr104")
           ! Using the routine in grid_mod.f90
           call copy_sph_index_to_root(grid, sphData)
@@ -1318,7 +1321,7 @@ CONTAINS
            "molebench","h2obench1","h2obench2","agbstar","gammavel","molefil","ggtau","iras04158")
          gridConverged = .TRUE.
 
-      CASE ("cluster","wr104")
+      CASE ("cluster","wr104","molcluster")
         call assign_grid_values(thisOctal,subcell, grid)
         gridConverged = .TRUE.
 
@@ -5078,6 +5081,11 @@ IF ( .NOT. gridConverged ) RETURN
     integer,save :: acount,bcount,ccount = 0
     logical,save  :: firstTime = .true.
 
+    integer,save :: icount, jcount
+
+    icount = 0
+    jcount = 0
+
     splitInAzimuth = .false.
     
    select case(grid%geometry)
@@ -5596,8 +5604,41 @@ IF ( .NOT. gridConverged ) RETURN
          end if
 
       end if
-            
-            
+
+   case ("molcluster")
+      ! Splits if the number of particle is more than a critical mass.
+      ! using the function in amr_mod.f90 
+
+!      call find_n_particle_in_subcell(nparticle, ave_density, sphData, &
+!           thisOctal, subcell)
+      call find_density(nparticle, ave_density, sphData, &
+           thisOctal, subcell)
+
+      ! get the size and centre of the current cell
+      cellSize = thisOctal%subcellSize
+
+      !
+      total_mass = ave_density * (cellVolume(thisOctal, subcell)*1.d10)**3  ! should be in [g]
+
+
+      if (total_mass > amrlimitscalar .and. nparticle > 0) then
+         split = .true.
+        jcount = jcount + 1
+        if(mod(jcount,1000) .eq. 100) write(*,*) jcount, "mass split"
+      else
+         split = .false.
+      end if
+
+      ! Extra check
+      ! if # of SPH particle is greater than 20 then splits...
+      if (nparticle .gt. 20) then
+         split = .true.
+        icount = icount + 1
+        if(mod(icount,1000) .eq. 100) write(*,*) icount, "particle split"
+     else
+        split = .false.
+     end if
+                 
    case ("wr104")
       ! Splits if the number of particle is more than a critical value (~3).
       limit = nint(amrLimitScalar)
@@ -5678,7 +5719,7 @@ IF ( .NOT. gridConverged ) RETURN
 
    case("ggtau")
 
-      split =.false.
+      split = .false.
 
       if (thisOctal%ndepth < 5) split = .true.
 
@@ -5766,7 +5807,7 @@ IF ( .NOT. gridConverged ) RETURN
    case("iras04158")
  
       split = .false.
-      if (thisOctal%ndepth  < 7) split = .true.
+      if (thisOctal%ndepth < 8) split = .true.
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
@@ -5776,36 +5817,39 @@ IF ( .NOT. gridConverged ) RETURN
          split = .true.
          goto 555
       endif
-      if ((abs(cellcentre%z)/hr < 1) .and. (cellsize/hr > 2.)) then
+      if ((abs(cellcentre%z)/hr < 1) .and. (cellsize/hr > 1.)) then
          split = .true.
          goto 555
       endif
-
-      if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) then
+      if ((abs(cellcentre%z)/hr < 2) .and. (cellsize/hr > 2.)) then
+         split = .true.
+         goto 555
+      endif
+      if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 10.)) then
          split = .true.
          goto 555
       endif
 
       if ((r > grid%rInner).and.(r < grid%rInner * 1.02)) then
-         if ((abs(cellcentre%z)/hr < 5.)) then
-            if (cellsize > 1.e-2 * grid%rInner) split = .true.
+         if ((abs(cellcentre%z)/hr < 3.)) then
+            if (cellsize > 1.e-1 * grid%rInner) split = .true.
          endif
       endif
 
-      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
-         if ((abs(cellcentre%z)/hr < 1.)) then
-            if (cellsize > 5.d-1*grid%rinner) split = .true.
-         endif
-      endif
-
-      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
+      if ((r > grid%rinner).and.(r < 1.01*grid%rinner)) then
          if ((abs(cellcentre%z)/hr < 2.)) then
-            split = .true.
+            if (cellsize > 5.d-2*grid%rinner) split = .true.
          endif
       endif
 
-555   if ((r-cellsize/2.d0) > grid%router*1.01) split = .false.
-      if ((r+cellsize/2.d0) < grid%rinner*0.99) split = .false.
+!      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
+!         if ((abs(cellcentre%z)/hr < 0.5)) then
+!            split = .true.
+!         endif
+!   endif
+
+555   if ((r-cellsize/2.d0) > grid%router*1.005) split = .false.
+      if ((r+cellsize/2.d0) < grid%rinner*0.995) split = .false.
 
    case("oldshakara")
       split = .false.
@@ -8858,7 +8902,7 @@ IF ( .NOT. gridConverged ) RETURN
 
   subroutine iras04158(thisOctal, subcell ,grid)
 
-    use input_variables, only : height, betadisc, router, rinner
+    use input_variables, only : router, rinner
     
     TYPE(octal), INTENT(INOUT) :: thisOctal
     type(GRIDTYPE), intent(in) :: grid
@@ -8898,7 +8942,7 @@ IF ( .NOT. gridConverged ) RETURN
                                       / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
        thisOctal%velocity(subcell) = keplerianVelocity(rvec, grid)
     else
-       thisOctal%velocity = VECTOR(1d-20,1d-20,1d-20)
+       thisOctal%velocity = VECTOR(1d-10,1d-10,1d-10)
     endif
 !    write(*,*) thisOctal%temperature(subcell), thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
    CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
@@ -8954,7 +8998,7 @@ IF ( .NOT. gridConverged ) RETURN
        r1 = nr
     endif
        
-    if( (r - rgrid(r1)) .gt. 0.) then
+    if( (r .gt. rgrid(r1))) then
        r2 = min(r1+1,nr)
     else
        r2 = r1
@@ -8972,7 +9016,7 @@ IF ( .NOT. gridConverged ) RETURN
        z11 = nz
     endif
 
-    if( (z - zarray(z11,1)) .gt. 0.) then
+    if(z .gt. zarray(z11,1)) then
        z12 = min(z11 + 1,nz)
     else
        z12 = z11
@@ -8987,7 +9031,7 @@ IF ( .NOT. gridConverged ) RETURN
        z21 = nz
     endif
 
-    if( (z - zarray(z21,2)) .gt. 0.) then
+    if( (z .gt. zarray(z21,2))) then
        z22 = min(z21 + 1,nz)
     else
        z22 = z21
@@ -9015,51 +9059,80 @@ IF ( .NOT. gridConverged ) RETURN
      if(r1 .ne. r2) then
 !        d = sqrt((rmax-rmin)**2+(z2min-z1min)**2)
         u = (r - rmin) / (rmax - rmin)
-     elseif(r1 .eq. 1) then
-        u = 0
      else
-        u = 1
+        u = 0
      endif
-
-     if((zarray(z12,1) .ne. zarray(z11,1)) .and. (zarray(z22,2) .ne. zarray(z21,2)) .and. (r1 .ne. r2)) then
-
+     
+!     if((zarray(z12,1) .ne. zarray(z11,1)) .and. (zarray(z22,2) .ne. zarray(z21,2)) .and. (r1 .ne. r2)) then
+     if((z12 .ne. z11) .and. (z22 .ne. z21) .and. (r1 .ne. r2)) then
+        if((z2min-z)*(z2max-z) .gt. 0.d0 .or. (z1min-z)*(z1max-z) .gt. 0.d0) stop
         gradmin = (z2min - z1min) / (rmax - rmin)
         gradmax = (z2max - z1max) / (rmax - rmin)
         zminint = z1min + (r - rmin) * gradmin
         zmaxint = z1max + (r - rmin) * gradmax
         d = zmaxint - zminint
-        v = (z - z1min) / d
+        v = (z - zminint) / d
 
      elseif((z1max .ne. z1min) .and. (z2max .ne. z2min) .and. (r1 .eq. r2)) then
         zminint = z1min
         zmaxint = z1max
         d = zmaxint - zminint
-        v = (z - z1min) / d
+        v = (z - zminint) / d
+
+     elseif(z .gt. z1max .or. z .lt. z2min) then ! possible for v to be greater than 1 so limit it
+        gradmin = (z2min - z1min) / (rmax - rmin)
+        gradmax = (z2max - z1max) / (rmax - rmin)
+        zminint = z1min + (r - rmin) * gradmin
+        zmaxint = z1max + (r - rmin) * gradmax
+        d = zmaxint - zminint
+        v = max(min((z - zminint) / d,2.),-1.)
+
      else
+
         v = 0
+
      endif
 
      if(output .eq. 'abundance') then
-        
-        out = (1-v) * ((1-u) * abundance(r1,z11) + u * abundance(r2,z21)) +  &
-                  v * ((1-u) * abundance(r1,z12) + u * abundance(r2,z22))
-        
+        if(z .gt. 1.1 * z1max .and. z .gt. 1.1 * z2max) then
+           out = 1e-13
+        elseif( .not. logint) then
+           out = (1-v) * ((1-u) * abundance(r1,z11) + u * abundance(r2,z21)) +  &
+                     v * ((1-u) * abundance(r1,z12) + u * abundance(r2,z22))
+        else
+           out = 10.d0**((1-v) * ((1-u) * log10(abundance(r1,z11)) + u * log10(abundance(r2,z21))) +  &
+                             v * ((1-u) * log10(abundance(r1,z12)) + u * log10(abundance(r2,z22))))
+        endif
+!        out = v
+     
+       
      elseif(output .eq. 'nh2') then
-
-        out = (1-v) * ((1-u) * nh2(r1,z11) + u * nh2(r2,z21)) + &
-                  v * ((1-u) * nh2(r1,z12) + u * nh2(r2,z22))        
+        if(z .gt. 1.1 * z1max .and. z .gt. 1.1 * z2max) then
+           out = 1e-5
+        elseif( .not. logint) then
+           out = (1-v) * ((1-u) * nh2(r1,z11) + u * nh2(r2,z21)) + &
+                     v * ((1-u) * nh2(r1,z12) + u * nh2(r2,z22))        
+        else
+           out = 10.d0**((1-v) * ((1-u) * log10(nh2(r1,z11)) + u * log10(nh2(r2,z21))) +  &
+                             v * ((1-u) * log10(nh2(r1,z12)) + u * log10(nh2(r2,z22))))
+        endif
 
      elseif(output .eq. 'td') then
-
-        out = (1-v) * ((1-u) * td(r1,z11) + u * td(r2,z21)) + &
-                  v * ((1-u) * td(r1,z12) + u * td(r2,z22))        
+        if(z .gt. 1.1 * z1max .and. z .gt. 1.1 * z2max) then
+           out = tcbr
+        elseif( .not. logint) then
+           out = 10.d0**((1-v) * ((1-u) * log10(td(r1,z11)) + u * log10(td(r2,z21))) +  &
+                             v * ((1-u) * log10(td(r1,z12)) + u * log10(td(r2,z22))))
+        else
+           out = (1-v) * ((1-u) * td(r1,z11) + u * td(r2,z21)) + &
+                     v * ((1-u) * td(r1,z12) + u * td(r2,z22))        
+        endif
 
      else
         write(*,*) "Undefined parameter"
         out = 1d-20
      endif
-
-   end function readparameterfrom2dmap
+end function readparameterfrom2dmap
 
   subroutine molecularFilamentFill(thisOctal,subcell,grid)
 
@@ -9267,17 +9340,47 @@ IF ( .NOT. gridConverged ) RETURN
 
     keplerianVelocity = VECTOR(1.d-20, 1.d-20, 1.d-20)
 
-    r = sqrt(rVec%x**2+rVec%y**2)
+    r = sqrt(point%x**2+point%y**2)
+
+!    write(*,*) "r", r
+!    write(*,*) "rvec", rvec, modulus(rvec)
 
     if ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
        v = sqrt(2.d0*6.672d-8*mcore/(r*1d10)) ! G in cgs and M in g (from Msun)
-
-       call normalize(rvec)
+!    write(*,*) "v", v
+ 
        keplerianvelocity = VECTOR(0.d0,0.d0,1.d0) .cross. rvec
-       keplerianvelocity = (v/cSpeed) * keplerianvelocity        
+      call normalize(keplerianvelocity) 
+      keplerianvelocity = (v/cSpeed) * keplerianvelocity        
 
     endif
   end function keplerianVelocity
+
+  real(double) function akeplerianVelocity(point, grid)
+    use input_variables, only : mcore
+    type(octalvector), intent(in) :: point
+    type(GRIDTYPE), intent(in) :: grid
+    type(octalvector) :: rvec
+    real(double) :: v, r
+    rVec = point
+
+    akeplerianVelocity = 1.d-20
+
+    r = sqrt(rVec%x**2+rVec%y**2)
+
+!    write(*,*) "rvec",rvec
+!    print,* "r",r
+
+
+    if ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
+       v = sqrt(2.d0*6.672d-8*mcore/(r*1d10)) ! G in cgs and M in g (from Msun)
+       print *,"v",v
+       call normalize(rvec)
+       akeplerianvelocity = v
+
+    endif
+  end function akeplerianVelocity
+
 
   TYPE(vector)  function ggtauVelocity(point, grid)
 
@@ -14020,7 +14123,8 @@ IF ( .NOT. gridConverged ) RETURN
                if (mu  < theta ) then
                   call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
                   if (.not.ok) then
-                     write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1
+                     write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1,x1,x2
+                     write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
                      x1 = thisoctal%subcellSize/2.d0
                      x2 = 0.d0
                   endif
@@ -14127,9 +14231,20 @@ IF ( .NOT. gridConverged ) RETURN
             mu = acos(max(-1.d0,min(1.d0,cosmu)))
             distTor1 = 1.e30
             if (mu  < theta ) then
-               call solveQuadDble(1.d0, -2.d0*d*cosmu, d**2-r1**2, x1, x2, ok)
+                  call solveQuadDble(1.d0, -2.d0*d*cosmu,d**2-r1**2, x1, x2, ok)
+!               if(ok) then
+!                  write(*,*) "All good",d,cosmu,r1,x1,x2
+!                  write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
+!               endif
+
                if (.not.ok) then
-                  write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1
+                  write(*,*) "mu", mu, "theta", theta
+                  write(*,*) "Quad solver failed in intersectcubeamr2d IIb",d,cosmu,r1,x1,x2
+                  write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r1**2
+                  write(*,*) "xhat",xhat
+                  write(*,*) "dir",direction
+                  write(*,*) "point",point
+
                   x1 = thisoctal%subcellSize/2.d0
                   x2 = 0.d0
                endif
