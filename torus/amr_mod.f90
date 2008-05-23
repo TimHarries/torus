@@ -8942,7 +8942,7 @@ IF ( .NOT. gridConverged ) RETURN
                                       / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
        thisOctal%velocity(subcell) = keplerianVelocity(rvec, grid)
     else
-       thisOctal%velocity = VECTOR(1d-10,1d-10,1d-10)
+       thisOctal%velocity = VECTOR(1d-20,1d-20,1d-20)
     endif
 !    write(*,*) thisOctal%temperature(subcell), thisOctal%rho(subcell), modulus(thisOctal%velocity(subcell))
    CALL fillVelocityCorners(thisOctal,grid,keplerianVelocity,thisOctal%threed)
@@ -9355,32 +9355,6 @@ end function readparameterfrom2dmap
 
     endif
   end function keplerianVelocity
-
-  real(double) function akeplerianVelocity(point, grid)
-    use input_variables, only : mcore
-    type(octalvector), intent(in) :: point
-    type(GRIDTYPE), intent(in) :: grid
-    type(octalvector) :: rvec
-    real(double) :: v, r
-    rVec = point
-
-    akeplerianVelocity = 1.d-20
-
-    r = sqrt(rVec%x**2+rVec%y**2)
-
-!    write(*,*) "rvec",rvec
-!    print,* "r",r
-
-
-    if ((r > grid%rInner)) then !.and.(r < grid%rOuter)) then
-       v = sqrt(2.d0*6.672d-8*mcore/(r*1d10)) ! G in cgs and M in g (from Msun)
-       print *,"v",v
-       call normalize(rvec)
-       akeplerianvelocity = v
-
-    endif
-  end function akeplerianVelocity
-
 
   TYPE(vector)  function ggtauVelocity(point, grid)
 
