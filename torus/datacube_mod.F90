@@ -372,7 +372,7 @@ contains
     type(DATACUBE) :: thisCube
     type(TELESCOPE), optional :: mytelescope
     integer :: nx, ny, nv
-
+    character(len=100) :: message
     if(present(mytelescope)) then
        
        thisCube%telescope = mytelescope
@@ -409,16 +409,28 @@ contains
     thisCube%converged = 0
     thisCube%weight = 1.d0
 
+    write(message, *) "Done!"
+    call writeinfo(message,TRIVIAL)
+
   end subroutine initCube
 
 ! Set spatial axes for datacube - Equally spaced (linearly) between min and max
   subroutine addSpatialAxes(cube, xMin, xMax, yMin, yMax)
+    use input_variables , only : gridDistance
     type(DATACUBE) :: cube
     real(double) :: xMin, xMax, yMax, yMin, dx, dy
     integer :: i
+    character(len=100) :: message
+
+    write(message, *) "Adding spatial axes..."
+    call writeinfo(message,TRIVIAL)
 
     dx = (xMax - xMin)/dble(cube%nx)
     dy = (yMax - yMin)/dble(cube%ny)
+
+    write(message, *) "Pixel Separation = ", dx*1e10/autocm, "AU", (dx*1e10/griddistance)*(180./pi)*60.*60.
+    call writeinfo(message,TRIVIAL)
+
     do i = 1, cube%nx
        cube%xAxis(i) = xmin + dx/2.d0 + dble(i-1)*dx 
 
@@ -433,13 +445,20 @@ contains
 ! Set velocity axis for datacube - Equally spaced (linearly) between min and max
   subroutine addVelocityAxis(cube, vMin, vMax)
     type(DATACUBE) :: cube
-    real(double) :: vMin, vMax, dv
+    real(double):: vMin, vMax, dv
     integer :: i
-    
+    character(len=100) :: message
+
+    write(message, *) "Adding velocity axis... "
+    call writeinfo(message,TRIVIAL)
+
     dv = (vMax - vMin) / dble(cube%nv)
 
+    write(message, *) "Velocity bin width =  ", dv, " km/s"
+    call writeinfo(message,TRIVIAL)
+
     do i = 1, cube%nv
-       cube%vAxis(i) = vmin + dv/2.d0 + dv * dble(i-1)
+       cube%vAxis(i) = vmin + dv * real(i-1)
     enddo
   end subroutine addVelocityAxis
 
