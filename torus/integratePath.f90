@@ -2623,7 +2623,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   
   !
   ! The distance from the center from which a test ray starts.
-  if (grid%geometry == "cluster") then
+  if (grid%geometry == "cluster" .or. grid%geometry == "molcluster") then
      R = 1.0d-3
   else
 !     R = 1.001*rStar
