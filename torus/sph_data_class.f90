@@ -1,6 +1,7 @@
 module sph_data_class
 
   use kind_mod
+  use vector_mod
   ! 
   ! Class definition for Mathew's SPH data.
   ! 
@@ -55,15 +56,18 @@ module sph_data_class
      integer          :: npart                  ! Total number of gas particles (field+disc)
      real(double) :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
-     real(double) :: gaspartmass            ! Mass of each gas particle
+     real(double), pointer :: gaspartmass            ! Mass of each gas particle
+     real(double), pointer, dimension(:) :: gasmass            ! Mass of each gas particle ! DAR changed to allow variable mass
      ! Positions of gas particles
      real(double), pointer, dimension(:) :: xn,yn,zn
+     real(double), pointer, dimension(:) :: vxn,vyn,vzn
      ! Density of the gas particles
      real(double), pointer, dimension(:) :: rhon
      ! Temperature of the gas particles
      real(double), pointer, dimension(:) :: temperature
      ! Positions of stars
      real(double), pointer, dimension(:) :: x,y,z
+     real(double), pointer, dimension(:) :: vx,vy,vz
      !
      real(double), pointer, dimension(:) :: ptmass ! Masses of stars
      ! 
@@ -91,50 +95,59 @@ contains
   ! 
   ! Initializes an object with parameters (if possible).
   ! 
-  subroutine init_sph_data(this, udist, umass, utime, npart,  time, nptmass, &
-       gaspartmass)
+  subroutine init_sph_data(sphdata, udist, umass, utime, npart,  time, nptmass, gaspartmass)
     implicit none
-    type(sph_data), intent(inout) :: this
+    type(sph_data), intent(inout) :: sphdata
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
     !                                                       ! (umass is M_sol, udist=0.1 pc)
     integer, intent(in)           :: npart                  ! Number of gas particles (field+disc)
     real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass                ! Number of stars/brown dwarfs
-    real(double), intent(in)  :: gaspartmass            ! Mass of each gas particle
+    real(double), intent(in),optional  :: gaspartmass            ! Mass of each gas particle
 
     ! Indicate that this object is in use
-    this%inUse = .true.
+    sphdata%inUse = .true.
 
     ! save these values in this object
-    this%udist = udist
-    this%umass = umass
-    this%utime = utime
-    this%npart = npart
-    this%time = time
-    this%nptmass = nptmass
-    this%gaspartmass = gaspartmass
+    sphdata%udist = udist
+    sphdata%umass = umass
+    sphdata%utime = utime
+    sphdata%npart = npart
+    sphdata%time = time
+    sphdata%nptmass = nptmass
+    if( present(gaspartmass)) sphdata%gaspartmass = gaspartmass
 
 
     ! allocate arrays
     ! -- for gas particles
-    ALLOCATE(this%xn(npart))
-    ALLOCATE(this%yn(npart))
-    ALLOCATE(this%zn(npart))
-    ALLOCATE(this%rhon(npart))
+    ALLOCATE(sphdata%xn(npart))
+    ALLOCATE(sphdata%yn(npart))
+    ALLOCATE(sphdata%zn(npart))
 
+
+    ALLOCATE(sphdata%vxn(npart))
+    ALLOCATE(sphdata%vyn(npart))
+    ALLOCATE(sphdata%vzn(npart))
+
+    ALLOCATE(sphdata%rhon(npart))
+    ALLOCATE(sphdata%temperature(npart))
+    ALLOCATE(sphdata%gasmass(npart))
 
     ! -- for star positions
-    ALLOCATE(this%x(nptmass))
-    ALLOCATE(this%y(nptmass))
-    ALLOCATE(this%z(nptmass))
+    ALLOCATE(sphdata%x(nptmass))
+    ALLOCATE(sphdata%y(nptmass))
+    ALLOCATE(sphdata%z(nptmass))
+
+    ALLOCATE(sphdata%vx(nptmass))
+    ALLOCATE(sphdata%vy(nptmass))
+    ALLOCATE(sphdata%vz(nptmass))
     
     ! -- for mass of stars
-    ALLOCATE(this%ptmass(nptmass))
+    ALLOCATE(sphdata%ptmass(nptmass))
 
     !
-    this%have_stellar_disc = .false. 
+    sphdata%have_stellar_disc = .false. 
 
-    
   end subroutine init_sph_data
 
   ! 
@@ -244,6 +257,9 @@ contains
   ! Read in the data from a file, allocate the array memory, and store the
   ! the number of gas and stars in this object.
   !
+  ! Note: This routine only works with the 'old' (unknown how old) dump file
+  ! format. Use new_read_sph_data to read in ASCII created by SPLASH.
+
   subroutine read_sph_data(this, filename)
     implicit none
     type(sph_data), intent(inout) :: this
@@ -252,22 +268,20 @@ contains
     integer, parameter  :: LUIN = 10 ! logical unit # of the data file
 !    real(double) :: udist, umass, utime,  time,  gaspartmass, discpartmass
 !    integer*4 :: npart,  nsph, nptmass
-    real(double) :: udist, umass, utime,  time,  gaspartmass
-    integer :: npart,  nptmass
+    real(double) :: udist, umass, utime
+    real(double) :: gaspartmass, time
+    integer :: npart, nptmass, n1, n2
     real(double), allocatable :: dummy(:)     
 
 
     open(unit=LUIN, file=TRIM(filename), form='unformatted')
-    
+  
 
     ! reading in the first line
-    READ(LUIN) udist, umass, utime, npart, time, &
-         nptmass, gaspartmass
-
+    READ(LUIN) udist, umass, utime, npart, n1, n2, time, nptmass, gaspartmass
 
     ! initilaizing the sph_data object (allocating arrays, saving parameters and so on....)
-    call init_sph_data(this, udist, umass, utime, npart, time, nptmass,&
-         gaspartmass)
+    call init_sph_data(this, udist, umass, utime, npart, time, nptmass, gaspartmass)
 
 
     ! reading the positions  of gas particles and stars,
@@ -296,10 +310,105 @@ contains
 
     DEALLOCATE(dummy)
 
-    
   end subroutine read_sph_data
 
+  subroutine new_read_sph_data(sphdata, filename)
+    implicit none
+    type(sph_data), intent(inout) :: sphdata
+    character(LEN=*), intent(in)  :: filename
+    !   
+    integer, parameter  :: LUIN = 10 ! logical unit # of the data file
+!    real(double) :: udist, umass, utime,  time,  gaspartmass, discpartmass
+!    integer*4 :: npart,  nsph, nptmass
+    real(double) :: udist, umass, utime,  time
+    real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, masscounter
+    integer :: itype, ipart, icount, iptmass, igas, idead
+    integer :: npart, nptmass, n1, n2
+    real(double) junk
+    character(LEN=1)  :: junkchar
 
+    open(unit=LUIN, file=TRIM(filename), form="formatted")
+
+    read(LUIN,*) 
+    read(LUIN,*)
+    read(LUIN,*)
+    read(LUIN,*) junkchar, time, utime
+    read(LUIN,*)
+    read(LUIN,*)
+    read(LUIN,*) junkchar, npart, n1, nptmass, n2
+    npart = npart + n1 ! no. of particles we're interested in
+    read(LUIN,*)
+    read(LUIN,*) junkchar, udist, junk, junk, umass
+    read(LUIN,*)
+    read(LUIN,*)
+    read(LUIN,*)
+
+    call init_sph_data(sphdata, udist, umass, utime, npart, time, nptmass)
+
+    npart = npart + n2 + nptmass ! npart now equal to no. lines - 12 = sum of particles dead or alive
+
+    write(*,*) ' '
+    write(*,*) 'Reading SPH data from ASCII....'
+    write(*,*) ' '
+
+    iptmass = 0
+    icount = 12
+    igas = 0
+    idead = 0
+
+    do ipart=1, npart
+
+       read(LUIN,*) xn, yn, zn, gaspartmass, junk, rhon, vx, vy, vz, junk, junk, junk, junk, itype
+       icount = icount + 1
+
+       if(itype .eq. 1) then ! .or. itype .eq. 4) then
+          igas = igas + 1
+
+          sphdata%xn(igas) = xn
+          sphdata%yn(igas) = yn
+          sphdata%zn(igas) = zn
+
+          sphdata%gasmass(igas) = gaspartmass
+          sphdata%temperature(igas) = 10. ! isothermal
+          sphdata%rhon(igas) = rhon
+
+          sphdata%vxn(igas) = vx
+          sphdata%vyn(igas) = vy
+          sphdata%vzn(igas) = vz
+
+          masscounter = masscounter + gaspartmass
+          
+       Elseif(itype .eq. 3) then
+
+          iptmass = iptmass+1
+
+          sphdata%x(iptmass) = xn
+          sphdata%y(iptmass) = yn
+          sphdata%z(iptmass) = zn
+
+          sphdata%vx(iptmass) = vx
+          sphdata%vy(iptmass) = vy
+          sphdata%vz(iptmass) = vz
+
+          sphdata%ptmass(iptmass) = gaspartmass 
+
+          masscounter = masscounter + gaspartmass
+
+          write(*,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol"
+       else
+
+          idead = idead + 1
+
+       endif
+
+    enddo
+
+    write(*,*) "Read ",icount," lines of which ", ipart, "are particles of which", iptmass,&
+               "are sink particles and ",igas,"are gas particles and", idead, "are dead"
+
+    write(*,*) "Total Mass in all particles, ", masscounter, "Msol"
+
+  end subroutine new_read_sph_data
 
   !
   !
@@ -422,8 +531,6 @@ contains
     type(sph_data), intent(in) :: this
     out = this%gaspartmass
   end function get_gaspartmass
-    
-    
 
   !
   ! Returns the position of the i_th gas particle. 
@@ -481,6 +588,16 @@ contains
     
   end function get_rhon
 
+  function get_mass(this, i) RESULT(out)
+    implicit none
+    real(double) :: out 
+    type(sph_data), intent(in) :: this
+    integer, intent(in) :: i
+
+    out  = this%gasmass(i)
+    
+  end function get_mass
+
   ! Returns the temperature of gas particle at the postion of
   ! i-th particle.
   
@@ -494,6 +611,16 @@ contains
     
   end function get_temp
 
+  function get_vel(this, i) RESULT(out)
+    implicit none
+    type(VECTOR) :: out 
+    type(sph_data), intent(in) :: this
+    integer, intent(in) :: i
+
+    out  = VECTOR(this%vxn(i),this%vyn(i),this%vzn(i))
+    
+  end function get_vel
+
   ! Assigns the density of gas particle at the postion of
   ! i-th particle.
   
@@ -506,9 +633,7 @@ contains
     this%rhon(i) = value
     
   end subroutine put_rhon
-   
-
-  
+     
   !
   ! Rerurns the postions of the i-th point mass.
   !
@@ -673,7 +798,7 @@ contains
     write(UN,*)     '# of stars                 : ',  get_nptmass(this)
     write(UN,*)     '# of gas particles (total) : ',  get_npart(this)   
     write(UN,*)     'Time of data dump          : ',  tmp, ' [Myr]'    
-    write(UN,*)     'Mass (gas particle)        : ',  get_gaspartmass(this)*get_umass(this), ' [g]'    
+    !write(UN,*)     'Mass (gas particle)        : ',  get_gaspartmass(this)*get_umass(this), ' [g]'    
     write(UN,'(a)') '#######################################################'
     write(UN,'(a)') ' '
     write(Un,'(a)') ' '
