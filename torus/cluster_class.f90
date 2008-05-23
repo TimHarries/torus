@@ -12,6 +12,7 @@ module cluster_class
   use gridtype_mod
   use isochrone_class
   use messages_mod
+  use vector_mod
   
   implicit none
 
@@ -244,10 +245,10 @@ contains
     do i = 1, n
        ! preparing the spectrum
        !
+
        mass = get_pt_mass(sphData, i)*get_umass(sphData) ! [g]
        ! converting it to solar masses
        mass = mass/1.989e33 ! [M_sun]
-      
 
        ! finding the corresponding radius and the surface temperature of
        ! this star.
@@ -257,7 +258,6 @@ contains
        ! position of this star
        call get_position_pt_mass(sphData, i, x, y, z)
        x = x*length_units; y=y*length_units; z=z*length_units  ! [10^10cm]
-       
        ! save it to a star
        a_star%luminosity = luminosity     ! erg/sec
 !       a_star%luminosity = luminosity * 100.    ! erg/sec
@@ -343,6 +343,7 @@ contains
     type(cluster), intent(in), optional :: a_cluster
     !
     real(double) :: density_ave, rho_disc_ave, dummy_d
+    type(VECTOR) :: velocity_ave
     real :: tem_ave
     integer :: nparticle     
     !
@@ -350,11 +351,9 @@ contains
     ! assign density to the subcell
     select case (geometry)
        case ("cluster")
-
           call find_temp_in_subcell(nparticle, tem_ave, sphData, &
                thisOctal, subcell)
           thisOctal%temperature(subcell)  = tem_ave
-
           call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
                thisOctal, subcell)
 
@@ -362,14 +361,17 @@ contains
           ! in the cluster, then add the contribution from the stellar disc.
           rho_disc_ave = 1.d-30
 
-          if (a_cluster%disc_on) then
+         if (a_cluster%disc_on) then
              if (stellar_disc_exists(sphData) .and.  &       
                   disc_intersects_subcell(a_cluster, sphData, thisOctal, subcell) ) then
+
                 rho_disc_ave = average_disc_density_fast(sphData, thisOctal, &
                      subcell, a_cluster, dummy_d)
+
 !             rho_disc_ave = average_disc_density(sphData, thisOctal, &
 !                  subcell, a_cluster)
                 thisOctal%rho(subcell) = density_ave + rho_disc_ave
+
              ! This should be in [g/cm^3]
 
 !             if (thisOctal%rho(subcell) > 5.d-14) then
@@ -379,6 +381,7 @@ contains
                    thisOctal%inFlow(subcell) = .true.
                 endif
              else
+
                 thisOctal%rho(subcell) = density_ave
                 ! This should be in [g/cm^3]
                 
@@ -389,6 +392,7 @@ contains
                 endif
              end if
           else
+
              thisOctal%rho(subcell) = density_ave
              ! This should be in [g/cm^3]
              
@@ -409,6 +413,68 @@ contains
           !!
           !!
 
+       case ("molcluster")
+          call find_temp_in_subcell(nparticle, tem_ave, sphData, &
+               thisOctal, subcell)
+          thisOctal%temperature(subcell)  = tem_ave
+!          call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
+!               thisOctal, subcell)
+          call find_density(nparticle, density_ave, sphData, &
+               thisOctal, subcell) ! DAR routine based on mass in volume not smoothing length averge density
+
+
+
+          ! if this subcell intersect with any of the stellar disk
+          ! in the cluster, then add the contribution from the stellar disc.
+          rho_disc_ave = 1.d-30
+
+!         if (a_cluster%disc_on) then
+!             if (stellar_disc_exists(sphData) .and.  &       
+!                  disc_intersects_subcell(a_cluster, sphData, thisOctal, subcell) ) then
+
+!                rho_disc_ave = average_disc_density_fast(sphData, thisOctal, &
+!                     subcell, a_cluster, dummy_d)
+!
+!!             rho_disc_ave = average_disc_density(sphData, thisOctal, &
+!!                  subcell, a_cluster)
+!                thisOctal%rho(subcell) = density_ave + rho_disc_ave
+!
+!             ! This should be in [g/cm^3]
+!
+!             if (thisOctal%rho(subcell) > 5.d-14) then
+!                if (thisOctal%rho(subcell) > 1.d-20) then
+!                   thisOctal%inFlow(subcell) = .true.  
+!                else
+!                   thisOctal%inFlow(subcell) = .true.
+!                endif
+!             else
+
+                thisOctal%rho(subcell) = density_ave
+                ! This should be in [g/cm^3]
+                
+                if (thisOctal%rho(subcell) > 1.d-27) then
+                   thisOctal%inFlow(subcell) = .true.  
+                else
+                   thisOctal%inFlow(subcell) = .true.
+                endif
+!             end if
+!          else
+
+!             thisOctal%rho(subcell) = density_ave
+             ! This should be in [g/cm^3]
+             
+!             if (thisOctal%rho(subcell) > 1.d-27) then
+!                thisOctal%inFlow(subcell) = .true.  
+!             else
+!                thisOctal%inFlow(subcell) = .true.
+!             endif
+
+!          end if
+
+          call find_velocity(nparticle, velocity_ave, sphData, &
+               thisOctal, subcell) ! DAR routine basedon average momentum
+
+          thisOctal%velocity(subcell) = velocity_ave
 
        case("wr104")
           call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
@@ -566,6 +632,166 @@ contains
     
 
   end subroutine find_n_particle_in_subcell
+
+  subroutine find_density(n, dens_ave, sphData, node, subcell)
+    implicit none
+    integer, intent(out) :: n                ! number of particels in the subcell
+    real(double), intent(out) :: dens_ave ! average density of the subcell
+    type(sph_data), intent(in)    :: sphData
+    type(octal), intent(inout)    :: node
+    integer, intent(in)           :: subcell ! index of the subcell
+    !
+    integer :: npart
+    integer :: i, j, counter
+    real(double) :: x, y, z
+    !
+    !
+    real(double), save :: umass, udist, udens  ! for units conversion  
+    real(double), save :: dens_min 
+    logical, save  :: first_time = .true.
+    !
+    !logical :: restart
+    !    
+    integer, parameter :: nsample =400
+
+    ! Carry out the initial calculations
+    if (first_time) then       
+       ! units of sphData
+       umass = get_umass(sphData)  ! [g]
+       udist = get_udist(sphData)  ! [cm]
+       udens = umass/udist**3
+
+       ! convert units
+       udist = udist/1.0d10  ! [10^10cm]
+
+       dens_min = get_rhon_min(sphData)
+       first_time = .false.
+    end if
+
+    if (associated(node%gas_particle_list)) then
+       
+       ! retriving the number of the total gas particles
+       ! in "node".
+       ! -- using the function in linked_list_class.f90
+       npart = SIZE(node%gas_particle_list)
+       
+       counter = 0
+       dens_ave = 0.0d0
+       do i=1, npart
+          ! Retriving the sph data index for this paritcle
+          j = node%gas_particle_list(i)
+          
+          ! retriving this posisiton of the gas particle.
+          call get_position_gas_particle(sphData, j, x, y, z)
+          
+          ! convert units
+          x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
+          ! quick check to see if this gas particle is
+          ! belongs to this cell.
+          if ( within_subcell(node, subcell, x, y, z) ) then
+             counter = counter + 1
+             dens_ave = dens_ave + get_mass(sphData, j) 
+          end if
+          
+       end do
+       
+       n = counter
+       
+    else
+
+       n = 0
+
+    endif
+    
+    if (n>0) then
+!       dens_ave = dens_ave/dble(n)
+       dens_ave = dens_ave*umass/(1e30*cellVolume(node, subcell))  ! [g/cm^3]
+    else
+       dens_ave = 1.d-30
+    end if
+    
+
+  end subroutine find_density
+
+  subroutine find_velocity(n, vel_ave, sphData, node, subcell) ! technically finding average momentum?
+    implicit none
+    integer, intent(out) :: n                ! number of particels in the subcell
+    type(VECTOR), intent(out) :: vel_ave ! average density of the subcell
+    type(sph_data), intent(in)    :: sphData
+    type(octal), intent(inout)    :: node
+    integer, intent(in)           :: subcell ! index of the subcell
+    !
+    integer :: npart
+    integer :: i, j, counter
+    real(double) :: x, y, z
+    real(double) :: mass, mass_sum
+
+
+    real(double), save :: umass, udist, utime  ! for units conversion  
+    real(double), save :: dens_min
+    logical, save  :: first_time = .true.
+
+    ! Carry out the initial calculations
+    if (first_time) then       
+       ! units of sphData
+       umass = get_umass(sphData)  ! [g]
+       udist = get_udist(sphData)  ! [cm]
+       utime = get_utime(sphData)  ! [s]
+
+       ! convert units
+       udist = udist/1.0d10  ! [10^10cm]
+
+       dens_min = get_rhon_min(sphData)
+       first_time = .false.
+    end if
+
+    if (associated(node%gas_particle_list)) then
+       
+       ! retriving the number of the total gas particles
+       ! in "node".
+       ! -- using the function in linked_list_class.f90
+       npart = SIZE(node%gas_particle_list)
+       
+       counter = 0
+       vel_ave = VECTOR(1d-30,1d-30,1d-30)
+
+       do i=1, npart
+          ! Retriving the sph data index for this paritcle
+          j = node%gas_particle_list(i)
+          
+          ! retriving this posisiton of the gas particle.
+          call get_position_gas_particle(sphData, j, x, y, z)
+          
+          ! convert units
+          x = x*udist; y = y*udist; z = z*udist   ! [10^10cm]
+          ! quick check to see if this gas particle is
+          ! belongs to this cell.
+          if ( within_subcell(node, subcell, x, y, z) ) then
+             counter = counter + 1
+             mass = get_mass(sphdata, j)
+             vel_ave = vel_ave + mass * get_vel(sphData, j)
+             mass_sum = mass_sum + mass
+          end if
+          
+       end do
+       
+       n = counter
+       
+    else
+
+       n = 0
+
+    endif
+    
+    if (n>0) then
+       vel_ave = (1./mass_sum) * vel_ave
+       vel_ave = ((1./(utime*3.1556926e7))*udist*1d10) * vel_ave  ! [cm/s]
+       vel_ave = (1./cspeed) * vel_ave  ! fraction of c
+    else
+       vel_ave = VECTOR(1.d-30,1.d-30,1d-30)
+    end if
+    
+  end subroutine find_velocity
 
 
   subroutine find_temp_in_subcell(n, tem_ave, sphData, node, subcell)
@@ -1101,7 +1327,7 @@ contains
 
 !    !
 !    ! Emulating the larger grain size....
-!    ! 
+    !   
 !    density_out = density_out/1.0d3   ! [g/cm^3]
 !
 !    ! limiting the minimum density
