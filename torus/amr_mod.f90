@@ -337,6 +337,8 @@ CONTAINS
     INTEGER :: nDustType ! number of different dust types
     integer :: i
 
+    character(len=100) :: message
+
     ALLOCATE(grid%octreeRoot)
 
     do i = 1, 8
@@ -461,9 +463,11 @@ CONTAINS
           ! splitting/constructing the octree data structure. 
           !
           ! Using the routine in grid_mod.f90
-          write(*,*) "Copying SPH index to root"
+          write(message,*) "Copying SPH index to root"
+          call writeinfo(message, TRIVIAL)
           call copy_sph_index_to_root(grid, sphData)
-          write(*,*) "Initializing OctreeRoot"
+          write(message,*) "Initializing OctreeRoot"
+          call writeinfo(message, TRIVIAL)
           !
           DO subcell = 1, grid%octreeRoot%maxChildren
              ! calculate the values at the centre of each of the subcells
@@ -471,7 +475,8 @@ CONTAINS
              ! label the subcells
              grid%octreeRoot%label(subcell) = subcell
           END DO
-          write(*,*) "Done."
+          write(message,*) "Done."
+          call writeinfo(message, TRIVIAL)
        case("wr104")
           ! Using the routine in grid_mod.f90
           call copy_sph_index_to_root(grid, sphData)
