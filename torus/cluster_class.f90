@@ -318,7 +318,7 @@ contains
     
 !    thisOctal%temperature(subcell) = 3.0e0
 !    thisOctal%temperature(subcell) = 10.0
-    thisOctal%velocity = VECTOR(0.,0.,0.)
+!    thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%etaLine(subcell) = 1.e-30
     thisOctal%etaCont(subcell) = 1.e-30
        
@@ -333,22 +333,26 @@ contains
   ! This routine can be used for example, in addNewChild and initFirstOctal
   ! in amr_mod.f90
   !
-  subroutine assign_density(thisOctal,subcell, sphData, geometry, a_cluster)
+  subroutine assign_density(thisOctal,subcell, sphData, grid, a_cluster)
     implicit none
     type(octal), intent(inout) :: thisOctal
     integer, intent(in) :: subcell
-    !type(gridtype), intent(in) :: grid
+    type(gridtype), intent(in) :: grid
     type(sph_data), intent(in) :: sphData
-    character(len=*), intent(in) :: geometry
+    character(len=20) :: geometry
     type(cluster), intent(in), optional :: a_cluster
     !
     real(double) :: density_ave, rho_disc_ave, dummy_d
+    real(double), parameter :: density_crit = 1d-13
     type(VECTOR) :: velocity_ave
     real :: tem_ave
     integer :: nparticle     
     !
     !
     ! assign density to the subcell
+    
+    geometry = grid%geometry
+
     select case (geometry)
        case ("cluster")
           call find_temp_in_subcell(nparticle, tem_ave, sphData, &
@@ -422,54 +426,9 @@ contains
           call find_density(nparticle, density_ave, sphData, &
                thisOctal, subcell) ! DAR routine based on mass in volume not smoothing length averge density
 
-
-
-          ! if this subcell intersect with any of the stellar disk
-          ! in the cluster, then add the contribution from the stellar disc.
-          rho_disc_ave = 1.d-30
-
-!         if (a_cluster%disc_on) then
-!             if (stellar_disc_exists(sphData) .and.  &       
-!                  disc_intersects_subcell(a_cluster, sphData, thisOctal, subcell) ) then
-
-!                rho_disc_ave = average_disc_density_fast(sphData, thisOctal, &
-!                     subcell, a_cluster, dummy_d)
-!
-!!             rho_disc_ave = average_disc_density(sphData, thisOctal, &
-!!                  subcell, a_cluster)
-!                thisOctal%rho(subcell) = density_ave + rho_disc_ave
-!
-!             ! This should be in [g/cm^3]
-!
-!             if (thisOctal%rho(subcell) > 5.d-14) then
-!                if (thisOctal%rho(subcell) > 1.d-20) then
-!                   thisOctal%inFlow(subcell) = .true.  
-!                else
-!                   thisOctal%inFlow(subcell) = .true.
-!                endif
-!             else
-
-                thisOctal%rho(subcell) = density_ave
-                ! This should be in [g/cm^3]
+                thisOctal%rho(subcell) = density_ave             
                 
-                if (thisOctal%rho(subcell) > 1.d-27) then
-                   thisOctal%inFlow(subcell) = .true.  
-                else
-                   thisOctal%inFlow(subcell) = .true.
-                endif
-!             end if
-!          else
-
-!             thisOctal%rho(subcell) = density_ave
-             ! This should be in [g/cm^3]
-             
-!             if (thisOctal%rho(subcell) > 1.d-27) then
-!                thisOctal%inFlow(subcell) = .true.  
-!             else
-!                thisOctal%inFlow(subcell) = .true.
-!             endif
-
-!          end if
+                thisOctal%temperature(subcell) = max(10., 10. * ((density_ave / density_crit)**(0.4)))
 
           call find_velocity(nparticle, velocity_ave, sphData, &
                thisOctal, subcell) ! DAR routine basedon average momentum
@@ -792,7 +751,6 @@ contains
     end if
     
   end subroutine find_velocity
-
 
   subroutine find_temp_in_subcell(n, tem_ave, sphData, node, subcell)
     use input_variables, only : TMinGlobal
