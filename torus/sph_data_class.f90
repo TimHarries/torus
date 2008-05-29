@@ -2,6 +2,7 @@ module sph_data_class
 
   use kind_mod
   use vector_mod
+  use messages_mod
   ! 
   ! Class definition for Mathew's SPH data.
   ! 
@@ -321,11 +322,12 @@ contains
 !    real(double) :: udist, umass, utime,  time,  gaspartmass, discpartmass
 !    integer*4 :: npart,  nsph, nptmass
     real(double) :: udist, umass, utime,  time
-    real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, masscounter
+    real(double) :: xn, yn, zn, vx, vy, vz, gaspartmass, rhon, masscounter, u
     integer :: itype, ipart, icount, iptmass, igas, idead
     integer :: npart, nptmass, n1, n2
     real(double) junk
     character(LEN=1)  :: junkchar
+    character(LEN=100) :: message
 
     open(unit=LUIN, file=TRIM(filename), form="formatted")
 
@@ -347,19 +349,24 @@ contains
 
     npart = npart + n2 + nptmass ! npart now equal to no. lines - 12 = sum of particles dead or alive
 
-    write(*,*) ' '
-    write(*,*) 'Reading SPH data from ASCII....'
-    write(*,*) ' '
+    write(message,*) "Reading SPH data from ASCII...."
+    call writeinfo(message, TRIVIAL)
 
     iptmass = 0
     icount = 12
     igas = 0
     idead = 0
+    masscounter = 0.d0
 
     do ipart=1, npart
 
-       read(LUIN,*) xn, yn, zn, gaspartmass, junk, rhon, vx, vy, vz, junk, junk, junk, junk, itype
+       read(LUIN,*) xn, yn, zn, gaspartmass, junk, rhon, vx, vy, vz, u, junk, junk, junk, itype
        icount = icount + 1
+
+       if(mod(icount,10000) .eq. 1) then
+          write(message,*) "Reading", icount,"th particle"
+          call writeinfo(message, TRIVIAL)
+       endif
 
        if(itype .eq. 1) then ! .or. itype .eq. 4) then
           igas = igas + 1
@@ -369,13 +376,15 @@ contains
           sphdata%zn(igas) = zn
 
           sphdata%gasmass(igas) = gaspartmass
-          sphdata%temperature(igas) = 10. ! isothermal
           sphdata%rhon(igas) = rhon
 
           sphdata%vxn(igas) = vx
           sphdata%vyn(igas) = vy
           sphdata%vzn(igas) = vz
 
+!         sphdata%temperature = 2. * 2.46 * (u * 1d-7) / (3. * 8.314472) ! 8.31 is gas constant
+          sphdata%temperature = 1.9725e-8 * u
+          
           masscounter = masscounter + gaspartmass
           
        Elseif(itype .eq. 3) then
@@ -394,7 +403,8 @@ contains
 
           masscounter = masscounter + gaspartmass
 
-          write(*,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol"
+          write(message,*) "Sink Particle number", iptmass," - mass", gaspartmass, " Msol"
+          call writeinfo(message, TRIVIAL)
        else
 
           idead = idead + 1
@@ -403,10 +413,14 @@ contains
 
     enddo
 
-    write(*,*) "Read ",icount," lines of which ", ipart, "are particles of which", iptmass,&
-               "are sink particles and ",igas,"are gas particles and", idead, "are dead"
+    write(message,*) "Read ",icount, " lines"
+    call writeinfo(message, TRIVIAL)
 
-    write(*,*) "Total Mass in all particles, ", masscounter, "Msol"
+    write(message,*)  iptmass,"are sink particles and ",igas,"are gas particles and", idead, "are dead"
+    call writeinfo(message, TRIVIAL)
+
+    write(message,*) "Total Mass in all particles, ", masscounter, "Msol"
+    call writeinfo(message, TRIVIAL)
 
   end subroutine new_read_sph_data
 
