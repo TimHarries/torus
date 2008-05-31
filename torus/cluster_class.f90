@@ -315,44 +315,48 @@ contains
     TYPE(octal), intent(inout) :: thisOctal
     INTEGER, INTENT(IN) :: subcell
     TYPE(gridtype), INTENT(IN) :: grid
+    real(double), parameter :: density_crit = 1d-13
     
 !    thisOctal%temperature(subcell) = 3.0e0
 !    thisOctal%temperature(subcell) = 10.0
 !    thisOctal%velocity = VECTOR(0.,0.,0.)
     thisOctal%etaLine(subcell) = 1.e-30
     thisOctal%etaCont(subcell) = 1.e-30
+
+    if(grid%geometry .eq. 'molcluster') then
+       thisOctal%nh2(subcell) = thisOctal%rho(subcell) / (2. * mhydrogen)
+       thisOctal%temperature(subcell) = max(10., 10. * ((thisOctal%rho(subcell) / density_crit)**(0.4)))
+       thisOctal%microturb(subcell) = max(1d-8,sqrt((2.d-10 * kerg * thisOctal%temperature(subcell) / &
+            (28.0 * amu)) + modulus(thisOctal%velocity(subcell))**2) / (cspeed * 1e-5)) ! mu is 0.3km/s subsonic turbulence
+    endif
        
   end subroutine assign_grid_values
 
-
-
-  
   !
   ! Adds density values to ths subcell of thisOctal.
   !
   ! This routine can be used for example, in addNewChild and initFirstOctal
   ! in amr_mod.f90
   !
-  subroutine assign_density(thisOctal,subcell, sphData, grid, a_cluster)
+  subroutine assign_density(thisOctal,subcell, sphData, geometry, a_cluster)
+
     implicit none
+
     type(octal), intent(inout) :: thisOctal
     integer, intent(in) :: subcell
-    type(gridtype), intent(in) :: grid
+!    type(gridtype), intent(in) :: grid
     type(sph_data), intent(in) :: sphData
-    character(len=20) :: geometry
+    character(len=*) :: geometry
     type(cluster), intent(in), optional :: a_cluster
     !
     real(double) :: density_ave, rho_disc_ave, dummy_d
-    real(double), parameter :: density_crit = 1d-13
     type(VECTOR) :: velocity_ave
     real :: tem_ave
     integer :: nparticle     
     !
     !
     ! assign density to the subcell
-    
-    geometry = grid%geometry
-
+       
     select case (geometry)
        case ("cluster")
           call find_temp_in_subcell(nparticle, tem_ave, sphData, &
@@ -418,17 +422,15 @@ contains
           !!
 
        case ("molcluster")
-          call find_temp_in_subcell(nparticle, tem_ave, sphData, &
-               thisOctal, subcell)
-          thisOctal%temperature(subcell)  = tem_ave
+!          call find_temp_in_subcell(nparticle, tem_ave, sphData, &
+!               thisOctal, subcell)
+!          thisOctal%temperature(subcell)  = tem_ave
 !          call find_n_particle_in_subcell(nparticle, density_ave, sphData, &
 !               thisOctal, subcell)
           call find_density(nparticle, density_ave, sphData, &
                thisOctal, subcell) ! DAR routine based on mass in volume not smoothing length averge density
 
-                thisOctal%rho(subcell) = density_ave             
-                
-                thisOctal%temperature(subcell) = max(10., 10. * ((density_ave / density_crit)**(0.4)))
+                thisOctal%rho(subcell) = density_ave
 
           call find_velocity(nparticle, velocity_ave, sphData, &
                thisOctal, subcell) ! DAR routine basedon average momentum
@@ -713,6 +715,7 @@ contains
        
        counter = 0
        vel_ave = VECTOR(1d-30,1d-30,1d-30)
+       mass_sum = 0.
 
        do i=1, npart
           ! Retriving the sph data index for this paritcle
