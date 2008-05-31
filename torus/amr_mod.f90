@@ -206,11 +206,10 @@ CONTAINS
     CASE ("spiralwind")
        CALL spiralWindSubcell(thisOctal, subcell ,grid)
        
-
     CASE("cluster","molcluster")
        ! using a routine in cluster_class.f90
        call assign_density(thisOctal,subcell, sphData, grid%geometry, stellar_cluster)
-       
+
     CASE("wr104")
        ! using a routine in cluster_class.f90
        call assign_density(thisOctal,subcell, sphData, grid%geometry)
@@ -463,6 +462,7 @@ CONTAINS
           ! splitting/constructing the octree data structure. 
           !
           ! Using the routine in grid_mod.f90
+
           write(message,*) "Copying SPH index to root"
           call writeinfo(message, TRIVIAL)
           call copy_sph_index_to_root(grid, sphData)
@@ -1329,6 +1329,7 @@ CONTAINS
       CASE ("cluster","wr104","molcluster")
         call assign_grid_values(thisOctal,subcell, grid)
         gridConverged = .TRUE.
+        CALL fillVelocityCorners(thisOctal,grid,noddyvelocity,thisOctal%threed)
 
       CASE ("ppdisk","wrshell","toruslogo","planetgap")
         gridConverged = .TRUE.
@@ -5085,11 +5086,12 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: h0
     integer,save :: acount,bcount,ccount = 0
     logical,save  :: firstTime = .true.
+    character(len=100) :: message
 
-    integer,save :: icount, jcount
+    integer,save :: mass_split, particle_split
 
-    icount = 0
-    jcount = 0
+    mass_split = 0
+    particle_split = 0
 
     splitInAzimuth = .false.
     
@@ -5611,39 +5613,16 @@ IF ( .NOT. gridConverged ) RETURN
       end if
 
    case ("molcluster")
-      ! Splits if the number of particle is more than a critical mass.
-      ! using the function in amr_mod.f90 
 
-!      call find_n_particle_in_subcell(nparticle, ave_density, sphData, &
-!           thisOctal, subcell)
-      call find_density(nparticle, ave_density, sphData, &
-           thisOctal, subcell)
+      ! Find number of particles and total mass in this cell
+      call find_density(nparticle, ave_density, sphData, thisOctal, subcell)
+      total_mass = ave_density * ( cellVolume(thisOctal, subcell)  * 1.d30 ) ! in [g]
 
-      ! get the size and centre of the current cell
-      cellSize = thisOctal%subcellSize
-
-      !
-      total_mass = ave_density * (cellVolume(thisOctal, subcell)*1.d10)**3  ! should be in [g]
-
-
-      if (total_mass > amrlimitscalar .and. nparticle > 0) then
-         split = .true.
-        jcount = jcount + 1
-        if(mod(jcount,1000) .eq. 100) write(*,*) jcount, "mass split"
-      else
-         split = .false.
-      end if
-
-      ! Extra check
-      ! if # of SPH particle is greater than 20 then splits...
-      if (nparticle .gt. 20) then
-         split = .true.
-        icount = icount + 1
-        if(mod(icount,1000) .eq. 100) write(*,*) icount, "particle split"
-     else
-        split = .false.
-     end if
-                 
+      ! Split if the number of particles in cell exceeds limit or if mass in cell exceeds limit.
+      split = .false.
+      if (total_mass > amrlimitscalar .and. nparticle > 0) split = .true.
+      if (nparticle > 20) split = .true.
+      
    case ("wr104")
       ! Splits if the number of particle is more than a critical value (~3).
       limit = nint(amrLimitScalar)
@@ -9386,6 +9365,24 @@ end function readparameterfrom2dmap
     endif    
 
   end function ggtauVelocity
+
+  TYPE(vector)  function noddyVelocity(point, grid)
+
+    type(octalvector), intent(in) :: point
+    type(GRIDTYPE), intent(in) :: grid
+    type(octalvector) :: posvec
+    type(octal), pointer :: thisOctal
+    integer :: subcell
+    real(double) :: v, r
+    posVec = point
+
+    thisOctal => grid%octreeroot
+
+    CALL findSubcellTD(posvec,grid%octreeRoot,thisOctal,subcell)    
+
+    noddyVelocity = thisOctal%velocity(subcell)
+
+  end function noddyVelocity
 
   subroutine assign_melvin(thisOctal,subcell,grid)
 
