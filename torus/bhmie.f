@@ -8,10 +8,10 @@ C       in calling routine!
 C      PARAMETER(MXNANG=1000,NMXX=15000)
 c     PARAMETER(MXNANG=1000,NMXX=150000)
 c Increase the size of array for larger grains (on 24-may-05 by RK)      
-      PARAMETER(MXNANG=500,NMXX=1500000)
+c      PARAMETER(MXNANG=500,NMXX=1500000)
 c     
 c      Used until 24-may-05      
-c       PARAMETER(MXNANG=1000,NMXX=100000)
+       PARAMETER(MXNANG=1000,NMXX=400000) ! change by DAR on 2008-06-05
 
 C Arguments:
 
@@ -141,26 +141,30 @@ c      REALPART_SP(SPCX)=(REAL(SPCX))
       DOUBLE COMPLEX DPCX
       DOUBLE PRECISION REALPART
       DOUBLE PRECISION IMAGPART
+
       REALPART(DPCX)=(DBLE(DPCX))
+
       IMAGPART(DPCX)=(DIMAG(DPCX))
-      
 C***********************************************************************
 C*** Safety checks
+
       IF(SINGLE)WRITE(0,*)'Warning: this version of bhmie uses only ',
      &          'single precision complex numbers!'
       IF(NANG.GT.MXNANG)STOP'***Error: NANG > MXNANG in bhmie'
       IF(NANG.LT.2)NANG=2
 C*** Obtain pi:
+
       PII=4.D0*ATAN(1.D0)
       DX=X
       DREFRL=REFREL
       Y=X*DREFRL
       YMOD=ABS(Y)
-C
+
 C*** Series expansion terminated after NSTOP terms
 C    Logarithmic derivatives calculated from NMX on down
       XSTOP=X+4.*X**0.3333+2.
       NMX=NINT(MAX(XSTOP,YMOD))+15
+
 C BTD experiment 91.1.15: add one more term to series and compare results
 C      NMX=MAX(XSTOP,YMOD)+16
 C test: compute 7001 wavelengths between .0001 and 1000 micron
@@ -175,6 +179,7 @@ C
       ENDIF
 C*** Require NANG.GE.1 in order to calculate scattering intensities
       DANG=0.
+
       IF(NANG.GT.1)DANG=.5*PII/DBLE(NANG-1)
       DO 1000 J=1,NANG
           THETA=DBLE(J-1)*DANG
@@ -189,6 +194,7 @@ C*** Require NANG.GE.1 in order to calculate scattering intensities
           DCXS1(J)=(0.D0,0.D0)
           DCXS2(J)=(0.D0,0.D0)
  1200 CONTINUE
+
 C
 C*** Logarithmic derivative D(J) calculated by downward recurrence
 C    beginning with initial value (0.,0.) at J=NMX
@@ -199,10 +205,12 @@ C
           EN=NMX-N+1
           D(NMX-N)=(EN/Y)-(1./(D(NMX-N+1)+EN/Y))
  2000 CONTINUE
+
 C
 C*** Riccati-Bessel functions with real argument X
 C    calculated by upward recurrence
 C
+
       PSI0=COS(DX)
       PSI1=SIN(DX)
       CHI0=-SIN(DX)
@@ -211,6 +219,7 @@ C
       QSCA=0.E0
       GSCA=0.E0
       P=-1.
+
       DO 3000 N=1,NSTOP
           EN=N
           FN=(2.E0*EN+1.)/(EN*(EN+1.))
@@ -228,12 +237,14 @@ C    in computation of g=<cos(theta)>
               AN1=AN
               BN1=BN
           ENDIF
+
 C
 C*** Compute AN and BN:
           AN=(D(N)/DREFRL+EN/DX)*PSI-PSI1
           AN=AN/((D(N)/DREFRL+EN/DX)*XI-XI1)
           BN=(DREFRL*D(N)+EN/DX)*PSI-PSI1
           BN=BN/((DREFRL*D(N)+EN/DX)*XI-XI1)
+
 C
 C*** Augment sums for Qsca and g=<cos(theta)>
           junk = (ABS(AN)**2+ABS(BN)**2)
@@ -262,6 +273,7 @@ C    First do angles from 0 to 90
               TAU(J)=EN*AMU(J)*PI(J)-(EN+1.)*PI0(J)
               DCXS1(J)=DCXS1(J)+FN*(AN*PI(J)+BN*TAU(J))
               DCXS2(J)=DCXS2(J)+FN*(AN*TAU(J)+BN*PI(J))
+
  2500     CONTINUE
 C
 C*** Now do angles greater than 90 using PI and TAU from
@@ -272,12 +284,14 @@ C    P=1 for N=1,3,...; P=-1 for N=2,4,...
               JJ=2*NANG-J
               DCXS1(JJ)=DCXS1(JJ)+FN*P*(AN*PI(J)-BN*TAU(J))
               DCXS2(JJ)=DCXS2(JJ)+FN*P*(BN*PI(J)-AN*TAU(J))
+
  2600     CONTINUE
           PSI0=PSI1
           PSI1=PSI
           CHI0=CHI1
           CHI1=CHI
           XI1=DCMPLX(PSI1,-CHI1)
+
 C
 C*** Compute pi_n for next value of n
 C    For each angle J, compute pi_n+1
@@ -303,6 +317,7 @@ C prepare single precision complex scattering amplitude for output
       ENDDO
 
       RETURN
+
       END
 
 
