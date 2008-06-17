@@ -20,7 +20,7 @@ contains
 
   subroutine torus(b_idim,  b_npart,       b_nactive, b_nptmass, b_num_gas, &
                    b_xyzmh, b_rho,         b_iphase,                        &
-                   b_udist, b_umass,       b_utime,   b_time,    b_temp)
+                   b_udist, b_umass,       b_utime,   b_time,    b_temp, temp_min )
 
   use kind_mod               ! variable type KIND parameters
   use vector_mod             ! vector math
@@ -152,6 +152,7 @@ contains
   real*8, intent(in)    :: b_udist, b_umass, b_utime, b_time
   integer, intent(in)   :: b_num_gas           ! Number of gas particles
   real*8, intent(inout) :: b_temp(b_num_gas)   ! Temperature of gas particles
+  real(kind=8), intent(in)      :: temp_min
   integer, save :: num_calls = 0
   character(len=4) :: char_num_calls
 
@@ -236,6 +237,14 @@ contains
 
   call inputs() ! variables are passed using the input_variables module
   if (.not.inputOK) goto 666
+
+! check that the minimum temperature used in the SPH code matches that used in Torus
+  if ( temp_min /= TminGlobal ) then
+     write(*,*) "Minimum temperature in the SPH code does not match that in Torus"
+     write(*,*) "Torus: TminGlobal=", TminGlobal
+     write(*,*) "SPH: temp_min=", temp_min
+     STOP
+  endif
 
   if (geometry /= "cluster" ) then
      print *, "Error: cluster geometry required"
