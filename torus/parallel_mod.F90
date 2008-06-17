@@ -464,7 +464,6 @@ contains
   CALL MPI_BCAST(this%utime,        1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
   CALL MPI_BCAST(this%umass,        1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
   CALL MPI_BCAST(this%time,         1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
-  CALL MPI_BCAST(this%gaspartmass,  1, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr) 
 
   end subroutine gather_sph_data
 

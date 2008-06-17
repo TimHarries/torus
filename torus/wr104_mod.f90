@@ -23,7 +23,6 @@ contains
     integer          :: npart                  ! Number of gas particles
     real(double) :: time                   ! Time of sph data dump (in units of utime)
     integer          :: nptmass                ! Number of stars/brown dwarfs
-    real(double) :: gaspartmass            ! Mass of each gas particles
 
 !    real(double) :: dummy  ! position of gas particles
 
@@ -42,11 +41,10 @@ contains
     uTime = 1.e6
     time = 1.e6
     nptmass = 1
-    gaspartmass = 1.0d-24
 
     ! initilaizing the sph_data object
     ! using a routine in sph_data_class.  (Allocating the memory for arrays and etc..)
-    call init_sph_data(sphData, udist, umass, utime, npart, time, nptmass, gaspartmass)
+    call init_sph_data(sphData, udist, umass, utime, npart, time, nptmass)
 
 
     ! reading the X poistion of particles

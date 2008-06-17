@@ -21,7 +21,6 @@ module sph_data_class
        get_npart, &
        get_nptmass, &
        get_time, &
-       get_gaspartmass, &
        get_position_gas_particle, &
        put_position_gas_particle, &
        get_rhon, &
@@ -57,7 +56,6 @@ module sph_data_class
      integer          :: npart                  ! Total number of gas particles (field+disc)
      real(double) :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
-     real(double), pointer :: gaspartmass            ! Mass of each gas particle
      real(double), pointer, dimension(:) :: gasmass            ! Mass of each gas particle ! DAR changed to allow variable mass
      ! Positions of gas particles
      real(double), pointer, dimension(:) :: xn,yn,zn
@@ -96,7 +94,7 @@ contains
   ! 
   ! Initializes an object with parameters (if possible).
   ! 
-  subroutine init_sph_data(sphdata, udist, umass, utime, npart,  time, nptmass, gaspartmass)
+  subroutine init_sph_data(sphdata, udist, umass, utime, npart,  time, nptmass)
     implicit none
     type(sph_data), intent(inout) :: sphdata
     real(double), intent(in)  :: udist, umass, utime    ! Units of distance, mass, time in cgs
@@ -104,7 +102,6 @@ contains
     integer, intent(in)           :: npart                  ! Number of gas particles (field+disc)
     real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass                ! Number of stars/brown dwarfs
-    real(double), intent(in),optional  :: gaspartmass            ! Mass of each gas particle
 
     ! Indicate that this object is in use
     sphdata%inUse = .true.
@@ -116,7 +113,6 @@ contains
     sphdata%npart = npart
     sphdata%time = time
     sphdata%nptmass = nptmass
-    if( present(gaspartmass)) sphdata%gaspartmass = gaspartmass
 
 
     ! allocate arrays
@@ -155,7 +151,7 @@ contains
   ! Initializes an object with parameters when torus is called as a subroutine from sphNG.
   ! 
   subroutine init_sph_data2(this, udist, umass, utime, npart,  time, nptmass, &
-       gaspartmass, b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp)
+        b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp)
     implicit none
 
 ! Arguments --------------------------------------------------------------------
@@ -165,7 +161,6 @@ contains
     integer, intent(in)           :: npart              ! Number of gas particles (field+disc)
     real(double), intent(in)  :: time                   ! Time of sph data dump (in units of utime)
     integer, intent(in)           :: nptmass            ! Number of stars/brown dwarfs
-    real(double), intent(in)  :: gaspartmass            ! Mass of each gas particle
 
     integer, intent(in)   :: b_npart, b_idim
     integer*1, intent(in) :: b_iphase(b_idim)
@@ -187,7 +182,6 @@ contains
     this%npart = npart
     this%time = time
     this%nptmass = nptmass
-    this%gaspartmass = gaspartmass
     this%nptmass     = nptmass
 
     ! allocate arrays
@@ -282,7 +276,7 @@ contains
     READ(LUIN) udist, umass, utime, npart, n1, n2, time, nptmass, gaspartmass
 
     ! initilaizing the sph_data object (allocating arrays, saving parameters and so on....)
-    call init_sph_data(this, udist, umass, utime, npart, time, nptmass, gaspartmass)
+    call init_sph_data(this, udist, umass, utime, npart, time, nptmass)
 
 
     ! reading the positions  of gas particles and stars,
@@ -537,14 +531,6 @@ contains
     out = this%time
   end function get_time
     
-
-  ! returns the mass of each gass particle in [umass]
-  function get_gaspartmass(this) RESULT(out)
-    implicit none
-    real(double) :: out
-    type(sph_data), intent(in) :: this
-    out = this%gaspartmass
-  end function get_gaspartmass
 
   !
   ! Returns the position of the i_th gas particle. 
@@ -812,7 +798,6 @@ contains
     write(UN,*)     '# of stars                 : ',  get_nptmass(this)
     write(UN,*)     '# of gas particles (total) : ',  get_npart(this)   
     write(UN,*)     'Time of data dump          : ',  tmp, ' [Myr]'    
-    !write(UN,*)     'Mass (gas particle)        : ',  get_gaspartmass(this)*get_umass(this), ' [g]'    
     write(UN,'(a)') '#######################################################'
     write(UN,'(a)') ' '
     write(Un,'(a)') ' '
