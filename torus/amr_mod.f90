@@ -5561,20 +5561,10 @@ IF ( .NOT. gridConverged ) RETURN
       total_mass = ave_density * (cellSize*1.e10_db)**3  ! should be in [g]
 
 
-      if (total_mass > amrlimitscalar .and. nparticle > 0) then
-         split = .true.
-      else
-         split = .false.
-      end if
-
-      ! Extra check
-      ! if # of SPH particle is greater than 5 then splits...
-      if (nparticle> 5) then
-         split = .true.
-      else
-         split = .false.
-      end if
-      
+      ! Split if the number of particles in cell exceeds limit or if mass in cell exceeds limit.
+      split = .false.
+      if (total_mass > amrlimitscalar .and. nparticle > 0) split = .true.
+      if (nparticle > 5) split = .true.
 
       if (include_disc(stellar_cluster)) then
       
@@ -5594,18 +5584,10 @@ IF ( .NOT. gridConverged ) RETURN
 
             total_mass = total_mass + rho_disc_ave * (cellSize*1.e10_db)**3  !  [g]
 
-
-!            if (cellSize > 1.0e2  .or.  &
             if (cellSize > 1.0e4  .or.  &
                  (cellsize > scale_length) ) then
 !                 (cellsize > scale_length .and. rho_disc_ave > 1.0e-20) ) then
-
-
-
-
                split = .true.  ! units in 10^10cm
-            else
-               split = .false.
             end if
             
          end if
