@@ -18,6 +18,16 @@ else
     make >> compile_log 2>&1
 fi
 
+if [[ $? -eq 0 ]]; then
+# Count number of warnings. Subtract 2 because there are always warnings
+# about include files from the make depends step (run twice).
+    num_warn=`grep -i warning compile_log | wc -l | awk '{print $1 - 2}`
+    echo "Compilation completed with ${num_warn} warnings."
+else
+    echo "Compilation failed."
+    exit 1
+fi
+
 cd ..
 }
 
@@ -56,6 +66,7 @@ cp -r ../torus/benchmarks/molebench/* .
 cp ../torus/data/hco_benchmark.mol .
 ln -s ../${SYSTEM}_${TORUS_RUN_TYPE}/torus.${SYSTEM} .
 run_torus
+cd ..
 }
 
 run_torus()
