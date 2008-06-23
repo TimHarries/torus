@@ -23,24 +23,15 @@ cd ..
 
 run_benchmark()
 {
-echo "Running ${SYSTEM} ${TORUS_RUN_TYPE}"
+echo "Running ${SYSTEM} ${TORUS_RUN_TYPE} benchmark"
 mkdir run_${SYSTEM}_${TORUS_RUN_TYPE}
 cd run_${SYSTEM}_${TORUS_RUN_TYPE}
 cp -r ../torus/benchmarks/disc/* .
 ln -s ../${SYSTEM}_${TORUS_RUN_TYPE}/torus.${SYSTEM} .
-
-if [[ ${SYSTEM} == intelmac ]]; then
-    ./torus.${SYSTEM} > log 2>&1 
-elif [[ ${SYSTEM} == ompi ]]; then
-    mpirun -np 4 torus.${SYSTEM} > log 2>&1
-else
-    echo "Unrecognised system ${SYSTEM}"
-    exit 1
-fi
+run_torus
 }
 
 check_benchmark()
-
 {
 echo Compiling comparespec code
 g95 -o comparespec comparespec.f90
@@ -53,6 +44,30 @@ cp sed100_775.dat specb.dat
 echo Comparing the 77.5 degree model...
 ./comparespec
 cd ..
+}
+
+run_molebench()
+{
+echo "Running ${SYSTEM} ${TORUS_RUN_TYPE} molebench"
+mkdir molebench_${SYSTEM}_${TORUS_RUN_TYPE}
+cd molebench_${SYSTEM}_${TORUS_RUN_TYPE}
+mkdir  J
+cp -r ../torus/benchmarks/molebench/* .
+cp ../torus/data/hco_benchmark.mol .
+ln -s ../${SYSTEM}_${TORUS_RUN_TYPE}/torus.${SYSTEM} .
+run_torus
+}
+
+run_torus()
+{
+if [[ ${SYSTEM} == intelmac ]]; then
+    ./torus.${SYSTEM} > log 2>&1 
+elif [[ ${SYSTEM} == ompi ]]; then
+    mpirun -np 4 torus.${SYSTEM} > log 2>&1
+else
+    echo "Unrecognised system ${SYSTEM}"
+    exit 1
+fi
 }
 
 #########################################################################################
@@ -88,6 +103,7 @@ for torus_type in fast debug; do
 	build_torus
 	run_benchmark
 	check_benchmark
+	run_molebench
 
     done
 done
