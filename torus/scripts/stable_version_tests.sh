@@ -5,6 +5,7 @@
 
 build_torus()
 {
+echo "Building ${SYSTEM} ${TORUS_RUN_TYPE}"
 mkdir ${SYSTEM}_${TORUS_RUN_TYPE}
 cd ${SYSTEM}_${TORUS_RUN_TYPE}
 
@@ -22,6 +23,7 @@ cd ..
 
 run_benchmark()
 {
+echo "Running ${SYSTEM} ${TORUS_RUN_TYPE}"
 mkdir run_${SYSTEM}_${TORUS_RUN_TYPE}
 cd run_${SYSTEM}_${TORUS_RUN_TYPE}
 cp -r ../torus/benchmarks/disc/* .
@@ -75,7 +77,8 @@ fi
 
 # Get latest code from CVS repository
 cd ${test_directory}
-cvs -d pinky:/h/th/CVS co torus
+echo "Checking Torus out from CVS repository"
+cvs -q -d pinky:/h/th/CVS co torus > cvs_log 
 
 for torus_type in fast debug; do
     for sys in ompi intelmac; do
