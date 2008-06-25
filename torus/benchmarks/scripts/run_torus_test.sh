@@ -58,6 +58,16 @@ echo Comparing the 77.5 degree model...
 ./comparespec
 }
 
+check_molebench()
+{
+echo Compiling compare_molbench code
+g95 -o compare_molbench compare_molbench.f90
+model_file=`ls results.* | tail -1`
+ln -s ${model_file} results.dat
+./compare_molbench
+}
+
+
 # Main part of script starts here ------------------------------------------
 
 # Set up 
@@ -69,7 +79,7 @@ export PATH=/sw/bin:/usr/local/bin:${PATH}
 
 # If all the required files are copied in to the working directory
 # then this line is not required. 
-#export TORUS_DATA=${test_dir}/torus/data
+export TORUS_DATA=${test_dir}/torus/data
 
 export G95_FPU_INVALID=true
 export G95_FPU_ZERODIV=true
@@ -111,12 +121,7 @@ cd ..
 cd run_ompi_molebench
 echo "Running torus.ompi molebench"
 /usr/local/bin/mpirun -np 4 torus.ompi > run_log_ompi.txt 2>&1
-if [[ $? -eq 0 ]]; then
-    echo "Molecular benchmark returned zero exit status"
-else
-    echo "Molecular benchmark returned non-zero exit status"
-fi 
-
+check_molebench
 cd ..
 
 exit
