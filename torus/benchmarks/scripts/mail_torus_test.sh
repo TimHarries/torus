@@ -24,16 +24,27 @@ done
 
 mail_to="acreman th drundle"
 
+# Test for success of disc benchmark
 num_success=`/usr/bin/grep "TORUS: Test successful" ${LOG_FILE} | /usr/bin/wc -l `
 
 if [[ ${num_success} -eq ${num_tests} ]]; then
-    subject_line="Torus test successful"
+    subject_line="Torus benchmark successful. "
 else
-    subject_line="Torus test failed"
+    subject_line="Torus benchmark failed. "
 fi
 
+# Test for success of molebench
+num_success=`/usr/bin/grep "Test passed" ${LOG_FILE} | /usr/bin/wc -l `
+
+if [[ ${num_success} -eq 1 ]]; then
+    subject_line2="Molecular benchmark successful. "
+else
+    subject_line2="Molecular benchmark failed. "
+fi
+
+
 for user in ${mail_to}; do
-    /sw/bin/mutt -s "${subject_line}" ${attach_list} ${user}@${MAIL_DOMAIN} < ${LOG_FILE} 
+    /sw/bin/mutt -s "${subject_line} ${subject_line2}" ${attach_list} ${user}@${MAIL_DOMAIN} < ${LOG_FILE} 
 done
 
 exit
