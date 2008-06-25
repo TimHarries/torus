@@ -66,6 +66,15 @@ cp -r ../torus/benchmarks/molebench/* .
 cp ../torus/data/hco_benchmark.mol .
 ln -s ../${SYSTEM}_${TORUS_RUN_TYPE}/torus.${SYSTEM} .
 run_torus
+}
+
+check_molebench()
+{
+echo Compiling compare_molbench code
+g95 -o compare_molbench compare_molbench.f90
+model_file=`ls results.* | tail -1`
+ln -s ${model_file} results.dat
+./compare_molbench
 cd ..
 }
 
@@ -115,7 +124,7 @@ for torus_type in fast debug; do
 	run_benchmark
 	check_benchmark
 	run_molebench
-
+	check_molebench
     done
 done
 
