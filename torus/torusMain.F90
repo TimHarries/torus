@@ -1109,6 +1109,7 @@ program torus
 
 
         if (myRankGlobal /= 0) then
+           call plotGridMPI(grid, "rhoafterread.png/png", "x-z", "rho", plotgrid=.true.)
            if (grid%octreeRoot%twoD) then
               call doHydrodynamics2d(grid)
            else if (grid%octreeRoot%oneD) then

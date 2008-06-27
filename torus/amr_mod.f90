@@ -5368,7 +5368,6 @@ IF ( .NOT. gridConverged ) RETURN
       split = .false.
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAmr) split = .true.
-!      if ( (modulus(rVec)< 0.1d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
 
 
    case("protobin")
@@ -5376,6 +5375,7 @@ IF ( .NOT. gridConverged ) RETURN
       rVec = subcellCentre(thisOctal, subcell)
       if (thisOctal%nDepth < minDepthAmr) split = .true.
 !      if ((rVec%z > 0).and.(thisOctal%nDepth < maxDepthAMR))  split = .true.
+!      if ( (modulus(rVec)< 0.5d5).and.(thisOctal%nDepth < 10) ) split = .true.
 
    case("benchmark")
       split = .false.

@@ -391,7 +391,7 @@ ifeq ($(SYSTEM), zen)
 # Include run-time error checking using ifort. Use environment variable to avoid clash with 
 # ITC -check option in version 3.1 of mpiifort/mpif90 scripts. 
     ifeq ($(debug), yes)
-      export F90FLAGS=-check all
+      export F90FLAGS=-check all -check noarg_temp_created
     endif
 # Uncomment this line to include MPI correctness checking using ITC libraries
 # when using version 3.1 of the Intel MPI libraries

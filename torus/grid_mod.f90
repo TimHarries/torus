@@ -3040,7 +3040,7 @@ contains
 
   
   subroutine writeAMRgrid(filename,fileFormatted,grid)
-    use input_variables, only : molecular, cmf
+    use input_variables, only : molecular, cmf, hydrodynamics
     ! writes out the 'grid' for an adaptive mesh geometry  
 
     implicit none
@@ -3245,7 +3245,7 @@ contains
 
 
   subroutine writeAMRgridMPI(filename,fileFormatted,grid,mpiFlag)
-    use input_variables, only : molecular, cmf
+    use input_variables, only : molecular, cmf, hydrodynamics
     ! writes out the 'grid' for an adaptive mesh geometry  
 
     implicit none
@@ -3408,20 +3408,39 @@ contains
        tempNChildren = thisOctal%nChildren
        tempIndexChild = thisOctal%indexChild
        tempHasChild = thisOctal%hasChild
-       if (doMpiFlag.and.(thisOctal%nDepth < 2) .and. (myRankGlobal==1)) then
-          writeOctal = .true.
-          tempNChildren = 8
-          do i = 1, 8
-             tempIndexChild(i) = i
-          enddo
-          tempHasChild = .true.
+
+       if (nThreadsGlobal == 9) then
+          if (doMpiFlag.and.(thisOctal%nDepth < 2) .and. (myRankGlobal==1)) then
+             writeOctal = .true.
+             tempNChildren = 8
+             do i = 1, 8
+                tempIndexChild(i) = i
+             enddo
+             tempHasChild = .true.
+          endif
+          if (doMpiFlag.and.(thisOctal%nDepth==1).and.(myRankGlobal /=1)) writeOctal = .false.
        endif
 
-       if (doMpiFlag.and.(thisOctal%nDepth==1).and.(myRankGlobal /=1)) writeOctal = .false.
-       
-!       write(*,*) myRankGlobal, " writing depth ", thisOctal%nDepth, " writeoctal ", writeoctal, &
-!            octalOnThread(thisOctal, 1, myRankGlobal)
+       if (nThreadsGlobal == 65) then
+          if (doMpiFlag.and.(thisOctal%nDepth < 3) .and. (myRankGlobal==1)) then
+             writeOctal = .true.
+             tempNChildren = 8
+             do i = 1, 8
+                tempIndexChild(i) = i
+             enddo
+             tempHasChild = .true.
+          endif
+          if (doMpiFlag.and.(thisOctal%nDepth < 3).and.(myRankGlobal /=1)) writeOctal = .false.
 
+          if (doMpiFlag.and.(thisOctal%nDepth>=3).and. .not.(octalOnThread(thisOctal,1, myRankGlobal))) writeOctal = .false.
+
+       endif
+       
+       if (writeOctal) then
+          write(*,*) myRankGlobal, " writing depth ", thisOctal%nDepth, " writeoctal ", writeoctal, &
+               octalOnThread(thisOctal, 1, myRankGlobal), " label ",thisOctal%label, " mpithread ", &
+               thisOctal%mpithread
+       endif
        if (writeOctal) then
 
           if (fileFormatted) then 
@@ -3486,6 +3505,14 @@ contains
                 write(unit=20,iostat=error) thisOctal%microturb
              endif
           endif
+
+          if (hydrodynamics) then
+             if (fileformatted) then
+                write(unit=20,iostat=error,fmt=*) thisOctal%boundaryCondition
+             else
+                write(unit=20,iostat=error) thisOctal%boundaryCondition
+             endif
+          endif
           
           if (grid%splitOverMpi) then
              if (fileformatted) then
@@ -3513,7 +3540,7 @@ contains
   subroutine readAMRgrid(filename,fileFormatted,grid)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
-    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf
+    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf, hydrodynamics
     implicit none
 
     character(len=*)            :: filename
@@ -3734,6 +3761,14 @@ contains
 
        endif
 
+       if (hydrodynamics) then
+          if (fileformatted) then
+             write(unit=20,iostat=error,fmt=*) thisOctal%boundaryCondition
+          else
+             write(unit=20,iostat=error) thisOctal%boundaryCondition
+          endif
+       endif
+
 
        if (grid%splitOverMpi) then
           if (fileformatted) then
@@ -3759,7 +3794,7 @@ contains
   subroutine readAMRgridMPI(filename,fileFormatted,grid, mpiflag)
     ! reads in a previously saved 'grid' for an adaptive mesh geometry  
 
-    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf
+    use input_variables, only: geometry,dipoleOffset,amr2dOnly,statEq2d, molecular, cmf, hydrodynamics
     implicit none
 
     character(len=*)            :: filename
@@ -3774,7 +3809,7 @@ contains
     integer :: iJunk
     logical, optional :: mpiFlag
     logical :: doMpiFlag
-    real, pointer :: junk(:), junk2(:,:), junk3(:,:)
+    real, pointer :: junk(:) => null(), junk2(:,:) => null(), junk3(:,:)=>null()
 
     error = 0
 
@@ -3849,7 +3884,9 @@ contains
     call readReal1D(junk,fileFormatted)
     call readReal2D(junk2,fileFormatted)
     call readReal2D(junk3,fileFormatted)
-    deallocate(junk, junk2, junk3)
+    if (associated(junk)) deallocate(junk)
+    if (associated(junk2)) deallocate(junk2)
+    if (associated(junk3)) deallocate(junk3)
 
     call readClumps(fileFormatted)
     
@@ -3882,6 +3919,7 @@ contains
     grid%dipoleOffset = dipoleOffset
     grid%amr2donly = amr2donly
     grid%statEq2d = statEq2d
+    write(*,*) myRankGlobal, " read in successfully"
 
   contains
    
@@ -3899,10 +3937,14 @@ contains
        type(octal), pointer :: thisChild, tempOctal
        integer              :: iChild
        logical :: loopAround !, onThread
+       logical :: deleteBranch, found
+       integer :: nFirstLevel, iSubcell, i
 
 
        nOctal = nOctal+1
        thisOctal%parent => parent
+
+
        
        if (fileFormatted) then
           read(unit=20,fmt=*,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
@@ -3934,7 +3976,9 @@ contains
        end if
 
 
-
+!       write(*,*) myrankGlobal, " reading in octal number ", nOctal, " depth ",thisOctal%nDepth, " label ", &
+!            thisOctal%label, " split ", grid%splitOvermpi,dompiflag, " nchild ",thisOctal%nChildren
+!       write(*,*) "flags ",grid%onekappa,grid%photoionization,molecular,cmf
        thisOctal%oneD = .not.(thisOctal%twoD.or.thisOctal%threeD)
 
 
@@ -3975,6 +4019,14 @@ contains
 
        endif
 
+       if (hydrodynamics) then
+          if (fileformatted) then
+             read(unit=20,iostat=error,fmt=*) thisOctal%boundaryCondition
+          else
+             read(unit=20,iostat=error) thisOctal%boundaryCondition
+          endif
+       endif
+          
 
        if (grid%splitOverMpi) then
           if (fileformatted) then
@@ -3985,6 +4037,7 @@ contains
           endif
        endif
 
+!       write(*,*) myrankGlobal, " rank has mpithread ", thisOctal%mpiThread
        if (myRankGlobal == 0) then
           thisOctal%nChildren = 0
           thisOctal%hasChild = .false.
@@ -3995,27 +4048,85 @@ contains
        loopAround = .true.
 
        do while (loopAround)
-          if (thisOctal%nDepth == 1) then
-             thisOctal%nChildren = 1
-             thisOctal%hasChild = .false.
-             thisOctal%hasChild(myRankGlobal) = .true.
-             thisOctal%indexChild(1) = myRankGlobal
-!             thisOctal%indexChild(myRankGlobal) = 1
+
+          if (nThreadsGlobal == 9) then
+             if (thisOctal%nDepth == 1) then
+                thisOctal%nChildren = 1
+                thisOctal%hasChild = .false.
+                thisOctal%hasChild(myRankGlobal) = .true.
+                thisOctal%indexChild(1) = myRankGlobal
+             endif
           endif
+
+          if (nThreadsGlobal == 65) then
+
+             if (thisOctal%nDepth == 2) then
+                thisOctal%nChildren = 1
+                allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                do i = 1, thisOctal%nChildren
+                   thisChild => thisOctal%child(i)
+                   call readOctreePrivate(thisChild,thisOctal,fileFormatted, nOctal, grid, dompiflag)
+                enddo
+                goto 666
+             endif
+
+             if (thisOctal%nDepth == 3) then
+
+                write(*,*) "rank ", myRankGlobal, " depth ",thisOctal%nDepth, " thread ", thisOctal%mpiThread
+                found = .false.
+                if (octalOnThread(thisOctal, 1, myRankGlobal)) then
+                   found = .true.
+                   allocate(thisOctal%child(1:thisOctal%nChildren)) 
+                   do iChild = 1, myRankGlobal
+                      do i = 1, thisOctal%nChildren
+                         thisChild => thisOctal%child(i)
+                         call readOctreePrivate(thisChild,thisOctal,fileFormatted, nOctal, grid, dompiflag)
+                      enddo
+                      if (iChild /= myRankGlobal) then
+                         tempOctal => thisChild
+                         call deleteOctreeBranch(tempOctal,onlyChildren = .false., &
+                              adjustParent = .false. , grid = grid, adjustGridInfo = .false.)
+                      endif
+                   enddo
+                else
+                   thisOctal%nChildren = 0
+                endif
+                if (.not.found) thisOctal%nChildren = 0
+                goto 666
+             endif
+          endif
+
+
+
           loopAround = .false.
           
           if (thisOctal%nChildren > 0) then 
              allocate(thisOctal%child(1:thisOctal%nChildren)) 
              do iChild = 1, thisOctal%nChildren, 1
                 thisChild => thisOctal%child(iChild)
+!                write(*,*) myRankGlobal, " calling readoctreeprivate. depth ", thisOctal%ndepth, " ichild ", ichild, &
+!                     " thisoctal%nchildren ",thisOctal%nChildren
+
                 call readOctreePrivate(thisChild,thisOctal,fileFormatted, nOctal, grid, dompiflag)             
+
+!                write(*,*) myRankGlobal, " has called readoctreeprivate. depth ", thisOctal%ndepth
+                deleteBranch = .false.
+
+                if (nThreadsGlobal == 9) then
+                   if ((thisOctal%nDepth == 1).and.(thisChild%mpiThread(1) /= myRankGlobal)) deleteBranch = .true.
+                endif
+
+
              
-                if ((thisOctal%nDepth == 1).and.(thisChild%mpiThread(1) /= myRankGlobal)) then
+                if (deleteBranch) then
+
+                   loopAround = .true.
+
                    tempOctal => thisChild
-!                   write(*,*) myrankglobal, " split over mpi ", grid%splitOverMpi
-!                   write(*,*) myRankGlobal, " attempting to delete branch. mpithread ",thisChild%mpithread
-!                   write(*,*) myrankGlobal, " child depth is ", thisChild%nDepth
-!                   write(*,*) myrankglobal, " this octal has nchildren set to ", thisOctal%nChildren 
+                   write(*,*) myrankglobal, " split over mpi ", grid%splitOverMpi
+                   write(*,*) myRankGlobal, " attempting to delete branch. mpithread ",thisChild%mpithread
+                   write(*,*) myrankGlobal, " child depth is ", thisChild%nDepth
+                   write(*,*) myrankglobal, " this octal has nchildren set to ", thisOctal%nChildren 
                    call deleteOctreeBranch(tempOctal,onlyChildren = .false., &
                         adjustParent = .false. , grid = grid, adjustGridInfo = .false.)
                    
@@ -4023,9 +4134,9 @@ contains
                         adjustParent=.false., grid=grid, & 
                         adjustGridInfo=.false.)
                    deallocate(thisOctal%child)
-                   loopAround = .true.
-!                   write(*,*) myRankGlobal, " deleted branch ", thisOctal%nChildren
-!                   write(*,*) myRankGlobal, " thisoctal ndepth ", thisOctal%nDepth
+                   write(*,*) myRankGlobal, " deleted branch ", thisOctal%nChildren
+                   write(*,*) myRankGlobal, " thisoctal ndepth ", thisOctal%nDepth
+                   
                 endif
                 
              end do
@@ -4120,7 +4231,7 @@ contains
           endif
        endif
 
-       write(*,*) myRankGlobal, " skipping octal with mpithread ",thisOctal%mpithread
+!r       write(*,*) myRankGlobal, " skipping octal with mpithread ",thisOctal%mpithread
 
      end subroutine getOctalPrivate
  
@@ -6293,33 +6404,33 @@ contains
      if (fileFormatted) then
         read(unit=20,fmt=*,iostat=error) present
         if (error /=0) then 
-          print *, 'Panic: read error in readDouble2D' ; stop
+          print *, 'Panic: read error in readDouble2D',myrankglobal ; stop
         end if
         if (present) then
            read(unit=20,fmt=*,iostat=error) length1, length2
            if (error /=0) then 
-             print *, 'Panic: read error in readDouble2D' ; stop
+             print *, 'Panic: read error in readDouble2D',myrankglobal ; stop
            end if
            allocate(variable(length1,length2))
            read(unit=20,fmt=*,iostat=error) variable
            if (error /=0) then 
-             print *, 'Panic: read error in readDouble2D' ; stop
+             print *, 'Panic: read error in readDouble2D',myrankglobal ; stop
            end if
         end if
      else
         read(unit=20,iostat=error) present
         if (error /=0) then 
-          print *, 'Panic: read error in readDouble2D' ; stop
+          print *, 'Panic: read error in readDouble2D',myrankglobal ; stop
         end if
         if (present) then
            read(unit=20,iostat=error) length1, length2
            if (error /=0) then 
-             print *, 'Panic: read error in readDouble2D' ; stop
+             print *, 'Panic: read error in readDouble2D',myrankglobal ; stop
            end if
            allocate(variable(length1,length2))
            read(unit=20,iostat=error) variable
            if (error /=0) then 
-             print *, 'Panic: read error in readDouble2D' ; stop
+             print *, 'Panic: read error in readDouble2D',myrankglobal ; stop
            end if
         end if
      end if

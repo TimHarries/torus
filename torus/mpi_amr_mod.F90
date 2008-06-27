@@ -174,6 +174,7 @@ contains
 
              call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
              if (present(title)) call pglab(" ", " ", title)
+             write(*,*) "Scaling from ", valueMin, " to ", valuemax
              if(logscale) then
                 CALL PGWEDG('BI', 4.0, 5.0, real(log10(valueMin)), real(log10(valueMax)), TRIM(ADJUSTL(valueName)) )
              else

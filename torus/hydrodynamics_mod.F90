@@ -1012,7 +1012,6 @@ contains
              write(*,*) "rho ", thisOctal%rho(subcell)
              write(*,*) "rhoe ", thisOctal%rhoe(subcell)
              write(*,*) "biggamma ", biggamma
-             write(*,*) "ethermal ", ethermal
              write(*,*) "EOS ", iEquationofState
           endif
           if (isnan(thisOctal%pressure_i(subcell))) then
@@ -3888,8 +3887,8 @@ contains
     converged_tmp=.true.
 
 
-    refineOnMass = .false.
-    refineOnIonization = .true.
+    refineOnMass = .true.
+    refineOnIonization = .false.
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -4423,7 +4422,7 @@ contains
                 call mpi_send(nTemp, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, ierr)
                 if (nTemp(1) > 0) then
                    do i = 1, nTemp(1)
-                      call mpi_send(temp(i,:), 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
+                      call mpi_send(temp(i,1:4), 4, MPI_DOUBLE_PRECISION, iThread, tag, MPI_COMM_WORLD, ierr)
                    enddo
                 endif
              endif
@@ -5762,9 +5761,10 @@ contains
     include 'mpif.h'
     type(gridtype) :: grid
     logical, optional :: multigrid
+    integer, parameter :: maxThreads = 100
     integer :: iDepth
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
-    real(double) :: fracChange(20), tempFracChange(20), deltaT, dx
+    real(double) :: fracChange(maxthreads), tempFracChange(maxthreads), deltaT, dx
     integer :: nHydrothreads
     real(double), parameter :: tol = 1.d-5
     integer :: it, ierr
