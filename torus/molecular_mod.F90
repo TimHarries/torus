@@ -832,7 +832,6 @@ module molecular_mod
      logical :: itransdone(200)
      logical :: realdust
      real(double),save :: BnuBckGrnd(200)
-     integer,save :: transArray(200,2)
      real(double) :: balance(200), spontaneous(200) 
      real(double) :: nMol
      integer, parameter :: maxSamplePoints = 100
@@ -1006,7 +1005,7 @@ module molecular_mod
    end subroutine getRay
 
  subroutine calculateMoleculeSpectrum(grid, thisMolecule)
-   use input_variables, only : itrans, nSubpixels, inc, debug, usedust
+   use input_variables, only : itrans, nSubpixels, inc, usedust
 
 #ifdef MPI
        include 'mpif.h'
@@ -1014,19 +1013,13 @@ module molecular_mod
 
    type(GRIDTYPE) :: grid
    type(MOLECULETYPE) :: thisMolecule
-   integer :: i
    type(OCTALVECTOR) :: unitvec, posvec, centrevec, viewvec
    type(DATACUBE) ::  cube
 
-   real(double) :: tau, dummy
    character (len=80) :: filename
 
    real(double) :: mean(6) = 0.d0
    integer :: icount = 0
-
-   type(OCTALVECTOR) :: currentposition
-   type(octal), pointer :: thisoctal
-   integer :: subcell
 
 
 #ifdef MPI
@@ -1034,7 +1027,6 @@ module molecular_mod
      integer       ::   my_rank        ! my processor rank
      integer       ::   np             ! The number of processes
      integer       ::   ierr           ! error flag
-     real(double), allocatable :: tempArray(:)
 
      ! FOR MPI IMPLEMENTATION=======================================================
      !  Get my process rank # 
@@ -1143,7 +1135,7 @@ module molecular_mod
      type(OCTALVECTOR) :: position, direction
      integer :: nOctal, iOctal, subcell
      real(double), allocatable :: ds(:), phi(:), i0(:,:)
-     integer :: nRay, tempray
+     integer :: nRay !, tempray
      integer :: previousnRay = 100
      type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
      type(OCTAL), pointer :: thisOctal
@@ -3072,8 +3064,8 @@ module molecular_mod
    character(len=80) :: filename
    type(datacube) :: cube
    type(moleculetype) :: thisMolecule
-   real(double),allocatable :: convolvedfluxspec(:), fluxspec(:), inspec(:), antspec(:), weightedspec(:), &
-                               brightnessspec(:)
+   real(double),allocatable :: fluxspec(:), inspec(:) !, &
+!                               convolvedfluxspec(:), brightnessspec(:), antspec(:), weightedspec(:)
    real(double) :: fac, dA, fac2
    integer :: i
    integer :: itrans
@@ -3083,11 +3075,11 @@ module molecular_mod
 !   call fineGaussianWeighting(cube, cube%nx, beamsize, weight)!, NormalizeArea = .true.)
 
    allocate(fluxspec(1:cube%nv))
-   allocate(convolvedfluxspec(1:cube%nv))
+!   allocate(convolvedfluxspec(1:cube%nv))
    allocate(inspec(1:cube%nv))
-   allocate(antspec(1:cube%nv))
-   allocate(weightedspec(1:cube%nv))
-   allocate(brightnessspec(1:cube%nv))
+!   allocate(antspec(1:cube%nv))
+!   allocate(weightedspec(1:cube%nv))
+!   allocate(brightnessspec(1:cube%nv))
 
    fac =  pi*(cube%telescope%Diameter/2.d0)**2 / (2.d0*kerg) ! Effective Telescope Area / 2k - Flux -> Antenna Temp
 
@@ -3125,7 +3117,9 @@ module molecular_mod
    
    close(30)
 endif
-   deallocate(fluxspec, convolvedfluxspec, inspec, antspec, weightedspec, brightnessspec)
+
+   deallocate(inspec, fluxspec)
+!   deallocate(convolvedfluxspec, antspec, weightedspec, brightnessspec)
 
  end subroutine createFluxSpectra
 
@@ -3597,7 +3591,6 @@ end subroutine testOpticalDepth
 
 subroutine plotdiscValues(grid, thisMolecule)
   
-  use input_variables, only : lamstart, lamend, rinner, router, debug
 
   type(GRIDTYPE) :: grid
   type(MOLECULETYPE) :: thisMolecule
