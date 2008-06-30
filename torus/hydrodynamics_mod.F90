@@ -78,7 +78,7 @@ contains
     integer :: myRank, ierr
     type(octal), pointer   :: thisOctal, parentOctal, testOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, n, m
+    integer :: i, n, m
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -113,7 +113,7 @@ contains
   recursive subroutine updatePhiTree(thisOctal, nDepth)
     include 'mpif.h'
     integer :: myRank, ierr
-    type(octal), pointer   :: thisOctal, parentOctal, testOctal
+    type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, n, nDepth
 
@@ -207,8 +207,8 @@ contains
     integer :: myRank, ierr
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, iDepth
-    real(double) :: dt, dx, x_plus_half, x_minus_half
+    integer :: subcell, i
+    real(double) :: dt, dx !, x_plus_half, x_minus_half
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
   
@@ -257,7 +257,7 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, iDepth
-    real(double) :: dt, dx, x_plus_half, x_minus_half
+    real(double) :: dt !, dx
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
   
@@ -293,10 +293,9 @@ contains
   recursive subroutine setupX(thisOctal, grid, direction)
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator
+    integer :: subcell, i
+    type(OCTALVECTOR) :: direction
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -316,12 +315,10 @@ contains
 
 
   recursive subroutine dumpx(thisOctal, n)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer   :: neighbourOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, neighbourSubcell, n
-    type(OCTALVECTOR) :: direction, locator
+    integer :: subcell, i, n
+    type(OCTALVECTOR) :: locator
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -898,15 +895,13 @@ contains
    recursive subroutine computePressureU(thisOctal, gamma, direction, iEquationOfState)
      include 'mpif.h'
      integer :: myRank, ierr
-    type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal, neighbourOctal
+    type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, neighbourSubcell
-    real(double) :: gamma, eThermal, eKinetic, eTot, u, bigGamma,eta, u2
-    type(OCTALVECTOR) :: direction, locator
+    integer :: subcell, i
+    real(double) :: gamma, bigGamma,eta
+    type(OCTALVECTOR) :: direction
     integer :: iEquationOfState
     logical :: useViscosity
-    integer :: nd
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -966,14 +961,12 @@ contains
    recursive subroutine computePressureV(thisOctal, gamma, direction,  iEquationOfState)
      include 'mpif.h'
      integer :: myRank, ierr
-    type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal, neighbourOctal
+    type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, neighbourSubcell
-    real(double) :: gamma, eThermal, eKinetic, eTot, u, bigGamma,eta,u2
-    type(OCTALVECTOR) :: direction, locator
+    integer :: subcell, i
+    real(double) :: gamma, bigGamma,eta
+    type(OCTALVECTOR) :: direction
     integer ::  iEquationOfState
-    integer :: nd
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -1027,14 +1020,12 @@ contains
    recursive subroutine computePressureW(thisOctal, gamma, direction,  iEquationOfState)
      include 'mpif.h'
      integer :: myRank, ierr
-    type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal, neighbourOctal
+    type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, neighbourSubcell
-    real(double) :: gamma, eThermal, eKinetic, eTot, u, bigGamma,eta,u2
-    type(OCTALVECTOR) :: direction, locator
+    integer :: subcell, i
+    real(double) :: gamma, bigGamma,eta
+    type(OCTALVECTOR) :: direction
     integer :: iEquationOfState
-    integer :: nd
 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -1084,12 +1075,11 @@ contains
   recursive subroutine pressureForceU(thisOctal, dt, iEquationOfState)
     include 'mpif.h'
     integer :: myRank, ierr
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, tmp, rhou, dx
-    integer :: iEquationOfState, iDepth
+    real(double) :: dt, rhou, dx
+    integer :: iEquationOfState
 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -1181,12 +1171,11 @@ contains
   recursive subroutine pressureForceV(thisOctal, dt, iEquationOfState)
     include 'mpif.h'
     integer :: myRank, ierr
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt, tmp, rhou, dx
-    integer :: iEquationOfState, iDepth
+    real(double) :: dt, rhou, dx
+    integer :: iEquationOfState
 
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -1278,12 +1267,11 @@ contains
   recursive subroutine pressureForceW(thisOctal, dt, iEquationOfState)
     include 'mpif.h'
     integer :: myRank, ierr
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt, rhow, dx
-    integer :: iEquationOfState, iDepth
+    integer :: iEquationOfState
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
 
@@ -1355,7 +1343,6 @@ contains
 
 
   recursive subroutine copyRhoToQ(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1379,7 +1366,6 @@ contains
   end subroutine copyRhoToQ
 
   recursive subroutine copyRhoEToQ(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1403,7 +1389,6 @@ contains
   end subroutine copyRhoEToQ
 
   recursive subroutine copyRhoUToQ(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1427,7 +1412,6 @@ contains
   end subroutine copyRhoUToQ
 
   recursive subroutine copyRhoVToQ(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1451,7 +1435,6 @@ contains
   end subroutine copyRhoVToQ
 
   recursive subroutine copyRhoWToQ(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1475,7 +1458,6 @@ contains
   end subroutine copyRhoWToQ
 
   recursive subroutine copyQtoRhoV(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1501,7 +1483,6 @@ contains
   end subroutine copyQtoRhoV
 
   recursive subroutine copyQtoRhoW(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1527,7 +1508,6 @@ contains
   end subroutine copyQtoRhoW
 
   recursive subroutine copyQtoRho(thisOctal, direction)
-    type(GRIDTYPE) :: grid
     type(OCTALVECTOR) :: direction
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
@@ -1576,7 +1556,6 @@ contains
   end subroutine copyQtoRho
 
   recursive subroutine copyQtoRhoE(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1602,7 +1581,6 @@ contains
   end subroutine copyQtoRhoE
 
   recursive subroutine copyQtoRhoU(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -1631,7 +1609,7 @@ contains
 
   subroutine advectRho(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
-    integer :: group(:), nGroup, iDepth
+    integer :: group(:), nGroup
     type(GRIDTYPE) :: grid
     real(double) :: dt
     type(OCTALVECTOR) :: direction
@@ -1644,7 +1622,7 @@ contains
 
   subroutine advectRhoE(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
-    integer :: group(:), nGroup, iDepth
+    integer :: group(:), nGroup
 
     type(GRIDTYPE) :: grid
     real(double) :: dt
@@ -1658,7 +1636,7 @@ contains
 
   subroutine advectRhoU(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
-    integer :: group(:), nGroup, iDepth
+    integer :: group(:), nGroup
 
     type(GRIDTYPE) :: grid
     real(double) :: dt
@@ -1672,7 +1650,7 @@ contains
 
   subroutine advectRhoV(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
-    integer :: group(:), nGroup, iDepth
+    integer :: group(:), nGroup
 
     type(GRIDTYPE) :: grid
     real(double) :: dt
@@ -1686,7 +1664,7 @@ contains
 
   subroutine advectRhoW(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
-    integer :: group(:), nGroup, iDepth
+    integer :: group(:), nGroup
 
     type(GRIDTYPE) :: grid
     real(double) :: dt
@@ -1700,7 +1678,7 @@ contains
 
   subroutine advectQ(grid, direction, dt, nPairs, thread1, thread2, nbound, group, nGroup)
     integer :: nPairs, thread1(:), thread2(:), nBound(:)
-    integer :: group(:), nGroup, iDepth
+    integer :: group(:), nGroup
 
     type(GRIDTYPE) :: grid
     real(double) :: dt
@@ -1722,7 +1700,7 @@ contains
   subroutine  hydroStep(grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
     type(GRIDTYPE) :: grid
     real(double) :: gamma, dt
-    type(OCTALVECTOR) :: direction
+!    type(OCTALVECTOR) :: direction
     integer :: nPairs, thread1(:), thread2(:), nBound(:), group(:), nGroup
 
 !    direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
@@ -1772,10 +1750,8 @@ contains
     integer :: group(:), nGroup
     integer :: iEquationOfState
     integer :: iDepth
-    real(double) :: gamma, dt, subdt, courantDt, timeStep, nextTimeStep
-    type(OCTALVECTOR) :: direction
-    integer :: i
-    integer :: minDepth, maxDepth, jDepth, nextDepth
+    real(double) :: gamma, timeStep, nextTimeStep
+    integer :: minDepth, maxDepth, nextDepth
 
 
     if (iDepth /= maxDepth) then
@@ -1804,12 +1780,9 @@ contains
     logical :: selfGravity
     integer :: group(:), nGroup
     integer :: iEquationOfState
-    integer :: iDepth
-    real(double) :: gamma, dt, subdt
+    real(double) :: gamma, dt
     type(OCTALVECTOR) :: direction
-    integer :: i
-    integer :: minDepth, maxDepth, jDepth
-    real(double) :: testTime(10)
+    integer :: minDepth, maxDepth
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
 
     selfGravity = .true.
@@ -1935,9 +1908,8 @@ contains
     integer :: group(:), nGroup
     integer :: iEquationOfState
 
-    real(double) :: gamma, dt, subdt
+    real(double) :: gamma, dt
     type(OCTALVECTOR) :: direction
-    integer :: i
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
@@ -2015,11 +1987,10 @@ contains
   recursive subroutine computeCourantTime(thisOctal, tc, gamma, iEquationOfState)
     include 'mpif.h'
     integer :: myRank, ierr
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: tc, dx, cs, gamma, eThermal, eTot, eKinetic, u, speed
+    real(double) :: tc, dx, cs, gamma, speed
     integer :: iEquationOfState
   
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -2060,7 +2031,6 @@ contains
     integer :: subcell
     real(double) :: cs, gamma
     real(double) :: u2, eKinetic, eTot, eThermal
-    integer :: iEquationOfSate
     logical, save :: firstTime = .true.
     integer :: iEquationOfState
     real(double), parameter :: gamma2 = 1.4d0, rhoCrit = 1.d-14
@@ -2111,7 +2081,7 @@ contains
     type(gridtype) :: grid
     real(double) :: dt,  gamma, mu
     real(double) :: currentTime
-    integer :: i, pgbegin
+    integer :: i
     type(OCTALVECTOR) :: direction
     logical :: gridConverged
     integer :: iEquationOfState = 0
@@ -2331,21 +2301,18 @@ contains
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64), gamma, mu
     real(double) :: currentTime, smallTime
-    integer :: i, pgbegin, it, iUnrefine
+    integer :: i, it, iUnrefine
     integer :: myRank, ierr
     character(len=20) :: plotfile
-    real(double) :: tDump, nextDumpTime, ang, tff
+    real(double) :: tDump, nextDumpTime, tff !, ang
     type(OCTALVECTOR) :: direction, viewVec
     logical :: gridConverged
     integer :: nSource = 0
-    type(SOURCETYPE) :: source(1)
-    integer :: nDependent, dependentThread(100)
     integer :: thread1(200), thread2(200), nBound(200), nPairs
     logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads
     integer :: nGroup, group(200)
     integer :: iEquationOfState = 2
-    integer :: minDepth, maxDepth
     logical :: doRefine
 
     dorefine = .true.
@@ -2619,15 +2586,13 @@ contains
     type(gridtype) :: grid
     real(double) :: dt, tc(64), temptc(64), gamma, mu
     real(double) :: currentTime
-    integer :: i, pgbegin, it, iUnrefine
+    integer :: i, it, iUnrefine
     integer :: myRank, ierr
     character(len=20) :: plotfile, titleString
-    real(double) :: tDump, nextDumpTime, ang, tff
+    real(double) :: tDump, nextDumpTime, tff !, ang
     type(OCTALVECTOR) :: direction, viewVec
     logical :: gridConverged
     integer :: nSource = 0
-    type(SOURCETYPE) :: source(1)
-    integer :: nDependent, dependentThread(100)
     integer :: thread1(100), thread2(100), nBound(100), nPairs
     integer :: nGroup, group(100)
 
@@ -2893,7 +2858,6 @@ contains
   end subroutine doHydrodynamics2d
 
   recursive subroutine calculateEnergy(thisOctal, gamma, mu)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -2922,7 +2886,6 @@ contains
 
 
   recursive subroutine zeroRefinedLastTime(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -2946,7 +2909,6 @@ contains
 
 
   recursive subroutine transferTempStorage(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -2981,7 +2943,6 @@ contains
   end subroutine transferTempStorage
 
   recursive subroutine calculateRhoV(thisOctal, direction)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3005,7 +2966,6 @@ contains
   end subroutine calculateRhoV
 
   recursive subroutine calculateRhoW(thisOctal, direction)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3030,7 +2990,6 @@ contains
 
 
   recursive subroutine calculateRhoU(thisOctal, direction)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3054,7 +3013,6 @@ contains
   end subroutine calculateRhoU
 
   recursive subroutine calculateRhoE(thisOctal, direction)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3120,7 +3078,6 @@ contains
   end subroutine plotHydroResults
 
   recursive subroutine getArray(thisOctal, x, rho, rhou, v, n)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3151,7 +3108,6 @@ contains
 
 
   recursive subroutine unsetGhosts(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3174,7 +3130,6 @@ contains
   end subroutine unsetGhosts
 
   recursive subroutine feederCellCheck(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3198,7 +3153,6 @@ contains
   end subroutine feederCellCheck
 
   recursive subroutine boundaryCondCheck(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -3234,7 +3188,6 @@ contains
     type(octal), pointer   :: thisOctal, bOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, bSubcell
-    logical :: firsttime
     type(OCTALVECTOR) :: locator, dir
     real(double) :: gamma, machNumber, Pr, rhor
 
@@ -3686,15 +3639,13 @@ contains
   recursive subroutine setupEdges(thisOctal, grid)
     include 'mpif.h'
     type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal, neighbourOctal
+    type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
-    integer :: subcell, i, neighbourSubcell
+    integer :: subcell, i
     type(OCTALVECTOR) :: locator, rVec
     integer :: nProbes, iProbe
-    type(OCTALVECTOR) :: probe(6), direction
-    real(double) :: dx
+    type(OCTALVECTOR) :: probe(6)
     integer :: nProbeOutside
-    logical :: corner
     integer :: myRank, ierr
 
 
@@ -3760,11 +3711,9 @@ contains
     use input_variables, only : maxDepthAMR
     type(GRIDTYPE) :: grid
     type(OCTAL), pointer :: thisOctal, child
-    type(OCTALVECTOR) :: rVec, corner
-    integer :: i, j, subcell, iStream
+    integer :: i, subcell
     logical :: inherit
     logical :: split
-    integer :: n
     character(len=*) :: criterion
 
     subcell = 1
@@ -3866,20 +3815,19 @@ contains
     use input_variables, only : maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: child, neighbourOctal
     !
-    integer :: subcell, i, ilambda
+    integer :: subcell, i
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, loc, locator
-    logical :: split
-    integer :: neighbourSubcell, j, nDir
-    real(double) :: r, grad, maxGradient
+    type(OCTALVECTOR) :: dirVec(6), centre, locator
+!    logical :: split
+    integer :: neighbourSubcell, nDir
+    real(double) :: r !, grad, maxGradient
     logical, optional :: inherit
     real(double), parameter :: limit = 0.1d0
     real(double) :: gamma
-    real(double) :: cs, rhocs
+!    real(double) :: cs, rhocs
     integer :: myRank, ierr
     integer :: iEquationOfState
     logical :: refineOnMass, refineOnIonization
@@ -4059,14 +4007,10 @@ contains
     use input_variables, only : maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
-    integer :: subcell, i, ilambda
+    type(octal), pointer  :: child
+    integer :: subcell, i
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, rvec
-    integer :: neighbourSubcell, j, nDir
-    real(double) :: r
     logical, optional :: inherit
     integer :: myRank, ierr
     converged = .true.
@@ -4111,15 +4055,11 @@ contains
     use input_variables, only : maxDepthAMR
     include 'mpif.h'
     type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: child
     !
-    integer :: subcell, i, ilambda
+    integer :: subcell, i
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, rvec
-    integer :: neighbourSubcell, j, nDir
-    real(double) :: r
     logical, optional :: inherit
     integer :: myRank, ierr
     converged = .true.
@@ -4182,18 +4122,16 @@ contains
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    integer :: ilambda
     real(double) :: gamma
-    integer :: subcell, i, j
-    logical :: unrefine, ok, converged
-    integer :: nTau
-    integer :: nVals, nc
-    real(double) :: rhow(8), rhov(8), rhou(8), rho(8), rhoe(8), fac, limit
+    integer :: subcell, i
+    logical :: unrefine
+    integer :: nc
+    real(double) :: rhow(8), rhov(8), rhou(8), rho(8), rhoe(8) !, fac, limit
     real(double) :: cs(8), mass
-    real(double) :: rhocs, rhomean, rhoemean
+!    real(double) :: rhocs, rhomean, rhoemean
     logical :: refinedLastTime, ghostCell
     integer :: iEquationOfState
-    limit  = 0.1d0
+!    limit  = 0.1d0
 
     unrefine = .true.
     refinedLastTime = .false.
@@ -4283,15 +4221,12 @@ contains
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child
-    integer :: ilambda
     real(double) :: gamma
-    integer :: subcell, i, j
-    logical :: unrefine, ok, converged
-    integer :: nTau
-    integer :: nVals, nc
-    real(double) :: ionfrac(8), fac, limit
-    real(double) :: cs(8), mass
-    real(double) :: rhocs, rhomean, rhoemean
+    integer :: subcell, i
+    logical :: unrefine
+    integer :: nc
+    real(double) :: ionfrac(8), limit
+    real(double) :: mass
     logical :: refinedLastTime, ghostCell
     integer :: iEquationOfState
     limit  = 0.1d0
@@ -4333,8 +4268,8 @@ contains
  
 
   function sigma(x, n)
-    real(double) :: x(:), sigma, mean
-    integer :: n, i
+    real(double) :: x(:), sigma !, mean
+    integer :: n !, i
 
 !    mean = SUM(x(1:n))/dble(n)
 !    do i = 1, n
@@ -4355,7 +4290,6 @@ contains
     type(OCTALVECTOR) :: locs(100000), eLocs(100000)
     integer :: nLocs(64), tempNlocs(10000)
     integer :: thread(100000), nLocsGlobal,i, depth(100000)
-    integer :: nGroup, group(1000)
 
     real(double) :: temp(10000,4),tempsent(4)
     integer :: nTemp(1), nSent(1), eDepth(100000)
@@ -4365,7 +4299,7 @@ contains
     logical :: globalChanged(64)
     integer :: status(MPI_STATUS_SIZE)
     logical :: evenAcrossThreads
-    character(len=20) :: plotfile
+!    character(len=20) :: plotfile
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
     ! first even up the local part of the grid
@@ -4479,13 +4413,12 @@ contains
 
     include 'mpif.h'
     type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: child, neighbourOctal
     !
-    integer :: subcell, i, ilambda
+    integer :: subcell, i
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, loc
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
@@ -4610,7 +4543,7 @@ contains
     include 'mpif.h'
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: child, neighbourOctal
     !
     integer :: subcell, i
     logical :: converged, converged_tmp
