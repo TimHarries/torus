@@ -3040,7 +3040,7 @@ contains
 
   
   subroutine writeAMRgrid(filename,fileFormatted,grid)
-    use input_variables, only : molecular, cmf, hydrodynamics
+    use input_variables, only : molecular, cmf
     ! writes out the 'grid' for an adaptive mesh geometry  
 
     implicit none
@@ -3938,7 +3938,7 @@ contains
        integer              :: iChild
        logical :: loopAround !, onThread
        logical :: deleteBranch, found
-       integer :: nFirstLevel, iSubcell, i
+       integer :: i
 
 
        nOctal = nOctal+1

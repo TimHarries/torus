@@ -192,7 +192,6 @@ contains
 !     .  arrays are set for a maximum size parameter of 200     .
 !     ...........................................................
 
-      integer :: nci
       integer :: i, n, n1
       complex :: cim
       real :: p1, p2

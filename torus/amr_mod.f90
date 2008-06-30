@@ -5086,7 +5086,6 @@ IF ( .NOT. gridConverged ) RETURN
     real(double) :: h0
     integer,save :: acount,bcount,ccount = 0
     logical,save  :: firstTime = .true.
-    character(len=100) :: message
 
     integer,save :: mass_split, particle_split
 
@@ -9355,7 +9354,6 @@ end function readparameterfrom2dmap
     type(octalvector) :: posvec
     type(octal), pointer :: thisOctal
     integer :: subcell
-    real(double) :: v, r
     posVec = point
 
     thisOctal => grid%octreeroot

@@ -3872,7 +3872,7 @@ contains
     !
     integer :: subcell, i, ilambda
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat, loc, locator
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec, loc, locator
     logical :: split
     integer :: neighbourSubcell, j, nDir
     real(double) :: r, grad, maxGradient
@@ -4064,7 +4064,7 @@ contains
     type(octal), pointer  :: child, neighbourOctal, startOctal
     integer :: subcell, i, ilambda
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat, rvec
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec, rvec
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
@@ -4117,7 +4117,7 @@ contains
     !
     integer :: subcell, i, ilambda
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat, rvec
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec, rvec
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
@@ -4485,7 +4485,7 @@ contains
     !
     integer :: subcell, i, ilambda
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat, loc
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec, loc
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
     logical, optional :: inherit
@@ -4609,13 +4609,12 @@ contains
 
     include 'mpif.h'
     type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child, neighbourOctal, startOctal
     !
-    integer :: subcell, i, ilambda
+    integer :: subcell, i
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat, loc(:)
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec, loc(:)
     integer :: thread(:), depth(:)
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
@@ -4691,13 +4690,12 @@ contains
 
     include 'mpif.h'
     type(gridtype) :: grid
-    real :: factor
     type(octal), pointer   :: thisOctal
-    type(octal), pointer  :: child, neighbourOctal, startOctal
+    type(octal), pointer  :: child, neighbourOctal
     !
-    integer :: subcell, i, ilambda
+    integer :: subcell, i
     logical :: converged, converged_tmp
-    type(OCTALVECTOR) :: dirVec(6), centre, octVec, aHat
+    type(OCTALVECTOR) :: dirVec(6), centre, octVec
     integer :: dependentThread(:)
     integer :: neighbourSubcell, j, nDir
     real(double) :: r
@@ -4819,7 +4817,6 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    type(OCTALVECTOR) :: direction
     real(double) :: gamma
   
     do subcell = 1, thisOctal%maxChildren
@@ -4853,18 +4850,16 @@ contains
 
   recursive subroutine calculateFluxDifferences(grid, thisOctal, dt, gamma, direction)
     type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal, neighbourOctal
-    integer :: neighbourSubcell
+    type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    type(OCTALVECTOR) :: direction, locator
+    type(OCTALVECTOR) :: direction
     real(double) :: fluxl(3), fluxr(3), fludif(3), rSumr, hTilde, uTilde, vsc, ssc
     real(double) :: eiglam(3), sgn(3)
-    real(double) :: absVt, dtdx, dt, gamma
-    integer :: ierr, n
+    real(double) :: absVt, dt, gamma
+    integer :: ierr
     real(double), parameter :: sbpar1 = 1.d0, sbpar2 = 2.d0
     real(double) :: fluxc_i_minus_1(3), w_i_minus_1(4)
-    real(double) :: q, qnext, rho, rhoe, rhou, rhov, rhow,pressure, x, flux
     real(double) :: uvdif
 
     do subcell = 1, thisOctal%maxChildren
@@ -4929,11 +4924,10 @@ contains
 
   recursive subroutine applySuperBee(grid, thisOctal, dt, gamma, direction)
     type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal, neighbourOctal
-    integer :: neighbourSubcell
+    type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    type(OCTALVECTOR) :: direction, locator
+    type(OCTALVECTOR) :: direction
     real(double) :: fluxl(3), fluxr(3), fludif(3), rSumr, hTilde, uTilde, vsc, ssc
     real(double) :: fluxc_i_minus_1(3)
     real(double) :: eiglam(3), sgn(3)
@@ -4942,7 +4936,6 @@ contains
     integer :: ierr, n
     real(double), parameter :: sbpar1 = 2.d0, sbpar2 = 2.d0
     real(double) :: uvdif
-    real(double) :: q, rho, rhoe, rhou, rhov, rhow, qnext, x, pressure, flux
     real(double) :: w_i_minus_1(4)
     
     do subcell = 1, thisOctal%maxChildren
@@ -5061,7 +5054,6 @@ contains
   end subroutine updateStateVariables
 
   recursive subroutine createStateVectors(thisOctal, gamma)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -5107,11 +5099,9 @@ contains
   end subroutine createStateVectors
 
   recursive subroutine unpackStateVectors(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    type(OCTALVECTOR) :: direction
     
   
     do subcell = 1, thisOctal%maxChildren
@@ -5218,8 +5208,7 @@ contains
 
   recursive subroutine calculateNewFluxes(grid, thisOctal, direction, dt, gamma)
     type(GRIDTYPE) :: grid
-    type(octal), pointer   :: thisOctal, neighbourOctal
-    integer :: neighbourSubcell
+    type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
     real(double) :: dt
@@ -5229,8 +5218,8 @@ contains
     real(double) :: gamma, qstate_i_plus_1(5)
     real(double) :: cSHat, zeta, uHat, vHat, wHat, hTotHat, rhoHat, PHat, eTotHat, eKinHat
     real(double) :: lambda(5), tildePhi(5), theta(5), eps(1:5), dx, qstate_i_minus_2(5), r(5)
-    type(OCTALVECTOR) :: direction, locator
-    integer :: n, nbound
+    type(OCTALVECTOR) :: direction
+    integer :: n
     
   
     do subcell = 1, thisOctal%maxChildren
@@ -5319,7 +5308,6 @@ contains
   end subroutine calculateNewFluxes
 
   recursive subroutine swapFluxes(thisOctal)
-    type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
@@ -5351,7 +5339,6 @@ contains
     type(OCTALVECTOR) :: direction
     real(double) :: gamma
     real(double) :: dt
-    integer :: i
 
     write(*,*) myRankGlobal, " setting up x"
     call setupX(grid%octreeRoot, grid, direction)
@@ -5387,7 +5374,6 @@ contains
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i
-    real(double) :: dt
     real(double) :: qstate_i_minus_1(5)
     type(OCTALVECTOR) :: direction
     
@@ -5425,11 +5411,10 @@ contains
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator, dir(6)
-    real(double) :: rhou_i_minus_1, rho_i_minus_1
+    type(OCTALVECTOR) :: locator, dir(6)
     integer :: n, ndir, nd
     real(double) :: x1, x2, g(6)
-    real(double) :: deltaT, fracChange, gGrav, newPhi, frac, d2phidx2(3), sumd2phidx2
+    real(double) :: deltaT, fracChange, gGrav, newPhi, frac !, d2phidx2(3), sumd2phidx2
 
     gGrav = bigG
 
@@ -5529,8 +5514,7 @@ contains
     type(octal), pointer  :: child 
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator, dir(6), probe(6)
-    real(double) :: rhou_i_minus_1, rho_i_minus_1
+    type(OCTALVECTOR) :: locator, dir(6), probe(6)
     integer :: n, ndir
     real(double) ::  g(6), dx
     real(double) :: deltaT, fracChange, gGrav, newPhi, frac, d2phidx2(3), sumd2phidx2
@@ -5665,11 +5649,10 @@ contains
     integer :: nDepth
     real(double) :: rho, rhou, rhov, rhow, q, qnext, x, rhoe, pressure, flux, phi
     integer :: subcell, i, neighbourSubcell
-    type(OCTALVECTOR) :: direction, locator, dir(6)
-    real(double) :: rhou_i_minus_1, rho_i_minus_1
+    type(OCTALVECTOR) :: locator, dir(6)
     integer :: n, ndir
     real(double) :: x1, x2, g(6)
-    real(double) :: deltaT, fracChange, gGrav, newPhi, frac, d2phidx2(3), sumd2phidx2
+    real(double) :: deltaT, fracChange, gGrav, newPhi, frac !, d2phidx2(3), sumd2phidx2
 
     gGrav = bigG
 
@@ -5768,7 +5751,7 @@ contains
     integer :: nHydrothreads
     real(double), parameter :: tol = 1.d-5
     integer :: it, ierr
-    character(len=30) :: plotfile
+!    character(len=30) :: plotfile
     nHydroThreads = nThreadsGlobal - 1
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")
