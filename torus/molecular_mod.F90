@@ -3488,7 +3488,7 @@ subroutine testOpticalDepth(grid,thisMolecule)
   type(octal), pointer   :: thisOctal
   type(OCTALVECTOR) :: currentposition(3), posvec, viewvec, unitvec
   integer :: subcell, i, itrans
-  integer :: ilamb, nlamb
+  integer :: ilamb, nlamb=500
   real(double) :: xmidplane
   real :: lamb
   real(double) :: tau, dummy, kappaAbs, kappaSca, i0
