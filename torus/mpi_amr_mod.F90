@@ -1929,6 +1929,28 @@ contains
 !    write(*,*) myrankGlobal, " leaving receive requests ", sendLoop
   end subroutine periodBoundaryReceiveRequests
 
+#else
+
+  use messages_mod
+  use octal_mod
+
+  implicit none
+
+  contains
+
+! Stubbed version to allow non-MPI code to compile
+  function octalOnThread(thisOctal, subcell, myRank) result(check)
+    type(OCTAL), pointer :: thisOctal
+    integer :: subcell
+    integer :: myRank
+    logical :: check
+
+! Set return value of function to prevent a compiler warning. 
+    check=.false.
+    call writefatal("octalOnThread called in non-MPI code")
+    STOP
+
+  end function octalOnThread
 
 #endif
 end module mpi_amr_mod
