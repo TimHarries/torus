@@ -72,6 +72,7 @@ program torus
   use molecular_mod
   use modelatom_mod
   use cmf_mod
+  use vtk_mod
   use hydrodynamics_mod
   use mpi_global_mod
   use parallel_mod
@@ -1120,6 +1121,9 @@ program torus
         endif
      endif
 #endif
+
+     call  writeVtkFile(grid, "test.vtk", "rho")
+     stop
 
   if (lucyRadiativeEq) call do_lucyRadiativeEq
 
