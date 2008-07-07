@@ -1,0 +1,131 @@
+! A test of SPH-Torus which uses particles to represent the benchmark disc 
+
+program sphbench
+
+use torus_mod, only: torus
+
+  implicit none
+
+! number of particle spaces
+  integer, parameter :: nx=100
+  integer, parameter :: ny=100
+  integer, parameter :: nz=100
+  integer, parameter :: npart=(nx+1)*(ny+1)*(nz+1)
+
+! loop and particle indices
+  integer :: i, j, k, ipart
+
+! Define double precision 
+  integer, parameter :: db = selected_real_kind(15,307)
+
+! Grid size and centre offsets in cm 
+  real(db), parameter :: xsize   = 8.0d16
+  real(db), parameter :: ysize   = 8.0d16
+  real(db), parameter :: zsize   = 8.0d16
+  real(db), parameter :: xoffset = 4.0d16
+  real(db), parameter :: yoffset = 4.0d16
+  real(db), parameter :: zoffset = 4.0d16
+
+! Cartesian x,y,z co-ordinates
+  real(db) :: x(npart), y(npart), z(npart), r
+
+! Torus arguments
+  integer, parameter :: b_idim  = npart + 1 ! Set maximum array sizes
+  integer, parameter :: b_npart = npart + 1 ! Gas particles + one point mass
+  integer, parameter :: b_nactive=-99       ! Not used
+  integer, parameter :: b_nptmass = 1       ! Number of point masses
+  integer, parameter :: b_num_gas = npart   ! Number of gas particles
+  real(kind=8) :: b_xyzmh(5,b_idim)
+  real(kind=4) :: b_rho(b_idim)
+  integer(kind=1) :: b_iphase(b_idim) 
+  real(kind=8), parameter :: b_udist=1.0 ! unit of distance
+  real(kind=8), parameter :: b_umass=1.0 ! units of mass
+  real(kind=8), parameter :: b_utime=1.0 ! Units of time
+  real(kind=8), parameter :: b_time=1.0e16_db  ! Current time, used as age of star
+  real(kind=8) :: b_temp(b_num_gas)
+  real(kind=8), parameter :: temp_min=3.0
+
+! Source parameters
+  real(db), parameter :: source_x = 0.0
+  real(db), parameter :: source_y = 0.0
+  real(db), parameter :: source_z = 0.0
+
+  real(db), parameter :: mSol = 1.9891e33_db
+  real(db), parameter :: source_mass = 1.0 * mSol
+
+! disc parameters
+  real(db), parameter :: pi = 3.1415926535897932_db
+  real(db), parameter :: auToCm = 1.495979d13
+  real(db), parameter :: disc_r_outer = 1000.0 * auToCm
+  real(db), parameter :: disc_r_inner = 1.0 * auToCm
+  real(db), parameter :: r_d = 0.5 * disc_r_outer
+  real(db), parameter :: z_d = 0.25 * r_d
+  real(db), parameter :: rho_zero = 0.81614E-17_db
+  real(db), parameter :: rho_bg   = 1d-33 ! Background density
+
+  real(db) :: f1, f2, hr
+
+! Begin executable statments -------------
+
+! 1. Set up gas particles 
+
+  ipart = 0
+! Set up gas particle information
+  do k=0, nz
+     do j=0, ny
+        do i=0, nx
+
+           ipart = ipart+1
+           x(ipart) = ( (real(i) / real(nx)) * xsize ) - xoffset
+           y(ipart) = ( (real(j) / real(ny)) * ysize ) - yoffset
+           z(ipart) = ( (real(k) / real(nz)) * zsize ) - zoffset
+
+           r = sqrt( x(ipart)**2 + y(ipart)**2 + z(ipart)**2 )
+           
+           if ( r > disc_r_outer .or. r < disc_r_inner ) then
+              b_rho(ipart) = rho_bg
+           else
+
+              hr = z_d * ( ( r / r_d ) ** 1.125 )
+              f1 = ( r / r_d ) ** (-1) 
+              f2 = exp ( -1.0 * (pi/4.0) * ( z(ipart) / hr ) **2 )
+
+              b_rho(ipart) = f1 * f2 * rho_zero
+
+           endif
+
+        end do
+     end do
+  end do
+
+! Set properties of the gas particles
+   b_xyzmh(1,1:npart) = x(:)
+   b_xyzmh(2,1:npart) = y(:)
+   b_xyzmh(3,1:npart) = z(:)
+   b_xyzmh(4,1:npart) = 0.0
+   b_xyzmh(5,1:npart) = 0.0      
+
+! Initialise phase flag. Gas particles are denoted by zero.
+   b_iphase(1:npart) = 0 
+
+   b_temp(1:npart) = temp_min
+
+! 2. Set up point mass properties
+
+! Set properties of the point mass
+   b_iphase(npart+1)  = 1
+   b_xyzmh(1,npart+1) = 0.0
+   b_xyzmh(2,npart+1) = 0.0
+   b_xyzmh(3,npart+1) = 0.0
+   b_xyzmh(4,npart+1) = source_mass
+
+! 3. Call torus
+
+! Call torus
+  call torus(b_idim,  b_npart,       b_nactive, b_nptmass, b_num_gas, &
+             b_xyzmh, b_rho,         b_iphase,                        &
+             b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
+            temp_min )
+
+
+end program sphbench
