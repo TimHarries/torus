@@ -113,7 +113,7 @@ fi
 # 2.2 Build torus
 echo "INFO: Building torus, SYSTEM=${SYSTEM}"
 make depends
-make ${debug_flag} ${profile_flag} ${itac_flag} sph=yes lib
+make ${debug_flag} ${profile_flag} ${itac_flag} lib
 if [[ -e libtorus.a ]]; then
   echo "INFO: Moving libtorus.a to ${sphtorus_dir}/lib"
 else
