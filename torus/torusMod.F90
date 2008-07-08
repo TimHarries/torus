@@ -57,6 +57,7 @@ contains
   use cmf_mod
   use mpi_global_mod
   use parallel_mod
+  use vtk_mod
 
   implicit none
 #ifdef MPI
@@ -434,6 +435,8 @@ contains
   call torus_mpi_barrier
 
   call random_seed
+
+  if (MyrankIsZero) call  writeVtkFile(grid, "rho.vtk", "rho")
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
   
