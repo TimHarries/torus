@@ -269,6 +269,7 @@ contains
     type(sph_data), intent(inout) :: this
     integer :: my_rank, n_proc, ierr, i 
     integer :: npart_all, nptmass_all
+    real(double)    :: totalgasmass_all
     integer, allocatable :: npart_arr(:),   nptmass_arr(:)
     integer, allocatable :: npart_displ(:), nptmass_displ(:)
     real(double), allocatable :: xn_tmp(:), yn_tmp(:), zn_tmp(:), rhon_tmp(:), temperature_tmp(:)
@@ -291,6 +292,10 @@ contains
 ! 1.2 Get number of gas particles for each process
   ALLOCATE( npart_arr(n_proc) )
   CALL MPI_GATHER(this%npart, 1, MPI_INTEGER, npart_arr, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
+
+! 1.3 Get total gas mass
+  call MPI_ALLREDUCE(this%totalgasmass, totalgasmass_all, 1, MPI_DOUBLE_PRECISION, MPI_SUM, MPI_COMM_WORLD, ierr) 
+  this%totalgasmass = totalgasmass_all
 
 ! 2.1 Get total number of point masses
   call MPI_ALLREDUCE(this%nptmass, nptmass_all, 1, MPI_INTEGER, MPI_SUM, MPI_COMM_WORLD, ierr)

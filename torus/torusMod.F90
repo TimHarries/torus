@@ -20,7 +20,8 @@ contains
 
   subroutine torus(b_idim,  b_npart,       b_nactive, b_nptmass, b_num_gas, &
                    b_xyzmh, b_rho,         b_iphase,                        &
-                   b_udist, b_umass,       b_utime,   b_time,    b_temp, temp_min )
+                   b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
+                   temp_min, b_totalgasmass )
 
   use kind_mod               ! variable type KIND parameters
   use vector_mod             ! vector math
@@ -107,8 +108,6 @@ contains
   integer :: i, j
   character(len=80) :: tempChar
   
-  real(double) :: totalMass
-
   real :: theta1, theta2
   type(SURFACETYPE) :: starSurface
 
@@ -153,6 +152,7 @@ contains
   real*8, intent(in)    :: b_udist, b_umass, b_utime, b_time
   integer, intent(in)   :: b_num_gas           ! Number of gas particles
   real*8, intent(inout) :: b_temp(b_num_gas)   ! Temperature of gas particles
+  real*8, intent(in)    :: b_totalgasmass      ! Total gas mass for this MPI process
   real(kind=8), intent(in)      :: temp_min
   integer, save :: num_calls = 0
   character(len=4) :: char_num_calls
@@ -173,7 +173,7 @@ contains
   call unixGetHostname(tempChar, tempInt) 
   print *, 'Process ', myRankGlobal,' running on host ',TRIM(ADJUSTL(tempChar))
   print *, 'Process ', myRankGlobal, 'b_npart=', b_npart, 'b_nactive=', b_nactive, &
-           'b_nptmass=', b_nptmass, 'b_num_gas=', b_num_gas 
+           'b_nptmass=', b_nptmass, 'b_num_gas=', b_num_gas
 
   !===============================================================================
 
@@ -310,7 +310,7 @@ contains
 
   ! The total number of gas particles is the total number of active particles less the number of point masses.
   call init_sph_data2(sphData, b_udist, b_umass, b_utime, b_num_gas, b_time, b_nptmass, &
-       b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp)
+       b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp, b_totalgasmass)
   ! Communicate particle data. Non-mpi case has a stubbed routine. 
   call gather_sph_data(sphData)
 
@@ -425,12 +425,8 @@ contains
   ! set up the sources
   call set_up_sources
 
-  if (associated(grid%octreeRoot)) then
-     totalMass =0.d0
-     call findTotalMass(grid%octreeRoot, totalMass)
-     write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
-     call writeInfo(message, IMPORTANT)
-  endif
+  call checkSphTotalMass(grid, sphData, 0.2, ok)
+  if ( .not. ok ) goto 666
 
   call torus_mpi_barrier
 
@@ -809,4 +805,48 @@ end module torus_mod
   end subroutine update_sph_temperature
 
 !-------------------------------------------------------------------------------  
+! Check the total mass on the grid against the total mass component of the SPH data structure.
+! 
+! D. Acreman, July 2008
+   
+  subroutine checkSphTotalMass(grid, sphData, threshold, ok)
+
+    use gridtype_mod, only: gridtype
+    use sph_data_class, only : sph_data
+    use constants_mod, only: mSol
+    use messages_mod
+    use amr_mod
+
+    implicit none
+
+    type(GRIDTYPE), intent(in) :: grid
+    type(sph_data), intent(in) :: sphData
+    real, intent(in)           :: threshold
+    logical, intent(out)       :: ok
+
+    real(double) :: totalMass
+    real(double) :: diff
+
+    character(len=100) :: message
+
+    totalMass = 0.d0
+    call findTotalMass(grid%octreeRoot, totalMass)
+    totalMass = totalMass / mSol
+
+    write(message,*) "Mass of envelope: ",totalMass, " solar masses"
+    call writeInfo(message, FORINFO)
+    write(message,*) "Mass from SPH data structure: ", sphData%totalgasmass
+    call writeInfo(message, FORINFO)
+
+    ok = .true. 
+    diff = ( abs(totalMass - sphData%totalgasmass) ) / sphData%totalgasmass
+    if ( diff > threshold ) then
+       ok = .false. 
+       write(message,*) "Difference between mass on grid and mass from particles exceeds allowable limit."
+       call writeFatal(message)
+    end if
+
+  end subroutine checkSphTotalMass
+
+! End of file ------------------------------------------------------------------
 

@@ -57,6 +57,7 @@ module sph_data_class
      real(double) :: time                   ! Time of sph data dump (in units of utime)
      integer          :: nptmass                ! Number of stars/brown dwarfs
      real(double), pointer, dimension(:) :: gasmass            ! Mass of each gas particle ! DAR changed to allow variable mass
+     real(double)                        :: totalgasmass       ! Total gas mass summed over all SPH particles. 
      ! Positions of gas particles
      real(double), pointer, dimension(:) :: xn,yn,zn
      real(double), pointer, dimension(:) :: vxn,vyn,vzn
@@ -151,7 +152,7 @@ contains
   ! Initializes an object with parameters when torus is called as a subroutine from sphNG.
   ! 
   subroutine init_sph_data2(this, udist, umass, utime, npart,  time, nptmass, &
-        b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp)
+        b_npart, b_idim, b_iphase, b_xyzmh, b_rho, b_temp, b_totalgasmass)
     implicit none
 
 ! Arguments --------------------------------------------------------------------
@@ -167,6 +168,7 @@ contains
     real*8, intent(in)    :: b_xyzmh(5,b_idim)
     real*4, intent(in)    :: b_rho(b_idim)
     real*8, intent(in)    :: b_temp(b_idim)
+    real*8, intent(in)    :: b_totalgasmass
 ! Local variables --------------------------------------------------------------
     integer :: iii, iiipart, iiigas
 
@@ -182,7 +184,7 @@ contains
     this%npart = npart
     this%time = time
     this%nptmass = nptmass
-    this%nptmass     = nptmass
+    this%totalgasmass = b_totalgasmass
 
     ! allocate arrays
     ! -- for gas particles
@@ -907,6 +909,6 @@ contains
     type(sph_data), intent(in) :: this
     out = this%inUse
   end function isAlive
-   
+
 end module sph_data_class
     
