@@ -45,6 +45,7 @@ use torus_mod, only: torus
   real(kind=8), parameter :: b_time=182.0e6_db * year ! Current time, used as age of star
   real(kind=8) :: b_temp(b_num_gas)
   real(kind=8), parameter :: temp_min=3.0
+  real(kind=8), parameter :: total_gas_mass=0.011  ! Taken from 2D benchmark
 
 ! Source parameters
   real(db), parameter :: source_x = 0.0
@@ -126,7 +127,7 @@ use torus_mod, only: torus
   call torus(b_idim,  b_npart,       b_nactive, b_nptmass, b_num_gas, &
              b_xyzmh, b_rho,         b_iphase,                        &
              b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
-            temp_min )
+            temp_min, total_gas_mass )
 
 
 end program sphbench
