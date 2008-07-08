@@ -13,6 +13,7 @@ module cluster_class
   use isochrone_class
   use messages_mod
   use vector_mod
+  use constants_mod, only: mSol, secsToYears
   
   implicit none
 
@@ -240,7 +241,7 @@ contains
     
     age = get_time(sphData)*get_utime(sphData) ! in [sec]
     ! converting to years
-    age = age/3.1536000d7   ! [years]
+    age = age * secsToYears   ! [years]
     ! assigning stars
     do i = 1, n
        ! preparing the spectrum
@@ -248,7 +249,7 @@ contains
 
        mass = get_pt_mass(sphData, i)*get_umass(sphData) ! [g]
        ! converting it to solar masses
-       mass = mass/1.989e33 ! [M_sun]
+       mass = mass/mSol ! [M_sun]
 
        ! finding the corresponding radius and the surface temperature of
        ! this star.
