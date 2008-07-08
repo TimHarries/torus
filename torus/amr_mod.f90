@@ -5563,7 +5563,6 @@ IF ( .NOT. gridConverged ) RETURN
       ! Split if the number of particles in cell exceeds limit or if mass in cell exceeds limit.
       split = .false.
       if (total_mass > amrlimitscalar .and. nparticle > 0) split = .true.
-      if (nparticle > 5) split = .true.
 
       if (include_disc(stellar_cluster)) then
       
