@@ -41,7 +41,8 @@ use torus_mod, only: torus
   real(kind=8), parameter :: b_udist=1.0 ! unit of distance
   real(kind=8), parameter :: b_umass=1.0 ! units of mass
   real(kind=8), parameter :: b_utime=1.0 ! Units of time
-  real(kind=8), parameter :: b_time=1.0e16_db  ! Current time, used as age of star
+  real(kind=8), parameter :: year = 60.0*60.0*24.0*365.25 
+  real(kind=8), parameter :: b_time=182.0e6_db * year ! Current time, used as age of star
   real(kind=8) :: b_temp(b_num_gas)
   real(kind=8), parameter :: temp_min=3.0
 
