@@ -52,6 +52,7 @@ MODULE amr_mod
      real(double), pointer :: temperature(:,:) => null()
   end type curtaintype
 
+  real(double), parameter :: amr_min_rho = 1.0e-30_db 
 
 CONTAINS
 
@@ -780,7 +781,7 @@ CONTAINS
     parent%child(newChildIndex)%chiLine = 1.e-30
     parent%child(newChildIndex)%etaLine = 1.e-30
     parent%child(newChildIndex)%etaCont = 1.e-30
-    parent%child(newChildIndex)%rho = 1.e-30
+    parent%child(newChildIndex)%rho = amr_min_rho
     parent%child(newChildIndex)%N = 1.e-30
     parent%child(newChildIndex)%dusttype = 1
     if (mie .or. useDust) then
@@ -13005,7 +13006,7 @@ end function readparameterfrom2dmap
      do j = 1, nLocator
         call amrGridValues(grid%octreeRoot,locator(j),foundOctal=nearbyOctal, &
              foundsubcell=subcell, temperature=temp, rho=rho)
-        if (rho /= 0.d0) then
+        if ( rho > amr_min_rho ) then
            meanTemp = meanTemp + temp
            meanRho = meanRho + log10(rho)
            ntemp = ntemp + 1
