@@ -392,7 +392,6 @@ contains
     logical :: directPhoton !, smoothconverged
     integer :: nCellsInDiffusion
     integer, intent(in), optional :: plot_i ! index number of plot
-    integer :: this_plot_i
     logical, intent(in), optional :: ll_sph
     logical :: useFixedRange
     logical :: scatteredPhoton
@@ -535,13 +534,6 @@ contains
        ! Plotting the intermidiate temperature steps
 
        if (plot_maps .and. myRankIsZero) then
-
-! Set the index used for plot file names. Zero values omits index from file name. 
-          if (present(plot_i) ) then
-             this_plot_i = plot_i
-          else
-             this_plot_i = 0
-          endif
 
 ! If this is an sphtorus run then use the same colour scale for all plots.
           if (present(ll_sph) ) then
