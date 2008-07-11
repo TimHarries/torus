@@ -232,7 +232,7 @@ contains
   nMarker = 0
   lucyRadiativeEq = .false. ! this has to be initialized here
   num_calls = num_calls + 1
-  write(char_num_calls,'(i4)') num_calls
+  write(char_num_calls,'(i4.4)') num_calls
 
   ! get the model parameters
 
@@ -432,7 +432,7 @@ contains
 
   call random_seed
 
-  if (MyrankIsZero) call  writeVtkFile(grid, "rho.vtk", "rho")
+  if (MyrankIsZero) call  writeVtkFile(grid, "rho_"//char_num_calls//".vtk", "rho")
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
   
