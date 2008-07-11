@@ -515,10 +515,12 @@ contains
   ! function returns the number of gas particles which belongs to a subcell this
   ! of this octal, and the average denisty ( in g/cm^3) of this cell.
   !  
-  subroutine find_n_particle_in_subcell(n, rho_ave, sphData, node, subcell)
+  subroutine find_n_particle_in_subcell(n, rho_ave, sphData, node, subcell, rho_min, rho_max)
     implicit none
-    integer, intent(out) :: n                ! number of particels in the subcell
+    integer, intent(out) :: n                ! number of particles in the subcell
     real(double), intent(out) :: rho_ave ! average density of the subcell
+    real(double), intent(out), optional :: rho_min, rho_max
+    real(double) :: this_rho
     type(sph_data), intent(in)    :: sphData
     type(octal), intent(inout)    :: node
     integer, intent(in)           :: subcell ! index of the subcell
@@ -529,12 +531,9 @@ contains
     !
     !
     real(double), save :: umass, udist, udent  ! for units conversion  
-    real(double), save :: rho_min
     logical, save  :: first_time = .true.
     !
-    !logical :: restart
-    !    
-    integer, parameter :: nsample =400
+    real(double), parameter    :: rho_null = 1.0e-30_db
 
     ! Carry out the initial calculations
     if (first_time) then       
@@ -546,7 +545,6 @@ contains
        ! convert units
        udist = udist/1.0d10  ! [10^10cm]
 
-       rho_min = get_rhon_min(sphData)
        first_time = .false.
     end if
 
@@ -559,8 +557,10 @@ contains
        
        counter = 0
        rho_ave = 0.0d0
+       if ( present(rho_min) ) rho_min = 1.0d30
+       if ( present(rho_max) ) rho_max = 0.0d0
        do i=1, npart
-          ! Retriving the sph data index for this paritcle
+          ! Retriving the sph data index for this particle
           j = node%gas_particle_list(i)
           
           ! retriving this posisiton of the gas particle.
@@ -572,7 +572,10 @@ contains
           ! belongs to this cell.
           if ( within_subcell(node, subcell, x, y, z) ) then
              counter = counter + 1
-             rho_ave = rho_ave + get_rhon(sphData, j) 
+             this_rho = get_rhon(sphData, j) 
+             rho_ave = rho_ave + this_rho
+             if ( present(rho_min) ) rho_min = min(this_rho, rho_min)
+             if ( present(rho_max) ) rho_max = max(this_rho, rho_max)
           end if
           
        end do
@@ -588,8 +591,12 @@ contains
     if (n>0) then
        rho_ave = rho_ave/dble(n)
        rho_ave = rho_ave*udent  ! [g/cm^3]
+       if ( present(rho_min) ) rho_min = rho_min * udent
+       if ( present(rho_max) ) rho_max = rho_max * udent
     else
-       rho_ave = 1.d-30
+       rho_ave = rho_null
+       if ( present(rho_min) ) rho_min = rho_null
+       if ( present(rho_max) ) rho_max = rho_null
     end if
     
 

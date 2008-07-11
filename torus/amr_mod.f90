@@ -5548,22 +5548,19 @@ IF ( .NOT. gridConverged ) RETURN
       if (cellSize > ABS(R_cmfgen(nr)-Rmin_cmfgen)/4.0d0)  split=.true.
 
    case ("cluster")
-      ! Splits if the number of particle is more than a critical mass.
-      ! using the function in amr_mod.f90 
+
       call find_n_particle_in_subcell(nparticle, ave_density, sphData, &
-           thisOctal, subcell)
+           thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity)
 
+      total_mass = ave_density * ( cellVolume(thisOctal, subcell)  * 1.d30 )
 
-      ! get the size and centre of the current cell
-      cellSize = thisOctal%subcellSize
-
-      !
-      total_mass = ave_density * (cellSize*1.e10_db)**3  ! should be in [g]
-
-
-      ! Split if the number of particles in cell exceeds limit or if mass in cell exceeds limit.
       split = .false.
+
+      ! Split if  mass in cell exceeds limit.
       if (total_mass > amrlimitscalar .and. nparticle > 0) split = .true.
+
+      ! Split in order to capture density gradients. 
+      if  ( maxDensity/minDensity > 1.0e4 ) split = .true. 
 
       if (include_disc(stellar_cluster)) then
       
@@ -5573,22 +5570,12 @@ IF ( .NOT. gridConverged ) RETURN
 
          if (stellar_disc_exists(sphData) .and.  &       
               disc_intersects_subcell(stellar_cluster, sphData, thisOctal, subcell) ) then
-         rho_disc_ave = average_disc_density_fast(sphData, thisOctal, &
-              subcell, stellar_cluster, scale_length)
+            rho_disc_ave = average_disc_density_fast(sphData, thisOctal, &
+                 subcell, stellar_cluster, scale_length)
 
-!!         rho_disc_ave = average_disc_density(sphData, thisOctal, &
-!!              subcell, stellar_cluster, scale_length)
-!            rho_disc_ave = max_disc_density_from_sample(sphData, thisOctal, &
-!                 subcell, stellar_cluster, scale_length)
+            ! units in 10^10cm
+            if (cellSize > 1.0e4  .or. (cellsize > scale_length) ) split = .true.
 
-            total_mass = total_mass + rho_disc_ave * (cellSize*1.e10_db)**3  !  [g]
-
-            if (cellSize > 1.0e4  .or.  &
-                 (cellsize > scale_length) ) then
-!                 (cellsize > scale_length .and. rho_disc_ave > 1.0e-20) ) then
-               split = .true.  ! units in 10^10cm
-            end if
-            
          end if
 
       end if
