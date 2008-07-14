@@ -1006,18 +1006,21 @@ contains
 
 
   !
-  ! Removes cells (just setting the inflow flag to .false. if the cells are closer than a 
-  ! given radius (in 10^10cm) from star positions specified in cluster_class object.
-  recursive subroutine remove_too_close_cells(thisCluster, thisOctal, R_max)
+  ! Removes cells by setting the inflow flag to .false. and density to rho_small if the cells are  
+  ! closer than a given radius (in 10^10cm) from star positions specified in cluster_class object.
+  recursive subroutine remove_too_close_cells(thisCluster, thisOctal, R_max, removedMass, rho_small)
     implicit none
 
-    type(cluster), intent(in)  :: thisCluster    
-    type(octal), pointer       :: thisOctal
-    real(double), intent(in) :: R_max   ! [10^10 cm]
+    type(cluster), intent(in)   :: thisCluster    
+    type(octal), pointer        :: thisOctal
+    real(double), intent(in)    :: R_max   ! [10^10 cm]
+    real(double), intent(inout) :: removedMass
+    real(double), intent(in)    :: rho_small
     !
     type(octal), pointer       :: pChild
     integer                    :: i           ! loop counter
-    integer :: nc, subcell
+    integer                    :: nc, subcell
+
     
     nc = thisOctal%nChildren    
     do subcell = 1, 8
@@ -1026,21 +1029,17 @@ contains
           do i = 1, nc
              if (thisOctal%indexChild(i) == subcell) then
                 pChild => thisOctal%child(i)                
-                call remove_too_close_cells(thisCluster, pChild, R_max)
+                call remove_too_close_cells(thisCluster, pChild, R_max, removedMass, rho_small)
                 exit
              end if
           end do
        else
-          if (thisCluster%disc_on) then
-             continue
-          else
+          if (.not. thisCluster%disc_on) then
              ! checks if it's too close 
              if (cell_too_close_to_star(thisCluster,thisOctal, subcell, R_max) ) then
                 thisOctal%inFlow(subcell) = .false.
-                thisOctal%rho(subcell) = 1.e-28  ! set it to a very low density
-             else
-                ! no correction done
-                continue             
+                removedMass = removedMass + (thisOctal%rho(subcell)-rho_small) * cellVolume(thisOctal, subcell) * 1.0e30_db
+                thisOctal%rho(subcell) = rho_small  ! set it to a very low density
              end if
           end if
        end if

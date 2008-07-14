@@ -1574,6 +1574,7 @@ CONTAINS
   subroutine amr_grid_setup
 
     real(double) :: mass_scale, mass_accretion_old, mass_accretion_new
+    real(double) :: removedMass
 
     if (doTuning) call tune(6, "AMR grid construction.")  ! start a stopwatch
 
@@ -1715,7 +1716,10 @@ CONTAINS
 !           call fill_in_empty_octals(young_cluster,grid%octreeRoot,sphData)
           call estimateRhoOfEmpty(grid, grid%octreeRoot, sphData)	
            !Removing the cells within 10^14 cm from the stars.
-          call remove_too_close_cells(young_cluster,grid%octreeRoot,1.0d4)
+          removedMass = 0.0
+          call remove_too_close_cells(young_cluster,grid%octreeRoot,1.0d4, removedMass, amr_min_rho)
+          write(message,*) "Mass removed by remove_too_close_cells= ", removedMass / mSol
+          call writeInfo(message, TRIVIAL)
 
        case("molcluster")
           call writeInfo("Initialising adaptive grid...", TRIVIAL)
