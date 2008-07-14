@@ -13002,11 +13002,13 @@ end function readparameterfrom2dmap
      if (nTemp > 0) then
         meanTemp = meanTemp/ real(nTemp)
         meanRho = meanRho /  dble(nTemp)
+        meanRho = 10.d0**meanRho
      else
-        meanTemp = thisOctal%temperature(thisSubcell)
-        meanRho = log10(thisOctal%rho(thisSubcell))
+        ! If there are no nearby cells then use the parent cell properties 
+        meanTemp = thisOctal%temperature(thisOctal%parentSubcell)
+        meanRho =  thisOctal%parent%rho(thisOctal%parentSubcell)
      endif
-     meanRho = 10.d0**meanRho
+
      deallocate(locator)
    end subroutine averageofNearbyCells
 
