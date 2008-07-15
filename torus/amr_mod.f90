@@ -5072,7 +5072,7 @@ IF ( .NOT. gridConverged ) RETURN
     INTEGER               :: nr, nr1, nr2
     real(double)          :: minDensity, maxDensity
     INTEGER               :: nsample = 400
-    INTEGER               :: nparticle, limit
+    INTEGER               :: nparticle, limit, npart_octal(8)
 !    real(double) :: timenow
     real(double) :: dummyDouble
     real(double) :: rho_disc_ave, scale_length
@@ -5549,15 +5549,20 @@ IF ( .NOT. gridConverged ) RETURN
 
    case ("cluster")
 
+      do i=1, 8
+         call find_n_particle_in_subcell(npart_octal(i), ave_density, sphData, thisOctal, i)
+      end do
+
       call find_n_particle_in_subcell(nparticle, ave_density, sphData, &
            thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity)
+
 
       total_mass = ave_density * ( cellVolume(thisOctal, subcell)  * 1.d30 )
 
       split = .false.
 
       ! Split if  mass in cell exceeds limit.
-      if (total_mass > amrlimitscalar .and. nparticle > 0) split = .true.
+      if (total_mass > amrlimitscalar .and. nparticle > 0 .and. SUM(npart_octal) > 1 ) split = .true.
 
       ! Split in order to capture density gradients. 
       if  ( maxDensity/minDensity > 1.0e4 ) split = .true. 
@@ -13002,13 +13007,11 @@ end function readparameterfrom2dmap
      if (nTemp > 0) then
         meanTemp = meanTemp/ real(nTemp)
         meanRho = meanRho /  dble(nTemp)
-        meanRho = 10.d0**meanRho
      else
-        ! If there are no nearby cells then use the parent cell properties 
-        meanTemp = thisOctal%temperature(thisOctal%parentSubcell)
-        meanRho =  thisOctal%parent%rho(thisOctal%parentSubcell)
+        meanTemp = thisOctal%temperature(thisSubcell)
+        meanRho = log10(thisOctal%rho(thisSubcell))
      endif
-
+     meanRho = 10.d0**meanRho
      deallocate(locator)
    end subroutine averageofNearbyCells
 
