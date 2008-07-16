@@ -2225,6 +2225,8 @@ subroutine do_amr_plots
   ! See grid_mod.f90 for details.
   !
   ! Plotting some grid values
+
+     call  writeVtkFile(grid, "rho.vtk")
      call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
           "rho_grid",.true., .true., nmarker, xmarker, ymarker, zmarker, &
           width_3rd_dim, show_value_3rd_dim, suffix="default" )

@@ -102,13 +102,13 @@ contains
                zp = REAL(rVec%z + d)
                zm = REAL(rVec%z - d)
 
-               write(lunit,*) xm, 0., zm
+               write(lunit,*) xm, zm, 0.
 
-               write(lunit,*) xp, 0., zm
+               write(lunit,*) xp, zm, 0.
 
-               write(lunit,*) xm, 0., zp
+               write(lunit,*) xm, zp, 0.
 
-               write(lunit,*) xp, 0., zp
+               write(lunit,*) xp, zp, 0.
             endif
 
 
