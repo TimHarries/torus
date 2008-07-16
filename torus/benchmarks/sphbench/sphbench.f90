@@ -63,7 +63,7 @@ use torus_mod, only: torus
   real(db), parameter :: r_d = 0.5 * disc_r_outer
   real(db), parameter :: z_d = 0.25 * r_d
   real(db), parameter :: rho_zero = 0.81614E-17_db
-  real(db), parameter :: rho_bg   = 1d-33 ! Background density
+  real(db), parameter :: rho_bg   = 1.001e-30_db ! Background density
 
   real(db) :: f1, f2, hr
 
