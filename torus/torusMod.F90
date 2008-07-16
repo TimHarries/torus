@@ -432,7 +432,7 @@ contains
 
   call random_seed
 
-  if (MyrankIsZero) call  writeVtkFile(grid, "rho_"//char_num_calls//".vtk", "rho")
+!  if (MyrankIsZero) call  writeVtkFile(grid, "rho_"//char_num_calls//".vtk" )
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
   
