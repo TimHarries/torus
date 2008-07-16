@@ -3436,11 +3436,11 @@ contains
 
        endif
        
-       if (writeOctal) then
-          write(*,*) myRankGlobal, " writing depth ", thisOctal%nDepth, " writeoctal ", writeoctal, &
-               octalOnThread(thisOctal, 1, myRankGlobal), " label ",thisOctal%label, " mpithread ", &
-               thisOctal%mpithread
-       endif
+!       if (writeOctal) then
+!          write(*,*) myRankGlobal, " writing depth ", thisOctal%nDepth, " writeoctal ", writeoctal, &
+!               octalOnThread(thisOctal, 1, myRankGlobal), " label ",thisOctal%label, " mpithread ", &
+!               thisOctal%mpithread
+!       endif
        if (writeOctal) then
 
           if (fileFormatted) then 

@@ -109,6 +109,22 @@ contains
           if (iPlane == 1) then
              valueMin = MINVAL(value(1:nSquares))
              valueMax = MAXVAL(value(1:nSquares))
+
+!             if ((valueMin /= 0.).and.(valueMin < 1.e-30)) valueMin = 1.e-30
+!             if ((valueMax /= 0.).and.(valueMax < 1.e-30)) valueMin = 1.e-30
+
+             if (valueMax > 1.e30) valueMax = 1.e30
+             if (valueMin > 1.e30) valueMin = 1.e30
+
+             if (valueMin == valueMax) then
+                if (valueMin == 0.) then
+                   valueMin = -1.e-4
+                   valueMax = 1.e-4
+                else
+                   valueMax = 1.01 * valueMin
+                endif
+             endif
+
           endif
           call pgpage
           if (present(valueMinFlag)) valueMin = valueMinFlag
@@ -174,7 +190,8 @@ contains
 
              call pgbox('bcnst',0.0,0,'bcnst',0.0,0)
              if (present(title)) call pglab(" ", " ", title)
-             write(*,*) "Scaling from ", valueMin, " to ", valuemax
+                   
+!             write(*,*) "Scaling from ", valueMin, " to ", valuemax
              if(logscale) then
                 CALL PGWEDG('BI', 4.0, 5.0, real(log10(valueMin)), real(log10(valueMax)), TRIM(ADJUSTL(valueName)) )
              else
@@ -1708,6 +1725,96 @@ contains
     end do
   end subroutine columnAlongPathAMR
 
+  subroutine countSubcellsMPI(grid, nSubcells, nSubcellArray)
+    include 'mpif.h'
+    type(GRIDTYPE) :: grid
+    integer :: nSubcells
+    integer, optional :: nSubcellArray(:)
+    integer :: ierr, myRank, iThread, nThreads, nVoxels, n, nOctals
+    integer :: iBuffer(1)
+    integer, allocatable :: iArray(:)
+    integer :: tag = 81
+    integer :: status(MPI_STATUS_SIZE)
+
+
+    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+    call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
+    allocate(iArray(1:nThreads-1))
+
+    nSubcells = 0
+    if (myrank == 1) then
+       call countVoxelsMPI(grid%octreeRoot,nVoxels)
+       nSubcells = nSubcells + nVoxels
+       iArray(1) = nSubcells
+       do iThread = 2, nThreads - 1
+          call MPI_RECV(n, 1, MPI_INTEGER, iThread, tag, MPI_COMM_WORLD, status, ierr)
+          iArray(iThread) = n
+          nSubcells = nSubcells + n
+       end do
+    else
+       call countVoxelsMPI(grid%octreeRoot,nVoxels)
+       call MPI_SEND(nVoxels, 1, MPI_INTEGER, 1, tag, MPI_COMM_WORLD, ierr)
+    endif
+    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+    iBuffer(1) = nSubcells
+    call MPI_BCAST(iBuffer, 1, MPI_INTEGER, 1, MPI_COMM_WORLD, ierr)
+    nSubcells = iBuffer(1)
+
+    call MPI_BCAST(iArray, nThreads-1, MPI_INTEGER, 1, MPI_COMM_WORLD, ierr)
+
+    if (present(nSubcellArray)) nSubcellArray = iArray
+    deallocate(iArray)
+
+  end subroutine countSubcellsMPI
+
+  SUBROUTINE countVoxelsMPI(thisOctal, nVoxels)  
+    ! count the number of octals in the current section of the grid.
+    ! also counts the number of unique volume elements (voxels) i.e.
+    !   those subcells that are not subdivided
+
+    IMPLICIT NONE
+
+    TYPE(OCTAL), POINTER  :: thisOctal 
+    INTEGER,INTENT(INOUT) :: nVoxels   ! number of childless subcells
+    
+    nVoxels = 0
+    CALL countVoxelsPrivate(thisOctal, nVoxels)
+    
+    CONTAINS
+    
+      RECURSIVE SUBROUTINE countVoxelsPrivate(thisOctal, nVoxels)
+        include 'mpif.h'
+        integer :: nVoxels
+        integer :: myRank, ierr, subcell
+        TYPE(OCTAL), POINTER  :: thisOctal 
+        TYPE(OCTAL), POINTER  :: child
+        INTEGER :: i
+
+
+
+      do subcell = 1, thisOctal%maxChildren
+         if (thisOctal%hasChild(subcell)) then
+            ! find the child
+            do i = 1, thisOctal%nChildren, 1
+               if (thisOctal%indexChild(i) == subcell) then
+                  child => thisOctal%child(i)
+                  call countVoxelsPrivate(child, nVoxels)
+                  exit
+               end if
+            end do
+         else
+
+            if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+
+            nVoxels = nVoxels + 1
+         endif
+      enddo
+
+
+      end SUBROUTINE countVoxelsPrivate
+
+  END SUBROUTINE countVoxelsMPI
 
   function octalOnThread(thisOctal, subcell, myRank) result(check)
     type(OCTAL), pointer :: thisOctal

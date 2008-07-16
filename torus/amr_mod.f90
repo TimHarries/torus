@@ -5362,7 +5362,7 @@ IF ( .NOT. gridConverged ) RETURN
       if (thisOctal%nDepth < minDepthAMR) split = .true.
 !      rVec = subcellCentre(thisOctal, subcell)
 !      if ( (modulus(rVec)< 0.1d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
-      if ((rVec%x > 0.d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
+!      if ((rVec%x > 0.d0).and.(thisOctal%nDepth < maxDepthAMR) ) split = .true.
 
    case("sedov")
       split = .false.
@@ -8351,7 +8351,6 @@ IF ( .NOT. gridConverged ) RETURN
        thisOctal%energy(subcell) = 0.25d0
        thisOctal%pressure_i(subcell) = 0.1d0
     endif
-
     if (thisOctal%oneD) then
        if (rvec%x < 0.25d0) then
           thisOctal%rho(subcell) = 1.d0

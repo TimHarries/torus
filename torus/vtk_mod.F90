@@ -10,6 +10,7 @@ module vtk_mod
   use constants_mod
   use utils_mod
   use amr_mod
+  use mpi_amr_mod
   use messages_mod
 
   implicit none
@@ -17,139 +18,420 @@ module vtk_mod
 
 contains
 
-  subroutine writeVtkFile(grid, vtkFilename, dataType)
+
+
+  subroutine writePoints(grid, vtkFilename, nPoints)
     type(GRIDTYPE) :: grid
-    character(len=*) :: vtkFilename, dataType
-    real, allocatable :: pointx(:), pointy(:), pointz(:), value(:)
-    integer :: nOctals, nVoxels, nCell, nPoint, i
-    integer, allocatable :: cellPointIndex(:,:)
+    integer :: lunit = 69
+    integer :: nPoints
+    logical :: writeHeader
+    character(len=*) :: vtkFilename
 
-    open(69,file=vtkFilename, form="formatted", status="unknown")
+    writeHeader = .true.
+#ifdef MPI
+    if (myRankGlobal /= 1) writeHeader = .false.
+#endif
 
-    write(69,'(a)') "# vtk DataFile Version 2.0"
-    write(69,'(a,a)') "TORUS AMR data: ",trim(dataType)
-    write(69,'(a)') "ASCII"
-    write(69,'(a)') "DATASET UNSTRUCTURED_GRID"
+    open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
+    if (writeHeader) then
+       write(69,'(a,i10,a)') "POINTS ",nPoints, " float"
+    endif
+
+
+    call recursiveWritePoints(grid%octreeRoot, lunit)
+    close(lunit)
+
+  contains
+
+    recursive subroutine recursiveWritePoints(thisOctal,lunit)
+      type(OCTAL), pointer :: thisOctal, child
+
+#ifdef MPI
+      include 'mpif.h'  
+#endif
+      integer :: lunit
+      integer :: subcell, i
+      real :: xp, xm, yp, ym, zm, zp, d
+      type(OCTALVECTOR) :: rVec
+      do subcell = 1, thisOctal%maxChildren
+         if (thisOctal%hasChild(subcell)) then
+            ! find the child
+            do i = 1, thisOctal%nChildren, 1
+               if (thisOctal%indexChild(i) == subcell) then
+                  child => thisOctal%child(i)
+                  call recursiveWritePoints(child,lunit)
+                  exit
+               end if
+            end do
+         else
+
+#ifdef MPI
+            if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+#endif
+            if (thisOctal%threed) then
+               rVec = subcellCentre(thisOctal,subcell)
+               d = thisOctal%subcellSize/2.d0
+               xp = REAL(rVec%x + d)
+               xm = REAL(rVec%x - d)
+               yp = REAL(rVec%y + d)
+               ym = REAL(rVec%y - d)
+               zp = REAL(rVec%z + d)
+               zm = REAL(rVec%z - d)
+
+               write(lunit,*) xm, ym, zm
+
+               write(lunit,*) xp, ym, zm
+
+               write(lunit,*) xm, yp, zm
+
+               write(lunit,*) xp, yp, zm
+
+               write(lunit,*) xm, ym, zp
+
+               write(lunit,*) xp, ym, zp
+
+               write(lunit,*) xm, yp, zp
+
+               write(lunit,*) xp, yp, zp
+
+            else
+               rVec = subcellCentre(thisOctal,subcell)
+               d = thisOctal%subcellSize/2.d0
+               xp = REAL(rVec%x + d)
+               xm = REAL(rVec%x - d)
+               zp = REAL(rVec%z + d)
+               zm = REAL(rVec%z - d)
+
+               write(lunit,*) xm, 0., zm
+
+               write(lunit,*) xp, 0., zm
+
+               write(lunit,*) xm, 0., zp
+
+               write(lunit,*) xp, 0., zp
+            endif
+
+
+         endif
+      enddo
+
+
+    end subroutine recursiveWritePoints
+  end subroutine writePoints
+
+  subroutine writeIndices(grid, vtkFilename, nPoints, nCells, iOffset)
+    type(GRIDTYPE) :: grid
+    integer :: lunit = 69
+    integer :: nCells, nPoints, iOffset, i, nCount
+    logical :: writeHeader
+    character(len=*) :: vtkFilename
+
+    writeHeader = .true.
+#ifdef MPI
+    if (myRankGlobal /= 1) writeHeader = .false.
+#endif
+
+    open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
+    if (writeHeader) then
+       write(lunit, '(a, i10, i10)') "CELLS ",nCells, nPoints+nCells
+    endif
+
+    nCount = 0
+    call recursiveWriteIndices(grid%octreeRoot, lunit, nCount, iOffset)
+    close(lunit)
+
+  contains
+
+    recursive subroutine recursiveWriteIndices(thisOctal,lunit, nCount, iOffset)
+      type(OCTAL), pointer :: thisOctal, child
+
+#ifdef MPI
+      include 'mpif.h'  
+#endif
+      integer :: lunit
+      integer :: subcell, i
+      integer :: iOffset, nCount
+
+      do subcell = 1, thisOctal%maxChildren
+         if (thisOctal%hasChild(subcell)) then
+            ! find the child
+            do i = 1, thisOctal%nChildren, 1
+               if (thisOctal%indexChild(i) == subcell) then
+                  child => thisOctal%child(i)
+                  call recursiveWriteIndices(child,lunit, nCount, iOffset)
+                  exit
+               end if
+            end do
+         else
+
+#ifdef MPI
+            if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+#endif
+
+            if (thisOctal%threed) then
+               write(lunit, '(9i10)') 8, nCount + iOffset,&
+                    nCount + iOffset + 1, &
+                    nCount + iOffset + 2, &
+                    nCount + iOffset + 3, &
+                    nCount + iOffset + 4, &
+                    nCount + iOffset + 5, &
+                    nCount + iOffset + 6, &
+                    nCount + iOffset + 7
+               nCount = nCount + 8
+            else
+
+               write(lunit, '(5i10)') 4, nCount + iOffset,&
+                    nCount + iOffset + 1, &
+                    nCount + iOffset + 2, &
+                    nCount + iOffset + 3
+               nCount = nCount + 4
+
+
+            endif
+         endif
+      enddo
+
+
+    end subroutine recursiveWriteIndices
+  end subroutine writeIndices
+
+
+  subroutine writeValue(grid, vtkFilename, valueType, nCells)
+    type(GRIDTYPE) :: grid
+    integer :: lunit = 69
+    integer :: nCells
+    character(len=*) :: valueType
+    logical :: writeHeader
+    character(len=*) :: vtkFilename
+    logical :: vector, scalar
+
+
+    select case (valueType)
+       case("velocity","hydrovelocity")
+          scalar = .false.
+          vector = .true.
+       case DEFAULT
+          scalar = .true.
+          vector = .false.
+    end select
+
+    writeHeader = .true.
+#ifdef MPI
+    if (myRankGlobal /= 1) writeHeader = .false.
+#endif
+
+    open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
+    if (writeHeader) then
+       if (scalar) then
+          write(69,'(a,a,a)') "SCALARS ",trim(valueType)," float"
+          write(69, '(a)') "LOOKUP_TABLE default"
+       endif
+       if (vector) then
+          write(69, '(a,a,a)') "VECTORS ", trim(valueType), " float"
+       endif
+
+    endif
+
+    call recursiveWriteValue(grid%octreeRoot, valueType)
+    close(lunit)
+
+  contains
+
+    recursive subroutine recursiveWriteValue(thisOctal, valueType)
+      type(OCTAL), pointer :: thisOctal, child
+
+#ifdef MPI
+      include 'mpif.h'  
+#endif
+      integer :: lunit = 69
+      integer :: subcell, i
+      character(len=*) :: valueType
+
+      do subcell = 1, thisOctal%maxChildren
+         if (thisOctal%hasChild(subcell)) then
+            ! find the child
+            do i = 1, thisOctal%nChildren, 1
+               if (thisOctal%indexChild(i) == subcell) then
+                  child => thisOctal%child(i)
+                  call recursiveWriteValue(child, valueType)
+                  exit
+               end if
+            end do
+         else
+
+#ifdef MPI
+            if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+#endif
+
+            select case (valueType)
+               case("rho")
+                  write(lunit, *) real(thisOctal%rho(subcell))
+               case("hydrovelocity")
+                  write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
+                       real(thisOctal%rhov(subcell)/thisOctal%rho(subcell)), &
+                       real(thisOctal%rhow(subcell)/thisOctal%rho(subcell))
+               case("velocity")
+                  write(lunit, *) thisOctal%velocity(subcell)%x*cspeed/1.e5, &
+                       thisOctal%velocity(subcell)%y*cspeed/1.e5, thisOctal%velocity(subcell)%z*cspeed/1.e5
+               case("temperature")
+                  write(lunit, *) real(thisOctal%temperature(subcell))
+               case("phi")
+                  write(lunit, *) real(thisOctal%phi_i(subcell))
+               case DEFAULT
+                  write(*,*) "Cannot write vtk type ",trim(valueType)
+             end select
+
+
+         endif
+      enddo
+
+
+    end subroutine recursiveWriteValue
+  end subroutine writeValue
+
+  subroutine writeVtkFile(grid, vtkFilename, valueTypeFilename)
+#ifdef MPI
+    include 'mpif.h'
+#endif
+    type(GRIDTYPE) :: grid
+    character(len=*) :: vtkFilename
+    integer :: nValueType
+    character(len=20) :: valueType(50)
+    character(len=*), optional ::  valueTypeFilename
+    integer :: nCells, nPoints
+    integer :: lunit = 69
+    logical :: writeHeader
+    integer :: nOctals, nVoxels, ierr, iOffset, i, iType
+    integer :: nPointOffset
+#ifdef MPI
+    integer :: nPointsArray(64)
+    integer, allocatable :: iOffsetArray(:)
+    integer :: myRank, nThreads, iThread
+#endif
+
+    
+
+    if (PRESENT(valueTypeFilename)) then
+       nValueType = 1
+       open(29, file=valueTypeFilename, status="old", form="formatted")
+10     continue
+       read(29,'(a)',end=20) valueType(nValueType)
+       nValueType = nValueType + 1
+       goto 10
+20     continue
+       nValueType = nValueType - 1
+       close(29)
+    else
+       nValueType = 2
+       valueType(1) = "rho"
+       valueType(2) = "velocity"
+    endif
+
+
+    if (grid%octreeRoot%threed) then
+       nPointOffset = 8
+    else if (grid%octreeRoot%twoD) then
+       nPointOffset = 4
+    else if (grid%octreeRoot%oneD) then
+       nPointOffset = 2
+    endif
 
     call countVoxels(grid%octreeRoot, nOctals, nVoxels)  
 
-    nCell = nVoxels
-    nPoint = nCell * 8
-    allocate(pointx(1:nPoint), pointy(1:nPoint), pointz(1:nPoint), value(1:nCell))
-    allocate(cellPointIndex(nCell,8))
 
-    ncell = 0 
-    nPoint = 0 
-    call getPointandCellData(grid%octreeRoot, pointx, pointy, pointz, npoint, cellPointIndex, value, nCell)
+#ifdef MPI
+    if (grid%splitOverMpi) then
+       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+       call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
+       call MPI_COMM_SIZE(MPI_COMM_WORLD, nThreads, ierr)
+       allocate(iOffsetArray(1:nThreads-1))
+       call countSubcellsMPI(grid, nVoxels, nSubcellArray = iOffsetArray)
+       iOffsetArray(2:nThreads-1) = iOffsetArray(1:nThreads-2)
+       iOffsetArray(1) = 0
+       do i = 2, nThreads-1
+          iOffsetArray(i) = iOffsetArray(i) + iOffsetArray(i-1)
+       enddo
+       iOffsetArray = iOffsetArray * nPointOffset 
+    endif
+#endif
+
+
+    nCells = nVoxels
+    nPoints = nCells * nPointOffset
+    writeHeader = .true.
+#ifdef MPI
+    if (myRankGlobal /= 1) then
+       writeHeader = .false.
+    endif
+#endif
     
-    write(69,'(a,i10,a)') "POINTS ",nPoint, " float"
-    do i = 1, nPoint
-       write(69, *) pointx(i), pointy(i), pointz(i)
+    if (writeHeader) then
+       open(lunit,file=vtkFilename, form="formatted", status="unknown")
+       write(lunit,'(a)') "# vtk DataFile Version 2.0"
+       write(lunit,'(a,a)') "TORUS AMR data"
+       write(lunit,'(a)') "ASCII"
+       write(lunit,'(a)') "DATASET UNSTRUCTURED_GRID"
+    endif
+
+    if (.not.grid%splitOverMPI) call writePoints(grid, vtkFilename, nPoints)
+
+#ifdef MPI
+    if (grid%splitOverMpi) then
+    do iThread = 1, nThreadsGlobal
+       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+       if (iThread == myRankGlobal) then
+          call writePoints(grid, vtkFilename, nPoints)
+       endif
+    enddo
+ endif
+#endif
+
+    if (.not.grid%splitOverMPI) call writeIndices(grid, vtkFilename, nPoints, nCells, 0)
+
+#ifdef MPI
+    if (grid%splitOverMpi) then
+
+    do iThread = 1, nThreadsGlobal
+       call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+       if (iThread == myRankGlobal) then
+           call writeIndices(grid, vtkFilename, nPoints, nCells, iOffsetArray(myRankGlobal))
+       endif
+    enddo
+ endif
+#endif
+
+    if (writeHeader) then
+       open(lunit,file=vtkFilename, form="formatted", status="old",position="append")
+       write(lunit, '(a, i10)') "CELL_TYPES ",nCells
+       do i = 1, nCells
+          if (nPointOffset == 8) write(lunit, '(a)') "11"
+          if (nPointOffset == 4) write(lunit, '(a)') "8"
+       enddo
+       write(69, '(a,  i10)') "CELL_DATA ",nCells
+       close(lunit)
+    endif
+
+    do iType = 1, nValueType
+    
+       if (.not.grid%splitOverMPI) call writeValue(grid, vtkFilename, valueType(iType), nCells)
+
+#ifdef MPI
+    if (grid%splitOverMpi) then
+
+       do iThread = 1, nThreadsGlobal
+          call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+          if (iThread == myRankGlobal) then
+             call writeValue(grid, vtkFilename, valueType(iType), nCells)
+          endif
+       enddo
+    endif
+#endif
+
     enddo
 
-    write(69, '(a, i10, i10)') "CELLS ",nCell, nPoint+nCell
-    do i = 1, nCell
-       write(69, '(a,8i10)') " 8 ", cellPointIndex(i,1:8)-1
-    enddo
-
-    write(69, '(a, i10)') "CELL_TYPES ",nCell
-    do i = 1, nCell
-       write(69, '(a)') "11"
-    enddo
-
-    write(69, '(a,  i10)') "CELL_DATA ",nCell
-    write(69,'(a)') "SCALARS rho float"
-    write(69, '(a)') "LOOKUP_TABLE default"
-    do i = 1, nCell
-       write(69, *) value(i)
-    enddo
-    close(69)
   end subroutine writeVtkFile
 
 
-  recursive subroutine getPointandCellData(thisOctal, pointx, pointy, pointz, npoint, cellPointIndex, value, nCell)
-    type(OCTAL), pointer :: thisOctal, child
-    real :: pointx(:), pointy(:), pointz(:), value(:)
-    integer :: nPoint, cellPointIndex(:,:), ncell
-    integer :: subcell, i
-    type(OCTALVECTOR) :: rVec
-    real :: d, xp, xm, yp, ym, zp, zm
-
-    do subcell = 1, thisOctal%maxChildren
-       if (thisOctal%hasChild(subcell)) then
-          ! find the child
-          do i = 1, thisOctal%nChildren, 1
-             if (thisOctal%indexChild(i) == subcell) then
-                child => thisOctal%child(i)
-                call  getPointandCellData(child, pointx, pointy, pointz, npoint, cellPointIndex, value, nCell)
-                exit
-             end if
-          end do
-       else
-          nCell = nCell + 1
-          rVec = subcellCentre(thisOctal,subcell)
-          d = thisOctal%subcellSize/2.d0
-          xp = REAL(rVec%x + d)
-          xm = REAL(rVec%x - d)
-          yp = REAL(rVec%y + d)
-          ym = REAL(rVec%y - d)
-          zp = REAL(rVec%z + d)
-          zm = REAL(rVec%z - d)
-          
-          value(nCell) = thisOctal%rho(subcell)
-          nPoint = nPoint + 1
-          pointx(nPoint) = xm
-          pointy(nPoint) = ym
-          pointz(nPoint) = zm
-          cellPointIndex(nCell, 1) = nPoint
-
-          nPoint = nPoint + 1
-          pointx(nPoint) = xp
-          pointy(nPoint) = ym
-          pointz(nPoint) = zm
-          cellPointIndex(nCell, 2) = nPoint
-
-          nPoint = nPoint + 1
-          pointx(nPoint) = xm
-          pointy(nPoint) = yp
-          pointz(nPoint) = zm
-          cellPointIndex(nCell, 3) = nPoint
-
-
-          nPoint = nPoint + 1
-          pointx(nPoint) = xp
-          pointy(nPoint) = yp
-          pointz(nPoint) = zm
-          cellPointIndex(nCell, 4) = nPoint
-
-          nPoint = nPoint + 1
-          pointx(nPoint) = xm
-          pointy(nPoint) = ym
-          pointz(nPoint) = zp
-          cellPointIndex(nCell, 5) = nPoint
-
-          nPoint = nPoint + 1
-          pointx(nPoint) = xp
-          pointy(nPoint) = ym
-          pointz(nPoint) = zp
-          cellPointIndex(nCell, 6) = nPoint
-
-          nPoint = nPoint + 1
-          pointx(nPoint) = xm
-          pointy(nPoint) = yp
-          pointz(nPoint) = zp
-          cellPointIndex(nCell, 7) = nPoint
-
-          nPoint = nPoint + 1
-          pointx(nPoint) = xp
-          pointy(nPoint) = yp
-          pointz(nPoint) = zp
-          cellPointIndex(nCell, 8) = nPoint
-
-       end if
-    enddo
-
-  end subroutine getPointandCellData
 
 
 end module vtk_mod

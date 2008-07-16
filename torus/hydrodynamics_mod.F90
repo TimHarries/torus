@@ -11,9 +11,11 @@ module hydrodynamics_mod
   use source_mod
   use timing
   use mpi_amr_mod
+  use vtk_mod
 
   implicit none
   real(double) :: gridDistanceScale = 1.d10
+!  real(double) :: gridDistanceScale = 1.d0
 
 contains
 
@@ -1817,6 +1819,8 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceU(grid%octreeRoot, dt/2.d0, iEquationOfState)
 
+!    call writeVtkFile(grid, "usweep1.vtk", "vtk.txt")
+
 
     direction = OCTALVECTOR(0.d0, 1.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1841,6 +1845,7 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceV(grid%octreeRoot, dt, iEquationOfState)
 
+!    call writeVtkFile(grid, "vsweep.vtk", "vtk.txt")
 
     direction = OCTALVECTOR(0.d0, 0.d0, 1.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1865,15 +1870,15 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceW(grid%octreeRoot, dt, iEquationOfState)
 
+!    call writeVtkFile(grid, "wsweep.vtk", "vtk.txt")
+
+
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupRhoPhi(grid%octreeRoot, grid, direction)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call setupUi(grid%octreeRoot, grid, direction)
     call setupUpm(grid%octreeRoot, grid, direction)
-
-    call plotGridMPI(grid, "uinterface.png/png", "x-z", "u_i", plotgrid=.false.)
-
 
 
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -1893,12 +1898,20 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
     call pressureForceU(grid%octreeRoot, dt/2.d0, iEquationOfState)
 
+!    call writeVtkFile(grid, "usweep2.vtk", "vtk.txt")
+
+
     call periodBoundary(grid)
     call imposeBoundary(grid%octreeRoot)
     call transferTempStorage(grid%octreeRoot)
 
 
+!    call writeVtkFile(grid, "beforeselfgrav.vtk", "vtk.txt")
+
     if (selfGravity) call selfGrav(grid, nPairs, thread1, thread2, nBound, group, nGroup)
+
+!    call writeVtkFile(grid, "afterselfgrav.vtk", "vtk.txt")
+
 
   end subroutine hydroStep3d
 
@@ -2092,7 +2105,7 @@ contains
     integer :: it
     integer :: myRank, ierr
     integer :: nPairs, thread1(100), thread2(100), group(100), nBound(100), ngroup
-    integer :: iUnrefine
+    integer :: iUnrefine, nUnrefine
     real(double) :: nextDumpTime, tdump, temptc(10)
     character(len=80) :: plotfile
 
@@ -2248,7 +2261,9 @@ contains
        iUnrefine = iUnrefine + 1
        if (iUnrefine == 5) then
           call tune(6, "Unrefine grid")
-          call unrefineCells(grid%octreeRoot, grid, gamma, iEquationOfState)
+          nUnrefine = 0 
+          call unrefineCells(grid%octreeRoot, grid, gamma, iEquationOfState, nUnrefine)
+          write(*,*) "Unrefined ", nUnrefine, " cells"
           call tune(6, "Unrefine grid")
           iUnrefine = 0
        endif
@@ -2308,6 +2323,7 @@ contains
     type(OCTALVECTOR) :: direction, viewVec
     logical :: gridConverged
     integer :: nSource = 0
+    integer :: nUnrefine
     integer :: thread1(200), thread2(200), nBound(200), nPairs
     logical :: globalConverged(64), tConverged(64)
     integer :: nHydroThreads
@@ -2331,7 +2347,7 @@ contains
     it = grid%iDump
     currentTime = grid%currentTime
     nextDumpTime = grid%currentTime
-    tDump = 0.01d0
+!    tDump = 0.01d0
     tff = 1.d0 / sqrt(bigG * (1d0*mSol/((4.d0/3.d0)*pi*7.d15**3)))
     tDump = 1.d-2 * tff
     call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
@@ -2340,10 +2356,13 @@ contains
     if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
 
-    call writeInfo("Plotting grid", TRIVIAL)    
+    call writeInfo("Plotting grid", TRIVIAL)   
     call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "mpi", plotgrid=.true.)
 
-
+!    write(plotfile,'(a)') "test.vtk"
+!    call writeVtkFile(grid, plotfile, "rho")
+!    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
+!    stop
 
     call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -2369,6 +2388,7 @@ contains
 
     if (myrank == 1) call tune(6, "Initial refine")
     
+!    call writeVtkFile(grid, "beforerefine.vtk")
 
     call plotGridMPI(grid, "beforeindrefine.png/png", "x-z", "rho", plotgrid=.true.)
 
@@ -2419,6 +2439,7 @@ contains
 
     if (myrank == 1) call tune(6, "Initial refine")
 
+!    call writeVtkFile(grid, "afterrefine.vtk")
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
     call setupX(grid%octreeRoot, grid, direction)
@@ -2436,7 +2457,7 @@ contains
 
 
     if (myrankglobal==1) write(*,*) "Setting tdump to: ", tdump
-    nextDumpTime = tdump
+    nextDumpTime = tdump + currentTime
     iUnrefine = 0
 !    call writeInfo("Plotting grid", TRIVIAL)    
 !    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "rhoe", 0., 1.)
@@ -2479,22 +2500,18 @@ contains
           dt = nextDumpTime - currentTime
        endif
 
-       smallTime = 0.3d0 * 1.d4*gridDistanceScale/2.e5
+!       smallTime = 0.3d0 * 1.d4*gridDistanceScale/2.e5
 !       write(*,*) "myrank ",myrank, "smallest cell ",grid%halfSmallestSubcell
        if (myrank == 1) write(*,*) "courantTime", dt,cflnumber
-       if (myrank == 1) write(*,*) "smallTime", smallTime
+!       if (myrank == 1) write(*,*) "smallTime", smallTime
        if (myrank == 1) call tune(6,"Hydrodynamics step")
-       if (dt > smallTime) dt = smallTime
+!       if (dt > smallTime) dt = smallTime
        call writeInfo("calling hydro step",TRIVIAL)
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
-
-       call hydroStep3d(iEquationOfState, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup)
-
-
-
+       call hydroStep3d(iEquationOfState, grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup, doSelfGrav=.true.)
 
 
        if (myrank == 1) call tune(6,"Hydrodynamics step")
@@ -2528,7 +2545,9 @@ contains
        iUnrefine = iUnrefine + 1
        if (iUnrefine == 5) then
           if (myrank == 1)call tune(6, "Unrefine grid")
-          call unrefineCells(grid%octreeRoot, grid, gamma, iEquationOfState)
+          nUnrefine = 0
+          call unrefineCells(grid%octreeRoot, grid, gamma, iEquationOfState, nUnrefine)
+          write(*,*) "Unrefined ", nUnrefine, " cells"
           if (myrank == 1)call tune(6, "Unrefine grid")
           iUnrefine = 0
        endif
@@ -2567,6 +2586,10 @@ contains
           call plotGridMPI(grid, plotfile, "x-z", "rho", zoomfactor=zoomfactor)!, debug=.true.) !, withvel=.true.)
           write(plotfile,'(a,i4.4,a)') "rhogrid",it,".png/png"
           call plotGridMPI(grid, plotfile, "x-z", "rho",plotgrid=.true.) !, withvel=.true.)
+
+
+          write(plotfile,'(a,i4.4,a)') "rho",it,".vtk"
+          call writeVtkFile(grid, plotfile, "vtk.txt")
 
 
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
@@ -3821,13 +3844,13 @@ contains
     integer :: subcell, i
     logical :: converged, converged_tmp
     type(OCTALVECTOR) :: dirVec(6), centre, locator
-!    logical :: split
+    logical :: split
     integer :: neighbourSubcell, nDir
-    real(double) :: r !, grad, maxGradient
+    real(double) :: r , grad, maxGradient
     logical, optional :: inherit
     real(double), parameter :: limit = 0.1d0
     real(double) :: gamma
-!    real(double) :: cs, rhocs
+    real(double) :: cs, rhocs
     integer :: myRank, ierr
     integer :: iEquationOfState
     logical :: refineOnMass, refineOnIonization
@@ -3879,8 +3902,8 @@ contains
              dirVec(1) = OCTALVECTOR( 1.d0, 0.d0, 0.d0)
              dirVec(2) = OCTALVECTOR(-1.d0, 0.d0, 0.d0)
           endif
-!
-!
+
+
 !          do i = 1, nDir
 !             maxGradient = 1.d-30
 !             locator = subcellCentre(thisOctal, subcell) + &
@@ -3893,110 +3916,107 @@ contains
 !                     thisOctal%rho(subcell))
 !                maxGradient = max(grad, maxGradient)
 !
-!!                if (grad > limit) write(*,*) "rho",grad
+!                !                if (grad > limit) write(*,*) "rho",grad
 !
-!                if (thisOctal%rhoe(subcell) /= 0.d0) then
-!                   grad = abs((thisOctal%rhoe(subcell)-neighbourOctal%rhoe(neighbourSubcell)) / &
-!                        thisOctal%rhoe(subcell))
-!                   maxGradient = max(grad, maxGradient)
+!                !                if (thisOctal%rhoe(subcell) /= 0.d0) then
+!                !                   grad = abs((thisOctal%rhoe(subcell)-neighbourOctal%rhoe(neighbourSubcell)) / &
+!                !                        thisOctal%rhoe(subcell))
+!                !                   maxGradient = max(grad, maxGradient)
+!                !                endif
+!                !                if (grad > limit) write(*,*) "rhoe",grad, thisOctal%rhoe(subcell), neighbourOctal%rhoe(neighboursubcell),&
+!                !                     thisOctal%mpiThread(subcell), neighbourOctal%mpithread(neighboursubcell)
+!                !                if (.not.thisOctal%ghostCell(subcell)) then
+!                !                   cs = soundSpeed(thisOctal, subcell, gamma, iEquationOfState)
+!                !                   rhocs = thisOctal%rho(subcell) * cs
+!                !
+!                !                   if (rhocs /= 0.d0) then
+!                !                      grad = abs((thisOctal%rhou(subcell)-neighbourOctal%rhou(neighbourSubcell)) / &
+!                !                           rhocs)
+!                !                      maxGradient = max(grad, maxGradient)
+!                !!                      if (grad > limit) write(*,*) "rhou",grad
+!                !                      
+!                !                      grad = abs((thisOctal%rhov(subcell)-neighbourOctal%rhov(neighbourSubcell)) / &
+!                !                        rhocs)
+!                !                      maxGradient = max(grad, maxGradient)
+!                !!                      if (grad > limit) write(*,*) "rhov",grad
+!                !                      
+!                !                      grad = abs((thisOctal%rhow(subcell)-neighbourOctal%rhow(neighbourSubcell)) / &
+!                !                           rhocs)
+!                maxGradient = max(grad, maxGradient)
+!                !                      if (grad > limit) write(*,*) "rhow",grad
+!             endif
+!             if (maxGradient > limit) then
+!                split = .true.
+!             else
+!                split = .false.
+!             endif
+!
+!
+!             if (split) then
+!                if ((neighbourOctal%nDepth >= thisOctal%nDepth).and.(thisOctal%nDepth < maxDepthAMR)) then
+!                   call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+!                        inherit=inherit, interp=.false.)
+!                   converged = .false.
+!                   exit
 !                endif
-!!                if (grad > limit) write(*,*) "rhoe",grad, thisOctal%rhoe(subcell), neighbourOctal%rhoe(neighboursubcell),&
-!!                     thisOctal%mpiThread(subcell), neighbourOctal%mpithread(neighboursubcell)
-!                if (.not.thisOctal%ghostCell(subcell)) then
-!                   cs = soundSpeed(thisOctal, subcell, gamma, iEquationOfState)
-!                   rhocs = thisOctal%rho(subcell) * cs
 !
-!                   if (rhocs /= 0.d0) then
-!                      grad = abs((thisOctal%rhou(subcell)-neighbourOctal%rhou(neighbourSubcell)) / &
-!                           rhocs)
-!                      maxGradient = max(grad, maxGradient)
-!!                      if (grad > limit) write(*,*) "rhou",grad
-!                      
-!                      grad = abs((thisOctal%rhov(subcell)-neighbourOctal%rhov(neighbourSubcell)) / &
-!                        rhocs)
-!                      maxGradient = max(grad, maxGradient)
-!!                      if (grad > limit) write(*,*) "rhov",grad
-!                      
-!                      grad = abs((thisOctal%rhow(subcell)-neighbourOctal%rhow(neighbourSubcell)) / &
-!                           rhocs)
-!                      maxGradient = max(grad, maxGradient)
-!!                      if (grad > limit) write(*,*) "rhow",grad
-!                   endif
-!                   if (maxGradient > limit) then
-!                      split = .true.
-!                   else
-!                      split = .false.
-!                   endif
+!                !                      if ((thisOctal%nDepth >= neighbourOctal%nDepth).and.(neighbourOctal%nDepth < maxDepth)) then
+!                !                         call addNewChild(neighbourOctal,neighboursubcell,grid,adjustGridInfo=.TRUE., &
+!                !                              inherit=inherit, interp=.false.)
+!                !                         converged = .false.
+!                !                         exit
+!                !                      endif
+!
+!             endif
+!          enddo
 !
 !
-!                   if (split) then
-!                      if ((neighbourOctal%nDepth >= thisOctal%nDepth).and.(thisOctal%nDepth < maxDepthAMR)) then
-!                         call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-!                              inherit=inherit, interp=.false.)
-!                         converged = .false.
-!                         exit
-!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
-!                      endif
-!
-!!                      if ((thisOctal%nDepth >= neighbourOctal%nDepth).and.(neighbourOctal%nDepth < maxDepth)) then
-!!                         call addNewChild(neighbourOctal,neighboursubcell,grid,adjustGridInfo=.TRUE., &
-!!                              inherit=inherit, interp=.false.)
-!!                         converged = .false.
-!!                         exit
-!!                      endif
-!
-!       endif
-! endif
-!       endif
-!       end do
+    if (refineOnMass) then
+       if (((thisOctal%rho(subcell)*cellVolume(thisOctal, subcell)*1.d30) > 1.d-5*mSol) &
+            .and.(thisOctal%nDepth < maxDepthAMR))  then
+          call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+               inherit=inherit, interp=.false.)
+          converged = .false.
+       endif
+    endif
 
 
-          if (refineOnMass) then
-             if (((thisOctal%rho(subcell)*cellVolume(thisOctal, subcell)*1.d30) > 1.d-4*mSol) &
-                  .and.(thisOctal%nDepth < maxDepthAMR))  then
+    if (refineOnIonization) then
+
+       do i = 1, nDir
+          locator = subcellCentre(thisOctal, subcell) + &
+               (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(i)
+          if (inOctal(grid%octreeRoot, locator)) then
+             neighbourOctal => thisOctal
+             call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
+
+             if ((thisOctal%ionFrac(subcell,1) > 0.9d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) < 0.1d0) .and. &
+                  (thisOctal%nDepth < maxDepthAMR) ) then
                 call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
                      inherit=inherit, interp=.false.)
                 converged = .false.
+                exit
              endif
+
+             if ((thisOctal%ionFrac(subcell,1) < 0.1d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) > 0.9d0) .and. &
+                  (thisOctal%nDepth < maxDepthAMR) ) then
+                call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
+                     inherit=inherit, interp=.false.)
+                converged = .false.
+                exit
+             endif
+
           endif
-
-
-          if (refineOnIonization) then
-
-             do i = 1, nDir
-                locator = subcellCentre(thisOctal, subcell) + &
-                     (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell) * dirVec(i)
-                if (inOctal(grid%octreeRoot, locator)) then
-                   neighbourOctal => thisOctal
-                   call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-                   
-                   if ((thisOctal%ionFrac(subcell,1) > 0.9d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) < 0.1d0) .and. &
-                        (thisOctal%nDepth < maxDepthAMR) ) then
-                      call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                           inherit=inherit, interp=.false.)
-                      converged = .false.
-                      exit
-                   endif
-
-                   if ((thisOctal%ionFrac(subcell,1) < 0.1d0).and.(neighbourOctal%ionFrac(neighbourSubcell,1) > 0.9d0) .and. &
-                        (thisOctal%nDepth < maxDepthAMR) ) then
-                      call addNewChild(thisOctal,subcell,grid,adjustGridInfo=.TRUE., &
-                           inherit=inherit, interp=.false.)
-                      converged = .false.
-                      exit
-                   endif
-
-                endif
-             enddo
-          endif
+       enddo
+    endif
 
 
 
-          if (.not.converged) exit
-       endif
-    end do
+    if (.not.converged) exit
+ endif
+end do
 
-  end subroutine refineGridGeneric2
+end subroutine refineGridGeneric2
 
 
 
@@ -4117,7 +4137,7 @@ contains
     locator = rVec
   end subroutine locatorToNeighbour
        
-  recursive subroutine unrefineCells(thisOctal, grid, gamma, iEquationOfState)
+  recursive subroutine unrefineCells(thisOctal, grid, gamma, iEquationOfState, nUnrefine)
     use input_variables, only : minDepthAMR
     type(GRIDTYPE) :: grid
     type(octal), pointer   :: thisOctal
@@ -4125,7 +4145,7 @@ contains
     real(double) :: gamma
     integer :: subcell, i
     logical :: unrefine
-    integer :: nc
+    integer :: nc, nUnrefine
     real(double) :: rhow(8), rhov(8), rhou(8), rho(8), rhoe(8) !, fac, limit
     real(double) :: cs(8), mass
 !    real(double) :: rhocs, rhomean, rhoemean
@@ -4144,7 +4164,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call unrefineCells(child, grid,  gamma, iEquationOfState)
+                call unrefineCells(child, grid,  gamma, iEquationOfState, nUnrefine)
                 exit
              end if
           end do
@@ -4205,13 +4225,14 @@ contains
 !       endif
 !       
 
-    if (mass  < 2.d-5*mSol) unrefine = .true.
+    if (mass  < 2.d-6*mSol) unrefine = .true.
        
     if (thisOctal%nDepth <= minDepthAMR) unrefine = .false.
 
     if ((thisOctal%nChildren == 0).and.unrefine) then
        call deleteChild(thisOctal%parent, thisOctal%parentSubcell, adjustParent = .true., &
             grid = grid, adjustGridInfo = .true.)
+       nunrefine = nunrefine + 1
     endif
     
   end subroutine unrefineCells
@@ -4287,12 +4308,12 @@ contains
     include 'mpif.h'  
     integer :: ierr
     logical :: globalConverged, localChanged(64)
-    type(OCTALVECTOR) :: locs(100000), eLocs(100000)
-    integer :: nLocs(64), tempNlocs(10000)
-    integer :: thread(100000), nLocsGlobal,i, depth(100000)
+    type(OCTALVECTOR) :: locs(200000), eLocs(200000)
+    integer :: nLocs(64), tempNlocs(20000)
+    integer :: thread(100000), nLocsGlobal,i, depth(200000)
 
-    real(double) :: temp(10000,4),tempsent(4)
-    integer :: nTemp(1), nSent(1), eDepth(100000)
+    real(double) :: temp(20000,4),tempsent(4)
+    integer :: nTemp(1), nSent(1), eDepth(200000)
     integer :: iThread, nExternalLocs
     integer :: iter
     integer, parameter :: tag = 1
