@@ -1122,8 +1122,8 @@ program torus
      endif
 #endif
 
-     if (writeoutput) call  writeVtkFile(grid, "test.vtk", "rho")
-     stop
+!     if (writeoutput) call  writeVtkFile(grid, "test.vtk", "rho")
+!     stop
 
   if (lucyRadiativeEq) call do_lucyRadiativeEq
 
