@@ -82,12 +82,9 @@ contains
   type(PHASEMATRIX), allocatable :: miePhase(:,:,:)
 
   ! filenames
-
-  character(len=80) :: filename
   character(len=80) :: phasePopFilename
 
   ! vectors
-
   type(VECTOR), parameter :: zAxis = VECTOR(0.,0.,1.)
   type(VECTOR), parameter :: yAxis = VECTOR(0.,1.,0.)
   type(VECTOR), parameter :: xAxis = VECTOR(1.,0.,0.)
@@ -131,14 +128,6 @@ contains
 
   ! Used for multiple sources (when geometry=cluster)
   type(cluster)   :: young_cluster
-
-  ! Used in "plot_AMR_planes" and "plot_AMR_values"
-  integer :: nmarker           ! number of markers
-  real, allocatable    :: xmarker(:)  ! position of x
-  real, allocatable    :: ymarker(:)  ! position of y
-  real, allocatable    :: zmarker(:)  ! position of z
-  real    :: width_3rd_dim         ! Use this to restrict the markers to be plotted..  
-  real val_3rd_dim
 
   ! Name of the file to output various message from torus
   character(len=80) :: message
@@ -229,7 +218,6 @@ contains
   inputKappaSca = 0.
   inputKappaAbs = 0.
 
-  nMarker = 0
   lucyRadiativeEq = .false. ! this has to be initialized here
   num_calls = num_calls + 1
   write(char_num_calls,'(i4.4)') num_calls
@@ -272,19 +260,6 @@ contains
 
   amrGridCentre = OCTALVECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
 
-  
-  ! For plotting routines used later in this program
-  if (plane_for_plot == "x-y") then
-     val_3rd_dim = amrGridCentre%z
-  else if (plane_for_plot == "y-z") then
-     val_3rd_dim = amrGridCentre%x
-  else if (plane_for_plot == "z-x") then
-     val_3rd_dim = amrGridCentre%y
-  else if (plane_for_plot == "x-z") then
-     val_3rd_dim = amrGridCentre%y
-  else
-     val_3rd_dim = 0.0d0        
-  end if
 
   if (doRaman) screened = .true.
 
@@ -419,9 +394,6 @@ contains
   ! Write the information on the grid to file using a routine in grid_mod.f90
   if ( myRankIsZero ) call grid_info(grid, "info_grid_"//TRIM(ADJUSTL(char_num_calls))//".dat")
 
-  ! Plotting the various values stored in the AMR grid.
-  call do_amr_plots
-
   ! set up the sources
   call set_up_sources
 
@@ -432,7 +404,7 @@ contains
 
   call random_seed
 
-!  if (MyrankIsZero) call  writeVtkFile(grid, "rho_"//char_num_calls//".vtk" )
+  if (myRankIsZero) call  writeVtkFile(grid, "torus_"//char_num_calls//".vtk", "vtk.txt" )
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
   
@@ -610,68 +582,6 @@ CONTAINS
   if (doTuning) call tune(6, "AMR grid construction.") ! stop a stopwatch
 
 end subroutine amr_grid_setup
-
-!-----------------------------------------------------------------------------------------------------------------------
-
-! Plot values of variables on AMR grid. Extracted from torusMain by D. Acreman 
-
-subroutine do_amr_plots
-
-  ! Do some preparation for the arrays used in plot_AMR_* which will be used later
-  nmarker = get_nstar(young_cluster)
-  allocate(xMarker(1:nMarker))
-  allocate(yMarker(1:nMarker))
-  allocate(zMarker(1:nMarker))
-  do i = 1, nmarker
-     a_star = get_a_star(young_cluster, i)
-     xmarker(i)= a_star%position%x
-     ymarker(i)= a_star%position%y
-     zmarker(i)= a_star%position%z
-  end do
-  width_3rd_dim = amrGridSize
-
-  if ( plot_maps .and. myRankIsZero ) then
-
-     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-          "rho_grid",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-          width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls, &
-          fixValMin=sph_rho_min, fixValMax=sph_rho_max, useFixedRange=.true. )
-     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-          "rho_zoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-          width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default", index=num_calls, &
-          fixValMin=sph_rho_min, fixValMax=sph_rho_max, useFixedRange=.true. )
-     call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-          nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-     if (grid%lineEmission) then
-        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
-             "Vx", .false., .false.,  &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-        call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
-             "Vy", .false., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-        call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
-             "Vz", .false., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-     end if
-
-     call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
-          "temperature", .true., .false., nmarker, xmarker, ymarker, zmarker, &
-          width_3rd_dim, show_value_3rd_dim, suffix="default", index=num_calls, &
-          fixValMin=sph_tem_min, fixValMax=sph_tem_max, useFixedRange=.false. )
-  
-     if (mie) then
-        do i = 1, nDustType
-           write(message,'(a,i1)') "dusttype",i
-           write(filename,'(a,i1)') "dusttype",i
-           call plot_AMR_values(grid, message, "x-z", 0., &
-                trim(filename),.false., .false., nmarker, xmarker, ymarker, zmarker, &
-                width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor, suffix="default", index=num_calls)
-        enddo
-     endif
-
-  endif
-
-end subroutine do_amr_plots
 
 !-----------------------------------------------------------------------------------------------------------------------
 subroutine set_up_sources
