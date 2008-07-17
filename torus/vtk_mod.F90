@@ -15,6 +15,11 @@ module vtk_mod
 
   implicit none
 
+  public :: writeVtkfile
+
+  private :: writePoints, writeIndices, writeValue
+
+  logical :: writeHeader
 
 contains
 
@@ -24,13 +29,7 @@ contains
     type(GRIDTYPE) :: grid
     integer :: lunit = 69
     integer :: nPoints
-    logical :: writeHeader
     character(len=*) :: vtkFilename
-
-    writeHeader = .true.
-#ifdef MPI
-    if (myRankGlobal /= 1) writeHeader = .false.
-#endif
 
     open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
     if (writeHeader) then
@@ -123,13 +122,7 @@ contains
     type(GRIDTYPE) :: grid
     integer :: lunit = 69
     integer :: nCells, nPoints, iOffset, i, nCount
-    logical :: writeHeader
     character(len=*) :: vtkFilename
-
-    writeHeader = .true.
-#ifdef MPI
-    if (myRankGlobal /= 1) writeHeader = .false.
-#endif
 
     open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
     if (writeHeader) then
@@ -201,7 +194,6 @@ contains
     integer :: lunit = 69
     integer :: nCells
     character(len=*) :: valueType
-    logical :: writeHeader
     character(len=*) :: vtkFilename
     logical :: vector, scalar
 
@@ -214,11 +206,6 @@ contains
           scalar = .true.
           vector = .false.
     end select
-
-    writeHeader = .true.
-#ifdef MPI
-    if (myRankGlobal /= 1) writeHeader = .false.
-#endif
 
     open(lunit, file=vtkFilename, form="formatted", status="old", position="append")
     if (writeHeader) then
@@ -300,7 +287,6 @@ contains
     character(len=*), optional ::  valueTypeFilename
     integer :: nCells, nPoints
     integer :: lunit = 69
-    logical :: writeHeader
     integer :: nOctals, nVoxels, ierr, iOffset, i, iType
     integer :: nPointOffset
 #ifdef MPI
@@ -360,7 +346,7 @@ contains
     nPoints = nCells * nPointOffset
     writeHeader = .true.
 #ifdef MPI
-    if (myRankGlobal /= 1) then
+    if (myRankGlobal /= 1 .and. grid%splitOverMpi) then
        writeHeader = .false.
     endif
 #endif
