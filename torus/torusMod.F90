@@ -92,7 +92,6 @@ contains
 
   ! output arrays
 
-  integer :: iLambda
   real, allocatable :: xArray(:)
 
   ! model flags
@@ -111,7 +110,6 @@ contains
   ! adaptive grid stuff
 
   type(OCTALVECTOR) :: amrGridCentre ! central coordinates of grid
-  real :: ang
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
                                      !   (i.e. the number of childless subcells)
@@ -146,7 +144,6 @@ contains
   integer, save :: num_calls = 0
   character(len=4) :: char_num_calls
 
-  real(double) :: tempArray(10)
 #ifdef MPI
   ! For MPI implementations =====================================================
   integer ::   ierr           ! error flag
@@ -352,21 +349,6 @@ contains
   if (noScattering) then
      if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
      grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
-  endif
-
-  if (writeoutput) then
-     open(76, file="phasematrix.dat",status="unknown",form="formatted")
-     ilambda = findIlambda(10000.0, xArray, nLambda, ok)
-     do i = 1, nMuMie
-	ang =  pi*real(i-1)/real(nMuMie-1)
-        write(76,*) 180.*ang/pi, miephase(1, ilambda, i)%element(1,1)
-     enddo
-     close(76)
-     tempArray(1) = 0.
-     do i = 1, nMumie
-        tempArray(1) = tempArray(1) + miePhase(1, ilambda, i)%element(1,1)/real(nMuMie)
-     enddo
-     write(*,*) "phase normalization ",tempArray(1)
   endif
 
   if (includeGasOpacity) then
