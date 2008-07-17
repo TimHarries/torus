@@ -37,17 +37,18 @@ contains
     endif
 
 
-    call recursiveWritePoints(grid%octreeRoot, lunit)
+    call recursiveWritePoints(grid%octreeRoot, lunit, grid)
     close(lunit)
 
   contains
 
-    recursive subroutine recursiveWritePoints(thisOctal,lunit)
+    recursive subroutine recursiveWritePoints(thisOctal,lunit, grid)
       type(OCTAL), pointer :: thisOctal, child
 
 #ifdef MPI
       include 'mpif.h'  
 #endif
+      type(GRIDTYPE) :: grid
       integer :: lunit
       integer :: subcell, i
       real :: xp, xm, yp, ym, zm, zp, d
@@ -58,14 +59,14 @@ contains
             do i = 1, thisOctal%nChildren, 1
                if (thisOctal%indexChild(i) == subcell) then
                   child => thisOctal%child(i)
-                  call recursiveWritePoints(child,lunit)
+                  call recursiveWritePoints(child,lunit, grid)
                   exit
                end if
             end do
          else
 
 #ifdef MPI
-            if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+            if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
 #endif
             if (thisOctal%threed) then
                rVec = subcellCentre(thisOctal,subcell)
@@ -130,17 +131,18 @@ contains
     endif
 
     nCount = 0
-    call recursiveWriteIndices(grid%octreeRoot, lunit, nCount, iOffset)
+    call recursiveWriteIndices(grid%octreeRoot, lunit, nCount, iOffset, grid)
     close(lunit)
 
   contains
 
-    recursive subroutine recursiveWriteIndices(thisOctal,lunit, nCount, iOffset)
+    recursive subroutine recursiveWriteIndices(thisOctal,lunit, nCount, iOffset, grid)
       type(OCTAL), pointer :: thisOctal, child
 
 #ifdef MPI
       include 'mpif.h'  
 #endif
+      type(GRIDTYPE) :: grid
       integer :: lunit
       integer :: subcell, i
       integer :: iOffset, nCount
@@ -151,14 +153,14 @@ contains
             do i = 1, thisOctal%nChildren, 1
                if (thisOctal%indexChild(i) == subcell) then
                   child => thisOctal%child(i)
-                  call recursiveWriteIndices(child,lunit, nCount, iOffset)
+                  call recursiveWriteIndices(child,lunit, nCount, iOffset, grid)
                   exit
                end if
             end do
          else
 
 #ifdef MPI
-            if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+            if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
 #endif
 
             if (thisOctal%threed) then
@@ -219,17 +221,18 @@ contains
 
     endif
 
-    call recursiveWriteValue(grid%octreeRoot, valueType)
+    call recursiveWriteValue(grid%octreeRoot, valueType, grid)
     close(lunit)
 
   contains
 
-    recursive subroutine recursiveWriteValue(thisOctal, valueType)
+    recursive subroutine recursiveWriteValue(thisOctal, valueType, grid)
       type(OCTAL), pointer :: thisOctal, child
 
 #ifdef MPI
       include 'mpif.h'  
 #endif
+      type(GRIDTYPE), intent(in) :: grid
       integer :: lunit = 69
       integer :: subcell, i
       character(len=*) :: valueType
@@ -240,14 +243,14 @@ contains
             do i = 1, thisOctal%nChildren, 1
                if (thisOctal%indexChild(i) == subcell) then
                   child => thisOctal%child(i)
-                  call recursiveWriteValue(child, valueType)
+                  call recursiveWriteValue(child, valueType, grid)
                   exit
                end if
             end do
          else
 
 #ifdef MPI
-            if (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) cycle
+            if ( (.not.octalOnThread(thisOctal, subcell, myRankGlobal)) .and. grid%splitOverMPI ) cycle
 #endif
 
             select case (valueType)
