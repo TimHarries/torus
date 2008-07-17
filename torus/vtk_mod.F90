@@ -295,6 +295,12 @@ contains
     integer :: myRank, nThreads, iThread
 #endif
 
+
+#ifdef MPI
+! just return if the grid is not decomposed and MPI job and not zero rank thread
+    if ((.not.grid%splitOverMpi).and.(myRankGlobal /= 0)) goto 666
+#endif
+
     
 
     if (PRESENT(valueTypeFilename)) then
@@ -357,6 +363,7 @@ contains
        write(lunit,'(a,a)') "TORUS AMR data"
        write(lunit,'(a)') "ASCII"
        write(lunit,'(a)') "DATASET UNSTRUCTURED_GRID"
+       close(lunit)
     endif
 
     if (.not.grid%splitOverMPI) call writePoints(grid, vtkFilename, nPoints)
@@ -414,6 +421,8 @@ contains
 #endif
 
     enddo
+
+666 continue
 
   end subroutine writeVtkFile
 

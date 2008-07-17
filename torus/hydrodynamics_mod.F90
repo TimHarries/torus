@@ -2019,7 +2019,7 @@ contains
              end if
           end do
        else
-!          if (thisOctal%mpiThread(subcell) /= myRank) cycle
+
           if (.not.octalOnThread(thisOctal, subcell, myRank)) cycle
 
           if (.not.thisOctal%ghostCell(subcell)) then
