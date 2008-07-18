@@ -2193,6 +2193,11 @@ endif
    mCore = mCore * mSol
    mDisc = mDisc * mSol
 
+   rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/(100.d0*autocm)**betaDisc  &
+        * (rInner*1.d10)**alphaDisc * &
+        (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
+   write(*,*) "RHO0: ", rho0, mdisc, alphadisc,betadisc,height,rinner,router
+
 endif
 
 if (geometry .eq. "planetgap") then

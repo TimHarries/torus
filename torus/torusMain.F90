@@ -1021,6 +1021,8 @@ program torus
 !           sigma0 = rho0 * (rinner*1.e10/(1.*autocm))**alphaDisc * &
 !           (height*1.e10) * (autocm / (100.d0*autocm))**betaDisc * sqrt(twopi)
 
+
+
            sigma0 = rho0 * (height*1.e10) * ((rinner*1.e10) / (100.d0*autocm))**betaDisc * sqrt(twopi)
 
            if (writeoutput) write(*,*) "Sigma0: ",sigma0
