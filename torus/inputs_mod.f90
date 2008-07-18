@@ -249,7 +249,7 @@ contains
           smoothFactor = 0.0      
        end if
        call getReal("samplefreq", sampleFreq, cLine, nLines, &
-            "Max samples per AMR subcell: ","(a,f6.1,1x,a)", 2., ok, .true.) 
+            "Max samples per AMR subcell: ","(a,f6.1,1x,a)", 2., ok, .false.) 
        call getString("popfile", popFilename, cLine, nLines, &
             "Grid populations filename: ","(a,a,1x,a)","none", ok, .false.)
        call getLogical("writepops", writePops, cLine, nLines, &
@@ -1133,7 +1133,7 @@ contains
             "Probability of photon from dusty envelope: ","(a,f4.2,a)", 0.8, ok, .true.)
 
        call getReal("tthresh", tthresh, cLine, nLines, &
-            "Temperature threshold for dust (K): ","(a,f10.2,a)", 1000., ok, .true.)
+            "Temperature threshold for dust (K): ","(a,f10.2,a)", 2000., ok, .false.)
 
        oneKappa = .true.
 
@@ -2161,9 +2161,6 @@ endif
 
     call getReal("teff", teff, cLine, nLines, &
          "Effective temp (K): ","(a,f7.0,a)", 1., ok, .true.)
-
-    call getReal("rho", rho0, cLine, nLines, &
-         "Density (g/cm^3): ","(a,f7.0,a)", 1., ok, .true.)
 
    call getReal("mcore", mCore, cLine, nLines, &
        "Core mass (solar masses): ","(a,f5.1,a)", 0.5, ok, .true.)
