@@ -14,6 +14,7 @@ module cmf_mod
   use datacube_mod
   use timing
   use parallel_mod
+  use vtk_mod
 
   implicit none
 
@@ -1001,6 +1002,7 @@ contains
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
 #endif
 
+    call writeVTKfile(grid, "grid.vtk", "vtk.txt")
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
 
      call createContFreqArray(nFreq, freq, nAtom, thisAtom, nsource, source, maxFreq)

@@ -958,7 +958,8 @@ program torus
 
   ! set up the sources
   call set_up_sources
-
+  write(*,*) "nSources ", nsource, size(source)
+ 
      if (geometry == "wr104") then
 !        call IntegratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
 !             VECTOR(0.,0.,1.), grid, lambda, tauExt, tauAbs, &
@@ -1056,7 +1057,6 @@ program torus
 
 667 continue
      call random_seed
-
      if (cmf) then
         if (movie) call plotAMRthreeDMovie(grid, source, nsource)
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
@@ -2019,25 +2019,7 @@ CONTAINS
 !     end if
 
 
-        if (geometry == "ttauri" .or. geometry == "luc_cir3d" .or. &
-             geometry == "cmfgen" .or. geometry == "romanova".or.geometry == "magstream") then
-           nu = cSpeed / (lamLine * angstromtocm)
-           call contread(contFluxFile, nu, coreContinuumFlux)
-           call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
-           if (geometry == "ttauri") then
-              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
-           elseif (geometry == "magstream") then
-!              call createMagStreamSurface(source(1)%surface, grid, nu, coreContinuumFlux, fAccretion)
-!              call testSurface(source(1)%surface)
-
-           elseif (geometry == "romanova") then
-              call createTTauriSurface2(starSurface, grid, romData, nu, coreContinuumFlux,fAccretion) 
-           else
-              call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
-           end if
-!           call testSurface(starSurface)
-        endif
-
+! ttauri source  / central star creation code moved from here to set_up_sources by th (18/7/08)
         if (lineEmission.and.(.not.cmf)) then
            !  calculate the statistical equilibrium (and hence the emissivities 
            !  and the opacities) for all of the subcells in an
@@ -2318,9 +2300,40 @@ subroutine set_up_sources
 
 
   ! set up the sources
+  call writeInfo("Setting up sources")
   nSource = 0
 
   select case(geometry)
+
+     case("ttauri", "luc_cir3d", "cmfgen", "romanova")
+
+        if (.not.cmf) then
+           nu = cSpeed / (lamLine * angstromtocm)
+           call contread(contFluxFile, nu, coreContinuumFlux)
+           call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
+           if (geometry == "ttauri") then
+              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+           elseif (geometry == "magstream") then
+              
+           elseif (geometry == "romanova") then
+              call createTTauriSurface2(starSurface, grid, romData, nu, coreContinuumFlux,fAccretion) 
+           else
+              call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+           end if
+        else
+           nSource = 1
+           allocate(source(1:1))
+           source(1)%luminosity = grid%lCore
+           source(1)%radius = ttaurirStar/1.d10
+           source(1)%teff = 4000.
+           source(1)%position = VECTOR(0.,0.,0.)
+           call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
+           call normalizedSpectrum(source(1)%spectrum)
+           call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
+           nu =1.d15
+        endif
+
+        
     case("testamr","benchmark")
        nSource = 1
        allocate(source(1:1))

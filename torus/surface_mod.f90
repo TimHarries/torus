@@ -103,7 +103,7 @@ contains
     close(unit=20)
 
     call convertToFnu(surface%nuarray, surface%hnuArray, surface%nNuHotFlux)
-    
+
     n = 0
     do i = 1, nTheta
        theta = pi*real(i-1)/real(nTheta-1)

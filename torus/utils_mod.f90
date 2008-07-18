@@ -3993,7 +3993,7 @@ END SUBROUTINE GAUSSJ
        do i = 1, n
           nu = cSpeed / (1.d-8 * nuArray(i)) ! hz
           nuTemp(i) = nu
-          fTemp(i) = (fArray(i)/1.d8) ! erg/s/cm^2/angs -> erg/s/cm^2/cm
+          fTemp(i) = (fArray(i)*1.d8) ! erg/s/cm^2/angs -> erg/s/cm^2/cm
           fTemp(i) = fTemp(i) * cspeed / nu**2 ! erg/s/cm^2/Hz
        end do
        do i = 1, n
@@ -4001,6 +4001,10 @@ END SUBROUTINE GAUSSJ
           fArray(i) = fTemp(n-i+1)
        enddo
        deallocate(fTemp, nuTemp)
+!       do i = 1, n
+!          write(45,*) nuarray(i), fArray(i)
+!       enddo
+!       stop
     endif
   end subroutine convertToFnu
 

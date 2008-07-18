@@ -261,8 +261,13 @@ contains
                        real(thisOctal%rhov(subcell)/thisOctal%rho(subcell)), &
                        real(thisOctal%rhow(subcell)/thisOctal%rho(subcell))
                case("velocity")
-                  write(lunit, *) thisOctal%velocity(subcell)%x*cspeed/1.e5, &
-                       thisOctal%velocity(subcell)%y*cspeed/1.e5, thisOctal%velocity(subcell)%z*cspeed/1.e5
+                  if (thisOctal%threed) then
+                     write(lunit, *) thisOctal%velocity(subcell)%x*cspeed/1.e5, &
+                          thisOctal%velocity(subcell)%y*cspeed/1.e5, thisOctal%velocity(subcell)%z*cspeed/1.e5
+                  else
+                     write(lunit, *) thisOctal%velocity(subcell)%x*cspeed/1.e5, &
+                           thisOctal%velocity(subcell)%z*cspeed/1.e5, 0.
+                     endif
                case("temperature")
                   write(lunit, *) real(thisOctal%temperature(subcell))
                case("phi")
