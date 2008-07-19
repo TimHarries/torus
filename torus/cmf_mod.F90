@@ -1158,7 +1158,7 @@ contains
 
           if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
              
-             write(*,*) iOctal,iOctal_beg,iOctal_end
+!             write(*,*) iOctal,iOctal_beg,iOctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
 
@@ -1361,7 +1361,7 @@ contains
                          endif
 !                         write(*,*) "iter",iter,fac
                       enddo
-                      write(*,*) "Main iteration route converged after ", iter, " iterations"
+!                      write(*,*) "Main iteration route converged after ", iter, " iterations"
                       thisOctal%ne(subcell) = ne
                    endif
 

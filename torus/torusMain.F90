@@ -1993,6 +1993,21 @@ CONTAINS
 
         if (writeoutput) call writeAMRgrid("after_creation.grid",.false.,grid)
 
+
+
+           nu = cSpeed / (lamLine * angstromtocm)
+           call contread(contFluxFile, nu, coreContinuumFlux)
+           call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
+           if (geometry == "ttauri") then
+              call createTTauriSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+           elseif (geometry == "magstream") then
+              
+           elseif (geometry == "romanova") then
+              call createTTauriSurface2(starSurface, grid, romData, nu, coreContinuumFlux,fAccretion) 
+           else
+              call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
+           end if
+
         if ((geometry == "shakara").and.(nDustType>1)) then
            call fillDustShakara(grid, grid%octreeRoot)
         endif
@@ -2017,7 +2032,6 @@ CONTAINS
 !            nmarker, xmarker, ymarker, zmarker, &
 !            width_3rd_dim, show_value_3rd_dim,val_3rd_dim)
 !     end if
-
 
 ! ttauri source  / central star creation code moved from here to set_up_sources by th (18/7/08)
         if (lineEmission.and.(.not.cmf)) then

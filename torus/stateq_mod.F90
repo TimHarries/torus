@@ -4445,7 +4445,7 @@ contains
         ! Now allows for at least ntrial_min iterations. (RK changed this)
 !        if ((errx.le.tolx) .and. all(x > 0.0_db) .and. k>ntrial_min) then
         if ((dx_max.le.tolx) .and. all(x > 0.0_db) .and. k>ntrial_min) then
-           if (debug) print *, k, 'trials.'
+!           if (debug) print *, k, 'trials.'
            return
         end if
 
@@ -4455,7 +4455,7 @@ contains
         needRestart = .true.
       end if
 
-      print *, n_iteration, 'trials' 
+!      print *, n_iteration, 'trials' 
 
     end subroutine mnewt_stateq_v2
 
