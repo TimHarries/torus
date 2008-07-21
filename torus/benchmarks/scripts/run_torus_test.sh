@@ -67,6 +67,41 @@ ln -s ${model_file} results.dat
 ./compare_molbench
 }
 
+sphbench()
+{
+export SYSTEM=intelmac
+rm -rf sphbench
+mkdir sphbench
+cd sphbench
+
+echo "Making Torus library"
+mkdir build
+cd build 
+ln -s ../../torus/* .
+make depends > compile_log
+make debug=yes lib >> compile_log 2>&1 
+
+echo "Compiling sphbench"
+cp ../../torus/benchmarks/sphbench/sphbench.f90 .
+g95 -c -o sphbench.o sphbench.f90 >> compile_log
+g95 -o sphbench sphbench.o -L. -ltorus -L/Users/acreman/lib/pgplot -lpgplot -L/Users/acreman/cfitsio/lib -lcfitsio >> compile_log
+cd ..
+
+mkdir run
+cd run
+cp ../../torus/benchmarks/sphbench/*.dat . 
+cp ../../torus/benchmarks/sphbench/*.txt . 
+ln -s ../../torus/isochrones/* .
+ln -s ../build/sphbench .
+echo "Running sphbench"
+./sphbench > run_log 2>&1
+if [[ $? -eq 0 ]]; then
+    echo "SPH benchmark returned zero exit status"
+else
+    echo "SPH benchmark returned non-zero exit status"
+fi 
+
+}
 
 # Main part of script starts here ------------------------------------------
 
@@ -103,6 +138,7 @@ echo Checking out torus from CVS archive...
 rm -rf torus
 /usr/bin/cvs -q co torus > cvs_log.txt
 
+
 for sys in ${sys_to_test}; do
     rm -rf build_${sys} run_${sys} run_${sys}_molebench
     mkdir  build_${sys} run_${sys} run_${sys}_molebench
@@ -123,6 +159,8 @@ echo "Running torus.ompi molebench"
 /usr/local/bin/mpirun -np 4 torus.ompi > run_log_ompi.txt 2>&1
 check_molebench
 cd ..
+
+sphbench
 
 exit
 
