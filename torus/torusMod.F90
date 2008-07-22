@@ -145,6 +145,7 @@ contains
   character(len=11), save       :: prev_file_tag="none"
   integer, save :: num_calls = 0
   character(len=4) :: char_num_calls
+  character(len=100) :: filename
 
 #ifdef MPI
   ! For MPI implementations =====================================================
@@ -294,7 +295,7 @@ contains
   call gather_sph_data(sphData)
 
   ! Writing basic info of this data
-  if (myRankIsZero) call info(sphData, "info_sph_"//TRIM(ADJUSTL(char_num_calls))//".dat")
+  if (myRankIsZero) call info(sphData, "info_sph_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat")
 
   ! reading in the isochrone data needed to build an cluster object.
   call new(isochrone_data, "dam98_0225")   
@@ -305,7 +306,8 @@ contains
   call build_cluster(young_cluster, sphData, dble(lamstart), dble(lamend), isochrone_data)
     
   ! Wrting the stellar catalog readble for a human
-  if (myRankIsZero) call write_catalog(young_cluster, sphData, "catalogue_"//TRIM(ADJUSTL(char_num_calls))//".dat")
+  filename="catalogue_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat"
+  if (myRankIsZero) call write_catalog(young_cluster, sphData, trim(filename) )
 
   ! Finding the inclinations of discs seen from +z directions...
   !     if (myRankIsZero) call find_inclinations(sphData, 0.0d0, 0.0d0, 1.0d0, "inclinations_z.dat")
@@ -381,7 +383,8 @@ contains
   call amr_grid_setup
 
   ! Write the information on the grid to file using a routine in grid_mod.f90
-  if ( myRankIsZero ) call grid_info(grid, "info_grid_"//TRIM(ADJUSTL(char_num_calls))//".dat")
+  filename = trim ("info_grid_"//trim(adjustl(file_tag))//"."//TRIM(ADJUSTL(char_num_calls))//".dat")
+  if ( myRankIsZero ) call grid_info(grid, filename)
 
   ! set up the sources
   call set_up_sources
@@ -393,7 +396,8 @@ contains
 
   call random_seed
 
-  if (myRankIsZero) call  writeVtkFile(grid, "torus_"//trim(adjustl(file_tag))//'.'//char_num_calls//".vtk", "vtk.txt" )
+  filename = trim ( "torus_in_"//trim(adjustl(file_tag))//'.'//char_num_calls//".vtk" )
+  if (myRankIsZero) call  writeVtkFile(grid, filename, "vtk.txt")
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
   
@@ -404,6 +408,9 @@ contains
   if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! stop a stopwatch
+
+  filename = trim ( "torus_out_"//trim(adjustl(file_tag))//'.'//char_num_calls//".vtk" )
+  if (myRankIsZero) call  writeVtkFile(grid, filename, "vtk.txt")
 
   call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
 
