@@ -165,6 +165,9 @@ contains
     itheta = real(surface%ntheta)*theta/pi + 1
     iphi =  real(surface%ntheta)*phi/twopi + 1
 
+    iPhi = min(surface%nTheta, iphi)
+    iTheta = min(surface%nTheta, iTheta)
+
     getElement = surface%angleArray(iTheta, iPhi)
 
 

@@ -1825,6 +1825,8 @@ contains
     integer :: nFirstLevel
     nHydroThreads = nThreadsGlobal - 1
 
+    check = .true.
+
     if (thisOctal%twoD) then
        if (nHydroThreads == 4) then
           if (thisOctal%mpiThread(subcell) == myRank) then

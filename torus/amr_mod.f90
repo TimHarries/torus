@@ -6591,6 +6591,8 @@ IF ( .NOT. gridConverged ) RETURN
   thisOctal%velocity(subcell) = TTauriVelocity(point,grid)
   !thisOctal%velocity(subcell) = TTauriRotation(point,grid)    
      
+  thisOctal%microturb(subcell) = 50.d5/cspeed!!!!!!!!!!!!!!!!!!!!
+
 
   IF ((thisoctal%threed).and.(subcell == 8)) &
        CALL fillVelocityCorners(thisOctal,grid,TTauriVelocity, .true.)
@@ -7736,9 +7738,9 @@ IF ( .NOT. gridConverged ) RETURN
     !TaccretionDouble = Laccretion / REAL(((fourPi * TTauriRstar**2)*stefanBoltz* &
     !                                  abs(cos(theta1)-cos(theta2))),kind=db)
 
-    sAccretion = (fourPi * TTauriRstar**2)*abs(cos(theta1)-cos(theta2))!1.e20
-    tAccretionDouble = max(1.d0, tAccretionDouble)
-    Taccretion = TaccretionDouble**0.25
+!    sAccretion = (fourPi * TTauriRstar**2)*abs(cos(theta1)-cos(theta2))!1.e20
+!    tAccretionDouble = max(1.d0, tAccretionDouble)
+!    Taccretion = TaccretionDouble**0.25
 
 !    write(*,*) contfluxfile
     open(20,file=contFluxFile,status="old",form="formatted")

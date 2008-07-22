@@ -505,7 +505,7 @@ program torus
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
         call readAtom(thisAtom(i),atomFilename(i))
-        call stripAtomLevels(thisAtom(i), 5)
+        call stripAtomLevels(thisAtom(i), 10)
      enddo
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
   endif
@@ -958,7 +958,6 @@ program torus
 
   ! set up the sources
   call set_up_sources
-  write(*,*) "nSources ", nsource, size(source)
  
      if (geometry == "wr104") then
 !        call IntegratePathAMR(lambdatau,  lamLine, VECTOR(1.,1.,1.), zeroVec, &
@@ -1077,7 +1076,7 @@ program torus
               enddo
            endif
 
-        do i = 1, 50
+        do i = 1, 1
            ang = twoPi * real(i-1)/51. 
 !           ang = 45.*degtorad
            t = 120.d0*degtorad
@@ -1995,6 +1994,7 @@ CONTAINS
 
 
 
+	if (lineEmission) then
            nu = cSpeed / (lamLine * angstromtocm)
            call contread(contFluxFile, nu, coreContinuumFlux)
            call buildSphere(grid%starPos1, grid%rCore, starSurface, 400, contFluxFile)
@@ -2007,6 +2007,7 @@ CONTAINS
            else
               call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
            end if
+        endif
 
         if ((geometry == "shakara").and.(nDustType>1)) then
            call fillDustShakara(grid, grid%octreeRoot)
@@ -2335,6 +2336,8 @@ subroutine set_up_sources
               call createSurface(starSurface, grid, nu, coreContinuumFlux,fAccretion) 
            end if
         else
+           nu = cSpeed / (lamLine * angstromtocm)
+
            nSource = 1
            allocate(source(1:1))
            source(1)%luminosity = grid%lCore
@@ -2344,7 +2347,9 @@ subroutine set_up_sources
            call fillSpectrumBB(source(1)%spectrum, dble(teff),  dble(100.), dble(2.e8), 200)
            call normalizedSpectrum(source(1)%spectrum)
            call buildSphere(grid%starPos1, grid%rCore, source(1)%surface, 400, contFluxFile)
-           nu =1.d15
+           call createTTauriSurface(source(1)%surface, grid, nu, coreContinuumFlux,fAccretion) 
+
+
         endif
 
         

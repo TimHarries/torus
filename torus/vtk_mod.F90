@@ -309,6 +309,11 @@ contains
     if ((.not.grid%splitOverMpi).and.(myRankGlobal /= 0)) goto 666
 #endif
 
+#ifdef MPI
+! just return if the grid is decomposed and MPI job and this is rank zero thread
+    if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
+#endif
+
     
 
     if (PRESENT(valueTypeFilename)) then

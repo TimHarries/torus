@@ -472,7 +472,7 @@ contains
 
 
     deltaV = 4.3 * thisOctal%microturb(subcell) * (r-0.5d0) ! random frequency near line spectrum peak. 
-    ! 4.3 corresponds to the width where the peak of the line profile has dropped to 1% of it's peak
+    ! 4.3 corresponds to the width where the peak of the line profile has dropped to 1% of its peak
     ! microturulence is assumed gaussian - b is FULL WIDTH
 
     weight = weight * phiProf(deltaV, thisOctal%microturb(subcell))
@@ -689,7 +689,6 @@ contains
 
 
 
-                t1 = dtau
                 dTau = alphaNu *  (distArray(i)-distArray(i-1)) * 1.d10
                 
 
@@ -708,7 +707,7 @@ contains
 
 
                 i0(iRBB) = i0(iRBB) +  exp(-tau(irBB)) * (1.d0-exp(-dtau))*snu
-                if (dtau > 1.d10) write(*,*) dtau
+!                if (dtau > 1.d10) write(*,*) dtau
 
                 tau(iRBB) = tau(iRBB) + dtau
              endif
@@ -945,7 +944,7 @@ contains
     integer :: iStage
     real(double), allocatable :: oldpops(:,:), newPops(:,:), dPops(:,:), mainoldpops(:,:)
     real(double) :: newNe, dNe
-    real(double), parameter :: underCorrect = 0.9d0
+    real(double), parameter :: underCorrect = 1.d0 !0.9d0
     real(double) :: fac
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: ioctal_beg, ioctal_end
@@ -976,6 +975,8 @@ contains
     logical :: recalcJbar, neConverged, firstCheckonTau
     character(len=80) :: message
     logical :: ionized
+    integer :: iLev, nIter, iLab
+    real(double) :: lev1, lev2
 
 #ifdef MPI
     ! For MPI implementations
@@ -1082,25 +1083,35 @@ contains
      call MPI_BARRIER(MPI_COMM_WORLD, ierr) 
      call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
 #endif
+     if (writeoutput) then
+        open(69, file="cmf_convergence.dat", status="old", form="formatted")
+        write(69,'(a)') &
+!             012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789
+             "      Iter Max Frac      Tol      Subcell    Level  New pop   Old pop      nRays   Fix ray"
+        close(69)
+     endif
 
 
-    nRay = 100
-!    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-    do iStage = 1, 2
+    nRay = 1000
+    write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
+    do iStage = 1, 1
 
 
        if (iStage == 1) then
           fixedRays = .true.
-          tolerance = 1.d-2
+          tolerance = 1.d-4
        else
           fixedRays = .false.
-          tolerance = 1.d-4
+          tolerance = 1.d-5
        endif
 
        gridConverged = .false.
+       nIter = 0
+
 
        do while (.not.gridConverged)
 
+          nIter = nIter + 1
           if (doTuning) call tune(6, "One cmf iteration")  ! start a stopwatch
 
           allocate(ds(1:nRay))
@@ -1135,9 +1146,6 @@ contains
     allocate(octalsBelongRank(size(octalArray)))
     
     if (my_rank == 0) then
-       print *, ' '
-       print *, 'atomLoop  computed by ', np-1, ' processors.'
-       print *, ' '
        call mpiBlockHandout(np,octalsBelongRank,blockDivFactor=1,tag=tag,&
                             maxBlockSize=10,setDebug=.false.)
     
@@ -1156,7 +1164,7 @@ contains
 
 
 
-          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
+!          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
              
 !             write(*,*) iOctal,iOctal_beg,iOctal_end
              thisOctal => octalArray(iOctal)%content
@@ -1183,6 +1191,8 @@ contains
                               nAtom, thisAtom, source, nSource, hitPhotosphere(iRay), sourceNumber(iray), &
                               cosTheta(iRay), weight(iRay), nRBBTrans, indexRBBTrans, indexAtom, nHatom, nHeIAtom, nHeIIatom, &
                               nfreq, freq, iCont(iray,1:nFreq))
+                         if ((iray == 10).and.(iOctal==iOctal_beg).and.(subcell == 1).and.(myrankglobal==2)) &
+                              write(*,*) myrankglobal, " direction ",o2s(direction)
                          if (hitPhotosphere(iray)) nHit = nHit + 1
                       enddo
                       iter = 0
@@ -1212,22 +1222,23 @@ contains
                                     thisOctal%newAtomLevel(subcell,iAtom,1:), &
                                     freq, nFreq, weight(1:nRay), iRBB,tauAv)
 
+
 !                               if (firstCheckonTau) then
 !                                  thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
 !                               endif
-
-
-!                               write(*,*) thisAtom(iAtom)%iLower(iTrans), " -> ", thisAtom(iAtom)%iUpper(iTrans), ": ",tauAv
-                               if (iTrans == 4) tauHalpha = tauAv
-
+!
+!
+!!                               write(*,*) thisAtom(iAtom)%iLower(iTrans), " -> ", thisAtom(iAtom)%iUpper(iTrans), ": ",tauAv
+!                               if (iTrans == 4) tauHalpha = tauAv
+!
 !                               if (iter < 10) then
-!                                  if (tauAv > 1.d1) then
-!                                     thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
-!                                  else
-!                                     thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
-!                                  endif
-!                                  firstCheckonTau = .false.
-!                               endif
+!                                 if (tauAv > 1.d5) then
+!                                    thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
+!                                 else
+!                                    thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
+!                                 endif
+!                                 firstCheckonTau = .false.
+!                              endif
 
 
                             enddo
@@ -1382,7 +1393,7 @@ contains
              enddo
           end do
 
-          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
+!          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
 
 #ifdef MPI
  if (.not.blockHandout) exit blockloop
@@ -1430,14 +1441,22 @@ contains
 #endif
 
           maxFracChange = -1.d30
-          call swapPops(grid%octreeRoot, maxFracChange)
-          write(*,*) "Maximum fractional change this iteration",maxFracChange
-          write(*,*) "Fractional change",maxFracChange,"tolerance",tolerance , &
+          call swapPops(grid%octreeRoot, maxFracChange, lev1, lev2, ilev, ilab)
+          if (writeoutput) write(*,*) "Maximum fractional change this iteration",maxFracChange
+          if (writeoutput) write(*,*) "Fractional change",maxFracChange,"tolerance",tolerance , &
                "fixed rays",fixedrays,"nray",nray
+          if (writeoutput) write(*,*) "iLevel ", iLev, " new pops ", lev1, " old pops ", lev2
 
           if (myRankIsZero) &
                call writeAmrGrid("atom_tmp.grid",.false.,grid)
 
+
+          if (writeoutput) then
+             open(69, file="cmf_convergence.dat", status="old", position = "append", form="formatted")
+             write(69,'(i10, 1p, 2e10.2, 2i10, 2e10.2, i10, l10)') &
+                  nIter, maxFracChange, tolerance, ilab, ilev, lev1, lev2, nRay, fixedRays
+             close(69)
+          endif
 
           if (maxFracChange < tolerance) then
              gridConverged = .true.
@@ -1463,18 +1482,19 @@ contains
 !          write(*,*) "!!!!!!!!!!!!! Forcing exit after only one iteration"
 
 
+          if (doTuning)  call tune(6, "One cmf iteration")  ! stop a stopwatch
        enddo
-       if (doTuning)  call tune(6, "One cmf iteration")  ! stop a stopwatch
 
     enddo
-    write(*,*) "ATOM loop done."
+    call writeInfo( "ATOM loop done.")
   end subroutine atomLoop
 
-  recursive  subroutine  swapPops(thisOctal, maxFracChange)
+  recursive  subroutine  swapPops(thisOctal, maxFracChange, lev1, lev2, ilev,ilab)
     type(octal), pointer   :: thisOctal
     type(octal), pointer  :: child 
     integer :: subcell, i, j, iAtom
-    real(double) :: maxFracChange, temp
+    real(double) :: maxFracChange, temp, lev1, lev2
+    integer :: ilev, ilab
   
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
@@ -1482,7 +1502,7 @@ contains
           do i = 1, thisOctal%nChildren, 1
              if (thisOctal%indexChild(i) == subcell) then
                 child => thisOctal%child(i)
-                call swapPops(child, maxFracChange)
+                call swapPops(child, maxFracChange, lev1, lev2, ilev, ilab)
                 exit
              end if
           end do
@@ -1495,6 +1515,10 @@ contains
                         thisOctal%atomLevel(subcell,iAtom,j))
                    if (temp > maxFracChange) then
                       maxFracChange = temp
+                      ilev = j
+                      lev1 = thisOctal%newatomLevel(subcell,iAtom,j)
+                      lev2 = thisOctal%atomLevel(subcell,iAtom,j)
+                      ilab = thisOctal%label(subcell)
                    endif
                 endif
              enddo
@@ -2217,7 +2241,7 @@ contains
 
     nMonte = 1
 
-    call initCube(cube, 200, 200, 50)
+    call initCube(cube, 200, 200, 100)
 !    call addSpatialAxes(cube, -grid%octreeRoot%subcellSize*0.1d0, +grid%octreeRoot%subcellSize*0.1d0, &
 !         -grid%octreeRoot%subcellSize*0.1d0, grid%octreeRoot%subcellSize*0.1d0)
 
@@ -2232,7 +2256,7 @@ contains
 !    call addSpatialAxes(cube, -dble(3.1*grid%rInner), +dble(3.1*grid%rInner), -dble(3.1*grid%rInner), +dble(3.1*grid%rInner))
 !    write(*,*) "rinner",grid%rinner/(rsol/1.e10)
 
-    call addvelocityAxis(cube, -2500.d0, 2500.d0)
+    call addvelocityAxis(cube, -200.d0, 200.d0)
 
     xProj =   viewVec .cross. OCTALVECTOR(0.d0, 0.d0, 1.d0)
     call normalize(xProj)
