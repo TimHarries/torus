@@ -21,7 +21,7 @@ contains
   subroutine torus(b_idim,  b_npart,       b_nactive, b_nptmass, b_num_gas, &
                    b_xyzmh, b_rho,         b_iphase,                        &
                    b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
-                   temp_min, b_totalgasmass )
+                   temp_min, b_totalgasmass, file_tag )
 
   use kind_mod               ! variable type KIND parameters
   use vector_mod             ! vector math
@@ -141,6 +141,8 @@ contains
   real*8, intent(inout) :: b_temp(b_num_gas)   ! Temperature of gas particles
   real*8, intent(in)    :: b_totalgasmass      ! Total gas mass for this MPI process
   real(kind=8), intent(in)      :: temp_min
+  character(len=11), intent(in) :: file_tag
+  character(len=11), save       :: prev_file_tag="none"
   integer, save :: num_calls = 0
   character(len=4) :: char_num_calls
 
@@ -216,6 +218,11 @@ contains
   inputKappaAbs = 0.
 
   lucyRadiativeEq = .false. ! this has to be initialized here
+
+! Used to  set up output file names
+! Reset the counter each time the SPH dump file name changes 
+  if ( file_tag /= prev_file_tag ) num_calls = 0
+  prev_file_tag = file_tag
   num_calls = num_calls + 1
   write(char_num_calls,'(i4.4)') num_calls
 
@@ -386,7 +393,7 @@ contains
 
   call random_seed
 
-  if (myRankIsZero) call  writeVtkFile(grid, "torus_"//char_num_calls//".vtk", "vtk.txt" )
+  if (myRankIsZero) call  writeVtkFile(grid, "torus_"//trim(adjustl(file_tag))//'.'//char_num_calls//".vtk", "vtk.txt" )
 
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
   
