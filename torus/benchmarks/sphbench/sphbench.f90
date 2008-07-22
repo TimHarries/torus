@@ -127,7 +127,7 @@ use torus_mod, only: torus
   call torus(b_idim,  b_npart,       b_nactive, b_nptmass, b_num_gas, &
              b_xyzmh, b_rho,         b_iphase,                        &
              b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
-            temp_min, total_gas_mass )
+            temp_min, total_gas_mass, "sphbench" )
 
 
 end program sphbench
