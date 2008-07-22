@@ -22,8 +22,6 @@ do
     fi
 done
 
-mail_to="acreman th drundle"
-
 # Test for success of disc benchmark
 num_success=`/usr/bin/grep "TORUS: Test successful" ${LOG_FILE} | /usr/bin/wc -l `
 
@@ -42,9 +40,16 @@ else
     subject_line2="Molecular benchmark failed. "
 fi
 
-
+# Astro mail addresses
+mail_to="acreman th drundle"
 for user in ${mail_to}; do
     /sw/bin/mutt -s "${subject_line} ${subject_line2}" ${attach_list} ${user}@${MAIL_DOMAIN} < ${LOG_FILE} 
+done
+
+# Other mail addresses
+mail_to="N.J.Mayne@exeter.ac.uk"
+for user in ${mail_to}; do
+    /sw/bin/mutt -s "${subject_line} ${subject_line2}" ${attach_list} ${user} < ${LOG_FILE}
 done
 
 exit
