@@ -7,8 +7,6 @@ nphotons 100000
 amrgridcentrex 0.0
 amrgridcentrey 0.0
 amrgridcentrez 0.0
-distance 140.
-sed T
 inarcsec F
 amrgridsize 1.0e7
 dosmoothgrid T
@@ -23,16 +21,11 @@ popfile lucy4.dat
 readpops F
 writepops T
 nphase 1
-wavlin F
 filter_set_name step_functions
 narrowband F
-nlambda 100
-lamstart 1100.
-lamend 3.6e8
 lambdafile F
 lamfilename lambda.dat
 tthresh 10000.
-inclination  0.001
 gridtype octree
 gridusesamr T
 amr2d F
@@ -44,7 +37,6 @@ router 800.
 height 10.18
 rho 1.83e-10
 maxscat 10
-filename bench00
 device "/xs"                             
 stokesimage F
 vmin -100000.                            
@@ -65,8 +57,8 @@ writelucy F
 readlucy F
 probdust 0.9
 graintype1 sil_dl
-amin1 0.0005
-amax1 0.25
+amin1 0.12
+amax1 0.1201
 a01 1.
 qdist1 3.5
 pdist1 1.
@@ -79,8 +71,20 @@ dustfile T
 kappafile kmh.dat
 mcore 0.5
 mdisc 1.e-4
-firstinc 0.001
 imagearcsec 10.
 disc_on F
 pgplotdevice  "gif/gif"
+
+filename test
+ninc 2
+firstinc 12.5
+lastinc 77.5
+ndf F
+nphase 1
+sised T
+nlambda 200
+wavlin F
+lamstart 1200.
+lamend  2.e7
+distance 2.25558e-8
 
