@@ -59,6 +59,8 @@ contains
   use mpi_global_mod
   use parallel_mod
   use vtk_mod
+  use phaseloop_mod, only: do_phaseloop
+  use TTauri_mod, only: alpha_disc
 
   implicit none
 #ifdef MPI
@@ -85,17 +87,9 @@ contains
   character(len=80) :: phasePopFilename
 
   ! vectors
-  type(VECTOR), parameter :: zAxis = VECTOR(0.,0.,1.)
-  type(VECTOR), parameter :: yAxis = VECTOR(0.,1.,0.)
-  type(VECTOR), parameter :: xAxis = VECTOR(1.,0.,0.)
   type(VECTOR) :: rotationAxis, normToRotation
 
-  ! output arrays
-
-  real, allocatable :: xArray(:)
-
   ! model flags
-
   logical :: flatSpec
   logical :: ok
   logical :: greyContinuum
@@ -108,7 +102,6 @@ contains
   type(SURFACETYPE) :: starSurface
 
   ! adaptive grid stuff
-
   type(OCTALVECTOR) :: amrGridCentre ! central coordinates of grid
   integer           :: nOctals       ! number of octals in grid
   integer           :: nVoxels       ! number of unique voxels in grid
@@ -120,6 +113,12 @@ contains
   ! For romanova geometry case
   type(romanova) :: romData ! parameters and data for romanova geometry
 
+  type(alpha_disc)  :: ttauri_disc       ! parameters for ttauri disc
+  real(double) :: objectDistance
+  real :: inclination
+  integer, parameter :: maxTau = 20000
+  type(BLOBTYPE), allocatable :: blobs(:)
+  real dTime
   !
   ! SPH data of Matthew
   type(sph_data) :: sphData
@@ -277,12 +276,16 @@ contains
      greyContinuum = .true.
   endif
 
-  ! the observer's viewing direction
-
-  rotationAxis = VECTOR(0., 0., 1.)
-
-  normToRotation = rotationAxis .cross. yAxis
-  call normalize(normToRotation)
+  if (allocated(inclinations)) then
+     inclination = inclinations(1)
+  else
+     inclination = firstInclination
+  end if
+  if (inclination .lt. 1.e-6) then
+     call writeWarning("inclination less than 1.e-6, now set to 1.e-6.")
+     call writeWarning("Did you specify an inclination of 0?")
+  end if
+  inclination = max(inclination, 1.e-4)
 
   !=====================================================================
   ! INIIALIZATIONS BEFORE CALLING INITAMR ROUTINE SHOULD BE HERE
@@ -334,10 +337,6 @@ contains
 
   grid%doRaman = doRaman
 
-  ! allocate the output arrays
-
-  allocate(xArray(1:nLambda))
-
   if (photoionization) call addIons(grid%ion, grid%nion)
   
 
@@ -353,7 +352,7 @@ contains
      grid%nopacity = nLambda
   end if
 
-  call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
+  call  createDustCrossSectionPhaseMatrix(grid, grid%lamArray, nLambda, miePhase, nMuMie)
 
   if (noScattering) then
      if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
@@ -367,7 +366,7 @@ contains
 
      call readTsujiPPTable()
      call readTsujiKPTable()
-     call createAllMolecularTables(20, 1.e-6, 20000., grid%nLambda, xArray)
+     call createAllMolecularTables(20, 1.e-6, 20000., grid%nLambda, grid%lamArray)
 
   end if
 
@@ -402,7 +401,7 @@ contains
   if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
   
   call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
-       nLambda, xArray, source, nSource, nLucy, massEnvelope, tthresh, &
+       nLambda, grid%lamArray, source, nSource, nLucy, massEnvelope, tthresh, &
        lucy_undersampled, .false., IterLucy, plot_i=num_calls)
 
   if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
@@ -413,6 +412,13 @@ contains
   if (myRankIsZero) call  writeVtkFile(grid, filename, "vtk.txt")
 
   call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
+
+  objectDistance = griddistance * pctocm
+  call do_phaseloop(grid, .false., 0.0, 0.0, 0.0,                                            &
+     theta1, theta2, VECTOR(0.0,0.0,0.0), 0.0_db, 0.0, 0.0, 0.0, 0.0_db,                     &
+     starsurface, newContFluxFile, 0.0, 0.0, 0.0, ttauri_disc, (/VECTOR(0.0,0.0,0.0)/), 1,   &
+     0.0, 10000, flatspec, objectDistance, inclination, maxTau,                              &
+     miePhase, nsource, source, blobs, nmumie, dTime)
 
 ! Tidy up and finish the run 
 
@@ -426,7 +432,7 @@ call deleteOctreeBranch(grid%octreeRoot,onlyChildren=.false., adjustParent=.fals
 call freeGrid(grid)
 
 deallocate(miePhase) 
-deallocate(xArray)
+
 
 call torus_mpi_barrier
 
@@ -437,6 +443,7 @@ CONTAINS
 
     real :: deltaLambda
     real :: loglamStart, logLamEnd
+    real :: xarray(nLambda)
 
     if (lamLinear) then
        deltaLambda = (lamEnd - lamStart) / real(nLambda)
@@ -609,7 +616,7 @@ subroutine set_up_sources
   end do
 
   if (nSource > 0) then
-     call randomSource(source, nSource, i, xArray, nLambda, initialize=.true.)  
+     call randomSource(source, nSource, i, grid%lamArray, nLambda, initialize=.true.)  
      call writeInfo("Sources set up.",TRIVIAL)
   endif
 
