@@ -58,6 +58,7 @@ use torus_mod, only: torus
 
 ! disc parameters
   real(db), parameter :: pi = 3.1415926535897932_db
+  real(db), parameter :: minusPiByFour = ( pi / 4.0_db) * (-1.0_db)
   real(db), parameter :: auToCm = 1.495979d13
   real(db), parameter :: disc_r_outer = 1000.0 * auToCm
   real(db), parameter :: disc_r_inner = 1.0 * auToCm
@@ -66,7 +67,7 @@ use torus_mod, only: torus
   real(db), parameter :: rho_zero = 0.81614E-17_db
   real(db), parameter :: rho_bg   = 1.001e-30_db ! Background density
 
-  real(db) :: f1, f2, hr
+  real(db) :: f1, f2, hr, z_over_h
 
 ! Begin executable statments -------------
 
@@ -83,15 +84,16 @@ use torus_mod, only: torus
            y(ipart) = ( (real(j) / real(ny)) * ysize ) - yoffset
            z(ipart) = ( (real(k) / real(nz)) * zsize ) - zoffset
 
-           r = sqrt( x(ipart)**2 + y(ipart)**2 + z(ipart)**2 )
+           r = sqrt( x(ipart)**2 + y(ipart)**2 )
            
            if ( r > disc_r_outer .or. r < disc_r_inner ) then
               b_rho(ipart) = rho_bg
            else
 
               hr = z_d * ( ( r / r_d ) ** 1.125 )
+              z_over_h = z(ipart) / hr
               f1 = ( r / r_d ) ** (-1) 
-              f2 = exp ( -1.0 * (pi/4.0) * ( z(ipart) / hr ) **2 )
+              f2 = exp ( minusPiByFour * ( z_over_h **2 ) )
 
               b_rho(ipart) = f1 * f2 * rho_zero
 
