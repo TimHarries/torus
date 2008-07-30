@@ -103,6 +103,10 @@ use torus_mod, only: torus
      end do
   end do
 
+  where ( b_rho < rho_bg ) 
+     b_rho = rho_bg
+  end where
+
 ! Set properties of the gas particles
    b_xyzmh(1,1:npart) = x(:)
    b_xyzmh(2,1:npart) = y(:)
