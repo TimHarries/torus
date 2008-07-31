@@ -7,27 +7,19 @@ use torus_mod, only: torus
   implicit none
 
 ! number of particle spaces
-  integer, parameter :: nx=150
-  integer, parameter :: ny=150
-  integer, parameter :: nz=150
-  integer, parameter :: npart=(nx+1)*(ny+1)*(nz+1)
+  integer, parameter :: npart=1e6
 
-! loop and particle indices
-  integer :: i, j, k, ipart
+! loop and particle index
+  integer :: ipart
 
 ! Define double precision 
   integer, parameter :: db = selected_real_kind(15,307)
 
-! Grid size and centre offsets in cm 
-  real(db), parameter :: xsize   = 3.0d16
-  real(db), parameter :: ysize   = 3.0d16
-  real(db), parameter :: zsize   = 3.0d16
-  real(db), parameter :: xoffset = 1.5d16
-  real(db), parameter :: yoffset = 1.5d16
-  real(db), parameter :: zoffset = 1.5d16
+! Cylindrical polar co-ordinates
+  real(db) :: r, theta, z
 
-! Cartesian x,y,z co-ordinates and cylindrical polar r
-  real(db) :: x, y, z, r
+! Cartesian co-ordinates used with z above
+  real(db) :: x, y 
 
 ! Torus arguments
   integer, parameter :: b_idim  = npart + 1 ! Set maximum array sizes
@@ -69,43 +61,43 @@ use torus_mod, only: torus
 
   real(db) :: f1, f2, hr, z_over_h
 
+  real :: ran_num
+
 ! Begin executable statments -------------
 
 ! 1. Set up gas particles 
 
-  ipart = 0
 ! Set up gas particle information
-  do k=0, nz
-     do j=0, ny
-        do i=0, nx
+  part_loop:  do ipart=1, npart
 
-           ipart = ipart+1
-           x = ( (real(i) / real(nx)) * xsize ) - xoffset
-           y = ( (real(j) / real(ny)) * ysize ) - yoffset
-           z = ( (real(k) / real(nz)) * zsize ) - zoffset
-           r = sqrt( x**2 + y**2 )
+     call random_number(ran_num)
+     r     = ran_num * disc_r_outer
+     call random_number(ran_num)
+     theta = ran_num * 2.0_db * pi
+     call random_number(ran_num)
+     z     =  (ran_num-0.5) * 2.0_db * disc_r_outer 
            
-           if ( r > disc_r_outer .or. r < disc_r_inner ) then
-              b_rho(ipart) = rho_bg
-           else
+     if ( r > disc_r_outer .or. r < disc_r_inner ) then
+        b_rho(ipart) = rho_bg
+     else
 
-              hr = z_d * ( ( r / r_d ) ** 1.125 )
-              z_over_h = z / hr
-              f1 = ( r / r_d ) ** (-1) 
-              f2 = exp ( minusPiByFour * ( z_over_h **2 ) )
+        hr = z_d * ( ( r / r_d ) ** 1.125 )
+        z_over_h = z / hr
+        f1 = ( r / r_d ) ** (-1) 
+        f2 = exp ( minusPiByFour * ( z_over_h **2 ) )
 
-              b_rho(ipart) = f1 * f2 * rho_zero
+        b_rho(ipart) = f1 * f2 * rho_zero
 
-           endif
+     endif
 
 ! Set positions of the gas particles
-           b_xyzmh(1,ipart) = x
-           b_xyzmh(2,ipart) = y
-           b_xyzmh(3,ipart) = z
+     x = r * sin(theta) 
+     y = r * cos(theta) 
+     b_xyzmh(1,ipart) = x
+     b_xyzmh(2,ipart) = y
+     b_xyzmh(3,ipart) = z
 
-        end do
-     end do
-  end do
+  end do part_loop
 
   where ( b_rho < rho_bg ) 
      b_rho = rho_bg
