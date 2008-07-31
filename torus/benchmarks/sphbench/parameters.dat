@@ -87,4 +87,7 @@ wavlin F
 lamstart 1200.
 lamend  2.e7
 distance 2.25558e-8
+taumax 0.5
+taumin 0.001
+nphotons 500000
 
