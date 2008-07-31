@@ -71,7 +71,7 @@ use torus_mod, only: torus
   part_loop:  do ipart=1, npart
 
      call random_number(ran_num)
-     r     = ran_num * disc_r_outer
+     r     = disc_r_inner * exp ( log (disc_r_outer/disc_r_inner) * ran_num ) 
      call random_number(ran_num)
      theta = ran_num * 2.0_db * pi
      call random_number(ran_num)
