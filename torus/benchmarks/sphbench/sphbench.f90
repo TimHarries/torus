@@ -7,9 +7,9 @@ use torus_mod, only: torus
   implicit none
 
 ! number of particle spaces
-  integer, parameter :: nx=100
-  integer, parameter :: ny=100
-  integer, parameter :: nz=100
+  integer, parameter :: nx=150
+  integer, parameter :: ny=150
+  integer, parameter :: nz=150
   integer, parameter :: npart=(nx+1)*(ny+1)*(nz+1)
 
 ! loop and particle indices
@@ -19,15 +19,15 @@ use torus_mod, only: torus
   integer, parameter :: db = selected_real_kind(15,307)
 
 ! Grid size and centre offsets in cm 
-  real(db), parameter :: xsize   = 8.0d16
-  real(db), parameter :: ysize   = 8.0d16
-  real(db), parameter :: zsize   = 8.0d16
-  real(db), parameter :: xoffset = 4.0d16
-  real(db), parameter :: yoffset = 4.0d16
-  real(db), parameter :: zoffset = 4.0d16
+  real(db), parameter :: xsize   = 3.0d16
+  real(db), parameter :: ysize   = 3.0d16
+  real(db), parameter :: zsize   = 3.0d16
+  real(db), parameter :: xoffset = 1.5d16
+  real(db), parameter :: yoffset = 1.5d16
+  real(db), parameter :: zoffset = 1.5d16
 
-! Cartesian x,y,z co-ordinates
-  real(db) :: x(npart), y(npart), z(npart), r
+! Cartesian x,y,z co-ordinates and cylindrical polar r
+  real(db) :: x, y, z, r
 
 ! Torus arguments
   integer, parameter :: b_idim  = npart + 1 ! Set maximum array sizes
@@ -80,24 +80,28 @@ use torus_mod, only: torus
         do i=0, nx
 
            ipart = ipart+1
-           x(ipart) = ( (real(i) / real(nx)) * xsize ) - xoffset
-           y(ipart) = ( (real(j) / real(ny)) * ysize ) - yoffset
-           z(ipart) = ( (real(k) / real(nz)) * zsize ) - zoffset
-
-           r = sqrt( x(ipart)**2 + y(ipart)**2 )
+           x = ( (real(i) / real(nx)) * xsize ) - xoffset
+           y = ( (real(j) / real(ny)) * ysize ) - yoffset
+           z = ( (real(k) / real(nz)) * zsize ) - zoffset
+           r = sqrt( x**2 + y**2 )
            
            if ( r > disc_r_outer .or. r < disc_r_inner ) then
               b_rho(ipart) = rho_bg
            else
 
               hr = z_d * ( ( r / r_d ) ** 1.125 )
-              z_over_h = z(ipart) / hr
+              z_over_h = z / hr
               f1 = ( r / r_d ) ** (-1) 
               f2 = exp ( minusPiByFour * ( z_over_h **2 ) )
 
               b_rho(ipart) = f1 * f2 * rho_zero
 
            endif
+
+! Set positions of the gas particles
+           b_xyzmh(1,ipart) = x
+           b_xyzmh(2,ipart) = y
+           b_xyzmh(3,ipart) = z
 
         end do
      end do
@@ -107,10 +111,7 @@ use torus_mod, only: torus
      b_rho = rho_bg
   end where
 
-! Set properties of the gas particles
-   b_xyzmh(1,1:npart) = x(:)
-   b_xyzmh(2,1:npart) = y(:)
-   b_xyzmh(3,1:npart) = z(:)
+
    b_xyzmh(4,1:npart) = 0.0
    b_xyzmh(5,1:npart) = 0.0      
 
