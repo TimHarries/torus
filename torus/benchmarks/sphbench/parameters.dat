@@ -1,9 +1,8 @@
 2 !verbosity
 forceLucyConv F
-iterLucy 4
+iterLucy 5
 tminglobal 3.0
 taudiff 1000.
-nphotons 100000
 amrgridcentrex 0.0
 amrgridcentrey 0.0
 amrgridcentrez 0.0
@@ -11,12 +10,11 @@ inarcsec F
 amrgridsize 1.0e7
 dosmoothgrid T
 taumax 1.
-taumin 0.001
 smoothfactor 2.
 smoothgridtau T
-lambdasmooth 4500.
+lambdasmooth 5500.
 limitscalar 1.e28
-samplefreq 1.
+samplefreq 2.
 popfile lucy4.dat
 readpops F
 writepops T
@@ -31,7 +29,7 @@ gridusesamr T
 amr2d F
 amr3d T
 geometry cluster
-rcore 2.                               
+rcore 1.0                               
 rinner 3.
 router 800.
 height 10.18
@@ -41,7 +39,7 @@ device "/xs"
 stokesimage F
 vmin -100000.                            
 vmax +100000.                            
-teff 4000.
+teff 5800.
 probcont 1.                              
 mie T                                    
 iso_scatter T
@@ -51,11 +49,11 @@ lucyrad T
 usebias F
 twod F
 nlucy 100000
-lucy_undersampled 5.
+lucy_undersampled 0.
 lucyfile lucy.dat
 writelucy F
 readlucy F
-probdust 0.1
+probdust 0.1	
 graintype1 sil_dl
 amin1 0.12
 amax1 0.1201
@@ -88,4 +86,7 @@ distance 2.25558e-8
 taumax 0.5
 taumin 0.001
 nphotons 500000
+mincrossings 50
+forceFirstScat F
+tthresh 2000.
 
