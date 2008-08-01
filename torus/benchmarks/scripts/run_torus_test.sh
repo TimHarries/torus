@@ -74,6 +74,7 @@ rm -rf sphbench
 mkdir sphbench
 cd sphbench
 
+echo
 echo "Making Torus library"
 mkdir build
 cd build 
@@ -91,16 +92,12 @@ mkdir run
 cd run
 cp ../../torus/benchmarks/sphbench/*.dat . 
 cp ../../torus/benchmarks/sphbench/*.txt . 
+cp ../../torus/benchmarks/disc/comparespec.f90 . 
+cp ../../torus/benchmarks/disc/sed* .
 ln -s ../../torus/isochrones/* .
 ln -s ../build/sphbench .
 echo "Running sphbench"
 ./sphbench > run_log 2>&1
-if [[ $? -eq 0 ]]; then
-    echo "SPH benchmark returned zero exit status"
-else
-    echo "SPH benchmark returned non-zero exit status"
-fi 
-
 }
 
 # Main part of script starts here ------------------------------------------
@@ -149,18 +146,22 @@ echo "g95 environment variables are:"
 printenv | grep -i g95
 
 cd run_ompi
+echo 
 echo "Running torus.ompi"
 /usr/local/bin/mpirun -np 4 torus.ompi > run_log_ompi.txt 2>&1
 check_benchmark
 cd ..
 
 cd run_ompi_molebench
+echo
 echo "Running torus.ompi molebench"
 /usr/local/bin/mpirun -np 4 torus.ompi > run_log_ompi.txt 2>&1
 check_molebench
 cd ..
 
 sphbench
+check_benchmark > check_log 
+cd ..
 
 exit
 
