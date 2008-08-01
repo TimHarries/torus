@@ -2081,6 +2081,14 @@ endif
 
 endif
 
+if (geometry == "cluster" ) then
+
+   call getReal("rcore", rCore, cLine, nLines, &
+        "Core radius (solar radii): ","(a,f5.1,a)", 1.0, ok, .true.)
+   rCore = rCore * rSol / 1.e10
+
+end if
+
 if (geometry == "whitney") then
 
 

@@ -14,6 +14,7 @@ module cluster_class
   use messages_mod
   use vector_mod
   use constants_mod, only: mSol, secsToYears
+  use input_variables, only: rCore
   
   implicit none
 
@@ -292,7 +293,8 @@ contains
     type(GRIDTYPE), intent(inout)  :: grid
     
     grid%lineEmission = .false.
-    
+    grid%rCore        = rCore
+
   end subroutine initClusterAMR
 
 
