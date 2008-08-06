@@ -29,7 +29,7 @@ gridusesamr T
 amr2d F
 amr3d T
 geometry cluster
-rcore 1.0                               
+rcore 215.0                               
 rinner 3.
 router 800.
 height 10.18
