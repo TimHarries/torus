@@ -86,9 +86,6 @@ contains
   ! filenames
   character(len=80) :: phasePopFilename
 
-  ! vectors
-  type(VECTOR) :: rotationAxis, normToRotation
-
   ! model flags
   logical :: flatSpec
   logical :: ok
@@ -413,12 +410,19 @@ contains
 
   call update_sph_temperature (b_idim, b_npart, b_iphase, b_xyzmh, sphData, grid, b_temp)
 
-  objectDistance = griddistance * pctocm
-  call do_phaseloop(grid, .false., 0.0, 0.0, 0.0,                                            &
-     theta1, theta2, VECTOR(0.0,0.0,0.0), 0.0_db, 0.0, 0.0, 0.0, 0.0_db,                     &
-     starsurface, newContFluxFile, 0.0, 0.0, 0.0, ttauri_disc, (/VECTOR(0.0,0.0,0.0)/), 1,   &
-     0.0, 10000, flatspec, objectDistance, inclination, maxTau,                              &
-     miePhase, nsource, source, blobs, nmumie, dTime)
+  if ( nInclination > 0 ) then
+
+     call writeInfo ("Calling phaseloop", FORINFO)
+     objectDistance = griddistance * pctocm
+     call do_phaseloop(grid, .false., 0.0, 0.0, 0.0,                                            &
+          theta1, theta2, VECTOR(0.0,0.0,0.0), 0.0_db, 0.0, 0.0, 0.0, 0.0_db,                     &
+          starsurface, newContFluxFile, 0.0, 0.0, 0.0, ttauri_disc, (/VECTOR(0.0,0.0,0.0)/), 1,   &
+          0.0, 10000, flatspec, objectDistance, inclination, maxTau,                              &
+          miePhase, nsource, source, blobs, nmumie, dTime)
+
+  else
+     call writeInfo ("Not calling phaseloop", FORINFO)
+  end if
 
 ! Tidy up and finish the run 
 
