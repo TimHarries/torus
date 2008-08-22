@@ -1,0 +1,11 @@
+#!/bin/bash
+echo Compiling
+g95 -c -o particle_pos.o particle_pos.f90
+g95 -c -o sphbench.o     sphbench.f90
+
+echo Linking
+g95 -o sphbench sphbench.o particle_pos.o -L../build -ltorus -L${HOME}/lib/pgplot -lpgplot -L${HOME}/cfitsio/lib -lcfitsio
+
+echo Done
+exit
+

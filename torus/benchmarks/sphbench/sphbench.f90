@@ -3,10 +3,11 @@
 program sphbench
 
 use torus_mod, only: torus
+use particle_pos_mod, only: particle_pos
 
   implicit none
 
-! number of particle spaces
+! number of particles
   integer, parameter :: npart=1e6
 
 ! loop and particle index
@@ -41,10 +42,6 @@ use torus_mod, only: torus
   character(len=11), parameter :: file_tag = "sphbench   "
 
 ! Source parameters
-  real(db), parameter :: source_x = 0.0
-  real(db), parameter :: source_y = 0.0
-  real(db), parameter :: source_z = 0.0
-
   real(db), parameter :: mSol = 1.9891e33_db
   real(db), parameter :: source_mass = 1.0 * mSol
 
@@ -67,15 +64,18 @@ use torus_mod, only: torus
 
 ! 1. Set up gas particles 
 
+  call particle_pos
+
 ! Set up gas particle information
+  open (unit=62, status="old", file="part.dat")
+  open (unit=63, status="replace", file="part_ascii.dat")
   part_loop:  do ipart=1, npart
 
-     call random_number(ran_num)
-     r     = disc_r_inner * exp ( log (disc_r_outer/disc_r_inner) * ran_num ) 
+     read(62,*) r, z
+     r = r * auToCm
+     z = z * auToCm
      call random_number(ran_num)
      theta = ran_num * 2.0_db * pi
-     call random_number(ran_num)
-     z     =  (ran_num-0.5) * 2.0_db * disc_r_outer 
            
      if ( r > disc_r_outer .or. r < disc_r_inner ) then
         b_rho(ipart) = rho_bg
@@ -96,16 +96,22 @@ use torus_mod, only: torus
      b_xyzmh(1,ipart) = x
      b_xyzmh(2,ipart) = y
      b_xyzmh(3,ipart) = z
+! Set particle mass assuming equal mass for all particles 
+     b_xyzmh(4,ipart) = total_gas_mass / real(npart, kind=db)
+! Smoothing lenght is zero for now
+     b_xyzmh(5,ipart) = 0.0      
+
+     write(63,*) b_xyzmh(:,ipart)
 
   end do part_loop
+  close(62)
+  close(63)
 
   where ( b_rho < rho_bg ) 
      b_rho = rho_bg
   end where
 
 
-   b_xyzmh(4,1:npart) = 0.0
-   b_xyzmh(5,1:npart) = 0.0      
 
 ! Initialise phase flag. Gas particles are denoted by zero.
    b_iphase(1:npart) = 0 
@@ -120,6 +126,8 @@ use torus_mod, only: torus
    b_xyzmh(2,npart+1) = 0.0
    b_xyzmh(3,npart+1) = 0.0
    b_xyzmh(4,npart+1) = source_mass
+
+   
 
 ! 3. Call torus
 
