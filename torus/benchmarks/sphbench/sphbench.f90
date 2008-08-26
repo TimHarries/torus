@@ -87,6 +87,7 @@ use particle_pos_mod, only: particle_pos
         f2 = exp ( minusPiByFour * ( z_over_h **2 ) )
 
         b_rho(ipart) = f1 * f2 * rho_zero
+        if (b_rho(ipart) < rho_bg) b_rho(ipart) = rho_bg
 
      endif
 
@@ -97,21 +98,16 @@ use particle_pos_mod, only: particle_pos
      b_xyzmh(2,ipart) = y
      b_xyzmh(3,ipart) = z
 ! Set particle mass assuming equal mass for all particles 
-     b_xyzmh(4,ipart) = total_gas_mass / real(npart, kind=db)
-! Smoothing lenght is zero for now
-     b_xyzmh(5,ipart) = 0.0      
+     b_xyzmh(4,ipart) = msol * total_gas_mass / real(npart, kind=db)
+! Smoothing length based on particle mass and density
+     b_xyzmh(5,ipart) = ( b_xyzmh(4,ipart) / b_rho(ipart) ) ** (1.0/3.0)
 
-     write(63,*) b_xyzmh(:,ipart)
+
+     write(63,*) b_xyzmh(:,ipart), b_rho(ipart)
 
   end do part_loop
   close(62)
   close(63)
-
-  where ( b_rho < rho_bg ) 
-     b_rho = rho_bg
-  end where
-
-
 
 ! Initialise phase flag. Gas particles are denoted by zero.
    b_iphase(1:npart) = 0 
