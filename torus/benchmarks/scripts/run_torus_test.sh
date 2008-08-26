@@ -83,9 +83,9 @@ make depends > compile_log
 make debug=yes lib >> compile_log 2>&1 
 
 echo "Compiling sphbench"
-cp ../../torus/benchmarks/sphbench/sphbench.f90 .
-g95 -c -o sphbench.o sphbench.f90 >> compile_log
-g95 -o sphbench sphbench.o -L. -ltorus -L/Users/acreman/lib/pgplot -lpgplot -L/Users/acreman/cfitsio/lib -lcfitsio >> compile_log
+cp ../../torus/benchmarks/sphbench/*.f90 .
+cp ../../torus/benchmarks/sphbench/compile .
+./compile >> compile_log
 cd ..
 
 mkdir run
@@ -94,7 +94,7 @@ cp ../../torus/benchmarks/sphbench/*.dat .
 cp ../../torus/benchmarks/sphbench/*.txt . 
 cp ../../torus/benchmarks/disc/comparespec.f90 . 
 cp ../../torus/benchmarks/disc/sed* .
-ln -s ../../torus/isochrones/* .
+ln -s ../../torus/isochrones/iso* .
 ln -s ../build/sphbench .
 echo "Running sphbench"
 ./sphbench > run_log 2>&1
