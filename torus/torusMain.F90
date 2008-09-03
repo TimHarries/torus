@@ -809,7 +809,7 @@ program torus
         
 
      if (mie) then
-        if (geometry == "shakara" .or. geometry .eq. 'iras04158') then
+        if (geometry == "shakara" .or. geometry .eq. 'iras04158' .or. geometry == "circumbindisk") then
 
 !        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*real(autocm)) ! defined at 1AU
 
@@ -2267,6 +2267,37 @@ subroutine set_up_sources
           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
        endif
        call normalizedSpectrum(source(1)%spectrum)
+
+    case("circumbindisk")
+       nSource = 2
+       allocate(source(1:2))
+       source(1)%radius = rStar1
+       source(1)%teff = teff1  
+       source(1)%position = VECTOR(0.,0.,binarySep/2.)
+       tmp = rstar1 * 1.e10  ! [cm]
+       source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
+       if (contFluxfile1 .eq. "blackbody") then
+          call fillSpectrumBB(source(1)%spectrum, dble(teff), &
+               dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
+       else
+          call buildSphere(o2s(source(1)%position), real(source(1)%radius), source(1)%surface, 400, contFluxFile1)
+          call readSpectrum(source(1)%spectrum, contfluxfile1, ok)
+       endif
+       call normalizedSpectrum(source(1)%spectrum)
+
+       source(2)%radius = rStar2
+       source(2)%teff = teff2  
+       source(2)%position = VECTOR(0.,0.,-binarySep/2.)
+       tmp = rstar2 * 1.e10  ! [cm]
+       source(2)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(2)%teff)**4
+       if (contFluxfile .eq. "blackbody") then
+          call fillSpectrumBB(source(2)%spectrum, dble(teff), &
+               dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
+       else
+          call buildSphere(o2s(source(2)%position), real(source(2)%radius), source(2)%surface, 400, contFluxFile2)
+          call readSpectrum(source(2)%spectrum, contfluxfile2, ok)
+       endif
+       call normalizedSpectrum(source(2)%spectrum)
 
     case("gammavel")
        nSource = 2

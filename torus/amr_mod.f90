@@ -236,7 +236,7 @@ CONTAINS
     CASE ("ggtau")
        CALL ggtauFill(thisOctal, subcell ,grid)
 
-    CASE ("shakara","aksco")
+    CASE ("shakara","aksco","circumbindisk")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
     CASE ("iras04158")
@@ -1324,7 +1324,7 @@ CONTAINS
 
       CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
            "lexington", "warpeddisc", "whitney","fractal","symbiotic", "starburst", &
-           "molebench","h2obench1","h2obench2","agbstar","gammavel","molefil","ggtau","iras04158")
+           "molebench","h2obench1","h2obench2","agbstar","gammavel","molefil","ggtau","iras04158","circumbindisk")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104","molcluster")
@@ -5723,7 +5723,7 @@ IF ( .NOT. gridConverged ) RETURN
 1001  if ((r+(cellsize/(2.d0*100.))) < 1.8) split = .false.
       if ((r-(cellsize/(2.d0*100.))) > 8.) split = .false.
 
-   case("shakara","aksco")
+   case("shakara","aksco","circumbindisk")
       split = .false.
       if (thisOctal%ndepth  < 4) split = .true.
       cellSize = thisOctal%subcellSize 
@@ -10938,7 +10938,8 @@ end function readparameterfrom2dmap
 
         ! don't split outer edge of disc
 
-        if ((grid%geometry == "shakara").or.(grid%geometry == "warpeddisc").or.(grid%geometry == "iras04158")) then
+        if ((grid%geometry == "shakara").or.(grid%geometry == "warpeddisc").or.(grid%geometry == "iras04158").or.&
+             (grid%geometry=="circumbindisk")) then
            if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%router*0.9) goto 666
         endif
            
@@ -13496,7 +13497,7 @@ end function readparameterfrom2dmap
 
         ! don't split outer edge of disc
 
-        if (grid%geometry == "shakara") then
+        if ((grid%geometry == "shakara").or.(grid%geometry=="circumbindisk")) then
            if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%router*0.9) goto 666
         endif
            

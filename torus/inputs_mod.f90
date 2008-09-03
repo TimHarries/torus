@@ -2205,6 +2205,75 @@ endif
 
 endif
 
+ if (geometry .eq. "circumbindisk") then
+
+    call getLogical("noscat", noScattering, cLine, nLines, &
+         "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
+
+    call getReal("rinner", rInner, cLine, nLines, &
+         "Inner Radius (AU): ","(a,f5.1,a)", 12., ok, .true.)
+
+    call getReal("router", rOuter, cLine, nLines, &
+         "Outer Radius (AU): ","(a,f5.1,a)", 20., ok, .true.)
+
+    call getReal("height", height, cLine, nLines, &
+         "Scale height (AU): ","(a,1pe8.2,a)",1.e0,ok,.true.)
+
+
+   call getReal("mdisc", mDisc, cLine, nLines, &
+       "Disc mass (solar masses): ","(a,f5.3,a)", 1.e-4, ok, .true.)
+
+   call getReal("alphadisc", alphaDisc, cLine, nLines, &
+       "Disc alpha parameter: ","(a,f5.3,a)", 2.25, ok, .true.)
+
+   call getReal("betadisc", betaDisc, cLine, nLines, &
+       "Disc beta parameter: ","(a,f5.3,a)", 1.25, ok, .true.)
+
+   call getReal("teff1", teff1, cLine, nLines, &
+         "Effective temp star 1 (K): ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("teff2", teff2, cLine, nLines, &
+         "Effective temp star 2 (K): ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("mstar1", mstar1, cLine, nLines, &
+         "Mass of star 1 (solar masses): ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("mstar2", mstar2, cLine, nLines, &
+         "Mass of star 2 (solar masses): ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("rstar1", rstar1, cLine, nLines, &
+         "Radius of star 1 (solar radii): ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("rstar2", rstar2, cLine, nLines, &
+         "Radius of star 2 (solar radius): ","(a,f7.0,a)", 1., ok, .true.)
+
+   call getReal("binarysep", binarySep, cLine, nLines, &
+        "Binary separation (AU): ","(a,1pe7.1,a)", 1.e13, ok, .true.)
+
+   call getString("contflux1", contFluxFile1, cLine, nLines, &
+        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+
+   call getString("contflux2", contFluxFile2, cLine, nLines, &
+        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+
+
+
+   rInner = rInner * auToCm/1.e10
+   rOuter = rOuter * autoCm / 1.e10
+   height = height * autoCm / 1.e10
+   mstar1 = mstar1 * mSol
+   mstar2 = mStar2 * mSol
+   rStar1 = rStar1 * rSol/ 1.e10
+   rStar2 = rStar2 * rSol/ 1.e10
+   binarySep = binarySep * auToCm/1.e10
+   mCore = (mstar1 + mstar2)
+   mDisc = mDisc * mSol
+   rho0  = mDisc *(betaDisc-alphaDisc+2.) / ( twoPi**1.5 * (height*1.e10)/(100.d0*autocm)**betaDisc  &
+        * (rInner*1.d10)**alphaDisc * &
+        (((rOuter*1.e10)**(betaDisc-alphaDisc+2.)-(rInner*1.e10)**(betaDisc-alphaDisc+2.))) )
+
+endif
+
 if (geometry .eq. "planetgap") then
 
    call getLogical("planetgap", planetGap, cLine, nLines, &

@@ -76,7 +76,7 @@ contains
     case("melvin")
        out = melvinDensity(r_vec, grid)
 
-    case("shakara","aksco")
+    case("shakara","aksco","circumbindisk")
        out = shakaraSunyaevDisc(r_vec, grid)
 
     case("warpeddisc")

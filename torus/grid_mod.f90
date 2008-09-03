@@ -598,6 +598,11 @@ contains
     case("ggtau")
        grid%geometry = "ggtau"
 
+    case("circumbindisk")
+       grid%geometry = "circumbindisk"
+       grid%rInner = rInner
+       grid%rOuter = rOuter
+
     case("shakara")
        grid%geometry = "shakara"
        grid%rCore = rCore

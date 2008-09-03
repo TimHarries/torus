@@ -218,7 +218,7 @@ module input_variables
   real :: rMin, rMaj
   real :: shellFrac
   real :: Teff, Teff1, Teff2
-  real :: rstar1, rstar2 
+  real :: rstar1, rstar2, mstar1, mstar2
   real :: mdot1, mdot2
   real :: Mbol
   real :: radius, kfac, xfac

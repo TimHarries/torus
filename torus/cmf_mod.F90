@@ -1092,14 +1092,14 @@ contains
      endif
 
 
-    nRay = 1000
+    nRay = 100
     write(*,*) "only doing fixed ray stage!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
     do iStage = 1, 1
 
 
        if (iStage == 1) then
           fixedRays = .true.
-          tolerance = 1.d-4
+          tolerance = 1.d-3
        else
           fixedRays = .false.
           tolerance = 1.d-5
@@ -1223,22 +1223,22 @@ contains
                                     freq, nFreq, weight(1:nRay), iRBB,tauAv)
 
 
-!                               if (firstCheckonTau) then
-!                                  thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
-!                               endif
-!
-!
-!!                               write(*,*) thisAtom(iAtom)%iLower(iTrans), " -> ", thisAtom(iAtom)%iUpper(iTrans), ": ",tauAv
-!                               if (iTrans == 4) tauHalpha = tauAv
-!
-!                               if (iter < 10) then
-!                                 if (tauAv > 1.d5) then
-!                                    thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
-!                                 else
-!                                    thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
-!                                 endif
-!                                 firstCheckonTau = .false.
-!                              endif
+                               if (firstCheckonTau) then
+                                  thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
+                               endif
+
+
+!                               write(*,*) thisAtom(iAtom)%iLower(iTrans), " -> ", thisAtom(iAtom)%iUpper(iTrans), ": ",tauAv
+                               if (iTrans == 4) tauHalpha = tauAv
+
+                               if (iter < 10) then
+                                 if (tauAv > 1.d2) then
+                                    thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
+                                 else
+                                    thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
+                                 endif
+                                 firstCheckonTau = .false.
+                              endif
 
 
                             enddo
