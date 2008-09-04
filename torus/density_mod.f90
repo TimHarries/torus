@@ -76,7 +76,7 @@ contains
     case("melvin")
        out = melvinDensity(r_vec, grid)
 
-    case("shakara","aksco","circumbindisk")
+    case("shakara","aksco","circumbin")
        out = shakaraSunyaevDisc(r_vec, grid)
 
     case("warpeddisc")
@@ -869,7 +869,46 @@ contains
     integer :: nspiral1
     real(double) :: phase(10)
     integer :: i
-    real(double) :: phi
+    real(double) :: phi, dist
+    logical, save :: firstTime = .true.
+    integer, parameter :: nStream = 1000
+    real ::  phi1, phi2, dphi, r1, turns, d
+    type(OCTALVECTOR),save :: stream1(nStream), stream2(nStream)
+    logical :: ok
+
+    if (firstTime) then
+
+       phi1 = pi
+       phi2 = pi+pi/2.
+       turns = 0.
+       dphi = (phi2 - phi1) + twoPi * turns
+       d = binarySep/(1.+massRatio)
+       call solveQuad(1., 2.*d*cos(real(pi)-phi2), d**2-rInner**2, x1, x2,ok)
+       r1 = min(x1, x2)
+       do i = 1, nStream
+          phi = phi1 + dphi * real(i-1)/real(nStream-1)
+          r = (phi-phi1)/dphi * r1
+          stream1(i) = OCTALVECTOR(dble(r*cos(phi)+d), dble(r*sin(phi)), 0.d0)
+          write(47, *) stream1(i)%x/rinner, stream1(i)%y/rinner
+       enddo
+
+       phi1 = 0.
+       phi2 = pi/2.
+       turns = 0.
+       dphi = (phi2 - phi1) + twoPi * turns
+       d = -binarySep*(1.-1./(1.+massRatio))
+       call solveQuad(1., 2.*d*cos(real(pi)-phi2), d**2-rInner**2, x1, x2,ok)
+       r1 = min(x1, x2)
+       do i = 1, nStream
+          phi = phi1 + dphi * real(i-1)/real(nStream-1)
+          r = (phi-phi1)/dphi * r1
+          stream2(i) = OCTALVECTOR(dble(r*cos(phi)+d), dble(r*sin(phi)), 0.d0)
+       enddo
+
+
+       firstTime = .false.
+    endif
+
 
     nSpiral1 = 3
     do i = 1, nspiral1
@@ -896,8 +935,28 @@ contains
 
        rhoOut = rhoOut * fac
     endif
+
+    if ((r < rInner).and.(grid%geometry == "circumbin")) then
+       dist = 1.e30
+       do i = 1, nStream
+          fac = modulus(point - stream1(i))
+          dist = min(dist,fac)
+       enddo
+       dist = dist / (0.01d0*rInner)
+       rhoOut = max(rhoOut, rho0 * exp(-dist))
+
+       dist = 1.e30
+       do i = 1, nStream
+          fac = modulus(point - stream2(i))
+          dist = min(dist,fac)
+       enddo
+       dist = dist / (0.01d0*rInner)
+       rhoOut = max(rhoOut, rho0 * exp(-dist))
+    endif
+
     rhoOut = max(rhoOut, 1.d-30)
        
+
 
   end function shakaraSunyaevDisc
 

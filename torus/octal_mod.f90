@@ -266,16 +266,16 @@ CONTAINS
                 subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
              CASE (5)    
                 subcellCentre = rVec - (d * xHatOctal) - (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
              CASE (6)    
                 subcellCentre = rVec + (d * xHatOctal) - (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
              CASE (7)    
                 subcellCentre = rVec - (d * xHatOctal) + (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
              CASE (8)    
                 subcellCentre = rVec + (d * xHatOctal) + (d * zHatOctal)
-                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi-0.25d0*thisOctal%dphi))
+                subcellCentre = rotateZ(subcellCentre,-(thisOctal%phi+0.25d0*thisOctal%dphi))
              CASE DEFAULT
                 PRINT *, "Error:: Invalid nChild passed to subcellCentre twoD case 1"
                 PRINT *, "        nChild = ", nChild 

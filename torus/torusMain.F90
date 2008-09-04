@@ -809,7 +809,7 @@ program torus
         
 
      if (mie) then
-        if (geometry == "shakara" .or. geometry .eq. 'iras04158' .or. geometry == "circumbindisk") then
+        if (geometry == "shakara" .or. geometry .eq. 'iras04158' .or. geometry == "circumbin") then
 
 !        sigma0 = totalMass / (twoPi*(rOuter*1.e10-rInner*1.e10)*1.*real(autocm)) ! defined at 1AU
 
@@ -1985,6 +1985,9 @@ subroutine do_amr_plots
      call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
           "rho_zoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
           width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default" )
+     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+          "rho_zoom_nogrid",.true., .false., nmarker, xmarker, ymarker, zmarker, &
+          width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default" )
      if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
         call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
              "rho_ultrazoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
@@ -2268,12 +2271,12 @@ subroutine set_up_sources
        endif
        call normalizedSpectrum(source(1)%spectrum)
 
-    case("circumbindisk")
+    case("circumbin")
        nSource = 2
        allocate(source(1:2))
        source(1)%radius = rStar1
        source(1)%teff = teff1  
-       source(1)%position = VECTOR(0.,0.,binarySep/2.)
+       source(1)%position = VECTOR(binarySep/(1.+massRatio), 0., 0.)
        tmp = rstar1 * 1.e10  ! [cm]
        source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
        if (contFluxfile1 .eq. "blackbody") then
@@ -2287,10 +2290,10 @@ subroutine set_up_sources
 
        source(2)%radius = rStar2
        source(2)%teff = teff2  
-       source(2)%position = VECTOR(0.,0.,-binarySep/2.)
+       source(2)%position = VECTOR(-binarySep*(1.-1./(1.+massratio)), 0., 0.)
        tmp = rstar2 * 1.e10  ! [cm]
        source(2)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(2)%teff)**4
-       if (contFluxfile .eq. "blackbody") then
+       if (contFluxfile2 .eq. "blackbody") then
           call fillSpectrumBB(source(2)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
        else

@@ -236,7 +236,7 @@ CONTAINS
     CASE ("ggtau")
        CALL ggtauFill(thisOctal, subcell ,grid)
 
-    CASE ("shakara","aksco","circumbindisk")
+    CASE ("shakara","aksco","circumbin")
        CALL shakaraDisk(thisOctal, subcell ,grid)
 
     CASE ("iras04158")
@@ -711,7 +711,7 @@ CONTAINS
     
     ! if splitAzimuthally is not present then we assume we are not
 
-    if (cylindrical) then
+    if (cylindrical) then  
        if (parent%splitAzimuthally) then
           rVec =  subcellCentre(parent,iChild)
           parent%child(newChildIndex)%phi = atan2(rvec%y, rVec%x)
@@ -725,7 +725,6 @@ CONTAINS
        endif
        parent%child(newChildIndex)%splitAzimuthally = .false.
        parent%child(newChildIndex)%maxChildren = 4
-
 
        if (PRESENT(splitAzimuthally)) then
           if (splitAzimuthally) then
@@ -757,7 +756,6 @@ CONTAINS
              parent%child(newChildIndex)%maxChildren = 4
           endif
        endif
-       
     endif
 
     parent%child(newChildIndex)%inFlow = parent%inFlow
@@ -1324,7 +1322,7 @@ CONTAINS
 
       CASE("benchmark","shakara","aksco", "melvin","clumpydisc", &
            "lexington", "warpeddisc", "whitney","fractal","symbiotic", "starburst", &
-           "molebench","h2obench1","h2obench2","agbstar","gammavel","molefil","ggtau","iras04158","circumbindisk")
+           "molebench","h2obench1","h2obench2","agbstar","gammavel","molefil","ggtau","iras04158","circumbin")
          gridConverged = .TRUE.
 
       CASE ("cluster","wr104","molcluster")
@@ -5723,9 +5721,9 @@ IF ( .NOT. gridConverged ) RETURN
 1001  if ((r+(cellsize/(2.d0*100.))) < 1.8) split = .false.
       if ((r-(cellsize/(2.d0*100.))) > 8.) split = .false.
 
-   case("shakara","aksco","circumbindisk")
+   case("shakara","aksco","circumbin")
       split = .false.
-      if (thisOctal%ndepth  < 4) split = .true.
+      if (thisOctal%ndepth  < 5) split = .true.
       cellSize = thisOctal%subcellSize 
       cellCentre = subcellCentre(thisOctal,subCell)
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
@@ -5754,6 +5752,28 @@ IF ( .NOT. gridConverged ) RETURN
             if (cellsize > 5.d-1*grid%rinner) split = .true.
          endif
       endif
+
+      splitInAzimuth = .false.
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 31.)) then
+         splitInAzimuth = .true.
+         split = .true.
+      endif
+
+      if (grid%geometry == "circumbin") then
+         if (abs(cellCentre%z) < rinner/2.) then
+            if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
+               splitInAzimuth = .true.
+               split = .true.
+            endif
+            if ((r < rinner).and.(thisOctal%subcellSize > (0.05*rinner))) split = .true.
+         endif
+      endif
+
+      if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
+         split = .false.
+         splitInAzimuth = .false.
+      endif
+
 
 !      if ((r > grid%rinner).and.(r < 1.001d0*grid%rinner)) then
 !         if ((abs(cellcentre%z)/hr < 2.)) then
@@ -8058,7 +8078,6 @@ IF ( .NOT. gridConverged ) RETURN
     type(OCTAL) :: thisOctal
     type(GRIDTYPE) :: grid
     integer :: subcell
-    real :: massRatio
     integer, parameter :: nsteps = 1000
     real :: ydist(nSteps), xDist(nSteps)
     real :: d1, d2, curlyR, dx, dybydx, ddash1, ddash2
@@ -10939,7 +10958,7 @@ end function readparameterfrom2dmap
         ! don't split outer edge of disc
 
         if ((grid%geometry == "shakara").or.(grid%geometry == "warpeddisc").or.(grid%geometry == "iras04158").or.&
-             (grid%geometry=="circumbindisk")) then
+             (grid%geometry=="circumbin")) then
            if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%router*0.9) goto 666
         endif
            
@@ -13497,7 +13516,7 @@ end function readparameterfrom2dmap
 
         ! don't split outer edge of disc
 
-        if ((grid%geometry == "shakara").or.(grid%geometry=="circumbindisk")) then
+        if ((grid%geometry == "shakara").or.(grid%geometry=="circumbin")) then
            if (sqrt(thissubcellcentre%x**2 + thissubcellcentre%y**2) > grid%router*0.9) goto 666
         endif
            

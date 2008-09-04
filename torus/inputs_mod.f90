@@ -1942,7 +1942,7 @@ endif
   "Plot values on specified plane?: ","(a,1l,a)",.true., ok, .false.)
 
  call getString("plane_for_plot", plane_for_plot, cLine, nLines, &
-  "Plane(s) for plotting: ","(a,a,1x,a)","x-y", ok, .false.)
+  "Plane(s) for plotting: ","(a,a,1x,a)","x-z", ok, .false.)
 
  call getLogical("show_value_3rd_dim", show_value_3rd_dim, cLine, nLines, &
   "Display the third dimension on plot_AMR_value: ","(a,1l,a)",.false., ok, .false.)
@@ -2205,7 +2205,7 @@ endif
 
 endif
 
- if (geometry .eq. "circumbindisk") then
+ if (geometry .eq. "circumbin") then
 
     call getLogical("noscat", noScattering, cLine, nLines, &
          "No scattering opacity in model: ","(a,1l,1x,a)", .false., ok, .false.)
@@ -2251,13 +2251,14 @@ endif
         "Binary separation (AU): ","(a,1pe7.1,a)", 1.e13, ok, .true.)
 
    call getString("contflux1", contFluxFile1, cLine, nLines, &
-        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+        "Continuum flux filename for star 1: ","(a,a,1x,a)","none", ok, .true.)
 
    call getString("contflux2", contFluxFile2, cLine, nLines, &
-        "Continuum flux filename: ","(a,a,1x,a)","none", ok, .true.)
+        "Continuum flux filename for star 2: ","(a,a,1x,a)","none", ok, .true.)
 
 
 
+   massRatio = mstar2/mstar1
    rInner = rInner * auToCm/1.e10
    rOuter = rOuter * autoCm / 1.e10
    height = height * autoCm / 1.e10

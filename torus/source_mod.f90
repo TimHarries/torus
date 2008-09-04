@@ -122,7 +122,7 @@ module source_mod
 	    enddo
 	    prob(1:nSource) = prob(1:nSource) - prob(1)
 	    prob(1:nSource) = prob(1:nSource) / prob(nSource)
-
+            write(*,*) "Source prob: ",prob(1:nSource)
          end if
 	 
          call random_number(r)
