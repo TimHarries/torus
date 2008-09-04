@@ -64,7 +64,7 @@ use particle_pos_mod, only: particle_pos
 
 ! 1. Set up gas particles 
 
-  call particle_pos
+  call particle_pos(npart)
 
 ! Set up gas particle information
   open (unit=62, status="old", file="part.dat")

@@ -6,7 +6,7 @@ module particle_pos_mod
 
   contains
 
-    subroutine particle_pos
+    subroutine particle_pos(npart)
 
       implicit none
 
@@ -22,9 +22,9 @@ module particle_pos_mod
 
       real(db) :: this_mass
       integer  :: i, part 
-      integer, parameter :: imax=1000
-      integer, parameter :: npart=1e6
-      real :: r(npart), pdf(imax)
+      integer, parameter  :: imax=1000
+      integer, intent(in) :: npart
+      real :: r, pdf(imax)
       real :: ran_num, part_r, part_z
 
       integer, parameter :: npts=1000
@@ -33,8 +33,8 @@ module particle_pos_mod
 
       ! Calculate look up table of mass out to given radius
       do i=1, imax
-         r(i) = real(i) 
-         call mass_vs_r(1.0, r(i), this_mass)
+         r = real(i) 
+         call mass_vs_r(1.0, r, this_mass)
          pdf(i) = this_mass
       end do
 
