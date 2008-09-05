@@ -22,18 +22,18 @@ module particle_pos_mod
 
       real(db) :: this_mass
       integer  :: i, part 
-      integer, parameter  :: imax=1000
+      integer, parameter  :: imax=10000 ! Radial sampling
       integer, intent(in) :: npart
       real :: r, pdf(imax)
       real :: ran_num, part_r, part_z
 
-      integer, parameter :: npts=1000
+      integer, parameter :: npts=10000 ! ! z sampling
       real :: gaus_pdf(0:npts)
       real :: z_sig(0:npts)
 
       ! Calculate look up table of mass out to given radius
       do i=1, imax
-         r = real(i) 
+         r = ( real(i) / real(imax) ) * r_out
          call mass_vs_r(1.0, r, this_mass)
          pdf(i) = this_mass
       end do
@@ -50,7 +50,7 @@ module particle_pos_mod
 
          do i=1, imax
             if ( pdf(i) > ran_num ) then 
-               part_r = real(i)
+               part_r = ( real(i) / real(imax) ) * r_out
                exit
             end if
          end do
@@ -122,8 +122,8 @@ module particle_pos_mod
         real, intent(out)   :: x(0:npts)
 
 ! Local
-        real, parameter :: xmin = -5.0
-        real, parameter :: xmax =  5.0
+        real, parameter :: xmin = -10.0
+        real, parameter :: xmax =  10.0
         real    :: dx
         real    :: gaus
         integer :: ng
