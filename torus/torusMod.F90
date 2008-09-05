@@ -385,7 +385,7 @@ contains
   ! set up the sources
   call set_up_sources
 
-  call checkSphTotalMass(grid, sphData, 0.2, ok)
+  call checkSphTotalMass(grid, sphData, 2.0, ok)
   if ( .not. ok ) goto 666
 
   call torus_mpi_barrier
