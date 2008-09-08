@@ -7395,6 +7395,9 @@ contains
     character(len=5)  :: index_string
     real   :: v3
 
+
+    call writeWARNING("Calls to plot_amr_values are DEPRECATED. Please use writeVTKfile instead")
+
     newDevice = .true.
     if (present(openDevice)) newDevice=openDevice
 

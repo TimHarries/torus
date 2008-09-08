@@ -1096,6 +1096,9 @@ contains
        call getLogical("readlucy", readLucy, cLine, nLines, &
             "Read lucy grid file: ","(a,1l,1x,a)", .false., ok, .false.)
 
+       call getLogical("multilucyfiles", multilucyfiles, cLine, nLines, &
+            "Multiple lucy vtk files: ","(a,1l,1x,a)", .false., ok, .false.)
+
        call getLogical("redolucy", redolucy, cLine, nLines, &
             "Redo lucy radiative equilibrium routine from a input file: ", &
             "(a,1l,1x,a)", .false., ok, .false.)

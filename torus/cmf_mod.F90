@@ -1166,7 +1166,7 @@ contains
 
 !          if (doTuning) call tune(6, "One octal iteration")  ! start a stopwatch
              
-!             write(*,*) iOctal,iOctal_beg,iOctal_end
+             write(*,*) iOctal,iOctal_beg,iOctal_end
              thisOctal => octalArray(iOctal)%content
              do subcell = 1, thisOctal%maxChildren
 
@@ -1228,11 +1228,10 @@ contains
                                endif
 
 
-!                               write(*,*) thisAtom(iAtom)%iLower(iTrans), " -> ", thisAtom(iAtom)%iUpper(iTrans), ": ",tauAv
                                if (iTrans == 4) tauHalpha = tauAv
 
                                if (iter < 10) then
-                                 if (tauAv > 1.d2) then
+                                 if (tauAv > 1.d1) then
                                     thisAtom(iAtom)%indetailedBalance(iTrans) = .true.
                                  else
                                     thisAtom(iAtom)%indetailedBalance(iTrans) = .false.
@@ -1240,6 +1239,8 @@ contains
                                  firstCheckonTau = .false.
                               endif
 
+                              if (debug) write(*,*) thisAtom(iAtom)%iLower(iTrans), " -> ", thisAtom(iAtom)%iUpper(iTrans), ": ", &
+                                    tauAv,thisAtom(iAtom)%indetailedbalance(itrans)
 
                             enddo
                          endif
@@ -1348,7 +1349,7 @@ contains
                            write(*,*) "Ne: ",ne,dne
                            write(*,*) "T: ",thisOctal%temperature(subcell)
                            write(*,*) "R: ",modulus(subcellCentre(thisOctal,subcell))/rCore
-                           write(*,*) "log(HeII/HeIII): ",log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) / &
+                           write(*,*) "log(H I/H II): ",log10(SUM(thisOctal%newAtomLevel(subcell,1,1:thisAtom(1)%nlevels-1)) / &
                                 thisOctal%newAtomLevel(subcell, 1, thisAtom(1)%nlevels))
                         endif
                          fac = -1.d30

@@ -695,11 +695,6 @@ end subroutine gaussSeidelSweep
 
 
     call setDiffOnTau(grid)
-    if (writeoutput) then
-       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
-            "setdiff", .true., .false.,  suffix="default", &
-            width_3rd_dim= real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomfactor) 
-    endif
 !    endif
 !    call defineDiffusiononRho(grid%octreeRoot, 1.d-10)
 !       call defineDiffusionOnUndersampled(grid%octreeRoot)

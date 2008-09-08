@@ -450,13 +450,9 @@ CONTAINS
           if (phi < 0.d0) phi = phi + twoPi
           r0 = sqrt(x0**2 + y0**2)
           phi0 = atan2(y0,x0)
-          
           if (phi0 < 0.d0) phi0 = phi0 + twoPi
-          if (this%splitAzimuthally) then
-             dphi = this%dphi/4.d0
-          else
-             dphi = this%dphi/2.d0
-          endif
+
+          dphi = returndPhi(this)
 
           if ( z > (z0+dp) ) then
              out = .false.

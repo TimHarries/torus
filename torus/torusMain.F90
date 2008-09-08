@@ -358,7 +358,7 @@ program torus
      allocate(thisAtom(1:nAtom))
      do i = 1, nAtom
         call readAtom(thisAtom(i),atomFilename(i))
-        call stripAtomLevels(thisAtom(i), 10)
+        call stripAtomLevels(thisAtom(i), 5)
      enddo
     call createRBBarrays(nAtom, thisAtom, nRBBtrans, indexAtom, indexRBBTrans)
   endif
@@ -863,9 +863,9 @@ program torus
 !        call atomLoop(grid, nAtom, thisAtom, nsource, source)
 
            if (writeoutput) then
-              call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
-                   "etaline.ps/vcps", .true., .false., & 
-                   nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+!              call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
+!                   "etaline.ps/vcps", .true., .false., & 
+!                   nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
               !
               
               fac = 120.*degtorad
@@ -1982,44 +1982,44 @@ subroutine do_amr_plots
   ! Plotting some grid values
 
      call  writeVtkFile(grid, "rho.vtk")
-     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-          "rho_grid",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-          width_3rd_dim, show_value_3rd_dim, suffix="default" )
-     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-          "rho_zoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-          width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default" )
-     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-          "rho_zoom_nogrid",.true., .false., nmarker, xmarker, ymarker, zmarker, &
-          width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default" )
-     if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
-        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-             "rho_ultrazoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-             width_3rd_dim, show_value_3rd_dim, boxfac=0.005, suffix="default")
-     end if
-     call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-          nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-     if (grid%lineEmission) then
-        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
-             "Vx", .false., .false.,  &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-        call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
-             "Vy", .false., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-        call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
-             "Vz", .false., .false., &
-             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-     end if
-  !        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-  !             "etacont.ps/vcps", .true., .false.,  &
-  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-  !        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-  !             "etacont_zoom.ps/vcps", .true., .false.,  &
-  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
-  !             show_value_3rd_dim, boxfac=0.0004)
-     call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
-          "temperature", .true., .false., nmarker, xmarker, ymarker, zmarker, &
-          width_3rd_dim, show_value_3rd_dim, suffix="default", useFixedRange=.false. )
-  !        call plot_AMR_values(grid, "temperature", "x-y", 0., &
+!     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+!          "rho_grid",.true., .true., nmarker, xmarker, ymarker, zmarker, &
+!          width_3rd_dim, show_value_3rd_dim, suffix="default" )
+!     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+!          "rho_zoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
+!          width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default" )
+!     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+!          "rho_zoom_nogrid",.true., .false., nmarker, xmarker, ymarker, zmarker, &
+!          width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default" )
+!     if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
+!        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
+!             "rho_ultrazoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
+!             width_3rd_dim, show_value_3rd_dim, boxfac=0.005, suffix="default")
+!     end if
+!     call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
+!          nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+!     if (grid%lineEmission) then
+!        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
+!             "Vx", .false., .false.,  &
+!             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
+!        call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
+!             "Vy", .false., .false., &
+!             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
+!        call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
+!             "Vz", .false., .false., &
+!             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
+!     end if
+!  !        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
+!  !             "etacont.ps/vcps", .true., .false.,  &
+!  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
+!  !        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
+!  !             "etacont_zoom.ps/vcps", .true., .false.,  &
+!  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
+!  !             show_value_3rd_dim, boxfac=0.0004)
+!     call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
+!          "temperature", .true., .false., nmarker, xmarker, ymarker, zmarker, &
+!          width_3rd_dim, show_value_3rd_dim, suffix="default", useFixedRange=.false. )
+!  !        call plot_AMR_values(grid, "temperature", "x-y", 0., &
   !             "temperature2.ps/vcps", .true., .false., &
   !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
   !        if (lineEmission) then
@@ -2034,15 +2034,15 @@ subroutine do_amr_plots
   !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
   !        end if
   
-     if (mie) then
-        do i = 1, nDustType
-           write(message,'(a,i1)') "dusttype",i
-           write(filename,'(a,i1)') "dusttype",i
-           call plot_AMR_values(grid, message, "x-z", 0., &
-                trim(filename),.false., .false., nmarker, xmarker, ymarker, zmarker, &
-                width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor, suffix="default" )
-        enddo
-     endif
+!     if (mie) then
+!        do i = 1, nDustType
+!           write(message,'(a,i1)') "dusttype",i
+!           write(filename,'(a,i1)') "dusttype",i
+!           call plot_AMR_values(grid, message, "x-z", 0., &
+!                trim(filename),.false., .false., nmarker, xmarker, ymarker, zmarker, &
+!                width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor, suffix="default" )
+!        enddo
+!     endif
 
   !     ! plotting column density (new routine in grid_mod.f90)
   !     if (grid%geometry(1:7) == "cluster") then 
@@ -2263,8 +2263,6 @@ subroutine set_up_sources
        source(1)%radius = grid%rCore
        source(1)%teff = teff   
        source(1)%position = VECTOR(0.,0.,0.)
-       tmp = source(1)%radius * 1.e10  ! [cm]
-       source(1)%luminosity = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
        if (contFluxfile .eq. "blackbody") then
           call fillSpectrumBB(source(1)%spectrum, dble(teff), &
                dble(lamStart), dble(lamEnd),nLambda, lamArray=xArray)
@@ -2273,6 +2271,20 @@ subroutine set_up_sources
           call readSpectrum(source(1)%spectrum, contfluxfile, ok)
        endif
        call normalizedSpectrum(source(1)%spectrum)
+       call sumSurface(source(1)%surface, source(1)%luminosity)
+
+       tmp = source(1)%radius * 1.e10  ! [cm]
+       fac = fourPi * stefanBoltz * (tmp*tmp) * (source(1)%teff)**4
+       if (abs(fac-source(1)%luminosity)/source(1)%luminosity > 0.01d0) then
+          if (writeoutput) then
+             write(*,*) "WARNING: luminosity from effective temperature and that from the SED differ by >1%"
+             write(*,*) "Lum from Teff (lSol): ",fac/lSol
+             write(*,*) "Lum from SED  (lSol): ",source(1)%luminosity/lSol
+             write(*,*) "Implied source of accretion luminosity of: ",(source(1)%luminosity-fac)/lSol
+             fac = (source(1)%luminosity-fac) * tmp / (bigG * mCore)
+             write(*,*) "Mass accretion rate could be ",fac/mSol/ secstoYears, " solar masses/year"
+          endif
+       endif
 
     case("circumbin")
        nSource = 2
@@ -2453,14 +2465,14 @@ subroutine do_lucyRadiativeEq
 
      
 
-     ! Plotting the slices of planes
-     if (myRankIsZero .and. plot_maps) then
-       call plot_AMR_planes(grid, "temperature", plane_for_plot, 3, "temperature", &
-            .true., .false., nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-       call plot_AMR_planes(grid, "etaCont", plane_for_plot, 3, "etaCont", .true., .false., &
-            nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-    end if
-
+!     ! Plotting the slices of planes
+!     if (myRankIsZero .and. plot_maps) then
+!       call plot_AMR_planes(grid, "temperature", plane_for_plot, 3, "temperature", &
+!            .true., .false., nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+!       call plot_AMR_planes(grid, "etaCont", plane_for_plot, 3, "etaCont", .true., .false., &
+!            nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
+!    end if
+!
      call torus_mpi_barrier
 
 end subroutine do_lucyRadiativeEq

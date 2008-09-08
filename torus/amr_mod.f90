@@ -5384,8 +5384,16 @@ IF ( .NOT. gridConverged ) RETURN
       rd = grid%rOuter / 2. 
       hr = height * (r/rd)**1.125
 
-      if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
-      if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 0.2)) split = .true.
+      if (.not.thisOctal%cylindrical) then
+         if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
+         if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 0.2)) split = .true.
+      else
+         if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.5)) split = .true.
+      endif
+
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 31.)) then
+         splitInAzimuth = .true.
+      endif
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
 
    case("molebench")
@@ -14094,6 +14102,7 @@ end function readparameterfrom2dmap
                   if (.not.ok) then
                      write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1,x1,x2
                      write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
+                     write(*,*) "direction ",direction
                      x1 = thisoctal%subcellSize/2.d0
                      x2 = 0.d0
                   endif
@@ -16626,7 +16635,7 @@ end function readparameterfrom2dmap
           kappaExt = kappaExt * thisOctal%rho(subcell) * 1.d10
        endif
        sOctal => thisOctal
-       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell) !, sOctal)
   
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
        if (thisOctal%twod.and.(direction%x < 0.d0).and.(currentPosition%x < 0.d0)) exit

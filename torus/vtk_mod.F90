@@ -260,6 +260,8 @@ contains
       type(GRIDTYPE), intent(in) :: grid
       integer :: lunit = 69
       integer :: subcell, i
+      real :: value
+      real(double) :: kAbs
       character(len=*) :: valueType
 
       do subcell = 1, thisOctal%maxChildren
@@ -293,10 +295,31 @@ contains
                      write(lunit, *) thisOctal%velocity(subcell)%x*cspeed/1.e5, &
                            thisOctal%velocity(subcell)%z*cspeed/1.e5, 0.
                      endif
+
                case("temperature")
                   write(lunit, *) real(thisOctal%temperature(subcell))
+
+               case("tau")
+                  call returnKappa(grid, thisOctal, subcell, rosselandKappa=kabs)
+                  value = thisOctal%subcellsize * kabs * thisOctal%rho(subcell) * 1.e10
+                  if (thisOctal%diffusionApprox(subcell)) value = 1.e10
+                  write(lunit, *) real(value)
+
+               case("dusttype")
+                  write(lunit,*) real(thisOctal%dustTypeFraction(subcell,1))
+
+               case("etacont")
+                  write(lunit, *) real(thisOctal%etaCont(subcell))
+
+               case("crossings")
+                  value = thisOctal%ncrossings(subcell)
+                  if (thisOctal%diffusionApprox(subcell)) value = 1.e6
+                  write(lunit, *) real(value)
+                  
                case("phi")
                   write(lunit, *) real(thisOctal%phi_i(subcell))
+
+
                case DEFAULT
                   write(*,*) "Cannot write vtk type ",trim(valueType)
              end select
@@ -309,7 +332,7 @@ contains
     end subroutine recursiveWriteValue
   end subroutine writeValue
 
-  subroutine writeVtkFile(grid, vtkFilename, valueTypeFilename)
+  subroutine writeVtkFile(grid, vtkFilename, valueTypeFilename, valueTypeString)
     use input_variables, only : cylindrical
 #ifdef MPI
     include 'mpif.h'
@@ -319,6 +342,7 @@ contains
     integer :: nValueType
     character(len=20) :: valueType(50)
     character(len=*), optional ::  valueTypeFilename
+    character(len=*), optional ::  valueTypeString(:)
     integer :: nCells, nPoints
     integer :: lunit = 69
     integer :: nOctals, nVoxels, ierr, iOffset, i, iType
@@ -340,7 +364,7 @@ contains
     if (grid%splitOverMpi.and.(myRankGlobal == 0)) goto 666
 #endif
 
-    
+
 
     if (PRESENT(valueTypeFilename)) then
        nValueType = 1
@@ -356,6 +380,11 @@ contains
        nValueType = 2
        valueType(1) = "rho"
        valueType(2) = "velocity"
+    endif
+
+    if (PRESENT(valueTypeString)) then
+       nValueType = SIZE(valueTypeString)
+       valueType(1:nValueType) = valueTypeString(1:nValueType)
     endif
 
 

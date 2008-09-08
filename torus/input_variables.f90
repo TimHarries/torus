@@ -513,7 +513,7 @@ module input_variables
   real    :: lucy_undersampled  
   integer :: minCrossings
   logical :: forceLucyConv
-
+  logical :: multiLucyFiles
 
   !  Input parameters for bipolar jets geometry.
   !

@@ -1344,9 +1344,9 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            
            totEnvelopeEmission = totDustContinuumEmission
            chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
-           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
-           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
-           if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
+!           if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
+!           if (writeoutput) write(*,*) "totcontemission",lcore/1.e30
+!           if (writeoutput) write(*,'(a,f9.7)') "Chance of continuum emission from dust: ",chanceDust
            
 
 !           weightDust = chanceDust / probDust
@@ -1358,10 +1358,10 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            weightPhoto = 1.
 
            energyPerPhoton =  (totDustContinuumEmission*1.d30 + lCore)/1.d20/dble(nInnerLoop)
-           if (writeoutput) write(*,*) "WeightDust",weightDust
-           if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
-           if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
-           if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
+!           if (writeoutput) write(*,*) "WeightDust",weightDust
+!           if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
+!           if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
+!           if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
 
         endif
 

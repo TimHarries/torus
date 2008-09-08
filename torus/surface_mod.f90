@@ -9,6 +9,7 @@ module surface_mod
   use density_mod
   use romanova_class
   use messages_mod
+  use spectrum_mod
 
   implicit none
 
@@ -71,7 +72,8 @@ contains
     integer :: returnVal
     real :: dummyReal
     real :: nu, hnu
-
+    logical :: ok
+    type(SPECTRUMTYPE) :: hotspec
     surface%centre = centre
     surface%radius = radius
     surface%nElements = 0
@@ -79,28 +81,40 @@ contains
 
     allocate(surface%angleArray(1:nTheta,1:nTheta))
     ! open the continuum flux file to get the number of points
-    open(20,file=contfile,status="old",form="formatted")
-    nNuHotFlux = 0
-    do
-       read(20,*,iostat=returnVal) dummyReal, dummyReal
-       if (returnVal /= 0) exit
-       nNuHotFlux = nNuHotFlux + 1
-    end do
-    close(unit=20)
-    ! store the value 
-    surface%nNuHotFlux = nNuHotFlux 
+
+    call readSpectrum(hotSpec, contfile, ok)
+
+
+    nNuHotFlux = hotSpec%nLambda
     allocate(surface%nuArray(nNuHotFlux))
     allocate(surface%hnuArray(nNuHotFlux))
-    ! now read in the array again, and store it.
-    open(20,file=contfile,status="old",form="formatted")
-    nNuHotFlux = 1
-    do
-       read(20,*,iostat=returnVal) nu, hnu
-       if (returnVal /= 0) exit
-       surface%nuArray(nNuHotFlux)=nu;  surface%hnuArray(nNuHotFlux)=hnu
-       nNuHotFlux = nNuHotFlux + 1
-    end do
-    close(unit=20)
+    surface%nNuHotFlux = hotSpec%nLambda
+    surface%nuArray = hotSpec%lambda
+    surface%hnuArray = hotSpec%flux
+
+!    open(20,file=contfile,status="old",form="formatted")
+!    nNuHotFlux = 0
+!    do
+!       read(20,*,iostat=returnVal) dummyReal, dummyReal
+!       if (returnVal /= 0) exit
+!       nNuHotFlux = nNuHotFlux + 1
+!    end do
+!    close(unit=20)
+!    ! store the value 
+!    surface%nNuHotFlux = nNuHotFlux 
+!    allocate(surface%nuArray(nNuHotFlux))
+!    allocate(surface%hnuArray(nNuHotFlux))
+!    ! now read in the array again, and store it.
+!    open(20,file=contfile,status="old",form="formatted")
+!    nNuHotFlux = 1
+!    do
+!       read(20,*,iostat=returnVal) nu, hnu
+!       if (returnVal /= 0) exit
+!       surface%nuArray(nNuHotFlux)=nu;  surface%hnuArray(nNuHotFlux)=hnu
+!       nNuHotFlux = nNuHotFlux + 1
+!    end do
+!    close(unit=20)
+
 
     call convertToFnu(surface%nuarray, surface%hnuArray, surface%nNuHotFlux)
 
@@ -546,8 +560,9 @@ contains
 
 
 
-  subroutine sumSurface(surface)
+  subroutine sumSurface(surface, luminosity)
     type(SURFACETYPE),intent(inout) :: surface
+    real(double), optional :: luminosity
     integer :: iElement
     real :: surfaceArea
     integer :: iNu
@@ -566,8 +581,9 @@ contains
     enddo
     surface%totalPhotosphere(SIZE(surface%hnuArray)) = 0.0
     ! just checking ..
-    write(*,*) "SUM(surface%totalPhotosphere(:)", SUM(surface%totalPhotosphere(:))
+    if (writeoutput) write(*,*) "SUM(surface%totalPhotosphere(:)", SUM(surface%totalPhotosphere(:))
 
+    if (PRESENT(luminosity)) luminosity =  SUM(surface%totalPhotosphere(:))
     surface%totalAccretion = 0.0
     do iElement = 1, SIZE(surface%element), 1
       if (surface%element(iElement)%hot) then

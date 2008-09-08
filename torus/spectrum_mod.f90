@@ -189,19 +189,30 @@ module spectrum_mod
       type(SPECTRUMTYPE) :: spectrum
       logical :: ok
       character(len=*) :: filename
-      real :: fTemp(120000),xTemp(120000)
+      real :: fTemp(120000),xTemp(120000), x, f
+      character(len=80) :: cLine
       integer :: nLambda, i
 
       ok = .true.
       open(20,file=filename,form="formatted",status="old", err=666)
       nLambda = 1
 10    continue
-      read(20,*,end=20) xtemp(nLambda),fTemp(nLambda)
+      read(20,'(a)',end=20) cline
+      if (len(trim(cline)).gt.0) then
+         read(cLine,*,err=10) x, f
+      else
+         goto 10
+      endif
+      xtemp(nLambda) = x
+      fTemp(nLambda) = f
       nLambda = nLambda + 1
       goto 10
 20    continue
       close(20)
       nLambda = nLambda - 1
+      if (nLambda == 0) then
+         call writeFatal("Error reading continuum flux file: "//trim(filename))
+      endif
       allocate(spectrum%flux(1:nLambda))
       allocate(spectrum%lambda(1:nLambda))
       allocate(spectrum%dlambda(1:nLambda))
