@@ -2250,13 +2250,17 @@ endif
    call getReal("binarysep", binarySep, cLine, nLines, &
         "Binary separation (AU): ","(a,1pe7.1,a)", 1.e13, ok, .true.)
 
+   call getReal("streamfac", streamFac, cLine, nLines, &
+         "Stream density in terms of density at inner radius: ","(a,e12.3,a)", 1., ok, .true.)
+
    call getString("contflux1", contFluxFile1, cLine, nLines, &
         "Continuum flux filename for star 1: ","(a,a,1x,a)","none", ok, .true.)
 
    call getString("contflux2", contFluxFile2, cLine, nLines, &
         "Continuum flux filename for star 2: ","(a,a,1x,a)","none", ok, .true.)
 
-
+   call getLogical("vardustsub", variableDustSublimation, cLine, nLines, &
+        "Variable dust sublimation temperature: ", "(a,1l,1x,a)", .false., ok, .true.)
 
    massRatio = mstar2/mstar1
    rInner = rInner * auToCm/1.e10

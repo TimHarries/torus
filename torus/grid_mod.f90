@@ -602,6 +602,7 @@ contains
        grid%geometry = "circumbin"
        grid%rInner = rInner
        grid%rOuter = rOuter
+       grid%rCore = rSol/1.e10
 
     case("shakara")
        grid%geometry = "shakara"

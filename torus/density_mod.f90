@@ -869,7 +869,7 @@ contains
     integer :: nspiral1
     real(double) :: phase(10)
     integer :: i
-    real(double) :: phi, dist
+    real(double) :: phi, dist, rhofac
     logical, save :: firstTime = .true.
     integer, parameter :: nStream = 1000
     real ::  phi1, phi2, dphi, r1, turns, d
@@ -889,7 +889,6 @@ contains
           phi = phi1 + dphi * real(i-1)/real(nStream-1)
           r = (phi-phi1)/dphi * r1
           stream1(i) = OCTALVECTOR(dble(r*cos(phi)+d), dble(r*sin(phi)), 0.d0)
-          write(47, *) stream1(i)%x/rinner, stream1(i)%y/rinner
        enddo
 
        phi1 = 0.
@@ -943,7 +942,7 @@ contains
           dist = min(dist,fac)
        enddo
        dist = dist / (0.01d0*rInner)
-       rhoOut = max(rhoOut, rho0 * exp(-dist))
+       rhoOut = max(rhoOut, streamFac*rho0 * exp(-dist))
 
        dist = 1.e30
        do i = 1, nStream
@@ -951,7 +950,7 @@ contains
           dist = min(dist,fac)
        enddo
        dist = dist / (0.01d0*rInner)
-       rhoOut = max(rhoOut, rho0 * exp(-dist))
+       rhoOut = max(rhoOut, streamFac*rho0 * exp(-dist))
     endif
 
     rhoOut = max(rhoOut, 1.d-30)

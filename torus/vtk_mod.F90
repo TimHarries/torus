@@ -51,7 +51,7 @@ contains
       type(GRIDTYPE) :: grid
       integer :: lunit
       integer :: subcell, i
-      real :: xp, xm, yp, ym, zm, zp, d
+      real :: xp, xm, yp, ym, zm, zp, d, r1, r2, phi, dphi
       type(OCTALVECTOR) :: rVec
       do subcell = 1, thisOctal%maxChildren
          if (thisOctal%hasChild(subcell)) then
@@ -69,31 +69,56 @@ contains
             if (.not.octalOnThread(thisOctal, subcell, myRankGlobal) .and. grid%splitOverMPI) cycle
 #endif
             if (thisOctal%threed) then
-               rVec = subcellCentre(thisOctal,subcell)
-               d = thisOctal%subcellSize/2.d0
-               xp = REAL(rVec%x + d)
-               xm = REAL(rVec%x - d)
-               yp = REAL(rVec%y + d)
-               ym = REAL(rVec%y - d)
-               zp = REAL(rVec%z + d)
-               zm = REAL(rVec%z - d)
+               if (.not.thisOctal%cylindrical) then
+                  rVec = subcellCentre(thisOctal,subcell)
+                  d = thisOctal%subcellSize/2.d0
+                  xp = REAL(rVec%x + d)
+                  xm = REAL(rVec%x - d)
+                  yp = REAL(rVec%y + d)
+                  ym = REAL(rVec%y - d)
+                  zp = REAL(rVec%z + d)
+                  zm = REAL(rVec%z - d)
+                  
+                  write(lunit,*) xm, ym, zm
+                  
+                  write(lunit,*) xp, ym, zm
+                  
+                  write(lunit,*) xm, yp, zm
+                  
+                  write(lunit,*) xp, yp, zm
+                  
+                  write(lunit,*) xm, ym, zp
+                  
+                  write(lunit,*) xp, ym, zp
+                  
+                  write(lunit,*) xm, yp, zp
+                  
+                  write(lunit,*) xp, yp, zp
+               else
+                  rVec = subcellCentre(thisOctal, subcell)
+                  d = thisOctal%subcellSize/2.d0
+                  zp = REAL(rVec%z + d)
+                  zm = REAL(rVec%z - d)
+                  r1 = sqrt(rVec%x**2 + rVec%y**2) - d
+                  r2 = sqrt(rVec%x**2 + rVec%y**2) + d
+                  phi = atan2(rVec%y, rVec%x)
+                  dphi = returndPhi(thisOctal)
+                  write(lunit,*) r1*cos(phi-dphi), r1*sin(phi-dphi), zm
 
-               write(lunit,*) xm, ym, zm
+                  write(lunit,*) r1*cos(phi+dphi), r1*sin(phi+dphi), zm
 
-               write(lunit,*) xp, ym, zm
+                  write(lunit,*) r2*cos(phi+dphi), r2*sin(phi+dphi), zm
 
-               write(lunit,*) xm, yp, zm
+                  write(lunit,*) r2*cos(phi-dphi), r2*sin(phi-dphi), zm
 
-               write(lunit,*) xp, yp, zm
+                  write(lunit,*) r1*cos(phi-dphi), r1*sin(phi-dphi), zp
 
-               write(lunit,*) xm, ym, zp
+                  write(lunit,*) r1*cos(phi+dphi), r1*sin(phi+dphi), zp
 
-               write(lunit,*) xp, ym, zp
+                  write(lunit,*) r2*cos(phi+dphi), r2*sin(phi+dphi), zp
 
-               write(lunit,*) xm, yp, zp
-
-               write(lunit,*) xp, yp, zp
-
+                  write(lunit,*) r2*cos(phi-dphi), r2*sin(phi-dphi), zp
+               endif
             else
                rVec = subcellCentre(thisOctal,subcell)
                d = thisOctal%subcellSize/2.d0
@@ -285,6 +310,7 @@ contains
   end subroutine writeValue
 
   subroutine writeVtkFile(grid, vtkFilename, valueTypeFilename)
+    use input_variables, only : cylindrical
 #ifdef MPI
     include 'mpif.h'
 #endif
@@ -410,7 +436,8 @@ contains
        open(lunit,file=vtkFilename, form="formatted", status="old",position="append")
        write(lunit, '(a, i10)') "CELL_TYPES ",nCells
        do i = 1, nCells
-          if (nPointOffset == 8) write(lunit, '(a)') "11"
+          if ((nPointOffset == 8).and.(.not.cylindrical)) write(lunit, '(a)') "11"
+          if ((nPointOffset == 8).and.(cylindrical)) write(lunit, '(a)') "12"
           if (nPointOffset == 4) write(lunit, '(a)') "8"
        enddo
        write(69, '(a,  i10)') "CELL_DATA ",nCells

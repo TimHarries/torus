@@ -285,6 +285,8 @@ program torus
   
   call random_seed
 
+  allocate(distortionVec(1:1))
+
   call random_seed(size=iSize)
   allocate(iSeed(1:iSize))
   call random_seed(get=iSeed)
@@ -321,12 +323,12 @@ program torus
   nMarker = 0
   lucyRadiativeEq = .false. ! this has to be initialized here
 
+  hydrodynamics = .false.
 
   ! get the model parameters
 
   call inputs() ! variables are passed using the input_variables module
   if (.not.inputOK) goto 666
-
 !  call test_profiles()  ! Testing Lorentz profile with Voigt profile
 
 
@@ -742,6 +744,7 @@ program torus
      if ( enhance ) then
         nVec = 100
         nPhi = 360
+	if (allocated(distortionVec)) deallocate(distortionVec)
         allocate(distortionVec(nVec))
         timeStart = 0.
         timeEnd = 12.*3600.
@@ -2274,6 +2277,7 @@ subroutine set_up_sources
     case("circumbin")
        nSource = 2
        allocate(source(1:2))
+       massRatio = mstar2/mstar1
        source(1)%radius = rStar1
        source(1)%teff = teff1  
        source(1)%position = VECTOR(binarySep/(1.+massRatio), 0., 0.)

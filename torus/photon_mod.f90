@@ -1240,7 +1240,7 @@ contains
 
              ! must be outwards from the photosphere if this is a core continuum photon
 
-             if ((t < 0.).and.(r3 /= 0.).and.(grid%lineEmission).and.(.not.contWindPhoton)) then
+             if ((t < 0.).and.(r3_oct /= 0.).and.(grid%lineEmission).and.(.not.contWindPhoton)) then
                 thisPhoton%direction = (-1.d0)*thisPhoton%direction
              endif
              t = (thisPhoton%direction .dot. rHat)

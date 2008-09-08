@@ -473,7 +473,7 @@ contains
     write(message,'(a,1pe12.5)') "Total souce luminosity (lsol): ",lCore/lSol
     call writeInfo(message, TRIVIAL)
 
-    if (grid%geometry == "shakara") then
+    if ((grid%geometry == "shakara").or.(grid%geometry == "circumbin")) then
 	if (nDustType > 1) then
            call fillDustShakara(grid, grid%octreeRoot)
         endif
@@ -2903,7 +2903,7 @@ end subroutine addDustContinuumLucyMono
 subroutine setBiasOnTau(grid, iLambda)
 #ifdef MPI
     use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
-    use input_variables, only : blockHandout
+    use input_variables, only : blockHandout, cylindrical
     include 'mpif.h'
 #endif
     type(gridtype) :: grid
@@ -2919,22 +2919,30 @@ subroutine setBiasOnTau(grid, iLambda)
     integer :: iOctal_beg, iOctal_end
     real(double), parameter :: underCorrect = 0.8d0
     real(double) :: kappaSca, kappaAbs, kappaExt
-    type(OCTALVECTOR) :: arrayVec(4)
+    type(OCTALVECTOR) :: arrayVec(6)
 #ifdef MPI
 ! Only declared in MPI case
      integer, dimension(:), allocatable :: octalsBelongRank
      logical :: rankComplete
      integer :: tag = 0
+     integer :: nDir
      real(double), allocatable :: eArray(:), tArray(:)
      integer :: nVoxels, ierr
      integer :: nBias
 #endif
 
+     if (cylindrical) then
+        nDir = 6
+     else
+        nDir = 4
+     endif
 
-     arrayVec(1) = OCTALVECTOR(1.d0, 1.d-10, 1.d-10)
-     arrayVec(2) = OCTALVECTOR(-1.d0, 1.d-10, 1.d-10)
-     arrayVec(3) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
-     arrayVec(4) = OCTALVECTOR(1.d-10, 1.d-10,-1.d0)
+     if (nDir == 4) then
+        arrayVec(1) = OCTALVECTOR(1.d0, 1.d-10, 1.d-10)
+        arrayVec(2) = OCTALVECTOR(-1.d0, 1.d-10, 1.d-10)
+        arrayVec(3) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
+        arrayVec(4) = OCTALVECTOR(1.d-10, 1.d-10,-1.d0)
+     endif
 
     allocate(octalArray(grid%nOctals))
     nOctal = 0
@@ -2988,7 +2996,21 @@ subroutine setBiasOnTau(grid, iLambda)
              else
 
                 tau = 1.d30
-                do i = 1, 4
+                if (cylindrical) then
+                   ndir = 4
+                   arrayVec(1) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
+                   arrayVec(2) = OCTALVECTOR(1.d-10, 1.d-10,-1.d0)
+                   arrayVec(3) = OCTALVECTOR(rVec%x, rVec%y,1.d-10)
+                   call normalize(arrayVec(3))
+                   arrayVec(4) = (-1.d0)*arrayVec(3)
+!                   arrayVec(5) = arrayVec(3).cross.arrayVec(1)
+!                   call normalize(arrayVec(5))
+!                   arrayVec(6) = (-1.d0)*arrayVec(5)
+                endif
+
+
+
+                do i = 1, ndir
                    direction = arrayVec(i)
                    call tauAlongPath(ilambda, grid, rVec, direction, thistau, 20.d0 )
                    tau = min(tau, thisTau)
@@ -3029,7 +3051,7 @@ subroutine setBiasOnTau(grid, iLambda)
 #endif
 
     deallocate(octalArray)
-
+    if (writeoutput) write(*,*) "Tau bias completed"
   end subroutine setBiasOnTau
 
   subroutine packBias(octalArray, nBias, eArray, octalsBelongRank)

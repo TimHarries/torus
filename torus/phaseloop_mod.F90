@@ -1966,7 +1966,12 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
               if (hitCore) then
                  if (grid%geometry /= "binary") then
-                    r = modulus(thisPhoton%position)/grid%rCore
+
+                    if (grid%rCore /= 0.) then
+                       r = modulus(thisPhoton%position)/grid%rCore
+                    else 
+                       r = 10.
+                    endif
                     if (r < 1.01) then
                        absorbed = .true.
                        albedo = 0.

@@ -5729,7 +5729,7 @@ IF ( .NOT. gridConverged ) RETURN
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
 
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.5)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
 !      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
 
@@ -16617,7 +16617,7 @@ end function readparameterfrom2dmap
 
     do while (inOctal(grid%octreeRoot, currentPosition))
 
-       call findSubcellLocal(currentPosition,thisOctal,subcell)
+       call findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
        if (.not.PRESENT(ross)) then
           call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
           kappaExt = kappaAbs + kappaSca
