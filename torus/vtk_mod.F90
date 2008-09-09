@@ -283,6 +283,8 @@ contains
             select case (valueType)
                case("rho")
                   write(lunit, *) real(thisOctal%rho(subcell))
+               case("bias")
+                  write(lunit, *) real(thisOctal%biasCont3d(subcell))
                case("hydrovelocity")
                   write(lunit, *) real(thisOctal%rhou(subcell)/thisOctal%rho(subcell)), &
                        real(thisOctal%rhov(subcell)/thisOctal%rho(subcell)), &
@@ -377,9 +379,10 @@ contains
        nValueType = nValueType - 1
        close(29)
     else
-       nValueType = 2
+       nValueType = 3
        valueType(1) = "rho"
        valueType(2) = "velocity"
+       valueType(3) = "tau"
     endif
 
     if (PRESENT(valueTypeString)) then

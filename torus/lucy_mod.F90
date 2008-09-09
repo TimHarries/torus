@@ -2924,7 +2924,7 @@ subroutine setBiasOnTau(grid, iLambda)
                    ndir = 6
                    arrayVec(1) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
                    arrayVec(2) = OCTALVECTOR(1.d-10, 1.d-10,-1.d0)
-                   arrayVec(3) = OCTALVECTOR(rVec%x, rVec%y,1.d-10)
+                   arrayVec(3) = OCTALVECTOR(rVec%x+1.d-10, rVec%y*1.0001d0,1.d-10)
                    call normalize(arrayVec(3))
                    arrayVec(4) = (-1.d0)*arrayVec(3)
                    arrayVec(5) = arrayVec(3).cross.arrayVec(1)
@@ -2976,6 +2976,9 @@ subroutine setBiasOnTau(grid, iLambda)
 
     deallocate(octalArray)
     if (writeoutput) write(*,*) "Tau bias completed"
+    call writeVtkFile(grid, "bias.vtk", &
+            valueTypeString=(/"bias"/))
+
   end subroutine setBiasOnTau
 
   subroutine packBias(octalArray, nBias, eArray, octalsBelongRank)

@@ -5731,7 +5731,7 @@ IF ( .NOT. gridConverged ) RETURN
 1001  if ((r+(cellsize/(2.d0*100.))) < 1.8) split = .false.
       if ((r-(cellsize/(2.d0*100.))) > 8.) split = .false.
 
-   case("shakara","aksco","circumbin")
+   case("shakara","aksco")
       split = .false.
       if (thisOctal%ndepth  < 5) split = .true.
       cellSize = thisOctal%subcellSize 
@@ -5739,9 +5739,9 @@ IF ( .NOT. gridConverged ) RETURN
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
 
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
+!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 1.)) split = .true.
 
-!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -5790,6 +5790,60 @@ IF ( .NOT. gridConverged ) RETURN
 !            split = .true.
 !         endif
 !      endif
+
+   case("circumbin")
+      split = .false.
+      if (thisOctal%ndepth  < 5) split = .true.
+      cellSize = thisOctal%subcellSize 
+      cellCentre = subcellCentre(thisOctal,subCell)
+      r = sqrt(cellcentre%x**2 + cellcentre%y**2)
+      hr = height * (r / (100.d0*autocm/1.d10))**betadisc
+
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 2.)) split = .true.
+
+!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+
+      if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
+
+!      if ((r > grid%rInner).and.(r < grid%rInner * 1.01)) then
+!         if ((abs(cellcentre%z)/hr < 5.)) then
+!            if (cellsize > 1.e-3 * grid%rInner) split = .true.
+!         endif
+!      endif
+
+!      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
+!           (thisOctal%nDepth < maxDepthAmr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
+
+      if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
+      if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
+
+      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
+         if ((abs(cellcentre%z)/hr < 1.)) then
+            if (cellsize > 5.d-1*grid%rinner) split = .true.
+         endif
+      endif
+
+      splitInAzimuth = .false.
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 181.)) then
+         splitInAzimuth = .true.
+         split = .true.
+      endif
+
+      if (grid%geometry == "circumbin") then
+         if (abs(cellCentre%z) < rinner/2.) then
+            if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
+               splitInAzimuth = .true.
+               split = .true.
+            endif
+            if ((r < rinner).and.(thisOctal%subcellSize > (0.05*rinner))) split = .true.
+         endif
+      endif
+
+      if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
+         split = .false.
+         splitInAzimuth = .false.
+      endif
+
 
    case("iras04158")
  
@@ -16608,7 +16662,7 @@ end function readparameterfrom2dmap
   subroutine tauAlongPath(ilambda, grid, rVec, direction, tau, tauMax, ross)
     use input_variables, only : rGap
     type(GRIDTYPE) :: grid
-    type(OCTALVECTOR) :: rVec, direction, currentPosition
+    type(OCTALVECTOR) :: rVec, direction, currentPosition, beforeVec, afterVec
     integer :: iLambda
     real(double) :: tau, distToNextCell
     real(double), optional :: tauMax
@@ -16629,7 +16683,7 @@ end function readparameterfrom2dmap
 
     do while (inOctal(grid%octreeRoot, currentPosition))
 
-       call findSubcellTD(currentPosition, grid%octreeRoot, thisOctal,subcell)
+       call findSubcellLocal(currentPosition, thisOctal,subcell)
        if (.not.PRESENT(ross)) then
           call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
           kappaExt = kappaAbs + kappaSca
@@ -16640,13 +16694,14 @@ end function readparameterfrom2dmap
        sOctal => thisOctal
        call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
   
-       if (thisOctal%cylindrical) oldR = sqrt(currentPosition%x**2 + currentPosition%y**2)
+       beforeVec = OCTALVECTOR(currentPosition%x, currentPosition%y,0.d0)
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
+       afterVec = OCTALVECTOR(currentPosition%x, currentPosition%y,0.d0)
+       
        if (thisOctal%twod.and.(direction%x < 0.d0).and.(currentPosition%x < 0.d0)) exit
 
-
-       if (thisOctal%threed.and.thisOctal%cylindrical) then
-          if (sqrt(currentPosition%x**2 + currentPosition%y**2) > oldR) exit
+       if ((thisOctal%cylindrical).and.((beforeVec.dot.afterVec).lt.0.d0)) then
+          exit
        endif
           
        if (planetGap) then
