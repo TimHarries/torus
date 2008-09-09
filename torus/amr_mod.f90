@@ -5769,16 +5769,6 @@ IF ( .NOT. gridConverged ) RETURN
          split = .true.
       endif
 
-      if (grid%geometry == "circumbin") then
-         if (abs(cellCentre%z) < rinner/2.) then
-            if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
-               splitInAzimuth = .true.
-               split = .true.
-            endif
-            if ((r < rinner).and.(thisOctal%subcellSize > (0.05*rinner))) split = .true.
-         endif
-      endif
-
       if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
          split = .false.
          splitInAzimuth = .false.
@@ -5805,23 +5795,9 @@ IF ( .NOT. gridConverged ) RETURN
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
-!      if ((r > grid%rInner).and.(r < grid%rInner * 1.01)) then
-!         if ((abs(cellcentre%z)/hr < 5.)) then
-!            if (cellsize > 1.e-3 * grid%rInner) split = .true.
-!         endif
-!      endif
-
-!      if (((r-cellsize/2.d0) < grid%rinner).and. ((r+cellsize/2.d0) > grid%rInner) .and. &
-!           (thisOctal%nDepth < maxDepthAmr) .and. (abs(cellCentre%z/hr) < 3.d0) ) split=.true.
-
       if ((r+cellsize/2.d0) < grid%rinner*1.) split = .false.
       if ((r-cellsize/2.d0) > grid%router*1.) split = .false.
 
-      if ((r > grid%rinner).and.(r < 1.01d0*grid%rinner)) then
-         if ((abs(cellcentre%z)/hr < 1.)) then
-            if (cellsize > 5.d-1*grid%rinner) split = .true.
-         endif
-      endif
 
       splitInAzimuth = .false.
       if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 181.)) then
@@ -5829,14 +5805,12 @@ IF ( .NOT. gridConverged ) RETURN
          split = .true.
       endif
 
-      if (grid%geometry == "circumbin") then
-         if (abs(cellCentre%z) < rinner/2.) then
-            if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
-               splitInAzimuth = .true.
-               split = .true.
-            endif
-            if ((r < rinner).and.(thisOctal%subcellSize > (0.05*rinner))) split = .true.
+      if (abs(cellCentre%z) < rinner/10.) then
+         if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
+            splitInAzimuth = .true.
+            split = .true.
          endif
+!         if ((r < rinner).and.(thisOctal%subcellSize > (0.1*rinner))) split = .true.
       endif
 
       if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
@@ -13834,7 +13808,7 @@ end function readparameterfrom2dmap
 
           r = thisOctal%subcellSize/2. + grid%halfSmallestSubcell * 0.1d0
           centre = subcellCentre(thisOctal, subcell) + &
-               (0.01d0*grid%halfSmallestsubcell)*OCTALVECTOR(+1.d0,+1.d0,+1.d0)
+               (0.01d0*grid%halfSmallestsubcell)*OCTALVECTOR(+0.9d0,+0.8d0,+0.7d0)
           if (.not.thisOctal%cylindrical) then
              nDir = 6
              dirVec(1) = OCTALVECTOR( 0.d0, 0.d0, +1.d0)

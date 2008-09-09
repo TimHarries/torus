@@ -927,10 +927,12 @@ contains
        fac = max(-50.d0,fac)
        rhoOut = dble(rho0) * (dble(rInner/r))**dble(alphaDisc) * exp(fac)
        fac = 1.d0
-!       if (r < rInner) then
-!          fac = ((rInner - r)/(0.01*rInner))**2
-!          fac = exp(-fac)
-!       endif
+       if (grid%geometry == "circumbin") then
+          if (r < rInner) then
+             fac = ((rInner - r)/(0.01*rInner))**2
+             fac = exp(-fac)
+          endif
+       endif
 
        rhoOut = rhoOut * fac
     endif
