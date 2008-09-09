@@ -2824,12 +2824,12 @@ end subroutine addDustContinuumLucyMono
 !-------------------------------------------------------------------------------
 
 subroutine setBiasOnTau(grid, iLambda)
+    use input_variables, only : cylindrical
 #ifdef MPI
     use mpi_global_mod,  only : myRankGlobal, nThreadsGlobal
     use input_variables, only : blockHandout, cylindrical
     include 'mpif.h'
 #endif
-    use input_variables, only : cylindrical
     type(gridtype) :: grid
     type(octal), pointer   :: thisOctal
     real(double) :: tau, thisTau
