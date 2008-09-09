@@ -2921,15 +2921,15 @@ subroutine setBiasOnTau(grid, iLambda)
 
                 tau = 1.d30
                 if (cylindrical) then
-                   ndir = 4
+                   ndir = 6
                    arrayVec(1) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
                    arrayVec(2) = OCTALVECTOR(1.d-10, 1.d-10,-1.d0)
                    arrayVec(3) = OCTALVECTOR(rVec%x, rVec%y,1.d-10)
                    call normalize(arrayVec(3))
                    arrayVec(4) = (-1.d0)*arrayVec(3)
-!                   arrayVec(5) = arrayVec(3).cross.arrayVec(1)
-!                   call normalize(arrayVec(5))
-!                   arrayVec(6) = (-1.d0)*arrayVec(5)
+                   arrayVec(5) = arrayVec(3).cross.arrayVec(1)
+                   call normalize(arrayVec(5))
+                   arrayVec(6) = (-1.d0)*arrayVec(5)
                 endif
 
 

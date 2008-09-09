@@ -4276,6 +4276,7 @@ IF ( .NOT. gridConverged ) RETURN
         IF (haveDescended) then
            boundaryProblem = .TRUE.
            PRINT *, 'Panic: In findSubcellLocalPrivate, have descended and are now going back up'
+           write(*,*) "split az ",thisOctal%splitAzimuthally
            write(*,*) point
            write(*,*) atan2(point%y,point%x)*radtodeg
            write(*,*) sqrt(point%x**2 + point%y**2)
@@ -4285,6 +4286,7 @@ IF ( .NOT. gridConverged ) RETURN
            write(*,*) thisOctal%subcellSize
            write(*,*) thisOctal%phi*radtodeg,thisOctal%dphi*radtodeg
            write(*,*) sqrt(thisOctal%centre%x**2+thisOctal%centre%y**2)
+           write(*,*) atan2(thisOctal%centre%y,thisOctal%centre%x)*radtodeg
            
 !           rVec = subcellCentre(thisOctal,subcell)
 !           write(*,*) rVec%x+thisOctal%subcellSize/2.
@@ -14092,7 +14094,7 @@ end function readparameterfrom2dmap
             endif
             distTor2 = max(x1,x2)/compX
                
-            if (d .ne. 0.) then
+            if ((d .ne. 0.).and.(r1 > 0.1d0*grid%halfSmallestSubcell)) then
                theta = asin(max(-1.d0,min(1.d0,r1 / d)))
                cosmu = ((-1.d0)*xHat).dot.rdirection
                mu = acos(max(-1.d0,min(1.d0,cosmu)))
@@ -14103,13 +14105,14 @@ end function readparameterfrom2dmap
                      write(*,*) "Quad solver failed in intersectcubeamr2d II",d,cosmu,r1,x1,x2
                      write(*,*) "coeff b",-2.d0*d*cosmu, "coeff c", d**2-r2**2
                      write(*,*) "direction ",direction
+                     write(*,*) "mu ",mu*radtodeg, "theta ",theta*radtodeg
                      x1 = thisoctal%subcellSize/2.d0
                      x2 = 0.d0
                   endif
                   distTor1 = min(x1,x2)/compX
                endif
             else
-               distTor1 = 0.
+               distTor1 = 1.d30
             end if
          endif
          distToRboundary = min(distTor1, distTor2)
@@ -16611,7 +16614,7 @@ end function readparameterfrom2dmap
     real(double), optional :: tauMax
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-1
-    real(double) :: kappaSca, kappaAbs, kappaExt
+    real(double) :: kappaSca, kappaAbs, kappaExt, oldR
     integer :: subcell
     logical, optional :: ross
     logical :: planetGap
@@ -16626,7 +16629,7 @@ end function readparameterfrom2dmap
 
     do while (inOctal(grid%octreeRoot, currentPosition))
 
-       call findSubcellTD(currentPosition,grid%octreeRoot,thisOctal,subcell)
+       call findSubcellTD(currentPosition, grid%octreeRoot, thisOctal,subcell)
        if (.not.PRESENT(ross)) then
           call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
           kappaExt = kappaAbs + kappaSca
@@ -16635,11 +16638,17 @@ end function readparameterfrom2dmap
           kappaExt = kappaExt * thisOctal%rho(subcell) * 1.d10
        endif
        sOctal => thisOctal
-       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell) !, sOctal)
+       call distanceToCellBoundary(grid, currentPosition, direction, DisttoNextCell, sOctal)
   
+       if (thisOctal%cylindrical) oldR = sqrt(currentPosition%x**2 + currentPosition%y**2)
        currentPosition = currentPosition + (distToNextCell+fudgeFac*grid%halfSmallestSubcell)*direction
        if (thisOctal%twod.and.(direction%x < 0.d0).and.(currentPosition%x < 0.d0)) exit
 
+
+       if (thisOctal%threed.and.thisOctal%cylindrical) then
+          if (sqrt(currentPosition%x**2 + currentPosition%y**2) > oldR) exit
+       endif
+          
        if (planetGap) then
           if ((direction%x < 0.d0).and.(rVec%x > rGap*autocm/1.d10) &
                .and.(currentPosition%x < rGap*autocm/1.d10)) exit
