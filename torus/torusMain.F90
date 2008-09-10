@@ -164,7 +164,6 @@ program torus
 
   ! misc
   real :: junk
-  character(len=80) :: plotFile
   real :: r
   real :: r1
   real(oct) :: t
@@ -858,24 +857,7 @@ program torus
 667 continue
      call random_seed
      if (cmf) then
-        if (movie) call plotAMRthreeDMovie(grid, source, nsource)
         if (.not.readlucy) call atomLoop(grid, nAtom, thisAtom, nsource, source)
-!        call atomLoop(grid, nAtom, thisAtom, nsource, source)
-
-           if (writeoutput) then
-!              call plot_AMR_values(grid, "n=3", plane_for_plot, val_3rd_dim,  &
-!                   "etaline.ps/vcps", .true., .false., & 
-!                   nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-              !
-              
-              fac = 120.*degtorad
-              do i = 1, 1
-                 ang = real(i-1)/40. * twoPi
-                 octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
-                 write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
-!                 call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
-              enddo
-           endif
 
         do i = 1, 1
            ang = twoPi * real(i-1)/51. 
@@ -934,7 +916,6 @@ program torus
      if (readmol) call calculateMoleculeSpectrum(grid, co)
 !        call createDataCube(cube, grid, OCTALVECTOR(0.d0, 1.d0, 0.d0), co, 1)
 
-     if (myRankIsZero) call plotDataCube(cube, 'cube.ps/vcps')
      stop
   endif
 
@@ -948,12 +929,6 @@ program torus
   ! initialize the blobs if required
 
   if (nBlobs > 0) call initialize_blobs
-
-
-  if (myRankIsZero .and. plotVelocity) then
-     write(*,*) ' Plotting velocity vectors...'
-     call plotVelocityVectors(grid, "1.gif/GIF")
-  endif
 
 
   if (nPhase /= 1) then
@@ -1564,15 +1539,6 @@ CONTAINS
           write(message,*) "                                : ",nVoxels," unique voxels"
           call writeInfo(message, TRIVIAL)
            
-          if (writeoutput) then
-             fac = 110.*degtorad
-             do i = 1, 1
-                ang = real(i-1)/40. * twoPi
-                octVec = OCTALVECTOR(sin(fac)*cos(ang), sin(fac)*sin(ang), cos(fac))
-                write(thisdevice,'(a,i3.3,a)') "col",i,".ps/vcps"
-                call columnDensityPlot(grid, source, nsource, octVec, thisDevice)
-             enddo
-          endif
 
 
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
@@ -1982,73 +1948,6 @@ subroutine do_amr_plots
   ! Plotting some grid values
 
      call  writeVtkFile(grid, "rho.vtk")
-!     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-!          "rho_grid",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-!          width_3rd_dim, show_value_3rd_dim, suffix="default" )
-!     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-!          "rho_zoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-!          width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default" )
-!     call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-!          "rho_zoom_nogrid",.true., .false., nmarker, xmarker, ymarker, zmarker, &
-!          width_3rd_dim, show_value_3rd_dim, boxfac=zoomFactor, suffix="default" )
-!     if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
-!        call plot_AMR_values(grid, "rho", plane_for_plot, val_3rd_dim, &
-!             "rho_ultrazoom",.true., .true., nmarker, xmarker, ymarker, zmarker, &
-!             width_3rd_dim, show_value_3rd_dim, boxfac=0.005, suffix="default")
-!     end if
-!     call plot_AMR_planes(grid, "rho", plane_for_plot, 3, "rho", .true., .false., &
-!          nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-!     if (grid%lineEmission) then
-!        call plot_AMR_values(grid, "Vx", plane_for_plot, val_3rd_dim,  &
-!             "Vx", .false., .false.,  &
-!             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-!        call plot_AMR_values(grid, "Vy", plane_for_plot, val_3rd_dim, &
-!             "Vy", .false., .false., &
-!             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-!        call plot_AMR_values(grid, "Vz", plane_for_plot, val_3rd_dim, &
-!             "Vz", .false., .false., &
-!             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim, suffix="default")
-!     end if
-!  !        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-!  !             "etacont.ps/vcps", .true., .false.,  &
-!  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-!  !        call plot_AMR_values(grid, "etaCont", plane_for_plot, val_3rd_dim,  &
-!  !             "etacont_zoom.ps/vcps", .true., .false.,  &
-!  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, &
-!  !             show_value_3rd_dim, boxfac=0.0004)
-!     call plot_AMR_values(grid, "temperature", plane_for_plot, val_3rd_dim, &
-!          "temperature", .true., .false., nmarker, xmarker, ymarker, zmarker, &
-!          width_3rd_dim, show_value_3rd_dim, suffix="default", useFixedRange=.false. )
-!  !        call plot_AMR_values(grid, "temperature", "x-y", 0., &
-  !             "temperature2.ps/vcps", .true., .false., &
-  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-  !        if (lineEmission) then
-  !           call plot_AMR_values(grid, "etaLine", plane_for_plot, val_3rd_dim,  &
-  !                "etaline.ps/vcps", .true., .false., & 
-  !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-  !           call plot_AMR_values(grid, "chiLine", plane_for_plot, val_3rd_dim,  &
-  !                "chiline.ps/vcps", .true., .false., &
-  !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-  !           call plot_AMR_values(grid, "dV_dR", plane_for_plot, val_3rd_dim,  &
-  !                "dv_dr.ps/vcps", .true., .false., &
-  !                nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim)
-  !        end if
-  
-!     if (mie) then
-!        do i = 1, nDustType
-!           write(message,'(a,i1)') "dusttype",i
-!           write(filename,'(a,i1)') "dusttype",i
-!           call plot_AMR_values(grid, message, "x-z", 0., &
-!                trim(filename),.false., .false., nmarker, xmarker, ymarker, zmarker, &
-!                width_3rd_dim, show_value_3rd_dim, boxfac=zoomfactor, suffix="default" )
-!        enddo
-!     endif
-
-  !     ! plotting column density (new routine in grid_mod.f90)
-  !     if (grid%geometry(1:7) == "cluster") then 
-  !       call plot_column_density(grid, plane_for_plot,  "column_density.ps/vcps", &
-  !             nmarker, xmarker, ymarker, zmarker, width_3rd_dim, show_value_3rd_dim,val_3rd_dim)
-  !     end if
 
   endif
 

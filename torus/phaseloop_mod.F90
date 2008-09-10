@@ -606,18 +606,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      allocate(contWeightArray(1:nLambda))
 
 
-     if (myRankIsZero .and. movie) then
-        if (device(2:3) == "xs") then
-           call plotGrid(grid, viewVec,  opaqueCore, &
-                device,contTau, foreground, background, coolStarPosition, firstPlot)
-        endif
 !
-!! COMMENTED OUT FOR DEBUG
-!!        write(filename,"(a,i3.3,a)") "frame",iPhase,".gif/gif"
-        write(filename,"(a,i3.3,a)") "frame",iPhase,".ps/vcps"
-        call plotGrid(grid, viewVec,  opaqueCore, &
-             filename, contTau, foreground, background, coolStarPosition, firstPlot)
-     endif
 
      if (geometry == "wr104") then
         write(*,*) "stripping dust!!!!!!!!!!!"
@@ -2588,13 +2577,6 @@ endif ! (doPvimage)
            call smoothPVimage(pvImage(iSlit), vfwhm/2.35, pfwhm/2.35)
 
            call writePVimage(pvImage(iSlit), specfile, vSys)
-           if (device /= "/xs") then
-              write(plotfile,'(a,i3.3,a,i2.2,a,a)') "slitplot",iPhase,"_slit_",iSlit,".gif",trim(device)
-           else
-              plotfile = device
-           endif
-           ! doing this only for the first image in obsImageSet
-           call plotSlitOnImage(obsImageSet(1), PVimage(iSlit), plotfile, gridDistance)
         enddo
      endif
   end if ! (myRankIsZero)

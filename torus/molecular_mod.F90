@@ -1057,9 +1057,6 @@ module molecular_mod
 
      write(filename,'(a,a,i1,a,i1,a)') trim(cube%telescope%label),'fluxcubeJ', &
           thisMolecule%itransUpper(itrans)-1,'-',thisMolecule%itransLower(itrans)-1,'.ps/vcps'
-     call plotDataCube(cube, filename, plotflux=.true.)
-
-     !  call plotDataCube(cube, 'subpixels.ps/vcps',withSpec=.False.,GotPixels=.true.) ! plot the image 
      stop
 
     end subroutine calculateMoleculeSpectrum
@@ -1244,9 +1241,6 @@ module molecular_mod
          if(writeoutput) then
             write(message,*) "Done! Plotting"
             call writeinfo(message,TRIVIAL)
-            call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-                 "lucytemps.ps/vcps", .true., .false., &
-                 width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.) 
          endif
 
       endif
@@ -1279,24 +1273,6 @@ module molecular_mod
 
       if(writeoutput) then
 
-         do i=1,4
-
-            write(filename,'(a,i1,a)') "./J/J=",i-1,"lte.ps/vcps"
-            call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
-                 filename, .true., .false., &
-                 width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false., &
-                 ilam = i, fixValMin=fixValMin, fixValMax=fixValMax)
-         enddo
-         
-         call plot_AMR_values(grid, "molAbundance", "x-z", real(grid%octreeRoot%centre%y), &
-              "molAbundance.ps/vcps", .true., .false., &
-              width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.,&
-              fixValMin=1d-10, fixValMax=1d-3)          
-
-         call plot_AMR_values(grid, "molAbundance", "x-z", real(grid%octreeRoot%centre%y), &
-              "molAbundanceZoom.ps/vcps", .true., .false., &
-              width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.,&
-              fixValMin=1d-13, fixValMax=1d-3, boxfac = 0.001)          
 
       endif
 
@@ -1441,10 +1417,6 @@ module molecular_mod
                   write(filename,'(a,i1,a,i2,a)') "./J/J=",i-1,"-Iter",grand_iter,".ps/vcps"
                endif
 
-               call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
-                    filename, .true., .false., &
-                    width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false., &
-                    ilam = i, boxfac = 0.7, fixValMin=fixValMin, fixValMax=fixValMax)
             enddo
 
             do i=1,4
@@ -1454,10 +1426,6 @@ module molecular_mod
                   write(filename,'(a,i1,a,i2,a)') "./J/J=",i-1,"-Iter",grand_iter,"zoom.ps/vcps"
                endif
 
-               call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
-                    filename, .true., .false., &
-                    width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., &
-                    ilam = i, boxfac = 0.001, fixValMin=fixValMin, fixValMax=fixValMax)
             enddo
 
             do i=1,4
@@ -1467,10 +1435,6 @@ module molecular_mod
                   write(filename,'(a,i1,a,i2,a)') "./J/J=",i-1,"-Iter",grand_iter,"zoomlittle.ps/vcps"
                endif
 
-               call plot_AMR_values(grid, "J", "x-z", real(grid%octreeRoot%centre%y), &
-                    filename, .true., .false., &
-                    width_3rd_dim=real(grid%octreeRoot%subcellsize) ,  show_value_3rd_dim=.false., &
-                    ilam = i, boxfac = 0.009, fixValMin=fixValMin, fixValMax=fixValMax)
 
             enddo
 
@@ -3598,89 +3562,14 @@ subroutine plotdiscValues(grid, thisMolecule)
   
   call calculateOctalParams(grid, grid%OctreeRoot, thisMolecule,0.d0,.true.)
   
-  call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-       "disctemperature.ps/vcps", .true.,.false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize), fixValMin=1.d0, fixValMax=500.d0, show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-       "discrho.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , fixValMin=1.d-20, fixValMax=1.d-10, show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "Vy", "x-z", real(grid%octreeRoot%centre%y), &
-       "discVelocity.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-       "disctemperatureZoom.ps/vcps", .true.,.false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize), fixValMin=1.d0, fixValMax=500.d0,&
-       show_value_3rd_dim=.false., boxfac = 0.005) 
-  call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-       "discrhoZoom.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , fixValMin=1.d-20, fixValMax=1.d-10,&
-       show_value_3rd_dim=.false., boxfac = 0.005) 
-  call plot_AMR_values(grid, "Vy", "x-z", real(grid%octreeRoot%centre%y), &
-       "discVelocityZoom.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.,boxfac = 0.005) 
-  call plot_AMR_values(grid, "molAbundance", "x-z", real(grid%octreeRoot%centre%y), &
-       "discmolAbundanceWrong.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.,&
-       fixValMin=1d-13, fixValMax=1d-4)          
-  call plot_AMR_values(grid, "molAbundance", "x-z", real(grid%octreeRoot%centre%y), &
-       "discmolAbundanceZoomWrong.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.,&
-       fixValMin=1d-13, fixValMax=1d-4, boxfac = 0.005)          
   
   call findtempdiff(grid, grid%OctreeRoot, thisMolecule, mean, 2)
   
-  call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-       "Cdisctemperature.ps/vcps", .true.,.false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) ,  fixValMin=1.d0, fixValMax=500.d0, show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-       "Cdiscrho.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , fixValMin=1.d-20, fixValMax=1.d-10, show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "Vy", "x-z", real(grid%octreeRoot%centre%y), &
-       "CdiscVelocity.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-       "CdisctemperatureZoom.ps/vcps", .true.,.false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) ,  fixValMin=1.d0, fixValMax=500.d0,&
-       show_value_3rd_dim=.false., boxfac = 0.005) 
-  call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-       "CdiscrhoZoom.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , fixValMin=1.d-20, fixValMax=1.d-10,&
-       show_value_3rd_dim=.false., boxfac = 0.005) 
-  call plot_AMR_values(grid, "Vy", "x-z", real(grid%octreeRoot%centre%y), &
-       "CdiscVelocityZoom.ps/vcps", .false., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , fixValMin=0.d0, fixValMax=50.d0,&
-       show_value_3rd_dim=.false.,boxfac = 0.005) 
-  call plot_AMR_values(grid, "molAbundance", "x-z", real(grid%octreeRoot%centre%y), &
-       "discmolAbundance.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.,&
-       fixValMin=1d-13, fixValMax=1d-4)          
-  call plot_AMR_values(grid, "molAbundance", "x-z", real(grid%octreeRoot%centre%y), &
-       "discmolAbundanceZoom.ps/vcps", .true., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , show_value_3rd_dim=.false.,&
-       fixValMin=1d-13, fixValMax=1d-4, boxfac = 0.005)          
            
   call readAMRgrid("molecular_tmp.grid",.false.,grid)
   
   call findtempdiff(grid, grid%OctreeRoot, thisMolecule, mean, 0)
   
-  call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-       "tempdiff02.ps/vcps", .false.,.false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) ,  fixValMin=0.d0, fixValMax=2.d0, show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-       "tempdiff0911.ps/vcps", .false.,.false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) ,  fixValMin=0.9d0, fixValMax=1.1d0, show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-       "tempdiff099101.ps/vcps", .false.,.false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) ,  fixValMin=0.99d0, fixValMax=1.01d0, show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-       "rhodiff02.ps/vcps", .false., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , fixValMin=0.d0, fixValMax=2.d0, show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-       "rhodiff0911.ps/vcps", .false., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , fixValMin=0.9d0, fixValMax=1.1d0, show_value_3rd_dim=.false.) 
-  call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-       "rhodiff099101.ps/vcps", .false., .false., &
-       width_3rd_dim=real(grid%octreeRoot%subcellsize) , fixValMin=0.99d0, fixValMax=1.01d0, show_value_3rd_dim=.false.) 
   call readAMRgrid("molecular_tmp.grid",.false.,grid)
   
   ! Set everything back to the way it was?

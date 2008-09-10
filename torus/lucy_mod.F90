@@ -246,28 +246,6 @@ contains
              tempImage(i,j) = grid%temperature(i,j,grid%nz/2)
           enddo
        enddo
-
-       dx = grid%xAxis(2) - grid%xAxis(1)
-       dy = grid%yAxis(2) - grid%yAxis(1) 
-       tr(1) =  - dx + grid%xAxis(1)
-       tr(2) = dx
-       tr(3) = 0.
-       tr(4) =  - dy + grid%yAxis(1)
-       tr(5) = 0.
-       tr(6) = dy
-
-       bg = MAXVAL(tempImage, mask=grid%inUse(1:grid%nx,1:grid%ny,grid%nz/2))
-       fg = MINVAL(tempImage, mask=grid%inUse(1:grid%nx,1:grid%ny,grid%nz/2))
-       call pgbegin(0,"/xs",1,1)
-
-       call pgvport(0.1,0.9,0.1,0.9)
-
-       call pgwnad(grid%xAxis(1), grid%xAxis(grid%nx), grid%yAxis(1), grid%yAxis(grid%ny))
-       call palette(3)
-       call pgimag(tempImage, grid%nx, grid%ny, 1, grid%nx, 1, grid%ny, fg, bg, tr)
-       call pgwedg("RI", 0.,10., fg,bg," ")
-       call pgbox('bcnst',0,0,'bcnst',0,0)
-       call pgend
     enddo
     open(21,file="r.dat",status="unknown",form="formatted")
     do i = 1, 100

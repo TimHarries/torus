@@ -2063,8 +2063,6 @@ contains
      write(*,*) "Process ",my_rank, " create data cube done"
 #endif
     if (Writeoutput) then
-       write(plotfile,'(a,i3.3,a)') "cube",nfile,".ps/ps"
-       call plotDataCube(cube, plotfile,withspec=.false.,twopanels=.true.)
        write(plotfile,'(a,i3.3,a)') "datacube",nfile,".fits.gz"
        call writeDataCube(cube,plotfile)
     endif

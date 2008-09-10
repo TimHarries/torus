@@ -386,10 +386,6 @@ contains
     write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
 
-    if(myRankIsZero) then
-    write(plotfile,'(a,i3.3,a)') "rho",0,".png/png"
-    call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false.,boxfac=0.01)
-    endif
 
     do while(.not.converged)
     
@@ -450,39 +446,14 @@ contains
 
 
     if(myRankIsZero) then
-       write(plotfile,'(a,i3.3,a)') "rho",niter,".png/png"
-       call plot_AMR_values(grid, "rho", "x-z", 0.0, plotfile, .true., .false., boxfac=0.01)
-
-!       write(plotfile,'(a,i3.3,a)') "temp",niter,".gif/gif"
-!       call plot_AMR_values(grid, "temperature", "x-z", 0.0, plotfile, .true., .false.)
 
        ! chris
        if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
          if (geometry.ne."warpeddisc") then
            rGapCM = rGap * autocm / 1.d10
-           write(plotfile,'(a,i3.3,a)') "rho_gapzoom",niter,".ps/vcps"
-           call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.,&
-                xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM)
-           write(plotfile,'(a,i3.3,a)') "temp_gapzoom",niter,".ps/vcps"
-           call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.false., .false.,&
-                xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM, fixValMin=40.d0, fixValMax=200.d0)
          end if
 
-         write(plotfile,'(a,i3.3,a)') "rho",niter,".ps/vcps"
-         call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
-         write(plotfile,'(a,i3.3,a)') "rho_zoom",niter,".ps/vcps"
-         call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
-         write(plotfile,'(a,i3.3,a)') "rho_ultrazoom",niter,".ps/vcps"
-         call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.001)
-         write(plotfile,'(a,i3.3,a)') "temp",niter,".ps/vcps"
-         call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false.)
-         write(plotfile,'(a,i3.3,a)') "temp_zoom",niter,".ps/vcps"
-         call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
-         write(plotfile,'(a,i3.3,a)') "temp_ultrazoom",niter,".ps/vcps"
-         call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.001)
         end if
-!       write(plotfile,'(a,i3.3,a)') "tau",niter,".gif/gif"
-!       call plot_AMR_values(grid, "tau", "x-z", 0.0, plotfile, .true., .false.) !problem with passing ilam
      endif
 
        ! chris (26/05/04)
@@ -499,9 +470,6 @@ contains
 !	if (.true.) then
      if(myRankIsZero) &
           write(*,*) "Smoothing adaptive grid structure for optical depth..."
-     if(myRankIsZero) &
-          call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_before.ps/vcps", .true., .false., boxfac=0.005)
-
 
 
           do j = ilamsmooth, ilamsmooth !grid%nlambda
@@ -529,10 +497,6 @@ contains
 
 
 
-     if(myRankIsZero) &
-          call plot_AMR_values(grid, "rho", "x-z", 0.0, "rho_after.ps/vcps", .true., .false., boxfac=0.005)
-          totalMass = 0.
-          call findTotalMass(grid%octreeRoot, totalMass)
     if(myRankIsZero) &
     write(*,*) "Total disc mass: ",totalMass/msol," solar masses"
 
@@ -563,27 +527,7 @@ contains
     ! chris
     if(myRankIsZero) then
     if ((geometry == "ppdisk").or.(geometry == "planetgap").or.(geometry=="warpeddisc")) then
-      if (geometry.ne."warpeddisc") then
-        write(plotfile,'(a,i3.3,a)') "rho_gapzoom_final.ps/vcps"
-        call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.,&
-             xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM)
-        write(plotfile,'(a,i3.3,a)') "temp_gapzoom_final.ps/vcps"
-        call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.false., .false.,&
-             xStart=0.7*rGapCM, xEnd=1.3*rGapCM, yStart=-0.3*rGapCM, yEnd=0.3*rGapCM, fixValMin=40.d0, fixValMax=200.d0)
-      end if
 
-      write(plotfile,'(a,i3.3,a)') "rho_final.ps/vcps"
-      call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false.)
-      write(plotfile,'(a,i3.3,a)') "rho_zoom_final.ps/vcps"
-      call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
-      write(plotfile,'(a,i3.3,a)') "rho_ultrazoom_final.ps/vcps"
-      call plot_AMR_values(grid, "rho", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.001)
-      write(plotfile,'(a,i3.3,a)') "temp_final.ps/vcps"
-      call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false.)
-      write(plotfile,'(a,i3.3,a)') "temp_zoom_final.ps/vcps"
-      call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=zoomFactor)
-      write(plotfile,'(a,i3.3,a)') "temp_ultrazoom_final.ps/vcps"
-      call plot_AMR_values(grid, "temperature", plane_for_plot, 0.0, plotfile,.true., .false., boxfac=0.001)
     end if
     endif
 

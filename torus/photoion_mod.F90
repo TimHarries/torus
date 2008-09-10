@@ -205,41 +205,6 @@ contains
        write(message,*) "Number of cells in diffusion zone: ", nCellsInDiffusion
        call writeInfo(message,IMPORTANT)
 
-
-       if (writeoutput) then
-          call plot_AMR_values(grid, "ionization", "x-z", 0., &
-               "ionization.ps/vcps", .true., .true., &
-               width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.)
-
-          
-          call locate(lamArray, nLambda, 5500., ilam)
-          call plot_AMR_values(grid, "tau", "x-z", real(grid%octreeRoot%centre%y), &
-               "tau.ps/vcps", .true., .false., &
-                width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,ilam=ilam) 
-
-          call plot_AMR_values(grid, "photocoeff", "x-z", 0., &
-               "photocoeff.ps/vcps", .true., .true., &
-               width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.)
-
-       call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-            "rho_temp_zoom.ps/vcps", .true., .false., &
-             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
-
-       call plot_AMR_values(grid, "rho", "x-y", real(grid%octreeRoot%centre%y), &
-            "rho_temp_xy.ps/vcps", .true., .false., &
-            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
-
-       call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-            "lucy_zoom_xz.ps/vcps", .true., .false., &
-            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomFactor) 
-          
-          call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-            "lucy_temp_xz.ps/vcps", .true., .false., &
-            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.) 
-
-       endif
-
-
        epsoverdeltat = lcore/dble(nMonte)
 
        call zeroDistanceGrid(grid%octreeRoot)
@@ -536,10 +501,6 @@ end if ! (my_rank /= 0)
 
        if (doTuning) call tune(6, "Temperature/ion corrections")
        call defineDiffusionOnRosseland(grid,grid%octreeRoot,taudiff)
-       if (myRankIsZero) &
-       call plot_AMR_values(grid, "crossings", "x-z", real(grid%octreeRoot%centre%y), &
-            "crossings.ps/vcps", .true., .false., &
-            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.)
 
        if (doTuning) call tune(6, "Gauss-Seidel sweeps")
 
@@ -547,9 +508,6 @@ end if ! (my_rank /= 0)
        nCellsInDiffusion = 0
        call defineDiffusionOnUndersampled(grid%octreeroot, nDiff=nCellsInDiffusion)
 
-       call plot_AMR_values(grid, "rho", "x-z", real(grid%octreeRoot%centre%y), &
-            "rho_temp_zoom.ps/vcps", .true., .false., &
-            width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false., boxfac=zoomFactor)
 
        call solveArbitraryDiffusionZones(grid)
        call defineDiffusionOnRosseland(grid,grid%octreeRoot, taudiff, nDiff=nCellsInDiffusion)

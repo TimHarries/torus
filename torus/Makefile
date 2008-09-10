@@ -2,14 +2,12 @@
 # Usage :: 
 #    1. make             : Make torus with optimization flag(s)
 #    2. make clean       : Clean up directory
-#    3. make pgplot=no   : Use pgplot stubs rather than library
-#    4. make cfitsio=no  : Use cfitsio stubs rather than library
-#    5. make debug=yes   : Make torus with debug option,
-#    6. make profile=yes : Make torus with profiler option
-#    7. make static=yes  : Make torus with static linking
+#    3. make cfitsio=no  : Use cfitsio stubs rather than library
+#    4. make debug=yes   : Make torus with debug option,
+#    5. make profile=yes : Make torus with profiler option
+#    6. make static=yes  : Make torus with static linking
 #-----------------------------------------------------------------
 
-pgplot  = yes
 cfitsio = yes
 debug   = no
 profile = no
@@ -35,7 +33,6 @@ ifeq ($(SYSTEM), intelmac)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -L/Users/${USER}/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
     CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
     EXE = torus.intelmac
     KNOWN_SYSTEM = yes
@@ -53,11 +50,7 @@ ifeq ($(SYSTEM), davesmac)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -lgfortran -L/usr/local -lpgplot -L/usr/X11R6/lib -lX11 -L/scisoft/i386/lib -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-#   PGLIBS   = -L/usr/local/lib -lpgplot -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
-#   PGLIBS   = -L/usr/local/lib /usr/local/lib/libpgplot.a -L/usr/X11R6/lib -lX11 -lpng12 -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
     CFITSIOLIBS = -L/star/lib/ -lcfitsio #-lmkl_core -lmkl_intel
-#    PGLIBS   = -L/sw/lib/pgplot -lpgplot -L/usr/X11R6/lib -lX11 -L/sw/lib -lpng -laquaterm /System/Library/Frameworks/Cocoa.framework/Cocoa
 #    CFITSIOLIBS = -L/Users/${USER}/cfitsio/lib -lcfitsio
 
 #    STARLIBS = -L/star/lib `ndf_link`                                                                   
@@ -80,7 +73,6 @@ ifeq ($(SYSTEM), g95)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    PGLIBS   = -L/star/lib `pgplot_link`
     CFITSIOLIBS = -lcfitsio
     STARLIBS = -L/star/lib `ndf_link`
 #    F2CLIB   = -L$(PATH2G2C) -lg2c
@@ -99,7 +91,6 @@ ifeq ($(SYSTEM), sun)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    PGLIBS   = -L/star/lib `pgplot_link`
     STARLIBS = -L/star/lib `ndf_link`
     F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.sun
@@ -117,10 +108,6 @@ ifeq ($(SYSTEM), osx)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-#    PGLIBS   = -L/star/lib `pgplot_link`
-    PGLIBS   = -L/sw/lib/pgplot -lpgplot
-#    STARLIBS = -L/star/lib `ndf_link` 
-    STARLIBS = -L/usr/X11R6/lib -lX11
     F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.osx
     KNOWN_SYSTEM = yes
@@ -137,9 +124,7 @@ ifeq ($(SYSTEM), gfortran)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    PGLIBS   = -L/star/lib `pgplot_link`
     STARLIBS = -L/star/lib `ndf_link`
-#    STARLIBS = -L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
     F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.gfortran
     KNOWN_SYSTEM = yes
@@ -158,9 +143,6 @@ ifeq ($(SYSTEM), macmpi)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    STARLIBS = /local-star/lib/libpgplot.a  -L/Users/th/macmpi -lmacmpi /System/Library/Frameworks/Carbon.framework/Carbon -L/usr/lib -lSystemStubs /usr/X11R6/lib/libX11.a /usr/local/lib/libg2c.a /star/lib/libndf.a /star/lib/libary.a /star/lib/libhds.a /star/lib/liberr_standalone.a /star/lib/libpsx.a /star/lib/libchr.a /star/lib/libprm.a /star/lib/libprm_a.a /star/lib/libast.a /star/lib/libast_wcslib.a /star/lib/libast_slalib.a /star/lib/libsla.a /star/lib/libast_grf_2.0.a /star/lib/libast_grf_3.2.a /star/lib/libast_pass2.a /star/lib/libast_ems.a /star/lib/libemsf.a /star/lib/libems.a /star/lib/libcnf.a 
-#    STARLIBS = -L/Users/th/osxpgplot -lpgplot -L/usr/X11R6/lib -lX11
-#    F2CLIB   = -L/usr/local/lib -lg2c
     EXE = torus.macmpi
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
@@ -177,7 +159,6 @@ ifeq ($(SYSTEM), gfort)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    PGLIBS   = -L/star/lib `pgplot_link`
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = -L$(PATH2G2C) -lg2c
     EXE = torus.g95
@@ -199,7 +180,6 @@ ifeq  ($(SYSTEM), linux)
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
     STARLIBS = -L/star/lib `ndf_link`
-    PGLIBS   = -L/star/lib `pgplot_link`
     F2CLIB   = -lg2c
     STATICLIBS = -lpthread
     EXE = torus.linux
@@ -216,7 +196,6 @@ ifeq ($(SYSTEM), alpha)
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
     KINDMOD  = kind_mod.f90.osf
-    PGLIBS   = -L/star/lib `pgplot_link`
     STARLIBS = -L/star/lib `ndf_link`
     EXE = torus
     KNOWN_SYSTEM = yes
@@ -232,9 +211,7 @@ ifeq ($(SYSTEM), lamosx)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -L${GUANINE_HOME}/csr201/local-ppc/opt/pgplot -lpgplot
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
-    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = torus.lamosx
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
@@ -251,9 +228,7 @@ ifeq ($(SYSTEM), lamosx-intel)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -L${GUANINE_HOME}/csr201/local-i386/opt/pgplot -lpgplot
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
-    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
     EXE = torus.lamosx-intel
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
@@ -270,9 +245,8 @@ ifeq ($(SYSTEM), ompiosx)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -L${GUANINE_HOME}/csr201/local-ppc/opt/pgplot -lpgplot
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
-    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    STARLIBS =  -L/usr/lib -lSystemStubs 
     EXE = torus.ompiosx
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
@@ -289,9 +263,7 @@ ifeq ($(SYSTEM), ompi)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   =   -L/Users/${USER}/lib/pgplot -lpgplot #-lpng -laquaterm  /System/Library/Frameworks/Cocoa.framework/Cocoa
     CFITSIOLIBS =  -L/Users/${USER}/cfitsio/lib -lcfitsio
-    STARLIBS = -L/usr/X11R6/lib -lX11
     EXE = torus.ompi
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
@@ -308,9 +280,8 @@ ifeq ($(SYSTEM), ompiosx-intel)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -L${GUANINE_HOME}/csr201/local-i386/opt/pgplot -lpgplot
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio.i386 -lcfitsio
-    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    STARLIBS =  -L/usr/lib -lSystemStubs 
     EXE = torus.ompiosx-intel
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
@@ -332,7 +303,6 @@ ifeq ($(SYSTEM), mpilam)
     KINDMOD  = kind_mod.f90.linux
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    PGLIBS   = -L/star/lib `pgplot_link`
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpilam
@@ -355,7 +325,6 @@ ifeq ($(SYSTEM), mpich)
     KINDMOD  = kind_mod.f90.linux
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    PGLIBS   = -L/star/lib `pgplot_link`
     STARLIBS = -L/star/lib `ndf_link`
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpichf90 -lmpich -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpich
@@ -375,7 +344,6 @@ ifeq ($(SYSTEM), linuxintel)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    PGLIBS   = -L/star/lib `pgplot_link`
     CFITSIOLIBS = -lcfitsio
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = -L/usr/lib -lg2c
@@ -409,8 +377,6 @@ ifeq ($(SYSTEM), zen)
     STATICLIBS= -Bstatic
     STARLIBS= #-DMPI -Xlinker -rpath -Xlinker $libdir -Xlinker -rpath -Xlinker /opt/intel/mpi-rt/3.0 -lmpi -lmpiif -lmpigi -lrt -lpthread -ldl
 #    -L/star/lib `ndf_link` 
-    PGLIBS= -L/home/tjharrie/libpgplot -lpgplot -lpng
-#    -L/star/lib `pgplot_link`
     CFITSIOLIBS = -L/home/tjharrie/cfitsio -lcfitsio
     MPIFLAG = -DMPI
     KNOWN_SYSTEM=yes
@@ -431,7 +397,6 @@ ifeq ($(SYSTEM), mpiintel)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    PGLIBS   = -L/star/lib `pgplot_link`
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
     EXE = torus.mpiintel
@@ -452,7 +417,6 @@ ifeq ($(SYSTEM), openmpi)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    PGLIBS   = -L/star/lib `pgplot_link`
     CFITSIOLIBS = -lcfitsio
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
@@ -478,8 +442,6 @@ ifeq ($(SYSTEM), openmpi-nocona)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-#    PGLIBS   = -L/star/lib `pgplot_link`
-    PGLIBS   = -L/star/lib -lpgplot -lpng -L/usr/X11R6/lib -lICE -lX11
     CFITSIOLIBS = -lcfitsio
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L$(PATH2G2C) -lg2c
@@ -498,7 +460,6 @@ ifeq ($(SYSTEM), miracle)
     KINDMOD  = kind_mod.f90.miracle
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -L/home/rk/pgplot -lpgplot -lX11
     EXE = torus.miracle
     KNOWN_SYSTEM = yes
 endif
@@ -514,7 +475,6 @@ ifeq ($(SYSTEM), ukaff1a)
     KINDMOD  = kind_mod.f90.miracle
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -L/home/th/pgplot -lpgplot
     CFITSIOLIBS = -L/home/th/cfitsio -lcfitsio
     EXE = torus.ukaff1a
     MPIFLAG = -DMPI
@@ -533,7 +493,6 @@ ifeq ($(SYSTEM), omp)
     KINDMOD  = kind_mod.f90.miracle
     SPECF77  = spec_f77.f.miracle
     IMAGEF77 = image_f77.f.miracle
-    PGLIBS   = -L/home/th/pgplot -lpgplot
     EXE = torus.omp
     KNOWN_SYSTEM = yes
 endif
@@ -548,7 +507,6 @@ ifeq ($(SYSTEM), ceres)
     KINDMOD  = kind_mod.f90.aix
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -L/usr/lib -lxlf90 -lm -lc -lX11 -L${HOME}/software/pgplot -lpgplot
     EXE = torus.aix
     KNOWN_SYSTEM = yes
 endif
@@ -566,7 +524,6 @@ ifeq ($(SYSTEM), mpig95)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.default
     SPECF77  = spec_f77.f.default
-    PGLIBS   = -L/star/lib `pgplot_link`
     CFITSIOLIBS = -lcfitsio
     STARLIBS = -L/star/lib `ndf_link` 
     F2CLIB   = ${MPI_INC} -L${TOP}/lib -lmpi -llamf77mpi -L$(PATH2G2C) -lg2c -lm
@@ -585,10 +542,8 @@ ifeq ($(SYSTEM), darwin)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -L$(HOME)/pgplot -lpgplot
-#    PGLIBS   = -L$(HOME)/local-ppc/opt/pgplot -lpgplot
     CFITSIOLIBS = -L${GUANINE_HOME}/tjharrie/cfitsio -lcfitsio
-    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs
+    STARLIBS =  -L/usr/lib -lSystemStubs
     EXE = torus.darwin
     KNOWN_SYSTEM = yes
 endif
@@ -604,8 +559,7 @@ ifeq ($(SYSTEM), mpidarwin)
     KINDMOD  = kind_mod.f90.linuxintel
     IMAGEF77 = image_f77.f.miracle
     SPECF77  = spec_f77.f.miracle
-    PGLIBS   = -L${HOME}/pgplot -lpgplot
-    STARLIBS = -L/usr/X11R6/lib -lX11 -L/usr/lib -lSystemStubs 
+    STARLIBS =  -L/usr/lib -lSystemStubs 
     EXE = latticeQED
     MPIFLAG = -DMPI
     KNOWN_SYSTEM = yes
@@ -615,13 +569,6 @@ endif
 # Deal with make options
 #
 ETCFLAG  =
-
-ifeq ($(pgplot), no)
-   PGSTUBS = pgplot_stubs.o
-   PGLIBS  = 
-else 
-   PGSTUBS = 
-endif
 
 ifeq ($(cfitsio), no)
    CFITSIOLIBS  =
@@ -669,7 +616,7 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             parameters_mod.f90 jets_mod.f90 \
             dust_mod.f90 source_mod.f90 spectrum_mod.f90 ion_mod.f90 \
             wr104_mod.f90 opacity_lte_mod.f90 density_mod.f90 \
-            pixplot_module.f90 sph_data_class.f90 cluster_class.f90 \
+            sph_data_class.f90 cluster_class.f90 \
             linked_list_class.f90 timing.f90  isochrone_class.f90 \
             filter_set_class.f90 ostar_mod.f90  \
             cluster_utils.f90 surface_mod.f90  math_mod2.f90 disc_class.f90 \
@@ -681,10 +628,9 @@ F90SOURCE = kind_mod.f90 constants_mod.f90 atom_mod.f90 vector_mod.f90  \
             romanova_class.f90 messages_mod.f90 starburst_mod.f90 \
             mpi_global_mod.f90 nrtype.f90 nrutil.f90
 
-F77SOURCE = bhmie.f phfit2.f mieDistCrossSection.f palette.f \
+F77SOURCE = bhmie.f phfit2.f mieDistCrossSection.f \
             spec_f77.f image_f77.f 
 
-PGSOURCE  = pgplot_stubs.f90
 
 CAPF90SOURCE =	 photoionAMR_mod.F90 photoion_mod.F90 mpi_amr_mod.F90 hydrodynamics_mod.F90 cmf_mod.F90 \
 	         diffusion_mod.F90 formal_solutions.F90 lucy_mod.F90 molecular_mod.F90 \
@@ -702,14 +648,8 @@ F90OBJ = $(F90SOURCE:.f90=.o)
 CAPF90OBJ =  $(CAPF90SOURCE:.F90=.o)
 CAPF90OBJLIB =  $(CAPF90SOURCELIB:.F90=.o)
 F77OBJ = $(F77SOURCE:.f=.o)
-# Only compile the pgplot stubs if required.
-ifeq ($(pgplot), no)
-  PGOBJ  = $(PGSOURCE:.f90=.o)
-else
-  PGOBJ = 
-endif
-ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ) $(PGOBJ)
-LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(F77OBJ) $(PGOBJ)
+ALLOBJ = $(CAPF90OBJ) $(F90OBJ)  $(F77OBJ)
+LIBOBJ = $(CAPF90OBJLIB) $(F90OBJ)  $(F77OBJ)
 
 #
 # Compilers and compiler flags
@@ -727,7 +667,7 @@ all: depends $(ALLOBJ)
 	    @echo "Linking object files and libraries..."
 	    $(F90) $(TRACEFLAG) -o $(EXE) \
 	    $(F77OBJ) $(F90OBJ) $(CAPF90OBJ) \
-	    $(PGSTUBS) $(PGLIBS) $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
+	    $(CFITSIOLIBS) $(STARLIBS) $(F2CLIB) $(STATICLIBS)
 	    @echo "...done"
     else
 	    @echo ""

@@ -2283,24 +2283,8 @@ contains
        if (currentTime .gt. nextDumpTime) then
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
-!          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
-!          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
-          write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
-!          call plotGridMPI(grid, plotfile, "x-z", "rho", 0., 1.1, plotgrid=.false.)
-
-          call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.1, plotgrid=.false.)
-!          call plotGridMPI(grid, "/xs", "x-z", "pressure", 0., 2.1, plotgrid=.false.)
-!          call plotGridMPI(grid, "/xs", "x-z", "rhou", -0.5, 0.5, plotgrid=.false.)
-
-!          call plotGridMPI(grid, "/xs", "x-z", "rhoe", 0., 2.1, plotgrid=.false.)
-
-!          call plotGridMPI(grid, "/xs", "x-z", "rhou", -1.1, 1.1, plotgrid=.false.)
-!          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
-!          call plotGridMPI(grid, "/xs", "x-z", "rhoe", plotgrid=.true.)
-!          write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           grid%iDump = it
           grid%currentTime = currentTime
-!          call writeAmrGridMpiAll(plotfile,.false.,grid)
 
        endif
 
@@ -2465,21 +2449,6 @@ contains
     iUnrefine = 0
 
     call writeInfo("Plotting col density", TRIVIAL)    
-!    call columnDensityPlotAMR(grid, viewVec, "test.png/png", iminfix = 0., imaxfix = 0.2)
-
-!      call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
-
-!    do i = 1, 20
-!       ang = twoPi * dble(i-1)/20.d0
-!       viewVec = OCTALVECTOR(cos(ang), sin(ang), 0.d0)
-!       write(plotfile,'(a,i4.4,a)') "image",i,".gif/gif"
-!       call columnDensityPlotAMR(grid, viewVec, plotfile, iminfix = 0., imaxfix = 1.)
-!    enddo
-!    stop
-
-!    do while(currentTime < 0.2d0)
-
-!       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 0.5)
 
     if (myrank == 1) call tune(6, "Self-Gravity")
     if (myrank == 1) write(*,*) "Doing multigrid self gravity"
@@ -2764,22 +2733,6 @@ contains
 
     iUnrefine = 0
 
-!    call writeInfo("Plotting col density", TRIVIAL)    
-!    call columnDensityPlotAMR(grid, viewVec, "test.png/png", iminfix = 0., imaxfix = 0.2)
-
-!      call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
-
-!    do i = 1, 20
-!       ang = twoPi * dble(i-1)/20.d0
-!       viewVec = OCTALVECTOR(cos(ang), sin(ang), 0.d0)
-!       write(plotfile,'(a,i4.4,a)') "image",i,".gif/gif"
-!       call columnDensityPlotAMR(grid, viewVec, plotfile, iminfix = 0., imaxfix = 1.)
-!    enddo
-!    stop
-
-!    do while(currentTime < 0.2d0)
-
-
 
 
     do while(.true.)
@@ -2857,17 +2810,6 @@ contains
        if (currentTime .ge. nextDumpTime) then
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
-!          write(plotfile,'(a,i4.4,a)') "image",it,".png/png"
-!          call columnDensityPlotAMR(grid, viewVec, plotfile, resetRangeFlag=.false.)
-          write(titleString,'(f10.3)') currentTime
-          write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.false.)
-          write(plotfile,'(a,i4.4,a)') "rhogrid",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", 0.9, 2.1,plotgrid=.true.)
-
-
-!          call plotGridMPI(grid, plotfile, "x-z", "rho", plotgrid=.false.)!, withvel=.true.)
-!          call plotGridMPI(grid, plotfile, "x-z", "rho", plotgrid=.false.)!, withvel=.true.)
           write(plotfile,'(a,i4.4,a)') "dump",it,".grid"
           grid%iDump = it
           grid%currentTime = currentTime
@@ -3057,48 +2999,6 @@ contains
        endif
     enddo
   end subroutine calculateRhoE
-
-  subroutine plotHydroResults(grid)
-
-    type(GRIDTYPE) :: grid
-    real(double) :: x(100000), rho(100000), v(100000), rhou(100000)
-    real,save :: xr(100000), yr(100000)
-    real,save :: xd(100000), yd(100000)
-    logical, save :: firstTime = .true.
-    integer,save :: n
-    integer :: i
-    
-    if (firstTime) then
-       open(20,file="sod.dat", form="formatted",status="old")
-       do i = 1 , 19
-          read(20,*) xd(i), yd(i)
-       enddo
-       close(20)
-    endif
-
-
-    if (.not.firstTime) then
-       call pgsci(0)
-       call pgpoint(n, xr, yr, 30)
-    endif
-    firstTime = .false.
-
-    n = 0
-    call getArray(grid%octreeRoot, x, rho, rhou, v, n)
-    xr(1:n) = real(x(1:n))
-    yr(1:n) = real(rho(1:n))
-!    yr(1:n) = real(rhou(1:n))
-
-
-
-!    write(*,*) "xr",xr(1:n)
-!    write(*,*) "yr",yr(1:n)
-    call pgsci(2)
-    call pgline(19,xd,yd)
-
-    call pgsci(1)
-    call pgpoint(n, xr, yr, 30)
-  end subroutine plotHydroResults
 
   recursive subroutine getArray(thisOctal, x, rho, rhou, v, n)
     type(octal), pointer   :: thisOctal
