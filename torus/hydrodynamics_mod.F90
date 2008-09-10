@@ -2150,7 +2150,6 @@ contains
 
 
 
-    call plotGridMPI(grid, "rhostart.png/png", "x-z", "rho", plotgrid=.false.)
 
     call writeInfo("Refining individual subgrids", TRIVIAL)
     if (.not.grid%splitOverMpi) then
@@ -2276,7 +2275,6 @@ contains
  !           "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0, quiet=.true.)
 
 
-!       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
 
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt
@@ -2340,13 +2338,6 @@ contains
     if (myRank == 1) write(*,*) "CFL set to ", cflNumber
 
 
-    call writeInfo("Plotting grid", TRIVIAL)   
-    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "mpi", plotgrid=.true.)
-
-!    write(plotfile,'(a)') "test.vtk"
-!    call writeVtkFile(grid, plotfile, "rho")
-!    call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-!    stop
 
     call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -2374,8 +2365,6 @@ contains
     
 !    call writeVtkFile(grid, "beforerefine.vtk")
 
-    call plotGridMPI(grid, "beforeindrefine.png/png", "x-z", "rho", plotgrid=.true.)
-
     call writeInfo("Refining individual subgrids", TRIVIAL)
     if (.not.grid%splitOverMpi) then
        do
@@ -2398,8 +2387,6 @@ contains
     end do
     call MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
-    call plotGridMPI(grid, "afterindrefine.png/png", "x-z", "rho", plotgrid=.true.)
-
     
     call writeInfo("Refining grid part 2", TRIVIAL)    
     do
@@ -2418,7 +2405,6 @@ contains
     call evenUpGridMPI(grid,.false., dorefine)
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-    call plotGridMPI(grid, "afterglobrefine.png/png", "x-z", "rho", plotgrid=.true.)
 
 
     if (myrank == 1) call tune(6, "Initial refine")
@@ -2444,7 +2430,6 @@ contains
     nextDumpTime = tdump + currentTime
     iUnrefine = 0
 !    call writeInfo("Plotting grid", TRIVIAL)    
-!    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "rhoe", 0., 1.)
 
     iUnrefine = 0
 
@@ -2487,8 +2472,6 @@ contains
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
-       call plotGridMPI(grid, "beforerefine.png/png", "x-z", "rho")
-
 
        if (myrank == 1) call tune(6, "Loop refine")
        call writeInfo("Refining grid", TRIVIAL)
@@ -2530,31 +2513,14 @@ contains
        
        if (myrank == 1) call tune(6, "Loop refine")
 !
-       call plotGridMPI(grid, "afterrefine.png/png", "x-z", "rho")
-
 
        currentTime = currentTime + dt
-       call plotGridMPI(grid, "pressure.png/png", "x-z", "pressure")
-       call plotGridMPI(grid, "cs.png/png", "x-z", "cs")
-       call plotGridMPI(grid, "mass.png/png", "x-z", "mass")
-       call plotGridMPI(grid, "rhoe.png/png", "x-z", "rhoe")
-       call plotGridMPI(grid, "rhovel.png/png", "x-z", "rho",withvel=.true.)
-       call plotGridMPI(grid, "u.png/png", "x-z", "u")
-       call plotGridMPI(grid, "v.png/png", "x-z", "v")
-       call plotGridMPI(grid, "w.png/png", "x-z", "w")
        if (myRank == 1) write(*,*) "current time ",currentTime,dt,nextDumpTime
 !       stop
 
        if (currentTime .ge. nextDumpTime) then
           nextDumpTime = nextDumpTime + tDump
           it = it + 1
-
-          write(plotfile,'(a,i4.4,a)') "rho",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho") !, logflag=.true.)!, debug=.true.) !, withvel=.true.)
-          write(plotfile,'(a,i4.4,a)') "rhozoom",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", zoomfactor=zoomfactor)!, debug=.true.) !, withvel=.true.)
-          write(plotfile,'(a,i4.4,a)') "rhogrid",it,".png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho",plotgrid=.true.) !, withvel=.true.)
 
 
           write(plotfile,'(a,i4.4,a)') "rho",it,".vtk"
@@ -2621,8 +2587,6 @@ contains
 !           plotfile,.false., .true.)
 
 
-!    call plotGridMPI(grid, "mpi.png/png", "x-z", "mpi", plotgrid=.true.)
-!    call plotGridMPI(grid, "chi.png/png", "x-z", "chi", plotgrid=.true.)
 
     call returnBoundaryPairs(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
@@ -2691,7 +2655,6 @@ contains
     call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
 
-!    call plotGridMPI(grid, "rhostart.png/png", "x-z", "rho", plotgrid=.true.)
 
 
     direction = OCTALVECTOR(1.d0, 0.d0, 0.d0)
@@ -2729,7 +2692,6 @@ contains
 
     iUnrefine = 0
 !    call writeInfo("Plotting grid", TRIVIAL)    
-!    call plotGridMPI(grid, "mpi.ps/vcps", "x-z", "rhoe", 0., 1.)
 
     iUnrefine = 0
 
@@ -2755,8 +2717,6 @@ contains
 
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-!       call plotGridMPI(grid, "initgrav.png/png", "x-z", "phi", plotgrid=.false.)
-!       stop
 
        call hydroStep2d(grid, gamma, dt, nPairs, thread1, thread2, nBound, group, nGroup, iEquationOfState)
 
@@ -2801,9 +2761,6 @@ contains
  !           "/xs",.false., .true., fixvalmin=0.d0, fixvalmax=1.d0, quiet=.true.)
 
 
-!       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 1.)
-
-!       call plotGridMPI(grid, "/xs", "x-z", "rho", 0., 0.5, plotgrid=.false.)
 
        currentTime = currentTime + dt
        if (myRank == 1) write(*,*) "current time ",currentTime,dt
@@ -4236,10 +4193,6 @@ end subroutine refineGridGeneric2
           gridConverged = .true.
           call setupEdges(grid%octreeRoot, grid)
 !          call refineEdges(grid%octreeRoot, grid,  gridconverged, inherit=inheritFlag)
-
-          !          write(plotfile,'(a,i4.4,a)') "grid",i,".png/png"
-          !          call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
-          !          i = i  + 1
           if (gridConverged) exit
        end do
 
@@ -5649,9 +5602,6 @@ end subroutine refineGridGeneric2
        deltaT =  (2.d0*grid%halfSmallestSubcell*gridDistanceScale)**2 / 6.d0
     endif
 
-    call plotGridMPI(grid, "gravbefore.png/png", "x-z", "phi", plotgrid=.false.)
-    call plotGridMPI(grid, "rhobefore.png/png", "x-z", "rho", plotgrid=.true.)
-
     fracChange = 1.d30
     it = 0
     do while (ANY(fracChange(1:nHydrothreads) > tol))
@@ -5665,13 +5615,10 @@ end subroutine refineGridGeneric2
        
        fracChange = tempFracChange
        !       write(plotfile,'(a,i4.4,a)') "grav",it,".png/png"
-       !       call plotGridMPI(grid, plotfile, "x-z", "phi", plotgrid=.false.)
 !e           if (myrankglobal == 1)   write(*,*) it,MAXVAL(fracChange(1:nHydroThreads))
     enddo
     if (myRankGlobal == 1) write(*,*) "Gravity solver completed after: ",it, " iterations"
 
-    call plotGridMPI(grid, "grav.png/png", "x-z", "phi", plotgrid=.true.)
-    call plotGridMPI(grid, "rhoafter.png/png", "x-z", "rho", plotgrid=.true.)
 
 !    if (myrankglobal == 1) call tune(6,"Complete self gravity")
 

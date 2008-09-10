@@ -18,7 +18,7 @@
 ! NHS: 02/9/02  adaptive mesh code merged
 ! RK : 12/02/03 Parallelized major loops in lucyStateEquilibriumAMR, stateqAMR, torusMain.
 ! RK : 07/07/05 Added the observed flux solver in oberver's frame. 
-
+! TJH: 10/09/08 pgplot calls removed...
 program torus
 
 
@@ -85,7 +85,7 @@ program torus
   type(SOURCETYPE), allocatable :: source(:)
   type(SOURCETYPE) a_star
   real :: inclination
-  character(len=80) :: thisdevice
+  character(len=80) :: plotfile
   real(double) :: objectDistance
 
   ! variables for the grid
@@ -894,7 +894,6 @@ program torus
 
 
         if (myRankGlobal /= 0) then
-           call plotGridMPI(grid, "rhoafterread.png/png", "x-z", "rho", plotgrid=.true.)
            if (grid%octreeRoot%twoD) then
               call doHydrodynamics2d(grid)
            else if (grid%octreeRoot%oneD) then

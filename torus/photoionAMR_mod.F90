@@ -154,8 +154,6 @@ contains
           call evenUpGridMPI(grid, .false., .true.)
        endif
 
-       write(plotfile,'(a,i4.4,a)') "firstpass.png/png"
-       call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
 
        call writeInfo("Refining grid", TRIVIAL)
        do
@@ -165,8 +163,6 @@ contains
        end do
        call MPI_BARRIER(amrCOMMUNICATOR, ierr)
 
-       write(plotfile,'(a,i4.4,a)') "secpass.png/png"
-       call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
 
 
        call writeInfo("Refining grid part 2", TRIVIAL)    
@@ -186,8 +182,6 @@ contains
        call evenUpGridMPI(grid, .false., .true.)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-       write(plotfile,'(a,i4.4,a)') "finalgrid.png/png"
-       call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
 
 
 
@@ -226,8 +220,6 @@ contains
              call evenUpGridMPI(grid, .false., .true.)
           endif
 
-          write(plotfile,'(a,i4.4,a)') "firstpass.png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
 
           call writeInfo("Refining grid", TRIVIAL)
           do
@@ -236,9 +228,6 @@ contains
              if (gridConverged) exit
           end do
           call MPI_BARRIER(amrCOMMUNICATOR, ierr)
-
-          write(plotfile,'(a,i4.4,a)') "secpass.png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
 
 
           call writeInfo("Refining grid part 2", TRIVIAL)    
@@ -258,15 +247,11 @@ contains
           call evenUpGridMPI(grid, .false., .true.)
           call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
 
-          write(plotfile,'(a,i4.4,a)') "postrefine.png/png"
-          call plotGridMPI(grid, plotfile, "x-z", "ionization",  plotgrid=.true.)
 
        endif
     enddo
     if (myrank /=0) then
        call unrefineCellsPhotoion(grid%octreeRoot, grid, gamma, iEquationOfState)
-       write(plotfile,'(a,i4.4,a)') "postrefine.png/png"
-       call plotGridMPI(grid, plotfile, "x-z", "ionization",  plotgrid=.true.)
 
        call evenUpGridMPI(grid, .false., .true.)
        call exchangeAcrossMPIboundary(grid, nPairs, thread1, thread2, nBound, group, nGroup)
@@ -274,7 +259,6 @@ contains
     endif
 
 
-    if (myrank /=0) call plotgridMPI(grid, "temperature.png/png", "x-z", "temperature")
 
     if (myrank /= 0) then
 
@@ -289,13 +273,6 @@ contains
        !       call calculateRhoW(grid%octreeRoot, direction)
 
 
-       !       call writeInfo("Plotting col density", TRIVIAL)    
-       !       write(plotfile,'(a,i4.4,a)') "col",0,".png/png"
-       !       call columnDensityPlotAMR(grid, viewVec, plotfile)
-       !       write(plotfile,'(a,i4.4,a)') "image",0,".png/png"
-       !       call plotGridMPI(grid, plotfile, "x-z", "rho")
-       !       write(plotfile,'(a,i4.4,a)') "temp",0,".png/png"
-       !       call plotGridMPI(grid, plotfile, "x-z", "temperature")
 
     endif
     do while(.true.)
@@ -339,7 +316,6 @@ contains
 
 
 
-       if (myrank /=0) call plotgridMPI(grid, "temperature.png/png", "x-z", "temperature")
 
        call writeInfo("Calling photoionization loop",TRIVIAL)
        call photoIonizationloopAMR(grid, source, nSource, nLambda, lamArray, readlucy, writelucy, &
@@ -397,14 +373,6 @@ contains
           write(mpiFilename,'(a, i4.4, a)') "dump_", grid%iDump,".grid"
           !          call writeAmrGridMpiAll(mpiFilename,.false.,grid)
 
-          if (myrank /= 0) then
-             write(plotfile,'(a,i4.4,a)') "image",grid%idump,".png/png"
-             call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22)
-             write(plotfile,'(a,i4.4,a)') "grid",grid%idump,".png/png"
-             call plotGridMPI(grid, plotfile, "x-z", "rho", valueMinFlag = 1.5e-22, valueMaxFlag = 4.e-22, plotgrid=.true.)
-             write(plotfile,'(a,i4.4,a)') "temp",grid%idump,".png/png"
-             call plotGridMPI(grid, plotfile, "x-z", "temperature")          
-          endif
        endif
 
 
@@ -856,11 +824,6 @@ if (.false.) then
 !    converged = .true.
 ! call MPI_BARRIER(MPI_COMM_WORLD, ierr)
 
-!    if (myrank /=0) call plotgridMPI(grid, "/xs", "x-z", "ionization", 1.e-10 , 1., logFlag=.true.)
-!    if (myrank /=0) call plotgridMPI(grid, "crossings.png/png", "x-z", "crossings", 1.e-2 , 1.e4, logFlag=.true.)
-!    if (myrank /=0) call plotgridMPI(grid, "temperature.png/png", "x-z", "temperature", 1.e-2 , 1.e4, logFlag=.true.)
-!    if (myrank /=0) call plotgridMPI(grid, "ionization.png/png", "x-z", "ionization", 1.e-10 , 1., logFlag=.true.)
-!    if (myrank /=0) call plotgridMPI(grid, "coeff.png/png", "x-z", "coeff", 1.e-10 , 1., logFlag=.true.)
 
 
     firstCall = .false.
