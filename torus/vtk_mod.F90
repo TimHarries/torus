@@ -382,7 +382,7 @@ contains
        nValueType = 3
        valueType(1) = "rho"
        valueType(2) = "velocity"
-       valueType(3) = "tau"
+       valueType(3) = "temperature"
     endif
 
     if (PRESENT(valueTypeString)) then
