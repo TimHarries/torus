@@ -225,7 +225,7 @@ contains
     integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 40
+    integer, parameter :: nStorage = 12
     real(double) :: loc(3), tempStorage(nStorage)
     type(OCTALVECTOR) :: octVec, direction, rVec
     integer :: nBound
@@ -389,42 +389,12 @@ contains
                 tempStorage(10) = neighbourOctal%pressure_i(neighbourSubcell)
                 tempStorage(11) = neighbourOctal%flux_i(neighbourSubcell)
 
-                tempStorage(12) = neighbourOctal%a(neighbourSubcell, 1)
-                tempStorage(13) = neighbourOctal%a(neighbourSubcell, 2)
-                tempStorage(14) = neighbourOctal%a(neighbourSubcell, 3)
-                tempStorage(15) = neighbourOctal%w(neighbourSubcell, 1)
-                tempStorage(16) = neighbourOctal%w(neighbourSubcell, 2)
-                tempStorage(17) = neighbourOctal%w(neighbourSubcell, 3)
-                tempStorage(18) = neighbourOctal%w(neighbourSubcell, 4)
-                tempStorage(19) = neighbourOctal%fluxc(neighbourSubcell, 1)
-                tempStorage(20) = neighbourOctal%fluxc(neighbourSubcell, 2)
-                tempStorage(21) = neighbourOctal%fluxc(neighbourSubcell, 3)
-                tempStorage(22) = neighbourOctal%flux(neighbourSubcell, 1)
-                tempStorage(23) = neighbourOctal%flux(neighbourSubcell, 2)
-                tempStorage(24) = neighbourOctal%flux(neighbourSubcell, 3)
+                tempStorage(12) = neighbourOctal%flux_i(neighbourSubcell)
 
 
 
-                tempStorage(25) = neighbourOctal%fluxvector(neighbourSubcell, 1)
-                tempStorage(26) = neighbourOctal%fluxvector(neighbourSubcell, 2)
-                tempStorage(27) = neighbourOctal%fluxvector(neighbourSubcell, 3)
-                tempStorage(28) = neighbourOctal%fluxvector(neighbourSubcell, 4)
-                tempStorage(29) = neighbourOctal%fluxvector(neighbourSubcell, 5)
-
-                tempStorage(30) = neighbourOctal%qstate(neighbourSubcell, 1)
-                tempStorage(31) = neighbourOctal%qstate(neighbourSubcell, 2)
-                tempStorage(32) = neighbourOctal%qstate(neighbourSubcell, 3)
-                tempStorage(33) = neighbourOctal%qstate(neighbourSubcell, 4)
-                tempStorage(34) = neighbourOctal%qstate(neighbourSubcell, 5)
-
-                tempStorage(35) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 1)
-                tempStorage(36) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 2)
-                tempStorage(37) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 3)
-                tempStorage(38) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 4)
-                tempStorage(39) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 5)
 
 
-                tempStorage(40) = neighbourOctal%phi_i(neighbourSubcell)
 
              else ! need to average
                 call averageValue(direction, neighbourOctal,  neighbourSubcell, q, rhou, rhov, rhow, rho, rhoe, pressure, flux, phi)
@@ -445,7 +415,7 @@ contains
                 tempStorage(9) = dble(neighbourOctal%nDepth)
                 tempStorage(10) = pressure
                 tempStorage(11) = flux
-                tempStorage(40) = phi
+                tempStorage(12) = phi
              endif
 !                          write(*,*) myRank, " sending temp storage"
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
@@ -518,7 +488,7 @@ contains
     integer :: myRank, ierr
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: nOctals
-    integer, parameter :: nStorage = 40
+    integer, parameter :: nStorage = 12
     real(double) :: loc(3), tempStorage(nStorage)
     type(OCTALVECTOR) :: octVec, direction, rVec
     integer :: nBound
@@ -670,42 +640,8 @@ contains
                 tempStorage(10) = neighbourOctal%pressure_i(neighbourSubcell)
                 tempStorage(11) = neighbourOctal%flux_i(neighbourSubcell)
  
-                tempStorage(12) = neighbourOctal%a(neighbourSubcell, 1)
-                tempStorage(13) = neighbourOctal%a(neighbourSubcell, 2)
-                tempStorage(14) = neighbourOctal%a(neighbourSubcell, 3)
-                tempStorage(15) = neighbourOctal%w(neighbourSubcell, 1)
-                tempStorage(16) = neighbourOctal%w(neighbourSubcell, 2)
-                tempStorage(17) = neighbourOctal%w(neighbourSubcell, 3)
-                tempStorage(18) = neighbourOctal%w(neighbourSubcell, 4)
-                tempStorage(19) = neighbourOctal%fluxc(neighbourSubcell, 1)
-                tempStorage(20) = neighbourOctal%fluxc(neighbourSubcell, 2)
-                tempStorage(21) = neighbourOctal%fluxc(neighbourSubcell, 3)
-                tempStorage(22) = neighbourOctal%flux(neighbourSubcell, 1)
-                tempStorage(23) = neighbourOctal%flux(neighbourSubcell, 2)
-                tempStorage(24) = neighbourOctal%flux(neighbourSubcell, 3)
 
-
-
-                tempStorage(25) = neighbourOctal%fluxvector(neighbourSubcell, 1)
-                tempStorage(26) = neighbourOctal%fluxvector(neighbourSubcell, 2)
-                tempStorage(27) = neighbourOctal%fluxvector(neighbourSubcell, 3)
-                tempStorage(28) = neighbourOctal%fluxvector(neighbourSubcell, 4)
-                tempStorage(29) = neighbourOctal%fluxvector(neighbourSubcell, 5)
-
-                tempStorage(30) = neighbourOctal%qstate(neighbourSubcell, 1)
-                tempStorage(31) = neighbourOctal%qstate(neighbourSubcell, 2)
-                tempStorage(32) = neighbourOctal%qstate(neighbourSubcell, 3)
-                tempStorage(33) = neighbourOctal%qstate(neighbourSubcell, 4)
-                tempStorage(34) = neighbourOctal%qstate(neighbourSubcell, 5)
-
-                tempStorage(35) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 1)
-                tempStorage(36) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 2)
-                tempStorage(37) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 3)
-                tempStorage(38) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 4)
-                tempStorage(39) = neighbourOctal%qstate_i_minus_1(neighbourSubcell, 5)
-
-
-                tempStorage(40) = neighbourOctal%phi_i(neighbourSubcell)
+                tempStorage(12) = neighbourOctal%phi_i(neighbourSubcell)
 
 !                          write(*,*) myRank, " sending temp storage"
              call MPI_SEND(tempStorage, nStorage, MPI_DOUBLE_PRECISION, receiveThread, tag, MPI_COMM_WORLD, ierr)
@@ -1058,7 +994,7 @@ contains
        qnext = thisOctal%mpiBoundaryStorage(subcell, nBound, 8)
        pressure = thisOctal%mpiBoundaryStorage(subcell, nBound, 10)
        flux =  thisOctal%mpiBoundaryStorage(subcell, nBound, 11)
-       phi = thisOctal%mpiBoundaryStorage(subcell, nBound, 40)
+       phi = thisOctal%mpiBoundaryStorage(subcell, nBound, 12)
 
     endif
   end subroutine getNeighbourValues
@@ -1177,216 +1113,6 @@ contains
     endif
 
   end subroutine averageValue
-
-
-  subroutine getNeighbourValues2(grid, thisOctal, subcell, direction, a_i_plus_1, a_i_minus_1,  &
-       w_i_minus_1, fluxc_i_minus_1, flux_i_plus_1, fluxvector_i_minus_1, fluxvector_i_plus_1, &
-       qstate_i_minus_1, x_i_minus_1, &
-       qstate_i_plus_1, qstate_i_minus_2)
-    include 'mpif.h'
-    type(GRIDTYPE) :: grid
-    real(double), optional :: a_i_plus_1(3), a_i_minus_1(3)
-    real(double), optional :: w_i_minus_1(4), fluxc_i_minus_1(3), flux_i_plus_1(3)
-    real(double), optional :: qState_i_minus_1(5), qstate_i_minus_2(5)
-    real(double), optional :: qState_i_plus_1(5)
-    real(double), optional :: fluxVector_i_minus_1(5), fluxvector_i_plus_1(5), x_i_minus_1
-    type(OCTAL), pointer :: thisOctal, neighbourOctal
-    type(OCTALVECTOR) :: direction, locator
-    integer :: subcell, neighbourSubcell
-    integer :: nBound
-    integer :: myRank, ierr
-
-    call MPI_COMM_RANK(MPI_COMM_WORLD, myRank, ierr)
-
-    nbound = getNboundFromDirection(direction)
-    
-    locator = subcellCentre(thisOctal, subcell) + direction * (thisOctal%subcellSize/2.d0+0.01d0*grid%halfSmallestSubcell)
-    neighbourOctal => thisOctal
-    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-
-    if (neighbourOctal%mpiThread(neighbourSubcell) == myRank) then
-
-
-       if (thisOctal%nDepth == neighbourOctal%nDepth) then ! same level
-
-          if (PRESENT(a_i_plus_1)) a_i_plus_1(1:3)   = neighbourOctal%a(neighbourSubcell,1:3)
-
-          if (PRESENT(flux_i_plus_1)) flux_i_plus_1(1:3)   = neighbourOctal%flux(neighbourSubcell,1:3)
-
-          if (PRESENT(qstate_i_plus_1)) qstate_i_plus_1 = neighbourOctal%qState(neighbourSubcell, 1:5)
-
-          if (PRESENT(fluxvector_i_plus_1)) fluxvector_i_plus_1 = neighbourOctal%fluxvector(neighbourSubcell, 1:5)
-
-       else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
-
-          if ((thisOctal%ndepth-neighbourOctal%nDepth)/=1) then
-             write(*,*) "Octal depths differ by more than 1!!!!!"
-             stop
-          endif
-
-          if (PRESENT(a_i_plus_1)) a_i_plus_1(1:3)   = neighbourOctal%a(neighbourSubcell,1:3)
-
-          if (PRESENT(flux_i_plus_1)) flux_i_plus_1(1:3)   = neighbourOctal%flux(neighbourSubcell,1:3)
-
-          if (PRESENT(qstate_i_plus_1)) qstate_i_plus_1 = neighbourOctal%qState(neighbourSubcell, 1:5)
-
-          if (PRESENT(fluxvector_i_plus_1)) fluxvector_i_plus_1 = neighbourOctal%fluxvector(neighbourSubcell, 1:5)
-       else
-          write(*,*) "not done yet!!!!" ! fine to coarse
-          stop
-       endif
-
-
-    else
-
-
-       if (.not.associated(thisOctal%mpiBoundaryStorage)) then
-          write(*,*) "boundary storage not allocated when it should be!", myrank, neighbourOctal%mpiThread(neighboursubcell), &
-               thisOctal%mpiThread(subcell)
-          write(*,*) "direction",  direction,nBound
-          write(*,*) "this centre",subcellCentre(thisOctal, subcell)
-          write(*,*) "neig centre",subcellCentre(neighbourOctal, neighboursubcell)
-          stop
-       endif
-
-       if (PRESENT(a_i_plus_1)) then
-          a_i_plus_1(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 12)
-          a_i_plus_1(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 13)
-          a_i_plus_1(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 14)
-       endif
-
-       if (PRESENT(flux_i_plus_1)) then
-          flux_i_plus_1(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 22)
-          flux_i_plus_1(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 23)
-          flux_i_plus_1(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 24)
-       endif
-
-       if (PRESENT(qstate_i_plus_1)) then
-          qstate_i_plus_1(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 30)
-          qstate_i_plus_1(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 31)
-          qstate_i_plus_1(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
-          qstate_i_plus_1(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 33)
-          qstate_i_plus_1(5) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
-       endif
-
-       if (PRESENT(fluxvector_i_plus_1)) then
-          fluxvector_i_plus_1(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 25)
-          fluxvector_i_plus_1(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 26)
-          fluxvector_i_plus_1(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 27)
-          fluxvector_i_plus_1(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 28)
-          fluxvector_i_plus_1(5) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 29)
-       endif
-
-
-    endif
-
-
-    nbound = getNboundFromDirection((-1.d0)*direction)
-
-    locator = subcellCentre(thisOctal, subcell) + direction * (-thisOctal%subcellSize/2.d0-0.01d0*grid%halfSmallestSubcell)
-    neighbourOctal => thisOctal
-    call findSubcellLocal(locator, neighbourOctal, neighbourSubcell)
-
-    if (neighbourOctal%mpiThread(neighbourSubcell) == myRank) then
-
-
-       if (thisOctal%nDepth == neighbourOctal%nDepth) then ! same level
-
-          if (PRESENT(a_i_minus_1)) a_i_minus_1(1:3)   = neighbourOctal%a(neighbourSubcell,1:3)
-          if (PRESENT(w_i_minus_1)) w_i_minus_1(1:4)   = neighbourOctal%w(neighbourSubcell,1:4)
-          if (PRESENT(fluxc_i_minus_1)) then
-             fluxc_i_minus_1(1:3)   = neighbourOctal%fluxc(neighbourSubcell,1:3)
-          endif
-
-          if (PRESENT(fluxvector_i_minus_1)) fluxvector_i_minus_1 = neighbourOctal%fluxvector(neighbourSubcell, 1:5)
-
-          if (PRESENT(qstate_i_minus_1)) qstate_i_minus_1 = neighbourOctal%qState(neighbourSubcell, 1:5)
-
-          if (PRESENT(qstate_i_minus_2)) qstate_i_minus_2 = neighbourOctal%qState_i_minus_1(neighbourSubcell, 1:5)
-
-          if (PRESENT(x_i_minus_1)) x_i_minus_1 = neighbourOctal%x_i(neighboursubcell)
-
-       else if (thisOctal%nDepth > neighbourOctal%nDepth) then ! fine cells set to coarse cell fluxes (should be interpolated here!!!)
-
-          if (PRESENT(a_i_minus_1)) a_i_minus_1(1:3)   = neighbourOctal%a(neighbourSubcell,1:3)
-          if (PRESENT(w_i_minus_1)) w_i_minus_1(1:4)   = neighbourOctal%w(neighbourSubcell,1:4)
-          if (PRESENT(fluxc_i_minus_1)) then
-             fluxc_i_minus_1(1:3)   = neighbourOctal%fluxc(neighbourSubcell,1:3)
-          endif
-
-          if (PRESENT(fluxvector_i_minus_1)) fluxvector_i_minus_1 = neighbourOctal%fluxvector(neighbourSubcell, 1:5)
-          if (PRESENT(qstate_i_minus_1)) qstate_i_minus_1 = neighbourOctal%qState(neighbourSubcell, 1:5)
-          if (PRESENT(x_i_minus_1)) x_i_minus_1 = neighbourOctal%x_i(neighboursubcell)
-
-          if (PRESENT(qstate_i_minus_2)) qstate_i_minus_2 = neighbourOctal%qState_i_minus_1(neighbourSubcell, 1:5)
-
-       else
-          write(*,*) "not done yet!!!!" ! fine to coarse
-          stop
-       endif
-
-
-    else
-
-
-       if (.not.associated(thisOctal%mpiBoundaryStorage)) then
-          write(*,*) "boundary storage not allocated when it should be!", myrank, neighbourOctal%mpiThread(neighboursubcell), &
-               thisOctal%mpiThread(subcell)
-          write(*,*) "direction",  direction,nBound
-          write(*,*) "this centre",subcellCentre(thisOctal, subcell)
-          write(*,*) "neig centre",subcellCentre(neighbourOctal, neighboursubcell)
-          stop
-       endif
-       if (PRESENT(a_i_minus_1)) then
-          a_i_minus_1(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 12)
-          a_i_minus_1(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 13)
-          a_i_minus_1(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 14)
-       endif
-
-       if (PRESENT(w_i_minus_1)) then
-          w_i_minus_1(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 15)
-          w_i_minus_1(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 16)
-          w_i_minus_1(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 17)
-          w_i_minus_1(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 18)
-       endif
-
-       if (PRESENT(fluxc_i_minus_1)) then
-          fluxc_i_minus_1(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 19)
-          fluxc_i_minus_1(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 20)
-          fluxc_i_minus_1(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 21)
-       endif
-
-       if (PRESENT(fluxvector_i_minus_1)) then
-          fluxvector_i_minus_1(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 25)
-          fluxvector_i_minus_1(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 26)
-          fluxvector_i_minus_1(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 27)
-          fluxvector_i_minus_1(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 28)
-          fluxvector_i_minus_1(5) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 29)
-       endif
-
-       if (PRESENT(qstate_i_minus_1)) then
-          qstate_i_minus_1(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 30)
-          qstate_i_minus_1(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 31)
-          qstate_i_minus_1(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 32)
-          qstate_i_minus_1(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 33)
-          qstate_i_minus_1(5) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 34)
-       endif
-
-       if (PRESENT(qstate_i_minus_2)) then
-          qstate_i_minus_2(1) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 35)
-          qstate_i_minus_2(2) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 36)
-          qstate_i_minus_2(3) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 37)
-          qstate_i_minus_2(4) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 38)
-          qstate_i_minus_2(5) =  thisOctal%mpiBoundaryStorage(subcell, nBound, 39)
-       endif
-       
-       if (PRESENT(x_i_minus_1)) then
-          x_i_minus_1 = thisOctal%mpiBoundaryStorage(subcell, nBound, 7)
-       endif
-    endif
-
-
-  end subroutine getNeighbourValues2
 
 
 

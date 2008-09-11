@@ -542,7 +542,7 @@ CONTAINS
     ! adds one new child to an octal
 
     USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, molecular, cmf, nAtom, useDust, &
-                                TMinGlobal
+                                TMinGlobal, hydrodynamics
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
@@ -811,6 +811,57 @@ CONTAINS
        parent%child(newChildIndex)%photoIonCoeff = 0.d0
     endif
        
+    if (hydrodynamics) then
+       allocate(parent%child(newChildIndex)%q_i(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%q_i_plus_1(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%q_i_minus_1(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%q_i_minus_2(1:parent%maxChildren))
+
+       allocate(parent%child(newChildIndex)%x_i(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%x_i_plus_1(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%x_i_minus_1(1:parent%maxChildren))
+
+       allocate(parent%child(newChildIndex)%u_interface(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%u_i_plus_1(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%u_i_minus_1(1:parent%maxChildren))
+
+       allocate(parent%child(newChildIndex)%flux_i(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%flux_i_plus_1(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%flux_i_minus_1(1:parent%maxChildren))
+
+       allocate(parent%child(newChildIndex)%phiLimit(1:parent%maxChildren))
+
+       allocate(parent%child(newChildIndex)%ghostCell(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%feederCell(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%edgeCell(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%refinedLastTime(1:parent%maxChildren))
+
+       allocate(parent%child(newChildIndex)%pressure_i(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%pressure_i_plus_1(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%pressure_i_minus_1(1:parent%maxChildren))
+
+       allocate(parent%child(newChildIndex)%rhou(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%rhov(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%rhow(1:parent%maxChildren))
+
+       allocate(parent%child(newChildIndex)%rhoe(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%energy(1:parent%maxChildren))
+
+
+       allocate(parent%child(newChildIndex)%phi_i(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%phi_i_plus_1(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%phi_i_minus_1(1:parent%maxChildren))
+
+       allocate(parent%child(newChildIndex)%rho_i_plus_1(1:parent%maxChildren))
+       allocate(parent%child(newChildIndex)%rho_i_minus_1(1:parent%maxChildren))
+
+       allocate(parent%child(newChildIndex)%boundaryCondition(1:parent%maxChildren))
+
+    endif
+
+
+
+
 
     IF (PRESENT(sphData)) THEN
        if (isAlive(sphData)) then
@@ -9860,6 +9911,55 @@ end function readparameterfrom2dmap
       IF ( error /= 0 ) CALL deallocationError(error,location=7) 
       NULLIFY(thisOctal%dustTypeFraction)
 
+      IF (ASSOCIATED(thisOctal%x_i)) DEALLOCATE(thisOctal%x_i,STAT=error); NULLIFY(thisOctal%x_i)
+      IF (ASSOCIATED(thisOctal%x_i_plus_1)) DEALLOCATE(thisOctal%x_i_plus_1,STAT=error); NULLIFY(thisOctal%x_i_plus_1)
+      IF (ASSOCIATED(thisOctal%x_i_minus_1)) DEALLOCATE(thisOctal%x_i_minus_1,STAT=error); NULLIFY(thisOctal%x_i_minus_1)
+
+      IF (ASSOCIATED(thisOctal%q_i)) DEALLOCATE(thisOctal%q_i,STAT=error); NULLIFY(thisOctal%q_i)
+      IF (ASSOCIATED(thisOctal%q_i_plus_1)) DEALLOCATE(thisOctal%q_i_plus_1,STAT=error); NULLIFY(thisOctal%q_i_plus_1)
+      IF (ASSOCIATED(thisOctal%q_i_minus_1)) DEALLOCATE(thisOctal%q_i_minus_1,STAT=error); NULLIFY(thisOctal%q_i_minus_1)
+      IF (ASSOCIATED(thisOctal%q_i_minus_2)) DEALLOCATE(thisOctal%q_i_minus_2,STAT=error); NULLIFY(thisOctal%q_i_minus_2)
+
+
+      IF (ASSOCIATED(thisOctal%u_interface)) DEALLOCATE(thisOctal%u_interface,STAT=error); NULLIFY(thisOctal%u_interface)
+      IF (ASSOCIATED(thisOctal%u_i_plus_1)) DEALLOCATE(thisOctal%u_i_plus_1,STAT=error); NULLIFY(thisOctal%u_i_plus_1)
+      IF (ASSOCIATED(thisOctal%u_i_minus_1)) DEALLOCATE(thisOctal%u_i_minus_1,STAT=error); NULLIFY(thisOctal%u_i_minus_1)
+
+      IF (ASSOCIATED(thisOctal%flux_i)) DEALLOCATE(thisOctal%flux_i,STAT=error); NULLIFY(thisOctal%flux_i)
+      IF (ASSOCIATED(thisOctal%flux_i_plus_1)) DEALLOCATE(thisOctal%flux_i_plus_1,STAT=error); NULLIFY(thisOctal%flux_i_plus_1)
+      IF (ASSOCIATED(thisOctal%flux_i_minus_1)) DEALLOCATE(thisOctal%flux_i_minus_1,STAT=error); NULLIFY(thisOctal%flux_i_minus_1)
+
+      IF (ASSOCIATED(thisOctal%phiLimit)) DEALLOCATE(thisOctal%phiLimit,STAT=error); NULLIFY(thisOctal%phiLimit)
+      IF (ASSOCIATED(thisOctal%rLimit)) DEALLOCATE(thisOctal%rLimit,STAT=error); NULLIFY(thisOctal%rLimit)
+
+
+      IF (ASSOCIATED(thisOctal%ghostCell)) DEALLOCATE(thisOctal%ghostCell,STAT=error); NULLIFY(thisOctal%ghostCell)
+      IF (ASSOCIATED(thisOctal%feederCell)) DEALLOCATE(thisOctal%feederCell,STAT=error); NULLIFY(thisOctal%feederCell)
+      IF (ASSOCIATED(thisOctal%edgeCell)) DEALLOCATE(thisOctal%edgeCell,STAT=error); NULLIFY(thisOctal%edgeCell)
+      IF (ASSOCIATED(thisOctal%refinedLastTime)) DEALLOCATE(thisOctal%refinedLastTime,STAT=error); NULLIFY(thisOctal%refinedLastTime)
+
+
+      IF (ASSOCIATED(thisOctal%rhou)) DEALLOCATE(thisOctal%rhou,STAT=error); NULLIFY(thisOctal%rhou)
+      IF (ASSOCIATED(thisOctal%rhov)) DEALLOCATE(thisOctal%rhov,STAT=error); NULLIFY(thisOctal%rhov)
+      IF (ASSOCIATED(thisOctal%rhow)) DEALLOCATE(thisOctal%rhow,STAT=error); NULLIFY(thisOctal%rhow)
+      IF (ASSOCIATED(thisOctal%rhoe)) DEALLOCATE(thisOctal%rhoe,STAT=error); NULLIFY(thisOctal%rhoe)
+      IF (ASSOCIATED(thisOctal%energy)) DEALLOCATE(thisOctal%energy,STAT=error); NULLIFY(thisOctal%energy)
+
+
+      IF (ASSOCIATED(thisOctal%x_i)) DEALLOCATE(thisOctal%x_i,STAT=error); NULLIFY(thisOctal%pressure_i)
+      IF (ASSOCIATED(thisOctal%pressure_i_plus_1)) DEALLOCATE(thisOctal%pressure_i_plus_1,STAT=error); NULLIFY(thisOctal%pressure_i_plus_1)
+      IF (ASSOCIATED(thisOctal%pressure_i_minus_1)) DEALLOCATE(thisOctal%pressure_i_minus_1,STAT=error); NULLIFY(thisOctal%pressure_i_minus_1)
+
+      IF (ASSOCIATED(thisOctal%boundaryPartner)) DEALLOCATE(thisOctal%boundaryPartner,STAT=error); NULLIFY(thisOctal%boundaryPartner)
+      IF (ASSOCIATED(thisOctal%boundaryCondition)) DEALLOCATE(thisOctal%boundaryCondition,STAT=error); NULLIFY(thisOctal%boundaryCondition)
+
+      IF (ASSOCIATED(thisOctal%phi_i)) DEALLOCATE(thisOctal%phi_i,STAT=error); NULLIFY(thisOctal%phi_i)
+      IF (ASSOCIATED(thisOctal%phi_i_plus_1)) DEALLOCATE(thisOctal%phi_i_plus_1,STAT=error); NULLIFY(thisOctal%phi_i_plus_1)
+      IF (ASSOCIATED(thisOctal%phi_i_minus_1)) DEALLOCATE(thisOctal%phi_i_minus_1,STAT=error); NULLIFY(thisOctal%phi_i_minus_1)
+
+      IF (ASSOCIATED(thisOctal%rho_i_plus_1)) DEALLOCATE(thisOctal%rho_i_plus_1,STAT=error); NULLIFY(thisOctal%rho_i_plus_1)
+      IF (ASSOCIATED(thisOctal%rho_i_minus_1)) DEALLOCATE(thisOctal%rho_i_minus_1,STAT=error); NULLIFY(thisOctal%rho_i_minus_1)
+
     END SUBROUTINE deleteOctalPrivate
       
     SUBROUTINE deallocationError(error,location)
@@ -9999,37 +10099,125 @@ end function readparameterfrom2dmap
     dest%nh2              = source%nh2
     dest%microturb        = source%microturb
 
+    if (associated(source%rho_i_minus_1)) then
+       allocate(dest%rho_i_minus_1(SIZE(source%rho_i_minus_1)))
+       dest%rho_i_minus_1 = source%rho_i_minus_1
+    endif
 
-    if (associated(dest%x_i_minus_1)) dest%x_i_minus_1      = source%x_i_minus_1
-    if (associated(dest%x_i)) dest%x_i              = source%x_i
-    if (associated(dest%x_i_plus_1)) dest%x_i_plus_1       = source%x_i_plus_1
+    if (associated(source%rho_i_minus_1)) then
+       allocate(dest%rho_i_minus_1(SIZE(source%rho_i_plus_1)))
+       dest%rho_i_plus_1      = source%rho_i_plus_1
+    endif
 
-    if (associated(dest%q_i_minus_2)) dest%q_i_minus_2      = source%q_i_minus_2
-    if (associated(dest%q_i_minus_1)) dest%q_i_minus_1      = source%q_i_minus_1
-    if (associated(dest%q_i)) dest%q_i              = source%q_i
-    if (associated(dest%q_i_plus_1)) dest%q_i_plus_1       = source%q_i_plus_1
 
-    if (associated(dest%flux_i_minus_1)) dest%flux_i_minus_1   = source%flux_i_minus_1
-    if (associated(dest%flux_i)) dest%flux_i           = source%flux_i
-    if (associated(dest%flux_i_plus_1)) dest%flux_i_plus_1    = source%flux_i_plus_1
+    if (associated(source%x_i_minus_1)) then
+       allocate(dest%x_i_minus_1(SIZE(source%x_i_minus_1)))
+       dest%x_i_minus_1      = source%x_i_minus_1
+    endif
+    if (associated(source%x_i)) then
+       allocate(dest%x_i(SIZE(source%x_i)))
+       dest%x_i              = source%x_i
+    endif
+    if (associated(source%x_i_plus_1)) then
+       allocate(dest%x_i_plus_1(SIZE(source%x_i_plus_1)))
+       dest%x_i_plus_1       = source%x_i_plus_1
+    endif
 
-    if (associated(dest%pressure_i_minus_1)) dest%pressure_i_minus_1   = source%pressure_i_minus_1
-    if (associated(dest%pressure_i)) dest%pressure_i           = source%pressure_i
-    if (associated(dest%phi_i)) dest%phi_i                = source%phi_i
-    if (associated(dest%pressure_i_plus_1)) dest%pressure_i_plus_1    = source%pressure_i_plus_1
+    if (associated(source%q_i_minus_2)) then
+       allocate(dest%q_i_minus_2(SIZE(source%q_i_minus_2)))
+       dest%q_i_minus_2      = source%q_i_minus_2
+    endif
+    if (associated(source%q_i_minus_1)) then
+       allocate(dest%q_i_minus_1(SIZE(source%q_i_minus_1)))
+       dest%q_i_minus_1      = source%q_i_minus_1
+    endif
+    if (associated(source%q_i)) then
+       allocate(dest%q_i(SIZE(source%q_i)))
+       dest%q_i              = source%q_i
+    endif
+    if (associated(source%q_i_plus_1)) then
+       allocate(dest%q_i_plus_1(SIZE(source%q_i_plus_1)))
+       dest%q_i_plus_1       = source%q_i_plus_1
+    endif
 
-    if (associated(dest%u_interface)) dest%u_interface          = source%u_interface
-    if (associated(dest%rLimit)) dest%rLimit               = source%rLimit
-    if (associated(dest%phiLimit)) dest%phiLimit             = source%phiLimit
-    if (associated(dest%ghostCell)) dest%ghostCell            = source%ghostCell
-    if (associated(dest%edgeCell)) dest%edgeCell             = source%edgeCell
-    if (associated(dest%feederCell)) dest%feederCell           = source%feederCell
-    if (associated(dest%energy)) dest%energy               = source%energy
-    if (associated(dest%rhou)) dest%rhou                 = source%rhou
-    if (associated(dest%rhov)) dest%rhov                 = source%rhov
-    if (associated(dest%rhow)) dest%rhow                 = source%rhow
-    if (associated(dest%rhoe)) dest%rhoe                 = source%rhoe
-    if (associated(dest%refinedLastTime)) dest%refinedLastTime      = source%refinedLastTime
+    if (associated(source%flux_i_minus_1)) then
+       allocate(dest%flux_i_minus_1(SIZE(source%flux_i_minus_1)))
+       dest%flux_i_minus_1   = source%flux_i_minus_1
+    endif
+    if (associated(source%flux_i)) then
+       allocate(dest%flux_i(SIZE(source%flux_i)))
+       dest%flux_i           = source%flux_i
+    endif
+    if (associated(source%flux_i_plus_1)) then
+       allocate(dest%flux_i_plus_1(SIZE(source%flux_i_plus_1)))
+       dest%flux_i_plus_1    = source%flux_i_plus_1
+    endif
+
+    if (associated(source%pressure_i_minus_1)) then
+       allocate(dest%pressure_i_minus_1(SIZE(source%pressure_i_minus_1)))
+       dest%pressure_i_minus_1   = source%pressure_i_minus_1
+    endif
+    if (associated(source%pressure_i)) then
+       allocate(dest%pressure_i(SIZE(source%pressure_i)))
+       dest%pressure_i           = source%pressure_i
+    endif
+    if (associated(source%phi_i)) then
+       allocate(dest%phi_i(SIZE(source%phi_i)))
+       dest%phi_i                = source%phi_i
+    endif
+    if (associated(source%pressure_i_plus_1)) then
+       allocate(dest%pressure_i_plus_1(SIZE(source%pressure_i_plus_1)))
+       dest%pressure_i_plus_1    = source%pressure_i_plus_1
+    endif
+
+    if (associated(source%u_interface)) then
+       allocate(dest%u_interface(SIZE(source%u_interface)))
+       dest%u_interface          = source%u_interface
+    endif
+    if (associated(source%rLimit)) then
+       allocate(dest%rLimit(SIZE(source%rLimit)))
+       dest%rLimit               = source%rLimit
+    endif
+    if (associated(source%phiLimit)) then
+       allocate(dest%phiLimit(SIZE(source%phiLimit)))
+       dest%phiLimit             = source%phiLimit
+    endif
+    if (associated(source%ghostCell)) then
+       allocate(dest%ghostCell(SIZE(source%ghostCell)))
+       dest%ghostCell            = source%ghostCell
+    endif
+    if (associated(source%edgeCell)) then
+       allocate(dest%edgeCell(SIZE(source%edgeCell)))
+       dest%edgeCell             = source%edgeCell
+    endif
+    if (associated(source%feederCell)) then
+       allocate(dest%feederCell(SIZE(source%feederCell)))
+       dest%feederCell           = source%feederCell
+    endif
+    if (associated(source%energy)) then
+       allocate(dest%energy(SIZE(source%energy)))
+       dest%energy               = source%energy
+    endif
+    if (associated(source%rhou)) then
+       allocate(dest%rhou(SIZE(source%rhou)))
+       dest%rhou                 = source%rhou
+       endif
+    if (associated(source%rhov)) then
+       allocate(dest%rhov(SIZE(source%rhov)))
+       dest%rhov                 = source%rhov
+       endif
+    if (associated(source%rhow)) then
+       allocate(dest%rhow(SIZE(source%rhow)))
+       dest%rhow                 = source%rhow
+       endif
+    if (associated(source%rhoe)) then
+       allocate(dest%rhoe(SIZE(source%rhoe)))
+       dest%rhoe                 = source%rhoe
+       endif
+    if (associated(source%refinedLastTime)) then
+       allocate(dest%refinedLastTime(SIZE(source%refinedLastTime)))
+       dest%refinedLastTime      = source%refinedLastTime
+    endif
 
     if (associated(source%mpiBoundaryStorage)) then
        allocate(dest%mpiBoundaryStorage(SIZE(source%mpiBoundaryStorage, 1),&

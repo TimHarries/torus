@@ -176,7 +176,6 @@ MODULE octal_mod
     logical, dimension(8)                 :: diffusionApprox
     logical, dimension(8) :: undersampled
     real, dimension(8) :: nDiffusion
-    integer, pointer :: boundaryCondition(:) => null()
 
     ! hydrodynamics
     real(double), pointer :: q_i(:) => null(), q_i_plus_1(:) => null(), q_i_minus_1(:) => null(), q_i_minus_2(:) => null()
@@ -191,11 +190,9 @@ MODULE octal_mod
     real(double), pointer :: tempStorage(:,:) => null()
     type(OCTALVECTOR), pointer :: boundaryPartner(:) => null()
     real(double), pointer :: phi_i(:) => null(), phi_i_plus_1(:) => null(), phi_i_minus_1(:) => null()
+    real(double),pointer :: rho_i_minus_1(:) => null(), rho_i_plus_1(:) => null()
+    integer, pointer :: boundaryCondition(:) => null()
 
-!    real(double) :: w(8,4), fluxc(8,3),  a(8,3)
-!    real(double) :: ac2(8,3), flux(8,3), ac1(8,3)
-!    real(double) :: qState(8,5), fluxvector(8,5), newFluxVector(8,5), qstate_i_minus_1(8,5)
-!    real(double) :: rho_i_minus_1(8), rho_i_plus_1(8)
   END TYPE octal
  
 CONTAINS 
