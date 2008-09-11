@@ -37,11 +37,6 @@ module sph_data_class
        find_inclinations, &
        isAlive
   
-    real(double), parameter :: sph_rho_min=1.0e-25_db ! Lower limit for rho plots from sphtorus
-    real(double), parameter :: sph_rho_max=1.0e-12_db ! Upper limit for rho plots from sphtorus
-    real(double), parameter :: sph_tem_min=10.0_db ! Lower limit for temperature plots from sphtorus
-    real(double), parameter :: sph_tem_max=3.0e2_db ! Upper limit for temperature plots from sphtorus
-
   private:: &
        kill_sph_data
   
@@ -61,6 +56,7 @@ module sph_data_class
      ! Positions of gas particles
      real(double), pointer, dimension(:) :: xn,yn,zn
      real(double), pointer, dimension(:) :: vxn,vyn,vzn
+     real(double), pointer, dimension(:) :: hn                 ! Smoothing length
      ! Density of the gas particles
      real(double), pointer, dimension(:) :: rhon
      ! Temperature of the gas particles
@@ -191,8 +187,10 @@ contains
     ALLOCATE(this%xn(npart))
     ALLOCATE(this%yn(npart))
     ALLOCATE(this%zn(npart))
+    ALLOCATE(this%hn(npart))
     ALLOCATE(this%rhon(npart))
     ALLOCATE(this%temperature(npart))
+    ALLOCATE(this%gasmass(npart))
 
 
     ! -- for star positions
@@ -217,12 +215,15 @@ contains
              write (*,*) 'Error: iiigas>npart',iiigas, npart
              cycle
           endif
-          this%rhon(iiigas)        = b_rho(iii)
+          this%rhon(iiigas) = b_rho(iii)
+          this%hn(iiigas)   = b_xyzmh(5,iii)
           this%xn(iiigas)          = b_xyzmh(1,iii)
           this%yn(iiigas)          = b_xyzmh(2,iii)
           this%zn(iiigas)          = b_xyzmh(3,iii)
+          this%gasmass(iiigas)     = b_xyzmh(4,iii)
 ! b_temp contains gas particle data only
           this%temperature(iiigas) = b_temp(iiigas)
+
        elseif (b_iphase(iii) > 0) then
           iiipart=iiipart+1
           if (iiipart > nptmass) then
@@ -688,7 +689,17 @@ contains
     NULLIFY(this%rhon, this%temperature)
     NULLIFY(this%x, this%y, this%z)
     NULLIFY(this%ptmass)
-    
+
+    if ( ASSOCIATED(this%gasmass) ) then 
+       DEALLOCATE(this%gasmass)
+       NULLIFY(this%gasmass)
+    end if
+
+    if ( ASSOCIATED(this%hn) ) then 
+       DEALLOCATE(this%hn)
+       NULLIFY(this%hn)
+    end if
+
     this%inUse = .false.
 
   end subroutine kill_sph_data

@@ -273,6 +273,7 @@ contains
     integer, allocatable :: npart_arr(:),   nptmass_arr(:)
     integer, allocatable :: npart_displ(:), nptmass_displ(:)
     real(double), allocatable :: xn_tmp(:), yn_tmp(:), zn_tmp(:), rhon_tmp(:), temperature_tmp(:)
+    real(double), allocatable :: gasmass_tmp(:), hn_tmp(:)
     real(double), allocatable :: x_tmp(:),  y_tmp(:),  z_tmp(:),  ptmass_tmp(:)
     character(len=3) :: char_my_rank
     logical, parameter :: ll_testwrite = .false.
@@ -313,11 +314,13 @@ contains
      npart_displ(i) = npart_displ(i-1) + npart_arr(i-1)
   END DO
 
-  ALLOCATE ( xn_tmp(npart_all)     )
-  ALLOCATE ( yn_tmp(npart_all)     )
-  ALLOCATE ( zn_tmp(npart_all)     )
-  ALLOCATE ( rhon_tmp(npart_all)   )
+  ALLOCATE ( xn_tmp(npart_all)          )
+  ALLOCATE ( yn_tmp(npart_all)          )
+  ALLOCATE ( zn_tmp(npart_all)          )
+  ALLOCATE ( rhon_tmp(npart_all)        )
   ALLOCATE ( temperature_tmp(npart_all) )
+  ALLOCATE ( gasmass_tmp(npart_all)     )
+  ALLOCATE ( hn_tmp(npart_all)          )
 
 ! Gather the particle data on process 0 then broadcast to all. For some reason MPI_ALLGATHERV 
 ! doesn't work  for doing this. 
@@ -340,6 +343,14 @@ contains
   CALL MPI_GATHERV(this%temperature, this%npart, MPI_DOUBLE_PRECISION, temperature_tmp(:), npart_arr(:), &
        npart_displ(:), MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
   CALL MPI_BCAST(temperature_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+  CALL MPI_GATHERV(this%gasmass, this%npart, MPI_DOUBLE_PRECISION, gasmass_tmp(:), npart_arr(:), npart_displ(:), &
+                      MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+  CALL MPI_BCAST(gasmass_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
+
+  CALL MPI_GATHERV(this%hn, this%npart, MPI_DOUBLE_PRECISION, hn_tmp(:), npart_arr(:), npart_displ(:), &
+                      MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr )
+  CALL MPI_BCAST(hn_tmp(:), npart_all, MPI_DOUBLE_PRECISION, 0, MPI_COMM_WORLD, ierr)
 
 ! 3.2 Point masses
   IF ( nptmass_all > 0 ) THEN
@@ -396,12 +407,16 @@ contains
   DEALLOCATE ( this%zn          )
   DEALLOCATE ( this%rhon        )
   DEALLOCATE ( this%temperature )
+  DEALLOCATE ( this%gasmass     )
+  DEALLOCATE ( this%hn          ) 
 
   ALLOCATE   ( this%xn(npart_all)          )
   ALLOCATE   ( this%yn(npart_all)          )
   ALLOCATE   ( this%zn(npart_all)          )
   ALLOCATE   ( this%rhon(npart_all)        )
   ALLOCATE   ( this%temperature(npart_all) )
+  ALLOCATE   ( this%gasmass(npart_all)     )
+  ALLOCATE   ( this%hn(npart_all)          ) 
 
 ! 4.2 Point masses
   IF  ( nptmass_all > 0 ) THEN
@@ -424,6 +439,8 @@ contains
   this%rhon(:)        = rhon_tmp(:)
   this%temperature(:) = temperature_tmp(:)
   this%npart          = npart_all
+  this%gasmass(:)     = gasmass_tmp(:)
+  this%hn(:)          = hn_tmp(:)
 
 ! 5.2 Point masses
   IF  ( nptmass_all > 0 ) THEN
@@ -446,6 +463,11 @@ contains
         END DO 
      END IF
      close(60)
+     open (unit=60, status='replace', file='smoothing_length_'//TRIM(ADJUSTL(char_my_rank))//'.txt')
+     do i=1, this%npart
+        write(60,*) ( this%gasmass(i) / this%rhon(i) ) ** (1.0/3.0),  this%hn(i) 
+     end do
+     close(60)
   END IF
 
 ! 6. Deallocate temporary storage
@@ -454,6 +476,8 @@ contains
   DEALLOCATE ( zn_tmp          )
   DEALLOCATE ( yn_tmp          )
   DEALLOCATE ( xn_tmp          )
+  DEALLOCATE ( hn_tmp          )
+  DEALLOCATE ( gasmass_tmp     ) 
   IF  ( nptmass_all > 0 ) THEN
      DEALLOCATE ( x_tmp      )
      DEALLOCATE ( y_tmp      )

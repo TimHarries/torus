@@ -5046,41 +5046,17 @@ IF ( .NOT. gridConverged ) RETURN
 
    case ("cluster")
 
-      do i=1, 8
-         call find_n_particle_in_subcell(npart_octal(i), ave_density, sphData, thisOctal, i)
-      end do
-
       call find_n_particle_in_subcell(nparticle, ave_density, sphData, &
            thisOctal, subcell, rho_min=minDensity, rho_max=maxDensity)
-
 
       total_mass = ave_density * ( cellVolume(thisOctal, subcell)  * 1.d30 )
 
       split = .false.
 
-      ! Split if  mass in cell exceeds limit.
-      if (total_mass > amrlimitscalar .and. nparticle > 0 .and. SUM(npart_octal) > 1 ) split = .true.
-
       ! Split in order to capture density gradients. 
-      if  ( maxDensity/minDensity > 1.0e4 ) split = .true. 
+      if (  (maxDensity-minDensity) / (0.5*(maxDensity+minDensity)) > 0.5 ) split = .true. 
 
-      if (include_disc(stellar_cluster)) then
-      
-         ! If the subcell intersects with the stellar disk.. then do additional check.
-         ! This time, the cells will be split when the mass of the cell exceeds a 
-         ! critical mass specified by "amrlimitscalar.
-
-         if (stellar_disc_exists(sphData) .and.  &       
-              disc_intersects_subcell(stellar_cluster, sphData, thisOctal, subcell) ) then
-            rho_disc_ave = average_disc_density_fast(sphData, thisOctal, &
-                 subcell, stellar_cluster, scale_length)
-
-            ! units in 10^10cm
-            if (cellSize > 1.0e4  .or. (cellsize > scale_length) ) split = .true.
-
-         end if
-
-      end if
+      if (total_mass > amrlimitscalar) split = .true.
 
    case ("molcluster")
 
@@ -12669,7 +12645,22 @@ end function readparameterfrom2dmap
     real :: temp
     real(double) :: rho, rho_tmp
     integer :: subcell, i, np
-    
+    type(OCTALVECTOR) :: rVec
+    real(double), allocatable, save :: recip_sm(:)
+    real(double)  :: udist
+    logical, save :: first_time = .true.
+
+    if ( first_time .and. grid%geometry == "cluster" ) then 
+       allocate( recip_sm(sphData%npart) )
+       
+       udist = get_udist(sphData)
+       do i=1, sphData%npart 
+          recip_sm(i) = 1.0_db / (sphData%hn(i) * udist * 1.0e-10_db)
+       end do
+       recip_sm(:) = recip_sm(:) * recip_sm(:)
+       first_time = .false.
+    end if
+
     do subcell = 1, thisOctal%maxChildren
        if (thisOctal%hasChild(subcell)) then
           ! find the child
@@ -12684,15 +12675,64 @@ end function readparameterfrom2dmap
           call find_n_particle_in_subcell(np, rho_tmp, sphData, &
                thisOctal, subcell)
           if (np < 1) then
-             call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
+             if ( grid%geometry == "cluster" ) then 
+                rVec = subcellCentre(thisOctal,subcell)
+                call find_closest_sph_particle(sphData, rVec, temp, rho, recip_sm(:) )
+             else
+                call averageofNearbyCells(grid, thisOctal, subcell, temp, rho)
+             end if
              thisOctal%rho(subcell) = rho
              thisOctal%temperature(subcell) = temp
           endif
        endif
     enddo
+
+
   end subroutine estimateRhoOfEmpty
 
+  subroutine find_closest_sph_particle(sphData, rVec, temp, rho, recip_sm)
+    USE inputs_mod, only: TMinGlobal
 
+    implicit none
+
+    type(sph_data), intent(in)    :: sphData
+    type(OCTALVECTOR), intent(in) :: rVec
+    real, intent(out)             :: temp
+    real(double), intent(out)     :: rho
+    real(double), intent(in)      :: recip_sm(sphData%npart)
+
+    integer      :: ipart
+    real(double) :: this_dist, dist, sm_len
+    real(double) :: part_x, part_y, part_z ! particle positions in torus units
+    real(double) :: umass, udist, udent
+    real(double), parameter :: cmToTorus = 1.0e-10_db
+
+    umass = get_umass(sphData)  ! [g]
+    udist = get_udist(sphData)  ! [cm]
+    udent = umass/udist**3
+
+    dist = 1.0e99_db
+    rho  = amr_min_rho
+    temp = TMinGlobal
+    do ipart=1, sphData%npart
+
+       part_x = sphData%xn(ipart) * udist * cmToTorus
+       part_y = sphData%yn(ipart) * udist * cmToTorus 
+       part_z = sphData%zn(ipart) * udist * cmToTorus 
+       sm_len = sphData%hn(ipart) * udist * cmToTorus
+       ! Calculate distance**2 instead of distance as there is no need to calculate the (slow) sqrt function.
+       this_dist = ( (part_x - rVec%x)**2 + (part_y - rVec%y)**2 + (part_z - rVec%z)**2 ) * recip_sm(ipart) 
+
+       if ( this_dist < dist) then
+          dist = this_dist
+          rho  = sphData%rhon(ipart) * udent
+          temp = sphdata%temperature(ipart)
+       end if
+
+    end do
+    
+
+  end subroutine find_closest_sph_particle
 
 
   recursive subroutine updateTemps(grid, thisOctal)
