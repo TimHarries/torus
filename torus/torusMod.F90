@@ -399,7 +399,7 @@ contains
   
   call lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, & 
        nLambda, grid%lamArray, source, nSource, nLucy, massEnvelope, tthresh, &
-       lucy_undersampled, .false., IterLucy, plot_i=num_calls)
+       lucy_undersampled, .false., IterLucy )
 
   if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
 

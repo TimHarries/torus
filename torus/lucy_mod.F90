@@ -54,7 +54,6 @@ contains
     real(oct) :: adot, V, epsOverDeltaT
     real(oct) :: newT, deltaT
     real(oct) :: meanDeltaT
-    real(oct) :: dx, dy, tr(6), fg, bg
     real(double) :: dummy(1)
     real(oct), allocatable :: tempImage(:,:)
     integer :: nDT
@@ -282,9 +281,9 @@ contains
   end subroutine lucyRadiativeEquilibrium
 
   subroutine lucyRadiativeEquilibriumAMR(grid, miePhase, nDustType, nMuMie, nLambda, lamArray, &
-       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter, plot_i, ll_sph)
+       source, nSource, nLucy, massEnvelope, tthresh, percent_undersampled_min, twoD, maxIter)
     use input_variables, only : variableDustSublimation
-    use input_variables, only : smoothFactor, lambdasmooth, plot_maps, taudiff, forceLucyConv, multiLucyFiles
+    use input_variables, only : smoothFactor, lambdasmooth, taudiff, forceLucyConv, multiLucyFiles
 !    use input_variables, only : rinner, router
 #ifdef MPI
     use input_variables, only : blockhandout
@@ -370,8 +369,6 @@ contains
     real :: diffusionZoneTemp, temp
     logical :: directPhoton !, smoothconverged
     integer :: nCellsInDiffusion
-    integer, intent(in), optional :: plot_i ! index number of plot
-    logical, intent(in), optional :: ll_sph
     logical :: scatteredPhoton
 !    integer :: omp_get_num_threads, omp_get_thread_num
     real(double) :: this_bnu, fac2, hNuOverkT
