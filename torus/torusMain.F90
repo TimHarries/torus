@@ -220,14 +220,6 @@ program torus
   ! Used for multiple sources (when geometry=cluster)
   type(cluster)   :: young_cluster
 
-  ! Used in "plot_AMR_planes" and "plot_AMR_values"
-  integer :: nmarker           ! number of markers
-  real, allocatable    :: xmarker(:)  ! position of x
-  real, allocatable    :: ymarker(:)  ! position of y
-  real, allocatable    :: zmarker(:)  ! position of z
-  real    :: width_3rd_dim         ! Use this to restrict the markers to be plotted..  
-  real val_3rd_dim
-
   ! Name of the file to output various message from torus
   character(len=80) :: message
   real :: h 
@@ -319,7 +311,6 @@ program torus
   inputKappaSca = 0.
   inputKappaAbs = 0.
 
-  nMarker = 0
   lucyRadiativeEq = .false. ! this has to be initialized here
 
   hydrodynamics = .false.
@@ -376,20 +367,6 @@ program torus
 
 
   amrGridCentre = OCTALVECTOR(amrGridCentreX, amrGridCentreY, amrGridCentreZ)
-
-  
-  ! For plotting routines used later in this program
-  if (plane_for_plot == "x-y") then
-     val_3rd_dim = amrGridCentre%z
-  else if (plane_for_plot == "y-z") then
-     val_3rd_dim = amrGridCentre%x
-  else if (plane_for_plot == "z-x") then
-     val_3rd_dim = amrGridCentre%y
-  else if (plane_for_plot == "x-z") then
-     val_3rd_dim = amrGridCentre%y
-  else
-     val_3rd_dim = 0.0d0        
-  end if
 
   !
 
@@ -726,7 +703,7 @@ program torus
         if ( myRankIsZero ) call grid_info(grid, "info_grid.dat")
 
         ! Plotting the various values stored in the AMR grid.
-        call do_amr_plots
+        if ( plot_maps .and. myRankIsZero ) call writeVtkFile(grid, "rho.vtk")
      end if
 
   !=================================================================
@@ -1542,7 +1519,6 @@ CONTAINS
 
           call writeInfo("...initial adaptive grid configuration complete", TRIVIAL)
           if (doTuning) call tune(6, "Magstream grid construction.") ! stop a stopwatch
-!           call plotAMRthreeDMovie(grid, source, nsource)
 
        case DEFAULT
           call initFirstOctal(grid,amrGridCentre,amrGridSize, amr1d, amr2d, amr3d, &
@@ -1747,13 +1723,6 @@ CONTAINS
 !        endif
 
 
-        
-!     ! plotting column density (new routine in grid_mod.f90)
-!     if (grid%geometry == "luc_cir3d") then 
-!        call plot_column_density(grid, plane_for_plot,  "column_density.ps/vcps", &
-!            nmarker, xmarker, ymarker, zmarker, &
-!            width_3rd_dim, show_value_3rd_dim,val_3rd_dim)
-!     end if
 
 ! ttauri source  / central star creation code moved from here to set_up_sources by th (18/7/08)
         if (lineEmission.and.(.not.cmf)) then
@@ -1905,52 +1874,6 @@ CONTAINS
  
 end subroutine amr_grid_setup
 
-!-----------------------------------------------------------------------------------------------------------------------
-
-! Plot values of variables on AMR grid. Extracted from torusMain by D. Acreman 
-
-subroutine do_amr_plots
-
-  !     if (grid%geometry == "jets"  .or. &
-!          grid%geometry == "ttauri"  .or.  grid%geometry == "testamr" ) then
-!        call draw_cells_on_density(grid, plane_for_plot, "cells_on_density.ps/vcps")
-!        !     call draw_cells_on_density(grid, plane_for_plot, device)
-!     end if
-     
-
-  ! Do some preparation for the arrays used in plot_AMR_* which will be used later
-
-  if (grid%geometry(1:7) == "cluster" .or. grid%geometry == "molcluster") then
-     nmarker = get_nstar(young_cluster)
-     allocate(xMarker(1:nMarker))
-     allocate(yMarker(1:nMarker))
-     allocate(zMarker(1:nMarker))
-     do i = 1, nmarker
-        a_star = get_a_star(young_cluster, i)
-        xmarker(i)= a_star%position%x
-        ymarker(i)= a_star%position%y
-        zmarker(i)= a_star%position%z
-     end do
-  else
-     nmarker = 0
-     ALLOCATE(xmarker(nmarker), ymarker(nmarker), zmarker(nmarker))
-  end if
-  width_3rd_dim = amrGridSize
-
-  if ( plot_maps .and. myRankIsZero ) then
-
-  ! Plot desired AMR grid value here... This is more generalized
-  ! version of fancyAmrPlot.
-  !
-  ! See grid_mod.f90 for details.
-  !
-  ! Plotting some grid values
-
-     call  writeVtkFile(grid, "rho.vtk")
-
-  endif
-
-end subroutine do_amr_plots
 
 !-----------------------------------------------------------------------------------------------------------------------
 subroutine set_up_sources
@@ -2361,16 +2284,7 @@ subroutine do_lucyRadiativeEq
         call kill_all(young_cluster)
      endif
 
-     
 
-!     ! Plotting the slices of planes
-!     if (myRankIsZero .and. plot_maps) then
-!       call plot_AMR_planes(grid, "temperature", plane_for_plot, 3, "temperature", &
-!            .true., .false., nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-!       call plot_AMR_planes(grid, "etaCont", plane_for_plot, 3, "etaCont", .true., .false., &
-!            nmarker, xmarker, ymarker, zmarker, show_value_3rd_dim)
-!    end if
-!
      call torus_mpi_barrier
 
 end subroutine do_lucyRadiativeEq
