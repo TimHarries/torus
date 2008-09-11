@@ -7,9 +7,9 @@ amrgridcentrex 0.0
 amrgridcentrey 0.0
 amrgridcentrez 0.0
 inarcsec F
-amrgridsize 1.0e7
+amrgridsize 5.0e6
 dosmoothgrid T
-taumax 1.
+taumax 0.5 
 smoothfactor 2.
 smoothgridtau T
 lambdasmooth 5500.
