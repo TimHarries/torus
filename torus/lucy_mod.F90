@@ -517,7 +517,6 @@ contains
        call writeVtkFile(grid, tfilename, &
             valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    "/))
        
-       if (grid%geometry /= "cluster") call polardump(grid)
 
        if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
        
@@ -1121,7 +1120,7 @@ contains
 !    !
     if (myRankIsZero) call writeAMRgrid("lucy_grid_tmp.dat", .false., grid)
        
-   enddo
+ enddo
 
   end subroutine lucyRadiativeEquilibriumAMR
 

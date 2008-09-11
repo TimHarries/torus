@@ -2054,7 +2054,7 @@ endif
   "Reset diffusion zones to false if thin: ","(a,1l,a)",.true., ok, .false.)
 
  call getReal("edenstol", eDensTol, cLine, nLines, &
-  "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.01, ok, .false.) ! used for gauss-seidel sweep also
+  "Fractional change in energy density for convergence: ","(a,f7.1,a)",0.05, ok, .false.) ! used for gauss-seidel sweep also
 
 
  if (geometry(1:9) .eq. "benchmark") then

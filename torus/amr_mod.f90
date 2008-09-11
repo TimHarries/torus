@@ -4828,10 +4828,10 @@ IF ( .NOT. gridConverged ) RETURN
          if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
          if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 0.2)) split = .true.
       else
-         if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.5)) split = .true.
+         if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
       endif
 
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 31.)) then
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 91.)) then
          splitInAzimuth = .true.
       endif
       if ((r+cellsize/2.d0) < grid%rinner) split = .false.
@@ -5238,7 +5238,7 @@ IF ( .NOT. gridConverged ) RETURN
 
 
       splitInAzimuth = .false.
-      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 181.)) then
+      if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 91.)) then
          splitInAzimuth = .true.
          split = .true.
       endif
@@ -13512,6 +13512,13 @@ end function readparameterfrom2dmap
                write(*,*) "point",point
                do;enddo
             endif
+            if ((x1.lt.0.d0).and.(x2.lt.0.d0)) then
+               write(*,*) "x1, x2 ",x1,x2
+               write(*,*) "rdirection ",rdirection
+               write(*,*) "xhat ",xhat
+               write(*,*) "compx ",compx
+               write(*,*) "cosmu ",cosmu
+            endif
             distTor2 = max(x1,x2)/compX
                
             if ((d .ne. 0.).and.(r1 > 0.1d0*grid%halfSmallestSubcell)) then
@@ -13585,16 +13592,17 @@ end function readparameterfrom2dmap
          
          tVal = min(distToZboundary, distToRboundary, distToSide)
          if (tVal > 1.e29) then
-            write(*,*) "Cylindrical"
+            write(*,*) "Cylindrical ",tval
             write(*,*) tVal,compX,compZ, distToZboundary,disttorboundary, disttoside
             write(*,*) "subcen",subcen
             write(*,*) "z", currentZ
          endif
          if (tval < 0.) then
-            write(*,*) "Cylindrical"
+            write(*,*) "Cylindrical ",tval
             write(*,*) tVal,distToZboundary,disttorboundary, disttoside
             write(*,*) "subcen",subcen
             write(*,*) "z", currentZ
+            write(*,*) "disttor1, disttor2 ",disttor1,disttor2
          endif
 
       endif

@@ -1064,7 +1064,7 @@ end subroutine gaussSeidelSweep
 #endif
 
 subroutine setDiffOnTau(grid)
-    use input_variables, only : tauForce
+    use input_variables, only : tauForce, cylindrical
 #ifdef MPI
     use input_variables, only : blockHandout
     include 'mpif.h'
@@ -1080,8 +1080,8 @@ subroutine setDiffOnTau(grid)
     type(octalWrapper), allocatable :: octalArray(:) ! array containing pointers to octals
     integer :: iOctal
     integer :: iOctal_beg, iOctal_end
-!    real(double) :: kappaSca, kappaAbs, kappaExt
-    type(OCTALVECTOR) :: arrayVec(4)
+    real(double) :: kappaAbs
+    type(OCTALVECTOR) :: arrayVec(6), aVec
 #ifdef MPI
 ! Only declared in MPI case
      integer, dimension(:), allocatable :: octalsBelongRank
@@ -1092,13 +1092,13 @@ subroutine setDiffOnTau(grid)
      integer :: nDiff
      integer :: np
      integer :: my_rank
-
+     integer :: nDir
 
     np = 1
     my_rank = 1
 #endif
-
-
+    
+    ndir = 4
      arrayVec(1) = OCTALVECTOR(1.d0, 1.d-10, 1.d-10)
      arrayVec(2) = OCTALVECTOR(-1.d0, 1.d-10, 1.d-10)
      arrayVec(3) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
@@ -1154,27 +1154,43 @@ subroutine setDiffOnTau(grid)
 
              rVec = subcellCentre(thisOctal, subcell)
 	
-             tau = 1.d30
-             ntau = 20
-             do i = 1, 4
-                direction = arrayVec(i)
-                call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0, ross=.true.)
-                tau = min(tau, thisTau)
-             enddo
-             if (tau > tauForce) then
-                thisOctal%diffusionApprox(subcell) = .true.
-             else
+             call returnKappa(grid, thisOctal, subcell,  rosselandKappa = kappaAbs)
+             tau = thisOctal%subcellSize*kappaAbs*thisOctal%rho(subcell)*1.d10
+
+             if (tau < 0.1d0) then
                 thisOctal%diffusionApprox(subcell) = .false.
+             else
+                tau = 1.d30
+                ntau = 20
+                
+                if (cylindrical) then
+                   ndir = 4
+                   arrayVec(1) = OCTALVECTOR(1.d-10, 1.d-10, 1.d0)
+                   arrayVec(2) = OCTALVECTOR(1.d-10, 1.d-10,-1.d0)
+                   arrayVec(3) = OCTALVECTOR(rVec%x+1.d-10, rVec%y*1.0001d0,1.d-10)
+                   call normalize(arrayVec(3))
+                   arrayVec(4) = (-1.d0)*arrayVec(3)
+!                   arrayVec(5) = arrayVec(3).cross.arrayVec(1)
+!                   call normalize(arrayVec(5))
+!                   arrayVec(6) = (-1.d0)*arrayVec(5)
+                endif
+
+
+
+
+                do i = 1, nDir
+                   direction = arrayVec(i)
+                   call tauAlongPath(ilambda, grid, rVec, direction, thistau, 100.d0, ross=.true.)
+                   tau = min(tau, thisTau)
+                enddo
+                if (tau > tauForce) then
+                   thisOctal%diffusionApprox(subcell) = .true.
+                else
+                   thisOctal%diffusionApprox(subcell) = .false.
+                endif
+
+
              endif
-
-
-!             call returnKappa(grid, thisOctal, subcell, ilambda=ilambda, kappaSca=kappaSca, kappaAbs=kappaAbs)
-!             kappaExt = kappaAbs + kappaSca
-
-             
-!             tau = thisOctal%subcellSize * kappaExt
-!             thisOctal%biasCont3D(subcell) = max(1.d-4,exp(-tau))
-
 
           endif
 
