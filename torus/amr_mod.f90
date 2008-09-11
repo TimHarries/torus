@@ -25,6 +25,7 @@ MODULE amr_mod
   USE romanova_class
   USE magField
   USE mpi_global_mod
+  USE parallel_mod, ONLY: torus_abort
 
   IMPLICIT NONE
 
@@ -4202,7 +4203,7 @@ IF ( .NOT. gridConverged ) RETURN
       prob = boundaryProblem
     else
       if (boundaryProblem) then
-        stop 1
+        call torus_abort("Torus aborting due to panic in findSubcellLocal")
       endif
     endif
                                  

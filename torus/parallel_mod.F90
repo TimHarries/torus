@@ -522,6 +522,41 @@ contains
 
 #endif
 
+!-------------------------------------------------------------------------------
+
+! Abort Torus. If the message argument is present this is used as the 
+! error message, otherwise a generic abort message is given. 
+!
+! D. Acreman, September 2008
+
+  subroutine torus_abort(message)
+
+    USE messages_mod
+
+    implicit none
+
+#ifdef MPI
+    include 'mpif.h'
+#endif
+
+    character(len=*), optional, intent(in) :: message
+    integer :: ierr
+
+    if ( present(message) ) then
+       call writeInfo(message, IMPORTANT)
+    else
+       call writeInfo("TORUS aborting", IMPORTANT)
+    end if
+
+#ifdef MPI
+    call mpi_abort(MPI_COMM_WORLD, ierr)
+#else
+    STOP
+#endif
+
+  end subroutine torus_abort
+
+
 end module parallel_mod
 
 
