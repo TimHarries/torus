@@ -1082,6 +1082,7 @@ subroutine setDiffOnTau(grid)
     integer :: iOctal_beg, iOctal_end
     real(double) :: kappaAbs
     type(OCTALVECTOR) :: arrayVec(6), aVec
+     integer :: nDir
 #ifdef MPI
 ! Only declared in MPI case
      integer, dimension(:), allocatable :: octalsBelongRank
@@ -1092,7 +1093,6 @@ subroutine setDiffOnTau(grid)
      integer :: nDiff
      integer :: np
      integer :: my_rank
-     integer :: nDir
 
     np = 1
     my_rank = 1

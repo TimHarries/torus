@@ -4824,12 +4824,12 @@ IF ( .NOT. gridConverged ) RETURN
       rd = grid%rOuter / 2. 
       hr = height * (r/rd)**1.125
 
-      if (.not.thisOctal%cylindrical) then
+!      if (.not.thisOctal%cylindrical) then
          if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
          if ((abs(cellcentre%z)/hr > 5.).and.(abs(cellcentre%z/cellsize) < 0.2)) split = .true.
-      else
-         if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
-      endif
+!      else
+!         if ((abs(cellcentre%z)/hr < 10.) .and. (cellsize/hr > 0.2)) split = .true.
+!      endif
 
       if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 91.)) then
          splitInAzimuth = .true.
@@ -9974,14 +9974,14 @@ end function readparameterfrom2dmap
     dest%probDistCont     = source%probDistCont
     dest%Ne               = source%Ne
     dest%NH               = source%NH
-    dest%NHI              = source%NHI
-    dest%boundaryCondition= source%boundaryCondition
-    dest%boundaryPartner  = source%boundaryPartner
-    dest%NHII             = source%NHII
-    dest%NHeI             = source%NHeI
-    dest%NHeII            = source%NHeII
-    dest%Hheating         = source%Hheating
-    dest%Heheating        = source%Heheating
+    if (associated(dest%NHI)) dest%NHI              = source%NHI
+    if (associated(dest%boundaryCondition)) dest%boundaryCondition = source%boundaryCondition
+    if (associated(dest%boundaryPartner)) dest%boundaryPartner  = source%boundaryPartner
+    if (associated(dest%NHII)) dest%NHII             = source%NHII
+    if (associated(dest%NHeI)) dest%NHeI             = source%NHeI
+    if (associated(dest%NHeII)) dest%NHeII            = source%NHeII
+    if (associated(dest%Hheating)) dest%Hheating         = source%Hheating
+    if (associated(dest%Heheating)) dest%Heheating        = source%Heheating
     dest%oldFrac          = source%oldFrac
     dest%nTot             = source%nTot
     dest%inStar           = source%inStar
@@ -10000,36 +10000,36 @@ end function readparameterfrom2dmap
     dest%microturb        = source%microturb
 
 
-    dest%x_i_minus_1      = source%x_i_minus_1
-    dest%x_i              = source%x_i
-    dest%x_i_plus_1       = source%x_i_plus_1
+    if (associated(dest%x_i_minus_1)) dest%x_i_minus_1      = source%x_i_minus_1
+    if (associated(dest%x_i)) dest%x_i              = source%x_i
+    if (associated(dest%x_i_plus_1)) dest%x_i_plus_1       = source%x_i_plus_1
 
-    dest%q_i_minus_2      = source%q_i_minus_2
-    dest%q_i_minus_1      = source%q_i_minus_1
-    dest%q_i              = source%q_i
-    dest%q_i_plus_1       = source%q_i_plus_1
+    if (associated(dest%q_i_minus_2)) dest%q_i_minus_2      = source%q_i_minus_2
+    if (associated(dest%q_i_minus_1)) dest%q_i_minus_1      = source%q_i_minus_1
+    if (associated(dest%q_i)) dest%q_i              = source%q_i
+    if (associated(dest%q_i_plus_1)) dest%q_i_plus_1       = source%q_i_plus_1
 
-    dest%flux_i_minus_1   = source%flux_i_minus_1
-    dest%flux_i           = source%flux_i
-    dest%flux_i_plus_1    = source%flux_i_plus_1
+    if (associated(dest%flux_i_minus_1)) dest%flux_i_minus_1   = source%flux_i_minus_1
+    if (associated(dest%flux_i)) dest%flux_i           = source%flux_i
+    if (associated(dest%flux_i_plus_1)) dest%flux_i_plus_1    = source%flux_i_plus_1
 
-    dest%pressure_i_minus_1   = source%pressure_i_minus_1
-    dest%pressure_i           = source%pressure_i
-    dest%phi_i                = source%phi_i
-    dest%pressure_i_plus_1    = source%pressure_i_plus_1
+    if (associated(dest%pressure_i_minus_1)) dest%pressure_i_minus_1   = source%pressure_i_minus_1
+    if (associated(dest%pressure_i)) dest%pressure_i           = source%pressure_i
+    if (associated(dest%phi_i)) dest%phi_i                = source%phi_i
+    if (associated(dest%pressure_i_plus_1)) dest%pressure_i_plus_1    = source%pressure_i_plus_1
 
-    dest%u_interface          = source%u_interface
-    dest%rLimit               = source%rLimit
-    dest%phiLimit             = source%phiLimit
-    dest%ghostCell            = source%ghostCell
-    dest%edgeCell             = source%edgeCell
-    dest%feederCell           = source%feederCell
-    dest%energy               = source%energy
-    dest%rhou                 = source%rhou
-    dest%rhov                 = source%rhov
-    dest%rhow                 = source%rhow
-    dest%rhoe                 = source%rhoe
-    dest%refinedLastTime      = source%refinedLastTime
+    if (associated(dest%u_interface)) dest%u_interface          = source%u_interface
+    if (associated(dest%rLimit)) dest%rLimit               = source%rLimit
+    if (associated(dest%phiLimit)) dest%phiLimit             = source%phiLimit
+    if (associated(dest%ghostCell)) dest%ghostCell            = source%ghostCell
+    if (associated(dest%edgeCell)) dest%edgeCell             = source%edgeCell
+    if (associated(dest%feederCell)) dest%feederCell           = source%feederCell
+    if (associated(dest%energy)) dest%energy               = source%energy
+    if (associated(dest%rhou)) dest%rhou                 = source%rhou
+    if (associated(dest%rhov)) dest%rhov                 = source%rhov
+    if (associated(dest%rhow)) dest%rhow                 = source%rhow
+    if (associated(dest%rhoe)) dest%rhoe                 = source%rhoe
+    if (associated(dest%refinedLastTime)) dest%refinedLastTime      = source%refinedLastTime
 
     if (associated(source%mpiBoundaryStorage)) then
        allocate(dest%mpiBoundaryStorage(SIZE(source%mpiBoundaryStorage, 1),&

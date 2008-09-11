@@ -140,12 +140,12 @@ MODULE octal_mod
     real(double), pointer :: jnugrid(:,:) => null() ! molecular level populations
     real(double), pointer :: bnu(:,:) => null() ! 
     real, pointer :: molAbundance(:) => null() ! molecular abundances ! only 1D because only deal with one molecule at a time
-    real(double), DIMENSION(8) :: NHI            ! neutral H
-    real(double), DIMENSION(8) :: NHII            ! HII
-    real(double), DIMENSION(8) :: NHeI            ! HeI
-    real(double), DIMENSION(8) :: NHeII            ! HeII
-    real(double), dimension(8) :: Hheating
-    real(double), dimension(8) :: Heheating
+    real(double), pointer, DIMENSION(:) :: NHI => null()           ! neutral H
+    real(double),  pointer, DIMENSION(:) :: NHII  => null()           ! HII
+    real(double),  pointer, DIMENSION(:) :: NHeI => null()            ! HeI
+    real(double),  pointer, DIMENSION(:) :: NHeII => null()            ! HeII
+    real(double),  pointer, dimension(:) :: Hheating => null()
+    real(double),  pointer, dimension(:) :: Heheating => null()
    
     real(double), dimension(:,:), pointer  :: ionFrac => null()
     real(double), dimension(:,:), pointer  :: photoIonCoeff  => null()
@@ -176,26 +176,26 @@ MODULE octal_mod
     logical, dimension(8)                 :: diffusionApprox
     logical, dimension(8) :: undersampled
     real, dimension(8) :: nDiffusion
-    integer :: boundaryCondition(8)
+    integer, pointer :: boundaryCondition(:) => null()
 
     ! hydrodynamics
-    real(double) :: q_i(8), q_i_plus_1(8), q_i_minus_1(8), q_i_minus_2(8)
-    real(double) :: x_i(8), x_i_plus_1(8), x_i_minus_1(8)
-    real(double) :: u_interface(8), u_i_plus_1(8), u_i_minus_1(8)
-    real(double) :: flux_i(8), flux_i_plus_1(8), flux_i_minus_1(8)
-    real(double) :: phiLimit(8), rLimit(8)
-    logical :: ghostCell(8), feederCell(8)
-    logical :: edgeCell(8), refinedLastTime(8)
-    real(double) :: rhou(8),  rhov(8), rhow(8), rhoE(8), energy(8)
-    real(double) :: pressure_i(8), pressure_i_plus_1(8), pressure_i_minus_1(8)
+    real(double), pointer :: q_i(:) => null(), q_i_plus_1(:) => null(), q_i_minus_1(:) => null(), q_i_minus_2(:) => null()
+    real(double), pointer :: x_i(:) => null(), x_i_plus_1(:) => null(), x_i_minus_1(:) => null()
+    real(double), pointer :: u_interface(:) => null(), u_i_plus_1(:) => null(), u_i_minus_1(:) => null()
+    real(double), pointer :: flux_i(:) => null(), flux_i_plus_1(:) => null(), flux_i_minus_1(:) => null()
+    real(double), pointer :: phiLimit(:) => null(), rLimit(:) => null()
+    logical, pointer :: ghostCell(:) => null(), feederCell(:) => null()
+    logical, pointer :: edgeCell(:) => null(), refinedLastTime(:) => null()
+    real(double), pointer :: rhou(:) => null(),  rhov(:) => null(), rhow(:) => null(), rhoE(:) => null(), energy(:) => null()
+    real(double), pointer :: pressure_i(:) => null(), pressure_i_plus_1(:) => null(), pressure_i_minus_1(:) => null()
     real(double), pointer :: tempStorage(:,:) => null()
-    type(OCTALVECTOR) :: boundaryPartner(8)
+    type(OCTALVECTOR), pointer :: boundaryPartner(:) => null()
+    real(double), pointer :: phi_i(:) => null(), phi_i_plus_1(:) => null(), phi_i_minus_1(:) => null()
 
-    real(double) :: w(8,4), fluxc(8,3),  a(8,3)
-    real(double) :: ac2(8,3), flux(8,3), ac1(8,3)
-    real(double) :: qState(8,5), fluxvector(8,5), newFluxVector(8,5), qstate_i_minus_1(8,5)
-    real(double) :: rho_i_minus_1(8), rho_i_plus_1(8)
-    real(double) :: phi_i(8), phi_i_plus_1(8), phi_i_minus_1(8)
+!    real(double) :: w(8,4), fluxc(8,3),  a(8,3)
+!    real(double) :: ac2(8,3), flux(8,3), ac1(8,3)
+!    real(double) :: qState(8,5), fluxvector(8,5), newFluxVector(8,5), qstate_i_minus_1(8,5)
+!    real(double) :: rho_i_minus_1(8), rho_i_plus_1(8)
   END TYPE octal
  
 CONTAINS 
