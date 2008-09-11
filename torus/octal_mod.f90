@@ -173,6 +173,9 @@ MODULE octal_mod
     real(double), dimension(:,:), pointer        :: dustTypeFraction => null() ! dust type fraction (sum=1)
     INTEGER :: parentSubcell
     logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
+
+
+
     logical, dimension(8)                 :: diffusionApprox
     logical, dimension(8) :: undersampled
     real, dimension(8) :: nDiffusion

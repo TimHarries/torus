@@ -5278,9 +5278,9 @@ IF ( .NOT. gridConverged ) RETURN
       r = sqrt(cellcentre%x**2 + cellcentre%y**2)
       hr = height * (r / (100.d0*autocm/1.d10))**betadisc
 
-      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 2.)) split = .true.
+!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 2.)) split = .true.
 
-!      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
+      if ((abs(cellcentre%z)/hr < 7.) .and. (cellsize/hr > 0.2)) split = .true.
 
       if ((abs(cellcentre%z)/hr > 2.).and.(abs(cellcentre%z/cellsize) < 2.)) split = .true.
 
@@ -5294,12 +5294,12 @@ IF ( .NOT. gridConverged ) RETURN
          split = .true.
       endif
 
-      if (abs(cellCentre%z) < rinner/10.) then
+      if (abs(cellCentre%z) < rinner/2.) then
          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
             splitInAzimuth = .true.
             split = .true.
          endif
-!         if ((r < rinner).and.(thisOctal%subcellSize > (0.1*rinner))) split = .true.
+         if ((r < rinner).and.(thisOctal%subcellSize > (0.1*rinner))) split = .true.
       endif
 
       if ((r > rOuter*1.1d0).and.(thisOctal%nDepth > 4)) then
@@ -9006,10 +9006,11 @@ end function readparameterfrom2dmap
     thisOctal%rho(subcell) = 1.d-30
     thisOctal%nh(subcell) =  thisOctal%rho(subcell) / mHydrogen
     thisOctal%ne(subcell) = 1.d-5 !thisOctal%nh(subcell)
-    thisOctal%nhi(subcell) = 1.e-5
-    thisOctal%nhii(subcell) = thisOctal%ne(subcell)
-    thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
-
+    if (photoionization) then
+       thisOctal%nhi(subcell) = 1.e-5
+       thisOctal%nhii(subcell) = thisOctal%ne(subcell)
+       thisOctal%nHeI(subcell) = 0.d0 !0.1d0 *  thisOctal%nH(subcell)
+    endif
     if (associated(thisOctal%ionFrac)) then
        thisOctal%ionFrac(subcell,1) = 1.
        thisOctal%ionFrac(subcell,2) = 1.e-5
@@ -9936,7 +9937,8 @@ end function readparameterfrom2dmap
       IF (ASSOCIATED(thisOctal%ghostCell)) DEALLOCATE(thisOctal%ghostCell,STAT=error); NULLIFY(thisOctal%ghostCell)
       IF (ASSOCIATED(thisOctal%feederCell)) DEALLOCATE(thisOctal%feederCell,STAT=error); NULLIFY(thisOctal%feederCell)
       IF (ASSOCIATED(thisOctal%edgeCell)) DEALLOCATE(thisOctal%edgeCell,STAT=error); NULLIFY(thisOctal%edgeCell)
-      IF (ASSOCIATED(thisOctal%refinedLastTime)) DEALLOCATE(thisOctal%refinedLastTime,STAT=error); NULLIFY(thisOctal%refinedLastTime)
+      IF (ASSOCIATED(thisOctal%refinedLastTime)) &
+           DEALLOCATE(thisOctal%refinedLastTime,STAT=error); NULLIFY(thisOctal%refinedLastTime)
 
 
       IF (ASSOCIATED(thisOctal%rhou)) DEALLOCATE(thisOctal%rhou,STAT=error); NULLIFY(thisOctal%rhou)
@@ -9947,11 +9949,15 @@ end function readparameterfrom2dmap
 
 
       IF (ASSOCIATED(thisOctal%x_i)) DEALLOCATE(thisOctal%x_i,STAT=error); NULLIFY(thisOctal%pressure_i)
-      IF (ASSOCIATED(thisOctal%pressure_i_plus_1)) DEALLOCATE(thisOctal%pressure_i_plus_1,STAT=error); NULLIFY(thisOctal%pressure_i_plus_1)
-      IF (ASSOCIATED(thisOctal%pressure_i_minus_1)) DEALLOCATE(thisOctal%pressure_i_minus_1,STAT=error); NULLIFY(thisOctal%pressure_i_minus_1)
+      IF (ASSOCIATED(thisOctal%pressure_i_plus_1)) &
+           DEALLOCATE(thisOctal%pressure_i_plus_1,STAT=error); NULLIFY(thisOctal%pressure_i_plus_1)
+      IF (ASSOCIATED(thisOctal%pressure_i_minus_1)) &
+           DEALLOCATE(thisOctal%pressure_i_minus_1,STAT=error); NULLIFY(thisOctal%pressure_i_minus_1)
 
-      IF (ASSOCIATED(thisOctal%boundaryPartner)) DEALLOCATE(thisOctal%boundaryPartner,STAT=error); NULLIFY(thisOctal%boundaryPartner)
-      IF (ASSOCIATED(thisOctal%boundaryCondition)) DEALLOCATE(thisOctal%boundaryCondition,STAT=error); NULLIFY(thisOctal%boundaryCondition)
+      IF (ASSOCIATED(thisOctal%boundaryPartner)) &
+           DEALLOCATE(thisOctal%boundaryPartner,STAT=error); NULLIFY(thisOctal%boundaryPartner)
+      IF (ASSOCIATED(thisOctal%boundaryCondition)) &
+           DEALLOCATE(thisOctal%boundaryCondition,STAT=error); NULLIFY(thisOctal%boundaryCondition)
 
       IF (ASSOCIATED(thisOctal%phi_i)) DEALLOCATE(thisOctal%phi_i,STAT=error); NULLIFY(thisOctal%phi_i)
       IF (ASSOCIATED(thisOctal%phi_i_plus_1)) DEALLOCATE(thisOctal%phi_i_plus_1,STAT=error); NULLIFY(thisOctal%phi_i_plus_1)
