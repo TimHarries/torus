@@ -17,7 +17,7 @@ ${MYF90} -c -o particle_pos.o particle_pos.f90
 ${MYF90} -c -o sphbench.o     sphbench.F90
 
 echo Linking
-${MYF90} -o sphbench sphbench.o particle_pos.o -L../build -ltorus -L${HOME}/cfitsio/lib -lcfitsio
+${MYF90} -o sphbench sphbench.o particle_pos.o -L. -ltorus -L${HOME}/cfitsio/lib -lcfitsio
 
 echo Done
 
