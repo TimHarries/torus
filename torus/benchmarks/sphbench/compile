@@ -1,11 +1,25 @@
-#!/bin/bash
-echo Compiling
-g95 -c -o particle_pos.o particle_pos.f90
-g95 -c -o sphbench.o     sphbench.f90
+#!/bin/ksh
+
+echo Compiling SPH-Bench for ${SYSTEM} system
+
+case ${SYSTEM} in 
+
+    intelmac) export MYF90="g95";;
+
+    ompi) export MYF90="mpif90 -DMPI";;
+
+	*) echo "Unrecognised system"
+	   exit 1 ;;
+
+esac
+
+${MYF90} -c -o particle_pos.o particle_pos.f90
+${MYF90} -c -o sphbench.o     sphbench.F90
 
 echo Linking
-g95 -o sphbench sphbench.o particle_pos.o -L../build -ltorus -L${HOME}/lib/pgplot -lpgplot -L${HOME}/cfitsio/lib -lcfitsio
+${MYF90} -o sphbench sphbench.o particle_pos.o -L../build -ltorus -L${HOME}/cfitsio/lib -lcfitsio
 
 echo Done
+
 exit
 

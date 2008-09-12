@@ -7,7 +7,11 @@ use particle_pos_mod, only: particle_pos
 
   implicit none
 
-! number of particles
+#ifdef MPI
+  include 'mpif.h'
+#endif
+
+! Total number of particles
   integer, parameter :: npart=1e6
 
 ! loop and particle index
@@ -23,22 +27,23 @@ use particle_pos_mod, only: particle_pos
   real(db) :: x, y 
 
 ! Torus arguments
-  integer, parameter :: b_idim  = npart + 1 ! Set maximum array sizes
-  integer, parameter :: b_npart = npart + 1 ! Gas particles + one point mass
+  integer            :: b_idim              ! Maximum array size
+  integer            :: b_npart
   integer, parameter :: b_nactive=-99       ! Not used
-  integer, parameter :: b_nptmass = 1       ! Number of point masses
-  integer, parameter :: b_num_gas = npart   ! Number of gas particles
-  real(kind=8) :: b_xyzmh(5,b_idim)
-  real(kind=4) :: b_rho(b_idim)
-  integer(kind=1) :: b_iphase(b_idim) 
+  integer            :: b_nptmass           ! Number of point masses
+  integer            :: b_num_gas           ! Number of gas particles
+  real(kind=8),allocatable     :: b_xyzmh(:,:)
+  real(kind=4),allocatable     :: b_rho(:)
+  integer(kind=1), allocatable :: b_iphase(:) 
   real(kind=8), parameter :: b_udist=1.0 ! unit of distance
   real(kind=8), parameter :: b_umass=1.0 ! units of mass
   real(kind=8), parameter :: b_utime=1.0 ! Units of time
   real(kind=8), parameter :: year = 60.0*60.0*24.0*365.25 
   real(kind=8), parameter :: b_time=182.0e6_db * year ! Current time, used as age of star
-  real(kind=8) :: b_temp(b_num_gas)
+  real(kind=8), allocatable :: b_temp(:)
   real(kind=8), parameter :: temp_min=3.0
-  real(kind=8), parameter :: total_gas_mass=0.011  ! Taken from 2D benchmark
+  real(kind=8), parameter :: total_disc_mass=0.011  ! Taken from 2D benchmark
+  real(kind=8)            :: total_gas_mass
   character(len=11), parameter :: file_tag = "sphbench   "
 
 ! Source parameters
@@ -60,16 +65,43 @@ use particle_pos_mod, only: particle_pos
 
   real :: ran_num
 
+  integer :: ierr, my_rank, nproc
+
 ! Begin executable statments -------------
 
 ! 1. Set up gas particles 
 
-  call particle_pos(npart)
+#ifdef MPI
+  call mpi_init(ierr) 
+  call mpi_comm_rank(MPI_COMM_WORLD, my_rank, ierr)
+  call mpi_comm_size(MPI_COMM_WORLD, nproc, ierr)
+#else
+  my_rank = 0
+  nproc   = 1
+#endif
+
+  total_gas_mass = total_disc_mass / real(nproc) 
+  b_num_gas      = npart / nproc  ! number of gas particles for this MPI process
+
+  if (my_rank == 0) write(*,*) "SPH benchmark: generating particles"
+
+  if (my_rank == 0) then
+     b_idim = b_num_gas + 1
+  else
+     b_idim = b_num_gas
+  end if
+
+  allocate ( b_xyzmh(5,b_idim) )
+  allocate ( b_rho(b_idim)     )
+  allocate ( b_iphase(b_idim)  )
+  allocate ( b_temp(b_num_gas) )
+
+  call particle_pos( b_num_gas )
 
 ! Set up gas particle information
   open (unit=62, status="old", file="part.dat")
   open (unit=63, status="replace", file="part_ascii.dat")
-  part_loop:  do ipart=1, npart
+  part_loop:  do ipart=1, b_num_gas
 
      read(62,*) r, z
      r = r * auToCm
@@ -98,7 +130,7 @@ use particle_pos_mod, only: particle_pos
      b_xyzmh(2,ipart) = y
      b_xyzmh(3,ipart) = z
 ! Set particle mass assuming equal mass for all particles 
-     b_xyzmh(4,ipart) = msol * total_gas_mass / real(npart, kind=db)
+     b_xyzmh(4,ipart) = msol * total_gas_mass / real(b_num_gas, kind=db)
 ! Smoothing length based on particle mass and density
      b_xyzmh(5,ipart) = ( b_xyzmh(4,ipart) / b_rho(ipart) ) ** (1.0/3.0)
 
@@ -110,20 +142,30 @@ use particle_pos_mod, only: particle_pos
   close(63)
 
 ! Initialise phase flag. Gas particles are denoted by zero.
-   b_iphase(1:npart) = 0 
+   b_iphase(1:b_num_gas) = 0 
 
-   b_temp(1:npart) = temp_min
+   b_temp(1:b_num_gas) = temp_min
 
 ! 2. Set up point mass properties
 
 ! Set properties of the point mass
-   b_iphase(npart+1)  = 1
-   b_xyzmh(1,npart+1) = 0.0
-   b_xyzmh(2,npart+1) = 0.0
-   b_xyzmh(3,npart+1) = 0.0
-   b_xyzmh(4,npart+1) = source_mass
 
-   
+   if (my_rank == 0) then 
+
+      b_npart            = b_num_gas + 1
+      b_nptmass          = 1
+      b_iphase(b_num_gas+1)  = 1
+      b_xyzmh(1,b_num_gas+1) = 0.0
+      b_xyzmh(2,b_num_gas+1) = 0.0
+      b_xyzmh(3,b_num_gas+1) = 0.0
+      b_xyzmh(4,b_num_gas+1) = source_mass
+
+   else
+
+      b_npart   = b_num_gas
+      b_nptmass = 0
+
+   endif
 
 ! 3. Call torus
 
@@ -133,5 +175,14 @@ use particle_pos_mod, only: particle_pos
              b_udist, b_umass,       b_utime,   b_time,    b_temp,    &
             temp_min, total_gas_mass, file_tag )
 
+  deallocate ( b_xyzmh  )
+  deallocate ( b_rho    )
+  deallocate ( b_iphase )
+  deallocate ( b_temp   ) 
+
+#ifdef MPI
+  call MPI_FINALIZE(ierr)
+#endif
 
 end program sphbench
+
