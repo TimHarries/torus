@@ -38,6 +38,13 @@ ln -s ../build_${this_system}/torus.${this_system}
 cp -r ../torus/benchmarks/molebench/* .
 cp ../torus/data/hco_benchmark.mol .
 
+# Prepare cylindrical polar version of disc benchmark
+cd ../run_${sys}_disc_cylindrical
+ln -s ../build_${this_system}/torus.${this_system}
+cp -r ../torus/benchmarks/disc_cylindrical/parameters.dat .
+cp -r ../torus/benchmarks/disc/sed* .
+cp -r ../torus/benchmarks/disc/compare* .
+
 cd ..
 
 }
@@ -69,7 +76,6 @@ ln -s ${model_file} results.dat
 
 sphbench()
 {
-export SYSTEM=intelmac
 rm -rf sphbench
 mkdir sphbench
 cd sphbench
@@ -79,13 +85,13 @@ echo "Making Torus library"
 mkdir build
 cd build 
 ln -s ../../torus/* .
-make depends > compile_log
+make depends > compile_log 2>&1
 make debug=yes lib >> compile_log 2>&1 
 
 echo "Compiling sphbench"
 cp ../../torus/benchmarks/sphbench/*.f90 .
 cp ../../torus/benchmarks/sphbench/compile .
-./compile >> compile_log
+./compile >> compile_log 2>&1 
 cd ..
 
 mkdir run
@@ -97,7 +103,7 @@ cp ../../torus/benchmarks/disc/sed* .
 ln -s ../../torus/isochrones/iso* .
 ln -s ../build/sphbench .
 echo "Running sphbench"
-./sphbench > run_log 2>&1
+/usr/local/bin/mpirun -np 4 sphbench > run_log 2>&1
 }
 
 # Main part of script starts here ------------------------------------------
@@ -133,35 +139,48 @@ cd ${test_dir}
 
 echo Checking out torus from CVS archive...
 rm -rf torus
-/usr/bin/cvs -q co torus > cvs_log.txt
+/usr/bin/cvs -q co torus > cvs_log.txt 2>&1 
 
 
 for sys in ${sys_to_test}; do
-    rm -rf build_${sys} run_${sys} run_${sys}_molebench
-    mkdir  build_${sys} run_${sys} run_${sys}_molebench
+
+    rm -rf build_${sys} run_${sys} run_${sys}_molebench run_${sys}_disc_cylindrical
+    mkdir  build_${sys} run_${sys} run_${sys}_molebench run_${sys}_disc_cylindrical
     build_and_prepare ${sys}
+
+    echo "g95 environment variables are:"
+    printenv | grep -i g95
+
+    cd run_${sys}
+    echo 
+    echo "Running torus.${sys}"
+    /usr/local/bin/mpirun -np 4 torus.${sys} > run_log_${sys}.txt 2>&1
+    check_benchmark
+    cd ..
+
+    cd run_${sys}_molebench
+    echo
+    echo "Running torus.${sys} molebench"
+    /usr/local/bin/mpirun -np 4 torus.${sys} > run_log_${sys}.txt 2>&1
+    check_molebench
+    cd ..
+
+    sphbench
+    echo "" > check_log 
+    echo "SPHBENCH RESULTS" >> check_log
+    check_benchmark >> check_log 2>&1 
+    cd ../..
+
+    cd run_${sys}_disc_cylindrical
+    echo
+    echo "Running torus.${sys} cylindrical polar disc benchmark"
+    /usr/local/bin/mpirun -np 4 torus.${sys} > run_log_${sys}.txt 2>&1
+    echo "" > check_log 
+    echo "CYLINDIRCAL POLAR DISC BENCHMARK RESULTS" >> check_log
+    check_benchmark >> check_log 2>&1 
+    cd ..
+
 done
-
-echo "g95 environment variables are:"
-printenv | grep -i g95
-
-cd run_ompi
-echo 
-echo "Running torus.ompi"
-/usr/local/bin/mpirun -np 4 torus.ompi > run_log_ompi.txt 2>&1
-check_benchmark
-cd ..
-
-cd run_ompi_molebench
-echo
-echo "Running torus.ompi molebench"
-/usr/local/bin/mpirun -np 4 torus.ompi > run_log_ompi.txt 2>&1
-check_molebench
-cd ..
-
-sphbench
-check_benchmark > check_log 
-cd ..
 
 exit
 
