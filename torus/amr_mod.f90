@@ -321,7 +321,7 @@ CONTAINS
     use input_variables, only : cylindrical, photoionization, molecular, cmf, nAtom
 
     IMPLICIT NONE
-    
+    type(OCTAL), pointer :: thisOctal
     TYPE(gridtype), INTENT(INOUT)    :: grid 
     TYPE(octalVector), INTENT(IN)    :: centre ! coordinates of the grid centre
     REAL, INTENT(IN)                 :: size 
@@ -398,28 +398,10 @@ CONTAINS
        grid%octreeRoot%centre%z = 0.d0
     endif
     grid%octreeRoot%indexChild = -999 ! values are undefined
-    grid%octreeRoot%probDistLine = 0.0
-    grid%octreeRoot%probDistCont = 0.0
     NULLIFY(grid%octreeRoot%parent)   ! tree root does not have a parent
     NULLIFY(grid%octreeRoot%child)    ! tree root does not yet have children
     ! initialize some values
-    grid%octreeRoot%biasLine3D = 1.0 
-    grid%octreeRoot%biasCont3D = 1.0 
-    grid%octreeRoot%velocity = vector(1.e-30,1.e-30,1.e-30)
-    grid%octreeRoot%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
-    grid%octreeRoot%chiLine = -9.9e9
-    grid%octreeRoot%etaLine = -9.9e9
-    grid%octreeRoot%etaCont = -9.9e9 
-    grid%octreeRoot%nDirectPhotons = -1
     grid%octreeRoot%rho = 1.e-30
-    grid%octreeRoot%N = -9.9e9
-    grid%octreeRoot%Ne = -9.9e9
-    grid%octreeRoot%nh2 = 1.d-30
-    grid%octreeRoot%microturb = 1.d-10
-    grid%octreeRoot%nTot = -9.9e9
-    grid%octreeRoot%changed = .false.
-    grid%octreeRoot%dustType = 1
-
 
     if (cmf) then
        allocate(grid%octreeroot%atomAbundance(8, nAtom))
@@ -434,14 +416,7 @@ CONTAINS
        grid%Octreeroot%molAbundance = 1.e-30
     endif
 
-    ALLOCATE(grid%octreeRoot%dusttypefraction(8,  nDustType))
-    grid%octreeroot%dustTypeFraction(1:8,1:nDustType) = 0.d0
-    grid%octreeroot%dustTypeFraction(1:8,1) = 1.d0
-    grid%octreeRoot%inflow = .true.
     grid%octreeRoot%gasOpacity = .false.
-    grid%octreeRoot%diffusionApprox = .false.
-    grid%octreeRoot%nDiffusion = 0.
-    grid%octreeRoot%oldFrac = 1.e-5
     if (photoionization) then
        allocate(grid%octreeRoot%ionFrac(1:grid%octreeRoot%maxChildren, 1:grid%nIon))
        allocate(grid%octreeRoot%photoionCoeff(1:grid%octreeRoot%maxChildren, 1:grid%nIon))
@@ -452,6 +427,18 @@ CONTAINS
     if (associated(grid%octreeRoot%photoIonCoeff)) then
        grid%octreeRoot%photoIonCoeff = 0.d0
     endif
+
+    if (molecular) then
+       thisOctal => grid%octreeRoot
+       call allocateAttribute(thisOctal%molAbundance, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%temperatureGas, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%temperatureDust, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nh2, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%molmicroturb, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%cornerVelocity, 27)
+    endif
+
 
     select case (grid%geometry)
        case("cluster","molcluster")
@@ -541,11 +528,13 @@ CONTAINS
                          isample, stream)
     ! adds one new child to an octal
 
-    USE input_variables, ONLY : nDustType, cylindrical, photoionization, mie, molecular, cmf, nAtom, useDust, &
-                                TMinGlobal, hydrodynamics
+    USE input_variables, ONLY : cylindrical, &
+         photoionization, molecular, cmf, nAtom,  &
+                                TMinGlobal, hydrodynamics, mie, nDustType
     IMPLICIT NONE
     
     TYPE(octal), TARGET, INTENT(INOUT) :: parent ! the parent octal 
+    type(octal), pointer :: thisOctal
     INTEGER, INTENT(IN)  :: iChild     ! the label (1-8) of the subcell gaining the child 
     TYPE(gridtype), INTENT(INOUT) :: grid ! need to pass the grid to routines that
                                           !   calculate the variables stored in
@@ -683,6 +672,40 @@ CONTAINS
        endif
     endif
 
+    ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
+    ! set up the new child's variables
+    parent%child(newChildIndex)%threeD = parent%threeD
+    parent%child(newChildIndex)%twoD = parent%twoD
+    parent%child(newChildIndex)%oneD = parent%oneD
+    parent%child(newChildIndex)%maxChildren = parent%maxChildren
+    parent%child(newChildIndex)%cylindrical = parent%cylindrical
+
+    if (mie) then
+       thisOctal => parent%child(newChildIndex)
+       call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
+       ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
+       thisOctal%dustTypeFraction(thisOctal%maxchildren,1:nDustType) = 0.d0
+       thisOctal%dustTypeFraction(thisOctal%maxchildren,1) = 1.d0
+
+       call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nDiffusion, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%eDens, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%diffusionCoeff, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%oldeDens, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nDirectPhotons, thisOctal%maxChildren)
+       
+       call allocateAttribute(thisOctal%underSampled, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
+
+
+    endif
+
+
 
 
 !    if (myrankglobal==2) write(*,'(10i4)') parent%child(newChildindex)%ndepth, parent%child(newChildIndex)%mpiThread(1:8)
@@ -696,17 +719,17 @@ CONTAINS
     endif
 
     if (molecular) then
-       allocate(parent%child(newChildIndex)%molAbundance(8))
+       thisOctal => parent%child(newChildIndex)
+       call allocateAttribute(thisOctal%molAbundance, thisOctal%maxChildren)
        parent%child(newChildIndex)%molAbundance(:) = 1.e-30
+       call allocateAttribute(thisOctal%temperatureGas, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%temperatureDust, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nh2, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%molmicroturb, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%cornerVelocity, 27)
     endif
 
-    ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
-    ! set up the new child's variables
-    parent%child(newChildIndex)%threeD = parent%threeD
-    parent%child(newChildIndex)%twoD = parent%twoD
-    parent%child(newChildIndex)%oneD = parent%oneD
-    parent%child(newChildIndex)%maxChildren = parent%maxChildren
-    parent%child(newChildIndex)%cylindrical = parent%cylindrical
 
     
     ! if splitAzimuthally is not present then we assume we are not
@@ -764,40 +787,15 @@ CONTAINS
     parent%child(newChildIndex)%subcellSize = parent%subcellSize / 2.0_oc
     parent%child(newChildIndex)%hasChild = .false.
     parent%child(newChildIndex)%nChildren = 0
-    parent%child(newChildIndex)%nDirectPhotons = -1
     parent%child(newChildIndex)%indexChild = -999 ! values are undefined
     parent%child(newChildIndex)%centre = subcellCentre(parent,iChild)
     if (parent%cylindrical) then
        parent%child(newChildIndex)%r = subcellRadius(parent,iChild)
     endif
-    parent%child(newChildIndex)%probDistLine = 0.0
-    parent%child(newChildIndex)%probDistCont = 0.0
-    parent%child(newChildIndex)%biasLine3D = 1.0 
-    parent%child(newChildIndex)%biasCont3D = 1.0 
-    parent%child(newChildIndex)%velocity = vector(1.e-30,1.e-30,1.e-30)
-    parent%child(newChildIndex)%cornerVelocity = vector(1.e-30,1.e-30,1.e-30)
-    parent%child(newChildIndex)%chiLine = 1.e-30
-    parent%child(newChildIndex)%etaLine = 1.e-30
-    parent%child(newChildIndex)%etaCont = 1.e-30
     parent%child(newChildIndex)%rho = amr_min_rho
     parent%child(newChildIndex)%N = 1.e-30
-    parent%child(newChildIndex)%dusttype = 1
-    if (mie .or. useDust) then
-       ALLOCATE(parent%child(newChildIndex)%dusttypefraction(8,  nDustType))
-       parent%child(newChildIndex)%dustTypeFraction(1:8,1:nDustType) = 0.d0
-       parent%child(newChildIndex)%dustTypeFraction(1:8,1) = 1.d0
-    end if
     parent%child(newChildIndex)%gasOpacity = .false.
-    parent%child(newChildIndex)%Ne = 1.e-30
     parent%child(newChildIndex)%temperature = TMinGlobal
-    parent%child(newChildIndex)%nTot = 1.e-30
-    parent%child(newChildIndex)%eDens = 1.d-10
-    parent%child(newChildIndex)%microturb = 1.d-10
-    parent%child(newChildIndex)%changed = .false.
-    parent%child(newChildIndex)%diffusionApprox = .false.
-    parent%child(newChildindex)%nDiffusion  = 0.
-    parent%child(newChildindex)%oldFrac = 1.
-    parent%child(newChildindex)%ncrossings = 10000
 
 
     if (photoionization) then
@@ -5270,7 +5268,7 @@ IF ( .NOT. gridConverged ) RETURN
          split = .true.
       endif
 
-      if (abs(cellCentre%z) < rinner/2.) then
+      if (abs(cellCentre%z) < rinner/5.) then
          if ((thisOctal%cylindrical).and.(thisOctal%dPhi*radtodeg > 11.).and.(r < rInner)) then
             splitInAzimuth = .true.
             split = .true.
@@ -7224,12 +7222,11 @@ IF ( .NOT. gridConverged ) RETURN
     type(GRIDTYPE), intent(inout)      :: grid                
     real, intent(out) :: theta1, theta2
    
-    real(double) :: TaccretionDouble
     integer :: nNu 
     real :: nuArray(3000),fnu(3000)
     real :: tot
     integer :: i 
-    real :: rStar, saccretion, taccretion
+    real :: rStar
 
 
 
@@ -8969,7 +8966,6 @@ end function readparameterfrom2dmap
     if(firsttime) then
        velocitysum = VECTOR(1d-20,1d-20,1d-20)
        firsttime = .false.
-       write(*,*) firsttime
     endif
 
     rVec = subcellCentre(thisOctal,subcell)
@@ -9019,7 +9015,6 @@ end function readparameterfrom2dmap
        h = height * (r / (100.d0*autocm/1.d10))**betaDisc
     
     endif
-
     thisOctal%biasCont3D = 1.
     thisOctal%etaLine = 1.e-30
 
@@ -9034,8 +9029,10 @@ end function readparameterfrom2dmap
        thisOctal%velocity = VECTOR(0.,0.,0.)
     endif
 
-    thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
-    thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
+    if (molecular) then
+       thisOctal%microturb(subcell) = sqrt((2.d0*kErg*thisOctal%temperature(subcell))/(29.0 * amu))/cspeed
+       thisOctal%nh2(subcell) = thisOctal%rho(subcell)/(2.*mhydrogen)
+    endif
 !    write(*,*) velocitysum
 
   end subroutine shakaraDisk
@@ -9888,59 +9885,61 @@ end function readparameterfrom2dmap
       IF ( error /= 0 ) CALL deallocationError(error,location=7) 
       NULLIFY(thisOctal%dustTypeFraction)
 
-      IF (ASSOCIATED(thisOctal%x_i)) DEALLOCATE(thisOctal%x_i,STAT=error); NULLIFY(thisOctal%x_i)
-      IF (ASSOCIATED(thisOctal%x_i_plus_1)) DEALLOCATE(thisOctal%x_i_plus_1,STAT=error); NULLIFY(thisOctal%x_i_plus_1)
-      IF (ASSOCIATED(thisOctal%x_i_minus_1)) DEALLOCATE(thisOctal%x_i_minus_1,STAT=error); NULLIFY(thisOctal%x_i_minus_1)
+      call deallocateAttribute(thisOctal%x_i)
+      call deallocateAttribute(thisOctal%x_i_plus_1)
+      call deallocateAttribute(thisOctal%x_i_minus_1)
 
-      IF (ASSOCIATED(thisOctal%q_i)) DEALLOCATE(thisOctal%q_i,STAT=error); NULLIFY(thisOctal%q_i)
-      IF (ASSOCIATED(thisOctal%q_i_plus_1)) DEALLOCATE(thisOctal%q_i_plus_1,STAT=error); NULLIFY(thisOctal%q_i_plus_1)
-      IF (ASSOCIATED(thisOctal%q_i_minus_1)) DEALLOCATE(thisOctal%q_i_minus_1,STAT=error); NULLIFY(thisOctal%q_i_minus_1)
-      IF (ASSOCIATED(thisOctal%q_i_minus_2)) DEALLOCATE(thisOctal%q_i_minus_2,STAT=error); NULLIFY(thisOctal%q_i_minus_2)
-
-
-      IF (ASSOCIATED(thisOctal%u_interface)) DEALLOCATE(thisOctal%u_interface,STAT=error); NULLIFY(thisOctal%u_interface)
-      IF (ASSOCIATED(thisOctal%u_i_plus_1)) DEALLOCATE(thisOctal%u_i_plus_1,STAT=error); NULLIFY(thisOctal%u_i_plus_1)
-      IF (ASSOCIATED(thisOctal%u_i_minus_1)) DEALLOCATE(thisOctal%u_i_minus_1,STAT=error); NULLIFY(thisOctal%u_i_minus_1)
-
-      IF (ASSOCIATED(thisOctal%flux_i)) DEALLOCATE(thisOctal%flux_i,STAT=error); NULLIFY(thisOctal%flux_i)
-      IF (ASSOCIATED(thisOctal%flux_i_plus_1)) DEALLOCATE(thisOctal%flux_i_plus_1,STAT=error); NULLIFY(thisOctal%flux_i_plus_1)
-      IF (ASSOCIATED(thisOctal%flux_i_minus_1)) DEALLOCATE(thisOctal%flux_i_minus_1,STAT=error); NULLIFY(thisOctal%flux_i_minus_1)
-
-      IF (ASSOCIATED(thisOctal%phiLimit)) DEALLOCATE(thisOctal%phiLimit,STAT=error); NULLIFY(thisOctal%phiLimit)
-      IF (ASSOCIATED(thisOctal%rLimit)) DEALLOCATE(thisOctal%rLimit,STAT=error); NULLIFY(thisOctal%rLimit)
+      call deallocateAttribute(thisOctal%q_i)
+      call deallocateAttribute(thisOctal%q_i_plus_1)
+      call deallocateAttribute(thisOctal%q_i_minus_1)
+      call deallocateAttribute(thisOctal%q_i_minus_2)
 
 
-      IF (ASSOCIATED(thisOctal%ghostCell)) DEALLOCATE(thisOctal%ghostCell,STAT=error); NULLIFY(thisOctal%ghostCell)
-      IF (ASSOCIATED(thisOctal%feederCell)) DEALLOCATE(thisOctal%feederCell,STAT=error); NULLIFY(thisOctal%feederCell)
-      IF (ASSOCIATED(thisOctal%edgeCell)) DEALLOCATE(thisOctal%edgeCell,STAT=error); NULLIFY(thisOctal%edgeCell)
-      IF (ASSOCIATED(thisOctal%refinedLastTime)) &
-           DEALLOCATE(thisOctal%refinedLastTime,STAT=error); NULLIFY(thisOctal%refinedLastTime)
+      call deallocateAttribute(thisOctal%u_interface)
+      call deallocateAttribute(thisOctal%u_i_plus_1)
+      call deallocateAttribute(thisOctal%u_i_minus_1)
+
+      call deallocateAttribute(thisOctal%flux_i)
+      call deallocateAttribute(thisOctal%flux_i_plus_1)
+      call deallocateAttribute(thisOctal%flux_i_minus_1)
+
+      call deallocateAttribute(thisOctal%phiLimit)
+      call deallocateAttribute(thisOctal%rLimit)
 
 
-      IF (ASSOCIATED(thisOctal%rhou)) DEALLOCATE(thisOctal%rhou,STAT=error); NULLIFY(thisOctal%rhou)
-      IF (ASSOCIATED(thisOctal%rhov)) DEALLOCATE(thisOctal%rhov,STAT=error); NULLIFY(thisOctal%rhov)
-      IF (ASSOCIATED(thisOctal%rhow)) DEALLOCATE(thisOctal%rhow,STAT=error); NULLIFY(thisOctal%rhow)
-      IF (ASSOCIATED(thisOctal%rhoe)) DEALLOCATE(thisOctal%rhoe,STAT=error); NULLIFY(thisOctal%rhoe)
-      IF (ASSOCIATED(thisOctal%energy)) DEALLOCATE(thisOctal%energy,STAT=error); NULLIFY(thisOctal%energy)
+      call deallocateAttribute(thisOctal%ghostCell)
+      call deallocateAttribute(thisOctal%feederCell)
+      call deallocateAttribute(thisOctal%edgeCell)
+      call deallocateAttribute(thisOctal%refinedLastTime)
 
 
-      IF (ASSOCIATED(thisOctal%x_i)) DEALLOCATE(thisOctal%x_i,STAT=error); NULLIFY(thisOctal%pressure_i)
-      IF (ASSOCIATED(thisOctal%pressure_i_plus_1)) &
-           DEALLOCATE(thisOctal%pressure_i_plus_1,STAT=error); NULLIFY(thisOctal%pressure_i_plus_1)
-      IF (ASSOCIATED(thisOctal%pressure_i_minus_1)) &
-           DEALLOCATE(thisOctal%pressure_i_minus_1,STAT=error); NULLIFY(thisOctal%pressure_i_minus_1)
+      call deallocateAttribute(thisOctal%rhou)
+      call deallocateAttribute(thisOctal%rhov)
+      call deallocateAttribute(thisOctal%rhow)
+      call deallocateAttribute(thisOctal%rhoe)
+      call deallocateAttribute(thisOctal%energy)
 
-      IF (ASSOCIATED(thisOctal%boundaryPartner)) &
-           DEALLOCATE(thisOctal%boundaryPartner,STAT=error); NULLIFY(thisOctal%boundaryPartner)
-      IF (ASSOCIATED(thisOctal%boundaryCondition)) &
-           DEALLOCATE(thisOctal%boundaryCondition,STAT=error); NULLIFY(thisOctal%boundaryCondition)
 
-      IF (ASSOCIATED(thisOctal%phi_i)) DEALLOCATE(thisOctal%phi_i,STAT=error); NULLIFY(thisOctal%phi_i)
-      IF (ASSOCIATED(thisOctal%phi_i_plus_1)) DEALLOCATE(thisOctal%phi_i_plus_1,STAT=error); NULLIFY(thisOctal%phi_i_plus_1)
-      IF (ASSOCIATED(thisOctal%phi_i_minus_1)) DEALLOCATE(thisOctal%phi_i_minus_1,STAT=error); NULLIFY(thisOctal%phi_i_minus_1)
+      call deallocateAttribute(thisOctal%x_i)
+      call deallocateAttribute(thisOctal%pressure_i_plus_1)
+      call deallocateAttribute(thisOctal%pressure_i_minus_1)
 
-      IF (ASSOCIATED(thisOctal%rho_i_plus_1)) DEALLOCATE(thisOctal%rho_i_plus_1,STAT=error); NULLIFY(thisOctal%rho_i_plus_1)
-      IF (ASSOCIATED(thisOctal%rho_i_minus_1)) DEALLOCATE(thisOctal%rho_i_minus_1,STAT=error); NULLIFY(thisOctal%rho_i_minus_1)
+      call deallocateAttribute(thisOctal%boundaryPartner)
+      call deallocateAttribute(thisOctal%boundaryCondition)
+
+      call deallocateAttribute(thisOctal%phi_i)
+      call deallocateAttribute(thisOctal%phi_i_plus_1)
+      call deallocateAttribute(thisOctal%phi_i_minus_1)
+
+      call deallocateAttribute(thisOctal%rho_i_plus_1)
+      call deallocateAttribute(thisOctal%rho_i_minus_1)
+
+
+      call deallocateAttribute(thisOctal%temperaturedust)
+      call deallocateAttribute(thisOctal%temperaturegas)
+      call deallocateAttribute(thisOctal%nh2)
+      call deallocateAttribute(thisOctal%microturb)
+      call deallocateAttribute(thisOctal%molmicroturb)
 
     END SUBROUTINE deleteOctalPrivate
       
@@ -10025,223 +10024,117 @@ end function readparameterfrom2dmap
     END IF
     CALL deleteOctal(dest, deleteChildren=.FALSE., adjustParent=.FALSE. )
 
-    dest%nDepth           = source%nDepth
-    dest%mpiThread        = source%mpiThread
-    dest%nChildren        = source%nChildren
-    dest%indexChild       = source%indexChild
-    dest%threeD           = source%threeD 
-    dest%cylindrical      = source%cylindrical
-    dest%splitAzimuthally= source%splitAzimuthally
-    dest%twoD             = source%twoD   
-    dest%oneD             = source%oneD   
-    dest%maxChildren      = source%maxChildren
-    dest%hasChild         = source%hasChild
-    dest%centre           = source%centre
-    dest%rho              = source%rho
-    dest%phi              = source%phi
-    dest%dphi             = source%dphi
-    dest%r                = source%r
-    dest%velocity         = source%velocity
-    dest%nDirectPhotons = source%nDirectPhotons
-    dest%temperature      = source%temperature
-    dest%oldTemperature   = source%oldTemperature
-    dest%distanceGrid     = source%distanceGrid
-    dest%nCrossings       = source%nCrossings
-    dest%chiLine          = source%chiLine
-    dest%etaLine          = source%etaLine
-    dest%etaCont          = source%etaCont
-    dest%biasLine3D       = source%biasLine3D
-    dest%biasCont3D       = source%biasCont3D
-    dest%probDistLine     = source%probDistLine
-    dest%probDistCont     = source%probDistCont
-    dest%Ne               = source%Ne
-    dest%NH               = source%NH
-    if (associated(dest%NHI)) dest%NHI              = source%NHI
-    if (associated(dest%boundaryCondition)) dest%boundaryCondition = source%boundaryCondition
-    if (associated(dest%boundaryPartner)) dest%boundaryPartner  = source%boundaryPartner
-    if (associated(dest%NHII)) dest%NHII             = source%NHII
-    if (associated(dest%NHeI)) dest%NHeI             = source%NHeI
-    if (associated(dest%NHeII)) dest%NHeII            = source%NHeII
-    if (associated(dest%Hheating)) dest%Hheating         = source%Hheating
-    if (associated(dest%Heheating)) dest%Heheating        = source%Heheating
-    dest%oldFrac          = source%oldFrac
-    dest%nTot             = source%nTot
-    dest%inStar           = source%inStar
-    dest%inFlow           = source%inFlow
-    dest%label            = source%label
-    dest%subcellSize      = source%subcellSize
-    dest%changed          = source%changed
-    dest%dustType         = source%dustType         
-    dest%parentSubcell    = source%parentSubcell    
-    dest%gasOpacity       = source%gasOpacity       
-    dest%diffusionApprox  = source%diffusionApprox  
-    dest%underSampled     = source%underSampled
-    dest%nDiffusion       = source%nDiffusion
-    dest%cornerVelocity   = source%cornerVelocity
-    dest%nh2              = source%nh2
-    dest%microturb        = source%microturb
+    dest%nDepth =  source%nDepth
+    dest%mpiThread =  source%mpiThread
+    dest%nChildren = source%nChildren
+    dest%indexChild = source%indexChild
+    dest%threeD =   source%threeD 
+    dest%twod = source%twoD  
+    dest%oneD = source%oneD   
+    dest%cylindrical = source%cylindrical
+    dest%splitAzimuthally = source%splitAzimuthally
+    dest%maxChildren =  source%maxChildren
+    dest%hasChild = source%hasChild
+    dest%centre =  source%centre
+    dest%rho =  source%rho
+    dest%phi =  source%phi
+    dest%dphi = source%dphi
+    dest%r =   source%r
+    dest%velocity = source%velocity
+    dest%temperature = source%temperature
+    dest%inFlow = source%inFlow
+    dest%label =   source%label
+    dest%parentSubcell =   source%parentSubcell
+    dest%subcellSize =  source%subcellSize
+    dest%gasOpacity =  source%gasOpacity 
 
-    if (associated(source%rho_i_minus_1)) then
-       allocate(dest%rho_i_minus_1(SIZE(source%rho_i_minus_1)))
-       dest%rho_i_minus_1 = source%rho_i_minus_1
-    endif
-
-    if (associated(source%rho_i_minus_1)) then
-       allocate(dest%rho_i_minus_1(SIZE(source%rho_i_plus_1)))
-       dest%rho_i_plus_1      = source%rho_i_plus_1
-    endif
+    call copyAttribute(dest%inStar, source%inStar)
+    call copyAttribute(dest%chiLine, source%chiLine)
+    call copyAttribute(dest%etaLine, source%etaLine)
+    call copyAttribute(dest%etaCont, source%etaCont)
+    call copyAttribute(dest%biasCont3d, source%biasCont3d)
+    call copyAttribute(dest%probDistLine, source%probDistLine)
+    call copyAttribute(dest%probDistCont,  source%probDistCont)
+    call copyAttribute(dest%Ne,  source%Ne)
+    call copyAttribute(dest%NH,  source%NH)
+    call copyAttribute(dest%NHI,  source%NHI)
+    call copyAttribute(dest%boundaryCondition,  source%boundaryCondition)
+    call copyAttribute(dest%boundaryPartner,  source%boundaryPartner)
+    call copyAttribute(dest%NHII,  source%NHII)
+    call copyAttribute(dest%NHeI,  source%NHeI)
+    call copyAttribute(dest%NHeII,  source%NHeII)
+    call copyAttribute(dest%Hheating,  source%Hheating)
+    call copyAttribute(dest%Heheating,  source%Heheating)
+    call copyAttribute(dest%changed,  source%changed)
+    call copyAttribute(dest%cornerVelocity,  source%cornerVelocity)
 
 
-    if (associated(source%x_i_minus_1)) then
-       allocate(dest%x_i_minus_1(SIZE(source%x_i_minus_1)))
-       dest%x_i_minus_1      = source%x_i_minus_1
-    endif
-    if (associated(source%x_i)) then
-       allocate(dest%x_i(SIZE(source%x_i)))
-       dest%x_i              = source%x_i
-    endif
-    if (associated(source%x_i_plus_1)) then
-       allocate(dest%x_i_plus_1(SIZE(source%x_i_plus_1)))
-       dest%x_i_plus_1       = source%x_i_plus_1
-    endif
+    call copyAttribute(dest%temperaturedust, source%temperatureDust)
+    call copyAttribute(dest%temperaturegas, source%temperaturegas)
+    call copyAttribute(dest%dustType, source%dustType)
+    call copyAttribute(dest%oldFrac, source%oldFrac)
 
-    if (associated(source%q_i_minus_2)) then
-       allocate(dest%q_i_minus_2(SIZE(source%q_i_minus_2)))
-       dest%q_i_minus_2      = source%q_i_minus_2
-    endif
-    if (associated(source%q_i_minus_1)) then
-       allocate(dest%q_i_minus_1(SIZE(source%q_i_minus_1)))
-       dest%q_i_minus_1      = source%q_i_minus_1
-    endif
-    if (associated(source%q_i)) then
-       allocate(dest%q_i(SIZE(source%q_i)))
-       dest%q_i              = source%q_i
-    endif
-    if (associated(source%q_i_plus_1)) then
-       allocate(dest%q_i_plus_1(SIZE(source%q_i_plus_1)))
-       dest%q_i_plus_1       = source%q_i_plus_1
-    endif
+    call copyAttribute(dest%nh2, source%nh2)
+    call copyAttribute(dest%microturb, source%microturb)
+    call copyAttribute(dest%molmicroturb, source%molmicroturb)
 
-    if (associated(source%flux_i_minus_1)) then
-       allocate(dest%flux_i_minus_1(SIZE(source%flux_i_minus_1)))
-       dest%flux_i_minus_1   = source%flux_i_minus_1
-    endif
-    if (associated(source%flux_i)) then
-       allocate(dest%flux_i(SIZE(source%flux_i)))
-       dest%flux_i           = source%flux_i
-    endif
-    if (associated(source%flux_i_plus_1)) then
-       allocate(dest%flux_i_plus_1(SIZE(source%flux_i_plus_1)))
-       dest%flux_i_plus_1    = source%flux_i_plus_1
-    endif
+    call copyAttribute(dest%rho_i_minus_1, source%rho_i_minus_1)
 
-    if (associated(source%pressure_i_minus_1)) then
-       allocate(dest%pressure_i_minus_1(SIZE(source%pressure_i_minus_1)))
-       dest%pressure_i_minus_1   = source%pressure_i_minus_1
-    endif
-    if (associated(source%pressure_i)) then
-       allocate(dest%pressure_i(SIZE(source%pressure_i)))
-       dest%pressure_i           = source%pressure_i
-    endif
-    if (associated(source%phi_i)) then
-       allocate(dest%phi_i(SIZE(source%phi_i)))
-       dest%phi_i                = source%phi_i
-    endif
-    if (associated(source%pressure_i_plus_1)) then
-       allocate(dest%pressure_i_plus_1(SIZE(source%pressure_i_plus_1)))
-       dest%pressure_i_plus_1    = source%pressure_i_plus_1
-    endif
+    call copyAttribute(dest%rho_i_plus_1, source%rho_i_plus_1)
 
-    if (associated(source%u_interface)) then
-       allocate(dest%u_interface(SIZE(source%u_interface)))
-       dest%u_interface          = source%u_interface
-    endif
-    if (associated(source%rLimit)) then
-       allocate(dest%rLimit(SIZE(source%rLimit)))
-       dest%rLimit               = source%rLimit
-    endif
-    if (associated(source%phiLimit)) then
-       allocate(dest%phiLimit(SIZE(source%phiLimit)))
-       dest%phiLimit             = source%phiLimit
-    endif
-    if (associated(source%ghostCell)) then
-       allocate(dest%ghostCell(SIZE(source%ghostCell)))
-       dest%ghostCell            = source%ghostCell
-    endif
-    if (associated(source%edgeCell)) then
-       allocate(dest%edgeCell(SIZE(source%edgeCell)))
-       dest%edgeCell             = source%edgeCell
-    endif
-    if (associated(source%feederCell)) then
-       allocate(dest%feederCell(SIZE(source%feederCell)))
-       dest%feederCell           = source%feederCell
-    endif
-    if (associated(source%energy)) then
-       allocate(dest%energy(SIZE(source%energy)))
-       dest%energy               = source%energy
-    endif
-    if (associated(source%rhou)) then
-       allocate(dest%rhou(SIZE(source%rhou)))
-       dest%rhou                 = source%rhou
-       endif
-    if (associated(source%rhov)) then
-       allocate(dest%rhov(SIZE(source%rhov)))
-       dest%rhov                 = source%rhov
-       endif
-    if (associated(source%rhow)) then
-       allocate(dest%rhow(SIZE(source%rhow)))
-       dest%rhow                 = source%rhow
-       endif
-    if (associated(source%rhoe)) then
-       allocate(dest%rhoe(SIZE(source%rhoe)))
-       dest%rhoe                 = source%rhoe
-       endif
-    if (associated(source%refinedLastTime)) then
-       allocate(dest%refinedLastTime(SIZE(source%refinedLastTime)))
-       dest%refinedLastTime      = source%refinedLastTime
-    endif
 
-    if (associated(source%mpiBoundaryStorage)) then
-       allocate(dest%mpiBoundaryStorage(SIZE(source%mpiBoundaryStorage, 1),&
-            SIZE(source%mpiBoundaryStorage,2),SIZE(source%mpiBoundaryStorage,3)))
-       dest%mpiBoundaryStorage   = source%mpiBoundaryStorage
-    endif
+    call copyAttribute(dest%x_i_minus_1, source%x_i_minus_1)
 
-    if (associated(source%photoIonCoeff)) then
-       allocate(dest%photoIonCoeff(SIZE(source%photoIonCoeff,1),SIZE(source%photoIonCoeff,2)))
-       dest%photoIonCoeff          = source%photoIonCoeff
-    endif
+    call copyAttribute(dest%x_i, source%x_i)
+    call copyAttribute(dest%x_i_plus_1, source%x_i_plus_1)
 
-    if (associated(source%molecularLevel)) then
-       allocate(dest%molecularLevel(SIZE(source%molecularLevel,1),SIZE(source%molecularLevel,2)))
-       dest%molecularLevel          = source%molecularLevel
-    endif
+    call copyAttribute(dest%q_i_minus_2, source%q_i_minus_2)
+    call copyAttribute(dest%q_i_minus_1, source%q_i_minus_1)
+    call copyAttribute(dest%q_i, source%q_i)
+    call copyAttribute(dest%q_i_plus_1, source%q_i_plus_1)
 
-    if (associated(source%molAbundance)) then
-       allocate(dest%molAbundance(SIZE(source%molAbundance,1)))
-       dest%molAbundance          = source%molAbundance
-    endif
+    call copyAttribute(dest%flux_i_minus_1, source%flux_i_minus_1)
+    call copyAttribute(dest%flux_i, source%flux_i)
+    call copyAttribute(dest%flux_i_plus_1, source%flux_i_plus_1)
 
-    if (associated(source%atomAbundance)) then
-       allocate(dest%atomAbundance(SIZE(source%atomAbundance,1),SIZE(source%atomAbundance,2)))
-       dest%atomAbundance          = source%atomAbundance
-    endif
+    call copyAttribute(dest%pressure_i_minus_1, source%pressure_i_minus_1)
+    call copyAttribute(dest%pressure_i, source%pressure_i)
+    call copyAttribute(dest%phi_i, source%phi_i)
+    call copyAttribute(dest%pressure_i_plus_1, source%pressure_i_plus_1)
 
-    if (associated(source%atomLevel)) then
-       allocate(dest%atomLevel(SIZE(source%atomLevel,1),SIZE(source%atomLevel,2),SIZE(source%atomLevel,3)))
-       dest%atomLevel          = source%atomLevel
-    endif
+    call copyAttribute(dest%u_interface, source%u_interface)
+    call copyAttribute(dest%rLimit, source%rLimit)
+    call copyAttribute(dest%phiLimit, source%phiLimit)
+    call copyAttribute(dest%ghostCell, source%ghostCell)
+    call copyAttribute(dest%edgeCell, source%edgeCell)
+    call copyAttribute(dest%feederCell, source%feederCell)
+    call copyAttribute(dest%energy, source%energy)
+    call copyAttribute(dest%rhou, source%rhou)
+    call copyAttribute(dest%rhov, source%rhov)
+    call copyAttribute(dest%rhow, source%rhow)
+    call copyAttribute(dest%rhoe, source%rhoe)
+    call copyAttribute(dest%refinedLastTime, source%refinedLastTime)
 
-    if (associated(source%newatomLevel)) then
-       allocate(dest%newatomLevel(SIZE(source%newatomLevel,1),SIZE(source%newatomLevel,2),SIZE(source%newatomLevel,3)))
-       dest%newatomLevel          = source%newatomLevel
-    endif
+    call copyAttribute(dest%photoIonCoeff, source%photoIonCoeff)
+    call copyAttribute(dest%molecularLevel, source%molecularLevel)
 
-    if (associated(source%ionFrac)) then
-       allocate(dest%ionFrac(SIZE(source%ionFrac,1),SIZE(source%ionFrac,2)))
-       dest%ionFrac          = source%ionFrac
-    endif
+    call copyAttribute(dest%molAbundance, source%molAbundance)
 
+    call copyAttribute(dest%atomAbundance, source%atomAbundance)
+
+    call copyAttribute(dest%atomLevel, source%atomLevel)
+
+    call copyAttribute(dest%newatomLevel, source%newatomLevel)
+
+    call copyAttribute(dest%ionFrac, source%ionFrac)
+
+
+    IF (ASSOCIATED(source%mpiboundaryStorage)) THEN                   
+      ALLOCATE(dest%mpiboundaryStorage( SIZE(source%mpiboundaryStorage,1),       &
+                              SIZE(source%mpiboundaryStorage,2), &
+                              SIZE(source%mpiboundaryStorage,3)))
+      dest%mpiboundaryStorage = source%mpiboundaryStorage
+    END IF  
 
     IF (ASSOCIATED(source%kappaAbs)) THEN                   
       ALLOCATE(dest%kappaAbs( SIZE(source%kappaAbs,1),       &
@@ -16276,7 +16169,7 @@ end function readparameterfrom2dmap
     real(double), optional :: tauMax
     type(OCTAL), pointer :: thisOctal, sOctal
     real(double) :: fudgeFac = 1.d-1
-    real(double) :: kappaSca, kappaAbs, kappaExt, oldR
+    real(double) :: kappaSca, kappaAbs, kappaExt
     integer :: subcell
     logical, optional :: ross
     logical :: planetGap

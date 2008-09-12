@@ -3012,5 +3012,41 @@ subroutine setBiasOnTau(grid, iLambda)
     end do
   end subroutine unpackBias
 
+  recursive subroutine allocateMemoryForLucy(thisOctal)
+    use input_variables, only : nDustType
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call allocateMemoryForLucy(child)
+                exit
+             end if
+          end do
+       else
+          call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%nDiffusion, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%eDens, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%diffusionCoeff, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%oldeDens, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%nDirectPhotons, thisOctal%maxChildren)
+
+          call allocateAttribute(thisOctal%underSampled, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
+
+
+       endif
+    enddo
+  end subroutine allocateMemoryForLucy
+
 end module lucy_mod
 

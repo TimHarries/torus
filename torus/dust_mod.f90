@@ -4,6 +4,7 @@ module dust_mod
   use phasematrix_mod
   use grid_mod
   use constants_mod
+  use octal_mod
   use amr_mod
   use messages_mod
 
@@ -1507,5 +1508,33 @@ contains
        call writeInfo("Completed.",TRIVIAL)
     endif
   end subroutine createDustCrossSectionPhaseMatrix
+
+
+  recursive subroutine allocateMemoryForDust(thisOctal)
+    use input_variables, only : nDustType
+    type(octal), pointer   :: thisOctal
+    type(octal), pointer  :: child 
+    integer :: subcell, i
+    
+    do subcell = 1, thisOctal%maxChildren
+       if (thisOctal%hasChild(subcell)) then
+          ! find the child
+          do i = 1, thisOctal%nChildren, 1
+             if (thisOctal%indexChild(i) == subcell) then
+                child => thisOctal%child(i)
+                call allocateMemoryForDust(child)
+                exit
+             end if
+          end do
+       else
+          call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
+          call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
+          ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
+          thisOctal%dustTypeFraction(thisOctal%maxchildren,1:nDustType) = 0.d0
+          thisOctal%dustTypeFraction(thisOctal%maxchildren,1) = 1.d0
+       endif
+    enddo
+  end subroutine allocateMemoryForDust
+  
 
 end module dust_mod

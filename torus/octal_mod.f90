@@ -58,7 +58,32 @@ MODULE octal_mod
 !       |________|________|________\ x
 !                                  /
 
+  interface allocateAttribute
+     module procedure allocateAttributeDouble
+     module procedure allocateAttributeReal
+     module procedure allocateAttributeInteger
+     module procedure allocateAttributeLogical
+     module procedure allocateAttributeVector
+  end interface
 
+  interface deallocateAttribute
+     module procedure deallocateAttributeDouble
+     module procedure deallocateAttributeReal
+     module procedure deallocateAttributeInteger
+     module procedure deallocateAttributeLogical
+     module procedure deallocateAttributeOctalVector
+  end interface
+
+  interface copyAttribute
+     module procedure copyAttributeDoublePointer
+     module procedure copyAttributeDoublePointer2d
+     module procedure copyAttributeDoublePointer3d
+     module procedure copyAttributeRealPointer
+     module procedure copyAttributeIntegerPointer
+     module procedure copyAttributeLogicalPointer
+     module procedure copyAttributeOctVecPointer
+     module procedure copyAttributeVectorPointer
+  end interface
 
 
   TYPE octalWrapper
@@ -95,42 +120,64 @@ MODULE octal_mod
     TYPE(octalVector)                  :: centre
     real(double)                       :: r
     REAL(double), DIMENSION(8)         :: rho            ! density
-    TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
-    real(double), dimension(8)         :: microturb
-    real(double), dimension(8)         :: molmicroturb
-    TYPE(vector), DIMENSION(27)        :: cornerVelocity ! velocity at corners of subcells
+    INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
     REAL, DIMENSION(8)                 :: temperature    ! grid subcell temperatures (gas or dust)
-    REAL, DIMENSION(8)                 :: temperaturedust! grid subcell dust temperatures
-    REAL, DIMENSION(8)                 :: temperaturegas ! grid subcell gas temperatures
+    real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
+
+    LOGICAL, DIMENSION(8)              :: inFlow
+
+
+    TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
+    TYPE(vector), DIMENSION(:), pointer       :: cornerVelocity => null()! velocity at corners of subcells
+    real(double)               :: phi, dphi
     
-    real(double), dimension(8) :: eDens
-    REAL, DIMENSION(8)                 :: oldTemperature    ! grid subcell temperatures
-    REAL(double), DIMENSION(8)                 :: oldeDens
-    REAL(double), DIMENSION(8)                 :: kappaRoss
+    logical, dimension(:), pointer                 :: diffusionApprox => null()
+    real, dimension(:), pointer :: nDiffusion => null()
+    real(double), dimension(:), pointer :: eDens => null()
+    real(double), pointer :: diffusionCoeff(:) => null()
+    REAL(double), DIMENSION(:), pointer                 :: oldeDens => null()
+    INTEGER, DIMENSION(:), pointer :: nDirectPhotons => null()
 
-    REAL(double), DIMENSION(8)         :: distanceGrid   ! distance crossing used by lucy R Eq
+    logical, dimension(:), pointer :: undersampled => null()
+    REAL, DIMENSION(:), pointer                 :: oldTemperature  => null()   ! grid subcell temperatures
+    REAL(double), DIMENSION(:), pointer                 :: kappaRoss => null()
+    REAL(double), DIMENSION(:), pointer         :: distanceGrid  => null()  ! distance crossing used by lucy R Eq
+    INTEGER, DIMENSION(:), pointer              :: nCrossings  => null()    ! no of photon crossings used by lucy R Eq
+    real(double), DIMENSION(:), pointer :: nTot => null()          ! total density
+    real, dimension(:), pointer :: oldFrac  => null() ! Previous value of dust sublimation fraction
+
+    INTEGER, DIMENSION(:), pointer                :: dusttype
+    real(double), dimension(:,:), pointer        :: dustTypeFraction => null() ! dust type fraction (sum=1)
 
 
-
-    INTEGER, DIMENSION(8)              :: nCrossings     ! no of photon crossings used by lucy R Eq
+    REAL, DIMENSION(:,:), POINTER      :: departCoeff =>null()! temporary storage for departure coefficients
+    LOGICAL, DIMENSION(:), pointer :: inStar      ! point lies within star
     REAL(double), DIMENSION(:,:), POINTER      :: kappaAbs => null() ! cont absorption opacities
     REAL(double), DIMENSION(:,:), POINTER      :: kappaSca => null() ! scattering opacities
-    REAL(double), DIMENSION(8)                 :: chiLine        ! line opacity
-    REAL(double), DIMENSION(8)                 :: etaLine        ! line emissivity
-    REAL(double), DIMENSION(8)                 :: etaCont        ! line emissivity
-    REAL(double), DIMENSION(8)                 :: biasLine3D     ! grid bias distribution
-    REAL(double), DIMENSION(8)                 :: biasCont3D     ! grid bias distribution
-    real(double), DIMENSION(8) :: probDistLine  ! emissivity probability distribution
-    real(double), DIMENSION(8) :: probDistCont  ! emissivity probability distribution
+
+    REAL(double), DIMENSION(:), pointer                 :: chiLine  => null()       ! line opacity
+    REAL(double), DIMENSION(:), pointer                 :: etaLine  => null()       ! line emissivity
+    REAL(double), DIMENSION(:), pointer                 :: etaCont   => null()      ! line emissivity
+    REAL(double), DIMENSION(:), pointer                 :: biasLine3D  => null()    ! grid bias distribution
+    REAL(double), DIMENSION(:), pointer                 :: biasCont3D  => null()   ! grid bias distribution
+    real(double), DIMENSION(:), pointer :: probDistLine  => null() ! emissivity probability distribution
+    real(double), DIMENSION(:), pointer :: probDistCont  => null()  ! emissivity probability distribution
     real(double), DIMENSION(:,:), POINTER ::  N => null()! stateq level pops
-    real(double), DIMENSION(8) :: Ne            ! electron density
-    real(double)               :: phi, dphi
-    real(double), DIMENSION(8) :: NH            ! total H no density
-    real(double), DIMENSION(8) :: NH2            ! total H2 no density
+    real(double), DIMENSION(:), pointer :: Ne  => null()           ! electron density
+    real(double), DIMENSION(:), pointer :: NH  => null()           ! total H no density
     real(double), pointer :: molecularLevel(:,:) => null() ! molecular level populations
     real(double), pointer :: molcellparam(:,:) => null()
     real(double), pointer :: newmolecularLevel(:,:) => null() ! molecular level populations
     real(double), pointer :: oldmolecularLevel(:,:) => null() ! molecular level populations
+
+    REAL, DIMENSION(:), pointer                 :: temperaturedust=> null() ! grid subcell dust temperatures
+    REAL, DIMENSION(:), pointer                 :: temperaturegas => null() ! grid subcell gas temperatures
+    real(double), DIMENSION(:), pointer :: NH2 => null()           ! total H2 no density
+    real(double), pointer, dimension(:)         :: microturb => null()
+    real(double), dimension(:), pointer         :: molmicroturb => null()
+
+
+
     real(double), pointer :: atomLevel(:,:,:) => null() ! atom level populations
     real(double), pointer :: atomAbundance(:,:) ! abundances
     real(double), pointer :: newatomLevel(:,:,:) => null() ! atom level populations
@@ -149,36 +196,25 @@ MODULE octal_mod
    
     real(double), dimension(:,:), pointer  :: ionFrac => null()
     real(double), dimension(:,:), pointer  :: photoIonCoeff  => null()
-    real(double) :: diffusionCoeff(8)
 
-    real(double), DIMENSION(8) :: nTot          ! total density
-    real, dimension(8) :: oldFrac ! Previous value of dust sublimation fraction
-    REAL, DIMENSION(:,:), POINTER      :: departCoeff =>null()! temporary storage for departure coefficients
-    LOGICAL(KIND=logic), DIMENSION(8) :: inStar      ! point lies within star
-    INTEGER, DIMENSION(8) :: nDirectPhotons
-    LOGICAL(KIND=logic), DIMENSION(8) :: inFlow      ! inside accretion flow region GET RID OF THIS?    
-    INTEGER, DIMENSION(8) :: label                       ! numeric label for each subcell. 
+
+
+
       ! the subcell labels may be useful for debugging the code, but are not needed for
       !   any of the normal AMR routines. They should probably be removed in the future.
     
-    real(oct)               :: subcellSize    ! the size (length of a vertex) of each subcell
 
     ! This is used only when we construct the tree from SPH data which
     ! contains the position+density+velocitiy of gas particles.
     ! Should be allocated with # of gas particles in this octal
     INTEGER, POINTER                   :: gas_particle_list(:) => null() ! SPH index of the particles in this octal
-    LOGICAL(KIND=logic), DIMENSION(8) :: changed     ! octal has changed in some way since previous calculation
+    LOGICAL, DIMENSION(:), pointer :: changed => null()    ! octal has changed in some way since previous calculation
     real(double), pointer, dimension(:,:,:) :: mpiBoundaryStorage => null()
-    INTEGER, DIMENSION(8)                :: dusttype
-    real(double), dimension(:,:), pointer        :: dustTypeFraction => null() ! dust type fraction (sum=1)
     INTEGER :: parentSubcell
     logical :: gasOpacity                            ! use gas rather than dust opacity for this cell
 
 
 
-    logical, dimension(8)                 :: diffusionApprox
-    logical, dimension(8) :: undersampled
-    real, dimension(8) :: nDiffusion
 
     ! hydrodynamics
     real(double), pointer :: q_i(:) => null(), q_i_plus_1(:) => null(), q_i_minus_1(:) => null(), q_i_minus_2(:) => null()
@@ -535,6 +571,182 @@ CONTAINS
        returndPhi = thisOctal%dPhi / 2.d0
     endif
   end function returnDphi
+
+  subroutine allocateAttributeDouble(array, nSize)
+    integer :: nSize
+    real(double), pointer :: array(:)
+
+    if (.not.associated(array)) then
+       allocate(array(1:nSize))
+    endif
+  end subroutine allocateAttributeDouble
+  
+  subroutine allocateAttributeReal(array, nSize)
+    integer :: nSize
+    real, pointer :: array(:)
+
+    if (.not.associated(array)) then
+       allocate(array(1:nSize))
+    endif
+  end subroutine allocateAttributeReal
+
+  subroutine allocateAttributeInteger(array, nSize)
+    integer :: nSize
+    integer, pointer :: array(:)
+
+    if (.not.associated(array)) then
+       allocate(array(1:nSize))
+    endif
+  end subroutine allocateAttributeInteger
+
+  subroutine allocateAttributeLogical(array, nSize)
+    integer :: nSize
+    logical, pointer :: array(:)
+
+    if (.not.associated(array)) then
+       allocate(array(1:nSize))
+    endif
+  end subroutine allocateAttributeLogical
+
+  subroutine allocateAttributeVector(array, nSize)
+    integer :: nSize
+    type(VECTOR), pointer :: array(:)
+
+    if (.not.associated(array)) then
+       allocate(array(1:nSize))
+    endif
+  end subroutine allocateAttributeVector
+
+
+  subroutine copyAttributeSingleInteger(dest, source)
+    integer :: dest, source
+    dest = source
+  end subroutine copyAttributeSingleInteger
+
+  subroutine copyAttributeDoublePointer(dest, source)
+    real(double), pointer :: dest(:), source(:)
+
+    if (associated(source)) then
+       allocate(dest(SIZE(source)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeDoublePointer
+
+  subroutine copyAttributeDoublePointer2d(dest, source)
+    real(double), pointer :: dest(:,:), source(:,:)
+
+    if (associated(source)) then
+       allocate(dest(SIZE(source, 1),SIZE(source,2)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeDoublePointer2d
+
+  subroutine copyAttributeDoublePointer3d(dest, source)
+    real(double), pointer :: dest(:,:,:), source(:,:,:)
+
+    if (associated(source)) then
+       allocate(dest(SIZE(source, 1),SIZE(source,2),SIZE(source,3)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeDoublePointer3d
+
+  subroutine copyAttributeRealPointer(dest, source)
+    real, pointer :: dest(:), source(:)
+
+    if (associated(source)) then
+       allocate(dest(SIZE(source)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeRealPointer
+
+  subroutine copyAttributeIntegerPointer(dest, source)
+    integer, pointer :: dest(:), source(:)
+
+    if (associated(source)) then
+       allocate(dest(SIZE(source)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeIntegerPointer
+
+
+  subroutine copyAttributeLogicalPointer(dest, source)
+    logical, pointer :: dest(:), source(:)
+
+    if (associated(source)) then
+       allocate(dest(SIZE(source)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeLogicalPointer
+
+  subroutine copyAttributeOctVEcPointer(dest, source)
+    type(OCTALVECTOR) , pointer :: dest(:), source(:)
+    if (associated(source)) then
+       allocate(dest(SIZE(source)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeOctVecPointer
+
+  subroutine copyAttributeVectorPointer(dest, source)
+    type(VECTOR) , pointer :: dest(:), source(:)
+    if (associated(source)) then
+       allocate(dest(SIZE(source)))
+       dest = source
+    endif
+
+  end subroutine copyAttributeVectorPointer
+
+  subroutine deallocateAttributeDouble(array)
+    real(double), pointer :: array(:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeDouble
+
+  subroutine deallocateAttributeReal(array)
+    real, pointer :: array(:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeReal
+
+  subroutine deallocateAttributeInteger(array)
+    integer, pointer :: array(:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeInteger
+
+  subroutine deallocateAttributeLogical(array)
+    logical, pointer :: array(:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeLogical
+
+  subroutine deallocateAttributeOctalVector(array)
+    type(OCTALVECTOR), pointer :: array(:)
+
+    if (associated(array)) then
+       deallocate(array)
+       nullify(array)
+    endif
+  end subroutine deallocateAttributeOctalVector
+
 
 
 END MODULE octal_mod

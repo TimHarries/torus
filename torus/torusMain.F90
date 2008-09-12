@@ -587,6 +587,7 @@ program torus
      call addIons(grid%ion, grid%nion)
   endif
 
+
 ! Set up the wavelength arrays with either linear or log spaced values.
   call set_up_lambda_array
 
@@ -2234,6 +2235,8 @@ subroutine do_lucyRadiativeEq
 
      if (doTuning) call tune(6, "LUCY Radiative Equilbrium")  ! start a stopwatch
  
+     call allocateMemoryForLucy(grid%octreeRoot)
+
      if (.not.grid%adaptive) then
         call lucyRadiativeEquilibrium(grid, miePhase, nDustType, nMuMie, nLambda, xArray, dble(teff), nLucy)
      else
@@ -2251,6 +2254,8 @@ subroutine do_lucyRadiativeEq
            endif
 
         endif
+
+        
 
         if (myRankIsZero .and. writeLucy) call writeAMRgrid(lucyFilenameOut,writeFileFormatted,grid)
      endif
