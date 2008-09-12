@@ -6,11 +6,14 @@ module particle_pos_mod
 
   contains
 
-    subroutine particle_pos(npart)
+    subroutine particle_pos(npart, r_arg, z_arg)
 
       implicit none
 
       integer, parameter :: db = selected_real_kind(15,307)
+
+      integer, intent(in)  :: npart
+      real(db), intent(out) :: r_arg(npart), z_arg(npart)
 
       real, parameter :: r_out = 1000.0      ! AU
       real, parameter :: r_d   = r_out / 2.0 ! AU
@@ -20,14 +23,13 @@ module particle_pos_mod
       real(db), parameter :: auToCm = 1.495979d13
       real(db), parameter :: mSol = 1.9891e33_db
 
+      integer, parameter  :: imax=10000 ! Radial sampling
+      integer, parameter :: npts=10000 ! ! z sampling
+
       real(db) :: this_mass
       integer  :: i, part 
-      integer, parameter  :: imax=10000 ! Radial sampling
-      integer, intent(in) :: npart
       real :: r, pdf(imax)
       real :: ran_num, part_r, part_z
-
-      integer, parameter :: npts=10000 ! ! z sampling
       real :: gaus_pdf(0:npts)
       real :: z_sig(0:npts)
 
@@ -43,7 +45,6 @@ module particle_pos_mod
 
       call setup_gaussian(z_sig, gaus_pdf, npts)
 
-      open (unit=61, file="part.dat")
       do part=1, npart
 
          call random_number(ran_num)
@@ -57,10 +58,10 @@ module particle_pos_mod
      
          call get_z(part_r, part_z)
 
-         write(61,*) part_r, part_z
+         r_arg(part) = part_r
+         z_arg(part) = part_z
 
       end do
-      close(61)
 
     contains
 

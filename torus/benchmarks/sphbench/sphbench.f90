@@ -21,7 +21,8 @@ use particle_pos_mod, only: particle_pos
   integer, parameter :: db = selected_real_kind(15,307)
 
 ! Cylindrical polar co-ordinates
-  real(db) :: r, theta, z
+  real(db), allocatable :: r(:), z(:)
+  real(db) :: theta
 
 ! Cartesian co-ordinates used with z above
   real(db) :: x, y 
@@ -95,27 +96,27 @@ use particle_pos_mod, only: particle_pos
   allocate ( b_rho(b_idim)     )
   allocate ( b_iphase(b_idim)  )
   allocate ( b_temp(b_num_gas) )
+  allocate ( r(b_num_gas)      )
+  allocate ( z(b_num_gas)      )
 
-  call particle_pos( b_num_gas )
+  call particle_pos( b_num_gas, r, z)
+
+  r(:) = r(:) * auToCm
+  z(:) = z(:) * auToCm
 
 ! Set up gas particle information
-  open (unit=62, status="old", file="part.dat")
-  open (unit=63, status="replace", file="part_ascii.dat")
   part_loop:  do ipart=1, b_num_gas
 
-     read(62,*) r, z
-     r = r * auToCm
-     z = z * auToCm
      call random_number(ran_num)
      theta = ran_num * 2.0_db * pi
            
-     if ( r > disc_r_outer .or. r < disc_r_inner ) then
+     if ( r(ipart) > disc_r_outer .or. r(ipart) < disc_r_inner ) then
         b_rho(ipart) = rho_bg
      else
 
-        hr = z_d * ( ( r / r_d ) ** 1.125 )
-        z_over_h = z / hr
-        f1 = ( r / r_d ) ** (-1) 
+        hr = z_d * ( ( r(ipart) / r_d ) ** 1.125 )
+        z_over_h = z(ipart) / hr
+        f1 = ( r(ipart) / r_d ) ** (-1) 
         f2 = exp ( minusPiByFour * ( z_over_h **2 ) )
 
         b_rho(ipart) = f1 * f2 * rho_zero
@@ -124,22 +125,17 @@ use particle_pos_mod, only: particle_pos
      endif
 
 ! Set positions of the gas particles
-     x = r * sin(theta) 
-     y = r * cos(theta) 
+     x = r(ipart) * sin(theta) 
+     y = r(ipart) * cos(theta) 
      b_xyzmh(1,ipart) = x
      b_xyzmh(2,ipart) = y
-     b_xyzmh(3,ipart) = z
+     b_xyzmh(3,ipart) = z(ipart) 
 ! Set particle mass assuming equal mass for all particles 
      b_xyzmh(4,ipart) = msol * total_gas_mass / real(b_num_gas, kind=db)
 ! Smoothing length based on particle mass and density
      b_xyzmh(5,ipart) = ( b_xyzmh(4,ipart) / b_rho(ipart) ) ** (1.0/3.0)
 
-
-     write(63,*) b_xyzmh(:,ipart), b_rho(ipart)
-
   end do part_loop
-  close(62)
-  close(63)
 
 ! Initialise phase flag. Gas particles are denoted by zero.
    b_iphase(1:b_num_gas) = 0 
@@ -152,8 +148,8 @@ use particle_pos_mod, only: particle_pos
 
    if (my_rank == 0) then 
 
-      b_npart            = b_num_gas + 1
-      b_nptmass          = 1
+      b_npart                = b_num_gas + 1
+      b_nptmass              = 1
       b_iphase(b_num_gas+1)  = 1
       b_xyzmh(1,b_num_gas+1) = 0.0
       b_xyzmh(2,b_num_gas+1) = 0.0
@@ -179,6 +175,7 @@ use particle_pos_mod, only: particle_pos
   deallocate ( b_rho    )
   deallocate ( b_iphase )
   deallocate ( b_temp   ) 
+  deallocate ( r, z     )
 
 #ifdef MPI
   call MPI_FINALIZE(ierr)
