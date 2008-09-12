@@ -68,6 +68,8 @@ use particle_pos_mod, only: particle_pos
 
   integer :: ierr, my_rank, nproc
 
+  character(len=4)  :: char_nproc
+
 ! Begin executable statments -------------
 
 ! 1. Set up gas particles 
@@ -80,6 +82,8 @@ use particle_pos_mod, only: particle_pos
   my_rank = 0
   nproc   = 1
 #endif
+
+  call random_seed
 
   total_gas_mass = total_disc_mass / real(nproc) 
   b_num_gas      = npart / nproc  ! number of gas particles for this MPI process
@@ -103,6 +107,9 @@ use particle_pos_mod, only: particle_pos
 
   r(:) = r(:) * auToCm
   z(:) = z(:) * auToCm
+
+  write(char_nproc,'(i4)') my_rank
+  open(unit=60, file="part_"//trim(adjustl(char_nproc))//".dat", status='replace')
 
 ! Set up gas particle information
   part_loop:  do ipart=1, b_num_gas
@@ -135,7 +142,13 @@ use particle_pos_mod, only: particle_pos
 ! Smoothing length based on particle mass and density
      b_xyzmh(5,ipart) = ( b_xyzmh(4,ipart) / b_rho(ipart) ) ** (1.0/3.0)
 
+     write(60,*) x,y,z(ipart), b_rho(ipart)
+
   end do part_loop
+
+  close(60)
+
+  deallocate ( r, z )
 
 ! Initialise phase flag. Gas particles are denoted by zero.
    b_iphase(1:b_num_gas) = 0 
@@ -175,7 +188,7 @@ use particle_pos_mod, only: particle_pos
   deallocate ( b_rho    )
   deallocate ( b_iphase )
   deallocate ( b_temp   ) 
-  deallocate ( r, z     )
+
 
 #ifdef MPI
   call MPI_FINALIZE(ierr)
