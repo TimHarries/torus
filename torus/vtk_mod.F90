@@ -283,6 +283,8 @@ contains
             select case (valueType)
                case("rho")
                   write(lunit, *) real(thisOctal%rho(subcell))
+               case("dust1")
+                  write(lunit, *) real(thisOctal%dustTypeFraction(subcell,1))
                case("bias")
                   write(lunit, *) real(thisOctal%biasCont3d(subcell))
                case("hydrovelocity")

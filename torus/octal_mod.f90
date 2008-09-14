@@ -85,6 +85,48 @@ MODULE octal_mod
      module procedure copyAttributeVectorPointer
   end interface
 
+  interface readAttributePointer
+     module procedure readAttributeDoublePointer
+     module procedure readAttributeRealPointer
+     module procedure readAttributeIntegerPointer
+     module procedure readAttributeVectorPointer
+     module procedure readAttributeOctalVectorPointer
+  end interface
+
+  interface writeAttributePointer
+     module procedure writeAttributeDoublePointer
+     module procedure writeAttributeRealPointer
+     module procedure writeAttributeIntegerPointer
+     module procedure writeAttributeVectorPointer
+     module procedure writeAttributeOctalVectorPointer
+  end interface
+
+  interface readAttributeStatic
+     module procedure readAttributeStaticDouble
+     module procedure readAttributeStaticDoubleSingle
+     module procedure readAttributeStaticReal
+     module procedure readAttributeStaticInteger
+     module procedure readAttributeStaticIntegerSingle
+     module procedure readAttributeStaticLogical
+     module procedure readAttributeStaticLogicalSingle
+     module procedure readAttributeStaticVector
+     module procedure readAttributeStaticOctalVector
+     module procedure readAttributeStaticOctalVectorSingle
+  end interface
+
+  interface writeAttributeStatic
+     module procedure writeAttributeStaticDouble
+     module procedure writeAttributeStaticDoubleSingle
+     module procedure writeAttributeStaticReal
+     module procedure writeAttributeStaticInteger
+     module procedure writeAttributeStaticIntegerSingle
+     module procedure writeAttributeStaticLogical
+     module procedure writeAttributeStaticLogicalSingle
+     module procedure writeAttributeStaticVector
+     module procedure writeAttributeStaticOctalVector
+     module procedure writeAttributeStaticOctalVectorSingle
+  end interface
+
 
   TYPE octalWrapper
     TYPE(octal), POINTER  :: content => NULL()
@@ -128,7 +170,7 @@ MODULE octal_mod
 
 
     TYPE(vector), DIMENSION(8)         :: velocity       ! velocity
-    TYPE(vector), DIMENSION(:), pointer       :: cornerVelocity => null()! velocity at corners of subcells
+    TYPE(vector), DIMENSION(27)    :: cornerVelocity ! velocity at corners of subcells
     real(double)               :: phi, dphi
     
     logical, dimension(:), pointer                 :: diffusionApprox => null()
@@ -747,6 +789,567 @@ CONTAINS
     endif
   end subroutine deallocateAttributeOctalVector
 
+
+
+  subroutine readAttributeDoublePointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer :: nSize
+    logical :: valPresent
+    real(double), pointer :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit,*) valPresent
+    else
+       read(lUnit) valPresent
+    endif
+
+    if (valPresent) then
+       if (fileFormatted) then
+          read(lunit,*) nSize
+          allocate(array(1:nSize))
+          read(lUnit,*) array(1:nSize)
+       else
+          read(lunit) nSize
+          allocate(array(1:nSize))
+          read(lUnit) array(1:nSize)
+       endif
+    endif
+
+  end subroutine readAttributeDoublePointer
+
+  subroutine readAttributeIntegerPointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer :: nSize
+    logical :: valPresent
+    integer, pointer :: array(:)
+    logical :: fileFormatted
+    
+    if (fileFormatted) then
+       read(lUnit,*) valPresent
+    else
+       read(lUnit) valPresent
+    endif
+
+    if (valPresent) then
+       if (fileFormatted) then
+          read(lunit,*) nSize
+          allocate(array(1:nSize))
+          read(lUnit,*) array(1:nSize)
+       else
+          read(lunit) nSize
+          allocate(array(1:nSize))
+          read(lUnit) array(1:nSize)
+       endif
+    endif
+
+  end subroutine readAttributeIntegerPointer
+
+  subroutine readAttributeRealPointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer :: nSize
+    logical :: valPresent
+    real, pointer :: array(:)
+    logical :: fileFormatted
+    
+    if (fileFormatted) then
+       read(lUnit,*) valPresent
+    else
+       read(lUnit) valPresent
+    endif
+
+    if (valPresent) then
+       if (fileFormatted) then
+          read(lunit,*) nSize
+          allocate(array(1:nSize))
+          read(lUnit,*) array(1:nSize)
+       else
+          read(lunit) nSize
+          allocate(array(1:nSize))
+          read(lUnit) array(1:nSize)
+       endif
+    endif
+
+  end subroutine readAttributeRealPointer
+
+  subroutine readAttributeVectorPointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer :: nSize
+    logical :: valPresent
+    TYPE(VECTOR) , pointer :: array(:)
+    logical :: fileFormatted
+    
+    if (fileFormatted) then
+       read(lUnit,*) valPresent
+    else
+       read(lUnit) valPresent
+    endif
+
+    if (valPresent) then
+       if (fileFormatted) then
+          read(lunit,*) nSize
+          allocate(array(1:nSize))
+          read(lUnit,*) array(1:nSize)
+       else
+          read(lunit) nSize
+          allocate(array(1:nSize))
+          read(lUnit) array(1:nSize)
+       endif
+    endif
+
+  end subroutine readAttributeVectorPointer
+
+  subroutine readAttributeOctalVectorPointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer :: nSize
+    logical :: valPresent
+    TYPE(OCTALVECTOR) , pointer :: array(:)
+    logical :: fileFormatted
+    
+    if (fileFormatted) then
+       read(lUnit,*) valPresent
+    else
+       read(lUnit) valPresent
+    endif
+
+    if (valPresent) then
+       if (fileFormatted) then
+          read(lunit,*) nSize
+          allocate(array(1:nSize))
+          read(lUnit,*) array(1:nSize)
+       else
+          read(lunit) nSize
+          allocate(array(1:nSize))
+          read(lUnit) array(1:nSize)
+       endif
+    endif
+
+  end subroutine readAttributeOctalVectorPointer
+
+
+  subroutine readAttributeStaticDouble(lUnit, array, fileFormatted)
+    integer :: lUnit
+    real(double) :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticDouble
+
+  subroutine readAttributeStaticDoubleSingle(lUnit, array, fileFormatted)
+    integer :: lUnit
+    real(double) :: array
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticDoubleSingle
+
+  subroutine readAttributeStaticIntegerSingle(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer :: array
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticIntegerSingle
+
+  subroutine readAttributeStaticLogicalSingle(lUnit, array, fileFormatted)
+    integer :: lUnit
+    logical :: array
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticLogicalSingle
+
+  subroutine readAttributeStaticOctalVectorSingle(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(OCTALVECTOR) :: array
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticOctalVectorSingle
+
+  subroutine readAttributeStaticReal(lUnit, array, fileFormatted)
+    integer :: lUnit
+    real :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticReal
+
+  subroutine readAttributeStaticInteger(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticInteger
+
+  subroutine readAttributeStaticLogical(lUnit, array, fileFormatted)
+    integer :: lUnit
+    logical :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticLogical
+
+  subroutine readAttributeStaticVector(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(VECTOR) :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticVector
+
+  subroutine readAttributeStaticOctalVector(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(OCTALVECTOR) :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       read(lUnit, *) array
+    else
+       read(lUnit) array
+    endif
+  end subroutine readAttributeStaticOctalVector
+
+
+  subroutine writeAttributeDoublePointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    real(double), pointer :: array(:)
+    logical :: fileFormatted
+
+    if (associated(array)) then
+       if (fileFormatted) then
+          write(lUnit,*) .true.
+       else
+          write(lUnit) .true.
+       endif
+
+       if (fileFormatted) then
+          write(lunit,*) SIZE(array)
+          write(lUnit,*) array(1:SIZE(array))
+       else
+          write(lunit) SIZE(array)
+          write(lUnit) array(1:SIZE(array))
+       endif
+    else
+       if (fileFormatted) then
+          write(lUnit,*) .false.
+       else
+          write(lUnit) .false.
+       endif
+    endif
+  end subroutine writeAttributeDoublePointer
+
+  subroutine writeAttributeRealPointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    real, pointer :: array(:)
+    logical :: fileFormatted
+
+    if (associated(array)) then
+       if (fileFormatted) then
+          write(lUnit,*) .true.
+       else
+          write(lUnit) .true.
+       endif
+
+       if (fileFormatted) then
+          write(lunit,*) SIZE(array)
+          write(lUnit,*) array(1:SIZE(array))
+       else
+          write(lunit) SIZE(array)
+          write(lUnit) array(1:SIZE(array))
+       endif
+    else
+       if (fileFormatted) then
+          write(lUnit,*) .false.
+       else
+          write(lUnit) .false.
+       endif
+    endif
+  end subroutine writeAttributeRealPointer
+
+  subroutine writeAttributeIntegerPointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer, pointer :: array(:)
+    logical :: fileFormatted
+
+    if (associated(array)) then
+       if (fileFormatted) then
+          write(lUnit,*) .true.
+       else
+          write(lUnit) .true.
+       endif
+
+       if (fileFormatted) then
+          write(lunit,*) SIZE(array)
+          write(lUnit,*) array(1:SIZE(array))
+       else
+          write(lunit) SIZE(array)
+          write(lUnit) array(1:SIZE(array))
+       endif
+    else
+       if (fileFormatted) then
+          write(lUnit,*) .false.
+       else
+          write(lUnit) .false.
+       endif
+    endif
+  end subroutine writeAttributeIntegerPointer
+
+  subroutine writeAttributeLogicalPointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    logical, pointer :: array(:)
+    logical :: fileFormatted
+
+    if (associated(array)) then
+       if (fileFormatted) then
+          write(lUnit,*) .true.
+       else
+          write(lUnit) .true.
+       endif
+
+       if (fileFormatted) then
+          write(lunit,*) SIZE(array)
+          write(lUnit,*) array(1:SIZE(array))
+       else
+          write(lunit) SIZE(array)
+          write(lUnit) array(1:SIZE(array))
+       endif
+    else
+       if (fileFormatted) then
+          write(lUnit,*) .false.
+       else
+          write(lUnit) .false.
+       endif
+    endif
+  end subroutine writeAttributeLogicalPointer
+
+
+  subroutine writeAttributeVectorPointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(VECTOR), pointer :: array(:)
+    logical :: fileFormatted
+
+    if (associated(array)) then
+       if (fileFormatted) then
+          write(lUnit,*) .true.
+       else
+          write(lUnit) .true.
+       endif
+
+       if (fileFormatted) then
+          write(lunit,*) SIZE(array)
+          write(lUnit,*) array(1:SIZE(array))
+       else
+          write(lunit) SIZE(array)
+          write(lUnit) array(1:SIZE(array))
+       endif
+    else
+       if (fileFormatted) then
+          write(lUnit,*) .false.
+       else
+          write(lUnit) .false.
+       endif
+    endif
+  end subroutine writeAttributeVectorPointer
+
+  subroutine writeAttributeOctalVectorPointer(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(OCTALVECTOR), pointer :: array(:)
+    logical :: fileFormatted
+
+    if (associated(array)) then
+       if (fileFormatted) then
+          write(lUnit,*) .true.
+       else
+          write(lUnit) .true.
+       endif
+
+       if (fileFormatted) then
+          write(lunit,*) SIZE(array)
+          write(lUnit,*) array(1:SIZE(array))
+       else
+          write(lunit) SIZE(array)
+          write(lUnit) array(1:SIZE(array))
+       endif
+    else
+       if (fileFormatted) then
+          write(lUnit,*) .false.
+       else
+          write(lUnit) .false.
+       endif
+    endif
+  end subroutine writeAttributeOctalVectorPointer
+
+
+  subroutine writeAttributeStaticDouble(lUnit, array, fileFormatted)
+    integer :: lUnit
+    real(double):: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array(1:SIZE(array))
+    else
+       write(lUnit) array(1:SIZE(array))
+    endif
+  end subroutine writeAttributeStaticDouble
+
+ subroutine writeAttributeStaticReal(lUnit, array, fileFormatted)
+    integer :: lUnit
+    real :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array(1:SIZE(array))
+    else
+       write(lUnit) array(1:SIZE(array))
+    endif
+  end subroutine writeAttributeStaticReal
+
+ subroutine writeAttributeStaticInteger(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array(1:SIZE(array))
+    else
+       write(lUnit) array(1:SIZE(array))
+    endif
+  end subroutine writeAttributeStaticInteger
+
+ subroutine writeAttributeStaticIntegerSingle(lUnit, array, fileFormatted)
+    integer :: lUnit
+    integer :: array
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array
+    else
+       write(lUnit) array
+    endif
+  end subroutine writeAttributeStaticIntegerSingle
+
+ subroutine writeAttributeStaticLogicalSingle(lUnit, array, fileFormatted)
+    integer :: lUnit
+    logical :: array
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array
+    else
+       write(lUnit) array
+    endif
+  end subroutine writeAttributeStaticLogicalSingle
+
+ subroutine writeAttributeStaticVectorSingle(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(VECTOR) :: array
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array
+    else
+       write(lUnit) array
+    endif
+  end subroutine writeAttributeStaticVectorSingle
+
+ subroutine writeAttributeStaticOctalVectorSingle(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(OCTALVECTOR) :: array
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array
+    else
+       write(lUnit) array
+    endif
+  end subroutine writeAttributeStaticOctalVectorSingle
+
+ subroutine writeAttributeStaticDoubleSingle(lUnit, array, fileFormatted)
+    integer :: lUnit
+    real(double) :: array
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array
+    else
+       write(lUnit) array
+    endif
+  end subroutine writeAttributeStaticDoubleSingle
+
+ subroutine writeAttributeStaticLogical(lUnit, array, fileFormatted)
+    integer :: lUnit
+    logical :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array(1:SIZE(array))
+    else
+       write(lUnit) array(1:SIZE(array))
+    endif
+  end subroutine writeAttributeStaticLogical
+
+ subroutine writeAttributeStaticVector(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(VECTOR) :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array(1:SIZE(array))
+    else
+       write(lUnit) array(1:SIZE(array))
+    endif
+  end subroutine writeAttributeStaticVector
+
+
+ subroutine writeAttributeStaticOctalVector(lUnit, array, fileFormatted)
+    integer :: lUnit
+    type(OCTALVECTOR) :: array(:)
+    logical :: fileFormatted
+
+    if (fileFormatted) then
+       write(lUnit,*) array(1:SIZE(array))
+    else
+       write(lUnit) array(1:SIZE(array))
+    endif
+  end subroutine writeAttributeStaticOCTALVector
 
 
 END MODULE octal_mod

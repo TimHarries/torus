@@ -2867,34 +2867,70 @@ contains
        type(gridtype) :: grid
        type(octal), pointer :: thisChild
        integer              :: iChild
+
+       call writeAttributeStatic(20, thisOctal%nDepth, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%nChildren, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%indexChild, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%hasChild, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%centre, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%rho, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%temperature, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%label, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%subcellSize, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%threeD, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%twoD, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%maxChildren, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%cylindrical, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%splitAzimuthally, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%phi, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%r, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%parentSubcell, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%inStar, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%inFlow, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%velocity, fileFormatted)
+       call writeAttributeStatic(20, thisOctal%cornervelocity, fileFormatted)
+
+       call writeAttributePointer(20, thisOctal%chiLine, fileFormatted)
+       call writeAttributePointer(20, thisOctal%etaLine, fileFormatted)
+       call writeAttributePointer(20, thisOctal%etaCont, fileFormatted)
+       call writeAttributePointer(20, thisOctal%biasLine3D, fileFormatted)
+       call writeAttributePointer(20, thisOctal%biasCont3D, fileFormatted)
+       call writeAttributePointer(20, thisOctal%probDistLine, fileFormatted)
+       call writeAttributePointer(20, thisOctal%probDistCont, fileFormatted)
+       call writeAttributePointer(20, thisOctal%ne, fileFormatted)
+       call writeAttributePointer(20, thisOctal%nH, fileFormatted)
+       call writeAttributePointer(20, thisOctal%nTot, fileFormatted)
+       call writeAttributePointer(20, thisOctal%dustType, fileFormatted)
+
+
        
-       if (fileFormatted) then 
-          write(iostat=error,fmt=*,unit=20) thisOctal%nDepth, thisOctal%nChildren,&
-                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
-                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
-                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
-                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
-                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
-                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
-                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
-                  thisOctal%subcellSize,thisOctal%threed, thisOctal%twoD,    &
-                  thisOctal%maxChildren, thisOctal%dustType,  &
-                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
-                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
-       else
-          write(iostat=error,unit=20) thisOctal%nDepth, thisOctal%nChildren, &
-                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
-                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
-                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
-                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
-                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
-                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nh, thisOctal%nTot,      &
-                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
-                  thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
-                  thisOctal%maxChildren, thisOctal%dustType, &
-                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
-                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
-       end if 
+!       if (fileFormatted) then 
+!          write(iostat=error,fmt=*,unit=20) thisOctal%nDepth, thisOctal%nChildren,&
+!                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+!                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+!                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+!                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+!                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+!                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
+!                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+!                  thisOctal%subcellSize,thisOctal%threed, thisOctal%twoD,    &
+!                  thisOctal%maxChildren, thisOctal%dustType,  &
+!                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+!                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
+!       else
+!          write(iostat=error,unit=20) thisOctal%nDepth, thisOctal%nChildren, &
+!                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+!                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+!                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+!                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+!                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+!                  thisOctal%probDistCont, thisOctal%Ne, thisOctal%nh, thisOctal%nTot,      &
+!                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+!                  thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
+!                  thisOctal%maxChildren, thisOctal%dustType, &
+!                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+!                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
+!       end if 
        if (.not.grid%oneKappa) then
 !          call writeReal2D(thisOctal%kappaAbs,fileFormatted)
 !          call writeReal2D(thisOctal%kappaSca,fileFormatted)
@@ -3399,38 +3435,73 @@ contains
 
        nOctal = nOctal+1
        thisOctal%parent => parent
-       
-       if (fileFormatted) then
-          read(unit=20,fmt=*,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
-                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
-                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
-                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
-                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
-                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
-                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
-                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
-                  thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
-                  thisOctal%maxChildren, thisOctal%dustType, &
-                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
-                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
-       else
-          read(unit=20,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
-                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
-                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
-                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
-                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
-                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
-                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
-                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
-                  thisOctal%subcellSize, thisOctal%threeD,  thisOctal%twoD,  &
-                  thisOctal%maxChildren, thisOctal%dustType, &
-                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
-                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
 
-       end if
+
+       call readAttributeStatic(20, thisOctal%nDepth, fileFormatted)
+       call readAttributeStatic(20, thisOctal%nChildren, fileFormatted)
+       call readAttributeStatic(20, thisOctal%indexChild, fileFormatted)
+       call readAttributeStatic(20, thisOctal%hasChild, fileFormatted)
+       call readAttributeStatic(20, thisOctal%centre, fileFormatted)
+       call readAttributeStatic(20, thisOctal%rho, fileFormatted)
+       call readAttributeStatic(20, thisOctal%temperature, fileFormatted)
+       call readAttributeStatic(20, thisOctal%label, fileFormatted)
+       call readAttributeStatic(20, thisOctal%subcellSize, fileFormatted)
+       call readAttributeStatic(20, thisOctal%threeD, fileFormatted)
+       call readAttributeStatic(20, thisOctal%twoD, fileFormatted)
+       call readAttributeStatic(20, thisOctal%maxChildren, fileFormatted)
+       call readAttributeStatic(20, thisOctal%cylindrical, fileFormatted)
+       call readAttributeStatic(20, thisOctal%splitAzimuthally, fileFormatted)
+       call readAttributeStatic(20, thisOctal%phi, fileFormatted)
+       call readAttributeStatic(20, thisOctal%r, fileFormatted)
+       call readAttributeStatic(20, thisOctal%parentSubcell, fileFormatted)
+       call readAttributeStatic(20, thisOctal%inStar, fileFormatted)
+       call readAttributeStatic(20, thisOctal%inFlow, fileFormatted)
+       call readAttributeStatic(20, thisOctal%velocity, fileFormatted)
+       call readAttributeStatic(20, thisOctal%cornervelocity, fileFormatted)
+
+       call readAttributePointer(20, thisOctal%chiLine, fileFormatted)
+       call readAttributePointer(20, thisOctal%etaLine, fileFormatted)
+       call readAttributePointer(20, thisOctal%etaCont, fileFormatted)
+       call readAttributePointer(20, thisOctal%biasLine3D, fileFormatted)
+       call readAttributePointer(20, thisOctal%biasCont3D, fileFormatted)
+       call readAttributePointer(20, thisOctal%probDistLine, fileFormatted)
+       call readAttributePointer(20, thisOctal%probDistCont, fileFormatted)
+       call readAttributePointer(20, thisOctal%ne, fileFormatted)
+       call readAttributePointer(20, thisOctal%nH, fileFormatted)
+       call readAttributePointer(20, thisOctal%nTot, fileFormatted)
+       call readAttributePointer(20, thisOctal%dustType, fileFormatted)
+
        
+!       if (fileFormatted) then
+!          read(unit=20,fmt=*,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
+!                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+!                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+!                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+!                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+!                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+!                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
+!                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+!                  thisOctal%subcellSize, thisOctal%threeD, thisOctal%twoD,   &
+!                  thisOctal%maxChildren, thisOctal%dustType, &
+!                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+!                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
+!       else
+!          read(unit=20,iostat=error) thisOctal%nDepth, thisOctal%nChildren,  &
+!                  thisOctal%indexChild, thisOctal%hasChild, thisOctal%centre,& 
+!                  thisOctal%rho, thisOctal%velocity,thisOctal%cornerVelocity,&
+!                  thisOctal%temperature, thisOctal%chiLine,thisOctal%etaLine,&
+!                  thisOctal%etaCont, thisOctal%biasLine3D,                   &
+!                  thisOctal%biasCont3D, thisOctal%probDistLine,              &
+!                  thisOctal%probDistCont, thisOctal%Ne,  thisOctal%nh,thisOctal%nTot,      &
+!                  thisOctal%inStar, thisOctal%inFlow, thisOctal%label,       &
+!                  thisOctal%subcellSize, thisOctal%threeD,  thisOctal%twoD,  &
+!                  thisOctal%maxChildren, thisOctal%dustType, &
+!                  thisOctal%cylindrical, thisOctal%splitAzimuthally, thisOctal%phi, &
+!                  thisOctal%dPhi, thisOctal%r, thisOctal%parentSubcell
+!
+!       end if
+!       
        thisOctal%oneD = .not.(thisOctal%twoD.or.thisOctal%threeD)
-
 
        if (.not.grid%oneKappa) then
 !          call readReal2D(thisOctal%kappaAbs,fileFormatted)

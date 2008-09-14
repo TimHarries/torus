@@ -512,7 +512,8 @@ contains
        endif
        
        call writeVtkFile(grid, tfilename, &
-            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    "/))
+            valueTypeString=(/"rho        ", "temperature", "tau        ", "crossings  ", "etacont    " , &
+                              "dust1      "/))
        
 
        if (doTuning) call tune(6, "One Lucy Rad Eq Itr")  ! start a stopwatch
