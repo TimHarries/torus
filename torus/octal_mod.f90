@@ -204,7 +204,7 @@ MODULE octal_mod
     REAL(double), DIMENSION(:), pointer                 :: biasCont3D  => null()   ! grid bias distribution
     real(double), DIMENSION(:), pointer :: probDistLine  => null() ! emissivity probability distribution
     real(double), DIMENSION(:), pointer :: probDistCont  => null()  ! emissivity probability distribution
-    real(double), DIMENSION(:,:), POINTER ::  N => null()! stateq level pops
+    real(double), DIMENSION(:,:), POINTER :: N => null()! stateq level pops
     real(double), DIMENSION(:), pointer :: Ne  => null()           ! electron density
     real(double), DIMENSION(:), pointer :: NH  => null()           ! total H no density
     real(double), pointer :: molecularLevel(:,:) => null() ! molecular level populations

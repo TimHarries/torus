@@ -353,7 +353,6 @@ CONTAINS
        grid%octreeRoot%kappaSca = 1.e-30
     endif
 
-    ALLOCATE(grid%octreeRoot%N(8,grid%maxLevels))
 
     if (oneD) then
        grid%octreeRoot%oneD = .true.
@@ -640,7 +639,6 @@ CONTAINS
        endif
     endif
 
-    ALLOCATE(parent%child(newChildIndex)%N(8,grid%maxLevels))
     ! set up the new child's variables
     parent%child(newChildIndex)%threeD = parent%threeD
     parent%child(newChildIndex)%twoD = parent%twoD
@@ -16182,6 +16180,8 @@ end function readparameterfrom2dmap
     endif
 
     if (cmf) then
+       ALLOCATE(thisOctal%N(8,grid%maxLevels))
+
        allocate(thisOctal%atomAbundance(8, 1:nAtom))
        thisOctal%atomAbundance(:, 1) = 0.71d0 / mHydrogen
        if (nAtom > 1) then
@@ -16200,7 +16200,6 @@ end function readparameterfrom2dmap
     endif
 
     thisOctal%rho = amr_min_rho
-    thisOctal%N = 1.e-30
     thisOctal%gasOpacity = .false.
     thisOctal%temperature = TMinGlobal
 
