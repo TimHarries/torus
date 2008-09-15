@@ -403,41 +403,8 @@ CONTAINS
     ! initialize some values
     grid%octreeRoot%rho = 1.e-30
 
-    if (cmf) then
-       allocate(grid%octreeroot%atomAbundance(8, nAtom))
-       grid%octreeRoot%atomAbundance(1:8, 1) =  0.71d0 / mHydrogen ! by default solar
-       if (nAtom > 1) then
-          grid%octreeRoot%atomAbundance(1:8, 2:nAtom) =  0.27d0 / (4.d0*mHydrogen) !assume higher atoms are helium
-       endif
-    endif
-
-    if (molecular) then
-       allocate(grid%octreeroot%molAbundance(8))
-       grid%Octreeroot%molAbundance = 1.e-30
-    endif
-
-    grid%octreeRoot%gasOpacity = .false.
-    if (photoionization) then
-       allocate(grid%octreeRoot%ionFrac(1:grid%octreeRoot%maxChildren, 1:grid%nIon))
-       allocate(grid%octreeRoot%photoionCoeff(1:grid%octreeRoot%maxChildren, 1:grid%nIon))
-    endif
-
-    if (associated(grid%octreeRoot%ionFrac)) grid%octreeRoot%ionFrac = 1.e-30
-    
-    if (associated(grid%octreeRoot%photoIonCoeff)) then
-       grid%octreeRoot%photoIonCoeff = 0.d0
-    endif
-
-    if (molecular) then
-       thisOctal => grid%octreeRoot
-       call allocateAttribute(thisOctal%molAbundance, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%temperatureGas, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%temperatureDust, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%nh2, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%molmicroturb, thisOctal%maxChildren)
-    endif
-
+    thisOctal => grid%octreeRoot
+    call allocateOctalAttributes(grid, thisOctal)
 
     select case (grid%geometry)
        case("cluster","molcluster")
@@ -681,64 +648,6 @@ CONTAINS
     parent%child(newChildIndex)%maxChildren = parent%maxChildren
     parent%child(newChildIndex)%cylindrical = parent%cylindrical
 
-    if (mie) then
-       thisOctal => parent%child(newChildIndex)
-       call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
-       thisOctal%dustType = 1
-       ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
-       thisOctal%dustTypeFraction = 0.d0
-       thisOctal%dustTypeFraction(:,1) = 1.d0
-
-       call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%nDiffusion, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%eDens, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%diffusionCoeff, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%oldeDens, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%nDirectPhotons, thisOctal%maxChildren)
-       
-       call allocateAttribute(thisOctal%underSampled, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
-
-       call allocateAttribute(thisOctal%probDistLine, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
-
-
-    endif
-
-
-
-
-!    if (myrankglobal==2) write(*,'(10i4)') parent%child(newChildindex)%ndepth, parent%child(newChildIndex)%mpiThread(1:8)
-
-    if (cmf) then
-       allocate(parent%child(newChildIndex)%atomAbundance(8, 1:nAtom))
-       parent%child(newChildIndex)%atomAbundance(:, 1) = 0.71d0 / mHydrogen
-       if (nAtom > 1) then
-          parent%child(newChildIndex)%atomAbundance(:, 2:nAtom) =  0.27d0 / (4.d0*mHydrogen) !assume higher atoms are helium
-       endif
-    endif
-
-    if (molecular) then
-       thisOctal => parent%child(newChildIndex)
-       call allocateAttribute(thisOctal%molAbundance, thisOctal%maxChildren)
-       parent%child(newChildIndex)%molAbundance(:) = 1.e-30
-       call allocateAttribute(thisOctal%temperatureGas, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%temperatureDust, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%nh2, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
-       call allocateAttribute(thisOctal%molmicroturb, thisOctal%maxChildren)
-    endif
-
 
     
     ! if splitAzimuthally is not present then we assume we are not
@@ -790,6 +699,7 @@ CONTAINS
        endif
     endif
 
+
     parent%child(newChildIndex)%inFlow = parent%inFlow
     parent%child(newChildIndex)%parent => parent
     parent%child(newChildIndex)%parentSubcell = iChild
@@ -801,73 +711,10 @@ CONTAINS
     if (parent%cylindrical) then
        parent%child(newChildIndex)%r = subcellRadius(parent,iChild)
     endif
-    parent%child(newChildIndex)%rho = amr_min_rho
-    parent%child(newChildIndex)%N = 1.e-30
-    parent%child(newChildIndex)%gasOpacity = .false.
-    parent%child(newChildIndex)%temperature = TMinGlobal
 
 
-    if (photoionization) then
-       allocate(parent%child(newChildIndex)%ionFrac(1:parent%maxChildren, 1:grid%nIon))
-       allocate(parent%child(newChildIndex)%photoionCoeff(1:parent%maxChildren, 1:grid%nIon))
-    endif
-
-    if (associated(parent%child(newChildindex)%ionFrac)) parent%child(newChildIndex)%ionFrac = 1.e-30
-    
-    if (associated(parent%child(newChildIndex)%photoIonCoeff)) then
-       parent%child(newChildIndex)%photoIonCoeff = 0.d0
-    endif
-       
-    if (hydrodynamics) then
-       allocate(parent%child(newChildIndex)%q_i(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%q_i_plus_1(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%q_i_minus_1(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%q_i_minus_2(1:parent%maxChildren))
-
-       allocate(parent%child(newChildIndex)%x_i(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%x_i_plus_1(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%x_i_minus_1(1:parent%maxChildren))
-
-       allocate(parent%child(newChildIndex)%u_interface(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%u_i_plus_1(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%u_i_minus_1(1:parent%maxChildren))
-
-       allocate(parent%child(newChildIndex)%flux_i(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%flux_i_plus_1(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%flux_i_minus_1(1:parent%maxChildren))
-
-       allocate(parent%child(newChildIndex)%phiLimit(1:parent%maxChildren))
-
-       allocate(parent%child(newChildIndex)%ghostCell(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%feederCell(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%edgeCell(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%refinedLastTime(1:parent%maxChildren))
-
-       allocate(parent%child(newChildIndex)%pressure_i(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%pressure_i_plus_1(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%pressure_i_minus_1(1:parent%maxChildren))
-
-       allocate(parent%child(newChildIndex)%rhou(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%rhov(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%rhow(1:parent%maxChildren))
-
-       allocate(parent%child(newChildIndex)%rhoe(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%energy(1:parent%maxChildren))
-
-
-       allocate(parent%child(newChildIndex)%phi_i(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%phi_i_plus_1(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%phi_i_minus_1(1:parent%maxChildren))
-
-       allocate(parent%child(newChildIndex)%rho_i_plus_1(1:parent%maxChildren))
-       allocate(parent%child(newChildIndex)%rho_i_minus_1(1:parent%maxChildren))
-
-       allocate(parent%child(newChildIndex)%boundaryCondition(1:parent%maxChildren))
-
-    endif
-
-
-
+    thisOctal => parent%child(newChildIndex)
+    call allocateOctalAttributes(grid, thisOctal)
 
 
     IF (PRESENT(sphData)) THEN
@@ -9872,6 +9719,7 @@ end function readparameterfrom2dmap
     call copyAttribute(dest%etaLine, source%etaLine)
     call copyAttribute(dest%etaCont, source%etaCont)
     call copyAttribute(dest%biasCont3d, source%biasCont3d)
+    call copyAttribute(dest%biasLine3d, source%biasLine3d)
     call copyAttribute(dest%distanceGrid, source%distanceGrid)
 
 
@@ -16292,6 +16140,131 @@ end function readparameterfrom2dmap
     enddo
 
   end subroutine fudge_minMaxValue
+
+
+  subroutine allocateOctalAttributes(grid, thisOctal)
+    use input_variables, only : mie, cmf, nAtom, nDustType, molecular, TminGlobal, &
+         photoionization, hydrodynamics
+    type(OCTAL), pointer :: thisOctal
+    type(GRIDTYPE) :: grid
+
+    if (mie) then
+       call allocateAttribute(thisOctal%oldFrac, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%dustType, thisOctal%maxChildren)
+       thisOctal%dustType = 1
+       ALLOCATE(thisOctal%dusttypefraction(thisOctal%maxchildren,  nDustType))
+       thisOctal%dustTypeFraction = 0.d0
+       thisOctal%dustTypeFraction(:,1) = 1.d0
+
+       call allocateAttribute(thisOctal%diffusionApprox, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nDiffusion, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%eDens, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%diffusionCoeff, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%oldeDens, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nDirectPhotons, thisOctal%maxChildren)
+       
+       call allocateAttribute(thisOctal%underSampled, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%oldTemperature, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%kappaRoss, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%distanceGrid, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nCrossings, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nTot, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%etaCont, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%etaLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%chiLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%biasCont3D, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%biasLine3D, thisOctal%maxChildren)
+
+       call allocateAttribute(thisOctal%probDistLine, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%probDistCont, thisOctal%maxChildren)
+
+
+    endif
+
+    if (cmf) then
+       allocate(thisOctal%atomAbundance(8, 1:nAtom))
+       thisOctal%atomAbundance(:, 1) = 0.71d0 / mHydrogen
+       if (nAtom > 1) then
+          thisOctal%atomAbundance(:, 2:nAtom) =  0.27d0 / (4.d0*mHydrogen) !assume higher atoms are helium
+       endif
+    endif
+
+    if (molecular) then
+       call allocateAttribute(thisOctal%molAbundance, thisOctal%maxChildren)
+       thisOctal%molAbundance(:) = 1.e-30
+       call allocateAttribute(thisOctal%temperatureGas, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%temperatureDust, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%nh2, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%microturb, thisOctal%maxChildren)
+       call allocateAttribute(thisOctal%molmicroturb, thisOctal%maxChildren)
+    endif
+
+    thisOctal%rho = amr_min_rho
+    thisOctal%N = 1.e-30
+    thisOctal%gasOpacity = .false.
+    thisOctal%temperature = TMinGlobal
+
+
+    if (photoionization) then
+       allocate(thisOctal%ionFrac(1:thisOctal%maxchildren, 1:grid%nIon))
+       allocate(thisOctal%photoionCoeff(1:thisOctal%maxchildren, 1:grid%nIon))
+    endif
+
+    if (associated(thisOctal%ionFrac)) thisOctal%ionFrac = 1.e-30
+    
+    if (associated(thisOctal%photoIonCoeff)) then
+       thisOctal%photoIonCoeff = 0.d0
+    endif
+       
+    if (hydrodynamics) then
+       allocate(thisOctal%q_i(1:thisOctal%maxchildren))
+       allocate(thisOctal%q_i_plus_1(1:thisOctal%maxchildren))
+       allocate(thisOctal%q_i_minus_1(1:thisOctal%maxchildren))
+       allocate(thisOctal%q_i_minus_2(1:thisOctal%maxchildren))
+
+       allocate(thisOctal%x_i(1:thisOctal%maxchildren))
+       allocate(thisOctal%x_i_plus_1(1:thisOctal%maxchildren))
+       allocate(thisOctal%x_i_minus_1(1:thisOctal%maxchildren))
+
+       allocate(thisOctal%u_interface(1:thisOctal%maxchildren))
+       allocate(thisOctal%u_i_plus_1(1:thisOctal%maxchildren))
+       allocate(thisOctal%u_i_minus_1(1:thisOctal%maxchildren))
+
+       allocate(thisOctal%flux_i(1:thisOctal%maxchildren))
+       allocate(thisOctal%flux_i_plus_1(1:thisOctal%maxchildren))
+       allocate(thisOctal%flux_i_minus_1(1:thisOctal%maxchildren))
+
+       allocate(thisOctal%phiLimit(1:thisOctal%maxchildren))
+
+       allocate(thisOctal%ghostCell(1:thisOctal%maxchildren))
+       allocate(thisOctal%feederCell(1:thisOctal%maxchildren))
+       allocate(thisOctal%edgeCell(1:thisOctal%maxchildren))
+       allocate(thisOctal%refinedLastTime(1:thisOctal%maxchildren))
+
+       allocate(thisOctal%pressure_i(1:thisOctal%maxchildren))
+       allocate(thisOctal%pressure_i_plus_1(1:thisOctal%maxchildren))
+       allocate(thisOctal%pressure_i_minus_1(1:thisOctal%maxchildren))
+
+       allocate(thisOctal%rhou(1:thisOctal%maxchildren))
+       allocate(thisOctal%rhov(1:thisOctal%maxchildren))
+       allocate(thisOctal%rhow(1:thisOctal%maxchildren))
+
+       allocate(thisOctal%rhoe(1:thisOctal%maxchildren))
+       allocate(thisOctal%energy(1:thisOctal%maxchildren))
+
+
+       allocate(thisOctal%phi_i(1:thisOctal%maxchildren))
+       allocate(thisOctal%phi_i_plus_1(1:thisOctal%maxchildren))
+       allocate(thisOctal%phi_i_minus_1(1:thisOctal%maxchildren))
+
+       allocate(thisOctal%rho_i_plus_1(1:thisOctal%maxchildren))
+       allocate(thisOctal%rho_i_minus_1(1:thisOctal%maxchildren))
+
+       allocate(thisOctal%boundaryCondition(1:thisOctal%maxchildren))
+
+    endif
+  end  subroutine allocateOctalAttributes
+
 
    
 END MODULE amr_mod

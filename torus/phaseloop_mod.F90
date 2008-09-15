@@ -253,7 +253,7 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
   integer, parameter :: maxIntPro = 1000
   integer :: nIntPro
   real :: lamIntPro(maxIntPro), intPro(maxIntPro)
-
+  character(len=80) :: message
   ! raman scattering model parameters
   type(VECTOR) :: ramanSourceVelocity
 
@@ -619,11 +619,12 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 !          show_value_3rd_dim, boxfac=zoomfactor)
 
 
-     if (writeoutput) write(*,*) " "
-     if (writeoutput) write(*,'(a)') "Some basic model parameters"
-     if (writeoutput) write(*,'(a)') "---------------------------"
-     if (writeoutput) write(*,*) " "
-     if (writeoutput) write(*,*) "Inclination: ",radtodeg*acos(outVec%z)
+     call writeInfo(" ", TRIVIAL)
+     call writeInfo("Some basic model parameters",TRIVIAL)
+     call writeInfo("---------------------------",TRIVIAL)
+     call writeInfo(" ", TRIVIAL)
+
+     call writeFormatted("(a,f7.1)","Inclination: ",real(radtodeg*acos(outVec%z)),TRIVIAL)
      ! THE FOLLOWING STATEMENT IS DANGEROUS. ACCORDING TO INPUT_MOD.F90 
      ! NOT ALL THE GEOMETRY HAS RCORE VALUES, AND SAME UNITS!
      ! THIS SHOULD BE DONE IN INITAMRGRID ROUTINE AS SOME GEOMETRY HAS
@@ -662,17 +663,17 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
         totEnvelopeEmission = totDustContinuumEmission
         chanceDust = totDustContinuumEmission/(totDustContinuumEmission+lCore/1.e30)
-        if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
-        if (writeoutput) write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
+!        if (writeoutput) write(*,*) "totdustemission",totdustcontinuumemission
+!        if (writeoutput) write(*,'(a,f7.2)') "Chance of continuum emission from dust: ",chanceDust
 
         weightDust = chanceDust / probDust
         weightPhoto = (1. - chanceDust) / (1. - probDust)
 
-        if (writeoutput) write(*,*) "WeightDust",weightDust
-        if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
-        if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
+!        if (writeoutput) write(*,*) "WeightDust",weightDust
+!        if (writeoutput) write(*,*) "WeightPhoto",weightPhoto
+!        if (writeoutput) write(*,*) "core + envelope luminosity",lCore+totEnvelopeEmission*1.d30
         energyPerPhoton =  ((lCore + totEnvelopeEmission*1.d30) / dble(nPhotons))/1.d20
-        if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
+!        if (writeoutput) write(*,*) "Energy per photon: ", energyPerPhoton
 
      endif
 
@@ -1025,9 +1026,12 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
         end if
 
         if (writeoutput) then
-           write(*,*) " "
-           write(*,*) "Inclination = ",inclination*radToDeg,' degrees'
-           write(*,*) " "
+           write(message,*) " "
+           call writeInfo(message, TRIVIAL)
+           write(message,*) "Inclination = ",inclination*radToDeg,' degrees'
+           call writeInfo(message, TRIVIAL)
+           write(message,*) " "
+           call writeInfo(message, TRIVIAL)
         end if
 
        if (iPhase == nStartPhase .and. iInclination == 1) originalOutFile = outFile
@@ -1065,7 +1069,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
 
      end if
 
-     if (writeoutput) write(*,*) "Viewing vector: ",viewVec
+     write(message,'(a,f6.3,f6.3,f6.3)') "Viewing vector: ",viewVec%x, viewVec%y, viewVec%z
+     call writeInfo(message, TRIVIAL)
 
      ! zero the output arrays
 
@@ -1189,12 +1194,15 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
            
      endif
 
-     if (writeoutput) then
-        write(*,*) " "
-        write(*,'(a)') "Run-time messages"
-        write(*,'(a)') "-----------------"
-        write(*,*) " "
-     endif
+     
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a)') "Run-time messages"
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a)') "-----------------"
+     call writeInfo(message, TRIVIAL)
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
      
      ntot = 0
 
@@ -2361,7 +2369,8 @@ subroutine do_phaseloop(grid, alreadyDoneInfall, meanDustParticleMass, rstar, ve
      deallocate(tempDoubleArray)
 #endif
      call torus_mpi_barrier !('finished syncing output. Waiting to continue...') 
-     if(myRankIsZero) write(*,'(i10,a)') int(real(iOuterLoop)/real(nOuterLoop)*real(nPhotons)+0.5)," photons done"
+     write(message,'(i10,a)') int(real(iOuterLoop)/real(nOuterLoop)*real(nPhotons)+0.5)," photons done"
+     call writeInfo(message, TRIVIAL)
 
         errorArray(iOuterLoop,1:nLambda) = yArray(1:nLambda)
 
@@ -2478,21 +2487,31 @@ endif ! (doPvimage)
 
  if (myRankIsZero) then 
 
-     write(*,*) " "
-     write(*,'(a)') "Model summary"
-     write(*,'(a)') "-------------"
-     write(*,*) " "
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a)') "Model summary"
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a)') "-------------"
+     call writeInfo(message, TRIVIAL)
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
 
      call systemInfo(startTime,nPhotons)
      
      if (grid%adaptive) then
-        print *, tooFewSamples, ' rays had 2 or less samples.'
-        print *, BoundaryProbs, ' rays had numerical problems with octal boundaries.'
-        print *, negativeOpacity, ' rays had problems with negative opacity values.'
+        write(message,*)  tooFewSamples, ' rays had 2 or less samples.'
+        call writeInfo(message, TRIVIAL)
+        write(message,*) BoundaryProbs, ' rays had numerical problems with octal boundaries.'
+        call writeInfo(message, TRIVIAL)
+        write(message,*) negativeOpacity, ' rays had problems with negative opacity values.'
+        call writeInfo(message, TRIVIAL)
      end if
-     write(*,*) " "
-     write(*,*) "Average # of scattering per photon:: ", real(nTot)/real(nPhotons)
-     write(*,*) " " 
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
+     write(message,*) "Average # of scattering per photon:: ", real(nTot)/real(nPhotons)
+     call writeInfo(message, TRIVIAL)
+     write(message,*) " " 
+     call writeInfo(message, TRIVIAL)
 
  end if 
 

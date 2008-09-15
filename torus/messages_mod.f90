@@ -9,6 +9,11 @@ module messages_mod
   
   implicit none
 
+  interface writeFormatted
+     module procedure writeFormattedReal
+     module procedure writeFormattedInteger
+  end interface
+
   public
 
   logical :: writeoutput
@@ -17,15 +22,50 @@ module messages_mod
   logical :: doTuning
   logical :: myRankIsZero
   integer :: verbosityLevel
-  integer, parameter :: TRIVIAL = 1
+  integer, parameter :: TRIVIAL = 3
   integer, parameter :: FORINFO = 2
-  integer, parameter :: IMPORTANT = 3
+  integer, parameter :: IMPORTANT = 1
   
 contains
 
+  subroutine writeFormattedReal(formatString, message, value, level)
+    character(len=*) :: formatString, message
+    real :: value
+    integer :: level
+    logical :: thisOutputInfo
+    
+    thisOutputInfo = outputInfo
+    if (verbosityLevel .lt. Level) then
+       thisoutputinfo = .false.
+    endif
+
+    if (writeoutput.and.thisoutputInfo) then
+       write(*,formatString) "! "//trim(message), value
+    endif
+  end subroutine writeFormattedReal
+
+  subroutine writeFormattedInteger(formatString, message, value, level)
+    character(len=*) :: formatString, message
+    integer :: value
+    integer :: level
+    logical :: thisOutputInfo
+    
+    thisOutputInfo = outputInfo
+    if (verbosityLevel .lt. Level) then
+       thisoutputinfo = .false.
+    endif
+
+    if (writeoutput.and.thisoutputInfo) then
+       write(*,formatString) "! "//trim(message), value
+    endif
+  end subroutine writeFormattedInteger
+
+
   subroutine writewarning(wstring)
     character(len=*) :: wstring
-    if (writeoutput.and.outputWarnings) then
+    logical :: doOutput
+    if (outputWarnings.and.(verbosityLevel .ge. IMPORTANT)) dooutput = .true.
+    if (writeoutput.and.dooutput) then
        write(*,'(a,a,a)') "WARNING: ", trim(wstring)," !"
     endif
   end subroutine writewarning
@@ -44,7 +84,7 @@ contains
 
     thisoutputinfo = outputinfo
     if (present(level)) then
-       if (level < verbosityLevel) then
+       if (verbositylevel .lt. Level) then
           thisoutputinfo = .false.
        endif
     endif

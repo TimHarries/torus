@@ -426,14 +426,14 @@ contains
     allocate(sigmaExt(1:grid%nLambda))
 
 
-    if (writeoutput) write(*,'(a)') "NEW: Filling grid with mie cross-sections..."
-    if (writeoutput) write(*,*) "Dust law: n(a) = const * a^-q * Exp( -(a/a0)^p )"
-    if (writeoutput) write(*,*) "          where  amin < a < amax"
-    if (writeoutput) write(*,*) "    amin = ",  aMin
-    if (writeoutput) write(*,*) "    amax = ",  aMax 
-    if (writeoutput) write(*,*) "      a0 = ",  a0
-    if (writeoutput) write(*,*) "       q = ",  qDist
-    if (writeoutput) write(*,*) "       p = ",  pDist
+    call writeInfo("NEW: Filling grid with mie cross-sections...", TRIVIAL)
+    call writeInfo("Dust law: n(a) = const * a^-q * Exp( -(a/a0)^p )", TRIVIAL)
+    call writeInfo("          where  amin < a < amax", TRIVIAL)
+    call writeFormatted("(a,f6.3)","    amin  = ",  aMin, TRIVIAL)
+    call writeFormatted("(a,f6.3)","    amax  = ",  aMax, TRIVIAL)
+    call writeFormatted("(a,e12.3)","    a0    = ",  a0, TRIVIAL)
+    call writeFormatted("(a,e12.3)","    qDist = ",  qDist, TRIVIAL)
+    call writeFormatted("(a,e12.3)","    pDist = ",  pDist, TRIVIAL)
 
 
     allocate(mReal(1:grid%nLambda))
@@ -466,7 +466,6 @@ contains
     ! finding the cross sections
     sigmaExt(:) = 0.0; sigmaAbs(:)=0.0; sigmaSca(:)=0.0 ! initializing the values
 
-    if (writeoutput) write(*,*) "Dust law: ",aMin,aMax,qDist
     if (writeoutput) open(20,file="albedo.dat",form="formatted",status="unknown")
     if (writeoutput) open(21,file="gfactor.dat",form="formatted",status="unknown")
     do i = 1, grid%nLambda
@@ -534,7 +533,7 @@ contains
        grid%kappaAbs = grid%kappaAbs * 1.e10
        grid%kappaSca = grid%kappaSca * 1.e10
     else
-       if (writeoutput) write(*,'(a,i4)') "Filling the oneKappa arrays: ",grid%nLambda
+       call writeFormatted("(a,i4)", "Filling the oneKappa arrays: ",grid%nLambda, TRIVIAL)
 
        meanParticleMass = 0.
        do i = 1, ngrain
@@ -561,7 +560,7 @@ contains
 
     endif
     deallocate(sigmaAbs, sigmaSca)
-    if (writeoutput) write(*,'(a)') "mie cross-sections done. Note 10^10 factor"
+    call writeInfo("mie cross-sections done. Note 10^10 factor", TRIVIAL)
   end subroutine fillGridMie
 
   subroutine setKappaTest(grid, scale, aMin, aMax, a0, qDist, pDist, grainType, &

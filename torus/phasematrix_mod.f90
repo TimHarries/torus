@@ -423,6 +423,7 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
   real :: x
   integer :: i,j
   logical :: SI
+  character(len=80) :: message
 
   allocate(ytmpArray(1:nLambda))
   allocate(tmpXarray(1:nLambda))
@@ -491,7 +492,6 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
 !  x = 1./x
 
 !  x = 
-  write(*,*) "starting to write spectrum"
 
   if (normalizeSpectrum) then
      if (yMedian(1)%i /= 0.) then
@@ -504,7 +504,6 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
      x = 1.d0
   endif
 
-  write(*,*) "scaling by ",x
 !  
   do i = 1, nLambda
      ytmpArray(i) = yMedian(i) * x !!!!!!!!!!!!!
@@ -529,7 +528,6 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
      sigU(i) = sqrt(sum((tmpErrorArray(1:nOuterLoop,i)%u-meanU(i))**2)/real(nOuterLoop-1))
   enddo
 
-  write(*,*) "setting up stokes"
 
   stokes_i = ytmpArray%i
   stokes_q = ytmpArray%q
@@ -580,7 +578,8 @@ subroutine writeSpectrum(outFile,  nLambda, xArray, yArray,  errorArray, nOuterL
 endif
 
   if (sed) then
-     write(*,'(a)') "Writing spectrum as lambda F_lambda"
+     write(message,'(a)') "Writing spectrum as lambda F_lambda"
+     call writeInfo(message, TRIVIAL)
 
 
 !     tot = 0.
@@ -602,7 +601,8 @@ endif
   endif
 
   if (SI) then
-     write(*,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (W/m^2)"
+     write(message,'(a)') "Writing spectrum as lambda (microns) vs lambda F_lambda (W/m^2)"
+     call writeInfo(message, TRIVIAL)
 
      tmpXarray(1:nLambda) = xArray(1:nLambda) / 1.e4
      
@@ -620,12 +620,15 @@ endif
   endif
 
   if (useNdf) then
-     write(*,*) "Writing spectrum to ",trim(outfile),".sdf"
+     write(message,*) "Writing spectrum to ",trim(outfile),".sdf"
+     call writeInfo(message, TRIVIAL)
      call wrtsp(nLambda,real(stokes_i),real(stokes_q),real(stokes_qv), &
           real(stokes_u), &
           real(stokes_uv),tmpXarray,outFile)
   else
-     write(*,*) "Writing spectrum to ",trim(outfile),".dat"
+     write(message,*) "Writing spectrum to ",trim(outfile),".dat"
+     call writeInfo(message, TRIVIAL)
+
      open(20,file=trim(outFile)//".dat",status="unknown",form="formatted")
 33   format(6(1x, 1PE14.5))
 !34   format(a1, a14, 5(a6))

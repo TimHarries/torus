@@ -956,26 +956,37 @@ contains
 
     subroutine systemInfo(startTime,nPhotons)
       integer :: nPhotons
-      character(len=80) :: time, login, hostname
+      character(len=80) :: time, login, hostname, message
       integer :: cpuTime, endTime, startTime, i
 
       call unixTimes(cpuTime, endTime)
       call unixGethostname(hostname,i)
       call unixGetlogin(login,i)
 
-      write(*,'(a)') " "
-      write(*,'(a)') "System information"
-      write(*,'(a)') "------------------"
-      write(*,'(a)') " "
-      write(*,'(a,a)') "Job run by: ",trim(login)
-      write(*,'(a,a)') "Job run on: ",trim(hostname)
-      write(*,'(a)') " "
+      write(message,'(a)') " "
+      call writeInfo(message,TRIVIAL)
+      write(message,'(a)') "System information"
+      call writeInfo(message,TRIVIAL)
+      write(message,'(a)') "------------------"
+      call writeInfo(message,TRIVIAL)
+      write(message,'(a)') " "
+      call writeInfo(message,TRIVIAL)
+      write(message,'(a,a)') "Job run by: ",trim(login)
+      call writeInfo(message,TRIVIAL)
+      write(message,'(a,a)') "Job run on: ",trim(hostname)
+      call writeInfo(message,TRIVIAL)
+      write(message,'(a)') " "
+      call writeInfo(message,TRIVIAL)
       call timeString(endTime - startTime, time)
-      write(*,'(a,a)') "Time elapsed: ",time
+      write(message,'(a,a)') "Time elapsed: ",trim(time)
+      call writeInfo(message,TRIVIAL)
       call timeString(cpuTime, time)
-      write(*,'(a,a)') "CPU time used: ",time
-      write(*,'(a)') " "
-      write(*,'(a,f7.1)') "Photons/second: ",real(nPhotons)/real(endTime-startTime)
+      write(message,'(a,a)') "CPU time used: ",trim(time)
+      call writeInfo(message,TRIVIAL)
+      write(message,'(a)') " "
+      call writeInfo(message,TRIVIAL)
+      write(message,'(a,f7.1)') "Photons/second: ",real(nPhotons)/real(endTime-startTime)
+      call writeInfo(message,TRIVIAL)
 
     end subroutine systemInfo
 

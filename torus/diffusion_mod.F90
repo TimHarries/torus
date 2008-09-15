@@ -676,6 +676,7 @@ end subroutine gaussSeidelSweep
     use messages_mod, only : myRankIsZero
 
     type(GRIDTYPE) :: grid
+    character(len=80) :: message
     logical :: gridConverged
     real(double) :: deMax
     integer :: niter
@@ -709,19 +710,16 @@ end subroutine gaussSeidelSweep
         call gaussSeidelSweep(grid, edenstol, demax, gridConverged)
 !        call copyEdens(grid%octreeRoot)
         call setDiffusionCoeff(grid, grid%octreeRoot)
- if (myRankIsZero) then
-        write(*,*) nIter," Maximum relative change in eDens:",deMax
-!        call plot_AMR_values(grid, "temperature", "x-z", real(grid%octreeRoot%centre%y), &
-!             "/xs", .true., .false., &
-!             width_3rd_dim=real(grid%octreeRoot%subcellsize), show_value_3rd_dim=.false.,boxfac=zoomfactor) 
-  endif
+        write(message,*) nIter," Maximum relative change in eDens:",deMax
+	call writeInfo(message, TRIVIAL)
         if (nIter < 3) gridConverged = .false.
         if (nIter > maxIter) then
            if (myRankIsZero) write(*,*) "No solution found after ",maxIter," iterations"
            gridConverged = .true.
         endif
      enddo
-     if (myRankisZero) write(*,*) "Gauss-seidel took ",niter, " iterations"
+     write(message,*) "Gauss-seidel took ",niter, " iterations"
+     call writeInfo(message,TRIVIAL)
    end subroutine solveArbitraryDiffusionZones
 
 

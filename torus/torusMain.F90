@@ -286,7 +286,6 @@ program torus
 #ifdef MPI
   call MPI_BCAST(iSeed, iSize, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
   call random_seed(put=iseed)
-! write(*,*) myRankGlobal,"random seed",iseed(1:isize)
 #endif
   deallocate(iSeed)
 
@@ -604,7 +603,7 @@ program torus
   call  createDustCrossSectionPhaseMatrix(grid, xArray, nLambda, miePhase, nMuMie)
 
   if (noScattering) then
-     if (writeoutput) write(*,*) "! WARNING: Scattering opacity turned off in model"
+     if (writeoutput) call writeWarning("Scattering opacity turned off in model")
      grid%oneKappaSca(1:nDustType,1:nLambda) = TINY(grid%oneKappaSca)
   endif
 
@@ -654,8 +653,6 @@ program torus
      call locate(grid%lamArray, nLambda,lambdaTau,itestlam)
      call locate(grid%lamArray, nLambda,lambdasmooth,ismoothlam)
      grid%itestlam = iTestLam
-     write(message,*) "Test wavelength index: ",itestlam,ismoothlam
-     call writeInfo(message, TRIVIAL)
   end if
 
   ! chris
@@ -744,7 +741,6 @@ program torus
 
   ! set up the sources
   call set_up_sources
- 
      if (geometry == "wr104") then
 
         totalMass = 0.d0
@@ -784,7 +780,7 @@ program torus
         totalMass =0.d0
         call findTotalMass(grid%octreeRoot, totalMass)
         write(message,*) "Mass of envelope: ",totalMass/mSol, " solar masses"
-        call writeInfo(message, IMPORTANT)
+        call writeInfo(message, TRIVIAL)
      endif
         
 
@@ -1896,7 +1892,7 @@ subroutine set_up_sources
 
 
   ! set up the sources
-  call writeInfo("Setting up sources")
+  call writeInfo("Setting up sources", TRIVIAL)
   nSource = 0
 
   select case(geometry)

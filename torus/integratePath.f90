@@ -2587,7 +2587,6 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   real, allocatable :: tauCont(:,:) !tauCont(maxTau,nLambda)
   real, allocatable  :: linePhotonAlbedo(:) ! the line photon albedo along the ray
 
-
   integer  :: nTau        ! size of optical depth arrays
   real     :: escProb     ! the escape probability
   logical  :: hitcore     ! has the photon hit the core
@@ -2598,7 +2597,7 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   real :: junk
   type(OCTALVECTOR) :: octVec, position
   logical :: contPhoton = .true.
-
+  character(len=80) :: message
   integer :: ntest = 301
   real :: theta
   real(oct) :: x1, x2
@@ -2615,9 +2614,12 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
 
   ! chuck out some useful information to the user
     
-  write(*,'(a,f7.1,a)') "Cross-sections at ",wavelength, " angstroms"
-  write(*,'(a)') "------------------------------------------"
-  write(*,*) " "
+  write(message,'(a,f7.1,a)') "Cross-sections at ",wavelength, " angstroms"
+  call writeInfo(message, TRIVIAL)
+  write(message,'(a)') "------------------------------------------"
+  call writeInfo(message, TRIVIAL)
+  write(message,*) " "
+  call writeInfo(message, TRIVIAL)
 
   zeroVec = OCTALVECTOR(0.,0.,0.)
   
@@ -2654,11 +2656,16 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   end if
   
   if (nTau > 2) then 
-     write(*,'(a,1pe10.3)') "Optical depth in x-axis from centre: ",tauExt(ntau)
-     write(*,'(a,1pe10.3)') "Absorption depth in x-axis from centre: ",tauAbs(ntau)
-     write(*,'(a,1pe10.3)') "Scattering depth in x-axis from centre: ",tauSca(ntau)
-     write(*,'(a,i4)') "Number of samples: ",nTau
-     write(*,*) " "
+     write(message,'(a,1pe10.3)') "Optical depth in x-axis from centre: ",tauExt(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Absorption depth in x-axis from centre: ",tauAbs(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Scattering depth in x-axis from centre: ",tauSca(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,i4)') "Number of samples: ",nTau
+     call writeInfo(message, TRIVIAL)
+     write(message,*) " "
+  call writeInfo(message, TRIVIAL)
   end if
 
   !
@@ -2683,11 +2690,16 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   end if
   
   if (nTau > 2) then 
-     write(*,'(a,1pe10.3)') "Optical depth in y-axis from centre: ",tauExt(ntau)
-     write(*,'(a,1pe10.3)') "Absorption depth in y-axis from centre: ",tauAbs(ntau)
-     write(*,'(a,1pe10.3)') "Scattering depth in y-axis from centre: ",tauSca(ntau)
-     write(*,'(a,i4)') "Number of samples: ",nTau
-     write(*,*) " "
+     write(message,'(a,1pe10.3)') "Optical depth in y-axis from centre: ",tauExt(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Absorption depth in y-axis from centre: ",tauAbs(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Scattering depth in y-axis from centre: ",tauSca(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,i4)') "Number of samples: ",nTau
+     call writeInfo(message, TRIVIAL)
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
   end if
 
   !
@@ -2712,11 +2724,16 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
   end if
   
   if (nTau > 2) then 
-     write(*,'(a,1pe10.3)') "Optical depth in z-axis from centre: ",tauExt(ntau)
-     write(*,'(a,1pe10.3)') "Absorption depth in z-axis from centre: ",tauAbs(ntau)
-     write(*,'(a,1pe10.3)') "Scattering depth in z-axis from centre: ",tauSca(ntau)
-     write(*,'(a,i4)') "Number of samples: ",nTau
-     write(*,*) " "
+     write(message,'(a,1pe10.3)') "Optical depth in z-axis from centre: ",tauExt(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Absorption depth in z-axis from centre: ",tauAbs(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Scattering depth in z-axis from centre: ",tauSca(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,i4)') "Number of samples: ",nTau
+     call writeInfo(message, TRIVIAL)
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
   end if
 
   !
@@ -2742,12 +2759,17 @@ subroutine test_optical_depth(gridUsesAMR, VoigtProf, &
      write(*,*) '   Error encountered in test towards observer!!! (error = ',error,')'
   end if     
      
-  write(*,'(a,1pe10.3)') "Optical depth to observer: ",tauExt(ntau)
-  write(*,'(a,1pe10.3)') "Absorption depth to observer: ",tauAbs(ntau)
-  write(*,'(a,1pe10.3)') "Scattering depth to observer: ",tauSca(ntau)
-  write(*,'(a,i4)') "Number of samples: ",nTau
-  write(*,*) " "
 
+     write(message,'(a,1pe10.3)') "Optical depth to observer from centre: ",tauExt(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Absorption depth to observer from centre: ",tauAbs(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,1pe10.3)') "Scattering depth to observer from centre: ",tauSca(ntau)
+     call writeInfo(message, TRIVIAL)
+     write(message,'(a,i4)') "Number of samples: ",nTau
+     call writeInfo(message, TRIVIAL)
+     write(message,*) " "
+     call writeInfo(message, TRIVIAL)
 
   !
   !

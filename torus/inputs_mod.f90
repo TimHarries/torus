@@ -78,7 +78,7 @@ contains
 
 
     call getInteger("verbosity", verbosityLevel, cLine, nLines, &
-         "Verbosity level: ", "(a,i8,1x,a)", 1, ok, .false.)
+         "Verbosity level: ", "(a,i8,1x,a)", 3, ok, .false.)
 
 
     call getInteger("nphotons", nPhotons, cLine, nLines, &
@@ -282,7 +282,6 @@ contains
        end if
 
        if (amr2d) then
-          if (writeoutput) write(*,*) "WARNING: amr grid is in two-d - switching off stateq2d"
           stateq2d = .false.
           amr2donly = .false.
        endif

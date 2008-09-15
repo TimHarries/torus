@@ -2053,7 +2053,7 @@ contains
 
     type(GRIDTYPE) :: grid
 
-    print *, 'Deallocating grid structure'
+    call writeInfo("Deallocating grid structure", TRIVIAL)
     
 !    if (associated(grid%octreeRoot)) then
 !      call deleteOctreeBranch(grid%octreeRoot,grid)   
@@ -3294,6 +3294,7 @@ contains
     implicit none
 
     character(len=*)            :: filename
+    character(len=80)            :: message
     logical, intent(in)         :: fileFormatted
     type(GRIDTYPE), intent(inout) :: grid
     
@@ -3333,10 +3334,12 @@ contains
        end if
     end if
 
-    if (writeoutput) write(*,'(a,a)') "Reading populations file from: ",trim(filename)
-    if (writeoutput) write(*,'(a,i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') ' - data file written at: ', &
+    write(message,'(a,a)') "Reading populations file from: ",trim(filename)
+    call writeInfo(message,TRIVIAL)
+    write(message,'(a,i4,a,i2.2,a,i2.2,a,i2.2,a,i2.2)') ' - data file written at: ', &
                           timeValues(1),'/',timeValues(2),'/',&
                           timeValues(3),'  ',timeValues(5),':',timeValues(6)
+    call writeInfo(message,TRIVIAL)
                           
     ! read the variables to be stored in the top-level 'grid' structure
     if (fileFormatted) then
@@ -3406,12 +3409,6 @@ contains
     
     close(unit=20)
 
-    if (writeoutput) then
-       print *, 'setting ''geometry'':',trim(geometry),' previously:',trim(grid%geometry)
-       print *, 'setting ''dipoleOffset'':',dipoleOffset,' previously:',grid%dipoleOffset
-       print *, 'setting ''amr2donly'':',amr2donly,' previously:',grid%amr2donly
-       print *, 'setting ''statEq2d'':',' previously:', grid%statEq2d
-    endif
     grid%geometry = trim(geometry)
     grid%dipoleOffset = dipoleOffset
     grid%amr2donly = amr2donly
@@ -6521,7 +6518,6 @@ contains
        if (fac < epsilon(1.d0)) then
           write(UN,'(a)') "**** WARNING: Grid cell depth is so great numerical problems may occur****"
        endif
-       write(*,*) fac,epsilon(1.d0)
     else
        write(UN,'(a)') ' '
        write(UN,'(a)') '######################################################'
